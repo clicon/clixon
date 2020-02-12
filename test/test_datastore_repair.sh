@@ -81,7 +81,7 @@ EOF
 )
 
 testrun(){
-    new "test params: -f $cfg"
+    new "test params: -f $cfg -- -U"
     # Bring your own backend
     if [ $BE -ne 0 ]; then
 	# kill old backend (if any)
@@ -90,8 +90,8 @@ testrun(){
 	if [ $? -ne 0 ]; then
 	    err
 	fi
-	new "start backend -s startup -f $cfg"
-	start_backend -s startup -f $cfg
+	new "start backend -s startup -f $cfg -- -U"
+	start_backend -s startup -f $cfg -- -U
 
 	new "waiting"
 	wait_backend

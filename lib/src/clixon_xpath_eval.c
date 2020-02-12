@@ -373,6 +373,10 @@ xp_eval_step(xp_ctx     *xc0,
 	    if (cxvec_append(x, &xc->xc_nodeset, &xc->xc_size) < 0)
 		goto done;
 	}
+	if (vec){
+	    free(vec);
+	    vec = NULL;
+	}
 	break;
     case A_DESCENDANT:
 	for (i=0; i<xc->xc_size; i++){

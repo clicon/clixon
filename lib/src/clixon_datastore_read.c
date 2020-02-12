@@ -265,7 +265,6 @@ text_read_modstate(clicon_handle       h,
 		    goto done;
 		}
 	    }
-		continue; /* ignore other tags, such as module-set-id */
 	    if (strcmp(xml_name(xm), "module"))
 		continue; /* ignore other tags, such as module-set-id */
 	    if ((name = xml_find_body(xm, "name")) == NULL)

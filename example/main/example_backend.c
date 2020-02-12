@@ -71,11 +71,15 @@ static int _reset = 0;
  */
 static int _state = 0;
 
-/*! Variable to control upgrade callbacks.
+/*! Variable to control module-specific upgrade callbacks.
  * If set, call test-case for upgrading ietf-interfaces, otherwise call 
  * auto-upgrade
  */
-static int _upgrade = 0;
+static int _module_upgrade = 0;
+
+/*! Variable to control general-purpose upgrade callbacks.
+ */
+static int _general_upgrade = 0;
 
 /*! Variable to control transaction logging (for debug)
  * If set, call syslog for every transaction callback
@@ -456,9 +460,11 @@ example_upgrade(clicon_handle    h,
     int                       i;
     const char              **pp;
 
+    if (_general_upgrade == 0)
+	goto ok;
     if (strcmp(db, "startup") != 0) /* skip other than startup datastore */
 	goto ok;
-    if (msd->md_status) /* skip if there is proper module-state in datastore */
+    if (msd && msd->md_status) /* skip if there is proper module-state in datastore */
 	goto ok;
     yspec = clicon_dbspec_yang(h);     /* Get all yangs */
     /* Get canonical namespaces for using "normalized" prefixes */
@@ -793,7 +799,7 @@ static clixon_plugin_api api = {
     .ca_trans_revert=main_revert,           /* trans revert */
     .ca_trans_end=main_end,                 /* trans end */
     .ca_trans_abort=main_abort,             /* trans abort */
-    .ca_datastore_upgrade=example_upgrade   /* gneral-purpose upgrade. */
+    .ca_datastore_upgrade=example_upgrade   /* general-purpose upgrade. */
 };
 
 /*! Backend plugin initialization
@@ -818,7 +824,7 @@ clixon_plugin_init(clicon_handle h)
 	goto done;
     opterr = 0;
     optind = 1;
-    while ((c = getopt(argc, argv, "rsut:")) != -1)
+    while ((c = getopt(argc, argv, "rsuUt:")) != -1)
 	switch (c) {
 	case 'r':
 	    _reset = 1;
@@ -826,8 +832,11 @@ clixon_plugin_init(clicon_handle h)
 	case 's':
 	    _state = 1;
 	    break;
-	case 'u':
-	    _upgrade = 1;
+	case 'u': /* module-specific upgrade */
+	    _module_upgrade = 1;
+	    break;
+	case 'U': /* general-purpose upgrade */
+	    _general_upgrade = 1;
 	    break;
 	case 't': /* transaction log */
 	    _transaction_log = 1;
@@ -885,7 +894,7 @@ clixon_plugin_init(clicon_handle h)
     /* Upgrade callback: if you start the backend with -- -u you will get the
      * test interface example. Otherwise the auto-upgrade feature is enabled.
      */
-    if (_upgrade){
+    if (_module_upgrade == 1){
 	if (upgrade_callback_register(h, upgrade_2016, "urn:example:interfaces", 20140508, 20160101, NULL) < 0)
 	    goto done;
 	if (upgrade_callback_register(h, upgrade_2018, "urn:example:interfaces", 20160101, 20180220, NULL) < 0)
