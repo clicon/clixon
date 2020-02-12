@@ -419,12 +419,14 @@ example_extension(clicon_handle h,
  */
 static const map_str2str namespace_map[] = {
     {"/a:x/a:y/a:z/descendant-or-self::node()", "urn:example:b"},
+    /* add more paths to be renamed here */
     {NULL,                          NULL}
 };
 
 /* Remove these paths */
 static const char *remove_map[] = {
     "/a:remove_me",
+    /* add more paths to be deleted here */
     NULL
 };
 
@@ -447,7 +449,7 @@ example_upgrade(clicon_handle    h,
 {
     int                       retval = -1;
     cvec                     *nsc = NULL;    /* Canonical namespace */
-    yang_stmt                *yspec;    yang_stmt                *yspec;
+    yang_stmt                *yspec;    
     const struct map_str2str *ms;            /* map iterator */
     cxobj                   **xvec = NULL;   /* vector of result nodes */
     size_t                    xlen; 
