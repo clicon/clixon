@@ -979,14 +979,22 @@ from_client_get(clicon_handle h,
     }
     /* If not only-state, then read running config 
      * Note xret can be pruned by nacm below and change name and
-     * metrged with state data, so zero-copy cant be used
+     * merged with state data, so zero-copy cant be used
      * Also, must use external namespace context here due to <filter stmt
      */
+#ifdef VALIDATE_STATE_XML
     if (xmldb_get0(h, "running", nsc, NULL, 1, &xret, NULL) < 0) {
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
     }
+#else
+    if (xmldb_get0(h, "running", nsc, xpath, 1, &xret, NULL) < 0) {
+	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
+	    goto done;
+	goto ok;
+    }
+#endif
 
     /* If not only config,
      * get state data from plugins as defined by plugin_statedata(), if any 

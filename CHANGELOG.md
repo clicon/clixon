@@ -7,8 +7,11 @@
   * C-api: Changed `clicon_session_id_get(clicon_handle h, uint32_t *id)`
   * From a cli perspective this is a revert to 4.1 behaviour, where the cli does not immediately exit on start if the backend is not running, but with the new session-id function
 
+### Known Issues
+* If you retrieve state _and_ config data using RESTCONF or NETCONF `get`, a severe performance penalty occurs if you have large lists (eg ACLs). Workaround: disable `VALIDATE_STATE_XML` in `include/clixon_custom.h`.
+
 ### Corrected Bugs
-* Fixed: Enabling modstate (CLICON_XMLDB_MODSTATE), changing a revision on a yang, and restarting made the backend daemon exit at start (thanks Matt).
+* Fixed: If you enabled modstate (CLICON_XMLDB_MODSTATE), changed a revision in a yang spec, and restarted the backend daemon, it exit at start (thanks Matt).
   * Also: ensure to load `ietf-yang-library.yang ` if CLICON_XMLDB_MODSTATE is set
 * Fixed: Pretty-printed XML using prefixes not parsed correctly.
   * eg `<a:x>   <y/></a:x>` could lead to errors, wheras (`<x>   <y/></x>`) works fine.
