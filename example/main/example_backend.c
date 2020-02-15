@@ -71,11 +71,15 @@ static int _reset = 0;
  */
 static int _state = 0;
 
-/*! Variable to control upgrade callbacks.
+/*! Variable to control module-specific upgrade callbacks.
  * If set, call test-case for upgrading ietf-interfaces, otherwise call 
  * auto-upgrade
  */
-static int _upgrade = 0;
+static int _module_upgrade = 0;
+
+/*! Variable to control general-purpose upgrade callbacks.
+ */
+static int _general_upgrade = 0;
 
 /*! Variable to control transaction logging (for debug)
  * If set, call syslog for every transaction callback
@@ -410,6 +414,116 @@ example_extension(clicon_handle h,
     return retval;
 }
 
+/* Here follows code for general-purpose datastore upgrade
+ * Nodes affected are identified by paths.
+ * In this example nodes' namespaces are changed, or they are removed altogether
+ */
+/* Rename the namespaces of these paths. 
+ * That is, paths (on the left) should get namespaces (to the right) 
+ */
+static const map_str2str namespace_map[] = {
+    {"/a:x/a:y/a:z/descendant-or-self::node()", "urn:example:b"},
+    /* add more paths to be renamed here */
+    {NULL,                          NULL}
+};
+
+/* Remove these paths */
+static const char *remove_map[] = {
+    "/a:remove_me",
+    /* add more paths to be deleted here */
+    NULL
+};
+
+/*! General-purpose datastore upgrade callback called once on startup
+ *
+ * Gets called on startup after initial XML parsing, but before module-specific upgrades
+ * and before validation. 
+ * @param[in] h    Clicon handle
+ * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
+ * @param[in] xt   XML tree. Upgrade this "in place"
+ * @param[in] msd  Info on datastore module-state, if any
+ * @retval   -1    Error
+ * @retval    0    OK
+ */
+int
+example_upgrade(clicon_handle    h,
+		char            *db,
+		cxobj           *xt,
+		modstate_diff_t *msd)
+{
+    int                       retval = -1;
+    cvec                     *nsc = NULL;    /* Canonical namespace */
+    yang_stmt                *yspec;    
+    const struct map_str2str *ms;            /* map iterator */
+    cxobj                   **xvec = NULL;   /* vector of result nodes */
+    size_t                    xlen; 
+    int                       i;
+    const char              **pp;
+
+    if (_general_upgrade == 0)
+	goto ok;
+    if (strcmp(db, "startup") != 0) /* skip other than startup datastore */
+	goto ok;
+    if (msd && msd->md_status) /* skip if there is proper module-state in datastore */
+	goto ok;
+    yspec = clicon_dbspec_yang(h);     /* Get all yangs */
+    /* Get canonical namespaces for using "normalized" prefixes */
+    if (xml_nsctx_yangspec(yspec, &nsc) < 0)
+	goto done;
+    /* 1. Remove paths */
+    for (pp = remove_map; *pp; ++pp){
+	/* Find all nodes matching n */
+	if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, *pp) < 0) 
+	    goto done;
+	/* Remove them */
+	/* Loop through all nodes matching mypath and change theoir namespace */
+	for (i=0; i<xlen; i++){
+	    if (xml_purge(xvec[i]) < 0)
+		goto done;
+	}
+	if (xvec){
+	    free(xvec);
+	    xvec = NULL;
+	}
+    }
+    /* 2. Rename namespaces of the paths declared in the namespace map
+     */
+    for (ms = &namespace_map[0]; ms->ms_s0; ms++){
+	char *mypath;
+	char *mynamespace;
+	char *myprefix = NULL;
+
+	mypath = ms->ms_s0;
+	mynamespace = ms->ms_s1;
+	if (xml_nsctx_get_prefix(nsc, mynamespace, &myprefix) == 0){
+	    clicon_err(OE_XML, ENOENT, "Namespace %s not found in canonical namespace map",
+		       mynamespace);
+	    goto done;
+	}
+	/* Find all nodes matching mypath */
+	if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, mypath) < 0) 
+	    goto done;
+	/* Loop through all nodes matching mypath and change theoir namespace */
+	for (i=0; i<xlen; i++){
+	    /* Change namespace of this node (using myprefix) */ 
+	    if (xml_namespace_change(xvec[i], mynamespace, myprefix) < 0)
+		goto done;
+	}
+	if (xvec){
+	    free(xvec);
+	    xvec = NULL;
+	}
+    }
+ ok:
+    retval = 0;
+ done:
+    if (xvec)
+	free(xvec);
+    if (nsc)
+	cvec_free(nsc);
+    return retval;
+}
+
 /*! Testcase upgrade function moving interfaces-state to interfaces
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      XML tree to be updated
@@ -684,7 +798,8 @@ static clixon_plugin_api api = {
     .ca_trans_commit=main_commit,           /* trans commit */
     .ca_trans_revert=main_revert,           /* trans revert */
     .ca_trans_end=main_end,                 /* trans end */
-    .ca_trans_abort=main_abort              /* trans abort */
+    .ca_trans_abort=main_abort,             /* trans abort */
+    .ca_datastore_upgrade=example_upgrade   /* general-purpose upgrade. */
 };
 
 /*! Backend plugin initialization
@@ -709,7 +824,7 @@ clixon_plugin_init(clicon_handle h)
 	goto done;
     opterr = 0;
     optind = 1;
-    while ((c = getopt(argc, argv, "rsut:")) != -1)
+    while ((c = getopt(argc, argv, "rsuUt:")) != -1)
 	switch (c) {
 	case 'r':
 	    _reset = 1;
@@ -717,8 +832,11 @@ clixon_plugin_init(clicon_handle h)
 	case 's':
 	    _state = 1;
 	    break;
-	case 'u':
-	    _upgrade = 1;
+	case 'u': /* module-specific upgrade */
+	    _module_upgrade = 1;
+	    break;
+	case 'U': /* general-purpose upgrade */
+	    _general_upgrade = 1;
 	    break;
 	case 't': /* transaction log */
 	    _transaction_log = 1;
@@ -776,7 +894,7 @@ clixon_plugin_init(clicon_handle h)
     /* Upgrade callback: if you start the backend with -- -u you will get the
      * test interface example. Otherwise the auto-upgrade feature is enabled.
      */
-    if (_upgrade){
+    if (_module_upgrade == 1){
 	if (upgrade_callback_register(h, upgrade_2016, "urn:example:interfaces", 20140508, 20160101, NULL) < 0)
 	    goto done;
 	if (upgrade_callback_register(h, upgrade_2018, "urn:example:interfaces", 20160101, 20180220, NULL) < 0)

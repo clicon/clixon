@@ -64,6 +64,7 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_options.h"
+#include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
@@ -741,6 +742,49 @@ add_namespace(cxobj *x1, /* target */
     /* 5. Add prefix to x1, if any */
     if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
 	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Change namespace of XML node 
+ *
+ * @param[in]  x         XML node
+ * @param[in]  namespace Change to this namespace (if it does not already belong to it)
+ * @param[in]  prefix    If change, use this namespace
+ * @param      0         OK
+ * @param     -1         Error
+ */
+int
+xml_namespace_change(cxobj *x, 
+		     char  *namespace,
+		     char  *prefix)
+{
+    int    retval = -1;
+    cxobj *xp;
+    char  *ns0 = NULL;     /* existing namespace */
+    char  *prefix0 = NULL; /* existing prefix */
+    
+    ns0 = NULL;
+    if (xml2ns(x, xml_prefix(x), &ns0) < 0)
+	goto done;
+    if (strcmp(ns0, namespace) == 0)
+	goto ok; /* Already has right namespace */ 
+    /* Is namespace already declared? */
+    if (xml2prefix(x, namespace, &prefix0) == 1){
+	/* Yes it is declared and the prefix is pexists */
+	if (xml_prefix_set(x, prefix0) < 0)
+	    goto done;
+    }
+    else{ /* Namespace does not exist, add it */
+	if ((xp = xml_parent(x)) == NULL){
+	    clicon_err(OE_XML, ENOENT, "XML node must have parent");
+	    goto done;
+	}
+	if (add_namespace(x, xp, prefix0, namespace) < 0)
+	    goto done;
+    }
+ ok:
     retval = 0;
  done:
     return retval;

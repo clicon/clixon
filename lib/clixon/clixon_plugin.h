@@ -159,6 +159,19 @@ typedef int (trans_cb_t)(clicon_handle h, transaction_data td);
  */
 typedef char *(cli_prompthook_t)(clicon_handle, char *mode);
 
+/*! General-purpose datastore upgrade callback called once on startup
+ *
+ * Gets called on startup after initial XML parsing, but before module-specific upgrades
+ * and before validation. 
+ * @param[in] h    Clicon handle
+ * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
+ * @param[in] xt   XML tree. Upgrade this "in place"
+ * @param[in] msd  Info on datastore module-state, if any
+ * @retval   -1    Error
+ * @retval    0    OK
+ */
+typedef int (datastore_upgrade_t)(clicon_handle h, char *db, cxobj *xt, modstate_diff_t *msd);
+
 /*! Startup status for use in startup-callback
  * Note that for STARTUP_ERR and _INVALID, running runs in failsafe mode
  * and startup contains the erroneous or invalid database.
@@ -206,8 +219,8 @@ struct clixon_plugin_api{
 	    trans_cb_t       *cb_trans_revert;   /* Transaction revert */
 	    trans_cb_t       *cb_trans_end;	 /* Transaction completed  */
     	    trans_cb_t       *cb_trans_abort;	 /* Transaction aborted */    
+	    datastore_upgrade_t *cb_datastore_upgrade; /* General-purpose datastore upgrade */
 	} cau_backend;
-
     } u;
 };
 /* Access fields */
@@ -224,6 +237,8 @@ struct clixon_plugin_api{
 #define ca_trans_revert   u.cau_backend.cb_trans_revert
 #define ca_trans_end      u.cau_backend.cb_trans_end
 #define ca_trans_abort    u.cau_backend.cb_trans_abort
+#define ca_datastore_upgrade  u.cau_backend.cb_datastore_upgrade
+
 
 /*
  * Macros
@@ -270,6 +285,8 @@ int clixon_plugin_exit(clicon_handle h);
 int clixon_plugin_auth(clicon_handle h, void *arg);
 
 int clixon_plugin_extension(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+
+int clixon_plugin_datastore_upgrade(clicon_handle h, char *db, cxobj *xt, modstate_diff_t *msd);
 
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, char *namespace, char *name);

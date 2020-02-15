@@ -197,14 +197,16 @@ startup_common(clicon_handle       h,
 	xt = NULL;
 	goto ok;
     }
-    if (msd){
-	/* Here xt is old syntax */
-	if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-	/* Here xt is new syntax */
-    }
+    /* Here xt is old syntax */
+    /* General purpose datastore upgrade */
+    if (clixon_plugin_datastore_upgrade(h, db, xt, msd) < 0)
+	goto done;
+    /* Module-specific upgrade callbacks */
+    if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, 0, "Yang spec not set");
 	goto done;

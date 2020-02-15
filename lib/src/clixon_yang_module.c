@@ -74,10 +74,10 @@
 #include "clixon_xpath.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
+#include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_map.h"
-#include "clixon_yang_module.h"
 #include "clixon_yang_internal.h" /* internal */
 
 modstate_diff_t *
@@ -97,6 +97,8 @@ modstate_diff_free(modstate_diff_t *md)
 {
     if (md == NULL)
 	return 0;
+    if (md->md_set_id)
+	free(md->md_set_id);
     if (md->md_del)
 	xml_free(md->md_del);
     if (md->md_mod)

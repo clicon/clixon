@@ -362,8 +362,23 @@ xp_eval_step(xp_ctx     *xc0,
 	}
 	ctx_nodeset_replace(xc, vec, veclen);
 	break;
-    case A_DESCENDANT:
     case A_DESCENDANT_OR_SELF:
+	for (i=0; i<xc->xc_size; i++){
+	    xv = xc->xc_nodeset[i];
+	    if (nodetest_recursive(xv, xs->xs_c0, CX_ELMNT, 0x0, nsc, localonly, &vec, &veclen) < 0)
+		goto done;
+	}
+	for (i=0; i<veclen; i++){
+	    x = vec[i];
+	    if (cxvec_append(x, &xc->xc_nodeset, &xc->xc_size) < 0)
+		goto done;
+	}
+	if (vec){
+	    free(vec);
+	    vec = NULL;
+	}
+	break;
+    case A_DESCENDANT:
 	for (i=0; i<xc->xc_size; i++){
 	    xv = xc->xc_nodeset[i];
 	    if (nodetest_recursive(xv, xs->xs_c0, CX_ELMNT, 0x0, nsc, localonly, &vec, &veclen) < 0)

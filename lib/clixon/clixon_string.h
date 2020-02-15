@@ -36,7 +36,7 @@
 #ifndef _CLIXON_STRING_H_
 #define _CLIXON_STRING_H_
 
-/* Struct used to map between int and strings. Typically used to map between
+/*! Struct used to map between int and strings. Typically used to map between
  * values and their names. Note NULL terminated
  * Example:
  * @code
@@ -54,6 +54,14 @@ struct map_str2int{
     int           ms_int;
 };
 typedef struct map_str2int map_str2int;
+
+/*! Struct used to map between two strings.
+ */
+struct map_str2str{
+    char         *ms_s0;
+    char         *ms_s1;
+};
+typedef struct map_str2str map_str2str;
 
 /*! A malloc version that aligns on 4 bytes. To avoid warning from valgrind */
 #define align4(s) (((s)/4)*4 + 4)
