@@ -1,14 +1,20 @@
 # Clixon Changelog
 
-## 4.3.2 (Upcoming)
+## 4.3.2 (15 February 2020)
 
+### Major New features
+* New "general-purpose" datastore upgrade callback added which i called once on startup, intended for low-level general upgrades and as a complement to module-specific upgrade.
+  * Called on startup after initial XML parsing, but before module-specific upgrades
+  * Enabled by definign the `.ca_datastore_upgrade`
+  * [General-purpose upgrade documentation](https://clixon-docs.readthedocs.io/en/latest/backend.html#general-purpose)
+  
 ### API changes on existing features (you may need to change your code)
 * Session-id CLI functionality delayed: "lazy evaluation"
   * C-api: Changed `clicon_session_id_get(clicon_handle h, uint32_t *id)`
   * From a cli perspective this is a revert to 4.1 behaviour, where the cli does not immediately exit on start if the backend is not running, but with the new session-id function
 
 ### Known Issues
-* If you retrieve state _and_ config data using RESTCONF or NETCONF `get`, a severe performance penalty occurs if you have large lists (eg ACLs). Workaround: disable `VALIDATE_STATE_XML` in `include/clixon_custom.h`.
+* If you retrieve state _and_ config data using RESTCONF or NETCONF `get`, a performance penalty occurs if you have large lists (eg ACLs). Workaround is: disable `VALIDATE_STATE_XML` in `include/clixon_custom.h` (disabled by default).
 
 ### Corrected Bugs
 * Fixed: If you enabled modstate (CLICON_XMLDB_MODSTATE), changed a revision in a yang spec, and restarted the backend daemon, it exit at start (thanks Matt).

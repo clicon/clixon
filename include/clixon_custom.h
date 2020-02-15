@@ -74,4 +74,4 @@
  * is recommended to enable it during development and debugging but disable it in production, until
  * this has been resolved.
  */
-#define VALIDATE_STATE_XML
+#undef VALIDATE_STATE_XML
