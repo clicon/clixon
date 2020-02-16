@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Performance of large lists. See large-lists.md
+# Performance of large lists. See doc/scaling/large-lists.md
 # The parameters are shown below (under Default values)
 # Examples
 # 1. run all measurements up to 10000 entris collect all results in /tmp/plots
@@ -8,6 +8,7 @@
 #    run=false plot=true resdir=/tmp/plots term=x11 ./plot_perf.sh
 # 3. Use existing data plot i686 and armv7l data as png
 #    archs="i686 armv7l" run=false plot=true resdir=/tmp/plots term=png ./plot_perf.sh 
+# Need gnuplot installed
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -508,7 +509,6 @@ for a in $archs; do
     gplot="$gplot \"$resdir/delete-restconf-100-$a\" using 1:(\$2/$reqs0) title \"rc-$a\", \"$resdir/delete-netconf-100-$a\" using 1:(\$2/$reqs0) title \"nc-$a\","
 
 done
-
 
 gnuplot -persist <<EOF
 set title "Clixon delete single entry"

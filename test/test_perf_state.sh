@@ -16,6 +16,9 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 # Number of requests made get/put
 : ${perfreq:=100}
 
+# time function (this is a mess to get right on freebsd/linux)
+: ${TIMEFN:=time -p} # portability: 2>&1 | awk '/real/ {print $2}'
+
 APPNAME=example
 
 cfg=$dir/config.xml
@@ -76,11 +79,11 @@ echo "</interfaces></config></edit-config></rpc>]]>]]>" >> $fconfig
 
 # Now take large config file and write it via netconf to candidate
 new "netconf write large config"
-expecteof_file "time $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 # Now commit it from candidate to running 
 new "netconf commit large config"
-expecteof "time $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 
+expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 # START actual tests
 # Having a large db, get single entries many times
@@ -128,13 +131,13 @@ done } 2>&1 | awk '/real/ {print $2}'
 
 # Get config in one large get
 new "netconf get large config"
-time echo "<rpc><get> <filter type=\"xpath\" select=\"/if:interfaces\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg > /tmp/netconf
+{ time -p echo "<rpc><get> <filter type=\"xpath\" select=\"/if:interfaces\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg  > /tmp/netconf; } 2>&1 | awk '/real/ {print $2}'
 
 new "restconf get large config"
-time curl -sG http://localhost/restconf/data/ietf-interfaces:interfaces | wc
+$TIMEFN curl -sG http://localhost/restconf/data/ietf-interfaces:interfaces 2>&1 | awk '/real/ {print $2}'
 
 new "cli get large config"
-time $clixon_cli -1f $cfg show state xml interfaces | wc
+$TIMEFN $clixon_cli -1f $cfg show state xml interfaces 2>&1 | awk '/real/ {print $2}'
 
 new "Kill restconf daemon"
 stop_restconf 
