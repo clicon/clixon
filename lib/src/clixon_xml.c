@@ -81,6 +81,9 @@
 /* Initial length of x_value malloced string */
 #define XML_VALUE_MAX_DEFAULT 32
 
+/* Revert use cbuf for xml value code in patch release */
+#define REVERT_9575d10887e35079c4a9b227dde6ab0f6f09fa03
+
 /*
  * Types
  */
@@ -126,7 +129,13 @@ struct xml{
     int               x_childvec_len;/* Number of children */
     int               x_childvec_max;/* Length of allocated vector */
     enum cxobj_type   x_type;       /* type of node: element, attribute, body */
+#ifdef REVERT_9575d10887e35079c4a9b227dde6ab0f6f09fa03
+    char             *x_value;      /* attribute and body nodes have values */
+    uint32_t          x_value_len;  /* Length of x_value string (excluding null) */
+    uint32_t          x_value_max;  /* allocated size for x_value */
+#else
     cbuf             *x_value_cb;   /* attribute and body nodes have values */
+#endif
     int               x_flags;      /* Flags according to XML_FLAG_* */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, by 
 				       reference, dont free */
@@ -614,6 +623,91 @@ xml_flag_reset(cxobj   *xn,
     return 0;
 }
 
+#ifdef REVERT_9575d10887e35079c4a9b227dde6ab0f6f09fa03
+/*! Get value of xnode
+ * @param[in]  xn    xml node
+ * @retval     value of xml node
+ */
+char*
+xml_value(cxobj *xn)
+{
+    return xn->x_value;
+}
+
+/*! xml value string reallocator
+ */
+static int
+xml_value_realloc(cxobj *xn, 
+		  int    len0,
+		  char  *val)
+{
+    int retval = -1;
+    int len;
+    int diff;
+
+    if (val==NULL)
+	goto ok;
+    len = len0 + strlen(val);
+    diff = xn->x_value_max - (len + 1);
+    if (diff <= 0){
+	while (diff <= 0){
+	    if (xn->x_value_max == 0)
+		xn->x_value_max = XML_VALUE_MAX_DEFAULT;
+	    else
+		xn->x_value_max *= 2;
+	    diff = xn->x_value_max - (len + 1);
+	}
+	if ((xn->x_value = realloc(xn->x_value, xn->x_value_max)) == NULL){
+	    clicon_err(OE_XML, errno, "realloc");
+	    goto done;
+	}
+    }
+    strncpy(xn->x_value + len0, val, len-len0+1);
+    xn->x_value_len = len;
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Set value of xml node, value is copied
+ * @param[in]  xn    xml node
+ * @param[in]  val   new value, null-terminated string, copied by function
+ * @retval     -1    on error with clicon-err set
+ * @retval     0     OK
+ */
+int
+xml_value_set(cxobj *xn, 
+	      char  *val)
+{
+    int retval = -1;
+
+    if (xn->x_value && strlen(xn->x_value)){
+    	xn->x_value[0] = '\0';
+	xn->x_value_len = 0;
+    }
+    if (xml_value_realloc(xn, 0, val) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Append value of xnode, value is copied
+ * @param[in]  xn    xml node
+ * @param[in]  val   appended value, null-terminated string, copied by function
+ * @retval     NULL  on error with clicon-err set, or if value is set to NULL
+ * @retval     new value
+ */
+int
+xml_value_append(cxobj *xn, 
+		 char  *val)
+{
+    return xml_value_realloc(xn, xn->x_value_len, val);
+}
+
+#else /* REVERT_9575d10887e35079c4a9b227dde6ab0f6f09fa03 */
+
 /*! Get value of xnode
  * @param[in]  xn    xml node
  * @retval     value of xml node
@@ -676,6 +770,7 @@ xml_value_append(cxobj *xn,
  done:
     return retval;
 }
+#endif /* REVERT_9575d10887e35079c4a9b227dde6ab0f6f09fa03 */
 
 /*! Get type of xnode
  * @param[in]  xn    xml node
@@ -1600,8 +1695,13 @@ xml_free(cxobj *x)
 
     if (x->x_name)
 	free(x->x_name);
+#ifdef REVERT_9575d10887e35079c4a9b227dde6ab0f6f09fa03
+    if (x->x_value)
+	free(x->x_value);
+#else /* REVERT_9575d10887e35079c4a9b227dde6ab0f6f09fa03 */
     if (x->x_value_cb)
 	cbuf_free(x->x_value_cb);  
+#endif /* REVERT_9575d10887e35079c4a9b227dde6ab0f6f09fa03 */
     if (x->x_prefix)
 	free(x->x_prefix);
     for (i=0; i<x->x_childvec_len; i++){
