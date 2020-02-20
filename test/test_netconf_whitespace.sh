@@ -57,8 +57,7 @@ module whitespace{
 }
 EOF
 
-
-new "test params: -f $cfg"
+new "test params: -f $cfg -s startup"
 
 echo '<config><ex:x xmlns:ex="urn:example:whitespace">    
  <ex:y>   <ex:a>foo</ex:a>\n  <ex:b>  </ex:b></ex:y>   </ex:x></config></edit-config></rpc>]]>]]>$start</config>' > $dir/startup_db

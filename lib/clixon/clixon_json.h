@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -34,6 +35,7 @@
  * JSON support functions.
  * JSON syntax is according to:
  * http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+ * RFC 7951 JSON Encoding of Data Modeled with YANG
  */
 #ifndef _CLIXON_JSON_H
 #define _CLIXON_JSON_H

@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -104,7 +105,8 @@ main(int    argc,
     clicon_handle h;
     struct stat   st;
     cxobj        *xcfg = NULL;
-
+    cxobj        *xerr = NULL; /* malloced must be freed */
+	
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init("api-path", LOG_DEBUG, CLICON_LOG_STDERR); 
     /* Initialize clixon handle */
@@ -204,38 +206,32 @@ main(int    argc,
      * If fd=0, then continue reading from stdin (after CR)
      * If fd>0, reading from file opened as argv[1]
      */
-    if (xml_parse_file(fd, "</clicon>", NULL, &x) < 0){
+    if (xml_parse_file(fd, NULL, &x) < 0){
 	fprintf(stderr, "Error: parsing: %s\n", clicon_err_reason);
 	return -1;
     }
 
     /* Validate XML as well */
     if (yang_file_dir){
-	cxobj *x1;
-	cxobj *xerr = NULL; /* malloced must be freed */
-
-	x1 = NULL;
-	while ((x1 = xml_child_each(x, x1, CX_ELMNT)) != NULL) {
-	    /* Populate */
-	    if (xml_apply0(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
-		goto done;
-	    /* Add default values */
-	    if (xml_apply(x1, CX_ELMNT, xml_default, h) < 0)
-		goto done;
-	    if ((ret = xml_yang_validate_all_top(h, x1, &xerr)) < 0) 
-		goto done;
-	    if (ret > 0 && (ret = xml_yang_validate_add(h, x1, &xerr)) < 0)
-		goto done;
-	    if (ret == 0){
-		if ((cb = cbuf_new()) ==NULL){
-		    clicon_err(OE_XML, errno, "cbuf_new");
-		    goto done;
-		}
-		if (netconf_err2cb(xerr, cb) < 0)
-		    goto done;
-		fprintf(stderr, "xml validation error: %s\n", cbuf_get(cb));
+	/* Populate */
+	if (xml_spec_populate(x, yspec, NULL) < 0)
+	    goto done;
+	/* Add default values */
+	if (xml_apply(x, CX_ELMNT, xml_default, h) < 0)
+	    goto done;
+	if ((ret = xml_yang_validate_all_top(h, x, &xerr)) < 0) 
+	    goto done;
+	if (ret > 0 && (ret = xml_yang_validate_add(h, x, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if ((cb = cbuf_new()) ==NULL){
+		clicon_err(OE_XML, errno, "cbuf_new");
 		goto done;
 	    }
+	    if (netconf_err2cb(xerr, cb) < 0)
+		goto done;
+	    fprintf(stderr, "xml validation error: %s\n", cbuf_get(cb));
+	    goto done;
 	}
 	if (xml_apply0(x, CX_ELMNT, xml_sort, h) < 0)
 	    goto done;

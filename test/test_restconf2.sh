@@ -82,23 +82,25 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    sudo pkill -u $wwwuser -f clixon_restconf
 
-new "start restconf daemon"
-start_restconf -f $cfg
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
-new "waiting"
-wait_restconf
+    new "waiting"
+    wait_restconf
+fi
 
 new "restconf POST tree without key"
 expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"type":"regular"}}}' http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"name"},"error-severity":"error","error-message":"Mandatory key"}}}'
 
 new "restconf POST initial tree"
-expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}' http://localhost/restconf/data)" 0 ""
+expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}' http://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
 
 new "restconf POST top without namespace"
-expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"cont1":{"interface":{"name":"local0","type":"regular"}}}' http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"cont1"},"error-severity":"error","error-message":"Unassigned yang spec"}}}'
+expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"cont1":{"interface":{"name":"local0","type":"regular"}}}' http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Top-level JSON object cont1 is not qualified with namespace which is a MUST according to RFC 7951"}}}'
 
 new "restconf GET datastore initial"
 expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'
@@ -124,10 +126,10 @@ new "restconf POST interface without mandatory key"
 expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/example:cont1 -d '{"example:interface":{"type":"regular"}}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"name"},"error-severity":"error","error-message":"Mandatory key"}}}'
 
 new "restconf POST interface"
-expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/example:cont1)" 0 ""
+expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/example:cont1)" 0 "HTTP/1.1 201 Created"
 
 new "restconf POST interface without namespace"
-expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"interface":{"name":"TEST2","type":"eth0"}}' http://localhost/restconf/data/example:cont1)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Data is not prefixed with matching namespace"}}}'
+expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"interface":{"name":"TEST2","type":"eth0"}}' http://localhost/restconf/data/example:cont1)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Top-level JSON object interface is not qualified with namespace which is a MUST according to RFC 7951"}}}'
 
 new "restconf POST again"
 expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/example:cont1)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
@@ -136,7 +138,7 @@ new "restconf POST from top"
 expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"name":"TEST","type":"eth0"}}}' http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
 
 new "restconf DELETE"
-expectfn 'curl -s -X DELETE http://localhost/restconf/data/example:cont1' 0 ""
+expectfn 'curl -si -X DELETE http://localhost/restconf/data/example:cont1' 0 "HTTP/1.1 204 No Content"
 
 new "restconf GET null datastore"
 expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}}'
@@ -154,34 +156,34 @@ new "restconf GET null datastore"
 expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}}'
 
 new "restconf PUT initial datastore" 
-expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" -d '{"data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}}' http://localhost/restconf/data)" 0 ""
+expectpart "$(curl -si -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-restconf:data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}}' http://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
 
 new "restconf GET datastore"
 expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'
 
 new "restconf PUT replace datastore" 
-expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" -d '{"data":{"example:cont2":{"name":"foo"}}}' http://localhost/restconf/data)" 0 ""
+expectpart "$(curl -si -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-restconf:data":{"example:cont2":{"name":"foo"}}}' http://localhost/restconf/data)" 0 "HTTP/1.1 204 No Content"
 
 new "restconf GET replaced datastore"
 expectfn "curl -s -X GET http://localhost/restconf/data/example:cont2" 0 '{"example:cont2":{"name":"foo"}}'
 
 new "restconf PUT initial datastore again" 
-expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" -d '{"data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}}' http://localhost/restconf/data)" 0 ""
+expectpart "$(curl -si -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-restconf:data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}}' http://localhost/restconf/data)" 0 "HTTP/1.1 204 No Content"
 
 new "restconf PUT change interface"
-expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"local0","type":"atm0"}}' http://localhost/restconf/data/example:cont1/interface=local0)" 0 ""
+expectpart "$(curl -si -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"local0","type":"atm0"}}' http://localhost/restconf/data/example:cont1/interface=local0)" 0 "HTTP/1.1 204 No Content"
 
 new "restconf GET datastore atm"
 expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1" 0 '{"example:cont1":{"interface":\[{"name":"local0","type":"atm0"}\]}}'
 
 new "restconf PUT add interface"
-expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/example:cont1/interface=TEST)" 0 ""
+expectpart "$(curl -si -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"TEST","type":"eth0"}}' http://localhost/restconf/data/example:cont1/interface=TEST)" 0 "HTTP/1.1 201 Created"
 
 new "restconf PUT change key error"
 expectpart "$(curl -is -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"ALPHA","type":"eth0"}}' http://localhost/restconf/data/example:cont1/interface=TEST)" 0 'HTTP/1.1 412 Precondition Failed' '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
 
 new "restconf PUT change type to eth0 (non-key sub-element to list)"
-expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:type":"eth0"}' http://localhost/restconf/data/example:cont1/interface=local0/type)" 0 ""
+expectpart "$(curl -si -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:type":"eth0"}' http://localhost/restconf/data/example:cont1/interface=local0/type)" 0 "HTTP/1.1 204 No Content"
 
 new "restconf GET datastore eth"
 expectfn "curl -s -X GET http://localhost/restconf/data/example:cont1/interface=local0" 0 '{"example:interface":\[{"name":"local0","type":"eth0"}\]}'
@@ -193,8 +195,10 @@ expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"
 new "restconf POST type x3"
 expectfn 'curl -s -X GET http://localhost/restconf/data/example:types' 0 '{"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}}'
 
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf 
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE

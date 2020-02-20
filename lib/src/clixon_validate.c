@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -233,10 +234,10 @@ validate_identityref(cxobj     *xt,
 	goto fail;
     }
 
-#if 0 /* Assume proper namespace, otherwise we assume module prefixes,
-       * see IDENTITYREF_KLUDGE 
-       */
-    {
+    /* Assume proper namespace, otherwise we assume module prefixes,
+     * see IDENTITYREF_KLUDGE 
+     */
+    if (0){
 	char       *namespace;
 	yang_stmt  *ymod;
 	yang_stmt  *yspec;    
@@ -255,7 +256,7 @@ validate_identityref(cxobj     *xt,
 	}
 	cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
     }
-#else
+#if 1
     {
 	yang_stmt  *ymod;
 	/* idref from prefix:id to module:id */
@@ -1071,6 +1072,7 @@ xml_yang_validate_all(clicon_handle h,
     int        nr;
     int        ret;
     cxobj     *x;
+    cxobj     *xp;
     char      *namespace = NULL;
     cbuf      *cb = NULL;
     cvec      *nsc = NULL;
@@ -1085,13 +1087,16 @@ xml_yang_validate_all(clicon_handle h,
 	}
 	if (xml2ns(xt, xml_prefix(xt), &namespace) < 0)
 	    goto done;
+	cprintf(cb, "Failed to find YANG spec of XML node: %s", xml_name(xt));
+	if ((xp = xml_parent(xt)) != NULL)
+	    cprintf(cb, " with parent: %s", xml_name(xp));
 	if (namespace){
-	    cprintf(cb, "namespace is: %s", namespace);
+	    cprintf(cb, " in namespace: %s", namespace);
 	    if (netconf_unknown_element_xml(xret, "application", xml_name(xt), cbuf_get(cb)) < 0)
 		goto done;
 	}
 	else
-	    if (netconf_unknown_element_xml(xret, "application", xml_name(xt), NULL) < 0)
+	    if (netconf_unknown_element_xml(xret, "application", xml_name(xt), cbuf_get(cb)) < 0)
 		goto done;
 	goto fail;
     }

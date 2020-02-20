@@ -77,14 +77,16 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    sudo pkill -u $wwwuser -f clixon_restconf
 
-new "start restconf daemon"
-start_restconf -f $cfg
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
-new "waiting"
-wait_restconf
+    new "waiting"
+    wait_restconf
+fi
 
 new "B.1.1.  Retrieve the Top-Level API Resource root"
 expectpart "$(curl -si -X GET -H 'Accept: application/xrd+xml' http://localhost/.well-known/host-meta)" 0 "HTTP/1.1 200 OK" "Content-Type: application/xrd+xml" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
@@ -113,7 +115,6 @@ expectpart "$(curl -si -X POST -H 'Content-Type: application/yang-data+xml' http
 
 new "B.2.1.  Add Data Resources again (conflict - not in RFC)"
 expectpart "$(curl -si -X POST -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters -d '<album xmlns="http://example.com/ns/example-jukebox"><name>Wasting Light</name><year>2011</year></album>')" 0 "HTTP/1.1 409 Conflict"
-
 
 new "4.5. PUT replace content (xml encoding)"
 expectpart "$(curl -si -X PUT -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album=Wasting%20Light -d '<album xmlns="http://example.com/ns/example-jukebox" xmlns:jbox="http://example.com/ns/example-jukebox"><name>Wasting Light</name><genre>jbox:alternative</genre><year>2011</year></album>')" 0 "HTTP/1.1 204 No Content"
@@ -254,8 +255,10 @@ new 'B.3.9.  "with-defaults" Parameter'
 
 fi # NYI
 
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE

@@ -2,7 +2,8 @@
 
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2017-2020 Olof Hagsand
+# Copyright (C) 2017-2019 Olof Hagsand
+# Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 #
 # This file is part of CLIXON
 #
@@ -88,6 +89,11 @@ cat <<EOF > /usr/local/bin/test/site.sh
 SKIPLIST="test_api.sh test_yangmodels.sh test_openconfig.sh test_install.sh test_privileges.sh"
 #IETFRFC=
 EOF
+
+# Workaround for this error output:
+# sudo: setrlimit(RLIMIT_CORE): Operation not permitted
+echo "Set disable_coredump false" > /etc/sudo.conf
+
 
 chmod 775 /usr/local/bin/test/site.sh 
 

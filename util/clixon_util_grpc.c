@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -65,7 +67,7 @@
 /* clixon */
 #include "clixon/clixon.h"
 
-#define UTIL_SSL_OPTS "hD:H:"
+#define UTIL_GRPC_OPTS "hD:H:"
 
 #define ARRLEN(x) (sizeof(x) / sizeof(x[0]))
 
@@ -485,7 +487,7 @@ main(int    argc,
 
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
-    while ((c = getopt(argc, argv, UTIL_SSL_OPTS)) != -1)
+    while ((c = getopt(argc, argv, UTIL_GRPC_OPTS)) != -1)
 	switch (c) {
 	case 'h':
 	    usage(argv[0]);

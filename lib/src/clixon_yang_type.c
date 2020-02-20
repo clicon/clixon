@@ -94,9 +94,9 @@
 #include "clixon_hash.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_options.h"
-#include "clixon_yang_module.h"
 #include "clixon_yang_type.h"
 
 /* 

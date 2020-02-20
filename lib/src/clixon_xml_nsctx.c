@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -356,10 +358,20 @@ xml_nsctx_yang(yang_stmt *yn,
  *
  * That is, create a "canonical" XML namespace mapping from all loaded yang 
  * modules which are children of the yang specification.
- * ALso add netconf base namespace: nc , urn:ietf:params:xml:ns:netconf:base:1.0
+ * Also add netconf base namespace: nc , urn:ietf:params:xml:ns:netconf:base:1.0
  * Fully explore all prefix:namespace pairs of all yang modules
  * @param[in]  yspec  Yang spec
  * @param[out] ncp    XML namespace context
+ * @retval     0      OK
+ * @retval    -1      Error
+ * @code
+ *  cvec      *nsc = NULL;
+ *  yang_stmt *yspec = clicon_dbspec_yang(h);
+ *  if (xml_nsctx_yangspec(yspec, &nsc) < 0)
+ *	goto done;
+ *  ...
+ *  cvec_free(nsc);
+ * @endcode
  */
 int
 xml_nsctx_yangspec(yang_stmt *yspec,

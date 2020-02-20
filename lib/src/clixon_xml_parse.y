@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -58,7 +60,7 @@
 %{
 
 /* typecast macro */
-#define _YA ((struct xml_parse_yacc_arg *)_ya)
+#define _YA ((clixon_xml_yacc *)_ya)
 
 #include <stdio.h>
 #include <stdint.h>
@@ -82,11 +84,14 @@
 #include "clixon_xml_parse.h"
 
 void 
-clixon_xml_parseerror(void *_ya, char *s) 
+clixon_xml_parseerror(void *_ya,
+		      char *s) 
 { 
-  clicon_err(OE_XML, XMLPARSE_ERRNO, "xml_parse: line %d: %s: at or before: %s", 
-	      _YA->ya_linenum, s, clixon_xml_parsetext); 
-  return;
+    clicon_err(OE_XML, XMLPARSE_ERRNO, "xml_parse: line %d: %s: at or before: %s", 
+	       _YA->ya_linenum,
+	       s,
+	       clixon_xml_parsetext); 
+    return;
 }
 
 /*
@@ -94,7 +99,7 @@ clixon_xml_parseerror(void *_ya, char *s)
  * there may also be some leakage here on NULL return
  */
 static int
-xml_parse_content(struct xml_parse_yacc_arg *ya, 
+xml_parse_content(clixon_xml_yacc *ya, 
 		  char                      *str)
 {
     cxobj *xn = ya->ya_xelement;
@@ -120,7 +125,7 @@ xml_parse_content(struct xml_parse_yacc_arg *ya,
  * But if there is an element, then skip all whitespace.
  */
 static int
-xml_parse_whitespace(struct xml_parse_yacc_arg *ya,
+xml_parse_whitespace(clixon_xml_yacc *ya,
 		     char                      *str)
 {
     cxobj *xn = ya->ya_xelement;
@@ -151,7 +156,7 @@ xml_parse_whitespace(struct xml_parse_yacc_arg *ya,
 }
  
 static int
-xml_parse_version(struct xml_parse_yacc_arg *ya,
+xml_parse_version(clixon_xml_yacc *ya,
 		  char                      *ver)
 {
     if(strcmp(ver, "1.0")){
@@ -164,59 +169,34 @@ xml_parse_version(struct xml_parse_yacc_arg *ya,
     return 0;
 }
 
-/*! Parse Qualified name --> Unprefixed name
- * @param[in] ya        XML parser yacc handler struct 
- * @param[in] localpart Name
- * @note the call to xml_child_spec() may not have xmlns attribute read yet XXX
- */
-static int
-xml_parse_unprefixed_name(struct xml_parse_yacc_arg *ya,
-			  char                      *name)
-{
-    int        retval = -1;
-    cxobj     *x;
-    yang_stmt *y = NULL;  /* yang node */   
-    cxobj     *xp;        /* xml parent */ 
-
-    xp = ya->ya_xparent;
-    if ((x = xml_new(name, xp, NULL)) == NULL) 
-	goto done;
-    if (xml_child_spec(x, xp, ya->ya_yspec, &y) < 0)
-	goto done;
-    if (y && xml_spec_set(x, y) < 0)
-	goto done;
-    ya->ya_xelement = x;
-    retval = 0;
- done:
-    free(name);
-    return retval;
-}
-
-/*! Parse Qualified name -> PrefixedName
+/*! Parse Qualified name -> (Un)PrefixedName
+ *
+ * This is where all (parsed) xml elements are created
  * @param[in] ya        XML parser yacc handler struct 
  * @param[in] prefix    Prefix, namespace, or NULL
  * @param[in] localpart Name
  */
 static int
-xml_parse_prefixed_name(struct xml_parse_yacc_arg *ya,
+xml_parse_prefixed_name(clixon_xml_yacc *ya,
 			char                      *prefix,
 			char                      *name)
 {
     int        retval = -1;
     cxobj     *x;
-    yang_stmt *y = NULL;  /* yang node */   
     cxobj     *xp;      /* xml parent */ 
 
     xp = ya->ya_xparent;
     if ((x = xml_new(name, xp, NULL)) == NULL) 
 	goto done;
-    if (xml_child_spec(x, xp, ya->ya_yspec, &y) < 0)
-	goto done;
-    if (y && xml_spec_set(x, y) < 0)
-	goto done;
-    if (xml_prefix_set(x, prefix) < 0)
+    xml_type_set(x, CX_ELMNT);
+    if (prefix && xml_prefix_set(x, prefix) < 0)
 	goto done;
     ya->ya_xelement = x;
+    /* If topmost, add to top-list created list */
+    if (xp == ya->ya_xtop){
+	if (cxvec_append(x, &ya->ya_xvec, &ya->ya_xlen) < 0)
+	    goto done;
+    }
     retval = 0;
  done:
     if (prefix)
@@ -226,7 +206,7 @@ xml_parse_prefixed_name(struct xml_parse_yacc_arg *ya,
 }
 
 static int
-xml_parse_endslash_pre(struct xml_parse_yacc_arg *ya)
+xml_parse_endslash_pre(clixon_xml_yacc *ya)
 {
     ya->ya_xparent = ya->ya_xelement;
     ya->ya_xelement = NULL;
@@ -234,7 +214,7 @@ xml_parse_endslash_pre(struct xml_parse_yacc_arg *ya)
 }
 
 static int
-xml_parse_endslash_mid(struct xml_parse_yacc_arg *ya)
+xml_parse_endslash_mid(clixon_xml_yacc *ya)
 {
     if (ya->ya_xelement != NULL)
 	ya->ya_xelement = xml_parent(ya->ya_xelement);
@@ -245,7 +225,7 @@ xml_parse_endslash_mid(struct xml_parse_yacc_arg *ya)
 }
 
 static int
-xml_parse_endslash_post(struct xml_parse_yacc_arg *ya)
+xml_parse_endslash_post(clixon_xml_yacc *ya)
 {
     ya->ya_xelement = NULL;
     return 0;
@@ -261,7 +241,7 @@ xml_parse_endslash_post(struct xml_parse_yacc_arg *ya)
  * @param[in] name
  */
 static int
-xml_parse_bslash(struct xml_parse_yacc_arg *ya, 
+xml_parse_bslash(clixon_xml_yacc *ya, 
 		 char                      *prefix,
 		 char                      *name)
 {
@@ -309,7 +289,7 @@ xml_parse_bslash(struct xml_parse_yacc_arg *ya,
  *  - PrefixedAttName: xmlns:NAME 
  */
 static int
-xml_parse_attr(struct xml_parse_yacc_arg *ya,
+xml_parse_attr(clixon_xml_yacc *ya,
 	       char                      *prefix,
 	       char                      *name,
 	       char                      *attval)
@@ -389,7 +369,7 @@ element     : '<' qname  attrs element1
                    { clicon_debug(2, "element -> < qname attrs element1"); }
 	    ;
 
-qname       : NAME           { if (xml_parse_unprefixed_name(_YA, $1) < 0) YYABORT; 
+qname       : NAME           { if (xml_parse_prefixed_name(_YA, NULL, $1) < 0) YYABORT; 
                                 clicon_debug(2, "qname -> NAME %s", $1);}
             | NAME ':' NAME  { if (xml_parse_prefixed_name(_YA, $1, $3) < 0) YYABORT; 
                                 clicon_debug(2, "qname -> NAME : NAME");}

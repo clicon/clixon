@@ -110,23 +110,23 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="config"><filter type=
 
 # Get path=/sender-state, state vs config
 new "netconf get /sender-state config+state"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="all"><filter type="xpath" select="/sender-state" xmlns="urn:example:example"/></get></rpc>]]>]]>' '^<rpc-reply><data><sender-state xmlns="urn:example:example"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="all"><filter type="xpath" select="/ex:sender-state" xmlns:ex="urn:example:example"/></get></rpc>]]>]]>' '^<rpc-reply><data><sender-state xmlns="urn:example:example"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$'
 
 new "netconf get /sender-state state-only"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"><filter type="xpath" select="/sender-state" xmlns="urn:example:example"/></get></rpc>]]>]]>' '^<rpc-reply><data><sender-state xmlns="urn:example:example"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"><filter type="xpath" select="/ex:sender-state" xmlns:ex="urn:example:example"/></get></rpc>]]>]]>' '^<rpc-reply><data><sender-state xmlns="urn:example:example"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$'
 
 new "netconf get /sender-state config-only"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="config"><filter type="xpath" select="/sender-state" xmlns="urn:example:example"/></get></rpc>]]>]]>' '^<rpc-reply><data/></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="config"><filter type="xpath" select="/ex:sender-state" xmlns:ex="urn:example:example"/></get></rpc>]]>]]>' '^<rpc-reply><data/></rpc-reply>]]>]]>$'
 
 # Get path=/sender-config, state vs config
 new "netconf get /sender-config config+state"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="all"><filter type="xpath" select="/sender-config" xmlns="urn:example:example"/></get></rpc>]]>]]>' '^<rpc-reply><data><sender-config xmlns="urn:example:example"><name>x</name></sender-config></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="all"><filter type="xpath" select="/ex:sender-config" xmlns:ex="urn:example:example"/></get></rpc>]]>]]>' '^<rpc-reply><data><sender-config xmlns="urn:example:example"><name>x</name></sender-config></data></rpc-reply>]]>]]>$'
 
 new "netconf get /sender-config state-only"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"><filter type="xpath" select="/sender-config" xmlns="urn:example:example"/></get></rpc>]]>]]>' '^<rpc-reply><data/></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"><filter type="xpath" select="/ex:sender-config" xmlns:ex="urn:example:example"/></get></rpc>]]>]]>' '^<rpc-reply><data/></rpc-reply>]]>]]>$'
 
 new "netconf get /sender-config config-only"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="config"><filter type="xpath" select="/sender-config" xmlns="urn:example:example"/></get></rpc>]]>]]>' '^<rpc-reply><data><sender-config xmlns="urn:example:example"><name>x</name></sender-config></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="config"><filter type="xpath" select="/ex:sender-config" xmlns:ex="urn:example:example"/></get></rpc>]]>]]>' '^<rpc-reply><data><sender-config xmlns="urn:example:example"><name>x</name></sender-config></data></rpc-reply>]]>]]>$'
 
 # Negative tests, 
 # Double xmlns attribute
@@ -172,7 +172,6 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"><filter ty
 
 new "netconf get / config-only ok"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="config"><filter type="xpath" select="/"/></get></rpc>]]>]]>' '^<rpc-reply><data><sender-config xmlns="urn:example:example"><name>y</name></sender-config></data></rpc-reply>]]>]]>$'
-
 
 if [ $BE -eq 0 ]; then
     exit # BE

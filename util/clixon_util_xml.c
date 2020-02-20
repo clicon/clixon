@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -63,6 +65,48 @@
 /* clixon */
 #include "clixon/clixon.h"
 
+/* Command line options to be passed to getopt(3) */
+#define UTIL_XML_OPTS "hD:f:Jjl:pvoy:Y:t:T:"
+
+static int
+validate_tree(clicon_handle h,
+	      cxobj        *xt,
+	      yang_stmt    *yspec)
+{
+    int    retval = -1;
+    int    ret;
+    cxobj *xerr = NULL; /* malloced must be freed */
+    cbuf         *cbret = NULL;
+
+    /* should already be populated */
+    /* Add default values */
+    if (xml_apply(xt, CX_ELMNT, xml_default, h) < 0)
+	goto done;
+    if (xml_apply(xt, -1, xml_sort_verify, h) < 0)
+	clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
+    if ((ret = xml_yang_validate_all_top(h, xt, &xerr)) < 0) 
+	goto done;
+    if (ret > 0 && (ret = xml_yang_validate_add(h, xt, &xerr)) < 0)
+	goto done;
+    if (ret == 0){
+	if ((cbret = cbuf_new()) ==NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	if (netconf_err2cb(xerr, cbret) < 0)
+	    goto done;
+	fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (cbret)
+	cbuf_free(cbret);
+    if (xerr)
+	xml_free(xerr);
+    return retval;
+}
+
 static int
 usage(char *argv0)
 {
@@ -79,6 +123,8 @@ usage(char *argv0)
 	    "\t-p \t\tPretty-print output\n"
 	    "\t-y <filename> \tYang filename or dir (load all files)\n"
     	    "\t-Y <dir> \tYang dirs (can be several)\n"
+   	    "\t-t <file>\tXML top input file (where base tree is pasted to)\n"
+	    "\t-T <path>\tXPath to where in top input file base should be pasted\n"
 	    ,
 	    argv0);
     exit(0);
@@ -89,7 +135,8 @@ main(int    argc,
      char **argv)
 {
     int           retval = -1;
-    cxobj        *xt = NULL;
+    int           ret;
+    cxobj        *xt = NULL;   /* Base cxobj tree parsed from xml or json */
     cxobj        *xc;
     cbuf         *cb = cbuf_new();
     int           c;
@@ -97,18 +144,23 @@ main(int    argc,
     int           jsonin = 0;
     int           jsonout = 0;
     char         *input_filename = NULL;
+    char         *top_input_filename = NULL;
     char         *yang_file_dir = NULL;
     yang_stmt    *yspec = NULL;
     cxobj        *xerr = NULL; /* malloced must be freed */
-    int           ret;
     int           pretty = 0;
     int           validate = 0;
     int           output = 0;
     clicon_handle h;
     struct stat   st;
-    int           fd = 0; /* stdin */
+    int           fd = 0; /* base file, stdin */
+    int           tfd = -1; /* top file */
     cxobj        *xcfg = NULL;
     cbuf         *cbret = NULL;
+    cxobj        *xtop = NULL; /* Top tree if any */
+    char         *top_path = NULL;
+    cxobj        *xbot;        /* Place in xtop where base cxobj is parsed */
+    cvec         *nsc = NULL; 
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -124,7 +176,7 @@ main(int    argc,
     clicon_conf_xml_set(h, xcfg);
     optind = 1;
     opterr = 0;
-    while ((c = getopt(argc, argv, "hD:f:Jjl:pvoy:Y:")) != -1)
+    while ((c = getopt(argc, argv, UTIL_XML_OPTS)) != -1)
 	switch (c) {
 	case 'h':
 	    usage(argv[0]);
@@ -162,12 +214,22 @@ main(int    argc,
 	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
 		goto done;
 	    break;
+	case 't':
+	    top_input_filename = optarg;
+	    break;
+	case 'T': /* top file xpath */
+	    top_path = optarg;
+	    break;
 	default:
 	    usage(argv[0]);
 	    break;
 	}
     if (validate && !yang_file_dir){
 	fprintf(stderr, "-v requires -y\n");
+	usage(argv[0]);
+    }
+    if (top_input_filename && top_path == NULL){
+	fprintf(stderr, "-t requires -T\n");
 	usage(argv[0]);
     }
     clicon_log_init(__FILE__, debug?LOG_DEBUG:LOG_INFO, logdst);
@@ -188,6 +250,31 @@ main(int    argc,
 		goto done;
 	}
     }
+    /* If top file is declared, the base XML/JSON is pasted as child to the top-file.
+     * This is to emulate sub-tress, not just top-level parsing.
+     * Always validated
+     */
+    if (top_input_filename){
+	if ((tfd = open(top_input_filename, O_RDONLY)) < 0){
+	    clicon_err(OE_YANG, errno, "open(%s)", top_input_filename);	
+	    goto done;
+	}
+	if (xml_parse_file(tfd, yspec, &xtop) < 0){
+	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
+	    goto done;
+	}
+	if (validate_tree(h, xtop, yspec) < 0)
+	    goto done;
+
+	/* Compute canonical namespace context */
+	if (xml_nsctx_yangspec(yspec, &nsc) < 0)
+	    goto done;
+	if ((xbot = xpath_first(xtop, nsc, "%s", top_path)) == NULL){
+	    fprintf(stderr, "Path not found in top tree: %s\n", top_path);
+	    goto done;
+	}
+	xt = xbot;
+    }
     if (input_filename){
 	if ((fd = open(input_filename, O_RDONLY)) < 0){
 	    clicon_err(OE_YANG, errno, "open(%s)", input_filename);	
@@ -203,9 +290,13 @@ main(int    argc,
 	    goto done;
 	}
     }
-    else{
-	if (xml_parse_file(fd, "</config>", NULL, &xt) < 0){
+    else{ /* XML */
+	if ((ret = xml_parse_file2(fd, (xt==NULL)?YB_TOP:YB_PARENT, yspec, NULL, &xt, &xerr)) < 0){
 	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
+	    goto done;
+	}
+	if (ret == 0){
+	    clicon_rpc_generate_error(xerr, "util_xml", NULL);
 	    goto done;
 	}
     }
@@ -220,32 +311,8 @@ main(int    argc,
 
     /* 3. Validate data (if yspec) */
     if (validate){
-	xc = xml_child_i(xt, 0);
-	/* Populate */
-	if (xml_apply0(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	if (validate_tree(h, xt, yspec) < 0)
 	    goto done;
-	/* Sort */
-	if (xml_apply0(xc, CX_ELMNT, xml_sort, h) < 0)
-	    goto done;
-	/* Add default values */
-	if (xml_apply(xc, CX_ELMNT, xml_default, h) < 0)
-	    goto done;
-	if (xml_apply0(xc, -1, xml_sort_verify, h) < 0)
-	    clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
-	if ((ret = xml_yang_validate_all_top(h, xc, &xerr)) < 0) 
-	    goto done;
-	if (ret > 0 && (ret = xml_yang_validate_add(h, xc, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if ((cbret = cbuf_new()) ==NULL){
-		clicon_err(OE_XML, errno, "cbuf_new");
-		goto done;
-	    }
-	    if (netconf_err2cb(xerr, cbret) < 0)
-		goto done;
-	    fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
-	    goto done;
-	}
     }
     /* 4. Output data (xml/json) */
     if (output){
@@ -260,11 +327,17 @@ main(int    argc,
     }
     retval = 0;
  done:
+    if (nsc)
+	cvec_free(nsc);
     if (cbret)
 	cbuf_free(cbret);
     if (xcfg)
 	xml_free(xcfg);
-    if (xt)
+    if (xerr)
+	xml_free(xerr);
+    if (xtop)
+	xml_free(xtop);
+    else if (xt)
 	xml_free(xt);
     if (cb)
 	cbuf_free(cb);

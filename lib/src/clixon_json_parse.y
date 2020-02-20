@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -99,7 +100,7 @@ object.
 /* Here starts user C-code */
 
 /* typecast macro */
-#define _JY ((struct clicon_json_yacc_arg *)_jy)
+#define _JY ((clixon_json_yacc *)_jy)
 
 #define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_json_parsetext, _JY->jy_linenum); YYERROR;}
 
@@ -142,8 +143,7 @@ void
 clixon_json_parseerror(void *_jy,
 		       char *s) 
 { 
-    clicon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'", 
-	       _JY->jy_name,
+    clicon_err(OE_XML, XMLPARSE_ERRNO, "json_parse: line %d: %s at or before: '%s'", 
 	       _JY->jy_linenum ,
 	       s, 
 	       clixon_json_parsetext); 
@@ -151,14 +151,14 @@ clixon_json_parseerror(void *_jy,
 }
 
 int
-json_parse_init(struct clicon_json_yacc_arg *jy)
+json_parse_init(clixon_json_yacc *jy)
 {
     //        clicon_debug_init(2, NULL);
     return 0;
 }
 
 int
-json_parse_exit(struct clicon_json_yacc_arg *jy)
+json_parse_exit(clixon_json_yacc *jy)
 {
     return 0;
 }
@@ -167,8 +167,8 @@ json_parse_exit(struct clicon_json_yacc_arg *jy)
  *  Split name into prefix:name (extended JSON RFC7951)
  */
 static int
-json_current_new(struct clicon_json_yacc_arg *jy,
-		 char                        *name)
+json_current_new(clixon_json_yacc *jy,
+		 char             *name)
 {
     int        retval = -1;
     cxobj     *x;
@@ -183,6 +183,11 @@ json_current_new(struct clicon_json_yacc_arg *jy,
 	goto done; 
     if (prefix && xml_prefix_set(x, prefix) < 0)
 	goto done;
+    /* If topmost, add to top-list created list */
+    if (jy->jy_current == jy->jy_xtop){
+	if (cxvec_append(x, &jy->jy_xvec, &jy->jy_xlen) < 0)
+	    goto done;
+    }
     jy->jy_current = x;
     retval = 0;
  done:
@@ -194,7 +199,7 @@ json_current_new(struct clicon_json_yacc_arg *jy,
 }
 
 static int
-json_current_pop(struct clicon_json_yacc_arg *jy)
+json_current_pop(clixon_json_yacc *jy)
 {
     if (jy->jy_current) 
 	jy->jy_current = xml_parent(jy->jy_current);
@@ -202,7 +207,7 @@ json_current_pop(struct clicon_json_yacc_arg *jy)
 }
 
 static int
-json_current_clone(struct clicon_json_yacc_arg *jy)
+json_current_clone(clixon_json_yacc *jy)
 {
     cxobj *xn;
 
@@ -217,8 +222,8 @@ json_current_clone(struct clicon_json_yacc_arg *jy)
 }
 
 static int
-json_current_body(struct clicon_json_yacc_arg *jy, 
-		  char                        *value)
+json_current_body(clixon_json_yacc *jy, 
+		  char             *value)
 {
     int retval = -1;
     cxobj *xn;

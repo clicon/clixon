@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -365,7 +366,12 @@ api_data_write(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-
+    /* Create a dummy data tree parent to hook in the parsed data.
+     */
+    if ((xdata0 = xml_new("data0", NULL, NULL)) == NULL)
+	goto done;
+    if (xml_copy_one(api_path?xml_parent(xbot):xbot, xdata0) < 0)
+	goto done;
     /* Parse input data as json or xml into xml */
     switch (media_in){
     case YANG_DATA_XML:
@@ -418,7 +424,7 @@ api_data_write(clicon_handle h,
     /* The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
-    if (xml_child_nr(xdata0) != 1){
+    if (xml_child_nr_type(xdata0, CX_ELMNT) != 1){
 	if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
 	    goto done;
 	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -429,7 +435,7 @@ api_data_write(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    xdata = xml_child_i(xdata0,0);
+    xdata = xml_child_i_type(xdata0, 0, CX_ELMNT);
 #if 0
     if (debug){
 	cbuf *ccc=cbuf_new();
@@ -481,6 +487,13 @@ api_data_write(clicon_handle h,
 	    xml_free(xtop);
 	xtop = xdata;
 	xml_name_set(xtop, "config");
+	/* remove default namespace */
+	if ((xa = xml_find_type(xtop, NULL, "xmlns", CX_ATTR)) != NULL){
+	    if (xml_rm(xa) < 0)
+		goto done;
+	    if (xml_free(xa) < 0)
+		goto done;
+	}
     }
     else {
 	/* There is an api-path that defines an element in the datastore tree.
@@ -557,7 +570,7 @@ api_data_write(clicon_handle h,
 	    goto done;
 	nullspec = (xml_spec(xdata) == NULL);
 	/* xbot is already populated, resolve yang for added xdata too */
-	if (xml_apply0(xdata, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	if (xml_spec_populate0(xdata, yspec, NULL) < 0)
 	    goto done;
 	if (media_in == YANG_DATA_JSON && nullspec){
 	    /* json2xml decode could not be done above in json_parse,

@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -137,6 +138,8 @@ main(int    argc,
     cvec       *nsc = NULL;
     int         canonical = 0;
     cxobj      *xcfg = NULL;
+    cbuf       *cbret = NULL;
+    cxobj      *xerr = NULL; /* malloced must be freed */
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR); 
@@ -277,32 +280,28 @@ main(int    argc,
      * If fd=0, then continue reading from stdin (after CR)
      * If fd>0, reading from file opened as argv[1]
      */
-    if (xml_parse_file(fd, "</clicon>", NULL, &x0) < 0){
+    if (xml_parse_file(fd, NULL, &x0) < 0){
 	fprintf(stderr, "Error: parsing: %s\n", clicon_err_reason);
 	return -1;
     }
 
     /* Validate XML as well */
     if (yang_file_dir){
-	cbuf  *cbret = NULL;
-	cxobj *x1;
-	cxobj *xerr = NULL; /* malloced must be freed */
-
-	x1 = xml_child_i(x0, 0);
 	/* Populate */
-	if (xml_apply0(x1, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	if (xml_spec_populate(x0, yspec, NULL) < 0)
 	    goto done;
 	/* Sort */
-	if (xml_apply0(x1, CX_ELMNT, xml_sort, h) < 0)
+	if (xml_apply(x0, CX_ELMNT, xml_sort, h) < 0)
 	    goto done;
+
 	/* Add default values */
-	if (xml_apply(x1, CX_ELMNT, xml_default, h) < 0)
+	if (xml_apply(x0, CX_ELMNT, xml_default, h) < 0)
 	    goto done;
-	if (xml_apply0(x1, -1, xml_sort_verify, h) < 0)
+	if (xml_apply0(x0, -1, xml_sort_verify, h) < 0)
 	    clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
-	if ((ret = xml_yang_validate_all_top(h, x1, &xerr)) < 0) 
+	if ((ret = xml_yang_validate_all_top(h, x0, &xerr)) < 0) 
 	    goto done;
-	if (ret > 0 && (ret = xml_yang_validate_add(h, x1, &xerr)) < 0)
+	if (ret > 0 && (ret = xml_yang_validate_add(h, x0, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    if ((cbret = cbuf_new()) ==NULL){

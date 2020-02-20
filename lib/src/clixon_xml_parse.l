@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -66,7 +68,7 @@
 #define YY_NO_INPUT
 
 /* typecast macro */
-#define _YA ((struct xml_parse_yacc_arg *)_ya) 
+#define _YA ((clixon_xml_yacc *)_ya) 
 
 #undef clixon_xml_parsewrap
 int clixon_xml_parsewrap(void)
@@ -182,7 +184,7 @@ ncname     {namestart}{namechar}*
 /*! Initialize XML scanner.
  */
 int
-clixon_xml_parsel_init(struct xml_parse_yacc_arg *ya)
+clixon_xml_parsel_init(clixon_xml_yacc *ya)
 {
   BEGIN(START);
   ya->ya_lexbuf = yy_scan_string (ya->ya_parse_string);
@@ -193,7 +195,7 @@ clixon_xml_parsel_init(struct xml_parse_yacc_arg *ya)
 
 /*! Exit xml scanner */
 int
-clixon_xml_parsel_exit(struct xml_parse_yacc_arg *ya)
+clixon_xml_parsel_exit(clixon_xml_yacc *ya)
 {
    yy_delete_buffer(ya->ya_lexbuf);
    clixon_xml_parselex_destroy();  /* modern */

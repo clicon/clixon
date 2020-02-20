@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -431,6 +433,7 @@ cli_show_config1(clicon_handle h,
 		 cvec         *argv)
 {
     int              retval = -1;
+    int              ret;
     char            *db;
     char            *formatstr;
     char            *xpath;
@@ -448,6 +451,10 @@ cli_show_config1(clicon_handle h,
     if (cvec_len(argv) != 3 && cvec_len(argv) != 4){
 	clicon_err(OE_PLUGIN, 0, "Got %d arguments. Expected: <dbname>,<format>,<xpath>[,<attr>]", cvec_len(argv));
 
+	goto done;
+    }
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }
     /* First argv argument: Database */
@@ -489,13 +496,13 @@ cli_show_config1(clicon_handle h,
 	clicon_rpc_generate_error(xerr, "Get configuration", NULL);
 	goto done;
     }
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+    /* Some formats (eg cli) require yang */
+    if ((ret = xml_spec_populate(xt, yspec, &xerr)) < 0)
+	goto done;
+    if (ret == 0){
+	clicon_rpc_generate_error(xerr, "Get configuration", NULL);
 	goto done;
     }
-    /* Some formats (eg cli) require yang */
-    if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
-	goto done;
     /* Print configuration according to format */
     switch (format){
     case FORMAT_XML:
@@ -681,6 +688,7 @@ cli_show_auto1(clicon_handle h,
 	       cvec         *argv)
 {
     int              retval = 1;
+    int              ret;
     yang_stmt       *yspec;
     char            *api_path_fmt;  /* xml key format */
     //    char            *api_path = NULL; /* xml key */
@@ -737,6 +745,13 @@ cli_show_auto1(clicon_handle h,
     }
 
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+	clicon_rpc_generate_error(xerr, "Get configuration", NULL);
+	goto done;
+    }
+    /* Some formats (eg cli) require yang */
+    if ((ret = xml_spec_populate(xt, yspec, &xerr)) < 0)
+	goto done;
+    if (ret == 0){
 	clicon_rpc_generate_error(xerr, "Get configuration", NULL);
 	goto done;
     }

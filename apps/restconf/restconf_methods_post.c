@@ -1,8 +1,9 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -106,28 +107,28 @@ api_data_post(clicon_handle h,
 	      int           pretty,
 	      restconf_media media_out)
 {
-    int        retval = -1;
+    int            retval = -1;
     enum operation_type op = OP_CREATE;
-    cxobj     *xdata0 = NULL; /* Original -d data struct (including top symbol) */
-    cxobj     *xdata;         /* -d data (without top symbol)*/
-    int        i;
-    cbuf      *cbx = NULL;
-    cxobj     *xtop = NULL; /* top of api-path */
-    cxobj     *xbot = NULL; /* bottom of api-path */
-    yang_stmt *ybot = NULL; /* yang of xbot */
-    yang_stmt *ymoddata = NULL; /* yang module of data (-d) */
-    yang_stmt *yspec;
-    yang_stmt *ydata;
-    cxobj     *xa;
-    cxobj     *xret = NULL;
-    cxobj     *xretcom = NULL; /* return from commit */
-    cxobj     *xretdis = NULL; /* return from discard-changes */
-    cxobj     *xerr = NULL; /* malloced must be freed */
-    cxobj     *xe;            /* dont free */
-    char      *username;
-    int        nullspec = 0;
-    int        ret;
+    cxobj         *xdata = NULL; /* The actual data object to modify */
+    int            i;
+    cbuf          *cbx = NULL;
+    cxobj         *xtop = NULL; /* top of api-path */
+    cxobj         *xbot = NULL; /* bottom of api-path */
+    yang_stmt     *ybot = NULL; /* yang of xbot */
+    yang_stmt     *ymoddata = NULL; /* yang module of data (-d) */
+    yang_stmt     *yspec;
+    yang_stmt     *ydata;
+    cxobj         *xa;
+    cxobj         *xret = NULL;
+    cxobj         *xretcom = NULL; /* return from commit */
+    cxobj         *xretdis = NULL; /* return from discard-changes */
+    cxobj         *xerr = NULL; /* malloced must be freed */
+    cxobj         *xe;            /* dont free */
+    cxobj         *x;            
+    char          *username;
+    int            ret;
     restconf_media media_in;
+    int            nrchildren0 = 0;
     
     clicon_debug(1, "%s api_path:\"%s\"", __FUNCTION__, api_path);
     clicon_debug(1, "%s data:\"%s\"", __FUNCTION__, data);
@@ -155,15 +156,6 @@ api_data_post(clicon_handle h,
 	    goto ok;
 	}
     }
-#if 1
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xtop, 0, 0, -1) < 0)
-	    goto done;
-	clicon_debug(1, "%s XURI:%s", __FUNCTION__, cbuf_get(ccc));
-	cbuf_free(ccc);
-    }
-#endif
     /* 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource.  (tested again below)
      */
@@ -178,11 +170,19 @@ api_data_post(clicon_handle h,
 	    goto done;
 	goto ok;
     }
+
+    /* Record how many children before parse (after check nr should be +1) */
+    nrchildren0 = 0;
+    x = NULL;
+    while ((x = xml_child_each(xbot, x, CX_ELMNT)) != NULL){
+	nrchildren0++;
+	xml_flag_set(x, XML_FLAG_MARK);
+    }
     /* Parse input data as json or xml into xml */
     media_in = restconf_content_type(r);
     switch (media_in){
     case YANG_DATA_XML:
-	if (xml_parse_string(data, NULL, &xdata0) < 0){
+	if (xml_parse_string(data, yspec, &xbot) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -195,16 +195,10 @@ api_data_post(clicon_handle h,
 	}
 	break;
     case YANG_DATA_JSON:	
-	/* Data here cannot cannot (always) be Yang populated since it is
-	 * loosely hanging without top symbols.
-	 * And if it is not yang populated, it cant be translated properly
-	 * from JSON to XML.
-	 * Therefore, yang population is done later after addsub below
-	 * Further complication is that if data is root resource, then it will
-	 * work, so I need to check below that it didnt.
-	 * THIS could be simplified.
+	/* If xbot is top-level (api_path=null) it does not have a spec therefore look for 
+	 * top-level (yspec) otherwise assume parent (xbot) is populated.
 	 */
-	if ((ret = json_parse_str(data, yspec, &xdata0, &xerr)) < 0){ 
+	if ((ret = json_parse_str(data, yspec, &xbot, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -230,10 +224,12 @@ api_data_post(clicon_handle h,
 	goto ok;
 	break;
     } /* switch media_in */
-    /* 4.4.1: The message-body MUST contain exactly one instance of the
+
+    /* RFC 8040 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
-    if (xml_child_nr(xdata0) != 1){
+    clicon_debug(1, "%s nrchildren0: %d", __FUNCTION__, nrchildren0);
+    if (xml_child_nr_type(xbot, CX_ELMNT) - nrchildren0 != 1){
 	if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
 	    goto done;
 	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -244,23 +240,32 @@ api_data_post(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    xdata = xml_child_i(xdata0, 0);
-    if (ys_module_by_xml(yspec, xdata, &ymoddata) < 0)
-	goto done;
+    /* Find the actual (new) object, the single unmarked one */
+    x = NULL;
+    while ((x = xml_child_each(xbot, x, CX_ELMNT)) != NULL){
+	if (xml_flag(x, XML_FLAG_MARK)){ 
+	    xml_flag_reset(x, XML_FLAG_MARK);
+	    continue;
+	}
+	xdata = x;
+    }
+
     /* Add operation (create/replace) as attribute */
     if ((xa = xml_new("operation", xdata, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
-    xml_prefix_set(xa, NETCONF_BASE_PREFIX);
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
-    /* Replace xbot with x, ie bottom of api-path with data */
-    if (xml_addsub(xbot, xdata) < 0)
+
+#if 0 /* XXX postpone this, there is something wrong with NETCONF_BASE_NAMESPACE not appearing here
+      * but later it does due to default handling,... */
+    if (xml_namespace_change(xa, NETCONF_BASE_NAMESPACE, NETCONF_BASE_PREFIX) < 0)
 	goto done;
-    /* xbot is already populated, resolve yang for added xdata too 
-     */
-    nullspec = (xml_spec(xdata) == NULL);
-    if (xml_apply0(xdata, CX_ELMNT, xml_spec_populate, yspec) < 0)
+#else
+    xml_prefix_set(xa, NETCONF_BASE_PREFIX); /* XXX: But this assumes proper namespace set */
+#endif
+
+    if (ys_module_by_xml(yspec, xdata, &ymoddata) < 0)
 	goto done;
     /* ybot is parent of spec(parent(data))) */
     if (ymoddata && (ydata = xml_spec(xdata)) != NULL){
@@ -290,20 +295,6 @@ api_data_post(clicon_handle h,
 	    goto ok;
 	}
     }
-    if (media_in == YANG_DATA_JSON && nullspec){
-	/* json2xml decode may not have been done above in json_parse,
-	   need to be done here instead 
-	   UNLESS it is a root resource, then json-parse has already done it
-	*/
-	if ((ret = json2xml_decode(xdata, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if (api_return_err(h, r, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-    }
-
     /* If restconf insert/point attributes are present, translate to netconf */
     if (restconf_insert_attributes(xdata, qvec) < 0)
 	goto done;
@@ -405,8 +396,6 @@ api_data_post(clicon_handle h,
 	xml_free(xretdis);
     if (xtop)
 	xml_free(xtop);
-    if (xdata0)
-	xml_free(xdata0);
      if (cbx)
 	cbuf_free(cbx); 
    return retval;
@@ -630,7 +619,7 @@ api_operations_post_output(clicon_handle h,
     if (youtput!=NULL){
 	xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
 #if 0
-	if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	if (xml_spec_populate(xoutput, yspec, NULL) < 0)
 	    goto done;
 	if ((ret = xml_yang_validate_all(xoutput, &xerr)) < 0)
 	    goto done;
@@ -861,7 +850,7 @@ api_operations_post(clicon_handle h,
     }
 #endif
     /* 6. Validate incoming RPC and fill in defaults */
-    if (xml_spec_populate_rpc_input(h, xtop, yspec) < 0) /*  */
+    if (xml_spec_populate_rpc(xtop, yspec, NULL) < 0) /*  */
 	goto done;
     if ((ret = xml_yang_validate_rpc(h, xtop, &xret)) < 0)
 	goto done;

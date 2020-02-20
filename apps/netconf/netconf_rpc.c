@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -157,9 +159,11 @@ netconf_get_config(clicon_handle h,
 		   cxobj        *xn, 
 		   cxobj       **xret)
 {
-     cxobj      *xfilter; /* filter */
-     int         retval = -1;
-     char       *ftype = NULL;
+     int        retval = -1;
+     cxobj     *xfilter; /* filter */
+     char      *ftype = NULL;
+     cxobj     *xdata;
+     yang_stmt *yspec;
 
      /* ie <filter>...</filter> */
      if ((xfilter = xpath_first(xn, NULL, "filter")) != NULL) 
@@ -354,9 +358,11 @@ netconf_get(clicon_handle h,
 	    cxobj        *xn, 
 	    cxobj       **xret)
 {
-     cxobj      *xfilter; /* filter */
-     int         retval = -1;
-     char       *ftype = NULL;
+     int        retval = -1;
+     cxobj     *xfilter; /* filter */
+     char      *ftype = NULL;
+     cxobj     *xdata;
+     yang_stmt *yspec;
 
        /* ie <filter>...</filter> */
      if ((xfilter = xpath_first(xn, NULL, "filter")) != NULL) 
@@ -471,7 +477,6 @@ netconf_notification_cb(int   s,
 }
 
 /*
-
     <create-subscription> 
        <stream>RESULT</stream> # If not present, events in the default NETCONF stream will be sent.
        <filter type="xpath" select="XPATHEXPR"/>
@@ -586,7 +591,7 @@ netconf_application_rpc(clicon_handle h,
 	/* 1. Check xn arguments with input statement. */
 	if ((yinput = yang_find(yrpc, Y_INPUT, NULL)) != NULL){
 	    xml_spec_set(xn, yinput); /* needed for xml_spec_populate */
-	    if (xml_apply(xn, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	    if (xml_spec_populate(xn, yspec, NULL) < 0)
 		goto done;
 	    if ((ret = xml_yang_validate_all_top(h, xn, &xerr)) < 0)
 		goto done;
@@ -618,9 +623,8 @@ netconf_application_rpc(clicon_handle h,
 	if ((youtput = yang_find(yrpc, Y_OUTPUT, NULL)) != NULL){
 	    xoutput=xpath_first(*xret, NULL, "/");
 	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
-	    if (xml_apply(xoutput, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	    if (xml_spec_populate(xoutput, yspec, NULL) < 0)
 		goto done;
-
 	    if ((ret = xml_yang_validate_all_top(h, xoutput, &xerr)) < 0)
 		goto done;
 	    if (ret > 0 && (ret = xml_yang_validate_add(h, xoutput, &xerr)) < 0)

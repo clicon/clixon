@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -445,7 +446,7 @@ clixon_xml_changelog_init(clicon_handle h)
 	    clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	    goto done;
 	}    
-	if (xml_parse_file(fd, NULL, yspec, &xt) < 0)
+	if (xml_parse_file(fd, yspec, &xt) < 0)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xt) < 0)
 	    goto done;

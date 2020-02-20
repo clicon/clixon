@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -56,11 +57,17 @@ int xml_diff(yang_stmt *yspec, cxobj *x0, cxobj *x1,
 	     cxobj ***changed_x0, cxobj ***changed_x1, size_t *changedlen);
 int xml_tree_prune_flagged_sub(cxobj *xt, int flag, int test, int *upmark);
 int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
+int xml_namespace_change(cxobj *x, char *namespace, char *prefix);
 int xml_default(cxobj *x, void  *arg);
 int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, void *arg);
-int xml_spec_populate_rpc_input(clicon_handle h, cxobj *x, yang_stmt *yspec);
-int xml_spec_populate(cxobj *x, void *arg);
+int xml_spec_populate_rpc(cxobj *xrpc, yang_stmt *yspec, cxobj **xerr);
+int xml_spec_populate_rpc_reply(cxobj *xrpc, char *name, yang_stmt *yspec, cxobj **xerr);
+int xml_spec_populate0(cxobj *xt, yang_stmt *yspec, cxobj **xerr);
+int xml_spec_populate0_parent(cxobj *xt, cxobj **xerr);
+int xml_spec_populate(cxobj *xt, yang_stmt *yspec, cxobj **xerr);
+int xml_spec_populate_parent(cxobj *xt, cxobj **xerr);
+
 int xml2xpath(cxobj *x, char **xpath);
 int assign_namespaces(cxobj *x0, cxobj *x1, cxobj *x1p);
 int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);

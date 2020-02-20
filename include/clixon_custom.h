@@ -1,7 +1,8 @@
 /*
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -31,6 +32,7 @@
   ***** END LICENSE BLOCK *****
 
   Custom file as boilerplate appended by clixon_config.h 
+  Note that clixon_config.h is only included by clixon system files, not automatically by examples or apps
   */
 
 #ifndef HAVE_STRNDUP 
@@ -72,11 +74,20 @@
 #undef XML_EXPLICIT_INDEX
 
 /*! Validate user state callback content
- * User register state callbacks using the ca_statedata callback
- * When this option is set, the XML returned from the callback is validated after merging with the 
- * running db. If it fails, an internal error is returned to the originating user.
- * If the option is not set, the XML returned by the user is not validated. This could be useful if
- * there is some error in the validation, as a safety catch.
- * (Eventually this option will be permanently enabled)
+ * Users may register state callbacks using ca_statedata callback
+ * When this option is set, the XML returned from the callback is validated after merging with the running
+ * db. If it fails, an internal error is returned to the originating user.
+ * If the option is not set, the XML returned by the user is not validated.
+ * Note that enabling this option causes a large performance overhead for large lists, therefore it
+ * is recommended to enable it during development and debugging but disable it in production, until
+ * this has been resolved.
  */
 #define VALIDATE_STATE_XML
+
+/*! Treat <config> specially in a xmldb datastore.
+ * config is treated as a "neutral" tag that does not have a yang spec.
+ * In particulat when binding xml to yang, if <config> is encountered as top-of-tree, do not
+ * try to bind a yang-spec to this symbol.
+ */
+#define XMLDB_CONFIG_HACK
+

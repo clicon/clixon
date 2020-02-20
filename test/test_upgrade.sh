@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Starting clixon with outdated (or not) modules
-# This relieas on storing RFC7895 YANG Module Library modules-state info
+# This relies on storing RFC7895 YANG Module Library modules-state info
 # in the datastore (or XML files?)
 # The test is made with three Yang models A, B and C as follows:
 # Yang module A has revisions "0814-01-28" and "2019-01-01"

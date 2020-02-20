@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -47,20 +48,23 @@ struct xml_parse_yacc_arg{
     char       *ya_parse_string; /* original (copy of) parse string */
     int         ya_linenum;      /* Number of \n in parsed buffer */
     void       *ya_lexbuf;       /* internal parse buffer from lex */
-
-    cxobj      *ya_xelement;     /* xml active element */
-    cxobj      *ya_xparent;      /* xml parent element*/
+    cxobj      *ya_xtop;         /* cxobj top element (fixed) */
+    cxobj      *ya_xelement;     /* cxobj active element (changes with parse context) */
+    cxobj      *ya_xparent;      /* cxobj parent element (changes with parse context) */
     yang_stmt  *ya_yspec;        /* If set, top-level yang-spec */
     int         ya_lex_state;    /* lex return state */
+    cxobj     **ya_xvec;         /* Vector of created top-level nodes (to know which are created) */
+    size_t      ya_xlen;         /* Length of ya_xvec */
 };
+typedef struct xml_parse_yacc_arg clixon_xml_yacc;
 
 extern char *clixon_xml_parsetext;
 
 /*
  * Prototypes
  */
-int clixon_xml_parsel_init(struct xml_parse_yacc_arg *ya);
-int clixon_xml_parsel_exit(struct xml_parse_yacc_arg *ya);
+int clixon_xml_parsel_init(clixon_xml_yacc *ya);
+int clixon_xml_parsel_exit(clixon_xml_yacc *ya);
 
 int clixon_xml_parsel_linenr(void);
 int clixon_xml_parselex(void *);

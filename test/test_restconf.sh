@@ -50,14 +50,16 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    sudo pkill -u $wwwuser -f clixon_restconf
 
-new "start restconf daemon"
-start_restconf -f $cfg
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
-new "waiting"
-wait_restconf
+    new "waiting"
+    wait_restconf
+fi
 
 new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
 expecteq "$(curl -s -X GET http://localhost/.well-known/host-meta)" 0 "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>
@@ -118,10 +120,10 @@ new "restconf empty rpc, default media type should fail (JSON)"
 expectpart "$(curl -si -X POST -H "Accept: application/yang-data+json" -d {\"clixon-example:input\":null} http://localhost/restconf/operations/clixon-example:empty)" 0 'HTTP/1.1 415 Unsupported Media Type'
 
 new "restconf empty rpc with extra args (should fail)"
-expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-example:input\":{\"extra\":null}} http://localhost/restconf/operations/clixon-example:empty)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"extra"},"error-severity":"error","error-message":"namespace is: urn:example:clixon"}}}'
+expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-example:input\":{\"extra\":null}} http://localhost/restconf/operations/clixon-example:empty)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"extra"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: extra with parent: empty in namespace: urn:example:clixon"}}}'
 
 new "restconf debug rpc"
-expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-lib:input\":{\"level\":0}} http://localhost/restconf/operations/clixon-lib:debug)" 0  "HTTP/1.1 204 No Content"
+#expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-lib:input\":{\"level\":0}} http://localhost/restconf/operations/clixon-lib:debug)" 0  "HTTP/1.1 204 No Content"
 
 new "restconf get empty config + state json"
 expecteq "$(curl -sS -X GET http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state":{"op":["42","41","43"]}}
@@ -173,24 +175,21 @@ new "restconf Add subtree eth/0/0 to datastore using POST"
 expectpart "$(curl -s -i -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}}' http://localhost/restconf/data)" 0 'HTTP/1.1 201 Created' 'Location: http://localhost/restconf/data/ietf-interfaces:interfaces'
 
 new "restconf Re-add subtree eth/0/0 which should give error"
-expectpart "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}}' http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
-
-# XXX Cant get this to work
-#expecteq "$(curl -s -X POST -d {\"interfaces\":{\"interface\":{\"name\":\"eth/0/0\",\"type\":\"clixon-example:eth\",\"enabled\":true}}} http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
+expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}}' http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
 
 new "restconf Check interfaces eth/0/0 added"
 expectfn "curl -s -X GET http://localhost/restconf/data/ietf-interfaces:interfaces" 0 '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up"}\]}}}
 '
 
 new "restconf delete interfaces"
-expecteq "$(curl -s -X DELETE  http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 ""
+expectpart "$(curl -si -X DELETE  http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/1.1 204 No Content"
 
 new "restconf Check empty config"
 expectfn "curl -sG http://localhost/restconf/data/clixon-example:state" 0 "$state
 "
 
 new "restconf Add interfaces subtree eth/0/0 using POST"
-expectpart "$(curl -s -X POST http://localhost/restconf/data/ietf-interfaces:interfaces -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}')" 0 ""
+expectpart "$(curl -si -X POST http://localhost/restconf/data/ietf-interfaces:interfaces -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}')" 0 "HTTP/1.1 201 Created"
 
 new "restconf Check eth/0/0 added config"
 expectpart "$(curl -s -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}}'
@@ -208,7 +207,7 @@ new "restconf Re-post eth/0/0 which should generate error"
 expectpart "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
 
 new "Add leaf description using POST"
-expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:description":"The-first-interface"}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 ""
+expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:description":"The-first-interface"}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 "HTTP/1.1 201 Created"
 
 new "Add nothing using POST (expect fail)"
 expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0  'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"The message-body MUST contain exactly one instance of the expected data resource"}}}'
@@ -218,7 +217,7 @@ expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces
 '
 
 new "restconf delete eth/0/0"
-expecteq "$(curl -s -X DELETE  http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 ""
+expectpart "$(curl -si -X DELETE  http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 "HTTP/1.1 204 No Content"
 
 new "Check deleted eth/0/0"
 expectfn 'curl -s -G http://localhost/restconf/data' 0 "$state"
@@ -227,7 +226,7 @@ new "restconf Re-Delete eth/0/0 using none should generate error"
 expecteq "$(curl -s -X DELETE  http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-missing","error-severity":"error","error-message":"Data does not exist; cannot delete resource"}}}'
 
 new "restconf Add subtree eth/0/0 using PUT"
-expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 ""
+expectpart "$(curl -si -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 "HTTP/1.1 201 Created"
 
 new "restconf get subtree"
 expecteq "$(curl -s -G http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces":{"interface":[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}]}}
@@ -238,7 +237,7 @@ expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"
 '
 
 new "restconf rpc using POST json wrong"
-expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"wrongelement"},"error-severity":"error","error-message":"namespace is: urn:example:clixon"}}}'
+expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"wrongelement"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: wrongelement with parent: example in namespace: urn:example:clixon"}}}'
 
 new "restconf rpc non-existing rpc without namespace"
 expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{}' http://localhost/restconf/operations/kalle)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"kalle"},"error-severity":"error","error-message":"RPC not defined"}}}'
@@ -277,8 +276,10 @@ expectpart "$(curl -is -X PUT -H "Content-Type: application/yang-data+json" -d '
 new "restconf Add subtree with too many keys (expected error)"
 expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=a,b)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"List key interface length mismatch"}}}'
 
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE

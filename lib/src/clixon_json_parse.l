@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -62,7 +63,7 @@
 #define YY_NO_INPUT
 
 /* typecast macro */
-#define _JY ((struct clicon_json_yacc_arg *)_yy)
+#define _JY ((clixon_json_yacc *)_yy)
 
 #define     MAXBUF  4*4*64*1024
 
@@ -119,7 +120,7 @@ exp ({integer}|{real})[eE][+-]{integer}
 /*! Initialize scanner.
  */
 int
-json_scan_init(struct clicon_json_yacc_arg *jy)
+json_scan_init(clixon_json_yacc *jy)
 {
   BEGIN(START);
   jy->jy_lexbuf = yy_scan_string (jy->jy_parse_string);
@@ -136,7 +137,7 @@ json_scan_init(struct clicon_json_yacc_arg *jy)
  * Even within Flex version 2.5 (this is assumed), freeing buffers is different.
  */
 int
-json_scan_exit(struct clicon_json_yacc_arg *jy)
+json_scan_exit(clixon_json_yacc *jy)
 {
     yy_delete_buffer(jy->jy_lexbuf);
     clixon_json_parselex_destroy();  /* modern */

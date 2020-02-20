@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -245,6 +246,7 @@ text_read_modstate(clicon_handle       h,
 	/* 1) There is no modules-state info in the file */
     }
     else if (xmcache && msd){
+	msd->md_status = 1;  /* There is module state in the file */
 	/* Create diff trees */
 	if (xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>", yspec, &msd->md_del) < 0)
 	    goto done;
@@ -257,6 +259,12 @@ text_read_modstate(clicon_handle       h,
 
 	/* 3) For each module state m in the file */
 	while ((xm = xml_child_each(xmodst, xm, CX_ELMNT)) != NULL) {
+	    if (strcmp(xml_name(xm), "module-set-id") == 0){
+		if (xml_body(xm) && (msd->md_set_id = strdup(xml_body(xm))) == NULL){
+		    clicon_err(OE_UNIX, errno, "strdup");
+		    goto done;
+		}
+	    }
 	    if (strcmp(xml_name(xm), "module"))
 		continue; /* ignore other tags, such as module-set-id */
 	    if ((name = xml_find_body(xm, "name")) == NULL)
@@ -342,7 +350,7 @@ xmldb_readfile(clicon_handle      h,
 	if ((ret = json_parse_file(fd, yspec, &x0, NULL)) < 0) /* XXX: ret == 0*/
 	    goto done;
     }
-    else if ((xml_parse_file(fd, "</config>", yspec, &x0)) < 0)
+    else if ((xml_parse_file2(fd, YB_TOP, yspec, "</config>", &x0, NULL)) < 0)
 	goto done;
 
     /* Always assert a top-level called "config". 
@@ -548,7 +556,6 @@ xmldb_get_cache(clicon_handle    h,
     /* XXX where should we apply default values once? */
     if (xml_apply(x1t, CX_ELMNT, xml_default, h) < 0)
 	goto done;
-    
     /* Copy the matching parts of the (relevant) XML tree.
      * If cache was empty, also update to datastore cache
      */
@@ -671,7 +678,7 @@ xmldb_get(clicon_handle    h,
  * The tree returned may be the actual cache, therefore calls for cleaning and
  * freeing tree must be made after use.
  * @param[in]  h      Clicon handle
- * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  db     Name of datastore, eg "running"
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  copy   Force copy. Overrides cache_zerocopy -> cache 

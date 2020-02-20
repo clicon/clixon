@@ -88,13 +88,13 @@
 #include "clixon_yang_internal.h"
 #include "clixon_hash.h"
 #include "clixon_xml.h"
+#include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_data.h"
 #include "clixon_options.h"
 #include "clixon_yang_type.h"
 #include "clixon_yang_parse.h"
 #include "clixon_yang_cardinality.h"
-#include "clixon_yang_module.h"
 #include "clixon_yang_parse_lib.h"
 
 /* Size of json read buffer when reading from file*/

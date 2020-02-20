@@ -154,14 +154,16 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    sudo pkill -u $wwwuser -f clixon_restconf
 
-new "start restconf daemon"
-start_restconf -f $cfg
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
-new "waiting"
-wait_backend
+    new "waiting"
+    wait_restconf
+fi
 
 new "Set crypto to aes"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config><target><candidate/></target><config><crypto xmlns="urn:example:my-crypto">aes</crypto></config></edit-config></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><ok/></rpc-reply>]]>]]>$'
@@ -281,8 +283,7 @@ expectpart "$(curl -s -i -X DELETE  http://localhost/restconf/data/example:crypt
 
 # 2. set identity in other module with restconf , read it with restconf and netconf
 new "restconf add POST instead of PUT (should fail)"
-expectpart "$(curl -s -i -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/example:crypto -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Data is not prefixed with matching namespace"}}}'
-
+expectpart "$(curl -s -i -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/example:crypto -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"crypto"},"error-severity":"error","error-message":"Leaf contains sub-element"}}}'
 new "restconf add other (des) identity using POST"
 expectpart "$(curl -s -i -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data  -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 201 Created' 'Location: http://localhost/restconf/data/example:crypto'
 
@@ -308,8 +309,10 @@ expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example:crypto)" 
 new "netconf get other identity"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><crypto xmlns="urn:example:my-crypto" xmlns:des="urn:example:des">des:des3</crypto></data></rpc-reply>]]>]]>$'
 
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE

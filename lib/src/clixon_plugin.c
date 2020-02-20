@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -59,6 +61,7 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 
 /* List of plugins XXX 
@@ -361,7 +364,7 @@ clixon_plugin_start(clicon_handle h)
 	if ((startfn = cp->cp_api.ca_start) == NULL)
 	    continue;
 	if (startfn(h) < 0) {
-	    clicon_debug(1, "plugin_start() failed");
+	    clicon_debug(1, "%s() failed", __FUNCTION__);
 	    return -1;
 	}
     }
@@ -384,7 +387,7 @@ clixon_plugin_exit(clicon_handle h)
 	if ((exitfn = cp->cp_api.ca_exit) == NULL)
 	    continue;
 	if (exitfn(h) < 0) {
-	    clicon_debug(1, "plugin_exit() failed");
+	    clicon_debug(1, "%s() failed", __FUNCTION__);
 	    return -1;
 	}
 	if (dlclose(cp->cp_handle) != 0) {
@@ -425,7 +428,7 @@ clixon_plugin_auth(clicon_handle h,
 	if ((authfn = cp->cp_api.ca_auth) == NULL)
 	    continue;
 	if ((retval = authfn(h, arg)) < 0) {
-	    clicon_debug(1, "plugin_auth() failed");
+	    clicon_debug(1, "%s() failed", __FUNCTION__);
 	    return -1;
 	}
 	break;
@@ -460,11 +463,46 @@ clixon_plugin_extension(clicon_handle h,
 	if ((extfn = cp->cp_api.ca_extension) == NULL)
 	    continue;
 	if ((retval = extfn(h, yext, ys)) < 0) {
-	    clicon_debug(1, "plugin_extension() failed");
+	    clicon_debug(1, "%s() failed", __FUNCTION__);
 	    return -1;
 	}
     }
     return retval;
+}
+
+/*! Call plugingeneral-purpose datastore upgrade in all plugins
+ *
+ * @param[in] h    Clicon handle
+ * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
+ * @param[in] xt   XML tree. Upgrade this "in place"
+ * @param[in] msd  Module-state diff, info on datastore module-state
+ * @retval   -1    Error
+ * @retval    0    OK
+ * Upgrade datastore on load before or as an alternative to module-specific upgrading mechanism
+ * @param[in]  h       Clicon handle
+ * Call plugin start functions (if defined)
+ * @note  Start functions used to have argc/argv. Use clicon_argv_get() instead
+ */
+int
+clixon_plugin_datastore_upgrade(clicon_handle    h,
+                               char            *db,
+                               cxobj           *xt,
+                               modstate_diff_t *msd)
+{
+    clixon_plugin  *cp;
+    int             i;
+    datastore_upgrade_t *repairfn;
+    
+    for (i = 0; i < _clixon_nplugins; i++) {
+       cp = &_clixon_plugins[i];
+       if ((repairfn = cp->cp_api.ca_datastore_upgrade) == NULL)
+           continue;
+       if (repairfn(h, db, xt, msd) < 0) {
+           clicon_debug(1, "%s() failed", __FUNCTION__);
+           return -1;
+       }
+    }
+    return 0;
 }
 
 /*--------------------------------------------------------------------
@@ -715,7 +753,7 @@ upgrade_callback_call(clicon_handle h,
     int                 ret;
 
     if (upgrade_cb_list == NULL)
-	return 0;
+	return 1;
     uc = upgrade_cb_list;
     do {
 	/* For matching an upgrade callback:
@@ -753,3 +791,4 @@ upgrade_callback_call(clicon_handle h,
     retval =0;
     goto done;
 }
+

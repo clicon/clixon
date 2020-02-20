@@ -150,7 +150,7 @@ main(int    argc,
 	}
     }
     else{
-	if (xml_parse_file(fd, NULL, NULL, &xt) < 0){
+	if (xml_parse_file(fd, NULL, &xt) < 0){
 	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
 	    goto done;
 	}

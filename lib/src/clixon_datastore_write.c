@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -203,7 +204,7 @@ check_identityref(cxobj     *x0,
 }
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
- * @param[in]  th       Datastore text handle
+ * @param[in]  h        Clicon handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
  * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  x0p      Parent of x0
@@ -616,7 +617,7 @@ text_modify(clicon_handle       h,
 } /* text_modify */
 
 /*! Modify a top-level base tree x0 with modification tree x1
- * @param[in]  th       Datastore text handle
+ * @param[in]  h        Clicon handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
  * @param[in]  x1       XML tree which modifies base
  * @param[in]  yspec    Top-level yang spec (if y is NULL)
@@ -847,7 +848,7 @@ xmldb_put(clicon_handle       h,
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if (x1 && strcmp(xml_name(x1),"config")!=0){
+    if (x1 && strcmp(xml_name(x1), "config") != 0){
 	clicon_err(OE_XML, 0, "Top-level symbol of modification tree is %s, expected \"config\"",
 		   xml_name(x1));
 	goto done;

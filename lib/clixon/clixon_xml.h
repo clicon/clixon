@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -77,10 +78,19 @@ enum insert_type{ /* edit-config insert */
     INS_AFTER,  
 };
 
+/* XML object types */
 enum cxobj_type {CX_ERROR=-1, 
 		 CX_ELMNT, 
 		 CX_ATTR, 
 		 CX_BODY};
+
+/* How to bind yang to XML top-level when parsing */
+enum yang_bind{ 
+    YB_NONE,    /* Dont try to do Yang binding */
+    YB_PARENT,  /* Get yang binding from parents yang */
+    YB_TOP,     /* Get yang binding from top-level modules */
+};
+
 #define CX_ANY CX_ERROR /* catch all and error is same */
 
 typedef struct xml cxobj; /* struct defined in clicon_xml.c */
@@ -107,6 +117,8 @@ typedef int (xml_applyfn_t)(cxobj *x, void *arg);
  * Prototypes
  */
 char     *xml_type2str(enum cxobj_type type);
+int       xml_stats_get(uint64_t *nr);
+size_t    xml_size(cxobj *xt, size_t *szp);
 char     *xml_name(cxobj *xn);
 int       xml_name_set(cxobj *xn, char *name);
 char     *xml_prefix(cxobj *xn);
@@ -115,7 +127,6 @@ char     *nscache_get(cxobj *x, char *prefix);
 int       nscache_get_prefix(cxobj *x, char *namespace, char **prefix);
 cvec     *nscache_get_all(cxobj *x);
 int       nscache_set(cxobj *x,	char *prefix, char *namespace);
-
 int       nscache_clear(cxobj *x);
 int       nscache_replace(cxobj *x, cvec *ns);
 
@@ -181,8 +192,11 @@ int       xml_free(cxobj *xn);
 int       xml_print(FILE  *f, cxobj *xn);
 int       clicon_xml2file(FILE *f, cxobj *xn, int level, int prettyprint);
 int       clicon_xml2cbuf(cbuf *xf, cxobj *xn, int level, int prettyprint, int32_t depth);
-int       xml_parse_file(int fd, char *endtag, yang_stmt *yspec, cxobj **xt);
+int       xml_parse_file(int fd, yang_stmt *yspec, cxobj **xt);
+int       xml_parse_file2(int fd, enum yang_bind bind, yang_stmt *yspec, char *endtag, cxobj **xt, cxobj **xerr);
 int       xml_parse_string(const char *str, yang_stmt *yspec, cxobj **xml_top);
+int       xml_parse_string2(const char *str, enum yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
+
 #if defined(__GNUC__) && __GNUC__ >= 3
 int       xml_parse_va(cxobj **xt, yang_stmt *yspec, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
 #else

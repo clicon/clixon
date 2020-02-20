@@ -171,7 +171,6 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></s
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-
 #new "cli not defined extension"
 #new "netconf not defined extension"
 #expecteof "$clixon_netconf -qf $cfg -l o" 0 "$YANG" "Extension ex:not-defined not found"
@@ -179,7 +178,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<
 #expectfn "$clixon_cli -1f $cfg -y $fyangerr show version" 0 "Yang error: Extension ex:not-defined not found"
 
 new "netconf schema resource, RFC 7895"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get><filter type="xpath" select="modules-state/module" xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"/></get></rpc>]]>]]>' '<module><name>ietf-yang-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace><conformance-type>implement</conformance-type></module>'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get><filter type="xpath" select="yanglib:modules-state/yanglib:module" xmlns:yanglib="urn:ietf:params:xml:ns:yang:ietf-yang-library"/></get></rpc>]]>]]>' '<module><name>ietf-yang-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace><conformance-type>implement</conformance-type></module>'
 
 new "netconf edit config"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon"><y><a>1</a><b>2</b><c>5</c><val>one</val></y><d/></x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -272,7 +271,7 @@ new "netconfig config submodule"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><mylist xmlns="urn:example:clixon"><x>a</x><subm-container><subm-leaf>foo</subm-leaf></subm-container></mylist></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf submodule get config"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><mylist xmlns="urn:example:clixon"><x>a</x><subm-container><subm-leaf>foo</subm-leaf></subm-container></mylist></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg -D 1 -l s" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' '^<rpc-reply><data><mylist xmlns="urn:example:clixon"><x>a</x><subm-container><subm-leaf>foo</subm-leaf></subm-container></mylist></data></rpc-reply>]]>]]>$'
 
 new "netconf submodule validate"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

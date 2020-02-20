@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -65,6 +66,7 @@
 #include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
+#include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_string.h"
 #include "clixon_xpath_ctx.h"
@@ -73,13 +75,15 @@
 #include "clixon_err.h"
 #include "clixon_err_string.h"
 #include "clixon_xml_nsctx.h"
+#include "clixon_xml_map.h"
+#include "clixon_xml_sort.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_proto_client.h"
 
 /*! Send internal netconf rpc from client to backend
  * @param[in]    h      CLICON handle
  * @param[in]    msg    Encoded message. Deallocate woth free
- * @param[out]   xret   Return value from backend as xml tree. Free w xml_free
+ * @param[out]   xret0  Return value from backend as xml tree. Free w xml_free
  * @param[inout] sock0  If pointer exists, do not close socket to backend on success 
  *                      and return it here. For keeping a notify socket open
  * @note sock0 is if connection should be persistent, like a notification/subscribe api
@@ -96,7 +100,6 @@ clicon_rpc_msg(clicon_handle      h,
     int                port;
     char              *retdata = NULL;
     cxobj             *xret = NULL;
-    yang_stmt         *yspec;
 
 #ifdef RPC_USERNAME_ASSERT
     assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
@@ -135,8 +138,10 @@ clicon_rpc_msg(clicon_handle      h,
     clicon_debug(1, "%s retdata:%s", __FUNCTION__, retdata);
 
     if (retdata){
- 	yspec = clicon_dbspec_yang(h);
-	if (xml_parse_string(retdata, yspec, &xret) < 0)
+	/* Cannot populate xret here because need to know RPC name (eg "lock") in order to associate yang
+	 * to reply.
+	 */
+	if (xml_parse_string2(retdata, YB_NONE, NULL, &xret, NULL) < 0)
 	    goto done;
     }
     if (xret0){
@@ -239,17 +244,33 @@ clicon_rpc_netconf_xml(clicon_handle  h,
 		       cxobj        **xret,
 		       int           *sp)
 {
-    int                retval = -1;
-    cbuf               *cb = NULL;
+    int        retval = -1;
+    cbuf      *cb = NULL;
+    cxobj     *xname;
+    char      *rpcname;
+    cxobj     *xreply;
+    yang_stmt *yspec;
 
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
+    if ((xname = xml_child_i_type(xml, 0, 0)) == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "Missing rpc name");
+	goto done;
+    }
+    rpcname = xml_name(xname); /* Store rpc name and use in yang binding after reply */
     if (clicon_xml2cbuf(cb, xml, 0, 0, -1) < 0)
 	goto done;
     if (clicon_rpc_netconf(h, cbuf_get(cb), xret, sp) < 0)
 	goto done;
+    if ((xreply = xml_find_type(*xret, NULL, "rpc-reply", CX_ELMNT)) != NULL &&
+	xml_find_type(xreply, NULL, "rpc-error", CX_ELMNT) == NULL){
+	yspec = clicon_dbspec_yang(h);
+	/* Here use rpc name to bind to yang */
+	if (xml_spec_populate_rpc_reply(xreply, rpcname, yspec, NULL) < 0) 
+	    goto done;
+    }
     retval = 0;
  done:
     if (cb)
@@ -318,7 +339,9 @@ clicon_rpc_generate_error(cxobj       *xerr,
  *  if (nsc)
  *     xml_nsctx_free(nsc);
  * @endcode
+ * @see clicon_rpc_get
  * @see clicon_rpc_generate_error
+ * @note the netconf return message us yang populated, but returned data is not
  */
 int
 clicon_rpc_get_config(clicon_handle h, 
@@ -387,7 +410,6 @@ clicon_rpc_get_config(clicon_handle h,
 	free(msg);
     return retval;
 }
-
 
 /*! Send database entries as XML to backend daemon
  * @param[in] h          CLICON handle
@@ -650,6 +672,7 @@ clicon_rpc_unlock(clicon_handle h,
  * @endcode
  * @see clicon_rpc_get_config which is almost the same as with content=config, but you can also select dbname
  * @see clicon_rpc_generate_error
+ * @note the netconf return message us yang populated, but returned data is not
  */
 int
 clicon_rpc_get(clicon_handle   h, 

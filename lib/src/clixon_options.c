@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -240,7 +241,7 @@ parse_configfile(clicon_handle  h,
     }
     clicon_debug(2, "%s: Reading config file %s", __FUNCTION__, filename);
     fd = fileno(f);
-    if (xml_parse_file(fd, "</clicon>", yspec, &xt) < 0)
+    if (xml_parse_file(fd, yspec, &xt) < 0)
 	goto done;
     if (xml_child_nr(xt)==1 && xml_child_nr_type(xt, CX_BODY)==1){
 	clicon_err(OE_CFG, 0, "Config file %s: Expected XML but is probably old sh style", filename);

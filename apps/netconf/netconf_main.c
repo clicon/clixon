@@ -103,7 +103,6 @@ netconf_hello_dispatch(cxobj *xn)
     return retval;
 }
 
-
 /*! Process incoming packet 
  * @param[in]   h    Clicon handle
  * @param[in]   cb   Packet buffer
@@ -149,7 +148,7 @@ netconf_input_packet(clicon_handle h,
     free(str0);
     if ((xrpc=xpath_first(xreq, NULL, "//rpc")) != NULL){
         isrpc++;
-	if (xml_spec_populate_rpc_input(h, xrpc, yspec) < 0)
+	if (xml_spec_populate_rpc(xrpc, yspec, NULL) < 0)
 	    goto done;
 	if ((ret = xml_yang_validate_rpc(h, xrpc, &xret)) < 0) 
 	    goto done;

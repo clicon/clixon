@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -132,61 +133,6 @@ xml_cv_cache(cxobj   *x,
 	free(reason);
     if (cv)
 	cv_free(cv);
-    return retval;
-}
-
-/*! Given a child name and an XML object, return yang stmt of child
- * If no xml parent, find root yang stmt matching name
- * @param[in]  x        Child
- * @param[in]  xp       XML parent, can be NULL.
- * @param[in]  yspec    Yang specification (top level)
- * @param[out] yresult  Pointer to yang stmt of result, or NULL, if not found
- * @retval     0       OK
- * @retval    -1       Error
- * @note special rule for rpc, ie <rpc><foo>,look for top "foo" node.
- * @note works for import prefix, but not work for generic XML parsing where
- *       xmlns and xmlns:ns are used.
- */
-int
-xml_child_spec(cxobj      *x,
-	       cxobj      *xp,
-	       yang_stmt  *yspec,
-	       yang_stmt **yresult)
-{
-    int        retval = -1;
-    yang_stmt *y = NULL;  /* result yang node */   
-    yang_stmt *yparent; /* parent yang */
-    yang_stmt *ymod = NULL;
-    yang_stmt *yi;
-    char      *name;
-	    
-    name = xml_name(x);
-    if (xp && (yparent = xml_spec(xp)) != NULL){
-	/* First case: parent already has an associated yang statement,
-	 * then find matching child of that */
-	if (yang_keyword_get(yparent) == Y_RPC){
-	    if ((yi = yang_find(yparent, Y_INPUT, NULL)) != NULL)
-		y = yang_find_datanode(yi, name);
-	}
-	else
-	    y = yang_find_datanode(yparent, name);
-    }
-    else if (yspec){
-	/* Second case, this is a "root", need to find yang stmt from spec
-	 */
-	if (ys_module_by_xml(yspec, xp, &ymod) < 0)
-	    goto done;
-	if (ymod != NULL)
-	    y = yang_find_schemanode(ymod, name);
-    }
-    else
-	y = NULL;
-    /* kludge rpc -> input */
-    if (y && yang_keyword_get(y) == Y_RPC && yang_find(y, Y_INPUT, NULL))
-	y = yang_find(y, Y_INPUT, NULL);
-    *yresult = y;
-    retval = 0;
- done:
     return retval;
 }
 

@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -1484,8 +1485,8 @@ clixon_path_search(cxobj       *xt,
  * @code
  *   cxobj **xvec = NULL;
  *   size_t  xlen;
- *   if (clixon_xml_find_api_path(x, &xvec, &xlen, "/symbol/%s", "foo") < 0) 
- *      goto err;
+ *   if (clixon_xml_find_api_path(x, yspec, &xvec, &xlen, "/symbol/%s", "foo") < 0) 
+ *      err;
  *   for (i=0; i<xlen; i++){
  *      xn = xvec[i];
  *         ...
@@ -1547,9 +1548,9 @@ clixon_xml_find_api_path(cxobj     *xt,
     goto done;
 }
 
-/*! Given (instance-id) path and an XML tree, return matching xml node vector using stdarg
+/*! Given (instance-id) path and XML tree, return matching xml node vector using stdarg
  *
- * Instance-identifier is a subset of XML Xpaths and defined in Yang, used in NACM for example.
+ * Instance-identifier is a subset of XML XPaths and defined in Yang, used in NACM for example.
  * @param[in]  xt       Top xml-tree where to search
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
  * @param[out] xvec     Vector of xml-trees. Vector must be free():d after use
@@ -1573,7 +1574,7 @@ clixon_xml_find_api_path(cxobj     *xt,
  *   }
  *   free(xvec);
  * @endcode
- * @see xpath_vec for full XML Xpaths
+ * @see xpath_vec for full XML XPaths
  * @see api_path_search  for RESTCONF api-paths
  * @see RFC7950 Sec 9.13 
  */

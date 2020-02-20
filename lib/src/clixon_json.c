@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -34,6 +35,7 @@
  * JSON support functions.
  * JSON syntax is according to:
  * http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+ * RFC 7951 JSON Encoding of Data Modeled with YANG
  */
 
 #ifdef HAVE_CONFIG_H
@@ -421,7 +423,7 @@ json2xml_decode(cxobj     *x,
 		goto done;
 
 	    if (ytype){
-		if (strcmp(yang_argument_get(ytype),"identityref")==0){
+		if (strcmp(yang_argument_get(ytype), "identityref")==0){
 		    if ((ret = json2xml_decode_identityref(x, y, xerr)) < 0)
 			goto done;
 		    if (ret == 0)
@@ -1062,34 +1064,25 @@ json_xmlns_translate(yang_stmt *yspec,
 {
     int        retval = -1;
     yang_stmt *ymod;
-    char      *namespace0;
     char      *namespace;
-    char      *prefix = NULL;
+    char      *modname = NULL;
+    char      *prefix;
     cxobj     *xc;
     int        ret;
     
-    prefix = xml_prefix(x); /* prefix is here module name */
-    if (prefix != NULL){
-	if ((ymod = yang_find_module_by_name(yspec, prefix)) == NULL){
+    if ((modname = xml_prefix(x)) != NULL){ /* prefix is here module name */
+	if ((ymod = yang_find_module_by_name(yspec, modname)) == NULL){
 	    if (xerr &&
 		netconf_unknown_namespace_xml(xerr, "application",
-					      prefix,
+					      modname,
 					      "No yang module found corresponding to prefix") < 0)
 		goto done;
 	    goto fail;
 	}
 	namespace = yang_find_mynamespace(ymod);
-	/* Get existing default namespace in tree */
-	if (xml2ns(x, NULL, &namespace0) < 0)
+	prefix = yang_find_myprefix(ymod);
+	if (xml_namespace_change(x, namespace, prefix) < 0)
 	    goto done;
-	/* Set xmlns="" default namespace attribute (if diff from default) */
-	if (namespace0 == NULL ||
-	    strcmp(namespace0, namespace)){
-	    if (xmlns_set(x, NULL, namespace) < 0)
-		goto done;
-	    /* and remove prefix */
-	    xml_prefix_set(x, NULL);
-	}
     }
     xc = NULL;
     while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL){
@@ -1112,12 +1105,12 @@ json_xmlns_translate(yang_stmt *yspec,
  * are split and interpreted as in RFC7951
  *
  * @param[in]  str    Input string containing JSON
+ * @param[in]  yb     How to bind yang to XML top-level when parsing
  * @param[in]  yspec  If set, also do yang validation
- * @param[in]  name   Log string, typically filename
  * @param[out] xt     XML top of tree typically w/o children on entry (but created)
  * @param[out] xerr   Reason for invalid returned as netconf err msg 
  * 
- * @see _xml_parse  for XML variant
+ * @see _xml_parse for XML variant
  * @retval        1   OK and valid
  * @retval        0   Invalid (only if yang spec)
  * @retval       -1   Error with clicon_err called
@@ -1125,57 +1118,88 @@ json_xmlns_translate(yang_stmt *yspec,
  * @see RFC 7951
  */
 static int 
-json_parse(char        *str, 
-	    yang_stmt  *yspec,
-	    const char *name, 
-	    cxobj      *xt,
-	    cxobj     **xerr)
+_json_parse(char          *str, 
+	    enum yang_bind yb,
+	    yang_stmt     *yspec,
+	    cxobj         *xt,
+	    cxobj        **xerr)
 {
-    int                         retval = -1;
-    struct clicon_json_yacc_arg jy = {0,};
-    int                          ret;
-
-    clicon_debug(1, "%s", __FUNCTION__);
+    int              retval = -1;
+    clixon_json_yacc jy = {0,};
+    int              ret;
+    cxobj           *x;
+    cbuf            *cberr = NULL;
+    int              i;
+    
+    clicon_debug(1, "%s %s", __FUNCTION__, str);
     jy.jy_parse_string = str;
-    jy.jy_name = name;
     jy.jy_linenum = 1;
     jy.jy_current = xt;
+    jy.jy_xtop = xt;
     if (json_scan_init(&jy) < 0)
 	goto done;
     if (json_parse_init(&jy) < 0)
 	goto done;
     if (clixon_json_parseparse(&jy) != 0) { /* yacc returns 1 on error */
-	clicon_log(LOG_NOTICE, "JSON error: %s on line %d", name, jy.jy_linenum);
+	clicon_log(LOG_NOTICE, "JSON error: line %d", jy.jy_linenum);
 	if (clicon_errno == 0)
 	    clicon_err(OE_XML, 0, "JSON parser error with no error code (should not happen)");
 	goto done;
     }
-    if (yspec){
+    /* Traverse new objects */
+    for (i = 0; i < jy.jy_xlen; i++) {
+	x = jy.jy_xvec[i];
+	/* RFC 7951 Section 4: A namespace-qualified member name MUST be used for all 
+	 * members of a top-level JSON object 
+	 */
+	if (yspec && xml_prefix(x) == NULL){
+	    if ((cberr = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    cprintf(cberr, "Top-level JSON object %s is not qualified with namespace which is a MUST according to RFC 7951", xml_name(x));
+	    if (netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
+		goto done;
+	    goto fail;
+	}
 	/* Names are split into name/prefix, but now add namespace info */
-	if ((ret = json_xmlns_translate(yspec, xt, xerr)) < 0)
+	if ((ret = json_xmlns_translate(yspec, x, xerr)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
-	/* Populate, ie associate xml nodes with yang specs.
-	 * XXX But this wrong if xt is not on top-level, can give false positives.
+	/* Now assign yang stmts to each XML node 
+	 * XXX should be xml_spec_populate0_parent() sometimes.
 	 */
-	if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0){
-	    goto done;
+	switch (yb){
+	case YB_NONE:
+	    break;
+	case YB_PARENT:
+		if (xml_spec_populate0_parent(x, NULL) < 0)
+		    goto done;
+	    break;
+	case YB_TOP:
+	    if (xml_spec_populate0(x, yspec, NULL) < 0)
+		goto done;
+	    break;
 	}
-	if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
-	    goto done;
 	/* Now find leafs with identityrefs (+transitive) and translate 
 	 * prefixes in values to XML namespaces */
-	if ((ret = json2xml_decode(xt, xerr)) < 0)
+	if ((ret = json2xml_decode(x, xerr)) < 0)
 	    goto done;
 	if (ret == 0) /* XXX necessary? */
 	    goto fail;
     }
+    if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
+	goto done;
     retval = 1;
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (cberr)
+	cbuf_free(cberr);
     json_parse_exit(&jy);
     json_scan_exit(&jy);
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (jy.jy_xvec)
+	free(jy.jy_xvec);
     return retval; 
  fail: /* invalid */
     retval = 0;
@@ -1185,7 +1209,7 @@ json_parse(char        *str,
 /*! Parse string containing JSON and return an XML tree
  *
  * @param[in]     str   String containing JSON
- * @param[in]     yspec Yang specification, or NULL
+ * @param[in]     yspec Yang specification, mandatory to make module->xmlns translation
  * @param[in,out] xt    Top object, if not exists, on success it is created with name 'top'
  * @param[out]    xerr  Reason for invalid returned as netconf err msg 
  *
@@ -1208,11 +1232,23 @@ json_parse_str(char      *str,
 	       cxobj    **xt,
 	       cxobj    **xerr)
 {
+    enum yang_bind yb = YB_PARENT;
+    
     clicon_debug(1, "%s", __FUNCTION__);
-    if (*xt == NULL)
+    if (xt==NULL){
+	clicon_err(OE_XML, EINVAL, "xt is NULL");
+	return -1;
+    }
+    if (*xt == NULL){
+	yb = YB_TOP; /* ad-hoc #1 */
 	if ((*xt = xml_new("top", NULL, NULL)) == NULL)
 	    return -1;
-    return json_parse(str, yspec, "", *xt, xerr);
+    }
+    else{
+	if (xml_spec(*xt) == NULL)
+	    yb = YB_TOP;  /* ad-hoc #2 */
+    }
+    return _json_parse(str, yb, yspec, *xt, xerr);
 }
 
 /*! Read a JSON definition from file and parse it into a parse-tree. 
@@ -1263,7 +1299,14 @@ json_parse_file(int        fd,
     char *ptr;
     char  ch;
     int   len = 0;
+    enum yang_bind yb = YB_PARENT;
     
+    if (xt==NULL){
+	clicon_err(OE_XML, EINVAL, "xt is NULL");
+	return -1;
+    }
+    if (*xt==NULL)
+	yb = YB_TOP;
     if ((jsonbuf = malloc(jsonbuflen)) == NULL){
 	clicon_err(OE_XML, errno, "malloc");
 	goto done;
@@ -1282,7 +1325,7 @@ json_parse_file(int        fd,
 		if ((*xt = xml_new(JSON_TOP_SYMBOL, NULL, NULL)) == NULL)
 		    goto done;
 	    if (len){
-		if ((ret = json_parse(ptr, yspec, "", *xt, xerr)) < 0)
+		if ((ret = _json_parse(ptr, yb, yspec, *xt, xerr)) < 0)
 		    goto done;
 		if (ret == 0)
 		    goto fail;

@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -168,22 +169,28 @@ client_get_capabilities(clicon_handle h,
 			char         *xpath,
 			cxobj       **xret)
 {
-    int    retval = -1;
-    cxobj *xrstate = NULL; /* xml restconf-state node */
-    cxobj *xcap = NULL;    /* xml capabilities node */
-
+    int     retval = -1;
+    cxobj  *xrstate = NULL; /* xml restconf-state node */
+    cbuf   *cb = NULL;
+    
     if ((xrstate = xpath_first(*xret, NULL, "restconf-state")) == NULL){
 	clicon_err(OE_YANG, ENOENT, "restconf-state not found in config node");
 	goto done;
     }
-    if ((xcap = xml_new("capabilities", xrstate, yspec)) == NULL)
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
-    if (xml_parse_va(&xcap, yspec, "<capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability>") < 0)
-	goto done;
-    if (xml_parse_va(&xcap, yspec, "<capability>urn:ietf:params:restconf:capability:depth:1.0</capability>") < 0)
+    }
+    cprintf(cb, "<capabilities>");
+    cprintf(cb, "<capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability>");
+    cprintf(cb, "<capability>urn:ietf:params:restconf:capability:depth:1.0</capability>");
+    cprintf(cb, "</capabilities>");
+    if (xml_parse_string2(cbuf_get(cb), YB_PARENT, NULL, &xrstate, NULL) < 0)
 	goto done;
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
@@ -217,10 +224,10 @@ client_get_streams(clicon_handle   h,
 	goto done;
     }
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, 0, "clicon buffer");
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    cprintf(cb,"<%s xmlns=\"%s\">", top, yang_argument_get(yns));
+    cprintf(cb, "<%s xmlns=\"%s\">", top, yang_argument_get(yns));
     /* Second argument is a hack to have the same function for the
      * RFC5277 and 8040 stream cases
      */
@@ -271,9 +278,14 @@ client_statedata(clicon_handle h,
     yang_stmt *ymod;
     int        ret;
     char      *namespace;
+    cbuf      *cb = NULL;
     
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
+	goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277")){
@@ -285,7 +297,9 @@ client_statedata(clicon_handle h,
 	    clicon_err(OE_YANG, ENOENT, "clixon-rfc5277 namespace not found");
 	    goto done;
 	}
-	if (xml_parse_va(xret, yspec, "<netconf xmlns=\"%s\"/>", namespace) < 0)
+
+	cprintf(cb, "<netconf xmlns=\"%s\"/>", namespace);
+	if (xml_parse_string2(cbuf_get(cb), YB_TOP, yspec, xret, NULL) < 0)
 	    goto done;
 	if ((ret = client_get_streams(h, yspec, xpath, ymod, "netconf", xret)) < 0)
 	    goto done;
@@ -301,7 +315,9 @@ client_statedata(clicon_handle h,
 	    clicon_err(OE_YANG, ENOENT, "ietf-restconf-monitoring namespace not found");
 	    goto done;
 	}
-	if (xml_parse_va(xret, yspec, "<restconf-state xmlns=\"%s\"/>", namespace) < 0)
+	cbuf_reset(cb);
+	cprintf(cb, "<restconf-state xmlns=\"%s\"/>", namespace);
+	if (xml_parse_string2(cbuf_get(cb), YB_TOP, yspec, xret, NULL) < 0)
 	    goto done;
 	if ((ret = client_get_streams(h, yspec, xpath, ymod, "restconf-state", xret)) < 0)
 	    goto done;
@@ -323,6 +339,8 @@ client_statedata(clicon_handle h,
     retval = 1; /* OK */
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    if (cb)
+	cbuf_free(cb);
     return retval;
  fail:
     retval = 0;
@@ -574,7 +592,7 @@ from_client_edit_config(clicon_handle h,
 	    xml_spec_set(xc, NULL);
 	/* Populate XML with Yang spec (why not do this in parser?) 
 	 */
-	if (xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	if (xml_spec_populate(xc, yspec, NULL) < 0)
 	    goto done;
 	/* Maybe validate xml here as in text_modify_top? */
 	if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
@@ -980,15 +998,22 @@ from_client_get(clicon_handle h,
     }
     /* If not only-state, then read running config 
      * Note xret can be pruned by nacm below and change name and
-     * metrged with state data, so zero-copy cant be used
+     * merged with state data, so zero-copy cant be used
      * Also, must use external namespace context here due to <filter stmt
      */
+#ifdef VALIDATE_STATE_XML
     if (xmldb_get0(h, "running", nsc, NULL, 1, &xret, NULL) < 0) {
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
     }
-
+#else
+    if (xmldb_get0(h, "running", nsc, xpath, 1, &xret, NULL) < 0) {
+	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
+	    goto done;
+	goto ok;
+    }
+#endif
     /* If not only config,
      * get state data from plugins as defined by plugin_statedata(), if any 
      */
@@ -1501,7 +1526,7 @@ from_client_msg(clicon_handle        h,
      * should really have been dealt with by decode above
      * but it still is needed - test_cli debug test fails
      */
-    if (xml_spec_populate_rpc_input(h, x, yspec) < 0)
+    if (xml_spec_populate_rpc(x, yspec, NULL) < 0)
     	goto done;
     if ((ret = xml_yang_validate_rpc(h, x, &xret)) < 0)
 	goto done;

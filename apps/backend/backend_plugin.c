@@ -133,7 +133,7 @@ clixon_plugin_statedata(clicon_handle    h,
 	    cbuf_free(ccc);
 	}
 #endif
-	if (xml_apply(x, CX_ELMNT, xml_spec_populate, yspec) < 0)
+	if (xml_spec_populate(x, yspec, NULL) < 0)
 	    goto done;
 	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
 	    goto done;

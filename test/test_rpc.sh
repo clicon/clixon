@@ -95,7 +95,7 @@ expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+xml' -H '
 '
 
 new "restconf example rpc xml in w json encoding (expect fail)"
-expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+xml' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Reques' "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>rpc</error-type><error-tag>malformed-message</error-tag><error-severity>error</error-severity><error-message> on line 1: syntax error at or before: '&lt;'</error-message></error></errors>"
+expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+xml' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>rpc</error-type><error-tag>malformed-message</error-tag><error-severity>error</error-severity><error-message>json_parse: line 1: syntax error at or before: '&lt;'</error-message></error></errors>"
 
 new "restconf example rpc json in xml encoding (expect fail)"
 expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+xml' -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Reques' '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>rpc</error-type><error-tag>malformed-message</error-tag><error-severity>error</error-severity><error-message>xml_parse: line 0: syntax error: at or before: "</error-message></error></errors>'
@@ -114,7 +114,7 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf empty rpc with input x"
-expectpart "$(curl -iss -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":0}}' http://localhost/restconf/operations/clixon-example:empty)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"x"},"error-severity":"error","error-message":"namespace is: urn:example:clixon"}}}'
+expectpart "$(curl -iss -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":0}}' http://localhost/restconf/operations/clixon-example:empty)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"x"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: x with parent: empty in namespace: urn:example:clixon"}}}'
 
 # cornercase: optional has yang input/output sections but test without body
 new "restconf optional rpc with null input and output"
@@ -129,7 +129,7 @@ new "restconf omit mandatory"
 expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":null}' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"x"},"error-severity":"error","error-message":"Mandatory variable"}}}'
 
 new "restconf add extra"
-expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":"0","extra":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"extra"},"error-severity":"error","error-message":"namespace is: urn:example:clixon"}}}'
+expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":"0","extra":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"extra"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: extra with parent: example in namespace: urn:example:clixon"}}}'
 
 new "restconf wrong method"
 expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:wrong)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"wrong"},"error-severity":"error","error-message":"RPC not defined"}}}'
@@ -144,7 +144,7 @@ new "netconf edit-config ok"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target><candidate/></target><config/></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf edit-config extra arg should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target><candidate/></target><extra/><config/></edit-config></rpc>]]>]]>' "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>extra</bad-element></error-info><error-severity>error</error-severity><error-message>namespace is: urn:ietf:params:xml:ns:netconf:base:1.0</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target><candidate/></target><extra/><config/></edit-config></rpc>]]>]]>' "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>extra</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: extra with parent: edit-config in namespace: urn:ietf:params:xml:ns:netconf:base:1.0</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "netconf edit-config empty target should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target/><config/></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>missing-choice</error-app-tag><error-info><missing-choice>config-target</missing-choice></error-info><error-severity>error</error-severity></rpc-error></rpc-reply>]]>]]>$'

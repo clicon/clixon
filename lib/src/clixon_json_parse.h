@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -39,13 +40,16 @@
  * Types
  */
 
-struct clicon_json_yacc_arg{ /* XXX: mostly unrelevant */
-    const char           *jy_name;         /* Name of syntax (for error string) */
-    int                   jy_linenum;      /* Number of \n in parsed buffer */
-    char                 *jy_parse_string; /* original (copy of) parse string */
-    void                 *jy_lexbuf;       /* internal parse buffer from lex */
-    cxobj                *jy_current;
+struct clixon_json_yacc_arg{ /* XXX: mostly unrelevant */
+    int        jy_linenum;      /* Number of \n in parsed buffer */
+    char      *jy_parse_string; /* original (copy of) parse string */
+    void      *jy_lexbuf;       /* internal parse buffer from lex */
+    cxobj     *jy_xtop;         /* cxobj top element (fixed) */
+    cxobj     *jy_current;      /* cxobj active element (changes with parse context) */
+    cxobj    **jy_xvec;         /* Vector of created top-level nodes (to know which are created) */
+    size_t     jy_xlen;         /* Length of jy_xvec */
 };
+typedef struct clixon_json_yacc_arg clixon_json_yacc;
 
 /*
  * Variables
@@ -55,11 +59,11 @@ extern char *clixon_json_parsetext;
 /*
  * Prototypes
  */
-int json_scan_init(struct clicon_json_yacc_arg *jy);
-int json_scan_exit(struct clicon_json_yacc_arg *jy);
+int json_scan_init(clixon_json_yacc *jy);
+int json_scan_exit(clixon_json_yacc *jy);
 
-int json_parse_init(struct clicon_json_yacc_arg *jy);
-int json_parse_exit(struct clicon_json_yacc_arg *jy);
+int json_parse_init(clixon_json_yacc *jy);
+int json_parse_exit(clixon_json_yacc *jy);
 
 int clixon_json_parselex(void *);
 int clixon_json_parseparse(void *);

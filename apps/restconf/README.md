@@ -217,7 +217,7 @@ You can also run restconf in a debugger.
 sudo gdb /www-data/clixon_restconf
 (gdb) run -D 1 -f /usr/local/etc/example.xml
 ```
-but you need to ensure /www-data/fastcgi_restconf.sock has the following access:
+but you need to ensure /www-data/fastcgi_restconf.sock has the following access (may need to be done after restconf has started)
 ```
 rwxr-xr-x 1 www-data www-data 0 sep 22 11:46 /www-data/fastcgi_restconf.sock
 ```

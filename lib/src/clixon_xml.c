@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -45,11 +46,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
-#include <stdint.h>
 #include <assert.h>
 
 /* cligen */
@@ -163,6 +165,72 @@ char *
 xml_type2str(enum cxobj_type type)
 {
     return (char*)clicon_int2str(xsmap, type);
+}
+
+/* Stats */
+uint64_t _stats_nr = 0;
+
+/*! Get global statistics about XML objects
+ */
+int
+xml_stats_get(uint64_t *nr)
+{
+    if (nr)
+	*nr = _stats_nr;
+    return 0;
+}
+
+/*! Return the alloced memory of a single XML obj 
+ * @param[in]   x    XML object
+ * @param[out]  szp  Size of this XML obj
+ * @retval      0    OK
+ * (baseline: 96 bytes per object on x86-64)
+ */
+static int
+xml_size_one(cxobj  *x,
+	     size_t *szp)
+{
+    size_t sz = 0;
+
+    sz += sizeof(struct xml);
+    if (x->x_name)
+	sz += strlen(x->x_name) + 1;
+    if (x->x_prefix)
+	sz += strlen(x->x_prefix) + 1;
+    sz += x->x_childvec_max*sizeof(struct xml*);
+    if (x->x_value_cb)
+	sz += cbuf_buflen(x->x_value_cb);
+    if (x->x_cv)
+	sz += cv_size(x->x_cv);
+    if (x->x_ns_cache)
+	sz += cvec_size(x->x_ns_cache);
+    if (szp)
+	*szp = sz;
+    return 0;
+}
+
+/*! Return the alloced memory of a XML obj tree recursively
+ * @param[in]   x    XML object
+ * @param[out]  szp  Size of this XML obj recursively
+ * @retval      0    OK
+ */
+size_t
+xml_size(cxobj  *xt,
+	 size_t *szp)
+{
+    size_t sz = 0;
+    cxobj *xc;
+
+    xml_size_one(xt, &sz);
+    if (szp)
+	*szp += sz;
+    xc = NULL;
+    while ((xc = xml_child_each(xt, xc, -1)) != NULL) {
+	xml_size(xc, &sz);
+	if (szp)
+	    *szp += sz;
+    }
+    return 0;
 }
 
 /*
@@ -353,6 +421,10 @@ nscache_clear(cxobj *x)
  * @param[out] namespace  URI namespace (or NULL). Note pointer into xml tree
  * @retval     0          OK
  * @retval    -1          Error
+ * @code
+ *   if (xml2ns(xt, NULL, &namespace) < 0)
+ *      err;
+ * @endcode
  * @see xmlns_check 
  * @see xmlns_set cache is set
  * @note, this function uses a cache. 
@@ -444,7 +516,7 @@ xmlns_set(cxobj *x,
  * @param[out] prefixp   Pointer to prefix if found
  * @retval    -1         Error
  * @retval     0         No namespace found
- * @retval     1         Namespace found
+ * @retval     1         Namespace found, prefix returned in prefixp
  */
 int
 xml2prefix(cxobj *xn,
@@ -455,6 +527,7 @@ xml2prefix(cxobj *xn,
     cxobj *xa = NULL;
     cxobj *xp;
     char  *prefix = NULL;
+    char  *xaprefix;
     int    ret;
 
     if (nscache_get_prefix(xn, namespace, &prefix) == 1) /* found */
@@ -471,7 +544,8 @@ xml2prefix(cxobj *xn,
 	    }
 	}
 	/* xmlns:prefix=namespace */
-	else if (strcmp("xmlns", xml_prefix(xa)) == 0){ 
+	else if ((xaprefix=xml_prefix(xa)) != NULL &&
+		 strcmp("xmlns", xaprefix) == 0){ 
 	    if (strcmp(xml_value(xa), namespace) == 0){
 		prefix = xml_name(xa);
 		if (nscache_set(xn, prefix, namespace) < 0)
@@ -838,10 +912,6 @@ xml_child_order(cxobj *xp,
 
 /*! Iterator over xml children objects
  *
- * @note Never manipulate the child-list during operation or using the
- * same object recursively, the function uses an internal field to remember the
- * index used. It works as long as the same object is not iterated concurrently. 
- *
  * @param[in] xparent xml tree node whose children should be iterated
  * @param[in] xprev   previous child, or NULL on init
  * @param[in] type    matching type or -1 for any
@@ -852,6 +922,9 @@ xml_child_order(cxobj *xp,
  *   }
  * @endcode
  * @note makes uses _x_vector_i:can be changed if list changed between calls
+ * @note Never manipulate the child-list during operation or using the
+ * same object recursively, the function uses an internal field to remember the
+ * index used. It works as long as the same object is not iterated concurrently. 
  */
 cxobj *
 xml_child_each(cxobj           *xparent, 
@@ -867,7 +940,7 @@ xml_child_each(cxobj           *xparent,
 	xn = xparent->x_childvec[i];
 	if (xn == NULL)
 	    continue;
-	if (type != CX_ERROR && xn->x_type != type)
+	if (type != CX_ERROR && xml_type(xn) != type)
 	    continue;
 	break; /* this is next object after previous */
     }
@@ -994,6 +1067,7 @@ xml_new(char      *name,
 	x->_x_i = xml_child_nr(xp)-1;
     }
     x->x_spec = yspec; /* Can be NULL */
+    _stats_nr++;
     return x;
 }
 
@@ -1236,9 +1310,8 @@ xml_child_rm(cxobj *xp,
     xp->x_childvec[i] = NULL;
     xml_parent_set(xc, NULL);
     xp->x_childvec_len--;
-    /* shift up, note same index i used but ok since we break */
-    for (; i<xp->x_childvec_len; i++)
-	xp->x_childvec[i] = xp->x_childvec[i+1];
+    if (i<xp->x_childvec_len)
+	memmove(&xp->x_childvec[i], &xp->x_childvec[i+1], (xp->x_childvec_len-i)*sizeof(cxobj*));
     retval = 0;
  done:
     return retval;
@@ -1655,6 +1728,7 @@ xml_free(cxobj *x)
     if (x->x_ns_cache)
 	xml_nsctx_free(x->x_ns_cache);
     free(x);
+    _stats_nr--;
     return 0;
 }
 
@@ -1717,7 +1791,7 @@ clicon_xml2file(FILE  *f,
 	xc = NULL;
 	/* print attributes only */
 	while ((xc = xml_child_each(x, xc, -1)) != NULL) {
-	    switch (xc->x_type){
+	    switch (xml_type(xc)){
 	    case CX_ATTR:
 		if (clicon_xml2file(f, xc, level+1, prettyprint) <0)
 		    goto done;
@@ -1846,7 +1920,7 @@ clicon_xml2cbuf(cbuf   *cb,
 	xc = NULL;
 	/* print attributes only */
 	while ((xc = xml_child_each(x, xc, -1)) != NULL) 
-	    switch (xc->x_type){
+	    switch (xml_type(xc)){
 	    case CX_ATTR:
 		if (clicon_xml2cbuf(cb, xc, level+1, prettyprint, -1) < 0)
 		    goto done;
@@ -1938,22 +2012,34 @@ xmltree2cbuf(cbuf  *cb,
  *
  * Given a string containing XML, parse into existing XML tree and return
  * @param[in]     str   Pointer to string containing XML definition. 
- * @param[in]     yspec Yang specification or NULL
+ * @param[in]     yb    How to bind yang to XML top-level when parsing
+ * @param[in]     yspec Yang specification (only if bind is TOP or CONFIG)
  * @param[in,out] xtop  Top of XML parse tree. Assume created. Holds new tree.
+ * @param[out]    xerr  Reason for failure (yang assignment not made)
+ * @retval        1     Parse OK and all yang assignment made
+ * @retval        0     Parse OK but yang assigment not made (or only partial) and xerr set
+ * @retval       -1     Error with clicon_err called. Includes parse error
  * @see xml_parse_file
  * @see xml_parse_string
  * @see xml_parse_va
+ * @see _json_parse
  * @note special case is empty XML where the parser is not invoked.
  */
 static int 
-_xml_parse(const char  *str, 
-	   yang_stmt   *yspec,
-	   cxobj       *xt)
+_xml_parse(const char    *str, 
+	   enum yang_bind yb,
+	   yang_stmt     *yspec,
+	   cxobj         *xt,
+	   cxobj        **xerr)
 {
     int                       retval = -1;
-    struct xml_parse_yacc_arg ya = {0,};
+    clixon_xml_yacc ya = {0,};
     cxobj                    *x;
+    int                       ret;
+    int                       failed = 0; /* yang assignment */
+    int                       i;
 
+    clicon_debug(1, "%s %s", __FUNCTION__, str);
     if (strlen(str) == 0)
 	return 0; /* OK */
     if (xt == NULL){
@@ -1964,33 +2050,107 @@ _xml_parse(const char  *str,
 	clicon_err(OE_XML, errno, "strdup");
 	return -1;
     }
+    ya.ya_xtop = xt;
     ya.ya_xparent = xt;
     ya.ya_yspec = yspec;
     if (clixon_xml_parsel_init(&ya) < 0)
 	goto done;    
     if (clixon_xml_parseparse(&ya) != 0)  /* yacc returns 1 on error */
 	goto done;
+    /* Purge all top-level body objects */
     x = NULL;
     while ((x = xml_find_type(xt, NULL, "body", CX_BODY)) != NULL)
 	xml_purge(x);
-    /* Verify namespaces after parsing */
-    if (xml_apply0(xt, CX_ELMNT, xml_localname_check, NULL) < 0)
-    	goto done;
-    /* Sort the complete tree after parsing */
-    if (yspec){
-	/* Populate, ie associate xml nodes with yang specs */
-	if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+    /* Traverse new objects */
+    for (i = 0; i < ya.ya_xlen; i++) {
+	x = ya.ya_xvec[i];
+	/* Verify namespaces after parsing */
+	if (xml_apply0(x, CX_ELMNT, xml_localname_check, NULL) < 0)
 	    goto done;
-	/* Sort according to yang */
-	if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
-	    goto done;
+	/* Populate, ie associate xml nodes with yang specs 
+	 */
+	switch (yb){
+	case YB_NONE:
+	    break;
+	case YB_PARENT:
+	    /* xt:n         Has spec
+	     * x:   <a> <-- populate from parent
+	     */
+	    if ((ret = xml_spec_populate0_parent(x, xerr)) < 0)
+		goto done;
+	    if (ret == 0)
+		failed++;
+	    break;
+	case YB_TOP:
+	    /* xt:<top>     nospec
+	     * x:   <a> <-- populate from modules
+	     */
+#ifdef XMLDB_CONFIG_HACK
+	    if (strcmp(xml_name(x),"config") == 0){
+		/* xt:<top>         nospec
+		 * x:   <config>
+		 *         <a>  <-- populate from modules
+		 */
+		if ((ret = xml_spec_populate(x, yspec, xerr)) < 0)
+		    goto done;
+	    }
+	    else
+#endif
+	    if ((ret = xml_spec_populate0(x, yspec, xerr)) < 0)
+		goto done;
+	    if (ret == 0)
+		failed++;
+	    break;
+	}
     }
-    retval = 0;
+    /* Sort the complete tree after parsing. Sorting is less meaningful if Yang not bound */
+    if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
+	goto done;
+    retval = (failed==0) ? 1 : 0;
   done:
     clixon_xml_parsel_exit(&ya);
     if (ya.ya_parse_string != NULL)
 	free(ya.ya_parse_string);
+    if (ya.ya_xvec)
+	free(ya.ya_xvec);
     return retval; 
+}
+
+/*! Read an XML definition from file and parse it into a parse-tree. 
+ *
+ * @param[in]     fd  A file descriptor containing the XML file (as ASCII characters)
+ * @param[in]     yspec   Yang specification, or NULL
+ * @param[in,out] xt   Pointer to XML parse tree. If empty, create.
+ * @retval        1     Parse OK and all yang assignment made
+ * @retval        0     Parse OK but yang assigment not made (or only partial)
+ * @retval       -1     Error with clicon_err called. Includes parse error *
+ * @code
+ *  cxobj *xt = NULL;
+ *  int    fd;
+ *  fd = open(filename, O_RDONLY);
+ *  xml_parse_file(fd, yspec, &xt);
+ *  xml_free(xt);
+ * @endcode
+ * @see xml_parse_string
+ * @see xml_parse_va
+ * @note, If xt empty, a top-level symbol will be added so that <tree../> will be:  <top><tree.../></tree></top>
+ * @note May block on file I/O
+ * @see xml_parse_file2 for a more advanced API
+ */
+int 
+xml_parse_file(int        fd, 
+	       yang_stmt *yspec,
+	       cxobj    **xt)
+{
+    enum yang_bind yb = YB_PARENT;
+
+    if (xt==NULL){
+	clicon_err(OE_XML, EINVAL, "xt is NULL");
+	return -1;
+    }
+    if (*xt==NULL)
+	yb = YB_TOP;
+    return xml_parse_file2(fd, yb, yspec, NULL, xt, NULL);
 }
 
 /*! FSM to detect substring
@@ -2006,32 +2166,38 @@ FSM(char *tag,
 	return 0;
 }
 
-/*! Read an XML definition from file and parse it into a parse-tree. 
+/*! Read an XML definition from file and parse it into a parse-tree, advanced API
  *
- * @param[in]  fd  A file descriptor containing the XML file (as ASCII characters)
- * @param[in]  endtag  Read until encounter "endtag" in the stream, or NULL
- * @param[in]  yspec   Yang specification, or NULL
- * @param[in,out] xt   Pointer to XML parse tree. If empty, create.
- * @retval        0  OK
- * @retval       -1  Error with clicon_err called
+ * @param[in]     fd    A file descriptor containing the XML file (as ASCII characters)
+ * @param[in]     yb    How to bind yang to XML top-level when parsing
+ * @param[in]     yspec Yang specification (only if bind is TOP or CONFIG)
+ * @param[in]     endtag  Read until encounter "endtag" in the stream, or NULL
+ * @param[in,out] xt    Pointer to XML parse tree. If empty, create.
+ * @retval        1     Parse OK and all yang assignment made
+ * @retval        0     Parse OK but yang assigment not made (or only partial) and xerr set
+ * @retval       -1     Error with clicon_err called. Includes parse error
  *
  * @code
  *  cxobj *xt = NULL;
+ *  cxobj *xerr = NULL;
  *  int    fd;
  *  fd = open(filename, O_RDONLY);
- *  xml_parse_file(fd, "</config>", yspec, &xt);
+ *  if ((ret = xml_parse_file2(fd, YB_TOP, yspec, "</config>", &xt, &xerr)) < 0)
+ *    err;
  *  xml_free(xt);
  * @endcode
  * @see xml_parse_string
- * @see xml_parse_va
+ * @see xml_parse_file
  * @note, If xt empty, a top-level symbol will be added so that <tree../> will be:  <top><tree.../></tree></top>
  * @note May block on file I/O
  */
 int 
-xml_parse_file(int        fd, 
-	       char      *endtag,
-	       yang_stmt *yspec,
-	       cxobj    **xt)
+xml_parse_file2(int            fd, 
+		enum yang_bind yb,
+		yang_stmt     *yspec,
+		char          *endtag,
+		cxobj        **xt,
+		cxobj        **xerr)
 {
     int   retval = -1;
     int   ret;
@@ -2043,6 +2209,7 @@ xml_parse_file(int        fd,
     int   endtaglen = 0;
     int   state = 0;
     int   oldxmlbuflen;
+    int   failed = 0;
 
     if (endtag != NULL)
 	endtaglen = strlen(endtag);
@@ -2069,8 +2236,10 @@ xml_parse_file(int        fd,
 	    if (*xt == NULL)
 		if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
 		    goto done;
-	    if (_xml_parse(ptr, yspec, *xt) < 0)
+	    if ((ret = _xml_parse(ptr, yb, yspec, *xt, xerr)) < 0)
 		goto done;
+	    if (ret == 0)
+		failed++;
 	    break;
 	}
 	if (len>=xmlbuflen-1){ /* Space: one for the null character */
@@ -2084,7 +2253,7 @@ xml_parse_file(int        fd,
 	    ptr = xmlbuf;
 	}
     } /* while */
-    retval = 0;
+    retval = (failed==0) ? 1 : 0;
  done:
     if (retval < 0 && *xt){
 	free(*xt);
@@ -2095,12 +2264,55 @@ xml_parse_file(int        fd,
     return retval;
 }
 
-/*! Read an XML definition from string and parse it into a parse-tree. 
+/*! Read an XML definition from string and parse it into a parse-tree, advanced API
+ *
+ * @param[in]     str   String containing XML definition. 
+ * @param[in]     yb    How to bind yang to XML top-level when parsing
+ * @param[in]     yspec Yang specification, or NULL
+ * @param[in,out] xt    Pointer to XML parse tree. If empty will be created.
+ * @param[out]    xerr  Reason for failure (yang assignment not made)
+ * @retval        1     Parse OK and all yang assignment made
+ * @retval        0     Parse OK but yang assigment not made (or only partial)
+ * @retval       -1     Error with clicon_err called. Includes parse error
+ *
+ * @code
+ *  cxobj *xt = NULL;
+ *  cxobj *xerr = NULL;
+ *  if (xml_parse_string2(str, YB_TOP, yspec, &xt, &xerr) < 0)
+ *    err;
+ *  if (xml_rootchild(xt, 0, &xt) < 0) # If you want to remove TOP
+ *    err;
+ * @endcode
+ * @see xml_parse_file
+ * @see xml_parse_va
+ * @note You need to free the xml parse tree after use, using xml_free()
+ * @note If empty on entry, a new TOP xml will be created named "top"
+ */
+int 
+xml_parse_string2(const char    *str, 
+		  enum yang_bind yb,
+		  yang_stmt     *yspec,
+		  cxobj        **xt,
+		  cxobj        **xerr)
+{
+    if (xt==NULL){
+	clicon_err(OE_XML, EINVAL, "xt is NULL");
+	return -1;
+    }
+    if (*xt == NULL){
+	if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
+	    return -1;
+    }
+    return _xml_parse(str, yb, yspec, *xt, xerr);
+}
+
+/*! Read an XML definition from string and parse it into a parse-tree
  *
  * @param[in]     str   String containing XML definition. 
  * @param[in]     yspec Yang specification, or NULL
  * @param[in,out] xt    Pointer to XML parse tree. If empty will be created.
- * @retval        0     OK
+ * @retval        1     Parse OK and all yang assignment made
+ * @retval        0     Parse OK but yang assigment not made (or only partial)
  * @retval       -1     Error with clicon_err called. Includes parse error
  *
  * @code
@@ -2118,24 +2330,36 @@ xml_parse_file(int        fd,
 int 
 xml_parse_string(const char *str, 
 		 yang_stmt  *yspec,
-		 cxobj     **xtop)
+		 cxobj     **xt)
 {
-    if (*xtop == NULL)
-	if ((*xtop = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
+    enum yang_bind yb = YB_PARENT;
+
+    if (xt==NULL){
+	clicon_err(OE_XML, EINVAL, "xt is NULL");
+	return -1;
+    }
+    if (*xt == NULL){
+	yb = YB_TOP; /* ad-hoc #1 */
+	if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
 	    return -1;
-    return _xml_parse(str, yspec, *xtop);
+    }
+    else{
+	if (xml_spec(*xt) == NULL)
+	    yb = YB_TOP;  /* ad-hoc #2 */
+    }
+    return _xml_parse(str, yb, yspec, *xt, NULL);
 }
 
 /*! Read XML from var-arg list and parse it into xml tree
  *
  * Utility function using stdarg instead of static string.
- * @param[in,out] xtop  Top of XML parse tree. If it is NULL, top element 
-                        called 'top' will be created. Call xml_free() after use
- * @param[in]  yspec    Yang specification, or NULL
- * @param[in]  format   Format string for stdarg according to printf(3)
-
- * @retval  0  OK
- * @retval -1  Error with clicon_err called
+ * @param[in,out] xtop   Top of XML parse tree. If it is NULL, top element 
+                         called 'top' will be created. Call xml_free() after use
+ * @param[in]     yspec  Yang specification, or NULL
+ * @param[in]     format Format string for stdarg according to printf(3)
+ * @retval        1      Parse OK and all yang assignment made
+ * @retval        0      Parse OK but yang assigment not made (or only partial)
+ * @retval       -1      Error with clicon_err called. Includes parse error
  *
  * @code
  *  cxobj *xt = NULL;
@@ -2168,9 +2392,7 @@ xml_parse_va(cxobj     **xtop,
     va_start(args, format);
     len = vsnprintf(str, len, format, args) + 1;
     va_end(args);
-    if (xml_parse_string(str, yspec, xtop) < 0)
-	goto done;
-    retval = 0;
+    retval = xml_parse_string(str, yspec, xtop); /* xml_parse_string2 */
  done:
     if (str)
 	free(str);
@@ -2201,6 +2423,7 @@ xml_copy_one(cxobj *x0,
     if ((s = xml_prefix(x0))) /* malloced string */
 	if ((xml_prefix_set(x1, s)) < 0)
 	    goto done;
+    xml_spec_set(x1, xml_spec(x0));
     retval = 0;
  done:
     return retval;
@@ -2219,8 +2442,9 @@ xml_copy_one(cxobj *x0,
  *   if (xml_copy(x0, x1) < 0)
  *      err;
  * @endcode
+ * @see xml_dup
  */
-int
+int 
 xml_copy(cxobj *x0, 
 	 cxobj *x1)
 {
@@ -2249,6 +2473,7 @@ xml_copy(cxobj *x0,
  *   x1 = xml_dup(x0);
  * @endcode
  * Note, returned tree should be freed as: xml_free(x1)
+ * @see xml_cp
  */
 cxobj *
 xml_dup(cxobj *x0)
@@ -2356,7 +2581,6 @@ cxvec_prepend(cxobj   *x,
  done:
     return retval;
 }
-
 
 /*! Apply a function call recursively on all xml node children recursively
  * Recursively traverse all xml nodes in a parse-tree and apply fn(arg) for 
@@ -2751,4 +2975,3 @@ clicon_log_xml(int    level,
 	free(msg);
     return retval;
 }
-

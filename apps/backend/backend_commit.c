@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -189,6 +191,7 @@ startup_common(clicon_handle       h,
     clicon_debug(1, "Reading startup config from %s", db);
     if (xmldb_get0(h, db, NULL, "/", 0, &xt, msd) < 0)
 	goto done;
+    clicon_debug(1, "Reading startup config done");
     /* Clear flags xpath for get */
     xml_apply0(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
 	       (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
@@ -197,20 +200,21 @@ startup_common(clicon_handle       h,
 	xt = NULL;
 	goto ok;
     }
-    if (msd){
-	/* Here xt is old syntax */
-	if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-	/* Here xt is new syntax */
-    }
+    /* Here xt is old syntax */
+    /* General purpose datastore upgrade */
+    if (clixon_plugin_datastore_upgrade(h, db, xt, msd) < 0)
+       goto done;
+    /* Module-specific upgrade callbacks */
+    if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
+       goto done;
+    if (ret == 0)
+       goto fail;
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, 0, "Yang spec not set");
 	goto done;
     }
     /* After upgrading, XML tree needs to be sorted and yang spec populated */
-    if (xml_apply0(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+    if (xml_spec_populate(xt, yspec, NULL) < 0)
 	goto done;
     if (xml_apply0(xt, CX_ELMNT, xml_sort, h) < 0)
 	goto done;

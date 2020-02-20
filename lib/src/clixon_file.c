@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -57,6 +58,7 @@
 #include "clixon_err.h"
 #include "clixon_queue.h"
 #include "clixon_string.h"
+#include "clixon_log.h"
 #include "clixon_file.h"
 
 /*! qsort "compar" for directory alphabetically sorting, see qsort(3)
@@ -173,12 +175,12 @@ int
 clicon_file_copy(char *src, 
 		 char *target)
 {
-    int inF = 0, ouF = 0;
-    int err = 0;
-    char line[512];
-    int bytes;
+    int         retval = -1;
+    int         inF = 0, ouF = 0;
+    int         err = 0;
+    char        line[512];
+    int         bytes;
     struct stat st;
-    int retval = -1;
 
     if (stat(src, &st) != 0){
 	clicon_err(OE_UNIX, errno, "stat");

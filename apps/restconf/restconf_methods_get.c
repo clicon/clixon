@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -203,7 +204,7 @@ api_data_get2(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    if (xml_apply(xret, CX_ELMNT, xml_spec_populate, yspec) < 0)
+    if (xml_spec_populate(xret, yspec, NULL) < 0)
 	goto done;
     /* We get return via netconf which is complete tree from root 
      * We need to cut that tree to only the object.

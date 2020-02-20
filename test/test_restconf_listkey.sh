@@ -99,7 +99,7 @@ new "restconf PUT change whole list entry (same keys)"
 expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y -d '{"list:a":{"b":"x","c":"y","nonkey":"z"}}')" 0 ''
 
 new "restconf PUT change whole list entry (no namespace)(expect fail)"
-expectpart "$(curl -is -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y -d '{"a":{"b":"x","c":"y","nonkey":"z"}}')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Data is not prefixed with matching namespace"}}}'
+expectpart "$(curl -is -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y -d '{"a":{"b":"x","c":"y","nonkey":"z"}}')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Top-level JSON object a is not qualified with namespace which is a MUST according to RFC 7951"}}}'
 
 new "restconf PUT change list entry (wrong keys)(expect fail)"
 expectpart "$(curl -is -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y -d '{"list:a":{"b":"y","c":"x"}}')" 0 '412 Precondition Failed' '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'

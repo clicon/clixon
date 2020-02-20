@@ -95,7 +95,7 @@ start_restconf -f $cfg
 new "waiting"
 wait_restconf
 
-new "generate 'large' config with $perfnr list entries"
+new "generate config with $perfnr list entries"
 echo -n "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\">" > $fconfig
 for (( i=0; i<$perfnr; i++ )); do  
     echo -n "<y><a>$i</a><b>$i</b></y>" >> $fconfig
@@ -118,6 +118,7 @@ expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<r
 # comparing to existing)
 new "netconf commit large config again"
 expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+
 # Having a large db, get and put single entries many times
 # Note same entries in the range alreay there, db has same size
 
@@ -160,6 +161,7 @@ new "restconf add $perfreq small config"
 done }  2>&1 | awk '/real/ {print $2}'
 
 # CLI get (XXX why does this take so much time?)
+# See: EXPAND_ONLY_INTERACTIVE in cligen. If set it is acceptable but there are some side-effects
 new "cli get $perfreq small config 1 key index"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
@@ -205,6 +207,9 @@ done | $clixon_netconf -qf $cfg  > /dev/null; }  2>&1 | awk '/real/ {print $2}'
 #new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
+# XXX This takes time
+# 18.69 without startup feature
+# 21.98 with startup
 new "restconf delete $perfreq small config"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
@@ -213,7 +218,7 @@ done > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # Now do leaf-lists istead of leafs
 
-#new "generate large leaf-list config"
+#new "generate leaf-list config"
 echo -n "<rpc><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">" > $fconfig2
 for (( i=0; i<$perfnr; i++ )); do  
     echo -n "<c>$i</c>" >> $fconfig2

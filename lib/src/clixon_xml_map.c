@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -65,6 +66,8 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_options.h"
+#include "clixon_data.h"
+#include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
@@ -612,12 +615,19 @@ xml_tree_prune_flagged_sub(cxobj *xt,
     int        iskey;
     int        anykey=0;
     yang_stmt *yt;
+    int        i;
 
     mark = 0;
     yt = xml_spec(xt); /* xan be null */
     x = NULL;
     xprev = x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    i = 0;
+    while ((x = xml_child_each(xt, x, -1)) != NULL) {
+	i++;
+	if (xml_type(x) != CX_ELMNT){
+	    xprev = x;
+	    continue;
+	}
 	if (xml_flag(x, flag) == test?flag:0){
 	    /* Pass test */
 	    mark++;
@@ -641,8 +651,9 @@ xml_tree_prune_flagged_sub(cxobj *xt,
 	if (submark)
 	    mark++;
 	else{ /* Safe with xml_child_each if last */
-	    if (xml_purge(x) < 0)
+	    if (xml_child_rm(xt, i-1) < 0)
 		goto done;
+	    i--;
 	    x = xprev;
 	}
 	xprev = x;
@@ -651,13 +662,20 @@ xml_tree_prune_flagged_sub(cxobj *xt,
     if (anykey && !mark){
 	x = NULL;
 	xprev = x = NULL;
-	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	i = 0;
+	while ((x = xml_child_each(xt, x, -1)) != NULL) {
+	    i++;
+	    if (xml_type(x) != CX_ELMNT){
+		xprev = x;
+		continue;
+	    }
 	    /* If it is key remove it here */
 	    if (yt){
 		if ((iskey = yang_key_match(yt, xml_name(x))) < 0)
 		    goto done;
-		if (iskey && xml_purge(x) < 0)
+		if (xml_child_rm(xt, i-1) < 0)
 		    goto done;
+		i--;
 		x = xprev;
 	    }
 	    xprev = x; 
@@ -710,7 +728,6 @@ xml_tree_prune_flagged(cxobj *xt,
  */
 static int
 add_namespace(cxobj *x1, /* target */
-	      cxobj *x1p,
 	      char  *prefix1,
 	      char  *namespace)
 {
@@ -741,6 +758,47 @@ add_namespace(cxobj *x1, /* target */
     /* 5. Add prefix to x1, if any */
     if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
 	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Change namespace of XML node 
+ *
+ * @param[in]  x         XML node
+ * @param[in]  namespace Change to this namespace (if ns does not exist in tree)
+ * @param[in]  prefix    If change, use this prefix
+ * @param      0         OK
+ * @param     -1         Error
+ */
+int
+xml_namespace_change(cxobj *x, 
+                    char   *namespace,
+                    char   *prefix)
+{
+    int    retval = -1;
+    char  *ns0 = NULL;     /* existing namespace */
+    char  *prefix0 = NULL; /* existing prefix */
+    
+    ns0 = NULL;
+    if (xml2ns(x, xml_prefix(x), &ns0) < 0)
+       goto done;
+    if (ns0 && strcmp(ns0, namespace) == 0)
+       goto ok; /* Already has right namespace */ 
+    /* Is namespace already declared? */
+    if (xml2prefix(x, namespace, &prefix0) == 1){
+       /* Yes it is declared and the prefix is pexists */
+       if (xml_prefix_set(x, prefix0) < 0)
+           goto done;
+    }
+    else{ /* Namespace does not exist, add it */
+	/* Clear old prefix if any */
+       if (xml_prefix_set(x, NULL) < 0)
+           goto done;
+       if (add_namespace(x, prefix0, namespace) < 0)
+	   goto done;	   
+    }
+ ok:
     retval = 0;
  done:
     return retval;
@@ -799,7 +857,7 @@ xml_default(cxobj *xt,
 				clicon_err(OE_UNIX, errno, "strdup");
 				goto done;
 			    }
-			    if (add_namespace(xc, xt, prefix, namespace) < 0)
+			    if (add_namespace(xc, prefix, namespace) < 0)
 				goto done;
 			}
 		    }
@@ -878,31 +936,36 @@ xml_non_config_data(cxobj *xt,
     return retval;
 }
 
-/*! Find yang spec association of XML node for incoming RPC
+/*! Find yang spec association of XML node for incoming RPC starting with <rpc>
  * 
  * Incoming RPC has an "input" structure that is not taken care of by xml_spec_populate
- * @param[in]   xt      XML tree node
- * @param[in]   arg     Yang spec
- * @retval      0       OK
- * @retval     -1       Error
+ * @param[in]   xrpc XML rpc node
+ * @param[in]   yspec  Yang spec
+ * @param[out]  xerr   Reason for failure, or NULL
+ * @retval      1      OK yang assignment made
+ * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
+ * @retval     -1      Error
  * The 
  * @code
- *   xml_apply(xc, CX_ELMNT, xml_spec_populate_rpc_input, yspec)
+ *   if (xml_spec_populate_rpc(h, x, NULL) < 0)
+ *      err;
  * @endcode
  * @see xml_spec_populate  For other generic cases
+ * @see xml_spec_populate_rpc_reply
  */
 int
-xml_spec_populate_rpc_input(clicon_handle h,
-			    cxobj        *xrpc,
-			    yang_stmt    *yspec)
+xml_spec_populate_rpc(cxobj     *xrpc,
+		      yang_stmt *yspec,
+		      cxobj    **xerr)
 {
     int        retval = -1;
     yang_stmt *yrpc = NULL;    /* yang node */
     yang_stmt *ymod=NULL; /* yang module */
     yang_stmt *yi = NULL; /* input */
     cxobj     *x;
+    int        ret;
     
-    if ((strcmp(xml_name(xrpc), "rpc"))!=0){
+    if ((strcmp(xml_name(xrpc), "rpc")) != 0){
 	clicon_err(OE_UNIX, EINVAL, "RPC expected");
 	goto done;
     }
@@ -921,14 +984,225 @@ xml_spec_populate_rpc_input(clicon_handle h,
 		 * recursive population to work. Therefore, assign input yang
 		 * to rpc level although not 100% intuitive */
 		xml_spec_set(x, yi); 
-		if (xml_apply(x, CX_ELMNT, xml_spec_populate, yspec) < 0)
+		if ((ret = xml_spec_populate_parent(x, xerr)) < 0)
 		    goto done;
+		if (ret == 0)
+		    goto fail;
 	    }
 	}
     }
-    retval = 0;
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Find yang spec association of XML node for outgoing RPC starting with <rpc-reply>
+ * 
+ * Incoming RPC has an "input" structure that is not taken care of by xml_spec_populate
+ * @param[in]   xrpc  XML rpc node
+ * @param[in]   name  Name of RPC (not seen in output/reply)
+ * @param[in]   yspec  Yang spec
+ * @param[out]  xerr   Reason for failure, or NULL
+ * @retval      1      OK yang assignment made
+ * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
+ * @retval     -1      Error
+ *
+ * @code
+ *   if (xml_spec_populate_rpc_reply(x, "get-config", yspec, name) < 0)
+ *      err;
+ * @endcode
+ * @see xml_spec_populate  For other generic cases
+ */
+int
+xml_spec_populate_rpc_reply(cxobj     *xrpc,
+			    char      *name,
+			    yang_stmt *yspec,
+			    cxobj    **xerr)
+{
+    int        retval = -1;
+    yang_stmt *yrpc = NULL;    /* yang node */
+    yang_stmt *ymod=NULL;      /* yang module */
+    yang_stmt *yo = NULL;      /* output */
+    cxobj     *x;
+    int        ret;
+    
+    if (strcmp(xml_name(xrpc), "rpc-reply")){
+	clicon_err(OE_UNIX, EINVAL, "rpc-reply expected");
+	goto done;
+    }
+    x = NULL;
+    while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {
+	if (ys_module_by_xml(yspec, x, &ymod) < 0)
+	    goto done;
+	if (ymod == NULL)
+	    continue;
+	if ((yrpc = yang_find(ymod, Y_RPC, name)) == NULL)
+	    continue;
+	//	xml_spec_set(xrpc, yrpc);
+	if ((yo = yang_find(yrpc, Y_OUTPUT, NULL)) == NULL)
+	    continue;
+	/* xml_spec_populate need to have parent with yang spec for
+	 * recursive population to work. Therefore, assign input yang
+	 * to rpc level although not 100% intuitive */
+	break;
+    }
+    if (yo != NULL){
+	xml_spec_set(xrpc, yo); 
+	if ((ret = xml_spec_populate(xrpc, yspec, xerr)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Associate XML node x with x:s parents yang:s matching child
+ *
+ * @param[in]   xt     XML tree node
+ * @param[out]  xerr   Reason for failure, or NULL
+ * @retval      2      OK yang assignment made
+ * @retval      1      OK, Yang assignment not made because yang parent is anyxml or anydata
+ * @retval      0      Yang assigment not made and xerr set
+ * @retval     -1      Error
+ * @see populate_self_top
+ */
+static int
+populate_self_parent(cxobj  *xt,
+		     cxobj **xerr)
+{
+    int        retval = -1;
+    yang_stmt *y = NULL;     /* yang node */
+    yang_stmt *yparent;      /* yang parent */
+    cxobj     *xp = NULL;    /* xml parent */
+    char      *name;
+    char      *ns = NULL;    /* XML namespace of xt */
+    char      *nsy = NULL;   /* Yang namespace of xt */
+
+    xp = xml_parent(xt);
+    name = xml_name(xt);
+    if (xp == NULL){
+	if (xerr &&
+	    netconf_bad_element_xml(xerr, "application", name, "Missing parent") < 0)
+	    goto done;
+	goto fail;
+    }
+    if ((yparent = xml_spec(xp)) == NULL){
+	if (xerr &&
+	    netconf_bad_element_xml(xerr, "application", name, "Missing parent yang node") < 0)
+	    goto done;
+	goto fail;
+    }
+    if (yang_keyword_get(yparent) == Y_ANYXML || yang_keyword_get(yparent) == Y_ANYDATA){
+	retval = 1;
+	goto done;
+    }
+    if ((y = yang_find_datanode(yparent, name)) == NULL){
+	if (xerr &&
+	    netconf_bad_element_xml(xerr, "application", name, "Missing matching yang node") < 0)
+	    goto done;
+	goto fail;
+    }
+    if (xml2ns(xt, xml_prefix(xt), &ns) < 0)
+	goto done;
+    nsy = yang_find_mynamespace(y);
+    if (ns == NULL || nsy == NULL){
+	if (xerr &&
+	    netconf_bad_element_xml(xerr, "application", name, "Missing namespace") < 0)
+	    goto done;
+	goto fail;
+    }
+    /* Assign spec only if namespaces match */
+    if (strcmp(ns, nsy) != 0){
+	if (xerr &&
+	    netconf_bad_element_xml(xerr, "application", name, "Namespace mismatch") < 0)
+	    goto done;
+	goto fail;
+    }
+    xml_spec_set(xt, y);
+    retval = 2;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Associate XML node x with yang spec y by going through all top-level modules and finding match
+ *
+ * @param[in]   xt     XML tree node
+ * @param[in]   yspec  Yang spec
+ * @param[out]  xerr   Reason for failure, or NULL
+ * @retval      2      OK yang assignment made
+ * @retval      1      OK, Yang assignment not made because yang parent is anyxml or anydata
+ * @retval      0      yang assigment not made and xerr set
+ * @retval     -1      Error
+ * @see populate_self_parent
+ */
+static int
+populate_self_top(cxobj     *xt, 
+		  yang_stmt *yspec,
+		  cxobj    **xerr)
+{
+    int        retval = -1;
+    yang_stmt *y = NULL;     /* yang node */
+    yang_stmt *ymod;         /* yang module */
+    char      *name;
+    char      *ns = NULL;    /* XML namespace of xt */
+    char      *nsy = NULL;   /* Yang namespace of xt */
+
+    name = xml_name(xt);
+    if (yspec == NULL){
+	if (xerr &&
+	    netconf_bad_element_xml(xerr, "application", name, "Missing yang spec") < 0)
+	    goto done;
+	goto fail;
+    }
+    if (ys_module_by_xml(yspec, xt, &ymod) < 0)
+	goto done;
+    /* ymod is "real" module, name may belong to included submodule */
+    if (ymod == NULL){
+	if (xerr &&
+	    netconf_bad_element_xml(xerr, "application", name, "No such yang module") < 0)
+	    goto done;
+	goto fail;
+    }
+    if ((y = yang_find_schemanode(ymod, name)) == NULL){ /* also rpc */
+	if (xerr &&
+	    netconf_bad_element_xml(xerr, "application", name, "Missing matching yang node") < 0)
+	    goto done;
+	goto fail;
+    }
+    if (xml2ns(xt, xml_prefix(xt), &ns) < 0)
+	goto done;
+    nsy = yang_find_mynamespace(y);
+    if (ns == NULL || nsy == NULL){
+	if (xerr &&
+	    netconf_bad_element_xml(xerr, "application", name, "Missing namespace") < 0)
+	    goto done;
+	goto fail;
+    }
+    /* Assign spec only if namespaces match */
+    if (strcmp(ns, nsy) != 0){
+	if (xerr &&
+	    netconf_bad_element_xml(xerr, "application", name, "Namespace mismatch") < 0)
+	    goto done;
+	goto fail;
+    }
+    xml_spec_set(xt, y);
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Find yang spec association of XML node
@@ -937,95 +1211,111 @@ xml_spec_populate_rpc_input(clicon_handle h,
  * need specialized function.
  * XXX: maybe it can be built into the same function, but you dont know whether it is input or output rpc, so
  * it seems like you need specialized functions.
- * @param[in]   xt      XML tree node
- * @param[in]   arg     Yang spec
- * @retval      0       OK
- * @retval     -1       Error
+ * @param[in]   xt     XML tree node
+ * @param[in]   yspec  Yang spec
+ * @param[out]  xerr   Reason for failure, or NULL
+ * @retval      1      OK yang assignment made
+ * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
+ * @retval     -1      Error
  * @code
- *   xml_apply(xc, CX_ELMNT, xml_spec_populate, yspec)
+ *   if (xml_spec_populate(x, yspec, NULL) < 0)
+ *     err;
  * @endcode
  * @note For subs to anyxml nodes will not have spec set
- * @see xml_spec_populate_rpc_input  for incoming rpc 
- * XXX: can give false positives
+ * @see xml_spec_populate_rpc  for incoming rpc 
  */
-#undef DEBUG /* Set this for debug */
 int
-xml_spec_populate(cxobj  *x, 
-		  void   *arg)
+xml_spec_populate(cxobj     *xt, 
+		  yang_stmt *yspec,
+		  cxobj    **xerr)
 {
-    int        retval = -1;
-    yang_stmt *yspec = NULL; /* yang spec */
-    yang_stmt *y = NULL;     /* yang node */
-    yang_stmt *yparent;      /* yang parent */
-    yang_stmt *ymod;         /* yang module */
-    cxobj     *xp = NULL;    /* xml parent */
-    char      *name;
-    char      *ns = NULL;    /* XML namespace of x */
-    char      *nsy = NULL;   /* Yang namespace of x */
+    int    retval = -1;
+    cxobj *xc;         /* xml child */
+    int    ret;
+    int    failed = 0; /* we continue loop after failure, should we stop at fail?`*/
 
-    yspec = (yang_stmt*)arg;
-    xp = xml_parent(x);
-    name = xml_name(x);
-#ifdef DEBUG
-    clicon_debug(1, "%s name:%s", __FUNCTION__, name);
-#endif
-    if (xml2ns(x, xml_prefix(x), &ns) < 0)
+    xc = NULL;     /* Apply on children */
+    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+	if ((ret = xml_spec_populate0(xc, yspec, xerr)) < 0)
+	    goto done;
+	if (ret == 0)
+	    failed++;
+    }
+    retval = (failed==0) ? 1 : 0;
+ done:
+    return retval;
+}
+
+int
+xml_spec_populate_parent(cxobj  *xt,
+			 cxobj **xerr)
+{
+    int    retval = -1;
+    cxobj *xc;           /* xml child */
+    int    ret;
+    int    failed = 0; /* we continue loop after failure, should we stop at fail?`*/
+    
+    xc = NULL;     /* Apply on children */
+    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+	if ((ret = xml_spec_populate0_parent(xc, xerr)) < 0)
+	    goto done;
+	if (ret == 0)
+	    failed++;
+    }
+    retval = (failed==0) ? 1 : 0;
+ done:
+    return retval;
+}
+
+int
+xml_spec_populate0(cxobj     *xt, 
+		   yang_stmt *yspec,
+		   cxobj    **xerr)
+{
+    int    retval = -1;
+    cxobj *xc;           /* xml child */
+    int    ret;
+    int    failed = 0; /* we continue loop after failure, should we stop at fail?`*/
+
+    if ((ret = populate_self_top(xt, yspec, xerr)) < 0) 
 	goto done;
-    if (xp && (yparent = xml_spec(xp)) != NULL){
-#ifdef DEBUG
-	clicon_debug(1, "%s yang parent:%s", __FUNCTION__, yang_argument_get(yparent));
-#endif
-	y = yang_find_datanode(yparent, name);
-    }
-    else if (yspec){ /* XXX this gives false positives */
-	if (ys_module_by_xml(yspec, x, &ymod) < 0)
-	    goto done;
-	/* ymod is "real" module, name may belong to included submodule */
-	if (ymod != NULL){
-#ifdef DEBUG
-               clicon_debug(1, "%s %s mod:%s", __FUNCTION__, name, yang_argument_get(ymod));
-#endif
-	       y = yang_find_schemanode(ymod, name);
-          }
-#ifdef DEBUG
-	else
-	    clicon_debug(1, "%s %s mod:NULL", __FUNCTION__, name);
-#endif
-    }
-    if (y) {
-	nsy = yang_find_mynamespace(y);
-	if (ns == NULL || nsy == NULL){
-	    clicon_err(OE_XML, EFAULT, "Namespace NULL");
-	    goto done;
-	}
-#ifdef DEBUG
-	clicon_debug(1, "%s y:%s", __FUNCTION__, yang_argument_get(y));
-#endif
-	/* Assign spec only if namespaces match */
-	if (strcmp(ns, nsy) == 0){
-#if 0
-	    /* Cornercase: 
-	     * The XML parser may have kept pretty-printed whitespaces in empty nodes, eg "<x>  </x>"
-	     * since it is valid leaf(-list) content.
-	     * But if it is not a container, list or something, else, the content should be stripped.
-	     * But we cannot do this because of false positives (above)
-	     */
-	    if (xml_spec(x) == NULL && /* Not assigned yet, ensure to do just once,... */
-		yang_keyword_get(y) != Y_LEAF &&
-		yang_keyword_get(y) != Y_LEAF_LIST){
-		if (xml_rm_children(x, CX_BODY) < 0)
-		    goto done;
-	    }
-#endif
-	    xml_spec_set(x, y);
+    if (ret == 1){
+	xc = NULL;     /* Apply on children */
+	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+	    if ((ret = xml_spec_populate0_parent(xc, xerr)) < 0)
+		goto done;
+	    if (ret == 0)
+		failed++;
 	}
     }
-    else{
-#ifdef DEBUG
-    	clicon_debug(1, "%s y:NULL", __FUNCTION__);
-#endif
+    retval = (failed==0) ? 1 : 0;
+ done:
+    return retval;
+}
+
+int
+xml_spec_populate0_parent(cxobj  *xt,
+			  cxobj **xerr)
+{
+    int    retval = -1;
+    cxobj *xc;           /* xml child */
+    int    ret;
+    int    failed = 0; /* we continue loop after failure, should we stop at fail?`*/
+    
+    if ((ret = populate_self_parent(xt, xerr)) < 0)
+	goto done;
+    if (ret == 0)
+	failed++;
+    else if (ret != 1){ /* 1 means anyxml parent */
+	xc = NULL;     /* Apply on children */
+	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+	    if ((ret = xml_spec_populate0_parent(xc, xerr)) < 0)
+		goto done;
+	    if (ret == 0)
+		failed++;
+	}
     }
-    retval = 0;
+    retval = (failed==0) ? 1 : 0;
  done:
     return retval;
 }
@@ -1242,11 +1532,8 @@ assign_namespaces(cxobj *x0, /* source */
 	   * Check if it is exists in x1 itself */
 	if (xml2prefix(x1, namespace, &pexist) == 1){
 	    /* Yes it exists, but is it equal? */
-	    if ((pexist == NULL && prefix0 == NULL) ||
-		(pexist && prefix0 &&
-		 strcmp(pexist, prefix0)==0)){ /* Equal, reuse */
-		;
-	    }
+	    if (clicon_strcmp(pexist, prefix0) == 0)
+		    ; /* Equal, reuse */
 	    else{ /* namespace exist, but not equal, use existing */
 		/* Add prefix to x1, if any */
 		if (pexist && xml_prefix_set(x1, pexist) < 0)
@@ -1254,8 +1541,7 @@ assign_namespaces(cxobj *x0, /* source */
 	    }
 	    goto ok; /* skip */
 	}
-	else
-	    { /* namespace does not exist in target x1, use source prefix 
+	else { /* namespace does not exist in target x1, use source prefix 
 		* use the prefix defined in the module
 		*/
 	    if (isroot){
@@ -1272,7 +1558,7 @@ assign_namespaces(cxobj *x0, /* source */
 		}
 	    }
 	}
-	if (add_namespace(x1, x1p, prefix1, namespace) < 0)
+	if (add_namespace(x1, prefix1, namespace) < 0)
 	    goto done;
     }
  ok:

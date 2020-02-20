@@ -73,6 +73,9 @@ testname=
 # If set, enable debugging (of backend and restconf daemons)
 : ${DBG:=0}
 
+# If set to 0, override starting of clixon_resrtcong in test (you bring your own)
+: ${RC:=1}
+
 # Where to log restconf. Some systems may not have syslog,
 # eg logging to a file: RCLOG="-l f/www-data/restconf.log"
 : ${RCLOG:=}

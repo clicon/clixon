@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -233,7 +234,7 @@ api_root(clicon_handle  h,
 
     if (xml_parse_string("<restconf xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><data/><operations/><yang-library-version>2016-06-21</yang-library-version></restconf>", NULL, &xt) < 0)
 	goto done;
-    if (xml_apply(xt, CX_ELMNT, xml_spec_populate, yspec) < 0)
+    if (xml_spec_populate(xt, yspec, NULL) < 0)
 	goto done;
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
@@ -548,15 +549,15 @@ usage(clicon_handle h,
 {
     fprintf(stderr, "usage:%s [options]\n"
 	    "where options are\n"
-            "\t-h \t\tHelp\n"
-	    "\t-D <level>\tDebug level\n"
-    	    "\t-f <file>\tConfiguration file (mandatory)\n"
-	    "\t-l <s|f<file>> \tLog on (s)yslog, (f)ile (syslog is default)\n"
-	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
-	    "\t-d <dir>\tSpecify restconf plugin directory dir (default: %s)\n"
-	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
+            "\t-h \t\t  Help\n"
+	    "\t-D <level>\t  Debug level\n"
+    	    "\t-f <file>\t  Configuration file (mandatory)\n"
+	    "\t-l <s|f<file>> \t  Log on (s)yslog, (f)ile (syslog is default)\n"
+	    "\t-p <dir>\t  Yang directory path (see CLICON_YANG_DIR)\n"
+	    "\t-d <dir>\t  Specify restconf plugin directory dir (default: %s)\n"
+	    "\t-y <file>\t  Load yang spec file (override yang main module)\n"
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
-    	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
+    	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
 	    "\t-o \"<option>=<value>\" Give configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_restconf_dir(h)

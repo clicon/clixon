@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -123,11 +124,11 @@ static const map_str2int xpath_tree_map[] = {
 static const map_str2int axis_type_map[] = {
     {"NaN",                 A_NAN},
     {"ancestor",            A_ANCESTOR},
-    {"ancestor-or-selgf",   A_ANCESTOR_OR_SELF},
+    {"ancestor-or-self",    A_ANCESTOR_OR_SELF},
     {"attribute",           A_ATTRIBUTE},
     {"child",               A_CHILD},
     {"descendant",          A_DESCENDANT},
-    {"descendeant-or-self", A_DESCENDANT_OR_SELF},
+    {"descendant-or-self",  A_DESCENDANT_OR_SELF},
     {"following",           A_FOLLOWING},
     {"following-sibling",   A_FOLLOWING_SIBLING},
     {"namespace",           A_NAMESPACE},
@@ -702,7 +703,7 @@ xpath_first_localonly(cxobj    *xcur,
  *   cxobj **vec;
  *   size_t  veclen;
  *   if (xpath_vec(xcur, nsc, "//symbol/foo", &vec, &veclen) < 0) 
- *      goto err;
+ *      err;
  *   for (i=0; i<veclen; i++){
  *      xn = vec[i];
  *         ...

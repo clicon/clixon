@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -210,7 +211,7 @@ nacm_load_external(clicon_handle h)
 	goto done;
     fd = fileno(f);
     /* Read configfile */
-    if (xml_parse_file(fd, "</clicon>", yspec, &xt) < 0)
+    if (xml_parse_file(fd, yspec, &xt) < 0)
 	goto done;
     if (xt == NULL){
 	clicon_err(OE_XML, 0, "No xml tree in %s", filename);
@@ -747,6 +748,10 @@ main(int    argc,
     /* Load yang Netconf stream discovery */
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
 	yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
+	goto done;
+    /* Load yang YANG module state */
+    if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE") &&
+	yang_spec_parse_module(h, "ietf-yang-library", NULL, yspec)< 0)
 	goto done;
     /* Here all modules are loaded 
      * Compute and set canonical namespace context
