@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-## 4.3.3 (Expected: February 2020)
+## 4.3.3 (20 February 2020)
 
 ### Minor changes
 * Due to increased memory usage in internal XML trees, the [use cbuf for xml value code](https://github.com/clicon/clixon/commit/9575d10887e35079c4a9b227dde6ab0f6f09fa03) is reversed.
