@@ -67,6 +67,10 @@ module clixon-config {
 	description
 	    "Released in Clixon 3.8";
     }
+    extension search_index {
+      description "This list argument acts as a search index using optimized binary search.
+                  ";
+    }
     typedef startup_mode{
 	description
 	    "Which method to boot/start clicon backend.

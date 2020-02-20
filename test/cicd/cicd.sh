@@ -27,6 +27,7 @@ fi
 
 h=$1
 
+ssh -t $h "test -d src || mkdir src"
 ssh -t $h "test -d src/cligen || (cd src;git clone https://github.com/olofhagsand/cligen.git)"
 ssh -t $h "(cd src/cligen;git pull)"
 ssh -t $h "(cd src/cligen;./configure)"

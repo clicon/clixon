@@ -180,7 +180,7 @@ new "restconf get protocol tcp"
 expecteq "$(curl -s -X GET http://localhost/restconf/data/system:system)" 0 '{"system:system":{"protocol":{"tcp":[null]}}}
 '
 
-new "restconf set protocol tcp+udp fail"
+new "restconf set protocol tcp+udp fail again"
 expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/system:system/protocol -d '{"system:protocol":{"tcp": [null], "udp": [null]}}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"udp"},"error-severity":"error","error-message":"Element in choice statement already exists"}}}'
 
 new "cli set protocol udp"

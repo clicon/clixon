@@ -1,24 +1,24 @@
 # Clixon Changelog
 
-* [4.4.0](#4.4.0) Upcoming
-  * [4.3.3](#4.3.3) 
-  * [4.3.2](#4.3.2)
-  * [4.3.1](#4.3.1)
-* [4.3.0](#4.3.0) 1 January 2020
-* [4.2.0](#4.2.0) 27 October 2019
-* [4.1.0](#4.1.0) 18 August 2019
-  * [4.0.1](#4.0.1)
-* [4.0.0](#4.0.0) 13 July 2019
-* [3.9.0](#3.9.0) 21 Feb 2019
-* [3.8.0](#3.8.0) 6 Nov 2018
-* [3.7.0](#3.7.0) 22 July 2018
-  * [3.6.1](#3.6.1)
-* [3.6.0](#3.6.0) 30 April 2018
-* [3.5.0](#3.5.0) 12 February 2018
-* [3.4.0](#3.4.0) 1 January 2018
-* [3.3.3](#3.3.3) 25 November 2017
-* [3.3.2](#3.3.2) Aug 27 2017
-* [3.3.1](#3.3.1) June 7 2017
+* [4.4.0](#4-4-0) Upcoming
+  * [4.3.3](#4-3-3) 
+  * [4.3.2](#4-3-2)
+  * [4.3.1](#4-3-1)
+* [4.3.0](#4-3-0) 1 January 2020
+* [4.2.0](#4-2-0) 27 October 2019
+* [4.1.0](#4-1-0) 18 August 2019
+  * [4.0.1](#4-0-1)
+* [4.0.0](#4-0-0) 13 July 2019
+* [3.9.0](#3-9-0) 21 Feb 2019
+* [3.8.0](#3-8-0) 6 Nov 2018
+* [3.7.0](#3-7-0) 22 July 2018
+  * [3.6.1](#3-6-1)
+* [3.6.0](#3-6-0) 30 April 2018
+* [3.5.0](#3-5-0) 12 February 2018
+* [3.4.0](#3-4-0) 1 January 2018
+* [3.3.3](#3-3-3) 25 November 2017
+* [3.3.2](#3-3-2) Aug 27 2017
+* [3.3.1](#3-3-1) June 7 2017
 
 ## 4.4.0
 Expected: February 2020
@@ -37,7 +37,7 @@ Expected: February 2020
   * You can also register explicit indexes for making binary search (not only list keys)
   * For more info, see docs at [paths](https://clixon-docs.readthedocs.io/en/latest/paths.html) and 
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
-
+  * Experimental: explicit search index, ie index any list variable, not just keys
 ### API changes on existing features (you may need to change your code)
 * JSON parse error messages change from ` on line x: syntax error,..` to `json_parse: line x: syntax error`
 * Unknown-element error message is more descriptive, eg from `namespace is: urn:example:clixon` to: `Failed to find YANG spec of XML node: x with parent: xp in namespace urn:example:clixon`.

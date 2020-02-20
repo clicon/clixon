@@ -162,8 +162,6 @@ netconf_get_config(clicon_handle h,
      int        retval = -1;
      cxobj     *xfilter; /* filter */
      char      *ftype = NULL;
-     cxobj     *xdata;
-     yang_stmt *yspec;
 
      /* ie <filter>...</filter> */
      if ((xfilter = xpath_first(xn, NULL, "filter")) != NULL) 
@@ -361,8 +359,6 @@ netconf_get(clicon_handle h,
      int        retval = -1;
      cxobj     *xfilter; /* filter */
      char      *ftype = NULL;
-     cxobj     *xdata;
-     yang_stmt *yspec;
 
        /* ie <filter>...</filter> */
      if ((xfilter = xpath_first(xn, NULL, "filter")) != NULL) 
