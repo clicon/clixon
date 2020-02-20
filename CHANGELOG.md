@@ -1,9 +1,34 @@
 # Clixon Changelog
 
-## 4.4.0 (Expected: February 2020)
+* [4.4.0](#4.4.0) Upcoming
+  * [4.3.3](#4.3.3) 
+  * [4.3.2](#4.3.2)
+  * [4.3.1](#4.3.1)
+* [4.3.0](#4.3.0) 1 January 2020
+* [4.2.0](#4.2.0) 27 October 2019
+* [4.1.0](#4.1.0) 18 August 2019
+  * [4.0.1](#4.0.1)
+* [4.0.0](#4.0.0) 13 July 2019
+* [3.9.0](#3.9.0) 21 Feb 2019
+* [3.8.0](#3.8.0) 6 Nov 2018
+* [3.7.0](#3.7.0) 22 July 2018
+  * [3.6.1](#3.6.1)
+* [3.6.0](#3.6.0) 30 April 2018
+* [3.5.0](#3.5.0) 12 February 2018
+* [3.4.0](#3.4.0) 1 January 2018
+* [3.3.3](#3.3.3) 25 November 2017
+* [3.3.2](#3.3.2) Aug 27 2017
+* [3.3.1](#3.3.1) June 7 2017
+
+## 4.4.0
+Expected: February 2020
 
 ### Major New features
 
+* New "general-purpose" datastore upgrade callback added which i called once on startup, intended for low-level general upgrades and as a complement to module-specific upgrade.
+  * Called on startup after initial XML parsing, but before module-specific upgrades
+  * Enabled by definign the `.ca_datastore_upgrade`
+  * [General-purpose upgrade documentation](https://clixon-docs.readthedocs.io/en/latest/backend.html#general-purpose)
 * New and updated search functions using xpath, api-path and instance-id
   * New search functions using api-path and instance_id:
     * C search functions: `clixon_find_instance_id()` and `clixon_find_api_path()`
@@ -14,6 +39,16 @@
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
 
 ### API changes on existing features (you may need to change your code)
+* JSON parse error messages change from ` on line x: syntax error,..` to `json_parse: line x: syntax error`
+* Unknown-element error message is more descriptive, eg from `namespace is: urn:example:clixon` to: `Failed to find YANG spec of XML node: x with parent: xp in namespace urn:example:clixon`.
+* C-API parse and validation API more capable
+  * `xml_spec_populate` family of functions extended with three-value return values
+    * -1: error, 0: parse OK, 1: parse and YANG binding OK.
+  * `xml_parse` and `json_parse` API changes
+    * Three value returns: -1: error, 0: parse OK, 1: parse and YANG binding OK.
+    * Extended `xml_parse_file2` and `xml_parse_string2` extended API functions with all options available.
+      * New concept called `yang_bind` that defines how XML symbols are bound to YANG after parsing
+    * Existing API same except `xml_parse_file` `endtag` argument moved to `xml_parse_file2`
 * Session-id CLI functionality delayed: "lazy evaluation"
   * C-api: Changed `clicon_session_id_get(clicon_handle h, uint32_t *id)`
   * From a cli perspective this is a revert to 4.1 behaviour, where the cli does not immediately exit on start if the backend is not running, but with the new session-id function
@@ -24,6 +59,7 @@
   
 ### Minor changes
 
+* C-API: Added instrumentation: `xml_size` and `xml_stats_get`.
 * Obsoleted and removed XMLDB format "tree". This function did not work. Only xml and json allowed.
 * Test framework
   * Added `-- -S <file>` command-line to main example to be able to return any state to main example.
@@ -34,6 +70,8 @@
   
 ### Corrected Bugs
 
+* Fixed: Enabling modstate (CLICON_XMLDB_MODSTATE), changing a revision on a yang, and restarting made the backend daemon exit at start (thanks Matt)
+  * Also: ensure to load `ietf-yang-library.yang ` if CLICON_XMLDB_MODSTATE is set
 * Fixed: Pretty-printed XML using prefixes not parsed correctly.
   * eg `<a:x>   <y/></a:x>` could lead to errors, wheras (`<x>   <y/></x>`) works fine.
 * XML namespace merge bug fixed. Example: two xmlns attributes could both survive a merge whereas one should replace the other.
@@ -43,8 +81,50 @@
 * Fixed: Leafref validation did not cover case of when the "path" statement is declared within a typedef, only if it was declared in the data part directly under leaf.
 * Fixed: Yang `must` xpath statements containing prefixes stopped working due to namespace context updates
 
+## 4.3.3
+20 February 2020
 
-## 4.3.0 (1 January 2020)
+### Minor changes
+* Due to increased memory usage in internal XML trees, the [use cbuf for xml value code](https://github.com/clicon/clixon/commit/9575d10887e35079c4a9b227dde6ab0f6f09fa03) is reversed.
+
+## 4.3.2
+15 February 2020
+
+### Major New features
+* New "general-purpose" datastore upgrade callback added which i called once on startup, intended for low-level general upgrades and as a complement to module-specific upgrade.
+  * Called on startup after initial XML parsing, but before module-specific upgrades
+  * Enabled by definign the `.ca_datastore_upgrade`
+  * [General-purpose upgrade documentation](https://clixon-docs.readthedocs.io/en/latest/backend.html#general-purpose)
+  
+### API changes on existing features (you may need to change your code)
+* Session-id CLI functionality delayed: "lazy evaluation"
+  * C-api: Changed `clicon_session_id_get(clicon_handle h, uint32_t *id)`
+  * From a cli perspective this is a revert to 4.1 behaviour, where the cli does not immediately exit on start if the backend is not running, but with the new session-id function
+
+### Known Issues
+* If you retrieve state _and_ config data using RESTCONF or NETCONF `get`, a performance penalty occurs if you have large lists (eg ACLs). Workaround is: disable `VALIDATE_STATE_XML` in `include/clixon_custom.h` (disabled by default).
+
+### Corrected Bugs
+* Fixed: If you enabled modstate (CLICON_XMLDB_MODSTATE), changed a revision in a yang spec, and restarted the backend daemon, it exit at start (thanks Matt).
+  * Also: ensure to load `ietf-yang-library.yang ` if CLICON_XMLDB_MODSTATE is set
+* Fixed: Pretty-printed XML using prefixes not parsed correctly.
+  * eg `<a:x>   <y/></a:x>` could lead to errors, wheras (`<x>   <y/></x>`) works fine.
+
+## 4.3.1
+2 February 2020
+
+Patch release based on testing by Dave Cornejo, Netgate
+
+### Corrected Bugs
+* XML namespace merge bug fixed. Example: two xmlns attributes could both survive a merge whereas one should replace the other.
+* Compile option `VALIDATE_STATE_XML` introduced in `include/custom.h` to control whether code for state data validation is compiled or not. 
+* Fixed: Validation of user state data led to wrong validation, if state relied on config data, eg leafref/must/when etc.
+* Fixed: No revision in yang module led to errors in validation of state data
+* Fixed: Leafref validation did not cover case of when the "path" statement is declared within a typedef, only if it was declared in the data part directly under leaf.
+* Fixed: Yang `must` xpath statements containing prefixes stopped working due to namespace context updates
+
+## 4.3.0
+1 January 2020
 
 There were several issues with multiple namespaces with augmented yangs in 4.2 that have been fixed in 4.3. Some other highlights include: several issues with XPaths including "canonical namespace context" support, a reorganization of the YANG files shipped with the release, and a wildchar in the CLICON_MODE variable.
 
@@ -88,11 +168,12 @@ xpath_first_nsc` are removed).
 * Mandatory variables can no longer be deleted.
 * [Add missing includes](https://github.com/clicon/clixon/pulls)
 	
-## 4.2.0 (27 October 2019)
+## 4.2.0
+27 October 2019
 
 ### Summary
 
-The main improvement in thus release concerns security in terms of priveleges and credentials of accessing the clixon backend. There is also stricter multi-namespace checks which primarily effects where augmented models are used.
+The main improvement in this release concerns security in terms of priveleges and credentials of accessing the clixon backend. There is also stricter multi-namespace checks which primarily effects where augmented models are used.
 
 ### Major New features
 * The backend daemon can drop privileges after initialization to run as non-privileged user
@@ -171,7 +252,8 @@ a="urn:example:a" xmlns:b="urn:example:b"/>`
   * Inserted sanity check in all yang parse routines.
   * Committed updated clixon-lib yang file that triggered the error
 
-## 4.1.0 (18 August 2019)
+## 4.1.0
+18 August 2019
 
 ### Summary
 
@@ -182,7 +264,7 @@ a="urn:example:a" xmlns:b="urn:example:b"/>`
 
 ### Major New features
 * Restconf RFC 8040 increased feature compliance
-  * RESTCONF PATCH (plain patch) is being implemented according to RFC 8040 Section 4.6.1
+  * RESTCONF PATCH (plain patch) is implemented according to RFC 8040 Section 4.6.1
     * Note RESTCONF plain patch is different from RFC 8072 "YANG Patch Media Type" which is not implemented
   * RESTCONF "content" query parameter supported
     * Extended Netconf with content attribute for internal use
@@ -264,8 +346,8 @@ a="urn:example:a" xmlns:b="urn:example:b"/>`
 * Fixed [RESTCONF: HTTP return codes are not according to RFC 8040](https://github.com/clicon/clixon/issues/56)
   * See also API changes above
 * Yang Unique statements with multiple schema identifiers did not work on some platforms due to memory error.
-
-## 4.0.1 (5 Aug 2019)
+## 4.0.1
+5 Aug 2019
 
 This is a hotfix for a multi-key CLI bug that appeared in 4.0.0
 (worked in 3.10).
@@ -280,7 +362,8 @@ This is a hotfix for a multi-key CLI bug that appeared in 4.0.0
       set x a 1 b <anything> # Error
     ```
 
-## 4.0.0 (13 July 2019)
+## 4.0.0
+13 July 2019
 
 ### Summary
 
@@ -618,7 +701,8 @@ Olof Hagsand
 * Fixed numeric ordering of lists (again) [https://github.com/clicon/clixon/issues/64] It was previously just fixed for leaf-lists.
 * There was a problem with ordered-by-user for XML children that appeared in some circumstances and difficult to trigger. Entries entered by the user did not appear in the order they were entered. This should now be fixed.
 
-## 3.9.0 (21 Feb 2019)
+## 3.9.0
+21 Feb 2019
 
 Thanks for all bug reports, feature requests and support! Thanks to [Netgate](https://www.netgate.com) and other sponsors for making Clixon a better tool!
 
@@ -788,7 +872,8 @@ Thanks for all bug reports, feature requests and support! Thanks to [Netgate](ht
 * getopt return value changed from char to int (https://github.com/clicon/clixon/issues/58)
 * Netconf/Restconf RPC extra input arguments are ignored (https://github.com/clicon/clixon/issues/47)
 	
-## 3.8.0 (6 Nov 2018)
+## 3.8.0
+6 Nov 2018
 
 ### Major New features
 * YANG Features
@@ -895,7 +980,8 @@ Thanks for all bug reports, feature requests and support! Thanks to [Netgate](ht
     <crypto xmlns:x="urn:example:des">x:des3</crypto>
 ```
 
-## 3.7.0 (22 July 2018)
+## 3.7.0
+22 July 2018
 
 ### Major New features
 
@@ -994,14 +1080,16 @@ translate {
   <crypto xmlns:x="urn:example:des">x:des3</crypto>
 ```
 
-## 3.6.1 (29 May 2018)
+## 3.6.1
+29 May 2018
 
 ### Corrected Bugs
 * https://github.com/clicon/clixon/issues/23 clixon_cli failing with error
   * The example included a reference to nacm yang file which did not exist and was not used
 * Added clixon-config@2018-04-30.yang
 
-## 3.6.0 (30 April 2018)
+## 3.6.0
+30 April 2018
 
 ### Major changes:
 * Experimental NACM RFC8341 Network Configuration Access Control Model, see [NACM](README_NACM.md).
@@ -1118,7 +1206,8 @@ enables saved files to be used as datastore without any editing. Thanks Matt, Ne
 * Translate xml->json \n correctly
 * Fix issue: https://github.com/clicon/clixon/issues/15 Replace whole config
 
-## 3.5.0 (12 February 2018)
+## 3.5.0
+12 February 2018
 
 ### Major changes:
 * Major Restconf feature update to comply to RFC 8040. Thanks Stephen Jones of Netgate for getting right.
@@ -1152,7 +1241,8 @@ enables saved files to be used as datastore without any editing. Thanks Matt, Ne
 	
 ### Known issues
 
-## 3.4.0 (1 January 2018)
+## 3.4.0
+1 January 2018
 
 ### Major changes:
 * Optimized search performance for large lists by sorting and binary search.
@@ -1202,7 +1292,8 @@ enables saved files to be used as datastore without any editing. Thanks Matt, Ne
 ### Known issues
 * Please use text datastore, key-value datastore no up-to-date
 
-## 3.3.3 (25 November 2017)
+## 3.3.3
+25 November 2017
 
 Thanks to Matthew Smith, Joe Loeliger at Netgate; Fredrik Pettai at
 SUNET for support, requests, debugging, bugfixes and proposed solutions.
@@ -1287,7 +1378,8 @@ plugin. The example application shows how.
   longer silently exits. Instead a log is printed and an RPC error is returned.
   Cred to Matt, netgate for pointing this out.
 
-## 3.3.2 (Aug 27 2017)
+## 3.3.2
+Aug 27 2017
 
 ### Known issues
 * Please use text datastore, key-value datastore no up-to-date
@@ -1396,7 +1488,8 @@ If you submit "nopresence" without a leaf, it will automatically be removed:
 * Removed vector return values from xmldb_get()
 * Generalized yang type resolution to all included (sub)modules not just the topmost
 	
-## 3.3.1 (June 7 2017)
+## 3.3.1
+June 7 2017
 
 * Fixed yang leafref cli completion for absolute paths.
 
