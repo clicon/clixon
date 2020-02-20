@@ -11,6 +11,8 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
+if false; then # NOTYET
+
 : ${clixon_util_path:=clixon_util_path -D $DBG -Y /usr/local/share/clixon}
 
 # Number of list/leaf-list entries
@@ -81,5 +83,5 @@ expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:i=\"i$rndi\"])"
 
 unset nr
 unset clixon_util_path # for other script reusing it
-
+fi
 
