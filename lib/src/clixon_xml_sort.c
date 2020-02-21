@@ -196,9 +196,22 @@ xml_cmp(cxobj *x1,
     int         nr2 = 0;
     cxobj      *x1b;
     cxobj      *x2b;
+    enum cxobj_type xt1;
+    enum cxobj_type xt2;
 
     if (x1==NULL || x2==NULL)
 	goto done; /* shouldnt happen */
+    /* Sort according to attributes first */
+    if ((xt1 = xml_type(x1)) != (xt2 = xml_type(x2))){
+	if (xt1 == CX_ATTR){
+	    equal = -1;
+	    goto done;
+	}
+	else if (xt2 == CX_ATTR){
+	    equal = 1;
+	    goto done;
+	}
+    }
     y1 = xml_spec(x1);
     y2 = xml_spec(x2);
     if (same){
@@ -301,10 +314,14 @@ xml_cmp(cxobj *x1,
 	} /* while cvi */
 	break;
     default:
+	/* This is a very special case such as for two choices - which is not validation correct, but we
+	   should sort them according to nr1, nr2 since their yang is equal order */
+	if (same)
+	    equal = nr1-nr2;
 	break;
     } /* switch */
  done:
-    clicon_debug(2, "%s %s %s %d nr: %d %d yi: %d %d", __FUNCTION__, xml_name(x1), xml_name(x2), equal, nr1, nr2, yi1, yi2);
+    clicon_debug(2, "%s %s %s eq:%d nr: %d %d yi: %d %d", __FUNCTION__, xml_name(x1), xml_name(x2), equal, nr1, nr2, yi1, yi2);
     return equal;
 }
 

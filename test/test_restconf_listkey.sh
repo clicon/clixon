@@ -129,7 +129,7 @@ new "restconf PUT list-list"
 expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y/e=z -d '{"list:e":{"f":"z","nonkey":"0"}}')" 0 ''
 
 new "restconf PUT change list-lst entry (wrong keys)(expect fail)"
-expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y/e=z -d '{"list:e":{"f":"wrong","nonley":"0"}}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
+expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y/e=z -d '{"list:e":{"f":"wrong","nonkey":"0"}}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
 
 new "restconf PUT list-list sub non-key"
 expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y/e=z/nonkey -d '{"list:nonkey":"u"}')" 0 ''

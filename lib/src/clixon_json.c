@@ -1130,8 +1130,9 @@ _json_parse(char          *str,
     cxobj           *x;
     cbuf            *cberr = NULL;
     int              i;
+    int              failed = 0; /* yang assignment */
     
-    clicon_debug(1, "%s %s", __FUNCTION__, str);
+    clicon_debug(1, "%s %d %s", __FUNCTION__, yb, str);
     jy.jy_parse_string = str;
     jy.jy_linenum = 1;
     jy.jy_current = xt;
@@ -1174,12 +1175,16 @@ _json_parse(char          *str,
 	case YB_NONE:
 	    break;
 	case YB_PARENT:
-		if (xml_spec_populate0_parent(x, NULL) < 0)
+	    if ((ret = xml_spec_populate0_parent(x, xerr)) < 0)
 		    goto done;
+	    if (ret == 0)
+		failed++;
 	    break;
 	case YB_TOP:
-	    if (xml_spec_populate0(x, yspec, NULL) < 0)
+	    if (xml_spec_populate0(x, yspec, xerr) < 0)
 		goto done;
+	    if (ret == 0)
+		failed++;
 	    break;
 	}
 	/* Now find leafs with identityrefs (+transitive) and translate 
@@ -1191,7 +1196,7 @@ _json_parse(char          *str,
     }
     if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
 	goto done;
-    retval = 1;
+    retval = (failed==0) ? 1 : 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cberr)

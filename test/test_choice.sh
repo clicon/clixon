@@ -119,14 +119,16 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    sudo pkill -u $wwwuser -f clixon_restconf
 
-new "start restconf daemon"
-start_restconf -f $cfg
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
-new "waiting"
-wait_restconf
+    new "waiting"
+    wait_restconf
+fi
 
 # First vanilla (protocol) case
 new "netconf validate empty"
@@ -279,8 +281,10 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 new "netconf validate multiple error"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>mc</bad-element></error-info><error-severity>error</error-severity><error-message>Element in choice statement already exists</error-message></rpc-error></rpc-reply>]]>]]>$'
 
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE
