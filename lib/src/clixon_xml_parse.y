@@ -178,8 +178,8 @@ xml_parse_version(clixon_xml_yacc *ya,
  */
 static int
 xml_parse_prefixed_name(clixon_xml_yacc *ya,
-			char                      *prefix,
-			char                      *name)
+			char            *prefix,
+			char            *name)
 {
     int        retval = -1;
     cxobj     *x;
@@ -201,7 +201,8 @@ xml_parse_prefixed_name(clixon_xml_yacc *ya,
  done:
     if (prefix)
 	free(prefix);
-    free(name);
+    if (name)
+	free(name);
     return retval;
 }
 
@@ -242,8 +243,8 @@ xml_parse_endslash_post(clixon_xml_yacc *ya)
  */
 static int
 xml_parse_bslash(clixon_xml_yacc *ya, 
-		 char                      *prefix,
-		 char                      *name)
+		 char            *prefix,
+		 char            *name)
 {
     int    retval = -1;
     cxobj *x = ya->ya_xelement;
@@ -279,7 +280,10 @@ xml_parse_bslash(clixon_xml_yacc *ya,
     }
     retval = 0;
   done:
-    free(name);
+    if (prefix)
+	free(prefix);
+    if (name)
+	free(name);
     return retval;
 }
 
@@ -412,7 +416,7 @@ comment     : BCOMMENT ECOMMENT
 
 pi          : BQMARK NAME EQMARK {clicon_debug(2, "pi -> <? NAME ?>"); free($2); }
             | BQMARK NAME STRING EQMARK
-	    {clicon_debug(2, "pi -> <? NAME STRING ?>"); free($2); free($3);}
+ 	        { clicon_debug(2, "pi -> <? NAME STRING ?>"); free($2); free($3);}
             ;
 
 

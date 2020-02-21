@@ -1706,15 +1706,15 @@ xml_find_body_obj(cxobj *xt,
 int
 xml_free(cxobj *x)
 {
-    int i;
+    int    i;
     cxobj *xc;
 
     if (x->x_name)
 	free(x->x_name);
-    if (x->x_value_cb)
-	cbuf_free(x->x_value_cb);  
     if (x->x_prefix)
 	free(x->x_prefix);
+    if (x->x_value_cb)
+	cbuf_free(x->x_value_cb);  
     for (i=0; i<x->x_childvec_len; i++){
 	if ((xc = x->x_childvec[i]) != NULL){
 	    xml_free(xc);
@@ -2032,12 +2032,12 @@ _xml_parse(const char    *str,
 	   cxobj         *xt,
 	   cxobj        **xerr)
 {
-    int                       retval = -1;
+    int             retval = -1;
     clixon_xml_yacc ya = {0,};
-    cxobj                    *x;
-    int                       ret;
-    int                       failed = 0; /* yang assignment */
-    int                       i;
+    cxobj          *x;
+    int             ret;
+    int             failed = 0; /* yang assignment */
+    int             i;
 
     clicon_debug(1, "%s %s", __FUNCTION__, str);
     if (strlen(str) == 0)

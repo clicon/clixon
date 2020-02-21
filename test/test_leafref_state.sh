@@ -10,6 +10,7 @@
 # with different paths.
 # Using the -sS <file> state capability of the main example, that is why CLICON_BACKEND_DIR is
 # /usr/local/lib/$APPNAME/backend so that the main backend plugins is included.
+# These tests require VALIDATE_STATE_XML to be set
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

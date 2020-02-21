@@ -31,7 +31,7 @@ memonce(){
 	    perfnr=100 # test_perf.sh restconf put more or less stops
 	    perfreq=10
 
-	    clixon_backend="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=yes --log-file=$valgrindfile clixon_backend"
+	    clixon_backend="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=yes --log-file=$valgrindfile clixon_backend"
 	    ;;
 	'restconf')
 	    valgrindtest=3 # This means backend valgrind test
