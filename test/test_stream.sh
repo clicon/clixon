@@ -27,7 +27,8 @@ APPNAME=example
 : ${clixon_util_stream:=clixon_util_stream}
 NCWAIT=10 # Wait (netconf valgrind may need more time)
 
-DATE=$(date +"%Y-%m-%d")
+# Ensure UTC
+DATE=$(date -u +"%Y-%m-%d")
 
 cfg=$dir/conf.xml
 fyang=$dir/stream.yang
