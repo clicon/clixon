@@ -44,19 +44,19 @@
  * Types
  */
 /*! XML parser yacc handler struct */
-struct xml_parse_yacc_arg{
-    char       *ya_parse_string; /* original (copy of) parse string */
-    int         ya_linenum;      /* Number of \n in parsed buffer */
-    void       *ya_lexbuf;       /* internal parse buffer from lex */
-    cxobj      *ya_xtop;         /* cxobj top element (fixed) */
-    cxobj      *ya_xelement;     /* cxobj active element (changes with parse context) */
-    cxobj      *ya_xparent;      /* cxobj parent element (changes with parse context) */
-    yang_stmt  *ya_yspec;        /* If set, top-level yang-spec */
-    int         ya_lex_state;    /* lex return state */
-    cxobj     **ya_xvec;         /* Vector of created top-level nodes (to know which are created) */
-    size_t      ya_xlen;         /* Length of ya_xvec */
+struct clixon_xml_parse_yacc {
+    char       *xy_parse_string; /* original (copy of) parse string */
+    int         xy_linenum;      /* Number of \n in parsed buffer */
+    void       *xy_lexbuf;       /* internal parse buffer from lex */
+    cxobj      *xy_xtop;         /* cxobj top element (fixed) */
+    cxobj      *xy_xelement;     /* cxobj active element (changes with parse context) */
+    cxobj      *xy_xparent;      /* cxobj parent element (changes with parse context) */
+    yang_stmt  *xy_yspec;        /* If set, top-level yang-spec */
+    int         xy_lex_state;    /* lex return state */
+    cxobj     **xy_xvec;         /* Vector of created top-level nodes (to know which are created) */
+    size_t      xy_xlen;         /* Length of xy_xvec */
 };
-typedef struct xml_parse_yacc_arg clixon_xml_yacc;
+typedef struct clixon_xml_parse_yacc clixon_xml_yacc;
 
 extern char *clixon_xml_parsetext;
 

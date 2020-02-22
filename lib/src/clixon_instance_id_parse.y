@@ -88,7 +88,7 @@
 /* Here starts user C-code */
 
 /* typecast macro */
-#define _IY ((struct clicon_instance_id_yacc_arg *)_iy)
+#define _IY ((clixon_instance_id_yacc *)_iy)
 
 #define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_instance_id_parsetext, _IY->iy_linenum); YYERROR;}
 
@@ -138,13 +138,13 @@ clixon_instance_id_parseerror(void *_iy,
 }
 
 int
-instance_id_parse_init(struct clicon_instance_id_yacc_arg *iy)
+instance_id_parse_init(clixon_instance_id_yacc *iy)
 {
     return 0;
 }
 
 int
-instance_id_parse_exit(struct clicon_instance_id_yacc_arg *iy)
+instance_id_parse_exit(clixon_instance_id_yacc *iy)
 {
     return 0;
 }

@@ -2033,7 +2033,7 @@ _xml_parse(const char    *str,
 	   cxobj        **xerr)
 {
     int             retval = -1;
-    clixon_xml_yacc ya = {0,};
+    clixon_xml_yacc xy = {0,};
     cxobj          *x;
     int             ret;
     int             failed = 0; /* yang assignment */
@@ -2046,24 +2046,24 @@ _xml_parse(const char    *str,
 	clicon_err(OE_XML, errno, "Unexpected NULL XML");
 	return -1;	
     }
-    if ((ya.ya_parse_string = strdup(str)) == NULL){
+    if ((xy.xy_parse_string = strdup(str)) == NULL){
 	clicon_err(OE_XML, errno, "strdup");
 	return -1;
     }
-    ya.ya_xtop = xt;
-    ya.ya_xparent = xt;
-    ya.ya_yspec = yspec;
-    if (clixon_xml_parsel_init(&ya) < 0)
+    xy.xy_xtop = xt;
+    xy.xy_xparent = xt;
+    xy.xy_yspec = yspec;
+    if (clixon_xml_parsel_init(&xy) < 0)
 	goto done;    
-    if (clixon_xml_parseparse(&ya) != 0)  /* yacc returns 1 on error */
+    if (clixon_xml_parseparse(&xy) != 0)  /* yacc returns 1 on error */
 	goto done;
     /* Purge all top-level body objects */
     x = NULL;
     while ((x = xml_find_type(xt, NULL, "body", CX_BODY)) != NULL)
 	xml_purge(x);
     /* Traverse new objects */
-    for (i = 0; i < ya.ya_xlen; i++) {
-	x = ya.ya_xvec[i];
+    for (i = 0; i < xy.xy_xlen; i++) {
+	x = xy.xy_xvec[i];
 	/* Verify namespaces after parsing */
 	if (xml_apply0(x, CX_ELMNT, xml_localname_check, NULL) < 0)
 	    goto done;
@@ -2108,11 +2108,11 @@ _xml_parse(const char    *str,
 	goto done;
     retval = (failed==0) ? 1 : 0;
   done:
-    clixon_xml_parsel_exit(&ya);
-    if (ya.ya_parse_string != NULL)
-	free(ya.ya_parse_string);
-    if (ya.ya_xvec)
-	free(ya.ya_xvec);
+    clixon_xml_parsel_exit(&xy);
+    if (xy.xy_parse_string != NULL)
+	free(xy.xy_parse_string);
+    if (xy.xy_xvec)
+	free(xy.xy_xvec);
     return retval; 
 }
 

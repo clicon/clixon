@@ -82,16 +82,16 @@
 %type <stack>     predicates
 %type <stack>     primaryexpr
 
-%lex-param     {void *_xy} /* Add this argument to parse() and lex() function */
-%parse-param   {void *_xy}
+%lex-param     {void *_xpy} /* Add this argument to parse() and lex() function */
+%parse-param   {void *_xpy}
 
 %{
 /* Here starts user C-code */
 
 /* typecast macro */
-#define _XY ((struct clicon_xpath_yacc_arg *)_xy)
+#define _XPY ((clixon_xpath_yacc *)_xpy)
 
-#define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_xpath_parsetext, _XY->xy_linenum); YYERROR;}
+#define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_xpath_parsetext, _XPY->xpy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
 #define YY_(msgid) msgid 
@@ -131,26 +131,26 @@ extern int clixon_xpath_parseget_lineno  (void); /*XXX obsolete ? */
 */
 
 void 
-clixon_xpath_parseerror(void *_xy,
-		       char *s) 
+clixon_xpath_parseerror(void *_xpy,
+			char *s) 
 { 
     clicon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'", 
-	       _XY->xy_name,
-	       _XY->xy_linenum ,
+	       _XPY->xpy_name,
+	       _XPY->xpy_linenum ,
 	       s, 
 	       clixon_xpath_parsetext); 
   return;
 }
 
 int
-xpath_parse_init(struct clicon_xpath_yacc_arg *xy)
+xpath_parse_init(clixon_xpath_yacc *xpy)
 {
     //        clicon_debug_init(2, NULL);
     return 0;
 }
 
 int
-xpath_parse_exit(struct clicon_xpath_yacc_arg *xy)
+xpath_parse_exit(clixon_xpath_yacc *xpy)
 {
     return 0;
 }
@@ -197,8 +197,8 @@ xp_new(enum xp_type  type,
 /*
 */
 
-start       : expr X_EOF         { _XY->xy_top=$1;clicon_debug(2,"start->expr"); YYACCEPT; } 
-            | locationpath X_EOF { _XY->xy_top=$1;clicon_debug(2,"start->locationpath"); YYACCEPT; } 
+start       : expr X_EOF         { _XPY->xpy_top=$1;clicon_debug(2,"start->expr"); YYACCEPT; } 
+            | locationpath X_EOF { _XPY->xpy_top=$1;clicon_debug(2,"start->locationpath"); YYACCEPT; } 
             ;
 
 expr        : expr LOGOP andexpr { $$=xp_new(XP_EXP,$2,NULL,NULL,NULL,$1, $3);clicon_debug(2,"expr->expr or andexpr");  } 

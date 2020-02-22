@@ -40,7 +40,7 @@
  * Types
  */
 
-struct clixon_json_yacc_arg{ /* XXX: mostly unrelevant */
+struct clixon_json_yacc { 
     int        jy_linenum;      /* Number of \n in parsed buffer */
     char      *jy_parse_string; /* original (copy of) parse string */
     void      *jy_lexbuf;       /* internal parse buffer from lex */
@@ -49,7 +49,7 @@ struct clixon_json_yacc_arg{ /* XXX: mostly unrelevant */
     cxobj    **jy_xvec;         /* Vector of created top-level nodes (to know which are created) */
     size_t     jy_xlen;         /* Length of jy_xvec */
 };
-typedef struct clixon_json_yacc_arg clixon_json_yacc;
+typedef struct clixon_json_yacc clixon_json_yacc;
 
 /*
  * Variables

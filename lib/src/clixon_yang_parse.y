@@ -161,7 +161,7 @@
 /* Here starts user C-code */
 
 /* typecast macro */
-#define _YY ((struct clicon_yang_yacc_arg *)_yy)
+#define _YY ((clixon_yang_yacc *)_yy)
 
 #define _YYERROR(msg) {clicon_debug(2, "YYERROR %s '%s' %d", (msg), clixon_yang_parsetext, _YY->yy_linenum); YYERROR;}
 
@@ -218,14 +218,14 @@ clixon_yang_parseerror(void *_yy,
 }
 
 int
-    yang_parse_init(struct clicon_yang_yacc_arg *yy)
+    yang_parse_init(clixon_yang_yacc *yy)
 {
     return 0;
 }
 
 
 int
-yang_parse_exit(struct clicon_yang_yacc_arg *yy)
+yang_parse_exit(clixon_yang_yacc *yy)
 {
     return 0;
 }
@@ -234,7 +234,7 @@ yang_parse_exit(struct clicon_yang_yacc_arg *yy)
  * @param[in]  yy        Yang yacc argument
  */
 int
-ystack_pop(struct clicon_yang_yacc_arg *yy)
+ystack_pop(clixon_yang_yacc *yy)
 {
     struct ys_stack *ystack; 
 
@@ -252,8 +252,8 @@ ystack_pop(struct clicon_yang_yacc_arg *yy)
  * @param[in]  yn        Yang node to push
  */
 struct ys_stack *
-ystack_push(struct clicon_yang_yacc_arg *yy,
-	    yang_stmt                   *yn)
+ystack_push(clixon_yang_yacc *yy,
+	    yang_stmt        *yn)
 {
     struct ys_stack *ystack; 
 
@@ -278,10 +278,10 @@ ystack_push(struct clicon_yang_yacc_arg *yy,
  * @note consumes 'argument' and 'extra' which assumes it is malloced and not freed by caller
  */
 static yang_stmt *
-ysp_add(struct clicon_yang_yacc_arg *yy, 
-	enum rfc_6020                keyword, 
-	char                        *argument,
-    	char                        *extra)
+ysp_add(clixon_yang_yacc *yy, 
+	enum rfc_6020     keyword, 
+	char             *argument,
+    	char             *extra)
 {
     struct ys_stack *ystack = yy->yy_stack;
     yang_stmt       *ys = NULL;
@@ -321,10 +321,10 @@ ysp_add(struct clicon_yang_yacc_arg *yy,
  * @param[in]  extra     Yang extra for cornercases (unknown/extension)
  */
 static yang_stmt *
-ysp_add_push(struct clicon_yang_yacc_arg *yy,
-	     enum rfc_6020                keyword, 
-	     char                        *argument,
-    	     char                        *extra)
+ysp_add_push(clixon_yang_yacc *yy,
+	     enum rfc_6020     keyword, 
+	     char             *argument,
+    	     char             *extra)
 {
     yang_stmt *ys;
 

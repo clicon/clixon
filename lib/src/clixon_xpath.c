@@ -486,20 +486,20 @@ int
 xpath_parse(char        *xpath,
 	    xpath_tree **xptree)
 {
-    int                          retval = -1;
-    struct clicon_xpath_yacc_arg xy = {0,};
-    cbuf                        *cb = NULL;    
+    int               retval = -1;
+    clixon_xpath_yacc xpy = {0,};
+    cbuf             *cb = NULL;    
 
-    xy.xy_parse_string = xpath;
-    xy.xy_name = "xpath parser";
-    xy.xy_linenum = 1;
-    if (xpath_scan_init(&xy) < 0)
+    xpy.xpy_parse_string = xpath;
+    xpy.xpy_name = "xpath parser";
+    xpy.xpy_linenum = 1;
+    if (xpath_scan_init(&xpy) < 0)
 	goto done;
-    if (xpath_parse_init(&xy) < 0)
+    if (xpath_parse_init(&xpy) < 0)
 	goto done;
     clicon_debug(2,"%s",__FUNCTION__);
-    if (clixon_xpath_parseparse(&xy) != 0) { /* yacc returns 1 on error */
-	clicon_log(LOG_NOTICE, "XPATH error: on line %d", xy.xy_linenum);
+    if (clixon_xpath_parseparse(&xpy) != 0) { /* yacc returns 1 on error */
+	clicon_log(LOG_NOTICE, "XPATH error: on line %d", xpy.xpy_linenum);
 	if (clicon_errno == 0)
 	    clicon_err(OE_XML, 0, "XPATH parser error with no error code (should not happen)");
 	goto done;
@@ -509,12 +509,12 @@ xpath_parse(char        *xpath,
 	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}
-	xpath_tree_print_cb(cb, xy.xy_top);
+	xpath_tree_print_cb(cb, xpy.xpy_top);
 	clicon_debug(2, "xpath parse tree:\n%s", cbuf_get(cb));
     }
-    xpath_parse_exit(&xy);
-    xpath_scan_exit(&xy);
-    *xptree = xy.xy_top;
+    xpath_parse_exit(&xpy);
+    xpath_scan_exit(&xpy);
+    *xptree = xpy.xpy_top;
     retval = 0;
  done:
     if (cb)

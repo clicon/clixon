@@ -54,13 +54,13 @@
 
 %type <string> attvalue 
 
-%lex-param     {void *_ya} /* Add this argument to parse() and lex() function */
-%parse-param   {void *_ya}
+%lex-param     {void *_xy} /* Add this argument to parse() and lex() function */
+%parse-param   {void *_xy}
 
 %{
 
 /* typecast macro */
-#define _YA ((clixon_xml_yacc *)_ya)
+#define _XY ((clixon_xml_yacc *)_xy)
 
 #include <stdio.h>
 #include <stdint.h>
@@ -84,11 +84,11 @@
 #include "clixon_xml_parse.h"
 
 void 
-clixon_xml_parseerror(void *_ya,
+clixon_xml_parseerror(void *_xy,
 		      char *s) 
 { 
     clicon_err(OE_XML, XMLPARSE_ERRNO, "xml_parse: line %d: %s: at or before: %s", 
-	       _YA->ya_linenum,
+	       _XY->xy_linenum,
 	       s,
 	       clixon_xml_parsetext); 
     return;
@@ -99,14 +99,14 @@ clixon_xml_parseerror(void *_ya,
  * there may also be some leakage here on NULL return
  */
 static int
-xml_parse_content(clixon_xml_yacc *ya, 
-		  char                      *str)
+xml_parse_content(clixon_xml_yacc *xy, 
+		  char            *str)
 {
-    cxobj *xn = ya->ya_xelement;
-    cxobj *xp = ya->ya_xparent;
+    cxobj *xn = xy->xy_xelement;
+    cxobj *xp = xy->xy_xparent;
     int    retval = -1;
 
-    ya->ya_xelement = NULL; /* init */
+    xy->xy_xelement = NULL; /* init */
     if (xn == NULL){
 	if ((xn = xml_new("body", xp, NULL)) == NULL)
 	    goto done; 
@@ -114,7 +114,7 @@ xml_parse_content(clixon_xml_yacc *ya,
     }
     if (xml_value_append(xn, str) < 0)
 	goto done; 
-    ya->ya_xelement = xn;
+    xy->xy_xelement = xn;
     retval = 0;
   done:
     return retval;
@@ -125,15 +125,15 @@ xml_parse_content(clixon_xml_yacc *ya,
  * But if there is an element, then skip all whitespace.
  */
 static int
-xml_parse_whitespace(clixon_xml_yacc *ya,
-		     char                      *str)
+xml_parse_whitespace(clixon_xml_yacc *xy,
+		     char            *str)
 {
-    cxobj *xn = ya->ya_xelement;
-    cxobj *xp = ya->ya_xparent;
+    cxobj *xn = xy->xy_xelement;
+    cxobj *xp = xy->xy_xparent;
     int    retval = -1;
     int    i;
 
-    ya->ya_xelement = NULL; /* init */
+    xy->xy_xelement = NULL; /* init */
     /* If there is an element already, only add one whitespace child 
      * otherwise, keep all whitespace. See code in xml_parse_bslash
      */
@@ -148,7 +148,7 @@ xml_parse_whitespace(clixon_xml_yacc *ya,
     }
     if (xml_value_append(xn, str) < 0)
 	goto done; 
-    ya->ya_xelement = xn;
+    xy->xy_xelement = xn;
  ok:
     retval = 0;
   done:
@@ -156,8 +156,8 @@ xml_parse_whitespace(clixon_xml_yacc *ya,
 }
  
 static int
-xml_parse_version(clixon_xml_yacc *ya,
-		  char                      *ver)
+xml_parse_version(clixon_xml_yacc *xy,
+		  char            *ver)
 {
     if(strcmp(ver, "1.0")){
 	clicon_err(OE_XML, XMLPARSE_ERRNO, "Wrong XML version %s expected 1.0", ver);
@@ -172,12 +172,12 @@ xml_parse_version(clixon_xml_yacc *ya,
 /*! Parse Qualified name -> (Un)PrefixedName
  *
  * This is where all (parsed) xml elements are created
- * @param[in] ya        XML parser yacc handler struct 
+ * @param[in] xy        XML parser yacc handler struct 
  * @param[in] prefix    Prefix, namespace, or NULL
  * @param[in] localpart Name
  */
 static int
-xml_parse_prefixed_name(clixon_xml_yacc *ya,
+xml_parse_prefixed_name(clixon_xml_yacc *xy,
 			char            *prefix,
 			char            *name)
 {
@@ -185,16 +185,16 @@ xml_parse_prefixed_name(clixon_xml_yacc *ya,
     cxobj     *x;
     cxobj     *xp;      /* xml parent */ 
 
-    xp = ya->ya_xparent;
+    xp = xy->xy_xparent;
     if ((x = xml_new(name, xp, NULL)) == NULL) 
 	goto done;
     xml_type_set(x, CX_ELMNT);
     if (prefix && xml_prefix_set(x, prefix) < 0)
 	goto done;
-    ya->ya_xelement = x;
+    xy->xy_xelement = x;
     /* If topmost, add to top-list created list */
-    if (xp == ya->ya_xtop){
-	if (cxvec_append(x, &ya->ya_xvec, &ya->ya_xlen) < 0)
+    if (xp == xy->xy_xtop){
+	if (cxvec_append(x, &xy->xy_xvec, &xy->xy_xlen) < 0)
 	    goto done;
     }
     retval = 0;
@@ -207,28 +207,28 @@ xml_parse_prefixed_name(clixon_xml_yacc *ya,
 }
 
 static int
-xml_parse_endslash_pre(clixon_xml_yacc *ya)
+xml_parse_endslash_pre(clixon_xml_yacc *xy)
 {
-    ya->ya_xparent = ya->ya_xelement;
-    ya->ya_xelement = NULL;
+    xy->xy_xparent = xy->xy_xelement;
+    xy->xy_xelement = NULL;
     return 0;
 }
 
 static int
-xml_parse_endslash_mid(clixon_xml_yacc *ya)
+xml_parse_endslash_mid(clixon_xml_yacc *xy)
 {
-    if (ya->ya_xelement != NULL)
-	ya->ya_xelement = xml_parent(ya->ya_xelement);
+    if (xy->xy_xelement != NULL)
+	xy->xy_xelement = xml_parent(xy->xy_xelement);
     else
-	ya->ya_xelement = ya->ya_xparent;
-    ya->ya_xparent = xml_parent(ya->ya_xelement);
+	xy->xy_xelement = xy->xy_xparent;
+    xy->xy_xparent = xml_parent(xy->xy_xelement);
     return 0;
 }
 
 static int
-xml_parse_endslash_post(clixon_xml_yacc *ya)
+xml_parse_endslash_post(clixon_xml_yacc *xy)
 {
-    ya->ya_xelement = NULL;
+    xy->xy_xelement = NULL;
     return 0;
 }
 
@@ -237,17 +237,17 @@ xml_parse_endslash_post(clixon_xml_yacc *ya)
  * Any whitespace between the subelements to a non-leaf is
  * insignificant, i.e., an implementation MAY insert whitespace
  * characters between subelements and are therefore stripped, but see comment in code below.
- * @param[in] ya      XML parser yacc handler struct 
+ * @param[in] xy      XML parser yacc handler struct 
  * @param[in] prefix  
  * @param[in] name
  */
 static int
-xml_parse_bslash(clixon_xml_yacc *ya, 
+xml_parse_bslash(clixon_xml_yacc *xy, 
 		 char            *prefix,
 		 char            *name)
 {
     int    retval = -1;
-    cxobj *x = ya->ya_xelement;
+    cxobj *x = xy->xy_xelement;
     cxobj *xc;
     char  *prefix0;
     char  *name0;
@@ -293,16 +293,16 @@ xml_parse_bslash(clixon_xml_yacc *ya,
  *  - PrefixedAttName: xmlns:NAME 
  */
 static int
-xml_parse_attr(clixon_xml_yacc *ya,
-	       char                      *prefix,
-	       char                      *name,
-	       char                      *attval)
+xml_parse_attr(clixon_xml_yacc *xy,
+	       char            *prefix,
+	       char            *name,
+	       char            *attval)
 {
     int    retval = -1;
     cxobj *xa = NULL; 
 
-    if ((xa = xml_find_type(ya->ya_xelement, prefix, name, CX_ATTR)) == NULL){
-	if ((xa = xml_new(name, ya->ya_xelement, NULL)) == NULL)
+    if ((xa = xml_find_type(xy->xy_xelement, prefix, name, CX_ATTR)) == NULL){
+	if ((xa = xml_new(name, xy->xy_xelement, NULL)) == NULL)
 	    goto done;
 	xml_type_set(xa, CX_ATTR);
 	if (prefix && xml_prefix_set(xa, prefix) < 0)
@@ -352,10 +352,10 @@ xmldcl      : BXMLDCL verinfo encodingdecl sddecl EQMARK
             ;
 
 verinfo     : VER '=' '\"' STRING '\"' 
-                 { if (xml_parse_version(_YA, $4) <0) YYABORT;
+                 { if (xml_parse_version(_XY, $4) <0) YYABORT;
 		     clicon_debug(2, "verinfo->version=\"STRING\"");}
             | VER '=' '\'' STRING '\'' 
-         	 { if (xml_parse_version(_YA, $4) <0) YYABORT;
+         	 { if (xml_parse_version(_XY, $4) <0) YYABORT;
 		     clicon_debug(2, "verinfo->version='STRING'");}
             ;
 
@@ -373,26 +373,26 @@ element     : '<' qname  attrs element1
                    { clicon_debug(2, "element -> < qname attrs element1"); }
 	    ;
 
-qname       : NAME           { if (xml_parse_prefixed_name(_YA, NULL, $1) < 0) YYABORT; 
+qname       : NAME           { if (xml_parse_prefixed_name(_XY, NULL, $1) < 0) YYABORT; 
                                 clicon_debug(2, "qname -> NAME %s", $1);}
-            | NAME ':' NAME  { if (xml_parse_prefixed_name(_YA, $1, $3) < 0) YYABORT; 
+            | NAME ':' NAME  { if (xml_parse_prefixed_name(_XY, $1, $3) < 0) YYABORT; 
                                 clicon_debug(2, "qname -> NAME : NAME");}
             ;
 
-element1    :  ESLASH         {_YA->ya_xelement = NULL; 
+element1    :  ESLASH         {_XY->xy_xelement = NULL; 
                                clicon_debug(2, "element1 -> />");} 
-            | '>'             { xml_parse_endslash_pre(_YA); }
-              elist           { xml_parse_endslash_mid(_YA); }
-              endtag          { xml_parse_endslash_post(_YA); 
+            | '>'             { xml_parse_endslash_pre(_XY); }
+              elist           { xml_parse_endslash_mid(_XY); }
+              endtag          { xml_parse_endslash_post(_XY); 
                                clicon_debug(2, "element1 -> > elist endtag");} 
             ;
 
 endtag      : BSLASH NAME '>'          
                        { clicon_debug(2, "endtag -> < </ NAME>");
-			   if (xml_parse_bslash(_YA, NULL, $2) < 0) YYABORT; }
+			   if (xml_parse_bslash(_XY, NULL, $2) < 0) YYABORT; }
 
             | BSLASH NAME ':' NAME '>' 
-                       { if (xml_parse_bslash(_YA, $2, $4) < 0) YYABORT; 
+                       { if (xml_parse_bslash(_XY, $2, $4) < 0) YYABORT; 
 			 clicon_debug(2, "endtag -> < </ NAME:NAME >"); }
             ;
 
@@ -404,9 +404,9 @@ elist       : elist content { clicon_debug(2, "elist -> elist content"); }
 content     : element      { clicon_debug(2, "content -> element"); }
             | comment      { clicon_debug(2, "content -> comment"); }
             | pi           { clicon_debug(2, "content -> pi"); }
-            | CHARDATA     { if (xml_parse_content(_YA, $1) < 0) YYABORT;  
+            | CHARDATA     { if (xml_parse_content(_XY, $1) < 0) YYABORT;  
                              clicon_debug(2, "content -> CHARDATA %s", $1); }
-            | WHITESPACE   { if (xml_parse_whitespace(_YA, $1) < 0) YYABORT;  
+            | WHITESPACE   { if (xml_parse_whitespace(_XY, $1) < 0) YYABORT;  
                              clicon_debug(2, "content -> WHITESPACE %s", $1); }
             |              { clicon_debug(2, "content -> "); }
             ;
@@ -424,8 +424,8 @@ attrs       : attrs attr
             |
             ;
 
-attr        : NAME '=' attvalue          { if (xml_parse_attr(_YA, NULL, $1, $3) < 0) YYABORT; }
-            | NAME ':' NAME '=' attvalue { if (xml_parse_attr(_YA, $1, $3, $5) < 0) YYABORT; }
+attr        : NAME '=' attvalue          { if (xml_parse_attr(_XY, NULL, $1, $3) < 0) YYABORT; }
+            | NAME ':' NAME '=' attvalue { if (xml_parse_attr(_XY, $1, $3, $5) < 0) YYABORT; }
             ;
 
 attvalue    : '\"' STRING '\"'   { $$=$2; /* $2 must be consumed */}

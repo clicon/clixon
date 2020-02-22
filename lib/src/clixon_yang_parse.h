@@ -50,7 +50,7 @@ struct ys_stack{
     yang_stmt       *ys_node;
 };
 
-struct clicon_yang_yacc_arg{ /* XXX: mostly unrelevant */
+struct clixon_yang_yacc {
     char                 *yy_name;         /* Name of syntax, typically filename 
 					      (for error string) */
     int                   yy_linenum;      /* Number of \n in parsed buffer */
@@ -59,9 +59,9 @@ struct clicon_yang_yacc_arg{ /* XXX: mostly unrelevant */
     struct ys_stack      *yy_stack;     /* Stack of levels: push/pop on () and [] */
     int                   yy_lex_state;  /* lex start condition (ESCAPE/COMMENT) */
     int                   yy_lex_string_state; /* lex start condition (STRING) */
-    yang_stmt            *yy_module;       /* top-level (sub)module - return value of 
-					      parser */
+    yang_stmt            *yy_module;       /* top-level (sub)module - return value of parser */
 };
+typedef struct clixon_yang_yacc clixon_yang_yacc;
 
 /* This is a malloced piece of code we attach to cligen objects used as db-specs.
  * So if(when) we translate cg_obj to yang_obj (or something). These are the fields
@@ -86,17 +86,17 @@ extern char *clixon_yang_parsetext;
 /*
  * Prototypes
  */
-int yang_scan_init(struct clicon_yang_yacc_arg *ya);
-int yang_scan_exit(struct clicon_yang_yacc_arg *ya);
+int yang_scan_init(clixon_yang_yacc *ya);
+int yang_scan_exit(clixon_yang_yacc *ya);
 
-int yang_parse_init(struct clicon_yang_yacc_arg *ya);
-int yang_parse_exit(struct clicon_yang_yacc_arg *ya);
+int yang_parse_init(clixon_yang_yacc *ya);
+int yang_parse_exit(clixon_yang_yacc *ya);
 
 int clixon_yang_parselex(void *_ya);
 int clixon_yang_parseparse(void *);
 void clixon_yang_parseerror(void *_ya, char*);
 
-int ystack_pop(struct clicon_yang_yacc_arg *ya);
-struct ys_stack *ystack_push(struct clicon_yang_yacc_arg *ya, yang_stmt *yn);
+int ystack_pop(clixon_yang_yacc *ya);
+struct ys_stack *ystack_push(clixon_yang_yacc *ya, yang_stmt *yn);
 
 #endif	/* _CLIXON_YANG_PARSE_H_ */

@@ -79,7 +79,7 @@
 #define YY_NO_INPUT
 
 /* typecast macro */
-#define _AY ((struct clicon_api_path_yacc_arg *)_ay)
+#define _AY ((clixon_api_path_yacc *)_ay)
 
 #define     MAXBUF  4*4*64*1024
 
@@ -124,7 +124,7 @@ identifier {namestart}{namechar}*
 /*! Initialize scanner.
  */
 int
-api_path_scan_init(struct clicon_api_path_yacc_arg *ay)
+api_path_scan_init(clixon_api_path_yacc *ay)
 {
   BEGIN(INIT);
   ay->ay_lexbuf = yy_scan_string(ay->ay_parse_string);
@@ -141,7 +141,7 @@ api_path_scan_init(struct clicon_api_path_yacc_arg *ay)
  * Even within Flex version 2.5 (this is assumed), freeing buffers is different.
  */
 int
-api_path_scan_exit(struct clicon_api_path_yacc_arg *ay)
+api_path_scan_exit(clixon_api_path_yacc *ay)
 {
     yy_delete_buffer(ay->ay_lexbuf);
     clixon_api_path_parselex_destroy();  /* modern */

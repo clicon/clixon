@@ -119,8 +119,8 @@ static int
 api_path_parse(char         *api_path,
 	       clixon_path **cplist)
 {
-    int                          retval = -1;
-    struct clicon_api_path_yacc_arg ay = {0,};
+    int                  retval = -1;
+    clixon_api_path_yacc ay = {0,};
 
     clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
     ay.ay_parse_string = api_path;
@@ -164,8 +164,8 @@ static int
 instance_id_parse(char         *path,
 		  clixon_path **cplist)
 {
-    int                          retval = -1;
-    struct clicon_instance_id_yacc_arg iy = {0,};
+    int                     retval = -1;
+    clixon_instance_id_yacc iy = {0,};
 
     clicon_debug(1, "%s path:%s", __FUNCTION__, path);
     iy.iy_parse_string = path;

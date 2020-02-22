@@ -450,8 +450,8 @@ yang_parse_str(char         *str,
 	       const char   *name, /* just for errs */
 	       yang_stmt    *yspec)
 {
-    struct clicon_yang_yacc_arg yy = {0,};
-    yang_stmt                  *ymod = NULL;
+    clixon_yang_yacc yy = {0,};
+    yang_stmt       *ymod = NULL;
 
     if (yspec == NULL){
 	clicon_err(OE_YANG, 0, "Yang parse need top level yang spec");

@@ -80,7 +80,7 @@
 /* Here starts user C-code */
 
 /* typecast macro */
-#define _AY ((struct clicon_api_path_yacc_arg *)_ay)
+#define _AY ((clixon_api_path_yacc *)_ay)
 
 #define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_api_path_parsetext, _AY->ay_linenum); YYERROR;}
 
@@ -130,13 +130,13 @@ clixon_api_path_parseerror(void *_ay,
 }
 
 int
-api_path_parse_init(struct clicon_api_path_yacc_arg *ay)
+api_path_parse_init(clixon_api_path_yacc *ay)
 {
     return 0;
 }
 
 int
-api_path_parse_exit(struct clicon_api_path_yacc_arg *ay)
+api_path_parse_exit(clixon_api_path_yacc *ay)
 {
     return 0;
 }

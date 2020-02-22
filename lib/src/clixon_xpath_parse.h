@@ -39,13 +39,14 @@
 /*
  * Types
  */
-struct clicon_xpath_yacc_arg{ 
-    const char           *xy_name;         /* Name of syntax (for error string) */
-    int                   xy_linenum;      /* Number of \n in parsed buffer */
-    char                 *xy_parse_string; /* original (copy of) parse string */
-    void                 *xy_lexbuf;       /* internal parse buffer from lex */
-    xpath_tree           *xy_top;
+struct clixon_xpath_yacc{ 
+    const char           *xpy_name;         /* Name of syntax (for error string) */
+    int                   xpy_linenum;      /* Number of \n in parsed buffer */
+    char                 *xpy_parse_string; /* original (copy of) parse string */
+    void                 *xpy_lexbuf;       /* internal parse buffer from lex */
+    xpath_tree           *xpy_top;
 };
+typedef struct clixon_xpath_yacc clixon_xpath_yacc;
 
 /*
  * Variables
@@ -55,11 +56,11 @@ extern char *clixon_xpath_parsetext;
 /*
  * Prototypes
  */
-int xpath_scan_init(struct clicon_xpath_yacc_arg *xy);
-int xpath_scan_exit(struct clicon_xpath_yacc_arg *xy);
+int xpath_scan_init(clixon_xpath_yacc *xy);
+int xpath_scan_exit(clixon_xpath_yacc *xy);
 
-int xpath_parse_init(struct clicon_xpath_yacc_arg *xy);
-int xpath_parse_exit(struct clicon_xpath_yacc_arg *xy);
+int xpath_parse_init(clixon_xpath_yacc *xy);
+int xpath_parse_exit(clixon_xpath_yacc *xy);
 
 int clixon_xpath_parselex(void *);
 int clixon_xpath_parseparse(void *);

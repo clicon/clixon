@@ -39,7 +39,7 @@
 /*
  * Types
  */
-struct clicon_instance_id_yacc_arg{ 
+struct clixon_instance_id_yacc { 
     const char   *iy_name;         /* Name of syntax (for error string) */
     int           iy_linenum;      /* Number of \n in parsed buffer */
     char         *iy_parse_string; /* original (copy of) parse string */
@@ -47,6 +47,7 @@ struct clicon_instance_id_yacc_arg{
     clixon_path  *iy_top;
     int           iy_lex_state;    /* lex return state */
 };
+typedef struct clixon_instance_id_yacc clixon_instance_id_yacc;
 
 /*
  * Variables
@@ -56,11 +57,11 @@ extern char *clixon_instance_id_parsetext;
 /*
  * Prototypes
  */
-int instance_id_scan_init(struct clicon_instance_id_yacc_arg *);
-int instance_id_scan_exit(struct clicon_instance_id_yacc_arg *);
+int instance_id_scan_init(clixon_instance_id_yacc *);
+int instance_id_scan_exit(clixon_instance_id_yacc *);
 
-int instance_id_parse_init(struct clicon_instance_id_yacc_arg *);
-int instance_id_parse_exit(struct clicon_instance_id_yacc_arg *);
+int instance_id_parse_init(clixon_instance_id_yacc *);
+int instance_id_parse_exit(clixon_instance_id_yacc *);
 
 int clixon_instance_id_parselex(void *);
 int clixon_instance_id_parseparse(void *);

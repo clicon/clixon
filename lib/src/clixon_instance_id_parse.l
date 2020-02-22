@@ -76,7 +76,7 @@
 #define YY_NO_INPUT
 
 /* typecast macro */
-#define _IY ((struct clicon_instance_id_yacc_arg *)_iy)
+#define _IY ((clixon_instance_id_yacc *)_iy)
 
 #define     MAXBUF  4*4*64*1024
 
@@ -131,7 +131,7 @@ uint       [1-9][0-9]*
 /*! Initialize scanner.
  */
 int
-instance_id_scan_init(struct clicon_instance_id_yacc_arg *iy)
+instance_id_scan_init(clixon_instance_id_yacc *iy)
 {
   BEGIN(INIT);
   iy->iy_lexbuf = yy_scan_string(iy->iy_parse_string);
@@ -148,7 +148,7 @@ instance_id_scan_init(struct clicon_instance_id_yacc_arg *iy)
  * Even within Flex version 2.5 (this is assumed), freeing buffers is different.
  */
 int
-instance_id_scan_exit(struct clicon_instance_id_yacc_arg *iy)
+instance_id_scan_exit(clixon_instance_id_yacc *iy)
 {
     yy_delete_buffer(iy->iy_lexbuf);
     clixon_instance_id_parselex_destroy();  /* modern */

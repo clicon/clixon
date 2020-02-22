@@ -39,13 +39,14 @@
 /*
  * Types
  */
-struct clicon_api_path_yacc_arg{ 
+struct clixon_api_path_yacc { 
     const char   *ay_name;         /* Name of syntax (for error string) */
     int           ay_linenum;      /* Number of \n in parsed buffer */
     char         *ay_parse_string; /* original (copy of) parse string */
     void         *ay_lexbuf;       /* internal parse buffer from lex */
     clixon_path  *ay_top;
 };
+typedef struct clixon_api_path_yacc clixon_api_path_yacc;
 
 /*
  * Variables
@@ -55,11 +56,11 @@ extern char *clixon_api_path_parsetext;
 /*
  * Prototypes
  */
-int api_path_scan_init(struct clicon_api_path_yacc_arg *);
-int api_path_scan_exit(struct clicon_api_path_yacc_arg *);
+int api_path_scan_init(clixon_api_path_yacc *);
+int api_path_scan_exit(clixon_api_path_yacc *);
 
-int api_path_parse_init(struct clicon_api_path_yacc_arg *);
-int api_path_parse_exit(struct clicon_api_path_yacc_arg *);
+int api_path_parse_init(clixon_api_path_yacc *);
+int api_path_parse_exit(clixon_api_path_yacc *);
 
 int clixon_api_path_parselex(void *);
 int clixon_api_path_parseparse(void *);

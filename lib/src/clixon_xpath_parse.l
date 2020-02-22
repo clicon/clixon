@@ -66,7 +66,7 @@
 #define YY_NO_INPUT
 
 /* typecast macro */
-#define _XY ((struct clicon_xpath_yacc_arg *)_yy)
+#define _XPY ((clixon_xpath_yacc *)_yy)
 
 #define     MAXBUF  4*4*64*1024
 
@@ -93,7 +93,7 @@ ncname     {namestart}{namechar}*
 
 %%
 <TOKEN>[ \t]            
-<TOKEN>\n               { _XY->xy_linenum++; }
+<TOKEN>\n               { _XPY->xpy_linenum++; }
 <TOKEN>\r               { }
 <TOKEN><<EOF>>          { return X_EOF; }
 <TOKEN>".."             { return DOUBLEDOT; }
@@ -161,10 +161,10 @@ ncname     {namestart}{namechar}*
 /*! Initialize scanner.
  */
 int
-xpath_scan_init(struct clicon_xpath_yacc_arg *xy)
+xpath_scan_init(clixon_xpath_yacc *xpy)
 {
   BEGIN(TOKEN);
-  xy->xy_lexbuf = yy_scan_string (xy->xy_parse_string);
+  xpy->xpy_lexbuf = yy_scan_string (xpy->xpy_parse_string);
 #if 1 /* XXX: just to use unput to avoid warning  */
   if (0)
     yyunput(0, ""); 
@@ -178,9 +178,9 @@ xpath_scan_init(struct clicon_xpath_yacc_arg *xy)
  * Even within Flex version 2.5 (this is assumed), freeing buffers is different.
  */
 int
-xpath_scan_exit(struct clicon_xpath_yacc_arg *xy)
+xpath_scan_exit(clixon_xpath_yacc *xpy)
 {
-    yy_delete_buffer(xy->xy_lexbuf);
+    yy_delete_buffer(xpy->xpy_lexbuf);
     clixon_xpath_parselex_destroy();  /* modern */
     return 0;
 }
