@@ -210,12 +210,8 @@ api_data_get2(clicon_handle h,
      * We need to cut that tree to only the object.
      */
 #if 0 /* DEBUG */
-    if (debug){
-	cbuf *cb = cbuf_new();
-	clicon_xml2cbuf(cb, xret, 0, 0, -1);
-	clicon_debug(1, "%s xret:%s", __FUNCTION__, cbuf_get(cb));
-	cbuf_free(cb);
-    }
+    if (debug)
+	clicon_log_xml(LOG_DEBUG, xret, "%s xret:", __FUNCTION__);
 #endif
     /* Check if error return  */
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){

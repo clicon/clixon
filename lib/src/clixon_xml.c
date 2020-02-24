@@ -173,7 +173,7 @@ uint64_t _stats_nr = 0;
 /*! Get global statistics about XML objects
  */
 int
-xml_stats_get(uint64_t *nr)
+xml_stats_global(uint64_t *nr)
 {
     if (nr)
 	*nr = _stats_nr;
@@ -187,8 +187,8 @@ xml_stats_get(uint64_t *nr)
  * (baseline: 96 bytes per object on x86-64)
  */
 static int
-xml_size_one(cxobj  *x,
-	     size_t *szp)
+xml_stats_one(cxobj    *x,
+	      size_t   *szp)
 {
     size_t sz = 0;
 
@@ -209,24 +209,26 @@ xml_size_one(cxobj  *x,
     return 0;
 }
 
-/*! Return the alloced memory of a XML obj tree recursively
+/*! Return statistics of an XML tree recursively
  * @param[in]   x    XML object
  * @param[out]  szp  Size of this XML obj recursively
  * @retval      0    OK
  */
 size_t
-xml_size(cxobj  *xt,
-	 size_t *szp)
+xml_stats(cxobj    *xt,
+	  uint64_t *nrp,
+	  size_t   *szp)
 {
     size_t sz = 0;
     cxobj *xc;
 
-    xml_size_one(xt, &sz);
+    *nrp += 1;
+    xml_stats_one(xt, &sz);
     if (szp)
 	*szp += sz;
     xc = NULL;
     while ((xc = xml_child_each(xt, xc, -1)) != NULL) {
-	xml_size(xc, &sz);
+	xml_stats(xc, nrp, &sz);
 	if (szp)
 	    *szp += sz;
     }
@@ -1738,8 +1740,6 @@ xml_free(cxobj *x)
 
 /*! Print an XML tree structure to an output stream and encode chars "<>&"
  *
- * Uses clicon_xml2cbuf internally
- *
  * @param[in]   f           UNIX output stream
  * @param[in]   xn          clicon xml tree
  * @param[in]   level       how many spaces to insert before each line
@@ -2070,6 +2070,8 @@ _xml_parse(const char    *str,
 	/* Populate, ie associate xml nodes with yang specs 
 	 */
 	switch (yb){
+	case YB_RPC:
+	case YB_UNKNOWN:
 	case YB_NONE:
 	    break;
 	case YB_PARENT:
@@ -2325,7 +2327,8 @@ xml_parse_string2(const char    *str,
  * @see xml_parse_file
  * @see xml_parse_va
  * @note You need to free the xml parse tree after use, using xml_free()
- * @note If empty on entry, a new TOP xml will be created named "top"
+ * @note If xt is empty on entry, a new TOP xml will be created named "top" and yang binding 
+ *       assumed to be TOP
  */
 int 
 xml_parse_string(const char *str, 

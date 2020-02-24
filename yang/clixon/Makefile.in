@@ -42,6 +42,7 @@ datarootdir     = @datarootdir@
 YANG_INSTALLDIR   = @YANG_INSTALLDIR@
 
 YANGSPECS	 = clixon-config@2019-09-11.yang
+YANGSPECS	+= clixon-config@2020-02-22.yang
 YANGSPECS	+= clixon-lib@2019-08-13.yang
 YANGSPECS	+= clixon-rfc5277@2008-07-01.yang
 YANGSPECS	+= clixon-xml-changelog@2019-03-21.yang

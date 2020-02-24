@@ -50,6 +50,7 @@ int xml2json(FILE *f, cxobj *x, int pretty);
 int json_print(FILE *f, cxobj *x);
 int xml2json_vec(FILE *f, cxobj **vec, size_t veclen, int pretty);
 int json_parse_str(char *str, yang_stmt *yspec, cxobj **xt, cxobj **xret);
+int json_parse_str2(char *str, enum yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xret);
 int json_parse_file(int fd, yang_stmt *yspec, cxobj **xt, cxobj **xret);
 
 #endif /* _CLIXON_JSON_H */

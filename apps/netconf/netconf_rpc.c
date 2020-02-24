@@ -442,7 +442,7 @@ netconf_notification_cb(int   s,
     if (clicon_msg_decode(reply, yspec, NULL, &xt) < 0) 
 	goto done;
 
-    if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:netconf:notification:1.0")) == NULL)
+    if ((nsc = xml_nsctx_init(NULL, NOTIFICATION_RFC5277_NAMESPACE)) == NULL)
 	goto done;
     if ((xn = xpath_first(xt, nsc, "notification")) == NULL)
 	goto ok;

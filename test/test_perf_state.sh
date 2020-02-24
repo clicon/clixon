@@ -14,7 +14,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 : ${perfnr:=1000}
 
 # Number of requests made get/put
-: ${perfreq:=100}
+: ${perfreq:=10}
 
 # time function (this is a mess to get right on freebsd/linux)
 : ${TIMEFN:=time -p} # portability: 2>&1 | awk '/real/ {print $2}'

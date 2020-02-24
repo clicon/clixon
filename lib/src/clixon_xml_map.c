@@ -801,10 +801,16 @@ xml_tree_prune_flagged(cxobj *xt,
 }
 
 /*! Add prefix:namespace pair to xml node, set cache, prefix, etc
+ * @param[in]  x         XML node whose namespace should change
+ * @param[in]  xp        XML node where namespace attribute should be declared (can be same)
+ * @param[in]  prefix1   Use this prefix
+ * @param[in]  namespace Use this namespace
+ * @note x and xp must be different if x is an attribute and may be different otherwise
  */
 static int
-add_namespace(cxobj *x1, /* target */
-	      char  *prefix1,
+add_namespace(cxobj *x,
+	      cxobj *xp,
+	      char  *prefix,
 	      char  *namespace)
 {
     int    retval = -1;
@@ -813,26 +819,26 @@ add_namespace(cxobj *x1, /* target */
     /* Add binding to x1p. We add to parent due to heurestics, so we dont
      * end up in adding it to large number of siblings 
      */
-    if (nscache_set(x1, prefix1, namespace) < 0)
+    if (nscache_set(x, prefix, namespace) < 0)
 	goto done;
     /* Create xmlns attribute to x1p/x1 XXX same code v */
-    if (prefix1){
-	if ((xa = xml_new(prefix1, x1, NULL)) == NULL)
+    if (prefix){
+	if ((xa = xml_new(prefix, xp, NULL)) == NULL)
 	    goto done;
 	if (xml_prefix_set(xa, "xmlns") < 0)
 	    goto done;
     }
     else{
-	if ((xa = xml_new("xmlns", x1, NULL)) == NULL)
+	if ((xa = xml_new("xmlns", xp, NULL)) == NULL)
 	    goto done;
     }
     xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa, namespace) < 0)
 	goto done;
-    xml_sort(x1, NULL); /* Ensure attr is first / XXX xml_insert? */
+    xml_sort(xp, NULL); /* Ensure attr is first / XXX xml_insert? */
 	
-    /* 5. Add prefix to x1, if any */
-    if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
+    /* 5. Add prefix to x, if any */
+    if (prefix && xml_prefix_set(x, prefix) < 0)
 	goto done;
     retval = 0;
  done:
@@ -855,15 +861,16 @@ xml_namespace_change(cxobj *x,
     int    retval = -1;
     char  *ns0 = NULL;     /* existing namespace */
     char  *prefix0 = NULL; /* existing prefix */
-    
+    cxobj *xp;
+
     ns0 = NULL;
     if (xml2ns(x, xml_prefix(x), &ns0) < 0)
        goto done;
     if (ns0 && strcmp(ns0, namespace) == 0)
-       goto ok; /* Already has right namespace */ 
+	goto ok; /* Already has right namespace */ 
     /* Is namespace already declared? */
     if (xml2prefix(x, namespace, &prefix0) == 1){
-       /* Yes it is declared and the prefix is pexists */
+       /* Yes it is declared and the prefix is prefix0 */
        if (xml_prefix_set(x, prefix0) < 0)
            goto done;
     }
@@ -871,7 +878,11 @@ xml_namespace_change(cxobj *x,
 	/* Clear old prefix if any */
        if (xml_prefix_set(x, NULL) < 0)
            goto done;
-       if (add_namespace(x, prefix0, namespace) < 0)
+       if (xml_type(x) == CX_ELMNT) /* If not element, do the namespace addition to the element */
+	   xp = x;
+       else
+	   xp = xml_parent(x);
+       if (add_namespace(x, xp, prefix, namespace) < 0)
 	   goto done;	   
     }
  ok:
@@ -933,7 +944,7 @@ xml_default(cxobj *xt,
 				clicon_err(OE_UNIX, errno, "strdup");
 				goto done;
 			    }
-			    if (add_namespace(xc, prefix, namespace) < 0)
+			    if (add_namespace(xc, xc, prefix, namespace) < 0)
 				goto done;
 			}
 		    }
@@ -1634,7 +1645,7 @@ assign_namespaces(cxobj *x0, /* source */
 		}
 	    }
 	}
-	if (add_namespace(x1, prefix1, namespace) < 0)
+	if (add_namespace(x1, x1, prefix1, namespace) < 0)
 	    goto done;
     }
  ok:

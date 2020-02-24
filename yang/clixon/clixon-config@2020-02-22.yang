@@ -667,6 +667,34 @@ module clixon-config {
                          data to store before dropping. 0 means no retention";
 
 	}
+    }
+    container clixon-stats{
+	config false;
+	description "Clixon backend statistics.";
+	container global{
+	    description "Clixon global statistics";
+	    leaf nr{
+		description "Number of cxobj:ects. That is number of residing xml/json objects
+                             in the internal 'cxobj' representation.";
+		type uint64;
+	    }
 
+	}
+	list datastore{
+	    description "Datastore statistics";
+	    key "name";
+	    leaf name{
+		description "name of datastore (eg running).";
+		type string;
+	    }
+	    leaf nr{
+		description "Number bytes of internal datastore cache of datastore tree.";
+		type uint64;
+	    }
+	    leaf size{
+		description "Size in bytes of internal datastore cache of datastore tree.";
+		type uint64;
+	    }
+	}
     }
 }

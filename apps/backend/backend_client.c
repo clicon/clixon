@@ -297,7 +297,6 @@ client_statedata(clicon_handle h,
 	    clicon_err(OE_YANG, ENOENT, "clixon-rfc5277 namespace not found");
 	    goto done;
 	}
-
 	cprintf(cb, "<netconf xmlns=\"%s\"/>", namespace);
 	if (xml_parse_string2(cbuf_get(cb), YB_TOP, yspec, xret, NULL) < 0)
 	    goto done;
@@ -1035,15 +1034,8 @@ from_client_get(clicon_handle h,
     if (ret > 0 && (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
 	goto done;
     if (ret == 0){
-#if 1
-	if (debug){
-	    cbuf *ccc=cbuf_new();
-	    if (clicon_xml2cbuf(ccc, xret, 0, 0, -1) < 0)
-		goto done;
-	    clicon_debug(1, "%s FAIL: %s", __FUNCTION__, cbuf_get(ccc));
-	    cbuf_free(ccc);
-	}
-#endif
+	if (debug)
+	    clicon_log_xml(LOG_DEBUG, xret, "VALIDATE_STATE");
 	if ((xr = xpath_first(xerr, NULL, "//error-tag")) != NULL &&
 	    (xb = xml_body_get(xr))){
 	    if (xml_value_set(xb, "operation-failed") < 0)
@@ -1258,7 +1250,7 @@ from_client_create_subscription(clicon_handle h,
     struct timeval       stop;
     cvec                *nsc = NULL;
     
-    if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:netmod:notification")) == NULL)
+    if ((nsc = xml_nsctx_init(NULL, EVENT_RFC5277_NAMESPACE)) == NULL)
 	goto done;
     if ((x = xpath_first(xe, nsc, "//stream")) != NULL)
 	stream = xml_find_value(x, "body");
@@ -1721,7 +1713,7 @@ backend_rpc_init(clicon_handle h)
 
     /* In backend_client.? RPC from RFC 5277 */
     if (rpc_callback_register(h, from_client_create_subscription, NULL,
-		      "urn:ietf:params:xml:ns:netmod:notification", "create-subscription") < 0)
+		      EVENT_RFC5277_NAMESPACE, "create-subscription") < 0)
 	goto done;
     /* Clixon RPC */
     if (rpc_callback_register(h, from_client_debug, NULL,

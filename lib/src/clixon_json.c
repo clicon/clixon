@@ -1066,7 +1066,6 @@ json_xmlns_translate(yang_stmt *yspec,
     yang_stmt *ymod;
     char      *namespace;
     char      *modname = NULL;
-    char      *prefix;
     cxobj     *xc;
     int        ret;
     
@@ -1080,8 +1079,13 @@ json_xmlns_translate(yang_stmt *yspec,
 	    goto fail;
 	}
 	namespace = yang_find_mynamespace(ymod);
-	prefix = yang_find_myprefix(ymod);
-	if (xml_namespace_change(x, namespace, prefix) < 0)
+	/* It would be possible to use canonical prefixes here, but probably not
+	 * necessary or even right. Therefore, the namespace given by the JSON prefix / module
+	 * is always the default namespace with prefix NULL.
+	 * If not, this would be the prefix to pass instead of NULL
+	 * prefix = yang_find_myprefix(ymod);
+	 */
+	if (xml_namespace_change(x, namespace, NULL) < 0)
 	    goto done;
     }
     xc = NULL;
@@ -1172,6 +1176,8 @@ _json_parse(char          *str,
 	 * XXX should be xml_spec_populate0_parent() sometimes.
 	 */
 	switch (yb){
+	case YB_RPC:
+	case YB_UNKNOWN:
 	case YB_NONE:
 	    break;
 	case YB_PARENT:
@@ -1231,6 +1237,25 @@ _json_parse(char          *str,
  * @retval       -1     Error with clicon_err called
  * @see json_parse_file with a file descriptor (and more description)
  */
+int 
+json_parse_str2(char          *str, 
+		enum yang_bind yb,
+		yang_stmt     *yspec,
+		cxobj        **xt,
+		cxobj        **xerr)
+{
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (xt==NULL){
+	clicon_err(OE_XML, EINVAL, "xt is NULL");
+	return -1;
+    }
+    if (*xt == NULL){
+	if ((*xt = xml_new("top", NULL, NULL)) == NULL)
+	    return -1;
+    }
+    return _json_parse(str, yb, yspec, *xt, xerr);
+}
+
 int 
 json_parse_str(char      *str, 
 	       yang_stmt *yspec,

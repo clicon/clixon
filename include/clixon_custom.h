@@ -47,6 +47,7 @@
  * NETCONF namespace (see rfc6241 3.1)
  * Undefine it if you want to ensure strict namespace assignment on all netconf and
  * XML statements.
+ * The base namespace is defined as NETCONF_BASE_NAMESPACE
  */
 #define USE_NETCONF_NS_AS_DEFAULT
 

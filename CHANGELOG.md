@@ -38,7 +38,10 @@ Expected: February 2020
   * For more info, see docs at [paths](https://clixon-docs.readthedocs.io/en/latest/paths.html) and 
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
   * Experimental: explicit search index, ie index any list variable, not just keys
+	
 ### API changes on existing features (you may need to change your code)
+* New clixon-config@2020-02-22.yang revision
+  * Added search index extension
 * JSON parse error messages change from ` on line x: syntax error,..` to `json_parse: line x: syntax error`
 * Unknown-element error message is more descriptive, eg from `namespace is: urn:example:clixon` to: `Failed to find YANG spec of XML node: x with parent: xp in namespace urn:example:clixon`.
 * C-API parse and validation API more capable
@@ -59,7 +62,7 @@ Expected: February 2020
   
 ### Minor changes
 
-* C-API: Added instrumentation: `xml_size` and `xml_stats_get`.
+* C-API: Added instrumentation: `xml_stats` and `xml_stats_global`.
 * Obsoleted and removed XMLDB format "tree". This function did not work. Only xml and json allowed.
 * Test framework
   * Added `-- -S <file>` command-line to main example to be able to return any state to main example.

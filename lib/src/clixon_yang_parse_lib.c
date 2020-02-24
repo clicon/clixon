@@ -161,8 +161,8 @@ yang_augment_node(yang_stmt *ys,
     int        retval = -1;
     char      *schema_nodeid;
     yang_stmt *ytarget = NULL;
+    yang_stmt *yc0;
     yang_stmt *yc;
-    int        i;
     yang_stmt *ymod;
 
     if ((ymod = ys_module(ys)) == NULL){
@@ -179,8 +179,9 @@ yang_augment_node(yang_stmt *ys,
     /* Extend ytarget with ys' children
      * First enlarge ytarget vector 
      */
-    for (i=0; i<ys->ys_len; i++){
-	if ((yc = ys_dup(ys->ys_stmt[i])) == NULL)
+    yc0 = NULL;
+    while ((yc0 = yn_each(ys, yc0)) != NULL) {
+	if ((yc = ys_dup(yc0)) == NULL)
 	    goto done;
 	yc->ys_mymodule = ymod;
 	if (yn_insert(ytarget, yc) < 0)
@@ -201,13 +202,13 @@ yang_augment_spec(yang_stmt *ysp,
     yang_stmt *ym;
     yang_stmt *ys;
     int        i;
-    int        j;
+    int        j; 
 
-    i = modnr;
-    while (i<ysp->ys_len){ /* Loop through modules and sub-modules */
+    i = modnr; /* cant use yang_each here since you dont start at 0 */
+    while (i < yang_len_get(ysp)){ /* Loop through modules and sub-modules */
 	ym = ysp->ys_stmt[i++];
 	j = 0;
-	while (j<ym->ys_len){ /* Top-level symbols in modules */
+	while (j < yang_len_get(ym)){ /* Top-level symbols in modules */
 	    ys = ym->ys_stmt[j++];
 	    switch (yang_keyword_get(ys)){
 	    case Y_AUGMENT: /* top-level */
@@ -260,7 +261,7 @@ ys_do_refine(yang_stmt *yr,
 	case Y_MAX_ELEMENTS:
 	case Y_EXTENSION:
 	    /* Remove old matching, dont increment due to prune in loop */
-	    for (i=0; i<yt->ys_len; ){
+	    for (i=0; i<yang_len_get(yt); ){
 		ytc = yt->ys_stmt[i];
 		if (keyw != yang_keyword_get(ytc)){
 		    i++;
@@ -321,7 +322,7 @@ yang_expand_grouping(yang_stmt *yn)
 
     /* Cannot use yang_apply here since child-list is modified (is destructive) */
     i = 0;
-    while (i<yn->ys_len){
+    while (i < yang_len_get(yn)){
 	ys = yn->ys_stmt[i]; 
 	switch(yang_keyword_get(ys)){
 	case Y_USES:
@@ -359,15 +360,15 @@ yang_expand_grouping(yang_stmt *yn)
 	    /* Replace ys with ygrouping,... 
 	     * First enlarge parent vector 
 	     */
-	    glen = ygrouping2->ys_len;
+	    glen = yang_len_get(ygrouping2);
 	    /* 
 	     * yn is parent: the children of ygrouping replaces ys.
 	     * Is there a case when glen == 0?  YES AND THIS BREAKS
 	     */
 	    if (glen != 1){
-		size = (yn->ys_len - i - 1)*sizeof(struct yang_stmt *);
+		size = (yang_len_get(yn) - i - 1)*sizeof(struct yang_stmt *);
 		yn->ys_len += glen - 1;
-		if (glen && (yn->ys_stmt = realloc(yn->ys_stmt, (yn->ys_len)*sizeof(yang_stmt *))) == 0){
+		if (glen && (yn->ys_stmt = realloc(yn->ys_stmt, (yang_len_get(yn))*sizeof(yang_stmt *))) == 0){
 		    clicon_err(OE_YANG, errno, "realloc");
 		    goto done;
 		}
@@ -411,7 +412,7 @@ yang_expand_grouping(yang_stmt *yn)
 	    /* Remove 'uses' node */
 	    ys_free(ys); 
 	    /* Remove the grouping copy */
-	    ygrouping2->ys_len = 0;
+	    ygrouping2->ys_len = 0; /* Cant do with get access function */
 	    ys_free(ygrouping2);
 	    break; /* Note same child is re-iterated since it may be changed */
 	default:
@@ -420,7 +421,7 @@ yang_expand_grouping(yang_stmt *yn)
 	}
     }
     /* Second pass since length may have changed */
-    for (i=0; i<yn->ys_len; i++){
+    for (i=0; i<yang_len_get(yn); i++){
 	ys = yn->ys_stmt[i];
 	if (yang_expand_grouping(ys) < 0)
 	    goto done;
@@ -903,22 +904,22 @@ yang_parse_post(clicon_handle h,
     /* 1: Parse from text to yang parse-tree. 
      * Iterate through modules and detect module/submodules to parse
      * - note the list may grow on each iteration */
-    for (i=modnr; i<yspec->ys_len; i++)
+    for (i=modnr; i<yang_len_get(yspec); i++)
 	if (yang_parse_recurse(h, yspec->ys_stmt[i], yspec) < 0)
 	    goto done;
 
     /* 2. Check cardinality maybe this should be done after grouping/augment */
-    for (i=modnr; i<yspec->ys_len; i++) 
+    for (i=modnr; i<yang_len_get(yspec); i++) 
 	if (yang_cardinality(h, yspec->ys_stmt[i], yang_argument_get(yspec->ys_stmt[i])) < 0)
 	    goto done;
     
     /* 3: Check features: check if enabled and remove disabled features */
-    for (i=modnr; i<yspec->ys_len; i++) /* XXX */
+    for (i=modnr; i<yang_len_get(yspec); i++) /* XXX */
 	if (yang_features(h, yspec->ys_stmt[i]) < 0)
 	    goto done;
     
     /* 4: Go through parse tree and populate it with cv types */
-    for (i=modnr; i<yspec->ys_len; i++)
+    for (i=modnr; i<yang_len_get(yspec); i++)
 	if (yang_apply(yspec->ys_stmt[i], -1, ys_populate, (void*)h) < 0)
 	    goto done;
 
@@ -926,7 +927,7 @@ yang_parse_post(clicon_handle h,
      * from ys_populate step.
      * Must be done using static binding.
      */
-    for (i=modnr; i<yspec->ys_len; i++)
+    for (i=modnr; i<yang_len_get(yspec); i++)
 	if (yang_apply(yspec->ys_stmt[i], Y_TYPE, ys_resolve_type, h) < 0)
 	    goto done;
 
@@ -938,7 +939,7 @@ yang_parse_post(clicon_handle h,
      */
 
     /* 6: Macro expansion of all grouping/uses pairs. Expansion needs marking */
-    for (i=modnr; i<yspec->ys_len; i++){
+    for (i=modnr; i<yang_len_get(yspec); i++){
 	if (yang_expand_grouping(yspec->ys_stmt[i]) < 0)
 	    goto done;
 	yang_apply(yspec->ys_stmt[i], -1, (yang_applyfn_t*)yang_flag_reset, (void*)YANG_FLAG_MARK);
@@ -949,12 +950,12 @@ yang_parse_post(clicon_handle h,
 	goto done;
 
     /* 4: Go through parse tree and do 2nd step populate (eg default) */
-    for (i=modnr; i<yspec->ys_len; i++)
+    for (i=modnr; i<yang_len_get(yspec); i++)
 	if (yang_apply(yspec->ys_stmt[i], -1, ys_populate2, (void*)h) < 0)
 	    goto done;
 
     /* 8: sanity check of schemanode references, need more here */
-    for (i=modnr; i<yspec->ys_len; i++)
+    for (i=modnr; i<yang_len_get(yspec); i++)
 	if (yang_apply(yspec->ys_stmt[i], -1, ys_schemanode_check, NULL) < 0)
 	    goto done;
     retval = 0;
@@ -990,7 +991,7 @@ yang_spec_parse_module(clicon_handle h,
 	goto done;
     }
     /* Apply steps 2.. on new modules, ie ones after modnr. */
-    modnr = yspec->ys_len;
+    modnr = yang_len_get(yspec);
     /* Do not load module if it already exists */
     if (yang_find(yspec, Y_MODULE, module) != NULL)
 	goto ok;
@@ -1026,7 +1027,7 @@ yang_spec_parse_file(clicon_handle h,
     char       *base = NULL;;
 
     /* Apply steps 2.. on new modules, ie ones after modnr. */
-    modnr = yspec->ys_len;
+    modnr = yang_len_get(yspec);
     /* Find module, and do not load file if module already exists */
     if (basename(filename) == NULL){
 	clicon_err(OE_YANG, errno, "No basename");
@@ -1101,7 +1102,7 @@ yang_spec_load_dir(clicon_handle h,
 	clicon_log(LOG_WARNING, "%s: No yang files found in %s",
 		   __FUNCTION__, dir);
     /* Apply post steps on new modules, ie ones after modnr. */
-    modnr = yspec->ys_len;
+    modnr = yang_len_get(yspec);
     /* Load all yang files in dir */
     for (i = 0; i < ndp; i++) {
 	/* base = module name [+ @rev ] + .yang */
@@ -1151,7 +1152,7 @@ yang_spec_load_dir(clicon_handle h,
 	if (revm && rev0){
 	    if (revm > rev0) /* Loaded module is older or eq -> remove ym */
 		ym = ym0;
-	    for (j=0; j<yspec->ys_len; j++)
+	    for (j=0; j<yang_len_get(yspec); j++)
 		if (yspec->ys_stmt[j] == ym)
 		    break;
 	    ys_prune(yspec, j);

@@ -581,7 +581,8 @@ stream_notify(clicon_handle h,
 	goto done;
     }
     /* From RFC5277 */
-    cprintf(cb, "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>%s</eventTime>%s</notification>", timestr, str);
+    cprintf(cb, "<notification xmlns=\"%s\"><eventTime>%s</eventTime>%s</notification>",
+	    NOTIFICATION_RFC5277_NAMESPACE, timestr, str);
     if (xml_parse_string(cbuf_get(cb), yspec, &xev) < 0)
 	goto done;
     if (xml_rootchild(xev, 0, &xev) < 0)
@@ -644,7 +645,9 @@ stream_notify_xml(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "time2str");
 	goto done;
     }
-    cprintf(cb, "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>%s</eventTime>NULL</notification>", timestr); /* XXX str is always NULL */
+    cprintf(cb, "<notification xmlns=\"%s\"><eventTime>%s</eventTime>NULL</notification>",
+	    NOTIFICATION_RFC5277_NAMESPACE,
+	    timestr); /* XXX str is always NULL */
     if (xml_parse_string(cbuf_get(cb), yspec, &xev) < 0)
 	goto done;
     if (xml_rootchild(xev, 0, &xev) < 0)

@@ -73,6 +73,7 @@
 #include "clixon_xpath.h"
 #include "clixon_proto.h"
 #include "clixon_err.h"
+#include "clixon_stream.h"
 #include "clixon_err_string.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
@@ -750,7 +751,6 @@ clicon_rpc_get(clicon_handle   h,
     return retval;
 }
 
-
 /*! Close a (user) session
  * @param[in] h        CLICON handle
  * @retval    0        OK
@@ -964,11 +964,12 @@ clicon_rpc_create_subscription(clicon_handle    h,
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(session_id,
-				 "<rpc username=\"%s\"><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\">"
+				 "<rpc username=\"%s\"><create-subscription xmlns=\"%s\">"
 				 "<stream>%s</stream>"
 				 "<filter type=\"xpath\" select=\"%s\" />"
 				 "</create-subscription></rpc>", 
 				 username?username:"",
+				 EVENT_RFC5277_NAMESPACE,
 				 stream?stream:"", filter?filter:"")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, s0) < 0)

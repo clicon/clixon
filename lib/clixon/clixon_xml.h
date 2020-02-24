@@ -86,9 +86,11 @@ enum cxobj_type {CX_ERROR=-1,
 
 /* How to bind yang to XML top-level when parsing */
 enum yang_bind{ 
+    YB_UNKNOWN=0, /* System derive binding: top if parent not exist or no spec, otherwise parent */
     YB_NONE,    /* Dont try to do Yang binding */
     YB_PARENT,  /* Get yang binding from parents yang */
     YB_TOP,     /* Get yang binding from top-level modules */
+    YB_RPC,     /* Assume top-level xml is an netconf RPC message */
 };
 
 #define CX_ANY CX_ERROR /* catch all and error is same */
@@ -117,8 +119,8 @@ typedef int (xml_applyfn_t)(cxobj *x, void *arg);
  * Prototypes
  */
 char     *xml_type2str(enum cxobj_type type);
-int       xml_stats_get(uint64_t *nr);
-size_t    xml_size(cxobj *xt, size_t *szp);
+int       xml_stats_global(uint64_t *nr);
+size_t    xml_stats(cxobj *xt, uint64_t *nrp, size_t *szp);
 char     *xml_name(cxobj *xn);
 int       xml_name_set(cxobj *xn, char *name);
 char     *xml_prefix(cxobj *xn);

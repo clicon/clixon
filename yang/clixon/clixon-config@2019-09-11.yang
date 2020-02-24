@@ -12,7 +12,7 @@ module clixon-config {
     description
       "Clixon configuration file
        ***** BEGIN LICENSE BLOCK *****
-       Copyright (C) 2009-2020 Olof Hagsand
+       Copyright (C) 2009-2019 Olof Hagsand
        
        This file is part of CLIXON
 
@@ -66,10 +66,6 @@ module clixon-config {
     revision 2018-10-21 {
 	description
 	    "Released in Clixon 3.8";
-    }
-    extension search_index {
-      description "This list argument acts as a search index using optimized binary search.
-                  ";
     }
     typedef startup_mode{
 	description

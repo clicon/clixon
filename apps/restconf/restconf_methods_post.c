@@ -129,6 +129,7 @@ api_data_post(clicon_handle h,
     int            ret;
     restconf_media media_in;
     int            nrchildren0 = 0;
+    enum yang_bind yb;
     
     clicon_debug(1, "%s api_path:\"%s\"", __FUNCTION__, api_path);
     clicon_debug(1, "%s data:\"%s\"", __FUNCTION__, data);
@@ -178,11 +179,18 @@ api_data_post(clicon_handle h,
 	nrchildren0++;
 	xml_flag_set(x, XML_FLAG_MARK);
     }
-    /* Parse input data as json or xml into xml */
+    if (xml_spec(xbot)==NULL)
+	yb = YB_TOP;
+    else
+	yb = YB_PARENT;
+    /* Parse input data as json or xml into xml 
+     * If xbot is top-level (api_path=null) it does not have a spec therefore look for 
+     * top-level (yspec) otherwise assume parent (xbot) is populated.
+     */
     media_in = restconf_content_type(r);
     switch (media_in){
     case YANG_DATA_XML:
-	if (xml_parse_string(data, yspec, &xbot) < 0){
+	if ((ret = xml_parse_string2(data, yb, yspec, &xbot, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -193,12 +201,18 @@ api_data_post(clicon_handle h,
 		goto done;
 	    goto ok;
 	}
+	if (ret == 0){
+	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
 	break;
     case YANG_DATA_JSON:	
-	/* If xbot is top-level (api_path=null) it does not have a spec therefore look for 
-	 * top-level (yspec) otherwise assume parent (xbot) is populated.
-	 */
-	if ((ret = json_parse_str(data, yspec, &xbot, &xerr)) < 0){
+	if ((ret = json_parse_str2(data, yb, yspec, &xbot, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -256,14 +270,8 @@ api_data_post(clicon_handle h,
     xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
-
-#if 0 /* XXX postpone this, there is something wrong with NETCONF_BASE_NAMESPACE not appearing here
-      * but later it does due to default handling,... */
     if (xml_namespace_change(xa, NETCONF_BASE_NAMESPACE, NETCONF_BASE_PREFIX) < 0)
 	goto done;
-#else
-    xml_prefix_set(xa, NETCONF_BASE_PREFIX); /* XXX: But this assumes proper namespace set */
-#endif
 
     if (ys_module_by_xml(yspec, xdata, &ymoddata) < 0)
 	goto done;
@@ -299,13 +307,8 @@ api_data_post(clicon_handle h,
     if (restconf_insert_attributes(xdata, qvec) < 0)
 	goto done;
 #if 1
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xdata, 0, 0, -1) < 0)
-	    goto done;
-	clicon_debug(1, "%s XDATA:%s", __FUNCTION__, cbuf_get(ccc));
-	cbuf_free(ccc);
-    }
+    if (debug)
+	clicon_log_xml(LOG_DEBUG, xdata, "%s xdata:", __FUNCTION__);
 #endif
 
     /* Create text buffer for transfer to backend */
@@ -495,13 +498,8 @@ api_operations_post_input(clicon_handle h,
      * <data><input xmlns="urn:example:clixon">...</input></data>
      */
 #if 1
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xdata, 0, 0, -1) < 0)
-	    goto done;
-	clicon_debug(1, "%s DATA:%s", __FUNCTION__, cbuf_get(ccc));
-	cbuf_free(ccc);
-    }
+    if (debug)
+	clicon_log_xml(LOG_DEBUG, xdata, "%s xdata:", __FUNCTION__);
 #endif
     /* Validate that exactly only <input> tag */
     if ((xinput = xml_child_i_type(xdata, 0, CX_ELMNT)) == NULL ||
@@ -602,13 +600,8 @@ api_operations_post_output(clicon_handle h,
     xml_name_set(xoutput, "output");
     /* xoutput should now look: <output><x xmlns="uri">0</x></output> */
 #if 1
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xoutput, 0, 0, -1) < 0)
-	    goto done;
-	clicon_debug(1, "%s XOUTPUT:%s", __FUNCTION__, cbuf_get(ccc));
-	cbuf_free(ccc);
-    }
+    if (debug)
+	clicon_log_xml(LOG_DEBUG, xoutput, "%s xoutput:", __FUNCTION__);
 #endif
 
     /* Sanity check of outgoing XML 
@@ -840,20 +833,15 @@ api_operations_post(clicon_handle h,
     /* Here xtop is: 
       <rpc username="foo"><myfn xmlns="uri"><x>42</x></myfn></rpc> */
 #if 1
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xtop, 0, 0, -1) < 0)
-	    goto done;
-	clicon_debug(1, "%s 5. Translate input args: %s",
-		     __FUNCTION__, cbuf_get(ccc));
-	cbuf_free(ccc);
-    }
+    if (debug)
+	clicon_log_xml(LOG_DEBUG, xtop, "%s 5. Translate input args:", __FUNCTION__);
 #endif
-    /* 6. Validate incoming RPC and fill in defaults */
+    /* 6. Validate outgoing RPC and fill in defaults */
     if (xml_spec_populate_rpc(xtop, yspec, NULL) < 0) /*  */
 	goto done;
     if ((ret = xml_yang_validate_rpc(h, xtop, &xret)) < 0)
 	goto done;
+
     if (ret == 0){
 	if ((xe = xpath_first(xret, NULL, "rpc-error")) == NULL){
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
@@ -867,13 +855,8 @@ api_operations_post(clicon_handle h,
      * <rpc username="foo"><myfn xmlns="uri"><x>42</x><y>99</y></myfn></rpc>
     */
 #if 0
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xtop, 0, 0, -1) < 0)
-	    goto done;
-	clicon_debug(1, "%s 6. Validate and defaults:%s", __FUNCTION__, cbuf_get(ccc));
-	cbuf_free(ccc);
-    }
+    if (debug)
+	clicon_log_xml(LOG_DEBUG, xtop, "%s 6. Validate and defaults:", __FUNCTION__);
 #endif
     /* 7. Send to RPC handler, either local or backend
      * Note (1) xtop is <rpc><method> xbot is <method>
@@ -907,13 +890,8 @@ api_operations_post(clicon_handle h,
      *       <rpc-reply><x xmlns="uri">0</x></rpc-reply>
      */
 #if 1
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xret, 0, 0, -1) < 0)
-	    goto done;
-	clicon_debug(1, "%s 8. Receive reply:%s", __FUNCTION__, cbuf_get(ccc));
-	cbuf_free(ccc);
-    }
+    if (debug)
+	clicon_log_xml(LOG_DEBUG, xret, "%s Receive reply:", __FUNCTION__);
 #endif
     youtput = yang_find(yrpc, Y_OUTPUT, NULL);
     if ((ret = api_operations_post_output(h, r, xret, yspec, youtput, namespace,

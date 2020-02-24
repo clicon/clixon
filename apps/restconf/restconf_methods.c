@@ -236,34 +236,34 @@ api_data_write(clicon_handle h,
 	       restconf_media media_out,
 	       int            plain_patch)
 {
-    int        retval = -1;
+    int            retval = -1;
     enum operation_type op;
-    int        i;
-    cxobj     *xdata0 = NULL; /* Original -d data struct (including top symbol) */
-    cxobj     *xdata;         /* -d data (without top symbol)*/
-    cbuf      *cbx = NULL;
-    cxobj     *xtop = NULL; /* top of api-path */
-    cxobj     *xbot = NULL; /* bottom of api-path */
-    yang_stmt *ybot = NULL; /* yang of xbot */
-    yang_stmt *ymodapi = NULL; /* yang module of api-path (if any) */
-    yang_stmt *ymoddata = NULL; /* yang module of data (-d) */
-    cxobj     *xparent;
-    yang_stmt *yp; /* yang parent */
-    yang_stmt *yspec;
-    cxobj     *xa;
-    char      *api_path;
-    cxobj     *xret = NULL;
-    cxobj     *xretcom = NULL; /* return from commit */
-    cxobj     *xretdis = NULL; /* return from discard-changes */
-    cxobj     *xerr = NULL;    /* malloced must be freed */
-    cxobj     *xe;             /* direct pointer into tree, dont free */
-    char      *username;
-    int        ret;
-    char      *namespace = NULL;
-    char      *dname;
-    int        nullspec = 0;
-    cbuf      *cbpath = NULL;    
-    cvec      *nsc = NULL;
+    int            i;
+    cxobj         *xdata0 = NULL; /* Original -d data struct (including top symbol) */
+    cxobj         *xdata;         /* -d data (without top symbol)*/
+    cbuf          *cbx = NULL;
+    cxobj         *xtop = NULL; /* top of api-path */
+    cxobj         *xbot = NULL; /* bottom of api-path */
+    yang_stmt     *ybot = NULL; /* yang of xbot */
+    yang_stmt     *ymodapi = NULL; /* yang module of api-path (if any) */
+    yang_stmt     *ymoddata = NULL; /* yang module of data (-d) */
+    cxobj         *xparent;
+    yang_stmt     *yp; /* yang parent */
+    yang_stmt     *yspec;
+    cxobj         *xa;
+    char          *api_path;
+    cxobj         *xret = NULL;
+    cxobj         *xretcom = NULL; /* return from commit */
+    cxobj         *xretdis = NULL; /* return from discard-changes */
+    cxobj         *xerr = NULL;    /* malloced must be freed */
+    cxobj         *xe;             /* direct pointer into tree, dont free */
+    char          *username;
+    int            ret;
+    char          *namespace = NULL;
+    char          *dname;
+    cbuf          *cbpath = NULL;    
+    cvec          *nsc = NULL;
+    enum yang_bind yb;
 
     clicon_debug(1, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
     clicon_debug(1, "%s data:\"%s\"", __FUNCTION__, data);
@@ -306,13 +306,8 @@ api_data_write(clicon_handle h,
 
     }
 #if 0
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xret, 0, 0, -1) < 0)
-	    goto done;
-	clicon_debug(1, "%s XRET: %s", __FUNCTION__, cbuf_get(ccc));
-	cbuf_free(ccc);
-    }
+    if (debug)
+	clicon_log_xml(LOG_DEBUG, xret, "%s xret:", __FUNCTION__);
 #endif
     if (xml_child_nr(xret) == 0){ /* Object does not exist */
 	if (plain_patch){    /* If the target resource instance does not exist, the server MUST NOT create it. */
@@ -370,12 +365,35 @@ api_data_write(clicon_handle h,
      */
     if ((xdata0 = xml_new("data0", NULL, NULL)) == NULL)
 	goto done;
-    if (xml_copy_one(api_path?xml_parent(xbot):xbot, xdata0) < 0)
-	goto done;
-    /* Parse input data as json or xml into xml */
+    { /* XXX mv to copy? */
+	cxobj *xfrom;
+	cxobj *xac;
+	
+	xfrom = api_path?xml_parent(xbot):xbot;
+	if (xml_copy_one(xfrom, xdata0) < 0)
+	    goto done;
+	xa = NULL;
+	while ((xa = xml_child_each(xfrom, xa, CX_ATTR)) != NULL) {
+	    if ((xac = xml_new(xml_name(xa), xdata0, NULL)) == NULL)
+		goto done;
+	    if (xml_copy(xa, xac) < 0) /* recursion */
+		goto done;
+	}
+    }
+    if (xml_spec(xdata0)==NULL)
+	yb = YB_TOP;
+    else
+	yb = YB_PARENT;
+
+    /* Parse input data as json or xml into xml 
+     * Note that in POST (api_data_post) the new object is grafted on xbot, since it is a new
+     * object. In that case all yang bindings can be made since xbot is available.
+     * Here the new object replaces xbot and is therefore more complicated to make when parsing.
+     * Instead, xbots parent is copied into xdata0 (but not its children).
+     */
     switch (media_in){
     case YANG_DATA_XML:
-	if (xml_parse_string(data, yspec, &xdata0) < 0){
+	if ((ret = xml_parse_string2(data, yb, yspec, &xdata0, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -386,15 +404,18 @@ api_data_write(clicon_handle h,
 		goto done;
 	    goto ok;
 	}
+	if (ret == 0){
+	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
 	break;
     case YANG_DATA_JSON:
-	/* Data here cannot cannot be Yang populated since it is loosely
-	 * hanging without top symbols.
-	 * And if it is not yang populated, it cant be translated properly
-	 * from JSON to XML.
-	 * Therefore, yang population is done later after addsub below
-	 */
-	if ((ret = json_parse_str(data, yspec, &xdata0, &xerr)) < 0){
+	if ((ret = json_parse_str2(data, yb, yspec, &xdata0, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -436,15 +457,6 @@ api_data_write(clicon_handle h,
 	goto ok;
     }
     xdata = xml_child_i_type(xdata0, 0, CX_ELMNT);
-#if 0
-    if (debug){
-	cbuf *ccc=cbuf_new();
-	if (clicon_xml2cbuf(ccc, xdata, 0, 0, -1) < 0)
-	    goto done;
-	clicon_debug(1, "%s DATA:%s", __FUNCTION__, cbuf_get(ccc));
-	cbuf_free(ccc);
-    }
-#endif
     /* If the api-path (above) defines a module, then xdata must have a prefix
      * and it match the module defined in api-path
      * This does not apply if api-path is / (no module)
@@ -568,23 +580,6 @@ api_data_write(clicon_handle h,
 	xml_purge(xbot);
 	if (xml_addsub(xparent, xdata) < 0)
 	    goto done;
-	nullspec = (xml_spec(xdata) == NULL);
-	/* xbot is already populated, resolve yang for added xdata too */
-	if (xml_spec_populate0(xdata, yspec, NULL) < 0)
-	    goto done;
-	if (media_in == YANG_DATA_JSON && nullspec){
-	    /* json2xml decode could not be done above in json_parse,
-	     * need to be done here instead 
-	     * UNLESS it is root resource, then json-parse has already done it
-	     */
-	    if ((ret = json2xml_decode(xdata, &xerr)) < 0)
-		goto done;
-	    if (ret == 0){
-		if (api_return_err(h, r, xerr, pretty, media_out, 0) < 0)
-		    goto done;
-		goto ok;
-	    }
-	}
 	/* If restconf insert/point attributes are present, translate to netconf */
 	if (restconf_insert_attributes(xdata, qvec) < 0)
 	    goto done;
@@ -864,9 +859,11 @@ api_data_delete(clicon_handle h,
     if ((xa = xml_new("operation", xbot, NULL)) == NULL)
 	goto done;
     xml_type_set(xa, CX_ATTR);
-    xml_prefix_set(xa, NETCONF_BASE_PREFIX);
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
+    if (xml_namespace_change(xa, NETCONF_BASE_NAMESPACE, NETCONF_BASE_PREFIX) < 0)
+	goto done;
+
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
     /* For internal XML protocol: add username attribute for access control

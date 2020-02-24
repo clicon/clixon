@@ -232,9 +232,7 @@ api_root(clicon_handle  h,
     FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));
     FCGX_FPrintF(r->out, "\r\n");
 
-    if (xml_parse_string("<restconf xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><data/><operations/><yang-library-version>2016-06-21</yang-library-version></restconf>", NULL, &xt) < 0)
-	goto done;
-    if (xml_spec_populate(xt, yspec, NULL) < 0)
+    if (xml_parse_string("<restconf xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><data/><operations/><yang-library-version>2016-06-21</yang-library-version></restconf>", yspec, &xt) < 0)
 	goto done;
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");

@@ -125,13 +125,8 @@ clixon_plugin_statedata(clicon_handle    h,
 	if (fn(h, nsc, xpath, x) < 0)
 	    goto fail;  /* Dont quit here on user callbacks */
 #if 1
-	if (debug){
-	    cbuf *ccc=cbuf_new();
-	    if (clicon_xml2cbuf(ccc, x, 0, 0, -1) < 0)
-		goto done;
-	    clicon_debug(1, "%s STATE: %s", __FUNCTION__, cbuf_get(ccc));
-	    cbuf_free(ccc);
-	}
+	if (debug)
+	    clicon_log_xml(LOG_DEBUG, x, "%s STATE:", __FUNCTION__);
 #endif
 	if (xml_spec_populate(x, yspec, NULL) < 0)
 	    goto done;

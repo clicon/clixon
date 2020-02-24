@@ -11,10 +11,10 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 : ${format:=xml}
 
 # Number of list/leaf-list entries in file
-: ${perfnr:=1000}
+: ${perfnr:=10000}
 
 # Number of requests made get/put
-: ${perfreq:=100}
+: ${perfreq:=10}
 
 # time function (this is a mess to get right on freebsd/linux)
 # -f %e gives elapsed wall clock time but is not available on all systems
