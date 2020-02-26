@@ -263,8 +263,10 @@ api_data_get2(clicon_handle h,
 	    if (netconf_invalid_value_xml(&xerr, "application", "Instance does not exist") < 0)
 		goto done;
 	    /* override invalid-value default 400 with 404 */
-	    if (api_return_err(h, r, xerr, pretty, media_out, 404) < 0)
-		goto done;
+	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) != NULL){
+		if (api_return_err(h, r, xe, pretty, media_out, 404) < 0)
+		    goto done;
+	    }
 	    goto ok;
 	}
 	switch (media_out){

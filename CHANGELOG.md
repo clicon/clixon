@@ -73,6 +73,7 @@ Expected: February 2020
   
 ### Corrected Bugs
 
+* Fixed: Some restconf errors were wrongly formatted such as: `{"ietf-restconf:errors":{"error":{"rpc-error":` . There should be no `"rpc-error"` level.
 * Fixed: Enabling modstate (CLICON_XMLDB_MODSTATE), changing a revision on a yang, and restarting made the backend daemon exit at start (thanks Matt)
   * Also: ensure to load `ietf-yang-library.yang ` if CLICON_XMLDB_MODSTATE is set
 * Fixed: Pretty-printed XML using prefixes not parsed correctly.

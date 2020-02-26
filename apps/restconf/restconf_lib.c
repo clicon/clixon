@@ -468,18 +468,41 @@ api_return_err(clicon_handle h,
 {
     int        retval = -1;
     cbuf      *cb = NULL;
+    cbuf      *cberr = NULL;
     cxobj     *xtag;
     char      *tagstr;
     int        code;	
+    cxobj     *xerr2 = NULL;
     const char *reason_phrase;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    if ((cb = cbuf_new()) == NULL)
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
-    if ((xtag = xpath_first(xerr, NULL, "//error-tag")) == NULL){
-	restconf_notfound(r);
-	goto ok;
     }
+    /* A well-formed error message when entering here should look like:
+     * <rpc-error>...<error-tag>invalid-value</error-tag>
+     * Check this is so, otherwise generate an internal error.
+     */
+    if (strcmp(xml_name(xerr), "rpc-error") != 0 ||
+	(xtag = xpath_first(xerr, NULL, "error-tag")) == NULL){
+	if ((cberr = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cberr, "Internal error, system returned invalid error message: ");
+	if (netconf_err2cb(xerr, cberr) < 0)
+	    goto done;
+	if (netconf_operation_failed_xml(&xerr2, "application",
+					 cbuf_get(cberr)) < 0)
+	    goto done;
+	if ((xerr = xpath_first(xerr2, NULL, "//rpc-error")) == NULL){
+	    clicon_err(OE_XML, 0, "Internal error, shouldnt happen");
+	    goto done;
+	}
+    }
+    if (xml_name_set(xerr, "error") < 0)
+	goto done;
     tagstr = xml_body(xtag);
     if (code0 != 0)
 	code = code0;
@@ -489,8 +512,6 @@ api_return_err(clicon_handle h,
     }
     if ((reason_phrase = restconf_code2reason(code)) == NULL)
 	reason_phrase="";
-    if (xml_name_set(xerr, "error") < 0)
-	goto done;
     FCGX_SetExitStatus(code, r->out); /* Created */
     FCGX_FPrintF(r->out, "Status: %d %s\r\n", code, reason_phrase);
     FCGX_FPrintF(r->out, "Content-Type: %s\r\n\r\n", restconf_media_int2str(media));
@@ -532,12 +553,14 @@ api_return_err(clicon_handle h,
 	goto done;
 	break;
     } /* switch media */
- ok:
+    // ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
+    if (cberr)
+        cbuf_free(cberr);
     return retval;
 }
 
