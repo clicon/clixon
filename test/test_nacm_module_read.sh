@@ -202,7 +202,7 @@ expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-e
 '
 
 new "limit read other module fail"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}}'
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 new "limit read state OK"
 expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state":{"op":["42","41","43"]}}

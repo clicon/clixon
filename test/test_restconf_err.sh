@@ -145,7 +145,7 @@ expecteq "$(curl -s -X GET -H 'Accept: application/yang-data+xml' http://localho
 "
 
 new "restconf GET non-existent container body"
-expectpart "$(curl -si -X GET http://localhost/restconf/data/example:a/c)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}}'
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example:a/c)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 new "restconf GET invalid (no yang) container body"
 expectpart "$(curl -si -X GET http://localhost/restconf/data/example:a/xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'
@@ -175,7 +175,7 @@ expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-confi
 
 # XXX actually no such element
 new "restconf GET augment multi-namespace, no 2nd module in api-path, fail"
-expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-config/dynamic/ospf)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"rpc-error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}}'
+expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-config/dynamic/ospf)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 new "Kill restconf daemon"
 stop_restconf 
