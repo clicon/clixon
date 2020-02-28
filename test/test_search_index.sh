@@ -11,12 +11,10 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-if false; then # NOTYET
-
 : ${clixon_util_path:=clixon_util_path -D $DBG -Y /usr/local/share/clixon}
 
 # Number of list/leaf-list entries
-: ${nr:=10}
+: ${nr:=10000}
 
 # Number of tests to generate XML for +1
 max=2
@@ -50,38 +48,52 @@ module moda{
         type string;
       }
       leaf i{
-        description "extra index";
-        type string;
+        description "explicit index variable";
+        type int32;
 	cc:search_index;
+      }
+      leaf j{
+        description "non-index variable";
+        type int32;
       }
     }
   }
 }
 EOF
 
-# key random
-rnd=$(( ( RANDOM % $nr ) ))
-# Let key index rndi be reverse of rnd
-rndi=$(( $nr - $rnd - 1 ))
-
 # Single string key
 # Assign index i in reverse order
 new "generate list with $nr single string key to $xml1"
 echo -n '<x1 xmlns="urn:example:a">' > $xml1
 for (( i=0; i<$nr; i++ )); do  
-    let ii=$nr-$i-1  
-    echo -n "<y><k1>a$i</k1><z>foo$i</z><i>i$ii</i></y>" >> $xml1
+    let ii=$nr-$i-1
+    echo -n "<y><k1>a$i</k1><z>foo$i</z><i>$ii</i><j>$ii</j></y>" >> $xml1
 done
 echo -n '</x1>' >> $xml1
 
-# How should I know it is an optimized search?
-new "instance-id single string key i=i$rndi"
-echo "$clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:i=\"i$rndi\"]"
-expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:i=\"i$rndi\"])" 0 "^0: <y><k1>a$rnd</k1><z>foo$rnd</z><i>i$rndi</i></y>$"
+# First check correctness
+for (( ii=0; ii<10; ii++ )); do
+    # key random
+    rnd=$(( ( RANDOM % $nr ) ))
+    # Let key index rndi be reverse of rnd
+    rndi=$(( $nr - $rnd - 1 ))
+    new "instance-id single string key i=$rndi (rnd:$rnd)"
+    expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:i=\"$rndi\"])" 0 "^0: <y><k1>a$rnd</k1><z>foo$rnd</z><i>$rndi</i><j>$rndi</j></y>$"
+done
 
-#rm -rf $dir
+# Then measure time for index and non-index, assume correct
+# For small nr, the tiome to parse is so much larger than searching (and also parsing involves
+# searching) which makes it hard to make a  test comparing accessing the index variable "i" and the
+# non-index variable "j".
+new "index search latency i=$rndi"
+{ time -p $clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:i=\"$rndi\"] -n 10 > /dev/null; }  2>&1 | awk '/real/ {print $2}'
+
+new "non-index search latency j=$rndi"
+{ time -p $clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:j=\"$rndi\"] > /dev/null; }  2>&1 | awk '/real/ {print $2}'
+
+rm -rf $dir
 
 unset nr
 unset clixon_util_path # for other script reusing it
-fi
+
 

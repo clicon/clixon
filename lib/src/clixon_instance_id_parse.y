@@ -357,7 +357,7 @@ key_pred       : LSQBR key_pred_expr RSQBR  { $$ = $2;
                                               clicon_debug(2,"key_pred = [ key_pred_expr ]"); }
                ;
 
-key_pred_expr  : node_id_k EQUAL qstring   { $$ = keyval_set($1, $3); free($1);
+key_pred_expr  : node_id_k EQUAL qstring   { $$ = keyval_set($1, $3); free($1); free($3);
                           clicon_debug(2,"key_pred_expr = node_id_k = qstring");  }
                ;
 

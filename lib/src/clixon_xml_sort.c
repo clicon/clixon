@@ -68,6 +68,7 @@
 #include "clixon_xml_map.h"
 #include "clixon_yang_type.h"
 #include "clixon_yang_module.h"
+#include "clixon_xml_vec.h"
 #include "clixon_xml_sort.h"
 
 /*! Get xml body value as cligen variable
@@ -142,6 +143,7 @@ xml_cv_cache(cxobj   *x,
  * @param[in]  same  If set, x1 and x2 are member of same parent & enumeration 
  *                   is used (see explanation below)
  * @param[in]  skip1 Key matching skipped for keys not in x1 (see explanation)
+ * @param[in]  explicit For list nodes, use explicit index variables, not keys
  * @retval     0     If equal
  * @retval    <0     If x1 is less than x2
  * @retval    >0     If x1 is greater than x2
@@ -175,10 +177,11 @@ xml_cv_cache(cxobj   *x,
  * but is not equal to <x><k>71</42><y>bar</y></x>
  */
 int
-xml_cmp(cxobj *x1,
-	cxobj *x2,
-	int    same,
-    	int    skip1)
+xml_cmp(cxobj  *x1,
+	cxobj  *x2,
+	int     same,
+    	int     skip1,
+	char   *indexvar)
 {
     yang_stmt  *y1;
     yang_stmt  *y2;
@@ -274,8 +277,41 @@ xml_cmp(cxobj *x1,
 		equal = 1;
 	}
 	break;
-    case Y_LIST: /* Match with key values 
-		  * Use Y_LIST cache (see struct yang_stmt) */
+    case Y_LIST: /* Match with key values  */
+	if (indexvar != NULL){
+#ifdef XML_EXPLICIT_INDEX
+	    x1b = xml_find(x1, indexvar);
+	    x2b = xml_find(x2, indexvar);
+	    if (x1b == NULL && x2b == NULL)
+		;
+	    else if (x1b == NULL)
+		equal = -1;
+	    else if (x2b == NULL)
+		equal = 1;
+	    else{
+		b1 = xml_body(x1b);
+		b2 = xml_body(x2b);
+		if (b1 == NULL && b2 == NULL)
+		    ;
+		else if (b1 == NULL)
+		    equal = -1;
+		else if (b2 == NULL)
+		    equal = 1;
+		else{
+		    if (xml_cv_cache(x1b, &cv1) < 0) /* error case */
+			goto done;
+		    if (xml_cv_cache(x2b, &cv2) < 0) /* error case */
+			goto done;
+		    assert(cv1 && cv2);
+		    equal = cv_cmp(cv1, cv2);
+		}
+	    }
+	    if (equal)
+		break;
+#endif /* XML_EXPLICIT_INDEX */
+	}
+	else {
+	/* Use Y_LIST cache (see struct yang_stmt) */
 	cvk = yang_cvec_get(y1); /* Use Y_LIST cache, see ys_populate_list() */
 	cvi = NULL;
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
@@ -312,6 +348,7 @@ xml_cmp(cxobj *x1,
 	    if (equal)
 		break;
 	} /* while cvi */
+	}
 	break;
     default:
 	/* This is a very special case such as for two choices - which is not validation correct, but we
@@ -332,7 +369,7 @@ static int
 xml_cmp_qsort(const void* arg1, 
 	      const void* arg2)
 {
-    return xml_cmp(*(struct xml**)arg1, *(struct xml**)arg2, 1, 0);
+    return xml_cmp(*(struct xml**)arg1, *(struct xml**)arg2, 1, 0, NULL);
 }
 
 /*! Sort children of an XML node 
@@ -389,7 +426,7 @@ xml_find_keys_notsorted(cxobj   *xp,
 	yc = xml_spec(xc);
 	if (yangi != yang_order(yc)) /* wrong yang */
 	    break;
-	if (xml_cmp(xc, x1, 0, skip1) == 0){
+	if (xml_cmp(xc, x1, 0, skip1, NULL) == 0){
 	    if (cxvec_append(xc, xvec, xlen) < 0)
 		goto done;
 	    goto ok; /* found */
@@ -400,7 +437,7 @@ xml_find_keys_notsorted(cxobj   *xp,
 	yc = xml_spec(xc);
 	if (yangi != yang_order(yc)) /* wrong yang */
 	    break;
-	if (xml_cmp(xc, x1, 0, skip1) == 0){
+	if (xml_cmp(xc, x1, 0, skip1, NULL) == 0){
 	    if (cxvec_append(xc, xvec, xlen) < 0)
 		goto done;
 	    goto ok; /* found */
@@ -413,23 +450,25 @@ xml_find_keys_notsorted(cxobj   *xp,
 }
 
 /*! Find more equal objects in a vector up and down in the array of the present
- * @param[in]  xp    Parent XML node (go through its childre)
- * @param[in]  x1    XML node to match
- * @param[in]  yangi Yang order number (according to spec)
- * @param[in]  mid   Where to start from (may be in middle of interval)
- * @param[out] xvec  Vector of matching XML return objects (can be empty)
- * @param[out] xlen  Length of xvec
- * @retval     0     OK, see xvec (may be empty)
- * @retval    -1     Error
+ * @param[in]  childvec  Vector of children of parent
+ * @param[in]  childlen  Length of child vector
+ * @param[in]  x1        XML node to match
+ * @param[in]  yangi     Yang order number (according to spec)
+ * @param[in]  mid       Where to start from (may be in middle of interval)
+ * @param[out] xvec      Vector of matching XML return objects (can be empty)
+ * @param[out] xlen      Length of xvec
+ * @retval     0         OK, see xvec (may be empty)
+ * @retval    -1         Error
  */
 static int
-more_equals(cxobj   *xp,
-	    cxobj   *x1,
-	    int      yangi,
-	    int      mid,
-	    int      skip1,
-	    cxobj ***xvec,
-	    size_t  *xlen)
+search_multi_equals(cxobj  **childvec,
+		    size_t   childlen,
+		    cxobj   *x1,
+		    int      yangi,
+		    int      mid,
+		    int      skip1,
+		    cxobj ***xvec,
+		    size_t  *xlen)
 {
     int        retval = -1;
     int        i;
@@ -437,21 +476,21 @@ more_equals(cxobj   *xp,
     yang_stmt *yc;
     
     for (i=mid-1; i>=0; i--){ /* First decrement */
-	xc = xml_child_i(xp, i);
+	xc = childvec[i];
 	yc = xml_spec(xc);
 	if (yangi != yang_order(yc)) /* wrong yang */
 	    break;
-	if (xml_cmp(x1, xc, 0, skip1) != 0)
+	if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
 	    break;
 	if (cxvec_prepend(xc, xvec, xlen) < 0)
 	    goto done;
     }
-    for (i=mid+1; i<xml_child_nr(xp); i++){ /* Then increment */
-	xc = xml_child_i(xp, i);
+    for (i=mid+1; i<childlen; i++){ /* Then increment */
+	xc = childvec[i];
 	yc = xml_spec(xc);
 	if (yangi != yang_order(yc)) /* wrong yang */
 	    break;
-	if (xml_cmp(x1, xc, 0, skip1) != 0)
+	if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
 	    break;
 	if (cxvec_append(xc, xvec, xlen) < 0)
 	    goto done;
@@ -462,6 +501,118 @@ more_equals(cxobj   *xp,
     return retval;
 }
 
+#ifdef XML_EXPLICIT_INDEX
+/* XXX unify with search_multi_equals */
+static int
+search_multi_equals_xvec(clixon_xvec  *childvec,
+		      cxobj        *x1,
+		      int           yangi,
+		      int           mid,
+		      int           skip1,
+		      cxobj      ***xvec,
+		      size_t       *xlen)
+{
+    int        retval = -1;
+    int        i;
+    cxobj     *xc;
+    yang_stmt *yc;
+    
+    for (i=mid-1; i>=0; i--){ /* First decrement */
+	xc = clixon_xvec_i(childvec, i);
+	yc = xml_spec(xc);
+	if (yangi != yang_order(yc)) /* wrong yang */
+	    break;
+	if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
+	    break;
+	if (cxvec_prepend(xc, xvec, xlen) < 0)
+	    goto done;
+    }
+    for (i=mid+1; i<clixon_xvec_len(childvec); i++){ /* Then increment */
+	xc = clixon_xvec_i(childvec, i);
+	yc = xml_spec(xc);
+	if (yangi != yang_order(yc)) /* wrong yang */
+	    break;
+	if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
+	    break;
+	if (cxvec_append(xc, xvec, xlen) < 0)
+	    goto done;
+    }
+
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Insert xi in vector sorted according to index variable xi
+ * @param[in]  x1    XML parent object (the list element)
+ * @param[in]  ivec  Sorted index vector
+ * @param[in]  low   Lower range limit
+ * @param[in]  upper Upper range limit
+ * @param[in]  max   Upper range limit
+ * @param[out] eq    If 0, not equal object found; if 1 pos is one equivalent object
+ * @retval     0     Position, where to insert xn
+ * @retval    -1     Error
+ * @see xml_search_indexvar_binary which returns the found objects, this one just returns 
+ * position of where to insert xn.
+ */
+int
+xml_search_indexvar_binary_pos(cxobj       *x1,
+			       char        *indexvar,
+			       clixon_xvec *ivec,
+			       int          low, 
+			       int          upper,
+			       int          max,
+			       int         *eq)
+{
+    int        retval = -1;
+    int        mid;
+    int        cmp;
+    cxobj     *xc;
+    
+    if (upper < low){  /* beyond range */
+	clicon_err(OE_XML, 0, "low>upper %d %d", low, upper);	
+	goto done;
+    }
+    if (low == upper){
+	retval = low;
+	goto done;
+    }
+    mid = (low + upper) / 2;
+    if (mid >= max){  /* beyond range */
+	clicon_err(OE_XML, 0, "Beyond range %d %d %d", low, mid, upper);	
+	goto done;
+    }
+    xc = clixon_xvec_i(ivec, mid);
+    /* >0 means search upper interval, <0 lower interval, = 0 is equal */
+    cmp = xml_cmp(x1, xc, 0, 0, indexvar);
+    if (low +1 == upper){ /* termination criterium */
+    }
+    if (cmp == 0){
+	retval = mid; /* equal */
+	if (eq)
+	    *eq = 1;
+	goto done;
+    }
+    else {
+	if (low +1 == upper){ /* termination criterium */
+	    if (eq)           /* No exact match */
+		*eq = 0;
+	    if (cmp < 0)      /* return either 0 if cmp<0 or +1 if cmp>0 */
+		retval = mid; 
+	    else
+		retval = mid+1; 
+	    goto done;
+	}
+	if (cmp < 0)
+	    return xml_search_indexvar_binary_pos(x1, indexvar, ivec, low, mid, max, eq);
+	else 
+	    return xml_search_indexvar_binary_pos(x1, indexvar, ivec, mid+1, upper, max, eq);
+    }
+ done:
+    return retval;
+}
+#endif /* XML_EXPLICIT_INDEX */
+
 /*! Find XML child under xp matching x1 using binary search
  * @param[in]  xp        Parent xml node. 
  * @param[in]  x1        Find this object among xp:s children
@@ -470,21 +621,23 @@ more_equals(cxobj   *xp,
  * @param[in]  low       Lower bound of childvec search interval 
  * @param[in]  upper     Lower bound of childvec search interval 
  * @param[in]  skip1     Key matching skipped for keys not in x1
+ * @param[in]  indexvar  Override list key value search with explicit search index of x1
  * @param[out] xvec      Vector of matching XML return objects (can be empty)
  * @param[out] xlen      Length of xvec
  * @retval     0         OK, see xvec (may be empty)
  * @retval    -1         Error
  */
 static int
-xml_find_keys1(cxobj     *xp,
-		 cxobj   *x1,
-		 int      sorted,
-		 int      yangi,
-		 int      low, 
-		 int      upper,
-		 int      skip1,
-		 cxobj ***xvec,
-		 size_t  *xlen)
+xml_search_binary(cxobj   *xp,
+		  cxobj   *x1,
+		  int      sorted,
+		  int      yangi,
+		  int      low, 
+		  int      upper,
+		  int      skip1,
+		  char    *indexvar,
+		  cxobj ***xvec,
+		  size_t  *xlen)
 {
     int        retval = -1;
     int        mid;
@@ -503,7 +656,42 @@ xml_find_keys1(cxobj     *xp,
     cmp = yangi-yang_order(y);
     /* Here is right yang order == same yang? */
     if (cmp == 0){
-	cmp = xml_cmp(x1, xc, 0, skip1);
+#ifdef XML_EXPLICIT_INDEX
+	if (indexvar != NULL){ 
+	    clixon_xvec *ivec = NULL;
+	    int          ilen;
+	    int          pos;
+	    int          eq = 0;
+	    /* Check if (exactly one) explicit indexes in cvk */
+	    if (xml_search_vector_get(xp, indexvar, &ivec) < 0)
+		goto done;
+	    if (ivec){
+		ilen = clixon_xvec_len(ivec);
+#if 1  /* XXX This needs some heavy testing */
+		if ((pos = xml_search_indexvar_binary_pos(x1, indexvar,
+							  ivec, 0,
+							  ilen, ilen, &eq)) < 0)
+		    goto done;
+		if (eq){ /* Found */
+		    if (cxvec_append(clixon_xvec_i(ivec,pos), xvec, xlen) < 0)
+			goto done;
+		    /* there may be more? */
+		    if (search_multi_equals_xvec(ivec, x1, yangi, pos,
+						 0, xvec, xlen) < 0)
+			goto done;
+		}
+#else
+		if (xml_search_indexvar_binary(x1, indexvar,
+					       ivec, 0,
+					       ilen, ilen,
+					       xvec, xlen) < 0)
+		    goto done;
+#endif
+	    }
+	    goto ok;
+	}
+#endif
+	cmp = xml_cmp(x1, xc, 0, skip1, NULL);
 	if (cmp && !sorted){ /* Ordered by user (if not equal) */
 	    retval = xml_find_keys_notsorted(xp, x1, yangi, mid, skip1, xvec, xlen);
 	    goto done;
@@ -513,20 +701,22 @@ xml_find_keys1(cxobj     *xp,
 	if (cxvec_append(xc, xvec, xlen) < 0)
 	    goto done;
 	/* there may be more? */
-	if (more_equals(xp, x1, yangi, mid, skip1, xvec, xlen) < 0)
+	if (search_multi_equals(xml_childvec_get(xp), xml_child_nr(xp),
+				x1, yangi, mid,
+				skip1, xvec, xlen) < 0)
 	    goto done;
     }
     else if (cmp < 0)
-	xml_find_keys1(xp, x1, sorted, yangi, low, mid-1, skip1, xvec, xlen);
+	xml_search_binary(xp, x1, sorted, yangi, low, mid-1, skip1, indexvar, xvec, xlen);
     else 
-	xml_find_keys1(xp, x1, sorted, yangi, mid+1, upper, skip1, xvec, xlen);
+	xml_search_binary(xp, x1, sorted, yangi, mid+1, upper, skip1, indexvar, xvec, xlen);
  ok:
     retval = 0;
  done:
     return retval;
 }
 
-/*! Find XML child under xp matching x1 using binary search for list/leaf-list keys
+/*! Search XML child under xp matching x1 using yang-based binary search for list/leaf-list keys
  * 
  * Match is tried xp with x1 with either name only (container/leaf) or using keys (list/leaf-lists)
  * Any non-key leafs or other structure of x1 is not matched.
@@ -535,6 +725,7 @@ xml_find_keys1(cxobj     *xp,
  * @param[in]  x1    Find this object among xp:s children
  * @param[in]  yc    Yang spec of x1
  * @param[in]  skip1 Key matching skipped for keys not in x1
+ * @param[in]  indexvar Override list key value search with explicit search index var of x1
  * @param[out] xvec  Vector of matching XML return objects (can be empty)
  * @param[out] xlen  Length of xvec
  * @retval     0     OK, see xvec (may be empty)
@@ -542,10 +733,11 @@ xml_find_keys1(cxobj     *xp,
  * @see xml_find_index  for a generic search function
  */
 static int
-xml_find_keys(cxobj       *xp,
+xml_search_yang(cxobj     *xp,
 		cxobj     *x1,
 		yang_stmt *yc,
 		int        skip1,
+	        char      *indexvar,
 		cxobj   ***xvec,
 		size_t    *xlen)
 {
@@ -566,7 +758,7 @@ xml_find_keys(cxobj       *xp,
     else if (yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST)
 	sorted = (yang_find(yc, Y_ORDERED_BY, "user") == NULL);
     yangi = yang_order(yc);
-    return xml_find_keys1(xp, x1, sorted, yangi, low, upper, skip1, xvec, xlen);
+    return xml_search_binary(xp, x1, sorted, yangi, low, upper, skip1, indexvar, xvec, xlen);
 }
 
 /*! Insert xn in xp:s sorted child list (special case of ordered-by user)
@@ -724,7 +916,7 @@ xml_insert2(cxobj           *xp,
 	    goto done;
 	}
 	else /* Ordered by system */
-	    cmp = xml_cmp(xn, xc, 0, 0);
+	    cmp = xml_cmp(xn, xc, 0, 0, NULL);
     }
     else{ /* Not equal yang - compute diff */
 	cmp = yni - yang_order(yc);
@@ -841,7 +1033,7 @@ xml_sort_verify(cxobj *x0,
     xml_enumerate_children(x0);
     while ((x = xml_child_each(x0, x, -1)) != NULL) {
 	if (xprev != NULL){ /* Check xprev <= x */
-	    if (xml_cmp(xprev, x, 1, 0) > 0)
+	    if (xml_cmp(xprev, x, 1, 0, NULL) > 0)
 		goto done;
 	}
 	xprev = x;
@@ -914,7 +1106,7 @@ match_base_child(cxobj      *x0,
 	break;
     }
     /* Get match. */
-    if (xml_find_keys(x0, x1c, yc, 0, &xvec, &xlen) < 0)
+    if (xml_search_yang(x0, x1c, yc, 0, 0, &xvec, &xlen) < 0)
 	goto done;
     if (xlen)
 	*x0cp = xvec[0];
@@ -1028,7 +1220,20 @@ xml_find_noyang_name(cxobj     *xp,
     return retval;
 }
 
-/*! API for search in XML child list with yang available
+/*! Try to find an XML child from parent with yang available using list keys and leaf-lists
+ *
+ * Must be populated with Yang specs, parent must be list or leaf-list, and (for list) search
+ * index must be keys in the order they are declared.
+ * First identify that this search qualifies for yang-based list/leaf-list optimized search,
+ * - if no, revert (return 0) so that the overlying algorithm can try next or fallback to
+ *   linear seacrh
+ * - if yes, then construct a dummy search object and find it in the list of xp:s children
+ *   using binary search
+ * @param[in]  xp    Parent xml node. 
+ * @param[in]  yc    Yang spec of list child (preferred) See rule (2) above
+ * @param[in]  cvk   List of keys and values as CLIgen vector on the form k1=foo, k2=bar
+ * @param[out] xvec  Array of found nodes
+ * @param[out] xlen  Len of xvec
  * @retval     1     OK
  * @retval     0     Revert, try again with no-yang search
  * @retval    -1     Error
@@ -1051,6 +1256,8 @@ xml_find_index_yang(cxobj     *xp,
     cg_var    *ycv = NULL;
     int        i;
     char      *name;
+    int        revert = 0;
+    char      *indexvar = NULL;
 
     name = yang_argument_get(yc);
     if ((cb = cbuf_new()) == NULL){
@@ -1069,15 +1276,17 @@ xml_find_index_yang(cxobj     *xp,
 		goto done;
 	    }
 	    /* Parameter in cvk is not key or not in right key order, then we cannot call
-	     * xml_find_keys and we need to revert to noyang
+	     * xml_find_keys and we need to revert to noynag
 	     */
 	    if ((ycv = cvec_i(ycvk, i)) == NULL || strcmp(kname, cv_string_get(ycv))){
-		goto revert;
+		revert++;
 		break;
 	    }
 	    cprintf(cb, "<%s>%s</%s>", kname, cv_string_get(cvi), kname);
 	    i++;
 	}
+	if (revert)
+	    break;
 	cprintf(cb, "</%s>", name);
 	break;
     case Y_LEAF_LIST:
@@ -1092,7 +1301,24 @@ xml_find_index_yang(cxobj     *xp,
 	cprintf(cb, "<%s/>", name);
 	break;
     }
-    clicon_debug(1, "%s XML:%s", __FUNCTION__, cbuf_get(cb));
+#ifdef XML_EXPLICIT_INDEX
+    if (revert){
+	char      *iname;
+	yang_stmt *yi;
+	if (cvec_len(cvk) != 1 ||
+	    (cvi = cvec_i(cvk, 0)) == NULL ||
+	    (iname = cv_name_get(cvi)) == NULL ||
+	    (yi = yang_find_datanode(yc, iname)) == NULL ||
+	    yang_flag_get(yi, YANG_FLAG_INDEX) == 0)
+	    goto revert;
+	cbuf_reset(cb);
+	cprintf(cb, "<%s><%s>%s</%s></%s>", name, iname, cv_string_get(cvi), iname, name);	
+	indexvar = iname;
+    }
+#else
+    if (revert)
+	goto revert;
+#endif
     if (xml_parse_string(cbuf_get(cb), yc, &xc) < 0)
 	goto done;
     if (xml_rootchild(xc, 0, &xc) < 0)
@@ -1109,7 +1335,7 @@ xml_find_index_yang(cxobj     *xp,
 	if (xml_spec_set(xk, yk) < 0) 
 	    goto done;
     }
-    if (xml_find_keys(xp, xc, yc, 1, xvec, xlen) < 0)
+    if (xml_search_yang(xp, xc, yc, 1, indexvar, xvec, xlen) < 0)
 	goto done;
     retval = 1; /* OK */
  done:
@@ -1118,40 +1344,10 @@ xml_find_index_yang(cxobj     *xp,
     if (xc)
 	xml_free(xc);
     return retval;
- revert: /* means try name-only*/
+ revert: /* means give up yang/key search, try next (eg explicit/noyang) */
     retval = 0;
     goto done;
 }
-
-#ifdef XML_EXPLICIT_INDEX
-/*! API for search in XML child list with yang available
- * @retval     1     OK
- * @retval     0     Revert, try again with no-yang search (or explicit index)
- * @retval    -1     Error
- * XXX: can merge with xml_find_index_yang in some way, similar code
- */
-static int
-xml_find_index_explicit(cxobj     *xp,
-			yang_stmt *yc,
-			cvec      *cvk,
-			cxobj   ***xvec, 
-			size_t    *xlen)
-{
-    int        retval = -1;
-    cg_var    *cvi;
-
-    if (yang_keyword_get(yc) == Y_LIST && cvec_len(cvk) == 1){
-	cvi = cvec_i(cvk, 0);
-	goto revert;
-    }
-    retval = 1; /* OK */	
- done:
-    return retval;
- revert: /* means try name-only*/
-    retval = 0;
-    goto done;
-}
-#endif /* XML_EXPLICIT_INDEX */
 
 /*! API for search in XML child list using indexes and binary search if applicable
  *
@@ -1180,7 +1376,7 @@ xml_find_index_explicit(cxobj     *xp,
  * @param[in]  xp     Parent xml node. 
  * @param[in]  yc     Yang spec of list child (preferred) See rule (2) above
  * @param[in]  yp     Yang spec of parent node or yang-spec/yang (Alternative if yc not given).
- * @param[in]  ns     Namespace (needed only if name is derived from top-symbol)
+ * @param[in]  namespace Namespace (needed only if name is derived from top-symbol)
  * @param[in]  name   Name of child (not required if yc given)
  * @param[in]  cvk    List of keys and values as CLIgen vector on the form k1=foo, k2=bar
  * @param[out] xvec   Array of found nodes
@@ -1192,15 +1388,13 @@ xml_find_index_explicit(cxobj     *xp,
  *    size_t   xlen = 0;
  *    cvec    *cvk = NULL; vector of index keys 
  *    ... Populate cvk with key/values eg a:5 b:6
- *    if (clixon_xml_find_index(xp, yp, "a", ns, cvk, &xvec, &xlen) < 0)
+ *    if (clixon_xml_find_index(xp, yp, NULL, "a", ns, cvk, &xvec, &xlen) < 0)
  *       err;
  * @endcode
  * Discussion: 
  * (1) Rule 2 on how to get the child name election seems unecessary complex. First, it would be 
  * nice to just state name and parent 2c. But xp as top-objects may sometimes be dummies, for
  * parsing, copy-buffers, or simply for XML nodes that do not have YANG. 
- * (2) Short form could be: "first" only returning first object to get rid of vectors.
- * (3) Another short form could be: keyname,keyval instead of cvk for single keys.
  */
 int
 clixon_xml_find_index(cxobj     *xp,
@@ -1233,14 +1427,8 @@ clixon_xml_find_index(cxobj     *xp,
 	if (ret == 0){ /* This means yang method did not work for some reason 
 			* such as not being list key indexes in cvk, for example
 			*/
-#ifdef XML_EXPLICIT_INDEX
-	    /* Check if (exactly one) explicit indexes in cvk */
-	    if ((ret = xml_find_index_explicit(xp, yc, cvk, xvec, xlen)) < 0)
+	    if (xml_find_noyang_name(xp, namespace, name, cvk, xvec, xlen) < 0)
 		goto done;
-	    if (ret == 0)
-#endif
-		if (xml_find_noyang_name(xp, namespace, name, cvk, xvec, xlen) < 0)
-		    goto done;
 	}
     }
     else
@@ -1294,4 +1482,3 @@ clixon_xml_find_pos(cxobj     *xp,
  done:
     return retval;
 }
-

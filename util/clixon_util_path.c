@@ -58,7 +58,7 @@
 #include "clixon/clixon.h"
 
 /* Command line options to be passed to getopt(3) */
-#define UTIL_PATH_OPTS "hD:f:ap:y:Y:"
+#define UTIL_PATH_OPTS "hD:f:ap:y:Y:n:"
 
 static int
 usage(char *argv0)
@@ -72,6 +72,7 @@ usage(char *argv0)
 	    "\t-p <xpath> \tPATH string\n"
 	    "\t-y <filename> \tYang filename or dir (load all files)\n"
     	    "\t-Y <dir> \tYang dirs (can be several)\n"
+	    "\t-n <n> \tRepeat the call n times(for profiling)\n"
 	    "and the following extra rules:\n"
 	    "\tif -f is not given, XML input is expected on stdin\n"
 	    "\tif -p is not given, <path> is expected as the first line on stdin\n"
@@ -90,7 +91,7 @@ main(int    argc,
     int         i;
     cxobj      *x = NULL;
     cxobj     **xvec = NULL;
-    size_t      xlen;
+    size_t      xlen = 0;
     int         c;
     int         len;
     char       *buf = NULL;
@@ -106,6 +107,7 @@ main(int    argc,
     struct stat   st;
     cxobj        *xcfg = NULL;
     cxobj        *xerr = NULL; /* malloced must be freed */
+    int           nr = 1;
 	
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init("api-path", LOG_DEBUG, CLICON_LOG_STDERR); 
@@ -148,6 +150,9 @@ main(int    argc,
 	case 'Y':
 	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
 		goto done;
+	    break;
+	case 'n':
+	    nr = atoi(optarg);
 	    break;
 	default:
 	    usage(argv[0]);
@@ -238,17 +243,20 @@ main(int    argc,
 	if (xml_apply0(x, -1, xml_sort_verify, h) < 0)
 	    clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
     }
-    if (api_path_p){
-	if ((ret = clixon_xml_find_api_path(x, yspec, &xvec, &xlen, "%s", path)) < 0)
+    /* Repeat for profiling (default is nr = 1) */
+    for (i=0; i<nr; i++){
+	if (api_path_p){
+	    if ((ret = clixon_xml_find_api_path(x, yspec, &xvec, &xlen, "%s", path)) < 0)
+		goto done;
+	}
+	else{
+	    if ((ret = clixon_xml_find_instance_id(x, yspec, &xvec, &xlen, "%s", path)) < 0)
+		goto done;
+	}
+	if (ret == 0){
+	    fprintf(stderr, "Fail\n");
 	    goto done;
-    }
-    else{
-	if ((ret = clixon_xml_find_instance_id(x, yspec, &xvec, &xlen, "%s", path)) < 0)
-	    goto done;
-    }
-    if (ret == 0){
-	fprintf(stderr, "Fail\n");
-	goto done;
+	}
     }
     /* Print results */
     for (i=0; i<xlen; i++){

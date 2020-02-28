@@ -33,7 +33,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * XML support functions.
+ * Clixon XML object (cxobj) support functions.
  * @see https://www.w3.org/TR/2008/REC-xml-20081126
  *      https://www.w3.org/TR/2009/REC-xml-names-20091208/
  * Canonical XML version (just for info)
@@ -104,6 +104,8 @@ typedef struct xml cxobj; /* struct defined in clicon_xml.c */
  * @retval     2    Locally, just abort this subtree, continue with others
  */
 typedef int (xml_applyfn_t)(cxobj *x, void *arg);
+
+typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xvec.c */
 
 /*
  * xml_flag() flags:
@@ -227,6 +229,14 @@ int       xml_attr_insert2val(char *instr, enum insert_type *ins);
 int       clicon_log_xml(int level, cxobj *x, char *format, ...)  __attribute__ ((format (printf, 3, 4)));
 #else
 int       clicon_log_xml(int level, cxobj *x, char *format, ...);
+#endif
+#ifdef XML_EXPLICIT_INDEX
+int       xml_search_index_p(cxobj *x);
+
+int       xml_search_vector_get(cxobj *x, char *name, clixon_xvec **xvec);
+int       xml_search_child_insert(cxobj *xp, cxobj *x);
+int       xml_search_child_rm(cxobj *xp, cxobj *x);
+
 #endif
 
 #endif /* _CLIXON_XML_H */

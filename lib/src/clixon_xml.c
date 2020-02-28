@@ -33,7 +33,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * XML support functions.
+ * Clixon XML object (cxobj) support functions.
  * @see https://www.w3.org/TR/2008/REC-xml-20081126
  *      https://www.w3.org/TR/2009/REC-xml-names-20091208
  * Canonical XML version (just for info)
@@ -69,6 +69,7 @@
 #include "clixon_options.h" /* xml_spec_populate */
 #include "clixon_yang_module.h"
 #include "clixon_xml_map.h" /* xml_spec_populate */
+#include "clixon_xml_vec.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_parse.h"
 #include "clixon_xml_nsctx.h"
@@ -90,6 +91,35 @@
 /*
  * Types
  */
+
+#ifdef XML_EXPLICIT_INDEX
+static int xml_search_index_free(cxobj *x);
+
+/* A search index pair consisting of a name of an (index) variable and a vector of xml children
+ * the variable should be a potential child of the XML node
+ * The vector should have the same elements as the regular XML childvec, but in different order
+ *
+ *                        +-----+-----+-----+
+ * search index vector i: |  b  |  c  |  a  |
+ *                        +-----+-----+-----+
+ *
+ *                    index: "i"
+ *               +-----+-----+-----+
+ * x_childvec:   |  a  |  b  |  c  |
+ *               +-----+-----+-----+
+ *                  |     |     |
+ *                  v     v     v
+ *                +---+ +---+ +---+
+ * value of "i"   | 5 | | 0 | | 2 |
+ *                +---+ +---+ +---+
+
+ */
+struct search_index{
+    qelem_t      si_q;    /* Queue header */
+    char        *si_name; /* Name of index variable (must be (potential) child of xml node at hand */
+    clixon_xvec *si_xvec; /* Sorted vector of xml object pointers (should be of YANG type LIST) */
+};
+#endif
 
 /*! xml tree node, with name, type, parent, children, etc 
  * Note that this is a private type not visible from externally, use
@@ -128,20 +158,23 @@ struct xml{
     char             *x_name;       /* name of node */
     char             *x_prefix;     /* namespace localname N, called prefix */
     struct xml       *x_up;         /* parent node in hierarchy if any */
-    struct xml      **x_childvec;   /* vector of children nodes */
+    struct xml      **x_childvec;   /* vector of children nodes (XXX: use clixon_vec ) */
     int               x_childvec_len;/* Number of children */
     int               x_childvec_max;/* Length of allocated vector */
     enum cxobj_type   x_type;       /* type of node: element, attribute, body */
-    cbuf             *x_value_cb;   /* attribute and body nodes have values */
+    cbuf             *x_value_cb;   /* attribute and body nodes have values (XXX: this consumes 
+				       memory) cv? */
     int               x_flags;      /* Flags according to XML_FLAG_* */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, by 
 				       reference, dont free */
-    cg_var           *x_cv;         /* Cached value as cligen variable 
-                                       (eg xml_cmp) */
+    cg_var           *x_cv;         /* Cached value as cligen variable (eg xml_cmp) */
     cvec             *x_ns_cache;   /* Cached vector of namespaces */
     int              _x_vector_i;   /* internal use: xml_child_each */
     int              _x_i;          /* internal use for sorting: 
 				       see xml_enumerate and xml_cmp */
+#ifdef XML_EXPLICIT_INDEX
+    struct search_index *x_search_index; /* explicit search index vectors */
+#endif
 };
 
 /*
@@ -961,12 +994,13 @@ xml_child_append(cxobj *x,
 		 cxobj *xc)
 {
     x->x_childvec_len++;
-    if (x->x_childvec_len > x->x_childvec_max)
+    if (x->x_childvec_len > x->x_childvec_max){
 	x->x_childvec_max = x->x_childvec_max?2*x->x_childvec_max:XML_CHILDVEC_MAX_DEFAULT;
-    x->x_childvec = realloc(x->x_childvec, x->x_childvec_max*sizeof(cxobj*));
-    if (x->x_childvec == NULL){
-	clicon_err(OE_XML, errno, "realloc");
-	return -1;
+	x->x_childvec = realloc(x->x_childvec, x->x_childvec_max*sizeof(cxobj*));
+	if (x->x_childvec == NULL){
+	    clicon_err(OE_XML, errno, "realloc");
+	    return -1;
+	}
     }
     x->x_childvec[x->x_childvec_len-1] = xc;
     return 0;
@@ -985,12 +1019,13 @@ xml_child_insert_pos(cxobj *xp,
     size_t size;
    
     xp->x_childvec_len++;
-    if (xp->x_childvec_len > xp->x_childvec_max)
+    if (xp->x_childvec_len > xp->x_childvec_max){
 	xp->x_childvec_max = xp->x_childvec_max?2*xp->x_childvec_max:XML_CHILDVEC_MAX_DEFAULT;
-    xp->x_childvec = realloc(xp->x_childvec, xp->x_childvec_max*sizeof(cxobj*));
-    if (xp->x_childvec == NULL){
-	clicon_err(OE_XML, errno, "realloc");
-	return -1;
+	xp->x_childvec = realloc(xp->x_childvec, xp->x_childvec_max*sizeof(cxobj*));
+	if (xp->x_childvec == NULL){
+	    clicon_err(OE_XML, errno, "realloc");
+	    return -1;
+	}
     }
     size = (xml_child_nr(xp) - i - 1)*sizeof(cxobj *);
     memmove(&xp->x_childvec[i+1], &xp->x_childvec[i], size);
@@ -1197,6 +1232,10 @@ xml_addsub(cxobj *xp,
 	}
 	/* clear namespace context cache of child */
 	nscache_clear(xc);
+#ifdef XML_EXPLICIT_INDEX
+    if (xml_search_index_p(xc))
+	    xml_search_child_insert(xp, xc);
+#endif
     }
     retval = 0;
  done:
@@ -1309,6 +1348,10 @@ xml_child_rm(cxobj *xp,
 	clicon_err(OE_XML, 0, "Child not found");
 	goto done;
     }
+#ifdef XML_EXPLICIT_INDEX
+    if (xml_search_index_p(xc))
+	xml_search_child_rm(xp, xc);
+#endif
     xp->x_childvec[i] = NULL;
     xml_parent_set(xc, NULL);
     xp->x_childvec_len--;
@@ -1729,6 +1772,9 @@ xml_free(cxobj *x)
 	cv_free(x->x_cv);
     if (x->x_ns_cache)
 	xml_nsctx_free(x->x_ns_cache);
+#ifdef XML_EXPLICIT_INDEX
+    xml_search_index_free(x);
+#endif
     free(x);
     _stats_nr--;
     return 0;
@@ -2490,6 +2536,7 @@ xml_dup(cxobj *x0)
     return x1;
 }
 
+#if 1 /* XXX At some point migrate this code to the clixon_xml_vec.[ch] API */
 /*! Copy XML vector from vec0 to vec1
  * @param[in]  vec0    Source XML tree vector
  * @param[in]  len0    Length of source XML tree vector
@@ -2584,6 +2631,7 @@ cxvec_prepend(cxobj   *x,
  done:
     return retval;
 }
+#endif
 
 /*! Apply a function call recursively on all xml node children recursively
  * Recursively traverse all xml nodes in a parse-tree and apply fn(arg) for 
@@ -2978,3 +3026,225 @@ clicon_log_xml(int    level,
 	free(msg);
     return retval;
 }
+
+#ifdef XML_EXPLICIT_INDEX
+/*
+ *
+ */
+
+/*! Is this XML object a search index, ie it is registered as a yang clixon cc:search_index
+ * Is this xml node a search index and does it have a parent that is a list and a grandparent 
+ * where a search-vector can be placed
+ * @param[in] x  XML object
+ * @retval    1  Yes
+ * @retval    0  No
+ */
+int
+xml_search_index_p(cxobj *x)
+{
+    yang_stmt *y;
+    cxobj     *xp;
+    
+    /* The index variable has a yang spec */
+    if ((y = xml_spec(x)) == NULL)
+	return 0;
+    /* The index variable is a registered search index */
+    if (yang_flag_get(y, YANG_FLAG_INDEX) == 0)
+	return 0;
+    /* The index variable has a parent which has a LIST yang spec  */
+    if ((xp = xml_parent(x)) == NULL)
+	return 0;
+    if ((y = xml_spec(xp)) == NULL)
+	return 0;
+    if (yang_keyword_get(y) != Y_LIST)
+	return 0;
+    /* The index variable has a grand-parent */
+    if (xml_parent(xp) == NULL)
+	return 0;
+    return 1;
+}
+	
+
+/*! Free all search vector pairs of this XML node
+ * @param[in]  x    XML object
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+static int
+xml_search_index_free(cxobj *x)
+{
+    struct search_index *si;
+
+    while ((si = x->x_search_index) != NULL) {
+	DELQ(si, x->x_search_index, struct search_index *);
+	if (si->si_name)
+	    free(si->si_name);
+	if (si->si_xvec)
+	    clixon_xvec_free(si->si_xvec);
+	free(si);
+    }
+    return 0;
+}
+
+/*! Add single search vector pair to this XML node
+ * @param[in]  x     XML object
+ * @param[in]  name  Name of index variable
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+static struct search_index *
+xml_search_index_add(cxobj *x,
+		     char  *name)
+{
+    struct search_index *si = NULL;
+
+    if ((si = malloc(sizeof(struct search_index))) == NULL){
+	clicon_err(OE_XML, errno, "malloc");
+	goto done;
+    }
+    memset(si, 0, sizeof(struct search_index));
+    if ((si->si_name = strdup(name)) == NULL){
+	clicon_err(OE_XML, errno, "strdup");
+	free(si);
+	si = NULL;
+	goto done;
+    }
+    if ((si->si_xvec = clixon_xvec_new()) == NULL){
+	free(si->si_name);
+	free(si);
+	si = NULL;
+	goto done;
+    }
+    ADDQ(si, x->x_search_index);
+ done:
+    return si;
+}
+
+/*! Add single search vector pair to this XML node
+ * @param[in]  x     XML object
+ * @param[in]  name  Name of index variable
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+static struct search_index *
+xml_search_index_get(cxobj *x,
+		     char  *name)
+{
+    struct search_index *si = NULL;
+
+    if ((si = x->x_search_index) != NULL) {
+	do {
+	    if (strcmp(si->si_name, name) == 0){
+		goto done;
+		break;
+	    }
+	    si = NEXTQ(struct search_index *, si);
+	} while (si && si != x->x_search_index);
+    }
+ done:
+    return si;
+}
+
+/*--------------------------------------------------*/
+
+/*! Get sorted index vector for list for variable "name"
+ * @param[in]  xp    XML parent object
+ * @param[in]  name  Name of index variable
+ * @param[out] xvec  XML object search vector
+ * @retval     0     OK
+ */
+int
+xml_search_vector_get(cxobj        *xp,
+		      char         *name,
+		      clixon_xvec **xvec)
+{
+    struct search_index *si;
+
+    *xvec = NULL;
+    if ((si = xp->x_search_index) != NULL) {
+	do {
+	    if (strcmp(si->si_name, name) == 0){
+		*xvec = si->si_xvec;
+		break;
+	    }
+	    si = NEXTQ(struct search_index *, si);
+	} while (si && si != xp->x_search_index);
+    }
+    return 0;
+}
+
+/*! Insert a new cxobj into search index vector for list for variable "name"
+ * @param[in] xp XML parent object (the list element)
+ * @param[in] xi XML index object (that should be added)
+ */
+int
+xml_search_child_insert(cxobj *xp,
+			cxobj *xi)
+{
+    int                  retval = -1;
+    char                *indexvar;
+    struct search_index *si;
+    cxobj               *xpp;
+    int                  i;
+    int                  len;
+    
+    indexvar = xml_name(xi);
+    if ((xpp = xml_parent(xp)) == NULL)
+	goto ok;
+    /* Find base vector in grandparent */
+    if ((si = xml_search_index_get(xpp, indexvar)) == NULL){
+	/* If not found add base vector in grand-parent */	      
+	if ((si = xml_search_index_add(xpp, indexvar)) == NULL)
+	    goto done;
+    }
+    /* Find element position using binary search and then remove */
+    len = clixon_xvec_len(si->si_xvec);
+    if ((i = xml_search_indexvar_binary_pos(xp, indexvar, si->si_xvec, 0, len, len, NULL)) < 0)
+	goto done;
+    assert(clixon_xvec_i(si->si_xvec, i) != xp);
+    if (clixon_xvec_insert_pos(si->si_xvec, xp, i) < 0)
+	goto done;
+ ok:
+    retval = 0;
+ done:    
+    return retval;
+}
+
+/*! Remove a single cxobj from search vector 
+ * @param[in] xp  XML parent object (the list element)
+ * @param[in] xi  XML index object (that should be added)
+ */
+int
+xml_search_child_rm(cxobj *xp,
+		    cxobj *xi)
+{
+    int                 retval = -1;
+    cxobj              *xpp;
+    char               *indexvar;
+    int                 i;
+    int                 len;
+    struct search_index *si;
+    int                  eq = 0;
+    
+    indexvar = xml_name(xi);
+    if ((xpp = xml_parent(xp)) == NULL)
+	goto ok;
+    /* Find base vector in grandparent */
+    if ((si = xml_search_index_get(xpp, indexvar)) == NULL)
+	goto ok;
+    
+    /* Find element using binary search and then remove */
+    len = clixon_xvec_len(si->si_xvec);
+    if ((i = xml_search_indexvar_binary_pos(xp, indexvar, si->si_xvec, 0, len, len, &eq)) < 0)
+	goto done;
+	//    if (clixon_xvec_i(si->si_xvec, i) == xp)
+    if (eq)
+	if (clixon_xvec_rm_pos(si->si_xvec, i) < 0)
+	    goto done;		
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+#endif /* XML_EXPLICIT_INDEX */

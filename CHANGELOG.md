@@ -29,7 +29,7 @@ Expected: February 2020
   * Called on startup after initial XML parsing, but before module-specific upgrades
   * Enabled by definign the `.ca_datastore_upgrade`
   * [General-purpose upgrade documentation](https://clixon-docs.readthedocs.io/en/latest/backend.html#general-purpose)
-* New and updated search functions using xpath, api-path and instance-id
+* New and updated search functions using xpath, api-path and instance-id, and explicit indexes
   * New search functions using api-path and instance_id:
     * C search functions: `clixon_find_instance_id()` and `clixon_find_api_path()`
   * Binary search optimization in lists for indexed leafs in all three formats.
@@ -37,7 +37,6 @@ Expected: February 2020
   * You can also register explicit indexes for making binary search (not only list keys)
   * For more info, see docs at [paths](https://clixon-docs.readthedocs.io/en/latest/paths.html) and 
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
-  * Experimental: explicit search index, ie index any list variable, not just keys
 	
 ### API changes on existing features (you may need to change your code)
 * New clixon-config@2020-02-22.yang revision
@@ -59,11 +58,15 @@ Expected: February 2020
 * CLI Error message (clicon_rpc_generate_error()) changed when backend returns netconf error to be more descriptive:
   * Original: `Config error: Validate failed. Edit and try again or discard changes: Invalid argument`
   * New (example): `Netconf error: application operation-failed Identityref validation failed, undefined not derived from acl-base . Validate failed. Edit and try again or discard changes"
-  
+* Obsoleted and removed XMLDB format "tree". This function did not work. Only xml and json allowed.
+
 ### Minor changes
 
-* C-API: Added instrumentation: `xml_stats` and `xml_stats_global`.
-* Obsoleted and removed XMLDB format "tree". This function did not work. Only xml and json allowed.
+* C-API:
+  * Added instrumentation: `xml_stats` and `xml_stats_global`.
+  * Added object-based `clixon_xvec` as a new programming construct for contiguous XML object vectors.
+    * See files: `clixon_xml_vec.[ch]`
+    * Plan is to replace `cxobj **` with `clixon_xvec *` going forward.
 * Test framework
   * Added `-- -S <file>` command-line to main example to be able to return any state to main example.
   * Added `test/cicd` test scripts for running on a set of other hosts

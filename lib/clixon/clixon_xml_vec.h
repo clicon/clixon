@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -32,25 +33,28 @@
 
   ***** END LICENSE BLOCK *****
 
- * XML sort and earch functions when used with YANG
+ * Clixon XML object vectors
  */
-#ifndef _CLIXON_XML_SORT_H
-#define _CLIXON_XML_SORT_H
+#ifndef _CLIXON_XML_VEC_H
+#define _CLIXON_XML_VEC_H
+
+/*
+ * Types
+ */
+typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xvec.c */
 
 /*
  * Prototypes
  */
-int xml_cmp(cxobj *x1, cxobj *x2, int same, int skip1, char *explicit);
-int xml_sort(cxobj *x0, void *arg);
-int xml_insert(cxobj *xp, cxobj *xc, enum insert_type ins, char *key_val, cvec *nsckey);
-int xml_sort_verify(cxobj *x, void *arg);
-#ifdef XML_EXPLICIT_INDEX
-int xml_search_indexvar_binary_pos(cxobj *xp, char *indexvar, clixon_xvec *xvec,
-				   int low, int upper, int max, int *eq);
-#endif
-int match_base_child(cxobj *x0, cxobj *x1c, yang_stmt *yc, cxobj **x0cp);
-int clixon_xml_find_index(cxobj *xp, yang_stmt *yp, char *namespace, char *name,
-			  cvec *cvk, cxobj ***xvec, size_t *xlen);
-int clixon_xml_find_pos(cxobj *xp, yang_stmt *yc, uint32_t pos, cxobj ***xvec, size_t *xlen);
+clixon_xvec *clixon_xvec_new(void);
+clixon_xvec *clixon_xvec_dup(clixon_xvec *xv0);
+int          clixon_xvec_free(clixon_xvec *xv);
+int          clixon_xvec_len(clixon_xvec *xv);
+cxobj       *clixon_xvec_i(clixon_xvec *xv, int i);
+int          clixon_xvec_append(clixon_xvec *xv, cxobj *x);
+int          clixon_xvec_prepend(clixon_xvec *xv, cxobj *x);
+int          clixon_xvec_insert_pos(clixon_xvec *xv, cxobj *x, int i);
+int          clixon_xvec_rm_pos(clixon_xvec *xv, int i);
+int          clixon_xvec_print(FILE *f, clixon_xvec *xv);
 
-#endif /* _CLIXON_XML_SORT_H */
+#endif /* _CLIXON_XML_VEC_H */

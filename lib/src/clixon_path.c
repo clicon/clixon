@@ -1441,8 +1441,9 @@ clixon_path_search(cxobj       *xt,
 		    if (clixon_xml_find_pos(xp, yc, cv_uint32_get(cv), &xvecc, &xlenc) < 0)
 			goto done;
 		}
-		else if (clixon_xml_find_index(xp, yang_parent_get(yc), modns, yang_argument_get(yc),
-					cp->cp_cvk, &xvecc, &xlenc) < 0)
+		else if (clixon_xml_find_index(xp, yang_parent_get(yc),
+					       modns, yang_argument_get(yc),
+					       cp->cp_cvk, &xvecc, &xlenc) < 0)
 		    goto done;
 	    }
 	    if (xvecp)

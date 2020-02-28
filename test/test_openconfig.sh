@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # Parse yang openconfig yangs from https://github.com/openconfig/public
 # Notes:
-# - openconfig test suites are patched to counter Clixon issues as follows:
-#    - release/models/mpls/openconfig-mpls-te.yang
-#      issue: https://github.com/clicon/clixon/issues/6
-# - Env-var MODELS should be 1
 # - Env-var OPENCONFIG should point to checkout place. (define it in site.sh for example)
 
 # Magic line must be first in script (see README.md)

@@ -479,7 +479,7 @@ xml_diff1(yang_stmt *ys,
 	    continue;
 	}
 	/* Both x0c and x1c exists, check if they are equal. */
-	eq = xml_cmp(x0c, x1c, 0, 0);
+	eq = xml_cmp(x0c, x1c, 0, 0, NULL);
 	if (eq < 0){
 	    if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
 		goto done;
@@ -1214,6 +1214,10 @@ populate_self_parent(cxobj  *xt,
 	goto fail;
     }
     xml_spec_set(xt, y);
+#ifdef XML_EXPLICIT_INDEX
+    if (xml_search_index_p(xt))
+	xml_search_child_insert(xp, xt);
+#endif
     retval = 2;
  done:
     return retval;
@@ -1292,12 +1296,12 @@ populate_self_top(cxobj     *xt,
     goto done;
 }
 
-/*! Find yang spec association of XML node
+/*! Find yang spec association of tree of XML nodes
  *
- * This may be unnecessary if yspec is set on manual creation. Also note that for incoming or outgoing RPC
- * need specialized function.
- * XXX: maybe it can be built into the same function, but you dont know whether it is input or output rpc, so
- * it seems like you need specialized functions.
+ * Populate xt:s children as top-level symbols
+ * This may be unnecessary if yspec is set on manual creation. Also note that for incoming or 
+ * outgoing RPC need specialized function. maybe it can be built into the same function, but 
+ * you dont know whether it is input or output rpc.
  * @param[in]   xt     XML tree node
  * @param[in]   yspec  Yang spec
  * @param[out]  xerr   Reason for failure, or NULL
@@ -1333,6 +1337,10 @@ xml_spec_populate(cxobj     *xt,
     return retval;
 }
 
+/*! Find yang spec association of tree of XML nodes
+ *
+ * Populate xt:s children outgoing from that xt is populated
+ */
 int
 xml_spec_populate_parent(cxobj  *xt,
 			 cxobj **xerr)
@@ -1354,6 +1362,10 @@ xml_spec_populate_parent(cxobj  *xt,
     return retval;
 }
 
+/*! Find yang spec association of tree of XML nodes
+ *
+ * Populate xt as top-level node
+ */
 int
 xml_spec_populate0(cxobj     *xt, 
 		   yang_stmt *yspec,
@@ -1380,6 +1392,10 @@ xml_spec_populate0(cxobj     *xt,
     return retval;
 }
 
+/*! Find yang spec association of tree of XML nodes
+ *
+ * Populate xt as if xt:s parent is populated
+ */
 int
 xml_spec_populate0_parent(cxobj  *xt,
 			  cxobj **xerr)

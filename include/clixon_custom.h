@@ -32,7 +32,11 @@
   ***** END LICENSE BLOCK *****
 
   Custom file as boilerplate appended by clixon_config.h 
-  Note that clixon_config.h is only included by clixon system files, not automatically by examples or apps
+  These are compile-time options. RUntime options are in clixon-config.yang.
+  In general they are kludges and "should be removed" when cod eis improved
+  and not proper system config options.
+  Note that clixon_config.h is only included by clixon system files, not automatically by examples
+  or apps
   */
 
 #ifndef HAVE_STRNDUP 
@@ -72,7 +76,7 @@
  * This also applies if there are multiple keys and you want to search on only the second for 
  * example.
  */
-#undef XML_EXPLICIT_INDEX
+#define XML_EXPLICIT_INDEX
 
 /*! Validate user state callback content
  * Users may register state callbacks using ca_statedata callback
@@ -87,7 +91,7 @@
 
 /*! Treat <config> specially in a xmldb datastore.
  * config is treated as a "neutral" tag that does not have a yang spec.
- * In particulat when binding xml to yang, if <config> is encountered as top-of-tree, do not
+ * In particular when binding xml to yang, if <config> is encountered as top-of-tree, do not
  * try to bind a yang-spec to this symbol.
  */
 #define XMLDB_CONFIG_HACK
