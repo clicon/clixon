@@ -249,7 +249,7 @@ xpath_list_optimize_fn(xpath_tree *xt,
     if ((yp = xml_spec(xv)) == NULL)
 	goto ok;
     /* or if not config data (state data should not be ordered) */
-    if (yang_config(yp) == 0)
+    if (yang_config_ancestor(yp) == 0)
 	goto ok;
     /* Check yang and that only a list with key as index is a special case can do bin search 
      * That is, ONLY check optimize cases of this type:_x[_y='_z']

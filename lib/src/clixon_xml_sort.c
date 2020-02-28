@@ -611,6 +611,46 @@ xml_search_indexvar_binary_pos(cxobj       *x1,
  done:
     return retval;
 }
+
+static int
+xml_search_indexvar(cxobj   *xp,
+		    cxobj   *x1,
+		    int      yangi,
+		    int      low, 
+		    int      upper,
+		    char    *indexvar,
+		    cxobj ***xvec,
+		    size_t  *xlen)
+{
+    int          retval = -1;
+    clixon_xvec *ivec = NULL;
+    int          ilen;
+    int          pos;
+    int          eq = 0;
+
+    /* Check if (exactly one) explicit indexes in cvk */
+    if (xml_search_vector_get(xp, indexvar, &ivec) < 0)
+	goto done;
+    if (ivec){
+	ilen = clixon_xvec_len(ivec);
+	if ((pos = xml_search_indexvar_binary_pos(x1, indexvar,
+						  ivec, 0,
+						  ilen, ilen, &eq)) < 0)
+	    goto done;
+	if (eq){ /* Found */
+	    if (cxvec_append(clixon_xvec_i(ivec,pos), xvec, xlen) < 0)
+		goto done;
+	    /* there may be more? */
+	    if (search_multi_equals_xvec(ivec, x1, yangi, pos,
+					 0, xvec, xlen) < 0)
+		goto done;
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 #endif /* XML_EXPLICIT_INDEX */
 
 /*! Find XML child under xp matching x1 using binary search
@@ -657,40 +697,13 @@ xml_search_binary(cxobj   *xp,
     /* Here is right yang order == same yang? */
     if (cmp == 0){
 #ifdef XML_EXPLICIT_INDEX
-	if (indexvar != NULL){ 
-	    clixon_xvec *ivec = NULL;
-	    int          ilen;
-	    int          pos;
-	    int          eq = 0;
-	    /* Check if (exactly one) explicit indexes in cvk */
-	    if (xml_search_vector_get(xp, indexvar, &ivec) < 0)
+	if (indexvar){
+	    if (xml_search_indexvar(xp, x1, yangi, low, upper, indexvar, xvec, xlen) < 0)
 		goto done;
-	    if (ivec){
-		ilen = clixon_xvec_len(ivec);
-#if 1  /* XXX This needs some heavy testing */
-		if ((pos = xml_search_indexvar_binary_pos(x1, indexvar,
-							  ivec, 0,
-							  ilen, ilen, &eq)) < 0)
-		    goto done;
-		if (eq){ /* Found */
-		    if (cxvec_append(clixon_xvec_i(ivec,pos), xvec, xlen) < 0)
-			goto done;
-		    /* there may be more? */
-		    if (search_multi_equals_xvec(ivec, x1, yangi, pos,
-						 0, xvec, xlen) < 0)
-			goto done;
-		}
-#else
-		if (xml_search_indexvar_binary(x1, indexvar,
-					       ivec, 0,
-					       ilen, ilen,
-					       xvec, xlen) < 0)
-		    goto done;
-#endif
-	    }
 	    goto ok;
 	}
 #endif
+	/* >0 means search upper interval, <0 lower interval, = 0 is equal */
 	cmp = xml_cmp(x1, xc, 0, skip1, NULL);
 	if (cmp && !sorted){ /* Ordered by user (if not equal) */
 	    retval = xml_find_keys_notsorted(xp, x1, yangi, mid, skip1, xvec, xlen);
@@ -753,7 +766,7 @@ xml_search_yang(cxobj     *xp,
 	if ((xa = xml_child_i(xp, low)) == NULL || xml_type(xa) != CX_ATTR)
 	    break;
     /* Find if non-config and if ordered-by-user */
-    if (yang_config(yc)==0)
+    if (yang_config_ancestor(yc)==0)
 	sorted = 0;
     else if (yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST)
 	sorted = (yang_find(yc, Y_ORDERED_BY, "user") == NULL);
@@ -989,7 +1002,7 @@ xml_insert(cxobj           *xp,
 	if ((xa = xml_child_i(xp, low)) == NULL || xml_type(xa)!=CX_ATTR)
 	    break;
     /* Find if non-config and if ordered-by-user */
-    if (yang_config(y)==0)
+    if (yang_config_ancestor(y)==0)
 	userorder = 1;
     else if (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST)
 	userorder = (yang_find(y, Y_ORDERED_BY, "user") != NULL);
@@ -1026,7 +1039,7 @@ xml_sort_verify(cxobj *x0,
     yang_stmt *ys;
 
     /* Abort sort if non-config (=state) data */
-    if ((ys = xml_spec(x0)) != 0 && yang_config(ys)==0){
+    if ((ys = xml_spec(x0)) != 0 && yang_config_ancestor(ys)==0){
 	retval = 1;
 	goto done;
     }

@@ -216,6 +216,7 @@ int        yang_desc_schema_nodeid(yang_stmt *yn, char *schema_nodeid,
 				   enum rfc_6020 keyword, yang_stmt **yres);
 int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
+int        yang_config_ancestor(yang_stmt *ys);
 int        yang_features(clicon_handle h, yang_stmt *yt);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_stmt *yn, char *name);

@@ -2346,11 +2346,10 @@ yang_mandatory(yang_stmt *ys)
 }
 
 /*! Return config state of this node
- * config statement is default true. 
- * @note a node with config=false may not have a sub statement where 
- * config=true. And this function does not check the status of a parent.
- * @retval 0 if node has a config sub-statement and it is false
- * @retval 1 node has not config sub-statement or it is true
+ * @param[in] ys  Yang statement
+ * @retval    0   If node has a config sub-statement and it is false
+ * @retval    1   If node has not config sub-statement or it is true
+ * @see yang_config_ancestor  which also takes ancestors into account, which you should normally do.
  */
 int
 yang_config(yang_stmt *ys)
@@ -2362,6 +2361,26 @@ yang_config(yang_stmt *ys)
 	    return 1; 
 	return cv_bool_get(ym->ys_cv);
     }
+    return 1;
+}
+
+/*! Return config state of this node taking parent into account
+ *
+ * config statement is default true. 
+ * @param[in] ys  Yang statement
+ * @retval    0   Node or one of its ancestor has config false
+ * @retval    1   Neither node nor any of its ancestors has config false
+ */
+int
+yang_config_ancestor(yang_stmt *ys)
+{
+    yang_stmt *yp;
+    
+    yp = ys;
+    do {
+	if (yang_config(yp) == 0)
+	    return 0;
+    } while((yp = yang_parent_get(yp)) != NULL);
     return 1;
 }
 

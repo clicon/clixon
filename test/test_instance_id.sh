@@ -12,6 +12,9 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 # Number of tests to generate XML for
 max=9
 
+# How many times to run ech test (go through some random numbers)
+rep=10
+
 # XML file (alt provide it in stdin after xpath)
 for (( i=1; i<$max; i++ )); do  
     eval xml$i=$dir/xml$i.xml
@@ -155,6 +158,7 @@ module modb{
 }
 EOF
 
+# This make it non-deterministic, some numbers may not work,...
 rnd=$(( ( RANDOM % $nr ) ))
 
 # Single string key
@@ -165,45 +169,42 @@ for (( i=0; i<$nr; i++ )); do
 done
 echo -n '</x1>' >> $xml1
 
-new "instance-id single string key k1=a$rnd"
-echo "$clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:k1=\"a$rnd\"]"
-expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:k1=\"a$rnd\"])" 0 "^0: <y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
+for (( ii=0; ii<$rep; ii++ )); do    
+    new "instance-id single string key k1=a$rnd"
+    expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:k1=\"a$rnd\"])" 0 "^0: <y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
 
-new "instance-id single string key /x1"
-echo "$clixon_util_path -f $xml1 -y $ydir -p /a:x1"
-expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1)" 0 "0: <x1 xmlns=\"urn:example:a\"><y><k1>a0</k1><z>foo0</z></y><y><k1>a1</k1><z>foo1</z></y>" # Assume at least two elements
+    new "instance-id single string key /x1"
+    expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1)" 0 "0: <x1 xmlns=\"urn:example:a\"><y><k1>a0</k1><z>foo0</z></y><y><k1>a1</k1><z>foo1</z></y>" # Assume at least two elements
 
-new "instance-id position specific position 5"
-echo "$clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[5]"
-expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[5])" 0 "0: <y><k1>a13</k1><z>foo13</z>" # sort alphanumerivc wrong 1,10,2
+    new "instance-id position specific position 5"
+#    expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[5])" 0 "0: <y><k1>a13</k1><z>foo13</z>" # sort alphanumerivc wrong 1,10,2
 
-new "instance-id single string key omit key"
-expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y)" 0 '^0: <y><k1>a0</k1><z>foo0</z></y>
+    new "instance-id single string key omit key"
+    expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y)" 0 '^0: <y><k1>a0</k1><z>foo0</z></y>
 1: <y><k1>a0</k1><z>foo0</z></y>'
 
-# Fails and error handling
-new "instance-id single string search non-index"
-echo "$clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:z=\"foo$rnd\"]"
-expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:z=\"foo$rnd\"] )" 0 "<y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
+    # Fails and error handling
+    new "instance-id single string search non-index"
+    expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:z=\"foo$rnd\"] )" 0 "<y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
 
-new "instance-id single string search non-index (two variables, index first)"
-expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:k1=\"a$rnd\"][a:z=\"foo$rnd\"] )" 0 "<y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
+    new "instance-id single string search non-index (two variables, index first)"
+    expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:k1=\"a$rnd\"][a:z=\"foo$rnd\"] )" 0 "<y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
 
-new "instance-id single string search non-index (two variables, index last)"
-expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:z=\"foo$rnd\"][a:k1=\"a$rnd\"] )" 0 "<y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
+    new "instance-id single string search non-index (two variables, index last)"
+    expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:z=\"foo$rnd\"][a:k1=\"a$rnd\"] )" 0 "<y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
 
-new "instance-id single string wrong module, notfound"
-expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /xxx:x1/a:y[a:k1=\"a$rnd\"] 2> /dev/null)" 255 '^$'
+    new "instance-id single string wrong module, notfound"
+    expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /xxx:x1/a:y[a:k1=\"a$rnd\"] 2> /dev/null)" 255 '^$'
 
-new "instance-id single string no module, notfound"
-expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /x1/a:y[a:k1=\"a$rnd\"] 2> /dev/null)" 255 '^$'
+    new "instance-id single string no module, notfound"
+    expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /x1/a:y[a:k1=\"a$rnd\"] 2> /dev/null)" 255 '^$'
 
-new "instance-id single string no sub-prefixes, notfound"
-echo "$clixon_util_path -f $xml1 -y $ydir -p /a:x1/y[k1=\"a$rnd\"]"
-expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/y[k1=\"a$rnd\"] 2> /dev/null)" 255 '^$'
+    new "instance-id single string no sub-prefixes, notfound"
+    expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/y[k1=\"a$rnd\"] 2> /dev/null)" 255 '^$'
 
-new "instance-id single string two keys, notfound"
-expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:k1=a$rnd][a:k2=a$rnd] 2> /dev/null)" 255 '^$'
+    new "instance-id single string two keys, notfound"
+    expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /a:x1/a:y[a:k1=a$rnd][a:k2=a$rnd] 2> /dev/null)" 255 '^$'
+done
 
 # Single int key
 new "generate list with $nr single int key to $xml2"
@@ -213,9 +214,10 @@ for (( i=0; i<$nr; i++ )); do
 done
 echo -n '</x2>' >> $xml2
 
-new "instance-id single int key k1=$rnd"
-echo "$clixon_util_path -f $xml2 -y $ydir -p /a:x2/a:y[a:k1=\"$rnd\"]"
-expectpart "$($clixon_util_path -f $xml2 -y $ydir -p /a:x2/a:y[a:k1=\"$rnd\"])" 0 "^0: <y><k1>$rnd</k1><z>foo$rnd</z></y>$"
+for (( ii=0; ii<$rep; ii++ )); do    
+    new "instance-id single int key k1=$rnd"
+    expectpart "$($clixon_util_path -f $xml2 -y $ydir -p /a:x2/a:y[a:k1=\"$rnd\"])" 0 "^0: <y><k1>$rnd</k1><z>foo$rnd</z></y>$"
+done
 
 # Double string key
 new "generate list with $nr double string keys to $xml3 (two k2 entries per k1 key)"
@@ -229,23 +231,21 @@ echo -n "<y><k1>a0</k1><k2></k2><z>foo0</z></y>" >> $xml3
 echo -n "<y><k1>a1</k1><k2></k2><z>foo1</z></y>" >> $xml3
 echo -n '</x3>' >> $xml3
 
-new "instance-id double string key k1=a$rnd k2=b$rnd"
-echo "$clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[k1=\"a$rnd\"][k2=\"b$rnd\"]"
-expectpart "$($clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[k1=\"a$rnd\"][k2=\"b$rnd\"])" 0 "0: <y><k1>a$rnd</k1><k2>b$rnd</k2><z>foob$rnd</z></y>"
+for (( ii=0; ii<$rep; ii++ )); do    
+    new "instance-id double string key k1=a$rnd k2=b$rnd"
+    expectpart "$($clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[k1=\"a$rnd\"][k2=\"b$rnd\"])" 0 "0: <y><k1>a$rnd</k1><k2>b$rnd</k2><z>foob$rnd</z></y>"
 
-new "instance-id double string key k1=a$rnd, - empty k2 string"
-echo "$clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[k1=\"a1\"][k2=\"\"]"
-expectpart "$($clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[k1=\"a1\"][k2=\"\"])" 0 "0: <y><k1>a1</k1><k2/><z>foo1</z></y>"
+    new "instance-id double string key k1=a$rnd, - empty k2 string"
+    expectpart "$($clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[k1=\"a1\"][k2=\"\"])" 0 "0: <y><k1>a1</k1><k2/><z>foo1</z></y>"
 
-new "instance-id double string key k1=a$rnd, - no k2 string - three matches"
-echo "$clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[k1=\"a1\"]"
-expecteq "$($clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[k1=\"a1\"])" 0 "0: <y><k1>a1</k1><k2/><z>foo1</z></y>
+    new "instance-id double string key k1=a$rnd, - no k2 string - three matches"
+    expecteq "$($clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[k1=\"a1\"])" 0 "0: <y><k1>a1</k1><k2/><z>foo1</z></y>
 1: <y><k1>a1</k1><k2>a1</k2><z>foo1</z></y>
 2: <y><k1>a1</k1><k2>b1</k2><z>foob1</z></y>"
 
-new "instance-id double string specific position 5"
-echo "$clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[5]"
-expectpart "$($clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[5])" 0 "0: <y><k1>a1</k1><k2>b1</k2><z>foob1</z></y>" # sort alphanumerivc wrong 1,10,2
+    new "instance-id double string specific position 5"
+    expectpart "$($clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[5])" 0 "0: <y><k1>a1</k1><k2>b1</k2><z>foob1</z></y>" # sort alphanumerivc wrong 1,10,2
+done
 
 # Leaf-list
 new "generate leaf-list int keys to $xml4"
@@ -255,9 +255,10 @@ for (( i=0; i<$nr; i++ )); do
 done
 echo -n '</x4>' >> $xml4
 
-new "instance-id leaf-list k1=a$rnd"
-echo "$clixon_util_path -f $xml4 -y $ydir -p /a:x4/a:y[.=\"a$rnd\"]"
-expectpart "$($clixon_util_path -f $xml4 -y $ydir -p /a:x4/a:y[.=\"a$rnd\"])" 0 "^0: <y>a$rnd</y>$"
+for (( ii=0; ii<$rep; ii++ )); do    
+    new "instance-id leaf-list k1=a$rnd"
+    expectpart "$($clixon_util_path -f $xml4 -y $ydir -p /a:x4/a:y[.=\"a$rnd\"])" 0 "^0: <y>a$rnd</y>$"
+done
 
 # Single string key direct under root
 new "generate list with $nr single string key to $xml5"
@@ -265,9 +266,11 @@ echo -n '' > $xml5
 for (( i=0; i<$nr; i++ )); do  
     echo -n "<x5 xmlns=\"urn:example:a\"><k1>a$i</k1><z>foo$i</z></x5>" >> $xml5
 done
-    
-new "instance-id direct under root single string key k1=a$rnd"
-expectpart "$($clixon_util_path -f $xml5 -y $ydir -p /a:x5[k1=\"a$rnd\"])" 0 "^0: <x5 xmlns=\"urn:example:a\"><k1>a$rnd</k1><z>foo$rnd</z></x5>$"
+
+for (( ii=0; ii<$rep; ii++ )); do    
+    new "instance-id direct under root single string key k1=a$rnd"
+    expectpart "$($clixon_util_path -f $xml5 -y $ydir -p /a:x5[k1=\"a$rnd\"])" 0 "^0: <x5 xmlns=\"urn:example:a\"><k1>a$rnd</k1><z>foo$rnd</z></x5>$"
+done
 
 # Depth and augment
 # Deep augmented xml path
@@ -282,13 +285,14 @@ for (( i=0; i<$nr; i++ )); do
 done
 echo -n '</x6>' >> $xml6
 
-new "instance-id double string key b$rnd,b$rnd in mod b"
-echo "$clixon_util_path -f $xml6 -y $ydir -p /b:x6/b:yy[kk1=\"b$rnd\"][kk2=\"b$rnd\"]"
-expectpart "$($clixon_util_path -f $xml6 -y $ydir -p /b:x6/b:yy[kk1=\"b$rnd\"][kk2=\"b$rnd\"])" 0 "0: <yy><kk1>b$rnd</kk1><kk2>b$rnd</kk2><zz>foo$rnd</zz><y xmlns=\"urn:example:a\"><k1>a0</k1><k2>a0</k2><z>foo0</z></y><y xmlns=\"urn:example:a\"><k1>a1</k1><k2>a1</k2><z>foo1</z></y><y xmlns=\"urn:example:a\"><k1>a2</k1><k2>a2</k2><z>foo2</z></y></yy>"
+for (( ii=0; ii<$rep; ii++ )); do
+    new "instance-id double string key b$rnd,b$rnd in mod b"
+    expectpart "$($clixon_util_path -f $xml6 -y $ydir -p /b:x6/b:yy[kk1=\"b$rnd\"][kk2=\"b$rnd\"])" 0 "0: <yy><kk1>b$rnd</kk1><kk2>b$rnd</kk2><zz>foo$rnd</zz><y xmlns=\"urn:example:a\"><k1>a0</k1><k2>a0</k2><z>foo0</z></y><y xmlns=\"urn:example:a\"><k1>a1</k1><k2>a1</k2><z>foo1</z></y><y xmlns=\"urn:example:a\"><k1>a2</k1><k2>a2</k2><z>foo2</z></y></yy>"
 
-new "instance-id double string key a$rnd,b$rnd in modb + augmented in moda"
-expectpart "$($clixon_util_path -f $xml6 -y $ydir -p /b:x6/b:yy[kk1=\"b$rnd\"][kk2=\"b$rnd\"]/a:y[k1=\"a1\"][k2=\"a1\"]/a:z[.=\"foo1\"])" 0 "0: <z>foo1</z>"
-
+    new "instance-id double string key a$rnd,b$rnd in modb + augmented in moda"
+    expectpart "$($clixon_util_path -f $xml6 -y $ydir -p /b:x6/b:yy[kk1=\"b$rnd\"][kk2=\"b$rnd\"]/a:y[k1=\"a1\"][k2=\"a1\"]/a:z[.=\"foo1\"])" 0 "0: <z>foo1</z>"
+done
+    
 # Single list ordered by user
 new "generate list with $nr single string key to $xml7"
 echo -n '<x7 xmlns="urn:example:a">' > $xml7
@@ -297,9 +301,10 @@ for (( i=0; i<$nr; i++ )); do
 done
 echo -n '</x7>' >> $xml7
 
-new "instance-id single string key k1=a$rnd ordered by user"
-echo "$clixon_util_path -f $xml7 -y $ydir -p /a:x7/a:y[a:k1=\"a$rnd\"]"
-expectpart "$($clixon_util_path -f $xml7 -y $ydir -p /a:x7/a:y[a:k1=\"a$rnd\"])" 0 "^0: <y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
+for (( ii=0; ii<$rep; ii++ )); do
+    new "instance-id single string key k1=a$rnd ordered by user"
+    expectpart "$($clixon_util_path -f $xml7 -y $ydir -p /a:x7/a:y[a:k1=\"a$rnd\"])" 0 "^0: <y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
+done
 
 # Single list state data (non-config)
 new "generate list with $nr single string key to $xml8"
@@ -309,8 +314,11 @@ for (( i=0; i<$nr; i++ )); do
 done
 echo -n '</x8>' >> $xml8
 
-new "instance-id single string key k1=a$rnd ordered by user"
-expectpart "$($clixon_util_path -f $xml8 -y $ydir -p /a:x8/a:y[a:k1=\"a$rnd\"])" 0 "^0: <y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
+for (( ii=0; ii<$rep; ii++ )); do
+    rnd=$(( ( RANDOM % $nr ) ))
+    new "instance-id single string key k1=a$rnd ordered by user"
+    expectpart "$($clixon_util_path -f $xml8 -y $ydir -p /a:x8/a:y[a:k1=\"a$rnd\"])" 0 "^0: <y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
+done
 
 rm -rf $dir
 

@@ -72,7 +72,7 @@ usage(char *argv0)
 	    "\t-p <xpath> \tPATH string\n"
 	    "\t-y <filename> \tYang filename or dir (load all files)\n"
     	    "\t-Y <dir> \tYang dirs (can be several)\n"
-	    "\t-n <n> \tRepeat the call n times(for profiling)\n"
+	    "\t-n <n>   \tRepeat the call n times(for profiling)\n"
 	    "and the following extra rules:\n"
 	    "\tif -f is not given, XML input is expected on stdin\n"
 	    "\tif -p is not given, <path> is expected as the first line on stdin\n"
