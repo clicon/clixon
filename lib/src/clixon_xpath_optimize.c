@@ -63,6 +63,7 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xml_vec.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
@@ -227,8 +228,7 @@ loop_preds(xpath_tree *xt,
 static int
 xpath_list_optimize_fn(xpath_tree *xt,
 		       cxobj      *xv,
-		       cxobj    ***xvec, 
-		       size_t     *xlen)
+		       clixon_xvec **xvec)
 {
     int          retval = -1;
     xpath_tree  *xm = NULL;
@@ -294,7 +294,7 @@ xpath_list_optimize_fn(xpath_tree *xt,
 	i++;
     }
     /* Use 2a form since yc allready given to compute cvk */
-    if (clixon_xml_find_index(xv, yp, NULL, name, cvk, xvec, xlen) < 0)
+    if (clixon_xml_find_index(xv, yp, NULL, name, cvk, xvec) < 0)
 	goto done;
     retval = 1; /* match */
  done:
@@ -314,22 +314,27 @@ xpath_list_optimize_fn(xpath_tree *xt,
  * @retval -1  Error
  * @retval  0  Dont optimize: not special case, do normal processing
  * @retval  1  Optimization made, special case, use x (found if != NULL)
+ * XXX Contains glue code between cxobj ** and clixon_xvec code 
  */
 int
 xpath_optimize_check(xpath_tree *xs,
                      cxobj      *xv,
-	             cxobj    ***xvec, 
-	             size_t     *xlen)
-
+	             cxobj    ***xvec0, 
+	             size_t     *xlen0)
 {
 #ifdef XPATH_LIST_OPTIMIZE
-    int    ret;
+    int          ret;
+    clixon_xvec *xvec = NULL;
     
     if (!_optimize_enable)
 	return 0; /* use regular code */
-    if ((ret = xpath_list_optimize_fn(xs, xv, xvec, xlen)) < 0)
+    /* Glue code since xpath code uses (old) cxobj ** and search code uses (new) clixon_xvec */
+    if ((ret = xpath_list_optimize_fn(xs, xv, &xvec)) < 0)
 	return -1;
     if (ret == 1){
+	if (clixon_xvec_vec(xvec, xvec0, xlen0) < 0)
+	    return -1;
+	clixon_xvec_free(xvec);
 	_optimize_hits++;
 	return 1; /* Optimized */
     }

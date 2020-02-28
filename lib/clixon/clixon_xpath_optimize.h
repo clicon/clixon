@@ -38,9 +38,10 @@
 #define _CLIXON_XPATH_OPTIMIZE_H
 
 
-int xpath_list_optimize_stats(int *hits);
-int xpath_list_optimize_set(int enable); 
+int  xpath_list_optimize_stats(int *hits);
+int  xpath_list_optimize_set(int enable); 
 void xpath_optimize_exit(void);
-int xpath_optimize_check();
+//int  xpath_optimize_check(xpath_tree *xs, cxobj *xv, cxobj ***xvec0, size_t *xlen0);
+int  xpath_optimize_check();
 
 #endif /* _CLIXON_XPATH_OPTIMIZE_H */

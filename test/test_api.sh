@@ -117,8 +117,7 @@ trigger_rpc(clicon_handle h,          /* Clicon handle */
     char      *val;
     cvec      *cvk = NULL;
     cg_var    *cv;
-    cxobj    **xvec = NULL;
-    size_t     xlen = 0;
+    clixon_xvec *xvec = NULL;
 
     if (xmldb_get(h, "running", NULL, "/c", &xret) < 0)
       goto done;
@@ -158,10 +157,10 @@ trigger_rpc(clicon_handle h,          /* Clicon handle */
     cv_name_set(cv, "k");
     cv_string_set(cv, "5");
     /* Use form 2c use spec of xc + name */
-    if (clixon_xml_find_index(xc, NULL, NULL, "y3", cvk, &xvec, &xlen) < 0)
+    if (clixon_xml_find_index(xc, NULL, NULL, "y3", cvk, &xvec) < 0)
        goto done;
-    if (xlen)
-       val = xml_find_body(xvec[0], "val");
+    if (clixon_xvec_len(xvec))
+       val = xml_find_body(clixon_xvec_i(xvec,0), "val");
     else
        val = NULL;
     clicon_debug(1, "%s Method 3: val:%s", __FUNCTION__, val?val:"null");

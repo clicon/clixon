@@ -86,13 +86,13 @@ int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop,
 		 cxobj **xpathp, yang_stmt **ypathp, cxobj **xerr);
 int xml2api_path_1(cxobj *x, cbuf *cb);
 #if defined(__GNUC__) && __GNUC__ >= 3
-int clixon_xml_find_api_path(cxobj *xt, yang_stmt *yt, cxobj ***xvec, size_t *xlen, char *format,
-		     ...) __attribute__ ((format (printf, 5, 6)));;
-int clixon_xml_find_instance_id(cxobj *xt, yang_stmt *yt, cxobj ***xvec, size_t *xlen, char *format,
-		     ...) __attribute__ ((format (printf, 5, 6)));;
+int clixon_xml_find_api_path(cxobj *xt, yang_stmt *yt, clixon_xvec **xvec, char *format,
+		     ...) __attribute__ ((format (printf, 4, 5)));;
+int clixon_xml_find_instance_id(cxobj *xt, yang_stmt *yt, clixon_xvec **xvec, char *format,
+		     ...) __attribute__ ((format (printf, 4, 5)));;
 #else
-int clixon_xml_find_api_path(cxobj *xt, yang_stmt *yt, cxobj ***xvec, size_t *xlen, char *format, ...);
-int clixon_xml_find_instance_id(cxobj *xt, yang_stmt *yt, cxobj ***xvec, size_t *xlen, char *format, ...);
+int clixon_xml_find_api_path(cxobj *xt, yang_stmt *yt, clixon_xvec **xvec, char *format, ...);
+int clixon_xml_find_instance_id(cxobj *xt, yang_stmt *yt, clixon_xvec **xvec, char *format, ...);
 #endif
 
 #endif  /* _CLIXON_PATH_H_ */

@@ -93,9 +93,9 @@ clixon_xvec_inc(clixon_xvec *xv)
     
     xv->xv_len++;
     if (xv->xv_len > xv->xv_max){
-	if (xv->xv_max == 0)
+	if (xv->xv_max < XVEC_MAX_DEFAULT)
 	    xv->xv_max = XVEC_MAX_DEFAULT;
-	if (xv->xv_max < XVEC_MAX_THRESHOLD)
+	else if (xv->xv_max < XVEC_MAX_THRESHOLD)
 	    xv->xv_max *= 2;
 	else
 	    xv->xv_max += XVEC_MAX_THRESHOLD;
@@ -197,6 +197,37 @@ clixon_xvec_i(clixon_xvec *xv,
 	return NULL;
 }
 
+/*! Return whole XML object vector
+ *
+ * Used in glue code between clixon_xvec code and cxobj **, size_t code, may go AWAY?
+ * @param[in]  xv    XML tree vector
+ * @param[out] xvec  XML object vector
+ * @retval     0
+ * @retval    -1
+ */
+int
+clixon_xvec_vec(clixon_xvec *xv,
+		cxobj     ***xvec,
+		size_t      *xlen)
+{
+    size_t sz;
+
+    if (xv->xv_len == 0){
+	*xvec = NULL;
+	*xlen = 0;
+    }
+    else {
+	sz = xv->xv_len * sizeof(cxobj*);
+	if ((*xvec = malloc(sz)) == NULL){
+	    clicon_err(OE_UNIX, errno, "memcpy");
+	    return -1;
+	}
+	memcpy(*xvec, xv->xv_vec, sz);
+	*xlen = xv->xv_len;
+    }
+    return 0;
+}
+
 /*! Append a new xml tree to an existing xml vector last in the list
  *
  * @param[in]  xv    XML tree vector
@@ -218,7 +249,7 @@ clixon_xvec_append(clixon_xvec *xv,
 
     if (clixon_xvec_inc(xv) < 0)
 	goto done;
-    xv->xv_vec[xv->xv_len] = x;
+    xv->xv_vec[xv->xv_len-1] = x;
     retval = 0;
  done:
     return retval;

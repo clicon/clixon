@@ -89,6 +89,7 @@
 #include "clixon_yang.h" 
 #include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
+#include "clixon_xml_vec.h"
 #include "clixon_xml_sort.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_map.h"
@@ -1401,7 +1402,6 @@ instance_id_resolve(clixon_path *cplist,
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
  * @param[in]  cplist   Lisp of clixon-path
  * @param[out] xvec     Vector of xml-trees. Vector must be free():d after use
- * @param[out] xlen     Returns length of vector in return value
  * @retval    -1        Error
  * @retval     0        Fail  fail: eg no yang 
  * @retval     1        OK with found xml nodes in xvec (if any)
@@ -1410,61 +1410,61 @@ static int
 clixon_path_search(cxobj       *xt,
 		   yang_stmt   *yt,
 		   clixon_path *cplist,
-		   cxobj     ***xvec0, 
-		   size_t      *xlen0)
+		   clixon_xvec **xvec0)
 {
     int          retval = -1;
     char        *modns; /* Module namespace of api-path */
     clixon_path *cp;
-    cxobj      **xvecp = NULL; /* parent set */
-    size_t       xlenp = 0;
-    cxobj      **xvecc = NULL; /* child set */
-    size_t       xlenc = 0;
+    clixon_xvec *xvecp = NULL;
+    clixon_xvec *xvecc = NULL;
     yang_stmt   *yc;
     cxobj       *xp;	
     int          i;
     cg_var      *cv;
 
+    if ((xvecp = clixon_xvec_new()) == NULL)
+	goto done;    
     modns = NULL;
     if ((cp = cplist) != NULL){
-	cxvec_append(xt, &xvecp, &xlenp); /* Initialize parent xml set */
+	if (clixon_xvec_append(xvecp, xt) < 0)
+	    goto done;
 	do {
 	    yc = cp->cp_yang;
 	    if ((modns = yang_find_mynamespace(yc)) == NULL)
 		goto fail;
-	    for (i=0; i<xlenp; i++){
-		xp = xvecp[i]; /* Iterate over parent set */
+	    for (i=0; i<clixon_xvec_len(xvecp); i++){
+		xp = clixon_xvec_i(xvecp, i); /* Iterate over parent set */
+		xvecc = NULL;
 		if (cp->cp_cvk && /* cornercase for instance-id [<pos>] special case */
 		    (yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST) &&
 		    cvec_len(cp->cp_cvk) == 1 && (cv = cvec_i(cp->cp_cvk,0)) &&
 		    (cv_type_get(cv) == CGV_UINT32)){
-		    if (clixon_xml_find_pos(xp, yc, cv_uint32_get(cv), &xvecc, &xlenc) < 0)
+		    if (clixon_xml_find_pos(xp, yc, cv_uint32_get(cv), &xvecc) < 0)
 			goto done;
 		}
 		else if (clixon_xml_find_index(xp, yang_parent_get(yc),
 					       modns, yang_argument_get(yc),
-					       cp->cp_cvk, &xvecc, &xlenc) < 0)
+					       cp->cp_cvk, &xvecc) < 0)
 		    goto done;
-	    }
+	    } /* for */
 	    if (xvecp)
-		free(xvecp);
-	    xvecp = xvecc; xlenp = xlenc;
-	    xvecc = NULL, xlenc = 0;
+		clixon_xvec_free(xvecp);
+	    xvecp = xvecc;
+	    xvecc = NULL;
 	    cp = NEXTQ(clixon_path *, cp);
 	} while (cp && cp != cplist);
-	*xvec0 = xvecp; xvecp = NULL;
-	*xlen0 = xlenp;
-    }
+	*xvec0 = xvecp;
+	xvecp = NULL;
+    } /* if */
     retval = 1;
  done:
     if (xvecp)
-	free(xvecp);
+	clixon_xvec_free(xvecp);
     if (xvecc)
-	free(xvecc);
+	clixon_xvec_free(xvecc);
     return retval;
  fail: /* eg no yang for api-path, no match */
     *xvec0 = NULL;
-    *xlen0 = 0;
     retval = 0;
     goto done;
 }
@@ -1474,7 +1474,6 @@ clixon_path_search(cxobj       *xt,
  * @param[in]  xt       Top xml-tree where to search
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
  * @param[out] xvec     Vector of xml-trees. Vector must be free():d after use
- * @param[out] xlen     Returns length of vector in return value
  * @param[in]  format   Format string for api-path syntax
  * @retval    -1        Error
  * @retval     0        Nomatch
@@ -1484,24 +1483,23 @@ clixon_path_search(cxobj       *xt,
  * - Modulename not defined for top-level id. 
  * - Number of keys in key-value list does not match Yang list
  * @code
- *   cxobj **xvec = NULL;
- *   size_t  xlen;
- *   if (clixon_xml_find_api_path(x, yspec, &xvec, &xlen, "/symbol/%s", "foo") < 0) 
- *      err;
- *   for (i=0; i<xlen; i++){
- *      xn = xvec[i];
- *         ...
- *   }
- *   free(xvec);
+ *    clixon_xvec *xvec = NULL;
+ *    cxobj       *x;
+ *    if (clixon_xml_find_api_path(x, yspec, &xvec, "/symbol/%s", "foo") < 0) 
+ *       err;
+ *    for (i=0; i<clixon_xpath_len(xvec); i++){
+ *       x = clixon_xpath_i(xvec, i);
+ *       ...
+ *    }
+ *    clixon_xvec_free(xvec);
  * @endcode
- * @see xpath_vec
+ * @see xpath_vec1
  */
 int
-clixon_xml_find_api_path(cxobj     *xt, 
-			 yang_stmt *yt,
-			 cxobj   ***xvec, 
-			 size_t    *xlen, 
-			 char      *format, 
+clixon_xml_find_api_path(cxobj        *xt, 
+			 yang_stmt    *yt,
+			 clixon_xvec **xvec,
+			 char         *format,
 			 ...)
 {
     int              retval = -1;
@@ -1537,7 +1535,7 @@ clixon_xml_find_api_path(cxobj     *xt,
 	goto done;
     if (ret == 0)
 	goto fail;
-    retval = clixon_path_search(xt, yt, cplist, xvec, xlen);
+    retval = clixon_path_search(xt, yt, cplist, xvec);
  done:
     if (cplist)
 	clixon_path_free(cplist);
@@ -1565,15 +1563,15 @@ clixon_xml_find_api_path(cxobj     *xt,
  * - Modulename not defined for top-level id. 
  * - Number of keys in key-value list does not match Yang list
  * @code
- *   cxobj **xvec = NULL;
- *   size_t  xlen;
- *   if (clixon_xml_find_instance_id(x, &xvec, &xlen, "/symbol/%s", "foo") < 0) 
- *      goto err;
- *   for (i=0; i<xlen; i++){
- *      xn = xvec[i];
- *         ...
- *   }
- *   free(xvec);
+ *    clixon_xvec *xvec = NULL;
+ *    cxobj       *x;
+ *    if (clixon_xml_find_instance_id(x, &xvec, "/symbol/%s", "foo") < 0) 
+ *       goto err;
+ *    for (i=0; i<clixon_xpath_len(xvec); i++){
+ *       xn = clixon_xpath_i(xvec, i);
+ *       ...
+ *    }
+ *    clixon_xvec_free(xvec);
  * @endcode
  * @see xpath_vec for full XML XPaths
  * @see api_path_search  for RESTCONF api-paths
@@ -1582,9 +1580,8 @@ clixon_xml_find_api_path(cxobj     *xt,
 int
 clixon_xml_find_instance_id(cxobj     *xt, 
 			    yang_stmt *yt,
-			    cxobj   ***xvec,
-			    size_t    *xlen,
-			    char      *format, 
+			    clixon_xvec **xvec,
+			    char      *format,
 			    ...)
 {
     int          retval = -1;
@@ -1619,7 +1616,7 @@ clixon_xml_find_instance_id(cxobj     *xt,
 	goto done;
     if (ret == 0)
 	goto fail;
-    if ((retval = clixon_path_search(xt, yt, cplist, xvec, xlen)) < 0)
+    if ((retval = clixon_path_search(xt, yt, cplist, xvec)) < 0)
     	goto done;
  done:
     if (cplist)
