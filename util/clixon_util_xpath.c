@@ -324,23 +324,8 @@ main(int    argc,
     }
     else
 	x = x0;
-#ifdef XPATH_LIST_OPTIMIZE /* Experimental */
-    {
-	int hits = 0;
-	int j;
-
-	xpath_list_optimize_stats(&hits);
-	for (j=0;j<1;j++){
-	    if (xpath_vec_ctx(x, nsc, xpath, 0, &xc) < 0)
-		return -1;
-	}
-	xpath_list_optimize_stats(&hits);
-	fprintf(stderr, "hits after:%d\n", hits);
-    }
-#else
     if (xpath_vec_ctx(x, nsc, xpath, 0, &xc) < 0)
 	return -1;
-#endif
     /* Print results */
     cb = cbuf_new();
     ctx_print2(cb, xc);

@@ -267,4 +267,4 @@ rm -rf $dir
 # unset conditional parameters 
 unset format
 unset perfnr
-unset perfreg
+unset perfreq

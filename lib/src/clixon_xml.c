@@ -237,8 +237,19 @@ xml_stats_one(cxobj    *x,
 	sz += cv_size(x->x_cv);
     if (x->x_ns_cache)
 	sz += cvec_size(x->x_ns_cache);
+#ifdef XML_EXPLICIT_INDEX
+    if (x->x_search_index){
+	/* XXX: only one */
+	sz += sizeof(struct search_index);
+	if (x->x_search_index->si_name)
+	    sz += strlen(x->x_search_index->si_name)+1;
+	if (x->x_search_index->si_xvec)
+	    sz += clixon_xvec_len(x->x_search_index->si_xvec)*sizeof(struct cxobj*);
+    }
+#endif
     if (szp)
 	*szp = sz;
+    clicon_debug(1, "%s %" PRIu64, __FUNCTION__, sz);
     return 0;
 }
 
@@ -261,10 +272,12 @@ xml_stats(cxobj    *xt,
 	*szp += sz;
     xc = NULL;
     while ((xc = xml_child_each(xt, xc, -1)) != NULL) {
+	sz=0;
 	xml_stats(xc, nrp, &sz);
 	if (szp)
 	    *szp += sz;
     }
+    clicon_debug(1, "%s %" PRIu64, __FUNCTION__, *szp);
     return 0;
 }
 

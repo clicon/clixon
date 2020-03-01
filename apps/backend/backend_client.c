@@ -44,6 +44,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <inttypes.h>
 #include <errno.h>
 #include <signal.h>
 #include <fcntl.h>
@@ -256,6 +257,84 @@ client_get_streams(clicon_handle   h,
     goto done;
 }
 
+/*! Get clixon per datastore stats
+ * @param[in]     h       Clicon handle
+ * @param[in]     dbname  Datastore name
+ * @param[in,out] cb      Cligen buf
+ * @retval        0       OK
+ * @retval       -1       Error
+ */
+static int
+clixon_stats_get_db(clicon_handle h,
+		    char         *name,
+		    cbuf         *cb)
+{
+    int      retval = -1;
+    cxobj   *xt = NULL;
+    uint64_t nr = 0;
+    size_t   sz = 0;
+
+    if (xmldb_get(h, "running", NULL, NULL, &xt) < 0)
+	goto done;
+    xml_stats(xt, &nr, &sz);
+    cprintf(cb, "<datastore><name>%s</name><nr>%" PRIu64 "</nr>"
+	    "<size>%" PRIu64 "</size></datastore>",
+	    name, nr, sz);
+    retval = 0;
+ done:
+    if (xt)
+	free(xt);
+    return retval;
+}
+
+/*! Get clixon stats
+ * @param[in]     h       Clicon handle
+ * @param[in]     yspec   Yang spec
+ * @param[in]     xpath   XML Xpath
+ * @param[in]     nsc     XML Namespace context for xpath
+ * @param[in,out] xret    Existing XML tree, merge x into this
+ * @retval        0       OK
+* @retval        -1       Error
+
+ */
+int
+clixon_stats_get(clicon_handle h,
+		 yang_stmt    *yspec,
+		 char         *xpath,
+		 cvec         *nsc,
+		 cxobj       **xret)
+{
+    int      retval = -1;
+    cbuf    *cb = NULL;
+    uint64_t nr;
+    int      ret;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "<clixon-stats xmlns=\"%s\">", CLIXON_CONF_NS);
+    nr=0;
+    xml_stats_global(&nr);
+    cprintf(cb, "<global><xmlnr>%" PRIu64 "</xmlnr></global>", nr);
+    clixon_stats_get_db(h, "running", cb);
+    clixon_stats_get_db(h, "candidate", cb);
+    clixon_stats_get_db(h, "startup", cb);
+    cprintf(cb, "</clixon-stats>");
+    if ((ret = xml_parse_string2(cbuf_get(cb), YB_TOP, yspec, xret, NULL)) < 0)
+	goto done;
+    if (ret == 0){
+	clicon_err(OE_XML, EINVAL, "Internal error");
+	goto done;
+    }
+    retval = 0;
+ done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
 /*! Get system state-data, including streams and plugins
  * @param[in]     h       Clicon handle
  * @param[in]     xpath   Xpath selection, not used but may be to filter early
@@ -330,6 +409,11 @@ client_statedata(clicon_handle h,
 	    goto done;
 	if (ret == 0)
 	    goto fail;
+    }
+    /* Clixon-config has a state data, if yang is present */
+    if (yang_find(yspec, Y_MODULE, "clixon-config") != NULL){
+	if (clixon_stats_get(h, yspec, xpath, nsc, xret) < 0)
+	    goto done;
     }
     if ((ret = clixon_plugin_statedata(h, yspec, nsc, xpath, xret)) < 0)
 	goto done;

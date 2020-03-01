@@ -80,12 +80,6 @@
 #include "clixon_validate.h"
 #include "clixon_xml_map.h"
 
-/*! Clixon configuration namespace
- * Probably should be defined somewhere else or extracted from yang
- * @see clixon-config.yang
- */
-#define CLIXON_CONF_NS "http://clicon.org/config"
-
 /* Mapping between Cli generation from Yang string <--> constants, 
    see clixon-config.yang type cli_genmodel_type */
 static const map_str2int cli_genmodel_map[] = {

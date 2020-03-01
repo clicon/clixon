@@ -21,11 +21,11 @@
 * [3.3.1](#331) June 7 2017
 
 ## 4.4.0
-Expected: February 2020
+Expected: Early March 2020
 
 ### Major New features
 
-* New "general-purpose" datastore upgrade callback added which i called once on startup, intended for low-level general upgrades and as a complement to module-specific upgrade.
+* New "general-purpose" datastore upgrade callback called once on startup, intended for low-level general upgrades and as a complement to module-specific upgrade.
   * Called on startup after initial XML parsing, but before module-specific upgrades
   * Enabled by definign the `.ca_datastore_upgrade`
   * [General-purpose upgrade documentation](https://clixon-docs.readthedocs.io/en/latest/backend.html#general-purpose)
@@ -39,8 +39,10 @@ Expected: February 2020
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
 	
 ### API changes on existing features (you may need to change your code)
+* Bugfix of config false statement may cause change of sorting of lists in GET opertions (lists that were sorted should not have been sorted)
 * New clixon-config@2020-02-22.yang revision
-  * Added search index extension
+  * Search index extension `search_index` for declaring which non-key variables are search indexes
+  * Added `clixon-stats` for clixon XML and memory statistics.
 * JSON parse error messages change from ` on line x: syntax error,..` to `json_parse: line x: syntax error`
 * Unknown-element error message is more descriptive, eg from `namespace is: urn:example:clixon` to: `Failed to find YANG spec of XML node: x with parent: xp in namespace urn:example:clixon`.
 * C-API parse and validation API more capable
@@ -76,7 +78,7 @@ Expected: February 2020
   
 ### Corrected Bugs
 
-* Fixed: Search function checked only own not for config false statement, should have checked all ancestors.
+* Fixed: Search function checked only own not for config false statement, should have checked all ancestors. This may affect some state returned in GET calls
 * Fixed: Some restconf errors were wrongly formatted such as: `{"ietf-restconf:errors":{"error":{"rpc-error":` . There should be no `"rpc-error"` level.
 * Fixed: Enabling modstate (CLICON_XMLDB_MODSTATE), changing a revision on a yang, and restarting made the backend daemon exit at start (thanks Matt)
   * Also: ensure to load `ietf-yang-library.yang ` if CLICON_XMLDB_MODSTATE is set

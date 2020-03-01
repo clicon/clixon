@@ -41,7 +41,9 @@ module clixon-config {
        ***** END LICENSE BLOCK *****";
 
     revision 2020-02-22 {
-	description "Added search index extension";
+	description
+	    "Added: search index extension,
+             Added: clixon-stats state for clixon XML and memory statistics.";
     }
     revision 2019-09-11 {
 	description
@@ -673,12 +675,11 @@ module clixon-config {
 	description "Clixon backend statistics.";
 	container global{
 	    description "Clixon global statistics";
-	    leaf nr{
-		description "Number of cxobj:ects. That is number of residing xml/json objects
+	    leaf xmlnr{
+		description "Number of XML objects. That is number of residing xml/json objects
                              in the internal 'cxobj' representation.";
 		type uint64;
 	    }
-
 	}
 	list datastore{
 	    description "Datastore statistics";
@@ -688,7 +689,8 @@ module clixon-config {
 		type string;
 	    }
 	    leaf nr{
-		description "Number bytes of internal datastore cache of datastore tree.";
+		description "Number of XML objects. That is number of residing xml/json objects
+                             in the internal 'cxobj' representation.";
 		type uint64;
 	    }
 	    leaf size{

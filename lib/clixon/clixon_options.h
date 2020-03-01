@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -37,6 +39,15 @@
 
 #ifndef _CLIXON_OPTIONS_H_
 #define _CLIXON_OPTIONS_H_
+
+/*
+ * Constants
+ */
+/*! Clixon configuration namespace
+ * Probably should be defined somewhere else or extracted from yang
+ * @see clixon-config.yang
+ */
+#define CLIXON_CONF_NS "http://clicon.org/config"
 
 /*
  * Types
