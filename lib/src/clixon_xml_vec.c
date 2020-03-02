@@ -62,6 +62,7 @@
 #include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xml_io.h"
 #include "clixon_xml_vec.h"
 
 //typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c */

@@ -66,6 +66,7 @@
 #include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_yang_module.h"
 #include "clixon_xml_nsctx.h"
 
 /*! Create and initialize XML namespace context
@@ -407,4 +408,225 @@ xml_nsctx_yangspec(yang_stmt *yspec,
     retval = 0;
  done:
     return retval;
+}
+
+/*! Given an xml tree return URI namespace recursively : default or localname given
+ *
+ * Given an XML tree and a prefix (or NULL) return URI namespace.
+ * @param[in]  x          XML tree
+ * @param[in]  prefix     prefix/ns localname. If NULL then return default.
+ * @param[out] namespace  URI namespace (or NULL). Note pointer into xml tree
+ * @retval     0          OK
+ * @retval    -1          Error
+ * @code
+ *   if (xml2ns(xt, NULL, &namespace) < 0)
+ *      err;
+ * @endcode
+ * @see xmlns_check 
+ * @see xmlns_set cache is set
+ * @note, this function uses a cache. 
+ */
+int
+xml2ns(cxobj *x,
+       char  *prefix,
+       char **namespace)
+{
+    int    retval = -1;
+    char  *ns = NULL;
+    cxobj *xp;
+    
+    if ((ns = nscache_get(x, prefix)) != NULL)
+	goto ok;
+    if (prefix != NULL) /* xmlns:<prefix>="<uri>" */
+	ns = xml_find_type_value(x, "xmlns", prefix, CX_ATTR);
+    else{                /* xmlns="<uri>" */
+    	ns = xml_find_type_value(x, NULL, "xmlns", CX_ATTR);
+    }
+    /* namespace not found, try parent */
+    if (ns == NULL){
+	if ((xp = xml_parent(x)) != NULL){
+	    if (xml2ns(xp, prefix, &ns) < 0)
+		goto done;
+	}
+	/* If no parent, return default namespace if defined */
+#ifdef USE_NETCONF_NS_AS_DEFAULT
+	else{
+	    if (prefix == NULL)
+		ns = NETCONF_BASE_NAMESPACE;
+	    else
+		ns = NULL;
+	}
+#endif
+    }
+    /* Set default namespace cache (since code is at this point,
+     * no cache was found */
+    if (ns && nscache_set(x, prefix, ns) < 0)
+	goto done;
+ ok:
+    if (namespace)
+	*namespace = ns;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Add a namespace attribute to an XML node, either default or specific prefix
+ * @param[in]  x          XML tree
+ * @param[in]  prefix     prefix/ns localname. If NULL then set default xmlns
+ * @param[in]  ns         URI namespace (or NULL). Will be copied
+ * @retval     0          OK
+ * @retval    -1          Error
+ * @see xml2ns 
+ */
+int
+xmlns_set(cxobj *x,
+	  char  *prefix,
+	  char  *ns)
+{
+    int    retval = -1;
+    cxobj *xa;
+
+    if (prefix != NULL){ /* xmlns:<prefix>="<uri>" */
+	if ((xa = xml_new(prefix, x, NULL)) == NULL)
+	    goto done;
+	if (xml_prefix_set(xa, "xmlns") < 0)
+	    goto done;
+    }
+    else{                /* xmlns="<uri>" */
+	if ((xa = xml_new("xmlns", x, NULL)) == NULL)
+	    goto done;
+    }
+    xml_type_set(xa, CX_ATTR);
+    if (xml_value_set(xa, ns) < 0)
+	goto done;
+    /* (re)set namespace cache (as used in xml2ns) */
+    if (ns && nscache_set(x, prefix, ns) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Get namespace given prefix recursively 
+ * @param[in]  xn        XML node
+ * @param[in]  namespace Namespace
+ * @param[out] prefixp   Pointer to prefix if found
+ * @retval    -1         Error
+ * @retval     0         No namespace found
+ * @retval     1         Namespace found, prefix returned in prefixp
+ */
+int
+xml2prefix(cxobj *xn,
+	   char  *namespace,
+	   char **prefixp)
+{
+    int    retval = -1;
+    cxobj *xa = NULL;
+    cxobj *xp;
+    char  *prefix = NULL;
+    char  *xaprefix;
+    int    ret;
+
+    if (nscache_get_prefix(xn, namespace, &prefix) == 1) /* found */
+	goto found;
+    xa = NULL;
+    while ((xa = xml_child_each(xn, xa, CX_ATTR)) != NULL) {
+	/* xmlns=namespace */
+	if (strcmp("xmlns", xml_name(xa)) == 0){ 
+	    if (strcmp(xml_value(xa), namespace) == 0){
+		if (nscache_set(xn, NULL, namespace) < 0)
+		    goto done;
+		prefix = NULL; /* Maybe should set all caches in ns:s children? */
+		goto found;
+	    }
+	}
+	/* xmlns:prefix=namespace */
+	else if ((xaprefix=xml_prefix(xa)) != NULL &&
+		 strcmp("xmlns", xaprefix) == 0){ 
+	    if (strcmp(xml_value(xa), namespace) == 0){
+		prefix = xml_name(xa);
+		if (nscache_set(xn, prefix, namespace) < 0)
+		    goto done;
+		goto found;
+	    }
+	}
+    }
+    if ((xp = xml_parent(xn)) != NULL){
+	if ((ret = xml2prefix(xp, namespace, &prefix)) < 0)
+	    goto done;
+	if (ret == 1){
+	    if (nscache_set(xn, prefix, namespace) < 0)
+		goto done;
+	    goto found;
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+ found:
+    *prefixp = prefix;
+    retval = 1;
+    goto done;
+}
+
+/*! See if xmlns:[<localname>=]<uri> exists, if so return <uri>
+ *
+ * @param[in]  xn   XML node
+ * @param[in]  nsn  Namespace name
+ * @retval     URI  return associated URI if found
+ * @retval     NULL No namespace name binding found for nsn
+ * @see xml2ns XXX coordinate
+ */
+static char *
+xmlns_check(cxobj *xn,
+	    char  *nsn)
+{
+    cxobj *x = NULL;
+    char  *xns;
+    
+    while ((x = xml_child_each(xn, x, CX_ATTR)) != NULL) 
+	if ((xns = xml_prefix(x)) && strcmp(xns, "xmlns")==0 &&
+	    strcmp(xml_name(x), nsn) == 0)
+	    return xml_value(x);
+    return NULL;
+}
+
+/*! Check namespace of xml node by searching recursively among ancestors 
+ * @param[in]  xn         xml node
+ * @param[in]  namespace  check validity of namespace
+ * @retval     0          Found / validated or no yang spec
+ * @retval    -1          Not found
+ * @note This function is grossly inefficient
+ */
+int
+xml_localname_check(cxobj *xn, 
+		    void  *arg)
+{
+    cxobj     *xp = NULL;
+    char      *nsn;
+    char      *n;
+    yang_stmt *ys = xml_spec(xn);
+    
+    /* No namespace name - comply */
+    if ((nsn = xml_prefix(xn)) == NULL)
+	return 0;
+    /* Check if NSN defined in same node */
+    if (xmlns_check(xn, nsn) != NULL)
+	return 0;
+    /* Check if NSN defined in some ancestor */
+    while ((xp = xml_parent(xn)) != NULL) {
+	if (xmlns_check(xp, nsn) != NULL)
+	    return 0;
+    	xn = xp;
+    }
+    /* Check if my namespace */
+    if ((n = yang_find_myprefix(ys)) != NULL && strcmp(nsn,n)==0)
+	return 0;
+    /* Check if any imported module */
+    if (yang_find_module_by_prefix(ys, nsn) != NULL)
+	return 0;
+    /* Not found, error */
+    clicon_err(OE_XML, ENOENT, "Namespace name %s in %s:%s not found",
+	       nsn, nsn, xml_name(xn));
+    return -1;
 }

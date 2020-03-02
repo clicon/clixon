@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -31,34 +33,33 @@
 
   ***** END LICENSE BLOCK *****
 
- * XML support functions.
- * @see     https://www.w3.org/TR/2009/REC-xml-names-20091208/
+ * Clixon XML object parse and print functions
+ * @see https://www.w3.org/TR/2008/REC-xml-20081126
+ *      https://www.w3.org/TR/2009/REC-xml-names-20091208
  */
-#ifndef _CLIXON_XML_NSCTX_H
-#define _CLIXON_XML_NSCTX_H
-
-/*
- * An xml namespace context is a cligen variable vector containing a list of
- * <prefix,namespace> pairs.
- * It is encoded in a cvv as a list of string values, where the c name is the 
- * prefix and the string values are the namespace URI.
- * The default namespace is decoded as having the name NULL
- */
+#ifndef _CLIXON_XML_IO_H_
+#define _CLIXON_XML_IO_H_
 
 /*
  * Prototypes
  */
-cvec   *xml_nsctx_init(char *prefix, char *namespace);
-int     xml_nsctx_free(cvec *nsc);
-char   *xml_nsctx_get(cvec *nsc, char *prefix);
-int     xml_nsctx_get_prefix(cvec *cvv,	char *namespace, char **prefix);
-int     xml_nsctx_add(cvec *nsc, char *prefix, char *namespace);
-int     xml_nsctx_node(cxobj *x, cvec **ncp);
-int     xml_nsctx_yang(yang_stmt *yn, cvec **ncp);
-int     xml_nsctx_yangspec(yang_stmt *yspec, cvec **ncp);
+int clicon_xml2file(FILE  *f, cxobj *x, int level, int prettyprint);
+int xml_print(FILE *f, cxobj *xn);
+int clicon_xml2cbuf(cbuf *cb, cxobj *x, int level, int prettyprint, int32_t depth);
+int xmltree2cbuf(cbuf *cb, cxobj *x, int level);
 
-int       xml2ns(cxobj *x, char *localname, char **namespace);
-int       xml2prefix(cxobj *xn, char *namespace, char **prefixp);
-int       xml_localname_check(cxobj *xn, void *arg);
+int xml_parse_file(int fd, yang_stmt *yspec, cxobj **xt);
+int xml_parse_file2(int fd, enum yang_bind yb, yang_stmt *yspec, char *endtag, cxobj **xt, cxobj **xerr);
+int xml_parse_string2(const char *str, enum yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
+int xml_parse_string(const char *str, yang_stmt *yspec, cxobj **xt);
+#if defined(__GNUC__) && __GNUC__ >= 3
+int       xml_parse_va(cxobj **xt, yang_stmt *yspec, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
+#else
+int       xml_parse_va(cxobj **xt, yang_stmt *yspec, const char *format, ...);
+#endif
+#ifdef NOTUSED
+int xml_body_int32(cxobj *xb, int32_t *val);
+int xml_body_uint32(cxobj *xb, uint32_t *val);
+#endif
 
-#endif /* _CLIXON_XML_NSCTX_H */
+#endif	/* _CLIXON_XML_IO_H_ */

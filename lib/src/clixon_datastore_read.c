@@ -75,6 +75,7 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
 #include "clixon_xml_map.h"
+#include "clixon_xml_io.h"
 #include "clixon_xml_nsctx.h"
 
 #include "clixon_datastore.h"
@@ -646,7 +647,7 @@ xmldb_get_zerocopy(clicon_handle    h,
 
 /*! Get content of datastore and return a copy of the XML tree
  * @param[in]  h      Clicon handle
- * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  db     Name of database to search in, eg "running"
  * @param[in]  nsc    XML namespace context for XPATH
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[out] xret   Single return XML tree. Free with xml_free()

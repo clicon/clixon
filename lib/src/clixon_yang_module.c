@@ -70,6 +70,7 @@
 #include "clixon_file.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xml_io.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"

@@ -78,6 +78,7 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_sort.h"
+#include "clixon_xml_io.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_proto_client.h"
 

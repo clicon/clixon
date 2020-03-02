@@ -134,9 +134,6 @@ int       nscache_set(cxobj *x,	char *prefix, char *namespace);
 int       nscache_clear(cxobj *x);
 int       nscache_replace(cxobj *x, cvec *ns);
 
-int       xml2ns(cxobj *x, char *localname, char **namespace);
-int       xml2prefix(cxobj *xn, char *namespace, char **prefixp);
-
 int       xmlns_set(cxobj *x, char *prefix, char *namespace);
 cxobj    *xml_parent(cxobj *xn);
 int       xml_parent_set(cxobj *xn, cxobj *parent);
@@ -193,20 +190,6 @@ cxobj    *xml_find_body_obj(cxobj *xt, char *name, char *val);
 
 int       xml_free(cxobj *xn);
 
-int       xml_print(FILE  *f, cxobj *xn);
-int       clicon_xml2file(FILE *f, cxobj *xn, int level, int prettyprint);
-int       clicon_xml2cbuf(cbuf *xf, cxobj *xn, int level, int prettyprint, int32_t depth);
-int       xml_parse_file(int fd, yang_stmt *yspec, cxobj **xt);
-int       xml_parse_file2(int fd, enum yang_bind bind, yang_stmt *yspec, char *endtag, cxobj **xt, cxobj **xerr);
-int       xml_parse_string(const char *str, yang_stmt *yspec, cxobj **xml_top);
-int       xml_parse_string2(const char *str, enum yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
-
-#if defined(__GNUC__) && __GNUC__ >= 3
-int       xml_parse_va(cxobj **xt, yang_stmt *yspec, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
-#else
-int       xml_parse_va(cxobj **xt, yang_stmt *yspec, const char *format, ...);
-#endif
-int       xmltree2cbuf(cbuf *cb, cxobj *x, int level);
 int       xml_copy_one(cxobj *xn0, cxobj *xn1);
 int       xml_copy(cxobj *x0, cxobj *x1);
 cxobj    *xml_dup(cxobj *x0);
@@ -219,9 +202,6 @@ int       xml_apply0(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *ar
 int       xml_apply_ancestor(cxobj *xn, xml_applyfn_t fn, void *arg);
 int       xml_isancestor(cxobj *x, cxobj *xp);
 
-int       xml_body_parse(cxobj *xb, enum cv_type type, cg_var **cvp);
-int       xml_body_int32(cxobj *xb, int32_t *val);
-int       xml_body_uint32(cxobj *xb, uint32_t *val);
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
 int       xml_attr_insert2val(char *instr, enum insert_type *ins);

@@ -42,7 +42,7 @@ Expected: Early March 2020
 * Bugfix of config false statement may cause change of sorting of lists in GET opertions (lists that were sorted should not have been sorted)
 * New clixon-config@2020-02-22.yang revision
   * Search index extension `search_index` for declaring which non-key variables are search indexes
-  * Added `clixon-stats` for clixon XML and memory statistics.
+  * Added `clixon-stats` state for clixon XML and memory statistics.
 * JSON parse error messages change from ` on line x: syntax error,..` to `json_parse: line x: syntax error`
 * Unknown-element error message is more descriptive, eg from `namespace is: urn:example:clixon` to: `Failed to find YANG spec of XML node: x with parent: xp in namespace urn:example:clixon`.
 * C-API parse and validation API more capable

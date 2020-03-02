@@ -70,6 +70,7 @@
 #include "clixon_yang.h"
 #include "clixon_sig.h"
 #include "clixon_xml.h"
+#include "clixon_xml_io.h"
 #include "clixon_options.h"
 #include "clixon_proto.h"
 
