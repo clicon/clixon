@@ -91,7 +91,8 @@ main(int    argc,
     int         i;
     cxobj      *x = NULL;
     cxobj      *xc;
-    clixon_xvec *xvec = NULL;
+    cxobj     **xvec = NULL;
+    size_t      xlen = 0;
     int         c;
     int         len;
     char       *buf = NULL;
@@ -247,11 +248,11 @@ main(int    argc,
     xvec = NULL;
     for (i=0; i<nr; i++){
 	if (api_path_p){
-	    if ((ret = clixon_xml_find_api_path(x, yspec, &xvec, "%s", path)) < 0)
+	    if ((ret = clixon_xml_find_api_path(x, yspec, &xvec, &xlen, "%s", path)) < 0)
 		goto done;
 	}
 	else{
-	    if ((ret = clixon_xml_find_instance_id(x, yspec, &xvec, "%s", path)) < 0)
+	    if ((ret = clixon_xml_find_instance_id(x, yspec, &xvec, &xlen, "%s", path)) < 0)
 		goto done;
 	}
 	if (ret == 0){
@@ -260,8 +261,8 @@ main(int    argc,
 	}
     }
     /* Print results */
-    for (i=0; i<clixon_xvec_len(xvec); i++){
-	xc = clixon_xvec_i(xvec,i);
+    for (i = 0; i < xlen; i++){
+	xc = xvec[i];
 	fprintf(stdout, "%d: ", i);
 	clicon_xml2file(stdout, xc, 0, 0);
 	fprintf(stdout, "\n");
@@ -274,7 +275,7 @@ main(int    argc,
     if (cb)
 	cbuf_free(cb);
     if (xvec)
-	clixon_xvec_free(xvec);
+	free(xvec);
     if (buf)
 	free(buf);
     if (x)

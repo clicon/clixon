@@ -109,15 +109,15 @@ trigger_rpc(clicon_handle h,          /* Clicon handle */
 	  void         *arg,          /* client_entry */
 	  void         *regarg)       /* Argument given at register */
 {
-    int        retval = -1;
-    cxobj     *xret = NULL;
-    cxobj     *xc = NULL;
-    cxobj     *x = NULL;
-    char      *k; 
-    char      *val;
-    cvec      *cvk = NULL;
-    cg_var    *cv;
-    clixon_xvec *xvec = NULL;
+    int          retval = -1;
+    cxobj       *xret = NULL;
+    cxobj       *xc = NULL;
+    cxobj       *x = NULL;
+    char        *k; 
+    char        *val;
+    cvec        *cvk = NULL;
+    cg_var      *cv;
+    clixon_xvec *xv = NULL;
 
     if (xmldb_get(h, "running", NULL, "/c", &xret) < 0)
       goto done;
@@ -157,10 +157,10 @@ trigger_rpc(clicon_handle h,          /* Clicon handle */
     cv_name_set(cv, "k");
     cv_string_set(cv, "5");
     /* Use form 2c use spec of xc + name */
-    if (clixon_xml_find_index(xc, NULL, NULL, "y3", cvk, &xvec) < 0)
+    if (clixon_xml_find_index(xc, NULL, NULL, "y3", cvk, &xv) < 0)
        goto done;
-    if (clixon_xvec_len(xvec))
-       val = xml_find_body(clixon_xvec_i(xvec,0), "val");
+    if (clixon_xvec_len(xv))
+       val = xml_find_body(clixon_xvec_i(xv,0), "val");
     else
        val = NULL;
     clicon_debug(1, "%s Method 3: val:%s", __FUNCTION__, val?val:"null");
@@ -173,8 +173,8 @@ trigger_rpc(clicon_handle h,          /* Clicon handle */
 	cvec_free(cvk);
     if (xret)
         xml_free(xret);
-    if (xvec)
-        free(xvec);
+    if (xv)
+       clixon_xvec_free(xv);
     return retval;
 }
 

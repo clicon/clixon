@@ -1391,7 +1391,7 @@ xml_find_index_yang(cxobj       *xp,
  *    ... Populate cvk with key/values eg a:5 b:6
  *    if (clixon_xml_find_index(xp, yp, NULL, "a", ns, cvk, &xv) < 0)
  *       err;
- *    for (i=0; i<clixon_xpath_len(xvec); i++){
+ *    for (i=0; i<clixon_xvec_len(xvec); i++){
  *       x = clixon_xpath_i(xvec, i);
  *       ...
  *    }

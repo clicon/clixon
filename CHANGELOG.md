@@ -68,7 +68,6 @@ Expected: Early March 2020
   * Added instrumentation: `xml_stats` and `xml_stats_global`.
   * Added object-based `clixon_xvec` as a new programming construct for contiguous XML object vectors.
     * See files: `clixon_xml_vec.[ch]`
-    * Plan is to replace `cxobj **` with `clixon_xvec *` going forward.
 * Test framework
   * Added `-- -S <file>` command-line to main example to be able to return any state to main example.
   * Added `test/cicd` test scripts for running on a set of other hosts

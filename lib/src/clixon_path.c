@@ -1483,22 +1483,23 @@ clixon_path_search(cxobj       *xt,
  * - Modulename not defined for top-level id. 
  * - Number of keys in key-value list does not match Yang list
  * @code
- *    clixon_xvec *xvec = NULL;
- *    cxobj       *x;
- *    if (clixon_xml_find_api_path(x, yspec, &xvec, "/symbol/%s", "foo") < 0) 
+ *    cxobj **vec = NULL;
+ *    size_t  len = 0;
+ *    if (clixon_xml_find_api_path(x, yspec, &vec, &len, "/symbol/%s", "foo") < 0) 
  *       err;
- *    for (i=0; i<clixon_xpath_len(xvec); i++){
- *       x = clixon_xpath_i(xvec, i);
+ *    for (i=0; i<len; i++){
+ *       x = vec[i];
  *       ...
  *    }
- *    clixon_xvec_free(xvec);
+ *    free(xvec);
  * @endcode
- * @see xpath_vec1
+ * @see clixon_xml_find_instance_id
  */
 int
 clixon_xml_find_api_path(cxobj        *xt, 
 			 yang_stmt    *yt,
-			 clixon_xvec **xvec,
+			 cxobj      ***xvec,
+			 size_t       *xlen,
 			 char         *format,
 			 ...)
 {
@@ -1508,6 +1509,7 @@ clixon_xml_find_api_path(cxobj        *xt,
     char            *api_path = NULL;
     clixon_path     *cplist = NULL;
     int              ret;
+    clixon_xvec     *xv = NULL;
     
     va_start(ap, format);
     len = vsnprintf(NULL, 0, format, ap);
@@ -1535,8 +1537,17 @@ clixon_xml_find_api_path(cxobj        *xt,
 	goto done;
     if (ret == 0)
 	goto fail;
-    retval = clixon_path_search(xt, yt, cplist, xvec);
+    if ((ret = clixon_path_search(xt, yt, cplist, &xv)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+    /* Convert to api xvec format */
+    if (clixon_xvec_extract(xv, xvec, xlen) < 0)
+	goto done;
+    retval = 1;
  done:
+    if (xv)
+	clixon_xvec_free(xv);
     if (cplist)
 	clixon_path_free(cplist);
     if (api_path)
@@ -1563,24 +1574,24 @@ clixon_xml_find_api_path(cxobj        *xt,
  * - Modulename not defined for top-level id. 
  * - Number of keys in key-value list does not match Yang list
  * @code
- *    clixon_xvec *xvec = NULL;
- *    cxobj       *x;
- *    if (clixon_xml_find_instance_id(x, &xvec, "/symbol/%s", "foo") < 0) 
+ *    cxobj **vec = NULL;
+ *    size_t  len = 0;
+ *    if (clixon_xml_find_instance_id(x, yspec, &vec, &len, "/symbol/%s", "foo") < 0) 
  *       goto err;
- *    for (i=0; i<clixon_xpath_len(xvec); i++){
- *       xn = clixon_xpath_i(xvec, i);
+ *    for (i=0; i<len; i++){
+ *       x = vec[i];
  *       ...
  *    }
  *    clixon_xvec_free(xvec);
  * @endcode
- * @see xpath_vec for full XML XPaths
- * @see api_path_search  for RESTCONF api-paths
+ * @see clixon_xml_find_api_path    for RESTCONF api-paths
  * @see RFC7950 Sec 9.13 
  */
 int
 clixon_xml_find_instance_id(cxobj     *xt, 
 			    yang_stmt *yt,
-			    clixon_xvec **xvec,
+			    cxobj   ***xvec,
+			    size_t    *xlen,
 			    char      *format,
 			    ...)
 {
@@ -1590,6 +1601,7 @@ clixon_xml_find_instance_id(cxobj     *xt,
     char        *path = NULL;
     clixon_path *cplist = NULL;
     int          ret;
+    clixon_xvec *xv = NULL;
     
     va_start(ap, format);
     len = vsnprintf(NULL, 0, format, ap);
@@ -1616,9 +1628,17 @@ clixon_xml_find_instance_id(cxobj     *xt,
 	goto done;
     if (ret == 0)
 	goto fail;
-    if ((retval = clixon_path_search(xt, yt, cplist, xvec)) < 0)
-    	goto done;
+    if ((ret = clixon_path_search(xt, yt, cplist, &xv)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+    /* Convert to api xvec format */
+    if (clixon_xvec_extract(xv, xvec, xlen) < 0)
+	goto done;
+    retval = 1;
  done:
+    if (xv)
+	clixon_xvec_free(xv);
     if (cplist)
 	clixon_path_free(cplist);
     if (path)

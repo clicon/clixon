@@ -333,7 +333,7 @@ xpath_optimize_check(xpath_tree *xs,
     if ((ret = xpath_list_optimize_fn(xs, xv, &xvec)) < 0)
 	return -1;
     if (ret == 1){
-	if (clixon_xvec_vec(xvec, xvec0, xlen0) < 0)
+	if (clixon_xvec_extract(xvec, xvec0, xlen0) < 0)
 	    return -1;
 	clixon_xvec_free(xvec);
 	_optimize_hits++;

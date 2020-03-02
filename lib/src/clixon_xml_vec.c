@@ -198,33 +198,24 @@ clixon_xvec_i(clixon_xvec *xv,
 	return NULL;
 }
 
-/*! Return whole XML object vector
+/*! Return whole XML object vector and null it in original xvec, essentially moving it
  *
  * Used in glue code between clixon_xvec code and cxobj **, size_t code, may go AWAY?
  * @param[in]  xv    XML tree vector
  * @param[out] xvec  XML object vector
  * @retval     0
- * @retval    -1
  */
 int
-clixon_xvec_vec(clixon_xvec *xv,
-		cxobj     ***xvec,
-		size_t      *xlen)
+clixon_xvec_extract(clixon_xvec *xv,
+		    cxobj     ***xvec,
+		    size_t      *xlen)
 {
-    size_t sz;
-
-    if (xv->xv_len == 0){
-	*xvec = NULL;
-	*xlen = 0;
-    }
-    else {
-	sz = xv->xv_len * sizeof(cxobj*);
-	if ((*xvec = malloc(sz)) == NULL){
-	    clicon_err(OE_UNIX, errno, "memcpy");
-	    return -1;
-	}
-	memcpy(*xvec, xv->xv_vec, sz);
-	*xlen = xv->xv_len;
+    *xvec = xv->xv_vec;
+    *xlen = xv->xv_len;
+    if (xv->xv_vec != NULL){
+	xv->xv_len = 0;
+	xv->xv_max = 0;
+	xv->xv_vec = NULL;
     }
     return 0;
 }

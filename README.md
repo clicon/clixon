@@ -11,12 +11,13 @@ mechanism.
 
 See [main documentation](https://clixon-docs.readthedocs.io) and [project page](https://www.clicon.org).
   
+Clixon interaction is best done posting issues, pull requests, or joining the
+[slack channel](https://clixondev.slack.com).
+[Slack invite](https://join.slack.com/t/clixondev/shared_invite/enQtMzI3OTM4MzA3Nzk3LTA3NWM4OWYwYWMxZDhiYTNhNjRkNjQ1NWI1Zjk5M2JjMDk4MTUzMTljYTZiYmNhODkwMDI2ZTkyNWU3ZWMyN2U). 
+
 Clixon is open-source and dual licensed. Either Apache License, Version 2.0 or GNU
 General Public License Version 2; you choose.
 
 See [LICENSE.md](LICENSE.md) for the license.
 
-Clixon interaction is best done posting issues, pull requests, or joining the
-[slack channel](https://clixondev.slack.com).
-[Slack invite](https://join.slack.com/t/clixondev/shared_invite/enQtMzI3OTM4MzA3Nzk3LTA3NWM4OWYwYWMxZDhiYTNhNjRkNjQ1NWI1Zjk5M2JjMDk4MTUzMTljYTZiYmNhODkwMDI2ZTkyNWU3ZWMyN2U). 
-
+[Netgate](https://www.netgate.com/) sponsors Clixon.
