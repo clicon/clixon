@@ -1313,7 +1313,11 @@ populate_self_top(cxobj     *xt,
  *     err;
  * @endcode
  * @note For subs to anyxml nodes will not have spec set
- * @see xml_spec_populate_rpc  for incoming rpc 
+ * There are several functions in the API family
+ * @see xml_spec_populate_rpc     for incoming rpc 
+ * @see xml_spec_populate_parent  Not top-level and parent is properly yang populated
+ * @see xml_spec_populate0        If the calling xml object should also be populated
+ * @see xml_spec_populate0_parent
  */
 int
 xml_spec_populate(cxobj     *xt, 
@@ -1357,9 +1361,15 @@ xml_spec_populate_parent(cxobj  *xt,
 	if (ret == 0)
 	    failed++;
     }
-    retval = (failed==0) ? 1 : 0;
+    if (failed)
+	goto fail;
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
+
 }
 
 /*! Find yang spec association of tree of XML nodes
@@ -1378,18 +1388,23 @@ xml_spec_populate0(cxobj     *xt,
 
     if ((ret = populate_self_top(xt, yspec, xerr)) < 0) 
 	goto done;
-    if (ret == 1){
-	xc = NULL;     /* Apply on children */
-	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	    if ((ret = xml_spec_populate0_parent(xc, xerr)) < 0)
-		goto done;
-	    if (ret == 0)
-		failed++;
-	}
+    if (ret == 0)
+	goto fail;
+    xc = NULL;     /* Apply on children */
+    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+	if ((ret = xml_spec_populate0_parent(xc, xerr)) < 0)
+	    goto done;
+	if (ret == 0)
+	    failed++;
     }
-    retval = (failed==0) ? 1 : 0;
+    if (failed)
+	goto fail;
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Find yang spec association of tree of XML nodes
@@ -1408,19 +1423,22 @@ xml_spec_populate0_parent(cxobj  *xt,
     if ((ret = populate_self_parent(xt, xerr)) < 0)
 	goto done;
     if (ret == 0)
-	failed++;
-    else if (ret != 1){ /* 1 means anyxml parent */
-	xc = NULL;     /* Apply on children */
-	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	    if ((ret = xml_spec_populate0_parent(xc, xerr)) < 0)
-		goto done;
-	    if (ret == 0)
-		failed++;
-	}
+	goto fail;
+    xc = NULL;     /* Apply on children */
+    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+	if ((ret = xml_spec_populate0_parent(xc, xerr)) < 0)
+	    goto done;
+	if (ret == 0)
+	    failed++;
     }
-    retval = (failed==0) ? 1 : 0;
+    if (failed)
+	goto fail;
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Given an XML node, build an xpath to root, internal function

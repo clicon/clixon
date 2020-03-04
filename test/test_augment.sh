@@ -167,14 +167,16 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    sudo pkill -u $wwwuser -f clixon_restconf
 
-new "start restconf daemon"
-start_restconf -f $cfg
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
-new "waiting"
-wait_restconf
+    new "waiting"
+    wait_restconf
+fi
 
 # mandatory-leaf See RFC7950 Sec 7.17
 new "netconf set interface with augmented type and mandatory leaf"
@@ -240,7 +242,6 @@ EOF
 new "restconf POST augment multi-namespace path e2 (middle path)"
 expectpart "$(curl -s -X POST -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e2 -d "$XML" )" 0 ''
 
-
 new "restconf GET augment multi-namespace top"
 expectpart "$(curl -si -X GET http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080},{"name":"e2","type":"fddi","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi","example-augment:port":80,"example-augment:lport":8080},{"name":"e3","type":"fddi","example-augment:mandatory-leaf":"true","example-augment:me":"you","example-augment:port":80,"example-augment:lport":8080}\]}}'
 
@@ -253,8 +254,10 @@ expectpart "$(curl -si -X GET http://localhost/restconf/data/ietf-interfaces:int
 new "restconf GET augment multi-namespace cross level 2"
 expectpart "$(curl -si -X GET http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1/example-augment:ospf/reference-bandwidth)" 0 'HTTP/1.1 200 OK' '{"example-augment:reference-bandwidth":23}'
 
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf 
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE

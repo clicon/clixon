@@ -343,7 +343,7 @@ clicon_rpc_generate_error(cxobj       *xerr,
  * @endcode
  * @see clicon_rpc_get
  * @see clicon_rpc_generate_error
- * @note the netconf return message us yang populated, but returned data is not
+ * @note the netconf return message is yang populated, as well as the return data
  */
 int
 clicon_rpc_get_config(clicon_handle h, 
@@ -357,10 +357,13 @@ clicon_rpc_get_config(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
+    cxobj             *xerr = NULL;    
     cxobj             *xd;
     cg_var            *cv = NULL;
     char              *prefix;
     uint32_t           session_id;
+    int                ret;
+    yang_stmt         *yspec;
     
     if (session_id_check(h, &session_id) < 0)
 	goto done;
@@ -394,9 +397,21 @@ clicon_rpc_get_config(clicon_handle h,
     /* Send xml error back: first check error, then ok */
     if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
 	xd = xml_parent(xd); /* point to rpc-reply */
-    else if ((xd = xpath_first(xret, NULL, "/rpc-reply/data")) == NULL)
+    else if ((xd = xpath_first(xret, NULL, "/rpc-reply/data")) == NULL){
 	if ((xd = xml_new("data", NULL, NULL)) == NULL)
 	    goto done;
+    }
+    else{
+	yspec = clicon_dbspec_yang(h);
+	if ((ret = xml_spec_populate(xd, yspec, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		clicon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
+		goto done;
+	    }
+	}
+    }
     if (xt){
 	if (xml_rm(xd) < 0)
 	    goto done;
@@ -406,6 +421,8 @@ clicon_rpc_get_config(clicon_handle h,
   done:
     if (cb)
 	cbuf_free(cb);
+    if (xerr)
+	xml_free(xerr);
     if (xret)
 	xml_free(xret);
     if (msg)
@@ -674,7 +691,7 @@ clicon_rpc_unlock(clicon_handle h,
  * @endcode
  * @see clicon_rpc_get_config which is almost the same as with content=config, but you can also select dbname
  * @see clicon_rpc_generate_error
- * @note the netconf return message us yang populated, but returned data is not
+ * @note the netconf return message is yang populated, as well as the return data
  */
 int
 clicon_rpc_get(clicon_handle   h, 
@@ -688,11 +705,14 @@ clicon_rpc_get(clicon_handle   h,
     struct clicon_msg *msg = NULL;
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
+    cxobj             *xerr = NULL;
     cxobj             *xd;
     char              *username;
     cg_var            *cv = NULL;
     char              *prefix;
     uint32_t           session_id;
+    int                ret;
+    yang_stmt         *yspec;
     
     if (session_id_check(h, &session_id) < 0)
 	goto done;
@@ -733,9 +753,21 @@ clicon_rpc_get(clicon_handle   h,
     /* Send xml error back: first check error, then ok */
     if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
 	xd = xml_parent(xd); /* point to rpc-reply */
-    else if ((xd = xpath_first(xret, NULL, "/rpc-reply/data")) == NULL)
+    else if ((xd = xpath_first(xret, NULL, "/rpc-reply/data")) == NULL){
 	if ((xd = xml_new("data", NULL, NULL)) == NULL)
 	    goto done;
+    }
+    else{
+	yspec = clicon_dbspec_yang(h);
+	if ((ret = xml_spec_populate(xd, yspec, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		clicon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
+		goto done;
+	    }
+	}
+    }
     if (xt){
 	if (xml_rm(xd) < 0)
 	    goto done;
@@ -745,6 +777,8 @@ clicon_rpc_get(clicon_handle   h,
   done:
     if (cb)
 	cbuf_free(cb);
+    if (xerr)
+	xml_free(xerr);
     if (xret)
 	xml_free(xret);
     if (msg)

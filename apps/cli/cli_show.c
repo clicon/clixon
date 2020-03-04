@@ -433,7 +433,6 @@ cli_show_config1(clicon_handle h,
 		 cvec         *argv)
 {
     int              retval = -1;
-    int              ret;
     char            *db;
     char            *formatstr;
     char            *xpath;
@@ -493,13 +492,6 @@ cli_show_config1(clicon_handle h,
 	    goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Get configuration", NULL);
-	goto done;
-    }
-    /* Some formats (eg cli) require yang */
-    if ((ret = xml_spec_populate(xt, yspec, &xerr)) < 0)
-	goto done;
-    if (ret == 0){
 	clicon_rpc_generate_error(xerr, "Get configuration", NULL);
 	goto done;
     }
@@ -688,7 +680,6 @@ cli_show_auto1(clicon_handle h,
 	       cvec         *argv)
 {
     int              retval = 1;
-    int              ret;
     yang_stmt       *yspec;
     char            *api_path_fmt;  /* xml key format */
     //    char            *api_path = NULL; /* xml key */
@@ -743,15 +734,7 @@ cli_show_auto1(clicon_handle h,
 	if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
 	    goto done;
     }
-
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Get configuration", NULL);
-	goto done;
-    }
-    /* Some formats (eg cli) require yang */
-    if ((ret = xml_spec_populate(xt, yspec, &xerr)) < 0)
-	goto done;
-    if (ret == 0){
 	clicon_rpc_generate_error(xerr, "Get configuration", NULL);
 	goto done;
     }

@@ -80,20 +80,35 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    sudo pkill -u $wwwuser -f clixon_restconf
 
-new "start restconf daemon"
-start_restconf -f $cfg
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
-new "waiting"
-wait_restconf
+    new "waiting"
+    wait_restconf
+fi
 
 new "restconf PUT add whole list entry"
 expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y -d '{"list:a":{"b":"x","c":"y","nonkey":"0"}}')" 0 ''
 
+# GETs to ensure you get list [] in JSON
+new "restconf GET whole list entry"
+expecteq "$(curl -s -X GET -H "Accept: application/yang-data+json" http://localhost/restconf/data/list:c/)" 0 '{"list:c":{"a":[{"b":"x","c":"y","nonkey":"0"}]}}
+'
+
+new "restconf GET list entry"
+expecteq "$(curl -s -X GET -H "Accept: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y)" 0 '{"list:a":[{"b":"x","c":"y","nonkey":"0"}]}
+'
+
 new "restconf PUT add whole list entry XML"
 expecteq "$(curl -s -X PUT -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+xml' -d '<a xmlns="urn:example:clixon"><b>xx</b><c>xy</c><nonkey>0</nonkey></a>' http://localhost/restconf/data/list:c/a=xx,xy)" 0 ''
+
+new "restconf GET list entry two XXX shouldnt be allowed"
+expecteq "$(curl -s -X GET -H "Accept: application/yang-data+json" http://localhost/restconf/data/list:c/a/b)" 0 '{"list:b":["x","xx"]}
+'
 
 new "restconf PUT change whole list entry (same keys)"
 expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y -d '{"list:a":{"b":"x","c":"y","nonkey":"z"}}')" 0 ''
@@ -149,9 +164,10 @@ expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://
 new "restconf PUT change list+leaf-list entry (expect fail)"
 expectpart "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y/f=u -d '{"list:f":"w"}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
 
-
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf 
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE
