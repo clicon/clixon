@@ -45,6 +45,7 @@ Expected: Early March 2020
   * Added `clixon-stats` state for clixon XML and memory statistics.
   * Added: CLICON_CLI_BUF_START and CLICON_CLI_BUF_THRESHOLD so you can change the start and
     threshold of quadratic and linear growth of CLIgen buffers (cbuf:s)
+  * Added: CLICON_VALIDATE_STATE_XML for controling validation of user state XML
 * JSON parse error messages change from ` on line x: syntax error,..` to `json_parse: line x: syntax error`
 * Unknown-element error message is more descriptive, eg from `namespace is: urn:example:clixon` to: `Failed to find YANG spec of XML node: x with parent: xp in namespace urn:example:clixon`.
 * C-API parse and validation API more capable
@@ -66,6 +67,7 @@ Expected: Early March 2020
 
 ### Minor changes
 
+* Replaced compile option `VALIDATE_STATE_XML` with runtime option `CLICON_VALIDATE_STATE_XML`.
 * Memory footprint 
   * Do not autopopulate namespace cache, instead use on-demand, see `xml2ns()`.
   * Set CBUF start level to 256 (`CLICON_CLI_BUF_START` option)

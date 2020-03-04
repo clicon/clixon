@@ -45,7 +45,8 @@ module clixon-config {
 	    "Added: search index extension,
              Added: clixon-stats state for clixon XML and memory statistics.
              Added: CLICON_CLI_BUF_START and CLICON_CLI_BUF_THRESHOLD for quadratic and linear
-                    growth of CLIgen buffers (cbuf:s)";
+                    growth of CLIgen buffers (cbuf:s)
+             Added: CLICON_VALIDATE_STATE_XML for controling validation of user state XML";
     }
     revision 2019-09-11 {
 	description
@@ -574,6 +575,20 @@ module clixon-config {
 	    description "Name of file with module revision changelog.
                          If CLICON_XML_CHANGELOG is true, Clixon
                          reads the module changelog from this file.";
+	}
+	leaf CLICON_VALIDATE_STATE_XML {
+	    type boolean;
+	    default false;
+	    description
+		"Validate user state callback content.
+                 Users may register state callbacks using ca_statedata callback
+                 When set, the XML returned from the callback is validated after merging with 
+                 the running db. If it fails, an internal error is returned to the originating 
+                 user.
+                 If the option is not set, the XML returned by the user is not validated.
+                 Note that enabling currently causes a large performance overhead for large
+                 lists, therefore it is recommended to enable it during development and debugging
+                 but disable it in production, until this has been resolved.";
 	}
 	leaf CLICON_STARTUP_MODE {
 	    type startup_mode;

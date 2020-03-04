@@ -859,24 +859,24 @@ xml_child_each(cxobj           *xparent,
  * @note does not do anything with child, you may need to set its parent, etc
  */
 static int
-xml_child_append(cxobj *x, 
+xml_child_append(cxobj *xp,
 		 cxobj *xc)
 {
-    if (!is_element(x))
+    if (!is_element(xp))
 	return 0;
-    x->x_childvec_len++;
-    if (x->x_childvec_len > x->x_childvec_max){
-	if (x->x_childvec_len < XML_CHILDVEC_SIZE_THRESHOLD)
-	    x->x_childvec_max = x->x_childvec_max?2*x->x_childvec_max:XML_CHILDVEC_SIZE_START;
+    xp->x_childvec_len++;
+    if (xp->x_childvec_len > xp->x_childvec_max){
+	if (xp->x_childvec_len < XML_CHILDVEC_SIZE_THRESHOLD)
+	    xp->x_childvec_max = xp->x_childvec_max?2*xp->x_childvec_max:XML_CHILDVEC_SIZE_START;
 	else
-	    x->x_childvec_max += XML_CHILDVEC_SIZE_THRESHOLD;
-	x->x_childvec = realloc(x->x_childvec, x->x_childvec_max*sizeof(cxobj*));
-	if (x->x_childvec == NULL){
+	    xp->x_childvec_max += XML_CHILDVEC_SIZE_THRESHOLD;
+	xp->x_childvec = realloc(xp->x_childvec, xp->x_childvec_max*sizeof(cxobj*));
+	if (xp->x_childvec == NULL){
 	    clicon_err(OE_XML, errno, "realloc");
 	    return -1;
 	}
     }
-    x->x_childvec[x->x_childvec_len-1] = xc;
+    xp->x_childvec[xp->x_childvec_len-1] = xc;
     return 0;
 }
 
@@ -896,7 +896,10 @@ xml_child_insert_pos(cxobj *xp,
 	return 0;
     xp->x_childvec_len++;
     if (xp->x_childvec_len > xp->x_childvec_max){
-	xp->x_childvec_max = xp->x_childvec_max?2*xp->x_childvec_max:XML_CHILDVEC_MAX_DEFAULT;
+	if (xp->x_childvec_len < XML_CHILDVEC_SIZE_THRESHOLD)
+	    xp->x_childvec_max = xp->x_childvec_max?2*xp->x_childvec_max:XML_CHILDVEC_SIZE_START;
+	else
+	    xp->x_childvec_max += XML_CHILDVEC_SIZE_THRESHOLD;
 	xp->x_childvec = realloc(xp->x_childvec, xp->x_childvec_max*sizeof(cxobj*));
 	if (xp->x_childvec == NULL){
 	    clicon_err(OE_XML, errno, "realloc");

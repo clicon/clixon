@@ -1027,11 +1027,9 @@ from_client_get(clicon_handle h,
     int32_t         depth = -1; /* Nr of levels to print, -1 is all, 0 is none */
     yang_stmt      *yspec;
     int             i;
-#ifdef VALIDATE_STATE_XML
     cxobj          *xerr = NULL;
     cxobj          *xr;
     cxobj          *xb;
-#endif
     
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
@@ -1081,21 +1079,22 @@ from_client_get(clicon_handle h,
     /* If not only-state, then read running config 
      * Note xret can be pruned by nacm below and change name and
      * merged with state data, so zero-copy cant be used
-     * Also, must use external namespace context here due to <filter stmt
+     * Also, must use external namespace context here due to <filter> stmt
      */
-#ifdef VALIDATE_STATE_XML
-    if (xmldb_get0(h, "running", nsc, NULL, 1, &xret, NULL) < 0) {
-	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
-	    goto done;
-	goto ok;
+    if (clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
+	if (xmldb_get0(h, "running", nsc, NULL, 1, &xret, NULL) < 0) {
+	    if (netconf_operation_failed(cbret, "application", "read registry")< 0)
+		goto done;
+	    goto ok;
+	}
     }
-#else
-    if (xmldb_get0(h, "running", nsc, xpath, 1, &xret, NULL) < 0) {
-	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
-	    goto done;
-	goto ok;
+    else{
+	if (xmldb_get0(h, "running", nsc, xpath, 1, &xret, NULL) < 0) {
+	    if (netconf_operation_failed(cbret, "application", "read registry")< 0)
+		goto done;
+	    goto ok;
+	}
     }
-#endif
     /* If not only config,
      * get state data from plugins as defined by plugin_statedata(), if any 
      */
@@ -1107,33 +1106,34 @@ from_client_get(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-#ifdef VALIDATE_STATE_XML
-    /* Check XML  by validating it. return internal error with error cause 
-     * Primarily intended for user-supplied state-data.
-     * The whole config tree must be present in case the state data references config data
-     */
-    if ((ret = xml_yang_validate_all_top(h, xret, &xerr)) < 0) 
-	goto done;
-    if (ret > 0 && (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
-	goto done;
-    if (ret == 0){
-	if (debug)
-	    clicon_log_xml(LOG_DEBUG, xret, "VALIDATE_STATE");
-	if ((xr = xpath_first(xerr, NULL, "//error-tag")) != NULL &&
-	    (xb = xml_body_get(xr))){
-	    if (xml_value_set(xb, "operation-failed") < 0)
-		goto done;
-	}
-	if ((xr = xpath_first(xerr, NULL, "//error-message")) != NULL &&
-	    (xb = xml_body_get(xr))){
-	    if (xml_value_append(xb, " Internal error, state callback returned invalid XML") < 0)
-		goto done;
-	}
-	if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+    if (clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
+	/* Check XML  by validating it. return internal error with error cause 
+	 * Primarily intended for user-supplied state-data.
+	 * The whole config tree must be present in case the state data references config data
+	 */
+	if ((ret = xml_yang_validate_all_top(h, xret, &xerr)) < 0) 
 	    goto done;
-	goto ok;
-    }
-#endif /* VALIDATE_STATE_XML */
+	if (ret > 0 && (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if (debug)
+		clicon_log_xml(LOG_DEBUG, xret, "VALIDATE_STATE");
+	    if ((xr = xpath_first(xerr, NULL, "//error-tag")) != NULL &&
+		(xb = xml_body_get(xr))){
+		if (xml_value_set(xb, "operation-failed") < 0)
+		    goto done;
+	    }
+	    if ((xr = xpath_first(xerr, NULL, "//error-message")) != NULL &&
+		(xb = xml_body_get(xr))){
+		if (xml_value_append(xb, " Internal error, state callback returned invalid XML") < 0)
+		    goto done;
+	    }
+	    if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+		goto done;
+	    goto ok;
+	}
+    } /* CLICON_VALIDATE_STATE_XML */
+
     if (content == CONTENT_NONCONFIG){ /* state only, all config should be removed now */
 	/* Keep state data only, remove everything that is not config. Note that state data
 	 * may be a sub-part in a config tree, we need to traverse to find all
@@ -1197,10 +1197,8 @@ from_client_get(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-#ifdef VALIDATE_STATE_XML
     if (xerr)
 	xml_free(xerr);
-#endif
     if (xpath)
 	free(xpath);
     if (xnacm)
