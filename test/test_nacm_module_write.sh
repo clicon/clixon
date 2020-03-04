@@ -148,14 +148,16 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    sudo pkill -u $wwwuser -f clixon_restconf
 
-new "start restconf daemon (-a is enable basic authentication)"
-start_restconf -f $cfg -- -a
+    new "start restconf daemon (-a is enable basic authentication)"
+    start_restconf -f $cfg -- -a
 
-new "waiting"
-wait_restconf
+    new "waiting"
+    wait_restconf
+fi
 
 # Set nacm from scratch
 nacm(){
@@ -252,8 +254,10 @@ expecteq "$(curl -u wilma:bar -sS -X PUT -H "Content-Type: application/yang-data
 new "default delete list deny"
 expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data/clixon-example:translate=key42)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf 
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE

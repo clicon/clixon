@@ -458,10 +458,12 @@ xml2ns(cxobj *x,
 	}
 #endif
     }
+#if 0 /* Dont auto-populate all caches, eg startup doesnt need a cache */
     /* Set default namespace cache (since code is at this point,
      * no cache was found */
     if (ns && nscache_set(x, prefix, ns) < 0)
 	goto done;
+#endif
  ok:
     if (namespace)
 	*namespace = ns;

@@ -217,6 +217,7 @@ xml_cmp(cxobj  *x1,
 	    goto done;
 	}
     }
+    /* Here x1 and x2 are same type */
     y1 = xml_spec(x1);
     y2 = xml_spec(x2);
     if (same){
@@ -1034,13 +1035,15 @@ xml_sort_verify(cxobj *x0,
 	retval = 1;
 	goto done;
     }
-    xml_enumerate_children(x0);
-    while ((x = xml_child_each(x0, x, -1)) != NULL) {
-	if (xprev != NULL){ /* Check xprev <= x */
-	    if (xml_cmp(xprev, x, 1, 0, NULL) > 0)
-		goto done;
+    if (xml_type(x0) == CX_ELMNT){
+	xml_enumerate_children(x0);
+	while ((x = xml_child_each(x0, x, -1)) != NULL) {
+	    if (xprev != NULL){ /* Check xprev <= x */
+		if (xml_cmp(xprev, x, 1, 0, NULL) > 0)
+		    goto done;
+	    }
+	    xprev = x;
 	}
-	xprev = x;
     }
     retval = 0;
  done:

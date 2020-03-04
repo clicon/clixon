@@ -96,6 +96,8 @@ EOF
   valgrind --leak-check=full --show-leak-kinds=all clixon_netconf -qf /tmp/myconf.xml -y /tmp/my.yang
   valgrind --tool=callgrind clixon_netconf -qf /tmp/myconf.xml -y /tmp/my.yang
   sudo kcachegrind
+  valgrind --tool=massif clixon_netconf -qf /tmp/myconf.xml -y /tmp/my.yang
+  massif-visualizer
  ```
 
 ## New release

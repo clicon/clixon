@@ -5,6 +5,9 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
+# ENable this for massif memory profiling
+#clixon_backend="valgrind --tool=massif clixon_backend"
+
 clixon_util_xpath=clixon_util_xpath 
 
 # Number of list/leaf-list entries in file
@@ -58,18 +61,23 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
+# Test function
+# Arguments:
+# 1: nr   size of large list
 testrun(){
     nr=$1
 
-    new "generate config with $nr list entries"
-    echo -n "<config><x xmlns=\"urn:example:clixon\">" > $dir/startup_db
-    for (( i=0; i<$nr; i++ )); do  
-	echo -n "<y><a>$i</a><b>$i</b></y>" >> $dir/startup_db
-    done
-    echo "</x></config>" >> $dir/startup_db
-
     new "test params: -f $cfg"
     if [ $BE -ne 0 ]; then
+
+	new "generate config with $nr list entries"
+	echo -n "<config><x xmlns=\"urn:example:clixon\">" > $dir/startup_db
+	for (( i=0; i<$nr; i++ )); do  
+	    echo -n "<y><a>$i</a><b>$i</b></y>" >> $dir/startup_db
+	done
+	echo "</x></config>" >> $dir/startup_db
+
+
 	new "kill old backend"
 	sudo clixon_backend -zf $cfg
 	if [ $? -ne 0 ]; then
@@ -86,17 +94,19 @@ testrun(){
 
     new "netconf get state"
     res=$(echo "<rpc><get><filter type=\"xpath\" select=\"/cc:clixon-stats\" xmlns:cc=\"http://clicon.org/config\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg)
+
     echo "Total"
     echo -n "   objects: "
     echo $res | $clixon_util_xpath -p "/rpc-reply/data/clixon-stats/global/xmlnr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}'
-    echo -n "   mem: "
-    # This ony works on Linux 
-    cat /proc/$pid/statm|awk '{print $1*4/1000 "M"}'
+    if [ -f /proc/$pid/statm ]; then     # This ony works on Linux 
+#	cat /proc/$pid/statm
+	echo -n "   mem: "
+	cat /proc/$pid/statm|awk '{print $1*4/1000 "M"}'
+    fi
     for db in running candidate startup; do
 	echo "$db"
 	resdb=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/data/clixon-stats/datastore[name=\"$db\"]")
 	resdb=${resdb#"nodeset:0:"}
-#	echo "resdb:$resdb"
 	echo -n "   objects: "
 	echo $resdb | $clixon_util_xpath -p "datastore/nr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}'
 	echo -n "   mem: "
@@ -111,6 +121,8 @@ testrun(){
 	    err "backend already dead"
 	fi
 	# kill backend
+
+	new "Zap backend"
 	stop_backend -f $cfg
     fi
 }

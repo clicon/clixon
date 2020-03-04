@@ -266,24 +266,23 @@ client_get_streams(clicon_handle   h,
  */
 static int
 clixon_stats_get_db(clicon_handle h,
-		    char         *name,
+		    char         *dbname,
 		    cbuf         *cb)
 {
     int      retval = -1;
     cxobj   *xt = NULL;
     uint64_t nr = 0;
     size_t   sz = 0;
-
-    if (xmldb_get(h, "running", NULL, NULL, &xt) < 0)
-	goto done;
+    db_elmnt       *de = NULL;
+    
+    /* This is the db cache */
+    if ((de = clicon_db_elmnt_get(h, dbname)) != NULL)
+	xt =  de->de_xml;
     xml_stats(xt, &nr, &sz);
     cprintf(cb, "<datastore><name>%s</name><nr>%" PRIu64 "</nr>"
 	    "<size>%" PRIu64 "</size></datastore>",
-	    name, nr, sz);
+	    dbname, nr, sz);
     retval = 0;
- done:
-    if (xt)
-	free(xt);
     return retval;
 }
 

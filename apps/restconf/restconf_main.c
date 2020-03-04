@@ -588,6 +588,8 @@ main(int    argc,
     clixon_plugin *cp = NULL;
     uint32_t       id = 0;
     cvec          *nsctx_global = NULL; /* Global namespace context */
+    size_t         cligen_buflen;
+    size_t         cligen_bufthreshold;
     
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -694,6 +696,11 @@ main(int    argc,
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
     
+    /* Init cligen buffers */
+    cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
+    cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
+    cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
+
     /* Add (hardcoded) netconf features in case ietf-netconf loaded here
      * Otherwise it is loaded in netconf_module_load below
      */

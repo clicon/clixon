@@ -43,7 +43,9 @@ module clixon-config {
     revision 2020-02-22 {
 	description
 	    "Added: search index extension,
-             Added: clixon-stats state for clixon XML and memory statistics.";
+             Added: clixon-stats state for clixon XML and memory statistics.
+             Added: CLICON_CLI_BUF_START and CLICON_CLI_BUF_THRESHOLD for quadratic and linear
+                    growth of CLIgen buffers (cbuf:s)";
     }
     revision 2019-09-11 {
 	description
@@ -442,14 +444,25 @@ module clixon-config {
 		"Name of CLI history file. If not given, history is not saved.
                  The number of lines is saved is given by CLICON_CLI_HIST_SIZE.";
 	}
-	leaf CLICON_CLI_HIST_SIZE {
-	    type int32;
-	    default 300;
+	leaf CLICON_CLI_BUF_START {
+	    type uint32;
+	    default 256;
 	    description
-		"Number of lines to save in CLI history. 
-                 Also, if CLICON_CLI_HIST_FILE is set, also the size in lines
-                 of the saved history.";
+		"CLIgen buffer (cbuf) initial size. 
+                 When the buffer needs to grow, the allocation grows quadratic up to a threshold
+                 after which linear growth continues. 
+                 See CLICON_CLI_BUF_THRESHOLD";
 	}
+	leaf CLICON_CLI_BUF_THRESHOLD {
+	    type uint32;
+	    default 65536;
+	    description
+		"CLIgen buffer (cbuf) threshold size.
+                 When the buffer exceeds the threshold, the allocation grows by adding the threshold
+                 value to the buffer length.
+                 If 0, the growth continues with quadratic growth.
+                 See CLICON_CLI_BUF_THRESHOLD";
+	}	
 	leaf CLICON_SOCK_FAMILY {
 	    type string;
 	    default "UNIX";

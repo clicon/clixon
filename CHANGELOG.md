@@ -43,6 +43,8 @@ Expected: Early March 2020
 * New clixon-config@2020-02-22.yang revision
   * Search index extension `search_index` for declaring which non-key variables are search indexes
   * Added `clixon-stats` state for clixon XML and memory statistics.
+  * Added: CLICON_CLI_BUF_START and CLICON_CLI_BUF_THRESHOLD so you can change the start and
+    threshold of quadratic and linear growth of CLIgen buffers (cbuf:s)
 * JSON parse error messages change from ` on line x: syntax error,..` to `json_parse: line x: syntax error`
 * Unknown-element error message is more descriptive, eg from `namespace is: urn:example:clixon` to: `Failed to find YANG spec of XML node: x with parent: xp in namespace urn:example:clixon`.
 * C-API parse and validation API more capable
@@ -64,6 +66,10 @@ Expected: Early March 2020
 
 ### Minor changes
 
+* Memory footprint 
+  * Do not autopopulate namespace cache, instead use on-demand, see `xml2ns()`.
+  * Set CBUF start level to 256 (`CLICON_CLI_BUF_START` option)
+  * Reduced xml child vector default size from 4 to 1 with quadratic growoth to 64K then linear
 * C-API:
   * Added instrumentation: `xml_stats` and `xml_stats_global`.
   * Added object-based `clixon_xvec` as a new programming construct for contiguous XML object vectors.

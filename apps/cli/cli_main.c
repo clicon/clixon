@@ -289,6 +289,8 @@ main(int argc, char **argv)
     int            tabmode;
     char          *dir;
     cvec          *nsctx_global = NULL; /* Global namespace context */
+    size_t         cligen_buflen;
+    size_t         cligen_bufthreshold;
     
     /* Defaults */
     once = 0;
@@ -449,6 +451,11 @@ main(int argc, char **argv)
     if (help)
 	usage(h, argv[0]);
 
+    /* Init cligen buffers */
+    cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
+    cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
+    cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
+    
     if (clicon_yang_regexp(h) == REGEXP_LIBXML2){
 #ifdef HAVE_LIBXML2
 	/* Enable XSD libxml2 regex engine */

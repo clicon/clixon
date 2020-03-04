@@ -460,6 +460,8 @@ main(int    argc,
     char         *dir;
     gid_t         gid = -1;
     cvec         *nsctx_global = NULL; /* Global namespace context */
+    size_t        cligen_buflen;
+    size_t        cligen_bufthreshold;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -623,11 +625,16 @@ main(int    argc,
     clicon_argv_set(h, argv0, argc, argv);
     
     clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
-
+    
     /* Defer: Wait to the last minute to print help message */
     if (help)
 	usage(h, argv[0]);
 
+    /* Init cligen buffers */
+    cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
+    cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
+    cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
+    
 #ifndef HAVE_LIBXML2
     if (clicon_yang_regexp(h) ==  REGEXP_LIBXML2){
 	clicon_err(OE_FATAL, 0, "CLICON_YANG_REGEXP set to libxml2, but HAVE_LIBXML2 not set (Either change CLICON_YANG_REGEXP to posix, or run: configure --with-libxml2))");

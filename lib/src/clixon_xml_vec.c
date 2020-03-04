@@ -97,9 +97,9 @@ clixon_xvec_inc(clixon_xvec *xv)
 	if (xv->xv_max < XVEC_MAX_DEFAULT)
 	    xv->xv_max = XVEC_MAX_DEFAULT;
 	else if (xv->xv_max < XVEC_MAX_THRESHOLD)
-	    xv->xv_max *= 2;
+	    xv->xv_max *= 2;                  /* Double the space - exponential */
 	else
-	    xv->xv_max += XVEC_MAX_THRESHOLD;
+	    xv->xv_max += XVEC_MAX_THRESHOLD; /* Add - linear growth */
 	if ((xv->xv_vec = realloc(xv->xv_vec, sizeof(cxobj *) * xv->xv_max)) == NULL){
 	    clicon_err(OE_XML, errno, "realloc");
 	    goto done;
