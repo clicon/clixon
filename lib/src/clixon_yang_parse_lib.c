@@ -319,12 +319,13 @@ yang_expand_grouping(yang_stmt *yn)
     char      *id = NULL;
     char      *prefix = NULL;
     size_t     size;
+    yang_stmt *yp;
 
     /* Cannot use yang_apply here since child-list is modified (is destructive) */
     i = 0;
     while (i < yang_len_get(yn)){
 	ys = yn->ys_stmt[i]; 
-	switch(yang_keyword_get(ys)){
+	switch (yang_keyword_get(ys)){
 	case Y_USES:
 	    /* Split argument into prefix and name */
 	    if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
@@ -345,13 +346,28 @@ yang_expand_grouping(yang_stmt *yn)
 		goto done;
 		break;
 	    }
-	    /* Check mark flag to see if this grouping (itself) has been expanded
-	       If not, this needs to be done before we can insert it into
-	       the 'uses' place */
+	    /* Check so that this uses statement is not a decendant of the grouping
+	     * Not that there may be other indirect recursions (I think?)
+	     */
+	    yp = yn;
+	    do {
+		if (yp == ygrouping){
+
+		    clicon_err(OE_YANG, EFAULT, "Yang use of grouping %s in module %s is defined inside the grouping (recursion)",
+			       yang_argument_get(ys),
+			       yang_argument_get(ys_module(yn))
+			       );
+		    goto done;
+		}
+	    } while((yp = yang_parent_get(yp)) != NULL);
 	    if (yang_flag_get(ygrouping, YANG_FLAG_MARK) == 0){ 
+		/* Check mark flag to see if this grouping has been expanded before, 
+		 * here below in the traverse section 
+		 * A mark could be completely normal (several uses) or it could be a recursion.
+		 */
+		yang_flag_set(ygrouping, YANG_FLAG_MARK); /* Mark as (being)  expanded */
 		if (yang_expand_grouping(ygrouping) < 0)
 		    goto done;
-		yang_flag_set(ygrouping, YANG_FLAG_MARK); /* Mark as expanded */
 	    }
 	    /* Make a copy of the grouping, then make refinements to this copy
 	     */
@@ -378,7 +394,6 @@ yang_expand_grouping(yang_stmt *yn)
 			    &yn->ys_stmt[i+1],
 			    size);
 	    }
-
 	    /* Iterate through refinements and modify grouping copy 
 	     * See RFC 7950 7.13.2 yrt is the refine target node
 	     */
@@ -423,8 +438,21 @@ yang_expand_grouping(yang_stmt *yn)
     /* Second pass since length may have changed */
     for (i=0; i<yang_len_get(yn); i++){
 	ys = yn->ys_stmt[i];
-	if (yang_expand_grouping(ys) < 0)
-	    goto done;
+	if (yang_keyword_get(ys) == Y_GROUPING){
+	    /* Check mark flag to see if this grouping has been expanded before, here or in the
+	     * 'uses' section 
+	     * A mark could be completely normal (several uses) or it could be a recursion.
+	     */
+	    if (yang_flag_get(ys, YANG_FLAG_MARK) == 0){
+		yang_flag_set(ys, YANG_FLAG_MARK); /* Mark as (being)  expanded */
+		if (yang_expand_grouping(ys) < 0)
+		    goto done;
+	    }
+	}
+	else{
+	    if (yang_expand_grouping(ys) < 0)
+		goto done;
+	}
     }
     retval = 0;
  done:
@@ -723,7 +751,11 @@ yang_parse_module(clicon_handle h,
     if ((nr = yang_parse_find_match(h, module, revision, &revf, fbuf)) < 0)
 	goto done;
     if (nr == 0){
-	clicon_err(OE_YANG, errno, "No yang files found matching \"%s\" in the list of CLICON_YANG_DIRs", module);
+	if (revision)
+	    clicon_err(OE_YANG, errno, "No yang files found matching \"%s@%s\" in the list of CLICON_YANG_DIRs",
+		       module, revision);
+	else
+	    clicon_err(OE_YANG, errno, "No yang files found matching \"%s\" in the list of CLICON_YANG_DIRs", module);
 	goto done;
     }
     filename = cbuf_get(fbuf);
