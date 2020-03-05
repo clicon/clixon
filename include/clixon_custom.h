@@ -78,10 +78,13 @@
  */
 #define XML_EXPLICIT_INDEX
 
-/*! Treat <config> specially in a xmldb datastore.
- * config is treated as a "neutral" tag that does not have a yang spec.
+/*! Treat <config> and <data> specially in a xmldb datastore.
+ * config/data is treated as a "neutral" tag that does not have a yang spec.
  * In particular when binding xml to yang, if <config> is encountered as top-of-tree, do not
  * try to bind a yang-spec to this symbol.
+ * The root of this is GET and PUT commands where the <config> and <data> tag belongs to the
+ * RPC rather than the data.
+ * This is a hack, there must be a way to make this more generic
  */
 #define XMLDB_CONFIG_HACK
 

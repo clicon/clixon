@@ -365,7 +365,7 @@ api_data_write(clicon_handle h,
      */
     if ((xdata0 = xml_new("data0", NULL, NULL)) == NULL)
 	goto done;
-    { /* XXX mv to copy? */
+    if (api_path){ /* XXX mv to copy? */
 	cxobj *xfrom;
 	cxobj *xac;
 	

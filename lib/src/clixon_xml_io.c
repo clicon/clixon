@@ -436,12 +436,14 @@ _xml_parse(const char    *str,
 	    if (ret == 0)
 		failed++;
 	    break;
+
 	case YB_TOP:
 	    /* xt:<top>     nospec
 	     * x:   <a> <-- populate from modules
 	     */
 #ifdef XMLDB_CONFIG_HACK
-	    if (strcmp(xml_name(x),"config") == 0){
+	    if (strcmp(xml_name(x),"config") == 0 ||
+		strcmp(xml_name(x),"data") == 0){
 		/* xt:<top>         nospec
 		 * x:   <config>
 		 *         <a>  <-- populate from modules

@@ -161,6 +161,7 @@ main(int    argc,
     char         *top_path = NULL;
     cxobj        *xbot;        /* Place in xtop where base cxobj is parsed */
     cvec         *nsc = NULL; 
+    enum yang_bind yb;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -291,7 +292,13 @@ main(int    argc,
 	}
     }
     else{ /* XML */
-	if ((ret = xml_parse_file2(fd, (xt==NULL)?YB_TOP:YB_PARENT, yspec, NULL, &xt, &xerr)) < 0){
+	if (!yang_file_dir)
+	    yb = YB_NONE;
+	else if (xt == NULL)
+	    yb = YB_TOP;
+	else
+	    yb = YB_PARENT;
+	if ((ret = xml_parse_file2(fd, yb, yspec, NULL, &xt, &xerr)) < 0){
 	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
 	    goto done;
 	}
