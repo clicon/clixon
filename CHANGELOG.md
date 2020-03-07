@@ -39,6 +39,11 @@ Expected: Early March 2020
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
 	
 ### API changes on existing features (you may need to change your code)
+* Empty values in JSON has changed to comply to RFC 7951
+   * empty values of yang type `empty` are encoded as: `{"x":[null]}`
+   * empty string values are encoded as: `{"x":""}` (changed from `null` in 4.0 and `[null]` in 4.3)
+   * empty containers are encoded as: `{"x":{}}`
+   * empty elements in unknown/anydata/anyxml encoded as: `{"x":{}}` (changed from `{"x":null}`)
 * Bugfix of config false statement may cause change of sorting of lists in GET opertions (lists that were sorted should not have been sorted)
 * New clixon-config@2020-02-22.yang revision
   * Search index extension `search_index` for declaring which non-key variables are search indexes

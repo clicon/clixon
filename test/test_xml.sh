@@ -11,8 +11,9 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 new "xml parse"
 expecteof "$clixon_util_xml -o" 0 "<a><b/></a>" "^<a><b/></a>$"
 
+# Note dont know what b is.
 new "xml parse to json"
-expecteof "$clixon_util_xml -oj" 0 "<a><b/></a>" '{"a":{"b":null}}'
+expecteof "$clixon_util_xml -oj" 0 "<a><b/></a>" '{"a":{"b":{}}}'
 
 new "xml parse strange names"
 expecteof "$clixon_util_xml -o" 0 "<_-><b0.><c-.-._/></b0.></_->" "<_-><b0.><c-.-._/></b0.></_->"

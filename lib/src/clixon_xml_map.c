@@ -1296,6 +1296,27 @@ populate_self_top(cxobj     *xt,
     goto done;
 }
 
+/*! After yang binding, bodies of containers and lists are stripped from XML bodies
+ * May apply to other nodes?
+ */
+static int
+strip_whitespace(cxobj *xt)
+{
+    yang_stmt    *yt;
+    enum rfc_6020 keyword;
+    cxobj        *xc;
+    
+    if ((yt = xml_spec(xt)) != NULL){
+	keyword = yang_keyword_get(yt);
+	if (keyword == Y_LIST || keyword == Y_CONTAINER){
+	    xc = NULL;
+	    while ((xc = xml_find_type(xt, NULL, "body", CX_BODY)) != NULL)
+		xml_purge(xc);
+	}
+    }
+    return 0;
+}
+
 /*! Find yang spec association of tree of XML nodes
  *
  * Populate xt:s children as top-level symbols
@@ -1329,6 +1350,7 @@ xml_spec_populate(cxobj     *xt,
     int    ret;
     int    failed = 0; /* we continue loop after failure, should we stop at fail?`*/
 
+    strip_whitespace(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
 	if ((ret = xml_spec_populate0(xc, yspec, xerr)) < 0)
@@ -1354,6 +1376,7 @@ xml_spec_populate_parent(cxobj  *xt,
     int    ret;
     int    failed = 0; /* we continue loop after failure, should we stop at fail?`*/
     
+    strip_whitespace(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
 	if ((ret = xml_spec_populate0_parent(xc, xerr)) < 0)
@@ -1390,6 +1413,7 @@ xml_spec_populate0(cxobj     *xt,
 	goto done;
     if (ret == 0)
 	goto fail;
+    strip_whitespace(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
 	if ((ret = xml_spec_populate0_parent(xc, xerr)) < 0)
@@ -1424,6 +1448,7 @@ xml_spec_populate0_parent(cxobj  *xt,
 	goto done;
     if (ret == 0)
 	goto fail;
+    strip_whitespace(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
 	if ((ret = xml_spec_populate0_parent(xc, xerr)) < 0)

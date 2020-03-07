@@ -519,12 +519,12 @@ xml2json_encode_identityref(cxobj     *xb,
  * @param[out]    cb0  Encoded string
  */
 static int
-xml2json_encode(cxobj     *xb,
-		cbuf      *cb0)
+xml2json_encode_leafs(cxobj     *xb,
+		      cxobj     *xp,
+		      yang_stmt *yp,
+		      cbuf      *cb0)
 {
     int           retval = -1;
-    cxobj        *xp;
-    yang_stmt    *yp;
     enum rfc_6020 keyword;
     yang_stmt    *ytype;
     char         *restype;  /* resolved type */
@@ -538,10 +538,9 @@ xml2json_encode(cxobj     *xb,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    body = xml_value(xb);
-    if ((xp = xml_parent(xb)) == NULL ||
-	(yp = xml_spec(xp)) == NULL){
-	cprintf(cb, "%s", body); 
+    body = xb?xml_value(xb):NULL;
+    if (yp == NULL){
+	cprintf(cb, "%s", body?body:"null"); 
 	goto ok; /* unknown */
     }
     keyword = yang_keyword_get(yp);
@@ -554,7 +553,10 @@ xml2json_encode(cxobj     *xb,
 	cvtype = yang_type2cv(yp);
 	switch (cvtype){ 
 	case CGV_STRING:
-	    if (ytype){
+	case CGV_REST:
+	    if (body==NULL)
+		; /* empty: "" */
+	    else if (ytype){
 		if (strcmp(restype, "identityref")==0){
 		    if (xml2json_encode_identityref(xb, body, yp, cb) < 0)
 			goto done;
@@ -578,8 +580,18 @@ xml2json_encode(cxobj     *xb,
 	    cprintf(cb, "%s", body);
 	    quote = 0;
 	    break;
+	case CGV_VOID:
+	    /* special case YANG empty type */
+	    if (body == NULL && strcmp(restype, "empty")==0){
+		quote = 0;
+		cprintf(cb, "[null]");
+	    }
+	    break;
 	default:
-	    cprintf(cb, "%s", body);
+	    if (body)
+		cprintf(cb, "{}"); /* dont know */
+	    else
+		cprintf(cb, "%s", body);
 	}
 	break;
     default:
@@ -604,6 +616,49 @@ xml2json_encode(cxobj     *xb,
 	cbuf_free(cb);
     if (origtype)
 	free(origtype);
+    return retval;
+}
+
+/* X has no XML child - no body.
+ * If x is a container, use {} instead of null 
+ * if leaf or leaf-list then assume EMPTY type, then [null]
+ * else null
+ */
+static int
+nullchild(cbuf      *cb,
+	  cxobj     *x,
+	  yang_stmt *y)
+{
+    int           retval = -1;
+
+    if (y == NULL){
+	/* This is very problematic.
+	 * RFC 7951 explicitly forbids "null" to be used unless for empty types in [null]
+	 */
+	cprintf(cb, "{}");
+    }
+    else{
+	switch (yang_keyword_get(y)){
+	case Y_ANYXML:
+	case Y_ANYDATA:
+	case Y_CONTAINER:
+	    cprintf(cb, "{}");
+	    break;
+	case Y_LEAF:
+	case Y_LEAF_LIST:
+	    if (xml2json_encode_leafs(NULL, x, y, cb) < 0)
+		goto done;
+	    break;
+	default:
+	    /* This is very problematic.
+	     * RFC 7951 explicitly forbids "null" to be used unless for empty types in [null]
+	     */
+	    cprintf(cb, "{}");
+	    break;
+	}
+    }
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -657,6 +712,7 @@ xml2json1_cbuf(cbuf                   *cb,
     int              retval = -1;
     int              i;
     cxobj           *xc;
+    cxobj           *xp;
     enum childtype   childt;
     enum array_element_type xc_arraytype;
     yang_stmt       *ys;
@@ -678,8 +734,9 @@ xml2json1_cbuf(cbuf                   *cb,
 		arraytype2str(arraytype),
 		childtype2str(childt));
     switch(arraytype){
-    case BODY_ARRAY: /* Only place in fn where body is printed */
-	if (xml2json_encode(x, cb) < 0)
+    case BODY_ARRAY: /* Only place in fn where body is printed (except nullchild) */
+	xp = xml_parent(x);
+	if (xml2json_encode_leafs(x, xp, xml_spec(xp), cb) < 0)
 	    goto done;
 	break;
     case NO_ARRAY:
@@ -691,19 +748,8 @@ xml2json1_cbuf(cbuf                   *cb,
 	}
 	switch (childt){
 	case NULL_CHILD:
-	    /* If x is a container, use {} instead of null 
-	     * if leaf or leaf-list then assume EMPTY type, then [null]
-	     * else null
-	     */
-	    if (ys && yang_keyword_get(ys) == Y_CONTAINER)
-		cprintf(cb, "{}");
-	    else{
-		if (ys &&
-		    (yang_keyword_get(ys) == Y_LEAF || yang_keyword_get(ys) == Y_LEAF_LIST))
-		    cprintf(cb, "[null]");
-		else
-		    cprintf(cb, "null");
-	    }
+	    if (nullchild(cb, x, ys) < 0)
+		goto done;
 	    break;
 	case BODY_CHILD:
 	    break;
@@ -726,7 +772,8 @@ xml2json1_cbuf(cbuf                   *cb,
 		pretty?(level*JSON_INDENT):0, "");
 	switch (childt){
 	case NULL_CHILD:
-	    cprintf(cb, "null");
+	    if (nullchild(cb, x, ys) < 0)
+		goto done;
 	    break;
 	case BODY_CHILD:
 	    break;
@@ -744,7 +791,8 @@ xml2json1_cbuf(cbuf                   *cb,
 		pretty?(level*JSON_INDENT):0, "");
 	switch (childt){
 	case NULL_CHILD:
-	    cprintf(cb, "null");
+	    if (nullchild(cb, x, ys) < 0)
+		goto done;
 	    break;
 	case BODY_CHILD:
 	    break;

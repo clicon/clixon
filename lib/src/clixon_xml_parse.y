@@ -136,6 +136,9 @@ xml_parse_whitespace(clixon_xml_yacc *xy,
     xy->xy_xelement = NULL; /* init */
     /* If there is an element already, only add one whitespace child 
      * otherwise, keep all whitespace. See code in xml_parse_bslash
+     * Note that this xml element is not aware of YANG yet. 
+     * For example, if xp is LEAF then a body child is OK, but if xp is CONTAINER
+     * then the whitespace body is pretty-prints and should be stripped (later)
      */
     for (i=0; i<xml_child_nr(xp); i++){
 	if (xml_type(xml_child_i(xp, i)) == CX_ELMNT)
@@ -397,7 +400,7 @@ endtag      : BSLASH NAME '>'
             ;
 
 elist       : elist content { clicon_debug(2, "elist -> elist content"); }
-            | content      { clicon_debug(2, "elist -> content"); }
+            | content       { clicon_debug(2, "elist -> content"); }
             ;
 
 /* Rule 43 */
