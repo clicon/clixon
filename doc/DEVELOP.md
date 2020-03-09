@@ -56,6 +56,10 @@ configure.ac --.
 Note: remember to run autoheader sometimes (when?)
 And when you do note (https://github.com/olofhagsand/cligen/issues/17) which states that cligen_custom.h should be in quote. 
 
+Get config.sub and config.guess:
+$ wget -O config.guess 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'
+$ wget -O config.sub 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD'
+
 ## Debug
 How to debug
 

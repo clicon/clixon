@@ -46,7 +46,8 @@ module clixon-config {
              Added: clixon-stats state for clixon XML and memory statistics.
              Added: CLICON_CLI_BUF_START and CLICON_CLI_BUF_THRESHOLD for quadratic and linear
                     growth of CLIgen buffers (cbuf:s)
-             Added: CLICON_VALIDATE_STATE_XML for controling validation of user state XML";
+             Added: CLICON_VALIDATE_STATE_XML for controling validation of user state XML
+	     Added: CLICON_CLICON_YANG_LIST_CHECK to skip list key checks";
     }
     revision 2019-09-11 {
 	description
@@ -301,6 +302,14 @@ module clixon-config {
                  Yang patterns, and in the CLI.
                  There is a 'good-enough' posix translation mode and a complete
                  libxml2 mode";
+	}
+	leaf CLICON_YANG_LIST_CHECK {
+	    type boolean;
+	    default true;
+	    description
+		"If false, skip Yang list check sanity checks from RFC 7950, Sec 7.8.2: 
+                   The 'key' statement, which MUST be present if the list represents configuration.
+                 Some yang specs seem not to fulfil this.";
 	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;

@@ -835,7 +835,7 @@ yang_parse_recurse(clicon_handle h,
 /*!
  * @param[in] ys      Yang statement
  * @param[in] dummy   Necessary for called in yang_apply
- * @see yang_apply_fn
+ * @see yang_applyfn_t
  */
 static int 
 ys_schemanode_check(yang_stmt *ys, 
@@ -903,6 +903,69 @@ ys_schemanode_check(yang_stmt *ys,
  done:
     if (vec)
 	free(vec);
+    return retval;
+}
+
+/*! Check lists: non-config lists MUST have keys
+ * @param[in] h   Clicon handle
+ * @param[in] ys  Yang statement
+ * Verify the following rule:
+ * RFC 7950 7.8.2: The "key" statement, which MUST be present if the list represents
+ *                 configuration and MAY be present otherwise
+ * Unless CLICON_YANG_LIST_CHECK is false
+ * OR it is the "errors" rule of the ietf-restconf spec which seems to be a special case.
+ */
+static int 
+ys_list_check(clicon_handle h,
+	      yang_stmt    *ys)
+{
+    int           retval = -1;
+    yang_stmt    *ymod;
+    yang_stmt    *yc = NULL;
+    enum rfc_6020 keyw;
+    
+    /* This node has config false */
+    if (yang_config(ys) == 0)
+	return 0;
+    keyw = yang_keyword_get(ys);
+    /* Check if list and if keys do not exist */
+    if (keyw == Y_LIST &&
+	yang_find(ys, Y_KEY, NULL) == 0){
+	ymod = ys_module(ys);
+#if 1 
+	/* Except restconf error extension from sanity check, dont know why it has no keys */
+	if (strcmp(yang_find_mynamespace(ys),"urn:ietf:params:xml:ns:yang:ietf-restconf")==0 &&
+	    strcmp(yang_argument_get(ys),"error") == 0)
+	    ;
+	else
+#endif
+	    {
+		if (clicon_option_bool(h, "CLICON_YANG_LIST_CHECK")){
+		    clicon_log(LOG_ERR, "Error: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
+			   yang_argument_get(ys),
+			   yang_argument_get(ymod)
+			   );
+
+		    goto done;
+		}
+		else
+		    clicon_log(LOG_WARNING, "Warning: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
+			   yang_argument_get(ys),
+			   yang_argument_get(ymod)
+			   );
+	    }
+    }
+    /* Traverse subs */
+    if (yang_schemanode(ys) || keyw == Y_MODULE || keyw == Y_SUBMODULE){
+	yc = NULL;
+	while ((yc = yn_each(ys, yc)) != NULL){
+	    if (ys_list_check(h, yc) < 0)
+		goto done;
+	}
+    }
+
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -986,10 +1049,15 @@ yang_parse_post(clicon_handle h,
 	if (yang_apply(yspec->ys_stmt[i], -1, ys_populate2, (void*)h) < 0)
 	    goto done;
 
-    /* 8: sanity check of schemanode references, need more here */
-    for (i=modnr; i<yang_len_get(yspec); i++)
+    /* 8: sanity checks of expanded yangs need more here */
+    for (i=modnr; i<yang_len_get(yspec); i++){
+	/* Check schemanode references */
 	if (yang_apply(yspec->ys_stmt[i], -1, ys_schemanode_check, NULL) < 0)
 	    goto done;
+	/* Check list key values */
+	if (ys_list_check(h, yspec->ys_stmt[i]) < 0)
+	    goto done;
+    }
     retval = 0;
  done:
     return retval;

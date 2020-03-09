@@ -687,14 +687,13 @@ yang_find_datanode(yang_stmt *yn,
     yang_stmt *yspec;
     yang_stmt *ysmatch = NULL;
     char      *name;
-    int        i, j;
 
-    for (i=0; i<yn->ys_len; i++){
-	ys = yn->ys_stmt[i];
-	if (ys->ys_keyword == Y_CHOICE){ /* Look for its children */
-	    for (j=0; j<ys->ys_len; j++){
-		yc = ys->ys_stmt[j];
-		if (yc->ys_keyword == Y_CASE) /* Look for its children */
+    ys = NULL;
+    while ((ys = yn_each(yn, ys)) != NULL){
+	if (yang_keyword_get(ys) == Y_CHOICE){ /* Look for its children */
+	    yc = NULL;
+	    while ((yc = yn_each(ys, yc)) != NULL){
+		if (yang_keyword_get(yc) == Y_CASE) /* Look for its children */
 		    ysmatch = yang_find_datanode(yc, argument);
 		else
 		    if (yang_datanode(yc)){
@@ -726,8 +725,8 @@ yang_find_datanode(yang_stmt *yn,
 	(yang_keyword_get(yn) == Y_MODULE ||
 	 yang_keyword_get(yn) == Y_SUBMODULE)){
 	yspec = ys_spec(yn);
-	for (i=0; i<yn->ys_len; i++){
-	    ys = yn->ys_stmt[i];
+	ys = NULL;
+	while ((ys = yn_each(yn, ys)) != NULL){
 	    if (yang_keyword_get(ys) == Y_INCLUDE){
 		name = yang_argument_get(ys);
 		yc = yang_find_module_by_name(yspec, name);
@@ -2083,12 +2082,15 @@ yang_apply(yang_stmt     *yn,
 int
 yang_datanode(yang_stmt *ys)
 {
-    return  (yang_keyword_get(ys) == Y_CONTAINER ||
-	     yang_keyword_get(ys) == Y_LEAF ||
-	     yang_keyword_get(ys) == Y_LIST ||
-	     yang_keyword_get(ys) == Y_LEAF_LIST ||
-	     yang_keyword_get(ys) == Y_ANYXML ||
-	     yang_keyword_get(ys) == Y_ANYDATA);
+    enum rfc_6020 keyw;
+
+    keyw = yang_keyword_get(ys);
+    return (keyw == Y_CONTAINER ||
+	    keyw == Y_LEAF ||
+	    keyw == Y_LIST ||
+	    keyw == Y_LEAF_LIST ||
+	    keyw == Y_ANYXML ||
+	    keyw == Y_ANYDATA);
 }
 
 /*! All the work for schema_nodeid functions both absolute and descendant

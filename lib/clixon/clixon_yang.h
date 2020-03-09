@@ -155,7 +155,31 @@ struct xml;
 
 typedef struct yang_stmt yang_stmt; /* Defined in clixon_yang_internal */
 
+/*! Yang apply function worker
+ * @param[in]  yn   yang node
+ * @param[in]  arg  Argument
+ * @retval    -1    Error, abort
+ * @retval     0    OK, continue with next
+ * @retval     n    OK, abort traversal and return to caller with "n"
+ */
 typedef int (yang_applyfn_t)(yang_stmt *ys, void *arg);
+
+
+/* Yang data definition statement
+ * See RFC 7950 Sec 3:
+ *   o  data definition statement: A statement that defines new data
+ *      nodes.  One of "container", "leaf", "leaf-list", "list", "choice",
+ *      "case", "augment", "uses", "anydata", and "anyxml".
+ */
+#define yang_datadefinition(y) (yang_datanode(y) || yang_keyword_get(y) == Y_CHOICE || yang_keyword_get(y) == Y_CASE || yang_keyword_get(y) == Y_AUGMENT || yang_keyword_get(y) == Y_USES)
+
+/* Yang schema node .
+ * See RFC 7950 Sec 3:
+ *    o  schema node: A node in the schema tree.  One of action, container,
+ *       leaf, leaf-list, list, choice, case, rpc, input, output,
+ *       notification, anydata, and anyxml.
+ */
+#define yang_schemanode(y) (yang_datanode(y) || yang_keyword_get(y) == Y_RPC || yang_keyword_get(y) == Y_CHOICE || yang_keyword_get(y) == Y_CASE || yang_keyword_get(y) == Y_INPUT || yang_keyword_get(y) == Y_OUTPUT || yang_keyword_get(y) == Y_NOTIFICATION)
 
 /*
  * Prototypes

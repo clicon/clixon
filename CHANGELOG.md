@@ -72,6 +72,9 @@ Expected: Early March 2020
 
 ### Minor changes
 
+* Sanity check of mandatory key statement for Yang LISTs.
+  * If fails, exit with error message, eg: `Yang error: Sanity check failed: LIST vsDataContainer lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)`
+  * Can be disabled by setting `CLICON_CLICON_YANG_LIST_CHECK` to `false`
 * Replaced compile option `VALIDATE_STATE_XML` with runtime option `CLICON_VALIDATE_STATE_XML`.
 * Memory footprint 
   * Do not autopopulate namespace cache, instead use on-demand, see `xml2ns()`.
@@ -90,8 +93,9 @@ Expected: Early March 2020
   
 ### Corrected Bugs
 
-* Recursive (erroneous) Yang specs with recursive grouping/use statement is now fixed: instead of stack overflow, you get an error message and an exit
-* Fixed: Search function checked only own not for config false statement, should have checked all ancestors. This may affect some state returned in GET calls
+* Yang specs with recursive grouping/use statement is now fixed: instead of stack overflow, you get an error message and an exit
+* Fixed: Some state data was sorted but should not have been.
+  * Search function checked only own not for config false statement, should have checked all ancestors.
 * Fixed: Some restconf errors were wrongly formatted such as: `{"ietf-restconf:errors":{"error":{"rpc-error":` . There should be no `"rpc-error"` level.
 * Fixed: Enabling modstate (CLICON_XMLDB_MODSTATE), changing a revision on a yang, and restarting made the backend daemon exit at start (thanks Matt)
   * Also: ensure to load `ietf-yang-library.yang ` if CLICON_XMLDB_MODSTATE is set

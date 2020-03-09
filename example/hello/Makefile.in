@@ -125,6 +125,7 @@ install: $(YANGSPECS) $(CLISPECS) $(PLUGINS) $(APPNAME).xml
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/clispec
 	install -m 0644 $(CLISPECS) $(DESTDIR)$(libdir)/$(APPNAME)/clispec
 	install -d -m 0755 $(DESTDIR)$(datarootdir)/$(APPNAME)/yang
+	install -d -m 0755 $(DESTDIR)$(YANG_INSTALLDIR)
 	install -m 0644 $(YANGSPECS) $(DESTDIR)$(YANG_INSTALLDIR)
 	install -d -m 0755 $(DESTDIR)$(localstatedir)/$(APPNAME)
 

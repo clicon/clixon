@@ -90,21 +90,6 @@ struct yang_stmt{
     int               _ys_vector_i;   /* internal use: yn_each */
 };
 
-/* Yang data definition statement
- * See RFC 7950 Sec 3:
- *   o  data definition statement: A statement that defines new data
- *      nodes.  One of "container", "leaf", "leaf-list", "list", "choice",
- *      "case", "augment", "uses", "anydata", and "anyxml".
- */
-#define yang_datadefinition(y) (yang_datanode(y) || (y)->ys_keyword == Y_CHOICE || (y)->ys_keyword == Y_CASE || (y)->ys_keyword == Y_AUGMENT || (y)->ys_keyword == Y_USES)
-
-/* Yang schema node .
- * See RFC 7950 Sec 3:
- *    o  schema node: A node in the schema tree.  One of action, container,
- *       leaf, leaf-list, list, choice, case, rpc, input, output,
- *       notification, anydata, and anyxml.
- */
-#define yang_schemanode(y) (yang_datanode(y) || (y)->ys_keyword == Y_RPC || (y)->ys_keyword == Y_CHOICE || (y)->ys_keyword == Y_CASE || (y)->ys_keyword == Y_INPUT || (y)->ys_keyword == Y_OUTPUT || (y)->ys_keyword == Y_NOTIFICATION)
 
 #endif  /* _CLIXON_YANG_INTERNAL_H_ */
 

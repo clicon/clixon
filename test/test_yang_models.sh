@@ -40,6 +40,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/draft/802</CLICON_YANG_DIR> 
   <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/published/802.1</CLICON_YANG_DIR> 
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_LIST_CHECK>false</CLICON_YANG_LIST_CHECK>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -106,7 +107,7 @@ let i=0;
 for f in $files; do
     if [ -n "$(head -5 $f|grep '^ module')" ]; then
 	new "$clixon_cli -1f $cfg -o CLICON_YANG_MAIN_FILE=$f -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common -p $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf show version"
-	expectfn "$clixon_cli -1f $cfg -o CLICON_YANG_MAIN_FILE=$f -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common -p $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf -o CLICON_CLI_GENMODEL=0 show version" 0 "$version."
+	expectfn "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_FILE=$f -p $YANGMODELS/vendor/juniper/18.2/18.2R1/common -p $YANGMODELS/vendor/juniper/18.2/18.2R1/junos/conf -o CLICON_CLI_GENMODEL=0 show version" 0 "$version."
 	let i++;
 	sleep 1
     fi
