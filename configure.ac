@@ -44,6 +44,9 @@ AC_INIT(lib/clixon/clixon.h.in)
 : ${CFLAGS="-O2 -Wall"}
 : ${INSTALLFLAGS="-s"}
 
+# where autotool scripts are: install-sh, config.sub, config.guess
+AC_CONFIG_AUX_DIR(aux)
+
 CLIXON_VERSION_MAJOR="4"
 CLIXON_VERSION_MINOR="4"
 CLIXON_VERSION_PATCH="0"
