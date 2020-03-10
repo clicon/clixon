@@ -232,7 +232,7 @@ new "update list permit"
 expecteq "$(curl -u guest:bar -sS -H 'Content-Type: application/yang-data+xml' -X PUT http://localhost/restconf/data/nacm-example:a=key42 -d '<a xmlns="urn:example:nacm"><k>key42</k><b><c>update</c></b></a>')" 0 ''
 
 new "read list check"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:a)" 0 '{"nacm-example:a":[{"k":"key42","b":{"c":"update"}}]}
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:a=key42)" 0 '{"nacm-example:a":[{"k":"key42","b":{"c":"update"}}]}
 '
 
 new "delete list deny"
@@ -243,10 +243,10 @@ expecteq "$(curl -u wilma:bar -sS -X DELETE http://localhost/restconf/data/nacm-
 
 #----- default deny (clixon-example limit and guest have default access)
 new "default create list deny"
-expecteq "$(curl -u wilma:bar -sS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val42"}]}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expecteq "$(curl -u wilma:bar -sS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-example:translate/translate=key42 -d '{"clixon-example:translate":[{"k":"key42","value":"val42"}]}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "create list permit"
-expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val42"}]}')" 0 ''
+expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-example:translate/translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val42"}]}')" 0 ''
 
 new "default update list deny"
 expecteq "$(curl -u wilma:bar -sS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val99"}]}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'

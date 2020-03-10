@@ -39,6 +39,9 @@ Expected: Early March 2020
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
 	
 ### API changes on existing features (you may need to change your code)
+* C-API:
+   * All uses of `api_path2xpath_cvv()` should be replaced by `api_path2xpath()`
+   * `api_path2xpath()` added an `xerr` argument.
 * Empty values in JSON has changed to comply to RFC 7951
    * empty values of yang type `empty` are encoded as: `{"x":[null]}`
    * empty string values are encoded as: `{"x":""}` (changed from `null` in 4.0 and `[null]` in 4.3)

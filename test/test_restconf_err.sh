@@ -141,14 +141,20 @@ new "restconf POST initial tree"
 expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+xml' -d "$XML" http://localhost/restconf/data)" 0 ''
 
 new "restconf GET initial datastore"
-expecteq "$(curl -s -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/example:a)" 0 "$XML
+expecteq "$(curl -s -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/example:a=0)" 0 "$XML
 "
 
+new "restconf GET non-qualified list"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example:a)" 0 'HTTP/1.1 400 Bad Request' "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"rpc\",\"error-tag\":\"malformed-message\",\"error-severity\":\"error\",\"error-message\":\"malformed key =example:a, expected '=restval'\"}}}"
+
+new "restconf GET non-qualified list subelements"
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example:a/k)" 0 'HTTP/1.1 400 Bad Request' "^{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"rpc\",\"error-tag\":\"malformed-message\",\"error-severity\":\"error\",\"error-message\":\"malformed key =example:a, expected '=restval'\"}}}"
+
 new "restconf GET non-existent container body"
-expectpart "$(curl -si -X GET http://localhost/restconf/data/example:a/c)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example:a=0/c)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 new "restconf GET invalid (no yang) container body"
-expectpart "$(curl -si -X GET http://localhost/restconf/data/example:a/xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example:a=0/xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'
 
 new "restconf GET invalid (no yang) element"
 expectpart "$(curl -si -X GET http://localhost/restconf/data/example:xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'

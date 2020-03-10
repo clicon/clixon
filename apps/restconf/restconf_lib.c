@@ -708,7 +708,7 @@ restconf_insert_attributes(cxobj *xdata,
 	if (xml_prefix_set(xa, "yang") < 0)
 	    goto done;
 	xml_type_set(xa, CX_ATTR);
-	if ((ret = api_path2xpath(pstr, ys_spec(y), &xpath, &nsc)) < 0)
+	if ((ret = api_path2xpath(pstr, ys_spec(y), &xpath, &nsc, NULL)) < 0)
 	    goto done;
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new");

@@ -124,11 +124,11 @@ api_data(clicon_handle h,
     if (strcmp(request_method, "OPTIONS")==0)
 	retval = api_data_options(h, r);
     else if (strcmp(request_method, "HEAD")==0)
-	retval = api_data_head(h, r, pcvec, pi, qvec, pretty, media_out);
+	retval = api_data_head(h, r, api_path, pcvec, pi, qvec, pretty, media_out);
     else if (strcmp(request_method, "GET")==0)
-	retval = api_data_get(h, r, pcvec, pi, qvec, pretty, media_out);
+	retval = api_data_get(h, r, api_path, pcvec, pi, qvec, pretty, media_out);
     else if (strcmp(request_method, "POST")==0)
-	retval = api_data_post(h, r, api_path, pcvec, pi, qvec, data, pretty, media_out);
+	retval = api_data_post(h, r, api_path, pi, qvec, data, pretty, media_out);
     else if (strcmp(request_method, "PUT")==0)
 	retval = api_data_put(h, r, api_path, pcvec, pi, qvec, data, pretty, media_out);
     else if (strcmp(request_method, "PATCH")==0)
@@ -169,9 +169,9 @@ api_operations(clicon_handle h,
     request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
     clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
     if (strcmp(request_method, "GET")==0)
-	retval = api_operations_get(h, r, path, pcvec, pi, qvec, data, pretty, media_out);
+	retval = api_operations_get(h, r, path, pi, qvec, data, pretty, media_out);
     else if (strcmp(request_method, "POST")==0)
-	retval = api_operations_post(h, r, path, pcvec, pi, qvec, data,
+	retval = api_operations_post(h, r, path, pi, qvec, data,
 				     pretty, media_out);
     else
 	retval = restconf_notfound(r);

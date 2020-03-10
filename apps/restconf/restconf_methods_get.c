@@ -66,6 +66,7 @@
  * According to restconf 
  * @param[in]  h      Clixon handle
  * @param[in]  r      Fastcgi request handle
+ * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
@@ -90,17 +91,17 @@
  * Netconf: <get-config>, <get>                        
  */
 static int
-api_data_get2(clicon_handle h,
-	      FCGX_Request *r,
-	      cvec         *pcvec,
-	      int           pi,
-	      cvec         *qvec,
-	      int           pretty,
+api_data_get2(clicon_handle  h,
+	      FCGX_Request  *r,
+	      char          *api_path, 
+	      cvec          *pcvec, /* XXX remove? */
+	      int            pi,
+	      cvec          *qvec,
+	      int            pretty,
 	      restconf_media media_out,
-	      int           head)
+	      int            head)
 {
     int        retval = -1;
-    cbuf      *cbpath = NULL;
     char      *xpath = NULL;
     cbuf      *cbx = NULL;
     yang_stmt *yspec;
@@ -117,12 +118,41 @@ api_data_get2(clicon_handle h,
     char      *attr; /* attribute value string */
     netconf_content content = CONTENT_ALL;
     int32_t    depth = -1;  /* Nr of levels to print, -1 is all, 0 is none */
+    cxobj     *xtop = NULL;
+    cxobj     *xbot = NULL;
+    yang_stmt *y = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }
+    /* strip /... from start */
+    for (i=0; i<pi; i++)
+	api_path = index(api_path+1, '/');
+    if (api_path){
+	if ((xtop = xml_new("top", NULL, NULL)) == NULL)
+	    goto done;
+	/* Translate api-path to xml, but to validate the api-path, note: strict=1 
+	 * xtop and xbot unnecessary fir this function but neede by function
+	 */
+	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
+	    goto done;
+	/* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) */
+	if (ret != 0 &&
+	    (ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){ /* validation failed */
+	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+
     /* Check for content attribute */
     if ((attr = cvec_find_str(qvec, "content")) != NULL){
 	clicon_debug(1, "%s content=%s", __FUNCTION__, attr);
@@ -162,25 +192,7 @@ api_data_get2(clicon_handle h,
 	    }
 	}
     }
-    if ((cbpath = cbuf_new()) == NULL)
-        goto done;
-    cprintf(cbpath, "/");
 
-    /* We know "data" is element pi-1.
-     * Translate api-path to xpath: xpath (cbpath) and namespace context (nsc)
-     */
-    if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &nsc, &xerr)) < 0)
-	goto done;
-    if (ret == 0){
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    xpath = cbuf_get(cbpath);
     clicon_debug(1, "%s path:%s", __FUNCTION__, xpath);
     switch (content){
     case CONTENT_CONFIG:
@@ -306,12 +318,14 @@ api_data_get2(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xpath)
+	free(xpath);
     if (nsc)
 	xml_nsctx_free(nsc);
+    if (xtop)
+        xml_free(xtop);
     if (cbx)
         cbuf_free(cbx);
-    if (cbpath)
-	cbuf_free(cbpath);
     if (xret)
 	xml_free(xret);
     if (xerr)
@@ -324,6 +338,7 @@ api_data_get2(clicon_handle h,
 /*! REST HEAD method
  * @param[in]  h      Clixon handle
  * @param[in]  r      Fastcgi request handle
+ * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
@@ -338,19 +353,21 @@ api_data_get2(clicon_handle h,
 int
 api_data_head(clicon_handle h,
 	      FCGX_Request *r,
+	      char         *api_path,
 	      cvec         *pcvec,
 	      int           pi,
 	      cvec         *qvec,
 	      int           pretty,
 	      restconf_media media_out)
 {
-    return api_data_get2(h, r, pcvec, pi, qvec, pretty, media_out, 1);
+    return api_data_get2(h, r, api_path, pcvec, pi, qvec, pretty, media_out, 1);
 }
 
 /*! REST GET method
  * According to restconf 
  * @param[in]  h      Clixon handle
  * @param[in]  r      Fastcgi request handle
+ * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
@@ -375,13 +392,14 @@ api_data_head(clicon_handle h,
 int
 api_data_get(clicon_handle h,
 	     FCGX_Request *r,
+	     char         *api_path, 
              cvec         *pcvec,
              int           pi,
              cvec         *qvec,
 	     int           pretty,
 	     restconf_media media_out)
 {
-    return api_data_get2(h, r, pcvec, pi, qvec, pretty, media_out, 0);
+    return api_data_get2(h, r, api_path, pcvec, pi, qvec, pretty, media_out, 0);
 }
 
 /*! GET restconf/operations resource
@@ -413,7 +431,6 @@ int
 api_operations_get(clicon_handle h,
 		   FCGX_Request *r, 
 		   char         *path, 
-		   cvec         *pcvec, 
 		   int           pi,
 		   cvec         *qvec, 
 		   char         *data,

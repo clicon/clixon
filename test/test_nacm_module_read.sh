@@ -119,10 +119,11 @@ RULES=$(cat <<EOF
 
    </nacm>
    <x xmlns="urn:example:nacm">42</x>
-   <translate xmlns="urn:example:clixon"><k>key42</k><value>val42</value></translate>
-   <translate xmlns="urn:example:clixon"><k>key43</k><value>val43</value></translate>
+   <translate xmlns="urn:example:clixon"><translate><k>key42</k><value>val42</value></translate></translate>
+   <translate xmlns="urn:example:clixon"><translate><k>key43</k><value>val43</value></translate></translate>
 EOF
 )
+# NOTE use of translate^ has nothing to do with the CLI translate semantics
 
 new "test params: -f $cfg -- -s"
 
@@ -164,14 +165,14 @@ expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+
 #----READ access
 #user:admin
 new "admin read ok"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" 0 '{"clixon-example:translate":[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}]}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" 0 '{"clixon-example:translate":{"translate":[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}]}}
 '
 
 new "admin read netconf ok"
-expecteof "$clixon_netconf -U andy -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/t:translate" xmlns:t="urn:example:clixon" /></get-config></rpc>]]>]]>' '^<rpc-reply><data><translate xmlns="urn:example:clixon"><k>key42</k><value>val42</value></translate><translate xmlns="urn:example:clixon"><k>key43</k><value>val43</value></translate></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -U andy -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/t:translate" xmlns:t="urn:example:clixon" /></get-config></rpc>]]>]]>' '^<rpc-reply><data><translate xmlns="urn:example:clixon"><translate><k>key42</k><value>val42</value></translate><translate><k>key43</k><value>val43</value></translate></translate></data></rpc-reply>]]>]]>$'
 
 new "admin read element ok"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate=key42/value)" 0 '{"clixon-example:value":"val42"}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate/translate=key42/value)" 0 '{"clixon-example:value":"val42"}
 '
 
 new "admin read other module OK"
@@ -193,14 +194,14 @@ fi
 #user:limit
 
 new "limit read ok"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" 0 '{"clixon-example:translate":[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}]}
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" 0 '{"clixon-example:translate":{"translate":[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}]}}
 '
 
 new "limit read netconf ok"
-expecteof "$clixon_netconf -U wilma -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/t:translate" xmlns:t="urn:example:clixon"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><translate xmlns="urn:example:clixon"><k>key42</k><value>val42</value></translate><translate xmlns="urn:example:clixon"><k>key43</k><value>val43</value></translate></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -U wilma -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/t:translate" xmlns:t="urn:example:clixon"/></get-config></rpc>]]>]]>' '^<rpc-reply><data><translate xmlns="urn:example:clixon"><translate><k>key42</k><value>val42</value></translate><translate><k>key43</k><value>val43</value></translate></translate></data></rpc-reply>]]>]]>$'
 
 new "limit read element ok"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate=key42/value)" 0 '{"clixon-example:value":"val42"}
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate/translate=key42/value)" 0 '{"clixon-example:value":"val42"}
 '
 
 new "limit read other module fail"
@@ -211,7 +212,7 @@ expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-e
 '
 
 new "limit read top ok (part)"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data)" 0 '{"data":{"clixon-example:translate":[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}],"clixon-example:state":{"op":["42","41","43"]}}}
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data)" 0 '{"data":{"clixon-example:translate":{"translate":[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}]},"clixon-example:state":{"op":["42","41","43"]}}}
 '
 
 #user:guest
@@ -223,7 +224,7 @@ new "guest read netconf fail"
 expecteof "$clixon_netconf -U guest -qf $cfg" 0 '<rpc><get-config><source><candidate/></source><filter type="xpath" select="/t:translate" xmlns:t="urn:example:clixon"/></get-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>default deny</error-message></rpc-error></rpc-reply>]]>]]>$'
 
 new "guest read element fail"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate=key42/value)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate/translate=key42/value)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "guest read other module fail"
 expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
@@ -262,7 +263,7 @@ new "admin set read-default permit"
 expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:read-default":"permit"}' http://localhost/restconf/data/ietf-netconf-acm:nacm/read-default)" 0 ""
 
 new "limit read ok"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" 0 '{"clixon-example:translate":[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}]}
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:translate)" 0 '{"clixon-example:translate":{"translate":[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}]}}
 '
 
 new "limit read other module ok"

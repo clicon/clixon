@@ -100,7 +100,6 @@ int
 api_data_post(clicon_handle h,
 	      FCGX_Request *r, 
 	      char         *api_path, 
-	      cvec         *pcvec, 
 	      int           pi,
 	      cvec         *qvec, 
 	      char         *data,
@@ -145,6 +144,7 @@ api_data_post(clicon_handle h,
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
     if (api_path){
+	/* Translate api-path to xml, side-effect: validate the api-path, note: strict=1 */
 	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
@@ -609,7 +609,7 @@ api_operations_post_output(clicon_handle h,
      * (1) Does not handle <ok/> properly
      * (2) Uncertain how validation errors should be logged/handled
      */
-    if (youtput!=NULL){
+    if (youtput != NULL){
 	xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
 #if 0
 	if (xml_spec_populate(xoutput, yspec, NULL) < 0)
@@ -675,9 +675,7 @@ api_operations_post_output(clicon_handle h,
 /*! REST operation POST method 
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
- * @param[in]  path   According to restconf (Sec 3.5.1.1 in [draft])
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
- * @param[in]  pi     Offset, where to start pcvec
+ * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
@@ -706,8 +704,7 @@ api_operations_post_output(clicon_handle h,
 int
 api_operations_post(clicon_handle h,
 		    FCGX_Request *r, 
-		    char         *path, 
-		    cvec         *pcvec, 
+		    char         *api_path, 
 		    int           pi,
 		    cvec         *qvec, 
 		    char         *data,
@@ -716,7 +713,7 @@ api_operations_post(clicon_handle h,
 {
     int        retval = -1;
     int        i;
-    char      *oppath = path;
+    char      *oppath = api_path;
     yang_stmt *yspec;
     yang_stmt *youtput = NULL;
     yang_stmt *yrpc = NULL;
@@ -736,7 +733,7 @@ api_operations_post(clicon_handle h,
     yang_stmt *ys = NULL;
     char      *namespace = NULL;
     
-    clicon_debug(1, "%s json:\"%s\" path:\"%s\"", __FUNCTION__, data, path);
+    clicon_debug(1, "%s json:\"%s\" path:\"%s\"", __FUNCTION__, data, api_path);
     /* 1. Initialize */
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");

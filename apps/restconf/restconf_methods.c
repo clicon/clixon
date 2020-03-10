@@ -261,9 +261,9 @@ api_data_write(clicon_handle h,
     int            ret;
     char          *namespace = NULL;
     char          *dname;
-    cbuf          *cbpath = NULL;    
     cvec          *nsc = NULL;
     enum yang_bind yb;
+    char          *xpath = NULL;
 
     clicon_debug(1, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
     clicon_debug(1, "%s data:\"%s\"", __FUNCTION__, data);
@@ -272,28 +272,27 @@ api_data_write(clicon_handle h,
 	goto done;
     }
     api_path=api_path0;
+    /* strip /... from start */
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
-    /* Check if object exists in backend.
-     * Translate api-path to xpath */
-    if ((cbpath = cbuf_new()) == NULL)
-	goto done;
-    cprintf(cbpath, "/");
-
-    if ((ret = api_path2xpath_cvv(pcvec, pi, yspec, cbpath, &nsc, &xerr)) < 0)
-	goto done;
-    if (ret == 0){
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+    if (api_path){
+	/* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) */
+	if ((ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
 	    goto done;
+	if (ret == 0){ /* validation failed */
+	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
     }
+
     xret = NULL;
     if (clicon_rpc_get_config(h, clicon_nacm_recovery_user(h),
-			      "candidate", cbuf_get(cbpath), nsc, &xret) < 0){
+			      "candidate", xpath, nsc, &xret) < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;
 	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -672,10 +671,10 @@ api_data_write(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xpath)
+	free(xpath);
     if (nsc)
 	xml_nsctx_free(nsc);
-    if (cbpath)
-	cbuf_free(cbpath);
     if (xret)
 	xml_free(xret);
     if (xerr)

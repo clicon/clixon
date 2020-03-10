@@ -40,13 +40,12 @@
 /*
  * Prototypes
  */
-int api_data_head(clicon_handle h, FCGX_Request *r, cvec *pcvec, int pi, 
+int api_data_head(clicon_handle h, FCGX_Request *r, char *api_path, cvec *pcvec, int pi, 
 		  cvec *qvec, int pretty, restconf_media media_out);
-int api_data_get(clicon_handle h, FCGX_Request *r, cvec *pcvec, int pi, 
+int api_data_get(clicon_handle h, FCGX_Request *r, char *api_path, cvec *pcvec, int pi, 
 		 cvec *qvec, int pretty, restconf_media media_out);
 int api_operations_get(clicon_handle h, FCGX_Request *r, 
-		       char *path,
-		       cvec *pcvec, int pi, cvec *qvec, char *data,
+		       char *api_path, int pi, cvec *qvec, char *data,
 		       int pretty, restconf_media media_out);
 
 #endif /* _RESTCONF_METHODS_GET_H_ */

@@ -152,7 +152,7 @@ expand_dbvar(void   *h,
      */
     if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
 	goto done;
-    if (api_path2xpath(api_path, yspec, &xpath, &nsc) < 0)
+    if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
 	goto done;
 
     /* Get configuration */
@@ -714,7 +714,7 @@ cli_show_auto1(clicon_handle h,
     }
     if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
 	goto done;
-    if (api_path2xpath(api_path, yspec, &xpath, &nsc) < 0)
+    if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
 	goto done;
     /* XXX Kludge to overcome a trailing / in show, that I cannot add to
      * yang2api_path_fmt_1 where it should belong.

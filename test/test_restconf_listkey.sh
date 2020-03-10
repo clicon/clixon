@@ -99,6 +99,9 @@ new "restconf GET whole list entry"
 expecteq "$(curl -s -X GET -H "Accept: application/yang-data+json" http://localhost/restconf/data/list:c/)" 0 '{"list:c":{"a":[{"b":"x","c":"y","nonkey":"0"}]}}
 '
 
+new "restconf GET list entry itself (should fail)"
+expectpart "$(curl -si -X GET -H "Accept: application/yang-data+json" http://localhost/restconf/data/list:c/a)" 0 'HTTP/1.1 400 Bad Request' '^{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"malformed key =a, expected '
+
 new "restconf GET list entry"
 expecteq "$(curl -s -X GET -H "Accept: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y)" 0 '{"list:a":[{"b":"x","c":"y","nonkey":"0"}]}
 '
@@ -106,9 +109,7 @@ expecteq "$(curl -s -X GET -H "Accept: application/yang-data+json" http://localh
 new "restconf PUT add whole list entry XML"
 expecteq "$(curl -s -X PUT -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+xml' -d '<a xmlns="urn:example:clixon"><b>xx</b><c>xy</c><nonkey>0</nonkey></a>' http://localhost/restconf/data/list:c/a=xx,xy)" 0 ''
 
-new "restconf GET list entry two XXX shouldnt be allowed"
-expecteq "$(curl -s -X GET -H "Accept: application/yang-data+json" http://localhost/restconf/data/list:c/a/b)" 0 '{"list:b":["x","xx"]}
-'
+expectpart "$(curl -si -X GET -H "Accept: application/yang-data+json" http://localhost/restconf/data/list:c/a/b)" 0 'HTTP/1.1 400 Bad Request' '^{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"malformed key =a, expected '
 
 new "restconf PUT change whole list entry (same keys)"
 expecteq "$(curl -s -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/list:c/a=x,y -d '{"list:a":{"b":"x","c":"y","nonkey":"z"}}')" 0 ''

@@ -145,14 +145,16 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    sudo pkill -u $wwwuser -f clixon_restconf
 
-new "start restconf daemon (-a is enable http basic auth)"
-start_restconf -f $cfg -- -a
+    new "start restconf daemon (-a is enable http basic auth)"
+    start_restconf -f $cfg -- -a
 
-new "waiting"
-wait_restconf
+    new "waiting"
+    wait_restconf
+fi
 
 new "auth get"
 expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data)" 0 '{"data":{"clixon-example:state":{"op":["42","41","43"]}}}
@@ -209,8 +211,10 @@ expectfn "$clixon_cli -1 -U wilma -l o -f $cfg rpc ipv4" 255 "access-denied defa
 new "cli rpc as guest"
 expectfn "$clixon_cli -1 -U guest -l o -f $cfg rpc ipv4" 255 "access-denied access denied"
 
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE
