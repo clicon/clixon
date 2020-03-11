@@ -97,6 +97,7 @@ Expected: Early March 2020
   
 ### Corrected Bugs
 
+* Fixed [Makefile syntax error *** mixed implicit and normal rules #104](https://github.com/clicon/clixon/issues/104). Make operator `|=` seems not to work on GNU make version < 4.
 * Yang specs with recursive grouping/use statement is now fixed: instead of stack overflow, you get an error message and an exit
 * Fixed: Some state data was sorted but should not have been.
   * Search function checked only own not for config false statement, should have checked all ancestors.
