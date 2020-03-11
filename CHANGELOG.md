@@ -75,6 +75,7 @@ Expected: Early March 2020
 
 ### Minor changes
 
+* Moved hello example to [clixon-examples](https://github.com/clicon/clixon-examples)
 * Sanity check of mandatory key statement for Yang LISTs.
   * If fails, exit with error message, eg: `Yang error: Sanity check failed: LIST vsDataContainer lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)`
   * Can be disabled by setting `CLICON_CLICON_YANG_LIST_CHECK` to `false`

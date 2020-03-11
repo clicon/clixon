@@ -2,6 +2,12 @@ module clixon-example {
     yang-version 1.1;
     namespace "urn:example:clixon";
     prefix ex;
+    description
+	"Clixon example used as a part of the Clixon test suite.
+         It can be used as a basis for making new Clixon applications.";
+    revision 2020-03-11 {
+	description "Added container around translation list. Released in Clixon 4.4.0";
+    }
     revision 2019-11-05 {
 	description "Augment interface. Released in Clixon 4.3.0";
     }
@@ -28,13 +34,16 @@ module clixon-example {
 	base if:interface-type;
     }
     /* Translation function example - See also example_cli */
-    list translate{
-	key k;
-	leaf k{
-	    type string;
-	}
-	leaf value{
-	    type string;
+    container translate{
+	description "dont have lists directly under top since restconf cant address list directly";
+	list translate{
+	    key k;
+	    leaf k{
+		type string;
+	    }
+	    leaf value{
+		type string;
+	    }
 	}
     }
     /* State data (not config) for the example application*/

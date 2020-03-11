@@ -36,7 +36,7 @@ CLICON_PROMPT="%U@%H> ";
 CLICON_PLUGIN="example_cli";
 
 # Translate variable "value" by incrementing its characters
-translate value (<value:string translate:incstr()>),cli_set("/translate/value");
+translate value (<value:string translate:incstr()>),cli_set("/clixon-example:translate/translate=0/value");
 
 # Note, when switching to PT, change datamodel to only @datamodel
 set @datamodel, cli_set();

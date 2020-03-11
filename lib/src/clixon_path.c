@@ -798,7 +798,7 @@ api_path2xpath_cvv(cvec       *api_path,
  *   free(xpath)
  *   cvec_free(nsc);
  * @endcode
- *
+ * @see api_path2xml  For api-path to xml translation (maybe could be combined?)
  */
 int
 api_path2xpath(char       *api_path,
@@ -1075,7 +1075,7 @@ api_path2xml_vec(char      **vec,
  *   xbotp:    <subid/>
  *   ybotp:    Y_LEAF subid
  * @note "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
- * @see api_path2xpath For api-path to xml xpath translation
+ * @see api_path2xpath   For api-path to xpath translation (maybe could be combined?)
  */
 int
 api_path2xml(char       *api_path,
