@@ -953,12 +953,12 @@ api_path2xml_vec(char      **vec,
 	    clicon_err(OE_XML, 0, "malformed key, expected '=restval'");
 	    goto done;
 	}
-	if ((x = xml_new(yang_argument_get(y), x0, y)) == NULL)
+	if ((x = xml_new(yang_argument_get(y), NULL, x0, CX_ELMNT)) == NULL)
 	    goto done;
-	xml_type_set(x, CX_ELMNT);
-	if ((xb = xml_new("body", x, NULL)) == NULL)
+	xml_spec_set(x, y);
+
+	if ((xb = xml_new("body", NULL, x, CX_BODY)) == NULL)
 	    goto done; 
-	xml_type_set(xb, CX_BODY);
 	if (restval && xml_value_set(xb, restval) < 0)
 	    goto done;
 	break;
@@ -991,9 +991,10 @@ api_path2xml_vec(char      **vec,
 	}
 	cvi = NULL;
 	/* create list object */
-	if ((x = xml_new(name, x0, y)) == NULL)
+	if ((x = xml_new(name, NULL, x0, CX_ELMNT)) == NULL)
 	    goto done;
-	xml_type_set(x, CX_ELMNT);
+	xml_spec_set(x, y);
+
 	vi = 0;
 	/* Create keys */
 	while ((cvi = cvec_each(cvk, cvi)) != NULL){
@@ -1005,12 +1006,12 @@ api_path2xml_vec(char      **vec,
 		    goto done;
 		goto fail;
 	    }
-	    if ((xn = xml_new(keyname, x, ykey)) == NULL)
+	    if ((xn = xml_new(keyname, NULL, x, CX_ELMNT)) == NULL)
 		goto done; 
-	    xml_type_set(xn, CX_ELMNT);
-	    if ((xb = xml_new("body", xn, NULL)) == NULL)
+	    xml_spec_set(xn, ykey);
+
+	    if ((xb = xml_new("body", NULL, xn, CX_BODY)) == NULL)
 		goto done;
-	    xml_type_set(xb, CX_BODY);
 	    if (vi++ < nvalvec){
 		if (xml_value_set(xb, valvec[vi-1]) < 0)
 		    goto done;
@@ -1019,9 +1020,9 @@ api_path2xml_vec(char      **vec,
 	break;
     default: /* eg Y_CONTAINER, Y_LEAF */
 	if ((x = xml_find_type(x0, NULL, name, CX_ELMNT)) == NULL){ /* eg key of list */
-	    if ((x = xml_new(name, x0, y)) == NULL)
+	    if ((x = xml_new(name, NULL, x0, CX_ELMNT)) == NULL)
 		goto done;
-	    xml_type_set(x, CX_ELMNT);
+	    xml_spec_set(x, y);
 	}
 	break;
     }

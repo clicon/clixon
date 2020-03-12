@@ -147,7 +147,7 @@ main(int    argc,
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
     /* Initialize config tree (needed for -Y below) */
-    if ((xcfg = xml_new("clixon-config", NULL, NULL)) == NULL)
+    if ((xcfg = xml_new("clixon-config", NULL, NULL, CX_ELMNT)) == NULL)
 	goto done;
     if (clicon_conf_xml_set(h, xcfg) < 0)
 	goto done;

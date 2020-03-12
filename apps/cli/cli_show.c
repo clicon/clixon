@@ -165,7 +165,7 @@ expand_dbvar(void   *h,
     xcur = xt; /* default top-of-tree */
     xpathcur = xpath;
     /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL, NULL)) == NULL)
+    if ((xtop = xml_new("config", NULL, NULL, CX_ELMNT)) == NULL)
 	goto done;
     xbot = xtop;
     /* This is primarily to get "y", 

@@ -213,14 +213,14 @@ xmldb_copy(clicon_handle h,
 	    x2 = NULL;
 	}
 	else  if (x2 == NULL){ /* create x2 and copy from x1 */
-	    if ((x2 = xml_new(xml_name(x1), NULL, xml_spec(x1))) == NULL)
+	    if ((x2 = xml_new(xml_name(x1), NULL, NULL, CX_ELMNT)) == NULL)
 		goto done;
 	    if (xml_copy(x1, x2) < 0) 
 		goto done;
 	}
 	else{ /* copy x1 to x2 */
 	    xml_free(x2);
-	    if ((x2 = xml_new(xml_name(x1), NULL, xml_spec(x1))) == NULL)
+	    if ((x2 = xml_new(xml_name(x1), NULL, NULL, CX_ELMNT)) == NULL)
 		goto done;
 	    if (xml_copy(x1, x2) < 0) 
 		goto done;

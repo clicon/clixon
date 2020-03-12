@@ -489,16 +489,13 @@ xmlns_set(cxobj *x,
     cxobj *xa;
 
     if (prefix != NULL){ /* xmlns:<prefix>="<uri>" */
-	if ((xa = xml_new(prefix, x, NULL)) == NULL)
-	    goto done;
-	if (xml_prefix_set(xa, "xmlns") < 0)
+	if ((xa = xml_new(prefix, "xmlns", x, CX_ATTR)) == NULL)
 	    goto done;
     }
     else{                /* xmlns="<uri>" */
-	if ((xa = xml_new("xmlns", x, NULL)) == NULL)
+	if ((xa = xml_new("xmlns", NULL, x, CX_ATTR)) == NULL)
 	    goto done;
     }
-    xml_type_set(xa, CX_ATTR);
     if (xml_value_set(xa, ns) < 0)
 	goto done;
     /* (re)set namespace cache (as used in xml2ns) */

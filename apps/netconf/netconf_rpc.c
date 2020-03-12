@@ -671,9 +671,8 @@ netconf_rpc_dispatch(clicon_handle h,
      * It may even be wrong if something else is done with the incoming message?
      */
     if ((username = clicon_username_get(h)) != NULL){
-	if ((xa = xml_new("username", xn, NULL)) == NULL)
+	if ((xa = xml_new("username", NULL, xn, CX_ATTR)) == NULL)
 	    goto done;
-	xml_type_set(xa, CX_ATTR);
 	if (xml_value_set(xa, username) < 0)
 	    goto done;
     }

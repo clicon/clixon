@@ -591,7 +591,7 @@ xml_parse_file2(int            fd,
 	    (endtag && (state == endtaglen))){
 	    state = 0;
 	    if (*xt == NULL)
-		if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
+		if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, NULL, CX_ELMNT)) == NULL)
 		    goto done;
 	    if ((ret = _xml_parse(ptr, yb, yspec, *xt, xerr)) < 0)
 		goto done;
@@ -657,7 +657,7 @@ xml_parse_string2(const char    *str,
 	return -1;
     }
     if (*xt == NULL){
-	if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
+	if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, NULL, CX_ELMNT)) == NULL)
 	    return -1;
     }
     return _xml_parse(str, yb, yspec, *xt, xerr);
@@ -698,7 +698,7 @@ xml_parse_string(const char *str,
     }
     if (*xt == NULL){
 	yb = YB_TOP; /* ad-hoc #1 */
-	if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, NULL)) == NULL)
+	if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, NULL, CX_ELMNT)) == NULL)
 	    return -1;
     }
     else{

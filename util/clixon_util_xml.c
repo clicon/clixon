@@ -169,11 +169,11 @@ main(int    argc,
     /* Initialize clixon handle */
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
-    if ((xcfg = xml_new("clixon-config", NULL, NULL)) == NULL)
+    if ((xcfg = xml_new("clixon-config", NULL, NULL, CX_ELMNT)) == NULL)
 	goto done;
     if (clicon_conf_xml_set(h, xcfg) < 0)
 	goto done;
-    xcfg = xml_new("clixon-config", NULL, NULL);
+    xcfg = xml_new("clixon-config", NULL, NULL, CX_ELMNT);
     clicon_conf_xml_set(h, xcfg);
     optind = 1;
     opterr = 0;

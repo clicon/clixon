@@ -179,10 +179,8 @@ json_current_new(clixon_json_yacc *jy,
     /* Find colon separator and if found split into prefix:name */
     if (nodeid_split(name, &prefix, &id) < 0)
 	goto done;
-    if ((x = xml_new(id, jy->jy_current, NULL)) == NULL)
+    if ((x = xml_new(id, prefix, jy->jy_current, CX_ELMNT)) == NULL)
 	goto done; 
-    if (prefix && xml_prefix_set(x, prefix) < 0)
-	goto done;
     /* If topmost, add to top-list created list */
     if (jy->jy_current == jy->jy_xtop){
 	if (cxvec_append(x, &jy->jy_xvec, &jy->jy_xlen) < 0)
@@ -229,9 +227,8 @@ json_current_body(clixon_json_yacc *jy,
     cxobj *xn;
 
     clicon_debug(2, "%s", __FUNCTION__);
-    if ((xn = xml_new("body", jy->jy_current, NULL)) == NULL)
+    if ((xn = xml_new("body", NULL, jy->jy_current, CX_BODY)) == NULL)
 	goto done; 
-    xml_type_set(xn, CX_BODY);
     if (value && xml_value_append(xn, value) < 0)
 	goto done; 
     retval = 0;

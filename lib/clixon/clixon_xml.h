@@ -160,8 +160,8 @@ cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
 int       xml_child_insert_pos(cxobj *x, cxobj *xc, int i);
 int       xml_childvec_set(cxobj *x, int len);
 cxobj   **xml_childvec_get(cxobj *x);
-cxobj    *xml_new(char *name, cxobj *xn_parent, yang_stmt *spec);
-cxobj    *xml_new2(char *name, cxobj *xn_parent, enum cxobj_type type);
+cxobj    *xml_new(char *name, char *prefix, cxobj *xn_parent, enum cxobj_type type);
+
 yang_stmt *xml_spec(cxobj *x);
 int       xml_spec_set(cxobj *x, yang_stmt *spec);
 cg_var   *xml_cv(cxobj *x);

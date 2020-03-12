@@ -127,12 +127,12 @@ netconf_invalid_value_xml(cxobj **xret,
     char  *encstr = NULL;
 
     if (*xret == NULL){
-	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	if ((*xret = xml_new("rpc-reply", NULL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
 	goto done;
-    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+    if ((xerr = xml_new("rpc-error", NULL, *xret, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
 		     "<error-tag>invalid-value</error-tag>"
@@ -307,12 +307,12 @@ netconf_bad_attribute_xml(cxobj **xret,
     char  *encstr = NULL;
 
     if (*xret == NULL){
-	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	if ((*xret = xml_new("rpc-reply", NULL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
 	goto done;
-    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+    if ((xerr = xml_new("rpc-error", NULL, *xret, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
 		     "<error-tag>bad-attribute</error-tag>"
@@ -396,12 +396,12 @@ netconf_common_xml(cxobj **xret,
     char  *encstr = NULL;
     
     if (*xret == NULL){
-	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	if ((*xret = xml_new("rpc-reply", NULL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
 	goto done;
-    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+    if ((xerr = xml_new("rpc-error", NULL, *xret, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
 		     "<error-tag>%s</error-tag>"
@@ -646,12 +646,12 @@ netconf_access_denied_xml(cxobj **xret,
     char  *encstr = NULL;
 
     if (*xret == NULL){
-	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	if ((*xret = xml_new("rpc-reply", NULL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
 	goto done;
-    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+    if ((xerr = xml_new("rpc-error", NULL, *xret, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
 		     "<error-tag>access-denied</error-tag>"
@@ -876,12 +876,12 @@ netconf_data_missing_xml(cxobj **xret,
     cxobj *xerr;
 
     if (*xret == NULL){
-	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	if ((*xret = xml_new("rpc-reply", NULL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
 	goto done;
-    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+    if ((xerr = xml_new("rpc-error", NULL, *xret, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_parse_va(&xerr, NULL, 
 		     "<error-type>application</error-type>"
@@ -1004,12 +1004,12 @@ netconf_operation_failed_xml(cxobj **xret,
     char  *encstr = NULL;
     
     if (*xret == NULL){
-	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	if ((*xret = xml_new("rpc-reply", NULL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
 	goto done;
-    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+    if ((xerr = xml_new("rpc-error", NULL, *xret, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
 		     "<error-tag>operation-failed</error-tag>"
@@ -1083,12 +1083,12 @@ netconf_malformed_message_xml(cxobj **xret,
     char  *encstr = NULL;
     
     if (*xret == NULL){
-	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	if ((*xret = xml_new("rpc-reply", NULL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
 	goto done;
-    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+    if ((xerr = xml_new("rpc-error", NULL, *xret, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_parse_va(&xerr, NULL, "<error-type>rpc</error-type>"
 		     "<error-tag>malformed-message</error-tag>"
@@ -1130,12 +1130,12 @@ netconf_data_not_unique_xml(cxobj **xret,
     cbuf   *cb = NULL;
     
     if (*xret == NULL){
-	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	if ((*xret = xml_new("rpc-reply", NULL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
 	goto done;
-    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+    if ((xerr = xml_new("rpc-error", NULL, *xret, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_parse_va(&xerr, NULL, "<error-type>protocol</error-type>"
 		     "<error-tag>operation-failed</error-tag>"
@@ -1143,7 +1143,7 @@ netconf_data_not_unique_xml(cxobj **xret,
 		     "<error-severity>error</error-severity>") < 0)
 	goto done;
     if (cvec_len(cvk)){
-	if ((xinfo = xml_new("error-info", xerr, NULL)) == NULL)
+	if ((xinfo = xml_new("error-info", NULL, xerr, CX_ELMNT)) == NULL)
 	    goto done;
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -1183,12 +1183,12 @@ netconf_minmax_elements_xml(cxobj **xret,
     cxobj *xerr;
     
     if (*xret == NULL){
-	if ((*xret = xml_new("rpc-reply", NULL, NULL)) == NULL)
+	if ((*xret = xml_new("rpc-reply", NULL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
 	goto done;
-    if ((xerr = xml_new("rpc-error", *xret, NULL)) == NULL)
+    if ((xerr = xml_new("rpc-error", NULL, *xret, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_parse_va(&xerr, NULL, "<error-type>protocol</error-type>"
 		     "<error-tag>operation-failed</error-tag>"

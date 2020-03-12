@@ -39,6 +39,10 @@ Expected: Early March 2020
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
 	
 ### API changes on existing features (you may need to change your code)
+* C-API change: `xml_new()` changed from:
+  * `xml_new(name, xp, ys)`  to `xml_new(name, prefix, xp, type)`
+  * If you have used, `ys`, add `xml_spec_set(x, ys)` after the statement
+  * If you have `xml_type_set(x, TYPE)` or `xml_prefix_set(x, PREFIX)` immediately after the statement, you can remove those and set them directly as: `xml_new(name, PREFIX, xp, TYPE)`
 * NACM datanode write rules have been changed from looking at datastore being chekend (eg running/candidate/startup) to *only* look at running.
 * C-API:
    * All uses of `api_path2xpath_cvv()` should be replaced by `api_path2xpath()`

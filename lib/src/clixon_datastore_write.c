@@ -180,16 +180,13 @@ check_identityref(cxobj     *x0,
 		goto done;
 	    /* Create xmlns attribute to x1 XXX same code ^*/
 	    if (prefix){
-		if ((xa = xml_new(prefix, x, NULL)) == NULL)
-		    goto done;
-		if (xml_prefix_set(xa, "xmlns") < 0)
+		if ((xa = xml_new(prefix, "xmlns", x, CX_ATTR)) == NULL)
 		    goto done;
 	    }
 	    else{
-		if ((xa = xml_new("xmlns", x, NULL)) == NULL)
+		if ((xa = xml_new("xmlns", NULL, x, CX_ATTR)) == NULL)
 		    goto done;
 	    }
-	    xml_type_set(xa, CX_ATTR);
 	    if (xml_value_set(xa, ns0) < 0)
 		goto done;
 	    xml_sort(x, NULL); /* Ensure attr is first / XXX xml_insert? */
@@ -343,8 +340,10 @@ text_modify(clicon_handle       h,
 		}
 		/* Add new xml node but without parent - insert when node fully
 		   copied (see changed conditional below) */
-		if ((x0 = xml_new(x1name, NULL, (yang_stmt*)y0)) == NULL)
+		if ((x0 = xml_new(x1name, NULL, NULL, CX_ELMNT)) == NULL)
 		    goto done;
+		xml_spec_set(x0, y0);
+
 		/* Get namespace from x1
 		 * Check if namespace exists in x0 parent
 		 * if not add new binding and replace in x0.
@@ -355,9 +354,8 @@ text_modify(clicon_handle       h,
 		if (op==OP_NONE)
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
 		if (x1bstr){ /* empty type does not have body */
-		    if ((x0b = xml_new("body", x0, NULL)) == NULL)
+		    if ((x0b = xml_new("body", NULL, x0, CX_BODY)) == NULL)
 			goto done; 
-		    xml_type_set(x0b, CX_BODY);
 		}
 	    }
 	    if (x1bstr){
@@ -490,7 +488,7 @@ text_modify(clicon_handle       h,
 		if (x0){
 		    xml_purge(x0);
 		}
-		if ((x0 = xml_new(x1name, x0p, (yang_stmt*)y0)) == NULL)
+		if ((x0 = xml_new(x1name, NULL, x0p, CX_ELMNT)) == NULL)
 		    goto done;
 		if (xml_copy(x1, x0) < 0)
 		    goto done;
@@ -508,8 +506,10 @@ text_modify(clicon_handle       h,
 		 * copied (see changed conditional below) 
 		 * Note x0 may dangle cases if exit before changed conditional
 		 */
-		if ((x0 = xml_new(x1name, NULL, (yang_stmt*)y0)) == NULL)
+		if ((x0 = xml_new(x1name, NULL, NULL, CX_ELMNT)) == NULL)
 		    goto done;
+		xml_spec_set(x0, y0);
+
 		changed++;
 		/* Get namespace from x1
 		 * Check if namespace exists in x0 parent

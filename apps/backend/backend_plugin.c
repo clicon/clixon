@@ -120,7 +120,7 @@ clixon_plugin_statedata(clicon_handle    h,
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if ((fn = cp->cp_api.ca_statedata) == NULL)
 	    continue;
-	if ((x = xml_new("config", NULL, NULL)) == NULL)
+	if ((x = xml_new("config", NULL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
 	if (fn(h, nsc, xpath, x) < 0)
 	    goto fail;  /* Dont quit here on user callbacks */

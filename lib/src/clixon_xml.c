@@ -955,7 +955,7 @@ xml_childvec_get(cxobj *x)
  * @retval     NULL      Error and clicon_err() called
  * @code
  *   cxobj *x;
- *   if ((x = xml_new(name, xparent, NULL)) == NULL)
+ *   if ((x = xml_new(name, prefix, xparent, CX_ELMNT)) == NULL)
  *     err;
  *   ...
  *   xml_free(x);
@@ -967,9 +967,10 @@ xml_childvec_get(cxobj *x)
  * @see xml_sort_insert
  */
 cxobj *
-xml_new(char      *name, 
-	cxobj     *xp,
-	yang_stmt *yspec)
+xml_new(char           *name,
+	char           *prefix, 
+	cxobj          *xp,
+	enum cxobj_type type)
 {
     cxobj *x;
     
@@ -978,7 +979,12 @@ xml_new(char      *name,
 	return NULL;
     }
     memset(x, 0, sizeof(cxobj));
-    if ((xml_name_set(x, name)) < 0)
+    xml_type_set(x, type);
+    if (name != NULL &&
+	xml_name_set(x, name) < 0)
+	return NULL;
+    if (prefix != NULL &&
+	xml_prefix_set(x, prefix) < 0)
 	return NULL;
     if (xp){
 	xml_parent_set(x, xp);
@@ -986,11 +992,12 @@ xml_new(char      *name,
 	    return NULL;
 	x->_x_i = xml_child_nr(xp)-1;
     }
-    x->x_spec = yspec; /* Can be NULL */
     _stats_nr++;
     return x;
 }
 
+
+#ifdef NOTYET
 /*! Create new xml node given a name and parent. Free with xml_free().
  */
 cxobj *
@@ -1031,6 +1038,7 @@ xml_new2(char           *name,
     _stats_nr++;
     return x;
 }
+#endif /* NOTYET */
 
 /*! Return yang spec of node. 
  * Not necessarily set. Either has not been set yet (by xml_spec_set( or anyxml.
@@ -1194,7 +1202,7 @@ xml_wrap_all(cxobj *xp,
 
     if (!is_element(xp))
 	return NULL;
-    if ((xw = xml_new(tag, NULL, NULL)) == NULL)
+    if ((xw = xml_new(tag, NULL, NULL, CX_ELMNT)) == NULL)
 	goto done;
     while (xp->x_childvec_len)
 	if (xml_addsub(xw, xml_child_i(xp, 0)) < 0)
@@ -1223,7 +1231,7 @@ xml_wrap(cxobj *xc,
     cxobj *xp; /* parent */
 
     xp = xml_parent(xc);
-    if ((xw = xml_new(tag, xp, NULL)) == NULL)
+    if ((xw = xml_new(tag, NULL, xp, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_addsub(xw, xc) < 0)
 	goto done;
@@ -1804,7 +1812,7 @@ xml_copy_one(cxobj *x0,
  * @retval     0   OK
  * @retval    -1   Error
  * @code
- *   x1 = xml_new("new", xparent, NULL);
+ *   x1 = xml_new("new", NULL, xparent, xml_type(x0));
  *   if (xml_copy(x0, x1) < 0)
  *      err;
  * @endcode
@@ -1822,7 +1830,7 @@ xml_copy(cxobj *x0,
 	goto done;
     x = NULL;
     while ((x = xml_child_each(x0, x, -1)) != NULL) {
-	if ((xcopy = xml_new(xml_name(x), x1, xml_spec(x))) == NULL)
+	if ((xcopy = xml_new(xml_name(x), NULL, x1, xml_type(x))) == NULL)
 	    goto done;
 	if (xml_copy(x, xcopy) < 0) /* recursion */
 	    goto done;
@@ -1846,7 +1854,7 @@ xml_dup(cxobj *x0)
 {
     cxobj *x1;
 
-    if ((x1 = xml_new("new", NULL, xml_spec(x0))) == NULL)
+    if ((x1 = xml_new("new", NULL, NULL, xml_type(x0))) == NULL)
 	return NULL;
     if (xml_copy(x0, x1) < 0)
 	return NULL;
