@@ -832,14 +832,12 @@ nacm_datanode_write(cxobj           *xt,
  * @endcode
  * @see RFC8341 3.4 Access Control Enforcement Procedures
  */
-int
+static int
 nacm_access(clicon_handle h,
-	    char         *mode,
 	    cxobj        *xnacm,
 	    char         *username)
 {
     int     retval = -1;
-    cxobj  *xnacm0 = NULL;
     char   *enabled;
     cxobj  *x;
     cvec  *nsc = NULL;
@@ -847,17 +845,6 @@ nacm_access(clicon_handle h,
     clicon_debug(1, "%s", __FUNCTION__);
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
 	goto done;
-    if (mode == NULL || strcmp(mode, "disabled") == 0)
-	goto permit;
-    /* 0. If nacm-mode is external, get NACM defintion from separet tree,
-       otherwise get it from internal configuration */
-    if (strcmp(mode, "external") && strcmp(mode, "internal")){
-	clicon_err(OE_XML, 0, "Invalid NACM mode: %s", mode);
-	goto done;
-    }
-    /* If config does not exist, then the operation is permitted. (?) */
-    if (xnacm == NULL)
-	goto permit;
     /* Do initial nacm processing common to all access validation in
      * RFC8341 3.4 */
     /* 1.   If the "enable-nacm" leaf is set to "false", then the protocol
@@ -876,8 +863,6 @@ nacm_access(clicon_handle h,
  done:
     if (nsc)
 	xml_nsctx_free(nsc);
-    if (retval != 0 && xnacm0)
-	xml_free(xnacm0);
     clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
     return retval;
  permit:
@@ -891,7 +876,6 @@ nacm_access(clicon_handle h,
  * etc. If retval = 1 access is OK and skip next NACM step.
  * @param[in]  h        Clicon handle
  * @param[in]  username User name of requestor
- * @param[in]  point  NACM access control point
  * @param[out] xncam    NACM XML tree, set if retval=0. Free after use
  * @retval -1  Error
  * @retval  0  OK but not validated. Need to do NACM step using xnacm
@@ -910,7 +894,6 @@ nacm_access(clicon_handle h,
 int
 nacm_access_pre(clicon_handle  h,
 		char          *username,
-		enum nacm_point point,
 		cxobj        **xnacmp)
 {
     int    retval = -1;
@@ -920,19 +903,27 @@ nacm_access_pre(clicon_handle  h,
     cxobj *xnacm = NULL;
     cvec  *nsc = NULL;
     
+    mode = clicon_option_str(h, "CLICON_NACM_MODE");
+    if (mode == NULL)
+	goto permit;
+    else if (strcmp(mode, "disabled")==0)
+	goto permit;
+    else if (strcmp(mode, "external")==0){
+	if ((x = clicon_nacm_ext(h)))
+	    if ((xnacm0 = xml_dup(x)) == NULL)
+		goto done;
+    }
+    else if (strcmp(mode, "internal")==0){
+	if (xmldb_get0(h, "running", nsc, "nacm", 1, &xnacm0, NULL) < 0)
+	    goto done;
+    }
+    else{
+	clicon_err(OE_XML, 0, "Invalid NACM mode: %s", mode);
+	goto done;
+    }
+    
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
 	goto done;
-    if ((mode = clicon_option_str(h, "CLICON_NACM_MODE")) != NULL){
-	if (strcmp(mode, "external")==0){
-	    if ((x = clicon_nacm_ext(h)))
-		if ((xnacm0 = xml_dup(x)) == NULL)
-		    goto done;
-	}
-	else if (strcmp(mode, "internal")==0){
-	    if (xmldb_get0(h, "running", nsc, "nacm", 1, &xnacm0, NULL) < 0)
-		goto done;
-	}
-    }
     /* If config does not exist then the operation is permitted(?) */
     if (xnacm0 == NULL)
 	goto permit;
@@ -943,7 +934,7 @@ nacm_access_pre(clicon_handle  h,
 	goto done;
     xnacm0 = NULL;
     /* Initial NACM steps and common to all NACM access validation. */
-    if ((retval = nacm_access(h, mode, xnacm, username)) < 0)
+    if ((retval = nacm_access(h, xnacm, username)) < 0)
 	goto done;
     if (retval == 0){ /* if retval == 0 then return an xml nacm tree */
 	*xnacmp = xnacm;

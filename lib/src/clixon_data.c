@@ -264,6 +264,44 @@ clicon_nacm_ext_set(clicon_handle h,
     return 0;
 }
 
+/*! Get NACM (rfc 8341) XML parse tree cache
+ * @param[in]  h    Clicon handle
+ * @retval     xn   XML NACM tree, or NULL. Direct pointer, no copying
+ * @note  Use with caution, only valid on a stack, direct pointer freed on function return
+ * @see from_client_msg
+ */
+cxobj *
+clicon_nacm_cache(clicon_handle h)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    size_t         len;
+    void          *p;
+
+    if ((p = clicon_hash_value(cdat, "nacm_cache", &len)) != NULL)
+	return *(cxobj **)p;
+    return NULL;
+}
+
+/*! Set NACM (rfc 8341) external XML parse tree cache
+ * @param[in]  h   Clicon handle
+ * @param[in]  xn  XML Nacm tree direct pointer, no copying
+ * @note  Use with caution, only valid on a stack, direct pointer freed on function return
+ * @see from_client_msg
+ */
+int
+clicon_nacm_cache_set(clicon_handle h,
+		      cxobj        *xn)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+
+    /* It is the pointer to xn that should be copied by hash,
+       so we send a ptr to the ptr to indicate what to copy.
+     */
+    if (clicon_hash_add(cdat, "nacm_cache", &xn, sizeof(xn)) == NULL)
+	return -1;
+    return 0;
+}
+
 /*! Get YANG specification for Clixon system options and features
  * Must use hash functions directly since they are not strings.
  * Example: features are typically accessed directly in the config tree.

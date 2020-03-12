@@ -49,9 +49,7 @@ EOF
 
 xml='<config><x xmlns="urn:example:clixon"><y><a>1</a><b>2</b><c>first-entry</c></y><y><a>1</a><b>3</b><c>second-entry</c></y><y><a>2</a><b>3</b><c>third-entry</c></y><d/><f><e>a</e><e>b</e><e>c</e></f><g>astring</g></x></config>'
 
-
 name=text
-
 
 mydir=$dir/$name
 

@@ -830,9 +830,7 @@ xmldb_put(clicon_handle       h,
     cxobj              *x0 = NULL;
     db_elmnt           *de = NULL;
     int                 ret;
-    cxobj              *xnacm = NULL; 
-    char               *mode;
-    cxobj              *xnacm0 = NULL;
+    cxobj              *xnacm = NULL;
     cxobj              *xmodst = NULL;
     cxobj              *x;
     int                 permit = 0; /* nacm permit all */
@@ -874,23 +872,10 @@ xmldb_put(clicon_handle       h,
     if (xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
 #endif
-    mode = clicon_option_str(h, "CLICON_NACM_MODE");
-    if (mode){
-	if (strcmp(mode, "external")==0)
-	    xnacm0 = clicon_nacm_ext(h);
-	else if (strcmp(mode, "internal")==0)
-	    xnacm0 = x0;
-    }
-    /* Create namespace context for with nacm namespace as default */
-    if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-netconf-acm")) == NULL)
-	goto done;
-    if (xnacm0 != NULL &&
-	(xnacm = xpath_first(xnacm0, nsc, "nacm")) != NULL){
-	/* Pre-NACM access step, if permit, then dont do any nacm checks in 
-	 * text_modify_* below */
-	if ((permit = nacm_access(h, mode, xnacm, username)) < 0)
-	    goto done;
-    }
+
+    xnacm = clicon_nacm_cache(h);
+    permit = (xnacm==NULL);
+
     /* Here assume if xnacm is set and !permit do NACM */
     /* 
      * Modify base tree x with modification x1. This is where the

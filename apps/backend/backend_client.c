@@ -444,21 +444,20 @@ client_statedata(clicon_handle h,
  * @see from_client_get
  */
 static int
-client_config_only(clicon_handle h,
-		   cvec         *nsc,
-		   yang_stmt    *yspec,
-		   char         *db,
-		   char         *xpath,
-		   char         *username,
-		   int32_t       depth,
-		   cbuf         *cbret)
+client_get_config_only(clicon_handle h,
+		       cvec         *nsc,
+		       yang_stmt    *yspec,
+		       char         *db,
+		       char         *xpath,
+		       char         *username,
+		       int32_t       depth,
+		       cbuf         *cbret)
 {
     int     retval = -1;
     cxobj  *xret = NULL;
     cxobj  *xnacm = NULL;
     cxobj **xvec = NULL;
     size_t  xlen;    
-    int     ret;
 
     /* Note xret can be pruned by nacm below (and change name),
      * so zero-copy cant be used
@@ -470,9 +469,8 @@ client_config_only(clicon_handle h,
 	goto ok;
     }
     /* Pre-NACM access step */
-    if ((ret = nacm_access_pre(h, username, NACM_DATA, &xnacm)) < 0)
-	goto done;
-    if (ret == 0){ /* Do NACM validation */
+    xnacm = clicon_nacm_cache(h);
+    if (xnacm != NULL){ /* Do NACM validation */
 	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	    goto done;
 	/* NACM datanode/module read validation */
@@ -494,8 +492,6 @@ client_config_only(clicon_handle h,
  done:
     if (xvec)
 	free(xvec);
-    if (xnacm)
-	xml_free(xnacm);
     if (xret)
 	xml_free(xret);
     return retval;
@@ -582,7 +578,7 @@ from_client_get_config(clicon_handle h,
 	    goto ok;
 	}
     }
-    if ((ret = client_config_only(h, nsc, yspec, db, xpath, username, -1, cbret)) < 0)
+    if ((ret = client_get_config_only(h, nsc, yspec, db, xpath, username, -1, cbret)) < 0)
 	goto done;
  ok:
     retval = 0;
@@ -1016,7 +1012,6 @@ from_client_get(clicon_handle h,
     cxobj          *xfilter;
     char           *xpath = NULL;
     cxobj          *xret = NULL;
-    int             ret;
     cxobj         **xvec = NULL;
     size_t          xlen;    
     cxobj          *xnacm = NULL;
@@ -1030,6 +1025,7 @@ from_client_get(clicon_handle h,
     cxobj          *xerr = NULL;
     cxobj          *xr;
     cxobj          *xb;
+    int             ret;
     
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
@@ -1072,7 +1068,7 @@ from_client_get(clicon_handle h,
 	}
     }
     if (content == CONTENT_CONFIG){ /* config only, no state */
-	if (client_config_only(h, nsc, yspec, "running", xpath, username, depth, cbret) < 0)
+	if (client_get_config_only(h, nsc, yspec, "running", xpath, username, depth, cbret) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1173,9 +1169,8 @@ from_client_get(clicon_handle h,
 	goto done;
 
     /* Pre-NACM access step */
-    if ((ret = nacm_access_pre(h, username, NACM_DATA, &xnacm)) < 0)
-	goto done;
-    if (ret == 0){ /* Do NACM validation */
+    xnacm = clicon_nacm_cache(h);
+    if (xnacm != NULL){ /* Do NACM validation */
 	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	    goto done;
 	/* NACM datanode/module read validation */
@@ -1201,8 +1196,6 @@ from_client_get(clicon_handle h,
 	xml_free(xerr);
     if (xpath)
 	free(xpath);
-    if (xnacm)
-	xml_free(xnacm);
     if (xvec)
 	free(xvec);
     if (nsc)
@@ -1565,6 +1558,7 @@ from_client_msg(clicon_handle        h,
     cxobj               *xnacm = NULL;
     cxobj               *xret = NULL;
     uint32_t             id;
+    enum nacm_credentials_t creds;
     
     clicon_debug(1, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h); 
@@ -1627,22 +1621,21 @@ from_client_msg(clicon_handle        h,
 	clicon_debug(1, "%s module:%s rpc:%s", __FUNCTION__, module, rpc);
 	/* Pre-NACM access step */
 	xnacm = NULL;
-	if ((ret = nacm_access_pre(h, username, NACM_RPC, &xnacm)) < 0)
+
+	if ((ret = nacm_access_pre(h, username, &xnacm)) < 0)
 	    goto done;
-	if (ret == 0){ /* Do NACM validation */
-	    enum nacm_credentials_t mode;
-	    mode = clicon_nacm_credentials(h);
-	    if ((ret = verify_nacm_user(mode, ce->ce_username, username, cbret)) < 0)
+	/* Cache XML NACM tree here. Use with caution, only valid on from_client_msg stack */
+	if (clicon_nacm_cache_set(h, xnacm) < 0)
+	    goto done;
+	if (ret == 0){ /* Do NACM RPC validation */
+	    creds = clicon_nacm_credentials(h);
+	    if ((ret = verify_nacm_user(creds, ce->ce_username, username, cbret)) < 0)
 		goto done;
 	    if (ret == 0) /* credentials fail */
 		goto reply;
 	    /* NACM rpc operation exec validation */
 	    if ((ret = nacm_rpc(rpc, module, username, xnacm, cbret)) < 0)
 		goto done;
-	    if (xnacm){
-		xml_free(xnacm);
-		xnacm = NULL;
-	    }
 	    if (ret == 0) /* Not permitted and cbret set */
 		goto reply;
 	}
@@ -1658,7 +1651,13 @@ from_client_msg(clicon_handle        h,
 		goto done;
 	    goto reply;
 	}
-    }
+	if (xnacm){
+	    xml_free(xnacm);
+	    xnacm = NULL;
+	    if (clicon_nacm_cache_set(h, NULL) < 0)
+		goto done;
+	}
+    } /* while */
  reply:
     if (cbuf_len(cbret) == 0)
 	if (netconf_operation_failed(cbret, "application", clicon_errno?clicon_err_reason:"unknown")< 0)
@@ -1687,8 +1686,11 @@ from_client_msg(clicon_handle        h,
     retval = 0;
   done:  
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    if (xnacm)
+    if (xnacm){
 	xml_free(xnacm);
+	if (clicon_nacm_cache_set(h, NULL) < 0)
+	    goto done;
+    }
     if (xret)
 	xml_free(xret);
     if (xt)

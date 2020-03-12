@@ -362,6 +362,7 @@ startup_commit(clicon_handle  h,
 	goto done;
      /* 9, write (potentially modified) tree to running
       * XXX note here startup is copied to candidate, which may confuse everything
+      * XXX default values are overwritten
       */
      if ((ret = xmldb_put(h, "running", OP_REPLACE, td->td_target,
 			  clicon_username_get(h), cbret)) < 0)

@@ -39,6 +39,7 @@ Expected: Early March 2020
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
 	
 ### API changes on existing features (you may need to change your code)
+* NACM datanode write rules have been changed from looking at datastore being chekend (eg running/candidate/startup) to *only* look at running.
 * C-API:
    * All uses of `api_path2xpath_cvv()` should be replaced by `api_path2xpath()`
    * `api_path2xpath()` added an `xerr` argument.
@@ -97,6 +98,7 @@ Expected: Early March 2020
   
 ### Corrected Bugs
 
+* Fixed: NACM datanode write problem: read/write/exec default rules did not work.
 * Fixed [Makefile syntax error *** mixed implicit and normal rules #104](https://github.com/clicon/clixon/issues/104). Make operator `|=` seems not to work on GNU make version < 4.
 * Yang specs with recursive grouping/use statement is now fixed: instead of stack overflow, you get an error message and an exit
 * Fixed: Some state data was sorted but should not have been.
