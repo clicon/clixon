@@ -1,19 +1,19 @@
 # Clixon Changelog
 
 * [4.4.0](#440) Expected: March 2020
+* [4.3.0](#430) 1 January 2020
   * [4.3.3](#433) 
   * [4.3.2](#432)
   * [4.3.1](#431)
-* [4.3.0](#430) 1 January 2020
 * [4.2.0](#420) 27 October 2019
 * [4.1.0](#410) 18 August 2019
-  * [4.0.1](#401)
 * [4.0.0](#400) 13 July 2019
+  * [4.0.1](#401)
 * [3.9.0](#390) 21 Feb 2019
 * [3.8.0](#380) 6 Nov 2018
 * [3.7.0](#370) 22 July 2018
-  * [3.6.1](#361)
 * [3.6.0](#360) 30 April 2018
+  * [3.6.1](#361)
 * [3.5.0](#350) 12 February 2018
 * [3.4.0](#340) 1 January 2018
 * [3.3.3](#333) 25 November 2017
@@ -25,9 +25,8 @@ Expected: March 2020
 
 This release has focussed on refactoring and bugfixing. Lots of
 changes to basic XML/YANG/RESTCONF code, including a tighter XML/YANG
-binding. Memory profiling and new buffer growth management. Limited
-new features to new optimized search functions and a new repair
-callback.
+binding. Memory profiling and new buffer growth management. New
+features include optimized search functions and a repair callback.
 
 ### Major New features
 
@@ -45,29 +44,32 @@ callback.
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
 	
 ### API changes on existing protocol/config features
-* Empty values in JSON has changed to comply to RFC 7951
-   * empty values of yang type `empty` are encoded as: `{"x":[null]}`
-   * empty string values are encoded as: `{"x":""}` (changed from `null` in 4.0 and `[null]` in 4.3)
-   * empty containers are encoded as: `{"x":{}}`
-   * empty elements in unknown/anydata/anyxml encoded as: `{"x":{}}` (changed from `{"x":null}`)
-* Bugfix of `config false` statement may cause change of sorting of lists in GET opertions
-   * Lists were sorted that should not have been.
-* New clixon-config@2020-02-22.yang revision
-   * Search index extension `search_index` for declaring which non-key variables are explicit search indexes (to support new optimized search API)
-  * Added `clixon-stats` state for clixon XML and memory statistics.
-  * Added: `CLICON_CLI_BUF_START` and `CLICON_CLI_BUF_THRESHOLD` so you can change the start and
-    threshold of quadratic and linear growth of CLIgen buffers (cbuf:s)
-  * Added: CLICON_VALIDATE_STATE_XML for controling validation of user state XML
-* JSON parse error messages change from ` on line x: syntax error,..` to `json_parse: line x: syntax error`
-* Unknown-element error message is more descriptive, eg from `namespace is: urn:example:clixon` to: `Failed to find YANG spec of XML node: x with parent: xp in namespace urn:example:clixon`.
-* Session-id CLI functionality delayed: "lazy evaluation"
-  * C-api: Changed `clicon_session_id_get(clicon_handle h, uint32_t *id)`
-  * From a cli perspective this is a revert to 4.1 behaviour, where the cli does not immediately exit on start if the backend is not running, but with the new session-id function
-* On failed validation of leafrefs, error message changed from: `No such leaf` to `No leaf <name> matching path <path>`.
-* CLI Error message (clicon_rpc_generate_error()) changed when backend returns netconf error to be more descriptive:
-  * Original: `Config error: Validate failed. Edit and try again or discard changes: Invalid argument`
-  * New (example): `Netconf error: application operation-failed Identityref validation failed, undefined not derived from acl-base . Validate failed. Edit and try again or discard changes"
-* Obsoleted and removed XMLDB format "tree". This function did not work. Only xml and json allowed.
+* JSON
+  * Empty values in JSON has changed to comply to RFC 7951
+    * empty values of yang type `empty` are encoded as: `{"x":[null]}`
+    * empty string values are encoded as: `{"x":""}` (changed from `null` in 4.0 and `[null]` in 4.3)
+    * empty containers are encoded as: `{"x":{}}`
+    * empty elements in unknown/anydata/anyxml encoded as: `{"x":{}}` (changed from `{"x":null}`)
+  * JSON parse error messages change from `on line x: syntax error,..` to `json_parse: line x: syntax error`
+* State data
+  * Bugfix of `config false` statement may cause change of sorting of lists in GET opertions
+    * Lists were sorted that should not have been.
+* Config options
+  * New clixon-config@2020-02-22.yang revision
+    * Search index extension `search_index` for declaring which non-key variables are explicit search indexes (to support new optimized search API)
+    * Added `clixon-stats` state for clixon XML and memory statistics.
+    * Added: `CLICON_CLI_BUF_START` and `CLICON_CLI_BUF_THRESHOLD` so you can change the start and threshold of quadratic and linear growth of CLIgen buffers (cbuf:s)
+    * Added: CLICON_VALIDATE_STATE_XML for controling validation of user state XML
+  * Obsoleted and removed XMLDB format "tree". This function did not work. Only xml and json allowed.
+* CLI
+  * Session-id CLI functionality delayed: "lazy evaluation"
+    * From a cli perspective this is a revert to 4.1 behaviour, where the cli does not immediately exit on start if the backend is not running, but with the new session-id function
+* Error messages
+  * Unknown-element error message is more descriptive, eg from `namespace is: urn:example:clixon` to: `Failed to find YANG spec of XML node: x with parent: xp in namespace urn:example:clixon`.
+  * On failed validation of leafrefs, error message changed from: `No such leaf` to `No leaf <name> matching path <path>`.
+  * CLI Error message (clicon_rpc_generate_error()) changed when backend returns netconf error to be more descriptive:
+    * Original: `Config error: Validate failed. Edit and try again or discard changes: Invalid argument`
+    * New (example): `Netconf error: application operation-failed Identityref validation failed, undefined not derived from acl-base . Validate failed. Edit and try again or discard changes"
 
 ### C-API changes on existing features (you may need to change your plugin C-code)
 * `xml_new()` changed from `xml_new(name, xp, ys)`  to `xml_new(name, prefix, xp, type)`
@@ -83,6 +85,7 @@ callback.
     * Extended `xml_parse_file2` and `xml_parse_string2` extended API functions with all options available.
       * New concept called `yang_bind` that defines how XML symbols are bound to YANG after parsing
     * Existing API same except `xml_parse_file` `endtag` argument moved to `xml_parse_file2`
+* Changed `clicon_session_id_get(clicon_handle h, uint32_t *id)`
 
 ### Minor changes
 
