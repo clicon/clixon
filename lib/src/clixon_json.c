@@ -586,9 +586,9 @@ xml2json_encode_leafs(cxobj     *xb,
 	    break;
 	default:
 	    if (body)
-		cprintf(cb, "{}"); /* dont know */
-	    else
 		cprintf(cb, "%s", body);
+	    else
+		cprintf(cb, "{}"); /* dont know */
 	}
 	break;
     default:
