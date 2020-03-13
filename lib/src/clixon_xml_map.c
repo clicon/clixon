@@ -784,7 +784,7 @@ xml_tree_prune_flagged(cxobj *xt,
     x = NULL;
     xprev = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if (xml_flag(x, flag) == test?flag:0){ 	/* Pass test means purge */
+	if (xml_flag(x, flag) == (test?flag:0)){ 	/* Pass test means purge */
 	    if (xml_purge(x) < 0)
 		goto done;
 	    x = xprev;

@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -1314,6 +1315,7 @@ ys_populate_leaf(clicon_handle h,
     char           *origtype=NULL;   /* original type */
     uint8_t         fraction_digits;
     int             options = 0x0;
+    yang_stmt      *ytypedef; /* where type is define */
 
     yparent = ys->ys_parent;     /* Find parent: list/container */
     /* 1. Find type specification and set cv type accordingly */
@@ -1335,10 +1337,27 @@ ys_populate_leaf(clicon_handle h,
 	clicon_err(OE_YANG, errno, "cv_new_set"); 
 	goto done;
     }
+    /* get parent of where type is defined, can be original object */
+    ytypedef = yrestype?yang_parent_get(yrestype):ys;
+
     /* 3. Check if default value. Here we parse the string in the default-stmt
      * and add it to the leafs cv.
+     * 3a) First check local default
      */
     if ((ydef = yang_find(ys, Y_DEFAULT, NULL)) != NULL){
+	if ((cvret = cv_parse1(ydef->ys_argument, cv, &reason)) < 0){ /* error */
+	    clicon_err(OE_YANG, errno, "parsing cv");
+	    goto done;
+	}
+	if (cvret == 0){ /* parsing failed */
+	    clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+	    free(reason);
+	    goto done;
+	}
+    }
+    /* 2. then check typedef default */
+    else if (ytypedef != ys &&
+	     (ydef = yang_find(ytypedef, Y_DEFAULT, NULL)) != NULL) {
 	if ((cvret = cv_parse1(ydef->ys_argument, cv, &reason)) < 0){ /* error */
 	    clicon_err(OE_YANG, errno, "parsing cv");
 	    goto done;

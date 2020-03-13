@@ -754,8 +754,6 @@ xmldb_get0_clear(clicon_handle    h,
 {
     int        retval = -1;
     
-    if (clicon_datastore_cache(h) != DATASTORE_CACHE_ZEROCOPY)
-	goto ok;
     if (x == NULL)
 	goto ok;
     /* clear XML tree of defaults */

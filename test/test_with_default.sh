@@ -6,8 +6,9 @@
 # (o  report-all-tagged)
 # o  trim
 # o  explicit
-# Clixon supports explicit, bit the testcases define the other cases as well
+# Clixon supports explicit, but the testcases define the other cases as well
 # in case others will be supported
+# XXX I dont think this is correct. Or at least it is not complete.
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -78,14 +79,10 @@ if [ $BE -ne 0 ]; then
     wait_backend
 fi
 
-# This is the base XML with thre values in the server: noset, default, other
+# This is the base XML with three values in the server: notset, default, other
 XML='<c xmlns="urn:example:default"><x><k>default</k><y>42</y></x><x><k>notset</k></x><x><k>other</k><y>99</y></x></c>'
 
-# report-all: doe not consider any data node to be default data,
-# even schema default data. (noset is set to 42)
-REPORT_ALL='<c xmlns="urn:example:default"><x><k>default</k><y>42</y></x><x><k>notset</k></x><x><k>other</k><y>99</y></x></c>'
-
-# report-all: doe not consider any data node to be default data,
+# report-all: does not consider any data node to be default data,
 # even schema default data. (noset is set to 42)
 REPORT_ALL='<c xmlns="urn:example:default"><x><k>default</k><y>42</y></x><x><k>notset</k><y>42</y></x><x><k>other</k><y>99</y></x></c>'
 
@@ -96,14 +93,13 @@ TRIM='<c xmlns="urn:example:default"><x><k>default</k></x><x><k>notset</k></x><x
 # explicit:  MUST consider any data node that is not explicitly set data to
 # be default data.
 # (SAME AS Input XML)
-EXPLICIT='<c xmlns="urn:example:default"><x><k>default</k><y>42</y></x><x><k>notset</k></x><x><k>other</k><y>99</y></x></c>'
+EXPLICIT='<c xmlns="urn:example:default"><x><k>default</k><y>42</y></x><x><k>notset</k><y>42</y></x><x><k>other</k><y>99</y></x></c>'
 
 new "Set defaults"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "Check config (Clixon supports explicit)"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$EXPLICIT</data></rpc-reply>]]>]]>$"
-
 
 if [ $BE -eq 0 ]; then
     exit # BE

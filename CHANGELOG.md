@@ -39,8 +39,7 @@ Expected: Early March 2020
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
 	
 ### API changes on existing features (you may need to change your code)
-* C-API change: `xml_new()` changed from:
-  * `xml_new(name, xp, ys)`  to `xml_new(name, prefix, xp, type)`
+* C-API change: `xml_new()` changed from `xml_new(name, xp, ys)`  to `xml_new(name, prefix, xp, type)`
   * If you have used, `ys`, add `xml_spec_set(x, ys)` after the statement
   * If you have `xml_type_set(x, TYPE)` or `xml_prefix_set(x, PREFIX)` immediately after the statement, you can remove those and set them directly as: `xml_new(name, PREFIX, xp, TYPE)`
 * NACM datanode write rules have been changed from looking at datastore being chekend (eg running/candidate/startup) to *only* look at running.
@@ -102,6 +101,8 @@ Expected: Early March 2020
   
 ### Corrected Bugs
 
+* Fixed: Datastore read on startup got fixed default values.
+* Fixed: Default values only worked on leafs, not typedefs.
 * Fixed: NACM datanode write problem: read/write/exec default rules did not work.
 * Fixed [Makefile syntax error *** mixed implicit and normal rules #104](https://github.com/clicon/clixon/issues/104). Make operator `|=` seems not to work on GNU make version < 4.
 * Yang specs with recursive grouping/use statement is now fixed: instead of stack overflow, you get an error message and an exit
