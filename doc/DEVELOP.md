@@ -134,6 +134,11 @@ Create release branch:
   git push origin release-4.2
 ```
 
+Merge a branch back:
+```
+  git merge --no-ff release-4.2
+```
+
 ## Use of constants etc
 
 Use MAXPATHLEN (not PATH_MAX)
