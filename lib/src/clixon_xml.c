@@ -66,9 +66,9 @@
 #include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
-#include "clixon_options.h" /* xml_spec_populate */
+#include "clixon_options.h" /* xml_bind_yang */
 #include "clixon_yang_module.h"
-#include "clixon_xml_map.h" /* xml_spec_populate */
+#include "clixon_xml_map.h" /* xml_bind_yang */
 #include "clixon_xml_vec.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_io.h"

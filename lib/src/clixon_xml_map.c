@@ -1022,134 +1022,6 @@ xml_non_config_data(cxobj *xt,
     return retval;
 }
 
-/*! Find yang spec association of XML node for incoming RPC starting with <rpc>
- * 
- * Incoming RPC has an "input" structure that is not taken care of by xml_spec_populate
- * @param[in]   xrpc XML rpc node
- * @param[in]   yspec  Yang spec
- * @param[out]  xerr   Reason for failure, or NULL
- * @retval      1      OK yang assignment made
- * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
- * @retval     -1      Error
- * The 
- * @code
- *   if (xml_spec_populate_rpc(h, x, NULL) < 0)
- *      err;
- * @endcode
- * @see xml_spec_populate  For other generic cases
- * @see xml_spec_populate_rpc_reply
- */
-int
-xml_spec_populate_rpc(cxobj     *xrpc,
-		      yang_stmt *yspec,
-		      cxobj    **xerr)
-{
-    int        retval = -1;
-    yang_stmt *yrpc = NULL;    /* yang node */
-    yang_stmt *ymod=NULL; /* yang module */
-    yang_stmt *yi = NULL; /* input */
-    cxobj     *x;
-    int        ret;
-    
-    if ((strcmp(xml_name(xrpc), "rpc")) != 0){
-	clicon_err(OE_UNIX, EINVAL, "RPC expected");
-	goto done;
-    }
-    x = NULL;
-    while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {
-	if (ys_module_by_xml(yspec, x, &ymod) < 0)
-	    goto done;
-	if (ymod != NULL)
-	    yrpc = yang_find(ymod, Y_RPC, xml_name(x));
-	/* Non-strict semantics: loop through all modules to find the node 
-	 */
-	if (yrpc){
-	    xml_spec_set(x, yrpc);
-	    if ((yi = yang_find(yrpc, Y_INPUT, NULL)) != NULL){
-		/* xml_spec_populate need to have parent with yang spec for
-		 * recursive population to work. Therefore, assign input yang
-		 * to rpc level although not 100% intuitive */
-		xml_spec_set(x, yi); 
-		if ((ret = xml_spec_populate_parent(x, xerr)) < 0)
-		    goto done;
-		if (ret == 0)
-		    goto fail;
-	    }
-	}
-    }
-    retval = 1;
- done:
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-
-/*! Find yang spec association of XML node for outgoing RPC starting with <rpc-reply>
- * 
- * Incoming RPC has an "input" structure that is not taken care of by xml_spec_populate
- * @param[in]   xrpc  XML rpc node
- * @param[in]   name  Name of RPC (not seen in output/reply)
- * @param[in]   yspec  Yang spec
- * @param[out]  xerr   Reason for failure, or NULL
- * @retval      1      OK yang assignment made
- * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
- * @retval     -1      Error
- *
- * @code
- *   if (xml_spec_populate_rpc_reply(x, "get-config", yspec, name) < 0)
- *      err;
- * @endcode
- * @see xml_spec_populate  For other generic cases
- */
-int
-xml_spec_populate_rpc_reply(cxobj     *xrpc,
-			    char      *name,
-			    yang_stmt *yspec,
-			    cxobj    **xerr)
-{
-    int        retval = -1;
-    yang_stmt *yrpc = NULL;    /* yang node */
-    yang_stmt *ymod=NULL;      /* yang module */
-    yang_stmt *yo = NULL;      /* output */
-    cxobj     *x;
-    int        ret;
-    
-    if (strcmp(xml_name(xrpc), "rpc-reply")){
-	clicon_err(OE_UNIX, EINVAL, "rpc-reply expected");
-	goto done;
-    }
-    x = NULL;
-    while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {
-	if (ys_module_by_xml(yspec, x, &ymod) < 0)
-	    goto done;
-	if (ymod == NULL)
-	    continue;
-	if ((yrpc = yang_find(ymod, Y_RPC, name)) == NULL)
-	    continue;
-	//	xml_spec_set(xrpc, yrpc);
-	if ((yo = yang_find(yrpc, Y_OUTPUT, NULL)) == NULL)
-	    continue;
-	/* xml_spec_populate need to have parent with yang spec for
-	 * recursive population to work. Therefore, assign input yang
-	 * to rpc level although not 100% intuitive */
-	break;
-    }
-    if (yo != NULL){
-	xml_spec_set(xrpc, yo); 
-	if ((ret = xml_spec_populate(xrpc, yspec, xerr)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-    }
-    retval = 1;
- done:
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-
 /*! Associate XML node x with x:s parents yang:s matching child
  *
  * @param[in]   xt     XML tree node
@@ -1329,20 +1201,20 @@ strip_whitespace(cxobj *xt)
  * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
  * @retval     -1      Error
  * @code
- *   if (xml_spec_populate(x, yspec, NULL) < 0)
+ *   if (xml_bind_yang(x, yspec, NULL) < 0)
  *     err;
  * @endcode
  * @note For subs to anyxml nodes will not have spec set
  * There are several functions in the API family
- * @see xml_spec_populate_rpc     for incoming rpc 
- * @see xml_spec_populate_parent  Not top-level and parent is properly yang populated
- * @see xml_spec_populate0        If the calling xml object should also be populated
- * @see xml_spec_populate0_parent
+ * @see xml_bind_yang_rpc     for incoming rpc 
+ * @see xml_bind_yang_parent  Not top-level and parent is properly yang populated
+ * @see xml_bind_yang0        If the calling xml object should also be populated
+ * @see xml_bind_yang0_parent
  */
 int
-xml_spec_populate(cxobj     *xt, 
-		  yang_stmt *yspec,
-		  cxobj    **xerr)
+xml_bind_yang(cxobj     *xt, 
+	      yang_stmt *yspec,
+	      cxobj    **xerr)
 {
     int    retval = -1;
     cxobj *xc;         /* xml child */
@@ -1352,7 +1224,7 @@ xml_spec_populate(cxobj     *xt,
     strip_whitespace(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	if ((ret = xml_spec_populate0(xc, yspec, xerr)) < 0)
+	if ((ret = xml_bind_yang0(xc, yspec, xerr)) < 0)
 	    goto done;
 	if (ret == 0)
 	    failed++;
@@ -1367,8 +1239,8 @@ xml_spec_populate(cxobj     *xt,
  * Populate xt:s children outgoing from that xt is populated
  */
 int
-xml_spec_populate_parent(cxobj  *xt,
-			 cxobj **xerr)
+xml_bind_yang_parent(cxobj  *xt,
+		     cxobj **xerr)
 {
     int    retval = -1;
     cxobj *xc;           /* xml child */
@@ -1378,7 +1250,7 @@ xml_spec_populate_parent(cxobj  *xt,
     strip_whitespace(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	if ((ret = xml_spec_populate0_parent(xc, xerr)) < 0)
+	if ((ret = xml_bind_yang0_parent(xc, xerr)) < 0)
 	    goto done;
 	if (ret == 0)
 	    failed++;
@@ -1399,9 +1271,9 @@ xml_spec_populate_parent(cxobj  *xt,
  * Populate xt as top-level node
  */
 int
-xml_spec_populate0(cxobj     *xt, 
-		   yang_stmt *yspec,
-		   cxobj    **xerr)
+xml_bind_yang0(cxobj     *xt, 
+	       yang_stmt *yspec,
+	       cxobj    **xerr)
 {
     int    retval = -1;
     cxobj *xc;           /* xml child */
@@ -1415,7 +1287,7 @@ xml_spec_populate0(cxobj     *xt,
     strip_whitespace(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	if ((ret = xml_spec_populate0_parent(xc, xerr)) < 0)
+	if ((ret = xml_bind_yang0_parent(xc, xerr)) < 0)
 	    goto done;
 	if (ret == 0)
 	    failed++;
@@ -1435,8 +1307,8 @@ xml_spec_populate0(cxobj     *xt,
  * Populate xt as if xt:s parent is populated
  */
 int
-xml_spec_populate0_parent(cxobj  *xt,
-			  cxobj **xerr)
+xml_bind_yang0_parent(cxobj  *xt,
+		      cxobj **xerr)
 {
     int    retval = -1;
     cxobj *xc;           /* xml child */
@@ -1450,13 +1322,141 @@ xml_spec_populate0_parent(cxobj  *xt,
     strip_whitespace(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	if ((ret = xml_spec_populate0_parent(xc, xerr)) < 0)
+	if ((ret = xml_bind_yang0_parent(xc, xerr)) < 0)
 	    goto done;
 	if (ret == 0)
 	    failed++;
     }
     if (failed)
 	goto fail;
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Find yang spec association of XML node for incoming RPC starting with <rpc>
+ * 
+ * Incoming RPC has an "input" structure that is not taken care of by xml_bind_yang
+ * @param[in]   xrpc XML rpc node
+ * @param[in]   yspec  Yang spec
+ * @param[out]  xerr   Reason for failure, or NULL
+ * @retval      1      OK yang assignment made
+ * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
+ * @retval     -1      Error
+ * The 
+ * @code
+ *   if (xml_bind_yang_rpc(h, x, NULL) < 0)
+ *      err;
+ * @endcode
+ * @see xml_bind_yang  For other generic cases
+ * @see xml_bind_yang_rpc_reply
+ */
+int
+xml_bind_yang_rpc(cxobj     *xrpc,
+		      yang_stmt *yspec,
+		      cxobj    **xerr)
+{
+    int        retval = -1;
+    yang_stmt *yrpc = NULL;    /* yang node */
+    yang_stmt *ymod=NULL; /* yang module */
+    yang_stmt *yi = NULL; /* input */
+    cxobj     *x;
+    int        ret;
+    
+    if ((strcmp(xml_name(xrpc), "rpc")) != 0){
+	clicon_err(OE_UNIX, EINVAL, "RPC expected");
+	goto done;
+    }
+    x = NULL;
+    while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {
+	if (ys_module_by_xml(yspec, x, &ymod) < 0)
+	    goto done;
+	if (ymod != NULL)
+	    yrpc = yang_find(ymod, Y_RPC, xml_name(x));
+	/* Non-strict semantics: loop through all modules to find the node 
+	 */
+	if (yrpc){
+	    xml_spec_set(x, yrpc);
+	    if ((yi = yang_find(yrpc, Y_INPUT, NULL)) != NULL){
+		/* xml_bind_yang need to have parent with yang spec for
+		 * recursive population to work. Therefore, assign input yang
+		 * to rpc level although not 100% intuitive */
+		xml_spec_set(x, yi); 
+		if ((ret = xml_bind_yang_parent(x, xerr)) < 0)
+		    goto done;
+		if (ret == 0)
+		    goto fail;
+	    }
+	}
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Find yang spec association of XML node for outgoing RPC starting with <rpc-reply>
+ * 
+ * Incoming RPC has an "input" structure that is not taken care of by xml_bind_yang
+ * @param[in]   xrpc  XML rpc node
+ * @param[in]   name  Name of RPC (not seen in output/reply)
+ * @param[in]   yspec  Yang spec
+ * @param[out]  xerr   Reason for failure, or NULL
+ * @retval      1      OK yang assignment made
+ * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
+ * @retval     -1      Error
+ *
+ * @code
+ *   if (xml_bind_yang_rpc_reply(x, "get-config", yspec, name) < 0)
+ *      err;
+ * @endcode
+ * @see xml_bind_yang  For other generic cases
+ */
+int
+xml_bind_yang_rpc_reply(cxobj     *xrpc,
+			char      *name,
+			yang_stmt *yspec,
+			cxobj    **xerr)
+{
+    int        retval = -1;
+    yang_stmt *yrpc = NULL;    /* yang node */
+    yang_stmt *ymod=NULL;      /* yang module */
+    yang_stmt *yo = NULL;      /* output */
+    cxobj     *x;
+    int        ret;
+    
+    if (strcmp(xml_name(xrpc), "rpc-reply")){
+	clicon_err(OE_UNIX, EINVAL, "rpc-reply expected");
+	goto done;
+    }
+    x = NULL;
+    while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {
+	if (ys_module_by_xml(yspec, x, &ymod) < 0)
+	    goto done;
+	if (ymod == NULL)
+	    continue;
+	if ((yrpc = yang_find(ymod, Y_RPC, name)) == NULL)
+	    continue;
+	//	xml_spec_set(xrpc, yrpc);
+	if ((yo = yang_find(yrpc, Y_OUTPUT, NULL)) == NULL)
+	    continue;
+	/* xml_bind_yang need to have parent with yang spec for
+	 * recursive population to work. Therefore, assign input yang
+	 * to rpc level although not 100% intuitive */
+	break;
+    }
+    if (yo != NULL){
+	xml_spec_set(xrpc, yo); 
+	if ((ret = xml_bind_yang(xrpc, yspec, xerr)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
     retval = 1;
  done:
     return retval;

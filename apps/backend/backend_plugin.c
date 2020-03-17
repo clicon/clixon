@@ -128,7 +128,7 @@ clixon_plugin_statedata(clicon_handle    h,
 	if (debug)
 	    clicon_log_xml(LOG_DEBUG, x, "%s STATE:", __FUNCTION__);
 #endif
-	if (xml_spec_populate(x, yspec, NULL) < 0)
+	if (xml_bind_yang(x, yspec, NULL) < 0)
 	    goto done;
 	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
 	    goto done;

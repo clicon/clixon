@@ -1220,7 +1220,7 @@ _json_parse(char          *str,
 	if (ret == 0)
 	    goto fail;
 	/* Now assign yang stmts to each XML node 
-	 * XXX should be xml_spec_populate0_parent() sometimes.
+	 * XXX should be xml_bind_yang0_parent() sometimes.
 	 */
 	switch (yb){
 	case YB_RPC:
@@ -1228,13 +1228,13 @@ _json_parse(char          *str,
 	case YB_NONE:
 	    break;
 	case YB_PARENT:
-	    if ((ret = xml_spec_populate0_parent(x, xerr)) < 0)
+	    if ((ret = xml_bind_yang0_parent(x, xerr)) < 0)
 		    goto done;
 	    if (ret == 0)
 		failed++;
 	    break;
 	case YB_TOP:
-	    if (xml_spec_populate0(x, yspec, xerr) < 0)
+	    if (xml_bind_yang0(x, yspec, xerr) < 0)
 		goto done;
 	    if (ret == 0)
 		failed++;

@@ -79,8 +79,14 @@ features include optimized search functions and a repair callback.
 * All uses of `api_path2xpath_cvv()` should be replaced by `api_path2xpath()`
    * `api_path2xpath()` added an `xerr` argument.
 * Parse and validation API more capable
-  * `xml_spec_populate` family of functions extended with three-value return values
-    * -1: error, 0: parse OK, 1: parse and YANG binding OK.
+  * `xml_spec_populate` has been split into a family of functions
+    * `xml_bind_yang_rpc()`
+    * `xml_bind_yang_rpc_reply()`
+    * `xml_bind_yang0()`
+    * `xml_bind_yang0_parent()`
+    * `xml_bind_yang()`
+    * `xml_bind_yang_parent()`
+    * All have three-value return values: -1: error, 0: parse OK, 1: parse and YANG binding OK.
   * `xml_parse` and `json_parse` API changes
     * Three value returns: -1: error, 0: parse OK, 1: parse and YANG binding OK.
     * Extended `xml_parse_file2` and `xml_parse_string2` extended API functions with all options available.

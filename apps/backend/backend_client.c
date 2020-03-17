@@ -670,7 +670,7 @@ from_client_edit_config(clicon_handle h,
 	    xml_spec_set(xc, NULL);
 	/* Populate XML with Yang spec (why not do this in parser?) 
 	 */
-	if (xml_spec_populate(xc, yspec, NULL) < 0)
+	if (xml_bind_yang(xc, yspec, NULL) < 0)
 	    goto done;
 	/* Maybe validate xml here as in text_modify_top? */
 	if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
@@ -1593,7 +1593,7 @@ from_client_msg(clicon_handle        h,
      * should really have been dealt with by decode above
      * but it still is needed - test_cli debug test fails
      */
-    if (xml_spec_populate_rpc(x, yspec, NULL) < 0)
+    if (xml_bind_yang_rpc(x, yspec, NULL) < 0)
     	goto done;
     if ((ret = xml_yang_validate_rpc(h, x, &xret)) < 0)
 	goto done;

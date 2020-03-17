@@ -61,12 +61,12 @@ int xml_namespace_change(cxobj *x, char *namespace, char *prefix);
 int xml_default(cxobj *x, void  *arg);
 int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, void *arg);
-int xml_spec_populate_rpc(cxobj *xrpc, yang_stmt *yspec, cxobj **xerr);
-int xml_spec_populate_rpc_reply(cxobj *xrpc, char *name, yang_stmt *yspec, cxobj **xerr);
-int xml_spec_populate0(cxobj *xt, yang_stmt *yspec, cxobj **xerr);
-int xml_spec_populate0_parent(cxobj *xt, cxobj **xerr);
-int xml_spec_populate(cxobj *xt, yang_stmt *yspec, cxobj **xerr);
-int xml_spec_populate_parent(cxobj *xt, cxobj **xerr);
+int xml_bind_yang_rpc(cxobj *xrpc, yang_stmt *yspec, cxobj **xerr);
+int xml_bind_yang_rpc_reply(cxobj *xrpc, char *name, yang_stmt *yspec, cxobj **xerr);
+int xml_bind_yang0(cxobj *xt, yang_stmt *yspec, cxobj **xerr);
+int xml_bind_yang0_parent(cxobj *xt, cxobj **xerr);
+int xml_bind_yang(cxobj *xt, yang_stmt *yspec, cxobj **xerr);
+int xml_bind_yang_parent(cxobj *xt, cxobj **xerr);
 
 int xml2xpath(cxobj *x, char **xpath);
 int assign_namespaces(cxobj *x0, cxobj *x1, cxobj *x1p);

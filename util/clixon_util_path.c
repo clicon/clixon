@@ -220,7 +220,7 @@ main(int    argc,
     /* Validate XML as well */
     if (yang_file_dir){
 	/* Populate */
-	if (xml_spec_populate(x, yspec, NULL) < 0)
+	if (xml_bind_yang(x, yspec, NULL) < 0)
 	    goto done;
 	/* Add default values */
 	if (xml_apply(x, CX_ELMNT, xml_default, h) < 0)

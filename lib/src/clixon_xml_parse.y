@@ -270,7 +270,7 @@ xml_parse_bslash(clixon_xml_yacc *xy,
      * So the rule is: if there is at least on element, then remove all bodies.
      * See also code in xml_parse_whitespace
      * But there is more: when YANG is assigned, if not leaf/leaf-lists, then all contents should
-     * be stripped, see xml_spec_populate()
+     * be stripped, see xml_bind_yang()
      */
     xc = NULL;
     while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) 

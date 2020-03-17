@@ -586,8 +586,8 @@ netconf_application_rpc(clicon_handle h,
     if (yrpc != NULL){
 	/* 1. Check xn arguments with input statement. */
 	if ((yinput = yang_find(yrpc, Y_INPUT, NULL)) != NULL){
-	    xml_spec_set(xn, yinput); /* needed for xml_spec_populate */
-	    if (xml_spec_populate(xn, yspec, NULL) < 0)
+	    xml_spec_set(xn, yinput); /* needed for xml_bind_yang */
+	    if (xml_bind_yang(xn, yspec, NULL) < 0)
 		goto done;
 	    if ((ret = xml_yang_validate_all_top(h, xn, &xerr)) < 0)
 		goto done;
@@ -618,8 +618,8 @@ netconf_application_rpc(clicon_handle h,
 	if (0)
 	if ((youtput = yang_find(yrpc, Y_OUTPUT, NULL)) != NULL){
 	    xoutput=xpath_first(*xret, NULL, "/");
-	    xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
-	    if (xml_spec_populate(xoutput, yspec, NULL) < 0)
+	    xml_spec_set(xoutput, youtput); /* needed for xml_bind_yang */
+	    if (xml_bind_yang(xoutput, yspec, NULL) < 0)
 		goto done;
 	    if ((ret = xml_yang_validate_all_top(h, xoutput, &xerr)) < 0)
 		goto done;

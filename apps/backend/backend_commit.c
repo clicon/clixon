@@ -214,7 +214,7 @@ startup_common(clicon_handle       h,
 	goto done;
     }
     /* After upgrading, XML tree needs to be sorted and yang spec populated */
-    if (xml_spec_populate(xt, yspec, NULL) < 0)
+    if (xml_bind_yang(xt, yspec, NULL) < 0)
 	goto done;
     if (xml_apply0(xt, CX_ELMNT, xml_sort, h) < 0)
 	goto done;

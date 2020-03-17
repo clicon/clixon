@@ -66,9 +66,9 @@
 #include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
-#include "clixon_options.h" /* xml_spec_populate */
+#include "clixon_options.h" /* xml_bind_yang */
 #include "clixon_yang_module.h"
-#include "clixon_xml_map.h" /* xml_spec_populate */
+#include "clixon_xml_map.h" /* xml_bind_yang */
 #include "clixon_xml_vec.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_nsctx.h"
@@ -431,7 +431,7 @@ _xml_parse(const char    *str,
 	    /* xt:n         Has spec
 	     * x:   <a> <-- populate from parent
 	     */
-	    if ((ret = xml_spec_populate0_parent(x, xerr)) < 0)
+	    if ((ret = xml_bind_yang0_parent(x, xerr)) < 0)
 		goto done;
 	    if (ret == 0)
 		failed++;
@@ -448,12 +448,12 @@ _xml_parse(const char    *str,
 		 * x:   <config>
 		 *         <a>  <-- populate from modules
 		 */
-		if ((ret = xml_spec_populate(x, yspec, xerr)) < 0)
+		if ((ret = xml_bind_yang(x, yspec, xerr)) < 0)
 		    goto done;
 	    }
 	    else
 #endif
-	    if ((ret = xml_spec_populate0(x, yspec, xerr)) < 0)
+	    if ((ret = xml_bind_yang0(x, yspec, xerr)) < 0)
 		goto done;
 	    if (ret == 0)
 		failed++;

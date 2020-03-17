@@ -288,7 +288,7 @@ main(int    argc,
     /* Validate XML as well */
     if (yang_file_dir){
 	/* Populate */
-	if (xml_spec_populate(x0, yspec, NULL) < 0)
+	if (xml_bind_yang(x0, yspec, NULL) < 0)
 	    goto done;
 	/* Sort */
 	if (xml_apply(x0, CX_ELMNT, xml_sort, h) < 0)

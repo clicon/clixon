@@ -270,7 +270,7 @@ clicon_rpc_netconf_xml(clicon_handle  h,
 	xml_find_type(xreply, NULL, "rpc-error", CX_ELMNT) == NULL){
 	yspec = clicon_dbspec_yang(h);
 	/* Here use rpc name to bind to yang */
-	if (xml_spec_populate_rpc_reply(xreply, rpcname, yspec, NULL) < 0) 
+	if (xml_bind_yang_rpc_reply(xreply, rpcname, yspec, NULL) < 0) 
 	    goto done;
     }
     retval = 0;
@@ -403,7 +403,7 @@ clicon_rpc_get_config(clicon_handle h,
     }
     else{
 	yspec = clicon_dbspec_yang(h);
-	if ((ret = xml_spec_populate(xd, yspec, &xerr)) < 0)
+	if ((ret = xml_bind_yang(xd, yspec, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -759,7 +759,7 @@ clicon_rpc_get(clicon_handle   h,
     }
     else{
 	yspec = clicon_dbspec_yang(h);
-	if ((ret = xml_spec_populate(xd, yspec, &xerr)) < 0)
+	if ((ret = xml_bind_yang(xd, yspec, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){

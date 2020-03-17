@@ -152,7 +152,7 @@ main(int argc, char **argv)
 	clicon_err(OE_XML, 0, "Parsing base xml: %s", x0str);
 	goto done;
     }
-    if (xml_spec_populate(x0, yspec, NULL) < 0)
+    if (xml_bind_yang(x0, yspec, NULL) < 0)
 	goto done;
     if ((xb = xpath_first(x0, NULL, "%s", xpath)) == NULL){
 	clicon_err(OE_XML, 0, "xpath: %s not found in x0", xpath);
@@ -167,7 +167,7 @@ main(int argc, char **argv)
 	clicon_err(OE_XML, 0, "Parsing insert xml: %s", xistr);
 	goto done;
     }
-    if (xml_spec_populate(xi, yspec, NULL) < 0)
+    if (xml_bind_yang(xi, yspec, NULL) < 0)
 	goto done;
     if ((xi = xpath_first(xi, NULL, "%s", xpath)) == NULL){
 	clicon_err(OE_XML, 0, "xpath: %s not found in xi", xpath);

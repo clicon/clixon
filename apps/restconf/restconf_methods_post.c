@@ -609,9 +609,9 @@ api_operations_post_output(clicon_handle h,
      * (2) Uncertain how validation errors should be logged/handled
      */
     if (youtput != NULL){
-	xml_spec_set(xoutput, youtput); /* needed for xml_spec_populate */
+	xml_spec_set(xoutput, youtput); /* needed for xml_bind_yang */
 #if 0
-	if (xml_spec_populate(xoutput, yspec, NULL) < 0)
+	if (xml_bind_yang(xoutput, yspec, NULL) < 0)
 	    goto done;
 	if ((ret = xml_yang_validate_all(xoutput, &xerr)) < 0)
 	    goto done;
@@ -832,7 +832,7 @@ api_operations_post(clicon_handle h,
 	clicon_log_xml(LOG_DEBUG, xtop, "%s 5. Translate input args:", __FUNCTION__);
 #endif
     /* 6. Validate outgoing RPC and fill in defaults */
-    if (xml_spec_populate_rpc(xtop, yspec, NULL) < 0) /*  */
+    if (xml_bind_yang_rpc(xtop, yspec, NULL) < 0) /*  */
 	goto done;
     if ((ret = xml_yang_validate_rpc(h, xtop, &xret)) < 0)
 	goto done;
