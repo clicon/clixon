@@ -155,7 +155,7 @@ xml_copy_marked(cxobj *x0,
     x = NULL;
     while ((x = xml_child_each(x0, x, CX_ATTR)) != NULL) {
 	name = xml_name(x);
-	if ((xcopy = xml_new(name, NULL, x1, CX_ATTR)) == NULL)
+	if ((xcopy = xml_new(name, x1, CX_ATTR)) == NULL)
 	    goto done;
 	if (xml_copy(x, xcopy) < 0) 
 	    goto done;
@@ -178,7 +178,7 @@ xml_copy_marked(cxobj *x0,
 	name = xml_name(x);
 	if (xml_flag(x, XML_FLAG_MARK)){
 	    /* (2) the complete subtree of that node is copied. */
-	    if ((xcopy = xml_new(name, NULL, x1, CX_ELMNT)) == NULL)
+	    if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
 		goto done;
 	    if (xml_copy(x, xcopy) < 0) 
 		goto done;
@@ -186,7 +186,7 @@ xml_copy_marked(cxobj *x0,
 	}
 	if (xml_flag(x, XML_FLAG_CHANGE)){
 	    /*  Copy individual nodes marked with XML_FLAG_CHANGE */
-	    if ((xcopy = xml_new(name, NULL, x1, CX_ELMNT)) == NULL)
+	    if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
 		goto done;
 	    if (xml_copy_marked(x, xcopy) < 0) /*  */
 		goto done;
@@ -198,7 +198,7 @@ xml_copy_marked(cxobj *x0,
 	    if ((iskey = yang_key_match(yt, name)) < 0)
 		goto done;
 	    if (iskey){
-		if ((xcopy = xml_new(name, NULL, x1, CX_ELMNT)) == NULL)
+		if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
 		    goto done;
 		if (xml_copy(x, xcopy) < 0) 
 		    goto done;
@@ -538,7 +538,7 @@ xmldb_get_cache(clicon_handle    h,
 	goto done;
 
     /* Make new tree by copying top-of-tree from x0t to x1t */
-    if ((x1t = xml_new(xml_name(x0t), NULL, NULL, CX_ELMNT)) == NULL)
+    if ((x1t = xml_new(xml_name(x0t), NULL, CX_ELMNT)) == NULL)
 	goto done;
     xml_spec_set(x1t, xml_spec(x0t));
 

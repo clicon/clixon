@@ -386,7 +386,7 @@ cvec2xml_1(cvec   *cvv,
     cv = NULL;
     while ((cv = cvec_each(cvv, cv)) != NULL) 
 	len++;
-    if ((xt = xml_new(toptag, NULL, xp, CX_ELMNT)) == NULL)
+    if ((xt = xml_new(toptag, xp, CX_ELMNT)) == NULL)
 	goto err;
     if (xml_childvec_set(xt, len) < 0)
 	goto err;
@@ -395,11 +395,11 @@ cvec2xml_1(cvec   *cvv,
     while ((cv = cvec_each(cvv, cv)) != NULL) {
 	if (cv_type_get(cv)==CGV_ERR || cv_name_get(cv) == NULL)
 	    continue;
-	if ((xn = xml_new(cv_name_get(cv), NULL, NULL, CX_ELMNT)) == NULL) /* this leaks */
+	if ((xn = xml_new(cv_name_get(cv), NULL, CX_ELMNT)) == NULL) /* this leaks */
 	    goto err;
 	xml_parent_set(xn, xt);
 	xml_child_i_set(xt, i++, xn);
-	if ((xb = xml_new("body", NULL, xn, CX_BODY)) == NULL) /* this leaks */
+	if ((xb = xml_new("body", xn, CX_BODY)) == NULL) /* this leaks */
 	    goto err;
 	val = cv2str_dup(cv);
 	xml_value_set(xb, val); /* this leaks */
@@ -822,11 +822,13 @@ add_namespace(cxobj *x,
 	goto done;
     /* Create xmlns attribute to x1p/x1 XXX same code v */
     if (prefix){
-	if ((xa = xml_new(prefix, "xmlns", xp, CX_ATTR)) == NULL)
+	if ((xa = xml_new(prefix, xp, CX_ATTR)) == NULL)
+	    goto done;
+	if (xml_prefix_set(xa, "xmlns") < 0)
 	    goto done;
     }
     else{
-	if ((xa = xml_new("xmlns", NULL, xp, CX_ATTR)) == NULL)
+	if ((xa = xml_new("xmlns", xp, CX_ATTR)) == NULL)
 	    goto done;
     }
     if (xml_value_set(xa, namespace) < 0)
@@ -924,7 +926,7 @@ xml_default(cxobj *xt,
 		continue;
 	    if (!cv_flag(yang_cv_get(y), V_UNSET)){  /* Default value exists */
 		if (!xml_find(xt, yang_argument_get(y))){
-		    if ((xc = xml_new(yang_argument_get(y), NULL, NULL, CX_ELMNT)) == NULL)
+		    if ((xc = xml_new(yang_argument_get(y), NULL, CX_ELMNT)) == NULL)
 			goto done;
 		    xml_spec_set(xc, y);
 
@@ -948,7 +950,7 @@ xml_default(cxobj *xt,
 		    }
 
 		    xml_flag_set(xc, XML_FLAG_DEFAULT);
-		    if ((xb = xml_new("body", NULL, xc, CX_BODY)) == NULL)
+		    if ((xb = xml_new("body", xc, CX_BODY)) == NULL)
 			goto done;
 		    if ((str = cv2str_dup(yang_cv_get(y))) == NULL){
 			clicon_err(OE_UNIX, errno, "cv2str_dup");
@@ -1749,17 +1751,17 @@ xml_merge1(cxobj              *x0,  /* the target */
     if (yang_keyword_get(y0) == Y_LEAF_LIST || yang_keyword_get(y0) == Y_LEAF){
 	x1bstr = xml_body(x1);
 	if (x0==NULL){
-	    if ((x0 = xml_new(x1name, NULL, x0p, CX_ELMNT)) == NULL)
+	    if ((x0 = xml_new(x1name, x0p, CX_ELMNT)) == NULL)
 		goto done;
 	    xml_spec_set(x0, y0);
 	    if (x1bstr){ /* empty type does not have body */
-		if ((x0b = xml_new("body", NULL, x0, CX_BODY)) == NULL)
+		if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
 		    goto done; 
 	    }
 	}
 	if (x1bstr){
 	    if ((x0b = xml_body_get(x0)) == NULL){
-		if ((x0b = xml_new("body", NULL, x0, CX_BODY)) == NULL)
+		if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
 		    goto done; 
 	    }
 	    if (xml_value_set(x0b, x1bstr) < 0)
@@ -1770,7 +1772,7 @@ xml_merge1(cxobj              *x0,  /* the target */
     } /* if LEAF|LEAF_LIST */
     else { /* eg Y_CONTAINER, Y_LIST  */
 	if (x0==NULL){
-	    if ((x0 = xml_new(x1name, NULL, NULL, CX_ELMNT)) == NULL)
+	    if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
 		goto done;
 	    xml_spec_set(x0, y0);
 	}

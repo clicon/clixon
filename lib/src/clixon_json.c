@@ -345,7 +345,9 @@ json2xml_decode_identityref(cxobj     *x,
 		if (prefix2 == NULL)
 		    prefix2 = yang_find_myprefix(ymod);
 		/* Add "xmlns:prefix2=namespace" */
-		if ((xa = xml_new(prefix2, "xmlns", x, CX_ATTR)) == NULL)
+		if ((xa = xml_new(prefix2, x, CX_ATTR)) == NULL)
+		    goto done;
+		if (xml_prefix_set(xa, "xmlns") < 0)
 		    goto done;
 		if (xml_value_set(xa, namespace) < 0)
 		    goto done;
@@ -965,7 +967,7 @@ xml2json_cbuf_vec(cbuf      *cb,
     cxobj *xc;
     cvec  *nsc = NULL; 
 
-    if ((xp = xml_new("xml2json", NULL, NULL, CX_ELMNT)) == NULL)
+    if ((xp = xml_new("xml2json", NULL, CX_ELMNT)) == NULL)
 	goto done;
     /* Make a copy of old and graft it into new top-object
      * Also copy namespace context */
@@ -1295,7 +1297,7 @@ json_parse_str2(char          *str,
 	return -1;
     }
     if (*xt == NULL){
-	if ((*xt = xml_new("top", NULL, NULL, CX_ELMNT)) == NULL)
+	if ((*xt = xml_new("top", NULL, CX_ELMNT)) == NULL)
 	    return -1;
     }
     return _json_parse(str, yb, yspec, *xt, xerr);
@@ -1316,7 +1318,7 @@ json_parse_str(char      *str,
     }
     if (*xt == NULL){
 	yb = YB_TOP; /* ad-hoc #1 */
-	if ((*xt = xml_new("top", NULL, NULL, CX_ELMNT)) == NULL)
+	if ((*xt = xml_new("top", NULL, CX_ELMNT)) == NULL)
 	    return -1;
     }
     else{
@@ -1397,7 +1399,7 @@ json_parse_file(int        fd,
 	    jsonbuf[len++] = ch;
 	if (ret == 0){
 	    if (*xt == NULL)
-		if ((*xt = xml_new(JSON_TOP_SYMBOL, NULL, NULL, CX_ELMNT)) == NULL)
+		if ((*xt = xml_new(JSON_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 		    goto done;
 	    if (len){
 		if ((ret = _json_parse(ptr, yb, yspec, *xt, xerr)) < 0)

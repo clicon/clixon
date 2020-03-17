@@ -658,7 +658,7 @@ xml_type(cxobj *xn)
  * @param[in]  type  new type
  * @retval     type  old type
  */
-enum cxobj_type 
+static enum cxobj_type 
 xml_type_set(cxobj          *xn, 
 	     enum cxobj_type type)
 {
@@ -950,25 +950,20 @@ xml_childvec_get(cxobj *x)
  *
  * @param[in]  name      Name of XML node
  * @param[in]  xp        The parent where the new xml node will be appended
- * @param[in]  spec      Yang statement of this XML or NULL.
+ * @param[in]  type      XML type
  * @retval     xml       Created xml object if successful. Free with xml_free()
  * @retval     NULL      Error and clicon_err() called
  * @code
  *   cxobj *x;
- *   if ((x = xml_new(name, prefix, xparent, CX_ELMNT)) == NULL)
+ *   if ((x = xml_new(name, xparent, CX_ELMNT)) == NULL)
  *     err;
  *   ...
  *   xml_free(x);
  * @endcode
- * @note As a rule, yspec should be given in normal Clixon calls to enable
- *       proper sorting and insert functionality. Except as follows:
- *         - type is body or attribute
- *         - Yang is unknown
  * @see xml_sort_insert
  */
 cxobj *
 xml_new(char           *name,
-	char           *prefix, 
 	cxobj          *xp,
 	enum cxobj_type type)
 {
@@ -983,9 +978,6 @@ xml_new(char           *name,
     if (name != NULL &&
 	xml_name_set(x, name) < 0)
 	return NULL;
-    if (prefix != NULL &&
-	xml_prefix_set(x, prefix) < 0)
-	return NULL;
     if (xp){
 	xml_parent_set(x, xp);
 	if (xml_child_append(xp, x) < 0) 
@@ -996,6 +988,41 @@ xml_new(char           *name,
     return x;
 }
 
+/*! Create a new XML node and set it's body to a value
+ *
+ * @param[in]   name    The name of the new node
+ * @param[in]   parent  The parent to put the new node under
+ * @param[in]   val     The value to set in the body                  
+ *
+ * Creates a new node, sets it as a child of the parent, if one was passed in.
+ * Creates a child of the node, sets the child's type to CX_BODY, and sets
+ * the value of the body/child.
+ * Thanks mgsmith@netgate.com
+ */
+cxobj *
+xml_new_body(char  *name,
+	     cxobj *parent,
+	     char  *val)
+{
+    cxobj *new_node = NULL;
+    cxobj *body_node;
+
+    if (!name || !parent || !val) {
+	return NULL;
+    }
+    if ((new_node = xml_new(name, parent, CX_ELMNT)) == NULL) {
+	return NULL;
+    }
+    if ((body_node = xml_new("body", new_node, CX_BODY)) == NULL ||
+	xml_value_set(body_node, val) < 0) {
+	xml_free(new_node);
+	new_node = NULL;
+	body_node = NULL;
+    } else {
+	xml_type_set(body_node, CX_BODY);
+    }
+    return new_node;
+}
 
 #ifdef NOTYET
 /*! Create new xml node given a name and parent. Free with xml_free().
@@ -1202,7 +1229,7 @@ xml_wrap_all(cxobj *xp,
 
     if (!is_element(xp))
 	return NULL;
-    if ((xw = xml_new(tag, NULL, NULL, CX_ELMNT)) == NULL)
+    if ((xw = xml_new(tag, NULL, CX_ELMNT)) == NULL)
 	goto done;
     while (xp->x_childvec_len)
 	if (xml_addsub(xw, xml_child_i(xp, 0)) < 0)
@@ -1231,7 +1258,7 @@ xml_wrap(cxobj *xc,
     cxobj *xp; /* parent */
 
     xp = xml_parent(xc);
-    if ((xw = xml_new(tag, NULL, xp, CX_ELMNT)) == NULL)
+    if ((xw = xml_new(tag, xp, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_addsub(xw, xc) < 0)
 	goto done;
@@ -1812,7 +1839,7 @@ xml_copy_one(cxobj *x0,
  * @retval     0   OK
  * @retval    -1   Error
  * @code
- *   x1 = xml_new("new", NULL, xparent, xml_type(x0));
+ *   x1 = xml_new("new", xparent, xml_type(x0));
  *   if (xml_copy(x0, x1) < 0)
  *      err;
  * @endcode
@@ -1830,7 +1857,7 @@ xml_copy(cxobj *x0,
 	goto done;
     x = NULL;
     while ((x = xml_child_each(x0, x, -1)) != NULL) {
-	if ((xcopy = xml_new(xml_name(x), NULL, x1, xml_type(x))) == NULL)
+	if ((xcopy = xml_new(xml_name(x), x1, xml_type(x))) == NULL)
 	    goto done;
 	if (xml_copy(x, xcopy) < 0) /* recursion */
 	    goto done;
@@ -1854,7 +1881,7 @@ xml_dup(cxobj *x0)
 {
     cxobj *x1;
 
-    if ((x1 = xml_new("new", NULL, NULL, xml_type(x0))) == NULL)
+    if ((x1 = xml_new("new", NULL, xml_type(x0))) == NULL)
 	return NULL;
     if (xml_copy(x0, x1) < 0)
 	return NULL;

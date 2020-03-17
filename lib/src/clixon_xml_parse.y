@@ -108,7 +108,7 @@ xml_parse_content(clixon_xml_yacc *xy,
 
     xy->xy_xelement = NULL; /* init */
     if (xn == NULL){
-	if ((xn = xml_new("body", NULL, xp, CX_BODY)) == NULL)
+	if ((xn = xml_new("body", xp, CX_BODY)) == NULL)
 	    goto done; 
     }
     if (xml_value_append(xn, str) < 0)
@@ -144,7 +144,7 @@ xml_parse_whitespace(clixon_xml_yacc *xy,
 	    goto ok; /* Skip if already element */
     }
     if (xn == NULL){
-	if ((xn = xml_new("body", NULL, xp, CX_BODY)) == NULL)
+	if ((xn = xml_new("body", xp, CX_BODY)) == NULL)
 	    goto done; 
     }
     if (xml_value_append(xn, str) < 0)
@@ -187,8 +187,11 @@ xml_parse_prefixed_name(clixon_xml_yacc *xy,
     cxobj     *xp;      /* xml parent */ 
 
     xp = xy->xy_xparent;
-    if ((x = xml_new(name, prefix, xp, CX_ELMNT)) == NULL) 
+    if ((x = xml_new(name, xp, CX_ELMNT)) == NULL) 
 	goto done;
+    if (xml_prefix_set(x, prefix) < 0)
+	goto done;
+
     xy->xy_xelement = x;
     /* If topmost, add to top-list created list */
     if (xp == xy->xy_xtop){
@@ -300,8 +303,11 @@ xml_parse_attr(clixon_xml_yacc *xy,
     cxobj *xa = NULL; 
 
     if ((xa = xml_find_type(xy->xy_xelement, prefix, name, CX_ATTR)) == NULL){
-	if ((xa = xml_new(name, prefix, xy->xy_xelement, CX_ATTR)) == NULL)
+	if ((xa = xml_new(name, xy->xy_xelement, CX_ATTR)) == NULL)
 	    goto done;
+	if (xml_prefix_set(xa, prefix) < 0)
+	    goto done;
+
     }
     if (xml_value_set(xa, attval) < 0)
 	goto done;

@@ -327,7 +327,7 @@ api_data_write(clicon_handle h,
 	xret = NULL;
     }
     /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL, NULL, CX_ELMNT)) == NULL)
+    if ((xtop = xml_new("config", NULL, CX_ELMNT)) == NULL)
 	goto done;
     /* Translate api_path to xml in the form of xtop/xbot */
     xbot = xtop;
@@ -362,7 +362,7 @@ api_data_write(clicon_handle h,
     }
     /* Create a dummy data tree parent to hook in the parsed data.
      */
-    if ((xdata0 = xml_new("data0", NULL, NULL, CX_ELMNT)) == NULL)
+    if ((xdata0 = xml_new("data0", NULL, CX_ELMNT)) == NULL)
 	goto done;
     if (api_path){ /* XXX mv to copy? */
 	cxobj *xfrom;
@@ -373,7 +373,7 @@ api_data_write(clicon_handle h,
 	    goto done;
 	xa = NULL;
 	while ((xa = xml_child_each(xfrom, xa, CX_ATTR)) != NULL) {
-	    if ((xac = xml_new(xml_name(xa), NULL, xdata0, CX_ATTR)) == NULL)
+	    if ((xac = xml_new(xml_name(xa), xdata0, CX_ATTR)) == NULL)
 		goto done;
 	    if (xml_copy(xa, xac) < 0) /* recursion */
 		goto done;
@@ -479,7 +479,9 @@ api_data_write(clicon_handle h,
     /* Add operation create as attribute. If that fails with Conflict, then 
      * try "replace" (see comment in function header)
      */
-    if ((xa = xml_new("operation", NETCONF_BASE_PREFIX, xdata, CX_ATTR)) == NULL)
+    if ((xa = xml_new("operation", xdata, CX_ATTR)) == NULL)
+	goto done;
+    if (xml_prefix_set(xa, NETCONF_BASE_PREFIX) < 0)
 	goto done;
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
@@ -836,7 +838,7 @@ api_data_delete(clicon_handle h,
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
     /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL, NULL, CX_ELMNT)) == NULL)
+    if ((xtop = xml_new("config", NULL, CX_ELMNT)) == NULL)
 	goto done;
     xbot = xtop;
     if (api_path){
@@ -852,7 +854,7 @@ api_data_delete(clicon_handle h,
 	    goto ok;
 	}
     }
-    if ((xa = xml_new("operation", NULL, xbot, CX_ATTR)) == NULL)
+    if ((xa = xml_new("operation", xbot, CX_ATTR)) == NULL)
 	goto done;
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;

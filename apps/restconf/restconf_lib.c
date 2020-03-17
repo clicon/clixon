@@ -685,7 +685,9 @@ restconf_insert_attributes(cxobj *xdata,
 	if (xmlns_set(xdata, "yang", YANG_XML_NAMESPACE) < 0)
 	    goto done;
 	/* Then add insert attribute */
-	if ((xa = xml_new("insert", "yang", xdata, CX_ATTR)) == NULL)
+	if ((xa = xml_new("insert", xdata, CX_ATTR)) == NULL)
+	    goto done;
+	if (xml_prefix_set(xa, "yang") < 0)
 	    goto done;
 	if (xml_value_set(xa, instr) < 0)
 	    goto done;
@@ -700,7 +702,9 @@ restconf_insert_attributes(cxobj *xdata,
 	else
 	    attrname="value";
 	/* Then add value/key attribute */
-	if ((xa = xml_new(attrname, "yang", xdata, CX_ATTR)) == NULL)
+	if ((xa = xml_new(attrname, xdata, CX_ATTR)) == NULL)
+	    goto done;
+	if (xml_prefix_set(xa, "yang") < 0)
 	    goto done;
 	if ((ret = api_path2xpath(pstr, ys_spec(y), &xpath, &nsc, NULL)) < 0)
 	    goto done;

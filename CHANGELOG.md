@@ -72,9 +72,10 @@ features include optimized search functions and a repair callback.
     * New (example): `Netconf error: application operation-failed Identityref validation failed, undefined not derived from acl-base . Validate failed. Edit and try again or discard changes"
 
 ### C-API changes on existing features (you may need to change your plugin C-code)
-* `xml_new()` changed from `xml_new(name, xp, ys)`  to `xml_new(name, prefix, xp, type)`
+* `xml_new()` changed from `xml_new(name, xp, ys)`  to `xml_new(name, xp, type)`
   * If you have used, `ys`, add `xml_spec_set(x, ys)` after the statement
-  * If you have `xml_type_set(x, TYPE)` or `xml_prefix_set(x, PREFIX)` immediately after the statement, you can remove those and set them directly as: `xml_new(name, PREFIX, xp, TYPE)`
+  * If you have `xml_type_set(x, TYPE)`  after the statement, you can remove it and set it directly as: `xml_new(name, xp, TYPE)`
+* `xml_type_set()`has been removed in the API. The type must be set at creation timw with `xml_new`
 * All uses of `api_path2xpath_cvv()` should be replaced by `api_path2xpath()`
    * `api_path2xpath()` added an `xerr` argument.
 * Parse and validation API more capable

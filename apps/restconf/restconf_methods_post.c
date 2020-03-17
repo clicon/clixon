@@ -139,7 +139,7 @@ api_data_post(clicon_handle h,
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
     /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL, NULL, CX_ELMNT)) == NULL)
+    if ((xtop = xml_new("config", NULL, CX_ELMNT)) == NULL)
 	goto done;
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
@@ -265,7 +265,7 @@ api_data_post(clicon_handle h,
     }
 
     /* Add operation (create/replace) as attribute */
-    if ((xa = xml_new("operation", NULL, xdata, CX_ATTR)) == NULL)
+    if ((xa = xml_new("operation", xdata, CX_ATTR)) == NULL)
 	goto done;
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
@@ -788,12 +788,12 @@ api_operations_post(clicon_handle h,
     /* 3. Build xml tree with user and rpc: 
      * <rpc username="foo"><myfn xmlns="uri"/>
      */
-    if ((xtop = xml_new("rpc", NULL, NULL, CX_ELMNT)) == NULL)
+    if ((xtop = xml_new("rpc", NULL, CX_ELMNT)) == NULL)
 	goto done;
     xbot = xtop;
     /* Here xtop is: <rpc/> */
     if ((username = clicon_username_get(h)) != NULL){
-	if ((xa = xml_new("username", NULL, xtop, CX_ATTR)) == NULL)
+	if ((xa = xml_new("username", xtop, CX_ATTR)) == NULL)
 	    goto done;
 	if (xml_value_set(xa, username) < 0)
 	    goto done;

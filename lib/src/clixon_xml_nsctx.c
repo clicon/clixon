@@ -489,11 +489,14 @@ xmlns_set(cxobj *x,
     cxobj *xa;
 
     if (prefix != NULL){ /* xmlns:<prefix>="<uri>" */
-	if ((xa = xml_new(prefix, "xmlns", x, CX_ATTR)) == NULL)
+	if ((xa = xml_new(prefix, x, CX_ATTR)) == NULL)
 	    goto done;
+	if (xml_prefix_set(xa, "xmlns") < 0)
+	    goto done;
+
     }
     else{                /* xmlns="<uri>" */
-	if ((xa = xml_new("xmlns", NULL, x, CX_ATTR)) == NULL)
+	if ((xa = xml_new("xmlns", x, CX_ATTR)) == NULL)
 	    goto done;
     }
     if (xml_value_set(xa, ns) < 0)
