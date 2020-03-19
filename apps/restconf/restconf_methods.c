@@ -262,7 +262,7 @@ api_data_write(clicon_handle h,
     char          *namespace = NULL;
     char          *dname;
     cvec          *nsc = NULL;
-    enum yang_bind yb;
+    yang_bind      yb;
     char          *xpath = NULL;
 
     clicon_debug(1, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
@@ -380,7 +380,7 @@ api_data_write(clicon_handle h,
 	}
     }
     if (xml_spec(xdata0)==NULL)
-	yb = YB_TOP;
+	yb = YB_MODULE;
     else
 	yb = YB_PARENT;
 
@@ -392,7 +392,7 @@ api_data_write(clicon_handle h,
      */
     switch (media_in){
     case YANG_DATA_XML:
-	if ((ret = xml_parse_string2(data, yb, yspec, &xdata0, &xerr)) < 0){
+	if ((ret = clixon_xml_parse_string(data, yb, yspec, &xdata0, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -414,7 +414,7 @@ api_data_write(clicon_handle h,
 	}
 	break;
     case YANG_DATA_JSON:
-	if ((ret = json_parse_str2(data, yb, yspec, &xdata0, &xerr)) < 0){
+	if ((ret = clixon_json_parse_string(data, yb, yspec, &xdata0, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){

@@ -214,7 +214,7 @@ parse_configfile(clicon_handle  h,
     char       *body;
     clicon_hash_t *copt = clicon_options(h);
     cbuf       *cbret = NULL;
-    cxobj      *xret = NULL;
+    cxobj      *xerr = NULL;
     int         ret;
     cvec       *nsc = NULL;
 
@@ -236,8 +236,18 @@ parse_configfile(clicon_handle  h,
     }
     clicon_debug(2, "%s: Reading config file %s", __FUNCTION__, filename);
     fd = fileno(f);
-    if (xml_parse_file(fd, yspec, &xt) < 0)
+    if ((ret = clixon_xml_parse_file(fd, yspec?YB_MODULE:YB_NONE, yspec, NULL, &xt, &xerr)) < 0)
 	goto done;
+    if (ret == 0){
+	if ((cbret = cbuf_new()) ==NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	if (netconf_err2cb(xerr, cbret) < 0)
+	    goto done;
+	clixon_netconf_error(OE_CFG, xerr, NULL, NULL);
+	goto done;
+    }
     if (xml_child_nr(xt)==1 && xml_child_nr_type(xt, CX_BODY)==1){
 	clicon_err(OE_CFG, 0, "Config file %s: Expected XML but is probably old sh style", filename);
 	goto done;
@@ -252,14 +262,14 @@ parse_configfile(clicon_handle  h,
     }
     if (xml_apply0(xc, CX_ELMNT, xml_default, h) < 0)
 	goto done;	
-    if ((ret = xml_yang_validate_add(h, xc, &xret)) < 0)
+    if ((ret = xml_yang_validate_add(h, xc, &xerr)) < 0)
 	goto done;
     if (ret == 0){
 	if ((cbret = cbuf_new()) ==NULL){
 	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}
-	if (netconf_err2cb(xret, cbret) < 0)
+	if (netconf_err2cb(xerr, cbret) < 0)
 	    goto done;
 	clicon_err(OE_CFG, 0, "Config file validation: %s", cbuf_get(cbret));
 	goto done;
@@ -296,8 +306,8 @@ parse_configfile(clicon_handle  h,
 	xml_nsctx_free(nsc);
     if (cbret)
 	cbuf_free(cbret);
-    if (xret)
-	xml_free(xret);
+    if (xerr)
+	xml_free(xerr);
     if (xt)
 	xml_free(xt);
     if (f)
@@ -330,8 +340,8 @@ clicon_option_add(clicon_handle h,
 	    clicon_err(OE_UNIX, ENOENT, "option %s not found (clicon_conf_xml_set has not been called?)", name);
 	    goto done;
 	}
-	if (xml_parse_va(&x, NULL, "<%s>%s</%s>",
-			 name, value, name) < 0)
+	if (clixon_xml_parse_va(YB_NONE, NULL, &x, NULL, "<%s>%s</%s>",
+				name, value, name) < 0)
 	    goto done;
     }
     if (clicon_hash_add(copt, 
@@ -394,7 +404,7 @@ clicon_options_main(clicon_handle h)
      * - no default values
      * - no sanity checks
      */
-    if (parse_configfile(h, configfile, yspec, &xconfig) < 0)
+    if (parse_configfile(h, configfile, NULL, &xconfig) < 0)
 	goto done;
     if (xml_rootchild(xconfig, 0, &xconfig) < 0)
 	goto done;

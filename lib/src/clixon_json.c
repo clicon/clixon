@@ -1169,11 +1169,11 @@ json_xmlns_translate(yang_stmt *yspec,
  * @see RFC 7951
  */
 static int 
-_json_parse(char          *str, 
-	    enum yang_bind yb,
-	    yang_stmt     *yspec,
-	    cxobj         *xt,
-	    cxobj        **xerr)
+_json_parse(char      *str, 
+	    yang_bind  yb,
+	    yang_stmt *yspec,
+	    cxobj     *xt,
+	    cxobj    **xerr)
 {
     int              retval = -1;
     clixon_json_yacc jy = {0,};
@@ -1223,21 +1223,31 @@ _json_parse(char          *str,
 	 * XXX should be xml_bind_yang0_parent() sometimes.
 	 */
 	switch (yb){
-	case YB_RPC:
-	case YB_UNKNOWN:
-	case YB_NONE:
-	    break;
 	case YB_PARENT:
-	    if ((ret = xml_bind_yang0_parent(x, xerr)) < 0)
+	    if ((ret = xml_bind_yang0(x, yb, yspec, xerr)) < 0)
 		    goto done;
 	    if (ret == 0)
 		failed++;
 	    break;
-	case YB_TOP:
-	    if (xml_bind_yang0(x, yspec, xerr) < 0)
-		goto done;
+	case YB_MODULE:
+#ifdef XMLDB_CONFIG_HACK
+	    if (strcmp(xml_name(x),"config") == 0 ||
+		strcmp(xml_name(x),"data") == 0){
+		/* xt:<top>         nospec
+		 * x:   <config>
+		 *         <a>  <-- populate from modules
+		 */
+		if ((ret = xml_bind_yang(x, yb, yspec, xerr)) < 0)
+		    goto done;
+	    }
+	    else
+#endif
+		if ((ret = xml_bind_yang0(x, yb, yspec, xerr)) < 0)
+		    goto done;
 	    if (ret == 0)
 		failed++;
+	    break;
+	case YB_NONE:
 	    break;
 	}
 	/* Now find leafs with identityrefs (+transitive) and translate 
@@ -1247,9 +1257,12 @@ _json_parse(char          *str,
 	if (ret == 0) /* XXX necessary? */
 	    goto fail;
     }
+    if (failed)
+	goto fail;
+    /* This fails if xt is not bound to yang */
     if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
 	goto done;
-    retval = (failed==0) ? 1 : 0;
+    retval = 1;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cberr)
@@ -1267,29 +1280,30 @@ _json_parse(char          *str,
 /*! Parse string containing JSON and return an XML tree
  *
  * @param[in]     str   String containing JSON
+ * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification, mandatory to make module->xmlns translation
  * @param[in,out] xt    Top object, if not exists, on success it is created with name 'top'
  * @param[out]    xerr  Reason for invalid returned as netconf err msg 
- *
- * @code
- *  cxobj *cx = NULL;
- *  if (json_parse_str(str, yspec, &cx, &xerr) < 0)
- *    err;
- *  xml_free(cx);
- * @endcode
- * @note  you need to free the xml parse tree after use, using xml_free()
- * @see json_parse_file
  * @retval        1     OK and valid
  * @retval        0     Invalid (only if yang spec) w xerr set
  * @retval       -1     Error with clicon_err called
- * @see json_parse_file with a file descriptor (and more description)
+ *
+ * @code
+ *  cxobj *x = NULL;
+ *  if (clixon_json_parse_string(str, YB_MODULE, yspec, &x, &xerr) < 0)
+ *    err;
+ *  xml_free(x);
+ * @endcode
+ * @note  you need to free the xml parse tree after use, using xml_free()
+ * @see clixon_xml_parse_string  XML instead of JSON
+ * @see clixon_json_parse_file   From a file
  */
 int 
-json_parse_str2(char          *str, 
-		enum yang_bind yb,
-		yang_stmt     *yspec,
-		cxobj        **xt,
-		cxobj        **xerr)
+clixon_json_parse_string(char      *str, 
+			 yang_bind  yb,
+			 yang_stmt *yspec,
+			 cxobj    **xt,
+			 cxobj    **xerr)
 {
     clicon_debug(1, "%s", __FUNCTION__);
     if (xt==NULL){
@@ -1299,31 +1313,6 @@ json_parse_str2(char          *str,
     if (*xt == NULL){
 	if ((*xt = xml_new("top", NULL, CX_ELMNT)) == NULL)
 	    return -1;
-    }
-    return _json_parse(str, yb, yspec, *xt, xerr);
-}
-
-int 
-json_parse_str(char      *str, 
-	       yang_stmt *yspec,
-	       cxobj    **xt,
-	       cxobj    **xerr)
-{
-    enum yang_bind yb = YB_PARENT;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (xt==NULL){
-	clicon_err(OE_XML, EINVAL, "xt is NULL");
-	return -1;
-    }
-    if (*xt == NULL){
-	yb = YB_TOP; /* ad-hoc #1 */
-	if ((*xt = xml_new("top", NULL, CX_ELMNT)) == NULL)
-	    return -1;
-    }
-    else{
-	if (xml_spec(*xt) == NULL)
-	    yb = YB_TOP;  /* ad-hoc #2 */
     }
     return _json_parse(str, yb, yspec, *xt, xerr);
 }
@@ -1347,7 +1336,7 @@ json_parse_str(char      *str,
  *
  * @code
  *  cxobj *xt = NULL;
- *  if (json_parse_file(0, yspec, &xt) < 0)
+ *  if (clixon_json_parse_file(0, YB_MODULE, yspec, &xt) < 0)
  *    err;
  *  xml_free(xt);
  * @endcode
@@ -1359,31 +1348,29 @@ json_parse_str(char      *str,
  * @retval        0     Invalid (only if yang spec) w xerr set
  * @retval       -1     Error with clicon_err called
  *
- * @see json_parse_str
+ * @see clixon_json_parse_string
  * @see RFC7951
  */
 int
-json_parse_file(int        fd,
-		yang_stmt *yspec,
-		cxobj    **xt,
-		cxobj    **xerr)
+clixon_json_parse_file(int        fd,
+		       yang_bind  yb,
+		       yang_stmt *yspec,
+		       cxobj    **xt,
+		       cxobj    **xerr)
 {
-    int   retval = -1;
-    int   ret;
-    char *jsonbuf = NULL;
-    int   jsonbuflen = BUFLEN; /* start size */
-    int   oldjsonbuflen;
-    char *ptr;
-    char  ch;
-    int   len = 0;
-    enum yang_bind yb = YB_PARENT;
+    int       retval = -1;
+    int       ret;
+    char     *jsonbuf = NULL;
+    int       jsonbuflen = BUFLEN; /* start size */
+    int       oldjsonbuflen;
+    char     *ptr;
+    char      ch;
+    int       len = 0;
     
     if (xt==NULL){
 	clicon_err(OE_XML, EINVAL, "xt is NULL");
 	return -1;
     }
-    if (*xt==NULL)
-	yb = YB_TOP;
     if ((jsonbuf = malloc(jsonbuflen)) == NULL){
 	clicon_err(OE_XML, errno, "malloc");
 	goto done;

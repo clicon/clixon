@@ -142,7 +142,7 @@ main(int    argc,
     }
     /* 2. Parse data (xml/json) */
     if (jsonin){
-	if ((ret = json_parse_file(fd, NULL, &xt, &xerr)) < 0)
+	if ((ret = clixon_json_parse_file(fd, YB_NONE, NULL, &xt, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    fprintf(stderr, "Invalid JSON\n");
@@ -150,7 +150,7 @@ main(int    argc,
 	}
     }
     else{
-	if (xml_parse_file(fd, NULL, &xt) < 0){
+	if (clixon_xml_parse_file(fd, YB_NONE, NULL, NULL, &xt, NULL) < 0){
 	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
 	    goto done;
 	}

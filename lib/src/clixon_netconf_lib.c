@@ -134,15 +134,16 @@ netconf_invalid_value_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
-    if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
-		     "<error-tag>invalid-value</error-tag>"
-		     "<error-severity>error</error-severity>", type) < 0)
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
+			    "<error-type>%s</error-type>"
+			    "<error-tag>invalid-value</error-tag>"
+			    "<error-severity>error</error-severity>", type) < 0)
 	goto done;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
-	if (xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
-			 encstr) < 0)
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
+				"<error-message>%s</error-message>", encstr) < 0)
 	    goto done;
     }
     retval = 0;
@@ -314,16 +315,16 @@ netconf_bad_attribute_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
-    if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
-		     "<error-tag>bad-attribute</error-tag>"
-		     "<error-info>%s</error-info>"
-		     "<error-severity>error</error-severity>", type, info) < 0)
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>%s</error-type>"
+			    "<error-tag>bad-attribute</error-tag>"
+			    "<error-info>%s</error-info>"
+			    "<error-severity>error</error-severity>", type, info) < 0)
 	goto done;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
-	if (xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
-			 encstr) < 0)
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
+				encstr) < 0)
 	    goto done;
     }
     retval = 0;
@@ -403,17 +404,17 @@ netconf_common_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
-    if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
-		     "<error-tag>%s</error-tag>"
-		     "<error-info><%s>%s</%s></error-info>"
-		     "<error-severity>error</error-severity>",
-		     type, tag, infotag, element, infotag) < 0)
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>%s</error-type>"
+			    "<error-tag>%s</error-tag>"
+			    "<error-info><%s>%s</%s></error-info>"
+			    "<error-severity>error</error-severity>",
+			    type, tag, infotag, element, infotag) < 0)
 	goto done;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
-	if (xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
-			 encstr) < 0)
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
+				encstr) < 0)
 	    goto done;
     }
     retval = 0;
@@ -653,15 +654,15 @@ netconf_access_denied_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
-    if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
-		     "<error-tag>access-denied</error-tag>"
-		     "<error-severity>error</error-severity>", type) < 0)
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>%s</error-type>"
+			    "<error-tag>access-denied</error-tag>"
+			    "<error-severity>error</error-severity>", type) < 0)
 	goto done;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
-	if (xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
-			 encstr) < 0)
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
+				encstr) < 0)
 	    goto done;
     }
     retval = 0;
@@ -883,24 +884,24 @@ netconf_data_missing_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
-    if (xml_parse_va(&xerr, NULL, 
-		     "<error-type>application</error-type>"
-		     "<error-tag>data-missing</error-tag>") < 0)
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
+			    "<error-type>application</error-type>"
+			    "<error-tag>data-missing</error-tag>") < 0)
 	goto done;
     if (missing_choice) /* NYI: RFC7950: 15.6 <error-path> */
-	if (xml_parse_va(&xerr, NULL, 
-			 "<error-app-tag>missing-choice</error-app-tag>"
-			 "<error-info><missing-choice>%s</missing-choice></error-info>",
-			 missing_choice) < 0)
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
+				"<error-app-tag>missing-choice</error-app-tag>"
+				"<error-info><missing-choice>%s</missing-choice></error-info>",
+				missing_choice) < 0)
 	    goto done;
-    if (xml_parse_va(&xerr, NULL, 
-		"<error-severity>error</error-severity>") < 0)
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
+			    "<error-severity>error</error-severity>") < 0)
 	goto done;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	    goto done;
-	if (xml_parse_va(&xerr, NULL,
-			 "<error-message>%s</error-message>", encstr) < 0)
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
+				"<error-message>%s</error-message>", encstr) < 0)
 	    goto done;
     }
     retval = 0;
@@ -1011,16 +1012,16 @@ netconf_operation_failed_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
-    if (xml_parse_va(&xerr, NULL, "<error-type>%s</error-type>"
-		     "<error-tag>operation-failed</error-tag>"
-		     "<error-severity>error</error-severity>",
-		     type) < 0)
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>%s</error-type>"
+			    "<error-tag>operation-failed</error-tag>"
+			    "<error-severity>error</error-severity>",
+			    type) < 0)
 	goto done;
     if (message){
 	 if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	     goto done;
-	 if (xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
-			 encstr) < 0)
+	 if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
+				 encstr) < 0)
 	goto done;
     }
     retval = 0;
@@ -1090,15 +1091,15 @@ netconf_malformed_message_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
-    if (xml_parse_va(&xerr, NULL, "<error-type>rpc</error-type>"
-		     "<error-tag>malformed-message</error-tag>"
-		     "<error-severity>error</error-severity>") < 0)
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>rpc</error-type>"
+			    "<error-tag>malformed-message</error-tag>"
+			    "<error-severity>error</error-severity>") < 0)
 	goto done;
      if (message){
 	 if (xml_chardata_encode(&encstr, "%s", message) < 0)
 	     goto done;
-	 if (xml_parse_va(&xerr, NULL, "<error-message>%s</error-message>",
-			  encstr) < 0)
+	 if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
+				 encstr) < 0)
 	     goto done;
      }
     retval = 0;
@@ -1137,10 +1138,11 @@ netconf_data_not_unique_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
-    if (xml_parse_va(&xerr, NULL, "<error-type>protocol</error-type>"
-		     "<error-tag>operation-failed</error-tag>"
-     		     "<error-app-tag>data-not-unique</error-app-tag>"
-		     "<error-severity>error</error-severity>") < 0)
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
+			    "<error-type>protocol</error-type>"
+			    "<error-tag>operation-failed</error-tag>"
+			    "<error-app-tag>data-not-unique</error-app-tag>"
+			    "<error-severity>error</error-severity>") < 0)
 	goto done;
     if (cvec_len(cvk)){
 	if ((xinfo = xml_new("error-info", xerr, CX_ELMNT)) == NULL)
@@ -1153,7 +1155,8 @@ netconf_data_not_unique_xml(cxobj **xret,
 	    if ((xi = xml_find(x, cv_string_get(cvi))) == NULL)
 		continue; /* ignore, shouldnt happen */
 	    clicon_xml2cbuf(cb, xi, 0, 0, -1);	
-	    if (xml_parse_va(&xinfo, NULL, "<non-unique>%s</non-unique>", cbuf_get(cb)) < 0)
+	    if (clixon_xml_parse_va(YB_NONE, NULL, &xinfo, NULL,
+				    "<non-unique>%s</non-unique>", cbuf_get(cb)) < 0)
 		goto done;
 	    cbuf_reset(cb);
 	}
@@ -1190,13 +1193,13 @@ netconf_minmax_elements_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
-    if (xml_parse_va(&xerr, NULL, "<error-type>protocol</error-type>"
-		     "<error-tag>operation-failed</error-tag>"
-		     "<error-app-tag>too-%s-elements</error-app-tag>"
-		     "<error-severity>error</error-severity>"
-		     "<error-path>%s</error-path>",
-		     max?"many":"few",
-		     xml_name(x)) < 0) /* XXX should be xml2xpath */
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>protocol</error-type>"
+			    "<error-tag>operation-failed</error-tag>"
+			    "<error-app-tag>too-%s-elements</error-app-tag>"
+			    "<error-severity>error</error-severity>"
+			    "<error-path>%s</error-path>",
+			    max?"many":"few",
+			    xml_name(x)) < 0) /* XXX should be xml2xpath */
 	goto done;
     retval = 0;
  done:
@@ -1264,19 +1267,20 @@ netconf_module_features(clicon_handle h)
 {
     int        retval = -1;
     cxobj     *xc;
-    yang_stmt *yspec;
-    
-    yspec = clicon_dbspec_yang(h);
+
     if ((xc = clicon_conf_xml(h)) == NULL){
 	clicon_err(OE_CFG, ENOENT, "Clicon configuration not loaded");
 	goto done; 
     }
     /* Enable features (hardcoded here) */
-    if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:candidate</CLICON_FEATURE>", yspec, &xc) < 0)
+    if (clixon_xml_parse_string("<CLICON_FEATURE>ietf-netconf:candidate</CLICON_FEATURE>",
+				YB_PARENT, NULL, &xc, NULL) < 0)
 	goto done;
-    if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:validate</CLICON_FEATURE>", yspec, &xc) < 0)
+    if (clixon_xml_parse_string("<CLICON_FEATURE>ietf-netconf:validate</CLICON_FEATURE>",
+				YB_PARENT,  NULL, &xc, NULL) < 0)
 	goto done;
-    if (xml_parse_string("<CLICON_FEATURE>ietf-netconf:xpath</CLICON_FEATURE>", yspec, &xc) < 0)
+    if (clixon_xml_parse_string("<CLICON_FEATURE>ietf-netconf:xpath</CLICON_FEATURE>",
+				YB_PARENT, NULL, &xc, NULL) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1320,7 +1324,7 @@ netconf_module_load(clicon_handle h)
  * @code
  *   cxobj *xt = NULL;
  *   char  *db;
- *   xml_parse_string("<x><target>source</target></x>", NULL, &xt);
+ *   clixon_xml_parse_string("<x><target>source</target></x>", YB_NONE, NULL, &xt, NULL);
  *   db = netconf_db_find(xt, "target");
  * @endcode
  */
@@ -1355,7 +1359,7 @@ netconf_db_find(cxobj *xn,
  *     printf("%s", cbuf_get(cb));
  *     cbuf_free(cb);
  * @endcode
- * @see clicon_rpc_generate_error
+ * @see clixon_netconf_error
  */
 int
 netconf_err2cb(cxobj *xerr,
@@ -1494,5 +1498,48 @@ netconf_hello_req(clicon_handle h,
     cprintf(cb, "</hello>");
     cprintf(cb, "]]>]]>");
     retval = 0;
+    return retval;
+}
+
+/*! Generate clicon error from Netconf error message
+ *
+ * Get a text error message from netconf error message and generate error on the form:
+ *   <msg>: "<arg>": <netconf-error>   or   <msg>: <netconf-error>
+ * @param[in]    fn       Inline function name (when called from clicon_err() macro)
+ * @param[in]    line     Inline file line number (when called from clicon_err() macro)
+ * @param[in]    err      Error number, typically errno
+ * @param[in]  xerr    Netconf error xml tree on the form: <rpc-error> 
+ * @param[in]  format  Format string 
+ * @param[in]  arg     String argument to format (optional)
+ */
+int
+clixon_netconf_error_fn(const char *fn, 
+			const int   line,
+			int         category,
+			cxobj       *xerr,
+			const char  *msg,
+			const char  *arg)
+{
+    int    retval = -1;
+    cbuf  *cb = NULL;
+
+    if ((cb = cbuf_new()) ==NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (msg){
+	cprintf(cb, "%s", msg);
+	if (arg)
+	    cprintf(cb, " \"%s\" ", arg);
+	cprintf(cb, ": ");
+    }
+    if (netconf_err2cb(xerr, cb) < 0)
+	goto done;
+
+    clicon_err_fn(fn, line, category, 0, "%s", cbuf_get(cb));
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }

@@ -184,7 +184,7 @@ clicon_msg_decode(struct clicon_msg *msg,
     /* body */
     xmlstr = msg->op_body;
     clicon_debug(1, "%s %s", __FUNCTION__, xmlstr);
-    if (xml_parse_string(xmlstr, yspec, xml) < 0)
+    if (clixon_xml_parse_string(xmlstr, yspec?YB_MODULE:YB_NONE, yspec, xml, NULL) < 0)
 	goto done;
     retval = 0;
  done:

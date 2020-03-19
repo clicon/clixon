@@ -53,6 +53,11 @@ enum netconf_content{
 typedef enum netconf_content netconf_content;
 
 /*
+ * Macros
+ */
+#define clixon_netconf_error(c, x, f, a) clixon_netconf_error_fn(__FUNCTION__, __LINE__, (c), (x), (f), (a))
+
+/*
  * Prototypes
  */
 int netconf_in_use(cbuf *cb, char *type, char *message);
@@ -95,5 +100,8 @@ const netconf_content netconf_content_str2int(char *str);
 const char *netconf_content_int2str(netconf_content nr);
 int netconf_hello_server(clicon_handle h, cbuf *cb, uint32_t session_id);
 int netconf_hello_req(clicon_handle h, cbuf *cb);
+
+int clicon_err_fn(const char *fn, const int line, int level, int err, char *format, ...);
+int clixon_netconf_error_fn(const char *fn, const int line, int category, cxobj *xerr, const char *fmt, const char *arg);
 
 #endif /* _CLIXON_NETCONF_LIB_H */

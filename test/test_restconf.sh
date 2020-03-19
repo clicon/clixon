@@ -110,8 +110,11 @@ expectpart "$(curl -is -X OPTIONS http://localhost/restconf/data)" 0 "HTTP/1.1 2
 new "restconf HEAD. RFC 8040 4.2"
 expectpart "$(curl -si -I -H "Accept: application/yang-data+json" http://localhost/restconf/data)" 0 "HTTP/1.1 200 OK" "Content-Type: application/yang-data+json"
 
-new "restconf empty rpc"
+new "restconf empty rpc JSON"
 expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-example:input\":null} http://localhost/restconf/operations/clixon-example:empty)" 0  "HTTP/1.1 204 No Content"
+
+new "restconf empty rpc XML"
+expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+xml" -d '<input xmlns="urn:example:clixon"></input>' http://localhost/restconf/operations/clixon-example:empty)" 0  "HTTP/1.1 204 No Content"
 
 new "restconf empty rpc, default media type should fail"
 expectpart "$(curl -si -X POST -d {\"clixon-example:input\":null} http://localhost/restconf/operations/clixon-example:empty)" 0 'HTTP/1.1 415 Unsupported Media Type'

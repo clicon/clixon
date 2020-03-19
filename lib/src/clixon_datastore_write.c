@@ -808,7 +808,7 @@ xml_container_presence(cxobj  *x,
  * @code
  *   cxobj     *xt;
  *   cxobj     *xret = NULL;
- *   if (xml_parse_string("<a>17</a>", yspec, &xt) < 0)
+ *   if (clixon_xml_parse_string("<a>17</a>", YB_NONE, NULL, &xt, NULL) < 0)
  *     err;
  *   if ((ret = xmldb_put(h, "running", OP_MERGE, xt, username, cbret)) < 0)
  *     err;

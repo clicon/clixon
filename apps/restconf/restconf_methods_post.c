@@ -128,7 +128,7 @@ api_data_post(clicon_handle h,
     int            ret;
     restconf_media media_in;
     int            nrchildren0 = 0;
-    enum yang_bind yb;
+    yang_bind      yb;
     
     clicon_debug(1, "%s api_path:\"%s\"", __FUNCTION__, api_path);
     clicon_debug(1, "%s data:\"%s\"", __FUNCTION__, data);
@@ -180,7 +180,7 @@ api_data_post(clicon_handle h,
 	xml_flag_set(x, XML_FLAG_MARK);
     }
     if (xml_spec(xbot)==NULL)
-	yb = YB_TOP;
+	yb = YB_MODULE;
     else
 	yb = YB_PARENT;
     /* Parse input data as json or xml into xml 
@@ -190,7 +190,7 @@ api_data_post(clicon_handle h,
     media_in = restconf_content_type(r);
     switch (media_in){
     case YANG_DATA_XML:
-	if ((ret = xml_parse_string2(data, yb, yspec, &xbot, &xerr)) < 0){
+	if ((ret = clixon_xml_parse_string(data, yb, yspec, &xbot, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -212,7 +212,7 @@ api_data_post(clicon_handle h,
 	}
 	break;
     case YANG_DATA_JSON:	
-	if ((ret = json_parse_str2(data, yb, yspec, &xbot, &xerr)) < 0){
+	if ((ret = clixon_json_parse_string(data, yb, yspec, &xbot, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -453,7 +453,9 @@ api_operations_post_input(clicon_handle h,
     media_in = restconf_content_type(r);
     switch (media_in){
     case YANG_DATA_XML:
-	if (xml_parse_string(data, yspec, &xdata) < 0){
+	/* XXX: Here data is on the form: <input xmlns="urn:example:clixon"/> and has no proper yang binding 
+	 * support */
+	if ((ret = clixon_xml_parse_string(data, YB_NONE, yspec, &xdata, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -464,9 +466,21 @@ api_operations_post_input(clicon_handle h,
 		goto done;
 	    goto fail;
 	}
+	if (ret == 0){
+	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		clicon_debug(1, "%s F", __FUNCTION__);
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto fail;
+	}
 	break;
     case YANG_DATA_JSON:
-	if ((ret = json_parse_str(data, yspec, &xdata, &xerr)) < 0){
+	/* XXX: Here data is on the form: {"clixon-example:input":null} and has no proper yang binding 
+	 * support */
+	if ((ret = clixon_json_parse_string(data, YB_NONE, yspec, &xdata, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -492,6 +506,7 @@ api_operations_post_input(clicon_handle h,
 	goto fail;
 	break;
     } /* switch media_in */
+    clicon_debug(1, "%s F", __FUNCTION__);
     xml_name_set(xdata, "data");
     /* Here xdata is: 
      * <data><input xmlns="urn:example:clixon">...</input></data>
@@ -610,8 +625,8 @@ api_operations_post_output(clicon_handle h,
      */
     if (youtput != NULL){
 	xml_spec_set(xoutput, youtput); /* needed for xml_bind_yang */
-#if 0
-	if (xml_bind_yang(xoutput, yspec, NULL) < 0)
+#ifdef notyet
+	if (xml_bind_yang(xoutput, YB_MODULE, yspec, NULL) < 0)
 	    goto done;
 	if ((ret = xml_yang_validate_all(xoutput, &xerr)) < 0)
 	    goto done;
@@ -863,7 +878,7 @@ api_operations_post(clicon_handle h,
     if ((ret = rpc_callback_call(h, xbot, cbret, r)) < 0)
 	goto done;
     if (ret > 0){ /* Handled locally */
-	if (xml_parse_string(cbuf_get(cbret), NULL, &xret) < 0)
+	if (clixon_xml_parse_string(cbuf_get(cbret), YB_NONE, NULL, &xret, NULL) < 0)
 	    goto done;
 	/* Local error: return it and quit */
 	if ((xe = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL){

@@ -372,18 +372,17 @@ xmltree2cbuf(cbuf  *cb,
  * @retval        1     Parse OK and all yang assignment made
  * @retval        0     Parse OK but yang assigment not made (or only partial) and xerr set
  * @retval       -1     Error with clicon_err called. Includes parse error
- * @see xml_parse_file
- * @see xml_parse_string
- * @see xml_parse_va
+ * @see clixon_xml_parse_file
+ * @see clixon_xml_parse_string
  * @see _json_parse
  * @note special case is empty XML where the parser is not invoked.
  */
 static int 
-_xml_parse(const char    *str, 
-	   enum yang_bind yb,
-	   yang_stmt     *yspec,
-	   cxobj         *xt,
-	   cxobj        **xerr)
+_xml_parse(const char *str, 
+	   yang_bind   yb,
+	   yang_stmt  *yspec,
+	   cxobj      *xt,
+	   cxobj     **xerr)
 {
     int             retval = -1;
     clixon_xml_yacc xy = {0,};
@@ -423,21 +422,19 @@ _xml_parse(const char    *str,
 	/* Populate, ie associate xml nodes with yang specs 
 	 */
 	switch (yb){
-	case YB_RPC:
-	case YB_UNKNOWN:
 	case YB_NONE:
 	    break;
 	case YB_PARENT:
 	    /* xt:n         Has spec
 	     * x:   <a> <-- populate from parent
 	     */
-	    if ((ret = xml_bind_yang0_parent(x, xerr)) < 0)
+	    if ((ret = xml_bind_yang0(x, YB_PARENT, NULL, xerr)) < 0)
 		goto done;
 	    if (ret == 0)
 		failed++;
 	    break;
 
-	case YB_TOP:
+	case YB_MODULE:
 	    /* xt:<top>     nospec
 	     * x:   <a> <-- populate from modules
 	     */
@@ -448,22 +445,25 @@ _xml_parse(const char    *str,
 		 * x:   <config>
 		 *         <a>  <-- populate from modules
 		 */
-		if ((ret = xml_bind_yang(x, yspec, xerr)) < 0)
+		if ((ret = xml_bind_yang(x, YB_MODULE, yspec, xerr)) < 0)
 		    goto done;
 	    }
 	    else
 #endif
-	    if ((ret = xml_bind_yang0(x, yspec, xerr)) < 0)
+	    if ((ret = xml_bind_yang0(x, YB_MODULE, yspec, xerr)) < 0)
 		goto done;
 	    if (ret == 0)
 		failed++;
 	    break;
 	}
     }
+    if (failed)
+	goto fail;
+    /* This fails if xt is not bound to yang */
     /* Sort the complete tree after parsing. Sorting is less meaningful if Yang not bound */
     if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
 	goto done;
-    retval = (failed==0) ? 1 : 0;
+    retval = 1;
   done:
     clixon_xml_parsel_exit(&xy);
     if (xy.xy_parse_string != NULL)
@@ -471,43 +471,9 @@ _xml_parse(const char    *str,
     if (xy.xy_xvec)
 	free(xy.xy_xvec);
     return retval; 
-}
-
-/*! Read an XML definition from file and parse it into a parse-tree. 
- *
- * @param[in]     fd  A file descriptor containing the XML file (as ASCII characters)
- * @param[in]     yspec   Yang specification, or NULL
- * @param[in,out] xt   Pointer to XML parse tree. If empty, create.
- * @retval        1     Parse OK and all yang assignment made
- * @retval        0     Parse OK but yang assigment not made (or only partial)
- * @retval       -1     Error with clicon_err called. Includes parse error *
- * @code
- *  cxobj *xt = NULL;
- *  int    fd;
- *  fd = open(filename, O_RDONLY);
- *  xml_parse_file(fd, yspec, &xt);
- *  xml_free(xt);
- * @endcode
- * @see xml_parse_string
- * @see xml_parse_va
- * @note, If xt empty, a top-level symbol will be added so that <tree../> will be:  <top><tree.../></tree></top>
- * @note May block on file I/O
- * @see xml_parse_file2 for a more advanced API
- */
-int 
-xml_parse_file(int        fd, 
-	       yang_stmt *yspec,
-	       cxobj    **xt)
-{
-    enum yang_bind yb = YB_PARENT;
-
-    if (xt==NULL){
-	clicon_err(OE_XML, EINVAL, "xt is NULL");
-	return -1;
-    }
-    if (*xt==NULL)
-	yb = YB_TOP;
-    return xml_parse_file2(fd, yb, yspec, NULL, xt, NULL);
+ fail: /* invalid */
+    retval = 0;
+    goto done;
 }
 
 /*! FSM to detect substring
@@ -539,22 +505,22 @@ FSM(char *tag,
  *  cxobj *xerr = NULL;
  *  int    fd;
  *  fd = open(filename, O_RDONLY);
- *  if ((ret = xml_parse_file2(fd, YB_TOP, yspec, "</config>", &xt, &xerr)) < 0)
+ *  if ((ret = clixon_xml_parse_file(fd, YB_MODULE, yspec, "</config>", &xt, &xerr)) < 0)
  *    err;
  *  xml_free(xt);
  * @endcode
- * @see xml_parse_string
- * @see xml_parse_file
+ * @see clixon_xml_parse_string
+ * @see clixon_json_parse_file
  * @note, If xt empty, a top-level symbol will be added so that <tree../> will be:  <top><tree.../></tree></top>
  * @note May block on file I/O
  */
 int 
-xml_parse_file2(int            fd, 
-		enum yang_bind yb,
-		yang_stmt     *yspec,
-		char          *endtag,
-		cxobj        **xt,
-		cxobj        **xerr)
+clixon_xml_parse_file(int        fd, 
+		      yang_bind  yb,
+		      yang_stmt *yspec,
+		      char      *endtag,
+		      cxobj    **xt,
+		      cxobj    **xerr)
 {
     int   retval = -1;
     int   ret;
@@ -568,6 +534,14 @@ xml_parse_file2(int            fd,
     int   oldxmlbuflen;
     int   failed = 0;
 
+    if (xt==NULL){
+	clicon_err(OE_XML, EINVAL, "xt is NULL");
+	return -1;
+    }
+    if (yb == YB_MODULE && yspec == NULL){
+	clicon_err(OE_XML, EINVAL, "yspec is required if yb == YB_MODULE");
+	return -1;
+    }
     if (endtag != NULL)
 	endtaglen = strlen(endtag);
     if ((xmlbuf = malloc(xmlbuflen)) == NULL){
@@ -635,25 +609,29 @@ xml_parse_file2(int            fd,
  * @code
  *  cxobj *xt = NULL;
  *  cxobj *xerr = NULL;
- *  if (xml_parse_string2(str, YB_TOP, yspec, &xt, &xerr) < 0)
+ *  if (clixon_xml_parse_string(str, YB_MODULE, yspec, &xt, &xerr) < 0)
  *    err;
  *  if (xml_rootchild(xt, 0, &xt) < 0) # If you want to remove TOP
  *    err;
  * @endcode
- * @see xml_parse_file
- * @see xml_parse_va
+ * @see clixon_xml_parse_file
+ * @see clixon_xml_parse_va
  * @note You need to free the xml parse tree after use, using xml_free()
  * @note If empty on entry, a new TOP xml will be created named "top"
  */
 int 
-xml_parse_string2(const char    *str, 
-		  enum yang_bind yb,
-		  yang_stmt     *yspec,
-		  cxobj        **xt,
-		  cxobj        **xerr)
+clixon_xml_parse_string(const char *str, 
+			yang_bind   yb,
+			yang_stmt  *yspec,
+			cxobj     **xt,
+			cxobj     **xerr)
 {
     if (xt==NULL){
 	clicon_err(OE_XML, EINVAL, "xt is NULL");
+	return -1;
+    }
+    if (yb == YB_MODULE && yspec == NULL){
+	clicon_err(OE_XML, EINVAL, "yspec is required if yb == YB_MODULE");
 	return -1;
     }
     if (*xt == NULL){
@@ -663,57 +641,15 @@ xml_parse_string2(const char    *str,
     return _xml_parse(str, yb, yspec, *xt, xerr);
 }
 
-/*! Read an XML definition from string and parse it into a parse-tree
- *
- * @param[in]     str   String containing XML definition. 
- * @param[in]     yspec Yang specification, or NULL
- * @param[in,out] xt    Pointer to XML parse tree. If empty will be created.
- * @retval        1     Parse OK and all yang assignment made
- * @retval        0     Parse OK but yang assigment not made (or only partial)
- * @retval       -1     Error with clicon_err called. Includes parse error
- *
- * @code
- *  cxobj *xt = NULL;
- *  if (xml_parse_string(str, yspec, &xt) < 0)
- *    err;
- *  if (xml_rootchild(xt, 0, &xt) < 0) # If you want to remove TOP
- *    err;
- * @endcode
- * @see xml_parse_file
- * @see xml_parse_va
- * @note You need to free the xml parse tree after use, using xml_free()
- * @note If xt is empty on entry, a new TOP xml will be created named "top" and yang binding 
- *       assumed to be TOP
- */
-int 
-xml_parse_string(const char *str, 
-		 yang_stmt  *yspec,
-		 cxobj     **xt)
-{
-    enum yang_bind yb = YB_PARENT;
-
-    if (xt==NULL){
-	clicon_err(OE_XML, EINVAL, "xt is NULL");
-	return -1;
-    }
-    if (*xt == NULL){
-	yb = YB_TOP; /* ad-hoc #1 */
-	if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
-	    return -1;
-    }
-    else{
-	if (xml_spec(*xt) == NULL)
-	    yb = YB_TOP;  /* ad-hoc #2 */
-    }
-    return _xml_parse(str, yb, yspec, *xt, NULL);
-}
-
 /*! Read XML from var-arg list and parse it into xml tree
  *
  * Utility function using stdarg instead of static string.
- * @param[in,out] xtop   Top of XML parse tree. If it is NULL, top element 
-                         called 'top' will be created. Call xml_free() after use
+
+ * @param[in]     yb     How to bind yang to XML top-level when parsing
  * @param[in]     yspec  Yang specification, or NULL
+ * @param[in,out] xtop   Top of XML parse tree. If it is NULL, top element 
+ *                       called 'top' will be created. Call xml_free() after use
+ * @param[out]    xerr   Reason for failure (yang assignment not made)
  * @param[in]     format Format string for stdarg according to printf(3)
  * @retval        1      Parse OK and all yang assignment made
  * @retval        0      Parse OK but yang assigment not made (or only partial)
@@ -721,18 +657,20 @@ xml_parse_string(const char *str,
  *
  * @code
  *  cxobj *xt = NULL;
- *  if (xml_parse_va(&xt, NULL, "<xml>%d</xml>", 22) < 0)
+ *  if (clixon_xml_parse_va(YB_NONE, NULL, &xt, NULL, "<xml>%d</xml>", 22) < 0)
  *    err;
  *  xml_free(xt);
  * @endcode
- * @see xml_parse_string
- * @see xml_parse_file
- * @note If vararg list is empty, consider using xml_parse_string()
+ * @see clixon_xml_parse_string
+ * @see clixon_xml_parse_file
+ * @note If vararg list is empty, consider using clixon_xml_parse_string()
  */
 int 
-xml_parse_va(cxobj     **xtop,
-	     yang_stmt  *yspec,		 
-	     const char *format, ...)
+clixon_xml_parse_va(yang_bind   yb,
+		    yang_stmt  *yspec,		 
+		    cxobj     **xtop,
+		    cxobj     **xerr,
+		    const char *format, ...)
 {
     int     retval = -1;
     va_list args;
@@ -750,104 +688,10 @@ xml_parse_va(cxobj     **xtop,
     va_start(args, format);
     len = vsnprintf(str, len, format, args) + 1;
     va_end(args);
-    retval = xml_parse_string(str, yspec, xtop); /* xml_parse_string2 */
+    retval = clixon_xml_parse_string(str, yb, yspec, xtop, xerr); 
  done:
     if (str)
 	free(str);
     return retval;
 }
 
-#ifdef NOTUSED
-/*! Generic parse function for xml values
- * @param[in]   xb       xml tree body node, ie containing a value to be parsed
- * @param[in]   type     Type of value to be parsed in value
- * @param[out]  cvp      CLIgen variable containing the parsed value
- * @note free cv with cv_free after use.
- * @see xml_body_int32   etc, for type-specific parse functions
- * @note range check failure returns 0
- */
-static int
-xml_body_parse(cxobj       *xb,
-	       enum cv_type type,
-	       cg_var     **cvp)
-{
-    int     retval = -1;
-    cg_var *cv = NULL;
-    int     cvret;
-    char   *bstr;
-    char   *reason = NULL;
-
-    if ((bstr = xml_body(xb)) == NULL){
-	clicon_err(OE_XML, 0, "No body found");
-	goto done;
-    }
-    if ((cv = cv_new(type)) == NULL){
-	clicon_err(OE_XML, errno, "cv_new");
-	goto done;
-    }
-    if ((cvret = cv_parse1(bstr, cv, &reason)) < 0){
-	clicon_err(OE_XML, errno, "cv_parse");
-	goto done;
-    }
-    if (cvret == 0){  /* parsing failed */
-	clicon_err(OE_XML, errno, "Parsing CV: %s", reason);
-	if (reason)
-	    free(reason);
-    }
-    *cvp = cv;
-    retval = 0;
- done:
-    if (retval < 0 && cv != NULL)
-	cv_free(cv);
-    return retval;
-}
-
-/*! Parse an xml body as int32
- * The real parsing functions are in the cligen code
- * @param[in]   xb          xml tree body node, ie containing a value to be parsed
- * @param[out]  val         Value after parsing
- * @retval      0           OK, parsed value in 'val'
- * @retval     -1           Error, one of: body not found, parse error, 
- *                          alloc error.
- * @note extend to all other cligen var types and generalize
- * @note use yang type info?
- * @note range check failure returns 0
- */
-int
-xml_body_int32(cxobj    *xb,
-	       int32_t *val)
-{
-    cg_var *cv = NULL;
-
-    if (xml_body_parse(xb, CGV_INT32, &cv) < 0)
-	return -1;
-    *val = cv_int32_get(cv);
-    cv_free(cv);
-    return 0;
-}
-
-/*! Parse an xml body as uint32
- * The real parsing functions are in the cligen code
- * @param[in]   xb          xml tree body node, ie containing a value to be parsed
- * @param[out]  val         Value after parsing
- * @retval      0           OK, parsed value in 'val'
- * @retval     -1           Error, one of: body not found, parse error, 
- *                          alloc error.
- * @note extend to all other cligen var types and generalize
- * @note use yang type info?
- * @note range check failure returns 0
- */
-int
-xml_body_uint32(cxobj    *xb,
-		uint32_t *val)
-{
-    cg_var *cv = NULL;
-
-    if (xml_body_parse(xb, CGV_UINT32, &cv) < 0)
-	return -1;
-    *val = cv_uint32_get(cv);
-    cv_free(cv);
-    return 0;
-}
-
-#endif /* NOTUSED */

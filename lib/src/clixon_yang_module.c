@@ -327,7 +327,7 @@ yang_modules_state_get(clicon_handle    h,
 	/* Parse cb, x is on the form: <top><modules-state>... 
 	 * Note, list is not sorted since it is state (should not be)
 	 */
-	if (xml_parse_string(cbuf_get(cb), yspec, &x) < 0){
+	if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, &x, NULL) < 0){
 	    if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
 		goto done;
 	    goto fail;

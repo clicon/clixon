@@ -40,7 +40,7 @@
  * On success, nothing is printed and exitcode 0
  * On failure, an error is printed on stderr and exitcode != 0
  * Failure error prints are different, it would be nice to make them more
- * uniform. (see clicon_rpc_generate_error)
+ * uniform. (see clixon_netconf_error)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -161,7 +161,7 @@ main(int    argc,
     char         *top_path = NULL;
     cxobj        *xbot;        /* Place in xtop where base cxobj is parsed */
     cvec         *nsc = NULL; 
-    enum yang_bind yb;
+    yang_bind     yb;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -260,8 +260,12 @@ main(int    argc,
 	    clicon_err(OE_YANG, errno, "open(%s)", top_input_filename);	
 	    goto done;
 	}
-	if (xml_parse_file(tfd, yspec, &xtop) < 0){
+	if ((ret = clixon_xml_parse_file(tfd, YB_MODULE, yspec, NULL, &xtop, &xerr)) < 0){
 	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
+	    goto done;
+	}
+	if (ret == 0){
+	    clixon_netconf_error(OE_NETCONF, xerr, "Parse top file", NULL);
 	    goto done;
 	}
 	if (validate_tree(h, xtop, yspec) < 0)
@@ -284,10 +288,10 @@ main(int    argc,
     }
     /* 2. Parse data (xml/json) */
     if (jsonin){
-	if ((ret = json_parse_file(fd, yspec, &xt, &xerr)) < 0)
+	if ((ret = clixon_json_parse_file(fd, top_input_filename?YB_PARENT:YB_MODULE, yspec, &xt, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    clicon_rpc_generate_error(xerr, "util_xml", NULL);
+	    clixon_netconf_error(OE_NETCONF, xerr, "util_xml", NULL);
 	    goto done;
 	}
     }
@@ -295,15 +299,15 @@ main(int    argc,
 	if (!yang_file_dir)
 	    yb = YB_NONE;
 	else if (xt == NULL)
-	    yb = YB_TOP;
+	    yb = YB_MODULE;
 	else
 	    yb = YB_PARENT;
-	if ((ret = xml_parse_file2(fd, yb, yspec, NULL, &xt, &xerr)) < 0){
+	if ((ret = clixon_xml_parse_file(fd, yb, yspec, NULL, &xt, &xerr)) < 0){
 	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
 	    goto done;
 	}
 	if (ret == 0){
-	    clicon_rpc_generate_error(xerr, "util_xml", NULL);
+	    clixon_netconf_error(OE_NETCONF, xerr, "util_xml", NULL);
 	    goto done;
 	}
     }

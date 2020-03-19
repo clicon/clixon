@@ -332,9 +332,9 @@ runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="
 new "5. Load non-compat invalid startup. Enter failsafe, startup invalid."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp non-compat-invalid.xml startup_db)
-#runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>' # sorted
-runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><c xmlns="urn:example:c">bla bla</c><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' # unsorted
-
+runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>' # sorted
+#runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><c xmlns="urn:example:c">bla bla</c><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' # unsorted
+exit
 new "6. Load non-compat invalid running. Enter failsafe, startup invalid."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp non-compat-invalid.xml running_db)
@@ -346,8 +346,8 @@ runtest true running '<data><a1 xmlns="urn:example:a">always work</a1></data>' '
 new "7. Load compatible invalid startup."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp compat-invalid.xml startup_db)
-#runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>' # sorted
-runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><c xmlns="urn:example:c">bla bla</c><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' # unsorted
+runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>' # sorted
+#runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><c xmlns="urn:example:c">bla bla</c><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' # unsorted
 
 # This testcase contains an error/exception of the clixon xml parser, and
 # I cant track down the memory leakage.

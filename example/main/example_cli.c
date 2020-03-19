@@ -98,10 +98,12 @@ example_client_rpc(clicon_handle h,
     /* User supplied variable in CLI command */
     cva = cvec_find(cvv, "a"); /* get a cligen variable from vector */
     /* Create XML for example netconf RPC */
-    if (xml_parse_va(&xtop, NULL, "<rpc message-id=\"101\" xmlns=\"%s\" username=\"%s\"><example xmlns=\"urn:example:clixon\"><x>%s</x></example></rpc>",
-		     NETCONF_BASE_NAMESPACE,
-		     clicon_username_get(h),
-		     cv_string_get(cva)) < 0)
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xtop, NULL,
+			    "<rpc message-id=\"101\" xmlns=\"%s\" username=\"%s\">"
+			    "<example xmlns=\"urn:example:clixon\"><x>%s</x></example></rpc>",
+			    NETCONF_BASE_NAMESPACE,
+			    clicon_username_get(h),
+			    cv_string_get(cva)) < 0)
 	goto done;
     /* Skip top-level */
     xrpc = xml_child_i(xtop, 0);
@@ -109,7 +111,7 @@ example_client_rpc(clicon_handle h,
     if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Get configuration", NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, "Get configuration", NULL);
 	goto done;
     }
     /* Print result */

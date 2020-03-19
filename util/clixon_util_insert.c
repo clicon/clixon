@@ -140,19 +140,14 @@ main(int argc, char **argv)
     clicon_debug(1, "xpath:%s", xpath);
     if ((yspec = yspec_new()) == NULL)
 	goto done;
-#if 1
     if (yang_spec_parse_file(h, filename, yspec) < 0)
 	goto done;
-#else
-    if (yang_parse_file(fd, "yang test", yspec) == NULL)
-	goto done;
-#endif
     /* Parse base XML */
-    if (xml_parse_string(x0str, yspec, &x0) < 0){
+    if (clixon_xml_parse_string(x0str, YB_MODULE, yspec, &x0, NULL) < 0){
 	clicon_err(OE_XML, 0, "Parsing base xml: %s", x0str);
 	goto done;
     }
-    if (xml_bind_yang(x0, yspec, NULL) < 0)
+    if (xml_bind_yang(x0, YB_MODULE, yspec, NULL) < 0)
 	goto done;
     if ((xb = xpath_first(x0, NULL, "%s", xpath)) == NULL){
 	clicon_err(OE_XML, 0, "xpath: %s not found in x0", xpath);
@@ -163,11 +158,11 @@ main(int argc, char **argv)
 	xml_print(stderr, xb);
     }
     /* Parse insert XML */
-    if (xml_parse_string(xistr, yspec, &xi) < 0){
+    if (clixon_xml_parse_string(xistr, YB_MODULE, yspec, &xi, NULL) < 0){
 	clicon_err(OE_XML, 0, "Parsing insert xml: %s", xistr);
 	goto done;
     }
-    if (xml_bind_yang(xi, yspec, NULL) < 0)
+    if (xml_bind_yang(xi, YB_MODULE, yspec, NULL) < 0)
 	goto done;
     if ((xi = xpath_first(xi, NULL, "%s", xpath)) == NULL){
 	clicon_err(OE_XML, 0, "xpath: %s not found in xi", xpath);

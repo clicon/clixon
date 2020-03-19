@@ -584,7 +584,7 @@ stream_notify(clicon_handle h,
     /* From RFC5277 */
     cprintf(cb, "<notification xmlns=\"%s\"><eventTime>%s</eventTime>%s</notification>",
 	    NOTIFICATION_RFC5277_NAMESPACE, timestr, str);
-    if (xml_parse_string(cbuf_get(cb), yspec, &xev) < 0)
+    if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, &xev, NULL) < 0)
 	goto done;
     if (xml_rootchild(xev, 0, &xev) < 0)
 	goto done;
@@ -649,7 +649,7 @@ stream_notify_xml(clicon_handle h,
     cprintf(cb, "<notification xmlns=\"%s\"><eventTime>%s</eventTime>NULL</notification>",
 	    NOTIFICATION_RFC5277_NAMESPACE,
 	    timestr); /* XXX str is always NULL */
-    if (xml_parse_string(cbuf_get(cb), yspec, &xev) < 0)
+    if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, yspec, &xev, NULL) < 0)
 	goto done;
     if (xml_rootchild(xev, 0, &xev) < 0)
 	goto done;

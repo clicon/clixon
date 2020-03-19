@@ -40,7 +40,7 @@
  * On success, nothing is printed and exitcode 0
  * On failure, an error is printed on stderr and exitcode != 0
  * Failure error prints are different, it would be nice to make them more
- * uniform. (see clicon_rpc_generate_error)
+ * uniform. (see clixon_netconf_error)
  */
 
 #ifdef HAVE_CONFIG_H

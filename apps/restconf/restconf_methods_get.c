@@ -134,7 +134,7 @@ api_data_get2(clicon_handle  h,
 	if ((xtop = xml_new("top", NULL, CX_ELMNT)) == NULL)
 	    goto done;
 	/* Translate api-path to xml, but to validate the api-path, note: strict=1 
-	 * xtop and xbot unnecessary fir this function but neede by function
+	 * xtop and xbot unnecessary for this function but needed by function
 	 */
 	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
 	    goto done;

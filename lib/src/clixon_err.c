@@ -139,17 +139,16 @@ clicon_err_reset(void)
  *
  * @param[in]    fn       Inline function name (when called from clicon_err() macro)
  * @param[in]    line     Inline file line number (when called from clicon_err() macro)
- * @param[in]    err      Error number, typically errno
- * @param[in]    suberr   Sub-error number   
+ * @param[in]    category See enum clicon_err
+ * @param[in]    errno    Error number, typically errno
  * @param[in]    reason   Error string, format with argv
  * @see clicon_err_reser  Resetting the global error variables.
  */
-int
-clicon_err_fn(const char *fn, 
-	      const int   line, 
-	      int         category, 
-	      int         suberr, 
-	      char       *reason, ...)
+int clicon_err_fn(const char *fn,
+		  const int  line,
+		  int        category,
+		  int        err,
+		  char      *format, ...) 
 {
     va_list args;
     int     len;
@@ -158,11 +157,11 @@ clicon_err_fn(const char *fn,
 
     /* Set the global variables */
     clicon_errno    = category;
-    clicon_suberrno = suberr;
+    clicon_suberrno = errno;
 
     /* first round: compute length of error message */
-    va_start(args, reason);
-    len = vsnprintf(NULL, 0, reason, args);
+    va_start(args, format);
+    len = vsnprintf(NULL, 0, format, args);
     va_end(args);
 
     /* allocate a message string exactly fitting the message length */
@@ -171,9 +170,9 @@ clicon_err_fn(const char *fn,
 	goto done;
     }
 
-    /* second round: compute write message from reason and args */
-    va_start(args, reason);
-    if (vsnprintf(msg, len+1, reason, args) < 0){
+    /* second round: compute write message from format and args */
+    va_start(args, format);
+    if (vsnprintf(msg, len+1, format, args) < 0){
 	va_end(args);
 	fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
 	goto done;
@@ -182,14 +181,14 @@ clicon_err_fn(const char *fn,
     strncpy(clicon_err_reason, msg, ERR_STRLEN-1);
 
     /* Actually log it */
-    if (suberr){
-	/* Here we could take care of specific suberr, like application-defined errors */
+    if (errno){
+	/* Here we could take care of specific errno, like application-defined errors */
 	clicon_log(LOG_ERR, "%s: %d: %s: %s: %s", 
 		   fn,
 		   line,
 		   clicon_strerror(category),
 		   msg,
-		   suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
+		   errno==XMLPARSE_ERRNO?"XML parse error":strerror(errno));
     }
     else
 	clicon_log(LOG_ERR, "%s: %d: %s: %s", 

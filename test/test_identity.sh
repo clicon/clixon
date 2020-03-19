@@ -253,14 +253,14 @@ new "CLI set wrong acl-type"
 expectfn "$clixon_cli -1 -f $cfg -l o set acls acl x type undefined" 0 "^$"
 
 new "cli validate acl-type"
-expectfn "$clixon_cli -1 -f $cfg -l o validate" 255 "Netconf error: application operation-failed Identityref validation failed, undefined not derived from acl-base . Validate failed. Edit and try again or discard changes"
+expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 255 " Netconf error: Validate failed. Edit and try again or discard changes: application operation-failed Identityref validation failed, undefined not derived from acl-base"
 
 # test empty identityref list
 new "cli set empty"
 expectfn "$clixon_cli -1 -f $cfg -l o set e undefined" 0 "^$"
 
 new "cli validate empty"
-expectfn "$clixon_cli -1 -f $cfg -l o validate" 255 "Netconf error: application operation-failed Identityref validation failed, undefined not derived from acl-base . Validate failed. Edit and try again or discard changes"
+expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 255 "Netconf error: Validate failed. Edit and try again or discard changes: application operation-failed Identityref validation failed, undefined not derived from acl-base"
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

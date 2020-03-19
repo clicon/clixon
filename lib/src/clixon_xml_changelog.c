@@ -447,7 +447,7 @@ clixon_xml_changelog_init(clicon_handle h)
 	    clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	    goto done;
 	}    
-	if (xml_parse_file(fd, yspec, &xt) < 0)
+	if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xt) < 0)
 	    goto done;

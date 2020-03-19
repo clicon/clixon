@@ -138,7 +138,7 @@ netconf_input_packet(clicon_handle h,
     }
     str = str0;
     /* Parse incoming XML message */
-    if (xml_parse_string(str, yspec, &xreq) < 0){ 
+    if (clixon_xml_parse_string(str, YB_MODULE, yspec, &xreq, NULL) < 0){ 
 	free(str0);
 	if (netconf_operation_failed(cbret, "rpc", clicon_err_reason)< 0)
 	    goto done;

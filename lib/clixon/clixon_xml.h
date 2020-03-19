@@ -84,14 +84,47 @@ enum cxobj_type {CX_ERROR=-1,
 		 CX_ATTR, 
 		 CX_BODY};
 
-/* How to bind yang to XML top-level when parsing */
+/* How to bind yang to XML top-level when parsing 
+ * Assume an XML tree x with parent xp (or NULL) and a set of children c1,c2:   
+ *
+ *                (XML)  xp  
+ *                       |
+ *                       x
+ *                      / \
+ *                     c1  c2
+ * (1) If you make a binding using YB_MODULE, you assume there is a loaded module "ym" with a top-level
+ * data resource "y" that the XML node x can match to:
+ *
+ *                (XML)  xp          ym (YANG)
+ *                       |           |
+ *                       x - - - - - y
+ *                      / \         / \
+ *                     x1  x2 - -  y1  y2
+ * In that case, "y" is a container, list, leaf or leaf-list with same name as "x". 
+ *
+ * (2) If you make a binding using YB_PARENT, you assume xp already have a YANG binding (eg to "yp"):
+ *
+ *                (XML)  xp - - - -  yp (YANG)
+ *                       |           
+ *                       x           
+ * so that the yang binding of "x" is a child of "yp":
+ *
+ *                (XML)  xp - - - -  yp (YANG)
+ *                       |           |
+ *                       x  - - - -  y         
+ *                      / \         / \
+ *                     x1  x2 - -  y1  y2
+ * XXX: lacks support for incoming restconf rpc, see api_operations_post_input)
+ */
 enum yang_bind{ 
-    YB_UNKNOWN=0, /* System derive binding: top if parent not exist or no spec, otherwise parent */
-    YB_NONE,    /* Dont try to do Yang binding */
-    YB_PARENT,  /* Get yang binding from parents yang */
-    YB_TOP,     /* Get yang binding from top-level modules */
-    YB_RPC,     /* Assume top-level xml is an netconf RPC message */
+    YB_MODULE=0, /* Search for matching yang binding among top-level symbols of Yang modules */
+    YB_PARENT,   /* Assume yang binding of existing parent and match its children by name */
+    YB_NONE,     /* Dont do Yang binding */
+#ifdef NYI
+    YB_RPC,      /* Assume top-level xml is an netconf RPC message (NYI) */
+#endif
 };
+typedef enum yang_bind yang_bind;
 
 #define CX_ANY CX_ERROR /* catch all and error is same */
 

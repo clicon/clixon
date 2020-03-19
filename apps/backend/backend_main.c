@@ -211,7 +211,7 @@ nacm_load_external(clicon_handle h)
 	goto done;
     fd = fileno(f);
     /* Read configfile */
-    if (xml_parse_file(fd, yspec, &xt) < 0)
+    if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
 	goto done;
     if (xt == NULL){
 	clicon_err(OE_XML, 0, "No xml tree in %s", filename);

@@ -250,11 +250,13 @@ text_read_modstate(clicon_handle       h,
     else if (xmcache && msd){
 	msd->md_status = 1;  /* There is module state in the file */
 	/* Create diff trees */
-	if (xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>", yspec, &msd->md_del) < 0)
+	if (clixon_xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>",
+				    YB_MODULE, yspec, &msd->md_del, NULL) < 0)
 	    goto done;
 	if (xml_rootchild(msd->md_del, 0, &msd->md_del) < 0) 
 	    goto done;
-	if (xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>", yspec, &msd->md_mod) < 0)
+	if (clixon_xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>",
+				    YB_MODULE, yspec, &msd->md_mod, NULL) < 0)
 	    goto done;
 	if (xml_rootchild(msd->md_mod, 0, &msd->md_mod) < 0) 
 	    goto done;
@@ -349,10 +351,10 @@ xmldb_readfile(clicon_handle      h,
 	goto done;
     }    
     if (strcmp(format, "json")==0){
-	if ((ret = json_parse_file(fd, yspec, &x0, NULL)) < 0) /* XXX: ret == 0*/
+	if ((ret = clixon_json_parse_file(fd, YB_MODULE, yspec, &x0, NULL)) < 0) /* XXX: ret == 0*/
 	    goto done;
     }
-    else if ((xml_parse_file2(fd, YB_TOP, yspec, "</config>", &x0, NULL)) < 0)
+    else if ((clixon_xml_parse_file(fd, YB_MODULE, yspec, "</config>", &x0, NULL)) < 0)
 	goto done;
 
     /* Always assert a top-level called "config". 

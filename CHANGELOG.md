@@ -76,23 +76,28 @@ features include optimized search functions and a repair callback.
   * If you have used, `ys`, add `xml_spec_set(x, ys)` after the statement
   * If you have `xml_type_set(x, TYPE)`  after the statement, you can remove it and set it directly as: `xml_new(name, xp, TYPE)`
 * `xml_type_set()`has been removed in the API. The type must be set at creation timw with `xml_new`
+* `clicon_rpc_generate_error()` renamed to `clixon_netconf_error()` and added a category parameter
 * All uses of `api_path2xpath_cvv()` should be replaced by `api_path2xpath()`
    * `api_path2xpath()` added an `xerr` argument.
-* Parse and validation API more capable
-  * `xml_spec_populate` has been split into a family of functions
-    * `xml_bind_yang_rpc()`
-    * `xml_bind_yang_rpc_reply()`
-    * `xml_bind_yang0()`
-    * `xml_bind_yang0_parent()`
-    * `xml_bind_yang()`
-    * `xml_bind_yang_parent()`
-    * All have three-value return values: -1: error, 0: parse OK, 1: parse and YANG binding OK.
-  * `xml_parse` and `json_parse` API changes
-    * Three value returns: -1: error, 0: parse OK, 1: parse and YANG binding OK.
-    * Extended `xml_parse_file2` and `xml_parse_string2` extended API functions with all options available.
-      * New concept called `yang_bind` that defines how XML symbols are bound to YANG after parsing
-    * Existing API same except `xml_parse_file` `endtag` argument moved to `xml_parse_file2`
-* Changed `clicon_session_id_get(clicon_handle h, uint32_t *id)`
+* XML and JSON parsing functions have been rearranged/cleaned up as follows:
+   * Three value returns: -1: error, 0: parse OK, 1: parse and YANG binding OK.
+   * New concept called `yang_bind` that defines how XML symbols are bound to YANG after parsing (see below)
+   * New XML parsing API:
+      * `clixon_xml_parse_string()`
+      * `clixon_xml_parse_file()`
+   * New JSON parsing API, with same signature as XML parsing:
+      * `clixon_json_parse_string()`
+      * `clixon_xml_parse_file()`
+* Yang binding type has been introduced as a new concept and used in the API with the following values:
+   * `YB_MODULE` : Search for matching yang binding among top-level symbols of Yang modules
+   * `YB_PARENT` : Assume yang binding of existing parent and match its children by name
+   * `YB_NONE`   : Don't do YANG binding
+* XML YANG binding API have been rearranged as follows:
+   * `xml_bind_yang_rpc()`
+   * `xml_bind_yang_rpc_reply()`
+   * `xml_bind_yang()`
+   * `xml_bind_yang0()`
+   * All have three-value return values: -1: error, 0: YANG binding failed, 1: parse and YANG binding OK.
 
 ### Minor changes
 

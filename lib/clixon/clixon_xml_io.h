@@ -48,18 +48,15 @@ int xml_print(FILE *f, cxobj *xn);
 int clicon_xml2cbuf(cbuf *cb, cxobj *x, int level, int prettyprint, int32_t depth);
 int xmltree2cbuf(cbuf *cb, cxobj *x, int level);
 
-int xml_parse_file(int fd, yang_stmt *yspec, cxobj **xt);
-int xml_parse_file2(int fd, enum yang_bind yb, yang_stmt *yspec, char *endtag, cxobj **xt, cxobj **xerr);
-int xml_parse_string2(const char *str, enum yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
-int xml_parse_string(const char *str, yang_stmt *yspec, cxobj **xt);
+int clixon_xml_parse_file(int fd, yang_bind yb, yang_stmt *yspec, char *endtag, cxobj **xt, cxobj **xerr);
+int clixon_xml_parse_string(const char *str, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
+
 #if defined(__GNUC__) && __GNUC__ >= 3
-int       xml_parse_va(cxobj **xt, yang_stmt *yspec, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
+int clixon_xml_parse_va(yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr, 
+			const char *format, ...)  __attribute__ ((format (printf, 5, 6)));
 #else
-int       xml_parse_va(cxobj **xt, yang_stmt *yspec, const char *format, ...);
-#endif
-#ifdef NOTUSED
-int xml_body_int32(cxobj *xb, int32_t *val);
-int xml_body_uint32(cxobj *xb, uint32_t *val);
+int clixon_xml_parse_va(yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr,
+			const char *format, ...);
 #endif
 
 #endif	/* _CLIXON_XML_IO_H_ */

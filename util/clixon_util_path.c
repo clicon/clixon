@@ -212,7 +212,7 @@ main(int    argc,
      * If fd=0, then continue reading from stdin (after CR)
      * If fd>0, reading from file opened as argv[1]
      */
-    if (xml_parse_file(fd, NULL, &x) < 0){
+    if (clixon_xml_parse_file(fd, YB_NONE, NULL, NULL, &x, NULL) < 0){
 	fprintf(stderr, "Error: parsing: %s\n", clicon_err_reason);
 	return -1;
     }
@@ -220,7 +220,7 @@ main(int    argc,
     /* Validate XML as well */
     if (yang_file_dir){
 	/* Populate */
-	if (xml_bind_yang(x, yspec, NULL) < 0)
+	if (xml_bind_yang(x, YB_MODULE, yspec, NULL) < 0)
 	    goto done;
 	/* Add default values */
 	if (xml_apply(x, CX_ELMNT, xml_default, h) < 0)

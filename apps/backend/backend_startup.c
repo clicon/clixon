@@ -176,7 +176,7 @@ load_extraxml(clicon_handle h,
 	goto done;
     }
     yspec = clicon_dbspec_yang(h);
-    if (xml_parse_file(fd, yspec, &xt) < 0)
+    if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
 	goto done;
     /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)

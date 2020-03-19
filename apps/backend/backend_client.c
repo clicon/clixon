@@ -186,7 +186,7 @@ client_get_capabilities(clicon_handle h,
     cprintf(cb, "<capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability>");
     cprintf(cb, "<capability>urn:ietf:params:restconf:capability:depth:1.0</capability>");
     cprintf(cb, "</capabilities>");
-    if (xml_parse_string2(cbuf_get(cb), YB_PARENT, NULL, &xrstate, NULL) < 0)
+    if (clixon_xml_parse_string(cbuf_get(cb), YB_PARENT, NULL, &xrstate, NULL) < 0)
 	goto done;
     retval = 0;
  done:
@@ -236,7 +236,7 @@ client_get_streams(clicon_handle   h,
 	goto done;
     cprintf(cb,"</%s>", top);
 
-    if (xml_parse_string(cbuf_get(cb), yspec, &x) < 0){
+    if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, &x, NULL) < 0){
 	if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
 	    goto done;
 	goto fail;
@@ -320,7 +320,7 @@ clixon_stats_get(clicon_handle h,
     clixon_stats_get_db(h, "candidate", cb);
     clixon_stats_get_db(h, "startup", cb);
     cprintf(cb, "</clixon-stats>");
-    if ((ret = xml_parse_string2(cbuf_get(cb), YB_TOP, yspec, xret, NULL)) < 0)
+    if ((ret = clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL)) < 0)
 	goto done;
     if (ret == 0){
 	clicon_err(OE_XML, EINVAL, "Internal error");
@@ -376,7 +376,7 @@ client_statedata(clicon_handle h,
 	    goto done;
 	}
 	cprintf(cb, "<netconf xmlns=\"%s\"/>", namespace);
-	if (xml_parse_string2(cbuf_get(cb), YB_TOP, yspec, xret, NULL) < 0)
+	if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL) < 0)
 	    goto done;
 	if ((ret = client_get_streams(h, yspec, xpath, ymod, "netconf", xret)) < 0)
 	    goto done;
@@ -394,7 +394,7 @@ client_statedata(clicon_handle h,
 	}
 	cbuf_reset(cb);
 	cprintf(cb, "<restconf-state xmlns=\"%s\"/>", namespace);
-	if (xml_parse_string2(cbuf_get(cb), YB_TOP, yspec, xret, NULL) < 0)
+	if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL) < 0)
 	    goto done;
 	if ((ret = client_get_streams(h, yspec, xpath, ymod, "restconf-state", xret)) < 0)
 	    goto done;
@@ -670,7 +670,7 @@ from_client_edit_config(clicon_handle h,
 	    xml_spec_set(xc, NULL);
 	/* Populate XML with Yang spec (why not do this in parser?) 
 	 */
-	if (xml_bind_yang(xc, yspec, NULL) < 0)
+	if (xml_bind_yang(xc, YB_MODULE, yspec, NULL) < 0)
 	    goto done;
 	/* Maybe validate xml here as in text_modify_top? */
 	if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)

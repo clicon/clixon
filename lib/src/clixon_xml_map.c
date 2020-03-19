@@ -1201,18 +1201,17 @@ strip_whitespace(cxobj *xt)
  * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
  * @retval     -1      Error
  * @code
- *   if (xml_bind_yang(x, yspec, NULL) < 0)
+ *   if (xml_bind_yang(x, YB_MODULE, yspec, NULL) < 0)
  *     err;
  * @endcode
  * @note For subs to anyxml nodes will not have spec set
  * There are several functions in the API family
  * @see xml_bind_yang_rpc     for incoming rpc 
- * @see xml_bind_yang_parent  Not top-level and parent is properly yang populated
  * @see xml_bind_yang0        If the calling xml object should also be populated
- * @see xml_bind_yang0_parent
  */
 int
 xml_bind_yang(cxobj     *xt, 
+	      yang_bind  yb,
 	      yang_stmt *yspec,
 	      cxobj    **xerr)
 {
@@ -1224,33 +1223,7 @@ xml_bind_yang(cxobj     *xt,
     strip_whitespace(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	if ((ret = xml_bind_yang0(xc, yspec, xerr)) < 0)
-	    goto done;
-	if (ret == 0)
-	    failed++;
-    }
-    retval = (failed==0) ? 1 : 0;
- done:
-    return retval;
-}
-
-/*! Find yang spec association of tree of XML nodes
- *
- * Populate xt:s children outgoing from that xt is populated
- */
-int
-xml_bind_yang_parent(cxobj  *xt,
-		     cxobj **xerr)
-{
-    int    retval = -1;
-    cxobj *xc;           /* xml child */
-    int    ret;
-    int    failed = 0; /* we continue loop after failure, should we stop at fail?`*/
-    
-    strip_whitespace(xt);
-    xc = NULL;     /* Apply on children */
-    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	if ((ret = xml_bind_yang0_parent(xc, xerr)) < 0)
+	if ((ret = xml_bind_yang0(xc, yb, yspec, xerr)) < 0)
 	    goto done;
 	if (ret == 0)
 	    failed++;
@@ -1263,15 +1236,22 @@ xml_bind_yang_parent(cxobj  *xt,
  fail:
     retval = 0;
     goto done;
-
 }
 
 /*! Find yang spec association of tree of XML nodes
  *
+ * @param[in]   xt     XML tree node
+ * @param[in]   yb     How to bind yang to XML top-level when parsing
+ * @param[in]   yspec  Yang spec
+ * @param[out]  xerr   Reason for failure, or NULL
+ * @retval      1      OK yang assignment made
+ * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
+ * @retval     -1      Error
  * Populate xt as top-level node
  */
 int
 xml_bind_yang0(cxobj     *xt, 
+	       yang_bind  yb,
 	       yang_stmt *yspec,
 	       cxobj    **xerr)
 {
@@ -1280,49 +1260,26 @@ xml_bind_yang0(cxobj     *xt,
     int    ret;
     int    failed = 0; /* we continue loop after failure, should we stop at fail?`*/
 
-    if ((ret = populate_self_top(xt, yspec, xerr)) < 0) 
-	goto done;
-    if (ret == 0)
-	goto fail;
-    strip_whitespace(xt);
-    xc = NULL;     /* Apply on children */
-    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	if ((ret = xml_bind_yang0_parent(xc, xerr)) < 0)
+    switch (yb){
+    case YB_MODULE:
+	if ((ret = populate_self_top(xt, yspec, xerr)) < 0) 
 	    goto done;
-	if (ret == 0)
-	    failed++;
-    }
-    if (failed)
-	goto fail;
-    retval = 1;
- done:
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-
-/*! Find yang spec association of tree of XML nodes
- *
- * Populate xt as if xt:s parent is populated
- */
-int
-xml_bind_yang0_parent(cxobj  *xt,
-		      cxobj **xerr)
-{
-    int    retval = -1;
-    cxobj *xc;           /* xml child */
-    int    ret;
-    int    failed = 0; /* we continue loop after failure, should we stop at fail?`*/
-    
-    if ((ret = populate_self_parent(xt, xerr)) < 0)
+	break;
+    case YB_PARENT:
+	if ((ret = populate_self_parent(xt, xerr)) < 0)
+	    goto done;
+	break;
+    default:
+	clicon_err(OE_XML, EINVAL, "Invalid yang binding: %d", yb);
 	goto done;
+	break;
+    }
     if (ret == 0)
 	goto fail;
     strip_whitespace(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	if ((ret = xml_bind_yang0_parent(xc, xerr)) < 0)
+	if ((ret = xml_bind_yang0(xc, YB_PARENT, yspec, xerr)) < 0)
 	    goto done;
 	if (ret == 0)
 	    failed++;
@@ -1356,8 +1313,8 @@ xml_bind_yang0_parent(cxobj  *xt,
  */
 int
 xml_bind_yang_rpc(cxobj     *xrpc,
-		      yang_stmt *yspec,
-		      cxobj    **xerr)
+		  yang_stmt *yspec,
+		  cxobj    **xerr)
 {
     int        retval = -1;
     yang_stmt *yrpc = NULL;    /* yang node */
@@ -1385,7 +1342,7 @@ xml_bind_yang_rpc(cxobj     *xrpc,
 		 * recursive population to work. Therefore, assign input yang
 		 * to rpc level although not 100% intuitive */
 		xml_spec_set(x, yi); 
-		if ((ret = xml_bind_yang_parent(x, xerr)) < 0)
+		if ((ret = xml_bind_yang(x, YB_PARENT, NULL, xerr)) < 0)
 		    goto done;
 		if (ret == 0)
 		    goto fail;
@@ -1452,7 +1409,7 @@ xml_bind_yang_rpc_reply(cxobj     *xrpc,
     }
     if (yo != NULL){
 	xml_spec_set(xrpc, yo); 
-	if ((ret = xml_bind_yang(xrpc, yspec, xerr)) < 0)
+	if ((ret = xml_bind_yang(xrpc, YB_MODULE, yspec, xerr)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;

@@ -254,12 +254,12 @@ main(int argc, char **argv)
 		clicon_err(OE_UNIX, errno, "open(%s)", xmlfilename);
 		goto done;
 	    }
-	    if (xml_parse_file(fd, yspec, &xt) < 0)
+	    if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
 		goto done;
 	    close(fd);
 	}
 	else
-	    if (xml_parse_string(argv[2], yspec, &xt) < 0)
+	    if (clixon_xml_parse_string(argv[2], YB_MODULE, yspec, &xt, NULL) < 0)
 		goto done;
 	if (xml_rootchild(xt, 0, &xt) < 0)
 	    goto done;

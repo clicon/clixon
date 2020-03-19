@@ -330,7 +330,7 @@ example_statedata(clicon_handle h,
 	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
 	    goto done;
 	}
-	if (xml_parse_file(fd, yspec, &xstate) < 0)
+	if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xstate, NULL) < 0)
 	    goto done;
     }
     else {
@@ -353,16 +353,18 @@ example_statedata(clicon_handle h,
 		cprintf(cb, "</interface>");
 	    }
 	    cprintf(cb, "</interfaces>");
-	    if (xml_parse_string(cbuf_get(cb), NULL, &xstate) < 0)
+	    if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, &xstate, NULL) < 0)
 		goto done;
 	}
 	/* State in test_yang.sh , test_restconf.sh and test_order.sh */
 	if (yang_find_module_by_namespace(yspec, "urn:example:clixon") != NULL){
-	    if (xml_parse_string("<state xmlns=\"urn:example:clixon\">"
-				 "<op>42</op>"
-				 "<op>41</op>"
-				 "<op>43</op>" /* should not be ordered */
-				 "</state>", NULL, &xstate) < 0)
+	    if (clixon_xml_parse_string("<state xmlns=\"urn:example:clixon\">"
+					"<op>42</op>"
+					"<op>41</op>"
+					"<op>43</op>" /* should not be ordered */
+					"</state>",
+					YB_NONE,
+					NULL, &xstate, NULL) < 0)
 		goto done; /* For the case when urn:example:clixon is not loaded */
 	}
 	/* Event state from RFC8040 Appendix B.3.1 
@@ -375,7 +377,7 @@ example_statedata(clicon_handle h,
 	    cprintf(cb, "<event><name>interface-down</name><event-count>90</event-count></event>");
 	    cprintf(cb, "<event><name>interface-up</name><event-count>77</event-count></event>");
 	    cprintf(cb, "</events>");
-	    if (xml_parse_string(cbuf_get(cb), NULL, &xstate) < 0)
+	    if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, &xstate, NULL) < 0)
 		goto done;
 	}
     }
@@ -757,9 +759,9 @@ example_reset(clicon_handle h,
 
     if (!_reset)
 	goto ok; /* Note not enabled by default */
-    if (xml_parse_string("<config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface>"
-			 "<name>lo</name><type>ex:loopback</type>"
-			 "</interface></interfaces></config>", NULL, &xt) < 0)
+    if (clixon_xml_parse_string("<config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">"
+				"<interface><name>lo</name><type>ex:loopback</type>"
+				"</interface></interfaces></config>", YB_NONE, NULL, &xt, NULL) < 0)
 	goto done;
     /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)

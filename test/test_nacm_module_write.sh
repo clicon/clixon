@@ -248,7 +248,7 @@ new "create list permit"
 expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-example:translate/translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val42"}]}')" 0 'HTTP/1.1 201 Created'
 
 new "default update list deny"
-expectpart "$(curl -u wilma:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-example:translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val99"}]}')" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}'
+expectpart "$(curl -u wilma:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-example:translate/translate=key42 -d '{"clixon-example:translate": [{"k":"key42","value":"val99"}]}')" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}'
 
 new "default delete list deny"
 expectpart "$(curl -u wilma:bar -siS -X DELETE http://localhost/restconf/data/clixon-example:translate=key42)" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}'

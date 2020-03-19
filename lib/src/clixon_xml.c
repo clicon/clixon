@@ -1416,7 +1416,7 @@ xml_rm_children(cxobj          *xp,
  * @retval    -1    Error
  * @code
  *   cxobj *xt = NULL; 
- *   if (xml_parse_string("<a>2</a>", NULL, &xt) < 0)
+ *   if (clixon_xml_parse_string("<a>2</a>", YB_NONE, NULL, &xt, NULL) < 0)
  *      err;
  *  # Here xt will be: <top><a>2</a></top>
  *   if (xml_rootchild(xt, 0, &xt) < 0)

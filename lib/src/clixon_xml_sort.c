@@ -100,8 +100,10 @@ xml_cv_cache(cxobj   *x,
 	body="";
     if ((cv = xml_cv(x)) != NULL)
 	goto ok;
-    if ((y = xml_spec(x)) == NULL)
-	goto ok;
+    if ((y = xml_spec(x)) == NULL){
+	clicon_err(OE_XML, EFAULT, "Yang binding missing for xml symbol %s, body:%s", xml_name(x), body);
+	goto done;
+    }
     if (yang_type_get(y, NULL, &yrestype, &options, NULL, NULL, NULL, &fraction) < 0)
 	goto done;
     yang2cv_type(yang_argument_get(yrestype), &cvtype);
@@ -195,8 +197,8 @@ xml_cmp(cxobj  *x1,
     char       *b1;
     char       *b2;
     char       *keyname;
-    cg_var     *cv1; 
-    cg_var     *cv2;
+    cg_var     *cv1 = NULL; 
+    cg_var     *cv2 = NULL;
     int         nr1 = 0;
     int         nr2 = 0;
     cxobj      *x1b;
@@ -1324,7 +1326,7 @@ xml_find_index_yang(cxobj       *xp,
     if (revert)
 	goto revert;
 #endif
-    if (xml_parse_string(cbuf_get(cb), yc, &xc) < 0)
+    if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, &xc, NULL) < 0)
 	goto done;
     if (xml_rootchild(xc, 0, &xc) < 0)
 	goto done;

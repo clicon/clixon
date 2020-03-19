@@ -143,7 +143,7 @@ clicon_rpc_msg(clicon_handle      h,
 	/* Cannot populate xret here because need to know RPC name (eg "lock") in order to associate yang
 	 * to reply.
 	 */
-	if (xml_parse_string2(retdata, YB_NONE, NULL, &xret, NULL) < 0)
+	if (clixon_xml_parse_string(retdata, YB_NONE, NULL, &xret, NULL) < 0)
 	    goto done;
     }
     if (xret0){
@@ -280,38 +280,6 @@ clicon_rpc_netconf_xml(clicon_handle  h,
     return retval;
 }
 
-/*! Generate clicon error from Netconf error message
- *
- * Get a text error message from netconf error message and generate error on the form:
- *   <msg>: "<arg>": <netconf-error>   or   <msg>: <netconf-error>
- * @param[in]  xerr    Netconf error xml tree on the form: <rpc-error> 
- * @param[in]  format  Format string 
- * @param[in]  arg     String argument to format (optional)
- */
-int
-clicon_rpc_generate_error(cxobj       *xerr,
-			  const char  *msg,
-			  const char  *arg)
-{
-    int    retval = -1;
-    cbuf  *cb = NULL;
-
-    if ((cb = cbuf_new()) ==NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }
-    if (netconf_err2cb(xerr, cb) < 0)
-	goto done;
-    cprintf(cb, ". %s", msg);
-    if (arg)
-	cprintf(cb, " \"%s\" ", arg);
-    clicon_err(OE_NETCONF, 0, "%s", cbuf_get(cb));
-    retval = 0;
- done:
-    if (cb)
-	cbuf_free(cb);
-    return retval;
-}
 
 /*! Get database configuration
  * Same as clicon_proto_change just with a cvec instead of lvec
@@ -333,7 +301,7 @@ clicon_rpc_generate_error(cxobj       *xerr,
  *   if (clicon_rpc_get_config(h, NULL, "running", "/hello/world", nsc, &xt) < 0)
  *       err;
  *   if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
- *	clicon_rpc_generate_error(xerr, "msg", "/hello/world");
+ *	clixon_netconf_error(OE_NETCONF, xerr, "msg", "/hello/world");
  *      err;
  *   }
  *   if (xt)
@@ -342,7 +310,7 @@ clicon_rpc_generate_error(cxobj       *xerr,
  *     xml_nsctx_free(nsc);
  * @endcode
  * @see clicon_rpc_get
- * @see clicon_rpc_generate_error
+ * @see clixon_netconf_error
  * @note the netconf return message is yang populated, as well as the return data
  */
 int
@@ -403,7 +371,7 @@ clicon_rpc_get_config(clicon_handle h,
     }
     else{
 	yspec = clicon_dbspec_yang(h);
-	if ((ret = xml_bind_yang(xd, yspec, &xerr)) < 0)
+	if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -477,7 +445,7 @@ clicon_rpc_edit_config(clicon_handle       h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Editing configuration", NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, "Editing configuration", NULL);
 	goto done;
     }
     retval = 0;
@@ -527,7 +495,7 @@ clicon_rpc_copy_config(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Copying configuration", NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, "Copying configuration", NULL);
 	goto done;
     }
     retval = 0;
@@ -570,7 +538,7 @@ clicon_rpc_delete_config(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Deleting configuration", NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, "Deleting configuration", NULL);
 	goto done;
     }
     retval = 0;
@@ -609,7 +577,7 @@ clicon_rpc_lock(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Locking configuration", NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, "Locking configuration", NULL);
 	goto done;
     }
     retval = 0;
@@ -647,7 +615,7 @@ clicon_rpc_unlock(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Configuration unlock", NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, "Configuration unlock", NULL);
 	goto done;
     }
     retval = 0;
@@ -681,7 +649,7 @@ clicon_rpc_unlock(clicon_handle h,
  *  if (clicon_rpc_get(h, "/hello/world", nsc, CONTENT_ALL, -1, &xt) < 0)
  *     err;
  *  if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
- *     clicon_rpc_generate_error(xerr, "clicon_rpc_get", NULL);
+ *     clixon_netconf_error(OE_NETCONF, xerr, "clicon_rpc_get", NULL);
  *     err;
  *  }
  *  if (xt)
@@ -690,7 +658,7 @@ clicon_rpc_unlock(clicon_handle h,
  *     xml_nsctx_free(nsc);
  * @endcode
  * @see clicon_rpc_get_config which is almost the same as with content=config, but you can also select dbname
- * @see clicon_rpc_generate_error
+ * @see clixon_netconf_error
  * @note the netconf return message is yang populated, as well as the return data
  */
 int
@@ -759,7 +727,7 @@ clicon_rpc_get(clicon_handle   h,
     }
     else{
 	yspec = clicon_dbspec_yang(h);
-	if ((ret = xml_bind_yang(xd, yspec, &xerr)) < 0)
+	if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
@@ -811,7 +779,7 @@ clicon_rpc_close_session(clicon_handle h)
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Close session", NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, "Close session", NULL);
 	goto done;
     }
     retval = 0;
@@ -850,7 +818,7 @@ clicon_rpc_kill_session(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Kill session", NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, "Kill session", NULL);
 	goto done;
     }
     retval = 0;
@@ -888,7 +856,7 @@ clicon_rpc_validate(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, CLIXON_ERRSTR_VALIDATE_FAILED, NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, CLIXON_ERRSTR_VALIDATE_FAILED, NULL);
 	goto done;	
     }
     retval = 0;
@@ -924,7 +892,7 @@ clicon_rpc_commit(clicon_handle h)
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, CLIXON_ERRSTR_COMMIT_FAILED, NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, CLIXON_ERRSTR_COMMIT_FAILED, NULL);
 	goto done;
     }
     retval = 0;
@@ -960,7 +928,7 @@ clicon_rpc_discard_changes(clicon_handle h)
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Discard changes", NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, "Discard changes", NULL);
 	goto done;
     }
     retval = 0;
@@ -1010,7 +978,7 @@ clicon_rpc_create_subscription(clicon_handle    h,
     if (clicon_rpc_msg(h, msg, &xret, s0) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Create subscription", NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, "Create subscription", NULL);
 	goto done;
     }
     retval = 0;
@@ -1048,7 +1016,7 @@ clicon_rpc_debug(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Debug", NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, "Debug", NULL);
 	goto done;
     }
     if (xpath_first(xret, NULL, "//rpc-reply/ok") == NULL){
@@ -1091,7 +1059,7 @@ clicon_hello_req(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clicon_rpc_generate_error(xerr, "Hello", NULL);
+	clixon_netconf_error(OE_NETCONF, xerr, "Hello", NULL);
 	goto done;
     }
     if ((x = xpath_first(xret, NULL, "hello/session-id")) == NULL){
