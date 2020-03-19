@@ -455,6 +455,14 @@ module clixon-config {
 		"Name of CLI history file. If not given, history is not saved.
                  The number of lines is saved is given by CLICON_CLI_HIST_SIZE.";
 	}
+	leaf CLICON_CLI_HIST_SIZE {
+	    type int32;
+	    default 300;
+	    description
+		"Number of lines to save in CLI history. 
+                 Also, if CLICON_CLI_HIST_FILE is set, also the size in lines
+                 of the saved history.";
+	}
 	leaf CLICON_CLI_BUF_START {
 	    type uint32;
 	    default 256;
