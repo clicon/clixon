@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -48,6 +49,7 @@
 #include <string.h>
 #include <limits.h>
 #include <stdint.h>
+#include <syslog.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -1535,8 +1537,11 @@ clixon_netconf_error_fn(const char *fn,
     }
     if (netconf_err2cb(xerr, cb) < 0)
 	goto done;
-
-    clicon_err_fn(fn, line, category, 0, "%s", cbuf_get(cb));
+#if 0 /* More verbose output for debugging */
+    clicon_log(LOG_ERR, "%s: %d: %s", fn, line, cbuf_get(cb));
+#else
+    clicon_log(LOG_ERR, "%s", cbuf_get(cb));
+#endif
     retval = 0;
  done:
     if (cb)

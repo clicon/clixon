@@ -44,6 +44,7 @@ features include optimized search functions and a repair callback.
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
 	
 ### API changes on existing protocol/config features
+* Obsolete configuration options present in clixon configuration file will cause clixon application to exit at startup. 
 * JSON
   * Empty values in JSON has changed to comply to RFC 7951
     * empty values of yang type `empty` are encoded as: `{"x":[null]}`
@@ -69,7 +70,7 @@ features include optimized search functions and a repair callback.
   * On failed validation of leafrefs, error message changed from: `No such leaf` to `No leaf <name> matching path <path>`.
   * CLI Error message (clicon_rpc_generate_error()) changed when backend returns netconf error to be more descriptive:
     * Original: `Config error: Validate failed. Edit and try again or discard changes: Invalid argument`
-    * New (example): `Netconf error: application operation-failed Identityref validation failed, undefined not derived from acl-base . Validate failed. Edit and try again or discard changes"
+    * New (example): `Validate failed. Edit and try again or discard changes: application operation-failed Identityref validation failed, undefined not derived from acl-base"
 
 ### C-API changes on existing features (you may need to change your plugin C-code)
 * `xml_new()` changed from `xml_new(name, xp, ys)`  to `xml_new(name, xp, type)`

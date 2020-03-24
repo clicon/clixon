@@ -77,8 +77,8 @@ struct err_state{
 /*
  * Variables
  */
-int clicon_errno  = 0;    /* See enum clicon_err */
-int clicon_suberrno  = 0; /* Corresponds to errno.h */
+int clicon_errno  = 0;    /* See enum clicon_err XXX: hide this and change to err_category */
+int clicon_suberrno  = 0; /* Corresponds to errno.h XXX: change to errno */
 char clicon_err_reason[ERR_STRLEN] = {0, };
 
 /*
@@ -147,7 +147,7 @@ clicon_err_reset(void)
 int clicon_err_fn(const char *fn,
 		  const int  line,
 		  int        category,
-		  int        err,
+		  int        suberr,
 		  char      *format, ...) 
 {
     va_list args;
@@ -157,7 +157,7 @@ int clicon_err_fn(const char *fn,
 
     /* Set the global variables */
     clicon_errno    = category;
-    clicon_suberrno = errno;
+    clicon_suberrno = suberr;
 
     /* first round: compute length of error message */
     va_start(args, format);

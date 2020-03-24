@@ -587,7 +587,11 @@ main(int argc, char **argv)
     restarg = clicon_strjoin(argc, argv, " ");
 
     /* If several cligen object variables match same preference, select first */
+#if 0 /* New cligen version (not in 4.4) */
+    cligen_preference_mode_set(cli_cligen(h), 1);
+#else
     cligen_match_cgvar_same(1);
+#endif
 
     /* Call start function in all plugins before we go interactive 
      */
