@@ -124,6 +124,7 @@ clixon_plugin_statedata(clicon_handle    h,
 	    goto done;
 	if (fn(h, nsc, xpath, x) < 0)
 	    goto fail;  /* Dont quit here on user callbacks */
+	/* if x contains no data, then continue? */
 #if 1
 	if (debug)
 	    clicon_log_xml(LOG_DEBUG, x, "%s STATE:", __FUNCTION__);

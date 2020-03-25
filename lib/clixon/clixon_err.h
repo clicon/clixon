@@ -54,7 +54,7 @@
 
 /*
  * Types
- * Add error here, but must also add an entry in EV variable.
+ * Add error category here, but must also add an entry in EV variable.
  */ 
 enum clicon_err{
     /* 0 means error not set) */  

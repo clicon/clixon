@@ -637,6 +637,7 @@ api_path2xpath_cvv(cvec       *api_path,
     char      *namespace = NULL;
     cvec      *nsc = NULL;
 			
+    cprintf(xpath, "/");
     /* Initialize namespace context */
     if ((nsc = xml_nsctx_init(NULL, NULL)) == NULL)
 	goto done;
