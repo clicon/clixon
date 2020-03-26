@@ -522,7 +522,7 @@ clicon_rpc(int                   s,
     if (clicon_msg_rcv(s, &reply, &eof) < 0)
 	goto done;
     if (eof){
-	clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
+	clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
 	close(s);
 	errno = ESHUTDOWN;
 	goto done;

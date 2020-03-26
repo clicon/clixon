@@ -336,7 +336,7 @@ clixon_stats_get(clicon_handle h,
 
 /*! Get system state-data, including streams and plugins
  * @param[in]     h       Clicon handle
- * @param[in]     xpath   Xpath selection, not used but may be to filter early
+ * @param[in]     xpath   XPath selection, may be used to filter early
  * @param[in]     nsc     XML Namespace context for xpath
  * @param[in]     content config/state or both
  * @param[in,out] xret    Existing XML tree, merge x into this
@@ -1095,7 +1095,7 @@ from_client_get(clicon_handle h,
      * get state data from plugins as defined by plugin_statedata(), if any 
      */
     clicon_err_reset();
-    if ((ret = client_statedata(h, xpath, nsc, content, &xret)) < 0)
+    if ((ret = client_statedata(h, xpath?xpath:"/", nsc, content, &xret)) < 0)
 	goto done;
     if (ret == 0){ /* Error from callback (error in xret) */
 	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
