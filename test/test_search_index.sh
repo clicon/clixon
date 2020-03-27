@@ -6,7 +6,7 @@
 #   - not a key int
 #   - key in an ordered-by user
 #   - key in state data
-# Use instance-id for tests,since api-path can only handle keys, and xpath is too complex.
+# Use instance-id for tests, since api-path can only handle keys, and xpath is too complex.
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -82,7 +82,7 @@ for (( ii=0; ii<10; ii++ )); do
 done
 
 # Then measure time for index and non-index, assume correct
-# For small nr, the tiome to parse is so much larger than searching (and also parsing involves
+# For small nr, the time to parse is so much larger than searching (and also parsing involves
 # searching) which makes it hard to make a  test comparing accessing the index variable "i" and the
 # non-index variable "j".
 new "index search latency i=$rndi"

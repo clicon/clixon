@@ -1653,7 +1653,11 @@ assign_namespaces(cxobj *x0, /* source */
 		}
 	    }
 	    else{
-		y = xml_spec(x0);
+		if ((y = xml_spec(x0)) == NULL){
+		    clicon_err(OE_YANG, ENOENT, "XML %s does not have yang spec",
+			       xml_name(x0));
+		    goto done;
+		}
 		if ((prefix1 = strdup(yang_find_myprefix(y))) == NULL){
 		    clicon_err(OE_UNIX, errno, "strdup");
 		    goto done;

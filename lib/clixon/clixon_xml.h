@@ -117,11 +117,12 @@ enum cxobj_type {CX_ERROR=-1,
  * XXX: lacks support for incoming restconf rpc, see api_operations_post_input)
  */
 enum yang_bind{ 
-    YB_MODULE=0, /* Search for matching yang binding among top-level symbols of Yang modules */
+    YB_NONE=0,   /* Dont do Yang binding */
+    YB_MODULE,   /* Search for matching yang binding among top-level symbols of Yang modules */
     YB_PARENT,   /* Assume yang binding of existing parent and match its children by name */
-    YB_NONE,     /* Dont do Yang binding */
+
 #ifdef NYI
-    YB_RPC,      /* Assume top-level xml is an netconf RPC message (NYI) */
+    YB_RPC,      /* Assume top-level xml is an netconf RPC message */
 #endif
 };
 typedef enum yang_bind yang_bind;
