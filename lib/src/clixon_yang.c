@@ -920,6 +920,31 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
     return 1;
 }
 
+/*! Return topmost yang root node directly under module/submodule
+ *
+ * @param[in] ys    Yang statement
+ * @retval    ytop  Topmost yang node (can be ys itself)
+ * @retval    NULL  ys is spec, module, NULL etc with no reasonable rootnode
+ */
+yang_stmt *
+yang_myroot(yang_stmt *ys)
+{
+    yang_stmt    *yp;
+    enum rfc_6020 kw;
+
+    kw = yang_keyword_get(ys);
+    if (ys==NULL || kw==Y_SPEC || kw == Y_MODULE || kw == Y_SUBMODULE)
+	return NULL;
+    yp = yang_parent_get(ys);
+    while((yp = yang_parent_get(ys)) != NULL) {
+	kw = yang_keyword_get(yp);
+	if (kw == Y_MODULE || kw == Y_SUBMODULE)
+	    return ys;
+	ys = yp;
+    } 
+    return NULL;
+}
+
 /*! If a given yang stmt has a choice/case as parent, return the choice statement 
  */
 yang_stmt *
@@ -2386,7 +2411,7 @@ yang_config(yang_stmt *ys)
     return 1;
 }
 
-/*! Return config state of this node taking parent into account
+/*! Return config state of this node taking parents/anceestors into account
  *
  * config statement is default true. 
  * @param[in] ys  Yang statement

@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -223,6 +224,7 @@ yang_stmt *yang_find_schemanode(yang_stmt *yn, char *argument);
 char      *yang_find_myprefix(yang_stmt *ys);
 char      *yang_find_mynamespace(yang_stmt *ys);
 int        yang_find_prefix_by_namespace(yang_stmt *ys, char *namespace, char **prefix);
+yang_stmt *yang_myroot(yang_stmt *ys);
 yang_stmt *yang_choice(yang_stmt *y);
 int        yang_order(yang_stmt *y);
 int        yang_print(FILE *f, yang_stmt *yn);

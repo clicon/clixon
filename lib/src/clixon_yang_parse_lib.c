@@ -923,10 +923,16 @@ ys_list_check(clicon_handle h,
     yang_stmt    *ymod;
     yang_stmt    *yc = NULL;
     enum rfc_6020 keyw;
+    yang_stmt    *yroot;
     
-    /* This node has config false */
-    if (yang_config(ys) == 0)
-	return 0;
+    /* This node is state, not config */
+    if (yang_config_ancestor(ys) == 0)
+	goto ok;
+    /* Find root, examine if this node is part of a rpc declaration */
+    if ((yroot = yang_myroot(ys)) != NULL &&
+	yang_keyword_get(yroot) == Y_RPC)
+	goto ok;
+    
     keyw = yang_keyword_get(ys);
     /* Check if list and if keys do not exist */
     if (keyw == Y_LIST &&
@@ -963,7 +969,7 @@ ys_list_check(clicon_handle h,
 		goto done;
 	}
     }
-
+ ok:
     retval = 0;
  done:
     return retval;
