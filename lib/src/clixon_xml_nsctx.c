@@ -458,12 +458,12 @@ xml2ns(cxobj *x,
 	}
 #endif
     }
-#if 0 /* Dont auto-populate all caches, eg startup doesnt need a cache */
     /* Set default namespace cache (since code is at this point,
-     * no cache was found */
+     * no cache was found 
+     * If not, this is devastating when populating deep yang structures
+     */
     if (ns && nscache_set(x, prefix, ns) < 0)
 	goto done;
-#endif
  ok:
     if (namespace)
 	*namespace = ns;
