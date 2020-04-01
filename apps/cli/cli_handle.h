@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -50,8 +52,6 @@ int cli_parse_file(clicon_handle h,
 int cli_susp_hook(clicon_handle h, cligen_susp_cb_t *fn);
 
 int cli_interrupt_hook(clicon_handle h, cligen_interrupt_cb_t *fn);
-
-char *cli_nomatch(clicon_handle h);
 
 int cli_prompt_set(clicon_handle h, char *prompt);
 

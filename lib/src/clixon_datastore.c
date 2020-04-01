@@ -118,7 +118,7 @@ xmldb_db2file(clicon_handle  h,
     return retval;
 }
 
-/*! Validate database name
+/*! Ensure database name is correct
  * @param[in]   db    Name of database 
  * @retval  0   OK
  * @retval  -1  Failed validate, xret set to error

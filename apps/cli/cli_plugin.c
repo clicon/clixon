@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -465,10 +467,10 @@ cli_handler_err(FILE *f)
 }
 
 /*! Evaluate a matched command
- * @param[in]     h       Clicon handle
- * @param[in]     cmd	  The command string
- * @retval   int If there is a callback, the return value of the callback is returned,
- * @retval   0   otherwise
+ * @param[in]     h    Clicon handle
+ * @param[in]     cmd  The command string
+ * @retval        int  If there is a callback, the return value of the callback is returned,
+ * @retval        0    otherwise
  */
 int
 clicon_eval(clicon_handle h,
@@ -501,35 +503,32 @@ clicon_eval(clicon_handle h,
  * match is found in another mode, the mode variable is updated to point at 
  * the new mode string.
  *
- * @param[in]     h         Clicon handle
- * @param[in]     cmd	    Command string
- * @param[in,out] modenamep Pointer to the mode string pointer
- * @param[out]    evalres   Evaluation result if retval=1
- *                       -2      On eof (shouldnt happen)
- *                       -1	  On parse error
- *                      >=0       Number of matches
- * @retval -2              Eof               CG_EOF
- * @retval -1              Error             CG_ERROR
- * @retval  0              No match          CG_NOMATCH
- * @retval  1              Exactly one match CG_MATCH
- * @retval  2+             Multiple matches
+ * @param[in]     h           Clicon handle
+ * @param[in]     cmd	      Command string
+ * @param[in,out] modenamep   Pointer to the mode string pointer
+ * @param[out]    result      CLIgen match result, < 0: errors, >=0 number of matches
+ * @param[out]    evalres     Evaluation result if result=1
+ * @retval  0     OK
+ * @retval  -1    Error
  */
 int
-clicon_parse(clicon_handle h, 
-	     char         *cmd, 
-	     char        **modenamep, 
-	     int          *evalres)
+clicon_parse(clicon_handle  h, 
+	     char          *cmd, 
+	     char         **modenamep, 
+	     cligen_result *result,	     
+	     int           *evalres)
 {
-    int        retval = -1;
-    char       *modename;
-    char       *modename0;
-    int        r;
+    int           retval = -1;
+    char         *modename;
+    char         *modename0;
+    int           r;
     cli_syntax_t *stx = NULL;
     cli_syntaxmode_t *smode;
-    parse_tree *pt;     /* Orig */
-    cg_obj     *match_obj;
-    cvec       *cvv = NULL;
-    FILE       *f;
+    parse_tree   *pt;     /* Orig */
+    cg_obj       *match_obj;
+    cvec         *cvv = NULL;
+    FILE         *f;
+    char         *reason = NULL;
     
     if (clicon_get_logflags()&CLICON_LOG_STDOUT)
 	f = stdout;
@@ -562,22 +561,21 @@ clicon_parse(clicon_handle h,
 	    clicon_err(OE_UNIX, errno, "cvec_new");
 	    goto done;;
 	}
-	retval = cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv);
-	if (retval != CG_MATCH)
+	if (cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv, result, &reason) < 0)
+	    goto done;
+	if (*result != CG_MATCH)
 	    pt_expand_cleanup_1(pt); /* XXX change to pt_expand_treeref_cleanup */
 	if (modename0){
 	    cligen_tree_active_set(cli_cligen(h), modename0);
 	    modename0 = NULL;
 	}
-	switch (retval) {
+	switch (*result) {
 	case CG_EOF: /* eof */
 	case CG_ERROR:
 	    fprintf(f, "CLI parse error: %s\n", cmd);
 	    break;
 	case CG_NOMATCH: /* no match */
-	    /*	    clicon_err(OE_CFG, 0, "CLI syntax error: \"%s\": %s", 
-		    cmd, cli_nomatch(h));*/
-	    fprintf(f, "CLI syntax error: \"%s\": %s\n", cmd, cli_nomatch(h));
+	    fprintf(f, "CLI syntax error: \"%s\": %s\n", cmd, reason);
 	    break;
 	case CG_MATCH:
 	    if (strcmp(modename, *modenamep)){	/* Command in different mode */
@@ -593,9 +591,12 @@ clicon_parse(clicon_handle h,
 	default:
 	    fprintf(f, "CLI syntax error: \"%s\" is ambiguous\n", cmd);
 	    break;
-	} /* switch retval */
+	} /* switch result */
     }
+    retval = 0;
 done:
+    if (reason)
+	free(reason);
     if (cvv)
 	cvec_free(cvv);
     return retval;

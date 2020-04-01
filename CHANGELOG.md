@@ -20,6 +20,13 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
+## 4.5.0
+
+### C-API changes on existing features (you may need to change your plugin C-code)
+
+* `clicon_parse()`: Changed signature due to new cligen error and result handling:
+* Removed: `cli_nomatch()`  
+
 ## 4.4.0
 Expected: March 2020
 
