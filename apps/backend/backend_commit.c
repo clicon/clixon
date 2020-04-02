@@ -349,6 +349,30 @@ startup_commit(clicon_handle  h,
      /* 8. Call plugin transaction commit callbacks */
      if (plugin_transaction_commit(h, td) < 0)
 	 goto done;
+#ifdef MOVE_TRANS_END
+     /* 10. Call plugin transaction end callbacks */
+     plugin_transaction_end(h, td);
+
+     /* Clear cached trees from default values and marking */
+     if (xmldb_get0_clear(h, td->td_target) < 0)
+	 goto done;
+     /* [Delete and] create running db */
+     if (xmldb_exists(h, "running") == 1){
+	if (xmldb_delete(h, "running") != 0 && errno != ENOENT) 
+	    goto done;;
+     }
+    if (xmldb_create(h, "running") < 0)
+	goto done;
+     /* 9, write (potentially modified) tree to running
+      * XXX note here startup is copied to candidate, which may confuse everything
+      * XXX default values are overwritten
+      */
+     if ((ret = xmldb_put(h, "running", OP_REPLACE, td->td_target,
+			  clicon_username_get(h), cbret)) < 0)
+	 goto done;
+     if (ret == 0)
+	 goto fail;
+#else
      /* Clear cached trees from default values and marking */
      if (xmldb_get0_clear(h, td->td_target) < 0)
 	 goto done;
@@ -371,6 +395,7 @@ startup_commit(clicon_handle  h,
 	 goto fail;
     /* 10. Call plugin transaction end callbacks */
     plugin_transaction_end(h, td);
+#endif /* MOVE_TRANS_END */
     retval = 1;
  done:
     if (td){
@@ -541,6 +566,31 @@ candidate_commit(clicon_handle h,
      if (plugin_transaction_commit(h, td) < 0)
 	 goto done;
 
+#ifdef MOVE_TRANS_END
+    /* 9. Call plugin transaction end callbacks */
+    plugin_transaction_end(h, td);
+
+     /* Clear cached trees from default values and marking */
+     if (xmldb_get0_clear(h, td->td_target) < 0)
+	 goto done;
+     if (xmldb_get0_clear(h, td->td_src) < 0)
+	 goto done;
+     /* 8. Success: Copy candidate to running 
+      */
+     if (xmldb_copy(h, candidate, "running") < 0)
+	 goto done;
+     /* Here pointers to old (source) tree are obsolete */
+     if (td->td_dvec){
+	 td->td_dlen = 0;
+	free(td->td_dvec);
+	td->td_dvec = NULL;
+     }
+     if (td->td_scvec){
+	free(td->td_scvec);
+	td->td_scvec = NULL;
+     }
+#else
+     
      /* Clear cached trees from default values and marking */
      if (xmldb_get0_clear(h, td->td_target) < 0)
 	 goto done;
@@ -574,6 +624,8 @@ candidate_commit(clicon_handle h,
     /* 9. Call plugin transaction end callbacks */
     plugin_transaction_end(h, td);
 
+#endif /* MOVE_TRANS_END */
+    
     retval = 1;
  done:
      /* In case of failure (or error), call plugin transaction termination callbacks */
@@ -773,9 +825,17 @@ from_client_validate(clicon_handle h,
 	    goto done;
 	goto ok;
     }
+#ifdef MOVE_TRANS_END
+    /* Call plugin transaction end callbacks */
+    plugin_transaction_end(h, td);
     /* Clear cached trees from default values and marking */
-    if (xmldb_get0_clear(h, td->td_target) < 0)
+    if (xmldb_get0_clear(h, td->td_src) < 0 ||
+	xmldb_get0_clear(h, td->td_target) < 0){
+	plugin_transaction_abort(h, td);
 	goto done;
+    }
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+#else /* MOVE_TRANS_END */
     if (xmldb_get0_clear(h, td->td_src) < 0 ||
 	xmldb_get0_clear(h, td->td_target) < 0){
 	plugin_transaction_abort(h, td);
@@ -793,6 +853,7 @@ from_client_validate(clicon_handle h,
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
     /* Call plugin transaction end callbacks */
     plugin_transaction_end(h, td);
+#endif /* MOVE_TRANS_END */
  ok:
     retval = 0;
  done:

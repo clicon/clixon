@@ -44,6 +44,8 @@ features include optimized search functions and a repair callback.
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
 	
 ### API changes on existing protocol/config features
+* State data is now ordered-by system for performance reasons. For example, alphabetically for strings and numeric for integers
+  * Controlled by compile-time option `STATE_ORDERED_BY_SYSTEM`
 * Obsolete configuration options present in clixon configuration file will cause clixon application to exit at startup. 
 * JSON
   * Empty values in JSON has changed to comply to RFC 7951
@@ -101,6 +103,8 @@ features include optimized search functions and a repair callback.
    * All have three-value return values: -1: error, 0: YANG binding failed, 1: parse and YANG binding OK.
 
 ### Minor changes
+
+* Added a compile-time option `MOVE_TRANS_END` which changes the semantics of the transaction_end callback. Instead of being called after a transaction, it is called prior to the target database is installed. This is to ensure that the source and target databases are same as for other transaction callbacks.
 
 * Moved hello example to [clixon-examples](https://github.com/clicon/clixon-examples)
 * Sanity check of mandatory key statement for Yang LISTs.

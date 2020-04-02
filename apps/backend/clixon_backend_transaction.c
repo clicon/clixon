@@ -222,6 +222,9 @@ transaction_print(FILE               *f,
     return 0;
 }
 
+/*! Log a transaction
+ * 
+ */
 int
 transaction_log(clicon_handle      h,
 		transaction_data   th,

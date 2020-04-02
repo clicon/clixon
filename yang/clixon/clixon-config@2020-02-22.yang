@@ -616,7 +616,9 @@ module clixon-config {
 	    type boolean;
 	    default false;
 	    description "If set, modifications in validation and commit 
-                         callbacks are written back into the datastore";
+                         callbacks are written back into the datastore.
+                         This is a bad idea and therefore obsoleted.";
+	    status obsolete;
 	}
 	leaf CLICON_NACM_MODE {
 	    type nacm_mode;

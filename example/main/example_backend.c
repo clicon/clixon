@@ -37,6 +37,7 @@
   * argc/argv after -- in clixon_backend:
   *  -r  enable the reset function 
   *  -s  enable the state function
+  *  -S  read state data from file, otherwise construct it programmatically
   *  -u  enable upgrade function - auto-upgrade testing
   *  -t  enable transaction logging (cal syslog for every transaction)
  */

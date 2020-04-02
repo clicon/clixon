@@ -180,7 +180,7 @@ expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-exam
 '
 
 new "admin read state OK"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state":{"op":["42","41","43"]}}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state":{"op":["41","42","43"]}}
 '
 
 new "admin read top ok (all)"
@@ -208,11 +208,11 @@ new "limit read other module fail"
 expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 new "limit read state OK"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state":{"op":["42","41","43"]}}
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state":{"op":["41","42","43"]}}
 '
 
 new "limit read top ok (part)"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data)" 0 '{"data":{"clixon-example:translate":{"translate":[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}]},"clixon-example:state":{"op":["42","41","43"]}}}
+expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data)" 0 '{"data":{"clixon-example:translate":{"translate":[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}]},"clixon-example:state":{"op":["41","42","43"]}}}
 '
 
 #user:guest

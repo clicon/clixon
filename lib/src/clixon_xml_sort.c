@@ -253,7 +253,11 @@ xml_cmp(cxobj  *x1,
      * existing list.
      */
     if (same &&
-	(yang_config(y1)==0 || yang_find(y1, Y_ORDERED_BY, "user") != NULL)){
+	(
+#ifndef STATE_ORDERED_BY_SYSTEM
+	 yang_config(y1)==0 ||
+#endif
+	 yang_find(y1, Y_ORDERED_BY, "user") != NULL)){
 	    equal = nr1-nr2;
 	    goto done; /* Ordered by user or state data : maintain existing order */
 	}
@@ -385,16 +389,19 @@ xml_cmp_qsort(const void* arg1,
  * @retval     0    OK, all nodes traversed (subparts may have been skipped)
  * @retval     1    OK, aborted on first fn returned 1
  * @see xml_apply  - typically called by recursive apply function
+ * @see xml_sort_verify
  */
 int
 xml_sort(cxobj *x,
 	 void  *arg)
 {
+#ifndef STATE_ORDERED_BY_SYSTEM
     yang_stmt *ys;
-
+    
     /* Abort sort if non-config (=state) data */
-    if ((ys = xml_spec(x)) != 0 && yang_config(ys)==0)
+    if ((ys = xml_spec(x)) != 0	&& yang_config(ys)==0)
 	return 1;
+#endif
     xml_enumerate_children(x);
     qsort(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort);
     return 0;
@@ -759,10 +766,13 @@ xml_search_yang(cxobj     *xp,
     for (low=0; low<upper; low++)
 	if ((xa = xml_child_i(xp, low)) == NULL || xml_type(xa) != CX_ATTR)
 	    break;
+#ifndef STATE_ORDERED_BY_SYSTEM
     /* Find if non-config and if ordered-by-user */
     if (yang_config_ancestor(yc)==0)
 	sorted = 0;
-    else if (yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST)
+    else
+#endif
+	if (yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST)
 	sorted = (yang_find(yc, Y_ORDERED_BY, "user") == NULL);
     yangi = yang_order(yc);
     return xml_search_binary(xp, x1, sorted, yangi, low, upper, skip1, indexvar, xvec);
@@ -996,10 +1006,13 @@ xml_insert(cxobj           *xp,
 	if ((xa = xml_child_i(xp, low)) == NULL || xml_type(xa)!=CX_ATTR)
 	    break;
     /* Find if non-config and if ordered-by-user */
+#ifndef STATE_ORDERED_BY_SYSTEM
     if (yang_config_ancestor(y)==0)
 	userorder = 1;
-    else if (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST)
-	userorder = (yang_find(y, Y_ORDERED_BY, "user") != NULL);
+    else
+#endif
+	if (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST)
+	    userorder = (yang_find(y, Y_ORDERED_BY, "user") != NULL);
     yi = yang_order(y);
     if ((i = xml_insert2(xp, xi, y, yi,
 			 userorder, ins, key_val, nsc_key,
@@ -1019,8 +1032,8 @@ xml_insert(cxobj           *xp,
 /*! Verify all children of XML node are sorted according to xml_sort()
  * @param[in]   x       XML node. Check its children
  * @param[in]   arg     Dummy. Ensures xml_apply can be used with this fn
- @ @retval      0       Sorted
- @ @retval     -1       Not sorted
+ * @retval      0       Sorted
+ * @retval     -1       Not sorted
  * @see xml_apply
  */
 int
@@ -1030,13 +1043,15 @@ xml_sort_verify(cxobj *x0,
     int    retval = -1;
     cxobj *x = NULL;
     cxobj *xprev = NULL;
+#ifndef STATE_ORDERED_BY_SYSTEM
     yang_stmt *ys;
-
+    
     /* Abort sort if non-config (=state) data */
     if ((ys = xml_spec(x0)) != 0 && yang_config_ancestor(ys)==0){
 	retval = 1;
 	goto done;
     }
+#endif
     if (xml_type(x0) == CX_ELMNT){
 	xml_enumerate_children(x0);
 	while ((x = xml_child_each(x0, x, -1)) != NULL) {
@@ -1067,15 +1082,15 @@ match_base_child(cxobj      *x0,
 		 yang_stmt  *yc,
 		 cxobj     **x0cp)
 {
-    int        retval = -1;
-    cvec      *cvk = NULL; /* vector of index keys */
-    cg_var    *cvi;
-    cxobj     *xb;
-    char      *keyname;
-    cxobj     *x0c = NULL;
-    yang_stmt *y0c;
-    yang_stmt *y0p;
-    yang_stmt *yp; /* yang parent */
+    int          retval = -1;
+    cvec        *cvk = NULL; /* vector of index keys */
+    cg_var      *cvi;
+    cxobj       *xb;
+    char        *keyname;
+    cxobj       *x0c = NULL;
+    yang_stmt   *y0c;
+    yang_stmt   *y0p;
+    yang_stmt   *yp; /* yang parent */
     clixon_xvec *xvec = NULL;
     
     *x0cp = NULL; /* init return value */

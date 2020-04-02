@@ -222,6 +222,11 @@ main(int    argc,
 	/* Populate */
 	if (xml_bind_yang(x, YB_MODULE, yspec, NULL) < 0)
 	    goto done;
+	/* sort */
+	if (xml_apply(x, CX_ELMNT, xml_sort, h) < 0)
+	    goto done;
+	if (xml_apply(x, -1, xml_sort_verify, h) < 0)
+	    clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
 	/* Add default values */
 	if (xml_apply(x, CX_ELMNT, xml_default, h) < 0)
 	    goto done;
@@ -239,10 +244,7 @@ main(int    argc,
 	    fprintf(stderr, "xml validation error: %s\n", cbuf_get(cb));
 	    goto done;
 	}
-	if (xml_apply0(x, CX_ELMNT, xml_sort, h) < 0)
-	    goto done;
-	if (xml_apply0(x, -1, xml_sort_verify, h) < 0)
-	    clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
+
     }
     /* Repeat for profiling (default is nr = 1) */
     xvec = NULL;

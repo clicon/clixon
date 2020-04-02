@@ -273,10 +273,11 @@ for op in begin validate complete commit; do
     let line++
 done
 
-# End is special because change does not haveold element
+# End is special because change does not have old element
 checklog "$nr main_end add: <d>0</d>" $line
 let line++
-checklog "$nr main_end change: <b>42</b>" $line
+# This check does not work if  MOVE_TRANS_END is set
+#checklog "$nr main_end change: <b>42</b>" $line
 let line+=3 # skip nacm
 
 let nr++

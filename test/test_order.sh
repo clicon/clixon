@@ -167,11 +167,13 @@ if [ $BE -ne 0 ]; then
 fi
 
 # STATE (should not be ordered)
-new "state data (should be unordered: 42,41,43)"
+#new "state data (should be unordered: 42,41,43)"
+# Eeh I changed that to sortered unless STATE_ORDERED_BY_SYSTEM
+new "state data (should be ordered: 41,42,43)"
 cat <<EOF > $tmp
 <rpc><get><filter type="xpath" select="ex:state" xmlns:ex="urn:example:clixon" /></get></rpc>]]>]]>
 EOF
-expecteof "$clixon_netconf -qf $cfg" 0 "$(cat $tmp)" '<rpc-reply><data><state xmlns="urn:example:clixon"><op>42</op><op>41</op><op>43</op></state></data></rpc-reply>]]>]]>'
+expecteof "$clixon_netconf -qf $cfg" 0 "$(cat $tmp)" '<rpc-reply><data><state xmlns="urn:example:clixon"><op>41</op><op>42</op><op>43</op></state></data></rpc-reply>]]>]]>'
 
 # Check as file
 new "verify running from start, should be: c,l,y0,y1,y2,y3; y1 and y3 sorted."

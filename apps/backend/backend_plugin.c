@@ -132,6 +132,10 @@ clixon_plugin_statedata(clicon_handle    h,
 #endif
 	if (xml_bind_yang(x, YB_MODULE, yspec, NULL) < 0)
 	    goto done;
+	if (xml_apply(x, CX_ELMNT, xml_sort, h) < 0)
+	    goto done;
+	if (xml_apply(x, CX_ELMNT, xml_default, h) < 0)
+	    goto done;
 	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
 	    goto done;
 	if (ret == 0)

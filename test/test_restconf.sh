@@ -33,7 +33,7 @@ cat <<EOF > $cfg
 EOF
 
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
-state='{"clixon-example:state":{"op":\["42","41","43"\]}'
+state='{"clixon-example:state":{"op":\["41","42","43"\]}'
 
 new "test params: -f $cfg -- -s"
 if [ $BE -ne 0 ]; then
@@ -129,7 +129,7 @@ new "restconf debug rpc"
 #expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-lib:input\":{\"level\":0}} http://localhost/restconf/operations/clixon-lib:debug)" 0  "HTTP/1.1 204 No Content"
 
 new "restconf get empty config + state json"
-expecteq "$(curl -sS -X GET http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state":{"op":["42","41","43"]}}
+expecteq "$(curl -sS -X GET http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state":{"op":["41","42","43"]}}
 '
 
 new "restconf get empty config + state json with wrong module name"
@@ -140,7 +140,7 @@ expectpart "$(curl -siSG http://localhost/restconf/data/badmodule:state)" 0 'HTT
 
 new "restconf get empty config + state xml"
 ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/data/clixon-example:state)
-expect='<state xmlns="urn:example:clixon"><op>42</op><op>41</op><op>43</op></state>'
+expect='<state xmlns="urn:example:clixon"><op>41</op><op>42</op><op>43</op></state>'
 match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -173,7 +173,7 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf GET datastore"
-expecteq "$(curl -s -X GET http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state":{"op":["42","41","43"]}}
+expecteq "$(curl -s -X GET http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state":{"op":["41","42","43"]}}
 '
 
 # Exact match
@@ -207,7 +207,7 @@ new "restconf Check eth/0/0 GET augmented state level 2"
 expectpart "$(curl -s -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0/clixon-example:my-status)" 0 '{"clixon-example:my-status":{"int":42,"str":"foo"}}'
 
 new "restconf Check eth/0/0 added state"
-expectpart "$(curl -s -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state":{"op":\["42","41","43"\]}}'
+expectpart "$(curl -s -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state":{"op":\["41","42","43"\]}}'
 
 new "restconf Re-post eth/0/0 which should generate error"
 expectpart "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'

@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Scaling/ performance tests
-# Config + state data, only get
+# State data only, in particular non-config lists (ie not state leafs on a config list)
 # Restconf/Netconf/CLI
-# Use mixed interfaces config+state
 # ALso added two layers a/b to get extra depth (som caching can break)
 
 # Magic line must be first in script (see README.md)
@@ -54,6 +53,7 @@ module $APPNAME{
    prefix ex;
    namespace "urn:example:clixon";
    container interfaces {
+    config false;
     list a{
       key "name";
       leaf name {
@@ -74,7 +74,6 @@ module $APPNAME{
       }
       leaf status {
         type string;
-	config false;
       }
     }
 }
@@ -86,7 +85,7 @@ EOF
 new "generate state file with $perfnr list entries"
 echo -n "<interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b>" > $fstate
 for (( i=0; i<$perfnr; i++ )); do  
-    echo -n "<interface><name>e$i</name><status>up</status></interface>" >> $fstate
+    echo -n "<interface><name>e$i</name><type>ex:eth</type><status>up</status></interface>" >> $fstate
 done
 echo "</b></a></interfaces>" >> $fstate
 
@@ -113,7 +112,8 @@ start_restconf -f $cfg
 
 new "waiting"
 wait_restconf
-
+exit
+if false; then
 new "generate 'large' config with $perfnr list entries"
 echo -n "<rpc><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b>" > $fconfig
 for (( i=0; i<$perfnr; i++ )); do  
@@ -128,6 +128,7 @@ expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/
 # Now commit it from candidate to running 
 new "netconf commit large config"
 expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+fi
 
 # START actual tests
 # Having a large db, get single entries many times
@@ -135,7 +136,7 @@ expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<r
 new "netconf get test single req"
 sel="/ex:interfaces/ex:a[ex:name='foo']/ex:b/ex:interface[ex:name='e1']"
 msg="<rpc><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>"
-expecteof "$clixon_netconf -qf $cfg" 0 "$msg" '^<rpc-reply><data><interfaces xmlns="urn:example:clixon"><a><name>foo</name><b><interface><name>e1</name><type>ex:eth</type><enabled>true</enabled><status>up</status></interface></b></a></interfaces></data></rpc-reply>]]>]]>$'
+time -p expecteof "$clixon_netconf -qf $cfg" 0 "$msg" '^<rpc-reply><data><interfaces xmlns="urn:example:clixon"><a><name>foo</name><b><interface><name>e1</name><type>ex:eth</type><enabled>true</enabled><status>up</status></interface></b></a></interfaces></data></rpc-reply>]]>]]>$'
 
 new "netconf get $perfreq single reqs"
 { time -p for (( i=0; i<$perfreq; i++ )); do
@@ -145,9 +146,10 @@ new "netconf get $perfreq single reqs"
 done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF get
+#echo "curl -s -X GET http://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1"
 new "restconf get test single req"
-expecteq "$(curl -s -X GET http://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 '{"example:interface":[{"name":"e1","type":"ex:eth","enabled":true,"status":"up"}]}
-'
+time -p expecteq "$(curl -s -X GET http://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 '{"example:interface":[{"name":"e1","type":"ex:eth","enabled":true,"status":"up"}]}
+' | awk '/real/ {print $2}'
 
 new "restconf get $perfreq single reqs"
 #echo "curl -sG http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e0"
@@ -158,6 +160,7 @@ new "restconf get $perfreq single reqs"
     curl -sG http://localhost/restconf/data/example:interfaces/a/b/interface=e$rnd > /dev/null
 done } 2>&1 | awk '/real/ {print $2}'
 
+if false; then
 # CLI get
 new "cli get test single req"
 expectfn "$clixon_cli -1 -1f $cfg -l o show state xml interfaces a foo b interface e1" 0 '^<interface>
@@ -172,7 +175,7 @@ new "cli get $perfreq single reqs"
     rnd=$(( ( RANDOM % $perfnr ) ))
     $clixon_cli -1 -f $cfg show state xml interfaces a b interface e$rnd > /dev/null
 done } 2>&1 | awk '/real/ {print $2}'
-
+fi
 # Get config in one large get
 new "netconf get large config"
 { time -p echo "<rpc><get> <filter type=\"xpath\" select=\"/ex:interfaces/ex:a[name='foo']/ex:b\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg  > /tmp/netconf; } 2>&1 | awk '/real/ {print $2}'

@@ -157,7 +157,7 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "auth get"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data)" 0 '{"data":{"clixon-example:state":{"op":["42","41","43"]}}}
+expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data)" 0 '{"data":{"clixon-example:state":{"op":["41","42","43"]}}}
 '
 
 new "Set x to 0"

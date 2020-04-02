@@ -1704,6 +1704,14 @@ xml_merge1(cxobj              *x0,  /* the target */
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
     cbuf      *cbr = NULL; /* Reason buffer */
+#ifdef XML_MERGE_TWO_ROUNDS
+    int i;
+    struct {
+	cxobj     *w_x0c;
+	cxobj     *w_x1c;
+	yang_stmt *w_yc;
+    } *second_wave = NULL;
+#endif
 
     assert(x1 && xml_type(x1) == CX_ELMNT);
     assert(y0);
@@ -1739,6 +1747,13 @@ xml_merge1(cxobj              *x0,  /* the target */
 	}
 	if (assign_namespaces(x1, x0, x0p) < 0)
 	    goto done;
+#ifdef XML_MERGE_TWO_ROUNDS
+	if ((second_wave = calloc(xml_child_nr(x1), sizeof(*second_wave))) == NULL){
+	    clicon_err(OE_UNIX, errno, "calloc");
+	    goto done;
+	}
+	i = 0;
+#endif
 	/* Loop through children of the modification tree */
 	x1c = NULL;
 	while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
@@ -1762,11 +1777,38 @@ xml_merge1(cxobj              *x0,  /* the target */
 	    x0c = NULL;
 	    if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
 		goto done;
+#ifdef XML_MERGE_TWO_ROUNDS
+	    /* Save x0c, x1c, yc and merge in second wave, so that x1c entries "interfer"
+	     * with itself, ie that later searches are among earlier objects already added
+	     * to x0 */
+	    second_wave[i].w_x0c = x0c;
+	    second_wave[i].w_x1c = x1c;
+	    second_wave[i].w_yc  = yc;
+	    i++;
+#else
 	    if (xml_merge1(x0c, yc, x0, x1c, reason) < 0)
 		goto done;
 	    if (*reason != NULL)
 		goto ok;
+#endif
 	} /* while */
+#ifdef XML_MERGE_TWO_ROUNDS
+	/* Second run where actual merging is done 
+	 * Loop through children of the modification tree */
+	x1c = NULL;
+	i = 0;
+	while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+	    if (xml_merge1(second_wave[i].w_x0c,
+			   second_wave[i].w_yc,
+			   x0,
+			   second_wave[i].w_x1c,
+			   reason) < 0)
+		goto done;
+	    if (*reason != NULL)
+		goto ok;
+	    i++;
+	}
+#endif
 	if (xml_parent(x0) == NULL &&
 	    xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0) 
 	    goto done;
@@ -1774,6 +1816,10 @@ xml_merge1(cxobj              *x0,  /* the target */
  ok:
     retval = 0;
  done:
+#ifdef XML_MERGE_TWO_ROUNDS
+    if (second_wave)
+	free(second_wave);
+#endif
     if (cbr)
 	cbuf_free(cbr);
     return retval;
@@ -1838,7 +1884,7 @@ xml_merge(cxobj     *x0,
 	    }
 	    break;
 	}
-	/* See if there is a corresponding node in the base tree */
+	/* See if there is a corresponding node (x1c) in the base tree (x0) */
 	if (match_base_child(x0, x1c, yc, &x0c) < 0)
 	    goto done;
 	/* There is a case where x0c and x1c are choice nodes, if so,
