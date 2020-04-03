@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [4.4.0](#440) Expected: March 2020
+* [4.4.0](#440) Expected: April 2020
 * [4.3.0](#430) 1 January 2020
   * [4.3.3](#433) 
   * [4.3.2](#432)
@@ -21,9 +21,9 @@
 * [3.3.1](#331) June 7 2017
 
 ## 4.4.0
-Expected: March 2020
+Expected: April 2020
 
-This release has focussed on refactoring and bugfixing. Lots of
+This release focusses on refactoring and bugfixing. Lots of
 changes to basic XML/YANG/RESTCONF code, including a tighter XML/YANG
 binding. Memory profiling and new buffer growth management. New
 features include optimized search functions and a repair callback.
@@ -43,7 +43,7 @@ features include optimized search functions and a repair callback.
   * For more info, see docs at [paths](https://clixon-docs.readthedocs.io/en/latest/paths.html) and 
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
 	
-### API changes on existing protocol/config features
+### API changes on existing protocol/config features (You may have have to change how you use Clixon)
 * State data is now ordered-by system for performance reasons. For example, alphabetically for strings and numeric for integers
   * Controlled by compile-time option `STATE_ORDERED_BY_SYSTEM`
 * Obsolete configuration options present in clixon configuration file will cause clixon application to exit at startup. 
@@ -78,7 +78,7 @@ features include optimized search functions and a repair callback.
 * `xml_new()` changed from `xml_new(name, xp, ys)`  to `xml_new(name, xp, type)`
   * If you have used, `ys`, add `xml_spec_set(x, ys)` after the statement
   * If you have `xml_type_set(x, TYPE)`  after the statement, you can remove it and set it directly as: `xml_new(name, xp, TYPE)`
-* `xml_type_set()`has been removed in the API. The type must be set at creation timw with `xml_new`
+* `xml_type_set()` has been removed in the API. The type must be set at creation time with `xml_new`
 * `clicon_rpc_generate_error()` renamed to `clixon_netconf_error()` and added a category parameter
 * All uses of `api_path2xpath_cvv()` should be replaced by `api_path2xpath()`
    * `api_path2xpath()` added an `xerr` argument.

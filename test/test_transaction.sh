@@ -277,7 +277,7 @@ done
 checklog "$nr main_end add: <d>0</d>" $line
 let line++
 # This check does not work if  MOVE_TRANS_END is set
-#checklog "$nr main_end change: <b>42</b>" $line
+checklog "$nr main_end change: <b>42</b>" $line
 let line+=3 # skip nacm
 
 let nr++

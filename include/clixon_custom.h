@@ -88,14 +88,6 @@
  */
 #define XMLDB_CONFIG_HACK
 
-/*! Ensure target tree is complete when transaction end is called.
- * This may mean that the call to plugin_transaction_end is done later
- * and/or that cleaning of transaction src/target trees are made later
- * clixon-4.4
- * note: a test in test_transaction.sh does not work
- */
-#define MOVE_TRANS_END
-
 /*! Let state data be ordered-by system
  * RFC 7950 is cryptic about this
  * It says in 7.7.7:
