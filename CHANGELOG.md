@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [4.4.0](#440) Expected: April 2020
+* [4.4.0](#440) 5 April 2020
 * [4.3.0](#430) 1 January 2020
   * [4.3.3](#433) 
   * [4.3.2](#432)
@@ -21,7 +21,7 @@
 * [3.3.1](#331) June 7 2017
 
 ## 4.4.0
-Expected: April 2020
+5 April 2020
 
 This release focusses on refactoring and bugfixing. Lots of
 changes to basic XML/YANG/RESTCONF code, including a tighter XML/YANG
