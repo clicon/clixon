@@ -1,7 +1,8 @@
 #!/bin/bash
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2017-2020 Olof Hagsand
+# Copyright (C) 2017-2019 Olof Hagsand
+# Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 #
 # This file is part of CLIXON
 #

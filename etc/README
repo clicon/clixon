@@ -7,7 +7,6 @@ Example:
 > ./configure --prefix=/hello
 > make
 > make install
-> make install-include
 > cd 
 > source /hello/etc/cliconrc
 > clicon_config

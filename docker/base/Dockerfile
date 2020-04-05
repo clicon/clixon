@@ -65,7 +65,6 @@ RUN apk add --update nginx
 RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data
 RUN make
 RUN make install
-RUN make install-include
 
 # Build and install the clixon hello example (not really necessary for base)
 WORKDIR /clixon/clixon/example/hello

@@ -1,7 +1,8 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2017-2020 Olof Hagsand
+# Copyright (C) 2017-2019 Olof Hagsand
+# Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 #
 # This file is part of CLIXON
 #
@@ -65,7 +66,6 @@ RUN apk add --update nginx
 RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data --enable-optyangs
 RUN make
 RUN make install
-RUN make install-include
 
 # Install utils
 WORKDIR /clixon/clixon/util

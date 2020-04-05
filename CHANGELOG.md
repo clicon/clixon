@@ -44,6 +44,7 @@ features include optimized search functions and a repair callback.
 [search](https://clixon-docs.readthedocs.io/en/latest/xml.html#searching-in-xml)
 	
 ### API changes on existing protocol/config features (You may have have to change how you use Clixon)
+* In the bbuild system, you dont need to do `make install-include` for installing include files for compiling. This is now included in the actions done by `make install`.
 * State data is now ordered-by system for performance reasons. For example, alphabetically for strings and numeric for integers
   * Controlled by compile-time option `STATE_ORDERED_BY_SYSTEM`
 * Obsolete configuration options present in clixon configuration file will cause clixon application to exit at startup. 

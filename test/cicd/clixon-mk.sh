@@ -9,7 +9,6 @@ fi
 $MAKE clean
 $MAKE -j10
 sudo $MAKE install
-sudo $MAKE install-include
 (cd example; $MAKE)
 (cd util; $MAKE)
 (cd example; sudo $MAKE install)

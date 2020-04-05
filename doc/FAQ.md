@@ -80,7 +80,6 @@ Clixon:
 	./configure --enable-optyang;
 	make; 
 	sudo make install; 
-	sudo make install-include
 ```
 (note: optyang enable only if you need to run the main example, otherwise it is not necessary).
 
