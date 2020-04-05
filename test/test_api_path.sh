@@ -145,11 +145,9 @@ done
 echo -n '</x1>' >> $xml1
     
 new "api-path single string key k1=a$rnd"
-echo "$clixon_util_path -f $xml1 -y $ydir -p /moda:x1/y=a$rnd"
 expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /moda:x1/y=a$rnd)" 0 "^0: <y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
 
 new "api-path single string key /x1"
-echo "$clixon_util_path -f $xml1 -y $ydir -p /moda:x1"
 expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /moda:x1)" 0 "0: <x1 xmlns=\"urn:example:a\"><y><k1>a0</k1><z>foo0</z></y><y><k1>a1</k1><z>foo1</z></y>" # Assume at least two elements
 
 new "api-path single string key omit key"
@@ -183,7 +181,6 @@ done
 echo -n '</x2>' >> $xml2
 
 new "api-path single int key k1=$rnd"
-echo "$clixon_util_path -f $xml2 -y $ydir -p /moda:x2/y=$rnd"
 expectpart "$($clixon_util_path -f $xml2 -y $ydir -p /moda:x2/y=$rnd)" 0 "^0: <y><k1>$rnd</k1><z>foo$rnd</z></y>$"
 
 # Double string key
@@ -199,15 +196,12 @@ echo -n "<y><k1>a1</k1><k2></k2><z>foo1</z></y>" >> $xml3
 echo -n '</x3>' >> $xml3
 
 new "api-path double string key k1=a$rnd,b$rnd"
-echo "$clixon_util_path -f $xml3 -y $ydir -p /moda:x3/y=a$rnd,b$rnd"
 expectpart "$($clixon_util_path -f $xml3 -y $ydir -p /moda:x3/y=a$rnd,b$rnd)" 0 "0: <y><k1>a$rnd</k1><k2>b$rnd</k2><z>foob$rnd</z></y>"
 
 new "api-path double string key k1=a$rnd, - empty k2 string"
-echo "$clixon_util_path -f $xml3 -y $ydir -p /moda:x3/y=a1,"
 expectpart "$($clixon_util_path -f $xml3 -y $ydir -p /moda:x3/y=a1,)" 0 "0: <y><k1>a1</k1><k2/><z>foo1</z></y>"
 
 new "api-path double string key k1=a$rnd, - no k2 string - three matches"
-echo "$clixon_util_path -f $xml3 -y $ydir -p /moda:x3/y=a1"
 expecteq "$($clixon_util_path -f $xml3 -y $ydir -p /moda:x3/y=a1)" 0 "0: <y><k1>a1</k1><k2/><z>foo1</z></y>
 1: <y><k1>a1</k1><k2>a1</k2><z>foo1</z></y>
 2: <y><k1>a1</k1><k2>b1</k2><z>foob1</z></y>"
@@ -221,7 +215,6 @@ done
 echo -n '</x4>' >> $xml4
 
 new "api-path leaf-list k1=a$rnd"
-echo "$clixon_util_path -f $xml4 -y $ydir -p /moda:x4/y=a$rnd"
 expectpart "$($clixon_util_path -f $xml4 -y $ydir -p /moda:x4/y=a$rnd)" 0 "^0: <y>a$rnd</y>$"
 
 # Single string key direct under root
@@ -232,7 +225,6 @@ for (( i=0; i<$nr; i++ )); do
 done
     
 new "api-path direct under root single string key k1=a$rnd"
-echo "$clixon_util_path -f $xml5 -y $ydir -p /moda:x5=a$rnd"
 expectpart "$($clixon_util_path -f $xml5 -y $ydir -p /moda:x5=a$rnd)" 0 "^0: <x5 xmlns=\"urn:example:a\"><k1>a$rnd</k1><z>foo$rnd</z></x5>$"
 
 # Depth and augment
@@ -249,11 +241,9 @@ done
 echo -n '</x6>' >> $xml6
 
 new "api-path double string key k1=b$rnd,b$rnd in modb"
-echo "$clixon_util_path -f $xml6 -y $ydir -p /modb:x6/yy=b$rnd,b$rnd"
 expectpart "$($clixon_util_path -f $xml6 -y $ydir -p /modb:x6/yy=b$rnd,b$rnd)" 0 "0: <yy><kk1>b$rnd</kk1><kk2>b$rnd</kk2><zz>foo$rnd</zz><y xmlns=\"urn:example:a\"><k1>a0</k1><k2>a0</k2><z>foo0</z></y><y xmlns=\"urn:example:a\"><k1>a1</k1><k2>a1</k2><z>foo1</z></y><y xmlns=\"urn:example:a\"><k1>a2</k1><k2>a2</k2><z>foo2</z></y></yy>"
 
 new "api-path double string key k1=a$rnd,b$rnd in modb + augmented in moda"
-echo "$clixon_util_path -f $xml6 -y $ydir -p /modb:x6/yy=b$rnd,b$rnd/moda:y=a1,a1"
 expectpart "$($clixon_util_path -f $xml6 -y $ydir -p /modb:x6/yy=b$rnd,b$rnd/moda:y=a1,a1/z=foo1)" 0 "0: <z>foo1</z>"
 
 # unset conditional parameters 

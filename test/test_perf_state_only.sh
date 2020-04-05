@@ -99,10 +99,10 @@ if [ $BE -ne 0 ]; then
 
     new "start backend -s init -f $cfg -- -sS $fstate"
     start_backend -s init -f $cfg -- -sS $fstate
-fi
 
-new "waiting"
-wait_backend
+    new "waiting"
+    wait_backend
+fi
 
 new "kill old restconf daemon"
 sudo pkill -u $wwwuser -f clixon_restconf
@@ -112,7 +112,7 @@ start_restconf -f $cfg
 
 new "waiting"
 wait_restconf
-exit
+
 if false; then
 new "generate 'large' config with $perfnr list entries"
 echo -n "<rpc><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b>" > $fconfig
