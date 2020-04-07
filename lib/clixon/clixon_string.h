@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
@@ -102,6 +103,7 @@ int clicon_str2int(const map_str2int *mstab, char *str);
 int clicon_str2int_search(const map_str2int *mstab, char *str, int upper);
 int nodeid_split(char *nodeid,	char **prefix, char **id);
 char *clixon_trim(char *str);
+char *clixon_trim2(char *str, char *trims);
 int clicon_strcmp(char *s1, char *s2);
 
 #ifndef HAVE_STRNDUP

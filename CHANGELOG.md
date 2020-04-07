@@ -24,11 +24,18 @@
 ## 4.5.0
 Expected: May 2020
 
+### API changes on existing protocol/config features (You may have have to change how you use Clixon)
+
+* Stricter incoming RPC sanity checking, error messages may have changed.
+
 ### C-API changes on existing features (you may need to change your plugin C-code)
 
 * CLI
   * `clicon_parse()`: Changed signature due to new cligen error and result handling:
   * Removed: `cli_nomatch()`  
+
+### Minor changes
+
 
 ## 4.4.0
 5 April 2020
@@ -114,8 +121,6 @@ features include optimized search functions and a repair callback.
    * All have three-value return values: -1: error, 0: YANG binding failed, 1: parse and YANG binding OK.
 
 ### Minor changes
-
-* Added a compile-time option `MOVE_TRANS_END` which changes the semantics of the transaction_end callback. Instead of being called after a transaction, it is called prior to the target database is installed. This is to ensure that the source and target databases are same as for other transaction callbacks.
 
 * Moved hello example to [clixon-examples](https://github.com/clicon/clixon-examples)
 * Sanity check of mandatory key statement for Yang LISTs.

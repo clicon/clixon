@@ -86,6 +86,7 @@
 #include <clixon/clixon_regex.h>
 #include <clixon/clixon_path.h>
 #include <clixon/clixon_xml_map.h>
+#include <clixon/clixon_xml_bind.h>
 #include <clixon/clixon_xml_io.h>
 #include <clixon/clixon_validate.h>
 #include <clixon/clixon_datastore.h>

@@ -1090,14 +1090,10 @@ xml_yang_validate_all(clicon_handle h,
 	cprintf(cb, "Failed to find YANG spec of XML node: %s", xml_name(xt));
 	if ((xp = xml_parent(xt)) != NULL)
 	    cprintf(cb, " with parent: %s", xml_name(xp));
-	if (namespace){
+	if (namespace)
 	    cprintf(cb, " in namespace: %s", namespace);
-	    if (netconf_unknown_element_xml(xret, "application", xml_name(xt), cbuf_get(cb)) < 0)
-		goto done;
-	}
-	else
-	    if (netconf_unknown_element_xml(xret, "application", xml_name(xt), cbuf_get(cb)) < 0)
-		goto done;
+	if (netconf_unknown_element_xml(xret, "application", xml_name(xt), cbuf_get(cb)) < 0)
+	    goto done;
 	goto fail;
     }
     if (yang_config(ys) != 0){

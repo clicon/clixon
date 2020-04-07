@@ -6,17 +6,6 @@
 # @see test_nacm.sh is slightly modified - this follows the RFC more closely
 # See RFC 8341 A.1 and A.2
 # Note: use clixon-example instead of ietf-netconf-monitoring since the latter is
-# Tests for 
-# deny-ncm:  This rule prevents the "guest" group from reading any
-#     monitoring information in the "clixon-example" YANG
-#     module.
-# permit-ncm:  This rule allows the "limited" group to read the
-#     "clixon-example" YANG module.
-# permit-exec:  This rule allows the "limited" group to invoke any
-#     protocol operation supported by the server.
-# permit-all:  This rule allows the "admin" group complete access to
-#     all content in the server.  No subsequent rule will match for the
-#     "admin" group because of this module rule
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

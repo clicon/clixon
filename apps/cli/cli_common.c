@@ -977,7 +977,8 @@ cli_notification_cb(int   s,
     cxobj             *xt = NULL;
     cxobj             *xe;
     cxobj             *x;
-    enum format_enum format = (enum format_enum)arg;
+    enum format_enum   format = (enum format_enum)arg;
+    int                ret;
     
     /* get msg (this is the reason this function is called) */
     if (clicon_msg_rcv(s, &reply, &eof) < 0)
@@ -989,8 +990,13 @@ cli_notification_cb(int   s,
 	event_unreg_fd(s, cli_notification_cb);
 	goto done;
     }
-    if (clicon_msg_decode(reply, NULL, NULL, &xt) < 0) /* XXX pass yang_spec */
+    /* XXX pass yang_spec and use xerr*/
+    if ((ret = clicon_msg_decode(reply, NULL, NULL, &xt, NULL)) < 0) 
 	goto done;
+    if (ret == 0){ /* will not happen since no yspec ^*/
+	clicon_err(OE_NETCONF, EFAULT, "Notification malformed");
+	goto done;
+    }
     if ((xe = xpath_first(xt, NULL, "//event")) != NULL){
 	x = NULL;
 	while ((x = xml_child_each(xe, x, -1)) != NULL) {

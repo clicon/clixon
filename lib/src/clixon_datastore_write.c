@@ -362,6 +362,10 @@ text_modify(clicon_handle       h,
 		}
 	    }
 	    if (x1bstr){
+		/* XXX: Do the type lookup here inline instead, there are more
+		 * cases where we check for types, eg where we now call clixon_trim2
+		 * AND in nacm path where we need proper namespace contexts.
+		 */
 		if (check_identityref(x1, x0, x0p, x1bstr, y0) < 0)
 		    goto done;
 		if ((x0b = xml_body_get(x0)) != NULL){
@@ -496,7 +500,7 @@ text_modify(clicon_handle       h,
 		if (xml_copy(x1, x0) < 0)
 		    goto done;
 		break;
-	    }
+	    } /* anyxml, anydata */
 	    if (x0==NULL){
 		if (op==OP_MERGE && !permit && xnacm){
 		    if ((ret = nacm_datanode_write(NULL, x1, NACM_CREATE, username, xnacm, cbret)) < 0) 

@@ -66,9 +66,9 @@
 #include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
-#include "clixon_options.h" /* xml_bind_yang */
+#include "clixon_options.h" 
 #include "clixon_yang_module.h"
-#include "clixon_xml_map.h" /* xml_bind_yang */
+#include "clixon_xml_bind.h"
 #include "clixon_xml_vec.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_nsctx.h"
@@ -455,7 +455,13 @@ _xml_parse(const char *str,
 	    if (ret == 0)
 		failed++;
 	    break;
-	}
+	case YB_RPC:
+	    if ((ret = xml_bind_yang_rpc(x, yspec, xerr)) < 0)
+		goto done;
+	    if (ret == 0)
+		failed++;
+	    break;
+	} /* switch */
     }
     if (failed)
 	goto fail;
@@ -601,7 +607,7 @@ clixon_xml_parse_file(int        fd,
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification, or NULL
  * @param[in,out] xt    Pointer to XML parse tree. If empty will be created.
- * @param[out]    xerr  Reason for failure (yang assignment not made)
+ * @param[out]    xerr  Reason for failure (yang assignment not made) if retval = 0
  * @retval        1     Parse OK and all yang assignment made
  * @retval        0     Parse OK but yang assigment not made (or only partial)
  * @retval       -1     Error with clicon_err called. Includes parse error

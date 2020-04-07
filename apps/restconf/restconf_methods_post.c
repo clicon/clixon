@@ -847,8 +847,17 @@ api_operations_post(clicon_handle h,
 	clicon_log_xml(LOG_DEBUG, xtop, "%s 5. Translate input args:", __FUNCTION__);
 #endif
     /* 6. Validate outgoing RPC and fill in defaults */
-    if (xml_bind_yang_rpc(xtop, yspec, NULL) < 0) /*  */
+    if ((ret = xml_bind_yang_rpc(xtop, yspec, &xret)) < 0) /*  */
 	goto done;
+    if (ret == 0){
+	if ((xe = xpath_first(xret, NULL, "rpc-error")) == NULL){
+	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+	    goto ok;
+	}
+	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
+    }
     if ((ret = xml_yang_validate_rpc(h, xtop, &xret)) < 0)
 	goto done;
 

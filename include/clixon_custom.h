@@ -98,10 +98,3 @@
  */
 #define STATE_ORDERED_BY_SYSTEM
 
-/*! Separate list merge into two separate rounds, 
- * First round search for duplicates where objects are saved, and a second round where
- * actual merge is done. If in same round, in extreme cases that later
- * searches are among earlier objects already added
- * clixon-4.4
- */
-#define XML_MERGE_TWO_ROUNDS

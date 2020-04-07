@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -351,13 +352,13 @@ nacm_rule_datanode(cxobj           *xt,
 
     /*  6b) Either (1) the rule does not have a "rule-type" defined or
 	(2) the "rule-type" is "data-node" and the "path" matches the
-	requested data node, action node, or notification node.  A
-	path is considered to match if the requested node is the node
-	specified by the path or is a descendant node of the path.*/    
+	requested data node, action node, or notification node. */    
     if ((path = xml_find_body(xrule, "path")) == NULL){
 	if (xml_find_body(xrule, "rpc-name") ||xml_find_body(xrule, "notification-name"))
 	    goto nomatch;
     }
+    else
+	path = clixon_trim2(path, " \t\n");
     access_operations = xml_find_body(xrule, "access-operations");
     switch (access){
     case NACM_READ:
@@ -387,10 +388,17 @@ nacm_rule_datanode(cxobj           *xt,
     default:
 	break;
     }
-    /* Here module is matched, now check for path if any NYI */
+    /* Here module is matched, now check for path if any NYI 
+     * A path is considered to match if the requested node is the node
+     * specified by the path or is a descendant node of the path */
     if (path){ 
+#if 0
+	if ((ret = clixon_xml_find_instance_id(xt, yt, xvec, xlen, "%s", path)) == NULL)
+	    goto nomatch;
+#else
 	if ((xpath = xpath_first(xt, nsc, "%s", path)) == NULL)
 	    goto nomatch;
+#endif
 	/* The requested node xr is the node specified by the path or is a 
 	 * descendant node of the path:
 	 * xmatch is one of xvec[] or an ancestor of the xvec[] nodes.

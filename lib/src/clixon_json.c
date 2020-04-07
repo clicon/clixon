@@ -68,6 +68,7 @@
 #include "clixon_yang_type.h"
 #include "clixon_yang_module.h"
 #include "clixon_xml_sort.h"
+#include "clixon_xml_bind.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_nsctx.h" /* namespace context */
 #include "clixon_netconf_lib.h"
@@ -1248,6 +1249,12 @@ _json_parse(char      *str,
 		failed++;
 	    break;
 	case YB_NONE:
+	    break;
+	case YB_RPC: 
+	    if ((ret = xml_bind_yang_rpc(x, yspec, xerr)) < 0)
+		goto done;
+	    if (ret == 0)
+		failed++;
 	    break;
 	}
 	/* Now find leafs with identityrefs (+transitive) and translate 

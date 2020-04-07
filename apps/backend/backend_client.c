@@ -1570,12 +1570,16 @@ from_client_msg(clicon_handle        h,
 	goto done;
     }
     /* Decode msg from client -> xml top (ct) and session id */
-    if (clicon_msg_decode(msg, yspec, &id, &xt) < 0){
-	if (netconf_malformed_message(cbret, "XML parse error")< 0)
+    if ((ret = clicon_msg_decode(msg, yspec, &id, &xt, &xret)) < 0){
+	if (netconf_malformed_message(cbret, "XML parse error") < 0)
 	    goto done;
 	goto reply;
     }
-
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+	    goto done;
+	goto reply;
+    }
     if ((x = xpath_first(xt, NULL, "/rpc")) == NULL){
 	if ((x = xpath_first(xt, NULL, "/hello")) != NULL){
 	    if ((ret = from_client_hello(h, x, ce, cbret)) <0)
@@ -1589,12 +1593,6 @@ from_client_msg(clicon_handle        h,
 	}
     }
     ce->ce_id = id;
-    /* Populate incoming XML tree with yang - 
-     * should really have been dealt with by decode above
-     * but it still is needed - test_cli debug test fails
-     */
-    if (xml_bind_yang_rpc(x, yspec, NULL) < 0)
-    	goto done;
     if ((ret = xml_yang_validate_rpc(h, x, &xret)) < 0)
 	goto done;
     if (ret == 0){

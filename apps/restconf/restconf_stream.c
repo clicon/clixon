@@ -161,6 +161,7 @@ restconf_stream_cb(int   s,
     cxobj             *xn;        /* notification xml */
     cbuf              *cb = NULL;
     int                pretty = 0; /* XXX should be via arg */
+    int                ret;
     
     clicon_debug(1, "%s", __FUNCTION__);
     /* get msg (this is the reason this function is called) */
@@ -180,8 +181,12 @@ restconf_stream_cb(int   s,
 	clicon_exit_set(); 
 	goto done;
     }
-    if (clicon_msg_decode(reply, NULL, NULL, &xtop) < 0)  /* XXX pass yang_spec */
+    if ((ret = clicon_msg_decode(reply, NULL, NULL, &xtop, NULL)) < 0)  /* XXX pass yang_spec */
 	goto done;
+    if (ret == 0){
+	clicon_err(OE_XML, EFAULT, "Invalid notification");
+	goto done;
+    }
     /* create event */
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");

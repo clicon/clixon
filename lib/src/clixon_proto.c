@@ -59,6 +59,7 @@
 #include <netinet/in.h>
 #include <sys/un.h>
 #include <arpa/inet.h>
+#include <assert.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -170,15 +171,21 @@ clicon_msg_encode(uint32_t      id,
  * @param[in]  yspec  Yang specification, (can be NULL)
  * @param[out] id     Session id
  * @param[out] xml    XML parse tree
+ * @param[out] xerr   Reason for failure (yang assignment not made) if retval =0
+ * @retval     1      Parse OK and all yang assignment made
+ * @retval     0      Parse OK but yang assigment not made (or only partial)
+ * @retval    -1      Error with clicon_err called. Includes parse error
  */
 int
 clicon_msg_decode(struct clicon_msg *msg, 
 		  yang_stmt         *yspec,
 		  uint32_t          *id,
-		  cxobj            **xml)
+		  cxobj            **xml,
+		  cxobj            **xerr)
 {
-    int   retval = -1;
-    char *xmlstr;
+    int    retval = -1;
+    char  *xmlstr;
+    int    ret;
 
     /* hdr */
     if (id)
@@ -186,11 +193,16 @@ clicon_msg_decode(struct clicon_msg *msg,
     /* body */
     xmlstr = msg->op_body;
     clicon_debug(1, "%s %s", __FUNCTION__, xmlstr);
-    if (clixon_xml_parse_string(xmlstr, yspec?YB_MODULE:YB_NONE, yspec, xml, NULL) < 0)
+    if ((ret = clixon_xml_parse_string(xmlstr, yspec?YB_RPC:YB_NONE, yspec, xml, xerr)) < 0)
 	goto done;
-    retval = 0;
+    if (ret == 0)
+	goto fail;
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Open local connection using unix domain sockets

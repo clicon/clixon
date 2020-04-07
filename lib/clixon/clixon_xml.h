@@ -120,10 +120,8 @@ enum yang_bind{
     YB_NONE=0,   /* Dont do Yang binding */
     YB_MODULE,   /* Search for matching yang binding among top-level symbols of Yang modules */
     YB_PARENT,   /* Assume yang binding of existing parent and match its children by name */
+    YB_RPC,      /* Assume top-level xml is an netconf RPC message (or hello) */
 
-#ifdef NYI
-    YB_RPC,      /* Assume top-level xml is an netconf RPC message */
-#endif
 };
 typedef enum yang_bind yang_bind;
 

@@ -283,7 +283,7 @@ expectpart "$(curl -s -i -X DELETE  http://localhost/restconf/data/example:crypt
 
 # 2. set identity in other module with restconf , read it with restconf and netconf
 new "restconf add POST instead of PUT (should fail)"
-expectpart "$(curl -s -i -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/example:crypto -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"crypto"},"error-severity":"error","error-message":"Missing matching yang node"}}}'
+expectpart "$(curl -s -i -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/example:crypto -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"crypto"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: crypto with parent: crypto in namespace: urn:example:my-crypto"}}}'
 
 # Alternative error:
 #'{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"crypto"},"error-severity":"error","error-message":"Leaf contains sub-element"}}}'

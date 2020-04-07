@@ -1321,9 +1321,9 @@ api_path_resolve(clixon_path *cplist,
  * @retval    -1        Error
  * @retval     0        Fail
  * @retval     1        OK
- * @note: The spec says: prefixes depend on the XML context in which the value occurs. However,
- *        canonical prefixes/namespaces are used based on loaded yang modules.
- *        This means that prefix=NULL is not allowed.
+ * @note: The spec says: prefixes depend on the XML context in which the value occurs. 
+ *  However, canonical prefixes/namespaces are used based on loaded yang modules.
+ *  This means that prefix=NULL is not allowed.
  * Reasons for fail (retval = 0) are:
  * - No prefix of identifier (keynames may omit prefix)
  * - Prefix does not correspond to existing module.
@@ -1564,7 +1564,8 @@ clixon_xml_find_api_path(cxobj        *xt,
 
 /*! Given (instance-id) path and XML tree, return matching xml node vector using stdarg
  *
- * Instance-identifier is a subset of XML XPaths and defined in Yang, used in NACM for example.
+ * Instance-identifier is a subset of XML XPaths and defined in Yang, used in NACM for 
+ * example.
  * @param[in]  xt       Top xml-tree where to search
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
  * @param[out] xvec     Vector of xml-trees. Vector must be free():d after use
@@ -1588,6 +1589,7 @@ clixon_xml_find_api_path(cxobj        *xt,
  *    }
  *    clixon_xvec_free(xvec);
  * @endcode
+ * @note canonical namespace contexts are used, seexpath2canonical
  * @see clixon_xml_find_api_path    for RESTCONF api-paths
  * @see RFC7950 Sec 9.13 
  */

@@ -660,7 +660,8 @@ cv_validate1(clicon_handle h,
 	    if (strcmp(restype, "enumeration") == 0){
 		found = 0;
 		yi = NULL;
-		if (str != NULL) 
+		if (str != NULL) {
+		    str = clixon_trim2(str, " \t\n"); /* May be misplaced, strip earlier? */
 		    while ((yi = yn_each(yrestype, yi)) != NULL){
 			if (yang_keyword_get(yi) != Y_ENUM)
 			    continue;
@@ -669,6 +670,7 @@ cv_validate1(clicon_handle h,
 			    break;
 			}
 		    }
+		}
 		if (!found){
 		    if (reason)
 			*reason = cligen_reason("'%s' does not match enumeration", str);
@@ -680,7 +682,7 @@ cv_validate1(clicon_handle h,
 		 * of the names of the bits that are set.  A zero-length string thus
 		 * represents a value where no bits are set.
 		 */
-
+		str = clixon_trim2(str, " \t\n"); /* May be misplaced, strip earlier? */
 		nvec = 0;
 		if ((vec = clicon_strsep(str, " \t", &nvec)) == NULL)
 		    goto done;

@@ -509,8 +509,6 @@ from_validate_common(clicon_handle       h,
  * @retval   -1       Error - or validation failed 
  * @retval    0       Validation failed (with cbret set)
  * @retval    1       Validation OK       
- * @note Need to differentiate between error and validation fail
- *       (only done for validate_common)
  */
 int
 candidate_commit(clicon_handle h, 

@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
 
   This file is part of CLIXON.
 
@@ -685,6 +687,29 @@ clixon_trim(char *str)
 	s++;
     for (i=strlen(s)-1; i>=0; i--){ /* trim from rear */
 	if (isblank(s[i]))
+	    s[i] = '\0';
+	else
+	    break;
+    }
+    return s;
+}
+
+/*! Trim blanks from front and end of a string, return new string 
+ * @param[in]  str 
+ * @param[in]  trims  Characters to trim: a vector of characters
+ * @retval     s      Pointer into existing str after trimming blanks
+ */
+char *
+clixon_trim2(char *str,
+	     char *trims)
+{
+    char *s = str;
+    int   i;
+
+    while (strlen(s) && index(trims, s[0])) /* trim from front */
+	s++;
+    for (i=strlen(s)-1; i>=0; i--){ /* trim from rear */
+	if (index(trims, s[i]))
 	    s[i] = '\0';
 	else
 	    break;

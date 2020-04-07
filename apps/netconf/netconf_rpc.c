@@ -425,6 +425,8 @@ netconf_notification_cb(int   s,
     clicon_handle      h = (clicon_handle)arg;
     yang_stmt         *yspec = NULL;
     cvec              *nsc = NULL;
+    int                ret;
+    cxobj             *xerr = NULL; 
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* get msg (this is the reason this function is called) */
@@ -439,9 +441,12 @@ netconf_notification_cb(int   s,
 	goto done;
     }
     yspec = clicon_dbspec_yang(h);
-    if (clicon_msg_decode(reply, yspec, NULL, &xt) < 0) 
+    if ((ret = clicon_msg_decode(reply, yspec, NULL, &xt, &xerr)) < 0) 
 	goto done;
-
+    if (ret == 0){ /* XXX use xerr */
+	clicon_err(OE_NETCONF, EFAULT, "Notification malformed");
+	goto done;
+    }
     if ((nsc = xml_nsctx_init(NULL, NOTIFICATION_RFC5277_NAMESPACE)) == NULL)
 	goto done;
     if ((xn = xpath_first(xt, nsc, "notification")) == NULL)
@@ -467,6 +472,8 @@ netconf_notification_cb(int   s,
 	xml_nsctx_free(nsc);
     if (xt != NULL)
 	xml_free(xt);
+    if (xerr != NULL)
+	xml_free(xerr);
     if (reply)
 	free(reply);
     return retval;

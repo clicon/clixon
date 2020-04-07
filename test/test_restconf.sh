@@ -123,9 +123,10 @@ new "restconf empty rpc, default media type should fail (JSON)"
 expectpart "$(curl -si -X POST -H "Accept: application/yang-data+json" -d {\"clixon-example:input\":null} http://localhost/restconf/operations/clixon-example:empty)" 0 'HTTP/1.1 415 Unsupported Media Type'
 
 new "restconf empty rpc with extra args (should fail)"
-expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-example:input\":{\"extra\":null}} http://localhost/restconf/operations/clixon-example:empty)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"extra"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: extra with parent: empty in namespace: urn:example:clixon"}}}'
+expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-example:input\":{\"extra\":null}} http://localhost/restconf/operations/clixon-example:empty)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"extra"},"error-severity":"error","error-message":"Unrecognized parameter: extra in rpc: empty"}}}'
 
-new "restconf debug rpc"
+# Irritiating to get debugs on the terminal
+#new "restconf debug rpc"
 #expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-lib:input\":{\"level\":0}} http://localhost/restconf/operations/clixon-lib:debug)" 0  "HTTP/1.1 204 No Content"
 
 new "restconf get empty config + state json"
@@ -243,19 +244,19 @@ expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"
 '
 
 new "restconf rpc using POST json wrong"
-expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"wrongelement"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: wrongelement with parent: example in namespace: urn:example:clixon"}}}'
+expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"wrongelement"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: wrongelement with parent: example in namespace: urn:example:clixon"}}}'
 
 new "restconf rpc non-existing rpc without namespace"
-expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{}' http://localhost/restconf/operations/kalle)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"kalle"},"error-severity":"error","error-message":"RPC not defined"}}}'
+expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{}' http://localhost/restconf/operations/kalle)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"kalle"},"error-severity":"error","error-message":"RPC not defined"}}'
 
 new "restconf rpc non-existing rpc"
-expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{}' http://localhost/restconf/operations/clixon-example:kalle)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"kalle"},"error-severity":"error","error-message":"RPC not defined"}}}'
+expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{}' http://localhost/restconf/operations/clixon-example:kalle)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"kalle"},"error-severity":"error","error-message":"RPC not defined"}}'
 
 new "restconf rpc missing name"
-expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{}' http://localhost/restconf/operations)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"Operation name expected"}}}'
+expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{}' http://localhost/restconf/operations)" 0 'HTTP/1.1 412 Precondition Failed' '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"Operation name expected"}}}'
 
 new "restconf rpc missing input"
-expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"restconf RPC does not have input statement"}}}'
+expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{}' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"restconf RPC does not have input statement"}}}'
 
 new "restconf rpc using POST xml"
 ret=$(curl -s -X POST -H "Content-Type: application/yang-data+json" -H "Accept: application/yang-data+xml" -d '{"clixon-example:input":{"x":42}}' http://localhost/restconf/operations/clixon-example:example)

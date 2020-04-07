@@ -45,6 +45,10 @@
  *  quoted-string       = (DQUOTE string DQUOTE) / (SQUOTE string SQUOTE)
  *  positive-integer-value = (non-zero-digit DIGIT*)
  *  identifier          = (ALPHA | "_")(ALPHA | DIGIT | "_" | "-" | ".")*
+ *
+ * RFC 8341: All the same rules as an instance-identifier apply, except that predicates
+ *           for keys are optional.  If a key predicate is missing, then the 
+ *           node-instance-identifier represents all possible server instances for that key.
  */
 
 %start start
