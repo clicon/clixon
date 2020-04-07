@@ -212,11 +212,10 @@ cli_signal_init (clicon_handle h)
 static int
 cli_interactive(clicon_handle h)
 {
-    int     retval = -1;
-    int     res;
-    char   *cmd;
-    char   *new_mode;
-    int     eval;
+    int           retval = -1;
+    char         *cmd;
+    char         *new_mode;
+    cligen_result result;
     
     /* Loop through all commands */
     while(!cligen_exiting(cli_cligen(h))) {
@@ -225,8 +224,9 @@ cli_interactive(clicon_handle h)
 	    cligen_exiting_set(cli_cligen(h), 1); /* EOF */
 	    goto ok; /* EOF should not be -1 error? */
 	}
-	if ((res = clicon_parse(h, cmd, &new_mode, &eval)) < 0)
+	if (clicon_parse(h, cmd, &new_mode, &result, NULL) < 0)
 	    goto done;
+	/* Why not check result? */
     }
  ok:
     retval = 0;
@@ -587,8 +587,10 @@ main(int argc, char **argv)
     /* Join rest of argv to a single command */
     restarg = clicon_strjoin(argc, argv, " ");
 
+#if 0 /* Unsure for why this is enabled by default, turned off in clixon 4.5? */
     /* If several cligen object variables match same preference, select first */
     cligen_preference_mode_set(cli_cligen(h), 1);
+#endif
 
     /* Call start function in all plugins before we go interactive 
      */
@@ -603,13 +605,15 @@ main(int argc, char **argv)
     cligen_utf8_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_UTF8"));
     /* Launch interfactive event loop, unless -1 */
     if (restarg != NULL && strlen(restarg)){
-	char *mode = cli_syntax_mode(h);
-	int result;
+	char         *mode = cli_syntax_mode(h);
+	cligen_result result;            /* match result */
+	int           evalresult = 0;    /* if result == 1, calback result */
 
-	/* */
-	if (clicon_parse(h, restarg, &mode, &result) != 1)
+	if (clicon_parse(h, restarg, &mode, &result, &evalresult) < 0)
 	    goto done;
-	if (result < 0)
+	if (result != 1) /* Not unique match */
+	    goto done;
+	if (evalresult < 0)
 	    goto done;
     }
 
