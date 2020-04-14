@@ -242,9 +242,7 @@ new 'B.3.5.  "point" Parameter leaf-list 4 before 3'
 expectpart "$(curl -si -X POST -H 'Content-Type: application/yang-data+json' -d '{"example-jukebox:extra":"4"}' http://localhost/restconf/data?insert=before\&point=%2Fexample-jukebox%3Aextra%3D3 )" 0 "HTTP/1.1 201 Created" 'Location: http://localhost/restconf/data/example-jukebox:extra=4'
 
 new 'B.3.5.  "insert/point" leaf-list check order (2,4,3,1)'
-expectpart "$(curl -si -X GET http://localhost/restconf/data/example-jukebox:extra -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<extra xmlns="http://example.com/ns/example-jukebox">2</extra><extra xmlns="http://example.com/ns/example-jukebox">4</extra><extra xmlns="http://example.com/ns/example-jukebox">3</extra><extra xmlns="http://example.com/ns/example-jukebox">1</extra>'
-
-if false; then # NYI
+expectpart "$(curl -si -X GET http://localhost/restconf/data/example-jukebox:extra -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<extra xmlns="http://example.com/ns/example-jukebox">2</extra><extra xmlns="http://example.com/ns/example-jukebox" xmlns:jbox="http://example.com/ns/example-jukebox">4</extra><extra xmlns="http://example.com/ns/example-jukebox">3</extra><extra xmlns="http://example.com/ns/example-jukebox">1</extra>'
 
 new "B.2.2.  Detect Datastore Resource Entity-Tag Change" # XXX done except entity-changed
 new 'B.3.3.  "fields" Parameter'
@@ -252,8 +250,6 @@ new 'B.3.6.  "filter" Parameter'
 new 'B.3.7.  "start-time" Parameter'
 new 'B.3.8.  "stop-time" Parameter'
 new 'B.3.9.  "with-defaults" Parameter'
-
-fi # NYI
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

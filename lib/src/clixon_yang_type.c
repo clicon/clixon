@@ -526,9 +526,9 @@ outoflength(uint64_t    u64,
  * @param[in]  regexps Vector of compiled regexps
  * @param[out] reason  If given, and return value is 0, contains malloced str 
 
- * @retval -1  Error (fatal), with errno set to indicate error
- * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
- * @retval 1   Validation OK
+ * @retval    -1       Error (fatal), with errno set to indicate error
+ * @retval     0       Validation not OK, malloced reason is returned. Free reason with free()
+ * @retval     1       Validation OK
  * @note reason if given must be freed by caller
  * @see cv_validate Corresponding type check in cligen
  */
@@ -661,7 +661,7 @@ cv_validate1(clicon_handle h,
 		found = 0;
 		yi = NULL;
 		if (str != NULL) {
-		    str = clixon_trim2(str, " \t\n"); /* May be misplaced, strip earlier? */
+		    //		    str = clixon_trim2(str, " \t\n"); /* May be misplaced, strip earlier? */
 		    while ((yi = yn_each(yrestype, yi)) != NULL){
 			if (yang_keyword_get(yi) != Y_ENUM)
 			    continue;

@@ -203,13 +203,20 @@ clixon_xvec_i(clixon_xvec *xv,
  * Used in glue code between clixon_xvec code and cxobj **, size_t code, may go AWAY?
  * @param[in]  xv    XML tree vector
  * @param[out] xvec  XML object vector
- * @retval     0
+ * @retval     0     OK
+ * @retval    -1     Error
  */
 int
 clixon_xvec_extract(clixon_xvec *xv,
 		    cxobj     ***xvec,
 		    size_t      *xlen)
 {
+    int retval = -1;
+    
+    if (xv == NULL){
+	clicon_err(OE_XML, EINVAL, "xv is NULL");
+	goto done;
+    }
     *xvec = xv->xv_vec;
     *xlen = xv->xv_len;
     if (xv->xv_vec != NULL){
@@ -217,7 +224,9 @@ clixon_xvec_extract(clixon_xvec *xv,
 	xv->xv_max = 0;
 	xv->xv_vec = NULL;
     }
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Append a new xml tree to an existing xml vector last in the list

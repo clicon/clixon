@@ -57,8 +57,9 @@ enum nacm_access{
  * Prototypes
  */
 int nacm_rpc(char *rpc, char *module, char *username, cxobj *xnacm, cbuf *cbret);
-int nacm_datanode_read(cxobj *xt, cxobj **xvec, size_t xlen, char *username, cxobj *nacm_xtree);
-int nacm_datanode_write(cxobj *xt, cxobj *xr, enum nacm_access access,
+int nacm_datanode_read(clicon_handle h, cxobj *xt, cxobj **xvec, size_t xlen, char *username,
+		       cxobj *nacm_xtree);
+int nacm_datanode_write(clicon_handle h, cxobj *xt, cxobj *xr, enum nacm_access access,
 			char *username, cxobj *xnacm, cbuf *cbret);
 int nacm_access_pre(clicon_handle h, char *username, cxobj **xnacmp);
 

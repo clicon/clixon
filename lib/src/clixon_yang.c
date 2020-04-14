@@ -873,7 +873,9 @@ yang_find_mynamespace(yang_stmt *ys)
  * @retval    -1         found
  * @note  prefix NULL is not returned, if own module, then return its prefix
  * @code
- * char *pfx = yang_find_prefix_by_namespace(ys, "urn:example:clixon", &prefix);
+ *    char *prefix = NULL;
+ *    if (yang_find_prefix_by_namespace(ys, "urn:example:clixon", &prefix) < 0)
+ *      err;
  * @endcode
  */
 int
@@ -1103,7 +1105,7 @@ yang_key2str(int keyword)
 }
 
 /*! Find top data node among all modules by namespace in xml tree
- * @param[in]  ysp      Yang specification
+ * @param[in]  yspec    Yang specification
  * @param[in]  xt       XML node
  * @param[out] ymod     Yang module (NULL if not found)
  * @retval     0        OK
@@ -1112,7 +1114,7 @@ yang_key2str(int keyword)
  * Note that xt xml symbol may belong to submodule of ymod
  */
 int
-ys_module_by_xml(yang_stmt  *ysp,
+ys_module_by_xml(yang_stmt  *yspec,
 		 cxobj      *xt,
 		 yang_stmt **ymodp)
 {
@@ -1130,7 +1132,7 @@ ys_module_by_xml(yang_stmt  *ysp,
     if (namespace == NULL)
 	goto ok;
     /* We got the namespace, now get the module */
-    ym = yang_find_module_by_namespace(ysp, namespace);
+    ym = yang_find_module_by_namespace(yspec, namespace);
     /* Set result param */
     if (ymodp && ym)
 	*ymodp = ym;
@@ -1892,6 +1894,58 @@ ys_populate_unknown(clicon_handle h,
     return retval;
 }
 
+/*! Populate modules / submodules
+ * @param[in] h    Clicon handle
+ * @param[in] ys   The yang statement (module/submodule) to populate.
+ *
+ * Check RFC 7950: 7.1.4: All prefixes, including the prefix for the module itself, 
+ * MUST be unique within the module or submodule.
+ */
+static int
+ys_populate_module_submodule(clicon_handle h,
+			     yang_stmt    *ym)
+{
+    int        retval = -1;
+    yang_stmt *yp;
+    yang_stmt *yi;
+    yang_stmt *yi2; /* remaining */
+    char      *p0 = NULL;
+    char      *pi;
+    char      *pi2; /* remaining */
+
+    /* Modules but not submodules have prefixes */
+    if ((yp = yang_find(ym, Y_PREFIX, NULL)) != NULL)
+	p0 = yang_argument_get(yp);
+    yi = NULL;
+    while ((yi = yn_each(ym, yi)) != NULL) {
+	if (yang_keyword_get(yi) != Y_IMPORT)
+	    continue;
+	yp = yang_find(yi, Y_PREFIX, NULL);
+	pi = yang_argument_get(yp);
+	if (p0 && strcmp(p0, pi) == 0){ 	/* Check top-level */
+	    clicon_err(OE_YANG, EFAULT, "Prefix %s in module %s is not unique but should be (see RFC 7950 7.1.4)",
+		       pi, yang_argument_get(ym));
+	    goto done;
+	}
+	/* Check rest of imports */
+	yi2 = yi;
+	while ((yi2 = yn_each(ym, yi2)) != NULL) {
+	    if (yang_keyword_get(yi2) != Y_IMPORT)
+		continue;
+	    yp = yang_find(yi2, Y_PREFIX, NULL);
+	    pi2 = yang_argument_get(yp);
+	    if (strcmp(pi2, pi) == 0){
+		clicon_err(OE_YANG, EFAULT, "Prefix %s in module %s is not unique but should be (see RFC 7950 7.1.4)",
+			   pi, yang_argument_get(ym));
+		goto done;
+	    }
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Populate with cligen-variables, default values, etc. Sanity checks on complete tree.
  *
  * @param[in]  ys  Yang statement
@@ -1913,24 +1967,29 @@ ys_populate(yang_stmt    *ys,
     clicon_handle h = (clicon_handle)arg;
     
     switch(ys->ys_keyword){
-    case Y_LIST:
-	if (ys_populate_list(h, ys) < 0)
-	    goto done;
-	break;
-    case Y_RANGE: 
-	if (ys_populate_range(h, ys) < 0)
+    case Y_IDENTITY:
+	if (ys_populate_identity(h, ys, NULL) < 0)
 	    goto done;
 	break;
     case Y_LENGTH: 
 	if (ys_populate_length(h, ys) < 0)
 	    goto done;
 	break;
-    case Y_TYPE:
-	if (ys_populate_type(h, ys) < 0)
+    case Y_LIST:
+	if (ys_populate_list(h, ys) < 0)
 	    goto done;
 	break;
-    case Y_IDENTITY:
-	if (ys_populate_identity(h, ys, NULL) < 0)
+    case Y_MODULE:
+    case Y_SUBMODULE:
+	if (ys_populate_module_submodule(h, ys) < 0)
+	    goto done;
+	break;
+    case Y_RANGE: 
+	if (ys_populate_range(h, ys) < 0)
+	    goto done;
+	break;
+    case Y_TYPE:
+	if (ys_populate_type(h, ys) < 0)
 	    goto done;
 	break;
     case Y_UNIQUE:
@@ -1948,7 +2007,6 @@ ys_populate(yang_stmt    *ys,
   done:
     return retval;
 }
-
 
 /*! Run after grouping expand and augment 
  * @see ys_populate   run before grouping expand and augment

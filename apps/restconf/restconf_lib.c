@@ -738,9 +738,11 @@ restconf_insert_attributes(cxobj *xdata,
     }
     /* Add prefix/namespaces used in attributes */
     cv = NULL;
-    while ((cv = cvec_each(nsc, cv)) != NULL)
-	if (xmlns_set(xdata, cv_name_get(cv), cv_string_get(cv)) < 0)
+    while ((cv = cvec_each(nsc, cv)) != NULL){
+	char *ns = cv_string_get(cv);
+	if (xmlns_set(xdata, cv_name_get(cv), ns) < 0)
 	    goto done;
+    }
     if (nsc)
 	xml_sort(xdata, NULL); /* Ensure attr is first */
     cprintf(cb, "/>");

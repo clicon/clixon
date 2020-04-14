@@ -25,7 +25,7 @@ cat <<EOF > $fyang
 module nacm-example{
   yang-version 1.1;
   namespace "urn:example:nacm";
-  prefix nacm;
+  prefix nex;
   import clixon-example {
 	prefix ex;
   }

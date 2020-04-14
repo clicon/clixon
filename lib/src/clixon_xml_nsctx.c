@@ -152,11 +152,13 @@ xml_nsctx_get_prefix(cvec  *cvv,
     while ((cv = cvec_each(cvv, cv)) != NULL){
 	if ((ns = cv_string_get(cv)) != NULL &&
 	    strcmp(ns, namespace) == 0){
-	    *prefix = cv_name_get(cv); /* can be NULL */
+	    if (prefix)
+		*prefix = cv_name_get(cv); /* can be NULL */
 	    return 1;
 	}
     }
-    *prefix = NULL;
+    if (prefix)
+	*prefix = NULL;
     return 0;
 }
 
@@ -493,7 +495,6 @@ xmlns_set(cxobj *x,
 	    goto done;
 	if (xml_prefix_set(xa, "xmlns") < 0)
 	    goto done;
-
     }
     else{                /* xmlns="<uri>" */
 	if ((xa = xml_new("xmlns", x, CX_ATTR)) == NULL)

@@ -686,7 +686,10 @@ api_path2xpath_cvv(cvec       *api_path,
 	if (xml_nsctx_get_prefix(nsc, namespace, &xprefix) == 0){
 	    xprefix = yang_find_myprefix(y);
 	    clicon_debug(1, "%s prefix not found add it %s", __FUNCTION__, xprefix);
-	    /* not found, add it to nsc  */
+	    /* not found, add it to nsc 
+	     * XXX: do we always have to add it? It could be default?
+	     */
+	    //	    if (xml2prefix(x1, namespace, &pexisting));
 	    if (xml_nsctx_add(nsc, xprefix, namespace) < 0)
 		goto done;
 	}
@@ -1358,7 +1361,8 @@ instance_id_resolve(clixon_path *cplist,
 		}
 	    }
 	    if ((yc = yang_find_datanode(yt, cp->cp_id)) == NULL){
-		clicon_err(OE_YANG, ENOENT, "Corresponding yang node for id not found");
+		clicon_err(OE_YANG, ENOENT, "Corresponding yang node for id:%s not found",
+			   cp->cp_id);
 		goto fail;
 	    }
 	    cp->cp_yang = yc;
@@ -1411,9 +1415,9 @@ instance_id_resolve(clixon_path *cplist,
  * @retval     1        OK with found xml nodes in xvec (if any)
  */
 static int
-clixon_path_search(cxobj       *xt,
-		   yang_stmt   *yt,
-		   clixon_path *cplist,
+clixon_path_search(cxobj        *xt,
+		   yang_stmt    *yt,
+		   clixon_path  *cplist,
 		   clixon_xvec **xvec0)
 {
     int          retval = -1;
@@ -1480,8 +1484,8 @@ clixon_path_search(cxobj       *xt,
  * @param[out] xvec     Vector of xml-trees. Vector must be free():d after use
  * @param[in]  format   Format string for api-path syntax
  * @retval    -1        Error
- * @retval     0        Nomatch
- * @retval     1        OK with found xml nodes in xvec (if any)
+ * @retval     0        Non-fatal failure, yang bind failures, etc, 
+ * @retval     1        OK with found xml nodes in xvec (if any) (xvec contains matches)
  * Reasons for nomatch (retval = 0) are:
  * - Modulename in api-path does not correspond to existing module
  * - Modulename not defined for top-level id. 
@@ -1572,7 +1576,7 @@ clixon_xml_find_api_path(cxobj        *xt,
  * @param[out] xlen     Returns length of vector in return value
  * @param[in]  format   Format string for api-path syntax
  * @retval    -1        Error
- * @retval     0        Nomatch
+ * @retval     0        Non-fatal failure, yang bind failures, etc, 
  * @retval     1        OK with found xml nodes in xvec (if any)
  * Reasons for nomatch (retval = 0) are:
  * - Modulename in api-path does not correspond to existing module
@@ -1589,7 +1593,7 @@ clixon_xml_find_api_path(cxobj        *xt,
  *    }
  *    clixon_xvec_free(xvec);
  * @endcode
- * @note canonical namespace contexts are used, seexpath2canonical
+ * @note canonical namespace contexts are used, see xpath2canonical
  * @see clixon_xml_find_api_path    for RESTCONF api-paths
  * @see RFC7950 Sec 9.13 
  */
@@ -1639,7 +1643,7 @@ clixon_xml_find_instance_id(cxobj     *xt,
     if (ret == 0)
 	goto fail;
     /* Convert to api xvec format */
-    if (clixon_xvec_extract(xv, xvec, xlen) < 0)
+    if (xv && clixon_xvec_extract(xv, xvec, xlen) < 0)
 	goto done;
     retval = 1;
  done:

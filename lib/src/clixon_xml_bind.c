@@ -270,9 +270,7 @@ populate_self_top(cxobj     *xt,
 /*! Find yang spec association of tree of XML nodes
  *
  * Populate xt:s children as top-level symbols
- * This may be unnecessary if yspec is set on manual creation. Also note that for incoming or 
- * outgoing RPC need specialized function. maybe it can be built into the same function, but 
- * you dont know whether it is input or output rpc.
+ * This may be unnecessary if yspec is set on manual creation: x=xml_new(); xml_spec_set(x,y)
  * @param[in]   xt     XML tree node
  * @param[in]   yspec  Yang spec
  * @param[out]  xerr   Reason for failure, or NULL

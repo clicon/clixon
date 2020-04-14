@@ -131,15 +131,19 @@ attr_ns_value(cxobj *x,
     goto done;
 }
 
+/*! When new body is added, some needs type lookup is made and namespace checked
+ * This includes identityrefs, paths
+ * This code identifies x0 as an identityref, looks at the _body_ string and ensures the right
+ * namespace is inserted in x1.
+ */
 static int
-check_identityref(cxobj     *x0,
-		  cxobj     *x1,
-		  cxobj     *x1p,		  
-		  char      *x1bstr,
-		  yang_stmt *y)
+check_body_namespace(cxobj     *x0,
+		     cxobj     *x1,
+		     cxobj     *x1p,		  
+		     char      *x1bstr,
+		     yang_stmt *y)
 {
     int        retval = -1;
-    yang_stmt *yrestype = NULL;
     char      *prefix = NULL;
     char      *ns0 = NULL;
     char      *ns1 = NULL;
@@ -151,11 +155,6 @@ check_identityref(cxobj     *x0,
     isroot = xml_parent(x1p)==NULL &&
 	strcmp(xml_name(x1p), "config") == 0 &&
 	xml_prefix(x1p)==NULL;
-    if (yang_type_get(y, NULL, &yrestype,
-		      NULL, NULL, NULL, NULL, NULL) < 0)
-	goto done;
-    if (strcmp(yang_argument_get(yrestype), "identityref") != 0)
-	goto ok; /* skip */
     if (nodeid_split(x1bstr, &prefix, NULL) < 0)
 	goto done;
     if (prefix == NULL)
@@ -240,12 +239,12 @@ text_modify(clicon_handle       h,
     char      *opstr = NULL;
     char      *x1name;
     char      *x1cname; /* child name */
-    cxobj     *x0c; /* base child */
-    cxobj     *x0b; /* base body */
-    cxobj     *x1c; /* mod child */
-    char      *x0bstr; /* mod body string */
-    char      *x1bstr; /* mod body string */
-    yang_stmt *yc;  /* yang child */
+    cxobj     *x0c;     /* base child */
+    cxobj     *x0b;     /* base body */
+    cxobj     *x1c;     /* mod child */
+    char      *x0bstr;  /* mod body string */
+    char      *x1bstr;  /* mod body string */
+    yang_stmt *yc;      /* yang child */
     cxobj    **x0vec = NULL;
     int        i;
     int        ret;
@@ -318,7 +317,7 @@ text_modify(clicon_handle       h,
 		 * of ordered-by user and (changed) insert attribute.
 		 */
 		if (!permit && xnacm){
-		    if ((ret = nacm_datanode_write(NULL, x1, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+		    if ((ret = nacm_datanode_write(h, NULL, x1, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -335,7 +334,7 @@ text_modify(clicon_handle       h,
 	case OP_NONE: /* fall thru */
 	    if (x0==NULL){
 		if ((op != OP_NONE) && !permit && xnacm){
-		    if ((ret = nacm_datanode_write(NULL, x1, NACM_CREATE, username, xnacm, cbret)) < 0) 
+		    if ((ret = nacm_datanode_write(h, NULL, x1, NACM_CREATE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -350,8 +349,9 @@ text_modify(clicon_handle       h,
 		/* Get namespace from x1
 		 * Check if namespace exists in x0 parent
 		 * if not add new binding and replace in x0.
+		 * See also xmlns copying of attributes in the body section below
 		 */
-		if (assign_namespaces(x1, x0, x0p) < 0)
+		if (assign_namespace_element(x1, x0, x0p) < 0)
 		    goto done;
 		changed++;
 		if (op==OP_NONE)
@@ -362,17 +362,46 @@ text_modify(clicon_handle       h,
 		}
 	    }
 	    if (x1bstr){
-		/* XXX: Do the type lookup here inline instead, there are more
-		 * cases where we check for types, eg where we now call clixon_trim2
-		 * AND in nacm path where we need proper namespace contexts.
+		/* Some bodies (eg identityref) requires proper namespace setup, so a type lookup is
+		 * necessary.
 		 */
-		if (check_identityref(x1, x0, x0p, x1bstr, y0) < 0)
+		yang_stmt *yrestype = NULL;
+		char      *restype;
+
+		if (yang_type_get(y0, NULL, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
 		    goto done;
+		if (yrestype == NULL){
+		    clicon_err(OE_CFG, EFAULT, "No restype (internal error)");
+		    goto done;
+		}
+		restype = yang_argument_get(yrestype);
+		if (strcmp(restype, "identityref") == 0){
+		    x1bstr = clixon_trim2(x1bstr, " \t\n"); 
+		    if (check_body_namespace(x1, x0, x0p, x1bstr, y0) < 0)
+			goto done;
+		}
+		else{
+		    /* Some bodies strip pretty-printed here, unsure where to do this,.. */
+		    if (strcmp(restype, "enumeration") == 0 ||
+			strcmp(restype, "bits") == 0)
+			x1bstr = clixon_trim2(x1bstr, " \t\n"); 
+
+		    /* If origin body has namespace definitions, copy them. The reason is that
+		     * some bodies rely on namespace prefixes, such as NACM path, but there is 
+		     * no way we can now this here.
+		     * However, this may lead to namespace collisions if these prefixes are not
+		     * canonical, and may collide with the assign_namespace_element() above (but that 
+		     * is for element sysmbols)
+		     * Oh well.
+		     */
+		    if (assign_namespace_body(x1, x1bstr, x0) < 0)
+			goto done;
+		}
 		if ((x0b = xml_body_get(x0)) != NULL){
 		    x0bstr = xml_value(x0b);
 		    if (x0bstr==NULL || strcmp(x0bstr, x1bstr)){
 			if ((op != OP_NONE) && !permit && xnacm){
-			    if ((ret = nacm_datanode_write(NULL, x1,
+			    if ((ret = nacm_datanode_write(h, NULL, x1,
 							   x0bstr==NULL?NACM_CREATE:NACM_UPDATE,
 							   username, xnacm, cbret)) < 0)
 				goto done;
@@ -398,7 +427,7 @@ text_modify(clicon_handle       h,
 	case OP_REMOVE: /* fall thru */
 	    if (x0){
 		if ((op != OP_NONE) && !permit && xnacm){
-		    if ((ret = nacm_datanode_write(NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0)
+		    if ((ret = nacm_datanode_write(h, NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0)
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -460,7 +489,7 @@ text_modify(clicon_handle       h,
 		 * of ordered-by user and (changed) insert attribute.
 		 */
 		if (!permit && xnacm){
-		    if ((ret = nacm_datanode_write(NULL, x1, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+		    if ((ret = nacm_datanode_write(h, NULL, x1, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -486,7 +515,7 @@ text_modify(clicon_handle       h,
 		if (op == OP_NONE)
 		    break;
 		if (op==OP_MERGE && !permit && xnacm){
-		    if ((ret = nacm_datanode_write(NULL, x0, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+		    if ((ret = nacm_datanode_write(h, NULL, x0, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -503,7 +532,7 @@ text_modify(clicon_handle       h,
 	    } /* anyxml, anydata */
 	    if (x0==NULL){
 		if (op==OP_MERGE && !permit && xnacm){
-		    if ((ret = nacm_datanode_write(NULL, x1, NACM_CREATE, username, xnacm, cbret)) < 0) 
+		    if ((ret = nacm_datanode_write(h, NULL, x1, NACM_CREATE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -522,7 +551,7 @@ text_modify(clicon_handle       h,
 		 * Check if namespace exists in x0 parent
 		 * if not add new binding and replace in x0.
 		 */
-		if (assign_namespaces(x1, x0, x0p) < 0)
+		if (assign_namespace_element(x1, x0, x0p) < 0)
 		    goto done;
 		if (op==OP_NONE)
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
@@ -595,7 +624,7 @@ text_modify(clicon_handle       h,
 	case OP_REMOVE: /* fall thru */
 	    if (x0){
 		if (!permit && xnacm){
-		    if ((ret = nacm_datanode_write(NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0) 
+		    if ((ret = nacm_datanode_write(h, NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -676,7 +705,7 @@ text_modify_top(clicon_handle       h,
 	    case OP_REMOVE:
 	    case OP_REPLACE:
 		if (!permit && xnacm){
-		    if ((ret = nacm_datanode_write(NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0)
+		    if ((ret = nacm_datanode_write(h, NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0)
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -710,7 +739,7 @@ text_modify_top(clicon_handle       h,
     /* Special case top-level replace */
     else if (op == OP_REPLACE || op == OP_DELETE){
 	if (!permit && xnacm){
-	    if ((ret = nacm_datanode_write(NULL, x1, NACM_UPDATE, username, xnacm, cbret)) < 0) 
+	    if ((ret = nacm_datanode_write(h, NULL, x1, NACM_UPDATE, username, xnacm, cbret)) < 0) 
 		goto done;
 	    if (ret == 0)
 		goto fail;

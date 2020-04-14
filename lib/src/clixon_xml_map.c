@@ -763,6 +763,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
     return retval;
 }
 #endif
+
 /*! Prune everything that passes test
  * @param[in]   xt      XML tree with some node marked
  * @param[in]   flag    Which flag to test for
@@ -799,7 +800,7 @@ xml_tree_prune_flagged(cxobj *xt,
     return retval;
 }
 
-/*! Add prefix:namespace pair to xml node, set cache, prefix, etc
+/*! Add prefix:namespace pair to xml node, set cache, etc
  * @param[in]  x         XML node whose namespace should change
  * @param[in]  xp        XML node where namespace attribute should be declared (can be same)
  * @param[in]  prefix1   Use this prefix
@@ -835,9 +836,6 @@ add_namespace(cxobj *x,
 	goto done;
     xml_sort(xp, NULL); /* Ensure attr is first / XXX xml_insert? */
 	
-    /* 5. Add prefix to x, if any */
-    if (prefix && xml_prefix_set(x, prefix) < 0)
-	goto done;
     retval = 0;
  done:
     return retval;
@@ -882,6 +880,10 @@ xml_namespace_change(cxobj *x,
 	   xp = xml_parent(x);
        if (add_namespace(x, xp, prefix, namespace) < 0)
 	   goto done;	   
+       /* Add prefix to x, if any */
+       if (prefix && xml_prefix_set(x, prefix) < 0)
+	   goto done;
+       
     }
  ok:
     retval = 0;
@@ -945,6 +947,9 @@ xml_default(cxobj *xt,
 				goto done;
 			    }
 			    if (add_namespace(xc, xc, prefix, namespace) < 0)
+				goto done;
+			    /* Add prefix to x, if any */
+			    if (prefix && xml_prefix_set(xc, prefix) < 0)
 				goto done;
 			}
 		    }
@@ -1114,7 +1119,6 @@ xml2xpath(cxobj *x,
     return retval;
 }
 
-
 /*! Check if the module tree x is in is assigned right XML namespace, assign if not
  * @param[in]  x   XML node
  *(0. You should probably find the XML root and apply this function to that.)
@@ -1160,50 +1164,24 @@ xmlns_assign(cxobj *x)
     return retval;
 }
 
-/*! Given a src node x0 and a target node x1, assign (optional) prefix and namespace
- * @param[in]  x0       Source XML tree
- * @param[in]  x1       Target XML tree
- * 1. Find N=namespace(x0)
- * 2. Detect if N is declared in x1 parent
- * 3. If yes, assign prefix to x1
- * 4. If no, create new prefix/namespace binding and assign that to x1p (x1 if x1p is root)
- * 5. Add prefix to x1, if any
- * 6. Ensure x1 cache is updated
- * @note switch use of x0 and x1 compared to datastore text_modify
- * @see xml2ns
- * XXX: fail handling: 		if (netconf_data_missing(cbret, NULL, "Data does not exist; cannot delete resource") < 0)
-		    goto done;
+/*! Given a src element node x0 and a target node x1, assign (optional) prefix and namespace
+ * @see assign_namespace_element  this is a subroutine
  */
-int
-assign_namespaces(cxobj *x0, /* source */
-		  cxobj *x1, /* target */
-		  cxobj *x1p)
+static int
+assign_namespace(cxobj *x0, /* source */
+		 cxobj *x1, /* target */
+		 cxobj *x1p,
+		 int    isroot,
+		 char  *namespace,
+		 char  *prefix0)
 {
     int        retval = -1;
-    char      *namespace = NULL;
-    char      *prefix0 = NULL;;
     char      *prefix1 = NULL;
-    char      *prefixb = NULL; /* identityref body prefix */
+    char      *pexist = NULL;
     cvec      *nsc0 = NULL;
     cvec      *nsc = NULL;
-    int        isroot;
-    char      *pexist = NULL;
     yang_stmt *y;
     
-    /* XXX: need to identify root better than hiereustics and strcmp,... */
-    isroot = xml_parent(x1p)==NULL &&
-	(strcmp(xml_name(x1p), "config") == 0 || strcmp(xml_name(x1p), "top") == 0)&&
-	xml_prefix(x1p)==NULL;
-
-    /* 1. Find N=namespace(x0) */
-    prefix0 = xml_prefix(x0);
-    if (xml2ns(x0, prefix0, &namespace) < 0)
-	goto done;
-    if (namespace == NULL){
-	clicon_err(OE_XML, ENOENT, "No namespace found for prefix:%s",
-		   prefix0?prefix0:"NULL");
-	goto done;
-    }
     /* 2a. Detect if namespace is declared in x1 target parent */
     if (xml2prefix(x1p, namespace, &pexist) == 1){
 	/* Yes, and it has prefix pexist */
@@ -1235,7 +1213,7 @@ assign_namespaces(cxobj *x0, /* source */
 	if (xml2prefix(x1, namespace, &pexist) == 1){
 	    /* Yes it exists, but is it equal? */
 	    if (clicon_strcmp(pexist, prefix0) == 0)
-		    ; /* Equal, reuse */
+		; /* Equal, reuse */
 	    else{ /* namespace exist, but not equal, use existing */
 		/* Add prefix to x1, if any */
 		if (pexist && xml_prefix_set(x1, pexist) < 0)
@@ -1253,30 +1231,132 @@ assign_namespaces(cxobj *x0, /* source */
 		}
 	    }
 	    else{
+		char *ptmp;
 		if ((y = xml_spec(x0)) == NULL){
 		    clicon_err(OE_YANG, ENOENT, "XML %s does not have yang spec",
 			       xml_name(x0));
 		    goto done;
 		}
-		if ((prefix1 = strdup(yang_find_myprefix(y))) == NULL){
+		/* Find local (imported) prefix for that module namespace */
+		if (yang_find_prefix_by_namespace(y, namespace, &ptmp) < 0)
+		    goto done;
+		if ((prefix1 = strdup(ptmp)) == NULL){
 		    clicon_err(OE_UNIX, errno, "strdup");
 		    goto done;
-		}
+		}   
+
 	    }
 	}
 	if (add_namespace(x1, x1, prefix1, namespace) < 0)
 	    goto done;
+	if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
+	    goto done;	    
     }
  ok:
     /* 6. Ensure x1 cache is updated (I think it is done w xmlns_set above) */
     retval = 0;
  done:
-    if (prefixb)
-	free(prefixb);
     if (prefix1)
 	free(prefix1);
     return retval;
 }
+
+/*! Given a src element node x0 and a target node x1, assign (optional) prefix and namespace
+ * @param[in]  x0       Source XML tree
+ * @param[in]  x1       Target XML tree
+ * @retval     0        OK
+ * @retval     -1       OK
+ * 1. Find N=namespace(x0)
+ * 2. Detect if N is declared in x1 parent
+ * 3. If yes, assign prefix to x1
+ * 4. If no, create new prefix/namespace binding and assign that to x1p (x1 if x1p is root)
+ * 5. Add prefix to x1, if any
+ * 6. Ensure x1 cache is updated
+ * @note switch use of x0 and x1 compared to datastore text_modify
+ * @see xml2ns
+*/
+int
+assign_namespace_element(cxobj *x0, /* source */
+			 cxobj *x1, /* target */
+			 cxobj *x1p)
+{
+    int        retval = -1;
+    char      *namespace = NULL;
+    char      *prefix0 = NULL;;
+    int        isroot;
+    
+    /* XXX: need to identify root better than hiereustics and strcmp,... */
+    isroot = xml_parent(x1p)==NULL &&
+	(strcmp(xml_name(x1p), "config") == 0 || strcmp(xml_name(x1p), "top") == 0)&&
+	xml_prefix(x1p)==NULL;
+
+    /* 1. Find N=namespace(x0) in x0 element */
+    prefix0 = xml_prefix(x0);
+    if (xml2ns(x0, prefix0, &namespace) < 0)
+	goto done;
+    if (namespace == NULL){
+	clicon_err(OE_XML, ENOENT, "No namespace found for prefix:%s",
+		   prefix0?prefix0:"NULL");
+	goto done;
+    }
+    if (assign_namespace(x0, x1, x1p, isroot, namespace, prefix0) < 0)
+	goto done;
+    /* 6. Ensure x1 cache is updated (I think it is done w xmlns_set above) */
+    retval = 0;
+ done:
+    return retval;
+}
+
+/* If origin body has namespace definitions, copy them. The reason is that
+ * some bodies rely on namespace prefixes, such as NACM path, but there is 
+ * no way we can now this here.
+ * However, this may lead to namespace collisions if these prefixes are not
+ * canonical, and may collide with the assign_namespace_element() above (but that 
+ * is for element sysmbols)
+ */
+int
+assign_namespace_body(cxobj *x0, /* source */
+		      char  *x0bstr,
+		      cxobj *x1) /* target */
+{
+    int    retval = -1;
+    char  *namespace = NULL;
+    char  *name;
+    char  *prefix;
+    char  *prefix0 = NULL;;
+    char  *pexisting = NULL;;
+    cxobj *xa;
+    
+    xa = NULL;
+    while ((xa = xml_child_each(x0, xa, CX_ATTR)) != NULL) {
+	prefix = xml_prefix(xa);
+	name = xml_name(xa);
+	namespace = xml_value(xa);
+	if ((strcmp(name, "xmlns")==0 && prefix==NULL) ||
+	    (prefix != NULL && strcmp(prefix, "xmlns")==0)){
+	    if (prefix == NULL)
+		prefix0 = NULL;
+	    else
+		prefix0 = name;
+	    if (strcmp(namespace, NETCONF_BASE_NAMESPACE) ==0 ||
+		strcmp(namespace, YANG_XML_NAMESPACE) ==0)
+		continue;
+	    /* Detect if prefix:namespace is declared already? */
+	    if (xml2prefix(x1, namespace, &pexisting) == 1){
+		/* Yes, and it has prefix pexist */
+		if (clicon_strcmp(pexisting, prefix0) ==0)
+		    continue;
+	    }
+	    if (add_namespace(x1, x1, prefix0, namespace) < 0)
+		goto done;
+	}
+    }
+    /* 6. Ensure x1 cache is updated (I think it is done w xmlns_set above) */
+    retval = 0;
+ done:
+    return retval;
+}
+
 
 /*! Merge a base tree x0 with x1 with yang spec y
  * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
@@ -1334,7 +1414,7 @@ xml_merge1(cxobj              *x0,  /* the target */
 	    if (xml_value_set(x0b, x1bstr) < 0)
 		goto done;
 	}
-	if (assign_namespaces(x1, x0, x0p) < 0)
+	if (assign_namespace_element(x1, x0, x0p) < 0)
 	    goto done;
     } /* if LEAF|LEAF_LIST */
     else { /* eg Y_CONTAINER, Y_LIST  */
@@ -1343,7 +1423,7 @@ xml_merge1(cxobj              *x0,  /* the target */
 		goto done;
 	    xml_spec_set(x0, y0);
 	}
-	if (assign_namespaces(x1, x0, x0p) < 0)
+	if (assign_namespace_element(x1, x0, x0p) < 0)
 	    goto done;
 	if ((second_wave = calloc(xml_child_nr(x1), sizeof(*second_wave))) == NULL){
 	    clicon_err(OE_UNIX, errno, "calloc");

@@ -56,7 +56,7 @@ cat <<EOF > $fyang
 module nacm-example{
   yang-version 1.1;
   namespace "urn:example:nacm";
-  prefix nacm;
+  prefix nex;
   import clixon-example {
 	prefix ex;
   }
@@ -104,7 +104,7 @@ RULES=$(cat <<EOF
        <rule>
          <name>deny-update</name>
          <module-name>nacm-example</module-name>
-         <access-operations>read update</access-operations>
+         <access-operations>update</access-operations>
          <action>deny</action>
        </rule>
      </rule-list>
@@ -121,7 +121,7 @@ RULES=$(cat <<EOF
        <rule>
          <name>deny-create-delete</name>
          <module-name>nacm-example</module-name>
-         <access-operations>read create delete</access-operations>
+         <access-operations>create delete</access-operations>
          <action>deny</action>
        </rule>
 

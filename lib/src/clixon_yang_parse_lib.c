@@ -978,7 +978,7 @@ ys_list_check(clicon_handle h,
 /*! Parse top yang module including all its sub-modules. Expand and populate yang tree
  *
  * Perform secondary actions after yang parsing. These actions cannot be made at
- * compile-time for various reasons.
+ * parse-time for various reasons.
  * These includes:
  * - Detect imported yang specs that are not loaded and load and parse them too
  * - Check cardinality of yang (that nr of children match)
@@ -1015,14 +1015,17 @@ yang_parse_post(clicon_handle h,
 	    goto done;
     
     /* 3: Check features: check if enabled and remove disabled features */
-    for (i=modnr; i<yang_len_get(yspec); i++) /* XXX */
+    for (i=modnr; i<yang_len_get(yspec); i++) 
 	if (yang_features(h, yspec->ys_stmt[i]) < 0)
 	    goto done;
     
     /* 4: Go through parse tree and populate it with cv types */
-    for (i=modnr; i<yang_len_get(yspec); i++)
+    for (i=modnr; i<yang_len_get(yspec); i++){
+	if (ys_populate(yspec->ys_stmt[i], h) < 0) /* Alt: make a yang_apply0 */
+	    goto done;
 	if (yang_apply(yspec->ys_stmt[i], -1, ys_populate, (void*)h) < 0)
 	    goto done;
+    }
 
     /* 5: Resolve all types: populate type caches. Requires eg length/range cvecs
      * from ys_populate step.

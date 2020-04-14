@@ -755,12 +755,18 @@ xml_search_yang(cxobj     *xp,
 	        char      *indexvar,
 		clixon_xvec *xvec)
 {
+    int    retval = -1;
     cxobj *xa;
     int    low = 0;
     int    upper = xml_child_nr(xp);
     int    sorted = 1;
     int    yangi;
     
+    if (xp == NULL){
+	clicon_err(OE_XML, EINVAL, "xp is NULL");
+	goto done;
+    }
+    upper = xml_child_nr(xp);
     /* Assume if there are any attributes, they are first in the list, mask
        them by raising low to skip them */
     for (low=0; low<upper; low++)
@@ -775,7 +781,12 @@ xml_search_yang(cxobj     *xp,
 	if (yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST)
 	sorted = (yang_find(yc, Y_ORDERED_BY, "user") == NULL);
     yangi = yang_order(yc);
-    return xml_search_binary(xp, x1, sorted, yangi, low, upper, skip1, indexvar, xvec);
+    
+    if (xml_search_binary(xp, x1, sorted, yangi, low, upper, skip1, indexvar, xvec) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Insert xn in xp:s sorted child list (special case of ordered-by user)
@@ -1281,6 +1292,10 @@ xml_find_index_yang(cxobj       *xp,
     int        revert = 0;
     char      *indexvar = NULL;
 
+    if (xp == NULL){
+	clicon_err(OE_XML, EINVAL, "xp is NULL");
+	goto done;
+    }
     name = yang_argument_get(yc);
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");

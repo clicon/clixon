@@ -95,7 +95,7 @@ leafstring(cxobj *x)
     return xml_value(c);
 }
 
-/*! Internal recursive part where configuration xml tree is pruned frim filter
+/*! Internal recursive part where configuration xml tree is pruned from filter
  * assume parent has been selected and filter match (same name) as parent
  * parent is pruned according to selection.
  * @param[in]  xfilter  Filter xml

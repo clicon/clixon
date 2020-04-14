@@ -24,6 +24,12 @@
 ## 4.5.0
 Expected: May 2020
 
+### Major New features
+
+* NACM RFC341 datanode paths
+  * Read operations now implemented
+  * Create/Write/Update not yet
+
 ### API changes on existing protocol/config features (You may have have to change how you use Clixon)
 
 * Stricter incoming RPC sanity checking, error messages may have changed.
@@ -36,6 +42,7 @@ Expected: May 2020
 
 ### Minor changes
 
+* Sanity check of duplicates prefixes in Yang modules and submodules as defined in RFC 7950 Sec 7.1.4
 
 ## 4.4.0
 5 April 2020
@@ -49,7 +56,7 @@ features include optimized search functions and a repair callback.
 
 * New "general-purpose" datastore upgrade/repair callback called once on startup, intended for low-level general upgrades and as a complement to module-specific upgrade.
   * Called on startup after initial XML parsing, but before module-specific upgrades
-  * Enabled by definign the `.ca_datastore_upgrade`
+  * Enabled by defining the `.ca_datastore_upgrade`
   * [General-purpose upgrade documentation](https://clixon-docs.readthedocs.io/en/latest/backend.html#general-purpose)
 * New and updated search functions using xpath, api-path and instance-id, and explicit indexes
   * New search functions using api-path and instance_id:

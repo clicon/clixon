@@ -474,7 +474,7 @@ client_get_config_only(clicon_handle h,
 	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	    goto done;
 	/* NACM datanode/module read validation */
-	if (nacm_datanode_read(xret, xvec, xlen, username, xnacm) < 0) 
+	if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0) 
 	    goto done;
     }
     cprintf(cbret, "<rpc-reply>");
@@ -1174,7 +1174,7 @@ from_client_get(clicon_handle h,
 	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	    goto done;
 	/* NACM datanode/module read validation */
-	if (nacm_datanode_read(xret, xvec, xlen, username, xnacm) < 0) 
+	if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0) 
 	    goto done;
     }
     cprintf(cbret, "<rpc-reply>");     /* OK */
