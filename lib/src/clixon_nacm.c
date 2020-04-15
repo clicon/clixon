@@ -71,6 +71,7 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
 #include "clixon_path.h"
+#include "clixon_xml_vec.h"
 #include "clixon_nacm.h"
 
 /* NACM namespace for use with xml namespace contexts and xpath */
@@ -523,19 +524,12 @@ static int
 nacm_data_read_xrule_xml(cxobj        *xt,
 			 cxobj        *xn,
 			 cxobj        *xrule,
+			 cxobj        *xp,
 			 yang_stmt    *yspec)
 {
     int        retval = -1;
-    cxobj     *xp;
-    int        ret;
     cxobj     *pathobj;
-    char      *access_operations;
-    cvec      *nsc0 = NULL;   /* Non-canonical namespace context */
-    char      *path0;         /* Non-canonical path */
-    char      *path=NULL;     /* Canonical path */
     yang_stmt *ymod;
-    cxobj    **xvec = NULL;
-    size_t     xlen = 0;
     char      *module_rule; /* rule module name */
 
     if ((module_rule = xml_find_body(xrule, "module-name")) == NULL)
@@ -553,26 +547,12 @@ nacm_data_read_xrule_xml(cxobj        *xt,
 	(2) the "rule-type" is "data-node" and the "path" matches the
 	requested data node, action node, or notification node. */    
     if ((pathobj = xml_find_type(xrule, NULL, "path", CX_ELMNT)) == NULL){
-	if (xml_find_body(xrule, "rpc-name") || xml_find_body(xrule, "notification-name"))
-	    goto nomatch;
-    }
-    access_operations = xml_find_body(xrule, "access-operations");
-    /* 6c) For a "read" access operation, the rule's "access-operations"
-       leaf has the "read" bit set or has the special value "*" */
-    if (!match_access(access_operations, "read", NULL))
-	goto nomatch;
-    if (pathobj == NULL){
 	if (nacm_data_read_action(xrule, xn) < 0)
 	    goto done;
 	goto match;
     }
-    path0 = clixon_trim2(xml_body(pathobj), " \t\n");
     /* Create namespace context for with nacm namespace as default */
-    if (xml_nsctx_node(pathobj, &nsc0) < 0)
-	goto done;
-    /* instance-id requires canonical paths */
-    if (xpath2canonical(path0, nsc0, yspec, &path, NULL) < 0)
-	goto done;
+
     /* path may not be yang-consistent gives an error,... but retval =0 back,... 
      * Here I may need another function.
      * I have a top-level node "xt", a node "xn" and a "path".
@@ -580,33 +560,15 @@ nacm_data_read_xrule_xml(cxobj        *xt,
      * The brute force is to evaluate the result in xvec and then see if ancestors of
      * xn is in xvec.
      */
-    if ((ret = clixon_xml_find_instance_id(xt, yspec, &xvec, &xlen, "%s", path)) < 0)
-	goto done;
-    switch (ret){
-    case 0: /* Actually some kind of failure, eg yang mismatch */
+
+    /* Check if ancestor is xp */
+    if (xn != xp && !xml_isancestor(xn, xp))
 	goto nomatch;
-	break;
-    case 1: 
-	if (xlen == 0)
-	    goto nomatch;
-	assert(xlen == 1);
-	xp = xvec[0]; /* XXX: loop? */
-	/* Check if ancestor is xp */
-	if (xn != xp && !xml_isancestor(xn, xp))
-	    goto nomatch;
-	if (nacm_data_read_action(xrule, xn) < 0)
-	    goto done;
-	break;
-    } /* switch */
+    if (nacm_data_read_action(xrule, xn) < 0)
+	goto done;
  match:
     retval = 1; /* match */
  done:
-    if (path)
-	free(path);
-    if (nsc0)
-	cvec_free(nsc0);
-    if (xvec)
-	free(xvec);
     return retval;
  nomatch:
     retval = 0;
@@ -635,52 +597,25 @@ nacm_datanode_read_recurse(clicon_handle h,
 			   cxobj       **rlistvec,
 			   size_t        rlistlen,
 			   cvec         *nsc,
+			   clixon_xvec  *rulevec,
+			   clixon_xvec  *xpathvec,
 			   yang_stmt    *yspec)
 {
     int     retval=-1;
-    cxobj  *rlist;
-    cxobj **rvec = NULL; /* rules */
-    size_t  rlen;
     cxobj  *x;
     int     i;
-    int     j;
-    char   *gname;
-    cxobj  *xrule;
     cxobj  *xprev;
-    int     match;
+    int     ret;
     
     if (xml_spec(xn)){ /* Check this node */
-	for (i=0; i<rlistlen; i++){ 	/* Loop through rule list */
-	    rlist = rlistvec[i];
-	    /* Loop through user's group to find match in this rule-list */
-	    for (j=0; j<glen; j++){
-		gname = xml_find_body(gvec[j], "name");
-		if (xpath_first(rlist, nsc, ".[group='%s']", gname)!=NULL)
-		    break; /* found */
-	    }
-	    if (j==glen) /* not found */
-		continue;
-	    /* 6. For each rule-list entry found, process all rules, in order,
-	       until a rule that matches the requested access operation is
-	       found. (see 6 sub rules in nacm_rule_datanode
-	    */
-	    if (xpath_vec(rlist, nsc, "rule", &rvec, &rlen) < 0)
-		goto done;
-	    match = 0;
-	    for (j=0; j<rlen; j++){ /* Loop through rules */
-		xrule = rvec[j];
-		if ((match = nacm_data_read_xrule_xml(xt, xn, xrule, yspec)) < 0) 
-		    goto done;	    
-		if (match == 1){ /* match */
-		    break;
-		}
-	    }
-	    if (rvec){
-		free(rvec);
-		rvec=NULL;
-	    }	
-	    if (match)
-		break;
+	for (i=0; i<clixon_xvec_len(rulevec); i++){ 	/* Loop through rule list */
+	    if ((ret = nacm_data_read_xrule_xml(xt, xn,
+						clixon_xvec_i(rulevec, i),
+						clixon_xvec_i(xpathvec, i),
+						yspec)) < 0) 
+		goto done;	    
+	    if (ret == 1)
+		break; /* stop at first match */
 	}
 #if 0 /* 6(A) in algorithm 
        * If N did not match any rule R, and default rule is deny, remove that subtree */
@@ -689,12 +624,14 @@ nacm_datanode_read_recurse(clicon_handle h,
 		goto done;
 #endif
     }
+
     /* If node should be purged, dont recurse and defewr removal to caller */
     if (xml_flag(xn, XML_FLAG_DEL) == 0){
 	x = NULL; 	/* Recursively check XML */
 	xprev = NULL;
 	while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
-	    if (nacm_datanode_read_recurse(h, xt, x, gvec, glen, rlistvec, rlistlen, nsc, yspec) < 0)
+	    if (nacm_datanode_read_recurse(h, xt, x, gvec, glen, rlistvec, rlistlen, nsc,
+					   rulevec, xpathvec, yspec) < 0)
 		goto done;
 	    /* check for delayed remove */
 	    if (xml_flag(x, XML_FLAG_DEL)){
@@ -706,10 +643,123 @@ nacm_datanode_read_recurse(clicon_handle h,
     }
     retval = 0;
  done:
-    if (rvec){
-	free(rvec);
-	rvec=NULL;
-    }	
+    return retval;
+}
+
+/*! Prepare datastructures before running through XML tree
+ * Save rules in a "cache"
+ * These rules match:
+ *  - user/group
+ *  - have read access-op, etc
+ * Also make instance-id lookups on top object for each rule. Assume at most one result
+ */
+static int
+nacm_datanode_read_prepare(clicon_handle h,
+			   cxobj        *xt,
+			   cxobj       **gvec,
+			   size_t        glen,
+			   cxobj       **rlistvec,
+			   size_t        rlistlen,
+			   cvec         *nsc,
+			   clixon_xvec  *rulevec,
+    			   clixon_xvec  *xpathvec)
+{
+    int        retval = -1;
+    cxobj     *rlist;
+    int        i;
+    int        j;
+    char      *gname;
+    cxobj    **rvec = NULL; /* rules */
+    size_t     rlen;	
+    cxobj     *xrule;
+    cxobj     *pathobj;
+    char      *access_operations;
+    char      *path0;         /* Non-canonical path */
+    char      *path=NULL;     /* Canonical path */
+    cvec      *nsc0 = NULL;   /* Non-canonical namespace context */
+    yang_stmt *yspec;
+    cxobj   **xvec = NULL;
+    size_t    xlen = 0;
+    int       ret;
+
+    yspec = clicon_dbspec_yang(h);
+    for (i=0; i<rlistlen; i++){ 	/* Loop through rule list */
+	rlist = rlistvec[i];
+	/* Loop through user's group to find match in this rule-list */
+	for (j=0; j<glen; j++){
+	    gname = xml_find_body(gvec[j], "name");
+	    if (xpath_first(rlist, nsc, ".[group='%s']", gname)!=NULL)
+		break; /* found */
+	}
+	if (j==glen) /* not found */
+	    continue;
+	/* 6. For each rule-list entry found, process all rules, in order,
+	   until a rule that matches the requested access operation is
+	   found. (see 6 sub rules in nacm_rule_datanode
+	*/
+	if (xpath_vec(rlist, nsc, "rule", &rvec, &rlen) < 0)
+	    goto done;
+	for (j=0; j<rlen; j++){ /* Loop through rules */
+	    xrule = rvec[j];
+	    /* 6c) For a "read" access operation, the rule's "access-operations"
+	       leaf has the "read" bit set or has the special value "*" */
+	    access_operations = xml_find_body(xrule, "access-operations");
+	    if (!match_access(access_operations, "read", NULL))
+		continue;
+	    /*  6b) Either (1) the rule does not have a "rule-type" defined or
+		(2) the "rule-type" is "data-node" and the "path" matches the
+		requested data node, action node, or notification node. */    
+	    if ((pathobj = xml_find_type(xrule, NULL, "path", CX_ELMNT)) == NULL){
+		if (xml_find_body(xrule, "rpc-name") || xml_find_body(xrule, "notification-name"))
+		    continue;
+		if (clixon_xvec_append(xpathvec, NULL) < 0) /* XXX: vector of vectors? */
+		    goto done;
+	    }
+	    else{
+		path0 = clixon_trim2(xml_body(pathobj), " \t\n");
+		/* Create namespace context for with nacm namespace as default */
+		if (xml_nsctx_node(pathobj, &nsc0) < 0)
+		    goto done;
+		/* instance-id requires canonical paths */
+		if (xpath2canonical(path0, nsc0, yspec, &path, NULL) < 0)
+		    goto done;
+		if ((ret = clixon_xml_find_instance_id(xt, yspec, &xvec, &xlen, "%s", path)) < 0)
+		    goto done;
+		if (ret == 0)
+		    continue;
+		if (xlen > 1)
+		    clicon_log(LOG_WARNING, "%s path:%s Clixon only supports single returns, this had: %lu", __FUNCTION__, path, xlen);
+		if (clixon_xvec_append(xpathvec, xvec?xvec[0]:NULL) < 0) /* XXX: vector of vectors? */
+		    goto done;
+		if (xvec){
+		    free(xvec);
+		    xvec = NULL;
+		}
+		if (nsc0){
+		    cvec_free(nsc0);
+		    nsc0 = NULL;
+		}
+		if (path){
+		    free(path);
+		    path = NULL;
+		}
+	    }
+	    if (clixon_xvec_append(rulevec, xrule) < 0) /* save it */
+		goto done;
+	}
+	if (rvec){
+	    free(rvec);
+	    rvec=NULL;
+	}	
+    }
+    retval = 0;
+ done:
+    if (xvec)
+	free(xvec);
+    if (path)
+	free(path);
+    if (nsc0)
+	cvec_free(nsc0);
     return retval;
 }
 
@@ -769,14 +819,16 @@ nacm_datanode_read(clicon_handle h,
 		   char         *username,
 		   cxobj        *xnacm)
 {
-    int     retval = -1;
-    cxobj **gvec = NULL; /* groups */
-    size_t  glen;
-    cxobj **rlistvec = NULL; /* rule-list */
-    size_t  rlistlen;
-    int     i;
-    char   *read_default = NULL;
-    cvec   *nsc = NULL;
+    int          retval = -1;
+    cxobj      **gvec = NULL; /* groups */
+    size_t       glen;
+    cxobj      **rlistvec = NULL; /* rule-list */
+    size_t       rlistlen;
+    int          i;
+    char        *read_default = NULL;
+    cvec        *nsc = NULL;
+    clixon_xvec *rulevec = NULL;
+    clixon_xvec *xpathvec = NULL;
     
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
@@ -804,8 +856,19 @@ nacm_datanode_read(clicon_handle h,
 	clicon_err(OE_XML, EINVAL, "No nacm read-default rule");
 	goto done;
     }
+    /* First run through rules and cache rules as well as lookup objects in xt. 
+     * DANGER: objects could be stale if they are removed?
+     */
+    if ((rulevec = clixon_xvec_new()) == NULL)
+	goto done;
+    if ((xpathvec = clixon_xvec_new()) == NULL)
+	goto done;
+    if (nacm_datanode_read_prepare(h, xt, gvec, glen, rlistvec, rlistlen, nsc,
+				   rulevec, xpathvec) < 0)
+	goto done;
+    /* Then recursivelyy traverse all nodes */
     if (nacm_datanode_read_recurse(h, xt, xt, gvec, glen, rlistvec, rlistlen, nsc,
-				   clicon_dbspec_yang(h)) < 0)
+				   rulevec, xpathvec, clicon_dbspec_yang(h)) < 0)
 	goto done;
 #if 1
     /* Step 8(B) above:
@@ -836,6 +899,10 @@ nacm_datanode_read(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xpathvec)
+	clixon_xvec_free(xpathvec);
+    if (rulevec)
+	clixon_xvec_free(rulevec);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (gvec)
