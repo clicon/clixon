@@ -321,34 +321,7 @@ nacm_rpc(char         *rpc,
  * @retval -1 Error
  * @retval  0 No Match
  * @retval  1 Match
- * @retval  1 SubMatch
-
-   o  For HEAD and GET requests, any data nodes that are ancestor nodes
-      of the target resource are considered to be part of the retrieval
-      request for access control purposes.
-  Data nodes to which the client does not have read access are silently
-   omitted, along with any descendants,
-the  selection criteria are applied to the subset of nodes that the user
-   is authorized to read, not the entire datastore.
- * Assume tree:
- *  tree 
- *   |
- *   a 
- *  / \
- * b   c
- * access: /
- * rule1: /a/b deny
- * rule2: / permit
- * returned tree:
- *  tree
- *   |
- *   a
- *    \
- *     c
- * Algorithm:
- * Traverse all rules and access the tree:
- * rule1: purge b
- * rule2: accept rest.
+ * @note not used for read
  */
 static int
 nacm_rule_datanode_path(clicon_handle    h,
@@ -361,7 +334,7 @@ nacm_rule_datanode_path(clicon_handle    h,
     cxobj     *xp;            /* Node specified by path */
     cxobj     *xa;            /* Ancestor */
     char      *path0;         /* Non-canonical path */
-    char      *path;          /* Canonical path */
+    char      *path=NULL;     /* Canonical path */
     yang_stmt *yspec;
     cxobj    **xvec = NULL;
     size_t     xlen = 0;
@@ -396,6 +369,10 @@ nacm_rule_datanode_path(clicon_handle    h,
  match:
     retval = 1;
  done:
+    if (nsc0)
+	cvec_free(nsc0);
+    if (path)
+	free(path);
     if (xvec)
 	free(xvec);
     return retval;
@@ -504,47 +481,49 @@ nacm_rule_datanode(clicon_handle    h,
     goto done;
 }
 
+/*! Perform NACM action: mark if permit, del if deny
+ * @param[in] xrule    NACM rule
+ * @param[in] xn       XML node (requested node)
+ * @retval    -1       Error
+ * @retval    0        OK
+ */
 static int
 nacm_data_read_action(cxobj *xrule,
-		      cxobj *xp,
-		      int    default_permit)
+		      cxobj *xn)
 {
     int   retval = -1;
     char *action;
 
     if ((action = xml_find_body(xrule, "action")) != NULL){
-	if (strcmp(action, "deny")==0){
-	    if (xml_purge(xp) < 0)
-		goto done;			    
-	}
-	else if (strcmp(action, "permit")==0){
-	    if (default_permit)
-		;
-	    else
-		xml_flag_set(xp, XML_FLAG_MARK);
-	}
+	if (strcmp(action, "deny")==0)
+	    xml_flag_set(xn, XML_FLAG_DEL);
+	else if (strcmp(action, "permit")==0)
+	    xml_flag_set(xn, XML_FLAG_MARK);
     }
     retval = 0;
- done:
+    //done:
     return retval;
 }
 
-/*
- * @retval -1 Error
- * @retval  0 OK and rule does not match
- * @retval  1 OK and rule matches
+/*! Match specific rule to specific requested node
+ * @param[in]  xt       XML root tree with "config" label 
+ * @param[in]  xn       XML node (requested node)
+ * @param[in]  xrule    NACM rule
+ * @param[in]  yspec    YANG spec
+ * @retval -1  Error
+ * @retval  0  OK and rule does not match
+ * @retval  1  OK and rule matches
  * Two distinct cases:
  * (1) read_default is permit
  *     mark all deny rules and remove them
  * (2) read_default is deny:
  *     mark all permit rules and ancestors, remove everything else
  */
-// xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
 static int
-nacm_data_read_xrule(clicon_handle h,
-		     cxobj        *xt,
-		     cxobj        *xrule,
-		     int           default_permit)
+nacm_data_read_xrule_xml(cxobj        *xt,
+			 cxobj        *xn,
+			 cxobj        *xrule,
+			 yang_stmt    *yspec)
 {
     int        retval = -1;
     cxobj     *xp;
@@ -553,18 +532,23 @@ nacm_data_read_xrule(clicon_handle h,
     char      *access_operations;
     cvec      *nsc0 = NULL;   /* Non-canonical namespace context */
     char      *path0;         /* Non-canonical path */
-    char      *path;          /* Canonical path */
-    yang_stmt *yspec;
+    char      *path=NULL;     /* Canonical path */
     yang_stmt *ymod;
     cxobj    **xvec = NULL;
     size_t     xlen = 0;
     char      *module_rule; /* rule module name */
-    int        i;
 
-    yspec = clicon_dbspec_yang(h);
     if ((module_rule = xml_find_body(xrule, "module-name")) == NULL)
 	goto nomatch;
-
+    /* 6a) The rule's "module-name" leaf is "*" or equals the name of
+     * the YANG module where the requested data node is defined. 
+     */
+    if (strcmp(module_rule, "*") != 0){
+	if (ys_module_by_xml(yspec, xn, &ymod) < 0)
+	    goto done;
+	if (strcmp(yang_argument_get(ymod), module_rule) != 0)
+	    goto nomatch;
+    }
     /*  6b) Either (1) the rule does not have a "rule-type" defined or
 	(2) the "rule-type" is "data-node" and the "path" matches the
 	requested data node, action node, or notification node. */    
@@ -578,25 +562,8 @@ nacm_data_read_xrule(clicon_handle h,
     if (!match_access(access_operations, "read", NULL))
 	goto nomatch;
     if (pathobj == NULL){
-	/* 6a) The rule's "module-name" leaf is "*" or equals the name of
-	 * the YANG module where the requested data node is defined. 
-	 * Go thru all children of xt, 
-	 */
-	i = 0;
-	xp = NULL;
-	while ((xp = xml_child_each(xt, xp, CX_ELMNT)) != NULL) {
-	    if (strcmp(module_rule, "*") != 0){
-		if (ys_module_by_xml(yspec, xp, &ymod) < 0)
-		    goto done;
-		if (strcmp(yang_argument_get(ymod), module_rule) != 0)
-		    continue;
-	    }
-	    i++;
-	    if (nacm_data_read_action(xrule, xp, default_permit) < 0)
-		goto done;
-	}
-	if (i==0)
-	    goto nomatch;
+	if (nacm_data_read_action(xrule, xn) < 0)
+	    goto done;
 	goto match;
     }
     path0 = clixon_trim2(xml_body(pathobj), " \t\n");
@@ -606,7 +573,13 @@ nacm_data_read_xrule(clicon_handle h,
     /* instance-id requires canonical paths */
     if (xpath2canonical(path0, nsc0, yspec, &path, NULL) < 0)
 	goto done;
-    /* XXX path may not be yang-consistent gives an error,... but retval =0 back,... */
+    /* path may not be yang-consistent gives an error,... but retval =0 back,... 
+     * Here I may need another function.
+     * I have a top-level node "xt", a node "xn" and a "path".
+     * I want to know if "xn" is or is a descendant of the matches of path on xt.
+     * The brute force is to evaluate the result in xvec and then see if ancestors of
+     * xn is in xvec.
+     */
     if ((ret = clixon_xml_find_instance_id(xt, yspec, &xvec, &xlen, "%s", path)) < 0)
 	goto done;
     switch (ret){
@@ -618,21 +591,20 @@ nacm_data_read_xrule(clicon_handle h,
 	    goto nomatch;
 	assert(xlen == 1);
 	xp = xvec[0]; /* XXX: loop? */
-	/* 6a) The rule's "module-name" leaf is "*" or equals the name of
-	 * the YANG module where the requested data node is defined. */
-	if (strcmp(module_rule, "*") != 0){
-	    if (ys_module_by_xml(yspec, xp, &ymod) < 0)
-		goto done;
-	    if (strcmp(yang_argument_get(ymod), module_rule) != 0)
-		goto nomatch;
-	}
-	if (nacm_data_read_action(xrule, xp, default_permit) < 0)
+	/* Check if ancestor is xp */
+	if (xn != xp && !xml_isancestor(xn, xp))
+	    goto nomatch;
+	if (nacm_data_read_action(xrule, xn) < 0)
 	    goto done;
 	break;
     } /* switch */
  match:
     retval = 1; /* match */
  done:
+    if (path)
+	free(path);
+    if (nsc0)
+	cvec_free(nsc0);
     if (xvec)
 	free(xvec);
     return retval;
@@ -641,13 +613,114 @@ nacm_data_read_xrule(clicon_handle h,
     goto done;
 }
 
+/*! Recursive check for NACM read rules among all XML nodes
+ * @param[in]  h        Clicon handle
+ * @param[in]  xt       XML root tree with "config" label 
+ * @param[in]  xn       XML node (requested node)
+ * @param[in]  gvec     Vector of groups
+ * @param[in]  glen     Length of group vector
+ * @param[in]  rlistvec Vector of rules
+ * @param[in]  rlistlen Length of rule vector
+ * @param[in]  nsc      Namespace context
+ * @param[in]  yspec    YANG spec
+ * @retval  0  OK
+ * @retval -1  Error
+ */
+static int
+nacm_datanode_read_recurse(clicon_handle h,
+			   cxobj        *xt,
+			   cxobj        *xn,
+			   cxobj       **gvec,
+			   size_t        glen,
+			   cxobj       **rlistvec,
+			   size_t        rlistlen,
+			   cvec         *nsc,
+			   yang_stmt    *yspec)
+{
+    int     retval=-1;
+    cxobj  *rlist;
+    cxobj **rvec = NULL; /* rules */
+    size_t  rlen;
+    cxobj  *x;
+    int     i;
+    int     j;
+    char   *gname;
+    cxobj  *xrule;
+    cxobj  *xprev;
+    int     match;
+    
+    if (xml_spec(xn)){ /* Check this node */
+	for (i=0; i<rlistlen; i++){ 	/* Loop through rule list */
+	    rlist = rlistvec[i];
+	    /* Loop through user's group to find match in this rule-list */
+	    for (j=0; j<glen; j++){
+		gname = xml_find_body(gvec[j], "name");
+		if (xpath_first(rlist, nsc, ".[group='%s']", gname)!=NULL)
+		    break; /* found */
+	    }
+	    if (j==glen) /* not found */
+		continue;
+	    /* 6. For each rule-list entry found, process all rules, in order,
+	       until a rule that matches the requested access operation is
+	       found. (see 6 sub rules in nacm_rule_datanode
+	    */
+	    if (xpath_vec(rlist, nsc, "rule", &rvec, &rlen) < 0)
+		goto done;
+	    match = 0;
+	    for (j=0; j<rlen; j++){ /* Loop through rules */
+		xrule = rvec[j];
+		if ((match = nacm_data_read_xrule_xml(xt, xn, xrule, yspec)) < 0) 
+		    goto done;	    
+		if (match == 1){ /* match */
+		    break;
+		}
+	    }
+	    if (rvec){
+		free(rvec);
+		rvec=NULL;
+	    }	
+	    if (match)
+		break;
+	}
+#if 0 /* 6(A) in algorithm 
+       * If N did not match any rule R, and default rule is deny, remove that subtree */
+	if (strcmp(read_default, "deny") == 0)
+	    if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
+		goto done;
+#endif
+    }
+    /* If node should be purged, dont recurse and defewr removal to caller */
+    if (xml_flag(xn, XML_FLAG_DEL) == 0){
+	x = NULL; 	/* Recursively check XML */
+	xprev = NULL;
+	while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
+	    if (nacm_datanode_read_recurse(h, xt, x, gvec, glen, rlistvec, rlistlen, nsc, yspec) < 0)
+		goto done;
+	    /* check for delayed remove */
+	    if (xml_flag(x, XML_FLAG_DEL)){
+		if (xml_purge(x) < 0)
+		    goto done;
+	    x = xprev;
+	    }
+	}
+    }
+    retval = 0;
+ done:
+    if (rvec){
+	free(rvec);
+	rvec=NULL;
+    }	
+    return retval;
+}
+
 /*! Make nacm datanode and module rule read access validation
  * Just purge nodes that fail validation (dont send netconf error message)
+ * @param[in]  h        Clicon handle
  * @param[in]  xt       XML root tree with "config" label 
  * @param[in]  xrvec    Vector of requested nodes (sub-part of xt)
  * @param[in]  xrlen    Length of requsted node vector
  * @param[in]  username 
- * @param[in]  xnacm     NACM xml tree
+ * @param[in]  xnacm    NACM xml tree
  * @retval -1  Error
  * @retval  0  Not access and cbret set
  * @retval  1  Access
@@ -667,51 +740,23 @@ nacm_data_read_xrule(clicon_handle h,
  * - rule r2 to permit/deny /a/b
  * - rule r3 to permit/deny /a/b/c
  * - rule r4 to permit/deny /d
-
- * - read access on /a/b which returns <a><b><c/><d/></b></a>?
- * permit - t; deny - f
- *    r1  |  r2  |  r3  | result (r0 and r4 are dont cares - dont match)
- *  ------+------+------+---------
- *    t   |  t   |  t   | <a><b><c/><d/></b></a>  
- *    t   |  t   |  f   | <a><b><d/></b></a>
- *    t   |  f   |  t   | <a/>       
- *    t   |  f   |  f   | <a/>     
- *    f   |  t   |  t   | 
- *    f   |  t   |  f   | 
- *    f   |  f   |  t   | 
- *    f   |  f   |  f   | 
  *
- * - read access on / which returns <d/><e/>?
- * permit - t; deny - f
- *    r0  |  r4  | result
- *  ------+------+---------
- *    t   |  t   | <d/><e/>
- *    t   |  f   | <e/>
- *    f   |  t   | <d/>
- *    f   |  f   | 
- * Algorithm 1, based on an xml tree XT:
- * The special variable ACTION can have values: 
- *      permit/deny/default
- * 1. Traverse through all nodes x in xt. Set ACTION to default
- *   - Find first exact matching rule r of non-default rules r1-rn on x
- *     - if found set ACTION to r->action (permit/deny).
- *   - if ACTION is deny purge x and all descendants
- *   - if ACTION is permit, mark x as PERMIT
- *   - continue traverse
- * 2. If default action is 
- * 2. Traverse through all nodes x in xt. Set ACTION to default r0->action
- *   - if x is marked as PERMIT
- *   - if ACTION is deny deny purge x and all descendants
+ * Some observations:
+ * 1. The requested node is a set of nodes in a tree (not just the top-node)
+ * 2. Any node descendants of a deny is denied (except default)
+ * 3. First rule matching a node is the active rule
+ * 
+ * Algorithm:  Select either (A) or (B)
  *
- * Algorithm 2 (based on requested node set XRS which are sub-trees in XT).
- * For each XR in XRS, check match with rule r1-rn, r0.
- * 1. XR is PERMIT 
- *     - Recursively match subtree to find reject sub-trees and purge.
- * 2. XR is REJECT. Purge XR.
- * Module-rule w no path is implicit rule on top node.
+ * 1. Select next node N in the requested node tree:
+ *   2. Select next R rule in the set of applicable rules:
+ *     3. If N does not match R, and remaining rules, goto 2.
+ *     4. If N matches R as deny, remove that subtree
+ *     5. If N matches R as accept, mark that node
+ * 6(A). If N did not match any rule R, and default rule is deny, remove that subtree
+ * 7. If remaining nodes, goto 1
+ * 8(B) If default rule is deny, recursively remove all subtrees that are not marked
  *
- * A module rule has the "module-name" leaf set but no nodes from the
- * "rule-type" choice set.
  * @see RFC8341 3.4.5.  Data Node Access Validation
  * @see nacm_datanode_write
  * @see nacm_rpc
@@ -727,16 +772,11 @@ nacm_datanode_read(clicon_handle h,
     int     retval = -1;
     cxobj **gvec = NULL; /* groups */
     size_t  glen;
-    char   *gname;
     cxobj **rlistvec = NULL; /* rule-list */
     size_t  rlistlen;
     int     i;
-    int     j;
     char   *read_default = NULL;
-    int     matches = 0;
     cvec   *nsc = NULL;
-    cxobj  *xrule;
-    int     ret;
     
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
@@ -764,53 +804,21 @@ nacm_datanode_read(clicon_handle h,
 	clicon_err(OE_XML, EINVAL, "No nacm read-default rule");
 	goto done;
     }
-    matches = 0;
-    for (i=0; i<rlistlen; i++){ 	/* Loop through rule list */
-	cxobj  *rlist;
-	cxobj **rvec = NULL; /* rules */
-	size_t  rlen;
-
-	rlist = rlistvec[i];
-	/* Loop through user's group to find match in this rule-list */
-	for (j=0; j<glen; j++){
-	    gname = xml_find_body(gvec[j], "name");
-	    if (xpath_first(rlist, nsc, ".[group='%s']", gname)!=NULL)
-		break; /* found */
-	}
-	if (j==glen) /* not found */
-	    continue;
-	/* 6. For each rule-list entry found, process all rules, in order,
-	   until a rule that matches the requested access operation is
-	   found. (see 6 sub rules in nacm_rule_datanode
-	*/
-	if (xpath_vec(rlist, nsc, "rule", &rvec, &rlen) < 0)
-	    goto done;
-	for (j=0; j<rlen; j++){ /* Loop through rules */
-	    xrule = rvec[j];
-	    if ((ret = nacm_data_read_xrule(h, xt, xrule, strcmp(read_default,"permit")==0)) < 0) 
-		goto done;	    
-	    if (ret > 0)
-		matches++;
-	}
-	if (rvec){
-	    free(rvec);
-	    rvec=NULL;
-	}	
-    }
-    /* If there were accpet rules in some matches, remove everything else */
-    if (matches && strcmp(read_default, "deny") == 0)
+    if (nacm_datanode_read_recurse(h, xt, xt, gvec, glen, rlistvec, rlistlen, nsc,
+				   clicon_dbspec_yang(h)) < 0)
+	goto done;
+#if 1
+    /* Step 8(B) above:
+     * If default rule is deny, recursively remove all subtrees that are not marked
+     */
+    if (strcmp(read_default, "deny") == 0)
 	if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
 	    goto done;
-    if (strcmp(read_default, "deny") == 0){
-	if (matches == 0)
-	    goto step9; /* delete all */
-	else /* Accept rules that override default delete: delete everything not marked) */
-	    if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
-		goto done;
-    }
+#endif
     /* reset flag */
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
+
     goto ok;
     /* 8.   At this point, no matching rule was found in any rule-list
        entry. */
@@ -821,7 +829,7 @@ nacm_datanode_read(clicon_handle h,
         "nacm:default-deny-all" statement, then the requested data node
         and all its descendants are not included in the reply.
     */
-    for (i=0; i<xrlen; i++)     /* Loop through requested nodes */
+    for (i=0; i<xrlen; i++)     /* Loop through requested nodes, safe since vector not children */
 	if (xml_purge(xrvec[i]) < 0)
 	    goto done;
  ok:
@@ -836,7 +844,7 @@ nacm_datanode_read(clicon_handle h,
 	free(rlistvec);
     return retval;
 }
-	      
+
 /*! Make nacm datanode and module rule write access validation
  * The operations of NACM are: create, read, update, delete, exec
  *  where write is short-hand for create+delete+update

@@ -1440,6 +1440,7 @@ clixon_path_search(cxobj        *xt,
 	    yc = cp->cp_yang;
 	    if ((modns = yang_find_mynamespace(yc)) == NULL)
 		goto fail;
+	    if (xvecp)
 	    for (i=0; i<clixon_xvec_len(xvecp); i++){
 		xp = clixon_xvec_i(xvecp, i); /* Iterate over parent set */
 		xvecc = NULL;

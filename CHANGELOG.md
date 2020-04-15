@@ -27,8 +27,8 @@ Expected: May 2020
 ### Major New features
 
 * NACM RFC341 datanode paths
-  * Read operations now implemented
-  * Create/Write/Update not yet
+  * NACM datanode read paths
+  * NYI: NACM datanode paths for create/delete/update
 
 ### API changes on existing protocol/config features (You may have have to change how you use Clixon)
 
