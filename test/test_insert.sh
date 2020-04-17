@@ -6,7 +6,7 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-: ${clixon_util_insert:=clixon_util_insert}
+: ${clixon_util_xml_mod:=clixon_util_xml_mod -o insert}
 
 OPTS="-D $DBG"
 
@@ -46,16 +46,20 @@ module example {
 }
 EOF
 
+# Insert a sub tree into base tree. Verify its inserted in the right place
+# Args:
+# 1: base tree
+# 2: sub tree
 testrun(){
     x0=$1
     xi="<c xmlns=\"urn:example:example\">$2</c>"
     xp=c
 
-    new "random list add leaf-list"
-    # First run sorted (assume this is the refernce == correct)
-    rs=$($clixon_util_insert -y $fyang -x "$xi" -b "$x0" -p $xp $OPTS -s)
+    new "insert list into $x0, verify order"
+    # First run sorted (assume this is the reference == correct)
+    rs=$($clixon_util_xml_mod -y $fyang -x "$xi" -b "$x0" -p $xp $OPTS -s)
     # Then run actual insert
-    r0=$($clixon_util_insert -y $fyang -x "$xi" -b "$x0" -p $xp $OPTS)
+    r0=$($clixon_util_xml_mod -y $fyang -x "$xi" -b "$x0" -p $xp $OPTS)
     # If both are null something is amiss
     if [ -z "$r0" -a -z "$rs" ]; then
 	err "length of retval is zero"
@@ -213,4 +217,4 @@ testrun "$x0" "<e>32</e>"
 rm -rf $dir
 
 # unset conditional parameters 
-unset clixon_util_insert
+unset clixon_util_xml_mod

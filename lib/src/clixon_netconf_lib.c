@@ -1503,13 +1503,12 @@ netconf_hello_req(clicon_handle h,
     return retval;
 }
 
-/*! Generate clicon error from Netconf error message
+/*! Generate textual error log from Netconf error message
  *
  * Get a text error message from netconf error message and generate error on the form:
  *   <msg>: "<arg>": <netconf-error>   or   <msg>: <netconf-error>
- * @param[in]    fn       Inline function name (when called from clicon_err() macro)
- * @param[in]    line     Inline file line number (when called from clicon_err() macro)
- * @param[in]    err      Error number, typically errno
+ * @param[in]  fn      Inline function name (when called from clicon_err() macro)
+ * @param[in]  line    Inline file line number (when called from clicon_err() macro)
  * @param[in]  xerr    Netconf error xml tree on the form: <rpc-error> 
  * @param[in]  format  Format string 
  * @param[in]  arg     String argument to format (optional)
@@ -1517,7 +1516,6 @@ netconf_hello_req(clicon_handle h,
 int
 clixon_netconf_error_fn(const char *fn, 
 			const int   line,
-			int         category,
 			cxobj       *xerr,
 			const char  *msg,
 			const char  *arg)

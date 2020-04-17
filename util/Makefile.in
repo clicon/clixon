@@ -70,12 +70,12 @@ LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB)
 
 # Utilities, unit testings. Not installed.
 APPSRC    = clixon_util_xml.c
+APPSRC   += clixon_util_xml_mod.c
 APPSRC   += clixon_util_json.c
 APPSRC   += clixon_util_yang.c
 APPSRC   += clixon_util_xpath.c
 APPSRC   += clixon_util_path.c
 APPSRC   += clixon_util_datastore.c
-APPSRC   += clixon_util_insert.c
 APPSRC   += clixon_util_regexp.c
 ifeq ($(with_restconf),yes)
 APPSRC   += clixon_util_stream.c # Needs curl
@@ -114,7 +114,7 @@ clixon_util_path: clixon_util_path.c $(LIBDEPS)
 clixon_util_datastore: clixon_util_datastore.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 
-clixon_util_insert: clixon_util_insert.c $(LIBDEPS)
+clixon_util_xml_mod: clixon_util_xml_mod.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 
 clixon_util_regexp: clixon_util_regexp.c $(LIBDEPS)

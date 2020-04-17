@@ -1357,15 +1357,15 @@ assign_namespace_body(cxobj *x0, /* source */
     return retval;
 }
 
-
 /*! Merge a base tree x0 with x1 with yang spec y
  * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
  * @param[in]  y0  Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  x0p Parent of x0
  * @param[in]  x1  xml tree which modifies base
  * @param[out] reason If retval=0 a malloced string
- * @retval     0     OK. If reason is set, Yang error
- * @retval    -1     Error
+ * @retval     1      OK
+ * @retval     0      Yang error, reason is set
+ * @retval    -1      Error
  * Assume x0 and x1 are same on entry and that y is the spec
  */
 static int
@@ -1384,7 +1384,8 @@ xml_merge1(cxobj              *x0,  /* the target */
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
     cbuf      *cbr = NULL; /* Reason buffer */
-    int i;
+    int        ret;
+    int        i;
     struct {
 	cxobj     *w_x0c;
 	cxobj     *w_x1c;
@@ -1398,7 +1399,7 @@ xml_merge1(cxobj              *x0,  /* the target */
     if (yang_keyword_get(y0) == Y_LEAF_LIST || yang_keyword_get(y0) == Y_LEAF){
 	x1bstr = xml_body(x1);
 	if (x0==NULL){
-	    if ((x0 = xml_new(x1name, x0p, CX_ELMNT)) == NULL)
+	    if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
 		goto done;
 	    xml_spec_set(x0, y0);
 	    if (x1bstr){ /* empty type does not have body */
@@ -1414,6 +1415,9 @@ xml_merge1(cxobj              *x0,  /* the target */
 	    if (xml_value_set(x0b, x1bstr) < 0)
 		goto done;
 	}
+	if (xml_parent(x0) == NULL &&
+	    xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0) 
+	    goto done;
 	if (assign_namespace_element(x1, x0, x0p) < 0)
 	    goto done;
     } /* if LEAF|LEAF_LIST */
@@ -1447,7 +1451,7 @@ xml_merge1(cxobj              *x0,  /* the target */
 			goto done;
 		    }
 		}
-		break;
+		goto fail;
 	    }
 	    /* See if there is a corresponding node in the base tree */
 	    x0c = NULL;
@@ -1466,40 +1470,41 @@ xml_merge1(cxobj              *x0,  /* the target */
 	x1c = NULL;
 	i = 0;
 	while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
-	    if (xml_merge1(second_wave[i].w_x0c,
+	    if ((ret = xml_merge1(second_wave[i].w_x0c,
 			   second_wave[i].w_yc,
 			   x0,
 			   second_wave[i].w_x1c,
-			   reason) < 0)
+				  reason)) < 0)
 		goto done;
-	    if (*reason != NULL)
-		goto ok;
+	    if (ret == 0)
+		goto fail;
 	    i++;
 	}
 	if (xml_parent(x0) == NULL &&
 	    xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0) 
 	    goto done;
     } /* else Y_CONTAINER  */
- ok:
-    retval = 0;
+    retval = 1;
  done:
     if (second_wave)
 	free(second_wave);
     if (cbr)
 	cbuf_free(cbr);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Merge XML trees x1 into x0 according to yang spec yspec
- * @param[in]  x0    Base xml tree (can be NULL in add scenarios)
- * @param[in]  x1    xml tree which modifies base
- * @param[in]  yspec Yang spec
+ * @param[in]  x0     Base xml tree (can be NULL in add scenarios)
+ * @param[in]  x1     xml tree which modifies base
+ * @param[in]  yspec  Yang spec
  * @param[out] reason If retval=0, reason is set. Malloced. Needs to be freed by caller
- * @retval     0     OK. If reason is set, Yang error
- * @retval    -1     Error
+ * @retval     1      OK
+ * @retval     0      Yang error, reason is set
+ * @retval    -1      Error
  * @note both x0 and x1 need to be top-level trees
- * @see text_modify_top as more generic variant (in datastore text)
- * @note returns -1 if YANG do not match, you may want to have a softer error
  */
 int
 xml_merge(cxobj     *x0,
@@ -1518,7 +1523,6 @@ xml_merge(cxobj     *x0,
     if (x0 == NULL || x1 == NULL){
 	clicon_err(OE_UNIX, EINVAL, "parameters x0 or x1 is NULL");
 	goto done;
-	goto done;
     }
     /* Loop through children of the modification tree */
     x1c = NULL;
@@ -1532,7 +1536,7 @@ xml_merge(cxobj     *x0,
 		    clicon_err(OE_UNIX, errno, "strdup");
 		    goto done;
 	    }
-	    goto ok;	
+	    goto fail;	
 	}
 	/* Get yang spec of the child */
 	if ((yc = yang_find_datanode(ymod, x1cname)) == NULL){
@@ -1547,7 +1551,7 @@ xml_merge(cxobj     *x0,
 		    goto done;
 		}
 	    }
-	    break;
+	    goto fail;
 	}
 	/* See if there is a corresponding node (x1c) in the base tree (x0) */
 	if (match_base_child(x0, x1c, yc, &x0c) < 0)
@@ -1561,12 +1565,14 @@ xml_merge(cxobj     *x0,
 	if (*reason != NULL)
 	    break;
     }
- ok:
-    retval = 0; /* OK */
+    retval = 1; /* OK */
  done:
     if (cbr)
 	cbuf_free(cbr);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Get integer value from xml node from yang enumeration 

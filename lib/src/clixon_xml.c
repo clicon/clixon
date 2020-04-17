@@ -1172,12 +1172,13 @@ xml_find(cxobj *xp,
  * @see xml_wrap
  * @see xml_insert
  * @note xc is not sorted correctly, need to call xml_sort on parent
+ * @see xml_insert which is a higher layer function including yang and sorting
  */
 int
 xml_addsub(cxobj *xp, 
 	   cxobj *xc)
 {
-    int retval = -1;
+    int    retval = -1;
     cxobj *oldp;
     int    i;
     char  *pns = NULL; /* parent namespace */

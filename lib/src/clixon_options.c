@@ -246,7 +246,7 @@ parse_configfile(clicon_handle  h,
 	if (netconf_err2cb(xerr, cbret) < 0)
 	    goto done;
 	/* Here one could make it more relaxing to not quit on unrecognized option? */
-	clixon_netconf_error(OE_CFG, xerr, NULL, NULL);
+	clixon_netconf_error(xerr, NULL, NULL);
 	goto done;
     }
     if (xml_child_nr(xt)==1 && xml_child_nr_type(xt, CX_BODY)==1){

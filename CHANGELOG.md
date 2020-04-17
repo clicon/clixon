@@ -36,13 +36,20 @@ Expected: May 2020
 
 ### C-API changes on existing features (you may need to change your plugin C-code)
 
+* `xml_merge()` changed to use 3-value return: 1:OK, 0:Yang failed, -1: Error
+* `clixon_netconf_error(category, xerr, msg, arg)` removed first argument -> `clixon_netconf_error(xerr, msg, arg)`
 * CLI
   * `clicon_parse()`: Changed signature due to new cligen error and result handling:
   * Removed: `cli_nomatch()`  
 
 ### Minor changes
 
+* Renamed utility function `clixon_util_insert()` to `clixon_util_xml_mod()` and added merge functionality.
 * Sanity check of duplicates prefixes in Yang modules and submodules as defined in RFC 7950 Sec 7.1.4
+
+### Corrected Bugs
+
+* Fixed: Insertion of subtree leaf nodes were not made in the crrect place, always ended up last regardless of yang spec (if ordered-by system).
 
 ## 4.4.0
 5 April 2020

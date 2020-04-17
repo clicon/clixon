@@ -57,7 +57,12 @@ typedef enum netconf_content netconf_content;
 /*
  * Macros
  */
-#define clixon_netconf_error(c, x, f, a) clixon_netconf_error_fn(__FUNCTION__, __LINE__, (c), (x), (f), (a))
+/*! Generate textual error log from Netconf error message
+ * @param[in]  xerr     Netconf error xml tree on the form: <rpc-error> 
+ * @param[in]  format   Format string 
+ * @param[in]  arg      String argument to format (optional)
+ */
+#define clixon_netconf_error(x, f, a) clixon_netconf_error_fn(__FUNCTION__, __LINE__, (x), (f), (a))
 
 /*
  * Prototypes
@@ -103,7 +108,6 @@ const char *netconf_content_int2str(netconf_content nr);
 int netconf_hello_server(clicon_handle h, cbuf *cb, uint32_t session_id);
 int netconf_hello_req(clicon_handle h, cbuf *cb);
 
-int clicon_err_fn(const char *fn, const int line, int level, int err, char *format, ...);
-int clixon_netconf_error_fn(const char *fn, const int line, int category, cxobj *xerr, const char *fmt, const char *arg);
+int clixon_netconf_error_fn(const char *fn, const int line, cxobj *xerr, const char *fmt, const char *arg);
 
 #endif /* _CLIXON_NETCONF_LIB_H */

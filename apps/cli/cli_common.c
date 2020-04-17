@@ -714,13 +714,13 @@ compare_dbs(clicon_handle h,
     if (clicon_rpc_get_config(h, NULL, "running", "/", NULL, &xc1) < 0)
 	goto done;
     if ((xerr = xpath_first(xc1, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(OE_NETCONF, xerr, "Get configuration", NULL);
+	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
     }
     if (clicon_rpc_get_config(h, NULL, "candidate", "/", NULL, &xc2) < 0)
 	goto done;
     if ((xerr = xpath_first(xc2, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(OE_NETCONF, xerr, "Get configuration", NULL);
+	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
     }
     if (compare_xmls(xc1, xc2, astext) < 0) /* astext? */
@@ -884,7 +884,7 @@ save_config_file(clicon_handle h,
 	goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(OE_NETCONF, xerr, "Get configuration", NULL);
+	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
     }
     /* get-config returns a <data> tree. Save as <config> tree so it can be used
@@ -1230,7 +1230,7 @@ cli_copy_config(clicon_handle h,
     if (clicon_rpc_get_config(h, NULL, db, cbuf_get(cb), nsc, &x1) < 0)
 	goto done;
     if ((xerr = xpath_first(x1, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(OE_NETCONF, xerr, "Get configuration", NULL);
+	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
     }
 

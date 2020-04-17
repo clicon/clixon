@@ -159,7 +159,7 @@ expand_dbvar(void   *h,
     if (clicon_rpc_get_config(h, NULL, dbstr, xpath, nsc, &xt) < 0) /* XXX */
     	goto done;
     if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(OE_NETCONF, xe, "Get configuration", NULL);
+	clixon_netconf_error(xe, "Get configuration", NULL);
 	goto ok; 
     }
     xcur = xt; /* default top-of-tree */
@@ -176,7 +176,7 @@ expand_dbvar(void   *h,
 	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    clixon_netconf_error(OE_NETCONF, xerr, "Expand datastore symbol", NULL);
+	    clixon_netconf_error(xerr, "Expand datastore symbol", NULL);
 	    goto done;
 	}
     }
@@ -492,7 +492,7 @@ cli_show_config1(clicon_handle h,
 	    goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(OE_NETCONF, xerr, "Get configuration", NULL);
+	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
     }
     /* Print configuration according to format */
@@ -633,7 +633,7 @@ show_conf_xpath(clicon_handle h,
     if (clicon_rpc_get_config(h, NULL, str, xpath, nsc, &xt) < 0)
     	goto done;
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(OE_NETCONF, xerr, "Get configuration", NULL);
+	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
     }
 
@@ -735,7 +735,7 @@ cli_show_auto1(clicon_handle h,
 	    goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(OE_NETCONF, xerr, "Get configuration", NULL);
+	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
     }
     if ((xp = xpath_first(xt, nsc, "%s", xpath)) != NULL)

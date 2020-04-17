@@ -65,7 +65,7 @@
 /* clixon */
 #include "clixon/clixon.h"
 
-/* Command line options to be passed to getopt(3) */
+/* Command line options passed to getopt(3) */
 #define UTIL_XML_OPTS "hD:f:Jjl:pvoy:Y:t:T:"
 
 static int
@@ -265,7 +265,7 @@ main(int    argc,
 	    goto done;
 	}
 	if (ret == 0){
-	    clixon_netconf_error(OE_NETCONF, xerr, "Parse top file", NULL);
+	    clixon_netconf_error(xerr, "Parse top file", NULL);
 	    goto done;
 	}
 	if (validate_tree(h, xtop, yspec) < 0)
@@ -291,7 +291,7 @@ main(int    argc,
 	if ((ret = clixon_json_parse_file(fd, top_input_filename?YB_PARENT:YB_MODULE, yspec, &xt, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    clixon_netconf_error(OE_NETCONF, xerr, "util_xml", NULL);
+	    clixon_netconf_error(xerr, "util_xml", NULL);
 	    goto done;
 	}
     }
@@ -307,7 +307,7 @@ main(int    argc,
 	    goto done;
 	}
 	if (ret == 0){
-	    clixon_netconf_error(OE_NETCONF, xerr, "util_xml", NULL);
+	    clixon_netconf_error(xerr, "util_xml", NULL);
 	    goto done;
 	}
     }

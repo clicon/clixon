@@ -113,7 +113,7 @@ example_client_rpc(clicon_handle h,
     if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clixon_netconf_error(OE_NETCONF, xerr, "Get configuration", NULL);
+	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
     }
     /* Print result */
