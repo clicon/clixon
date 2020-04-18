@@ -268,13 +268,12 @@ expectpart "$(curl -u guest:bar -siS -X GET http://localhost/restconf/data/ietf-
 new "3. limited can read config-parameters"
 expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:acme-netconf/config-parameters)" 0 'HTTP/1.1 200 OK' '{"nacm-example:config-parameters":{"parameter":\[{"name":"a","value":"72"}\]}}'
 
-if false; then # notyet
+
 new "3. limited can set config-parameters"
-expectpart "$(curl -u wilma:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/nacm-example:acme-netconf/config-parameters/parameter=a -d '{"nacm-example:parameter":[{"name":"a","value":"93"}]}')" 0 'HTTP/1.1 200 OK' 
-fi
+expectpart "$(curl -u wilma:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/nacm-example:acme-netconf/config-parameters/parameter=a -d '{"nacm-example:parameter":[{"name":"a","value":"93"}]}')" 0 'HTTP/1.1 204 No Content' 
 
 new "4. guest cannot set /config-parameter"
-expectpart "$(curl -u wilma:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/nacm-example:acme-netconf/config-parameters/parameter=a -d '{"nacm-example:parameter":[{"name":"a","value":"93"}]}')" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expectpart "$(curl -u guest:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/nacm-example:acme-netconf/config-parameters/parameter=a -d '{"nacm-example:parameter":[{"name":"a","value":"93"}]}')" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 # 5. guest|limit cannot POST dummy interface
 # 6. admin can POST dummy interface

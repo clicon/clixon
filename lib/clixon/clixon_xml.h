@@ -137,7 +137,7 @@ typedef struct xml cxobj; /* struct defined in clicon_xml.c */
  */
 typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 
-typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xvec.c */
+typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c */
 
 /*
  * xml_flag() flags:

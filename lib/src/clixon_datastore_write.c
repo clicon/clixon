@@ -208,6 +208,7 @@ check_body_namespace(cxobj     *x0,
  * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  x0p      Parent of x0
  * @param[in]  x1       XML tree which modifies base
+ * @param[in]  x1t      Request root node (nacm needs this)
  * @param[in]  op       OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
  * @param[in]  username User name of requestor for nacm
  * @param[in]  xnacm    NACM XML tree (only if !permit)
@@ -229,6 +230,7 @@ text_modify(clicon_handle       h,
 	    yang_stmt          *y0,
 	    cxobj              *x0p,
 	    cxobj              *x1,
+	    cxobj              *x1t,
 	    enum operation_type op,
 	    char               *username,
 	    cxobj              *xnacm,
@@ -317,7 +319,7 @@ text_modify(clicon_handle       h,
 		 * of ordered-by user and (changed) insert attribute.
 		 */
 		if (!permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, NULL, x1, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+		    if ((ret = nacm_datanode_write(h, x1t, x1, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -334,7 +336,7 @@ text_modify(clicon_handle       h,
 	case OP_NONE: /* fall thru */
 	    if (x0==NULL){
 		if ((op != OP_NONE) && !permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, NULL, x1, NACM_CREATE, username, xnacm, cbret)) < 0) 
+		    if ((ret = nacm_datanode_write(h, x1t, x1, NACM_CREATE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -401,7 +403,7 @@ text_modify(clicon_handle       h,
 		    x0bstr = xml_value(x0b);
 		    if (x0bstr==NULL || strcmp(x0bstr, x1bstr)){
 			if ((op != OP_NONE) && !permit && xnacm){
-			    if ((ret = nacm_datanode_write(h, NULL, x1,
+			    if ((ret = nacm_datanode_write(h, x1t, x1,
 							   x0bstr==NULL?NACM_CREATE:NACM_UPDATE,
 							   username, xnacm, cbret)) < 0)
 				goto done;
@@ -427,7 +429,7 @@ text_modify(clicon_handle       h,
 	case OP_REMOVE: /* fall thru */
 	    if (x0){
 		if ((op != OP_NONE) && !permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0)
+		    if ((ret = nacm_datanode_write(h, x1t, x0, NACM_DELETE, username, xnacm, cbret)) < 0)
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -489,7 +491,7 @@ text_modify(clicon_handle       h,
 		 * of ordered-by user and (changed) insert attribute.
 		 */
 		if (!permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, NULL, x1, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+		    if ((ret = nacm_datanode_write(h, x1t, x1, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -515,7 +517,7 @@ text_modify(clicon_handle       h,
 		if (op == OP_NONE)
 		    break;
 		if (op==OP_MERGE && !permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, NULL, x0, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+		    if ((ret = nacm_datanode_write(h, x1t, x0, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -532,7 +534,7 @@ text_modify(clicon_handle       h,
 	    } /* anyxml, anydata */
 	    if (x0==NULL){
 		if (op==OP_MERGE && !permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, NULL, x1, NACM_CREATE, username, xnacm, cbret)) < 0) 
+		    if ((ret = nacm_datanode_write(h, x1t, x1, NACM_CREATE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -603,7 +605,7 @@ text_modify(clicon_handle       h,
 		x1cname = xml_name(x1c);
 		x0c = x0vec[i++];
 		yc = yang_find_datanode(y0, x1cname);
-		if ((ret = text_modify(h, x0c, yc, x0, x1c, op,
+		if ((ret = text_modify(h, x0c, yc, x0, x1c, x1t, op,
 				       username, xnacm, permit, cbret)) < 0)
 		    goto done;
 		/* If xml return - ie netconf error xml tree, then stop and return OK */
@@ -624,7 +626,7 @@ text_modify(clicon_handle       h,
 	case OP_REMOVE: /* fall thru */
 	    if (x0){
 		if (!permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0) 
+		    if ((ret = nacm_datanode_write(h, x1t, x0, NACM_DELETE, username, xnacm, cbret)) < 0) 
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -656,6 +658,7 @@ text_modify(clicon_handle       h,
  * @param[in]  h        Clicon handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
  * @param[in]  x1       XML tree which modifies base
+ * @param[in]  x1t      Request root node (nacm needs this)
  * @param[in]  yspec    Top-level yang spec (if y is NULL)
  * @param[in]  op       OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
  * @param[in]  username User name of requestor for nacm
@@ -671,6 +674,7 @@ static int
 text_modify_top(clicon_handle       h,
 		cxobj              *x0,
 		cxobj              *x1,
+		cxobj              *x1t,
 		yang_stmt          *yspec,
 		enum operation_type op,
 		char               *username,
@@ -705,7 +709,7 @@ text_modify_top(clicon_handle       h,
 	    case OP_REMOVE:
 	    case OP_REPLACE:
 		if (!permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, NULL, x0, NACM_DELETE, username, xnacm, cbret)) < 0)
+		    if ((ret = nacm_datanode_write(h, x1t, x0, NACM_DELETE, username, xnacm, cbret)) < 0)
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -739,7 +743,7 @@ text_modify_top(clicon_handle       h,
     /* Special case top-level replace */
     else if (op == OP_REPLACE || op == OP_DELETE){
 	if (!permit && xnacm){
-	    if ((ret = nacm_datanode_write(h, NULL, x1, NACM_UPDATE, username, xnacm, cbret)) < 0) 
+	    if ((ret = nacm_datanode_write(h, x1t, x1, NACM_UPDATE, username, xnacm, cbret)) < 0) 
 		goto done;
 	    if (ret == 0)
 		goto fail;
@@ -773,7 +777,7 @@ text_modify_top(clicon_handle       h,
 		goto done;
 	    x0c = NULL;
 	}
-	if ((ret = text_modify(h, x0c, yc, x0, x1c, op,
+	if ((ret = text_modify(h, x0c, yc, x0, x1c, x1t, op,
 			       username, xnacm, permit, cbret)) < 0)
 	    goto done;
 	/* If xml return - ie netconf error xml tree, then stop and return OK */
@@ -917,7 +921,7 @@ xmldb_put(clicon_handle       h,
      * Modify base tree x with modification x1. This is where the
      * new tree is made.
      */
-    if ((ret = text_modify_top(h, x0, x1, yspec, op, username, xnacm, permit, cbret)) < 0)
+    if ((ret = text_modify_top(h, x0, x1, x1, yspec, op, username, xnacm, permit, cbret)) < 0)
 	goto done;
     /* If xml return - ie netconf error xml tree, then stop and return OK */
     if (ret == 0){
