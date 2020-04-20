@@ -603,14 +603,16 @@ done:
 }
 
 /*! Read command from CLIgen's cliread() using current syntax mode.
- * @param[in] h       Clicon handle
- * @retval    string  char* buffer containing CLIgen command
- * @retval    NULL    Fatal error
+ * @param[in]  h       Clicon handle
+ * @param[out] stringp Pointer to command buffer or NULL on EOF
+ * @retval     0       OK
+ * @retval    -1       Error
  */
-char *
-clicon_cliread(clicon_handle h)
+int
+clicon_cliread(clicon_handle h,
+	       char        **stringp)
 {
-    char             *ret;
+    int               retval = -1;
     char             *pfmt = NULL;
     cli_syntaxmode_t *mode;
     cli_syntax_t     *stx;
@@ -632,10 +634,15 @@ clicon_cliread(clicon_handle h)
     else
 	cli_prompt_set(h, cli_prompt(pfmt ? pfmt : mode->csm_prompt));
     cligen_tree_active_set(cli_cligen(h), mode->csm_name);
-    ret = cliread(cli_cligen(h));
+    if (cliread(cli_cligen(h), stringp) < 0){
+	clicon_err(OE_FATAL, errno, "CLIgen");
+	goto done;
+    }
+    retval = 0;
+ done:
     if (pfmt)
 	free(pfmt);
-    return ret;
+    return retval;
 }
 
 /*

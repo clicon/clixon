@@ -4606,7 +4606,7 @@ if test "x$ac_cv_header_cligen_cligen_h" = xyes; then :
 _ACEOF
 
 else
-  as_fn_error $? "cligen missing. Try: git clone https://github.com/olofhagsand/cligen.git" "$LINENO" 5
+  as_fn_error $? "CLIgen missing. Try: git clone https://github.com/olofhagsand/cligen.git" "$LINENO" 5
 fi
 
 done

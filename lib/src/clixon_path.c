@@ -411,8 +411,7 @@ yang2api_path_fmt(yang_stmt *ys,
  *            2 : ip = "1.2.3.4"
  *   api_path:  /interfaces/interface=e/ipv4/address=1.2.3.4
  * @param[in]  api_path_fmt  XML key format, eg /aaa/%s/name
- * @param[in]  cvv           cligen variable vector, one for every wildchar in 
- *                           api_path_fmt
+ * @param[in]  cvv           cligen variable vector, one for every wildchar in api_path_fmt
  * @param[out] api_path      api_path, eg /aaa/17. Free after use
  * @note first and last elements of cvv are not used,..
  * @see api_path_fmt2xpath

@@ -26,7 +26,7 @@ Expected: May 2020
 
 ### Major New features
 
-* NACM RFC341 datanode read and write paths
+* NACM RFC8341 datanode read and write paths
   * This completes the NACM RPC and Data node access checks (notification still remains)
   
 ### API changes on existing protocol/config features (You may have have to change how you use Clixon)
@@ -43,6 +43,7 @@ Expected: May 2020
 
 ### Minor changes
 
+* Adapted to CLIgen 4.5 API changes, eg: `cliread()` and  `cliread_parse()`
 * Renamed utility function `clixon_util_insert()` to `clixon_util_xml_mod()` and added merge functionality.
 * Sanity check of duplicates prefixes in Yang modules and submodules as defined in RFC 7950 Sec 7.1.4
 

@@ -220,15 +220,17 @@ cli_interactive(clicon_handle h)
     /* Loop through all commands */
     while(!cligen_exiting(cli_cligen(h))) {
 	new_mode = cli_syntax_mode(h);
-	if ((cmd = clicon_cliread(h)) == NULL) {
-	    cligen_exiting_set(cli_cligen(h), 1); /* EOF */
-	    goto ok; /* EOF should not be -1 error? */
+	cmd = NULL;
+	if (clicon_cliread(h, &cmd) < 0)
+	    goto done;
+	if (cmd == NULL) { /* EOF */
+	    cligen_exiting_set(cli_cligen(h), 1); 
+	    continue;
 	}
 	if (clicon_parse(h, cmd, &new_mode, &result, NULL) < 0)
 	    goto done;
 	/* Why not check result? */
     }
- ok:
     retval = 0;
  done:
     return retval;

@@ -69,7 +69,7 @@ int clicon_eval(clicon_handle h, char *cmd, cg_obj *match_obj, cvec *vr);
 
 int clicon_parse(clicon_handle h, char *cmd, char **mode, cligen_result *result, int *evalres);
 
-char *clicon_cliread(clicon_handle h);
+int clicon_cliread(clicon_handle h, char **stringp);
 
 int cli_plugin_finish(clicon_handle h);
 
