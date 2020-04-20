@@ -462,9 +462,9 @@ nacm_datanode_prepare(clicon_handle h,
  */
 
 /*! Match specific rule to specific requested node
- * @param[in]  xt       XML root tree with "config" label 
  * @param[in]  xn       XML node (requested node)
  * @param[in]  xrule    NACM rule
+ * @param[in]  xp       Xpath match
  * @param[in]  yspec    YANG spec
  * @retval -1  Error
  * @retval  0  OK and rule does not match
@@ -473,43 +473,15 @@ nacm_datanode_prepare(clicon_handle h,
  */
 static int
 nacm_data_write_xrule_xml(cxobj        *xn,
-			  enum nacm_access access,
 			  cxobj        *xrule,
 			  cxobj        *xp,
 			  yang_stmt    *yspec)
 {
     int        retval = -1;
-    cxobj     *pathobj;
     yang_stmt *ymod;
     char      *module_pattern; /* rule module name */
-    char      *access_operations;
     char      *action;
 
-    access_operations = xml_find_body(xrule, "access-operations");
-    switch (access){
-    case NACM_CREATE:
-	/* 6d) For a "create" access operation, the rule's "access-operations" 
-	   leaf has the "create" bit set or has the special value "*". */
-	if (!match_access(access_operations, "create", "write"))
-	    goto nomatch;
-	break;
-    case NACM_DELETE:
-	/* 6e) For a "delete" access operation, the rule's "access-operations" 
-	   leaf has the "delete" bit set or has the  special value "*". */
-	if (!match_access(access_operations, "delete", "write"))
-	    goto nomatch;
-	break;
-    case NACM_UPDATE:
-	/* 6f) For an "update" access operation, the rule's "access-operations"
-	   leaf has the "update" bit set or has the special value "*". */ 
-	if (!match_access(access_operations, "update", "write"))
-	    goto nomatch;
-	break;
-    default:
-	clicon_err(OE_XML, EINVAL, "Access %d unupported (shouldnt happen)", access);
-	goto done;
-	break;
-    }
     if ((module_pattern = xml_find_body(xrule, "module-name")) == NULL)
 	goto nomatch;
     /* 6a) The rule's "module-name" leaf is "*" or equals the name of
@@ -525,7 +497,7 @@ nacm_data_write_xrule_xml(cxobj        *xn,
     /*  6b) Either (1) the rule does not have a "rule-type" defined or
 	(2) the "rule-type" is "data-node" and the "path" matches the
 	Requested data node, action node, or notification node. */    
-    if ((pathobj = xml_find_type(xrule, NULL, "path", CX_ELMNT)) == NULL){
+    if (xml_find_type(xrule, NULL, "path", CX_ELMNT) == NULL){
 	if (strcmp(action, "deny")==0)
 	    goto deny;
 	goto permit;
@@ -549,7 +521,6 @@ nacm_data_write_xrule_xml(cxobj        *xn,
 
 /*! Recursive check for NACM write rules among all XML nodes
  * @param[in]  h         Clicon handle
- * @param[in]  access    NACM access right
  * @param[in]  xn        XML node (requested node)
  * @param[in]  rulevec   Precomputed rules that apply to this user group
  * @param[in]  xpathvec  Precomputed xpath results that apply to this XML tree
@@ -567,7 +538,6 @@ nacm_data_write_xrule_xml(cxobj        *xn,
 static int
 nacm_datanode_write_recurse(clicon_handle    h,
 			    cxobj           *xn,
-			    enum nacm_access access,
 			    clixon_xvec     *rulevec,
 			    clixon_xvec     *xpathvec,
 			    int              defpermit,
@@ -580,7 +550,7 @@ nacm_datanode_write_recurse(clicon_handle    h,
     int     ret = 0;
     
     for (i=0; i<clixon_xvec_len(rulevec); i++){ 	/* Loop through rule list */
-	if ((ret = nacm_data_write_xrule_xml(xn, access,
+	if ((ret = nacm_data_write_xrule_xml(xn,
 					     clixon_xvec_i(rulevec, i),
 					     clixon_xvec_i(xpathvec, i),
 					     yspec)) < 0) 
@@ -605,7 +575,7 @@ nacm_datanode_write_recurse(clicon_handle    h,
     /* If node should be purged, dont recurse and defer removal to caller */
     x = NULL; 	/* Recursively check XML */
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
-	if ((ret = nacm_datanode_write_recurse(h, x, access,
+	if ((ret = nacm_datanode_write_recurse(h, x, 
 					       rulevec, xpathvec,
 					       defpermit, yspec, cbret)) < 0)
 	    goto done;
@@ -624,8 +594,8 @@ nacm_datanode_write_recurse(clicon_handle    h,
  * The operations of NACM are: create, read, update, delete, exec
  *  where write is short-hand for create+delete+update
  * @param[in]  h        Clixon handle
- * @param[in]  xt       XML root tree with "config" label.
- * @param[in]  xreq     XML requestor node (part of xt)
+ * @param[in]  xreq     XML requestor node (part of xt) for delete it is existing, for others it is new
+ * @param[in]  xt       XML request root tree with "config" label at top.
  * @param[in]  op       NACM access of xreq
  * @param[in]  username User making access
  * @param[in]  xnacm    NACM xml tree
@@ -639,8 +609,8 @@ nacm_datanode_write_recurse(clicon_handle    h,
  */
 int
 nacm_datanode_write(clicon_handle    h,
-		    cxobj           *xt,
 		    cxobj           *xreq,
+		    cxobj           *xt,
 		    enum nacm_access access,
 		    char            *username,
 		    cxobj           *xnacm,
@@ -698,7 +668,7 @@ nacm_datanode_write(clicon_handle    h,
 			      rulevec, xpathvec) < 0)
 	goto done;
     /* Then recursivelyy traverse all requested nodes */
-    if ((ret = nacm_datanode_write_recurse(h, xreq, access,
+    if ((ret = nacm_datanode_write_recurse(h, xreq, 
 					   rulevec, xpathvec,
 					   strcmp(write_default, "deny"),
 					   clicon_dbspec_yang(h),
@@ -798,7 +768,6 @@ nacm_data_read_xrule_xml(cxobj        *xn,
 			 yang_stmt    *yspec)
 {
     int        retval = -1;
-    cxobj     *pathobj;
     yang_stmt *ymod;
     char      *module_pattern; /* rule module name */
 
@@ -816,7 +785,7 @@ nacm_data_read_xrule_xml(cxobj        *xn,
     /*  6b) Either (1) the rule does not have a "rule-type" defined or
 	(2) the "rule-type" is "data-node" and the "path" matches the
 	requested data node, action node, or notification node. */    
-    if ((pathobj = xml_find_type(xrule, NULL, "path", CX_ELMNT)) == NULL){
+    if (xml_find_type(xrule, NULL, "path", CX_ELMNT) == NULL){
 	if (nacm_data_read_action(xrule, xn) < 0)
 	    goto done;
 	goto match;

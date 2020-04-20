@@ -27,7 +27,7 @@
 # 2. guest cannot read /nacm
 # 3. limited can read and set /config-parameters
 # 4. guest cannot set /config-parametesr
-# 5. guest|limit cannot POST dummy interface
+# 5. limit can read and update but not create or delete dummy interface
 # 6. admin can POST dummy interface
 # 7. guest|limit can read and PUT dummy interface
 # 8. guest|limit cannot DELETE dummy interface
@@ -104,7 +104,7 @@ module itf{
   container interfaces{
     list interface{
       key name;
-      leaf key{
+      leaf name{
         type string;
       }
       leaf value{
@@ -268,18 +268,49 @@ expectpart "$(curl -u guest:bar -siS -X GET http://localhost/restconf/data/ietf-
 new "3. limited can read config-parameters"
 expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:acme-netconf/config-parameters)" 0 'HTTP/1.1 200 OK' '{"nacm-example:config-parameters":{"parameter":\[{"name":"a","value":"72"}\]}}'
 
-
 new "3. limited can set config-parameters"
 expectpart "$(curl -u wilma:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/nacm-example:acme-netconf/config-parameters/parameter=a -d '{"nacm-example:parameter":[{"name":"a","value":"93"}]}')" 0 'HTTP/1.1 204 No Content' 
 
 new "4. guest cannot set /config-parameter"
 expectpart "$(curl -u guest:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/nacm-example:acme-netconf/config-parameters/parameter=a -d '{"nacm-example:parameter":[{"name":"a","value":"93"}]}')" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
-# 5. guest|limit cannot POST dummy interface
-# 6. admin can POST dummy interface
-# 7. guest|limit can read and PUT dummy interface
-# 8. guest|limit cannot DELETE dummy interface
-# 9. admin can DELETE dummy interface
+# 5. limit can read and update but not create or delete dummy interface
+
+new "5a. limit cannot create dummy interface"
+expectpart "$(curl -u wilma:bar -siS -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/itf:interfaces -d '{"itf:interface":[{"name":"dummy","value":"93"}]}')" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+
+new "5b. admin can create dummy interface"
+expectpart "$(curl -u andy:bar -siS -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/itf:interfaces -d '{"itf:interface":[{"name":"dummy","value":"93"}]}')" 0 'HTTP/1.1 201 Created'
+
+new "5b. admin can create other interface x as reference"
+expectpart "$(curl -u andy:bar -siS -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/itf:interfaces -d '{"itf:interface":[{"name":"x","value":"200"}]}')" 0 'HTTP/1.1 201 Created'
+
+new "5c. limit can read dummy interface"
+expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/itf:interfaces/interface=dummy)" 0 'HTTP/1.1 200 OK' '{"itf:interface":\[{"name":"dummy","value":"93"}\]}'
+
+new "5c. limit can read other interface"
+expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/itf:interfaces/interface=x)" 0 'HTTP/1.1 200 OK' '{"itf:interface":\[{"name":"x","value":"200"}\]}'
+
+new "5d. limit can update dummy interface"
+expectpart "$(curl -u wilma:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/itf:interfaces/interface=dummy -d '{"itf:interface":[{"name":"dummy","value":"42"}]}')" 0 'HTTP/1.1 204 No Content'
+
+new "5d. admin can update dummy interface"
+expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/itf:interfaces/interface=dummy -d '{"itf:interface":[{"name":"dummy","value":"17"}]}')" 0 'HTTP/1.1 204 No Content'
+
+new "5d. limit can not update other interface"
+expectpart "$(curl -u wilma:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/itf:interfaces/interface=x -d '{"itf:interface":[{"name":"x","value":"42"}]}')" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+
+new "5d. admin can update other interface"
+expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/itf:interfaces/interface=x -d '{"itf:interface":[{"name":"x","value":"42"}]}')" 0 'HTTP/1.1 204 No Content'
+
+new "5d. limit can read dummy interface (again)"
+expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/itf:interfaces/interface=dummy)" 0 'HTTP/1.1 200 OK' '{"itf:interface":\[{"name":"dummy","value":"17"}\]}'
+
+new "5e. limit can not delete dummy interface"
+expectpart "$(curl -u wilma:bar -siS -X DELETE http://localhost/restconf/data/itf:interfaces/interface=dummy)" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+
+new "5e. admin can delete dummy interface"
+expectpart "$(curl -u andy:bar -siS -X DELETE http://localhost/restconf/data/itf:interfaces/interface=dummy)" 0 'HTTP/1.1 204 No Content' 
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

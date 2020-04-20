@@ -233,6 +233,7 @@ int       xml_apply(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *arg
 int       xml_apply0(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *arg);
 int       xml_apply_ancestor(cxobj *xn, xml_applyfn_t fn, void *arg);
 int       xml_isancestor(cxobj *x, cxobj *xp);
+cxobj    *xml_root(cxobj *xn);
 
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);

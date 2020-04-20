@@ -2158,6 +2158,22 @@ xml_isancestor(cxobj *x,
     return 0;
 }
 
+/*! Get ultimate root ancestor of an xml-node: top-level node without parent
+ * @param[in]   xn      XML node
+ * @retval      xr      XML root node (can be xn)
+ */
+cxobj *
+xml_root(cxobj *xn)
+{
+    cxobj     *xp = NULL;
+    cxobj     *x = NULL;
+
+    x = xn;
+    while ((xp = xml_parent(x)) != NULL) 
+	x = xp;
+    return x;
+}
+
 /*! Map xml operation from string to enumeration
  * @param[in]   opstr  String, eg "merge"
  * @param[out]  op     Enumeration, eg OP_MERGE

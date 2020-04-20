@@ -27,7 +27,7 @@ Expected: May 2020
 ### Major New features
 
 * NACM RFC8341 datanode read and write paths
-  * This completes the NACM RPC and Data node access checks (notification still remains)
+  * This completes the NACM RPC and Data node access checks (only remaining NACM access point is notification)
   
 ### API changes on existing protocol/config features (You may have have to change how you use Clixon)
 
