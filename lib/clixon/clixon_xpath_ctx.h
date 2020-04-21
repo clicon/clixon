@@ -75,7 +75,7 @@ enum xp_objtype{
 struct xp_ctx{
     enum xp_objtype xc_type;
     cxobj         **xc_nodeset; /* if type XT_NODESET */
-    size_t          xc_size;    /* Length of nodeset */
+    int             xc_size;    /* Length of nodeset */
     int             xc_bool;    /* if xc_type XT_BOOL */
     double          xc_number;  /* if xc_type XT_NUMBER */
     char           *xc_string;  /* if xc_type XT_STRING */

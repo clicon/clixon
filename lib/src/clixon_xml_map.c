@@ -443,12 +443,12 @@ xml_diff1(yang_stmt *ys,
 	  cxobj     *x0, 
 	  cxobj     *x1,
 	  cxobj   ***x0vec,
-	  size_t    *x0veclen,
+	  int       *x0veclen,
 	  cxobj   ***x1vec,
-	  size_t    *x1veclen,
+	  int       *x1veclen,
 	  cxobj   ***changed_x0,
 	  cxobj   ***changed_x1,
-	  size_t    *changedlen)
+	  int       *changedlen)
 {
     int        retval = -1;
     cxobj     *x0c = NULL; /* x0 child */
@@ -551,12 +551,12 @@ xml_diff(yang_stmt *yspec,
 	 cxobj     *x0, 
 	 cxobj     *x1,
 	 cxobj   ***first,
-	 size_t    *firstlen,
+	 int       *firstlen,
 	 cxobj   ***second,
-	 size_t    *secondlen,
+	 int       *secondlen,
 	 cxobj   ***changed_x0,
 	 cxobj   ***changed_x1,
-	 size_t    *changedlen)
+	 int       *changedlen)
 {
     int retval = -1;
 

@@ -135,7 +135,7 @@ main_commit(clicon_handle    h,
     cxobj  *target = transaction_target(td); /* wanted XML tree */
     cxobj **vec = NULL;
     int     i;
-    size_t  len;
+    int     len;
     cvec   *nsc = NULL;
 
     if (_transaction_log)

@@ -51,7 +51,7 @@ clixon_xvec *clixon_xvec_dup(clixon_xvec *xv0);
 int          clixon_xvec_free(clixon_xvec *xv);
 int          clixon_xvec_len(clixon_xvec *xv);
 cxobj       *clixon_xvec_i(clixon_xvec *xv, int i);
-int          clixon_xvec_extract(clixon_xvec *xv, cxobj ***xvec, size_t *xlen);
+int          clixon_xvec_extract(clixon_xvec *xv, cxobj ***xvec, int *xlen);
 int          clixon_xvec_append(clixon_xvec *xv, cxobj *x);
 int          clixon_xvec_prepend(clixon_xvec *xv, cxobj *x);
 int          clixon_xvec_insert_pos(clixon_xvec *xv, cxobj *x, int i);

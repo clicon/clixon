@@ -321,7 +321,7 @@ int
 xpath_optimize_check(xpath_tree *xs,
                      cxobj      *xv,
 	             cxobj    ***xvec0, 
-	             size_t     *xlen0)
+	             int        *xlen0)
 {
 #ifdef XPATH_LIST_OPTIMIZE
     int          ret;

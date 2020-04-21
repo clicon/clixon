@@ -344,7 +344,7 @@ nacm_datanode_prepare(clicon_handle h,
     cvec      *nsc0 = NULL;   /* Non-canonical namespace context */
     yang_stmt *yspec;
     cxobj   **xvec = NULL;
-    size_t    xlen = 0;
+    int       xlen = 0;
     int       ret;
 
     yspec = clicon_dbspec_yang(h);
@@ -422,7 +422,7 @@ nacm_datanode_prepare(clicon_handle h,
 		if (ret == 0)
 		    continue;
 		if (xlen > 1)
-		    clicon_log(LOG_WARNING, "%s path:%s Clixon only supports single returns, this had: %lu", __FUNCTION__, path, xlen);
+		    clicon_log(LOG_WARNING, "%s path:%s Clixon only supports single returns, this had: %d", __FUNCTION__, path, xlen);
 		if (clixon_xvec_append(xpathvec, xvec?xvec[0]:NULL) < 0) /* XXX: vector of vectors? */
 		    goto done;
 		if (xvec){

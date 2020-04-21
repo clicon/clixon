@@ -770,7 +770,7 @@ xpath_vec(cxobj    *xcur,
  * @retval     -1       error.
  * @code
  *   cxobj **vec;
- *   size_t  veclen;
+ *   int     veclen;
  *   cvec   *nsc; // namespace context (not NULL)
  *   if (xpath_vec_flag(xcur, nsc, "//symbol/foo", XML_FLAG_ADD, &vec, &veclen) < 0) 
  *      goto err;
@@ -789,7 +789,7 @@ xpath_vec_flag(cxobj    *xcur,
 	       char     *xpformat, 
 	       uint16_t  flags,
 	       cxobj  ***vec, 
-	       size_t   *veclen,
+	       int      *veclen,
 	       ...)
 {
     int        retval = -1;

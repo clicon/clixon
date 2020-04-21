@@ -47,7 +47,7 @@ struct clixon_json_yacc {
     cxobj     *jy_xtop;         /* cxobj top element (fixed) */
     cxobj     *jy_current;      /* cxobj active element (changes with parse context) */
     cxobj    **jy_xvec;         /* Vector of created top-level nodes (to know which are created) */
-    size_t     jy_xlen;         /* Length of jy_xvec */
+    int        jy_xlen;         /* Length of jy_xvec */
 };
 typedef struct clixon_json_yacc clixon_json_yacc;
 

@@ -1507,7 +1507,7 @@ int
 clixon_xml_find_api_path(cxobj        *xt, 
 			 yang_stmt    *yt,
 			 cxobj      ***xvec,
-			 size_t       *xlen,
+			 int          *xlen,
 			 char         *format,
 			 ...)
 {
@@ -1584,7 +1584,7 @@ clixon_xml_find_api_path(cxobj        *xt,
  * - Number of keys in key-value list does not match Yang list
  * @code
  *    cxobj **vec = NULL;
- *    size_t  len = 0;
+ *    int     len = 0;
  *    if (clixon_xml_find_instance_id(x, yspec, &vec, &len, "/symbol/%s", "foo") < 0) 
  *       goto err;
  *    for (i=0; i<len; i++){
@@ -1601,7 +1601,7 @@ int
 clixon_xml_find_instance_id(cxobj     *xt, 
 			    yang_stmt *yt,
 			    cxobj   ***xvec,
-			    size_t    *xlen,
+			    int       *xlen,
 			    char      *format,
 			    ...)
 {

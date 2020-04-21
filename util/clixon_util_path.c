@@ -92,7 +92,7 @@ main(int    argc,
     cxobj      *x = NULL;
     cxobj      *xc;
     cxobj     **xvec = NULL;
-    size_t      xlen = 0;
+    int         xlen = 0;
     int         c;
     int         len;
     char       *buf = NULL;

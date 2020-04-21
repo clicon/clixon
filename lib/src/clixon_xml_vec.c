@@ -209,7 +209,7 @@ clixon_xvec_i(clixon_xvec *xv,
 int
 clixon_xvec_extract(clixon_xvec *xv,
 		    cxobj     ***xvec,
-		    size_t      *xlen)
+		    int         *xlen)
 {
     int retval = -1;
     

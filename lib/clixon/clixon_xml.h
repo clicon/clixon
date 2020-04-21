@@ -226,9 +226,9 @@ int       xml_copy_one(cxobj *xn0, cxobj *xn1);
 int       xml_copy(cxobj *x0, cxobj *x1);
 cxobj    *xml_dup(cxobj *x0);
 
-int       cxvec_dup(cxobj **vec0, size_t len0, cxobj ***vec1, size_t *len1);
-int       cxvec_append(cxobj *x, cxobj ***vec, size_t  *len);
-int       cxvec_prepend(cxobj *x, cxobj ***vec, size_t  *len);
+int       cxvec_dup(cxobj **vec0, int len0, cxobj ***vec1, int *len1);
+int       cxvec_append(cxobj *x, cxobj ***vec, int *len);
+int       cxvec_prepend(cxobj *x, cxobj ***vec, int *len);
 int       xml_apply(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *arg);
 int       xml_apply0(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *arg);
 int       xml_apply_ancestor(cxobj *xn, xml_applyfn_t fn, void *arg);

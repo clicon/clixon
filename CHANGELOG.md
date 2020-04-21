@@ -35,6 +35,7 @@ Expected: May 2020
 
 ### C-API changes on existing features (you may need to change your plugin C-code)
 
+* Length of xml vector in many structs changed from `size_t` to `int`since it is a vector size, not byte size. This includes `transaction_data_t`
 * `xml_merge()` changed to use 3-value return: 1:OK, 0:Yang failed, -1: Error
 * `clixon_netconf_error(category, xerr, msg, arg)` removed first argument -> `clixon_netconf_error(xerr, msg, arg)`
 * CLI

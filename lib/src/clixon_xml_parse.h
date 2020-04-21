@@ -54,7 +54,7 @@ struct clixon_xml_parse_yacc {
     yang_stmt  *xy_yspec;        /* If set, top-level yang-spec */
     int         xy_lex_state;    /* lex return state */
     cxobj     **xy_xvec;         /* Vector of created top-level nodes (to know which are created) */
-    size_t      xy_xlen;         /* Length of xy_xvec */
+    int         xy_xlen;         /* Length of xy_xvec */
 };
 typedef struct clixon_xml_parse_yacc clixon_xml_yacc;
 

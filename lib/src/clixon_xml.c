@@ -279,7 +279,7 @@ xml_stats_one(cxobj    *x,
     }
     if (szp)
 	*szp = sz;
-    clicon_debug(1, "%s %" PRIu64, __FUNCTION__, sz);
+    clicon_debug(1, "%s %zu", __FUNCTION__, sz);
     return 0;
 }
 
@@ -307,7 +307,7 @@ xml_stats(cxobj    *xt,
 	if (szp)
 	    *szp += sz;
     }
-    clicon_debug(1, "%s %" PRIu64, __FUNCTION__, *szp);
+    clicon_debug(1, "%s %zu", __FUNCTION__, *szp);
     return 0;
 }
 
@@ -1911,9 +1911,9 @@ xml_dup(cxobj *x0)
  */
 int
 cxvec_dup(cxobj  **vec0, 
-	  size_t   len0, 
+	  int      len0, 
 	  cxobj ***vec1, 
-	  size_t  *len1)
+	  int     *len1)
 {
     int retval = -1;
 
@@ -1934,7 +1934,7 @@ cxvec_dup(cxobj  **vec0,
  * @retval        -1      Error
  * @code
  *  cxobj  **xvec = NULL;
- *  size_t   xlen = 0;
+ *  int      xlen = 0;
  *  cxobj   *x; 
  *
  *  if (cxvec_append(x, &xvec, &xlen) < 0) 
@@ -1943,11 +1943,12 @@ cxvec_dup(cxobj  **vec0,
  *     free(xvec);
  * @endcode
  * @see cxvec_prepend
+ * @see clixon_cxvec_append  which is its own encapsulated xml vector datatype
  */
 int
 cxvec_append(cxobj   *x, 
 	     cxobj ***vec, 
-	     size_t  *len)
+	     int     *len)
 {
     int retval = -1;
 
@@ -1978,11 +1979,12 @@ cxvec_append(cxobj   *x,
  *     free(xvec);
  * @endcode
  * @see cxvec_prepend
+ * @see clixon_cxvec_prepend  which is its own encapsulated xml vector datatype
  */
 int
 cxvec_prepend(cxobj   *x, 
 	     cxobj ***vec, 
-	     size_t  *len)
+	     int     *len)
 {
     int retval = -1;
 

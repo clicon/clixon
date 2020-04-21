@@ -135,12 +135,12 @@ int   xpath_vec_ctx(cxobj *xcur, cvec *nsc, char *xpath, int localonly, xp_ctx  
 #if defined(__GNUC__) && __GNUC__ >= 3
 int    xpath_vec_bool(cxobj *xcur, cvec *nsc, char *xpformat, ...) __attribute__ ((format (printf, 3, 4)));
 int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *xpformat, uint16_t flags, 
-		   cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 7)));
+		   cxobj ***vec, int *veclen, ...) __attribute__ ((format (printf, 3, 7)));
 
 #else
 int    xpath_vec_bool(cxobj *xcur, cvec *nsc, char *xpformat, ...);
 int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *xpformat, uint16_t flags, 
-		      cxobj ***vec, size_t *veclen, ...);
+		      cxobj ***vec, int *veclen, ...);
 #endif
 
 /* Functions with explicit namespace context (nsc) set. If you do not need 

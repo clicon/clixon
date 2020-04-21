@@ -53,9 +53,9 @@ int xmlns_assign(cxobj *x);
 int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
 int cvec2xml_1(cvec *cvv, char *toptag, cxobj *xp, cxobj **xt0);
 int xml_diff(yang_stmt *yspec, cxobj *x0, cxobj *x1, 	 
-	     cxobj ***first, size_t *firstlen, 
-	     cxobj ***second, size_t *secondlen, 
-	     cxobj ***changed_x0, cxobj ***changed_x1, size_t *changedlen);
+	     cxobj ***first, int *firstlen, 
+	     cxobj ***second, int *secondlen, 
+	     cxobj ***changed_x0, cxobj ***changed_x1, int *changedlen);
 int xml_tree_prune_flagged_sub(cxobj *xt, int flag, int test, int *upmark);
 int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
 int xml_namespace_change(cxobj *x, char *namespace, char *prefix);

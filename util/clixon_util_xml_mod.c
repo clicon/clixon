@@ -69,6 +69,7 @@
 #define UTIL_XML_MOD_OPTS "hD:o:y:b:x:p:s"
 
 enum opx{
+    OPX_ERROR = -1,
     OPX_INSERT,
     OPX_MERGE,
     OPX_PARENT
@@ -126,7 +127,7 @@ main(int argc, char **argv)
     int           sort = 0;
     int           ret;
     clicon_handle h;
-    enum opx      opx = -1;
+    enum opx      opx = OPX_ERROR;
     char         *reason = NULL;
     
     clicon_log_init("clixon_insert", LOG_DEBUG, CLICON_LOG_STDERR); 
@@ -168,7 +169,7 @@ main(int argc, char **argv)
     /* Sanity check: check mandatory arguments */
     if (x1str == NULL || x0str == NULL || yangfile == NULL)
 	usage(argv0);
-    if (opx == -1) 
+    if (opx == OPX_ERROR) 
 	usage(argv0);
     if ((yspec = yspec_new()) == NULL)
 	goto done;

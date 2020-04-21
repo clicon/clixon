@@ -41,7 +41,10 @@
 int  xpath_list_optimize_stats(int *hits);
 int  xpath_list_optimize_set(int enable); 
 void xpath_optimize_exit(void);
-//int  xpath_optimize_check(xpath_tree *xs, cxobj *xv, cxobj ***xvec0, size_t *xlen0);
+#if 0 /* XXX kludge for include file dependencies */
+int  xpath_optimize_check(xpath_tree *xs, cxobj *xv, cxobj ***xvec0, int *xlen0);
+#else
 int  xpath_optimize_check();
+#endif
 
 #endif /* _CLIXON_XPATH_OPTIMIZE_H */

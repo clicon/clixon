@@ -225,11 +225,7 @@ keyval_pos(char *uint)
 	goto done;
     }
     cv = cvec_i(cvv, 0);
-    if (cv_type_set(cv, CGV_UINT32) < 0){
-	clicon_err(OE_UNIX, errno, "cv_type_set");
-	cvv = NULL;
-	goto done;
-    }
+    cv_type_set(cv, CGV_UINT32);
     if ((ret = cv_parse1(uint, cv, &reason)) < 0){
 	clicon_err(OE_UNIX, errno, "cv_parse1");
 	cvv = NULL;
