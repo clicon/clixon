@@ -52,7 +52,6 @@ typedef struct {
     char       csm_prompt[CLI_PROMPT_LEN];          /* Prompt for mode */
     int        csm_nsyntax;   /* Num syntax specs registered by plugin */
     parse_tree csm_pt;                            /* CLIgen parse tree */
-
 } cli_syntaxmode_t;
 
 /* Plugin group object. Just a single object, not list. part of cli_handle */

@@ -310,6 +310,48 @@ nacm_rpc(char         *rpc,
     goto done;
 }
 
+/* Local struct for keeping preparation/compiled data in NACM data path code */
+struct prepvec{
+    qelem_t       pv_q;
+    cxobj        *pv_xrule;
+    clixon_xvec  *pv_xpathvec;
+};
+typedef struct prepvec prepvec;
+
+/*! Delete all Upgrade callbacks
+ */
+int
+prepvec_free(prepvec *pv_list)
+{
+    prepvec *pv;
+
+    while((pv = pv_list) != NULL) {
+	DELQ(pv, pv_list, prepvec *);
+	if (pv->pv_xpathvec)
+	    clixon_xvec_free(pv->pv_xpathvec);
+	free(pv);
+    }
+    return 0;
+}
+
+prepvec *
+prepvec_add(prepvec  **pv_listp,
+	    cxobj     *xrule)
+{
+    prepvec *pv;
+
+    if ((pv = malloc(sizeof(*pv))) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	return NULL;
+    }
+    memset(pv, 0, sizeof(*pv));
+    ADDQ(pv, *pv_listp);
+    pv->pv_xrule = xrule;
+    if ((pv->pv_xpathvec = clixon_xvec_new()) == NULL)
+	return NULL;
+    return pv;
+}
+
 /*! Prepare datastructures before running through XML tree
  * Save rules in a "cache"
  * These rules match:
@@ -318,21 +360,21 @@ nacm_rpc(char         *rpc,
  * Also make instance-id lookups on top object for each rule. Assume at most one result
  */
 static int
-nacm_datanode_prepare(clicon_handle h,
-		      cxobj        *xt,
-		      enum nacm_access access,
-		      cxobj       **gvec,
-		      size_t        glen,
-		      cxobj       **rlistvec,
-		      size_t        rlistlen,
-		      cvec         *nsc,
-		      clixon_xvec  *rulevec,
-		      clixon_xvec  *xpathvec)
+nacm_datanode_prepare(clicon_handle     h,
+		      cxobj            *xt,
+		      enum nacm_access  access,
+		      cxobj           **gvec,
+		      size_t            glen,
+		      cxobj           **rlistvec,
+		      size_t            rlistlen,
+		      cvec             *nsc,
+		      prepvec         **pv_listp)
 {
     int        retval = -1;
     cxobj     *rlist;
     int        i;
     int        j;
+    int        k;
     char      *gname;
     cxobj    **rvec = NULL; /* rules */
     size_t     rlen;	
@@ -346,6 +388,7 @@ nacm_datanode_prepare(clicon_handle h,
     cxobj   **xvec = NULL;
     int       xlen = 0;
     int       ret;
+    prepvec *pv;
 
     yspec = clicon_dbspec_yang(h);
     for (i=0; i<rlistlen; i++){ 	/* Loop through rule list */
@@ -368,7 +411,6 @@ nacm_datanode_prepare(clicon_handle h,
 	    xrule = rvec[j];
 	    /* 6c) For a "read" access operation, the rule's "access-operations"
 	       leaf has the "read" bit set or has the special value "*" */
-
 	    access_operations = xml_find_body(xrule, "access-operations");
 	    switch (access){
 	    case NACM_READ: 
@@ -406,7 +448,8 @@ nacm_datanode_prepare(clicon_handle h,
 	    if ((pathobj = xml_find_type(xrule, NULL, "path", CX_ELMNT)) == NULL){
 		if (xml_find_body(xrule, "rpc-name") || xml_find_body(xrule, "notification-name"))
 		    continue;
-		if (clixon_xvec_append(xpathvec, NULL) < 0) /* XXX: vector of vectors? */
+		/* Here a new xrule is found, add it */
+		if (prepvec_add(pv_listp, xrule) == NULL)
 		    goto done;
 	    }
 	    else{
@@ -421,10 +464,13 @@ nacm_datanode_prepare(clicon_handle h,
 		    goto done;
 		if (ret == 0)
 		    continue;
-		if (xlen > 1)
-		    clicon_log(LOG_WARNING, "%s path:%s Clixon only supports single returns, this had: %d", __FUNCTION__, path, xlen);
-		if (clixon_xvec_append(xpathvec, xvec?xvec[0]:NULL) < 0) /* XXX: vector of vectors? */
+		/* Here a new xrule is found, add it */
+		if ((pv = prepvec_add(pv_listp, xrule)) == NULL)
 		    goto done;
+		for (k=0; k<xlen; k++){
+		    if (clixon_xvec_append(pv->pv_xpathvec, xvec[k]) < 0)
+			goto done;
+		}
 		if (xvec){
 		    free(xvec);
 		    xvec = NULL;
@@ -438,8 +484,6 @@ nacm_datanode_prepare(clicon_handle h,
 		    path = NULL;
 		}
 	    }
-	    if (clixon_xvec_append(rulevec, xrule) < 0) /* save it */
-		goto done;
 	}
 	if (rvec){
 	    free(rvec);
@@ -472,15 +516,17 @@ nacm_datanode_prepare(clicon_handle h,
  * @retval  2  OK and rule matches permit
  */
 static int
-nacm_data_write_xrule_xml(cxobj        *xn,
-			  cxobj        *xrule,
-			  cxobj        *xp,
-			  yang_stmt    *yspec)
+nacm_data_write_xrule_xml(cxobj       *xn,
+			  cxobj       *xrule,
+			  clixon_xvec *xpathvec,
+			  yang_stmt   *yspec)
 {
     int        retval = -1;
     yang_stmt *ymod;
     char      *module_pattern; /* rule module name */
     char      *action;
+    cxobj     *xp;
+    int        i;
 
     if ((module_pattern = xml_find_body(xrule, "module-name")) == NULL)
 	goto nomatch;
@@ -502,11 +548,16 @@ nacm_data_write_xrule_xml(cxobj        *xn,
 	    goto deny;
 	goto permit;
     }
-    /* Check if ancestor is xp */
-    if (xn != xp && !xml_isancestor(xn, xp))
-	goto nomatch;
-    if (strcmp(action, "deny")==0)
-	goto deny;
+    for (i=0; i<clixon_xvec_len(xpathvec); i++){
+	xp = clixon_xvec_i(xpathvec, i);
+	/* Check if ancestor is xp (for every xpathvec?) */
+	if (xn == xp || xml_isancestor(xn, xp)){
+	    if (strcmp(action, "deny")==0)
+		goto deny;
+	    goto permit;
+	}
+    }
+    goto nomatch;
  permit:
     retval = 2;       /* rule match and permit */
  done:
@@ -536,35 +587,40 @@ nacm_data_write_xrule_xml(cxobj        *xn,
  * deny:    Send error message
  */
 static int
-nacm_datanode_write_recurse(clicon_handle    h,
-			    cxobj           *xn,
-			    clixon_xvec     *rulevec,
-			    clixon_xvec     *xpathvec,
-			    int              defpermit,
-			    yang_stmt       *yspec,
-			    cbuf            *cbret)
+nacm_datanode_write_recurse(clicon_handle h,
+			    cxobj        *xn,
+			    prepvec      *pv_list,
+			    int           defpermit,
+			    yang_stmt    *yspec,
+			    cbuf         *cbret)
 {
-    int     retval=-1;
-    cxobj  *x;
-    int     i;
-    int     ret = 0;
+    int       retval = -1;
+    cxobj   *x;
+    int      ret = 0;
+    prepvec *pv;
     
-    for (i=0; i<clixon_xvec_len(rulevec); i++){ 	/* Loop through rule list */
-	if ((ret = nacm_data_write_xrule_xml(xn,
-					     clixon_xvec_i(rulevec, i),
-					     clixon_xvec_i(xpathvec, i),
-					     yspec)) < 0) 
-	    goto done;
-	if (ret == 0) /* No match, continue with next rule */
-	    ;
-	else if (ret == 1){ /* Match and deny: break all traversal and send error back to client */
-	    if (netconf_access_denied(cbret, "application", "access denied") < 0)
+    pv = pv_list;
+    if (pv){
+	do {
+	    /* return values: -1:Error /0:no match /1: deny /2: permit
+	     */
+	    if ((ret = nacm_data_write_xrule_xml(xn, pv->pv_xrule, pv->pv_xpathvec, yspec)) < 0) 
 		goto done;
-	    goto deny;
-	    break;
-	}
-	else if (ret == 2) /* Match and accpt: break rule processing but continue recursion */
-	    break;
+	    switch(ret){
+	    case 0: /* No match, continue with next rule */
+		break;
+	    case 1: /* Match and deny: break all traversal and send error back to client */
+		if (netconf_access_denied(cbret, "application", "access denied") < 0)
+		    goto done;
+		goto deny;
+		break;
+	    case 2: /* Match and permit: break rule processing but continue recursion */
+		break;
+	    }
+	    if (ret == 2)
+		break;
+	    pv = NEXTQ(prepvec *, pv);
+	} while (pv && pv != pv_list);
     }
     /* If no rule match, check default rule: if deny then break traversal and send error */
     if (ret == 0 && !defpermit){
@@ -575,8 +631,7 @@ nacm_datanode_write_recurse(clicon_handle    h,
     /* If node should be purged, dont recurse and defer removal to caller */
     x = NULL; 	/* Recursively check XML */
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
-	if ((ret = nacm_datanode_write_recurse(h, x, 
-					       rulevec, xpathvec,
+	if ((ret = nacm_datanode_write_recurse(h, x, pv_list,
 					       defpermit, yspec, cbret)) < 0)
 	    goto done;
 	if (ret == 0)
@@ -616,17 +671,16 @@ nacm_datanode_write(clicon_handle    h,
 		    cxobj           *xnacm,
 		    cbuf            *cbret)
 {
-    int          retval = -1;
-    cxobj      **gvec = NULL; /* groups */
-    size_t       glen;
-    cxobj      **rlistvec = NULL; /* rule-list */
-    size_t       rlistlen;
-    cxobj      **rvec = NULL; /* rules */
-    char        *write_default = NULL;
-    cvec        *nsc = NULL;
-    clixon_xvec *rulevec = NULL;
-    clixon_xvec *xpathvec = NULL;
-    int          ret;
+    int             retval = -1;
+    cxobj         **gvec = NULL; /* groups */
+    size_t          glen;
+    cxobj         **rlistvec = NULL; /* rule-list */
+    size_t          rlistlen;
+    cxobj         **rvec = NULL; /* rules */
+    char           *write_default = NULL;
+    cvec           *nsc = NULL;
+    int             ret;
+    prepvec        *pv_list = NULL;
 
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
@@ -638,7 +692,6 @@ nacm_datanode_write(clicon_handle    h,
 	clicon_err(OE_XML, EINVAL, "No nacm write-default rule");
 	goto done;
     }
-
     /* 3.   Check all the "group" entries to see if any of them contain a
        "user-name" entry that equals the username for the session
        making the request.  (If the "enable-external-groups" leaf is
@@ -660,16 +713,10 @@ nacm_datanode_write(clicon_handle    h,
 	goto done;
     /* First run through rules and cache rules as well as lookup objects in xt. 
      */
-    if ((rulevec = clixon_xvec_new()) == NULL)
-	goto done;
-    if ((xpathvec = clixon_xvec_new()) == NULL)
-	goto done;
-    if (nacm_datanode_prepare(h, xt, access, gvec, glen, rlistvec, rlistlen, nsc,
-			      rulevec, xpathvec) < 0)
+    if (nacm_datanode_prepare(h, xt, access, gvec, glen, rlistvec, rlistlen, nsc, &pv_list) < 0)
 	goto done;
     /* Then recursivelyy traverse all requested nodes */
-    if ((ret = nacm_datanode_write_recurse(h, xreq, 
-					   rulevec, xpathvec,
+    if ((ret = nacm_datanode_write_recurse(h, xreq, pv_list,
 					   strcmp(write_default, "deny"),
 					   clicon_dbspec_yang(h),
 					   cbret)) < 0)
@@ -701,10 +748,8 @@ nacm_datanode_write(clicon_handle    h,
     retval = 1;
  done:
     clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
-    if (xpathvec)
-	clixon_xvec_free(xpathvec);
-    if (rulevec)
-	clixon_xvec_free(rulevec);
+    if (pv_list)
+	prepvec_free(pv_list);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (gvec)
@@ -764,13 +809,15 @@ nacm_data_read_action(cxobj *xrule,
 static int
 nacm_data_read_xrule_xml(cxobj        *xn,
 			 cxobj        *xrule,
-			 cxobj        *xp,
+			 clixon_xvec  *xpathvec,
 			 yang_stmt    *yspec)
 {
     int        retval = -1;
     yang_stmt *ymod;
     char      *module_pattern; /* rule module name */
-
+    cxobj     *xp;
+    int        i;
+    
     if ((module_pattern = xml_find_body(xrule, "module-name")) == NULL)
 	goto nomatch;
     /* 6a) The rule's "module-name" leaf is "*" or equals the name of
@@ -790,17 +837,21 @@ nacm_data_read_xrule_xml(cxobj        *xn,
 	    goto done;
 	goto match;
     }
-    /* Check if ancestor is xp */
-    if (xn != xp && !xml_isancestor(xn, xp))
-	goto nomatch;
-    if (nacm_data_read_action(xrule, xn) < 0)
-	goto done;
- match:
-    retval = 1; /* match */
- done:
-    return retval;
+    for (i=0; i<clixon_xvec_len(xpathvec); i++){
+	xp = clixon_xvec_i(xpathvec, i);
+	/* Check if ancestor is xp (for every xpathvec?) */
+	if (xn == xp || xml_isancestor(xn, xp)){
+	    if (nacm_data_read_action(xrule, xn) < 0)
+		goto done;
+	    goto match;
+	}
+    }
  nomatch:
     retval = 0;
+ done:
+    return retval;
+ match:
+    retval = 1; /* match */
     goto done;
 }
 
@@ -816,26 +867,30 @@ nacm_data_read_xrule_xml(cxobj        *xn,
 static int
 nacm_datanode_read_recurse(clicon_handle h,
 			   cxobj        *xn,
-			   clixon_xvec  *rulevec,
-			   clixon_xvec  *xpathvec,
+			   prepvec      *pv_list,
 			   yang_stmt    *yspec)
 {
-    int     retval=-1;
-    cxobj  *x;
-    int     i;
-    cxobj  *xprev;
-    int     ret;
+    int      retval = -1;
+    cxobj   *x;
+    cxobj   *xprev;
+    int      ret;
+    prepvec *pv;
     
     if (xml_spec(xn)){ /* Check this node */
-	for (i=0; i<clixon_xvec_len(rulevec); i++){ 	/* Loop through rule list */
-	    if ((ret = nacm_data_read_xrule_xml(xn,
-						clixon_xvec_i(rulevec, i),
-						clixon_xvec_i(xpathvec, i),
-						yspec)) < 0) 
-		goto done;	    
-	    if (ret == 1)
-		break; /* stop at first match */
+	pv = pv_list;
+	if (pv){
+	    do {
+		if ((ret = nacm_data_read_xrule_xml(xn,
+						    pv->pv_xrule,
+						    pv->pv_xpathvec,
+						    yspec)) < 0) 
+		    goto done;	    
+		if (ret == 1)
+		    break; /* stop at first match */		    
+		pv = NEXTQ(prepvec *, pv);
+	    } while (pv && pv != pv_list);
 	}
+
 #if 0 /* 6(A) in algorithm 
        * If N did not match any rule R, and default rule is deny, remove that subtree */
 	if (strcmp(read_default, "deny") == 0)
@@ -849,7 +904,7 @@ nacm_datanode_read_recurse(clicon_handle h,
 	x = NULL; 	/* Recursively check XML */
 	xprev = NULL;
 	while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
-	    if (nacm_datanode_read_recurse(h, x, rulevec, xpathvec, yspec) < 0)
+	    if (nacm_datanode_read_recurse(h, x, pv_list, yspec) < 0)
 		goto done;
 	    /* check for delayed remove */
 	    if (xml_flag(x, XML_FLAG_DEL)){
@@ -920,16 +975,15 @@ nacm_datanode_read(clicon_handle h,
 		   char         *username,
 		   cxobj        *xnacm)
 {
-    int          retval = -1;
-    cxobj      **gvec = NULL; /* groups */
-    size_t       glen;
-    cxobj      **rlistvec = NULL; /* rule-list */
-    size_t       rlistlen;
-    int          i;
-    char        *read_default = NULL;
-    cvec        *nsc = NULL;
-    clixon_xvec *rulevec = NULL;
-    clixon_xvec *xpathvec = NULL;
+    int             retval = -1;
+    cxobj         **gvec = NULL; /* groups */
+    size_t          glen;
+    cxobj         **rlistvec = NULL; /* rule-list */
+    size_t          rlistlen;
+    int             i;
+    char           *read_default = NULL;
+    cvec           *nsc = NULL;
+    prepvec        *pv_list = NULL;
     
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
@@ -960,15 +1014,10 @@ nacm_datanode_read(clicon_handle h,
     /* First run through rules and cache rules as well as lookup objects in xt. 
      * DANGER: objects could be stale if they are removed?
      */
-    if ((rulevec = clixon_xvec_new()) == NULL)
-	goto done;
-    if ((xpathvec = clixon_xvec_new()) == NULL)
-	goto done;
-    if (nacm_datanode_prepare(h, xt, NACM_READ, gvec, glen, rlistvec, rlistlen, nsc,
-			      rulevec, xpathvec) < 0)
+    if (nacm_datanode_prepare(h, xt, NACM_READ, gvec, glen, rlistvec, rlistlen, nsc, &pv_list) < 0)
 	goto done;
     /* Then recursivelyy traverse all nodes */
-    if (nacm_datanode_read_recurse(h, xt, rulevec, xpathvec, clicon_dbspec_yang(h)) < 0)
+    if (nacm_datanode_read_recurse(h, xt, pv_list, clicon_dbspec_yang(h)) < 0)
 	goto done;
 #if 1
     /* Step 8(B) above:
@@ -999,10 +1048,8 @@ nacm_datanode_read(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    if (xpathvec)
-	clixon_xvec_free(xpathvec);
-    if (rulevec)
-	clixon_xvec_free(rulevec);
+    if (pv_list)
+	prepvec_free(pv_list);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (gvec)

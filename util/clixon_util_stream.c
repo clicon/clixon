@@ -70,10 +70,10 @@ struct curlbuf{
  * realloc. Therefore, we append new data to the userdata buffer.
  */
 static size_t
-curl_get_cb(void *ptr, 
+curl_get_cb(void  *ptr, 
 	    size_t size, 
 	    size_t nmemb, 
-	    void *userdata)
+	    void  *userdata)
 {
     struct curlbuf *buf = (struct curlbuf *)userdata;
     int len;

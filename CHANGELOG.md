@@ -50,7 +50,7 @@ Expected: May 2020
 
 ### Corrected Bugs
 
-* Fixed: Insertion of subtree leaf nodes were not made in the crrect place, always ended up last regardless of yang spec (if ordered-by system).
+* Fixed: Insertion of subtree leaf nodes were not made in the correct place, always ended up last regardless of yang spec (if ordered-by system).
 
 ## 4.4.0
 5 April 2020

@@ -156,8 +156,10 @@ trigger_rpc(clicon_handle h,          /* Clicon handle */
 	goto done;
     cv_name_set(cv, "k");
     cv_string_set(cv, "5");
+    if ((xv = clixon_xvec_new()) == NULL)
+       goto done;
     /* Use form 2c use spec of xc + name */
-    if (clixon_xml_find_index(xc, NULL, NULL, "y3", cvk, &xv) < 0)
+    if (clixon_xml_find_index(xc, NULL, NULL, "y3", cvk, xv) < 0)
        goto done;
     if (clixon_xvec_len(xv))
        val = xml_find_body(clixon_xvec_i(xv,0), "val");

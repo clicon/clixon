@@ -227,9 +227,9 @@ loop_preds(xpath_tree *xt,
  *  y[k=3] # corresponds to: <name>[<keyname>=<keyval>]
  */
 static int
-xpath_list_optimize_fn(xpath_tree *xt,
-		       cxobj      *xv,
-		       clixon_xvec **xvec)
+xpath_list_optimize_fn(xpath_tree  *xt,
+		       cxobj       *xv,
+		       clixon_xvec *xvec)
 {
     int          retval = -1;
     xpath_tree  *xm = NULL;
@@ -329,8 +329,10 @@ xpath_optimize_check(xpath_tree *xs,
     
     if (!_optimize_enable)
 	return 0; /* use regular code */
+    if ((xvec = clixon_xvec_new()) == NULL)
+	return -1;
     /* Glue code since xpath code uses (old) cxobj ** and search code uses (new) clixon_xvec */
-    if ((ret = xpath_list_optimize_fn(xs, xv, &xvec)) < 0)
+    if ((ret = xpath_list_optimize_fn(xs, xv, xvec)) < 0)
 	return -1;
     if (ret == 1){
 	if (clixon_xvec_extract(xvec, xvec0, xlen0) < 0)

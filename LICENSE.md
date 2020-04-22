@@ -1,6 +1,6 @@
 Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
 Copyright (C) 2017-2019 Olof Hagsand
-Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
+Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC (Netgate)
 
 
 CLIXON is dual license. 

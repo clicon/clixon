@@ -179,6 +179,8 @@ populate_self_parent(cxobj  *xt,
 #endif
     retval = 1;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
  fail:
     retval = 0;

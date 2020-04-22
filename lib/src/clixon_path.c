@@ -37,10 +37,16 @@
  * - instance-identifier as defined by YANG
  * - clixon-path is an internal format which both ^ use as internal representation
  *
+ * 1. Instance-identifier
  * "Instance-identifier" is a subset of XML Xpaths and defined in Yang, used in NACM for example.
  *  and defined in RF7950 Sections 9.13 and 14. 
  *  To note: prefixes depend on the XML context in which the value occurs,
+ *  In RFC8341 node-instance-identifiers are defined as:
+ *   All the same rules as an instance-identifier apply, except that predicates for keys are optional.
+ *   If a key predicate is missing, then the node-instance-identifier represents all possible server
+ *   instances for that key.
  *
+ * 2. Api-path
  * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
  * BNF:
  *  <api-path>       := <root> ("/" (<api-identifier> | <list-instance>))*
@@ -1365,31 +1371,40 @@ instance_id_resolve(clixon_path *cplist,
 		goto fail;
 	    }
 	    cp->cp_yang = yc;
-	    if (cp->cp_cvk){
-		/* Iterate over yang list keys and assign as names in cvk */
-		if (yang_keyword_get(yc) == Y_LEAF_LIST)
-		    ;
-		else if (yang_keyword_get(yc) == Y_LIST){
-#ifdef notused
-		    if (cvec_len(cp->cp_cvk) > cvec_len(yang_cvec_get(yc))){
-			clicon_err(OE_YANG, ENOENT, "Number of keys in key-value list does not match Yang list ");
-			goto fail;
-		    }
+	    switch (yang_keyword_get(yc)){
+	    case Y_LIST:
+		if (cp->cp_cvk == NULL){
+#if 0 /* XXX why is this not enforced? */
+		    clicon_err(OE_YANG, ENOENT, "key-values mandatory for lists");
+		    goto fail;		    
 #endif
-		    i = 0;
-		    cva = NULL;
-		    while ((cva = cvec_each(cp->cp_cvk, cva)) != NULL) {
-			if (cv_name_get(cva) == NULL){
-			    cvy = cvec_i(yang_cvec_get(yc), i);
-			    cv_name_set(cva, cv_string_get(cvy));
-			}
-			i++;
+		    break;
+		}
+#if 0 /* XXX why is this not enforced? */
+		if (cvec_len(cp->cp_cvk) > cvec_len(yang_cvec_get(yc))){
+		    clicon_err(OE_YANG, ENOENT, "Number of keys in key-value list does not match Yang list ");
+		    goto fail;
+		}
+#endif
+		i = 0;
+		cva = NULL;
+		while ((cva = cvec_each(cp->cp_cvk, cva)) != NULL) {
+		    if (cv_name_get(cva) == NULL){
+			cvy = cvec_i(yang_cvec_get(yc), i);
+			cv_name_set(cva, cv_string_get(cvy));
 		    }
+		    i++;
 		}
-		else{
+		break;
+	    case Y_LEAF_LIST:
+		
+		break;
+	    default:
+		if (cp->cp_cvk != NULL){
 		    clicon_err(OE_YANG, ENOENT, "key-values only defined for list or leaf-list");
-		    goto fail; 
+		    goto fail;
 		}
+		break;
 	    }
 	    yt = yc;
     	    cp = NEXTQ(clixon_path *, cp);
@@ -1439,22 +1454,26 @@ clixon_path_search(cxobj        *xt,
 	    yc = cp->cp_yang;
 	    if ((modns = yang_find_mynamespace(yc)) == NULL)
 		goto fail;
-	    if (xvecp)
-	    for (i=0; i<clixon_xvec_len(xvecp); i++){
-		xp = clixon_xvec_i(xvecp, i); /* Iterate over parent set */
-		xvecc = NULL;
-		if (cp->cp_cvk && /* cornercase for instance-id [<pos>] special case */
-		    (yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST) &&
-		    cvec_len(cp->cp_cvk) == 1 && (cv = cvec_i(cp->cp_cvk,0)) &&
-		    (cv_type_get(cv) == CGV_UINT32)){
-		    if (clixon_xml_find_pos(xp, yc, cv_uint32_get(cv), &xvecc) < 0)
-			goto done;
-		}
-		else if (clixon_xml_find_index(xp, yang_parent_get(yc),
-					       modns, yang_argument_get(yc),
-					       cp->cp_cvk, &xvecc) < 0)
+	    if (xvecp){
+		if ((xvecc = clixon_xvec_new()) == NULL)
 		    goto done;
-	    } /* for */
+		for (i=0; i<clixon_xvec_len(xvecp); i++){
+		    xp = clixon_xvec_i(xvecp, i); /* Iterate over parent set */
+
+		    if (cp->cp_cvk && /* cornercase for instance-id [<pos>] special case */
+			(yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST) &&
+			cvec_len(cp->cp_cvk) == 1 && (cv = cvec_i(cp->cp_cvk,0)) &&
+			(cv_type_get(cv) == CGV_UINT32)){
+			if (clixon_xml_find_pos(xp, yc, cv_uint32_get(cv), xvecc) < 0)
+			    goto done;
+		    }
+		    else if (clixon_xml_find_index(xp, yang_parent_get(yc),
+						   modns, yang_argument_get(yc),
+						   cp->cp_cvk, xvecc) < 0)
+			goto done;
+		    /* XXX: xvecc append! either here or in the functions */
+		} /* for */
+	    }
 	    if (xvecp)
 		clixon_xvec_free(xvecp);
 	    xvecp = xvecc;

@@ -273,11 +273,11 @@ expand_dbvar(void   *h,
 /*! List files in a directory
  */
 int
-expand_dir(char *dir, 
-	   int *nr, 
+expand_dir(char   *dir, 
+	   int    *nr, 
 	   char ***commands, 
-	   mode_t flags, 
-	   int detail)
+	   mode_t  flags, 
+	   int     detail)
 {
     DIR	          *dirp;
     struct dirent *dp;
