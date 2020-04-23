@@ -70,35 +70,29 @@ new "netconf empty rpc"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><empty xmlns="urn:example:clixon"/></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><ok/></rpc-reply>]]>]]>$'
 
 new "restconf example rpc json/json default - no http media headers"
-expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":0}}' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 200 OK' 'Content-Type: application/yang-data+json' '{"clixon-example:output":{"x":"0","y":"42"}}
-'
+expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":0}}' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 200 OK' 'Content-Type: application/yang-data+json' '{"clixon-example:output":{"x":"0","y":"42"}}'
 
 new "restconf example rpc json/json change y default"
-expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":"0","y":"99"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'Content-Type: application/yang-data+json' '{"clixon-example:output":{"x":"0","y":"99"}}
-'
+expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":"0","y":"99"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'Content-Type: application/yang-data+json' '{"clixon-example:output":{"x":"0","y":"99"}}'
 
 new "restconf example rpc json/json"
 # XXX example:input example:output
-expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+json' -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'Content-Type: application/yang-data+json' '{"clixon-example:output":{"x":"0","y":"42"}}
-'
+expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+json' -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'Content-Type: application/yang-data+json' '{"clixon-example:output":{"x":"0","y":"42"}}'
 
 new "restconf example rpc xml/json"
-expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+json' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)"  0 'Content-Type: application/yang-data+json' '{"clixon-example:output":{"x":"0","y":"42"}}
-'
+expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+json' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)"  0 'Content-Type: application/yang-data+json' '{"clixon-example:output":{"x":"0","y":"42"}}'
 
 new "restconf example rpc json/xml"
-expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+xml' -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'Content-Type: application/yang-data+xml' '<output xmlns="urn:example:clixon"><x>0</x><y>42</y></output>
-'
+expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+xml' -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'Content-Type: application/yang-data+xml' '<output xmlns="urn:example:clixon"><x>0</x><y>42</y></output>'
 
 new "restconf example rpc xml/xml"
-expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+xml' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)" 0 'Content-Type: application/yang-data+xml' '<output xmlns="urn:example:clixon"><x>0</x><y>42</y></output>
-'
+expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+xml' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)" 0 'Content-Type: application/yang-data+xml' '<output xmlns="urn:example:clixon"><x>0</x><y>42</y></output>'
 
 new "restconf example rpc xml in w json encoding (expect fail)"
-expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+xml' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>rpc</error-type><error-tag>malformed-message</error-tag><error-severity>error</error-severity><error-message>json_parse: line 1: syntax error at or before: '&lt;'</error-message></error></errors>"
+expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+xml' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>rpc</error-type><error-tag>malformed-message</error-tag><error-severity>error</error-severity><error-message>json_parse: line 1: syntax error at or before: '&lt;'</error-message></error></errors>"
 
 new "restconf example rpc json in xml encoding (expect fail)"
-expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+xml' -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Reques' '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>rpc</error-type><error-tag>malformed-message</error-tag><error-severity>error</error-severity><error-message>xml_parse: line 0: syntax error: at or before: "</error-message></error></errors>'
+expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+xml' -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Reques' '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>rpc</error-type><error-tag>malformed-message</error-tag><error-severity>error</error-severity><error-message>xml_parse: line 0: syntax error: at or before: "</error-message></error></errors>'
 
 new "netconf example rpc"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>0</x></example></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><x xmlns="urn:example:clixon">0</x><y xmlns="urn:example:clixon">42</y></rpc-reply>]]>]]>$'
@@ -154,6 +148,13 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params
 
 new "netconf edit-config missing config should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target><candidate/></target></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>missing-choice</error-app-tag><error-info><missing-choice>edit-content</missing-choice></error-info><error-severity>error</error-severity></rpc-error></rpc-reply>]]>]]>$'
+
+# Negative errors (namespace/module missing)
+new "netconf wrong rpc namespace (should fail)"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:example:xxx"><get/></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>get</bad-element></error-info><error-severity>error</error-severity></rpc-error></rpc-reply>]]>]]>$'
+
+new "restconf wrong rpc (should fail"
+expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" u http://localhost/restconf/operations/clixon-foo:get)" 0 'HTTP/1.1 412 Precondition Failed' '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"yang module not found"}}}'
 
 new "Kill restconf daemon"
 stop_restconf 

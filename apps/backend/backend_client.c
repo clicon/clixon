@@ -293,8 +293,7 @@ clixon_stats_get_db(clicon_handle h,
  * @param[in]     nsc     XML Namespace context for xpath
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @retval        0       OK
-* @retval        -1       Error
-
+ * @retval        -1       Error
  */
 int
 clixon_stats_get(clicon_handle h,

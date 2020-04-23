@@ -428,18 +428,12 @@ xml_bind_yang_rpc(cxobj     *xrpc,
 	rpcname = xml_name(x);
 	if (ys_module_by_xml(yspec, x, &ymod) < 0)
 	    goto done;
-#if 1
-	assert(ymod);
-#else
 	if (ymod == NULL){
-	    if ((cberr = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
+	    if (xerr &&
+		netconf_unknown_element_xml(xerr, "application", rpcname, "Unrecognized RPC (wrong namespace?)") < 0)
 		goto done;
-	    }
-	    /* more here */
 	    goto fail;
 	}
-#endif    
 	if ((yrpc = yang_find(ymod, Y_RPC, rpcname)) == NULL){
 	    if (xerr &&
 		netconf_unknown_element_xml(xerr, "application", rpcname, "Unrecognized RPC") < 0)

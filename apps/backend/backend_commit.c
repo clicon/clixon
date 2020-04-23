@@ -538,7 +538,6 @@ candidate_commit(clicon_handle h,
      /* 7. Call plugin transaction commit callbacks */
      if (plugin_transaction_commit(h, td) < 0)
 	 goto done;
-
      
      /* Clear cached trees from default values and marking */
      if (xmldb_get0_clear(h, td->td_target) < 0)
