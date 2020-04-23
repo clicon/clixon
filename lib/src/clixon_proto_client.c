@@ -1011,7 +1011,10 @@ clicon_rpc_debug(clicon_handle h,
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(session_id,
-				 "<rpc username=\"%s\"><debug xmlns=\"http://clicon.org/lib\"><level>%d</level></debug></rpc>", username?username:"", level)) == NULL)
+				 "<rpc username=\"%s\"><debug xmlns=\"%s\"><level>%d</level></debug></rpc>",
+				 username?username:"",
+				 CLIXON_LIB_NS,
+				 level)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;

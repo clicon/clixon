@@ -26,6 +26,7 @@ module clixon-example {
     import iana-if-type {
       prefix ianaift;
     }
+
     /* Example interface type for tests, local callbacks, etc */
     identity eth {
 	base if:interface-type;
@@ -33,7 +34,20 @@ module clixon-example {
     identity loopback {
 	base if:interface-type;
     }
-    /* Translation function example - See also example_cli */
+    /* Generic config data */
+    container table{
+	list parameter{
+	    key name;
+	    leaf name{
+		type string;
+	    }
+	    leaf value{
+		type string;
+	    }
+	}
+    }
+    /* Translation function example - See also example_cli 
+    * XXX use table ^instead */
     container translate{
 	description "dont have lists directly under top since restconf cant address list directly";
 	list translate{

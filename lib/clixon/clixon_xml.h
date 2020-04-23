@@ -154,7 +154,7 @@ typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c
  */
 char     *xml_type2str(enum cxobj_type type);
 int       xml_stats_global(uint64_t *nr);
-size_t    xml_stats(cxobj *xt, uint64_t *nrp, size_t *szp);
+int       xml_stats(cxobj *xt, uint64_t *nrp, size_t *szp);
 char     *xml_name(cxobj *xn);
 int       xml_name_set(cxobj *xn, char *name);
 char     *xml_prefix(cxobj *xn);

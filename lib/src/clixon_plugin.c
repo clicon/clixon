@@ -471,7 +471,7 @@ clixon_plugin_extension(clicon_handle h,
     return retval;
 }
 
-/*! Call plugingeneral-purpose datastore upgrade in all plugins
+/*! Call plugin general-purpose datastore upgrade in all plugins
  *
  * @param[in] h    Clicon handle
  * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"

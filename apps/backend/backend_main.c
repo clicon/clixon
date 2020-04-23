@@ -885,6 +885,10 @@ main(int    argc,
 	}
 	    
     }
+    /* Call plugin callbacks when in background and before dropped privileges */
+    if (clixon_plugin_daemon(h) < 0)
+	goto done;
+
     /* Write pid-file */
     if ((pid = pidfile_write(pidfile)) <  0)
 	goto done;

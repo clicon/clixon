@@ -284,18 +284,24 @@ xml_stats_one(cxobj    *x,
 }
 
 /*! Return statistics of an XML tree recursively
- * @param[in]   x    XML object
+ * @param[in]   xt   XML object
  * @param[out]  szp  Size of this XML obj recursively
  * @retval      0    OK
+ * @retval     -1    Error
  */
-size_t
+int
 xml_stats(cxobj    *xt,
 	  uint64_t *nrp,
 	  size_t   *szp)
 {
+    int    retval = -1;
     size_t sz = 0;
     cxobj *xc;
 
+    if (xt == NULL){
+	clicon_err(OE_XML, EINVAL, "xml node is NULL");
+	goto done;
+    }
     *nrp += 1;
     xml_stats_one(xt, &sz);
     if (szp)
@@ -308,7 +314,9 @@ xml_stats(cxobj    *xt,
 	    *szp += sz;
     }
     clicon_debug(1, "%s %zu", __FUNCTION__, *szp);
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*

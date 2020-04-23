@@ -105,6 +105,12 @@ typedef int (*clicon_upgrade_cb)(
  */
 typedef int (plgstart_t)(clicon_handle); /* Plugin start */
 
+/* Called just after a server has "daemonized", ie put in background.
+ * Backend: If daemon privileges are dropped this callback is called *before* privileges are dropped.
+ * If daemon is started in foreground (-F) it is still called.
+ */
+typedef int (plgdaemon_t)(clicon_handle);              /* Plugin daemonized */
+
 /* Called just before plugin unloaded. 
  */
 typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
@@ -211,12 +217,14 @@ struct clixon_plugin_api{
 	struct { /* netconf-specific */
 	} cau_netconf;
 	struct { /* backend-specific */
+            plgdaemon_t      *cb_daemon;         /* Plugin daemonized */
 	    plgreset_t       *cb_reset;          /* Reset system status */
 	    plgstatedata_t   *cb_statedata;      /* Get state data from plugin (backend only) */
 	    trans_cb_t       *cb_trans_begin;	 /* Transaction start */
 	    trans_cb_t       *cb_trans_validate; /* Transaction validation */
 	    trans_cb_t       *cb_trans_complete; /* Transaction validation complete */
 	    trans_cb_t       *cb_trans_commit;   /* Transaction commit */
+	    trans_cb_t       *cb_trans_commit_done; /* Transaction when commit done */
 	    trans_cb_t       *cb_trans_revert;   /* Transaction revert */
 	    trans_cb_t       *cb_trans_end;	 /* Transaction completed  */
     	    trans_cb_t       *cb_trans_abort;	 /* Transaction aborted */
@@ -229,12 +237,14 @@ struct clixon_plugin_api{
 #define ca_suspend        u.cau_cli.ci_suspend
 #define ca_interrupt      u.cau_cli.ci_interrupt
 #define ca_auth           u.cau_restconf.cr_auth
+#define ca_daemon         u.cau_backend.cb_daemon
 #define ca_reset          u.cau_backend.cb_reset
 #define ca_statedata      u.cau_backend.cb_statedata
 #define ca_trans_begin    u.cau_backend.cb_trans_begin
 #define ca_trans_validate u.cau_backend.cb_trans_validate
 #define ca_trans_complete u.cau_backend.cb_trans_complete
 #define ca_trans_commit   u.cau_backend.cb_trans_commit
+#define ca_trans_commit_done u.cau_backend.cb_trans_commit_done
 #define ca_trans_revert   u.cau_backend.cb_trans_revert
 #define ca_trans_end      u.cau_backend.cb_trans_end
 #define ca_trans_abort    u.cau_backend.cb_trans_abort

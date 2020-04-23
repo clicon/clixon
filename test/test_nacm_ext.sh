@@ -157,8 +157,7 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "auth get"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data)" 0 '{"data":{"clixon-example:state":{"op":["41","42","43"]}}}
-'
+expectpart "$(curl -u andy:bar -siS -X GET http://localhost/restconf/data)" 0 'HTTP/1.1 200 OK' '{"data":{"clixon-example:state":{"op":\["41","42","43"\]}'
 
 new "Set x to 0"
 expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 0}' http://localhost/restconf/data/nacm-example:x)" 0 ""

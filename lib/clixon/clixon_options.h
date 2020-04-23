@@ -46,8 +46,10 @@
 /*! Clixon configuration namespace
  * Probably should be defined somewhere else or extracted from yang
  * @see clixon-config.yang
+ * @see clixon-lib.yang
  */
 #define CLIXON_CONF_NS "http://clicon.org/config"
+#define CLIXON_LIB_NS "http://clicon.org/lib"
 
 /*
  * Types

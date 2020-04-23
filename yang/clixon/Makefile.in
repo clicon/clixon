@@ -1,8 +1,9 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
-#
+# Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2017-2019 Olof Hagsand
+# Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)#
 # This file is part of CLIXON
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,7 +43,7 @@ datarootdir     = @datarootdir@
 YANG_INSTALLDIR   = @YANG_INSTALLDIR@
 
 YANGSPECS	 = clixon-config@2020-02-22.yang
-YANGSPECS	+= clixon-lib@2019-08-13.yang
+YANGSPECS	+= clixon-lib@2020-04-23.yang
 YANGSPECS	+= clixon-rfc5277@2008-07-01.yang
 YANGSPECS	+= clixon-xml-changelog@2019-03-21.yang
 

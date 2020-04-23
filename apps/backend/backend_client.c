@@ -269,67 +269,26 @@ clixon_stats_get_db(clicon_handle h,
 		    char         *dbname,
 		    cbuf         *cb)
 {
-    int      retval = -1;
-    cxobj   *xt = NULL;
-    uint64_t nr = 0;
-    size_t   sz = 0;
-    db_elmnt       *de = NULL;
+    int       retval = -1;
+    cxobj    *xt = NULL;
+    uint64_t  nr = 0;
+    size_t    sz = 0;
+    db_elmnt *de = NULL;
     
     /* This is the db cache */
-    if ((de = clicon_db_elmnt_get(h, dbname)) != NULL)
-	xt =  de->de_xml;
-    xml_stats(xt, &nr, &sz);
-    cprintf(cb, "<datastore><name>%s</name><nr>%" PRIu64 "</nr>"
-	    "<size>%" PRIu64 "</size></datastore>",
-	    dbname, nr, sz);
-    retval = 0;
-    return retval;
-}
-
-/*! Get clixon stats
- * @param[in]     h       Clicon handle
- * @param[in]     yspec   Yang spec
- * @param[in]     xpath   XML Xpath
- * @param[in]     nsc     XML Namespace context for xpath
- * @param[in,out] xret    Existing XML tree, merge x into this
- * @retval        0       OK
- * @retval        -1       Error
- */
-int
-clixon_stats_get(clicon_handle h,
-		 yang_stmt    *yspec,
-		 char         *xpath,
-		 cvec         *nsc,
-		 cxobj       **xret)
-{
-    int      retval = -1;
-    cbuf    *cb = NULL;
-    uint64_t nr;
-    int      ret;
-
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+    if ((de = clicon_db_elmnt_get(h, dbname)) == NULL ||
+	(xt = de->de_xml) == NULL){
+	cprintf(cb, "<datastore><name>%s</name><nr>0</nr><size>0</size></datastore>", dbname);
     }
-    cprintf(cb, "<clixon-stats xmlns=\"%s\">", CLIXON_CONF_NS);
-    nr=0;
-    xml_stats_global(&nr);
-    cprintf(cb, "<global><xmlnr>%" PRIu64 "</xmlnr></global>", nr);
-    clixon_stats_get_db(h, "running", cb);
-    clixon_stats_get_db(h, "candidate", cb);
-    clixon_stats_get_db(h, "startup", cb);
-    cprintf(cb, "</clixon-stats>");
-    if ((ret = clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL)) < 0)
-	goto done;
-    if (ret == 0){
-	clicon_err(OE_XML, EINVAL, "Internal error");
-	goto done;
+    else{
+	if (xml_stats(xt, &nr, &sz) < 0)
+	    goto done;
+	cprintf(cb, "<datastore><name>%s</name><nr>%" PRIu64 "</nr>"
+		"<size>%" PRIu64 "</size></datastore>",
+		dbname, nr, sz);
     }
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
-    if (cb)
-	cbuf_free(cb);
     return retval;
 }
 
@@ -407,11 +366,6 @@ client_statedata(clicon_handle h,
 	    goto done;
 	if (ret == 0)
 	    goto fail;
-    }
-    /* Clixon-config has a state data, if yang is present */
-    if (yang_find(yspec, Y_MODULE, "clixon-config") != NULL){
-	if (clixon_stats_get(h, yspec, xpath, nsc, xret) < 0)
-	    goto done;
     }
     if ((ret = clixon_plugin_statedata(h, yspec, nsc, xpath, xret)) < 0)
 	goto done;
@@ -1441,6 +1395,41 @@ from_client_ping(clicon_handle h,
     return 0;
 }
 
+/*! Check liveness of backend daemon,  just send a reply
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+from_client_datastats(clicon_handle h,
+		      cxobj        *xe,
+		      cbuf         *cbret,
+		      void         *arg,
+		      void         *regarg)
+{
+    int      retval = -1;
+    uint64_t nr;
+    
+    cprintf(cbret, "<rpc-reply>");
+    nr=0;
+    xml_stats_global(&nr);
+    cprintf(cbret, "<global><xmlnr>%" PRIu64 "</xmlnr></global>", nr);
+    if (clixon_stats_get_db(h, "running", cbret) < 0)
+	goto done;
+    if (clixon_stats_get_db(h, "candidate", cbret) < 0)
+	goto done;
+    if (clixon_stats_get_db(h, "startup", cbret) < 0)
+	goto done;
+    cprintf(cbret, "</rpc-reply>");
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Verify nacm user with  peer uid credentials
  * @param[in]  mode      Peer credential mode: none, exact or except
  * @param[in]  peername  Peer username if any
@@ -1797,10 +1786,13 @@ backend_rpc_init(clicon_handle h)
 	goto done;
     /* Clixon RPC */
     if (rpc_callback_register(h, from_client_debug, NULL,
-			      "http://clicon.org/lib", "debug") < 0)
+			      CLIXON_LIB_NS, "debug") < 0)
 	goto done;
     if (rpc_callback_register(h, from_client_ping, NULL,
-			      "http://clicon.org/lib", "ping") < 0)
+			      CLIXON_LIB_NS, "ping") < 0)
+	goto done;
+    if (rpc_callback_register(h, from_client_datastats, NULL,
+			      CLIXON_LIB_NS, "datastats") < 0)
 	goto done;
     retval =0;
  done:

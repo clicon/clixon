@@ -92,6 +92,32 @@ clixon_plugin_reset(clicon_handle h,
     return retval;
 }
 
+/*! Request plugins to reset system state
+ * The system 'state' should be the same as the contents of running_db
+ * @param[in]  h       Clicon handle
+ * @param[in]  db      Name of database
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clixon_plugin_daemon(clicon_handle h)
+{
+    clixon_plugin  *cp = NULL;
+    plgdaemon_t    *daemonfn;          /* Plugin auth */
+    int             retval = 1;
+    
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+	if ((daemonfn = cp->cp_api.ca_daemon) == NULL)
+	    continue;
+	if ((retval = daemonfn(h)) < 0) {
+	    clicon_debug(1, "plugin_daemon() failed");
+	    return -1;
+	}
+	break;
+    }
+    return retval;
+}
+
 /*! Go through all backend statedata callbacks and collect state data
  * This is internal system call, plugin is invoked (does not call) this function
  * Backend plugins can register 
@@ -339,6 +365,36 @@ plugin_transaction_commit(clicon_handle       h,
 			   __FUNCTION__, cp->cp_name);
 	    /* Make an effort to revert transaction */
 	    plugin_transaction_revert(h, td, i-1); 
+	    break;
+	}
+    }
+    return retval;
+}
+
+/*! Call transaction_commit_done callbacks in all backend plugins
+ * @param[in]  h       Clicon handle
+ * @param[in]  td      Transaction data
+ * @retval     0       OK
+ * @retval    -1       Error: one of the plugin callbacks returned error
+ * @note no revert is done
+ */
+int
+plugin_transaction_commit_done(clicon_handle       h, 
+			       transaction_data_t *td)
+{
+    int            retval = 0;
+    clixon_plugin *cp = NULL;
+    trans_cb_t    *fn;
+    int            i=0;
+
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+	i++;
+	if ((fn = cp->cp_api.ca_trans_commit_done) == NULL)
+	    continue;
+	if ((retval = fn(h, (transaction_data)td)) < 0){
+	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
+		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_commit_done callback does not make clicon_err call on error", 
+			   __FUNCTION__, cp->cp_name);
 	    break;
 	}
     }

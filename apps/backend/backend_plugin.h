@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -69,6 +71,8 @@ typedef struct {
  */
 int clixon_plugin_reset(clicon_handle h, char *db);
 
+int clixon_plugin_daemon(clicon_handle h);
+
 int clixon_plugin_statedata(clicon_handle h, yang_stmt *yspec, cvec *nsc,
 			    char *xpath, cxobj **xtop);
 transaction_data_t * transaction_new(void);
@@ -78,6 +82,7 @@ int  plugin_transaction_begin(clicon_handle h, transaction_data_t *td);
 int  plugin_transaction_validate(clicon_handle h, transaction_data_t *td);
 int  plugin_transaction_complete(clicon_handle h, transaction_data_t *td);
 int  plugin_transaction_commit(clicon_handle h, transaction_data_t *td);
+int  plugin_transaction_commit_done(clicon_handle h, transaction_data_t *td);
 int  plugin_transaction_end(clicon_handle h, transaction_data_t *td);
 int  plugin_transaction_abort(clicon_handle h, transaction_data_t *td);
 

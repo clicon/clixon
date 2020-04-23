@@ -40,6 +40,8 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    /* 	    Deleted:  clixon-stats state for clixon XML and memory statistics. (moved to clixon-lib)
+     */
     revision 2020-02-22 {
 	description
 	    "Added: search index extension,
@@ -716,35 +718,6 @@ module clixon-config {
 	    description "Retention for stream replay buffers in seconds, ie how much
                          data to store before dropping. 0 means no retention";
 
-	}
-    }
-    container clixon-stats{
-	config false;
-	description "Clixon backend statistics.";
-	container global{
-	    description "Clixon global statistics";
-	    leaf xmlnr{
-		description "Number of XML objects. That is number of residing xml/json objects
-                             in the internal 'cxobj' representation.";
-		type uint64;
-	    }
-	}
-	list datastore{
-	    description "Datastore statistics";
-	    key "name";
-	    leaf name{
-		description "name of datastore (eg running).";
-		type string;
-	    }
-	    leaf nr{
-		description "Number of XML objects. That is number of residing xml/json objects
-                             in the internal 'cxobj' representation.";
-		type uint64;
-	    }
-	    leaf size{
-		description "Size in bytes of internal datastore cache of datastore tree.";
-		type uint64;
-	    }
 	}
     }
 }
