@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -41,10 +42,6 @@
 int  xpath_list_optimize_stats(int *hits);
 int  xpath_list_optimize_set(int enable); 
 void xpath_optimize_exit(void);
-#if 0 /* XXX kludge for include file dependencies */
 int  xpath_optimize_check(xpath_tree *xs, cxobj *xv, cxobj ***xvec0, int *xlen0);
-#else
-int  xpath_optimize_check();
-#endif
 
 #endif /* _CLIXON_XPATH_OPTIMIZE_H */

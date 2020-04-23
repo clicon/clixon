@@ -3,7 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
-  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -1338,6 +1338,8 @@ api_path_resolve(clixon_path *cplist,
  * - Corresponding yang node for id not found
  * - Number of keys in key-value list does not match Yang list
  * - Key-values only defined for list or leaf-list
+ * @note key-value presence in lists is not enforced due to use-cases where instance-id need not have
+ *       them (eg RFC8341) alternative could be to have a "strict" parameter, but gets complicated
  * @see api_path_resolve
  */
 static int
@@ -1374,13 +1376,13 @@ instance_id_resolve(clixon_path *cplist,
 	    switch (yang_keyword_get(yc)){
 	    case Y_LIST:
 		if (cp->cp_cvk == NULL){
-#if 0 /* XXX why is this not enforced? */
+#if 0 /* see key-value presence in lists note above */
 		    clicon_err(OE_YANG, ENOENT, "key-values mandatory for lists");
 		    goto fail;		    
 #endif
 		    break;
 		}
-#if 0 /* XXX why is this not enforced? */
+#if 0 /* see key-value presence in lists note above */
 		if (cvec_len(cp->cp_cvk) > cvec_len(yang_cvec_get(yc))){
 		    clicon_err(OE_YANG, ENOENT, "Number of keys in key-value list does not match Yang list ");
 		    goto fail;

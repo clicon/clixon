@@ -6,6 +6,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Number of list/leaf-list entries in file
 : ${perfnr:=10000}
+: ${pretty:=false}
 
 APPNAME=example
 
@@ -76,11 +77,35 @@ fi
 # Use it latter to generate startup-db in xml, tree formats
 tmpx=$dir/tmp.xml
 new "generate large startup config ($tmpx) with $perfnr entries"
-echo -n "<config><x0 xmlns=\"urn:example:clixon\"><x1><x2><name>ip</name><x>" > $tmpx
-for (( i=0; i<$perfnr; i++ )); do  
-    echo -n "<y><a>$i</a><b>$i</b></y>" >> $tmpx
-done
-echo "</x></x2></x1></x0></config>" >> $tmpx
+if $pretty; then
+cat<<EOF >  $tmpx
+<config>
+   <x0 xmlns="urn:example:clixon">
+      <x1>
+         <x2>
+            <name>ip</name>
+            <x>
+EOF
+    for (( i=0; i<$perfnr; i++ )); do  
+	echo "               <y>" >> $tmpx
+	echo "                  <a>$i</a>" >> $tmpx
+	echo "                  <b>$i</b>" >> $tmpx
+	echo "               </y>" >> $tmpx
+    done
+cat<<EOF >>  $tmpx
+            </x>
+         </x2>
+      </x1>
+   </x0>
+</config>
+EOF
+else
+    echo -n "<config><x0 xmlns=\"urn:example:clixon\"><x1><x2><name>ip</name><x>" > $tmpx
+    for (( i=0; i<$perfnr; i++ )); do  
+	echo -n "<y><a>$i</a><b>$i</b></y>" >> $tmpx
+    done
+    echo "</x></x2></x1></x0></config>" >> $tmpx
+fi
 
 if false; then # XXX JSON dont work as datastore yet
 # Then generate large JSON file (cant translate namespace - long story)
@@ -118,6 +143,7 @@ for mode in startup running; do
 	echo "time sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang -o CLICON_XMLDB_FORMAT=$format"
 	# Cannot use start_backend here due to expected error case
 { time -p sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang -o CLICON_XMLDB_FORMAT=$format 2> /dev/null; } 2>&1 | awk '/real/ {print $2}'
+exit
     done
 done
 
