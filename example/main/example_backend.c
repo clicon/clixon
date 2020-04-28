@@ -75,10 +75,16 @@ static int _reset = 0;
  */
 static int _state = 0;
 
-/*! File where state XML is read from, if _state is true
+/*! File where state XML is read from, if _state is true -- -sS <file>
  * Primarily for testing
  */
 static char *_state_file = NULL;
+
+/*! Read state file init on startup instead of on request
+ * Primarily for testing
+ */
+static int _state_file_init = 0;
+static cxobj *_state_xstate = NULL;
 
 /*! Variable to control module-specific upgrade callbacks.
  * If set, call test-case for upgrading ietf-interfaces, otherwise call 
@@ -337,12 +343,19 @@ example_statedata(clicon_handle h,
     
     /* If -S is set, then read state data from file, otherwise construct it programmatically */
     if (_state_file){
-	if ((fd = open(_state_file, O_RDONLY)) < 0){
-	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
-	    goto done;
+	if (_state_file_init){
+	    if (xml_copy(_state_xstate, xstate) < 0)
+		goto done;
 	}
-	if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xstate, NULL) < 0)
-	    goto done;
+	else{
+	    if ((fd = open(_state_file, O_RDONLY)) < 0){
+		clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
+		goto done;
+	    }
+	    if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xstate, NULL) < 0)
+		goto done;
+	    close(fd);
+	}
     }
     else {
 	/* Example of statedata, in this case merging state data with 
@@ -820,7 +833,30 @@ example_start(clicon_handle h)
 int
 example_daemon(clicon_handle h)
 {
-    return 0;
+    int retval = -1;
+    int ret;
+
+    /* Read state file (or should this be in init/start?) */
+    if (_state && _state_file && _state_file_init){
+	int fd;
+	yang_stmt *yspec = clicon_dbspec_yang(h);
+	
+	if ((fd = open(_state_file, O_RDONLY)) < 0){
+	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
+	    goto done;
+	}
+	if ((ret = clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &_state_xstate, NULL)) < 0)
+	    goto done;
+	close(fd);
+	if (ret == 0){
+	    fprintf(stderr, "%s error\n", __FUNCTION__);
+	    goto done;
+	}
+	fprintf(stderr, "%s done\n", __FUNCTION__);
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 int 
@@ -873,16 +909,19 @@ clixon_plugin_init(clicon_handle h)
 	goto done;
     opterr = 0;
     optind = 1;
-    while ((c = getopt(argc, argv, "rsS:uUt")) != -1)
+    while ((c = getopt(argc, argv, "rsS:iuUt")) != -1)
 	switch (c) {
 	case 'r':
 	    _reset = 1;
 	    break;
-	case 's':
+	case 's': /* state callback */
 	    _state = 1;
 	    break;
-	case 'S': /* state file */
+	case 'S': /* state file (requires -s) */
 	    _state_file = optarg;
+	    break;
+	case 'i': /* read state file on init not by request (requires -sS <file> */
+	    _state_file_init = 1;
 	    break;
        case 'u': /* module-specific upgrade */
            _module_upgrade = 1;

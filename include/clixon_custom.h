@@ -75,6 +75,8 @@
 /*! Add explicit search indexes, so that binary search can be made for non-key list indexes
  * This also applies if there are multiple keys and you want to search on only the second for 
  * example.
+ * There may be some cases where the index vector is not updated, need to verify before 
+ * enabling this completely.
  */
 #define XML_EXPLICIT_INDEX
 
@@ -94,10 +96,16 @@
  *    This statement (red:The "ordered-by" Statement) is ignored if the list represents
  *    state data,...
  * but it is not clear it is ignored because it should always be ordered-by system?
+ * Cant measure any diff on performance with this on using large state lists (500K)
  * clixon-4.4
  */
 #define STATE_ORDERED_BY_SYSTEM
 
 /*! Restart specific backend plugins
+ * Experimental code for now, needs some testing
  */
 #undef RESTART_PLUGIN_RPC
+
+/*! Differentiate creating XML object body/element vs elenmet to reduce space
+ */
+#define XML_NEW_DIFFERENTIATE

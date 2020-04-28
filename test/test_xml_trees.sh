@@ -89,12 +89,11 @@ testrun insert "$x0a<a><x>1</x></a>$x0b" "$x0a<d>42</d>$x0b" c 0 '<c xmlns="urn:
 new "parent 1st element"
 testrun parent "$x0a$x0b" "<a><x>1</x></a>" $p 0 '<c xmlns="urn:example:example"><a><x>1</x></a></c>'
 
-new "patrse parent element"
-testrun parent "$x0a<a><x>2</x></a>$x0b" '<a><x>1</x></a>' $p 0 '<c xmlns="urn:example:example"><a><x>1</x></a><a><x>2</x></a></c>'
-
+new "parse parent element"
+testrun parent "$x0a<a><x>2</x></a>$x0b" '<a><x>1</x></a>' $p 0 '<c xmlns="urn:example:example"><a><x>2</x></a><a><x>1</x></a></c>'
 
 new "parse parent container"
-testrun parent "$x0a<a><x>1</x></a>$x0b" '<d>42</d>' c 0 '<c xmlns="urn:example:example"><d>42</d><a><x>1</x></a></c>'
+testrun parent "$x0a<a><x>1</x></a>$x0b" '<d>42</d>' c 0 '<c xmlns="urn:example:example"><a><x>1</x></a><d>42</d></c>'
 
 # -------- merge
 

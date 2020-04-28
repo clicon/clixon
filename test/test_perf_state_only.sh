@@ -2,7 +2,7 @@
 # Scaling/ performance tests
 # State data only, in particular non-config lists (ie not state leafs on a config list)
 # Restconf/Netconf/CLI
-# ALso added two layers a/b to get extra depth (som caching can break)
+# Also added two layers a/b to get extra depth (som caching can break)
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -42,42 +42,41 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>example</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/example/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/example/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
 </clixon-config>
 EOF
 
 cat <<EOF > $fyang
 module $APPNAME{
-   yang-version 1.1;
-   prefix ex;
-   namespace "urn:example:clixon";
-   container interfaces {
+  yang-version 1.1;
+  prefix ex;
+  namespace "urn:example:clixon";
+  container interfaces {
     config false;
     list a{
       key "name";
       leaf name {
         type string;
       }
-    container b{
-    list interface {
-      key "name";
-      leaf name {
-        type string;
-      }
-      leaf type {
-        type string;
-      }
-      leaf enabled {
-        type boolean;
-        default true;
-      }
-      leaf status {
-        type string;
+      container b{
+        list interface {
+          key "name";
+          leaf name {
+            type string;
+          }
+          leaf type {
+            type string;
+          }
+          leaf enabled {
+            type boolean;
+            default true;
+          }
+          leaf status {
+            type string;
+          }
+        }
       }
     }
-}
-}
   }
 }
 EOF
@@ -113,22 +112,9 @@ start_restconf -f $cfg
 new "waiting"
 wait_restconf
 
-if false; then
-new "generate 'large' config with $perfnr list entries"
-echo -n "<rpc><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b>" > $fconfig
-for (( i=0; i<$perfnr; i++ )); do  
-    echo -n "<interface><name>e$i</name><type>ex:eth</type></interface>" >> $fconfig
-done
-echo "</b></a></interfaces></config></edit-config></rpc>]]>]]>" >> $fconfig
-
-# Now take large config file and write it via netconf to candidate
-new "netconf write large config"
-expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
-
-# Now commit it from candidate to running 
-new "netconf commit large config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
-fi
+new "cli get large config"
+echo "$clixon_cli -1f $cfg show state xml"
+$TIMEFN $clixon_cli -1f $cfg show state xml 2>&1 | awk '/real/ {print $2}'
 
 # START actual tests
 # Having a large db, get single entries many times
@@ -176,6 +162,7 @@ new "cli get $perfreq single reqs"
     $clixon_cli -1 -f $cfg show state xml interfaces a b interface e$rnd > /dev/null
 done } 2>&1 | awk '/real/ {print $2}'
 fi
+
 # Get config in one large get
 new "netconf get large config"
 { time -p echo "<rpc><get> <filter type=\"xpath\" select=\"/ex:interfaces/ex:a[name='foo']/ex:b\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg  > /tmp/netconf; } 2>&1 | awk '/real/ {print $2}'
@@ -184,23 +171,21 @@ new "restconf get large config"
 $TIMEFN curl -sG http://localhost/restconf/data/example:interfaces/a=foo/b 2>&1 | awk '/real/ {print $2}'
 
 new "cli get large config"
-$TIMEFN $clixon_cli -1f $cfg show state xml interfaces a foo b 2>&1 | awk '/real/ {print $2}'
+$TIMEFN $clixon_cli -1f $cfg show state xml 2>&1 | awk '/real/ {print $2}'
 
 new "Kill restconf daemon"
 stop_restconf 
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
 
 rm -rf $dir
 

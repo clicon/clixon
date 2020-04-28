@@ -98,10 +98,17 @@ EOF
 ### Run valgrind and callgrind
  ```
   valgrind --leak-check=full --show-leak-kinds=all clixon_netconf -qf /tmp/myconf.xml -y /tmp/my.yang
-  valgrind --tool=callgrind clixon_netconf -qf /tmp/myconf.xml -y /tmp/my.yang
+  LD_BIND_NOW=y valgrind --tool=callgrind clixon_netconf -qf /tmp/myconf.xml -y /tmp/my.yang
   sudo kcachegrind
   valgrind --tool=massif clixon_netconf -qf /tmp/myconf.xml -y /tmp/my.yang
   massif-visualizer
+ ```
+
+To turn callgrind off/on:
+ ```
+  valgrind --tool=callgrind --instr-atstart=no clixon_netconf -qf /tmp/myconf.xml -y /tmp/my.yang
+  ...
+  callgrind_control -i on
  ```
 
 ## New release

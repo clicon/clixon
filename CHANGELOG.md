@@ -48,6 +48,11 @@ Expected: May 2020
 
 ### Minor changes
 
+* Optimizations
+  * Reduced memory for attribute and body objects, see `XML_NEW_DIFFERENTIATE` compile-time option.
+  * Optimized cbuf handling in parsing and xml2cbuf functions.
+  * Optimized xml scanner to read strings rather than single chars
+  * Optimized xml_merge for the case of disjunct trees.
 * Experimental: restart_plugin
 * Two new plugin callbacks added
   * ca_daemon: Called just after a server has "daemonized", ie put in background.

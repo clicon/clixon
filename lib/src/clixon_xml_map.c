@@ -79,6 +79,18 @@
 #include "clixon_yang_type.h"
 #include "clixon_xml_map.h"
 
+/* Local types 
+ */
+/* Merge code needs a two-phase pass where objects subject to merge are first checked for,
+ * the actually inserted.
+ * This is to mitigate a search problem where objects inserted are among the ones checked for
+ */
+typedef struct  {
+    cxobj     *mt_x0c;
+    cxobj     *mt_x1c;
+    yang_stmt *mt_yc;
+} merge_twophase;
+
 /*! Is attribute and is either of form xmlns="", or xmlns:x="" */
 int
 isxmlns(cxobj *x)
@@ -1264,6 +1276,7 @@ assign_namespace(cxobj *x0, /* source */
 /*! Given a src element node x0 and a target node x1, assign (optional) prefix and namespace
  * @param[in]  x0       Source XML tree
  * @param[in]  x1       Target XML tree
+ * @param[in]  x1p      Target XML tree parent
  * @retval     0        OK
  * @retval     -1       OK
  * 1. Find N=namespace(x0)
@@ -1380,33 +1393,42 @@ xml_merge1(cxobj              *x0,  /* the target */
     cxobj     *x0c; /* base child */
     cxobj     *x0b; /* base body */
     cxobj     *x1c; /* mod child */
-    char      *x1name;
     char      *x1bstr; /* mod body string */
     yang_stmt *yc;  /* yang child */
     cbuf      *cbr = NULL; /* Reason buffer */
     int        ret;
     int        i;
-    struct {
-	cxobj     *w_x0c;
-	cxobj     *w_x1c;
-	yang_stmt *w_yc;
-    } *second_wave = NULL;
-
+    merge_twophase *twophase = NULL;
+    int twophase_len;
+    
     assert(x1 && xml_type(x1) == CX_ELMNT);
     assert(y0);
 
-    x1name = xml_name(x1);
+    if (x0 == NULL){
+	cvec   *nsc = NULL;
+	cg_var *cv;
+	char   *ns;
+	char   *px;
+	nsc = cvec_dup(nscache_get_all(x1));
+	if (xml_rm(x1) < 0)
+	    goto done;
+	if (xml_insert(x0p, x1, INS_LAST, NULL, NULL) < 0)
+	    goto done;
+	cv = NULL;
+	while ((cv = cvec_each(nsc, cv)) != NULL){
+	    px = cv_name_get(cv);
+	    ns = cv_string_get(cv);
+	    /* Check if it exists */
+	    if (xml2prefix(x1, ns, NULL) == 0)
+		if (xmlns_set(x1, px, ns) < 0)
+		    goto done;
+	}
+	if (nsc)
+	    cvec_free(nsc);
+	goto ok;
+    }
     if (yang_keyword_get(y0) == Y_LEAF_LIST || yang_keyword_get(y0) == Y_LEAF){
 	x1bstr = xml_body(x1);
-	if (x0==NULL){
-	    if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
-		goto done;
-	    xml_spec_set(x0, y0);
-	    if (x1bstr){ /* empty type does not have body */
-		if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
-		    goto done; 
-	    }
-	}
 	if (x1bstr){
 	    if ((x0b = xml_body_get(x0)) == NULL){
 		if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
@@ -1422,14 +1444,10 @@ xml_merge1(cxobj              *x0,  /* the target */
 	    goto done;
     } /* if LEAF|LEAF_LIST */
     else { /* eg Y_CONTAINER, Y_LIST  */
-	if (x0==NULL){
-	    if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
-		goto done;
-	    xml_spec_set(x0, y0);
-	}
 	if (assign_namespace_element(x1, x0, x0p) < 0)
 	    goto done;
-	if ((second_wave = calloc(xml_child_nr(x1), sizeof(*second_wave))) == NULL){
+	twophase_len = xml_child_nr(x1);
+	if ((twophase = calloc(twophase_len, sizeof(*twophase))) == NULL){
 	    clicon_err(OE_UNIX, errno, "calloc");
 	    goto done;
 	}
@@ -1457,37 +1475,37 @@ xml_merge1(cxobj              *x0,  /* the target */
 	    x0c = NULL;
 	    if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
 		goto done;
-	    /* Save x0c, x1c, yc and merge in second wave, so that x1c entries "interfer"
+	    /* Save x0c, x1c, yc and merge in second wave, so that x1c entries dont "interfer"
 	     * with itself, ie that later searches are among earlier objects already added
 	     * to x0 */
-	    second_wave[i].w_x0c = x0c;
-	    second_wave[i].w_x1c = x1c;
-	    second_wave[i].w_yc  = yc;
+	    twophase[i].mt_x0c = x0c;
+	    twophase[i].mt_x1c = x1c;
+	    twophase[i].mt_yc  = yc;
 	    i++;
 	} /* while */
+	twophase_len = i; /* Inital length included non-elements */
 	/* Second run where actual merging is done 
 	 * Loop through children of the modification tree */
-	x1c = NULL;
-	i = 0;
-	while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
-	    if ((ret = xml_merge1(second_wave[i].w_x0c,
-			   second_wave[i].w_yc,
+	for (i=0; i<twophase_len; i++){
+	    assert(twophase[i].mt_x1c);
+	    if ((ret = xml_merge1(twophase[i].mt_x0c,
+			   twophase[i].mt_yc,
 			   x0,
-			   second_wave[i].w_x1c,
+			   twophase[i].mt_x1c,
 				  reason)) < 0)
 		goto done;
 	    if (ret == 0)
 		goto fail;
-	    i++;
 	}
 	if (xml_parent(x0) == NULL &&
 	    xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0) 
 	    goto done;
     } /* else Y_CONTAINER  */
+ ok:
     retval = 1;
  done:
-    if (second_wave)
-	free(second_wave);
+    if (twophase)
+	free(twophase);
     if (cbr)
 	cbuf_free(cbr);
     return retval;
@@ -1519,12 +1537,22 @@ xml_merge(cxobj     *x0,
     yang_stmt *yc;
     yang_stmt *ymod;
     cbuf      *cbr = NULL; /* Reason buffer */
+    int        i;
+    merge_twophase *twophase = NULL;
+    int        twophase_len;
+    int        ret;
 
     if (x0 == NULL || x1 == NULL){
 	clicon_err(OE_UNIX, EINVAL, "parameters x0 or x1 is NULL");
 	goto done;
     }
+    twophase_len = xml_child_nr(x1);
+    if ((twophase = calloc(twophase_len, sizeof(*twophase))) == NULL){
+	clicon_err(OE_UNIX, errno, "calloc");
+	goto done;
+    }
     /* Loop through children of the modification tree */
+    i = 0;
     x1c = NULL;
     while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 	x1cname = xml_name(x1c);
@@ -1553,20 +1581,36 @@ xml_merge(cxobj     *x0,
 	    }
 	    goto fail;
 	}
+	x0c = NULL;
 	/* See if there is a corresponding node (x1c) in the base tree (x0) */
-	if (match_base_child(x0, x1c, yc, &x0c) < 0)
+	if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
 	    goto done;
-	/* There is a case where x0c and x1c are choice nodes, if so,
-	 * it is treated as a match, and x0c will remain 
-	 * If it is overwritten, then x0c should be removed here.
-	 */
-	if (xml_merge1(x0c, yc, x0, x1c, reason) < 0)
+	/* Save x0c, x1c, yc and merge in second wave, so that x1c entries dont "interfer"
+	 * with itself, ie that later searches are among earlier objects already added
+	 * to x0 */
+	twophase[i].mt_x0c = x0c;
+	twophase[i].mt_x1c = x1c;
+	twophase[i].mt_yc  = yc;
+	i++;
+    }
+    twophase_len = i; /* Inital length included non-elements */
+    /* Second run where actual merging is done 
+     * Loop through children of the modification tree */
+    for (i=0; i<twophase_len; i++){
+	assert(twophase[i].mt_x1c);
+	if ((ret = xml_merge1(twophase[i].mt_x0c,
+			      twophase[i].mt_yc,
+			      x0,
+			      twophase[i].mt_x1c,
+			      reason)) < 0)
 	    goto done;
-	if (*reason != NULL)
-	    break;
+	if (ret == 0)
+	    goto fail;
     }
     retval = 1; /* OK */
  done:
+    if (twophase)
+	free(twophase);
     if (cbr)
 	cbuf_free(cbr);
     return retval;

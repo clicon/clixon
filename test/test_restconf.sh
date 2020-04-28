@@ -193,16 +193,16 @@ new "restconf Add interfaces subtree eth/0/0 using POST"
 expectpart "$(curl -si -X POST http://localhost/restconf/data/ietf-interfaces:interfaces -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}')" 0 "HTTP/1.1 201 Created"
 
 new "restconf Check eth/0/0 added config"
-expectpart "$(curl -s -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}}'
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}}'
 
 new "restconf Check eth/0/0 GET augmented state level 1"
-expectpart "$(curl -s -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 '{"ietf-interfaces:interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}'
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}'
 
 new "restconf Check eth/0/0 GET augmented state level 2"
-expectpart "$(curl -s -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0/clixon-example:my-status)" 0 '{"clixon-example:my-status":{"int":42,"str":"foo"}}'
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0/clixon-example:my-status)" 0 'HTTP/1.1 200 OK' '{"clixon-example:my-status":{"int":42,"str":"foo"}}' 
 
-new "restconf Check eth/0/0 added state"
-expectpart "$(curl -s -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/clixon-example:state)" 0 '{"clixon-example:state":{"op":\["41","42","43"\]}}'
+new "restconf Check eth/0/0 added state XXXXXXX"
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/clixon-example:state)" 0 'HTTP/1.1 200 OK' '{"clixon-example:state":{"op":\["41","42","43"\]}}'
 
 new "restconf Re-post eth/0/0 which should generate error"
 expectpart "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'

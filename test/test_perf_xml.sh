@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Test: XML performance test 
+# Test: XML performance test (CDATA test only)
 # See https://github.com/clicon/clixon/issues/96
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

@@ -79,8 +79,12 @@
  * Constants
  */
 /* How many XML children to start with if any. Then add quadratic until threshold when
- * add lineraly */
-#define XML_CHILDVEC_SIZE_START 1
+ * add lineraly 
+ * Heurestics: if child is body only single child is expected, but element children may
+ * have siblings
+ */
+#define XML_CHILDVEC_SIZE_START 1        
+#define XML_CHILDVEC_SIZE_START_ELMNT 16 
 #define XML_CHILDVEC_SIZE_THRESHOLD 65536
 
 /* Intention of these macros is to guard against access of type-specific fields 
@@ -182,6 +186,8 @@ struct xml{
 #endif
 };
 
+
+#ifdef XML_NEW_DIFFERENTIATE
 /* This is experimental variant of struct xml for use by non-elements to save space
  */
 struct xmlbody{
@@ -196,6 +202,7 @@ struct xmlbody{
     cbuf             *xb_value_cb;  /* attribute and body nodes have values (XXX: this consumes 
 				       memory) cv? */
 };
+#endif /* XML_NEW_DIFFERENTIATE */
 
 /*
  * Variables
@@ -245,13 +252,13 @@ xml_stats_one(cxobj    *x,
 {
     size_t sz = 0;
 
-    sz += sizeof(struct xml);
     if (x->x_name)
 	sz += strlen(x->x_name) + 1;
     if (x->x_prefix)
 	sz += strlen(x->x_prefix) + 1;
     switch (xml_type(x)){
     case CX_ELMNT:
+	sz += sizeof(struct xml);
 	sz += x->x_childvec_max*sizeof(struct xml*);
 	if (x->x_ns_cache)
 	    sz += cvec_size(x->x_ns_cache);
@@ -270,9 +277,13 @@ xml_stats_one(cxobj    *x,
 	break;
     case CX_BODY:
     case CX_ATTR:
+#ifdef XML_NEW_DIFFERENTIATE
+	sz += sizeof(struct xmlbody);
+#else
+	sz += sizeof(struct xmlbody);
+#endif
 	if (x->x_value_cb)
 	    sz += cbuf_buflen(x->x_value_cb);
-
 	break;
     default:
 	break;
@@ -610,7 +621,7 @@ xml_value_set(cxobj *xn,
     }
     else
 	cbuf_reset(xn->x_value_cb);
-    cprintf(xn->x_value_cb, "%s", val);
+    cbuf_append_str(xn->x_value_cb, val);
     retval = 0;
  done:
     return retval;
@@ -642,7 +653,7 @@ xml_value_append(cxobj *xn,
 	    goto done;
 	}
     }
-    if (cprintf(xn->x_value_cb, "%s", val) < 0){
+    if (cbuf_append_str(xn->x_value_cb, val) < 0){
 	clicon_err(OE_XML, errno, "cprintf");
 	goto done;
     }
@@ -878,17 +889,27 @@ xml_child_each(cxobj           *xparent,
 
 /*! Extend child vector with one and insert xml node there
  * @note does not do anything with child, you may need to set its parent, etc
+ * @see xml_child_insert_pos
+ * XXX could insert hint if we know this is a yang list and not a leaf to increase start.
  */
 static int
 xml_child_append(cxobj *xp,
 		 cxobj *xc)
 {
+    size_t start;
+
     if (!is_element(xp))
 	return 0;
+    start = XML_CHILDVEC_SIZE_START;
+    /* Heurestics: if child is body only single child is expected, but element children may
+     * have siblings
+     */
+    if (xml_type(xc) == CX_ELMNT)
+	start = XML_CHILDVEC_SIZE_START_ELMNT;
     xp->x_childvec_len++;
     if (xp->x_childvec_len > xp->x_childvec_max){
 	if (xp->x_childvec_len < XML_CHILDVEC_SIZE_THRESHOLD)
-	    xp->x_childvec_max = xp->x_childvec_max?2*xp->x_childvec_max:XML_CHILDVEC_SIZE_START;
+	    xp->x_childvec_max = xp->x_childvec_max?2*xp->x_childvec_max:start;
 	else
 	    xp->x_childvec_max += XML_CHILDVEC_SIZE_THRESHOLD;
 	xp->x_childvec = realloc(xp->x_childvec, xp->x_childvec_max*sizeof(cxobj*));
@@ -983,6 +1004,49 @@ xml_childvec_get(cxobj *x)
  * @endcode
  * @see xml_sort_insert
  */
+#ifdef XML_NEW_DIFFERENTIATE
+/* Differentiate creating XML object body/element vs elenmet to reduce space */
+cxobj *
+xml_new(char           *name, 
+	cxobj          *xp,
+	enum cxobj_type type)
+{
+    struct xml *x = NULL;
+    size_t      sz;
+    
+    switch (type){
+    case CX_ELMNT:
+	sz = sizeof(struct xml);
+	break;
+    case CX_ATTR:
+    case CX_BODY:
+	sz = sizeof(struct xmlbody);
+	break;
+    default:
+	clicon_err(OE_XML, EINVAL, "Invalid type: %d", type);
+	return NULL;
+	break;
+    }
+    if ((x = malloc(sz)) == NULL){
+	clicon_err(OE_XML, errno, "malloc");
+	return NULL;
+    }
+    memset(x, 0, sz);
+    xml_type_set(x, type);
+    if (name && (xml_name_set(x, name)) < 0)
+	return NULL;
+    if (xp){
+	xml_parent_set(x, xp);
+	if (xml_child_append(xp, x) < 0) 
+	    return NULL;
+	x->_x_i = xml_child_nr(xp)-1;
+    }
+    _stats_nr++;
+    return x;
+}
+
+#else /* XML_NEW_DIFFERENTIATE */
+
 cxobj *
 xml_new(char           *name,
 	cxobj          *xp,
@@ -1008,6 +1072,7 @@ xml_new(char           *name,
     _stats_nr++;
     return x;
 }
+#endif /* XML_NEW_DIFFERENTIATE */
 
 /*! Create a new XML node and set it's body to a value
  *
@@ -1045,48 +1110,6 @@ xml_new_body(char  *name,
     return new_node;
 }
 
-#ifdef NOTYET
-/*! Create new xml node given a name and parent. Free with xml_free().
- */
-cxobj *
-xml_new2(char           *name, 
-	 cxobj          *xp,
-	 enum cxobj_type type)
-{
-    struct xml *x = NULL;
-    size_t      sz;
-    
-    switch (type){
-    case CX_ELMNT:
-	sz = sizeof(struct xml);
-	break;
-    case CX_ATTR:
-    case CX_BODY:
-	sz = sizeof(struct xmlbody);
-	break;
-    default:
-	clicon_err(OE_XML, EINVAL, "Invalid type: %d", type);
-	return NULL;
-	break;
-    }
-    if ((x = malloc(sz)) == NULL){
-	clicon_err(OE_XML, errno, "malloc");
-	return NULL;
-    }
-    memset(x, 0, sz);
-    xml_type_set(x, type);
-    if (name && (xml_name_set(x, name)) < 0)
-	return NULL;
-    if (xp){
-	xml_parent_set(x, xp);
-	if (xml_child_append(xp, x) < 0) 
-	    return NULL;
-	x->_x_i = xml_child_nr(xp)-1;
-    }
-    _stats_nr++;
-    return x;
-}
-#endif /* NOTYET */
 
 /*! Return yang spec of node. 
  * Not necessarily set. Either has not been set yet (by xml_spec_set( or anyxml.

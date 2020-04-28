@@ -3,7 +3,7 @@
 # Config + state data, only get
 # Restconf/Netconf/CLI
 # Use mixed interfaces config+state
-# ALso added two layers a/b to get extra depth (som caching can break)
+# Also added two layers a/b to get extra depth (some caching can break)
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -50,35 +50,35 @@ EOF
 
 cat <<EOF > $fyang
 module $APPNAME{
-   yang-version 1.1;
-   prefix ex;
-   namespace "urn:example:clixon";
-   container interfaces {
+  yang-version 1.1;
+  prefix ex;
+  namespace "urn:example:clixon";
+  container interfaces {
     list a{
       key "name";
       leaf name {
         type string;
       }
-    container b{
-    list interface {
-      key "name";
-      leaf name {
-        type string;
-      }
-      leaf type {
-        type string;
-      }
-      leaf enabled {
-        type boolean;
-        default true;
-      }
-      leaf status {
-        type string;
-	config false;
+      container b{
+        list interface {
+          key "name";
+          leaf name {
+            type string;
+          }
+          leaf type {
+            type string;
+          }
+          leaf enabled {
+            type boolean;
+            default true;
+          }
+          leaf status {
+            type string;
+            config false;
+          }
+        }
       }
     }
-}
-}
   }
 }
 EOF

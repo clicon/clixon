@@ -3,7 +3,8 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2020 Olof Hagsand
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -42,6 +43,7 @@
  */
 int xml_cmp(cxobj *x1, cxobj *x2, int same, int skip1, char *explicit);
 int xml_sort(cxobj *x0, void *arg);
+int xml_sort_recurse(cxobj *xn);
 int xml_insert(cxobj *xp, cxobj *xc, enum insert_type ins, char *key_val, cvec *nsckey);
 int xml_sort_verify(cxobj *x, void *arg);
 #ifdef XML_EXPLICIT_INDEX

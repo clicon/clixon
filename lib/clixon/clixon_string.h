@@ -97,6 +97,7 @@ int xml_chardata_encode(char **escp, char *fmt, ... ) __attribute__ ((format (pr
 int uri_percent_encode(char **encp, char *str, ...);
 int xml_chardata_encode(char **escp, char *fmt, ...);
 #endif
+int xml_chardata_cbuf_append(cbuf *cb, char *str);
 int uri_percent_decode(char *enc, char **str);
 const char *clicon_int2str(const map_str2int *mstab, int i);
 int clicon_str2int(const map_str2int *mstab, char *str);

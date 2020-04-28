@@ -314,6 +314,7 @@ uri_percent_decode(char  *enc,
  *     ' -> "&apos; "  may
  *     ' -> "&quot; "  may
  * Optionally >
+ * @see xml_chardata_cbuf_append for a specialized version
  */
 int
 xml_chardata_encode(char **escp,
@@ -432,6 +433,58 @@ xml_chardata_encode(char **escp,
 	free(esc);
     return retval;
 }
+
+/*! Escape characters according to XML definition and append to cbuf
+ * @param[in]   cb     CLIgen buf
+ * @param[in]   fmt    Not-encoded input string
+ * @see xml_chardata_encode for the generic function
+ */
+int
+xml_chardata_cbuf_append(cbuf *cb,
+			 char *str)
+{
+    int  retval = -1;
+    int  i;
+    int  cdata; /* when set, skip encoding */
+
+    /* The orignal of this code is in xml_chardata_encode */
+    /* Step: encode and expand str --> enc */
+    /* Same code again, but now actually encode into output buffer */
+    cdata = 0;
+    for (i=0; i<strlen(str); i++){
+	if (cdata){
+	    if (strncmp(&str[i], "]]>", strlen("]]>")) == 0){
+		cdata = 0;
+		cbuf_append(cb, str[i++]);
+		cbuf_append(cb, str[i++]);
+	    }
+	    cbuf_append(cb, str[i]);
+	}
+	else
+	switch (str[i]){
+	case '&':
+	    cbuf_append_str(cb, "&amp;");
+	    break;
+	case '<':
+	    if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
+		cbuf_append(cb, str[i]);
+		cdata++;
+		break;
+	    }
+	    cbuf_append_str(cb, "&lt;");
+	    break;
+	case '>':
+	    cbuf_append_str(cb, "&gt;");
+	    break;
+	default:
+	    cbuf_append(cb, str[i]);
+	}
+    }
+    retval = 0;
+    // done:
+    return retval;
+}
+
 
 /*! Split a string into a cligen variable vector using 1st and 2nd delimiter 
  * Split a string first into elements delimited by delim1, then into

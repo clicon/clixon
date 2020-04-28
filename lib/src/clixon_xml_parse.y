@@ -83,6 +83,13 @@
 #include "clixon_xml_sort.h"
 #include "clixon_xml_parse.h"
 
+/* Enable for debugging, steals some cycles otherwise */
+#if 0
+#define _PARSE_DEBUG(s) clicon_debug(2,(s))
+#else
+#define _PARSE_DEBUG(s)
+#endif
+    
 void 
 clixon_xml_parseerror(void *_xy,
 		      char *s) 
@@ -94,7 +101,9 @@ clixon_xml_parseerror(void *_xy,
     return;
 }
 
-/*
+/*! Parse XML content, eg chars between >...<
+ * @param[in]  xy
+ * @param[in]  str  Body string, direct pointer (copy before use, dont free)
  * Note that we dont handle escaped characters correctly 
  * there may also be some leakage here on NULL return
  */
@@ -325,39 +334,39 @@ xml_parse_attr(clixon_xml_yacc *xy,
 %%
  /* [1] document ::= prolog element Misc* */
 document    : prolog element misclist  MY_EOF
-                 { clicon_debug(2, "document->prolog element misc* ACCEPT"); 
+                 { _PARSE_DEBUG("document->prolog element misc* ACCEPT"); 
 		   YYACCEPT; }
             | elist MY_EOF
-	    { clicon_debug(2, "document->elist ACCEPT");  /* internal exception*/
+	    { _PARSE_DEBUG("document->elist ACCEPT");  /* internal exception*/
 		   YYACCEPT; }
             ;
 /* [22] prolog ::=  XMLDecl? Misc* (doctypedecl Misc*)? */
 prolog      : xmldcl misclist
-                { clicon_debug(2, "prolog->xmldcl misc*"); }
+                { _PARSE_DEBUG("prolog->xmldcl misc*"); }
             | misclist
-	        { clicon_debug(2, "prolog->misc*"); }
+	        { _PARSE_DEBUG("prolog->misc*"); }
             ;
 
-misclist    : misclist misc { clicon_debug(2, "misclist->misclist misc"); }
-            |     { clicon_debug(2, "misclist->"); }
+misclist    : misclist misc { _PARSE_DEBUG("misclist->misclist misc"); }
+            |     { _PARSE_DEBUG("misclist->"); }
             ;
 
 /* [27]	Misc ::=  Comment | PI | S */
-misc        : comment    { clicon_debug(2, "misc->comment"); }
-	    | pi         { clicon_debug(2, "misc->pi"); }
-            | WHITESPACE { clicon_debug(2, "misc->white space"); }
+misc        : comment    { _PARSE_DEBUG("misc->comment"); }
+	    | pi         { _PARSE_DEBUG("misc->pi"); }
+            | WHITESPACE { _PARSE_DEBUG("misc->white space"); }
 	    ;
 
 xmldcl      : BXMLDCL verinfo encodingdecl sddecl EQMARK
-	          { clicon_debug(2, "xmldcl->verinfo encodingdecl? sddecl?"); }
+	          { _PARSE_DEBUG("xmldcl->verinfo encodingdecl? sddecl?"); }
             ;
 
 verinfo     : VER '=' '\"' STRING '\"' 
                  { if (xml_parse_version(_XY, $4) <0) YYABORT;
-		     clicon_debug(2, "verinfo->version=\"STRING\"");}
+		     _PARSE_DEBUG("verinfo->version=\"STRING\"");}
             | VER '=' '\'' STRING '\'' 
          	 { if (xml_parse_version(_XY, $4) <0) YYABORT;
-		     clicon_debug(2, "verinfo->version='STRING'");}
+		     _PARSE_DEBUG("verinfo->version='STRING'");}
             ;
 
 encodingdecl : ENC '=' '\"' STRING '\"' {if ($4)free($4);}
@@ -371,53 +380,53 @@ sddecl      : SD '=' '\"' STRING '\"' {if ($4)free($4);}
             ;
 /* [39] element ::= EmptyElemTag | STag content ETag */
 element     : '<' qname  attrs element1 
-                   { clicon_debug(2, "element -> < qname attrs element1"); }
+                   { _PARSE_DEBUG("element -> < qname attrs element1"); }
 	    ;
 
 qname       : NAME           { if (xml_parse_prefixed_name(_XY, NULL, $1) < 0) YYABORT; 
-                                clicon_debug(2, "qname -> NAME %s", $1);}
+                                _PARSE_DEBUG("qname -> NAME");}
             | NAME ':' NAME  { if (xml_parse_prefixed_name(_XY, $1, $3) < 0) YYABORT; 
-                                clicon_debug(2, "qname -> NAME : NAME");}
+                                _PARSE_DEBUG("qname -> NAME : NAME");}
             ;
 
 element1    :  ESLASH         {_XY->xy_xelement = NULL; 
-                               clicon_debug(2, "element1 -> />");} 
+                               _PARSE_DEBUG("element1 -> />");} 
             | '>'             { xml_parse_endslash_pre(_XY); }
               elist           { xml_parse_endslash_mid(_XY); }
               endtag          { xml_parse_endslash_post(_XY); 
-                               clicon_debug(2, "element1 -> > elist endtag");} 
+                               _PARSE_DEBUG("element1 -> > elist endtag");} 
             ;
 
 endtag      : BSLASH NAME '>'          
-                       { clicon_debug(2, "endtag -> < </ NAME>");
+                       { _PARSE_DEBUG("endtag -> < </ NAME>");
 			   if (xml_parse_bslash(_XY, NULL, $2) < 0) YYABORT; }
 
             | BSLASH NAME ':' NAME '>' 
                        { if (xml_parse_bslash(_XY, $2, $4) < 0) YYABORT; 
-			 clicon_debug(2, "endtag -> < </ NAME:NAME >"); }
+			 _PARSE_DEBUG("endtag -> < </ NAME:NAME >"); }
             ;
 
-elist       : elist content { clicon_debug(2, "elist -> elist content"); }
-            | content       { clicon_debug(2, "elist -> content"); }
+elist       : elist content { _PARSE_DEBUG("elist -> elist content"); }
+            | content       { _PARSE_DEBUG("elist -> content"); }
             ;
 
 /* Rule 43 */
-content     : element      { clicon_debug(2, "content -> element"); }
-            | comment      { clicon_debug(2, "content -> comment"); }
-            | pi           { clicon_debug(2, "content -> pi"); }
+content     : element      { _PARSE_DEBUG("content -> element"); }
+            | comment      { _PARSE_DEBUG("content -> comment"); }
+            | pi           { _PARSE_DEBUG("content -> pi"); }
             | CHARDATA     { if (xml_parse_content(_XY, $1) < 0) YYABORT;  
-                             clicon_debug(2, "content -> CHARDATA %s", $1); }
+                             _PARSE_DEBUG("content -> CHARDATA"); }
             | WHITESPACE   { if (xml_parse_whitespace(_XY, $1) < 0) YYABORT;  
-                             clicon_debug(2, "content -> WHITESPACE %s", $1); }
-            |              { clicon_debug(2, "content -> "); }
+                             _PARSE_DEBUG("content -> WHITESPACE"); }
+            |              { _PARSE_DEBUG("content -> "); }
             ;
 
 comment     : BCOMMENT ECOMMENT
             ;
 
-pi          : BQMARK NAME EQMARK {clicon_debug(2, "pi -> <? NAME ?>"); free($2); }
+pi          : BQMARK NAME EQMARK {_PARSE_DEBUG("pi -> <? NAME ?>"); free($2); }
             | BQMARK NAME STRING EQMARK
- 	        { clicon_debug(2, "pi -> <? NAME STRING ?>"); free($2); free($3);}
+ 	        { _PARSE_DEBUG("pi -> <? NAME STRING ?>"); free($2); free($3);}
             ;
 
 

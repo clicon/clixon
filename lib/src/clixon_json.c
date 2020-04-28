@@ -1266,7 +1266,12 @@ _json_parse(char      *str,
     }
     if (failed)
 	goto fail;
-    /* This fails if xt is not bound to yang */
+    /* Sort the complete tree after parsing. Sorting is not really meaningful if Yang 
+       not bound */
+    if (yb != YB_NONE)
+	if (xml_sort_recurse(xt) < 0)
+	    goto done;
+
     if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
 	goto done;
     retval = 1;

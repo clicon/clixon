@@ -241,7 +241,6 @@ clicon_xml2cbuf(cbuf   *cb,
     int    hasbody;
     int    haselement;
     char  *namespace;
-    char  *encstr = NULL; /* xml encoded string */
     char  *val;
     
     if (depth == 0)
@@ -252,21 +251,27 @@ clicon_xml2cbuf(cbuf   *cb,
     case CX_BODY:
 	if ((val = xml_value(x)) == NULL) /* incomplete tree */
 	    break;
-	if (xml_chardata_encode(&encstr, "%s", val) < 0)
+	if (xml_chardata_cbuf_append(cb, val) < 0)
 	    goto done;
-	cprintf(cb, "%s", encstr);
 	break;
     case CX_ATTR:
-	cprintf(cb, " ");
-	if (namespace)
-	    cprintf(cb, "%s:", namespace);
+	cbuf_append_str(cb, " ");
+	if (namespace){
+	    cbuf_append_str(cb, namespace);
+	    cbuf_append_str(cb, ":");
+	}
 	cprintf(cb, "%s=\"%s\"", name, xml_value(x));
 	break;
     case CX_ELMNT:
-	cprintf(cb, "%*s<", prettyprint?(level*XML_INDENT):0, "");
-	if (namespace)
-	    cprintf(cb, "%s:", namespace);
-	cprintf(cb, "%s", name);
+	if (prettyprint)
+	    cprintf(cb, "%*s<", level*XML_INDENT, "");
+	else
+	    cbuf_append_str(cb, "<");
+	if (namespace){
+	    cbuf_append_str(cb, namespace);
+	    cbuf_append_str(cb, ":");
+	}
+	cbuf_append_str(cb, name);
 	hasbody = 0;
 	haselement = 0;
 	xc = NULL;
@@ -288,11 +293,11 @@ clicon_xml2cbuf(cbuf   *cb,
 	    }
 	/* Check for special case <a/> instead of <a></a> */
 	if (hasbody==0 && haselement==0) 
-	    cprintf(cb, "/>");
+	    cbuf_append_str(cb, "/>");
 	else{
-	    cprintf(cb, ">");
+	    cbuf_append_str(cb, ">");
 	    if (prettyprint && hasbody == 0)
-		cprintf(cb, "\n");
+		cbuf_append_str(cb, "\n");
 	    xc = NULL;
 	    while ((xc = xml_child_each(x, xc, -1)) != NULL) 
 		if (xml_type(xc) != CX_ATTR)
@@ -300,13 +305,16 @@ clicon_xml2cbuf(cbuf   *cb,
 			goto done;
 	    if (prettyprint && hasbody == 0)
 		cprintf(cb, "%*s", level*XML_INDENT, "");
-	    cprintf(cb, "</");
-	    if (namespace)
-		cprintf(cb, "%s:", namespace);
-	    cprintf(cb, "%s>", name);
+	    cbuf_append_str(cb, "</");
+	    if (namespace){
+		cbuf_append_str(cb, namespace);
+		cbuf_append_str(cb, ":");
+	    }
+	    cbuf_append_str(cb, name);
+	    cbuf_append_str(cb, ">");
 	}
 	if (prettyprint)
-	    cprintf(cb, "\n");
+	    cbuf_append_str(cb, "\n");
 	break;
     default:
 	break;
@@ -314,8 +322,6 @@ clicon_xml2cbuf(cbuf   *cb,
  ok:
     retval = 0;
  done:
-    if (encstr)
-	free(encstr);
     return retval;
 }
 
@@ -465,10 +471,11 @@ _xml_parse(const char *str,
     }
     if (failed)
 	goto fail;
-    /* This fails if xt is not bound to yang */
-    /* Sort the complete tree after parsing. Sorting is less meaningful if Yang not bound */
-    if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
-	goto done;
+    /* Sort the complete tree after parsing. Sorting is not really meaningful if Yang
+       not bound */
+    if (yb != YB_NONE)
+	if (xml_sort_recurse(xt) < 0)
+	    goto done;
     retval = 1;
   done:
     clixon_xml_parsel_exit(&xy);

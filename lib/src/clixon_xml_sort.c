@@ -407,6 +407,30 @@ xml_sort(cxobj *x,
     return 0;
 }
 
+/*! Recursively sort a tree 
+ * Alt to use xml_apply
+ */
+int
+xml_sort_recurse(cxobj *xn)
+{
+    int    retval = -1;
+    cxobj *x;
+    int    ret;
+    
+    x = NULL;
+    while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
+	if ((ret = xml_sort(x, NULL)) < 0)
+	    goto done;
+	if (ret == 1) /* This node is not sortable */
+	    break;
+	if (xml_sort_recurse(x) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Special case search for ordered-by user or state data where linear sort is used
  *
  * @param[in]  xp    Parent XML node (go through its childre)

@@ -341,8 +341,10 @@ xpath_optimize_check(xpath_tree *xs,
 	_optimize_hits++;
 	return 1; /* Optimized */
     }
-    else
+    else{
+	clixon_xvec_free(xvec);
 	return 0; /* use regular code */
+    }
 #else
     return 0; /* use regular code */
 #endif

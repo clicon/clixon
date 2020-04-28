@@ -510,7 +510,7 @@ xmlns_set(cxobj *x,
     return retval;
 }
 
-/*! Get namespace given prefix recursively 
+/*! Get prefix of given namespace recursively 
  * @param[in]  xn        XML node
  * @param[in]  namespace Namespace
  * @param[out] prefixp   Pointer to prefix if found
@@ -567,7 +567,8 @@ xml2prefix(cxobj *xn,
  done:
     return retval;
  found:
-    *prefixp = prefix;
+    if (prefixp)
+	*prefixp = prefix;
     retval = 1;
     goto done;
 }

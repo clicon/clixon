@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Backend Memory tests, footprint using the clixon-conf state statistics
 # Create a large datastore, load it and measure
+# Baseline: (thinkpad laptop) running db:
+# 100K objects: 500K   mem: 74M
+# 1M   objects: 5M     mem: 747M
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-# ENable this for massif memory profiling
+# Enable this for massif memory profiling
 #clixon_backend="valgrind --tool=massif clixon_backend"
 
 clixon_util_xpath=clixon_util_xpath 
@@ -92,12 +95,14 @@ testrun(){
 
     pid=$(cat $pidfile)
 
-    new "netconf get state"
-    res=$(echo "<rpc><get><filter type=\"xpath\" select=\"/cc:clixon-stats\" xmlns:cc=\"http://clicon.org/config\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg)
+    new "netconf get stats"
+    res=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><stats xmlns="http://clicon.org/lib"/></rpc>]]>]]>' | $clixon_netconf -qf $cfg)
+    objects=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/global/xmlnr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}')
 
     echo "Total"
-    echo -n "   objects: "
-    echo $res | $clixon_util_xpath -p "/rpc-reply/data/clixon-stats/global/xmlnr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}'
+    echo "   objects: $objects"
+
+#
     if [ -f /proc/$pid/statm ]; then     # This ony works on Linux 
 #	cat /proc/$pid/statm
 	echo -n "   mem: "
@@ -105,7 +110,7 @@ testrun(){
     fi
     for db in running candidate startup; do
 	echo "$db"
-	resdb=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/data/clixon-stats/datastore[name=\"$db\"]")
+	resdb=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/datastore[name=\"$db\"]")
 	resdb=${resdb#"nodeset:0:"}
 	echo -n "   objects: "
 	echo $resdb | $clixon_util_xpath -p "datastore/nr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}'
@@ -134,4 +139,3 @@ rm -rf $dir
 
 # unset conditional parameters 
 unset perfnr
-
