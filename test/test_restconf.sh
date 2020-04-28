@@ -62,36 +62,32 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
-expecteq "$(curl -s -X GET http://localhost/.well-known/host-meta)" 0 "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>
-   <Link rel='restconf' href='/restconf'/>
-</XRD>"
+expectpart "$(curl -si -X GET http://localhost/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
 new "restconf get restconf resource. RFC 8040 3.3 (json)"
-expecteq "$(curl -sG -H "Accept: application/yang-data+json" http://localhost/restconf)" 0 '{"ietf-restconf:restconf":{"data":{},"operations":{},"yang-library-version":"2016-06-21"}}
-'
+expectpart "$(curl -si -X GET -H "Accept: application/yang-data+json" http://localhost/restconf)" 0 'HTTP/1.1 200 OK' '{"ietf-restconf:restconf":{"data":{},"operations":{},"yang-library-version":"2016-06-21"}}'
 
 new "restconf get restconf resource. RFC 8040 3.3 (xml)"
 # Get XML instead of JSON?
-expecteq "$(curl -s -H 'Accept: application/yang-data+xml' -G http://localhost/restconf)" 0 '<restconf xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><data/><operations/><yang-library-version>2016-06-21</yang-library-version></restconf>
-'
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf)" 0 'HTTP/1.1 200 OK' '<restconf xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><data/><operations/><yang-library-version>2016-06-21</yang-library-version></restconf>'
 
 # Should be alphabetically ordered
 new "restconf get restconf/operations. RFC8040 3.3.2 (json)"
-expectpart "$(curl -siG http://localhost/restconf/operations)" 0 'HTTP/1.1 200 OK' '{"operations":{"clixon-example:client-rpc":\[null\],"clixon-example:empty":\[null\],"clixon-example:optional":\[null\],"clixon-example:example":\[null\],"clixon-lib:debug":\[null\],"clixon-lib:ping":\[null\],"clixon-lib:datastats":\[null\],"ietf-netconf:get-config":\[null\],"ietf-netconf:edit-config":\[null\],"ietf-netconf:copy-config":\[null\],"ietf-netconf:delete-config":\[null\],"ietf-netconf:lock":\[null\],"ietf-netconf:unlock":\[null\],"ietf-netconf:get":\[null\],"ietf-netconf:close-session":\[null\],"ietf-netconf:kill-session":\[null\],"ietf-netconf:commit":\[null\],"ietf-netconf:discard-changes":\[null\],"ietf-netconf:validate":\[null\],"clixon-rfc5277:create-subscription":\[null\]}}'
+expectpart "$(curl -si -X GET http://localhost/restconf/operations)" 0 'HTTP/1.1 200 OK' '{"operations":{"clixon-example:client-rpc":\[null\],"clixon-example:empty":\[null\],"clixon-example:optional":\[null\],"clixon-example:example":\[null\],"clixon-lib:debug":\[null\],"clixon-lib:ping":\[null\],"clixon-lib:stats":\[null\],"clixon-lib:restart-plugin":\[null\],"ietf-netconf:get-config":\[null\],"ietf-netconf:edit-config":\[null\],"ietf-netconf:copy-config":\[null\],"ietf-netconf:delete-config":\[null\],"ietf-netconf:lock":\[null\],"ietf-netconf:unlock":\[null\],"ietf-netconf:get":\[null\],"ietf-netconf:close-session":\[null\],"ietf-netconf:kill-session":\[null\],"ietf-netconf:commit":\[null\],"ietf-netconf:discard-changes":\[null\],"ietf-netconf:validate":\[null\],"clixon-rfc5277:create-subscription":\[null\]}}'
 
 new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
-ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/operations)
-expect='<operations><client-rpc xmlns="urn:example:clixon"/><empty xmlns="urn:example:clixon"/><optional xmlns="urn:example:clixon"/><example xmlns="urn:example:clixon"/><debug xmlns="http://clicon.org/lib"/><ping xmlns="http://clicon.org/lib"/><datastats xmlns="http://clicon.org/lib"/><get-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><copy-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><delete-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><lock xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><unlock xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><get xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><close-session xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><kill-session xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><commit xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><discard-changes xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><validate xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"/></operations>'
+ret=$(curl -s -X GET -H "Accept: application/yang-data+xml" http://localhost/restconf/operations)
+expect='<operations><client-rpc xmlns="urn:example:clixon"/><empty xmlns="urn:example:clixon"/><optional xmlns="urn:example:clixon"/><example xmlns="urn:example:clixon"/><debug xmlns="http://clicon.org/lib"/><ping xmlns="http://clicon.org/lib"/><stats xmlns="http://clicon.org/lib"/><restart-plugin xmlns="http://clicon.org/lib"/><get-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><copy-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><delete-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><lock xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><unlock xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><get xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><close-session xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><kill-session xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><commit xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><discard-changes xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><validate xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"/></operations>'
 match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
 new "restconf get restconf/yang-library-version. RFC8040 3.3.3"
-expecteq "$(curl -sG http://localhost/restconf/yang-library-version)" 0 '{"yang-library-version":"2016-06-21"}'
+expectpart "$(curl -si -X GET http://localhost/restconf/yang-library-version)" 0 'HTTP/1.1 200 OK' '{"yang-library-version":"2016-06-21"}'
 
 new "restconf get restconf/yang-library-version. RFC8040 3.3.3 (xml)"
-ret=$(curl -s -H "Accept: application/yang-data+xml" -G http://localhost/restconf/yang-library-version)
+ret=$(curl -s -X GET -H "Accept: application/yang-data+xml" http://localhost/restconf/yang-library-version)
 expect="<yang-library-version>2016-06-21</yang-library-version>"
 match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
@@ -99,8 +95,7 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf schema resource, RFC 8040 sec 3.7 according to RFC 7895 (explicit resource)"
-expecteq "$(curl -s -H 'Accept: application/yang-data+json' -G http://localhost/restconf/data/ietf-yang-library:modules-state/module=ietf-interfaces,2018-02-20)" 0 '{"ietf-yang-library:module":[{"name":"ietf-interfaces","revision":"2018-02-20","namespace":"urn:ietf:params:xml:ns:yang:ietf-interfaces","conformance-type":"implement"}]}
-'
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+json' http://localhost/restconf/data/ietf-yang-library:modules-state/module=ietf-interfaces,2018-02-20)" 0 'HTTP/1.1 200 OK' '{"ietf-yang-library:module":\[{"name":"ietf-interfaces","revision":"2018-02-20","namespace":"urn:ietf:params:xml:ns:yang:ietf-interfaces","conformance-type":"implement"}\]}'
 
 new "restconf options. RFC 8040 4.1"
 expectpart "$(curl -is -X OPTIONS http://localhost/restconf/data)" 0 "HTTP/1.1 200 OK" "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE"

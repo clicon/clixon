@@ -346,6 +346,7 @@ expecteq(){
 # - evaluated expression
 # - expected command return value (0 if OK)
 # - expected stdout outcome*
+# @note need to escape \[\]
 expectpart(){
   r=$?
   ret=$1

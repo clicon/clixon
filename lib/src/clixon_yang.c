@@ -1882,7 +1882,7 @@ ys_populate_unknown(clicon_handle h,
     }
 #endif
     /* Make extension callbacks that may alter yang structure */
-    if (clixon_plugin_extension(h, yext, ys) < 0)
+    if (clixon_plugin_extension_all(h, yext, ys) < 0)
 	goto done;
 
     retval = 0;

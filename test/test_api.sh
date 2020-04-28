@@ -222,18 +222,21 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend"
     start_backend -s running -f $cfg
-
-fi
-
-new "kill old restconf daemon"
-sudo pkill -u www-data -f "/www-data/clixon_restconf"
-
-new "start restconf daemon"
-start_restconf -f $cfg
+ fi
 
 new "waiting"
 wait_backend
-wait_restconf
+    
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    sudo pkill -u www-data -f "/www-data/clixon_restconf"
+
+    new "start restconf daemon"
+    start_restconf -f $cfg
+
+    new "waiting"
+    wait_restconf
+fi
 
 XML='<c xmlns="urn:example:api"><y3><k>2</k></y3><y3><k>3</k></y3><y3><k>5</k><val>zorro</val></y3><y3><k>7</k></y3></c>'
 
@@ -246,6 +249,11 @@ expectpart "$(curl -si -X GET http://localhost/restconf/data/example-api:c -H 'A
 
 new "Send a trigger"
 expectpart "$(curl -si -X POST http://localhost/restconf/operations/example-api:trigger -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 204 No Content'
+
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE

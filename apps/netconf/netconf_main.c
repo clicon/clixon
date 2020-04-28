@@ -326,7 +326,7 @@ netconf_terminate(clicon_handle h)
     cvec       *nsctx;
     cxobj      *x;
     
-    clixon_plugin_exit(h);
+    clixon_plugin_exit_all(h);
     rpc_callback_delete_all(h);
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
@@ -571,7 +571,7 @@ main(int    argc,
 	goto done;
 
     /* Call start function is all plugins before we go interactive */
-    if (clixon_plugin_start(h) < 0)
+    if (clixon_plugin_start_all(h) < 0)
 	goto done;
 #if 1
     /* XXX get session id from backend hello */

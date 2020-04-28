@@ -86,7 +86,7 @@ checklog(){
     s=$1 # statement
     l0=$2 # linenr
     new "Check $s in log"
-#    echo "grep \"transaction_log $s\"  $flog"
+#    echo "grep \"transaction_log $s line:$l0\"  $flog"
     t=$(grep -n "transaction_log $s" $flog)
     if [ -z "$t" ]; then
 	echo -e "\e[31m\nError in Test$testnr [$testname]:"
@@ -133,7 +133,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></
 new "Commit base"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><commit/></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
-let line=12 # Skipping basic transaction
+let line=14 # Skipping basic transaction
 
 # 1. validate(-only) transaction
 let nr++
@@ -164,7 +164,7 @@ new "Commit transaction: commit"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><commit/></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 xml="<y><a>$nr</a></y>"
-for op in begin validate complete commit end; do
+for op in begin validate complete commit commit_done end; do
     checklog "$nr main_$op add: $xml" $line
     let line++
     checklog "$nr nacm_$op add: $xml" $line
@@ -227,12 +227,13 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><commit/></rpc>]]>]]>' '^<rpc-reply
 new "Commit user-error discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-for op in begin validate complete commit; do
+for op in begin validate complete commit ; do
     checklog "$nr main_$op add: <y><a>$errnr</a></y>" $line
     let line++
     checklog "$nr nacm_$op add: <y><a>$errnr</a></y>" $line
     let line++
 done
+
 let line++ # error message
 checklog "$nr main_revert add: <y><a>$errnr</a></y>" $line
 let line++
@@ -252,7 +253,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></
 new "netconf commit base"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><commit/></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 #Ignore
-let line+=10
+let line+=12
 
 let nr++
 new "6. netconf mixed change: change b, del c, add d"
@@ -262,7 +263,7 @@ new "netconf commit change"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><commit/></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 # Check complete transaction $nr:
-for op in begin validate complete commit; do
+for op in begin validate complete commit commit_done; do
     checklog "$nr main_$op add: <d>0</d>" $line
     let line++
     checklog "$nr main_$op change: <b>0</b><b>42</b>" $line
@@ -287,7 +288,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></
 
 new "netconf commit base"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><commit/></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
-let line+=10
+let line+=12
 
 # Variant check that only b,c
 let nr++
@@ -298,7 +299,7 @@ new "netconf commit base"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><commit/></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 # check complete
-for op in begin validate complete commit end; do
+for op in begin validate complete commit commit_done end; do
     checklog "$nr main_$op add: <b>1</b><c>1</c>" $line
     let line++
     checklog "$nr nacm_$op add: <b>1</b><c>1</c>" $line

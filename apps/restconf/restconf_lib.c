@@ -623,7 +623,7 @@ restconf_terminate(clicon_handle h)
     clicon_debug(1, "%s", __FUNCTION__);
     if ((fs = clicon_socket_get(h)) != -1)
 	close(fs);
-    clixon_plugin_exit(h);
+    clixon_plugin_exit_all(h);
     rpc_callback_delete_all(h);
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)

@@ -127,6 +127,15 @@ nacm_commit(clicon_handle    h,
 }
 
 int
+nacm_commit_done(clicon_handle    h, 
+		 transaction_data td)
+{
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+    return 0;
+}
+
+int
 nacm_revert(clicon_handle    h, 
 	    transaction_data td)
 {
@@ -199,6 +208,7 @@ static clixon_plugin_api api = {
     .ca_trans_validate=nacm_validate,       /* trans validate */
     .ca_trans_complete=nacm_complete,       /* trans complete */
     .ca_trans_commit=nacm_commit,           /* trans commit */
+    .ca_trans_commit_done=nacm_commit_done, /* trans commit done */
     .ca_trans_revert=nacm_revert,           /* trans revert */
     .ca_trans_end=nacm_end,                 /* trans end */
     .ca_trans_abort=nacm_abort              /* trans abort */

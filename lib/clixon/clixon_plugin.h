@@ -270,7 +270,7 @@ typedef struct clixon_plugin clixon_plugin;
  * Prototypes
  */
 
-/*! Plugin initialization function. Must appear in all plugins
+/*! Plugin initialization function. Must appear in all plugins, not a clixon system function
  * @param[in]  h    Clixon handle
  * @retval     api  Pointer to API struct
  * @retval     NULL Failure (if clixon_err() called), module disabled otherwise.
@@ -288,15 +288,20 @@ int clixon_plugins_load(clicon_handle h, char *function, char *dir, char *regexp
 
 int clixon_pseudo_plugin(clicon_handle h, char *name, clixon_plugin **cpp);
 
-int clixon_plugin_start(clicon_handle h);
+int clixon_plugin_start_one(clixon_plugin *cp, clicon_handle h);
+int clixon_plugin_start_all(clicon_handle h);
 
-int clixon_plugin_exit(clicon_handle h);
+int clixon_plugin_exit_one(clixon_plugin *cp, clicon_handle h);
+int clixon_plugin_exit_all(clicon_handle h);
 
-int clixon_plugin_auth(clicon_handle h, void *arg);
+int clixon_plugin_auth_one(clixon_plugin *cp, clicon_handle h, void *arg);
+int clixon_plugin_auth_all(clicon_handle h, void *arg);
 
-int clixon_plugin_extension(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+int clixon_plugin_extension_one(clixon_plugin *cp, clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+int clixon_plugin_extension_all(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 
-int clixon_plugin_datastore_upgrade(clicon_handle h, char *db, cxobj *xt, modstate_diff_t *msd);
+int clixon_plugin_datastore_upgrade_one(clixon_plugin *cp, clicon_handle h, char *db, cxobj *xt, modstate_diff_t *msd);
+int clixon_plugin_datastore_upgrade_all(clicon_handle h, char *db, cxobj *xt, modstate_diff_t *msd);
 
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, char *namespace, char *name);

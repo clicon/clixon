@@ -596,7 +596,7 @@ main(int argc, char **argv)
 
     /* Call start function in all plugins before we go interactive 
      */
-    if (clixon_plugin_start(h) < 0)
+    if (clixon_plugin_start_all(h) < 0)
 	goto done;
 
     cligen_line_scrolling_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_LINESCROLLING"));

@@ -316,6 +316,7 @@ client_statedata(clicon_handle h,
     char      *namespace;
     cbuf      *cb = NULL;
     
+    clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
@@ -367,7 +368,7 @@ client_statedata(clicon_handle h,
 	if (ret == 0)
 	    goto fail;
     }
-    if ((ret = clixon_plugin_statedata(h, yspec, nsc, xpath, xret)) < 0)
+    if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, xret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -980,6 +981,7 @@ from_client_get(clicon_handle h,
     cxobj          *xb;
     int             ret;
     
+    clicon_debug(1, "%s", __FUNCTION__);
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec9");
@@ -1405,11 +1407,11 @@ from_client_ping(clicon_handle h,
  * @retval    -1       Error
  */
 static int
-from_client_datastats(clicon_handle h,
-		      cxobj        *xe,
-		      cbuf         *cbret,
-		      void         *arg,
-		      void         *regarg)
+from_client_stats(clicon_handle h,
+		  cxobj        *xe,
+		  cbuf         *cbret,
+		  void         *arg,
+		  void         *regarg)
 {
     int      retval = -1;
     uint64_t nr;
@@ -1429,6 +1431,55 @@ from_client_datastats(clicon_handle h,
  done:
     return retval;
 }
+
+#ifdef RESTART_PLUGIN_RPC
+/*! Request restart of specific plugins
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+from_client_restart_plugin(clicon_handle h,
+			   cxobj        *xe,
+			   cbuf         *cbret,
+			   void         *arg,
+			   void         *regarg)
+{
+    int            retval = -1;
+    char          *name;
+    cxobj        **vec = NULL;
+    size_t         veclen;
+    int            i;
+    clixon_plugin *cp;
+    int            ret;
+    
+    if (xpath_vec(xe, NULL, "plugin", &vec, &veclen) < 0) 
+	goto done;
+    for (i=0; i<veclen; i++){
+	name = xml_body(vec[i]);
+	if ((cp = clixon_plugin_find(h, name)) == NULL){
+	    if (netconf_bad_element(cbret, "application", "plugin", "No such plugin") < 0)
+		goto done;
+	    goto ok;
+	}
+	if ((ret = from_client_restart_one(h, cp, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto ok; /* cbret set */
+   }
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+ ok:
+    retval = 0;
+ done:
+    if (vec)
+	free(vec);
+    return retval;
+}
+#endif /* RESTART_PLUGIN_RPC */
 
 /*! Verify nacm user with  peer uid credentials
  * @param[in]  mode      Peer credential mode: none, exact or except
@@ -1685,7 +1736,7 @@ from_client_msg(clicon_handle        h,
 	cbuf_free(cbret);
     /* Sanity: log if clicon_err() is not called ! */
     if (retval < 0 && clicon_errno < 0) 
-	clicon_log(LOG_NOTICE, "%s: Internal error: No clicon_err call on error (message: %s)",
+	clicon_log(LOG_NOTICE, "%s: Internal error: No clicon_err call on RPC error (message: %s)",
 		   __FUNCTION__, rpc?rpc:"");
     //    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;// -1 here terminates backend
@@ -1791,9 +1842,14 @@ backend_rpc_init(clicon_handle h)
     if (rpc_callback_register(h, from_client_ping, NULL,
 			      CLIXON_LIB_NS, "ping") < 0)
 	goto done;
-    if (rpc_callback_register(h, from_client_datastats, NULL,
-			      CLIXON_LIB_NS, "datastats") < 0)
+    if (rpc_callback_register(h, from_client_stats, NULL,
+			      CLIXON_LIB_NS, "stats") < 0)
 	goto done;
+#ifdef RESTART_PLUGIN_RPC
+    if (rpc_callback_register(h, from_client_restart_plugin, NULL,
+			      CLIXON_LIB_NS, "restart-plugin") < 0)
+	goto done;
+#endif
     retval =0;
  done:
     return retval;

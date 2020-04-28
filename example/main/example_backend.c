@@ -160,6 +160,15 @@ main_commit(clicon_handle    h,
 }
 
 int
+main_commit_done(clicon_handle    h, 
+		 transaction_data td)
+{
+    if (_transaction_log)
+	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+    return 0;
+}
+
+int
 main_revert(clicon_handle    h, 
 	    transaction_data td)
 {
@@ -802,6 +811,18 @@ example_start(clicon_handle h)
     return 0;
 }
 
+/*! Plugin daemon.
+ * @param[in]  h     Clicon handle
+ *
+ * plugin_daemon is called once after damonization has been made but before lowering of privileges
+ * the main event loop is entered. 
+ */
+int
+example_daemon(clicon_handle h)
+{
+    return 0;
+}
+
 int 
 example_exit(clicon_handle h)
 {
@@ -816,12 +837,14 @@ static clixon_plugin_api api = {
     example_start,                          /* start */
     example_exit,                           /* exit */
     .ca_extension=example_extension,        /* yang extensions */
+    .ca_daemon=example_daemon,              /* daemon */
     .ca_reset=example_reset,                /* reset */
     .ca_statedata=example_statedata,        /* statedata */
     .ca_trans_begin=main_begin,             /* trans begin */
     .ca_trans_validate=main_validate,       /* trans validate */
     .ca_trans_complete=main_complete,       /* trans complete */
     .ca_trans_commit=main_commit,           /* trans commit */
+    .ca_trans_commit_done=main_commit_done, /* trans commit done */
     .ca_trans_revert=main_revert,           /* trans revert */
     .ca_trans_end=main_end,                 /* trans end */
     .ca_trans_abort=main_abort,             /* trans abort */

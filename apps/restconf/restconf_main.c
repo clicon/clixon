@@ -409,7 +409,7 @@ api_restconf(clicon_handle h,
     /* If present, check credentials. See "plugin_credentials" in plugin  
      * See RFC 8040 section 2.5
      */
-    if ((authenticated = clixon_plugin_auth(h, r)) < 0)
+    if ((authenticated = clixon_plugin_auth_all(h, r)) < 0)
 	goto done;
     clicon_debug(1, "%s auth:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
 
@@ -781,7 +781,7 @@ main(int    argc,
 
     /* Call start function in all plugins before we go interactive 
      */
-     if (clixon_plugin_start(h) < 0)
+     if (clixon_plugin_start_all(h) < 0)
 	 goto done;
 
     if ((sockpath = clicon_option_str(h, "CLICON_RESTCONF_PATH")) == NULL){

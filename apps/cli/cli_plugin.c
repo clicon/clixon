@@ -423,7 +423,7 @@ cli_syntax_load(clicon_handle h)
     retval = 0;
 done:
     if (retval != 0) {
-	clixon_plugin_exit(h);
+	clixon_plugin_exit_all(h);
 	cli_syntax_unload(h);
 	cli_syntax_set(h, NULL);
     }
@@ -440,7 +440,7 @@ int
 cli_plugin_finish(clicon_handle h)
 {
     /* Remove all CLI plugins */
-    clixon_plugin_exit(h);
+    clixon_plugin_exit_all(h);
     /* Remove all cligen syntax modes */
     cli_syntax_unload(h);
     cli_syntax_set(h, NULL);

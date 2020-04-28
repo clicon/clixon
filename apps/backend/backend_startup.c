@@ -227,7 +227,7 @@ startup_extraxml(clicon_handle        h,
     if (xmldb_db_reset(h, tmp_db) < 0)
 	goto done;
     /* Application may define extra xml in its reset function*/
-    if (clixon_plugin_reset(h, tmp_db) < 0)   
+    if (clixon_plugin_reset_all(h, tmp_db) < 0)   
 	goto done;
     /* Extra XML can also be added via file */
     if (file){

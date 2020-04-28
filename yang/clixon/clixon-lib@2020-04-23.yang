@@ -43,7 +43,8 @@ module clixon-lib {
 
     revision 2020-04-23 {
 	description
-	    "Added:  clixon-stats state for clixon XML and memory statistics.";
+	    "Added: stats RPC for clixon XML and memory statistics.
+             Added: restart-plugin RPC for restarting individual plugins without restarting backend.";
     }
     revision 2019-08-13 {
 	description
@@ -68,13 +69,13 @@ module clixon-lib {
     rpc ping {
         description "Check aliveness of backend daemon.";
     }
-    rpc datastats {
+    rpc stats {
         description "Clixon XML statistics.";
 	output {
 	    container global{
 		description "Clixon global statistics";
 		leaf xmlnr{
-		    description "Number of XML objects. That is number of residing xml/json objects
+		    description "Number of XML objects: number of residing xml/json objects
                              in the internal 'cxobj' representation.";
 		    type uint64;
 		}
@@ -97,6 +98,15 @@ module clixon-lib {
 		}
 	    }
 
+	}
+    }
+    rpc restart-plugin {
+	description "Restart specific backend plugins.";
+	input {
+	    leaf-list plugin {
+		description "Name of plugin to restart";
+		type string;
+	    }
 	}
     }
 }

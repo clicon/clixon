@@ -98,3 +98,6 @@
  */
 #define STATE_ORDERED_BY_SYSTEM
 
+/*! Restart specific backend plugins
+ */
+#undef RESTART_PLUGIN_RPC

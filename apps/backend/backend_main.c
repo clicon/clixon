@@ -122,7 +122,7 @@ backend_terminate(clicon_handle h)
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
     stream_publish_exit();
-    clixon_plugin_exit(h);
+    clixon_plugin_exit_all(h);
     /* Delete all backend plugin RPC callbacks */
     rpc_callback_delete_all(h);
     /* Delete all backend plugin upgrade callbacks */
@@ -867,7 +867,7 @@ main(int    argc,
 	clicon_log(LOG_NOTICE, "%s: %u %s", __PROGRAM__, getpid(), cbuf_get(cbret));
 	
     /* Call backend plugin_start with user -- options */
-    if (clixon_plugin_start(h) < 0)
+    if (clixon_plugin_start_all(h) < 0)
 	goto done;
     /* -1 option to run only once */
     if (once)
@@ -886,7 +886,7 @@ main(int    argc,
 	    
     }
     /* Call plugin callbacks when in background and before dropped privileges */
-    if (clixon_plugin_daemon(h) < 0)
+    if (clixon_plugin_daemon_all(h) < 0)
 	goto done;
 
     /* Write pid-file */

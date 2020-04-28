@@ -31,14 +31,14 @@ Expected: May 2020
   
 ### API changes on existing protocol/config features (You may have have to change how you use Clixon)
 
-* xml-stats moved from clixon-config.yang as state data to an rpc `datastats`in clixon-lib.yang 
+* New clixon-lib@2020-04-23.yang revision
+  * Added: stats RPC for clixon XML and memory statistics.
+  * Added: restart-plugin RPC for restarting individual plugins without restarting backend.
+* xml-stats moved from clixon-config.yang as state data to an rpc `datastats` in clixon-lib.yang 
 * Stricter incoming RPC sanity checking, error messages may have changed.
 
 ### C-API changes on existing features (you may need to change your plugin C-code)
 
-* Two new plugin callbacks added
-  * ca_daemon: Called just after a server has "daemonized", ie put in background.
-  * ca_trans_commit_done: Called when all plugin commits have been done.
 * Length of xml vector in many structs changed from `size_t` to `int`since it is a vector size, not byte size. This includes `transaction_data_t`
 * `xml_merge()` changed to use 3-value return: 1:OK, 0:Yang failed, -1: Error
 * `clixon_netconf_error(category, xerr, msg, arg)` removed first argument -> `clixon_netconf_error(xerr, msg, arg)`
@@ -48,6 +48,11 @@ Expected: May 2020
 
 ### Minor changes
 
+* Experimental: restart_plugin
+* Two new plugin callbacks added
+  * ca_daemon: Called just after a server has "daemonized", ie put in background.
+  * ca_trans_commit_done: Called when all plugin commits have been done.
+    * Note: If you have used "end" callback and usign transaction data, you should probably use this instead.
 * Adapted to CLIgen 4.5 API changes, eg: `cliread()` and  `cliread_parse()`
 * Renamed utility function `clixon_util_insert()` to `clixon_util_xml_mod()` and added merge functionality.
 * Sanity check of duplicates prefixes in Yang modules and submodules as defined in RFC 7950 Sec 7.1.4

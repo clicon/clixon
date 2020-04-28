@@ -411,7 +411,7 @@ api_stream(clicon_handle h,
     /* If present, check credentials. See "plugin_credentials" in plugin  
      * See RFC 8040 section 2.5
      */
-    if ((authenticated = clixon_plugin_auth(h, r)) < 0)
+    if ((authenticated = clixon_plugin_auth_all(h, r)) < 0)
 	goto done;
     clicon_debug(1, "%s auth:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
 

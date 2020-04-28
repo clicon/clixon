@@ -202,7 +202,7 @@ startup_common(clicon_handle       h,
     }
     /* Here xt is old syntax */
     /* General purpose datastore upgrade */
-    if (clixon_plugin_datastore_upgrade(h, db, xt, msd) < 0)
+    if (clixon_plugin_datastore_upgrade_all(h, db, xt, msd) < 0)
        goto done;
     /* Module-specific upgrade callbacks */
     if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
@@ -230,7 +230,7 @@ startup_common(clicon_handle       h,
     }
 
     /* 4. Call plugin transaction start callbacks */
-    if (plugin_transaction_begin(h, td) < 0)
+    if (plugin_transaction_begin_all(h, td) < 0)
 	goto done;
 
     /* 5. Make generic validation on all new or changed data.
@@ -244,11 +244,11 @@ startup_common(clicon_handle       h,
 	goto fail; /* STARTUP_INVALID */
     }
     /* 6. Call plugin transaction validate callbacks */
-    if (plugin_transaction_validate(h, td) < 0)
+    if (plugin_transaction_validate_all(h, td) < 0)
 	goto done;
 
     /* 7. Call plugin transaction complete callbacks */
-    if (plugin_transaction_complete(h, td) < 0)
+    if (plugin_transaction_complete_all(h, td) < 0)
 	goto done;
  ok:
     retval = 1;
@@ -289,14 +289,14 @@ startup_validate(clicon_handle  h,
     if ((td = transaction_new()) == NULL)
 	goto done;
     if ((ret = startup_common(h, db, td, cbret)) < 0){
-	plugin_transaction_abort(h, td);
+	plugin_transaction_abort_all(h, td);
 	goto done;
     }
     if (ret == 0){
-	plugin_transaction_abort(h, td);
+	plugin_transaction_abort_all(h, td);
 	goto fail;
     }
-    plugin_transaction_end(h, td);
+    plugin_transaction_end_all(h, td);
      /* Clear cached trees from default values and marking */
     if (xmldb_get0_clear(h, td->td_target) < 0)
 	 goto done;
@@ -347,10 +347,10 @@ startup_commit(clicon_handle  h,
     if (ret == 0)
 	goto fail;
      /* 8. Call plugin transaction commit callbacks */
-     if (plugin_transaction_commit(h, td) < 0)
+     if (plugin_transaction_commit_all(h, td) < 0)
 	 goto done;
      /* After commit, make a post-commit call (sure that all plugins have committed) */
-     if (plugin_transaction_commit_done(h, td) < 0)
+     if (plugin_transaction_commit_done_all(h, td) < 0)
 	 goto done;
      /* Clear cached trees from default values and marking */
      if (xmldb_get0_clear(h, td->td_target) < 0)
@@ -373,12 +373,12 @@ startup_commit(clicon_handle  h,
      if (ret == 0)
 	 goto fail;
     /* 10. Call plugin transaction end callbacks */
-    plugin_transaction_end(h, td);
+    plugin_transaction_end_all(h, td);
     retval = 1;
  done:
     if (td){
 	if (retval < 1)
-	    plugin_transaction_abort(h, td);
+	    plugin_transaction_abort_all(h, td);
 	 xmldb_get0_free(h, &td->td_target);
 	 transaction_free(td);
     }
@@ -477,7 +477,7 @@ from_validate_common(clicon_handle       h,
 	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
     /* 4. Call plugin transaction start callbacks */
-    if (plugin_transaction_begin(h, td) < 0)
+    if (plugin_transaction_begin_all(h, td) < 0)
 	goto done;
 
     /* 5. Make generic validation on all new or changed data.
@@ -488,11 +488,11 @@ from_validate_common(clicon_handle       h,
 	goto fail;
 
     /* 6. Call plugin transaction validate callbacks */
-    if (plugin_transaction_validate(h, td) < 0)
+    if (plugin_transaction_validate_all(h, td) < 0)
 	goto done;
 
     /* 7. Call plugin transaction complete callbacks */
-    if (plugin_transaction_complete(h, td) < 0)
+    if (plugin_transaction_complete_all(h, td) < 0)
 	goto done;
     retval = 1;
  done:
@@ -539,10 +539,10 @@ candidate_commit(clicon_handle h,
     }
 
      /* 7. Call plugin transaction commit callbacks */
-     if (plugin_transaction_commit(h, td) < 0)
+     if (plugin_transaction_commit_all(h, td) < 0)
 	 goto done;
      /* After commit, make a post-commit call (sure that all plugins have committed) */
-     if (plugin_transaction_commit_done(h, td) < 0)
+     if (plugin_transaction_commit_done_all(h, td) < 0)
 	 goto done;
      
      /* Clear cached trees from default values and marking */
@@ -576,14 +576,14 @@ candidate_commit(clicon_handle h,
      }
 
     /* 9. Call plugin transaction end callbacks */
-    plugin_transaction_end(h, td);
+    plugin_transaction_end_all(h, td);
     
     retval = 1;
  done:
      /* In case of failure (or error), call plugin transaction termination callbacks */
      if (td){
 	 if (retval < 1)
-	     plugin_transaction_abort(h, td);
+	     plugin_transaction_abort_all(h, td);
 	 xmldb_get0_free(h, &td->td_target);
 	 xmldb_get0_free(h, &td->td_src);
 	 transaction_free(td);
@@ -771,7 +771,7 @@ from_client_validate(clicon_handle h,
 	 * use clicon_err. */
 	if (xret && clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
 	    goto done;
-	plugin_transaction_abort(h, td);
+	plugin_transaction_abort_all(h, td);
 	if (!cbuf_len(cbret) &&
 	    netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
 	    goto done;
@@ -780,13 +780,13 @@ from_client_validate(clicon_handle h,
 
     if (xmldb_get0_clear(h, td->td_src) < 0 ||
 	xmldb_get0_clear(h, td->td_target) < 0){
-	plugin_transaction_abort(h, td);
+	plugin_transaction_abort_all(h, td);
 	goto done;
     }
 
     /* Optionally write (potentially modified) tree back to candidate */
     if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD")){
-	plugin_transaction_abort(h, td);
+	plugin_transaction_abort_all(h, td);
 	if ((ret = xmldb_put(h, "candidate", OP_REPLACE, td->td_target,
 			     clicon_username_get(h), cbret)) < 0)
 	    goto done;
@@ -794,13 +794,13 @@ from_client_validate(clicon_handle h,
     }
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
     /* Call plugin transaction end callbacks */
-    plugin_transaction_end(h, td);
+    plugin_transaction_end_all(h, td);
  ok:
     retval = 0;
  done:
     if (td){
 	if (retval < 0)
-	    plugin_transaction_abort(h, td);
+	    plugin_transaction_abort_all(h, td);
 	 xmldb_get0_free(h, &td->td_target);
 	 xmldb_get0_free(h, &td->td_src);
 	 transaction_free(td);
@@ -810,3 +810,143 @@ from_client_validate(clicon_handle h,
     return retval;
 } /* from_client_validate */
 
+#ifdef RESTART_PLUGIN_RPC
+int
+from_client_restart_one(clicon_handle h,
+			clixon_plugin *cp,
+			cbuf         *cbret)
+{
+    int                 retval = -1;
+    char               *db = "tmp";
+    transaction_data_t *td = NULL;
+    plgreset_t         *resetfn;          /* Plugin auth */
+    trans_cb_t         *fn;
+    int                 ret;
+    cxobj              *xerr = NULL;
+    yang_stmt          *yspec;
+    int                 i;
+    cxobj              *xn;
+    
+    yspec =  clicon_dbspec_yang(h);
+    if (xmldb_db_reset(h, db) < 0)
+	goto done;
+    /* Application may define extra xml in its reset function*/
+    if ((resetfn = cp->cp_api.ca_reset) != NULL){
+	if ((retval = resetfn(h, db)) < 0) {
+	    clicon_debug(1, "plugin_start() failed");
+	    goto done;
+	}
+    }
+    /* 1. Start transaction */
+    if ((td = transaction_new()) == NULL)
+	goto done;
+    /* This is the state we are going to */
+    if (xmldb_get0(h, "running", NULL, "/", 0, &td->td_target, NULL) < 0)
+	goto done;
+    if ((ret = xml_yang_validate_all_top(h, td->td_target, &xerr)) < 0)
+	goto done;
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+	    goto done;
+	goto fail;
+    }
+    /* This is the state we are going from */
+    if (xmldb_get0(h, db, NULL, "/", 0, &td->td_src, NULL) < 0)
+	goto done;
+
+    /* 3. Compute differences */
+    if (xml_diff(yspec, 
+		 td->td_src,
+		 td->td_target,
+		 &td->td_dvec,      /* removed: only in running */
+		 &td->td_dlen,
+		 &td->td_avec,      /* added: only in candidate */
+		 &td->td_alen,
+		 &td->td_scvec,     /* changed: original values */
+		 &td->td_tcvec,     /* changed: wanted values */
+		 &td->td_clen) < 0)
+	goto done;
+
+    /* Mark as changed in tree */
+    for (i=0; i<td->td_dlen; i++){ /* Also down */
+	xn = td->td_dvec[i];
+	xml_flag_set(xn, XML_FLAG_DEL);
+	xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_DEL);
+	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+    }
+    for (i=0; i<td->td_alen; i++){ /* Also down */
+	xn = td->td_avec[i];
+	xml_flag_set(xn, XML_FLAG_ADD);
+	xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_ADD);
+	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+    }
+    for (i=0; i<td->td_clen; i++){ /* Also up */
+	xn = td->td_scvec[i];
+	xml_flag_set(xn, XML_FLAG_CHANGE);
+	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+	xn = td->td_tcvec[i];
+	xml_flag_set(xn, XML_FLAG_CHANGE);
+	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+    }
+    
+    /* 4. Call plugin transaction start callbacks */
+    if ((fn = cp->cp_api.ca_trans_begin) != NULL){
+	if ((retval = fn(h, (transaction_data)td)) < 0){
+	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
+		clicon_log(LOG_NOTICE, "%s: Plugin '%s' transaction_begin callback does not make clicon_err call on error", 
+			   __FUNCTION__, cp->cp_name);
+	    
+	    goto fail;
+	}
+    }
+    /* 5. Make generic validation on all new or changed data.
+       Note this is only call that uses 3-values */
+    if ((ret = generic_validate(h, yspec, td, &xerr)) < 0)
+	goto done;
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+	    goto done;
+	goto fail;
+    }
+    if ((fn = cp->cp_api.ca_trans_validate) != NULL){
+	if ((retval = fn(h, (transaction_data)td)) < 0){
+	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
+		clicon_log(LOG_NOTICE, "%s: Plugin '%s' transaction_validate callback does not make clicon_err call on error", 
+			   __FUNCTION__, cp->cp_name);
+	    goto fail;
+	}
+    }
+    if ((fn = cp->cp_api.ca_trans_complete) != NULL){
+	if ((retval = fn(h, (transaction_data)td)) < 0){
+	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
+		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_complete callback does not make clicon_err call on error", 
+			   __FUNCTION__, cp->cp_name);
+	    
+	    goto fail;
+	}
+    }
+    
+    if ((fn = cp->cp_api.ca_trans_commit) != NULL){
+	if (fn(h, (transaction_data)td) < 0){
+	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
+		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_commit callback does not make clicon_err call on error", 
+			   __FUNCTION__, cp->cp_name);
+	    goto fail;
+	}
+    }
+    if ((fn = cp->cp_api.ca_trans_end) != NULL){
+	if ((retval = fn(h, (transaction_data)td)) < 0){
+	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
+		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_end callback does not make clicon_err call on error", 
+			   __FUNCTION__, cp->cp_name);
+	    goto fail;
+	}
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+#endif /* RESTART_PLUGIN_RPC */
