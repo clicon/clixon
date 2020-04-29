@@ -198,6 +198,7 @@ xml_parse_prefixed_name(clixon_xml_yacc *xy,
     xp = xy->xy_xparent;
     if ((x = xml_new(name, xp, CX_ELMNT)) == NULL) 
 	goto done;
+    /* Cant check namespaces here since local xmlns attributes loaded after */
     if (xml_prefix_set(x, prefix) < 0)
 	goto done;
 

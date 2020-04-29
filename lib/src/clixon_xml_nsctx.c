@@ -424,7 +424,6 @@ xml_nsctx_yangspec(yang_stmt *yspec,
  *   if (xml2ns(xt, NULL, &namespace) < 0)
  *      err;
  * @endcode
- * @see xmlns_check 
  * @see xmlns_set cache is set
  * @note, this function uses a cache. 
  */
@@ -469,6 +468,38 @@ xml2ns(cxobj *x,
  ok:
     if (namespace)
 	*namespace = ns;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Recursively check prefix / namespaces (and populate ns cache)
+ * @retval     1          OK
+ * @retval     0          (Some) prefix not found
+ * @retval    -1          Error
+ */
+int
+xml2ns_recurse(cxobj *xt)
+{
+    int    retval = -1;
+    cxobj *x;
+    char  *prefix;
+    char  *namespace;
+
+    x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	if ((prefix = xml_prefix(x)) != NULL){
+	    namespace = NULL;
+	    if (xml2ns(x, prefix, &namespace) < 0)
+		goto done;
+	    if (namespace == NULL){
+		clicon_err(OE_XML, ENOENT, "No namespace associated with %s:%s", prefix, xml_name(x));
+		goto done;
+	    }	    
+	}
+	if (xml2ns_recurse(x) < 0)
+	    goto done;
+    }
     retval = 0;
  done:
     return retval;
@@ -573,64 +604,3 @@ xml2prefix(cxobj *xn,
     goto done;
 }
 
-/*! See if xmlns:[<localname>=]<uri> exists, if so return <uri>
- *
- * @param[in]  xn   XML node
- * @param[in]  nsn  Namespace name
- * @retval     URI  return associated URI if found
- * @retval     NULL No namespace name binding found for nsn
- * @see xml2ns XXX coordinate
- */
-static char *
-xmlns_check(cxobj *xn,
-	    char  *nsn)
-{
-    cxobj *x = NULL;
-    char  *xns;
-    
-    while ((x = xml_child_each(xn, x, CX_ATTR)) != NULL) 
-	if ((xns = xml_prefix(x)) && strcmp(xns, "xmlns")==0 &&
-	    strcmp(xml_name(x), nsn) == 0)
-	    return xml_value(x);
-    return NULL;
-}
-
-/*! Check namespace of xml node by searching recursively among ancestors 
- * @param[in]  xn         xml node
- * @param[in]  namespace  check validity of namespace
- * @retval     0          Found / validated or no yang spec
- * @retval    -1          Not found
- * @note This function is grossly inefficient
- */
-int
-xml_localname_check(cxobj *xn, 
-		    void  *arg)
-{
-    cxobj     *xp = NULL;
-    char      *nsn;
-    char      *n;
-    yang_stmt *ys = xml_spec(xn);
-    
-    /* No namespace name - comply */
-    if ((nsn = xml_prefix(xn)) == NULL)
-	return 0;
-    /* Check if NSN defined in same node */
-    if (xmlns_check(xn, nsn) != NULL)
-	return 0;
-    /* Check if NSN defined in some ancestor */
-    while ((xp = xml_parent(xn)) != NULL) {
-	if (xmlns_check(xp, nsn) != NULL)
-	    return 0;
-    	xn = xp;
-    }
-    /* Check if my namespace */
-    if ((n = yang_find_myprefix(ys)) != NULL && strcmp(nsn,n)==0)
-	return 0;
-    /* Check if any imported module */
-    if (yang_find_module_by_prefix(ys, nsn) != NULL)
-	return 0;
-    /* Not found, error */
-    clicon_err(OE_XML, ENOENT, "Namespace name %s in %s:%s not found",
-	       nsn, nsn, xml_name(xn));
-    return -1;
-}

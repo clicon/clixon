@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
 # Startup performance tests for different formats and startup modes.
+# Generate file in different formats:
+# xml, xml pretty-printed, xml with prefixes, json
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Number of list/leaf-list entries in file
 : ${perfnr:=10000}
-: ${pretty:=false}
 
 APPNAME=example
 
 cfg=$dir/scaling-conf.xml
 fyang=$dir/scaling.yang
+
+sx=$dir/sx.xml
+sxpp=$dir/sxpp.xml
+sxpre=$dir/sxpre.xml
+sj=$dir/sj.xml
 
 # NOTE, added a deep yang structure (x0,x1,x2) to expose performance due to turned off caching.
 cat <<EOF > $fyang
@@ -75,10 +81,23 @@ fi
 
 # First generate large XML file
 # Use it latter to generate startup-db in xml, tree formats
-tmpx=$dir/tmp.xml
-new "generate large startup config ($tmpx) with $perfnr entries"
-if $pretty; then
-cat<<EOF >  $tmpx
+
+new "generate plain xml startup config ($sx) with $perfnr entries"
+echo -n "<config><x0 xmlns=\"urn:example:clixon\"><x1><x2><name>ip</name><x>" > $sx
+for (( i=0; i<$perfnr; i++ )); do  
+    echo -n "<y><a>$i</a><b>$i</b></y>" >> $sx
+done
+echo "</x></x2></x1></x0></config>" >> $sx
+
+new "generate prefixed xml startup config ($sxpre) with $perfnr entries"
+echo -n "<config><ex:x0 xmlns:ex=\"urn:example:clixon\"><ex:x1><ex:x2><ex:name>ip</ex:name><ex:x>" > $sxpre
+for (( i=0; i<$perfnr; i++ )); do  
+    echo -n "<ex:y><ex:a>$i</ex:a><ex:b>$i</ex:b></ex:y>" >> $sxpre
+done
+echo "</ex:x></ex:x2></ex:x1></ex:x0></config>" >> $sxpre
+    
+new "generate pretty-printed xml startup config ($sxpp) with $perfnr entries"
+cat<<EOF >  $sxpp
 <config>
    <x0 xmlns="urn:example:clixon">
       <x1>
@@ -87,62 +106,58 @@ cat<<EOF >  $tmpx
             <x>
 EOF
     for (( i=0; i<$perfnr; i++ )); do  
-	echo "               <y>" >> $tmpx
-	echo "                  <a>$i</a>" >> $tmpx
-	echo "                  <b>$i</b>" >> $tmpx
-	echo "               </y>" >> $tmpx
+	echo "               <y>" >> $sxpp
+	echo "                  <a>$i</a>" >> $sxpp
+	echo "                  <b>$i</b>" >> $sxpp
+	echo "               </y>" >> $sxpp
     done
-cat<<EOF >>  $tmpx
+cat<<EOF >>  $sxpp
             </x>
          </x2>
       </x1>
    </x0>
 </config>
 EOF
-else
-    echo -n "<config><x0 xmlns=\"urn:example:clixon\"><x1><x2><name>ip</name><x>" > $tmpx
-    for (( i=0; i<$perfnr; i++ )); do  
-	echo -n "<y><a>$i</a><b>$i</b></y>" >> $tmpx
-    done
-    echo "</x></x2></x1></x0></config>" >> $tmpx
-fi
 
-if false; then # XXX JSON dont work as datastore yet
-# Then generate large JSON file (cant translate namespace - long story)
-tmpj=$dir/tmp.json
-new "generate large startup config ($tmpj) with $perfnr entries"
-echo -n '{"config": {"scaling:x":{"y":[' > $tmpj
+if false; then # ---------- not supported
+new "generate pretty-printed json startup config ($sj) with $perfnr entries"
+echo -n '{"config": {"scaling:x":{"y":[' > $sj
 for (( i=0; i<$perfnr; i++ )); do  
     if [ $i -ne 0 ]; then
-	echo -n ",{\"a\":$i,\"b\":$i}" >> $tmpj
+	echo -n ",{\"a\":$i,\"b\":$i}" >> $sj
     else
-	echo -n "{\"a\":$i,\"b\":$i}" >> $tmpj
+	echo -n "{\"a\":$i,\"b\":$i}" >> $sj
     fi
 
 done
-echo "]}}}" >> $tmpj
+echo "]}}}" >> $sj
 fi
 
 # Loop over mode and format
-for mode in startup running; do
-    file=$dir/${mode}_db
-    for format in xml; do # json - something w namespaces
-	sudo rm -f $file
-	sudo touch $file
-	sudo chmod 666 $file
-	case $format in
-	    xml)
-		echo "cp $tmpx $file"
-		cp $tmpx $file
-	    ;;
-	    json)
-		cp $tmpj $file
-	    ;;
-	esac
-	new "Startup format: $format mode:$mode"
-	# Cannot use start_backend here due to expected error case
-        { time -p sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang -o CLICON_XMLDB_FORMAT=$format 2> /dev/null; } 2>&1 | awk '/real/ {print $2}'
-    done
+mode=startup # running
+format=xml
+sdb=$dir/${mode}_db
+for variant in prefix plain pretty; do
+    case $variant in
+        plain)
+	    f=$sx
+            ;;
+	pretty)
+	    f=$sxpp
+            ;;
+	prefix)
+	    f=$sxpre
+            ;;
+       esac
+
+    sudo rm -f $sdb
+    sudo touch $sdb
+    sudo chmod 666 $sdb
+    
+    cp $f $sdb
+    new "Startup $format $variant"
+    # Cannot use start_backend here due to expected error case
+    { time -p sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang -o CLICON_XMLDB_FORMAT=$format 2> /dev/null; } 2>&1 | awk '/real/ {print $2}'
 done
 
 rm -rf $dir

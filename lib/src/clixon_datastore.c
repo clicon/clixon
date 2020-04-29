@@ -369,7 +369,31 @@ xmldb_exists(clicon_handle h,
     return retval;
 }
 
-/*! Delete database. Remove file 
+/*! Clear database cache if any for mem/size optimization only
+ * @param[in]  h   Clicon handle
+ * @param[in]  db  Database
+ * @retval -1  Error
+ * @retval  0  OK
+ */
+int 
+xmldb_clear(clicon_handle h, 
+	    const char   *db)
+{
+    cxobj    *xt = NULL;
+    db_elmnt *de = NULL;
+    
+    if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
+	if ((de = clicon_db_elmnt_get(h, db)) != NULL){
+	    if ((xt = de->de_xml) != NULL){
+		xml_free(xt);
+		de->de_xml = NULL;
+	    }
+	}
+    }
+    return 0;
+}
+
+/*! Delete database, clear cache if any. Remove file 
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database
  * @retval -1  Error
@@ -381,18 +405,10 @@ xmldb_delete(clicon_handle h,
 {
     int                 retval = -1;
     char               *filename = NULL;
-    db_elmnt           *de = NULL;
-    cxobj              *xt = NULL;
     struct stat         sb;
     
-    if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
-	if ((de = clicon_db_elmnt_get(h, db)) != NULL){
-	    if ((xt = de->de_xml) != NULL){
-		xml_free(xt);
-		de->de_xml = NULL;
-	    }
-	}
-    }
+    if (xmldb_clear(h, db) < 0)
+	goto done;
     if (xmldb_db2file(h, db, &filename) < 0)
 	goto done;
     if (lstat(filename, &sb) == 0)

@@ -80,6 +80,8 @@
  * @retval    -1   Error
  * @note only applicable if x is body and has yang-spec and is leaf or leaf-list
  * Move to clixon_xml.c?
+ * As a side-effect sets the cache.
+ * Clear cache with xml_cv_set(x, NULL)
  */
 static int
 xml_cv_cache(cxobj   *x,

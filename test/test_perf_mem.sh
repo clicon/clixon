@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Backend Memory tests, footprint using the clixon-conf state statistics
+# Backend Memory tests of config data, footprint using the clixon-conf state statistics
 # Create a large datastore, load it and measure
 # Baseline: (thinkpad laptop) running db:
 # 100K objects: 500K   mem: 74M
@@ -71,15 +71,14 @@ testrun(){
     nr=$1
 
     new "test params: -f $cfg"
-    if [ $BE -ne 0 ]; then
 
+    if [ $BE -ne 0 ]; then
 	new "generate config with $nr list entries"
 	echo -n "<config><x xmlns=\"urn:example:clixon\">" > $dir/startup_db
 	for (( i=0; i<$nr; i++ )); do  
 	    echo -n "<y><a>$i</a><b>$i</b></y>" >> $dir/startup_db
 	done
 	echo "</x></config>" >> $dir/startup_db
-
 
 	new "kill old backend"
 	sudo clixon_backend -zf $cfg
@@ -105,7 +104,7 @@ testrun(){
 #
     if [ -f /proc/$pid/statm ]; then     # This ony works on Linux 
 #	cat /proc/$pid/statm
-	echo -n "   mem: "
+	echo -n "   /proc/$pid/statm: "
 	cat /proc/$pid/statm|awk '{print $1*4/1000 "M"}'
     fi
     for db in running candidate startup; do
@@ -132,10 +131,51 @@ testrun(){
     fi
 }
 
-new "Memory test for backend with 1 $perfnr entries"
+new "Memory test for backend with $perfnr entries"
 testrun $perfnr
 
 rm -rf $dir
 
 # unset conditional parameters 
 unset perfnr
+
+if false; then
+# Example memory pretty-printed:
+x:
+  base struct:  104
+  name:         2
+  childvec:     131072
+  (ns-cache:    115) # only in startup?
+  sum:          131178
+xmlns:
+  base struct:  56
+  name:         6
+  value-cb:     38
+  sum:          100
+y:
+  base struct:  104
+  name:         2
+  childvec:     16
+  (ns-cache:     115)  # only in startup?
+  sum:          122
+a:
+  base struct:  104
+  name:         2
+  childvec:     8
+(ns-cache:     115)  # only in startup?
+  value-cv:     72  # Value cached for sorting
+  sum:          186
+body:
+  base struct:  56
+  name:         5
+  value-cb:     4
+  sum:          65
+b:
+  sum:          114
+  base struct:  104
+  name:         2
+  childvec:     8
+  (ns-cache:     115)  # only in startup?
+
+
+fi

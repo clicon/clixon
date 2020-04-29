@@ -834,6 +834,8 @@ main(int    argc,
 	if (ret != 1)
 	    if (xmldb_copy(h, "tmp", "running") < 0)
 		goto done;
+	/* clear startup dbcache */
+	xmldb_clear(h, "startup");
 	if (ret2status(ret, &status) < 0)
 	    goto done;
 	/* if status = STARTUP_INVALID, cbret contains info */

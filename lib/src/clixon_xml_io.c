@@ -423,7 +423,7 @@ _xml_parse(const char *str,
     for (i = 0; i < xy.xy_xlen; i++) {
 	x = xy.xy_xvec[i];
 	/* Verify namespaces after parsing */
-	if (xml_apply0(x, CX_ELMNT, xml_localname_check, NULL) < 0)
+	if (xml2ns_recurse(x) < 0)
 	    goto done;
 	/* Populate, ie associate xml nodes with yang specs 
 	 */

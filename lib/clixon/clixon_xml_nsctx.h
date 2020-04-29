@@ -58,7 +58,7 @@ int     xml_nsctx_yang(yang_stmt *yn, cvec **ncp);
 int     xml_nsctx_yangspec(yang_stmt *yspec, cvec **ncp);
 
 int     xml2ns(cxobj *x, char *localname, char **namespace);
+int     xml2ns_recurse(cxobj *x);
 int     xml2prefix(cxobj *xn, char *namespace, char **prefixp);
-int     xml_localname_check(cxobj *xn, void *arg);
 
 #endif /* _CLIXON_XML_NSCTX_H */

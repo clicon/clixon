@@ -177,10 +177,10 @@ struct xml{
     int               x_childvec_max;/* Length of allocated vector */
 
 
-    cvec             *x_ns_cache;   /* Cached vector of namespaces */
+    cvec             *x_ns_cache;   /* Cached vector of namespaces (set by bind-yang) */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, 
 				       by reference, dont free */
-    cg_var           *x_cv;         /* Cached value as cligen variable (eg xml_cmp) */
+    cg_var           *x_cv;         /* Cached value as cligen variable (set by xml_cmp) */
 #ifdef XML_EXPLICIT_INDEX
     struct search_index *x_search_index; /* explicit search index vectors */
 #endif
@@ -199,8 +199,7 @@ struct xmlbody{
     int              _xb_vector_i;   /* internal use: xml_child_each */
     int              _xb_i;          /* internal use for sorting: 
 				       see xml_enumerate and xml_cmp */
-    cbuf             *xb_value_cb;  /* attribute and body nodes have values (XXX: this consumes 
-				       memory) cv? */
+    cbuf             *xb_value_cb;  /* attribute and body nodes have values */
 };
 #endif /* XML_NEW_DIFFERENTIATE */
 
@@ -239,6 +238,7 @@ xml_stats_global(uint64_t *nr)
 	*nr = _stats_nr;
     return 0;
 }
+
 
 /*! Return the alloced memory of a single XML obj 
  * @param[in]   x    XML object
@@ -280,7 +280,7 @@ xml_stats_one(cxobj    *x,
 #ifdef XML_NEW_DIFFERENTIATE
 	sz += sizeof(struct xmlbody);
 #else
-	sz += sizeof(struct xmlbody);
+	sz += sizeof(struct xml);
 #endif
 	if (x->x_value_cb)
 	    sz += cbuf_buflen(x->x_value_cb);
@@ -293,6 +293,45 @@ xml_stats_one(cxobj    *x,
     clicon_debug(1, "%s %zu", __FUNCTION__, sz);
     return 0;
 }
+
+#if 0
+/*! Print memory stats of a single object
+ */
+static int
+xml_print_stats_one(FILE   *f,
+		    cxobj  *x)
+{
+    size_t sz = 0;
+
+    xml_stats_one(x, &sz);
+    fprintf(f, "%s:\n", xml_name(x));
+    fprintf(f, "  sum: \t\t%u\n", (unsigned int)sz);
+    if (xml_type(x) == CX_ELMNT)
+	fprintf(f, "  base struct: \t%u\n", (unsigned int)sizeof(struct xml));
+    else
+	fprintf(f, "  base struct: \t%u\n", (unsigned int)sizeof(struct xmlbody));
+    if (x->x_name)
+	fprintf(f, "  name: \t%u\n", (unsigned int)strlen(x->x_name) + 1);
+    if (x->x_prefix)
+	fprintf(f, "  prefix: \t%u\n", (unsigned int)strlen(x->x_prefix) + 1);
+    if (xml_type(x) == CX_ELMNT){
+	if (x->x_childvec_max)
+	    fprintf(f, "  childvec: \t%u\n", (unsigned int)(x->x_childvec_max*sizeof(struct xml*)));
+	if (x->x_ns_cache)
+	    fprintf(f, "  ns-cache: \t%u\n", (unsigned int)cvec_size(x->x_ns_cache));
+	if (x->x_cv)
+	    fprintf(f, "  value-cv: \t%u\n", (unsigned int)cv_size(x->x_cv));
+	if (x->x_search_index)
+	    fprintf(f, "  search-index: \t%u\n",
+		    (unsigned int)(strlen(x->x_search_index->si_name) + 1 + clixon_xvec_len(x->x_search_index->si_xvec)*sizeof(struct cxobj*)));
+    }
+    else{
+	if (x->x_value_cb)
+	    fprintf(f, "  value-cb: \t%u\n", cbuf_buflen(x->x_value_cb));
+    }
+    return 0;
+}
+#endif
 
 /*! Return statistics of an XML tree recursively
  * @param[in]   xt   XML object
@@ -313,6 +352,7 @@ xml_stats(cxobj    *xt,
 	clicon_err(OE_XML, EINVAL, "xml node is NULL");
 	goto done;
     }
+    //    xml_print_stats_one(stderr, xt);
     *nrp += 1;
     xml_stats_one(xt, &sz);
     if (szp)
@@ -377,21 +417,21 @@ xml_prefix(cxobj *xn)
 }
 
 /*! Set prefix of xnode, prefix is copied
- * @param[in]  xn         xml node
- * @param[in]  localname  new prefix, null-terminated string, copied by function
- * @retval     -1         on error with clicon-err set
- * @retval     0          OK
+ * @param[in]  xn      XML node
+ * @param[in]  prefix  New prefix, null-terminated string, copied by function
+ * @retval     -1      Error with clicon-err set
+ * @retval     0       OK
  */
 int
 xml_prefix_set(cxobj *xn, 
-	       char  *localname)
+	       char  *prefix)
 {
     if (xn->x_prefix){
 	free(xn->x_prefix);
 	xn->x_prefix = NULL;
     }
-    if (localname){
-	if ((xn->x_prefix = strdup(localname)) == NULL){
+    if (prefix){
+	if ((xn->x_prefix = strdup(prefix)) == NULL){
 	    clicon_err(OE_XML, errno, "strdup");
 	    return -1;
 	}
@@ -1136,7 +1176,9 @@ xml_spec_set(cxobj     *x,
  * @param[in]  x    XML node (body and leaf/leaf-list)
  * @retval     cv   CLIgen variable containing value of x body
  * @retval     NULL
- * @note only applicable if x is body and has yang-spec and is leaf or leaf-list
+ * Only applicable if x is body and has yang-spec and is leaf or leaf-list
+ * Only accessed by xml_cv_cache as part of sorting in xml_cmp
+ * @see xml_cv_cache
  */
 cg_var *
 xml_cv(cxobj *x)
@@ -1146,11 +1188,13 @@ xml_cv(cxobj *x)
     return x->x_cv;
 }
 
-/*! Return (cached) cligen variable value of xml node
+/*! Set (cached) cligen variable value of xml node
  * @param[in]  x   XML node (body and leaf/leaf-list)
  * @param[in]  cv  CLIgen variable containing value of x body
  * @retval     0   OK
- * @note only applicable if x is body and has yang-spec and is leaf or leaf-list
+ * Only applicable if x is body and has yang-spec and is leaf or leaf-list
+ * Only accessed by xml_cv_cache as part of sorting in xml_cmp
+ * @see xml_cv_cache
  */
 int
 xml_cv_set(cxobj  *x, 
