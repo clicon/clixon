@@ -511,6 +511,94 @@ clicon_eval(clicon_handle h,
  * @retval  0     OK
  * @retval  -1    Error
  */
+#ifdef USE_CLIGEN44
+int
+clicon_parse(clicon_handle h, 
+	     char         *cmd, 
+	     char        **modenamep, 
+	     int          *evalres)
+{
+    int        retval = -1;
+    char       *modename;
+    char       *modename0;
+    int        r;
+    cli_syntax_t *stx = NULL;
+    cli_syntaxmode_t *smode;
+    parse_tree *pt;     /* Orig */
+    cg_obj     *match_obj;
+    cvec       *cvv = NULL;
+    FILE       *f;
+    
+    if (clicon_get_logflags()&CLICON_LOG_STDOUT)
+	f = stdout;
+    else
+	f = stderr;
+    stx = cli_syntax(h);
+    if ((modename = *modenamep) == NULL) {
+	smode = stx->stx_active_mode;
+	modename = smode->csm_name;
+    }
+    else {
+	if ((smode = syntax_mode_find(stx, modename, 0)) == NULL) {
+	    fprintf(f, "Can't find syntax mode '%s'\n", modename);
+	    goto done;
+	}
+    }
+    if (smode){
+	modename0 = NULL;
+	if ((pt = cligen_tree_active_get(cli_cligen(h))) != NULL)
+	    modename0 = pt->pt_name;
+	if (cligen_tree_active_set(cli_cligen(h), modename) < 0){
+	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
+	    goto done;
+	}
+	if ((pt = cligen_tree_active_get(cli_cligen(h))) == NULL){
+	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
+	    goto done;
+	}
+	if ((cvv = cvec_new(0)) == NULL){
+	    clicon_err(OE_UNIX, errno, "cvec_new");
+	    goto done;;
+	}
+	retval = cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv);
+	if (retval != CG_MATCH)
+	    pt_expand_cleanup_1(pt); /* XXX change to pt_expand_treeref_cleanup */
+	if (modename0){
+	    cligen_tree_active_set(cli_cligen(h), modename0);
+	    modename0 = NULL;
+	}
+	switch (retval) {
+	case CG_EOF: /* eof */
+	case CG_ERROR:
+	    fprintf(f, "CLI parse error: %s\n", cmd);
+	    break;
+	case CG_NOMATCH: /* no match */
+	    /*	    clicon_err(OE_CFG, 0, "CLI syntax error: \"%s\": %s", 
+		    cmd, cli_nomatch(h));*/
+	    fprintf(f, "CLI syntax error: \"%s\": %s\n", cmd, cli_nomatch(h));
+	    break;
+	case CG_MATCH:
+	    if (strcmp(modename, *modenamep)){	/* Command in different mode */
+		*modenamep = modename;
+		cli_set_syntax_mode(h, modename);
+	    }
+	    if ((r = clicon_eval(h, cmd, match_obj, cvv)) < 0)
+		cli_handler_err(stdout);
+	    pt_expand_cleanup_1(pt); /* XXX change to pt_expand_treeref_cleanup */
+	    if (evalres)
+		*evalres = r;
+	    break;
+	default:
+	    fprintf(f, "CLI syntax error: \"%s\" is ambiguous\n", cmd);
+	    break;
+	} /* switch retval */
+    }
+done:
+    if (cvv)
+	cvec_free(cvv);
+    return retval;
+}
+#else /* USE_CLIGEN44 */
 int
 clicon_parse(clicon_handle  h, 
 	     char          *cmd, 
@@ -601,6 +689,7 @@ done:
 	cvec_free(cvv);
     return retval;
 }
+#endif /* USE_CLIGEN44 */
 
 /*! Read command from CLIgen's cliread() using current syntax mode.
  * @param[in]  h       Clicon handle
@@ -608,6 +697,38 @@ done:
  * @retval     0       OK
  * @retval    -1       Error
  */
+#ifdef USE_CLIGEN44
+char *
+clicon_cliread(clicon_handle h)
+{
+    char             *ret;
+    char             *pfmt = NULL;
+    cli_syntaxmode_t *mode;
+    cli_syntax_t     *stx;
+    cli_prompthook_t *fn;
+    clixon_plugin     *cp;
+    
+    stx = cli_syntax(h);
+    mode = stx->stx_active_mode;
+    /* Get prompt from plugin callback? */
+    cp = NULL;
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+	if ((fn = cp->cp_api.ca_prompt) == NULL)
+	    continue;
+	pfmt = fn(h, mode->csm_name);
+	break;
+    }
+    if (clicon_quiet_mode(h))
+	cli_prompt_set(h, "");
+    else
+	cli_prompt_set(h, cli_prompt(pfmt ? pfmt : mode->csm_prompt));
+    cligen_tree_active_set(cli_cligen(h), mode->csm_name);
+    ret = cliread(cli_cligen(h));
+    if (pfmt)
+	free(pfmt);
+    return ret;
+}
+#else
 int
 clicon_cliread(clicon_handle h,
 	       char        **stringp)
@@ -634,6 +755,7 @@ clicon_cliread(clicon_handle h,
     else
 	cli_prompt_set(h, cli_prompt(pfmt ? pfmt : mode->csm_prompt));
     cligen_tree_active_set(cli_cligen(h), mode->csm_name);
+
     if (cliread(cli_cligen(h), stringp) < 0){
 	clicon_err(OE_FATAL, errno, "CLIgen");
 	goto done;
@@ -644,6 +766,7 @@ clicon_cliread(clicon_handle h,
 	free(pfmt);
     return retval;
 }
+#endif /* USE_CLIGEN44 */
 
 /*
  *

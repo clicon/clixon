@@ -193,6 +193,15 @@ cli_interrupt_hook(clicon_handle          h,
     return cligen_interrupt_hook(ch, fn); 
 }
 
+#ifdef USE_CLIGEN44
+char *
+cli_nomatch(clicon_handle h)
+{
+    cligen_handle ch = cligen(h);
+
+    return cligen_nomatch(ch);
+}
+#endif
 int
 cli_prompt_set(clicon_handle h,
 	       char         *prompt)

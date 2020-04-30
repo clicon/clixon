@@ -109,3 +109,8 @@
 /*! Differentiate creating XML object body/element vs elenmet to reduce space
  */
 #define XML_NEW_DIFFERENTIATE
+
+/*! Use cligen 4.4 instead of master / cligen 4.5.pre
+ * Temporary fix
+ */
+#define USE_CLIGEN44

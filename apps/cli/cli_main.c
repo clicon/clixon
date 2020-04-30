@@ -209,6 +209,32 @@ cli_signal_init (clicon_handle h)
  * @retval    -1
  * @see cligen_loop
  */
+#ifdef USE_CLIGEN44
+static int
+cli_interactive(clicon_handle h)
+{
+    int     retval = -1;
+    int     res;
+    char   *cmd;
+    char   *new_mode;
+    int     eval;
+    
+    /* Loop through all commands */
+    while(!cligen_exiting(cli_cligen(h))) {
+	new_mode = cli_syntax_mode(h);
+	if ((cmd = clicon_cliread(h)) == NULL) {
+	    cligen_exiting_set(cli_cligen(h), 1); /* EOF */
+	    goto ok; /* EOF should not be -1 error? */
+	}
+	if ((res = clicon_parse(h, cmd, &new_mode, &eval)) < 0)
+	    goto done;
+    }
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+#else /* USE_CLIGEN44 */
 static int
 cli_interactive(clicon_handle h)
 {
@@ -235,7 +261,7 @@ cli_interactive(clicon_handle h)
  done:
     return retval;
 }
-
+#endif /* USE_CLIGEN44 */
 
 static void
 usage(clicon_handle h,
@@ -608,6 +634,15 @@ main(int argc, char **argv)
     /* Launch interfactive event loop, unless -1 */
     if (restarg != NULL && strlen(restarg)){
 	char         *mode = cli_syntax_mode(h);
+#ifdef USE_CLIGEN44
+	int result;
+
+	/* */
+	if (clicon_parse(h, restarg, &mode, &result) != 1)
+	    goto done;
+	if (result < 0)
+	    goto done;
+#else /* USE_CLIGEN44 */
 	cligen_result result;            /* match result */
 	int           evalresult = 0;    /* if result == 1, calback result */
 
@@ -617,6 +652,7 @@ main(int argc, char **argv)
 	    goto done;
 	if (evalresult < 0)
 	    goto done;
+#endif /* USE_CLIGEN44 */
     }
 
     /* Go into event-loop unless -1 command-line */
