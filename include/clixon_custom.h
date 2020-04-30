@@ -113,4 +113,4 @@
 /*! Use cligen 4.4 instead of master / cligen 4.5.pre
  * Temporary fix
  */
-#define USE_CLIGEN44
+#undef USE_CLIGEN44
