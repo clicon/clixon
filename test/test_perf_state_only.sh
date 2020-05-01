@@ -127,7 +127,7 @@ $TIMEFN $clixon_cli -1f $cfg show state xml 2>&1 | awk '/real/ {print $2}'
 new "netconf get test single req"
 sel="/ex:interfaces/ex:a[ex:name='foo']/ex:b/ex:interface[ex:name='e1']"
 msg="<rpc><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>"
-time -p expecteof "$clixon_netconf -qf $cfg" 0 "$msg" '^<rpc-reply><data><interfaces xmlns="urn:example:clixon"><a><name>foo</name><b><interface><name>e1</name><type>ex:eth</type><enabled>true</enabled><status>up</status></interface></b></a></interfaces></data></rpc-reply>]]>]]>$'
+time -p expecteof "$clixon_netconf -qf $cfg" 0 "$msg" '^<rpc-reply><data><interfaces xmlns="urn:example:clixon"><a><name>foo</name><b><interface><name>e1</name><type>ex:eth</type><status>up</status></interface></b></a></interfaces></data></rpc-reply>]]>]]>$'
 
 new "netconf get $perfreq single reqs"
 { time -p for (( i=0; i<$perfreq; i++ )); do
@@ -139,7 +139,7 @@ done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 # RESTCONF get
 #echo "curl -s -X GET http://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1"
 new "restconf get test single req"
-time -p expecteq "$(curl -s -X GET http://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 '{"example:interface":[{"name":"e1","type":"ex:eth","enabled":true,"status":"up"}]}
+time -p expecteq "$(curl -s -X GET http://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 '{"example:interface":[{"name":"e1","type":"ex:eth","status":"up"}]}
 ' | awk '/real/ {print $2}'
 
 new "restconf get $perfreq single reqs"
@@ -157,7 +157,6 @@ new "cli get test single req"
 expectfn "$clixon_cli -1 -1f $cfg -l o show state xml interfaces a foo b interface e1" 0 '^<interface>
    <name>e1</name>
    <type>eth</type>
-   <enabled>true</enabled>
    <status>up</status>
 </interface>$'
 
