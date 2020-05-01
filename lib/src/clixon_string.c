@@ -814,6 +814,69 @@ clicon_strndup(const char *str,
 }
 #endif /* ! HAVE_STRNDUP */
 
+#ifdef USE_CLIGEN44
+
+#define CBUFLEN_THRESHOLD 65536
+struct cbuf {
+    char  *cb_buffer;   /* pointer to buffer */
+    size_t cb_buflen;   /* allocated bytes of buffer */
+    size_t cb_strlen;   /* length of string in buffer (< buflen) */
+};
+
+static int
+cbuf_realloc(cbuf  *cb,
+	     size_t sz)
+{
+    int retval = -1;
+    int diff;
+    
+    diff = cb->cb_buflen - (cb->cb_strlen + sz + 1);
+    if (diff <= 0){
+	while (diff <= 0){
+	    if (cb->cb_buflen < CBUFLEN_THRESHOLD)
+		cb->cb_buflen *= 2; /* Double the space - exponential */
+	    else
+		cb->cb_buflen += CBUFLEN_THRESHOLD; /* Add - linear growth*/
+	    diff = cb->cb_buflen - (cb->cb_strlen + sz + 1);
+	}
+	if ((cb->cb_buffer = realloc(cb->cb_buffer, cb->cb_buflen)) == NULL)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Append a string to a cbuf
+  *
+  * An optimized special case of cprintf
+  * @param [in]  cb  cligen buffer allocated by cbuf_new(), may be reallocated.
+  * @param [in]  str string
+  * @retval 0    OK
+  * @retval -1   Error
+  * @see cprintf for the generic function
+  */
+int
+cbuf_append_str(cbuf       *cb,
+		char       *str)
+{
+    size_t  len0;
+    size_t  len;
+
+    if (str == NULL){
+	errno = EINVAL;
+	return -1;
+    }
+    len0 = strlen(str);
+    len = cb->cb_strlen + len0;
+    /* Ensure buffer is large enough */
+    if (cbuf_realloc(cb, len) < 0)
+	return -1;
+    strncpy(cb->cb_buffer+cb->cb_strlen, str, len0+1);
+    cb->cb_strlen = len;;
+    return 0;
+}
+#endif
 
 /*
  * Turn this on for uni-test programs

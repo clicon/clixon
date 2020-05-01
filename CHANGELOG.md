@@ -48,6 +48,8 @@ Expected: May 2020
 
 ### Minor changes
 
+* Compile-time option: `USE_CLIGEN44` for running clixon-45 with cligen-44.
+  * Temporary fix since cligen-45 have some non-backward compatible behaviour.
 * Optimizations
   * Reduced memory for attribute and body objects, see `XML_NEW_DIFFERENTIATE` compile-time option.
   * Optimized prefix checks at xml parse time: using many prefixes slowed down parsing considerably
@@ -786,7 +788,7 @@ Olof Hagsand
 * List ordering bug - lists with ints as keys behaved wrongly and slow.
 * NACM read default rule did not work properly if nacm was enabled AND no groups were defined 
 * Re-inserted `cli_output_reset` for what was erroneuos thought to be an obsolete function
-  * See in 3.9.0 minro changes: Replaced all calls to (obsolete) `cli_output` with `fprintf`
+  * See in 3.9.0 minor changes: Replaced all calls to (obsolete) `cli_output` with `fprintf`
 * Allowed Yang extended Xpath functions (syntax only):
   * re-match, deref, derived-from, derived-from-or-self, enum-value, bit-is-set
 * XSD regular expression handling of dash(`-`)
