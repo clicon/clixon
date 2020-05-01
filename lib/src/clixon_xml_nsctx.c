@@ -463,7 +463,11 @@ xml2ns(cxobj *x,
      * no cache was found 
      * If not, this is devastating when populating deep yang structures
      */
-    if (ns && nscache_set(x, prefix, ns) < 0)
+    if (ns &&
+#ifdef OPTIMIZE_45_BIND  /* Dont set cache if few children: if 1 child typically a body */
+	xml_child_nr(x) > 1 &&
+#endif
+	nscache_set(x, prefix, ns) < 0)
 	goto done;
  ok:
     if (namespace)

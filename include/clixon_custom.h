@@ -109,3 +109,13 @@
 /*! Differentiate creating XML object body/element vs elenmet to reduce space
  */
 #define XML_NEW_DIFFERENTIATE
+
+/*! Clixon 4.5 optimizing experiments for yang bind
+ * Primarily for large lists
+ */
+#define OPTIMIZE_45_BIND
+
+/*! Clixon 4.5 optimizing experiments for sorting yang-bound XML trees
+ * Primarily for large lists
+ */
+#undef OPTIMIZE_45_SORT

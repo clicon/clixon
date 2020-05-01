@@ -261,7 +261,7 @@ parse_configfile(clicon_handle  h,
 	    
 	goto done;
     }
-    if (xml_apply0(xc, CX_ELMNT, xml_default, h) < 0)
+    if (xml_default_recurse(xc) < 0)
 	goto done;	
     if ((ret = xml_yang_validate_add(h, xc, &xerr)) < 0)
 	goto done;

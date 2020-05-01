@@ -1271,9 +1271,6 @@ _json_parse(char      *str,
     if (yb != YB_NONE)
 	if (xml_sort_recurse(xt) < 0)
 	    goto done;
-
-    if (xml_apply0(xt, CX_ELMNT, xml_sort, NULL) < 0)
-	goto done;
     retval = 1;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);

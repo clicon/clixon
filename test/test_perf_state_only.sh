@@ -3,6 +3,8 @@
 # State data only, in particular non-config lists (ie not state leafs on a config list)
 # Restconf/Netconf/CLI
 # Also added two layers a/b to get extra depth (som caching can break)
+# Alternative, run as:
+# sudo clixon_backend -Fs init -f /var/tmp/./test_perf_state_only.sh/config.xml -- -siS /home/olof/tmp/state_100K.xml
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -69,7 +71,7 @@ module $APPNAME{
           }
           leaf enabled {
             type boolean;
-            default true;
+            default true; 
           }
           leaf status {
             type string;
@@ -114,6 +116,7 @@ wait_restconf
 
 new "cli get large config"
 echo "$clixon_cli -1f $cfg show state xml"
+# baseline on thinkpad i5-3320M CPU @ 2.60GHz and 500K entries: 39.71s
 $TIMEFN $clixon_cli -1f $cfg show state xml 2>&1 | awk '/real/ {print $2}'
 
 # START actual tests

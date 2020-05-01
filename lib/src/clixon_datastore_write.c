@@ -191,7 +191,7 @@ check_body_namespace(cxobj     *x0,
 	    }
 	    if (xml_value_set(xa, ns0) < 0)
 		goto done;
-	    xml_sort(x, NULL); /* Ensure attr is first / XXX xml_insert? */
+	    xml_sort(x); /* Ensure attr is first / XXX xml_insert? */
 	}
     }
  ok:

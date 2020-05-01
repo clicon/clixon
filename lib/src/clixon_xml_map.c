@@ -846,7 +846,7 @@ add_namespace(cxobj *x,
     }
     if (xml_value_set(xa, namespace) < 0)
 	goto done;
-    xml_sort(xp, NULL); /* Ensure attr is first / XXX xml_insert? */
+    xml_sort(xp); /* Ensure attr is first / XXX xml_insert? */
 	
     retval = 0;
  done:
@@ -905,15 +905,12 @@ xml_namespace_change(cxobj *x,
 
 /*! Add default values (if not set)
  * @param[in]   xt      XML tree with some node marked
- * @param[in]   arg     Ignored
  * Typically called in a recursive apply function:
- * @code
- *   xml_apply(xt, CX_ELMNT, xml_default, NULL);
- * @endcode
+ * @retval      0       OK
+ * @retval      -1      Error
  */
 int
-xml_default(cxobj *xt, 
-	    void   *arg)
+xml_default(cxobj *xt)
 {
     int        retval = -1;
     yang_stmt *ys;
@@ -982,6 +979,27 @@ xml_default(cxobj *xt,
 		}
 	    }
 	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Recursively fill in default values in a tree
+ * Alt to use xml_apply
+ */
+int
+xml_default_recurse(cxobj *xn)
+{
+    int    retval = -1;
+    cxobj *x;
+    
+    if (xml_default(xn) < 0)
+	goto done;
+    x = NULL;
+    while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
+	if (xml_default_recurse(x) < 0)
+	    goto done;
     }
     retval = 0;
  done:

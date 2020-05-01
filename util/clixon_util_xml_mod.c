@@ -261,7 +261,7 @@ main(int argc, char **argv)
 	xml_print(stderr, x0);
     }
     if (sort)
-	xml_apply(xb, CX_ELMNT, xml_sort, h);
+	xml_sort_recurse(xb);
     if (strcmp(xml_name(xb),"top")==0)
 	clicon_xml2file(stdout, xml_child_i_type(xb, 0, CX_ELMNT), 0, 0);
     else

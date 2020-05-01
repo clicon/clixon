@@ -143,6 +143,22 @@ xml_cv_cache(cxobj   *x,
     return retval;
 }
 
+#ifdef OPTIMIZE_45_SORT
+static int
+xml_cv_cache_clear(cxobj *xt)
+{
+    int    retval = -1;
+    cxobj *x = NULL;
+
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL)
+	if (xml_cv_set(x, NULL) < 0)
+	    goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+#endif /* OPTIMIZE_45_SORT */
+
 /*! Help function to qsort for sorting entries in xml child vector same parent
  * @param[in]  x1    object 1
  * @param[in]  x2    object 2
@@ -386,7 +402,6 @@ xml_cmp_qsort(const void* arg1,
 /*! Sort children of an XML node 
  * Assume populated by yang spec.
  * @param[in] x0   XML node
- * @param[in] arg  Dummy so it can be called by xml_apply()
  * @retval    -1    Error, aborted at first error encounter
  * @retval     0    OK, all nodes traversed (subparts may have been skipped)
  * @retval     1    OK, aborted on first fn returned 1
@@ -394,8 +409,7 @@ xml_cmp_qsort(const void* arg1,
  * @see xml_sort_verify
  */
 int
-xml_sort(cxobj *x,
-	 void  *arg)
+xml_sort(cxobj *x)
 {
 #ifndef STATE_ORDERED_BY_SYSTEM
     yang_stmt *ys;
@@ -419,15 +433,30 @@ xml_sort_recurse(cxobj *xn)
     cxobj *x;
     int    ret;
     
-    x = NULL;
-    while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_sort(x, NULL)) < 0)
+#ifdef OPTIMIZE_45_SORT
+    ret = xml_sort_verify(xn, NULL);
+    if (ret == 1) /* This node is not sortable */
+	goto ok;
+    if (ret == -1){ /* not sorted */
+	if ((ret = xml_sort(xn)) < 0)
 	    goto done;
 	if (ret == 1) /* This node is not sortable */
-	    break;
+	    goto ok;
+    }
+    if (xml_cv_cache_clear(xn) < 0)
+	goto done;
+#else
+    if ((ret = xml_sort(xn)) < 0)
+	goto done;
+    if (ret == 1) /* This node is not sortable */
+	goto ok;
+#endif
+    x = NULL;
+    while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
 	if (xml_sort_recurse(x) < 0)
 	    goto done;
     }
+ ok:
     retval = 0;
  done:
     return retval;
@@ -1068,10 +1097,11 @@ xml_insert(cxobj           *xp,
 }
 
 /*! Verify all children of XML node are sorted according to xml_sort()
- * @param[in]   x       XML node. Check its children
- * @param[in]   arg     Dummy. Ensures xml_apply can be used with this fn
- * @retval      0       Sorted
- * @retval     -1       Not sorted
+ * @param[in]   x    XML node. Check its children
+ * @param[in]   arg  Dummy. Ensures xml_apply can be used with this fn
+ * @retval      1    Not sortable
+ * @retval      0    Sorted
+ * @retval     -1    Not sorted
  * @see xml_apply
  */
 int

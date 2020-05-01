@@ -55,6 +55,8 @@ Expected: May 2020
   * Optimized xml scanner to read strings rather than single chars
   * Optimized xml_merge for the case of disjunct trees.
   * Cleared startup-db cache after restart
+  * Experimental optimzations of yang-bind and sort for large lists
+    * Enabled by compile-time options: `OPTIMIZE_45_BIND` and `OPTIMIZE_45_SORT`
 * Experimental: restart_plugin
 * Two new plugin callbacks added
   * ca_daemon: Called just after a server has "daemonized", ie put in background.

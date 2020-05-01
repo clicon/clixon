@@ -113,6 +113,9 @@ strip_whitespace(cxobj *xt)
  */
 static int
 populate_self_parent(cxobj  *xt,
+#ifdef OPTIMIZE_45_BIND
+		     cxobj  *xsibling,
+#endif
 		     cxobj **xerr)
 {
     int        retval = -1;
@@ -124,8 +127,16 @@ populate_self_parent(cxobj  *xt,
     char      *nsy = NULL;   /* Yang namespace of xt */
     cbuf      *cb = NULL;
 
-    xp = xml_parent(xt);
     name = xml_name(xt);
+#ifdef OPTIMIZE_45_BIND
+    /* optimization for massive lists - use the first element as role model */
+    if (xsibling &&
+	xml_child_nr_type(xt, CX_ATTR) == 0){
+	y = xml_spec(xsibling);
+	goto set;
+    }
+#endif
+    xp = xml_parent(xt);
     if (xp == NULL){
 	if (xerr &&
 	    netconf_bad_element_xml(xerr, "application", name, "Missing parent") < 0)
@@ -172,6 +183,9 @@ populate_self_parent(cxobj  *xt,
 	    goto done;
 	goto fail;
     }
+#ifdef OPTIMIZE_45_BIND
+ set:
+#endif
     xml_spec_set(xt, y);
 #ifdef XML_EXPLICIT_INDEX
     if (xml_search_index_p(xt))
@@ -317,6 +331,79 @@ xml_bind_yang(cxobj     *xt,
     goto done;
 }
 
+#ifdef OPTIMIZE_45_BIND
+int
+xml_bind_yang0_opt(cxobj     *xt, 
+		   yang_bind  yb,
+		   cxobj     *xsibling,
+		   cxobj    **xerr)
+{
+    int        retval = -1;
+    cxobj     *xc;           /* xml child */
+    int        ret;
+    int        failed = 0; /* we continue loop after failure, should we stop at fail?`*/
+    yang_stmt *yc0 = NULL;
+    cxobj     *xc0 = NULL;
+    cxobj     *xs;
+    char      *name0 = NULL;
+    char      *prefix0 = NULL;
+    char      *name;
+    char      *prefix;
+
+    switch (yb){
+    case YB_PARENT:
+	if ((ret = populate_self_parent(xt, xsibling, xerr)) < 0)
+	    goto done;
+	break;
+    default:
+	clicon_err(OE_XML, EINVAL, "Invalid yang binding: %d", yb);
+	goto done;
+	break;
+    }
+    if (ret == 0)
+	goto fail;
+    else if (ret == 2)     /* ret=2 for anyxml from parent^ */
+    	goto ok;
+    strip_whitespace(xt);
+    xc = NULL;     /* Apply on children */
+    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+	/* It is xml2ns in populate_self_parent that needs improvement */
+	/* cache previous + prefix */
+	name = xml_name(xc);
+	prefix = xml_prefix(xc);
+	if (yc0 != NULL &&
+	    clicon_strcmp(name0, name) == 0 &&
+	    clicon_strcmp(prefix0, prefix) == 0){
+	    if ((ret = xml_bind_yang0_opt(xc, YB_PARENT, xc0, xerr)) < 0)
+		goto done;
+	}
+	else if (xsibling &&
+		 (xs = xml_find_type(xsibling, prefix, name, CX_ELMNT)) != NULL){
+	    if ((ret = xml_bind_yang0_opt(xc, YB_PARENT, xs, xerr)) < 0)
+		goto done;
+	}
+	else if ((ret = xml_bind_yang0_opt(xc, YB_PARENT, NULL, xerr)) < 0)
+	    goto done;
+	if (ret == 0)
+	    failed++;
+	xc0 = xc;
+	yc0 = xml_spec(xc); /* cache */
+	name0 = xml_name(xc);
+	prefix0 = xml_prefix(xc);
+    }
+    if (failed)
+	goto fail;
+ ok:
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+#endif /* OPTIMIZE_45_BIND */
+
+
 /*! Find yang spec association of tree of XML nodes
  *
  * @param[in]   xt     XML tree node
@@ -334,10 +421,10 @@ xml_bind_yang0(cxobj     *xt,
 	       yang_stmt *yspec,
 	       cxobj    **xerr)
 {
-    int    retval = -1;
-    cxobj *xc;           /* xml child */
-    int    ret;
-    int    failed = 0; /* we continue loop after failure, should we stop at fail?`*/
+    int        retval = -1;
+    cxobj     *xc;           /* xml child */
+    int        ret;
+    int        failed = 0; /* we continue loop after failure, should we stop at fail?`*/
 
     switch (yb){
     case YB_MODULE:
@@ -345,8 +432,15 @@ xml_bind_yang0(cxobj     *xt,
 	    goto done;
 	break;
     case YB_PARENT:
-	if ((ret = populate_self_parent(xt, xerr)) < 0)
+	if ((ret = populate_self_parent(xt,
+#ifdef OPTIMIZE_45_BIND
+					NULL,
+#endif
+					xerr)) < 0)
 	    goto done;
+	break;
+    case YB_NONE:
+	ret = 1;
 	break;
     default:
 	clicon_err(OE_XML, EINVAL, "Invalid yang binding: %d", yb);
@@ -360,8 +454,13 @@ xml_bind_yang0(cxobj     *xt,
     strip_whitespace(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	if ((ret = xml_bind_yang0(xc, YB_PARENT, yspec, xerr)) < 0)
+#ifdef OPTIMIZE_45_BIND
+	if ((ret = xml_bind_yang0_opt(xc, YB_PARENT, NULL, xerr)) < 0)
 	    goto done;
+#else
+	if ((ret = xml_bind_yang0(xc, YB_PARENT, NULL, xerr)) < 0)
+	    goto done;
+#endif
 	if (ret == 0)
 	    failed++;
     }

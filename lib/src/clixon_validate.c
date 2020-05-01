@@ -372,7 +372,7 @@ xml_yang_validate_rpc(clicon_handle h,
 	    goto done; /* error or validation fail */
 	if ((retval = xml_yang_validate_add(h, xn, xret)) < 1)
 	    goto done; /* error or validation fail */
-	if (xml_apply0(xn, CX_ELMNT, xml_default, h) < 0)
+	if (xml_default_recurse(xn) < 0)
 	    goto done;
     }
     // ok: /* pass validation */

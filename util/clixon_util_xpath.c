@@ -291,11 +291,11 @@ main(int    argc,
 	if (xml_bind_yang(x0, YB_MODULE, yspec, NULL) < 0)
 	    goto done;
 	/* Sort */
-	if (xml_apply(x0, CX_ELMNT, xml_sort, h) < 0)
+	if (xml_sort_recurse(x0) < 0)
 	    goto done;
 
 	/* Add default values */
-	if (xml_apply(x0, CX_ELMNT, xml_default, h) < 0)
+	if (xml_default_recurse(x0) < 0)
 	    goto done;
 	if (xml_apply0(x0, -1, xml_sort_verify, h) < 0)
 	    clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);

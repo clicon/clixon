@@ -80,7 +80,7 @@ validate_tree(clicon_handle h,
 
     /* should already be populated */
     /* Add default values */
-    if (xml_apply(xt, CX_ELMNT, xml_default, h) < 0)
+    if (xml_default_recurse(xt) < 0)
 	goto done;
     if (xml_apply(xt, -1, xml_sort_verify, h) < 0)
 	clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);

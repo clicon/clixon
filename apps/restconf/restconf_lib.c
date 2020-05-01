@@ -744,7 +744,7 @@ restconf_insert_attributes(cxobj *xdata,
 	    goto done;
     }
     if (nsc)
-	xml_sort(xdata, NULL); /* Ensure attr is first */
+	xml_sort(xdata); /* Ensure attr is first */
     cprintf(cb, "/>");
     retval = 0;
  done:

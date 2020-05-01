@@ -251,9 +251,9 @@ clixon_plugin_statedata_all(clicon_handle    h,
 	/* XXX: ret == 0 invalid yang binding should be handled as internal error */
 	if (xml_bind_yang(x, YB_MODULE, yspec, NULL) < 0)
 	    goto done;
-	if (xml_apply(x, CX_ELMNT, xml_sort, h) < 0)
+	if (xml_sort_recurse(x) < 0)
 	    goto done;
-	if (xml_apply(x, CX_ELMNT, xml_default, h) < 0)
+	if (xml_default_recurse(x) < 0)
 	    goto done;
 	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
 	    goto done;
