@@ -248,6 +248,21 @@ clixon_plugin_statedata_all(clicon_handle    h,
 	if (debug)
 	    clicon_log_xml(LOG_DEBUG, x, "%s STATE:", __FUNCTION__);
 #endif
+#ifdef USE_STATE_PATH_KLUDGE
+	/* This kludge skips all yang binding and validation of paths begining with a 
+	 * specific prefix
+	 * Note that there are many problems with this kludge. 
+	 */
+	{
+	    char *kpath;
+	    if (xpath &&
+		(kpath = clicon_option_str(h, "CLICON_STATE_PATH_KLUDGE")) != NULL){
+		if (strncmp(xpath, kpath, strlen(kpath)) == 0)
+		    ;
+	    }
+	    else {
+#endif /* USE_STATE_PATH_KLUDGE */
+
 	/* XXX: ret == 0 invalid yang binding should be handled as internal error */
 	if (xml_bind_yang(x, YB_MODULE, yspec, NULL) < 0)
 	    goto done;
@@ -255,6 +270,10 @@ clixon_plugin_statedata_all(clicon_handle    h,
 	    goto done;
 	if (xml_default_recurse(x) < 0)
 	    goto done;
+#ifdef USE_STATE_PATH_KLUDGE
+	    }
+	}
+#endif
 	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
 	    goto done;
 	if (ret == 0)

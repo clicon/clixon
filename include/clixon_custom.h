@@ -118,10 +118,19 @@
 /*! Clixon 4.5 optimizing experiments for sorting yang-bound XML trees
  * Primarily for large lists
  */
-#undef OPTIMIZE_45_SORT
+#define OPTIMIZE_45_SORT
 
 /*! Use cligen 4.4 instead of master / cligen 4.5.pre
  * Temporary fix
  */
 #undef USE_CLIGEN44
+
+/*! Check runtime CLICON_STATE_PATH_KLUDGE option
+ * For get state commands, if the select xpath is equal (or its beginning)
+ * is equal to the path in this option, then yang binding, sorting, default 
+ * values is skipped.
+ * This is a temporary option which will go away in future releases, therefore 
+ * marked as obsolete.";
+ */
+#define USE_STATE_PATH_KLUDGE
 

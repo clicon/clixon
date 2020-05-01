@@ -48,6 +48,8 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
+# Note, there is a commented default statement below. It may be useful, bit for a
+# clean performance setup, adding default values may be a fringe case?
 cat <<EOF > $fyang
 module $APPNAME{
   yang-version 1.1;
@@ -71,7 +73,7 @@ module $APPNAME{
           }
           leaf enabled {
             type boolean;
-            default true; 
+/*            default true;  */
           }
           leaf status {
             type string;
