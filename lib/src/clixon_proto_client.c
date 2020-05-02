@@ -731,9 +731,8 @@ clicon_rpc_get(clicon_handle   h,
 	{
 	    char *kpath;
 	    if (xpath &&
-		(kpath = clicon_option_str(h, "CLICON_STATE_PATH_KLUDGE")) != NULL){
-		if (strncmp(xpath, kpath, strlen(kpath)) == 0)
-		    ;
+		(kpath = clicon_option_str(h, "CLICON_STATE_PATH_KLUDGE")) != NULL &&
+		strncmp(xpath, kpath, strlen(kpath)) == 0){
 	    }
 	    else
 #endif /* USE_STATE_PATH_KLUDGE */
