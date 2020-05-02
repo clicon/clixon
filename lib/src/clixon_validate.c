@@ -785,7 +785,7 @@ check_list_unique_minmax(cxobj  *xt,
     cxobj      *x = NULL;
     yang_stmt  *y;
     yang_stmt  *yt;
-    yang_stmt  *yp = NULL; /* previous in list */
+    yang_stmt  *yprev = NULL; /* previous in list */
     yang_stmt  *ye = NULL; /* yang each list to catch emtpy */
     yang_stmt  *ych; /* y:s parent node (if choice that ye can compare to) */
     cxobj      *xp = NULL; /* previous in list */
@@ -809,28 +809,38 @@ check_list_unique_minmax(cxobj  *xt,
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 	if ((y = xml_spec(x)) == NULL)
 	    continue;
-	if ((ych=yang_choice(y)) == NULL)
+	if ((ych = yang_choice(y)) == NULL)
 	    ych = y;
 	keyw = yang_keyword_get(y);
-	if (keyw != Y_LIST && keyw != Y_LEAF_LIST)
+	if (keyw != Y_LIST && keyw != Y_LEAF_LIST){
+	    if (yprev != NULL && y == yprev && yang_choice(y)==NULL){
+		/* Only lists and leaf-lists are allowed to be many 
+		 * This checks duplicate container and leafs
+		 */
+		if (netconf_minmax_elements_xml(xret, x, 1) < 0)
+		    goto done;
+		goto fail;
+	    }
+	    yprev = y; /* Restart min/max count */
 	    continue;
-	if (yp != NULL){ /* There exists a previous (leaf)list */
-	    if (y == yp){ /* If same yang as previous x, then skip (eg same list) */
+	}
+	if (yprev != NULL){ /* There exists a previous (leaf)list */
+	    if (y == yprev){ /* If same yang as previous x, then skip (eg same list) */
 		nr++;
 		continue;
 	    }
 	    else {
 		/* Check if the list length violates min/max */
-		if ((ret = check_min_max(xp, yp, nr, xret)) < 0)
+		if ((ret = check_min_max(xp, yprev, nr, xret)) < 0)
 		    goto done;
 		if (ret == 0)
 		    goto fail;
 	    }
 	}
-	yp = y; /* Restart min/max count */
+	yprev = y; /* Restart min/max count */
 	xp = x; /* Need a reference to the XML as well */
 	nr = 1;
-	/* Gap analysis: Check if there is any empty list between y and yp 
+	/* Gap analysis: Check if there is any empty list between y and yprev 
 	 * Note, does not detect empty choice list (too complicated)
 	 */
 	if (yt != NULL && ych != ye){
@@ -868,12 +878,12 @@ check_list_unique_minmax(cxobj  *xt,
 		goto fail;
 	}
     }
-    /* yp if set, is a list that has been traversed 
+    /* yprev if set, is a list that has been traversed 
      * This check is made in the loop as well - this is for the last list
      */
-    if (yp){  
+    if (yprev){  
 	/* Check if the list length violates min/max */
-	if ((ret = check_min_max(xp, yp, nr, xret)) < 0)
+	if ((ret = check_min_max(xp, yprev, nr, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -1129,7 +1139,7 @@ xml_yang_validate_all(clicon_handle h,
 	    break;
 	}
 	/* must sub-node RFC 7950 Sec 7.5.3. Can be several. 
-	* XXX. use yang path instead? */
+	 * XXX. use yang path instead? */
 	yc = NULL;
 	while ((yc = yn_each(ys, yc)) != NULL) {
 	    if (yang_keyword_get(yc) != Y_MUST)

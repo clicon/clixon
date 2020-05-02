@@ -31,6 +31,8 @@ Expected: May 2020
   
 ### API changes on existing protocol/config features (You may have have to change how you use Clixon)
 
+* Stricter validation detecting duplicate container or leaf in XML.
+  * Eg `<x><a/><a/></x>` is invalid if `a` is anything else than leaf or leaf-list
 * New clixon-lib@2020-04-23.yang revision
   * Added: stats RPC for clixon XML and memory statistics.
   * Added: restart-plugin RPC for restarting individual plugins without restarting backend.
