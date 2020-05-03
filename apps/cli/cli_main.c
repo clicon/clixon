@@ -515,6 +515,10 @@ main(int argc, char **argv)
     if (netconf_module_features(h) < 0)
 	goto done;
 
+    /* Treat unknwon XML as anydata */
+    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1)
+	xml_bind_yang_unknown_anydata(1);
+
     /* Create top-level and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;

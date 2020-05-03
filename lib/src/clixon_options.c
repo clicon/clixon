@@ -555,7 +555,7 @@ clicon_option_int_set(clicon_handle h,
  */
 int
 clicon_option_bool(clicon_handle h,
-		  const char   *name)
+		   const char   *name)
 {
     char *s;
 
@@ -563,7 +563,9 @@ clicon_option_bool(clicon_handle h,
 	return 0;
     if (strcmp(s,"true")==0)
 	return 1;
-    return 0; /* Hopefully false, but anything else than "true" */
+    if (strcmp(s,"1")==0)
+	return 1;
+    return 0; /* Hopefully false, but anything else than "true" or "one" */
 }
 
 /*! Set option given as bool
@@ -578,8 +580,14 @@ clicon_option_bool_set(clicon_handle h,
 {
     char s[64];
     
-    if (snprintf(s, sizeof(s)-1, "%u", val) < 0)
+    if (val != 0 && val != 1){
+	clicon_err(OE_CFG, EINVAL, "val is %d, 0 or 1 expected", val);
 	return -1;
+    }
+    if (snprintf(s, sizeof(s)-1, "%s", val?"true":"false") < 0){
+	clicon_err(OE_CFG, errno, "snprintf");
+	return -1;
+    }
     return clicon_option_str_set(h, name, s);
 }
 

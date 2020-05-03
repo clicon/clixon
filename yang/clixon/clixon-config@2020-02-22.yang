@@ -314,6 +314,14 @@ module clixon-config {
                  Some yang specs seem not to fulfil this. However, if you reset this, there may
                  be follow-up errors due to code that assumes a configuration list has keys";
 	}
+	leaf CLICON_YANG_UNKNOWN_ANYDATA{
+	    type boolean;
+	    default false;
+	    description
+		"Treat unknown XML/JSON nodes as anydata. 
+                 This does not apply to namespaces, which means a top-level node: xxx:yyy
+                 is accepted only if yyy is unknown, not xxx";
+	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;
 	    description

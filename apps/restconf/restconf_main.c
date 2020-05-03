@@ -715,6 +715,9 @@ main(int    argc,
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);
+    /* Treat unknown XML as anydata */
+    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1)
+	xml_bind_yang_unknown_anydata(1);
     
     /* Load restconf plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_restconf_dir(h)) != NULL)

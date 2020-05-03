@@ -106,6 +106,9 @@ fi
 # Backend user
 BUSER=clicon
 
+# If set, unknown XML is treated as ANYDATA
+: ${YANG_UNKNOWN_ANYDATA:=false}
+
 # Follow the binary programs that can be parametrized (eg with valgrind)
 
 : ${clixon_cli:=clixon_cli}

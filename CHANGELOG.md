@@ -50,6 +50,8 @@ Expected: May 2020
 
 ### Minor changes
 
+* Added option `CLICON_YANG_UNKNOWN_ANYDATA` to treat unknown XML (wrt YANG) as anydata.
+  * This is to be (very) forgiving but you need to accept eg unsynchronized YANG and XML
 * Compile-time option: `USE_CLIGEN44` for running clixon-45 with cligen-44.
   * Temporary fix since cligen-45 have some non-backward compatible behaviour.
 * Optimizations

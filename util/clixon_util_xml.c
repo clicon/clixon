@@ -66,7 +66,7 @@
 #include "clixon/clixon.h"
 
 /* Command line options passed to getopt(3) */
-#define UTIL_XML_OPTS "hD:f:Jjl:pvoy:Y:t:T:"
+#define UTIL_XML_OPTS "hD:f:Jjl:pvoy:Y:t:T:u"
 
 static int
 validate_tree(clicon_handle h,
@@ -125,6 +125,7 @@ usage(char *argv0)
     	    "\t-Y <dir> \tYang dirs (can be several)\n"
    	    "\t-t <file>\tXML top input file (where base tree is pasted to)\n"
 	    "\t-T <path>\tXPath to where in top input file base should be pasted\n"
+	    "\t-u \t\tTreat unknown XML as anydata\n"
 	    ,
 	    argv0);
     exit(0);
@@ -220,6 +221,11 @@ main(int    argc,
 	    break;
 	case 'T': /* top file xpath */
 	    top_path = optarg;
+	    break;
+	case 'u':
+	    if (clicon_option_bool_set(h, "CLICON_YANG_UNKNOWN_ANYDATA", 1) < 0)
+		goto done;
+	    xml_bind_yang_unknown_anydata(1);
 	    break;
 	default:
 	    usage(argv[0]);

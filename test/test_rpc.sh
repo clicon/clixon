@@ -122,8 +122,10 @@ fi
 new "restconf omit mandatory"
 expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":null}' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"x"},"error-severity":"error","error-message":"Mandatory variable"}}}'
 
-new "restconf add extra"
+new "restconf add extra w/o yang: should fail"
+if ! $YANG_UNKNOWN_ANYDATA ; then
 expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":"0","extra":"0"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"extra"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: extra with parent: example in namespace: urn:example:clixon"}}}'
+fi
 
 new "restconf wrong method"
 expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":"0"}}' http://localhost/restconf/operations/clixon-example:wrong)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"wrong"},"error-severity":"error","error-message":"RPC not defined"}}}'
@@ -137,8 +139,10 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netco
 new "netconf edit-config ok"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target><candidate/></target><config/></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
+if ! $YANG_UNKNOWN_ANYDATA ; then
 new "netconf edit-config extra arg should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target><candidate/></target><extra/><config/></edit-config></rpc>]]>]]>' "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>extra</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: extra with parent: edit-config in namespace: urn:ietf:params:xml:ns:netconf:base:1.0</error-message></rpc-error></rpc-reply>]]>]]>$"
+fi
 
 new "netconf edit-config empty target should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target/><config/></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>missing-choice</error-app-tag><error-info><missing-choice>config-target</missing-choice></error-info><error-severity>error</error-severity></rpc-error></rpc-reply>]]>]]>$'

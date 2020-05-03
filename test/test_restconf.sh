@@ -237,8 +237,10 @@ new "restconf rpc using POST json"
 expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":42}}' http://localhost/restconf/operations/clixon-example:example)" 0 '{"clixon-example:output":{"x":"42","y":"42"}}
 '
 
+if ! $YANG_UNKNOWN_ANYDATA ; then
 new "restconf rpc using POST json wrong"
 expectpart "$(curl -si -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"wrongelement":"ipv4"}}' http://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"wrongelement"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: wrongelement with parent: example in namespace: urn:example:clixon"}}}'
+fi
 
 new "restconf rpc non-existing rpc without namespace"
 expectpart "$(curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{}' http://localhost/restconf/operations/kalle)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"kalle"},"error-severity":"error","error-message":"RPC not defined"}}'

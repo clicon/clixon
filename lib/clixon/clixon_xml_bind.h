@@ -43,6 +43,7 @@
 /*
  * Prototypes
  */
+int xml_bind_yang_unknown_anydata(int bool);
 int xml_bind_yang_rpc(cxobj *xrpc, yang_stmt *yspec, cxobj **xerr);
 int xml_bind_yang_rpc_reply(cxobj *xrpc, char *name, yang_stmt *yspec, cxobj **xerr);
 int xml_bind_yang0(cxobj *xt, yang_bind yb, yang_stmt *yspec, cxobj **xerr);

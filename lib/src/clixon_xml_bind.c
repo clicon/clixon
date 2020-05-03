@@ -79,6 +79,21 @@
 #include "clixon_yang_type.h"
 #include "clixon_xml_bind.h"
 
+/*
+ * Local variables
+ */
+static int _yang_unknown_anydata = 0;
+
+/*! Kludge to equate unknown XML with anydata
+ * The problem with this is that its global and shuld be bound to a handle
+ */
+int
+xml_bind_yang_unknown_anydata(int bool)
+{
+    _yang_unknown_anydata = bool;
+    return 0;
+}
+
 /*! After yang binding, bodies of containers and lists are stripped from XML bodies
  * May apply to other nodes?
  */
@@ -156,6 +171,10 @@ populate_self_parent(cxobj  *xt,
     if (xml2ns(xt, xml_prefix(xt), &ns) < 0)
 	goto done;
     if ((y = yang_find_datanode(yparent, name)) == NULL){
+	if (_yang_unknown_anydata){
+	    retval = 2; /* treat as anydata */
+	    goto done;
+	}
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
@@ -244,6 +263,10 @@ populate_self_top(cxobj     *xt,
     if (xml2ns(xt, xml_prefix(xt), &ns) < 0)
 	goto done;
     if ((y = yang_find_schemanode(ymod, name)) == NULL){ /* also rpc */
+	if (_yang_unknown_anydata){
+	    retval = 2; /* treat as anydata */
+	    goto done;
+	}
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
