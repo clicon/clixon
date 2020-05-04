@@ -811,6 +811,10 @@ from_client_validate(clicon_handle h,
 } /* from_client_validate */
 
 #ifdef RESTART_PLUGIN_RPC
+/*! Restart specific backend plugins without full backend restart
+ * Note, depending on plugin callbacks, there may be other dependencies which may make this
+ * difficult in the general case.
+ */
 int
 from_client_restart_one(clicon_handle h,
 			clixon_plugin *cp,
@@ -820,7 +824,6 @@ from_client_restart_one(clicon_handle h,
     char               *db = "tmp";
     transaction_data_t *td = NULL;
     plgreset_t         *resetfn;          /* Plugin auth */
-    trans_cb_t         *fn;
     int                 ret;
     cxobj              *xerr = NULL;
     yang_stmt          *yspec;
@@ -889,17 +892,10 @@ from_client_restart_one(clicon_handle h,
 	xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
     
-    /* 4. Call plugin transaction start callbacks */
-    if ((fn = cp->cp_api.ca_trans_begin) != NULL){
-	if ((retval = fn(h, (transaction_data)td)) < 0){
-	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
-		clicon_log(LOG_NOTICE, "%s: Plugin '%s' transaction_begin callback does not make clicon_err call on error", 
-			   __FUNCTION__, cp->cp_name);
-	    
-	    goto fail;
-	}
-    }
-    /* 5. Make generic validation on all new or changed data.
+    /* Call plugin transaction start callbacks */
+    if (plugin_transaction_begin_one(cp, h, td) < 0)
+	goto fail;
+    /* Make generic validation on all new or changed data.
        Note this is only call that uses 3-values */
     if ((ret = generic_validate(h, yspec, td, &xerr)) < 0)
 	goto done;
@@ -908,42 +904,25 @@ from_client_restart_one(clicon_handle h,
 	    goto done;
 	goto fail;
     }
-    if ((fn = cp->cp_api.ca_trans_validate) != NULL){
-	if ((retval = fn(h, (transaction_data)td)) < 0){
-	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
-		clicon_log(LOG_NOTICE, "%s: Plugin '%s' transaction_validate callback does not make clicon_err call on error", 
-			   __FUNCTION__, cp->cp_name);
-	    goto fail;
-	}
-    }
-    if ((fn = cp->cp_api.ca_trans_complete) != NULL){
-	if ((retval = fn(h, (transaction_data)td)) < 0){
-	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
-		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_complete callback does not make clicon_err call on error", 
-			   __FUNCTION__, cp->cp_name);
-	    
-	    goto fail;
-	}
-    }
-    
-    if ((fn = cp->cp_api.ca_trans_commit) != NULL){
-	if (fn(h, (transaction_data)td) < 0){
-	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
-		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_commit callback does not make clicon_err call on error", 
-			   __FUNCTION__, cp->cp_name);
-	    goto fail;
-	}
-    }
-    if ((fn = cp->cp_api.ca_trans_end) != NULL){
-	if ((retval = fn(h, (transaction_data)td)) < 0){
-	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
-		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_end callback does not make clicon_err call on error", 
-			   __FUNCTION__, cp->cp_name);
-	    goto fail;
-	}
-    }
+    /* Call validate callback in this plugin */
+    if (plugin_transaction_validate_one(cp, h, td) < 0)
+	goto fail;
+    if (plugin_transaction_complete_one(cp, h, td) < 0)
+	goto fail;
+    /* Call commit callback in this plugin */
+    if (plugin_transaction_commit_one(cp, h, td) < 0)
+	goto fail;
+    if (plugin_transaction_commit_done_one(cp, h, td) < 0)
+	goto fail;
+    /* Finalize */
+    if (plugin_transaction_end_one(cp, h, td) < 0)
+	goto fail;
     retval = 1;
  done:
+    if (td){
+	 xmldb_get0_free(h, &td->td_target);
+	 transaction_free(td);
+     }
     return retval;
  fail:
     retval = 0;

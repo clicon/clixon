@@ -65,23 +65,25 @@
 /*! Variable to control if reset code is run.
  * The reset code inserts "extra XML" which assumes ietf-interfaces is
  * loaded, and this is not always the case.
- * Therefore, the backend must be started with -- -r to enable the reset function
+ * Start backend with -- -r
  */
 static int _reset = 0;
 
 /*! Variable to control if state code is run
  * The state code adds extra non-config data
- * Therefore, the backend must be started with -- -s to enable the state function
+ * Start backend with -- -s
  */
 static int _state = 0;
 
 /*! File where state XML is read from, if _state is true -- -sS <file>
  * Primarily for testing
+ * Start backend with -- -sS <file>
  */
 static char *_state_file = NULL;
 
 /*! Read state file init on startup instead of on request
  * Primarily for testing
+ * Start backend with -- -siS <file>
  */
 static int _state_file_init = 0;
 static cxobj *_state_xstate = NULL;
@@ -89,15 +91,18 @@ static cxobj *_state_xstate = NULL;
 /*! Variable to control module-specific upgrade callbacks.
  * If set, call test-case for upgrading ietf-interfaces, otherwise call 
  * auto-upgrade
+ * Start backend with -- -u
  */
 static int _module_upgrade = 0;
 
 /*! Variable to control general-purpose upgrade callbacks.
+ * Start backend with -- -U
  */
 static int _general_upgrade = 0;
 
 /*! Variable to control transaction logging (for debug)
- * If set, call syslog for every transaction callback
+ * If set, call syslog for every transaction callback 
+ * Start backend with -- -t
  */
 static int _transaction_log = 0;
 

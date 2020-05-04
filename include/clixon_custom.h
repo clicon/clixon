@@ -105,7 +105,7 @@
  * Note, depending on plugin callbacks, there may be other dependencies which may make this
  * difficult in the general case.
  */
-#undef RESTART_PLUGIN_RPC
+#define RESTART_PLUGIN_RPC
 
 /*! Differentiate creating XML object body/element vs elenmet to reduce space
  */

@@ -63,6 +63,7 @@
 
 /*! Variable to control transaction logging (for debug)
  * If set, call syslog for every transaction callback
+ * Start backend with -- -t
  */
 static int _transaction_log = 0;
 

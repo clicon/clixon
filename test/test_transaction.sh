@@ -2,6 +2,8 @@
 # Transaction functionality
 # The test uses two backend plugins (main and nacm) that logs to a file and a
 # netconf client to push operation. The tests then look at the log.
+# The test assumes the two plugins recognize the -- -t argument which includes
+# that one of them fails at validation at one point
 # The tests are as follows (first five only callbacks per se; then data vector tests)
 # 1. Validate-only transaction
 # 2. Commit transaction
@@ -18,9 +20,6 @@
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
-
-# Which format to use as datastore format internally
-: ${format:=xml}
 
 APPNAME=example
 
@@ -77,11 +76,12 @@ cat <<EOF > $cfg
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
 </clixon-config>
 EOF
 
 # Check statements in log
+# arg1: a statement to look for
+# arg2: expected line number
 checklog(){
     s=$1 # statement
     l0=$2 # linenr
@@ -321,5 +321,3 @@ stop_backend -f $cfg
 
 rm -rf $dir
 
-# unset conditional parameters 
-unset format
