@@ -102,7 +102,8 @@
 #define STATE_ORDERED_BY_SYSTEM
 
 /*! Restart specific backend plugins
- * Experimental code for now, needs some testing
+ * Note, depending on plugin callbacks, there may be other dependencies which may make this
+ * difficult in the general case.
  */
 #undef RESTART_PLUGIN_RPC
 
@@ -132,5 +133,5 @@
  * This is a temporary option which will go away in future releases, therefore 
  * marked as obsolete.";
  */
-#define USE_STATE_PATH_KLUDGE
+#undef USE_STATE_PATH_KLUDGE
 

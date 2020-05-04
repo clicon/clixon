@@ -249,7 +249,7 @@ clixon_plugin_statedata_all(clicon_handle    h,
 	    clicon_log_xml(LOG_DEBUG, x, "%s STATE:", __FUNCTION__);
 #endif
 #ifdef USE_STATE_PATH_KLUDGE
-	/* This kludge skips all yang binding and validation of paths begining with a 
+	/* This kludge skips all yang binding and validation of paths beginning with a 
 	 * specific prefix
 	 * Note that there are many problems with this kludge. 
 	 */
@@ -294,7 +294,11 @@ clixon_plugin_statedata_all(clicon_handle    h,
     goto done;
 }
 
-/*! Create and initialize transaction */
+/*! Create and initialize a validate/commit transaction 
+ * @retval  td     New alloced transaction, 
+ * @retval  NULL   Error
+ * @see transaction_free  which deallocates the returned handle
+ */
 transaction_data_t *
 transaction_new(void)
 {
@@ -310,7 +314,10 @@ transaction_new(void)
     return td;
 }
 
-/*! Free transaction structure */
+/*! Free transaction structure 
+ *
+ * @param[in]  td      Transaction data will be deallocated after the call
+ */
 int 
 transaction_free(transaction_data_t *td)
 {
@@ -330,6 +337,13 @@ transaction_free(transaction_data_t *td)
     return 0;
 }
 
+/*! Call single plugin transaction_begin() before a validate/commit.
+ * @param[in]  cp      Plugin handle
+ * @param[in]  h       Clixon handle
+ * @param[in]  td      Transaction data
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
 int
 plugin_transaction_begin_one(clixon_plugin      *cp,
 			     clicon_handle       h, 
@@ -375,6 +389,13 @@ plugin_transaction_begin_all(clicon_handle       h,
     return retval;
 }
 
+/*! Call single plugin transaction_validate() in a validate/commit transaction
+ * @param[in]  cp      Plugin handle
+ * @param[in]  h       Clixon handle
+ * @param[in]  td      Transaction data
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
 int
 plugin_transaction_validate_one(clixon_plugin      *cp,
 				clicon_handle       h, 
@@ -418,6 +439,14 @@ plugin_transaction_validate_all(clicon_handle       h,
     return retval;
 }
 
+/*! Call single plugin transaction_complete() in a validate/commit transaction
+ * complete is called after validate (before commit)
+ * @param[in]  cp      Plugin handle
+ * @param[in]  h       Clixon handle
+ * @param[in]  td      Transaction data
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
 int
 plugin_transaction_complete_one(clixon_plugin      *cp,
 				clicon_handle       h, 
@@ -493,6 +522,14 @@ plugin_transaction_revert_all(clicon_handle       h,
     return retval; /* ignore errors */
 }
 
+
+/*! Call single plugin transaction_commit() in a commit transaction
+ * @param[in]  cp      Plugin handle
+ * @param[in]  h       Clixon handle
+ * @param[in]  td      Transaction data
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
 int
 plugin_transaction_commit_one(clixon_plugin      *cp,
 			      clicon_handle       h, 
@@ -544,6 +581,14 @@ plugin_transaction_commit_all(clicon_handle       h,
     return retval;
 }
 
+
+/*! Call single plugin transaction_commit_done() in a commit transaction
+ * @param[in]  cp      Plugin handle
+ * @param[in]  h       Clixon handle
+ * @param[in]  td      Transaction data
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
 int
 plugin_transaction_commit_done_one(clixon_plugin      *cp,
 				   clicon_handle       h, 
@@ -588,6 +633,13 @@ plugin_transaction_commit_done_all(clicon_handle       h,
     return retval;
 }
 
+/*! Call single plugin transaction_end() in a commit/validate transaction
+ * @param[in]  cp      Plugin handle
+ * @param[in]  h       Clixon handle
+ * @param[in]  td      Transaction data
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
 int
 plugin_transaction_end_one(clixon_plugin      *cp,
 			   clicon_handle       h, 
