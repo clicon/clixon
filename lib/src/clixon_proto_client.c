@@ -734,19 +734,21 @@ clicon_rpc_get(clicon_handle   h,
 		(kpath = clicon_option_str(h, "CLICON_STATE_PATH_KLUDGE")) != NULL &&
 		strncmp(xpath, kpath, strlen(kpath)) == 0){
 	    }
-	    else
+	    else{
 #endif /* USE_STATE_PATH_KLUDGE */
-	if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
-	    goto done;
+		if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
+		    goto done;
+		if (ret == 0){
+		    assert(xerr != NULL);
+		    if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+			clicon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
+			goto done;
+		    }
+		}
 #ifdef USE_STATE_PATH_KLUDGE
-	}
-#endif
-	if (ret == 0){
-	    if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
-		goto done;
 	    }
 	}
+#endif
     }
     if (xt){
 	if (xml_rm(xd) < 0)

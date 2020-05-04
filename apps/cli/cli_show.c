@@ -630,8 +630,13 @@ show_conf_xpath(clicon_handle h,
     namespace = cv_string_get(cv);
     if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
 	goto done;
+#if 0 /* Use state get intead of config (XXX: better use this but test_cli.sh fails) */
+    if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
+    	goto done;
+#else
     if (clicon_rpc_get_config(h, NULL, str, xpath, nsc, &xt) < 0)
     	goto done;
+#endif
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;

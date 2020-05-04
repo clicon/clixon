@@ -117,9 +117,8 @@ new "waiting"
 wait_restconf
 
 new "cli get large config"
-echo "$clixon_cli -1f $cfg show state xml"
 # baseline on thinkpad i5-3320M CPU @ 2.60GHz and 500K entries: 39.71s
-$TIMEFN $clixon_cli -1f $cfg show state xml 2>&1 | awk '/real/ {print $2}'
+$TIMEFN $clixon_cli -1f $cfg show xpath /interfaces urn:example:clixon 2>&1 | awk '/real/ {print $2}'
 
 # START actual tests
 # Having a large db, get single entries many times

@@ -344,8 +344,19 @@ example_statedata(clicon_handle h,
     /* If -S is set, then read state data from file, otherwise construct it programmatically */
     if (_state_file){
 	if (_state_file_init){
+#if 0 /* This is just for a zero-copy version (only works once) */
+	    {
+		cxobj *xx = NULL;
+		while (xml_child_nr(_state_xstate)){
+		    xx = xml_child_i(_state_xstate,0);
+		    if (xml_addsub(xstate, xx) < 0)
+			goto done;
+		}
+	    }
+#else
 	    if (xml_copy(_state_xstate, xstate) < 0)
 		goto done;
+#endif
 	}
 	else{
 	    if ((fd = open(_state_file, O_RDONLY)) < 0){

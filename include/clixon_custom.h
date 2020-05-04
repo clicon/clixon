@@ -132,5 +132,5 @@
  * This is a temporary option which will go away in future releases, therefore 
  * marked as obsolete.";
  */
-#undef USE_STATE_PATH_KLUDGE
+#define USE_STATE_PATH_KLUDGE
 

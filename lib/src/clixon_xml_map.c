@@ -1603,7 +1603,7 @@ xml_merge(cxobj     *x0,
 	/* See if there is a corresponding node (x1c) in the base tree (x0) */
 	if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
 	    goto done;
-	/* Save x0c, x1c, yc and merge in second wave, so that x1c entries dont "interfer"
+	/* Save x0c, x1c, yc and merge in second wave, so that x1c entries don't "interfere"
 	 * with itself, ie that later searches are among earlier objects already added
 	 * to x0 */
 	twophase[i].mt_x0c = x0c;
