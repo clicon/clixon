@@ -126,12 +126,3 @@
  */
 #undef USE_CLIGEN44
 
-/*! Check runtime CLICON_STATE_PATH_KLUDGE option
- * For get state commands, if the select xpath is equal (or its beginning)
- * is equal to the path in this option, then yang binding, sorting, default 
- * values is skipped.
- * This is a temporary option which will go away in future releases, therefore 
- * marked as obsolete.";
- */
-#undef USE_STATE_PATH_KLUDGE
-

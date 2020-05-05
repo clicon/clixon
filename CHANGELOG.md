@@ -28,6 +28,12 @@ Expected: May 2020
 
 * NACM RFC8341 datanode read and write paths
   * This completes the NACM RPC and Data node access checks (only remaining NACM access point is notification)
+* Added functionality to restart an individual plugin.
+  * New clixon-lib:restart-plugin RPC
+* Two new plugin callbacks added
+  * ca_daemon: Called just after a server has "daemonized", ie put in background.
+  * ca_trans_commit_done: Called when all plugin commits have been done.
+    * Note: If you have used "end" callback and usign transaction data, you should probably use this instead.
   
 ### API changes on existing protocol/config features (You may have have to change how you use Clixon)
 
@@ -50,8 +56,6 @@ Expected: May 2020
 
 ### Minor changes
 
-* Added functionality to restart an individual plugin.
-  * New clixon-lib:restart-plugin RPC
 * Added option `CLICON_YANG_UNKNOWN_ANYDATA` to treat unknown XML (wrt YANG) as anydata.
   * This is to be (very) forgiving but you need to accept eg unsynchronized YANG and XML
 * Compile-time option: `USE_CLIGEN44` for running clixon-45 with cligen-44.
@@ -65,11 +69,6 @@ Expected: May 2020
   * Cleared startup-db cache after restart
   * Experimental optimzations of yang-bind and sort for large lists
     * Enabled by compile-time options: `OPTIMIZE_45_BIND` and `OPTIMIZE_45_SORT`
-* Experimental: restart_plugin
-* Two new plugin callbacks added
-  * ca_daemon: Called just after a server has "daemonized", ie put in background.
-  * ca_trans_commit_done: Called when all plugin commits have been done.
-    * Note: If you have used "end" callback and usign transaction data, you should probably use this instead.
 * Adapted to CLIgen 4.5 API changes, eg: `cliread()` and  `cliread_parse()`
 * Renamed utility function `clixon_util_insert()` to `clixon_util_xml_mod()` and added merge functionality.
 * Sanity check of duplicates prefixes in Yang modules and submodules as defined in RFC 7950 Sec 7.1.4

@@ -1430,8 +1430,14 @@ xml_merge1(cxobj              *x0,  /* the target */
 	nsc = cvec_dup(nscache_get_all(x1));
 	if (xml_rm(x1) < 0)
 	    goto done;
-	if (xml_insert(x0p, x1, INS_LAST, NULL, NULL) < 0)
-	    goto done;
+	/* This is to make the anydata case a little more robust, more could be done */
+        if (xml_spec(x1) == NULL){
+            if (xml_addsub(x0p, x1) < 0)
+                goto done;
+        }
+        else
+	    if (xml_insert(x0p, x1, INS_LAST, NULL, NULL) < 0)
+		goto done;
 	cv = NULL;
 	while ((cv = cvec_each(nsc, cv)) != NULL){
 	    px = cv_name_get(cv);

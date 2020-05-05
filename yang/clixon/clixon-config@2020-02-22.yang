@@ -727,17 +727,5 @@ module clixon-config {
                          data to store before dropping. 0 means no retention";
 
 	}
-	leaf CLICON_STATE_PATH_KLUDGE {
-	    type string;
-	    status obsolete;
-	    description
-		"For get state commands, if the select xpath is equal (or its beginning)
-                 is equal to the path in this option, then yang binding, sorting, default 
-                 values is skipped. 
-                 Note you need to set USE_STATE_PATH_KLUDGE compile option
-                 This is a temporary option which will go away in future releases, therefore 
-                 marked as obsolete.";
-	}
-	
     }
 }

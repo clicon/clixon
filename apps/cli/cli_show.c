@@ -630,7 +630,7 @@ show_conf_xpath(clicon_handle h,
     namespace = cv_string_get(cv);
     if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
 	goto done;
-#if 0 /* Use state get intead of config (XXX: better use this but test_cli.sh fails) */
+#if 0 /* Use state get instead of config (XXX: better use this but test_cli.sh fails) */
     if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
     	goto done;
 #else
