@@ -576,12 +576,9 @@ main(int argc, char **argv)
 
 	treeref = clicon_cli_model_treename(h);
 	/* Create cli command tree from dbspec */
-	if (yang2cli(h, yspec, &pt, clicon_cli_genmodel_type(h)) < 0)
+	if (yang2cli(h, yspec, clicon_cli_genmodel_type(h), printgen, &pt) < 0)
 	    goto done;
 	cligen_tree_add(cli_cligen(h), treeref, pt);
-
-	if (printgen)
-	    pt_print(stdout, pt, 1); /* pt_print */
     }
 
     /* Initialize cli syntax */
@@ -619,10 +616,8 @@ main(int argc, char **argv)
     /* Join rest of argv to a single command */
     restarg = clicon_strjoin(argc, argv, " ");
 
-#if 0 /* Unsure for why this is enabled by default, turned off in clixon 4.5? */
     /* If several cligen object variables match same preference, select first */
     cligen_preference_mode_set(cli_cligen(h), 1);
-#endif
 
     /* Call start function in all plugins before we go interactive 
      */

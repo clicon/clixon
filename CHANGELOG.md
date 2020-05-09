@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [4.5.0](#440) Expected: May 2020
+* [4.5.0](#450) Expected: May 2020
 * [4.4.0](#440) 5 April 2020
 * [4.3.0](#430) 1 January 2020
   * [4.3.3](#433) 
@@ -44,6 +44,7 @@ Expected: May 2020
   * Added: restart-plugin RPC for restarting individual plugins without restarting backend.
 * xml-stats moved from clixon-config.yang as state data to an rpc `datastats` in clixon-lib.yang 
 * Stricter incoming RPC sanity checking, error messages may have changed.
+* Changed output of `clixon_cli -G` option to show generated CLI spec original text instead of resulting parse-tree, which gives better detail from a debugging perspective.
 
 ### C-API changes on existing features (you may need to change your plugin C-code)
 
@@ -57,7 +58,7 @@ Expected: May 2020
 ### Minor changes
 
 * Added option `CLICON_YANG_UNKNOWN_ANYDATA` to treat unknown XML (wrt YANG) as anydata.
-  * This is to be (very) forgiving but you need to accept eg unsynchronized YANG and XML
+  * This is a way to loosen sanity checks if you need to accept eg unsynchronized YANG and XML
 * Compile-time option: `USE_CLIGEN44` for running clixon-45 with cligen-44.
   * Temporary fix since cligen-45 have some non-backward compatible behaviour.
 * Optimizations

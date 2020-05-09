@@ -907,10 +907,11 @@ yang2cli_stmt(clicon_handle h,
 }
 
 /*! Generate CLI code for Yang specification
- * @param[in]  h     Clixon handle
- * @param[in]  yspec Yang specification
- * @param[out] ptnew CLIgen parse-tree
- * @param[in]  gt    CLI Generate style
+ * @param[in]  h        Clixon handle
+ * @param[in]  yspec    Yang specification
+ * @param[in]  gt       CLI Generate style
+ * @param[in]  printgen Log generated CLIgen syntax
+ * @param[out] ptnew    CLIgen parse-tree
  *
  * Code generation styles:
  *    VARS: generate keywords for regular vars only not index
@@ -919,8 +920,9 @@ yang2cli_stmt(clicon_handle h,
 int
 yang2cli(clicon_handle      h, 
 	 yang_stmt         *yspec, 
-	 parse_tree        *ptnew, 
-	 enum genmodel_type gt)
+	 enum genmodel_type gt,
+	 int                printgen,
+	 parse_tree        *ptnew)
 {
     cbuf           *cb = NULL;
     int             retval = -1;
@@ -936,7 +938,10 @@ yang2cli(clicon_handle      h,
     while ((ymod = yn_each(yspec, ymod)) != NULL)
 	if (yang2cli_stmt(h, ymod, gt, 0, cb) < 0)
 	    goto done;
-    clicon_debug(2, "%s: buf\n%s\n", __FUNCTION__, cbuf_get(cb));
+    if (printgen)
+	clicon_log(LOG_NOTICE, "%s: Generated CLI spec:\n%s", __FUNCTION__, cbuf_get(cb));
+    else
+	clicon_debug(2, "%s: buf\n%s\n", __FUNCTION__, cbuf_get(cb));
     /* Parse the buffer using cligen parser. XXX why this?*/
     if ((globals = cvec_new(0)) == NULL)
 	goto done;

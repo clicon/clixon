@@ -224,5 +224,5 @@ rwxr-xr-x 1 www-data www-data 0 sep 22 11:46 /www-data/fastcgi_restconf.sock
 
 You can set debug level of the backend via restconf:
 ```
-   url -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-lib:input":{"level":1}}' http://localhost/restconf/operations/clixon-lib:debug
+   curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-lib:input":{"level":1}}' http://localhost/restconf/operations/clixon-lib:debug
 ```
