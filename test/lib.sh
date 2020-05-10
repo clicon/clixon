@@ -345,20 +345,23 @@ expecteq(){
 
 # Evaluate and return
 # like expecteq but partial match is OK
-# Example: expectpart $(fn arg) 0 "my return"
+# Example: expectpart $(fn arg) 0 "my return" -- "foo"
 # - evaluated expression
 # - expected command return value (0 if OK)
 # - expected stdout outcome*
+# - the token "--not--"
+# - not expected stdout outcome*
 # @note need to escape \[\]
 expectpart(){
   r=$?
   ret=$1
   retval=$2
   expect=$3
+
 #  echo "r:$r"
 #  echo "ret:\"$ret\""
 #  echo "retval:$retval"
-#  echo "expect:$expect"
+#  echo "expect:\"$expect\""
   if [ $r != $retval ]; then
       echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
       echo -e "\e[0m:"
@@ -367,15 +370,26 @@ expectpart(){
   if [ -z "$ret" -a -z "$expect" ]; then
       return
   fi
-  # Loop over all variable args expect strings
+  # Loop over all variable args expect strings (skip first two args)
+  # note that "expect" var is never actually used
+  # Then test positive for strings, if the token --neg-- is detected, then test negative for the rest
+  positive=true;
   let i=0;
   for exp in "$@"; do
-       if [ $i -gt 1 ]; then
+      if [ "$exp" == "--not--" ]; then
+	  positive=false;
+      elif [ $i -gt 1 ]; then
 #	   echo "echo \"$ret\" | grep --null -o \"$exp"\"
 	   match=$(echo "$ret" | grep --null -o "$exp") # XXX -EZo: -E cant handle {}
 	   r=$? 
-	   if [ $r != 0 ]; then
-	       err "$exp" "$ret"
+	   if $positive; then
+	       if [ $r != 0 ]; then
+		   err "$exp" "$ret"
+	       fi
+	   else
+	       if [ $r == 0 ]; then
+		   err "not $exp" "$ret"
+	       fi
 	   fi
        fi
        let i++;
@@ -384,7 +398,6 @@ expectpart(){
 #      err "$expect" "$ret"
 #  fi
 }
-
 
 # Pipe stdin to command
 # Arguments:

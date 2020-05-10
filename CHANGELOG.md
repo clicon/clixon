@@ -57,6 +57,8 @@ Expected: May 2020
 
 ### Minor changes
 
+* Added decriptive error message when plugins produce invalid state XML.
+  * Example: `<error-tag>operation-failed</error-tag><error-info><bad-element>mystate</bad-element></error-info><error-message>No such yang module. Internal error, state callback returned invalid XML: example_backend</error-message>`
 * Added option `CLICON_YANG_UNKNOWN_ANYDATA` to treat unknown XML (wrt YANG) as anydata.
   * This is a way to loosen sanity checks if you need to accept eg unsynchronized YANG and XML
 * Compile-time option: `USE_CLIGEN44` for running clixon-45 with cligen-44.

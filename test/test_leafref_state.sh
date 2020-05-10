@@ -167,10 +167,10 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply
 
 # Leafref wrong
 new "netconf get / config+state should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="all"><filter type="xpath" select="/"/></get></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>x</bad-element></error-info><error-severity>error</error-severity><error-message>Leafref validation failed: No leaf x matching path /ex:sender-config/ex:name Internal error, state callback returned invalid XML</error-message></rpc-error></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="all"><filter type="xpath" select="/"/></get></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>x</bad-element></error-info><error-severity>error</error-severity><error-message>Leafref validation failed: No leaf x matching path /ex:sender-config/ex:name. Internal error, state callback returned invalid XML</error-message></rpc-error></rpc-reply>]]>]]>$'
 
 new "netconf get / state-only should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"><filter type="xpath" select="/"/></get></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>x</bad-element></error-info><error-severity>error</error-severity><error-message>Leafref validation failed: No leaf x matching path /ex:sender-config/ex:name Internal error, state callback returned invalid XML</error-message></rpc-error></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"><filter type="xpath" select="/"/></get></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>x</bad-element></error-info><error-severity>error</error-severity><error-message>Leafref validation failed: No leaf x matching path /ex:sender-config/ex:name. Internal error, state callback returned invalid XML</error-message></rpc-error></rpc-reply>]]>]]>$'
 
 new "netconf get / config-only ok"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="config"><filter type="xpath" select="/"/></get></rpc>]]>]]>' '^<rpc-reply><data><sender-config xmlns="urn:example:example"><name>y</name></sender-config></data></rpc-reply>]]>]]>$'

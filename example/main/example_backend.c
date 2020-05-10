@@ -364,13 +364,23 @@ example_statedata(clicon_handle h,
 #endif
 	}
 	else{
+	    cxobj *x1;
 	    if ((fd = open(_state_file, O_RDONLY)) < 0){
 		clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
 		goto done;
 	    }
-	    if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xstate, NULL) < 0)
+	    if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
 		goto done;
 	    close(fd);
+	    if ((x1 = xpath_first(xt, nsc, "%s", xpath)) != NULL){
+		xml_flag_set(x1, XML_FLAG_MARK);
+		/* Remove everything that is not marked */
+		if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
+		    goto done;
+		xml_flag_reset(x1, XML_FLAG_MARK);
+		if (xml_copy(xt, xstate) < 0)
+		    goto done;
+	    }
 	}
     }
     else {

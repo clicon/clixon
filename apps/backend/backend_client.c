@@ -284,7 +284,7 @@ clixon_stats_get_db(clicon_handle h,
 	if (xml_stats(xt, &nr, &sz) < 0)
 	    goto done;
 	cprintf(cb, "<datastore><name>%s</name><nr>%" PRIu64 "</nr>"
-		"<size>%" PRIu64 "</size></datastore>",
+		"<size>%zu</size></datastore>",
 		dbname, nr, sz);
     }
     retval = 0;
@@ -977,8 +977,6 @@ from_client_get(clicon_handle h,
     yang_stmt      *yspec;
     int             i;
     cxobj          *xerr = NULL;
-    cxobj          *xr;
-    cxobj          *xb;
     int             ret;
     
     clicon_debug(1, "%s", __FUNCTION__);
@@ -1064,21 +1062,16 @@ from_client_get(clicon_handle h,
 	 */
 	if ((ret = xml_yang_validate_all_top(h, xret, &xerr)) < 0) 
 	    goto done;
-	if (ret > 0 && (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
+	if (ret > 0 &&
+	    (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    if (debug)
 		clicon_log_xml(LOG_DEBUG, xret, "VALIDATE_STATE");
-	    if ((xr = xpath_first(xerr, NULL, "//error-tag")) != NULL &&
-		(xb = xml_body_get(xr))){
-		if (xml_value_set(xb, "operation-failed") < 0)
-		    goto done;
-	    }
-	    if ((xr = xpath_first(xerr, NULL, "//error-message")) != NULL &&
-		(xb = xml_body_get(xr))){
-		if (xml_value_append(xb, " Internal error, state callback returned invalid XML") < 0)
-		    goto done;
-	    }
+	    if (clixon_netconf_internal_error(xerr,
+					      ". Internal error, state callback returned invalid XML",
+					      NULL) < 0)
+		goto done;
 	    if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
 		goto done;
 	    goto ok;

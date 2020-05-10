@@ -83,6 +83,7 @@ module $APPNAME{
 }
 EOF
 
+# Mixed config + state XML
 new "generate state file with $perfnr list entries"
 echo -n "<interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b>" > $fstate
 for (( i=0; i<$perfnr; i++ )); do  

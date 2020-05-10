@@ -374,6 +374,10 @@ clicon_rpc_get_config(clicon_handle h,
 	if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
+	    if (clixon_netconf_internal_error(xerr,
+					      ". Internal error, backend returned invalid XML.",
+					      NULL) < 0)
+		goto done;
 	    if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
 		clicon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
 		goto done;
@@ -730,7 +734,10 @@ clicon_rpc_get(clicon_handle   h,
 	if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    assert(xerr != NULL);
+	    if (clixon_netconf_internal_error(xerr,
+					      ". Internal error, backend returned invalid XML.",
+					      NULL) < 0)
+		goto done;
 	    if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
 		clicon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
 		goto done;

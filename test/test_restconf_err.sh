@@ -15,6 +15,9 @@
 # Note this is different from an api-path that is invalid from a yang point
 # of view, this is interpreted as 400 Bad Request invalid-value/unknown-element
 # XXX: complete non-existent yang with unknown-element for all PUT/POST/GET api-paths
+#
+# Also generate an invalid state XML. This should generate an "Internal" error and the name of the
+# plugin should be visible in the error message.
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -25,6 +28,7 @@ cfg=$dir/conf.xml
 fyang=$dir/example.yang
 fyang2=$dir/augment.yang
 fxml=$dir/initial.xml
+fstate=$dir/state.xml
 
 #  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
 cat <<EOF > $cfg
@@ -36,6 +40,8 @@ cat <<EOF > $cfg
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>$dir/restconf.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
+  <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -103,7 +109,30 @@ module example{
          }
       }
    }
+   container mystate{
+      config false;
+      description "Just for generating a invalid XML";
+      list parameter{
+         key name;
+ 	 leaf name{
+	    type string;
+	 }
+	 leaf value{
+	    type string;
+	 }
+      }
+   }
 }
+EOF
+
+# State file with error: wrong namespace
+cat <<EOF > $fstate
+<mystate xmlns="urn:example:foobar">
+   <parameter>
+      <name>x</name>
+      <value>x</value>
+   </parameter>
+</mystate>
 EOF
 
 # Initial tree
@@ -121,28 +150,29 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     sudo pkill -f clixon_backend # to be sure
-    new "start backend -s init -f $cfg"
-    start_backend -s init -f $cfg
+    new "start backend -s init -f $cfg -- -sS $fstate"
+    start_backend -s init -f $cfg  -- -sS $fstate
 fi
 
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    sudo pkill -u $wwwuser -f clixon_restconf
 
-new "start restconf daemon"
-start_restconf -f $cfg
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
-new "waiting"
-wait_restconf
+    new "waiting"
+    wait_restconf
+fi
 
 new "restconf POST initial tree"
-expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+xml' -d "$XML" http://localhost/restconf/data)" 0 ''
+expectpart "$(curl -si -X POST -H 'Content-Type: application/yang-data+xml' -d "$XML" http://localhost/restconf/data)" 0 'HTTP/1.1 201 Created'
 
 new "restconf GET initial datastore"
-expecteq "$(curl -s -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/example:a=0)" 0 "$XML
-"
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/example:a=0)" 0 'HTTP/1.1 200 OK' "$XML"
 
 new "restconf GET non-qualified list"
 expectpart "$(curl -si -X GET http://localhost/restconf/data/example:a)" 0 'HTTP/1.1 400 Bad Request' "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"rpc\",\"error-tag\":\"malformed-message\",\"error-severity\":\"error\",\"error-message\":\"malformed key =example:a, expected '=restval'\"}}}"
@@ -165,7 +195,7 @@ expectpart "$(curl -is -X POST -H 'Content-Type: application/yang-data+xml' -d "
 
 # Test for multi-module path where an augment stretches across modules
 new "restconf POST augment multi-namespace path"
-expecteq "$(curl -s -X POST -H 'Content-Type: application/yang-data+xml' -d '<route-config xmlns="urn:example:aug"><dynamic><ospf xmlns="urn:example:clixon"><reference-bandwidth>23</reference-bandwidth></ospf></dynamic></route-config>' http://localhost/restconf/data)" 0 ''
+expectpart "$(curl -si -X POST -H 'Content-Type: application/yang-data+xml' -d '<route-config xmlns="urn:example:aug"><dynamic><ospf xmlns="urn:example:clixon"><reference-bandwidth>23</reference-bandwidth></ospf></dynamic></route-config>' http://localhost/restconf/data)" 0 'HTTP/1.1 201 Created'
 
 new "restconf GET augment multi-namespace top"
 expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-config)" 0 'HTTP/1.1 200 OK' '{"augment:route-config":{"dynamic":{"example:ospf":{"reference-bandwidth":23}}}}'
@@ -183,8 +213,15 @@ expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-confi
 new "restconf GET augment multi-namespace, no 2nd module in api-path, fail"
 expectpart "$(curl -si -X GET http://localhost/restconf/data/augment:route-config/dynamic/ospf)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
-new "Kill restconf daemon"
-stop_restconf 
+#----------------------------------------------
+# Also generate an invalid state XML. This should generate an "Internal" error and the name of the
+new "restconf GET failed state"
+expectpart "$(curl -si -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data?content=nonconfig)" 0 '412 Precondition Failed' '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>mystate</bad-element></error-info><error-severity>error</error-severity><error-message>No such yang module. Internal error, state callback returned invalid XML: example_backend</error-message></error></errors>'
+
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE

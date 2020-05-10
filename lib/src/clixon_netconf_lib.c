@@ -1546,3 +1546,42 @@ clixon_netconf_error_fn(const char *fn,
 	cbuf_free(cb);
     return retval;
 }
+
+/*! Add internal error info to existing netconf error message by rewriting
+ *
+ * If a eg sanity check detects errors in internal messages passing, such as from a plugin or
+ * in backend communication, an error is generated. However, it does not make sense to send this
+ * error message as-is to the requestor. Instead this function transforms the error to a more
+ * generic "operation-failed" error and adds info in its error message to say it is an internal error.
+ * If a requestor receives such an error, it will be clear that the error is internal.
+ * @param[in]  xerr    Netconf error xml tree on the form: <rpc-error> 
+ * @param[in]  msg     Error message
+ * @param[in]  arg     Extra error message (consider stdarg?)
+ * @retval     0       OK
+ * @retval     -1      Error
+ */
+int
+clixon_netconf_internal_error(cxobj *xerr,
+			      char  *msg,
+			      char  *arg)
+{
+    int    retval = -1;
+    cxobj *xr;
+    cxobj *xb;
+
+    if ((xr = xpath_first(xerr, NULL, "//error-tag")) != NULL &&
+	(xb = xml_body_get(xr))){
+	if (xml_value_set(xb, "operation-failed") < 0)
+	    goto done;
+    }
+    if ((xr = xpath_first(xerr, NULL, "//error-message")) != NULL &&
+	(xb = xml_body_get(xr))){
+	if (xml_value_append(xb, msg) < 0)
+	    goto done;
+	if (arg &&xml_value_append(xb, arg) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}

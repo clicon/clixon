@@ -230,6 +230,7 @@ clixon_plugin_statedata_all(clicon_handle    h,
     cxobj          *x = NULL;
     clixon_plugin  *cp = NULL;
     cbuf           *cberr = NULL; 
+    cxobj          *xerr = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
@@ -249,8 +250,18 @@ clixon_plugin_statedata_all(clicon_handle    h,
 	    clicon_log_xml(LOG_DEBUG, x, "%s STATE:", __FUNCTION__);
 #endif
 	/* XXX: ret == 0 invalid yang binding should be handled as internal error */
-	if (xml_bind_yang(x, YB_MODULE, yspec, NULL) < 0)
+	if ((ret = xml_bind_yang(x, YB_MODULE, yspec, &xerr)) < 0)
 	    goto done;
+	if (ret == 0){
+	    if (clixon_netconf_internal_error(xerr,
+					      ". Internal error, state callback returned invalid XML: ",
+					      cp->cp_name) < 0)
+		goto done;
+	    xml_free(*xret);
+	    *xret = xerr;
+	    xerr = NULL;
+	    goto fail;
+	}
 	if (xml_sort_recurse(x) < 0)
 	    goto done;
 	if (xml_default_recurse(x) < 0)
@@ -266,6 +277,8 @@ clixon_plugin_statedata_all(clicon_handle    h,
     } /* while plugin */
     retval = 1;
  done:
+    if (xerr)
+	xml_free(xerr);
     if (cberr)
 	cbuf_free(cberr);
     if (x)
