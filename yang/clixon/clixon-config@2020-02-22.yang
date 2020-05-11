@@ -40,8 +40,6 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
-    /* 	    Deleted:  clixon-stats state for clixon XML and memory statistics. (moved to clixon-lib)
-     */
     revision 2020-02-22 {
 	description
 	    "Added: search index extension,
@@ -313,14 +311,6 @@ module clixon-config {
                    The 'key' statement, which MUST be present if the list represents configuration.
                  Some yang specs seem not to fulfil this. However, if you reset this, there may
                  be follow-up errors due to code that assumes a configuration list has keys";
-	}
-	leaf CLICON_YANG_UNKNOWN_ANYDATA{
-	    type boolean;
-	    default false;
-	    description
-		"Treat unknown XML/JSON nodes as anydata. 
-                 This does not apply to namespaces, which means a top-level node: xxx:yyy
-                 is accepted only if yyy is unknown, not xxx";
 	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;
@@ -726,6 +716,35 @@ module clixon-config {
 	    description "Retention for stream replay buffers in seconds, ie how much
                          data to store before dropping. 0 means no retention";
 
+	}
+    }
+    container clixon-stats{
+	config false;
+	description "Clixon backend statistics.";
+	container global{
+	    description "Clixon global statistics";
+	    leaf xmlnr{
+		description "Number of XML objects. That is number of residing xml/json objects
+                             in the internal 'cxobj' representation.";
+		type uint64;
+	    }
+	}
+	list datastore{
+	    description "Datastore statistics";
+	    key "name";
+	    leaf name{
+		description "name of datastore (eg running).";
+		type string;
+	    }
+	    leaf nr{
+		description "Number of XML objects. That is number of residing xml/json objects
+                             in the internal 'cxobj' representation.";
+		type uint64;
+	    }
+	    leaf size{
+		description "Size in bytes of internal datastore cache of datastore tree.";
+		type uint64;
+	    }
 	}
     }
 }

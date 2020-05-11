@@ -38,11 +38,14 @@ Expected: May 2020
 ### API changes on existing protocol/config features (You may have have to change how you use Clixon)
 
 * Stricter validation detecting duplicate container or leaf in XML.
-  * Eg `<x><a/><a/></x>` is invalid if `a` is anything else than leaf or leaf-list
+  * Eg `<x><a/><a/></x>` is invalid if `a` is a leaf or container.
 * New clixon-lib@2020-04-23.yang revision
   * Added: stats RPC for clixon XML and memory statistics.
   * Added: restart-plugin RPC for restarting individual plugins without restarting backend.
-* xml-stats moved from clixon-config.yang as state data to an rpc `datastats` in clixon-lib.yang 
+* New clixon-config@2020-04-23.yang revision
+  * Removed xml-stats non-config data (replaced by rpc `stats` in clixon-lib.yang)
+  * Added option `CLICON_YANG_UNKNOWN_ANYDATA` to treat unknown XML (wrt YANG) as anydata.
+    * This is a way to loosen sanity checks if you need to accept eg unsynchronized YANG and XML
 * Stricter incoming RPC sanity checking, error messages may have changed.
 * Changed output of `clixon_cli -G` option to show generated CLI spec original text instead of resulting parse-tree, which gives better detail from a debugging perspective.
 
@@ -59,8 +62,6 @@ Expected: May 2020
 
 * Added decriptive error message when plugins produce invalid state XML.
   * Example: `<error-tag>operation-failed</error-tag><error-info><bad-element>mystate</bad-element></error-info><error-message>No such yang module. Internal error, state callback returned invalid XML: example_backend</error-message>`
-* Added option `CLICON_YANG_UNKNOWN_ANYDATA` to treat unknown XML (wrt YANG) as anydata.
-  * This is a way to loosen sanity checks if you need to accept eg unsynchronized YANG and XML
 * Compile-time option: `USE_CLIGEN44` for running clixon-45 with cligen-44.
   * Temporary fix since cligen-45 have some non-backward compatible behaviour.
 * Optimizations

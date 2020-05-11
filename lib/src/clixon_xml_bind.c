@@ -88,9 +88,9 @@ static int _yang_unknown_anydata = 0;
  * The problem with this is that its global and shuld be bound to a handle
  */
 int
-xml_bind_yang_unknown_anydata(int bool)
+xml_bind_yang_unknown_anydata(int val)
 {
-    _yang_unknown_anydata = bool;
+    _yang_unknown_anydata = val;
     return 0;
 }
 
