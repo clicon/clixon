@@ -141,7 +141,7 @@ clicon_err_reset(void)
  * @param[in]    fn       Inline function name (when called from clicon_err() macro)
  * @param[in]    line     Inline file line number (when called from clicon_err() macro)
  * @param[in]    category Clixon error category, See enum clicon_err
- * @param[in]    errno    Error number, typically errno
+ * @param[in]    suberr   Error number, typically errno
  * @param[in]    reason   Error string, format with argv
  * @see clicon_err_reser  Resetting the global error variables.
  */

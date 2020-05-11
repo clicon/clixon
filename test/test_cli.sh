@@ -80,6 +80,7 @@ expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 ipv4 address 1
 
 new "cli configure ip descr"
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 description mydesc" 0 "^$"
+
 new "cli configure ip type"
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 type ex:eth" 0 "^$"
 

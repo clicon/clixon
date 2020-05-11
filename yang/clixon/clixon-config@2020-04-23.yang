@@ -13,6 +13,7 @@ module clixon-config {
       "Clixon configuration file
        ***** BEGIN LICENSE BLOCK *****
        Copyright (C) 2009-2019 Olof Hagsand
+       Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
        
        This file is part of CLIXON
 
@@ -39,6 +40,22 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    /* 	    Deleted:  clixon-stats state for clixon XML and memory statistics. (moved to clixon-lib)
+     */
+    revision 2020-04-23 {
+	description
+	    "Added: CLICON_YANG_UNKNOWN_ANYDATA  to treat unknown XML (wrt YANG) as anydata.
+             Deleted: xml-stats non-config data (replaced by rpc stats in clixon-lib.yang)";
+    }
+    revision 2020-02-22 {
+	description
+	    "Added: search index extension,
+             Added: clixon-stats state for clixon XML and memory statistics.
+             Added: CLICON_CLI_BUF_START and CLICON_CLI_BUF_THRESHOLD for quadratic and linear
+                    growth of CLIgen buffers (cbuf:s)
+             Added: CLICON_VALIDATE_STATE_XML for controling validation of user state XML
+	     Added: CLICON_CLICON_YANG_LIST_CHECK to skip list key checks";
+    }
     revision 2019-09-11 {
 	description
 	    "Added: CLICON_BACKEND_USER: drop of privileges to user,
@@ -66,6 +83,10 @@ module clixon-config {
     revision 2018-10-21 {
 	description
 	    "Released in Clixon 3.8";
+    }
+    extension search_index {
+      description "This list argument acts as a search index using optimized binary search.
+                  ";
     }
     typedef startup_mode{
 	description
@@ -289,6 +310,23 @@ module clixon-config {
                  There is a 'good-enough' posix translation mode and a complete
                  libxml2 mode";
 	}
+	leaf CLICON_YANG_LIST_CHECK {
+	    type boolean;
+	    default true;
+	    description
+		"If false, skip Yang list check sanity checks from RFC 7950, Sec 7.8.2: 
+                   The 'key' statement, which MUST be present if the list represents configuration.
+                 Some yang specs seem not to fulfil this. However, if you reset this, there may
+                 be follow-up errors due to code that assumes a configuration list has keys";
+	}
+	leaf CLICON_YANG_UNKNOWN_ANYDATA{
+	    type boolean;
+	    default false;
+	    description
+		"Treat unknown XML/JSON nodes as anydata. 
+                 This does not apply to namespaces, which means a top-level node: xxx:yyy
+                 is accepted only if yyy is unknown, not xxx";
+	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;
 	    description
@@ -440,6 +478,25 @@ module clixon-config {
                  Also, if CLICON_CLI_HIST_FILE is set, also the size in lines
                  of the saved history.";
 	}
+	leaf CLICON_CLI_BUF_START {
+	    type uint32;
+	    default 256;
+	    description
+		"CLIgen buffer (cbuf) initial size. 
+                 When the buffer needs to grow, the allocation grows quadratic up to a threshold
+                 after which linear growth continues. 
+                 See CLICON_CLI_BUF_THRESHOLD";
+	}
+	leaf CLICON_CLI_BUF_THRESHOLD {
+	    type uint32;
+	    default 65536;
+	    description
+		"CLIgen buffer (cbuf) threshold size.
+                 When the buffer exceeds the threshold, the allocation grows by adding the threshold
+                 value to the buffer length.
+                 If 0, the growth continues with quadratic growth.
+                 See CLICON_CLI_BUF_THRESHOLD";
+	}	
 	leaf CLICON_SOCK_FAMILY {
 	    type string;
 	    default "UNIX";
@@ -552,6 +609,20 @@ module clixon-config {
                          If CLICON_XML_CHANGELOG is true, Clixon
                          reads the module changelog from this file.";
 	}
+	leaf CLICON_VALIDATE_STATE_XML {
+	    type boolean;
+	    default false;
+	    description
+		"Validate user state callback content.
+                 Users may register state callbacks using ca_statedata callback
+                 When set, the XML returned from the callback is validated after merging with 
+                 the running db. If it fails, an internal error is returned to the originating 
+                 user.
+                 If the option is not set, the XML returned by the user is not validated.
+                 Note that enabling currently causes a large performance overhead for large
+                 lists, therefore it is recommended to enable it during development and debugging
+                 but disable it in production, until this has been resolved.";
+	}
 	leaf CLICON_STARTUP_MODE {
 	    type startup_mode;
 	    description "Which method to boot/start clicon backend";
@@ -560,7 +631,9 @@ module clixon-config {
 	    type boolean;
 	    default false;
 	    description "If set, modifications in validation and commit 
-                         callbacks are written back into the datastore";
+                         callbacks are written back into the datastore.
+                         This is a bad idea and therefore obsoleted.";
+	    status obsolete;
 	}
 	leaf CLICON_NACM_MODE {
 	    type nacm_mode;
@@ -659,6 +732,5 @@ module clixon-config {
                          data to store before dropping. 0 means no retention";
 
 	}
-
     }
 }

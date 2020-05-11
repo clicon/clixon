@@ -143,7 +143,6 @@ xml_cv_cache(cxobj   *x,
     return retval;
 }
 
-#ifdef OPTIMIZE_45_SORT
 static int
 xml_cv_cache_clear(cxobj *xt)
 {
@@ -157,7 +156,6 @@ xml_cv_cache_clear(cxobj *xt)
  done:
     return retval;
 }
-#endif /* OPTIMIZE_45_SORT */
 
 /*! Help function to qsort for sorting entries in xml child vector same parent
  * @param[in]  x1    object 1
@@ -433,7 +431,6 @@ xml_sort_recurse(cxobj *xn)
     cxobj *x;
     int    ret;
     
-#ifdef OPTIMIZE_45_SORT
     ret = xml_sort_verify(xn, NULL);
     if (ret == 1) /* This node is not sortable */
 	goto ok;
@@ -445,12 +442,6 @@ xml_sort_recurse(cxobj *xn)
     }
     if (xml_cv_cache_clear(xn) < 0)
 	goto done;
-#else
-    if ((ret = xml_sort(xn)) < 0)
-	goto done;
-    if (ret == 1) /* This node is not sortable */
-	goto ok;
-#endif
     x = NULL;
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
 	if (xml_sort_recurse(x) < 0)

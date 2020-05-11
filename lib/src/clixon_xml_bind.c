@@ -88,9 +88,9 @@ static int _yang_unknown_anydata = 0;
  * The problem with this is that its global and shuld be bound to a handle
  */
 int
-xml_bind_yang_unknown_anydata(int bool)
+xml_bind_yang_unknown_anydata(int val)
 {
-    _yang_unknown_anydata = bool;
+    _yang_unknown_anydata = val;
     return 0;
 }
 
@@ -128,9 +128,7 @@ strip_whitespace(cxobj *xt)
  */
 static int
 populate_self_parent(cxobj  *xt,
-#ifdef OPTIMIZE_45_BIND
 		     cxobj  *xsibling,
-#endif
 		     cxobj **xerr)
 {
     int        retval = -1;
@@ -143,14 +141,12 @@ populate_self_parent(cxobj  *xt,
     cbuf      *cb = NULL;
 
     name = xml_name(xt);
-#ifdef OPTIMIZE_45_BIND
     /* optimization for massive lists - use the first element as role model */
     if (xsibling &&
 	xml_child_nr_type(xt, CX_ATTR) == 0){
 	y = xml_spec(xsibling);
 	goto set;
     }
-#endif
     xp = xml_parent(xt);
     if (xp == NULL){
 	if (xerr &&
@@ -202,9 +198,7 @@ populate_self_parent(cxobj  *xt,
 	    goto done;
 	goto fail;
     }
-#ifdef OPTIMIZE_45_BIND
  set:
-#endif
     xml_spec_set(xt, y);
 #ifdef XML_EXPLICIT_INDEX
     if (xml_search_index_p(xt))
@@ -354,7 +348,6 @@ xml_bind_yang(cxobj     *xt,
     goto done;
 }
 
-#ifdef OPTIMIZE_45_BIND
 int
 xml_bind_yang0_opt(cxobj     *xt, 
 		   yang_bind  yb,
@@ -424,8 +417,6 @@ xml_bind_yang0_opt(cxobj     *xt,
     retval = 0;
     goto done;
 }
-#endif /* OPTIMIZE_45_BIND */
-
 
 /*! Find yang spec association of tree of XML nodes
  *
@@ -455,11 +446,7 @@ xml_bind_yang0(cxobj     *xt,
 	    goto done;
 	break;
     case YB_PARENT:
-	if ((ret = populate_self_parent(xt,
-#ifdef OPTIMIZE_45_BIND
-					NULL,
-#endif
-					xerr)) < 0)
+	if ((ret = populate_self_parent(xt, NULL, xerr)) < 0)
 	    goto done;
 	break;
     case YB_NONE:
@@ -477,13 +464,8 @@ xml_bind_yang0(cxobj     *xt,
     strip_whitespace(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-#ifdef OPTIMIZE_45_BIND
 	if ((ret = xml_bind_yang0_opt(xc, YB_PARENT, NULL, xerr)) < 0)
 	    goto done;
-#else
-	if ((ret = xml_bind_yang0(xc, YB_PARENT, NULL, xerr)) < 0)
-	    goto done;
-#endif
 	if (ret == 0)
 	    failed++;
     }
