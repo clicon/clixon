@@ -810,7 +810,6 @@ from_client_validate(clicon_handle h,
     return retval;
 } /* from_client_validate */
 
-#ifdef RESTART_PLUGIN_RPC
 /*! Restart specific backend plugins without full backend restart
  * Note, depending on plugin callbacks, there may be other dependencies which may make this
  * difficult in the general case.
@@ -928,4 +927,4 @@ from_client_restart_one(clicon_handle h,
     retval = 0;
     goto done;
 }
-#endif /* RESTART_PLUGIN_RPC */
+

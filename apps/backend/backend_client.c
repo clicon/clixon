@@ -1425,7 +1425,6 @@ from_client_stats(clicon_handle h,
     return retval;
 }
 
-#ifdef RESTART_PLUGIN_RPC
 /*! Request restart of specific plugins
  * @param[in]  h       Clicon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
@@ -1472,7 +1471,6 @@ from_client_restart_plugin(clicon_handle h,
 	free(vec);
     return retval;
 }
-#endif /* RESTART_PLUGIN_RPC */
 
 /*! Verify nacm user with  peer uid credentials
  * @param[in]  mode      Peer credential mode: none, exact or except
@@ -1838,11 +1836,9 @@ backend_rpc_init(clicon_handle h)
     if (rpc_callback_register(h, from_client_stats, NULL,
 			      CLIXON_LIB_NS, "stats") < 0)
 	goto done;
-#ifdef RESTART_PLUGIN_RPC
     if (rpc_callback_register(h, from_client_restart_plugin, NULL,
 			      CLIXON_LIB_NS, "restart-plugin") < 0)
 	goto done;
-#endif
     retval =0;
  done:
     return retval;

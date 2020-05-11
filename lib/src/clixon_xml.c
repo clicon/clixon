@@ -158,6 +158,7 @@ struct search_index{
  * - Local name: In either case the "local name" is N (also "prefix")
  * It is this combination of the universally managed URI namespace with the 
  * vocabulary's local names that is effective in avoiding name clashes.
+ * @see struct xmlbody    For XML body and attributes
  */
 struct xml{
     enum cxobj_type   x_type;       /* type of node: element, attribute, body */
@@ -186,9 +187,8 @@ struct xml{
 #endif
 };
 
-
-#ifdef XML_NEW_DIFFERENTIATE
-/* This is experimental variant of struct xml for use by non-elements to save space
+/* Variant of struct xml for use by non-elements to save space
+ * @see struct xml  For XML elements
  */
 struct xmlbody{
     enum cxobj_type   xb_type;       /* type of node: element, attribute, body */
@@ -201,7 +201,6 @@ struct xmlbody{
 				       see xml_enumerate and xml_cmp */
     cbuf             *xb_value_cb;  /* attribute and body nodes have values */
 };
-#endif /* XML_NEW_DIFFERENTIATE */
 
 /*
  * Variables
@@ -277,11 +276,7 @@ xml_stats_one(cxobj    *x,
 	break;
     case CX_BODY:
     case CX_ATTR:
-#ifdef XML_NEW_DIFFERENTIATE
 	sz += sizeof(struct xmlbody);
-#else
-	sz += sizeof(struct xml);
-#endif
 	if (x->x_value_cb)
 	    sz += cbuf_buflen(x->x_value_cb);
 	break;
@@ -1042,10 +1037,9 @@ xml_childvec_get(cxobj *x)
  *   ...
  *   xml_free(x);
  * @endcode
+ * @note Differentiates between body/attribute vs element to reduce mem allocation
  * @see xml_sort_insert
  */
-#ifdef XML_NEW_DIFFERENTIATE
-/* Differentiate creating XML object body/element vs elenmet to reduce space */
 cxobj *
 xml_new(char           *name, 
 	cxobj          *xp,
@@ -1084,35 +1078,6 @@ xml_new(char           *name,
     _stats_nr++;
     return x;
 }
-
-#else /* XML_NEW_DIFFERENTIATE */
-
-cxobj *
-xml_new(char           *name,
-	cxobj          *xp,
-	enum cxobj_type type)
-{
-    cxobj *x;
-    
-    if ((x = malloc(sizeof(cxobj))) == NULL){
-	clicon_err(OE_XML, errno, "malloc");
-	return NULL;
-    }
-    memset(x, 0, sizeof(cxobj));
-    xml_type_set(x, type);
-    if (name != NULL &&
-	xml_name_set(x, name) < 0)
-	return NULL;
-    if (xp){
-	xml_parent_set(x, xp);
-	if (xml_child_append(xp, x) < 0) 
-	    return NULL;
-	x->_x_i = xml_child_nr(xp)-1;
-    }
-    _stats_nr++;
-    return x;
-}
-#endif /* XML_NEW_DIFFERENTIATE */
 
 /*! Create a new XML node and set it's body to a value
  *

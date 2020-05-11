@@ -101,26 +101,6 @@
  */
 #define STATE_ORDERED_BY_SYSTEM
 
-/*! Restart specific backend plugins
- * Note, depending on plugin callbacks, there may be other dependencies which may make this
- * difficult in the general case.
- */
-#define RESTART_PLUGIN_RPC
-
-/*! Differentiate creating XML object body/element vs elenmet to reduce space
- */
-#define XML_NEW_DIFFERENTIATE
-
-/*! Clixon 4.5 optimizing experiments for yang bind
- * Primarily for large lists
- */
-#define OPTIMIZE_45_BIND
-
-/*! Clixon 4.5 optimizing experiments for sorting yang-bound XML trees
- * Primarily for large lists
- */
-#define OPTIMIZE_45_SORT
-
 /*! Use cligen 4.4 instead of master / cligen 4.5.pre
  * Temporary fix
  */
