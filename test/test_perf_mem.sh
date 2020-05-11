@@ -14,7 +14,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 clixon_util_xpath=clixon_util_xpath 
 
 # Number of list/leaf-list entries in file
-: ${perfnr:=10000}
+: ${perfnr:=1000} # 10000 causes timeout in valgrind test
 
 APPNAME=example
 

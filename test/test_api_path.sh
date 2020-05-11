@@ -12,6 +12,11 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 : ${clixon_util_path:=clixon_util_path -a -D $DBG}
 
+if [ $nr -lt 2 ] ; then
+    echo "nr==$nr must be > 1"
+    exit
+fi
+
 # Number of list/leaf-list entries
 : ${nr:=100}
 

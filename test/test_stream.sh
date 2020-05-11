@@ -310,3 +310,4 @@ rm -rf $dir
 
 # unset conditional parameters 
 unset clixon_util_stream
+unset nr
