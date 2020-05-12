@@ -53,10 +53,6 @@ int cli_susp_hook(clicon_handle h, cligen_susp_cb_t *fn);
 
 int cli_interrupt_hook(clicon_handle h, cligen_interrupt_cb_t *fn);
 
-#ifdef USE_CLIGEN44
-char *cli_nomatch(clicon_handle h);
-#endif
-
 int cli_prompt_set(clicon_handle h, char *prompt);
 
 int cli_logsyntax_set(clicon_handle h, int status);

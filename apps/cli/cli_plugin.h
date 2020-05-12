@@ -66,13 +66,9 @@ void *clixon_str2fn(char *name, void *handle, char **error);
 
 int clicon_eval(clicon_handle h, char *cmd, cg_obj *match_obj, cvec *vr);
 
-#ifdef USE_CLIGEN44
-int clicon_parse(clicon_handle h, char *cmd, char **modenamep, int *evalres);
-char *clicon_cliread(clicon_handle h);
-#else
 int clicon_parse(clicon_handle h, char *cmd, char **mode, cligen_result *result, int *evalres);
+
 int clicon_cliread(clicon_handle h, char **stringp);
-#endif
 
 int cli_plugin_finish(clicon_handle h);
 

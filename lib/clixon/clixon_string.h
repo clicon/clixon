@@ -107,9 +107,6 @@ char *clixon_trim(char *str);
 char *clixon_trim2(char *str, char *trims);
 int clicon_strcmp(char *s1, char *s2);
 
-#ifdef USE_CLIGEN44
-int cbuf_append_str(cbuf *cb, char *str);
-#endif
 #ifndef HAVE_STRNDUP
 char *clicon_strndup (const char *, size_t);
 #endif /* ! HAVE_STRNDUP */

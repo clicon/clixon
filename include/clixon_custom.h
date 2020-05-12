@@ -101,8 +101,3 @@
  */
 #define STATE_ORDERED_BY_SYSTEM
 
-/*! Use cligen 4.4 instead of master / cligen 4.5.pre
- * Temporary fix
- */
-#undef USE_CLIGEN44
-
