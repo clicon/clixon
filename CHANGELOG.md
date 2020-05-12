@@ -28,6 +28,8 @@ The 4.5.0 release introduces xpaths in the NACM implementation thus
 completing the RPC and Data node access. There has also been several
 optimizations. Note that this version must be run with CLIgen 4.5, it
 cannot run with CLIgen 4.4 or earlier.
+
+Thanks to everyone at Netgate for making this possible
 	
 ### Major New features
 
