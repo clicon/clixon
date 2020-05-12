@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [4.5.0](#450) Expected: May 2020
+* [4.5.0](#450) 12 May 2020
 * [4.4.0](#440) 5 April 2020
 * [4.3.0](#430) 1 January 2020
   * [4.3.3](#433) 
@@ -22,8 +22,13 @@
 * [3.3.1](#331) June 7 2017
 
 ## 4.5.0
-Expected: May 2020
+12 May 2020
 
+The 4.5.0 release introduces xpaths in the NACM implementation thus
+completing the RPC and Data node access. There has also been several
+optimizations. Note that this version must be run with CLIgen 4.5, it
+cannot run with CLIgen 4.4 or earlier.
+	
 ### Major New features
 
 * NACM RFC8341 datanode read and write paths
@@ -35,7 +40,7 @@ Expected: May 2020
   * ca_trans_commit_done: Called when all plugin commits have been done.
     * Note: If you have used "end" callback and usign transaction data, you should probably use this instead.
   
-### API changes on existing protocol/config features (For users, you may have have to change how you use Clixon)
+### API changes on existing protocol/config features (For users)
 
 * Stricter validation detecting duplicate container or leaf in XML.
   * Eg `<x><a/><a/></x>` is invalid if `a` is a leaf or container.
@@ -49,7 +54,7 @@ Expected: May 2020
 * Stricter incoming RPC sanity checking, error messages may have changed.
 * Changed output of `clixon_cli -G` option to show generated CLI spec original text instead of resulting parse-tree, which gives better detail from a debugging perspective.
 
-### C-API changes on existing features (For developers: you may need to change your plugin C-code)
+### C-API changes on existing features (For developers)
 
 * Length of xml vector in many structs changed from `size_t` to `int`since it is a vector size, not byte size.
   * Example: `transaction_data_t`
@@ -61,25 +66,22 @@ Expected: May 2020
   * `clicon_parse()`: Changed signature due to new cligen error and result handling:
   * Removed: `cli_nomatch()`  
 
-### Minor changes
+### Optimzations
+* Optimized namespace prefix checks at xml parse time: using many prefixes slowed down parsing considerably
+* Optimized cbuf handling in parsing and xml2cbuf functions: use of new `cbuf_append()` function.
+* Optimized xml scanner to read strings rather than single chars
+* Identify early that trees are disjunct instead of recursively merge in `xml_merge`
+* Optimizations of `yang_bind` for large lists: use a "sibling/template" to use same binding as previous element.
+* Reduced memory for attribute and body objects, by allocating less memory in `xml_new()` than for elements, reducing XML storage with ca 25%
+* Cleared startup-db cache after restart, slashing datastore cache with (best-case) a third.
+* Removed nameserver binding cache for leaf/leaf-list objects.
+* Remove xml value cache after sorting (just use cligen value cache at sorting, remove after use)
 
+### Minor changes
 * Added decriptive error message when plugins produce invalid state XML.
   * Example: `<error-tag>operation-failed</error-tag><error-info><bad-element>mystate</bad-element></error-info><error-message>No such yang module. Internal error, state callback returned invalid XML: example_backend</error-message>`
   * Such a message means there is something wrong in the internal plugins or elsewehere, ie it is not a proper end-user error.
-* Compile-time option: `USE_CLIGEN44` for running clixon-45 with cligen-44.
-  * Temporary fix since cligen-45 have some non-backward compatible behaviour.
-* Cycle optimizations
-  * Optimized namespace prefix checks at xml parse time: using many prefixes slowed down parsing considerably
-  * Optimized cbuf handling in parsing and xml2cbuf functions: use of new `cbuf_append()` function.
-  * Optimized xml scanner to read strings rather than single chars
-  * Identify early that trees are disjunct instead of recursively merge in `xml_merge`
-  * Optimizations of `yang_bind` for large lists: use a "sibling/template" to use same binding as previous element.
-* Memory optimizations
-  * Reduced memory for attribute and body objects, by allocating less memory in `xml_new()` than for elements, reducing XML storage with ca 25%
-  * Cleared startup-db cache after restart, slashing datastore cache with (best-case) a third.
-  * Removed nameserver binding cache for leaf/leaf-list objects.
-  * Remove xml value cache after sorting (just use cligen value cache at sorting, remove after use)
-* Adapted to CLIgen 4.5 API changes, eg: `cliread()` and  `cliread_parse()`
+* Adapted to CLIgen 4.5 API changes, eg: `cliread()` and `cliread_parse()`
 * Renamed utility function `clixon_util_insert()` to `clixon_util_xml_mod()` and added merge functionality.
 * Sanity check of duplicate prefixes in Yang modules and submodules as defined in RFC 7950 Sec 7.1.4
 
