@@ -1,7 +1,9 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2017-2019 Olof Hagsand
+# Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 #
 # This file is part of CLIXON
 #
@@ -94,10 +96,10 @@ $(top_srcdir)/lib/src/$(CLIXON_LIB):
 	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
 
 clean:
-	rm -f *.core $(APPL) $(APPOBJ) $(LIBOBJ) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
+	rm -f *.core $(APPL) $(APPOBJ) $(LIBOBJ) $(MYLIB) $(MYLIBSO) $(MYLIBLINK) test test.c
 
 distclean: clean
-	rm -f Makefile *~ .depend test test.c
+	rm -f Makefile *~ .depend
 
 # Put daemon in bin 
 # Put other executables in libexec/
