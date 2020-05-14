@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [4.6.0](#460) Expected: July 2020
 * [4.5.0](#450) 12 May 2020
 * [4.4.0](#440) 5 April 2020
 * [4.3.0](#430) 1 January 2020
@@ -21,6 +22,9 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
+## 4.6.0
+Expected: July 2020
+
 ## 4.5.0
 12 May 2020
 
@@ -40,7 +44,7 @@ Thanks to everyone at Netgate for making this possible
 * Two new plugin callbacks added
   * ca_daemon: Called just after a server has "daemonized", ie put in background.
   * ca_trans_commit_done: Called when all plugin commits have been done.
-    * Note: If you have used "end" callback and usign transaction data, you should probably use this instead.
+    * Note: If you have used "end" callback and using transaction data, you should probably use this instead.
   
 ### API changes on existing protocol/config features (For users)
 
