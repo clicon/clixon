@@ -95,12 +95,16 @@ syntax_mode_find(cli_syntax_t *stx,
 	return  NULL;
 
    if ((m = malloc(sizeof(cli_syntaxmode_t))) == NULL) {
-	perror("malloc");
+       clicon_err(OE_UNIX, errno, "malloc");
 	return NULL;
     }
     memset(m, 0, sizeof(*m));
     strncpy(m->csm_name, mode, sizeof(m->csm_name)-1);
     strncpy(m->csm_prompt, CLI_DEFAULT_PROMPT, sizeof(m->csm_prompt)-1);
+    if ((m->csm_pt = pt_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "pt_new");
+	return NULL;
+    }
     INSQ(m, stx->stx_modes);
     stx->stx_nmodes++;
 
@@ -126,14 +130,14 @@ static int
 syntax_append(clicon_handle h,
 	      cli_syntax_t *stx,
 	      const char   *name, 
-	      parse_tree    pt)
+	      parse_tree   *pt)
 {
     cli_syntaxmode_t *m;
 
     if ((m = syntax_mode_find(stx, name, 1)) == NULL) 
 	return -1;
 
-    if (cligen_parsetree_merge(&m->csm_pt, NULL, pt) < 0)
+    if (cligen_parsetree_merge(m->csm_pt, NULL, pt) < 0)
 	return -1;
     
     return 0;
@@ -154,8 +158,9 @@ cli_syntax_unload(clicon_handle h)
     while (stx->stx_nmodes > 0) {
 	m = stx->stx_modes;
 	DELQ(m, stx->stx_modes, cli_syntaxmode_t *);
-	if (m)
+	if (m){
 	    free(m);
+	}
 	stx->stx_nmodes--;
     }
     return 0;
@@ -214,7 +219,7 @@ clixon_str2fn(char  *name,
  * @param[in]  h        Clixon handle
  * @param[in]  filename	Name of file where syntax is specified (in syntax-group dir)
  * @param[in]  dir	Name of dir, or NULL
- * @param[out] allpt    Universal CLIgen parse tree: apply to all modes
+ * @param[out] ptall    Universal CLIgen parse tree: apply to all modes
  */
 static int
 cli_load_syntax_file(clicon_handle h,
@@ -224,7 +229,7 @@ cli_load_syntax_file(clicon_handle h,
 {
     void          *handle = NULL;  /* Handle to plugin .so module */
     char          *mode = NULL;    /* Name of syntax mode to append new syntax */
-    parse_tree     pt = {0,};
+    parse_tree    *pt = NULL;
     int            retval = -1;
     FILE          *f;
     char           filepath[MAXPATHLEN];
@@ -235,6 +240,10 @@ cli_load_syntax_file(clicon_handle h,
     char          *plgnam;
     clixon_plugin *cp;
 
+    if ((pt = pt_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "pt_new");
+	goto done;
+    }
     if (dir)
 	snprintf(filepath, MAXPATHLEN-1, "%s/%s", dir, filename);
     else
@@ -250,7 +259,7 @@ cli_load_syntax_file(clicon_handle h,
     }
 
     /* Assuming this plugin is first in queue */
-    if (cli_parse_file(h, f, filepath, &pt, cvv) < 0){
+    if (cli_parse_file(h, f, filepath, pt, cvv) < 0){
 	clicon_err(OE_PLUGIN, 0, "failed to parse cli file %s", filepath);
 	fclose(f);
 	goto done;
@@ -352,11 +361,15 @@ cli_syntax_load(clicon_handle h)
     cligen_susp_cb_t  *fns = NULL;
     cligen_interrupt_cb_t *fni = NULL;
     clixon_plugin     *cp;
-    parse_tree         ptall = {0,}; /* Universal CLIgen parse tree all modes */
+    parse_tree        *ptall = NULL; /* Universal CLIgen parse tree all modes */
 
     /* Syntax already loaded.  XXX should we re-load?? */
     if ((stx = cli_syntax(h)) != NULL)
 	return 0;
+    if ((ptall = pt_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "pt_new");
+	goto done;
+    }
 
     /* Format plugin directory path */
     clispec_dir = clicon_clispec_dir(h);
@@ -373,7 +386,7 @@ cli_syntax_load(clicon_handle h)
 
     /* Load single specific clispec file */
     if (clispec_file){
-	if (cli_load_syntax_file(h, clispec_file, NULL, &ptall) < 0)
+	if (cli_load_syntax_file(h, clispec_file, NULL, ptall) < 0)
 	    goto done;
     }
     /* Load all clispec .cli files in directory */
@@ -385,7 +398,7 @@ cli_syntax_load(clicon_handle h)
 	for (i = 0; i < ndp; i++) {
 	    clicon_debug(1, "DEBUG: Loading syntax '%.*s'", 
 			 (int)strlen(dp[i].d_name)-4, dp[i].d_name);
-	    if (cli_load_syntax_file(h, dp[i].d_name, clispec_dir, &ptall) < 0)
+	    if (cli_load_syntax_file(h, dp[i].d_name, clispec_dir, ptall) < 0)
 		goto done;
 	}
     }
@@ -401,7 +414,7 @@ cli_syntax_load(clicon_handle h)
      */
     m = stx->stx_modes;
     do {
-	if (cligen_parsetree_merge(&m->csm_pt, NULL, ptall) < 0)
+	if (cligen_parsetree_merge(m->csm_pt, NULL, ptall) < 0)
 	    return -1;
 	if (gen_parse_tree(h, m) != 0)
 	    goto done;

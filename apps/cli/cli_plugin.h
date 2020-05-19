@@ -47,11 +47,11 @@ typedef void (clicon_callback_t)(clicon_handle h);
 
 /* List of syntax modes */
 typedef struct {
-    qelem_t    csm_qelem;                               /* List header */
-    char       csm_name[256];                      /* Syntax mode name */
-    char       csm_prompt[CLI_PROMPT_LEN];          /* Prompt for mode */
-    int        csm_nsyntax;   /* Num syntax specs registered by plugin */
-    parse_tree csm_pt;                            /* CLIgen parse tree */
+    qelem_t     csm_qelem;                               /* List header */
+    char        csm_name[256];                      /* Syntax mode name */
+    char        csm_prompt[CLI_PROMPT_LEN];          /* Prompt for mode */
+    int         csm_nsyntax;   /* Num syntax specs registered by plugin */
+    parse_tree *csm_pt;                            /* CLIgen parse tree */
 } cli_syntaxmode_t;
 
 /* Plugin group object. Just a single object, not list. part of cli_handle */

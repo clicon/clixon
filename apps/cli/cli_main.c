@@ -544,12 +544,16 @@ main(int argc, char **argv)
      * <module>.
      */
     if (clicon_cli_genmodel(h)){
-	parse_tree    pt = {0,};  /* cli parse tree */
+	parse_tree   *pt = NULL;  /* cli parse tree */
 	char         *treeref; 
 
+	if ((pt = pt_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "pt_new");
+	    goto done;
+	}
 	treeref = clicon_cli_model_treename(h);
 	/* Create cli command tree from dbspec */
-	if (yang2cli(h, yspec, clicon_cli_genmodel_type(h), printgen, &pt) < 0)
+	if (yang2cli(h, yspec, clicon_cli_genmodel_type(h), printgen, pt) < 0)
 	    goto done;
 	cligen_tree_add(cli_cligen(h), treeref, pt);
     }

@@ -955,7 +955,7 @@ yang2cli(clicon_handle      h,
        handle=NULL for global namespace, this means expand callbacks must be in
        CLICON namespace, not in a cli frontend plugin.
     */
-    if (cligen_expandv_str2fn(*ptnew, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)     
+    if (cligen_expandv_str2fn(ptnew, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)     
 	goto done;
 
     retval = 0;

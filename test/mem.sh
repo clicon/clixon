@@ -102,3 +102,5 @@ for cmd1 in $cmds; do
     memonce $cmd1
     println "Mem test $cmd1 done"
 done
+
+unset pattern
