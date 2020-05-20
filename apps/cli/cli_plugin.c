@@ -321,16 +321,16 @@ cli_load_syntax_file(clicon_handle h,
 	    return -1;
     }
     else {
-    for (i = 0; i < nvec; i++) {
-	if (syntax_append(h,
-			  cli_syntax(h),
-			  vec[i],
-			  pt) < 0) { 
-	    goto done;
+	for (i = 0; i < nvec; i++) {
+	    if (syntax_append(h,
+			      cli_syntax(h),
+			      vec[i],
+			      pt) < 0) { 
+		goto done;
+	    }
+	    if (prompt)
+		cli_set_prompt(h, vec[i], prompt);
 	}
-	if (prompt)
-	    cli_set_prompt(h, vec[i], prompt);
-    }
     }
 
     cligen_parsetree_free(pt, 1);
@@ -577,7 +577,7 @@ clicon_parse(clicon_handle  h,
 	if (cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv, result, &reason) < 0)
 	    goto done;
 	if (*result != CG_MATCH)
-	    pt_expand_cleanup_1(pt); /* XXX change to pt_expand_treeref_cleanup */
+	    pt_expand_cleanup(pt); /* XXX change to pt_expand_treeref_cleanup */
 	if (modename0){
 	    cligen_tree_active_set(cli_cligen(h), modename0);
 	    modename0 = NULL;
@@ -597,7 +597,7 @@ clicon_parse(clicon_handle  h,
 	    }
 	    if ((r = clicon_eval(h, cmd, match_obj, cvv)) < 0)
 		cli_handler_err(stdout);
-	    pt_expand_cleanup_1(pt); /* XXX change to pt_expand_treeref_cleanup */
+	    pt_expand_cleanup(pt); /* XXX change to pt_expand_treeref_cleanup */
 	    if (evalres)
 		*evalres = r;
 	    break;
