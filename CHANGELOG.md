@@ -25,6 +25,10 @@
 ## 4.6.0
 Expected: July 2020
 
+### Minor changes
+
+* Added new function `xml_child_index_each()` to iterate over the children of an XML node according to the order defined by an explicit index variable. This is a complement to `xml_child_each()` which iterates using the default order.
+
 ## 4.5.0
 12 May 2020
 

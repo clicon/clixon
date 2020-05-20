@@ -249,6 +249,8 @@ int       xml_search_index_p(cxobj *x);
 int       xml_search_vector_get(cxobj *x, char *name, clixon_xvec **xvec);
 int       xml_search_child_insert(cxobj *xp, cxobj *x);
 int       xml_search_child_rm(cxobj *xp, cxobj *x);
+cxobj    *xml_child_index_each(cxobj *xparent, char *name, cxobj *xprev, enum cxobj_type type);
+
 
 #endif
 

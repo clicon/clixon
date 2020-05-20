@@ -877,8 +877,8 @@ xml_child_order(cxobj *xp,
  *     ...
  *   }
  * @endcode
- * @note makes uses _x_vector_i:can be changed if list changed between calls
- * @note Never manipulate the child-list during operation or using the
+ * @note uses _x_vector_i as a shared resource: you cannot mix loops over same parent
+ * Further, never manipulate the child-list during operation or using the
  * same object recursively, the function uses an internal field to remember the
  * index used. It works as long as the same object is not iterated concurrently. 
  * If you need to delete a node you can do somethjing like:
@@ -894,6 +894,9 @@ xml_child_order(cxobj *xp,
  *      }
  *   }
  * @endcode
+#ifdef XML_EXPLICIT_INDEX
+ * @see xml_child_index_each
+#endif XML_EXPLICIT_INDEX 
  */
 cxobj *
 xml_child_each(cxobj           *xparent, 
@@ -921,6 +924,7 @@ xml_child_each(cxobj           *xparent,
 	xn = NULL;
     return xn;
 }
+
 
 /*! Extend child vector with one and insert xml node there
  * @note does not do anything with child, you may need to set its parent, etc
@@ -2579,6 +2583,57 @@ xml_search_child_rm(cxobj *xp,
     retval = 0;
  done:
     return retval;
+}
+
+/*! Iterator over xml children objects using (explicit) index variable
+ *
+ * @param[in] xparent xml tree node whose children should be iterated
+ * @param[in] name    Name of index variable
+ * @param[in] xprev   previous child, or NULL on init
+ * @param[in] type    matching type or -1 for any
+ * @code
+ *   cxobj *x = NULL;
+ *   while ((x = xml_child_index_each(x_top, "i", x, -1)) != NULL) {
+ *     ...
+ *   }
+ * @endcode
+ * @see xml_child_each  for looping over structural children.
+ * @note uses _x_vector_i as a shared resource: you cannot mix loops over same parent
+ * Further, never manipulate the child-list during operation or using the
+ * same object recursively, the function uses an internal field to remember the
+ * index used. It works as long as the same object is not iterated concurrently. 
+ * If you need to delete a node you can do somethjing like:
+ */
+cxobj *
+xml_child_index_each(cxobj           *xparent, 
+		     char            *name,
+		     cxobj           *xprev, 
+		     enum cxobj_type  type)
+{
+    cxobj        *xn = NULL; 
+    clixon_xvec  *xv = NULL;
+    int           i;
+    
+    if (xparent == NULL)
+	return NULL;
+    if (!is_element(xparent))
+	return NULL;
+    if (xml_search_vector_get(xparent, name, &xv) < 0)
+	return NULL;
+    if (xv == NULL)
+	return NULL;
+    for (i=xprev?xprev->_x_vector_i+1:0; i<clixon_xvec_len(xv); i++){
+	if ((xn = clixon_xvec_i(xv, i)) == NULL)
+	    continue;
+	if (type != CX_ERROR && xml_type(xn) != type)
+	    continue;
+	break; /* this is next object after previous */
+    }
+    if (i < clixon_xvec_len(xv)) /* found */
+	xn->_x_vector_i = i;
+    else
+	xn = NULL;
+    return xn;
 }
 
 #endif /* XML_EXPLICIT_INDEX */
