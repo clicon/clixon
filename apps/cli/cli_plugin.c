@@ -561,7 +561,7 @@ clicon_parse(clicon_handle  h,
     if (smode){
 	modename0 = NULL;
 	if ((pt = cligen_tree_active_get(cli_cligen(h))) != NULL)
-	    modename0 = pt->pt_name;
+	    modename0 = pt_name_get(pt);
 	if (cligen_tree_active_set(cli_cligen(h), modename) < 0){
 	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
 	    goto done;
