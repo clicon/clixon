@@ -55,6 +55,7 @@ HOST_VENDOR     = @host_vendor@
 # XXX why is not wwwdir under prefix?
 wwwdir  	= @wwwdir@
 wwwuser         = @wwwuser@
+with_libhttp	= @with_libhttp@
 
 SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
@@ -67,40 +68,50 @@ CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
 LIBS          = -L$(top_srcdir)/lib/src @LIBS@ $(top_srcdir)/lib/src/$(CLIXON_LIB)
+ifeq ($(with_libhttp),yes)
+LIBS          += -ldl -lpthread 
+endif
 
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
-# Name of application
-APPL	  = clixon_restconf
+# Applications
+APPLS	  = clixon_restconf # fcgi / nginx
+ifeq ($(with_libhttp),yes)
+APPLS	 += clixon_restconf_libhttp
+endif
 
-# Not accessible from plugin
-APPSRC    = restconf_main.c
-APPSRC   += restconf_methods.c
-APPSRC   += restconf_methods_post.c
-APPSRC   += restconf_methods_get.c
-APPSRC   += restconf_stream.c
+# Common source - not accessible from plugin - independent of fcgi
+APPSRC    = restconf_lib.c
 APPOBJ    = $(APPSRC:.c=.o)
 
-# Accessible from plugin
-LIBSRC    = restconf_lib.c
-LIBOBJ    = $(LIBSRC:.c=.o)
+# Fcgi-specific source including main
+APPFCGI    = restconf_fcgi_lib.c
+APPFCGI   += restconf_fcgi_main.c
+APPFCGI   += restconf_methods.c # These should be moved ^
+APPFCGI   += restconf_methods_post.c
+APPFCGI   += restconf_methods_get.c
+APPFCGI   += restconf_stream.c
+APPFCGIOBJ = $(APPFCGI:.c=.o)
 
-# Name of lib
-MYNAME	  = clixon_restconf
-MYLIBLINK = lib$(MYNAME)$(SH_SUFFIX)
-MYLIB     = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
-MYLIBSO   = $(MYLIBLINK).$(CLIXON_MAJOR)
+ifeq ($(with_libhttp),yes)
+# Libhttp-specific source including main
+APPLIBH  = restconf_libhttp_main.c
+APPLIBHOBJ = $(APPLIBH:.c=.o)
+endif
 
-all:	 $(MYLIB) $(APPL)
+all:	 $(APPLS)
 
 # Dependency of clixon library
 $(top_srcdir)/lib/src/$(CLIXON_LIB):
 	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
 
 clean:
-	rm -f $(LIBOBJ) *.core $(APPL) $(APPOBJ) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
+	rm -f *.core $(APPLS) $(APPOBJ) $(APPFCGIOBJ)
+ifeq ($(with_libhttp),yes)
+	rm -f $(APPLIBHOBJ)
+endif
 
 distclean: clean
 	rm -f Makefile *~ .depend
@@ -110,52 +121,38 @@ distclean: clean
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
 # Also a rule for letting www-dir be owned by www-data, which only works for sudo
-install:	install-lib $(APPL)
+install:	$(APPLS)
 ifeq ($(shell whoami),root)
 	install -d -m 0755 -o $(wwwuser) -g $(wwwuser) $(DESTDIR)$(wwwdir)
 else
 	install -d -m 0755 $(DESTDIR)$(wwwdir)
 endif
-	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(wwwdir)
+	install -m 0755 $(INSTALLFLAGS) $(APPLS) $(DESTDIR)$(wwwdir)
 
-install-lib: $(MYLIB)
-	install -d -m 0755 $(DESTDIR)$(libdir)
-	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
-	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon_restconf.so.2
-	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_restconf.so
-
-install-include:	clixon_restconf.h
-	install -d -m 0755 $(DESTDIR)$(includedir)/clixon
-	install -m 0644 $^ $(DESTDIR)$(includedir)/clixon
+install-include:	
 
 uninstall:
-	rm -f $(DESTDIR)$(wwwdir)/$(APPL)
-	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
+	rm -f $(DESTDIR)$(wwwdir)/$(APPLS)
 
 .SUFFIXES:
 .SUFFIXES: .c .o
 
 .c.o:
-	$(CC) $(INCLUDES) -D__PROGRAM__=\"$(APPL)\" $(CPPFLAGS) $(CFLAGS) -c $<
+	$(CC) $(INCLUDES) -D__PROGRAM__=\"clixon_restconf\" $(CPPFLAGS) $(CFLAGS) -c $<
 
-$(APPL) : $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)
-	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
+clixon_restconf : $(APPOBJ) $(APPFCGIOBJ)
+	$(CC) $(LDFLAGS) $(APPOBJ) $(APPFCGIOBJ) -L. $(LIBS) -o $@
 
-$(MYLIB) : $(LIBOBJ) $(LIBDEPS)
-ifeq ($(HOST_VENDOR),apple)
-	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJ) $(LIBS)
-else
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJ) $(LIBS) -Wl,-soname=$(MYLIBSO)
+ifeq ($(with_libhttp),yes)
+clixon_restconf_libhttp : $(APPOBJ) $(APPLIBHOBJ) $(LIBDEPS)
+	$(CC) $(LDFLAGS) $(APPOBJ) $(APPLIBHOBJ) -L. $(LIBS) -o $@
 endif
-
-# link-name is needed for application linking, eg for clixon_cli and clixon_config
-$(MYLIBLINK) : $(MYLIB)
 
 TAGS:
 	find . -name '*.[chyl]' -print | etags -
 
 depend:
-	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(LIBSRC) $(APPSRC) > .depend
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(APPFCGI) $(APPSRC) > .depend
 
 #include .depend
 

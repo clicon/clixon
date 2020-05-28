@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -30,43 +31,30 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
- * The exported interface to plugins. External apps (eg frontend restconf plugins)
- * should only include this file (not the restconf_*.h)
+  
  */
 
-#ifndef _CLIXON_RESTCONF_H_
-#define _CLIXON_RESTCONF_H_
+#ifndef _RESTCONF_FCGI_LIB_H_
+#define _RESTCONF_FCGI_LIB_H_
 
 /*
- * Types (also in restconf_lib.h)
+ * Prototypes
  */
-enum restconf_media{
-    YANG_DATA_JSON,  /* "application/yang-data+json" */
-    YANG_DATA_XML,   /* "application/yang-data+xml" */
-    YANG_PATCH_JSON, /* "application/yang-patch+json" */
-    YANG_PATCH_XML   /* "application/yang-patch+xml" */
-};
-typedef enum restconf_media restconf_media;
-
-/*
- * Prototypes (also in restconf_lib.h)
- */
-int restconf_err2code(char *tag);
-const char *restconf_code2reason(int code);
-
-int badrequest(FCGX_Request *r);
-int unauthorized(FCGX_Request *r);
-int forbidden(FCGX_Request *r);
-int notfound(FCGX_Request *r);
-int conflict(FCGX_Request *r);
-int internal_server_error(FCGX_Request *r);
-int notimplemented(FCGX_Request *r);
+restconf_media restconf_content_type(FCGX_Request *r);
+int restconf_badrequest(FCGX_Request *r);
+int restconf_unauthorized(FCGX_Request *r);
+int restconf_forbidden(FCGX_Request *r);
+int restconf_notfound(FCGX_Request *r);
+int restconf_notacceptable(FCGX_Request *r);
+int restconf_conflict(FCGX_Request *r);
+int restconf_unsupported_media(FCGX_Request *r);
+int restconf_internal_server_error(FCGX_Request *r);
+int restconf_notimplemented(FCGX_Request *r);
 int restconf_test(FCGX_Request *r, int dbg);
 cbuf *readdata(FCGX_Request *r);
-int get_user_cookie(char *cookiestr, char  *attribute, char **val);
 int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
-		   int pretty, restconf_media media, int code);
+		   int pretty, enum restconf_media media, int code);
+int http_location(FCGX_Request *r, cxobj *xobj);
+char *restconf_uripath(FCGX_Request *r);
 
-
-#endif /* _CLIXON_RESTCONF_H_ */
+#endif /* _RESTCONF_FCGI_LIB_H_ */

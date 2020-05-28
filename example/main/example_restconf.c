@@ -46,7 +46,6 @@
 
 /* clicon */
 #include <clixon/clixon.h>
-#include <clixon/clixon_restconf.h>
 
 static const char Base64[] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

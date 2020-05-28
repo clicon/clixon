@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -85,6 +86,7 @@
 #include <fcgiapp.h> /* Need to be after clixon_xml.h due to attribute format */
 
 #include "restconf_lib.h"
+#include "restconf_fcgi_lib.h"
 #include "restconf_stream.h"
 
 /*

@@ -78,6 +78,7 @@
 
 /* restconf */
 #include "restconf_lib.h"
+#include "restconf_fcgi_lib.h"
 #include "restconf_methods.h"
 #include "restconf_methods_get.h"
 #include "restconf_methods_post.h"
@@ -85,12 +86,6 @@
 
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:o:"
-
-/* RESTCONF enables deployments to specify where the RESTCONF API is 
-   located.  The client discovers this by getting the "/.well-known/host-meta"
-   resource 
-*/
-#define RESTCONF_WELL_KNOWN  "/.well-known/host-meta"
 
 /*! Generic REST method, GET, PUT, DELETE, etc
  * @param[in]  h      CLIXON handle
@@ -492,44 +487,6 @@ restconf_sig_term(int arg)
     exit(-1);
 }
 
-/*! Callback for yang extensions ietf-restconf:yang-data
- * @see ietf-restconf.yang
- * @param[in] h    Clixon handle
- * @param[in] yext Yang node of extension 
- * @param[in] ys   Yang node of (unknown) statement belonging to extension
- * @retval     0   OK, all callbacks executed OK
- * @retval    -1   Error in one callback
- */
-static int
-restconf_main_extension_cb(clicon_handle h,
-			   yang_stmt    *yext,
-			   yang_stmt    *ys)
-{
-    int        retval = -1;
-    char      *extname;
-    char      *modname;
-    yang_stmt *ymod;
-    yang_stmt *yc;
-    yang_stmt *yn = NULL;
-    
-    ymod = ys_module(yext);
-    modname = yang_argument_get(ymod);
-    extname = yang_argument_get(yext);
-    if (strcmp(modname, "ietf-restconf") != 0 || strcmp(extname, "yang-data") != 0)
-	goto ok;
-    clicon_debug(1, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
-    if ((yc = yang_find(ys, 0, NULL)) == NULL)
-	goto ok;
-    if ((yn = ys_dup(yc)) == NULL)
-	goto done;
-    if (yn_insert(yang_parent_get(ys), yn) < 0)
-	goto done;
- ok:
-    retval = 0;
- done:
-    return retval;
-}
-
 static void
 restconf_sig_child(int arg)
 {
@@ -567,7 +524,7 @@ usage(clicon_handle h,
     exit(0);
 }
 
-/*! Main routine for fastcgi API
+/*! Main routine for fastcgi restconf
  */
 int 
 main(int    argc, 
@@ -603,6 +560,7 @@ main(int    argc,
 	goto done;
 
     _CLICON_HANDLE = h; /* for termination handling */
+
     while ((c = getopt(argc, argv, RESTCONF_OPTS)) != -1)
 	switch (c) {
 	case 'h':

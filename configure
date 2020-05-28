@@ -634,6 +634,7 @@ CPP
 wwwuser
 wwwdir
 enable_optyangs
+with_libhttp
 with_restconf
 SH_SUFFIX
 CLIXON_DEFAULT_CONFIG
@@ -715,6 +716,7 @@ enable_optyangs
 enable_publish
 with_restconf
 with_wwwuser
+with_libhttp
 with_configfile
 with_libxml2
 with_yang_installdir
@@ -1366,6 +1368,8 @@ Optional Packages:
   --with-cligen=dir       Use CLIGEN here
   --without-restconf      disable support for restconf
   --with-wwwuser=<user>   Set www user different from www-data
+  --with-libhttp          Use libhttp as restconf server
+
   --with-configfile=FILE  set default path to config file
   --with-libxml2          use gnome/libxml2 regex engine
   --with-yang-installdir=DIR  Install Clixon yang files here (default: ${prefix}/share/clixon)
@@ -3296,6 +3300,7 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
  # If yes, compile apps/restconf
+  # If yes, include libhttp server (https://www.libhttp.org/)
 
 wwwdir=/www-data
 
@@ -4738,6 +4743,83 @@ cat >>confdefs.h <<_ACEOF
 #define WWWUSER "$wwwuser"
 _ACEOF
 
+
+# This is for libhttp server (https://www.libhttp.org/) to be used as restconf client
+# Out-of-the box it comes as static lib .a
+
+# Check whether --with-libhttp was given.
+if test "${with_libhttp+set}" = set; then :
+  withval=$with_libhttp;
+else
+  with_libhttp=no
+fi
+
+
+echo "lib_http: ${with_libhttp}"
+if test "x${with_libhttp}" == xyes; then
+   for ac_header in libhttp/libhttp.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "libhttp/libhttp.h" "ac_cv_header_libhttp_libhttp_h" "$ac_includes_default"
+if test "x$ac_cv_header_libhttp_libhttp_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBHTTP_LIBHTTP_H 1
+_ACEOF
+
+else
+  as_fn_error $? "libhttp header missing. See https://www.libhttp.org" "$LINENO" 5
+fi
+
+done
+
+   # In github repo default install this is a static lib
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for httplib_start in -lhttp" >&5
+$as_echo_n "checking for httplib_start in -lhttp... " >&6; }
+if ${ac_cv_lib_http_httplib_start+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lhttp -lpthread -ldl $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char httplib_start ();
+int
+main ()
+{
+return httplib_start ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_http_httplib_start=yes
+else
+  ac_cv_lib_http_httplib_start=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_http_httplib_start" >&5
+$as_echo "$ac_cv_lib_http_httplib_start" >&6; }
+if test "x$ac_cv_lib_http_httplib_start" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBHTTP 1
+_ACEOF
+
+  LIBS="-lhttp $LIBS"
+
+else
+  as_fn_error $? "libhttplib missing" "$LINENO" 5
+fi
+
+fi
 
 # Set default config file location
 CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml

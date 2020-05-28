@@ -94,6 +94,7 @@ AC_SUBST(CLIXON_DEFAULT_CONFIG)
 AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
+AC_SUBST(with_libhttp)  # If yes, include libhttp server (https://www.libhttp.org/)
 AC_SUBST(enable_optyangs) 
 AC_SUBST(wwwdir,/www-data)
 AC_SUBST(wwwuser,www-data)
@@ -207,6 +208,20 @@ if test "${with_wwwuser}"; then
 fi
 AC_MSG_RESULT(www user is $wwwuser)	
 AC_DEFINE_UNQUOTED(WWWUSER, "$wwwuser", [WWW user for restconf daemon])
+
+# This is for libhttp server (https://www.libhttp.org/) to be used as restconf client
+# Out-of-the box it comes as static lib .a
+AC_ARG_WITH([libhttp],
+            [AS_HELP_STRING([--with-libhttp          Use libhttp as restconf server])],
+	    ,
+	    [with_libhttp=no])
+
+echo "lib_http: ${with_libhttp}"
+if test "x${with_libhttp}" == xyes; then
+   AC_CHECK_HEADERS(libhttp/libhttp.h,, AC_MSG_ERROR([libhttp header missing. See https://www.libhttp.org]))
+   # In github repo default install this is a static lib
+   AC_CHECK_LIB(http, httplib_start,, AC_MSG_ERROR([libhttplib missing]),[-lpthread -ldl]) 
+fi
 
 # Set default config file location
 CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml

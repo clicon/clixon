@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -41,8 +42,15 @@
  */
 #define RESTCONF_API       "restconf"
 
+/* RESTCONF enables deployments to specify where the RESTCONF API is 
+   located.  The client discovers this by getting the "/.well-known/host-meta"
+   resource 
+*/
+#define RESTCONF_WELL_KNOWN  "/.well-known/host-meta"
+
+
 /*
- * Types
+ * Variables
  */
 
 /*! RESTCONF media types 
@@ -58,32 +66,15 @@ enum restconf_media{
 typedef enum restconf_media restconf_media;
 
 /*
- * Prototypes (also in clixon_restconf.h)
+ * Prototypes
  */
 int restconf_err2code(char *tag);
 const char *restconf_code2reason(int code);
-
 const restconf_media restconf_media_str2int(char *media);
 const char *restconf_media_int2str(restconf_media media);
-restconf_media restconf_content_type(FCGX_Request *r);
-int restconf_badrequest(FCGX_Request *r);
-int restconf_unauthorized(FCGX_Request *r);
-int restconf_forbidden(FCGX_Request *r);
-int restconf_notfound(FCGX_Request *r);
-int restconf_notacceptable(FCGX_Request *r);
-int restconf_conflict(FCGX_Request *r);
-int restconf_unsupported_media(FCGX_Request *r);
-int restconf_internal_server_error(FCGX_Request *r);
-int restconf_notimplemented(FCGX_Request *r);
-
-int restconf_test(FCGX_Request *r, int dbg);
-cbuf *readdata(FCGX_Request *r);
 int get_user_cookie(char *cookiestr, char  *attribute, char **val);
-int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
-		   int pretty, enum restconf_media media, int code);
-int http_location(FCGX_Request *r, cxobj *xobj);
 int restconf_terminate(clicon_handle h);
 int restconf_insert_attributes(cxobj *xdata, cvec *qvec);
-char *restconf_uripath(FCGX_Request *r);
+int restconf_main_extension_cb(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 
 #endif /* _RESTCONF_LIB_H_ */

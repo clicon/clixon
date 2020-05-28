@@ -35,6 +35,7 @@ apps/cli/test.c
 apps/dbctrl/clixon_dbctrl
 apps/netconf/clixon_netconf
 apps/restconf/clixon_restconf
+apps/restconf/clixon_restconf_libhttp
 apps/xmldb/clixon_xmldb
 
 etc/clixonrc
