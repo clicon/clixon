@@ -162,6 +162,12 @@ err(){
 # Test is previous test had valgrind errors if so quit
 checkvalgrind(){
     if [ -f $valgrindfile ]; then
+	res=$(cat $valgrindfile | grep -e "Invalid" |awk '{print  $4}' | grep -v '^0$')
+	if [ -n "$res" ]; then
+	    >&2 cat $valgrindfile
+	    sudo rm -f $valgrindfile
+	    exit -1	    
+	fi
 	res=$(cat $valgrindfile | grep -e "reachable" -e "lost:"|awk '{print  $4}' | grep -v '^0$')
 	if [ -n "$res" ]; then
 	    >&2 cat $valgrindfile

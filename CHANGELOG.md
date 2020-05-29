@@ -27,6 +27,7 @@ Expected: July 2020
 
 ### Minor changes
 
+* Added new function `clicon_xml2str()` to complement xml_print and others that returns a malloced string.
 * Added new function `xml_child_index_each()` to iterate over the children of an XML node according to the order defined by an explicit index variable. This is a complement to `xml_child_each()` which iterates using the default order.
 
 ## 4.5.0

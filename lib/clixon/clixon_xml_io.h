@@ -46,6 +46,7 @@
 int clicon_xml2file(FILE  *f, cxobj *x, int level, int prettyprint);
 int xml_print(FILE *f, cxobj *xn);
 int clicon_xml2cbuf(cbuf *cb, cxobj *x, int level, int prettyprint, int32_t depth);
+char *clicon_xml2str(cxobj *x);
 int xmltree2cbuf(cbuf *cb, cxobj *x, int level);
 
 int clixon_xml_parse_file(int fd, yang_bind yb, yang_stmt *yspec, char *endtag, cxobj **xt, cxobj **xerr);

@@ -349,6 +349,12 @@ module pattern{
             pattern 'Z|[\+\-]\d{2}:\d{2}';
          }
       }
+      leaf p45 {
+         description "Recognizing a CDATA pattern";
+         type string {
+	    pattern "<!\[CDATA\[.{1,10}\]\]>";
+         }
+      }
    }
 }
 EOF
@@ -356,9 +362,13 @@ EOF
 # Send a string via netconf for pattern matching
 # It assumes a yang with a hardcoded  container <c><p$pnr> to work properly
 # The function can expect matching or fail (negative test)
+# Arguments:
+# 1: leaf tag in yang
+# 2: expected match(1) or fail(0)
+# 3: match string
 testrun(){
     leaf="$1"   # leaf tag under <c> with pattern to test
-    mat="$2" # expected match (1) or fail (0)
+    mat="$2"     # expected match (1) or fail (0)
     str0="$3"    # content string (to match against)
 
     # URI-encode the string to be sent with netconf
@@ -694,6 +704,21 @@ testrun "p$pnr" 1 '+12:07'
 testrun "p$pnr" 1 'Z'
 testrun "p$pnr" 1 '-01:38'
 
+let pnr=45
+new "Test for pattern leaf p$pnr CDATA matcher"
+testrun "p$pnr" 1 '<![CDATA[foobar]]>'
+testrun "p$pnr" 0 '<![CDATA[]]>'
+testrun "p$pnr" 1 '<![CDATA[0123456789]]>'
+testrun "p$pnr" 0 '<![CDATA[01234567890]]>' # too long
+# Negative tests where one char at a time is removed
+testrun "p$pnr" 0 '![CDATA[0123456789]]>' 
+testrun "p$pnr" 0 '<[CDATA[0123456789]]>'
+testrun "p$pnr" 0 '<!CDATA[01234567890]]>'
+testrun "p$pnr" 0 '<![DATA[01234567890]]>'
+testrun "p$pnr" 0 '<![CDATA01234567890]]>'
+#testrun "p$pnr" 0 '<![CDATA[01234567890]>' # XML parse error
+#testrun "p$pnr" 0 '<![CDATA[0123456789]]' # XML parse error
+
 # CLI tests
 
 new "CLI tests for RFC7950 Sec 9.4.7 ex 2 AB"
@@ -738,6 +763,27 @@ expectfn "$clixon_cli -1f $cfg -l o set c threematch gks" 0 '^$'
 new "CLI tests for three patterns abcg (should fail)"
 expectfn "$clixon_cli -1f $cfg -l o set c threematch abcg" 255 '^CLI syntax error:'
 
+# Need to have failures first so there are no matches with existing entries
+new "CLI tests for CDATA, should fail"
+expectfn "$clixon_cli -1f $cfg -l o set c p45 <![CDATA[foo" 255 'CLI syntax error'
+
+new "CLI tests for CDATA, should fail"
+expectfn "$clixon_cli -1f $cfg -l o set c p45 <!CDATA[foo]]" 255 'CLI syntax error'
+
+new "CLI tests for CDATA, should fail"
+expectfn "$clixon_cli -1f $cfg -l o set c p45 <!CDATA[foo]>" 255 'CLI syntax error'
+
+new "CLI tests for CDATA, should fail"
+expectfn "$clixon_cli -1f $cfg -l o set c p45 <![CDATA[]]>" 255 'CLI syntax error'
+
+new "CLI tests for CDATA, should fail"
+expectfn "$clixon_cli -1f $cfg -l o set c p45 ![CDATA[foo]]>" 255 'CLI syntax error'
+
+new "CLI tests for CDATA, should fail"
+expectfn "$clixon_cli -1f $cfg -l o set c p45 <![CDATA[foo]]" 255 'CLI syntax error'
+
+new "CLI tests for CDATA OK"
+expectfn "$clixon_cli -1f $cfg -l o set c p45 <![CDATA[foobar]]>" 0 '^$'
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
