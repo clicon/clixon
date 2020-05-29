@@ -530,7 +530,7 @@ ys_dup(yang_stmt *old)
     return new;
 }
 
-/*! Insert yang statement as child of a parent yang_statement, last in list 
+/*! Append yang statement as child of a parent yang_statement, last in list 
  *
  * @param[in] ys_parent  Add child to this parent
  * @param[in] ys_child   Add this child

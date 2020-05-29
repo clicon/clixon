@@ -465,9 +465,9 @@ yang_expand_grouping(yang_stmt *yn)
 
 /*! Parse a string containing a YANG spec into a parse-tree
  * 
- * Syntax parsing. A string is input and a syntax-tree is returned (or error). 
- * A variable record is also returned containing a list of (global) variable values.
- * (cloned from cligen)
+ * Syntax parsing. A string is input and a YANG syntax-tree is returned (or error). 
+ * As a side-effect, Yang modules present in the text will be inserted under the global Yang 
+ * specification
  * @param[in] str    String of yang statements
  * @param[in] name   Log string, typically filename
  * @param[in] yspec  Yang specification. 
@@ -523,7 +523,7 @@ yang_parse_str(char         *str,
 /*! Parse yang spec from an open file descriptor
  * @param[in] fd     File descriptor containing the YANG file as ASCII characters
  * @param[in] name   For debug, eg filename
- * @param[in] ysp    Yang specification. Should have been created by caller using yspec_new
+ * @param[in] yspec  Yang specification. Should have been created by caller using yspec_new
  * @retval ymod      Top-level yang (sub)module
  * @retval NULL      Error 
  * @note this function simply parse a yang spec, no dependencies or checks
@@ -531,7 +531,7 @@ yang_parse_str(char         *str,
 yang_stmt *
 yang_parse_file(int         fd,
 		const char *name,
-		yang_stmt  *ysp)
+		yang_stmt  *yspec)
 {
     char         *buf = NULL;
     int           i;
@@ -564,7 +564,7 @@ yang_parse_file(int         fd,
 	}
 	buf[i++] = (char)(c&0xff);
     } /* read a line */
-    if ((ymod = yang_parse_str(buf, name, ysp)) < 0)
+    if ((ymod = yang_parse_str(buf, name, yspec)) < 0)
 	goto done;
   done:
     if (buf)
@@ -685,7 +685,7 @@ yang_parse_find_match(clicon_handle h,
  *
  * Similar to clicon_yang_str(), just read a file first
  * @param[in] filename Name of file
- * @param[in] ysp      Yang specification. Should have been created by caller using yspec_new
+ * @param[in] yspec    Yang specification. Should have been created by caller using yspec_new
  * @retval ymod        Top-level yang (sub)module
  * @retval NULL        Error encountered
 
@@ -694,7 +694,7 @@ yang_parse_find_match(clicon_handle h,
  */
 yang_stmt *
 yang_parse_filename(const char *filename, 
-		    yang_stmt  *ysp)
+		    yang_stmt  *yspec)
 {
     yang_stmt    *ymod = NULL;
     int           fd = -1;
@@ -709,7 +709,7 @@ yang_parse_filename(const char *filename,
 	clicon_err(OE_YANG, errno, "open(%s)", filename);	
 	goto done;
     }
-    if ((ymod = yang_parse_file(fd, filename, ysp)) < 0)
+    if ((ymod = yang_parse_file(fd, filename, yspec)) < 0)
 	goto done;
   done:
     if (fd != -1)
@@ -723,7 +723,7 @@ yang_parse_filename(const char *filename,
  * @param[in] h        CLICON handle
  * @param[in] module   Module name
  * @param[in] revision Revision (or NULL)
- * @param[in] ysp      Yang statement
+ * @param[in] yspec    Yang statement
  * @retval    0        OK
  * @retval   -1        Error
  *
@@ -733,7 +733,7 @@ static yang_stmt *
 yang_parse_module(clicon_handle h,
 		  const char   *module, 
 		  const char   *revision, 
-		  yang_stmt    *ysp)
+		  yang_stmt    *yspec)
 {
     cbuf      *fbuf = NULL;
     char      *filename;
@@ -759,7 +759,7 @@ yang_parse_module(clicon_handle h,
 	goto done;
     }
     filename = cbuf_get(fbuf);
-    if ((ymod = yang_parse_filename(filename, ysp)) == NULL)
+    if ((ymod = yang_parse_filename(filename, yspec)) == NULL)
 	goto done;
     if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL)
 	revm = cv_uint32_get(yang_cv_get(yrev));
