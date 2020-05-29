@@ -325,6 +325,30 @@ clicon_xml2cbuf(cbuf   *cb,
     return retval;
 }
 
+/*! Return an xml tree as a pretty-printed malloced string.
+ * @param[in]  x    XML tree
+ * @retval     str  Malloced pretty-printed string (should be free:d after use)
+ * @retval     NULL Error
+ */
+char *
+clicon_xml2str(cxobj  *x)
+{
+    cbuf  *cb;
+    char  *str;
+    
+    if ((cb = cbuf_new()) == NULL){
+       clicon_err(OE_XML, errno, "cbuf_new");
+       return NULL;
+    }
+    if (clicon_xml2cbuf(cb, x, 0, 1, -1) < 0)
+       return NULL;
+    if ((str = strdup(cbuf_get(cb))) == NULL){
+       clicon_err(OE_XML, errno, "strdup");
+       return NULL;
+    }
+    return str;
+}
+
 /*! Print actual xml tree datastructures (not xml), mainly for debugging
  * @param[in,out] cb          Cligen buffer to write to
  * @param[in]     xn          Clicon xml tree
