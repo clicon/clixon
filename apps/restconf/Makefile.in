@@ -56,6 +56,7 @@ HOST_VENDOR     = @host_vendor@
 wwwdir  	= @wwwdir@
 wwwuser         = @wwwuser@
 with_libhttp	= @with_libhttp@
+with_evhtp	= @with_evhtp@
 
 SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
@@ -71,6 +72,9 @@ LIBS          = -L$(top_srcdir)/lib/src @LIBS@ $(top_srcdir)/lib/src/$(CLIXON_LI
 ifeq ($(with_libhttp),yes)
 LIBS          += -ldl -lpthread 
 endif
+ifeq ($(with_evhtp),yes)
+LIBS          += -lpthread -levent -levent_openssl -lssl -lcrypto
+endif
 
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 
@@ -80,6 +84,9 @@ INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/inclu
 APPLS	  = clixon_restconf # fcgi / nginx
 ifeq ($(with_libhttp),yes)
 APPLS	 += clixon_restconf_libhttp
+endif
+ifeq ($(with_evhtp),yes)
+APPLS	 += clixon_restconf_evhtp
 endif
 
 # Common source - not accessible from plugin - independent of fcgi
@@ -100,6 +107,11 @@ ifeq ($(with_libhttp),yes)
 APPLIBH  = restconf_libhttp_main.c
 APPLIBHOBJ = $(APPLIBH:.c=.o)
 endif
+ifeq ($(with_evhtp),yes)
+# Evhtp-specific source including main
+APPEVHTPH  = restconf_evhtp_main.c
+APPEVHTPOBJ = $(APPEVHTPH:.c=.o)
+endif
 
 all:	 $(APPLS)
 
@@ -111,6 +123,9 @@ clean:
 	rm -f *.core $(APPLS) $(APPOBJ) $(APPFCGIOBJ)
 ifeq ($(with_libhttp),yes)
 	rm -f $(APPLIBHOBJ)
+endif
+ifeq ($(with_evhtp),yes)
+	rm -f $(APPEVHTPOBJ)
 endif
 
 distclean: clean
@@ -146,6 +161,11 @@ clixon_restconf : $(APPOBJ) $(APPFCGIOBJ)
 ifeq ($(with_libhttp),yes)
 clixon_restconf_libhttp : $(APPOBJ) $(APPLIBHOBJ) $(LIBDEPS)
 	$(CC) $(LDFLAGS) $(APPOBJ) $(APPLIBHOBJ) -L. $(LIBS) -o $@
+endif
+
+ifeq ($(with_evhtp),yes)
+clixon_restconf_evhtp : $(APPOBJ) $(APPEVHTPOBJ) $(LIBDEPS)
+	$(CC) $(LDFLAGS) $(APPOBJ) $(APPEVHTPOBJ) -L. $(LIBS) -o $@
 endif
 
 TAGS:

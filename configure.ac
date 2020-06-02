@@ -94,7 +94,8 @@ AC_SUBST(CLIXON_DEFAULT_CONFIG)
 AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
-AC_SUBST(with_libhttp)  # If yes, include libhttp server (https://www.libhttp.org/)
+AC_SUBST(with_libhttp)  # If yes, use libhttp+restconf server (https://www.libhttp.org/)
+AC_SUBST(with_evhtp) # If yes, use libevhp+restconf server (https://github.com/criticalstack/libevhtp)
 AC_SUBST(enable_optyangs) 
 AC_SUBST(wwwdir,/www-data)
 AC_SUBST(wwwuser,www-data)
@@ -146,7 +147,7 @@ fi
 SH_SUFFIX=".so"
 
 # This is for cligen
-AC_ARG_WITH(cligen,  [  --with-cligen=dir       Use CLIGEN here ] )
+AC_ARG_WITH(cligen,  [  --with-cligen=dir],[Use CLIGEN here ] )
 if test "${with_cligen}"; then
   echo "Using CLIGEN here: ${with_cligen}"
   CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
@@ -204,29 +205,39 @@ AC_ARG_WITH([wwwuser],
             [AS_HELP_STRING([--with-wwwuser=<user>],[Set www user different from www-data])])
 if test "${with_wwwuser}"; then
    wwwuser=${with_wwwuser}
-
 fi
 AC_MSG_RESULT(www user is $wwwuser)	
 AC_DEFINE_UNQUOTED(WWWUSER, "$wwwuser", [WWW user for restconf daemon])
 
-# This is for libhttp server (https://www.libhttp.org/) to be used as restconf client
+# OBSOLETE: This is for libhttp server (https://www.libhttp.org/) to be used as restconf client
 # Out-of-the box it comes as static lib .a
 AC_ARG_WITH([libhttp],
-            [AS_HELP_STRING([--with-libhttp          Use libhttp as restconf server])],
+            [AS_HELP_STRING([--with-libhttp],[Use libhttp as restconf server])],
 	    ,
 	    [with_libhttp=no])
 
-echo "lib_http: ${with_libhttp}"
 if test "x${with_libhttp}" == xyes; then
    AC_CHECK_HEADERS(libhttp/libhttp.h,, AC_MSG_ERROR([libhttp header missing. See https://www.libhttp.org]))
    # In github repo default install this is a static lib
    AC_CHECK_LIB(http, httplib_start,, AC_MSG_ERROR([libhttplib missing]),[-lpthread -ldl]) 
 fi
 
+# This is for libevhtp server (https://github.com/criticalstack/libevhtp)
+AC_ARG_WITH([evhtp],
+            [AS_HELP_STRING([--with-evhtp],[Use evhtp as restconf server])],
+	    ,
+	    [with_evhtp=no])
+
+#echo "with_evhtp:${with_evhtp}"
+if test "x${with_evhtp}" == xyes; then
+   AC_CHECK_HEADERS(evhtp/evhtp.h,, AC_MSG_ERROR([evhtp header missing. See https://github.com/criticalstack/libevhtp]))
+   AC_CHECK_LIB(evhtp, evhtp_new,, AC_MSG_ERROR([libevhtp missing]),[-lpthread -levent -levent_openssl -lssl -lcrypto]) 
+fi
+
 # Set default config file location
 CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml
 AC_ARG_WITH([configfile],
-	    [AS_HELP_STRING([--with-configfile=FILE],[set default path to config file])],
+	    [AS_HELP_STRING([--with-configfile=FILE],[Set default path to config file])],
 	    [CLIXON_DEFAULT_CONFIG="$withval"],)
 
 AC_CHECK_LIB(socket, socket)
@@ -235,7 +246,8 @@ AC_CHECK_LIB(dl, dlopen)
 # This is for libxml2 XSD regex engine
 # Note this only enables the compiling of the code. In order to actually
 # use it you need to set Clixon config option CLICON_YANG_REGEXP to libxml2
-AC_ARG_WITH(libxml2,  [  --with-libxml2          use gnome/libxml2 regex engine ] )
+AC_ARG_WITH([libxml2],
+	[AS_HELP_STRING([--with-libxml2],[Use gnome/libxml2 regex engine])])
 if test "${with_libxml2}"; then
    # Find libxml2 lib
    AC_CHECK_LIB(xml2, xmlRegexpCompile,[], AC_MSG_ERROR([libxml2 not found]))
@@ -254,7 +266,7 @@ AC_MSG_RESULT(Have getsockopt SO_PEERCRED)])
 # Each application designer may need to place YANG_INSTALLDIR in their config:
 # <CLICON_YANG_DIR>$YANG_INSTALLDIR</CLICON_YANG_DIR>
 AC_ARG_WITH(yang-installdir,
-            [  --with-yang-installdir=DIR  Install Clixon yang files here (default: ${prefix}/share/clixon) ],
+            [AS_HELP_STRING([--with-yang-installdir=DIR],[Install Clixon yang files here (default: ${prefix}/share/clixon)])],
 	    [YANG_INSTALLDIR="$withval"],
     	    [YANG_INSTALLDIR="${prefix}/share/clixon"]		
 	    )
@@ -266,7 +278,7 @@ AC_MSG_RESULT(Clixon yang files are installed in ${YANG_INSTALLDIR})
 # that Clixon needs to run (or examples rely on). These may be retreived from
 # elsewhere (eg yangmodels repo)
 AC_ARG_WITH(opt-yang-installdir,
-	    [  --with-opt-yang-installdir=DIR  Install optional yang files here (default: ${prefix}/share/clixon) ],
+	    [AS_HELP_STRING([--with-opt-yang-installdir=DIR],[Install optional yang files here (default: ${prefix}/share/clixon)])],
 	    [OPT_YANG_INSTALLDIR="$withval"],
     	    [OPT_YANG_INSTALLDIR="${prefix}/share/clixon"]		
 	    )

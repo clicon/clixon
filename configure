@@ -634,6 +634,7 @@ CPP
 wwwuser
 wwwdir
 enable_optyangs
+with_evhtp
 with_libhttp
 with_restconf
 SH_SUFFIX
@@ -717,6 +718,7 @@ enable_publish
 with_restconf
 with_wwwuser
 with_libhttp
+with_evhtp
 with_configfile
 with_libxml2
 with_yang_installdir
@@ -1365,15 +1367,19 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-cligen=dir       Use CLIGEN here
+  --with-cligen=dir
   --without-restconf      disable support for restconf
   --with-wwwuser=<user>   Set www user different from www-data
   --with-libhttp          Use libhttp as restconf server
-
-  --with-configfile=FILE  set default path to config file
-  --with-libxml2          use gnome/libxml2 regex engine
-  --with-yang-installdir=DIR  Install Clixon yang files here (default: ${prefix}/share/clixon)
-  --with-opt-yang-installdir=DIR  Install optional yang files here (default: ${prefix}/share/clixon)
+  --with-evhtp            Use evhtp as restconf server
+  --with-configfile=FILE  Set default path to config file
+  --with-libxml2          Use gnome/libxml2 regex engine
+  --with-yang-installdir=DIR
+                          Install Clixon yang files here (default:
+                          ${prefix}/share/clixon)
+  --with-opt-yang-installdir=DIR
+                          Install optional yang files here (default:
+                          ${prefix}/share/clixon)
 
 Some influential environment variables:
   CC          C compiler command
@@ -3300,7 +3306,8 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
  # If yes, compile apps/restconf
-  # If yes, include libhttp server (https://www.libhttp.org/)
+  # If yes, use libhttp+restconf server (https://www.libhttp.org/)
+ # If yes, use libevhp+restconf server (https://github.com/criticalstack/libevhtp)
 
 wwwdir=/www-data
 
@@ -4241,7 +4248,7 @@ SH_SUFFIX=".so"
 
 # Check whether --with-cligen was given.
 if test "${with_cligen+set}" = set; then :
-  withval=$with_cligen;
+  withval=$with_cligen; Use CLIGEN here
 fi
 
 if test "${with_cligen}"; then
@@ -4734,7 +4741,6 @@ fi
 
 if test "${with_wwwuser}"; then
    wwwuser=${with_wwwuser}
-
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: www user is $wwwuser" >&5
 $as_echo "www user is $wwwuser" >&6; }
@@ -4744,7 +4750,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
-# This is for libhttp server (https://www.libhttp.org/) to be used as restconf client
+# OBSOLETE: This is for libhttp server (https://www.libhttp.org/) to be used as restconf client
 # Out-of-the box it comes as static lib .a
 
 # Check whether --with-libhttp was given.
@@ -4755,7 +4761,6 @@ else
 fi
 
 
-echo "lib_http: ${with_libhttp}"
 if test "x${with_libhttp}" == xyes; then
    for ac_header in libhttp/libhttp.h
 do :
@@ -4817,6 +4822,81 @@ _ACEOF
 
 else
   as_fn_error $? "libhttplib missing" "$LINENO" 5
+fi
+
+fi
+
+# This is for libevhtp server (https://github.com/criticalstack/libevhtp)
+
+# Check whether --with-evhtp was given.
+if test "${with_evhtp+set}" = set; then :
+  withval=$with_evhtp;
+else
+  with_evhtp=no
+fi
+
+
+#echo "with_evhtp:${with_evhtp}"
+if test "x${with_evhtp}" == xyes; then
+   for ac_header in evhtp/evhtp.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "evhtp/evhtp.h" "ac_cv_header_evhtp_evhtp_h" "$ac_includes_default"
+if test "x$ac_cv_header_evhtp_evhtp_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_EVHTP_EVHTP_H 1
+_ACEOF
+
+else
+  as_fn_error $? "evhtp header missing. See https://github.com/criticalstack/libevhtp" "$LINENO" 5
+fi
+
+done
+
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for evhtp_new in -levhtp" >&5
+$as_echo_n "checking for evhtp_new in -levhtp... " >&6; }
+if ${ac_cv_lib_evhtp_evhtp_new+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-levhtp -lpthread -levent -levent_openssl -lssl -lcrypto $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char evhtp_new ();
+int
+main ()
+{
+return evhtp_new ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_evhtp_evhtp_new=yes
+else
+  ac_cv_lib_evhtp_evhtp_new=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_evhtp_evhtp_new" >&5
+$as_echo "$ac_cv_lib_evhtp_evhtp_new" >&6; }
+if test "x$ac_cv_lib_evhtp_evhtp_new" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBEVHTP 1
+_ACEOF
+
+  LIBS="-levhtp $LIBS"
+
+else
+  as_fn_error $? "libevhtp missing" "$LINENO" 5
 fi
 
 fi
