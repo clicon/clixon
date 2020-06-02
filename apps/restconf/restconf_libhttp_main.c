@@ -76,7 +76,7 @@
 #endif
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:o:"
+#define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:o:P:"
 
 /* Need global variable to for signal handler XXX */
 static clicon_handle _CLICON_HANDLE = NULL;
@@ -137,47 +137,73 @@ usage(clicon_handle h,
 	    "\t-y <file>\t  Load yang spec file (override yang main module)\n"
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
-	    "\t-o \"<option>=<value>\" Give configuration option overriding config file (see clixon-config.yang)\n",
+	    "\t-o \"<option>=<value>\" Give configuration option overriding config file (see clixon-config.yang)\n"
+    	    "\t-P <port>\t  HTTP port (default 80)\n"
+	    ,
 	    argv0,
 	    clicon_restconf_dir(h)
 	    );
     exit(0);
 }
 
-#if 0
-/*! This function will be called by the server on every new request.
+/*! Create and append a libhttp option.
  */
 static int
-begin_request_handler(struct httplib_connection *conn)
+lh_opts_append(struct lh_opt_t **options,
+	       int              *len,
+	       char             *name,
+	       char             *value)
 {
-    const struct httplib_request_info *request_info = httplib_get_request_info(conn);
-    char content[100];
-
-    /* Prepare the message we're going to send */
-    int content_length = snprintf(content, sizeof(content),
-                                  "Hello from clixon-civerweb! Remote port: %d",
-                                  request_info->remote_port);
-
-    /* Send HTTP reply to the client */
-    httplib_printf(conn,
-              "HTTP/1.1 200 OK\r\n"
-              "Content-Type: text/plain\r\n"
-              "Content-Length: %d\r\n"        // Always set Content-Length
-              "\r\n"
-              "%s",
-              content_length, content);
-
-    /* Returning non-zero tells the server that our function has replied to
-     * the client, and should not send client any more data.
-     */
-    return 1;
+    int              retval = -1;
+    struct lh_opt_t *opt = NULL;
+    
+    (*len)++;
+    if ((*options = realloc(*options, *len*sizeof(*opt))) == NULL){
+	clicon_err(OE_FATAL, errno, "realloc");
+	goto done;
+    }
+    opt = &(*options)[*len-1];
+    memset(opt, 0, sizeof(*opt));
+    if (name && (opt->name = strdup(name)) == NULL){
+	clicon_err(OE_FATAL, errno, "strdup");
+	goto done;
+    }
+    if (value && (opt->value = strdup(value)) == NULL){
+	clicon_err(OE_FATAL, errno, "strdup");
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+    
 }
-#endif
 
-LIBHTTP_API struct lh_ctx_t *		httplib_start( const struct lh_clb_t *callbacks, void *user_data, const struct lh_opt_t *options );
-
+/*! Free a libhttp options list
+ */
 static int
-my_begin_request(struct lh_ctx_t *ctx,
+lh_opts_free(struct lh_opt_t *options,
+	     int              len)
+{
+    struct lh_opt_t *opt = NULL;
+    int              i;
+    
+    for (i=0; i<len; i++){
+	opt = &options[i];
+	if (opt->name)
+	    free((char*)opt->name);
+	if (opt->value)
+	    free((char*)opt->value);
+    }
+    if (options)
+	free(options);
+    return 0;
+    
+}
+
+/*! Libhttp icoming request
+ */
+static int
+cx_begin_request(struct lh_ctx_t *ctx,
 		 struct lh_con_t *conn)
 {
     const struct lh_rqi_t *request_info = httplib_get_request_info(conn);
@@ -185,7 +211,7 @@ my_begin_request(struct lh_ctx_t *ctx,
 
     // Prepare the message we're going to send
     int content_length = snprintf(content, sizeof(content),
-                                  "Hello from Clixon! Remote port: %d",
+                                  "Hello from Clixon FOO! Remote port: %d",
                                   request_info->remote_port);
     fprintf(stderr, "%s\n", __FUNCTION__);
     httplib_printf(ctx, conn,
@@ -198,6 +224,94 @@ my_begin_request(struct lh_ctx_t *ctx,
     return 0;
 }
 
+static void
+cx_end_request(struct lh_ctx_t       *ctx,
+	       const struct lh_con_t *conn,
+	       int                    reply_status_code )
+{
+    fprintf(stderr, "%s\n", __FUNCTION__);
+}
+
+static int
+cx_log_message(struct lh_ctx_t       *ctx,
+	       const struct lh_con_t *conn,
+	       const char            *message)
+{
+    fprintf(stderr, "ERROR: %s\n", message);
+    return 0;
+}
+
+static int
+cx_log_access(struct lh_ctx_t       *ctx,
+	      const struct lh_con_t *conn,
+	      const char            *message)
+{
+    fprintf(stderr, "%s\n", __FUNCTION__);
+    return 0;
+}
+
+static int
+cx_init_ssl(struct lh_ctx_t *ctx,
+	    void            *ssl_context,
+	    void            *user_data)
+{
+    fprintf(stderr, "%s\n", __FUNCTION__);
+    return 0;
+}
+
+static void
+cx_connection_close(struct lh_ctx_t       *ctx,
+		    const struct lh_con_t *conn)
+{
+    fprintf(stderr, "%s\n", __FUNCTION__);
+}
+
+static const char *
+cx_open_file(struct lh_ctx_t       *ctx,
+	     const struct lh_con_t *conn,
+	     const char            *path,
+	     size_t                *data_len)
+{
+    fprintf(stderr, "%s\n", __FUNCTION__);
+    return NULL;
+}
+
+static void
+cx_init_lua(struct lh_ctx_t       *ctx,
+	    const struct lh_con_t *conn,
+	    void                  *lua_context)
+{
+    fprintf(stderr, "%s\n", __FUNCTION__);
+}
+
+static int
+cx_http_error(struct lh_ctx_t *ctx,
+	      struct lh_con_t *conn,
+	      int              status)
+{
+    fprintf(stderr, "%s\n", __FUNCTION__);
+    return 0;
+}
+
+static void
+cx_init_context(struct lh_ctx_t *ctx)
+{
+    fprintf(stderr, "%s\n", __FUNCTION__);
+}
+
+static void
+cx_init_thread(struct lh_ctx_t *ctx,
+	       int              thread_type)
+{
+    fprintf(stderr, "%s\n", __FUNCTION__);
+}
+
+static void
+cx_exit_context(struct lh_ctx_t *ctx)
+{
+    fprintf(stderr, "%s\n", __FUNCTION__);
+}
+
 /*! Main routine for libhttp restconf
  */
 int
@@ -205,11 +319,8 @@ main(int    argc,
      char **argv)
 {
     int            retval = -1;
-    //    int            sock;
     char	  *argv0 = argv[0];
     int            c;
-    //    char          *sockpath;
-    //    char          *path;
     clicon_handle  h;
     char          *dir;
     int            logdst = CLICON_LOG_SYSLOG;
@@ -222,14 +333,17 @@ main(int    argc,
     cvec          *nsctx_global = NULL; /* Global namespace context */
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
+    char          *portstr = "80";
 #ifdef _LIBHTTP_NYI 
     char          *stream_path;
 #endif
-
     struct lh_ctx_t *ctx = NULL;
     /* See XX_httplib_free_config_options, XX_httplib_init_options */
-    const struct lh_opt_t options[] = {{"listening_ports", "8080"}, {NULL, NULL}};
-    const struct lh_clb_t callbacks = {my_begin_request,NULL};
+    struct lh_opt_t *lh_opts = NULL;
+    int              lh_opts_len = 0;
+    const struct lh_clb_t lh_callbacks = {cx_begin_request, cx_end_request, cx_log_message, cx_log_access, cx_init_ssl,
+					  cx_connection_close, cx_open_file, cx_init_lua, cx_http_error,
+					  cx_init_context, cx_init_thread, cx_exit_context};
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -263,6 +377,7 @@ main(int    argc,
 		goto done;
 	   break;
 	} /* switch getopt */
+
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
@@ -328,12 +443,26 @@ main(int    argc,
 		goto done;
 	    break;
 	}
+	case 'P': /* http port */
+	    if (!strlen(optarg))
+		usage(h, argv[0]);
+	    portstr=optarg;
+	    break;
         default:
             usage(h, argv[0]);
             break;
 	}
     argc -= optind;
     argv += optind;
+
+    /* See here for libhttp options XX_httplib_process_options 
+     * - https://github.com/lammertb/libhttp/blob/master/doc/UserManual.md
+     * some options seem documented here:  https://github.com/civetweb/civetweb/blob/master/docs/UserManual.md
+     */
+    if (lh_opts_append(&lh_opts, &lh_opts_len, "listening_ports", portstr) < 0)
+	goto done;
+    if (lh_opts_append(&lh_opts, &lh_opts_len, "num_threads", "5") < 0)
+	goto done;
 
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
@@ -429,10 +558,14 @@ main(int    argc,
     if (clicon_options_main(h) < 0)
 	goto done;
 
+    /* Terminate options list with NULL (must be the last) */
+    if (lh_opts_append(&lh_opts, &lh_opts_len, NULL, NULL) < 0)
+	goto done;
+
     /* Start the web server. */
-    if ((ctx = httplib_start(&callbacks, /* callbacks */
-			     NULL,       /* user-data */
-			     options     /* options */
+    if ((ctx = httplib_start(&lh_callbacks, /* callbacks */
+			     h,             /* userdata - clixon handle*/
+			     lh_opts        /* options */
 			     )) == NULL)
 	goto done;
 
@@ -466,6 +599,7 @@ main(int    argc,
 #ifdef _LIBHTTP_NYI 
     stream_child_freeall(h);
 #endif
+    lh_opts_free(lh_opts, lh_opts_len);
     restconf_terminate(h);    
     return retval;
 }
