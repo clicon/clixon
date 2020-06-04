@@ -94,8 +94,6 @@ AC_SUBST(CLIXON_DEFAULT_CONFIG)
 AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
-AC_SUBST(with_libhttp)  # If yes, use libhttp+restconf server (https://www.libhttp.org/)
-AC_SUBST(with_evhtp) # If yes, use libevhp+restconf server (https://github.com/criticalstack/libevhtp)
 AC_SUBST(enable_optyangs) 
 AC_SUBST(wwwdir,/www-data)
 AC_SUBST(wwwuser,www-data)
@@ -147,7 +145,8 @@ fi
 SH_SUFFIX=".so"
 
 # This is for cligen
-AC_ARG_WITH(cligen,  [  --with-cligen=dir],[Use CLIGEN here ] )
+AC_ARG_WITH([cligen],
+            AS_HELP_STRING([--with-cligen=dir],[Use CLIGEN installation in this dir]))
 if test "${with_cligen}"; then
   echo "Using CLIGEN here: ${with_cligen}"
   CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
@@ -190,48 +189,59 @@ AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR([CLIgen missing. Try: git clone 
 
 AC_CHECK_LIB(cligen, cligen_init,, AC_MSG_ERROR([CLIgen missing. Try: git clone https://github.com/olofhagsand/cligen.git]))
 
-# This is for restconf (and fastcgi)
+# This is for restconf. There are three options:
+# --without-restconf    No restconf support
+# --with-restconf=fcgi  FCGI interface for separate web reverse proxy like nginx
+# --with-restconf=evhtp Integration with embedded web server libevhtp
+# Real one
 AC_ARG_WITH([restconf],
-            [AS_HELP_STRING([--without-restconf],[disable support for restconf])],
-            [],
-            [with_restconf=yes])
-if test "x${with_restconf}" == xyes; then
+	AS_HELP_STRING([--with-restconf=fcgi],[FCGI interface for stand-alone web rev-proxy eg nginx (default)]),
+	,
+	[with_restconf=fcgi])
+
+# Actions for each specific package
+if test "x${with_restconf}" == xfcgi; then
    # Lives in libfcgi-dev
    AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
-fi
-
-# This is for changing web user default www-data
-AC_ARG_WITH([wwwuser],
-            [AS_HELP_STRING([--with-wwwuser=<user>],[Set www user different from www-data])])
-if test "${with_wwwuser}"; then
-   wwwuser=${with_wwwuser}
-fi
-AC_MSG_RESULT(www user is $wwwuser)	
-AC_DEFINE_UNQUOTED(WWWUSER, "$wwwuser", [WWW user for restconf daemon])
-
-# OBSOLETE: This is for libhttp server (https://www.libhttp.org/) to be used as restconf client
-# Out-of-the box it comes as static lib .a
-AC_ARG_WITH([libhttp],
-            [AS_HELP_STRING([--with-libhttp],[Use libhttp as restconf server])],
-	    ,
-	    [with_libhttp=no])
-
-if test "x${with_libhttp}" == xyes; then
-   AC_CHECK_HEADERS(libhttp/libhttp.h,, AC_MSG_ERROR([libhttp header missing. See https://www.libhttp.org]))
-   # In github repo default install this is a static lib
-   AC_CHECK_LIB(http, httplib_start,, AC_MSG_ERROR([libhttplib missing]),[-lpthread -ldl]) 
-fi
-
-# This is for libevhtp server (https://github.com/criticalstack/libevhtp)
-AC_ARG_WITH([evhtp],
-            [AS_HELP_STRING([--with-evhtp],[Use evhtp as restconf server])],
-	    ,
-	    [with_evhtp=no])
-
-#echo "with_evhtp:${with_evhtp}"
-if test "x${with_evhtp}" == xyes; then
+elif test "x${with_restconf}" == xevhtp; then
    AC_CHECK_HEADERS(evhtp/evhtp.h,, AC_MSG_ERROR([evhtp header missing. See https://github.com/criticalstack/libevhtp]))
+#LIBS          += -lpthread -levent -levent_openssl -lssl -lcrypto
+   AC_CHECK_LIB(pthread, pthread_create,, AC_MSG_ERROR([libpthread missing]))
+   AC_CHECK_LIB(event, event_init,, AC_MSG_ERROR([libevent missing]))
+   AC_CHECK_LIB(event_openssl, bufferevent_openssl_socket_new,, AC_MSG_ERROR([libevent_openssl missing]))
+   AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
+   AC_CHECK_LIB(crypto, AES_encrypt,, AC_MSG_ERROR([libcrypto missing])) 
    AC_CHECK_LIB(evhtp, evhtp_new,, AC_MSG_ERROR([libevhtp missing]),[-lpthread -levent -levent_openssl -lssl -lcrypto]) 
+
+elif test "x${with_restconf}" == xno; then
+   # Cant get around "no" as an answer for --without-restconf that is reset here to undefined
+   with_restconf=   
+else
+   AC_MSG_ERROR([No such restconf package: ${with_restconf}])
+fi
+
+if test "x${with_restconf}" != "x"; then
+   # This is so it appears in config.h
+   AC_DEFINE_UNQUOTED(WITH_RESTCONF, ${with_restconf}, [Restconf package])
+fi
+# These are dummies just to get the help strings right
+AC_ARG_WITH([restconf],
+	AS_HELP_STRING([--with-restconf=fcgi],[FCGI interface for stand-alone web rev-proxy eg nginx (default)]))
+AC_ARG_WITH([restconf],
+            AS_HELP_STRING([--with-restconf=evhtp],[Integrate restconf with libevhtp server]))
+AC_ARG_WITH([restconf],
+	    AS_HELP_STRING([--without-restconf],[Disable restconf altogether]))
+
+# Common actions for all restconf packages
+if test "x${with_restconf}" != "x"; then
+   # This is for changing web user default www-data
+   AC_ARG_WITH([wwwuser],
+            [AS_HELP_STRING([--with-wwwuser=<user>],[Set www user different from www-data])])
+   if test "${with_wwwuser}"; then
+      wwwuser=${with_wwwuser}
+   fi
+   AC_MSG_RESULT(www user is $wwwuser)	
+   AC_DEFINE_UNQUOTED(WWWUSER, "$wwwuser", [WWW user for restconf daemon])
 fi
 
 # Set default config file location

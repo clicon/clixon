@@ -32,6 +32,9 @@
 #
 # ***** END LICENSE BLOCK *****
 #
+# This makefile supports several restconf web packages in compile-time depending
+# on the value of the with_restconf configure option
+#
 VPATH       	= @srcdir@
 srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
@@ -55,8 +58,8 @@ HOST_VENDOR     = @host_vendor@
 # XXX why is not wwwdir under prefix?
 wwwdir  	= @wwwdir@
 wwwuser         = @wwwuser@
-with_libhttp	= @with_libhttp@
-with_evhtp	= @with_evhtp@
+# one of fcgi or evhtp:
+with_restconf	= @with_restconf@
 
 SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
@@ -69,64 +72,47 @@ CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
 LIBS          = -L$(top_srcdir)/lib/src @LIBS@ $(top_srcdir)/lib/src/$(CLIXON_LIB)
-ifeq ($(with_libhttp),yes)
-LIBS          += -ldl -lpthread 
-endif
-ifeq ($(with_evhtp),yes)
-LIBS          += -lpthread -levent -levent_openssl -lssl -lcrypto
-endif
+#LIBS          += -lpthread -levent -levent_openssl -lssl -lcrypto
 
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
 # Applications
-APPLS	  = clixon_restconf # fcgi / nginx
-ifeq ($(with_libhttp),yes)
-APPLS	 += clixon_restconf_libhttp
-endif
-ifeq ($(with_evhtp),yes)
-APPLS	 += clixon_restconf_evhtp
+ifeq ($(with_restconf),fcgi)
+APPL	  = clixon_restconf # fcgi / nginx
+else 
+APPL	  = clixon_restconf_$(with_restconf)
 endif
 
-# Common source - not accessible from plugin - independent of fcgi
+# Common source - not accessible from plugin - independent of restconf package (fcgi|evhtp)
 APPSRC    = restconf_lib.c
-APPOBJ    = $(APPSRC:.c=.o)
 
 # Fcgi-specific source including main
-APPFCGI    = restconf_fcgi_lib.c
-APPFCGI   += restconf_fcgi_main.c
-APPFCGI   += restconf_methods.c # These should be moved ^
-APPFCGI   += restconf_methods_post.c
-APPFCGI   += restconf_methods_get.c
-APPFCGI   += restconf_stream.c
-APPFCGIOBJ = $(APPFCGI:.c=.o)
-
-ifeq ($(with_libhttp),yes)
-# Libhttp-specific source including main
-APPLIBH  = restconf_libhttp_main.c
-APPLIBHOBJ = $(APPLIBH:.c=.o)
+ifeq ($(with_restconf),fcgi)
+APPSRC   += restconf_fcgi_lib.c
+APPSRC   += restconf_fcgi_main.c
+APPSRC   += restconf_methods.c # These should be moved ^
+APPSRC   += restconf_methods_post.c
+APPSRC   += restconf_methods_get.c
+APPSRC   += restconf_stream.c
 endif
-ifeq ($(with_evhtp),yes)
+
 # Evhtp-specific source including main
-APPEVHTPH  = restconf_evhtp_main.c
-APPEVHTPOBJ = $(APPEVHTPH:.c=.o)
+ifeq ($(with_restconf),evhtp)
+APPSRC  += restconf_evhtp_main.c
 endif
 
-all:	 $(APPLS)
+APPOBJ    = $(APPSRC:.c=.o)
+
+all:	 $(APPL)
 
 # Dependency of clixon library
 $(top_srcdir)/lib/src/$(CLIXON_LIB):
 	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
 
 clean:
-	rm -f *.core $(APPLS) $(APPOBJ) $(APPFCGIOBJ)
-ifeq ($(with_libhttp),yes)
-	rm -f $(APPLIBHOBJ)
-endif
-ifeq ($(with_evhtp),yes)
-	rm -f $(APPEVHTPOBJ)
-endif
+	rm -f *.core $(APPL) $(APPOBJ) *.o # extra .o to clean residue if with_restconf changes
 
 distclean: clean
 	rm -f Makefile *~ .depend
@@ -136,18 +122,18 @@ distclean: clean
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
 # Also a rule for letting www-dir be owned by www-data, which only works for sudo
-install:	$(APPLS)
+install:	$(APPL)
 ifeq ($(shell whoami),root)
 	install -d -m 0755 -o $(wwwuser) -g $(wwwuser) $(DESTDIR)$(wwwdir)
 else
 	install -d -m 0755 $(DESTDIR)$(wwwdir)
 endif
-	install -m 0755 $(INSTALLFLAGS) $(APPLS) $(DESTDIR)$(wwwdir)
+	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(wwwdir)
 
 install-include:	
 
 uninstall:
-	rm -f $(DESTDIR)$(wwwdir)/$(APPLS)
+	rm -f $(DESTDIR)$(wwwdir)/$(APPL)
 
 .SUFFIXES:
 .SUFFIXES: .c .o
@@ -155,18 +141,8 @@ uninstall:
 .c.o:
 	$(CC) $(INCLUDES) -D__PROGRAM__=\"clixon_restconf\" $(CPPFLAGS) $(CFLAGS) -c $<
 
-clixon_restconf : $(APPOBJ) $(APPFCGIOBJ)
-	$(CC) $(LDFLAGS) $(APPOBJ) $(APPFCGIOBJ) -L. $(LIBS) -o $@
-
-ifeq ($(with_libhttp),yes)
-clixon_restconf_libhttp : $(APPOBJ) $(APPLIBHOBJ) $(LIBDEPS)
-	$(CC) $(LDFLAGS) $(APPOBJ) $(APPLIBHOBJ) -L. $(LIBS) -o $@
-endif
-
-ifeq ($(with_evhtp),yes)
-clixon_restconf_evhtp : $(APPOBJ) $(APPEVHTPOBJ) $(LIBDEPS)
-	$(CC) $(LDFLAGS) $(APPOBJ) $(APPEVHTPOBJ) -L. $(LIBS) -o $@
-endif
+$(APPL) : $(APPOBJ)
+	$(CC) $(LDFLAGS) $(APPOBJ) $(LIBS) -o $@
 
 TAGS:
 	find . -name '*.[chyl]' -print | etags -

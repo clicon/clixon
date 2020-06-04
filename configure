@@ -634,8 +634,6 @@ CPP
 wwwuser
 wwwdir
 enable_optyangs
-with_evhtp
-with_libhttp
 with_restconf
 SH_SUFFIX
 CLIXON_DEFAULT_CONFIG
@@ -717,8 +715,6 @@ enable_optyangs
 enable_publish
 with_restconf
 with_wwwuser
-with_libhttp
-with_evhtp
 with_configfile
 with_libxml2
 with_yang_installdir
@@ -1367,11 +1363,12 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-cligen=dir
-  --without-restconf      disable support for restconf
+  --with-cligen=dir       Use CLIGEN installation in this dir
+  --with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg
+                          nginx (default)
+  --with-restconf=evhtp   Integrate restconf with libevhtp server
+  --without-restconf      Disable restconf altogether
   --with-wwwuser=<user>   Set www user different from www-data
-  --with-libhttp          Use libhttp as restconf server
-  --with-evhtp            Use evhtp as restconf server
   --with-configfile=FILE  Set default path to config file
   --with-libxml2          Use gnome/libxml2 regex engine
   --with-yang-installdir=DIR
@@ -3306,8 +3303,6 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
  # If yes, compile apps/restconf
-  # If yes, use libhttp+restconf server (https://www.libhttp.org/)
- # If yes, use libevhp+restconf server (https://github.com/criticalstack/libevhtp)
 
 wwwdir=/www-data
 
@@ -4248,7 +4243,7 @@ SH_SUFFIX=".so"
 
 # Check whether --with-cligen was given.
 if test "${with_cligen+set}" = set; then :
-  withval=$with_cligen; Use CLIGEN here
+  withval=$with_cligen;
 fi
 
 if test "${with_cligen}"; then
@@ -4672,16 +4667,22 @@ else
 fi
 
 
-# This is for restconf (and fastcgi)
+# This is for restconf. There are three options:
+# --without-restconf    No restconf support
+# --with-restconf=fcgi  FCGI interface for separate web reverse proxy like nginx
+# --with-restconf=evhtp Integration with embedded web server libevhtp
+# Real one
 
 # Check whether --with-restconf was given.
 if test "${with_restconf+set}" = set; then :
   withval=$with_restconf;
 else
-  with_restconf=yes
+  with_restconf=fcgi
 fi
 
-if test "x${with_restconf}" == xyes; then
+
+# Actions for each specific package
+if test "x${with_restconf}" == xfcgi; then
    # Lives in libfcgi-dev
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for FCGX_Init in -lfcgi" >&5
 $as_echo_n "checking for FCGX_Init in -lfcgi... " >&6; }
@@ -4730,114 +4731,7 @@ else
   as_fn_error $? "libfcgi-dev missing" "$LINENO" 5
 fi
 
-fi
-
-# This is for changing web user default www-data
-
-# Check whether --with-wwwuser was given.
-if test "${with_wwwuser+set}" = set; then :
-  withval=$with_wwwuser;
-fi
-
-if test "${with_wwwuser}"; then
-   wwwuser=${with_wwwuser}
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: www user is $wwwuser" >&5
-$as_echo "www user is $wwwuser" >&6; }
-
-cat >>confdefs.h <<_ACEOF
-#define WWWUSER "$wwwuser"
-_ACEOF
-
-
-# OBSOLETE: This is for libhttp server (https://www.libhttp.org/) to be used as restconf client
-# Out-of-the box it comes as static lib .a
-
-# Check whether --with-libhttp was given.
-if test "${with_libhttp+set}" = set; then :
-  withval=$with_libhttp;
-else
-  with_libhttp=no
-fi
-
-
-if test "x${with_libhttp}" == xyes; then
-   for ac_header in libhttp/libhttp.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "libhttp/libhttp.h" "ac_cv_header_libhttp_libhttp_h" "$ac_includes_default"
-if test "x$ac_cv_header_libhttp_libhttp_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBHTTP_LIBHTTP_H 1
-_ACEOF
-
-else
-  as_fn_error $? "libhttp header missing. See https://www.libhttp.org" "$LINENO" 5
-fi
-
-done
-
-   # In github repo default install this is a static lib
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for httplib_start in -lhttp" >&5
-$as_echo_n "checking for httplib_start in -lhttp... " >&6; }
-if ${ac_cv_lib_http_httplib_start+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lhttp -lpthread -ldl $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char httplib_start ();
-int
-main ()
-{
-return httplib_start ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_http_httplib_start=yes
-else
-  ac_cv_lib_http_httplib_start=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_http_httplib_start" >&5
-$as_echo "$ac_cv_lib_http_httplib_start" >&6; }
-if test "x$ac_cv_lib_http_httplib_start" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBHTTP 1
-_ACEOF
-
-  LIBS="-lhttp $LIBS"
-
-else
-  as_fn_error $? "libhttplib missing" "$LINENO" 5
-fi
-
-fi
-
-# This is for libevhtp server (https://github.com/criticalstack/libevhtp)
-
-# Check whether --with-evhtp was given.
-if test "${with_evhtp+set}" = set; then :
-  withval=$with_evhtp;
-else
-  with_evhtp=no
-fi
-
-
-#echo "with_evhtp:${with_evhtp}"
-if test "x${with_evhtp}" == xyes; then
+elif test "x${with_restconf}" == xevhtp; then
    for ac_header in evhtp/evhtp.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "evhtp/evhtp.h" "ac_cv_header_evhtp_evhtp_h" "$ac_includes_default"
@@ -4851,6 +4745,242 @@ else
 fi
 
 done
+
+#LIBS          += -lpthread -levent -levent_openssl -lssl -lcrypto
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lpthread" >&5
+$as_echo_n "checking for pthread_create in -lpthread... " >&6; }
+if ${ac_cv_lib_pthread_pthread_create+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lpthread  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char pthread_create ();
+int
+main ()
+{
+return pthread_create ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_pthread_pthread_create=yes
+else
+  ac_cv_lib_pthread_pthread_create=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_pthread_pthread_create" >&5
+$as_echo "$ac_cv_lib_pthread_pthread_create" >&6; }
+if test "x$ac_cv_lib_pthread_pthread_create" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBPTHREAD 1
+_ACEOF
+
+  LIBS="-lpthread $LIBS"
+
+else
+  as_fn_error $? "libpthread missing" "$LINENO" 5
+fi
+
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for event_init in -levent" >&5
+$as_echo_n "checking for event_init in -levent... " >&6; }
+if ${ac_cv_lib_event_event_init+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-levent  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char event_init ();
+int
+main ()
+{
+return event_init ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_event_event_init=yes
+else
+  ac_cv_lib_event_event_init=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_event_event_init" >&5
+$as_echo "$ac_cv_lib_event_event_init" >&6; }
+if test "x$ac_cv_lib_event_event_init" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBEVENT 1
+_ACEOF
+
+  LIBS="-levent $LIBS"
+
+else
+  as_fn_error $? "libevent missing" "$LINENO" 5
+fi
+
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for bufferevent_openssl_socket_new in -levent_openssl" >&5
+$as_echo_n "checking for bufferevent_openssl_socket_new in -levent_openssl... " >&6; }
+if ${ac_cv_lib_event_openssl_bufferevent_openssl_socket_new+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-levent_openssl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char bufferevent_openssl_socket_new ();
+int
+main ()
+{
+return bufferevent_openssl_socket_new ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_event_openssl_bufferevent_openssl_socket_new=yes
+else
+  ac_cv_lib_event_openssl_bufferevent_openssl_socket_new=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_event_openssl_bufferevent_openssl_socket_new" >&5
+$as_echo "$ac_cv_lib_event_openssl_bufferevent_openssl_socket_new" >&6; }
+if test "x$ac_cv_lib_event_openssl_bufferevent_openssl_socket_new" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBEVENT_OPENSSL 1
+_ACEOF
+
+  LIBS="-levent_openssl $LIBS"
+
+else
+  as_fn_error $? "libevent_openssl missing" "$LINENO" 5
+fi
+
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
+$as_echo_n "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
+if ${ac_cv_lib_ssl_OPENSSL_init_ssl_+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lssl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char OPENSSL_init_ssl  ();
+int
+main ()
+{
+return OPENSSL_init_ssl  ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_ssl_OPENSSL_init_ssl_=yes
+else
+  ac_cv_lib_ssl_OPENSSL_init_ssl_=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssl_OPENSSL_init_ssl_" >&5
+$as_echo "$ac_cv_lib_ssl_OPENSSL_init_ssl_" >&6; }
+if test "x$ac_cv_lib_ssl_OPENSSL_init_ssl_" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBSSL 1
+_ACEOF
+
+  LIBS="-lssl $LIBS"
+
+else
+  as_fn_error $? "libssl missing" "$LINENO" 5
+fi
+
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for AES_encrypt in -lcrypto" >&5
+$as_echo_n "checking for AES_encrypt in -lcrypto... " >&6; }
+if ${ac_cv_lib_crypto_AES_encrypt+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcrypto  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char AES_encrypt ();
+int
+main ()
+{
+return AES_encrypt ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_crypto_AES_encrypt=yes
+else
+  ac_cv_lib_crypto_AES_encrypt=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypto_AES_encrypt" >&5
+$as_echo "$ac_cv_lib_crypto_AES_encrypt" >&6; }
+if test "x$ac_cv_lib_crypto_AES_encrypt" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBCRYPTO 1
+_ACEOF
+
+  LIBS="-lcrypto $LIBS"
+
+else
+  as_fn_error $? "libcrypto missing" "$LINENO" 5
+fi
 
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for evhtp_new in -levhtp" >&5
 $as_echo_n "checking for evhtp_new in -levhtp... " >&6; }
@@ -4898,6 +5028,61 @@ _ACEOF
 else
   as_fn_error $? "libevhtp missing" "$LINENO" 5
 fi
+
+
+elif test "x${with_restconf}" == xno; then
+   # Cant get around "no" as an answer for --without-restconf that is reset here to undefined
+   with_restconf=
+else
+   as_fn_error $? "No such restconf package: ${with_restconf}" "$LINENO" 5
+fi
+
+if test "x${with_restconf}" != "x"; then
+   # This is so it appears in config.h
+
+cat >>confdefs.h <<_ACEOF
+#define WITH_RESTCONF ${with_restconf}
+_ACEOF
+
+fi
+# These are dummies just to get the help strings right
+
+# Check whether --with-restconf was given.
+if test "${with_restconf+set}" = set; then :
+  withval=$with_restconf;
+fi
+
+
+# Check whether --with-restconf was given.
+if test "${with_restconf+set}" = set; then :
+  withval=$with_restconf;
+fi
+
+
+# Check whether --with-restconf was given.
+if test "${with_restconf+set}" = set; then :
+  withval=$with_restconf;
+fi
+
+
+# Common actions for all restconf packages
+if test "x${with_restconf}" != "x"; then
+   # This is for changing web user default www-data
+
+# Check whether --with-wwwuser was given.
+if test "${with_wwwuser+set}" = set; then :
+  withval=$with_wwwuser;
+fi
+
+   if test "${with_wwwuser}"; then
+      wwwuser=${with_wwwuser}
+   fi
+   { $as_echo "$as_me:${as_lineno-$LINENO}: result: www user is $wwwuser" >&5
+$as_echo "www user is $wwwuser" >&6; }
+
+cat >>confdefs.h <<_ACEOF
+#define WWWUSER "$wwwuser"
+_ACEOF
 
 fi
 

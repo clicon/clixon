@@ -1510,8 +1510,10 @@ verify_nacm_user(enum nacm_credentials_t mode,
     if (mode == NC_EXCEPT){
 	if (strcmp(peername, "root") == 0)
 	    goto ok;
+#ifdef WITH_RESTCONF
 	if (strcmp(peername, WWWUSER) == 0)
 	    goto ok;
+#endif
     }
     if (strcmp(peername, nacmname) != 0){
 	if ((cbmsg = cbuf_new()) == NULL){

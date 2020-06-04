@@ -24,6 +24,9 @@
 /* Define to 1 if you have the <cligen/cligen.h> header file. */
 #undef HAVE_CLIGEN_CLIGEN_H
 
+/* Define to 1 if you have the <evhtp/evhtp.h> header file. */
+#undef HAVE_EVHTP_EVHTP_H
+
 /* Define to 1 if you have the `getpeereid' function. */
 #undef HAVE_GETPEEREID
 
@@ -41,6 +44,9 @@
 
 /* Define to 1 if you have the `dl' library (-ldl). */
 #undef HAVE_LIBDL
+
+/* Define to 1 if you have the `evhtp' library (-levhtp). */
+#undef HAVE_LIBEVHTP
 
 /* Define to 1 if you have the `fcgi' library (-lfcgi). */
 #undef HAVE_LIBFCGI
@@ -119,6 +125,9 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
+
+/* Restconf package */
+#undef WITH_RESTCONF
 
 /* WWW user for restconf daemon */
 #undef WWWUSER
