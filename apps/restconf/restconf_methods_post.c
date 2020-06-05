@@ -188,7 +188,7 @@ api_data_post(clicon_handle h,
      * If xbot is top-level (api_path=null) it does not have a spec therefore look for 
      * top-level (yspec) otherwise assume parent (xbot) is populated.
      */
-    media_in = restconf_content_type(r);
+    media_in = restconf_content_type(h);
     switch (media_in){
     case YANG_DATA_XML:
 	if ((ret = clixon_xml_parse_string(data, yb, yspec, &xbot, &xerr)) < 0){
@@ -382,8 +382,7 @@ api_data_post(clicon_handle h,
     }
     FCGX_SetExitStatus(201, r->out);
     FCGX_FPrintF(r->out, "Status: 201 Created\r\n");
-    http_location(r, xdata);
-    FCGX_GetParam("HTTP_ACCEPT", r->envp);
+    http_location(h, r, xdata);
     FCGX_FPrintF(r->out, "\r\n");
  ok:
     retval = 0;
@@ -451,7 +450,7 @@ api_operations_post_input(clicon_handle h,
 	goto done;
     }
     /* Parse input data as json or xml into xml */
-    media_in = restconf_content_type(r);
+    media_in = restconf_content_type(h);
     switch (media_in){
     case YANG_DATA_XML:
 	/* XXX: Here data is on the form: <input xmlns="urn:example:clixon"/> and has no proper yang binding 

@@ -72,9 +72,14 @@ int restconf_err2code(char *tag);
 const char *restconf_code2reason(int code);
 const restconf_media restconf_media_str2int(char *media);
 const char *restconf_media_int2str(restconf_media media);
-int get_user_cookie(char *cookiestr, char  *attribute, char **val);
-int restconf_terminate(clicon_handle h);
-int restconf_insert_attributes(cxobj *xdata, cvec *qvec);
-int restconf_main_extension_cb(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+restconf_media restconf_content_type(clicon_handle h);
+int   get_user_cookie(char *cookiestr, char  *attribute, char **val);
+int   restconf_terminate(clicon_handle h);
+int   restconf_insert_attributes(cxobj *xdata, cvec *qvec);
+int   restconf_main_extension_cb(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+char *clixon_restconf_param_get(clicon_handle h, char *param);
+int   clixon_restconf_param_set(clicon_handle h, char *param, char *val);
+int   clixon_restconf_param_del(clicon_handle h, char *param);
+char *restconf_uripath(clicon_handle h);
 
 #endif /* _RESTCONF_LIB_H_ */

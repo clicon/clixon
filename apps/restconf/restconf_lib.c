@@ -176,6 +176,27 @@ restconf_media_int2str(restconf_media media)
     return clicon_int2str(http_media_map, media);
 }
 
+/*! Return media_in from Content-Type, -1 if not found or unrecognized
+ * @note media-type syntax does not support parameters
+ * @see RFC7231 Sec 3.1.1.1 for media-type syntax type:
+ *    media-type = type "/" subtype *( OWS ";" OWS parameter )
+ *     type       = token
+ *    subtype    = token
+ * 
+ */
+restconf_media
+restconf_content_type(clicon_handle h)
+{
+    char          *str;
+    restconf_media m;
+
+    if ((str = clixon_restconf_param_get(h, "HTTP_CONTENT_TYPE")) == NULL)
+	return -1;
+    if ((int)(m = restconf_media_str2int(str)) == -1)
+	return -1;
+    return m;
+}
+
 /*! Parse a cookie string and return value of cookie attribute
  * @param[in]  cookiestr  cookie string according to rfc6265 (modified)
  * @param[in]  attribute  cookie attribute
@@ -388,4 +409,63 @@ restconf_main_extension_cb(clicon_handle h,
     retval = 0;
  done:
     return retval;
+}
+
+/*! Get restconf http parameter
+ * @param[in]  h    Clicon handle
+ * @param[in]  name Data name
+ * @retval     val  Data value as string
+ * Currently using clixon runtime data but there is risk for colliding names
+ */
+char *
+clixon_restconf_param_get(clicon_handle h,
+			  char         *param)
+{
+    char *val;
+    if (clicon_data_get(h, param, &val) < 0)
+	return NULL;
+    return val;
+}
+
+/*! Set restconf http parameter
+ * @param[in]  h    Clicon handle
+ * @param[in]  name Data name
+ * @param[in]  val  Data value as null-terminated string
+ * @retval     0    OK
+ * @retval    -1    Error
+ * Currently using clixon runtime data but there is risk for colliding names
+ */
+int
+clixon_restconf_param_set(clicon_handle h,
+			  char        *param,
+    			  char         *val)
+{
+    return clicon_data_set(h, param, val);
+}
+
+int
+clixon_restconf_param_del(clicon_handle h,
+			  char        *param)
+{
+    return clicon_data_del(h, param);
+}
+
+/*! Extract uri-encoded uri-path from fastcgi parameters
+ * Use REQUEST_URI parameter and strip ?args
+ * REQUEST_URI have args and is encoded
+ *   eg /interface=eth%2f0%2f0?insert=first
+ * DOCUMENT_URI dont have args and is not encoded
+ *   eg /interface=eth/0/0
+ *  causes problems with eg /interface=eth%2f0%2f0
+ */
+char *
+restconf_uripath(clicon_handle h)
+{
+    char *path;
+    char *q;
+
+    path = clixon_restconf_param_get(h, "REQUEST_URI"); 
+    if ((q = index(path, '?')) != NULL)
+	*q = '\0';
+    return path;
 }

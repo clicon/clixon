@@ -148,6 +148,59 @@ clicon_strjoin(int         argc,
     return str;
 }
 
+/*! Split a string once into two parts: prefix and suffix
+ * @param[in]  string
+ * @param[in]  delim
+ * @param[out] prefix  If non-NULL, return malloced string, or NULL.
+ * @param[out] suffix  If non-NULL, return malloced identifier.
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @code
+ *    char      *a = NULL;
+ *    char      *b = NULL;
+ *    if (clixon_strsplit(nodeid, ':', &a, &b) < 0)
+ *	 goto done;
+ *    if (a)
+ *	 free(a);
+ *    if (b)
+ *	 free(b);
+ * @note caller need to free prefix and suffix after use
+ * @see clicon_strsep  not just single split
+ */
+int
+clixon_strsplit(char     *string,
+		const int delim,
+		char    **prefix,
+		char    **suffix)
+{
+    int   retval = -1;
+    char *str;
+    
+    if ((str = strchr(string, delim)) == NULL){
+	if (suffix && (*suffix = strdup(string)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+    }
+    else {
+	if (prefix){
+	    if ((*prefix = strdup(string)) == NULL){
+		clicon_err(OE_YANG, errno, "strdup");
+		goto done;
+	    }
+	    (*prefix)[str-string] = '\0';
+	}
+	str++;
+	if (suffix && (*suffix = strdup(str)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 static int
 uri_unreserved(unsigned char in)
 {
@@ -676,6 +729,7 @@ clicon_str2int_search(const map_str2int *mstab,
     return -1; /* not found */
 }
 
+
 /*! Split colon-separated node identifier into prefix and name
  * @param[in]  node-id
  * @param[out] prefix  If non-NULL, return malloced string, or NULL.
@@ -698,32 +752,7 @@ nodeid_split(char  *nodeid,
 	     char **prefix,
 	     char **id)
 {
-    int   retval = -1;
-    char *str;
-    
-    if ((str = strchr(nodeid, ':')) == NULL){
-	if (id && (*id = strdup(nodeid)) == NULL){
-	    clicon_err(OE_YANG, errno, "strdup");
-	    goto done;
-	}
-    }
-    else {
-	if (prefix){
-	    if ((*prefix = strdup(nodeid)) == NULL){
-		clicon_err(OE_YANG, errno, "strdup");
-		goto done;
-	    }
-	    (*prefix)[str-nodeid] = '\0';
-	}
-	str++;
-	if (id && (*id = strdup(str)) == NULL){
-	    clicon_err(OE_YANG, errno, "strdup");
-	    goto done;
-	}
-    }
-    retval = 0;
- done:
-    return retval;
+    return clixon_strsplit(nodeid, ':', prefix, id);
 }
 
 /*! Trim blanks from front and end of a string, return new string 

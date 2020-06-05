@@ -114,7 +114,7 @@ api_data(clicon_handle h,
     char   *request_method;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
+    request_method = clixon_restconf_param_get(h, "REQUEST_METHOD");
     clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
     if (strcmp(request_method, "OPTIONS")==0)
 	retval = api_data_options(h, r);
@@ -131,7 +131,7 @@ api_data(clicon_handle h,
     else if (strcmp(request_method, "DELETE")==0)
 	retval = api_data_delete(h, r, api_path, pi, pretty, media_out);
     else
-	retval = restconf_notfound(r);
+	retval = restconf_notfound(h, r);
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
@@ -161,7 +161,7 @@ api_operations(clicon_handle h,
     char   *request_method;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    request_method = FCGX_GetParam("REQUEST_METHOD", r->envp);
+    request_method = clixon_restconf_param_get(h, "REQUEST_METHOD");
     clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
     if (strcmp(request_method, "GET")==0)
 	retval = api_operations_get(h, r, path, pi, qvec, data, pretty, media_out);
@@ -169,7 +169,7 @@ api_operations(clicon_handle h,
 	retval = api_operations_post(h, r, path, pi, qvec, data,
 				     pretty, media_out);
     else
-	retval = restconf_notfound(r);
+	retval = restconf_notfound(h, r);
     return retval;
 }
 
@@ -340,8 +340,8 @@ api_restconf(clicon_handle h,
     cxobj *xerr;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    path = restconf_uripath(r);
-    query = FCGX_GetParam("QUERY_STRING", r->envp);
+    path = restconf_uripath(h);
+    query = clixon_restconf_param_get(h, "QUERY_STRING");
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
 
     /* Get media for output (proactive negotiation) RFC7231 by using
@@ -349,7 +349,7 @@ api_restconf(clicon_handle h,
      * operation POST, etc
      * If accept is * default is yang-json
      */
-    if ((media_str = FCGX_GetParam("HTTP_ACCEPT", r->envp)) == NULL){
+    if ((media_str = clixon_restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
 	// retval = restconf_unsupported_media(r);
 	// goto done;
     }
@@ -367,15 +367,15 @@ api_restconf(clicon_handle h,
 	goto done;
     /* Sanity check of path. Should be /restconf/ */
     if (pn < 2){
-	restconf_notfound(r);
+	restconf_notfound(h, r);
 	goto ok;
     }
     if (strlen(pvec[0]) != 0){
-	retval = restconf_notfound(r);
+	retval = restconf_notfound(h, r);
 	goto done;
     }
     if (strcmp(pvec[1], RESTCONF_API)){
-	retval = restconf_notfound(r);
+	retval = restconf_notfound(h, r);
 	goto done;
     }
     restconf_test(r, 1);
@@ -385,7 +385,7 @@ api_restconf(clicon_handle h,
 	goto done;
     }
     if ((method = pvec[2]) == NULL){
-	retval = restconf_notfound(r);
+	retval = restconf_notfound(h, r);
 	goto done;
     }
     clicon_debug(1, "%s: method=%s", __FUNCTION__, method);
@@ -441,7 +441,7 @@ api_restconf(clicon_handle h,
     else if (strcmp(method, "test") == 0)
 	restconf_test(r, 0);
     else
-	restconf_notfound(r);
+	restconf_notfound(h, r);
  ok:
     retval = 0;
  done:
@@ -483,7 +483,7 @@ restconf_sig_term(int arg)
 	stream_child_freeall(_CLICON_HANDLE);
 	restconf_terminate(_CLICON_HANDLE);
     }
-    clicon_exit_set(); /* checked in event_loop() */
+    clicon_exit_set(); /* checked in clixon_event_loop() */
     exit(-1);
 }
 
@@ -790,8 +790,12 @@ main(int    argc,
 	    clicon_session_id_set(h, id);
 	    start++;
 	}
-
-	if ((path = FCGX_GetParam("REQUEST_URI", r->envp)) != NULL){
+	/* Translate from FCGI parameter form to Clixon runtime data 
+	 * XXX: potential name collision?
+	 */
+	if (clixon_restconf_params_set(h, r->envp) < 0)
+	    goto done;
+	if ((path = clixon_restconf_param_get(h, "REQUEST_URI")) != NULL){
 	    clicon_debug(1, "path: %s", path);
 	    if (strncmp(path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0)
 		api_restconf(h, r); /* This is the function */
@@ -803,11 +807,13 @@ main(int    argc,
 	    }
 	    else{
 		clicon_debug(1, "top-level %s not found", path);
-		restconf_notfound(r);
+		restconf_notfound(h, r);
 	    }
 	}
 	else
 	    clicon_debug(1, "NULL URI");
+	if (clixon_restconf_params_clear(h, r->envp) < 0)
+	    goto done;
 	if (finish)
 	    FCGX_Finish_r(r);
 	else{ /* A handler is forked so we initiate a new request after instead 
@@ -817,7 +823,8 @@ main(int    argc,
 		goto done;
 	    }
 	}
-    }
+	
+    } /* while */
     retval = 0;
  done:
     stream_child_freeall(h);

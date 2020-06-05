@@ -105,7 +105,7 @@ restconf_sig_term(int arg)
 #endif
 	restconf_terminate(_CLICON_HANDLE);
     }
-    clicon_exit_set(); /* checked in event_loop() */
+    clicon_exit_set(); /* checked in clixon_event_loop() */
     exit(-1);
 }
 
@@ -240,7 +240,7 @@ usage(clicon_handle h,
     exit(0);
 }
 
-/*! Main routine for libhttp restconf
+/*! Main routine for libevhtp restconf
  */
 int
 main(int    argc,

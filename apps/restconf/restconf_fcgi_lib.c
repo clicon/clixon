@@ -64,36 +64,16 @@
 #include "restconf_lib.h"
 #include "restconf_fcgi_lib.h"
 
-/*! Return media_in from Content-Type, -1 if not found or unrecognized
- * @note media-type syntax does not support parameters
- * @see RFC7231 Sec 3.1.1.1 for media-type syntax type:
- *    media-type = type "/" subtype *( OWS ";" OWS parameter )
- *     type       = token
- *    subtype    = token
- * 
- */
-restconf_media
-restconf_content_type(FCGX_Request *r)
-{
-    char          *str;
-    restconf_media m;
-
-    if ((str = FCGX_GetParam("HTTP_CONTENT_TYPE", r->envp)) == NULL)
-	return -1;
-    if ((int)(m = restconf_media_str2int(str)) == -1)
-	return -1;
-    return m;
-}
-
 /*! HTTP error 400
  * @param[in]  r        Fastcgi request handle
  */
 int
-restconf_badrequest(FCGX_Request *r)
+restconf_badrequest(clicon_handle h,
+		    FCGX_Request *r)
 {
     char *path;
 
-    path = FCGX_GetParam("REQUEST_URI", r->envp);
+    path = clixon_restconf_param_get(h, "REQUEST_URI");
     FCGX_SetExitStatus(400, r->out);
     FCGX_FPrintF(r->out, "Status: 400 Bad Request\r\n"); /* 400 bad request */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
@@ -107,11 +87,12 @@ restconf_badrequest(FCGX_Request *r)
  * @param[in]  r        Fastcgi request handle
  */
 int
-restconf_unauthorized(FCGX_Request *r)
+restconf_unauthorized(clicon_handle h,
+		      FCGX_Request *r)
 {
     char *path;
 
-    path = FCGX_GetParam("REQUEST_URI", r->envp);
+    path = clixon_restconf_param_get(h, "REQUEST_URI");
     FCGX_SetExitStatus(401, r->out);
     FCGX_FPrintF(r->out, "Status: 401 Unauthorized\r\n"); /* 401 unauthorized */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
@@ -124,11 +105,12 @@ restconf_unauthorized(FCGX_Request *r)
  * @param[in]  r        Fastcgi request handle
  */
 int
-restconf_forbidden(FCGX_Request *r)
+restconf_forbidden(clicon_handle h,
+		   FCGX_Request *r)
 {
     char *path;
 
-    path = FCGX_GetParam("REQUEST_URI", r->envp);
+    path = clixon_restconf_param_get(h, "REQUEST_URI");
     FCGX_SetExitStatus(403, r->out);
     FCGX_FPrintF(r->out, "Status: 403 Forbidden\r\n"); /* 403 forbidden */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
@@ -141,11 +123,12 @@ restconf_forbidden(FCGX_Request *r)
  * @param[in]  r        Fastcgi request handle
  */
 int
-restconf_notfound(FCGX_Request *r)
+restconf_notfound(clicon_handle h,
+		  FCGX_Request *r)
 {
     char *path;
 
-    path = FCGX_GetParam("REQUEST_URI", r->envp);
+    path = clixon_restconf_param_get(h, "REQUEST_URI");
     FCGX_SetExitStatus(404, r->out);
     FCGX_FPrintF(r->out, "Status: 404 Not Found\r\n"); /* 404 not found */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
@@ -160,11 +143,12 @@ restconf_notfound(FCGX_Request *r)
  * @param[in]  r        Fastcgi request handle
  */
 int
-restconf_notacceptable(FCGX_Request *r)
+restconf_notacceptable(clicon_handle h,
+		       FCGX_Request *r)
 {
     char *path;
 
-    path = FCGX_GetParam("REQUEST_URI", r->envp);
+    path = clixon_restconf_param_get(h, "REQUEST_URI");
     FCGX_SetExitStatus(406, r->out);
     FCGX_FPrintF(r->out, "Status: 406 Not Acceptable\r\n"); /* 406 not acceptible */
 
@@ -206,12 +190,13 @@ restconf_unsupported_media(FCGX_Request *r)
  * @param[in]  r        Fastcgi request handle
  */
 int
-restconf_internal_server_error(FCGX_Request *r)
+restconf_internal_server_error(clicon_handle h,
+			       FCGX_Request *r)
 {
     char *path;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    path = FCGX_GetParam("REQUEST_URI", r->envp);
+    path = clixon_restconf_param_get(h, "REQUEST_URI");
     FCGX_FPrintF(r->out, "Status: 500 Internal Server Error\r\n"); /* 500 internal server error */
     FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
     FCGX_FPrintF(r->out, "<h1>Internal server error when accessing %s</h1>\n", path);
@@ -231,23 +216,6 @@ restconf_notimplemented(FCGX_Request *r)
     return 0;
 }
 
-/*!
- * @param[in]  r        Fastcgi request handle
- */
-static int
-printparam(FCGX_Request *r, 
-	   char         *e, 
-	   int           dbgp)
-{
-    char *p = FCGX_GetParam(e, r->envp);
-
-    if (dbgp)
-	clicon_debug(1, "%s = '%s'", e, p?p:"");
-    else
-	FCGX_FPrintF(r->out, "%s = '%s'\n", e, p?p:"");
-    return 0;
-}
-
 /*! Print all FCGI headers
  * @param[in]  r        Fastcgi request handle
  * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
@@ -256,41 +224,71 @@ int
 restconf_test(FCGX_Request *r, 
 	      int           dbg)
 {
-    printparam(r, "QUERY_STRING", dbg);
-    printparam(r, "REQUEST_METHOD", dbg);	
-    printparam(r, "CONTENT_TYPE", dbg);	
-    printparam(r, "CONTENT_LENGTH", dbg);	
-    printparam(r, "SCRIPT_FILENAME", dbg);	
-    printparam(r, "SCRIPT_NAME", dbg);	
-    printparam(r, "REQUEST_URI", dbg);	
-    printparam(r, "DOCUMENT_URI", dbg);	
-    printparam(r, "DOCUMENT_ROOT", dbg);	
-    printparam(r, "SERVER_PROTOCOL", dbg);	
-    printparam(r, "GATEWAY_INTERFACE", dbg);
-    printparam(r, "SERVER_SOFTWARE", dbg);
-    printparam(r, "REMOTE_ADDR", dbg);
-    printparam(r, "REMOTE_PORT", dbg);
-    printparam(r, "SERVER_ADDR", dbg);
-    printparam(r, "SERVER_PORT", dbg);
-    printparam(r, "SERVER_NAME", dbg);
-    printparam(r, "HTTP_COOKIE", dbg);
-    printparam(r, "HTTPS", dbg);
-    printparam(r, "HTTP_HOST", dbg);
-    printparam(r, "HTTP_ACCEPT", dbg);
-    printparam(r, "HTTP_CONTENT_TYPE", dbg);
-    printparam(r, "HTTP_AUTHORIZATION", dbg);
-#if 0 /* For debug */
+    char **environ = r->envp;
+    int    i;
+
     clicon_debug(1, "All environment vars:");
-    {
-	extern char **environ;
-	int i;
-	for (i = 0; environ[i] != NULL; i++){
-	    clicon_debug(1, "%s", environ[i]);
-	}
+    for (i = 0; environ[i] != NULL; i++){
+	clicon_debug(1, "%s", environ[i]);
     }
-    clicon_debug(1, "End environment vars:");
-#endif
+    clicon_debug(1, "End environment vars");
     return 0;
+}
+
+/*! Convert FCGI parameters to clixon runtime data
+ * @param[in]  h     Clixon handle
+ * @param[in]  envp  Fastcgi request handle parameter array on the format "<param>=<value>"
+ * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
+ */
+int
+clixon_restconf_params_set(clicon_handle h,
+			   char        **envp)
+{
+    int   retval = -1;
+    int   i;
+    char *param;
+    char *val;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    for (i = 0; envp[i] != NULL; i++){ /* on the form <param>=<value> */
+	if (clixon_strsplit(envp[i], '=', &param, &val) < 0)
+	    goto done;
+	clicon_debug(1, "%s param:%s val:%s", __FUNCTION__, param, val);
+	if (clixon_restconf_param_set(h, param, val) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    return retval;
+}
+
+/*! Clear all FCGI parameters in an environment
+ * @param[in]  h     Clixon handle
+ * @param[in]  envp  Fastcgi request handle parameter array on the format "<param>=<value>"
+ * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
+ */
+int
+clixon_restconf_params_clear(clicon_handle h,
+			     char        **envp)
+{
+    int   retval = -1;
+    int   i;
+    char *param;
+    char *val;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    for (i = 0; envp[i] != NULL; i++){ /* on the form <param>=<value> */
+	if (clixon_strsplit(envp[i], '=', &param, &val) < 0)
+	    goto done;
+	clicon_debug(1, "%s param:%s val:%s", __FUNCTION__, param, val);
+	if (clixon_restconf_param_del(h, param) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    return retval;
 }
 
 /*!
@@ -431,7 +429,8 @@ api_return_err(clicon_handle h,
  * @note ports are ignored
  */
 int
-http_location(FCGX_Request *r,
+http_location(clicon_handle h,
+	      FCGX_Request *r,
 	      cxobj        *xobj)
 {
     int   retval = -1;
@@ -440,9 +439,9 @@ http_location(FCGX_Request *r,
     char *request_uri;
     cbuf *cb = NULL;
 
-    https = FCGX_GetParam("HTTPS", r->envp);
-    host = FCGX_GetParam("HTTP_HOST", r->envp);
-    request_uri = FCGX_GetParam("REQUEST_URI", r->envp);
+    https = clixon_restconf_param_get(h, "HTTPS");
+    host = clixon_restconf_param_get(h, "HTTP_HOST");
+    request_uri = clixon_restconf_param_get(h, "REQUEST_URI");
     if (xobj != NULL){
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, 0, "cbuf_new");
@@ -468,23 +467,4 @@ http_location(FCGX_Request *r,
     return retval;
 }
 
-/*! Extract uri-encoded uri-path from fastcgi parameters
- * Use REQUEST_URI parameter and strip ?args
- * REQUEST_URI have args and is encoded
- *   eg /interface=eth%2f0%2f0?insert=first
- * DOCUMENT_URI dont have args and is not encoded
- *   eg /interface=eth/0/0
- *  causes problems with eg /interface=eth%2f0%2f0
- */
-char *
-restconf_uripath(FCGX_Request *r)
-{
-    char *path;
-    char *q;
-
-    path = FCGX_GetParam("REQUEST_URI", r->envp); 
-    if ((q = index(path, '?')) != NULL)
-	*q = '\0';
-    return path;
-}
 

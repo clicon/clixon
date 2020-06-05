@@ -311,7 +311,7 @@ api_data_write(clicon_handle h,
 #endif
     if (xml_child_nr(xret) == 0){ /* Object does not exist */
 	if (plain_patch){    /* If the target resource instance does not exist, the server MUST NOT create it. */
-	    restconf_badrequest(r);
+	    restconf_badrequest(h, r);
 	    goto ok;
 	}
 	else
@@ -740,7 +740,7 @@ api_data_put(clicon_handle h,
 {
     restconf_media media_in;
 
-    media_in = restconf_content_type(r);
+    media_in = restconf_content_type(h);
     return api_data_write(h, r, api_path0, pcvec, pi, qvec, data, pretty,
 			  media_in, media_out, 0);
 } 
@@ -776,7 +776,7 @@ api_data_patch(clicon_handle h,
     restconf_media media_in;
     int ret;
 
-    media_in = restconf_content_type(r);
+    media_in = restconf_content_type(h);
     switch (media_in){
     case YANG_DATA_XML:
     case YANG_DATA_JSON: 	/* plain patch */

@@ -539,9 +539,9 @@ main(int    argc,
 	clicon_err(OE_XML, errno, "nghttp2_session_send");
 	goto done;
     }
-    if (event_reg_fd(ss, ssl_input_cb, sd, "ssl socket") < 0)
+    if (clixon_event_reg_fd(ss, ssl_input_cb, sd, "ssl socket") < 0)
 	goto done;
-    if (event_loop() < 0)
+    if (clixon_event_loop() < 0)
 	goto done;
     retval = 0;
  done:

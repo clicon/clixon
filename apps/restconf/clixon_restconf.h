@@ -3,7 +3,6 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
-  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -31,30 +30,37 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-  
+
+ * The exported interface to plugins. External apps (eg frontend restconf plugins)
+ * should only include this file (not the restconf_*.h)
  */
 
-#ifndef _RESTCONF_FCGI_LIB_H_
-#define _RESTCONF_FCGI_LIB_H_
+#ifndef _CLIXON_RESTCONF_H_
+#define _CLIXON_RESTCONF_H_
 
 /*
- * Prototypes
+ * Types (also in restconf_lib.h)
  */
-int restconf_badrequest(clicon_handle h, FCGX_Request *r);
-int restconf_unauthorized(clicon_handle h, FCGX_Request *r);
-int restconf_forbidden(clicon_handle h, FCGX_Request *r);
-int restconf_notfound(clicon_handle h, FCGX_Request *r);
-int restconf_notacceptable(clicon_handle h, FCGX_Request *r);
-int restconf_conflict(FCGX_Request *r);
-int restconf_unsupported_media(FCGX_Request *r);
-int restconf_internal_server_error(clicon_handle h, FCGX_Request *r);
-int restconf_notimplemented(FCGX_Request *r);
-int restconf_test(FCGX_Request *r, int dbg);
-int clixon_restconf_params_set(clicon_handle h, char **envp);
-int clixon_restconf_params_clear(clicon_handle h, char **envp);
-cbuf *readdata(FCGX_Request *r);
-int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
-		   int pretty, enum restconf_media media, int code);
-int http_location(clicon_handle h, FCGX_Request *r, cxobj *xobj);
+enum restconf_media{
+    YANG_DATA_JSON,  /* "application/yang-data+json" */
+    YANG_DATA_XML,   /* "application/yang-data+xml" */
+    YANG_PATCH_JSON, /* "application/yang-patch+json" */
+    YANG_PATCH_XML   /* "application/yang-patch+xml" */
+};
+typedef enum restconf_media restconf_media;
 
-#endif /* _RESTCONF_FCGI_LIB_H_ */
+/*
+ * Prototypes (also in restconf_lib.h)
+ */
+int restconf_err2code(char *tag);
+const char *restconf_code2reason(int code);
+const restconf_media restconf_media_str2int(char *media);
+const char *restconf_media_int2str(restconf_media media);
+int   get_user_cookie(char *cookiestr, char  *attribute, char **val);
+int   restconf_terminate(clicon_handle h);
+int   restconf_insert_attributes(cxobj *xdata, cvec *qvec);
+int   restconf_main_extension_cb(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+char *clixon_restconf_param_get(clicon_handle h, char *param);
+int   clixon_restconf_param_set(clicon_handle h, char *param, char *val);
+
+#endif /* _CLIXON_RESTCONF_H_ */

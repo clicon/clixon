@@ -89,6 +89,7 @@ static inline char * strdup4(char *str)
  */ 
 char **clicon_strsep(char *string, char *delim, int  *nvec0);
 char *clicon_strjoin (int argc, char **argv, char *delim);
+int clixon_strsplit(char *nodeid, const int delim, char **prefix, char **id);
 int str2cvec(char *string, char delim1, char delim2, cvec **cvp);
 #if defined(__GNUC__) && __GNUC__ >= 3
 int uri_percent_encode(char **encp, char *fmt, ...) __attribute__ ((format (printf, 2, 3)));

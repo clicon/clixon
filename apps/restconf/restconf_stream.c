@@ -336,7 +336,7 @@ stream_timeout(int   s,
 	gettimeofday(&t, NULL);
 	t1.tv_sec = 1; t1.tv_usec = 0;
 	timeradd(&t, &t1, &t);
-	event_reg_timeout(t, stream_timeout, arg, "Stream timeout");
+	clixon_event_reg_timeout(t, stream_timeout, arg, "Stream timeout");
     }
     return 0;
 } 
@@ -374,28 +374,28 @@ api_stream(clicon_handle h,
 #endif
 
     clicon_debug(1, "%s", __FUNCTION__);
-    path = restconf_uripath(r);
-    query = FCGX_GetParam("QUERY_STRING", r->envp);
+    path = restconf_uripath(h);
+    query = clixon_restconf_param_get(h, "QUERY_STRING");
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     restconf_test(r, 1);
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;
     /* Sanity check of path. Should be /stream/<name> */
     if (pn != 3){
-	restconf_notfound(r);
+	restconf_notfound(h, r);
 	goto ok;
     }
     if (strlen(pvec[0]) != 0){
-	retval = restconf_notfound(r);
+	retval = restconf_notfound(h, r);
 	goto done;
     }
     if (strcmp(pvec[1], streampath)){
-	retval = restconf_notfound(r);
+	retval = restconf_notfound(h, r);
 	goto done;
     }
 
     if ((method = pvec[2]) == NULL){
-	retval = restconf_notfound(r);
+	retval = restconf_notfound(h, r);
 	goto done;
     }
     clicon_debug(1, "%s: method=%s", __FUNCTION__, method);
@@ -454,12 +454,12 @@ api_stream(clicon_handle h,
 		xml_free(xret);
 #endif /* STREAM_FORK */
 	    /* Listen to backend socket */
-	    if (event_reg_fd(s, 
+	    if (clixon_event_reg_fd(s, 
 			     restconf_stream_cb, 
 			     (void*)r,
 			     "stream socket") < 0)
 		goto done;
-	    if (event_reg_fd(r->listen_sock,
+	    if (clixon_event_reg_fd(r->listen_sock,
 			     stream_checkuplink, 
 			     (void*)r,
 			     "stream socket") < 0)
@@ -467,11 +467,11 @@ api_stream(clicon_handle h,
 	    /* Poll upstream errors */
 	    stream_timeout(0, (void*)r);
 	    /* Start loop */
-	    event_loop();
+	    clixon_event_loop();
 	    close(s);
-	    event_unreg_fd(s, restconf_stream_cb);
-	    event_unreg_fd(r->listen_sock, restconf_stream_cb);
-	    event_unreg_timeout(stream_timeout, (void*)r);
+	    clixon_event_unreg_fd(s, restconf_stream_cb);
+	    clixon_event_unreg_fd(r->listen_sock, restconf_stream_cb);
+	    clixon_event_unreg_timeout(stream_timeout, (void*)r);
 	    clicon_exit_reset();
 #ifdef STREAM_FORK
 	    FCGX_Finish_r(r);

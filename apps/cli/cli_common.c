@@ -987,7 +987,7 @@ cli_notification_cb(int   s,
 	clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
 	close(s);
 	errno = ESHUTDOWN;
-	event_unreg_fd(s, cli_notification_cb);
+	clixon_event_unreg_fd(s, cli_notification_cb);
 	goto done;
     }
     /* XXX pass yang_spec and use xerr*/

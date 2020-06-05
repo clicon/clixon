@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgat)e
 
   This file is part of CLIXON.
 
@@ -80,7 +82,7 @@ struct event_data{
 static struct event_data *ee = NULL;
 static struct event_data *ee_timers = NULL;
 
-/* Set if element in ee is deleted (event_unreg_fd). Check in ee loops */
+/* Set if element in ee is deleted (clixon_event_unreg_fd). Check in ee loops */
 static int _ee_unreg = 0;
 
 static int _clicon_exit = 0;
@@ -123,14 +125,14 @@ clicon_exit_get(void)
  * @code
  * int fn(int fd, void *arg){
  * }
- * event_reg_fd(fd, fn, (void*)42, "call fn on input on fd");
+ * clixon_event_reg_fd(fd, fn, (void*)42, "call fn on input on fd");
  * @endcode 
  */
 int
-event_reg_fd(int   fd, 
-	     int (*fn)(int, void*), 
-	     void *arg, 
-	     char *str)
+clixon_event_reg_fd(int   fd, 
+		    int (*fn)(int, void*), 
+		    void *arg, 
+		    char *str)
 {
     struct event_data *e;
 
@@ -154,12 +156,12 @@ event_reg_fd(int   fd,
  * @param[in]  s   File descriptor
  * @param[in]  fn  Function to call when input available on fd
  * Note: deregister when exactly function and socket match, not argument
- * @see event_reg_fd
- * @see event_unreg_timeout
+ * @see clixon_event_reg_fd
+ * @see clixon_event_unreg_timeout
  */
 int
-event_unreg_fd(int   s, 
-	       int (*fn)(int, void*))
+clixon_event_unreg_fd(int   s, 
+		      int (*fn)(int, void*))
 {
     struct event_data *e, **e_prev;
     int found = 0;
@@ -189,7 +191,7 @@ event_unreg_fd(int   s,
  *   gettimeofday(&t, NULL);
  *   t1.tv_sec = 1; t1.tv_usec = 0;
  *   timeradd(&t, &t1, &t);
- *   event_reg_timeout(t, fn, NULL, "call every second");
+ *   clixon_event_reg_timeout(t, fn, NULL, "call every second");
  * } 
  * @endcode 
  * 
@@ -198,14 +200,14 @@ event_unreg_fd(int   s,
  * registration for each period, see example above.
  * Note also that the first argument to fn is a dummy, just to get the same
  * signatute as for file-descriptor callbacks.
- * @see event_reg_fd
- * @see event_unreg_timeout
+ * @see clixon_event_reg_fd
+ * @see clixon_event_unreg_timeout
  */
 int
-event_reg_timeout(struct timeval t,  
-		  int          (*fn)(int, void*), 
-		  void          *arg, 
-		  char          *str)
+clixon_event_reg_timeout(struct timeval t,  
+			 int          (*fn)(int, void*), 
+			 void          *arg, 
+			 char          *str)
 {
     struct event_data *e, *e1, **e_prev;
 
@@ -228,22 +230,22 @@ event_reg_timeout(struct timeval t,
     }
     e->e_next = e1;
     *e_prev = e;
-    clicon_debug(2, "event_reg_timeout: %s", str); 
+    clicon_debug(2, "%s: %s", __FUNCTION__, str); 
     return 0;
 }
 
-/*! Deregister a timeout callback as previosly registered by event_reg_timeout()
+/*! Deregister a timeout callback as previosly registered by clixon_event_reg_timeout()
  * Note: deregister when exactly function and function arguments match, not time. So you
  * cannot have same function and argument callback on different timeouts. This is a little
- * different from event_unreg_fd.
+ * different from clixon_event_unreg_fd.
  * @param[in]  fn  Function to call at time t
  * @param[in]  arg Argument to function fn
- * @see event_reg_timeout
- * @see event_unreg_fd
+ * @see clixon_event_reg_timeout
+ * @see clixon_event_unreg_fd
  */
 int
-event_unreg_timeout(int (*fn)(int, void*), 
-		    void *arg)
+clixon_event_unreg_timeout(int (*fn)(int, void*), 
+			   void *arg)
 {
     struct event_data *e, **e_prev;
     int found = 0;
@@ -268,7 +270,7 @@ event_unreg_timeout(int (*fn)(int, void*),
  * @retval     1    Something to read on fd
  */
 int 
-event_poll(int fd)
+clixon_event_poll(int fd)
 {
     int            retval = -1;
     fd_set         fdset;
@@ -288,7 +290,7 @@ event_poll(int fd)
  * @retval -1  Error: eg select, callback, timer, 
  */
 int
-event_loop(void)
+clixon_event_loop(void)
 {
     struct event_data *e;
     struct event_data *e_next;
@@ -363,7 +365,7 @@ event_loop(void)
 }
 
 int
-event_exit(void)
+clixon_event_exit(void)
 {
     struct event_data *e, *e_next;
     

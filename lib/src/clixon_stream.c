@@ -230,7 +230,7 @@ stream_get_xml(clicon_handle h,
 /*! Check all stream subscription stop timers, set up new timer
  * @param[in] fd   No-op
  * @param[in] arg  Clicon handle
- * @note format is given by event_reg_timeout callback function (fd not needed)
+ * @note format is given by clixon_event_reg_timeout callback function (fd not needed)
  */
 int
 stream_timer_setup(int   fd,
@@ -295,7 +295,7 @@ stream_timer_setup(int   fd,
     }
     /* Initiate new timer */
     timeradd(&now, &t1, &t);
-    if (event_reg_timeout(t,
+    if (clixon_event_reg_timeout(t,
 			  stream_timer_setup, /* this function */
 			  h,                  /* clicon handle */
 			  "stream timer setup") < 0)
@@ -841,7 +841,7 @@ stream_replay_trigger(clicon_handle h,
     ra->ra_fn = fn;
     ra->ra_arg = arg;
     gettimeofday(&now, NULL);
-    if (event_reg_timeout(now, stream_replay_cb, ra,
+    if (clixon_event_reg_timeout(now, stream_replay_cb, ra,
 			  "create-subscribtion stream replay") < 0)
 	goto done;
     retval = 0;

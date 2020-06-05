@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -47,19 +49,19 @@ int clicon_exit_reset(void);
 
 int clicon_exit_get(void);
 
-int event_reg_fd(int fd, int (*fn)(int, void*), void *arg, char *str);
+int clixon_event_reg_fd(int fd, int (*fn)(int, void*), void *arg, char *str);
 
-int event_unreg_fd(int s, int (*fn)(int, void*));
+int clixon_event_unreg_fd(int s, int (*fn)(int, void*));
 
-int event_reg_timeout(struct timeval t,  int (*fn)(int, void*), 
-		      void *arg, char *str);
+int clixon_event_reg_timeout(struct timeval t,  int (*fn)(int, void*), 
+			     void *arg, char *str);
 
-int event_unreg_timeout(int (*fn)(int, void*), void *arg);
+int clixon_event_unreg_timeout(int (*fn)(int, void*), void *arg);
 
-int event_poll(int fd);
+int clixon_event_poll(int fd);
 
-int event_loop(void);
+int clixon_event_loop(void);
 
-int event_exit(void);
+int clixon_event_exit(void);
 
 #endif  /* _CLIXON_EVENT_H_ */

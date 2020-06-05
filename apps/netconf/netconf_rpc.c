@@ -437,7 +437,7 @@ netconf_notification_cb(int   s,
 	clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
 	close(s);
 	errno = ESHUTDOWN;
-	event_unreg_fd(s, netconf_notification_cb);
+	clixon_event_unreg_fd(s, netconf_notification_cb);
 	goto done;
     }
     yspec = clicon_dbspec_yang(h);
@@ -520,7 +520,7 @@ netconf_create_subscription(clicon_handle h,
 	goto done;
     if (xpath_first(*xret, NULL, "rpc-reply/rpc-error") != NULL)
 	goto ok;
-    if (event_reg_fd(s, 
+    if (clixon_event_reg_fd(s, 
 		     netconf_notification_cb, 
 		     h,
 		     "notification socket") < 0)

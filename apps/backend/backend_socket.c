@@ -289,7 +289,7 @@ backend_accept_client(int   fd,
     /*
      * Here we register callbacks for actual data socket 
      */
-    if (event_reg_fd(s, from_client, (void*)ce, "local netconf client socket") < 0)
+    if (clixon_event_reg_fd(s, from_client, (void*)ce, "local netconf client socket") < 0)
 	goto done;
     retval = 0;
  done:

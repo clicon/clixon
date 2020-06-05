@@ -274,7 +274,7 @@ netconf_input_cb(int   s,
 	    }
 	}
 	/* poll==1 if more, poll==0 if none */
-	if ((poll = event_poll(s)) < 0)
+	if ((poll = clixon_event_poll(s)) < 0)
 	    goto done;
 	if (poll == 0)
 	    break; /* No data to read */
@@ -338,7 +338,7 @@ netconf_terminate(clicon_handle h)
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
     xpath_optimize_exit();
-    event_exit();
+    clixon_event_exit();
     clicon_handle_exit(h);
     clicon_log_exit();
     return 0;
@@ -590,7 +590,7 @@ main(int    argc,
     /* Send hello to northbound client */
     if (!quiet)
 	send_hello(h, 1, id);
-    if (event_reg_fd(0, netconf_input_cb, h, "netconf socket") < 0)
+    if (clixon_event_reg_fd(0, netconf_input_cb, h, "netconf socket") < 0)
 	goto done;
     if (debug)
 	clicon_option_dump(h, debug);
@@ -598,10 +598,10 @@ main(int    argc,
 	struct timeval t;
 	gettimeofday(&t, NULL);
 	timeradd(&t, &tv, &t);
-	if (event_reg_timeout(t, timeout_fn, NULL, "timeout") < 0)
+	if (clixon_event_reg_timeout(t, timeout_fn, NULL, "timeout") < 0)
 	    goto done;
     }
-    if (event_loop() < 0)
+    if (clixon_event_loop() < 0)
 	goto done;
     retval = 0;
   done:
