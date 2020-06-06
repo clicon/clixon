@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -35,6 +37,7 @@
  * Access functions for clixon data. 
  * Free-typed values for runtime getting and setting.
  *            Accessed with clicon_data(h).
+ * @see clixon_option.[ch] for clixon options
  */
 
 #ifndef _CLIXON_DATA_H_
@@ -52,6 +55,10 @@ typedef struct {
 /*
  * Prototypes
  */
+int clicon_data_get(clicon_handle h, char *id, char **val);
+int clicon_data_set(clicon_handle h, char *id, char *val);
+int clicon_data_del(clicon_handle h, char *name);
+
 yang_stmt * clicon_dbspec_yang(clicon_handle h);
 int clicon_dbspec_yang_set(clicon_handle h, yang_stmt *ys);
 

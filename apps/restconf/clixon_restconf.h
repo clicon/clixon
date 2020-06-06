@@ -54,19 +54,13 @@ typedef enum restconf_media restconf_media;
  */
 int restconf_err2code(char *tag);
 const char *restconf_code2reason(int code);
-
-int badrequest(FCGX_Request *r);
-int unauthorized(FCGX_Request *r);
-int forbidden(FCGX_Request *r);
-int notfound(FCGX_Request *r);
-int conflict(FCGX_Request *r);
-int internal_server_error(FCGX_Request *r);
-int notimplemented(FCGX_Request *r);
-int restconf_test(FCGX_Request *r, int dbg);
-cbuf *readdata(FCGX_Request *r);
-int get_user_cookie(char *cookiestr, char  *attribute, char **val);
-int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
-		   int pretty, restconf_media media, int code);
-
+const restconf_media restconf_media_str2int(char *media);
+const char *restconf_media_int2str(restconf_media media);
+int   get_user_cookie(char *cookiestr, char  *attribute, char **val);
+int   restconf_terminate(clicon_handle h);
+int   restconf_insert_attributes(cxobj *xdata, cvec *qvec);
+int   restconf_main_extension_cb(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+char *clixon_restconf_param_get(clicon_handle h, char *param);
+int   clixon_restconf_param_set(clicon_handle h, char *param, char *val);
 
 #endif /* _CLIXON_RESTCONF_H_ */

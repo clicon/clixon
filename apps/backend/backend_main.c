@@ -134,7 +134,7 @@ backend_terminate(clicon_handle h)
     if (sockfamily==AF_UNIX && lstat(sockpath, &st) == 0)
 	unlink(sockpath);
     backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
-    event_exit();
+    clixon_event_exit();
     clicon_debug(1, "%s done", __FUNCTION__); 
     clicon_log_exit();
     return 0;
@@ -150,7 +150,7 @@ backend_sig_term(int arg)
     if (i++ == 0)
 	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
 		   __PROGRAM__, __FUNCTION__, getpid(), arg);
-    clicon_exit_set(); /* checked in event_loop() */
+    clicon_exit_set(); /* checked in clixon_event_loop() */
 }
 
 /*! Create backend server socket and register callback
@@ -168,7 +168,7 @@ backend_server_socket(clicon_handle h)
 	return -1;
     /* ss is a server socket that the clients connect to. The callback
        therefore accepts clients on ss */
-    if (event_reg_fd(ss, backend_accept_client, h, "server socket") < 0) {
+    if (clixon_event_reg_fd(ss, backend_accept_client, h, "server socket") < 0) {
 	close(ss);
 	return -1;
     }
@@ -923,7 +923,7 @@ main(int    argc,
 
     if (stream_timer_setup(0, h) < 0)
 	goto done;
-    if (event_loop() < 0)
+    if (clixon_event_loop() < 0)
 	goto done;
  ok:
     retval = 0;

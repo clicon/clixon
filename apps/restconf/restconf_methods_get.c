@@ -60,6 +60,7 @@
 #include <fcgiapp.h> /* Need to be after clixon_xml-h due to attribute format */
 
 #include "restconf_lib.h"
+#include "restconf_fcgi_lib.h"
 #include "restconf_methods_get.h"
 
 /*! Generic GET (both HEAD and GET)

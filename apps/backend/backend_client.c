@@ -144,7 +144,7 @@ backend_client_rm(clicon_handle        h,
     for (c = *ce_prev; c; c = c->ce_next){
 	if (c == ce){
 	    if (ce->ce_s){
-		event_unreg_fd(ce->ce_s, from_client);
+		clixon_event_unreg_fd(ce->ce_s, from_client);
 		close(ce->ce_s);
 		ce->ce_s = 0;
 	    }
@@ -1510,8 +1510,10 @@ verify_nacm_user(enum nacm_credentials_t mode,
     if (mode == NC_EXCEPT){
 	if (strcmp(peername, "root") == 0)
 	    goto ok;
+#ifdef WITH_RESTCONF
 	if (strcmp(peername, WWWUSER) == 0)
 	    goto ok;
+#endif
     }
     if (strcmp(peername, nacmname) != 0){
 	if ((cbmsg = cbuf_new()) == NULL){

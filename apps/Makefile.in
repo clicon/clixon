@@ -48,7 +48,7 @@ SUBDIRS += cli
 SUBDIRS += netconf
 
 # See configure.ac
-ifeq ($(with_restconf),yes)
+ifdef with_restconf
 SUBDIRS += restconf
 endif
 

@@ -235,7 +235,7 @@ example_stream_timer_setup(clicon_handle h)
     gettimeofday(&t, NULL);
     t1.tv_sec = 5; t1.tv_usec = 0;
     timeradd(&t, &t1, &t);
-    return event_reg_timeout(t, example_stream_timer, h, "example stream timer");
+    return clixon_event_reg_timeout(t, example_stream_timer, h, "example stream timer");
 }
 
 /*! Smallest possible RPC declaration for test 

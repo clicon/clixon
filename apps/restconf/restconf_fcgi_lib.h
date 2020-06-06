@@ -2,8 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
   Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
@@ -32,36 +31,30 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
- *
- * Event handling and loop
+  
  */
 
-#ifndef _CLIXON_EVENT_H_
-#define _CLIXON_EVENT_H_
+#ifndef _RESTCONF_FCGI_LIB_H_
+#define _RESTCONF_FCGI_LIB_H_
 
 /*
  * Prototypes
  */
-int clicon_exit_set(void);
+int restconf_badrequest(clicon_handle h, FCGX_Request *r);
+int restconf_unauthorized(clicon_handle h, FCGX_Request *r);
+int restconf_forbidden(clicon_handle h, FCGX_Request *r);
+int restconf_notfound(clicon_handle h, FCGX_Request *r);
+int restconf_notacceptable(clicon_handle h, FCGX_Request *r);
+int restconf_conflict(FCGX_Request *r);
+int restconf_unsupported_media(FCGX_Request *r);
+int restconf_internal_server_error(clicon_handle h, FCGX_Request *r);
+int restconf_notimplemented(FCGX_Request *r);
+int restconf_test(FCGX_Request *r, int dbg);
+int clixon_restconf_params_set(clicon_handle h, char **envp);
+int clixon_restconf_params_clear(clicon_handle h, char **envp);
+cbuf *readdata(FCGX_Request *r);
+int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
+		   int pretty, enum restconf_media media, int code);
+int http_location(clicon_handle h, FCGX_Request *r, cxobj *xobj);
 
-int clicon_exit_reset(void);
-
-int clicon_exit_get(void);
-
-int clixon_event_reg_fd(int fd, int (*fn)(int, void*), void *arg, char *str);
-
-int clixon_event_unreg_fd(int s, int (*fn)(int, void*));
-
-int clixon_event_reg_timeout(struct timeval t,  int (*fn)(int, void*), 
-			     void *arg, char *str);
-
-int clixon_event_unreg_timeout(int (*fn)(int, void*), void *arg);
-
-int clixon_event_poll(int fd);
-
-int clixon_event_loop(void);
-
-int clixon_event_exit(void);
-
-#endif  /* _CLIXON_EVENT_H_ */
+#endif /* _RESTCONF_FCGI_LIB_H_ */

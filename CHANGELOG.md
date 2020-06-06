@@ -25,6 +25,17 @@
 ## 4.6.0
 Expected: July 2020
 
+### C-API changes on existing features (For developers)
+
+* Due to name collision with libevent, all clixon event functions prepended with `clixon_`. You need to rename your event functions as follows:
+  * event_reg_fd() -> clixon_event_reg_fd()
+  * event_unreg_fd() -> clixon_event_unreg_fd()
+  * event_reg_timeout() -> clixon_event_reg_timeout()
+  * event_unreg_timeout() -> clixon_event_unreg_timeout()
+  * event_poll() -> clixon_event_poll()
+  * event_loop() -> clixon_event_loop()
+  * event_exit() -> clixon_event_exit()
+  
 ### Minor changes
 
 * Added new function `clicon_xml2str()` to complement xml_print and others that returns a malloced string.

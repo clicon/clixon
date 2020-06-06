@@ -272,7 +272,8 @@ usage(clicon_handle h,
 /*
  */
 int
-main(int argc, char **argv)
+main(int    argc,
+     char **argv)
 {
     int            retval = -1;
     int            c;    

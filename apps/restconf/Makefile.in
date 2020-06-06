@@ -32,6 +32,9 @@
 #
 # ***** END LICENSE BLOCK *****
 #
+# This makefile supports several restconf web packages in compile-time depending
+# on the value of the with_restconf configure option
+#
 VPATH       	= @srcdir@
 srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
@@ -55,6 +58,8 @@ HOST_VENDOR     = @host_vendor@
 # XXX why is not wwwdir under prefix?
 wwwdir  	= @wwwdir@
 wwwuser         = @wwwuser@
+# one of fcgi or evhtp:
+with_restconf	= @with_restconf@
 
 SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
@@ -67,27 +72,45 @@ CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
 LIBS          = -L$(top_srcdir)/lib/src @LIBS@ $(top_srcdir)/lib/src/$(CLIXON_LIB)
+#LIBS          += -lpthread -levent -levent_openssl -lssl -lcrypto
 
 CPPFLAGS  	= @CPPFLAGS@ -fPIC
 
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
-# Name of application
-APPL	  = clixon_restconf
+# Applications
+ifeq ($(with_restconf),fcgi)
+APPL	  = clixon_restconf # fcgi / nginx
+else 
+APPL	  = clixon_restconf_$(with_restconf)
+endif
 
-# Not accessible from plugin
-APPSRC    = restconf_main.c
-APPSRC   += restconf_methods.c
+# Common source - not accessible from plugin - independent of restconf package (fcgi|evhtp)
+#APPSRC    = restconf_lib.c
+
+# Fcgi-specific source including main
+ifeq ($(with_restconf),fcgi)
+APPSRC    = restconf_fcgi_lib.c
+APPSRC   += restconf_fcgi_main.c
+APPSRC   += restconf_methods.c # These should be moved ^
 APPSRC   += restconf_methods_post.c
 APPSRC   += restconf_methods_get.c
 APPSRC   += restconf_stream.c
+endif
+
+# Evhtp-specific source including main
+ifeq ($(with_restconf),evhtp)
+APPSRC   = restconf_evhtp_main.c
+endif
+
 APPOBJ    = $(APPSRC:.c=.o)
 
 # Accessible from plugin
 LIBSRC    = restconf_lib.c
 LIBOBJ    = $(LIBSRC:.c=.o)
 
-# Name of lib
+# This lib is very small but used for clixon restconf applications to access clixon restconf lib
+# functions. Mostly for future use
 MYNAME	  = clixon_restconf
 MYLIBLINK = lib$(MYNAME)$(SH_SUFFIX)
 MYLIB     = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
@@ -100,7 +123,7 @@ $(top_srcdir)/lib/src/$(CLIXON_LIB):
 	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
 
 clean:
-	rm -f $(LIBOBJ) *.core $(APPL) $(APPOBJ) $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
+	rm -f $(LIBOBJ) *.core $(APPL) $(APPOBJ) *.o $(MYLIB) $(MYLIBSO) $(MYLIBLINK) # extra .o to clean residue if with_restconf changes
 
 distclean: clean
 	rm -f Makefile *~ .depend
@@ -136,7 +159,7 @@ uninstall:
 .SUFFIXES: .c .o
 
 .c.o:
-	$(CC) $(INCLUDES) -D__PROGRAM__=\"$(APPL)\" $(CPPFLAGS) $(CFLAGS) -c $<
+	$(CC) $(INCLUDES) -D__PROGRAM__=\"clixon_restconf\" $(CPPFLAGS) $(CFLAGS) -c $<
 
 $(APPL) : $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)
 	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
@@ -155,7 +178,7 @@ TAGS:
 	find . -name '*.[chyl]' -print | etags -
 
 depend:
-	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(LIBSRC) $(APPSRC) > .depend
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(APPFCGI) $(APPSRC) > .depend
 
 #include .depend
 

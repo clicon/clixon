@@ -87,6 +87,15 @@ else
     : ${RCWAIT:=2}
 fi
 
+# RESTCONF protocol, eg http or https
+: ${RCPROTO:=http}
+
+# RESTCONF port
+: ${RCPORT:=80}
+
+# RESTCONF error message (if not up)
+: ${RCERROR:="HTTP/1.1 502 Bad Gateway"}
+
 # www user (on linux typically www-data, freebsd www)
 # could be taken from configure
 : ${wwwuser:=www-data} 
@@ -238,9 +247,9 @@ stop_restconf(){
 
 # Wait for restconf to stop sending  502 Bad Gateway
 wait_restconf(){
-    hdr=$(curl --head -sS http://localhost/restconf)
+    hdr=$(curl --head -sS $RCPROTO://localhost:$RCPORT/restconf)
     let i=0;
-    while [[ $hdr == "HTTP/1.1 502 Bad Gateway"* ]]; do
+    while [[ $hdr == "$RCERROR"* ]]; do
 	sleep 1
 	hdr=$(curl --head -sS http://localhost/restconf)
 	let i++;

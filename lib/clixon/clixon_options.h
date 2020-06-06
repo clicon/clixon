@@ -33,8 +33,10 @@
 
   ***** END LICENSE BLOCK *****
 
- *
- * Configuration file and Options.
+ * This file contains access functions for two types of clixon vars:
+ * - options, ie string based variables from Clixon configuration files.
+ *            Accessed with clicon_options(h).
+ * @see clixon_data.[ch] for free-type runtime get/set *
  */
 
 #ifndef _CLIXON_OPTIONS_H_

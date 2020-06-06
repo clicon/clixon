@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgat)e
 
   This file is part of CLIXON.
 
@@ -31,6 +33,8 @@
 
   ***** END LICENSE BLOCK *****
  * 
+ * This code uses WITH_RESTCONF_FCGI to identify its run with fcgi intreface for ca_auth
+ * This should be changed.
  */
 
 #include <stdlib.h>
@@ -39,14 +43,13 @@
 #include <errno.h>
 #include <ctype.h>
 #include <signal.h>
-#include <fcgiapp.h>
 
 /* cligen */
 #include <cligen/cligen.h>
 
 /* clicon */
 #include <clixon/clixon.h>
-#include <clixon/clixon_restconf.h>
+#include <clixon/clixon_restconf.h>  /* minor use */
 
 static const char Base64[] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -198,23 +201,22 @@ example_restconf_credentials(clicon_handle h,
 			     void         *arg)
 {
     int     retval = -1;
-    FCGX_Request *r = (FCGX_Request *)arg;
     cxobj  *xt = NULL;
-    char   *auth;
     char   *user = NULL;
+    cbuf   *cb = NULL;
+    char   *auth;
     char   *passwd;
     char   *passwd2 = "";
     size_t  authlen;
-    cbuf   *cb = NULL;
     int     ret;
 
     /* HTTP basic authentication not enabled, pass with user "none" */
     if (basic_auth==0)
 	goto ok;
     /* At this point in the code we must use HTTP basic authentication */
-    if ((auth = FCGX_GetParam("HTTP_AUTHORIZATION", r->envp)) == NULL)
+    if ((auth = clixon_restconf_param_get(h, "HTTP_AUTHORIZATION")) == NULL)
 	goto fail; 
-   if (strlen(auth) < strlen("Basic "))
+    if (strlen(auth) < strlen("Basic "))
 	goto fail;
     if (strncmp("Basic ", auth, strlen("Basic ")))
 	goto fail;

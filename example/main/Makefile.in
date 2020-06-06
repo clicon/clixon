@@ -1,7 +1,9 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+#  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+#  Copyright (C) 2017-2019 Olof Hagsand
+#  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgat)e
 #
 # This file is part of CLIXON
 #
@@ -63,7 +65,7 @@ NETCONF_PLUGIN  = $(APPNAME)_netconf.so
 RESTCONF_PLUGIN = $(APPNAME)_restconf.so
 
 PLUGINS = $(BE_PLUGIN) $(BE2_PLUGIN) $(CLI_PLUGIN) $(NETCONF_PLUGIN)
-ifeq ($(with_restconf),yes)
+ifdef with_restconf
 PLUGINS += $(RESTCONF_PLUGIN)
 endif
 
@@ -138,7 +140,7 @@ install: $(YANGSPECS) $(CLISPECS) $(PLUGINS) $(APPNAME).xml
 	install -m 0644 $(INSTALLFLAGS) $(BE_PLUGIN) $(BE2_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/backend
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/netconf
 	install -m 0644 $(INSTALLFLAGS) $(NETCONF_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/netconf
-ifeq ($(with_restconf),yes)
+ifdef with_restconf
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/restconf
 	install -m 0644 $(INSTALLFLAGS) $(RESTCONF_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/restconf
 endif
