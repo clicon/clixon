@@ -25,6 +25,17 @@
 ## 4.6.0
 Expected: July 2020
 
+### Major New features
+
+* Embedding restconf into the existing [libevhtp](https://github.com/criticalstack/libevhtp) embedded web server. Experimental.
+  * The existing FCGI restconf solution will continue to be supported for NGINX and other reverese proxies with an fast CGI API.
+  * The restconf code has been refactored to support both modes. Hopefully, it should be straightforward to add another embedded server, such as GNU microhttpd.
+  * The new restconf module is selected using a compile-time autotools configure as follows:
+    * `--with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg nginx (default)`
+    * `--with-restconf=evhtp   Integrate restconf with libevhtp server`
+    * `--without-restconf      Disable restconf altogether`
+
+
 ### C-API changes on existing features (For developers)
 
 * Due to name collision with libevent, all clixon event functions prepended with `clixon_`. You need to rename your event functions as follows:

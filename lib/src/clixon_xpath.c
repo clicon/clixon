@@ -353,7 +353,7 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
 	     (xt2->xs_type == XP_PRIME_NR || xt2->xs_type == XP_PRIME_STR))
 #endif
 	){
-	fprintf(stderr, "%s type %s vs %s\n", __FUNCTION__,
+	clicon_debug(2, "%s type %s vs %s\n", __FUNCTION__,
 		xpath_tree_int2str(xt1->xs_type),
 		xpath_tree_int2str(xt2->xs_type));
 	goto neq;
@@ -365,19 +365,19 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
 	goto eq;
     }
     if (xt1->xs_int != xt2->xs_int){
-	fprintf(stderr, "%s int\n", __FUNCTION__);
+	clicon_debug(2, "%s int\n", __FUNCTION__);
 	goto neq;
     }
     if (xt1->xs_double != xt2->xs_double){
-	fprintf(stderr, "%s double\n", __FUNCTION__);
+	clicon_debug(2, "%s double\n", __FUNCTION__);
 	goto neq;
     }
     if (clicon_strcmp(xt1->xs_s0, xt2->xs_s0)){
-	fprintf(stderr, "%s s0\n", __FUNCTION__);
+	clicon_debug(2, "%s s0\n", __FUNCTION__);
 	goto neq;
     }
     if (clicon_strcmp(xt1->xs_s1, xt2->xs_s1)){
-	fprintf(stderr, "%s s1\n", __FUNCTION__);
+	clicon_debug(2, "%s s1\n", __FUNCTION__);
 	goto neq;
     }
     xc1 = xt1->xs_c0;
@@ -386,7 +386,7 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
 	;
     else{
 	if (xc1 == NULL || xc2 == NULL){
-	    fprintf(stderr, "%s NULL\n", __FUNCTION__);
+	    clicon_debug(2, "%s NULL\n", __FUNCTION__);
 	    goto neq;
 	}
 	if ((ret = xpath_tree_eq(xc1, xc2, vec, len)) < 0)
@@ -400,7 +400,7 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
 	;
     else{
 	if (xc1 == NULL || xc2 == NULL){
-	    fprintf(stderr, "%s NULL\n", __FUNCTION__);
+	    clicon_debug(2, "%s NULL\n", __FUNCTION__);
 	    goto neq;
 	}
 	if ((ret = xpath_tree_eq(xc1, xc2, vec, len)) < 0)
