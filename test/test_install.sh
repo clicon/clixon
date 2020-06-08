@@ -27,12 +27,18 @@ if [ ! -f $dir/usr/local/share/clixon/clixon-config* ]; then
     err $dir/usr/local/share/clixon/clixon-config*
 fi
 new "Check installed files libclixon.so"
+# Check both /usr/local/lib and /usr/lib 
+# This is a problem on some platforms that dont have /usr/local/ in LD_LIBRARY_PATH
 if [ ! -h $dir/usr/local/lib/libclixon.so ]; then
-    err $dir/usr/local/lib/libclixon.so
+    if [ ! -h $dir/usr/lib/libclixon.so ]; then
+	err $dir/usr/local/lib/libclixon.so
+    fi
 fi
 new "Check installed files libclixon_backend.so"
 if [ ! -h $dir/usr/local/lib/libclixon_backend.so ]; then
-    err $dir/usr/local/lib/libclixon_backend.so
+    if [ ! -h $dir/usr/lib/libclixon_backend.so ]; then
+	err $dir/usr/local/lib/libclixon_backend.so
+    fi
 fi
 
 new "Make DESTDIR install include"
