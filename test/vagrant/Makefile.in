@@ -53,8 +53,10 @@ VAGRANTS =
 
 all: $(VAGRANTS)
 
-# Local vagrant hosts
+# Local vagrant hosts eg generic/centos8. The vagrantdir is a subdirectory and logs will
+# appear eg as generic/centos8.log
 $(VAGRANTS):
+	test -d $@ || mkdir -p $@
 	./vagrant.sh $@ destroy 2>&1 | tee $@.log
 
 clean:

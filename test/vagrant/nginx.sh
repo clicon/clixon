@@ -2,63 +2,32 @@
 # Nginx config script. There are different variants of nginx configs, just off-loading
 # this to a separate script to hide the complexity
 
-set -eux
+set -ux
 
-if [ $# -ne 3 ]; then 
-    echo "usage: $0 <dir> <idfile> <port>"
+if [ $# -ne 4 ]; then 
+    echo "usage: $0 <dir> <idfile> <port> <wwwuser>"
     exit -1
 fi
 dir=$1
 idfile=$2
 port=$3
+wwwuser=$4
 
+# Macros to access target via ssh
 sshcmd="ssh -o StrictHostKeyChecking=no -i $idfile -p $port vagrant@127.0.0.1"
 scpcmd="scp -o StrictHostKeyChecking=no -p -i $idfile -P $port"
 
-if $($sshcmd test -d /etc/nginx/conf.d) ; then
-    confd=true
+if [ $($sshcmd test -d /usr/local/etc/nginx; echo $?) = 0 ]; then
+    prefix=/usr/local # eg freebsd
 else
-    confd=false
+    prefix=
 fi
 
-if $confd; then # conf.d nginx config
-cat <<EOF > $dir/default.conf
-#
-server {
-        listen 80 default_server;
-        listen localhost:80 default_server;
-        listen [::]:80 default_server;
-	server_name localhost;
-	server_name _;
-	location / {
-	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-	    include fastcgi_params;
-        }
-	location /streams {
-	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-	    include fastcgi_params;
- 	    proxy_http_version 1.1;
-	    proxy_set_header Connection "";
-        }
-}
-EOF
-    $scpcmd $dir/default.conf vagrant@127.0.0.1:
-cat<<EOF > $dir/startnginx.sh
-  sudo cp default.conf /etc/nginx/conf.d/
-#  if [ ! -d /run/nginx ]; then
-#    sudo mkdir /run/nginx
-#  fi
-  # Start nginx
-  /usr/sbin/nginx -c /etc/nginx/nginx.conf
-  >&2 echo "nginx started"
-
-EOF
-
-else # full nginx config
-
 # Nginx conf file
-cat<<'EOF' > $dir/nginx.conf
+cat<<EOF > $dir/nginx.conf
 #
+user $wwwuser;
+error_log  /var/log/nginx/error.log;
 worker_processes  1;
 events {
     worker_connections  1024;
@@ -67,10 +36,6 @@ events {
 http {
     include       mime.types;
     default_type  application/octet-stream;
-
-    #log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
-    #                  '$status $body_bytes_sent "$http_referer" '
-    #                  '"$http_user_agent" "$http_x_forwarded_for"';
 
     #access_log  logs/access.log  main;
 
@@ -87,6 +52,7 @@ http {
         listen [::]:80 default_server;
 	server_name localhost;
 	server_name _;
+      #:well-known is in root, otherwise restconf would be ok
 	location / {
 	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
 	    include fastcgi_params;
@@ -100,20 +66,31 @@ http {
   }
 }
 EOF
-    $scpcmd $dir/nginx.conf vagrant@127.0.0.1:
-cat<<EOF > $dir/startnginx.sh
+$scpcmd $dir/nginx.conf vagrant@127.0.0.1:
+cat<<'EOF' > $dir/startnginx.sh
     #!/usr/bin/env bash
+    if [ $# -ne 0 -a $# -ne 1 ]; then 
+       echo "usage: $0 [<prefix>"]
+       exit
+    fi	   
+    prefix=$1
     # start nginx
-    sudo cp nginx.conf /usr/local/etc/nginx/
-    if [ ! $(grep nginx_enable /etc/rc.conf) ]; then
-	sudo sh -c ' echo 'nginx_enable="YES"' >> /etc/rc.conf'
-    fi
-    sudo /usr/local/etc/rc.d/nginx restart
-EOF
+    sudo cp nginx.conf $prefix/etc/nginx/
 
-fi # full nginx config
+    if [ -d /etc/rc.conf ]; then # freebsd
+        if [ ! $(grep nginx_enable /etc/rc.conf) ]; then
+   	  sudo sh -c ' echo 'nginx_enable="YES"' >> /etc/rc.conf'
+        fi		
+        sudo /usr/local/etc/rc.d/nginx restart
+    else
+	sudo pkill nginx
+        nginxbin=$(which nginx)
+	sudo $nginxbin -c $prefix/etc/nginx/nginx.conf
+    fi
+EOF
 
 chmod a+x $dir/startnginx.sh
 $scpcmd $dir/startnginx.sh vagrant@127.0.0.1:
-$sshcmd ./startnginx.sh
+
+$sshcmd ./startnginx.sh $prefix
 

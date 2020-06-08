@@ -13,7 +13,7 @@ in a "site.mk" file. You can add such a file, eg:
   VAGRANTS += generic/centos8
 ```
 
-Logs appear in : <hostname>.log.
+Logs appear in : <dir>/<hostname>.log.
 
 You can also run a single vagrant test as follows:
 ```
@@ -25,4 +25,5 @@ The current status is as follows
 * generic/centos8 - some remaining nginx issue
 * generic/opensuse42 - fastcgi is not installed
 
-See more Vagrant boxes at [https://vagrantcloud.com/search]).
+For other vagrant boxes, see [search vagrant boxes](https://vagrantcloud.com/search)
+

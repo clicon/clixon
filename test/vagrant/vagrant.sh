@@ -19,11 +19,13 @@ if  [ $# -eq 2 ]; then
 else
     destroy=false
 fi
+
 host=$(echo "$box"|awk -F'/' '{print $2}')
 dir=$box
-# XXX: ad-hoc to get (linus) release from boxname
+# XXX: ad-hoc to get (linux) release from boxname
 # using lsb_release is too heavyweight in many cases
 release=$(echo "$host" | grep -io "[a-z]*" | head -1 | tr '[:upper:]' '[:lower:]')
+wwwuser=www-data
 
 # example box="freebsd/FreeBSD-12.1-STABLE"
 test -d $dir || mkdir -p $dir
@@ -64,8 +66,11 @@ case $system in
 	$sshcmd sudo pkg install -y git gmake bash
 	# cligen
 	$sshcmd sudo pkg install -y bison flex
-	# clixon
-	$sshcmd sudo pkg install -y fcgi-devkit nginx # FreeBSD
+	# Add www user for nginx
+	if [ ! $($sshcmd id -u $wwwuser) ]; then
+	    $sshcmd sudo pw useradd $wwwuser -d /nonexistent -s /usr/sbin/nologin 
+	fi
+	$sshcmd sudo pkg install -y fcgi-devkit nginx
 	;;
     Linux)
 	case $release in
@@ -75,6 +80,9 @@ case $system in
 		# cligen
 		$sshcmd sudo yum install -y bison flex
 		# clixon 
+		if [ ! $($sshcmd id -u $wwwuser) ]; then
+		    $sshcmd sudo useradd -M $wwwuser    
+		fi
 		$sshcmd sudo yum install -y fcgi-devel nginx
 		# clixon utilities
 		$sshcmd sudo yum install -y libcurl-devel
@@ -82,6 +90,7 @@ case $system in
 	    opensuse) # opensuse42
 		# clixon 
 		$sshcmd sudo zypper install -y nginx
+		# XXX: no fastcgi package?
 		;;
 	    *)
 		;;
@@ -93,29 +102,31 @@ case $system in
 esac
 
 # Hide all complex nginx config in sub-script
-. ./nginx.sh $dir $idfile $port
+. ./nginx.sh $dir $idfile $port $wwwuser
 
 # Setup cligen and clixon
+# This is a script generated at the original host, then copied to the target and run there.
 # 'EOF' means dont expand $
 cat<<'EOF' > $dir/setup.sh
 #!/usr/bin/env bash
 set -eux # x
 
-if [ $# -ne 1 ]; then 
-    echo "usage: $0 <release>"
+if [ $# -ne 2 ]; then 
+    echo "usage: $0 <release> <wwwuser>"
     exit -1
 fi
 release=$1
+wwwuser=$2
 # create user & group
 if [ ! $(id -u clicon) ]; then 
    if [ $release = "freebsd" ]; then
-      sudo pw useradd clicon; 
+      sudo pw useradd clicon -d /nonexistent -s /usr/sbin/nologin;
       sudo pw group mod clicon -m vagrant; 
-      sudo pw group mod clicon -m www; 
+      sudo pw group mod clicon -m $wwwuser;
    else  
       sudo useradd clicon;
       sudo usermod -a -G clicon vagrant;
-      sudo usermod -a -G clicon nginx; # nginx?
+      sudo usermod -a -G clicon $wwwuser;
    fi
 fi
 
@@ -144,10 +155,10 @@ cd src/clixon
 git pull
 
 if [ $release = "freebsd" ]; then
-    LDFLAGS=-L/usr/local/lib ./configure --with-wwwuser=www --enable-optyangs
+    LDFLAGS=-L/usr/local/lib ./configure --with-cligen=/usr/local --enable-optyangs
 else
    # Problems with su not having "sbin" in path on centos when when we run tests later
-    ./configure --sbindir=/usr/sbin --libdir=/usr/lib --with-wwwuser=nginx --enable-optyangs
+    ./configure --sbindir=/usr/sbin --libdir=/usr/lib --enable-optyangs
 fi
 $MAKE clean
 $MAKE -j10
@@ -160,18 +171,15 @@ sudo ldconfig
 cd test
 echo "#!/usr/bin/env bash" > ./site.sh
 if [ $release = "freebsd" ]; then
-echo "wwwuser=www" >> ./site.sh
-echo "make=gmake" >> ./site.sh
-echo 'SKIPLIST="test_api.sh"' >> ./site.sh
-else
-echo "wwwuser=nginx" >> ./site.sh
+  echo "make=gmake" >> ./site.sh
+  echo 'SKIPLIST="test_api.sh"' >> ./site.sh
 fi
 EOF
 chmod a+x $dir/setup.sh
 
 # config and setup cligen and clixon
 $scpcmd $dir/setup.sh vagrant@127.0.0.1:
-$sshcmd ./setup.sh $release
+$sshcmd ./setup.sh $release $wwwuser
 
 # Run tests
 $sshcmd "(cd src/cligen/test; ./sum.sh)"
