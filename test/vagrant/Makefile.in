@@ -41,20 +41,21 @@ SHELL	= /bin/sh
 .PHONY: all clean distclean depend install uninstall
 
 
-# Include "site.mk" file if it exists and define the HOSTS variables
-# eg :
-# HOSTS += vandal.hagsand.com # i86_32 ubuntu
-# ...
-HOSTS=
+# The "site.mk" file if it exists and define the VAGRANTS variables
+# eg:
+# VAGRANTS += freebsd/FreeBSD-12.1-STABLE
+
+VAGRANTS =
+
 -include site.mk
 
-.PHONY: all clean distclean depend install uninstall $(HOSTS) $(VAGRANTS)
+.PHONY: all clean distclean depend install uninstall $(VAGRANTS)
 
-all: $(HOSTS) $(VAGRANTS)
+all: $(VAGRANTS)
 
-# Real hosts reachable by ssh
-$(HOSTS): 
-	./cicd.sh $@ 2>&1 | tee $@.log
+# Local vagrant hosts
+$(VAGRANTS):
+	./vagrant.sh $@ destroy 2>&1 | tee $@.log
 
 clean:
 	rm -f *.log

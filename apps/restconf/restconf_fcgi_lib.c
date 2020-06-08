@@ -246,8 +246,8 @@ clixon_restconf_params_set(clicon_handle h,
 {
     int   retval = -1;
     int   i;
-    char *param;
-    char *val;
+    char *param = NULL;
+    char *val = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     for (i = 0; envp[i] != NULL; i++){ /* on the form <param>=<value> */
@@ -256,6 +256,14 @@ clixon_restconf_params_set(clicon_handle h,
 	clicon_debug(1, "%s param:%s val:%s", __FUNCTION__, param, val);
 	if (clixon_restconf_param_set(h, param, val) < 0)
 	    goto done;
+	if (param){
+	    free(param);
+	    param = NULL;
+	}
+	if (val){
+	    free(val);
+	    val = NULL;
+	}
     }
     retval = 0;
  done:
@@ -274,16 +282,19 @@ clixon_restconf_params_clear(clicon_handle h,
 {
     int   retval = -1;
     int   i;
-    char *param;
-    char *val;
+    char *param = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     for (i = 0; envp[i] != NULL; i++){ /* on the form <param>=<value> */
-	if (clixon_strsplit(envp[i], '=', &param, &val) < 0)
+	if (clixon_strsplit(envp[i], '=', &param, NULL) < 0)
 	    goto done;
-	clicon_debug(1, "%s param:%s val:%s", __FUNCTION__, param, val);
+	clicon_debug(1, "%s param:%s", __FUNCTION__, param);
 	if (clixon_restconf_param_del(h, param) < 0)
 	    goto done;
+	if (param){
+	    free(param);
+	    param = NULL;
+	}
     }
     retval = 0;
  done:

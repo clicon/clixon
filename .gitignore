@@ -18,6 +18,7 @@ example/*/Makefile
 lib/Makefile
 lib/*/Makefile
 test/Makefile
+test/*/Makefile
 yang/Makefile
 yang/*/Makefile
 autom4te.cache/
@@ -58,4 +59,6 @@ util/clixon_util_xpath
 util/clixon_util_yang
 
 test/site.sh
+test/vagrant/site.mk
+test/cicd/site.mk
 doc/html

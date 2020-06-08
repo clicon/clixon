@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # CI/CD script complementing trevor github
-# Login in to a number of hosts and fo the following:
+# Triggered from Makefile
+# Login in to a number of hosts and do the following:
 # 0. Create and transfer sub-scripts used in main script: cligen-mk.sh clixon-mk.sh clixon-config.sh
 # 1. pull latest version
 # 2. Run configure
@@ -27,14 +28,23 @@ fi
 
 h=$1
 
+SCRIPTS="cligen-mk.sh clixon-mk.sh clixon-config.sh"
+
+# Copy test scripts to remote machine
+scp $SCRIPTS $h:/tmp/
+ssh -t $h "(cd /tmp; chmod 750 $SCRIPTS)"
+
+# pull git changes and build cligen
 ssh -t $h "test -d src || mkdir src"
 ssh -t $h "test -d src/cligen || (cd src;git clone https://github.com/olofhagsand/cligen.git)"
 ssh -t $h "(cd src/cligen;git pull)"
 ssh -t $h "(cd src/cligen;./configure)"
 ssh -t $h "(cd src/cligen; /tmp/cligen-mk.sh)"
+# pull git changes and build clixon
 ssh -t $h "test -d src/clixon || (cd src;git clone https://github.com/clicon/clixon.git)"
 ssh -t $h "(cd src/clixon;git pull)"
 ssh -t $h "(cd src/clixon; /tmp/clixon-config.sh)"
 ssh -t $h "(cd src/clixon; /tmp/clixon-mk.sh)"
 ssh -t $h sudo ldconfig
+# Run clixon test suite
 ssh -t $h "(cd src/clixon/test; ./sum.sh)"
