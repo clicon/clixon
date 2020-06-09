@@ -109,6 +109,7 @@ main(int    argc,
     cxobj        *xcfg = NULL;
     cxobj        *xerr = NULL; /* malloced must be freed */
     int           nr = 1;
+    int           dbg = 0;
 	
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init("api-path", LOG_DEBUG, CLICON_LOG_STDERR); 
@@ -129,7 +130,7 @@ main(int    argc,
 	    usage(argv0);
 	    break;
     	case 'D':
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(argv0);
 	    break;
 	case 'f': /* XML file */
@@ -159,6 +160,8 @@ main(int    argc,
 	    usage(argv[0]);
 	    break;
 	}
+    clicon_debug_init(dbg, NULL);
+
     /* Parse yang */
     if (yang_file_dir){
 	if ((yspec = yspec_new()) == NULL)

@@ -294,6 +294,7 @@ main(int    argc,
     cvec          *nsctx_global = NULL; /* Global namespace context */
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
+    int            dbg=0;
     
     /* Defaults */
     once = 0;
@@ -332,7 +333,7 @@ main(int    argc,
 	    help = 1; 
 	    break;
 	case 'D' : /* debug */
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(h, argv[0]);
 	    break;
 	case 'f': /* config file */
@@ -352,9 +353,9 @@ main(int    argc,
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst);
+    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
 
-    clicon_debug_init(debug, NULL); 
+    clicon_debug_init(dbg, NULL); 
 
     /* Find, read and parse configfile */
     if (clicon_options_main(h) < 0){
@@ -588,8 +589,8 @@ main(int    argc,
     if (logclisyntax)
 	cli_logsyntax_set(h, logclisyntax);
 
-    if (debug)
-	clicon_option_dump(h, debug);
+    if (dbg)
+	clicon_option_dump(h, dbg);
     
     /* Join rest of argv to a single command */
     restarg = clicon_strjoin(argc, argv, " ");

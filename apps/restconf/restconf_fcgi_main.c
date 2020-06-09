@@ -551,6 +551,7 @@ main(int    argc,
     cvec          *nsctx_global = NULL; /* Global namespace context */
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
+    int            dbg = 0;
     
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -567,7 +568,7 @@ main(int    argc,
 	    usage(h, argv[0]);
 	    break;
 	case 'D' : /* debug */
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(h, argv[0]);
 	    break;
 	 case 'f': /* override config file */
@@ -587,9 +588,9 @@ main(int    argc,
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
+    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
 
-    clicon_debug_init(debug, NULL); 
+    clicon_debug_init(dbg, NULL); 
     clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
 	clicon_err(OE_DAEMON, errno, "Setting signal");
@@ -737,8 +738,8 @@ main(int    argc,
 	 goto done;
 
      /* Dump configuration options on debug */
-    if (debug)      
-	clicon_option_dump(h, debug);
+    if (dbg)      
+	clicon_option_dump(h, dbg);
 
     /* Call start function in all plugins before we go interactive 
      */

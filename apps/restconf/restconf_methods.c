@@ -306,7 +306,7 @@ api_data_write(clicon_handle h,
 
     }
 #if 0
-    if (debug)
+    if (clicon_debug_get())
 	clicon_log_xml(LOG_DEBUG, xret, "%s xret:", __FUNCTION__);
 #endif
     if (xml_child_nr(xret) == 0){ /* Object does not exist */

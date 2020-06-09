@@ -47,11 +47,6 @@
 #define CLICON_LOG_FILE   8 /* print logs on clicon_log_filename */
 
 /*
- * Variables
- */
-extern int debug;  
-
-/*
  * Prototypes
  */
 int clicon_log_init(char *ident, int upto, int flags);
@@ -67,6 +62,8 @@ int clicon_log(int level, char *format, ...);
 int clicon_debug(int dbglevel, char *format, ...);
 #endif
 int clicon_debug_init(int dbglevel, FILE *f);
+int clicon_debug_get(void);
+
 char *mon2name(int md);
 
 #endif  /* _CLIXON_LOG_H_ */

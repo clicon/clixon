@@ -159,7 +159,7 @@ main_commit(clicon_handle    h,
     /* Get all added i/fs */
     if (xpath_vec_flag(target, nsc, "//interface", XML_FLAG_ADD, &vec, &len) < 0)
 	return -1;
-    if (debug)
+    if (clicon_debug_get())
 	for (i=0; i<len; i++)             /* Loop over added i/fs */
 	    xml_print(stdout, vec[i]); /* Print the added interface */
   done:

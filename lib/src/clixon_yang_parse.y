@@ -195,13 +195,6 @@
 
 extern int clixon_yang_parseget_lineno  (void);
 
-int 
-clicon_yang_debug(int d)
-{
-    debug = d;
-    return 0;
-}
-
 /* 
    clixon_yang_parseerror
    also called from yacc generated code *

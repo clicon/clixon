@@ -457,7 +457,7 @@ xmldb_get_nocache(clicon_handle       h,
     if (xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: sort verify failed #2", __FUNCTION__);
 #endif
-    if (debug>1)
+    if (clicon_debug_get()>1)
     	clicon_xml2file(stderr, xt, 0, 1);
     *xtop = xt;
     xt = NULL;
@@ -565,7 +565,7 @@ xmldb_get_cache(clicon_handle    h,
     /* Copy the matching parts of the (relevant) XML tree.
      * If cache was empty, also update to datastore cache
      */
-    if (debug>1)
+    if (clicon_debug_get()>1)
     	clicon_xml2file(stderr, x1t, 0, 1);
     *xtop = x1t;
     retval = 0;
@@ -639,7 +639,7 @@ xmldb_get_zerocopy(clicon_handle    h,
     /* Apply default values (removed in clear function) */
     if (xml_default_recurse(x0t) < 0)
 	goto done;
-    if (debug>1)
+    if (clicon_debug_get()>1)
     	clicon_xml2file(stderr, x0t, 0, 1);
     *xtop = x0t;
     retval = 0;

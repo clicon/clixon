@@ -129,6 +129,7 @@ main(int argc, char **argv)
     clicon_handle h;
     enum opx      opx = OPX_ERROR;
     char         *reason = NULL;
+    int           dbg = 0;
     
     clicon_log_init("clixon_insert", LOG_DEBUG, CLICON_LOG_STDERR); 
     if ((h = clicon_handle_init()) == NULL)
@@ -141,7 +142,7 @@ main(int argc, char **argv)
 	    usage(argv0);
 	    break;
     	case 'D':
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(argv0);
 	    break;
 	case 'o': /* Operation */
@@ -171,6 +172,7 @@ main(int argc, char **argv)
 	usage(argv0);
     if (opx == OPX_ERROR) 
 	usage(argv0);
+    clicon_debug_init(dbg, NULL);
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     if (yang_spec_parse_file(h, yangfile, yspec) < 0)
@@ -189,7 +191,7 @@ main(int argc, char **argv)
 	clicon_err(OE_XML, 0, "xpath: %s not found in x0", xpath);
 	goto done;
     }
-    if (debug){
+    if (clicon_debug_get()){
 	clicon_debug(1, "xb:");
 	xml_print(stderr, xb);
     }
@@ -256,7 +258,7 @@ main(int argc, char **argv)
     default:
 	usage(argv0);
     }
-    if (debug){
+    if (clicon_debug_get()){
 	clicon_debug(1, "x0:");
 	xml_print(stderr, x0);
     }

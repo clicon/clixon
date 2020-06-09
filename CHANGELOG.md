@@ -38,6 +38,7 @@ Expected: July 2020
 
 ### C-API changes on existing features (For developers)
 
+* Replaced the global variable `debug` with access function: `clicon_debug_get()`.
 * Due to name collision with libevent, all clixon event functions prepended with `clixon_`. You need to rename your event functions as follows:
   * event_reg_fd() -> clixon_event_reg_fd()
   * event_unreg_fd() -> clixon_event_unreg_fd()

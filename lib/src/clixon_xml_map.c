@@ -358,7 +358,7 @@ xml2cvec(cxobj      *xt,
 	    }
 	}
     }
-    if (debug > 1){
+    if (clicon_debug_get() > 1){
 	clicon_debug(2, "%s cvv:\n", __FUNCTION__);
 	cvec_print(stderr, cvv);
     }

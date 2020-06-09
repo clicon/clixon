@@ -504,7 +504,7 @@ xpath_parse(char        *xpath,
 	    clicon_err(OE_XML, 0, "XPATH parser error with no error code (should not happen)");
 	goto done;
     }
-    if (debug > 1){
+    if (clicon_debug_get() > 1){
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;

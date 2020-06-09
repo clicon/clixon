@@ -401,6 +401,7 @@ main(int    argc,
     cvec            *nsctx_global = NULL; /* Global namespace context */
     size_t           cligen_buflen;
     size_t           cligen_bufthreshold;
+    int              dbg = 0;
     
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
@@ -421,7 +422,7 @@ main(int    argc,
 	    usage(h, argv[0]);
 	    break;
 	case 'D' : /* debug */
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(h, argv[0]);
 	    break;
 	 case 'f': /* override config file */
@@ -442,8 +443,8 @@ main(int    argc,
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
-    clicon_debug_init(debug, NULL); 
+    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
+    clicon_debug_init(dbg, NULL); 
 
     /* Find, read and parse configfile */
     if (clicon_options_main(h) < 0)
@@ -592,8 +593,8 @@ main(int    argc,
 	send_hello(h, 1, id);
     if (clixon_event_reg_fd(0, netconf_input_cb, h, "netconf socket") < 0)
 	goto done;
-    if (debug)
-	clicon_option_dump(h, debug);
+    if (dbg)
+	clicon_option_dump(h, dbg);
     if (tv.tv_sec || tv.tv_usec){
 	struct timeval t;
 	gettimeofday(&t, NULL);

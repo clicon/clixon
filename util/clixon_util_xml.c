@@ -163,6 +163,7 @@ main(int    argc,
     cxobj        *xbot;        /* Place in xtop where base cxobj is parsed */
     cvec         *nsc = NULL; 
     yang_bind     yb;
+    int           dbg = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -184,7 +185,7 @@ main(int    argc,
 	    usage(argv[0]);
 	    break;
     	case 'D':
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(argv[0]);
 	    break;
 	case 'f':
@@ -239,7 +240,9 @@ main(int    argc,
 	fprintf(stderr, "-t requires -T\n");
 	usage(argv[0]);
     }
-    clicon_log_init(__FILE__, debug?LOG_DEBUG:LOG_INFO, logdst);
+    clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, logdst);
+    clicon_debug_init(dbg, NULL);
+    
     /* 1. Parse yang */
     if (yang_file_dir){
 	if ((yspec = yspec_new()) == NULL)
@@ -319,7 +322,7 @@ main(int    argc,
     }
 
     /* Dump data structures (for debug) */
-    if (debug){
+    if (clicon_debug_get()){
 	cbuf_reset(cb);
 	xmltree2cbuf(cb, xt, 0);       
 	fprintf(stderr, "%s\n", cbuf_get(cb));
