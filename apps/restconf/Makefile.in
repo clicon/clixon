@@ -78,35 +78,30 @@ CPPFLAGS  	= @CPPFLAGS@ -fPIC
 
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
-# Applications
-ifeq ($(with_restconf),fcgi)
-APPL	  = clixon_restconf # fcgi / nginx
-else 
-APPL	  = clixon_restconf_$(with_restconf)
-endif
+# Application
+APPL	  = clixon_restconf
 
 # Common source - not accessible from plugin - independent of restconf package (fcgi|evhtp)
-#APPSRC    = restconf_lib.c
+APPSRC    =
+APPSRC   += restconf_api.c # maybe empty
+APPSRC   += restconf_api_$(with_restconf).c # cant be .so since libevhtp is a.
+APPSRC   += restconf_root.c
+APPSRC   += restconf_$(with_restconf)_main.c 
 
 # Fcgi-specific source including main
 ifeq ($(with_restconf),fcgi)
-APPSRC    = restconf_fcgi_lib.c
-APPSRC   += restconf_fcgi_main.c
-APPSRC   += restconf_methods.c # These should be moved ^
+APPSRC   += restconf_fcgi_lib.c # Most of these should be made generic
+APPSRC   += restconf_methods.c 
 APPSRC   += restconf_methods_post.c
 APPSRC   += restconf_methods_get.c
 APPSRC   += restconf_stream.c
-endif
-
-# Evhtp-specific source including main
-ifeq ($(with_restconf),evhtp)
-APPSRC   = restconf_evhtp_main.c
 endif
 
 APPOBJ    = $(APPSRC:.c=.o)
 
 # Accessible from plugin
 LIBSRC    = restconf_lib.c
+
 LIBOBJ    = $(LIBSRC:.c=.o)
 
 # This lib is very small but used for clixon restconf applications to access clixon restconf lib

@@ -297,7 +297,7 @@ check_drop_priv(clicon_handle h,
 	clicon_err(OE_DAEMON, EPERM, "Privileges can only be dropped from root user (uid is %u)\n", uid);
 	goto done;
     }
-    /* When dropping priveleges, datastores are created if they do not exist.
+    /* When dropping privileges, datastores are created if they do not exist.
      * But when drops are not made, datastores are created on demand.
      * XXX: move the creation to top-level so they are always created at init?
      */

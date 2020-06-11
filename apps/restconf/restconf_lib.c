@@ -59,6 +59,7 @@
 /* clicon */
 #include <clixon/clixon.h>
 
+#include "restconf_api.h"
 #include "restconf_lib.h"
 
 /* See RFC 8040 Section 7:  Mapping from NETCONF<error-tag> to Status Code
@@ -443,6 +444,13 @@ clixon_restconf_param_set(clicon_handle h,
     return clicon_data_set(h, param, val);
 }
 
+/*! Delete restconf http parameter
+ * @param[in]  h    Clicon handle
+ * @param[in]  name Data name
+ * @retval     0    OK
+ * @retval    -1    Error
+ * Currently using clixon runtime data but there is risk for colliding names
+ */
 int
 clixon_restconf_param_del(clicon_handle h,
 			  char        *param)
@@ -468,4 +476,79 @@ restconf_uripath(clicon_handle h)
     if ((q = index(path, '?')) != NULL)
 	*q = '\0';
     return path;
+}
+
+
+/*! Drop privileges from root to user (or already at user)
+ * @param[in]  h    Clicon handle
+ * @param[in]  user Drop to this level
+ * Group set to clicon to communicate with backend
+ */
+int
+restconf_drop_privileges(clicon_handle h,
+			 char         *user)
+{
+    int   retval = -1;
+    uid_t newuid = -1;
+    uid_t uid;
+    char *group;
+    gid_t gid = -1;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    /* Sanity check: backend group exists */
+    if ((group = clicon_sock_group(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "clicon_sock_group option not set");
+	return -1;
+    }
+    if (group_name2gid(group, &gid) < 0){
+	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.\n" /* \n required here due to multi-line log */
+		   "The config demon requires a valid group to create a server UNIX socket\n"
+		   "Define a valid CLICON_SOCK_GROUP in %s or via the -g option\n"
+		   "or create the group and add the user to it. Check documentation for how to do this on your platform",
+		   group,
+		   clicon_configfile(h));
+	goto done;
+    }
+    /* Get (wanted) new www user id */
+    if (name2uid(user, &newuid) < 0){
+	clicon_err(OE_DAEMON, errno, "'%s' is not a valid user .\n", user);
+	goto done;
+    }
+    /* get current backend userid, if already at this level OK */
+    if ((uid = getuid()) == newuid)
+	goto ok;
+    if (uid != 0){
+	clicon_err(OE_DAEMON, EPERM, "Privileges can only be dropped from root user (uid is %u)\n", uid);
+	goto done;
+    }
+    if (setgid(gid) == -1) {
+	clicon_err(OE_DAEMON, errno, "setgid %d", gid);
+	goto done;
+    }
+    if (drop_priv_perm(newuid) < 0)
+	goto done;
+    /* Verify you cannot regain root privileges */
+    if (setuid(0) != -1){
+	clicon_err(OE_DAEMON, EPERM, "Could regain root privilieges");
+	goto done;
+    }
+    clicon_debug(1, "%s dropped privileges from root to %s(%d)",
+		 __FUNCTION__, user, newuid);
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! HTTP error 405
+ * @param[in]  req      Generic Www handle
+ * @param[in]  allow    Which methods are allowed
+ */
+int
+restconf_method_notallowed(void  *req,
+			   char  *allow)
+{
+    restconf_reply_status_code(req, 405);
+    restconf_reply_header_add(req, "Allow", "%s", allow);
+    return 0;
 }

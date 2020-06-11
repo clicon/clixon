@@ -31,44 +31,24 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-  
+  *
+  * Virtual clixon restconf API functions.
  */
 
-#ifndef _RESTCONF_LIB_H_
-#define _RESTCONF_LIB_H_
-
-/*
- * Types
- */
-/*! RESTCONF media types 
- * @see http_media_map
- * (also in clixon_restconf.h)
- */
-enum restconf_media{
-    YANG_DATA_JSON,  /* "application/yang-data+json" */
-    YANG_DATA_XML,   /* "application/yang-data+xml" */
-    YANG_PATCH_JSON, /* "application/yang-patch+json" */
-    YANG_PATCH_XML   /* "application/yang-patch+xml" */
-};
-typedef enum restconf_media restconf_media;
+#ifndef _RESTCONF_API_H_
+#define _RESTCONF_API_H_
 
 /*
  * Prototypes
  */
-int restconf_err2code(char *tag);
-const char *restconf_code2reason(int code);
-const restconf_media restconf_media_str2int(char *media);
-const char *restconf_media_int2str(restconf_media media);
-restconf_media restconf_content_type(clicon_handle h);
-int   get_user_cookie(char *cookiestr, char  *attribute, char **val);
-int   restconf_terminate(clicon_handle h);
-int   restconf_insert_attributes(cxobj *xdata, cvec *qvec);
-int   restconf_main_extension_cb(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
-char *clixon_restconf_param_get(clicon_handle h, char *param);
-int   clixon_restconf_param_set(clicon_handle h, char *param, char *val);
-int   clixon_restconf_param_del(clicon_handle h, char *param);
-char *restconf_uripath(clicon_handle h);
-int   restconf_drop_privileges(clicon_handle h, char *user);
-int restconf_method_notallowed(void *req, char *allow);
+int restconf_reply_status_code(void *req, int code);
 
-#endif /* _RESTCONF_LIB_H_ */
+#if defined(__GNUC__) && __GNUC__ >= 3
+int restconf_reply_header_add(void *req, char *name, char *vfmt, ...)  __attribute__ ((format (printf, 3, 4)));
+#else
+int restconf_reply_header_add(FCGX_Request *req, char *name, char *vfmt, ...);
+#endif
+
+int restconf_reply_send(void  *req, cbuf *cb);
+
+#endif /* _RESTCONF_API_H_ */

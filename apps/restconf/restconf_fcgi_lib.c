@@ -194,7 +194,7 @@ restconf_internal_server_error(clicon_handle h,
 			       FCGX_Request *r)
 {
     char *path;
-
+    
     clicon_debug(1, "%s", __FUNCTION__);
     path = clixon_restconf_param_get(h, "REQUEST_URI");
     FCGX_FPrintF(r->out, "Status: 500 Internal Server Error\r\n"); /* 500 internal server error */
@@ -477,5 +477,4 @@ http_location(clicon_handle h,
 	cbuf_free(cb);
     return retval;
 }
-
 
