@@ -58,20 +58,24 @@
  */
 /*! Controls how keywords a generated in CLI syntax / prints from object model
  * Example YANG: 
+ * container c{
  *  list a {
  *    key x;
  *    leaf x;   
  *    leaf y;   
  *  }
- * NONE: a <x> <y>;
- * VARS: a <x> y <y>;
- * ALL:  a x <x> y <y>;
+ * }
+ * NONE: c a <x> <y>;
+ * VARS: c a <x> y <y>;
+ * ALL:  c a x <x> y <y>;
+ * HIDE: a x <x> y <y>;
  */
 enum genmodel_type{
     GT_ERR =-1, /* Error  */
     GT_NONE=0,  /* No extra keywords */
     GT_VARS,    /* Keywords on non-key variables */
     GT_ALL,     /* Keywords on all variables */
+    GT_HIDE,    /* Keywords on all variables and hide container around lists */
 };
 
 /*! See clixon-config.yang type startup_mode */

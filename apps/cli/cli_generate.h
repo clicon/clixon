@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -40,6 +41,6 @@
  * Prototypes
  */
 int yang2cli(clicon_handle h, yang_stmt *yspec, enum genmodel_type gt,
-	     int printgen, parse_tree *ptnew);
+	     int printgen, int state, parse_tree *ptnew);
 
 #endif  /* _CLI_GENERATE_H_ */

@@ -245,6 +245,7 @@ int        yang_config(yang_stmt *ys);
 int        yang_config_ancestor(yang_stmt *ys);
 int        yang_features(clicon_handle h, yang_stmt *yt);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
+int        yang_container_cli_hide(yang_stmt *ys, int gt);
 int        yang_key_match(yang_stmt *yn, char *name);
 
 int        yang_type_cache_regexp_set(yang_stmt *ytype, int rxmode, cvec *regexps);

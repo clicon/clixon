@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2020 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -340,8 +341,8 @@ yang2cli_var_pattern(clicon_handle h,
 }
 
 /* Forward */
-static int yang2cli_stmt(clicon_handle h, yang_stmt *ys, 
-			 enum genmodel_type gt, int level, cbuf *cb);
+static int yang2cli_stmt(clicon_handle h, yang_stmt *ys, enum genmodel_type gt,
+			 int level, int state, cbuf *cb);
 
 static int yang2cli_var_union(clicon_handle h, yang_stmt *ys, char *origtype,
 			      yang_stmt *ytype, char *helptext, cbuf *cb);
@@ -657,7 +658,7 @@ yang2cli_leaf(clicon_handle h,
 	    *s = '\0';
     }
     cprintf(cb, "%*s", level*3, "");
-    if (gt == GT_VARS|| gt == GT_ALL){
+    if (gt == GT_VARS|| gt == GT_ALL || gt == GT_HIDE){
 	cprintf(cb, "%s", yang_argument_get(ys));
 	if (helptext)
 	    cprintf(cb, "(\"%s\")", helptext);
@@ -686,6 +687,7 @@ yang2cli_leaf(clicon_handle h,
  * @param[in]  ys    Yang statement
  * @param[in]  gt    CLI Generate style 
  * @param[in]  level Indentation level
+ * @param[in]  state Include syntax for state not only config
  * @param[out] cb  Buffer where cligen code is written
  */
 static int
@@ -693,6 +695,7 @@ yang2cli_container(clicon_handle h,
 		   yang_stmt    *ys, 
 		   enum genmodel_type gt,
 		   int           level,
+		   int           state,
 		   cbuf         *cb)
 {
     yang_stmt    *yc;
@@ -700,26 +703,35 @@ yang2cli_container(clicon_handle h,
     int           retval = -1;
     char         *helptext = NULL;
     char         *s;
+    int           hide = 0;
 
-    cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
-    if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
-	if ((helptext = strdup(yang_argument_get(yd))) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
+    /* If non-presence container && HIDE mode && only child is 
+     * a list, then skip container keyword
+     * See also xml2cli
+     */
+     if ((hide = yang_container_cli_hide(ys, gt)) == 0){
+	cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
+	if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
+	    if ((helptext = strdup(yang_argument_get(yd))) == NULL){
+		clicon_err(OE_UNIX, errno, "strdup");
+		goto done;
+	    }
+	    if ((s = strstr(helptext, "\n\n")) != NULL)
+		*s = '\0';
+	    cprintf(cb, "(\"%s\")", helptext);
 	}
-	if ((s = strstr(helptext, "\n\n")) != NULL)
-	    *s = '\0';
-	cprintf(cb, "(\"%s\")", helptext);
+	if (cli_callback_generate(h, ys, cb) < 0)
+	    goto done;
+	cprintf(cb, ";{\n");
     }
-    if (cli_callback_generate(h, ys, cb) < 0)
-	goto done;
-    cprintf(cb, ";{\n");
+
 
     yc = NULL;
     while ((yc = yn_each(ys, yc)) != NULL) 
-       if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
+	if (yang2cli_stmt(h, yc, gt, level+1, state, cb) < 0)
 	   goto done;
-    cprintf(cb, "%*s}\n", level*3, "");
+    if (hide == 0)
+	cprintf(cb, "%*s}\n", level*3, "");
     retval = 0;
   done:
     if (helptext)
@@ -732,6 +744,7 @@ yang2cli_container(clicon_handle h,
  * @param[in]  ys    Yang statement
  * @param[in]  gt    CLI Generate style 
  * @param[in]  level Indentation level
+ * @param[in]  state Include syntax for state not only config
  * @param[out] cb    Buffer where cligen code is written
  */
 static int
@@ -739,6 +752,7 @@ yang2cli_list(clicon_handle      h,
 	      yang_stmt         *ys, 
 	      enum genmodel_type gt,
 	      int                level,
+	      int                state,
 	      cbuf              *cb)
 {
     yang_stmt    *yc;
@@ -775,7 +789,8 @@ yang2cli_list(clicon_handle      h,
 	/* Print key variable now, and skip it in loop below 
 	   Note, only print callback on last statement
 	 */
-	if (yang2cli_leaf(h, yleaf, gt==GT_VARS?GT_NONE:gt, level+1, 
+	if (yang2cli_leaf(h, yleaf,
+			  (gt==GT_VARS||gt==GT_HIDE)?GT_NONE:gt, level+1, 
 			  cvec_next(cvk, cvi)?0:1, cb) < 0)
 	    goto done;
     }
@@ -794,7 +809,7 @@ yang2cli_list(clicon_handle      h,
 	}
 	if (cvi != NULL)
 	    continue;
-	if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
+	if (yang2cli_stmt(h, yc, gt, level+1, state, cb) < 0)
 	    goto done;
     }
     cprintf(cb, "%*s}\n", level*3, "");
@@ -811,6 +826,7 @@ yang2cli_list(clicon_handle      h,
  * @param[in]  ys    Yang statement
  * @param[in]  gt    CLI Generate style 
  * @param[in]  level Indentation level
+ * @param[in]  state Include syntax for state not only config
  * @param[out] cb    Buffer where cligen code is written
 @example
   choice interface-type {
@@ -826,6 +842,7 @@ yang2cli_choice(clicon_handle h,
 		yang_stmt    *ys, 
 		enum genmodel_type gt,
 		int           level,
+		int           state,
     		cbuf         *cb)
 {
     int           retval = -1;
@@ -835,7 +852,7 @@ yang2cli_choice(clicon_handle h,
     while ((yc = yn_each(ys, yc)) != NULL) {
 	switch (yang_keyword_get(yc)){
 	case Y_CASE:
-	    if (yang2cli_stmt(h, yc, gt, level+2, cb) < 0)
+	    if (yang2cli_stmt(h, yc, gt, level+2, state, cb) < 0)
 		goto done;
 	    break;
 	case Y_CONTAINER:
@@ -843,45 +860,47 @@ yang2cli_choice(clicon_handle h,
 	case Y_LEAF_LIST:
 	case Y_LIST:
 	default:
-	    if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
+	    if (yang2cli_stmt(h, yc, gt, level+1, state, cb) < 0)
 		goto done;
 	    break;
 	}
     }
     retval = 0;
-  done:
+ done:
     return retval;
 }
 
 /*! Generate CLI code for Yang statement
  * @param[in]  h     Clixon handle
  * @param[in]  ys    Yang statement
- * @param[out] cb    Buffer where cligen code is written
  * @param[in]  gt    CLI Generate style 
  * @param[in]  level Indentation level
+ * @param[in]  state Include syntax for state not only config
+ * @param[out] cb    Buffer where cligen code is written
  */
 static int
 yang2cli_stmt(clicon_handle h, 
 	      yang_stmt    *ys, 
 	      enum genmodel_type gt,
-	      int           level, /* indentation level for pretty-print */
+	      int           level, 
+	      int           state,
 	      cbuf         *cb)
 {
     yang_stmt    *yc;
     int           retval = -1;
 
-    if (yang_config(ys)){
+    if (state || yang_config(ys)){
 	switch (yang_keyword_get(ys)){
 	case Y_CONTAINER:
-	    if (yang2cli_container(h, ys, gt, level, cb) < 0)
+	    if (yang2cli_container(h, ys, gt, level, state, cb) < 0)
 		goto done;
 	    break;
 	case Y_LIST:
-	    if (yang2cli_list(h, ys, gt, level, cb) < 0)
+	    if (yang2cli_list(h, ys, gt, level, state, cb) < 0)
 		goto done;
 	    break;
 	case Y_CHOICE:
-	    if (yang2cli_choice(h, ys, gt, level, cb) < 0)
+	    if (yang2cli_choice(h, ys, gt, level, state, cb) < 0)
 		goto done;
 	    break;
 	case Y_LEAF_LIST:
@@ -894,7 +913,7 @@ yang2cli_stmt(clicon_handle h,
 	case Y_MODULE:
 	    yc = NULL;
 	    while ((yc = yn_each(ys, yc)) != NULL)
-		if (yang2cli_stmt(h, yc, gt, level+1, cb) < 0)
+		if (yang2cli_stmt(h, yc, gt, level+1, state, cb) < 0)
 		    goto done;
 	    break;
 	default: /* skip */
@@ -902,7 +921,7 @@ yang2cli_stmt(clicon_handle h,
 	}
     }
     retval = 0;
-  done:
+ done:
     return retval;
 }
 
@@ -911,6 +930,7 @@ yang2cli_stmt(clicon_handle h,
  * @param[in]  yspec    Yang specification
  * @param[in]  gt       CLI Generate style
  * @param[in]  printgen Log generated CLIgen syntax
+ * @param[in]  state    Also include state syntax
  * @param[out] ptnew    CLIgen parse-tree
  *
  * Code generation styles:
@@ -922,6 +942,7 @@ yang2cli(clicon_handle      h,
 	 yang_stmt         *yspec, 
 	 enum genmodel_type gt,
 	 int                printgen,
+	 int                state,
 	 parse_tree        *ptnew)
 {
     cbuf           *cb = NULL;
@@ -936,7 +957,7 @@ yang2cli(clicon_handle      h,
     /* Traverse YANG, loop through all modules and generate CLI */
     ymod = NULL;
     while ((ymod = yn_each(yspec, ymod)) != NULL)
-	if (yang2cli_stmt(h, ymod, gt, 0, cb) < 0)
+	if (yang2cli_stmt(h, ymod, gt, 0, state, cb) < 0)
 	    goto done;
     if (printgen)
 	clicon_log(LOG_NOTICE, "%s: Generated CLI spec:\n%s", __FUNCTION__, cbuf_get(cb));

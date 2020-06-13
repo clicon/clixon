@@ -100,6 +100,9 @@ endif
 APPOBJ    = $(APPSRC:.c=.o)
 
 # Accessible from plugin
+# XXX actually this does not work properly, there are functions in lib
+# (eg restconf_method_notallowed) that uses symbols in restconf_api that
+# are not in the lib.
 LIBSRC    = restconf_lib.c
 
 LIBOBJ    = $(LIBSRC:.c=.o)

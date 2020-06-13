@@ -370,6 +370,8 @@ expecteq(){
 # - expected stdout outcome*
 # - the token "--not--"
 # - not expected stdout outcome*
+# Example:
+# expectpart "$(a-shell-cmd arg)" 0 'expected match 1' 'expected match 2' --not-- 'not expected 1'
 # @note need to escape \[\]
 expectpart(){
   r=$?

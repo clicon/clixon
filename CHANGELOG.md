@@ -27,6 +27,11 @@ Expected: July 2020
 
 ### Major New features
 
+* Auto-CLI enhancements
+  * A generated clispec including state (default @datanodestate) also generated along with the config clispec tree (default @datanode)
+  * New mode `GT_HIDE` set by option `CLICON_CLI_GENMODEL_TYPE` to collapse non-presence containers that only contain a single list
+  * Added a prfix for cli_show_config/cli_show_auto so that it can produce parseable output
+  * Thanks dcornejo@netgate.com for trying it out and suggestions
 * Embedding restconf into the existing [libevhtp](https://github.com/criticalstack/libevhtp) embedded web server. Experimental.
   * The existing FCGI restconf solution will continue to be supported for NGINX and other reverese proxies with an fast CGI API.
   * The restconf code has been refactored to support both modes. Hopefully, it should be straightforward to add another embedded server, such as GNU microhttpd.
@@ -36,8 +41,9 @@ Expected: July 2020
     * `--without-restconf      Disable restconf altogether`
 
 
-### C-API changes on existing features (For developers)
+### C/CLI-API changes on existing features (For developers)
 
+* Added prefix for cli_show_config/cli_show_auto so that it can produce parseable output
 * Replaced the global variable `debug` with access function: `clicon_debug_get()`.
 * Due to name collision with libevent, all clixon event functions prepended with `clixon_`. You need to rename your event functions as follows:
   * event_reg_fd() -> clixon_event_reg_fd()

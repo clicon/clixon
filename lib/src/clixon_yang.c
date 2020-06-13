@@ -2537,6 +2537,54 @@ yang_arg2cvec(yang_stmt *ys,
     return cvv;
 }
 
+/*! Check if yang is subject to generated cli GT_HIDE boolean
+ * The yang should be:
+ * 1) a non-presence container
+ * 2) parent of a (single) list XXX: or could multiple lists work?
+ * 3) no other data node children
+ * @retval   0   No, does not satisfy the GT_HIDE condition
+ * @retval   1   Yes, satisfies the GT_HIDE condition
+ * @see clixon-config.yang HIDE enumeration type
+ */
+int
+yang_container_cli_hide(yang_stmt         *ys,
+			enum genmodel_type gt)
+{
+    yang_stmt    *yc = NULL;
+    int           i;
+    enum rfc_6020 keyw;
+
+    keyw = yang_keyword_get(ys);
+    /* HIDE mode */
+    if (gt != GT_HIDE)
+	return 0;
+    /* A container */
+    if (yang_keyword_get(ys) != Y_CONTAINER)
+	return 0;
+    /* Non-presence */
+    if (yang_find(ys, Y_PRESENCE, NULL) != NULL)
+	return 0;
+    /* Ensure a single list child and no other data nodes */
+    i = 0; /* Number of list nodes */
+    while ((yc = yn_each(ys, yc)) != NULL) {
+	keyw = yang_keyword_get(yc);
+	/* case/choice could hide anything so disqualify those */
+	if (keyw == Y_CASE || keyw == Y_CHOICE)
+	    break;
+	if (!yang_datanode(yc)) /* Allowed, check next */
+	    continue;
+	if (keyw != Y_LIST) /* Another datanode than list */
+	    break;
+	if (i++>0) /* More than one list (or could this work?) */
+	    break;
+    }
+    if (yc != NULL) /* break from loop */
+	return 0;
+    if (i != 1) /* List found */
+	return 0;
+    return 1; /* Passed all tests: yes you can hide this keyword */
+}
+
 /*! Check if yang node yn has key-stmt as child which matches name
  *
  * The function looks at the LIST argument string (not actual children)

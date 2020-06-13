@@ -547,17 +547,37 @@ main(int    argc,
      */
     if (clicon_cli_genmodel(h)){
 	parse_tree   *pt = NULL;  /* cli parse tree */
-	char         *treeref; 
-
+	cbuf         *cbtreename;
+	parse_tree   *pts = NULL;  /* cli parse tree */
+	
 	if ((pt = pt_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "pt_new");
 	    goto done;
 	}
-	treeref = clicon_cli_model_treename(h);
-	/* Create cli command tree from dbspec */
-	if (yang2cli(h, yspec, clicon_cli_genmodel_type(h), printgen, pt) < 0)
+	if ((cbtreename = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
-	cligen_tree_add(cli_cligen(h), treeref, pt);
+	}
+	cprintf(cbtreename, "%s", clicon_cli_model_treename(h));
+	/* Create cli command tree from dbspec 
+	 * label this tree @datamodel per default 
+	 */
+	if (yang2cli(h, yspec, clicon_cli_genmodel_type(h), printgen, 0, pt) < 0)
+	    goto done;
+	cligen_tree_add(cli_cligen(h), cbuf_get(cbtreename), pt);
+	/* same for config+state 
+	 * label this tree @datamodelstate per default
+	 */
+	if ((pts = pt_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "pt_new");
+	    goto done;
+	}
+	cprintf(cbtreename, "state");
+	if (yang2cli(h, yspec, clicon_cli_genmodel_type(h), 0, 1, pts) < 0)
+	    goto done;
+	cligen_tree_add(cli_cligen(h), cbuf_get(cbtreename), pts);
+	if (cbtreename)
+	    cbuf_free(cbtreename);
     }
 
     /* Initialize cli syntax */
