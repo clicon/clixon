@@ -65,166 +65,166 @@
 #include "restconf_fcgi_lib.h"
 
 /*! HTTP error 400
- * @param[in]  r        Fastcgi request handle
+ * @param[in]  req       Fastcgi request handle
  */
 int
 restconf_badrequest(clicon_handle h,
-		    FCGX_Request *r)
+		    FCGX_Request *req)
 {
     char *path;
 
     path = clixon_restconf_param_get(h, "REQUEST_URI");
-    FCGX_SetExitStatus(400, r->out);
-    FCGX_FPrintF(r->out, "Status: 400 Bad Request\r\n"); /* 400 bad request */
-    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<h1>Clixon Bad request/h1>\n");
-    FCGX_FPrintF(r->out, "The requested URL %s or data is in some way badly formed.\n",
+    FCGX_SetExitStatus(400, req->out);
+    FCGX_FPrintF(req->out, "Status: 400 Bad Request\r\n"); /* 400 bad request */
+    FCGX_FPrintF(req->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(req->out, "<h1>Clixon Bad request/h1>\n");
+    FCGX_FPrintF(req->out, "The requested URL %s or data is in some way badly formed.\n",
 		 path);
     return 0;
 }
 
 /*! HTTP error 401
- * @param[in]  r        Fastcgi request handle
+ * @param[in]  req       Fastcgi request handle
  */
 int
 restconf_unauthorized(clicon_handle h,
-		      FCGX_Request *r)
+		      FCGX_Request *req)
 {
     char *path;
 
     path = clixon_restconf_param_get(h, "REQUEST_URI");
-    FCGX_SetExitStatus(401, r->out);
-    FCGX_FPrintF(r->out, "Status: 401 Unauthorized\r\n"); /* 401 unauthorized */
-    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<error-tag>access-denied</error-tag>\n");
-    FCGX_FPrintF(r->out, "The requested URL %s was unauthorized.\n", path);
+    FCGX_SetExitStatus(401, req->out);
+    FCGX_FPrintF(req->out, "Status: 401 Unauthorized\r\n"); /* 401 unauthorized */
+    FCGX_FPrintF(req->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(req->out, "<error-tag>access-denied</error-tag>\n");
+    FCGX_FPrintF(req->out, "The requested URL %s was unauthorized.\n", path);
    return 0;
 }
 
 /*! HTTP error 403
- * @param[in]  r        Fastcgi request handle
+ * @param[in]  req        Fastcgi request handle
  */
 int
 restconf_forbidden(clicon_handle h,
-		   FCGX_Request *r)
+		   FCGX_Request *req)
 {
     char *path;
 
     path = clixon_restconf_param_get(h, "REQUEST_URI");
-    FCGX_SetExitStatus(403, r->out);
-    FCGX_FPrintF(r->out, "Status: 403 Forbidden\r\n"); /* 403 forbidden */
-    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<h1>Forbidden</h1>\n");
-    FCGX_FPrintF(r->out, "The requested URL %s was forbidden.\n", path);
+    FCGX_SetExitStatus(403, req->out);
+    FCGX_FPrintF(req->out, "Status: 403 Forbidden\r\n"); /* 403 forbidden */
+    FCGX_FPrintF(req->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(req->out, "<h1>Forbidden</h1>\n");
+    FCGX_FPrintF(req->out, "The requested URL %s was forbidden.\n", path);
    return 0;
 }
 
 /*! HTTP error 404
- * @param[in]  r        Fastcgi request handle
+ * @param[in]  req        Fastcgi request handle
  */
 int
 restconf_notfound(clicon_handle h,
-		  FCGX_Request *r)
+		  FCGX_Request *req)
 {
     char *path;
 
     path = clixon_restconf_param_get(h, "REQUEST_URI");
-    FCGX_SetExitStatus(404, r->out);
-    FCGX_FPrintF(r->out, "Status: 404 Not Found\r\n"); /* 404 not found */
-    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<h1>Not Found</h1>\n");
-    FCGX_FPrintF(r->out, "Not Found\n");
-    FCGX_FPrintF(r->out, "The requested URL %s was not found on this server.\n",
+    FCGX_SetExitStatus(404, req->out);
+    FCGX_FPrintF(req->out, "Status: 404 Not Found\r\n"); /* 404 not found */
+    FCGX_FPrintF(req->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(req->out, "<h1>Not Found</h1>\n");
+    FCGX_FPrintF(req->out, "Not Found\n");
+    FCGX_FPrintF(req->out, "The requested URL %s was not found on this server.\n",
 		 path);
     return 0;
 }
 
 /*! HTTP error 406 Not acceptable
- * @param[in]  r        Fastcgi request handle
+ * @param[in]  req        Fastcgi request handle
  */
 int
 restconf_notacceptable(clicon_handle h,
-		       FCGX_Request *r)
+		       FCGX_Request *req)
 {
     char *path;
 
     path = clixon_restconf_param_get(h, "REQUEST_URI");
-    FCGX_SetExitStatus(406, r->out);
-    FCGX_FPrintF(r->out, "Status: 406 Not Acceptable\r\n"); /* 406 not acceptible */
+    FCGX_SetExitStatus(406, req->out);
+    FCGX_FPrintF(req->out, "Status: 406 Not Acceptable\r\n"); /* 406 not acceptible */
 
-    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<h1>Not Acceptable</h1>\n");
-    FCGX_FPrintF(r->out, "Not Acceptable\n");
-    FCGX_FPrintF(r->out, "The target resource does not have a current representation that would be acceptable to the user agent.\n",
+    FCGX_FPrintF(req->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(req->out, "<h1>Not Acceptable</h1>\n");
+    FCGX_FPrintF(req->out, "Not Acceptable\n");
+    FCGX_FPrintF(req->out, "The target resource does not have a current representation that would be acceptable to the user agent.\n",
 		 path);
     return 0;
 }
 
 /*! HTTP error 409
- * @param[in]  r        Fastcgi request handle
+ * @param[in]  req        Fastcgi request handle
  */
 int
-restconf_conflict(FCGX_Request *r)
+restconf_conflict(FCGX_Request *req)
 {
-    FCGX_SetExitStatus(409, r->out);
-    FCGX_FPrintF(r->out, "Status: 409 Conflict\r\n"); /* 409 Conflict */
-    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<h1>Data resource already exists</h1>\n");
+    FCGX_SetExitStatus(409, req->out);
+    FCGX_FPrintF(req->out, "Status: 409 Conflict\r\n"); /* 409 Conflict */
+    FCGX_FPrintF(req->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(req->out, "<h1>Data resource already exists</h1>\n");
     return 0;
 }
 
 /*! HTTP error 409
- * @param[in]  r        Fastcgi request handle
+ * @param[in]  req        Fastcgi request handle
  */
 int
-restconf_unsupported_media(FCGX_Request *r)
+restconf_unsupported_media(FCGX_Request *req)
 {
-    FCGX_SetExitStatus(415, r->out);
-    FCGX_FPrintF(r->out, "Status: 415 Unsupported Media Type\r\n"); 
-    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<h1>Unsupported Media Type</h1>\n");
+    FCGX_SetExitStatus(415, req->out);
+    FCGX_FPrintF(req->out, "Status: 415 Unsupported Media Type\r\n"); 
+    FCGX_FPrintF(req->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(req->out, "<h1>Unsupported Media Type</h1>\n");
     return 0;
 }
 
 /*! HTTP error 500
- * @param[in]  r        Fastcgi request handle
+ * @param[in]  req        Fastcgi request handle
  */
 int
 restconf_internal_server_error(clicon_handle h,
-			       FCGX_Request *r)
+			       FCGX_Request *req)
 {
     char *path;
     
     clicon_debug(1, "%s", __FUNCTION__);
     path = clixon_restconf_param_get(h, "REQUEST_URI");
-    FCGX_FPrintF(r->out, "Status: 500 Internal Server Error\r\n"); /* 500 internal server error */
-    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<h1>Internal server error when accessing %s</h1>\n", path);
+    FCGX_FPrintF(req->out, "Status: 500 Internal Server Error\r\n"); /* 500 internal server error */
+    FCGX_FPrintF(req->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(req->out, "<h1>Internal server error when accessing %s</h1>\n", path);
     return 0;
 }
 
 /*! HTTP error 501
- * @param[in]  r        Fastcgi request handle
+ * @param[in]  req        Fastcgi request handle
  */
 int
-restconf_notimplemented(FCGX_Request *r)
+restconf_notimplemented(FCGX_Request *req)
 {
     clicon_debug(1, "%s", __FUNCTION__);
-    FCGX_FPrintF(r->out, "Status: 501 Not Implemented\r\n"); 
-    FCGX_FPrintF(r->out, "Content-Type: text/html\r\n\r\n");
-    FCGX_FPrintF(r->out, "<h1>Not Implemented/h1>\n");
+    FCGX_FPrintF(req->out, "Status: 501 Not Implemented\r\n"); 
+    FCGX_FPrintF(req->out, "Content-Type: text/html\r\n\r\n");
+    FCGX_FPrintF(req->out, "<h1>Not Implemented/h1>\n");
     return 0;
 }
 
 /*! Print all FCGI headers
- * @param[in]  r        Fastcgi request handle
+ * @param[in]  req        Fastcgi request handle
  * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
  */
 int
-restconf_test(FCGX_Request *r, 
+restconf_test(FCGX_Request *req, 
 	      int           dbg)
 {
-    char **environ = r->envp;
+    char **environ = req->envp;
     int    i;
 
     clicon_debug(1, "All environment vars:");
@@ -303,24 +303,24 @@ clixon_restconf_params_clear(clicon_handle h,
 }
 
 /*!
- * @param[in]  r        Fastcgi request handle
+ * @param[in]  req        Fastcgi request handle
  */
 cbuf *
-readdata(FCGX_Request *r)
+readdata(FCGX_Request *req)
 {
     int   c;
     cbuf *cb;
 
     if ((cb = cbuf_new()) == NULL)
 	return NULL;
-    while ((c = FCGX_GetChar(r->in)) != -1)
+    while ((c = FCGX_GetChar(req->in)) != -1)
 	cprintf(cb, "%c", c);
     return cb;
 }
 
 /*! Return restconf error on get/head request
  * @param[in]  h      Clixon handle
- * @param[in]  r      Fastcgi request handle
+ * @param[in]  req      Fastcgi request handle
  * @param[in]  xerr   XML error message from backend
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  media  Output media
@@ -329,7 +329,7 @@ readdata(FCGX_Request *r)
  */
 int
 api_return_err(clicon_handle h,
-	       FCGX_Request *r,
+	       FCGX_Request *req,
 	       cxobj        *xerr,
 	       int           pretty,
 	       restconf_media media,
@@ -381,23 +381,23 @@ api_return_err(clicon_handle h,
     }
     if ((reason_phrase = restconf_code2reason(code)) == NULL)
 	reason_phrase="";
-    FCGX_SetExitStatus(code, r->out); /* Created */
-    FCGX_FPrintF(r->out, "Status: %d %s\r\n", code, reason_phrase);
-    FCGX_FPrintF(r->out, "Content-Type: %s\r\n\r\n", restconf_media_int2str(media));
+    FCGX_SetExitStatus(code, req->out); /* Created */
+    FCGX_FPrintF(req->out, "Status: %d %s\r\n", code, reason_phrase);
+    FCGX_FPrintF(req->out, "Content-Type: %s\r\n\r\n", restconf_media_int2str(media));
     switch (media){
     case YANG_DATA_XML:
 	if (clicon_xml2cbuf(cb, xerr, 2, pretty, -1) < 0)
 	    goto done;
 	clicon_debug(1, "%s code:%d err:%s", __FUNCTION__, code, cbuf_get(cb));
 	if (pretty){
-	    FCGX_FPrintF(r->out, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n", cbuf_get(cb));
-	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
-	    FCGX_FPrintF(r->out, "    </errors>\r\n");
+	    FCGX_FPrintF(req->out, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n", cbuf_get(cb));
+	    FCGX_FPrintF(req->out, "%s", cbuf_get(cb));
+	    FCGX_FPrintF(req->out, "    </errors>\r\n");
 	}
 	else {
-	    FCGX_FPrintF(r->out, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">", cbuf_get(cb));
-	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
-	    FCGX_FPrintF(r->out, "</errors>\r\n");
+	    FCGX_FPrintF(req->out, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">", cbuf_get(cb));
+	    FCGX_FPrintF(req->out, "%s", cbuf_get(cb));
+	    FCGX_FPrintF(req->out, "</errors>\r\n");
 	}
 	break;
     case YANG_DATA_JSON:
@@ -405,16 +405,16 @@ api_return_err(clicon_handle h,
 	    goto done;
 	clicon_debug(1, "%s code:%d err:%s", __FUNCTION__, code, cbuf_get(cb));
 	if (pretty){
-	    FCGX_FPrintF(r->out, "{\n");
-	    FCGX_FPrintF(r->out, "  \"ietf-restconf:errors\" : %s\n",
+	    FCGX_FPrintF(req->out, "{\n");
+	    FCGX_FPrintF(req->out, "  \"ietf-restconf:errors\" : %s\n",
 			 cbuf_get(cb));
-	    FCGX_FPrintF(r->out, "}\r\n");
+	    FCGX_FPrintF(req->out, "}\r\n");
 	}
 	else{
-	    FCGX_FPrintF(r->out, "{");
-	    FCGX_FPrintF(r->out, "\"ietf-restconf:errors\":");
-	    FCGX_FPrintF(r->out, "%s", cbuf_get(cb));
-	    FCGX_FPrintF(r->out, "}\r\n");
+	    FCGX_FPrintF(req->out, "{");
+	    FCGX_FPrintF(req->out, "\"ietf-restconf:errors\":");
+	    FCGX_FPrintF(req->out, "%s", cbuf_get(cb));
+	    FCGX_FPrintF(req->out, "}\r\n");
 	}
 	break;
     default:
@@ -434,14 +434,14 @@ api_return_err(clicon_handle h,
 }
 
 /*! Print location header from FCGI environment
- * @param[in]  r      Fastcgi request handle
+ * @param[in]  req      Fastcgi request handle
  * @param[in]  xobj   If set (eg POST) add to api-path
  * $https  “on” if connection operates in SSL mode, or an empty string otherwise 
  * @note ports are ignored
  */
 int
 http_location(clicon_handle h,
-	      FCGX_Request *r,
+	      FCGX_Request *req,
 	      cxobj        *xobj)
 {
     int   retval = -1;
@@ -460,14 +460,14 @@ http_location(clicon_handle h,
 	}
 	if (xml2api_path_1(xobj, cb) < 0)
 	    goto done;
-	FCGX_FPrintF(r->out, "Location: http%s://%s%s%s\r\n",
+	FCGX_FPrintF(req->out, "Location: http%s://%s%s%s\r\n",
 		     https?"s":"",
 		     host,
 		     request_uri,
 		     cbuf_get(cb));
     }
     else
-	FCGX_FPrintF(r->out, "Location: http%s://%s%s\r\n",
+	FCGX_FPrintF(req->out, "Location: http%s://%s%s\r\n",
 		     https?"s":"",
 		     host,
 		     request_uri);

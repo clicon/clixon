@@ -60,6 +60,10 @@ Expected: July 2020
 * Added new function `clicon_xml2str()` to complement xml_print and others that returns a malloced string.
 * Added new function `xml_child_index_each()` to iterate over the children of an XML node according to the order defined by an explicit index variable. This is a complement to `xml_child_each()` which iterates using the default order.
 
+### Corrected Bugs
+
+* Fixed: The module `clixon-rfc5277` was always enabled, but should only be enabled when `CLICON_STREAM_DISCOVERY_RFC5277` is enabled.
+
 ## 4.5.0
 12 May 2020
 
