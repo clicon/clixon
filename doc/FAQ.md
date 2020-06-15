@@ -68,11 +68,11 @@ Clixon is written in C. The plugins are written in C. The CLI
 specification uses [CLIgen](http://github.com/olofhagsand/cligen)
 
 ## How to best understand Clixon?
-Run the Clixon example, in the [example](../example) directory.
+Run the Clixon main example, in the [example](../example) directory or [examples repo](https://github.com/clicon/clixon-examples), or [main documentation](https://clixon-docs.readthedocs.io)
 
 ## Hello world?
 
-One of the examples is [a hello world example](../example/hello). Please start with that.
+One of the examples is [a hello world example](https://github.com/clicon/clixon-examples/hello). Please start with that.
 
 ## How do you build and install Clixon?
 Clixon: 
@@ -128,8 +128,7 @@ clicon:x:1001:<user>,www-data
 
 ## How do I use the CLI?
 
-The easiest way to use Clixon is via the CLI. Once the backend is started
-Example:
+The easiest way to use Clixon is via the CLI. In the main example, once the backend is started you can start the auto-cli. Example:
 ```
 clixon_cli -f /usr/local/etc/example.xml 
 cli> set interfaces interface eth9 ?

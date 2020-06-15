@@ -33,6 +33,7 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_CLI_GENMODEL>2</CLICON_CLI_GENMODEL>
   <CLICON_CLI_GENMODEL_TYPE>VARS</CLICON_CLI_GENMODEL_TYPE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
@@ -57,14 +58,14 @@ module $APPNAME {
     }
   }
   container exstate{
-     config false;
-     list sender{
-        key ref;
-        leaf ref{
-	   type string;
-        }
-     }
-   }
+    config false;
+    list sender{
+      key ref;
+      leaf ref{
+        type string;
+      }
+    }
+  }
 }
 EOF
 
@@ -90,6 +91,7 @@ show config @datamodel, cli_show_auto("candidate", "cli", "set ");
 show state, cli_show_config_state("running", "cli", "/", "set ");
 show state @datamodelstate, cli_show_auto_state("running", "cli", "set ");
 show xml, cli_show_config("candidate", "xml", "/");
+show xml @datamodel, cli_show_auto("candidate", "xml");
 commit, cli_commit();
 discard, discard_changes();
 

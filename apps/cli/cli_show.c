@@ -450,7 +450,7 @@ cli_show_config1(clicon_handle h,
     cvec            *nsc = NULL;
     char            *prefix = NULL;
     
-    if (cvec_len(argv) < 3 && cvec_len(argv) > 5){
+    if (cvec_len(argv) < 3 || cvec_len(argv) > 5){
 	clicon_err(OE_PLUGIN, 0, "Got %d arguments. Expected: <dbname>,<format>,<xpath>[,<namespace>, [<prefix>]]", cvec_len(argv));
 
 	goto done;
@@ -708,7 +708,7 @@ cli_show_auto1(clicon_handle h,
     char            *api_path = NULL;
     char            *prefix = NULL;
 
-    if (cvec_len(argv) < 3 && cvec_len(argv) > 4){
+    if (cvec_len(argv) < 3 || cvec_len(argv) > 4){
 	clicon_err(OE_PLUGIN, 0, "Usage: <api-path-fmt>* <database> <format> <prefix>. (*) generated.");
 	goto done;
     }
@@ -801,6 +801,7 @@ cli_show_auto1(clicon_handle h,
  *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
  *   <prefix>   to print before cli syntax outptu
  * @see cli_show_auto_state  For config and state
+ * @note SHOULD be used: ... @datamodel, cli_show_auto(<dbname>,...) to get correct #args
  */
 int 
 cli_show_auto(clicon_handle h,

@@ -30,7 +30,7 @@ Expected: July 2020
 * Auto-CLI enhancements
   * A generated clispec including state (default @datanodestate) also generated along with the config clispec tree (default @datanode)
   * New mode `GT_HIDE` set by option `CLICON_CLI_GENMODEL_TYPE` to collapse non-presence containers that only contain a single list
-  * Added a prfix for cli_show_config/cli_show_auto so that it can produce parseable output
+  * Added a prefix for cli_show_config/cli_show_auto so that it can produce parseable output
   * Thanks dcornejo@netgate.com for trying it out and suggestions
 * Embedding restconf into the existing [libevhtp](https://github.com/criticalstack/libevhtp) embedded web server. Experimental.
   * The existing FCGI restconf solution will continue to be supported for NGINX and other reverese proxies with an fast CGI API.
@@ -39,7 +39,6 @@ Expected: July 2020
     * `--with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg nginx (default)`
     * `--with-restconf=evhtp   Integrate restconf with libevhtp server`
     * `--without-restconf      Disable restconf altogether`
-
 
 ### C/CLI-API changes on existing features (For developers)
 

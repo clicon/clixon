@@ -236,6 +236,103 @@ cli_interactive(clicon_handle h)
     return retval;
 }
 
+/*! Generate one autocli clispec tree
+ *
+ * @param[in]  h        Clixon handle
+ * @param[in]  name     Name of tree
+ * @param[in]  gt       genmodel-type, ie HOW to generate the CLI
+ * @param[in]  printgen Print CLI syntax to stderr
+ *
+ * Generate clispec (datamodel) from YANG dataspec and add to the set of cligen trees 
+ * (as a separate mode)
+ * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the "tree reference"
+ * syntax, ie @datamodel
+ * @param[in]  h        Clixon handle
+ * @param[in]  printgen Print CLI syntax generated from dbspec
+ * @retval     0        OK
+ * @retval    -1        Error
+ *
+ * @note that yang2cli generates syntax for ALL modules under the loaded yangspec.
+ */
+static int
+autocli_tree(clicon_handle      h,
+	     char              *name,
+	     enum genmodel_type gt,
+	     int                state,
+	     int                printgen)
+{
+    int           retval = -1;
+    parse_tree   *pt = NULL;  /* cli parse tree */
+    yang_stmt    *yspec;
+    
+    if ((pt = pt_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "pt_new");
+	goto done;
+    }
+    yspec = clicon_dbspec_yang(h);
+    /* Generate tree (this is where the action is) */
+    if (yang2cli(h, yspec, gt, printgen, state, pt) < 0)
+	goto done;
+    /* Append cligen tree and name it */
+    if (cligen_tree_add(cli_cligen(h), name, pt) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Generate autocli, ie if enabled, generate clispec from YANG and add to cligen parse-trees
+ *
+ * Generate clispec (datamodel) from YANG dataspec and add to the set of cligen trees 
+ * (as a separate mode)
+ * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the "tree reference"
+ * syntax, ie @datamodel
+ * Also (if enabled) generate a second "state" tree called @datamodelstate
+ *
+ * @param[in]  h        Clixon handle
+ * @param[in]  printgen Print CLI syntax generated from dbspec
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+static int
+autocli_start(clicon_handle h,
+	      int           printgen)
+{
+    int                retval = -1;
+    int                autocli_model = 0;
+    cbuf              *treename = NULL;
+    enum genmodel_type gt;
+	
+    /* If autocli disabled quit */
+    if ((autocli_model = clicon_cli_genmodel(h)) == 0)
+	goto ok;
+    /* Get the autocli type, ie HOW the cli is generated (could be much more here) */
+    gt = clicon_cli_genmodel_type(h);
+    /* Create treename cbuf */
+    if ((treename = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    /* The tree name is by default @datamodel but can be changed by option (why would one do that?) */
+    cprintf(treename, "%s", clicon_cli_model_treename(h));
+    if (autocli_tree(h, cbuf_get(treename), gt, 0, printgen) < 0)
+	goto done;
+
+    /* Create a tree for config+state. This tree's name has appended "state" to @datamodel (XXX)
+     */
+    if (autocli_model > 1){
+	cprintf(treename, "state");
+	if (autocli_tree(h, cbuf_get(treename), gt, 1, printgen) < 0)
+	    goto done;
+    }
+ ok:
+    retval = 0;
+ done:
+    if (treename)
+	cbuf_free(treename);
+    return retval;
+}
+
 static void
 usage(clicon_handle h,
       char         *argv0)
@@ -536,49 +633,9 @@ main(int    argc,
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
 	goto done;
 
-    /* Create tree generated from dataspec. If no other trees exists, this is
-     * the only one.
-     * The following code creates the tree @datamodel
-     * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) 
-     * using the "tree reference"
-     * syntax, ie @datamodel
-     * But note that yang2cli generates syntax for ALL modules, not just for 
-     * <module>.
-     */
-    if (clicon_cli_genmodel(h)){
-	parse_tree   *pt = NULL;  /* cli parse tree */
-	cbuf         *cbtreename;
-	parse_tree   *pts = NULL;  /* cli parse tree */
-	
-	if ((pt = pt_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "pt_new");
-	    goto done;
-	}
-	if ((cbtreename = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	cprintf(cbtreename, "%s", clicon_cli_model_treename(h));
-	/* Create cli command tree from dbspec 
-	 * label this tree @datamodel per default 
-	 */
-	if (yang2cli(h, yspec, clicon_cli_genmodel_type(h), printgen, 0, pt) < 0)
-	    goto done;
-	cligen_tree_add(cli_cligen(h), cbuf_get(cbtreename), pt);
-	/* same for config+state 
-	 * label this tree @datamodelstate per default
-	 */
-	if ((pts = pt_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "pt_new");
-	    goto done;
-	}
-	cprintf(cbtreename, "state");
-	if (yang2cli(h, yspec, clicon_cli_genmodel_type(h), 0, 1, pts) < 0)
-	    goto done;
-	cligen_tree_add(cli_cligen(h), cbuf_get(cbtreename), pts);
-	if (cbtreename)
-	    cbuf_free(cbtreename);
-    }
+    /* Create autocli from YANG */
+    if (autocli_start(h, printgen) < 0)
+	goto done;
 
     /* Initialize cli syntax */
     if (cli_syntax_load(h) < 0)

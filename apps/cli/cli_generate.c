@@ -63,9 +63,9 @@
 #include "cli_plugin.h"
 #include "cli_generate.h"
 
-/* This is the default callback function. But this is typically overwritten */
-#define GENERATE_CALLBACK "overwrite_me"
-
+/*
+ * Constants
+ */
 /* variable expand function */
 #define GENERATE_EXPAND_XMLDB "expand_dbvar"
 
@@ -725,7 +725,6 @@ yang2cli_container(clicon_handle h,
 	cprintf(cb, ";{\n");
     }
 
-
     yc = NULL;
     while ((yc = yn_each(ys, yc)) != NULL) 
 	if (yang2cli_stmt(h, yc, gt, level+1, state, cb) < 0)
@@ -972,10 +971,10 @@ yang2cli(clicon_handle      h,
 	goto done;
     cvec_free(globals);
     /* Resolve the expand callback functions in the generated syntax.
-       This "should" only be GENERATE_EXPAND_XMLDB
-       handle=NULL for global namespace, this means expand callbacks must be in
-       CLICON namespace, not in a cli frontend plugin.
-    */
+     * This "should" only be GENERATE_EXPAND_XMLDB
+     * handle=NULL for global namespace, this means expand callbacks must be in
+     * CLICON namespace, not in a cli frontend plugin.
+     */
     if (cligen_expandv_str2fn(ptnew, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)     
 	goto done;
 

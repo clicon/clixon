@@ -189,13 +189,13 @@ new "cli set protocol udp"
 expectfn "$clixon_cli -1 -f $cfg -l o set system protocol udp" 0 "^$"
 
 new "cli get protocol udp"
-expectfn "$clixon_cli -1 -f $cfg -l o show configuration cli " 0 "^system protocol udp$"
+expectfn "$clixon_cli -1 -f $cfg -l o show configuration cli " 0 "^set system protocol udp$"
 
 new "cli change protocol to tcp"
 expectfn "$clixon_cli -1 -f $cfg -l o set system protocol tcp" 0 "^$"
 
 new "cli get protocol tcp"
-expectfn "$clixon_cli -1 -f $cfg -l o show configuration cli " 0 "^system protocol tcp$"
+expectfn "$clixon_cli -1 -f $cfg -l o show configuration cli " 0 "^set system protocol tcp$"
 
 new "cli delete all"
 expectfn "$clixon_cli -1 -f $cfg -l o delete all" 0 "^$"

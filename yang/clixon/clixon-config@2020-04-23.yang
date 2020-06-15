@@ -402,11 +402,12 @@ module clixon-config {
 	    type int32;
 	    default 1;
 	    description
-		"If set, generate CLI specification for CLI completion of
-                 loaded Yang modules. This CLI tree can be accessed in CLI
-                 spec files using the tree reference syntax (eg @datamodel).
-                 See also CLICON_CLI_MODEL_TREENAME.
-                 (consider boolean)";
+		"0: Do not generate CLISPEC syntax for the auto-cli.
+                 1: Generate a CLI specification for CLI completion of all loaded Yang modules. 
+                    This CLI tree can be accessed in CLI-spec files using the tree reference syntax (eg
+                     @datamodel).
+                 2: Same including state syntax in a tree called @datamodelstate.
+                 See also CLICON_CLI_MODEL_TREENAME.";
 	}
 	leaf CLICON_CLI_MODEL_TREENAME {
 	    type string;
