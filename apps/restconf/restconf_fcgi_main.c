@@ -79,9 +79,8 @@
 /* restconf */
 #include "restconf_lib.h"      /* generic shared with plugins */
 #include "restconf_api.h"      /* generic not shared with plugins */
-
+#include "restconf_err.h"
 #include "restconf_root.h"     /* generic not shared with plugins */
-#include "restconf_fcgi_lib.h" /* fcgi specific */
 #include "restconf_methods.h"  /* fcgi specific */
 #include "restconf_methods_get.h"
 #include "restconf_methods_post.h"
@@ -90,6 +89,90 @@
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:o:"
 
+/*! Convert FCGI parameters to clixon runtime data
+ * @param[in]  h     Clixon handle
+ * @param[in]  envp  Fastcgi request handle parameter array on the format "<param>=<value>"
+ * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
+ */
+static int
+fcgi_params_set(clicon_handle h,
+			   char        **envp)
+{
+    int   retval = -1;
+    int   i;
+    char *param = NULL;
+    char *val = NULL;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    for (i = 0; envp[i] != NULL; i++){ /* on the form <param>=<value> */
+	if (clixon_strsplit(envp[i], '=', &param, &val) < 0)
+	    goto done;
+	clicon_debug(1, "%s param:%s val:%s", __FUNCTION__, param, val);
+	if (clixon_restconf_param_set(h, param, val) < 0)
+	    goto done;
+	if (param){
+	    free(param);
+	    param = NULL;
+	}
+	if (val){
+	    free(val);
+	    val = NULL;
+	}
+    }
+    retval = 0;
+ done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    return retval;
+}
+
+/*! Clear all FCGI parameters in an environment
+ * @param[in]  h     Clixon handle
+ * @param[in]  envp  Fastcgi request handle parameter array on the format "<param>=<value>"
+ * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
+ */
+static int
+fcgi_params_clear(clicon_handle h,
+		  char        **envp)
+{
+    int   retval = -1;
+    int   i;
+    char *param = NULL;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    for (i = 0; envp[i] != NULL; i++){ /* on the form <param>=<value> */
+	if (clixon_strsplit(envp[i], '=', &param, NULL) < 0)
+	    goto done;
+	clicon_debug(1, "%s param:%s", __FUNCTION__, param);
+	if (clixon_restconf_param_del(h, param) < 0)
+	    goto done;
+	if (param){
+	    free(param);
+	    param = NULL;
+	}
+    }
+    retval = 0;
+ done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    return retval;
+}
+
+/*! Print all FCGI headers
+ * @param[in]  req        Fastcgi request handle
+ * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
+ */
+static int
+fcgi_print_headers(FCGX_Request *req)
+{
+    char **environ = req->envp;
+    int    i;
+
+    clicon_debug(1, "All environment vars:");
+    for (i = 0; environ[i] != NULL; i++)
+	clicon_debug(1, "%s", environ[i]);
+    clicon_debug(1, "End environment vars");
+    return 0;
+}
+
 /*! Generic REST method, GET, PUT, DELETE, etc
  * @param[in]  h      CLIXON handle
  * @param[in]  r      Fastcgi request handle
@@ -97,7 +180,6 @@
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
  * @param[in]  pi     Offset, where to start pcvec
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  dvec   Stream input daat
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  media_in  Input media
  * @param[in]  media_out Output media
@@ -176,46 +258,6 @@ api_operations(clicon_handle h,
     return retval;
 }
 
-/*! Determine the root of the RESTCONF API
- * @param[in]  h        Clicon handle
- * @param[in]  r        Fastcgi request handle
- * @note Hardcoded to "/restconf"
- * Return see RFC8040 3.1 and RFC7320
- * In line with the best practices defined by [RFC7320], RESTCONF
- * enables deployments to specify where the RESTCONF API is located.
- */
-#if 0
-static int
-api_well_known(clicon_handle h,
-	       FCGX_Request *req)
-{
-    char         *request_method;
-    FCGX_Request *body;
-    
-    /* call generic function */
-    if (api_well_known(h, req) < 0)
-	goto done;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (req == NULL){
-	errno = EINVAL;
-	goto done;
-    }
-    request_method = clixon_restconf_param_get(h, "REQUEST_METHOD");
-    if (strcmp(request_method, "GET") !=0 )
-	return restconf_method_notallowed(req, "GET");
-    restconf_reply_status_code(req, 200); /* OK */
-    restconf_reply_header_add(req, "Cache-Control", "no-cache");
-    restconf_reply_header_add(req, "Content-Type", "application/xrd+xml");
-    body = restconf_reply_body_start(req);
-    
-    restconf_reply_body_add(body, NULL, "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>\n");
-    restconf_reply_body_add(body, NULL, "   <Link rel='restconf' href='/restconf'/>\n");
-    restconf_reply_body_add(body, NULL, "</XRD>\r\n");
- done:
-    return 0;
-}
-#endif
 /*! Retrieve the Top-Level API Resource
  * @param[in]  h        Clicon handle
  * @param[in]  r        Fastcgi request handle
@@ -224,10 +266,10 @@ api_well_known(clicon_handle h,
  * XXX doesnt check method
  */
 static int
-api_root(clicon_handle  h,
-	 FCGX_Request  *r,
-	 int            pretty,
-	 restconf_media media_out)
+api_fcgi_root(clicon_handle  h,
+	      FCGX_Request  *r,
+	      int            pretty,
+	      restconf_media media_out)
 
 {
     int        retval = -1;
@@ -337,25 +379,23 @@ api_yang_library_version(clicon_handle h,
  * @param[in]  r        Fastcgi request handle
  */
 static int
-api_restconf(clicon_handle h,
-	     FCGX_Request *req)
+api_fcgi_restconf(clicon_handle h,
+		  FCGX_Request *req)
 {
     int    retval = -1;
     char  *path;
     char  *query = NULL;
-    char  *method;
+    char  *api_resource;
     char **pvec = NULL;
     int    pn;
     cvec  *qvec = NULL;
-    cvec  *dvec = NULL;
     cvec  *pcvec = NULL; /* for rest api */
     cbuf  *cb = NULL;
-    char  *data;
+    char  *indata = NULL;
     int    authenticated = 0;
     char  *media_str = NULL;
     restconf_media media_out = YANG_DATA_JSON;
     int    pretty;
-    cbuf  *cbret = NULL;
     cxobj *xret = NULL;
     cxobj *xerr;
 
@@ -398,30 +438,28 @@ api_restconf(clicon_handle h,
 	retval = restconf_notfound(h, req);
 	goto done;
     }
-    restconf_test(req, 1);
+    fcgi_print_headers(req);
 
     if (pn == 2){
-	retval = api_root(h, req, pretty, media_out);
+	retval = api_fcgi_root(h, req, pretty, media_out);
 	goto done;
     }
-    if ((method = pvec[2]) == NULL){
+    if ((api_resource = pvec[2]) == NULL){
 	retval = restconf_notfound(h, req);
 	goto done;
     }
-    clicon_debug(1, "%s: method=%s", __FUNCTION__, method);
+    clicon_debug(1, "%s: api_resource=%s", __FUNCTION__, api_resource);
     if (query != NULL && strlen(query))
 	if (str2cvec(query, '&', '=', &qvec) < 0)
 	    goto done;
     if (str2cvec(path, '/', '=', &pcvec) < 0) /* rest url eg /album=ricky/foo */
       goto done;
-    /* data */
-    if ((cb = readdata(req)) == NULL)
+    /* indata */
+    if ((cb = restconf_get_indata(req)) == NULL)
 	goto done;
-    data = cbuf_get(cb);
-    clicon_debug(1, "%s DATA=%s", __FUNCTION__, data);
+    indata = cbuf_get(cb);
+    clicon_debug(1, "%s DATA=%s", __FUNCTION__, indata);
 
-    if (str2cvec(data, '&', '=', &dvec) < 0)
-      goto done;
     /* If present, check credentials. See "plugin_credentials" in plugin  
      * See RFC 8040 section 2.5
      */
@@ -429,7 +467,7 @@ api_restconf(clicon_handle h,
 	goto done;
     clicon_debug(1, "%s auth:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
 
-    /* If set but no user, we set a dummy user */
+    /* If set but no user, set a dummy user */
     if (authenticated){
 	if (clicon_username_get(h) == NULL)
 	    clicon_username_set(h, "none");
@@ -445,22 +483,20 @@ api_restconf(clicon_handle h,
 	goto ok;
     }
     clicon_debug(1, "%s auth2:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
-    if (strcmp(method, "yang-library-version")==0){
+    if (strcmp(api_resource, "yang-library-version")==0){
 	if (api_yang_library_version(h, req, pretty, media_out) < 0)
 	    goto done;
     }
-    else if (strcmp(method, "data") == 0){ /* restconf, skip /api/data */
-	if (api_data(h, req, path, pcvec, 2, qvec, data,
+    else if (strcmp(api_resource, "data") == 0){ /* restconf, skip /api/data */
+	if (api_data(h, req, path, pcvec, 2, qvec, indata,
 		     pretty, media_out) < 0)
 	    goto done;
     }
-    else if (strcmp(method, "operations") == 0){ /* rpc */
-	if (api_operations(h, req, path, pcvec, 2, qvec, data,
+    else if (strcmp(api_resource, "operations") == 0){ /* rpc */
+	if (api_operations(h, req, path, pcvec, 2, qvec, indata,
 			   pretty, media_out) < 0)
 	    goto done;
     }
-    else if (strcmp(method, "test") == 0)
-	restconf_test(req, 0);
     else
 	restconf_notfound(h, req);
  ok:
@@ -469,16 +505,12 @@ api_restconf(clicon_handle h,
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (pvec)
 	free(pvec);
-    if (dvec)
-	cvec_free(dvec);
     if (qvec)
 	cvec_free(qvec);
     if (pcvec)
 	cvec_free(pcvec);
     if (cb)
 	cbuf_free(cb);
-    if (cbret)
-	cbuf_free(cbret);
     if (xret)
 	xml_free(xret);
     return retval;
@@ -834,12 +866,16 @@ main(int    argc,
 	/* Translate from FCGI parameter form to Clixon runtime data 
 	 * XXX: potential name collision?
 	 */
-	if (clixon_restconf_params_set(h, req->envp) < 0)
+	if (fcgi_params_set(h, req->envp) < 0)
 	    goto done;
+	/* Debug_ print headers */
+	if (clicon_debug_get())
+	    fcgi_print_headers(req);
+	
 	if ((path = clixon_restconf_param_get(h, "REQUEST_URI")) != NULL){
 	    clicon_debug(1, "path: %s", path);
 	    if (strncmp(path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0)
-		api_restconf(h, req); /* This is the function */
+		api_fcgi_restconf(h, req); /* This is the function */
 	    else if (strncmp(path+1, stream_path, strlen(stream_path)) == 0) {
 		api_stream(h, req, stream_path, &finish); 
 	    }
@@ -853,7 +889,7 @@ main(int    argc,
 	}
 	else
 	    clicon_debug(1, "NULL URI");
-	if (clixon_restconf_params_clear(h, req->envp) < 0)
+	if (fcgi_params_clear(h, req->envp) < 0)
 	    goto done;
 	if (finish)
 	    FCGX_Finish_r(req);

@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -34,22 +35,19 @@
   * Restconf method implementation for post: operation(rpc) and data
   */
 
-
 #ifndef _RESTCONF_METHODS_POST_H_
 #define _RESTCONF_METHODS_POST_H_
 
 /*
  * Prototypes
  */
-int api_data_post(clicon_handle h, FCGX_Request *r, char *api_path,
-		  int pi,
-		  cvec *qvec, char *data,
+int api_data_post(clicon_handle h, void *req, char *api_path,
+		  int pi, cvec *qvec, char *data,
 		  int pretty,
 		  restconf_media media_out);
 
-int api_operations_post(clicon_handle h, FCGX_Request *r, char *api_path,
+int api_operations_post(clicon_handle h, void *req, char *api_path,
 			int pi,	cvec *qvec, char *data,
 			int pretty, restconf_media media_out);
-
 
 #endif /* _RESTCONF_METHODS_POST_H_ */

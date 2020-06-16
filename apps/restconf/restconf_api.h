@@ -41,14 +41,14 @@
 /*
  * Prototypes
  */
-int restconf_reply_status_code(void *req, int code);
-
 #if defined(__GNUC__) && __GNUC__ >= 3
-int restconf_reply_header_add(void *req, char *name, char *vfmt, ...)  __attribute__ ((format (printf, 3, 4)));
+int restconf_reply_header(void *req, char *name, char *vfmt, ...)  __attribute__ ((format (printf, 3, 4)));
 #else
-int restconf_reply_header_add(FCGX_Request *req, char *name, char *vfmt, ...);
+int restconf_reply_header(FCGX_Request *req, char *name, char *vfmt, ...);
 #endif
 
-int restconf_reply_send(void  *req, cbuf *cb);
+int restconf_reply_send(void *req, int code, cbuf *cb);
+
+cbuf *restconf_get_indata(void *req);
 
 #endif /* _RESTCONF_API_H_ */

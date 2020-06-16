@@ -63,20 +63,6 @@
 #include "restconf_lib.h"
 #include "restconf_api.h"  /* Virtual api */
 
-/*! Add HTTP header field name and value to reply, fcgi specific
- * @param[in]  req   Fastcgi request handle
- * @param[in]  code  HTTP status code
- * @see eg RFC 7230
- */
-int
-restconf_reply_status_code(void  *req0,
-			   int    code)
-{
-    FCGX_Request *req = (FCGX_Request *)req0;
-
-    FCGX_SetExitStatus(code, req->out);
-    return 0;
-}
 
 /*! HTTP headers done, if there is a message body coming next
  * @param[in]  req   Fastcgi request handle
@@ -102,11 +88,10 @@ restconf_reply_body_start(void  *req0)
  * @see eg RFC 7230
  */
 int
-restconf_reply_header_add(void   *req0,
-			  char   *name,
-			  char   *vfmt,
-			  ...)
-
+restconf_reply_header(void   *req0,
+		      char   *name,
+		      char   *vfmt,
+		      ...)
 {
     FCGX_Request *req = (FCGX_Request *)req0;
     int        retval = -1;
@@ -195,23 +180,50 @@ restconf_reply_body_add(void     *req0,
 }
 
 /*! Send HTTP reply with potential message body
- * @param[in]     req         Fastcgi request handle
- * @param[in]     cb          Body as a cbuf, send if 
+ * @param[in]     req   Fastcgi request handle
+ * @param[in]     code  Status code
+ * @param[in]     cb    Body as a cbuf if non-NULL
  * 
  * Prerequisites: status code set, headers given, body if wanted set
  */
 int
 restconf_reply_send(void  *req0,
+		    int    code,
 		    cbuf  *cb)
 {
     FCGX_Request *req = (FCGX_Request *)req0;
     int           retval = -1;
+    const char *reason_phrase;
 
+    FCGX_SetExitStatus(code, req->out);
+    if ((reason_phrase = restconf_code2reason(code)) == NULL)
+	reason_phrase="";
+    if (restconf_reply_header(req, "Status", "%d %s", code, reason_phrase) < 0)
+	goto done;
+    FCGX_FPrintF(req->out, "\r\n");
     /* Write a body if cbuf is nonzero */
     if (cb != NULL && cbuf_len(cb)){
-	FCGX_FPrintF(req->out, "\r\n");
 	FCGX_FPrintF(req->out, "%s", cbuf_get(cb));
+	FCGX_FPrintF(req->out, "\r\n");
     }
     retval = 0;
-     return retval;
+ done:
+    return retval;
+}
+
+/*!
+ * @param[in]  req        Fastcgi request handle
+ */
+cbuf *
+restconf_get_indata(void *req0)
+{
+    FCGX_Request *req = (FCGX_Request *)req0;
+    int   c;
+    cbuf *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL)
+	return NULL;
+    while ((c = FCGX_GetChar(req->in)) != -1)
+	cprintf(cb, "%c", c);
+    return cb;
 }

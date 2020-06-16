@@ -135,50 +135,57 @@ EOF
     # Use  POST (instead of startup)
     if [ $db = init ]; then
 	new "Set Initial data using POST"
-	expectpart "$(curl -u guest:bar -siS -X POST -H "Content-Type: application/yang-data+xml" -d "$XML" http://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
+	expectpart "$(curl -u guest:bar -sik -X POST -H "Content-Type: application/yang-data+xml" -d "$XML" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
 	
 	new "Set NACM using POST"
-	expectpart "$(curl -u guest:bar -siS -X POST -H "Content-Type: application/yang-data+xml" -d "$NACM" http://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
+	expectpart "$(curl -u guest:bar -sik -X POST -H "Content-Type: application/yang-data+xml" -d "$NACM" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
     fi
     
     #----------- First get
     case "$ret1" in
-	0) ret='{"nacm-example:x":42}
-'
+	0) ret='{"nacm-example:x":42}'
+	   status="HTTP/1.1 200 OK"
 	;;
-	1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+	1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+	   status="HTTP/1.1 403 Forbidden"
 	   ;;
-	2) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+	2) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+	   status="HTTP/1.1 404 Not Found"
 	;;
     esac
 
     new "get startup 42"
-    expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 "$ret"
+    expectpart "$(curl -u guest:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "$status" "$ret"
 
     #----------- Then edit
     case "$ret2" in
 	0) ret=''
+	   status="HTTP/1.1 204 No Content"
 	;;
-	1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+	1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+	   status="HTTP/1.1 403 Forbidden"
 	;;
     esac
     new "edit new 99"
-    expecteq "$(curl -u guest:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 99}' http://localhost/restconf/data/nacm-example:x)" 0 "$ret"
+    expectpart "$(curl -u guest:bar -sik -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 99}' $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "$status" "$ret"
 
     #----------- Then second get
     case "$ret3" in
-	0) ret='{"nacm-example:x":99}
-'
+	0) ret='{"nacm-example:x":99}'
+	   status="HTTP/1.1 200 OK"
 	;;
-	1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+	1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+	   status="HTTP/1.1 403 Forbidden"
         ;;
-	2) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+	2) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+	   status="HTTP/1.1 404 Not Found"
 	   ;;
-	3) ret='{"nacm-example:x":42}
-'
+	3) ret='{"nacm-example:x":42}'
+	   status="HTTP/1.1 200 OK"
+	   ;;
     esac
     new "get 99"
-    expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 "$ret"
+    expectpart "$(curl -u guest:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "$status" "$ret"
     
     new "Kill restconf daemon"
     stop_restconf

@@ -63,13 +63,13 @@
 /* restconf */
 #include "restconf_lib.h"
 #include "restconf_api.h"
+#include "restconf_err.h"
 #include "restconf_root.h"
 
 
 /*! Determine the root of the RESTCONF API
  * @param[in]  h        Clicon handle
  * @param[in]  req      Generic Www handle (can be part of clixon handle)
- * @param[in]  cb       Body buffer
  * @see RFC8040 3.1 and RFC7320
  * In line with the best practices defined by [RFC7320], RESTCONF
  * enables deployments to specify where the RESTCONF API is located.
@@ -92,9 +92,10 @@ api_well_known(clicon_handle h,
 	restconf_method_notallowed(req, "GET");
 	goto ok;
     }
-    restconf_reply_status_code(req, 200); /* OK */
-    restconf_reply_header_add(req, "Cache-Control", "no-cache");
-    restconf_reply_header_add(req, "Content-Type", "application/xrd+xml");
+    if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
+	goto done;
+    if (restconf_reply_header(req, "Content-Type", "application/xrd+xml") < 0)
+	goto done;
     /* Create body */
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -105,14 +106,473 @@ api_well_known(clicon_handle h,
     cprintf(cb, "</XRD>\r\n");
 
     /* Must be after body */
-    restconf_reply_header_add(req, "Content-Length", "%d", cbuf_len(cb)); 
-    if (restconf_reply_send(req, cb) < 0)
+    if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
+	goto done;
+    if (restconf_reply_send(req, 200, cb) < 0)
 	goto done;
  ok:
     retval = 0;
  done:
     if (cb)
 	cbuf_free(cb);
+    return retval;
+}
+
+/*! Retrieve the Top-Level API Resource
+ * @param[in]  h        Clicon handle
+ * @param[in]  r        Fastcgi request handle
+ * @note Only returns null for operations and data,...
+ * See RFC8040 3.3
+ * XXX doesnt check method
+ */
+static int
+api_root(clicon_handle  h,
+	 void          *req,
+	 char          *request_method,
+	 int            pretty,
+	 restconf_media media_out)
+
+{
+    int        retval = -1;
+    yang_stmt *yspec;
+    cxobj     *xt = NULL;
+    cbuf      *cb = NULL;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (strcmp(request_method, "GET") != 0){
+	restconf_method_notallowed(req, "GET");
+	goto ok;
+    }
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
+    if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
+	goto done;
+    if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
+	goto done;
+    
+    if (clixon_xml_parse_string("<restconf xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><data/>"
+				"<operations/><yang-library-version>2016-06-21</yang-library-version></restconf>",
+				YB_MODULE, yspec, &xt, NULL) < 0)
+	goto done;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (xml_rootchild(xt, 0, &xt) < 0)
+	goto done;
+    switch (media_out){
+    case YANG_DATA_XML:
+	if (clicon_xml2cbuf(cb, xt, 0, pretty, -1) < 0)
+	    goto done;
+	break;
+    case YANG_DATA_JSON:
+	if (xml2json_cbuf(cb, xt, pretty) < 0)
+	    goto done;
+	break;
+    default:
+	break;
+    }
+    if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
+	goto done;
+    if (restconf_reply_send(req, 200, cb) < 0)
+	goto done;
+ ok:
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (xt)
+	xml_free(xt);
+    return retval;
+}
+
+/*!
+ * See https://tools.ietf.org/html/rfc7895
+ */
+static int
+api_yang_library_version(clicon_handle h,
+			 void         *req,
+			 int           pretty,
+			 restconf_media media_out)
+    
+{
+#if 1
+    clicon_debug(1, "%s", __FUNCTION__);
+    return 0;
+#else
+    int    retval = -1;
+    cxobj *xt = NULL;
+    cbuf  *cb = NULL;
+    char  *ietf_yang_library_revision = "2016-06-21"; /* XXX */
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    FCGX_SetExitStatus(200, r->out); /* OK */
+    FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
+    FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));
+    FCGX_FPrintF(r->out, "\r\n");
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xt, NULL,
+			    "<yang-library-version>%s</yang-library-version>",
+			    ietf_yang_library_revision) < 0)
+	goto done;
+    if (xml_rootchild(xt, 0, &xt) < 0)
+	goto done;
+    if ((cb = cbuf_new()) == NULL){
+	goto done;
+    }
+    switch (media_out){
+    case YANG_DATA_XML:
+	if (clicon_xml2cbuf(cb, xt, 0, pretty, -1) < 0)
+	    goto done;
+	break;
+    case YANG_DATA_JSON:
+	if (xml2json_cbuf(cb, xt, pretty) < 0)
+	    goto done;
+	break;
+    default:
+	break;
+    }
+    clicon_debug(1, "%s cb%s", __FUNCTION__, cbuf_get(cb));
+    FCGX_FPrintF(r->out, "%s\n", cb?cbuf_get(cb):"");
+    FCGX_FPrintF(r->out, "\n\n");
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (xt)
+	xml_free(xt);
+    return retval;
+#endif
+}
+
+/*! Generic REST method, GET, PUT, DELETE, etc
+ * @param[in]  h      CLIXON handle
+ * @param[in]  r      Fastcgi request handle
+ * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
+ * @param[in]  pi     Offset, where to start pcvec
+ * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_in  Input media
+ * @param[in]  media_out Output media
+ */
+static int
+api_data(clicon_handle h,
+	 void         *req, 
+	 char         *api_path, 
+	 cvec         *pcvec, 
+	 int           pi,
+	 cvec         *qvec, 
+	 char         *data,
+	 int           pretty,
+	 restconf_media media_out)
+{
+#if 1
+    clicon_debug(1, "%s", __FUNCTION__);
+    return 0;
+#else
+    int     retval = -1;
+    char   *request_method;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    request_method = clixon_restconf_param_get(h, "REQUEST_METHOD");
+    clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
+    if (strcmp(request_method, "OPTIONS")==0)
+	retval = api_data_options(h, req);
+    else if (strcmp(request_method, "HEAD")==0)
+	retval = api_data_head(h, req, api_path, pcvec, pi, qvec, pretty, media_out);
+    else if (strcmp(request_method, "GET")==0)
+	retval = api_data_get(h, req, api_path, pcvec, pi, qvec, pretty, media_out);
+    else if (strcmp(request_method, "POST")==0)
+	retval = api_data_post(h, req, api_path, pi, qvec, data, pretty, media_out);
+    else if (strcmp(request_method, "PUT")==0)
+	retval = api_data_put(h, req, api_path, pcvec, pi, qvec, data, pretty, media_out);
+    else if (strcmp(request_method, "PATCH")==0)
+	retval = api_data_patch(h, req, api_path, pcvec, pi, qvec, data, pretty, media_out);
+    else if (strcmp(request_method, "DELETE")==0)
+	retval = api_data_delete(h, req, api_path, pi, pretty, media_out);
+    else
+	retval = restconf_notfound(h, req);
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    return retval;
+#endif
+}
+
+/*! Move back to restconf_methods_get
+ */
+static int
+api_operations_get(clicon_handle h,
+		   void         *req, 
+		   char         *path, 
+		   int           pi,
+		   cvec         *qvec, 
+		   char         *data,
+		   int           pretty,
+		   restconf_media media_out)
+{
+    int        retval = -1;
+    yang_stmt *yspec;
+    yang_stmt *ymod; /* yang module */
+    yang_stmt *yc;
+    char      *namespace;
+    cbuf      *cb = NULL;
+    cxobj     *xt = NULL;
+    int        i;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    yspec = clicon_dbspec_yang(h);
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    switch (media_out){
+    case YANG_DATA_XML:
+	cprintf(cb, "<operations>");
+	break;
+    case YANG_DATA_JSON:
+	if (pretty)
+	    cprintf(cb, "{\"operations\": {\n");
+	else
+	    cprintf(cb, "{\"operations\":{");
+	break;
+    default:
+	break;
+    }
+    ymod = NULL;
+    i = 0;
+    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+	namespace = yang_find_mynamespace(ymod);
+	yc = NULL; 
+	while ((yc = yn_each(ymod, yc)) != NULL) {
+	    if (yang_keyword_get(yc) != Y_RPC)
+		continue;
+	    switch (media_out){
+	    case YANG_DATA_XML:
+		cprintf(cb, "<%s xmlns=\"%s\"/>", yang_argument_get(yc), namespace);
+		break;
+	    case YANG_DATA_JSON:
+		if (i++){
+		    cprintf(cb, ",");
+		    if (pretty)
+			cprintf(cb, "\n\t");
+		}
+		if (pretty)
+		    cprintf(cb, "\"%s:%s\": [null]", yang_argument_get(ymod), yang_argument_get(yc));
+		else
+		    cprintf(cb, "\"%s:%s\":[null]", yang_argument_get(ymod), yang_argument_get(yc));
+		break;
+	    default:
+		break;
+	    }
+	}
+    }
+    switch (media_out){
+    case YANG_DATA_XML:
+	cprintf(cb, "</operations>");
+	break;
+    case YANG_DATA_JSON:
+	if (pretty)
+	    cprintf(cb, "}\n}");
+	else
+	    cprintf(cb, "}}");
+	break;
+    default:
+	break;
+    }
+    if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
+	goto done;
+    if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
+	goto done;
+    if (restconf_reply_send(req, 200, cb) < 0)
+	goto done;
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (cb)
+        cbuf_free(cb);
+    if (xt)
+	xml_free(xt);
+    return retval;
+}
+
+/*! Operations REST method, POST
+ * @param[in]  h      CLIXON handle
+ * @param[in]  req   Generic Www handle (can be part of clixon handle)
+ * @param[in]  request_method  eg GET,...
+ * @param[in]  path   According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
+ * @param[in]  pi     Offset, where to start pcvec
+ * @param[in]  qvec   Vector of query string (QUERY_STRING)
+ * @param[in]  data   Stream input data
+ * @param[in]  media_out Output media
+ */
+static int
+api_operations(clicon_handle h,
+	       void         *req, 
+	       char         *request_method,
+	       char         *path,
+	       cvec         *pcvec, 
+	       int           pi,
+	       cvec         *qvec, 
+	       char         *data,
+	       int           pretty,
+	       restconf_media media_out)
+{
+    int retval;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (strcmp(request_method, "GET")==0)
+	retval = api_operations_get(h, req, path, pi, qvec, data, pretty, media_out);
+#ifdef NYI
+    else if (strcmp(request_method, "POST")==0)
+	retval = api_operations_post(h, req, path, pi, qvec, data,
+				     pretty, media_out);
+#endif
+    else
+	retval = restconf_notfound(h, req);
+    return retval;
+}
+
+/*! Process a /restconf root input, this is the root of the restconf processing
+ * @param[in]  h     Clicon handle
+ * @param[in]  req   Generic Www handle (can be part of clixon handle)
+ * @param[in]  qvec  Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
+ */
+int
+api_root_restconf(clicon_handle h,
+		  void         *req,
+		  cvec         *qvec)
+{
+    int            retval = -1;
+    char          *request_method = NULL; /* GET,.. */
+    char          *api_resource = NULL;   /* RFC8040 3.3: eg data/operations */
+    char          *path;
+    char         **pvec = NULL;
+    cvec          *pcvec = NULL; /* for rest api */
+    int            pn;
+    int            pretty;
+    cbuf          *cb = NULL;
+    char          *media_str = NULL;
+    restconf_media media_out = YANG_DATA_JSON;
+    char          *indata = NULL;
+    int            authenticated = 0;
+    cxobj         *xret = NULL;
+    cxobj         *xerr;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (req == NULL){
+	errno = EINVAL;
+	goto done;
+    }
+    request_method = clixon_restconf_param_get(h, "REQUEST_METHOD");
+    path = restconf_uripath(h);
+    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
+    /* Get media for output (proactive negotiation) RFC7231 by using
+     * Accept:. This is for methods that have output, such as GET, 
+     * operation POST, etc
+     * If accept is * default is yang-json
+     */
+    if ((media_str = clixon_restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
+	// retval = restconf_unsupported_media(r);
+	// goto done;
+    }
+    else    if ((int)(media_out = restconf_media_str2int(media_str)) == -1){
+	if (strcmp(media_str, "*/*") == 0) /* catch-all */
+	    media_out = YANG_DATA_JSON;
+	else{
+	    retval = restconf_unsupported_media(req);
+	    goto done;
+	}
+    }
+
+
+    clicon_debug(1, "%s ACCEPT: %s %s", __FUNCTION__, media_str, restconf_media_int2str(media_out));
+
+    if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
+	goto done;
+    /* Sanity check of path. Should be /restconf/ */
+    if (pn < 2){
+	restconf_notfound(h, req);
+	goto ok;
+    }
+    if (strlen(pvec[0]) != 0){
+	retval = restconf_notfound(h, req);
+	goto done;
+    }
+    if (strcmp(pvec[1], RESTCONF_API)){
+	retval = restconf_notfound(h, req);
+	goto done;
+    }
+    if (pn == 2){
+	retval = api_root(h, req, request_method, pretty, media_out);
+	goto done;
+    }
+    if ((api_resource = pvec[2]) == NULL){
+	retval = restconf_notfound(h, req);
+	goto done;
+    }
+    clicon_debug(1, "%s: api_resource=%s", __FUNCTION__, api_resource);
+    if (str2cvec(path, '/', '=', &pcvec) < 0) /* rest url eg /album=ricky/foo */
+      goto done;
+    /* data */
+    if ((cb = restconf_get_indata(req)) == NULL) /* XXX NYI ACTUALLY not always needed, do this later? */
+	goto done;
+    indata = cbuf_get(cb);
+    clicon_debug(1, "%s DATA=%s", __FUNCTION__, indata);
+
+    /* If present, check credentials. See "plugin_credentials" in plugin  
+     * See RFC 8040 section 2.5
+     */
+    if ((authenticated = clixon_plugin_auth_all(h, req)) < 0)
+	goto done;
+    clicon_debug(1, "%s auth:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
+
+    /* If set but no user, set a dummy user */
+    if (authenticated){
+	if (clicon_username_get(h) == NULL)
+	    clicon_username_set(h, "none");
+    }
+    else{
+	if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
+	    goto done;
+	if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+	    if (api_return_err(h, req, xerr, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+	goto ok;
+    }
+    clicon_debug(1, "%s auth2:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
+    if (strcmp(api_resource, "yang-library-version")==0){
+	if (api_yang_library_version(h, req, pretty, media_out) < 0) /* XXX NYI */
+	    goto done;
+    }
+    else if (strcmp(api_resource, "data") == 0){ /* restconf, skip /api/data */ /* XXX NYI */
+	if (api_data(h, req, path, pcvec, 2, qvec, indata,
+		     pretty, media_out) < 0)
+	    goto done;
+    }
+    else if (strcmp(api_resource, "operations") == 0){ /* rpc */
+	if (api_operations(h, req, request_method, path, pcvec, 2, qvec, indata, 
+			   pretty, media_out) < 0)
+	    goto done;
+    }
+    else
+	restconf_notfound(h, req);
+ ok:
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (pcvec)
+	cvec_free(pcvec);
+    if (pvec)
+	free(pvec);
+    if (cb)
+	cbuf_free(cb);
+    if (xret)
+	xml_free(xret);
     return retval;
 }
 

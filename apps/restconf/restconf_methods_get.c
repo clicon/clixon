@@ -57,21 +57,20 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include <fcgiapp.h> /* Need to be after clixon_xml-h due to attribute format */
-
 #include "restconf_lib.h"
-#include "restconf_fcgi_lib.h"
+#include "restconf_api.h"
+#include "restconf_err.h"
 #include "restconf_methods_get.h"
 
 /*! Generic GET (both HEAD and GET)
  * According to restconf 
- * @param[in]  h      Clixon handle
- * @param[in]  r      Fastcgi request handle
+ * @param[in]  h        Clixon handle
+ * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
- * @param[in]  pi     Offset, where path starts  
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element 
+ * @param[in]  pi       Offset, where path starts  
+ * @param[in]  qvec     Vector of query string (QUERY_STRING)
+ * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  * @param[in]  head   If 1 is HEAD, otherwise GET
  * @code
@@ -93,7 +92,7 @@
  */
 static int
 api_data_get2(clicon_handle  h,
-	      FCGX_Request  *r,
+	      void          *req,
 	      char          *api_path, 
 	      cvec          *pcvec, /* XXX remove? */
 	      int            pi,
@@ -148,7 +147,7 @@ api_data_get2(clicon_handle  h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -165,7 +164,7 @@ api_data_get2(clicon_handle  h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -187,7 +186,7 @@ api_data_get2(clicon_handle  h,
 		    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		    goto done;
 		}
-		if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		    goto done;
 		goto ok;
 	    }
@@ -213,7 +212,7 @@ api_data_get2(clicon_handle  h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -226,7 +225,7 @@ api_data_get2(clicon_handle  h,
 #endif
     /* Check if error return  */
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -234,9 +233,13 @@ api_data_get2(clicon_handle  h,
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
     if (head){
-	FCGX_SetExitStatus(200, r->out); /* OK */
-	FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));
-	FCGX_FPrintF(r->out, "\r\n");
+	/* Same headers as the GET, but no body */
+	if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
+	    goto done;
+	if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
+	    goto done;
+	if (restconf_reply_send(req, 200, NULL) < 0)
+	    goto done;
 	goto ok;
     }
     if (xpath==NULL || strcmp(xpath,"/")==0){ /* Special case: data root */
@@ -261,7 +264,7 @@ api_data_get2(clicon_handle  h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -275,7 +278,7 @@ api_data_get2(clicon_handle  h,
 		goto done;
 	    /* override invalid-value default 400 with 404 */
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) != NULL){
-		if (api_return_err(h, r, xe, pretty, media_out, 404) < 0)
+		if (api_return_err(h, req, xe, pretty, media_out, 404) < 0)
 		    goto done;
 	    }
 	    goto ok;
@@ -309,12 +312,12 @@ api_data_get2(clicon_handle  h,
 	}
     }
     clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
-    FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
-    FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));
-    FCGX_FPrintF(r->out, "\r\n");
-    FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
-    FCGX_FPrintF(r->out, "\r\n\r\n");
+    if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
+	goto done;
+    if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
+	goto done;
+    if (restconf_reply_send(req, 200, cbx) < 0)
+	goto done;
  ok:
     retval = 0;
  done:
@@ -337,13 +340,13 @@ api_data_get2(clicon_handle  h,
 }
 
 /*! REST HEAD method
- * @param[in]  h      Clixon handle
- * @param[in]  r      Fastcgi request handle
+ * @param[in]  h        Clixon handle
+ * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
- * @param[in]  pi     Offset, where path starts  
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element 
+ * @param[in]  pi       Offset, where path starts  
+ * @param[in]  qvec     Vector of query string (QUERY_STRING)
+ * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  *
  * The HEAD method is sent by the client to retrieve just the header fields 
@@ -353,7 +356,7 @@ api_data_get2(clicon_handle  h,
  */
 int
 api_data_head(clicon_handle h,
-	      FCGX_Request *r,
+	      void         *req,
 	      char         *api_path,
 	      cvec         *pcvec,
 	      int           pi,
@@ -361,18 +364,18 @@ api_data_head(clicon_handle h,
 	      int           pretty,
 	      restconf_media media_out)
 {
-    return api_data_get2(h, r, api_path, pcvec, pi, qvec, pretty, media_out, 1);
+    return api_data_get2(h, req, api_path, pcvec, pi, qvec, pretty, media_out, 1);
 }
 
 /*! REST GET method
  * According to restconf 
- * @param[in]  h      Clixon handle
- * @param[in]  r      Fastcgi request handle
+ * @param[in]  h        Clixon handle
+ * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
- * @param[in]  pi     Offset, where path starts  
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element 
+ * @param[in]  pi       Offset, where path starts  
+ * @param[in]  qvec     Vector of query string (QUERY_STRING)
+ * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
@@ -392,7 +395,7 @@ api_data_head(clicon_handle h,
  */
 int
 api_data_get(clicon_handle h,
-	     FCGX_Request *r,
+	     void         *req,
 	     char         *api_path, 
              cvec         *pcvec,
              int           pi,
@@ -400,12 +403,12 @@ api_data_get(clicon_handle h,
 	     int           pretty,
 	     restconf_media media_out)
 {
-    return api_data_get2(h, r, api_path, pcvec, pi, qvec, pretty, media_out, 0);
+    return api_data_get2(h, req, api_path, pcvec, pi, qvec, pretty, media_out, 0);
 }
 
 /*! GET restconf/operations resource
  * @param[in]  h      Clixon handle
- * @param[in]  r      Fastcgi request handle
+ * @param[in]  req    Generic Www handle
  * @param[in]  path   According to restconf (Sec 3.5.1.1 in [draft])
  * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
@@ -430,7 +433,7 @@ api_data_get(clicon_handle h,
  */
 int
 api_operations_get(clicon_handle h,
-		   FCGX_Request *r, 
+		   void         *req,
 		   char         *path, 
 		   int           pi,
 		   cvec         *qvec, 
@@ -505,11 +508,13 @@ api_operations_get(clicon_handle h,
     default:
 	break;
     }
-    FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));
-    FCGX_FPrintF(r->out, "\r\n");
-    FCGX_FPrintF(r->out, "%s", cbx?cbuf_get(cbx):"");
-    FCGX_FPrintF(r->out, "\r\n\r\n");
+
+    if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
+	goto done;
+    if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
+	goto done;
+    if (restconf_reply_send(req, 200, cbx) < 0)
+	goto done;
     // ok:
     retval = 0;
  done:

@@ -59,21 +59,67 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include <fcgiapp.h> /* Need to be after clixon_xml.h due to attribute format */
-
 #include "restconf_lib.h"
-#include "restconf_fcgi_lib.h"
+#include "restconf_api.h"
+#include "restconf_err.h"
 #include "restconf_methods_post.h"
 
+/*! Print location header from 
+ * @param[in]  req    Generic Www handle
+ * @param[in]  xobj   If set (eg POST) add to api-path
+ * $https  “on” if connection operates in SSL mode, or an empty string otherwise 
+ * @note ports are ignored
+ */
+static int
+http_location_header(clicon_handle h,
+		     void         *req,
+		     cxobj        *xobj)
+{
+    int   retval = -1;
+    char *https;
+    char *host;
+    char *request_uri;
+    cbuf *cb = NULL;
+
+    https = clixon_restconf_param_get(h, "HTTPS");
+    host = clixon_restconf_param_get(h, "HTTP_HOST");
+    request_uri = clixon_restconf_param_get(h, "REQUEST_URI");
+    if (xobj != NULL){
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, 0, "cbuf_new");
+	    goto done;
+	}
+	if (xml2api_path_1(xobj, cb) < 0)
+	    goto done;
+	if (restconf_reply_header(req, "Location", "http%s://%s%s%s",
+				  https?"s":"",
+				  host,
+				  request_uri,
+				  cbuf_get(cb)) < 0)
+	    goto done;
+    }
+    else
+	if (restconf_reply_header(req, "Location", "http%s://%s%s",
+				  https?"s":"",
+				  host,
+				  request_uri) < 0)
+	    goto done;
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
 /*! Generic REST POST  method 
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
+ * @param[in]  h        Clixon handle
+ * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
- * @param[in]  pi     Offset, where to start pcvec
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  data   Stream input data
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element
+ * @param[in]  pi       Offset, where to start pcvec
+ * @param[in]  qvec     Vector of query string (QUERY_STRING)
+ * @param[in]  data     Stream input data
+ * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  * restconf POST is mapped to edit-config create. 
  * @see RFC8040 Sec 4.4.1
@@ -99,7 +145,7 @@
  */
 int
 api_data_post(clicon_handle h,
-	      FCGX_Request *r, 
+	      void         *req,
 	      char         *api_path, 
 	      int           pi,
 	      cvec         *qvec, 
@@ -153,7 +199,7 @@ api_data_post(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -168,7 +214,7 @@ api_data_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -198,7 +244,7 @@ api_data_post(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -207,7 +253,7 @@ api_data_post(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -220,7 +266,7 @@ api_data_post(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -229,13 +275,13 @@ api_data_post(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
 	break;
     default:
-	restconf_unsupported_media(r);
+	restconf_unsupported_media(req);
 	goto ok;
 	break;
     } /* switch media_in */
@@ -251,7 +297,7 @@ api_data_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -284,7 +330,7 @@ api_data_post(clicon_handle h,
 	    		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 
@@ -298,7 +344,7 @@ api_data_post(clicon_handle h,
 	    		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -332,7 +378,7 @@ api_data_post(clicon_handle h,
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -354,7 +400,7 @@ api_data_post(clicon_handle h,
 	/* log errors from discard, but ignore */
 	if ((xpath_first(xretdis, NULL, "//rpc-error")) != NULL)
 	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0) /* Use original xe */
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0) /* Use original xe */
 	    goto done;
 	goto ok;
     }
@@ -376,14 +422,13 @@ api_data_post(clicon_handle h,
 	    goto done;
 	/* If copy-config failed, log and ignore (already committed) */
 	if ((xe = xpath_first(xretcom, NULL, "//rpc-error")) != NULL){
-
 	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
 	}
     }
-    FCGX_SetExitStatus(201, r->out);
-    FCGX_FPrintF(r->out, "Status: 201 Created\r\n");
-    http_location(h, r, xdata);
-    FCGX_FPrintF(r->out, "\r\n");
+    if (http_location_header(h, req, xdata) < 0)
+	goto done;
+    if (restconf_reply_send(req, 201, NULL) < 0)
+	goto done;	
  ok:
     retval = 0;
  done:
@@ -404,8 +449,8 @@ api_data_post(clicon_handle h,
 } /* api_data_post */
 
 /*! Handle input data to api_operations_post 
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
+ * @param[in]  h      Clixon handle
+ * @param[in]  req    Generic Www handle
  * @param[in]  data   Stream input data
  * @param[in]  yspec  Yang top-level specification 
  * @param[in]  yrpc   Yang rpc spec
@@ -426,7 +471,7 @@ api_data_post(clicon_handle h,
  */
 static int
 api_operations_post_input(clicon_handle h,
-			  FCGX_Request *r, 
+			  void         *req,
 			  char         *data,
 			  yang_stmt    *yspec,
 			  yang_stmt    *yrpc,
@@ -462,17 +507,16 @@ api_operations_post_input(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto fail;
 	}
 	if (ret == 0){
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_debug(1, "%s F", __FUNCTION__);
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -487,7 +531,7 @@ api_operations_post_input(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -496,17 +540,16 @@ api_operations_post_input(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto fail;
 	}
 	break;
     default:
-	restconf_unsupported_media(r);
+	restconf_unsupported_media(req);
 	goto fail;
 	break;
     } /* switch media_in */
-    clicon_debug(1, "%s F", __FUNCTION__);
     xml_name_set(xdata, "data");
     /* Here xdata is: 
      * <data><input xmlns="urn:example:clixon">...</input></data>
@@ -531,7 +574,7 @@ api_operations_post_input(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto fail;
     }
@@ -560,8 +603,8 @@ api_operations_post_input(clicon_handle h,
 }
 
 /*! Handle output data to api_operations_post 
- * @param[in]  h        CLIXON handle
- * @param[in]  r        Fastcgi request handle
+ * @param[in]  h        Clixon handle
+ * @param[in]  req      Generic Www handle
  * @param[in]  xret     XML reply messages from backend/handler
  * @param[in]  yspec    Yang top-level specification 
  * @param[in]  youtput  Yang rpc output specification
@@ -575,7 +618,7 @@ api_operations_post_input(clicon_handle h,
  */
 static int
 api_operations_post_output(clicon_handle h,
-			   FCGX_Request *r, 
+			   void         *req,
 			   cxobj        *xret,
 			   yang_stmt    *yspec,
 			   yang_stmt    *youtput,
@@ -605,7 +648,7 @@ api_operations_post_output(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto fail;
     }
@@ -638,7 +681,7 @@ api_operations_post_output(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -659,9 +702,8 @@ api_operations_post_output(clicon_handle h,
 	 strcmp(xml_name(xok),"ok")==0);
     if (isempty) {
 	/* Internal error - invalid output from rpc handler */
-	FCGX_SetExitStatus(204, r->out); /* OK */
-	FCGX_FPrintF(r->out, "Status: 204 No Content\r\n");
-	FCGX_FPrintF(r->out, "\r\n");
+	if (restconf_reply_send(req, 204, NULL) < 0)
+	    goto done;	
 	goto fail;
     }
     /* Clear namespace of parameters */
@@ -687,12 +729,12 @@ api_operations_post_output(clicon_handle h,
 }
 
 /*! REST operation POST method 
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
+ * @param[in]  h        Clixon handle
+ * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  data   Stream input data
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  qvec     Vector of query string (QUERY_STRING)
+ * @param[in]  data     Stream input data
+ * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  * See RFC 8040 Sec 3.6 / 4.4.2
  * @note We map post to edit-config create. 
@@ -717,7 +759,7 @@ api_operations_post_output(clicon_handle h,
  */
 int
 api_operations_post(clicon_handle h,
-		    FCGX_Request *r, 
+		    void         *req,
 		    char         *api_path, 
 		    int           pi,
 		    cvec         *qvec, 
@@ -766,7 +808,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -785,7 +827,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -796,7 +838,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -821,7 +863,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -834,7 +876,7 @@ api_operations_post(clicon_handle h,
     namespace = xml_find_type_value(xbot, NULL, "xmlns", CX_ATTR);
     clicon_debug(1, "%s : 4. Parse input data: %s", __FUNCTION__, data);
     if (data && strlen(data)){
-	if ((ret = api_operations_post_input(h, r, data, yspec, yrpc, xbot,
+	if ((ret = api_operations_post_input(h, req, data, yspec, yrpc, xbot,
 					     pretty, media_out)) < 0)
 	    goto done;
 	if (ret == 0)
@@ -854,7 +896,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto ok;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -866,7 +908,7 @@ api_operations_post(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto ok;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -884,14 +926,14 @@ api_operations_post(clicon_handle h,
     /* Look for local (client-side) restconf plugins. 
      * -1:Error, 0:OK local, 1:OK backend 
      */
-    if ((ret = rpc_callback_call(h, xbot, cbret, r)) < 0)
+    if ((ret = rpc_callback_call(h, xbot, cbret, req)) < 0)
 	goto done;
     if (ret > 0){ /* Handled locally */
 	if (clixon_xml_parse_string(cbuf_get(cbret), YB_NONE, NULL, &xret, NULL) < 0)
 	    goto done;
 	/* Local error: return it and quit */
 	if ((xe = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL){
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -900,7 +942,7 @@ api_operations_post(clicon_handle h,
 	if (clicon_rpc_netconf_xml(h, xtop, &xret, NULL) < 0)
 	    goto done;
 	if ((xe = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL){
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -913,16 +955,14 @@ api_operations_post(clicon_handle h,
 	clicon_log_xml(LOG_DEBUG, xret, "%s Receive reply:", __FUNCTION__);
 #endif
     youtput = yang_find(yrpc, Y_OUTPUT, NULL);
-    if ((ret = api_operations_post_output(h, r, xret, yspec, youtput, namespace,
+    if ((ret = api_operations_post_output(h, req, xret, yspec, youtput, namespace,
 					  pretty, media_out, &xoutput)) < 0)
 	goto done;
     if (ret == 0)
 	goto ok;
     /* xoutput should now look: <output xmlns="uri"><x>0</x></output> */
-    FCGX_SetExitStatus(200, r->out); /* OK */
-
-    FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));
-    FCGX_FPrintF(r->out, "\r\n");
+    if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
+	goto done;
     cbuf_reset(cbret);
     switch (media_out){
     case YANG_DATA_XML:
@@ -938,8 +978,8 @@ api_operations_post(clicon_handle h,
     default:
 	break;
     }
-    FCGX_FPrintF(r->out, "%s", cbuf_get(cbret));
-    FCGX_FPrintF(r->out, "\r\n\r\n");
+    if (restconf_reply_send(req, 200, cbret) < 0)
+	goto done;	
  ok:
     retval = 0;
  done:

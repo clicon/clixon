@@ -178,6 +178,7 @@ query_iterator(evhtp_header_t *hdr,
  * several different places in evhtp 
  * @param[in]  h    Clicon handle
  * @param[in]  req  Evhtp request struct
+ * @param[out] qvec Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
  * @retval     0    OK
  * @retval    -1    Error
  * The following parameters are set:
@@ -211,7 +212,10 @@ evhtp_params_set(clicon_handle    h,
     }
     meth = evhtp_request_get_method(req);
 
-    /* QUERY_STRING */
+    /* QUERY_STRING in fcgi but go direct to the info instead of putting it in a string?
+     * This is different from all else: Ie one could have re-created a string here but
+     * that would mean double parsing,...
+     */
     if (qvec && uri->query)
 	if (evhtp_kvs_for_each(uri->query, query_iterator, qvec) < 0){
 	    clicon_err(OE_CFG, errno, "evhtp_kvs_for_each");
@@ -349,70 +353,29 @@ static void
 cx_path_restconf(evhtp_request_t *req,
 		 void            *arg)
 {
-    evhtp_connection_t *conn;
-    clicon_handle       h = arg;
-    struct evbuffer    *b = NULL; 
-    cvec               *qvec = NULL;
-    size_t              len = 0;
-    cbuf               *cblen = NULL;
+    clicon_handle h = arg;
+    cvec         *qvec = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (req == NULL){
-	errno = EINVAL;
-	goto done;
-    }
     /* input debug */
     if (clicon_debug_get())
 	evhtp_headers_for_each(req->headers_in, print_header, h);
-
-    if ((cblen = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
+    /* get accepted connection */
     /* Query vector, ie the ?a=x&b=y stuff */
     if ((qvec = cvec_new(0)) ==NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto done;
     }
-    /* get accepted connection */
-    if ((conn = evhtp_request_get_connection(req)) == NULL){
-	clicon_err(OE_DAEMON, EFAULT, "evhtp_request_get_connection");
-	goto done;
-    }
-    /* Get all parameters from this request (resembling fcgi) */
+    /* set fcgi-like paramaters (ignore query vector) */
     if (evhtp_params_set(h, req, qvec) < 0)
 	goto done;
-
-    /* 1. create body */
-    if ((b = evbuffer_new()) == NULL){
-	clicon_err(OE_DAEMON, errno, "evbuffer_new");
+    /* call generic function */
+    if (api_root_restconf(h, req, qvec) < 0)
 	goto done;
-    }
-    cprintf(cblen, "%lu", len);
-    
-    /* 2. add headers (can mix with body) */
-    evhtp_headers_add_header(req->headers_out, evhtp_header_new("Cache-Control", "no-cache", 0, 0)); 
-    evhtp_headers_add_header(req->headers_out, evhtp_header_new("Content-Type", "application/xrd+xml", 0, 0));
-    evhtp_headers_add_header(req->headers_out, evhtp_header_new("Content-Length", cbuf_get(cblen), 0, 0)); 
 
-    /* Optional? */
-    htp_sslutil_add_xheaders(req->headers_out, conn->ssl, HTP_SSLUTILS_XHDR_ALL);
-
-    /* 3. send reply */
-    evhtp_send_reply_start(req, EVHTP_RES_OK);
-    evhtp_send_reply_body(req, b);
-    evhtp_send_reply_end(req);
-
-    /* Clear (fcgi)paramaters */
+    /* Clear (fcgi) paramaters from this request */
     if (evhtp_params_clear(h) < 0)
 	goto done;
  done:
-    if (qvec)
-	cvec_free(qvec);
-    if (cblen)
-	cbuf_free(cblen);
-    if (b)
-	evhtp_safe_free(b, evbuffer_free);    
     return; /* void */
 }
 
@@ -755,7 +718,6 @@ main(int    argc,
     /* Find and read configfile */
     if (clicon_options_main(h) < 0)
 	goto done;
-
 
     event_base_loop(evbase, 0);
     

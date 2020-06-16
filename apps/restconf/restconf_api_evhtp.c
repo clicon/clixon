@@ -65,22 +65,6 @@
 #include "restconf_lib.h"
 #include "restconf_api.h"  /* Virtual api */
 
-
-/*! Add HTTP header field name and value to reply, evhtp specific
- * @param[in]   req   Evhtp http request handle
- * @param[in]   code  HTTP status code
- * @see eg RFC 7230
- */
-int
-restconf_reply_status_code(void  *req0,
-			   int    code)
-{
-    evhtp_request_t *req = (evhtp_request_t *)req0;
-
-    req->status = code;
-    return 0;
-}
-
 /*! Add HTTP header field name and value to reply, evhtp specific
  * @param[in]  req   Evhtp http request handle
  * @param[in]  name  HTTP header field name
@@ -88,10 +72,10 @@ restconf_reply_status_code(void  *req0,
  * @see eg RFC 7230
  */
 int
-restconf_reply_header_add(void   *req0,
-			  char   *name,
-			  char   *vfmt,
-			  ...)
+restconf_reply_header(void   *req0,
+		      char   *name,
+		      char   *vfmt,
+		      ...)
 
 {
     evhtp_request_t *req = (evhtp_request_t *)req0;
@@ -142,13 +126,20 @@ restconf_reply_header_add(void   *req0,
  */
 int
 restconf_reply_send(void  *req0,
+		    int    code,
 		    cbuf  *cb)
 {
     evhtp_request_t    *req = (evhtp_request_t *)req0;
     int                 retval = -1;
     evhtp_connection_t *conn;
     struct evbuffer    *eb = NULL;
-
+    const char *reason_phrase;
+    
+    req->status = code;
+    if ((reason_phrase = restconf_code2reason(code)) == NULL)
+	reason_phrase="";
+    if (restconf_reply_header(req, "Status", "%d %s", code, reason_phrase) < 0)
+	goto done;
 #if 1    /* Optional? */
     if ((conn = evhtp_request_get_connection(req)) == NULL){
 	clicon_err(OE_DAEMON, EFAULT, "evhtp_request_get_connection");
@@ -180,4 +171,21 @@ restconf_reply_send(void  *req0,
     if (eb)
 	evhtp_safe_free(eb, evbuffer_free);
     return retval;
+}
+
+/*! get input data
+ * @param[in]  req        Fastcgi request handle
+ * @note Pulls up an event buffer and then copies it to a cbuf. This is not efficient.
+ */
+cbuf *
+restconf_get_indata(void *req0)
+{
+    evhtp_request_t *req = (evhtp_request_t *)req0;    
+    cbuf            *cb = NULL;
+    
+    if ((cb = cbuf_new()) == NULL)
+	return NULL;
+    if (evbuffer_get_length(req->buffer_in))
+	cprintf(cb, "%s", evbuffer_pullup(req->buffer_in, -1));
+    return cb;
 }

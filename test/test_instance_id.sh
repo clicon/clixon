@@ -239,7 +239,7 @@ for (( ii=0; ii<$rep; ii++ )); do
     expectpart "$($clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[k1=\"a1\"][k2=\"\"])" 0 "0: <y><k1>a1</k1><k2/><z>foo1</z></y>"
 
     new "instance-id double string key k1=a$rnd, - no k2 string - three matches"
-    expecteq "$($clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[k1=\"a1\"])" 0 "0: <y><k1>a1</k1><k2/><z>foo1</z></y>
+    expectpart "$($clixon_util_path -f $xml3 -y $ydir -p /a:x3/a:y[k1=\"a1\"])" 0 "0: <y><k1>a1</k1><k2/><z>foo1</z></y>
 1: <y><k1>a1</k1><k2>a1</k2><z>foo1</z></y>
 2: <y><k1>a1</k1><k2>b1</k2><z>foob1</z></y>"
 

@@ -86,7 +86,8 @@
 #include <fcgiapp.h> /* Need to be after clixon_xml.h due to attribute format */
 
 #include "restconf_lib.h"
-#include "restconf_fcgi_lib.h"
+#include "restconf_api.h"
+#include "restconf_err.h"
 #include "restconf_stream.h"
 
 /*
@@ -377,7 +378,6 @@ api_stream(clicon_handle h,
     path = restconf_uripath(h);
     query = clixon_restconf_param_get(h, "QUERY_STRING");
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-    restconf_test(r, 1);
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;
     /* Sanity check of path. Should be /stream/<name> */
@@ -404,7 +404,7 @@ api_stream(clicon_handle h,
     if (str2cvec(path, '/', '=', &pcvec) < 0) /* rest url eg /album=ricky/foo */
 	goto done;
     /* data */
-    if ((cb = readdata(r)) == NULL)
+    if ((cb = restconf_get_indata(r)) == NULL)
 	goto done;
     data = cbuf_get(cb);
     clicon_debug(1, "%s DATA=%s", __FUNCTION__, data);

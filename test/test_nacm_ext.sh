@@ -157,40 +157,37 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "auth get"
-expectpart "$(curl -u andy:bar -siS -X GET http://localhost/restconf/data)" 0 'HTTP/1.1 200 OK' '{"data":{"clixon-example:state":{"op":\["41","42","43"\]}'
+expectpart "$(curl -u andy:bar -sik -X GET $RCPROTO://localhost/restconf/data)" 0 'HTTP/1.1 200 OK' '{"data":{"clixon-example:state":{"op":\["41","42","43"\]}'
 
 new "Set x to 0"
-expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 0}' http://localhost/restconf/data/nacm-example:x)" 0 ""
+expectpart "$(curl -u andy:bar -sik -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 0}' $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "HTTP/1.1 201 Created"
 
 new "auth get (no user: access denied)"
-expecteq "$(curl -sS -X GET -H \"Accept:\ application/yang-data+json\" http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"access-denied","error-severity":"error","error-message":"The requested URL was unauthorized"}}}'
+expectpart "$(curl -sik -X GET -H \"Accept:\ application/yang-data+json\" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"access-denied","error-severity":"error","error-message":"The requested URL was unauthorized"}}}'
 
 new "auth get (wrong passwd: access denied)"
-expecteq "$(curl -u andy:foo -sS -X GET http://localhost/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"access-denied","error-severity":"error","error-message":"The requested URL was unauthorized"}}}'
+expectpart "$(curl -u andy:foo -sik -X GET $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"access-denied","error-severity":"error","error-message":"The requested URL was unauthorized"}}}'
 
 new "auth get (access)"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"nacm-example:x":0}
-'
+expectpart "$(curl -u andy:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "HTTP/1.1 200 OK" '{"nacm-example:x":0}'
 
 new "admin get nacm"
-expecteq "$(curl -u andy:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"nacm-example:x":0}
-'
+expectpart "$(curl -u andy:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "HTTP/1.1 200 OK" '{"nacm-example:x":0}'
 
 new "limited get nacm"
-expecteq "$(curl -u wilma:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"nacm-example:x":0}
-'
+expectpart "$(curl -u wilma:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "HTTP/1.1 200 OK" '{"nacm-example:x":0}'
 
 new "guest get nacm"
-expecteq "$(curl -u guest:bar -sS -X GET http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
+expectpart "$(curl -u guest:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "admin edit nacm"
-expecteq "$(curl -u andy:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 1}' http://localhost/restconf/data/nacm-example:x)" 0 ""
+expectpart "$(curl -u andy:bar -sik -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 1}' $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "HTTP/1.1 204 No Content"
 
 new "limited edit nacm"
-expecteq "$(curl -u wilma:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 2}' http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expectpart "$(curl -u wilma:bar -sik -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 2}' $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "guest edit nacm"
-expecteq "$(curl -u guest:bar -sS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 3}' http://localhost/restconf/data/nacm-example:x)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
+expectpart "$(curl -u guest:bar -sik -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 3}' $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "cli show conf as admin"
 expectfn "$clixon_cli -1 -U andy -l o -f $cfg show conf" 0 "^x 1;$"

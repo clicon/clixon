@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -40,11 +41,11 @@
 /*
  * Prototypes
  */
-int api_data_head(clicon_handle h, FCGX_Request *r, char *api_path, cvec *pcvec, int pi, 
+int api_data_head(clicon_handle h, void *req, char *api_path, cvec *pcvec, int pi, 
 		  cvec *qvec, int pretty, restconf_media media_out);
-int api_data_get(clicon_handle h, FCGX_Request *r, char *api_path, cvec *pcvec, int pi, 
+int api_data_get(clicon_handle h, void *req, char *api_path, cvec *pcvec, int pi, 
 		 cvec *qvec, int pretty, restconf_media media_out);
-int api_operations_get(clicon_handle h, FCGX_Request *r, 
+int api_operations_get(clicon_handle h, void *req, 
 		       char *api_path, int pi, cvec *qvec, char *data,
 		       int pretty, restconf_media media_out);
 

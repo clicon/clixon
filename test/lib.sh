@@ -3,7 +3,7 @@
 # Create working dir as variable "dir"
 # The functions are somewhat wildgrown, a little too many:
 # - expectfn
-# - expecteq
+# - expectpart
 # - expecteof
 # - expecteofeq
 # - expecteofx
@@ -286,7 +286,7 @@ new(){
 # Example: expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 "line1" "line2" 
 # XXX: for some reason some curl commands dont work here, eg
 #   curl -H 'Accept: application/xrd+xml'
-# instead use expectpart
+# NOTE: Please us expectpart instead!!
 expectfn(){
     cmd=$1
     retval=$2
@@ -336,34 +336,6 @@ expectfn(){
 }
 
 # Evaluate and return
-# Example: expecteq $(fn arg) 0 "my return"
-# - evaluated expression
-# - expected command return value (0 if OK)
-# - expected stdout outcome
-expecteq(){
-  r=$?
-  ret=$1
-  retval=$2
-  expect=$3
-#  echo "r:$r"
-#  echo "ret:\"$ret\""
-#  echo "retval:$retval"
-#  echo "expect:$expect"
-  if [ $r != $retval ]; then
-      echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
-      echo -e "\e[0m:"
-      exit -1
-  fi
-  if [ -z "$ret" -a -z "$expect" ]; then
-      return
-  fi
-  if [[ "$ret" != "$expect" ]]; then
-      err "$expect" "$ret"
-  fi
-}
-
-# Evaluate and return
-# like expecteq but partial match is OK
 # Example: expectpart $(fn arg) 0 "my return" -- "foo"
 # - evaluated expression
 # - expected command return value (0 if OK)

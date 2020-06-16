@@ -478,7 +478,6 @@ restconf_uripath(clicon_handle h)
     return path;
 }
 
-
 /*! Drop privileges from root to user (or already at user)
  * @param[in]  h    Clicon handle
  * @param[in]  user Drop to this level
@@ -540,15 +539,3 @@ restconf_drop_privileges(clicon_handle h,
     return retval;
 }
 
-/*! HTTP error 405
- * @param[in]  req      Generic Www handle
- * @param[in]  allow    Which methods are allowed
- */
-int
-restconf_method_notallowed(void  *req,
-			   char  *allow)
-{
-    restconf_reply_status_code(req, 405);
-    restconf_reply_header_add(req, "Allow", "%s", allow);
-    return 0;
-}

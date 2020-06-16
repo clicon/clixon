@@ -53,5 +53,6 @@
  * Prototypes
  */
 int api_well_known(clicon_handle h, void *req);
+int api_root_restconf(clicon_handle h, void *req, cvec *qvec);
 
 #endif /* _RESTCONF_ROOT_H_ */

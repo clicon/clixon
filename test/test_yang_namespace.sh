@@ -103,24 +103,23 @@ new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "restconf set x in example1"
-expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"example1:x":42}' http://localhost/restconf/data)" 0 ''
+expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" -d '{"example1:x":42}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
 
 new "restconf get config example1"
-expecteq "$(curl -s -X GET http://localhost/restconf/data/example1:x)" 0 '{"example1:x":42}
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example1:x)" 0 "HTTP/1.1 200 OK" '{"example1:x":42}
 '
 
 new "restconf set x in example2"
-expecteq "$(curl -s -X POST -H "Content-Type: application/yang-data+json" -d '{"example2:x":{"y":99}}' http://localhost/restconf/data)" 0 ''
+expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" -d '{"example2:x":{"y":99}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
 
 # XXX GET ../example1:x is translated to select=/x which gets both example1&2
 #new "restconf get config example1"
-#expecteq "$(curl -s -X GET http://localhost/restconf/data/example1:x)" 0 '{"example1:x":42}
-#'
+#expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example1:x)" 0 "HTTP/1.1 200 OK" '{"example1:x":42}'
+
 
 # XXX GET ../example2:x is translated to select=/x which gets both example1&2
 #new "restconf get config example2"
-#expecteq "$(curl -s -X GET http://localhost/restconf/data/example2:x)" 0 '{"example2:x":{"y":42}}
-#'
+#expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example2:x)" 0 "HTTP/1.1 200 OK" '{"example2:x":{"y":42}}'
 
 new "restconf get config example1 and example2"
 ret=$(curl -s -X GET http://localhost/restconf/data)

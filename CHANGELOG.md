@@ -32,13 +32,19 @@ Expected: July 2020
   * New mode `GT_HIDE` set by option `CLICON_CLI_GENMODEL_TYPE` to collapse non-presence containers that only contain a single list
   * Added a prefix for cli_show_config/cli_show_auto so that it can produce parseable output
   * Thanks dcornejo@netgate.com for trying it out and suggestions
-* Embedding restconf into the existing [libevhtp](https://github.com/criticalstack/libevhtp) embedded web server. Experimental.
+* Embedding restconf into the existing [libevhtp](https://github.com/criticalstack/libevhtp) embedded web server. (Experimental).
   * The existing FCGI restconf solution will continue to be supported for NGINX and other reverese proxies with an fast CGI API.
   * The restconf code has been refactored to support both modes. Hopefully, it should be straightforward to add another embedded server, such as GNU microhttpd.
   * The new restconf module is selected using a compile-time autotools configure as follows:
     * `--with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg nginx (default)`
     * `--with-restconf=evhtp   Integrate restconf with libevhtp server`
     * `--without-restconf      Disable restconf altogether`
+	
+### API changes on existing protocol/config features (For users)
+
+  * Restconf FCGI (eg via nginx) have changed reply message syntax as follows (due to refactoring and common code with evhtp):
+    * Bodies in error reyruns including html code have been removed
+    * Some (extra) CRLF:s have been removed
 
 ### C/CLI-API changes on existing features (For developers)
 

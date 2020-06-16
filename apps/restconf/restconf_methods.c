@@ -119,16 +119,16 @@ Mapping netconf error-tag -> status code
 /* clicon */
 #include <clixon/clixon.h>
 
-#include <fcgiapp.h> /* Need to be after clixon_xml-h due to attribute format */
-
 #include "restconf_lib.h"
-#include "restconf_fcgi_lib.h"
+#include "restconf_api.h"
+#include "restconf_err.h"
 #include "restconf_methods.h"
 
 /*! REST OPTIONS method
  * According to restconf
  * @param[in]  h      Clixon handle
- * @param[in]  r      Fastcgi request handle
+ * @param[in]  req    Generic Www handle
+ *
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
  * @endcode                     
@@ -139,14 +139,20 @@ Mapping netconf error-tag -> status code
  */
 int
 api_data_options(clicon_handle h,
-		 FCGX_Request *r)
+		 void         *req)
 {
+    int retval = -1;
+
     clicon_debug(1, "%s", __FUNCTION__);
-    FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE\r\n");
-    FCGX_FPrintF(r->out, "Accept-Patch: application/yang-data+xml,application/yang-data+json\r\n");
-    FCGX_FPrintF(r->out, "\r\n");
-    return 0;
+    if (restconf_reply_header(req, "Allow", "OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE") < 0)
+	goto done;
+    if (restconf_reply_header(req, "Accept-Patch", "application/yang-data+xml,application/yang-data+json") < 0)
+	goto done;
+    if (restconf_reply_send(req, 200, NULL) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Check matching keys
@@ -226,7 +232,7 @@ match_list_keys(yang_stmt *y,
  */ 
 static int
 api_data_write(clicon_handle h,
-	       FCGX_Request *r, 
+	       void         *req, 
 	       char         *api_path0, 
 	       cvec         *pcvec, 
 	       int           pi,
@@ -285,7 +291,7 @@ api_data_write(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -300,7 +306,7 @@ api_data_write(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
 
@@ -311,7 +317,7 @@ api_data_write(clicon_handle h,
 #endif
     if (xml_child_nr(xret) == 0){ /* Object does not exist */
 	if (plain_patch){    /* If the target resource instance does not exist, the server MUST NOT create it. */
-	    restconf_badrequest(h, r);
+	    restconf_badrequest(h, req);
 	    goto ok;
 	}
 	else
@@ -340,7 +346,7 @@ api_data_write(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -357,7 +363,7 @@ api_data_write(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -400,7 +406,7 @@ api_data_write(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -409,7 +415,7 @@ api_data_write(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -422,7 +428,7 @@ api_data_write(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -431,13 +437,13 @@ api_data_write(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
 	break;
     default:
-	restconf_unsupported_media(r);
+	restconf_unsupported_media(req);
 	goto ok;
 	break;
     } /* switch media_in */
@@ -452,7 +458,7 @@ api_data_write(clicon_handle h,
 	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 	    goto done;
 	}
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -471,7 +477,7 @@ api_data_write(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -520,7 +526,7 @@ api_data_write(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -545,7 +551,7 @@ api_data_write(clicon_handle h,
 		    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		    goto done;
 		}
-		if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+		if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		    goto done;
 		goto ok;
 	    }
@@ -569,7 +575,7 @@ api_data_write(clicon_handle h,
 			    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 			    goto done;
 			}
-			if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+			if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 			    goto done;
 			goto ok;
 		    }
@@ -610,7 +616,7 @@ api_data_write(clicon_handle h,
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;	    
 	goto ok;
     }
@@ -631,7 +637,7 @@ api_data_write(clicon_handle h,
 	/* log errors from discard, but ignore */
 	if ((xpath_first(xretdis, NULL, "//rpc-error")) != NULL)
 	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -659,14 +665,13 @@ api_data_write(clicon_handle h,
     }
     /* Check if it was created, or if we tried again and replaced it */
     if (op == OP_CREATE){
-	FCGX_SetExitStatus(201, r->out); /* Created */
-	FCGX_FPrintF(r->out, "Status: 201 Created\r\n");
+	if (restconf_reply_send(req, 201, NULL) < 0)
+	    goto done;	
     }
     else{
-	FCGX_SetExitStatus(204, r->out); /* Replaced */
-	FCGX_FPrintF(r->out, "Status: 204 No Content\r\n");
+	if (restconf_reply_send(req, 204, NULL) < 0)
+	    goto done;	
     }
-    FCGX_FPrintF(r->out, "\r\n");
  ok:
     retval = 0;
  done:
@@ -693,14 +698,14 @@ api_data_write(clicon_handle h,
 } /* api_data_write */
 
 /*! Generic REST PUT  method 
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
+ * @param[in]  h        Clixon handle
+ * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
- * @param[in]  pi     Offset, where to start pcvec
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  data   Stream input data
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element
+ * @param[in]  pi       Offset, where to start pcvec
+ * @param[in]  qvec     Vector of query string (QUERY_STRING)
+ * @param[in]  data     Stream input data
+ * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
 
  * @note restconf PUT is mapped to edit-config replace. 
@@ -729,7 +734,7 @@ api_data_write(clicon_handle h,
  */
 int
 api_data_put(clicon_handle h,
-	     FCGX_Request *r, 
+	     void         *req, 
 	     char         *api_path0, 
 	     cvec         *pcvec, 
 	     int           pi,
@@ -741,19 +746,19 @@ api_data_put(clicon_handle h,
     restconf_media media_in;
 
     media_in = restconf_content_type(h);
-    return api_data_write(h, r, api_path0, pcvec, pi, qvec, data, pretty,
+    return api_data_write(h, req, api_path0, pcvec, pi, qvec, data, pretty,
 			  media_in, media_out, 0);
 } 
 
 /*! Generic REST PATCH method for plain patch 
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
+ * @param[in]  h        Clixon handle
+ * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
- * @param[in]  pi     Offset, where to start pcvec
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  data   Stream input data
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element
+ * @param[in]  pi       Offset, where to start pcvec
+ * @param[in]  qvec     Vector of query string (QUERY_STRING)
+ * @param[in]  data     Stream input data
+ * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  * Netconf:  <edit-config> (nc:operation="merge")      
  * See RFC8040 Sec 4.6.1
@@ -764,7 +769,7 @@ api_data_put(clicon_handle h,
  */
 int
 api_data_patch(clicon_handle h,
-	       FCGX_Request *r, 
+	       void         *req, 
 	       char         *api_path0, 
 	       cvec         *pcvec, 
 	       int           pi,
@@ -780,26 +785,26 @@ api_data_patch(clicon_handle h,
     switch (media_in){
     case YANG_DATA_XML:
     case YANG_DATA_JSON: 	/* plain patch */
-	ret = api_data_write(h, r, api_path0, pcvec, pi, qvec, data, pretty,
+	ret = api_data_write(h, req, api_path0, pcvec, pi, qvec, data, pretty,
 			     media_in, media_out, 1);
 	break;
     case YANG_PATCH_XML:
     case YANG_PATCH_JSON: 	/* RFC 8072 patch */
-	ret = restconf_notimplemented(r);
+	ret = restconf_notimplemented(req);
 	break;
     default:
-	ret = restconf_unsupported_media(r);
+	ret = restconf_unsupported_media(req);
 	break;
     }
     return ret;
 } 
 
 /*! Generic REST DELETE method translated to edit-config
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
+ * @param[in]  h        Clixon handle
+ * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pi     Offset, where path starts
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  pi       Offset, where path starts
+ * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  * See RFC 8040 Sec 4.7
  * Example:
@@ -808,7 +813,7 @@ api_data_patch(clicon_handle h,
  */
 int
 api_data_delete(clicon_handle h,
-		FCGX_Request *r, 
+		void         *req, 
 		char         *api_path,
 		int           pi,
 		int           pretty,
@@ -850,7 +855,7 @@ api_data_delete(clicon_handle h,
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
 		goto done;
 	    }
-	    if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -879,7 +884,7 @@ api_data_delete(clicon_handle h,
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
 	goto done;
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -901,7 +906,7 @@ api_data_delete(clicon_handle h,
 	/* log errors from discard, but ignore */
 	if ((xpath_first(xretdis, NULL, "//rpc-error")) != NULL)
 	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
-	if (api_return_err(h, r, xe, pretty, media_out, 0) < 0)
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -927,10 +932,8 @@ api_data_delete(clicon_handle h,
 	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
 	}
     }
-    FCGX_SetExitStatus(204, r->out);
-    FCGX_FPrintF(r->out, "Status: 204 No Content\r\n");
-    FCGX_FPrintF(r->out, "Content-Type: text/plain\r\n");
-    FCGX_FPrintF(r->out, "\r\n");
+    if (restconf_reply_send(req, 204, NULL) < 0)
+	goto done;	
  ok:
     retval = 0;
  done:

@@ -69,6 +69,5 @@ int   clixon_restconf_param_set(clicon_handle h, char *param, char *val);
 int   clixon_restconf_param_del(clicon_handle h, char *param);
 char *restconf_uripath(clicon_handle h);
 int   restconf_drop_privileges(clicon_handle h, char *user);
-int restconf_method_notallowed(void *req, char *allow);
 
 #endif /* _RESTCONF_LIB_H_ */

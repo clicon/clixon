@@ -85,15 +85,15 @@ APPL	  = clixon_restconf
 APPSRC    =
 APPSRC   += restconf_api.c # maybe empty
 APPSRC   += restconf_api_$(with_restconf).c # cant be .so since libevhtp is a.
+APPSRC   += restconf_err.c 
 APPSRC   += restconf_root.c
 APPSRC   += restconf_$(with_restconf)_main.c 
+APPSRC   += restconf_methods.c
+APPSRC   += restconf_methods_post.c
+APPSRC   += restconf_methods_get.c
 
 # Fcgi-specific source including main
 ifeq ($(with_restconf),fcgi)
-APPSRC   += restconf_fcgi_lib.c # Most of these should be made generic
-APPSRC   += restconf_methods.c 
-APPSRC   += restconf_methods_post.c
-APPSRC   += restconf_methods_get.c
 APPSRC   += restconf_stream.c
 endif
 

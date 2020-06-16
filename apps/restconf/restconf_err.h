@@ -31,30 +31,30 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-  
+  *
+  * Return errors
+  * @see RFC 7231 Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content
  */
 
-#ifndef _RESTCONF_FCGI_LIB_H_
-#define _RESTCONF_FCGI_LIB_H_
+#ifndef _RESTCONF_ERR_H_
+#define _RESTCONF_ERR_H_
 
 /*
  * Prototypes
  */
-int restconf_badrequest(clicon_handle h, FCGX_Request *r);
-int restconf_unauthorized(clicon_handle h, FCGX_Request *r);
-int restconf_forbidden(clicon_handle h, FCGX_Request *r);
-int restconf_notfound(clicon_handle h, FCGX_Request *r);
-int restconf_notacceptable(clicon_handle h, FCGX_Request *r);
-int restconf_conflict(FCGX_Request *r);
-int restconf_unsupported_media(FCGX_Request *r);
-int restconf_internal_server_error(clicon_handle h, FCGX_Request *r);
-int restconf_notimplemented(FCGX_Request *r);
-int restconf_test(FCGX_Request *r,       int           dbg);
-int clixon_restconf_params_set(clicon_handle h,
-			   char        **envp);
-int clixon_restconf_params_clear(clicon_handle h, char **envp);
-cbuf *readdata(FCGX_Request *r);
-int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr, int pretty, restconf_media media, int code0);
-int http_location(clicon_handle h, FCGX_Request *r, cxobj *xobj);
 
-#endif /* _RESTCONF_FCGI_LIB_H_ */
+int restconf_badrequest(clicon_handle h, void *req);
+int restconf_unauthorized(clicon_handle h, void *req);
+int restconf_forbidden(clicon_handle h, void *req);
+int restconf_notfound(clicon_handle h, void *req);
+int restconf_method_notallowed(void *req, char *allow);
+int restconf_notacceptable(clicon_handle h, void *req);
+int restconf_conflict(void *req);
+int restconf_unsupported_media(void *req);
+int restconf_internal_server_error(clicon_handle h, void *req);
+int restconf_notimplemented(void *req);
+
+int api_return_err(clicon_handle h, void *req, cxobj *xerr, int pretty, restconf_media media, int code0);
+
+
+#endif /* _RESTCONF_ERR_H_ */

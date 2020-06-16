@@ -139,8 +139,7 @@ done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 # RESTCONF get
 #echo "curl -s -X GET http://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1"
 new "restconf get test single req"
-time -p expecteq "$(curl -s -X GET http://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 '{"example:interface":[{"name":"e1","type":"ex:eth","status":"up"}]}
-' | awk '/real/ {print $2}'
+time -p expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 '{"example:interface":[{"name":"e1","type":"ex:eth","status":"up"}]}' | awk '/real/ {print $2}'
 
 new "restconf get $perfreq single reqs"
 #echo "curl -sG http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e0"
