@@ -60,6 +60,7 @@ echo "$sshcmd"
 
 system=$($sshcmd uname)
 
+buildfcgi=false
 case $system in
     FreeBSD)
 	# packages for building
@@ -73,26 +74,41 @@ case $system in
 	$sshcmd sudo pkg install -y fcgi-devkit nginx
 	;;
     Linux)
+	# nginx restconf user: $wwwuser
+	if [ ! $($sshcmd id -u $wwwuser) ]; then
+	    $sshcmd sudo useradd -M $wwwuser    
+	fi
 	case $release in
 	    centos) # centos 8
 		# packages for building
 		$sshcmd sudo yum install -y git
 		# cligen
 		$sshcmd sudo yum install -y bison flex
-		# clixon 
-		if [ ! $($sshcmd id -u $wwwuser) ]; then
-		    $sshcmd sudo useradd -M $wwwuser    
-		fi
+		# clixon
 		$sshcmd sudo yum install -y fcgi-devel nginx
 		# clixon utilities
 		$sshcmd sudo yum install -y libcurl-devel
 		;;
 	    opensuse) # opensuse42
+		# packages for building
+		$sshcmd sudo zypper install -y git
+		# cligen
+		$sshcmd sudo zypper install -y bison flex
 		# clixon 
 		$sshcmd sudo zypper install -y nginx
-		# XXX: no fastcgi package?
+		buildfcgi=true # build fcgi from source
+		# clixon utilities
+		$sshcmd sudo zypper install -y libcurl-devel
+		# packages for building fcgi
+		$sshcmd sudo zypper install -y autoconf automake libtool
 		;;
-	    *)
+	    *) # ubuntu/apt based
+		# cligen
+		$sshcmd sudo apt install -y bison flex
+		# clixon 
+		$sshcmd sudo apt install -y libfcgi-dev nginx
+		# clixon utilities
+		$sshcmd sudo apt install -y libcurl4-openssl-dev
 		;;
 	esac
 	;;
@@ -100,6 +116,12 @@ case $system in
 	echo "Unknown system: $system"
 	;;
 esac
+
+# Some platforms dont have fcgi, build the source (should all?)
+if $buildfcgi; then
+    $sshcmd "test -d fcgi2 || git clone https://github.com/FastCGI-Archives/fcgi2"
+    $sshcmd "(cd fcgi2; ./autogen.sh; ./configure; make; sudo make install)"
+fi
 
 # Hide all complex nginx config in sub-script
 . ./nginx.sh $dir $idfile $port $wwwuser
@@ -121,11 +143,11 @@ wwwuser=$2
 if [ ! $(id -u clicon) ]; then 
    if [ $release = "freebsd" ]; then
       sudo pw useradd clicon -d /nonexistent -s /usr/sbin/nologin;
-      sudo pw group mod clicon -m vagrant; 
+      sudo pw group mod clicon -m vagrant;  # start clixon tests as this users
       sudo pw group mod clicon -m $wwwuser;
    else  
-      sudo useradd clicon;
-      sudo usermod -a -G clicon vagrant;
+      sudo useradd -M -U clicon;
+      sudo usermod -a -G clicon vagrant; # start clixon tests as this users
       sudo usermod -a -G clicon $wwwuser;
    fi
 fi

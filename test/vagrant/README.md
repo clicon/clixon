@@ -13,6 +13,8 @@ in a "site.mk" file. You can add such a file, eg:
   VAGRANTS += generic/centos8
 ```
 
+Beware memory exhaustion if you run too many simultaneously.
+
 Logs appear in : <dir>/<hostname>.log.
 
 You can also run a single vagrant test as follows:
@@ -22,8 +24,8 @@ You can also run a single vagrant test as follows:
 
 The current status is as follows
 * freebsd/FreeBSD-12.1-STABLE
-* generic/centos8 - some remaining nginx issue
-* generic/opensuse42 - fastcgi is not installed
+* generic/opensuse42
+* generic/centos8 - one state test fails
 
 For other vagrant boxes, see [search vagrant boxes](https://vagrantcloud.com/search)
 

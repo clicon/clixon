@@ -84,7 +84,7 @@ cat<<'EOF' > $dir/startnginx.sh
         sudo /usr/local/etc/rc.d/nginx restart
     else
 	sudo pkill nginx
-        nginxbin=$(which nginx)
+        nginxbin=$(sudo which nginx)
 	sudo $nginxbin -c $prefix/etc/nginx/nginx.conf
     fi
 EOF
