@@ -66,6 +66,7 @@
 #include "clixon_cli_api.h"
 #include "cli_plugin.h"
 #include "cli_handle.h"
+#include "cli_generate.h"
 
 /*
  *
@@ -177,7 +178,7 @@ cli_syntax_unload(clicon_handle h)
  * @param[in]  handle  Handle to plugin .so module  as returned by dlopen
  * @param[out] error   Static error string, if set indicates error
  * @retval     fn      Function pointer
- * @retval     NULL    FUnction not found or symbol NULL (check error for proper handling)
+ * @retval     NULL    Function not found or symbol NULL (check error for proper handling)
  * @see see cli_plugin_load where (optional) handle opened
  * @note the returned function is not type-checked which may result in segv at runtime
  */
@@ -188,8 +189,15 @@ clixon_str2fn(char  *name,
 {
     void *fn = NULL;
 
+
+	
     /* Reset error */
     *error = NULL;
+    /* Special check for auto-cli. If the virtual callback is used, it should be overwritten later 
+     * by a callback given in the clispec, eg: set @datamodel, cli_set();
+     */
+    if (strcmp(name, GENERATE_CALLBACK) == 0)
+	return NULL;
 
     /* First check given plugin if any */
     if (handle) {

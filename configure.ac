@@ -235,6 +235,7 @@ AC_ARG_WITH([restconf],
 # Common actions for all restconf packages
 if test "x${with_restconf}" != "x"; then
    # This is for changing web user default www-data
+   # Should this be a runtime option?
    AC_ARG_WITH([wwwuser],
             [AS_HELP_STRING([--with-wwwuser=<user>],[Set www user different from www-data])])
    if test "${with_wwwuser}"; then

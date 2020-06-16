@@ -49,24 +49,25 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "cli configure top"
-expectfn "$clixon_cli -1 -f $cfg set interfaces" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set interfaces)" 0 "^$"
 
 new "cli show configuration top (no presence)"
-expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg show conf cli)" 0 "^$"
 
 new "cli configure delete top"
-expectfn "$clixon_cli -1 -f $cfg delete interfaces" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg delete interfaces)" 0 "^$"
 
 new "cli show configuration delete top"
-expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg show conf cli)" 0 "^$"
 
 new "cli configure set interfaces"
-expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set interfaces interface eth/0/0)" 0 "^$"
 
 new "cli show configuration"
-expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 '^interfaces interface eth/0/0 interfaces interface eth/0/0 enabled true'
+expectpart "$($clixon_cli -1 -f $cfg show conf cli)" 0 "^set interfaces interface eth/0/0" "^set interfaces interface eth/0/0 enabled true"
 
 new "cli configure using encoded chars data <&"
+# problems in changing to expectpart with escapes
 expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 description \"foo<&bar\"" 0 ""
 
 new "cli configure using encoded chars name <&"
@@ -76,53 +77,53 @@ new "cli failed validate"
 expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 255 "Validate failed. Edit and try again or discard changes: application missing-element Mandatory variable <bad-element>type</bad-element>"
 
 new "cli configure ip addr"
-expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 ipv4 address 1.2.3.4 prefix-length 24" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set interfaces interface eth/0/0 ipv4 address 1.2.3.4 prefix-length 24)" 0 "^$"
 
 new "cli configure ip descr"
-expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 description mydesc" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set interfaces interface eth/0/0 description mydesc)" 0 "^$"
 
 new "cli configure ip type"
-expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 type ex:eth" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set interfaces interface eth/0/0 type ex:eth)" 0 "^$"
 
 new "cli show xpath description"
-expectfn "$clixon_cli -1 -f $cfg -l o show xpath /interfaces/interface/description urn:ietf:params:xml:ns:yang:ietf-interfaces" 0 "<description>mydesc</description>"
+expectpart "$($clixon_cli -1 -f $cfg -l o show xpath /interfaces/interface/description urn:ietf:params:xml:ns:yang:ietf-interfaces)" 0 "<description>mydesc</description>"
 
 new "cli delete description"
-expectfn "$clixon_cli -1 -f $cfg -l o delete interfaces interface eth/0/0 description mydesc" 0 ""
+expectpart "$($clixon_cli -1 -f $cfg -l o delete interfaces interface eth/0/0 description mydesc)" 0 ""
 
 new "cli show xpath no description"
-expectfn "$clixon_cli -1 -f $cfg -l o show xpath /interfaces/interface/description urn:ietf:params:xml:ns:yang:ietf-interfaces" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o show xpath /interfaces/interface/description urn:ietf:params:xml:ns:yang:ietf-interfaces)" 0 "^$"
 
 new "cli copy interface"
-expectfn "$clixon_cli -1 -f $cfg copy interface eth/0/0 to eth99" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg copy interface eth/0/0 to eth99)" 0 "^$"
 
 new "cli success validate"
-expectfn "$clixon_cli -1 -f $cfg -l o validate" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 0 "^$"
 
 new "cli commit"
-expectfn "$clixon_cli -1 -f $cfg -l o commit" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
 
 new "cli save"
-expectfn "$clixon_cli -1 -f $cfg -l o save /tmp/foo" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o save /tmp/foo)" 0 "^$"
 
 new "cli delete all"
-expectfn "$clixon_cli -1 -f $cfg -l o delete all" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o delete all)" 0 "^$"
 
 new "cli load"
-expectfn "$clixon_cli -1 -f $cfg -l o load /tmp/foo" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o load /tmp/foo)" 0 "^$"
 
 new "cli check load"
-expectfn "$clixon_cli -1 -f $cfg -l o show conf cli" 0 "interfaces interface eth/0/0 ipv4 enabled true"
+expectpart "$($clixon_cli -1 -f $cfg -l o show conf cli)" 0 "interfaces interface eth/0/0 ipv4 enabled true"
 
 new "cli debug set"
-expectfn "$clixon_cli -1 -f $cfg -l o debug level 1" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o debug level 1)" 0 "^$"
 
 # How to test this?
 new "cli debug reset"
 expectfn "$clixon_cli -1 -f $cfg -l o debug level 0" 0 "^$"
 
 new "cli rpc"
-expectfn "$clixon_cli -1 -f $cfg -l o rpc ipv4" 0 '<rpc-reply><x xmlns="urn:example:clixon">ipv4</x><y xmlns="urn:example:clixon">42</y></rpc-reply>'
+expectpart "$($clixon_cli -1 -f $cfg -l o rpc ipv4)" 0 '<rpc-reply><x xmlns="urn:example:clixon">ipv4</x><y xmlns="urn:example:clixon">42</y></rpc-reply>'
 
 if [ $BE -eq 0 ]; then
     exit # BE

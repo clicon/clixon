@@ -96,6 +96,7 @@ main(int    argc,
     cxobj     *xerr = NULL; /* malloced must be freed */
     int        ret;
     int        pretty = 0;
+    int        dbg = 0;
     
     optind = 1;
     opterr = 0;
@@ -105,7 +106,7 @@ main(int    argc,
 	    usage(argv[0]);
 	    break;
     	case 'D':
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(argv[0]);
 	    break;
 	case 'j':
@@ -125,7 +126,9 @@ main(int    argc,
 	    usage(argv[0]);
 	    break;
 	}
-    clicon_log_init(__FILE__, debug?LOG_DEBUG:LOG_INFO, logdst);
+    clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, logdst);
+    clicon_debug_init(dbg, NULL);
+
     if (yang_filename){
 	if ((yspec = yspec_new()) == NULL)
 	    goto done;

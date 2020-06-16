@@ -85,6 +85,7 @@ static const map_str2int cli_genmodel_map[] = {
     {"NONE",                 GT_NONE},
     {"VARS",                 GT_VARS},
     {"ALL",                  GT_ALL},
+    {"HIDE",                 GT_HIDE},
     {NULL,                   -1}
 };
 
@@ -612,7 +613,7 @@ clicon_option_del(clicon_handle h,
  * But sometimes there are type conversions, etc which makes it more
  * convenient to make wrapper functions. Or not?
  *-----------------------------------------------------------------*/
-/*! Wether to generate CLIgen syntax from datamodel or not (0 or 1)
+/*! Whether to generate CLIgen syntax from datamodel or not (0, 1 or 2)
  * Must be used with a previous clicon_option_exists().
  * @param[in] h     Clicon handle
  * @retval    flag  If set, generate CLI code from yang model, otherwise not

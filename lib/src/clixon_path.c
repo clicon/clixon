@@ -1559,7 +1559,7 @@ clixon_xml_find_api_path(cxobj        *xt,
     /* Parse api-path string to structured clixon-path data */
     if (api_path_parse(api_path, &cplist) < 0)
 	goto done;
-    if (debug)
+    if (clicon_debug_get())
 	clixon_path_print(stderr, cplist);
     /* Resolve module:name to yang-stmt, fail if not successful */
     if ((ret = api_path_resolve(cplist, yt)) < 0)
@@ -1652,7 +1652,7 @@ clixon_xml_find_instance_id(cxobj     *xt,
     va_end(ap);
     if (instance_id_parse(path, &cplist) < 0)
 	goto done;
-    if (debug)
+    if (clicon_debug_get())
 	clixon_path_print(stderr, cplist);
     /* Resolve module:name to pointer to yang-stmt, fail if not successful */
     if ((ret = instance_id_resolve(cplist, yt)) < 0)

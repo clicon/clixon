@@ -307,7 +307,7 @@ api_data_post(clicon_handle h,
     if (restconf_insert_attributes(xdata, qvec) < 0)
 	goto done;
 #if 1
-    if (debug)
+    if (clicon_debug_get())
 	clicon_log_xml(LOG_DEBUG, xdata, "%s xdata:", __FUNCTION__);
 #endif
 
@@ -512,7 +512,7 @@ api_operations_post_input(clicon_handle h,
      * <data><input xmlns="urn:example:clixon">...</input></data>
      */
 #if 1
-    if (debug)
+    if (clicon_debug_get())
 	clicon_log_xml(LOG_DEBUG, xdata, "%s xdata:", __FUNCTION__);
 #endif
     /* Validate that exactly only <input> tag */
@@ -614,7 +614,7 @@ api_operations_post_output(clicon_handle h,
     xml_name_set(xoutput, "output");
     /* xoutput should now look: <output><x xmlns="uri">0</x></output> */
 #if 1
-    if (debug)
+    if (clicon_debug_get())
 	clicon_log_xml(LOG_DEBUG, xoutput, "%s xoutput:", __FUNCTION__);
 #endif
 
@@ -843,7 +843,7 @@ api_operations_post(clicon_handle h,
     /* Here xtop is: 
       <rpc username="foo"><myfn xmlns="uri"><x>42</x></myfn></rpc> */
 #if 1
-    if (debug)
+    if (clicon_debug_get())
 	clicon_log_xml(LOG_DEBUG, xtop, "%s 5. Translate input args:", __FUNCTION__);
 #endif
     /* 6. Validate outgoing RPC and fill in defaults */
@@ -874,7 +874,7 @@ api_operations_post(clicon_handle h,
      * <rpc username="foo"><myfn xmlns="uri"><x>42</x><y>99</y></myfn></rpc>
     */
 #if 0
-    if (debug)
+    if (clicon_debug_get())
 	clicon_log_xml(LOG_DEBUG, xtop, "%s 6. Validate and defaults:", __FUNCTION__);
 #endif
     /* 7. Send to RPC handler, either local or backend
@@ -909,7 +909,7 @@ api_operations_post(clicon_handle h,
      *       <rpc-reply><x xmlns="uri">0</x></rpc-reply>
      */
 #if 1
-    if (debug)
+    if (clicon_debug_get())
 	clicon_log_xml(LOG_DEBUG, xret, "%s Receive reply:", __FUNCTION__);
 #endif
     youtput = yang_find(yrpc, Y_OUTPUT, NULL);

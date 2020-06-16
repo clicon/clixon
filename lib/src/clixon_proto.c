@@ -326,7 +326,7 @@ clicon_msg_send(int                s,
 
     clicon_debug(2, "%s: send msg len=%d", 
 		 __FUNCTION__, ntohl(msg->op_len));
-    if (debug > 2)
+    if (clicon_debug_get() > 2)
 	msg_dump(msg);
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
 		 s, msg, ntohl(msg->op_len)) < 0){
@@ -400,7 +400,7 @@ clicon_msg_rcv(int                s,
 	clicon_err(OE_CFG, errno, "body too short");
 	goto done;
     }
-    if (debug > 1)
+    if (clicon_debug_get() > 1)
 	msg_dump(*msg);
     retval = 0;
   done:

@@ -81,6 +81,7 @@ main(int argc, char **argv)
     yang_stmt *yspec = NULL;
     int        c;
     int        logdst = CLICON_LOG_STDERR;
+    int        dbg = 0;
     
     optind = 1;
     opterr = 0;
@@ -90,7 +91,7 @@ main(int argc, char **argv)
 	    usage(argv[0]);
 	    break;
     	case 'D':
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(argv[0]);
 	    break;
 	case 'l': /* Log destination: s|e|o|f */
@@ -101,7 +102,8 @@ main(int argc, char **argv)
 	    usage(argv[0]);
 	    break;
 	}
-    clicon_log_init("clixon_util_yang", debug?LOG_DEBUG:LOG_INFO, logdst);
+    clicon_log_init("clixon_util_yang", dbg?LOG_DEBUG:LOG_INFO, logdst);
+    clicon_debug_init(dbg, NULL);
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     if (yang_parse_file(0, "yang test", yspec) == NULL){

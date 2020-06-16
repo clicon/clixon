@@ -163,6 +163,7 @@ main(int    argc,
     int         ret = 0;
     int         nr = 1;
     int         mode = 0; /* 0 is posix, 1 is libxml */
+    int         dbg = 0;
 
     optind = 1;
     opterr = 0;
@@ -172,7 +173,7 @@ main(int    argc,
 	    usage(argv0);
 	    break;
     	case 'D':
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(argv0);
 	    break;
 	case 'p': /* xsd->posix */
@@ -195,7 +196,9 @@ main(int    argc,
 	    usage(argv[0]);
 	    break;
 	}
-    clicon_log_init(__FILE__, debug?LOG_DEBUG:LOG_INFO, CLICON_LOG_STDERR); 
+    clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, CLICON_LOG_STDERR); 
+    clicon_debug_init(dbg, NULL);
+
     if (regexp == NULL){
 	fprintf(stderr, "-r mandatory\n");
 	usage(argv0);
@@ -211,12 +214,12 @@ main(int    argc,
     clicon_debug(1, "regexp:%s", regexp);
     clicon_debug(1, "content:%s", content);
     if (mode == 0){
-	if ((ret = regex_posix(regexp, content, nr, debug)) < 0)
+	if ((ret = regex_posix(regexp, content, nr, dbg)) < 0)
 	    goto done;
 
     }
     else if (mode == 1){
-	if ((ret = regex_libxml2(regexp, content, nr, debug)) < 0)
+	if ((ret = regex_libxml2(regexp, content, nr, dbg)) < 0)
 	    goto done;
     }
     else

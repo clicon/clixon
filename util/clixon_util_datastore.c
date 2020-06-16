@@ -118,6 +118,7 @@ main(int argc, char **argv)
     int                 i;
     char               *xpath;
     cbuf               *cbret = NULL;
+    int                 dbg = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -135,7 +136,7 @@ main(int argc, char **argv)
 	    usage(argv0);
 	    break;
 	case 'D' : /* debug */
-	    debug = 1;	
+	    dbg = 1;	
 	    break;
 	case 'd': /* db symbolic: running|candidate|startup */
 	    if (!optarg)
@@ -166,8 +167,8 @@ main(int argc, char **argv)
     /* 
      * Logs, error and debug to stderr, set debug level
      */
-    clicon_log_init(__FILE__, debug?LOG_DEBUG:LOG_INFO, CLICON_LOG_STDERR); 
-    clicon_debug_init(debug, NULL); 
+    clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, CLICON_LOG_STDERR); 
+    clicon_debug_init(dbg, NULL); 
 
     argc -= optind;
     argv += optind;

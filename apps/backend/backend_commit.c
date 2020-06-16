@@ -453,7 +453,7 @@ from_validate_common(clicon_handle       h,
 		 &td->td_tcvec,     /* changed: wanted values */
 		 &td->td_clen) < 0)
 	goto done;
-    if (debug>1)
+    if (clicon_debug_get()>1)
 	transaction_print(stderr, td);
     /* Mark as changed in tree */
     for (i=0; i<td->td_dlen; i++){ /* Also down */

@@ -1066,7 +1066,7 @@ from_client_get(clicon_handle h,
 	    (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    if (debug)
+	    if (clicon_debug_get())
 		clicon_log_xml(LOG_DEBUG, xret, "VALIDATE_STATE");
 	    if (clixon_netconf_internal_error(xerr,
 					      ". Internal error, state callback returned invalid XML",
@@ -1362,7 +1362,7 @@ from_client_debug(clicon_handle h,
 
     clicon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
     setlogmask(LOG_UPTO(level?LOG_DEBUG:LOG_INFO)); /* for syslog */
-    clicon_log(LOG_NOTICE, "%s debug:%d", __FUNCTION__, debug);
+    clicon_log(LOG_NOTICE, "%s debug:%d", __FUNCTION__, clicon_debug_get());
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;

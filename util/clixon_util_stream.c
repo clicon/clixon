@@ -219,6 +219,7 @@ main(int argc, char **argv)
     int    c;
     char  *argv0 = argv[0];
     struct timeval now;
+    int            dbg = 0;
 
     clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR); 
     gettimeofday(&now, NULL);
@@ -230,7 +231,7 @@ main(int argc, char **argv)
 	    usage(argv0);
 	    break;
     	case 'D':
-	    debug++;
+	    dbg = 1;
 	    break;
 	case 'u': /* URL */
 	    url = optarg;
@@ -264,6 +265,7 @@ main(int argc, char **argv)
 	    usage(argv[0]);
 	    break;
 	}
+    clicon_debug_init(dbg, NULL);
     if (url == NULL)
 	usage(argv[0]);
     curl_global_init(0);

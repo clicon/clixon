@@ -58,14 +58,19 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 
-/* The global debug level. 0 means no debug */
-int debug = 0;
+/* The global debug level. 0 means no debug 
+ * @note There are pros and cons in having the debug state as a global variable. The 
+ * alternative to bind it to the clicon handle (h) was considered but it limits its
+ * usefulness, since not all functions have h
+ */
+static int _clixon_debug = 0;
 
 /* Bitmask whether to log to syslog or stderr: CLICON_LOG_STDERR | CLICON_LOG_SYSLOG */
 static int _logflags = 0x0;
 
 /* Set to open file to write debug messages directly to file */
 static FILE *_logfile = NULL;
+
 
 /*! Initialize system logger.
  *
@@ -217,7 +222,7 @@ clicon_log_str(int           level,
    /* syslog makes own filtering, we do it here:
     * if normal (not debug) then filter loglevels >= debug
     */
-    if (debug == 0 && level >= LOG_DEBUG)
+    if (_clixon_debug == 0 && level >= LOG_DEBUG)
 	goto done;
     if (_logflags & CLICON_LOG_STDERR){
 	flogtime(stderr);
@@ -231,6 +236,7 @@ clicon_log_str(int           level,
 	flogtime(_logfile);
 	fprintf(_logfile, "%s\n", msg);
 	fflush(_logfile);
+
     }
 
     /* Enable this if you want syslog in a stream. But there are problems with 
@@ -288,7 +294,6 @@ clicon_log(int   level,
     return retval;
 }
 
-
 /*! Initialize debug messages. Set debug level.
  *
  * Initialize debug module. The level is used together with clicon_debug(dbglevel) calls as follows: 
@@ -309,8 +314,14 @@ int
 clicon_debug_init(int   dbglevel,
 		  FILE *f)
 {
-    debug = dbglevel; /* Global variable */
+    _clixon_debug = dbglevel; /* Global variable */
     return 0;
+}
+
+int
+clicon_debug_get(void)
+{
+    return _clixon_debug;
 }
 
 /*! Print a debug message with debug-level. Settings determine where msg appears.
@@ -335,7 +346,7 @@ clicon_debug(int   dbglevel,
     char   *msg    = NULL;
     int     retval = -1;
 
-    if (dbglevel > debug) /* debug mask */
+    if (dbglevel > _clixon_debug) /* compare debug mask with global variable */
 	return 0;
     /* first round: compute length of debug message */
     va_start(args, format);

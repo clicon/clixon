@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -30,40 +31,27 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
- *
- * Regular logging and debugging. Syslog using levels.
+  *
+  * Generic restconf root handlers eg for /restconf /.well-known, etc
  */
 
-#ifndef _CLIXON_LOG_H_
-#define _CLIXON_LOG_H_
+#ifndef _RESTCONF_ROOT_H_
+#define _RESTCONF_ROOT_H_
 
 /*
  * Constants
  */
-#define CLICON_LOG_SYSLOG 1 /* print logs on syslog */
-#define CLICON_LOG_STDERR 2 /* print logs on stderr */
-#define CLICON_LOG_STDOUT 4 /* print logs on stdout */
-#define CLICON_LOG_FILE   8 /* print logs on clicon_log_filename */
+#define RESTCONF_API       "restconf"
+
+/* RESTCONF enables deployments to specify where the RESTCONF API is 
+   located.  The client discovers this by getting the "/.well-known/host-meta"
+   resource 
+*/
+#define RESTCONF_WELL_KNOWN  "/.well-known/host-meta"
 
 /*
  * Prototypes
  */
-int clicon_log_init(char *ident, int upto, int flags);
-int clicon_log_exit(void);
-int clicon_log_opt(char c);
-int clicon_log_file(char *filename);
-int clicon_get_logflags(void);
-#if defined(__GNUC__) && __GNUC__ >= 3
-int clicon_log(int level, char *format, ...) __attribute__ ((format (printf, 2, 3)));
-int clicon_debug(int dbglevel, char *format, ...) __attribute__ ((format (printf, 2, 3)));
-#else
-int clicon_log(int level, char *format, ...);
-int clicon_debug(int dbglevel, char *format, ...);
-#endif
-int clicon_debug_init(int dbglevel, FILE *f);
-int clicon_debug_get(void);
+int api_well_known(clicon_handle h, void *req);
 
-char *mon2name(int md);
-
-#endif  /* _CLIXON_LOG_H_ */
+#endif /* _RESTCONF_ROOT_H_ */

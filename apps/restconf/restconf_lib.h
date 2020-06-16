@@ -38,21 +38,8 @@
 #define _RESTCONF_LIB_H_
 
 /*
- * Constants
+ * Types
  */
-#define RESTCONF_API       "restconf"
-
-/* RESTCONF enables deployments to specify where the RESTCONF API is 
-   located.  The client discovers this by getting the "/.well-known/host-meta"
-   resource 
-*/
-#define RESTCONF_WELL_KNOWN  "/.well-known/host-meta"
-
-
-/*
- * Variables
- */
-
 /*! RESTCONF media types 
  * @see http_media_map
  * (also in clixon_restconf.h)
@@ -81,5 +68,7 @@ char *clixon_restconf_param_get(clicon_handle h, char *param);
 int   clixon_restconf_param_set(clicon_handle h, char *param, char *val);
 int   clixon_restconf_param_del(clicon_handle h, char *param);
 char *restconf_uripath(clicon_handle h);
+int   restconf_drop_privileges(clicon_handle h, char *user);
+int restconf_method_notallowed(void *req, char *allow);
 
 #endif /* _RESTCONF_LIB_H_ */

@@ -221,7 +221,7 @@ api_data_get2(clicon_handle  h,
      * We need to cut that tree to only the object.
      */
 #if 0 /* DEBUG */
-    if (debug)
+    if (clicon_debug_get())
 	clicon_log_xml(LOG_DEBUG, xret, "%s xret:", __FUNCTION__);
 #endif
     /* Check if error return  */

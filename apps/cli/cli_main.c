@@ -236,6 +236,103 @@ cli_interactive(clicon_handle h)
     return retval;
 }
 
+/*! Generate one autocli clispec tree
+ *
+ * @param[in]  h        Clixon handle
+ * @param[in]  name     Name of tree
+ * @param[in]  gt       genmodel-type, ie HOW to generate the CLI
+ * @param[in]  printgen Print CLI syntax to stderr
+ *
+ * Generate clispec (datamodel) from YANG dataspec and add to the set of cligen trees 
+ * (as a separate mode)
+ * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the "tree reference"
+ * syntax, ie @datamodel
+ * @param[in]  h        Clixon handle
+ * @param[in]  printgen Print CLI syntax generated from dbspec
+ * @retval     0        OK
+ * @retval    -1        Error
+ *
+ * @note that yang2cli generates syntax for ALL modules under the loaded yangspec.
+ */
+static int
+autocli_tree(clicon_handle      h,
+	     char              *name,
+	     enum genmodel_type gt,
+	     int                state,
+	     int                printgen)
+{
+    int           retval = -1;
+    parse_tree   *pt = NULL;  /* cli parse tree */
+    yang_stmt    *yspec;
+    
+    if ((pt = pt_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "pt_new");
+	goto done;
+    }
+    yspec = clicon_dbspec_yang(h);
+    /* Generate tree (this is where the action is) */
+    if (yang2cli(h, yspec, gt, printgen, state, pt) < 0)
+	goto done;
+    /* Append cligen tree and name it */
+    if (cligen_tree_add(cli_cligen(h), name, pt) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Generate autocli, ie if enabled, generate clispec from YANG and add to cligen parse-trees
+ *
+ * Generate clispec (datamodel) from YANG dataspec and add to the set of cligen trees 
+ * (as a separate mode)
+ * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the "tree reference"
+ * syntax, ie @datamodel
+ * Also (if enabled) generate a second "state" tree called @datamodelstate
+ *
+ * @param[in]  h        Clixon handle
+ * @param[in]  printgen Print CLI syntax generated from dbspec
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+static int
+autocli_start(clicon_handle h,
+	      int           printgen)
+{
+    int                retval = -1;
+    int                autocli_model = 0;
+    cbuf              *treename = NULL;
+    enum genmodel_type gt;
+	
+    /* If autocli disabled quit */
+    if ((autocli_model = clicon_cli_genmodel(h)) == 0)
+	goto ok;
+    /* Get the autocli type, ie HOW the cli is generated (could be much more here) */
+    gt = clicon_cli_genmodel_type(h);
+    /* Create treename cbuf */
+    if ((treename = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    /* The tree name is by default @datamodel but can be changed by option (why would one do that?) */
+    cprintf(treename, "%s", clicon_cli_model_treename(h));
+    if (autocli_tree(h, cbuf_get(treename), gt, 0, printgen) < 0)
+	goto done;
+
+    /* Create a tree for config+state. This tree's name has appended "state" to @datamodel (XXX)
+     */
+    if (autocli_model > 1){
+	cprintf(treename, "state");
+	if (autocli_tree(h, cbuf_get(treename), gt, 1, printgen) < 0)
+	    goto done;
+    }
+ ok:
+    retval = 0;
+ done:
+    if (treename)
+	cbuf_free(treename);
+    return retval;
+}
+
 static void
 usage(clicon_handle h,
       char         *argv0)
@@ -294,6 +391,7 @@ main(int    argc,
     cvec          *nsctx_global = NULL; /* Global namespace context */
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
+    int            dbg=0;
     
     /* Defaults */
     once = 0;
@@ -332,7 +430,7 @@ main(int    argc,
 	    help = 1; 
 	    break;
 	case 'D' : /* debug */
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(h, argv[0]);
 	    break;
 	case 'f': /* config file */
@@ -352,9 +450,9 @@ main(int    argc,
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst);
+    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
 
-    clicon_debug_init(debug, NULL); 
+    clicon_debug_init(dbg, NULL); 
 
     /* Find, read and parse configfile */
     if (clicon_options_main(h) < 0){
@@ -535,29 +633,9 @@ main(int    argc,
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
 	goto done;
 
-    /* Create tree generated from dataspec. If no other trees exists, this is
-     * the only one.
-     * The following code creates the tree @datamodel
-     * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) 
-     * using the "tree reference"
-     * syntax, ie @datamodel
-     * But note that yang2cli generates syntax for ALL modules, not just for 
-     * <module>.
-     */
-    if (clicon_cli_genmodel(h)){
-	parse_tree   *pt = NULL;  /* cli parse tree */
-	char         *treeref; 
-
-	if ((pt = pt_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "pt_new");
-	    goto done;
-	}
-	treeref = clicon_cli_model_treename(h);
-	/* Create cli command tree from dbspec */
-	if (yang2cli(h, yspec, clicon_cli_genmodel_type(h), printgen, pt) < 0)
-	    goto done;
-	cligen_tree_add(cli_cligen(h), treeref, pt);
-    }
+    /* Create autocli from YANG */
+    if (autocli_start(h, printgen) < 0)
+	goto done;
 
     /* Initialize cli syntax */
     if (cli_syntax_load(h) < 0)
@@ -588,8 +666,8 @@ main(int    argc,
     if (logclisyntax)
 	cli_logsyntax_set(h, logclisyntax);
 
-    if (debug)
-	clicon_option_dump(h, debug);
+    if (dbg)
+	clicon_option_dump(h, dbg);
     
     /* Join rest of argv to a single command */
     restarg = clicon_strjoin(argc, argv, " ");

@@ -27,6 +27,11 @@ Expected: July 2020
 
 ### Major New features
 
+* Auto-CLI enhancements
+  * A generated clispec including state (default @datanodestate) also generated along with the config clispec tree (default @datanode)
+  * New mode `GT_HIDE` set by option `CLICON_CLI_GENMODEL_TYPE` to collapse non-presence containers that only contain a single list
+  * Added a prefix for cli_show_config/cli_show_auto so that it can produce parseable output
+  * Thanks dcornejo@netgate.com for trying it out and suggestions
 * Embedding restconf into the existing [libevhtp](https://github.com/criticalstack/libevhtp) embedded web server. Experimental.
   * The existing FCGI restconf solution will continue to be supported for NGINX and other reverese proxies with an fast CGI API.
   * The restconf code has been refactored to support both modes. Hopefully, it should be straightforward to add another embedded server, such as GNU microhttpd.
@@ -35,9 +40,10 @@ Expected: July 2020
     * `--with-restconf=evhtp   Integrate restconf with libevhtp server`
     * `--without-restconf      Disable restconf altogether`
 
+### C/CLI-API changes on existing features (For developers)
 
-### C-API changes on existing features (For developers)
-
+* Added prefix for cli_show_config/cli_show_auto so that it can produce parseable output
+* Replaced the global variable `debug` with access function: `clicon_debug_get()`.
 * Due to name collision with libevent, all clixon event functions prepended with `clixon_`. You need to rename your event functions as follows:
   * event_reg_fd() -> clixon_event_reg_fd()
   * event_unreg_fd() -> clixon_event_unreg_fd()
@@ -52,6 +58,10 @@ Expected: July 2020
 * Added [Vagrant tests](test/vagrant/README.md)
 * Added new function `clicon_xml2str()` to complement xml_print and others that returns a malloced string.
 * Added new function `xml_child_index_each()` to iterate over the children of an XML node according to the order defined by an explicit index variable. This is a complement to `xml_child_each()` which iterates using the default order.
+
+### Corrected Bugs
+
+* Fixed: The module `clixon-rfc5277` was always enabled, but should only be enabled when `CLICON_STREAM_DISCOVERY_RFC5277` is enabled.
 
 ## 4.5.0
 12 May 2020

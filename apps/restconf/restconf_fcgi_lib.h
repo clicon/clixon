@@ -49,12 +49,12 @@ int restconf_conflict(FCGX_Request *r);
 int restconf_unsupported_media(FCGX_Request *r);
 int restconf_internal_server_error(clicon_handle h, FCGX_Request *r);
 int restconf_notimplemented(FCGX_Request *r);
-int restconf_test(FCGX_Request *r, int dbg);
-int clixon_restconf_params_set(clicon_handle h, char **envp);
+int restconf_test(FCGX_Request *r,       int           dbg);
+int clixon_restconf_params_set(clicon_handle h,
+			   char        **envp);
 int clixon_restconf_params_clear(clicon_handle h, char **envp);
 cbuf *readdata(FCGX_Request *r);
-int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr,
-		   int pretty, enum restconf_media media, int code);
+int api_return_err(clicon_handle h, FCGX_Request *r, cxobj *xerr, int pretty, restconf_media media, int code0);
 int http_location(clicon_handle h, FCGX_Request *r, cxobj *xobj);
 
 #endif /* _RESTCONF_FCGI_LIB_H_ */

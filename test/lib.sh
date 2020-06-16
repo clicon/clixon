@@ -90,9 +90,6 @@ fi
 # RESTCONF protocol, eg http or https
 : ${RCPROTO:=http}
 
-# RESTCONF port
-: ${RCPORT:=80}
-
 # RESTCONF error message (if not up)
 : ${RCERROR:="HTTP/1.1 502 Bad Gateway"}
 
@@ -229,8 +226,11 @@ wait_backend(){
     done
 }
 
+# Start restconf daemon
+# @see wait_restconf
 start_restconf(){
     # Start in background 
+#    echo "sudo -u $wwwuser -s $clixon_restconf $RCLOG -D $DBG $*"
     sudo -u $wwwuser -s $clixon_restconf $RCLOG -D $DBG $* &
     if [ $? -ne 0 ]; then
 	err
@@ -246,12 +246,16 @@ stop_restconf(){
 }
 
 # Wait for restconf to stop sending  502 Bad Gateway
+# @see start_restconf
 wait_restconf(){
-    hdr=$(curl --head -sS $RCPROTO://localhost:$RCPORT/restconf)
+#    echo "curl -kis $RCPROTO://localhost/restconf"
+    hdr=$(curl -kis $RCPROTO://localhost/restconf)
+#    echo "hdr:\"$hdr\""
     let i=0;
-    while [[ $hdr == "$RCERROR"* ]]; do
+    while [[ $hdr != *"200 OK"* ]]; do
 	sleep 1
-	hdr=$(curl --head -sS http://localhost/restconf)
+	hdr=$(curl -kis $RCPROTO://localhost/restconf)
+#	echo "hdr:\"$hdr\""
 	let i++;
 #	echo "wait_restconf $i"
 	if [ $i -ge $RCWAIT ]; then
@@ -366,6 +370,8 @@ expecteq(){
 # - expected stdout outcome*
 # - the token "--not--"
 # - not expected stdout outcome*
+# Example:
+# expectpart "$(a-shell-cmd arg)" 0 'expected match 1' 'expected match 2' --not-- 'not expected 1'
 # @note need to escape \[\]
 expectpart(){
   r=$?

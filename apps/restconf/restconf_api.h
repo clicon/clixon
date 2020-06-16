@@ -2,7 +2,8 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -30,40 +31,24 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
- *
- * Regular logging and debugging. Syslog using levels.
+  *
+  * Virtual clixon restconf API functions.
  */
 
-#ifndef _CLIXON_LOG_H_
-#define _CLIXON_LOG_H_
-
-/*
- * Constants
- */
-#define CLICON_LOG_SYSLOG 1 /* print logs on syslog */
-#define CLICON_LOG_STDERR 2 /* print logs on stderr */
-#define CLICON_LOG_STDOUT 4 /* print logs on stdout */
-#define CLICON_LOG_FILE   8 /* print logs on clicon_log_filename */
+#ifndef _RESTCONF_API_H_
+#define _RESTCONF_API_H_
 
 /*
  * Prototypes
  */
-int clicon_log_init(char *ident, int upto, int flags);
-int clicon_log_exit(void);
-int clicon_log_opt(char c);
-int clicon_log_file(char *filename);
-int clicon_get_logflags(void);
+int restconf_reply_status_code(void *req, int code);
+
 #if defined(__GNUC__) && __GNUC__ >= 3
-int clicon_log(int level, char *format, ...) __attribute__ ((format (printf, 2, 3)));
-int clicon_debug(int dbglevel, char *format, ...) __attribute__ ((format (printf, 2, 3)));
+int restconf_reply_header_add(void *req, char *name, char *vfmt, ...)  __attribute__ ((format (printf, 3, 4)));
 #else
-int clicon_log(int level, char *format, ...);
-int clicon_debug(int dbglevel, char *format, ...);
+int restconf_reply_header_add(FCGX_Request *req, char *name, char *vfmt, ...);
 #endif
-int clicon_debug_init(int dbglevel, FILE *f);
-int clicon_debug_get(void);
 
-char *mon2name(int md);
+int restconf_reply_send(void  *req, cbuf *cb);
 
-#endif  /* _CLIXON_LOG_H_ */
+#endif /* _RESTCONF_API_H_ */

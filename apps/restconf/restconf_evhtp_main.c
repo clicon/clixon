@@ -31,7 +31,8 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-  
+
+  * libevhtp code  
  */
 
 /* XXX temp constant should go away, */
@@ -43,7 +44,7 @@
 /* compilation withotu threading support 
  * XXX: could be disabled already in configure?
  */
-#define EVHTP_DISABLE_EVTHR
+//#define EVHTP_DISABLE_EVTHR
 #define EVHTP_DISABLE_REGEX
 
 #include <stdlib.h>
@@ -73,13 +74,9 @@
 
 /* restconf */
 
-#include "restconf_lib.h"
-#if 0 /* These are all dependent on FCGX */
-#include "restconf_methods.h"
-#include "restconf_methods_get.h"
-#include "restconf_methods_post.h"
-#include "restconf_stream.h"
-#endif
+#include "restconf_lib.h"       /* generic shared with plugins */
+#include "restconf_api.h"       /* generic not shared with plugins */
+#include "restconf_root.h"
 
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:o:P:c:k:"
@@ -122,6 +119,178 @@ restconf_sig_child(int arg)
     }
 }
 
+static char*
+evhtp_method2str(enum htp_method m)
+{
+    switch (m){
+    case htp_method_GET:
+	return "GET";
+	break;
+    case htp_method_HEAD:
+	return "HEAD";
+	break;
+    case htp_method_POST:
+	return "POST";
+	break;
+    case htp_method_PUT:
+	return "PUT";
+	break;
+    case htp_method_DELETE:
+	return "DELETE";
+	break;
+    case htp_method_PATCH:
+	return "PATCH";
+	break;
+    default:
+	return "XXX";
+	break;
+    }
+}
+
+static int
+query_iterator(evhtp_header_t *hdr,
+	       void           *arg)
+{
+    cvec   *qvec = (cvec *)arg;
+    char   *key;
+    char   *val;
+    char   *valu = NULL;    /* unescaped value */
+    cg_var *cv;
+
+    key = hdr->key;
+    val = hdr->val;
+    if (uri_percent_decode(val, &valu) < 0)
+	return -1;
+    if ((cv = cvec_add(qvec, CGV_STRING)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_add");
+	return -1;
+    }
+    cv_name_set(cv, key);
+    cv_string_set(cv, valu);
+    if (valu)
+	free(valu); 
+    return 0;
+}
+
+/*! Map from evhtp information to "fcgi" type parameters used in clixon code
+ *
+ * While all these params come via one call in fcgi, the information must be taken from
+ * several different places in evhtp 
+ * @param[in]  h    Clicon handle
+ * @param[in]  req  Evhtp request struct
+ * @retval     0    OK
+ * @retval    -1    Error
+ * The following parameters are set:
+ * QUERY_STRING
+ * REQUEST_METHOD
+ * REQUEST_URI
+ * HTTPS
+ * HTTP_HOST
+ * HTTP_ACCEPT
+ * HTTP_CONTENT_TYPE
+ * @note there may be more used by an application plugin
+ */
+static int
+evhtp_params_set(clicon_handle    h,
+		 evhtp_request_t *req,
+    		 cvec            *qvec)
+{
+    int             retval = -1;
+    htp_method      meth;
+    evhtp_uri_t    *uri;
+    evhtp_path_t   *path;
+    evhtp_header_t *hdr;
+
+    if ((uri = req->uri) == NULL){
+	clicon_err(OE_DAEMON, EFAULT, "No uri");
+	goto done;
+    }
+    if ((path = uri->path) == NULL){
+	clicon_err(OE_DAEMON, EFAULT, "No path");
+	goto done;
+    }
+    meth = evhtp_request_get_method(req);
+
+    /* QUERY_STRING */
+    if (qvec && uri->query)
+	if (evhtp_kvs_for_each(uri->query, query_iterator, qvec) < 0){
+	    clicon_err(OE_CFG, errno, "evhtp_kvs_for_each");
+	    goto done;
+	}
+
+    if (clixon_restconf_param_set(h, "REQUEST_METHOD", evhtp_method2str(meth)) < 0)
+	goto done;
+    if (clixon_restconf_param_set(h, "REQUEST_URI", path->full) < 0)
+	goto done;
+    if (clixon_restconf_param_set(h, "HTTPS", "https") < 0) /* some string or NULL */
+	goto done;
+    if ((hdr = evhtp_headers_find_header(req->headers_in, "Host")) != NULL){
+	if (clixon_restconf_param_set(h, "HTTP_HOST", hdr->val) < 0)
+	    goto done;
+    }
+    if ((hdr = evhtp_headers_find_header(req->headers_in, "Accept")) != NULL){
+	if (clixon_restconf_param_set(h, "HTTP_ACCEPT", hdr->val) < 0)
+	    goto done;
+    }
+    if ((hdr = evhtp_headers_find_header(req->headers_in, "Content-Type")) != NULL){
+	if (clixon_restconf_param_set(h, "HTTP_CONTENT_TYPE", hdr->val) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+static int
+evhtp_params_clear(clicon_handle h)
+{
+    int   retval = -1;
+    char *params[] = {"QUERY_STRING", "REQUEST_METHOD", "REQUEST_URI",
+		      "HTTPS", "HTTP_HOST", "HTTP_ACCEPT", "HTTP_CONTENT_TYPE", NULL};
+    char *param;
+    int   i=0;
+
+    while((param=params[i]) != NULL)
+	if (clixon_restconf_param_del(h, param) < 0)
+	    goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+static int
+print_header(evhtp_header_t *header,
+	     void           *arg)
+{
+    //    clicon_handle  h = (clicon_handle)arg;
+    
+    clicon_debug(1, "%s %s %s",
+		 __FUNCTION__, header->key, header->val);
+    return 0;
+}
+
+static evhtp_res
+cx_pre_accept(evhtp_connection_t *conn,
+	      void               *arg)
+{
+    //    clicon_handle  h = (clicon_handle)arg;
+
+    clicon_debug(1, "%s", __FUNCTION__);    
+    return EVHTP_RES_OK;
+}
+
+static evhtp_res
+cx_post_accept(evhtp_connection_t *conn,
+	       void               *arg)
+{
+    //    clicon_handle  h = (clicon_handle)arg;
+
+    clicon_debug(1, "%s", __FUNCTION__);    
+    return EVHTP_RES_OK;
+}
+
+/*! Generic callback called if no other callbacks are matched
+ */
 static void
 cx_gencb(evhtp_request_t *req,
 	 void            *arg)
@@ -129,7 +298,7 @@ cx_gencb(evhtp_request_t *req,
     evhtp_connection_t *conn;
     //    clicon_handle       h = arg;
 
-    fprintf(stderr, "%s\n", __FUNCTION__);    
+    clicon_debug(1, "%s", __FUNCTION__);    
     if (req == NULL){
 	errno = EINVAL;
 	return;
@@ -145,67 +314,105 @@ cx_gencb(evhtp_request_t *req,
     return; /* void */
 }
 
-static evhtp_res
-cx_pre_accept(evhtp_connection_t *conn,
-	      void               *arg)
+/*! /.well-known callback
+ * @see cx_genb
+ */
+static void
+cx_path_wellknown(evhtp_request_t *req,
+		  void            *arg)
 {
-    fprintf(stderr, "%s\n", __FUNCTION__);
-    return EVHTP_RES_OK;
+    clicon_handle       h = arg;
+
+    /* input debug */
+    if (clicon_debug_get())
+	evhtp_headers_for_each(req->headers_in, print_header, h);
+    /* get accepted connection */
+
+    /* set fcgi-like paramaters (ignore query vector) */
+    if (evhtp_params_set(h, req, NULL) < 0)
+	goto done;
+    /* call generic function */
+    if (api_well_known(h, req) < 0)
+	goto done;
+
+    /* Clear (fcgi) paramaters from this request */
+    if (evhtp_params_clear(h) < 0)
+	goto done;
+ done:
+    return; /* void */
 }
 
-static evhtp_res
-cx_post_accept(evhtp_connection_t *conn,
-	       void               *arg)
-{
-    fprintf(stderr, "%s\n", __FUNCTION__);
-    return EVHTP_RES_OK;
-}
-
-static int
-print_header_(evhtp_header_t * header, void * arg) {
-    fprintf(stderr, "%s: %s\n", header->key, header->val);
-    return 0;
-}
-
-/*! Generic callback called if no other callbacks are matched
+/*! /restconf callback
+ * @see cx_genb
  */
 static void
 cx_path_restconf(evhtp_request_t *req,
 		 void            *arg)
 {
     evhtp_connection_t *conn;
-    //    clicon_handle       h = arg;
+    clicon_handle       h = arg;
     struct evbuffer    *b = NULL; 
-    htp_method          meth;
+    cvec               *qvec = NULL;
+    size_t              len = 0;
+    cbuf               *cblen = NULL;
 
-    fprintf(stderr, "%s\n", __FUNCTION__);    
+    clicon_debug(1, "%s", __FUNCTION__);
     if (req == NULL){
 	errno = EINVAL;
 	goto done;
     }
-    if ((conn = evhtp_request_get_connection(req)) == NULL)
-	goto done;
-    meth = evhtp_request_get_method(req);
-    fprintf(stderr, "%s method:%d\n", __FUNCTION__, meth);    
-    evhtp_headers_for_each(req->headers_in, print_header_, NULL);
+    /* input debug */
+    if (clicon_debug_get())
+	evhtp_headers_for_each(req->headers_in, print_header, h);
 
-    if ((b = evbuffer_new()) == NULL){
+    if ((cblen = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    htp_sslutil_add_xheaders(
-        req->headers_out,
-        conn->ssl,
-        HTP_SSLUTILS_XHDR_ALL);
+    /* Query vector, ie the ?a=x&b=y stuff */
+    if ((qvec = cvec_new(0)) ==NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
+    /* get accepted connection */
+    if ((conn = evhtp_request_get_connection(req)) == NULL){
+	clicon_err(OE_DAEMON, EFAULT, "evhtp_request_get_connection");
+	goto done;
+    }
+    /* Get all parameters from this request (resembling fcgi) */
+    if (evhtp_params_set(h, req, qvec) < 0)
+	goto done;
+
+    /* 1. create body */
+    if ((b = evbuffer_new()) == NULL){
+	clicon_err(OE_DAEMON, errno, "evbuffer_new");
+	goto done;
+    }
+    cprintf(cblen, "%lu", len);
+    
+    /* 2. add headers (can mix with body) */
+    evhtp_headers_add_header(req->headers_out, evhtp_header_new("Cache-Control", "no-cache", 0, 0)); 
+    evhtp_headers_add_header(req->headers_out, evhtp_header_new("Content-Type", "application/xrd+xml", 0, 0));
+    evhtp_headers_add_header(req->headers_out, evhtp_header_new("Content-Length", cbuf_get(cblen), 0, 0)); 
+
+    /* Optional? */
+    htp_sslutil_add_xheaders(req->headers_out, conn->ssl, HTP_SSLUTILS_XHDR_ALL);
+
+    /* 3. send reply */
     evhtp_send_reply_start(req, EVHTP_RES_OK);
-    evbuffer_add(b, "hej\n", strlen("hej\n\n"));
     evhtp_send_reply_body(req, b);
     evhtp_send_reply_end(req);
 
-    //   evhtp_headers_add_header(request->headers_out, evhtp_header_new("Host", "localhost", 0, 0)); evhtp_headers_add_headers(request->headers_out, headers);
-    
-
-
+    /* Clear (fcgi)paramaters */
+    if (evhtp_params_clear(h) < 0)
+	goto done;
  done:
+    if (qvec)
+	cvec_free(qvec);
+    if (cblen)
+	cbuf_free(cblen);
+    if (b)
+	evhtp_safe_free(b, evbuffer_free);    
     return; /* void */
 }
 
@@ -246,26 +453,27 @@ int
 main(int    argc,
      char **argv)
 {
-    int            retval = -1;
-    char	  *argv0 = argv[0];
-    int            c;
-    clicon_handle  h;
-    char          *dir;
-    int            logdst = CLICON_LOG_SYSLOG;
-    yang_stmt     *yspec = NULL;
-    char          *str;
-    clixon_plugin *cp = NULL;
-    cvec          *nsctx_global = NULL; /* Global namespace context */
-    size_t         cligen_buflen;
-    size_t         cligen_bufthreshold;
-    uint16_t       port = 443;
+    int                retval = -1;
+    char	      *argv0 = argv[0];
+    int                c;
+    clicon_handle      h;
+    char              *dir;
+    int                logdst = CLICON_LOG_SYSLOG;
+    yang_stmt         *yspec = NULL;
+    char              *str;
+    clixon_plugin     *cp = NULL;
+    cvec              *nsctx_global = NULL; /* Global namespace context */
+    size_t             cligen_buflen;
+    size_t             cligen_bufthreshold;
+    uint16_t           port = 443;
 #ifdef _EVHTP_NYI 
-    char          *stream_path;
+    char              *stream_path;
 #endif
     evhtp_t           *htp = NULL;
     struct event_base *evbase = NULL;
     evhtp_ssl_cfg_t   *ssl_config = NULL;
     struct stat        f_stat;
+    int                dbg = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -282,7 +490,7 @@ main(int    argc,
 	    usage(h, argv0);
 	    break;
 	case 'D' : /* debug */
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(h, argv0);
 	    break;
 	 case 'f': /* override config file */
@@ -303,9 +511,9 @@ main(int    argc,
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
+    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
 
-    clicon_debug_init(debug, NULL); 
+    clicon_debug_init(dbg, NULL); 
     clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
 	clicon_err(OE_DAEMON, errno, "Setting signal");
@@ -390,7 +598,6 @@ main(int    argc,
 	}
     argc -= optind;
     argv += optind;
-
     /* Check ssl mandatory options */
     if (ssl_config->pemfile == NULL || ssl_config->privfile == NULL)
 	usage(h, argv0);
@@ -412,6 +619,53 @@ main(int    argc,
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
     
+    /* Init evhtp */
+    if ((evbase = event_base_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "event_base_new");
+	goto done;
+    }
+    /* create a new evhtp_t instance */
+    if ((htp = evhtp_new(evbase, NULL)) == NULL){
+	clicon_err(OE_UNIX, errno, "evhtp_new");
+	goto done;
+    }
+    if (evhtp_ssl_init(htp, ssl_config) < 0){
+	clicon_err(OE_UNIX, errno, "evhtp_new");
+	goto done;
+    }
+#ifndef EVHTP_DISABLE_EVTHR
+    evhtp_use_threads_wexit(htp, NULL, NULL, 4, NULL);
+#endif
+
+    /* Callback before the connection is accepted. */
+    evhtp_set_pre_accept_cb(htp, cx_pre_accept, h);
+
+    /* Callback right after a connection is accepted. */
+    evhtp_set_post_accept_cb(htp, cx_post_accept, h);
+
+    /* Callback to be executed for all /restconf api calls */
+    if (evhtp_set_cb(htp, "/" RESTCONF_API, cx_path_restconf, h) == NULL){
+    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
+    	goto done;
+    }
+    /* Callback to be executed for all /restconf api calls */
+    if (evhtp_set_cb(htp, RESTCONF_WELL_KNOWN, cx_path_wellknown, h) == NULL){
+    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
+    	goto done;
+    }
+    /* Generic callback called if no other callbacks are matched */
+    evhtp_set_gencb(htp, cx_gencb, h);
+
+    /* bind to a socket, optionally with specific protocol support formatting 
+     * If port is proteced must be done as root?
+     */
+    if (evhtp_bind_socket(htp, "127.0.0.1", port, 128) < 0){
+	clicon_err(OE_UNIX, errno, "evhtp_bind_socket");
+	goto done;
+    }
+    if (restconf_drop_privileges(h, WWWUSER) < 0)
+	goto done;
+
     /* Init cligen buffers */
     cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
     cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
@@ -422,7 +676,6 @@ main(int    argc,
      */
     if (netconf_module_features(h) < 0)
 	goto done;
-
     /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;
@@ -491,8 +744,8 @@ main(int    argc,
 	 goto done;
 
      /* Dump configuration options on debug */
-    if (debug)      
-	clicon_option_dump(h, debug);
+    if (dbg)      
+	clicon_option_dump(h, dbg);
 
     /* Call start function in all plugins before we go interactive 
      */
@@ -503,40 +756,6 @@ main(int    argc,
     if (clicon_options_main(h) < 0)
 	goto done;
 
-    /* Init evhtp */
-    if ((evbase = event_base_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "event_base_new");
-	goto done;
-    }
-    /* create a new evhtp_t instance */
-    if ((htp = evhtp_new(evbase, NULL)) == NULL){
-	clicon_err(OE_UNIX, errno, "evhtp_new");
-	goto done;
-    }
-    if (evhtp_ssl_init(htp, ssl_config) < 0){
-	clicon_err(OE_UNIX, errno, "evhtp_new");
-	goto done;
-    }
-    /* Generic callback called if no other callbacks are matched */
-    evhtp_set_gencb(htp, cx_gencb, h);
-
-    /* Callback before the connection is accepted. */
-    evhtp_set_pre_accept_cb(htp, cx_pre_accept, h);
-
-    /* Callback right after a connection is accepted. */
-    evhtp_set_post_accept_cb(htp, cx_post_accept, h);
-
-    /* Callback to be executed on a specific path */
-    if (evhtp_set_cb(htp, "/" RESTCONF_API, cx_path_restconf, h) == NULL){
-	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
-	goto done;
-    }
-
-    /* bind to a socket, optionally with specific protocol support formatting */
-    if (evhtp_bind_socket(htp, "127.0.0.1", port, 128) < 0){
-	clicon_err(OE_UNIX, errno, "evhtp_bind_socket");
-	goto done;
-    }
 
     event_base_loop(evbase, 0);
     

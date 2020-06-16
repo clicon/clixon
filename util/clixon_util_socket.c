@@ -95,6 +95,7 @@ main(int    argc,
     int                ret;
     cbuf              *cb = cbuf_new();
     clicon_handle      h;
+    int                dbg = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -110,7 +111,7 @@ main(int    argc,
 	    usage(argv[0]);
 	    break;
     	case 'D':
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(argv[0]);
 	    break;
 	case 's':
@@ -129,7 +130,9 @@ main(int    argc,
 	    usage(argv[0]);
 	    break;
 	}
-    clicon_log_init(__FILE__, debug?LOG_DEBUG:LOG_INFO, logdst);
+    clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, logdst);
+    clicon_debug_init(dbg, NULL);
+
     if (sockpath == NULL){
 	fprintf(stderr, "Mandatory option missing: -s <sockpath>\n");
 	usage(argv[0]);

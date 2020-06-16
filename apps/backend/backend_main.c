@@ -297,7 +297,7 @@ check_drop_priv(clicon_handle h,
 	clicon_err(OE_DAEMON, EPERM, "Privileges can only be dropped from root user (uid is %u)\n", uid);
 	goto done;
     }
-    /* When dropping priveleges, datastores are created if they do not exist.
+    /* When dropping privileges, datastores are created if they do not exist.
      * But when drops are not made, datastores are created on demand.
      * XXX: move the creation to top-level so they are always created at init?
      */
@@ -461,6 +461,7 @@ main(int    argc,
     cvec         *nsctx_global = NULL; /* Global namespace context */
     size_t        cligen_buflen;
     size_t        cligen_bufthreshold;
+    int           dbg;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -472,6 +473,7 @@ main(int    argc,
     once = 0;
     zap = 0;
     extraxml_file = NULL;
+    dbg = 0;
 
     /*
      * Command-line options for help, debug, and config-file
@@ -489,7 +491,7 @@ main(int    argc,
 	    help = 1; 
 	    break;
 	case 'D' : /* debug */
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(h, argv[0]);
 	    break;
 	case 'f': /* config file */
@@ -513,8 +515,8 @@ main(int    argc,
      * XXX: if started in a start-daemon script, there will be irritating
      * double syslogs until fork below. 
      */
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
-    clicon_debug_init(debug, NULL);
+    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
+    clicon_debug_init(dbg, NULL);
 
     /* Find and read configfile */
     if (clicon_options_main(h) < 0){
@@ -622,7 +624,7 @@ main(int    argc,
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
     
-    clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO, logdst); 
+    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
     
     /* Defer: Wait to the last minute to print help message */
     if (help)
@@ -880,7 +882,7 @@ main(int    argc,
        demonized errors OK. Before this stage, errors are logged on stderr 
        also */
     if (foreground==0){
-	clicon_log_init(__PROGRAM__, debug?LOG_DEBUG:LOG_INFO,
+	clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO,
 			logdst==CLICON_LOG_FILE?CLICON_LOG_FILE:CLICON_LOG_SYSLOG);
 	if (daemon(0, 0) < 0){
 	    fprintf(stderr, "config: daemon");
@@ -911,8 +913,8 @@ main(int    argc,
 	goto done;
     if (clicon_socket_set(h, ss) < 0)
 	goto done;
-    if (debug)
-	clicon_option_dump(h, debug);
+    if (dbg)
+	clicon_option_dump(h, dbg);
     /* Depending on configure setting, privileges may be dropped here after
      * initializations */
     if (check_drop_priv(h, gid) < 0)

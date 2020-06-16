@@ -927,7 +927,7 @@ url_post(char *url,
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postfields);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postfields));
 
-    if (debug)
+    if (clicon_debug_get())
 	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);   
     if ((errcode = curl_easy_perform(curl)) != CURLE_OK){
 	clicon_debug(1, "%s: curl: %s(%d)", __FUNCTION__, err, errcode);

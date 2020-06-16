@@ -206,7 +206,7 @@ xml2cli(FILE              *f,
     if (yang_keyword_get(ys) == Y_LEAF || yang_keyword_get(ys) == Y_LEAF_LIST){
 	if (prepend0)
 	    fprintf(f, "%s", prepend0);
-	if (gt == GT_ALL || gt == GT_VARS)
+	if (gt == GT_ALL || gt == GT_VARS || gt == GT_HIDE)
 	    fprintf(f, "%s ", xml_name(x));
 	if ((body = xml_body(x)) != NULL){
 	    if (index(body, ' '))
@@ -224,7 +224,12 @@ xml2cli(FILE              *f,
     }
     if (prepend0)
 	cprintf(cbpre, "%s", prepend0);
-    cprintf(cbpre, "%s ", xml_name(x));
+
+    /* If non-presence container && HIDE mode && only child is 
+     * a list, then skip container keyword
+     * See also yang2cli_container */
+    if (yang_container_cli_hide(ys, gt) == 0)
+	cprintf(cbpre, "%s ", xml_name(x));
 
     if (yang_keyword_get(ys) == Y_LIST){
 	/* If list then first loop through keys */
@@ -358,7 +363,7 @@ xml2cvec(cxobj      *xt,
 	    }
 	}
     }
-    if (debug > 1){
+    if (clicon_debug_get() > 1){
 	clicon_debug(2, "%s cvv:\n", __FUNCTION__);
 	cvec_print(stderr, cvv);
     }

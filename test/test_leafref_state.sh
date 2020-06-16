@@ -65,7 +65,7 @@ module leafref{
 }
 EOF
 
-# This is state data writte to file that backend reads from (on request)
+# This is state data written to file that backend reads from (on request)
 cat <<EOF > $fstate
    <sender-state xmlns="urn:example:example">
       <ref>x</ref>
