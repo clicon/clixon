@@ -74,7 +74,7 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
 			      nsc,
 			      &xret) < 0)
 	goto done;
-    xml_print(stdout, xret);
+    clicon_xml2file_cb(stdout, xret, 0, 1, cligen_output);
     retval = 0;
  done:
     if (nsc)
@@ -117,11 +117,11 @@ example_client_rpc(clicon_handle h,
 	goto done;
     }
     /* Print result */
-    clicon_xml2file(stdout, xml_child_i(xret, 0), 0, 0);
+    clicon_xml2file_cb(stdout, xml_child_i(xret, 0), 0, 0, cligen_output);
     fprintf(stdout,"\n");
 
     /* pretty-print:
-       xml2txt(stdout, xml_child_i(xret, 0), 0);
+       xml2txt_cb(stdout, xml_child_i(xret, 0), cligen_output);
     */
     retval = 0;
  done:

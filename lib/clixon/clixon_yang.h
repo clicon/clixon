@@ -227,6 +227,7 @@ int        yang_find_prefix_by_namespace(yang_stmt *ys, char *namespace, char **
 yang_stmt *yang_myroot(yang_stmt *ys);
 yang_stmt *yang_choice(yang_stmt *y);
 int        yang_order(yang_stmt *y);
+int        yang_print_cb(FILE *f, yang_stmt *yn, clicon_output_cb *fn);
 int        yang_print(FILE *f, yang_stmt *yn);
 int        yang_print_cbuf(cbuf *cb, yang_stmt *yn, int marginal);
 int        if_feature(yang_stmt *yspec, char *module, char *feature);

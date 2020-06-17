@@ -652,10 +652,10 @@ compare_xmls(cxobj *xc1,
     xc = NULL;
     if (astext)
 	while ((xc = xml_child_each(xc1, xc, -1)) != NULL)
-	    xml2txt(f, xc, 0);
+	    xml2txt_cb(f, xc, cligen_output);
     else
 	while ((xc = xml_child_each(xc1, xc, -1)) != NULL)
-	    xml_print(f, xc);
+	    clicon_xml2file_cb(f, xc, 0, 1, cligen_output);
 
     fclose(f);
     close(fd);
@@ -669,10 +669,10 @@ compare_xmls(cxobj *xc1,
     xc = NULL;
     if (astext)
 	while ((xc = xml_child_each(xc2, xc, -1)) != NULL)
-	    xml2txt(f, xc, 0);
+	    xml2txt_cb(f, xc, cligen_output);
     else
 	while ((xc = xml_child_each(xc2, xc, -1)) != NULL)
-	    xml_print(f, xc);
+	    clicon_xml2file_cb(f, xc, 0, 1, cligen_output);
     fclose(f);
     close(fd);
 
@@ -1002,15 +1002,15 @@ cli_notification_cb(int   s,
 	while ((x = xml_child_each(xe, x, -1)) != NULL) {
 	    switch (format){
 	    case FORMAT_XML:
-		if (clicon_xml2file(stdout, x, 0, 1) < 0)
+		if (clicon_xml2file_cb(stdout, x, 0, 1, cligen_output) < 0)
 		    goto done;
 		break;
 	    case FORMAT_TEXT:
-		if (xml2txt(stdout, x, 0) < 0)
+		if (xml2txt_cb(stdout, x, cligen_output) < 0)
 		    goto done;
 		break;
 	    case FORMAT_JSON:
-		if (xml2json(stdout, x, 1) < 0)
+		if (xml2json_cb(stdout, x, 1, cligen_output) < 0)
 		    goto done;
 		break;
 	    default:

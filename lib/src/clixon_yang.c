@@ -1245,13 +1245,15 @@ quotedstring(char *s)
 }
 
 /*! Print yang specification to file
- * @param[in]  f         File to print to.
- * @param[in]  yn        Yang node to print
+ * @param[in]  f     File to print to.
+ * @param[in]  yn    Yang node to print
+ * @param[in]  fn    Callback to make print function
  * @see yang_print_cbuf
  */
 int
-yang_print(FILE      *f, 
-	   yang_stmt *yn)
+yang_print_cb(FILE             *f, 
+	      yang_stmt        *yn,
+	      clicon_output_cb *fn)
 {
     int        retval = -1;
     cbuf      *cb = NULL;
@@ -1262,12 +1264,24 @@ yang_print(FILE      *f,
     }
     if (yang_print_cbuf(cb, yn, 0) < 0)
 	goto done;
-    fprintf(f, "%s", cbuf_get(cb));
+    (*fn)(f, "%s", cbuf_get(cb));
     if (cb)
 	cbuf_free(cb);
     retval = 0;
  done:
     return retval;
+}
+
+/*! Print yang specification to file
+ * @param[in]  f         File to print to.
+ * @param[in]  yn        Yang node to print
+ * @see yang_print_cbuf
+ */
+int
+yang_print(FILE      *f, 
+	   yang_stmt *yn)
+{
+    return yang_print_cb(f, yn, fprintf);
 }
 
 /*! Print yang specification to cligen buf

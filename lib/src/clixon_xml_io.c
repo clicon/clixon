@@ -96,15 +96,17 @@
  * @param[in]   xn          clicon xml tree
  * @param[in]   level       how many spaces to insert before each line
  * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
+ * @param[in]   fn          Callback to make print function
  * @see clicon_xml2cbuf
  * One can use clicon_xml2cbuf to get common code, but using fprintf is
  * much faster than using cbuf and then printing that,...
  */
 int
-clicon_xml2file(FILE  *f, 
-		cxobj *x, 
-		int    level, 
-		int    prettyprint)
+xml2file_recurse(FILE             *f, 
+		 cxobj            *x, 
+		 int               level, 
+		 int               prettyprint,
+		 clicon_output_cb *fn)
 {
     int    retval = -1;
     char  *name;
@@ -125,19 +127,19 @@ clicon_xml2file(FILE  *f,
 	    break;
 	if (xml_chardata_encode(&encstr, "%s", val) < 0)
 	    goto done;
-	fprintf(f, "%s", encstr);
+	(*fn)(f, "%s", encstr);
 	break;
     case CX_ATTR:
-	fprintf(f, " ");
+	(*fn)(f, " ");
 	if (namespace)
-	    fprintf(f, "%s:", namespace);
-	fprintf(f, "%s=\"%s\"", name, xml_value(x));
+	    (*fn)(f, "%s:", namespace);
+	(*fn)(f, "%s=\"%s\"", name, xml_value(x));
 	break;
     case CX_ELMNT:
-	fprintf(f, "%*s<", prettyprint?(level*XML_INDENT):0, "");
+	(*fn)(f, "%*s<", prettyprint?(level*XML_INDENT):0, "");
 	if (namespace)
-	    fprintf(f, "%s:", namespace);
-	fprintf(f, "%s", name);
+	    (*fn)(f, "%s:", namespace);
+	(*fn)(f, "%s", name);
 	hasbody = 0;
 	haselement = 0;
 	xc = NULL;
@@ -145,7 +147,7 @@ clicon_xml2file(FILE  *f,
 	while ((xc = xml_child_each(x, xc, -1)) != NULL) {
 	    switch (xml_type(xc)){
 	    case CX_ATTR:
-		if (clicon_xml2file(f, xc, level+1, prettyprint) <0)
+		if (xml2file_recurse(f, xc, level+1, prettyprint, fn) <0)
 		    goto done;
 		break;
 	    case CX_BODY:
@@ -162,26 +164,26 @@ clicon_xml2file(FILE  *f,
 	 * Ie, no CX_BODY or CX_ELMNT child.
 	 */
 	if (hasbody==0 && haselement==0) 
-	    fprintf(f, "/>");
+	    (*fn)(f, "/>");
 	else{
-	    fprintf(f, ">");
+	    (*fn)(f, ">");
 	    if (prettyprint && hasbody == 0)
-		    fprintf(f, "\n");
+		    (*fn)(f, "\n");
 	    xc = NULL;
 	    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
 		if (xml_type(xc) != CX_ATTR)
-		    if (clicon_xml2file(f, xc, level+1, prettyprint) <0)
+		    if (xml2file_recurse(f, xc, level+1, prettyprint, fn) <0)
 			goto done;
 	    }
 	    if (prettyprint && hasbody==0)
-		fprintf(f, "%*s", level*XML_INDENT, "");
-	    fprintf(f, "</");
+		(*fn)(f, "%*s", level*XML_INDENT, "");
+	    (*fn)(f, "</");
 	    if (namespace)
-		fprintf(f, "%s:", namespace);
-	    fprintf(f, "%s>", name);
+		(*fn)(f, "%s:", namespace);
+	    (*fn)(f, "%s>", name);
 	}
 	if (prettyprint)
-	    fprintf(f, "\n");
+	    (*fn)(f, "\n");
 	break;
     default:
 	break;
@@ -194,6 +196,42 @@ clicon_xml2file(FILE  *f,
     return retval;
 }
 
+/*! Print an XML tree structure to an output stream and encode chars "<>&"
+ *
+ * @param[in]   f           UNIX output stream
+ * @param[in]   xn          clicon xml tree
+ * @param[in]   level       how many spaces to insert before each line
+ * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
+ * @see clicon_xml2cbuf print to a cbuf string
+ * @see clicon_xml2cbuf_cb print using a callback
+ */
+int
+clicon_xml2file(FILE  *f, 
+		cxobj *x, 
+		int    level, 
+		int    prettyprint)
+{
+    return xml2file_recurse(f, x, level, prettyprint, fprintf);
+}
+
+/*! Print an XML tree structure to an output stream and encode chars "<>&"
+ *
+ * @param[in]   f           UNIX output stream
+ * @param[in]   xn          clicon xml tree
+ * @param[in]   level       how many spaces to insert before each line
+ * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
+ * @see clicon_xml2cbuf
+ */
+int
+clicon_xml2file_cb(FILE             *f, 
+		   cxobj            *x, 
+		   int               level, 
+		   int               prettyprint,
+		   clicon_output_cb *fn)
+{
+    return xml2file_recurse(f, x, level, prettyprint, fn);
+}
+
 /*! Print an XML tree structure to an output stream
  *
  * Uses clicon_xml2file internally
@@ -201,13 +239,13 @@ clicon_xml2file(FILE  *f,
  * @param[in]   f           UNIX output stream
  * @param[in]   xn          clicon xml tree
  * @see clicon_xml2cbuf
- * @see clicon_xml2file
+ * @see clicon_xml2cbuf_cb print using a callback
  */
 int
 xml_print(FILE  *f, 
-	  cxobj *xn)
+	  cxobj *x)
 {
-    return clicon_xml2file(f, xn, 0, 1);
+    return xml2file_recurse(f, x, 0, 1, fprintf);
 }
 
 /*! Print an XML tree structure to a cligen buffer and encode chars "<>&"

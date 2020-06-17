@@ -53,6 +53,20 @@ typedef void *clicon_handle;
 /* The dynamicically loadable plugin object handle (should be in clixon_plugin.h) */
 typedef void *plghndl_t;
 
+/*! Indirect output functions to print with something else than fprintf
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xn      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     Domain specific arg, ec client-entry or FCGX_Request 
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+typedef int (clicon_output_cb)(
+   FILE *f,
+   const char *templ, ... 
+) __attribute__ ((format (printf, 2, 3)));
+
 /*
  * Prototypes
  */

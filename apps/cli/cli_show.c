@@ -395,19 +395,19 @@ show_yang(clicon_handle h,
 	  cvec         *cvv, 
 	  cvec         *argv)
 {
-  yang_stmt *yn;
-  char      *str = NULL;
-  yang_stmt *yspec;
+    yang_stmt *yn;
+    char      *str = NULL;
+    yang_stmt *yspec;
 
-  yspec = clicon_dbspec_yang(h);	
-  if (cvec_len(argv) > 0){
-      str = cv_string_get(cvec_i(argv, 0));
-      yn = yang_find(yspec, 0, str);
-  }
-  else
-    yn = yspec;
-  yang_print(stdout, yn);
-  return 0;
+    yspec = clicon_dbspec_yang(h);	
+    if (cvec_len(argv) > 0){
+	str = cv_string_get(cvec_i(argv, 0));
+	yn = yang_find(yspec, 0, str);
+    }
+    else
+	yn = yspec;
+    yang_print_cb(stdout, yn, cligen_output); /* Doesnt use cligen_output */
+    return 0;
 }
 
 /*! Show configuration and state internal function
@@ -506,15 +506,15 @@ cli_show_config1(clicon_handle h,
     case FORMAT_XML:
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	    clicon_xml2file(stdout, xc, 0, 1);
+	    clicon_xml2file_cb(stdout, xc, 0, 1, cligen_output);
 	break;
     case FORMAT_JSON:
-	xml2json(stdout, xt, 1);
+	xml2json_cb(stdout, xt, 1, cligen_output);
 	break;
     case FORMAT_TEXT:
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	    xml2txt(stdout, xc, 0); /* tree-formed text */
+	    xml2txt_cb(stdout, xc, cligen_output); /* tree-formed text */
 	break;
     case FORMAT_CLI:
 	/* get CLI generatade mode: VARS|ALL */
@@ -522,14 +522,14 @@ cli_show_config1(clicon_handle h,
 	    goto done;
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
-	    xml2cli(stdout, xc, prefix, gt); /* cli syntax */
+	    xml2cli_cb(stdout, xc, prefix, gt, cligen_output); /* cli syntax */
 	break;
     case FORMAT_NETCONF:
-	fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
+	cligen_output(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	    clicon_xml2file(stdout, xc, 2, 1);
-	fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
+	    clicon_xml2file_cb(stdout, xc, 2, 1, cligen_output);
+	cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	break;
     }
     retval = 0;
@@ -763,15 +763,15 @@ cli_show_auto1(clicon_handle h,
 	    clicon_xml2file(stdout, xp, 0, 1);
 	    break;
 	case FORMAT_JSON:
-	    xml2json(stdout, xp, 1);
+	    xml2json_cb(stdout, xp, 1, cligen_output);
 	    break;
 	case FORMAT_TEXT:
-	    xml2txt(stdout, xp, 0); /* tree-formed text */
+	    xml2txt_cb(stdout, xp, cligen_output); /* tree-formed text */
 	    break;
 	case FORMAT_CLI:
 	    if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
 		goto done;
-	    xml2cli(stdout, xp, prefix, gt); /* cli syntax */
+	    xml2cli_cb(stdout, xp, prefix, gt, cligen_output); /* cli syntax */
 	    break;
 	case FORMAT_NETCONF:
 	    fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");

@@ -129,19 +129,26 @@ tleaf(cxobj *x)
     return (xml_child_nr_notype(xc, CX_ATTR) == 0);
 }
 
-/*! Translate XML -> TEXT
+/*! Translate XML to a "pseudo-code" textual format using a callback - internal function
+ * @param[in]  f      File to print to
+ * @param[in]  x      XML object to print
+ * @param[in]  fn     Callback to make print function
  * @param[in]  level  print 4 spaces per level in front of each line
- * XXX rewrite using YANG and remove encrypted password KLUDGE
  */
-int 
-xml2txt(FILE  *f, 
-	cxobj *x, 
-	int    level)
+static int 
+xml2txt_recurse(FILE             *f, 
+		cxobj            *x, 
+		clicon_output_cb *fn,
+		int               level)
 {
     cxobj *xc = NULL;
     int    children=0;
     int    retval = -1;
 
+    if (f == NULL || x == NULL || fn == NULL){
+	clicon_err(OE_XML, EINVAL, "f, x or fn is NULL");
+	goto done;
+    }
     xc = NULL;     /* count children (elements and bodies, not attributes) */
     while ((xc = xml_child_each(x, xc, -1)) != NULL)
 	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
@@ -149,48 +156,76 @@ xml2txt(FILE  *f,
     if (!children){ /* If no children print line */
 	switch (xml_type(x)){
 	case CX_BODY:
-	    fprintf(f, "%s;\n", xml_value(x));
+	    (*fn)(f, "%s;\n", xml_value(x));
 	    break;
 	case CX_ELMNT:
-	    fprintf(f, "%*s;\n", 4*level, xml_name(x));
+	    (*fn)(f, "%*s;\n", 4*level, xml_name(x));
 	    break;
 	default:
 	    break;
 	}
 	goto ok;
     }
-    fprintf(f, "%*s", 4*level, "");
-    fprintf(f, "%s ", xml_name(x));
+    (*fn)(f, "%*s", 4*level, "");
+    (*fn)(f, "%s ", xml_name(x));
     if (!tleaf(x))
-	fprintf(f, "{\n");
+	(*fn)(f, "{\n");
     xc = NULL;
     while ((xc = xml_child_each(x, xc, -1)) != NULL){
 	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
-	    if (xml2txt(f, xc, level+1) < 0)
+	    if (xml2txt_recurse(f, xc, fn, level+1) < 0)
 		break;
     }
     if (!tleaf(x))
-	fprintf(f, "%*s}\n", 4*level, "");
+	(*fn)(f, "%*s}\n", 4*level, "");
  ok:
     retval = 0;
-    //  done:
+ done:
     return retval;
+}
+
+/*! Translate XML to a "pseudo-code" textual format using a callback
+ * @param[in]  f      File to print to
+ * @param[in]  x      XML object to print
+ * @param[in]  fn     Callback to make print function
+ */
+int 
+xml2txt_cb(FILE             *f, 
+	   cxobj            *x, 
+	   clicon_output_cb *fn)
+{
+    return xml2txt_recurse(f, x, fn, 0);
+}
+
+/*! Translate XML to a "pseudo-code" textual format using stdio file
+ * @param[in]  f      File to print to
+ * @param[in]  x      XML object to print
+ * @param[in]  level  print 4 spaces per level in front of each line
+ * @see xml2txt_cb
+ */
+int 
+xml2txt(FILE  *f, 
+	cxobj *x, 
+	int    level)
+{
+    return xml2txt_recurse(f, x, fprintf, 0);
 }
 
 /*! Translate from XML to CLI commands
  * Howto: join strings and pass them down. 
  * Identify unique/index keywords for correct set syntax.
- * Args:
- *  @param[in] f        Where to print cli commands
- *  @param[in] x        XML Parse-tree (to translate)
- *  @param[in] prepend0 Print this text in front of all commands.
- *  @param[in] gt       option to steer cli syntax
+ * @param[in] f        Where to print cli commands
+ * @param[in] x        XML Parse-tree (to translate)
+ * @param[in] prepend  Print this text in front of all commands.
+ * @param[in] gt       option to steer cli syntax
+ * @param[in] fn       Callback to make print function
  */
 int 
-xml2cli(FILE              *f, 
-	cxobj             *x, 
-	char              *prepend0, 
-	enum genmodel_type gt)
+xml2cli_recurse(FILE              *f, 
+		cxobj             *x, 
+		char              *prepend, 
+		enum genmodel_type gt,
+		clicon_output_cb  *fn)
 {
     int              retval = -1;
     cxobj           *xe = NULL;
@@ -204,17 +239,17 @@ xml2cli(FILE              *f,
     if ((ys = xml_spec(x)) == NULL)
 	goto ok;
     if (yang_keyword_get(ys) == Y_LEAF || yang_keyword_get(ys) == Y_LEAF_LIST){
-	if (prepend0)
-	    fprintf(f, "%s", prepend0);
+	if (prepend)
+	    (*fn)(f, "%s", prepend);
 	if (gt == GT_ALL || gt == GT_VARS || gt == GT_HIDE)
-	    fprintf(f, "%s ", xml_name(x));
+	    (*fn)(f, "%s ", xml_name(x));
 	if ((body = xml_body(x)) != NULL){
 	    if (index(body, ' '))
-		fprintf(f, "\"%s\"", body);
+		(*fn)(f, "\"%s\"", body);
 	    else
-		fprintf(f, "%s", body);
+		(*fn)(f, "%s", body);
 	}
-	fprintf(f, "\n");
+	(*fn)(f, "\n");
 	goto ok;
     }
     /* Create prepend variable string */
@@ -222,8 +257,8 @@ xml2cli(FILE              *f,
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
 	goto done;
     }
-    if (prepend0)
-	cprintf(cbpre, "%s", prepend0);
+    if (prepend)
+	cprintf(cbpre, "%s", prepend);
 
     /* If non-presence container && HIDE mode && only child is 
      * a list, then skip container keyword
@@ -251,11 +286,11 @@ xml2cli(FILE              *f,
 	    if ((match = yang_key_match(ys, xml_name(xe))) < 0)
 		goto done;
 	    if (match){
-		fprintf(f, "%s\n", cbuf_get(cbpre));	
+		(*fn)(f, "%s\n", cbuf_get(cbpre));	
 		continue; /* Not key itself */
 	    }
 	}
-	if (xml2cli(f, xe, cbuf_get(cbpre), gt) < 0)
+	if (xml2cli_recurse(f, xe, cbuf_get(cbpre), gt, fn) < 0)
 	    goto done;
     }
  ok:
@@ -264,6 +299,43 @@ xml2cli(FILE              *f,
     if (cbpre)
 	cbuf_free(cbpre);
     return retval;
+}
+
+/*! Translate from XML to CLI commands
+ * Howto: join strings and pass them down. 
+ * Identify unique/index keywords for correct set syntax.
+ * @param[in] f        Where to print cli commands
+ * @param[in] x        XML Parse-tree (to translate)
+ * @param[in] prepend  Print this text in front of all commands.
+ * @param[in] gt       option to steer cli syntax
+ * @param[in] fn       Callback to make print function
+ */
+int 
+xml2cli_cb(FILE              *f, 
+	   cxobj             *x, 
+	   char              *prepend, 
+	   enum genmodel_type gt,
+	   clicon_output_cb  *fn)
+{
+    return xml2cli_recurse(f, x, prepend, gt, fn);
+}
+
+/*! Translate from XML to CLI commands
+ * Howto: join strings and pass them down. 
+ * Identify unique/index keywords for correct set syntax.
+ * Args:
+ *  @param[in] f        Where to print cli commands
+ *  @param[in] x        XML Parse-tree (to translate)
+ *  @param[in] prepend  Print this text in front of all commands.
+ *  @param[in] gt       option to steer cli syntax
+ */
+int 
+xml2cli(FILE              *f, 
+	cxobj             *x, 
+	char              *prepend, 
+	enum genmodel_type gt)
+{
+    return xml2cli_recurse(f, x, prepend, gt, fprintf);
 }
 
 /*! Translate a single xml node to a cligen variable vector. Note not recursive 

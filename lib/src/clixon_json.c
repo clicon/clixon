@@ -1007,6 +1007,43 @@ xml2json_cbuf_vec(cbuf      *cb,
     return retval;
 }
 
+/*! Translate from xml tree to JSON and print to file using a callback
+ * @param[in]  f      File to print to
+ * @param[in]  x      XML tree to translate from
+ * @param[in]  pretty Set if output is pretty-printed
+ * @retval     0      OK
+ * @retval    -1      Error
+ *
+ * @note yang is necessary to translate to one-member lists,
+ * eg if a is a yang LIST <a>0</a> -> {"a":["0"]} and not {"a":"0"}
+ * @code
+ * if (xml2json(stderr, xn, 0) < 0)
+ *   goto err;
+ * @endcode
+ */
+int 
+xml2json_cb(FILE             *f, 
+	    cxobj            *x, 
+	    int               pretty,
+	    clicon_output_cb *fn)
+{
+    int   retval = 1;
+    cbuf *cb = NULL;
+
+    if ((cb = cbuf_new()) ==NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    if (xml2json_cbuf(cb, x, pretty) < 0)
+	goto done;
+    (*fn)(f, "%s", cbuf_get(cb));
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
 /*! Translate from xml tree to JSON and print to file
  * @param[in]  f      File to print to
  * @param[in]  x      XML tree to translate from
@@ -1026,22 +1063,9 @@ xml2json(FILE      *f,
 	 cxobj     *x, 
 	 int        pretty)
 {
-    int   retval = 1;
-    cbuf *cb = NULL;
-
-    if ((cb = cbuf_new()) ==NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }
-    if (xml2json_cbuf(cb, x, pretty) < 0)
-	goto done;
-    fprintf(f, "%s", cbuf_get(cb));
-    retval = 0;
- done:
-    if (cb)
-	cbuf_free(cb);
-    return retval;
+    return xml2json_cb(f, x, pretty, fprintf);
 }
+
 
 /*! Print an XML tree structure to an output stream as JSON
  *
@@ -1050,9 +1074,9 @@ xml2json(FILE      *f,
  */
 int
 json_print(FILE  *f, 
-	   cxobj *xn)
+	   cxobj *x)
 {
-    return xml2json(f, xn, 1);
+    return xml2json_cb(f, x, 1, fprintf);
 }
 
 /*! Translate a vector of xml objects to JSON File.

@@ -40,14 +40,19 @@
 #ifndef _CLIXON_XML_MAP_H_
 #define _CLIXON_XML_MAP_H_
 
-/* declared in clixon_yang_internal */
+/*
+ * Types
+ */
+/* Declared in clixon_yang_internal */
 typedef enum yang_class yang_class;
 
 /*
  * Prototypes
  */
 int isxmlns(cxobj *x);
+int xml2txt_cb(FILE *f, cxobj *x, clicon_output_cb *fn);
 int xml2txt(FILE *f, cxobj *x, int level);
+int xml2cli_cb(FILE *f, cxobj *x, char *prepend, enum genmodel_type gt, clicon_output_cb *fn);
 int xml2cli(FILE *f, cxobj *x, char *prepend, enum genmodel_type gt);
 int xmlns_assign(cxobj *x);
 int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
