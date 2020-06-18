@@ -554,7 +554,7 @@ yang_parse_file(int         fd,
 	}
 	if (ret == 0)
 	    break; /* eof */
-	if (len==i){
+	if (i == len-1){
 	    if ((buf = realloc(buf, 2*len)) == NULL){
 		clicon_err(OE_XML, errno, "realloc");
 		goto done;
