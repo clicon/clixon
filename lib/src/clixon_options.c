@@ -443,7 +443,7 @@ clicon_options_main(clicon_handle h)
  * @param[in] h     clicon_handle
  * @param[in] name  option name
  * @retval  !=0     option exists
- * @retval    0     option does not exists
+ * @retval    0     option does not exist
  */
 int
 clicon_option_exists(clicon_handle h,
@@ -496,10 +496,10 @@ clicon_option_str_set(clicon_handle h,
  *
  * @param[in] h    clicon handle
  * @param[in] name name of option
- * @retval    int  An integer as aresult of atoi
+ * @retval    int  An integer as a result of atoi
  * @retval    -1   If option does not exist
  * @code
- *  if (clicon_option_exists(h, "X")
+ *  if (clicon_option_exists(h, "X"))
  *	return clicon_option_int(h, "X");
  *  else
  *      return 0;

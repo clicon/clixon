@@ -64,3 +64,4 @@
 #include "restconf_lib.h"
 #include "restconf_api.h"
 
+/* empty */

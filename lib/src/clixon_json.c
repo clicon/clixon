@@ -1429,7 +1429,7 @@ clixon_json_parse_file(int        fd,
 	    }
 	    break;
 	}
-	if (len>=jsonbuflen-1){ /* Space: one for the null character */
+	if (len >= jsonbuflen-1){ /* Space: one for the null character */
 	    oldjsonbuflen = jsonbuflen;
 	    jsonbuflen *= 2;
 	    if ((jsonbuf = realloc(jsonbuf, jsonbuflen)) == NULL){

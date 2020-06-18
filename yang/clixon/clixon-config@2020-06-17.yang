@@ -42,9 +42,10 @@ module clixon-config {
 
     /* 	    Deleted:  clixon-stats state for clixon XML and memory statistics. (moved to clixon-lib)
      */
-    revision 2020-07-19 {
+    revision 2020-06-17 {
 	description
-	    "";
+	    "Added: CLICON_CLI_LINES_DEFAULT
+             Added enum HIDE to CLICON_CLI_GENMODEL";
     }
     revision 2020-04-23 {
 	description
@@ -450,11 +451,17 @@ module clixon-config {
                  Set to 1 if you  want CLI to scroll sideways when approaching 
                       right margin";
 	}
-	leaf CLICON_CLI_LINEROWS {
+	leaf CLICON_CLI_LINES_DEFAULT {
 	    type int32;
 	    default 24;
 	    description
-		"Set to number of terminal rows in ";
+		"Set to number of CLI terminal rows for pageing/scrolling. 0 means unlimited.
+                 The number is set statically UNLESS:
+                 - there is no terminal, such as file input, in which case nr lines is 0
+                 - there is a terminal sufficiently powerful to read the number of lines from
+                   ioctl calls.
+                 In other words, this setting is used ONLY on raw terminals such as serial
+                 consoles.";
 	}
 	leaf CLICON_CLI_TAB_MODE {
 	    type int8;

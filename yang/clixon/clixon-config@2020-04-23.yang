@@ -159,9 +159,6 @@ module clixon-config {
 	    enum ALL{
 		description "Keywords on all variables: c a x <x> y <y>";
 	    }
-	    enum HIDE{
-		description "Keywords on non-key variables and hide container around lists: a <x> y <y>";
-	    }
 	}
     }
     typedef nacm_mode{

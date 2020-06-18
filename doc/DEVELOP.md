@@ -149,3 +149,8 @@ Merge a branch back:
 ## Use of constants etc
 
 Use MAXPATHLEN (not PATH_MAX)
+
+## Emulating a serial console
+
+olof@alarik> socat PTY,link=/tmp/clixon-tty,rawer EXEC:"/usr/local/bin/clixon_cli -f /usr/local/etc/example.xml",pty,stderr &
+olof@alarik> screen /tmp/clixon-tty

@@ -648,7 +648,7 @@ clixon_xml_parse_file(int        fd,
 		failed++;
 	    break;
 	}
-	if (len>=xmlbuflen-1){ /* Space: one for the null character */
+	if (len >= xmlbuflen-1){ /* Space: one for the null character */
 	    oldxmlbuflen = xmlbuflen;
 	    xmlbuflen *= 2;
 	    if ((xmlbuf = realloc(xmlbuf, xmlbuflen)) == NULL){

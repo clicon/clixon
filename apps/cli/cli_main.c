@@ -398,7 +398,8 @@ main(int    argc,
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
-    /* Initiate CLICON handle */
+
+    /* Initiate CLICON handle. CLIgen is also initialized */
     if ((h = cli_handle_init()) == NULL)
 	goto done;
 
@@ -556,6 +557,13 @@ main(int    argc,
     cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
     cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
     cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
+
+    /* Init row numbers for raw terminals */
+    if (clicon_option_exists(h, "CLICON_CLI_LINES_DEFAULT")){
+	int rows;
+	rows = clicon_option_int(h, "CLICON_CLI_LINES_DEFAULT");
+	cligen_terminal_rows_set(cli_cligen(h), rows);
+    }
     
     if (clicon_yang_regexp(h) == REGEXP_LIBXML2){
 #ifdef HAVE_LIBXML2

@@ -42,13 +42,16 @@ Expected: July 2020
 	
 ### API changes on existing protocol/config features (For users)
 
-  * Restconf FCGI (eg via nginx) have changed reply message syntax slightly as follows (due to refactoring and common code with evhtp):
+* New clixon-config@2020-06-17.yang revision
+  * Added CLICON_CLI_LINES_DEFAULT for setting window row size of raw terminals
+  * Added  enum HIDE to CLICON_CLI_GENMODEL for auto-cli
+* Restconf FCGI (eg via nginx) have changed reply message syntax slightly as follows (due to refactoring and common code with evhtp):
     * Bodies in error reyruns including html code have been removed
     * Some (extra) CRLF:s have been removed
 
 ### C/CLI-API changes on existing features (For developers)
 
-* Added new cli show functions to work with cligen_output for cligen pageing to work. To acheive this, add a callback function as follows:
+* Added new cli show functions to work with cligen_output for cligen pageing to work. To achieve this, replace function calls as follows:
   * xml2txt(...) --> xml2txt_cb(..., cligen_output)
   * xml2cli(...) --> xml2cli_cb(..., cligen_output)
   * clicon_xml2file(...) --> clicon_xml2file_cb(..., cligen_output)
