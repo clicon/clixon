@@ -102,8 +102,6 @@ restconf_badrequest(clicon_handle h,
     if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
 	goto done;
     cprintf(cb, "The requested URL %s or data is in some way badly formed.\n", path);
-    if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
-	goto done;
     if (restconf_reply_send(req, 400, cb) < 0)
 	goto done;
     retval = 0;
@@ -144,9 +142,6 @@ restconf_unauthorized(clicon_handle h,
 	goto done;
     cprintf(cb, "<error-tag>access-denied</error-tag>\n");
     cprintf(cb, "The requested URL %s was unauthorized.\n", path);
-    if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
-	goto done;
-
     if (restconf_reply_send(req, 400, cb) < 0)
 	goto done;
     retval = 0;
@@ -184,8 +179,6 @@ restconf_forbidden(clicon_handle h,
     if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
 	goto done;
     cprintf(cb, "The requested URL %s was forbidden.\n", path);
-    if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
-	goto done;
     if (restconf_reply_send(req, 403, cb) < 0)
 	goto done;
     retval = 0;
@@ -224,8 +217,6 @@ restconf_notfound(clicon_handle h,
     if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
 	goto done;
     cprintf(cb, "The requested URL %s was not found on this server.\n", path);
-    if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
-	goto done;
     if (restconf_reply_send(req, 404, cb) < 0)
 	goto done;
     retval = 0;
@@ -283,8 +274,6 @@ restconf_notacceptable(clicon_handle h,
     if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
 	goto done;
     cprintf(cb, "The target resource does not have a current representation that would be acceptable to the user agent.\n", path);
-    if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
-	goto done;
     if (restconf_reply_send(req, 406, cb) < 0)
 	goto done;
     retval = 0;
@@ -353,8 +342,6 @@ restconf_internal_server_error(clicon_handle h,
     if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
 	goto done;
     cprintf(cb, "Internal server error when accessing %s</h1>\n", path);
-    if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)=
-	goto done;
     if (restconf_reply_send(req, 500, cb) < 0)
 	goto done;
     retval = 0;
@@ -479,8 +466,6 @@ api_return_err(clicon_handle h,
 	goto done;
 	break;
     } /* switch media */
-    if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
-	goto done;
     if (restconf_reply_send(req, code, cb) < 0)
 	goto done;
     // ok:

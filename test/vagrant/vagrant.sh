@@ -36,6 +36,7 @@ Vagrant.configure("2") do |config|
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://vagrantcloud.com/search.
   config.vm.box = "$box"
+  config.vm.box_check_update = true
   config.ssh.shell = "sh" # freebsd
   config.vm.define "$host"
   config.vm.hostname = "$host"

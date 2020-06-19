@@ -65,9 +65,11 @@
 #include "restconf_api.h"
 #include "restconf_err.h"
 #include "restconf_root.h"
+#include "restconf_methods.h"
+#include "restconf_methods_get.h"
+#include "restconf_methods_post.h"
 
-
-/*! Determine the root of the RESTCONF API
+/*! Determine the root of the RESTCONF API by accessing /.well-known
  * @param[in]  h        Clicon handle
  * @param[in]  req      Generic Www handle (can be part of clixon handle)
  * @see RFC8040 3.1 and RFC7320
@@ -105,9 +107,6 @@ api_well_known(clicon_handle h,
     cprintf(cb, "   <Link rel='restconf' href='/restconf'/>\n");
     cprintf(cb, "</XRD>\r\n");
 
-    /* Must be after body */
-    if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
-	goto done;
     if (restconf_reply_send(req, 200, cb) < 0)
 	goto done;
  ok:
@@ -118,19 +117,19 @@ api_well_known(clicon_handle h,
     return retval;
 }
 
-/*! Retrieve the Top-Level API Resource
+/*! Retrieve the Top-Level API Resource /restconf/ (exact)
  * @param[in]  h        Clicon handle
  * @param[in]  r        Fastcgi request handle
  * @note Only returns null for operations and data,...
  * See RFC8040 3.3
- * XXX doesnt check method
+ * @see api_root_restconf for accessing /restconf/ *
  */
 static int
-api_root(clicon_handle  h,
-	 void          *req,
-	 char          *request_method,
-	 int            pretty,
-	 restconf_media media_out)
+api_root_restconf_exact(clicon_handle  h,
+			void          *req,
+			char          *request_method,
+			int            pretty,
+			restconf_media media_out)
 
 {
     int        retval = -1;
@@ -175,8 +174,6 @@ api_root(clicon_handle  h,
     default:
 	break;
     }
-    if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
-	goto done;
     if (restconf_reply_send(req, 200, cb) < 0)
 	goto done;
  ok:
@@ -199,20 +196,16 @@ api_yang_library_version(clicon_handle h,
 			 restconf_media media_out)
     
 {
-#if 1
-    clicon_debug(1, "%s", __FUNCTION__);
-    return 0;
-#else
     int    retval = -1;
     cxobj *xt = NULL;
     cbuf  *cb = NULL;
     char  *ietf_yang_library_revision = "2016-06-21"; /* XXX */
 
     clicon_debug(1, "%s", __FUNCTION__);
-    FCGX_SetExitStatus(200, r->out); /* OK */
-    FCGX_FPrintF(r->out, "Cache-Control: no-cache\r\n");
-    FCGX_FPrintF(r->out, "Content-Type: %s\r\n", restconf_media_int2str(media_out));
-    FCGX_FPrintF(r->out, "\r\n");
+    if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
+	goto done;
+    if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
+	goto done;
     if (clixon_xml_parse_va(YB_NONE, NULL, &xt, NULL,
 			    "<yang-library-version>%s</yang-library-version>",
 			    ietf_yang_library_revision) < 0)
@@ -220,6 +213,7 @@ api_yang_library_version(clicon_handle h,
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
     if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
     switch (media_out){
@@ -234,9 +228,8 @@ api_yang_library_version(clicon_handle h,
     default:
 	break;
     }
-    clicon_debug(1, "%s cb%s", __FUNCTION__, cbuf_get(cb));
-    FCGX_FPrintF(r->out, "%s\n", cb?cbuf_get(cb):"");
-    FCGX_FPrintF(r->out, "\n\n");
+    if (restconf_reply_send(req, 200, cb) < 0)
+	goto done;
     retval = 0;
  done:
     if (cb)
@@ -244,7 +237,6 @@ api_yang_library_version(clicon_handle h,
     if (xt)
 	xml_free(xt);
     return retval;
-#endif
 }
 
 /*! Generic REST method, GET, PUT, DELETE, etc
@@ -269,10 +261,6 @@ api_data(clicon_handle h,
 	 int           pretty,
 	 restconf_media media_out)
 {
-#if 1
-    clicon_debug(1, "%s", __FUNCTION__);
-    return 0;
-#else
     int     retval = -1;
     char   *request_method;
 
@@ -296,104 +284,6 @@ api_data(clicon_handle h,
     else
 	retval = restconf_notfound(h, req);
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    return retval;
-#endif
-}
-
-/*! Move back to restconf_methods_get
- */
-static int
-api_operations_get(clicon_handle h,
-		   void         *req, 
-		   char         *path, 
-		   int           pi,
-		   cvec         *qvec, 
-		   char         *data,
-		   int           pretty,
-		   restconf_media media_out)
-{
-    int        retval = -1;
-    yang_stmt *yspec;
-    yang_stmt *ymod; /* yang module */
-    yang_stmt *yc;
-    char      *namespace;
-    cbuf      *cb = NULL;
-    cxobj     *xt = NULL;
-    int        i;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
-    yspec = clicon_dbspec_yang(h);
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    switch (media_out){
-    case YANG_DATA_XML:
-	cprintf(cb, "<operations>");
-	break;
-    case YANG_DATA_JSON:
-	if (pretty)
-	    cprintf(cb, "{\"operations\": {\n");
-	else
-	    cprintf(cb, "{\"operations\":{");
-	break;
-    default:
-	break;
-    }
-    ymod = NULL;
-    i = 0;
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	namespace = yang_find_mynamespace(ymod);
-	yc = NULL; 
-	while ((yc = yn_each(ymod, yc)) != NULL) {
-	    if (yang_keyword_get(yc) != Y_RPC)
-		continue;
-	    switch (media_out){
-	    case YANG_DATA_XML:
-		cprintf(cb, "<%s xmlns=\"%s\"/>", yang_argument_get(yc), namespace);
-		break;
-	    case YANG_DATA_JSON:
-		if (i++){
-		    cprintf(cb, ",");
-		    if (pretty)
-			cprintf(cb, "\n\t");
-		}
-		if (pretty)
-		    cprintf(cb, "\"%s:%s\": [null]", yang_argument_get(ymod), yang_argument_get(yc));
-		else
-		    cprintf(cb, "\"%s:%s\":[null]", yang_argument_get(ymod), yang_argument_get(yc));
-		break;
-	    default:
-		break;
-	    }
-	}
-    }
-    switch (media_out){
-    case YANG_DATA_XML:
-	cprintf(cb, "</operations>");
-	break;
-    case YANG_DATA_JSON:
-	if (pretty)
-	    cprintf(cb, "}\n}");
-	else
-	    cprintf(cb, "}}");
-	break;
-    default:
-	break;
-    }
-    if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
-	goto done;
-    if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
-	goto done;
-    if (restconf_reply_send(req, 200, cb) < 0)
-	goto done;
-    retval = 0;
- done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    if (cb)
-        cbuf_free(cb);
-    if (xt)
-	xml_free(xt);
     return retval;
 }
 
@@ -425,11 +315,9 @@ api_operations(clicon_handle h,
     clicon_debug(1, "%s", __FUNCTION__);
     if (strcmp(request_method, "GET")==0)
 	retval = api_operations_get(h, req, path, pi, qvec, data, pretty, media_out);
-#ifdef NYI
     else if (strcmp(request_method, "POST")==0)
 	retval = api_operations_post(h, req, path, pi, qvec, data,
 				     pretty, media_out);
-#endif
     else
 	retval = restconf_notfound(h, req);
     return retval;
@@ -439,6 +327,7 @@ api_operations(clicon_handle h,
  * @param[in]  h     Clicon handle
  * @param[in]  req   Generic Www handle (can be part of clixon handle)
  * @param[in]  qvec  Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
+ * @see api_root_restconf_exact for accessing /restconf/ exact
  */
 int
 api_root_restconf(clicon_handle h,
@@ -506,7 +395,7 @@ api_root_restconf(clicon_handle h,
 	goto done;
     }
     if (pn == 2){
-	retval = api_root(h, req, request_method, pretty, media_out);
+	retval = api_root_restconf_exact(h, req, request_method, pretty, media_out);
 	goto done;
     }
     if ((api_resource = pvec[2]) == NULL){
@@ -546,10 +435,10 @@ api_root_restconf(clicon_handle h,
     }
     clicon_debug(1, "%s auth2:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
     if (strcmp(api_resource, "yang-library-version")==0){
-	if (api_yang_library_version(h, req, pretty, media_out) < 0) /* XXX NYI */
+	if (api_yang_library_version(h, req, pretty, media_out) < 0)
 	    goto done;
     }
-    else if (strcmp(api_resource, "data") == 0){ /* restconf, skip /api/data */ /* XXX NYI */
+    else if (strcmp(api_resource, "data") == 0){ /* restconf, skip /api/data */
 	if (api_data(h, req, path, pcvec, 2, qvec, indata,
 		     pretty, media_out) < 0)
 	    goto done;

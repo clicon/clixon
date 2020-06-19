@@ -138,11 +138,41 @@ evhtp_method2str(enum htp_method m)
     case htp_method_DELETE:
 	return "DELETE";
 	break;
+    case htp_method_MKCOL:
+	return "MKCOL";
+	break;
+    case htp_method_COPY:
+	return "COPY";
+	break;
+    case htp_method_MOVE:
+	return "MOVE";
+	break;
+    case htp_method_OPTIONS:
+	return "OPTIONS";
+	break;
+    case htp_method_PROPFIND:
+	return "PROPFIND";
+	break;
+    case htp_method_PROPPATCH:
+	return "PROPPATCH";
+	break;
+    case htp_method_LOCK:
+	return "LOCK";
+	break;
+    case htp_method_UNLOCK:
+	return "UNLOCK";
+	break;
+    case htp_method_TRACE:
+	return "TRACE";
+	break;
+    case htp_method_CONNECT:
+	return "CONNECT";
+	break;
     case htp_method_PATCH:
 	return "PATCH";
 	break;
     default:
-	return "XXX";
+	return "UNKNOWN";
 	break;
     }
 }
@@ -221,7 +251,6 @@ evhtp_params_set(clicon_handle    h,
 	    clicon_err(OE_CFG, errno, "evhtp_kvs_for_each");
 	    goto done;
 	}
-
     if (clixon_restconf_param_set(h, "REQUEST_METHOD", evhtp_method2str(meth)) < 0)
 	goto done;
     if (clixon_restconf_param_set(h, "REQUEST_URI", path->full) < 0)
@@ -327,6 +356,7 @@ cx_path_wellknown(evhtp_request_t *req,
 {
     clicon_handle       h = arg;
 
+    clicon_debug(1, "------------");
     /* input debug */
     if (clicon_debug_get())
 	evhtp_headers_for_each(req->headers_in, print_header, h);
@@ -356,6 +386,7 @@ cx_path_restconf(evhtp_request_t *req,
     clicon_handle h = arg;
     cvec         *qvec = NULL;
 
+    clicon_debug(1, "------------");
     /* input debug */
     if (clicon_debug_get())
 	evhtp_headers_for_each(req->headers_in, print_header, h);

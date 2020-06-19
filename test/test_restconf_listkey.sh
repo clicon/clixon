@@ -99,7 +99,7 @@ new "restconf GET whole list entry"
 expectpart "$(curl -sik -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/)" 0 "HTTP/1.1 200 OK" '{"list:c":{"a":\[{"b":"x","c":"y","nonkey":"0"}\]}}'
 
 new "restconf GET list entry itself (should fail)"
-expectpart "$(curl -si -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a)" 0 'HTTP/1.1 400 Bad Request' '^{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"malformed key =a, expected '
+expectpart "$(curl -sik -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a)" 0 'HTTP/1.1 400 Bad Request' '^{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"malformed key =a, expected '
 
 new "restconf GET list entry"
 expectpart "$(curl -sik -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x,y)" 0 "HTTP/1.1 200 OK" '{"list:a":\[{"b":"x","c":"y","nonkey":"0"}\]}'

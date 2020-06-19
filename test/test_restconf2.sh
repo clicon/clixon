@@ -190,7 +190,7 @@ expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example:cont1/
 
 #--------------- json type tests
 new "restconf POST type x3 POST"
-expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" -d '{"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created" "Location: http://localhost/restconf/data/example:types"
+expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" -d '{"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created" "Location: $RCPROTO://localhost/restconf/data/example:types"
 
 new "restconf POST type x3 GET"
 expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example:types)" 0 "HTTP/1.1 200 OK" '{"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}}'

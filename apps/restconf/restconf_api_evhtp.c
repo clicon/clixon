@@ -148,12 +148,18 @@ restconf_reply_send(void  *req0,
     htp_sslutil_add_xheaders(req->headers_out, conn->ssl, HTP_SSLUTILS_XHDR_ALL);
 #endif
 
+    /* If body, add a content-length header */
+    if (cb != NULL && cbuf_len(cb))
+	if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
+	    goto done;
+
     /* create evbuffer* : bufferevent_write_buffer/ drain, 
        ie send everything , except body */
     evhtp_send_reply_start(req, req->status); 
 
     /* Write a body if cbuf is nonzero */
     if (cb != NULL && cbuf_len(cb)){
+
 	/* Suboptimal, copy from cbuf to evbuffer */
 	if ((eb = evbuffer_new()) == NULL){
 	    clicon_err(OE_CFG, errno, "evbuffer_new");

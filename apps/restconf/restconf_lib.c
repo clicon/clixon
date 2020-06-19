@@ -441,6 +441,7 @@ clixon_restconf_param_set(clicon_handle h,
 			  char        *param,
     			  char         *val)
 {
+    clicon_debug(1, "%s=%s", param, val);
     return clicon_data_set(h, param, val);
 }
 
