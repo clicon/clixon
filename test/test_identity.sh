@@ -156,7 +156,7 @@ wait_backend
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
-    sudo pkill -u $wwwuser -f clixon_restconf
+    stop_restconf_pre
 
     new "start restconf daemon"
     start_restconf -f $cfg
@@ -270,37 +270,37 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<
 # 2. set identity in other module with restconf , read it with restconf and netconf
 # 3. set identity in other module with netconf, read it with restconf and netconf
 new "restconf add own identity"
-expectpart "$(curl -s -i -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/example:crypto  -d '{"example:crypto":"example:aes"}')" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:crypto  -d '{"example:crypto":"example:aes"}')" 0 'HTTP/1.1 201 Created'
 
 new "restconf get own identity"
-expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"aes"}'
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"aes"}'
 
 new "netconf get own identity as set by restconf"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><crypto xmlns="urn:example:my-crypto">aes</crypto></data></rpc-reply>]]>]]>$'
 
 new "restconf delete identity"
-expectpart "$(curl -s -i -X DELETE  http://localhost/restconf/data/example:crypto)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl -sik -X DELETE $RCPROTO://localhost/restconf/data/example:crypto)" 0 "HTTP/1.1 204 No Content"
 
 # 2. set identity in other module with restconf , read it with restconf and netconf
 if ! $YANG_UNKNOWN_ANYDATA ; then
 new "restconf add POST instead of PUT (should fail)"
-expectpart "$(curl -s -i -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/example:crypto -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"crypto"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: crypto with parent: crypto in namespace: urn:example:my-crypto"}}}'
+expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:crypto -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"crypto"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: crypto with parent: crypto in namespace: urn:example:my-crypto"}}}'
 fi
 
 # Alternative error:
 #'{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"crypto"},"error-severity":"error","error-message":"Leaf contains sub-element"}}}'
 
 new "restconf add other (des) identity using POST"
-expectpart "$(curl -s -i -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data  -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 201 Created' 'Location: http://localhost/restconf/data/example:crypto'
+expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data  -d '{"example:crypto":"example-des:des3"}')" 0 'HTTP/1.1 201 Created' "Location: $RCPROTO://localhost/restconf/data/example:crypto"
 
 new "restconf get other identity"
-expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"example-des:des3"}'
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"example-des:des3"}'
 
 new "netconf get other identity"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><crypto xmlns="urn:example:my-crypto" xmlns:des="urn:example:des">des:des3</crypto></data></rpc-reply>]]>]]>$'
 
 new "restconf delete identity"
-expectpart "$(curl -s -i -X DELETE  http://localhost/restconf/data/example:crypto)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl -sik -X DELETE $RCPROTO://localhost/restconf/data/example:crypto)" 0 "HTTP/1.1 204 No Content"
 
 # 3. set identity in other module with netconf, read it with restconf and netconf
 new "netconf set other identity"
@@ -310,7 +310,7 @@ new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "restconf get other identity (set by netconf)"
-expectpart "$(curl -s -i -X GET http://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"example-des:des3"}'
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"example-des:des3"}'
 
 new "netconf get other identity"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><crypto xmlns="urn:example:my-crypto" xmlns:des="urn:example:des">des:des3</crypto></data></rpc-reply>]]>]]>$'

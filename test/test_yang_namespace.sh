@@ -78,14 +78,16 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    stop_restconf_pre
 
-new "start restconf daemon"
-start_restconf -f $cfg 
+    new "start restconf daemon"
+    start_restconf -f $cfg 
 
-new "waiting"
-wait_restconf
+    new "waiting"
+    wait_restconf
+fi
 
 new "netconf set x in example1"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon1">42</x></config></edit-config></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><ok/></rpc-reply>]]>]]>$'
@@ -122,15 +124,17 @@ expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" -d
 #expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example2:x)" 0 "HTTP/1.1 200 OK" '{"example2:x":{"y":42}}'
 
 new "restconf get config example1 and example2"
-ret=$(curl -s -X GET http://localhost/restconf/data)
+ret=$(curl -sik -X GET $RCPROTO://localhost/restconf/data)
 expect='"example1:x":42,"example2:x":{"y":99}'
 match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
 
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf 
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE

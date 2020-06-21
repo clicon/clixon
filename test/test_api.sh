@@ -226,10 +226,10 @@ if [ $BE -ne 0 ]; then
 
 new "waiting"
 wait_backend
-    
+
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
-    sudo pkill -u www-data -f "/www-data/clixon_restconf"
+    stop_restconf_pre
 
     new "start restconf daemon"
     start_restconf -f $cfg
@@ -242,13 +242,13 @@ XML='<c xmlns="urn:example:api"><y3><k>2</k></y3><y3><k>3</k></y3><y3><k>5</k><v
 
 # Add a set of entries using restconf
 new "PUT a set of entries"
-expectpart "$(curl -si -X PUT -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/example-api:c -d "$XML")" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -sik -X PUT -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example-api:c -d "$XML")" 0 "HTTP/1.1 201 Created"
 
 new "Check entries"
-expectpart "$(curl -si -X GET http://localhost/restconf/data/example-api:c -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' "$XML"
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example-api:c -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' "$XML"
 
 new "Send a trigger"
-expectpart "$(curl -si -X POST http://localhost/restconf/operations/example-api:trigger -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 204 No Content'
+expectpart "$(curl -sik -X POST $RCPROTO://localhost/restconf/operations/example-api:trigger -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 204 No Content'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

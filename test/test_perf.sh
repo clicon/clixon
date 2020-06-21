@@ -86,14 +86,16 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    stop_restconf_pre
 
-new "start restconf daemon"
-start_restconf -f $cfg
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
-new "waiting"
-wait_restconf
+    new "waiting"
+    wait_restconf
+fi
 
 new "generate config with $perfnr list entries"
 echo -n "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\">" > $fconfig
@@ -147,7 +149,7 @@ done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 new "restconf get $perfreq small config 1 key index"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    curl -sG http://localhost/restconf/data/scaling:x/y=$rnd > /dev/null
+    curl -sik -X GET $RCPROTO://localhost/restconf/data/scaling:x/y=$rnd > /dev/null
 done } 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF put
@@ -157,7 +159,7 @@ done } 2>&1 | awk '/real/ {print $2}'
 new "restconf add $perfreq small config"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    curl -s -X PUT http://localhost/restconf/data/scaling:x/y=$rnd  -d '{"scaling:y":{"a":"'$rnd'","b":"'$rnd'"}}'
+    curl -sik -X PUT $RCPROTO://localhost/restconf/data/scaling:x/y=$rnd  -d '{"scaling:y":{"a":"'$rnd'","b":"'$rnd'"}}'
 done }  2>&1 | awk '/real/ {print $2}'
 
 # CLI get (XXX why does this take so much time?)
@@ -182,7 +184,7 @@ expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candid
 
 new "restconf get large config"
 # XXX for some reason cannot expand $TIMEFN next two tests, need keep variable?
-$TIMEFN curl -sG http://localhost/restconf/data 2>&1 > /dev/null | awk '/real/ {print $2}'
+$TIMEFN curl -sik -X GET $RCPROTO://localhost/restconf/data 2>&1 > /dev/null | awk '/real/ {print $2}'
 
 new "cli get large config"
 $TIMEFN $clixon_cli -1f $cfg show config xml 2>&1 > /dev/null | awk '/real/ {print $2}'
@@ -213,7 +215,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<
 new "restconf delete $perfreq small config"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    curl -s -X DELETE http://localhost/restconf/data/scaling:x/y=$rnd
+    curl -sik -X DELETE $RCPROTO://localhost/restconf/data/scaling:x/y=$rnd
 done > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # Now do leaf-lists istead of leafs
@@ -246,8 +248,10 @@ expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<r
 new "netconf get large leaf-list config"
 expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon"><c>0</c><c>1</c>' 2>&1 | awk '/real/ {print $2}'
 
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE

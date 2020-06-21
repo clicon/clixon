@@ -138,8 +138,10 @@ restconf_reply_send(void  *req0,
     req->status = code;
     if ((reason_phrase = restconf_code2reason(code)) == NULL)
 	reason_phrase="";
+#if 1 /* XXX  remove status header för evhtp? */
     if (restconf_reply_header(req, "Status", "%d %s", code, reason_phrase) < 0)
 	goto done;
+#endif
 #if 1    /* Optional? */
     if ((conn = evhtp_request_get_connection(req)) == NULL){
 	clicon_err(OE_DAEMON, EFAULT, "evhtp_request_get_connection");

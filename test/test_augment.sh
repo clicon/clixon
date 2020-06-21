@@ -168,8 +168,9 @@ new "waiting"
 wait_backend
 
 if [ $RC -ne 0 ]; then
+
     new "kill old restconf daemon"
-    sudo pkill -u $wwwuser -f clixon_restconf
+    stop_restconf_pre
 
     new "start restconf daemon"
     start_restconf -f $cfg
@@ -215,12 +216,12 @@ new "netconf commit ok"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
 
 # restconf and augment
-
 new "restconf get augment json"
-expectpart "$(curl -s -i -X GET http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080},{"name":"e2","type":"fddi","example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi","example-augment:port":80,"example-augment:lport":8080},{"name":"e3","type":"fddi","example-augment:mandatory-leaf":"true","example-augment:me":"you","example-augment:port":80,"example-augment:lport":8080}\]}}'
+echo "curl -sik -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces"
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/1.1 200 OK" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080},{"name":"e2","type":"fddi","example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi","example-augment:port":80,"example-augment:lport":8080},{"name":"e3","type":"fddi","example-augment:mandatory-leaf":"true","example-augment:me":"you","example-augment:port":80,"example-augment:lport":8080}\]}}'
 
 new "restconf get augment xml"
-expectpart "$(curl -s -i -X GET -H 'Accept: application/yang-data+xml' http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:mymod="urn:example:augment"><name>e1</name><type>mymod:some-new-iftype</type><mymod:mandatory-leaf>true</mymod:mandatory-leaf><mymod:port>80</mymod:port><mymod:lport>8080</mymod:lport></interface><interface><name>e2</name><type>fddi</type><mymod:mandatory-leaf xmlns:mymod="urn:example:augment">true</mymod:mandatory-leaf><mymod:other xmlns:mymod="urn:example:augment">if:fddi</mymod:other><mymod:port xmlns:mymod="urn:example:augment">80</mymod:port><mymod:lport xmlns:mymod="urn:example:augment">8080</mymod:lport></interface><interface><name>e3</name><type>fddi</type><mymod:mandatory-leaf xmlns:mymod="urn:example:augment">true</mymod:mandatory-leaf><mymod:me xmlns:mymod="urn:example:augment">mymod:you</mymod:me><mymod:port xmlns:mymod="urn:example:augment">80</mymod:port><mymod:lport xmlns:mymod="urn:example:augment">8080</mymod:lport></interface></interfaces>'
+expectpart "$(curl -sik -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:mymod="urn:example:augment"><name>e1</name><type>mymod:some-new-iftype</type><mymod:mandatory-leaf>true</mymod:mandatory-leaf><mymod:port>80</mymod:port><mymod:lport>8080</mymod:lport></interface><interface><name>e2</name><type>fddi</type><mymod:mandatory-leaf xmlns:mymod="urn:example:augment">true</mymod:mandatory-leaf><mymod:other xmlns:mymod="urn:example:augment">if:fddi</mymod:other><mymod:port xmlns:mymod="urn:example:augment">80</mymod:port><mymod:lport xmlns:mymod="urn:example:augment">8080</mymod:lport></interface><interface><name>e3</name><type>fddi</type><mymod:mandatory-leaf xmlns:mymod="urn:example:augment">true</mymod:mandatory-leaf><mymod:me xmlns:mymod="urn:example:augment">mymod:you</mymod:me><mymod:port xmlns:mymod="urn:example:augment">80</mymod:port><mymod:lport xmlns:mymod="urn:example:augment">8080</mymod:lport></interface></interfaces>'
 
 #<interface xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>e1</name><ospf xmlns="urn:example:augment"><reference-bandwidth>23</reference-bandwidth></ospf></interface>'
 
@@ -232,7 +233,7 @@ EOF
 # XXX: Since derived-from etc are NOT implemented, this test may have false positives
 # revisit when it is implemented.
 new "restconf PUT augment multi-namespace path e1 (whole path)"
-expectpart "$(curl -s -X PUT -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1 -d "$XML")" 0 ''
+expectpart "$(curl -sik -X PUT -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1 -d "$XML")" 0 "HTTP/1.1 204 No Content"
 
 XML=$(cat <<EOF
 <ospf xmlns="urn:example:augment"><reference-bandwidth>23</reference-bandwidth></ospf>
@@ -240,19 +241,19 @@ EOF
    )
 
 new "restconf POST augment multi-namespace path e2 (middle path)"
-expectpart "$(curl -s -X POST -H 'Content-Type: application/yang-data+xml' http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e2 -d "$XML" )" 0 ''
+expectpart "$(curl -sik -X POST -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e2 -d "$XML" )" 0 "HTTP/1.1 201 Created"
 
 new "restconf GET augment multi-namespace top"
-expectpart "$(curl -si -X GET http://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080},{"name":"e2","type":"fddi","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi","example-augment:port":80,"example-augment:lport":8080},{"name":"e3","type":"fddi","example-augment:mandatory-leaf":"true","example-augment:me":"you","example-augment:port":80,"example-augment:lport":8080}\]}}'
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080},{"name":"e2","type":"fddi","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi","example-augment:port":80,"example-augment:lport":8080},{"name":"e3","type":"fddi","example-augment:mandatory-leaf":"true","example-augment:me":"you","example-augment:port":80,"example-augment:lport":8080}\]}}'
 
 new "restconf GET augment multi-namespace level 1"
-expectpart "$(curl -si -X GET http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080}\]}'
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080}\]}'
 
 new "restconf GET augment multi-namespace cross"
-expectpart "$(curl -si -X GET http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1/example-augment:ospf)" 0 'HTTP/1.1 200 OK' '{"example-augment:ospf":{"reference-bandwidth":23}}'
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1/example-augment:ospf)" 0 'HTTP/1.1 200 OK' '{"example-augment:ospf":{"reference-bandwidth":23}}'
 
 new "restconf GET augment multi-namespace cross level 2"
-expectpart "$(curl -si -X GET http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1/example-augment:ospf/reference-bandwidth)" 0 'HTTP/1.1 200 OK' '{"example-augment:reference-bandwidth":23}'
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1/example-augment:ospf/reference-bandwidth)" 0 'HTTP/1.1 200 OK' '{"example-augment:reference-bandwidth":23}'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

@@ -106,14 +106,16 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    stop_restconf_pre
 
-new "start restconf daemon"
-start_restconf -f $cfg
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
-new "waiting"
-wait_restconf
+    new "waiting"
+    wait_restconf
+fi
 
 new "generate 'large' config with $perfnr list entries"
 echo -n "<rpc><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b>" > $fconfig
@@ -150,12 +152,11 @@ new "restconf get test single req"
 expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 "HTTP/1.1 200 OK" '{"example:interface":\[{"name":"e1","type":"ex:eth","enabled":true,"status":"up"}\]}'
 
 new "restconf get $perfreq single reqs"
-#echo "curl -sG http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e0"
-#curl -sG http://localhost/restconf/data/ietf-interfaces:interfaces/interface=e67
+#curl -sik -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e67
 
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    curl -sG http://localhost/restconf/data/example:interfaces/a/b/interface=e$rnd > /dev/null
+    curl -sik -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a/b/interface=e$rnd > /dev/null
 done } 2>&1 | awk '/real/ {print $2}'
 
 # CLI get
@@ -178,13 +179,15 @@ new "netconf get large config"
 { time -p echo "<rpc><get> <filter type=\"xpath\" select=\"/ex:interfaces/ex:a[name='foo']/ex:b\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg  > /tmp/netconf; } 2>&1 | awk '/real/ {print $2}'
 
 new "restconf get large config"
-$TIMEFN curl -sG http://localhost/restconf/data/example:interfaces/a=foo/b 2>&1 | awk '/real/ {print $2}'
+$TIMEFN curl -sik -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b 2>&1 | awk '/real/ {print $2}'
 
 new "cli get large config"
 $TIMEFN $clixon_cli -1f $cfg show state xml interfaces a foo b 2>&1 | awk '/real/ {print $2}'
 
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf 
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE

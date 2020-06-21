@@ -228,7 +228,7 @@ echo -n '' > $xml5
 for (( i=0; i<$nr; i++ )); do  
     echo -n "<x5 xmlns=\"urn:example:a\"><k1>a$i</k1><z>foo$i</z></x5>" >> $xml5
 done
-    
+
 new "api-path direct under root single string key k1=a$rnd"
 expectpart "$($clixon_util_path -f $xml5 -y $ydir -p /moda:x5=a$rnd)" 0 "^0: <x5 xmlns=\"urn:example:a\"><k1>a$rnd</k1><z>foo$rnd</z></x5>$"
 

@@ -94,8 +94,12 @@ fi
 : ${RCERROR:="HTTP/1.1 502 Bad Gateway"}
 
 # www user (on linux typically www-data, freebsd www)
-# could be taken from configure
-: ${wwwuser:=www-data} 
+# @see wwwstartuser which can be dropped to this
+: ${wwwuser:=www-data}
+
+# www user (on linux typically www-data, freebsd www)
+# Start restconf user, can be root which is dropped to wwwuser
+: ${wwwstartuser:=root} 
 
 # Parse yangmodels from https://github.com/YangModels/yang
 # Recommended: checkout yangmodels elsewhere in the tree and set the env
@@ -230,15 +234,25 @@ wait_backend(){
 # @see wait_restconf
 start_restconf(){
     # Start in background 
-#    echo "sudo -u $wwwuser -s $clixon_restconf $RCLOG -D $DBG $*"
-    sudo -u $wwwuser -s $clixon_restconf $RCLOG -D $DBG $* &
+    echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $*"
+    sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $* &
     if [ $? -ne 0 ]; then
 	err
     fi
 }
 
+# Stop restconf daemon before test
+stop_restconf_pre(){
+    sudo pkill -f clixon_restconf
+}
+
+# Stop restconf daemon after test
+# Two caveats in pkill:
+# 1) Dont use $clixon_restconf (dont work in valgrind)
+# 2) Dont use -u $wwwuser since clixon_restconf may drop privileges.
 stop_restconf(){
-    sudo pkill -u $wwwuser -f clixon_restconf # Dont use $clixon_restoconf doesnt work in valgrind
+    #    sudo pkill -u $wwwuser -f clixon_restconf # Dont use $clixon_restoconf doesnt work in valgrind
+    sudo pkill -f clixon_restconf
     if [ $valgrindtest -eq 3 ]; then 
 	sleep 1
 	checkvalgrind
@@ -557,6 +571,14 @@ expecteof_file(){
 
 # clixon tester. First arg is command second is stdin and
 # third is expected outcome, fourth is how long to wait
+# - (not-evaluated) expression
+# - stdin string
+# - expected command return value (0 if OK)
+# - expected stdout outcome*
+# - the token "--not--"
+# - not expected stdout outcome*
+#
+# XXX do expectwait like expectpart with multiple matches
 expectwait(){
   cmd=$1
   input=$2
@@ -569,6 +591,7 @@ expectwait(){
   sleep $wait |  cat <(echo $input) -| $cmd | while [ 1 ] ; do
     read -t 20 r
 #    echo "r:$r"
+    # Append $r to $ret
     ret="$ret$r"
     match=$(echo "$ret" | grep -Eo "$expect");
     if [ -z "$match" ]; then
