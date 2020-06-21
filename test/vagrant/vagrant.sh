@@ -155,7 +155,7 @@ fi
 
 # cligen
 test -d src || mkdir src
-test -d src/cligen || (cd src;git clone https://github.com/olofhagsand/cligen.git)
+test -d src/cligen || (cd src;git clone https://github.com/clicon/cligen.git)
 cd src/cligen
 git pull
 

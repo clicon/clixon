@@ -7,7 +7,7 @@
 
 ## CLIgen
 
-The Clixon CLI uses [CLIgen](http://github.com/olofhagsand/cligen) best described by the [CLIgen tutorial](https://github.com/olofhagsand/cligen/blob/master/cligen_tutorial.pdf). The [example](example) is also helpful.
+The Clixon CLI uses [CLIgen](http://github.com/clicon/cligen) best described by the [CLIgen tutorial](https://github.com/clicon/cligen/blob/master/cligen_tutorial.pdf). The [example](example) is also helpful.
 
 Clixon adds some features and structure to CLIgen which include:
 * A plugin framework for both textual CLI specifications(.cli) and object files (.so)

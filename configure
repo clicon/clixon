@@ -4613,7 +4613,7 @@ if test "x$ac_cv_header_cligen_cligen_h" = xyes; then :
 _ACEOF
 
 else
-  as_fn_error $? "CLIgen missing. Try: git clone https://github.com/olofhagsand/cligen.git" "$LINENO" 5
+  as_fn_error $? "CLIgen missing. Try: git clone https://github.com/clicon/cligen.git" "$LINENO" 5
 fi
 
 done
@@ -4663,7 +4663,7 @@ _ACEOF
   LIBS="-lcligen $LIBS"
 
 else
-  as_fn_error $? "CLIgen missing. Try: git clone https://github.com/olofhagsand/cligen.git" "$LINENO" 5
+  as_fn_error $? "CLIgen missing. Try: git clone https://github.com/clicon/cligen.git" "$LINENO" 5
 fi
 
 
@@ -5068,6 +5068,7 @@ fi
 # Common actions for all restconf packages
 if test "x${with_restconf}" != "x"; then
    # This is for changing web user default www-data
+   # Should this be a runtime option?
 
 # Check whether --with-wwwuser was given.
 if test "${with_wwwuser+set}" = set; then :
