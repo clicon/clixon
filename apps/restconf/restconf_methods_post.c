@@ -60,6 +60,7 @@
 #include <clixon/clixon.h>
 
 #include "restconf_lib.h"
+#include "restconf_handle.h"
 #include "restconf_api.h"
 #include "restconf_err.h"
 #include "restconf_methods_post.h"
@@ -81,9 +82,9 @@ http_location_header(clicon_handle h,
     char *request_uri;
     cbuf *cb = NULL;
 
-    https = clixon_restconf_param_get(h, "HTTPS");
-    host = clixon_restconf_param_get(h, "HTTP_HOST");
-    request_uri = clixon_restconf_param_get(h, "REQUEST_URI");
+    https = restconf_param_get(h, "HTTPS");
+    host = restconf_param_get(h, "HTTP_HOST");
+    request_uri = restconf_param_get(h, "REQUEST_URI");
     if (xobj != NULL){
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, 0, "cbuf_new");

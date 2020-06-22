@@ -78,6 +78,7 @@
 
 /* restconf */
 #include "restconf_lib.h"      /* generic shared with plugins */
+#include "restconf_handle.h"
 #include "restconf_api.h"      /* generic not shared with plugins */
 #include "restconf_err.h"
 #include "restconf_root.h"     /* generic not shared with plugins */
@@ -107,7 +108,7 @@ fcgi_params_set(clicon_handle h,
     for (i = 0; envp[i] != NULL; i++){ /* on the form <param>=<value> */
 	if (clixon_strsplit(envp[i], '=', &param, &val) < 0)
 	    goto done;
-	if (clixon_restconf_param_set(h, param, val) < 0)
+	if (restconf_param_set(h, param, val) < 0)
 	    goto done;
 	if (param){
 	    free(param);
@@ -121,35 +122,6 @@ fcgi_params_set(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
-    return retval;
-}
-
-/*! Clear all FCGI parameters in an environment
- * @param[in]  h     Clixon handle
- * @param[in]  envp  Fastcgi request handle parameter array on the format "<param>=<value>"
- * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
- */
-static int
-fcgi_params_clear(clicon_handle h,
-		  char        **envp)
-{
-    int   retval = -1;
-    int   i;
-    char *param = NULL;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    for (i = 0; envp[i] != NULL; i++){ /* on the form <param>=<value> */
-	if (clixon_strsplit(envp[i], '=', &param, NULL) < 0)
-	    goto done;
-	if (clixon_restconf_param_del(h, param) < 0)
-	    goto done;
-	if (param){
-	    free(param);
-	    param = NULL;
-	}
-    }
-    retval = 0;
- done:
     return retval;
 }
 
@@ -246,7 +218,7 @@ main(int    argc,
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
 
     /* Create handle */
-    if ((h = clicon_handle_init()) == NULL)
+    if ((h = restconf_handle_init()) == NULL)
 	goto done;
 
     _CLICON_HANDLE = h; /* for termination handling */
@@ -504,12 +476,12 @@ main(int    argc,
 	 */
 	if (fcgi_params_set(h, req->envp) < 0)
 	    goto done;
-	if ((path = clixon_restconf_param_get(h, "REQUEST_URI")) != NULL){
+	if ((path = restconf_param_get(h, "REQUEST_URI")) != NULL){
 	    clicon_debug(1, "path: %s", path);
 	    if (strncmp(path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0){
 		char  *query = NULL;
 		cvec  *qvec = NULL;
-		query = clixon_restconf_param_get(h, "QUERY_STRING");
+		query = restconf_param_get(h, "QUERY_STRING");
 		if (query != NULL && strlen(query))
 		    if (str2cvec(query, '&', '=', &qvec) < 0)
 			goto done;
@@ -532,7 +504,7 @@ main(int    argc,
 	}
 	else
 	    clicon_debug(1, "NULL URI");
-	if (fcgi_params_clear(h, req->envp) < 0)
+	if (restconf_param_del_all(h) < 0)
 	    goto done;
 	if (finish)
 	    FCGX_Finish_r(req);

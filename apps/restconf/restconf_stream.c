@@ -86,6 +86,7 @@
 #include <fcgiapp.h> /* Need to be after clixon_xml.h due to attribute format */
 
 #include "restconf_lib.h"
+#include "restconf_handle.h"
 #include "restconf_api.h"
 #include "restconf_err.h"
 #include "restconf_stream.h"
@@ -376,7 +377,7 @@ api_stream(clicon_handle h,
 
     clicon_debug(1, "%s", __FUNCTION__);
     path = restconf_uripath(h);
-    query = clixon_restconf_param_get(h, "QUERY_STRING");
+    query = restconf_param_get(h, "QUERY_STRING");
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;

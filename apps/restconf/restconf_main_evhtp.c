@@ -54,6 +54,7 @@
 #include <signal.h>
 #include <syslog.h>
 #include <fcntl.h>
+#include <ctype.h>
 #include <time.h>
 #include <limits.h>
 #include <signal.h>
@@ -75,6 +76,7 @@
 /* restconf */
 
 #include "restconf_lib.h"       /* generic shared with plugins */
+#include "restconf_handle.h"
 #include "restconf_api.h"       /* generic not shared with plugins */
 #include "restconf_root.h"
 
@@ -202,6 +204,43 @@ query_iterator(evhtp_header_t *hdr,
     return 0;
 }
 
+/*! Translate http header by capitalizing, prepend w HTTP_ and - -> _
+ * Example: Host -> HTTP_HOST 
+ */
+static int
+convert_fcgi(evhtp_header_t *hdr,
+	     void           *arg)
+{
+    int           retval = -1;
+    clicon_handle h = (clicon_handle)arg;
+    cbuf         *cb = NULL;
+    int           i;
+    char          c;
+    
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    /* convert key name */
+    cprintf(cb, "HTTP_");
+    for (i=0; i<strlen(hdr->key); i++){
+	c = hdr->key[i] & 0xff;
+	if (islower(c))
+	    cprintf(cb, "%c", toupper(c));
+	else if (c == '-')
+	    cprintf(cb, "_");
+	else
+	    cprintf(cb, "%c", c);
+    }
+    if (restconf_param_set(h, cbuf_get(cb), hdr->val) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
 /*! Map from evhtp information to "fcgi" type parameters used in clixon code
  *
  * While all these params come via one call in fcgi, the information must be taken from
@@ -230,7 +269,6 @@ evhtp_params_set(clicon_handle    h,
     htp_method      meth;
     evhtp_uri_t    *uri;
     evhtp_path_t   *path;
-    evhtp_header_t *hdr;
 
     if ((uri = req->uri) == NULL){
 	clicon_err(OE_DAEMON, EFAULT, "No uri");
@@ -251,41 +289,17 @@ evhtp_params_set(clicon_handle    h,
 	    clicon_err(OE_CFG, errno, "evhtp_kvs_for_each");
 	    goto done;
 	}
-    if (clixon_restconf_param_set(h, "REQUEST_METHOD", evhtp_method2str(meth)) < 0)
+    if (restconf_param_set(h, "REQUEST_METHOD", evhtp_method2str(meth)) < 0)
 	goto done;
-    if (clixon_restconf_param_set(h, "REQUEST_URI", path->full) < 0)
+    if (restconf_param_set(h, "REQUEST_URI", path->full) < 0)
 	goto done;
-    if (clixon_restconf_param_set(h, "HTTPS", "https") < 0) /* some string or NULL */
+    if (restconf_param_set(h, "HTTPS", "https") < 0) /* some string or NULL */
 	goto done;
-    if ((hdr = evhtp_headers_find_header(req->headers_in, "Host")) != NULL){
-	if (clixon_restconf_param_set(h, "HTTP_HOST", hdr->val) < 0)
-	    goto done;
-    }
-    if ((hdr = evhtp_headers_find_header(req->headers_in, "Accept")) != NULL){
-	if (clixon_restconf_param_set(h, "HTTP_ACCEPT", hdr->val) < 0)
-	    goto done;
-    }
-    if ((hdr = evhtp_headers_find_header(req->headers_in, "Content-Type")) != NULL){
-	if (clixon_restconf_param_set(h, "HTTP_CONTENT_TYPE", hdr->val) < 0)
-	    goto done;
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
-static int
-evhtp_params_clear(clicon_handle h)
-{
-    int   retval = -1;
-    char *params[] = {"QUERY_STRING", "REQUEST_METHOD", "REQUEST_URI",
-		      "HTTPS", "HTTP_HOST", "HTTP_ACCEPT", "HTTP_CONTENT_TYPE", NULL};
-    char *param;
-    int   i=0;
-
-    while((param=params[i]) != NULL)
-	if (clixon_restconf_param_del(h, param) < 0)
-	    goto done;
+    /* Translate all http headers by capitalizing, prepend w HTTP_ and - -> _
+     * Example: Host -> HTTP_HOST 
+     */
+    if (evhtp_headers_for_each(req->headers_in, convert_fcgi, h) < 0)
+	goto done;
     retval = 0;
  done:
     return retval;
@@ -370,7 +384,7 @@ cx_path_wellknown(evhtp_request_t *req,
 	goto done;
 
     /* Clear (fcgi) paramaters from this request */
-    if (evhtp_params_clear(h) < 0)
+    if (restconf_param_del_all(h) < 0)
 	goto done;
  done:
     return; /* void */
@@ -404,7 +418,7 @@ cx_path_restconf(evhtp_request_t *req,
 	goto done;
 
     /* Clear (fcgi) paramaters from this request */
-    if (evhtp_params_clear(h) < 0)
+    if (restconf_param_del_all(h) < 0)
 	goto done;
  done:
     return; /* void */
@@ -473,7 +487,7 @@ main(int    argc,
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
 
     /* Create handle */
-    if ((h = clicon_handle_init()) == NULL)
+    if ((h = restconf_handle_init()) == NULL)
 	goto done;
 
     _CLICON_HANDLE = h; /* for termination handling */

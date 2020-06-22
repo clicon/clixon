@@ -4,6 +4,7 @@
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -60,15 +61,13 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include "clixon_backend_handle.h"
-#include "backend_client.h"
-#include "backend_handle.h"
+#include "restconf_handle.h"
 
-/* header part is copied from struct clicon_handle in lib/src/clicon_handle.c */
+/* header part is copied from struct clicon_handle in lib/src/clixon_handle.c */
 
 #define CLICON_MAGIC 0x99aafabe
 
-#define handle(h) (assert(clicon_handle_check(h)==0),(struct backend_handle *)(h))
+#define handle(h) (assert(clicon_handle_check(h)==0),(struct restconf_handle *)(h))
 
 /* Clicon_handle for backends.
  * First part of this is header, same for clicon_handle and cli_handle.
@@ -82,108 +81,94 @@
  * @note The top part must be equivalent to struct clicon_handle in clixon_handle.c
  * @see struct clicon_handle, struct cli_handle
  */
-struct backend_handle {
-    int                      bh_magic;     /* magic (HDR)*/
-    clicon_hash_t           *bh_copt;      /* clicon option list (HDR) */
-    clicon_hash_t           *bh_data;      /* internal clicon data (HDR) */
-    clicon_hash_t           *ch_db_elmnt; /* xml datastore element cache data */
-    event_stream_t          *bh_stream;   /* notification streams, see clixon_stream.[ch] */
+struct restconf_handle {
+    int                      rh_magic;     /* magic (HDR)*/
+    clicon_hash_t           *rh_copt;      /* clicon option list (HDR) */
+    clicon_hash_t           *rh_data;      /* internal clicon data (HDR) */
+    clicon_hash_t           *rh_db_elmnt;  /* xml datastore element cache data */
+    event_stream_t          *rh_stream;    /* notification streams, see clixon_stream.[ch] */
     
     /* ------ end of common handle ------ */
-    struct client_entry     *bh_ce_list;   /* The client list */
-    int                      bh_ce_nr;     /* Number of clients, just increment */
+    clicon_hash_t           *rh_params;    /* restconf parameters, including http headers */
 };
 
 /*! Creates and returns a clicon config handle for other CLICON API calls
  */
 clicon_handle
-backend_handle_init(void)
+restconf_handle_init(void)
 {
-    return clicon_handle_init0(sizeof(struct backend_handle));
+    return clicon_handle_init0(sizeof(struct restconf_handle));
 }
 
 /*! Deallocates a backend handle, including all client structs
- * @Note: handle 'h' cannot be used in calls after this
+ * @note: handle 'h' cannot be used in calls after this
  * @see backend_client_rm
  */
 int
-backend_handle_exit(clicon_handle h)
+restconf_handle_exit(clicon_handle h)
 {
-    struct client_entry   *ce;
-
-    /* only delete client structs, not close sockets, etc, see backend_client_rm WHY NOT? */
-    while ((ce = backend_client_list(h)) != NULL){
-	if (ce->ce_s){
-	    close(ce->ce_s);
-	    ce->ce_s = 0;
-	}
-	backend_client_delete(h, ce);
-    }
     clicon_handle_exit(h); /* frees h and options (and streams) */
     return 0;
 }
 
-/*! Add new client, typically frontend such as cli, netconf, restconf
- * @param[in]  h        Clicon handle
- * @param[in]  addr     Address of client
- * @retval     ce       Client entry
- * @retval     NULL     Error
+/*! Get restconf http parameter
+ * @param[in]  h     Clicon handle
+ * @param[in]  name  Data name
+ * @retval     val   Data value as string
+ * Currently using clixon runtime data but there is risk for colliding names
  */
-struct client_entry *
-backend_client_add(clicon_handle    h, 
-		   struct sockaddr *addr)
+char *
+restconf_param_get(clicon_handle h,
+		   char         *param)
 {
-    struct backend_handle *bh = handle(h);
-    struct client_entry   *ce;
+    struct restconf_handle *rh = handle(h);
 
-    if ((ce = (struct client_entry *)malloc(sizeof(*ce))) == NULL){
-	clicon_err(OE_PLUGIN, errno, "malloc");
+    if (rh->rh_params == NULL)
 	return NULL;
-    }
-    memset(ce, 0, sizeof(*ce));
-    ce->ce_nr = bh->bh_ce_nr++; /* Session-id ? */
-    memcpy(&ce->ce_addr, addr, sizeof(*addr));
-    ce->ce_next = bh->bh_ce_list;
-    bh->bh_ce_list = ce;
-    return ce;
+    return (char*)clicon_hash_value(rh->rh_params, param, NULL);
 }
 
-/*! Return client list
- * @param[in]  h        Clicon handle
- * @retval     ce_list  Client entry list (all sessions)
- */
-struct client_entry *
-backend_client_list(clicon_handle h)
-{
-    struct backend_handle *bh = handle(h);
-
-    return bh->bh_ce_list;
-}
-
-/*! Actually remove client from client list
- * @param[in]  h   Clicon handle
- * @param[in]  ce  Client handle
- * @see backend_client_rm which is more high-level
+/*! Set restconf http parameter
+ * @param[in]  h    Clicon handle
+ * @param[in]  name Data name
+ * @param[in]  val  Data value as null-terminated string
+ * @retval     0    OK
+ * @retval    -1    Error
+ * Currently using clixon runtime data but there is risk for colliding names
  */
 int
-backend_client_delete(clicon_handle        h,
-		      struct client_entry *ce)
+restconf_param_set(clicon_handle h,
+		   char         *param,
+		   char         *val)
 {
-    struct client_entry   *c;
-    struct client_entry  **ce_prev;
-    struct backend_handle *bh = handle(h);
+    struct restconf_handle *rh = handle(h);
 
-    ce_prev = &bh->bh_ce_list;
-    for (c = *ce_prev; c; c = c->ce_next){
-	if (c == ce){
-	    *ce_prev = c->ce_next;
-	    if (ce->ce_username)
-		free(ce->ce_username);
-	    free(ce);
-	    break;
-	}
-	ce_prev = &c->ce_next;
-    }
-    return 0;
+    clicon_debug(1, "%s=%s", param, val);
+    if (rh->rh_params == NULL)
+	if ((rh->rh_params = clicon_hash_init()) == NULL)
+	    return -1;
+    return clicon_hash_add(rh->rh_params, param, val, strlen(val)+1)==NULL?-1:0;
 }
 
+/*! Delete all restconf http parameter
+ * @param[in]  h    Clicon handle
+ * @param[in]  name Data name
+ * @retval     0    OK
+ * @retval    -1    Error
+ * Currently using clixon runtime data but there is risk for colliding names
+ */
+int
+restconf_param_del_all(clicon_handle h)
+{
+    int                     retval = -1;
+    struct restconf_handle *rh = handle(h);
+    
+    if (rh->rh_params != NULL){
+	if (clicon_hash_free(rh->rh_params) < 0)
+	    goto done;
+	rh->rh_params = NULL;
+    }
+    retval = 0;
+ done:
+    return retval;
+}

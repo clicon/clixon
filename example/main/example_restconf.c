@@ -214,7 +214,7 @@ example_restconf_credentials(clicon_handle h,
     if (basic_auth==0)
 	goto ok;
     /* At this point in the code we must use HTTP basic authentication */
-    if ((auth = clixon_restconf_param_get(h, "HTTP_AUTHORIZATION")) == NULL)
+    if ((auth = restconf_param_get(h, "HTTP_AUTHORIZATION")) == NULL)
 	goto fail; 
     if (strlen(auth) < strlen("Basic "))
 	goto fail;

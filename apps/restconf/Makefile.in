@@ -104,6 +104,7 @@ APPOBJ    = $(APPSRC:.c=.o)
 # (eg restconf_method_notallowed) that uses symbols in restconf_api that
 # are not in the lib.
 LIBSRC    = restconf_lib.c
+LIBSRC   += restconf_handle.c 
 
 LIBOBJ    = $(LIBSRC:.c=.o)
 

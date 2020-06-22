@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -81,6 +83,7 @@
  * XXX: put ch_stream under ch_data
  * @see struct cli_handle
  * @see struct backend_handle
+ * @see struct restconf_handle
  */
 struct clicon_handle {
     int               ch_magic;    /* magic (HDR) */
@@ -157,7 +160,6 @@ clicon_handle_exit(clicon_handle h)
 	clicon_hash_free(ha);
     if ((ha = clicon_data(h)) != NULL)
 	clicon_hash_free(ha);
-
     if ((ha = clicon_db_elmnt(h)) != NULL)
 	clicon_hash_free(ha);
     stream_delete_all(h, 1);

@@ -98,7 +98,7 @@ restconf_badrequest(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    path = clixon_restconf_param_get("REQUEST_URI", r->envp);
+    path = restconf_param_get("REQUEST_URI", r->envp);
     if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
 	goto done;
     cprintf(cb, "The requested URL %s or data is in some way badly formed.\n", path);
@@ -137,7 +137,7 @@ restconf_unauthorized(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    path = clixon_restconf_param_get("REQUEST_URI", r->envp);
+    path = restconf_param_get("REQUEST_URI", r->envp);
     if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
 	goto done;
     cprintf(cb, "<error-tag>access-denied</error-tag>\n");
@@ -175,7 +175,7 @@ restconf_forbidden(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    path = clixon_restconf_param_get("REQUEST_URI", r->envp);
+    path = restconf_param_get("REQUEST_URI", r->envp);
     if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
 	goto done;
     cprintf(cb, "The requested URL %s was forbidden.\n", path);
@@ -213,7 +213,7 @@ restconf_notfound(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    path = clixon_restconf_param_get("REQUEST_URI", r->envp);
+    path = restconf_param_get("REQUEST_URI", r->envp);
     if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
 	goto done;
     cprintf(cb, "The requested URL %s was not found on this server.\n", path);
@@ -270,7 +270,7 @@ restconf_notacceptable(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    path = clixon_restconf_param_get("REQUEST_URI", r->envp);
+    path = restconf_param_get("REQUEST_URI", r->envp);
     if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
 	goto done;
     cprintf(cb, "The target resource does not have a current representation that would be acceptable to the user agent.\n", path);
@@ -338,7 +338,7 @@ restconf_internal_server_error(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    path = clixon_restconf_param_get("REQUEST_URI", r->envp);
+    path = restconf_param_get("REQUEST_URI", r->envp);
     if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
 	goto done;
     cprintf(cb, "Internal server error when accessing %s</h1>\n", path);

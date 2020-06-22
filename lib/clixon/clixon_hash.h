@@ -45,13 +45,13 @@ struct clicon_hash {
 typedef struct clicon_hash *clicon_hash_t;
 
 clicon_hash_t *clicon_hash_init (void);
-void clicon_hash_free (clicon_hash_t *);
-clicon_hash_t clicon_hash_lookup (clicon_hash_t *head, const char *key);
-void *clicon_hash_value (clicon_hash_t *head, const char *key, size_t *vlen);
-clicon_hash_t clicon_hash_add (clicon_hash_t *head, const char *key, void *val, size_t vlen);
-int clicon_hash_del (clicon_hash_t *head, const char *key);
-int clicon_hash_dump(clicon_hash_t *head, FILE *f);
-int clicon_hash_keys(clicon_hash_t *hash, char ***vector, size_t *nkeys);
+int            clicon_hash_free (clicon_hash_t *);
+clicon_hash_t  clicon_hash_lookup (clicon_hash_t *head, const char *key);
+void          *clicon_hash_value (clicon_hash_t *head, const char *key, size_t *vlen);
+clicon_hash_t  clicon_hash_add (clicon_hash_t *head, const char *key, void *val, size_t vlen);
+int            clicon_hash_del (clicon_hash_t *head, const char *key);
+int            clicon_hash_dump(clicon_hash_t *head, FILE *f);
+int            clicon_hash_keys(clicon_hash_t *hash, char ***vector, size_t *nkeys);
 
 /*
  *   Macros to iterate over hash contents.

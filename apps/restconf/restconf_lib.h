@@ -64,9 +64,6 @@ int   get_user_cookie(char *cookiestr, char  *attribute, char **val);
 int   restconf_terminate(clicon_handle h);
 int   restconf_insert_attributes(cxobj *xdata, cvec *qvec);
 int   restconf_main_extension_cb(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
-char *clixon_restconf_param_get(clicon_handle h, char *param);
-int   clixon_restconf_param_set(clicon_handle h, char *param, char *val);
-int   clixon_restconf_param_del(clicon_handle h, char *param);
 char *restconf_uripath(clicon_handle h);
 int   restconf_drop_privileges(clicon_handle h, char *user);
 

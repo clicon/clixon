@@ -4,6 +4,7 @@
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -35,22 +36,16 @@
  *
  */
 
-#ifndef _BACKEND_HANDLE_H_
-#define _BACKEND_HANDLE_H_
+#ifndef _RESTCONF_HANDLE_H_
+#define _RESCTONF_HANDLE_H_
 
 /*
  * Prototypes 
- * not exported.
  */
-/* backend handles. Defined in clixon_backend_handle.c */
-clicon_handle backend_handle_init(void);
+clicon_handle restconf_handle_init(void);
+int           restconf_handle_exit(clicon_handle h);
+char         *restconf_param_get(clicon_handle h, char *param);
+int           restconf_param_set(clicon_handle h, char *param, char *val);
+int           restconf_param_del_all(clicon_handle h);
 
-int backend_handle_exit(clicon_handle h);
-
-struct client_entry *backend_client_add(clicon_handle h, struct sockaddr *addr);
-
-struct client_entry *backend_client_list(clicon_handle h);
-
-int backend_client_delete(clicon_handle h, struct client_entry *ce);
-
-#endif  /* _BACKEND_HANDLE_H_ */
+#endif  /* _RESTCONF_HANDLE_H_ */
