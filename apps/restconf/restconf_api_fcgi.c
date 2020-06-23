@@ -206,6 +206,7 @@ restconf_reply_send(void  *req0,
 	FCGX_FPrintF(req->out, "%s", cbuf_get(cb));
 	FCGX_FPrintF(req->out, "\r\n");
     }
+    FCGX_FFlush(req->out); /* Is this only for notification ? */
     retval = 0;
  done:
     return retval;
