@@ -88,7 +88,7 @@
  */
 int
 clicon_data_get(clicon_handle h,
-		char         *name,
+		const char         *name,
 		char        **val)
 {
     clicon_hash_t *cdat = clicon_data(h);

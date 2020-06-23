@@ -156,17 +156,17 @@ char     *xml_type2str(enum cxobj_type type);
 int       xml_stats_global(uint64_t *nr);
 int       xml_stats(cxobj *xt, uint64_t *nrp, size_t *szp);
 char     *xml_name(cxobj *xn);
-int       xml_name_set(cxobj *xn, char *name);
+int       xml_name_set(cxobj *xn, const char *name);
 char     *xml_prefix(cxobj *xn);
 int       xml_prefix_set(cxobj *xn, char *name);
 char     *nscache_get(cxobj *x, char *prefix);
-int       nscache_get_prefix(cxobj *x, char *namespace, char **prefix);
+int       nscache_get_prefix(cxobj *x, char *_namespace, char **prefix);
 cvec     *nscache_get_all(cxobj *x);
-int       nscache_set(cxobj *x,	char *prefix, char *namespace);
+int       nscache_set(cxobj *x,	char *prefix, char *_namespace);
 int       nscache_clear(cxobj *x);
 int       nscache_replace(cxobj *x, cvec *ns);
 
-int       xmlns_set(cxobj *x, char *prefix, char *namespace);
+int       xmlns_set(cxobj *x, char *prefix, char *_namespace);
 cxobj    *xml_parent(cxobj *xn);
 int       xml_parent_set(cxobj *xn, cxobj *parent);
 
@@ -191,16 +191,16 @@ cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
 int       xml_child_insert_pos(cxobj *x, cxobj *xc, int i);
 int       xml_childvec_set(cxobj *x, int len);
 cxobj   **xml_childvec_get(cxobj *x);
-cxobj    *xml_new(char *name, cxobj *xn_parent, enum cxobj_type type);
+cxobj    *xml_new(const char *name, cxobj *xn_parent, enum cxobj_type type);
 cxobj    *xml_new_body(char *name, cxobj *parent, char *val);
 yang_stmt *xml_spec(cxobj *x);
 int       xml_spec_set(cxobj *x, yang_stmt *spec);
 cg_var   *xml_cv(cxobj *x);
 int       xml_cv_set(cxobj *x, cg_var *cv);
-cxobj    *xml_find(cxobj *xn_parent, char *name);
+cxobj    *xml_find(cxobj *xn_parent, const char *name);
 int       xml_addsub(cxobj *xp, cxobj *xc);
 cxobj    *xml_wrap_all(cxobj *xp, char *tag);
-cxobj    *xml_wrap(cxobj *xc, char *tag);
+cxobj    *xml_wrap(cxobj *xc, const char *tag);
 int       xml_purge(cxobj *xc);
 int       xml_child_rm(cxobj *xp, int i);
 int       xml_rm(cxobj *xc);
@@ -213,11 +213,11 @@ int       xml_enumerate_get(cxobj *x);
 
 char     *xml_body(cxobj *xn);
 cxobj    *xml_body_get(cxobj *xn);
-char     *xml_find_type_value(cxobj *xn_parent, char *prefix,
-			      char *name, enum cxobj_type type);
-cxobj    *xml_find_type(cxobj *xn_parent, char *prefix, char *name, enum cxobj_type type);
+char     *xml_find_type_value(cxobj *xn_parent, const char *prefix,
+			      const char *name, enum cxobj_type type);
+cxobj    *xml_find_type(cxobj *xn_parent, const char *prefix, const char *name, enum cxobj_type type);
 char     *xml_find_value(cxobj *xn_parent, char *name);
-char     *xml_find_body(cxobj *xn, char *name);
+char     *xml_find_body(cxobj *xn, const char *name);
 cxobj    *xml_find_body_obj(cxobj *xt, char *name, char *val);
 
 int       xml_free(cxobj *xn);

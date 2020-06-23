@@ -568,14 +568,14 @@ netconf_unknown_element_xml(cxobj **xret,
 int
 netconf_unknown_namespace(cbuf *cb,
 			  char *type,
-			  char *namespace,
+			  char *_namespace,
 			  char *message)
 {
     int    retval = -1;
     cxobj *xret = NULL;
 
     if (netconf_common_xml(&xret, type, "unknown-namespace",
-			   "bad-namespace", namespace, message) < 0)
+			   "bad-namespace", _namespace, message) < 0)
 	goto done;
     if (clicon_xml2cbuf(cb, xret, 0, 0, -1) < 0)
 	goto done;
@@ -589,11 +589,11 @@ netconf_unknown_namespace(cbuf *cb,
 int
 netconf_unknown_namespace_xml(cxobj **xret,
 			      char   *type,
-			      char   *namespace,
+			      char   *_namespace,
 			      char   *message)
 {
     return netconf_common_xml(xret, type, "unknown-namespace",
-			      "bad-namespace", namespace, message);
+			      "bad-namespace", _namespace, message);
 }
 
 /*! Create Netconf access-denied error cbuf according to RFC 6241 App A

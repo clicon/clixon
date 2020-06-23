@@ -386,7 +386,7 @@ xml_name(cxobj *xn)
  */
 int
 xml_name_set(cxobj *xn, 
-	     char  *name)
+	     const char  *name)
 {
     if (xn->x_name){
 	free(xn->x_name);
@@ -1045,7 +1045,7 @@ xml_childvec_get(cxobj *x)
  * @see xml_sort_insert
  */
 cxobj *
-xml_new(char           *name, 
+xml_new(const char           *name,
 	cxobj          *xp,
 	enum cxobj_type type)
 {
@@ -1196,7 +1196,7 @@ xml_cv_set(cxobj  *x,
  */
 cxobj *
 xml_find(cxobj *xp, 
-	 char  *name)
+	 const char  *name)
 {
     cxobj *x = NULL;
 
@@ -1310,7 +1310,7 @@ xml_wrap_all(cxobj *xp,
  */
 cxobj *
 xml_wrap(cxobj *xc, 
-	 char  *tag)
+	 const char  *tag)
 {
     cxobj *xw; /* new wrap node */
     cxobj *xp; /* parent */
@@ -1661,8 +1661,8 @@ xml_body_get(cxobj *xt)
  */
 char *
 xml_find_type_value(cxobj           *xt, 
-		    char            *prefix,
-		    char            *name,
+		    const char            *prefix,
+		    const char            *name,
 		    enum cxobj_type  type)
 {
     cxobj *x;
@@ -1691,8 +1691,8 @@ xml_find_type_value(cxobj           *xt,
  */
 cxobj *
 xml_find_type(cxobj           *xt, 
-	      char            *prefix,
-	      char            *name,
+	      const char            *prefix,
+	      const char            *name,
 	      enum cxobj_type  type)
 {
     cxobj *x = NULL;
@@ -1756,7 +1756,7 @@ xml_find_value(cxobj *xt,
  */
 char *
 xml_find_body(cxobj *xt, 
-	      char  *name)
+	      const char  *name)
 {
     cxobj *x=NULL;
 

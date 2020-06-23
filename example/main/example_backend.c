@@ -267,10 +267,10 @@ example_rpc(clicon_handle h,            /* Clicon handle */
 {
     int    retval = -1;
     cxobj *x = NULL;
-    char  *namespace;
+    char  *_namespace;
 
     /* get namespace from rpc name, return back in each output parameter */
-    if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
+    if ((_namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
 	clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
 	goto done;
     }
@@ -278,7 +278,7 @@ example_rpc(clicon_handle h,            /* Clicon handle */
     if (!xml_child_nr_type(xe, CX_ELMNT))
 	cprintf(cbret, "<ok/>");
     else while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
-	    if (xmlns_set(x, NULL, namespace) < 0)
+	    if (xmlns_set(x, NULL, _namespace) < 0)
 		goto done;
 	    if (clicon_xml2cbuf(cbret, x, 0, 0, -1) < 0)
 		goto done;
@@ -396,7 +396,7 @@ example_statedata(clicon_handle h,
 	    goto done;
 	if (xlen){
 	    cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
-	    for (i=0; i<xlen; i++){
+	    for (i=0; i<(int)xlen; i++){
 		name = xml_body(xvec[i]);
 		cprintf(cb, "<interface xmlns:ex=\"urn:example:clixon\"><name>%s</name><type>ex:eth</type><oper-status>up</oper-status>", name);
 		cprintf(cb, "<ex:my-status><ex:int>42</ex:int><ex:str>foo</ex:str></ex:my-status>");
@@ -551,7 +551,7 @@ example_upgrade(clicon_handle    h,
 	    goto done;
 	/* Remove them */
 	/* Loop through all nodes matching mypath and change theoir namespace */
-	for (i=0; i<xlen; i++){
+	for (i=0; i<(int)xlen; i++){
 	    if (xml_purge(xvec[i]) < 0)
 		goto done;
 	}
@@ -563,8 +563,8 @@ example_upgrade(clicon_handle    h,
     /* 2. Rename namespaces of the paths declared in the namespace map
      */
     for (ms = &namespace_map[0]; ms->ms_s0; ms++){
-	char *mypath;
-	char *mynamespace;
+	const char *mypath;
+	const char *mynamespace;
 	char *myprefix = NULL;
 
 	mypath = ms->ms_s0;
@@ -578,7 +578,7 @@ example_upgrade(clicon_handle    h,
 	if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, mypath) < 0) 
 	    goto done;
 	/* Loop through all nodes matching mypath and change theoir namespace */
-	for (i=0; i<xlen; i++){
+	for (i=0; i<(int)xlen; i++){
 	    /* Change namespace of this node (using myprefix) */ 
 	    if (xml_namespace_change(xvec[i], mynamespace, myprefix) < 0)
 		goto done;
@@ -648,7 +648,7 @@ upgrade_2016(clicon_handle h,
     /* Get all XML nodes with that namespace */
     if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
 	goto done;
-    for (i=0; i<vlen; i++){
+    for (i=0; i<(int)vlen; i++){
 	xc = vec[i];
 	/* Iterate through interfaces-state */
 	if (strcmp(xml_name(xc),"interfaces-state") == 0){
@@ -718,6 +718,7 @@ upgrade_2016(clicon_handle h,
  * - Change type /interfaces/interface/statistics/in-octets to decimal64 with
  *   fraction-digits 3 and divide all values with 1000
  */
+
 static int
 upgrade_2018(clicon_handle h,       
 	     cxobj        *xt,      
@@ -746,7 +747,7 @@ upgrade_2018(clicon_handle h,
     /* Get all XML nodes with that namespace */
     if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
 	goto done;
-    for (i=0; i<vlen; i++){
+    for (i=0; i<(int)vlen; i++){
 	xc = vec[i];
 	/* Delete /if:interfaces-state */
 	if (strcmp(xml_name(xc), "interfaces-state") == 0)
@@ -893,25 +894,28 @@ example_exit(clicon_handle h)
 
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
-static clixon_plugin_api api = {
-    "example",                              /* name */    
-    clixon_plugin_init,                     /* init - must be called clixon_plugin_init */
-    example_start,                          /* start */
-    example_exit,                           /* exit */
-    .ca_extension=example_extension,        /* yang extensions */
-    .ca_daemon=example_daemon,              /* daemon */
-    .ca_reset=example_reset,                /* reset */
-    .ca_statedata=example_statedata,        /* statedata */
-    .ca_trans_begin=main_begin,             /* trans begin */
-    .ca_trans_validate=main_validate,       /* trans validate */
-    .ca_trans_complete=main_complete,       /* trans complete */
-    .ca_trans_commit=main_commit,           /* trans commit */
-    .ca_trans_commit_done=main_commit_done, /* trans commit done */
-    .ca_trans_revert=main_revert,           /* trans revert */
-    .ca_trans_end=main_end,                 /* trans end */
-    .ca_trans_abort=main_abort,             /* trans abort */
-    .ca_datastore_upgrade=example_upgrade,  /* general-purpose upgrade. */
-};
+static clixon_plugin_api api;
+
+static void api_initialization(void)
+{
+	strcpy(api.ca_name, "example");                                 /* name */
+	api.ca_init = clixon_plugin_init;                               /* init - must be called clixon_plugin_init */
+	api.ca_start = example_start;                                   /* start */
+	api.ca_exit = example_exit;                                     /* exit */
+	api.ca_extension = example_extension;                           /* yang extensions */
+	api.u.cau_backend.cb_daemon = example_daemon;                   /* daemon */
+	api.u.cau_backend.cb_reset = example_reset;                     /* reset */
+	api.u.cau_backend.cb_statedata = example_statedata;             /* statedata */
+	api.u.cau_backend.cb_trans_begin = main_begin;                  /* trans begin */
+	api.u.cau_backend.cb_trans_validate = main_validate;            /* trans validate */
+	api.u.cau_backend.cb_trans_complete = main_complete;            /* trans complete */
+	api.u.cau_backend.cb_trans_commit = main_commit;                /* trans commit */
+	api.u.cau_backend.cb_trans_commit_done = main_commit_done;      /* trans commit done */
+	api.u.cau_backend.cb_trans_revert = main_revert;                /* trans revert */
+	api.u.cau_backend.cb_trans_end = main_end;                      /* trans end */
+	api.u.cau_backend.cb_trans_abort = main_abort;                  /* trans abort */
+	api.u.cau_backend.cb_datastore_upgrade = example_upgrade;       /* general-purpose upgrade. */
+}
 
 /*! Backend plugin initialization
  * @param[in]  h    Clixon handle
@@ -927,7 +931,7 @@ clixon_plugin_init(clicon_handle h)
     int            argc; /* command-line options (after --) */
     char         **argv;
     int            c;
-
+	api_initialization();
     clicon_debug(1, "%s backend", __FUNCTION__);
 
     /* Get user command-line options (after --) */

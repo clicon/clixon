@@ -682,12 +682,12 @@ int
 rpc_callback_register(clicon_handle  h,
 		      clicon_rpc_cb  cb,
 		      void          *arg,       
-    		      char          *namespace,
-		      char          *name)
+    		  const char    *_namespace,
+		      const char    *name)
 {
     rpc_callback_t *rc = NULL;
 
-    if (name == NULL || namespace == NULL){
+    if (name == NULL || _namespace == NULL){
 	clicon_err(OE_DB, EINVAL, "name or namespace NULL");
 	goto done;
     }
@@ -698,7 +698,7 @@ rpc_callback_register(clicon_handle  h,
     memset(rc, 0, sizeof(*rc));
     rc->rc_callback = cb;
     rc->rc_arg  = arg;
-    rc->rc_namespace  = strdup(namespace); 
+    rc->rc_namespace  = strdup(_namespace);
     rc->rc_name  = strdup(name);
     ADDQ(rc, rpc_cb_list);
     return 0;
@@ -755,19 +755,19 @@ rpc_callback_call(clicon_handle h,
     rpc_callback_t *rc;
     char           *name;
     char           *prefix;
-    char           *namespace;
+    char           *_namespace;
     int             nr = 0; /* How many callbacks */
 
     if (rpc_cb_list == NULL)
 	return 0;
     name = xml_name(xe);
     prefix = xml_prefix(xe);
-    xml2ns(xe, prefix, &namespace);
+    xml2ns(xe, prefix, &_namespace);
     rc = rpc_cb_list;
     do {
 	if (strcmp(rc->rc_name, name) == 0 &&
-	    namespace && rc->rc_namespace &&
-	    strcmp(rc->rc_namespace, namespace) == 0){
+	    _namespace && rc->rc_namespace &&
+	    strcmp(rc->rc_namespace, _namespace) == 0){
 	    if (rc->rc_callback(h, xe, cbret, arg, rc->rc_arg) < 0){
 		clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_name);
 		goto done;
@@ -818,7 +818,7 @@ int
 upgrade_callback_reg_fn(clicon_handle     h,
 			clicon_upgrade_cb cb,
 			const char       *fnstr,
-			char             *namespace,
+			char             *_namespace,
 			uint32_t          from,
 			uint32_t          revision,
 			void             *arg)
@@ -833,8 +833,8 @@ upgrade_callback_reg_fn(clicon_handle     h,
     uc->uc_callback = cb;
     uc->uc_fnstr = fnstr;
     uc->uc_arg  = arg;
-    if (namespace)
-	uc->uc_namespace  = strdup(namespace);
+    if (_namespace)
+	uc->uc_namespace  = strdup(_namespace);
     uc->uc_rev = revision;
     uc->uc_from = from;
     ADDQ(uc, upgrade_cb_list);
@@ -881,7 +881,7 @@ upgrade_callback_delete_all(clicon_handle h)
 int
 upgrade_callback_call(clicon_handle h,
 		      cxobj        *xt,
-		      char         *namespace,
+		      char         *_namespace,
 		      uint32_t      from,
 		      uint32_t      to,
 		      cbuf         *cbret)
@@ -903,17 +903,17 @@ upgrade_callback_call(clicon_handle h,
 	 *   - Registered from revision >= from AND
          *   - Registered to revision <= to (which includes case both 0)
 	 */
-	if (uc->uc_namespace == NULL || strcmp(uc->uc_namespace, namespace)==0)
+	if (uc->uc_namespace == NULL || strcmp(uc->uc_namespace, _namespace)==0)
 	    if ((uc->uc_from == 0) ||
 		(uc->uc_from >= from && uc->uc_rev <= to)){
-		if ((ret = uc->uc_callback(h, xt, namespace, from, to, uc->uc_arg, cbret)) < 0){
+		if ((ret = uc->uc_callback(h, xt, _namespace, from, to, uc->uc_arg, cbret)) < 0){
 		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, uc->uc_namespace);
 		    goto done;
 		}
 		if (ret == 0){
 		    if (cbuf_len(cbret)==0){	
 			clicon_err(OE_CFG, 0, "Validation fail %s(%s): cbret not set",
-				   uc->uc_fnstr, namespace);
+				   uc->uc_fnstr, _namespace);
 			goto done;
 		    }
 		    goto fail;

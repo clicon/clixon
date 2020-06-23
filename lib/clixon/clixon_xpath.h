@@ -134,12 +134,12 @@ int   xpath_vec_ctx(cxobj *xcur, cvec *nsc, char *xpath, int localonly, xp_ctx  
 
 #if defined(__GNUC__) && __GNUC__ >= 3
 int    xpath_vec_bool(cxobj *xcur, cvec *nsc, char *xpformat, ...) __attribute__ ((format (printf, 3, 4)));
-int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *xpformat, uint16_t flags, 
+int    xpath_vec_flag(cxobj *xcur, cvec *nsc, const char *xpformat, uint16_t flags,
 		   cxobj ***vec, int *veclen, ...) __attribute__ ((format (printf, 3, 7)));
 
 #else
 int    xpath_vec_bool(cxobj *xcur, cvec *nsc, char *xpformat, ...);
-int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *xpformat, uint16_t flags, 
+int    xpath_vec_flag(cxobj *xcur, cvec *nsc, const char *xpformat, uint16_t flags,
 		      cxobj ***vec, int *veclen, ...);
 #endif
 
@@ -149,13 +149,13 @@ int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *xpformat, uint16_t flags,
  * If you do not know what a namespace context is, see README.md#xml-and-xpath
  */
 #if defined(__GNUC__) && __GNUC__ >= 3
-cxobj *xpath_first(cxobj *xcur, cvec *nsc, char *xpformat,  ...) __attribute__ ((format (printf, 3, 4)));
+cxobj *xpath_first(cxobj *xcur, cvec *nsc, const char *xpformat,  ...) __attribute__ ((format (printf, 3, 4)));
 cxobj *xpath_first_localonly(cxobj *xcur, char *xpformat,  ...) __attribute__ ((format (printf, 2, 3)));
-int    xpath_vec(cxobj *xcur, cvec *nsc, char *xpformat, cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 6)));
+int    xpath_vec(cxobj *xcur, cvec *nsc, const char *xpformat, cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 6)));
 #else
-cxobj *xpath_first(cxobj *xcur, cvec *nsc, char *xpformat, ...);
+cxobj *xpath_first(cxobj *xcur, cvec *nsc, const char *xpformat, ...);
 cxobj *xpath_first_localonly(cxobj *xcur, char *xpformat, ...);
-int    xpath_vec(cxobj *xcur, cvec *nsc, char *xpformat, cxobj  ***vec, size_t *veclen, ...);
+int    xpath_vec(cxobj *xcur, cvec *nsc, const char *xpformat, cxobj  ***vec, size_t *veclen, ...);
 #endif
 
 int xpath2canonical(char *xpath0, cvec *nsc0, yang_stmt *yspec, char **xpath1, cvec **nsc1);

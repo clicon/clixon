@@ -420,7 +420,7 @@ restconf_main_extension_cb(clicon_handle h,
  */
 char *
 clixon_restconf_param_get(clicon_handle h,
-			  char         *param)
+			  const char         *param)
 {
     char *val;
     if (clicon_data_get(h, param, &val) < 0)
