@@ -14,7 +14,7 @@ sudo apt-get install flex bison fcgi-dev curl-dev
 
 Install and build CLIgen
 ```
-    git clone https://github.com/olofhagsand/cligen.git
+    git clone https://github.com/clicon/cligen.git
     cd cligen;
     configure;
     make;

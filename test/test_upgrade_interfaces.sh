@@ -270,7 +270,7 @@ testrun(){
     wait_backend
     
     new "kill old restconf daemon"
-    sudo pkill -u $wwwuser -f clixon_restconf
+    stop_restconf_pre
 
     new "start restconf daemon"
     start_restconf -f $cfg

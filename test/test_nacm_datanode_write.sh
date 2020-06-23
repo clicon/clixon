@@ -153,48 +153,48 @@ testrun(){
     testd=$9
 
     new "set write-default $writedefault"
-    expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/ietf-netconf-acm:nacm/write-default -d "{\"ietf-netconf-acm:write-default\":\"$writedefault\"}" )" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl -u andy:bar -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/write-default -d "{\"ietf-netconf-acm:write-default\":\"$writedefault\"}" )" 0 "HTTP/1.1 204 No Content"
 
     new "set param rule access: $paramaccess"
-    expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=parameter/access-operations -d "{\"ietf-netconf-acm:access-operations\":\"$paramaccess\"}" )" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl -u andy:bar -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=parameter/access-operations -d "{\"ietf-netconf-acm:access-operations\":\"$paramaccess\"}" )" 0 "HTTP/1.1 204 No Content"
 
     new "set param rule access: $paramaction"
-    expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=parameter/action -d "{\"ietf-netconf-acm:action\":\"$paramaction\"}" )" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl -u andy:bar -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=parameter/action -d "{\"ietf-netconf-acm:action\":\"$paramaction\"}" )" 0 "HTTP/1.1 204 No Content"
 
     new "set value rule access: $valueaccess"
-    expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=value/access-operations -d "{\"ietf-netconf-acm:access-operations\":\"$valueaccess\"}" )" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl -u andy:bar -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=value/access-operations -d "{\"ietf-netconf-acm:access-operations\":\"$valueaccess\"}" )" 0 "HTTP/1.1 204 No Content"
 
     new "set value rule access: $valueaction"
-    expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=value/action -d "{\"ietf-netconf-acm:action\":\"$valueaction\"}" )" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl -u andy:bar -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=value/action -d "{\"ietf-netconf-acm:action\":\"$valueaction\"}" )" 0 "HTTP/1.1 204 No Content"
 
 #--------------- Here tests: create/update/read/delete
 
     new "create object b"
     if $testc; then
-    expectpart "$(curl -u wilma:bar -siS -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/nacm-example:table/parameter=a/next  -d '{"nacm-example:parameter":[{"name":"b","value":"17"}]}')" 0 'HTTP/1.1 201 Created'
+    expectpart "$(curl -u wilma:bar -sik -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next  -d '{"nacm-example:parameter":[{"name":"b","value":"17"}]}')" 0 'HTTP/1.1 201 Created'
     else
-    expectpart "$(curl -u wilma:bar -siS -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/nacm-example:table/parameter=a/next  -d '{"nacm-example:parameter":[{"name":"b","value":"17"}]}')" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
+    expectpart "$(curl -u wilma:bar -sik -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next  -d '{"nacm-example:parameter":[{"name":"b","value":"17"}]}')" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
     fi
     new "read object b"
     if $testr; then
-    expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)" 0 'HTTP/1.1 200 OK' '{"nacm-example:parameter":\[{"name":"b","value":"17"}\]}'
+    expectpart "$(curl -u wilma:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)" 0 'HTTP/1.1 200 OK' '{"nacm-example:parameter":\[{"name":"b","value":"17"}\]}'
     else
-    expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)" 0 'HTTP/1.1 404 Not Found'
+    expectpart "$(curl -u wilma:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)" 0 'HTTP/1.1 404 Not Found'
     fi
 
     new "update object b"
     if $testu; then
-    expectpart "$(curl -u wilma:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b -d '{"nacm-example:parameter":[{"name":"b","value":"92"}]}')" 0 'HTTP/1.1 204 No Content'
+    expectpart "$(curl -u wilma:bar -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b -d '{"nacm-example:parameter":[{"name":"b","value":"92"}]}')" 0 'HTTP/1.1 204 No Content'
     else
-	expectpart "$(curl -u wilma:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b -d '{"nacm-example:parameter":[{"name":"b","value":"92"}]}')" 0 'HTTP/1.1 403 Forbidden'
+	expectpart "$(curl -u wilma:bar -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b -d '{"nacm-example:parameter":[{"name":"b","value":"92"}]}')" 0 'HTTP/1.1 403 Forbidden'
 	# '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
     fi
 
     new "delete object b"
     if $testd; then
-    expectpart "$(curl -u wilma:bar -siS -X DELETE http://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)" 0 'HTTP/1.1 204 No Content' 
+    expectpart "$(curl -u wilma:bar -sik -X DELETE $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)" 0 'HTTP/1.1 204 No Content' 
     else # XXX can vara olika
-	ret=$(curl -u wilma:bar -siS -X DELETE http://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)
+	ret=$(curl -u wilma:bar -sik -X DELETE $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)
 	r=$?
 	if [ $r != 0 ]; then
 	    err "retval: $r" "0"
@@ -208,7 +208,7 @@ testrun(){
 	fi
 	# Ensure delete
 	new "ensure delete object b"
-	expectpart "$(curl -u andy:bar -siS -X DELETE http://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)" 0 'HTTP/1.1' # ignore error
+	expectpart "$(curl -u andy:bar -sik -X DELETE $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)" 0 'HTTP/1.1' # ignore error
     fi
 
 } # testrun
@@ -230,7 +230,7 @@ wait_backend
     
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
-    sudo pkill -u $wwwuser -f clixon_restconf
+    stop_restconf_pre
     
     new "start restconf daemon (-a is enable basic authentication)"
     start_restconf -f $cfg -- -a
@@ -249,7 +249,7 @@ new "commit it"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
-expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl -u andy:bar -sik -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 204 No Content"
 
 #--------------- nacm enabled
 # config: def param:access/action value:access/action

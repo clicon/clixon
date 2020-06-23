@@ -148,14 +148,17 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
 
-new "start restconf daemon (-a is enable basic authentication)"
-start_restconf -f $cfg -- -a
+    new "kill old restconf daemon"
+    stop_restconf_pre
 
-new "waiting"
-wait_restconf
+    new "start restconf daemon (-a is enable basic authentication)"
+    start_restconf -f $cfg -- -a
+
+    new "waiting"
+    wait_restconf
+fi
 
 new "auth set authentication config"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -215,8 +218,10 @@ expectpart "$(curl -u wilma:bar -sik -X PUT -H "Content-Type: application/yang-d
 new "permit-edit-config: guest fail restconf"
 expectpart "$(curl -u guest:bar -sik -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x":2}' $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE

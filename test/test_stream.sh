@@ -120,7 +120,7 @@ wait_backend
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
-    sudo pkill -u $wwwuser -f clixon_restconf
+    stop_restconf_pre
       
     new "start restconf daemon"
     start_restconf -f $cfg
@@ -170,21 +170,21 @@ sleep 1
 new "2. Restconf RFC8040 stream testing"
 # 2.1 Stream discovery
 new "restconf event stream discovery RFC8040 Sec 6.2"
-expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams" 0 '{"ietf-restconf-monitoring:streams":{"stream":\[{"name":"EXAMPLE","description":"Example event stream","replay-support":true,"access":\[{"encoding":"xml","location":"https://localhost/streams/EXAMPLE"}\]}\]}'
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams)" 0 "HTTP/1.1 200 OK" '{"ietf-restconf-monitoring:streams":{"stream":\[{"name":"EXAMPLE","description":"Example event stream","replay-support":true,"access":\[{"encoding":"xml","location":"https://localhost/streams/EXAMPLE"}\]}\]}'
 
 sleep 1
 new "restconf subscribe RFC8040 Sec 6.3, get location"
-expectfn "curl -s -X GET http://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=EXAMPLE/access=xml/location" 0 '{"ietf-restconf-monitoring:location":"https://localhost/streams/EXAMPLE"}'
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=EXAMPLE/access=xml/location)" 0 "HTTP/1.1 200 OK" '{"ietf-restconf-monitoring:location":"https://localhost/streams/EXAMPLE"}'
 
 sleep 1
 # Restconf stream subscription RFC8040 Sec 6.3
 # Start Subscription w error
 new "restconf monitor event nonexist stream"
-expectwait 'curl -s -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" http://localhost/streams/NOTEXIST' 0 '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>' 2
+expectwait "curl -sk -X GET -H \"Accept: text/event-stream\" -H \"Cache-Control: no-cache\" -H \"Connection: keep-alive\" $RCPROTO://localhost/streams/NOTEXIST" 0 '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>' 2
 
 # 2a) start subscription 8s - expect 1-2 notifications
 new "2a) start subscriptions 8s - expect 1-2 notifications"
-ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 8)
+ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 8)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 
 match=$(echo "$ret" | grep -Eo "$expect")
@@ -200,7 +200,7 @@ sleep 1
 
 # 2b) start subscription 8s - stoptime after 5s - expect 1-2 notifications
 new "2b) start subscriptions 8s - stoptime after 5s - expect 1-2 notifications"
-ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 8 -e +10)
+ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 8 -e +10)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
@@ -215,7 +215,7 @@ sleep 1
 
 # 2c
 new "2c) start sub 8s - replay from start -8s - expect 3-4 notifications"
-ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 10 -s -8)
+ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 10 -s -8)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
@@ -230,7 +230,7 @@ sleep 1
 
 # 2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications
 new "2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications"
-ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 10 -s -30 -e +4)
+ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 10 -s -30 -e +4)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
@@ -244,9 +244,9 @@ fi
 
 sleep 1
 
-# 2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications
+# 2e) start sub 8s - replay from -90s w retention 60s - expect 9-14 notifications
 new "2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications"
-ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 10 -s -90 -e +0)
+ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 10 -s -90 -e +0)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
@@ -255,18 +255,18 @@ fi
 nr=$(echo "$ret" | grep -c "data:")
 
 if [ $nr -lt 9 -o $nr -gt 14 ]; then
-    err 10 "$nr"
+    err "9-14" "$nr"
 fi
 
 sleep 1
 
 # Try parallell
 # start background job
-curl -s -X GET  -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" "http://localhost/streams/EXAMPLE" > /dev/null &
+curl -sik -X GET  -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" "$RCPROTO://localhost/streams/EXAMPLE" > /dev/null &
 PID=$!
 
 new "Start subscriptions in parallell"
-ret=$($clixon_util_stream -u http://localhost/streams/EXAMPLE -t 8)
+ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 8)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 
 match=$(echo "$ret" | grep -Eo "$expect")
@@ -284,7 +284,7 @@ kill $PID
 # NCHAN Need manual testing
 echo "Nchan streams requires manual testing"
 echo "Add <CLICON_STREAM_PUB>http://localhost/pub</CLICON_STREAM_PUB> to config"
-echo "Eg: curl -H \"Accept: text/event-stream\" -s -X GET http://localhost/sub/EXAMPLE"
+echo "Eg: curl -sik -H \"Accept: text/event-stream\" -s -X GET $RCPROTO://localhost/sub/EXAMPLE"
 
 #-----------------
 sleep 5

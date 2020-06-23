@@ -60,6 +60,7 @@
 #include <clixon/clixon.h>
 
 #include "restconf_api.h"
+#include "restconf_handle.h"
 #include "restconf_lib.h"
 
 /* See RFC 8040 Section 7:  Mapping from NETCONF<error-tag> to Status Code
@@ -188,10 +189,10 @@ restconf_media_int2str(restconf_media media)
 restconf_media
 restconf_content_type(clicon_handle h)
 {
-    char          *str;
+    char          *str = NULL;
     restconf_media m;
 
-    if ((str = clixon_restconf_param_get(h, "HTTP_CONTENT_TYPE")) == NULL)
+    if ((str = restconf_param_get(h, "HTTP_CONTENT_TYPE")) == NULL)
 	return -1;
     if ((int)(m = restconf_media_str2int(str)) == -1)
 	return -1;
@@ -252,7 +253,7 @@ restconf_terminate(clicon_handle h)
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
     xpath_optimize_exit();
-    clicon_handle_exit(h);
+    restconf_handle_exit(h);
     clicon_log_exit();
     return 0;
 }
@@ -412,53 +413,6 @@ restconf_main_extension_cb(clicon_handle h,
     return retval;
 }
 
-/*! Get restconf http parameter
- * @param[in]  h    Clicon handle
- * @param[in]  name Data name
- * @retval     val  Data value as string
- * Currently using clixon runtime data but there is risk for colliding names
- */
-char *
-clixon_restconf_param_get(clicon_handle h,
-			  const char         *param)
-{
-    char *val;
-    if (clicon_data_get(h, param, &val) < 0)
-	return NULL;
-    return val;
-}
-
-/*! Set restconf http parameter
- * @param[in]  h    Clicon handle
- * @param[in]  name Data name
- * @param[in]  val  Data value as null-terminated string
- * @retval     0    OK
- * @retval    -1    Error
- * Currently using clixon runtime data but there is risk for colliding names
- */
-int
-clixon_restconf_param_set(clicon_handle h,
-			  char        *param,
-    			  char         *val)
-{
-    clicon_debug(1, "%s=%s", param, val);
-    return clicon_data_set(h, param, val);
-}
-
-/*! Delete restconf http parameter
- * @param[in]  h    Clicon handle
- * @param[in]  name Data name
- * @retval     0    OK
- * @retval    -1    Error
- * Currently using clixon runtime data but there is risk for colliding names
- */
-int
-clixon_restconf_param_del(clicon_handle h,
-			  char        *param)
-{
-    return clicon_data_del(h, param);
-}
-
 /*! Extract uri-encoded uri-path from fastcgi parameters
  * Use REQUEST_URI parameter and strip ?args
  * REQUEST_URI have args and is encoded
@@ -473,7 +427,7 @@ restconf_uripath(clicon_handle h)
     char *path;
     char *q;
 
-    path = clixon_restconf_param_get(h, "REQUEST_URI"); 
+    path = restconf_param_get(h, "REQUEST_URI");
     if ((q = index(path, '?')) != NULL)
 	*q = '\0';
     return path;

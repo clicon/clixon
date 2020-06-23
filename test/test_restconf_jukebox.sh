@@ -79,7 +79,7 @@ wait_backend
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
-    sudo pkill -u $wwwuser -f clixon_restconf
+    stop_restconf_pre
 
     new "start restconf daemon"
     start_restconf -f $cfg
@@ -197,8 +197,8 @@ JSON="{\"example-jukebox:song\":[{\"index\":0,\"id\":\"/example-jukebox:jukebox/
 expectpart "$(curl -sik -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=first -d "$JSON")" 0 "HTTP/1.1 201 Created" "Location: $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One/song=0"
 
 new 'B.3.4.  "insert" Parameter check order'
-RES="<playlist xmlns=\"$RCPROTO://example.com/ns/example-jukebox\"><name>Foo-One</name><song><index>0</index><id>/example-jukebox:jukebox/library/artist\[name='Foo Fighters'\]/album\[name='Wasting Light'\]/song\[name='Bridge Burning'\]</id></song><song><index>1</index><id>/example-jukebox:jukebox/library/artist\[name='Foo Fighters'\]/album\[name='Wasting Light'\]/song\[name='Rope'\]</id></song></playlist>"
-expectpart "$(curl -sik -X GET http://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' "$RES"
+RES="<playlist xmlns=\"http://example.com/ns/example-jukebox\"><name>Foo-One</name><song><index>0</index><id>/example-jukebox:jukebox/library/artist\[name='Foo Fighters'\]/album\[name='Wasting Light'\]/song\[name='Bridge Burning'\]</id></song><song><index>1</index><id>/example-jukebox:jukebox/library/artist\[name='Foo Fighters'\]/album\[name='Wasting Light'\]/song\[name='Rope'\]</id></song></playlist>"
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' "$RES"
 
 new 'B.3.5.  "point" Parameter (before for more interesting order: 0,2,1)'
 JSON="{\"example-jukebox:song\":[{\"index\":2,\"id\":\"/example-jukebox:jukebox/library/artist[name='Foo Fighters']/album[name='Wasting Light']/song[name='Bridge Burning']\"}]}"

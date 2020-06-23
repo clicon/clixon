@@ -129,10 +129,11 @@ clicon_hash_init(void)
 
 /*! Free hash table.
  *
- * @param[in] hash	  Hash table
- * @retval    void
+ * @param[in] hash   Hash table
+ * @retval    0      OK
+ * @retval   -1      Error
  */
-void
+int
 clicon_hash_free(clicon_hash_t *hash)
 {
     int i;
@@ -147,6 +148,7 @@ clicon_hash_free(clicon_hash_t *hash)
 	}
     }
     free(hash);
+    return 0;
 }
 
 /*! Find hash key.
@@ -189,6 +191,10 @@ clicon_hash_value(clicon_hash_t *hash,
 {
     clicon_hash_t h;
 
+    if (hash == NULL){
+	clicon_err(OE_UNIX, EINVAL, "hash is NULL");
+	return NULL;
+    }
     h = clicon_hash_lookup(hash, key);
     if (h == NULL)
 	return NULL; /* OK, key not found */
@@ -218,6 +224,10 @@ clicon_hash_add(clicon_hash_t *hash,
     clicon_hash_t h;
     clicon_hash_t new = NULL;
     
+    if (hash == NULL){
+	clicon_err(OE_UNIX, EINVAL, "hash is NULL");
+	return NULL;
+    }
     /* Check NULL case */
     if ((val == NULL && vlen != 0) ||
 	(val != NULL && vlen == 0)){
@@ -288,6 +298,10 @@ clicon_hash_del(clicon_hash_t *hash,
 {
     clicon_hash_t h;
 
+    if (hash == NULL){
+	clicon_err(OE_UNIX, EINVAL, "hash is NULL");
+	return -1;
+    }
     h = clicon_hash_lookup(hash, key);
     if (h == NULL)
 	return -1;
@@ -321,6 +335,10 @@ clicon_hash_keys(clicon_hash_t *hash,
     char        **tmp;
     char        **keys = NULL;
 
+    if (hash == NULL){
+	clicon_err(OE_UNIX, EINVAL, "hash is NULL");
+	return -1;
+    }
     *nkeys = 0;
     for (bkt = 0; bkt < HASH_SIZE; bkt++) {
 	h = hash[bkt];

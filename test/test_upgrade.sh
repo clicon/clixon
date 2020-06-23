@@ -137,7 +137,7 @@ cat <<EOF > $dir/compat-valid.xml
 </config>
 EOF
 
-# Create compatiblae startup db
+# Create compatible startup db
 # startup config XML with following 
 cat <<EOF > $dir/compat-invalid.xml
 <config>

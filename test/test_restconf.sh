@@ -43,6 +43,7 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     sudo pkill -f clixon_backend # to be sure
+
     new "start backend -s init -f $cfg -- -s"
     start_backend -s init -f $cfg -- -s
 fi
@@ -52,7 +53,7 @@ wait_backend
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
-    sudo pkill -u $wwwuser -f clixon_restconf
+    stop_restconf_pre
 
     new "start restconf daemon"
     start_restconf -f $cfg
@@ -124,10 +125,10 @@ expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" -d
 #expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-lib:input\":{\"level\":0}} $RCPROTO://localhost/restconf/operations/clixon-lib:debug)" 0  "HTTP/1.1 204 No Content"
 
 new "restconf get empty config + state json"
-expectpart "$(curl -kisS -X GET $RCPROTO://localhost/restconf/data/clixon-example:state)" 0 "HTTP/1.1 200 OK" '{"clixon-example:state":{"op":\["41","42","43"\]}}'
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/clixon-example:state)" 0 "HTTP/1.1 200 OK" '{"clixon-example:state":{"op":\["41","42","43"\]}}'
 
 new "restconf get empty config + state json with wrong module name"
-expectpart "$(curl -sikS -X GET $RCPROTO://localhost/restconf/data/badmodule:state)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"badmodule"},"error-severity":"error","error-message":"No such yang module prefix"}}}'
+expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/badmodule:state)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"badmodule"},"error-severity":"error","error-message":"No such yang module prefix"}}}'
 
 #'HTTP/1.1 404 Not Found'
 #'{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"No such yang module: badmodule"}}}'

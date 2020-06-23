@@ -44,7 +44,7 @@ RUN mkdir /clixon/build
 WORKDIR /clixon
 
 # Clone cligen
-RUN git clone https://github.com/olofhagsand/cligen.git
+RUN git clone https://github.com/clicon/cligen.git
 
 # Build cligen
 WORKDIR /clixon/cligen

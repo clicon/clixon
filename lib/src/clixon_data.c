@@ -93,13 +93,10 @@ clicon_data_get(clicon_handle h,
 {
     clicon_hash_t *cdat = clicon_data(h);
 
-    if (val == NULL){
-	clicon_err(OE_CFG, EINVAL, "%s val is NULL", __FUNCTION__);
-	return -1;
-    }
     if (clicon_hash_lookup(cdat, (char*)name) == NULL)
 	return -1;
-    *val = clicon_hash_value(cdat, (char*)name, NULL);
+    if (val)
+	*val = clicon_hash_value(cdat, (char*)name, NULL);
     return 0;
 }
 
@@ -716,4 +713,3 @@ clicon_session_id_set(clicon_handle h,
     clicon_hash_add(cdat, "session-id", &id, sizeof(uint32_t));
     return 0;
 }
-

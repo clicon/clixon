@@ -58,9 +58,9 @@ See [LICENSE.md](LICENSE.md) for the license.
 ## Dependencies
 
 Clixon depends on the following software packages, which need to exist on the target machine.
-- [CLIgen](http://github.com/olofhagsand/cligen) If you need to build and install CLIgen: 
+- [CLIgen](http://github.com/clicon/cligen) If you need to build and install CLIgen: 
 ```
-    git clone https://github.com/olofhagsand/cligen.git
+    git clone https://github.com/clicon/cligen.git
     cd cligen; configure; make; make install
 ```
 - Yacc/bison

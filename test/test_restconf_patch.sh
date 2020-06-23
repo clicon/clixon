@@ -101,6 +101,7 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     sudo pkill -f clixon_backend # to be sure
+
     new "start backend -s startup -f $cfg"
     start_backend -s startup -f $cfg
 fi
@@ -108,14 +109,16 @@ fi
 new "waiting"
 wait_backend
 
-new "kill old restconf daemon"
-sudo pkill -u $wwwuser -f clixon_restconf
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    stop_restconf_pre
 
-new "start restconf daemon (-a is enable basic authentication)"
-start_restconf -f $cfg -- -a 
+    new "start restconf daemon (-a is enable basic authentication)"
+    start_restconf -f $cfg -- -a 
 
-new "waiting"
-wait_restconf
+    new "waiting"
+    wait_restconf
+fi
 
 # also in test_restconf.sh
 new "MUST support the PATCH method for a plain patch" 
@@ -134,7 +137,7 @@ new "Check content (json)"
 expectpart "$(curl -u andy:bar -sik -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 200 OK' '{"example-jukebox:jukebox":{"library":{"artist":\[{"name":"Clash"}\]}}}'
 
 new "Check content (xml)"
-expectpart "$(curl -u andy:bar -si -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<jukebox xmlns="http://example.com/ns/example-jukebox"><library><artist><name>Clash</name></artist></library></jukebox>'
+expectpart "$(curl -u andy:bar -sik -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<jukebox xmlns="http://example.com/ns/example-jukebox"><library><artist><name>Clash</name></artist></library></jukebox>'
 
 new 'If the user is not authorized, "403 Forbidden" SHOULD be returned.'
 expectpart "$(curl -u wilma:bar -sik -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash -d '{"example-jukebox:artist":{"name":"Clash","album":{"name":"London Calling"}}}')" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
@@ -202,8 +205,10 @@ expectpart "$(curl -u andy:bar -sik -X PATCH -H 'Content-Type: application/yang-
 new "The key leaf values MUST be the same as the key leaf values in the request"
 expectpart "$(curl -u andy:bar -sik -X PATCH  -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '{"example-jukebox:album":{"name":"The Clash"}}')" 0 'HTTP/1.1 412 Precondition Failed'
 
-new "Kill restconf daemon"
-stop_restconf 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
 
 if [ $BE -eq 0 ]; then
     exit # BE

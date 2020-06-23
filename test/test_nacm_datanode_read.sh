@@ -176,43 +176,43 @@ testrun(){
     new "read-default:$readdefault module:$module table:$table parameter:$parameter"
 
     new "set read-default $readdefault"
-    expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/ietf-netconf-acm:nacm/read-default -d "{\"ietf-netconf-acm:read-default\":\"$readdefault\"}" )" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl -u andy:bar -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/read-default -d "{\"ietf-netconf-acm:read-default\":\"$readdefault\"}" )" 0 "HTTP/1.1 204 No Content"
 
     new "set module rule $module"
-    expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=module/action -d "{\"ietf-netconf-acm:action\":\"$module\"}" )" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl -u andy:bar -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=module/action -d "{\"ietf-netconf-acm:action\":\"$module\"}" )" 0 "HTTP/1.1 204 No Content"
 
     new "set table rule $table"
-    expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=table/action -d "{\"ietf-netconf-acm:action\":\"$table\"}" )" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl -u andy:bar -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=table/action -d "{\"ietf-netconf-acm:action\":\"$table\"}" )" 0 "HTTP/1.1 204 No Content"
 
     new "set parameter rule $parameter"
-    expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=parameter/action -d "{\"ietf-netconf-acm:action\":\"$parameter\"}" )" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl -u andy:bar -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl/rule=parameter/action -d "{\"ietf-netconf-acm:action\":\"$parameter\"}" )" 0 "HTTP/1.1 204 No Content"
 
 #--------------- Here check
     new "get other module"
     if $test1; then
-    expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example2:other2/value)" 0 'HTTP/1.1 200 OK' '{"nacm-example2:value":"88"}'
+    expectpart "$(curl -u wilma:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example2:other2/value)" 0 'HTTP/1.1 200 OK' '{"nacm-example2:value":"88"}'
     else
-    expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example2:other2/value)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+    expectpart "$(curl -u wilma:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example2:other2/value)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
     fi
 
     new "get other in same module"
     if $test2; then
-    expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:other/value)" 0 'HTTP/1.1 200 OK' '{"nacm-example:value":"99"}'
+    expectpart "$(curl -u wilma:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:other/value)" 0 'HTTP/1.1 200 OK' '{"nacm-example:value":"99"}'
     else
-    expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:other/value)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+    expectpart "$(curl -u wilma:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:other/value)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
     fi
 
     new "get table"
     if $test3; then
-	expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:table?depth=1)" 0 'HTTP/1.1 200 OK' '{"nacm-example:table":{}}'
+	expectpart "$(curl -u wilma:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:table?depth=1)" 0 'HTTP/1.1 200 OK' '{"nacm-example:table":{}}'
     else
-	expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:table?depth=1)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+	expectpart "$(curl -u wilma:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:table?depth=1)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
     fi
     new "get parameter"
     if $test4; then
-    expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 200 OK' '{"nacm-example:parameter":\[{"name":"a","value":"72"}\]}'
+    expectpart "$(curl -u wilma:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 200 OK' '{"nacm-example:parameter":\[{"name":"a","value":"72"}\]}'
     else
-    expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+    expectpart "$(curl -u wilma:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
     fi
 
 } # testrun
@@ -234,7 +234,7 @@ wait_backend
     
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
-    sudo pkill -u $wwwuser -f clixon_restconf
+    stop_restconf_pre
     
     new "start restconf daemon (-a is enable basic authentication)"
     start_restconf -f $cfg -- -a
@@ -253,7 +253,7 @@ new "commit it"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
-expectpart "$(curl -u andy:bar -siS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' http://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl -u andy:bar -sik -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 204 No Content"
 
 #--------------- nacm enabled
 # config: def module  table  parameter
@@ -294,7 +294,5 @@ if [ $BE -ne 0 ]; then     # Bring your own backend
     # kill backend
     stop_backend -f $cfg
 fi
-
-
 
 rm -rf $dir

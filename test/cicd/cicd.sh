@@ -36,7 +36,7 @@ ssh -t $h "(cd /tmp; chmod 750 $SCRIPTS)"
 
 # pull git changes and build cligen
 ssh -t $h "test -d src || mkdir src"
-ssh -t $h "test -d src/cligen || (cd src;git clone https://github.com/olofhagsand/cligen.git)"
+ssh -t $h "test -d src/cligen || (cd src;git clone https://github.com/clicon/cligen.git)"
 ssh -t $h "(cd src/cligen;git pull)"
 ssh -t $h "(cd src/cligen;./configure)"
 ssh -t $h "(cd src/cligen; /tmp/cligen-mk.sh)"

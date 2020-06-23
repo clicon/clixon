@@ -62,6 +62,7 @@
 
 /* restconf */
 #include "restconf_lib.h"
+#include "restconf_handle.h"
 #include "restconf_api.h"
 #include "restconf_err.h"
 #include "restconf_root.h"
@@ -89,7 +90,7 @@ api_well_known(clicon_handle h,
 	errno = EINVAL;
 	goto done;
     }
-    request_method = clixon_restconf_param_get(h, "REQUEST_METHOD");
+    request_method = restconf_param_get(h, "REQUEST_METHOD");
     if (strcmp(request_method, "GET") != 0){
 	restconf_method_notallowed(req, "GET");
 	goto ok;
@@ -265,7 +266,7 @@ api_data(clicon_handle h,
     char   *request_method;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    request_method = clixon_restconf_param_get(h, "REQUEST_METHOD");
+    request_method = restconf_param_get(h, "REQUEST_METHOD");
     clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
     if (strcmp(request_method, "OPTIONS")==0)
 	retval = api_data_options(h, req);
@@ -355,7 +356,7 @@ api_root_restconf(clicon_handle h,
 	errno = EINVAL;
 	goto done;
     }
-    request_method = clixon_restconf_param_get(h, "REQUEST_METHOD");
+    request_method = restconf_param_get(h, "REQUEST_METHOD");
     path = restconf_uripath(h);
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     /* Get media for output (proactive negotiation) RFC7231 by using
@@ -363,7 +364,7 @@ api_root_restconf(clicon_handle h,
      * operation POST, etc
      * If accept is * default is yang-json
      */
-    if ((media_str = clixon_restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
+    if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
 	// retval = restconf_unsupported_media(r);
 	// goto done;
     }

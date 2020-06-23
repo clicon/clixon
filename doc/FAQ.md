@@ -65,7 +65,7 @@ Clixon also supports Yang extensions, see main example.
 
 ## Which programming language is used?
 Clixon is written in C. The plugins are written in C. The CLI
-specification uses [CLIgen](http://github.com/olofhagsand/cligen)
+specification uses [CLIgen](http://github.com/clicon/cligen)
 
 ## How to best understand Clixon?
 Run the Clixon main example, in the [example](../example) directory or [examples repo](https://github.com/clicon/clixon-examples), or [main documentation](https://clixon-docs.readthedocs.io)
@@ -507,7 +507,7 @@ More are found in the doxygen reference.
 where 'cvv' contains the value of the variable 'var' and 'argv' contains the string "myarg".
 
 The 'cvv' datatype is a 'CLIgen variable vector'.
-They are documented in [CLIgen tutorial](https://github.com/olofhagsand/cligen/blob/master/cligen_tutorial.pdf)
+They are documented in [CLIgen tutorial](https://github.com/clicon/cligen/blob/master/cligen_tutorial.pdf)
 
 ## How do I write a validation function?
 Similar to a commit function, but instead write the transaction_validate() function.

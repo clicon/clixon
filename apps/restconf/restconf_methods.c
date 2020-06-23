@@ -120,6 +120,7 @@ Mapping netconf error-tag -> status code
 #include <clixon/clixon.h>
 
 #include "restconf_lib.h"
+#include "restconf_handle.h"
 #include "restconf_api.h"
 #include "restconf_err.h"
 #include "restconf_methods.h"

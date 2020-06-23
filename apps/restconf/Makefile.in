@@ -86,11 +86,11 @@ APPSRC    =
 APPSRC   += restconf_api.c # maybe empty
 APPSRC   += restconf_api_$(with_restconf).c # cant be .so since libevhtp is a.
 APPSRC   += restconf_err.c 
-APPSRC   += restconf_root.c
-APPSRC   += restconf_$(with_restconf)_main.c 
 APPSRC   += restconf_methods.c
 APPSRC   += restconf_methods_post.c
 APPSRC   += restconf_methods_get.c
+APPSRC   += restconf_root.c
+APPSRC   += restconf_main_$(with_restconf).c
 
 # Fcgi-specific source including main
 ifeq ($(with_restconf),fcgi)
@@ -104,6 +104,7 @@ APPOBJ    = $(APPSRC:.c=.o)
 # (eg restconf_method_notallowed) that uses symbols in restconf_api that
 # are not in the lib.
 LIBSRC    = restconf_lib.c
+LIBSRC   += restconf_handle.c 
 
 LIBOBJ    = $(LIBSRC:.c=.o)
 
