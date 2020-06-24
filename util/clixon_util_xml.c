@@ -175,8 +175,6 @@ main(int    argc,
 	goto done;
     if (clicon_conf_xml_set(h, xcfg) < 0)
 	goto done;
-    xcfg = xml_new("clixon-config", NULL, CX_ELMNT);
-    clicon_conf_xml_set(h, xcfg);
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, UTIL_XML_OPTS)) != -1)

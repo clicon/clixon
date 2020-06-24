@@ -492,7 +492,17 @@ main(int    argc,
 		}
 	    }
 	    else if (strncmp(path+1, stream_path, strlen(stream_path)) == 0) {
-		api_stream(h, req, stream_path, &finish); 
+		char  *query = NULL;
+		cvec  *qvec = NULL;
+		query = restconf_param_get(h, "QUERY_STRING");
+		if (query != NULL && strlen(query))
+		    if (str2cvec(query, '&', '=', &qvec) < 0)
+			goto done;
+		api_stream(h, req, qvec, stream_path, &finish); 
+		if (qvec){
+		    cvec_free(qvec);
+		    qvec = NULL;
+		}
 	    }
 	    else if (strncmp(path, RESTCONF_WELL_KNOWN, strlen(RESTCONF_WELL_KNOWN)) == 0) {
 		api_well_known(h, req); /*  */
@@ -509,7 +519,7 @@ main(int    argc,
 	if (finish)
 	    FCGX_Finish_r(req);
 	else{ /* A handler is forked so we initiate a new request after instead 
-		 of finnishing the old */
+		 of finishing the old */
 	    if (FCGX_InitRequest(req, sock, 0) != 0){
 		clicon_err(OE_CFG, errno, "FCGX_InitRequest");
 		goto done;

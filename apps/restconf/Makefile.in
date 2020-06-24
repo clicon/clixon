@@ -94,7 +94,8 @@ APPSRC   += restconf_main_$(with_restconf).c
 
 # Fcgi-specific source including main
 ifeq ($(with_restconf),fcgi)
-APPSRC   += restconf_stream.c
+# Streams notifications have some fcgi specific handling
+APPSRC   += restconf_stream_$(with_restconf).c
 endif
 
 APPOBJ    = $(APPSRC:.c=.o)

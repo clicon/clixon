@@ -66,7 +66,7 @@
 #include "clixon/clixon.h"
 
 /* Command line options passed to getopt(3) */
-#define UTIL_XML_MOD_OPTS "hD:o:y:b:x:p:s"
+#define UTIL_XML_MOD_OPTS "hD:o:y:Y:b:x:p:s"
 
 enum opx{
     OPX_ERROR = -1,
@@ -95,8 +95,9 @@ usage(char *argv0)
 	    "where options are\n"
             "\t-h \t\tHelp\n"
     	    "\t-D <level>\tDebug\n"
-	    "\t-o <op>   \tOperation: insert or merge\n"
+	    "\t-o <op>   \tOperation: parent, insert or merge\n"
 	    "\t-y <file> \tYANG spec file\n"
+    	    "\t-Y <dir> \tYang dirs (can be several)\n"
 	    "\t-b <base> \tXML base expression\n"
 	    "\t-x <xml>  \tXML to insert\n"
 	    "\t-p <xpath>\tXpath to where in base and XML\n"
@@ -120,7 +121,7 @@ main(int argc, char **argv)
     yang_stmt    *yspec = NULL;
     cxobj        *x0 = NULL;
     cxobj        *x1 = NULL;
-    cxobj        *xb;
+    cxobj        *xb = NULL;
     cxobj        *xi = NULL;
     cxobj        *xi1 = NULL;
     cxobj        *xerr = NULL;
@@ -130,9 +131,14 @@ main(int argc, char **argv)
     enum opx      opx = OPX_ERROR;
     char         *reason = NULL;
     int           dbg = 0;
+    cxobj        *xcfg = NULL;
     
     clicon_log_init("clixon_insert", LOG_DEBUG, CLICON_LOG_STDERR); 
     if ((h = clicon_handle_init()) == NULL)
+	goto done;
+    if ((xcfg = xml_new("clixon-config", NULL, CX_ELMNT)) == NULL)
+	goto done;
+    if (clicon_conf_xml_set(h, xcfg) < 0)
 	goto done;
     optind = 1;
     opterr = 0;
@@ -150,6 +156,10 @@ main(int argc, char **argv)
 	    break;
 	case 'y': /* YANG spec file */
 	    yangfile = optarg;
+	    break;
+	case 'Y':
+	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+		goto done;
 	    break;
 	case 'b': /* Base XML expression */
 	    x0str = optarg;
@@ -187,7 +197,9 @@ main(int argc, char **argv)
 	goto done;
     }
     /* Get base subtree by xpath */
-    if ((xb = xpath_first(x0, NULL, "%s", xpath)) == NULL){
+    if (xpath == NULL)
+	xb = x0;
+    else if ((xb = xpath_first(x0, NULL, "%s", xpath)) == NULL){
 	clicon_err(OE_XML, 0, "xpath: %s not found in x0", xpath);
 	goto done;
     }
@@ -208,7 +220,7 @@ main(int argc, char **argv)
 	}
 	break;
     case OPX_MERGE:
-	/* Parse insert XML */
+	/* Parse merge XML */
 	if ((ret = clixon_xml_parse_string(x1str, YB_MODULE, yspec, &x1, &xerr)) < 0){
 	    clicon_err(OE_XML, 0, "Parsing insert xml: %s", x1str);
 	    goto done;
@@ -217,7 +229,9 @@ main(int argc, char **argv)
 	    clixon_netconf_error(xerr, "Parsing secondary xml", NULL);
 	    goto done;
 	}
-	if ((xi = xpath_first(x1, NULL, "%s", xpath)) == NULL){
+	if (xpath == NULL)
+	    xi = x1;
+	else if ((xi = xpath_first(x1, NULL, "%s", xpath)) == NULL){
 	    clicon_err(OE_XML, 0, "xpath: %s not found in xi", xpath);
 	    goto done;
 	}
@@ -239,7 +253,9 @@ main(int argc, char **argv)
 	    goto done;
 	}
 	/* Get secondary subtree by xpath */
-	if ((xi = xpath_first(x1, NULL, "%s", xpath)) == NULL){
+	if (xpath == NULL)
+	    xi = x1;
+	else if ((xi = xpath_first(x1, NULL, "%s", xpath)) == NULL){
 	    clicon_err(OE_XML, 0, "xpath: %s not found in xi", xpath);
 	    goto done;
 	}
@@ -275,6 +291,8 @@ main(int argc, char **argv)
 	xml_free(x0);
     if (x1)
 	xml_free(x1);
+    if (xcfg)
+	xml_free(xcfg);
     if (xerr)
 	xml_free(xerr);
     if (reason)

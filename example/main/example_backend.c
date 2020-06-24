@@ -37,8 +37,10 @@
   * argc/argv after -- in clixon_backend:
   *  -r  enable the reset function 
   *  -s  enable the state function
-  *  -S  read state data from file, otherwise construct it programmatically
+  *  -S <file>  read state data from file, otherwise construct it programmatically (requires -s)
+  *  -i  read state file on init not by request for optimization (requires -sS <file>)
   *  -u  enable upgrade function - auto-upgrade testing
+  *  -U  general-purpose upgrade
   *  -t  enable transaction logging (cal syslog for every transaction)
  */
 #include <stdio.h>
@@ -372,14 +374,26 @@ example_statedata(clicon_handle h,
 	    if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
 		goto done;
 	    close(fd);
-	    if ((x1 = xpath_first(xt, nsc, "%s", xpath)) != NULL){
+	    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
+		goto done;
+	    for (i=0; i<xlen; i++){
+		x1 = xvec[i];
 		xml_flag_set(x1, XML_FLAG_MARK);
-		/* Remove everything that is not marked */
-		if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
-		    goto done;
+	    }
+	    /* Remove everything that is not marked */
+	    if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
+		goto done;
+	    for (i=0; i<xlen; i++){
+		x1 = xvec[i];
 		xml_flag_reset(x1, XML_FLAG_MARK);
-		if (xml_copy(xt, xstate) < 0)
-		    goto done;
+	    }
+	    if (xml_copy(xt, xstate) < 0)
+		goto done;
+
+	    if (xvec){
+		free(xvec);
+		xvec = 0;
+		xlen = 0;
 	    }
 	}
     }
