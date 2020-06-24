@@ -36,7 +36,9 @@
  * only include this file.
  * Internal code should not include this file
  */
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 #ifndef _CLIXON_BACKEND_H_
 #define _CLIXON_BACKEND_H_
 
@@ -50,3 +52,7 @@
 #include <clixon/clixon_backend_transaction.h>
 
 #endif /* _CLIXON_BACKEND_H_ */
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif

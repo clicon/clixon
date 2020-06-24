@@ -100,7 +100,7 @@
 static int
 attr_ns_value(cxobj *x,
 	      char  *name,
-	      char  *namespace,
+	      char  *_namespace,
 	      cbuf  *cbret,
 	      char **valp)
 {
@@ -119,7 +119,7 @@ attr_ns_value(cxobj *x,
 	    goto fail;
 	}
 	/* the attribute exists, but not w expected namespace */
-	if (strcmp(ans, namespace) == 0)
+	if (strcmp(ans, _namespace) == 0)
 	    val = xml_value(xa);
     }
     *valp = val;

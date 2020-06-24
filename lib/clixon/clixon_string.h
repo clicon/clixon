@@ -60,8 +60,8 @@ typedef struct map_str2int map_str2int;
 /*! Struct used to map between two strings.
  */
 struct map_str2str{
-    char         *ms_s0;
-    char         *ms_s1;
+    const char         *ms_s0;
+    const char         *ms_s1;
 };
 typedef struct map_str2str map_str2str;
 
@@ -78,7 +78,7 @@ static inline char * strdup4(char *str)
     char *dup;
     int len;
     len = align4(strlen(str)+1);
-    if ((dup = malloc(len)) == NULL)
+    if ((dup = (char*) malloc(len)) == NULL)
 	return NULL;
     strncpy(dup, str, len);
     return dup;

@@ -1493,7 +1493,7 @@ xml_find_index_yang(cxobj       *xp,
 int
 clixon_xml_find_index(cxobj        *xp,
 		      yang_stmt    *yp,
-		      char         *namespace,
+		      char         *_namespace,
 		      char         *name,
 		      cvec         *cvk,
 		      clixon_xvec  *xvec)
@@ -1514,7 +1514,7 @@ clixon_xml_find_index(cxobj        *xp,
 	yp = xml_spec(xp);
     if (yp){/* 2. YANG spec of parent + name derives yc. If not found use just name. */
 	if (yang_keyword_get(yp) == Y_SPEC)
-	    yp = yang_find_module_by_namespace(yp, namespace);
+	    yp = yang_find_module_by_namespace(yp, _namespace);
 	if (yp)
 	    yc = yang_find_datanode(yp, name);
     }
@@ -1524,12 +1524,12 @@ clixon_xml_find_index(cxobj        *xp,
 	if (ret == 0){ /* This means yang method did not work for some reason 
 			* such as not being list key indexes in cvk, for example
 			*/
-	    if (xml_find_noyang_name(xp, namespace, name, cvk, xvec) < 0)
+	    if (xml_find_noyang_name(xp, _namespace, name, cvk, xvec) < 0)
 		goto done;
 	}
     }
     else
-	if (xml_find_noyang_name(xp, namespace, name, cvk, xvec) < 0)
+	if (xml_find_noyang_name(xp, _namespace, name, cvk, xvec) < 0)
 	    goto done;
     retval = 0;
  done:

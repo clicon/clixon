@@ -410,7 +410,7 @@ example_statedata(clicon_handle h,
 	    goto done;
 	if (xlen){
 	    cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
-	    for (i=0; i<xlen; i++){
+	    for (i=0; i<(int)xlen; i++){
 		name = xml_body(xvec[i]);
 		cprintf(cb, "<interface xmlns:ex=\"urn:example:clixon\"><name>%s</name><type>ex:eth</type><oper-status>up</oper-status>", name);
 		cprintf(cb, "<ex:my-status><ex:int>42</ex:int><ex:str>foo</ex:str></ex:my-status>");
@@ -732,6 +732,7 @@ upgrade_2016(clicon_handle h,
  * - Change type /interfaces/interface/statistics/in-octets to decimal64 with
  *   fraction-digits 3 and divide all values with 1000
  */
+
 static int
 upgrade_2018(clicon_handle h,       
 	     cxobj        *xt,      
@@ -943,7 +944,7 @@ clixon_plugin_init(clicon_handle h)
     int            argc; /* command-line options (after --) */
     char         **argv;
     int            c;
-
+	api_initialization();
     clicon_debug(1, "%s backend", __FUNCTION__);
 	api_initialization();
     /* Get user command-line options (after --) */
