@@ -238,7 +238,7 @@ validate_identityref(cxobj     *xt,
      * see IDENTITYREF_KLUDGE 
      */
     if (0){
-	char       *namespace;
+	char       *ns;
 	yang_stmt  *ymod;
 	yang_stmt  *yspec;    
 
@@ -246,11 +246,11 @@ validate_identityref(cxobj     *xt,
 	 * identityref list associated with the base identities.
 	 */
 	/* Get namespace (of idref) from xml */
-	if (xml2ns(xt, prefix, &namespace) < 0)
+	if (xml2ns(xt, prefix, &ns) < 0)
 	    goto done;
 	yspec = ys_spec(ys);
 	/* Get module of that namespace */
-	if ((ymod = yang_find_module_by_namespace(yspec,  namespace)) == NULL){
+	if ((ymod = yang_find_module_by_namespace(yspec,  ns)) == NULL){
 	    clicon_err(OE_YANG, ENOENT, "No module found"); 
 	    goto done;
 	}
@@ -1083,7 +1083,7 @@ xml_yang_validate_all(clicon_handle h,
     int        ret;
     cxobj     *x;
     cxobj     *xp;
-    char      *namespace = NULL;
+    char      *ns = NULL;
     cbuf      *cb = NULL;
     cvec      *nsc = NULL;
 
@@ -1100,10 +1100,10 @@ xml_yang_validate_all(clicon_handle h,
 	cprintf(cb, "Failed to find YANG spec of XML node: %s", xml_name(xt));
 	if ((xp = xml_parent(xt)) != NULL)
 	    cprintf(cb, " with parent: %s", xml_name(xp));
-	if (xml2ns(xt, xml_prefix(xt), &namespace) < 0)
+	if (xml2ns(xt, xml_prefix(xt), &ns) < 0)
 	    goto done;
-	if (namespace)
-	    cprintf(cb, " in namespace: %s", namespace);
+	if (ns)
+	    cprintf(cb, " in namespace: %s", ns);
 	if (netconf_unknown_element_xml(xret, "application", xml_name(xt), cbuf_get(cb)) < 0)
 	    goto done;
 	goto fail;

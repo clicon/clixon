@@ -101,10 +101,8 @@ modstate_diff_free(modstate_diff_t *md)
 	return 0;
     if (md->md_set_id)
        free(md->md_set_id);
-    if (md->md_del)
-	xml_free(md->md_del);
-    if (md->md_mod)
-	xml_free(md->md_mod);
+    if (md->md_diff)
+	xml_free(md->md_diff);
     free(md);
     return 0;
 }
@@ -375,13 +373,13 @@ yang_modules_state_get(clicon_handle    h,
 
 /*! For single module state with namespace, get revisions and send upgrade callbacks
  * @param[in]  h        Clicon handle
- * @param[in]  xt      Top-level XML tree to be updated (includes other ns as well)
- * @param[in]  xs       XML module state (for one yang module)
+ * @param[in]  xt       Top-level XML tree to be updated (includes other ns as well)
+ * @param[in]  xd       XML module state diff (for one yang module)
  * @param[in]  xvec     Help vector where to store XML child nodes (??)
  * @param[in]  xlen     Length of xvec
  * @param[in]  ns0      Namespace of module state we are looking for
- * @param[in]  deleted  If set, dont look for system yang module and "to" rev
- * @param[out] cbret Netconf error message if invalid
+ * @param[in]  op       add,del, or mod
+ * @param[out] cbret    Netconf error message if invalid
  * @retval     1        OK
  * @retval     0        Validation failed (cbret set)
  * @retval    -1        Error
@@ -389,9 +387,8 @@ yang_modules_state_get(clicon_handle    h,
 static int
 mod_ns_upgrade(clicon_handle h,
 	       cxobj        *xt,
-	       cxobj        *xs,
+	       cxobj        *xmod,
 	       char         *ns,
-	       int           deleted,
 	       cbuf         *cbret)
 {
     int        retval = -1;
@@ -403,15 +400,14 @@ mod_ns_upgrade(clicon_handle h,
     int        ret;
     yang_stmt *yspec;
 
-    /* Make upgrade callback for this XML, specifying the module 
-     * namespace, from and to revision.
-     */
-    if ((b = xml_find_body(xs, "revision")) != NULL) /* Module revision */
-	if (ys_parse_date_arg(b, &from) < 0)
-	    goto done;
-    if (deleted)
-	to = 0;
-    else {	    /* Look up system module (alt send it via argument) */
+    /* If modified or removed get from revision from file */
+    if (xml_flag(xmod, (XML_FLAG_CHANGE|XML_FLAG_DEL)) != 0x0){
+	if ((b = xml_find_body(xmod, "revision")) != NULL) /* Module revision */
+	    if (ys_parse_date_arg(b, &from) < 0)
+		goto done;
+    }
+    /* If modified or added get to revision from system */
+    if (xml_flag(xmod, (XML_FLAG_CHANGE|XML_FLAG_ADD)) != 0x0){
 	yspec = clicon_dbspec_yang(h);
 	if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL)
 	    goto fail;
@@ -420,7 +416,9 @@ mod_ns_upgrade(clicon_handle h,
 	if (ys_parse_date_arg(yang_argument_get(yrev), &to) < 0)
 	    goto done;
     }
-    if ((ret = upgrade_callback_call(h, xt, ns, from, to, cbret)) < 0)
+    if ((ret = upgrade_callback_call(h, xt, ns,
+				     xml_flag(xmod, (XML_FLAG_ADD|XML_FLAG_DEL|XML_FLAG_CHANGE)),
+				     from, to, cbret)) < 0)
 	goto done;
     if (ret == 0) /* XXX ignore and continue? */
 	goto fail;
@@ -447,33 +445,25 @@ clixon_module_upgrade(clicon_handle    h,
 		      modstate_diff_t *msd,
    		      cbuf            *cbret)
 {
-    int        retval = -1;
-    char      *ns;           /* Namespace */
-    cxobj     *xs;            /* XML module state */
-    int        ret;
+    int      retval = -1;
+    char   *ns;           /* Namespace */
+    cxobj  *xmod;           /* XML module state diff */
+    int     ret;
 
-    if (msd == NULL)
+    if (msd == NULL){
+	clicon_err(OE_CFG, EINVAL, "No modstate");
+	goto done;
+    }
+    if (msd->md_status == 0) /* No modstate in startup */
 	goto ok;
     /* Iterate through xml modified module state */
-    xs = NULL;
-    while ((xs = xml_child_each(msd->md_mod, xs, CX_ELMNT)) != NULL) {
+    xmod = NULL;
+    while ((xmod = xml_child_each(msd->md_diff, xmod, CX_ELMNT)) != NULL) {
 	/* Extract namespace */
-	if ((ns = xml_find_body(xs, "namespace")) == NULL)
+	if ((ns = xml_find_body(xmod, "namespace")) == NULL)
 	    goto done;
 	/* Extract revisions and make callbacks */
-	if ((ret = mod_ns_upgrade(h, xt, xs, ns, 0, cbret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-    }
-    /* Iterate through xml deleted module state */
-    xs = NULL;
-    while ((xs = xml_child_each(msd->md_del, xs, CX_ELMNT)) != NULL) {
-	/* Extract namespace */
-	if ((ns = xml_find_body(xs, "namespace")) == NULL)
-	    continue;
-	/* Extract revisions and make callbacks (now w deleted=1)  */
-	if ((ret = mod_ns_upgrade(h, xt, xs, ns, 1, cbret)) < 0)
+	if ((ret = mod_ns_upgrade(h, xt, xmod, ns, cbret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -565,7 +555,7 @@ yang_find_module_by_prefix_yspec(yang_stmt *yspec,
 /*! Given a yang spec and a namespace, return yang module 
  *
  * @param[in]  yspec      A yang specification
- * @param[in]  namespace  namespace
+ * @param[in]  ns		  namespace
  * @retval     ymod       Yang module statement if found
  * @retval     NULL       not found
  * @see yang_find_module_by_name
@@ -573,14 +563,14 @@ yang_find_module_by_prefix_yspec(yang_stmt *yspec,
  */
 yang_stmt *
 yang_find_module_by_namespace(yang_stmt *yspec, 
-			      char      *namespace)
+			      const char      *ns)
 {
     yang_stmt *ymod = NULL;
 
-    if (namespace == NULL)
+    if (ns == NULL)
 	goto done;
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	if (yang_find(ymod, Y_NAMESPACE, namespace) != NULL)
+	if (yang_find(ymod, Y_NAMESPACE, ns) != NULL)
 	    break;
     }
  done:

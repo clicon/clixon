@@ -593,7 +593,7 @@ xpath_vec_ctx(cxobj    *xcur,
 cxobj *
 xpath_first(cxobj    *xcur, 
 	    cvec     *nsc,
-	    char     *xpformat, 
+	    const char     *xpformat,
 	    ...)
 {
     cxobj     *cx = NULL;
@@ -714,7 +714,7 @@ xpath_first_localonly(cxobj    *xcur,
 int
 xpath_vec(cxobj    *xcur, 
 	  cvec     *nsc,
-	  char     *xpformat, 
+	  const char     *xpformat,
 	  cxobj  ***vec, 
 	  size_t   *veclen,
 	  ...)
@@ -786,7 +786,7 @@ xpath_vec(cxobj    *xcur,
 int
 xpath_vec_flag(cxobj    *xcur, 
 	       cvec     *nsc,
-	       char     *xpformat, 
+	       const char     *xpformat,
 	       uint16_t  flags,
 	       cxobj  ***vec, 
 	       int      *veclen,

@@ -55,7 +55,7 @@ typedef struct {
 /*
  * Prototypes
  */
-int clicon_data_get(clicon_handle h, char *id, char **val);
+int clicon_data_get(clicon_handle h, const char *id, char **val);
 int clicon_data_set(clicon_handle h, char *id, char *val);
 int clicon_data_del(clicon_handle h, char *name);
 

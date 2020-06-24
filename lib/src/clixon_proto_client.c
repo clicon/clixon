@@ -315,9 +315,9 @@ clicon_rpc_netconf_xml(clicon_handle  h,
  */
 int
 clicon_rpc_get_config(clicon_handle h, 
-		      char         *username,
-		      char         *db, 
-		      char         *xpath,
+		      const char         *username,
+		      const char         *db,
+		      const char         *xpath,
 		      cvec         *nsc,
 		      cxobj       **xt)
 {

@@ -672,7 +672,7 @@ static rpc_callback_t *rpc_cb_list = NULL;
  * @param[in]  h         clicon handle
  * @param[in]  cb        Callback called 
  * @param[in]  arg       Domain-specific argument to send to callback 
- * @param[in]  namespace namespace of rpc
+ * @param[in]  ns		 namespace of rpc
  * @param[in]  name      RPC name
  * @retval     0         OK
  * @retval    -1         Error
@@ -682,12 +682,12 @@ int
 rpc_callback_register(clicon_handle  h,
 		      clicon_rpc_cb  cb,
 		      void          *arg,       
-    		      char          *namespace,
-		      char          *name)
+    		      const char    *ns,
+		      const char    *name)
 {
     rpc_callback_t *rc = NULL;
 
-    if (name == NULL || namespace == NULL){
+    if (name == NULL || ns == NULL){
 	clicon_err(OE_DB, EINVAL, "name or namespace NULL");
 	goto done;
     }
@@ -698,7 +698,7 @@ rpc_callback_register(clicon_handle  h,
     memset(rc, 0, sizeof(*rc));
     rc->rc_callback = cb;
     rc->rc_arg  = arg;
-    rc->rc_namespace  = strdup(namespace); 
+    rc->rc_namespace  = strdup(ns);
     rc->rc_name  = strdup(name);
     ADDQ(rc, rpc_cb_list);
     return 0;
@@ -755,19 +755,19 @@ rpc_callback_call(clicon_handle h,
     rpc_callback_t *rc;
     char           *name;
     char           *prefix;
-    char           *namespace;
+    char           *ns;
     int             nr = 0; /* How many callbacks */
 
     if (rpc_cb_list == NULL)
 	return 0;
     name = xml_name(xe);
     prefix = xml_prefix(xe);
-    xml2ns(xe, prefix, &namespace);
+    xml2ns(xe, prefix, &ns);
     rc = rpc_cb_list;
     do {
 	if (strcmp(rc->rc_name, name) == 0 &&
-	    namespace && rc->rc_namespace &&
-	    strcmp(rc->rc_namespace, namespace) == 0){
+	    ns && rc->rc_namespace &&
+	    strcmp(rc->rc_namespace, ns) == 0){
 	    if (rc->rc_callback(h, xe, cbret, arg, rc->rc_arg) < 0){
 		clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_name);
 		goto done;
@@ -793,9 +793,6 @@ typedef struct {
     const char       *uc_fnstr;     /* Stringified fn name for debug */
     void             *uc_arg;	    /* Application specific argument to cb */
     char             *uc_namespace; /* Module namespace */
-    uint32_t          uc_rev;       /* Module revision (to) in YYYYMMDD format or 0 */
-    uint32_t          uc_from;      /* Module revision (from) or 0 in YYYYMMDD format */
-
 } upgrade_callback_t;
 
 /* List of rpc callback entries XXX hang on handle */
@@ -807,9 +804,7 @@ static upgrade_callback_t *upgrade_cb_list = NULL;
  * @param[in]  cb        Callback called 
  * @param[in]  fnstr     Stringified function for debug
  * @param[in]  arg       Domain-specific argument to send to callback 
- * @param[in]  namespace Module namespace (if NULL all modules) 
- * @param[in]  from      From module revision (0 from any revision)
- * @param[in]  revision  To module revision (0 means module obsoleted)
+ * @param[in]  ns		 Module namespace (if NULL all modules) 
  * @retval     0         OK
  * @retval    -1         Error
  * @see upgrade_callback_call  which makes the actual callback
@@ -818,9 +813,7 @@ int
 upgrade_callback_reg_fn(clicon_handle     h,
 			clicon_upgrade_cb cb,
 			const char       *fnstr,
-			char             *namespace,
-			uint32_t          from,
-			uint32_t          revision,
+			char             *ns,
 			void             *arg)
 {
     upgrade_callback_t *uc;
@@ -833,10 +826,8 @@ upgrade_callback_reg_fn(clicon_handle     h,
     uc->uc_callback = cb;
     uc->uc_fnstr = fnstr;
     uc->uc_arg  = arg;
-    if (namespace)
-	uc->uc_namespace  = strdup(namespace);
-    uc->uc_rev = revision;
-    uc->uc_from = from;
+    if (ns)
+	uc->uc_namespace  = strdup(ns);
     ADDQ(uc, upgrade_cb_list);
     return 0;
  done:
@@ -864,14 +855,14 @@ upgrade_callback_delete_all(clicon_handle h)
     return 0;
 }
 
-/*! Search Upgrade callbacks and invoke if module match
+/*! Upgrade specific module identified by namespace, search matching callbacks
  *
  * @param[in]  h       clicon handle
  * @param[in]  xt      Top-level XML tree to be updated (includes other ns as well)
- * @param[in]  modname Name of module
- * @param[in]  modns   Namespace of module (for info)
- * @param[in]  from    From revision on the form YYYYMMDD
- * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
+ * @param[in]  ns      Namespace of module
+ * @param[in]  op      One of XML_FLAG_ADD, _DEL or _CHANGE
+ * @param[in]  from    From revision on the form YYYYMMDD (if DEL or CHANGE)
+ * @param[in]  to      To revision on the form YYYYMMDD (if ADD or CHANGE)
  * @param[out] cbret   Return XML (as string in CLIgen buffer), on invalid
  * @retval -1  Error
  * @retval  0  Invalid - cbret contains reason as netconf
@@ -881,7 +872,8 @@ upgrade_callback_delete_all(clicon_handle h)
 int
 upgrade_callback_call(clicon_handle h,
 		      cxobj        *xt,
-		      char         *namespace,
+		      char         *ns,
+		      uint16_t      op,
 		      uint32_t      from,
 		      uint32_t      to,
 		      cbuf         *cbret)
@@ -903,23 +895,21 @@ upgrade_callback_call(clicon_handle h,
 	 *   - Registered from revision >= from AND
          *   - Registered to revision <= to (which includes case both 0)
 	 */
-	if (uc->uc_namespace == NULL || strcmp(uc->uc_namespace, namespace)==0)
-	    if ((uc->uc_from == 0) ||
-		(uc->uc_from >= from && uc->uc_rev <= to)){
-		if ((ret = uc->uc_callback(h, xt, namespace, from, to, uc->uc_arg, cbret)) < 0){
-		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, uc->uc_namespace);
+	if (uc->uc_namespace == NULL || strcmp(uc->uc_namespace, ns)==0){
+	    if ((ret = uc->uc_callback(h, xt, ns, op, from, to, uc->uc_arg, cbret)) < 0){
+		clicon_debug(1, "%s Error in: %s", __FUNCTION__, uc->uc_namespace);
+		goto done;
+	    }
+	    if (ret == 0){
+		if (cbuf_len(cbret)==0){	
+		    clicon_err(OE_CFG, 0, "Validation fail %s(%s): cbret not set",
+			       uc->uc_fnstr, ns);
 		    goto done;
 		}
-		if (ret == 0){
-		    if (cbuf_len(cbret)==0){	
-			clicon_err(OE_CFG, 0, "Validation fail %s(%s): cbret not set",
-				   uc->uc_fnstr, namespace);
-			goto done;
-		    }
-		    goto fail;
-		}
-		nr++;
+		goto fail;
 	    }
+	    nr++;
+	}
 	uc = NEXTQ(upgrade_callback_t *, uc);
     } while (uc != upgrade_cb_list);
     retval = 1;

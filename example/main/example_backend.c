@@ -535,9 +535,9 @@ static const map_str2str namespace_map[] = {
  */
 int
 example_upgrade(clicon_handle    h,
-               char            *db,
-               cxobj           *xt,
-               modstate_diff_t *msd)
+		char            *db,
+		cxobj           *xt,
+		modstate_diff_t *msd)
 {
     int                       retval = -1;
     cvec                     *nsc = NULL;    /* Canonical namespace */
@@ -616,16 +616,17 @@ example_upgrade(clicon_handle    h,
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module (for info)
+ * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
  * @param[in]  from    From revision on the form YYYYMMDD
  * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
  * @param[in]  arg     User argument given at rpc_callback_register() 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..  if retval = 0
  * @retval     1       OK
  * @retval     0       Invalid
  * @retval    -1       Error
  * @see clicon_upgrade_cb
  * @see test_upgrade_interfaces.sh
- * @see upgrade_2016
+ * @see upgrade_2014_to_2016
  * This example shows a two-step upgrade where the 2014 function does:
  * - Move /if:interfaces-state/if:interface/if:admin-status to 
  *        /if:interfaces/if:interface/
@@ -634,13 +635,14 @@ example_upgrade(clicon_handle    h,
  * - Rename /interfaces/interface/description to descr 
  */
 static int
-upgrade_2016(clicon_handle h,       
-	     cxobj        *xt,      
-	     char         *ns,
-	     uint32_t      from,
-	     uint32_t      to,
-	     void         *arg,     
-	     cbuf         *cbret)
+upgrade_2014_to_2016(clicon_handle h,       
+		     cxobj        *xt,      
+		     char         *ns,
+		     uint16_t      op,
+		     uint32_t      from,
+		     uint32_t      to,
+		     void         *arg,     
+		     cbuf         *cbret)
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -654,6 +656,7 @@ upgrade_2016(clicon_handle h,
     int        i;
     char      *name;
 
+    clicon_debug(1, "%s from:%d to:%d", __FUNCTION__, from, to);
     /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
     yspec = clicon_dbspec_yang(h);	
     if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
@@ -716,16 +719,17 @@ upgrade_2016(clicon_handle h,
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module (for info)
+ * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
  * @param[in]  from    From revision on the form YYYYMMDD
  * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
  * @param[in]  arg     User argument given at rpc_callback_register() 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..  if retval = 0
  * @retval     1       OK
  * @retval     0       Invalid
  * @retval    -1       Error
  * @see clicon_upgrade_cb
  * @see test_upgrade_interfaces.sh
- * @see upgrade_2016
+ * @see upgrade_2016_to_2018
  * The 2016 function does:
  * - Delete /if:interfaces-state
  * - Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr
@@ -733,13 +737,14 @@ upgrade_2016(clicon_handle h,
  *   fraction-digits 3 and divide all values with 1000
  */
 static int
-upgrade_2018(clicon_handle h,       
-	     cxobj        *xt,      
-	     char         *ns,
-	     uint32_t      from,
-	     uint32_t      to,
-	     void         *arg,     
-	     cbuf         *cbret)
+upgrade_2016_to_2018(clicon_handle h,       
+		     cxobj        *xt,      
+		     char         *ns,
+		     uint16_t      op,
+		     uint32_t      from,
+		     uint32_t      to,
+		     void         *arg,     
+		     cbuf         *cbret)
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -752,6 +757,7 @@ upgrade_2018(clicon_handle h,
     size_t     vlen;
     int        i;
 
+    clicon_debug(1, "%s from:%d to:%d", __FUNCTION__, from, to);
     /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
     yspec = clicon_dbspec_yang(h);	
     if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
@@ -797,6 +803,63 @@ upgrade_2018(clicon_handle h,
  done:
     if (vec)
 	free(vec);
+    return retval;
+}
+
+/*! Testcase module-specific upgrade function moving interfaces-state to interfaces
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xn      XML tree to be updated
+ * @param[in]  ns      Namespace of module (for info)
+ * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
+ * @param[in]  from    From revision on the form YYYYMMDD
+ * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
+ * @param[in]  arg     User argument given at rpc_callback_register() 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..  if retval = 0
+ * @retval     1       OK
+ * @retval     0       Invalid
+ * @retval    -1       Error
+ * @see clicon_upgrade_cb
+ * @see test_upgrade_interfaces.sh
+ * @see upgrade_2014_to_2016
+ * This example shows a two-step upgrade where the 2014 function does:
+ * - Move /if:interfaces-state/if:interface/if:admin-status to 
+ *        /if:interfaces/if:interface/
+ * - Move /if:interfaces-state/if:interface/if:statistics to
+ *        /if:interfaces/if:interface/
+ * - Rename /interfaces/interface/description to descr 
+ */
+static int
+upgrade_interfaces(clicon_handle h,       
+		   cxobj        *xt,      
+		   char         *ns,
+		   uint16_t      op,
+		   uint32_t      from,
+		   uint32_t      to,
+		   void         *arg,     
+		   cbuf         *cbret)
+{
+    int retval = -1;
+
+    if (_module_upgrade) /* For testing */
+	clicon_log(LOG_NOTICE, "%s %s op:%s from:%d to:%d",
+		   __FUNCTION__, ns,
+		   (op&XML_FLAG_ADD)?"ADD":(op&XML_FLAG_DEL)?"DEL":"CHANGE",
+		   from, to);
+    if (from <= 20140508){
+	if ((retval = upgrade_2014_to_2016(h, xt, ns, op, from, to, arg, cbret)) < 0)
+	    goto done;
+	if (retval == 0)
+	    goto done;
+    }
+    if (from <= 20160101){
+    	if ((retval = upgrade_2016_to_2018(h, xt, ns, op, from, to, arg, cbret)) < 0)
+	    goto done;
+	if (retval == 0)
+	    goto done;
+    }
+    // ok:
+    retval = 1;
+ done:
     return retval;
 }
 
@@ -1026,13 +1089,11 @@ clixon_plugin_init(clicon_handle h)
      * test interface example. Otherwise the auto-upgrade feature is enabled.
      */
     if (_module_upgrade){
-	if (upgrade_callback_register(h, upgrade_2016, "urn:example:interfaces", 20140508, 20160101, NULL) < 0)
-	    goto done;
-	if (upgrade_callback_register(h, upgrade_2018, "urn:example:interfaces", 20160101, 20180220, NULL) < 0)
+	if (upgrade_callback_register(h, upgrade_interfaces, "urn:example:interfaces", NULL) < 0)
 	    goto done;
     }
     else
-	if (upgrade_callback_register(h, xml_changelog_upgrade, NULL, 0, 0, NULL) < 0)
+	if (upgrade_callback_register(h, xml_changelog_upgrade, NULL, NULL) < 0)
 	    goto done;
 
     /* Return plugin API */

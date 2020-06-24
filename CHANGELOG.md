@@ -51,6 +51,11 @@ Expected: July 2020
 
 ### C/CLI-API changes on existing features (For developers)
 
+* Changed module-specific upgrade API, not backward compatible. The API has been simplified which means more has to be done by the programmer.
+  * In summary, a user registers an upgrade callback per module. The callback is called at startup if the module is added, has been removed or if the revision on file is different from the one in the system. 
+  * The register function has removed `from` and `rev` parameters: `upgrade_callback_register(h, cb, namespace, arg)`
+  * The callback function has a new `op` parameter with possible values: `XML_FLAG_ADD`, `XML_FLAG_CHANGE` or `XML_FLAG_CHANGE`: `clicon_upgrade_cb(h, xn, ns, op, from, to, arg, cbret)`
+
 * Added new cli show functions to work with cligen_output for cligen pageing to work. To achieve this, replace function calls as follows:
   * xml2txt(...) --> xml2txt_cb(..., cligen_output)
   * xml2cli(...) --> xml2cli_cb(..., cligen_output)

@@ -207,7 +207,7 @@ int
 clixon_event_reg_timeout(struct timeval t,  
 			 int          (*fn)(int, void*), 
 			 void          *arg, 
-			 char          *str)
+			 const char          *str)
 {
     struct event_data *e, *e1, **e_prev;
 

@@ -212,92 +212,111 @@ xml_copy_marked(cxobj *x0,
 
 /*! Read module-state in an XML tree
  *
- * @param[in]  th    Datastore text handle
- * @param[in]  yspec Top-level yang spec 
- * @param[in]  xt    XML tree
- * @param[out] msd   If set, return modules-state differences
+ * @param[in]  th     Datastore text handle
+ * @param[in]  yspec  Top-level yang spec 
+ * @param[in]  xt     XML tree
+ * @param[out] msdiff Modules-state differences
  *
+ * The modstate difference contains:
+ * - if there is a modstate
+ * - the modstate identifier
+ * - An entry for each modstate that differs marked with flag: ADD|DEL|CHANGE
+ *
+ * Algorithm:
  * Read mst (module-state-tree) from xml tree (if any) and compare it with 
  * the system state mst.
  * This can happen:
  * 1) There is no modules-state info in the file
  * 2) There is module state info in the file
  * 3) For each module state m in the file:
- *    3a) There is no such module in the system
+ *    3a) There is no such module in the system -> add to list mark as DEL
  *    3b) File module-state matches system
- *    3c) File module-state does not match system
+ *    3c) File module-state does not match system -> add to list mark as CHANGE
+ * 4) For each module state s in the system
+ *    4a) If there is no such module in the file -> add to list mark as ADD
  */
 static int
 text_read_modstate(clicon_handle       h,
 		   yang_stmt          *yspec,
 		   cxobj              *xt,
-		   modstate_diff_t    *msd)
+		   modstate_diff_t    *msdiff)
 {
     int    retval = -1;
-    cxobj *xmodst;
-    cxobj *xm = NULL;
-    cxobj *xm2;
-    cxobj *xs;
-    char  *name; /* module name */
-    char  *mrev; /* file revision */
-    char  *srev; /* system revision */
-    cxobj *xmcache = NULL;
+    cxobj *xmodfile = NULL;   /* modstate of system (loaded yang modules in runtime) */
+    cxobj *xmodsystem = NULL; /* modstate of file, eg startup */
+    cxobj *xf = NULL;         /* xml modstate in file */
+    cxobj *xf2;               /* copy */
+    cxobj *xs;                /* xml modstate in system */
+    cxobj *xs2;               /* copy */
+    char  *name;              /* module name */
+    char  *frev;              /* file revision */
+    char  *srev;              /* system revision */
 
-    xmcache = clicon_modst_cache_get(h, 1);
-    if ((xmodst = xml_find_type(xt, NULL, "modules-state", CX_ELMNT)) == NULL){
+    /* Read module-state as computed at startup, see startup_module_state() */
+    xmodsystem = clicon_modst_cache_get(h, 1);
+    if ((xmodfile = xml_find_type(xt, NULL, "modules-state", CX_ELMNT)) == NULL){
 	/* 1) There is no modules-state info in the file */
     }
-    else if (xmcache && msd){
-	msd->md_status = 1;  /* There is module state in the file */
-	/* Create diff trees */
+    else if (xmodsystem && msdiff){
+	msdiff->md_status = 1;  /* There is module state in the file */
+	/* Create modstate tree for this file */
 	if (clixon_xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>",
-				    YB_MODULE, yspec, &msd->md_del, NULL) < 0)
+				    YB_MODULE, yspec, &msdiff->md_diff, NULL) < 0)
 	    goto done;
-	if (xml_rootchild(msd->md_del, 0, &msd->md_del) < 0) 
-	    goto done;
-	if (clixon_xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>",
-				    YB_MODULE, yspec, &msd->md_mod, NULL) < 0)
-	    goto done;
-	if (xml_rootchild(msd->md_mod, 0, &msd->md_mod) < 0) 
+	if (xml_rootchild(msdiff->md_diff, 0, &msdiff->md_diff) < 0) 
 	    goto done;
 
 	/* 3) For each module state m in the file */
-	while ((xm = xml_child_each(xmodst, xm, CX_ELMNT)) != NULL) {
-	    if (strcmp(xml_name(xm), "module-set-id") == 0){
-		if (xml_body(xm) && (msd->md_set_id = strdup(xml_body(xm))) == NULL){
+	xf = NULL;
+	while ((xf = xml_child_each(xmodfile, xf, CX_ELMNT)) != NULL) {
+	    if (strcmp(xml_name(xf), "module-set-id") == 0){
+		if (xml_body(xf) && (msdiff->md_set_id = strdup(xml_body(xf))) == NULL){
 		    clicon_err(OE_UNIX, errno, "strdup");
 		    goto done;
 		}
 	    }
-	    if (strcmp(xml_name(xm), "module"))
+	    if (strcmp(xml_name(xf), "module"))
 		continue; /* ignore other tags, such as module-set-id */
-	    if ((name = xml_find_body(xm, "name")) == NULL)
+	    if ((name = xml_find_body(xf, "name")) == NULL)
 		continue;
 	    /* 3a) There is no such module in the system */
-	    if ((xs = xpath_first(xmcache, NULL, "module[name=\"%s\"]", name)) == NULL){
-		//		fprintf(stderr, "%s: Module %s: not in system\n", __FUNCTION__, name);
-		if ((xm2 = xml_dup(xm)) == NULL)
+	    if ((xs = xpath_first(xmodsystem, NULL, "module[name=\"%s\"]", name)) == NULL){
+		if ((xf2 = xml_dup(xf)) == NULL) 	  /* Make a copy of this modstate */
 		    goto done;
-		if (xml_addsub(msd->md_del, xm2) < 0)
+		if (xml_addsub(msdiff->md_diff, xf2) < 0)   /* Add it to modstatediff */
 		    goto done;
+		xml_flag_set(xf2, XML_FLAG_DEL);
 		continue;
 	    }
 	    /* These two shouldnt happen since revision is key, just ignore */
-	    if ((mrev = xml_find_body(xm, "revision")) == NULL)
+	    if ((frev = xml_find_body(xf, "revision")) == NULL)
 		continue;
 	    if ((srev = xml_find_body(xs, "revision")) == NULL)
 		continue;
-	    if (strcmp(mrev, srev)==0){
-		/* 3b) File module-state matches system */
-		//		fprintf(stderr, "%s: Module %s: file \"%s\" and system revisions match\n", __FUNCTION__, name, mrev);
-	    }
-	    else{
+	    if (strcmp(frev, srev)!=0){
 		/* 3c) File module-state does not match system */
-		//		fprintf(stderr, "%s: Module %s: file \"%s\" and system \"%s\" revisions do not match\n", __FUNCTION__, name, mrev, srev);
-		if ((xm2 = xml_dup(xm)) == NULL)
+		if ((xf2 = xml_dup(xf)) == NULL)
 		    goto done;
-		if (xml_addsub(msd->md_mod, xm2) < 0)
+		if (xml_addsub(msdiff->md_diff, xf2) < 0)
 		    goto done;
+		xml_flag_set(xf2, XML_FLAG_CHANGE);
+	    }
+	}
+	/* 4) For each module state s in the system (xmodsystem) */
+	xs = NULL;
+	while ((xs = xml_child_each(xmodsystem, xs, CX_ELMNT)) != NULL) {
+	    if (strcmp(xml_name(xs), "module"))
+		continue; /* ignore other tags, such as module-set-id */
+	    if ((name = xml_find_body(xs, "name")) == NULL)
+		continue;
+	    /* 4a) If there is no such module in the file -> add to list mark as ADD */	    
+	    if ((xf = xpath_first(xmodfile, NULL, "module[name=\"%s\"]", name)) == NULL){
+		if ((xs2 = xml_dup(xs)) == NULL) 	  /* Make a copy of this modstate */
+		    goto done;
+		if (xml_addsub(msdiff->md_diff, xs2) < 0)   /* Add it to modstatediff */
+		    goto done;
+		xml_flag_set(xs2, XML_FLAG_ADD);
+		continue;
 	    }
 	}
     }
@@ -305,8 +324,8 @@ text_read_modstate(clicon_handle       h,
      * in all cases, whether CLICON_XMLDB_MODSTATE is on or not.
      * Clixon systems with CLICON_XMLDB_MODSTATE disabled ignores it
      */
-    if (xmodst){ 	
-	if (xml_purge(xmodst) < 0)
+    if (xmodfile){ 	
+	if (xml_purge(xmodfile) < 0)
 	    goto done;
     }
     retval = 0;
@@ -319,14 +338,14 @@ text_read_modstate(clicon_handle       h,
  * @param[in]  db    Symbolic database name, eg "candidate", "running"
  * @param[in]  yspec Top-level yang spec
  * @param[out] xp    XML tree read from file
- * @param[out] msd    If set, return modules-state differences
+ * @param[out] msdiff    If set, return modules-state differences
  */
 int
 xmldb_readfile(clicon_handle      h,
 	       const char         *db,
 	       yang_stmt          *yspec,
 	       cxobj             **xp,
-	       modstate_diff_t    *msd)
+	       modstate_diff_t    *msdiff)
 {
     int    retval = -1;
     cxobj *x0 = NULL;
@@ -373,7 +392,7 @@ xmldb_readfile(clicon_handle      h,
     /* From Clixon 3.10,datastore files may contain module-state defining
      * which modules are used in the file. 
      */
-    if (text_read_modstate(h, yspec, x0, msd) < 0)
+    if (text_read_modstate(h, yspec, x0, msdiff) < 0)
 	goto done;
     if (xp){
 	*xp = x0;
@@ -399,7 +418,7 @@ xmldb_readfile(clicon_handle      h,
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[out] xret   Single return XML tree. Free with xml_free()
- * @param[out] msd    If set, return modules-state differences
+ * @param[out] msdiff    If set, return modules-state differences
  * @retval     0      OK
  * @retval     -1     Error
  * @see xmldb_get  the generic API function
@@ -410,7 +429,7 @@ xmldb_get_nocache(clicon_handle       h,
 		  cvec               *nsc,
 		  char               *xpath,
 		  cxobj             **xtop,
-		  modstate_diff_t    *msd)
+		  modstate_diff_t    *msdiff)
 {
     int             retval = -1;
     char           *dbfile = NULL;
@@ -426,7 +445,7 @@ xmldb_get_nocache(clicon_handle       h,
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if (xmldb_readfile(h, db, yspec, &xt, msd) < 0)
+    if (xmldb_readfile(h, db, yspec, &xt, msdiff) < 0)
 	goto done;
     /* Here xt looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec */
@@ -483,7 +502,7 @@ xmldb_get_nocache(clicon_handle       h,
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[out] xret   Single return XML tree. Free with xml_free()
- * @param[out] msd    If set, return modules-state differences
+ * @param[out] msdiff    If set, return modules-state differences
  * @retval     0      OK
  * @retval     -1     Error
  * @see xmldb_get  the generic API function
@@ -494,7 +513,7 @@ xmldb_get_cache(clicon_handle    h,
 		cvec            *nsc,
 		char            *xpath,
 		cxobj          **xtop,
-		modstate_diff_t *msd)
+		modstate_diff_t *msdiff)
 {
     int             retval = -1;
     yang_stmt      *yspec;
@@ -514,7 +533,7 @@ xmldb_get_cache(clicon_handle    h,
     de = clicon_db_elmnt_get(h, db);
     if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
 	/* If there is no xml x0 tree (in cache), then read it from file */
-	if (xmldb_readfile(h, db, yspec, &x0t, msd) < 0)
+	if (xmldb_readfile(h, db, yspec, &x0t, msdiff) < 0)
 	    goto done;
 	/* XXX: should we validate file if read from disk? 
 	 * Argument against: we may want to have a semantically wrong file and wish
@@ -585,7 +604,7 @@ xmldb_get_cache(clicon_handle    h,
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
- * @param[out] msd    If set, return modules-state differences
+ * @param[out] msdiff    If set, return modules-state differences
  * @retval     0      OK
  * @retval     -1     Error
  */
@@ -595,7 +614,7 @@ xmldb_get_zerocopy(clicon_handle    h,
 		   cvec            *nsc,
 		   char            *xpath,
 		   cxobj          **xtop,
-		   modstate_diff_t *msd)
+		   modstate_diff_t *msdiff)
 {
     int             retval = -1;
     yang_stmt      *yspec;
@@ -614,7 +633,7 @@ xmldb_get_zerocopy(clicon_handle    h,
     de = clicon_db_elmnt_get(h, db);
     if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
 	/* If there is no xml x0 tree (in cache), then read it from file */
-	if (xmldb_readfile(h, db, yspec, &x0t, msd) < 0)
+	if (xmldb_readfile(h, db, yspec, &x0t, msdiff) < 0)
 	    goto done;
 	/* XXX: should we validate file if read from disk? 
 	 * Argument against: we may want to have a semantically wrong file and wish
@@ -689,7 +708,7 @@ xmldb_get(clicon_handle    h,
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  copy   Force copy. Overrides cache_zerocopy -> cache 
  * @param[out] xret   Single return XML tree. Free with xml_free()
- * @param[out] msd    If set, return modules-state differences (upgrade code)
+ * @param[out] msdiff    If set, return modules-state differences (upgrade code)
  * @retval     0      OK
  * @retval     -1     Error
  * @code
@@ -707,10 +726,10 @@ int
 xmldb_get0(clicon_handle    h, 
 	   const char      *db, 
 	   cvec            *nsc,
-	   char            *xpath,
+	   const char      *xpath,
 	   int              copy,
 	   cxobj          **xret,
-	   modstate_diff_t *msd)
+	   modstate_diff_t *msdiff)
 {
     int               retval = -1;
 
@@ -720,7 +739,7 @@ xmldb_get0(clicon_handle    h,
 	 * Add default values in copy
 	 * Copy deleted by xmldb_free
 	 */
-	retval = xmldb_get_nocache(h, db, nsc, xpath, xret, msd);
+	retval = xmldb_get_nocache(h, db, nsc, xpath, xret, msdiff);
 	break;
     case DATASTORE_CACHE_ZEROCOPY:
 	/* Get cache (file if empty) mark xpath match in original tree 
@@ -728,7 +747,7 @@ xmldb_get0(clicon_handle    h,
 	 * Default values and markings removed in xmldb_clear
 	 */
 	if (!copy){
-	    retval = xmldb_get_zerocopy(h, db, nsc, xpath, xret, msd);
+	    retval = xmldb_get_zerocopy(h, db, nsc, xpath, xret, msdiff);
 	    break;
 	}
 	/* fall through */
@@ -737,7 +756,7 @@ xmldb_get0(clicon_handle    h,
 	 * Add default values in copy, return copy
 	 * Copy deleted by xmldb_free
 	 */
-	retval = xmldb_get_cache(h, db, nsc, xpath, xret, msd);
+	retval = xmldb_get_cache(h, db, nsc, xpath, xret, msdiff);
 	break;
     }
     return retval;

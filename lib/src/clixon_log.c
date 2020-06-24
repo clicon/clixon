@@ -258,7 +258,7 @@ clicon_log_str(int           level,
  */
 int
 clicon_log(int   level, 
-	   char *format, ...)
+	   const char *format, ...)
 {
     va_list args;
     int     len;
@@ -339,7 +339,7 @@ clicon_debug_get(void)
  */
 int
 clicon_debug(int   dbglevel, 
-	     char *format, ...)
+	     const char *format, ...)
 {
     va_list args;
     int     len;

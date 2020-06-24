@@ -45,7 +45,7 @@
 /* Hardcoded plugin symbol. Must exist in all plugins to kickstart 
  * @see clixon_plugin_init
  */
-#define CLIXON_PLUGIN_INIT     "clixon_plugin_init" 
+#define CLIXON_PLUGIN_INIT     "clixon_plugin_init"
 
 /*
  * Types
@@ -71,11 +71,12 @@ typedef int (*clicon_rpc_cb)(
 /*! Registered Upgrade callback function 
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      XML tree to be updated
- * @param[in]  namespace Namespace of module
- * @param[in]  from    From revision on the form YYYYMMDD
- * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
+ * @param[in]  ns	    Namespace of module
+ * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
+ * @param[in]  from    From revision on the form YYYYMMDD (if DEL or CHANGE)
+ * @param[in]  to      To revision on the form YYYYMMDD (if ADD or CHANGE)
  * @param[in]  arg     User argument given at rpc_callback_register() 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..  (if retval = 0)
  * @retval     1       OK
  * @retval     0       Invalid
  * @retval    -1       Error
@@ -83,7 +84,8 @@ typedef int (*clicon_rpc_cb)(
 typedef int (*clicon_upgrade_cb)(
     clicon_handle h,       
     cxobj        *xn,      
-    char         *namespace,
+    char         *ns,
+    uint16_t      op,
     uint32_t      from,
     uint32_t      to,
     void         *arg,     
@@ -253,7 +255,7 @@ struct clixon_plugin_api{
 /*
  * Macros
  */
-#define upgrade_callback_register(h, cb, namespace, from, rev, arg) upgrade_callback_reg_fn((h), (cb), #cb, (namespace), (from), (rev), (arg))
+#define upgrade_callback_register(h, cb, ns, arg) upgrade_callback_reg_fn((h), (cb), #cb, (ns), (arg))
 
 typedef struct clixon_plugin_api clixon_plugin_api;
 
@@ -304,13 +306,13 @@ int clixon_plugin_datastore_upgrade_one(clixon_plugin *cp, clicon_handle h, char
 int clixon_plugin_datastore_upgrade_all(clicon_handle h, char *db, cxobj *xt, modstate_diff_t *msd);
 
 /* rpc callback API */
-int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, char *namespace, char *name);
+int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, const char *ns, const char *name);
 int rpc_callback_delete_all(clicon_handle h);
 int rpc_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg);
 
 /* upgrade callback API */
-int upgrade_callback_reg_fn(clicon_handle h, clicon_upgrade_cb cb, const char *strfn, char *namespace, uint32_t from, uint32_t to, void *arg);
+int upgrade_callback_reg_fn(clicon_handle h, clicon_upgrade_cb cb, const char *strfn, char *ns, void *arg);
 int upgrade_callback_delete_all(clicon_handle h);
-int upgrade_callback_call(clicon_handle h, cxobj *xt, char *namespace, uint32_t from, uint32_t to, cbuf *cbret);
+int upgrade_callback_call(clicon_handle h, cxobj *xt, char *ns, uint16_t op, uint32_t from, uint32_t to, cbuf *cbret);
 
 #endif  /* _CLIXON_PLUGIN_H_ */
