@@ -168,12 +168,12 @@ incstr(cligen_handle h,
        cg_var       *cv)
 {
     char *str;
-    int i;
+    size_t i;
     
     if (cv_type_get(cv) != CGV_STRING)
 	return 0;
     str = cv_string_get(cv);
-    for (i=0; i<(int)strlen(str); i++)
+    for (i=0; i<strlen(str); i++)
 	str[i]++;
     return 0;
 }
