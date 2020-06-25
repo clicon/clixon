@@ -86,7 +86,7 @@
  */
 cvec *
 xml_nsctx_init(const char  *prefix,
-	       const char  *_namespace)
+	       const char  *namespace_)
 {
     cvec *cvv = NULL;
 
@@ -94,7 +94,7 @@ xml_nsctx_init(const char  *prefix,
 	clicon_err(OE_XML, errno, "cvec_new");
 	goto done;
     }
-    if (_namespace && xml_nsctx_add(cvv, prefix, _namespace) < 0)
+    if (namespace_ && xml_nsctx_add(cvv, prefix, namespace_) < 0)
 	goto done;
  done:
     return cvv;
@@ -143,7 +143,7 @@ xml_nsctx_get(cvec *cvv,
  */
 int
 xml_nsctx_get_prefix(cvec  *cvv,
-		     const char  *_namespace,
+		     const char  *namespace_,
 		     char **prefix)
 {
     cg_var *cv = NULL;
@@ -151,7 +151,7 @@ xml_nsctx_get_prefix(cvec  *cvv,
 
     while ((cv = cvec_each(cvv, cv)) != NULL){
 	if ((ns = cv_string_get(cv)) != NULL &&
-	    strcmp(ns, _namespace) == 0){
+	    strcmp(ns, namespace_) == 0){
 	    if (prefix)
 		*prefix = cv_name_get(cv); /* can be NULL */
 	    return 1;
@@ -172,15 +172,15 @@ xml_nsctx_get_prefix(cvec  *cvv,
 int
 xml_nsctx_add(cvec  *cvv,
 	      const char  *prefix,
-	      const char  *_namespace)
+	      const char  *namespace_)
 {
     int     retval = -1;
     cg_var *cv;
     
     if ((cv = cvec_find(cvv, prefix)) != NULL) /* found, replace that */
-	cv_string_set(cv, _namespace);
+	cv_string_set(cv, namespace_);
     else /* cvec exists, but not prefix */
-	cvec_add_string(cvv, prefix, _namespace);
+	cvec_add_string(cvv, prefix, namespace_);
     retval = 0;
     // done:
     return retval;
