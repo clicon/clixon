@@ -336,7 +336,7 @@ example_statedata(clicon_handle h,
     cxobj **xvec = NULL;
     size_t  xlen = 0;
     cbuf   *cb = cbuf_new();
-    int     i;
+    size_t     i;
     cxobj  *xt = NULL;
     char   *name;
     cvec   *nsc1 = NULL;
@@ -376,14 +376,14 @@ example_statedata(clicon_handle h,
 	    close(fd);
 	    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
 		goto done;
-	    for (i=0; i<(int)xlen; i++){
+	    for (i=0; i<xlen; i++){
 		x1 = xvec[i];
 		xml_flag_set(x1, XML_FLAG_MARK);
 	    }
 	    /* Remove everything that is not marked */
 	    if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
 		goto done;
-	    for (i=0; i<(int)xlen; i++){
+	    for (i=0; i<xlen; i++){
 		x1 = xvec[i];
 		xml_flag_reset(x1, XML_FLAG_MARK);
 	    }
@@ -410,7 +410,7 @@ example_statedata(clicon_handle h,
 	    goto done;
 	if (xlen){
 	    cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
-	    for (i=0; i<(int)xlen; i++){
+	    for (i=0; i<xlen; i++){
 		name = xml_body(xvec[i]);
 		cprintf(cb, "<interface xmlns:ex=\"urn:example:clixon\"><name>%s</name><type>ex:eth</type><oper-status>up</oper-status>", name);
 		cprintf(cb, "<ex:my-status><ex:int>42</ex:int><ex:str>foo</ex:str></ex:my-status>");
@@ -545,7 +545,7 @@ example_upgrade(clicon_handle    h,
     const struct map_str2str *ms;            /* map iterator */
     cxobj                   **xvec = NULL;   /* vector of result nodes */
     size_t                    xlen; 
-    int                       i;
+    size_t                       i;
     const char              **pp;
 
     if (_general_upgrade == 0)
@@ -565,7 +565,7 @@ example_upgrade(clicon_handle    h,
 	    goto done;
 	/* Remove them */
 	/* Loop through all nodes matching mypath and change theoir namespace */
-	for (i=0; i<(int)xlen; i++){
+	for (i=0; i<xlen; i++){
 	    if (xml_purge(xvec[i]) < 0)
 		goto done;
 	}
@@ -592,7 +592,7 @@ example_upgrade(clicon_handle    h,
 	if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, mypath) < 0) 
 	    goto done;
 	/* Loop through all nodes matching mypath and change theoir namespace */
-	for (i=0; i<(int)xlen; i++){
+	for (i=0; i<xlen; i++){
 	    /* Change namespace of this node (using myprefix) */ 
 	    if (xml_namespace_change(xvec[i], mynamespace, myprefix) < 0)
 		goto done;
@@ -651,7 +651,7 @@ upgrade_2016(clicon_handle h,
     cxobj     *x;
     cxobj     *xif; /* xml /interfaces/interface node */
     size_t     vlen;
-    int        i;
+    size_t        i;
     char      *name;
 
     /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
@@ -662,7 +662,7 @@ upgrade_2016(clicon_handle h,
     /* Get all XML nodes with that namespace */
     if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
 	goto done;
-    for (i=0; i<(int)vlen; i++){
+    for (i=0; i<vlen; i++){
 	xc = vec[i];
 	/* Iterate through interfaces-state */
 	if (strcmp(xml_name(xc),"interfaces-state") == 0){
@@ -751,7 +751,7 @@ upgrade_2018(clicon_handle h,
     cxobj     *x;
     cxobj     *xb;
     size_t     vlen;
-    int        i;
+    size_t        i;
 
     /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
     yspec = clicon_dbspec_yang(h);	
@@ -761,7 +761,7 @@ upgrade_2018(clicon_handle h,
     /* Get all XML nodes with that namespace */
     if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
 	goto done;
-    for (i=0; i<(int)vlen; i++){
+    for (i=0; i<vlen; i++){
 	xc = vec[i];
 	/* Delete /if:interfaces-state */
 	if (strcmp(xml_name(xc), "interfaces-state") == 0)
