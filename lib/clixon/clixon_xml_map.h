@@ -63,7 +63,7 @@ int xml_diff(yang_stmt *yspec, cxobj *x0, cxobj *x1,
 	     cxobj ***changed_x0, cxobj ***changed_x1, int *changedlen);
 int xml_tree_prune_flagged_sub(cxobj *xt, int flag, int test, int *upmark);
 int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
-int xml_namespace_change(cxobj *x, const char *_namespace, char *prefix);
+int xml_namespace_change(cxobj *x, const char *namespace_, char *prefix);
 int xml_default(cxobj *x);
 int xml_default_recurse(cxobj *xn);
 int xml_sanity(cxobj *x, void  *arg);
