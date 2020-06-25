@@ -83,7 +83,7 @@ typedef int (*clicon_rpc_cb)(
 typedef int (*clicon_upgrade_cb)(
     clicon_handle h,       
     cxobj        *xn,      
-    char         *_namespace,
+    char         *namespace_,
     uint32_t      from,
     uint32_t      to,
     void         *arg,     
@@ -253,7 +253,7 @@ struct clixon_plugin_api{
 /*
  * Macros
  */
-#define upgrade_callback_register(h, cb, _namespace, from, rev, arg) upgrade_callback_reg_fn((h), (cb), #cb, (_namespace), (from), (rev), (arg))
+#define upgrade_callback_register(h, cb, namespace_, from, rev, arg) upgrade_callback_reg_fn((h), (cb), #cb, (namespace_), (from), (rev), (arg))
 
 typedef struct clixon_plugin_api clixon_plugin_api;
 
@@ -304,13 +304,13 @@ int clixon_plugin_datastore_upgrade_one(clixon_plugin *cp, clicon_handle h, char
 int clixon_plugin_datastore_upgrade_all(clicon_handle h, char *db, cxobj *xt, modstate_diff_t *msd);
 
 /* rpc callback API */
-int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, const char *_namespace, const char *name);
+int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, const char *namespace_, const char *name);
 int rpc_callback_delete_all(clicon_handle h);
 int rpc_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg);
 
 /* upgrade callback API */
-int upgrade_callback_reg_fn(clicon_handle h, clicon_upgrade_cb cb, const char *strfn, char *_namespace, uint32_t from, uint32_t to, void *arg);
+int upgrade_callback_reg_fn(clicon_handle h, clicon_upgrade_cb cb, const char *strfn, char *namespace_, uint32_t from, uint32_t to, void *arg);
 int upgrade_callback_delete_all(clicon_handle h);
-int upgrade_callback_call(clicon_handle h, cxobj *xt, char *_namespace, uint32_t from, uint32_t to, cbuf *cbret);
+int upgrade_callback_call(clicon_handle h, cxobj *xt, char *namespace_, uint32_t from, uint32_t to, cbuf *cbret);
 
 #endif  /* _CLIXON_PLUGIN_H_ */
