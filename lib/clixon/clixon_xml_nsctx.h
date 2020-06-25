@@ -48,17 +48,17 @@
 /*
  * Prototypes
  */
-cvec   *xml_nsctx_init(const char *prefix, const char *_namespace);
+cvec   *xml_nsctx_init(const char *prefix, const char *namespace_);
 int     xml_nsctx_free(cvec *nsc);
 char   *xml_nsctx_get(cvec *nsc, char *prefix);
-int     xml_nsctx_get_prefix(cvec *cvv,	const char *_namespace, char **prefix);
-int     xml_nsctx_add(cvec *nsc, const char *prefix, const char *_namespace);
+int     xml_nsctx_get_prefix(cvec *cvv,	const char *namespace_, char **prefix);
+int     xml_nsctx_add(cvec *nsc, const char *prefix, const char *namespace_);
 int     xml_nsctx_node(cxobj *x, cvec **ncp);
 int     xml_nsctx_yang(yang_stmt *yn, cvec **ncp);
 int     xml_nsctx_yangspec(yang_stmt *yspec, cvec **ncp);
 
-int     xml2ns(cxobj *x, char *localname, char **_namespace);
+int     xml2ns(cxobj *x, char *localname, char **namespace_);
 int     xml2ns_recurse(cxobj *x);
-int     xml2prefix(cxobj *xn, char *_namespace, char **prefixp);
+int     xml2prefix(cxobj *xn, char *namespace_, char **prefixp);
 
 #endif /* _CLIXON_XML_NSCTX_H */
