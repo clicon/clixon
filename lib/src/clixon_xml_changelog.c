@@ -356,6 +356,7 @@ changelog_iterate(clicon_handle h,
  * @param[in]  h       Clicon handle 
  * @param[in]  xt      Top-level XML tree to be updated (includes other ns as well)
  * @param[in]  namespace Namespace of module (for info)
+ * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
  * @param[in]  from    From revision on the form YYYYMMDD
  * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
  * @param[in]  arg     User argument given at rpc_callback_register() 
@@ -367,12 +368,13 @@ changelog_iterate(clicon_handle h,
  */
 int
 xml_changelog_upgrade(clicon_handle h,       
-		       cxobj        *xt,      
-		       char         *namespace,
-		       uint32_t      from,
-		       uint32_t      to,
-		       void         *arg,     
-		       cbuf         *cbret)
+		      cxobj        *xt,      
+		      char         *namespace,
+		      uint16_t      op,
+		      uint32_t      from,
+		      uint32_t      to,
+		      void         *arg,     
+		      cbuf         *cbret)
 {
     int        retval = -1;
     cxobj     *xchlog; /* changelog */

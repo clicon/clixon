@@ -54,8 +54,7 @@
 typedef struct {
     int    md_status; /* 0 if no module-state in a datastore, 1 if there is */
     char  *md_set_id; /* server-specific identifier */
-    cxobj *md_del;    /* yang module state deletes */
-    cxobj *md_mod;    /* yang module state modifications */
+    cxobj *md_diff;  /* yang module state containing revisions and XML_FLAG_ADD|DEL|CHANGE */
 } modstate_diff_t;
 
 /*

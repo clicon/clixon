@@ -177,19 +177,19 @@ startup_common(clicon_handle       h,
     int                 retval = -1;
     yang_stmt          *yspec;
     int                 ret;
-    modstate_diff_t    *msd = NULL;
+    modstate_diff_t    *msdiff = NULL;
     cxobj              *xt = NULL;
     cxobj              *x;
     cxobj              *xret = NULL;
     
     /* If CLICON_XMLDB_MODSTATE is enabled, then get the db XML with 
-     * potentially non-matching module-state in msd
+     * potentially non-matching module-state in msdiff
      */
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
-	if ((msd = modstate_diff_new()) == NULL)
+	if ((msdiff = modstate_diff_new()) == NULL)
 	    goto done;
     clicon_debug(1, "Reading startup config from %s", db);
-    if (xmldb_get0(h, db, NULL, "/", 0, &xt, msd) < 0)
+    if (xmldb_get0(h, db, NULL, "/", 0, &xt, msdiff) < 0)
 	goto done;
     clicon_debug(1, "Reading startup config done");
     /* Clear flags xpath for get */
@@ -202,13 +202,15 @@ startup_common(clicon_handle       h,
     }
     /* Here xt is old syntax */
     /* General purpose datastore upgrade */
-    if (clixon_plugin_datastore_upgrade_all(h, db, xt, msd) < 0)
+    if (clixon_plugin_datastore_upgrade_all(h, db, xt, msdiff) < 0)
        goto done;
     /* Module-specific upgrade callbacks */
-    if ((ret = clixon_module_upgrade(h, xt, msd, cbret)) < 0)
-       goto done;
-    if (ret == 0)
-       goto fail;
+    if (msdiff){
+	if ((ret = clixon_module_upgrade(h, xt, msdiff, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, 0, "Yang spec not set");
 	goto done;
@@ -257,8 +259,8 @@ startup_common(clicon_handle       h,
 	xml_free(xret);
     if (xt)
 	xml_free(xt);
-    if (msd)
-	modstate_diff_free(msd);
+    if (msdiff)
+	modstate_diff_free(msdiff);
     return retval;
  fail: 
     retval = 0;

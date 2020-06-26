@@ -40,7 +40,7 @@
 /*
  * Prototypes
  */
-int xml_changelog_upgrade(clicon_handle h, cxobj *xn, char *namespace, uint32_t from, uint32_t to, void *arg, cbuf *cbret);
+int xml_changelog_upgrade(clicon_handle h, cxobj *xn, char *namespace, uint16_t op, uint32_t from, uint32_t to, void *arg, cbuf *cbret);
 int clixon_xml_changelog_init(clicon_handle h);
 int xml_namespace_vec(clicon_handle h, cxobj *xt, char *namespace, cxobj ***vec, size_t *veclen);
 
