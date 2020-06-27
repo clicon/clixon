@@ -417,7 +417,7 @@ mod_ns_upgrade(clicon_handle h,
 	    goto done;
     }
     if ((ret = upgrade_callback_call(h, xt, ns,
-				     xml_flag(xmod, (XML_FLAG_CHANGE|XML_FLAG_ADD|XML_FLAG_CHANGE)),
+				     xml_flag(xmod, (XML_FLAG_ADD|XML_FLAG_DEL|XML_FLAG_CHANGE)),
 				     from, to, cbret)) < 0)
 	goto done;
     if (ret == 0) /* XXX ignore and continue? */

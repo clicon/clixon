@@ -840,6 +840,11 @@ upgrade_interfaces(clicon_handle h,
 {
     int retval = -1;
 
+    if (_module_upgrade) /* For testing */
+	clicon_log(LOG_NOTICE, "%s %s op:%s from:%d to:%d",
+		   __FUNCTION__, ns,
+		   (op&XML_FLAG_ADD)?"ADD":(op&XML_FLAG_DEL)?"DEL":"CHANGE",
+		   from, to);
     if (from <= 20140508){
 	if ((retval = upgrade_2014_to_2016(h, xt, ns, op, from, to, arg, cbret)) < 0)
 	    goto done;
@@ -1084,15 +1089,8 @@ clixon_plugin_init(clicon_handle h)
      * test interface example. Otherwise the auto-upgrade feature is enabled.
      */
     if (_module_upgrade){
-#if 1
 	if (upgrade_callback_register(h, upgrade_interfaces, "urn:example:interfaces", NULL) < 0)
 	    goto done;
-#else
-	if (upgrade_callback_register(h, upgrade_2014_to_2016, "urn:example:interfaces", NULL) < 0)
-	    goto done;
-	if (upgrade_callback_register(h, upgrade_2016_to_2018, "urn:example:interfaces", NULL) < 0)
-	    goto done;
-#endif
     }
     else
 	if (upgrade_callback_register(h, xml_changelog_upgrade, NULL, NULL) < 0)

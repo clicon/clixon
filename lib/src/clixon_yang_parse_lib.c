@@ -1208,8 +1208,7 @@ yang_spec_load_dir(clicon_handle h,
     if((ndp = clicon_file_dirent(dir, &dp, "(.yang)$", S_IFREG)) < 0)
 	goto done;
     if (ndp == 0)
-	clicon_log(LOG_WARNING, "%s: No yang files found in %s",
-		   __FUNCTION__, dir);
+	goto ok;
     /* Apply post steps on new modules, ie ones after modnr. */
     modnr = yang_len_get(yspec);
     /* Load all yang files in dir */
@@ -1270,6 +1269,7 @@ yang_spec_load_dir(clicon_handle h,
     }
     if (yang_parse_post(h, yspec, modnr) < 0)
 	goto done;
+ ok:
     retval = 0;
   done:
     if (dp)

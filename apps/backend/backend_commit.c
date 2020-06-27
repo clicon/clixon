@@ -195,11 +195,6 @@ startup_common(clicon_handle       h,
     /* Clear flags xpath for get */
     xml_apply0(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
 	       (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
-    if (xml_child_nr(xt) == 0){     /* If empty skip */
-	td->td_target = xt;
-	xt = NULL;
-	goto ok;
-    }
     /* Here xt is old syntax */
     /* General purpose datastore upgrade */
     if (clixon_plugin_datastore_upgrade_all(h, db, xt, msdiff) < 0)
@@ -210,6 +205,12 @@ startup_common(clicon_handle       h,
 	    goto done;
 	if (ret == 0)
 	    goto fail;
+    }
+    /* If empty skip. Note upgrading can add children, so it may be empty before that. */
+    if (xml_child_nr(xt) == 0){     
+	td->td_target = xt;
+	xt = NULL;
+	goto ok;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, 0, "Yang spec not set");
