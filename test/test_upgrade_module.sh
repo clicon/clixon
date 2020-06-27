@@ -311,5 +311,5 @@ testall '<dummy xmlns="urn:example:interfaces"/>' ''
 new "empty payload---------"
 testall '' ''
 
-#rm -rf $dir
+rm -rf $dir
 
