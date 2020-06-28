@@ -68,11 +68,11 @@ static int basic_auth = 0;
  */
 int
 b64_decode(const char *src,
-	   char       *target, 
+	   char       *target,
 	   size_t      targsize)
 {
     int tarindex, state, ch;
-    const char *pos;
+    char *pos;
 
     state = 0;
     tarindex = 0;
@@ -197,7 +197,7 @@ b64_decode(const char *src,
  * Enabled by passing -- -a to the main function
  */
 int
-example_restconf_credentials(clicon_handle h,     
+example_restconf_credentials(clicon_handle h,
 			     void         *arg)
 {
     int     retval = -1;
@@ -206,24 +206,23 @@ example_restconf_credentials(clicon_handle h,
     cbuf   *cb = NULL;
     char   *auth;
     char   *passwd;
-    char   passwd2[5] = {0};
+    char   *passwd2 = "";
     size_t  authlen;
     int     ret;
 
-	strcpy(passwd2, "");
     /* HTTP basic authentication not enabled, pass with user "none" */
     if (basic_auth==0)
 	goto ok;
     /* At this point in the code we must use HTTP basic authentication */
     if ((auth = restconf_param_get(h, "HTTP_AUTHORIZATION")) == NULL)
-	goto fail; 
+	goto fail;
     if (strlen(auth) < strlen("Basic "))
 	goto fail;
     if (strncmp("Basic ", auth, strlen("Basic ")))
 	goto fail;
     auth += strlen("Basic ");
     authlen = strlen(auth)*2;
-    if ((user = (char*)malloc(authlen)) == NULL){
+    if ((user = malloc(authlen)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
@@ -242,7 +241,7 @@ example_restconf_credentials(clicon_handle h,
     /* XXX Three hardcoded user/passwd (from RFC8341 A.1)*/
     if (strcmp(user, "wilma")==0 || strcmp(user, "andy")==0 ||
 	strcmp(user, "guest")==0){
-	strcpy(passwd2, "bar");
+	passwd2 = "bar";
     }
     if (strcmp(passwd, passwd2))
 	goto fail;
@@ -266,21 +265,21 @@ example_restconf_credentials(clicon_handle h,
     goto done;
 }
 
-/*! Local example restconf rpc callback 
+/*! Local example restconf rpc callback
  */
 int
-restconf_client_rpc(clicon_handle h, 
-		    cxobj        *xe,      
-		    cbuf         *cbret,    
+restconf_client_rpc(clicon_handle h,
+		    cxobj        *xe,
+		    cbuf         *cbret,
 		    void         *arg,
 		    void         *regarg)
 {
     int    retval = -1;
     cxobj *x = NULL;
-    char  *namespace_;
+    char  *namespace;
 
     /* get namespace from rpc name, return back in each output parameter */
-    if ((namespace_ = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
+    if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
 	clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
 	goto done;
     }
@@ -288,7 +287,7 @@ restconf_client_rpc(clicon_handle h,
     if (!xml_child_nr_type(xe, CX_ELMNT))
 	cprintf(cbret, "<ok/>");
     else while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
-	    if (xmlns_set(x, NULL, namespace_) < 0)
+	    if (xmlns_set(x, NULL, namespace) < 0)
 		goto done;
 	    if (clicon_xml2cbuf(cbret, x, 0, 0, -1) < 0)
 		goto done;
@@ -310,16 +309,13 @@ example_restconf_start(clicon_handle h)
 
 clixon_plugin_api * clixon_plugin_init(clicon_handle h);
 
-static clixon_plugin_api api;
-static void api_initialization(void)
-{
-	strcpy(api.ca_name, "example");                                 /* name */
-	api.ca_init = clixon_plugin_init;                               /* init */
-	api.ca_start = example_restconf_start;                          /* start */
-	api.ca_exit = NULL;                                             /* exit */
-	api.u.cau_restconf.cr_auth =  example_restconf_credentials ;     /* auth */
-}
-
+static clixon_plugin_api api = {
+    "example",           /* name */
+    clixon_plugin_init,  /* init */
+    example_restconf_start,/* start */
+    NULL,                /* exit */
+    .ca_auth=example_restconf_credentials   /* auth */
+};
 
 /*! Restconf plugin initialization
  * @param[in]  h    Clixon handle
@@ -336,7 +332,6 @@ clixon_plugin_init(clicon_handle h)
     char    **argv = NULL;
     int       c;
 
-    api_initialization();
     clicon_debug(1, "%s restconf", __FUNCTION__);
     /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)

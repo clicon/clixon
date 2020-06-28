@@ -132,17 +132,15 @@ example_client_rpc(clicon_handle h,
     return retval;
 }
 
-static clixon_plugin_api api;
-static void api_initialization(void)
-{
-	strcpy(api.ca_name, "example");                                 /* name */
-	api.ca_init = clixon_plugin_init;                               /* init */
-	api.ca_start = NULL;                                            /* start */
-	api.ca_exit = NULL;                                             /* exit */
-	api.u.cau_cli.ci_prompt = NULL;                                 /* cli_prompthook_t */
-	api.u.cau_cli.ci_suspend = NULL;                                /* cligen_susp_cb_t */
-	api.u.cau_cli.ci_interrupt = NULL;                              /* cligen_interrupt_cb_t */
-}
+static clixon_plugin_api api = {
+    "example",          /* name */
+    clixon_plugin_init, /* init */
+    NULL,               /* start */
+    NULL,               /* exit */
+    .ca_prompt=NULL,    /* cli_prompthook_t */
+    .ca_suspend=NULL,   /* cligen_susp_cb_t */
+    .ca_interrupt=NULL, /* cligen_interrupt_cb_t */
+};
 
 /*! CLI plugin initialization
  * @param[in]  h    Clixon handle
@@ -153,7 +151,7 @@ clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
     struct timeval tv;
-	api_initialization();
+
     gettimeofday(&tv, NULL);
     srandom(tv.tv_usec);
 
@@ -168,7 +166,7 @@ incstr(cligen_handle h,
        cg_var       *cv)
 {
     char *str;
-    size_t i;
+    int i;
     
     if (cv_type_get(cv) != CGV_STRING)
 	return 0;

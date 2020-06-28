@@ -32,6 +32,9 @@
   ***** END LICENSE BLOCK *****
 
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef _CLIXON_CLI_H_
 #define _CLIXON_CLI_H_
@@ -60,3 +63,7 @@ int plugin_start(clicon_handle h, int argc, char **argv);
 int plugin_exit(clicon_handle h);
 
 #endif  /* _CLIXON_CLI_H_ */
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif

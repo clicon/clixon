@@ -72,10 +72,10 @@ netconf_client_rpc(clicon_handle h,
 {
     int    retval = -1;
     cxobj *x = NULL;
-    char  *namespace_;
+    char  *namespace;
 
     /* get namespace from rpc name, return back in each output parameter */
-    if ((namespace_ = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
+    if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
 	clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
 	goto done;
     }
@@ -83,7 +83,7 @@ netconf_client_rpc(clicon_handle h,
     if (!xml_child_nr_type(xe, CX_ELMNT))
 	cprintf(cbret, "<ok/>");
     else while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
-	    if (xmlns_set(x, NULL, namespace_) < 0)
+	    if (xmlns_set(x, NULL, namespace) < 0)
 		goto done;
 	    if (clicon_xml2cbuf(cbret, x, 0, 0, -1) < 0)
 		goto done;

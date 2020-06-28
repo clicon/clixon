@@ -199,24 +199,21 @@ nacm_statedata(clicon_handle h,
 
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
-static clixon_plugin_api api;
-
-static void api_initialization(void)
-{
-	strcpy(api.ca_name, "nacm");                                 /* name */
-	api.ca_init = clixon_plugin_init;                            /* init - must be called clixon_plugin_init */
-	api.ca_start = NULL;                                         /* start */
-	api.ca_exit = NULL;                                          /* exit */
-	api.u.cau_backend.cb_statedata = nacm_statedata;             /* statedata */
-	api.u.cau_backend.cb_trans_begin = nacm_begin;               /* trans begin */
-	api.u.cau_backend.cb_trans_validate = nacm_validate;         /* trans validate */
-	api.u.cau_backend.cb_trans_complete = nacm_complete;         /* trans complete */
-	api.u.cau_backend.cb_trans_commit = nacm_commit;             /* trans commit */
-	api.u.cau_backend.cb_trans_commit_done = nacm_commit_done;   /* trans commit done */
-	api.u.cau_backend.cb_trans_revert = nacm_revert;             /* trans revert */
-	api.u.cau_backend.cb_trans_end = nacm_end;                   /* trans end */
-	api.u.cau_backend.cb_trans_abort = nacm_abort;               /* trans abort */
-}
+static clixon_plugin_api api = {
+    "nacm",             /* name */           /*--- Common fields.  ---*/
+    clixon_plugin_init, /* init */
+    NULL,               /* start */
+    NULL,               /* exit */
+    .ca_statedata=nacm_statedata, /* statedata */
+    .ca_trans_begin=nacm_begin,             /* trans begin */
+    .ca_trans_validate=nacm_validate,       /* trans validate */
+    .ca_trans_complete=nacm_complete,       /* trans complete */
+    .ca_trans_commit=nacm_commit,           /* trans commit */
+    .ca_trans_commit_done=nacm_commit_done, /* trans commit done */
+    .ca_trans_revert=nacm_revert,           /* trans revert */
+    .ca_trans_end=nacm_end,                 /* trans end */
+    .ca_trans_abort=nacm_abort              /* trans abort */
+};
 
 /*! Backend plugin initialization
  * @param[in]  h    Clixon handle
@@ -231,7 +228,6 @@ clixon_plugin_init(clicon_handle h)
     char **argv;
     int    c;
 
-    api_initialization();
     clicon_debug(1, "%s backend nacm", __FUNCTION__);
     /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)
