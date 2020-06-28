@@ -940,7 +940,7 @@ add_namespace(cxobj *x,
  */
 int
 xml_namespace_change(cxobj *x, 
-                    const char   *namespace_,
+                    const char   *ns,
                     char   *prefix)
 {
     int    retval = -1;
@@ -951,10 +951,10 @@ xml_namespace_change(cxobj *x,
     ns0 = NULL;
     if (xml2ns(x, xml_prefix(x), &ns0) < 0)
        goto done;
-    if (ns0 && strcmp(ns0, namespace_) == 0)
+    if (ns0 && strcmp(ns0, ns) == 0)
 	goto ok; /* Already has right namespace */ 
     /* Is namespace already declared? */
-    if (xml2prefix(x, namespace_, &prefix0) == 1){
+    if (xml2prefix(x, ns, &prefix0) == 1){
        /* Yes it is declared and the prefix is prefix0 */
        if (xml_prefix_set(x, prefix0) < 0)
            goto done;
@@ -967,7 +967,7 @@ xml_namespace_change(cxobj *x,
 	   xp = x;
        else
 	   xp = xml_parent(x);
-       if (add_namespace(x, xp, prefix, namespace_) < 0)
+       if (add_namespace(x, xp, prefix, ns) < 0)
 	   goto done;	   
        /* Add prefix to x, if any */
        if (prefix && xml_prefix_set(x, prefix) < 0)
@@ -1279,7 +1279,7 @@ assign_namespace(cxobj *x0, /* source */
 		 cxobj *x1, /* target */
 		 cxobj *x1p,
 		 int    isroot,
-		 char  *namespace_,
+		 char  *ns,
 		 char  *prefix0)
 {
     int        retval = -1;
@@ -1290,7 +1290,7 @@ assign_namespace(cxobj *x0, /* source */
     yang_stmt *y;
     
     /* 2a. Detect if namespace is declared in x1 target parent */
-    if (xml2prefix(x1p, namespace_, &pexist) == 1){
+    if (xml2prefix(x1p, ns, &pexist) == 1){
 	/* Yes, and it has prefix pexist */
 	if (pexist){
 	    if ((prefix1 = strdup(pexist)) == NULL){
@@ -1312,12 +1312,12 @@ assign_namespace(cxobj *x0, /* source */
 	    nscache_replace(x1, nsc);
 	}
 	/* Just in case */
-	if (nscache_set(x1, prefix1, namespace_) < 0)
+	if (nscache_set(x1, prefix1, ns) < 0)
 	    goto done;
     }
     else{ /* No, namespace does not exist in x1 _parent_ 
 	   * Check if it is exists in x1 itself */
-	if (xml2prefix(x1, namespace_, &pexist) == 1){
+	if (xml2prefix(x1, ns, &pexist) == 1){
 	    /* Yes it exists, but is it equal? */
 	    if (clicon_strcmp(pexist, prefix0) == 0)
 		; /* Equal, reuse */
@@ -1345,7 +1345,7 @@ assign_namespace(cxobj *x0, /* source */
 		    goto done;
 		}
 		/* Find local (imported) prefix for that module namespace */
-		if (yang_find_prefix_by_namespace(y, namespace_, &ptmp) < 0)
+		if (yang_find_prefix_by_namespace(y, ns, &ptmp) < 0)
 		    goto done;
 		if ((prefix1 = strdup(ptmp)) == NULL){
 		    clicon_err(OE_UNIX, errno, "strdup");
@@ -1354,7 +1354,7 @@ assign_namespace(cxobj *x0, /* source */
 
 	    }
 	}
-	if (add_namespace(x1, x1, prefix1, namespace_) < 0)
+	if (add_namespace(x1, x1, prefix1, ns) < 0)
 	    goto done;
 	if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
 	    goto done;	    
