@@ -208,7 +208,7 @@ yang_stmt *ys_prune(yang_stmt *yp, int i);
 
 int        ys_free(yang_stmt *ys);
 int        yspec_free(yang_stmt *yspec);
-int        ys_cp(yang_stmt *new_, yang_stmt *old);
+int        ys_cp(yang_stmt *nw, yang_stmt *old);
 yang_stmt *ys_dup(yang_stmt *old);
 int        yn_insert(yang_stmt *ys_parent, yang_stmt *ys_child);
 yang_stmt *yn_each(yang_stmt *yn, yang_stmt *ys);
@@ -223,7 +223,7 @@ yang_stmt *yang_find_datanode(yang_stmt *yn, char *argument);
 yang_stmt *yang_find_schemanode(yang_stmt *yn, char *argument);
 char      *yang_find_myprefix(yang_stmt *ys);
 char      *yang_find_mynamespace(yang_stmt *ys);
-int        yang_find_prefix_by_namespace(yang_stmt *ys, char *namespace_, char **prefix);
+int        yang_find_prefix_by_namespace(yang_stmt *ys, char *ns, char **prefix);
 yang_stmt *yang_myroot(yang_stmt *ys);
 yang_stmt *yang_choice(yang_stmt *y);
 int        yang_order(yang_stmt *y);
