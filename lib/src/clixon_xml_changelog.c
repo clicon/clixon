@@ -368,7 +368,7 @@ changelog_iterate(clicon_handle h,
 int
 xml_changelog_upgrade(clicon_handle h,       
 		       cxobj        *xt,      
-		       char         *namespace_,
+		       char         *ns,
 		       uint32_t      from,
 		       uint32_t      to,
 		       void         *arg,     
@@ -397,7 +397,7 @@ xml_changelog_upgrade(clicon_handle h,
      * - note it t=0 then no changelog is applied
      */
     if (xpath_vec(xchlog, NULL, "changelog[namespace=\"%s\"]", 
-		  &vec, &veclen, namespace_) < 0)
+		  &vec, &veclen, ns) < 0)
 	goto done;
     /* Get all changelogs in the interval [from,to]*/
     for (i=0; i<veclen; i++){
@@ -498,7 +498,7 @@ clixon_xml_changelog_init(clicon_handle h)
 int
 xml_namespace_vec(clicon_handle h,
 		  cxobj        *xt,
-		  char         *namespace_,
+		  char         *ns_func_var,
 		  cxobj      ***vecp,
 		  size_t       *veclenp)
 {
@@ -523,7 +523,7 @@ xml_namespace_vec(clicon_handle h,
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
 	if (xml2ns(xc, NULL, &ns) < 0) /* Get namespace of XML */
 	    goto done;       
-	if (strcmp(namespace_, ns))
+	if (strcmp(ns_func_var, ns))
 	    continue; /* no match */
 	xvec[i++] = xc;
     }
