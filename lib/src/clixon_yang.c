@@ -895,7 +895,7 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
     clicon_debug(1, "%s", __FUNCTION__);
     /* First check if namespace is my own module */
     myns = yang_find_mynamespace(ys);
-    if (strcmp(myns, namespace_) == 0){
+    if (strcmp(myns, ns) == 0){
 	*prefix = yang_find_myprefix(ys); /* or NULL? */
 	goto found;
     }
