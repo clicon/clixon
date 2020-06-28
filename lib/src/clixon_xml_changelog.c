@@ -498,7 +498,7 @@ clixon_xml_changelog_init(clicon_handle h)
 int
 xml_namespace_vec(clicon_handle h,
 		  cxobj        *xt,
-		  char         *ns_func_var,
+		  char         *ns,
 		  cxobj      ***vecp,
 		  size_t       *veclenp)
 {
@@ -506,7 +506,7 @@ xml_namespace_vec(clicon_handle h,
     cxobj **xvec = NULL;
     size_t  xlen;
     cxobj  *xc;
-    char   *ns;
+    char   *ns0;
     int     i;
 
     /* Allocate upper bound on length (ie could be too large) + a NULL element
@@ -521,9 +521,9 @@ xml_namespace_vec(clicon_handle h,
     xc = NULL;
     i = 0;
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	if (xml2ns(xc, NULL, &ns) < 0) /* Get namespace of XML */
+	if (xml2ns(xc, NULL, &ns0) < 0) /* Get namespace of XML */
 	    goto done;       
-	if (strcmp(ns_func_var, ns))
+	if (strcmp(ns, ns0))
 	    continue; /* no match */
 	xvec[i++] = xc;
     }
