@@ -573,14 +573,14 @@ yang_find_module_by_prefix_yspec(yang_stmt *yspec,
  */
 yang_stmt *
 yang_find_module_by_namespace(yang_stmt *yspec, 
-			      const char      *namespace_)
+			      const char      *ns)
 {
     yang_stmt *ymod = NULL;
 
-    if (namespace_ == NULL)
+    if (ns == NULL)
 	goto done;
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	if (yang_find(ymod, Y_NAMESPACE, namespace_) != NULL)
+	if (yang_find(ymod, Y_NAMESPACE, ns) != NULL)
 	    break;
     }
  done:
