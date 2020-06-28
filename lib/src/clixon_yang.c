@@ -515,19 +515,19 @@ ys_cp(yang_stmt *ynew,
 yang_stmt *
 ys_dup(yang_stmt *old)
 {
-    yang_stmt *new_;
+    yang_stmt *nw;
 
-    if ((new_ = ys_new(old->ys_keyword)) == NULL)
+    if ((nw = ys_new(old->ys_keyword)) == NULL)
 	return NULL;
-    if (new_->ys_cvec){
-	cvec_free(new_->ys_cvec);
-	new_->ys_cvec = NULL;
+    if (nw->ys_cvec){
+	cvec_free(nw->ys_cvec);
+	nw->ys_cvec = NULL;
     }
-    if (ys_cp(new_, old) < 0){
-	ys_free(new_);
+    if (ys_cp(nw, old) < 0){
+	ys_free(nw);
 	return NULL;
     }
-    return new_;
+    return nw;
 }
 
 /*! Append yang statement as child of a parent yang_statement, last in list 
@@ -849,7 +849,7 @@ yang_find_mynamespace(yang_stmt *ys)
 {
     yang_stmt *ymod; /* My module */
     yang_stmt *ynamespace;
-    char      *namespace_ = NULL;
+    char      *ns = NULL;
 
     if ((ymod = ys_real_module(ys)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "My yang module not found");
@@ -857,9 +857,9 @@ yang_find_mynamespace(yang_stmt *ys)
     }
     if ((ynamespace = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL)
 	goto done;
-    namespace_ = yang_argument_get(ynamespace);
+    ns = yang_argument_get(ynamespace);
  done:
-    return namespace_;
+    return ns;
 }
 
 /*! Given a yang statement and namespace, find local prefix valid in module
@@ -880,7 +880,7 @@ yang_find_mynamespace(yang_stmt *ys)
  */
 int
 yang_find_prefix_by_namespace(yang_stmt *ys,
-			      char      *namespace_,
+			      char      *ns,
 			      char     **prefix)
 {
     int        retval = 0; /* not found */
@@ -901,7 +901,7 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
     }
     /* Next, find namespaces in imported modules */
     yspec = ys_spec(ys);
-    if ((ymod = yang_find_module_by_namespace(yspec, namespace_)) == NULL)
+    if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL)
 	goto notfound;
     modname = yang_argument_get(ymod);
     my_ymod = ys_module(ys);
@@ -1121,18 +1121,18 @@ ys_module_by_xml(yang_stmt  *yspec,
     int        retval = -1;
     yang_stmt *ym = NULL; /* module */
     char      *prefix = NULL;
-    char      *namespace_ = NULL; /* namespace URI */
+    char      *ns = NULL; /* namespace URI */
 
     if (ymodp)
 	*ymodp = NULL;
     prefix = xml_prefix(xt);
-    if (xml2ns(xt, prefix, &namespace_) < 0) /* prefix may be NULL */
+    if (xml2ns(xt, prefix, &ns) < 0) /* prefix may be NULL */
 	goto done;
     /* No namespace found, give up */
-    if (namespace_ == NULL)
+    if (ns == NULL)
 	goto ok;
     /* We got the namespace, now get the module */
-    ym = yang_find_module_by_namespace(yspec, namespace_);
+    ym = yang_find_module_by_namespace(yspec, ns);
     /* Set result param */
     if (ymodp && ym)
 	*ymodp = ym;
