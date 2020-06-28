@@ -313,7 +313,7 @@ client_statedata(clicon_handle h,
     yang_stmt *yspec;
     yang_stmt *ymod;
     int        ret;
-    char      *namespace_;
+    char      *ns;
     cbuf      *cb = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
@@ -330,11 +330,11 @@ client_statedata(clicon_handle h,
 	    clicon_err(OE_YANG, ENOENT, "yang module clixon-rfc5277 not found");
 	    goto done;
 	}
-	if ((namespace_ = yang_find_mynamespace(ymod)) == NULL){
+	if ((ns = yang_find_mynamespace(ymod)) == NULL){
 	    clicon_err(OE_YANG, ENOENT, "clixon-rfc5277 namespace not found");
 	    goto done;
 	}
-	cprintf(cb, "<netconf xmlns=\"%s\"/>", namespace_);
+	cprintf(cb, "<netconf xmlns=\"%s\"/>", ns);
 	if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL) < 0)
 	    goto done;
 	if ((ret = client_get_streams(h, yspec, xpath, ymod, "netconf", xret)) < 0)
@@ -347,12 +347,12 @@ client_statedata(clicon_handle h,
 	    clicon_err(OE_YANG, ENOENT, "yang module ietf-restconf-monitoring not found");
 	    goto done;
 	}
-	if ((namespace_ = yang_find_mynamespace(ymod)) == NULL){
+	if ((ns = yang_find_mynamespace(ymod)) == NULL){
 	    clicon_err(OE_YANG, ENOENT, "ietf-restconf-monitoring namespace not found");
 	    goto done;
 	}
 	cbuf_reset(cb);
-	cprintf(cb, "<restconf-state xmlns=\"%s\"/>", namespace_);
+	cprintf(cb, "<restconf-state xmlns=\"%s\"/>", ns);
 	if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL) < 0)
 	    goto done;
 	if ((ret = client_get_streams(h, yspec, xpath, ymod, "restconf-state", xret)) < 0)
