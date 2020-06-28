@@ -160,13 +160,13 @@ int       xml_name_set(cxobj *xn, const char *name);
 char     *xml_prefix(cxobj *xn);
 int       xml_prefix_set(cxobj *xn, char *name);
 char     *nscache_get(cxobj *x, char *prefix);
-int       nscache_get_prefix(cxobj *x, char *namespace_, char **prefix);
+int       nscache_get_prefix(cxobj *x, char *ns, char **prefix);
 cvec     *nscache_get_all(cxobj *x);
-int       nscache_set(cxobj *x,	char *prefix, char *namespace_);
+int       nscache_set(cxobj *x,	char *prefix, char *ns);
 int       nscache_clear(cxobj *x);
 int       nscache_replace(cxobj *x, cvec *ns);
 
-int       xmlns_set(cxobj *x, char *prefix, char *namespace_);
+int       xmlns_set(cxobj *x, char *prefix, char *ns);
 cxobj    *xml_parent(cxobj *xn);
 int       xml_parent_set(cxobj *xn, cxobj *parent);
 
