@@ -78,10 +78,11 @@
 #include "restconf_lib.h"       /* generic shared with plugins */
 #include "restconf_handle.h"
 #include "restconf_api.h"       /* generic not shared with plugins */
+#include "restconf_err.h"
 #include "restconf_root.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:o:P:c:k:"
+#define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:o:P:s"
 
 /* Need global variable to for signal handler XXX */
 static clicon_handle _CLICON_HANDLE = NULL;
@@ -248,7 +249,8 @@ convert_fcgi(evhtp_header_t *hdr,
  * @param[in]  h    Clicon handle
  * @param[in]  req  Evhtp request struct
  * @param[out] qvec Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
- * @retval     0    OK
+ * @retval     1    OK continue
+ * @retval     0    Fail, dont continue
  * @retval    -1    Error
  * The following parameters are set:
  * QUERY_STRING
@@ -293,16 +295,30 @@ evhtp_params_set(clicon_handle    h,
 	goto done;
     if (restconf_param_set(h, "REQUEST_URI", path->full) < 0)
 	goto done;
-    if (restconf_param_set(h, "HTTPS", "https") < 0) /* some string or NULL */
-	goto done;
+    clicon_debug(1, "%s proto:%d", __FUNCTION__, req->proto);
+    if (req->proto != EVHTP_PROTO_10 &&
+	req->proto != EVHTP_PROTO_11){
+	if (restconf_badrequest(h, req)	< 0)
+	    goto done;
+	goto fail;
+    }
+    clicon_debug(1, "%s conn->ssl:%d", __FUNCTION__, req->conn->ssl?1:0);
+    if (req->conn->ssl != NULL){
+	if (restconf_param_set(h, "HTTPS", "https") < 0) /* some string or NULL */
+	    goto done;
+    }
+
     /* Translate all http headers by capitalizing, prepend w HTTP_ and - -> _
      * Example: Host -> HTTP_HOST 
      */
     if (evhtp_headers_for_each(req->headers_in, convert_fcgi, h) < 0)
 	goto done;
-    retval = 0;
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 static int
@@ -368,7 +384,8 @@ static void
 cx_path_wellknown(evhtp_request_t *req,
 		  void            *arg)
 {
-    clicon_handle       h = arg;
+    clicon_handle h = arg;
+    int           ret;
 
     clicon_debug(1, "------------");
     /* input debug */
@@ -377,12 +394,13 @@ cx_path_wellknown(evhtp_request_t *req,
     /* get accepted connection */
 
     /* set fcgi-like paramaters (ignore query vector) */
-    if (evhtp_params_set(h, req, NULL) < 0)
+    if ((ret = evhtp_params_set(h, req, NULL)) < 0)
 	goto done;
-    /* call generic function */
-    if (api_well_known(h, req) < 0)
-	goto done;
-
+    if (ret == 1){
+	/* call generic function */
+	if (api_well_known(h, req) < 0)
+	    goto done;
+    }
     /* Clear (fcgi) paramaters from this request */
     if (restconf_param_del_all(h) < 0)
 	goto done;
@@ -398,6 +416,7 @@ cx_path_restconf(evhtp_request_t *req,
 		 void            *arg)
 {
     clicon_handle h = arg;
+    int           ret;
     cvec         *qvec = NULL;
 
     clicon_debug(1, "------------");
@@ -411,17 +430,65 @@ cx_path_restconf(evhtp_request_t *req,
 	goto done;
     }
     /* set fcgi-like paramaters (ignore query vector) */
-    if (evhtp_params_set(h, req, qvec) < 0)
+    if ((ret = evhtp_params_set(h, req, qvec)) < 0)
 	goto done;
-    /* call generic function */
-    if (api_root_restconf(h, req, qvec) < 0)
-	goto done;
+    if (ret == 1){
+	/* call generic function */
+	if (api_root_restconf(h, req, qvec) < 0)
+	    goto done;
+    }
 
     /* Clear (fcgi) paramaters from this request */
     if (restconf_param_del_all(h) < 0)
 	goto done;
  done:
     return; /* void */
+}
+
+/*! Get Server cert info
+ * @param[out] ssl_config
+ */
+static int
+get_servercerts(evhtp_ssl_cfg_t *ssl_config,
+		const char      *pki_dir,
+		const char      *ssl_server_cert)
+{
+    int         retval = -1;
+    cbuf       *cb = NULL;
+    struct stat f_stat;
+
+    if (ssl_config == NULL){
+	clicon_err(OE_CFG, EINVAL, "ssl_config is NULL");
+	goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "%s/%s-crt.pem", pki_dir, ssl_server_cert);
+    if ((ssl_config->pemfile = strdup(cbuf_get(cb))) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    if (stat(ssl_config->pemfile, &f_stat) != 0) {
+	clicon_err(OE_FATAL, errno, "Cannot load SSL cert '%s'", ssl_config->pemfile);
+	goto done;
+    }
+    cbuf_reset(cb);
+    cprintf(cb, "%s/%s-key.pem", pki_dir, ssl_server_cert);
+    if ((ssl_config->privfile = strdup(cbuf_get(cb))) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    if (stat(ssl_config->privfile, &f_stat) != 0) {
+	clicon_err(OE_FATAL, errno, "Cannot load SSL key '%s'", ssl_config->privfile);
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
 }
 
 /*! Usage help routine
@@ -445,9 +512,8 @@ usage(clicon_handle h,
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
 	    "\t-o \"<option>=<value>\" Give configuration option overriding config file (see clixon-config.yang)\n"
-    	    "\t-P <port>\t  HTTPS port (default 443)\n"
-	    "\t-c <cert>\t  SSL server certificate - pemfile (mandatory)\n"
-	    "\t-k <key>\t  SSL private key - privfile (mandatory)\n"
+	    "\t-s\t  SSL server, https\n"
+    	    "\t-P <port>\t  HTTP port (default 80, or 443 if -s is given)\n"
 	    ,
 	    argv0,
 	    clicon_restconf_dir(h)
@@ -473,15 +539,17 @@ main(int    argc,
     cvec              *nsctx_global = NULL; /* Global namespace context */
     size_t             cligen_buflen;
     size_t             cligen_bufthreshold;
-    uint16_t           port = 443;
+    uint16_t           defaultport = 80;
+    uint16_t           port = 0;
 #ifdef _EVHTP_NYI 
     char              *stream_path;
 #endif
     evhtp_t           *htp = NULL;
     struct event_base *evbase = NULL;
     evhtp_ssl_cfg_t   *ssl_config = NULL;
-    struct stat        f_stat;
     int                dbg = 0;
+    char              *ssl_server = NULL; /* SSL server name, default "server", base for srv certs */
+    char              *pki_dir = CLIXON_PKI_DIR;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -542,13 +610,6 @@ main(int    argc,
 #ifdef _EVHTP_NYI 
     stream_path = clicon_option_str(h, "CLICON_STREAM_PATH");
 #endif
-    /* Init evhtp ssl config struct */
-    if ((ssl_config = malloc(sizeof(evhtp_ssl_cfg_t))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
-    }
-    memset(ssl_config, 0, sizeof(evhtp_ssl_cfg_t));
-    ssl_config->ssl_opts = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1;
     
     /* Now rest of options, some overwrite option file */
     optind = 1;
@@ -589,16 +650,14 @@ main(int    argc,
 		goto done;
 	    break;
 	}
+	case 's': /* ssl: use https */
+	    ssl_server = CLIXON_SERVER_CERT;
+	    defaultport = 443; /* unless explicit -P ? */
+	    break;
 	case 'P': /* http port */
 	    if (!strlen(optarg))
 		usage(h, argv0);
 	    port=atoi(optarg);
-	    break;
-	case 'c': /* SSL Server Certificate */
-	    ssl_config->pemfile = optarg;
-	    break;
-	case 'k': /* SSL private key */
-	    ssl_config->privfile = optarg;
 	    break;
         default:
             usage(h, argv0);
@@ -606,22 +665,23 @@ main(int    argc,
 	}
     argc -= optind;
     argv += optind;
-    /* Check ssl mandatory options */
-    if (ssl_config->pemfile == NULL || ssl_config->privfile == NULL)
-	usage(h, argv0);
-    /* Verify SSL files */
-    if (ssl_config->pemfile == NULL)
-	usage(h, argv0);
-    if (stat(ssl_config->pemfile, &f_stat) != 0) {
-	clicon_err(OE_FATAL, errno, "Cannot load SSL cert '%s'", ssl_config->pemfile);
-	goto done;
+    /* port = defaultport unless explicitly set -P */
+    if (port == 0)
+	port = defaultport;
+    /* Check server ssl certs */
+    if (ssl_server){
+	/* Init evhtp ssl config struct */
+	if ((ssl_config = malloc(sizeof(evhtp_ssl_cfg_t))) == NULL){
+	    clicon_err(OE_UNIX, errno, "malloc");
+	    goto done;
+	}
+	memset(ssl_config, 0, sizeof(evhtp_ssl_cfg_t));
+	ssl_config->ssl_opts = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1;
+
+	if (get_servercerts(ssl_config, pki_dir, ssl_server) < 0)
+	    goto done;
     }
-    if (ssl_config->privfile == NULL) 
-	usage(h, argv0);
-    if (stat(ssl_config->privfile, &f_stat) != 0) {
-	clicon_err(OE_FATAL, errno, "Cannot load SSL key '%s'", ssl_config->privfile);
-	goto done;
-    }
+
     //    ssl_verify_mode             = htp_sslutil_verify2opts(optarg);
     assert(SSL_VERIFY_NONE == 0);
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
@@ -637,9 +697,11 @@ main(int    argc,
 	clicon_err(OE_UNIX, errno, "evhtp_new");
 	goto done;
     }
-    if (evhtp_ssl_init(htp, ssl_config) < 0){
-	clicon_err(OE_UNIX, errno, "evhtp_new");
-	goto done;
+    if (ssl_server){
+	if (evhtp_ssl_init(htp, ssl_config) < 0){
+	    clicon_err(OE_UNIX, errno, "evhtp_new");
+	    goto done;
+	}
     }
 #ifndef EVHTP_DISABLE_EVTHR
     evhtp_use_threads_wexit(htp, NULL, NULL, 4, NULL);

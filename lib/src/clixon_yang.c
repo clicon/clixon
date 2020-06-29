@@ -224,6 +224,15 @@ yang_argument_get(yang_stmt *ys)
     return ys->ys_argument;
 }
 
+/*
+ * Note on cvec on XML nodes:
+ * 1. It is always created in xml_new. It could be lazily created on use to save a little memory
+ * 2. Only some yang statements use the cvec, as follows:
+ *  2a. ranges and lengths: [min, max]
+ *  2b. list: keys
+ *  2c. identity types: derived instances: identityrefs, save <module>:<idref>
+ *  2d. type: leafref types: derived instances.
+ */
 /*! Set yang argument, not not copied
  * @param[in] ys   Yang statement node
  * @param[in] arg  Argument
@@ -335,6 +344,7 @@ yang_stmt *
 ys_new(enum rfc_6020 keyw)
 {
     yang_stmt *ys;
+    cvec      *cvv;
 
     if ((ys = malloc(sizeof(*ys))) == NULL){
 	clicon_err(OE_YANG, errno, "malloc");
@@ -344,10 +354,11 @@ ys_new(enum rfc_6020 keyw)
     ys->ys_keyword    = keyw;
     /* The cvec contains stmt-specific variables. Only few stmts need variables so the
        cvec could be lazily created to save some heap and cycles. */
-    if ((ys->ys_cvec = cvec_new(0)) == NULL){ 
+    if ((cvv = cvec_new(0)) == NULL){ 
 	clicon_err(OE_YANG, errno, "cvec_new");
 	return NULL;
     }
+    yang_cvec_set(ys, cvv);
     return ys;
 }
 
@@ -1712,7 +1723,9 @@ ys_populate_identity(clicon_handle h,
 	    goto done;
 	}
 	//	    continue; /* root identity */
-	/* Check if derived id is already in base identifier */
+	/* Check if derived id is already in base identifier 
+	 * note that cvec is always created in ys_new()
+	 */
 	idrefvec = yang_cvec_get(ybaseid);
 	if (cvec_find(idrefvec, idref) != NULL)
 	    continue;

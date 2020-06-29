@@ -93,6 +93,7 @@ You may add your site-specific modifications in a `site.sh` file. Example:
 
 For example, in FreeBSD, add:
 ```
-wwwuser=www
-make=gmake
+  wwwuser=www
+  make=gmake
 ```
+

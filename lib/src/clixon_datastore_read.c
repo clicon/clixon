@@ -293,7 +293,7 @@ text_read_modstate(clicon_handle       h,
 		continue;
 	    if ((srev = xml_find_body(xs, "revision")) == NULL)
 		continue;
-	    if (strcmp(frev, srev)!=0){
+	    if (strcmp(frev, srev) != 0){
 		/* 3c) File module-state does not match system */
 		if ((xf2 = xml_dup(xf)) == NULL)
 		    goto done;

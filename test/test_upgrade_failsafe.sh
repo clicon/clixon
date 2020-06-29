@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Starting clixon with outdated (or not) modules
+# Starting clixon with outdated (or not) modules.
+# It is a test of handling modstate, identifying invalid startups
+# and entering failsafe
+# No active upgrading of an outdated db is made
 # This relies on storing RFC7895 YANG Module Library modules-state info
 # in the datastore (or XML files?)
 # The test is made with three Yang models A, B and C as follows:
@@ -32,7 +35,6 @@ fyangB=$dir/B@2019-01-01.yang
 # Yang module A revision "0814-01-28"
 # Note that this Yang model will exist in the DIR but will not be loaded
 # by the system. Just here for reference
-# XXX: Maybe it should be loaded and used in draft-wu?
 cat <<EOF > $fyangA0
 module A{
   prefix a;
@@ -268,7 +270,7 @@ runtest(){
 	wait_backend
     else
 	new "Restart backend as eg follows: -Ff $cfg -s $mode -o \"CLICON_XMLDB_MODSTATE=$modstate\" ($BETIMEOUT s)"
-	sleep $BETIMEOUT
+#	sleep $BETIMEOUT
     fi
 
     new "Check running db content"
@@ -279,7 +281,7 @@ runtest(){
 	new "Check startup db content"
 	expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>" "^<rpc-reply>$expstart</rpc-reply>]]>]]>$"
     fi
-    
+
     if [ $BE -ne 0 ]; then
 	new "Kill backend"
 	# Check if premature kill
@@ -294,42 +296,47 @@ runtest(){
 
 # Compatible == all yang modules match
 # runtest <mode> <expected running> <expected startup>
+# This is really just that modstate is stripped from candidate and running if modstate is off
 new "1. Run without CLICON_XMLDB_MODSTATE ensure no modstate in datastore"
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp compat-valid.xml startup_db)
 runtest false startup '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>'
 
 new "Verify no modstate in running"
-expect="module"
+expect="modules-state"
 ret=$(sudo grep $expect $dir/running_db)
 if [ -n "$ret" ]; then
     err "did not expect $expect" "$ret"
 fi
 
 new "2. Load compatible valid startup (all OK)"
+# This is really just that modstate is used in candidate and running if modstate is on
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp compat-valid.xml startup_db)
 runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>'
 
 new "Verify modstate in running"
-expect="module"
+expect="modules-state"
 ret=$(sudo grep $expect $dir/running_db)
 if [ -z "$ret" ]; then
     err "Expected $expect" "$ret"
 fi
 
 new "3. Load compatible running valid running (rest of tests are startup)"
+# Just test that a valid db survives start from running
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp compat-valid.xml running_db)
 runtest true running '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' ''
 #'<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>'
 
 new "4. Load non-compat valid startup"
+# Just test that a valid db survives start from running
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp non-compat-valid.xml startup_db)
 runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>'
 
 new "5. Load non-compat invalid startup. Enter failsafe, startup invalid."
+# A test that if a non-valid startup is encountered, validation fails and failsafe is entered
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp non-compat-invalid.xml startup_db)
 runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>' # sorted

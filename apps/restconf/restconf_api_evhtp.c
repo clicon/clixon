@@ -131,23 +131,26 @@ restconf_reply_send(void  *req0,
 {
     evhtp_request_t    *req = (evhtp_request_t *)req0;
     int                 retval = -1;
-    evhtp_connection_t *conn;
     struct evbuffer    *eb = NULL;
-    const char *reason_phrase;
+    const char         *reason_phrase;
     
     req->status = code;
     if ((reason_phrase = restconf_code2reason(code)) == NULL)
 	reason_phrase="";
-#if 1 /* XXX  remove status header för evhtp? */
+#if 0 /* XXX  remove status header för evhtp? */
     if (restconf_reply_header(req, "Status", "%d %s", code, reason_phrase) < 0)
 	goto done;
 #endif
-#if 1    /* Optional? */
-    if ((conn = evhtp_request_get_connection(req)) == NULL){
-	clicon_err(OE_DAEMON, EFAULT, "evhtp_request_get_connection");
-	goto done;
+#if 0    /* Optional? */
+    {
+	evhtp_connection_t *conn;
+
+	if ((conn = evhtp_request_get_connection(req)) == NULL){
+	    clicon_err(OE_DAEMON, EFAULT, "evhtp_request_get_connection");
+	    goto done;
+	}
+	htp_sslutil_add_xheaders(req->headers_out, conn->ssl, HTP_SSLUTILS_XHDR_ALL);
     }
-    htp_sslutil_add_xheaders(req->headers_out, conn->ssl, HTP_SSLUTILS_XHDR_ALL);
 #endif
 
     /* If body, add a content-length header */
@@ -190,10 +193,20 @@ restconf_get_indata(void *req0)
 {
     evhtp_request_t *req = (evhtp_request_t *)req0;    
     cbuf            *cb = NULL;
-    
+    size_t           len;
+    unsigned char   *buf;
+
     if ((cb = cbuf_new()) == NULL)
 	return NULL;
-    if (evbuffer_get_length(req->buffer_in))
-	cprintf(cb, "%s", evbuffer_pullup(req->buffer_in, -1));
+    len = evbuffer_get_length(req->buffer_in);
+    if (len > 0){
+	if ((buf = evbuffer_pullup(req->buffer_in, len)) == NULL){
+	    clicon_err(OE_CFG, errno, "evbuffer_pullup");
+	    return NULL;
+	}
+	/* Note the pullup may not be null-terminated */
+	cbuf_append_buf(cb, buf, len);
+    }
+
     return cb;
 }

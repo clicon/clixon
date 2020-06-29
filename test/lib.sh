@@ -90,9 +90,6 @@ fi
 # RESTCONF protocol, eg http or https
 : ${RCPROTO:=http}
 
-# RESTCONF error message (if not up)
-: ${RCERROR:="HTTP/1.1 502 Bad Gateway"}
-
 # www user (on linux typically www-data, freebsd www)
 # @see wwwstartuser which can be dropped to this
 : ${wwwuser:=www-data}
@@ -234,8 +231,13 @@ wait_backend(){
 # @see wait_restconf
 start_restconf(){
     # Start in background 
-    echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $*"
-    sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $* &
+    if [ $RCPROTO = https ]; then
+	EXTRA="-s"
+    else
+	EXTRA=
+    fi
+    echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $EXTRA $*"
+    sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $EXTRA $* &
     if [ $? -ne 0 ]; then
 	err
     fi
