@@ -119,9 +119,9 @@ int stream_ss_delete(clicon_handle h, char *name, stream_fn_t fn, void *arg);
 
 int stream_notify_xml(clicon_handle h, char *stream, cxobj *xml);
 #if defined(__GNUC__) && __GNUC__ >= 3
-int stream_notify(clicon_handle h, char *stream, const char *event, ...)  __attribute__ ((format (printf, 3, 4)));
+int stream_notify(clicon_handle h, const char *stream, const char *event, ...)  __attribute__ ((format (printf, 3, 4)));
 #else
-int stream_notify(clicon_handle h, char *stream, const char *event, ...);
+int stream_notify(clicon_handle h, const char *stream, const char *event, ...);
 #endif
 
 /* Replay */
@@ -129,7 +129,7 @@ int stream_replay_add(event_stream_t *es, struct timeval *tv, cxobj *xv);
 int stream_replay_trigger(clicon_handle h, char *stream, stream_fn_t fn, void *arg);
 
 /* Experimental publish streams using SSE. CLIXON_PUBLISH_STREAMS should be set */
-int stream_publish(clicon_handle h, char *stream);
+int stream_publish(clicon_handle h, const char *stream);
 int stream_publish_init();
 int stream_publish_exit();
 

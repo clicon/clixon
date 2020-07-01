@@ -297,7 +297,7 @@ json2xml_decode_identityref(cxobj     *x,
 			    cxobj    **xerr)
 {
     int        retval = -1;
-    char      *namespace;
+    char      *ns;
     char      *body;
     cxobj     *xb;
     cxobj     *xa;
@@ -319,7 +319,7 @@ json2xml_decode_identityref(cxobj     *x,
     /* prefix is a module name -> find module */
     if (prefix){
 	if ((ymod = yang_find_module_by_name(yspec, prefix)) != NULL){
-	    namespace = yang_find_mynamespace(ymod);
+	    ns = yang_find_mynamespace(ymod);
 	    /* Is this namespace in the xml context?
 	     * (yes) use its prefix (unless it is NULL)
 	     * (no)  insert a xmlns:<prefix> statement
@@ -328,15 +328,15 @@ json2xml_decode_identityref(cxobj     *x,
 	    if (xml_nsctx_node(x, &nsc) < 0)
 		goto done;
 	    clicon_debug(1, "%s prefix:%s body:%s namespace:%s",
-			 __FUNCTION__, prefix, body, namespace);
-	    if (!xml_nsctx_get_prefix(nsc, namespace, &prefix2)){
+			 __FUNCTION__, prefix, body, ns);
+	    if (!xml_nsctx_get_prefix(nsc, ns, &prefix2)){
 		/* (no)  insert a xmlns:<prefix> statement
 		 * Get yang prefix from import statement of my mod */
-		if (yang_find_prefix_by_namespace(y, namespace, &prefix2) == 0){
+		if (yang_find_prefix_by_namespace(y, ns, &prefix2) == 0){
 #ifndef IDENTITYREF_KLUDGE
 		    /* Just get the prefix from the module's own namespace */
 		    if (xerr && netconf_unknown_namespace_xml(xerr, "application",
-						      namespace,
+						      ns,
 						      "No local prefix corresponding to namespace") < 0)
 			goto done;
 		    goto fail;
@@ -350,7 +350,7 @@ json2xml_decode_identityref(cxobj     *x,
 		    goto done;
 		if (xml_prefix_set(xa, "xmlns") < 0)
 		    goto done;
-		if (xml_value_set(xa, namespace) < 0)
+		if (xml_value_set(xa, ns) < 0)
 		    goto done;
 	    }
 	    /* Here prefix2 is valid and can be NULL

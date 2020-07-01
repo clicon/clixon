@@ -555,7 +555,7 @@ yang_find_module_by_prefix_yspec(yang_stmt *yspec,
 /*! Given a yang spec and a namespace, return yang module 
  *
  * @param[in]  yspec      A yang specification
- * @param[in]  namespace  namespace
+ * @param[in]  ns         namespace
  * @retval     ymod       Yang module statement if found
  * @retval     NULL       not found
  * @see yang_find_module_by_name
@@ -563,14 +563,14 @@ yang_find_module_by_prefix_yspec(yang_stmt *yspec,
  */
 yang_stmt *
 yang_find_module_by_namespace(yang_stmt *yspec, 
-			      char      *namespace)
+			      const char      *ns)
 {
     yang_stmt *ymod = NULL;
 
-    if (namespace == NULL)
+    if (ns == NULL)
 	goto done;
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	if (yang_find(ymod, Y_NAMESPACE, namespace) != NULL)
+	if (yang_find(ymod, Y_NAMESPACE, ns) != NULL)
 	    break;
     }
  done:
