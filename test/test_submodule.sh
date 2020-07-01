@@ -158,7 +158,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 if [ $RC -ne 0 ]; then
@@ -168,7 +168,7 @@ if [ $RC -ne 0 ]; then
     new "start restconf daemon"
     start_restconf -f $cfg
 
-    new "waiting"
+    new "wait restconf"
     wait_restconf
 fi
 

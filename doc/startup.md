@@ -14,6 +14,8 @@
   * [Thanks](#thanks)
   * [References](#references)
 
+NOTE: Outdated docs, see: https://clixon-docs.readthedocs.io for updated docs
+
 ## Background
 
 This document describes the configuration startup mechanism of the Clixon backend. It describes the mechanism of Clixon version 3.10 which supports the following features:
@@ -334,7 +336,7 @@ where changes to the Yang model are documented and loaded into
 Clixon. The implementation is not complete.
 
 When upgrading, the system parses the changelog and tries to upgrade
-the datastore automatically. This featire is experimental and has
+the datastore automatically. This feature is experimental and has
 several limitations.
 
 You enable the automatic upgrading by registering the changelog upgrade method in `clixon_plugin_ini()` using wildcards:

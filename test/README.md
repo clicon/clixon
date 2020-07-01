@@ -97,3 +97,17 @@ For example, in FreeBSD, add:
   make=gmake
 ```
 
+## https
+
+If you use evhtp with `configure --with-restconf=evhtp`, you can prepend the tests with RCPROTO=https which will run all restconf tests with SSL https and server certs.
+
+Ensure the server keys are in order, as follows.
+
+If you already have server certs, ensure CLICON_SSL_SERVER_CERT and CLICON_SSL_SERVER_KEY points to them.
+
+If you do not have them, generate self-signed certs, eg as follows:
+```
+  openssl req -x509 -nodes -newkey rsa:4096 -keyout /etc/ssl/private/clixon-server-key.pem -out /etc/ssl/certs/clixon-server-crt.pem -days 365
+```
+
+There are also client-cert tests, eg test_ssl*.sh

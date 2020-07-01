@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Generated from autotools
+
+WITH_RESTCONF=@with_restconf@

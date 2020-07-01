@@ -45,7 +45,10 @@ module clixon-config {
     revision 2020-06-17 {
 	description
 	    "Added: CLICON_CLI_LINES_DEFAULT
-             Added enum HIDE to CLICON_CLI_GENMODEL";
+             Added enum HIDE to CLICON_CLI_GENMODEL
+             Added CLICON_SSL_SERVER_CERT
+             Added CLICON_SSL_SERVER_KEY
+             Added CLICON_SSL_CA_CERT";
     }
     revision 2020-04-23 {
 	description
@@ -376,6 +379,27 @@ module clixon-config {
                  RFC 8040 examples print XML and JSON in pretty-printed form.
                  Setting this value to false makes restconf return not pretty-printed
                  which may be desirable for performance or tests";
+	}
+	leaf CLICON_SSL_SERVER_CERT {
+	    type string;
+	    default "/etc/ssl/certs/clixon-server-crt.pem";
+	    description
+		"SSL server cert for restconf https. This is not required if you use
+                 --with-restconf=fcgi, ie a reverse-proxy based such as nginx over fcgi";
+	}
+	leaf CLICON_SSL_SERVER_KEY {
+	    type string;
+	    default "/etc/ssl/private/clixon-server-key.pem";
+	    description
+		"SSL server private key for restconf https. This is not required if you use
+                 --with-restconf=fcgi, ie a reverse-proxy based such as nginx over fcgi";
+	}
+	leaf CLICON_SSL_CA_CERT {
+	    type string;
+	    default "/etc/ssl/certs/clixon-ca_crt.pem";
+	    description
+		"SSL CA cert for client authentication. This is not required if you use
+                 --with-restconf=fcgi, ie a reverse-proxy based such as nginx over fcgi";
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;

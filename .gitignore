@@ -58,6 +58,7 @@ util/clixon_util_xml
 util/clixon_util_xpath
 util/clixon_util_yang
 
+test/config.sh
 test/site.sh
 test/vagrant/site.mk
 test/cicd/site.mk

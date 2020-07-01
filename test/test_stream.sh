@@ -23,6 +23,11 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
+# Only works with fcgi and http
+if [ "${WITH_RESTCONF}" != "fcgi" -o "$RCPROTO" = https ]; then
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
+fi
+
 APPNAME=example
 : ${clixon_util_stream:=clixon_util_stream}
 NCWAIT=10 # Wait (netconf valgrind may need more time)

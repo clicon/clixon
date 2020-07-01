@@ -100,8 +100,3 @@
  * clixon-4.4
  */
 #define STATE_ORDERED_BY_SYSTEM
-
-/*! Dir for Public Key Infrastructure (PKI) X.509 certificates
- */
-#define CLIXON_SERVER_CERT "server"
-#define CLIXON_PKI_DIR "/etc/pki/clixon"

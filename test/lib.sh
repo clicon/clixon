@@ -26,6 +26,14 @@ version=4
 
 >&2 echo "Running $testfile"
 
+# Generated config file from autotools / configure
+if [ -f ./config.sh ]; then
+    . ./config.sh
+    if [ $? -ne 0 ]; then
+	return -1 # error
+    fi
+fi
+
 # Site file, an example of this file in README.md
 if [ -f ./site.sh ]; then
     . ./site.sh
@@ -139,10 +147,11 @@ if [ ! -G $dir ]; then
     sudo chgrp $u $dir
 fi
 
-# If you bring your own backend BE=0 (it is already started),the backend may
+# If you bring your own backend BE=0 (it is already started), the backend may
 # have created some files (eg unix socket) in $dir and therefore cannot
-# be deleted
-if [ $BE -ne 0 ]; then
+# be deleted.
+# Same with RC=0
+if [ $BE -ne 0 -a $RC -ne 0 ]; then
     rm -rf $dir/*
 fi
 
@@ -232,7 +241,7 @@ wait_backend(){
 start_restconf(){
     # Start in background 
     if [ $RCPROTO = https ]; then
-	EXTRA="-s"
+	EXTRA="-s" # server certs
     else
 	EXTRA=
     fi

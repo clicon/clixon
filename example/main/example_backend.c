@@ -64,6 +64,9 @@
 /* These include signatures for plugin and transaction callbacks. */
 #include <clixon/clixon_backend.h> 
 
+/* Command line options to be passed to getopt(3) */
+#define BACKEND_EXAMPLE_OPTS "rsS:iuUt"
+
 /*! Variable to control if reset code is run.
  * The reset code inserts "extra XML" which assumes ietf-interfaces is
  * loaded, and this is not always the case.
@@ -1015,7 +1018,7 @@ clixon_plugin_init(clicon_handle h)
 	goto done;
     opterr = 0;
     optind = 1;
-    while ((c = getopt(argc, argv, "rsS:iuUt")) != -1)
+    while ((c = getopt(argc, argv, BACKEND_EXAMPLE_OPTS)) != -1)
 	switch (c) {
 	case 'r':
 	    _reset = 1;

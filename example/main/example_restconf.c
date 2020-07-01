@@ -51,6 +51,12 @@
 #include <clixon/clixon.h>
 #include <clixon/clixon_restconf.h>  /* minor use */
 
+/* Command line options to be passed to getopt(3) 
+ * -a  basic authentication
+ * -s  ssl client certificates
+ */
+#define RESTCONF_EXAMPLE_OPTS "as"
+
 static const char Base64[] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char Pad64 = '=';
@@ -59,6 +65,11 @@ static const char Pad64 = '=';
  *   clixon_restconf ... -- -a
  */
 static int basic_auth = 0;
+
+/* Use https ssl client certs, map subject CN to user. Set by starting restonf with:
+ *   clixon_restconf ... -- -s
+ */
+static int ssl_client_certs = 0;
 
 /* skips all whitespace anywhere.
    converts characters, four at a time, starting at (or after)
@@ -187,18 +198,17 @@ b64_decode(const char *src,
     return (tarindex);
 }
 
-/*! Process a rest request that requires (cookie) "authentication"
+/*! HTTP basic authentication example (note hardwired)
  * @param[in]  h        Clixon handle
- * @param[in]  arg      Argument. Here: Fastcgi request handle
  * @retval -1  Fatal error
  * @retval  0  Unauth
  * @retval  1  Auth
  * @note: Three hardwired users: andy, wilma, guest w password "bar".
  * Enabled by passing -- -a to the main function
  */
-int
-example_restconf_credentials(clicon_handle h,     
-			     void         *arg)
+static int
+example_basic_auth(clicon_handle h,     
+		   void         *arg)
 {
     int     retval = -1;
     cxobj  *xt = NULL;
@@ -210,9 +220,6 @@ example_restconf_credentials(clicon_handle h,
     size_t  authlen;
     int     ret;
 
-    /* HTTP basic authentication not enabled, pass with user "none" */
-    if (basic_auth==0)
-	goto ok;
     /* At this point in the code we must use HTTP basic authentication */
     if ((auth = restconf_param_get(h, "HTTP_AUTHORIZATION")) == NULL)
 	goto fail; 
@@ -249,7 +256,7 @@ example_restconf_credentials(clicon_handle h,
     clicon_debug(1, "%s user:%s", __FUNCTION__, user);
     if (clicon_username_set(h, user) < 0)
 	goto done;
- ok:   /* authenticated */
+    /* authenticated */
     retval = 1;
  done: /* error */
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -263,6 +270,53 @@ example_restconf_credentials(clicon_handle h,
  fail:  /* unauthenticated */
     retval = 0;
     goto done;
+}
+
+/*! SSL client cert authentication.
+ * @param[in]  h        Clixon handle
+ * @param[in]  arg      
+ * @retval -1  Fatal error
+ * @retval  0  Unauth
+ * @retval  1  Auth
+ */
+static int
+example_client_certs(clicon_handle h,     
+		     void         *arg)
+{
+    int   retval = -1;
+    char *cn;
+    
+    /* Check for cert subject common name (CN) */
+    if ((cn = restconf_param_get(h, "SSL_CN")) == NULL)
+	goto fail; 
+    if (clicon_username_set(h, cn) < 0)
+	goto done;
+    /* authenticated */
+    retval = 1;
+ done: /* error */
+    return retval;
+ fail:  /* unauthenticated */
+    retval = 0;
+    goto done;
+}
+
+/*! Authentication callback
+ * @param[in]  h        Clixon handle
+ * @param[in]  arg      
+ * @retval -1  Fatal error
+ * @retval  0  Unauth
+ * @retval  1  Auth
+ */
+int
+example_restconf_credentials(clicon_handle h,     
+			     void         *arg)
+{
+    if (basic_auth)
+	return example_basic_auth(h, arg);
+    else if (ssl_client_certs)
+	return example_client_certs(h, arg);
+    else
+	return 1;
 }
 
 /*! Local example restconf rpc callback 
@@ -338,10 +392,13 @@ clixon_plugin_init(clicon_handle h)
 	return NULL;
     opterr = 0;
     optind = 1;
-    while ((c = getopt(argc, argv, "a")) != -1)
+    while ((c = getopt(argc, argv, RESTCONF_EXAMPLE_OPTS)) != -1)
 	switch (c) {
-	case 'a':
+	case 'a': /* basic authentication */
 	    basic_auth = 1;
+	    break;
+	case 's': /* ssl client certs */
+	    ssl_client_certs = 1;
 	    break;
 	default:
 	    break;

@@ -326,6 +326,7 @@ AC_OUTPUT(Makefile
   	  yang/optional/Makefile
 	  doc/Makefile
 	  test/Makefile
+  	  test/config.sh
 	  test/cicd/Makefile
   	  test/vagrant/Makefile	
 )
