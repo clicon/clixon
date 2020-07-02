@@ -90,7 +90,7 @@
  * If such an attribute its found, its string value is returned.
  * @param[in]  x         XML node (where to look for attribute)
  * @param[in]  name      Attribute name
- * @param[in]  namespace (Expected)Namespace of attribute
+ * @param[in]  ns	     (Expected)Namespace of attribute
  * @param[out] cbret     Error message (if retval=0)
  * @param[out] valp      Pointer to value (if retval=1)
  * @retval    -1         Error
@@ -100,7 +100,7 @@
 static int
 attr_ns_value(cxobj *x,
 	      char  *name,
-	      char  *namespace,
+	      char  *ns,
 	      cbuf  *cbret,
 	      char **valp)
 {
@@ -119,7 +119,7 @@ attr_ns_value(cxobj *x,
 	    goto fail;
 	}
 	/* the attribute exists, but not w expected namespace */
-	if (strcmp(ans, namespace) == 0)
+	if (strcmp(ans, ns) == 0)
 	    val = xml_value(xa);
     }
     *valp = val;
