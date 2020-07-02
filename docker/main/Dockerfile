@@ -90,7 +90,7 @@ RUN install startsystem.sh /clixon/build/bin/
 
 #
 # Stage 2
-#
+# The second step skips the development environment and builds a runtime system
 FROM alpine
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 

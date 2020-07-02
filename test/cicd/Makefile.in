@@ -48,9 +48,9 @@ SHELL	= /bin/sh
 HOSTS=
 -include site.mk
 
-.PHONY: all clean distclean depend install uninstall $(HOSTS) $(VAGRANTS)
+.PHONY: all clean distclean depend install uninstall $(HOSTS)
 
-all: $(HOSTS) $(VAGRANTS)
+all: $(HOSTS)
 
 # Real hosts reachable by ssh
 $(HOSTS): 
