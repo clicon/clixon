@@ -71,7 +71,7 @@
 
 /*! Create and initialize XML namespace context
  * @param[in] prefix    Namespace prefix, or NULL for default
- * @param[in] namespace Set this namespace. If NULL create empty nsctx
+ * @param[in] ns	    Set this namespace. If NULL create empty nsctx
  * @retval    nsc       Return namespace context in form of a cvec
  * @retval    NULL      Error
  * @code
@@ -86,7 +86,7 @@
  */
 cvec *
 xml_nsctx_init(char  *prefix,
-	       char  *namespace)
+	       char  *ns)
 {
     cvec *cvv = NULL;
 
@@ -94,7 +94,7 @@ xml_nsctx_init(char  *prefix,
 	clicon_err(OE_XML, errno, "cvec_new");
 	goto done;
     }
-    if (namespace && xml_nsctx_add(cvv, prefix, namespace) < 0)
+    if (ns && xml_nsctx_add(cvv, prefix, ns) < 0)
 	goto done;
  done:
     return cvv;
@@ -143,15 +143,15 @@ xml_nsctx_get(cvec *cvv,
  */
 int
 xml_nsctx_get_prefix(cvec  *cvv,
-		     char  *namespace,
+		     char  *ns,
 		     char **prefix)
 {
     cg_var *cv = NULL;
-    char   *ns = NULL;
+    char   *ns0 = NULL;
 
     while ((cv = cvec_each(cvv, cv)) != NULL){
-	if ((ns = cv_string_get(cv)) != NULL &&
-	    strcmp(ns, namespace) == 0){
+	if ((ns0 = cv_string_get(cv)) != NULL &&
+	    strcmp(ns0, ns) == 0){
 	    if (prefix)
 		*prefix = cv_name_get(cv); /* can be NULL */
 	    return 1;
@@ -165,22 +165,22 @@ xml_nsctx_get_prefix(cvec  *cvv,
 /*! Set or replace namespace in namespace context
  * @param[in] cvv       Namespace context
  * @param[in] prefix    Namespace prefix, or NULL for default
- * @param[in] namespace Cached namespace to set (assume non-null?)
+ * @param[in] ns	    Cached namespace to set (assume non-null?)
  * @retval    0         OK
  * @retval   -1         Error
  */
 int
 xml_nsctx_add(cvec  *cvv,
 	      char  *prefix,
-	      char  *namespace)
+	      char  *ns)
 {
     int     retval = -1;
     cg_var *cv;
     
     if ((cv = cvec_find(cvv, prefix)) != NULL) /* found, replace that */
-	cv_string_set(cv, namespace);
+	cv_string_set(cv, ns);
     else /* cvec exists, but not prefix */
-	cvec_add_string(cvv, prefix, namespace);
+	cvec_add_string(cvv, prefix, ns);
     retval = 0;
     // done:
     return retval;

@@ -34,7 +34,9 @@
  * The exported interface to plugins. External apps (eg frontend restconf plugins)
  * should only include this file (not the restconf_*.h)
  */
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 #ifndef _CLIXON_RESTCONF_H_
 #define _CLIXON_RESTCONF_H_
 
@@ -65,3 +67,8 @@ char *restconf_param_get(clicon_handle h, char *param);
 int   restconf_param_set(clicon_handle h, char *param, char *val);
 
 #endif /* _CLIXON_RESTCONF_H_ */
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+

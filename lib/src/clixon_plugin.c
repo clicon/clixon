@@ -672,7 +672,7 @@ static rpc_callback_t *rpc_cb_list = NULL;
  * @param[in]  h         clicon handle
  * @param[in]  cb        Callback called 
  * @param[in]  arg       Domain-specific argument to send to callback 
- * @param[in]  namespace namespace of rpc
+ * @param[in]  ns        namespace of rpc
  * @param[in]  name      RPC name
  * @retval     0         OK
  * @retval    -1         Error
@@ -682,12 +682,12 @@ int
 rpc_callback_register(clicon_handle  h,
 		      clicon_rpc_cb  cb,
 		      void          *arg,       
-    		      char          *namespace,
+    		      char          *ns,
 		      char          *name)
 {
     rpc_callback_t *rc = NULL;
 
-    if (name == NULL || namespace == NULL){
+    if (name == NULL || ns == NULL){
 	clicon_err(OE_DB, EINVAL, "name or namespace NULL");
 	goto done;
     }
@@ -698,7 +698,7 @@ rpc_callback_register(clicon_handle  h,
     memset(rc, 0, sizeof(*rc));
     rc->rc_callback = cb;
     rc->rc_arg  = arg;
-    rc->rc_namespace  = strdup(namespace); 
+    rc->rc_namespace  = strdup(ns);
     rc->rc_name  = strdup(name);
     ADDQ(rc, rpc_cb_list);
     return 0;
@@ -755,19 +755,19 @@ rpc_callback_call(clicon_handle h,
     rpc_callback_t *rc;
     char           *name;
     char           *prefix;
-    char           *namespace;
+    char           *ns;
     int             nr = 0; /* How many callbacks */
 
     if (rpc_cb_list == NULL)
 	return 0;
     name = xml_name(xe);
     prefix = xml_prefix(xe);
-    xml2ns(xe, prefix, &namespace);
+    xml2ns(xe, prefix, &ns);
     rc = rpc_cb_list;
     do {
 	if (strcmp(rc->rc_name, name) == 0 &&
-	    namespace && rc->rc_namespace &&
-	    strcmp(rc->rc_namespace, namespace) == 0){
+	    ns && rc->rc_namespace &&
+	    strcmp(rc->rc_namespace, ns) == 0){
 	    if (rc->rc_callback(h, xe, cbret, arg, rc->rc_arg) < 0){
 		clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_name);
 		goto done;
@@ -804,7 +804,7 @@ static upgrade_callback_t *upgrade_cb_list = NULL;
  * @param[in]  cb        Callback called 
  * @param[in]  fnstr     Stringified function for debug
  * @param[in]  arg       Domain-specific argument to send to callback 
- * @param[in]  namespace Module namespace (if NULL all modules) 
+ * @param[in]  ns        Module namespace (if NULL all modules)
  * @retval     0         OK
  * @retval    -1         Error
  * @see upgrade_callback_call  which makes the actual callback
@@ -813,7 +813,7 @@ int
 upgrade_callback_reg_fn(clicon_handle     h,
 			clicon_upgrade_cb cb,
 			const char       *fnstr,
-			char             *namespace,
+			char             *ns,
 			void             *arg)
 {
     upgrade_callback_t *uc;
@@ -826,8 +826,8 @@ upgrade_callback_reg_fn(clicon_handle     h,
     uc->uc_callback = cb;
     uc->uc_fnstr = fnstr;
     uc->uc_arg  = arg;
-    if (namespace)
-	uc->uc_namespace  = strdup(namespace);
+    if (ns)
+	uc->uc_namespace  = strdup(ns);
     ADDQ(uc, upgrade_cb_list);
     return 0;
  done:
