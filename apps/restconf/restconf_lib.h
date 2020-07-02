@@ -34,6 +34,10 @@
   
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef _RESTCONF_LIB_H_
 #define _RESTCONF_LIB_H_
 
@@ -68,3 +72,8 @@ char *restconf_uripath(clicon_handle h);
 int   restconf_drop_privileges(clicon_handle h, char *user);
 
 #endif /* _RESTCONF_LIB_H_ */
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
