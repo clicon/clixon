@@ -2827,17 +2827,22 @@ yang_type_cache_free(yang_type_cache *ycache)
 	    switch (ycache->yc_rxmode){
 	    case REGEXP_POSIX:
 		cligen_regex_posix_free(cv_void_get(cv));
+		if ((p = cv_void_get(cv)) != NULL){
+		    free(p);
+		    cv_void_set(cv, NULL);
+		}
 		break;
 	    case REGEXP_LIBXML2:
 		cligen_regex_libxml2_free(cv_void_get(cv));
+		/* Note, already freed in libxml2 case */
+		if ((p = cv_void_get(cv)) != NULL){
+		    cv_void_set(cv, NULL);
+		}
 		break;
 	    default:
 		break;
 	    }
-	    if ((p = cv_void_get(cv)) != NULL){
-		free(p);
-		cv_void_set(cv, NULL);
-	    }
+
 	}
 	cvec_free(ycache->yc_regexps);
     }

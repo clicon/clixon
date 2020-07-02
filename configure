@@ -637,6 +637,7 @@ CPP
 wwwuser
 wwwdir
 enable_optyangs
+with_libxml2
 with_restconf
 SH_SUFFIX
 CLIXON_DEFAULT_CONFIG
@@ -3349,6 +3350,7 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
  # If yes, compile apps/restconf
+
 
 wwwdir=/www-data
 

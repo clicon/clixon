@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Generated from autotools
 
-WITH_RESTCONF=@with_restconf@
+WITH_RESTCONF=@with_restconf@ # evhtp, fcgi or ""
+WITH_LIBXML2=@with_libxml2@ # yes or ""
 CXX=@CXX@
+

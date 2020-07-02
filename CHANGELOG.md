@@ -87,6 +87,7 @@ Expected: July 2020
 
 ### Corrected Bugs
 
+* Fixed: [Double free when using libxml2 as regex engine #117](https://github.com/clicon/clixon/issues/117)
 * Fixed: Reading in a yang-spec file exactly the same size as the buffer (1024/2048/4096/...) could leave the buffer not terminated with a 0 byte
 * Fixed: The module `clixon-rfc5277` was always enabled, but should only be enabled when `CLICON_STREAM_DISCOVERY_RFC5277` is enabled.
 

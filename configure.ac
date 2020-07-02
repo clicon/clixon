@@ -94,6 +94,7 @@ AC_SUBST(CLIXON_DEFAULT_CONFIG)
 AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(with_restconf) # If yes, compile apps/restconf
+AC_SUBST(with_libxml2)  
 AC_SUBST(enable_optyangs) 
 AC_SUBST(wwwdir,/www-data)
 AC_SUBST(wwwuser,www-data)
