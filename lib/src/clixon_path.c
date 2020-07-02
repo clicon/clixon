@@ -1529,7 +1529,7 @@ clixon_xml_find_api_path(cxobj        *xt,
 			 yang_stmt    *yt,
 			 cxobj      ***xvec,
 			 int          *xlen,
-			 char         *format,
+			 const char   *format,
 			 ...)
 {
     int              retval = -1;
@@ -1623,7 +1623,7 @@ clixon_xml_find_instance_id(cxobj     *xt,
 			    yang_stmt *yt,
 			    cxobj   ***xvec,
 			    int       *xlen,
-			    char      *format,
+			    const char *format,
 			    ...)
 {
     int          retval = -1;

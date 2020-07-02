@@ -136,7 +136,7 @@ format_str2int(char *str)
  */
 struct clicon_msg *
 clicon_msg_encode(uint32_t      id,
-		  char         *format, ...)
+		  const char   *format, ...)
 {
     va_list            args;
     uint32_t           xmllen;

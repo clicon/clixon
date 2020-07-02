@@ -92,11 +92,11 @@ char *clicon_strjoin (int argc, char **argv, char *delim);
 int clixon_strsplit(char *nodeid, const int delim, char **prefix, char **id);
 int str2cvec(char *string, char delim1, char delim2, cvec **cvp);
 #if defined(__GNUC__) && __GNUC__ >= 3
-int uri_percent_encode(char **encp, char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
-int xml_chardata_encode(char **escp, char *fmt, ... ) __attribute__ ((format (printf, 2, 3)));
+int uri_percent_encode(char **encp, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
+int xml_chardata_encode(char **escp, const char *fmt, ... ) __attribute__ ((format (printf, 2, 3)));
 #else
-int uri_percent_encode(char **encp, char *str, ...);
-int xml_chardata_encode(char **escp, char *fmt, ...);
+int uri_percent_encode(char **encp, const char *str, ...);
+int xml_chardata_encode(char **escp, const char *fmt, ...);
 #endif
 int xml_chardata_cbuf_append(cbuf *cb, char *str);
 int uri_percent_decode(char *enc, char **str);

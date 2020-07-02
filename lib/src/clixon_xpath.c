@@ -483,7 +483,7 @@ xpath_tree_free(xpath_tree *xs)
  * @see xpath_tree_free 
  */
 int
-xpath_parse(char        *xpath,
+xpath_parse(const char  *xpath,
 	    xpath_tree **xptree)
 {
     int               retval = -1;
@@ -541,11 +541,11 @@ xpath_parse(char        *xpath,
  * @endcode
  */
 int
-xpath_vec_ctx(cxobj    *xcur, 
-	      cvec     *nsc,
-	      char     *xpath,
-	      int       localonly,
-	      xp_ctx  **xrp)
+xpath_vec_ctx(cxobj      *xcur, 
+	      cvec       *nsc,
+	      const char *xpath,
+	      int         localonly,
+	      xp_ctx    **xrp)
 {
     int         retval = -1;
     xpath_tree *xptree = NULL;
@@ -591,9 +591,9 @@ xpath_vec_ctx(cxobj    *xcur,
  * @see also xpath_vec.
  */
 cxobj *
-xpath_first(cxobj    *xcur, 
-	    cvec     *nsc,
-	    char     *xpformat, 
+xpath_first(cxobj      *xcur, 
+	    cvec       *nsc,
+	    const char *xpformat, 
 	    ...)
 {
     cxobj     *cx = NULL;
@@ -651,8 +651,8 @@ xpath_first(cxobj    *xcur,
  * @see also xpath_first.
  */
 cxobj *
-xpath_first_localonly(cxobj    *xcur, 
-		      char     *xpformat, 
+xpath_first_localonly(cxobj      *xcur, 
+		      const char *xpformat, 
 		      ...)
 {
     cxobj     *cx = NULL;
@@ -712,11 +712,11 @@ xpath_first_localonly(cxobj    *xcur,
  * @endcode
  */
 int
-xpath_vec(cxobj    *xcur, 
-	  cvec     *nsc,
-	  char     *xpformat, 
-	  cxobj  ***vec, 
-	  size_t   *veclen,
+xpath_vec(cxobj      *xcur, 
+	  cvec       *nsc,
+	  const char *xpformat, 
+	  cxobj    ***vec, 
+	  size_t     *veclen,
 	  ...)
 {
     int        retval = -1;
@@ -784,12 +784,12 @@ xpath_vec(cxobj    *xcur,
  * @see also xpath_vec  This is a specialized version.
  */
 int
-xpath_vec_flag(cxobj    *xcur, 
-	       cvec     *nsc,
-	       char     *xpformat, 
-	       uint16_t  flags,
-	       cxobj  ***vec, 
-	       int      *veclen,
+xpath_vec_flag(cxobj      *xcur, 
+	       cvec       *nsc,
+	       const char *xpformat, 
+	       uint16_t    flags,
+	       cxobj    ***vec, 
+	       int        *veclen,
 	       ...)
 {
     int        retval = -1;
@@ -847,9 +847,9 @@ xpath_vec_flag(cxobj    *xcur,
  * @retval    -1        Error
  */
 int
-xpath_vec_bool(cxobj *xcur, 
-	       cvec  *nsc,
-	       char  *xpformat, 
+xpath_vec_bool(cxobj      *xcur, 
+	       cvec       *nsc,
+	       const char *xpformat, 
 	       ...)
 {
     int        retval = -1;
@@ -970,7 +970,7 @@ traverse_canonical(xpath_tree *xs,
  * @endcode
  */
 int
-xpath2canonical(char      *xpath0,
+xpath2canonical(const char *xpath0,
 		cvec      *nsc0,
 		yang_stmt *yspec,
 		char     **xpath1,

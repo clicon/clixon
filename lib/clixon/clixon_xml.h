@@ -213,12 +213,12 @@ int       xml_enumerate_get(cxobj *x);
 
 char     *xml_body(cxobj *xn);
 cxobj    *xml_body_get(cxobj *xn);
-char     *xml_find_type_value(cxobj *xn_parent, char *prefix,
-			      char *name, enum cxobj_type type);
-cxobj    *xml_find_type(cxobj *xn_parent, char *prefix, char *name, enum cxobj_type type);
-char     *xml_find_value(cxobj *xn_parent, char *name);
-char     *xml_find_body(cxobj *xn, char *name);
-cxobj    *xml_find_body_obj(cxobj *xt, char *name, char *val);
+char     *xml_find_type_value(cxobj *xn_parent, const char *prefix,
+			      const char *name, enum cxobj_type type);
+cxobj    *xml_find_type(cxobj *xn_parent, const char *prefix, const char *name, enum cxobj_type type);
+char     *xml_find_value(cxobj *xn_parent, const char *name);
+char     *xml_find_body(cxobj *xn, const char *name);
+cxobj    *xml_find_body_obj(cxobj *xt, const char *name, char *val);
 
 int       xml_free(cxobj *xn);
 
@@ -239,9 +239,9 @@ int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
 int       xml_attr_insert2val(char *instr, enum insert_type *ins);
 #if defined(__GNUC__) && __GNUC__ >= 3
-int       clicon_log_xml(int level, cxobj *x, char *format, ...)  __attribute__ ((format (printf, 3, 4)));
+int       clicon_log_xml(int level, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
 #else
-int       clicon_log_xml(int level, cxobj *x, char *format, ...);
+int       clicon_log_xml(int level, cxobj *x, const char *format, ...);
 #endif
 #ifdef XML_EXPLICIT_INDEX
 int       xml_search_index_p(cxobj *x);

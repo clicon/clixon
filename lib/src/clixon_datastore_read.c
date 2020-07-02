@@ -427,7 +427,7 @@ static int
 xmldb_get_nocache(clicon_handle       h,
 		  const char         *db, 
 		  cvec               *nsc,
-		  char               *xpath,
+		  const char         *xpath,
 		  cxobj             **xtop,
 		  modstate_diff_t    *msdiff)
 {
@@ -511,7 +511,7 @@ static int
 xmldb_get_cache(clicon_handle    h,
 		const char      *db, 
 		cvec            *nsc,
-		char            *xpath,
+		const char      *xpath,
 		cxobj          **xtop,
 		modstate_diff_t *msdiff)
 {
@@ -612,7 +612,7 @@ static int
 xmldb_get_zerocopy(clicon_handle    h,
 		   const char      *db, 
 		   cvec            *nsc,
-		   char            *xpath,
+		   const char      *xpath,
 		   cxobj          **xtop,
 		   modstate_diff_t *msdiff)
 {
@@ -726,7 +726,7 @@ int
 xmldb_get0(clicon_handle    h, 
 	   const char      *db, 
 	   cvec            *nsc,
-	   char            *xpath,
+	   const char      *xpath,
 	   int              copy,
 	   cxobj          **xret,
 	   modstate_diff_t *msdiff)

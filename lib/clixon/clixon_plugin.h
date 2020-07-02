@@ -179,7 +179,7 @@ typedef char *(cli_prompthook_t)(clicon_handle, char *mode);
  * @retval   -1    Error
  * @retval    0    OK
  */
-typedef int (datastore_upgrade_t)(clicon_handle h, char *db, cxobj *xt, modstate_diff_t *msd);
+typedef int (datastore_upgrade_t)(clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
 
 /*! Startup status for use in startup-callback
  * Note that for STARTUP_ERR and _INVALID, running runs in failsafe mode
@@ -284,11 +284,11 @@ clixon_plugin *clixon_plugin_each(clicon_handle h, clixon_plugin *cpprev);
 
 clixon_plugin *clixon_plugin_each_revert(clicon_handle h, clixon_plugin *cpprev, int nr);
 
-clixon_plugin *clixon_plugin_find(clicon_handle h, char *name);
+clixon_plugin *clixon_plugin_find(clicon_handle h, const char *name);
 
-int clixon_plugins_load(clicon_handle h, char *function, char *dir, char *regexp);
+int clixon_plugins_load(clicon_handle h, const char *function, const char *dir, const char *regexp);
 
-int clixon_pseudo_plugin(clicon_handle h, char *name, clixon_plugin **cpp);
+int clixon_pseudo_plugin(clicon_handle h, const char *name, clixon_plugin **cpp);
 
 int clixon_plugin_start_one(clixon_plugin *cp, clicon_handle h);
 int clixon_plugin_start_all(clicon_handle h);
@@ -302,16 +302,16 @@ int clixon_plugin_auth_all(clicon_handle h, void *arg);
 int clixon_plugin_extension_one(clixon_plugin *cp, clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 int clixon_plugin_extension_all(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 
-int clixon_plugin_datastore_upgrade_one(clixon_plugin *cp, clicon_handle h, char *db, cxobj *xt, modstate_diff_t *msd);
-int clixon_plugin_datastore_upgrade_all(clicon_handle h, char *db, cxobj *xt, modstate_diff_t *msd);
+int clixon_plugin_datastore_upgrade_one(clixon_plugin *cp, clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
+int clixon_plugin_datastore_upgrade_all(clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
 
 /* rpc callback API */
-int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, char *ns, char *name);
+int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, const char *ns, const char *name);
 int rpc_callback_delete_all(clicon_handle h);
 int rpc_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg);
 
 /* upgrade callback API */
-int upgrade_callback_reg_fn(clicon_handle h, clicon_upgrade_cb cb, const char *strfn, char *ns, void *arg);
+int upgrade_callback_reg_fn(clicon_handle h, clicon_upgrade_cb cb, const char *strfn, const char *ns, void *arg);
 int upgrade_callback_delete_all(clicon_handle h);
 int upgrade_callback_call(clicon_handle h, cxobj *xt, char *ns, uint16_t op, uint32_t from, uint32_t to, cbuf *cbret);
 

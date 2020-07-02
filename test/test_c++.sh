@@ -50,7 +50,7 @@ netconf_client_rpc(clicon_handle h,
     char  *ns;
 
     /* get namespace from rpc name, return back in each output parameter */
-    if ((ns = xml_find_type_value(xe, NULL, (char*)"xmlns", CX_ATTR)) == NULL){
+    if ((ns = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
 	clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
 	goto done;
     }
@@ -94,10 +94,10 @@ clixon_plugin_init(clicon_handle h)
 
 	api_initialization();
 
-    clicon_debug(1, (char*)"%s netconf", __FUNCTION__);
+    clicon_debug(1, "%s netconf", __FUNCTION__);
     /* Register local netconf rpc client (note not backend rpc client) */
     if (rpc_callback_register(h, netconf_client_rpc, NULL,
-			      (char*)"urn:example:clixon", (char*)"client-rpc") < 0)
+			      "urn:example:clixon", "client-rpc") < 0)
 	return NULL;
     return &api;
 }

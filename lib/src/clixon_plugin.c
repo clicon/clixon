@@ -159,7 +159,7 @@ clixon_plugin_each_revert(clicon_handle  h,
  */
 clixon_plugin *
 clixon_plugin_find(clicon_handle h,
-		   char         *name)
+		   const char   *name)
 {
     int            i;
     clixon_plugin *cp = NULL;
@@ -185,8 +185,8 @@ clixon_plugin_find(clicon_handle h,
  */
 static int
 plugin_load_one(clicon_handle   h, 
-		char           *file,
-		char           *function,
+		char           *file, /* note modified */
+		const char     *function,
 		int             dlflags,
 		clixon_plugin **cpp)
 {
@@ -267,9 +267,9 @@ plugin_load_one(clicon_handle   h,
  */
 int
 clixon_plugins_load(clicon_handle h,
-    		    char         *function,
-		    char         *dir,
-    		    char         *regexp)
+    		    const char   *function,
+		    const char   *dir,
+    		    const char   *regexp)
 {
     int            retval = -1;
     int            ndp;
@@ -316,7 +316,7 @@ done:
  */
 int
 clixon_pseudo_plugin(clicon_handle   h,
-		     char           *name,
+		     const char     *name,
 		     clixon_plugin **cpp)
 {
     int            retval = -1;
@@ -595,7 +595,7 @@ clixon_plugin_extension_all(clicon_handle h,
 int
 clixon_plugin_datastore_upgrade_one(clixon_plugin   *cp,
 				    clicon_handle    h,
-				    char            *db,
+				    const char      *db,
 				    cxobj           *xt,
 				    modstate_diff_t *msd)
 
@@ -628,7 +628,7 @@ clixon_plugin_datastore_upgrade_one(clixon_plugin   *cp,
  */
 int
 clixon_plugin_datastore_upgrade_all(clicon_handle    h,
-				    char            *db,
+				    const char      *db,
 				    cxobj           *xt,
 				    modstate_diff_t *msd)
 {
@@ -682,8 +682,8 @@ int
 rpc_callback_register(clicon_handle  h,
 		      clicon_rpc_cb  cb,
 		      void          *arg,       
-    		      char          *ns,
-		      char          *name)
+    		      const char    *ns,
+		      const char    *name)
 {
     rpc_callback_t *rc = NULL;
 
@@ -813,7 +813,7 @@ int
 upgrade_callback_reg_fn(clicon_handle     h,
 			clicon_upgrade_cb cb,
 			const char       *fnstr,
-			char             *ns,
+			const char       *ns,
 			void             *arg)
 {
     upgrade_callback_t *uc;

@@ -55,9 +55,9 @@ typedef struct {
 /*
  * Prototypes
  */
-int clicon_data_get(clicon_handle h, char *id, char **val);
-int clicon_data_set(clicon_handle h, char *id, char *val);
-int clicon_data_del(clicon_handle h, char *name);
+int clicon_data_get(clicon_handle h, const char *name, char **val);
+int clicon_data_set(clicon_handle h, const char *name, char *val);
+int clicon_data_del(clicon_handle h, const char *name);
 
 yang_stmt * clicon_dbspec_yang(clicon_handle h);
 int clicon_dbspec_yang_set(clicon_handle h, yang_stmt *ys);

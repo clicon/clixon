@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -63,9 +65,9 @@ char *format_int2str(enum format_enum showas);
 enum format_enum format_str2int(char *str);
 
 #if defined(__GNUC__) && __GNUC__ >= 3
-struct clicon_msg *clicon_msg_encode(uint32_t id, char *format, ...) __attribute__ ((format (printf, 2, 3)));
+struct clicon_msg *clicon_msg_encode(uint32_t id, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
 #else
-struct clicon_msg *clicon_msg_encode(uint32_t id, char *format, ...);
+struct clicon_msg *clicon_msg_encode(uint32_t id, const char *format, ...);
 #endif
 int clicon_msg_decode(struct clicon_msg *msg, yang_stmt *yspec, uint32_t *id, cxobj **xml, cxobj **xerr);
 

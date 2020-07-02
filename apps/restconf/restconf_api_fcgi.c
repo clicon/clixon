@@ -90,7 +90,7 @@ restconf_reply_body_start(void  *req0)
 int
 restconf_reply_header(void   *req0,
 		      char   *name,
-		      char   *vfmt,
+		      const char   *vfmt,
 		      ...)
 {
     FCGX_Request *req = (FCGX_Request *)req0;

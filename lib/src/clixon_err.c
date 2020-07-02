@@ -149,7 +149,7 @@ int clicon_err_fn(const char *fn,
 		  const int  line,
 		  int        category,
 		  int        suberr,
-		  char      *format, ...) 
+		  const char *format, ...) 
 {
     va_list args;
     int     len;

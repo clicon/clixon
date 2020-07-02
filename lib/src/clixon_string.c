@@ -244,7 +244,7 @@ uri_unreserved(unsigned char in)
  */
 int
 uri_percent_encode(char **encp, 
-		   char  *fmt, ...)
+		   const char *fmt, ...)
 {
     int     retval = -1;
     char   *str = NULL;  /* Expanded format string w stdarg */
@@ -370,8 +370,8 @@ uri_percent_decode(char  *enc,
  * @see xml_chardata_cbuf_append for a specialized version
  */
 int
-xml_chardata_encode(char **escp,
-		    char  *fmt,...)
+xml_chardata_encode(char      **escp,
+		    const char *fmt,...)
 {
     int     retval = -1;
     char   *str = NULL;  /* Expanded format string w stdarg */

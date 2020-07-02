@@ -129,17 +129,17 @@ int   xpath_tree2cbuf(xpath_tree *xs, cbuf *xpathcb);
 int   xpath_tree_eq(xpath_tree *xt1, xpath_tree *xt2, xpath_tree ***vec, size_t *len);
 xpath_tree *xpath_tree_traverse(xpath_tree *xt, ...);
 int   xpath_tree_free(xpath_tree *xs);
-int   xpath_parse(char *xpath, xpath_tree **xptree);
-int   xpath_vec_ctx(cxobj *xcur, cvec *nsc, char *xpath, int localonly, xp_ctx  **xrp);
+int   xpath_parse(const char *xpath, xpath_tree **xptree);
+int   xpath_vec_ctx(cxobj *xcur, cvec *nsc, const char *xpath, int localonly, xp_ctx  **xrp);
 
 #if defined(__GNUC__) && __GNUC__ >= 3
-int    xpath_vec_bool(cxobj *xcur, cvec *nsc, char *xpformat, ...) __attribute__ ((format (printf, 3, 4)));
-int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *xpformat, uint16_t flags, 
+int    xpath_vec_bool(cxobj *xcur, cvec *nsc, const char *xpformat, ...) __attribute__ ((format (printf, 3, 4)));
+int    xpath_vec_flag(cxobj *xcur, cvec *nsc, const char *xpformat, uint16_t flags, 
 		   cxobj ***vec, int *veclen, ...) __attribute__ ((format (printf, 3, 7)));
 
 #else
-int    xpath_vec_bool(cxobj *xcur, cvec *nsc, char *xpformat, ...);
-int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *xpformat, uint16_t flags, 
+int    xpath_vec_bool(cxobj *xcur, cvec *nsc, const char *xpformat, ...);
+int    xpath_vec_flag(cxobj *xcur, cvec *nsc, const char *xpformat, uint16_t flags, 
 		      cxobj ***vec, int *veclen, ...);
 #endif
 
@@ -149,15 +149,15 @@ int    xpath_vec_flag(cxobj *xcur, cvec *nsc, char *xpformat, uint16_t flags,
  * If you do not know what a namespace context is, see README.md#xml-and-xpath
  */
 #if defined(__GNUC__) && __GNUC__ >= 3
-cxobj *xpath_first(cxobj *xcur, cvec *nsc, char *xpformat,  ...) __attribute__ ((format (printf, 3, 4)));
-cxobj *xpath_first_localonly(cxobj *xcur, char *xpformat,  ...) __attribute__ ((format (printf, 2, 3)));
-int    xpath_vec(cxobj *xcur, cvec *nsc, char *xpformat, cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 6)));
+cxobj *xpath_first(cxobj *xcur, cvec *nsc, const char *xpformat,  ...) __attribute__ ((format (printf, 3, 4)));
+cxobj *xpath_first_localonly(cxobj *xcur, const char *xpformat,  ...) __attribute__ ((format (printf, 2, 3)));
+int    xpath_vec(cxobj *xcur, cvec *nsc, const char *xpformat, cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 6)));
 #else
-cxobj *xpath_first(cxobj *xcur, cvec *nsc, char *xpformat, ...);
-cxobj *xpath_first_localonly(cxobj *xcur, char *xpformat, ...);
-int    xpath_vec(cxobj *xcur, cvec *nsc, char *xpformat, cxobj  ***vec, size_t *veclen, ...);
+cxobj *xpath_first(cxobj *xcur, cvec *nsc, const char *xpformat, ...);
+cxobj *xpath_first_localonly(cxobj *xcur, const char *xpformat, ...);
+int    xpath_vec(cxobj *xcur, cvec *nsc, const char *xpformat, cxobj  ***vec, size_t *veclen, ...);
 #endif
 
-int xpath2canonical(char *xpath0, cvec *nsc0, yang_stmt *yspec, char **xpath1, cvec **nsc1);
+int xpath2canonical(const char *xpath0, cvec *nsc0, yang_stmt *yspec, char **xpath1, cvec **nsc1);
 
 #endif /* _CLIXON_XPATH_H */

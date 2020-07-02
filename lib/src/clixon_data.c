@@ -88,7 +88,7 @@
  */
 int
 clicon_data_get(clicon_handle h,
-		char         *name,
+		const char   *name,
 		char        **val)
 {
     clicon_hash_t *cdat = clicon_data(h);
@@ -110,7 +110,7 @@ clicon_data_get(clicon_handle h,
  */
 int
 clicon_data_set(clicon_handle h, 
-		char         *name,
+		const char   *name,
 		char         *val)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -127,7 +127,7 @@ clicon_data_set(clicon_handle h,
  */
 int
 clicon_data_del(clicon_handle h, 
-		char         *name)
+		const char   *name)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 

@@ -327,7 +327,7 @@ parse_configfile(clicon_handle  h,
  */
 int
 clicon_option_add(clicon_handle h,
-		  char         *name,
+		  const char   *name,
 		  char         *value)
 {
     int            retval = -1;

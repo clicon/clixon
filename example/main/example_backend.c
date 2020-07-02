@@ -538,7 +538,7 @@ static const map_str2str namespace_map[] = {
  */
 int
 example_upgrade(clicon_handle    h,
-		char            *db,
+		const char      *db,
 		cxobj           *xt,
 		modstate_diff_t *msd)
 {

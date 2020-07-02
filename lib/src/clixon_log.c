@@ -257,8 +257,8 @@ clicon_log_str(int           level,
  * @see clicon_log_init and clicon_log_str
  */
 int
-clicon_log(int   level, 
-	   char *format, ...)
+clicon_log(int         level, 
+	   const char *format, ...)
 {
     va_list args;
     int     len;
@@ -338,8 +338,8 @@ clicon_debug_get(void)
  * @param[in] format     Message to print as argv.
  */
 int
-clicon_debug(int   dbglevel, 
-	     char *format, ...)
+clicon_debug(int         dbglevel, 
+	     const char *format, ...)
 {
     va_list args;
     int     len;

@@ -1661,8 +1661,8 @@ xml_body_get(cxobj *xt)
  */
 char *
 xml_find_type_value(cxobj           *xt, 
-		    char            *prefix,
-		    char            *name,
+		    const char      *prefix,
+		    const char      *name,
 		    enum cxobj_type  type)
 {
     cxobj *x;
@@ -1691,8 +1691,8 @@ xml_find_type_value(cxobj           *xt,
  */
 cxobj *
 xml_find_type(cxobj           *xt, 
-	      char            *prefix,
-	      char            *name,
+	      const char      *prefix,
+	      const char      *name,
 	      enum cxobj_type  type)
 {
     cxobj *x = NULL;
@@ -1730,8 +1730,8 @@ xml_find_type(cxobj           *xt,
  *               return x_value
  */
 char *
-xml_find_value(cxobj *xt, 
-	       char  *name)
+xml_find_value(cxobj      *xt, 
+	       const char *name)
 {
     cxobj *x = NULL;
     
@@ -1755,8 +1755,8 @@ xml_find_value(cxobj *xt,
  *               x_name=name    return x_value
  */
 char *
-xml_find_body(cxobj *xt, 
-	      char  *name)
+xml_find_body(cxobj      *xt, 
+	      const char *name)
 {
     cxobj *x=NULL;
 
@@ -1783,9 +1783,9 @@ xml_find_body(cxobj *xt,
  *               return x
  */
 cxobj *
-xml_find_body_obj(cxobj *xt, 
-		  char  *name,
-		  char  *val)
+xml_find_body_obj(cxobj      *xt, 
+		  const char *name,
+		  char       *val)
 {
     cxobj *x = NULL;
     char  *bstr;
@@ -2315,9 +2315,9 @@ xml_attr_insert2val(char             *instr,
  * @param[in]  format   Message to print as argv.
 */
 int
-clicon_log_xml(int    level, 
-	       cxobj *x,
-	       char  *format, ...)
+clicon_log_xml(int         level, 
+	       cxobj      *x,
+	       const char *format, ...)
 {
     va_list args;
     int     len;

@@ -44,8 +44,8 @@
  */
 clicon_handle restconf_handle_init(void);
 int           restconf_handle_exit(clicon_handle h);
-char         *restconf_param_get(clicon_handle h, char *param);
-int           restconf_param_set(clicon_handle h, char *param, char *val);
+char         *restconf_param_get(clicon_handle h, const char *param);
+int           restconf_param_set(clicon_handle h, const char *param, char *val);
 int           restconf_param_del_all(clicon_handle h);
 
 #endif  /* _RESTCONF_HANDLE_H_ */
