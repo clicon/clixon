@@ -6,8 +6,6 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 cfile=$dir/c++.cpp
 
-CXX=g++
-
 cat<<EOF > $cfile
 #include <stdio.h>
 #include <stdlib.h>
