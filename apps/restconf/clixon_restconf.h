@@ -63,7 +63,7 @@ int   restconf_terminate(clicon_handle h);
 int   restconf_insert_attributes(cxobj *xdata, cvec *qvec);
 int   restconf_main_extension_cb(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 /* also in restconf_handle.h */
-char *restconf_param_get(clicon_handle h, char *param);
+char *restconf_param_get(clicon_handle h, const char *param);
 int   restconf_param_set(clicon_handle h, char *param, char *val);
 
 #endif /* _CLIXON_RESTCONF_H_ */

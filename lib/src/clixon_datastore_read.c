@@ -726,7 +726,7 @@ int
 xmldb_get0(clicon_handle    h, 
 	   const char      *db, 
 	   cvec            *nsc,
-	   char            *xpath,
+	   const char      *xpath,
 	   int              copy,
 	   cxobj          **xret,
 	   modstate_diff_t *msdiff)

@@ -540,7 +540,7 @@ stream_notify1(clicon_handle   h,
  */
 int
 stream_notify(clicon_handle h, 
-	      char         *stream, 
+	      const char         *stream,
 	      const char   *event, ...)
 {
     int        retval = -1;
@@ -1013,7 +1013,7 @@ stream_publish_cb(clicon_handle h,
  */
 int
 stream_publish(clicon_handle h,
-	       char         *stream)
+	       const char         *stream)
 {
 #ifdef CLIXON_PUBLISH_STREAMS
     int retval = -1;
