@@ -134,10 +134,10 @@ EOF
     # Use  POST (instead of startup)
     if [ $db = init ]; then
 	new "Set Initial data using POST"
-	expectpart "$(curl -u guest:bar -sik -X POST -H "Content-Type: application/yang-data+xml" -d "$XML" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
+	expectpart "$(curl -u guest:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" -d "$XML" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
 	
 	new "Set NACM using POST"
-	expectpart "$(curl -u guest:bar -sik -X POST -H "Content-Type: application/yang-data+xml" -d "$NACM" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
+	expectpart "$(curl -u guest:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" -d "$NACM" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
     fi
     
     #----------- First get
@@ -154,7 +154,7 @@ EOF
     esac
 
     new "get startup 42"
-    expectpart "$(curl -u guest:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "$status" "$ret"
+    expectpart "$(curl -u guest:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "$status" "$ret"
 
     #----------- Then edit
     case "$ret2" in
@@ -166,7 +166,7 @@ EOF
 	;;
     esac
     new "edit new 99"
-    expectpart "$(curl -u guest:bar -sik -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 99}' $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "$status" "$ret"
+    expectpart "$(curl -u guest:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 99}' $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "$status" "$ret"
 
     #----------- Then second get
     case "$ret3" in
@@ -184,7 +184,7 @@ EOF
 	   ;;
     esac
     new "get 99"
-    expectpart "$(curl -u guest:bar -sik -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "$status" "$ret"
+    expectpart "$(curl -u guest:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "$status" "$ret"
     
     new "Kill restconf daemon"
     stop_restconf

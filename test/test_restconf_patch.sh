@@ -122,80 +122,80 @@ fi
 
 # also in test_restconf.sh
 new "MUST support the PATCH method for a plain patch" 
-expectpart "$(curl -u andy:bar -sik -X OPTIONS $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 200 OK" "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE" "Accept-Patch: application/yang-data+xml,application/yang-data+json"
+expectpart "$(curl -u andy:bar $CURLOPTS -X OPTIONS $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 200 OK" "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE" "Accept-Patch: application/yang-data+xml,application/yang-data+json"
 
 new "If the target resource instance does not exist, the server MUST NOT create it."
-expectpart "$(curl -u andy:bar -sik -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -d '{"example-jukebox:jukebox":null}')" 0 "HTTP/1.1 400 Bad Request"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -d '{"example-jukebox:jukebox":null}')" 0 "HTTP/1.1 400 Bad Request"
 
 new "Create it with PUT instead"
-expectpart "$(curl -u andy:bar -sik -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -d '{"example-jukebox:jukebox":null}')" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -d '{"example-jukebox:jukebox":null}')" 0 "HTTP/1.1 201 Created"
 
 new "THEN change it with PATCH"
-expectpart "$(curl -u andy:bar -sik -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -d '{"example-jukebox:jukebox":{"library":{"artist":{"name":"Clash"}}}}')" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -d '{"example-jukebox:jukebox":{"library":{"artist":{"name":"Clash"}}}}')" 0 "HTTP/1.1 204 No Content"
 
 new "Check content (json)"
-expectpart "$(curl -u andy:bar -sik -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 200 OK' '{"example-jukebox:jukebox":{"library":{"artist":\[{"name":"Clash"}\]}}}'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 200 OK' '{"example-jukebox:jukebox":{"library":{"artist":\[{"name":"Clash"}\]}}}'
 
 new "Check content (xml)"
-expectpart "$(curl -u andy:bar -sik -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<jukebox xmlns="http://example.com/ns/example-jukebox"><library><artist><name>Clash</name></artist></library></jukebox>'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<jukebox xmlns="http://example.com/ns/example-jukebox"><library><artist><name>Clash</name></artist></library></jukebox>'
 
 new 'If the user is not authorized, "403 Forbidden" SHOULD be returned.'
-expectpart "$(curl -u wilma:bar -sik -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash -d '{"example-jukebox:artist":{"name":"Clash","album":{"name":"London Calling"}}}')" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash -d '{"example-jukebox:artist":{"name":"Clash","album":{"name":"London Calling"}}}')" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new 'user is authorized'
-expectpart "$(curl -u andy:bar -sik -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash -d '{"example-jukebox:artist":{"name":"Clash","album":{"name":"London Calling"}}}')" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash -d '{"example-jukebox:artist":{"name":"Clash","album":{"name":"London Calling"}}}')" 0 "HTTP/1.1 204 No Content"
 
 # 4.6.1.  Plain Patch
 
 new "restconf DELETE whole datastore"
-expectpart "$(curl -u andy:bar -sik -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl -u andy:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 204 No Content"
 
 new "Create album London Calling with PUT"
-expectpart "$(curl -u andy:bar -sik -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '{"example-jukebox:album":{"name":"London Calling"}}')" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '{"example-jukebox:album":{"name":"London Calling"}}')" 0 "HTTP/1.1 201 Created"
 
 new "The message-body for a plain patch MUST be present"
-expectpart "$(curl -u andy:bar -sik -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Beatles -d '')" 0 "HTTP/1.1 400 Bad Request"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Beatles -d '')" 0 "HTTP/1.1 400 Bad Request"
 
 # Plain patch can be used to create or update, but not delete, a child
 # resource within the target resource.
 new "Create a child resource (genre and year)"
-expectpart "$(curl -u andy:bar -sik -X PATCH  -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '{"example-jukebox:album":{"name":"London Calling","genre":"example-jukebox:rock","year":"2129"}}')" 0 'HTTP/1.1 204 No Content'
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH  -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '{"example-jukebox:album":{"name":"London Calling","genre":"example-jukebox:rock","year":"2129"}}')" 0 'HTTP/1.1 204 No Content'
 
 new "Update a child resource (year)"
-expectpart "$(curl -u andy:bar -sik -X PATCH  -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '{"example-jukebox:album":{"name":"London Calling","year":"1979"}}')" 0 'HTTP/1.1 204 No Content'
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH  -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '{"example-jukebox:album":{"name":"London Calling","year":"1979"}}')" 0 'HTTP/1.1 204 No Content'
 
 new "Check content xml"
-expectpart "$(curl -u andy:bar -sik -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<album xmlns="http://example.com/ns/example-jukebox"><name>London Calling</name><genre>rock</genre><year>1979</year></album>'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<album xmlns="http://example.com/ns/example-jukebox"><name>London Calling</name><genre>rock</genre><year>1979</year></album>'
 
 new "Check content json"
-expectpart "$(curl -u andy:bar -sik -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 200 OK' '{"example-jukebox:album":\[{"name":"London Calling","genre":"rock","year":1979}\]}'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 200 OK' '{"example-jukebox:album":\[{"name":"London Calling","genre":"rock","year":1979}\]}'
 
 new "The message-body MUST be represented by the media type application/yang-data+xml (or +json ^)"
-expectpart "$(curl -u andy:bar -sik -X PATCH -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '<album xmlns="http://example.com/ns/example-jukebox"><name>London Calling</name><genre>jazz</genre></album>')" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '<album xmlns="http://example.com/ns/example-jukebox"><name>London Calling</name><genre>jazz</genre></album>')" 0 "HTTP/1.1 204 No Content"
 
 new "Check content (xml)"
-expectpart "$(curl -u andy:bar -sik -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<jukebox xmlns="http://example.com/ns/example-jukebox"><library><artist><name>Clash</name><album><name>London Calling</name><genre>jazz</genre><year>1979</year></album></artist></library></jukebox>'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' '<jukebox xmlns="http://example.com/ns/example-jukebox"><library><artist><name>Clash</name><album><name>London Calling</name><genre>jazz</genre><year>1979</year></album></artist></library></jukebox>'
 
 new "not implemented media type"
-expectpart "$(curl -u andy:bar -sik -X PATCH -H 'Content-Type: application/yang-patch+xml' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '<album xmlns="http://example.com/ns/example-jukebox"><name>London Calling</name><genre>jazz</genre></album>')" 0 "HTTP/1.1 501 Not Implemented"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-patch+xml' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '<album xmlns="http://example.com/ns/example-jukebox"><name>London Calling</name><genre>jazz</genre></album>')" 0 "HTTP/1.1 501 Not Implemented"
 
 new "wrong media type"
-expectpart "$(curl -u andy:bar -sik -X PATCH -H 'Content-Type: text/html' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '<album xmlns="http://example.com/ns/example-jukebox"><name>London Calling</name><genre>jazz</genre></album>')" 0 "HTTP/1.1 415 Unsupported Media Type"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: text/html' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '<album xmlns="http://example.com/ns/example-jukebox"><name>London Calling</name><genre>jazz</genre></album>')" 0 "HTTP/1.1 415 Unsupported Media Type"
 
 # If the target resource represents a YANG leaf-list, then the PATCH
 # method MUST NOT change the value of the leaf-list instance.
 #      leaf-list extra{
 new "Create leaf-list a"
-expectpart "$(curl -u andy:bar -sik -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:extra=a -d '{"example-jukebox:extra":"a"}')" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:extra=a -d '{"example-jukebox:extra":"a"}')" 0 "HTTP/1.1 201 Created"
 
 new "Create leaf-list b"
-expectpart "$(curl -u andy:bar -sik -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:extra=b -d '{"example-jukebox:extra":"b"}')" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:extra=b -d '{"example-jukebox:extra":"b"}')" 0 "HTTP/1.1 201 Created"
 
 new "Check content"
-expectpart "$(curl -u andy:bar -sik -X GET $RCPROTO://localhost/restconf/data/example-jukebox:extra -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 200 OK' '{"example-jukebox:extra":\["a","b"\]}'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-jukebox:extra -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 200 OK' '{"example-jukebox:extra":\["a","b"\]}'
 
 new "MUST NOT change the value of the leaf-list instance"
-expectpart "$(curl -u andy:bar -sik -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:extra=a -d '{"example-jukebox:extra":"b"}')" 0 'HTTP/1.1 412 Precondition Failed'
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:extra=a -d '{"example-jukebox:extra":"b"}')" 0 'HTTP/1.1 412 Precondition Failed'
 
 # If the target resource represents a YANG list instance, then the key
 # leaf values, in message-body representation, MUST be the same as the
@@ -203,7 +203,7 @@ expectpart "$(curl -u andy:bar -sik -X PATCH -H 'Content-Type: application/yang-
 # used to change the key leaf values for a data resource instance.
 
 new "The key leaf values MUST be the same as the key leaf values in the request"
-expectpart "$(curl -u andy:bar -sik -X PATCH  -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '{"example-jukebox:album":{"name":"The Clash"}}')" 0 'HTTP/1.1 412 Precondition Failed'
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH  -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '{"example-jukebox:album":{"name":"The Clash"}}')" 0 'HTTP/1.1 412 Precondition Failed'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

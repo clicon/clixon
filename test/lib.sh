@@ -88,6 +88,13 @@ testname=
 # eg logging to a file: RCLOG="-l f/www-data/restconf.log"
 : ${RCLOG:=}
 
+# Options passed to curl calls
+# -s : silent
+# -S : show error
+# -i : Include HTTP response headers
+# -k : insecure 
+: ${CURLOPTS:="-Ssik"}
+
 # Wait after daemons (backend/restconf) start. See mem.sh for valgrind
 if [ "$(uname -m)" = "armv7l" ]; then
     : ${RCWAIT:=8}
@@ -272,14 +279,15 @@ stop_restconf(){
 
 # Wait for restconf to stop sending  502 Bad Gateway
 # @see start_restconf
+# Reasons for not working: if you run evhtp is nginx running?
 wait_restconf(){
-#    echo "curl -kis $RCPROTO://localhost/restconf"
-    hdr=$(curl -kis $RCPROTO://localhost/restconf)
+# echo "curl $CURLOPTS $* $RCPROTO://localhost/restconf"
+    hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf) 2> /dev/null
 #    echo "hdr:\"$hdr\""
     let i=0;
     while [[ $hdr != *"200 OK"* ]]; do
 	sleep 1
-	hdr=$(curl -kis $RCPROTO://localhost/restconf)
+	hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf)
 #	echo "hdr:\"$hdr\""
 	let i++;
 #	echo "wait_restconf $i"

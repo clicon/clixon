@@ -175,17 +175,17 @@ sleep 1
 new "2. Restconf RFC8040 stream testing"
 # 2.1 Stream discovery
 new "restconf event stream discovery RFC8040 Sec 6.2"
-expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams)" 0 "HTTP/1.1 200 OK" '{"ietf-restconf-monitoring:streams":{"stream":\[{"name":"EXAMPLE","description":"Example event stream","replay-support":true,"access":\[{"encoding":"xml","location":"https://localhost/streams/EXAMPLE"}\]}\]}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams)" 0 "HTTP/1.1 200 OK" '{"ietf-restconf-monitoring:streams":{"stream":\[{"name":"EXAMPLE","description":"Example event stream","replay-support":true,"access":\[{"encoding":"xml","location":"https://localhost/streams/EXAMPLE"}\]}\]}'
 
 sleep 1
 new "restconf subscribe RFC8040 Sec 6.3, get location"
-expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=EXAMPLE/access=xml/location)" 0 "HTTP/1.1 200 OK" '{"ietf-restconf-monitoring:location":"https://localhost/streams/EXAMPLE"}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=EXAMPLE/access=xml/location)" 0 "HTTP/1.1 200 OK" '{"ietf-restconf-monitoring:location":"https://localhost/streams/EXAMPLE"}'
 
 sleep 1
 # Restconf stream subscription RFC8040 Sec 6.3
 # Start Subscription w error
 new "restconf monitor event nonexist stream"
-expectwait "curl -sk -X GET -H \"Accept: text/event-stream\" -H \"Cache-Control: no-cache\" -H \"Connection: keep-alive\" $RCPROTO://localhost/streams/NOTEXIST" 0 '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>' 2
+expectwait "curl $CURLOPTS -X GET -H \"Accept: text/event-stream\" -H \"Cache-Control: no-cache\" -H \"Connection: keep-alive\" $RCPROTO://localhost/streams/NOTEXIST" 0 '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>' 2
 
 # 2a) start subscription 8s - expect 1-2 notifications
 new "2a) start subscriptions 8s - expect 1-2 notifications"
@@ -267,7 +267,7 @@ sleep 1
 
 # Try parallell
 # start background job
-curl -sik -X GET  -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" "$RCPROTO://localhost/streams/EXAMPLE" > /dev/null &
+curl $CURLOPTS -X GET  -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" "$RCPROTO://localhost/streams/EXAMPLE" > /dev/null &
 PID=$!
 
 new "Start subscriptions in parallell"
@@ -289,7 +289,7 @@ kill $PID
 # NCHAN Need manual testing
 echo "Nchan streams requires manual testing"
 echo "Add <CLICON_STREAM_PUB>http://localhost/pub</CLICON_STREAM_PUB> to config"
-echo "Eg: curl -sik -H \"Accept: text/event-stream\" -s -X GET $RCPROTO://localhost/sub/EXAMPLE"
+echo "Eg: curl $CURLOPTS -H \"Accept: text/event-stream\" -s -X GET $RCPROTO://localhost/sub/EXAMPLE"
 
 #-----------------
 sleep 5

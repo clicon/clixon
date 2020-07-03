@@ -242,13 +242,13 @@ XML='<c xmlns="urn:example:api"><y3><k>2</k></y3><y3><k>3</k></y3><y3><k>5</k><v
 
 # Add a set of entries using restconf
 new "PUT a set of entries"
-expectpart "$(curl -sik -X PUT -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example-api:c -d "$XML")" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example-api:c -d "$XML")" 0 "HTTP/1.1 201 Created"
 
 new "Check entries"
-expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example-api:c -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' "$XML"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-api:c -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' "$XML"
 
 new "Send a trigger"
-expectpart "$(curl -sik -X POST $RCPROTO://localhost/restconf/operations/example-api:trigger -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 204 No Content'
+expectpart "$(curl $CURLOPTS -X POST $RCPROTO://localhost/restconf/operations/example-api:trigger -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 204 No Content'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

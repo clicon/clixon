@@ -72,9 +72,9 @@
  * @see eg RFC 7230
  */
 int
-restconf_reply_header(void   *req0,
-		      char   *name,
-		      char   *vfmt,
+restconf_reply_header(void       *req0,
+		      const char *name,
+		      const char *vfmt,
 		      ...)
 
 {

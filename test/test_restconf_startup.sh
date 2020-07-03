@@ -74,16 +74,16 @@ testrun(){
     wait_restconf
 
     new "restconf put 42"
-    expectpart "$(curl -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:x/y=42 -d '{"example:y":{"a":"42","b":"42"}}')" 0 "HTTP/1.1 201 Created"
+    expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:x/y=42 -d '{"example:y":{"a":"42","b":"42"}}')" 0 "HTTP/1.1 201 Created"
 
     new "restconf put 99"
-    expectpart "$(curl -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:x/y=99 -d '{"example:y":{"a":"99","b":"99"}}')" 0 "HTTP/1.1 201 Created"
+    expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:x/y=99 -d '{"example:y":{"a":"99","b":"99"}}')" 0 "HTTP/1.1 201 Created"
 
     new "restconf post 123"
-    expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:x -d '{"example:y":{"a":"123","b":"123"}}')" 0 "HTTP/1.1 201 Created"
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:x -d '{"example:y":{"a":"123","b":"123"}}')" 0 "HTTP/1.1 201 Created"
 
     new "restconf delete 42"
-    expectpart "$(curl -sik -X DELETE $RCPROTO://localhost/restconf/data/example:x/y=42)" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/example:x/y=42)" 0 "HTTP/1.1 204 No Content"
 
     new "Kill restconf daemon"
     stop_restconf 

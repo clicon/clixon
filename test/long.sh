@@ -108,14 +108,14 @@ while [ 1 ] ; do
 time -p    for (( i=0; i<$perfreq; i++ )); do
 #echo "i $i"
     rnd=$(( ( RANDOM % $perfnr ) ))
-    curl -s -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/scaling:x/y=$rnd  -d '{"scaling:y":{"a":"'$rnd'","b":"'$rnd'"}}'
+    curl $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/scaling:x/y=$rnd  -d '{"scaling:y":{"a":"'$rnd'","b":"'$rnd'"}}'
 done
 
 done
 new "restconf get $perfreq small config"
 time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    curl -sG -H 'Accept: application/yang-data+json'http://localhost/restconf/data/scaling:x/y=$rnd,42 > /dev/null
+    curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json'http://localhost/restconf/data/scaling:x/y=$rnd,42 > /dev/null
 done
 done
 

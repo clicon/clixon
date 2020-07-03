@@ -140,16 +140,16 @@ new "netconf get $perfreq single reqs"
 done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF get
-#echo "curl -sik -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1"
+#echo "curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1"
 new "restconf get test single req"
-time -p expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 '{"example:interface":[{"name":"e1","type":"ex:eth","status":"up"}]}' | awk '/real/ {print $2}'
+time -p expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 '{"example:interface":[{"name":"e1","type":"ex:eth","status":"up"}]}' | awk '/real/ {print $2}'
 
 new "restconf get $perfreq single reqs"
-#curl -sik -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e67
+#curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e67
 
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    curl -sik -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a/b/interface=e$rnd > /dev/null
+    curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a/b/interface=e$rnd > /dev/null
 done } 2>&1 | awk '/real/ {print $2}'
 
 if false; then
@@ -173,7 +173,7 @@ new "netconf get large config"
 { time -p echo "<rpc><get> <filter type=\"xpath\" select=\"/ex:interfaces/ex:a[name='foo']/ex:b\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg  > /tmp/netconf; } 2>&1 | awk '/real/ {print $2}'
 
 new "restconf get large config"
-$TIMEFN curl -sik -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b 2>&1 | awk '/real/ {print $2}'
+$TIMEFN curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b 2>&1 | awk '/real/ {print $2}'
 
 new "cli get large config"
 $TIMEFN $clixon_cli -1f $cfg show state xml 2>&1 | awk '/real/ {print $2}'

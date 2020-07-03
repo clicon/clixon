@@ -170,19 +170,19 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply
 #-- restconf
 
 new "restconf DELETE whole datastore"
-expectpart "$(curl -sik -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 204 No Content"
 
 new "restconf set protocol tcp+udp fail"
-expectpart "$(curl -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/system:system/protocol -d '{"system:protocol":{"tcp": [null], "udp": [null]}}')" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"udp"},"error-severity":"error","error-message":"Element in choice statement already exists"}}}'
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/system:system/protocol -d '{"system:protocol":{"tcp": [null], "udp": [null]}}')" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"udp"},"error-severity":"error","error-message":"Element in choice statement already exists"}}}'
 
 new "restconf set protocol tcp"
-expectpart "$(curl -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/system:system/protocol -d {\"system:protocol\":{\"tcp\":[null]}})" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/system:system/protocol -d {\"system:protocol\":{\"tcp\":[null]}})" 0 "HTTP/1.1 201 Created"
 
 new "restconf get protocol tcp"
-expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/system:system)" 0 "HTTP/1.1 200 OK" '{"system:system":{"protocol":{"tcp":\[null\]}}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/system:system)" 0 "HTTP/1.1 200 OK" '{"system:system":{"protocol":{"tcp":\[null\]}}}'
 
 new "restconf set protocol tcp+udp fail again"
-expectpart "$(curl -sik -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/system:system/protocol -d '{"system:protocol":{"tcp": [null], "udp": [null]}}')" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"udp"},"error-severity":"error","error-message":"Element in choice statement already exists"}}}'
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/system:system/protocol -d '{"system:protocol":{"tcp": [null], "udp": [null]}}')" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"udp"},"error-severity":"error","error-message":"Element in choice statement already exists"}}}'
 
 new "cli set protocol udp"
 expectfn "$clixon_cli -1 -f $cfg -l o set system protocol udp" 0 "^$"

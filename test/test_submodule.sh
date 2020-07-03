@@ -207,16 +207,16 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<
 
 # Now same with restconf
 new "restconf edit main"
-expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"main:main":{"x":"foo","ext":"foo"}}')" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"main:main":{"x":"foo","ext":"foo"}}')" 0 'HTTP/1.1 201 Created'
 
 new "restconf edit sub1"
-expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"main:sub1":{"x":"foo","ext1":"foo"}}')" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"main:sub1":{"x":"foo","ext1":"foo"}}')" 0 'HTTP/1.1 201 Created'
 
 new "restconf edit sub2"
-expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"main:sub2":{"x":"foo","ext2":"foo"}}')" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"main:sub2":{"x":"foo","ext2":"foo"}}')" 0 'HTTP/1.1 201 Created'
 
 new "restconf check main/sub1/sub2 contents"
-expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data?content=config)" 0 'HTTP/1.1 200 OK' '{"data":{"main:main":{"ext":"foo","x":"foo"},"main:sub1":{"ext1":"foo","x":"foo"},"main:sub2":{"ext2":"foo","x":"foo"}}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data?content=config)" 0 'HTTP/1.1 200 OK' '{"data":{"main:main":{"ext":"foo","x":"foo"},"main:sub1":{"ext1":"foo","x":"foo"},"main:sub2":{"ext2":"foo","x":"foo"}}}'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

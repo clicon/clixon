@@ -88,9 +88,9 @@ restconf_reply_body_start(void  *req0)
  * @see eg RFC 7230
  */
 int
-restconf_reply_header(void   *req0,
-		      char   *name,
-		      const char   *vfmt,
+restconf_reply_header(void       *req0,
+		      const char *name,
+		      const char *vfmt,
 		      ...)
 {
     FCGX_Request *req = (FCGX_Request *)req0;

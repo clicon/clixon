@@ -105,26 +105,25 @@ new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "restconf set x in example1"
-expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" -d '{"example1:x":42}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example1:x":42}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
 
 new "restconf get config example1"
-expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example1:x)" 0 "HTTP/1.1 200 OK" '{"example1:x":42}
-'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example1:x)" 0 "HTTP/1.1 200 OK" '{"example1:x":42}'
 
 new "restconf set x in example2"
-expectpart "$(curl -sik -X POST -H "Content-Type: application/yang-data+json" -d '{"example2:x":{"y":99}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example2:x":{"y":99}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
 
 # XXX GET ../example1:x is translated to select=/x which gets both example1&2
 #new "restconf get config example1"
-#expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example1:x)" 0 "HTTP/1.1 200 OK" '{"example1:x":42}'
+#expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example1:x)" 0 "HTTP/1.1 200 OK" '{"example1:x":42}'
 
 
 # XXX GET ../example2:x is translated to select=/x which gets both example1&2
 #new "restconf get config example2"
-#expectpart "$(curl -sik -X GET $RCPROTO://localhost/restconf/data/example2:x)" 0 "HTTP/1.1 200 OK" '{"example2:x":{"y":42}}'
+#expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example2:x)" 0 "HTTP/1.1 200 OK" '{"example2:x":{"y":42}}'
 
 new "restconf get config example1 and example2"
-ret=$(curl -sik -X GET $RCPROTO://localhost/restconf/data)
+ret=$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)
 expect='"example1:x":42,"example2:x":{"y":99}'
 match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then

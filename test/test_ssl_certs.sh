@@ -7,6 +7,9 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
+# force it (or check it?)
+RCPROTO=https
+
 # Only works with evhtp and https
 if [ "${WITH_RESTCONF}" != "evhtp"  -o "$RCPROTO" = http ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
@@ -16,9 +19,6 @@ APPNAME=example
 
 # Common NACM scripts
 . ./nacm.sh
-
-# force it (or check it?)
-RCPROTO=https
 
 fyang=$dir/example.yang
 
@@ -224,8 +224,9 @@ if [ $RC -ne 0 ]; then
     start_restconf -f $cfg -c -- -s
 
 fi
-#new "wait for restconf"
-#wait_restconf XXX
+
+new "wait for restconf"
+wait_restconf --key $certdir/andy.key --cert $certdir/andy.crt
 
 new "auth set authentication config"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -234,13 +235,13 @@ new "commit it"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
-expectpart "$(curl -sSik --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 204 No Content"
 
 new "admin get x"
-expectpart "$(curl -sSik --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 200 OK" '{"example:x":0}'
+expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 200 OK" '{"example:x":0}'
 
 new "guest get x"
-expectpart "$(curl -sSik --key $certdir/guest.key --cert $certdir/guest.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
+expectpart "$(curl $CURLOPTS --key $certdir/guest.key --cert $certdir/guest.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
@@ -260,4 +261,4 @@ fi
 # kill backend
 stop_backend -f $cfg
 
-rm -rf $dir
+#rm -rf $dir

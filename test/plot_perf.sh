@@ -177,29 +177,29 @@ runrest(){
 	    if [ $reqs = 0 ]; then # Write all in one go
 		genfile $nr restconf
 		# restconf @- means from stdin
-		{ time -p curl -sS -X PUT -d @$fjson http://localhost/restconf/data/scaling:x ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
+		{ time -p curl $CURLOPTS -X PUT -d @$fjson http://localhost/restconf/data/scaling:x ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
 	    else # Small requests
 		{ time -p for (( i=0; i<$reqs; i++ )); do
 	rnd=$(( ( RANDOM % $nr ) ));
-	curl -sS -X PUT http://localhost/restconf/data/scaling:x/y=$rnd -d "{\"scaling:y\":{\"a\":$rnd,\"b\":\"$rnd\"}}" 
+	curl $CURLOPTS -X PUT http://localhost/restconf/data/scaling:x/y=$rnd -d "{\"scaling:y\":{\"a\":$rnd,\"b\":\"$rnd\"}}" 
     done ; } 2>&1 | awk '/real/ {print $2}' | tr , .>> $file
 		# 
 	    fi
 	    ;;
 	get)
 	    if [ $reqs = 0 ]; then # Read all in one go
-		{ time -p curl -sS -X GET http://localhost/restconf/data/scaling:x > /dev/null; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
+		{ time -p curl $CURLOPTS -X GET http://localhost/restconf/data/scaling:x > /dev/null; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
 	    else # Small requests
 		{ time -p for (( i=0; i<$reqs; i++ )); do
 	rnd=$(( ( RANDOM % $nr ) ));
-	curl -sS -X GET http://localhost/restconf/data/scaling:x/y=$rnd  
+	curl $CURLOPTS -X GET http://localhost/restconf/data/scaling:x/y=$rnd  
     done ; } 2>&1 | awk '/real/ {print $2}' | tr , .>> $file
 	    fi
 	    ;;
 	delete)
 		{ time -p for (( i=0; i<$reqs; i++ )); do
 	rnd=$(( ( RANDOM % $nr ) ));
-	curl -sS -X GET http://localhost/restconf/data/scaling:x/y=$rnd  
+	curl $CURLOPTS -X GET http://localhost/restconf/data/scaling:x/y=$rnd  
     done ; } 2>&1 | awk '/real/ {print $2}' | tr , .>> $file
 		;;
 	    *)
