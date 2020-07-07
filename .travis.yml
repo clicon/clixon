@@ -1,4 +1,5 @@
 language: c
+os: linux
 # safelist
 branches:
   only:
@@ -6,5 +7,15 @@ branches:
 before_script:
   - sudo apt-get install -y libfcgi-dev
   - ./test/travis/before_script.sh
-
+arch:
+- amd64
+- arm64
+jobs:
+- arch: amd64
+- dist: bionic
+- script: ./configure && make && sudo make install
+jobs:
+- arch: arm64
+- dist: xenial
+- script: ./configure && make && sudo make install
  
