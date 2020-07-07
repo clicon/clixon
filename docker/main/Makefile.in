@@ -38,6 +38,12 @@ CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
+with_restconf	= @with_restconf@
+ifdef with_restconf
+DOCKERFILE      = Dockerfile.$(with_restconf)
+else
+DOCKERFILE      = Dockerfile
+endif
 
 # Example docker image. CHANGE THIS IF YOU PUSH
 IMG   = clixon/clixon-system
@@ -59,16 +65,18 @@ clean:
 distclean: clean
 	rm -f Makefile *~ .depend
 
-docker: clixon Dockerfile
-	sudo docker build -t $(IMG) .  # --no-cache
+docker: clixon $(DOCKERFILE)
+	sudo docker build -f $(DOCKERFILE) -t $(IMG) .  # --no-cache
 
 push:
 	sudo docker push $(IMG)
 
 # Start the clixon system container and run the test script
+# sleep is for waiting for start script to run properly before starting tests
+# Note tests will kill the daemons started in the start scrips
 test: docker
 	./cleanup.sh ; PORT=8080 ./start.sh # kill (ignore error) and the start it
-	sudo docker exec -it clixon-system bash -c 'cd /usr/local/bin/test && ./all.sh'
+	sleep 1; sudo docker exec -it clixon-system bash -c 'cd /usr/local/bin/test && ./all.sh'
 
 depend:
 

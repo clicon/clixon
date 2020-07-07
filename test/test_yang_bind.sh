@@ -155,5 +155,4 @@ EOF
 new "JSON Add any on top"
 expectpart "$($clixon_util_xml -Jvy $fyang -f $fjson)" 0 '^$'
 
-
-#rm -rf $dir
+rm -rf $dir

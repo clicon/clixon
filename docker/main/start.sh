@@ -33,8 +33,10 @@
 
 # Usage: ./startup.sh
 # Debug: DBG=1 ./startup.sh
-# See also cleanup.sh
-
+# This script runs _outside_ the container on the host, and triggers the startsystem.sh that runs
+# _inside_ the container.
+# @see cleanup.sh and startsystem.sh
+#
 >&2 echo "Running script: $0"
 
 # Error function

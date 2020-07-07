@@ -31,13 +31,12 @@
 #
 # ***** END LICENSE BLOCK *****
 #
-# Clixon dockerfile without restconf
 
 FROM alpine
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 
 # For clixon and cligen
-RUN apk add --update git make build-base gcc flex bison curl-dev
+RUN apk add --update git make build-base gcc flex bison fcgi-dev curl-dev
 
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
@@ -58,8 +57,13 @@ RUN mkdir /clixon/clixon
 WORKDIR /clixon/clixon
 COPY clixon .
 
+# Need to add www user manually
+RUN adduser -D -H www-data
+# nginx adds group www-data
+RUN apk add --update nginx
+
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --enable-optyangs --without-restconf
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data --enable-optyangs --with-restconf=fcgi
 RUN make
 RUN make install
 
@@ -81,7 +85,7 @@ RUN install *.sh /clixon/build/bin/test
 
 # Copy startscript
 WORKDIR /clixon
-COPY startsystem.sh startsystem.sh 
+COPY startsystem_fcgi.sh startsystem.sh 
 RUN install startsystem.sh /clixon/build/bin/
 
 #
@@ -93,13 +97,28 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 # For clixon and cligen
 RUN apk add --update flex bison fcgi-dev
 
+# need to add www user manually
+RUN adduser -D -H www-data
+# nginx adds group www-data
+RUN apk add --update nginx
+
 # Test-specific (for test scripts)
 RUN apk add --update sudo curl procps grep make bash
 
+# Expose nginx port for restconf
+EXPOSE 80
+
 # Create clicon user and group
 RUN adduser -D -H clicon
+RUN adduser nginx clicon
+RUN adduser www-data clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
+COPY --from=0 /www-data /www-data
+
+# Manually created
+RUN chown www-data /www-data
+RUN chgrp www-data /www-data
 
 # Log to stderr.
 CMD /usr/local/bin/startsystem.sh

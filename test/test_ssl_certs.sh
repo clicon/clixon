@@ -261,4 +261,4 @@ fi
 # kill backend
 stop_backend -f $cfg
 
-#rm -rf $dir
+rm -rf $dir

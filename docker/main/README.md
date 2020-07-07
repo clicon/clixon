@@ -4,13 +4,19 @@ This directory show how to build a "monolithic" clixon docker
 container exporting port 80 and contains the example application with
 both restconf, netconf, cli and backend. It also includes packages to be able to run the [Clixon tests](../../test).
 
+Note that restconf capability depends on how clixon was configured using the `--with-restconf` option.
+
 The directory contains the following files:
-	 cleanup.sh     kill containers
-	 Dockerfile     Docker build instructions
-	 Makefile.in    "make docker" builds the container
-	 README.md	This file
-	 start.sh       Start containers
-	 startsystem.sh Internal start script copied to inside the container (dont run from shell)
+  - cleanup.sh       Kill containers
+  - Dockerfile       Docker build instructions without restconf
+  - Dockerfile.fcgi  Docker build instructions with nginx/fcgi restconf (this is default)
+  - Dockerfile.evhtp Docker build instructions with libevhtp restconf
+  - Makefile.in      "make docker" builds the container
+  - README.md	  This file
+  - start.sh         Start containers
+  - startsystem.sh   Internal start script copied to inside the container (dont run from shell).
+  - startsystem_fcgi.sh  Variant for nginx/fcgi (default)
+  - startsystem_evhtp.sh Variant for libevhtp
 
 How to run the tests:
 ```
@@ -45,7 +51,14 @@ As netconf via stdin/stdout:
 ```
 As restconf using curl on exposed port 80:
 ```
-  $ curl -G http://localhost/restconf
+  $ curl -X GET http://localhost/restconf
+  {
+    "ietf-restconf:restconf": {
+      "data": {},
+      "operations": {},
+      "yang-library-version": "2016-06-21"
+    }
+  }
 ```
 Or run tests:
 ```
@@ -63,6 +76,6 @@ You trigger the test scripts inside the container using `make test`.
 ## Changing code
 
 If you want to edit clixon code so it runs in the container?
-You either
-(1) "persistent": make your changes in the actual clixon code and commit; make clean to remove the local clone;  make test again
-(2) "volatile" edit the local clone, (in the subdir); `make test`.
+You either:
+  1. "persistent": make your changes in the actual clixon code and commit; make clean to remove the local clone;  make test again
+  2. "volatile" edit the local clone, (in the subdir); `make test`.

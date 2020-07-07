@@ -31,7 +31,6 @@
 #
 # ***** END LICENSE BLOCK *****
 #
-# Clixon dockerfile without restconf
 
 FROM alpine
 MAINTAINER Olof Hagsand <olof@hagsand.se>
@@ -41,6 +40,22 @@ RUN apk add --update git make build-base gcc flex bison curl-dev
 
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
+
+# libevht
+# dependencies
+RUN apk add --update libevent cmake libevent-dev
+
+# clone libevhtp
+WORKDIR /clixon
+RUN git clone https://github.com/criticalstack/libevhtp.git
+WORKDIR /clixon/libevhtp/build
+RUN cmake -DEVHTP_DISABLE_REGEX=ON -DEVHTP_DISABLE_EVTHR=ON ..
+RUN make
+RUN make install
+
+# NOTE: Patch include queue.h to use the queue.h included in the evhtp release instead
+RUN (cd /usr/local/include/evhtp/; sed -i -e 's/<sys\/queue.h>/<evhtp\/sys\/queue.h>/' evhtp.h)
+
 RUN mkdir /clixon/build
 WORKDIR /clixon
 
@@ -58,8 +73,12 @@ RUN mkdir /clixon/clixon
 WORKDIR /clixon/clixon
 COPY clixon .
 
+# Need to add www user manually
+RUN adduser -D -H www-data
+
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --enable-optyangs --without-restconf
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data --enable-optyangs --with-restconf=evhtp
+
 RUN make
 RUN make install
 
@@ -81,7 +100,7 @@ RUN install *.sh /clixon/build/bin/test
 
 # Copy startscript
 WORKDIR /clixon
-COPY startsystem.sh startsystem.sh 
+COPY startsystem_evhtp.sh startsystem.sh 
 RUN install startsystem.sh /clixon/build/bin/
 
 #
@@ -91,15 +110,30 @@ FROM alpine
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 
 # For clixon and cligen
-RUN apk add --update flex bison fcgi-dev
+RUN apk add --update flex bison
+
+# need to add www user manually
+RUN adduser -D -H www-data
+# for libevtp
+RUN apk add --update openssl libevent
 
 # Test-specific (for test scripts)
 RUN apk add --update sudo curl procps grep make bash
 
+# Expose https port for restconf
+EXPOSE 80
+
 # Create clicon user and group
 RUN adduser -D -H clicon
+RUN adduser www-data clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
+COPY --from=0 /www-data /www-data
+#COPY --from=0 /usr/local/lib/libevhtp.a /usr/local/lib/libevhtp.a # maybe not necessary since static
+
+# Manually created
+RUN chown www-data /www-data
+RUN chgrp www-data /www-data
 
 # Log to stderr.
 CMD /usr/local/bin/startsystem.sh

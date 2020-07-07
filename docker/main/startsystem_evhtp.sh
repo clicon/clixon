@@ -31,12 +31,11 @@
 #
 # ***** END LICENSE BLOCK *****
 
-# Clixon start script without restconf. NOTE TESTS are very restricted
+# Clixon startscript for evhtp and https
 # This script is copied into the container on build time and runs
 # _inside_ the container at start in runtime. It gets environment variables
 # from the start.sh script.
-# It starts a backend and the sleeps
-# for restconf.
+# It starts a backend, a restconf daemon and exposes ports for restconf, and the sleeps
 # See also Dockerfile of the example
 # Log msg, see with docker logs
 
@@ -45,6 +44,8 @@ set -eux
 >&2 echo "$0"
 
 DBG=${DBG:-0}
+
+WWWUSER=${WWWUSER:-www-data}
 
 # Initiate clixon configuration (env variable)
 echo "$CONFIG" > /usr/local/etc/clixon.xml
@@ -56,11 +57,10 @@ echo "$STORE" > /usr/local/var/example/running_db
 # Add to skiplist:
 # - all 3rd party model testing (you need to download the repos)
 # - test_install.sh since you dont have the make environment
-# - test_order.sh XXX this is a bug need debugging
-# - NOTE all restconf tests skipped which makes these tests very constrained
 cat <<EOF > /usr/local/bin/test/site.sh
 # Add your local site specific env variables (or tests) here.
-SKIPLIST="test_api.sh test_c++.sh test_yangmodels.sh test_openconfig.sh test_install.sh test_privileges.sh test_augment.sh test_choice.sh test_identity.sh test_nacm_datanode_read.sh test_nacm_datanode.sh test_nacm_datanode_write.sh test_nacm_default.sh test_nacm_ext.sh test_nacm_module_read.sh test_nacm_module_write.sh test_nacm_protocol.sh test_nacm.sh test_perf.sh test_perf_state_only.sh test_perf_state.sh test_restconf2.sh test_restconf_err.sh test_restconf_jukebox.sh test_restconf_listkey.sh test_restconf_patch.sh test_restconf.sh test_restconf_startup.sh test_rpc.sh test_ssl_certs.sh test_stream.sh test_submodule.sh test_upgrade_auto.sh test_upgrade_interfaces.sh test_upgrade_repair.sh test_yang_namespace.sh"
+SKIPLIST="test_api.sh test_c++.sh test_yangmodels.sh test_openconfig.sh test_install.sh test_privileges.sh"
+RCPROTO=https
 #IETFRFC=
 EOF
 
@@ -70,7 +70,52 @@ echo "Set disable_coredump false" > /etc/sudo.conf
 
 chmod 775 /usr/local/bin/test/site.sh 
 
+# Generate self-signed server certificates
+cat<<EOF > ./ca.cnf
+[ ca ]
+default_ca      = CA_default
+
+[ CA_default ]
+serial = ca-serial
+crl = ca-crl.pem
+database = ca-database.txt
+name_opt = CA_default
+cert_opt = CA_default
+default_crl_days = 9999
+default_md = md5
+
+[ req ]
+default_bits           = 2048
+days                   = 1
+distinguished_name     = req_distinguished_name
+attributes             = req_attributes
+prompt                 = no
+output_password        = password
+
+[ req_distinguished_name ]
+C                      = SE
+L                      = Stockholm
+O                      = Clixon
+OU                     = clixon
+CN                     = ca
+emailAddress           = olof@hagsand.se
+
+[ req_attributes ]
+challengePassword      = test
+EOF
+
+# Generate self-signed server certificates
+openssl req -x509 -config ./ca.cnf -nodes -newkey rsa:4096 -keyout /etc/ssl/private/clixon-server-key.pem -out /etc/ssl/certs/clixon-server-crt.pem -days 365
+
+# Start clixon_restconf
+# -s https
+# But dont use -s exposing local ports since there is problem with self-signed certs?
+/www-data/clixon_restconf -l f/www-data/restconf.log -D $DBG &
+>&2 echo "clixon_restconf started"
+
 # Start clixon backend (tests will kill this)
+# Note if tests start too quickly, a backend may only be running and get error when start here,
+# therefore test starts need to be delayed slightly
 /usr/local/sbin/clixon_backend -D $DBG -s running -l e # logs on docker logs
 >&2 echo "clixon_backend started"
 
