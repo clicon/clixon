@@ -185,7 +185,9 @@ sleep 1
 # Restconf stream subscription RFC8040 Sec 6.3
 # Start Subscription w error
 new "restconf monitor event nonexist stream"
-expectwait "curl $CURLOPTS -X GET -H \"Accept: text/event-stream\" -H \"Cache-Control: no-cache\" -H \"Connection: keep-alive\" $RCPROTO://localhost/streams/NOTEXIST" 0 '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>' 2
+# Note cant use -S or -i here, the former dont know, latter because expectwait cant take
+# partial returns like expectpart can
+expectwait "curl -sk -X GET -H \"Accept: text/event-stream\" -H \"Cache-Control: no-cache\" -H \"Connection: keep-alive\" $RCPROTO://localhost/streams/NOTEXIST" 0 '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>' 2
 
 # 2a) start subscription 8s - expect 1-2 notifications
 new "2a) start subscriptions 8s - expect 1-2 notifications"
