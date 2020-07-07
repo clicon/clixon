@@ -9,5 +9,4 @@ before_script:
   - sudo apt-get install -y libfcgi-dev
   - ./test/travis/before_script.sh
 script:
-  - ./configure --with-restconf=fcgi && make && sudo make install
-  - ./configure --with-restconf=event && make && sudo make install
+  - ./configure --with-restconf=evhtp && make && sudo make install
