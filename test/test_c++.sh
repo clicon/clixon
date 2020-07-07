@@ -6,6 +6,28 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 cfile=$dir/c++.cpp
 
+APPNAME=example
+cfg=$dir/conf.xml
+
+test -d $dir/backend || mkdir $dir/backend
+
+cat <<EOF > $cfg
+<clixon-config xmlns="http://clicon.org/config">
+  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
+  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_BACKEND_DIR>$dir/backend</CLICON_BACKEND_DIR>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+</clixon-config>
+EOF
+
 cat<<EOF > $cfile
 #include <stdio.h>
 #include <stdlib.h>
@@ -64,7 +86,7 @@ static netconf_test api(clixon_plugin_init, plugin_start, plugin_exit);
 
 /*! Local example netconf rpc callback
  */
-int netconf_client_rpc(clicon_handle h,
+int example_rpc(clicon_handle h,
 		   cxobj        *xe,
 		   cbuf         *cbret,
 		   void         *arg,
@@ -107,7 +129,7 @@ clixon_plugin_api* clixon_plugin_init(clicon_handle h)
 {
     clicon_debug(1, "%s netconf", __FUNCTION__);
     /* Register local netconf rpc client (note not backend rpc client) */
-    if (rpc_callback_register(h, netconf_client_rpc, NULL, "urn:example:clixon", "client-rpc") < 0)
+    if (rpc_callback_register(h, example_rpc, NULL, "urn:example:clixon", "example") < 0)
 	      return NULL;
 
     return api.get_api();
@@ -116,8 +138,35 @@ clixon_plugin_api* clixon_plugin_init(clicon_handle h)
 EOF
 
 new "C++ compile"
-expectpart "$($CXX -g -Wall -rdynamic -fPIC -shared $cfile -o c++.o)" 0 ""
+expectpart "$($CXX -g -Wall -rdynamic -fPIC -shared $cfile -o $dir/backend/c++.so)" 0 ""
 
-rm -f c++.o
+new "test params: -f $cfg"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
+fi
+
+new "wait backend"
+wait_backend
+
+new "Netconf runtime test"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>0</x></example></rpc>]]>]]>' '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><x xmlns="urn:example:clixon">0</x><y xmlns="urn:example:clixon">42</y></rpc-reply>]]>]]>$'
+
+if [ $BE -ne 0 ]; then
+   new "Kill backend"
+   # Check if premature kill
+   pid=$(pgrep -u root -f clixon_backend)
+   if [ -z "$pid" ]; then
+       err "backend already dead"
+   fi
+   # kill backend
+   stop_backend -f $cfg
+fi 
+
 rm -rf $dir
 
