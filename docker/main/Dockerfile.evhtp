@@ -129,7 +129,6 @@ RUN adduser www-data clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
 COPY --from=0 /www-data /www-data
-#COPY --from=0 /usr/local/lib/libevhtp.a /usr/local/lib/libevhtp.a # maybe not necessary since static
 
 # Manually created
 RUN chown www-data /www-data
