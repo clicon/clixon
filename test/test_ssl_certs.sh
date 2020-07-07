@@ -7,11 +7,9 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-# force it (or check it?)
-RCPROTO=https
 
 # Only works with evhtp and https
-if [ "${WITH_RESTCONF}" != "evhtp"  -o "$RCPROTO" = http ]; then
+if [ "${WITH_RESTCONF}" != "evhtp" -o "$RCPROTO" != https ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
@@ -262,3 +260,6 @@ fi
 stop_backend -f $cfg
 
 rm -rf $dir
+
+# unset conditional parameters
+unset RCPROTO
