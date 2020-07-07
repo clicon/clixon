@@ -1,10 +1,10 @@
-language: c
-os: linux
 # safelist
 branches:
   only:
   - master
 jobs:
+- language: c
+- os: linux
 - arch: amd64
 - dist: bionic
 - before_script:
@@ -12,7 +12,11 @@ jobs:
   - ./test/travis/before_script.sh
 - script: ./configure --with-restconf=fcgi && make && sudo make install
 jobs:
+- language: c
+- os: linux
 - arch: amd64
 - dist: xenial
+- before_script:
+  - ./test/travis/before_script.sh
 - script: ./configure --with-restconf=evhtp && make && sudo make install
  
