@@ -7,6 +7,6 @@ os: linux
 arch: amd64
 script: ./configure --with-restconf=evhtp && make && sudo make install
 before_script:
-  - sudo apt-get install -y libevent-dev cmake libssl1.1 openssl libssl-dev
+  - sudo apt-get install -y libevent-dev cmake libssl openssl libssl-dev
   - ./test/travis/before_script.sh
   - ./test/travis/build_evhtp.sh
