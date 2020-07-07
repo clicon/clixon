@@ -72,11 +72,10 @@ push:
 	sudo docker push $(IMG)
 
 # Start the clixon system container and run the test script
-# sleep is for waiting for start script to run properly before starting tests
 # Note tests will kill the daemons started in the start scrips
 test: docker
 	./cleanup.sh ; PORT=8080 ./start.sh # kill (ignore error) and the start it
-	sleep 1; sudo docker exec -it clixon-system bash -c 'cd /usr/local/bin/test && ./all.sh'
+	sudo docker exec -it clixon-system bash -c 'cd /usr/local/bin/test && ./all.sh'
 
 depend:
 

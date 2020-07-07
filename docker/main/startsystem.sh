@@ -40,7 +40,7 @@
 # See also Dockerfile of the example
 # Log msg, see with docker logs
 
-set -eux
+set -ux # e but clixon_backend may fail if test is run in parallell
 
 >&2 echo "$0"
 
