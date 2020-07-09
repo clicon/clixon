@@ -105,6 +105,9 @@ done
 echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig
 
 # Now take large config file and write it via netconf to candidate
+new "test time exists"
+expectpart "$(time -p ls)" 0 
+
 new "netconf write large config"
 expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
