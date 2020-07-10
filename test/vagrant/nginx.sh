@@ -69,6 +69,7 @@ EOF
 $scpcmd $dir/nginx.conf vagrant@127.0.0.1:
 cat<<'EOF' > $dir/startnginx.sh
     #!/usr/bin/env bash
+    set -x
     if [ $# -ne 0 -a $# -ne 1 ]; then 
        echo "usage: $0 [<prefix>"]
        exit

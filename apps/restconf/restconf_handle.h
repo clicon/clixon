@@ -37,7 +37,7 @@
  */
 
 #ifndef _RESTCONF_HANDLE_H_
-#define _RESCTONF_HANDLE_H_
+#define _RESTCONF_HANDLE_H_
 
 /*
  * Prototypes 
