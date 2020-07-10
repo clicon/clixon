@@ -72,5 +72,4 @@ cd test
 echo "#!/usr/bin/env bash" > ./site.sh
 if [ $release = "freebsd" ]; then
   echo "make=gmake" >> ./site.sh
-  echo 'SKIPLIST="test_api.sh test_c++.sh"' >> ./site.sh
 fi

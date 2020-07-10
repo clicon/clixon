@@ -63,9 +63,6 @@ class netconf_test
 {
 private:
     struct clixon_plugin_api api;
-    plginit2_t       *ca_init;
-    plgstart_t       *ca_start;
-    plgexit_t        *ca_exit;
 
 public:
     netconf_test(plginit2_t* init, plgstart_t* start, plgexit_t* exit, const char* str = "c++ netconf test") : api()
@@ -138,7 +135,8 @@ clixon_plugin_api* clixon_plugin_init(clicon_handle h)
 EOF
 
 new "C++ compile"
-expectpart "$($CXX -g -Wall -rdynamic -fPIC -shared $cfile -o $dir/backend/c++.so)" 0 ""
+# -I /usr/local_include for eg freebsd
+expectpart "$($CXX -g -Wall -rdynamic -fPIC -shared -I/usr/local/include $cfile -o $dir/backend/c++.so)" 0 ""
 
 new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
