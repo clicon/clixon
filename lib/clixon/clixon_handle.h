@@ -46,11 +46,7 @@
    Note that its contents is different dependending on if invoked from a 
    cli/backend/netconf or other plugin. But this is hidden under-the-hood.
 */
-#if 1 /* SANITY CHECK */
-typedef struct {float a;} *clicon_handle;
-#else
 typedef void *clicon_handle;
-#endif
 
 /* The dynamicically loadable plugin object handle (should be in clixon_plugin.h) */
 typedef void *plghndl_t;

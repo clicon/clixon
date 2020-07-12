@@ -49,18 +49,24 @@ VAGRANTS =
 
 -include site.mk
 
-.PHONY: all clean distclean depend install uninstall $(VAGRANTS)
+.PHONY: all clean distclean depend install uninstall $(VAGRANTS) destroy
 
 all: $(VAGRANTS)
 
+logs:
+	test -d logs || mkdir -p logs
+
 # Local vagrant hosts eg generic/centos8. The vagrantdir is a subdirectory and logs will
 # appear eg as generic/centos8.log
-$(VAGRANTS):
-	test -d $@ || mkdir -p $@
-	./vagrant.sh $@ destroy 2>&1 | tee $@.log
+$(VAGRANTS): logs
+	./vagrant.sh $@ 2>&1 | tee "logs/$(subst /,-,$@).log"
 
-clean:
-	rm -f *.log
+destroy:
+	for i in $(VAGRANTS) ; \
+	do ./vagrant.sh $$i destroy; done
+
+clean:  destroy
+	rm -f logs/*.log
 
 distclean: clean
 	rm -f Makefile *~ .depend

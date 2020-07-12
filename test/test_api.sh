@@ -210,7 +210,8 @@ clixon_plugin_init(clicon_handle h)
 EOF
 
 new "compile $cfile"
-cc -g -Wall -rdynamic -fPIC -shared $cfile -o $sofile
+# -I /usr/local_include for eg freebsd
+expectpart "$($CC -g -Wall -rdynamic -fPIC -shared -I/usr/local/include $cfile -o $sofile)" 0 ""
 
 new "test params: -s running -f $cfg"
 

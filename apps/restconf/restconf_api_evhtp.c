@@ -65,6 +65,15 @@
 #include "restconf_lib.h"
 #include "restconf_api.h"  /* Virtual api */
 
+/* evhtp_safe_free is a macro that may not be present in a libevhtp release
+ */
+#ifndef evhtp_safe_free
+#define evhtp_safe_free(_var, _freefn) do { \
+        _freefn((_var));                    \
+        (_var) = NULL;                      \
+}  while (0)
+#endif
+
 /*! Add HTTP header field name and value to reply, evhtp specific
  * @param[in]  req   Evhtp http request handle
  * @param[in]  name  HTTP header field name
