@@ -85,7 +85,7 @@
 static int _yang_unknown_anydata = 0;
 
 /*! Kludge to equate unknown XML with anydata
- * The problem with this is that its global and shuld be bound to a handle
+ * The problem with this is that its global and should be bound to a handle
  */
 int
 xml_bind_yang_unknown_anydata(int val)
@@ -305,6 +305,7 @@ populate_self_top(cxobj     *xt,
  * Populate xt:s children as top-level symbols
  * This may be unnecessary if yspec is set on manual creation: x=xml_new(); xml_spec_set(x,y)
  * @param[in]   xt     XML tree node
+ * @param[in]   yb     How to bind yang to XML top-level when parsing
  * @param[in]   yspec  Yang spec
  * @param[out]  xerr   Reason for failure, or NULL
  * @retval      1      OK yang assignment made
@@ -348,7 +349,7 @@ xml_bind_yang(cxobj     *xt,
     goto done;
 }
 
-int
+static int
 xml_bind_yang0_opt(cxobj     *xt, 
 		   yang_bind  yb,
 		   cxobj     *xsibling,
@@ -428,6 +429,7 @@ xml_bind_yang0_opt(cxobj     *xt,
  * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
  * @retval     -1      Error
  * Populate xt as top-level node
+ * @see xml_bind_yang  If only children of xt should be populated, not xt itself
  */
 int
 xml_bind_yang0(cxobj     *xt, 

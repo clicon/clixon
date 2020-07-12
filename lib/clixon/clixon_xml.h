@@ -114,7 +114,6 @@ enum cxobj_type {CX_ERROR=-1,
  *                       x  - - - -  y         
  *                      / \         / \
  *                     x1  x2 - -  y1  y2
- * XXX: lacks support for incoming restconf rpc, see api_operations_post_input)
  */
 enum yang_bind{ 
     YB_NONE=0,   /* Dont do Yang binding */

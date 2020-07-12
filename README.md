@@ -8,7 +8,7 @@ Clixon is a YANG-based configuration manager, with interactive CLI,
 NETCONF and RESTCONF interfaces, an embedded database and transaction
 mechanism.
 
-See [main documentation](https://clixon-docs.readthedocs.io), [project page](https://www.clicon.org) and [examples](https://github.com/clicon/clixon-examples).
+See [documentation](https://clixon-docs.readthedocs.io), [project page](https://www.clicon.org) and [examples](https://github.com/clicon/clixon-examples).
   
 Clixon is open-source and dual licensed. Either Apache License, Version 2.0 or GNU
 General Public License Version 2; you choose.

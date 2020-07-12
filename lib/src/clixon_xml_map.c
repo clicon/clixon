@@ -1195,6 +1195,7 @@ xml2xpath1(cxobj *x,
  * @param[out] xpath  Malloced xpath string. Need to free() after use
  * @retval     0      OK
  * @retval    -1      Error. (eg XML malformed)
+ * @note x needs to be bound to YANG, see eg xml_bind_yang()
  */
 int
 xml2xpath(cxobj *x,
