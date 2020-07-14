@@ -168,6 +168,10 @@ populate_self_parent(cxobj  *xt,
 	goto done;
     if ((y = yang_find_datanode(yparent, name)) == NULL){
 	if (_yang_unknown_anydata){
+	    /* Add dummy Y_ANYDATA yang stmt, see ysp_add */
+	    if ((y = yang_anydata_add(yparent, name)) < 0)
+		goto done;
+	    xml_spec_set(xt, y);
 	    retval = 2; /* treat as anydata */
 	    goto done;
 	}
@@ -258,6 +262,10 @@ populate_self_top(cxobj     *xt,
 	goto done;
     if ((y = yang_find_schemanode(ymod, name)) == NULL){ /* also rpc */
 	if (_yang_unknown_anydata){
+	    /* Add dummy Y_ANYDATA yang stmt, see ysp_add */
+	    if ((y = yang_anydata_add(ymod, name)) < 0)
+		goto done;
+	    xml_spec_set(xt, y);
 	    retval = 2; /* treat as anydata */
 	    goto done;
 	}

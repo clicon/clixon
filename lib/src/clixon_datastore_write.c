@@ -571,9 +571,19 @@ text_modify(clicon_handle       h,
 	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
 		x1cname = xml_name(x1c);
 		/* Get yang spec of the child by child matching */
-		if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
-		    clicon_err(OE_YANG, errno, "No yang node found: %s", x1cname);
-		    goto done;
+		yc = yang_find_datanode(y0, x1cname);
+		if (yc == NULL){
+		    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
+			/* Add dummy Y_ANYDATA yang stmt, see ysp_add */
+			if ((yc = yang_anydata_add(y0, x1cname)) < 0)
+			    goto done;
+			xml_spec_set(x1c, yc);
+		    }
+		    else{
+			if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
+			    goto done;
+			goto fail;
+		    }
 		}
 		/* There is a cornercase (eg augment) of multi-namespace trees where
 		 * the yang child has a different namespace.
@@ -767,9 +777,17 @@ text_modify_top(clicon_handle       h,
 	if (ymod != NULL)
 	    yc = yang_find_datanode(ymod, x1cname);
 	if (yc == NULL){
-	    if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
-		goto done;
-	    goto fail;
+	    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
+		/* Add dummy Y_ANYDATA yang stmt, see ysp_add */
+		if ((yc = yang_anydata_add(ymod, x1cname)) < 0)
+		    goto done;
+		xml_spec_set(x1c, yc);
+	    }
+	    else{
+		if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
+		    goto done;
+		goto fail;
+	    }
 	}
 	/* See if there is a corresponding node in the base tree */
 	if (match_base_child(x0, x1c, yc, &x0c) < 0)

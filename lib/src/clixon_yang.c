@@ -2850,6 +2850,32 @@ yang_type_cache_free(yang_type_cache *ycache)
     return 0;
 }
 
+/*! Add a simple anydata-node 
+ *
+ * One usecase is CLICON_YANG_UNKNOWN_ANYDATA when unknown data is treated as anydata
+ * @param[in]  yp    Yang parent statement
+ * @param[in]  name  Node name
+ * @retval     ys    OK
+ * @retval     NULL  Error
+ * @see ysp_add
+ */
+yang_stmt *
+yang_anydata_add(yang_stmt *yp,
+		 char      *name)
+{
+    yang_stmt *ys = NULL;
+
+    if ((ys = ys_new(Y_ANYDATA)) == NULL)
+	goto done;
+    yang_argument_set(ys, name);
+    if (yn_insert(yp, ys) < 0){ /* Insert into hierarchy */
+	ys = NULL;
+	goto done;
+    }
+ done:
+    return ys;
+}
+
 #ifdef XML_EXPLICIT_INDEX
 /*! Mark element as search_index in list
  * @retval     0   OK

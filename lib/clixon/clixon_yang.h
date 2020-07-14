@@ -254,5 +254,7 @@ int        yang_type_cache_get(yang_stmt *ytype, yang_stmt **resolved, int *opti
 		   cvec **cvv, cvec *patterns, int *rxmode, cvec *regexps, uint8_t *fraction);
 int        yang_type_cache_set(yang_stmt *ys, yang_stmt *resolved, int options, cvec *cvv,
 			       cvec *patterns, uint8_t fraction);
+yang_stmt *yang_anydata_add(yang_stmt *yp, char *name);
+
 
 #endif  /* _CLIXON_YANG_H_ */
