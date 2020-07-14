@@ -4292,7 +4292,6 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-
 CPPFLAGS="-DHAVE_CONFIG_H ${CPPFLAGS}"
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: compiler is $CC" >&5
@@ -4552,7 +4551,10 @@ if test "${with_cligen+set}" = set; then :
   withval=$with_cligen;
 fi
 
-if test "${with_cligen}"; then
+if test -n "${CLIGEN_DIR}" -a -d "${CLIGEN_DIR}"; then
+        with_cligen=${CLIGEN_DIR}
+fi
+if test -d "${with_cligen}"; then
   echo "Using CLIGEN here: ${with_cligen}"
   CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
   LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"

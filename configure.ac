@@ -147,9 +147,11 @@ fi
 SH_SUFFIX=".so"
 
 # This is for cligen
-AC_ARG_WITH([cligen],
-            AS_HELP_STRING([--with-cligen=dir],[Use CLIGEN installation in this dir]))
-if test "${with_cligen}"; then
+AC_ARG_WITH([cligen], AS_HELP_STRING([--with-cligen=dir],[Use CLIGEN installation in this dir]))
+if test -n "${CLIGEN_DIR}" -a -d "${CLIGEN_DIR}"; then
+        with_cligen=${CLIGEN_DIR}
+fi
+if test -d "${with_cligen}"; then
   echo "Using CLIGEN here: ${with_cligen}"
   CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
   LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"

@@ -390,7 +390,7 @@ The main improvement in this release concerns security in terms of priveleges an
   * You can start as root and drop privileges either permanently or temporary
     * use `-U <user>` clixon_backend command-line option to drop to `user`
   * Generic options are the following:
-    * `CLICON_BACKEND_USER` sets the user to drop priveleges to
+    * `CLICON_BACKEND_USER` drop of privileges to this user
     * `CLICON_BACKEND_PRIVELEGES` can have the following values:
       * `none` Make no drop/change in privileges. This is currently the default.
       * `drop_perm`  After initialization, drop privileges permanently
