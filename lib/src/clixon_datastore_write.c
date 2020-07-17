@@ -777,7 +777,8 @@ text_modify_top(clicon_handle       h,
 	if (ymod != NULL)
 	    yc = yang_find_datanode(ymod, x1cname);
 	if (yc == NULL){
-	    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
+	    if (ymod != NULL &&
+		clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
 		/* Add dummy Y_ANYDATA yang stmt, see ysp_add */
 		if ((yc = yang_anydata_add(ymod, x1cname)) < 0)
 		    goto done;
