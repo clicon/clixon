@@ -2854,19 +2854,24 @@ yang_type_cache_free(yang_type_cache *ycache)
  *
  * One usecase is CLICON_YANG_UNKNOWN_ANYDATA when unknown data is treated as anydata
  * @param[in]  yp    Yang parent statement
- * @param[in]  name  Node name
+ * @param[in]  name  Node name, will be copied
  * @retval     ys    OK
  * @retval     NULL  Error
  * @see ysp_add
  */
 yang_stmt *
 yang_anydata_add(yang_stmt *yp,
-		 char      *name)
+		 char      *name0)
 {
     yang_stmt *ys = NULL;
+    char      *name = NULL;
 
     if ((ys = ys_new(Y_ANYDATA)) == NULL)
 	goto done;
+    if ((name = strdup(name0)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
     yang_argument_set(ys, name);
     if (yn_insert(yp, ys) < 0){ /* Insert into hierarchy */
 	ys = NULL;

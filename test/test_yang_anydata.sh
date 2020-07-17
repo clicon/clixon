@@ -77,9 +77,9 @@ module unknown{
 EOF
 
 # For edit config
-XMLA='<ca xmlns="urn:example:any"><b><k>22</k><u3>55</u3></b><u2><u21>a string</u21></u2></ca><u1 xmlns="urn:example:any"><u11>23</u11></u1>'
+XMLA='<ca xmlns="urn:example:any"><b><k>22</k><u3><u31>42</u31></u3></b><u2><u21>a string</u21></u2></ca><u1 xmlns="urn:example:any"><u11>23</u11></u1>'
 
-XMLU='<cu xmlns="urn:example:unknown"><b><k>22</k><u3>55</u3></b><u2><u21>a string</u21></u2></cu><u1 xmlns="urn:example:unknown"><u11>23</u11></u1>'
+XMLU='<cu xmlns="urn:example:unknown"><b><k>22</k><u3><u31>42</u31></u3></b><u2><u21>a string</u21></u2></cu><u1 xmlns="urn:example:unknown"><u11>23</u11></u1>'
 
 # Full state
 STATE0='<sa xmlns="urn:example:any"><sb><k>22</k><u5>55</u5></sb><u4><u5>a string</u5></u4></sa><su xmlns="urn:example:unknown"><sb><k>22</k><u5>55</u5></sb><u4><u5>a string</u5></u4></su>'
@@ -177,6 +177,13 @@ EOF
 
     new "Get running"
     expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"
+
+    # Add other functions, (based on previous errors), eg cli show config, cli commit.
+    new "cli show configuration"
+    expectpart "$($clixon_cli -1 -f $cfg show conf xml)" 0 "<u31>42</u31>"
+
+    new "cli commit"
+    expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
 
     if $unknown; then
 	STATE="$STATE0" # full state

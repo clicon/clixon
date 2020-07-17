@@ -528,8 +528,7 @@ cvec2xml_1(cvec   *cvv,
  * @see xml_diff  API function, this one is internal and recursive
  */
 static int
-xml_diff1(yang_stmt *ys, 
-	  cxobj     *x0, 
+xml_diff1(cxobj     *x0, 
 	  cxobj     *x1,
 	  cxobj   ***x0vec,
 	  int       *x0veclen,
@@ -581,11 +580,11 @@ xml_diff1(yang_stmt *ys,
 	    continue;
 	}
 	else{ /* equal */
-	    if ((yc = xml_spec(x0c)) == NULL){
-		clicon_err(OE_UNIX, errno, "Unknown element: %s", xml_name(x0c));
-		goto done;
-	    }
-	    if (yang_choice(yc)){
+	    /* xml-spec NULL could happen with anydata children for example,
+	     * if so, continute compare children but without yang
+	     */
+	    yc = xml_spec(x0c);
+	    if (yc && yang_choice(yc)){
 		/* if x0c and x1c are choice/case, then they are changed */
 		if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
 		    goto done;
@@ -593,7 +592,7 @@ xml_diff1(yang_stmt *ys,
 		if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
 		    goto done;
 	    }
-	    else if (yang_keyword_get(yc) == Y_LEAF){
+	    else if (yc && yang_keyword_get(yc) == Y_LEAF){
 		/* if x0c and x1c are leafs w bodies, then they are changed */
 		if ((b1 = xml_body(x0c)) == NULL) /* empty type */
 		    break;
@@ -607,7 +606,7 @@ xml_diff1(yang_stmt *ys,
 			goto done;
 		}
 	    }
-	    else if (xml_diff1(yc, x0c, x1c,   
+	    else if (xml_diff1(x0c, x1c,   
 			       x0vec, x0veclen, 
 			       x1vec, x1veclen, 
 			       changed_x0, changed_x1, changedlen)< 0)
@@ -664,7 +663,7 @@ xml_diff(yang_stmt *yspec,
 	    goto done;
 	goto ok;
     }
-    if (xml_diff1((yang_stmt*)yspec, x0, x1,
+    if (xml_diff1(x0, x1,
 		  first, firstlen, 
 		  second, secondlen, 
 		  changed_x0, changed_x1, changedlen) < 0)
