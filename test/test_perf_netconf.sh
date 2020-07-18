@@ -86,17 +86,6 @@ fi
 new "waiting"
 wait_backend
 
-if [ $RC -ne 0 ]; then
-    new "kill old restconf daemon"
-    stop_restconf_pre
-
-    new "start restconf daemon"
-    start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
-fi
-
 new "generate config with $perfnr list entries"
 echo -n "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\">" > $fconfig
 for (( i=0; i<$perfnr; i++ )); do  
@@ -148,59 +137,13 @@ new "netconf add $perfreq small config"
     echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
-# RESTCONF get
-new "restconf get $perfreq small config 1 key index"
-{ time -p for (( i=0; i<$perfreq; i++ )); do
-    rnd=$(( ( RANDOM % $perfnr ) ))
-    curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/scaling:x/y=$rnd > /dev/null
-done } 2>&1 | awk '/real/ {print $2}'
-
-# RESTCONF put
-# Reference:
-# i686 format=xml perfnr=10000/100 time: 38/29s 20190425  WITH/OUT startup copying
-# i686 format=tree perfnr=10000/100 time: 72/64s 20190425 WITH/OUT startup copying
-new "restconf add $perfreq small config"
-{ time -p for (( i=0; i<$perfreq; i++ )); do
-    rnd=$(( ( RANDOM % $perfnr ) ))
-    curl $CURLOPTS -X PUT $RCPROTO://localhost/restconf/data/scaling:x/y=$rnd  -d '{"scaling:y":{"a":"'$rnd'","b":"'$rnd'"}}'
-done }  2>&1 | awk '/real/ {print $2}'
-
-# CLI get (XXX why does this take so much time?)
-# See: EXPAND_ONLY_INTERACTIVE in cligen. If set it is acceptable but there are some side-effects
-new "cli get $perfreq small config 1 key index"
-{ time -p for (( i=0; i<$perfreq; i++ )); do
-    rnd=$(( ( RANDOM % $perfnr ) ))
-    $clixon_cli -1 -f $cfg show conf xml x y $rnd > /dev/null
-done } 2>&1 | awk '/real/ {print $2}'
-
-# CLI add
-new "cli add $perfreq small config"
-{ time -p for (( i=0; i<$perfreq; i++ )); do
-    rnd=$(( ( RANDOM % $perfnr ) ))
-    $clixon_cli -1 -f $cfg set x y $rnd b $rnd
-done } 2>&1 | awk '/real/ {print $2}'
-
 # Instead of many small entries, get one large in netconf and restconf
 # cli?
 new "netconf get large config"
 expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon"><y><a>0</a><b>0</b></y><y><a>1</a><b>1</b></y><y><a>2</a><b>2</b></y><y><a>3</a><b>3</b></y>' 2>&1 | awk '/real/ {print $2}'
 
-new "restconf get large config"
-# XXX for some reason cannot expand $TIMEFN next two tests, need keep variable?
-$TIMEFN curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data 2>&1 > /dev/null | awk '/real/ {print $2}'
-
-new "cli get large config"
-$TIMEFN $clixon_cli -1f $cfg show config xml 2>&1 > /dev/null | awk '/real/ {print $2}'
-
 # Delete entries (last since entries are removed from db)
-# netconf
-new "cli delete $perfreq small config"
-{ time -p for (( i=0; i<$perfreq; i++ )); do
-    rnd=$(( ( RANDOM % $perfnr ) ))
-    $clixon_cli -1 -f $cfg delete x y $rnd 
-done } 2>&1 | awk '/real/ {print $2}'
-
-#new "netconf discard-changes"
+new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf delete $perfreq small config"
@@ -211,15 +154,6 @@ done | $clixon_netconf -qf $cfg  > /dev/null; }  2>&1 | awk '/real/ {print $2}'
 
 #new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
-
-# XXX This takes time
-# 18.69 without startup feature
-# 21.98 with startup
-new "restconf delete $perfreq small config"
-{ time -p for (( i=0; i<$perfreq; i++ )); do
-    rnd=$(( ( RANDOM % $perfnr ) ))
-    curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/scaling:x/y=$rnd
-done > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # Now do leaf-lists istead of leafs
 
@@ -250,11 +184,6 @@ expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<r
 
 new "netconf get large leaf-list config"
 expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><x xmlns="urn:example:clixon"><c>0</c><c>1</c>' 2>&1 | awk '/real/ {print $2}'
-
-if [ $RC -ne 0 ]; then
-    new "Kill restconf daemon"
-    stop_restconf
-fi
 
 if [ $BE -eq 0 ]; then
     exit # BE
