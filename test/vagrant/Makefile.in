@@ -40,6 +40,7 @@ SHELL	= /bin/sh
 
 .PHONY: all clean distclean depend install uninstall
 
+# Optional specific LOGDIR, eg "LOGDIR=/var/log make"
 
 # The "site.mk" file if it exists and define the VAGRANTS variables
 # eg:
@@ -59,7 +60,11 @@ logs:
 # Local vagrant hosts eg generic/centos8. The vagrantdir is a subdirectory and logs will
 # appear eg as generic/centos8.log
 $(VAGRANTS): logs
+ifdef LOGDIR
+	./vagrant.sh $@ 2>&1 > "$(LOGDIR)/$(subst /,-,$@).log"
+else
 	./vagrant.sh $@ 2>&1 | tee "logs/$(subst /,-,$@).log"
+endif
 
 destroy:
 	for i in $(VAGRANTS) ; \
