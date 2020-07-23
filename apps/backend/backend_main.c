@@ -843,6 +843,13 @@ main(int    argc,
 	    goto done;
 	/* if status = STARTUP_INVALID, cbret contains info */
     }
+    /*
+     * Disable unknown to anydata auto-creation after startup
+     */
+    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
+	clicon_option_bool_set(h, "CLICON_YANG_UNKNOWN_ANYDATA", 0);
+	xml_bind_yang_unknown_anydata(0);
+    }
     /* Merge extra XML from file and reset function to running  
      */
     if (status == STARTUP_OK && startup_mode != SM_NONE){

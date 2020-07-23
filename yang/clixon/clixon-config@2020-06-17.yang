@@ -334,7 +334,7 @@ module clixon-config {
 	    type boolean;
 	    default false;
 	    description
-		"Treat unknown XML/JSON nodes as anydata. 
+		"Treat unknown XML/JSON nodes as anydata when loading from startup db.
                  This does not apply to namespaces, which means a top-level node: xxx:yyy
                  is accepted only if yyy is unknown, not xxx";
 	}
