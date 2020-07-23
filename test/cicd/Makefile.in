@@ -40,6 +40,7 @@ SHELL	= /bin/sh
 
 .PHONY: all clean distclean depend install uninstall
 
+# Optional specific LOGDIR, eg "LOGDIR=/var/log make"
 
 # Include "site.mk" file if it exists and define the HOSTS variables
 # eg :
@@ -54,7 +55,11 @@ all: $(HOSTS)
 
 # Real hosts reachable by ssh
 $(HOSTS): 
-	./cicd.sh $@ 2>&1 | tee $@.log
+ifdef LOGDIR
+	./cicd.sh $@ 2>&1 > $(LOGDIR)/$@.log
+else
+	./cicd.sh $@ 2>&1 | tee /$@.log
+endif
 
 clean:
 	rm -f *.log

@@ -75,7 +75,7 @@ push:
 # Note tests will kill the daemons started in the start scrips
 test: docker
 	./cleanup.sh ; PORT=8080 ./start.sh # kill (ignore error) and the start it
-	sudo docker exec -it clixon-system bash -c 'cd /usr/local/bin/test && ./all.sh'
+	sudo docker exec -t clixon-system bash -c 'cd /usr/local/bin/test && ./all.sh'
 
 depend:
 

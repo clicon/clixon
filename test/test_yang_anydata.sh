@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Test YANG ANYDATA:
 # Also Test CLICON_YANG_UNKNOWN_ANYDATA: Treat unknown XML/JSON nodes as anydata. 
-# Test matric is three dimensions:
-# 1. YANG spec:  u-elements are a) anydata or b) unknown
-# 2. Access is made to top-elements: a) top-level, b) in container, c) in list
-# 3. data is in a) startup b) netconf 3)state
+# Test matrix is three dimensions:
+# 1. YANG spec:  Add elements denotend with "u" which are either a) defined as anydata or b) unknown
+# 2. Make access to elements as: a) top-level, b) in container, c) in list
+# 3. data is in a) startup b) netconf 3) state
 
 # Load an XML file with unknown yang constructs that is labelled as anydata
 # Ensure clixon is robust to handle that
@@ -48,6 +48,14 @@ module any{
      }
      anydata u4;
    }
+   rpc myrpc {
+	input {
+	    anydata u7;
+	}
+	output {
+	    anydata u8;
+	}
+   }
 }
 EOF
 
@@ -73,6 +81,8 @@ module unknown{
        }
      }
    }
+   rpc myrpc {
+   }
 }
 EOF
 
@@ -81,7 +91,7 @@ XMLA='<ca xmlns="urn:example:any"><b><k>22</k><u3><u31>42</u31></u3></b><u2><u21
 
 XMLU='<cu xmlns="urn:example:unknown"><b><k>22</k><u3><u31>42</u31></u3></b><u2><u21>a string</u21></u2></cu><u1 xmlns="urn:example:unknown"><u11>23</u11></u1>'
 
-# Full state
+# Full state with unknowns
 STATE0='<sa xmlns="urn:example:any"><sb><k>22</k><u5>55</u5></sb><u4><u5>a string</u5></u4></sa><su xmlns="urn:example:unknown"><sb><k>22</k><u5>55</u5></sb><u4><u5>a string</u5></u4></su>'
 
 # Partial state with unknowns removed in the unknown module
@@ -99,11 +109,16 @@ testrun()
     unknown=$2
 
     if $unknown; then # treat unknown as anydata or not
-	unknownreply="<rpc-reply><ok/></rpc-reply>]]>]]>"
-	XML="$XMLA$XMLU"
+	if $startup; then # If startup
+	    XML="$XMLA$XMLU"
+	else
+	    XML="$XMLA"
+	    unknownreply="<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>u1</bad-element></error-info><error-severity>error</error-severity><error-message>Unassigned yang spec</error-message></rpc-error></rpc-reply>]]>]]>"
+	fi
     else
-	unknownreply="<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>u1</bad-element></error-info><error-severity>error</error-severity><error-message>Unassigned yang spec</error-message></rpc-error></rpc-reply>]]>]]>"
 	XML="$XMLA"
+	unknownreply="<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown
+-element</error-tag><error-info><bad-element>u1</bad-element></error-info><error-severity>error</error-severity><error-message>Unassigned yang spec</error-message></rpc-error></rpc-reply>]]>]]>"
     fi
 
     if $startup; then # get config from startup
@@ -127,6 +142,7 @@ testrun()
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
+  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_YANG_UNKNOWN_ANYDATA>$unknown</CLICON_YANG_UNKNOWN_ANYDATA>
   $F
 </clixon-config>
@@ -159,6 +175,16 @@ EOF
 	new "waiting"
 	wait_backend
     fi
+    if [ $RC -ne 0 ]; then
+	new "kill old restconf daemon"
+	stop_restconf_pre
+
+	new "start restconf daemon"
+	start_restconf -f $cfg
+
+    fi
+    new "wait restconf"
+    wait_restconf
 
 
     if ! $startup; then # If not startup, add xml using netconf
@@ -185,24 +211,45 @@ EOF
     new "cli commit"
     expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
 
-    if $unknown; then
-	STATE="$STATE0" # full state
-    else
-	STATE="$STATE1" # partial state
-    fi
-    echo "$STATE" > $fstate 
+
+    new "restconf get config"
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=config)" 0 "HTTP/1.1 200 OK" "$XML"
+    
+    # Save partial state in state file with unknown removed (positive test)
+    echo "$STATE1" > $fstate 
 
     new "Get state (positive test)"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"></get></rpc>]]>]]>' "^<rpc-reply><data>$STATE</data></rpc-reply>]]>]]>"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"></get></rpc>]]>]]>' "^<rpc-reply><data>$STATE1</data></rpc-reply>]]>]]>"
 
-    echo "$STATE0" > $fstate # full state
+    new "restconf get state(positive)"
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/1.1 200 OK" "$STATE1"
+
+    # full state with unknowns
+    echo "$STATE0" > $fstate 
 
     new "Get state (negative test)"
-    if $unknown; then
-	expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"></get></rpc>]]>]]>' "^<rpc-reply><data>$STATE</data></rpc-reply>]]>]]>"
-    else
-	expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"></get></rpc>]]>]]>' "error-message>Failed to find YANG spec of XML node: u5 with parent: sb in namespace: urn:example:unknown. Internal error, state callback returned invalid XML: example_backend</error-message>"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"></get></rpc>]]>]]>' "error-message>Failed to find YANG spec of XML node: u5 with parent: sb in namespace: urn:example:unknown. Internal error, state callback returned invalid XML: example_backend</error-message>"
+
+	new "restconf get state(negative)"
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/1.1 412 Precondition Failed" "<error-tag>operation-failed</error-tag><error-info><bad-element>u5</bad-element></error-info>"
+
+    # RPC:s take "not-supported" as OK: syntax OK and according to mdeol, just not implemented in
+    # server. But "unknown-element" as truly unknwon.
+    # (Would need to add a handler to get a proper OK)
+    new "Not supported RPC"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><myrpc xmlns="urn:example:any"></myrpc></rpc>]]>]]>' '<error-tag>operation-not-supported</error-tag>'
+
+    new "anydata RPC"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><myrpc xmlns="urn:example:any"><u7><u8>88</u8></u7></myrpc></rpc>]]>]]>' '<error-tag>operation-not-supported</error-tag>'
+
+    new "unknown RPC"
+    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><myrpc xmlns="urn:example:unknown"><u7><u8>88</u8></u7></myrpc></rpc>]]>]]>' '<error-tag>unknown-element</error-tag>'
+
+    if [ $RC -ne 0 ]; then
+	new "Kill restconf daemon"
+	stop_restconf
     fi
+
     if [ $BE -ne 0 ]; then
 	new "Kill backend"
 	# Check if premature kill
