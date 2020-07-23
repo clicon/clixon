@@ -120,6 +120,115 @@ singleconfigroot(cxobj  *xt,
  done:
     return retval;
 }
+
+/*! Recurse up from x0 up to x0t then create objects from x1t down to new object x1
+ */
+static int
+xml_copy_bottom_recurse(cxobj  *x0t, 
+			cxobj  *x0,
+			cxobj  *x1t,
+			cxobj **x1pp)
+{
+    int        retval = -1;
+    cxobj     *x0p = NULL;
+    cxobj     *x1p = NULL;
+    cxobj     *x1 = NULL;
+    cxobj     *x1a = NULL;
+    cxobj     *x0a = NULL;
+    cxobj     *x0k;
+    cxobj     *x1k;
+    yang_stmt *y = NULL;
+    cvec      *cvk = NULL; /* vector of index keys */
+    cg_var    *cvi;
+    char      *keyname;
+
+    if (x0 == x0t){
+	*x1pp = x1t;
+	goto ok;
+    }
+    if ((x0p = xml_parent(x0)) == NULL){
+	clicon_err(OE_XML, EFAULT, "Reached top of tree");
+	goto done;
+    }
+    if (xml_copy_bottom_recurse(x0t, x0p, x1t, &x1p) < 0)
+	goto done;
+    y = xml_spec(x0);
+    /* Look if it exists */
+    if (match_base_child(x1p, x0, y, &x1) < 0)
+	goto done;
+    if (x1 == NULL){ /* If not, create it and copy it one level only */
+	if ((x1 = xml_new(xml_name(x0), x1p, CX_ELMNT)) == NULL)
+	    goto done;
+	if (xml_copy_one(x0, x1) < 0)
+	    goto done;
+	/* Copy all attributes */
+	x0a = NULL;
+	while ((x0a = xml_child_each(x0, x0a, -1)) != NULL) {
+	    /* Assume ordered, skip after attributes */
+	    if (xml_type(x0a) != CX_ATTR)
+		break;
+	    if ((x1a = xml_new(xml_name(x0a), x1, CX_ATTR)) == NULL)
+		goto done;
+	    if (xml_copy_one(x0a, x1a) < 0)
+		goto done;
+	}
+	/* Key nodes in lists are copied */
+	if (y && yang_keyword_get(y) == Y_LIST){
+	    /* Loop over all key variables */
+	    cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
+	    cvi = NULL;
+	    /* Iterate over individual keys  */
+	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+		keyname = cv_string_get(cvi);	    
+		if ((x0k = xml_find_type(x0, NULL, keyname, CX_ELMNT)) != NULL){
+		    if ((x1k = xml_new(keyname, x1, CX_ELMNT)) == NULL)
+			goto done;
+		    if (xml_copy(x0k, x1k) < 0) 
+			goto done;
+		}
+
+	    }
+	}
+    }
+    *x1pp = x1;
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+static int
+xml_copy_from_bottom(cxobj  *x0t, 
+		     cxobj  *x0,
+		     cxobj  *x1t)
+{
+    int        retval = -1;
+    cxobj     *x1p    = NULL;
+    cxobj     *x0p    = NULL;
+    cxobj     *x1     = NULL;
+    yang_stmt *y      = NULL;
+    
+    if (x0 == x0t)
+	goto ok;
+    x0p = xml_parent(x0);
+    if (xml_copy_bottom_recurse(x0t, x0p, x1t, &x1p) < 0)
+	return -1;
+    y = xml_spec(x0);
+    /* Look if it exists */
+    if (match_base_child(x1p, x0, y, &x1) < 0)
+	goto done;
+    if (x1 == NULL){ /* If not, create it and copy complete tree */
+	if ((x1 = xml_new(xml_name(x0), x1p, CX_ELMNT)) == NULL)
+	    goto done;
+	if (xml_copy(x0, x1) < 0)
+	    goto done;
+    }
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Given XML tree x0 with marked nodes, copy marked nodes to new tree x1
  * Two marks are used: XML_FLAG_MARK and XML_FLAG_CHANGE
  *
@@ -563,20 +672,33 @@ xmldb_get_cache(clicon_handle    h,
 	goto done;
     xml_spec_set(x1t, xml_spec(x0t));
 
-    /* Iterate through the match vector
-     * For every node found in x0, mark the tree up to t1
-     */
-    for (i=0; i<xlen; i++){
-	x0 = xvec[i];
-	xml_flag_set(x0, XML_FLAG_MARK);
-	xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+    if (xlen < 1000){
+	/* This is optimized for the case when the tree is large and xlen is small
+	 * If the tree is large and xlen too, then the other is better.
+	 */
+	for (i=0; i<xlen; i++){
+	    x0 = xvec[i];
+	    if (xml_copy_from_bottom(x0t, x0, x1t) < 0) /* config */
+		goto done;
+	}
     }
-    if (xml_copy_marked(x0t, x1t) < 0) /* config */
-	goto done;
-    if (xml_apply(x0t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
-	goto done;
-    if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
-	goto done;
+    else {
+	/* Iterate through the match vector
+	 * For every node found in x0, mark the tree up to t1
+	 * XXX can we do this directly from xvec?
+	 */
+	for (i=0; i<xlen; i++){
+	    x0 = xvec[i];
+	    xml_flag_set(x0, XML_FLAG_MARK);
+	    xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+	}
+	if (xml_copy_marked(x0t, x1t) < 0) /* config */
+	    goto done;
+	if (xml_apply(x0t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+	    goto done;
+	if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+	    goto done;
+    }
     /* x1t is wrong here should be <config><system>.. but is <system>.. */
     /* XXX where should we apply default values once? */
     if (xml_default_recurse(x1t) < 0)

@@ -100,15 +100,13 @@ new "netconf write large config"
 expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 # Here, there are $perfnr entries in candidate
-new "netconf write large config again"
-expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 # Now commit it from candidate to running 
 new "netconf commit large config"
 expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
-# CLI get (XXX why does this take so much time?)
-# See: EXPAND_ONLY_INTERACTIVE in cligen. If set it is acceptable but there are some side-effects
+# CLI get. This takes a lot of time because expand_dbvar gets perfnr (eg 100000) entries
+# and loops over it.
 new "cli get $perfreq small config 1 key index"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))

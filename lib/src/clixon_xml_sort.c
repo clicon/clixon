@@ -1129,11 +1129,11 @@ xml_sort_verify(cxobj *x0,
 /*! Given child tree x1c, find (first) matching child in base tree x0 and return as x0cp
  * @param[in]  x0      Base tree node
  * @param[in]  x1c     Modification tree child
- * @param[in]  yc      Yang spec of tree child
+ * @param[in]  yc      Yang spec of tree child. If null revert to linear search.
  * @param[out] x0cp    Matching base tree child (if any)
  * @retval     0       OK
  * @retval    -1       Error
- * XXX: only handles first match
+ * @note only handles first match
  */
 int
 match_base_child(cxobj      *x0, 
@@ -1153,6 +1153,11 @@ match_base_child(cxobj      *x0,
     clixon_xvec *xvec = NULL;
     
     *x0cp = NULL; /* init return value */
+    /* Revert to simple xml lookup if no yang */
+    if (yc == NULL){ 
+	*x0cp = xml_find(x0, xml_name(x1c));
+	goto ok;
+    }
     /* Special case is if yc parent (yp) is choice/case
      * then find x0 child with same yc even though it does not match lexically
      * However this will give another y0c != yc

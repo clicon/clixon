@@ -112,8 +112,6 @@ new "netconf write large config"
 expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 # Here, there are $perfnr entries in candidate
-new "netconf write large config again"
-expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 # Now commit it from candidate to running 
 new "netconf commit large config"

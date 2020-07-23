@@ -101,8 +101,6 @@ new "netconf write large config"
 expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 # Here, there are $perfnr entries in candidate
-new "netconf write large config again"
-expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 # Now commit it from candidate to running 
 new "netconf commit large config"
@@ -110,18 +108,25 @@ expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<r
 
 # Now commit it again from candidate (validation takes time when
 # comparing to existing)
-new "netconf commit large config again"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 # Having a large db, get and put single entries many times
 # Note same entries in the range alreay there, db has same size
 
 # NETCONF get 1 key index
+# Note this is done by streaming input into one single netconf client. it is much
+# slower if it is started and stopped for each request. (next)
 new "netconf get $perfreq small config 1 key index"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
     echo "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:x/ex:y[ex:a=$rnd]\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
+
+new "netconf get $perfreq small config 1 key index start/stop"
+{ time -p for (( i=0; i<$perfreq; i++ )); do
+    rnd=$(( ( RANDOM % $perfnr ) ))
+    echo "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:x/ex:y[ex:a=$rnd]\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>]]>]]>"  | $clixon_netconf -qf $cfg > /dev/null; 
+done
+}  2>&1 | awk '/real/ {print $2}'
 
 # NETCONF get 1 key and one non-key index
 new "netconf get $perfreq small config 1 key + 1 non-key index"

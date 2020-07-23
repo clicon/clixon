@@ -299,16 +299,16 @@ EOF
 # There is some issue with having different payloads in the config file
 # That is why there are tests with different payloads
 
-new "b payload only---------"
+new "b payload only"
 testall '<dummy xmlns="urn:example:b"/>' '<dummy xmlns="urn:example:b"/>'
 
 new "b payload and interfaces payload---------"
 testall '<dummy xmlns="urn:example:b"/><dummy xmlns="urn:example:interfaces"/>' '<dummy xmlns="urn:example:b"/>'
 
-new "a payload only---------"
+new "a payload only"
 testall '<dummy xmlns="urn:example:interfaces"/>' ''
 
-new "empty payload---------"
+new "empty payload"
 testall '' ''
 
 rm -rf $dir

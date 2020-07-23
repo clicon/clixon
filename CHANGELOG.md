@@ -81,6 +81,7 @@ Expected: July 2020
   
 ### Minor changes
 
+* Optimized get config xpath of large lists, such as `a[x=1000]` in a list of 100000s `a:s`.
 * Added docker support for three restconf modes: nginx/fcgi(default); evhtp ; and none.
 * Added [Vagrant tests](test/vagrant/README.md)
 * Added new function `clicon_xml2str()` to complement xml_print and others that returns a malloced string.
