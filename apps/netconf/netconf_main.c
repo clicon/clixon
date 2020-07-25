@@ -149,9 +149,10 @@ netconf_input_packet(clicon_handle h,
     free(str0);
     if ((xrpc=xpath_first(xreq, NULL, "//rpc")) != NULL){
         isrpc++;
-	if (xml_bind_yang_rpc(xrpc, yspec, NULL) < 0)
+	if ((ret = xml_bind_yang_rpc(xrpc, yspec, &xret)) < 0)
 	    goto done;
-	if ((ret = xml_yang_validate_rpc(h, xrpc, &xret)) < 0) 
+	if (ret > 0 &&
+	    (ret = xml_yang_validate_rpc(h, xrpc, &xret)) < 0) 
 	    goto done;
 	if (ret == 0){
 	    clicon_xml2cbuf(cbret, xret, 0, 0, -1);

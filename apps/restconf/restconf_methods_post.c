@@ -670,9 +670,9 @@ api_operations_post_output(clicon_handle h,
     if (youtput != NULL){
 	xml_spec_set(xoutput, youtput); /* needed for xml_bind_yang */
 #ifdef notyet
-	if (xml_bind_yang(xoutput, YB_MODULE, yspec, NULL) < 0)
+	if ((ret = xml_bind_yang(xoutput, YB_MODULE, yspec, &xerr)) < 0)
 	    goto done;
-	if ((ret = xml_yang_validate_all(xoutput, &xerr)) < 0)
+	if (ret > 0 && (ret = xml_yang_validate_all(xoutput, &xerr)) < 0)
 	    goto done;
 	if (ret == 1 &&
 	    (ret = xml_yang_validate_add(h, xoutput, &xerr)) < 0)

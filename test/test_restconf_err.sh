@@ -216,7 +216,7 @@ expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/augment:r
 #----------------------------------------------
 # Also generate an invalid state XML. This should generate an "Internal" error and the name of the
 new "restconf GET failed state"
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 '412 Precondition Failed' '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>mystate</bad-element></error-info><error-severity>error</error-severity><error-message>No such yang module. Internal error, state callback returned invalid XML: example_backend</error-message></error></errors>'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 '412 Precondition Failed' '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>mystate</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: mystate with parent: top in namespace: urn:example:foobar. Internal error, state callback returned invalid XML: example_backend</error-message></error></errors>'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

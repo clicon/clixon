@@ -624,8 +624,13 @@ from_client_edit_config(clicon_handle h,
 	    xml_spec_set(xc, NULL);
 	/* Populate XML with Yang spec (why not do this in parser?) 
 	 */
-	if (xml_bind_yang(xc, YB_MODULE, yspec, NULL) < 0)
+	if ((ret = xml_bind_yang(xc, YB_MODULE, yspec, &xret)) < 0)
 	    goto done;
+	if (ret == 0){
+	    if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+		goto done;
+	    goto ok;
+	}
 	/* Maybe validate xml here as in text_modify_top? */
 	if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
 	    goto done;

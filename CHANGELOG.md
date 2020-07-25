@@ -51,8 +51,10 @@ Expected: July 2020
     * CLICON_SSL_CA_CERT
 
 * Restconf FCGI (eg via nginx) have changed reply message syntax slightly as follows (due to refactoring and common code with evhtp):
-    * Bodies in error reyruns including html code have been removed
+    * Bodies in error retuns including html code have been removed
     * Some (extra) CRLF:s have been removed
+
+* Changed and enhanced several `bad-element` error replies to `unknown-element` with more detailed error-message.
 
 ### C/CLI-API changes on existing features (For developers)
 

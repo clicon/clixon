@@ -129,6 +129,7 @@ fi
 BUSER=clicon
 
 # If set, unknown XML is treated as ANYDATA
+# This would only happen if you set option YANG_UNKNOWN_ANYDATA to something else than default
 : ${YANG_UNKNOWN_ANYDATA:=false}
 
 # Follow the binary programs that can be parametrized (eg with valgrind)

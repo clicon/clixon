@@ -184,7 +184,7 @@ populate_self_parent(cxobj  *xt,
 	if (ns)
 	    cprintf(cb, " in namespace: %s", ns);
 	if (xerr &&
-	    netconf_bad_element_xml(xerr, "application", name, cbuf_get(cb)) < 0)
+	    netconf_unknown_element_xml(xerr, "application", name, cbuf_get(cb)) < 0)
 	    goto done;
 	goto fail;
     }
@@ -251,15 +251,26 @@ populate_self_top(cxobj     *xt,
     }
     if (ys_module_by_xml(yspec, xt, &ymod) < 0)
 	goto done;
-    /* ymod is "real" module, name may belong to included submodule */
-    if (ymod == NULL){
-	if (xerr &&
-	    netconf_bad_element_xml(xerr, "application", name, "No such yang module") < 0)
-	    goto done;
-	goto fail;
-    }
     if (xml2ns(xt, xml_prefix(xt), &ns) < 0)
 	goto done;
+    /* ymod is "real" module, name may belong to included submodule */
+    if (ymod == NULL){
+	if (xerr){
+	    if ((cb = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    cprintf(cb, "Failed to find YANG spec of XML node: %s", name);
+	    if ((xp = xml_parent(xt)) != NULL)
+		cprintf(cb, " with parent: %s", xml_name(xp));
+	    if (ns)
+		cprintf(cb, " in namespace: %s", ns);
+	    if (netconf_unknown_element_xml(xerr, "application", name, cbuf_get(cb)) < 0)
+		goto done;
+	}
+	goto fail;
+    }
+
     if ((y = yang_find_schemanode(ymod, name)) == NULL){ /* also rpc */
 	if (_yang_unknown_anydata){
 	    /* Add dummy Y_ANYDATA yang stmt, see ysp_add */
@@ -279,7 +290,7 @@ populate_self_top(cxobj     *xt,
 	if (ns)
 	    cprintf(cb, " in namespace: %s", ns);
 	if (xerr &&
-	    netconf_bad_element_xml(xerr, "application", name, cbuf_get(cb)) < 0)
+	    netconf_unknown_element_xml(xerr, "application", name, cbuf_get(cb)) < 0)
 	    goto done;
 	goto fail;
     }
@@ -320,7 +331,8 @@ populate_self_top(cxobj     *xt,
  * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
  * @retval     -1      Error
  * @code
- *   if (xml_bind_yang(x, YB_MODULE, yspec, NULL) < 0)
+ *   cxobj *xerr = NULL;
+ *   if (xml_bind_yang(x, YB_MODULE, yspec, &xerr) < 0)
  *     err;
  * @endcode
  * @note For subs to anyxml nodes will not have spec set
@@ -493,7 +505,7 @@ xml_bind_yang0(cxobj     *xt,
 /*! Find yang spec association of XML node for incoming RPC starting with <rpc>
  * 
  * Incoming RPC has an "input" structure that is not taken care of by xml_bind_yang
- * @param[in]   xrpc XML rpc node
+ * @param[in]   xrpc   XML rpc node
  * @param[in]   yspec  Yang spec
  * @param[out]  xerr   Reason for failure, or NULL
  * @retval      1      OK yang assignment made

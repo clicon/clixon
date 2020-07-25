@@ -291,8 +291,18 @@ main(int    argc,
     /* Validate XML as well */
     if (yang_file_dir){
 	/* Populate */
-	if (xml_bind_yang(x0, YB_MODULE, yspec, NULL) < 0)
+	if ((ret = xml_bind_yang(x0, YB_MODULE, yspec, &xerr)) < 0)
 	    goto done;
+	if (ret == 0){
+	    if ((cb = cbuf_new()) ==NULL){
+		clicon_err(OE_XML, errno, "cbuf_new");
+		goto done;
+	    }
+	    if (netconf_err2cb(xerr, cbret) < 0)
+		goto done;
+	    fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
+	    goto done;
+	}
 	/* Sort */
 	if (xml_sort_recurse(x0) < 0)
 	    goto done;

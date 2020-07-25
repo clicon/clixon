@@ -113,12 +113,12 @@ testrun()
 	    XML="$XMLA$XMLU"
 	else
 	    XML="$XMLA"
-	    unknownreply="<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>u1</bad-element></error-info><error-severity>error</error-severity><error-message>Unassigned yang spec</error-message></rpc-error></rpc-reply>]]>]]>"
+	    unknownreply="<rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>u1</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: u1 with parent: config in namespace: urn:example:unknown</error-message></rpc-error>"
 	fi
     else
 	XML="$XMLA"
-	unknownreply="<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown
--element</error-tag><error-info><bad-element>u1</bad-element></error-info><error-severity>error</error-severity><error-message>Unassigned yang spec</error-message></rpc-error></rpc-reply>]]>]]>"
+	unknownreply="<rpc-error><error-type>application</error-type><error-tag>unknown
+-element</error-tag><error-info><bad-element>u1</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: u1 with parent: config in namespace: urn:example:unknown</error-message></rpc-error>"
     fi
 
     if $startup; then # get config from startup
@@ -265,16 +265,16 @@ EOF
 
 new "test params: -f $cfg"
 
-new "no startup, dont treat unknown as anydata"
+new "no startup, dont treat unknown as anydata----"
 testrun false false
 
-new "startup, dont treat unknown as anydata"
+new "startup, dont treat unknown as anydata----"
 testrun true false
 
-new "no startup, treat unknown as anydata"
+new "no startup, treat unknown as anydata----"
 testrun false true
 
-new "startup, treat unknown as anydata"
+new "startup, treat unknown as anydata----"
 testrun true true
 
 rm -rf $dir

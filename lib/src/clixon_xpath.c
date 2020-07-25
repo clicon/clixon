@@ -514,7 +514,8 @@ xpath_parse(const char  *xpath,
     }
     xpath_parse_exit(&xpy);
     xpath_scan_exit(&xpy);
-    *xptree = xpy.xpy_top;
+    if (xptree)
+	*xptree = xpy.xpy_top;
     retval = 0;
  done:
     if (cb)

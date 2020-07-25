@@ -217,8 +217,13 @@ startup_common(clicon_handle       h,
 	goto done;
     }
     /* After upgrading, XML tree needs to be sorted and yang spec populated */
-    if (xml_bind_yang(xt, YB_MODULE, yspec, NULL) < 0)
+    if ((ret = xml_bind_yang(xt, YB_MODULE, yspec, &xret)) < 0)
 	goto done;
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+	    goto done;
+	goto fail; 
+    }
     if (xml_sort_recurse(xt) < 0)
 	goto done;
     /* Handcraft transition with with only add tree */

@@ -535,6 +535,7 @@ netconf_create_subscription(clicon_handle h,
  *
  * This may either be local client-side or backend. If backend send as netconf 
  * RPC. 
+ * Assume already bound and validated.
  * @param[in]  h       clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
  * @param[out] xret    Return XML, error or OK
@@ -542,6 +543,7 @@ netconf_create_subscription(clicon_handle h,
  * @retval -1   Error
  * @retval  0   OK, not found handler.
  * @retval  1   OK, handler called
+ * @see netconf_input_packet  Assume bind and validation made there
  */
 static int
 netconf_application_rpc(clicon_handle h,
@@ -552,7 +554,6 @@ netconf_application_rpc(clicon_handle h,
     yang_stmt     *yspec = NULL; /* application yspec */
     yang_stmt     *yrpc = NULL;
     yang_stmt     *ymod = NULL;
-    yang_stmt     *yinput;
     yang_stmt     *youtput;
     cxobj         *xoutput;
     cxobj         *xerr = NULL;
@@ -591,22 +592,7 @@ netconf_application_rpc(clicon_handle h,
     yrpc = yang_find(ymod, Y_RPC, xml_name(xn));
     /* Check if found */
     if (yrpc != NULL){
-	/* 1. Check xn arguments with input statement. */
-	if ((yinput = yang_find(yrpc, Y_INPUT, NULL)) != NULL){
-	    xml_spec_set(xn, yinput); /* needed for xml_bind_yang */
-	    if (xml_bind_yang(xn, YB_MODULE, yspec, NULL) < 0)
-		goto done;
-	    if ((ret = xml_yang_validate_all_top(h, xn, &xerr)) < 0)
-		goto done;
-	    if (ret > 0 && (ret = xml_yang_validate_add(h, xn, &xerr)) < 0)
-		goto done;
-	    if (ret == 0){
-		if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
-		    goto done;		
-		netconf_output_encap(1, cbret, "rpc-error");
-		goto ok;
-	    }
-	}
+	/* No need to check xn arguments with input statement since already bound and validated. */
 	/* Look for local (client-side) netconf plugins. */
 	if ((ret = rpc_callback_call(h, xn, cbret, NULL)) < 0)
 	    goto done;
@@ -626,9 +612,9 @@ netconf_application_rpc(clicon_handle h,
 	if ((youtput = yang_find(yrpc, Y_OUTPUT, NULL)) != NULL){
 	    xoutput=xpath_first(*xret, NULL, "/");
 	    xml_spec_set(xoutput, youtput); /* needed for xml_bind_yang */
-	    if (xml_bind_yang(xoutput, YB_MODULE, yspec, NULL) < 0)
+	    if ((ret = xml_bind_yang(xoutput, YB_MODULE, yspec, &xerr)) < 0)
 		goto done;
-	    if ((ret = xml_yang_validate_all_top(h, xoutput, &xerr)) < 0)
+	    if (ret > 0 && (ret = xml_yang_validate_all_top(h, xoutput, &xerr)) < 0)
 		goto done;
 	    if (ret > 0 && (ret = xml_yang_validate_add(h, xoutput, &xerr)) < 0)
 		goto done;

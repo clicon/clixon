@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Tests cpp compatibility with clixon
+# Tests C++ compatibility with clixon
+# The test compiles a c++ backend plugin, installs it and starts the backend, and then runs
+# an RPC example.
+# The RPC example is the "example" RPC in clixon-example.yang
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
