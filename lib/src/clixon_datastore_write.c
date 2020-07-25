@@ -578,6 +578,9 @@ text_modify(clicon_handle       h,
 			if ((yc = yang_anydata_add(y0, x1cname)) < 0)
 			    goto done;
 			xml_spec_set(x1c, yc);
+			clicon_log(LOG_WARNING,
+				   "%s: %d: No YANG spec for %s, anydata used",
+				   __FUNCTION__, __LINE__, x1cname);
 		    }
 		    else{
 			if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
@@ -783,6 +786,9 @@ text_modify_top(clicon_handle       h,
 		if ((yc = yang_anydata_add(ymod, x1cname)) < 0)
 		    goto done;
 		xml_spec_set(x1c, yc);
+		clicon_log(LOG_WARNING,
+			   "%s: %d: No YANG spec for %s, anydata used",
+			   __FUNCTION__, __LINE__, x1cname);
 	    }
 	    else{
 		if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)

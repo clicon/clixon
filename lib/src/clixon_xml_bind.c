@@ -173,6 +173,9 @@ populate_self_parent(cxobj  *xt,
 		goto done;
 	    xml_spec_set(xt, y);
 	    retval = 2; /* treat as anydata */
+	    clicon_log(LOG_WARNING,
+		       "%s: %d: No YANG spec for %s, anydata used",
+		       __FUNCTION__, __LINE__, name);
 	    goto done;
 	}
 	if ((cb = cbuf_new()) == NULL){
@@ -278,6 +281,9 @@ populate_self_top(cxobj     *xt,
 		goto done;
 	    xml_spec_set(xt, y);
 	    retval = 2; /* treat as anydata */
+	    clicon_log(LOG_WARNING,
+		       "%s: %d: No YANG spec for %s, anydata used",
+		       __FUNCTION__, __LINE__, name);
 	    goto done;
 	}
 	if ((cb = cbuf_new()) == NULL){
