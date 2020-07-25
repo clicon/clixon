@@ -1093,8 +1093,12 @@ xml_yang_validate_all(clicon_handle h,
        and !Node has a config sub-statement and it is false */
     ys=xml_spec(xt);
     if (ys==NULL){
-	if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1)
+	if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1) {
+	    clicon_log(LOG_WARNING,
+		       "%s: %d: No YANG spec for %s, validation skipped",
+		       __FUNCTION__, __LINE__, xml_name(xt));
 	    goto ok;
+	}
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
