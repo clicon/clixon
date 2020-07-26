@@ -1298,11 +1298,13 @@ api_path_resolve(clixon_path *cplist,
 		    i = 0;
 		    cva = NULL;
 		    while ((cva = cvec_each(cp->cp_cvk, cva)) != NULL) {
-			if (cv_name_get(cva) == NULL){
-			    cvy = cvec_i(yang_cvec_get(yc), i);
-			    cv_name_set(cva, cv_string_get(cvy));
+			if (cv_name_get(cva) != NULL){
+			    clicon_err(OE_YANG, ENOENT, "Unexpected named key %s (shouldnt happen)",
+				       cv_name_get(cva));
+			    goto fail;
 			}
-			i++;
+			cvy = cvec_i(yang_cvec_get(yc), i++);
+			cv_name_set(cva, cv_string_get(cvy));
 		    }
 		}
 		else{
@@ -1349,10 +1351,9 @@ instance_id_resolve(clixon_path *cplist,
     int          retval = -1;
     clixon_path *cp;
     yang_stmt   *yc;
-    int          i;
     cg_var      *cva;
-    cg_var      *cvy;
     yang_stmt   *yspec;
+    char        *kname;
     
     yspec = ys_spec(yt);
     if ((cp = cplist) != NULL){
@@ -1368,7 +1369,7 @@ instance_id_resolve(clixon_path *cplist,
 		}
 	    }
 	    if ((yc = yang_find_datanode(yt, cp->cp_id)) == NULL){
-		clicon_err(OE_YANG, ENOENT, "Corresponding yang node for id:%s not found",
+		clicon_err(OE_YANG, ENOENT, "Node %s used in path has no corresponding yang node",
 			   cp->cp_id);
 		goto fail;
 	    }
@@ -1388,18 +1389,21 @@ instance_id_resolve(clixon_path *cplist,
 		    goto fail;
 		}
 #endif
-		i = 0;
 		cva = NULL;
 		while ((cva = cvec_each(cp->cp_cvk, cva)) != NULL) {
-		    if (cv_name_get(cva) == NULL){
-			cvy = cvec_i(yang_cvec_get(yc), i);
-			cv_name_set(cva, cv_string_get(cvy));
+		    if ((kname = cv_name_get(cva)) != NULL){ /* Check var exists */
+			if (yang_find(yc, 0, kname) == NULL){
+			    clicon_err(OE_YANG, ENOENT, "Index variable %s used in path is not child of Yang node %s",
+				       kname, yang_argument_get(yc));
+			    goto fail;
+			}
 		    }
-		    i++;
+		    else{ /* Assume index */
+			
+		    }
 		}
 		break;
 	    case Y_LEAF_LIST:
-		
 		break;
 	    default:
 		if (cp->cp_cvk != NULL){
@@ -1461,7 +1465,6 @@ clixon_path_search(cxobj        *xt,
 		    goto done;
 		for (i=0; i<clixon_xvec_len(xvecp); i++){
 		    xp = clixon_xvec_i(xvecp, i); /* Iterate over parent set */
-
 		    if (cp->cp_cvk && /* cornercase for instance-id [<pos>] special case */
 			(yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST) &&
 			cvec_len(cp->cp_cvk) == 1 && (cv = cvec_i(cp->cp_cvk,0)) &&
