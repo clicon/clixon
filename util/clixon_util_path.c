@@ -259,7 +259,7 @@ main(int    argc,
 	}
 
     }
-    /* Repeat for profiling (default is nr = 1) */
+    /* Repeat for performance profiling (default is nr = 1) */
     xvec = NULL;
     for (i=0; i<nr; i++){
 	if (api_path_p){
@@ -271,7 +271,7 @@ main(int    argc,
 		goto done;
 	}
 	if (ret == 0){
-	    fprintf(stderr, "Fail\n");
+	    fprintf(stderr, "Fail %d %s\n", clicon_errno, clicon_err_reason);
 	    goto done;
 	}
     }

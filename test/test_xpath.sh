@@ -186,6 +186,9 @@ new "Multiple entries"
 new "xpath bbb[ccc='foo']"
 expecteof "$clixon_util_xpath -f $xml3 -p bbb[ccc='foo']" 0 "" "^nodeset:0:<bbb x=\"hello\"><ccc>foo</ccc><ccc>42</ccc><ccc>bar</ccc></bbb>1:<bbb x=\"bye\"><ccc>99</ccc><ccc>foo</ccc></bbb>$"
 
+new "xpath bbb[ccc=\"foo\"]"
+expecteof "$clixon_util_xpath -f $xml3 -p bbb[ccc=\"foo\"]" 0 "" "^nodeset:0:<bbb x=\"hello\"><ccc>foo</ccc><ccc>42</ccc><ccc>bar</ccc></bbb>1:<bbb x=\"bye\"><ccc>99</ccc><ccc>foo</ccc></bbb>$"
+
 new "xpath bbb[ccc='42']"
 expecteof "$clixon_util_xpath -f $xml3 -p bbb[ccc='42']" 0 "" "^nodeset:0:<bbb x=\"hello\"><ccc>foo</ccc><ccc>42</ccc><ccc>bar</ccc></bbb>$"
 

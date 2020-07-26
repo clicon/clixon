@@ -143,7 +143,7 @@ clicon_err_reset(void)
  * @param[in]    category Clixon error category, See enum clicon_err
  * @param[in]    suberr   Error number, typically errno
  * @param[in]    reason   Error string, format with argv
- * @see clicon_err_reser  Resetting the global error variables.
+ * @see clicon_err_reset  Reset the global error variables.
  */
 int clicon_err_fn(const char *fn,
 		  const int  line,
