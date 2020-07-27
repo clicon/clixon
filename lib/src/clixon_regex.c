@@ -179,7 +179,7 @@ regexp_xsd2posix(char  *xsd,
 	}
 	else if (x == '\\')
 	    esc++;
-	else if (x == '$')
+	else if (x == '$' && i != strlen(xsd)-1) /* Escape $ unless it is last */
 	    cprintf(cb, "\\%c", x);
 	else if (x == ']' && minus){
 	    cprintf(cb, "-]");

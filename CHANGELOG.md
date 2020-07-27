@@ -94,6 +94,8 @@ Expected: July 2020
 
 ### Corrected Bugs
 
+* Fixed: [Need to add the possibility to use anchors around patterns #51](https://github.com/clicon/cligen/issues/51):
+  * Dont escape `$` if it is last in a regexp in translation from XML to POSIX.
 * Fixed `CLICON_YANG_UNKNOWN_ANYDATA` for config and state data. This feature introduced in 4.5 didnt really work.
 * Fixed: [Double free when using libxml2 as regex engine #117](https://github.com/clicon/clixon/issues/117)
 * Fixed: Reading in a yang-spec file exactly the same size as the buffer (1024/2048/4096/...) could leave the buffer not terminated with a 0 byte
