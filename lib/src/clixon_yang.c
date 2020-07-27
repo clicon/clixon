@@ -2072,6 +2072,7 @@ ys_populate2(yang_stmt    *ys,
  * @retval    1   OK
  * @note if-feature syntax is restricted to single, and, or, syntax, such as "a or b"
  * but RFC7950 allows for nested expr/term/factor syntax.
+ * XXX This should really be parsed in yang/lex.
  */
 static int
 yang_if_feature(clicon_handle h,
@@ -2082,6 +2083,7 @@ yang_if_feature(clicon_handle h,
     int         nvec;
     char       *f;
     int         i;
+    int         j;
     char       *prefix = NULL;
     char       *feature = NULL;
     yang_stmt  *ymod;  /* module yang node */
@@ -2089,19 +2091,18 @@ yang_if_feature(clicon_handle h,
     int         opand = -1; /* -1:not set, 0:or, 1:and */
     int         enabled = 0;
     
-    if ((vec = clicon_strsep(ys->ys_argument, " \t", &nvec)) == NULL)
+    if ((vec = clicon_strsep(ys->ys_argument, " \t\r\n", &nvec)) == NULL)
 	goto done;
-    if (nvec%2 == 0){ /* Must be odd: eg a / "a or b" etc */
-	clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
-	goto done;
-    }
     /* Two steps: first detect operators
      * Step 1: support "a" or "a or b or c" or "a and b and c "
      */
+    j = 0;
     for (i=0; i<nvec; i++){
-	if (i%2==0) /* only keep odd i:s 1,3,... */
-	    continue;
 	f = vec[i]; 
+	if (strcmp(f, "") == 0) /* skip empty */
+	    continue;
+	if ((j++)%2==0) /* only keep odd i:s 1,3,... */
+	    continue;
 	/* odd i: operator "and" or "or" */
 	if (strcmp(f, "or") == 0){
 	    switch (opand){
@@ -2142,6 +2143,11 @@ yang_if_feature(clicon_handle h,
 	    goto done;
 	}
     } /* for step 1 */
+    if (j%2 == 0){ /* Must be odd: eg a / "a or b" etc */
+	clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
+	goto done;
+    }
+
     if (opand == -1) /* Uninitialized means single operand */
 	opand = 1;
     if (opand) /* if AND,  start as enabled, if OR start as disabled */
@@ -2149,10 +2155,13 @@ yang_if_feature(clicon_handle h,
     else
 	enabled = 0;
     /* Step 2: Boolean operations on operands */
+    j = 0;
     for (i=0; i<nvec; i++){
-	if (i%2==1) /* only keep even i:s 0,2,... */
-	    continue;
 	f = vec[i]; 
+	if (strcmp(f, "") == 0) /* skip empty */
+	    continue;
+	if ((j++)%2==1) /* only keep even i:s 0,2,... */
+	    continue;
 	if (nodeid_split(f, &prefix, &feature) < 0)
 	    goto done;
 	/* Specifically need to handle? strcmp(prefix, myprefix)) */

@@ -77,17 +77,19 @@ module example{
      type "string";
    }
    leaf m1{
-     if-feature "A and A1";
+     if-feature "A and 
+        A1";
      description "Enabled";
      type "string";
    }
    leaf m2{
-     if-feature "A or A1";
+     if-feature "A or 
+        A1";
      description "Enabled";
      type "string";
    }
    leaf m3{
-     if-feature "A and B";
+     if-feature "A and B";
      description "Not enabled";
      type "string";
    }
