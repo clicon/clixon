@@ -83,6 +83,9 @@ Expected: July 2020
   
 ### Minor changes
 
+* Enhanced Clixon if-feature handling:
+  * If-feature now supports and/or lists, such as: `if-feature "a and b"` and `if-feature "a or b or c"`. However, full if-feature-expr including `not` and nested boolean experessions is still not supported.
+  * Sanity check: if an `if-feature` statement exists, a corresponding `feature` statement must exists that declares that feature.
 * Optimized get config xpath of large lists, such as `a[x=1000]` in a list of 100000s `a:s`.
 * Added docker support for three restconf modes: nginx/fcgi(default); evhtp ; and none.
 * Added [Vagrant tests](test/vagrant/README.md)

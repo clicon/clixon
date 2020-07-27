@@ -29,6 +29,7 @@ fyang=$dir/test.yang
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_FEATURE>$APPNAME:A</CLICON_FEATURE>
+  <CLICON_FEATURE>$APPNAME:A1</CLICON_FEATURE>
   <CLICON_FEATURE>ietf-routing:router-id</CLICON_FEATURE>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
@@ -55,8 +56,14 @@ module example{
    feature A{
       description "This test feature is enabled";
    }
+   feature A1{
+      description "This test feature is enabled (extra for multiple)";
+   }
    feature B{
       description "This test feature is disabled";
+   }
+   feature B1{
+      description "This test feature is disabled (extra for multiple)";
    }
    leaf x{
      if-feature A;
@@ -69,8 +76,70 @@ module example{
    leaf z{
      type "string";
    }
+   leaf m1{
+     if-feature "A and A1";
+     description "Enabled";
+     type "string";
+   }
+   leaf m2{
+     if-feature "A or A1";
+     description "Enabled";
+     type "string";
+   }
+   leaf m3{
+     if-feature "A and B";
+     description "Not enabled";
+     type "string";
+   }
+   leaf m4{
+     if-feature "A or B";
+     description "Enabled";
+     type "string";
+   }
+   leaf m5{
+     if-feature "B and B1";
+     description "Not enabled";
+     type "string";
+   }
+   leaf m6{
+     if-feature "B or B1";
+     description "Not enabled";
+     type "string";
+   }
+   leaf m7{
+     if-feature "A or A1 or B or B1";
+     description "Enabled";
+     type "string";
+   }
+   leaf m8{
+     if-feature "A and A1 and B and B1";
+     description "Not enabled";
+     type "string";
+   }
 }
 EOF
+
+# Run netconf feature test
+# 1: syntax node
+# 2: disabled or enabled
+testrun()
+{
+    node=$1
+    enabled=$2
+    
+    if $enabled; then
+	new "netconf set $node"
+	expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\">foo</$node></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+	new "netconf validate $node"
+	expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+    else
+	new "netconf set $node, expect fail"
+	expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\">foo</$node></config></edit-config></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>$node</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: $node with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
+    fi
+    new "netconf discard-changes"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+}
 
 new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
@@ -102,14 +171,20 @@ expectfn "$clixon_cli -1f $cfg -l o set routing ribs rib default-rib false" 255 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "netconf enabled feature"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><x xmlns="urn:example:clixon">foo</x></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+# Single if-feature
+testrun x true
 
-new "netconf validate enabled feature"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+testrun y false
 
-new "netconf disabled feature"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><y xmlns="urn:example:clixon">foo</y></config></edit-config></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>y</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: y with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$'
+# Multiple if-feature
+testrun m1 true
+testrun m2 true
+testrun m3 false
+testrun m4 true
+testrun m5 false
+testrun m6 false
+testrun m7 true
+testrun m8 false
 
 # This test has been broken up into all different modules instead of one large
 # reply since the modules change so often
@@ -128,13 +203,13 @@ if [ -z "$match" ]; then
 fi
 
 new "netconf module A"
-expect="<module><name>example</name><revision/><namespace>urn:example:clixon</namespace><feature>A</feature><conformance-type>implement</conformance-type></module>"
+expect="<module><name>example</name><revision/><namespace>urn:example:clixon</namespace><feature>A</feature><feature>A1</feature><conformance-type>implement</conformance-type></module>"
 match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi
 
-if false ; then # clixon "config" bug
+if false ; then # clixon "config" is a meta-config and not visisble in regular features
 new "netconf module clixon-config"
 expect="<module><name>clixon-config</name><revision>2018-09-30</revision><namespace/></module>"
 match=`echo "$ret" | grep --null -Go "$expect"`
@@ -184,17 +259,46 @@ if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
 
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
+#------------------------
+# Negative test, if if-feature but no feature, signal error
+cat <<EOF > $fyang
+module example{
+   yang-version 1.1;
+   namespace "urn:example:clixon";
+   prefix ex;
+   feature A{
+      description "This feature exists";
+   }
+   leaf x{
+     if-feature "A or B";
+     type "string";
+   }
+}
+EOF
+
+new "test params: -f $cfg"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+
+    new "start backend -s init -f $cfg: feature missing expected fail"
+    expectpart "$(sudo $clixon_backend -F1s init -f $cfg -l o)" 255 " Yang module example has IF_FEATURE B, but no such FEATURE statement exists"
+
+    stop_backend -f $cfg
 fi
-# kill backend
-stop_backend -f $cfg
 
 rm -rf $dir

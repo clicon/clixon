@@ -2064,14 +2064,156 @@ ys_populate2(yang_stmt    *ys,
     return retval;
 }
 
+/*! Handle complexity of if-feature node
+ * @param[in] h   Clixon handle
+ * @param[in] ys  Yang if-feature statement
+ * @retval   -1   Error
+ * @retval    0   Feature not enabled: remove yt
+ * @retval    1   OK
+ * @note if-feature syntax is restricted to single, and, or, syntax, such as "a or b"
+ * but RFC7950 allows for nested expr/term/factor syntax.
+ */
+static int
+yang_if_feature(clicon_handle h,
+		yang_stmt    *ys)
+{
+    int         retval = -1;
+    char      **vec = NULL;
+    int         nvec;
+    char       *f;
+    int         i;
+    char       *prefix = NULL;
+    char       *feature = NULL;
+    yang_stmt  *ymod;  /* module yang node */
+    yang_stmt  *yfeat; /* feature yang node */
+    int         opand = -1; /* -1:not set, 0:or, 1:and */
+    int         enabled = 0;
+    
+    if ((vec = clicon_strsep(ys->ys_argument, " \t", &nvec)) == NULL)
+	goto done;
+    if (nvec%2 == 0){ /* Must be odd: eg a / "a or b" etc */
+	clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
+	goto done;
+    }
+    /* Two steps: first detect operators
+     * Step 1: support "a" or "a or b or c" or "a and b and c "
+     */
+    for (i=0; i<nvec; i++){
+	if (i%2==0) /* only keep odd i:s 1,3,... */
+	    continue;
+	f = vec[i]; 
+	/* odd i: operator "and" or "or" */
+	if (strcmp(f, "or") == 0){
+	    switch (opand){
+	    case -1:
+		if (i != 1){
+		    clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
+		    goto done;
+		}
+		opand = 0;
+		break;
+	    case 0:
+		break;
+	    case 1:
+		clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
+		goto done;
+		break;
+	    }
+	}
+	else if (strcmp(f, "and") == 0){
+	    switch (opand){
+	    case -1:
+		if (i != 1){
+		    clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
+		    goto done;
+		}
+		opand = 1;
+		break;
+	    case 0:
+		clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
+		goto done;
+		break;
+	    case 1:
+		break;
+	    }
+	}
+	else{
+	    clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
+	    goto done;
+	}
+    } /* for step 1 */
+    if (opand == -1) /* Uninitialized means single operand */
+	opand = 1;
+    if (opand) /* if AND,  start as enabled, if OR start as disabled */
+	enabled = 1;
+    else
+	enabled = 0;
+    /* Step 2: Boolean operations on operands */
+    for (i=0; i<nvec; i++){
+	if (i%2==1) /* only keep even i:s 0,2,... */
+	    continue;
+	f = vec[i]; 
+	if (nodeid_split(f, &prefix, &feature) < 0)
+	    goto done;
+	/* Specifically need to handle? strcmp(prefix, myprefix)) */
+	if (prefix == NULL)
+	    ymod = ys_module(ys);
+	else
+	    ymod = yang_find_module_by_prefix(ys, prefix);
+	/* Check if feature exists, and is set, otherwise remove */
+	if ((yfeat = yang_find(ymod, Y_FEATURE, feature)) == NULL){
+	    clicon_err(OE_YANG, EINVAL, "Yang module %s has IF_FEATURE %s, but no such FEATURE statement exists",
+		       ymod?yang_argument_get(ymod):"none",
+		       feature);
+	    goto done;
+	}
+	/* Check if this feature is enabled or not 
+	 * Continue loop to catch unbound features and make verdict at end
+	 */
+	if (yfeat->ys_cv == NULL || !cv_bool_get(yfeat->ys_cv)){    /* disabled */
+	    /* if AND then this is permanently disabled */
+	    if (opand && enabled)
+		enabled = 0;
+	}
+	else{                                                       /* enabled */
+	    /* if OR then this is permanently enabled */
+	    if (!opand && !enabled)
+		enabled = 1;
+	}
+	if (prefix){
+	    free(prefix);
+	    prefix = NULL;
+	}
+	if (feature){
+	    free(feature);
+	    feature = NULL;
+	}
+    }
+    if (!enabled)
+	goto disabled;
+    retval = 1;
+ done:
+    if (vec)
+	free(vec); 
+    if (prefix)
+	free(prefix);
+    if (feature)
+	free(feature);
+    return retval;
+ disabled: 
+    retval = 0;  /* feature not enabled */
+    goto done;
+}
+
 /*! Find feature and if-feature nodes, check features and remove disabled nodes
- * @param[in] h   CLICON handle
+ * @param[in] h   Clixon handle
  * @param[in] yt  Yang statement
  * @retval   -1   Error
  * @retval    0   Feature not enabled: remove yt
  * @retval    1   OK
  * @note On return 1 the over-lying function need to remove yt from its parent
  * @note cannot use yang_apply here since child-list is modified (destructive) 
+ * @note if-feature syntax is restricted to single, and, or, syntax, such as "a or b"
  */
 int
 yang_features(clicon_handle h,
@@ -2081,37 +2223,16 @@ yang_features(clicon_handle h,
     int        i;
     int        j;
     yang_stmt *ys = NULL;
-    char       *prefix = NULL;
-    char       *feature = NULL;
-    yang_stmt  *ymod;  /* module yang node */
-    yang_stmt  *yfeat; /* feature yang node */
+    int        ret;
 
     i = 0;
     while (i<yt->ys_len){ /* Note, children may be removed */
 	ys = yt->ys_stmt[i];
 	if (ys->ys_keyword == Y_IF_FEATURE){
-	    if (nodeid_split(ys->ys_argument, &prefix, &feature) < 0)
+	    if ((ret = yang_if_feature(h, ys)) < 0)
 		goto done;
-	    /* Specifically need to handle? strcmp(prefix, myprefix)) */
-	    if (prefix == NULL)
-		ymod = ys_module(ys);
-	    else
-		ymod = yang_find_module_by_prefix(yt, prefix);
-
-	    /* Check if feature exists, and is set, otherwise remove */
-	    if ((yfeat = yang_find(ymod, Y_FEATURE, feature)) == NULL ||
-		yfeat->ys_cv == NULL || !cv_bool_get(yfeat->ys_cv)){
-		retval = 0; /* feature not enabled */
-		goto done;
-	    }
-	    if (prefix){
-		free(prefix);
-		prefix = NULL;
-	    }
-	    if (feature){
-		free(feature);
-		feature = NULL;
-	    }
+	    if (ret == 0)
+		goto disabled;
 	}
 	else
 	    if (ys->ys_keyword == Y_FEATURE){
@@ -2136,11 +2257,10 @@ yang_features(clicon_handle h,
     }
     retval = 1;
  done:
-    if (prefix)
-	free(prefix);
-    if (feature)
-	free(feature);
     return retval;
+ disabled: 
+    retval = 0;  /* feature not enabled */
+    goto done;
 }
 
 /*! Apply a function call recursively on all yang-stmt s recursively
