@@ -336,7 +336,12 @@ module clixon-config {
 	    description
 		"Treat unknown XML/JSON nodes as anydata when loading from startup db.
                  This does not apply to namespaces, which means a top-level node: xxx:yyy
-                 is accepted only if yyy is unknown, not xxx";
+                 is accepted only if yyy is unknown, not xxx.
+                 Note that this option has several caveats which needs to be fixed. Please
+                 use with care.
+                 The primary issue is that the unknown->anydata handling is not restricted to
+                 only loading from startup but may occur in other circumstances as well. This
+                 means that sanity checks of erroneous XML/JSON may not be properly signalled.";
 	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;

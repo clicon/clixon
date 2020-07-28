@@ -42,6 +42,10 @@ Expected: July 2020
 	
 ### API changes on existing protocol/config features (For users)
 
+* Netconf lock/unlock behaviour changed to adhere to RFC 6241
+  * Changed commit lock error tag from "lock denied" to "in-use".
+  * Changed unlock error message from "lock is already held" to #lock not active" or "lock held by other session".
+  * Fixed [lock candidate succeeded even though it is modified #110](https://github.com/clicon/clixon/issues/110)
 * New clixon-config@2020-06-17.yang revision
   * Added CLICON_CLI_LINES_DEFAULT for setting window row size of raw terminals
   * Added  enum HIDE to CLICON_CLI_GENMODEL for auto-cli
@@ -49,7 +53,6 @@ Expected: July 2020
     * CLICON_SSL_SERVER_CERT
     * CLICON_SSL_SERVER_KEY
     * CLICON_SSL_CA_CERT
-
 * Restconf FCGI (eg via nginx) have changed reply message syntax slightly as follows (due to refactoring and common code with evhtp):
     * Bodies in error retuns including html code have been removed
     * Some (extra) CRLF:s have been removed
@@ -95,6 +98,7 @@ Expected: July 2020
 ### Corrected Bugs
 
 * Fixed: Don't call upgrade callbacks if no revision defined so there's no way to determine right way 'from' and 'to'
+* Fixed: [lock candidate succeeded even though it is modified #110](https://github.com/clicon/clixon/issues/110)
 * Fixed: [Need to add the possibility to use anchors around patterns #51](https://github.com/clicon/cligen/issues/51):
   * Dont escape `$` if it is last in a regexp in translation from XML to POSIX.
 * Fixed `CLICON_YANG_UNKNOWN_ANYDATA` for config and state data. This feature introduced in 4.5 didnt really work.

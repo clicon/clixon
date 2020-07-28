@@ -61,16 +61,16 @@
  * by the caller
  *
  * @code
- * char **vec = NULL;
- * char  *v;
- * int    nvec;
- * if ((vec = clicon_strsep("/home/user/src/clixon", "/", &nvec)) == NULL)
- *    err;
- * for (i=0; i<nvec; i++){
- *    v = vec[i]; 
- *    ...
- * }
- * free(vec); 
+ *   char **vec = NULL;
+ *   char  *v;
+ *   int    nvec;
+ *   if ((vec = clicon_strsep("/home/user/src/clixon", "/", &nvec)) == NULL)
+ *     err;
+ *   for (i=0; i<nvec; i++){
+ *     v = vec[i]; 
+ *     ...
+ *   }
+ *   free(vec); 
  * @endcode
  * @param[in]   string     String to be split
  * @param[in]   delim      String of delimiter characters
@@ -538,7 +538,6 @@ xml_chardata_cbuf_append(cbuf *cb,
     return retval;
 }
 
-
 /*! Split a string into a cligen variable vector using 1st and 2nd delimiter 
  * Split a string first into elements delimited by delim1, then into
  * pairs delimited by delim2.
@@ -728,7 +727,6 @@ clicon_str2int_search(const map_str2int *mstab,
 	return found;
     return -1; /* not found */
 }
-
 
 /*! Split colon-separated node identifier into prefix and name
  * @param[in]  node-id

@@ -1014,7 +1014,7 @@ yang_parse_post(clicon_handle h,
 	if (yang_cardinality(h, yspec->ys_stmt[i], yang_argument_get(yspec->ys_stmt[i])) < 0)
 	    goto done;
     
-    /* 3: Check features: check if enabled and remove disabled features */
+    /* 3: Check features/if-features: check if enabled and remove disabled features */
     for (i=modnr; i<yang_len_get(yspec); i++) 
 	if (yang_features(h, yspec->ys_stmt[i]) < 0)
 	    goto done;
