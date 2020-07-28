@@ -94,6 +94,7 @@ Expected: July 2020
 
 ### Corrected Bugs
 
+* Fixed: Don't call upgrade callbacks if no revision defined so there's no way to determine right way 'from' and 'to'
 * Fixed: [Need to add the possibility to use anchors around patterns #51](https://github.com/clicon/cligen/issues/51):
   * Dont escape `$` if it is last in a regexp in translation from XML to POSIX.
 * Fixed `CLICON_YANG_UNKNOWN_ANYDATA` for config and state data. This feature introduced in 4.5 didnt really work.
