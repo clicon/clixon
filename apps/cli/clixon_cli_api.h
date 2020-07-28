@@ -69,6 +69,8 @@ int cli_notification_register(clicon_handle h, char *stream, enum format_enum fo
 
 /* cli_common.c: CLIgen new vector callbacks */
 
+int cli_dbxml(clicon_handle h, cvec *vars, cvec *argv, cvec *nsctx);
+
 int cli_set(clicon_handle h, cvec *vars, cvec *argv);
 
 int cli_merge(clicon_handle h, cvec *vars, cvec *argv);

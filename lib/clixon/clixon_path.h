@@ -89,9 +89,11 @@ int clixon_xml_find_api_path(cxobj *xt, yang_stmt *yt, cxobj ***xvec, int *xlen,
 		     ...) __attribute__ ((format (printf, 5, 6)));;
 int clixon_xml_find_instance_id(cxobj *xt, yang_stmt *yt, cxobj ***xvec, int *xlen, const char *format,
 		     ...) __attribute__ ((format (printf, 5, 6)));;
+int clixon_instance_id_bind(yang_stmt *yt, cvec *nsctx, const char *format, ...) __attribute__ ((format (printf, 3, 4)));
 #else
 int clixon_xml_find_api_path(cxobj *xt, yang_stmt *yt,  cxobj ***xvec, int *xlen, const char *format, ...);
 int clixon_xml_find_instance_id(cxobj *xt, yang_stmt *yt, cxobj ***xvec, int *xlen, const char *format, ...);
+int clixon_instance_id_bind(yang_stmt *yt, cvec *nsctx, const char *format, ...);
 #endif
 
 #endif  /* _CLIXON_PATH_H_ */

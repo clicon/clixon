@@ -1683,3 +1683,94 @@ clixon_xml_find_instance_id(cxobj     *xt,
     goto done;
 }
 
+/*! Given (instance-id) path and YANG, parse path, resolve YANG and return namespace binding
+ *
+ * Instance-identifier is a subset of XML XPaths and defined in Yang, used in NACM for 
+ * example.
+ * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
+ * @param[out] nsctx    Namespace context (should be created on entry)
+ * @param[in]  format   Format string for api-path syntax
+ * @retval    -1        Error
+ * @retval     0        Non-fatal failure, yang bind failures, etc, 
+ * @retval     1        OK with found xml nodes in xvec (if any)
+ * Reasons for nomatch (retval = 0) are:
+ * - Modulename in api-path does not correspond to existing module
+ * - Modulename not defined for top-level id. 
+ * - Number of keys in key-value list does not match Yang list
+ * @code
+ *    cvec *nsctx = NULL;
+ *
+ *    nsctx = cvec_new(0);
+ *    if (clixon_instance_id_bind(yspec, nsctx, "/symbol/%s", "foo") < 0) 
+ *       goto err;
+ *    ...
+ *    cvec_free(nsctx);
+ * @endcode
+ * @note canonical namespace contexts are used, see xpath2canonical
+ * @see clixon_xml_find_instance_id   for finding XML nodes using instance-id:s
+ * @see RFC7950 Sec 9.13 
+ */
+int
+clixon_instance_id_bind(yang_stmt  *yt,
+			cvec       *nsctx,
+			const char *format,
+			...)
+{
+    int          retval = -1;
+    va_list      ap;
+    size_t       len;
+    char        *path = NULL;
+    clixon_path *cplist = NULL;
+    clixon_path *cp;
+    int          ret;
+    char        *namespace;
+    
+    va_start(ap, format);
+    len = vsnprintf(NULL, 0, format, ap);
+    va_end(ap);
+    /* allocate a path string exactly fitting the length */
+    if ((path = malloc(len+1)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    /* second round: actually compute api-path string content */
+    va_start(ap, format);
+    if (vsnprintf(path, len+1, format, ap) < 0){
+	clicon_err(OE_UNIX, errno, "vsnprintf");
+	va_end(ap);
+	goto done;
+    }
+    va_end(ap);
+    if (instance_id_parse(path, &cplist) < 0)
+	goto done;
+    if (clicon_debug_get())
+	clixon_path_print(stderr, cplist);
+    /* Resolve module:name to pointer to yang-stmt, fail if not successful */
+    if ((ret = instance_id_resolve(cplist, yt)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+    /* Loop through prefixes used */
+    if ((cp = cplist) != NULL){
+	do {
+	    if (cp->cp_prefix &&
+		cp->cp_yang &&
+		(namespace = yang_find_mynamespace(cp->cp_yang)) != NULL){
+		if (xml_nsctx_get(nsctx, cp->cp_prefix) == NULL)
+		    if (xml_nsctx_add(nsctx, cp->cp_prefix, namespace) < 0)
+			goto done;
+	    }
+	    cp = NEXTQ(clixon_path *, cp);
+	} while (cp && cp != cplist);
+    }
+    retval = 1;
+ done:
+    if (cplist)
+	clixon_path_free(cplist);
+    if (path)
+	free(path);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
