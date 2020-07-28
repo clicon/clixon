@@ -164,14 +164,20 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 new "netconf get state operation"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get><filter type=\"xpath\" select=\"/if:interfaces\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" /></get></rpc>]]>]]>" '^<rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth1</name><type>ex:eth</type><enabled>true</enabled><oper-status>up</oper-status><ex:my-status xmlns:ex="urn:example:clixon"><ex:int>42</ex:int><ex:str>foo</ex:str></ex:my-status></interface></interfaces></data></rpc-reply>]]>]]>$'
 
+new "netconf lock" 
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf unlock" 
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>0</session-id></error-info><error-severity>error</error-severity><error-message>Unlock failed, lock is not currently active</error-message></rpc-error></rpc-reply>]]>]]>$"
+
 new "netconf lock/unlock"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]><rpc><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf lock/lock"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]><rpc><lock><target><candidate/></target></lock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]><rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>" 
 
-new "netconf lock" 
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+new "netconf unlock/unlock"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><unlock><target><candidate/></target></unlock></rpc>]]>]]><rpc><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>0</session-id></error-info><error-severity>error</error-severity><error-message>Unlock failed, lock is not currently active</error-message></rpc-error></rpc-reply>]]>]]><rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>0</session-id></error-info><error-severity>error</error-severity><error-message>Unlock failed, lock is not currently active</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "close-session"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><close-session/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
@@ -180,7 +186,20 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><close-session/></rpc>]]>]]>" "^<rp
 new "kill-session"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
-new "copy startup"
+# modify candidate, then lock, should fail.
+new "netconf edit config"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><table xmlns="urn:example:clixon"><parameter><name>a</name></parameter></table></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf lock: should fail" 
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>0</session-id></error-info><error-severity>error</error-severity><error-message>Operation failed, candidate has already been modified and the changes have not been committed or rolled back (RFC 6241 7.5)</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "netconf lock"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><lock><target><candidate/></target></lock></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "copy startup to candidate"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><copy-config><target><startup/></target><source><candidate/></source></copy-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get startup"

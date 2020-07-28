@@ -273,11 +273,10 @@ clixon_stats_get_db(clicon_handle h,
     cxobj    *xt = NULL;
     uint64_t  nr = 0;
     size_t    sz = 0;
-    db_elmnt *de = NULL;
     
     /* This is the db cache */
-    if ((de = clicon_db_elmnt_get(h, dbname)) == NULL ||
-	(xt = de->de_xml) == NULL){
+    if ((xt = xmldb_cache_get(h, dbname)) == NULL){
+
 	cprintf(cb, "<datastore><name>%s</name><nr>0</nr><size>0</size></datastore>", dbname);
     }
     else{
@@ -606,6 +605,7 @@ from_client_edit_config(clicon_handle h,
 	    goto done;
 	goto ok;
     }
+    
     if ((x = xpath_first(xn, NULL, "default-operation")) != NULL){
 	if (xml_operation(xml_body(x), &operation) < 0){
 	    if (netconf_invalid_value(cbret, "protocol", "Wrong operation")< 0)
@@ -618,49 +618,48 @@ from_client_edit_config(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    else{
-	/* <config> yang spec may be set to anyxml by ingress yang check,...*/
-	if (xml_spec(xc) != NULL)
-	    xml_spec_set(xc, NULL);
-	/* Populate XML with Yang spec (why not do this in parser?) 
-	 */
-	if ((ret = xml_bind_yang(xc, YB_MODULE, yspec, &xret)) < 0)
+    /* <config> yang spec may be set to anyxml by ingress yang check,...*/
+    if (xml_spec(xc) != NULL)
+	xml_spec_set(xc, NULL);
+    /* Populate XML with Yang spec (why not do this in parser?) 
+     */
+    if ((ret = xml_bind_yang(xc, YB_MODULE, yspec, &xret)) < 0)
+	goto done;
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
 	    goto done;
-	if (ret == 0){
-	    if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
-		goto done;
-	    goto ok;
-	}
-	/* Maybe validate xml here as in text_modify_top? */
-	if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
-	    goto done;
-	if (non_config){
-	    if (netconf_invalid_value(cbret, "protocol", "State data not allowed")< 0)
-		goto done;
-	    goto ok;
-	}
-	/* xmldb_put (difflist handling) requires list keys */
-	if ((ret = xml_yang_validate_list_key_only(h, xc, &xret)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
-		goto done;
-	    goto ok;
-	}
-	/* Cant do this earlier since we dont have a yang spec to
-	 * the upper part of the tree, until we get the "config" tree.
-	 */
-	if (xml_sort_recurse(xc) < 0)
-	    goto done;
-	if ((ret = xmldb_put(h, target, operation, xc, username, cbret)) < 0){
-	    clicon_debug(1, "%s ERROR PUT", __FUNCTION__);	
-	    if (netconf_operation_failed(cbret, "protocol", clicon_err_reason)< 0)
-		goto done;
-	    goto ok;
-	}
-	if (ret == 0)
-	    goto ok;
+	goto ok;
     }
+    /* Maybe validate xml here as in text_modify_top? */
+    if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
+	goto done;
+    if (non_config){
+	if (netconf_invalid_value(cbret, "protocol", "State data not allowed")< 0)
+	    goto done;
+	goto ok;
+    }
+    /* xmldb_put (difflist handling) requires list keys */
+    if ((ret = xml_yang_validate_list_key_only(h, xc, &xret)) < 0)
+	goto done;
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+	    goto done;
+	goto ok;
+    }
+    /* Cant do this earlier since we dont have a yang spec to
+     * the upper part of the tree, until we get the "config" tree.
+     */
+    if (xml_sort_recurse(xc) < 0)
+	goto done;
+    if ((ret = xmldb_put(h, target, operation, xc, username, cbret)) < 0){
+	clicon_debug(1, "%s ERROR PUT", __FUNCTION__);	
+	if (netconf_operation_failed(cbret, "protocol", clicon_err_reason)< 0)
+	    goto done;
+	goto ok;
+    }
+    if (ret == 0)
+	goto ok;
+    xmldb_modified_set(h, target, 1); /* mark as dirty */
     assert(cbuf_len(cbret) == 0);
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
@@ -742,6 +741,7 @@ from_client_copy_config(clicon_handle h,
 	    goto done;
 	goto ok;
     }
+    xmldb_modified_set(h, target, 1); /* mark as dirty */
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
@@ -808,6 +808,7 @@ from_client_delete_config(clicon_handle h,
 	    goto done;
 	goto ok;
     }
+    xmldb_modified_set(h, target, 1); /* mark as dirty */
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
@@ -859,21 +860,26 @@ from_client_lock(clicon_handle h,
     /*
      * A lock MUST not be granted if either of the following conditions is true:
      * 1) A lock is already held by any NETCONF session or another entity.
-     * 2) The target configuration is <candidate>, it has already been modified, and 
-     *    these changes have not been committed or rolled back.
      */
-    iddb = xmldb_islocked(h, db);
-    if (iddb != 0){
+    if ((iddb = xmldb_islocked(h, db)) != 0){
 	cprintf(cbx, "<session-id>%u</session-id>", iddb);
 	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
 	    goto done;
 	goto ok;
     }
-    else{
-	if (xmldb_lock(h, db, id) < 0)
+    /* 2) The target configuration is <candidate>, it has already been modified, and 
+     *    these changes have not been committed or rolled back.
+     */
+    if (strcmp(db, "candidate") == 0 &&
+	xmldb_modified_get(h, db)){
+	if (netconf_lock_denied(cbret, "<session-id>0</session-id>",
+				"Operation failed, candidate has already been modified and the changes have not been committed or rolled back (RFC 6241 7.5)") < 0)
 	    goto done;
-	cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+	goto ok;
     }
+    if (xmldb_lock(h, db, id) < 0)
+	goto done;
+    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;
  done:
@@ -926,12 +932,19 @@ from_client_unlock(clicon_handle h,
      * An unlock operation will not succeed if any of the following
      * conditions are true:
      * 1) the specified lock is not currently active
-     * 2) the session issuing the <unlock> operation is not the same
+     */
+    if (iddb == 0){
+	cprintf(cbx, "<session-id>0</session-id>");
+	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Unlock failed, lock is not currently active") < 0)
+	    goto done;
+	goto ok;
+    }
+    /* 2) the session issuing the <unlock> operation is not the same
      *    session that obtained the lock
      */
-    if (iddb == 0 || iddb != id){
-	cprintf(cbx, "<session-id>id=%u iddb=%d</session-id>", id, iddb);
-	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Unlock failed, lock is already held") < 0)
+    else if (iddb != id){
+	cprintf(cbx, "<session-id>%u</session-id>", iddb);
+	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Unlock failed, lock held by other session") < 0)
 	    goto done;
 	goto ok;
     }

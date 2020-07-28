@@ -69,4 +69,10 @@ int xmldb_create(clicon_handle h, const char *db);
 /* utility functions */
 int xmldb_db_reset(clicon_handle h, char *db);
 
+cxobj *xmldb_cache_get(clicon_handle h, const char *db);
+
+int xmldb_modified_get(clicon_handle h, const char *db);
+int xmldb_modified_set(clicon_handle h, const char *db, int value);
+
+
 #endif /* _CLIXON_DATASTORE_H */

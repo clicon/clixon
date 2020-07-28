@@ -256,7 +256,7 @@ xmldb_copy(clicon_handle h,
  * @param[in]  id   Session id
  * @retval -1  Error
  * @retval  0  OK
-  */
+ */
 int 
 xmldb_lock(clicon_handle h, 
 	   const char   *db, 
@@ -325,11 +325,11 @@ xmldb_unlock_all(clicon_handle h,
 }
 
 /*! Check if database is locked
- * @param[in]    h   Clicon handle
- * @param[in]    db  Database
- * @retval -1    Error
- * @retval   0   Not locked
- * @retval  >0   Id of locker
+ * @param[in] h   Clicon handle
+ * @param[in] db  Database
+ * @retval    -1  Error
+ * @retval    0   Not locked
+ * @retval    >0  Session id of locker
   */
 uint32_t
 xmldb_islocked(clicon_handle h, 
@@ -477,5 +477,67 @@ xmldb_db_reset(clicon_handle h,
     }
     if (xmldb_create(h, db) < 0)
 	return -1;
+    return 0;
+}
+
+/*! Get datastore XML cache
+ * @param[in]  h    Clicon handle
+ * @param[in]  db   Database name
+ * @retval     xml  XML cached tree or NULL
+ */
+cxobj *
+xmldb_cache_get(clicon_handle h,
+		const char   *db)
+{
+    db_elmnt *de;
+    
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL)
+	return NULL;
+    return de->de_xml;
+}
+
+/*! Get modified flag from datastore
+ * @param[in]  h     Clicon handle
+ * @param[in]  db    Database name
+ * @retval    -1     Error (datastore does not exist)
+ * @retval     0     Db is not modified
+ * @retval     1     Db is modified
+ * @note This only makes sense for "candidate", see RFC 6241 Sec 7.5
+ * @note This only works if db cache is used,...
+ */
+int
+xmldb_modified_get(clicon_handle h,
+		   const char   *db)
+{
+    db_elmnt *de;
+    
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+	clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+	return -1;
+    }
+    return de->de_modified;
+}
+
+/*! Get modified flag from datastore
+ * @param[in]  h     Clicon handle
+ * @param[in]  db    Database name
+ * @param[in]  value 0 or 1
+ * @retval    -1     Error (datastore does not exist)
+ * @retval     0     OK
+ * @note This only makes sense for "candidate", see RFC 6241 Sec 7.5
+ * @note This only works if db cache is used,...
+ */
+int
+xmldb_modified_set(clicon_handle h,
+		   const char   *db,
+		   int           value)
+{
+    db_elmnt *de;
+    
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+	clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+	return -1;
+    }
+    de->de_modified = value;
     return 0;
 }

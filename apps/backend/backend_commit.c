@@ -572,6 +572,7 @@ candidate_commit(clicon_handle h,
       */
      if (xmldb_copy(h, candidate, "running") < 0)
 	 goto done;
+     xmldb_modified_set(h, candidate, 0); /* reset dirty bit */
      /* Here pointers to old (source) tree are obsolete */
      if (td->td_dvec){
 	 td->td_dlen = 0;
@@ -640,7 +641,7 @@ from_client_commit(clicon_handle h,
 	    goto done;
 	}	
 	cprintf(cbx, "<session-id>%u</session-id>", iddb);
-	if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
+	if (netconf_in_use(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
 	    goto done;
 	goto ok;
     }
@@ -703,6 +704,7 @@ from_client_discard_changes(clicon_handle h,
 	    goto done;
 	goto ok;
     }
+    xmldb_modified_set(h, "candidate", 0); /* reset dirty bit */
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
  ok:
     retval = 0;

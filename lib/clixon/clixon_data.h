@@ -46,10 +46,15 @@
 /*
  * Types
  */
-/* Struct per database in hash */
+/* Struct per database in hash 
+ * Semantics of de_modified is to implement this from RFC 6241 Sec 7.5:
+ *       The target configuration is <candidate>, it has already been
+ *       modified, and these changes have not been committed or rolled back.
+ */
 typedef struct {
-    uint32_t  de_id;  /* session id */
-    cxobj    *de_xml; /* cache */
+    uint32_t  de_id;       /* session id */
+    cxobj    *de_xml;      /* cache */
+    int       de_modified; 
 } db_elmnt;
 
 /*
