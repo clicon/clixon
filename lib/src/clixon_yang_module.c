@@ -412,7 +412,8 @@ mod_ns_upgrade(clicon_handle h,
 	if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL)
 	    goto fail;
 	if ((yrev = yang_find(ymod, Y_REVISION, NULL)) == NULL)
-	    goto fail;
+	    retval = 1;
+	    goto done;
 	if (ys_parse_date_arg(yang_argument_get(yrev), &to) < 0)
 	    goto done;
     }
