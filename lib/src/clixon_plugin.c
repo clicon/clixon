@@ -156,6 +156,10 @@ clixon_plugin_each_revert(clicon_handle  h,
  * @param[in]  name Plugin name
  * @retval     p    Plugin if found
  * @retval     NULL Not found
+ * @code
+ *    clixon_plugin *cp;
+ *    cp = clixon_plugin_find(h, "plugin-name");
+ * @endcode
  */
 clixon_plugin *
 clixon_plugin_find(clicon_handle h,

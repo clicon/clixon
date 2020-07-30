@@ -289,13 +289,13 @@ cli_dbxml(clicon_handle       h,
 	goto done;
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
 	goto done;
-    /* should it not be list & container?? */
-    if (yang_keyword_get(y) != Y_LIST &&
-	yang_keyword_get(y) != Y_LEAF_LIST &&
-	cvec_len(cvv) > 1){
+    /* Add body last in case of leaf */
+    if (cvec_len(cvv) > 1 &&
+	(yang_keyword_get(y) == Y_LEAF)){
+	/* Add the body last */
 	if (dbxml_body(xbot, cvv) < 0)
 	    goto done;
-	/* Loop over namespace context and add them for the value */
+	/* Loop over namespace context and add them to this leaf node */
 	cv = NULL;
 	while ((cv = cvec_each(nsctx, cv)) != NULL){
 	    char *ns = cv_string_get(cv);

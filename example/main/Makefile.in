@@ -81,8 +81,7 @@ all:	$(PLUGINS)
 
 CLISPECS = $(APPNAME)_cli.cli
 
-YANGSPECS	 = clixon-example@2019-11-05.yang # obsolete
-YANGSPECS	+= clixon-example@2020-03-11.yang
+YANGSPECS	= clixon-example@2020-03-11.yang
 
 # Backend plugin
 BE_SRC   = $(APPNAME)_backend.c
