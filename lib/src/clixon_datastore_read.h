@@ -39,6 +39,6 @@
 /*
  * Prototypes
  */
-int xmldb_readfile(clicon_handle h, const char *db, yang_stmt *yspec, cxobj **xp, modstate_diff_t *msd);
+int xmldb_readfile(clicon_handle h, const char *db, yang_bind yb, yang_stmt *yspec, cxobj **xp, modstate_diff_t *msd);
 
 #endif /* _CLIXON_DATASTORE_READ_H */

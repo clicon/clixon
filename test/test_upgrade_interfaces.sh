@@ -7,6 +7,7 @@
 # A preliminary change list is in Appendix A of
 # draft-wang-netmod-module-revision-management-01
 # The example here is simplified and also extended.
+# For exampe  admin and stats field are non-config in the original, not here
 # It has also been broken up into two parts to test a series of upgrades.
 # These are the operations (authentic move/delete are from ietf-interfaces):
 # Move /if:interfaces-state/if:interface/if:admin-status to (2016)

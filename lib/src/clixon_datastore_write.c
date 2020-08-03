@@ -906,6 +906,7 @@ xmldb_put(clicon_handle       h,
     char               *format;
     cvec               *nsc = NULL; /* nacm namespace context */
     int                 firsttime = 0;
+    int                 pretty;
 
     if (cbret == NULL){
 	clicon_err(OE_XML, EINVAL, "cbret is NULL");
@@ -927,8 +928,10 @@ xmldb_put(clicon_handle       h,
     /* If there is no xml x0 tree (in cache), then read it from file */
     if (x0 == NULL){
 	firsttime++; /* to avoid leakage on error, see fail from text_modify */
-	if (xmldb_readfile(h, db, yspec, &x0, NULL) < 0)
+	if ((ret = xmldb_readfile(h, db, YB_MODULE, yspec, &x0, NULL)) < 0)
 	    goto done;
+	if (ret == 0)
+	    goto fail;
     }
     if (strcmp(xml_name(x0), "config")!=0){
 	clicon_err(OE_XML, 0, "Top-level symbol is %s, expected \"config\"",
@@ -1012,11 +1015,12 @@ xmldb_put(clicon_handle       h,
 	clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
 	goto done;
     } 
+    pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
     if (strcmp(format,"json")==0){
-	if (xml2json(f, x0, clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) < 0)
+	if (xml2json(f, x0, pretty) < 0)
 	    goto done;
     }
-    else if (clicon_xml2file(f, x0, 0, clicon_option_bool(h, "CLICON_XMLDB_PRETTY")) < 0)
+    else if (clicon_xml2file(f, x0, 0, pretty) < 0)
 	goto done;
     /* Remove modules state after writing to file
      */

@@ -61,6 +61,7 @@ Expected: July 2020
 
 ### C/CLI-API changes on existing features (For developers)
 
+* Added yang-binding yb parameter to xmldb_get0() and all xmldb get functions.
 * Changed module-specific upgrade API, not backward compatible. The API has been simplified which means more has to be done by the programmer.
   * In summary, a user registers an upgrade callback per module. The callback is called at startup if the module is added, has been removed or if the revision on file is different from the one in the system. 
   * The register function has removed `from` and `rev` parameters: `upgrade_callback_register(h, cb, namespace, arg)`

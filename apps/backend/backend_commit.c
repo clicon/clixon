@@ -181,7 +181,7 @@ startup_common(clicon_handle       h,
     cxobj              *xt = NULL;
     cxobj              *x;
     cxobj              *xret = NULL;
-    
+
     /* If CLICON_XMLDB_MODSTATE is enabled, then get the db XML with 
      * potentially non-matching module-state in msdiff
      */
@@ -189,8 +189,16 @@ startup_common(clicon_handle       h,
 	if ((msdiff = modstate_diff_new()) == NULL)
 	    goto done;
     clicon_debug(1, "Reading startup config from %s", db);
-    if (xmldb_get0(h, db, NULL, "/", 0, &xt, msdiff) < 0)
+    /* Get the startup datastore WITHOUT binding to YANG, sorting and default setting. 
+     * It is done below, later in this function
+     */
+    if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, &xt, msdiff) < 0)
 	goto done;
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, 0, "Yang spec not set");
+	goto done;
+    }
+
     clicon_debug(1, "Reading startup config done");
     /* Clear flags xpath for get */
     xml_apply0(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
@@ -206,23 +214,18 @@ startup_common(clicon_handle       h,
 	if (ret == 0)
 	    goto fail;
     }
-#if 1
-    if (clicon_quit_upgrade_get(h) == 1){ 	/* Print upgraded db */
+    /* Print upgraded db: -q backend switch */
+    if (clicon_quit_upgrade_get(h) == 1){ 	
 	if (xmldb_dump(h, stdout, xt) < 0)
 	    goto done;
 	exit(0);  /* This is fairly abrupt , but need to avoid side-effects of rewinding
 		     stack. Alternative is to make a separate function stack for this. */
     }
-#endif
     /* If empty skip. Note upgrading can add children, so it may be empty before that. */
     if (xml_child_nr(xt) == 0){     
 	td->td_target = xt;
 	xt = NULL;
 	goto ok;
-    }
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, 0, "Yang spec not set");
-	goto done;
     }
     /* After upgrading, XML tree needs to be sorted and yang spec populated */
     if ((ret = xml_bind_yang(xt, YB_MODULE, yspec, &xret)) < 0)
@@ -434,7 +437,7 @@ from_validate_common(clicon_handle       h,
 	goto done;
     }	
     /* This is the state we are going to */
-    if (xmldb_get0(h, candidate, NULL, "/", 0, &td->td_target, NULL) < 0)
+    if (xmldb_get0(h, candidate, YB_MODULE, NULL, "/", 0, &td->td_target, NULL) < 0)
 	goto done;
 
     /* Clear flags xpath for get */
@@ -452,7 +455,7 @@ from_validate_common(clicon_handle       h,
 
     /* 2. Parse xml trees 
      * This is the state we are going from */
-    if (xmldb_get0(h, "running", NULL, "/", 0, &td->td_src, NULL) < 0)
+    if (xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, &td->td_src, NULL) < 0)
 	goto done;
     /* Clear flags xpath for get */
     xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
@@ -861,7 +864,7 @@ from_client_restart_one(clicon_handle h,
     if ((td = transaction_new()) == NULL)
 	goto done;
     /* This is the state we are going to */
-    if (xmldb_get0(h, "running", NULL, "/", 0, &td->td_target, NULL) < 0)
+    if (xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, &td->td_target, NULL) < 0)
 	goto done;
     if ((ret = xml_yang_validate_all_top(h, td->td_target, &xerr)) < 0)
 	goto done;
@@ -871,7 +874,7 @@ from_client_restart_one(clicon_handle h,
 	goto fail;
     }
     /* This is the state we are going from */
-    if (xmldb_get0(h, db, NULL, "/", 0, &td->td_src, NULL) < 0)
+    if (xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, &td->td_src, NULL) < 0)
 	goto done;
 
     /* 3. Compute differences */

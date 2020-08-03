@@ -407,7 +407,7 @@ example_statedata(clicon_handle h,
 	 * Get config according to xpath */
 	if ((nsc1 = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
 	    goto done;
-	if (xmldb_get0(h, "running", nsc1, "/interfaces/interface/name", 1, &xt, NULL) < 0)
+	if (xmldb_get0(h, "running", YB_MODULE, nsc1, "/interfaces/interface/name", 1, &xt, NULL) < 0)
 	    goto done;
 	if (xpath_vec(xt, nsc1, "/interfaces/interface/name", &xvec, &xlen) < 0)
 	    goto done;

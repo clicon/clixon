@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# A very simple case - Error in this detected by msmith@netgate
+# A very simple case - Error in this detected by mgsmith@netgate
 # Enable modstate and save running on a simple system without upgrade callback
 # Upgrade yang revision, but no other (upgrade) changes
 # Then start from running with modstate enabled and the new revision

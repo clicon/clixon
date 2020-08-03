@@ -213,10 +213,11 @@ xml_copy_from_bottom(cxobj  *x0t,
     x0p = xml_parent(x0);
     if (xml_copy_bottom_recurse(x0t, x0p, x1t, &x1p) < 0)
 	return -1;
-    y = xml_spec(x0);
-    /* Look if it exists */
-    if (match_base_child(x1p, x0, y, &x1) < 0)
-	goto done;
+    if ((y = xml_spec(x0)) != NULL){
+	/* Look if it exists */
+	if (match_base_child(x1p, x0, y, &x1) < 0)
+	    goto done;
+    }
     if (x1 == NULL){ /* If not, create it and copy complete tree */
 	if ((x1 = xml_new(xml_name(x0), x1p, CX_ELMNT)) == NULL)
 	    goto done;
@@ -443,18 +444,25 @@ text_read_modstate(clicon_handle       h,
 }
 
 /*! Common read function that reads an XML tree from file
- * @param[in]  th    Datastore text handle
- * @param[in]  db    Symbolic database name, eg "candidate", "running"
- * @param[in]  yspec Top-level yang spec
- * @param[out] xp    XML tree read from file
- * @param[out] msdiff    If set, return modules-state differences
+ * @param[in]  th     Datastore text handle
+ * @param[in]  db     Symbolic database name, eg "candidate", "running"
+ * @param[in]  yb     How to bind yang to XML top-level when parsing
+ * @param[in]  yspec  Top-level yang spec
+ * @param[out] xp     XML tree read from file
+ * @param[out] msdiff If set, return modules-state differences
+ * @retval    -1      Error
+ * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
+ * @retval     1      OK
+ * @note retval 0 is NYI becaues of functions calling this function
  */
+#undef XMLDB_READFILE_FAIL
 int
-xmldb_readfile(clicon_handle      h,
-	       const char         *db,
-	       yang_stmt          *yspec,
-	       cxobj             **xp,
-	       modstate_diff_t    *msdiff)
+xmldb_readfile(clicon_handle    h,
+	       const char      *db,
+	       yang_bind        yb,
+	       yang_stmt       *yspec,
+	       cxobj          **xp,
+	       modstate_diff_t *msdiff)
 {
     int    retval = -1;
     cxobj *x0 = NULL;
@@ -479,12 +487,15 @@ xmldb_readfile(clicon_handle      h,
 	goto done;
     }    
     if (strcmp(format, "json")==0){
-	if ((ret = clixon_json_parse_file(fd, YB_MODULE, yspec, &x0, NULL)) < 0) /* XXX: ret == 0*/
+	if ((ret = clixon_json_parse_file(fd, yb, yspec, &x0, NULL)) < 0) /* XXX: ret == 0*/
 	    goto done;
     }
-    else if ((clixon_xml_parse_file(fd, YB_MODULE, yspec, "</config>", &x0, NULL)) < 0)
+    else if ((ret = clixon_xml_parse_file(fd, yb, yspec, "</config>", &x0, NULL)) < 0)
 	goto done;
-
+#ifdef XMLDB_READFILE_FAIL /* The functions calling this function cannot handle a failed parse yet */
+    if (ret == 0)
+    	goto fail;
+#endif
     /* Always assert a top-level called "config". 
        To ensure that, deal with two cases:
        1. File is empty <top/> -> rename top-level to "config" */
@@ -507,7 +518,7 @@ xmldb_readfile(clicon_handle      h,
 	*xp = x0;
 	x0 = NULL;
     }
-    retval = 0;
+    retval = 1;
  done:
     if (fd != -1)
 	close(fd);
@@ -516,6 +527,11 @@ xmldb_readfile(clicon_handle      h,
     if (x0)
 	xml_free(x0);
     return retval;
+#ifdef XMLDB_READFILE_FAIL /* The functions calling this function cannot handle a failed parse yet */
+ fail:
+    retval = 0;
+    goto done;
+#endif
 }
 
 /*! Get content of database using xpath. return a set of matching sub-trees
@@ -524,38 +540,45 @@ xmldb_readfile(clicon_handle      h,
  * This is a clixon datastore plugin of the the xmldb api
  * @param[in]  h      Clicon handle
  * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  yb     How to bind yang to XML top-level when parsing
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msdiff    If set, return modules-state differences
- * @retval     0      OK
  * @retval     -1     Error
+ * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
+ * @retval     1      OK
  * @see xmldb_get  the generic API function
  */
 static int
-xmldb_get_nocache(clicon_handle       h,
-		  const char         *db, 
-		  cvec               *nsc,
-		  const char         *xpath,
-		  cxobj             **xtop,
-		  modstate_diff_t    *msdiff)
+xmldb_get_nocache(clicon_handle    h,
+		  const char      *db, 
+		  yang_bind        yb,
+		  cvec            *nsc,
+		  const char      *xpath,
+		  cxobj          **xtop,
+		  modstate_diff_t *msdiff)
 {
-    int             retval = -1;
-    char           *dbfile = NULL;
-    yang_stmt      *yspec;
-    cxobj          *xt = NULL;
-    cxobj          *x;
-    int             fd = -1;
-    cxobj         **xvec = NULL;
-    size_t          xlen;
-    int             i;
+    int        retval = -1;
+    char      *dbfile = NULL;
+    yang_stmt *yspec;
+    cxobj     *xt = NULL;
+    cxobj     *x;
+    int        fd = -1;
+    cxobj    **xvec = NULL;
+    size_t     xlen;
+    int        i;
+    int        ret;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if (xmldb_readfile(h, db, yspec, &xt, msdiff) < 0)
+    if ((ret = xmldb_readfile(h, db, YB_MODULE, yspec, &xt, msdiff)) < 0)
 	goto done;
+    if (ret == 0)
+	goto fail;
+    
     /* Here xt looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec */
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
@@ -589,7 +612,7 @@ xmldb_get_nocache(clicon_handle       h,
     	clicon_xml2file(stderr, xt, 0, 1);
     *xtop = xt;
     xt = NULL;
-    retval = 0;
+    retval = 1;
  done:
     if (xt)
 	xml_free(xt);
@@ -600,6 +623,9 @@ xmldb_get_nocache(clicon_handle       h,
     if (fd != -1)
 	close(fd);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Get content of database using xpath. return a set of matching sub-trees
@@ -608,17 +634,20 @@ xmldb_get_nocache(clicon_handle       h,
  * This is a clixon datastore plugin of the the xmldb api
  * @param[in]  h      Clicon handle
  * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  yb     How to bind yang to XML top-level when parsing
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msdiff    If set, return modules-state differences
- * @retval     0      OK
  * @retval     -1     Error
+ * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
+ * @retval     1      OK
  * @see xmldb_get  the generic API function
  */
 static int
 xmldb_get_cache(clicon_handle    h,
 		const char      *db, 
+		yang_bind        yb,
 		cvec            *nsc,
 		const char      *xpath,
 		cxobj          **xtop,
@@ -634,6 +663,7 @@ xmldb_get_cache(clicon_handle    h,
     db_elmnt       *de = NULL;
     cxobj          *x1t = NULL;
     db_elmnt        de0 = {0,};
+    int             ret;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
@@ -642,11 +672,12 @@ xmldb_get_cache(clicon_handle    h,
     de = clicon_db_elmnt_get(h, db);
     if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
 	/* If there is no xml x0 tree (in cache), then read it from file */
-	if (xmldb_readfile(h, db, yspec, &x0t, msdiff) < 0)
+	if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, msdiff)) < 0)
 	    goto done;
-	/* XXX: should we validate file if read from disk? 
-	 * Argument against: we may want to have a semantically wrong file and wish
-	 * to edit?
+	if (ret == 0)
+	    goto fail;
+	/* Should we validate file if read from disk? 
+	 * No, argument against: we may want to have a semantically wrong file and wish to edit?
 	 */
 	de0.de_xml = x0t;
 	clicon_db_elmnt_set(h, db, &de0);
@@ -675,6 +706,7 @@ xmldb_get_cache(clicon_handle    h,
     if (xlen < 1000){
 	/* This is optimized for the case when the tree is large and xlen is small
 	 * If the tree is large and xlen too, then the other is better.
+	 * This only works if yang bind
 	 */
 	for (i=0; i<xlen; i++){
 	    x0 = xvec[i];
@@ -709,12 +741,15 @@ xmldb_get_cache(clicon_handle    h,
     if (clicon_debug_get()>1)
     	clicon_xml2file(stderr, x1t, 0, 1);
     *xtop = x1t;
-    retval = 0;
+    retval = 1;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
 	free(xvec);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Get the raw cache of whole tree
@@ -722,17 +757,20 @@ xmldb_get_cache(clicon_handle    h,
  * This is a clixon datastore plugin of the the xmldb api
  * @param[in]  h      Clicon handle
  * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  yb     How to bind yang to XML top-level when parsing
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msdiff    If set, return modules-state differences
- * @retval     0      OK
  * @retval     -1     Error
+ * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
+ * @retval     1      OK
  */
 static int
 xmldb_get_zerocopy(clicon_handle    h,
 		   const char      *db, 
+		   yang_bind        yb,
 		   cvec            *nsc,
 		   const char      *xpath,
 		   cxobj          **xtop,
@@ -747,6 +785,7 @@ xmldb_get_zerocopy(clicon_handle    h,
     cxobj          *x0;
     db_elmnt       *de = NULL;
     db_elmnt        de0 = {0,};
+    int             ret;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
@@ -755,11 +794,12 @@ xmldb_get_zerocopy(clicon_handle    h,
     de = clicon_db_elmnt_get(h, db);
     if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
 	/* If there is no xml x0 tree (in cache), then read it from file */
-	if (xmldb_readfile(h, db, yspec, &x0t, msdiff) < 0)
+	if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, msdiff)) < 0)
 	    goto done;
-	/* XXX: should we validate file if read from disk? 
-	 * Argument against: we may want to have a semantically wrong file and wish
-	 * to edit?
+	if (ret == 0)
+	    goto fail;
+	/* Should we validate file if read from disk? 
+	 * No, argument against: we may want to have a semantically wrong file and wish to edit?
 	 */
 	de0.de_xml = x0t;
 	clicon_db_elmnt_set(h, db, &de0);
@@ -783,12 +823,15 @@ xmldb_get_zerocopy(clicon_handle    h,
     if (clicon_debug_get()>1)
     	clicon_xml2file(stderr, x0t, 0, 1);
     *xtop = x0t;
-    retval = 0;
+    retval = 1;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
 	free(xvec);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Get content of datastore and return a copy of the XML tree
@@ -813,7 +856,7 @@ xmldb_get(clicon_handle    h,
 	  char            *xpath,
 	  cxobj          **xret)
 {
-    return xmldb_get0(h, db, nsc, xpath, 1, xret, NULL);
+    return xmldb_get0(h, db, YB_MODULE, nsc, xpath, 1, xret, NULL);
 }
 
 /*! Zero-copy variant of get content of database
@@ -826,6 +869,7 @@ xmldb_get(clicon_handle    h,
  * freeing tree must be made after use.
  * @param[in]  h      Clicon handle
  * @param[in]  db     Name of datastore, eg "running"
+ * @param[in]  yb     How to bind yang to XML top-level when parsing
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  copy   Force copy. Overrides cache_zerocopy -> cache 
@@ -835,7 +879,7 @@ xmldb_get(clicon_handle    h,
  * @retval     -1     Error
  * @code
  *   cxobj   *xt;
- *   if (xmldb_get0(xh, "running", nsc, "/interface[name="eth"]", 0, &xt, NULL) < 0)
+ *   if (xmldb_get0(xh, "running", YB_MODULE, nsc, "/interface[name="eth"]", 0, &xt, NULL) < 0)
  *      err;
  *   ...
  *   xmldb_get0_clear(h, xt);   # Clear tree from default values and flags 
@@ -847,6 +891,7 @@ xmldb_get(clicon_handle    h,
 int 
 xmldb_get0(clicon_handle    h, 
 	   const char      *db, 
+	   yang_bind        yb,
 	   cvec            *nsc,
 	   const char      *xpath,
 	   int              copy,
@@ -861,7 +906,7 @@ xmldb_get0(clicon_handle    h,
 	 * Add default values in copy
 	 * Copy deleted by xmldb_free
 	 */
-	retval = xmldb_get_nocache(h, db, nsc, xpath, xret, msdiff);
+	retval = xmldb_get_nocache(h, db, yb, nsc, xpath, xret, msdiff);
 	break;
     case DATASTORE_CACHE_ZEROCOPY:
 	/* Get cache (file if empty) mark xpath match in original tree 
@@ -869,7 +914,7 @@ xmldb_get0(clicon_handle    h,
 	 * Default values and markings removed in xmldb_clear
 	 */
 	if (!copy){
-	    retval = xmldb_get_zerocopy(h, db, nsc, xpath, xret, msdiff);
+	    retval = xmldb_get_zerocopy(h, db, yb, nsc, xpath, xret, msdiff);
 	    break;
 	}
 	/* fall through */
@@ -878,7 +923,7 @@ xmldb_get0(clicon_handle    h,
 	 * Add default values in copy, return copy
 	 * Copy deleted by xmldb_free
 	 */
-	retval = xmldb_get_cache(h, db, nsc, xpath, xret, msdiff);
+	retval = xmldb_get_cache(h, db, yb, nsc, xpath, xret, msdiff);
 	break;
     }
     return retval;
