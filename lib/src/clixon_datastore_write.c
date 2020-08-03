@@ -1039,3 +1039,39 @@ xmldb_put(clicon_handle       h,
     retval = 0;
     goto done;
 }
+
+/* Dump a datastore to file including modstate
+ */
+int
+xmldb_dump(clicon_handle   h,
+	   FILE           *f,
+	   cxobj          *xt)
+{
+    int    retval = -1;
+    cxobj *x;
+    cxobj *xmodst = NULL;
+    char  *format;
+    int    pretty;
+    
+    /* Add modstate first */
+    if ((x = clicon_modst_cache_get(h, 1)) != NULL){
+	if ((xmodst = xml_dup(x)) == NULL)
+	    goto done;
+	if (xml_child_insert_pos(xt, xmodst, 0) < 0)
+	    goto done;
+    }
+    if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
+	clicon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
+	goto done;
+    }
+    pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
+    if (strcmp(format,"json")==0){
+	if (xml2json(f, xt, pretty) < 0)
+	    goto done;
+    }
+    else if (clicon_xml2file(f, xt, 0, pretty) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
