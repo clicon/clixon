@@ -76,7 +76,7 @@
 #include "backend_startup.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:l:d:p:b:Fza:u:P:1s:c:U:g:y:o:"
+#define BACKEND_OPTS "hD:f:l:d:p:b:Fza:u:P:1qs:c:U:g:y:o:"
 
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
@@ -414,6 +414,7 @@ usage(clicon_handle h,
     	    "\t-1\t\tRun once and then quit (dont wait for events)\n"
 	    "\t-s <mode>\tSpecify backend startup mode: none|startup|running|init)\n"
 	    "\t-c <file>\tLoad extra xml configuration, but don't commit.\n"
+	    "\t-q \tQuit startup directly after upgrading and print result on stdout\n"
 	    "\t-U <user>\tRun backend daemon as this user AND drop privileges permanently\n"
 	    "\t-g <group>\tClient membership required to this group (default: %s)\n"
 
@@ -578,6 +579,10 @@ main(int    argc,
 	    break;
 	case '1' : /* Quit after reading database once - dont wait for events */
 	    once = 1;
+	    break;
+	case 'q': /* Quit directly after startup upgrading and print result on stdout */
+	    if (clicon_quit_upgrade_set(h, 1) < 0)
+		goto done;
 	    break;
 	case 's' : /* startup mode */
 	    if (clicon_option_add(h, "CLICON_STARTUP_MODE", optarg) < 0)
@@ -843,6 +848,10 @@ main(int    argc,
 	    goto done;
 	/* if status = STARTUP_INVALID, cbret contains info */
     }
+    /* Quit after upgrade catch-all, running/startup quits in upgrade code */
+    if (clicon_quit_upgrade_get(h) == 1)
+	goto done;
+
     /*
      * Disable unknown to anydata auto-creation after startup
      */

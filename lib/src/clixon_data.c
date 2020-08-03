@@ -713,3 +713,37 @@ clicon_session_id_set(clicon_handle h,
     clicon_hash_add(cdat, "session-id", &id, sizeof(uint32_t));
     return 0;
 }
+
+/*! Get quit-after-upgrade flag
+ * @param[in]  h    Clicon handle
+ * @retval     1    Flag set: quit startup directly after upgrade
+ * @retval     0    Flag not set
+ * If set, quit startup directly after upgrade
+ */
+int
+clicon_quit_upgrade_get(clicon_handle h)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    void           *p;
+
+    if ((p = clicon_hash_value(cdat, "quit-after-upgrade", NULL)) == NULL)
+	return 0;
+    return *(int*)p;
+}
+
+/*! Set quit-after-upgrade flag
+ * @param[in]  h   Clicon handle
+ * @param[in]  val  Set or reset flag
+ * @retval     0   OK
+ * @retval    -1   Error
+ * If set, quit startup directly after upgrade
+ */
+int
+clicon_quit_upgrade_set(clicon_handle h, 
+			int           val)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    clicon_hash_add(cdat, "quit-after-upgrade", &val, sizeof(int));
+    return 0;
+}

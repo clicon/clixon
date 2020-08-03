@@ -206,6 +206,14 @@ startup_common(clicon_handle       h,
 	if (ret == 0)
 	    goto fail;
     }
+#if 1
+    if (clicon_quit_upgrade_get(h) == 1){ 	/* Print upgraded db */
+	if (xmldb_dump(h, stdout, xt) < 0)
+	    goto done;
+	exit(0);  /* This is fairly abrupt , but need to avoid side-effects of rewinding
+		     stack. Alternative is to make a separate function stack for this. */
+    }
+#endif
     /* If empty skip. Note upgrading can add children, so it may be empty before that. */
     if (xml_child_nr(xt) == 0){     
 	td->td_target = xt;

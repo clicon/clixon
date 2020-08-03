@@ -86,6 +86,7 @@ Expected: July 2020
   
 ### Minor changes
 
+* New backend switch: `-q` : Quit startup directly after upgrading and print result on stdout.
 * Enhanced Clixon if-feature handling:
   * If-feature now supports and/or lists, such as: `if-feature "a and b"` and `if-feature "a or b or c"`. However, full if-feature-expr including `not` and nested boolean experessions is still not supported.
   * Sanity check: if an `if-feature` statement exists, a corresponding `feature` statement must exists that declares that feature.

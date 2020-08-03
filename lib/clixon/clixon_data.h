@@ -117,4 +117,8 @@ int clicon_argv_set(clicon_handle h, char *argv0, int argc, char **argv);
 int clicon_session_id_set(clicon_handle h, uint32_t id);
 int clicon_session_id_get(clicon_handle h, uint32_t *id);
 
+/* If set, quit startup directly after upgrade */
+int clicon_quit_upgrade_get(clicon_handle h);
+int clicon_quit_upgrade_set(clicon_handle h, int val);
+
 #endif  /* _CLIXON_DATA_H_ */
