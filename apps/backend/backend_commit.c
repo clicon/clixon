@@ -215,7 +215,25 @@ startup_common(clicon_handle       h,
 	    goto fail;
     }
     /* Print upgraded db: -q backend switch */
-    if (clicon_quit_upgrade_get(h) == 1){ 	
+    if (clicon_quit_upgrade_get(h) == 1){
+	/* bind yang */
+	if (ret = (xml_bind_yang(xt, YB_MODULE, yspec, &xret) < 1)){
+	    if (ret == 0){
+		/* invalid */
+		clicon_err(OE_XML, EFAULT, "invalid configuration");
+	    }
+	    else {
+		/* error */
+		xml_print(stderr, xret);
+		clicon_err(OE_XML, 0, "%s: YANG binding error", __func__);
+	    }
+	    exit(0);
+	}
+	/* sort yang */
+	if (xml_sort_recurse(xt) < 0) {
+	    clicon_err(OE_XML, EFAULT, "Yang sort error");
+	    exit(0);
+        }
 	if (xmldb_dump(h, stdout, xt) < 0)
 	    goto done;
 	exit(0);  /* This is fairly abrupt , but need to avoid side-effects of rewinding
