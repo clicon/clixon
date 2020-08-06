@@ -112,6 +112,7 @@ Expected: July 2020
 
 ### Corrected Bugs
 
+* Changed (restricted) recovery NACM user session. 
 * Fixed: [default values don't show up in datastores #111](https://github.com/clicon/clixon/issues/111).
   * See also API changes since this changes NACM behavior for example.
 * Fixed: Don't call upgrade callbacks if no revision defined so there's no way to determine right way 'from' and 'to'
