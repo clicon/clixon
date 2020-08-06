@@ -192,7 +192,6 @@ done
 
 #------- REALUSER: ROOT
 #XXX: seems not to work in docker
-if false; then
 # Neither of these should work: user != recovery
 REALUSER=root
 PSEUDO=root
@@ -233,6 +232,5 @@ for c in none except; do
 done
 new "cred: exact realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
 testrun exact $REALUSER $PSEUDO $RECOVERY false false
-fi
 
 rm -rf $dir
