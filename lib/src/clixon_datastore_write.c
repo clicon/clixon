@@ -1057,6 +1057,9 @@ xmldb_dump(clicon_handle   h,
     char  *format;
     int    pretty;
     
+    /* clear XML tree of defaults */
+    if (xml_tree_prune_flagged(xt, XML_FLAG_DEFAULT, 1) < 0)
+	goto done;
     /* Add modstate first */
     if ((x = clicon_modst_cache_get(h, 1)) != NULL){
 	if ((xmodst = xml_dup(x)) == NULL)

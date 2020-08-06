@@ -227,12 +227,10 @@ startup_common(clicon_handle       h,
 		xml_print(stderr, xret);
 		clicon_err(OE_XML, 0, "%s: YANG binding error", __func__);
 	    }
-	    exit(0);
-	}
-	/* sort yang */
-	if (xml_sort_recurse(xt) < 0) {
+
+	}	/* sort yang */
+	else if (xml_sort_recurse(xt) < 0) {
 	    clicon_err(OE_XML, EFAULT, "Yang sort error");
-	    exit(0);
         }
 	if (xmldb_dump(h, stdout, xt) < 0)
 	    goto done;
