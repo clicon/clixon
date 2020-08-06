@@ -1490,69 +1490,6 @@ from_client_restart_plugin(clicon_handle h,
     return retval;
 }
 
-/*! Verify nacm user with  peer uid credentials
- * @param[in]  mode      Peer credential mode: none, exact or except
- * @param[in]  peername  Peer username if any
- * @param[in]  username  username received in XML (eg for NACM)
- * @param[out] cbret     Set with netconf error message if ret == 0
- * @retval    -1         Error
- * @retval     0         Not verified (cbret set)
- * @retval     1         Verified
- * Credentials OK if both NACM user and peer useri s defined AND one of the
- * following is true:
- * - peer user is same as NACM user
- * - peer user is root (can be any NACM user)
- * - peer user is www (can be any NACM user)
- */
-static int
-verify_nacm_user(enum nacm_credentials_t mode,
-		 char                   *peername,
-		 char                   *nacmname,
-		 cbuf                   *cbret)
-{
-    int   retval = -1;
-    cbuf *cbmsg = NULL;
-
-    if (mode == NC_NONE)
-	return 1;
-    if (peername == NULL){
-	if (netconf_access_denied(cbret, "application", "No peer user credentials available") < 0)
-	    goto done;
-	goto fail;
-    }
-    if (nacmname == NULL){
-	if (netconf_access_denied(cbret, "application", "No NACM available") < 0)
-	    goto done;
-	goto fail;
-    }	
-    if (mode == NC_EXCEPT){
-	if (strcmp(peername, "root") == 0)
-	    goto ok;
-#ifdef WITH_RESTCONF
-	if (strcmp(peername, WWWUSER) == 0)
-	    goto ok;
-#endif
-    }
-    if (strcmp(peername, nacmname) != 0){
-	if ((cbmsg = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	cprintf(cbmsg, "User %s credential not matching NACM user %s", peername, nacmname);
-	if (netconf_access_denied(cbret, "application", cbuf_get(cbmsg)) < 0)
-	    goto done;
-	goto fail;
-    }
- ok:
-    retval  = 1;
- done:
-    if (cbmsg)
-	cbuf_free(cbmsg);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
 
 /*!
  * @retval     0       OK
@@ -1670,9 +1607,16 @@ from_client_msg(clicon_handle        h,
 	/* Pre-NACM access step */
 	xnacm = NULL;
 
-	if ((ret = nacm_access_pre(h, username, &xnacm)) < 0)
+	/* NACM intial pre- access control enforcements. Retval:
+	 * 0: Use NACM validation and xnacm is set.
+	 * 1: Permit, skip NACM
+	 * Therefore, xnacm=NULL means no NACM checks needed.
+	 */
+	if ((ret = nacm_access_pre(h, ce->ce_username, username, &xnacm)) < 0)
 	    goto done;
-	/* Cache XML NACM tree here. Use with caution, only valid on from_client_msg stack */
+	/* Cache XML NACM tree here. Use with caution, only valid on from_client_msg stack 
+	 * 
+	 */
 	if (clicon_nacm_cache_set(h, xnacm) < 0)
 	    goto done;
 	if (ret == 0){ /* Do NACM RPC validation */

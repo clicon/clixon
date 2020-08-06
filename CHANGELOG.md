@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [4.6.0](#460) Expected: July 2020
+* [4.6.0](#460) Expected: August 2020
 * [4.5.0](#450) 12 May 2020
 * [4.4.0](#440) 5 April 2020
 * [4.3.0](#430) 1 January 2020
@@ -49,22 +49,6 @@ Expected: July 2020
 * NACM default behaviour is read-only (empty configs are dead-lockedd)
   * This applies if NACM is loaded and `CLICON_NACM_MODE` is `internal`
   * Due to the previous bult (top-level default leafs)
-  * This means that empty configs or empty NACM configs are not writable (deadlocked).
-  * Workarounds:
-    1. Access the system with the recovery user, see clixon option CLICON_NACM_RECOVERY_USER
-    
-  * This means that empty configs or empty NACM configs are not writable (deadlocked).
-  * Workarounds:
-    1. Access the system with the recovery user, see clixon option CLICON_NACM_RECOVERY_USER
-    
-  * This means that empty configs or empty NACM configs are not writable (deadlocked).
-  * Workarounds:
-    1. Access the system with the recovery user, see clixon option CLICON_NACM_RECOVERY_USER
-    
-  * This means that empty configs or empty NACM configs are not writable (deadlocked).
-  * Workarounds:
-    1. Access the system with the recovery user, see clixon option CLICON_NACM_RECOVERY_USER
-    
   * This means that empty configs or empty NACM configs are not writable (deadlocked).
   * Workarounds:
     1. Access the system with the recovery user, see clixon option CLICON_NACM_RECOVERY_USER

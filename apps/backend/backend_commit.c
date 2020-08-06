@@ -217,7 +217,7 @@ startup_common(clicon_handle       h,
     /* Print upgraded db: -q backend switch */
     if (clicon_quit_upgrade_get(h) == 1){
 	/* bind yang */
-	if (ret = (xml_bind_yang(xt, YB_MODULE, yspec, &xret) < 1)){
+	if ((ret = (xml_bind_yang(xt, YB_MODULE, yspec, &xret)) < 1)){
 	    if (ret == 0){
 		/* invalid */
 		clicon_err(OE_XML, EFAULT, "invalid configuration");

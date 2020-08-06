@@ -95,7 +95,7 @@ enum priv_mode_t{
 
 /*! See clixon-config.yang type nacm_cred_mode (user credentials) */
 enum nacm_credentials_t{
-    NC_NONE=0,   /* "Dont match NACM user to any user credentials.  */
+    NC_NONE=0,   /* Dont match NACM user to any user credentials.  */
     NC_EXACT,    /* Exact match between NACM user and unix socket peer user. */
     NC_EXCEPT    /* Exact match except for root and www user  */
 };

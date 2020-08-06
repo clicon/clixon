@@ -704,8 +704,7 @@ module clixon-config {
 	    description
 		"Verify nacm user credentials with unix socket peer cred.
                  This means nacm user must match unix user accessing the backend
-                 socket.
-                 Except for recovery user and www user (for restconf)";
+                 socket.";
 	}
         leaf CLICON_NACM_RECOVERY_USER {
 	    type string;
@@ -716,7 +715,7 @@ module clixon-config {
                  all access control enforcements.
                  Note setting of CLICON_NACM_CREDENTIALS is important, if set to
                  exact for example, this user must exist and be used, otherwise
-                 another user (such as root or www) can pose as it.";
+                 another user (such as root or www) can pose as the recovery user.";
 	}
 	leaf CLICON_NACM_DISABLED_ON_EMPTY {
 	    type boolean;

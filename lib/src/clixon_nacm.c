@@ -1075,7 +1075,7 @@ nacm_datanode_read(clicon_handle h,
  * @retval  0  OK but not validated. Need to do NACM step using xnacm
  * @retval  1  OK permitted. You do not need to do next NACM step
  * @code
- *   if ((ret = nacm_access(h, mode, xnacm, username)) < 0)
+ *   if ((ret = nacm_access_check(h, mode, xnacm, peername, username)) < 0)
  *     err;
  *   if (ret == 0){
  *      // Next step NACM processing
@@ -1085,14 +1085,16 @@ nacm_datanode_read(clicon_handle h,
  * @see RFC8341 3.4 Access Control Enforcement Procedures
  */
 static int
-nacm_access(clicon_handle h,
-	    cxobj        *xnacm,
-	    char         *username)
+nacm_access_check(clicon_handle h,
+		  cxobj        *xnacm,
+		  char         *peername,
+		  char         *username)
 {
     int     retval = -1;
     char   *enabled;
     cxobj  *x;
     cvec  *nsc = NULL;
+    char  *recovery_user;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
@@ -1108,11 +1110,40 @@ nacm_access(clicon_handle h,
     enabled = xml_body(x);
     if (strcmp(enabled, "true") != 0)
 	goto permit;
+    recovery_user=clicon_nacm_recovery_user(h);
     /* 2.   If the requesting session is identified as a recovery session,
-       then the protocol operation is permitted. NYI */
-    if (username && strcmp(username, clicon_nacm_recovery_user(h)) == 0)
-	goto permit;
-
+     * then the protocol operation is permitted. 
+     */
+    if (username && peername && recovery_user &&
+	strcmp(username, recovery_user) == 0){
+	/* Recovery session in clixon is defined as
+	 * 1) username (sent in message) is recovery user
+	 * AND
+	 *  if cred is EXACT:
+	 *   2a) peername is also recovery user
+	 *  if cred is EXCEPT/NONE:;
+	 *   2b) peername is recovery user/root/WWWUSER
+	 */
+	if (strcmp(peername, recovery_user) == 0)
+	    goto permit;
+	switch(clicon_nacm_credentials(h)){
+	case NC_EXACT:
+	    break;
+	case NC_NONE:
+	    goto permit;
+	    break;
+	case NC_EXCEPT:
+	    if (strcmp(username, recovery_user) == 0 &&
+		strcmp(peername, "root") == 0)
+		goto permit;
+#ifdef WITH_RESTCONF
+	    if (strcmp(username, recovery_user) == 0 &&
+		strcmp(peername, WWWUSER) == 0)
+	    goto permit;
+#endif
+	    break;
+	}
+    }
     retval = 0; /* not permitted yet. continue with next NACM step */
  done:
     if (nsc)
@@ -1133,10 +1164,10 @@ nacm_access(clicon_handle h,
  * @param[out] xncam    NACM XML tree, set if retval=0. Free after use
  * @retval -1  Error
  * @retval  0  OK but not validated. Need to do NACM step using xnacm
- * @retval  1  OK permitted. You do not need to do next NACM step
+ * @retval  1  OK permitted. You do not need to do next NACM step.
  * @code
  *   cxobj *xnacm = NULL;
- *   if ((ret = nacm_access_pre(h, username, &xnacm)) < 0)
+ *   if ((ret = nacm_access_pre(h, peername, username, &xnacm)) < 0)
  *     err;
  *   if (ret == 0){
  *      // Next step NACM processing
@@ -1147,6 +1178,7 @@ nacm_access(clicon_handle h,
  */
 int
 nacm_access_pre(clicon_handle  h,
+		char          *peername,
 		char          *username,
 		cxobj        **xnacmp)
 {
@@ -1189,7 +1221,7 @@ nacm_access_pre(clicon_handle  h,
 	goto done;
     xnacm0 = NULL;
     /* Initial NACM steps and common to all NACM access validation. */
-    if ((retval = nacm_access(h, xnacm, username)) < 0)
+    if ((retval = nacm_access_check(h, xnacm, peername, username)) < 0)
 	goto done;
     if (retval == 0){ /* if retval == 0 then return an xml nacm tree */
 	*xnacmp = xnacm;
@@ -1208,3 +1240,70 @@ nacm_access_pre(clicon_handle  h,
     goto done;
 }
 
+/*! Verify nacm user with  peer uid credentials
+ * @param[in]  mode      Peer credential mode: none, exact or except
+ * @param[in]  peername  Peer username if any
+ * @param[in]  username  username received in XML (eg for NACM)
+ * @param[out] cbret     Set with netconf error message if ret == 0
+ * @retval    -1         Error
+ * @retval     0         Not verified (cbret set)
+ * @retval     1         Verified
+ * Credentials OK if 
+ *  - cred mode is NONE,
+ * Otherwise both NACM user AND peer user must exist, and
+ * if cred mode is EXACT and
+ * - peer user is same as NACM user
+ * or if cred mode is EXCEPT and one of the following is true
+ * - peer user is same as NACM user
+ * - peer user is root (can be any NACM user)
+ * - peer user is www (can be any NACM user)
+ */
+int
+verify_nacm_user(enum nacm_credentials_t cred,
+		 char                   *peername,
+		 char                   *nacmname,
+		 cbuf                   *cbret)
+{
+    int   retval = -1;
+    cbuf *cbmsg = NULL;
+
+    if (cred == NC_NONE)
+	return 1;
+    if (peername == NULL){
+	if (netconf_access_denied(cbret, "application", "No peer user credentials available") < 0)
+	    goto done;
+	goto fail;
+    }
+    if (nacmname == NULL){
+	if (netconf_access_denied(cbret, "application", "No NACM available") < 0)
+	    goto done;
+	goto fail;
+    }	
+    if (cred == NC_EXCEPT){
+	if (strcmp(peername, "root") == 0)
+	    goto ok;
+#ifdef WITH_RESTCONF
+	if (strcmp(peername, WWWUSER) == 0)
+	    goto ok;
+#endif
+    }
+    if (strcmp(peername, nacmname) != 0){
+	if ((cbmsg = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cbmsg, "User %s credential not matching NACM user %s", peername, nacmname);
+	if (netconf_access_denied(cbret, "application", cbuf_get(cbmsg)) < 0)
+	    goto done;
+	goto fail;
+    }
+ ok:
+    retval  = 1;
+ done:
+    if (cbmsg)
+	cbuf_free(cbmsg);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
