@@ -636,12 +636,11 @@ clicon_argv_set(clicon_handle h,
     return retval;
 }
 
-/*! Get xml database element including pid and xml cache
+/*! Get xml database element including id, xml cache, empty on startup and dirty bit
  * @param[in]  h    Clicon handle
  * @param[in]  db   Name of database
  * @retval     de   Database element
  * @retval     NULL None found
- * @note these use db_elmnt hash, not data
  */
 db_elmnt *
 clicon_db_elmnt_get(clicon_handle h,
@@ -655,14 +654,12 @@ clicon_db_elmnt_get(clicon_handle h,
     return NULL;
 }
 
-/*! Set xml database element including pid and xml cache
+/*! Set xml database element including id, xml cache, empty on startup and dirty bit
  * @param[in] h   Clicon handle
  * @param[in] db  Name of database
  * @param[in] de  Database element
  * @retval    0   OK
  * @retval   -1   Error
- * XXX add prefix to db to ensure uniqueness?
- * @note these use db_elmnt hash, not data
 */
 int
 clicon_db_elmnt_set(clicon_handle h, 

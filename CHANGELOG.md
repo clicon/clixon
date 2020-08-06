@@ -42,6 +42,34 @@ Expected: July 2020
 	
 ### API changes on existing protocol/config features (For users)
 
+* Top-level default leafs assigned.
+  * Enforcing RFC 7950 Sec 7.6.1 means unassigned top-level leafs (or leafs under non-presence containers) are assigned default values.
+  * In this process non-presence containers may be created.
+  * See also [default values don't show up in datastores #111](https://github.com/clicon/clixon/issues/111).
+* NACM default behaviour is read-only (empty configs are dead-lockedd)
+  * This applies if NACM is loaded and `CLICON_NACM_MODE` is `internal`
+  * Due to the previous bult (top-level default leafs)
+  * This means that empty configs or empty NACM configs are not writable (deadlocked).
+  * Workarounds:
+    1. Access the system with the recovery user, see clixon option CLICON_NACM_RECOVERY_USER
+    
+  * This means that empty configs or empty NACM configs are not writable (deadlocked).
+  * Workarounds:
+    1. Access the system with the recovery user, see clixon option CLICON_NACM_RECOVERY_USER
+    
+  * This means that empty configs or empty NACM configs are not writable (deadlocked).
+  * Workarounds:
+    1. Access the system with the recovery user, see clixon option CLICON_NACM_RECOVERY_USER
+    
+  * This means that empty configs or empty NACM configs are not writable (deadlocked).
+  * Workarounds:
+    1. Access the system with the recovery user, see clixon option CLICON_NACM_RECOVERY_USER
+    
+  * This means that empty configs or empty NACM configs are not writable (deadlocked).
+  * Workarounds:
+    1. Access the system with the recovery user, see clixon option CLICON_NACM_RECOVERY_USER
+    2. Edit the startup-db with a valid NACM config and restart the system
+    3. Set clixon option CLICON_NACM_DISABLED_ON_EMPTY to true which means that if the config is (completely) empty, you can add a NACM config as a first edit.
 * Netconf lock/unlock behaviour changed to adhere to RFC 6241
   * Changed commit lock error tag from "lock denied" to "in-use".
   * Changed unlock error message from "lock is already held" to #lock not active" or "lock held by other session".
@@ -53,6 +81,7 @@ Expected: July 2020
     * CLICON_SSL_SERVER_CERT
     * CLICON_SSL_SERVER_KEY
     * CLICON_SSL_CA_CERT
+  * Added CLICON_NACM_DISABLED_ON_EMPTY to mitigate read-only "dead-lock" of empty startup configs.
 * Restconf FCGI (eg via nginx) have changed reply message syntax slightly as follows (due to refactoring and common code with evhtp):
     * Bodies in error retuns including html code have been removed
     * Some (extra) CRLF:s have been removed
@@ -99,6 +128,8 @@ Expected: July 2020
 
 ### Corrected Bugs
 
+* Fixed: [default values don't show up in datastores #111](https://github.com/clicon/clixon/issues/111).
+  * See also API changes since this changes NACM behavior for example.
 * Fixed: Don't call upgrade callbacks if no revision defined so there's no way to determine right way 'from' and 'to'
 * Fixed: [lock candidate succeeded even though it is modified #110](https://github.com/clicon/clixon/issues/110)
 * Fixed: [Need to add the possibility to use anchors around patterns #51](https://github.com/clicon/cligen/issues/51):

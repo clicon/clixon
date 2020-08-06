@@ -2,7 +2,9 @@
 # Authentication and authorization and IETF NACM
 # See RFC 8341 A.2
 # But replaced ietf-netconf-monitoring with *
-# Note credenials check set to none since USER poses as different users.
+# Note:
+#  1. credenials check set to none since USER poses as different users.
+#  2. CLICON_NACM_DISABLE_ON_EMPTY: start with empty config and add nacm config
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -31,6 +33,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
+  <CLICON_NACM_DISABLED_ON_EMPTY>true</CLICON_NACM_DISABLED_ON_EMPTY>
 </clixon-config>
 EOF
 
@@ -140,7 +143,7 @@ expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/da
 
 # explicitly disable nacm (regression on netgate bug)
 new "disable nacm"
-expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": false}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": false}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 204 No Content"
 
 new "auth set authentication config"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"

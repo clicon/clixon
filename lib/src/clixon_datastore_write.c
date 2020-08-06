@@ -481,9 +481,11 @@ text_modify(clicon_handle       h,
 	switch(op){ 
 	case OP_CREATE:
 	    if (x0){
-		if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
-		    goto done;
-		goto fail;
+		if (xml_nopresence_default(x0) == 0){
+		    if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
+			goto done;
+		    goto fail;
+		}
 	    }
 	case OP_REPLACE: /* fall thru */
 	case OP_MERGE:  
@@ -928,7 +930,7 @@ xmldb_put(clicon_handle       h,
     /* If there is no xml x0 tree (in cache), then read it from file */
     if (x0 == NULL){
 	firsttime++; /* to avoid leakage on error, see fail from text_modify */
-	if ((ret = xmldb_readfile(h, db, YB_MODULE, yspec, &x0, NULL)) < 0)
+	if ((ret = xmldb_readfile(h, db, YB_MODULE, yspec, &x0, de, NULL)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -987,10 +989,10 @@ xmldb_put(clicon_handle       h,
 	db_elmnt de0 = {0,};
 	if (de != NULL)
 	    de0 = *de;
-	if (de0.de_xml == NULL){
+	if (de0.de_xml == NULL)
 	    de0.de_xml = x0;
-	    clicon_db_elmnt_set(h, db, &de0);
-	}
+	de0.de_empty = (xml_child_nr(de0.de_xml) == 0);
+	clicon_db_elmnt_set(h, db, &de0);
     }
     if (xmldb_db2file(h, db, &dbfile) < 0)
 	goto done;
@@ -1057,6 +1059,9 @@ xmldb_dump(clicon_handle   h,
     char  *format;
     int    pretty;
     
+    /* clear XML tree of defaults */
+    if (xml_tree_prune_flagged(xt, XML_FLAG_DEFAULT, 1) < 0)
+	goto done;
     /* Add modstate first */
     if ((x = clicon_modst_cache_get(h, 1)) != NULL){
 	if ((xmodst = xml_dup(x)) == NULL)
@@ -1079,3 +1084,4 @@ xmldb_dump(clicon_handle   h,
  done:
     return retval;
 }
+

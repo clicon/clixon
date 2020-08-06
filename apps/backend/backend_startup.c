@@ -226,7 +226,7 @@ startup_extraxml(clicon_handle        h,
     /* Clear tmp db */
     if (xmldb_db_reset(h, tmp_db) < 0)
 	goto done;
-    /* Application may define extra xml in its reset function*/
+    /* Application may define extra xml in its reset function */
     if (clixon_plugin_reset_all(h, tmp_db) < 0)   
 	goto done;
     /* Extra XML can also be added via file */
@@ -238,13 +238,13 @@ startup_extraxml(clicon_handle        h,
 	    goto fail;
     }
     /* 
-     * Check if tmp db is empty.
+     * Check if tmp db is empty. XXX no this is not possible.
      * It should be empty if extra-xml is null and reset plugins did nothing
      * then skip validation.
      */
     if (xmldb_get(h, tmp_db, NULL, NULL, &xt0) < 0)
 	goto done;
-    if (xt0==NULL || xml_child_nr(xt0)==0) 
+    if (xmldb_empty_get(h, tmp_db))
 	goto ok;
     xt = NULL;
     /* Validate the tmp db and return possibly upgraded xml in xt

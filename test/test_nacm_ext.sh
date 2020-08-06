@@ -48,7 +48,8 @@ module nacm-example{
   }
   prefix nacm;
   container authentication {
-	description "Example code for enabling www basic auth and some example 
+    presence "To keep this from auto-expanding"; 
+    description "Example code for enabling www basic auth and some example 
                      users";
     leaf basic_auth{
 	description "Basic user / password authentication as in HTTP basic auth";

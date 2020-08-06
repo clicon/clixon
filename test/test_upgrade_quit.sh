@@ -40,6 +40,11 @@ module interfaces{
 	reference
 	    "RFC 2863: The Interfaces Group MIB";
     }
+    leaf foo{
+         description "Should not appear";
+    	 type string;
+	 default "bar";
+    }
     container interfaces {
 	description
 	    "Interface configuration parameters.";
@@ -52,8 +57,11 @@ module interfaces{
 	    leaf description {
 		type string;
 	    }
-
-
+            leaf foo{
+              description "Should not appear";
+              type string;
+	      default "bar";
+            }
 	    leaf type {
 		type string;
 		mandatory true;
@@ -124,6 +132,11 @@ module interfaces{
 	reference
 	    "RFC 2863: The Interfaces Group MIB";
     }
+    leaf foo{
+         description "Should not appear";
+    	 type string;
+	 default "fie";
+    }
     container interfaces {
 	description
 	    "Interface configuration parameters.";
@@ -133,6 +146,11 @@ module interfaces{
 	    leaf name {
 		type string;
 	    }
+            leaf foo{
+              description "Should not appear";
+              type string;
+	      default "bar";
+            }
 	    container docs{
                description "Original description is wrapped and renamed";
   	       leaf descr {
@@ -290,7 +308,6 @@ XML='<interfaces xmlns="urn:example:interfaces"><interface><name>e0</name><type>
 ALL="<config>$MODSTATE$XML</config>"
 
 # -u means trigger example upgrade
-new "test params: -s startup -f $cfg -- -u"
 
 # kill old backend (if any)
 new "kill old backend"
@@ -301,6 +318,7 @@ fi
 new "start backend -s startup -f $cfg -q -- -u"
 output=$(sudo $clixon_backend -F -D $DBG -s startup -f $cfg -q -- -u)
 #echo "$output"
+
 if [ "$ALL" != "$output" ]; then
     err "$ALL" "$output"
 fi

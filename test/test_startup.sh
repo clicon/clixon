@@ -40,7 +40,6 @@ cat <<EOF > $cfg
   <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE>
   <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
 </clixon-config>
-
 EOF
 
 # Create running-db containin the interface "run" OK

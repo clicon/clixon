@@ -46,9 +46,8 @@ module clixon-config {
 	description
 	    "Added: CLICON_CLI_LINES_DEFAULT
              Added enum HIDE to CLICON_CLI_GENMODEL
-             Added CLICON_SSL_SERVER_CERT
-             Added CLICON_SSL_SERVER_KEY
-             Added CLICON_SSL_CA_CERT";
+             Added CLICON_SSL_SERVER_CERT, CLICON_SSL_SERVER_KEY, CLICON_SSL_CA_CERT
+             Added CLICON_NACM_DISABLED_ON_EMPTY";
     }
     revision 2020-04-23 {
 	description
@@ -718,6 +717,20 @@ module clixon-config {
                  Note setting of CLICON_NACM_CREDENTIALS is important, if set to
                  exact for example, this user must exist and be used, otherwise
                  another user (such as root or www) can pose as it.";
+	}
+	leaf CLICON_NACM_DISABLED_ON_EMPTY {
+	    type boolean;
+	    default false;
+	    description
+		"RFC 8341 and ietf-netconf-acm@2018-02-14.yang defines enable-nacm as true by
+                 default. Since also write-default is deny by default it leads to that empty 
+                 configs can not be edited.
+                 This means that a startup config must always have a NACM configuration or
+                 that the NACM recovery session is used to edit an empty config.
+                 If this option is set, Clixon disables NACM if a datastore is empty on load.
+                 Note that it only makes the check on initial load, not if a store 'becomes'
+                 empty, but enables a clixon nacm system to start empty and add an NACM
+                 config after boot.";
 	}
 	leaf CLICON_MODULE_LIBRARY_RFC7895 {
 	    type boolean;

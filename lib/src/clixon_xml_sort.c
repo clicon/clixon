@@ -1029,6 +1029,7 @@ xml_insert2(cxobj           *xp,
  * @retval    0       OK
  * @retval   -1       Error
  * @see xml_addsub where xc is appended. xml_insert is xml_addsub();xml_sort()
+ * @note It is assumed that all siblings of xi are YANG bound
  */
 int
 xml_insert(cxobj           *xp,

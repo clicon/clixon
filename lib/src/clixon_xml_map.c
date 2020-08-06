@@ -979,9 +979,223 @@ xml_namespace_change(cxobj *x,
     return retval;
 }
 
-/*! Add default values (if not set)
- * @param[in]   xt      XML tree with some node marked
- * Typically called in a recursive apply function:
+int
+xml_default_create1(yang_stmt *y,
+		    cxobj     *xt,
+		    int        top,
+		    cxobj    **xcp)
+{
+    int        retval = -1;
+    char      *namespace;
+    char      *prefix;
+    int        ret;
+    cxobj     *xc = NULL;
+
+    if ((xc = xml_new(yang_argument_get(y), NULL, CX_ELMNT)) == NULL)
+	goto done;
+    xml_spec_set(xc, y);
+    
+    /* assign right prefix */
+    if ((namespace = yang_find_mynamespace(y)) != NULL){
+	prefix = NULL;
+	if ((ret = xml2prefix(xt, namespace, &prefix)) < 0)
+	    goto done;
+	if (ret){ /* Namespace found, prefix returned in prefix */
+	    if (xml_prefix_set(xc, prefix) < 0)
+		goto done;
+	}
+	else{ /* Namespace does not exist in target, must add it w xmlns attr. 
+		 use source prefix */
+	    if (!top){
+		if ((prefix = yang_find_myprefix(y)) == NULL){
+		    clicon_err(OE_UNIX, errno, "strdup");
+		    goto done;
+		}		
+	    }
+	    if (add_namespace(xc, xc, prefix, namespace) < 0)
+		goto done;
+	    /* Add prefix to x, if any */
+	    if (prefix && xml_prefix_set(xc, prefix) < 0)
+		goto done;
+	}
+    }
+    if (xml_addsub(xt, xc) < 0)
+	goto done;
+    *xcp = xc;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Create leaf from default value
+ *
+ * @param[in]   yt      Yang spec
+ * @param[in]   xt      XML tree
+ * @param[in]   top     Use default namespace (if you create xmlns statement)
+ * @retval      0       OK
+ * @retval      -1      Error
+ */
+static int
+xml_default_create(yang_stmt *y,
+		   cxobj     *xt,
+		   int        top)
+{
+    int        retval = -1;
+    cxobj     *xc = NULL;
+    cxobj     *xb;
+    char      *str;
+	
+    if (xml_default_create1(y, xt, top, &xc) < 0)
+	goto done;
+    xml_flag_set(xc, XML_FLAG_DEFAULT);
+    if ((xb = xml_new("body", xc, CX_BODY)) == NULL)
+	goto done;
+    if ((str = cv2str_dup(yang_cv_get(y))) == NULL){
+	clicon_err(OE_UNIX, errno, "cv2str_dup");
+	goto done;
+    }
+    if (xml_value_set(xb, str) < 0)
+	goto done;
+    free(str);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Try to see if intermediate nodes are necessary for default values, create if so
+ *
+ * @param[in]   yt      Yang container (no-presence)
+ * @param[out]  createp Need to create XML container
+ * @retval      0       OK
+ * @retval      -1      Error
+ */
+static int
+xml_nopresence_try(yang_stmt *yt,
+		   int       *createp)
+{
+    int        retval = -1;
+    yang_stmt *y;
+    
+    if (yt == NULL || yang_keyword_get(yt) != Y_CONTAINER){
+	clicon_err(OE_XML, EINVAL, "yt argument is not container");
+	goto done;
+    }
+    *createp = 0;
+    y = NULL;
+    while ((y = yn_each(yt, y)) != NULL) {
+	switch (yang_keyword_get(y)){
+	case Y_LEAF:
+	    if (!cv_flag(yang_cv_get(y), V_UNSET)){  /* Default value exists */
+		/* Need to create container */
+		*createp = 1;
+		goto ok;
+	    }
+	    break;
+	case Y_CONTAINER:
+	    if (yang_find(y, Y_PRESENCE, NULL) == NULL){
+		/* If this is non-presence, (and it does not exist in xt) call recursively 
+		 * and create nodes if any default value exist first. Then continue and populate?
+		 */
+		if (xml_nopresence_try(y, createp) < 0)
+		    goto done;
+		if (*createp)
+		    goto ok;
+	    }
+	    break;
+	default:
+	    break;
+	} /* switch */
+    }
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Ensure default values are set on (children of) one single xml node
+ *
+ * Not recursive, except in one case with one or several non-presence containers, in which case
+ * XML containers may be created to host default values. That code may be a little too recursive.
+ * @param[in]   yt      Yang spec
+ * @param[in]   xt      XML tree (with yt as spec of xt, informally)
+ * @retval      0       OK
+ * @retval      -1      Error
+ */
+static int
+xml_default1(yang_stmt *yt,
+	     cxobj     *xt)
+{
+    int        retval = -1;
+    yang_stmt *yc;
+    cxobj     *xc;
+    int        top=0; /* Top symbol (set default namespace) */
+    int        create = 0;
+
+    if (xt == NULL){ /* No xml */
+	clicon_err(OE_XML, EINVAL, "No XML argument");
+	goto done;
+    }
+    switch (yang_keyword_get(yt)){
+    case Y_MODULE:
+    case Y_SUBMODULE:
+	top++;
+    case Y_CONTAINER: /* XXX maybe check for non-presence here as well */
+    case Y_LIST:
+    case Y_INPUT:
+    case Y_OUTPUT:
+	yc = NULL;
+	while ((yc = yn_each(yt, yc)) != NULL) {
+	    switch (yang_keyword_get(yc)){
+	    case Y_LEAF:
+		if (!cv_flag(yang_cv_get(yc), V_UNSET)){  /* Default value exists */
+		    if (xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
+			/* No such child exist, create this leaf */
+			if (xml_default_create(yc, xt, top) < 0)
+			    goto done;
+			xml_sort(xt);
+		    }
+		}
+		break;
+	    case Y_CONTAINER:
+		if (yang_find(yc, Y_PRESENCE, NULL) == NULL){
+		    /* If this is non-presence, (and it does not exist in xt) call 
+		     * recursively and create nodes if any default value exist first. 
+		     * Then continue and populate?
+		     */
+		    if (xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
+			/* No such container exist, recursively try if needed */
+			if (xml_nopresence_try(yc, &create) < 0)
+			    goto done;
+			if (create){
+			    /* Retval shows there is a default value need to create the 
+			     * container */
+			    if (xml_default_create1(yc, xt, top, &xc) < 0)
+				goto done;
+			    xml_sort(xt);
+			    /* Then call it recursively */
+			    if (xml_default1(yc, xc) < 0)
+				goto done;
+			}
+		    }
+		}
+		break;
+	    default:
+		break;
+	    }
+	}
+	break;
+    default:
+	break;
+    } /* switch */
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Ensure default values are set on existing leaf children of this node
+ * 
+ * Assume yang is bound to the tree
+ * @param[in]   xt      XML tree
  * @retval      0       OK
  * @retval      -1      Error
  */
@@ -990,79 +1204,22 @@ xml_default(cxobj *xt)
 {
     int        retval = -1;
     yang_stmt *ys;
-    yang_stmt *y;
-    //    int        i; // XXX
-    cxobj     *xc;
-    cxobj     *xb;
-    char      *str;
-    int        added=0;
-    char      *namespace;
-    char      *prefix;
-    int        ret;
     
     if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
 	retval = 0;
 	goto done;
     }
-    /* Check leaf defaults */
-    if (yang_keyword_get(ys) == Y_CONTAINER || yang_keyword_get(ys) == Y_LIST ||
-	yang_keyword_get(ys) == Y_INPUT){
-	y = NULL;
-	while ((y = yn_each(ys, y)) != NULL) {
-	    if (yang_keyword_get(y) != Y_LEAF)
-		continue;
-	    if (!cv_flag(yang_cv_get(y), V_UNSET)){  /* Default value exists */
-		if (!xml_find(xt, yang_argument_get(y))){
-		    if ((xc = xml_new(yang_argument_get(y), NULL, CX_ELMNT)) == NULL)
-			goto done;
-		    xml_spec_set(xc, y);
-
-		    /* assign right prefix */
-		    if ((namespace = yang_find_mynamespace(y)) != NULL){
-			prefix = NULL;
-			if ((ret = xml2prefix(xt, namespace, &prefix)) < 0)
-			    goto done;
-			if (ret){
-			    if (xml_prefix_set(xc, prefix) < 0)
-				goto done;
-			}
-			else{ /* namespace does not exist in target, use source prefix */
-			    if ((prefix = yang_find_myprefix(y)) == NULL){
-				clicon_err(OE_UNIX, errno, "strdup");
-				goto done;
-			    }
-			    if (add_namespace(xc, xc, prefix, namespace) < 0)
-				goto done;
-			    /* Add prefix to x, if any */
-			    if (prefix && xml_prefix_set(xc, prefix) < 0)
-				goto done;
-			}
-		    }
-
-		    xml_flag_set(xc, XML_FLAG_DEFAULT);
-		    if ((xb = xml_new("body", xc, CX_BODY)) == NULL)
-			goto done;
-		    if ((str = cv2str_dup(yang_cv_get(y))) == NULL){
-			clicon_err(OE_UNIX, errno, "cv2str_dup");
-			goto done;
-		    }
-		    if (xml_value_set(xb, str) < 0)
-			goto done;
-		    free(str);
-		    added++;
-		    if (xml_insert(xt, xc, INS_LAST, NULL, NULL) < 0)
-			goto done;
-		}
-	    }
-	}
-    }
+    if (xml_default1(ys, xt) < 0)
+	goto done;
     retval = 0;
  done:
     return retval;
 }
 
-/*! Recursively fill in default values in a tree
- * Alt to use xml_apply
+/*! Recursively fill in default values in an XML tree
+ * @param[in]   xt      XML tree
+ * @retval      0       OK
+ * @retval      -1      Error
  */
 int
 xml_default_recurse(cxobj *xn)
@@ -1080,6 +1237,85 @@ xml_default_recurse(cxobj *xn)
     retval = 0;
  done:
     return retval;
+}
+
+/*! Ensure default values are set on top-level
+ *
+ * Not recursive, except in one case with one or several non-presence containers
+ * @param[in]   xt      XML tree
+ * Typically called in a recursive apply function:
+ * @retval      0       OK
+ * @retval      -1      Error
+ */
+int
+xml_default_yspec(yang_stmt *yspec,
+		  cxobj     *xt)
+{
+    int        retval = -1;
+    yang_stmt *ymod = NULL;
+
+    if (yspec == NULL || yang_keyword_get(yspec) != Y_SPEC){
+	clicon_err(OE_XML, EINVAL, "yspec argument is not yang spec");
+	goto done;
+    }
+    while ((ymod = yn_each(yspec, ymod)) != NULL) 
+	if (xml_default1(ymod, xt) < 0)
+	    goto done;
+
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! This node is a default set value or (recursively) a non-presence container
+ * @retval 1  xt is a nopresence/default node (ie "virtual")
+ * @retval 0  xt is not such a node
+ */
+int
+xml_nopresence_default(cxobj *xt)
+{
+    cxobj     *xc;
+    yang_stmt *yt;
+
+    if ((yt = xml_spec(xt)) == NULL)
+	return 0;
+    switch (yang_keyword_get(yt)){
+    case Y_CONTAINER:
+	if (yang_find(yt, Y_PRESENCE, NULL))
+	    return 0;
+	break;
+    case Y_LEAF:
+	return xml_flag(xt, XML_FLAG_DEFAULT)?1:0;
+	break;
+    default:
+	return 0;
+    }
+    xc = NULL;
+    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+	if (xml_nopresence_default(xc) == 0)
+	    return 0;
+    }
+    return 1;
+}
+
+/*! Remove xml container if it is non-presence and only contains default leafs
+ * Called from xml_apply. Reason for marking is to delete it afterwords.
+ * @param[in] x
+ * @param[in] arg  (flag value)
+ * @code
+ *    if (xml_apply(xt, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_DEFAULT) < 0)
+ *	err;
+ *    if (xml_tree_prune_flagged(xt, XML_FLAG_DEFAULT, 1) < 0)
+ *	goto done;
+ * @endcode
+ */
+int
+xml_nopresence_default_mark(cxobj *x,
+			    void  *arg)
+{
+    if (xml_nopresence_default(x))
+	xml_flag_set(x, (intptr_t)arg);
+    return 0;
 }
 
 /*! Sanitize an xml tree: xml node has matching yang_stmt pointer 

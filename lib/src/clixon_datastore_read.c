@@ -72,6 +72,7 @@
 #include "clixon_xpath.h"
 #include "clixon_json.h"
 #include "clixon_nacm.h"
+#include "clixon_path.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
 #include "clixon_xml_map.h"
@@ -104,7 +105,7 @@ singleconfigroot(cxobj  *xt,
 	}
     }
     if (i != 1){
-	clicon_err(OE_DB, ENOENT, "Top-element is not unique, expecting single  config");
+	clicon_err(OE_DB, ENOENT, "Top-element is not unique, expecting single config");
 	goto done;
     }
     x = NULL;
@@ -443,33 +444,63 @@ text_read_modstate(clicon_handle       h,
     return retval;
 }
 
+static int
+disable_nacm_on_empty(cxobj     *x0,
+		      yang_stmt *yspec)
+{
+    int        retval = -1;
+    yang_stmt *ymod;
+    cxobj    **vec = NULL;
+    int        len = 0;
+    cxobj     *xb;
+
+    if ((ymod = yang_find(yspec, Y_MODULE, "ietf-netconf-acm")) == NULL)
+	goto ok;
+    if (clixon_xml_find_instance_id(x0, yspec, &vec, &len, "/nacm:nacm/nacm:enable-nacm") < 1)
+	goto done;
+    if (len){
+	if ((xb = xml_body_get(vec[0])) == NULL)
+	    goto done; 
+	if (xml_value_set(xb, "false") < 0)
+	    goto done;
+    }
+    if (vec)
+	free(vec);
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Common read function that reads an XML tree from file
  * @param[in]  th     Datastore text handle
  * @param[in]  db     Symbolic database name, eg "candidate", "running"
  * @param[in]  yb     How to bind yang to XML top-level when parsing
  * @param[in]  yspec  Top-level yang spec
  * @param[out] xp     XML tree read from file
+ * @param[out] de     If set, return db-element status (eg empty flag)
  * @param[out] msdiff If set, return modules-state differences
  * @retval    -1      Error
  * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
  * @retval     1      OK
- * @note retval 0 is NYI becaues of functions calling this function
+ * @note retval 0 is NYI because of functions calling this function cannot handle it yet
  */
-#undef XMLDB_READFILE_FAIL
+#undef XMLDB_READFILE_FAIL /* See comment on retval = 0 above */
 int
 xmldb_readfile(clicon_handle    h,
 	       const char      *db,
 	       yang_bind        yb,
 	       yang_stmt       *yspec,
 	       cxobj          **xp,
+	       db_elmnt        *de,
 	       modstate_diff_t *msdiff)
 {
-    int    retval = -1;
-    cxobj *x0 = NULL;
-    char  *dbfile = NULL;
-    int    fd = -1;
-    char  *format;
-    int    ret;
+    int        retval = -1;
+    cxobj     *x0 = NULL;
+    char      *dbfile = NULL;
+    int        fd = -1;
+    char      *format;
+    int        ret;
     
     if (xmldb_db2file(h, db, &dbfile) < 0)
 	goto done;
@@ -497,8 +528,9 @@ xmldb_readfile(clicon_handle    h,
     	goto fail;
 #endif
     /* Always assert a top-level called "config". 
-       To ensure that, deal with two cases:
-       1. File is empty <top/> -> rename top-level to "config" */
+     * To ensure that, deal with two cases:
+     * 1. File is empty <top/> -> rename top-level to "config" 
+     */
     if (xml_child_nr(x0) == 0){ 
 	if (xml_name_set(x0, "config") < 0)
 	    goto done;     
@@ -509,7 +541,10 @@ xmldb_readfile(clicon_handle    h,
 	if (singleconfigroot(x0, &x0) < 0)
 	    goto done;
     }
-    /* From Clixon 3.10,datastore files may contain module-state defining
+    if (xml_child_nr(x0) == 0 && de)
+	de->de_empty = 1;
+
+    /* Datastore files may contain module-state defining
      * which modules are used in the file. 
      */
     if (text_read_modstate(h, yspec, x0, msdiff) < 0)
@@ -569,16 +604,36 @@ xmldb_get_nocache(clicon_handle    h,
     size_t     xlen;
     int        i;
     int        ret;
+    db_elmnt   de0 = {0,};
+    int        empty = 0;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if ((ret = xmldb_readfile(h, db, YB_MODULE, yspec, &xt, msdiff)) < 0)
+    if ((ret = xmldb_readfile(h, db, YB_MODULE, yspec, &xt, &de0, msdiff)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
+    clicon_db_elmnt_set(h, db, &de0); /* Content is copied */    
     
+    /* Check if empty */
+    if (xml_child_nr(xt) == 0)
+	empty = 1;
+    /* Add global defaults. 
+     * Must do it before xpath check, since globals may be filtered out
+     */
+    if (xml_default_yspec(yspec, xt) < 0)
+	goto done;
+    /* If empty database, then disable NACM if loaded
+     * This has some drawbacks. One is that a config may become empty at a later stage
+     * and then this does not hold.
+     */
+    if (empty &&
+	clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
+	if (disable_nacm_on_empty(xt, yspec) < 0)
+	    goto done;
+    }
     /* Here xt looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec */
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
@@ -664,6 +719,7 @@ xmldb_get_cache(clicon_handle    h,
     cxobj          *x1t = NULL;
     db_elmnt        de0 = {0,};
     int             ret;
+    int             empty = 0;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
@@ -672,7 +728,7 @@ xmldb_get_cache(clicon_handle    h,
     de = clicon_db_elmnt_get(h, db);
     if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
 	/* If there is no xml x0 tree (in cache), then read it from file */
-	if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, msdiff)) < 0)
+	if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, &de0, msdiff)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -680,10 +736,30 @@ xmldb_get_cache(clicon_handle    h,
 	 * No, argument against: we may want to have a semantically wrong file and wish to edit?
 	 */
 	de0.de_xml = x0t;
-	clicon_db_elmnt_set(h, db, &de0);
+	clicon_db_elmnt_set(h, db, &de0); /* Content is copied */
     } /* x0t == NULL */
     else
 	x0t = de->de_xml;
+
+    /* Check if empty, must be before add global defaults */
+    if (xml_child_nr(x0t) == 0)
+	empty = 1;
+
+    /* Add global defaults. 
+     * Cant do it to x1t since that is after xpath check, since globals may be filtered out
+     */
+    if (xml_default_yspec(yspec, x0t) < 0)
+	goto done;
+    /* If empty database, then disable NACM if loaded
+     * This has some drawbacks. One is that a config may become empty at a later stage
+     * and then this does not hold.
+     */
+    if (empty &&
+	clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
+	if (disable_nacm_on_empty(x0t, yspec) < 0)
+	    goto done;
+    }
+
     /* Here x0t looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec 
      * Can we do everything in one go?
@@ -693,8 +769,6 @@ xmldb_get_cache(clicon_handle    h,
      *   a) for every node that is found, copy to new tree
      *   b) if config dont dont state data
      */
-
-    /* Here xt looks like: <config>...</config> */
     if (xpath_vec(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
 
@@ -703,6 +777,7 @@ xmldb_get_cache(clicon_handle    h,
 	goto done;
     xml_spec_set(x1t, xml_spec(x0t));
 
+    
     if (xlen < 1000){
 	/* This is optimized for the case when the tree is large and xlen is small
 	 * If the tree is large and xlen too, then the other is better.
@@ -786,6 +861,7 @@ xmldb_get_zerocopy(clicon_handle    h,
     db_elmnt       *de = NULL;
     db_elmnt        de0 = {0,};
     int             ret;
+    int             empty = 0;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
@@ -794,7 +870,7 @@ xmldb_get_zerocopy(clicon_handle    h,
     de = clicon_db_elmnt_get(h, db);
     if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
 	/* If there is no xml x0 tree (in cache), then read it from file */
-	if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, msdiff)) < 0)
+	if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, &de0, msdiff)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -806,6 +882,25 @@ xmldb_get_zerocopy(clicon_handle    h,
     } /* x0t == NULL */
     else
 	x0t = de->de_xml;
+    /* Check if empty, must be before add global defaults */
+    if (xml_child_nr(x0t) == 0)
+	empty = 1;
+
+    /* Add global defaults. 
+     * Cant do it to x1t since that is after xpath check, since globals may be filtered out
+     */
+    if (xml_default_yspec(yspec, x0t) < 0)
+	goto done;
+    /* If empty database, then disable NACM if loaded
+     * This has some drawbacks. One is that a config may become empty at a later stage
+     * and then this does not hold.
+     */
+    if (empty &&
+	clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
+	if (disable_nacm_on_empty(x0t, yspec) < 0)
+	    goto done;
+    }
+    
     /* Here xt looks like: <config>...</config> */
     if (xpath_vec(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
@@ -874,7 +969,7 @@ xmldb_get(clicon_handle    h,
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  copy   Force copy. Overrides cache_zerocopy -> cache 
  * @param[out] xret   Single return XML tree. Free with xml_free()
- * @param[out] msdiff    If set, return modules-state differences (upgrade code)
+ * @param[out] msdiff If set, return modules-state differences (upgrade code)
  * @retval     0      OK
  * @retval     -1     Error
  * @code
@@ -944,12 +1039,16 @@ xmldb_get0_clear(clicon_handle    h,
     
     if (x == NULL)
 	goto ok;
-    /* clear XML tree of defaults */
+    /* Mark non-presence containers as XML_FLAG_DEFAULT */
+    if (xml_apply(x, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_DEFAULT) < 0)
+	goto done;
+    /* Clear XML tree of defaults */
     if (xml_tree_prune_flagged(x, XML_FLAG_DEFAULT, 1) < 0)
 	goto done;
+
     /* clear mark and change */
     xml_apply0(x, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
-	       (void*)(0xff));
+	       (void*)(0xffff));
  ok:
     retval = 0;
  done:
@@ -972,3 +1071,4 @@ xmldb_get0_free(clicon_handle    h,
     *xp = NULL;
     return 0;
 }
+

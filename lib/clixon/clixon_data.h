@@ -54,7 +54,8 @@
 typedef struct {
     uint32_t  de_id;       /* session id */
     cxobj    *de_xml;      /* cache */
-    int       de_modified; 
+    int       de_modified; /* Dirty since loaded/copied/committed/etc XXX:nocache? */
+    int       de_empty;    /* Empty on read from file, xmldb_readfile and xmldb_put sets it */
 } db_elmnt;
 
 /*

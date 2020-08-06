@@ -1100,7 +1100,9 @@ nacm_access(clicon_handle h,
     /* Do initial nacm processing common to all access validation in
      * RFC8341 3.4 */
     /* 1.   If the "enable-nacm" leaf is set to "false", then the protocol
-       operation is permitted. */
+     * operation is permitted. 
+     * note option CLICON_NACM_DISABLED_ON_EMPTY
+    */
     if ((x = xpath_first(xnacm, nsc, "enable-nacm")) == NULL)
 	goto permit;
     enabled = xml_body(x);
@@ -1155,6 +1157,7 @@ nacm_access_pre(clicon_handle  h,
     cxobj *xnacm = NULL;
     cvec  *nsc = NULL;
     
+    /* Check clixon option: disabled, external tree or internal */
     mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (mode == NULL)
 	goto permit;

@@ -27,9 +27,6 @@ module scaling{
    yang-version 1.1;
    namespace "urn:example:clixon";
    prefix ex;
-   import "clixon-config" {
-     prefix cc;
-   }
    container x {
     list y {
       key "a";

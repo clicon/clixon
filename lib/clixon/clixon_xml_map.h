@@ -66,6 +66,9 @@ int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
 int xml_namespace_change(cxobj *x, char *ns, char *prefix);
 int xml_default(cxobj *x);
 int xml_default_recurse(cxobj *xn);
+int xml_default_yspec(yang_stmt *yspec, cxobj *xn);
+int xml_nopresence_default(cxobj *xt);
+int xml_nopresence_default_mark(cxobj *x, void *arg);
 int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, void *arg);
 

@@ -49,12 +49,13 @@
 
 /* Struct containing module state differences between two modules or two 
  * revisions of same module. 
- * This is in state of flux so it needs to be contained and easily changed.
+ * The most significant usecase is one module-state is a loaded datastore and the other
+ * is the one loaded by the server by its YANG files.
  */
 typedef struct {
     int    md_status; /* 0 if no module-state in a datastore, 1 if there is */
     char  *md_set_id; /* server-specific identifier */
-    cxobj *md_diff;  /* yang module state containing revisions and XML_FLAG_ADD|DEL|CHANGE */
+    cxobj *md_diff;   /* yang module state containing revisions and XML_FLAG_ADD|DEL|CHANGE */
 } modstate_diff_t;
 
 /*

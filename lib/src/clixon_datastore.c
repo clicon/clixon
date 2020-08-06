@@ -518,6 +518,26 @@ xmldb_modified_get(clicon_handle h,
     return de->de_modified;
 }
 
+/*! Get empty flag from datastore (the datastore was empty ON LOAD)
+ * @param[in]  h     Clicon handle
+ * @param[in]  db    Database name
+ * @retval    -1     Error (datastore does not exist)
+ * @retval     0     Db was not empty on load
+ * @retval     1     Db was empty on load
+ */
+int
+xmldb_empty_get(clicon_handle h,
+		const char   *db)
+{
+    db_elmnt *de;
+    
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+	clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+	return -1;
+    }
+    return de->de_empty;
+}
+
 /*! Get modified flag from datastore
  * @param[in]  h     Clicon handle
  * @param[in]  db    Database name
