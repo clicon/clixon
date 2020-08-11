@@ -121,7 +121,7 @@ EOF
     if [ $db = init ]; then
 	# Must set NACM first
 	new "Set NACM using PATCH"
-	expectpart "$(curl -u guest:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+xml" -d "<data>$NACM$XML</data>" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 204 No Content"
+	expectpart "$(curl -u guest:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+xml" -d "<data>$NACM$XML</data>" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
 
 #	new "Set Initial data using POST"
 #	expectpart "$(curl -u guest:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" -d "$XML" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
