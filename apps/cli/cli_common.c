@@ -312,10 +312,6 @@ cli_dbxml(clicon_handle       h,
 	goto done;
     if (clicon_rpc_edit_config(h, "candidate", OP_NONE, cbuf_get(cb)) < 0)
 	goto done;
-    if (clicon_autocommit(h)) {
-	if (clicon_rpc_commit(h) < 0) 
-	    goto done;
-    }
     retval = 0;
  done:
     if (xerr)

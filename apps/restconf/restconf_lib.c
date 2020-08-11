@@ -258,7 +258,8 @@ restconf_terminate(clicon_handle h)
     return 0;
 }
 
-/*! If restconf insert/point attributes are present, translate to netconf 
+/*! If RESTCONF insert/point attributes are present, translate to NETCONF 
+ *
  * @param[in] xdata  URI->XML to translate
  * @param[in] qvec   Query parameters (eg where insert/point should be)
  * @retval    0      OK 

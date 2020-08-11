@@ -119,7 +119,8 @@ attr_ns_value(cxobj *x,
 	    goto fail;
 	}
 	/* the attribute exists, but not w expected namespace */
-	if (strcmp(ans, ns) == 0)
+	if (ns == NULL ||
+	    strcmp(ans, ns) == 0)
 	    val = xml_value(xa);
     }
     *valp = val;
@@ -257,10 +258,14 @@ text_modify(clicon_handle       h,
     enum insert_type insert = INS_LAST;
     int        changed = 0; /* Only if x0p's children have changed-> sort necessary */
     cvec      *nscx1 = NULL;
+    char      *createstr = NULL;	
     
+    if (x1 == NULL){
+	clicon_err(OE_XML, EINVAL, "x1 is missing");
+	goto done;
+    }
     /* Check for operations embedded in tree according to netconf */
-    if ((ret = attr_ns_value(x1,
-			     "operation", NETCONF_BASE_NAMESPACE,
+    if ((ret = attr_ns_value(x1, "operation", NETCONF_BASE_NAMESPACE,
 			     cbret, &opstr)) < 0)
 	goto done;
     if (ret == 0)
@@ -268,6 +273,28 @@ text_modify(clicon_handle       h,
     if (opstr != NULL)
 	if (xml_operation(opstr, &op) < 0)
 	    goto done;
+    if ((ret = attr_ns_value(x1, "objectcreate", NULL, cbret, &createstr)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+    if (createstr != NULL &&
+	(op == OP_REPLACE || op == OP_MERGE || op == OP_CREATE)){
+	if (x0 == NULL || xml_nopresence_default(x0)){ /* does not exist or is default */
+	    if (strcmp(createstr, "false")==0){
+		/* RFC 8040 4.6 PATCH:
+		 * If the target resource instance does not exist, the server MUST NOT create it. 
+		 */
+		if (netconf_data_missing(cbret, NULL,
+	  "RFC 8040 4.6. PATCH: If the target resource instance does not exist, the server MUST NOT create it") < 0)
+		    goto done;
+		goto fail;
+	    }
+	    clicon_data_set(h, "objectexisted", "false");
+	}
+	else{  /* exists */
+	    clicon_data_set(h, "objectexisted", "true");
+	}
+    }
     x1name = xml_name(x1);
     if (yang_keyword_get(y0) == Y_LEAF_LIST ||
 	yang_keyword_get(y0) == Y_LEAF){
@@ -708,7 +735,8 @@ text_modify_top(clicon_handle       h,
     yang_stmt *ymod;/* yang module */
     char      *opstr;
     int        ret;
-
+    char      *createstr = NULL;
+    
     /* Check for operations embedded in tree according to netconf */
     if ((ret = attr_ns_value(x1,
 			     "operation", NETCONF_BASE_NAMESPACE,
@@ -719,7 +747,11 @@ text_modify_top(clicon_handle       h,
     if (opstr != NULL)
 	if (xml_operation(opstr, &op) < 0)
 	    goto done;
-    /* Special case if x1 is empty, top-level only <config/> */
+    if ((ret = attr_ns_value(x1, "objectcreate", NULL, cbret, &createstr)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+    /* Special case if incoming x1 is empty, top-level only <config/> */
     if (xml_child_nr_type(x1, CX_ELMNT) == 0){ 
 	if (xml_child_nr_type(x0, CX_ELMNT)){ /* base tree not empty */
 	    switch(op){ 
@@ -760,6 +792,12 @@ text_modify_top(clicon_handle       h,
     }
     /* Special case top-level replace */
     else if (op == OP_REPLACE || op == OP_DELETE){
+	if (createstr != NULL){
+	    if (xml_child_nr_type(x0, CX_ELMNT)) /* base tree not empty */
+		clicon_data_set(h, "objectexisted", "true");
+	    else
+		clicon_data_set(h, "objectexisted", "false");
+	}
 	if (!permit && xnacm){
 	    if ((ret = nacm_datanode_write(h, x1, x1t, NACM_UPDATE, username, xnacm, cbret)) < 0) 
 		goto done;
@@ -951,6 +989,7 @@ xmldb_put(clicon_handle       h,
     permit = (xnacm==NULL);
 
     /* Here assume if xnacm is set and !permit do NACM */
+    clicon_data_del(h, "objectexisted");
     /* 
      * Modify base tree x with modification x1. This is where the
      * new tree is made.

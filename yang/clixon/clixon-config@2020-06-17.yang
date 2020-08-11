@@ -47,7 +47,8 @@ module clixon-config {
 	    "Added: CLICON_CLI_LINES_DEFAULT
              Added enum HIDE to CLICON_CLI_GENMODEL
              Added CLICON_SSL_SERVER_CERT, CLICON_SSL_SERVER_KEY, CLICON_SSL_CA_CERT
-             Added CLICON_NACM_DISABLED_ON_EMPTY";
+             Added CLICON_NACM_DISABLED_ON_EMPTY
+             Removed default valude of CLICON_NACM_RECOVERY_USER";
     }
     revision 2020-04-23 {
 	description
@@ -708,7 +709,6 @@ module clixon-config {
 	}
         leaf CLICON_NACM_RECOVERY_USER {
 	    type string;
-	    default "_nacm_recovery";
 	    description
 		"RFC8341 defines a 'recovery session' as outside the scope. Clixon
                  defines this user as having special admin rights to exempt from

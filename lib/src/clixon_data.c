@@ -83,7 +83,7 @@
  * @param[in]  name Data name
  * @param[out] val  Data value as string
  * @retval     0    OK
- * @retval    -1    Not found
+ * @retval    -1    Not found (or error)
  * @see clicon_option_str
  */
 int

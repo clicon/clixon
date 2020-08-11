@@ -838,7 +838,7 @@ netconf_data_exists(cbuf      *cb,
  * does not exist.  For example, a "delete" operation was attempted on
  * data that does not exist.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
- * @param[in]  missing_choice  If set, see RFC7950: 15.6 violates mandatiry choice
+ * @param[in]  missing_choice  If set, see RFC7950: 15.6 violates mandatory choice
  * @param[in]  message Error message
  */
 int

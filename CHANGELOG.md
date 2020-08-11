@@ -46,6 +46,7 @@ Expected: July 2020
   * Enforcing RFC 7950 Sec 7.6.1 means unassigned top-level leafs (or leafs under non-presence containers) are assigned default values.
   * In this process non-presence containers may be created.
   * See also [default values don't show up in datastores #111](https://github.com/clicon/clixon/issues/111).
+  * If a default value is replaced by an actual value, RESTCONF return values have changed from `204 No Content` to `201 Created`
 * NACM default behaviour is read-only (empty configs are dead-lockedd)
   * This applies if NACM is loaded and `CLICON_NACM_MODE` is `internal`
   * Due to the previous bult (top-level default leafs)
@@ -54,6 +55,11 @@ Expected: July 2020
     1. Access the system with the recovery user, see clixon option CLICON_NACM_RECOVERY_USER
     2. Edit the startup-db with a valid NACM config and restart the system
     3. Set clixon option CLICON_NACM_DISABLED_ON_EMPTY to true which means that if the config is (completely) empty, you can add a NACM config as a first edit.
+* NACM recovery user session is now properly enforced. This means that if `CLICON_NACM_CREDENTIALS` is `except` (default), then a specific `CLICON_NACM_RECOVERY_USER` can make any edits and bypass NACM rules.
+  * Either this user must exist as UNIX user and be logged in by the client (eg CLI/NETCONF), or
+  * The client is "trusted" (root/wwwuser) and the recovery user is used as a pseudo-user when accessing the backend.
+  * For Restconf using proper authentication (eg SSL client certs) the recovery user must be an authenticated client.
+
 * Netconf lock/unlock behaviour changed to adhere to RFC 6241
   * Changed commit lock error tag from "lock denied" to "in-use".
   * Changed unlock error message from "lock is already held" to #lock not active" or "lock held by other session".
@@ -66,6 +72,7 @@ Expected: July 2020
     * CLICON_SSL_SERVER_KEY
     * CLICON_SSL_CA_CERT
   * Added CLICON_NACM_DISABLED_ON_EMPTY to mitigate read-only "dead-lock" of empty startup configs.
+  * Removed default valude of CLICON_NACM_RECOVERY_USER
 * Restconf FCGI (eg via nginx) have changed reply message syntax slightly as follows (due to refactoring and common code with evhtp):
     * Bodies in error retuns including html code have been removed
     * Some (extra) CRLF:s have been removed
@@ -100,6 +107,15 @@ Expected: July 2020
   
 ### Minor changes
 
+* Bundle internal NETCONF on RESTCONF
+  * A RESTCONF operation could produce several (up to four) internal NETCONF messages between RESTCONF server and backend. These have now been bundled into one.
+  * Added several extensions to clixon NETCONF to carry information between RESTCONF client and backend. This includes several attributes:
+    * autocommit - perform a operation immediately after an edit.
+    * copystartup - copy the running db to the startup db after a edit/ commit.
+    * objectcreate/objectexisted - PATCH and PUT create/merge behaviour is not consistent with vanilla NETCONF operations, these attributes carry more information to make them. In particular:
+      * RFC 8040 4.5 PUT: if the PUT request creates a new resource, a "201 Created" status-line is returned.  If an existing resource is modified, a "204 No Content" status-line is returned.
+      * RFC 8040 4.6 PATCH: If the target resource instance does not exist, the server MUST NOT create it.
+  * Improved performance, especially latency.
 * New backend switch: `-q` : Quit startup directly after upgrading and print result on stdout.
 * Enhanced Clixon if-feature handling:
   * If-feature now supports and/or lists, such as: `if-feature "a and b"` and `if-feature "a or b or c"`. However, full if-feature-expr including `not` and nested boolean experessions is still not supported.
@@ -112,7 +128,6 @@ Expected: July 2020
 
 ### Corrected Bugs
 
-* Changed (restricted) recovery NACM user session. 
 * Fixed: [default values don't show up in datastores #111](https://github.com/clicon/clixon/issues/111).
   * See also API changes since this changes NACM behavior for example.
 * Fixed: Don't call upgrade callbacks if no revision defined so there's no way to determine right way 'from' and 'to'

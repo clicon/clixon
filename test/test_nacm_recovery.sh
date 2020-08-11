@@ -4,7 +4,7 @@
 # the config even though NACM is enabled and write is DENY
 # Only use netconf - restconf also has authentication on web level, and that gets
 # another layer
-# The only recovery session that work are: (last true arg to testrun)
+# Main test default except mode, it gets too complicated otherwise
 #
 
 # Magic line must be first in script (see README.md)
@@ -148,89 +148,78 @@ EOF
     fi
 }
 
-#------- REALUSER: $USER
-
-# Neither of these should work: user != recovery
+#------- CRED: except USER: non-root
+# This is default, therefore first
+CRED=except 
 REALUSER=$USER
+
+# Recovery as a seperate user does not work
 PSEUDO=$USER
 RECOVERY=_recovery
-for c in none exact except; do
-    new "cred: $c realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
-    testrun $c $REALUSER $PSEUDO $RECOVERY true false
-done
+new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
+testrun $CRED $REALUSER $PSEUDO $RECOVERY true false
 
-# All these should work: user == recovery
-REALUSER=$USER
+# Recovery as actual user works
 PSEUDO=$USER
 RECOVERY=$USER
-for c in none exact except; do
-    new "cred: $c realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
-    testrun $c $REALUSER $PSEUDO $RECOVERY true true
-done
+new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
+testrun $CRED $REALUSER $PSEUDO $RECOVERY true true
 
-# Only none credentials should work
-REALUSER=$USER
+# pseudo-user as recovery user does not work if actual user is non-root/non-web
 PSEUDO=_recovery
 RECOVERY=_recovery
-new "cred: none realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
-testrun none $REALUSER $PSEUDO $RECOVERY true true
-for c in exact except; do
-    new "cred: $c realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
-    testrun $c $REALUSER $PSEUDO $RECOVERY false false
-done
+new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
+testrun $CRED $REALUSER $PSEUDO $RECOVERY false false
 
-# None of these work
-REALUSER=$USER
 PSEUDO=_recovery
 RECOVERY=$USER
-new "cred: none realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
-testrun none $REALUSER $PSEUDO $RECOVERY true false
-for c in exact except; do
-    new "cred: $c realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
-    testrun $c $REALUSER $PSEUDO $RECOVERY false false
-done
+new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
+testrun $CRED $REALUSER $PSEUDO $RECOVERY false false
 
-#------- REALUSER: ROOT
-#XXX: seems not to work in docker
-# Neither of these should work: user != recovery
-REALUSER=root
+#------- CRED: except USER: root
+CRED=except 
+REALUSER=root 
+
+# Recovery as a seperate user does not work
 PSEUDO=root
 RECOVERY=_recovery
-for c in none exact except; do
-    new "cred: $c realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
-    testrun $c $REALUSER $PSEUDO $RECOVERY true false
-done
+new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
+testrun $CRED $REALUSER $PSEUDO $RECOVERY true false
 
-# All these should work: user == recovery
-REALUSER=root
+# Recovery as actual user works
 PSEUDO=root
 RECOVERY=root
-for c in none exact except; do
-    new "cred: $c realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
-    testrun $c $REALUSER $PSEUDO $RECOVERY true true
-done
+new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
+testrun $CRED $REALUSER $PSEUDO $RECOVERY true true
 
-# none and except credentials should work
-# XXX: except does not work in travis
+# pseudo-user as recovery user works IF cred=except AND realuser=root!
+PSEUDO=_recovery
+RECOVERY=_recovery
+new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
+testrun $CRED $REALUSER $PSEUDO $RECOVERY true true
+
+PSEUDO=_recovery
+RECOVERY=root
+new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
+testrun $CRED $REALUSER $PSEUDO $RECOVERY true false
+
+
+#------- CRED: none
+# Check you can use any pseudo user if cred is none
+CRED=none
+REALUSER=$USER
+PSEUDO=_recovery
+RECOVERY=_recovery
+new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
+testrun $CRED $REALUSER $PSEUDO $RECOVERY true true
+
+#------- CRED: exact
+# pseudo-user as recovery user does not work if cred=exact
+CRED=exact
 REALUSER=root
 PSEUDO=_recovery
 RECOVERY=_recovery
-for c in none except; do
-    new "cred: $c realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
-    testrun $c $REALUSER $PSEUDO $RECOVERY true true
-done
-new "cred: exact realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
-testrun exact $REALUSER $PSEUDO $RECOVERY false false
-
-# None of these work
-REALUSER=root
-PSEUDO=_recovery
-RECOVERY=root
-for c in none except; do
-    new "cred: $c realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
-    testrun $c $REALUSER $PSEUDO $RECOVERY true false
-done
-new "cred: exact realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
-testrun exact $REALUSER $PSEUDO $RECOVERY false false
+new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
+testrun $CRED $REALUSER $PSEUDO $RECOVERY false false
 
 rm -rf $dir

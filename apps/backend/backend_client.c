@@ -576,6 +576,9 @@ from_client_edit_config(clicon_handle h,
     int                 ret;
     char               *username;
     cxobj              *xret = NULL;
+    char               *attr;
+    int                 autocommit = 0;
+    char               *val = NULL;
 
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
@@ -605,7 +608,6 @@ from_client_edit_config(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    
     if ((x = xpath_first(xn, NULL, "default-operation")) != NULL){
 	if (xml_operation(xml_body(x), &operation) < 0){
 	    if (netconf_invalid_value(cbret, "protocol", "Wrong operation")< 0)
@@ -660,8 +662,41 @@ from_client_edit_config(clicon_handle h,
     if (ret == 0)
 	goto ok;
     xmldb_modified_set(h, target, 1); /* mark as dirty */
+    /* Clixon extension: autocommit */
+    if ((attr = xml_find_value(xn, "autocommit")) != NULL &&
+	strcmp(attr,"true")==0)
+	autocommit = 1;
+    /* If autocommit option is set or requested by client */
+    if (clicon_autocommit(h) || autocommit) {
+	if ((ret = candidate_commit(h, "candidate", cbret)) < 0){ /* Assume validation fail, nofatal */
+	    if (ret < 0)
+		if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+		    goto done;
+	    goto ok;
+	}
+	if (ret == 0){ /* discard */
+	    if (xmldb_copy(h, "running", "candidate") < 0){
+		if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+		    goto done;
+		goto ok;
+	    }
+	    goto ok;
+	}
+    }
+    /* Clixon extension: copy */
+    if ((attr = xml_find_value(xn, "copystartup")) != NULL &&
+	strcmp(attr,"true") == 0){
+	if (xmldb_copy(h, "running", "startup") < 0){
+	    if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+		goto done;
+	    goto ok;
+	}
+    }
     assert(cbuf_len(cbret) == 0);
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply><ok");
+    if (clicon_data_get(h, "objectexisted", &val) == 0)
+	cprintf(cbret, " objectexisted=\"%s\"", val);
+    cprintf(cbret, "/></rpc-reply>");
  ok:
     retval = 0;
  done:
@@ -1026,7 +1061,7 @@ from_client_get(clicon_handle h,
 	content = netconf_content_str2int(attr);
     /* Clixon extensions: depth */
     if ((attr = xml_find_value(xe, "depth")) != NULL){
-	    char *reason = NULL;
+	char *reason = NULL;
 	if ((ret = parse_int32(attr, &depth, &reason)) < 0){
 	    clicon_err(OE_XML, errno, "parse_int32");
 	    goto done;

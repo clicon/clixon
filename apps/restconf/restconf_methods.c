@@ -272,7 +272,8 @@ api_data_write(clicon_handle h,
     cvec          *nsc = NULL;
     yang_bind      yb;
     char          *xpath = NULL;
-
+    char          *attr;
+	
     clicon_debug(1, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
     clicon_debug(1, "%s data:\"%s\"", __FUNCTION__, data);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -297,43 +298,10 @@ api_data_write(clicon_handle h,
 	    goto ok;
 	}
     }
-
-    xret = NULL;
-    if (clicon_rpc_get_config(h, clicon_nacm_recovery_user(h),
-			      "candidate", xpath, nsc, &xret) < 0){
-	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
-	    goto done;
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
-
-    }
-#if 0
-    if (clicon_debug_get())
-	clicon_log_xml(LOG_DEBUG, xret, "%s xret:", __FUNCTION__);
-#endif
-    if (xml_child_nr(xret) == 0){ /* Object does not exist */
-	if (plain_patch){    /* If the target resource instance does not exist, the server MUST NOT create it. */
-	    restconf_badrequest(h, req);
-	    goto ok;
-	}
-	else
-	    op = OP_CREATE;
-    }
-    else{
-	if (plain_patch)
-	    op = OP_MERGE;
-	else
-	    op = OP_REPLACE;
-    }
-    if (xret){
-	xml_free(xret);
-	xret = NULL;
-    }
+    if (plain_patch)
+	op = OP_MERGE; /* bad request if it does not exist */
+    else
+	op = OP_REPLACE; /* OP_CREATE if it does not exist */
     /* Create config top-of-tree */
     if ((xtop = xml_new("config", NULL, CX_ELMNT)) == NULL)
 	goto done;
@@ -491,9 +459,20 @@ api_data_write(clicon_handle h,
 	goto done;
     if (xml_prefix_set(xa, NETCONF_BASE_PREFIX) < 0)
 	goto done;
-    if (xml_value_set(xa, xml_operation2str(op)) < 0)
+    if (xml_value_set(xa, xml_operation2str(op)) < 0) /* XXX here is where op is used */
 	goto done;
-
+    if ((xa = xml_new("objectcreate", xdata, CX_ATTR)) == NULL)
+	goto done;
+    if (plain_patch){
+	/* RFC 8040 4.6. PATCH:
+	 * If the target resource instance does not exist, the server MUST NOT create it. 
+	 */
+	if (xml_value_set(xa, "false") < 0)
+	    goto done;
+    }
+    else
+	if (xml_value_set(xa, "true") < 0)
+	    goto done;
     /* Top-of tree, no api-path
      * Replace xparent with x, ie bottom of api-path with data 
      */	    
@@ -608,7 +587,17 @@ api_data_write(clicon_handle h,
 	    username?username:"",
 	    NETCONF_BASE_PREFIX,
 	    NETCONF_BASE_NAMESPACE); /* bind nc to netconf namespace */
-    cprintf(cbx, "<edit-config><target><candidate /></target>");
+    cprintf(cbx, "<edit-config");
+    /* RFC8040 Sec 1.4:
+     * If the NETCONF server supports :startup, the RESTCONF server MUST
+     * automatically update the non-volatile startup configuration
+     * datastore, after the "running" datastore has been altered as a
+     * consequence of a RESTCONF edit operation.
+     */
+    if (if_feature(yspec, "ietf-netconf", "startup"))
+	cprintf(cbx, " copystartup=\"true\"");
+    cprintf(cbx, " autocommit=\"true\"");
+    cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
     if (clicon_xml2cbuf(cbx, xtop, 0, 0, -1) < 0)
 	goto done;
@@ -621,58 +610,15 @@ api_data_write(clicon_handle h,
 	    goto done;	    
 	goto ok;
     }
-    cbuf_reset(cbx);
-    /* commit/discard should be done automaticaly by the system, therefore
-     * recovery user is used here (edit-config but not commit may be permitted
-     by NACM */
-    cprintf(cbx, "<rpc username=\"%s\">", clicon_nacm_recovery_user(h));
-    cprintf(cbx, "<commit/></rpc>");
-    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
-	goto done;
-    if ((xe = xpath_first(xretcom, NULL, "//rpc-error")) != NULL){
-	cbuf_reset(cbx);
-	cprintf(cbx, "<rpc username=\"%s\">", username?username:"");
-	cprintf(cbx, "<discard-changes/></rpc>");
-	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretdis, NULL) < 0)
+    if ((xe = xpath_first(xret, NULL, "//ok")) != NULL &&
+	(attr = xml_find_value(xe, "objectexisted")) != NULL &&
+	strcmp(attr, "false")==0){
+	if (restconf_reply_send(req, 201, NULL) < 0) /* Created */
 	    goto done;
-	/* log errors from discard, but ignore */
-	if ((xpath_first(xretdis, NULL, "//rpc-error")) != NULL)
-	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
-	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
     }
-    if (xretcom){ /* Clear: can be reused again below */
-	xml_free(xretcom);
-	xretcom = NULL;
-    }
-    if (if_feature(yspec, "ietf-netconf", "startup")){
-	/* RFC8040 Sec 1.4:
-	 * If the NETCONF server supports :startup, the RESTCONF server MUST
-	 * automatically update the non-volatile startup configuration
-	 * datastore, after the "running" datastore has been altered as a
-	 * consequence of a RESTCONF edit operation.
-	 */
-	cbuf_reset(cbx);
-	cprintf(cbx, "<rpc username=\"%s\">", clicon_nacm_recovery_user(h));
-	cprintf(cbx, "<copy-config><source><running/></source><target><startup/></target></copy-config></rpc>");
-	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
-	    goto done;
-	/* If copy-config failed, log and ignore (already committed) */
-	if ((xe = xpath_first(xretcom, NULL, "//rpc-error")) != NULL){
-
-	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
-	}
-    }
-    /* Check if it was created, or if we tried again and replaced it */
-    if (op == OP_CREATE){
-	if (restconf_reply_send(req, 201, NULL) < 0)
+    else
+	if (restconf_reply_send(req, 204, NULL) < 0) /* No content */
 	    goto done;	
-    }
-    else{
-	if (restconf_reply_send(req, 204, NULL) < 0)
-	    goto done;	
-    }
  ok:
     retval = 0;
  done:
@@ -877,7 +823,18 @@ api_data_delete(clicon_handle h,
 	    username?username:"",
 	    NETCONF_BASE_PREFIX,
 	    NETCONF_BASE_NAMESPACE); /* bind nc to netconf namespace */
-    cprintf(cbx, "<edit-config><target><candidate /></target>");
+
+    cprintf(cbx, "<edit-config");
+    /* RFC8040 Sec 1.4:
+     * If the NETCONF server supports :startup, the RESTCONF server MUST
+     * automatically update the non-volatile startup configuration
+     * datastore, after the "running" datastore has been altered as a
+     * consequence of a RESTCONF edit operation.
+     */
+    if (if_feature(yspec, "ietf-netconf", "startup"))
+	cprintf(cbx, " copystartup=\"true\"");
+    cprintf(cbx, " autocommit=\"true\"");
+    cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
     if (clicon_xml2cbuf(cbx, xtop, 0, 0, -1) < 0)
 	goto done;
@@ -888,50 +845,6 @@ api_data_delete(clicon_handle h,
 	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
-    }
-    /* Assume this is validation failed since commit includes validate */
-    cbuf_reset(cbx);
-    /* commit/discard should be done automatically by the system, therefore
-     * recovery user is used here (edit-config but not commit may be permitted
-     by NACM */
-    cprintf(cbx, "<rpc username=\"%s\">", clicon_nacm_recovery_user(h));
-    cprintf(cbx, "<commit/></rpc>");
-    if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
-	goto done;
-    if ((xe = xpath_first(xretcom, NULL, "//rpc-error")) != NULL){
-	cbuf_reset(cbx);
-	cprintf(cbx, "<rpc username=\"%s\">", clicon_nacm_recovery_user(h));
-	cprintf(cbx, "<discard-changes/></rpc>");
-	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretdis, NULL) < 0)
-	    goto done;
-	/* log errors from discard, but ignore */
-	if ((xpath_first(xretdis, NULL, "//rpc-error")) != NULL)
-	    clicon_log(LOG_WARNING, "%s: discard-changes failed which may lead candidate in an inconsistent state", __FUNCTION__);
-	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    if (xretcom){ /* Clear: can be reused again below */
-	xml_free(xretcom);
-	xretcom = NULL;
-    }
-    if (if_feature(yspec, "ietf-netconf", "startup")){
-	/* RFC8040 Sec 1.4:
-	 * If the NETCONF server supports :startup, the RESTCONF server MUST
-	 * automatically update the non-volatile startup configuration
-	 * datastore, after the "running" datastore has been altered as a
-	 * consequence of a RESTCONF edit operation.
-	 */
-	cbuf_reset(cbx);
-	cprintf(cbx, "<rpc username=\"%s\">", clicon_nacm_recovery_user(h));
-	cprintf(cbx, "<copy-config><source><running/></source><target><startup/></target></copy-config></rpc>");
-	if (clicon_rpc_netconf(h, cbuf_get(cbx), &xretcom, NULL) < 0)
-	    goto done;
-	/* If copy-config failed, log and ignore (already committed) */
-	if ((xe = xpath_first(xretcom, NULL, "//rpc-error")) != NULL){
-
-	    clicon_log(LOG_WARNING, "%s: copy-config running->startup failed", __FUNCTION__);
-	}
     }
     if (restconf_reply_send(req, 204, NULL) < 0)
 	goto done;	
