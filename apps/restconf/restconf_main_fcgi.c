@@ -443,10 +443,9 @@ main(int    argc,
 	clicon_err(OE_UNIX, errno, "chmod");
 	goto done;
     }
-#if 1
+    /* Drop privileges to WWWUSER if started as root */
     if (restconf_drop_privileges(h, WWWUSER) < 0)
 	goto done;
-#endif
     if (FCGX_InitRequest(req, sock, 0) != 0){
 	clicon_err(OE_CFG, errno, "FCGX_InitRequest");
 	goto done;

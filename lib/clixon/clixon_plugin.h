@@ -131,7 +131,7 @@ typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
  */
 typedef int (plgextension_t)(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 
-/*! Called by restconf to check credentials and return username
+/*! Called by restconf on each incoming request to check credentials and return username
  */
 
 /* Plugin authorization. Set username option (or not)
@@ -182,7 +182,7 @@ typedef char *(cli_prompthook_t)(clicon_handle, char *mode);
 typedef int (datastore_upgrade_t)(clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
 
 /*! Startup status for use in startup-callback
- * Note that for STARTUP_ERR and _INVALID, running runs in failsafe mode
+ * Note that for STARTUP_ERR and STARTUP_INVALID, running runs in failsafe mode
  * and startup contains the erroneous or invalid database.
  * The user should repair the startup and 
  * (1) restart the backend

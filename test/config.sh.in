@@ -5,4 +5,5 @@ WITH_RESTCONF=@with_restconf@ # evhtp, fcgi or ""
 WITH_LIBXML2=@with_libxml2@ # yes or ""
 CXX=@CXX@
 CC=@CC@
-
+WWWUSER=@wwwuser@
+WWWDIR=@wwwdir@

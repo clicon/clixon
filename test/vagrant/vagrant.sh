@@ -195,7 +195,7 @@ case $release in
 	# restconf
 	case ${with_restconf} in
 	    fcgi)
-		buildfcgi=true # some ubuntu dont have fcgidev
+		buildfcgi=true # some ubuntu dont have fcgi-dev
 		$sshcmd sudo apt install -y nginx
 		;;
 	    evhtp)
@@ -258,7 +258,6 @@ case ${with_restconf} in
 	    $sshcmd "(cd cmake; sudo make install)"
 	fi
 	if $buildevhtp; then
-	    if true; then
 		$sshcmd << 'EOF'
 		test -d libevhtp || sudo git clone https://github.com/criticalstack/libevhtp.git
 		cd libevhtp/build; 
@@ -267,12 +266,6 @@ case ${with_restconf} in
 		sudo make
 		sudo make install
 EOF
-	    else
-		$sshcmd "test -d libevhtp || sudo git clone https://github.com/criticalstack/libevhtp.git"
-		$sshcmd "(cd libevhtp/build; sudo /usr/local/bin/cmake -DEVHTP_DISABLE_REGEX=ON -DEVHTP_DISABLE_EVTHR=ON ..)"
-		$sshcmd "(cd libevhtp/build; sudo make)"
-		$sshcmd "(cd libevhtp/build; sudo make install)"
-	    fi
 	fi
 	;;
 esac

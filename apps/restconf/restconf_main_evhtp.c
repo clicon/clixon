@@ -792,6 +792,7 @@ main(int    argc,
 	clicon_err(OE_UNIX, errno, "evhtp_bind_socket");
 	goto done;
     }
+    /* Drop privileges to WWWUSER if started as root */
     if (restconf_drop_privileges(h, WWWUSER) < 0)
 	goto done;
 

@@ -246,8 +246,7 @@ module clixon-config {
 	    }
 	    enum exact {
 		description
-		  "Exact match between NACM user and unix socket peer user.
-                   Except for root user that can pose as any user.";
+		  "Exact match between NACM user and unix socket peer user.";
 	    }
 	    enum except {
 		description
@@ -691,13 +690,14 @@ module clixon-config {
 	leaf CLICON_NACM_MODE {
 	    type nacm_mode;
 	    default disabled;
-	    description "RFC8341 network access configuration control model 
-                         (NACM) mode: disabled, in regular (internal) config
-                         or separate external file given by CLICON_NACM_FILE";
+	    description
+		"RFC8341 network access configuration control model (NACM) mode: disabled, 
+                 in regular (internal) config or separate external file given by CLICON_NACM_FILE";
 	}
 	leaf CLICON_NACM_FILE {
 	    type string;
-	    description "RFC8341 NACM external configuration file";
+	    description
+		"RFC8341 NACM external configuration file (if CLIXON_NACM_MODE is external)";
 	}
 	leaf CLICON_NACM_CREDENTIALS {
 	    type nacm_cred_mode;
@@ -710,7 +710,7 @@ module clixon-config {
         leaf CLICON_NACM_RECOVERY_USER {
 	    type string;
 	    description
-		"RFC8341 defines a 'recovery session' as outside the scope. Clixon
+		"RFC8341 defines a 'recovery session' as outside its scope. Clixon
                  defines this user as having special admin rights to exempt from
                  all access control enforcements.
                  Note setting of CLICON_NACM_CREDENTIALS is important, if set to

@@ -279,7 +279,9 @@ startup_extraxml(clicon_handle        h,
 
 failsafe      ----------------------+
                             reset    \ commit
-running                       |-------+---------------> RUNNING FAILSAFE
+running                   ----|-------+---------------> RUNNING FAILSAFE
+                           \
+tmp                         |----------------------> 
  */
 int
 startup_failsafe(clicon_handle h)

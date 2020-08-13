@@ -106,10 +106,6 @@ fi
 : ${RCPROTO:=http}
 
 # www user (on linux typically www-data, freebsd www)
-# @see wwwstartuser which can be dropped to this
-: ${wwwuser:=www-data}
-
-# www user (on linux typically www-data, freebsd www)
 # Start restconf user, can be root which is dropped to wwwuser
 : ${wwwstartuser:=root} 
 
@@ -136,9 +132,9 @@ BUSER=clicon
 
 : ${clixon_cli:=clixon_cli}
 
-: ${clixon_netconf:=clixon_netconf}
+: ${clixon_netconf:=$(which clixon_netconf)}
 
-: ${clixon_restconf:=/www-data/clixon_restconf}
+: ${clixon_restconf:=$WWWDIR/clixon_restconf}
 
 : ${clixon_backend:=clixon_backend}
 
@@ -268,9 +264,9 @@ stop_restconf_pre(){
 # Stop restconf daemon after test
 # Two caveats in pkill:
 # 1) Dont use $clixon_restconf (dont work in valgrind)
-# 2) Dont use -u $wwwuser since clixon_restconf may drop privileges.
+# 2) Dont use -u $WWWUSER since clixon_restconf may drop privileges.
 stop_restconf(){
-    #    sudo pkill -u $wwwuser -f clixon_restconf # Dont use $clixon_restoconf doesnt work in valgrind
+    #    sudo pkill -u $WWWUSER -f clixon_restconf # Dont use $clixon_restoconf doesnt work in valgrind
     sudo pkill -f clixon_restconf
     if [ $valgrindtest -eq 3 ]; then 
 	sleep 1

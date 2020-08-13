@@ -109,7 +109,7 @@ Set the Clixon configuration options:
 ```
 In this example, the stream EXAMPLE would be accessed with `https://example.com/streams/EXAMPLE`.
 
-The retention is configured as 1 hour, i.e., the stream replay function will only save timeseries one other.
+The retention is configured as 1 hour, i.e., the stream replay function will only save timeseries one hour.
 
 Clixon defines an internal in-memory (not persistent) replay function
 controlled by the configure option above.
