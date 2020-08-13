@@ -25,7 +25,7 @@
 ## 4.6.0
 14 August 2020
 
-The 4.6.0 release introduces a new RESTCONF solution using "native" http. An important API change is top-level default value assignment that may cause a NACM read-only dead-lock. The NACM recovery user handling has been improved for this case.
+The 4.6.0 release introduces a new RESTCONF solution using "native" http. An important API change is top-level default value assignment that may cause a NACM read-only dead-lock. The NACM recovery user handling has been improved for this case. Numerous bugfixes and improvements. Vagrant tests have been added.
 
 ### Major New features
 
