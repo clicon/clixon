@@ -23,100 +23,110 @@
 * [3.3.1](#331) June 7 2017
 
 ## 4.6.0
-Expected: July 2020
+14 August 2020
+
+The 4.6.0 release introduces a new RESTCONF solution using "native" http. An important API change is top-level default value assignment that may cause a NACM read-only dead-lock. The NACM recovery user handling has been improved for this case.
 
 ### Major New features
 
-* Auto-CLI enhancements
-  * A generated clispec including state (default @datanodestate) also generated along with the config clispec tree (default @datanode)
-  * New mode `GT_HIDE` set by option `CLICON_CLI_GENMODEL_TYPE` to collapse non-presence containers that only contain a single list
-  * Added a prefix for cli_show_config/cli_show_auto so that it can produce parseable output
-  * Thanks dcornejo@netgate.com for trying it out and suggestions
-* Embedding restconf into the existing [libevhtp](https://github.com/criticalstack/libevhtp) embedded web server. (Experimental).
-  * The existing FCGI restconf solution will continue to be supported for NGINX and other reverse proxies with a FCGI API.
+* A new restconf configuration where Clixon restconf daemon is integrated with the [libevhtp](https://github.com/criticalstack/libevhtp) embedded web server.
+  * The existing FCGI restconf solution will continue to be supported for NGINX and other reverse proxies with a FCGI API and is still the default.
   * The restconf code has been refactored to support both modes. Hopefully, it should be straightforward to add another embedded server, such as GNU microhttpd.
   * The new restconf module is selected using a compile-time autotools configure as follows:
     * `--with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg nginx (default)`
     * `--with-restconf=evhtp   Integrate restconf with libevhtp server`
     * `--without-restconf      Disable restconf altogether`
+  * SSL server and client certificates are supported.
+  * SSE Stream notification is not yet supported.
 	
-### API changes on existing protocol/config features (For users)
+### API changes on existing protocol/config features
 
+Users may have to change how they access the system
+
+* New clixon-config@2020-06-17.yang revision
+  * Added `CLICON_CLI_LINES_DEFAULT` for setting window row size of raw terminals
+  * Added  enum HIDE to `CLICON_CLI_GENMODEL` for auto-cli
+  * Added SSL cert info for evhtp restconf https:
+    * `CLICON_SSL_SERVER_CERT`
+    * `CLICON_SSL_SERVER_KEY`
+    * `CLICON_SSL_CA_CERT`
+  * Added `CLICON_NACM_DISABLED_ON_EMPTY` to mitigate read-only "dead-lock" of empty startup configs.
+  * Removed default valude of `CLICON_NACM_RECOVERY_USER`
 * Top-level default leafs assigned.
   * Enforcing RFC 7950 Sec 7.6.1 means unassigned top-level leafs (or leafs under non-presence containers) are assigned default values.
   * In this process non-presence containers may be created.
   * See also [default values don't show up in datastores #111](https://github.com/clicon/clixon/issues/111).
   * If a default value is replaced by an actual value, RESTCONF return values have changed from `204 No Content` to `201 Created`
-* NACM default behaviour is read-only (empty configs are dead-lockedd)
+* NACM default behaviour is read-only (empty configs are dead-locked)
   * This applies if NACM is loaded and `CLICON_NACM_MODE` is `internal`
   * Due to the previous bult (top-level default leafs)
   * This means that empty configs or empty NACM configs are not writable (deadlocked).
   * Workarounds:
-    1. Access the system with the recovery user, see clixon option CLICON_NACM_RECOVERY_USER
+    1. Access the system with the recovery user, see clixon option `CLICON_NACM_RECOVERY_USER`
     2. Edit the startup-db with a valid NACM config and restart the system
-    3. Set clixon option CLICON_NACM_DISABLED_ON_EMPTY to true which means that if the config is (completely) empty, you can add a NACM config as a first edit.
-* NACM recovery user session is now properly enforced. This means that if `CLICON_NACM_CREDENTIALS` is `except` (default), then a specific `CLICON_NACM_RECOVERY_USER` can make any edits and bypass NACM rules.
-  * Either this user must exist as UNIX user and be logged in by the client (eg CLI/NETCONF), or
+    3. Enable clixon option `CLICON_NACM_DISABLED_ON_EMPTY`: if the config is empty, you can add a NACM config in a first edit.
+* NACM recovery user session is improved.
+  * If `CLICON_NACM_CREDENTIALS` is `except`, a specific `CLICON_NACM_RECOVERY_USER` can make any edits and bypass NACM rules.
+  * Either the recovery user exists as UNIX user and is logged in by the client (eg CLI/NETCONF), or
   * The client is "trusted" (root/wwwuser) and the recovery user is used as a pseudo-user when accessing the backend.
-  * For Restconf using proper authentication (eg SSL client certs) the recovery user must be an authenticated client.
+  * One can make the recovery user a proper authenticated (eg SSL client certs) user, or one may define root to be that user using local access.
 
 * Netconf lock/unlock behaviour changed to adhere to RFC 6241
   * Changed commit lock error tag from "lock denied" to "in-use".
-  * Changed unlock error message from "lock is already held" to #lock not active" or "lock held by other session".
-  * Fixed [lock candidate succeeded even though it is modified #110](https://github.com/clicon/clixon/issues/110)
-* New clixon-config@2020-06-17.yang revision
-  * Added CLICON_CLI_LINES_DEFAULT for setting window row size of raw terminals
-  * Added  enum HIDE to CLICON_CLI_GENMODEL for auto-cli
-  * Added SSL cert info for evhtp restconf https:
-    * CLICON_SSL_SERVER_CERT
-    * CLICON_SSL_SERVER_KEY
-    * CLICON_SSL_CA_CERT
-  * Added CLICON_NACM_DISABLED_ON_EMPTY to mitigate read-only "dead-lock" of empty startup configs.
-  * Removed default valude of CLICON_NACM_RECOVERY_USER
+  * Changed unlock error message from "lock is already held" to "lock not active" or "lock held by other session".
+  * See also related bugfix [lock candidate succeeded even though it is modified #110](https://github.com/clicon/clixon/issues/110)
 * Restconf FCGI (eg via nginx) have changed reply message syntax slightly as follows (due to refactoring and common code with evhtp):
-    * Bodies in error retuns including html code have been removed
-    * Some (extra) CRLF:s have been removed
+  * Bodies in error retuns including html code have been removed
+  * Some (extra) CRLF:s have been removed
+* Restconf and Netconf error handling
+  * Changed and enhanced several `bad-element` error replies to `unknown-element` with more detailed error-message.
 
-* Changed and enhanced several `bad-element` error replies to `unknown-element` with more detailed error-message.
+### C/CLI-API changes on existing features
 
-### C/CLI-API changes on existing features (For developers)
+Developers may need to change their code
 
-* Added yang-binding yb parameter to xmldb_get0() and all xmldb get functions.
-* Changed module-specific upgrade API, not backward compatible. The API has been simplified which means more has to be done by the programmer.
+* Added yang-binding `yb` parameter to `xmldb_get0()` and all xmldb get functions.
+* Simplified the _module-specific upgrade API.
+  * The new API is documented here: [Module-specific upgrade](https://clixon-docs.readthedocs.io/en/latest/upgrade.html#module-specific-upgrade)
+  * The change is not backward compatible. The API has been simplified which means more has to be done by the programmer.
   * In summary, a user registers an upgrade callback per module. The callback is called at startup if the module is added, has been removed or if the revision on file is different from the one in the system. 
   * The register function has removed `from` and `rev` parameters: `upgrade_callback_register(h, cb, namespace, arg)`
   * The callback function has a new `op` parameter with possible values: `XML_FLAG_ADD`, `XML_FLAG_CHANGE` or `XML_FLAG_CHANGE`: `clicon_upgrade_cb(h, xn, ns, op, from, to, arg, cbret)`
 
 * Added new cli show functions to work with cligen_output for cligen pageing to work. To achieve this, replace function calls as follows:
-  * xml2txt(...) --> xml2txt_cb(..., cligen_output)
-  * xml2cli(...) --> xml2cli_cb(..., cligen_output)
-  * clicon_xml2file(...) --> clicon_xml2file_cb(..., cligen_output)
-  * xml2json(...) --> xml2json_cb(..., cligen_output)
-  * yang_print(...) --> yang_print_cb(..., cligen_output)
+  * `xml2txt(...)` --> `xml2txt_cb(..., cligen_output)`
+  * `xml2cli(...)` --> `xml2cli_cb(..., cligen_output)`
+  * `clicon_xml2file(...)` --> `clicon_xml2file_cb(..., cligen_output)`
+  * `xml2json(...)` --> `xml2json_cb(..., cligen_output)`
+  * `yang_print(...)` --> `yang_print_cb(..., cligen_output)`
 
-* Added prefix for cli_show_config/cli_show_auto so that it can produce parseable output
+* Added prefix for `cli_show_config`/`cli_show_auto' so that it can produce parseable output
 * Replaced the global variable `debug` with access function: `clicon_debug_get()`.
 * Due to name collision with libevent, all clixon event functions prepended with `clixon_`. You need to rename your event functions as follows:
-  * event_reg_fd() -> clixon_event_reg_fd()
-  * event_unreg_fd() -> clixon_event_unreg_fd()
-  * event_reg_timeout() -> clixon_event_reg_timeout()
-  * event_unreg_timeout() -> clixon_event_unreg_timeout()
-  * event_poll() -> clixon_event_poll()
-  * event_loop() -> clixon_event_loop()
-  * event_exit() -> clixon_event_exit()
+  * `event_reg_fd()` -> `clixon_event_reg_fd()`
+  * `event_unreg_fd()` -> `clixon_event_unreg_fd()`
+  * `event_reg_timeout()` -> `clixon_event_reg_timeout()`
+  * `event_unreg_timeout()` -> `clixon_event_unreg_timeout()`
+  * `event_poll()` -> `clixon_event_poll()`
+  * `event_loop()` -> `clixon_event_loop()`
+  * `event_exit()` -> `clixon_event_exit()`
   
 ### Minor changes
 
-* Bundle internal NETCONF on RESTCONF
+These are new features that did not quite make it to the "Major features" list
+
+* Auto-CLI enhancements
+  * Traditionally the autocli has only been configuration-based. The autocli has now been extended with state, where a new syntax tree (`@datanodestate`) is also generated along with the config clispec tree.
+  * New mode `GT_HIDE` set by option `CLICON_CLI_GENMODEL_TYPE` to collapse non-presence containers that only contain a single list
+  * Added a prefix for cli_show_config/cli_show_auto so that it can produce parseable output
+  * Thanks dcornejo@netgate.com for trying it out and for suggestions
+
+* Bundle internal NETCONF messages
   * A RESTCONF operation could produce several (up to four) internal NETCONF messages between RESTCONF server and backend. These have now been bundled into one.
-  * Added several extensions to clixon NETCONF to carry information between RESTCONF client and backend. This includes several attributes:
-    * autocommit - perform a operation immediately after an edit.
-    * copystartup - copy the running db to the startup db after a edit/ commit.
-    * objectcreate/objectexisted - PATCH and PUT create/merge behaviour is not consistent with vanilla NETCONF operations, these attributes carry more information to make them. In particular:
-      * RFC 8040 4.5 PUT: if the PUT request creates a new resource, a "201 Created" status-line is returned.  If an existing resource is modified, a "204 No Content" status-line is returned.
-      * RFC 8040 4.6 PATCH: If the target resource instance does not exist, the server MUST NOT create it.
-  * Improved performance, especially latency.
+  * This improves performance for RESTCONF, especially latency.
+  * Added several extensions to clixon NETCONF to carry information between RESTCONF client and backend. The extensions are documented [here](https://clixon-docs.readthedocs.io/en/latest/misc.html#internal-netconf)This includes several attributes:
 * New backend switch: `-q` : Quit startup directly after upgrading and print result on stdout.
+  * This is useful when testing the upgrade functionality
 * Enhanced Clixon if-feature handling:
   * If-feature now supports and/or lists, such as: `if-feature "a and b"` and `if-feature "a or b or c"`. However, full if-feature-expr including `not` and nested boolean experessions is still not supported.
   * Sanity check: if an `if-feature` statement exists, a corresponding `feature` statement must exists that declares that feature.
@@ -134,7 +144,8 @@ Expected: July 2020
 * Fixed: [lock candidate succeeded even though it is modified #110](https://github.com/clicon/clixon/issues/110)
 * Fixed: [Need to add the possibility to use anchors around patterns #51](https://github.com/clicon/cligen/issues/51):
   * Dont escape `$` if it is last in a regexp in translation from XML to POSIX.
-* Fixed `CLICON_YANG_UNKNOWN_ANYDATA` for config and state data. This feature introduced in 4.5 didnt really work.
+* Fixed `CLICON_YANG_UNKNOWN_ANYDATA` option for config and state data.
+  * Set this option of you want to treat unknwon XML as *anydata_.
 * Fixed: [Double free when using libxml2 as regex engine #117](https://github.com/clicon/clixon/issues/117)
 * Fixed: Reading in a yang-spec file exactly the same size as the buffer (1024/2048/4096/...) could leave the buffer not terminated with a 0 byte
 * Fixed: The module `clixon-rfc5277` was always enabled, but should only be enabled when `CLICON_STREAM_DISCOVERY_RFC5277` is enabled.
@@ -142,7 +153,7 @@ Expected: July 2020
 ## 4.5.0
 12 May 2020
 
-The 4.5.0 release introduces xpaths in the NACM implementation thus
+The 4.5.0 release introduces XPaths in the NACM implementation thus
 completing the RPC and Data node access. There has also been several
 optimizations. Note that this version must be run with CLIgen 4.5, it
 cannot run with CLIgen 4.4 or earlier.

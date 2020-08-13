@@ -22,13 +22,10 @@ You can also run a single vagrant test as follows:
   vagrant.sh freebsd/FreeBSD-12.1-STABLE
 ```
 
-The current status is as follows
-* freebsd/FreeBSD-12.1-STABLE - OK
-* ubuntu/xenial64 - OK
-* generic/opensuse42 - nginx: [emerg] getgrnam("www-data") failed in /etc/nginx/nginx.conf:2
-
-* generic/centos8 - Error in test_perf_state.sh errcode=255
-* 
+The current vagrant boxes are verified continuously:
+* ubuntu/bionic64
+* generic/centos8
+* freebsd/FreeBSD-12.1-STABLE
 
 For other vagrant boxes, see [search vagrant boxes](https://vagrantcloud.com/search)
 
