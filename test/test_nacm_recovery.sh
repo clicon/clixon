@@ -42,7 +42,6 @@ EOF
 # The rule-list is from A.2
 RULES='<x xmlns="urn:example:nacm">0</x><nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm"><enable-nacm>true</enable-nacm><read-default>permit</read-default><write-default>permit</write-default><exec-default>permit</exec-default><enable-external-groups>true</enable-external-groups></nacm>'
 
-
 DEFAULT='<nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm"><enable-nacm>true</enable-nacm><read-default>permit</read-default><write-default>deny</write-default><exec-default>permit</exec-default><enable-external-groups>true</enable-external-groups></nacm>'
 
 # Arguments:
@@ -149,6 +148,7 @@ EOF
 }
 
 #------- CRED: except USER: non-root
+if [ "$USER" != root ]; then # Skip if USER is root
 # This is default, therefore first
 CRED=except 
 REALUSER=$USER
@@ -176,6 +176,8 @@ RECOVERY=$USER
 new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
 testrun $CRED $REALUSER $PSEUDO $RECOVERY false false
 
+fi # skip is USER is root
+
 #------- CRED: except USER: root
 CRED=except 
 REALUSER=root 
@@ -202,7 +204,6 @@ PSEUDO=_recovery
 RECOVERY=root
 new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
 testrun $CRED $REALUSER $PSEUDO $RECOVERY true false
-
 
 #------- CRED: none
 # Check you can use any pseudo user if cred is none
