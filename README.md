@@ -17,6 +17,6 @@ See [LICENSE.md](LICENSE.md) for the license.
 
 Clixon interaction is best done posting issues, pull requests, or joining the
 [slack channel](https://clixondev.slack.com).
-[Slack invite](https://join.slack.com/t/clixondev/shared_invite/zt-egqe8bqt-JSQL49otf2B9MzKSoUoRQg).
+[Slack invite](https://join.slack.com/t/clixondev/shared_invite/zt-grej02z5-fNz0b7Su8RcOn5hWKt8yOw)
 
 Clixon is sponsored by [Rubicon Communications LLC(Netgate)](https://www.netgate.com/)

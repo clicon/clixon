@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [4.6.0](#460) Expected: August 2020
+* [4.6.0](#460) 14 August 2020
 * [4.5.0](#450) 12 May 2020
 * [4.4.0](#440) 5 April 2020
 * [4.3.0](#430) 1 January 2020
@@ -26,6 +26,8 @@
 14 August 2020
 
 The 4.6.0 release introduces a new RESTCONF solution using "native" http. An important API change is top-level default value assignment that may cause a NACM read-only dead-lock. The NACM recovery user handling has been improved for this case. Numerous bugfixes and improvements. Vagrant tests have been added.
+
+Thanks Netgate for making this possible.
 
 ### Major New features
 
