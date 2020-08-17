@@ -93,11 +93,13 @@ AC_SUBST(INSTALLFLAGS)
 AC_SUBST(CLIXON_DEFAULT_CONFIG)
 AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
-AC_SUBST(with_restconf) # If yes, compile apps/restconf
+AC_SUBST(with_restconf) # Set to evhtp or fcgi -> compile apps/restconf
 AC_SUBST(with_libxml2)  
 AC_SUBST(enable_optyangs) 
-AC_SUBST(wwwdir,/www-data)
+# Web user default (ie what RESTCONF daemon runs as).
 AC_SUBST(wwwuser,www-data)
+# Home dir for web user
+AC_SUBST(wwwdir,/www-data)
 
 #
 AC_PROG_CC()
@@ -197,7 +199,6 @@ AC_CHECK_LIB(cligen, cligen_init,, AC_MSG_ERROR([CLIgen missing. Try: git clone 
 # --without-restconf    No restconf support
 # --with-restconf=fcgi  FCGI interface for separate web reverse proxy like nginx
 # --with-restconf=evhtp Integration with embedded web server libevhtp
-# Real one
 AC_ARG_WITH([restconf],
 	AS_HELP_STRING([--with-restconf=fcgi],[FCGI interface for stand-alone web rev-proxy eg nginx (default)]),
 	,
@@ -238,7 +239,7 @@ AC_ARG_WITH([restconf],
 
 # Common actions for all restconf packages
 if test "x${with_restconf}" != "x"; then
-   # This is for changing web user default www-data
+   # Web user default (ie what RESTCONF daemon runs as). Default: www-data
    # Should this be a runtime option?
    AC_ARG_WITH([wwwuser],
             [AS_HELP_STRING([--with-wwwuser=<user>],[Set www user different from www-data])])

@@ -634,8 +634,8 @@ ac_ct_CXX
 CXXFLAGS
 CXX
 CPP
-wwwuser
 wwwdir
+wwwuser
 enable_optyangs
 with_libxml2
 with_restconf
@@ -3349,12 +3349,14 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
 
- # If yes, compile apps/restconf
+ # Set to evhtp or fcgi -> compile apps/restconf
 
 
-wwwdir=/www-data
-
+# Web user default (ie what RESTCONF daemon runs as).
 wwwuser=www-data
+
+# Home dir for web user
+wwwdir=/www-data
 
 
 #
@@ -4979,7 +4981,6 @@ fi
 # --without-restconf    No restconf support
 # --with-restconf=fcgi  FCGI interface for separate web reverse proxy like nginx
 # --with-restconf=evhtp Integration with embedded web server libevhtp
-# Real one
 
 # Check whether --with-restconf was given.
 if test "${with_restconf+set}" = set; then :
@@ -5375,7 +5376,7 @@ fi
 
 # Common actions for all restconf packages
 if test "x${with_restconf}" != "x"; then
-   # This is for changing web user default www-data
+   # Web user default (ie what RESTCONF daemon runs as). Default: www-data
    # Should this be a runtime option?
 
 # Check whether --with-wwwuser was given.
