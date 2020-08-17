@@ -7,11 +7,12 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-
 # Only works with evhtp and https
-if [ "${WITH_RESTCONF}" != "evhtp" -o "$RCPROTO" != https ]; then
+if [ "${WITH_RESTCONF}" != "evhtp" ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
+
+RCPROTO=https
 
 APPNAME=example
 
@@ -30,8 +31,8 @@ cacert=$certdir/ca_cert.pem
 users="andy guest" # generate certs for some users in nacm.sh
 
 # Whether to generate new keys or not (only if $dir is not removed)
-# Here dont generate keys if restconf started stand-alone
-genkeys=true
+# Here dont generate keys if restconf started stand-alone (RC=0)
+: ${genkeys:=true}
 if [ $RC -eq 0 ]; then
     genkeys=false
 fi
@@ -43,6 +44,7 @@ test -d $certdir || mkdir $certdir
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
@@ -51,11 +53,12 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
+  <CLICON_RESTCONF_ADDRESS>127.0.0.1</CLICON_RESTCONF_ADDRESS>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
   <CLICON_SSL_SERVER_CERT>$srvcert</CLICON_SSL_SERVER_CERT>
@@ -199,6 +202,13 @@ done
 
 fi # genkeys
 
+# Startup DB with proper NACM config
+cat <<EOF > $dir/startup_db
+<config>
+  $RULES
+</config>
+EOF
+
 if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
@@ -207,8 +217,8 @@ if [ $BE -ne 0 ]; then
     fi
     sudo pkill -f clixon_backend # to be sure
 
-    new "start backend -s init -f $cfg"
-    start_backend -s init -f $cfg
+    new "start backend -s startup -f $cfg"
+    start_backend -s startup -f $cfg
 fi
 
 new "wait for backend"
@@ -220,17 +230,10 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon -c means client certs, -- -s means ssl client cert authentication in example"
     start_restconf -f $cfg -c -- -s
-
 fi
 
 new "wait for restconf"
 wait_restconf --key $certdir/andy.key --cert $certdir/andy.crt
-
-new "auth set authentication config"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
-
-new "commit it"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 
 new "enable nacm"
 expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 204 No Content"
@@ -240,6 +243,13 @@ expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X
 
 new "guest get x"
 expectpart "$(curl $CURLOPTS --key $certdir/guest.key --cert $certdir/guest.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
+
+new "admin set x 42"
+expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:x":42}' $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 204 No Content"
+
+new "admin get x 42"
+expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 200 OK" '{"example:x":42}'
+
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

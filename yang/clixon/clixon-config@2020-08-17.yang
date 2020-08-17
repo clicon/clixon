@@ -42,6 +42,18 @@ module clixon-config {
 
     /* 	    Deleted:  clixon-stats state for clixon XML and memory statistics. (moved to clixon-lib)
      */
+    revision 2020-08-17 {
+	description
+	    "Added: CLICON_RESTCONF_ADDRESS";
+    }
+    revision 2020-06-17 {
+	description
+	    "Added: CLICON_CLI_LINES_DEFAULT
+             Added enum HIDE to CLICON_CLI_GENMODEL
+             Added CLICON_SSL_SERVER_CERT, CLICON_SSL_SERVER_KEY, CLICON_SSL_CA_CERT
+             Added CLICON_NACM_DISABLED_ON_EMPTY
+             Removed default valude of CLICON_NACM_RECOVERY_USER";
+    }
     revision 2020-04-23 {
 	description
 	    "Added: CLICON_YANG_UNKNOWN_ANYDATA  to treat unknown XML (wrt YANG) as anydata.
@@ -159,6 +171,9 @@ module clixon-config {
 	    enum ALL{
 		description "Keywords on all variables: c a x <x> y <y>";
 	    }
+	    enum HIDE{
+		description "Keywords on non-key variables and hide container around lists: a <x> y <y>";
+	    }
 	}
     }
     typedef nacm_mode{
@@ -235,8 +250,7 @@ module clixon-config {
 	    }
 	    enum exact {
 		description
-		  "Exact match between NACM user and unix socket peer user.
-                   Except for root user that can pose as any user.";
+		  "Exact match between NACM user and unix socket peer user.";
 	    }
 	    enum except {
 		description
@@ -323,9 +337,14 @@ module clixon-config {
 	    type boolean;
 	    default false;
 	    description
-		"Treat unknown XML/JSON nodes as anydata. 
+		"Treat unknown XML/JSON nodes as anydata when loading from startup db.
                  This does not apply to namespaces, which means a top-level node: xxx:yyy
-                 is accepted only if yyy is unknown, not xxx";
+                 is accepted only if yyy is unknown, not xxx.
+                 Note that this option has several caveats which needs to be fixed. Please
+                 use with care.
+                 The primary issue is that the unknown->anydata handling is not restricted to
+                 only loading from startup but may occur in other circumstances as well. This
+                 means that sanity checks of erroneous XML/JSON may not be properly signalled.";
 	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;
@@ -368,6 +387,40 @@ module clixon-config {
                  RFC 8040 examples print XML and JSON in pretty-printed form.
                  Setting this value to false makes restconf return not pretty-printed
                  which may be desirable for performance or tests";
+	}
+	leaf CLICON_RESTCONF_ADDRESS {
+	    type string;
+	    default "ipv4:0.0.0.0";
+	    description
+		"RESTCONF outward address.
+                 Applies to native http (eg evhtp), not proxy solutions (eg fcgi).
+                 This is essentially from libevhtp: Bind to a socket, optionally with specific protocol
+                 support formatting. The addr can be defined as one of the following:
+                    ipv6:<ipv6addr> for binding to an IPv6 address.
+                    unix:<named pipe> for binding to a unix named socket
+                    ipv4:<ipv4addr> for binding to an ipv4 address
+                 If not given, the addr is assumed to be ipv4.";
+	}
+	leaf CLICON_SSL_SERVER_CERT {
+	    type string;
+	    default "/etc/ssl/certs/clixon-server-crt.pem";
+	    description
+		"SSL server cert for restconf https. This is not required if you use
+                 --with-restconf=fcgi, ie a reverse-proxy based such as nginx over fcgi";
+	}
+	leaf CLICON_SSL_SERVER_KEY {
+	    type string;
+	    default "/etc/ssl/private/clixon-server-key.pem";
+	    description
+		"SSL server private key for restconf https. This is not required if you use
+                 --with-restconf=fcgi, ie a reverse-proxy based such as nginx over fcgi";
+	}
+	leaf CLICON_SSL_CA_CERT {
+	    type string;
+	    default "/etc/ssl/certs/clixon-ca_crt.pem";
+	    description
+		"SSL CA cert for client authentication. This is not required if you use
+                 --with-restconf=fcgi, ie a reverse-proxy based such as nginx over fcgi";
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;
@@ -443,6 +496,18 @@ module clixon-config {
                  Set to 1 if you  want CLI to scroll sideways when approaching 
                       right margin";
 	}
+	leaf CLICON_CLI_LINES_DEFAULT {
+	    type int32;
+	    default 24;
+	    description
+		"Set to number of CLI terminal rows for pageing/scrolling. 0 means unlimited.
+                 The number is set statically UNLESS:
+                 - there is no terminal, such as file input, in which case nr lines is 0
+                 - there is a terminal sufficiently powerful to read the number of lines from
+                   ioctl calls.
+                 In other words, this setting is used ONLY on raw terminals such as serial
+                 consoles.";
+	}
 	leaf CLICON_CLI_TAB_MODE {
 	    type int8;
 	    default 0;
@@ -499,7 +564,7 @@ module clixon-config {
                  value to the buffer length.
                  If 0, the growth continues with quadratic growth.
                  See CLICON_CLI_BUF_THRESHOLD";
-	}	
+	}
 	leaf CLICON_SOCK_FAMILY {
 	    type string;
 	    default "UNIX";
@@ -642,13 +707,14 @@ module clixon-config {
 	leaf CLICON_NACM_MODE {
 	    type nacm_mode;
 	    default disabled;
-	    description "RFC8341 network access configuration control model 
-                         (NACM) mode: disabled, in regular (internal) config
-                         or separate external file given by CLICON_NACM_FILE";
+	    description
+		"RFC8341 network access configuration control model (NACM) mode: disabled, 
+                 in regular (internal) config or separate external file given by CLICON_NACM_FILE";
 	}
 	leaf CLICON_NACM_FILE {
 	    type string;
-	    description "RFC8341 NACM external configuration file";
+	    description
+		"RFC8341 NACM external configuration file (if CLIXON_NACM_MODE is external)";
 	}
 	leaf CLICON_NACM_CREDENTIALS {
 	    type nacm_cred_mode;
@@ -656,19 +722,31 @@ module clixon-config {
 	    description
 		"Verify nacm user credentials with unix socket peer cred.
                  This means nacm user must match unix user accessing the backend
-                 socket.
-                 Except for recovery user and www user (for restconf)";
+                 socket.";
 	}
         leaf CLICON_NACM_RECOVERY_USER {
 	    type string;
-	    default "_nacm_recovery";
 	    description
-		"RFC8341 defines a 'recovery session' as outside the scope. Clixon
+		"RFC8341 defines a 'recovery session' as outside its scope. Clixon
                  defines this user as having special admin rights to exempt from
                  all access control enforcements.
                  Note setting of CLICON_NACM_CREDENTIALS is important, if set to
                  exact for example, this user must exist and be used, otherwise
-                 another user (such as root or www) can pose as it.";
+                 another user (such as root or www) can pose as the recovery user.";
+	}
+	leaf CLICON_NACM_DISABLED_ON_EMPTY {
+	    type boolean;
+	    default false;
+	    description
+		"RFC 8341 and ietf-netconf-acm@2018-02-14.yang defines enable-nacm as true by
+                 default. Since also write-default is deny by default it leads to that empty 
+                 configs can not be edited.
+                 This means that a startup config must always have a NACM configuration or
+                 that the NACM recovery session is used to edit an empty config.
+                 If this option is set, Clixon disables NACM if a datastore is empty on load.
+                 Note that it only makes the check on initial load, not if a store 'becomes'
+                 empty, but enables a clixon nacm system to start empty and add an NACM
+                 config after boot.";
 	}
 	leaf CLICON_MODULE_LIBRARY_RFC7895 {
 	    type boolean;

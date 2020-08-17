@@ -563,9 +563,9 @@ usage(clicon_handle h,
 	    "\t-y <file>\t  Load yang spec file (override yang main module)\n"
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
-	    "\t-o \"<option>=<value>\" Give configuration option overriding config file (see clixon-config.yang)\n"
-	    "\t-s\t  SSL server, https\n"
-	    "\t-c\t  SSL verify client certs\n"
+	    "\t-o <option>=<value> Set configuration option overriding config file (see clixon-config.yang)\n"
+	    "\t-s\t\t  SSL server, https\n"
+	    "\t-c\t\t  SSL verify client certs\n"
     	    "\t-P <port>\t  HTTP port (default 80, or 443 if -s is given)\n"
 	    ,
 	    argv0,
@@ -602,6 +602,7 @@ main(int    argc,
     int                dbg = 0;
     int                use_ssl = 0;
     int                ssl_verify_clients = 0;
+    char              *restconf_address = NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -788,7 +789,15 @@ main(int    argc,
     /* bind to a socket, optionally with specific protocol support formatting 
      * If port is proteced must be done as root?
      */
-    if (evhtp_bind_socket(htp, "127.0.0.1", port, 128) < 0){
+    if ((restconf_address = clicon_option_str(h, "CLICON_RESTCONF_ADDRESS")) == NULL){
+	clicon_err(OE_CFG, EINVAL, "Missing clixon option: CLICON_RESTCONF_ADDRESS");
+	goto done;
+    }
+    if (evhtp_bind_socket(htp,                 /* evhtp handle */
+			  restconf_address,    /* string address, eg ipv4:<ipv4addr> */
+			  port,                /* port */
+			  16                   /* backlog flag, see listen(5)  */
+			  ) < 0){
 	clicon_err(OE_UNIX, errno, "evhtp_bind_socket");
 	goto done;
     }

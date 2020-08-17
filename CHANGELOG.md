@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [4.7.0](#470) Expected: September 2020
 * [4.6.0](#460) 14 August 2020
 * [4.5.0](#450) 12 May 2020
 * [4.4.0](#440) 5 April 2020
@@ -21,6 +22,16 @@
 * [3.3.3](#333) 25 November 2017
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
+
+## 4.7.0
+Expected: September 2020
+
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* New clixon-config@2020-08-17.yang revision
+  * Added `CLICON_RESTCONF_ADDRESS` for setting evhtp bind address
 
 ## 4.6.0
 14 August 2020
