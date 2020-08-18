@@ -25,7 +25,7 @@ The base container is a minimal and primitive example. Look at the [clixon-syste
 The following shows a simple example of how to run the example
 application. First, the container is started with the backend running:
 ```
-  $ sudo docker run --rm --name hello -d clixon/clixon clixon_backend -Fs init
+  $ sudo docker run --rm --name cli -d clixon/clixon clixon_backend -Fs init
 ```
 Then a CLI is started, and finally the container is removed:
 ```
