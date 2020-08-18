@@ -1,7 +1,8 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+# Copyright (C) 2017-2019 Olof Hagsand
+# Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 #
 # This file is part of CLIXON
 #
@@ -35,10 +36,26 @@ FROM alpine
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 
 # For clixon and cligen
-RUN apk add --update git make build-base gcc flex bison fcgi-dev curl-dev
+RUN apk add --update git make build-base gcc flex bison curl-dev
 
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
+
+# libevht
+# dependencies
+RUN apk add --update libevent cmake libevent-dev
+
+# clone libevhtp
+WORKDIR /clixon
+RUN git clone https://github.com/criticalstack/libevhtp.git
+WORKDIR /clixon/libevhtp/build
+RUN cmake -DEVHTP_DISABLE_REGEX=ON -DEVHTP_DISABLE_EVTHR=ON ..
+RUN make
+RUN make install
+
+# NOTE: Patch include queue.h to use the queue.h included in the evhtp release instead
+RUN (cd /usr/local/include/evhtp/; sed -i -e 's/<sys\/queue.h>/<evhtp\/sys\/queue.h>/' evhtp.h)
+
 RUN mkdir /clixon/build
 WORKDIR /clixon
 
@@ -58,40 +75,38 @@ COPY clixon .
 
 # Need to add www user manually
 RUN adduser -D -H www-data
-# nginx adds group www-data
-RUN apk add --update nginx
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data --enable-optyangs --with-restconf=evhtp
+
 RUN make
 RUN make install
 
-# Build and install the clixon hello example (not really necessary for base)
-WORKDIR /clixon/clixon/example/hello
 RUN make
 RUN make install
-RUN install hello.xml /clixon/build/etc/clixon.xml # For 2nd level
 
 #
 # Stage 2
-#
+# The second step skips the development environment and builds a runtime system
 FROM alpine
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 
 # For clixon and cligen
-RUN apk add --update flex bison fcgi-dev 
+RUN apk add --update flex bison
 
 # need to add www user manually
 RUN adduser -D -H www-data
-# nginx adds group www-data
-RUN apk add --update nginx
+# for libevtp
+RUN apk add --update openssl libevent
 
-# Expose nginx port for restconf
+# Test-specific (for test scripts) XXX Maybe remove those?
+RUN apk add --update sudo curl procps grep make bash
+
+# Expose https port for restconf
 EXPOSE 80
 
 # Create clicon user and group
 RUN adduser -D -H clicon
-RUN adduser nginx clicon
 RUN adduser www-data clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
@@ -100,6 +115,5 @@ COPY --from=0 /www-data /www-data
 # Manually created
 RUN chown www-data /www-data
 RUN chgrp www-data /www-data
-
 
 
