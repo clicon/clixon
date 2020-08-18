@@ -43,9 +43,14 @@ set -ux # e but clixon_backend may fail if test is run in parallell
 
 >&2 echo "$0"
 
-DBG=${DBG:-0}
+# If set, enable debugging (of backend and restconf daemons)
+: ${DBG:=0}
 
-WWWUSER=${WWWUSER:-www-data}
+# Web user default (ie what RESTCONF daemon runs as)
+: ${WWWUSER:=www-data}
+
+# Home dir for web user
+: ${WWWDIR:=/www-data}
 
 # Initiate clixon configuration (env variable)
 echo "$CONFIG" > /usr/local/etc/clixon.xml
@@ -110,7 +115,7 @@ openssl req -x509 -config ./ca.cnf -nodes -newkey rsa:4096 -keyout /etc/ssl/priv
 # Start clixon_restconf
 # -s https
 # But dont use -s exposing local ports since there is problem with self-signed certs?
-/www-data/clixon_restconf -l f/www-data/restconf.log -D $DBG &
+${WWWDIR}/clixon_restconf -l f${WWWDIR}/restconf.log -D $DBG &
 >&2 echo "clixon_restconf started"
 
 # Start clixon backend (tests will kill this)
