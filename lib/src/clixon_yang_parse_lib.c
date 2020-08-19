@@ -176,11 +176,11 @@ yang_augment_node(yang_stmt *ys,
 	goto done;
     if (ytarget == NULL)
 	goto ok;
-    /* Extend ytarget with ys' children
-     * First enlarge ytarget vector 
-     */
+    /* Extend ytarget with ys' schemanode children */
     yc0 = NULL;
     while ((yc0 = yn_each(ys, yc0)) != NULL) {
+	if (!yang_schemanode(yc0))
+	    continue;
 	if ((yc = ys_dup(yc0)) == NULL)
 	    goto done;
 	yc->ys_mymodule = ymod;
@@ -316,6 +316,7 @@ yang_expand_grouping(yang_stmt *yn)
     int        glen;
     int        i;
     int        j;
+    int        k;
     char      *id = NULL;
     char      *prefix = NULL;
     size_t     size;
@@ -346,8 +347,7 @@ yang_expand_grouping(yang_stmt *yn)
 		goto done;
 		break;
 	    }
-	    /* Check so that this uses statement is not a decendant of the grouping
-	     * Not that there may be other indirect recursions (I think?)
+	    /* Check so that this uses statement is not a descendant of the grouping
 	     */
 	    yp = yn;
 	    do {
@@ -373,10 +373,15 @@ yang_expand_grouping(yang_stmt *yn)
 	     */
 	    if ((ygrouping2 = ys_dup(ygrouping)) == NULL)
 		goto done;
-	    /* Replace ys with ygrouping,... 
-	     * First enlarge parent vector 
+	    /* Only replace data/schemanodes:
+	     * Compute the number of such nodes, and extend the child vector with that below
 	     */
-	    glen = yang_len_get(ygrouping2);
+	    glen = 0;
+	    yg = NULL;
+	    while ((yg = yn_each(ygrouping2, yg)) != NULL) {
+		if (yang_schemanode(yg))
+		    glen++;
+	    }
 	    /* 
 	     * yn is parent: the children of ygrouping replaces ys.
 	     * Is there a case when glen == 0?  YES AND THIS BREAKS
@@ -418,11 +423,18 @@ yang_expand_grouping(yang_stmt *yn)
 		 * grouping.  I interpret that as only one node --> break */
 		break;
 	    }
-	    /* Then copy and insert each child element */
-	    for (j=0; j<glen; j++){
+	    /* Then copy and insert each child element from ygrouping2 to yn */
+	    k=0;
+	    for (j=0; j<yang_len_get(ygrouping2); j++){
 		yg = ygrouping2->ys_stmt[j]; /* Child of refined copy */
-		yn->ys_stmt[i+j] = yg;
+		/* Only replace data/schemanodes */
+		if (!yang_schemanode(yg)){
+		    ys_free(yg);
+		    continue;
+		}
+		yn->ys_stmt[i+k] = yg;
 		yg->ys_parent = yn;
+		k++;
 	    }
 	    /* Remove 'uses' node */
 	    ys_free(ys); 
@@ -1067,6 +1079,10 @@ yang_parse_post(clicon_handle h,
 	if (ys_list_check(h, yspec->ys_stmt[i]) < 0)
 	    goto done;
     }
+    /* 9. Check cardinality a second time after grouping/augment etc */
+    for (i=modnr; i<yang_len_get(yspec); i++) 
+	if (yang_cardinality(h, yspec->ys_stmt[i], yang_argument_get(yspec->ys_stmt[i])) < 0)
+	    goto done;
     retval = 0;
  done:
     return retval;

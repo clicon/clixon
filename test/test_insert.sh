@@ -214,7 +214,10 @@ testrun "$x0" "<e>32</e>"
 new "adv list add leaf-list"
 testrun "$x0" "<e>32</e>"
 
+endtest
+
 rm -rf $dir
 
 # unset conditional parameters 
 unset clixon_util_xml_mod
+

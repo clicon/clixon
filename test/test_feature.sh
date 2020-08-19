@@ -303,4 +303,6 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
 fi
 
+endtest
+
 rm -rf $dir

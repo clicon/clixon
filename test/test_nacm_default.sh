@@ -225,6 +225,8 @@ for db in startup init; do
 
 done
 
+endtest
+
 rm -rf $dir
 
 # unset conditional parameters 

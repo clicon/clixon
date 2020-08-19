@@ -362,19 +362,36 @@ ys_new(enum rfc_6020 keyw)
     return ys;
 }
 
-/*! Free a single yang statement */
+/*! Free a single yang statement, dont remove children
+ * 
+ * @param[in]  ys   Yang node to remove 
+ * @param[in]  self Free own node
+ * @retval     0    OK
+ * @retval    -1    Error
+ * @see ys_free
+ */
 static int 
-ys_free1(yang_stmt *ys)
+ys_free1(yang_stmt *ys,
+	 int        self)
 {
-    if (ys->ys_argument)
+    if (ys->ys_argument){
 	free(ys->ys_argument);
-    if (ys->ys_cv)
+	ys->ys_argument = NULL;
+    }
+    if (ys->ys_cv){
 	cv_free(ys->ys_cv);
-    if (ys->ys_cvec)
+	ys->ys_cv = NULL;
+    }
+    if (ys->ys_cvec){
 	cvec_free(ys->ys_cvec);
-    if (ys->ys_typecache)
+	ys->ys_cvec = NULL;
+    }
+    if (ys->ys_typecache){
 	yang_type_cache_free(ys->ys_typecache);
-    free(ys);
+	ys->ys_typecache = NULL;
+    }
+    if (self)
+	free(ys);
     return 0;
 }
 
@@ -422,7 +439,7 @@ ys_free(yang_stmt *ys)
     }
     if (ys->ys_stmt)
 	free(ys->ys_stmt);
-    ys_free1(ys);
+    ys_free1(ys, 1);
     return 0;
 }
 
@@ -461,11 +478,14 @@ yn_realloc(yang_stmt *yn)
 /*! Copy yang statement recursively from old to new 
  * @param[in] ynew  New empty (but created) yang statement (to)
  * @param[in] yold  Old existing yang statement (from)
+ * @retval    0     OK
+ * @retval    -1    Error
  * @code
  * yang_stmt *new = ys_new(Y_LEAF);
  * if (ys_cp(new, old) < 0)
  *    err;
  * @endcode
+ * @see ys_replace
  */
 int        
 ys_cp(yang_stmt *ynew, 
@@ -519,6 +539,8 @@ ys_cp(yang_stmt *ynew,
  * @param[in] old  Old existing yang statement (from)
  * @retval    NULL Error
  * @retval    nw   New created yang statement
+ * @retval    0     OK
+ * @retval    -1    Error
  * This may involve duplicating strings, etc.
  * The new yang tree needs to be freed by ys_free().
  * The parent of new is NULL, it needs to be explicityl inserted somewhere
@@ -539,6 +561,47 @@ ys_dup(yang_stmt *old)
 	return NULL;
     }
     return nw;
+}
+
+/*! Replace yold with ynew (insert ynew at the exact place of yold). Keep yold pointer as-is.
+ *
+ * @param[in] yorig  Existing yang statement
+ * @param[in] yfrom   New empty (but created) yang statement
+
+ * @retval    0     OK
+ * @retval    -1    Error
+ * @code
+ * if (ys_replace(new, old) < 0)
+ *    err;
+ * @endcode
+ * @see ys_cp
+ * @note yfrom is left in its original state
+ */
+int
+ys_replace(yang_stmt *yorig,
+	   yang_stmt *yfrom)
+{
+    int        retval = -1;
+    yang_stmt *yp; /* parent */
+    yang_stmt *yc; /* child */
+
+    yp = yang_parent_get(yorig);
+    /* Remove old yangs all children */
+    yc = NULL;
+    while ((yc = yn_each(yorig, yc)) != NULL) 
+	ys_free(yc);
+    if (yorig->ys_stmt){
+	free(yorig->ys_stmt);
+	yorig->ys_stmt = NULL;
+	yorig->ys_len = 0;
+    }
+    ys_free1(yorig, 0); /* Remove all in yold except the actual object */
+    if (ys_cp(yorig, yfrom) < 0)
+	goto done;
+    yorig->ys_parent = yp;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Append yang statement as child of a parent yang_statement, last in list 

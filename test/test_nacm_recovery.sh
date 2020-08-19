@@ -223,4 +223,6 @@ RECOVERY=_recovery
 new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
 testrun $CRED $REALUSER $PSEUDO $RECOVERY false false
 
+endtest
+
 rm -rf $dir

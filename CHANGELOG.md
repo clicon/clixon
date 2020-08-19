@@ -33,6 +33,11 @@ Users may have to change how they access the system
 * New clixon-config@2020-08-17.yang revision
   * Added `CLICON_RESTCONF_ADDRESS` for setting evhtp bind address
 
+### Corrected Bugs
+
+* Fixed: [(CLI) the description of a used grouping is shown instead of the encapsulating container #124](https://github.com/clicon/clixon/issues/124)
+  * Uses/group and augments only copies *schemanodes*. This means reference/description/.. etc are not copied, the original is kept. Also, as a side-effect of the bugfix, a final cardinality sanity check is now made after all yang modifications, not only at the time the file is loaded.
+  
 ## 4.6.0
 14 August 2020
 

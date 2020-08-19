@@ -297,11 +297,16 @@ wait_restconf(){
     fi
 }
 
-# Increment test number and print a nice string
-new(){
+endtest()
+{
     if [ $valgrindtest -eq 1 ]; then 
 	checkvalgrind
     fi
+}
+
+# Increment test number and print a nice string
+new(){
+    endtest # finalize previous test
     testnr=`expr $testnr + 1`
     testi=`expr $testi + 1`
     testname=$1
