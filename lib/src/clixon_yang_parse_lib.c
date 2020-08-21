@@ -547,7 +547,7 @@ yang_parse_file(int         fd,
 {
     char         *buf = NULL;
     int           i;
-    int           c;
+    char          c;
     int           len;
     yang_stmt    *ymod = NULL;
     int           ret;
