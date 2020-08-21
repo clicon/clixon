@@ -10,7 +10,7 @@ set -eux #
 
 if [ $# -ne 1 -a $# -ne 2 ]; then 
     echo "usage: $0 <box> [destroy]\n <box> as defined in https://vagrantcloud.com/search"
-    exit -1
+    exit 255
 fi
 
 box=$1 # As defined in https://vagrantcloud.com/search

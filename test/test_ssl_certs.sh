@@ -22,12 +22,13 @@ APPNAME=example
 fyang=$dir/example.yang
 
 cfg=$dir/conf.xml
-certdir=$dir/certs
 
+certdir=$dir/certs
 srvkey=$certdir/srv_key.pem
 srvcert=$certdir/srv_cert.pem
 cakey=$certdir/ca_key.pem # needed?
 cacert=$certdir/ca_cert.pem
+
 users="andy guest" # generate certs for some users in nacm.sh
 
 # Whether to generate new keys or not (only if $dir is not removed)
@@ -53,7 +54,8 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
-  <CLICON_RESTCONF_ADDRESS>127.0.0.1</CLICON_RESTCONF_ADDRESS>
+  <CLICON_RESTCONF_IPV4_ADDR>127.0.0.1</CLICON_RESTCONF_IPV4_ADDR>
+  <CLICON_RESTCONF_IPV6_ADDR>::1</CLICON_RESTCONF_IPV6_ADDR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>

@@ -81,8 +81,13 @@
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:o:P:sc"
 
+/* See see listen(5) */
+#define SOCKET_LISTEN_BACKLOG 16
+
 /* Need global variable to for signal handler XXX */
 static clicon_handle _CLICON_HANDLE = NULL;
+
+
 
 /*! Signall terminates process
  */
@@ -594,7 +599,7 @@ main(int    argc,
     cvec              *nsctx_global = NULL; /* Global namespace context */
     size_t             cligen_buflen;
     size_t             cligen_bufthreshold;
-    uint16_t           defaultport = 80;
+    uint16_t           defaultport;
     uint16_t           port = 0;
     evhtp_t           *htp = NULL;
     struct event_base *evbase = NULL;
@@ -602,7 +607,9 @@ main(int    argc,
     int                dbg = 0;
     int                use_ssl = 0;
     int                ssl_verify_clients = 0;
-    char              *restconf_address = NULL;
+    char              *restconf_ipv4_addr = NULL;
+    char              *restconf_ipv6_addr = NULL;
+    int                i;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -656,11 +663,17 @@ main(int    argc,
 	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
     }
-
+    
     /* Find and read configfile */
     if (clicon_options_main(h) < 0)
 	goto done;
     //    stream_path = clicon_option_str(h, "CLICON_STREAM_PATH");
+    /* Start with http default port, but change this later if -s is set to https default port */
+    if ((i = clicon_option_int(h, "CLICON_RESTCONF_HTTP_PORT")) < 0){
+	clicon_err(OE_CFG, EINVAL, "CLICON_RESTCONF_HTTP_PORT not found");
+	goto done;
+    }
+    defaultport = (uint16_t)i;
     
     /* Now rest of options, some overwrite option file */
     optind = 1;
@@ -703,7 +716,12 @@ main(int    argc,
 	}
 	case 's': /* ssl: use https */
 	    use_ssl = 1;
-	    defaultport = 443; /* unless explicit -P ? */
+	    /* Set to port - note can be overrifden by -P */
+	    if ((i = clicon_option_int(h, "CLICON_RESTCONF_HTTPS_PORT")) < 0){
+		clicon_err(OE_CFG, EINVAL, "CLICON_RESTCONF_HTTPS_PORT not found");
+		goto done;
+	    }
+	    defaultport = (uint16_t)i;
 	    break;
 	case 'c': /* ssl: verify clients */
 	    ssl_verify_clients = 1;
@@ -722,6 +740,10 @@ main(int    argc,
     /* port = defaultport unless explicitly set -P */
     if (port == 0)
 	port = defaultport;
+    if (port == 0){
+	clicon_err(OE_DAEMON, EINVAL, "Restconf bind port is 0");
+	goto done;
+    }
     /* Check server ssl certs */
     if (use_ssl){
 	/* Init evhtp ssl config struct */
@@ -757,6 +779,7 @@ main(int    argc,
 	clicon_err(OE_UNIX, errno, "evhtp_new");
 	goto done;
     }
+    /* Here the daemon either uses SSL or not, ie you cant seem to mix http and https :-( */
     if (use_ssl){
 	if (evhtp_ssl_init(htp, ssl_config) < 0){
 	    clicon_err(OE_UNIX, errno, "evhtp_new");
@@ -787,19 +810,49 @@ main(int    argc,
     evhtp_set_gencb(htp, cx_gencb, h);
 
     /* bind to a socket, optionally with specific protocol support formatting 
-     * If port is proteced must be done as root?
      */
-    if ((restconf_address = clicon_option_str(h, "CLICON_RESTCONF_ADDRESS")) == NULL){
-	clicon_err(OE_CFG, EINVAL, "Missing clixon option: CLICON_RESTCONF_ADDRESS");
+    restconf_ipv4_addr = clicon_option_str(h, "CLICON_RESTCONF_IPV4_ADDR");
+    restconf_ipv6_addr = clicon_option_str(h, "CLICON_RESTCONF_IPV6_ADDR");
+    if ((restconf_ipv4_addr == NULL || strlen(restconf_ipv4_addr)==0) &&
+	(restconf_ipv6_addr == NULL || strlen(restconf_ipv6_addr)==0)){
+	clicon_err(OE_DAEMON, EINVAL, "There are no restconf IPv4 or IPv6  bind addresses");
 	goto done;
     }
-    if (evhtp_bind_socket(htp,                 /* evhtp handle */
-			  restconf_address,    /* string address, eg ipv4:<ipv4addr> */
-			  port,                /* port */
-			  16                   /* backlog flag, see listen(5)  */
-			  ) < 0){
-	clicon_err(OE_UNIX, errno, "evhtp_bind_socket");
-	goto done;
+    if (restconf_ipv4_addr != NULL && strlen(restconf_ipv4_addr)){
+	cbuf *cb;
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cb, "ipv4:%s", restconf_ipv4_addr);
+	if (evhtp_bind_socket(htp,                  /* evhtp handle */
+			      cbuf_get(cb),         /* string address, eg ipv4:<ipv4addr> */
+			      port,                 /* port */
+			      SOCKET_LISTEN_BACKLOG /* backlog flag, see listen(5)  */
+			      ) < 0){
+	    clicon_err(OE_UNIX, errno, "evhtp_bind_socket");
+	    goto done;
+	}
+	if (cb)
+	    cbuf_free(cb);
+    }
+    if (restconf_ipv6_addr != NULL && strlen(restconf_ipv6_addr)){
+	cbuf *cb;
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cb, "ipv6:%s", restconf_ipv6_addr);
+	if (evhtp_bind_socket(htp,                  /* evhtp handle */
+			      cbuf_get(cb),         /* string address, eg ipv6:<ipv6addr> */
+      			      port,                 /* port */
+			      SOCKET_LISTEN_BACKLOG /* backlog flag, see listen(5)  */
+			      ) < 0){
+	    clicon_err(OE_UNIX, errno, "evhtp_bind_socket");
+	    goto done;
+	}
+	if (cb)
+	    cbuf_free(cb);
     }
     /* Drop privileges to WWWUSER if started as root */
     if (restconf_drop_privileges(h, WWWUSER) < 0)

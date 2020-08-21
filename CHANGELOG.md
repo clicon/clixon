@@ -31,7 +31,7 @@ Expected: September 2020
 Users may have to change how they access the system
 
 * New clixon-config@2020-08-17.yang revision
-  * Added `CLICON_RESTCONF_ADDRESS` for setting evhtp bind address
+  * Added options for Restconf evhtp setting default bind socket address and ports `CLICON_RESTCONF_IPV4_ADDR`, `CLICON_RESTCONF_IPV6_ADDR`, `CLICON_RESTCONF_HTTP_PORT`, `CLICON_RESTCONF_HTTPS_PORT`
 
 ### Corrected Bugs
 

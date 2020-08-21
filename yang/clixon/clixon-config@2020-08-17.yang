@@ -44,7 +44,8 @@ module clixon-config {
      */
     revision 2020-08-17 {
 	description
-	    "Added: CLICON_RESTCONF_ADDRESS";
+	    "Added: CLICON_RESTCONF_IPV4_ADDR, CLICON_RESTCONF_IPV6_ADDR, 
+                    CLICON_RESTCONF_HTTP_PORT, CLICON_RESTCONF_HTTPS_PORT";
     }
     revision 2020-06-17 {
 	description
@@ -388,39 +389,57 @@ module clixon-config {
                  Setting this value to false makes restconf return not pretty-printed
                  which may be desirable for performance or tests";
 	}
-	leaf CLICON_RESTCONF_ADDRESS {
+	leaf CLICON_RESTCONF_IPV4_ADDR {
 	    type string;
-	    default "ipv4:0.0.0.0";
+	    default "0.0.0.0";
 	    description
-		"RESTCONF outward address.
-                 Applies to native http (eg evhtp), not proxy solutions (eg fcgi).
-                 This is essentially from libevhtp: Bind to a socket, optionally with specific protocol
-                 support formatting. The addr can be defined as one of the following:
-                    ipv6:<ipv6addr> for binding to an IPv6 address.
-                    unix:<named pipe> for binding to a unix named socket
-                    ipv4:<ipv4addr> for binding to an ipv4 address
-                 If not given, the addr is assumed to be ipv4.";
+		"RESTCONF IPv4 socket binding address.
+                 Applies to native http by config option --with-restconf=evhtp.";
+	}
+	leaf CLICON_RESTCONF_IPV6_ADDR {
+	    type string;
+	    default "::";
+	    description
+		"RESTCONF IPv6 socket binding address.
+                 Applies to native http by config option --with-restconf=evhtp.";
+	}
+	leaf CLICON_RESTCONF_HTTP_PORT {
+	    type uint16;
+	    default 80;
+	    description
+		"RESTCONF socket binding port, non-ssl
+                 In the restconf daemon, it can be overriden by -P <port>
+                 Applies to native http only by config option --with-restconf=evhtp.";
+	}
+	leaf CLICON_RESTCONF_HTTPS_PORT {
+	    type uint16;
+	    default 443;
+	    description
+		"RESTCONF socket binding port, ssl
+                 In the restconf daemon, this is the port chosen if -s is given. 
+                 Note it can be overriden by -P <port>
+                 Applies to native http by config option --with-restconf=evhtp.";
 	}
 	leaf CLICON_SSL_SERVER_CERT {
 	    type string;
 	    default "/etc/ssl/certs/clixon-server-crt.pem";
 	    description
-		"SSL server cert for restconf https. This is not required if you use
-                 --with-restconf=fcgi, ie a reverse-proxy based such as nginx over fcgi";
+		"SSL server cert for restconf https. 
+                 Applies to native http only by config option --with-restconf=evhtp.";
 	}
 	leaf CLICON_SSL_SERVER_KEY {
 	    type string;
 	    default "/etc/ssl/private/clixon-server-key.pem";
 	    description
-		"SSL server private key for restconf https. This is not required if you use
-                 --with-restconf=fcgi, ie a reverse-proxy based such as nginx over fcgi";
+		"SSL server private key for restconf https.
+                 Applies to native http only by config option --with-restconf=evhtp.";
 	}
 	leaf CLICON_SSL_CA_CERT {
 	    type string;
 	    default "/etc/ssl/certs/clixon-ca_crt.pem";
 	    description
-		"SSL CA cert for client authentication. This is not required if you use
-                 --with-restconf=fcgi, ie a reverse-proxy based such as nginx over fcgi";
+		"SSL CA cert for client authentication.
+                 Applies to native http only by config option --with-restconf=evhtp.";
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;
