@@ -118,7 +118,6 @@ restconf_reply_header(void       *req0,
 	clicon_err(OE_CFG, errno, "evhttp_header_new");
 	goto done;
     }
-    value = NULL; /* freed by evhtp */
     evhtp_headers_add_header(req->headers_out, evhdr);
     retval = 0;
  done:

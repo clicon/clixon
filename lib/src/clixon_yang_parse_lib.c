@@ -554,8 +554,8 @@ yang_parse_file(int         fd,
 
     len = BUFLEN; /* any number is fine */
     if ((buf = malloc(len)) == NULL){
-	perror("pt_file malloc");
-	return NULL;
+	clicon_err(OE_XML, errno, "malloc");
+	goto done;
     }
     memset(buf, 0, len);
     i = 0; /* position in buf */
@@ -579,7 +579,7 @@ yang_parse_file(int         fd,
     if ((ymod = yang_parse_str(buf, name, yspec)) < 0)
 	goto done;
   done:
-    if (buf)
+    if (buf != NULL)
 	free(buf);
     return ymod; /* top-level (sub)module */
 }

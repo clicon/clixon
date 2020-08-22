@@ -1,13 +1,37 @@
 # Clixon Restconf
 
-  * [Installation](#installation)
+  * [Evhtp](#evhtp)
+  * [Nginx](#nginx)
   * [Streams](#streams)
   * [Nchan Streams](#nchan)
   * [Debugging](#debugging)	
 
-## Installation
+There are two installation instructions: for libevhtp and nginx.
 
-The examples are based on Nginx. Other reverse proxies should work but are not verified.
+## Evhtp
+
+Download, build and install libevhtp from source. Prereqs: libevent and cmake.
+```
+   git clone https://github.com/criticalstack/libevhtp.git
+   cd libevhtp/build
+   cmake -DEVHTP_DISABLE_REGEX=ON -DEVHTP_DISABLE_EVTHR=ON ..
+   make
+   sudo make install
+```
+
+Configure clixon with evhtp:
+```
+  ./configure --with-restconf=evhtp
+```
+
+Ensure www-data is member of the CLICON_SOCK_GROUP (default clicon). If not, add it:
+```
+  sudo usermod -a -G clicon www-data
+```
+
+## Nginx
+
+Installation instruction for Nginx. Other reverse proxies should work but are not verified.
 
 Ensure www-data is member of the CLICON_SOCK_GROUP (default clicon). If not, add it:
 ```
@@ -48,6 +72,8 @@ Or on FreeBSD:
 ```
   sudo service nginx start
 ```
+
+## Run
 
 Start clixon backend daemon (if not already started)
 ```
