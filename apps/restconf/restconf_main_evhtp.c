@@ -875,7 +875,7 @@ main(int    argc,
 	    cbuf_free(cb);
     }
     /* Drop privileges to WWWUSER if started as root */
-    if (0 && restconf_drop_privileges(h, WWWUSER) < 0)
+    if (restconf_drop_privileges(h, WWWUSER) < 0)
 	goto done;
 
     /* Init cligen buffers */
