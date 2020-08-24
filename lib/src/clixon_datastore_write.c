@@ -440,6 +440,9 @@ text_modify(clicon_handle       h,
 			}
 			if (xml_value_set(x0b, x1bstr) < 0)
 			    goto done;
+			/* If a default value ies replaced, then reset default flag */
+			if (xml_flag(x0, XML_FLAG_DEFAULT))
+			    xml_flag_reset(x0, XML_FLAG_DEFAULT);
 		    }
 		}
 	    }
@@ -862,43 +865,6 @@ text_modify_top(clicon_handle       h,
     goto done;
 } /* text_modify_top */
 
-/*! For containers without presence and no children(except attrs), remove
- * @param[in]   x       XML tree node
- * See section 7.5.1 in rfc6020bis-02.txt:
- * No presence:
- * those that exist only for organizing the hierarchy of data nodes:
- * the container has no meaning of its own, existing
- * only to contain child nodes.  This is the default style.
- * (Remove these if no children)
- * Presence:
- * the presence of the container itself is
- * configuration data, representing a single bit of configuration data.
- * The container acts as both a configuration knob and a means of
- * organizing related configuration.  These containers are explicitly
- * created and deleted.
- * (Dont touch these)
- */
-static int
-xml_container_presence(cxobj  *x, 
-		       void   *arg)
-{
-    int        retval = -1;
-    yang_stmt *y;  /* yang node */
-
-    if ((y = (yang_stmt*)xml_spec(x)) == NULL){
-	retval = 0;
-	goto done;
-    }
-    /* Mark node that is: container, have no children, dont have presence */
-    if (yang_keyword_get(y) == Y_CONTAINER && 
-	xml_child_nr_notype(x, CX_ATTR)==0 &&
-	yang_find(y, Y_PRESENCE, NULL) == NULL)
-	xml_flag_set(x, XML_FLAG_MARK); /* Mark, remove later */
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Modify database given an xml tree and an operation
  *
  * @param[in]  h      CLICON handle
@@ -1012,11 +978,11 @@ xmldb_put(clicon_handle       h,
     if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, 
 		  (void*)(XML_FLAG_NONE|XML_FLAG_MARK)) < 0)
 	goto done;
-    /* Mark non-presence containers that do not have children */
-    if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_container_presence, NULL) < 0)
+    /* Mark non-presence containers as XML_FLAG_DEFAULT */
+    if (xml_apply(x0, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_DEFAULT) < 0)
 	goto done;
-    /* Remove (prune) nodes that are marked (non-presence containers w/o children) */
-    if (xml_tree_prune_flagged(x0, XML_FLAG_MARK, 1) < 0)
+    /* Clear XML tree of defaults */
+    if (xml_tree_prune_flagged(x0, XML_FLAG_DEFAULT, 1) < 0)
 	goto done;
 #if 0 /* debug */
     if (xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)
