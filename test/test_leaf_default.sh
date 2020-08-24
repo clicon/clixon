@@ -149,18 +149,35 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "get startup config"
+# Should have all defaults, except r1 that is set to 99
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"
 
 # permission kludges
 sudo chmod 666 $dir/running_db
-new "Check running no defaults"
-echo "SXML:$SXML"
-ret=$(diff $dir/running_db <(echo "<config>
+new "Check running no defaults: r1 only"
+# Running should have only non-defaults, ie only r1 that is set to 99
+
+moreret=$(diff $dir/running_db <(echo "<config>
    $SXML
 </config>"))
-#echo "ret:$ret"
 if [ $? -ne 0 ]; then
-    err "<config>$SXML</config>" "$ret"
+    err "<config>$SXML</config>" "$moreret"
+fi	
+
+new "Change default value r2"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><r2 xmlns="urn:example:clixon">88</r2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "commit"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><commit/></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "Check running no defaults: r1 and r2"
+# Again, running should have only non-defaults, ie only r1 and r2
+moreret=$(diff $dir/running_db <(echo "<config>
+   $SXML
+   <r2 xmlns=\"urn:example:clixon\">88</r2>
+</config>"))
+if [ $? -ne 0 ]; then
+    err "<config>$SXML<r2 xmlns=\"urn:example:clixon\">88</r2></config>" "$moreret"
 fi	
 
 new "Kill backend"

@@ -23,16 +23,13 @@ cat <<EOF > $cfg
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_BACKEND_PIDFILE>$dir/restconf.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
   <CLICON_NACM_DISABLED_ON_EMPTY>true</CLICON_NACM_DISABLED_ON_EMPTY>
 </clixon-config>
 EOF
 
-cat<<EOF > $startupdb
-<config>
-  <nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
+NACM0="<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">
      <enable-nacm>true</enable-nacm>
      <read-default>deny</read-default>
      <write-default>deny</write-default>
@@ -71,6 +68,10 @@ cat<<EOF > $startupdb
        </rule>
    </rule-list>
  </nacm>
+"
+cat<<EOF > $startupdb
+<config>
+   $NACM0
 </config>
 EOF
 
@@ -94,7 +95,6 @@ EOF
 . ./jukebox.sh
 
 new "test params: -s startup -f $cfg"
-
 if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
@@ -146,11 +146,39 @@ expectpart "$(curl -u wilma:bar $CURLOPTS -X PATCH -H 'Content-Type: application
 new 'user is authorized'
 expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash -d '{"example-jukebox:artist":{"name":"Clash","album":{"name":"London Calling"}}}')" 0 "HTTP/1.1 204 No Content"
 
+# Restart
+cat<<EOF > $startupdb
+<config>
+   $NACM0
+</config>
+EOF
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    sudo pkill -f clixon_backend # to be sure
+    
+    new "start backend -s startup -f $cfg"
+    start_backend -s startup -f $cfg
+fi
+
+new "waiting"
+wait_backend
+    
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    stop_restconf_pre
+	
+    new "start restconf daemon (-a is enable basic authentication)"
+    start_restconf -f $cfg -- -a 
+
+    new "waiting"
+    wait_restconf
+fi
+
 # 4.6.1.  Plain Patch
-
-new "restconf DELETE whole datastore"
-expectpart "$(curl -u andy:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 204 No Content"
-
 new "Create album London Calling with PUT"
 expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '{"example-jukebox:album":{"name":"London Calling"}}')" 0 "HTTP/1.1 201 Created"
 

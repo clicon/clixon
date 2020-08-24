@@ -162,17 +162,16 @@ restconf_reply_send(void  *req0,
 #endif
 
     /* If body, add a content-length header */
-    if (cb != NULL && cbuf_len(cb))
+    if (cb != NULL && cbuf_len(cb)){
+	cprintf(cb, "\r\n");
 	if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)
 	    goto done;
-
+    }
     /* create evbuffer* : bufferevent_write_buffer/ drain, 
        ie send everything , except body */
     evhtp_send_reply_start(req, req->status); 
-
     /* Write a body if cbuf is nonzero */
     if (cb != NULL && cbuf_len(cb)){
-
 	/* Suboptimal, copy from cbuf to evbuffer */
 	if ((eb = evbuffer_new()) == NULL){
 	    clicon_err(OE_CFG, errno, "evbuffer_new");
