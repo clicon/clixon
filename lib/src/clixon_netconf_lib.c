@@ -1379,6 +1379,8 @@ netconf_err2cb(cxobj *xerr,
 	cprintf(cberr, "%s ", xml_body(x));
     if ((x=xpath_first(xerr, NULL, "//error-info"))!=NULL)
 	clicon_xml2cbuf(cberr, xml_child_i(x,0), 0, 0, -1);
+    if ((x=xpath_first(xerr, NULL, "//error-app-tag"))!=NULL)
+	cprintf(cberr, ": %s ", xml_body(x));
     retval = 0;
     return retval;
 }
@@ -1532,6 +1534,7 @@ clixon_netconf_error_fn(const char *fn,
 	cprintf(cb, "%s", msg);
 	if (arg)
 	    cprintf(cb, " \"%s\" ", arg);
+	
 	cprintf(cb, ": ");
     }
     if (netconf_err2cb(xerr, cb) < 0)
