@@ -242,6 +242,7 @@ cli_interactive(clicon_handle h)
  * @param[in]  name     Name of tree
  * @param[in]  gt       genmodel-type, ie HOW to generate the CLI
  * @param[in]  printgen Print CLI syntax to stderr
+ * @param[in]  show_tree Is tree for show cli command (1 - yes. 0 - no)
  *
  * Generate clispec (datamodel) from YANG dataspec and add to the set of cligen trees 
  * (as a separate mode)
@@ -259,7 +260,8 @@ autocli_tree(clicon_handle      h,
 	     char              *name,
 	     enum genmodel_type gt,
 	     int                state,
-	     int                printgen)
+	     int                printgen
+         int                show_tree)
 {
     int           retval = -1;
     parse_tree   *pt = NULL;  /* cli parse tree */
@@ -271,7 +273,7 @@ autocli_tree(clicon_handle      h,
     }
     yspec = clicon_dbspec_yang(h);
     /* Generate tree (this is where the action is) */
-    if (yang2cli(h, yspec, gt, printgen, state, pt) < 0)
+    if (yang2cli(h, yspec, gt, printgen, state, show_tree, pt) < 0)
 	goto done;
     /* Append cligen tree and name it */
     if (cligen_tree_add(cli_cligen(h), name, pt) < 0)
@@ -300,7 +302,7 @@ autocli_start(clicon_handle h,
 {
     int                retval = -1;
     int                autocli_model = 0;
-    cbuf              *treename = NULL;
+    cbuf              *show_treename = NULL, *set_treename = NULL;
     enum genmodel_type gt;
 	
     /* If autocli disabled quit */
@@ -308,28 +310,43 @@ autocli_start(clicon_handle h,
 	goto ok;
     /* Get the autocli type, ie HOW the cli is generated (could be much more here) */
     gt = clicon_cli_genmodel_type(h);
-    /* Create treename cbuf */
-    if ((treename = cbuf_new()) == NULL){
+    /* Create show_treename cbuf */
+    if ((show_treename = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    /* The tree name is by default @datamodel but can be changed by option (why would one do that?) */
-    cprintf(treename, "%s", clicon_cli_model_treename(h));
-    if (autocli_tree(h, cbuf_get(treename), gt, 0, printgen) < 0)
+    /* Create set_treename cbuf */
+    if ((set_treename = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    /* The tree name is by default @datamodelset but can be changed by option (why would one do that?) */
+	cprintf(set_treename, "%s", clicon_cli_model_treename(h));
+    cprintf(set_treename, "set");
+	if (autocli_tree(h, cbuf_get(set_treename), gt, 0, printgen, 0) < 0)
+	    goto done;
+
+    /* The tree name is by default @datamodelshow but can be changed by option (why would one do that?) */
+    cprintf(show_treename, "%s", clicon_cli_model_treename(h));
+    cprintf(show_treename, "show");
+    if (autocli_tree(h, cbuf_get(show_treename), gt, 0, printgen, 1) < 0)
 	goto done;
 
-    /* Create a tree for config+state. This tree's name has appended "state" to @datamodel (XXX)
+    /* Create a tree for config+state. This tree's name has appended "state" to @datamodelshow (XXX)
      */
     if (autocli_model > 1){
-	cprintf(treename, "state");
-	if (autocli_tree(h, cbuf_get(treename), gt, 1, printgen) < 0)
+	cprintf(show_treename, "state");
+	if (autocli_tree(h, cbuf_get(show_treename), gt, 1, printgen, 1) < 0)
 	    goto done;
     }
+
  ok:
     retval = 0;
  done:
-    if (treename)
-	cbuf_free(treename);
+    if (show_treename)
+	cbuf_free(show_treename);
+    if (set_treename)
+	cbuf_free(set_treename);
     return retval;
 }
 
