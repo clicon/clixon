@@ -798,8 +798,6 @@ yang2cli_list(clicon_handle      h,
 	/*if (yang2cli_leaf(h, yleaf,GT_NONE, level, 1, cb) < 0)
 	    goto done;*/
     cprintf(cb, "{[\n");
-	if (yang2cli_leaf(h, yleaf,GT_NONE, level, 1, cb) < 0)
-	    goto done;
     yc = NULL;
     while ((yc = yn_each(ys, yc)) != NULL) {
 	/*  cvk is a cvec of strings containing variable names
@@ -816,7 +814,10 @@ yang2cli_list(clicon_handle      h,
 	if (yang2cli_stmt(h, yc, gt, level+1, state, cb) < 0)
 	    goto done;
     }
-    cprintf(cb, "%*s]}\n", level*3, "");
+	cprintf(cb, "%*s]", level*3, "");
+	if (yang2cli_leaf(h, yleaf,GT_NONE, level*3 + 1, 1, cb) < 0)
+	    goto done;
+    cprintf(cb, "\n%*s}\n", level*3, "");
     retval = 0;
   done:
     if (helptext)
