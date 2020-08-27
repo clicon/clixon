@@ -814,10 +814,10 @@ yang2cli_list(clicon_handle      h,
 	    goto done;
     }
 	cprintf(cb, "]");
-	(struct yang_stmt)(*ys).ys_keyword = Y_CONTAINER;
+	(*((struct yang_stmt*) ys)).ys_keyword = Y_CONTAINER;
 	if (cli_callback_generate(h, ys, cb) < 0)
 	    goto done;
-	(struct yang_stmt)(*ys).ys_keyword = Y_LIST;
+	(*((struct yang_stmt*) ys)).ys_keyword = Y_LIST;
 	cprintf(cb, ";\n");
     cprintf(cb, "%*s}\n", level*3, "");
     retval = 0;
