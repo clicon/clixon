@@ -215,6 +215,16 @@ yang_keyword_get(yang_stmt *ys)
     return ys->ys_keyword;
 }
 
+/*! Set yang statement keyword
+ * @param[in] ys          Yang statement node
+ * @param[in] ys_keyword  Yang keyword
+ */
+void
+yang_keyword_set(enum rfc_6020 ys_keyword, yang_stmt *ys)
+{
+    ys->ys_keyword = ys_keyword;
+}
+
 /*! Get yang statement context-dependent argument
  * @param[in] ys  Yang statement node
  */

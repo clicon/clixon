@@ -191,6 +191,7 @@ yang_stmt *yang_child_i(yang_stmt *ys, int i);
 
 yang_stmt *yang_parent_get(yang_stmt *ys);
 enum rfc_6020 yang_keyword_get(yang_stmt *ys);
+void yang_keyword_set(enum rfc_6020 ys_keyword, yang_stmt *ys);
 char      *yang_argument_get(yang_stmt *ys);
 int        yang_argument_set(yang_stmt *ys, char *arg);
 
