@@ -794,10 +794,6 @@ yang2cli_list(clicon_handle      h,
 			  cvec_next(cvk, cvi)?0:1, cb) < 0)
 	    goto done;
     }
-	cprintf(cb, "]");
-	if (cli_callback_generate(h, ys, cb) < 0)
-	    goto done;
-	cprintf(cb, ";\n");
 	/*if (yang2cli_leaf(h, yleaf,GT_NONE, level, 1, cb) < 0)
 	    goto done;*/
     cprintf(cb, "{\n");
@@ -817,6 +813,10 @@ yang2cli_list(clicon_handle      h,
 	if (yang2cli_stmt(h, yc, gt, level+1, state, cb) < 0)
 	    goto done;
     }
+	cprintf(cb, "]");
+	if (cli_callback_generate(h, ys, cb) < 0)
+	    goto done;
+	cprintf(cb, ";\n");
     cprintf(cb, "%*s}\n", level*3, "");
     retval = 0;
   done:
