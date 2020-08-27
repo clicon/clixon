@@ -777,7 +777,7 @@ yang2cli_list(clicon_handle      h,
     /* Loop over all key variables */
     cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;
-	cprintf(cb, ";[");
+	cprintf(cb, "[");
     /* Iterate over individual keys  */
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	keyname = cv_string_get(cvi);
@@ -814,8 +814,10 @@ yang2cli_list(clicon_handle      h,
 	    goto done;
     }
 	cprintf(cb, "]");
+	ys->rfc_6020 = Y_CONTAINER;
 	if (cli_callback_generate(h, ys, cb) < 0)
 	    goto done;
+	ys->rfc_6020 = Y_LIST;
 	cprintf(cb, ";\n");
     cprintf(cb, "%*s}\n", level*3, "");
     retval = 0;
