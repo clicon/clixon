@@ -882,9 +882,10 @@ yang_find_schemanode(yang_stmt *yn,
 }
 
 /*! Given a yang statement, find the prefix associated to this module
+ *
  * @param[in]  ys        Yang statement in module tree (or module itself)
- * @retval     NULL      Not found
- * @retval     prefix    Prefix as char* pointer into yang tree
+ * @retval     NULL      No prefix found. This is an error
+ * @retval     prefix    OK: Prefix as char* pointer into yang tree
  * @code
  * char *myprefix;
  * myprefix = yang_find_myprefix(ys);
@@ -893,25 +894,26 @@ yang_find_schemanode(yang_stmt *yn,
 char *
 yang_find_myprefix(yang_stmt *ys)
 {
-    yang_stmt *ymod; /* My module */
+    yang_stmt *ymod = NULL; /* My module */
     yang_stmt *yprefix;
     char      *prefix = NULL;
 
     /* Not good enough with submodule, must be actual module */
-    if ((ymod = ys_real_module(ys)) == NULL){
-	clicon_err(OE_YANG, 0, "My yang module not found");
+    if (ys_real_module(ys, &ymod) < 0)
+	goto done;
+    if ((yprefix = yang_find(ymod, Y_PREFIX, NULL)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No prefix found for module %s", yang_argument_get(ymod));
 	goto done;
     }
-    if ((yprefix = yang_find(ymod, Y_PREFIX, NULL)) == NULL)
-	goto done;
     prefix = yang_argument_get(yprefix);
  done:
     return prefix;
 }
 
 /*! Given a yang statement, find the namespace URI associated to this module
+ *
  * @param[in]  ys        Yang statement in module tree (or module itself)
- * @retval     NULL      Not found
+ * @retval     NULL      Error: No namespace found. This is an error
  * @retval     ns        Namspace URI as char* pointer into yang tree
  * @code
  * char *myns = yang_find_mynamespace(ys);
@@ -921,16 +923,16 @@ yang_find_myprefix(yang_stmt *ys)
 char *
 yang_find_mynamespace(yang_stmt *ys)
 {
-    yang_stmt *ymod; /* My module */
+    yang_stmt *ymod = NULL; /* My module */
     yang_stmt *ynamespace;
     char      *ns = NULL;
 
-    if ((ymod = ys_real_module(ys)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "My yang module not found");
+    if (ys_real_module(ys, &ymod) < 0)
+	goto done;
+    if ((ynamespace = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No namespace found for module %s", yang_argument_get(ymod));
 	goto done;
     }
-    if ((ynamespace = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL)
-	goto done;
     ns = yang_argument_get(ynamespace);
  done:
     return ns;
@@ -1254,22 +1256,30 @@ ys_module(yang_stmt *ys)
 /*! Find real top module given a statement in a yang tree
  * With "real" top module means that if sub-module is the top-node,
  * the module that the sub-module belongs-to is found recursively
- * @param[in] ys    Any yang statement in a yang tree
- * @retval    ymod  The top module or sub-module 
+ * @param[in]  ys    Any yang statement in a yang tree
+ * @param[out] ymod  The top module or sub-module 
+ * @retval     0     OK, returned module in ymod
+ * @retval    -1     YANG validation error: all yang statements should have a "real" module
  * @see ys_module
  * @note For an augmented node, the original module is returned
  */
-yang_stmt *
-ys_real_module(yang_stmt *ys)
+int
+ys_real_module(yang_stmt  *ys,
+	       yang_stmt **ymod)
 {
+    int        retval = -1;
     yang_stmt *ym = NULL;
     yang_stmt *yb;
     char      *name;
     yang_stmt *yspec;
 
+    if (ymod == NULL){
+	clicon_err(OE_YANG, EINVAL, "ymod is NULL");
+	goto done;
+    }
     if ((ym = ys_module(ys)) != NULL){
 	yspec = ys_spec(ym);
-	while (yang_keyword_get(ym) == Y_SUBMODULE){
+	while (ym && yang_keyword_get(ym) == Y_SUBMODULE){
 	    if ((yb = yang_find(ym, Y_BELONGS_TO, NULL)) == NULL){
 		clicon_err(OE_YANG, ENOENT, "No belongs-to statement of submodule %s", yang_argument_get(ym)); /* shouldnt happen */
 		goto done;
@@ -1278,12 +1288,14 @@ ys_real_module(yang_stmt *ys)
 		clicon_err(OE_YANG, ENOENT, "Belongs-to statement of submodule %s has no argument", yang_argument_get(ym)); /* shouldnt happen */
 		goto done;
 	    }
-	    ym = yang_find_module_by_name(yspec, name);
+	    if ((ym = yang_find_module_by_name(yspec, name)) == NULL)
+		goto done;
 	}
     }
-    return ym;
+    *ymod = ym;
+    retval = 0;
  done:
-    return NULL;
+    return retval;
 }
 
 /*! Find top of tree, the yang specification from within the tree

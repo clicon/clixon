@@ -298,11 +298,12 @@ yang2api_path_fmt_1(yang_stmt *ys,
 		    cbuf      *cb)
 {
     yang_stmt *yp; /* parent */
-    yang_stmt *ymod;
+    yang_stmt *ymod = NULL;
+    yang_stmt *ypmod = NULL;
     int        i;
     cvec      *cvk = NULL; /* vector of index keys */
     int        retval = -1;
-
+    
     if ((yp = yang_parent_get(ys)) == NULL){
 	clicon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
 	goto done;
@@ -329,7 +330,11 @@ yang2api_path_fmt_1(yang_stmt *ys,
 		cprintf(cb, "/");
 	}
 	/* If parent namespace/module is different from child -> add child prefix */
-	if (ys_real_module(yp) != (ymod = ys_real_module(ys)))
+	if (ys_real_module(yp, &ypmod) < 0)
+	    goto done;
+	if (ys_real_module(ys, &ymod) < 0)
+	    goto done;
+	if (ypmod != ymod)
 	    cprintf(cb, "%s:", yang_argument_get(ymod));
     }
     else /* top symbol - mark with name prefix */

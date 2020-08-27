@@ -504,6 +504,7 @@ yang_find_module_by_prefix(yang_stmt *ys,
 	clicon_err(OE_YANG, 0, "My yang spec not found");
 	goto done;
     }
+    /* First try own module */
     if ((my_ymod = ys_module(ys)) == NULL){
 	clicon_err(OE_YANG, 0, "My yang module not found");
 	goto done;
@@ -513,6 +514,7 @@ yang_find_module_by_prefix(yang_stmt *ys,
 	ymod = my_ymod;
 	goto done;
     }
+    /* If no match, try imported modules */
     yimport = NULL;
     while ((yimport = yn_each(my_ymod, yimport)) != NULL) {
 	if (yang_keyword_get(yimport) != Y_IMPORT)

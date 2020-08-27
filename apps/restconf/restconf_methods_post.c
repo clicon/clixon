@@ -324,7 +324,10 @@ api_data_post(clicon_handle h,
 	goto done;
     /* ybot is parent of spec(parent(data))) */
     if (ymoddata && (ydata = xml_spec(xdata)) != NULL){
-	if (ys_real_module(ydata) != ymoddata){
+	yang_stmt *ymod = NULL;
+	if (ys_real_module(ydata, &ymod) < 0)
+	    goto done;
+	if (ymod != ymoddata){
 	     if (netconf_malformed_message_xml(&xerr, "Data is not prefixed with matching namespace") < 0)
 		 goto done;
 	     if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){

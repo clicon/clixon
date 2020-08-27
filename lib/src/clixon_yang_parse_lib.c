@@ -353,7 +353,7 @@ yang_expand_grouping(yang_stmt *yn)
 	    do {
 		if (yp == ygrouping){
 
-		    clicon_err(OE_YANG, EFAULT, "Yang use of grouping %s in module %s is defined inside the grouping (recursion)",
+		    clicon_err(OE_YANG, EFAULT, "Yang use of grouping %s in module %s is defined inside the grouping (recursion), see RFC 7950 Sec 7.12: A grouping MUST NOT reference itself",
 			       yang_argument_get(ys),
 			       yang_argument_get(ys_module(yn))
 			       );

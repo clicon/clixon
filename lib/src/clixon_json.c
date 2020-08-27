@@ -716,12 +716,13 @@ xml2json1_cbuf(cbuf                   *cb,
     enum childtype   childt;
     enum array_element_type xc_arraytype;
     yang_stmt       *ys;
-    yang_stmt       *ymod; /* yang module */
+    yang_stmt       *ymod = NULL; /* yang module */
     int              commas;
     char            *modname = NULL;
 
     if ((ys = xml_spec(x)) != NULL){
-	ymod = ys_real_module(ys);
+	if (ys_real_module(ys, &ymod) < 0)
+	    goto done;
 	modname = yang_argument_get(ymod);
 	if (modname0 && strcmp(modname, modname0) == 0)
 	    modname=NULL;
