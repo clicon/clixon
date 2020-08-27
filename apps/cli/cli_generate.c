@@ -777,7 +777,7 @@ yang2cli_list(clicon_handle      h,
     /* Loop over all key variables */
     cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;
-	cprintf(cb, " [\n");
+	// cprintf(cb, "[\n");
     /* Iterate over individual keys  */
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	keyname = cv_string_get(cvi);
@@ -794,10 +794,10 @@ yang2cli_list(clicon_handle      h,
 			  cvec_next(cvk, cvi)?0:1, cb) < 0)
 	    goto done;
     }
-	cprintf(cb, "] \n");
+	// cprintf(cb, "] \n");
 	/*if (yang2cli_leaf(h, yleaf,GT_NONE, level, 1, cb) < 0)
 	    goto done;*/
-    cprintf(cb, "{\n");
+    cprintf(cb, "{[\n");
     yc = NULL;
     while ((yc = yn_each(ys, yc)) != NULL) {
 	/*  cvk is a cvec of strings containing variable names
@@ -814,7 +814,7 @@ yang2cli_list(clicon_handle      h,
 	if (yang2cli_stmt(h, yc, gt, level+1, state, cb) < 0)
 	    goto done;
     }
-    cprintf(cb, "%*s}\n", level*3, "");
+    cprintf(cb, "%*s]}\n", level*3, "");
     retval = 0;
   done:
     if (helptext)
