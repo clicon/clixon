@@ -694,17 +694,17 @@ check_unique_list(cxobj     *x,
 }
 
 /*! Given a list, check if any min/max-elemants constraints apply
- * @param[in]  x  One x (the last) of a specific lis
- * @param[in]  y  Yang spec of x
- * @param[in]  nr Number of elements (like x) in thlist
- * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[in]  xp    Parent of the xml list there are too few/many
+ * @param[in]  y     Yang spec of the failing list
+ * @param[in]  nr    Number of elements (like x) in thlist
+ * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error
  * @see RFC7950 7.7.5
  */
 static int
-check_min_max(cxobj     *x,
+check_min_max(cxobj     *xp,
 	      yang_stmt *y,
 	      int        nr,
 	      cxobj     **xret)
@@ -717,7 +717,7 @@ check_min_max(cxobj     *x,
     if ((ymin = yang_find(y, Y_MIN_ELEMENTS, NULL)) != NULL){
 	cv = yang_cv_get(ymin);
 	if (nr < cv_uint32_get(cv)){
-	    if (netconf_minmax_elements_xml(xret, x, 0) < 0)
+	    if (netconf_minmax_elements_xml(xret, xp, yang_argument_get(y), 0) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -726,7 +726,7 @@ check_min_max(cxobj     *x,
 	cv = yang_cv_get(ymax);
 	if (cv_uint32_get(cv) > 0 && /* 0 means unbounded */
 	    nr > cv_uint32_get(cv)){
-	    if (netconf_minmax_elements_xml(xret, x, 1) < 0)
+	    if (netconf_minmax_elements_xml(xret, xp, yang_argument_get(y), 1) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -787,10 +787,9 @@ check_list_unique_minmax(cxobj  *xt,
     yang_stmt  *y;
     yang_stmt  *yt;
     yang_stmt  *yprev = NULL; /* previous in list */
-    yang_stmt  *ye = NULL; /* yang each list to catch emtpy */
-    yang_stmt  *ych; /* y:s parent node (if choice that ye can compare to) */
-    cxobj      *xp = NULL; /* previous in list */
-    yang_stmt  *yu;   /* yang unique */
+    yang_stmt  *ye = NULL;    /* yang each list to catch emtpy */
+    yang_stmt  *ych;          /* y:s parent node (if choice that ye can compare to) */
+    yang_stmt  *yu;           /* yang unique */
     int         ret;
     int         nr=0;   /* Nr of list elements for min/max check */
     enum rfc_6020 keyw;
@@ -818,7 +817,7 @@ check_list_unique_minmax(cxobj  *xt,
 		/* Only lists and leaf-lists are allowed to be many 
 		 * This checks duplicate container and leafs
 		 */
-		if (netconf_minmax_elements_xml(xret, x, 1) < 0)
+		if (netconf_minmax_elements_xml(xret, xt, xml_name(x), 1) < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -832,14 +831,13 @@ check_list_unique_minmax(cxobj  *xt,
 	    }
 	    else {
 		/* Check if the list length violates min/max */
-		if ((ret = check_min_max(xp, yprev, nr, xret)) < 0)
+		if ((ret = check_min_max(xt, yprev, nr, xret)) < 0)
 		    goto done;
 		if (ret == 0)
 		    goto fail;
 	    }
 	}
 	yprev = y; /* Restart min/max count */
-	xp = x; /* Need a reference to the XML as well */
 	nr = 1;
 	/* Gap analysis: Check if there is any empty list between y and yprev 
 	 * Note, does not detect empty choice list (too complicated)
@@ -884,7 +882,7 @@ check_list_unique_minmax(cxobj  *xt,
      */
     if (yprev){  
 	/* Check if the list length violates min/max */
-	if ((ret = check_min_max(xp, yprev, nr, xret)) < 0)
+	if ((ret = check_min_max(xt, yprev, nr, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;

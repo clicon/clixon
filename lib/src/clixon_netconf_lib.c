@@ -1173,19 +1173,23 @@ netconf_data_not_unique_xml(cxobj **xret,
 /*! Create Netconf too-many/few-elements err msg according to RFC 7950 15.2/15.3
  *
  * A NETCONF operation would result in configuration data where a
-   list or a leaf-list would have too many entries, the following error
- * @param[out] xret    Error XML tree. Free with xml_free after use
- * @param[in]   x        List element containing duplicate
+ * list or a leaf-list would have too many entries, the following error
+ * @param[out]  xret     Error XML tree. Free with xml_free after use
+ * @param[in]   xp       XML parent node (for error)
+ * @param[in]   name     Name of list (for error)
  * @param[in]   max      If set, return too-many, otherwise too-few
  * @see RFC7950 Sec 15.1
  */
 int
 netconf_minmax_elements_xml(cxobj **xret,
-	                    cxobj  *x,
+			    cxobj  *xp,
+			    char   *name,
 	                    int     max)
 {
     int    retval = -1;
     cxobj *xerr;
+    char  *path = NULL;
+    cbuf  *cb = NULL;
     
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
@@ -1195,16 +1199,31 @@ netconf_minmax_elements_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    if (xml_parent(xp)){ /* Dont include root, eg <config> */
+	if (xml2xpath(xp, &path) < 0)
+	    goto done;
+	if (path)
+	    cprintf(cb, "%s", path);
+    }
+    cprintf(cb, "/%s", name);
     if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>protocol</error-type>"
 			    "<error-tag>operation-failed</error-tag>"
 			    "<error-app-tag>too-%s-elements</error-app-tag>"
 			    "<error-severity>error</error-severity>"
 			    "<error-path>%s</error-path>",
 			    max?"many":"few",
-			    xml_name(x)) < 0) /* XXX should be xml2xpath */
+			    cbuf_get(cb)) < 0)
 	goto done;
     retval = 0;
  done:
+    if (path)
+	free(path);
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
@@ -1380,6 +1399,8 @@ netconf_err2cb(cxobj *xerr,
     if ((x=xpath_first(xerr, NULL, "//error-info"))!=NULL)
 	clicon_xml2cbuf(cberr, xml_child_i(x,0), 0, 0, -1);
     if ((x=xpath_first(xerr, NULL, "//error-app-tag"))!=NULL)
+	cprintf(cberr, ": %s ", xml_body(x));
+    if ((x=xpath_first(xerr, NULL, "//error-path"))!=NULL)
 	cprintf(cberr, ": %s ", xml_body(x));
     retval = 0;
     return retval;
