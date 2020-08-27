@@ -795,8 +795,8 @@ yang2cli_list(clicon_handle      h,
 	    goto done;
     }
 	cprintf(cb, "]\n");
-	if (yang2cli_leaf(h, yleaf,GT_NONE, level+1, 1, cb) < 0)
-	    goto done;
+	/*if (yang2cli_leaf(h, yleaf,GT_NONE, level, 1, cb) < 0)
+	    goto done;*/
     cprintf(cb, "{\n");
     yc = NULL;
     while ((yc = yn_each(ys, yc)) != NULL) {
