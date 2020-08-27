@@ -586,7 +586,7 @@ yang_parse_file(int         fd,
 
 /*! Given a yang filename, extract the revision as an integer as YYYYMMDD
  * @param[in]  filename  Filename on the form: name [+ @rev ] + .yang  
- * @param[out] basep     "Base" filename, stripped: [+ @rev ] + .yang
+ * @param[out] basep     "Base" filename, stripped: [+ @rev ] + .yang (malloced)
  * @param[out] revp      Revision as YYYYMMDD (0 if not found)
  */
 static int
@@ -608,7 +608,7 @@ filename2revision(const char *filename,
 	*p = '\0';
     if ((p = index(base, '@')) != NULL){ /* extract revision date */
 	*p++ = '\0';
-	if (ys_parse_date_arg(p, revp) < 0)
+	if (revp && ys_parse_date_arg(p, revp) < 0)
 	    goto done;
     }
     if (basep){
@@ -1244,9 +1244,16 @@ yang_spec_load_dir(clicon_handle h,
 	else{ /* a@xxx.yang */
 	    if (taken)
 		continue; /* skip if already taken */
-	    /* Look forward: is there anyone else later? */
-	    if (i+1<ndp && strncmp(base, dp[i+1].d_name, strlen(base)) == 0)
-		continue; /* same base: skip; */
+	    /* Look forward: is there anyone else later? (assume sorted revision dates) */
+	    if (i+1 < ndp){ /* not last in list */
+		char *nextbase = NULL; /* XXX suboptimal algorithm, could combione old/next/base */
+		if (filename2revision(dp[i+1].d_name, &nextbase, NULL) < 0)
+		    goto done;
+		if (nextbase && strcmp(base, nextbase) == 0)
+		    continue; /* same base: skip; */
+		if (nextbase)
+		    free(nextbase);
+	    }
 	    taken = 1; /* last in line and not taken */
 	}
 	/* Here only a single file is reached(taken)

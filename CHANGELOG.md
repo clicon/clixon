@@ -35,6 +35,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [Yang modules skipped if the name is a proper prefix of other module name](https://github.com/clicon/clixon/issues/130)
 * Fixed an error in global default values. Global default values were not written to datastore after startup, but AFTER an edit/commit.
 * Fixed: [Type / Endianism problem in yang_parse_file #128](https://github.com/clicon/clixon/issues/128)
 * Fixed: [(CLI) the description of a used grouping is shown instead of the encapsulating container #124](https://github.com/clicon/clixon/issues/124)
