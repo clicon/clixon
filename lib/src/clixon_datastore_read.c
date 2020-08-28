@@ -776,7 +776,6 @@ xmldb_get_cache(clicon_handle    h,
     if ((x1t = xml_new(xml_name(x0t), NULL, CX_ELMNT)) == NULL)
 	goto done;
     xml_spec_set(x1t, xml_spec(x0t));
-
     
     if (xlen < 1000){
 	/* This is optimized for the case when the tree is large and xlen is small
@@ -806,6 +805,13 @@ xmldb_get_cache(clicon_handle    h,
 	if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
 	    goto done;
     }
+    /* Remove global defaults from cache 
+     * Mark non-presence containers as XML_FLAG_DEFAULT */
+    if (xml_apply(x0t, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_DEFAULT) < 0)
+	goto done;
+    /* Clear XML tree of defaults */
+    if (xml_tree_prune_flagged(x0t, XML_FLAG_DEFAULT, 1) < 0)
+	goto done;
     /* x1t is wrong here should be <config><system>.. but is <system>.. */
     /* XXX where should we apply default values once? */
     if (xml_default_recurse(x1t) < 0)
