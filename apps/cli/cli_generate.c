@@ -818,10 +818,6 @@ yang2cli_list(clicon_handle      h,
 	    goto done;
     }
 	
-	/*yang_keyword_set(Y_CONTAINER, ys);
-	if (cli_callback_generate(h, ys, cb) < 0)
-	    goto done;
-	yang_keyword_set(Y_LIST, ys);*/
     cprintf(cb, "%*s}\n", level*3, "");
     retval = 0;
   done:
