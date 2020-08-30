@@ -51,7 +51,7 @@ CXX=@CXX@
 CC=@CC@
 
 # Web user default (ie what RESTCONF daemon runs as). Default: www-data
-WWWUSER=@wwwuser@
+wwwuser=@wwwuser@
 
 # Home dir for web user, by default /www-data
 WWWDIR=@wwwdir@

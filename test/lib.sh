@@ -266,7 +266,7 @@ stop_restconf_pre(){
 # 1) Dont use $clixon_restconf (dont work in valgrind)
 # 2) Dont use -u $WWWUSER since clixon_restconf may drop privileges.
 stop_restconf(){
-    #    sudo pkill -u $WWWUSER -f clixon_restconf # Dont use $clixon_restoconf doesnt work in valgrind
+    #    sudo pkill -u $wwwuser -f clixon_restconf # Dont use $clixon_restoconf doesnt work in valgrind
     sudo pkill -f clixon_restconf
     if [ $valgrindtest -eq 3 ]; then 
 	sleep 1

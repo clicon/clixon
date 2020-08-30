@@ -30,12 +30,16 @@ Expected: September 2020
 
 Users may have to change how they access the system
 
+* NACM datanode paths fixed to canonical namespace
+  * The fix of [Cannot create or modify NACM data node access rule with path using JSON encoding #129](https://github.com/clicon/clixon/issues/129) leads that data-node paths, eg `<rule>...<path>ex:table/ex:parameter</path></rule>` instance-identifiers are restricted to canonical namespace identifiers for both XML and JSON encoding. That is, if a symbol (such as `table` above) is a symbol in a module with prefix `ex`, another prefix cannot be used, even though defined with a `xmlns:` rule.
+
 * New clixon-config@2020-08-17.yang revision
   * Added options for Restconf evhtp setting default bind socket address and ports `CLICON_RESTCONF_IPV4_ADDR`, `CLICON_RESTCONF_IPV6_ADDR`, `CLICON_RESTCONF_HTTP_PORT`, `CLICON_RESTCONF_HTTPS_PORT`
 
 ### Corrected Bugs
 
-* Corrected error message for list min/max-value to comply to RFC 7950: a proper path is now returned, peviously only the list symbol. it is also exposed in the CLI correctly.
+* Fixed: [Cannot create or modify NACM data node access rule with path using JSON encoding #129](https://github.com/clicon/clixon/issues/129). The evaluation of NACM datanode rule path is assumed to be canonical namespace and cannot be overruled with `xmlns` rules.
+* Corrected error message for list min/max-value to comply to RFC 7950: a proper path is now returned, previously only the final list symbol was returned. This error-path is also now exposed in the CLI error message correctly.
   * Example: `<error-path>/c/a1</error-path>`
 * Fixed: [Yang modules skipped if the name is a proper prefix of other module name](https://github.com/clicon/clixon/issues/130)
 * Fixed an error in global default values. Global default values were not written to datastore after startup, but AFTER an edit/commit.

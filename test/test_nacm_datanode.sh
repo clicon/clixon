@@ -132,8 +132,8 @@ RULES=$(cat <<EOF
        <group>guest</group>
        <rule>
          <name>deny-nacm</name>
-         <path xmlns:n="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
-           /n:nacm
+         <path xmlns:nacm="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
+           /nacm:nacm
          </path>
          <access-operations>*</access-operations>
          <action>deny</action>
@@ -147,8 +147,8 @@ RULES=$(cat <<EOF
        <group>limited</group>
        <rule>
          <name>permit-acme-config</name>
-         <path xmlns:acme="http://example.com/ns/netconf">
-           /acme:acme-netconf/acme:config-parameters
+         <path xmlns:ex="http://example.com/ns/netconf">
+           /ex:acme-netconf/acme:config-parameters
          </path>
          <access-operations>
            read create update delete

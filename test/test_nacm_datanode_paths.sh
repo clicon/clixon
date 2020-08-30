@@ -112,8 +112,6 @@ if [ $RC -ne 0 ]; then
     wait_restconf
 fi
 
-
-
 new "admin read OK"
 expectpart "$(curl -u andy:bar -siS -X GET http://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 200 OK' '{"nacm-example:parameter":\[{"name":"a","value":"72"}\]}'
 
@@ -142,12 +140,14 @@ expectpart "$(curl -u andy:bar -siS -X POST  http://localhost/restconf/data/ietf
 new "Read NACM rule"
 expectpart "$(curl -u andy:bar -siS -X GET http://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0  "HTTP/1.1 200 OK" '{"ietf-netconf-acm:rule-list":\[{"name":"limited-acl","group":"limited","rule":\[{"name":"table","module-name":"\*","path":"/ex:table","access-operations":"read","action":"permit"}\]}\]}'
 
-if false; then
+new "limit read OK (Set rul w JSON)"
+expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 200 OK' '{"nacm-example:parameter":\[{"name":"a","value":"72"}\]}'
+
+new "Delete NACM read rule"
+expectpart "$(curl -u andy:bar -siS -X DELETE http://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0 "HTTP/1.1 204 No Content"
+
 new "Fail limit read"
-# XXX: No namespace found for prefix: ex
-# See [Cannot create or modify NACM data node access rule with path using JSON encoding #129](https://github.com/clicon/clixon/issues/129)
 expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
-fi
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

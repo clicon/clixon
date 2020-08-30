@@ -454,12 +454,22 @@ nacm_datanode_prepare(clicon_handle     h,
 	    }
 	    else{
 		path0 = clixon_trim2(xml_body(pathobj), " \t\n");
+		/* Get canonical namespace context for nacm paths */
+		if ((path = strdup(path0)) == NULL){
+		    clicon_err(OE_UNIX, errno, "strdup");
+		    goto done;
+		}
+#if 0
+		/* See https://github.com/clicon/clixon/issues/129:
+		 * If this is enabled, you are back to the problem of JSON encodings
+		 */
 		/* Create namespace context for with nacm namespace as default */
 		if (xml_nsctx_node(pathobj, &nsc0) < 0)
 		    goto done;
 		/* instance-id requires canonical paths */
 		if (xpath2canonical(path0, nsc0, yspec, &path, NULL) < 0)
 		    goto done;
+#endif
 		if ((ret = clixon_xml_find_instance_id(xt, yspec, &xvec, &xlen, "%s", path)) < 0)
 		    goto done;
 		if (ret == 0)

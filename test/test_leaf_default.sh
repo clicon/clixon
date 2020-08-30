@@ -10,6 +10,10 @@
 #             v non-presence container (presence false) DEFAULT
 # ancestor--> ancestor --> leaf --> default
 # ^leafs closest ancestor that is not a non-presence container
+# Test has three parts where system is started three times:
+# 1) with init
+# 2) with startup: r1 only
+# 3) with startup: p4 only
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -79,6 +83,25 @@ module example{
         }   
       }
     }
+    container xs-config {
+        description "Typical contruct where a list element has a default leaf";
+	list x {
+	    key "name";
+	    leaf name {
+		type string;
+	    }
+	    container y {
+		leaf inside {
+		    type boolean;
+		    default false;
+		}
+            }
+   	    leaf outside {
+	        type boolean;
+		default false;
+	    }
+	 }
+     }
 }
 EOF
 
@@ -114,6 +137,12 @@ expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></
 
 new "get config"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"
+
+new "Set x list element"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><xs-config xmlns="urn:example:clixon"><x><name>a</name></x></xs-config></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+
+new "get config (should contain y/inside+outside)"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML<xs-config xmlns=\"urn:example:clixon\"><x><name>a</name><y><inside>false</inside></y><outside>false</outside></x></xs-config></data></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -187,7 +216,7 @@ if [ -z "$pid" ]; then
     err "backend already dead"
 fi
 
-# From startup 2, only prsence p4, s4/np5 should be filled in
+# From startup 2, only presence p4, s4/np5 should be filled in
 cat <<EOF > $dir/startup_db
 <config>
   <p4 xmlns="urn:example:clixon"></p4>
@@ -209,6 +238,36 @@ fi
 
 new "get startup config with presence"
 expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"
+
+new "Kill backend"
+# Check if premature kill
+pid=$(pgrep -u root -f clixon_backend)
+if [ -z "$pid" ]; then
+    err "backend already dead"
+fi
+
+# Only single x list element
+cat <<EOF > $dir/startup_db
+<config>
+   <xs-config xmlns="urn:example:clixon"><x><name>a</name></x></xs-config>
+</config>
+EOF
+XML='<r1 xmlns="urn:example:clixon">11</r1><r2 xmlns="urn:example:clixon">22</r2><np3 xmlns="urn:example:clixon"><s3>33</s3><np31><s31>31</s31></np31></np3>'
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend  -s startup -f $cfg"
+    start_backend -s startup -f $cfg
+
+    new "waiting"
+    wait_backend
+fi
+
+new "get startup config with list default"
+expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML<xs-config xmlns=\"urn:example:clixon\"><x><name>a</name><y><inside>false</inside></y><outside>false</outside></x></xs-config></data></rpc-reply>]]>]]>$"
 
 new "Kill backend"
 # Check if premature kill
