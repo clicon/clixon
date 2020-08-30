@@ -669,6 +669,8 @@ yang2cli_leaf(clicon_handle h,
     else
 	if (yang2cli_var(h, ys, helptext, cb) < 0)
 	    goto done;
+	if (yang_keyword_get(ys) == Y_KEY)
+		cprintf(cb, "]");
     if (callback){
 	if (cli_callback_generate(h, ys, cb) < 0)
 	    goto done;
@@ -794,8 +796,7 @@ yang2cli_list(clicon_handle      h,
 			  cvec_next(cvk, cvi)?0:1, cb) < 0)
 	    goto done;
     }
-	/*if (yang2cli_leaf(h, yleaf,GT_NONE, level, 1, cb) < 0)
-	    goto done;*/
+
     cprintf(cb, "{\n");
     yc = NULL;
     while ((yc = yn_each(ys, yc)) != NULL) {
@@ -813,12 +814,11 @@ yang2cli_list(clicon_handle      h,
 	if (yang2cli_stmt(h, yc, gt, level+1, state, cb) < 0)
 	    goto done;
     }
-	cprintf(cb, "]");
-	yang_keyword_set(Y_CONTAINER, ys);
+	
+	/*yang_keyword_set(Y_CONTAINER, ys);
 	if (cli_callback_generate(h, ys, cb) < 0)
 	    goto done;
-	yang_keyword_set(Y_LIST, ys);
-	cprintf(cb, ";\n");
+	yang_keyword_set(Y_LIST, ys);*/
     cprintf(cb, "%*s}\n", level*3, "");
     retval = 0;
   done:
