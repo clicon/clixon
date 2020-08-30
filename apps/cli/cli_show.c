@@ -769,12 +769,12 @@ cli_show_auto1(clicon_handle h,
 	    xml2json_cb(stdout, xp, 1, cligen_output);
 	    break;
 	case FORMAT_TEXT:
+		fprintf(stdout, "%d", yang_keyword_get(yspec));
 		ys_keyword = yang_keyword_get(yspec);
 		xp_helper = xml_child_i(xml_parent(xp), i);
 		for (; xp_helper != NULL; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
-			if (ys_keyword == Y_LIST) 
-				xml2txt_cb(stdout, xp_helper, cligen_output); /* tree-formed text */
-			else 
+			xml2txt_cb(stdout, xp_helper, cligen_output); /* tree-formed text */
+			if (ys_keyword != Y_LIST) 
 				break;
 		}
 	    break;
