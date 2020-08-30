@@ -703,10 +703,13 @@ cli_show_auto1(clicon_handle h,
     enum format_enum format = FORMAT_XML;
     cxobj           *xt = NULL;
     cxobj           *xp;
+	cxobj           *xp_helper;
     cxobj           *xerr;
     enum genmodel_type gt;
     char            *api_path = NULL;
     char            *prefix = NULL;
+	enum rfc_6020    ys_keyword;
+	int 			 i = 0;
 
     if (cvec_len(argv) < 3 || cvec_len(argv) > 4){
 	clicon_err(OE_PLUGIN, 0, "Usage: <api-path-fmt>* <database> <format> <prefix>. (*) generated.");
@@ -766,7 +769,14 @@ cli_show_auto1(clicon_handle h,
 	    xml2json_cb(stdout, xp, 1, cligen_output);
 	    break;
 	case FORMAT_TEXT:
-	    xml2txt_cb(stdout, xp, cligen_output); /* tree-formed text */
+		ys_keyword = yang_keyword_get(yspec);
+		xp_helper = xml_child_i(xml_parent(xp), i);
+		for (; xp_helper != NULL; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
+			if (ys_keyword == Y_LIST) 
+				xml2txt_cb(stdout, xp_helper, cligen_output); /* tree-formed text */
+			else 
+				break;
+		}
 	    break;
 	case FORMAT_CLI:
 	    if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)

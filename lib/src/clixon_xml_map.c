@@ -153,7 +153,6 @@ xml2txt_recurse(FILE             *f,
     while ((xc = xml_child_each(x, xc, -1)) != NULL)
 	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
 	    children++;
-	(*fn)(f, "%d", children);
     if (!children){ /* If no children print line */
 	switch (xml_type(x)){
 	case CX_BODY:
