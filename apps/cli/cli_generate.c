@@ -633,7 +633,6 @@ yang2cli_var(clicon_handle h,
  * @param[in]  gt    CLI Generate style 
  * @param[in]  level Indentation level
  * @param[in]  callback  If set, include a "; cli_set()" callback, otherwise not
- * @param[in]  is_key_leaf  true if is key of list, otherwise false
  * @param[out] cb  Buffer where cligen code is written
  */
 static int
@@ -642,7 +641,6 @@ yang2cli_leaf(clicon_handle h,
 	      enum genmodel_type gt,
 	      int           level,
 	      int           callback,
-		  int 			is_key_leaf,
 	      cbuf         *cb)
 {
     yang_stmt    *yd;  /* description */
@@ -650,6 +648,7 @@ yang2cli_leaf(clicon_handle h,
     char         *helptext = NULL;
     char         *s;
 
+	cprintf(cb, "[");
     /* description */
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
 	if ((helptext = strdup(yang_argument_get(yd))) == NULL){
@@ -672,8 +671,7 @@ yang2cli_leaf(clicon_handle h,
 	if (yang2cli_var(h, ys, helptext, cb) < 0)
 	    goto done;
 	
-	if (is_key_leaf)
-		cprintf(cb, "]");
+	cprintf(cb, "]");
     if (callback){
 	if (cli_callback_generate(h, ys, cb) < 0)
 	    goto done;
@@ -782,7 +780,7 @@ yang2cli_list(clicon_handle      h,
     /* Loop over all key variables */
     cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;
-	cprintf(cb, "[");
+	
     /* Iterate over individual keys  */
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	keyname = cv_string_get(cvi);
@@ -796,7 +794,7 @@ yang2cli_list(clicon_handle      h,
 	 */
 	if (yang2cli_leaf(h, yleaf,
 			  (gt==GT_VARS||gt==GT_HIDE)?GT_NONE:gt, level+1, 
-			  cvec_next(cvk, cvi)?0:1, 1, cb) < 0)
+			  cvec_next(cvk, cvi)?0:1, cb) < 0)
 	    goto done;
     }
 
