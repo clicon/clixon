@@ -781,6 +781,7 @@ yang2cli_list(clicon_handle      h,
     cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;
 	
+	cprintf(cb, "[");
     /* Iterate over individual keys  */
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	keyname = cv_string_get(cvi);
