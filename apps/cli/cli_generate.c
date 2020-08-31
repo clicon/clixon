@@ -909,7 +909,7 @@ yang2cli_stmt(clicon_handle h,
 	    break;
 	case Y_LEAF_LIST:
 	case Y_LEAF:
-	    if (yang2cli_leaf(h, ys, gt, level, 1, 0, cb) < 0)
+	    if (yang2cli_leaf(h, ys, gt, level, 1, cb) < 0)
 		goto done;
 	    break;
 	case Y_CASE:
