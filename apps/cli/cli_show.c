@@ -770,13 +770,14 @@ cli_show_auto1(clicon_handle h,
 	    break;
 	case FORMAT_TEXT:
 		ys_keyword = yang_keyword_get(xml_spec(xp));
-		xp_helper = xml_child_i(xml_parent(xp), i);
-		fprintf(stdout, "%s\n", xml_name(xml_parent(xp)));
-		fprintf(stdout, "%s\n", xml_name(xp_helper));
-		fprintf(stdout, "%d\n", ys_keyword);
-		if (xp_helper == NULL)
+		if (ys_keyword == Y_LIST) 
+			xp_helper = xml_child_i(xml_parent(xp), i);
+		else
 			xp_helper = xp;
-		for (; xp_helper != NULL; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
+
+		for (; i < xml_child_nr(xml_parent(xp_helper)) ; ++i, xp_helper = xml_child_i(xml_parent(xp_helper), i)) {
+			fprintf(stdout, "%d\n", yang_keyword_get(xml_spec(xml_child_i(xml_parent(xp_helper), i))));
+			fprintf(stdout, "%d\n", xml_type(xml_child_i(xml_parent(xp_helper), i)));
 			xml2txt_cb(stdout, xp_helper, cligen_output);  /* tree-formed text */
 			if (ys_keyword != Y_LIST) 
 				break;
