@@ -648,7 +648,6 @@ yang2cli_leaf(clicon_handle h,
     char         *helptext = NULL;
     char         *s;
 
-	cprintf(cb, "[");
     /* description */
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
 	if ((helptext = strdup(yang_argument_get(yd))) == NULL){
@@ -664,6 +663,7 @@ yang2cli_leaf(clicon_handle h,
 	if (helptext)
 	    cprintf(cb, "(\"%s\")", helptext);
 	cprintf(cb, " ");
+	cprintf(cb, "[");
 	if (yang2cli_var(h, ys, helptext, cb) < 0)
 	    goto done;
     }
