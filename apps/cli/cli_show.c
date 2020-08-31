@@ -775,9 +775,9 @@ cli_show_auto1(clicon_handle h,
 		else
 			xp_helper = xp;
 
-		for (; i < xml_child_nr(xml_parent(xp_helper)) ; ++i, xp_helper = xml_child_i(xml_parent(xp_helper), i)) {
-			fprintf(stdout, "%d\n", yang_keyword_get(xml_spec(xml_child_i(xml_parent(xp_helper), i))));
-			fprintf(stdout, "%d\n", xml_type(xml_child_i(xml_parent(xp_helper), i)));
+		for (; i < xml_child_nr(xml_parent(xp)) ; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
+			fprintf(stdout, "%d\n", yang_keyword_get(xml_spec(xp_helper)));
+			fprintf(stdout, "%d\n", xml_type(xp_helper));
 			xml2txt_cb(stdout, xp_helper, cligen_output);  /* tree-formed text */
 			if (ys_keyword != Y_LIST) 
 				break;
