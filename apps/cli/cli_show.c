@@ -770,15 +770,16 @@ cli_show_auto1(clicon_handle h,
 	    break;
 	case FORMAT_TEXT:
 		ys_keyword = yang_keyword_get(xml_spec(xp));
-		xml2txt_cb(stdout, xp, cligen_output);
-		/*xp_helper = xml_child_i(xml_parent(xp), i);
+		xp_helper = xml_child_i(xml_parent(xp), i);
+		fprintf(stdout, "%s\n", xml_parent(xp).x_name);
+		fprintf(stdout, "%d\n", ys_keyword);
 		if (xp_helper == NULL)
 			xp_helper = xp;
 		for (; xp_helper != NULL; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
-			xml2txt_cb(stdout, xp_helper, cligen_output);  tree-formed text
+			xml2txt_cb(stdout, xp_helper, cligen_output);  /* tree-formed text */
 			if (ys_keyword != Y_LIST) 
 				break;
-		}*/
+		}
 	    break;
 	case FORMAT_CLI:
 	    if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
