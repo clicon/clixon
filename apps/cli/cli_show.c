@@ -771,7 +771,7 @@ cli_show_auto1(clicon_handle h,
 	case FORMAT_TEXT:
 		ys_keyword = yang_keyword_get(xml_spec(xp));
 		xp_helper = xml_child_i(xml_parent(xp), i);
-		fprintf(stdout, "%s\n", xml_parent(xp)->x_name);
+		fprintf(stdout, "%s\n", xml_name(xml_parent(xp)));
 		fprintf(stdout, "%d\n", ys_keyword);
 		if (xp_helper == NULL)
 			xp_helper = xp;
