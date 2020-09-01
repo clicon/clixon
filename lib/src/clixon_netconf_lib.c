@@ -1396,7 +1396,8 @@ netconf_err2cb(cxobj *xerr,
 	cprintf(cberr, "%s ", xml_body(x));
     if ((x=xpath_first(xerr, NULL, "//error-message"))!=NULL)
 	cprintf(cberr, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, NULL, "//error-info"))!=NULL)
+    if ((x=xpath_first(xerr, NULL, "//error-info"))!=NULL &&
+	xml_child_nr(x) > 0)
 	clicon_xml2cbuf(cberr, xml_child_i(x,0), 0, 0, -1);
     if ((x=xpath_first(xerr, NULL, "//error-app-tag"))!=NULL)
 	cprintf(cberr, ": %s ", xml_body(x));
