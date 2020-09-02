@@ -570,12 +570,18 @@ api_data_write(clicon_handle h,
 	    goto done;
 	/* If we already have that default namespace, remove it in child */
 	if ((xa = xml_find_type(xdata, NULL, "xmlns", CX_ATTR)) != NULL){
-	    if (xml2ns(xparent, NULL, &namespace) < 0)
+	    if (xml2ns(xparent, NULL, &namespace) < 0){
+		clicon_debug(1, "%s G done",  __FUNCTION__);
 		goto done;
+	    }
+	    if (namespace == NULL){
+		clicon_log_xml(LOG_DEBUG, xparent, "%s xparent:", __FUNCTION__);
+		/* XXX */
+	    }
 	    /* Set xmlns="" default namespace attribute (if diff from default) */
-	    if (strcmp(namespace, xml_value(xa))==0)
+	    if (namespace && strcmp(namespace, xml_value(xa))==0)
 		xml_purge(xa);
-	}		
+	}
     }
     /* For internal XML protocol: add username attribute for access control
      */
@@ -583,7 +589,8 @@ api_data_write(clicon_handle h,
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cbx, "<rpc username=\"%s\" xmlns:%s=\"%s\">",
+    cprintf(cbx, "<rpc xmlns=\"%s\" username=\"%s\" xmlns:%s=\"%s\">",
+	    NETCONF_BASE_NAMESPACE,
 	    username?username:"",
 	    NETCONF_BASE_PREFIX,
 	    NETCONF_BASE_NAMESPACE); /* bind nc to netconf namespace */
@@ -819,7 +826,8 @@ api_data_delete(clicon_handle h,
     /* For internal XML protocol: add username attribute for access control
      */
     username = clicon_username_get(h);
-    cprintf(cbx, "<rpc username=\"%s\" xmlns:%s=\"%s\">",
+    cprintf(cbx, "<rpc xmlns=\"%s\" username=\"%s\" xmlns:%s=\"%s\">",
+	    NETCONF_BASE_NAMESPACE,
 	    username?username:"",
 	    NETCONF_BASE_PREFIX,
 	    NETCONF_BASE_NAMESPACE); /* bind nc to netconf namespace */

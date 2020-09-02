@@ -704,6 +704,7 @@ text_modify(clicon_handle       h,
 /*! Modify a top-level base tree x0 with modification tree x1
  * @param[in]  h        Clicon handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
+ * @param[in]  x0t
  * @param[in]  x1       XML tree which modifies base
  * @param[in]  x1t      Request root node (nacm needs this)
  * @param[in]  yspec    Top-level yang spec (if y is NULL)

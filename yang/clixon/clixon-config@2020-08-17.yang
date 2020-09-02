@@ -45,7 +45,8 @@ module clixon-config {
     revision 2020-08-17 {
 	description
 	    "Added: CLICON_RESTCONF_IPV4_ADDR, CLICON_RESTCONF_IPV6_ADDR, 
-                    CLICON_RESTCONF_HTTP_PORT, CLICON_RESTCONF_HTTPS_PORT";
+                    CLICON_RESTCONF_HTTP_PORT, CLICON_RESTCONF_HTTPS_PORT
+                    CLICON_NAMESPACE_NETCONF_DEFAULT";
     }
     revision 2020-06-17 {
 	description
@@ -835,5 +836,17 @@ module clixon-config {
                          data to store before dropping. 0 means no retention";
 
 	}
+	leaf CLICON_NAMESPACE_NETCONF_DEFAULT {
+	    type boolean;
+	    default false;
+	    description
+		"Undefine if you want to ensure strict namespace assignment on all netconf
+                 and XML statements according to the standard RFC 6241.
+                 If defined, top-level rpc calls need not have namespaces (eg using xmlns=<ns>) 
+                 since the default NETCONF namespace will be assumed. (This is not standard).
+                 See rfc6241 3.1: urn:ietf:params:xml:ns:netconf:base:1.0.";
+
+	}
     }
+
 }

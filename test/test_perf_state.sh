@@ -118,7 +118,7 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "generate 'large' config with $perfnr list entries"
-echo -n "<rpc><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b>" > $fconfig
+echo -n "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b>" > $fconfig
 for (( i=0; i<$perfnr; i++ )); do  
     echo -n "<interface><name>e$i</name><type>ex:eth</type></interface>" >> $fconfig
 done
@@ -126,25 +126,25 @@ echo "</b></a></interfaces></config></edit-config></rpc>]]>]]>" >> $fconfig
 
 # Now take large config file and write it via netconf to candidate
 new "netconf write large config"
-expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 # Now commit it from candidate to running 
 new "netconf commit large config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 # START actual tests
 # Having a large db, get single entries many times
 # NETCONF get
 new "netconf get test single req"
 sel="/ex:interfaces/ex:a[ex:name='foo']/ex:b/ex:interface[ex:name='e1']"
-msg="<rpc><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>"
-expecteof "$clixon_netconf -qf $cfg" 0 "$msg" '^<rpc-reply><data><interfaces xmlns="urn:example:clixon"><a><name>foo</name><b><interface><name>e1</name><type>ex:eth</type><enabled>true</enabled><status>up</status></interface></b></a></interfaces></data></rpc-reply>]]>]]>$'
+msg="<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>"
+expecteof "$clixon_netconf -qf $cfg" 0 "$msg" "^<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b><interface><name>e1</name><type>ex:eth</type><enabled>true</enabled><status>up</status></interface></b></a></interfaces></data></rpc-reply>]]>]]>$"
 
 new "netconf get $perfreq single reqs"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
     sel="/ex:interfaces/ex:a[ex:name='foo']/ex:b/ex:interface[ex:name='e$rnd']"
-    echo "<rpc><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>"
+    echo "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF get
@@ -176,7 +176,7 @@ done } 2>&1 | awk '/real/ {print $2}'
 
 # Get config in one large get
 new "netconf get large config"
-{ time -p echo "<rpc><get> <filter type=\"xpath\" select=\"/ex:interfaces/ex:a[name='foo']/ex:b\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg  > /tmp/netconf; } 2>&1 | awk '/real/ {print $2}'
+{ time -p echo "<rpc $DEFAULTNS><get> <filter type=\"xpath\" select=\"/ex:interfaces/ex:a[name='foo']/ex:b\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg  > /tmp/netconf; } 2>&1 | awk '/real/ {print $2}'
 
 new "restconf get large config"
 $TIMEFN curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b 2>&1 | awk '/real/ {print $2}'

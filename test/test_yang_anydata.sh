@@ -189,20 +189,20 @@ EOF
 
     if ! $startup; then # If not startup, add xml using netconf
 	new "Put anydata"
-	expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "<rpc><edit-config><target><candidate/></target><config>$XMLA</config></edit-config></rpc>]]>]]>" "<rpc-reply><ok/></rpc-reply>]]>]]>"
+	expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XMLA</config></edit-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
 
 	new "Put unknown"
-	expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "<rpc><edit-config><target><candidate/></target><config>$XMLU</config></edit-config></rpc>]]>]]>" "$unknownreply"
+	expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XMLU</config></edit-config></rpc>]]>]]>" "$unknownreply"
 
 	new "commit"
-	expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "<rpc><commit/></rpc>]]>]]>" "<rpc-reply><ok/></rpc-reply>]]>]]>"
+	expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
     fi
     
     new "Get candidate"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>]]>]]>$"
 
     new "Get running"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>]]>]]>$"
 
     # Add other functions, (based on previous errors), eg cli show config, cli commit.
     new "cli show configuration"
@@ -211,7 +211,6 @@ EOF
     new "cli commit"
     expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
 
-
     new "restconf get config"
     expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=config)" 0 "HTTP/1.1 200 OK" "$XML"
     
@@ -219,7 +218,7 @@ EOF
     echo "$STATE1" > $fstate 
 
     new "Get state (positive test)"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"></get></rpc>]]>]]>' "^<rpc-reply><data>$STATE1</data></rpc-reply>]]>]]>"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"nonconfig\"></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$STATE1</data></rpc-reply>]]>]]>"
 
     new "restconf get state(positive)"
     expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/1.1 200 OK" "$STATE1"
@@ -228,7 +227,7 @@ EOF
     echo "$STATE0" > $fstate 
 
     new "Get state (negative test)"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get content="nonconfig"></get></rpc>]]>]]>' "error-message>Failed to find YANG spec of XML node: u5 with parent: sb in namespace: urn:example:unknown. Internal error, state callback returned invalid XML: example_backend</error-message>"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"nonconfig\"></get></rpc>]]>]]>" "error-message>Failed to find YANG spec of XML node: u5 with parent: sb in namespace: urn:example:unknown. Internal error, state callback returned invalid XML: example_backend</error-message>"
 
 	new "restconf get state(negative)"
     expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/1.1 412 Precondition Failed" "<error-tag>operation-failed</error-tag><error-info><bad-element>u5</bad-element></error-info>"
@@ -237,13 +236,13 @@ EOF
     # server. But "unknown-element" as truly unknwon.
     # (Would need to add a handler to get a proper OK)
     new "Not supported RPC"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><myrpc xmlns="urn:example:any"></myrpc></rpc>]]>]]>' '<error-tag>operation-not-supported</error-tag>'
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><myrpc xmlns=\"urn:example:any\"></myrpc></rpc>]]>]]>" "<error-tag>operation-not-supported</error-tag>"
 
     new "anydata RPC"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><myrpc xmlns="urn:example:any"><u7><u8>88</u8></u7></myrpc></rpc>]]>]]>' '<error-tag>operation-not-supported</error-tag>'
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><myrpc xmlns=\"urn:example:any\"><u7><u8>88</u8></u7></myrpc></rpc>]]>]]>" "<error-tag>operation-not-supported</error-tag>"
 
     new "unknown RPC"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><myrpc xmlns="urn:example:unknown"><u7><u8>88</u8></u7></myrpc></rpc>]]>]]>' '<error-tag>unknown-element</error-tag>'
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><myrpc xmlns=\"urn:example:unknown\"><u7><u8>88</u8></u7></myrpc></rpc>]]>]]>" "<error-tag>unknown-element</error-tag>"
 
     if [ $RC -ne 0 ]; then
 	new "Kill restconf daemon"

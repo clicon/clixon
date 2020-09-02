@@ -525,7 +525,8 @@ cli_show_config1(clicon_handle h,
 	    xml2cli_cb(stdout, xc, prefix, gt, cligen_output); /* cli syntax */
 	break;
     case FORMAT_NETCONF:
-	cligen_output(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
+	cligen_output(stdout, "<rpc xmlns=\"%s\"><edit-config><target><candidate/></target><config>\n",
+		      NETCONF_BASE_NAMESPACE);
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
 	    clicon_xml2file_cb(stdout, xc, 2, 1, cligen_output);
@@ -774,7 +775,8 @@ cli_show_auto1(clicon_handle h,
 	    xml2cli_cb(stdout, xp, prefix, gt, cligen_output); /* cli syntax */
 	    break;
 	case FORMAT_NETCONF:
-	    fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
+	    fprintf(stdout, "<rpc xmlns=\"%s\"><edit-config><target><candidate/></target><config>\n",
+		    NETCONF_BASE_NAMESPACE);
 	    clicon_xml2file(stdout, xp, 2, 1);
 	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	    break;

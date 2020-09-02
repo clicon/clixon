@@ -173,7 +173,7 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "netconfig edit main module"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><main xmlns="urn:example:clixon"><x>foo</x><ext>foo</ext></main></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><main xmlns=\"urn:example:clixon\"><x>foo</x><ext>foo</ext></main></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "cli edit main"
 expectfn "$clixon_cli -1f $cfg set main x bar" 0 ""
@@ -182,7 +182,7 @@ new "cli edit main ext"
 expectfn "$clixon_cli -1f $cfg set main ext bar" 0 ""
 
 new "netconfig edit sub1"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><sub1 xmlns="urn:example:clixon"><x>foo</x><ext1>foo</ext1></sub1></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><sub1 xmlns=\"urn:example:clixon\"><x>foo</x><ext1>foo</ext1></sub1></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "cli edit sub1"
 expectfn "$clixon_cli -1f $cfg set sub1 x bar" 0 ""
@@ -191,7 +191,7 @@ new "cli edit sub1 ext"
 expectfn "$clixon_cli -1f $cfg set sub1 ext1 bar" 0 ""
 
 new "netconfig edit sub2 module"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><sub2 xmlns="urn:example:clixon"><x>foo</x><ext2>foo</ext2></sub2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><sub2 xmlns=\"urn:example:clixon\"><x>foo</x><ext2>foo</ext2></sub2></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "cli edit sub2"
 expectfn "$clixon_cli -1f $cfg set sub2 x fum" 0 ""
@@ -200,10 +200,10 @@ new "cli edit sub2 ext"
 expectfn "$clixon_cli -1f $cfg set sub2 ext2 fum" 0 ""
 
 new "netconf submodule validate"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 # Now same with restconf
 new "restconf edit main"

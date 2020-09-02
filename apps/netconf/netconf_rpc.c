@@ -93,12 +93,14 @@ netconf_get_config_subtree(clicon_handle h,
     if ((xdata = xpath_first(*xret, NULL, "/rpc-reply/data")) == NULL)
 	goto ok;
     if (xml_filter(xfilter, xdata) < 0){
-	clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply><rpc-error>"
+	clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 			    "<error-tag>operation-failed</error-tag>"
-			    "<error-type>applicatio</error-type>"
+			    "<error-type>application</error-type>"
 			    "<error-severity>error</error-severity>"
 			    "<error-info>filtering</error-info>"
-			    "</rpc-error></rpc-reply>");
+			    "</rpc-error></rpc-reply>",
+			    NETCONF_BASE_NAMESPACE
+			    );
     }
 ok:
     retval = 0;
@@ -180,13 +182,14 @@ netconf_get_config(clicon_handle h,
 	     goto done;
      }
      else{
-	 clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply><rpc-error>"
+	 clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 			     "<error-tag>operation-failed</error-tag>"
 			     "<error-type>applicatio</error-type>"
 			     "<error-severity>error</error-severity>"
 			     "<error-message>filter type not supported</error-message>"
 			     "<error-info>type</error-info>"
-			     "</rpc-error></rpc-reply>");
+			     "</rpc-error></rpc-reply>",
+			     NETCONF_BASE_NAMESPACE);
      }
     retval = 0;
  done:
@@ -245,11 +248,12 @@ get_edit_opts(cxobj               *xn,
     retval = 1; /* hunky dory */
     return retval;
  parerr: /* parameter error, xret set */
-    clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply><rpc-error>"
+    clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 			"<error-tag>invalid-value</error-tag>"
 			"<error-type>protocol</error-type>"
 			"<error-severity>error</error-severity>"
-			"</rpc-error></rpc-reply>");
+			"</rpc-error></rpc-reply>",
+			NETCONF_BASE_NAMESPACE);
     return 0;
 }
 
@@ -322,11 +326,12 @@ netconf_edit_config(clicon_handle h,
      * (implement the features before removing these checks)
      */
     if (testopt!=TEST_THEN_SET || erropt!=STOP_ON_ERROR){
-	clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply><rpc-error>"
+	clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 			    "<error-tag>operation-not-supported</error-tag>"
 			    "<error-type>protocol</error-type>"
 			    "<error-severity>error</error-severity>"
-			    "</rpc-error></rpc-reply>");
+			    "</rpc-error></rpc-reply>",
+			    NETCONF_BASE_NAMESPACE);
 	goto ok;
     }
     if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
@@ -377,13 +382,14 @@ netconf_get(clicon_handle h,
 	     goto done;
      }
      else{
-	 clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply><rpc-error>"
+	 clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 			     "<error-tag>operation-failed</error-tag>"
 			     "<error-type>applicatio</error-type>"
 			     "<error-severity>error</error-severity>"
 			     "<error-message>filter type not supported</error-message>"
 			     "<error-info>type</error-info>"
-			     "</rpc-error></rpc-reply>");
+			     "</rpc-error></rpc-reply>",
+			     NETCONF_BASE_NAMESPACE);
      }
     retval = 0;
  done:
@@ -505,13 +511,14 @@ netconf_create_subscription(clicon_handle h,
     if ((xfilter = xpath_first(xn, NULL, "//filter")) != NULL){
 	if ((ftype = xml_find_value(xfilter, "type")) != NULL){
 	    if (strcmp(ftype, "xpath") != 0){
-		clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply><rpc-error>"
+		clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 				    "<error-tag>operation-failed</error-tag>"
 				    "<error-type>application</error-type>"
 				    "<error-severity>error</error-severity>"
 				    "<error-message>only xpath filter type supported</error-message>"
 				    "<error-info>type</error-info>"
-				    "</rpc-error></rpc-reply>");
+				    "</rpc-error></rpc-reply>",
+				    NETCONF_BASE_NAMESPACE);
 		goto ok;
 	    }
 	}
@@ -580,13 +587,14 @@ netconf_application_rpc(clicon_handle h,
     if (ys_module_by_xml(yspec, xn, &ymod) < 0)
 	goto done;
     if (ymod == NULL){
-	clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply><rpc-error>"
+	clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 			    "<error-tag>operation-failed</error-tag>"
 			    "<error-type>rpc</error-type>"
 			    "<error-severity>error</error-severity>"
 			    "<error-message>%s</error-message>"
 			    "<error-info>Not recognized module</error-info>"
-			    "</rpc-error></rpc-reply>", xml_name(xn));
+			    "</rpc-error></rpc-reply>",
+			    NETCONF_BASE_NAMESPACE, xml_name(xn));
 	goto ok;
     }
     yrpc = yang_find(ymod, Y_RPC, xml_name(xn));
@@ -717,13 +725,14 @@ netconf_rpc_dispatch(clicon_handle h,
 	    if ((retval = netconf_application_rpc(h, xe, xret)) < 0)
 		goto done;
 	    if (retval == 0){ /* not handled by callback */
-		clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply><rpc-error>"
+		clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 				    "<error-tag>operation-failed</error-tag>"
 				    "<error-type>rpc</error-type>"
 				    "<error-severity>error</error-severity>"
 				    "<error-message>%s</error-message>"
 				    "<error-info>Not recognized</error-info>"
-				    "</rpc-error></rpc-reply>", xml_name(xe));
+				    "</rpc-error></rpc-reply>",
+				    NETCONF_BASE_NAMESPACE, xml_name(xe));
 		goto done;
 	    }
 	}

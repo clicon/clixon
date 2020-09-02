@@ -697,6 +697,7 @@ main(int    argc,
 		   clicon_configfile(h));
 	goto done;
     }
+
     /* Treat unknown XML as anydata */
     if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1)
 	xml_bind_yang_unknown_anydata(1);
@@ -712,6 +713,9 @@ main(int    argc,
     if (xmldb_connect(h) < 0)
 	goto done;
 
+    /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
+    xml_nsctx_namespace_netconf_default(h);
+    
     /* Add (hardcoded) netconf features in case ietf-netconf loaded here
      * Otherwise it is loaded in netconf_module_load below
      */

@@ -64,10 +64,33 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_log.h"
+#include "clixon_options.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_yang_module.h"
 #include "clixon_xml_nsctx.h"
+
+/* Undefine if you want to ensure strict namespace assignment on all netconf
+ * and XML statements according to the standard RFC 6241.
+ * If defined, top-level rpc calls need not have namespaces (eg using xmlns=<ns>) 
+ * since the default NETCONF namespace will be assumed. (This is not standard).
+ * See rfc6241 3.1: urn:ietf:params:xml:ns:netconf:base:1.0.
+ */
+static int _USE_NAMESPACE_NETCONF_DEFAULT = 0;
+	    
+/*! Set if use internal default namespace mechanism or not
+ *
+ * This function shouldnt really be here, it sets a local variable from the value of the
+ * option CLICON_NAMESPACE_NETCONF_DEFAULT, but the code where it is used is deep in the call
+ * stack and cannot get the clicon handle currently.
+ * @param[in] h  Clicon handle
+ */
+int
+xml_nsctx_namespace_netconf_default(clicon_handle h)
+{
+    _USE_NAMESPACE_NETCONF_DEFAULT = clicon_option_bool(h, "CLICON_NAMESPACE_NETCONF_DEFAULT");
+    return 0;
+}
 
 /*! Create and initialize XML namespace context
  * @param[in] prefix    Namespace prefix, or NULL for default
@@ -220,12 +243,12 @@ xml_nsctx_node1(cxobj *xn,
 	    }
     }
     if ((xp = xml_parent(xn)) == NULL){
-#ifdef USE_NETCONF_NS_AS_DEFAULT
-	/* If not default namespace defined, use the base netconf ns as default */
-	if (xml_nsctx_get(nsc, NULL) == NULL)
-	    if (xml_nsctx_add(nsc, NULL, NETCONF_BASE_NAMESPACE) < 0)
-		goto done;
-#endif
+	if (_USE_NAMESPACE_NETCONF_DEFAULT){
+	    /* If not default namespace defined, use the base netconf ns as default */
+	    if (xml_nsctx_get(nsc, NULL) == NULL)
+		if (xml_nsctx_add(nsc, NULL, NETCONF_BASE_NAMESPACE) < 0)
+		    goto done;
+	}
     }
     else
 	if (xml_nsctx_node1(xp, nsc) < 0)
@@ -450,14 +473,12 @@ xml2ns(cxobj *x,
 		goto done;
 	}
 	/* If no parent, return default namespace if defined */
-#ifdef USE_NETCONF_NS_AS_DEFAULT
-	else{
+	else if (_USE_NAMESPACE_NETCONF_DEFAULT){
 	    if (prefix == NULL)
 		ns = NETCONF_BASE_NAMESPACE;
 	    else
 		ns = NULL;
 	}
-#endif
     }
     /* Set default namespace cache (since code is at this point,
      * no cache was found 

@@ -90,13 +90,13 @@ testrun(){
 	sleep $BETIMEOUT
     fi
     new "Startup test for $mode mode, check running"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$exprun</rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS>$exprun</rpc-reply>]]>]]>$"
 
     new "Startup test for $mode mode, check candidate"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$exprun</rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS>$exprun</rpc-reply>]]>]]>$"
 
     new "Startup test for $mode mode, check startup is untouched"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$sdb</data></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><startup/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$sdb</data></rpc-reply>]]>]]>$"
     
     new "Kill backend"
     # Check if premature kill

@@ -84,7 +84,7 @@
 
 /*! Send internal netconf rpc from client to backend
  * @param[in]    h      CLICON handle
- * @param[in]    msg    Encoded message. Deallocate woth free
+ * @param[in]    msg    Encoded message. Deallocate with free
  * @param[out]   xret0  Return value from backend as xml tree. Free w xml_free
  * @param[inout] sock0  If pointer exists, do not close socket to backend on success 
  *                      and return it here. For keeping a notify socket open
@@ -337,7 +337,7 @@ clicon_rpc_get_config(clicon_handle h,
 	goto done;
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "<rpc");
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     if (username == NULL)
 	username = clicon_username_get(h);
     if (username != NULL)
@@ -492,7 +492,9 @@ clicon_rpc_copy_config(clicon_handle h,
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(session_id,
-   "<rpc username=\"%s\"><copy-config><source><%s/></source><target><%s/></target></copy-config></rpc>",
+				 "<rpc xmlns=\"%s\" username=\"%s\">"
+				 "<copy-config><source><%s/></source><target><%s/></target></copy-config></rpc>",
+				 NETCONF_BASE_NAMESPACE,
 				 username?username:"",
 				 db1, db2)) == NULL)
 	goto done;
@@ -536,7 +538,9 @@ clicon_rpc_delete_config(clicon_handle h,
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(session_id,
-				 "<rpc username=\"%s\"><edit-config><target><%s/></target><default-operation>none</default-operation><config operation=\"delete\"/></edit-config></rpc>",
+				 "<rpc xmlns=\"%s\" username=\"%s\">"
+				 "<edit-config><target><%s/></target><default-operation>none</default-operation><config operation=\"delete\"/></edit-config></rpc>",
+				 NETCONF_BASE_NAMESPACE,
 				 username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
@@ -575,7 +579,9 @@ clicon_rpc_lock(clicon_handle h,
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(session_id,
-				 "<rpc username=\"%s\"><lock><target><%s/></target></lock></rpc>",
+				 "<rpc xmlns=\"%s\" username=\"%s\">"
+				 "<lock><target><%s/></target></lock></rpc>",
+				 NETCONF_BASE_NAMESPACE,
 				 username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
@@ -614,7 +620,10 @@ clicon_rpc_unlock(clicon_handle h,
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(session_id,
-				 "<rpc username=\"%s\"><unlock><target><%s/></target></unlock></rpc>", username?username:"", db)) == NULL)
+				 "<rpc xmlns=\"%s\" username=\"%s\">"
+				 "<unlock><target><%s/></target></unlock></rpc>",
+				 NETCONF_BASE_NAMESPACE,
+				 username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -690,7 +699,7 @@ clicon_rpc_get(clicon_handle   h,
 	goto done;
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "<rpc");
+    cprintf(cb, "<rpc xmlns=\"%s\" ", NETCONF_BASE_NAMESPACE);
     if ((username = clicon_username_get(h)) != NULL)
 	cprintf(cb, " username=\"%s\"", username);
     cprintf(cb, " xmlns:%s=\"%s\"",
@@ -781,8 +790,8 @@ clicon_rpc_close_session(clicon_handle h)
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(session_id,
-				 "<rpc username=\"%s\"><close-session/></rpc>",
-				 username?username:"")) == NULL)
+				 "<rpc xmlns=\"%s\" username=\"%s\"><close-session/></rpc>",
+				 NETCONF_BASE_NAMESPACE, username?username:"")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -820,7 +829,8 @@ clicon_rpc_kill_session(clicon_handle h,
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(my_session_id,
-				 "<rpc username=\"%s\"><kill-session><session-id>%u</session-id></kill-session></rpc>",
+				 "<rpc xmlns=\"%s\" username=\"%s\"><kill-session><session-id>%u</session-id></kill-session></rpc>",
+				 NETCONF_BASE_NAMESPACE,
 				 username?username:"", session_id)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
@@ -859,7 +869,9 @@ clicon_rpc_validate(clicon_handle h,
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(session_id,
-				 "<rpc username=\"%s\"><validate><source><%s/></source></validate></rpc>", username?username:"", db)) == NULL)
+				 "<rpc xmlns=\"%s\" username=\"%s\"><validate><source><%s/></source></validate></rpc>",
+				 NETCONF_BASE_NAMESPACE,
+				 username?username:"", db)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -895,7 +907,9 @@ clicon_rpc_commit(clicon_handle h)
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(session_id,
-				 "<rpc username=\"%s\"><commit/></rpc>", username?username:"")) == NULL)
+				 "<rpc xmlns=\"%s\" username=\"%s\"><commit/></rpc>",
+				 NETCONF_BASE_NAMESPACE,
+				 username?username:"")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -931,7 +945,9 @@ clicon_rpc_discard_changes(clicon_handle h)
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(session_id,
-				 "<rpc username=\"%s\"><discard-changes/></rpc>", username?username:"")) == NULL)
+				 "<rpc xmlns=\"%s\"  username=\"%s\"><discard-changes/></rpc>",
+				 NETCONF_BASE_NAMESPACE,
+				 username?username:"")) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -975,10 +991,11 @@ clicon_rpc_create_subscription(clicon_handle    h,
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(session_id,
-				 "<rpc username=\"%s\"><create-subscription xmlns=\"%s\">"
+				 "<rpc xmlns=\"%s\" username=\"%s\"><create-subscription xmlns=\"%s\">"
 				 "<stream>%s</stream>"
 				 "<filter type=\"xpath\" select=\"%s\" />"
 				 "</create-subscription></rpc>", 
+				 NETCONF_BASE_NAMESPACE,
 				 username?username:"",
 				 EVENT_RFC5277_NAMESPACE,
 				 stream?stream:"", filter?filter:"")) == NULL)
@@ -1019,7 +1036,8 @@ clicon_rpc_debug(clicon_handle h,
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(session_id,
-				 "<rpc username=\"%s\"><debug xmlns=\"%s\"><level>%d</level></debug></rpc>",
+				 "<rpc xmlns=\"%s\" username=\"%s\"><debug xmlns=\"%s\"><level>%d</level></debug></rpc>",
+				 NETCONF_BASE_NAMESPACE,
 				 username?username:"",
 				 CLIXON_LIB_NS,
 				 level)) == NULL)

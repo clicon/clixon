@@ -274,12 +274,12 @@ runtest(){
     fi
 
     new "Check running db content"
-    expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>' "^<rpc-reply>$exprun</rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS>$exprun</rpc-reply>]]>]]>$"
 
     # If given check startup db XML
     if [ -n "$expstart" ]; then 
 	new "Check startup db content"
-	expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><startup/></source></get-config></rpc>]]>]]>" "^<rpc-reply>$expstart</rpc-reply>]]>]]>$"
+	expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><startup/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS>$expstart</rpc-reply>]]>]]>$"
     fi
 
     if [ $BE -ne 0 ]; then

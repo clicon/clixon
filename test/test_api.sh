@@ -167,7 +167,7 @@ trigger_rpc(clicon_handle h,          /* Clicon handle */
        val = NULL;
     clicon_debug(1, "%s Method 3: val:%s", __FUNCTION__, val?val:"null");
 
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
     retval = 0;
   done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);

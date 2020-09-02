@@ -203,14 +203,14 @@ testbuiltin(){
     
     new "Netconf set invalid $t leaf"
     echo "$clixon_netconf -qf $cfg"
-    echo "<rpc><edit-config><target><candidate/></target><config><r$t xmlns=\"urn:example:clixon\">$val</r$t></config></edit-config></rpc>]]>]]>"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><r$t xmlns=\"urn:example:clixon\">$val</r$t></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+    echo "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><r$t xmlns=\"urn:example:clixon\">$val</r$t></config></edit-config></rpc>]]>]]>"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><r$t xmlns=\"urn:example:clixon\">$val</r$t></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
     new "netconf validate invalid range"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>r$t</bad-element></error-info><error-severity>error</error-severity><error-message>$errmsg</error-message></rpc-error></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>r$t</bad-element></error-info><error-severity>error</error-severity><error-message>$errmsg</error-message></rpc-error></rpc-reply>]]>]]>$"
 
     new "discard"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 }
 
 # Type explicit typed range tests.
@@ -255,21 +255,20 @@ testrange(){
     expectfn "$clixon_cli -1f $cfg -l o set l$t $eval" 255 "$errmsg"
     
     new "discard"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
     new "Netconf set invalid $t leaf"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><l$t xmlns=\"urn:example:clixon\">$eval</l$t></config></edit-config></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><l$t xmlns=\"urn:example:clixon\">$eval</l$t></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
     new "netconf get config"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply><data><l$t xmlns=\"urn:example:clixon\">$eval</l$t></data></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><l$t xmlns=\"urn:example:clixon\">$eval</l$t></data></rpc-reply>]]>]]>$"
 
     new "netconf validate invalid range"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>l$t</bad-element></error-info><error-severity>error</error-severity><error-message>$errmsg</error-message></rpc-error></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>l$t</bad-element></error-info><error-severity>error</error-severity><error-message>$errmsg</error-message></rpc-error></rpc-reply>]]>]]>$"
 
     new "discard"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><discard-changes/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 }
-
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"

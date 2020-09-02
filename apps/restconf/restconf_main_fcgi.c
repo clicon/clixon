@@ -325,6 +325,8 @@ main(int    argc,
     cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
     cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
 
+    /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
+    xml_nsctx_namespace_netconf_default(h);
     
     /* Add (hardcoded) netconf features in case ietf-netconf loaded here
      * Otherwise it is loaded in netconf_module_load below

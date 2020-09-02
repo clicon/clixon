@@ -30,15 +30,27 @@ Expected: September 2020
 
 Users may have to change how they access the system
 
+* Netconf as default namespace has been disabled by default.
+  * Only requests on the form: `<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config>...` will be accepted
+  * All replies will be on the form: `<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">...`
+  * Requests such as: `<rpc><edit-config>...` will not  be accepted.
+  * You can revert this behaviour (to clixon pre-4.6 behaviour) by enabling `CLICON_NAMESPACE_NETCONF_DEFAULT`
+  * This API change is a consequence of: [copy-config's RPC cxobj parameter does not contain namespace #131](https://github.com/clicon/clixon/issues/131)
 * NACM datanode paths fixed to canonical namespace
   * The fix of [Cannot create or modify NACM data node access rule with path using JSON encoding #129](https://github.com/clicon/clixon/issues/129) leads that data-node paths, eg `<rule>...<path>ex:table/ex:parameter</path></rule>` instance-identifiers are restricted to canonical namespace identifiers for both XML and JSON encoding. That is, if a symbol (such as `table` above) is a symbol in a module with prefix `ex`, another prefix cannot be used, even though defined with a `xmlns:` rule.
 
 * New clixon-config@2020-08-17.yang revision
-  * Added options for Restconf evhtp setting default bind socket address and ports `CLICON_RESTCONF_IPV4_ADDR`, `CLICON_RESTCONF_IPV6_ADDR`, `CLICON_RESTCONF_HTTP_PORT`, `CLICON_RESTCONF_HTTPS_PORT`
+  * Added options for Restconf evhtp setting default bind socket address and ports `CLICON_RESTCONF_IPV4_ADDR`, `CLICON_RESTCONF_IPV6_ADDR`, `CLICON_RESTCONF_HTTP_PORT`, `CLICON_RESTCONF_HTTPS_PORT`, `CLICON_NAMESPACE_NETCONF_DEFAULT`
+
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
 
 ### Corrected Bugs
 
 * Fixed: [CLI crash if error-info is empty #134](https://github.com/clicon/clixon/issues/134)
+* Fixed: [copy-config's RPC cxobj parameter does not contain namespace #131](https://github.com/clicon/clixon/issues/131)
+  * See also "Netconf as default namespace has been disabled by default" above
 * Fixed: [Cannot create or modify NACM data node access rule with path using JSON encoding #129](https://github.com/clicon/clixon/issues/129). The evaluation of NACM datanode rule path is assumed to be canonical namespace and cannot be overruled with `xmlns` rules.
 * Corrected error message for list min/max-value to comply to RFC 7950: a proper path is now returned, previously only the final list symbol was returned. This error-path is also now exposed in the CLI error message correctly.
   * Example: `<error-path>/c/a1</error-path>`

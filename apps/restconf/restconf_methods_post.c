@@ -369,7 +369,8 @@ api_data_post(clicon_handle h,
     /* For internal XML protocol: add username attribute for access control
      */
     username = clicon_username_get(h);
-    cprintf(cbx, "<rpc username=\"%s\" xmlns:%s=\"%s\">",
+    cprintf(cbx, "<rpc xmlns=\"%s\" username=\"%s\" xmlns:%s=\"%s\">",
+	    NETCONF_BASE_NAMESPACE,
 	    username?username:"",
 	    NETCONF_BASE_PREFIX,
 	    NETCONF_BASE_NAMESPACE); /* bind nc to netconf namespace */
@@ -632,6 +633,10 @@ api_operations_post_output(clicon_handle h,
     if (clicon_debug_get())
 	clicon_log_xml(LOG_DEBUG, xoutput, "%s xoutput:", __FUNCTION__);
 #endif
+    /* Remove original netconf default namespace. Somewhat unsure what "output" belongs to? */
+    if ((xa = xml_find_type(xoutput, NULL, "xmlns", CX_ATTR)) != NULL)
+	if (xml_purge(xa) < 0)
+	    goto done;
 
     /* Sanity check of outgoing XML 
      * For now, skip outgoing checks.

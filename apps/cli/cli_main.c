@@ -595,6 +595,9 @@ main(int    argc,
     if (netconf_module_features(h) < 0)
 	goto done;
 
+    /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
+    xml_nsctx_namespace_netconf_default(h);
+    
     /* Treat unknwon XML as anydata */
     if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1)
 	xml_bind_yang_unknown_anydata(1);

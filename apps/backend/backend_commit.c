@@ -680,7 +680,7 @@ from_client_commit(clicon_handle h,
         goto ok;
     }
     if (ret == 1)
-	cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+	cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
  done:
@@ -732,7 +732,7 @@ from_client_discard_changes(clicon_handle h,
 	goto ok;
     }
     xmldb_modified_set(h, "candidate", 0); /* reset dirty bit */
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
  done:
@@ -829,7 +829,7 @@ from_client_validate(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
     /* Call plugin transaction end callbacks */
     plugin_transaction_end_all(h, td);
  ok:

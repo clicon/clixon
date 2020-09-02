@@ -430,7 +430,7 @@ client_get_config_only(clicon_handle h,
 	if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0) 
 	    goto done;
     }
-    cprintf(cbret, "<rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     if (xret==NULL)
 	cprintf(cbret, "<data/>");
     else{
@@ -693,7 +693,7 @@ from_client_edit_config(clicon_handle h,
 	}
     }
     assert(cbuf_len(cbret) == 0);
-    cprintf(cbret, "<rpc-reply><ok");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok", NETCONF_BASE_NAMESPACE);
     if (clicon_data_get(h, "objectexisted", &val) == 0)
 	cprintf(cbret, " objectexisted=\"%s\"", val);
     cprintf(cbret, "/></rpc-reply>");
@@ -777,7 +777,7 @@ from_client_copy_config(clicon_handle h,
 	goto ok;
     }
     xmldb_modified_set(h, target, 1); /* mark as dirty */
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
  done:
@@ -844,7 +844,7 @@ from_client_delete_config(clicon_handle h,
 	goto ok;
     }
     xmldb_modified_set(h, target, 1); /* mark as dirty */
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
   done:
@@ -914,7 +914,7 @@ from_client_lock(clicon_handle h,
     }
     if (xmldb_lock(h, db, id) < 0)
 	goto done;
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
  done:
@@ -985,7 +985,7 @@ from_client_unlock(clicon_handle h,
     }
     else{
 	xmldb_unlock(h, db);
-	if (cprintf(cbret, "<rpc-reply><ok/></rpc-reply>") < 0)
+	if (cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE) < 0)
 	    goto done;
     }
  ok:
@@ -1178,7 +1178,7 @@ from_client_get(clicon_handle h,
 	if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0) 
 	    goto done;
     }
-    cprintf(cbret, "<rpc-reply>");     /* OK */
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);     /* OK */
     if (xret==NULL)
 	cprintf(cbret, "<data/>");
     else{
@@ -1227,7 +1227,7 @@ from_client_close_session(clicon_handle h,
 
     xmldb_unlock_all(h, id);
     stream_ss_delete_all(h, ce_event_cb, (void*)ce);
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
     return 0;
 }
 
@@ -1279,7 +1279,7 @@ from_client_kill_session(clicon_handle h,
     }
     if (xmldb_islocked(h, db) == id)
 	xmldb_unlock(h, db);
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
  done:
@@ -1377,7 +1377,7 @@ from_client_create_subscription(clicon_handle h,
 	if (stream_replay_trigger(h, stream, ce_event_cb, (void*)ce) < 0)
 	    goto done;
     }
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
   done:
@@ -1416,7 +1416,7 @@ from_client_debug(clicon_handle h,
     clicon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
     setlogmask(LOG_UPTO(level?LOG_DEBUG:LOG_INFO)); /* for syslog */
     clicon_log(LOG_NOTICE, "%s debug:%d", __FUNCTION__, clicon_debug_get());
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
  done:
@@ -1439,7 +1439,7 @@ from_client_ping(clicon_handle h,
 		 void         *arg,
 		 void         *regarg)
 {
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
     return 0;
 }
 
@@ -1462,7 +1462,7 @@ from_client_stats(clicon_handle h,
     int      retval = -1;
     uint64_t nr;
     
-    cprintf(cbret, "<rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     nr=0;
     xml_stats_global(&nr);
     cprintf(cbret, "<global><xmlnr>%" PRIu64 "</xmlnr></global>", nr);
@@ -1516,7 +1516,7 @@ from_client_restart_plugin(clicon_handle h,
 	if (ret == 0)
 	    goto ok; /* cbret set */
    }
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
  done:
@@ -1524,7 +1524,6 @@ from_client_restart_plugin(clicon_handle h,
 	free(vec);
     return retval;
 }
-
 
 /*!
  * @retval     0       OK
@@ -1546,7 +1545,8 @@ from_client_hello(clicon_handle       h,
     }
     id++;
     clicon_session_id_set(h, id);
-    cprintf(cbret, "<hello><session-id>%u</session-id></hello>", id);
+    cprintf(cbret, "<hello xmlns=\"%s\"><session-id>%u</session-id></hello>",
+	    NETCONF_BASE_NAMESPACE, id);
     retval = 0;
  done:
     return retval;

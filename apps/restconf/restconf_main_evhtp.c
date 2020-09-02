@@ -763,6 +763,9 @@ main(int    argc,
 	clicon_err(OE_DAEMON, EINVAL, "Restconf bind port is 0");
 	goto done;
     }
+    /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
+    xml_nsctx_namespace_netconf_default(h);
+    
     /* Check server ssl certs */
     if (use_ssl){
 	/* Init evhtp ssl config struct */

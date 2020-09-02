@@ -256,7 +256,7 @@ empty_rpc(clicon_handle h,            /* Clicon handle */
 	  void         *arg,          /* client_entry */
 	  void         *regarg)       /* Argument given at register */
 {
-    cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
     return 0;
 }
 
@@ -279,7 +279,7 @@ example_rpc(clicon_handle h,            /* Clicon handle */
 	clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
 	goto done;
     }
-    cprintf(cbret, "<rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     if (!xml_child_nr_type(xe, CX_ELMNT))
 	cprintf(cbret, "<ok/>");
     else while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {

@@ -546,7 +546,8 @@ nacm_data_write_xrule_xml(cxobj       *xn,
     if (strcmp(module_pattern, "*") != 0){
 	if (ys_module_by_xml(yspec, xn, &ymod) < 0)
 	    goto done;
-	if (strcmp(yang_argument_get(ymod), module_pattern) != 0)
+	/* ymod is NULL (xn is "config") Can this breach the NACM rule? */
+	if (ymod && strcmp(yang_argument_get(ymod), module_pattern) != 0)
 	    goto nomatch;
     }
     action = xml_find_body(xrule, "action"); /* mandatory */

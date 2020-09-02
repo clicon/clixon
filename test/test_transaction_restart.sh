@@ -7,7 +7,6 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-
 APPNAME=example
 
 cfg=$dir/conf_yang.xml
@@ -106,17 +105,17 @@ fi
 let nr=0
 
 new "Basic transaction to add top-level x"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><edit-config><target><candidate/></target><config><table xmlns='urn:example:clixon'><parameter><name>$nr</name></parameter></table></config></edit-config></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><table xmlns='urn:example:clixon'><parameter><name>$nr</name></parameter></table></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Commit base"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><commit/></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 let line=13 # Skipping basic transaction. Sanity check, find one last transaction
 xml="<table xmlns=\"urn:example:clixon\"><parameter><name>0</name></parameter></table>"
 checklog "$nr nacm_end add: $xml" $line
 
 new "Send restart nacm plugin"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><restart-plugin xmlns="http://clicon.org/lib"><plugin>example_backend_nacm</plugin></restart-plugin></rpc>]]>]]>' '^<rpc-reply><ok/></rpc-reply>]]>]]>'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><restart-plugin xmlns=\"http://clicon.org/lib\"><plugin>example_backend_nacm</plugin></restart-plugin></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
 
 # Now analyze log:
 # all transactions come from nacm plugin only.
@@ -130,7 +129,7 @@ done
 
 # Negative test: restart a plugin that does not exist
 new "Send restart to nonexistatn plugin expect fail"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><restart-plugin xmlns="http://clicon.org/lib"><plugin>xxx</plugin></restart-plugin></rpc>]]>]]>' '^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>plugin</bad-element></error-info><error-severity>error</error-severity><error-message>No such plugin</error-message></rpc-error></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><restart-plugin xmlns=\"http://clicon.org/lib\"><plugin>xxx</plugin></restart-plugin></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>plugin</bad-element></error-info><error-severity>error</error-severity><error-message>No such plugin</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 if [ $BE -eq 0 ]; then
     exit # BE

@@ -142,7 +142,7 @@ int clicon_option_int(clicon_handle h, const char *name);
 int clicon_option_int_set(clicon_handle h, const char *name, int val);
 
 /* Option values gixen as bool, default false */
-int clicon_option_bool(clicon_handle h, const char   *name);
+int clicon_option_bool(clicon_handle h, const char *name);
 int clicon_option_bool_set(clicon_handle h, const char *name, int val);
 
 /* Delete a single option via handle */

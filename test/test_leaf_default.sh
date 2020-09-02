@@ -124,25 +124,25 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "get config"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>]]>]]>$"
 
 new "Change default value r1"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><r1 xmlns="urn:example:clixon">99</r1></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><r1 xmlns=\"urn:example:clixon\">99</r1></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "get config r1"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:r1\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>]]>]]>" '^<rpc-reply><data><r1 xmlns="urn:example:clixon">99</r1></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:r1\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><r1 xmlns=\"urn:example:clixon\">99</r1></data></rpc-reply>]]>]]>$"
 
 new "Remove r1"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><r1 xmlns="urn:example:clixon" nc:operation="delete" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">99</r1></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><r1 xmlns=\"urn:example:clixon\" nc:operation=\"delete\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">99</r1></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "get config"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>]]>]]>$"
 
 new "Set x list element"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><xs-config xmlns="urn:example:clixon"><x><name>a</name></x></xs-config></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><xs-config xmlns=\"urn:example:clixon\"><x><name>a</name></x></xs-config></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "get config (should contain y/inside+outside)"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML<xs-config xmlns=\"urn:example:clixon\"><x><name>a</name><y><inside>false</inside></y><outside>false</outside></x></xs-config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML<xs-config xmlns=\"urn:example:clixon\"><x><name>a</name><y><inside>false</inside></y><outside>false</outside></x></xs-config></data></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -179,7 +179,7 @@ fi
 
 new "get startup config"
 # Should have all defaults, except r1 that is set to 99
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>]]>]]>$"
 
 # permission kludges
 sudo chmod 666 $dir/running_db
@@ -194,10 +194,10 @@ if [ $? -ne 0 ]; then
 fi	
 
 new "Change default value r2"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><r2 xmlns="urn:example:clixon">88</r2></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><r2 xmlns=\"urn:example:clixon\">88</r2></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "commit"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><commit/></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Check running no defaults: r1 and r2"
 # Again, running should have only non-defaults, ie only r1 and r2
@@ -237,7 +237,7 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "get startup config with presence"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML</data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>]]>]]>$"
 
 new "Kill backend"
 # Check if premature kill
@@ -267,7 +267,7 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "get startup config with list default"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>' "^<rpc-reply><data>$XML<xs-config xmlns=\"urn:example:clixon\"><x><name>a</name><y><inside>false</inside></y><outside>false</outside></x></xs-config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML<xs-config xmlns=\"urn:example:clixon\"><x><name>a</name><y><inside>false</inside></y><outside>false</outside></x></xs-config></data></rpc-reply>]]>]]>$"
 
 new "Kill backend"
 # Check if premature kill

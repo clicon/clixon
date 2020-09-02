@@ -88,10 +88,11 @@ netconf_in_use(cbuf *cb,
     int   retval = -1;
     char *encstr = NULL;
     
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
+    if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 		"<error-type>%s</error-type>"
 		"<error-tag>in-use</error-tag>"
 		"<error-severity>error</error-severity>",
+		NETCONF_BASE_NAMESPACE,
 		type) <0)
 	goto err;
     if (message){
@@ -127,12 +128,17 @@ netconf_invalid_value_xml(cxobj **xret,
     int    retval =-1;
     cxobj *xerr = NULL;
     char  *encstr = NULL;
-
+    cxobj *xa;
+    
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
+	goto done;
+    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
@@ -197,10 +203,11 @@ netconf_too_big(cbuf *cb,
     int     retval = -1;
     char *encstr = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
+    if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 		"<error-type>%s</error-type>"
 		"<error-tag>too-big</error-tag>"
 		"<error-severity>error</error-severity>",
+		NETCONF_BASE_NAMESPACE,
 		type) <0)
 	goto err;
     if (message){
@@ -238,12 +245,12 @@ netconf_missing_attribute(cbuf *cb,
     int   retval = -1;
     char *encstr = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
+    if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 		"<error-type>%s</error-type>"
 		"<error-tag>missing-attribute</error-tag>"
 		"<error-info>%s</error-info>"
 		"<error-severity>error</error-severity>",
-		type, info) <0)
+		NETCONF_BASE_NAMESPACE,	type, info) <0)
 	goto err;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
@@ -308,12 +315,17 @@ netconf_bad_attribute_xml(cxobj **xret,
     int   retval = -1;
     cxobj *xerr = NULL;
     char  *encstr = NULL;
+    cxobj *xa;
 
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
+	goto done;
+    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
@@ -354,12 +366,12 @@ netconf_unknown_attribute(cbuf *cb,
     int   retval = -1;
     char *encstr = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
+    if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 		"<error-type>%s</error-type>"
 		"<error-tag>unknown-attribute</error-tag>"
 		"<error-info>%s</error-info>"
 		"<error-severity>error</error-severity>",
-		type, info) <0)
+		NETCONF_BASE_NAMESPACE, type, info) <0)
 	goto err;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
@@ -397,13 +409,19 @@ netconf_common_xml(cxobj **xret,
     int    retval =-1;
     cxobj *xerr;
     char  *encstr = NULL;
+    cxobj *xa;
     
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
+	if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
+	    goto done;
+	if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
 	goto done;
+
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
     if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>%s</error-type>"
@@ -647,12 +665,17 @@ netconf_access_denied_xml(cxobj **xret,
     int    retval =-1;
     cxobj *xerr;
     char  *encstr = NULL;
+    cxobj *xa;
 
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
+	goto done;
+    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
@@ -690,12 +713,12 @@ netconf_lock_denied(cbuf *cb,
     int   retval = -1;
     char *encstr = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
+    if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 		"<error-type>protocol</error-type>"
 		"<error-tag>lock-denied</error-tag>"
 		"<error-info>%s</error-info>"
 		"<error-severity>error</error-severity>",
-		info) <0)
+		NETCONF_BASE_NAMESPACE, info) <0)
 	goto err;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
@@ -730,11 +753,11 @@ netconf_resource_denied(cbuf *cb,
     int   retval = -1;
     char *encstr = NULL;
     
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
+    if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 		"<error-type>%s</error-type>"
 		"<error-tag>resource-denied</error-tag>"
 		"<error-severity>error</error-severity>",
-		type) <0)
+		NETCONF_BASE_NAMESPACE, type) <0)
 	goto err;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
@@ -770,11 +793,11 @@ netconf_rollback_failed(cbuf *cb,
     int   retval = -1;
     char *encstr = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
+    if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 		"<error-type>%s</error-type>"
 		"<error-tag>rollback-failed</error-tag>"
 		"<error-severity>error</error-severity>",
-		type) <0)
+		NETCONF_BASE_NAMESPACE, type) <0)
 	goto err;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
@@ -809,10 +832,11 @@ netconf_data_exists(cbuf      *cb,
     int   retval = -1;
     char *encstr = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
+    if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 		"<error-type>application</error-type>"
 		"<error-tag>data-exists</error-tag>"
-		"<error-severity>error</error-severity>") <0)
+		"<error-severity>error</error-severity>",
+		NETCONF_BASE_NAMESPACE) <0)
 	goto err;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
@@ -877,12 +901,17 @@ netconf_data_missing_xml(cxobj **xret,
     int   retval = -1;
     char *encstr = NULL;
     cxobj *xerr;
+    cxobj *xa;
 
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
+	goto done;
+    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
@@ -929,11 +958,11 @@ netconf_operation_not_supported(cbuf *cb,
     int   retval = -1;
     char *encstr = NULL;
 
-    if (cprintf(cb, "<rpc-reply><rpc-error>"
+    if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
 		"<error-type>%s</error-type>"
 		"<error-tag>operation-not-supported</error-tag>"
 		"<error-severity>error</error-severity>",
-		type) <0)
+		NETCONF_BASE_NAMESPACE, type) <0)
 	goto err;
     if (message){
 	if (xml_chardata_encode(&encstr, "%s", message) < 0)
@@ -1005,12 +1034,17 @@ netconf_operation_failed_xml(cxobj **xret,
     int   retval =-1;
     cxobj *xerr;
     char  *encstr = NULL;
+    cxobj *xa;
     
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
+	goto done;
+    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
@@ -1084,12 +1118,17 @@ netconf_malformed_message_xml(cxobj **xret,
     int    retval =-1;
     cxobj *xerr;
     char  *encstr = NULL;
+    cxobj *xa;
     
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
+	goto done;
+    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
@@ -1131,12 +1170,17 @@ netconf_data_not_unique_xml(cxobj **xret,
     cxobj  *xerr;
     cxobj  *xinfo;
     cbuf   *cb = NULL;
+    cxobj *xa;
     
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
+	goto done;
+    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
@@ -1190,12 +1234,17 @@ netconf_minmax_elements_xml(cxobj **xret,
     cxobj *xerr;
     char  *path = NULL;
     cbuf  *cb = NULL;
+    cxobj *xa;
     
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
+	goto done;
+    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
@@ -1396,9 +1445,10 @@ netconf_err2cb(cxobj *xerr,
 	cprintf(cberr, "%s ", xml_body(x));
     if ((x=xpath_first(xerr, NULL, "//error-message"))!=NULL)
 	cprintf(cberr, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, NULL, "//error-info"))!=NULL &&
-	xml_child_nr(x) > 0)
-	clicon_xml2cbuf(cberr, xml_child_i(x,0), 0, 0, -1);
+    if ((x=xpath_first(xerr, NULL, "//error-info")) != NULL &&
+	xml_child_nr(x) > 0){
+	clicon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, -1);
+    }
     if ((x=xpath_first(xerr, NULL, "//error-app-tag"))!=NULL)
 	cprintf(cberr, ": %s ", xml_body(x));
     if ((x=xpath_first(xerr, NULL, "//error-path"))!=NULL)

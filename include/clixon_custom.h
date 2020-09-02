@@ -47,14 +47,6 @@
  */
 #undef RPC_USERNAME_ASSERT
 
-/* If rpc call does not have a namespace (eg using xmlns) then use the default 
- * NETCONF namespace (see rfc6241 3.1)
- * Undefine it if you want to ensure strict namespace assignment on all netconf and
- * XML statements.
- * The base namespace is defined as NETCONF_BASE_NAMESPACE
- */
-#define USE_NETCONF_NS_AS_DEFAULT
-
 /*! Tag for wrong handling of identityref prefixes (XML encoding)
  * See https://github.com/clicon/clixon/issues/90
  * Instead of using generic xmlns prefix bindings, the module's own prefix

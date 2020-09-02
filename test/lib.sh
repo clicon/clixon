@@ -88,6 +88,9 @@ testname=
 # eg logging to a file: RCLOG="-l f/www-data/restconf.log"
 : ${RCLOG:=}
 
+# Default netconf namespace statement, typically as placed on top-level <rpc xmlns=""
+DEFAULTNS='xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"'
+
 # Options passed to curl calls
 # -s : silent
 # -S : show error
@@ -227,11 +230,11 @@ stop_backend(){
 
 # Wait for restconf to stop sending  502 Bad Gateway
 wait_backend(){
-    reply=$(echo '<rpc message-id="101"><ping xmlns="http://clicon.org/lib"/></rpc>]]>]]>' | $clixon_netconf -qef $cfg 2> /dev/null) 
+    reply=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101"><ping xmlns="http://clicon.org/lib"/></rpc>]]>]]>' | $clixon_netconf -qef $cfg 2> /dev/null) 
     let i=0;
     while [[ $reply != "<rpc-reply"* ]]; do
 	sleep 1
-	reply=$(echo '<rpc message-id="101" xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>' | clixon_netconf -qef $cfg 2> /dev/null)
+	reply=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101" xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>' | clixon_netconf -qef $cfg 2> /dev/null)
 	let i++;
 #	echo "wait_backend  $i"
 	if [ $i -ge $RCWAIT ]; then

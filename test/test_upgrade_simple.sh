@@ -64,10 +64,10 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "add hello world (with modstate)"
-expecteof "$clixon_netconf -qf $cfg" 0 '<rpc><edit-config><target><candidate/></target><config><hello xmlns="urn:example:simple"><world/></hello></config></edit-config></rpc>]]>]]>' "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><hello xmlns=\"urn:example:simple\"><world/></hello></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Kill backend"
 # Check if premature kill
@@ -112,7 +112,7 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "netconf get config"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '^<rpc-reply><data><hello xmlns="urn:example:simple"><world/></hello></data></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><hello xmlns=\"urn:example:simple\"><world/></hello></data></rpc-reply>]]>]]>$"
 
 new "Kill backend"
 # Check if premature kill

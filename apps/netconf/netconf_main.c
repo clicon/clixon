@@ -192,6 +192,9 @@ netconf_input_packet(clicon_handle h,
 		 * includes any "xmlns" attributes.
 		 */
 		while ((xa = xml_child_each(xrpc, xa, CX_ATTR)) != NULL){
+		    /* If attribute already exists, dont copy it */
+		    if (xml_find_type(xc, NULL, xml_name(xa), CX_ATTR) != NULL)
+			continue;
 		    if ((xa2 = xml_dup(xa)) ==NULL)
 			goto done;
 		    if (xml_addsub(xc, xa2) < 0)
@@ -522,12 +525,15 @@ main(int    argc,
     cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
     cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
 
+    /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
+    xml_nsctx_namespace_netconf_default(h);
+
     /* Add (hardcoded) netconf features in case ietf-netconf loaded here
      * Otherwise it is loaded in netconf_module_load below
      */
     if (netconf_module_features(h) < 0)
 	goto done;
-
+    
     /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;
