@@ -974,7 +974,7 @@ yang2cli(clicon_handle      h,
     /* Traverse YANG, loop through all modules and generate CLI */
     ymod = NULL;
     while ((ymod = yn_each(yspec, ymod)) != NULL)
-	if (yang2cli_stmt(h, ymod, gt, 0, state, cb, show_tree) < 0)
+	if (yang2cli_stmt(h, ymod, gt, 0, state, show_tree, cb) < 0)
 	    goto done;
     if (printgen)
 	clicon_log(LOG_NOTICE, "%s: Generated CLI spec:\n%s", __FUNCTION__, cbuf_get(cb));
