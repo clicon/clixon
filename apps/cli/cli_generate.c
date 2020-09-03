@@ -847,7 +847,7 @@ yang2cli_list(clicon_handle      h,
     }
     cprintf(cb, "%*s}\n", level*3, "");
 	if (show_tree == 1) {
-		cprintf(cd, ")");
+		cprintf(cb, ")");
 	} 
     retval = 0;
   done:
