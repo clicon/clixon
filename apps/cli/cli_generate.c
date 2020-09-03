@@ -669,7 +669,6 @@ yang2cli_leaf(clicon_handle h,
 	if (show_tree == 0) {
 		if (yang2cli_var(h, ys, helptext, cb) < 0)
 			goto done;
-		}
 		else
 		if (yang2cli_var(h, ys, helptext, cb) < 0)
 			goto done;
