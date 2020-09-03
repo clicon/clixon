@@ -661,18 +661,20 @@ yang2cli_leaf(clicon_handle h,
     }
     cprintf(cb, "%*s", level*3, "");
     if (gt == GT_VARS|| gt == GT_ALL || gt == GT_HIDE){
-	cprintf(cb, "%s", yang_argument_get(ys));
-	if (helptext)
-	    cprintf(cb, "(\"%s\")", helptext);
-	cprintf(cb, " ");
-	//cprintf(cb, "[");
-	if (show_tree == 0) {
-		if (yang2cli_var(h, ys, helptext, cb) < 0)
-			goto done;
-		else
-		if (yang2cli_var(h, ys, helptext, cb) < 0)
-			goto done;
+		cprintf(cb, "%s", yang_argument_get(ys));
+		if (helptext)
+			cprintf(cb, "(\"%s\")", helptext);
+		cprintf(cb, " ");
+		//cprintf(cb, "[");
+		if (show_tree == 0) 
+			if (yang2cli_var(h, ys, helptext, cb) < 0)
+				goto done;
 	}
+	else
+		if (show_tree == 0) 
+			if(yang2cli_var(h, ys, helptext, cb) < 0))
+				goto done;
+
 	//cprintf(cb, "]");
     if (callback){
 	if (cli_callback_generate(h, ys, cb) < 0)
