@@ -628,12 +628,13 @@ yang2cli_var(clicon_handle h,
 }
 
 /*! Generate CLI code for Yang leaf statement
- * @param[in]  h     	 Clixon handle
- * @param[in]  ys    	 Yang statement
- * @param[in]  gt    	 CLI Generate style 
- * @param[in]  level 	 Indentation level
- * @param[in]  callback  If set, include a "; cli_set()" callback, otherwise not
- * @param[in]  show_tree Is tree for show cli command
+ * @param[in]  h     	   Clixon handle
+ * @param[in]  ys    	   Yang statement
+ * @param[in]  gt    	   CLI Generate style 
+ * @param[in]  level 	   Indentation level
+ * @param[in]  callback    If set, include a "; cli_set()" callback, otherwise not
+ * @param[in]  show_tree   Is tree for show cli command
+ * @param[in]  key_leaf    Is leaf in a key in a list module
  * @param[out] cb  Buffer where cligen code is written
  */
 static int
@@ -643,6 +644,7 @@ yang2cli_leaf(clicon_handle h,
 	      int           level,
 	      int           callback,
 		  int			show_tree,
+		  int 			key_leaf,
 	      cbuf         *cb)
 {
     yang_stmt    *yd;  /* description */
@@ -666,12 +668,12 @@ yang2cli_leaf(clicon_handle h,
 			cprintf(cb, "(\"%s\")", helptext);
 		cprintf(cb, " ");
 		//cprintf(cb, "[");
-		if (show_tree == 0) 
+		if ((show_tree == 0) || (key_leaf == 1))
 			if (yang2cli_var(h, ys, helptext, cb) < 0)
 				goto done;
 	}
 	else
-		if (show_tree == 0) 
+		if ((show_tree == 0) || (key_leaf == 1))
 			if(yang2cli_var(h, ys, helptext, cb) < 0)
 				goto done;
 
@@ -775,6 +777,9 @@ yang2cli_list(clicon_handle      h,
     char         *helptext = NULL;
     char         *s;
 
+	if (show_tree == 1) {
+		cprintf(cb, "(");
+	}
     cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
 	if ((helptext = strdup(yang_argument_get(yd))) == NULL){
@@ -785,6 +790,24 @@ yang2cli_list(clicon_handle      h,
 	    *s = '\0';
 	cprintf(cb, "(\"%s\")", helptext);
     }
+	if (show_tree == 1) {
+		if (callback){
+			if (cli_callback_generate(h, ys, cb) < 0)
+	    		goto done;
+			cprintf(cb, ";\n");
+    	}
+		cprintf(cb, "|");
+		cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
+		if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
+			if ((helptext = strdup(yang_argument_get(yd))) == NULL){
+				clicon_err(OE_UNIX, errno, "strdup");
+				goto done;
+			}
+			if ((s = strstr(helptext, "\n\n")) != NULL)
+				*s = '\0';
+			cprintf(cb, "(\"%s\")", helptext);
+    	}
+	}
     /* Loop over all key variables */
     cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;
@@ -825,6 +848,9 @@ yang2cli_list(clicon_handle      h,
 	    goto done;
     }
     cprintf(cb, "%*s}\n", level*3, "");
+	if (show_tree == 1) {
+		cprintf(cd, ")");
+	} 
     retval = 0;
   done:
     if (helptext)
