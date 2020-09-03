@@ -325,7 +325,6 @@ autocli_start(clicon_handle h,
     cprintf(set_treename, "set");
 	if (autocli_tree(h, cbuf_get(set_treename), gt, 0, printgen, 0) < 0)
 	    goto done;
-    }
 
     /* The tree name is by default @datamodelshow but can be changed by option (why would one do that?) */
     cprintf(show_treename, "%s", clicon_cli_model_treename(h));
