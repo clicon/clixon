@@ -791,11 +791,9 @@ yang2cli_list(clicon_handle      h,
 	cprintf(cb, "(\"%s\")", helptext);
     }
 	if (show_tree == 1) {
-		if (callback){
-			if (cli_callback_generate(h, ys, cb) < 0)
-	    		goto done;
-			cprintf(cb, ";\n");
-    	}
+		if (cli_callback_generate(h, ys, cb) < 0)
+			goto done;
+		cprintf(cb, ";\n");
 		cprintf(cb, "|");
 		cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
 		if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
