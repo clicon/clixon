@@ -770,14 +770,14 @@ cli_show_auto1(clicon_handle h,
 	    break;
 	case FORMAT_TEXT:
 		ys_keyword = yang_keyword_get(xml_spec(xp));
-		if (ys_keyword == Y_LIST) 
+		if (ys_keyword == Y_LIST)
 			xp_helper = xml_child_i(xml_parent(xp), i);
 		else
 			xp_helper = xp;
 
 		for (; i < xml_child_nr(xml_parent(xp)) ; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
 			xml2txt_cb(stdout, xp_helper, cligen_output);  /* tree-formed text */
-			if (ys_keyword != Y_LIST) 
+			if (ys_keyword != Y_LIST)
 				break;
 		}
 	    break;
