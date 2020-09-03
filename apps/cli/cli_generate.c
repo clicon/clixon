@@ -826,7 +826,7 @@ yang2cli_list(clicon_handle      h,
 	 */
 	if (yang2cli_leaf(h, yleaf,
 			  (gt==GT_VARS||gt==GT_HIDE)?GT_NONE:gt, level+1, 
-			  cvec_next(cvk, cvi)?0:1, show_tree, cb) < 0)
+			  cvec_next(cvk, cvi)?0:1, show_tree, 1, cb) < 0)
 	    goto done;
     }
 
@@ -947,7 +947,7 @@ yang2cli_stmt(clicon_handle h,
 	    break;
 	case Y_LEAF_LIST:
 	case Y_LEAF:
-	    if (yang2cli_leaf(h, ys, gt, level, 1, show_tree, cb) < 0)
+	    if (yang2cli_leaf(h, ys, gt, level, 1, show_tree, 0, cb) < 0)
 		goto done;
 	    break;
 	case Y_CASE:
