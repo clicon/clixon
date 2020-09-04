@@ -101,6 +101,47 @@
 /* Size of json read buffer when reading from file*/
 #define BUFLEN 1024
 
+/*! Resolve a grouping name from a module, includes looking in submodules
+ */
+static yang_stmt *
+ys_grouping_module_resolve(yang_stmt *ymod,
+			   yang_stmt *yspec,
+			   char      *name)
+{
+    yang_stmt *yinc;
+    yang_stmt *ysubm;
+    yang_stmt *yrealmod = NULL;
+    yang_stmt *ygrouping = NULL;
+    char      *submname;
+
+    /* Find grouping from own sub/module */
+    if ((ygrouping = yang_find(ymod, Y_GROUPING, name)) != NULL)
+	goto done;
+    /* Find top-level module */
+    if (ys_real_module(ymod, &yrealmod) < 0)
+	goto done;
+    if (yrealmod == ymod) /* skip if module, continue if submodule */
+	goto done;
+    /* Find grouping from real module */
+    if ((ygrouping = yang_find(yrealmod, Y_GROUPING, name)) != NULL)
+	goto done;
+    /* Find grouping from sub-modules */
+    yinc = NULL;
+    while ((yinc = yn_each(yrealmod, yinc)) != NULL){
+	if (yang_keyword_get(yinc) != Y_INCLUDE)
+	    continue;
+	submname = yang_argument_get(yinc);		    
+	if ((ysubm = yang_find_module_by_name(yspec, submname)) == NULL)
+	    continue;
+	if (ysubm == ymod)
+	    continue;
+	if ((ygrouping = yang_find(ysubm, Y_GROUPING, name)) != NULL)
+	    break;
+    }
+ done:
+    return ygrouping;
+}
+
 /*! Resolve a grouping name from a point in the yang tree 
  * @param[in]  ys         Yang statement of "uses" statement doing the lookup
  * @param[in]  prefix     Prefix of grouping to look for
@@ -110,32 +151,41 @@
  * @retval    -1          Error, with clicon_err called
  */
 static int
-ys_grouping_resolve(yang_stmt  *ys, 
+ys_grouping_resolve(yang_stmt  *yuses, 
 		    char       *prefix, 
 		    char       *name,
 		    yang_stmt **ygrouping0)
 {
     int             retval = -1;
-    yang_stmt      *ymodule;
+    yang_stmt      *ymod;
     yang_stmt      *ygrouping = NULL;
-    yang_stmt      *yn;
+    yang_stmt      *yp;
+    yang_stmt      *ys;
+    yang_stmt      *yspec;
+    enum rfc_6020   keyw;
 
+    yspec = ys_spec(yuses);
     /* find the grouping associated with argument and expand(?) */
     if (prefix){ /* Go to top and find import that matches */
-	if ((ymodule = yang_find_module_by_prefix(ys, prefix)) != NULL)
-	    ygrouping = yang_find(ymodule, Y_GROUPING, name);
+	if ((ymod = yang_find_module_by_prefix(yuses, prefix)) != NULL)
+	    ygrouping = ys_grouping_module_resolve(ymod, yspec, name);
     }
-    else
+    else { 
+	ys = yuses; 	    /* Check upwards in hierarchy for matching groupings */
 	while (1){
-	    /* Check upwards in hierarchy for matching groupings */
-	    if ((yn = yang_parent_get(ys)) == NULL || yang_keyword_get(yn) == Y_SPEC)
+	    if ((yp = yang_parent_get(ys)) == NULL)
 		break;
-	    /* Here find grouping */
-	    if ((ygrouping = yang_find(yn, Y_GROUPING, name)) != NULL)
+	    if ((keyw = yang_keyword_get(yp)) == Y_SPEC)
 		break;
-	    /* Proceed to next level */
-	    ys = (yang_stmt*)yn;
+	    else if (keyw == Y_MODULE || keyw == Y_SUBMODULE){ /* Try submodules */
+		ygrouping = ys_grouping_module_resolve(yp, yspec, name);
+		break;
+	    }
+	    else if ((ygrouping = yang_find(yp, Y_GROUPING, name)) != NULL) /* Here find grouping */
+		break;
+	    ys = (yang_stmt*)yp; 	    /* Proceed to next level */
 	}
+    }
     *ygrouping0 = ygrouping;
     retval = 0;
     // done:
@@ -352,7 +402,6 @@ yang_expand_grouping(yang_stmt *yn)
 	    yp = yn;
 	    do {
 		if (yp == ygrouping){
-
 		    clicon_err(OE_YANG, EFAULT, "Yang use of grouping %s in module %s is defined inside the grouping (recursion), see RFC 7950 Sec 7.12: A grouping MUST NOT reference itself",
 			       yang_argument_get(ys),
 			       yang_argument_get(ys_module(yn))

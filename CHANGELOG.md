@@ -60,6 +60,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: YANG `uses` statements in sub-modules did not search for `grouping` statements in other submodules of the module it belongs to.
 * Fixed: [CLI crash if error-info is empty #134](https://github.com/clicon/clixon/issues/134)
 * Fixed: [copy-config's RPC cxobj parameter does not contain namespace #131](https://github.com/clicon/clixon/issues/131)
   * See also "Netconf as default namespace has been disabled by default" above
