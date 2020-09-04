@@ -40,11 +40,23 @@ Users may have to change how they access the system
   * The fix of [Cannot create or modify NACM data node access rule with path using JSON encoding #129](https://github.com/clicon/clixon/issues/129) leads that data-node paths, eg `<rule>...<path>ex:table/ex:parameter</path></rule>` instance-identifiers are restricted to canonical namespace identifiers for both XML and JSON encoding. That is, if a symbol (such as `table` above) is a symbol in a module with prefix `ex`, another prefix cannot be used, even though defined with a `xmlns:` rule.
 
 * New clixon-config@2020-08-17.yang revision
-  * Added options for Restconf evhtp setting default bind socket address and ports `CLICON_RESTCONF_IPV4_ADDR`, `CLICON_RESTCONF_IPV6_ADDR`, `CLICON_RESTCONF_HTTP_PORT`, `CLICON_RESTCONF_HTTPS_PORT`, `CLICON_NAMESPACE_NETCONF_DEFAULT`
+  * Added options for Restconf evhtp setting default bind socket address and ports:
+    * `CLICON_RESTCONF_IPV4_ADDR`, `CLICON_RESTCONF_IPV6_ADDR`, `CLICON_RESTCONF_HTTP_PORT`, `CLICON_RESTCONF_HTTPS_PORT`
+  * Added option for using NETCONF default namespace: `CLICON_NAMESPACE_NETCONF_DEFAULT`
+  * Added options for better handling of long and multi-line CLI help strings:
+    * `CLICON_CLI_HELPSTRING_TRUNCATE`, `CLICON_CLI_HELPSTRING_LINES`
 
 ### C/CLI-API changes on existing features
 
 Developers may need to change their code
+
+### Minor changes
+
+* Changed CLI help strings behaviour on query (?) for long and multi-line help strings.
+  * If multiple strings (eg "\n" in text), indent before each new line
+  * Primarily for auto-cli where long help strings are generated from YANG descriptions, but applies as well for manual long/multi-line help strings
+  * New config option: `CLICON_CLI_HELPSTRING_TRUNCATE`: Truncate help string on right margin mode
+  * New config option: `CLICON_CLI_HELPSTRING_LINES`: Limit of number of help strings to show
 
 ### Corrected Bugs
 

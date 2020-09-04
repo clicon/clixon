@@ -1317,5 +1317,5 @@ cli_help(clicon_handle h, cvec *vars, cvec *argv)
     parse_tree   *pt;
 
     pt = cligen_tree_active_get(ch);
-    return cligen_help(stdout, pt);
+    return cligen_help(ch, stdout, pt);
 }

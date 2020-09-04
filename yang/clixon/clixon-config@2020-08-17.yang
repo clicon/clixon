@@ -46,7 +46,8 @@ module clixon-config {
 	description
 	    "Added: CLICON_RESTCONF_IPV4_ADDR, CLICON_RESTCONF_IPV6_ADDR, 
                     CLICON_RESTCONF_HTTP_PORT, CLICON_RESTCONF_HTTPS_PORT
-                    CLICON_NAMESPACE_NETCONF_DEFAULT";
+                    CLICON_NAMESPACE_NETCONF_DEFAULT, 
+                    CLICON_CLI_HELPSTRING_TRUNCATE, CLICON_CLI_HELPSTRING_LINES";
     }
     revision 2020-06-17 {
 	description
@@ -585,6 +586,22 @@ module clixon-config {
                  If 0, the growth continues with quadratic growth.
                  See CLICON_CLI_BUF_THRESHOLD";
 	}
+	leaf CLICON_CLI_HELPSTRING_TRUNCATE {
+	    type boolean;
+	    default false;
+	    description
+		"CLIgen help string on query (?): Truncate help string on right margin mode
+                 This only applies if you have long help strings, such as when generating them from a
+                 spec such as the autocli";
+	}
+	leaf CLICON_CLI_HELPSTRING_LINES {
+	    type int32;
+	    default 0;
+	    description
+		"CLIgen help string on query (?) limit of number of lines to show, 0 means unlimited.
+                 This only applies if you have multi-line help strings, such as when generating 
+                 from a spec, such as in the autocli.";
+	}
 	leaf CLICON_SOCK_FAMILY {
 	    type string;
 	    default "UNIX";
@@ -712,6 +729,17 @@ module clixon-config {
                  lists, therefore it is recommended to enable it during development and debugging
                  but disable it in production, until this has been resolved.";
 	}
+	leaf CLICON_NAMESPACE_NETCONF_DEFAULT {
+	    type boolean;
+	    default false;
+	    description
+		"Undefine if you want to ensure strict namespace assignment on all netconf
+                 and XML statements according to the standard RFC 6241.
+                 If defined, top-level rpc calls need not have namespaces (eg using xmlns=<ns>) 
+                 since the default NETCONF namespace will be assumed. (This is not standard).
+                 See rfc6241 3.1: urn:ietf:params:xml:ns:netconf:base:1.0.";
+
+	}
 	leaf CLICON_STARTUP_MODE {
 	    type startup_mode;
 	    description "Which method to boot/start clicon backend";
@@ -836,17 +864,5 @@ module clixon-config {
                          data to store before dropping. 0 means no retention";
 
 	}
-	leaf CLICON_NAMESPACE_NETCONF_DEFAULT {
-	    type boolean;
-	    default false;
-	    description
-		"Undefine if you want to ensure strict namespace assignment on all netconf
-                 and XML statements according to the standard RFC 6241.
-                 If defined, top-level rpc calls need not have namespaces (eg using xmlns=<ns>) 
-                 since the default NETCONF namespace will be assumed. (This is not standard).
-                 See rfc6241 3.1: urn:ietf:params:xml:ns:netconf:base:1.0.";
-
-	}
     }
-
 }

@@ -392,6 +392,7 @@ main(int    argc,
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
     int            dbg=0;
+    int            nr;
     
     /* Defaults */
     once = 0;
@@ -560,9 +561,8 @@ main(int    argc,
 
     /* Init row numbers for raw terminals */
     if (clicon_option_exists(h, "CLICON_CLI_LINES_DEFAULT")){
-	int rows;
-	rows = clicon_option_int(h, "CLICON_CLI_LINES_DEFAULT");
-	cligen_terminal_rows_set(cli_cligen(h), rows);
+	nr = clicon_option_int(h, "CLICON_CLI_LINES_DEFAULT");
+	cligen_terminal_rows_set(cli_cligen(h), nr);
     }
     
     if (clicon_yang_regexp(h) == REGEXP_LIBXML2){
@@ -575,6 +575,12 @@ main(int    argc,
 #endif
     }
 
+    /* CLIgen help string setting for long and multi-line strings */
+    nr = clicon_option_int(h, "CLICON_CLI_HELPSTRING_TRUNCATE");
+    cligen_helpstring_truncate_set(cli_cligen(h), nr);
+    nr = clicon_option_int(h, "CLICON_CLI_HELPSTRING_LINES");
+    cligen_helpstring_lines_set(cli_cligen(h), nr);
+    
     /* Setup signal handlers */
     cli_signal_init(h);
 
