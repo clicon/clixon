@@ -88,7 +88,7 @@
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:o:"
+#define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:ro:"
 
 /*! Convert FCGI parameters to clixon runtime data
  * @param[in]  h     Clixon handle
@@ -178,6 +178,7 @@ usage(clicon_handle h,
 	    "\t-y <file>\t  Load yang spec file (override yang main module)\n"
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
+	    "\t-r \t\t  Do not drop privileges if run as root\n"
 	    "\t-o \"<option>=<value>\" Give configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_restconf_dir(h)
@@ -213,7 +214,8 @@ main(int    argc,
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
     int            dbg = 0;
-    
+    int            drop_priveleges = 1;
+
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
 
@@ -301,6 +303,10 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
+	case 'r':{ /* Do not drop privileges if run as root */
+	    drop_priveleges = 0;
+	    break;
+	}
 	case 'o':{ /* Configuration option */
 	    char          *val;
 	    if ((val = index(optarg, '=')) == NULL)
@@ -423,21 +429,17 @@ main(int    argc,
 	clicon_err(OE_CFG, errno, "FCGX_OpenSocket");
 	goto done;
     }
-#if 1
-    {
     /* Change group of fcgi sock fronting reverse proxy to WWWUSER, the effective group is clicon
      * which is backend. */
-	gid_t wgid = -1;
-	if (group_name2gid(WWWUSER, &wgid) < 0){
-	    clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.", WWWUSER);
-	    goto done;
-	}
-	if (chown(sockpath, -1, wgid) < 0){
-	    clicon_err(OE_CFG, errno, "chown");
-	    goto done;
-	}
+    gid_t wgid = -1;
+    if (group_name2gid(WWWUSER, &wgid) < 0){
+	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.", WWWUSER);
+	goto done;
     }
-#endif
+    if (chown(sockpath, -1, wgid) < 0){
+	clicon_err(OE_CFG, errno, "chown");
+	goto done;
+    }
     if (clicon_socket_set(h, sock) < 0)
 	goto done;
     /* umask settings may interfer: we want group to write: this is 774 */
@@ -445,9 +447,11 @@ main(int    argc,
 	clicon_err(OE_UNIX, errno, "chmod");
 	goto done;
     }
-    /* Drop privileges to WWWUSER if started as root */
-    if (restconf_drop_privileges(h, WWWUSER) < 0)
-	goto done;
+    if (drop_priveleges){
+	/* Drop privileges to WWWUSER if started as root */
+	if (restconf_drop_privileges(h, WWWUSER) < 0)
+	    goto done;
+    }
     if (FCGX_InitRequest(req, sock, 0) != 0){
 	clicon_err(OE_CFG, errno, "FCGX_InitRequest");
 	goto done;

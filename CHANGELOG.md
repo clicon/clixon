@@ -52,6 +52,7 @@ Developers may need to change their code
 
 ### Minor changes
 
+* Added `-r` command-line option to restconf daemon to NOT lower privileges to wwwuser if started from root.
 * Changed CLI help strings behaviour on query (?) for long and multi-line help strings.
   * If multiple strings (eg "\n" in text), indent before each new line
   * Primarily for auto-cli where long help strings are generated from YANG descriptions, but applies as well for manual long/multi-line help strings

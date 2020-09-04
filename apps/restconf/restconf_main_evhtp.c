@@ -80,7 +80,7 @@
 #include "restconf_root.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:o:P:sc"
+#define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:ro:scP:"
 
 /* See see listen(5) */
 #define SOCKET_LISTEN_BACKLOG 16
@@ -589,6 +589,7 @@ usage(clicon_handle h,
 	    "\t-y <file>\t  Load yang spec file (override yang main module)\n"
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
+	    "\t-r \t\t  Do not drop privileges if run as root\n"
 	    "\t-o <option>=<value> Set configuration option overriding config file (see clixon-config.yang)\n"
 	    "\t-s\t\t  SSL server, https\n"
 	    "\t-c\t\t  SSL verify client certs\n"
@@ -629,6 +630,7 @@ main(int    argc,
     char              *restconf_ipv6_addr = NULL;
     int                i;
     struct evhtp_handle *eh = &_EVHTP_HANDLE;
+    int                  drop_priveleges = 1;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -724,6 +726,10 @@ main(int    argc,
 		usage(h, argv0);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
+	case 'r':{ /* Do not drop privileges if run as root */
+	    drop_priveleges = 0;
+	    break;
+	}
 	case 'o':{ /* Configuration option */
 	    char          *val;
 	    if ((val = index(optarg, '=')) == NULL)
@@ -877,9 +883,11 @@ main(int    argc,
 	if (cb)
 	    cbuf_free(cb);
     }
-    /* Drop privileges to WWWUSER if started as root */
-    if (restconf_drop_privileges(h, WWWUSER) < 0)
-	goto done;
+    if (drop_priveleges){
+	/* Drop privileges to WWWUSER if started as root */
+	if (restconf_drop_privileges(h, WWWUSER) < 0)
+	    goto done;
+    }
 
     /* Init cligen buffers */
     cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
