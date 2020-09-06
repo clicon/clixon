@@ -804,7 +804,7 @@ yang2cli_list(clicon_handle      h,
 	if (show_tree == 1) {
 		if (cvec_next(cvk, cvi)?0:1) {
 			if (cli_callback_generate(h, ys, cb) < 0)
-    		goto done;
+goto done;
 			cprintf(cb, ";\n");
 			cprintf(cb, "{\n");
 		}
