@@ -630,7 +630,7 @@ yang2cli_var(clicon_handle h,
 /*! Generate CLI code for Yang leaf statement
  * @param[in]  h     	   Clixon handle
  * @param[in]  ys    	   Yang statement
- * @param[in]  gt    	   CLI Generate style 
+ * @param[in]  gt    	   CLI Generate style
  * @param[in]  level 	   Indentation level
  * @param[in]  callback    If set, include a "; cli_set()" callback, otherwise not
  * @param[in]  show_tree   Is tree for show cli command
@@ -692,7 +692,7 @@ yang2cli_leaf(clicon_handle h,
 /*! Generate CLI code for Yang container statement
  * @param[in]  h     	 Clixon handle
  * @param[in]  ys    	 Yang statement
- * @param[in]  gt    	 CLI Generate style 
+ * @param[in]  gt    	 CLI Generate style
  * @param[in]  level 	 Indentation level
  * @param[in]  state 	 Include syntax for state not only config
  * @param[in]  show_tree Is tree for show cli command
@@ -750,7 +750,7 @@ yang2cli_container(clicon_handle h,
 /*! Generate CLI code for Yang list statement
  * @param[in]  h     	 Clixon handle
  * @param[in]  ys    	 Yang statement
- * @param[in]  gt    	 CLI Generate style 
+ * @param[in]  gt    	 CLI Generate style
  * @param[in]  level 	 Indentation level
  * @param[in]  state 	 Include syntax for state not only config
  * @param[in]  show_tree Is tree for show cli command
@@ -785,7 +785,7 @@ yang2cli_list(clicon_handle      h,
 			*s = '\0';
 		cprintf(cb, "(\"%s\")", helptext);
     }
-	
+
     /* Loop over all key variables */
     cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;
@@ -804,7 +804,7 @@ yang2cli_list(clicon_handle      h,
 	if (show_tree == 1) {
 		if (cvec_next(cvk, cvi)?0:1) {
 			if (cli_callback_generate(h, ys, cb) < 0)
-	    		goto done;
+    		goto done;
 			cprintf(cb, ";\n");
 			cprintf(cb, "{\n");
 		}
@@ -848,7 +848,7 @@ yang2cli_list(clicon_handle      h,
  *
  * @param[in]  h     	 Clixon handle
  * @param[in]  ys    	 Yang statement
- * @param[in]  gt    	 CLI Generate style 
+ * @param[in]  gt    	 CLI Generate style
  * @param[in]  level 	 Indentation level
  * @param[in]  state 	 Include syntax for state not only config
  * @param[in]  show_tree Is tree for show cli command
@@ -899,7 +899,7 @@ yang2cli_choice(clicon_handle h,
 /*! Generate CLI code for Yang statement
  * @param[in]  h     	 Clixon handle
  * @param[in]  ys    	 Yang statement
- * @param[in]  gt    	 CLI Generate style 
+ * @param[in]  gt    	 CLI Generate style
  * @param[in]  level 	 Indentation level
  * @param[in]  state 	 Include syntax for state not only config
  * @param[in]  show_tree Is tree for show cli command
