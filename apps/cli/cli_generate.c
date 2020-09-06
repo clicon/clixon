@@ -667,17 +667,15 @@ yang2cli_leaf(clicon_handle h,
 		if (helptext)
 			cprintf(cb, "(\"%s\")", helptext);
 		cprintf(cb, " ");
-		//cprintf(cb, "[");
-		//if ((show_tree == 0) || (key_leaf == 1))
+		if ((show_tree == 0) || (key_leaf == 1))
 			if (yang2cli_var(h, ys, helptext, cb) < 0)
 				goto done;
 	}
 	else
-		//if ((show_tree == 0) || (key_leaf == 1))
+		if ((show_tree == 0) || (key_leaf == 1))
 			if(yang2cli_var(h, ys, helptext, cb) < 0)
 				goto done;
 
-	//cprintf(cb, "]");
     if (callback){
 	if (cli_callback_generate(h, ys, cb) < 0)
 	    goto done;
@@ -777,39 +775,21 @@ yang2cli_list(clicon_handle      h,
     char         *helptext = NULL;
     char         *s;
 
-	/*if (show_tree == 1) {
-		cprintf(cb, "(");
-	}*/
     cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
-	if ((helptext = strdup(yang_argument_get(yd))) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
-	}
-	if ((s = strstr(helptext, "\n\n")) != NULL)
-	    *s = '\0';
-	cprintf(cb, "(\"%s\")", helptext);
+		if ((helptext = strdup(yang_argument_get(yd))) == NULL){
+			clicon_err(OE_UNIX, errno, "strdup");
+			goto done;
+		}
+		if ((s = strstr(helptext, "\n\n")) != NULL)
+			*s = '\0';
+		cprintf(cb, "(\"%s\")", helptext);
     }
-	/*
-	if (show_tree == 1) {
-		cprintf(cb, "|");
-		cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
-		if (yd != NULL) {
-			if (helptext == NULL) {
-				clicon_err(OE_UNIX, errno, "strdup");
-				goto done;
-			}
-			if ((s = strstr(helptext, "\n\n")) != NULL)
-				*s = '\0';
-			cprintf(cb, "(\"%s\")", helptext);
-    	}
-	}
-	*/
+	
     /* Loop over all key variables */
     cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;
-	//if (gt != GT_ALL)
-	//	cprintf(cb, "[");
+
     /* Iterate over individual keys  */
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	keyname = cv_string_get(cvi);
@@ -821,6 +801,15 @@ yang2cli_list(clicon_handle      h,
 	/* Print key variable now, and skip it in loop below 
 	   Note, only print callback on last statement
 	 */
+	if (show_tree == 1) {
+		if (cvec_next(cvk, cvi)?0:1) {
+			if (cli_callback_generate(h, ys, cb) < 0)
+	    		goto done;
+			cprintf(cb, ";\n");
+			cprintf(cb, "{\n");
+		}
+	}
+
 	if (yang2cli_leaf(h, yleaf,
 			  (gt==GT_VARS||gt==GT_HIDE)?GT_NONE:gt, level+1, 
 			  cvec_next(cvk, cvi)?0:1, show_tree, 1, cb) < 0)
@@ -845,9 +834,9 @@ yang2cli_list(clicon_handle      h,
 	    goto done;
     }
     cprintf(cb, "%*s}\n", level*3, "");
-	/*if (show_tree == 1) {
-		cprintf(cb, ")");
-	}*/
+	if (show_tree == 1) {
+		cprintf(cb, "%*s}\n", level*3, "");
+	}
     retval = 0;
   done:
     if (helptext)
