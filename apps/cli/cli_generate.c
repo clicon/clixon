@@ -628,11 +628,11 @@ yang2cli_var(clicon_handle h,
 }
 
 /*! Generate CLI code for Yang leaf statement
- * @param[in]  h     	   Clixon handle
- * @param[in]  ys    	   Yang statement
- * @param[in]  gt    	   CLI Generate style
- * @param[in]  level 	   Indentation level
- * @param[in]  callback    If set, include a "; cli_set()" callback, otherwise not
+ * @param[in]  h     Clixon handle
+ * @param[in]  ys    Yang statement
+ * @param[in]  gt    CLI Generate style 
+ * @param[in]  level Indentation level
+ * @param[in]  callback  If set, include a "; cli_set()" callback, otherwise not
  * @param[in]  show_tree   Is tree for show cli command
  * @param[in]  key_leaf    Is leaf in a key in a list module
  * @param[out] cb  Buffer where cligen code is written
@@ -643,8 +643,8 @@ yang2cli_leaf(clicon_handle h,
 	      enum genmodel_type gt,
 	      int           level,
 	      int           callback,
-		  int			show_tree,
-		  int 			key_leaf,
+	      int	    show_tree,
+	      int 	    key_leaf,
 	      cbuf         *cb)
 {
     yang_stmt    *yd;  /* description */
@@ -663,18 +663,20 @@ yang2cli_leaf(clicon_handle h,
     }
     cprintf(cb, "%*s", level*3, "");
     if (gt == GT_VARS|| gt == GT_ALL || gt == GT_HIDE){
-		cprintf(cb, "%s", yang_argument_get(ys));
-		if (helptext)
-			cprintf(cb, "(\"%s\")", helptext);
-		cprintf(cb, " ");
-		if ((show_tree == 0) || (key_leaf == 1))
-			if (yang2cli_var(h, ys, helptext, cb) < 0)
-				goto done;
+	cprintf(cb, "%s", yang_argument_get(ys));
+	if (helptext)
+	    cprintf(cb, "(\"%s\")", helptext);
+	cprintf(cb, " ");
+	if ((show_tree == 0) || (key_leaf == 1)) {
+	if (yang2cli_var(h, ys, helptext, cb) < 0)
+	    goto done;
 	}
-	else
-		if ((show_tree == 0) || (key_leaf == 1))
-			if(yang2cli_var(h, ys, helptext, cb) < 0)
-				goto done;
+    }
+    else
+	if ((show_tree == 0) || (key_leaf == 1)) {
+	if (yang2cli_var(h, ys, helptext, cb) < 0)
+	    goto done;
+	}
 
     if (callback){
 	if (cli_callback_generate(h, ys, cb) < 0)
@@ -690,13 +692,13 @@ yang2cli_leaf(clicon_handle h,
 }
 
 /*! Generate CLI code for Yang container statement
- * @param[in]  h     	 Clixon handle
- * @param[in]  ys    	 Yang statement
- * @param[in]  gt    	 CLI Generate style
- * @param[in]  level 	 Indentation level
- * @param[in]  state 	 Include syntax for state not only config
+ * @param[in]  h     Clixon handle
+ * @param[in]  ys    Yang statement
+ * @param[in]  gt    CLI Generate style 
+ * @param[in]  level Indentation level
+ * @param[in]  state Include syntax for state not only config
  * @param[in]  show_tree Is tree for show cli command
- * @param[out] cb  		 Buffer where cligen code is written
+ * @param[out] cb  Buffer where cligen code is written
  */
 static int
 yang2cli_container(clicon_handle h, 
@@ -704,7 +706,7 @@ yang2cli_container(clicon_handle h,
 		   enum genmodel_type gt,
 		   int           level,
 		   int           state,
-		   int 			 show_tree,
+		   int 	         show_tree,
 		   cbuf         *cb)
 {
     yang_stmt    *yc;
@@ -748,13 +750,13 @@ yang2cli_container(clicon_handle h,
 }
 
 /*! Generate CLI code for Yang list statement
- * @param[in]  h     	 Clixon handle
- * @param[in]  ys    	 Yang statement
- * @param[in]  gt    	 CLI Generate style
- * @param[in]  level 	 Indentation level
- * @param[in]  state 	 Include syntax for state not only config
+ * @param[in]  h     Clixon handle
+ * @param[in]  ys    Yang statement
+ * @param[in]  gt    CLI Generate style 
+ * @param[in]  level Indentation level
+ * @param[in]  state Include syntax for state not only config
  * @param[in]  show_tree Is tree for show cli command
- * @param[out] cb    	 Buffer where cligen code is written
+ * @param[out] cb    Buffer where cligen code is written
  */
 static int
 yang2cli_list(clicon_handle      h, 
@@ -762,7 +764,7 @@ yang2cli_list(clicon_handle      h,
 	      enum genmodel_type gt,
 	      int                level,
 	      int                state,
-		  int 				 show_tree,
+	      int 		 show_tree,
 	      cbuf              *cb)
 {
     yang_stmt    *yc;
@@ -777,19 +779,17 @@ yang2cli_list(clicon_handle      h,
 
     cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
-		if ((helptext = strdup(yang_argument_get(yd))) == NULL){
-			clicon_err(OE_UNIX, errno, "strdup");
-			goto done;
-		}
-		if ((s = strstr(helptext, "\n\n")) != NULL)
-			*s = '\0';
-		cprintf(cb, "(\"%s\")", helptext);
+	if ((helptext = strdup(yang_argument_get(yd))) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+	if ((s = strstr(helptext, "\n\n")) != NULL)
+	    *s = '\0';
+	cprintf(cb, "(\"%s\")", helptext);
     }
-
     /* Loop over all key variables */
     cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;
-
     /* Iterate over individual keys  */
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	keyname = cv_string_get(cvi);
@@ -804,7 +804,7 @@ yang2cli_list(clicon_handle      h,
 	if (show_tree == 1) {
 		if (cvec_next(cvk, cvi)?0:1) {
 			if (cli_callback_generate(h, ys, cb) < 0)
-goto done;
+				goto done;
 			cprintf(cb, ";\n");
 			cprintf(cb, "{\n");
 		}
@@ -846,13 +846,13 @@ goto done;
 
 /*! Generate CLI code for Yang choice statement
  *
- * @param[in]  h     	 Clixon handle
- * @param[in]  ys    	 Yang statement
- * @param[in]  gt    	 CLI Generate style
- * @param[in]  level 	 Indentation level
- * @param[in]  state 	 Include syntax for state not only config
+ * @param[in]  h     Clixon handle
+ * @param[in]  ys    Yang statement
+ * @param[in]  gt    CLI Generate style 
+ * @param[in]  level Indentation level
+ * @param[in]  state Include syntax for state not only config
  * @param[in]  show_tree Is tree for show cli command
- * @param[out] cb    	 Buffer where cligen code is written
+ * @param[out] cb    Buffer where cligen code is written
 @example
   choice interface-type {
          container ethernet { ... }
@@ -868,7 +868,7 @@ yang2cli_choice(clicon_handle h,
 		enum genmodel_type gt,
 		int           level,
 		int           state,
-		int 		  show_tree,
+		int 	      show_tree,
 		cbuf         *cb)
 {
     int           retval = -1;
@@ -897,13 +897,13 @@ yang2cli_choice(clicon_handle h,
 }
 
 /*! Generate CLI code for Yang statement
- * @param[in]  h     	 Clixon handle
- * @param[in]  ys    	 Yang statement
- * @param[in]  gt    	 CLI Generate style
- * @param[in]  level 	 Indentation level
- * @param[in]  state 	 Include syntax for state not only config
+ * @param[in]  h     Clixon handle
+ * @param[in]  ys    Yang statement
+ * @param[in]  gt    CLI Generate style 
+ * @param[in]  level Indentation level
+ * @param[in]  state Include syntax for state not only config
  * @param[in]  show_tree Is tree for show cli command
- * @param[out] cb    	 Buffer where cligen code is written
+ * @param[out] cb    Buffer where cligen code is writte
  */
 static int
 yang2cli_stmt(clicon_handle h, 
@@ -911,7 +911,7 @@ yang2cli_stmt(clicon_handle h,
 	      enum genmodel_type gt,
 	      int           level, 
 	      int           state,
-		  int 			show_tree,
+	      int 	    show_tree,
 	      cbuf         *cb)
 {
     yang_stmt    *yc;
@@ -954,13 +954,13 @@ yang2cli_stmt(clicon_handle h,
 }
 
 /*! Generate CLI code for Yang specification
- * @param[in]  h         Clixon handle
- * @param[in]  yspec     Yang specification
- * @param[in]  gt        CLI Generate style
- * @param[in]  printgen  Log generated CLIgen syntax
- * @param[in]  state     Also include state syntax
+ * @param[in]  h        Clixon handle
+ * @param[in]  yspec    Yang specification
+ * @param[in]  gt       CLI Generate style
+ * @param[in]  printgen Log generated CLIgen syntax
+ * @param[in]  state    Also include state syntax
  * @param[in]  show_tree Is tree for show cli command
- * @param[out] ptnew     CLIgen parse-tree
+ * @param[out] ptnew    CLIgen parse-tree
  *
  * Code generation styles:
  *    VARS: generate keywords for regular vars only not index
@@ -972,7 +972,7 @@ yang2cli(clicon_handle      h,
 	 enum genmodel_type gt,
 	 int                printgen,
 	 int                state,
-	 int 				show_tree,
+	 int 		    show_tree,
 	 parse_tree        *ptnew)
 {
     cbuf           *cb = NULL;
