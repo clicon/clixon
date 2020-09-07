@@ -260,8 +260,8 @@ autocli_tree(clicon_handle      h,
 	     char              *name,
 	     enum genmodel_type gt,
 	     int                state,
-	     int                printgen,
-             int                show_tree)
+	     int                printgen
+         int                show_tree)
 {
     int           retval = -1;
     parse_tree   *pt = NULL;  /* cli parse tree */
