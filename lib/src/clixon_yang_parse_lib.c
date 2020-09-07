@@ -1298,8 +1298,11 @@ yang_spec_load_dir(clicon_handle h,
 		char *nextbase = NULL; /* XXX suboptimal algorithm, could combione old/next/base */
 		if (filename2revision(dp[i+1].d_name, &nextbase, NULL) < 0)
 		    goto done;
-		if (nextbase && strcmp(base, nextbase) == 0)
+		if (nextbase && strcmp(base, nextbase) == 0){
+		    free(nextbase);
+		    nextbase = NULL;
 		    continue; /* same base: skip; */
+		}
 		if (nextbase)
 		    free(nextbase);
 	    }
