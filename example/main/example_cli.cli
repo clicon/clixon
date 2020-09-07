@@ -35,9 +35,6 @@ CLICON_MODE="example";
 CLICON_PROMPT="%U@%H> ";
 CLICON_PLUGIN="example_cli";
 
-# Translate variable "value" by incrementing its characters
-translate value (<value:string translate:incstr()>),cli_set("/clixon-example:translate/translate=0/value");
-
 # Note, when switching to PT, change datamodel to only @datamodel
 set @datamodel, cli_set();
 merge @datamodel, cli_merge();
@@ -49,12 +46,12 @@ commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
 delete("Delete a configuration item")  all("Delete whole candidate configuration"), delete_all("candidate");
 
-startup("Store running as startup config"), db_copy("running", "startup");
 no("Negate or remove") debug("Debugging parts of the system"), cli_debug_cli((int32)0);
 debug("Debugging parts of the system"), cli_debug_cli((int32)1);{
     level("Set debug level: 1..n") <level:int32>("Set debug level (0..n)"), cli_debug_backend();
 }
 copy("Copy and create a new object") {
+    running("Copy from running db")  startup("Copy to startup config"), db_copy("running", "startup");
     interface("Copy interface"){
 	(<name:string>|<name:string expand_dbvar("candidate","/ietf-interfaces:interfaces/interface=%s/name")>("name of interface to copy from")) to("Copy to interface") <toname:string>("Name of interface to copy to"), cli_copy_config("candidate","//interface[%s='%s']","urn:ietf:params:xml:ns:yang:ietf-interfaces","name","name","toname");
     }
