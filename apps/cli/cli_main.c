@@ -238,10 +238,10 @@ cli_interactive(clicon_handle h)
 
 /*! Generate one autocli clispec tree
  *
- * @param[in]  h         Clixon handle
- * @param[in]  name      Name of tree
- * @param[in]  gt        genmodel-type, ie HOW to generate the CLI
- * @param[in]  printgen  Print CLI syntax to stderr
+ * @param[in]  h        Clixon handle
+ * @param[in]  name     Name of tree
+ * @param[in]  gt       genmodel-type, ie HOW to generate the CLI
+ * @param[in]  printgen Print CLI syntax to stderr
  * @param[in]  show_tree Is tree for show cli command (1 - yes. 0 - no)
  *
  * Generate clispec (datamodel) from YANG dataspec and add to the set of cligen trees 
@@ -261,7 +261,7 @@ autocli_tree(clicon_handle      h,
 	     enum genmodel_type gt,
 	     int                state,
 	     int                printgen,
-         int                show_tree)
+             int                show_tree)
 {
     int           retval = -1;
     parse_tree   *pt = NULL;  /* cli parse tree */
