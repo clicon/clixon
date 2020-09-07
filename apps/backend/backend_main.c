@@ -810,6 +810,7 @@ main(int    argc,
     if (xmldb_exists(h, "running") != 1)
 	if (xmldb_create(h, "running") < 0)
 	    return -1;
+    xmldb_delete(h, "candidate");
     /* If startup fails, lib functions report invalidation info in a cbuf */
     if ((cbret = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");

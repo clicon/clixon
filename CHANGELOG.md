@@ -61,6 +61,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [xmldb_get0 returns invalid candidate on startup transaction callbacks #126](https://github.com/clicon/clixon/issues/126). Always clear candidate-db before db initialization.
 * Fixed: YANG `uses` statements in sub-modules did not search for `grouping` statements in other submodules of the module it belongs to.
 * Fixed: [CLI crash if error-info is empty #134](https://github.com/clicon/clixon/issues/134)
 * Fixed: [copy-config's RPC cxobj parameter does not contain namespace #131](https://github.com/clicon/clixon/issues/131)
