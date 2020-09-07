@@ -709,7 +709,7 @@ cli_show_auto1(clicon_handle h,
     char            *api_path = NULL;
     char            *prefix = NULL;
     enum rfc_6020    ys_keyword;
-    int 	     i = 0;
+    int		     i = 0;
 
     if (cvec_len(argv) < 3 || cvec_len(argv) > 4){
 	clicon_err(OE_PLUGIN, 0, "Usage: <api-path-fmt>* <database> <format> <prefix>. (*) generated.");
