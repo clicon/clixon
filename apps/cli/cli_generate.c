@@ -869,7 +869,7 @@ yang2cli_choice(clicon_handle h,
 		int           level,
 		int           state,
 		int 	      show_tree,
-		cbuf         *cb)
+    		cbuf         *cb)
 {
     int           retval = -1;
     yang_stmt    *yc;
@@ -903,7 +903,7 @@ yang2cli_choice(clicon_handle h,
  * @param[in]  level Indentation level
  * @param[in]  state Include syntax for state not only config
  * @param[in]  show_tree Is tree for show cli command
- * @param[out] cb    Buffer where cligen code is writte
+ * @param[out] cb    Buffer where cligen code is written
  */
 static int
 yang2cli_stmt(clicon_handle h, 
