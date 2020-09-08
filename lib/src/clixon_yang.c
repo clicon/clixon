@@ -2630,7 +2630,7 @@ yang_desc_schema_nodeid(yang_stmt    *yn,
     return retval;
 }
 
-/*! Return if this leaf is mandatory or not
+/*! Check if this leaf is mandatory or not
  * Note: one can cache this value in ys_cvec instead of functionally evaluating it.
  * @retval 1 yang statement is leaf and it has a mandatory sub-stmt with value true
  * @retval 0 The negation of conditions for return value 1.
@@ -2638,16 +2638,21 @@ yang_desc_schema_nodeid(yang_stmt    *yn,
  *   o  mandatory node: A mandatory node is one of:
  *      1)  A leaf, choice, anydata, or anyxml node with a "mandatory"
  *         statement with the value "true".
- *      2)  A list or leaf-list node with a "min-elements" statement with a
- *         value greater than zero.
+ *      2) # see below
  *      3)  A container node without a "presence" statement and that has at
  *         least one mandatory node as a child.
+ *
+ * @note There is also this statement 
+ *      2)  A list or leaf-list node with a "min-elements" statement with a
+ *         value greater than zero.
+ * which we ignore here since:
+ *      (a) it does not consider the XML siblings and  therefore returns false positives
+ *      (b) where the actual check is catched by check_list_unique_minmax()
  */
 int
 yang_mandatory(yang_stmt *ys)
 {
     yang_stmt *ym;
-    cg_var    *cv;
 
     /* 1) A leaf, choice, anydata, or anyxml node with a "mandatory"
      *    statement with the value "true". */
@@ -2658,14 +2663,16 @@ yang_mandatory(yang_stmt *ys)
 		return cv_bool_get(ym->ys_cv);
 	}
     }
+#if 0 /* See note above */
     /* 2) A list or leaf-list node with a "min-elements" statement with a
      *    value greater than zero. */
     else if (ys->ys_keyword == Y_LIST || ys->ys_keyword == Y_LEAF_LIST){
 	if ((ym = yang_find(ys, Y_MIN_ELEMENTS, NULL)) != NULL){
 	    cv = yang_cv_get(ym);
-	    return cv_uint32_get(cv) > 0;
+	    return cv_uint32_get(cv) > 0; /* Not true if XML considered */
 	}
     }
+#endif
     /* 3) A container node without a "presence" statement and that has at
      *    least one mandatory node as a child. */
     else if (ys->ys_keyword == Y_CONTAINER && 
