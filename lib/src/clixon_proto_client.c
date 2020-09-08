@@ -1061,11 +1061,14 @@ clicon_rpc_debug(clicon_handle h,
     return retval;
 }
 
-/*! Send a debug request to backend server
+/*! Send a hello request to the backend server
  * @param[in] h        CLICON handle
  * @param[in] level    Debug level
  * @retval    0        OK
  * @retval   -1        Error and logged to syslog
+ * @note this is internal netconf to backend, not northbound to user client
+ * @note this deviates from RFC6241 slightly in that it waits for a reply, the RFC does not
+ *       stipulate that.
  */
 int
 clicon_hello_req(clicon_handle h,

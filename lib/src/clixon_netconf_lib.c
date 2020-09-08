@@ -1500,7 +1500,7 @@ netconf_content_int2str(netconf_content nr)
  *  
  * RFC6022 YANG Module for NETCONF Monitoring
  *     MUST advertise the capability URI "urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring"
- * RFC7895 Yang module library defines how to announce module features (not hell capabilities)
+ * RFC7895 Yang module library defines how to announce module features (not hello capabilities)
  * RFC7950 YANG 1.1 says (5.6.4);
  *    MUST announce the modules it implements by implementing the YANG module 
  *    "ietf-yang-library" (RFC7895) and listing all implemented modules in the
@@ -1535,16 +1535,18 @@ netconf_hello_server(clicon_handle h,
     char *encstr = NULL;
 
     module_set_id = clicon_option_str(h, "CLICON_MODULE_SET_ID");
-    if ((ietf_yang_library_revision = yang_modules_revision(h)) == NULL)
-	goto done;
+
     cprintf(cb, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(cb, "<capabilities>");
-        cprintf(cb, "<capability>urn:ietf:params:netconf:base:1.0</capability>");
-    if (xml_chardata_encode(&encstr, "urn:ietf:params:netconf:capability:yang-library:1.0?revision=%s&module-set-id=%s",
-			    ietf_yang_library_revision,
-			    module_set_id) < 0)
-	goto done;
-    cprintf(cb, "<capability>%s</capability>", encstr);
+    cprintf(cb, "<capability>urn:ietf:params:netconf:base:1.0</capability>");
+    /* Check if RFC7895 loaded and revision found */
+    if ((ietf_yang_library_revision = yang_modules_revision(h)) != NULL){
+	if (xml_chardata_encode(&encstr, "urn:ietf:params:netconf:capability:yang-library:1.0?revision=%s&module-set-id=%s",
+				ietf_yang_library_revision,
+				module_set_id) < 0)
+	    goto done;
+	cprintf(cb, "<capability>%s</capability>", encstr);
+    }
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:candidate:1.0</capability>");
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:validate:1.1</capability>");
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:startup:1.0</capability>");

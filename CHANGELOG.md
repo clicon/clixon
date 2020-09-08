@@ -61,6 +61,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [clixon_netconf does not respond to hello #136](https://github.com/clicon/clixon/issues/136)
+  * The error showed only when CLICON_MODULE_LIBRARY_RFC7895 was disabled.
 * Fixed: Do not check min/max constraints on state data in config validate code
 * Fixed: [min-elements attribute prevents from deleting list entries #133](https://github.com/clicon/clixon/issues/133)
 * Fixed: [xmldb_get0 returns invalid candidate on startup transaction callbacks #126](https://github.com/clicon/clixon/issues/126). Always clear candidate-db before db initialization.
