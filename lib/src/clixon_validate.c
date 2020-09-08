@@ -696,7 +696,7 @@ check_unique_list(cxobj     *x,
 /*! Given a list, check if any min/max-elemants constraints apply
  * @param[in]  xp    Parent of the xml list there are too few/many
  * @param[in]  y     Yang spec of the failing list
- * @param[in]  nr    Number of elements (like x) in thlist
+ * @param[in]  nr    Number of elements (like x) in the list
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)

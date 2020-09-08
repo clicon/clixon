@@ -109,11 +109,10 @@ RULES=$(cat <<EOF
 
    </nacm>
    <x xmlns="urn:example:nacm">42</x>
-   <translate xmlns="urn:example:clixon"><translate><k>key42</k><value>val42</value></translate></translate>
-   <translate xmlns="urn:example:clixon"><translate><k>key43</k><value>val43</value></translate></translate>
+   <table xmlns="urn:example:clixon"><parameter><name>key42</name><value>val42</value></parameter></table>
+   <table xmlns="urn:example:clixon"><parameter><name>key43</name><value>val43</value></parameter></table>
 EOF
 )
-# NOTE use of translate^ has nothing to do with the CLI translate semantics CONFUSING!
 
 new "test params: -f $cfg -- -s"
 
@@ -155,13 +154,13 @@ expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/ya
 #----READ access
 #user:admin
 new "admin read ok"
-expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:translate)" 0 'HTTP/1.1 200 OK' '{"clixon-example:translate":{"translate":\[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}\]}}'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:table)" 0 'HTTP/1.1 200 OK' '{"clixon-example:table":{"parameter":\[{"name":"key42","value":"val42"},{"name":"key43","value":"val43"}\]}}'
 
 new "admin read netconf ok"
-expecteof "$clixon_netconf -U andy -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/t:translate\" xmlns:t=\"urn:example:clixon\" /></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><translate xmlns=\"urn:example:clixon\"><translate><k>key42</k><value>val42</value></translate><translate><k>key43</k><value>val43</value></translate></translate></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -U andy -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/t:table\" xmlns:t=\"urn:example:clixon\" /></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><table xmlns=\"urn:example:clixon\"><parameter><name>key42</name><value>val42</value></parameter><parameter><name>key43</name><value>val43</value></parameter></table></data></rpc-reply>]]>]]>$"
 
 new "admin read element ok"
-expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:translate/translate=key42/value)" 0 'HTTP/1.1 200 OK' '{"clixon-example:value":"val42"}'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:table/parameter=key42/value)" 0 'HTTP/1.1 200 OK' '{"clixon-example:value":"val42"}'
 
 new "admin read other module OK"
 expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 'HTTP/1.1 200 OK' '{"nacm-example:x":42}'
@@ -171,7 +170,7 @@ expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/da
 
 new "admin read top ok (all)"
 ret=$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)
-expect='{"data":{"nacm-example:x":42,"clixon-example:translate":'
+expect='{"data":{"nacm-example:x":42,"clixon-example:table":'
 match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -180,13 +179,13 @@ fi
 #user:limit
 
 new "limit read ok"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:translate)" 0 'HTTP/1.1 200 OK' '{"clixon-example:translate":{"translate":\[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}\]}}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:table)" 0 'HTTP/1.1 200 OK' '{"clixon-example:table":{"parameter":\[{"name":"key42","value":"val42"},{"name":"key43","value":"val43"}\]}}'
 
 new "limit read netconf ok"
-expecteof "$clixon_netconf -U wilma -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/t:translate\" xmlns:t=\"urn:example:clixon\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><translate xmlns=\"urn:example:clixon\"><translate><k>key42</k><value>val42</value></translate><translate><k>key43</k><value>val43</value></translate></translate></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -U wilma -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/t:table\" xmlns:t=\"urn:example:clixon\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><table xmlns=\"urn:example:clixon\"><parameter><name>key42</name><value>val42</value></parameter><parameter><name>key43</name><value>val43</value></parameter></table></data></rpc-reply>]]>]]>$"
 
 new "limit read element ok"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:translate/translate=key42/value)" 0 'HTTP/1.1 200 OK' '{"clixon-example:value":"val42"}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:table/parameter=key42/value)" 0 'HTTP/1.1 200 OK' '{"clixon-example:value":"val42"}'
 
 new "limit read other module fail"
 expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
@@ -195,18 +194,18 @@ new "limit read state OK"
 expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:state)" 0 'HTTP/1.1 200 OK' '{"clixon-example:state":{"op":\["41","42","43"\]}}'
 
 new "limit read top ok (part)"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)" 0 'HTTP/1.1 200 OK' '{"data":{"clixon-example:translate":{"translate":\[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}\]},"clixon-example:state":{"op":\["41","42","43"\]}}}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)" 0 'HTTP/1.1 200 OK' '{"data":{"clixon-example:table":{"parameter":\[{"name":"key42","value":"val42"},{"name":"key43","value":"val43"}\]},"clixon-example:state":{"op":\["41","42","43"\]}}}'
 
 #user:guest
 
 new "guest read forbidden"
-expectpart "$(curl -u guest:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:translate)" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expectpart "$(curl -u guest:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:table)" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "guest read netconf fail"
-expecteof "$clixon_netconf -U guest -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/t:translate\" xmlns:t=\"urn:example:clixon\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>default deny</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -U guest -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/t:table\" xmlns:t=\"urn:example:clixon\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>default deny</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "guest read element forbidden"
-expectpart "$(curl -u guest:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:translate/translate=key42/value)" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expectpart "$(curl -u guest:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:table/parameter=key42/value)" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "guest read other module fail"
 expectpart "$(curl -u guest:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
@@ -243,7 +242,7 @@ new "admin set read-default permit"
 expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:read-default":"permit"}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/read-default)" 0 'HTTP/1.1 204 No Content'
 
 new "limit read ok"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:translate)" 0 'HTTP/1.1 200 OK' '{"clixon-example:translate":{"translate":\[{"k":"key42","value":"val42"},{"k":"key43","value":"val43"}\]}}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:table)" 0 'HTTP/1.1 200 OK' '{"clixon-example:table":{"parameter":\[{"name":"key42","value":"val42"},{"name":"key43","value":"val43"}\]}}'
 
 new "limit read other module ok"
 expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 'HTTP/1.1 200 OK' '{"nacm-example:x":42}'

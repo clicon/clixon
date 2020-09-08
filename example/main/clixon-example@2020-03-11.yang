@@ -46,20 +46,6 @@ module clixon-example {
 	    }
 	}
     }
-    /* Translation function example - See also example_cli 
-    * XXX use table ^instead */
-    container translate{
-	description "dont have lists directly under top since restconf cant address list directly";
-	list translate{
-	    key k;
-	    leaf k{
-		type string;
-	    }
-	    leaf value{
-		type string;
-	    }
-	}
-    }
     /* State data (not config) for the example application*/
     container state {
          config false;
