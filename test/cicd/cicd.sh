@@ -21,12 +21,14 @@
 
 set -eux # x
 
-if [ $# -ne 1 ]; then 
-    echo "usage: $0 <host>"
+if [ $# -ne 2 ]; then 
+    echo "usage: $0 <host> <restconf>"
+    echo "      where <restconf> is fcgi or evhtp"
     exit -1
 fi
 
-h=$1
+h=$1 # Host
+restconf=$2 
 
 SCRIPTS="cligen-mk.sh clixon-mk.sh clixon-config.sh"
 
@@ -43,8 +45,13 @@ ssh -t $h "(cd src/cligen; /tmp/cligen-mk.sh)"
 # pull git changes and build clixon
 ssh -t $h "test -d src/clixon || (cd src;git clone https://github.com/clicon/clixon.git)"
 ssh -t $h "(cd src/clixon;git pull)"
-ssh -t $h "(cd src/clixon; /tmp/clixon-config.sh)"
+ssh -t $h "(cd src/clixon; /tmp/clixon-config.sh $evhtp)"
 ssh -t $h "(cd src/clixon; /tmp/clixon-mk.sh)"
 ssh -t $h sudo ldconfig
 # Run clixon test suite
+if [ "$restconf" = "fcgi" ]; then
+    ssh -t $h sudo systemctl start nginx
+else
+    ssh -t $h sudo systemctl stop nginx
+fi
 ssh -t $h "(cd src/clixon/test; ./sum.sh)"

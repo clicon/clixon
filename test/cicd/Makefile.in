@@ -46,6 +46,8 @@ SHELL	= /bin/sh
 # eg :
 # HOSTS += vandal.hagsand.com # i86_32 ubuntu
 # ...
+# You can also set RESTCONF to fcgi or evhtp
+RESTCONF=fcgi
 HOSTS=
 -include site.mk
 
@@ -56,9 +58,9 @@ all: $(HOSTS)
 # Real hosts reachable by ssh
 $(HOSTS): 
 ifdef LOGDIR
-	./cicd.sh $@ 2>&1 > $(LOGDIR)/$@.log
+	./cicd.sh $@ $(RESTCONF) 2>&1 > $(LOGDIR)/$@-$(RESTCONF).log
 else
-	./cicd.sh $@ 2>&1 | tee /$@.log
+	./cicd.sh $@ $(RESTCONF) 2>&1 | tee /$@-$(RESTCONF).log
 endif
 
 clean:

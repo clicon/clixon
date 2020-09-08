@@ -18,28 +18,3 @@ You may also do `make push` if you want to push the image, but you may then cons
 
 (You may have to login for push with sudo docker login -u <username>)
 
-## Example run
-
-The base container is a minimal and primitive example. Look at the [clixon-system](../main) for a more stream-lined application.
-
-The following shows a simple example of how to run the example
-application. First, the container is started with the backend running:
-```
-  $ sudo docker run --rm --name cli -d clixon/clixon clixon_backend -Fs init
-```
-Then a CLI is started, and finally the container is removed:
-```
-  $ sudo docker exec -it hello clixon_cli
-  cli> set ?
-   hello                 
-  cli> set hello world 
-  cli> show configuration 
-  hello world;
-  > q
-  $ sudo docker kill hello
-```
-
-Note that the clixon example application is a special case since the example is
-already a part of the installation. If you want to add your own
-application, such as plugins, cli syntax files, yang models, etc, you
-need to extend the base container with your own additions.
