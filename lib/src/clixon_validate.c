@@ -824,6 +824,7 @@ check_list_unique_minmax(cxobj  *xt,
 	    yprev = y; /* Restart min/max count */
 	    continue;
 	}
+	/* Here only (leaf)lists */
 	if (yprev != NULL){ /* There exists a previous (leaf)list */
 	    if (y == yprev){ /* If same yang as previous x, then skip (eg same list) */
 		nr++;
@@ -849,7 +850,8 @@ check_list_unique_minmax(cxobj  *xt,
 	    ye = yn_each(yt, ye);
 	    if (ye && ych != ye)
 		do {
-		    if (yang_keyword_get(ye) == Y_LIST || yang_keyword_get(ye) == Y_LEAF_LIST){
+		    if (yang_config(ye) == 1 &&
+			(yang_keyword_get(ye) == Y_LIST || yang_keyword_get(ye) == Y_LEAF_LIST)){
 			/* Check if the list length violates min/max */
 			if ((ret = check_min_max(xt, ye, 0, xret)) < 0)
 			    goto done;
@@ -892,7 +894,8 @@ check_list_unique_minmax(cxobj  *xt,
      */
     if ((ye = yn_each(yt, ye)) != NULL)
 	do {
-	    if (yang_keyword_get(ye) == Y_LIST || yang_keyword_get(ye) == Y_LEAF_LIST){
+	    if (yang_config(ye) == 1 &&
+		(yang_keyword_get(ye) == Y_LIST || yang_keyword_get(ye) == Y_LEAF_LIST)){
 		/* Check if the list length violates min/max */
 		if ((ret = check_min_max(xt, ye, 0, xret)) < 0)
 		    goto done;

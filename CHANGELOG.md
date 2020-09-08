@@ -61,6 +61,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: Do not check min/max constraints on state data in config validate code
 * Fixed: [min-elements attribute prevents from deleting list entries #133](https://github.com/clicon/clixon/issues/133)
 * Fixed: [xmldb_get0 returns invalid candidate on startup transaction callbacks #126](https://github.com/clicon/clixon/issues/126). Always clear candidate-db before db initialization.
 * Fixed: YANG `uses` statements in sub-modules did not search for `grouping` statements in other submodules of the module it belongs to.

@@ -2707,7 +2707,7 @@ yang_config(yang_stmt *ys)
     return 1;
 }
 
-/*! Return config state of this node taking parents/anceestors into account
+/*! Return config state of this node taking parents/ancestors into account
  *
  * config statement is default true. 
  * @param[in] ys  Yang statement
