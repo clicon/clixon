@@ -148,7 +148,7 @@ static clixon_path *
 path_append(clixon_path *list,
 	    clixon_path *new)
 {
-    clicon_debug(1, "%s()", __FUNCTION__);
+    clicon_debug(3, "%s()", __FUNCTION__);
     if (new == NULL)
 	return NULL;
     ADDQ(new, list);
@@ -161,7 +161,7 @@ static clixon_path *
 path_add_keyvalue(clixon_path *cp,
 		  cvec        *cvk)
 {
-    clicon_debug(1, "%s()", __FUNCTION__);
+    clicon_debug(3, "%s()", __FUNCTION__);
     if (cp)
 	cp->cp_cvk = cvk;
     return cp;
@@ -173,7 +173,7 @@ path_new(char *module_name,
 {
     clixon_path *cp = NULL;
 
-    clicon_debug(1, "%s(%s,%s)", __FUNCTION__, module_name, id);
+    clicon_debug(3, "%s(%s,%s)", __FUNCTION__, module_name, id);
     if ((cp = malloc(sizeof(*cp))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
@@ -203,7 +203,7 @@ static cvec *
 keyval_add(cvec   *cvv,
 	   cg_var *cv)
 {
-    clicon_debug(1, "%s()", __FUNCTION__);
+    clicon_debug(3, "%s()", __FUNCTION__);
     if (cv == NULL)
 	goto done;
     if (cvv == NULL &&
@@ -229,7 +229,7 @@ keyval_set(char *name,
 {
     cg_var *cv = NULL;
 
-    clicon_debug(1, "%s(%s=%s)", __FUNCTION__, name?name:"NULL", val);
+    clicon_debug(3, "%s(%s=%s)", __FUNCTION__, name?name:"NULL", val);
     if ((cv = cv_new(CGV_STRING)) == NULL){
 	clicon_err(OE_UNIX, errno, "cv_new");
 	goto done;

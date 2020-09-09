@@ -85,7 +85,7 @@
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clicon_debug(2,(s))
+#define _PARSE_DEBUG(s) clicon_debug(3,(s))
 #else
 #define _PARSE_DEBUG(s)
 #endif

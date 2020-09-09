@@ -459,7 +459,7 @@ _xml_parse(const char *str,
     int             failed = 0; /* yang assignment */
     int             i;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(2, "%s", __FUNCTION__);
     if (strlen(str) == 0)
 	return 0; /* OK */
     if (xt == NULL){

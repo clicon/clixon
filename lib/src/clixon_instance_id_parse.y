@@ -160,7 +160,7 @@ static clixon_path *
 path_append(clixon_path *list,
 	    clixon_path *new)
 {
-    clicon_debug(1, "%s()", __FUNCTION__);
+    clicon_debug(2, "%s()", __FUNCTION__);
     if (new == NULL)
 	return NULL;
     ADDQ(new, list);
@@ -175,7 +175,7 @@ static clixon_path *
 path_add_keyvalue(clixon_path *cp,
 		  cvec        *cvk)
 {
-    clicon_debug(1, "%s()", __FUNCTION__);
+    clicon_debug(2, "%s()", __FUNCTION__);
     if (cp == NULL)
 	goto done;
     cp->cp_cvk = cvk;
@@ -189,7 +189,7 @@ path_new(char *prefix,
 {
     clixon_path *cp = NULL;
 
-    clicon_debug(1, "%s(%s,%s)", __FUNCTION__, prefix, id);
+    clicon_debug(2, "%s(%s,%s)", __FUNCTION__, prefix, id);
     if ((cp = malloc(sizeof(*cp))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
@@ -219,7 +219,7 @@ keyval_pos(char *uint)
     char   *reason=NULL;
     int     ret;
     
-    clicon_debug(1, "%s(%s)", __FUNCTION__, uint);
+    clicon_debug(2, "%s(%s)", __FUNCTION__, uint);
     if ((cvv = cvec_new(1)) == NULL) {
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto done;
@@ -252,7 +252,7 @@ static cvec *
 keyval_add(cvec   *cvv,
 	   cg_var *cv)
 {
-    clicon_debug(1, "%s()", __FUNCTION__);
+    clicon_debug(2, "%s()", __FUNCTION__);
     if (cv == NULL)
 	goto done;
     if (cvv == NULL &&
@@ -278,7 +278,7 @@ keyval_set(char *name,
 {
     cg_var *cv = NULL;
 
-    clicon_debug(1, "%s(%s=%s)", __FUNCTION__, name, val);
+    clicon_debug(2, "%s(%s=%s)", __FUNCTION__, name, val);
     if ((cv = cv_new(CGV_STRING)) == NULL){
 	clicon_err(OE_UNIX, errno, "cv_new");
 	goto done;
@@ -307,74 +307,74 @@ keyval_set(char *name,
 /*
 */
 
-start          : list X_EOF         { clicon_debug(2,"top"); _IY->iy_top=$1; YYACCEPT; } 
+start          : list X_EOF         { clicon_debug(3,"top"); _IY->iy_top=$1; YYACCEPT; } 
                ;
 
 list           : list SLASH element { if (($$ = path_append($1, $3)) == NULL) YYABORT;
-                                      clicon_debug(2,"list = list / element");}
+                                      clicon_debug(3,"list = list / element");}
                | SLASH element      { if (($$ = path_append(NULL, $2)) == NULL) YYABORT;
-                                      clicon_debug(2,"list = / element");}
+                                      clicon_debug(3,"list = / element");}
                ;
 
 element        : node_id element2   { $$ = path_add_keyvalue($1, $2);
-                                      clicon_debug(2,"element = node_id element2");}
+                                      clicon_debug(3,"element = node_id element2");}
                ;
 
 node_id        : IDENTIFIER               { $$ = path_new(NULL, $1); free($1);
-                                            clicon_debug(2,"node_id = IDENTIFIER");}
+                                            clicon_debug(3,"node_id = IDENTIFIER");}
                | prefix COLON IDENTIFIER  { $$ = path_new($1, $3); free($1); free($3);
-	                                    clicon_debug(2,"node_id = prefix : IDENTIFIER");} 
+	                                    clicon_debug(3,"node_id = prefix : IDENTIFIER");} 
                ;
 
-prefix         : IDENTIFIER               { $$=$1; clicon_debug(2,"prefix = IDENTIFIER");}
+prefix         : IDENTIFIER               { $$=$1; clicon_debug(3,"prefix = IDENTIFIER");}
 
-element2       : key_preds      { $$=$1; clicon_debug(2,"element2 = key_preds"); }
-               | leaf_list_pred { $$=$1; clicon_debug(2,"element2 = leaf_list_pred"); }
-               | pos            { $$=$1; clicon_debug(2,"element2 = key_preds"); }
-               |                { $$=NULL; clicon_debug(2,"element2 = "); }
+element2       : key_preds      { $$=$1; clicon_debug(3,"element2 = key_preds"); }
+               | leaf_list_pred { $$=$1; clicon_debug(3,"element2 = leaf_list_pred"); }
+               | pos            { $$=$1; clicon_debug(3,"element2 = key_preds"); }
+               |                { $$=NULL; clicon_debug(3,"element2 = "); }
                ;
 
 leaf_list_pred : LSQBR leaf_list_pred_expr RSQBR
                                  { if (($$ = keyval_add(NULL, $2)) == NULL) YYABORT;
-				   clicon_debug(2,"leaf_list_pred = [ leaf_list_pred_expr ]"); }
+				   clicon_debug(3,"leaf_list_pred = [ leaf_list_pred_expr ]"); }
                ;
 
 leaf_list_pred_expr : DOT EQUAL qstring  { $$ = keyval_set(".", $3); free($3);
-	                                   clicon_debug(2,"leaf_list_pred_expr = '.=' qstring"); }
+	                                   clicon_debug(3,"leaf_list_pred_expr = '.=' qstring"); }
                ;
 
 pos            : LSQBR UINT RSQBR        { $$ = keyval_pos($2); free($2);
-                                           clicon_debug(2,"pos = [ UINT ]"); }
+                                           clicon_debug(3,"pos = [ UINT ]"); }
                ;
 
 key_preds      : key_preds key_pred      { if (($$ = keyval_add($1, $2)) == NULL) YYABORT;
-                                           clicon_debug(2,"key_preds = key_pred key_preds"); }
+                                           clicon_debug(3,"key_preds = key_pred key_preds"); }
                | key_pred                { if (($$ = keyval_add(NULL, $1)) == NULL) YYABORT;
-                                           clicon_debug(2,"key_preds = key_pred");} 
+                                           clicon_debug(3,"key_preds = key_pred");} 
                ;
 
 key_pred       : LSQBR key_pred_expr RSQBR  { $$ = $2;
-                                              clicon_debug(2,"key_pred = [ key_pred_expr ]"); }
+                                              clicon_debug(3,"key_pred = [ key_pred_expr ]"); }
                ;
 
 key_pred_expr  : node_id_k EQUAL qstring   { $$ = keyval_set($1, $3); free($1); free($3);
-                          clicon_debug(2,"key_pred_expr = node_id_k = qstring");  }
+                          clicon_debug(3,"key_pred_expr = node_id_k = qstring");  }
                ;
 
 node_id_k      : IDENTIFIER               { $$ = $1; 
-                                            clicon_debug(2,"node_id_k = IDENTIFIER %s", $1); }
+                                            clicon_debug(3,"node_id_k = IDENTIFIER %s", $1); }
                | prefix COLON IDENTIFIER  { $$ = $3;  /* ignore prefix in key? */
-                          clicon_debug(2,"node_id_k = prefix %s : IDENTIFIER %s", $1, $3); free($1);} 
+                          clicon_debug(3,"node_id_k = prefix %s : IDENTIFIER %s", $1, $3); free($1);} 
                ;
 
 qstring        : DQUOTE STRING DQUOTE { $$=$2;
-                                        clicon_debug(2,"qstring = \" string \""); }
+                                        clicon_debug(3,"qstring = \" string \""); }
                | DQUOTE DQUOTE        { $$=strdup("");
-                                             clicon_debug(2,"qstring = \" \""); }
+                                             clicon_debug(3,"qstring = \" \""); }
                | SQUOTE STRING SQUOTE { $$=$2;
-                                             clicon_debug(2,"qstring = ' string '"); }
+                                             clicon_debug(3,"qstring = ' string '"); }
                | SQUOTE SQUOTE        { $$=strdup("");
-                                             clicon_debug(2,"qstring = ''"); }
+                                             clicon_debug(3,"qstring = ''"); }
                ;
 
 %%

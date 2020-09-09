@@ -584,6 +584,8 @@ clicon_parse(clicon_handle  h,
 	}
 	if (cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv, result, &reason) < 0)
 	    goto done;
+	/* Debug command and result code */
+	clicon_debug(1, "%s result:%d command: \"%s\"", __FUNCTION__, *result, cmd);
 	if (*result != CG_MATCH)
 	    pt_expand_cleanup(pt); /* XXX change to pt_expand_treeref_cleanup */
 	if (modename0){

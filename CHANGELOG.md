@@ -52,6 +52,9 @@ Developers may need to change their code
 
 ### Minor changes
 
+* Debug messages
+  * Added cli command debug printf on debug level 1
+  * Moved all parse debug printfs to level 3
 * Added `-r` command-line option to restconf daemon to NOT lower privileges to wwwuser if started from root.
 * Changed CLI help strings behaviour on query (?) for long and multi-line help strings.
   * If multiple strings (eg "\n" in text), indent before each new line

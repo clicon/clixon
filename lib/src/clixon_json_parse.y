@@ -250,7 +250,7 @@ json_current_body(clixon_json_yacc *jy,
 */
 
  /* top: json -> value is also possible */
-json          : value J_EOF { clicon_debug(2,"json->object"); YYACCEPT; } 
+json          : value J_EOF { clicon_debug(3,"json->object"); YYACCEPT; } 
               ;
 
 value         : J_TRUE  { json_current_body(_JY, "true");}
@@ -263,16 +263,16 @@ value         : J_TRUE  { json_current_body(_JY, "true");}
 
               ;
 
-object        : '{' '}' { clicon_debug(2,"object->{}");}
-              | '{' objlist '}' { clicon_debug(2,"object->{ objlist }");}
+object        : '{' '}' { clicon_debug(3,"object->{}");}
+              | '{' objlist '}' { clicon_debug(3,"object->{ objlist }");}
               ;
 
-objlist       : pair  { clicon_debug(2,"objlist->pair");}
-              | objlist ',' pair { clicon_debug(2,"objlist->objlist , pair");}
+objlist       : pair  { clicon_debug(3,"objlist->pair");}
+              | objlist ',' pair { clicon_debug(3,"objlist->objlist , pair");}
               ;
 
 pair          : string { json_current_new(_JY, $1);free($1);} ':' 
-                value { json_current_pop(_JY);}{ clicon_debug(2,"pair->string : value");}
+                value { json_current_pop(_JY);}{ clicon_debug(3,"pair->string : value");}
               ;
 
 array         : '[' ']'
@@ -284,8 +284,8 @@ valuelist     : value
               ;
 
 /* quoted string */
-string        : J_DQ ustring J_DQ {  clicon_debug(2,"string->\" ustring \"");$$=$2; }
-              | J_DQ J_DQ {  clicon_debug(2,"string->\" ustring \"");$$=strdup(""); }
+string        : J_DQ ustring J_DQ {  clicon_debug(3,"string->\" ustring \"");$$=$2; }
+              | J_DQ J_DQ {  clicon_debug(3,"string->\" ustring \"");$$=strdup(""); }
               ;
 
 /* unquoted string */
