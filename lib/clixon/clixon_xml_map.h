@@ -66,7 +66,7 @@ int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
 int xml_namespace_change(cxobj *x, char *ns, char *prefix);
 int xml_default(cxobj *x);
 int xml_default_recurse(cxobj *xn);
-int xml_default_yspec(yang_stmt *yspec, cxobj *xn);
+int xml_global_defaults(clicon_handle h, cxobj *xn, cvec *nsc, const char *xpath, yang_stmt *yspec);
 int xml_nopresence_default(cxobj *xt);
 int xml_nopresence_default_mark(cxobj *x, void *arg);
 int xml_sanity(cxobj *x, void  *arg);
@@ -77,5 +77,6 @@ int assign_namespace_element(cxobj *x0, cxobj *x1, cxobj *x1p);
 int assign_namespace_body(cxobj *x0, char *x0bstr, cxobj *x1);
 int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
 int yang_enum_int_value(cxobj *node, int32_t *val);
+int xml_copy_marked(cxobj *x0, cxobj *x1);
 
 #endif  /* _CLIXON_XML_MAP_H_ */

@@ -198,7 +198,6 @@ startup_common(clicon_handle       h,
 	clicon_err(OE_YANG, 0, "Yang spec not set");
 	goto done;
     }
-
     clicon_debug(1, "Reading startup config done");
     /* Clear flags xpath for get */
     xml_apply0(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
@@ -251,8 +250,16 @@ startup_common(clicon_handle       h,
 	    goto done;
 	goto fail; 
     }
+    /* Sort xml */
     if (xml_sort_recurse(xt) < 0)
 	goto done;
+    /* Add global defaults. */
+    if (xml_global_defaults(h, xt, NULL, NULL, yspec) < 0)
+	goto done;
+    /* Apply default values (removed in clear function) */
+    if (xml_default_recurse(xt) < 0)
+	goto done;
+    
     /* Handcraft transition with with only add tree */
     td->td_target = xt;
     xt = NULL;

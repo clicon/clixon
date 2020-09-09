@@ -1650,7 +1650,6 @@ from_client_msg(clicon_handle        h,
 	if ((ret = nacm_access_pre(h, ce->ce_username, username, &xnacm)) < 0)
 	    goto done;
 	/* Cache XML NACM tree here. Use with caution, only valid on from_client_msg stack 
-	 * 
 	 */
 	if (clicon_nacm_cache_set(h, xnacm) < 0)
 	    goto done;

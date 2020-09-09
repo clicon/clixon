@@ -583,7 +583,7 @@ xml_parent_set(cxobj *xn,
 
 /*! Get xml node flags, used for internal algorithms
  * @param[in]  xn    xml node
- * @retval     flag  Flag value(s), see XML_FLAG_*
+ * @retval     flag  Flag value(s), see XML_FLAG_MARK et al
  */
 uint16_t
 xml_flag(cxobj   *xn, 
@@ -594,7 +594,7 @@ xml_flag(cxobj   *xn,
 
 /*! Set xml node flags, used for internal algorithms
  * @param[in]  xn      xml node
- * @param[in]  flag    Flag values to set, see XML_FLAG_*
+ * @param[in]  flag    Flag values to set, see XML_FLAG_MARK et al
  */
 int
 xml_flag_set(cxobj   *xn, 
@@ -1925,6 +1925,8 @@ xml_copy(cxobj *x0,
   done:
     return retval;
 }
+
+
 
 /*! Create and return a copy of xml tree.
  *

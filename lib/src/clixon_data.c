@@ -660,6 +660,7 @@ clicon_db_elmnt_get(clicon_handle h,
  * @param[in] de  Database element
  * @retval    0   OK
  * @retval   -1   Error
+ * @see xmldb_disconnect
 */
 int
 clicon_db_elmnt_set(clicon_handle h, 

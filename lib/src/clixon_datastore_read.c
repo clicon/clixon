@@ -231,96 +231,6 @@ xml_copy_from_bottom(cxobj  *x0t,
     return retval;
 }
 
-/*! Given XML tree x0 with marked nodes, copy marked nodes to new tree x1
- * Two marks are used: XML_FLAG_MARK and XML_FLAG_CHANGE
- *
- * The algorithm works as following:
- * (1) Copy individual nodes marked with XML_FLAG_CHANGE 
- * until nodes marked with XML_FLAG_MARK are reached, where 
- * (2) the complete subtree of that node is copied. 
- * (3) Special case: key nodes in lists are copied if any node in list is marked
- *  @note you may want to check:!yang_config(ys)
- */
-static int
-xml_copy_marked(cxobj *x0, 
-		cxobj *x1)
-{
-    int        retval = -1;
-    int        mark;
-    cxobj     *x;
-    cxobj     *xcopy;
-    int        iskey;
-    yang_stmt *yt;
-    char      *name;
-    char      *prefix;
-
-    assert(x0 && x1);
-    yt = xml_spec(x0); /* can be null */
-    xml_spec_set(x1, yt);
-   /* Copy prefix*/
-    if ((prefix = xml_prefix(x0)) != NULL)
-	if (xml_prefix_set(x1, prefix) < 0)
-	    goto done;
-    
-    /* Copy all attributes */
-    x = NULL;
-    while ((x = xml_child_each(x0, x, CX_ATTR)) != NULL) {
-	name = xml_name(x);
-	if ((xcopy = xml_new(name, x1, CX_ATTR)) == NULL)
-	    goto done;
-	if (xml_copy(x, xcopy) < 0) 
-	    goto done;
-    }
-
-    /* Go through children to detect any marked nodes:
-     * (3) Special case: key nodes in lists are copied if any 
-     * node in list is marked
-     */
-    mark = 0;
-    x = NULL;
-    while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL) {
-	if (xml_flag(x, XML_FLAG_MARK|XML_FLAG_CHANGE)){
-	    mark++;
-	    break;
-	}
-    }
-    x = NULL;
-    while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL) {
-	name = xml_name(x);
-	if (xml_flag(x, XML_FLAG_MARK)){
-	    /* (2) the complete subtree of that node is copied. */
-	    if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
-		goto done;
-	    if (xml_copy(x, xcopy) < 0) 
-		goto done;
-	    continue; 
-	}
-	if (xml_flag(x, XML_FLAG_CHANGE)){
-	    /*  Copy individual nodes marked with XML_FLAG_CHANGE */
-	    if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
-		goto done;
-	    if (xml_copy_marked(x, xcopy) < 0) /*  */
-		goto done;
-	}
-	/* (3) Special case: key nodes in lists are copied if any 
-	 * node in list is marked */
-	if (mark && yt && yang_keyword_get(yt) == Y_LIST){
-	    /* XXX: I think yang_key_match is suboptimal here */
-	    if ((iskey = yang_key_match(yt, name)) < 0)
-		goto done;
-	    if (iskey){
-		if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
-		    goto done;
-		if (xml_copy(x, xcopy) < 0) 
-		    goto done;
-	    }
-	}
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Read module-state in an XML tree
  *
  * @param[in]  th     Datastore text handle
@@ -620,20 +530,6 @@ xmldb_get_nocache(clicon_handle    h,
     /* Check if empty */
     if (xml_child_nr(xt) == 0)
 	empty = 1;
-    /* Add global defaults. 
-     * Must do it before xpath check, since globals may be filtered out
-     */
-    if (xml_default_yspec(yspec, xt) < 0)
-	goto done;
-    /* If empty database, then disable NACM if loaded
-     * This has some drawbacks. One is that a config may become empty at a later stage
-     * and then this does not hold.
-     */
-    if (empty &&
-	clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
-	if (disable_nacm_on_empty(xt, yspec) < 0)
-	    goto done;
-    }
     /* Here xt looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec */
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
@@ -656,9 +552,23 @@ xmldb_get_nocache(clicon_handle    h,
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
 
-    /* Add default values (if not set) */
-    if (xml_default_recurse(xt) < 0)
-    	goto done;
+    if (yb != YB_NONE){
+	/* Add global defaults. */
+	if (xml_global_defaults(h, xt, nsc, xpath, yspec) < 0)
+	    goto done;
+	/* Add default values (if not set) */
+	if (xml_default_recurse(xt) < 0)
+	    goto done;
+    }
+    /* If empty database, then disable NACM if loaded
+     * This has some drawbacks. One is that a config may become empty at a later stage
+     * and then this does not hold.
+     */
+    if (empty &&
+	clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
+	if (disable_nacm_on_empty(xt, yspec) < 0)
+	    goto done;
+    }
 #if 0 /* debug */
     if (xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
 	clicon_log(LOG_NOTICE, "%s: sort verify failed #2", __FUNCTION__);
@@ -740,25 +650,9 @@ xmldb_get_cache(clicon_handle    h,
     } /* x0t == NULL */
     else
 	x0t = de->de_xml;
-
     /* Check if empty, must be before add global defaults */
     if (xml_child_nr(x0t) == 0)
 	empty = 1;
-
-    /* Add global defaults. 
-     * Cant do it to x1t since that is after xpath check, since globals may be filtered out
-     */
-    if (xml_default_yspec(yspec, x0t) < 0)
-	goto done;
-    /* If empty database, then disable NACM if loaded
-     * This has some drawbacks. One is that a config may become empty at a later stage
-     * and then this does not hold.
-     */
-    if (empty &&
-	clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
-	if (disable_nacm_on_empty(x0t, yspec) < 0)
-	    goto done;
-    }
 
     /* Here x0t looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec 
@@ -812,10 +706,23 @@ xmldb_get_cache(clicon_handle    h,
     /* Clear XML tree of defaults */
     if (xml_tree_prune_flagged(x0t, XML_FLAG_DEFAULT, 1) < 0)
 	goto done;
-    /* x1t is wrong here should be <config><system>.. but is <system>.. */
-    /* XXX where should we apply default values once? */
-    if (xml_default_recurse(x1t) < 0)
-	goto done;
+    if (yb != YB_NONE){
+	/* Add default global values */
+	if (xml_global_defaults(h, x1t, nsc, xpath, yspec) < 0)
+	    goto done;
+	/* Add default recursive values */
+	if (xml_default_recurse(x1t) < 0)
+	    goto done;
+    }
+    /* If empty database, then disable NACM if loaded
+     * This has some drawbacks. One is that a config may become empty at a later stage
+     * and then this does not hold.
+     */
+    if (empty &&
+	clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
+	if (disable_nacm_on_empty(x1t, yspec) < 0)
+	    goto done;
+    }
     /* Copy the matching parts of the (relevant) XML tree.
      * If cache was empty, also update to datastore cache
      */
@@ -892,21 +799,6 @@ xmldb_get_zerocopy(clicon_handle    h,
     if (xml_child_nr(x0t) == 0)
 	empty = 1;
 
-    /* Add global defaults. 
-     * Cant do it to x1t since that is after xpath check, since globals may be filtered out
-     */
-    if (xml_default_yspec(yspec, x0t) < 0)
-	goto done;
-    /* If empty database, then disable NACM if loaded
-     * This has some drawbacks. One is that a config may become empty at a later stage
-     * and then this does not hold.
-     */
-    if (empty &&
-	clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
-	if (disable_nacm_on_empty(x0t, yspec) < 0)
-	    goto done;
-    }
-    
     /* Here xt looks like: <config>...</config> */
     if (xpath_vec(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
@@ -918,9 +810,23 @@ xmldb_get_zerocopy(clicon_handle    h,
 	xml_flag_set(x0, XML_FLAG_MARK);
 	xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
-    /* Apply default values (removed in clear function) */
-    if (xml_default_recurse(x0t) < 0)
-	goto done;
+    if (yb != YB_NONE){
+	/* Add global defaults. */
+	if (xml_global_defaults(h, x0t, nsc, xpath, yspec) < 0)
+	    goto done;
+	/* Apply default values (removed in clear function) */
+	if (xml_default_recurse(x0t) < 0)
+	    goto done;
+    }
+    /* If empty database, then disable NACM if loaded
+     * This has some drawbacks. One is that a config may become empty at a later stage
+     * and then this does not hold.
+     */
+    if (empty &&
+	clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
+	if (disable_nacm_on_empty(x0t, yspec) < 0)
+	    goto done;
+    }
     if (clicon_debug_get()>1)
     	clicon_xml2file(stderr, x0t, 0, 1);
     *xtop = x0t;
@@ -970,7 +876,7 @@ xmldb_get(clicon_handle    h,
  * freeing tree must be made after use.
  * @param[in]  h      Clicon handle
  * @param[in]  db     Name of datastore, eg "running"
- * @param[in]  yb     How to bind yang to XML top-level when parsing
+ * @param[in]  yb     How to bind yang to XML top-level when parsing (if YB_NONE, no defaults)
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  copy   Force copy. Overrides cache_zerocopy -> cache 

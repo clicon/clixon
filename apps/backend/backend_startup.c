@@ -238,7 +238,7 @@ startup_extraxml(clicon_handle        h,
 	    goto fail;
     }
     /* 
-     * Check if tmp db is empty. XXX no this is not possible.
+     * Check if tmp db is empty. 
      * It should be empty if extra-xml is null and reset plugins did nothing
      * then skip validation.
      */

@@ -1239,17 +1239,19 @@ xml_default_recurse(cxobj *xn)
     return retval;
 }
 
-/*! Ensure default values are set on top-level
+/*! Expand and set default values of global top-level on XML tree
  *
  * Not recursive, except in one case with one or several non-presence containers
+ * @param[in]   h       Clixon handle
+ * @param[in]   yspec   Top-level YANG specification tree, all modules
  * @param[in]   xt      XML tree
- * Typically called in a recursive apply function:
  * @retval      0       OK
  * @retval      -1      Error
  */
-int
-xml_default_yspec(yang_stmt *yspec,
-		  cxobj     *xt)
+static int
+xml_global_defaults_create(cxobj     *xt,
+			   yang_stmt *yspec)
+
 {
     int        retval = -1;
     yang_stmt *ymod = NULL;
@@ -1261,9 +1263,83 @@ xml_default_yspec(yang_stmt *yspec,
     while ((ymod = yn_each(yspec, ymod)) != NULL) 
 	if (xml_default1(ymod, xt) < 0)
 	    goto done;
-
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Expand and set default values of global top-level on XML tree
+ *
+ * Not recursive, except in one case with one or several non-presence containers
+ * @param[in]   h       Clixon handle
+ * @param[in]   xt      XML tree, assume already filtered with xpath
+ * @param[in]   xpath   Filter global defaults with this and merge with xt
+ * @param[in]   yspec   Top-level YANG specification tree, all modules
+ * @retval      0       OK
+ * @retval      -1      Error
+ * Uses cache?
+ */
+int
+xml_global_defaults(clicon_handle h,
+		    cxobj        *xt,
+		    cvec         *nsc,
+		    const char   *xpath,
+		    yang_stmt    *yspec)
+{
+    int        retval = -1;
+    db_elmnt   de0 = {0,};
+    db_elmnt  *de = NULL;
+    cxobj     *xcache = NULL;
+    cxobj     *xpart = NULL;
+    cxobj    **xvec = NULL;
+    size_t     xlen;
+    int        i;
+    cxobj     *x0;
+    int        ret;
+    
+    /* First get or compute global xml tree cache */
+    if ((de = clicon_db_elmnt_get(h, "global-defaults")) == NULL){
+	/* Create it it */
+	if ((xcache = xml_new("config", NULL, CX_ELMNT)) == NULL)
+	    goto done;
+	if (xml_global_defaults_create(xcache, yspec) < 0)
+	    goto done;
+	de0.de_xml = xcache;
+	clicon_db_elmnt_set(h, "global-defaults", &de0);
+    }
+    else
+	xcache = de->de_xml;
+
+    /* Here xcache has all global defaults. Now find the matching nodes 
+     * XXX: nsc as 2nd argument
+     */
+    if (xpath_vec(xcache, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	goto done;
+    /* Iterate through match vector
+     * For every node found in x0, mark the tree up to t1
+     */
+    for (i=0; i<xlen; i++){
+	x0 = xvec[i];
+	xml_flag_set(x0, XML_FLAG_MARK);
+	xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+    }
+    if ((xpart = xml_new("config", NULL, CX_ELMNT)) == NULL)
+	goto done;
+    if (xml_copy_marked(xcache, xpart) < 0) /* config */
+	goto done;
+    if (xml_apply(xcache, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+	goto done;
+    if (xml_apply(xpart, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+	goto done;
+    /* Merge global pruned tree with xt */
+    if ((ret = xml_merge(xt, xpart, yspec, NULL)) < 1) /* XXX reason */
+	goto done;
+    retval = 0;
+ done:
+    if (xpart)
+	xml_free(xpart);
+    if (xvec)
+	free(xvec);
     return retval;
 }
 
@@ -1812,6 +1888,9 @@ xml_merge1(cxobj              *x0,  /* the target */
 	    x0c = NULL;
 	    if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
 		goto done;
+	    /* If x0 already has a value, do not replace it with a default value in x1 */
+	    if (x0c && xml_flag(x1c, XML_FLAG_DEFAULT))
+		continue;
 	    /* Save x0c, x1c, yc and merge in second wave, so that x1c entries dont "interfer"
 	     * with itself, ie that later searches are among earlier objects already added
 	     * to x0 */
@@ -1922,6 +2001,9 @@ xml_merge(cxobj     *x0,
 	/* See if there is a corresponding node (x1c) in the base tree (x0) */
 	if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
 	    goto done;
+	/* If x0 already has a value, do not replace it with a default value in x1 */
+	if (x0c && xml_flag(x1c, XML_FLAG_DEFAULT))
+	    continue;
 	/* Save x0c, x1c, yc and merge in second wave, so that x1c entries don't "interfere"
 	 * with itself, ie that later searches are among earlier objects already added
 	 * to x0 */
@@ -2009,5 +2091,92 @@ done:
 }
 
 
+/*! Given XML tree x0 with marked nodes, copy marked nodes to new tree x1
+ * Two marks are used: XML_FLAG_MARK and XML_FLAG_CHANGE
+ *
+ * The algorithm works as following:
+ * (1) Copy individual nodes marked with XML_FLAG_CHANGE 
+ * until nodes marked with XML_FLAG_MARK are reached, where 
+ * (2) the complete subtree of that node is copied. 
+ * (3) Special case: key nodes in lists are copied if any node in list is marked
+ *  @note you may want to check:!yang_config(ys)
+ */
+int
+xml_copy_marked(cxobj *x0, 
+		cxobj *x1)
+{
+    int        retval = -1;
+    int        mark;
+    cxobj     *x;
+    cxobj     *xcopy;
+    int        iskey;
+    yang_stmt *yt;
+    char      *name;
+    char      *prefix;
 
+    assert(x0 && x1);
+    yt = xml_spec(x0); /* can be null */
+    xml_spec_set(x1, yt);
+   /* Copy prefix*/
+    if ((prefix = xml_prefix(x0)) != NULL)
+	if (xml_prefix_set(x1, prefix) < 0)
+	    goto done;
+    
+    /* Copy all attributes */
+    x = NULL;
+    while ((x = xml_child_each(x0, x, CX_ATTR)) != NULL) {
+	name = xml_name(x);
+	if ((xcopy = xml_new(name, x1, CX_ATTR)) == NULL)
+	    goto done;
+	if (xml_copy(x, xcopy) < 0) 
+	    goto done;
+    }
 
+    /* Go through children to detect any marked nodes:
+     * (3) Special case: key nodes in lists are copied if any 
+     * node in list is marked
+     */
+    mark = 0;
+    x = NULL;
+    while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL) {
+	if (xml_flag(x, XML_FLAG_MARK|XML_FLAG_CHANGE)){
+	    mark++;
+	    break;
+	}
+    }
+    x = NULL;
+    while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL) {
+	name = xml_name(x);
+	if (xml_flag(x, XML_FLAG_MARK)){
+	    /* (2) the complete subtree of that node is copied. */
+	    if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
+		goto done;
+	    if (xml_copy(x, xcopy) < 0) 
+		goto done;
+	    continue; 
+	}
+	if (xml_flag(x, XML_FLAG_CHANGE)){
+	    /*  Copy individual nodes marked with XML_FLAG_CHANGE */
+	    if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
+		goto done;
+	    if (xml_copy_marked(x, xcopy) < 0) /*  */
+		goto done;
+	}
+	/* (3) Special case: key nodes in lists are copied if any 
+	 * node in list is marked */
+	if (mark && yt && yang_keyword_get(yt) == Y_LIST){
+	    /* XXX: I think yang_key_match is suboptimal here */
+	    if ((iskey = yang_key_match(yt, name)) < 0)
+		goto done;
+	    if (iskey){
+		if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
+		    goto done;
+		if (xml_copy(x, xcopy) < 0) 
+		    goto done;
+	    }
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
