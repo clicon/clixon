@@ -551,9 +551,9 @@ from_validate_common(clicon_handle       h,
  * do something more drastic?
  * @param[in]  h         Clicon handle
  * @param[in]  candidate A candidate database, not necessarily "candidate"
- * @retval   -1       Error - or validation failed 
- * @retval    0       Validation failed (with cbret set)
- * @retval    1       Validation OK       
+ * @retval    -1         Error - or validation failed 
+ * @retval     0         Validation failed (with cbret set)
+ * @retval     1         Validation OK       
  */
 int
 candidate_commit(clicon_handle h, 

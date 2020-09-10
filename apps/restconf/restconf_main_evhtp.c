@@ -97,14 +97,23 @@ static struct evhtp_handle{
 static void
 evhtp_terminate(struct evhtp_handle *eh)
 {
+    evhtp_ssl_cfg_t *sc;
+    
     if (eh->eh_htp){
 	evhtp_unbind_socket(eh->eh_htp);
 	evhtp_free(eh->eh_htp);
     }
     if (eh->eh_evbase)
 	event_base_free(eh->eh_evbase);
-    if (eh->eh_ssl_config)
-	free(eh->eh_ssl_config);
+    if ((sc = eh->eh_ssl_config) != NULL){
+	if (sc->cafile)
+	    free(sc->cafile);
+	if (sc->pemfile)
+	    free(sc->pemfile);
+	if (sc->privfile)
+	    free(sc->privfile);
+	free(sc);
+    }
 }
 
 /*! Signall terminates process
@@ -288,7 +297,7 @@ evhtp_params_set(clicon_handle    h,
     evhtp_uri_t  *uri;
     evhtp_path_t *path;
     evhtp_ssl_t  *ssl = NULL;
-    char         *subject;
+    char         *subject = NULL;
     cvec         *cvv = NULL;
     char         *cn;
 
@@ -345,6 +354,8 @@ evhtp_params_set(clicon_handle    h,
 	goto done;
     retval = 1;
  done:
+    if (subject)
+	free(subject);
     if (cvv)
 	cvec_free(cvv);
     return retval;

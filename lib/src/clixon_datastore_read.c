@@ -731,7 +731,7 @@ xmldb_get_cache(clicon_handle    h,
     *xtop = x1t;
     retval = 1;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
 	free(xvec);
     return retval;
@@ -832,7 +832,7 @@ xmldb_get_zerocopy(clicon_handle    h,
     *xtop = x0t;
     retval = 1;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
 	free(xvec);
     return retval;

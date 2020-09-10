@@ -24,7 +24,7 @@
 * [3.3.1](#331) June 7 2017
 
 ## 4.7.0
-Expected: September 2020
+Expected: 15 September 2020
 
 ### API changes on existing protocol/config features
 

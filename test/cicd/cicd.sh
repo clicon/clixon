@@ -45,7 +45,7 @@ ssh -t $h "(cd src/cligen; /tmp/cligen-mk.sh)"
 # pull git changes and build clixon
 ssh -t $h "test -d src/clixon || (cd src;git clone https://github.com/clicon/clixon.git)"
 ssh -t $h "(cd src/clixon;git pull)"
-ssh -t $h "(cd src/clixon; /tmp/clixon-config.sh $evhtp)"
+ssh -t $h "(cd src/clixon; /tmp/clixon-config.sh $restconf)"
 ssh -t $h "(cd src/clixon; /tmp/clixon-mk.sh)"
 ssh -t $h sudo ldconfig
 # Run clixon test suite
