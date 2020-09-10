@@ -669,9 +669,9 @@ from_client_edit_config(clicon_handle h,
     /* If autocommit option is set or requested by client */
     if (clicon_autocommit(h) || autocommit) {
 	if ((ret = candidate_commit(h, "candidate", cbret)) < 0){ /* Assume validation fail, nofatal */
-	    if (ret < 0)
-		if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
-		    goto done;
+	    if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+		goto done;
+	    xmldb_copy(h, "running", "candidate");
 	    goto ok;
 	}
 	if (ret == 0){ /* discard */

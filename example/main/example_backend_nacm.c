@@ -37,12 +37,9 @@
  * features:
  * - nacm
  * - transaction test
- * The transaction test is test/test_transaction.sh where a user-error is triggered
- * by this plugin if started with -- -t <xpath>. _transaction_xpath is then set
- * and triggers a validation error if it matches. The error also toggles between
- * validation and commit errors.
+ *  -t  enable transaction logging (cal syslog for every transaction)
+ *  -v <xpath> Failing validate and commit if <xpath> is present (synthetic error)
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,10 +64,12 @@
  */
 static int _transaction_log = 0;
 
-/*! Variable for failing validate and commit, if set, fail on validate vs commit
+/*! Variable to control transaction logging (for debug)
+ * If set, call syslog for every transaction callback 
+ * Start backend with -- -v <xpath>
  */
-static char * _transaction_xpath = NULL;
-static int  _transaction_error_toggle = 0; /* fail at validate vs commit */
+static char *_validate_fail_xpath = NULL;
+static int   _validate_fail_toggle = 0; /* fail at validate and commit */
 
 int
 nacm_begin(clicon_handle    h, 
@@ -86,11 +85,12 @@ int
 nacm_validate(clicon_handle    h, 
 	      transaction_data td)
 {
-    if (_transaction_log){
+    if (_transaction_log)
 	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
-	if (_transaction_error_toggle==0 &&
-	    xpath_first(transaction_target(td), NULL, "%s", _transaction_xpath)){
-	    _transaction_error_toggle=1; /* toggle if triggered */
+    if (_validate_fail_xpath){
+	if (_validate_fail_toggle==0 &&
+	    xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
+	    _validate_fail_toggle = 1; /* toggle if triggered */
 	    clicon_err(OE_XML, 0, "User error");
 	    return -1; /* induce fail */
 	}
@@ -113,13 +113,12 @@ int
 nacm_commit(clicon_handle    h, 
 	    transaction_data td)
 {
-    cxobj  *target = transaction_target(td); /* wanted XML tree */
-
-    if (_transaction_log){
+    if (_transaction_log)
 	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
-	if (_transaction_error_toggle==1 &&
-	    xpath_first(target, NULL, "%s", _transaction_xpath)){
-	    _transaction_error_toggle=0; /* toggle if triggered */
+    if (_validate_fail_xpath){
+	if (_validate_fail_toggle==1 &&
+	    xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
+	    _validate_fail_toggle = 0; /* toggle if triggered */
 	    clicon_err(OE_XML, 0, "User error");
 	    return -1; /* induce fail */
 	}
@@ -234,11 +233,13 @@ clixon_plugin_init(clicon_handle h)
 	goto done;
     opterr = 0;
     optind = 1;
-    while ((c = getopt(argc, argv, "rsut:")) != -1)
+    while ((c = getopt(argc, argv, "tv:")) != -1)
 	switch (c) {
 	case 't': /* transaction log */
 	    _transaction_log = 1;
-	    _transaction_xpath = optarg;
+	    break;
+	case 'v': /* validate fail */
+	    _validate_fail_xpath = optarg;
 	    break;
 	}
 

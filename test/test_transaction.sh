@@ -28,7 +28,7 @@ fyang=$dir/trans.yang
 flog=$dir/backend.log
 touch $flog
 
-# Used as a trigger for user-validittion errors, eg <a>$errnr</a> is invalid
+# Used as a trigger for user-validittion errors, eg <a>$errnr</a> = <a>42</a> is invalid
 errnr=42
 
 cat <<EOF > $fyang
@@ -68,7 +68,6 @@ cat <<EOF > $cfg
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
-  <!--CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP-->
   <CLICON_NETCONF_DIR>/usr/local/lib/$APPNAME/netconf</CLICON_NETCONF_DIR>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -109,7 +108,7 @@ checklog(){
     fi
 }
 
-new "test params: -f $cfg -l f$flog -- -t /x/y[a=$errnr]" # Fail on this
+new "test params: -f $cfg -l f$flog -- -t -v /x/y[a=$errnr]" # Fail on this
 # Bring your own backend
 if [ $BE -ne 0 ]; then
     # kill old backend (if any)
@@ -118,8 +117,8 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
-    new "start backend  -s init -f $cfg -l f$flog -- -t /x/y[a=$errnr]"
-    start_backend -s init -f $cfg -l f$flog -- -t /x/y[a=$errnr] # -t means transaction logging
+    new "start backend  -s init -f $cfg -l f$flog -- -t -v /x/y[a=$errnr]"
+    start_backend -s init -f $cfg -l f$flog -- -t -v /x/y[a=$errnr] # -t means transaction logging
 
     new "waiting"
     wait_backend

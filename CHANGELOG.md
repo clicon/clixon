@@ -64,6 +64,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: Restconf failed put/post could leave residue in candidate causing errors in next put/post
 * Fixed: [clixon_netconf does not respond to hello #136](https://github.com/clicon/clixon/issues/136)
   * The error showed only when CLICON_MODULE_LIBRARY_RFC7895 was disabled.
 * Fixed: Do not check min/max constraints on state data in config validate code

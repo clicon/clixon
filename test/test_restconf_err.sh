@@ -122,6 +122,17 @@ module example{
 	 }
       }
    }
+   container table{
+      list parameter{
+         key name;
+ 	 leaf name{
+	    type string;
+	 }
+	 leaf value{
+	    type string;
+	 }
+      }
+   }
 }
 EOF
 
@@ -150,8 +161,8 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     sudo pkill -f clixon_backend # to be sure
-    new "start backend -s init -f $cfg -- -sS $fstate"
-    start_backend -s init -f $cfg  -- -sS $fstate
+    new "start backend -s init -f $cfg -- -sS $fstate -v /table/parameter[name=\"4242\"]"
+    start_backend -s init -f $cfg -- -sS $fstate -v /table/parameter[name="4242"]
 fi
 
 new "waiting"
@@ -217,6 +228,14 @@ expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/augment:r
 # Also generate an invalid state XML. This should generate an "Internal" error and the name of the
 new "restconf GET failed state"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 '412 Precondition Failed' '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>mystate</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: mystate with parent: top in namespace: urn:example:foobar. Internal error, state callback returned invalid XML: example_backend</error-message></error></errors>'
+
+# Add error XML a[4242] , it should fail on autocommit but may not be discarded, therefore still
+# there in candidate when want to add something else
+new "Add user-invalid entry (should fail)"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data -d '<table xmlns="urn:example:clixon"><parameter><name>4242</name></parameter></table>')" 0 "HTTP/1.1 412 Precondition Failed" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"operation-failed","error-severity":"error","error-message":"User error"}}}'
+
+new "Add OK entry"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data -d '<table xmlns="urn:example:clixon"><parameter><name>1</name></parameter></table>')" 0 "HTTP/1.1 201 Created" 
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
