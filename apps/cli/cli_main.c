@@ -260,7 +260,7 @@ autocli_tree(clicon_handle      h,
 	     char              *name,
 	     enum genmodel_type gt,
 	     int                state,
-	     int                printgen
+	     int                printgen,
          int                show_tree)
 {
     int           retval = -1;
@@ -302,7 +302,7 @@ autocli_start(clicon_handle h,
 {
     int                retval = -1;
     int                autocli_model = 0;
-    cbuf              *show_treename = NULL, *set_treename = NULL;
+    cbuf              *show_treename = NULL, *treename = NULL;
     enum genmodel_type gt;
 	
     /* If autocli disabled quit */
@@ -315,15 +315,14 @@ autocli_start(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    /* Create set_treename cbuf */
-    if ((set_treename = cbuf_new()) == NULL){
+    /* Create treename cbuf */
+    if ((treename = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    /* The tree name is by default @datamodelset but can be changed by option (why would one do that?) */
-	cprintf(set_treename, "%s", clicon_cli_model_treename(h));
-    cprintf(set_treename, "set");
-	if (autocli_tree(h, cbuf_get(set_treename), gt, 0, printgen, 0) < 0)
+    /* The tree name is by default @datamodel but can be changed by option (why would one do that?) */
+	cprintf(treename, "%s", clicon_cli_model_treename(h));
+	if (autocli_tree(h, cbuf_get(treename), gt, 0, printgen, 0) < 0)
 	    goto done;
 
     /* The tree name is by default @datamodelshow but can be changed by option (why would one do that?) */
@@ -332,11 +331,11 @@ autocli_start(clicon_handle h,
     if (autocli_tree(h, cbuf_get(show_treename), gt, 0, printgen, 1) < 0)
 	goto done;
 
-    /* Create a tree for config+state. This tree's name has appended "state" to @datamodelshow (XXX)
+    /* Create a tree for config+state. This tree's name has appended "state" to @datamodel (XXX)
      */
     if (autocli_model > 1){
-	cprintf(show_treename, "state");
-	if (autocli_tree(h, cbuf_get(show_treename), gt, 1, printgen, 1) < 0)
+	cprintf(treename, "state");
+	if (autocli_tree(h, cbuf_get(treename), gt, 1, printgen, 1) < 0)
 	    goto done;
     }
 
@@ -345,8 +344,8 @@ autocli_start(clicon_handle h,
  done:
     if (show_treename)
 	cbuf_free(show_treename);
-    if (set_treename)
-	cbuf_free(set_treename);
+    if (treename)
+	cbuf_free(treename);
     return retval;
 }
 

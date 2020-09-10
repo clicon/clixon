@@ -776,6 +776,7 @@ yang2cli_list(clicon_handle      h,
     int           retval = -1;
     char         *helptext = NULL;
     char         *s;
+	int 		 list_has_callback;
 
     cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
@@ -801,8 +802,9 @@ yang2cli_list(clicon_handle      h,
 	/* Print key variable now, and skip it in loop below 
 	   Note, only print callback on last statement
 	 */
+	list_has_callback = cvec_next(cvk, cvi)?0:1;
 	if (show_tree == 1) {
-		if (cvec_next(cvk, cvi)?0:1) {
+		if (list_has_callback) {
 			if (cli_callback_generate(h, ys, cb) < 0)
 				goto done;
 			cprintf(cb, ";\n");
@@ -812,7 +814,7 @@ yang2cli_list(clicon_handle      h,
 
 	if (yang2cli_leaf(h, yleaf,
 			  (gt==GT_VARS||gt==GT_HIDE)?GT_NONE:gt, level+1, 
-			  cvec_next(cvk, cvi)?0:1, show_tree, 1, cb) < 0)
+			  list_has_callback, show_tree, 1, cb) < 0)
 	    goto done;
     }
 
@@ -834,7 +836,7 @@ yang2cli_list(clicon_handle      h,
 	    goto done;
     }
     cprintf(cb, "%*s}\n", level*3, "");
-	if (show_tree == 1) {
+	if ((show_tree == 1)  && (list_has_callback)) {
 		cprintf(cb, "%*s}\n", level*3, "");
 	}
     retval = 0;
