@@ -26,18 +26,20 @@
 ## 4.7.0
 Expected: 15 September 2020
 
+This release is primarily a bugfix and usability improvement release, no major new features.
+
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
 * Netconf as default namespace has been disabled by default.
-  * Only requests on the form: `<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config>...` will be accepted
-  * All replies will be on the form: `<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">...`
-  * Requests such as: `<rpc><edit-config>...` will not  be accepted.
+  * Only requests on the form: `<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config>...` are accepted
+  * All replies are on the form: `<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">...`
+  * Requests such as: `<rpc><edit-config>...` are not accepted.
   * You can revert this behaviour (to clixon pre-4.6 behaviour) by enabling `CLICON_NAMESPACE_NETCONF_DEFAULT`
   * This API change is a consequence of: [copy-config's RPC cxobj parameter does not contain namespace #131](https://github.com/clicon/clixon/issues/131)
 * NACM datanode paths fixed to canonical namespace
-  * The fix of [Cannot create or modify NACM data node access rule with path using JSON encoding #129](https://github.com/clicon/clixon/issues/129) leads that data-node paths, eg `<rule>...<path>ex:table/ex:parameter</path></rule>` instance-identifiers are restricted to canonical namespace identifiers for both XML and JSON encoding. That is, if a symbol (such as `table` above) is a symbol in a module with prefix `ex`, another prefix cannot be used, even though defined with a `xmlns:` rule.
+  * The fix of [Cannot create or modify NACM data node access rule with path using JSON encoding #129](https://github.com/clicon/clixon/issues/129) leads to that data-node paths, eg `<rule>...<path>ex:table/ex:parameter</path></rule>` instance-identifiers are restricted to canonical namespace identifiers for both XML and JSON encoding. That is, if a symbol (such as `table` above) is a symbol in a module with prefix `ex`, another prefix cannot be used, even though defined with a `xmlns:` rule.
 
 * New clixon-config@2020-08-17.yang revision
   * Added options for Restconf evhtp setting default bind socket address and ports:
@@ -45,6 +47,7 @@ Users may have to change how they access the system
   * Added option for using NETCONF default namespace: `CLICON_NAMESPACE_NETCONF_DEFAULT`
   * Added options for better handling of long and multi-line CLI help strings:
     * `CLICON_CLI_HELPSTRING_TRUNCATE`, `CLICON_CLI_HELPSTRING_LINES`
+  * Changed semantics of `CLICON_NACM_DISABLED_ON_EMPTY` to "disable NACM if there is no _NACM_ configuration", instead of "disable NACM if there is no _configuration_".
 
 ### C/CLI-API changes on existing features
 

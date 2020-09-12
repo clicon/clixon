@@ -652,7 +652,7 @@ filename2revision(const char *filename,
 	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
     }
-    clicon_debug(1, "%s %s", __FUNCTION__, base);
+    clicon_debug(2, "%s %s", __FUNCTION__, base);
     if ((p = rindex(base, '.')) != NULL) /* strip postfix .yang */
 	*p = '\0';
     if ((p = index(base, '@')) != NULL){ /* extract revision date */

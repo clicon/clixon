@@ -574,9 +574,7 @@ xmldb_get_nocache(clicon_handle    h,
 	if (xml_default_recurse(xt) < 0)
 	    goto done;
     }
-    /* If empty database, then disable NACM if loaded
-     * This has some drawbacks. One is that a config may become empty at a later stage
-     * and then this does not hold.
+    /* If empty NACM config, then disable NACM if loaded
      */
     if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
 	if (disable_nacm_on_empty(xt, yspec) < 0)
@@ -723,9 +721,7 @@ xmldb_get_cache(clicon_handle    h,
 	if (xml_default_recurse(x1t) < 0)
 	    goto done;
     }
-    /* If empty database, then disable NACM if loaded
-     * This has some drawbacks. One is that a config may become empty at a later stage
-     * and then this does not hold.
+    /* If empty NACM config, then disable NACM if loaded
      */
     if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
 	if (disable_nacm_on_empty(x1t, yspec) < 0)
@@ -822,9 +818,7 @@ xmldb_get_zerocopy(clicon_handle    h,
 	if (xml_default_recurse(x0t) < 0)
 	    goto done;
     }
-    /* If empty database, then disable NACM if loaded
-     * This has some drawbacks. One is that a config may become empty at a later stage
-     * and then this does not hold.
+    /* If empty NACM config, then disable NACM if loaded
      */
     if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
 	if (disable_nacm_on_empty(x0t, yspec) < 0)
