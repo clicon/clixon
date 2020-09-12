@@ -354,19 +354,37 @@ text_read_modstate(clicon_handle       h,
     return retval;
 }
 
+/*! Check if nacm only contains default values, if so disable NACM
+ * @param[in]  xt    Top-level XML
+ * @param[in]  yspec YANG spec  
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
 static int
-disable_nacm_on_empty(cxobj     *x0,
+disable_nacm_on_empty(cxobj     *xt,
 		      yang_stmt *yspec)
 {
     int        retval = -1;
     yang_stmt *ymod;
     cxobj    **vec = NULL;
     int        len = 0;
+    cxobj     *xnacm = NULL;
+    cxobj     *x;
     cxobj     *xb;
 
     if ((ymod = yang_find(yspec, Y_MODULE, "ietf-netconf-acm")) == NULL)
 	goto ok;
-    if (clixon_xml_find_instance_id(x0, yspec, &vec, &len, "/nacm:nacm/nacm:enable-nacm") < 1)
+    if ((xnacm = xpath_first(xt, NULL, "nacm")) == NULL)
+	goto ok;
+    /* Go through all children and check all are defaults, otherwise quit */
+    x = NULL;
+    while ((x = xml_child_each(xnacm, x, CX_ELMNT)) != NULL) {
+	if (!xml_flag(x, XML_FLAG_DEFAULT))
+	    break;
+    }
+    if (x != NULL)
+	goto ok; /* not empty, at least one non-default child of nacm */
+    if (clixon_xml_find_instance_id(xt, yspec, &vec, &len, "/nacm:nacm/nacm:enable-nacm") < 1)
 	goto done;
     if (len){
 	if ((xb = xml_body_get(vec[0])) == NULL)
@@ -515,7 +533,6 @@ xmldb_get_nocache(clicon_handle    h,
     int        i;
     int        ret;
     db_elmnt   de0 = {0,};
-    int        empty = 0;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
@@ -527,9 +544,6 @@ xmldb_get_nocache(clicon_handle    h,
 	goto fail;
     clicon_db_elmnt_set(h, db, &de0); /* Content is copied */    
     
-    /* Check if empty */
-    if (xml_child_nr(xt) == 0)
-	empty = 1;
     /* Here xt looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec */
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
@@ -564,8 +578,7 @@ xmldb_get_nocache(clicon_handle    h,
      * This has some drawbacks. One is that a config may become empty at a later stage
      * and then this does not hold.
      */
-    if (empty &&
-	clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
+    if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
 	if (disable_nacm_on_empty(xt, yspec) < 0)
 	    goto done;
     }
@@ -629,7 +642,6 @@ xmldb_get_cache(clicon_handle    h,
     cxobj          *x1t = NULL;
     db_elmnt        de0 = {0,};
     int             ret;
-    int             empty = 0;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
@@ -650,9 +662,6 @@ xmldb_get_cache(clicon_handle    h,
     } /* x0t == NULL */
     else
 	x0t = de->de_xml;
-    /* Check if empty, must be before add global defaults */
-    if (xml_child_nr(x0t) == 0)
-	empty = 1;
 
     /* Here x0t looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec 
@@ -718,8 +727,7 @@ xmldb_get_cache(clicon_handle    h,
      * This has some drawbacks. One is that a config may become empty at a later stage
      * and then this does not hold.
      */
-    if (empty &&
-	clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
+    if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
 	if (disable_nacm_on_empty(x1t, yspec) < 0)
 	    goto done;
     }
@@ -774,7 +782,6 @@ xmldb_get_zerocopy(clicon_handle    h,
     db_elmnt       *de = NULL;
     db_elmnt        de0 = {0,};
     int             ret;
-    int             empty = 0;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
@@ -795,9 +802,6 @@ xmldb_get_zerocopy(clicon_handle    h,
     } /* x0t == NULL */
     else
 	x0t = de->de_xml;
-    /* Check if empty, must be before add global defaults */
-    if (xml_child_nr(x0t) == 0)
-	empty = 1;
 
     /* Here xt looks like: <config>...</config> */
     if (xpath_vec(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
@@ -822,8 +826,7 @@ xmldb_get_zerocopy(clicon_handle    h,
      * This has some drawbacks. One is that a config may become empty at a later stage
      * and then this does not hold.
      */
-    if (empty &&
-	clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
+    if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
 	if (disable_nacm_on_empty(x0t, yspec) < 0)
 	    goto done;
     }

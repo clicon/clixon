@@ -791,10 +791,8 @@ module clixon-config {
                  configs can not be edited.
                  This means that a startup config must always have a NACM configuration or
                  that the NACM recovery session is used to edit an empty config.
-                 If this option is set, Clixon disables NACM if a datastore is empty on load.
-                 Note that it only makes the check on initial load, not if a store 'becomes'
-                 empty, but enables a clixon nacm system to start empty and add an NACM
-                 config after boot.";
+                 If this option is set, Clixon disables NACM if a datastore does NOT contain a
+                 NACM config on load.";
 	}
 	leaf CLICON_MODULE_LIBRARY_RFC7895 {
 	    type boolean;
