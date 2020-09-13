@@ -761,38 +761,42 @@ cli_show_auto1(clicon_handle h,
     }
     if ((xp = xpath_first(xt, nsc, "%s", xpath)) != NULL)
 	/* Print configuration according to format */
-	switch (format){
-	case FORMAT_XML:
-	    clicon_xml2file(stdout, xp, 0, 1);
-	    break;
-	case FORMAT_JSON:
-	    xml2json_cb(stdout, xp, 1, cligen_output);
-	    break;
-	case FORMAT_TEXT:
-		ys_keyword = yang_keyword_get(xml_spec(xp));
-		if (ys_keyword == Y_LIST)
-			xp_helper = xml_child_i(xml_parent(xp), i);
-		else
-			xp_helper = xp;
+	ys_keyword = yang_keyword_get(xml_spec(xp));
+	if (ys_keyword == Y_LIST)
+		xp_helper = xml_child_i(xml_parent(xp), i);
+	else
+		xp_helper = xp;
 
-		for (; i < xml_child_nr(xml_parent(xp)) ; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
-			xml2txt_cb(stdout, xp_helper, cligen_output);  /* tree-formed text */
-			if (ys_keyword != Y_LIST)
-				break;
-		}
-	    break;
-	case FORMAT_CLI:
-	    if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
-		goto done;
-	    xml2cli_cb(stdout, xp, prefix, gt, cligen_output); /* cli syntax */
-	    break;
-	case FORMAT_NETCONF:
-	    fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
-	    clicon_xml2file(stdout, xp, 2, 1);
-	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
-	    break;
-	default: /* see cli_show_config() */
-	    break;
+	switch (format){
+		case FORMAT_CLI:
+			if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
+				goto done;
+			xml2cli_cb(stdout, xp, prefix, gt, cligen_output); /* cli syntax */
+			break;
+		case FORMAT_NETCONF:
+			fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
+			clicon_xml2file(stdout, xp, 2, 1);
+			fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
+			break;
+		default:
+			for (; i < xml_child_nr(xml_parent(xp)) ; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
+				switch (format){
+					case FORMAT_XML:
+						clicon_xml2file(stdout, xp_helper, 0, 1);
+						break;
+					case FORMAT_JSON:
+						xml2json_cb(stdout, xp_helper, 1, cligen_output);
+						break;
+					case FORMAT_TEXT:	
+						xml2txt_cb(stdout, xp_helper, cligen_output);  /* tree-formed text */
+						break;
+					default: /* see cli_show_config() */
+						break;
+				}
+				if (ys_keyword != Y_LIST)
+					break;
+			}
+			break;
 	}
     retval = 0;
  done:
