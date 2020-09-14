@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [4.7.0](#470) Expected: September 2020
+* [4.7.0](#470) 14 September 2020
 * [4.6.0](#460) 14 August 2020
 * [4.5.0](#450) 12 May 2020
 * [4.4.0](#440) 5 April 2020
@@ -24,7 +24,7 @@
 * [3.3.1](#331) June 7 2017
 
 ## 4.7.0
-Expected: 15 September 2020
+14 September 2020
 
 This release is primarily a bugfix and usability improvement release, no major new features.
 
