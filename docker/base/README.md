@@ -4,6 +4,8 @@ This directory contains code for building and pushing the clixon base docker
 container. By default it is pushed to docker hub clixon/clixon, but you can change
 the IMAGE in Makefile.in and push it to another name.
 
+This clixon base container uses libevhtp, native http.
+
 The clixon docker base image can be used to build clixon
 applications. It has the whole code for a clixon release which it
 downloads from git.
