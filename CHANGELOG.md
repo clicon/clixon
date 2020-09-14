@@ -49,10 +49,6 @@ Users may have to change how they access the system
     * `CLICON_CLI_HELPSTRING_TRUNCATE`, `CLICON_CLI_HELPSTRING_LINES`
   * Changed semantics of `CLICON_NACM_DISABLED_ON_EMPTY` to "disable NACM if there is no _NACM_ configuration", instead of "disable NACM if there is no _configuration_".
 
-### C/CLI-API changes on existing features
-
-Developers may need to change their code
-
 ### Minor changes
 
 * Debug messages
