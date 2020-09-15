@@ -704,10 +704,13 @@ cli_show_auto1(clicon_handle h,
     enum format_enum format = FORMAT_XML;
     cxobj           *xt = NULL;
     cxobj           *xp;
+    cxobj           *xp_helper;
     cxobj           *xerr;
     enum genmodel_type gt;
     char            *api_path = NULL;
     char            *prefix = NULL;
+    enum rfc_6020    ys_keyword;
+    int		     i = 0;
 
     if (cvec_len(argv) < 3 || cvec_len(argv) > 4){
 	clicon_err(OE_PLUGIN, 0, "Usage: <api-path-fmt>* <database> <format> <prefix>. (*) generated.");
@@ -757,32 +760,46 @@ cli_show_auto1(clicon_handle h,
 	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
     }
-    if ((xp = xpath_first(xt, nsc, "%s", xpath)) != NULL)
+    if ((xp = xpath_first(xt, nsc, "%s", xpath)) != NULL){
 	/* Print configuration according to format */
+	ys_keyword = yang_keyword_get(xml_spec(xp));
+	if (ys_keyword == Y_LIST)
+		xp_helper = xml_child_i(xml_parent(xp), i);
+	else
+		xp_helper = xp;
+
 	switch (format){
-	case FORMAT_XML:
-	    clicon_xml2file(stdout, xp, 0, 1);
-	    break;
-	case FORMAT_JSON:
-	    xml2json_cb(stdout, xp, 1, cligen_output);
-	    break;
-	case FORMAT_TEXT:
-	    xml2txt_cb(stdout, xp, cligen_output); /* tree-formed text */
-	    break;
 	case FORMAT_CLI:
 	    if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
 		goto done;
 	    xml2cli_cb(stdout, xp, prefix, gt, cligen_output); /* cli syntax */
 	    break;
 	case FORMAT_NETCONF:
-	    fprintf(stdout, "<rpc xmlns=\"%s\"><edit-config><target><candidate/></target><config>\n",
-		    NETCONF_BASE_NAMESPACE);
+	    fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
 	    clicon_xml2file(stdout, xp, 2, 1);
 	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	    break;
-	default: /* see cli_show_config() */
+	default:
+	    for (; i < xml_child_nr(xml_parent(xp)) ; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
+		switch (format){
+		case FORMAT_XML:
+		    clicon_xml2file(stdout, xp_helper, 0, 1);
+		    break;
+		case FORMAT_JSON:
+		    xml2json_cb(stdout, xp_helper, 1, cligen_output);
+		    break;
+		case FORMAT_TEXT:	
+		    xml2txt_cb(stdout, xp_helper, cligen_output);  /* tree-formed text */
+		    break;
+		default: /* see cli_show_config() */
+		    break;
+		}
+		if (ys_keyword != Y_LIST)
+		    break;
+	    }
 	    break;
 	}
+    }
     retval = 0;
  done:
     if (nsc)
