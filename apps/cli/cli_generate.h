@@ -53,6 +53,6 @@
  * Prototypes
  */
 int yang2cli(clicon_handle h, yang_stmt *yspec, enum genmodel_type gt,
-	     int printgen, int state, parse_tree *ptnew);
+	     int printgen, int state, int show_tree, parse_tree *ptnew);
 
 #endif  /* _CLI_GENERATE_H_ */
