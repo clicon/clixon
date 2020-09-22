@@ -166,13 +166,24 @@ clixon_plugin_daemon_all(clicon_handle h)
 }
 
 /*! Call single backend statedata callback
+ *
+ * Create an xml state tree (xret) for one callback only on the form:
+ *   <config>...</config>,
+ * call a user supplied function (ca_statedata) which can do two things:
+ *  - Fill in state XML in the tree and return 0
+ *  - Call cli_error() and return -1
+ * In the former case, this function returns the state XML tree to the caller (which 
+ * typically merges the tree with other state trees).
+ * In the latter error case, this function returns 0 (invalid) to the caller with no tree
+ * If a fatal error occurs in this function, -1 is returned.
+ *
  * @param[in]  cp      Plugin handle
  * @param[in]  h       clicon handle
  * @param[in]  xpath   String with XPATH syntax. or NULL for all
- * @retval    -1       Error
- * @retval     0       Statedata callback failed
- * @retval     1       OK if callback found (and called) xp is set, otherwise xp is not set
- * @note xtop can be replaced
+ * @param[out] xret    If retval=1, state tree created and returned: <config>...
+ * @retval    -1       Fatal error
+ * @retval     0       Statedata callback failed. no XML tree returned
+ * @retval     1       OK if callback found (and called) xret is set
  */
 static int
 clixon_plugin_statedata_one(clixon_plugin  *cp,
@@ -194,6 +205,7 @@ clixon_plugin_statedata_one(clixon_plugin  *cp,
 			   __FUNCTION__, cp->cp_name);
 	    goto fail;  /* Dont quit here on user callbacks */
 	}
+
     }
     if (xp && x)
 	*xp = x;
@@ -212,11 +224,11 @@ clixon_plugin_statedata_one(clixon_plugin  *cp,
  * @param[in]     yspec   Yang spec
  * @param[in]     nsc     Namespace context
  * @param[in]     xpath   String with XPATH syntax. or NULL for all
- * @param[in,out] xtop    State XML tree is merged with existing tree.
+ * @param[in,out] xret    State XML tree is merged with existing tree.
  * @retval       -1       Error
  * @retval        0       Statedata callback failed (xret set with netconf-error)
  * @retval        1       OK
- * @note xtop can be replaced
+ * @note xret can be replaced in this function
  */
 int
 clixon_plugin_statedata_all(clicon_handle    h,

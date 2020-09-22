@@ -210,7 +210,7 @@ xpath_tree_print_cb(cbuf       *cb,
  * @see xpath_tree2str
  */
 int
-xpath_tree_print(FILE  *f, 
+xpath_tree_print(FILE       *f, 
 		 xpath_tree *xs)
 {
     int   retval = -1;
