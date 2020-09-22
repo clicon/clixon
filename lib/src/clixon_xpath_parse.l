@@ -113,6 +113,7 @@ ncname     {namestart}{namechar}*
 <TOKEN>last	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
 <TOKEN>position	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
 <TOKEN>count	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
+<TOKEN>contains	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
 <TOKEN>re-match         { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
 <TOKEN>deref            { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
 <TOKEN>derived-from     { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }

@@ -129,7 +129,7 @@ new "xpath ../../../rt:address-family = 'v6ur:ipv6-unicast'"
 expecteof "$clixon_util_xpath -f $xml2 -i /aaa/bbb/here2/here" 0 "../../../rt:address-family = 'v6ur:ipv6-unicast'" "^bool:true$"
 
 new "xpath /if:interfaces/if:interface[if:name=current()/rt:name]/ip:ipv6/ip:enabled='true'"
-expecteof "$clixon_util_xpath -f $xml2" 0 "/if:interfaces/if:interface[if:name=current()/rt:name]/ip:ipv6/ip:enabled='true'" "^bool:true$"
+expecteof "$clixon_util_xpath -D 1 -f $xml2" 0 "/if:interfaces/if:interface[if:name=current()/rt:name]/ip:ipv6/ip:enabled='true'" "^bool:true$"
 
 new "xpath rt:address-family='v6ur:ipv6-unicast'"
 expecteof "$clixon_util_xpath -f $xml2 -i /aaa" 0 "rt:address-family='v6ur:ipv6-unicast'" "^bool:true$"
@@ -174,7 +174,6 @@ new "xpath .[name='bar']"
 expecteof "$clixon_util_xpath -f $xml2 -p .[name='bar'] -i /aaa/bbb/routing/ribs/rib" 0 "" "^nodeset:0:<rib><name>bar</name><address-family>myfamily</address-family></rib>$"
 
 new "xpath /aaa/bbb/namespace (namespace is xpath axisname)"
-echo "$clixon_util_xpath -f $xml2 -p /aaa/bbb/namespace"
 expecteof "$clixon_util_xpath -f $xml2 -p /aaa/bbb/namespace" 0 "" "^nodeset:0:<namespace>urn:example:foo</namespace>$"
 
 # See https://github.com/clicon/clixon/issues/54
@@ -202,8 +201,17 @@ new "xpath bbb[ccc='fie']"
 expecteof "$clixon_util_xpath -f $xml3 -p bbb[ccc='fie']" 0 "" "^nodeset:$"
 
 # Just syntax - no semantic meaning
+new "xpath derived-from 10.4.1"
+expectpart "$($clixon_util_xpath -f $xml3 -p 'derived-from(../../change-operation,"modify")')" 0 "bool:false"
+
 new "xpath derived-from-or-self"
-expecteof "$clixon_util_xpath -f $xml3 -p 'derived-from-or-self(../../change-operation,modify)'" 0 "" "derived-from-or-self"
+expectpart "$($clixon_util_xpath -f $xml3 -p 'derived-from-or-self(../../change-operation,"modify")')" 0 "bool:false"
+
+new "xpath contains"
+expectpart "$($clixon_util_xpath -f $xml3 -p "contains(../../objectClass,'BTSFunction') or contains(../../objectClass,'RNCFunction')")" 0 "bool:false"
+
+# Just syntax - no semantic meaning
+
 
 rm -rf $dir
 

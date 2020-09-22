@@ -1174,11 +1174,45 @@ xml_yang_validate_all(clicon_handle h,
 	/* "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
 	if ((yc = yang_find(ys, Y_WHEN, NULL)) != NULL){
 	    xpath = yang_argument_get(yc); /* "when" has xpath argument */
-	    if ((nr = xpath_vec_bool(xt, NULL, "%s", xpath)) < 0)
+	    /* WHEN xpath needs namespace context */
+	    if (xml_nsctx_yang(ys, &nsc) < 0)
 		goto done;
-	    if (!nr){
+	    if ((nr = xpath_vec_bool(xt, nsc,
+				     "%s", xpath)) < 0)
+		goto done;
+	    if (nsc){
+		xml_nsctx_free(nsc);
+		nsc = NULL;
+	    }
+	    if (nr == 0){
+		if ((cb = cbuf_new()) == NULL){
+		    clicon_err(OE_UNIX, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cb, "Failed WHEN condition of %s in module %s",
+			xml_name(xt),
+			yang_argument_get(ys_module(ys)));
 		if (netconf_operation_failed_xml(xret, "application", 
-					     "when xpath validation failed") < 0)
+						 cbuf_get(cb)) < 0)
+		    goto done;
+		goto fail;
+	    }
+	}
+	/* Augmented when using special struct. */
+	if ((xpath = yang_when_xpath_get(ys)) != NULL){
+	    if ((nr = xpath_vec_bool(xml_parent(xt), yang_when_nsc_get(ys),
+				     "%s", xpath)) < 0)
+		goto done;
+	    if (nr == 0){
+		if ((cb = cbuf_new()) == NULL){
+		    clicon_err(OE_UNIX, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cb, "Failed augmented WHEN condition of %s in module %s",
+			xml_name(xt),
+			yang_argument_get(ys_module(ys)));
+		if (netconf_operation_failed_xml(xret, "application", 
+						 cbuf_get(cb)) < 0)
 		    goto done;
 		goto fail;
 	    }

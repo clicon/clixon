@@ -200,6 +200,10 @@ int        yang_cvec_set(yang_stmt *ys, cvec *cvv);
 uint16_t   yang_flag_get(yang_stmt *ys, uint16_t flag);
 int        yang_flag_set(yang_stmt *ys, uint16_t flag);
 int        yang_flag_reset(yang_stmt *ys, uint16_t flag);
+char      *yang_when_xpath_get(yang_stmt *ys);
+int        yang_when_xpath_set(yang_stmt *ys, char *xpath);
+cvec      *yang_when_nsc_get(yang_stmt *ys);
+int        yang_when_nsc_set(yang_stmt *ys, cvec *nsc);
 
 /* Other functions */
 yang_stmt *yspec_new(void);

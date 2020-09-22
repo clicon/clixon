@@ -2,8 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2009-2019 Olof Hagsand
   Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
@@ -33,46 +32,16 @@
 
   ***** END LICENSE BLOCK *****
 
+ * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10 (Base XML)
+ * and rfc 7950 (YANG-specific)
  */
-
-#ifndef _CLIXON_YANG_TYPE_H_
-#define _CLIXON_YANG_TYPE_H_
-
-/*
- * Constants
- */
-/*! Bit-fields used in options argument in yang_type_get()
- */
-#define YANG_OPTIONS_LENGTH           0x01
-#define YANG_OPTIONS_RANGE            0x02
-#define YANG_OPTIONS_FRACTION_DIGITS  0x04
-
-/*
- * Types
- */
-/* declared in clixon_yang_internal */
-typedef struct yang_type_cache yang_type_cache;
+#ifndef _CLIXON_XPATH_FUNCTION_H
+#define _CLIXON_XPATH_FUNCTION_H
 
 /*
  * Prototypes
  */
-int        ys_resolve_type(yang_stmt *ys, void *arg);
-int        yang2cv_type(char *ytype, enum cv_type *cv_type);
-char      *cv2yang_type(enum cv_type cv_type);
-yang_stmt *yang_find_identity(yang_stmt *ys, char *identity);
-yang_stmt *yang_find_identity_nsc(yang_stmt *yspec, char *identity, cvec *nsc);
-int        ys_cv_validate(clicon_handle h, cg_var *cv, yang_stmt *ys, char **reason);
-int        clicon_type2cv(char *type, char *rtype, yang_stmt *ys, enum cv_type *cvtype);
-int        yang_type_get(yang_stmt *ys, char **otype, yang_stmt **restype, 
-			 int *options, cvec **cvv,
-			 cvec *patterns, cvec *regexps,
-                         uint8_t *fraction_digits);
-int        yang_type_resolve(yang_stmt *yorig, yang_stmt *ys,
-			     yang_stmt *ytype, 
-			     yang_stmt **restype, int *options, 
-			     cvec **cvv, cvec *patterns, cvec *regexps,
-			     uint8_t *fraction);
-enum cv_type yang_type2cv(yang_stmt *ys);
+int xp_function_contains(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_derived_from(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, int self, xp_ctx **xrp);
 
-
-#endif  /* _CLIXON_YANG_TYPE_H_ */
+#endif /* _CLIXON_XPATH_FUNCTION_H */

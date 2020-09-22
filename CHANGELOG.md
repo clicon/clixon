@@ -27,6 +27,13 @@
 ## 4.8.0
 Expected: October 2020
 
+### New features
+
+* Added support for the following XPATH functions:
+  * `contains`, see https://www.w3.org/TR/xpath-10
+  * `derived-from` and `derived-from-or-self`
+    * in particular in augment/when statements as shown in eg RFC 7950.
+  
 ## 4.7.0
 14 September 2020
 

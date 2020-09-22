@@ -87,6 +87,7 @@
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_xpath_optimize.h"
+#include "clixon_xpath_function.h"
 #include "clixon_xpath_eval.h"
 
 /* Mapping between XPATH operator string <--> int  */
@@ -178,8 +179,8 @@ nodetest_eval_node(cxobj      *x,
  */
 static int
 nodetest_eval_node_localonly(cxobj      *x,
-			xpath_tree *xs,
-			cvec       *nsc)
+			     xpath_tree *xs,
+			     cvec       *nsc)
 {
     int  retval = -1;
     char *name1 = xml_name(x);
@@ -237,11 +238,11 @@ nodetest_eval(cxobj      *x,
 
 /*!
  * @param[in]  xn
- * @param[in]  nodetest  XPATH stack
+ * @param[in]  nodetest   XPATH stack
  * @param[in]  node_type
  * @param[in]  flags
  * @param[in]  nsc        XML Namespace context
- * @param[in]  localonly       Skip prefix and namespace tests (non-standard)
+ * @param[in]  localonly  Skip prefix and namespace tests (non-standard)
  * @param[out] vec0
  * @param[out] vec0len
  */
@@ -333,7 +334,7 @@ xp_eval_step(xp_ctx     *xc0,
 	else{
 	    if (nodetest->xs_type==XP_NODE_FN &&
 		nodetest->xs_s0 &&
-		strcmp(nodetest->xs_s0,"current")==0){
+		strcmp(nodetest->xs_s0, "current")==0){
 		if (cxvec_append(xc->xc_initial, &vec, &veclen) < 0)
 		    goto done;
 	    }
@@ -522,7 +523,6 @@ xp_eval_predicate(xp_ctx     *xc,
 	    if (xrc)
 		ctx_free(xrc);
 	}
-
     }
     assert(xr0||xr1);
     if (xr1){
@@ -972,6 +972,25 @@ xp_eval(xp_ctx     *xc,
 	    goto done;
 	goto ok;
 	break;
+    case XP_PRIME_FN:
+	if (xs->xs_s0){
+	    if (strcmp(xs->xs_s0, "contains") == 0){
+		if (xp_function_contains(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+		    goto done;
+		goto ok;
+	    }
+	    else if (strcmp(xs->xs_s0, "derived-from") == 0){
+		if (xp_function_derived_from(xc, xs->xs_c0, nsc, localonly, 0, xrp) < 0)
+		    goto done;
+		goto ok;
+	    }
+	    else if (strcmp(xs->xs_s0, "derived-from-or-self") == 0){
+		if (xp_function_derived_from(xc, xs->xs_c0, nsc, localonly, 1, xrp) < 0)
+		    goto done;
+		goto ok;
+	    }
+	}
+	break;
     default:
 	break;
     }
@@ -1047,12 +1066,10 @@ xp_eval(xp_ctx     *xc,
 	xr0->xc_type = XT_STRING;
 	xr0->xc_string = xs->xs_s0?strdup(xs->xs_s0):NULL;
 	break;
-    case XP_PRIME_FN:
-	break;
     default:
 	break;
     }
-    /* Eval second child c0
+    /* Eval second child c1
      * Note, some operators like locationpath, need transitive context (use_xr0)
      */
     if (xs->xs_c1)

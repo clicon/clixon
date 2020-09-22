@@ -316,6 +316,87 @@ yang_flag_reset(yang_stmt *ys,
     return 0;
 }
 
+/*! Get yang xpath for "when"-associated augment
+ *
+ * Ie, for yang structures like: augment <path> { when <xpath>; ... }
+ * Will insert new yang nodes at <path> with this special "when" struct (not yang node)
+ * @param[in]  ys     Yang statement
+ * @retval     xpath  xpath should evaluate to true at validation
+ * @retval     NULL   Not set
+ */
+char*
+yang_when_xpath_get(yang_stmt *ys)
+{
+    return  ys->ys_when_xpath;
+}
+
+/*! Set yang xpath and namespace context for "when"-associated augment
+ *
+ * Ie, for yang structures like: augment <path> { when <xpath>; ... }
+ * Will insert new yang nodes at <path> with this special "when" struct (not yang node)
+ * @param[in]  ys     Yang statement
+ * @param[in]  xpath  If set, this xpath should evaluate to true at validation, copied
+ * @retval     0      OK
+ * @retval     -1     Error
+ */
+int
+yang_when_xpath_set(yang_stmt *ys, 
+		    char      *xpath)
+{
+    int retval = -1;
+
+    if (xpath == NULL){
+	clicon_err(OE_YANG, EINVAL, "xpath is NULL");
+	goto done;
+    }
+    if ((ys->ys_when_xpath = strdup(xpath)) == NULL){
+	clicon_err(OE_YANG, errno, "strdup");
+	goto done;
+	
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Get yang namespace context for "when"-associated augment
+ *
+ * Ie, for yang structures like: augment <path> { when <xpath>; ... }
+ * Will insert new yang nodes at <path> with this special "when" struct (not yang node)
+ * @param[in]  ys     Yang statement
+ * @retval     nsc    Namespace context
+ * @note retval is direct pointer, may need to be copied
+ */
+cvec *
+yang_when_nsc_get(yang_stmt *ys)
+{
+    return ys->ys_when_nsc;
+}
+
+/*! Set yang namespace context for "when"-associated augment
+ *
+ * Ie, for yang structures like: augment <path> { when <xpath>; ... }
+ * Will insert new yang nodes at <path> with this special "when" struct (not yang node)
+ * @param[in]  ys     Yang statement
+ * @param[in]  nsc    Namespace context for when xpath
+ * @retval     0      OK
+ * @retval     -1     Error
+ */
+int
+yang_when_nsc_set(yang_stmt *ys, 
+		  cvec      *nsc)
+{
+    int retval = -1;
+
+    if (nsc && (ys->ys_when_nsc = cvec_dup(nsc)) == NULL){
+	clicon_err(OE_YANG, errno, "cvec_dup");
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /* End access functions */
 
 /*! Create new yang specification
@@ -390,6 +471,10 @@ ys_free1(yang_stmt *ys,
 	yang_type_cache_free(ys->ys_typecache);
 	ys->ys_typecache = NULL;
     }
+    if (ys->ys_when_xpath)
+	free(ys->ys_when_xpath);
+    if (ys->ys_when_nsc)
+	cvec_free(ys->ys_when_nsc);
     if (self)
 	free(ys);
     return 0;
@@ -522,6 +607,17 @@ ys_cp(yang_stmt *ynew,
 	ynew->ys_typecache = NULL;
 	if (yang_type_cache_cp(ynew, yold) < 0)
 	    goto done;
+    }
+    if (yold->ys_when_xpath)
+	if ((ynew->ys_when_xpath = strdup(yold->ys_when_xpath)) == NULL){
+	    clicon_err(OE_YANG, errno, "strdup");
+	    goto done;
+	}
+    if (yold->ys_when_nsc){
+	if ((ynew->ys_when_nsc = cvec_dup(yold->ys_when_nsc)) == NULL){
+	    clicon_err(OE_YANG, errno, "cvec_dup");
+	    goto done;
+	}
     }
     for (i=0; i<ynew->ys_len; i++){
 	yco = yold->ys_stmt[i];

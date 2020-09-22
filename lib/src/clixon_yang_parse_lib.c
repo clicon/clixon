@@ -89,6 +89,7 @@
 #include "clixon_yang_internal.h"
 #include "clixon_hash.h"
 #include "clixon_xml.h"
+#include "clixon_xml_nsctx.h"
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_data.h"
@@ -203,6 +204,10 @@ ys_grouping_resolve(yang_stmt  *yuses,
  * All data nodes defined in the "augment" statement are defined as XML
  * elements in the XML namespace of the module where the "augment" is
  * specified.
+ * 
+ * @note If the augment has a when statement, which is commonplace, the when statement is not copied as 
+ * datanodes are, since it should not apply to the target node. Instead it is added as a special "when"
+ * struct to the yang statements being inserted.
  */
 static int
 yang_augment_node(yang_stmt *ys, 
@@ -214,6 +219,9 @@ yang_augment_node(yang_stmt *ys,
     yang_stmt *yc0;
     yang_stmt *yc;
     yang_stmt *ymod;
+    yang_stmt *ywhen;
+    char      *wxpath = NULL; /* xpath of when statement */
+    cvec      *wnsc = NULL;   /* namespace context of when statement */
 
     if ((ymod = ys_module(ys)) == NULL){
 	clicon_err(OE_YANG, 0, "My yang module not found");
@@ -226,6 +234,12 @@ yang_augment_node(yang_stmt *ys,
 	goto done;
     if (ytarget == NULL)
 	goto ok;
+    /* Find when statement, if present */
+    if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL){
+	wxpath = yang_argument_get(ywhen);
+	if (xml_nsctx_yang(ywhen, &wnsc) < 0)
+	    goto done;
+    }
     /* Extend ytarget with ys' schemanode children */
     yc0 = NULL;
     while ((yc0 = yn_each(ys, yc0)) != NULL) {
@@ -236,10 +250,19 @@ yang_augment_node(yang_stmt *ys,
 	yc->ys_mymodule = ymod;
 	if (yn_insert(ytarget, yc) < 0)
 	    goto done;
+	/* If there is an associated when statement, add a special when struct to the yang */
+	if (ywhen){
+	    if (yang_when_xpath_set(yc, wxpath) < 0) 
+		goto done;
+	    if (yang_when_nsc_set(yc, wnsc) < 0) 
+		goto done;
+	}
     }
  ok:
     retval = 0;
  done:
+    if (wnsc)
+	cvec_free(wnsc);
     return retval;
 }
 

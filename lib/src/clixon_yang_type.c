@@ -1,8 +1,10 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
-  Copyright (C) 2009-2020 Olof Hagsand
+
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -94,6 +96,7 @@
 #include "clixon_hash.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xml_nsctx.h"
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_options.h"
@@ -1007,31 +1010,14 @@ ys_typedef_up(yang_stmt *ys)
     return (yang_stmt*)ys;
 }
 
-/*! Find identity yang-stmt
- *  This is a sanity check of base identity of identity-ref and for identity 
- *  statements when parsing.
+/*! Find identity yang-stmt given a name and a yang statement for prefix context
  *
- * Return true if node is identityref and is derived from identity_name
- * The derived-from() function returns true if the (first) node (in
- * document order in the argument "nodes") is a node of type identityref,
- * and its value is an identity that is derived from the identity
- * "identity-name" defined in the YANG module "module-name"; otherwise
- *  it returns false.
- *
- * Valid values for an identityref are any identities derived from the
- *  identityref's base identity. 
- *   1. (base) identity must exist (be found). This is a sanity check
- *   of the specification and also necessary for identity statements.
- *  (This is what is done here)
- *  2. Check if a given node has value derived from base identity. This is
- *     a run-time check necessary when validating eg netconf.
- *  (This is validation)
- *  3. Find all valid derived identities from a identityref base identity.
- *  (This is for cli generation)
  * @param[in] ys        Yang spec of id statement
- * @param[in] identity  Identity string -check if it exists
- * @retval    0        OK
+ * @param[in] identity  Identity string on the form <prefix>:<id>
+ * @retval    yid       yang-stmt of type IDENTITY
+ * @retval    NULL      Not found
  * @see validate_identityref for (2) above
+ * @see xml_find_identity
  */
 yang_stmt *
 yang_find_identity(yang_stmt *ys, 
@@ -1068,6 +1054,44 @@ yang_find_identity(yang_stmt *ys,
 	    ys = (yang_stmt*)yn;
 	}
     }
+  done:
+    if (id)
+	free(id);
+    if (prefix)
+	free(prefix);
+    return yid;
+}
+
+/*! Find identity yang-stmt given a name and a xml node for prefix context
+ *
+ * @param[in] yspec     Top-level yang-spec
+ * @param[in] identity  Identity string on the form <prefix>:<id>
+ * @param[in] nsc       Namespace context for <prefix>
+ * @retval    yid       yang-stmt of type IDENTITY
+ * @retval    NULL      Not found
+ * @see validate_identityref for (2) above
+ * @see xml_find_identity
+ */
+yang_stmt *
+yang_find_identity_nsc(yang_stmt *yspec, 
+		       char      *identity,
+		       cvec      *nsc)
+{
+    char        *id = NULL;
+    char        *prefix = NULL;
+    yang_stmt   *ymodule;
+    yang_stmt   *yid = NULL;
+    char        *ns = NULL;
+    
+    if (nodeid_split(identity, &prefix, &id) < 0)
+	goto done;
+    if ((ns = xml_nsctx_get(nsc, prefix)) == NULL)
+	goto done;
+    if ((ymodule = yang_find_module_by_namespace(yspec, ns)) == NULL)
+	goto done;
+    /* if ymodule is a sub-module, the identity may be found in a
+     * sub-module of ymod */
+    yid = yang_find(ymodule, Y_IDENTITY, id);
   done:
     if (id)
 	free(id);

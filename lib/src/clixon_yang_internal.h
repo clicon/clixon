@@ -67,7 +67,7 @@ struct yang_stmt{
     enum rfc_6020      ys_keyword;   /* See clicon_yang_parse.tab.h */
 
     char              *ys_argument;  /* String / argument depending on keyword */   
-    uint16_t           ys_flags;     /* Flags according to YANG_FLAG_* */
+    uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */
     yang_stmt         *ys_mymodule;  /* Shortcut to "my" module. Augmented
 					nodes can belong to other 
 					modules than the ancestor module */
@@ -87,7 +87,10 @@ struct yang_stmt{
 					   types as <module>:<id> list
 				     */
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
+    char              *ys_when_xpath; /* Special conditional for a "when"-associated augment xpath */
+    cvec              *ys_when_nsc;   /* Special conditional for a "when"-associated augment namespace ctx */
     int               _ys_vector_i;   /* internal use: yn_each */
+
 };
 
 

@@ -2180,3 +2180,4 @@ xml_copy_marked(cxobj *x0,
  done:
     return retval;
 }
+
