@@ -59,7 +59,7 @@ See https://www.w3.org/TR/xpath/
 #include "clixon/clixon.h"
 
 /* Command line options to be passed to getopt(3) */
-#define XPATH_OPTS "hD:f:p:i:n:cy:Y:"
+#define XPATH_OPTS "hD:f:p:i:n:cl:y:Y:"
 
 static int
 usage(char *argv0)
@@ -73,6 +73,7 @@ usage(char *argv0)
 	    "\t-i <xpath0>\t(optional) Initial XPATH string\n"
 	    "\t-n <pfx:id>\tNamespace binding (pfx=NULL for default)\n"
 	    "\t-c \t\tMap xpath to canonical form\n"
+	    "\t-l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut or (f)ile (stderr is default)\n"
 	    "\t-y <filename> \tYang filename or dir (load all files)\n"
     	    "\t-Y <dir> \tYang dirs (can be several)\n"
 	    "and the following extra rules:\n"
@@ -140,10 +141,11 @@ main(int    argc,
     cxobj      *xcfg = NULL;
     cbuf       *cbret = NULL;
     cxobj      *xerr = NULL; /* malloced must be freed */
+    int         logdst = CLICON_LOG_STDERR;
     int         dbg = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR); 
+    clicon_log_init("xpath", LOG_DEBUG, logdst); 
     /* Initialize clixon handle */
     if ((h = clicon_handle_init()) == NULL)
 	goto done;
@@ -200,6 +202,14 @@ main(int    argc,
 	case 'c': /* Map namespace to canonical form */
 	    canonical = 1;
 	    break;
+	case 'l': /* Log destination: s|e|o|f */
+	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
+		usage(argv[0]);
+	    if (logdst == CLICON_LOG_FILE &&
+		strlen(optarg)>1 &&
+		clicon_log_file(optarg+1) < 0)
+		goto done;
+	    break;
 	case 'y':
 	    yang_file_dir = optarg;
 	    break;
@@ -211,6 +221,11 @@ main(int    argc,
 	    usage(argv[0]);
 	    break;
 	}
+    /* 
+     * Logs, error and debug to stderr or syslog, set debug level
+     */
+    clicon_log_init("xpath", dbg?LOG_DEBUG:LOG_INFO, logdst);
+    
     clicon_debug_init(dbg, NULL);
 
     /* Parse yang */

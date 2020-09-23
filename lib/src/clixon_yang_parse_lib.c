@@ -90,6 +90,8 @@
 #include "clixon_hash.h"
 #include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_data.h"
@@ -1492,6 +1494,11 @@ ys_parse_sub(yang_stmt *ys,
 	    clicon_err(OE_YANG, errno, "%u: Out of range, should be [1:18]", fd);
 	    goto done;
 	}
+	break;
+    case Y_MUST:
+    case Y_WHEN:
+	if (xpath_parse(yang_argument_get(ys), NULL) < 0)
+	    goto done;
 	break;
     case Y_REVISION:
     case Y_REVISION_DATE:  /* YYYY-MM-DD encoded as uint32 YYYYMMDD */

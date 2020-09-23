@@ -217,7 +217,6 @@ nodetest_eval(cxobj      *x,
 	      int         localonly)
 {
     int   retval = 0; /* NB: no match is default (not error) */
-    char *fn;
 
     if (xs->xs_type == XP_NODE){
 	if (localonly)
@@ -226,11 +225,14 @@ nodetest_eval(cxobj      *x,
 	    retval = nodetest_eval_node(x, xs, nsc);
     }
     else if (xs->xs_type == XP_NODE_FN){
-	fn = xs->xs_s0;
-	if (strcmp(fn, "node")==0)
+	switch (xs->xs_int){
+	case XPATHFN_NODE:
+	case XPATHFN_TEXT:
 	    retval = 1;
-	else if (strcmp(fn, "text")==0)
-	    retval = 1;
+	    break;
+	default:
+	    break;
+	}
     }
     /* note, retval set by previous statement */
     return retval;
@@ -332,27 +334,21 @@ xp_eval_step(xp_ctx     *xc0,
 	    xc->xc_descendant = 0;
 	}
 	else{
-	    if (nodetest->xs_type==XP_NODE_FN &&
-		nodetest->xs_s0 &&
-		strcmp(nodetest->xs_s0, "current")==0){
-		if (cxvec_append(xc->xc_initial, &vec, &veclen) < 0)
+	    for (i=0; i<xc->xc_size; i++){ 
+		xv = xc->xc_nodeset[i];
+		x = NULL; 
+		if ((ret = xpath_optimize_check(xs, xv, &vec, &veclen)) < 0)
 		    goto done;
-	    }
-	    else for (i=0; i<xc->xc_size; i++){ 
-		    xv = xc->xc_nodeset[i];
-		    x = NULL; 
-		    if ((ret = xpath_optimize_check(xs, xv, &vec, &veclen)) < 0)
-			goto done;
-		    if (ret == 0){/* regular code, no optimization made */
-			while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
-			    /* xs->xs_c0 is nodetest */
-			    if (nodetest == NULL || nodetest_eval(x, nodetest, nsc, localonly) == 1){
-				if (cxvec_append(x, &vec, &veclen) < 0)
-				    goto done;
-			    }
+		if (ret == 0){/* regular code, no optimization made */
+		    while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
+			/* xs->xs_c0 is nodetest */
+			if (nodetest == NULL || nodetest_eval(x, nodetest, nsc, localonly) == 1){
+			    if (cxvec_append(x, &vec, &veclen) < 0)
+				goto done;
 			}
-		    } 
-		}
+		    }
+		} 
+	    }
 	}
 	ctx_nodeset_replace(xc, vec, veclen);
 	break;
@@ -974,20 +970,51 @@ xp_eval(xp_ctx     *xc,
 	break;
     case XP_PRIME_FN:
 	if (xs->xs_s0){
-	    if (strcmp(xs->xs_s0, "contains") == 0){
-		if (xp_function_contains(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+	    switch (xs->xs_int){
+	    case XPATHFN_CURRENT:
+		if (xp_function_current(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
 		    goto done;
 		goto ok;
-	    }
-	    else if (strcmp(xs->xs_s0, "derived-from") == 0){
+		break;
+	    case XPATHFN_DEREF:
+		if (xp_function_deref(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+		    goto done;
+		goto ok;
+		break;
+	    case XPATHFN_DERIVED_FROM:
 		if (xp_function_derived_from(xc, xs->xs_c0, nsc, localonly, 0, xrp) < 0)
 		    goto done;
 		goto ok;
-	    }
-	    else if (strcmp(xs->xs_s0, "derived-from-or-self") == 0){
+		break;
+	    case XPATHFN_DERIVED_FROM_OR_SELF:
 		if (xp_function_derived_from(xc, xs->xs_c0, nsc, localonly, 1, xrp) < 0)
 		    goto done;
 		goto ok;
+		break;
+	    case XPATHFN_COUNT:
+		if (xp_function_count(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+		    goto done;
+		goto ok;
+		break;
+	    case XPATHFN_NAME:
+		if (xp_function_name(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+		    goto done;
+		goto ok;
+		break;
+	    case XPATHFN_CONTAINS:
+		if (xp_function_contains(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+		    goto done;
+		goto ok;
+		break;
+	    case XPATHFN_NOT:
+		if (xp_function_not(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+		    goto done;
+		goto ok;
+		break;
+	    default:
+		clicon_err(OE_XML, EFAULT, "XPATH function not implemented: %s", xs->xs_s0);
+		goto done;
+		break;
 	    }
 	}
 	break;
@@ -1014,6 +1041,10 @@ xp_eval(xp_ctx     *xc,
     case XP_UNION:
 	break;
     case XP_PATHEXPR:
+	if (xs->xs_c1)
+	    use_xr0++;
+	break;
+    case XP_FILTEREXPR:
 	break;
     case XP_LOCPATH:
 	break;
@@ -1098,7 +1129,14 @@ xp_eval(xp_ctx     *xc,
 	    break;
 	}
     xc->xc_descendant = 0;
-    assert(xr0||xr1||xr2);
+#if 0
+    assert(xr0||xr1||xr2); /* for debugging */
+#else
+    if (xr0 == NULL && xr1 == NULL && xr2 == NULL){
+	clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
+	goto done;
+    }
+#endif
     if (xr2){
 	*xrp = xr2;
 	xr2 = NULL;

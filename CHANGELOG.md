@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [4.8.0](#480) Expected: October 2020
+* [4.8.0](#480) Expected: 15 October 2020
 * [4.7.0](#470) 14 September 2020
 * [4.6.0](#460) 14 August 2020
 * [4.5.0](#450) 12 May 2020
@@ -25,15 +25,29 @@
 * [3.3.1](#331) June 7 2017
 
 ## 4.8.0
-Expected: October 2020
+Expected: 15 October 2020
 
 ### New features
 
 * Added support for the following XPATH functions:
-  * `contains`, see https://www.w3.org/TR/xpath-10
-  * `derived-from` and `derived-from-or-self`
-    * in particular in augment/when statements as shown in eg RFC 7950.
-  
+  * `count`, `name`, `contains`, `not`, as defined in [xpath 1.0](https://www.w3.org/TR/xpath-10)
+  * `deref`, `derived-from` and `derived-from-or-self` from RFC7950 Section 10.
+    * in particular in augment/when statements
+  * Improved error handling
+    * Verification of XPath functions is done at startup when yang modules are loaded, not when XPaths are evaluated.
+    * Separation of "not found" and "not implemented" XPath functions
+    * Both give a fatal error (backend does not start).
+
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* Not implemented XPath functions will cause a backend exit on startup, instead of being ignored.
+
+### Minor changes
+
+* Added filterexpr to xpath
+
 ## 4.7.0
 14 September 2020
 

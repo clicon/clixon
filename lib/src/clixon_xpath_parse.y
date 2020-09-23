@@ -60,7 +60,6 @@
 %token <string> APOST
 %token <string> CHARS
 %token <string> NAME
-%token <string> NODETYPE
 %token <string> DOUBLEDOT
 %token <string> DOUBLESLASH
 %token <string> FUNCTIONNAME
@@ -75,6 +74,7 @@
 %type <stack>     addexpr
 %type <stack>     unionexpr
 %type <stack>     pathexpr
+%type <stack>     filterexpr
 %type <stack>     locationpath
 %type <stack>     abslocpath
 %type <stack>     rellocpath
@@ -122,6 +122,7 @@
 #include "clixon_xml.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
+#include "clixon_xpath_function.h"
 
 #include "clixon_xpath_parse.h"
 
@@ -135,7 +136,8 @@ void
 clixon_xpath_parseerror(void *_xpy,
 			char *s) 
 { 
-    clicon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'", 
+    errno = 0;
+    clicon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'",  /* Note lineno here is xpath, not yang */
 	       _XPY->xpy_name,
 	       _XPY->xpy_linenum ,
 	       s, 
@@ -155,7 +157,17 @@ xpath_parse_exit(clixon_xpath_yacc *xpy)
 {
     return 0;
 }
-
+ 
+/*! Generic creator function for an xpath tree object
+ *
+ * @param[in]  type   XPATH tree node type
+ * @param[in]  i0     step-> axis_type 
+ * @param[in]  numstr original string xs_double: numeric value 
+ * @param[in]  s0     String 0 set if XP_PRIME_STR, XP_PRIME_FN, XP_NODE[_FN] prefix
+ * @param[in]  s1     String 1 set if XP_NODE NAME
+ * @param[in]  c0     Child 0
+ * @param[in]  c1     Child 1
+ */
 static xpath_tree *
 xp_new(enum xp_type  type,
        int           i0,
@@ -191,6 +203,158 @@ xp_new(enum xp_type  type,
     return xs;
 }
 
+/*! Specialized xpath-tree creation for xpath functions (wrapper for functions around xp_new)
+ *
+ * Sanity check xpath functions before adding them
+ * @param[in]   xpy   XPath parse handle
+ * @param[in]   name  Name of function
+ * @param[in]   xpt   Sub-parse-tree
+ */
+static xpath_tree *
+xp_primary_function(clixon_xpath_yacc *xpy,
+		    char              *name,
+		    xpath_tree        *xpt)
+{
+    xpath_tree                *xtret = NULL;
+    enum clixon_xpath_function fn;
+    cbuf                      *cb = NULL;
+    
+    if ((fn = xp_fnname_str2int(name)) < 0){
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cb, "Unknown xpath function \"%s\"", name);
+	clixon_xpath_parseerror(xpy, cbuf_get(cb));
+	goto done;
+    }
+    switch (fn){
+    case XPATHFN_RE_MATCH:  /* Group of NOT IMPLEMENTED xpath functions */
+    case XPATHFN_ENUM_VALUE:
+    case XPATHFN_BIT_IS_SET:
+    case XPATHFN_LAST: 
+    case XPATHFN_POSITION:
+    case XPATHFN_ID:
+    case XPATHFN_LOCAL_NAME:
+    case XPATHFN_NAMESPACE_URI:
+    case XPATHFN_STRING:
+    case XPATHFN_CONCAT:
+    case XPATHFN_STARTS_WITH:
+    case XPATHFN_SUBSTRING_BEFORE:
+    case XPATHFN_SUBSTRING_AFTER:
+    case XPATHFN_SUBSTRING:
+    case XPATHFN_STRING_LENGTH:
+    case XPATHFN_NORMALIZE_SPACE:
+    case XPATHFN_TRANSLATE:
+    case XPATHFN_BOOLEAN:
+    case XPATHFN_TRUE:
+    case XPATHFN_FALSE:
+    case XPATHFN_LANG:
+    case XPATHFN_NUMBER:
+    case XPATHFN_SUM:
+    case XPATHFN_FLOOR:
+    case XPATHFN_CEILING:
+    case XPATHFN_ROUND:
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cb, "XPATH function \"%s\" is not implemented", name);
+	clixon_xpath_parseerror(xpy, cbuf_get(cb));
+	goto done;
+	break;
+    case XPATHFN_CURRENT:  /* Group of implemented xpath functions */
+    case XPATHFN_DEREF:
+    case XPATHFN_DERIVED_FROM:
+    case XPATHFN_DERIVED_FROM_OR_SELF:
+    case XPATHFN_COUNT:
+    case XPATHFN_NAME:
+    case XPATHFN_CONTAINS:
+    case XPATHFN_NOT:
+	break;
+    default: 
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cb, "Unknown xpath function \"%s\"", name);
+	clixon_xpath_parseerror(xpy, cbuf_get(cb));
+	goto done; 
+	break;
+    }
+    if (cb)
+	cbuf_free(cb);
+    xtret = xp_new(XP_PRIME_FN, fn, NULL, name, NULL, xpt, NULL);
+    name = NULL;
+ done:
+    if (name)
+	free(name);
+    if (cb)
+	cbuf_free(cb);
+    return xtret;
+}
+
+/*! Specialized xpath-tree creation for xpath nodetest functions (wrapper for functions around xp_new)
+ *
+ * Sanity check xpath functions before adding them
+ * @param[in]   xpy   XPath parse handle
+ * @param[in]   name  Name of function
+ * @param[in]   xpt   Sub-parse-tree
+ */
+static xpath_tree *
+xp_nodetest_function(clixon_xpath_yacc *xpy,
+		     char              *name,
+		     xpath_tree        *xpt)
+{
+    xpath_tree                *xtret = NULL;
+    enum clixon_xpath_function fn;
+    cbuf                      *cb = NULL;
+    
+    if ((fn = xp_fnname_str2int(name)) < 0){
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cb, "Unknown xpath function \"%s\"", name);
+	clixon_xpath_parseerror(xpy, cbuf_get(cb));
+	goto done;
+    }
+    switch (fn){
+    case XPATHFN_COMMENT:  /* Group of not implemented node functions */
+    case XPATHFN_PROCESSING_INSTRUCTIONS:
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cb, "XPATH function \"%s\" is not implemented", name);
+	clixon_xpath_parseerror(xpy, cbuf_get(cb));
+	goto done;
+	break;
+    case XPATHFN_TEXT:     /* Group of implemented node functions */
+    case XPATHFN_NODE:       
+	break;
+    default: 
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cb, "Unknown xpath nodetest function \"%s\"", name);
+	clixon_xpath_parseerror(xpy, cbuf_get(cb));
+	goto done; 
+	break;
+    }
+    if (cb)
+	cbuf_free(cb);
+    xtret = xp_new(XP_NODE_FN, fn, NULL, name, NULL, xpt, NULL);
+    name = NULL; /* Consumed by xp_new */
+ done:
+    if (cb)
+	cbuf_free(cb);
+    if (name)
+	free(name);
+    return xtret;
+}
+
 %} 
  
 %%
@@ -224,7 +388,13 @@ unionexpr   : unionexpr '|' pathexpr { $$=xp_new(XP_UNION,A_NAN,NULL,NULL,NULL,$
             ;
 
 pathexpr    : locationpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL);clicon_debug(3,"pathexpr-> locationpath"); } 
-            | primaryexpr { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL);clicon_debug(3,"pathexpr-> primaryexpr"); } 
+            | filterexpr { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL);clicon_debug(3,"pathexpr-> filterexpr"); }
+            | filterexpr '/' rellocpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, $3);clicon_debug(3,"pathexpr-> filterexpr / rellocpath"); } 
+            /* Filterexpr // relativelocationpath */
+            ;
+
+filterexpr  : primaryexpr { $$=xp_new(XP_FILTEREXPR,A_NAN,NULL,NULL,NULL,$1, NULL);clicon_debug(3,"filterexpr-> primaryexpr"); } 
+            /* Filterexpr predicate */
             ;
 
 /* location path returns a node-set  */
@@ -251,28 +421,27 @@ step        : axisspec nodetest predicates {$$=xp_new(XP_STEP,$1,NULL, NULL, NUL
 axisspec    : AXISNAME { clicon_debug(3,"axisspec-> AXISNAME(%d) ::", $1); $$=$1;}
             | '@'      { $$=A_ATTRIBUTE; clicon_debug(3,"axisspec-> @"); } 
             |          { clicon_debug(3,"axisspec-> "); $$=A_CHILD;} 
-            ;
+           ;
 
 nodetest    : '*'              { $$=xp_new(XP_NODE,A_NAN,NULL, NULL, NULL, NULL, NULL); clicon_debug(3,"nodetest-> *"); } 
             | NAME             { $$=xp_new(XP_NODE,A_NAN,NULL, NULL, $1, NULL, NULL); clicon_debug(3,"nodetest-> name(%s)",$1); } 
             | NAME ':' NAME    { $$=xp_new(XP_NODE,A_NAN,NULL, $1, $3, NULL, NULL);clicon_debug(3,"nodetest-> name(%s) : name(%s)", $1, $3); } 
             | NAME ':' '*'     { $$=xp_new(XP_NODE,A_NAN,NULL, $1, NULL, NULL, NULL);clicon_debug(3,"nodetest-> name(%s) : *", $1); } 
-            | NODETYPE '(' ')' { $$=xp_new(XP_NODE_FN,A_NAN,NULL, $1, NULL, NULL, NULL); clicon_debug(3,"nodetest-> nodetype():%s", $1); } 
+            | FUNCTIONNAME ')' { if (($$ = xp_nodetest_function(_XPY, $1, NULL)) == NULL) YYERROR;; clicon_debug(3,"nodetest-> nodetype():%s", $1); } 
             ;
 
 /* evaluates to boolean */
 predicates  : predicates '[' expr ']' { $$=xp_new(XP_PRED,A_NAN,NULL, NULL, NULL, $1, $3); clicon_debug(3,"predicates-> [ expr ]"); } 
             |                         { $$=xp_new(XP_PRED,A_NAN,NULL, NULL, NULL, NULL, NULL); clicon_debug(3,"predicates->"); } 
             ;
-
 primaryexpr : '(' expr ')'         { $$=xp_new(XP_PRI0,A_NAN,NULL, NULL, NULL, $2, NULL); clicon_debug(3,"primaryexpr-> ( expr )"); } 
             | NUMBER               { $$=xp_new(XP_PRIME_NR,A_NAN, $1, NULL, NULL, NULL, NULL);clicon_debug(3,"primaryexpr-> NUMBER(%s)", $1); /*XXX*/} 
             | QUOTE string QUOTE   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, $2, NULL, NULL, NULL);clicon_debug(3,"primaryexpr-> \" string \""); }
             | QUOTE QUOTE          { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, NULL, NULL, NULL, NULL);clicon_debug(3,"primaryexpr-> \" \""); } 
             | APOST string APOST   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, $2, NULL, NULL, NULL);clicon_debug(3,"primaryexpr-> ' string '"); }
             | APOST APOST          { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, NULL, NULL, NULL, NULL);clicon_debug(3,"primaryexpr-> ' '"); } 
-            | FUNCTIONNAME '(' ')' { $$=xp_new(XP_PRIME_FN,A_NAN,NULL, $1, NULL, NULL, NULL);clicon_debug(3,"primaryexpr-> functionname ( arguments )"); } 
-            | FUNCTIONNAME '(' args ')' { $$=xp_new(XP_PRIME_FN,A_NAN,NULL, $1, NULL, $3, NULL);clicon_debug(3,"primaryexpr-> functionname ( arguments )"); } 
+            | FUNCTIONNAME ')'      { if (($$ = xp_primary_function(_XPY, $1, NULL)) == NULL) YYERROR; clicon_debug(3,"primaryexpr-> functionname ()"); }
+            | FUNCTIONNAME args ')' { if (($$ = xp_primary_function(_XPY, $1, $2)) == NULL) YYERROR;  clicon_debug(3,"primaryexpr-> functionname (arguments)"); } 
             ;
 
 args        : args ',' expr { $$=xp_new(XP_EXP,A_NAN,NULL,NULL,NULL,$1, $3);

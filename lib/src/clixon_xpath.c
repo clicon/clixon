@@ -104,6 +104,7 @@ static const map_str2int xpath_tree_map[] = {
     {"addexpr",          XP_ADD},
     {"unionexpr",        XP_UNION},
     {"pathexpr",         XP_PATHEXPR},
+    {"filterexpr",       XP_FILTEREXPR},
     {"locationpath",     XP_LOCPATH},
     {"abslocpath",       XP_ABSPATH},
     {"rellocpath",       XP_RELLOCPATH},
@@ -514,12 +515,16 @@ xpath_parse(const char  *xpath,
     }
     xpath_parse_exit(&xpy);
     xpath_scan_exit(&xpy);
-    if (xptree)
+    if (xptree){
 	*xptree = xpy.xpy_top;
+	xpy.xpy_top = NULL;
+    }
     retval = 0;
  done:
     if (cb)
 	cbuf_free(cb);
+    if (xpy.xpy_top)
+	xpath_tree_free(xpy.xpy_top);
     return retval;
 }
 

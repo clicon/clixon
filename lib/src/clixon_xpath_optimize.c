@@ -145,7 +145,7 @@ xpath_optimize_init(xpath_tree **xm,
 	    goto done;
 	xs->xs_match++; /* in loop_preds get name in xs_s1 XXX: leaf-list is different */
 	/* get keyval (_z) */
-	if ((xs = xpath_tree_traverse(_xe, 0, 0, 1, 0, 0, 0, -1)) == NULL)
+	if ((xs = xpath_tree_traverse(_xe, 0, 0, 1, 0, 0, 0, 0, -1)) == NULL)
 	    goto done;
 	xs->xs_match++; /* in loop_preds get value in xs_s0 or xs_strnr */
     }

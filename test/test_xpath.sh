@@ -129,7 +129,7 @@ new "xpath ../../../rt:address-family = 'v6ur:ipv6-unicast'"
 expecteof "$clixon_util_xpath -f $xml2 -i /aaa/bbb/here2/here" 0 "../../../rt:address-family = 'v6ur:ipv6-unicast'" "^bool:true$"
 
 new "xpath /if:interfaces/if:interface[if:name=current()/rt:name]/ip:ipv6/ip:enabled='true'"
-expecteof "$clixon_util_xpath -D 1 -f $xml2" 0 "/if:interfaces/if:interface[if:name=current()/rt:name]/ip:ipv6/ip:enabled='true'" "^bool:true$"
+expectpart "$($clixon_util_xpath -f $xml2 -p "/if:interfaces/if:interface[if:name=current()/rt:name]/ip:ipv6/ip:enabled='true'")" 0 "^bool:true$"
 
 new "xpath rt:address-family='v6ur:ipv6-unicast'"
 expecteof "$clixon_util_xpath -f $xml2 -i /aaa" 0 "rt:address-family='v6ur:ipv6-unicast'" "^bool:true$"
@@ -210,8 +210,21 @@ expectpart "$($clixon_util_xpath -f $xml3 -p 'derived-from-or-self(../../change-
 new "xpath contains"
 expectpart "$($clixon_util_xpath -f $xml3 -p "contains(../../objectClass,'BTSFunction') or contains(../../objectClass,'RNCFunction')")" 0 "bool:false"
 
-# Just syntax - no semantic meaning
+# Nodetests
 
+new "xpath nodetest: node"
+expectpart "$($clixon_util_xpath -f $xml3 -p "/bbb/ccc/self::node()")" 0 "nodeset:0:<ccc>foo</ccc>"
+
+new "xpath nodetest: comment nyi"
+expectpart "$($clixon_util_xpath -f $xml3 -l o -p "/descendant-or-self::comment()")" 255 "XPATH function \"comment\" is not implemented"
+
+# Negative
+
+new "xpath dontexist"
+expectpart "$($clixon_util_xpath -f $xml3 -l o -p "dontexist()")" 255 "Unknown xpath function \"dontexist\""
+
+new "xpath enum-value nyi"
+expectpart "$($clixon_util_xpath -f $xml3 -l o -p "enum-value()")" 255 "XPATH function \"enum-value\" is not implemented"
 
 rm -rf $dir
 

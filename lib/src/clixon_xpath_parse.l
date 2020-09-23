@@ -78,6 +78,13 @@ clixon_xpath_parsewrap(void)
     return 1;
 }
 
+/* strip last char */
+void
+striplast(char *s)
+{
+   s[strlen(s)-1] = 0;
+}
+
 %}
 
 digit [0-9]
@@ -87,6 +94,7 @@ real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
 namestart  [A-Z_a-z]
 namechar   [A-Z_a-z\-\.0-9]
 ncname     {namestart}{namechar}*
+fnname     {ncname}\(
 
 %x TOKEN
 %s QLITERAL
@@ -110,16 +118,8 @@ ncname     {namestart}{namechar}*
 <TOKEN>">="             { clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext);return RELOP; }
 <TOKEN>"<="             { clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext);return RELOP; }
 <TOKEN>[<>=]            { clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext);return RELOP; }
-<TOKEN>last	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
-<TOKEN>position	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
-<TOKEN>count	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
-<TOKEN>contains	        { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
-<TOKEN>re-match         { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
-<TOKEN>deref            { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
-<TOKEN>derived-from     { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
-<TOKEN>derived-from-or-self { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
-<TOKEN>enum-value       { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
-<TOKEN>bit-is-set       { clixon_xpath_parselval.string = strdup(yytext); return FUNCTIONNAME; }
+
+<TOKEN>{fnname}	        { clixon_xpath_parselval.string = strdup(yytext); striplast(clixon_xpath_parselval.string); return FUNCTIONNAME; }
 
 <TOKEN>@                { return *yytext; }
 <TOKEN>ancestor::       { clixon_xpath_parselval.intval = A_ANCESTOR; return AXISNAME; }
@@ -135,12 +135,6 @@ ncname     {namestart}{namechar}*
 <TOKEN>preceding::        { clixon_xpath_parselval.intval = A_PRECEDING; return AXISNAME; }
 <TOKEN>preceding-sibling:: { clixon_xpath_parselval.intval = A_PRECEDING_SIBLING; return AXISNAME; }
 <TOKEN>self::             { clixon_xpath_parselval.intval = A_SELF; return AXISNAME; }
-
-<TOKEN>current          { clixon_xpath_parselval.string = strdup(yytext); return NODETYPE; }
-<TOKEN>comment          { clixon_xpath_parselval.string = strdup(yytext); return NODETYPE; }
-<TOKEN>text             { clixon_xpath_parselval.string = strdup(yytext); return NODETYPE; }
-<TOKEN>processing-instructions { clixon_xpath_parselval.string = strdup(yytext); return NODETYPE; }
-<TOKEN>node             { clixon_xpath_parselval.string = strdup(yytext); return NODETYPE; }
 
 <TOKEN>\"               { BEGIN(QLITERAL); return QUOTE; }
 <TOKEN>\'               { BEGIN(ALITERAL); return APOST; }

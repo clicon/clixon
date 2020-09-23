@@ -87,6 +87,7 @@ enum xp_type{
     XP_ADD,
     XP_UNION,
     XP_PATHEXPR,
+    XP_FILTEREXPR,
     XP_LOCPATH,
     XP_ABSPATH,
     XP_RELLOCPATH,
@@ -114,7 +115,7 @@ struct xpath_tree{
     char              *xs_s1;     /* set if XP_NODE NAME */
     struct xpath_tree *xs_c0;     /* child 0 */
     struct xpath_tree *xs_c1;     /* child 1 */
-    int                xs_match; /* meta: match this node */
+    int                xs_match;  /* meta: match this node */
 };
 typedef struct xpath_tree xpath_tree;
 

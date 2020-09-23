@@ -11,12 +11,12 @@ mechanism.
 See [documentation](https://clixon-docs.readthedocs.io), [project page](https://www.clicon.org) and [examples](https://github.com/clicon/clixon-examples), [Travis-CI](https://travis-ci.org/clicon/clixon)
   
 Clixon is open-source and dual licensed. Either Apache License, Version 2.0 or GNU
-General Public License Version 2; you choose.
+General Public License Version 2; you choose, see [LICENSE.md](LICENSE.md).
 
-See [LICENSE.md](LICENSE.md) for the license.
+See [CHANGELOG.md](CHANGELOG.md) release history.
 
 Clixon interaction is best done posting issues, pull requests, or joining the
 [slack channel](https://clixondev.slack.com).
-[Slack invite](https://join.slack.com/t/clixondev/shared_invite/zt-grej02z5-fNz0b7Su8RcOn5hWKt8yOw)
+[Slack invite](https://join.slack.com/t/clixondev/shared_invite/zt-hw9lofnk-C1iDFJ~E_CTiwtyGZi8fdQ)
 
 Clixon is sponsored by [Rubicon Communications LLC(Netgate)](https://www.netgate.com/)
