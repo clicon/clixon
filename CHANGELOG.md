@@ -46,7 +46,7 @@ Users may have to change how they access the system
 
 ### Minor changes
 
-* Added filterexpr to xpath
+* Added sanity check that a yang module name matches the filename
 
 ## 4.7.0
 14 September 2020

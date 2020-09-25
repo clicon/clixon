@@ -847,6 +847,18 @@ yang_parse_module(clicon_handle h,
     filename = cbuf_get(fbuf);
     if ((ymod = yang_parse_filename(filename, yspec)) == NULL)
 	goto done;
+    /* Sanity check that requested module name matches loaded module
+     * If this does not match, the filename and containing module do not match
+     * RFC 7950 Sec 5.2 
+     */
+    if (strcmp(yang_argument_get(ymod), module) != 0){
+	clicon_err(OE_YANG, EINVAL, "File %s contains yang module \"%s\" which does not expected module %s",
+		   filename,
+		   yang_argument_get(ymod),
+		   module);
+	ymod = NULL;
+	goto done;
+    }
     if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL)
 	revm = cv_uint32_get(yang_cv_get(yrev));
     if (filename2revision(filename, NULL, &revf) < 0)

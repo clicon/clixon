@@ -179,20 +179,20 @@ validate_leafref(cxobj     *xt,
  * @param[in]  xt    XML leaf node of type identityref
  * @param[in]  ys    Yang spec of leaf
  * @param[in]  ytype Yang type field of type identityref
- * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed
  * @retval    -1     Error
  * @see ys_populate_identity where the derived types are set
  * @see yang_augment_node
  * @see RFC7950 Sec 9.10.2:
+ * @see xp_function_derived_from  similar code other context
  */
 static int
 validate_identityref(cxobj     *xt,
 		     yang_stmt *ys,
 		     yang_stmt *ytype,
 		     cxobj    **xret)
-
 {
     int         retval = -1;
     char       *node = NULL;
@@ -204,6 +204,7 @@ validate_identityref(cxobj     *xt,
     cbuf       *cberr = NULL;
     cbuf       *cb = NULL;
     cvec       *idrefvec; /* Derived identityref list: (module:id)**/
+    yang_stmt  *ymod;
     
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new"); 
@@ -235,49 +236,22 @@ validate_identityref(cxobj     *xt,
 	goto fail;
     }
 
-    /* Assume proper namespace, otherwise we assume module prefixes,
-     * see IDENTITYREF_KLUDGE 
-     */
-    if (0){
-	char       *ns;
-	yang_stmt  *ymod;
-	yang_stmt  *yspec;    
-
-	/* Create an idref as <bbmodule>:<id> which is the format of the derived
-	 * identityref list associated with the base identities.
-	 */
-	/* Get namespace (of idref) from xml */
-	if (xml2ns(xt, prefix, &ns) < 0)
-	    goto done;
-	yspec = ys_spec(ys);
-	/* Get module of that namespace */
-	if ((ymod = yang_find_module_by_namespace(yspec,  ns)) == NULL){
-	    clicon_err(OE_YANG, ENOENT, "No module found"); 
-	    goto done;
-	}
-	cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
-    }
-#if 1
-    {
-	yang_stmt  *ymod;
-	/* idref from prefix:id to module:id */
-	if (prefix == NULL)
-	    ymod = ys_module(ys);
-	else{ /* from prefix to name */
+    /* idref from prefix:id to module:id */
+    if (prefix == NULL)
+	ymod = ys_module(ys);
+    else{ /* from prefix to name */
 #if 1 /* IDENTITYREF_KLUDGE  */
-	    ymod = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
+	ymod = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
 #endif
-	}
-	if (ymod == NULL){
-	    cprintf(cberr, "Identityref validation failed, %s not derived from %s", 
-		    node, yang_argument_get(ybaseid));
-	    if (netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
-		goto done;
-	    goto fail;
-	}
-	cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
     }
-#endif
+    if (ymod == NULL){
+	cprintf(cberr, "Identityref validation failed, %s not derived from %s", 
+		node, yang_argument_get(ybaseid));
+	if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
+	    goto done;
+	goto fail;
+    }
+    cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
     idref = cbuf_get(cb);	
     /* Here check if node is in the derived node list of the base identity 
      * The derived node list is a cvec computed XXX
