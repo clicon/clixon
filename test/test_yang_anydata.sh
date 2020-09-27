@@ -227,7 +227,7 @@ EOF
     echo "$STATE0" > $fstate 
 
     new "Get state (negative test)"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"nonconfig\"></get></rpc>]]>]]>" "error-message>Failed to find YANG spec of XML node: u5 with parent: sb in namespace: urn:example:unknown. Internal error, state callback returned invalid XML: example_backend</error-message>"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"nonconfig\"></get></rpc>]]>]]>" "error-message>Failed to find YANG spec of XML node: u5 with parent: sb in namespace: urn:example:unknown. Internal error, state callback returned invalid XML from plugin: example_backend</error-message>"
 
 	new "restconf get state(negative)"
     expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/1.1 412 Precondition Failed" "<error-tag>operation-failed</error-tag><error-info><bad-element>u5</bad-element></error-info>"

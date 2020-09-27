@@ -568,10 +568,10 @@ xmldb_get_nocache(clicon_handle    h,
 
     if (yb != YB_NONE){
 	/* Add global defaults. */
-	if (xml_global_defaults(h, xt, nsc, xpath, yspec) < 0)
+	if (xml_global_defaults(h, xt, nsc, xpath, yspec, 0) < 0)
 	    goto done;
 	/* Add default values (if not set) */
-	if (xml_default_recurse(xt) < 0)
+	if (xml_default_recurse(xt, 0) < 0)
 	    goto done;
     }
     /* If empty NACM config, then disable NACM if loaded
@@ -715,10 +715,10 @@ xmldb_get_cache(clicon_handle    h,
 	goto done;
     if (yb != YB_NONE){
 	/* Add default global values */
-	if (xml_global_defaults(h, x1t, nsc, xpath, yspec) < 0)
+	if (xml_global_defaults(h, x1t, nsc, xpath, yspec, 0) < 0)
 	    goto done;
 	/* Add default recursive values */
-	if (xml_default_recurse(x1t) < 0)
+	if (xml_default_recurse(x1t, 0) < 0)
 	    goto done;
     }
     /* If empty NACM config, then disable NACM if loaded
@@ -812,10 +812,10 @@ xmldb_get_zerocopy(clicon_handle    h,
     }
     if (yb != YB_NONE){
 	/* Add global defaults. */
-	if (xml_global_defaults(h, x0t, nsc, xpath, yspec) < 0)
+	if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
 	    goto done;
 	/* Apply default values (removed in clear function) */
-	if (xml_default_recurse(x0t) < 0)
+	if (xml_default_recurse(x0t, 0) < 0)
 	    goto done;
     }
     /* If empty NACM config, then disable NACM if loaded

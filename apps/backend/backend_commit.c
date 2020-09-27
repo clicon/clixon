@@ -254,10 +254,10 @@ startup_common(clicon_handle       h,
     if (xml_sort_recurse(xt) < 0)
 	goto done;
     /* Add global defaults. */
-    if (xml_global_defaults(h, xt, NULL, NULL, yspec) < 0)
+    if (xml_global_defaults(h, xt, NULL, NULL, yspec, 0) < 0)
 	goto done;
     /* Apply default values (removed in clear function) */
-    if (xml_default_recurse(xt) < 0)
+    if (xml_default_recurse(xt, 0) < 0)
 	goto done;
     
     /* Handcraft transition with with only add tree */

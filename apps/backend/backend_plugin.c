@@ -279,7 +279,7 @@ clixon_plugin_statedata_all(clicon_handle    h,
 	    goto done;
 	if (ret == 0){
 	    if (clixon_netconf_internal_error(xerr,
-					      ". Internal error, state callback returned invalid XML: ",
+					      ". Internal error, state callback returned invalid XML from plugin: ",
 					      cp->cp_name) < 0)
 		goto done;
 	    xml_free(*xret);
@@ -289,7 +289,16 @@ clixon_plugin_statedata_all(clicon_handle    h,
 	}
 	if (xml_sort_recurse(x) < 0)
 	    goto done;
-	if (xml_default_recurse(x) < 0)
+	/* Mark non-presence containers as XML_FLAG_DEFAULT */
+	if (xml_apply(x, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_DEFAULT) < 0)
+	    goto done;
+	/* Clear XML tree of defaults */
+	if (xml_tree_prune_flagged(x, XML_FLAG_DEFAULT, 1) < 0)
+	    goto done;
+        /* clear mark and change */
+	xml_apply0(x, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+		   (void*)(0xffff));
+	if (xml_default_recurse(x, 1) < 0)
 	    goto done;
 	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
 	    goto done;

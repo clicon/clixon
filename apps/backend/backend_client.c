@@ -324,6 +324,13 @@ client_statedata(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
+    /* Add default state to config if present */
+    if (xml_default_recurse(*xret, 1) < 0)
+	goto done;
+    /* Add default global state */
+    if (xml_global_defaults(h, *xret, nsc, xpath, yspec, 1) < 0)
+	goto done;
+
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277")){
 	if ((ymod = yang_find_module_by_name(yspec, "clixon-rfc5277")) == NULL){
 	    clicon_err(OE_YANG, ENOENT, "yang module clixon-rfc5277 not found");
@@ -367,6 +374,7 @@ client_statedata(clicon_handle h,
 	if (ret == 0)
 	    goto fail;
     }
+    /* Use plugin state callbacks */
     if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, xret)) < 0)
 	goto done;
     if (ret == 0)

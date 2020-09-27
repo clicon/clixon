@@ -64,9 +64,8 @@ int xml_diff(yang_stmt *yspec, cxobj *x0, cxobj *x1,
 int xml_tree_prune_flagged_sub(cxobj *xt, int flag, int test, int *upmark);
 int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
 int xml_namespace_change(cxobj *x, char *ns, char *prefix);
-int xml_default(cxobj *x);
-int xml_default_recurse(cxobj *xn);
-int xml_global_defaults(clicon_handle h, cxobj *xn, cvec *nsc, const char *xpath, yang_stmt *yspec);
+int xml_default_recurse(cxobj *xn, int state);
+int xml_global_defaults(clicon_handle h, cxobj *xn, cvec *nsc, const char *xpath, yang_stmt *yspec, int state);
 int xml_nopresence_default(cxobj *xt);
 int xml_nopresence_default_mark(cxobj *x, void *arg);
 int xml_sanity(cxobj *x, void  *arg);

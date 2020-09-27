@@ -323,7 +323,7 @@ main(int    argc,
 	    goto done;
 
 	/* Add default values */
-	if (xml_default_recurse(x0) < 0)
+	if (xml_default_recurse(x0, 0) < 0)
 	    goto done;
 	if (xml_apply0(x0, -1, xml_sort_verify, h) < 0)
 	    clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);

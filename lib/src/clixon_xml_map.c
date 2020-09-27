@@ -1118,12 +1118,14 @@ xml_nopresence_try(yang_stmt *yt,
  * XML containers may be created to host default values. That code may be a little too recursive.
  * @param[in]   yt      Yang spec
  * @param[in]   xt      XML tree (with yt as spec of xt, informally)
+ * @param[in]   state   Set if global state, otherwise config
  * @retval      0       OK
  * @retval      -1      Error
  */
 static int
 xml_default1(yang_stmt *yt,
-	     cxobj     *xt)
+	     cxobj     *xt,
+	     int        state)
 {
     int        retval = -1;
     yang_stmt *yc;
@@ -1145,6 +1147,8 @@ xml_default1(yang_stmt *yt,
     case Y_OUTPUT:
 	yc = NULL;
 	while ((yc = yn_each(yt, yc)) != NULL) {
+	    if (!state && !yang_config(yc)) 
+		continue;
 	    switch (yang_keyword_get(yc)){
 	    case Y_LEAF:
 		if (!cv_flag(yang_cv_get(yc), V_UNSET)){  /* Default value exists */
@@ -1173,7 +1177,7 @@ xml_default1(yang_stmt *yt,
 				goto done;
 			    xml_sort(xt);
 			    /* Then call it recursively */
-			    if (xml_default1(yc, xc) < 0)
+			    if (xml_default1(yc, xc, state) < 0)
 				goto done;
 			}
 		    }
@@ -1196,11 +1200,13 @@ xml_default1(yang_stmt *yt,
  * 
  * Assume yang is bound to the tree
  * @param[in]   xt      XML tree
+ * @param[in]   state   If set expand defaults also for state data, otherwise only config
  * @retval      0       OK
  * @retval      -1      Error
  */
-int
-xml_default(cxobj *xt)
+static int
+xml_default(cxobj *xt,
+	    int    state)
 {
     int        retval = -1;
     yang_stmt *ys;
@@ -1209,7 +1215,7 @@ xml_default(cxobj *xt)
 	retval = 0;
 	goto done;
     }
-    if (xml_default1(ys, xt) < 0)
+    if (xml_default1(ys, xt, state) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1218,20 +1224,27 @@ xml_default(cxobj *xt)
 
 /*! Recursively fill in default values in an XML tree
  * @param[in]   xt      XML tree
+ * @param[in]   state   If set expand defaults also for state data, otherwise only config
  * @retval      0       OK
  * @retval      -1      Error
  */
 int
-xml_default_recurse(cxobj *xn)
+xml_default_recurse(cxobj *xn,
+		    int    state)
 {
-    int    retval = -1;
-    cxobj *x;
+    int        retval = -1;
+    cxobj     *x;
+    yang_stmt *y;
     
-    if (xml_default(xn) < 0)
+    if (xml_default(xn, state) < 0)
 	goto done;
     x = NULL;
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
-	if (xml_default_recurse(x) < 0)
+	if ((y = (yang_stmt*)xml_spec(x)) != NULL){
+	    if (!state && !yang_config(y))
+		continue;
+	}
+	if (xml_default_recurse(x, state) < 0)
 	    goto done;
     }
     retval = 0;
@@ -1242,15 +1255,16 @@ xml_default_recurse(cxobj *xn)
 /*! Expand and set default values of global top-level on XML tree
  *
  * Not recursive, except in one case with one or several non-presence containers
- * @param[in]   h       Clixon handle
- * @param[in]   yspec   Top-level YANG specification tree, all modules
  * @param[in]   xt      XML tree
+ * @param[in]   yspec   Top-level YANG specification tree, all modules
+ * @param[in]   state   Set if global state, otherwise config
  * @retval      0       OK
  * @retval      -1      Error
  */
 static int
 xml_global_defaults_create(cxobj     *xt,
-			   yang_stmt *yspec)
+			   yang_stmt *yspec,
+			   int        state)
 
 {
     int        retval = -1;
@@ -1261,7 +1275,7 @@ xml_global_defaults_create(cxobj     *xt,
 	goto done;
     }
     while ((ymod = yn_each(yspec, ymod)) != NULL) 
-	if (xml_default1(ymod, xt) < 0)
+	if (xml_default1(ymod, xt, state) < 0)
 	    goto done;
     retval = 0;
  done:
@@ -1275,6 +1289,7 @@ xml_global_defaults_create(cxobj     *xt,
  * @param[in]   xt      XML tree, assume already filtered with xpath
  * @param[in]   xpath   Filter global defaults with this and merge with xt
  * @param[in]   yspec   Top-level YANG specification tree, all modules
+ * @param[in]   state   Set if global state, otherwise config
  * @retval      0       OK
  * @retval      -1      Error
  * Uses cache?
@@ -1284,7 +1299,8 @@ xml_global_defaults(clicon_handle h,
 		    cxobj        *xt,
 		    cvec         *nsc,
 		    const char   *xpath,
-		    yang_stmt    *yspec)
+		    yang_stmt    *yspec,
+		    int           state)
 {
     int        retval = -1;
     db_elmnt   de0 = {0,};
@@ -1296,16 +1312,19 @@ xml_global_defaults(clicon_handle h,
     int        i;
     cxobj     *x0;
     int        ret;
+    char      *key;
     
+    /* Use different keys for config and state */
+    key = state ? "global-defaults-state" : "global-defaults-config";
     /* First get or compute global xml tree cache */
-    if ((de = clicon_db_elmnt_get(h, "global-defaults")) == NULL){
-	/* Create it it */
+    if ((de = clicon_db_elmnt_get(h, key)) == NULL){
+	/* Create it */
 	if ((xcache = xml_new("config", NULL, CX_ELMNT)) == NULL)
 	    goto done;
-	if (xml_global_defaults_create(xcache, yspec) < 0)
+	if (xml_global_defaults_create(xcache, yspec, state) < 0)
 	    goto done;
 	de0.de_xml = xcache;
-	clicon_db_elmnt_set(h, "global-defaults", &de0);
+	clicon_db_elmnt_set(h, key, &de0);
     }
     else
 	xcache = de->de_xml;
@@ -1323,6 +1342,7 @@ xml_global_defaults(clicon_handle h,
 	xml_flag_set(x0, XML_FLAG_MARK);
 	xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
+    /* Create a new tree and copy over the parts from the cache that matches xpath */
     if ((xpart = xml_new("config", NULL, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_copy_marked(xcache, xpart) < 0) /* config */

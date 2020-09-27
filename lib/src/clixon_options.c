@@ -260,7 +260,7 @@ parse_configfile(clicon_handle  h,
 	    
 	goto done;
     }
-    if (xml_default_recurse(xc) < 0)
+    if (xml_default_recurse(xc, 0) < 0)
 	goto done;	
     if ((ret = xml_yang_validate_add(h, xc, &xerr)) < 0)
 	goto done;
