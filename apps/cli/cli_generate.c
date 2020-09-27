@@ -776,7 +776,7 @@ yang2cli_list(clicon_handle      h,
     int           retval = -1;
     char         *helptext = NULL;
     char         *s;
-	int 		 list_has_callback;
+    int 	  list_has_callback = 0;
 
     cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
@@ -836,9 +836,9 @@ yang2cli_list(clicon_handle      h,
 	    goto done;
     }
     cprintf(cb, "%*s}\n", level*3, "");
-	if ((show_tree == 1)  && (list_has_callback)) {
-		cprintf(cb, "%*s}\n", level*3, "");
-	}
+    if ((show_tree == 1)  && (list_has_callback)) {
+	cprintf(cb, "%*s}\n", level*3, "");
+    }
     retval = 0;
   done:
     if (helptext)

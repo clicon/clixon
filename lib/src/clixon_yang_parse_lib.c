@@ -234,8 +234,21 @@ yang_augment_node(yang_stmt *ys,
     /* Find the target */
     if (yang_abs_schema_nodeid(ysp, ys, schema_nodeid, -1, &ytarget) < 0)
 	goto done;
-    if (ytarget == NULL)
+
+    if (ytarget == NULL){
+#if 0
+	clicon_err(OE_YANG, 0, "Augment failed in module %s: target node %s not found",
+		   yang_argument_get(ys_module(ys)),
+		   schema_nodeid);
+	goto done;
+#else
+	clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: target node %s not found",
+		   yang_argument_get(ys_module(ys)),
+		   schema_nodeid);
 	goto ok;
+#endif
+    }
+
     /* Find when statement, if present */
     if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL){
 	wxpath = yang_argument_get(ywhen);

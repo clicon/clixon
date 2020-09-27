@@ -399,6 +399,8 @@ example_statedata(clicon_handle h,
 		clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
 		goto done;
 	    }
+	    if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
+		goto done;
 	    if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
 		goto done;
 	    close(fd);
@@ -417,7 +419,6 @@ example_statedata(clicon_handle h,
 	    }
 	    if (xml_copy(xt, xstate) < 0)
 		goto done;
-
 	    if (xvec){
 		free(xvec);
 		xvec = 0;
