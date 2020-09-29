@@ -212,8 +212,7 @@ ys_grouping_resolve(yang_stmt  *yuses,
  * struct to the yang statements being inserted.
  */
 static int
-yang_augment_node(yang_stmt *ys, 
-		  yang_stmt *ysp)
+yang_augment_node(yang_stmt *ys)
 {
     int        retval = -1;
     char      *schema_nodeid;
@@ -229,18 +228,19 @@ yang_augment_node(yang_stmt *ys,
 	clicon_err(OE_YANG, 0, "My yang module not found");
 	goto done;
     }
+    /* */
     schema_nodeid = yang_argument_get(ys);
     clicon_debug(2, "%s %s", __FUNCTION__, schema_nodeid);
     /* Find the target */
-    if (yang_abs_schema_nodeid(ysp, ys, schema_nodeid, -1, &ytarget) < 0)
+    if (yang_abs_schema_nodeid(ys, schema_nodeid, &ytarget) < 0)
 	goto done;
 
     if (ytarget == NULL){
-#if 0
+#if 0 /* Lots of yang models fail here */
 	clicon_err(OE_YANG, 0, "Augment failed in module %s: target node %s not found",
 		   yang_argument_get(ys_module(ys)),
 		   schema_nodeid);
-	goto done;
+	goto done; 
 #else
 	clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: target node %s not found",
 		   yang_argument_get(ys_module(ys)),
@@ -274,38 +274,36 @@ yang_augment_node(yang_stmt *ys,
 	}
     }
  ok:
-    retval = 0;
+   retval = 0;
  done:
     if (wnsc)
 	cvec_free(wnsc);
     return retval;
 }
 
-/*! Find all top-level augments and change original datamodels. */
+/*! Find all top-level augments in a module and change original datamodels. 
+ * @param[in]  ymod  Yang statement of type module/sub-module
+ * @retval     0     OK
+ * @retval    -1     Error
+ * Note there is an ordering problem, where an augment in one module depends on an augment in
+ * another module not yet augmented.
+ */
 static int
-yang_augment_spec(yang_stmt *ysp,
-		  int        modnr)
+yang_augment_module(yang_stmt *ymod)
+
 {
     int        retval = -1;
-    yang_stmt *ym;
     yang_stmt *ys;
-    int        i;
-    int        j; 
 
-    i = modnr; /* cant use yang_each here since you dont start at 0 */
-    while (i < yang_len_get(ysp)){ /* Loop through modules and sub-modules */
-	ym = ysp->ys_stmt[i++];
-	j = 0;
-	while (j < yang_len_get(ym)){ /* Top-level symbols in modules */
-	    ys = ym->ys_stmt[j++];
-	    switch (yang_keyword_get(ys)){
-	    case Y_AUGMENT: /* top-level */
-		if (yang_augment_node(ys, ysp) < 0)
-		    goto done;
-		break;
-	    default:
-		break;
-	    }
+    ys = NULL;
+    while ((ys = yn_each(ymod, ys)) != NULL){
+	switch (yang_keyword_get(ys)){
+	case Y_AUGMENT: /* top-level */
+	    if (yang_augment_node(ys) < 0)
+		goto done;
+	    break;
+	default:
+	    break;
 	}
     }
     retval = 0;
@@ -457,9 +455,12 @@ yang_expand_grouping(yang_stmt *yn)
 		    goto done;
 	    }
 	    /* Make a copy of the grouping, then make refinements to this copy
+	     * Note this ygrouping2 object does not gave a parent and does not work in many
+	     * functions which assume a full hierarchy, use the original ygrouping in those cases.
 	     */
 	    if ((ygrouping2 = ys_dup(ygrouping)) == NULL)
 		goto done;
+
 	    /* Only replace data/schemanodes:
 	     * Compute the number of such nodes, and extend the child vector with that below
 	     */
@@ -495,9 +496,8 @@ yang_expand_grouping(yang_stmt *yn)
 		if (yang_keyword_get(yr) != Y_REFINE)
 		    continue;
 		/* Find a node */
-		if (yang_desc_schema_nodeid(ygrouping2,
+		if (yang_desc_schema_nodeid(ygrouping, /* Cannot use ygrouping2 */
 					    yang_argument_get(yr),
-					    -1,
 					    &yrt) < 0)
 		    goto done;
 		/* Not found, try next */
@@ -865,7 +865,7 @@ yang_parse_module(clicon_handle h,
      * RFC 7950 Sec 5.2 
      */
     if (strcmp(yang_argument_get(ymod), module) != 0){
-	clicon_err(OE_YANG, EINVAL, "File %s contains yang module \"%s\" which does not expected module %s",
+	clicon_err(OE_YANG, EINVAL, "File %s contains yang module \"%s\" which does not match expected module %s",
 		   filename,
 		   yang_argument_get(ymod),
 		   module);
@@ -953,7 +953,6 @@ ys_schemanode_check(yang_stmt *ys,
 		    void      *dummy)
 {
     int           retval = -1;
-    yang_stmt    *yspec;
     yang_stmt    *yres = NULL;
     yang_stmt    *yp;
     char         *arg;
@@ -973,7 +972,7 @@ ys_schemanode_check(yang_stmt *ys,
 	    break;
 	/* fallthru */
     case Y_REFINE:
-	if (yang_desc_schema_nodeid(yp, arg, -1, &yres) < 0)
+	if (yang_desc_schema_nodeid(yp, arg, &yres) < 0)
 	    goto done;
 	if (yres == NULL){
 	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s %s", 
@@ -988,7 +987,7 @@ ys_schemanode_check(yang_stmt *ys,
 	    goto done;
 	for (i=0; i<nvec; i++){
 	    v = vec[i]; 
-	    if (yang_desc_schema_nodeid(yp, v, -1, &yres) < 0)
+	    if (yang_desc_schema_nodeid(yp, v, &yres) < 0)
 		goto done;
 	    if (yres == NULL){
 		clicon_err(OE_YANG, 0, "schemanode sanity check of %s %s", 
@@ -999,8 +998,7 @@ ys_schemanode_check(yang_stmt *ys,
 	break;
     }
     case Y_DEVIATION:
-	yspec = ys_spec(ys);
-	if (yang_abs_schema_nodeid(yspec, ys, arg, -1, &yres) < 0)
+	if (yang_abs_schema_nodeid(ys, arg, &yres) < 0)
 	    goto done;
 	if (yres == NULL){
 	    clicon_err(OE_YANG, 0, "schemanode sanity check of %s", arg);
@@ -1049,7 +1047,7 @@ ys_list_check(clicon_handle h,
     if (keyw == Y_LIST &&
 	yang_find(ys, Y_KEY, NULL) == 0){
 	ymod = ys_module(ys);
-#if 1 
+#if 1
 	/* Except restconf error extension from sanity check, dont know why it has no keys */
 	if (strcmp(yang_find_mynamespace(ys),"urn:ietf:params:xml:ns:yang:ietf-restconf")==0 &&
 	    strcmp(yang_argument_get(ys),"error") == 0)
@@ -1086,11 +1084,121 @@ ys_list_check(clicon_handle h,
     return retval;
 }
 
+/*! Depth-first topological sort
+ * Topological sort of a DAG
+ * @param[in]  yn    Yang module node
+ * @param[out] ylist Result list of sorted nodes with "least significant" first
+ * @param[out] ylen  Length of ylist
+ * @retval     0     OK
+ * @retval    -1     Error. Eg circular
+ * see eg https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search
+ */
+static int
+ys_visit(struct yang_stmt   *yn,
+	 struct yang_stmt ***ylist,
+	 int                *ylen)
+{
+    int               retval = -1;
+    int               i;
+    struct yang_stmt *yi; /* import / include */
+    struct yang_stmt *yspec;
+    struct yang_stmt *ymod;
+    
+    if (yn == NULL ||
+	(yang_keyword_get(yn) != Y_MODULE && yang_keyword_get(yn) != Y_SUBMODULE)){
+	clicon_err(OE_YANG, EINVAL, "Expected module or submodule");
+	goto done;
+    }
+    yspec = ys_spec(yn);
+    /* if n has a permanent mark then return */
+    if (yang_flag_get(yn, YANG_FLAG_MARK))
+	return 0;
+    /* if n has a temporary mark then stop (not a DAG) */
+    if (yang_flag_get(yn, YANG_FLAG_TMP)){
+	clicon_err(OE_YANG, EFAULT, "Yang module %s import/include is circular", yang_argument_get(yn));
+	goto done;
+    }
+    /* mark n with a temporary mark */
+    yang_flag_set(yn, YANG_FLAG_TMP);
+
+    /* Loop through import and include statements and visit each */
+    yi = NULL;
+    for (i=0; i<yang_len_get(yn); i++){
+	yi = yang_child_i(yn, i);
+	if (yang_keyword_get(yi) != Y_IMPORT &&
+	    yang_keyword_get(yi) != Y_INCLUDE)
+	    continue;
+	if ((ymod = yang_find(yspec, Y_MODULE, yang_argument_get(yi))) == NULL &&
+	    (ymod = yang_find(yspec, Y_SUBMODULE, yang_argument_get(yi))) == NULL){
+	    clicon_err(OE_YANG, EFAULT, "Yang module %s import/include not found",
+		       yang_argument_get(yi)); /* shouldnt happen */
+	    goto done;
+	}
+	if (ys_visit(ymod, ylist, ylen) < 0)
+	    goto done;
+    }
+    /* remove temporary mark from n */
+    yang_flag_reset(yn, YANG_FLAG_TMP);
+    /* mark n with a permanent mark */
+    yang_flag_set(yn, YANG_FLAG_MARK);
+    /* add n to head of L. NB reversed */
+    (*ylen)++;
+    if ((*ylist = realloc(*ylist, (*ylen)*sizeof(yang_stmt *))) == 0){
+	clicon_err(OE_YANG, errno, "realloc");
+	goto done;
+    }
+    (*ylist)[*ylen - 1] = yn;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Sort module/submodules according to import/include order and cycle detect
+ * Topological sort of a DAG
+ * @param[in]  yspec   Yang specification. 
+ * @param[in]  modmin  Start of interval of yspec:s module children 
+ * @param[in]  modmax  End of interval
+ * @param[out] ylist   Result list of sorted nodes with "least significant" first
+ * @param[out] ylen    Length of ylist
+ * see eg https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search
+ */
+static int
+yang_sort_modules(yang_stmt          *yspec,
+		  int                 modmin,
+		  int                 modmax,
+		  struct yang_stmt ***ylist,
+		  int                *ylen)
+{
+    int               retval = -1;
+    int               i;
+    struct yang_stmt *yn;
+
+
+    for (i=modmin; i<modmax; i++){
+	yn = yang_child_i(yspec, i);
+	/* select an unmarked node n */
+	if (yang_flag_get(yn, YANG_FLAG_MARK|YANG_FLAG_TMP) == 0){
+	    if (ys_visit(yn, ylist, ylen) < 0)
+		goto done;
+	}
+    }
+    if (*ylen != modmax-modmin){
+	clicon_err(OE_YANG, EFAULT, "Internal error: mismatch sort vector lengths");
+    }
+    /* Unmark all nodes */
+    for (i=modmin; i<modmax; i++){
+	yn = yang_child_i(yspec, i);
+	yang_flag_set(yn, YANG_FLAG_MARK|YANG_FLAG_TMP);
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Parse top yang module including all its sub-modules. Expand and populate yang tree
  *
  * Perform secondary actions after yang parsing. These actions cannot be made at
- * parse-time for various reasons.
- * These includes:
+ * parse-time for various reasons:
  * - Detect imported yang specs that are not loaded and load and parse them too
  * - Check cardinality of yang (that nr of children match)
  * - Check features: remove disabled
@@ -1098,43 +1206,59 @@ ys_list_check(clicon_handle h,
  * - Resolve types
  * - Augments
  * - Defaults
+ * There is some complexity in how modules are loaded vs how they need to be augmented
+ * Therefore, after full loading, a topological sort is made to ensure the modules are 
+ * non-circular (a DAG) and that the rest of the operations are made in the topology order.
+ * The loading order of the yang models (under yang spec) is kept.
  * 
  * @param[in] h      CLICON handle
  * @param[in] yspec  Yang specification. 
- * @param[in] modnr  Perform checks after this number, prior are already complete
+ * @param[in] modmin  Perform checks after this number, prior are already complete
  * @retval    0      Everything OK
  * @retval   -1      Error encountered
  */
 static int
 yang_parse_post(clicon_handle h,
 		yang_stmt    *yspec,
-		int           modnr)
+		int           modmin)
 {
-    int retval = -1;
-    int i;
+    int                retval = -1;
+    int                i;
+    int                modmax;
+    struct yang_stmt **ylist = NULL; /* Topology sorted modules */
+    int                ylen = 0;     /* Length of ylist */
     
     /* 1: Parse from text to yang parse-tree. 
      * Iterate through modules and detect module/submodules to parse
-     * - note the list may grow on each iteration */
-    for (i=modnr; i<yang_len_get(yspec); i++)
-	if (yang_parse_recurse(h, yspec->ys_stmt[i], yspec) < 0)
+     * NOTE: the list may grow on each iteration */
+    for (i=modmin; i<yang_len_get(yspec); i++)
+	if (yang_parse_recurse(h, yang_child_i(yspec, i), yspec) < 0)
 	    goto done;
+    
+    modmax = yang_len_get(yspec);
+    /* The set of modules [modmin..maxmax] is here complete wrt imports/includes and is a DAG
+     * Example: A imports B, C and D, and C and D imports B
+     * In some operations below (eg augment) need to be in topology order, eg B first.
+     * Therefore the modules are sorted into a separate list that is used henceforth
+     */
+    if (yang_sort_modules(yspec, modmin, yang_len_get(yspec), &ylist, &ylen) < 0)
+	goto done;
 
-    /* 2. Check cardinality maybe this should be done after grouping/augment */
-    for (i=modnr; i<yang_len_get(yspec); i++) 
-	if (yang_cardinality(h, yspec->ys_stmt[i], yang_argument_get(yspec->ys_stmt[i])) < 0)
+    /* 2. Check cardinality a first time (done again last) */
+    for (i=modmin; i<modmax; i++) 
+	if (yang_cardinality(h, yang_child_i(yspec, i), yang_argument_get(yspec->ys_stmt[i])) < 0)
 	    goto done;
     
     /* 3: Check features/if-features: check if enabled and remove disabled features */
-    for (i=modnr; i<yang_len_get(yspec); i++) 
-	if (yang_features(h, yspec->ys_stmt[i]) < 0)
+    for (i=modmin; i<modmax; i++) 
+	if (yang_features(h, yang_child_i(yspec, i)) < 0)
 	    goto done;
     
     /* 4: Go through parse tree and populate it with cv types */
-    for (i=modnr; i<yang_len_get(yspec); i++){
-	if (ys_populate(yspec->ys_stmt[i], h) < 0) /* Alt: make a yang_apply0 */
+    for (i=modmin; i<modmax; i++){
+	if (ys_populate(yang_child_i(yspec, i), h) < 0) /* Alt: make a yang_apply0 */
 	    goto done;
-	if (yang_apply(yspec->ys_stmt[i], -1, ys_populate, (void*)h) < 0)
+	if (yang_apply(yang_child_i(yspec, i), -1, ys_populate, (void*)h) < 0)
 	    goto done;
     }
 
@@ -1142,8 +1266,8 @@ yang_parse_post(clicon_handle h,
      * from ys_populate step.
      * Must be done using static binding.
      */
-    for (i=modnr; i<yang_len_get(yspec); i++)
-	if (yang_apply(yspec->ys_stmt[i], Y_TYPE, ys_resolve_type, h) < 0)
+    for (i=modmin; i<modmax; i++)
+	if (yang_apply(yang_child_i(yspec, i), Y_TYPE, ys_resolve_type, h) < 0)
 	    goto done;
 
     /* Up to here resolving is made in the context they are defined, rather 
@@ -1154,36 +1278,43 @@ yang_parse_post(clicon_handle h,
      */
 
     /* 6: Macro expansion of all grouping/uses pairs. Expansion needs marking */
-    for (i=modnr; i<yang_len_get(yspec); i++){
-	if (yang_expand_grouping(yspec->ys_stmt[i]) < 0)
+    for (i=0; i<ylen; i++){
+	if (yang_expand_grouping(ylist[i]) < 0)
 	    goto done;
-	yang_apply(yspec->ys_stmt[i], -1, (yang_applyfn_t*)yang_flag_reset, (void*)YANG_FLAG_MARK);
+	yang_apply(ylist[i], -1, (yang_applyfn_t*)yang_flag_reset, (void*)YANG_FLAG_MARK);
     }
 
-    /* 7: Top-level augmentation of all modules. (Augment also in uses) */
-    if (yang_augment_spec(yspec, modnr) < 0)
-	goto done;
+    /* 7: Top-level augmentation of all modules. 
+     * Note: Clixon does not implement augment in USES 
+     * Note: There is an ordering problem, where an augment in one module depends on an augment in
+     * another module not yet augmented.
+     */
+    for (i=0; i<ylen; i++)
+	if (yang_augment_module(ylist[i]) < 0)
+	    goto done;
 
     /* 4: Go through parse tree and do 2nd step populate (eg default) */
-    for (i=modnr; i<yang_len_get(yspec); i++)
-	if (yang_apply(yspec->ys_stmt[i], -1, ys_populate2, (void*)h) < 0)
+    for (i=0; i<ylen; i++)
+	if (yang_apply(ylist[i], -1, ys_populate2, (void*)h) < 0)
 	    goto done;
 
     /* 8: sanity checks of expanded yangs need more here */
-    for (i=modnr; i<yang_len_get(yspec); i++){
+    for (i=0; i<ylen; i++){
 	/* Check schemanode references */
-	if (yang_apply(yspec->ys_stmt[i], -1, ys_schemanode_check, NULL) < 0)
+	if (yang_apply(ylist[i], -1, ys_schemanode_check, NULL) < 0)
 	    goto done;
 	/* Check list key values */
-	if (ys_list_check(h, yspec->ys_stmt[i]) < 0)
+	if (ys_list_check(h, ylist[i]) < 0)
 	    goto done;
     }
     /* 9. Check cardinality a second time after grouping/augment etc */
-    for (i=modnr; i<yang_len_get(yspec); i++) 
-	if (yang_cardinality(h, yspec->ys_stmt[i], yang_argument_get(yspec->ys_stmt[i])) < 0)
+    for (i=0; i<ylen; i++)
+	if (yang_cardinality(h, ylist[i], yang_argument_get(ylist[i])) < 0)
 	    goto done;
     retval = 0;
  done:
+    if (ylist)
+	free(ylist);
     return retval;
 }
 
@@ -1203,7 +1334,7 @@ yang_spec_parse_module(clicon_handle h,
 		       yang_stmt    *yspec)
 {
     int         retval = -1;
-    int         modnr;       /* Existing number of modules */
+    int         modmin;       /* Existing number of modules */
     char       *base = NULL;;
 
     if (yspec == NULL){
@@ -1214,14 +1345,14 @@ yang_spec_parse_module(clicon_handle h,
 	clicon_err(OE_YANG, EINVAL, "yang module not set");
 	goto done;
     }
-    /* Apply steps 2.. on new modules, ie ones after modnr. */
-    modnr = yang_len_get(yspec);
+    /* Apply steps 2.. on new modules, ie ones after modmin. */
+    modmin = yang_len_get(yspec);
     /* Do not load module if it already exists */
     if (yang_find(yspec, Y_MODULE, module) != NULL)
 	goto ok;
     if (yang_parse_module(h, module, revision, yspec) == NULL)
 	goto done;
-    if (yang_parse_post(h, yspec, modnr) < 0)
+    if (yang_parse_post(h, yspec, modmin) < 0)
 	goto done;
  ok:
     retval = 0;
@@ -1247,11 +1378,11 @@ yang_spec_parse_file(clicon_handle h,
 		     yang_stmt    *yspec)
 {
     int         retval = -1;
-    int         modnr;       /* Existing number of modules */
+    int         modmin;       /* Existing number of modules */
     char       *base = NULL;;
 
-    /* Apply steps 2.. on new modules, ie ones after modnr. */
-    modnr = yang_len_get(yspec);
+    /* Apply steps 2.. on new modules, ie ones after modmin. */
+    modmin = yang_len_get(yspec);
     /* Find module, and do not load file if module already exists */
     if (basename(filename) == NULL){
 	clicon_err(OE_YANG, errno, "No basename");
@@ -1267,7 +1398,7 @@ yang_spec_parse_file(clicon_handle h,
 	goto ok;
     if (yang_parse_filename(filename, yspec) == NULL)
 	goto done;
-    if (yang_parse_post(h, yspec, modnr) < 0)
+    if (yang_parse_post(h, yspec, modmin) < 0)
 	goto done;
  ok:
     retval = 0;
@@ -1304,7 +1435,7 @@ yang_spec_load_dir(clicon_handle h,
     int            j;
     char           filename[MAXPATHLEN];
     char          *base = NULL; /* filename without dir */
-    int            modnr;
+    int            modmin;
     yang_stmt     *ym;   /* yang module */
     yang_stmt     *ym0;  /* (existing) yang module */
     yang_stmt     *yrev; /* yang revision */
@@ -1324,8 +1455,8 @@ yang_spec_load_dir(clicon_handle h,
 	goto done;
     if (ndp == 0)
 	goto ok;
-    /* Apply post steps on new modules, ie ones after modnr. */
-    modnr = yang_len_get(yspec);
+    /* Apply post steps on new modules, ie ones after modmin. */
+    modmin = yang_len_get(yspec);
     /* Load all yang files in dir */
     for (i = 0; i < ndp; i++) {
 	/* base = module name [+ @rev ] + .yang */
@@ -1392,7 +1523,7 @@ yang_spec_load_dir(clicon_handle h,
 	    ys_free(ym);
 	}
     }
-    if (yang_parse_post(h, yspec, modnr) < 0)
+    if (yang_parse_post(h, yspec, modmin) < 0)
 	goto done;
  ok:
     retval = 0;

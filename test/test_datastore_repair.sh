@@ -60,7 +60,7 @@ module B{
   import A {
      prefix "a";
   }
-  augment "/a:x/ngrt:y" {
+  augment "/a:x/a:y" {
     container z {
       leaf w {
         type string;

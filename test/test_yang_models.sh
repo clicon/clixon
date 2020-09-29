@@ -34,6 +34,7 @@ fi
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>ni-ieee1588-ptp:cmlds</CLICON_FEATURE>
   <CLICON_YANG_DIR>$YANGMODELS/standard/ietf/RFC</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/draft/802.1/Qcr</CLICON_YANG_DIR> 
   <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/draft/802</CLICON_YANG_DIR> 

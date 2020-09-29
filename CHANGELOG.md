@@ -46,7 +46,8 @@ Users may have to change how they access the system
 
 ### Minor changes
 
-* 
+* Added stricter check on schema-node identifier checking, such as for augments.
+  * These checks are now made at YANG loading time
 * Added sanity check that a yang module name matches the filename
 
 ### Corrected Bugs
@@ -58,7 +59,7 @@ Users may have to change how they access the system
 14 September 2020
 
 This release is primarily a bugfix and usability improvement release, no major new features.
-
+ppp
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system

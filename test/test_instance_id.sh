@@ -30,6 +30,9 @@ cat <<EOF > $ydir/moda.yang
 module moda{
   namespace "urn:example:a";
   prefix a;
+  import modb {
+    prefix b;
+  }
   container x1{
     description "list with single string key";
     list y{

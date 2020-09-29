@@ -51,9 +51,10 @@
 /*
  * Yang flags used in 
  */
-#define YANG_FLAG_MARK  0x01  /* (Dynamic) marker for dynamic algorithms, eg expand */
+#define YANG_FLAG_MARK  0x01  /* (Dynamic) marker for dynamic algorithms, eg expand and DAG */
+#define YANG_FLAG_TMP   0x02  /* (Dynamic) marker for dynamic algorithms, eg DAG detection */
 #ifdef XML_EXPLICIT_INDEX
-#define YANG_FLAG_INDEX 0x02  /* This yang node under list is (extra) index. --> you can access
+#define YANG_FLAG_INDEX 0x04  /* This yang node under list is (extra) index. --> you can access
 			       * list elements using this index with binary search */
 #endif
 
@@ -240,11 +241,8 @@ int        ys_populate2(yang_stmt *ys, void *arg);
 int        yang_apply(yang_stmt *yn, enum rfc_6020 key, yang_applyfn_t fn, 
 		      void *arg);
 int        yang_datanode(yang_stmt *ys);
-int        yang_abs_schema_nodeid(yang_stmt *yspec, yang_stmt *ys,
-				  char *schema_nodeid, 
-				  enum rfc_6020 keyword, yang_stmt **yres);
-int        yang_desc_schema_nodeid(yang_stmt *yn, char *schema_nodeid, 
-				   enum rfc_6020 keyword, yang_stmt **yres);
+int        yang_abs_schema_nodeid(yang_stmt *ys, char *schema_nodeid, yang_stmt **yres);
+int        yang_desc_schema_nodeid(yang_stmt *yn, char *schema_nodeid, yang_stmt **yres);
 int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
 int        yang_config_ancestor(yang_stmt *ys);

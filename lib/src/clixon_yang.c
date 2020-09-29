@@ -707,6 +707,7 @@ ys_replace(yang_stmt *yorig,
  * @retval    0          OK
  * @retval   -1          Error
  * Also add parent to child as up-pointer
+ * @see ys_prune
  */
 int
 yn_insert(yang_stmt *ys_parent, 
@@ -732,6 +733,7 @@ yn_insert(yang_stmt *ys_parent,
  *   }
  * @endcode
  * @note makes uses _ys_vector_i:can be changed if list changed between calls
+ * @note also does not work in recursive calls (to same node)
  */
 yang_stmt *
 yn_each(yang_stmt *yparent, 
@@ -997,6 +999,10 @@ yang_find_myprefix(yang_stmt *ys)
     /* Not good enough with submodule, must be actual module */
     if (ys_real_module(ys, &ymod) < 0)
 	goto done;
+    if (ymod == NULL){
+	clicon_err(OE_YANG, ENOENT, "Internal error: no module");
+	goto done;
+    }
     if ((yprefix = yang_find(ymod, Y_PREFIX, NULL)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "No prefix found for module %s", yang_argument_get(ymod));
 	goto done;
@@ -2523,80 +2529,90 @@ yang_datanode(yang_stmt *ys)
 }
 
 /*! All the work for schema_nodeid functions both absolute and descendant
- *  Ignore prefixes, see _abs 
- * @param[in]  yn    Yang node. Find next yang stmt and return that if match.
- * @param[in]  vec   Vector of nodeid's in a schema node identifier, eg a/b
- * @param[in]  nvec  Length of vec
- * @param[in]  keyword       A schemode of this type, or -1 if any
+ *
+ * @param[in]  yn    Yang node. For absolute schemanodeids this should be a module, otherwise any yang
+ * @param[in]  cvv   Schema-node path encoded as a name/value pair list.
+ * @param[in]  nsc   Namespace context from yang for the prefixes (names) of cvv
  * @param[out] yres  Result yang statement node, or NULL if not found
  * @retval    -1     Error, with clicon_err called
  * @retval     0     OK
+ *   A schema node identifier consists of a path of identifiers, separated by slashes ("/").
+ *   References to identifiers defined in external modules MUST be
+ *   qualified with appropriate prefixes, and references to identifiers
+ *   defined in the current module and its submodules MAY use a prefix.
+ * prefixes are implemented by cvv names, and id:s by cvv strings.
+ * A namespace context of the original module is nsc as prefix context.
+ *
+ * @see RFC7950 Sec 6.5
  */
 static int
-schema_nodeid_vec(yang_stmt    *yn,
-		  char        **vec, 
-		  int           nvec,
-		  enum rfc_6020 keyword,
-		  yang_stmt   **yres)
+schema_nodeid_iterate(yang_stmt    *yn,
+		      cvec         *nodeid_cvv,
+		      cvec         *nsc,
+		      yang_stmt   **yres)
 {
     int              retval = -1;
-    char            *arg;
-    yang_stmt       *ynext;
-    char            *nodeid = NULL;
-    int              i;
+    yang_stmt       *ymod;
+    char            *prefix; /* node-identifier     = [prefix ":"] identifier */
+    char            *id;    
     yang_stmt       *ys;
-    int              match;
+    yang_stmt       *ym2;
+    yang_stmt       *yp;
+    cg_var          *cv;
+    char            *ns;
+    yang_stmt       *yspec;
 
-    if (nvec <= 0)
-	goto done;
-    arg = vec[0];
-    clicon_debug(2, "%s: key=%s arg=%s match=%s len=%d",
-	    __FUNCTION__, yang_key2str(yn->ys_keyword), yn->ys_argument, 
-	    arg, yn->ys_len);
-    if (strcmp(arg, "..") == 0)
-	ynext = yn->ys_parent; /* This could actually be a MODULE */
-    else{
-	/* ignore prefixes */
-	if ((nodeid = strchr(arg, ':')) == NULL)
-	    nodeid = arg;
-	else
-	    nodeid++;
-	match = 0;
+    yspec = ys_spec(yn);
+    yp = yn;
+    /* Iterate over node identifiers /prefix:id/... */
+    cv = NULL;    
+    while ((cv = cvec_each(nodeid_cvv, cv)) != NULL){
+	prefix = cv_name_get(cv);
+	id = cv_string_get(cv);
+	/* Top level is repeated from abs case, but here this is done to match with  
+	 * matching module below
+	 * Get namespace */
+	if ((ns = xml_nsctx_get(nsc, prefix)) == NULL){
+	    clicon_err(OE_YANG, EFAULT, "No namespace for prefix: %s in schema node identifier in module %s",
+		       prefix,
+		       yang_argument_get(ys_module(yn)));
+	    goto done;
+	}
+	/* Get yang module */
+	if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL){
+	    clicon_err(OE_YANG, EFAULT, "No module for namespace: %s", ns);
+	    goto done;
+	}
+       /* Iterate over children of current node to get a match 
+	* XXX namespace?????
+	*/
 	ys = NULL;
-	for (i=0; i<yn->ys_len; i++){
-	    ys = yn->ys_stmt[i];
+	while ((ys = yn_each(yp, ys)) != NULL) {
 	    if (!yang_schemanode(ys))
-		continue;
-	    if ((int)keyword != -1 && keyword != ys->ys_keyword)
 		continue;
 	    /* some keys dont have arguments, match on key */
 	    if (ys->ys_keyword == Y_INPUT || ys->ys_keyword == Y_OUTPUT){
-		if (strcmp(nodeid, yang_key2str(ys->ys_keyword)) == 0){
-		    match++;
+		if (strcmp(id, yang_key2str(ys->ys_keyword)) == 0){
 		    break;
 		}
-	    } else
-		if (ys->ys_argument && strcmp(nodeid, ys->ys_argument) == 0){
-		    match++;
-		    break;
+	    }
+	    else {
+		if (ys->ys_argument && strcmp(id, ys->ys_argument) == 0){
+		    /* Also check for right prefix/module */
+		    ym2 = ys->ys_mymodule?ys->ys_mymodule:ys_module(ys);
+		    if (ym2 == ymod)
+			break;
 		}
-	}
-	if (!match){
-	    clicon_debug(1, "%s: %s not found", __FUNCTION__, nodeid);
+	    }
+	} /* while ys */
+	if (ys == NULL){
+	    clicon_debug(1, "%s: %s not found", __FUNCTION__, id);
 	    goto ok;
 	}
-	ynext = ys;
-    }
-    if (nvec == 1){ /* match */
-	if (yang_schemanode((yang_stmt*)ynext))
-	    *yres = (yang_stmt*)ynext;
-	else
-	    clicon_debug(1, "%s not schema node", arg);
-	goto ok;
-    }
-    /* recursive call using ynext */
-    if (schema_nodeid_vec(ynext, vec+1, nvec-1, keyword, yres) < 0)
-	goto done;
+	yp = ys;
+    } /* while cv */
+    assert(yp && yang_schemanode((yang_stmt*)yp));
+    *yres = (yang_stmt*)yp;
  ok:
     retval = 0;
  done:
@@ -2610,80 +2626,82 @@ schema_nodeid_vec(yang_stmt    *yn,
  * @param[in]  keyword       A schemode of this type, or -1 if any
  * @param[out] yres          Result yang statement node, or NULL if not found
  * @retval    -1             Error, with clicon_err called
- * @retval     0             OK (if yres set then found, if yres=0 then not found)
+ * @retval     0             OK , with result in yres
  * Assume schema nodeid:s have prefixes, (actually the first).
- * @see yang_desc_schema_nodeid
  * @see RFC7950 6.5
  * o  schema node: A node in the schema tree.  One of action, container,
  *    leaf, leaf-list, list, choice, case, rpc, input, output,
  *    notification, anydata, and anyxml.
  * Used in yang: deviation, top-level augment
+ * @see yang_desc_schema_nodeid
  */
 int
-yang_abs_schema_nodeid(yang_stmt    *yspec,
-		       yang_stmt    *yn,
+yang_abs_schema_nodeid(yang_stmt    *yn,
 		       char         *schema_nodeid,
-		       enum rfc_6020 keyword,
 		       yang_stmt   **yres)
 {
-    int              retval = -1;
-    char           **vec = NULL;
-    int              nvec;
-    yang_stmt       *ymod = NULL;
-    char            *id;
-    char            *prefix = NULL;
-    yang_stmt       *yprefix;
+    int           retval = -1;
+    cvec         *nodeid_cvv = NULL;
+    cvec         *nsc = NULL;
+    cg_var       *cv;
+    char         *prefix;
+    char         *ns;
+    yang_stmt    *yspec;
+    yang_stmt    *ymod;
+    char         *str;
 
     *yres = NULL;
+    yspec = ys_spec(yn);
     /* check absolute schema_nodeid */
     if (schema_nodeid[0] != '/'){
 	clicon_err(OE_YANG, EINVAL, "absolute schema nodeid should start with /");
 	goto done;
     }
-    if ((vec = clicon_strsep(schema_nodeid, "/", &nvec)) == NULL){
-	clicon_err(OE_YANG, errno, "strsep"); 
+    /* Split nodeid on the form /p0:i0/p1:i1 to a cvec with [name:p0 value:i0][...]
+     */
+    if (str2cvec(schema_nodeid, '/', ':', &nodeid_cvv) < 0)
 	goto done;
-    }
-    /* Assume schema nodeid looks like: "/prefix:id[/prefix:id]*" */
-    if (nvec < 2){
-	clicon_err(OE_YANG, 0, "NULL or truncated path: %s", schema_nodeid);
-	goto done;
-    }
-    /* split <prefix>:<id> */
-    if ((id = strchr(vec[1], ':')) == NULL){ /* no prefix */
-	clicon_log(LOG_WARNING, "%s: Absolute schema nodeid %s must have prefix", __FUNCTION__, schema_nodeid);
+    if (cvec_len(nodeid_cvv) == 0)
 	goto ok;
-    }
-    if ((prefix = strdup(vec[1])) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup"); 
-	goto done;
-    }
-    prefix[id-vec[1]] = '\0';
-    id++;
-    if (yn) /* Find module using local prefix definition */
-	ymod = yang_find_module_by_prefix(yn, prefix);
-    if (ymod == NULL){ /* Try (global) prefix the module itself uses */
-	ymod = NULL;
-	while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	    if ((yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL &&
-		strcmp(yprefix->ys_argument, prefix) == 0){
-		break;
+    /* If p0 is NULL an entry will be: [i0] which needs to be transformed to [NULL:i0] */
+    cv = NULL;    
+    while ((cv = cvec_each(nodeid_cvv, cv)) != NULL){
+	if ((str = cv_string_get(cv)) == NULL || !strlen(str)){
+	    if (cv_string_set(cv, cv_name_get(cv)) < 0){
+		clicon_err(OE_UNIX, errno, "cv_string_set");
+		goto done;
 	    }
+	    cv_name_set(cv, NULL);
 	}
     }
-    if (ymod == NULL){
-	clicon_err(OE_YANG, 0, "No module with prefix %s found", prefix);
+    /* Make a namespace context from yang for the prefixes (names) of nodeid_cvv */
+    if (xml_nsctx_yang(yn, &nsc) < 0)
+	goto done;
+    /* Since this is an _absolute_ schema nodeid start from top 
+     * Get namespace */
+    cv = cvec_i(nodeid_cvv, 0);
+    prefix = cv_name_get(cv);
+    if ((ns = xml_nsctx_get(nsc, prefix)) == NULL){
+	clicon_err(OE_YANG, EFAULT, "No namespace for prefix: %s in schema node identifier: %s in module %s",
+		   prefix, schema_nodeid, yang_argument_get(ys_module(yn)));
 	goto done;
     }
-    if (schema_nodeid_vec(ymod, vec+1, nvec-1, keyword, yres) < 0)
+    /* Get yang module */
+    if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL){
+	clicon_err(OE_YANG, EFAULT, "No module for namespace: %s in schema node identifier: %s",
+		   ns, schema_nodeid);
 	goto done;
- ok: /* yres may not be set */
+    }
+    /* Iterate through cvv to find schemanode using ymod as starting point (since it is absolute) */
+    if (schema_nodeid_iterate(ymod, nodeid_cvv, nsc, yres) < 0)
+	goto done;
+ ok:
     retval = 0;
  done:
-    if (vec)
-	free(vec);
-    if (prefix)
-	free(prefix);
+    if (nodeid_cvv)
+	cvec_free(nodeid_cvv);
+    if (nsc)
+	cvec_free(nsc);
     return retval;
 }
 
@@ -2694,35 +2712,60 @@ yang_abs_schema_nodeid(yang_stmt    *yspec,
  * @param[out] yres          First yang node matching schema nodeid
  * @retval     0             OK
  * @retval    -1             Error, with clicon_err called
- * @see yang_abs_schema_nodeid
  * Used in yang: unique, refine, uses augment
+ * @see yang_abs_schema_nodeid
  */
 int
 yang_desc_schema_nodeid(yang_stmt    *yn, 
 			char         *schema_nodeid,
-			enum rfc_6020 keyword,
 			yang_stmt   **yres)
 {
-    int              retval = -1;
-    char           **vec = NULL;
-    int              nvec;
-
-    *yres = NULL;
-    if (strlen(schema_nodeid) == 0)
+    int           retval = -1;
+    cvec         *nodeid_cvv = NULL;
+    cg_var       *cv;
+    char         *str;
+    cvec         *nsc = NULL;
+    
+    if (schema_nodeid == NULL || strlen(schema_nodeid) == 0){
+	clicon_err(OE_YANG, EINVAL, "nodeid is empty");
 	goto done;
+    }
+    *yres = NULL;
     /* check absolute schema_nodeid */
     if (schema_nodeid[0] == '/'){
 	clicon_err(OE_YANG, EINVAL, "descendant schema nodeid should not start with /");
 	goto done;
     }
-    if ((vec = clicon_strsep(schema_nodeid, "/", &nvec)) == NULL)
+    /* Split nodeid on the form /p0:i0/p1:i1 to a cvec with [name:p0 value:i0][...]
+     */
+    if (str2cvec(schema_nodeid, '/', ':', &nodeid_cvv) < 0)
 	goto done;
-    if (schema_nodeid_vec(yn, vec, nvec, keyword, yres) < 0)
+    if (cvec_len(nodeid_cvv) == 0)
+	goto ok;
+    /* If p0 is NULL an entry will be: [i0] which needs to be transformed to [NULL:i0] */
+    cv = NULL;    
+    while ((cv = cvec_each(nodeid_cvv, cv)) != NULL){
+	if ((str = cv_string_get(cv)) == NULL || !strlen(str)){
+	    if (cv_string_set(cv, cv_name_get(cv)) < 0){
+		clicon_err(OE_UNIX, errno, "cv_string_set");
+		goto done;
+	    }
+	    cv_name_set(cv, NULL);
+	}
+    }
+    /* Make a namespace context from yang for the prefixes (names) of nodeid_cvv */
+    if (xml_nsctx_yang(yn, &nsc) < 0)
 	goto done;
+    /* Iterate through cvv to find schemanode using yn as relative starting point */
+    if (schema_nodeid_iterate(yn, nodeid_cvv, nsc, yres) < 0)
+	goto done;
+ ok:
     retval = 0;
  done:
-    if (vec)
-	free(vec);
+    if (nsc)
+	cvec_free(nsc);
+    if (nodeid_cvv)
+	cvec_free(nodeid_cvv);
     return retval;
 }
 

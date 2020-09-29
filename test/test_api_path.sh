@@ -38,6 +38,9 @@ cat <<EOF > $ydir/moda.yang
 module moda{
   namespace "urn:example:a";
   prefix a;
+  import modb{
+    prefix b;
+  }
   container x1{
     description "list with single string key";
     list y{
@@ -150,6 +153,7 @@ done
 echo -n '</x1>' >> $xml1
     
 new "api-path single string key k1=a$rnd"
+echo "$clixon_util_path -f $xml1 -y $ydir -p /moda:x1/y=a$rnd"
 expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /moda:x1/y=a$rnd)" 0 "^0: <y><k1>a$rnd</k1><z>foo$rnd</z></y>$"
 
 new "api-path single string key /x1"
