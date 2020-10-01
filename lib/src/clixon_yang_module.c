@@ -307,7 +307,7 @@ yang_modules_state_get(clicon_handle    h,
 	/* xc is also original tree, need to copy it */
 	if ((xw = xml_wrap(xc, "top")) == NULL)
 	    goto done;
-        if (xpath_first(xw, NULL, "%s", xpath)){
+        if (xpath_first(xw, nsc, "%s", xpath)){
             if ((x = xml_dup(xc)) == NULL) /* Make copy and use below */
                 goto done;
         }
