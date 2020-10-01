@@ -88,7 +88,7 @@
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:l:p:d:y:a:u:ro:"
+#define RESTCONF_OPTS "hD:f:E:l:p:d:y:a:u:ro:"
 
 /*! Convert FCGI parameters to clixon runtime data
  * @param[in]  h     Clixon handle
@@ -172,6 +172,7 @@ usage(clicon_handle h,
             "\t-h \t\t  Help\n"
 	    "\t-D <level>\t  Debug level\n"
     	    "\t-f <file>\t  Configuration file (mandatory)\n"
+	    "\t-E <dir> \t  Extra configuration file directory\n"
 	    "\t-l <s|f<file>> \t  Log on (s)yslog, (f)ile (syslog is default)\n"
 	    "\t-p <dir>\t  Yang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-d <dir>\t  Specify restconf plugin directory dir (default: %s)\n"
@@ -239,6 +240,11 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
+	case 'E': /* extra config directory */
+	    if (!strlen(optarg))
+		usage(h, argv[0]);
+	    clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
+	    break;
 	 case 'l': /* Log destination: s|e|o */
 	     if ((logdst = clicon_log_opt(optarg[0])) < 0)
 		usage(h, argv[0]);
@@ -281,6 +287,7 @@ main(int    argc,
 	case 'h' : /* help */
 	case 'D' : /* debug */
 	case 'f':  /* config file */
+	case 'E':  /* extra config dir */
 	case 'l':  /* log  */
 	    break; /* see above */
 	case 'p' : /* yang dir path */

@@ -76,7 +76,7 @@
 #include "backend_startup.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:l:d:p:b:Fza:u:P:1qs:c:U:g:y:o:"
+#define BACKEND_OPTS "hD:f:E:l:d:p:b:Fza:u:P:1qs:c:U:g:y:o:"
 
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
@@ -402,6 +402,7 @@ usage(clicon_handle h,
             "\t-h\t\tHelp\n"
     	    "\t-D <level>\tDebug level\n"
     	    "\t-f <file>\tCLICON config file\n"
+	    "\t-E <dir> \tExtra configuration file directory\n"
 	    "\t-l (s|e|o|f<file>)  Log on (s)yslog, std(e)rr or std(o)ut (stderr is default) Only valid if -F, if background syslog is on syslog.\n"
 	    "\t-d <dir>\tSpecify backend plugin directory (default: %s)\n"
 	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
@@ -500,6 +501,11 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
+	case 'E': /* extra config directory */
+	    if (!strlen(optarg))
+		usage(h, argv[0]);
+	    clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
+	    break;
 	case 'l': /* Log destination: s|e|o */
 	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
 		usage(h, argv[0]);
@@ -523,7 +529,7 @@ main(int    argc,
     if (clicon_options_main(h) < 0){
 	if (help)
 	    usage(h, argv[0]);
-	return -1;
+	goto done;
     }
     /* External NACM file? */
     nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
@@ -539,6 +545,7 @@ main(int    argc,
 	case 'h' : /* help */
 	case 'D' : /* debug */
 	case 'f': /* config file */
+	case 'E': /* extra config dir */
 	case 'l' :
 	    break; /* see above */
 	case 'd':  /* Plugin directory */

@@ -72,7 +72,7 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "hD:f:l:F:1a:u:d:m:qp:GLy:c:U:o:"
+#define CLI_OPTS "hD:f:E:l:F:1a:u:d:m:qp:GLy:c:U:o:"
 
 /*! Check if there is a CLI history file and if so dump the CLI histiry to it
  * Just log if file does not exist or is not readable
@@ -361,6 +361,7 @@ usage(clicon_handle h,
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug level\n"
 	    "\t-f <file> \tConfig-file (mandatory)\n"
+	    "\t-E <dir>  \tExtra configuration file directory\n"
     	    "\t-F <file> \tRead commands from file (default stdin)\n"
 	    "\t-1\t\tDo not enter interactive mode\n"
     	    "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
@@ -456,6 +457,11 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
+	case 'E': /* extra config directory */
+	    if (!strlen(optarg))
+		usage(h, argv[0]);
+	    clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
+	    break;
 	case 'l': /* Log destination: s|e|o|f */
 	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
 		usage(h, argv[0]);
@@ -476,9 +482,8 @@ main(int    argc,
     if (clicon_options_main(h) < 0){
         if (help)
 	    usage(h, argv[0]);
-	return -1;
+	goto done;
     }
-	
     /* Now rest of options */   
     opterr = 0;
     optind = 1;
@@ -486,6 +491,7 @@ main(int    argc,
 	switch (c) {
 	case 'D' : /* debug */
 	case 'f': /* config file */
+	case 'E': /* extra config dir */
 	case 'l': /* Log destination */
 	    break; /* see above */
 	case 'F': /* read commands from file */

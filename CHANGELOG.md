@@ -37,11 +37,20 @@ Expected: 15 October 2020
     * Verification of XPath functions is done at startup when yang modules are loaded, not when XPaths are evaluated.
     * Separation of "not found" and "not implemented" XPath functions
     * Both give a fatal error (backend does not start).
+* Configuration directory
+  * A new configuration option `CLICON_CONFIGDIR` has been added for loading of extra config files
+  * If not given, only the main configfile is loaded.
+  * If given, and if the directory exists, the files in this directory will be loaded alphabetically AFTER the main config file in the following way:
+    * leaf values are overwritten
+    * leaf-list values are appended
+  * You can override file setting with `-E <dir>` command-line option.
 
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
+* New clixon-config@2020-10-01.yang revision
+  * Added option for configuration directory: `CLICON_CONFIGDIR`
 * Not implemented XPath functions will cause a backend exit on startup, instead of being ignored.
 
 ### Minor changes
@@ -59,7 +68,7 @@ Users may have to change how they access the system
 14 September 2020
 
 This release is primarily a bugfix and usability improvement release, no major new features.
-ppp
+
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system

@@ -71,7 +71,7 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hD:f:l:qa:u:d:p:y:U:t:eo:"
+#define NETCONF_OPTS "hD:f:E:l:qa:u:d:p:y:U:t:eo:"
 
 #define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
 
@@ -369,6 +369,7 @@ usage(clicon_handle h,
             "\t-h\t\tHelp\n"
 	    "\t-D <level>\tDebug level\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
+	    "\t-E <dir> \tExtra configuration file directory\n"
 	    "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
             "\t-q\t\tQuiet: dont send hello prompt\n"
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
@@ -434,6 +435,11 @@ main(int    argc,
 		usage(h, argv[0]);
 	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
 	    break;
+	case 'E': /* extra config directory */
+	    if (!strlen(optarg))
+		usage(h, argv[0]);
+	    clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
+	    break;
 	 case 'l': /* Log destination: s|e|o */
 	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
 		usage(h, argv[0]);
@@ -452,7 +458,7 @@ main(int    argc,
 
     /* Find, read and parse configfile */
     if (clicon_options_main(h) < 0)
-	return -1;
+	goto done;
     
     /* Now rest of options */
     optind = 1;
@@ -462,6 +468,7 @@ main(int    argc,
 	case 'h' : /* help */
 	case 'D' : /* debug */
 	case 'f':  /* config file */
+	case 'E': /* extra config dir */
 	case 'l':  /* log  */
 	    break; /* see above */
 	case 'q':  /* quiet: dont write hello */

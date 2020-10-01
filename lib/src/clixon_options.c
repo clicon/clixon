@@ -50,6 +50,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <dirent.h>
+#include <libgen.h> /* dirname */
 #include <syslog.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -65,6 +67,7 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_file.h"
 #include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -190,51 +193,29 @@ clicon_option_dump(clicon_handle h,
     return retval;
 }
 
-/*! Read filename and set values to global options registry. XML variant.
- *
- * @param[out] xconfig Pointer to xml config tree. Should be freed by caller
- * @retval     0       OK
- * @retval    -1       Error
+/*! Open and parse single config file
+ * @param[in]  filename
+ * @param[in]  yspec
+ * @param[out] xconfig   Pointer to xml config tree. Should be freed by caller
  */
 static int
-parse_configfile(clicon_handle  h,
-		 const char    *filename,
-		 yang_stmt     *yspec,
-		 cxobj        **xconfig)
+parse_configfile_one(const char *filename,
+		     yang_stmt  *yspec,
+		     cxobj     **xconfig)
 {
-    struct stat st;
-    FILE       *f = NULL;
-    int         retval = -1;
-    int         fd;
-    cxobj      *xt = NULL;
-    cxobj      *xc = NULL;
-    cxobj      *x = NULL;
-    char       *name;
-    char       *body;
-    clicon_hash_t *copt = clicon_options(h);
-    cbuf       *cbret = NULL;
-    cxobj      *xerr = NULL;
-    int         ret;
-    cvec       *nsc = NULL;
+    int    retval = -1;
+    int    fd = -1;
+    cxobj *xt = NULL;
+    cxobj *xerr = NULL;
+    cxobj *xa;
+    cbuf  *cbret = NULL;
+    int    ret;
 
-    if (filename == NULL || !strlen(filename)){
-	clicon_err(OE_UNIX, 0, "Not specified");
-	goto done;
-    }
-    if (stat(filename, &st) < 0){
-	clicon_err(OE_UNIX, errno, "%s", filename);
-	goto done;
-    }
-    if (!S_ISREG(st.st_mode)){
-	clicon_err(OE_UNIX, 0, "%s is not a regular file", filename);
-	goto done;
-    }
-    if ((f = fopen(filename, "r")) == NULL) {
-	clicon_err(OE_UNIX, errno, "configure file: %s", filename);
+    if ((fd = open(filename, O_RDONLY)) < 0){
+	clicon_err(OE_UNIX, errno, "open configure file: %s", filename);
 	return -1;
     }
     clicon_debug(2, "%s: Reading config file %s", __FUNCTION__, filename);
-    fd = fileno(f);
     if ((ret = clixon_xml_parse_file(fd, yspec?YB_MODULE:YB_NONE, yspec, NULL, &xt, &xerr)) < 0)
 	goto done;
     if (ret == 0){
@@ -248,21 +229,137 @@ parse_configfile(clicon_handle  h,
 	clixon_netconf_error(xerr, NULL, NULL);
 	goto done;
     }
-    if (xml_child_nr(xt)==1 && xml_child_nr_type(xt, CX_BODY)==1){
-	clicon_err(OE_CFG, 0, "Config file %s: Expected XML but is probably old sh style", filename);
+    /* Ensure a single root */
+    if (xt == NULL || xml_child_nr(xt) != 1){
+	clicon_err(OE_CFG, 0, "Config file %s: Lacks single top element", filename);
 	goto done;
     }
-    /* Hard-coded config for < 3.10 and clixon-config for >= 3.10 */
-    if ((nsc = xml_nsctx_init(NULL, CLIXON_CONF_NS)) == NULL)
+    if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
-    if ((xc = xpath_first(xt, nsc, "clixon-config")) == NULL){
+    /* Check well-formedness */
+    if (strcmp(xml_name(xt), "clixon-config") != 0 ||
+	(xa = xml_find_type(xt, NULL, "xmlns", CX_ATTR)) == NULL ||
+	strcmp(xml_value(xa), CLIXON_CONF_NS) != 0){
 	clicon_err(OE_CFG, 0, "Config file %s: Lacks top-level \"clixon-config\" element\nClixon config files should begin with: <clixon-config xmlns=\"%s\">", filename, CLIXON_CONF_NS);
-	    
 	goto done;
     }
-    if (xml_default_recurse(xc, 0) < 0)
+    *xconfig = xt;
+    xt = NULL;
+    retval = 0;
+ done:
+    if (xt)
+	xml_free(xt);
+    if (fd != -1)
+	close(fd);
+    if (cbret)
+	cbuf_free(cbret);
+    if (xerr)
+	xml_free(xerr);
+    return retval;
+}
+
+/*! Read filename and set values to global options registry. XML variant.
+ *
+ * @param[in]  h            Clixon handle
+ * @param[in]  filename     Main configuration file
+ * @param[in]  extraconfig0 Override (if set use that, othewrwise get from main file)
+ * @param[in]  yspec        Yang spec
+ * @param[out] xconfig      Pointer to xml config tree. Should be freed by caller
+ * @retval     0            OK
+ * @retval    -1            Error
+ */
+static int
+parse_configfile(clicon_handle  h,
+		 const char    *filename,
+		 char          *extraconfdir0, 
+		 yang_stmt     *yspec,
+		 cxobj        **xconfig)
+{
+    int            retval = -1;
+    struct stat    st;
+    cxobj         *xt = NULL;
+    cxobj         *xc = NULL;
+    cxobj         *x = NULL;
+    char          *name;
+    char          *body;
+    clicon_hash_t *copt = clicon_options(h);
+    cbuf          *cbret = NULL;
+    cxobj         *xerr = NULL;
+    int            ret;
+    cvec          *nsc = NULL;
+    int            i;
+    int            ndp;
+    struct dirent *dp = NULL;
+    char           filename1[MAXPATHLEN];
+    char          *extraconfdir = NULL;
+    cxobj         *xe = NULL;
+    cxobj         *xec;
+    DIR           *dirp;
+
+    if (filename == NULL || !strlen(filename)){
+	clicon_err(OE_UNIX, 0, "Not specified");
+	goto done;
+    }
+    if (stat(filename, &st) < 0){
+	clicon_err(OE_UNIX, errno, "%s", filename);
+	goto done;
+    }
+    if (!S_ISREG(st.st_mode)){
+	clicon_err(OE_UNIX, 0, "%s is not a regular file", filename);
+	goto done;
+    }
+    /* Parse main config file */
+    if (parse_configfile_one(filename, yspec, &xt) < 0)
+	goto done;
+    /* xt is a single-rooted:  <clixon-config>...</clixon-config>
+     * If no override (eg from command-line)
+     * Bootstrap: Shortcut to read extra confdir inline */
+    if ((extraconfdir = extraconfdir0) == NULL)
+	if ((xc = xpath_first(xt, 0, "CLICON_CONFIGDIR")) != NULL)
+	    extraconfdir = xml_body(xc);
+    if (extraconfdir){ /* If extra dir, parse extra config files */
+	/* A check it exists (also done in clicon_file_dirent) */
+	if ((dirp = opendir(extraconfdir)) == NULL) {
+	    clicon_err(OE_UNIX, errno, "CLICON_CONFIGDIR: %s opendir", extraconfdir);
+	    goto done;
+	}
+	closedir(dirp);
+	if((ndp = clicon_file_dirent(extraconfdir, &dp, NULL, S_IFREG)) < 0)  /* Read dir */
+	    goto done;
+	/* Loop through files */
+	for (i = 0; i < ndp; i++){	
+	    snprintf(filename1, sizeof(filename1), "%s/%s", extraconfdir, dp[i].d_name);
+	    if (parse_configfile_one(filename1, yspec, &xe) < 0)
+		goto done;
+	    /* Drain objects from extrafile and replace/append to main */
+	    while ((xec = xml_child_i_type(xe, 0, CX_ELMNT)) != NULL) {
+		name = xml_name(xec);
+		body = xml_body(xec);
+		/* Ignored from file due to bootstrapping */
+		if (strcmp(name,"CLICON_CONFIGFILE")==0)
+		    continue;
+		/* List options for configure options that are leaf-lists: append to main */
+		if (strcmp(name,"CLICON_FEATURE")==0 ||
+		    strcmp(name,"CLICON_YANG_DIR")==0){
+		    if (xml_addsub(xt, xec) < 0)
+			goto done;
+		    continue;
+		}
+		/* Remove existing in master if any */
+		if ((x = xml_find_type(xt, NULL, name, CX_ELMNT)) != NULL)
+		    xml_purge(x);
+		/* Append to master (removed from xe) */
+		if (xml_addsub(xt, xec) < 0)
+		    goto done;
+	    }
+	    if (xe)
+		xml_free(xe);
+	    xe = NULL;
+	}
+    }
+    if (xml_default_recurse(xt, 0) < 0)
 	goto done;	
-    if ((ret = xml_yang_validate_add(h, xc, &xerr)) < 0)
+    if ((ret = xml_yang_validate_add(h, xt, &xerr)) < 0)
 	goto done;
     if (ret == 0){
 	if ((cbret = cbuf_new()) ==NULL){
@@ -274,34 +371,38 @@ parse_configfile(clicon_handle  h,
 	clicon_err(OE_CFG, 0, "Config file validation: %s", cbuf_get(cbret));
 	goto done;
     }
-    while ((x = xml_child_each(xc, x, CX_ELMNT)) != NULL) {
+    x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 	name = xml_name(x);
 	body = xml_body(x);
-	if (name==NULL || body == NULL){
+	if (name == NULL || body == NULL){
 	    clicon_log(LOG_WARNING, "%s option NULL: name:%s body:%s",
 		       __FUNCTION__, name, body);
 	    continue;
 	}
-	/* hard-coded exceptions for configure options that are leaf-lists (not leaf)
+	/* Ignored from file due to bootstrapping */
+	if (strcmp(name,"CLICON_CONFIGFILE")==0)
+	    continue;
+	/* List options for configure options that are leaf-lists (not leaf)
 	 * They must be accessed directly by looping over clicon_conf_xml(h)
 	 */
 	if (strcmp(name,"CLICON_FEATURE")==0)
 	    continue;
 	if (strcmp(name,"CLICON_YANG_DIR")==0)
 	    continue;
-	/* Used as an arg to this fn */
-	if (strcmp(name,"CLICON_CONFIGFILE")==0)
-	    continue;
+
 	if (clicon_hash_add(copt, 
-		     name,
-		     body,
-		     strlen(body)+1) == NULL)
+			    name,
+			    body,
+			    strlen(body)+1) == NULL)
 	    goto done;
     }
     retval = 0;
     *xconfig = xt;
     xt = NULL;
-  done:
+ done:
+    if (dp)
+	free(dp);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (cbret)
@@ -310,8 +411,6 @@ parse_configfile(clicon_handle  h,
 	xml_free(xerr);
     if (xt)
 	xml_free(xt);
-    if (f)
-	fclose(f);
     return retval;
 }
 
@@ -375,6 +474,7 @@ clicon_options_main(clicon_handle h)
     char           xml = 0; /* Configfile is xml, otherwise legacy */
     cxobj         *xconfig = NULL;
     yang_stmt     *yspec = NULL;
+    char          *extraconfdir = NULL;
 
     /* Create configure yang-spec */
     if ((yspec = yspec_new()) == NULL)
@@ -396,20 +496,27 @@ clicon_options_main(clicon_handle h)
 	clicon_err(OE_CFG, 0, "%s: suffix %s not recognized", configfile, suffix);
 	goto done;
     }
-    /* Read configfile first without yangspec, for bootstrapping, see second
-     * time below with proper yangspec. 
-     * (You need to read the config-file to get the YANG_DIR to find the
-     * the clixon yang-spec)
+    
+    /* Override extraconfdir */
+    if (clicon_option_str(h, "CLICON_CONFIGDIR") &&
+	(extraconfdir = strdup(clicon_option_str(h, "CLICON_CONFIGDIR"))) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+
+    /* Read configfile first without yangspec, and without extra config dir for bootstrapping, 
+     * see second time below with proper yangspec and extra config dir
+     * (You need to read the config-file to get the YANG_DIR to find the clixon yang-spec)
      * Difference from parsing with yangspec is:
      * - no default values
      * - no sanity checks
+     * - no extra config dir
      */
-    if (parse_configfile(h, configfile, NULL, &xconfig) < 0)
+    if (parse_configfile(h, configfile, extraconfdir, NULL, &xconfig) < 0)
 	goto done;
-    if (xml_rootchild(xconfig, 0, &xconfig) < 0)
-	goto done;
-    /* Set clixon_conf pointer to handle */
+    
     clicon_conf_xml_set(h, xconfig);
+
     /* Parse clixon yang spec */
     if (yang_spec_parse_module(h, "clixon-config", NULL, yspec) < 0)
 	goto done;    
@@ -418,10 +525,9 @@ clicon_options_main(clicon_handle h)
 	xml_free(xconfig);
 	xconfig = NULL;
     }
+
     /* Read configfile second time now with check yang spec */
-    if (parse_configfile(h, configfile, yspec, &xconfig) < 0)
-	goto done;
-    if (xml_rootchild(xconfig, 0, &xconfig) < 0)
+    if (parse_configfile(h, configfile, extraconfdir, yspec, &xconfig) < 0)
 	goto done;
     if (xml_spec(xconfig) == NULL){
 	clicon_err(OE_CFG, 0, "Config file %s: did not find corresponding Yang specification\nHint: File does not begin with: <clixon-config xmlns=\"%s\"> or clixon-config.yang not found?", configfile, CLIXON_CONF_NS);
@@ -430,12 +536,17 @@ clicon_options_main(clicon_handle h)
     /* Set yang config spec (must store to free at exit, since conf_xml below uses it) */
     if (clicon_config_yang_set(h, yspec) < 0)
        goto done;
+    yspec = NULL;
     /* Set clixon_conf pointer to handle */
     if (clicon_conf_xml_set(h, xconfig) < 0)
 	goto done;
 
     retval = 0;
  done:
+    if (yspec)
+	ys_free(yspec);
+    if (extraconfdir)
+	free(extraconfdir);
     return retval;
 }
 
