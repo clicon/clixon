@@ -62,6 +62,7 @@ compare("Compare running and candidate"), compare_dbs((int32)1);
 show("Show a particular state of the system"){
     xpath("Show configuration") <xpath:string>("XPATH expression") <ns:string>("Namespace"), show_conf_xpath("candidate");
     version("Show version"), cli_show_version("candidate", "text", "/");
+    options("Show clixon options"), cli_show_options();
     compare("Compare candidate and running databases"), compare_dbs((int32)0);{
     		     xml("Show comparison in xml"), compare_dbs((int32)0);
 		     text("Show comparison in text"), compare_dbs((int32)1);

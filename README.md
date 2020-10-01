@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="http://www.clicon.org/Clixon_logga_liggande_med-ikon.png" width="400">
+  <img src="https://www.clicon.org/Clixon_logga_liggande_med-ikon.png" width="400">
 </div>
 
 [![Build Status](https://travis-ci.org/clicon/clixon.png)](https://travis-ci.org/clicon/clixon) [![Documentation Status](https://readthedocs.org/projects/clixon-docs/badge/?version=latest)](https://clixon-docs.readthedocs.io/en/latest/?badge=latest)

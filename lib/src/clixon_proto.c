@@ -293,8 +293,8 @@ static int
 msg_dump(struct clicon_msg *msg)
 {
     int  i;
-    char buf[9*8];
-    char buf2[9*8];
+    char buf[9*8+1];
+    char buf2[9*8+1];
     
     memset(buf2, 0, sizeof(buf2));
     snprintf(buf2, sizeof(buf2), "%s:", __FUNCTION__);

@@ -310,6 +310,7 @@ xml_nsctx_node(cxobj *xn,
  * xml_nsctx_free(nsc)
  * @endcode
  * @see RFC7950 Sections 6.4.1 (and 9.9.2?)
+ * @note Assume yn is in a yang structure (eg has parents and belongs to a (sub)module)
  */
 int
 xml_nsctx_yang(yang_stmt *yn,

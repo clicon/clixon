@@ -133,6 +133,8 @@ int cli_show_config_state(clicon_handle h, cvec *cvv, cvec *argv);
 
 int cli_show_auto(clicon_handle h, cvec *cvv, cvec *argv);
 
-int cli_show_state_auto(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_show_auto_state(clicon_handle h, cvec *cvv, cvec *argv);
+
+int cli_show_options(clicon_handle h, cvec *cvv, cvec *argv);
 
 #endif /* _CLIXON_CLI_API_H_ */
