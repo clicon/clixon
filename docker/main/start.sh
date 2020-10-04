@@ -51,7 +51,9 @@ err(){
 DBG=${DBG:-0}
 
 # Expose other host port than port 80
-PORT=${PORT:-80}
+PORT=${PORT:-8080}
+
+SPORT=${SPORT:-8443}
 
 # Initial running datastore content (other than empty)
 STORE=${STORE:-}
@@ -84,7 +86,7 @@ CONFIG=${CONFIG:-$CONFIG0}
 
 # Start clixon-example backend
 >&2 echo -n "Starting Backend..."
-sudo docker run -p $PORT:80 --name clixon-system --rm -e DBG=$DBG -e CONFIG="$CONFIG" -e STORE="$STORE" -td clixon/clixon-system || err "Error starting clixon-system"
+sudo docker run -p $PORT:80 -p $SPORT:443 --name clixon-system --rm -e DBG=$DBG -e CONFIG="$CONFIG" -e STORE="$STORE" -td clixon/clixon-system || err "Error starting clixon-system"
 
 >&2 echo "clixon-system started"
 

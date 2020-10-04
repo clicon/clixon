@@ -113,41 +113,41 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "admin read OK"
-expectpart "$(curl -u andy:bar -siS -X GET http://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 200 OK' '{"nacm-example:parameter":\[{"name":"a","value":"72"}\]}'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 200 OK' '{"nacm-example:parameter":\[{"name":"a","value":"72"}\]}'
 
 new "Fail limit read"
-expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 # Add NACM read rule
 new "Add NACM read path rule XML"
-expectpart "$(curl -u andy:bar -siS -X POST  http://localhost/restconf/data/ietf-netconf-acm:nacm -H 'Content-Type: application/yang-data+xml' -d '<rule-list xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm"><name>limited-acl</name><group>limited</group><rule><name>table</name><module-name>*</module-name><access-operations>read</access-operations><path xmlns:ex="urn:example:nacm">/ex:table</path><action>permit</action></rule></rule-list>')" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X POST $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm -H 'Content-Type: application/yang-data+xml' -d '<rule-list xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm"><name>limited-acl</name><group>limited</group><rule><name>table</name><module-name>*</module-name><access-operations>read</access-operations><path xmlns:ex="urn:example:nacm">/ex:table</path><action>permit</action></rule></rule-list>')" 0 "HTTP/1.1 201 Created"
 
 new "Read NACM rule"
-expectpart "$(curl -u andy:bar -siS -X GET http://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0  "HTTP/1.1 200 OK" '{"ietf-netconf-acm:rule-list":\[{"name":"limited-acl","group":"limited","rule":\[{"name":"table","module-name":"\*","path":"/ex:table","access-operations":"read","action":"permit"}\]}\]}'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0  "HTTP/1.1 200 OK" '{"ietf-netconf-acm:rule-list":\[{"name":"limited-acl","group":"limited","rule":\[{"name":"table","module-name":"\*","path":"/ex:table","access-operations":"read","action":"permit"}\]}\]}'
 
 new "limit read OK"
-expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 200 OK' '{"nacm-example:parameter":\[{"name":"a","value":"72"}\]}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 200 OK' '{"nacm-example:parameter":\[{"name":"a","value":"72"}\]}'
 
 new "Delete NACM read rule"
-expectpart "$(curl -u andy:bar -siS -X DELETE http://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl -u andy:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0 "HTTP/1.1 204 No Content"
 
 new "Fail limit read"
-expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 new "Add NACM read path rule JSON"
-expectpart "$(curl -u andy:bar -siS -X POST  http://localhost/restconf/data/ietf-netconf-acm:nacm -H 'Content-Type: application/yang-data+json' -d '{"ietf-netconf-acm:rule-list":[{"name":"limited-acl","group":"limited","rule":[{"name":"table","module-name":"*","path":"/ex:table","access-operations":"read","action":"permit"}]}]}')" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X POST  $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm -H 'Content-Type: application/yang-data+json' -d '{"ietf-netconf-acm:rule-list":[{"name":"limited-acl","group":"limited","rule":[{"name":"table","module-name":"*","path":"/ex:table","access-operations":"read","action":"permit"}]}]}')" 0 "HTTP/1.1 201 Created"
 
 new "Read NACM rule"
-expectpart "$(curl -u andy:bar -siS -X GET http://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0  "HTTP/1.1 200 OK" '{"ietf-netconf-acm:rule-list":\[{"name":"limited-acl","group":"limited","rule":\[{"name":"table","module-name":"\*","path":"/ex:table","access-operations":"read","action":"permit"}\]}\]}'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0  "HTTP/1.1 200 OK" '{"ietf-netconf-acm:rule-list":\[{"name":"limited-acl","group":"limited","rule":\[{"name":"table","module-name":"\*","path":"/ex:table","access-operations":"read","action":"permit"}\]}\]}'
 
 new "limit read OK (Set rul w JSON)"
-expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 200 OK' '{"nacm-example:parameter":\[{"name":"a","value":"72"}\]}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 200 OK' '{"nacm-example:parameter":\[{"name":"a","value":"72"}\]}'
 
 new "Delete NACM read rule"
-expectpart "$(curl -u andy:bar -siS -X DELETE http://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl -u andy:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0 "HTTP/1.1 204 No Content"
 
 new "Fail limit read"
-expectpart "$(curl -u wilma:bar -siS -X GET http://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
