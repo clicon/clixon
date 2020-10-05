@@ -214,15 +214,17 @@ ys_grouping_resolve(yang_stmt  *yuses,
 static int
 yang_augment_node(yang_stmt *ys)
 {
-    int        retval = -1;
-    char      *schema_nodeid;
-    yang_stmt *ytarget = NULL;
-    yang_stmt *yc0;
-    yang_stmt *yc;
-    yang_stmt *ymod;
-    yang_stmt *ywhen;
-    char      *wxpath = NULL; /* xpath of when statement */
-    cvec      *wnsc = NULL;   /* namespace context of when statement */
+    int           retval = -1;
+    char         *schema_nodeid;
+    yang_stmt    *ytarget = NULL;
+    yang_stmt    *yc0;
+    yang_stmt    *yc;
+    yang_stmt    *ymod;
+    yang_stmt    *ywhen;
+    char         *wxpath = NULL; /* xpath of when statement */
+    cvec         *wnsc = NULL;   /* namespace context of when statement */
+    enum rfc_6020 targetkey;
+    enum rfc_6020 childkey;
 
     if ((ymod = ys_module(ys)) == NULL){
 	clicon_err(OE_YANG, 0, "My yang module not found");
@@ -248,6 +250,18 @@ yang_augment_node(yang_stmt *ys)
 	goto ok;
 #endif
     }
+    /* The target node MUST be either a container, list, choice, case, input, output, or notification node.
+     * which means it is slightly different than a schema-nodeid ? */
+    targetkey = yang_keyword_get(ytarget);
+    if (targetkey != Y_CONTAINER && targetkey != Y_LIST && targetkey != Y_CHOICE &&
+	targetkey != Y_CASE && targetkey != Y_INPUT &&
+	targetkey != Y_OUTPUT && targetkey != Y_NOTIFICATION){
+	clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: target node %s has wrong type %s",
+		   yang_argument_get(ys_module(ys)),
+		   schema_nodeid,
+		   yang_key2str(targetkey));
+	goto ok;
+    }
 
     /* Find when statement, if present */
     if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL){
@@ -260,9 +274,71 @@ yang_augment_node(yang_stmt *ys)
     while ((yc0 = yn_each(ys, yc0)) != NULL) {
 	if (!yang_schemanode(yc0))
 	    continue;
+	childkey = yang_keyword_get(yc0);
+	switch (targetkey){
+	case Y_CONTAINER:
+	case Y_LIST:
+	    /* If the target node is a container or list node, the "action" and
+	       "notification" statements can be used within the "augment" statement.
+	    */
+	    if (childkey != Y_ACTION && childkey != Y_NOTIFICATION &&
+		childkey != Y_CONTAINER && childkey != Y_LEAF && childkey != Y_LIST &&
+		childkey != Y_LEAF_LIST && childkey != Y_USES && childkey != Y_CHOICE){
+		clicon_log(LOG_WARNING, "Warning: A Augment failed in module %s: node %s %d cannot be added to target node %s",
+			   yang_argument_get(ys_module(ys)),
+			   yang_key2str(childkey),
+			   childkey,
+			   schema_nodeid);
+		goto ok;
+	    }
+	    break;
+	case Y_CASE:
+	case Y_INPUT:
+	case Y_OUTPUT:
+	case Y_NOTIFICATION:
+	    /* If the target node is a container, list, case, input, output, or
+	       notification node, the "container", "leaf", "list", "leaf-list",
+	       "uses", and "choice" statements can be used within the "augment"
+	       statement. */
+	    if (childkey != Y_CONTAINER && childkey != Y_LEAF && childkey != Y_LIST &&
+		childkey != Y_LEAF_LIST && childkey != Y_USES && childkey != Y_CHOICE){
+		clicon_log(LOG_WARNING, "Warning: B Augment failed in module %s: node %s %d cannot be added to target node %s",
+			   yang_argument_get(ys_module(ys)),
+			   yang_key2str(childkey),
+			   childkey,
+			   schema_nodeid);
+		goto ok;
+	    }
+	    break;
+	case Y_CHOICE:
+	    /* If the target node is a choice node, the "case" statement or a
+	       shorthand "case" statement (see Section 7.9.2) can be used within the
+	       "augment" statement.
+	       XXX could be more or less anything?
+	       As a shorthand, the "case" statement can be omitted if the branch
+	       contains a single "anydata", "anyxml", "choice", "container", "leaf",
+	       "list", or "leaf-list" statement. 
+	    */
+	    if (childkey != Y_CASE && childkey != Y_ANYDATA && childkey != Y_ANYXML &&
+		childkey != Y_CHOICE && childkey != Y_CONTAINER && childkey != Y_LEAF &&
+		childkey != Y_LIST && childkey != Y_LEAF_LIST){
+
+		clicon_log(LOG_WARNING, "Warning: C Augment failed in module %s: node %s %d cannot be added to target node %s",
+			   yang_argument_get(ys_module(ys)),
+			   yang_key2str(childkey),
+			   childkey,
+			   schema_nodeid);
+		goto ok;
+	    }
+	    break;
+	default:
+	    break;
+	}
+
 	if ((yc = ys_dup(yc0)) == NULL)
 	    goto done;
 	yc->ys_mymodule = ymod;
+
 	if (yn_insert(ytarget, yc) < 0)
 	    goto done;
 	/* If there is an associated when statement, add a special when struct to the yang */

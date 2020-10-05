@@ -1404,7 +1404,7 @@ ys_real_module(yang_stmt  *ys,
  * @param[in] ys    Any yang statement in a yang tree
  * @retval    yspec The top yang specification
  * @see  ys_module
- * @see  ys_yang_augment_node where shortcut is set
+ * @see  yang_augment_node where shortcut is set
  */
 yang_stmt *
 ys_spec(yang_stmt *ys)
@@ -2590,6 +2590,7 @@ schema_nodeid_iterate(yang_stmt    *yn,
 	while ((ys = yn_each(yp, ys)) != NULL) {
 	    if (!yang_schemanode(ys))
 		continue;
+
 	    /* some keys dont have arguments, match on key */
 	    if (ys->ys_keyword == Y_INPUT || ys->ys_keyword == Y_OUTPUT){
 		if (strcmp(id, yang_key2str(ys->ys_keyword)) == 0){
