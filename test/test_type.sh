@@ -605,7 +605,7 @@ EOF
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><manc xmlns=\"urn:example:clixon\"/></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
 
     new "netconf validate should fail"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>man</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable</error-message></rpc-error></rpc-reply>]]>]]>"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>man</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable of manc in module example</error-message></rpc-error></rpc-reply>]]>]]>"
 
     new "netconf set container with mandatory leaf"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><manc xmlns=\"urn:example:clixon\"><man>foo</man></manc></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
@@ -620,7 +620,7 @@ EOF
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:manc\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><manc xmlns=\"urn:example:clixon\"/></data></rpc-reply>]]>]]>$"
 
     new "netconf validate should fail"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>missing-element</error-tag><error-info><bad-element>man</bad-element></error-info><error-severity>error</error-severity><error-message>May not remove mandatory variable</error-message></rpc-error></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>missing-element</error-tag><error-info><bad-element>man</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable of manc in module example</error-message></rpc-error></rpc-reply>]]>]]>$"
 
     new "netconf discard-changes"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"

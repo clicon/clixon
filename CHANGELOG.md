@@ -52,7 +52,8 @@ Users may have to change how they access the system
 * New clixon-config@2020-10-01.yang revision
   * Added option for configuration directory: `CLICON_CONFIGDIR`
 * Not implemented XPath functions will cause a backend exit on startup, instead of being ignored.
-
+* More explanatory validation error messages for when and augments error messages.
+  * Example: error-message: `Mandatory variable` -> `Mandatory variable of edit-config in module ietf-netconf`.
 ### Minor changes
 
 * Added stricter check on schema-node identifier checking, such as for augments.

@@ -140,13 +140,13 @@ new "Change type to atm"
 expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interface xmlns=\"urn:example:clixon\"><name>e0</name><type>atm</type></interface></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
 
 new "netconf validate not OK (mtu not allowed)"
-expecteof "$clixon_netconf -qf $cfg" 0 "^<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Failed augmented WHEN condition of mtu in module example</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "^<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Failed augmented WHEN condition derived-from(type, \"ex:ethernet\") of node mtu in module example</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "Change type to ethernet (self)"
 expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interface xmlns=\"urn:example:clixon\"><name>e0</name><type>ethernet</type></interface></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
 
 new "netconf validate not OK (mtu not allowed on self)"
-expecteof "$clixon_netconf -qf $cfg" 0 "^<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Failed augmented WHEN condition of mtu in module example</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "^<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Failed augmented WHEN condition derived-from(type, \"ex:ethernet\") of node mtu in module example</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -162,7 +162,7 @@ new "Change type to atm"
 expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interface xmlns=\"urn:example:clixon\"><name>e0</name><type>atm</type></interface></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
 
 new "netconf validate not OK (crc not allowed)"
-expecteof "$clixon_netconf -qf $cfg" 0 "^<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Failed augmented WHEN condition of crc in module example</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "^<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Failed augmented WHEN condition derived-from-or-self(type, \"ex:ethernet\") of node crc in module example</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "Change type to ethernet (self)"
 expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interface xmlns=\"urn:example:clixon\"><name>e0</name><type>ethernet</type></interface></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"

@@ -458,6 +458,7 @@ check_mandatory(cxobj     *xt,
     cvec      *cvk = NULL; /* vector of index keys */
     cg_var    *cvi;
     char      *keyname;
+    cbuf      *cb = NULL;
     
     yc = NULL;
     while ((yc = yn_each(yt, yc)) != NULL) {
@@ -493,8 +494,13 @@ check_mandatory(cxobj     *xt,
 		    break; /* got it */
 	    }
 	    if (x == NULL){
-		if (netconf_missing_element_xml(xret, "application", yang_argument_get(yc), "Mandatory variable") < 0)
+		if ((cb = cbuf_new()) == NULL){
+		    clicon_err(OE_UNIX, errno, "cbuf_new");
 		    goto done;
+		}
+		cprintf(cb, "Mandatory variable of %s in module %s", xml_name(xt), yang_argument_get(ys_module(yc)));
+		if (netconf_missing_element_xml(xret, "application", yang_argument_get(yc), cbuf_get(cb)) < 0)
+			    goto done;
 		goto fail;
 	    }
 	    break;
@@ -521,6 +527,8 @@ check_mandatory(cxobj     *xt,
     }
     retval = 1;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
  fail:
     retval = 0;
@@ -1151,8 +1159,7 @@ xml_yang_validate_all(clicon_handle h,
 	    /* WHEN xpath needs namespace context */
 	    if (xml_nsctx_yang(ys, &nsc) < 0)
 		goto done;
-	    if ((nr = xpath_vec_bool(xt, nsc,
-				     "%s", xpath)) < 0)
+	    if ((nr = xpath_vec_bool(xt, nsc, "%s", xpath)) < 0)
 		goto done;
 	    if (nsc){
 		xml_nsctx_free(nsc);
@@ -1182,7 +1189,8 @@ xml_yang_validate_all(clicon_handle h,
 		    clicon_err(OE_UNIX, errno, "cbuf_new");
 		    goto done;
 		}
-		cprintf(cb, "Failed augmented WHEN condition of %s in module %s",
+		cprintf(cb, "Failed augmented WHEN condition %s of node %s in module %s",
+			xpath,
 			xml_name(xt),
 			yang_argument_get(ys_module(ys)));
 		if (netconf_operation_failed_xml(xret, "application", 

@@ -93,12 +93,14 @@ generic_validate(clicon_handle       h,
 		 transaction_data_t *td,
 		 cxobj             **xret)
 {
-    int             retval = -1;
-    cxobj          *x1;
-    cxobj          *x2;
-    yang_stmt      *ys;
-    int             i;
-    int             ret;
+    int        retval = -1;
+    cxobj     *x1;
+    cxobj     *x2;
+    yang_stmt *ys;
+    int        i;
+    int        ret;
+    cbuf      *cb = NULL;
+    yang_stmt *yp;
 
     /* All entries */
     if ((ret = xml_yang_validate_all_top(h, td->td_target, xret)) < 0) 
@@ -120,10 +122,17 @@ generic_validate(clicon_handle       h,
 	x1 = td->td_dvec[i];
 	ys = xml_spec(x1);
 	if (ys && yang_mandatory(ys) && yang_config(ys)==1){
-	    yang_stmt *yp =yang_parent_get(ys);
-	    if (yp== NULL ||
-		(yang_keyword_get(yp)!=Y_MODULE && yang_keyword_get(yp)!=Y_SUBMODULE)){
-		if (netconf_missing_element_xml(xret, "protocol", xml_name(x1), "May not remove mandatory variable") < 0)
+	    yp = yang_parent_get(ys);
+	    if (yp == NULL ||
+		(yang_keyword_get(yp) != Y_MODULE && yang_keyword_get(yp) != Y_SUBMODULE)){
+		if ((cb = cbuf_new()) == NULL){
+		    clicon_err(OE_UNIX, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cb, "Mandatory variable of %s in module %s",
+			xml_parent(x1)?xml_name(xml_parent(x1)):"",
+			yang_argument_get(ys_module(ys)));
+		if (netconf_missing_element_xml(xret, "protocol", xml_name(x1), cbuf_get(cb)) < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -140,6 +149,8 @@ generic_validate(clicon_handle       h,
     // ok:
     retval = 1;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
  fail:
     retval = 0;

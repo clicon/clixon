@@ -120,7 +120,7 @@ new "restconf GET if-type"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1/interface=local0/type)" 0 "HTTP/1.1 200 OK" '{"example:type":"regular"}'
 
 new "restconf POST interface without mandatory type"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"name":"TEST"}}')" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"type"},"error-severity":"error","error-message":"Mandatory variable"}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"name":"TEST"}}')" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"type"},"error-severity":"error","error-message":"Mandatory variable of interface in module example"}}}'
 
 new "restconf POST interface without mandatory key"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"type":"regular"}}')" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"name"},"error-severity":"error","error-message":"Mandatory key"}}}'

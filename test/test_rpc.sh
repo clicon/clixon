@@ -122,7 +122,7 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf omit mandatory"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":null}' $RCPROTO://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"x"},"error-severity":"error","error-message":"Mandatory variable"}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":null}' $RCPROTO://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"x"},"error-severity":"error","error-message":"Mandatory variable of example in module clixon-example"}}}'
 
 new "restconf add extra w/o yang: should fail"
 if ! $YANG_UNKNOWN_ANYDATA ; then
@@ -133,10 +133,10 @@ new "restconf wrong method"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":"0"}}' $RCPROTO://localhost/restconf/operations/clixon-example:wrong)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"wrong"},"error-severity":"error","error-message":"RPC not defined"}}}'
 
 new "restconf example missing input"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":null}' $RCPROTO://localhost/restconf/operations/ietf-netconf:edit-config)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"target"},"error-severity":"error","error-message":"Mandatory variable"}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":null}' $RCPROTO://localhost/restconf/operations/ietf-netconf:edit-config)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"target"},"error-severity":"error","error-message":"Mandatory variable of edit-config in module ietf-netconf"}}}'
 
 new "netconf kill-session missing session-id mandatory"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><kill-session/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>session-id</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><kill-session/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>session-id</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable of kill-session in module ietf-netconf</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "netconf edit-config ok"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><target><candidate/></target><config/></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -150,7 +150,7 @@ new "netconf edit-config empty target: should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><target/><config/></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>missing-choice</error-app-tag><error-info><missing-choice>config-target</missing-choice></error-info><error-severity>error</error-severity></rpc-error></rpc-reply>]]>]]>$"
 
 new "netconf edit-config missing target: should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><config/></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>target</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><config/></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>target</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable of edit-config in module ietf-netconf</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "netconf edit-config missing config: should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><target><candidate/></target></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>missing-choice</error-app-tag><error-info><missing-choice>edit-content</missing-choice></error-info><error-severity>error</error-severity></rpc-error></rpc-reply>]]>]]>$"
