@@ -846,7 +846,15 @@ check_list_unique_minmax(cxobj  *xt,
 	}
 	if (keyw != Y_LIST)
 	    continue;
-	/* Here only lists. test unique constraints */
+	/* Here new (first element) of lists only
+	 * First check unique keys
+	 */
+	if ((ret = check_unique_list(x, xt, y, y, xret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+	/* Check if there is a unique constraint on the list
+	 */
 	yu = NULL;
 	while ((yu = yn_each(y, yu)) != NULL) {
 	    if (yang_keyword_get(yu) != Y_UNIQUE)
@@ -861,6 +869,8 @@ check_list_unique_minmax(cxobj  *xt,
 		goto fail;
 	}
     }
+
+
     /* yprev if set, is a list that has been traversed 
      * This check is made in the loop as well - this is for the last list
      */
