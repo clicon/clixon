@@ -461,7 +461,7 @@ check_list_key(cxobj     *xt,
     cg_var    *cvi;
     char      *keyname;
     
-    if (yt == NULL || !yang_config(yt) || yang_keyword_get(yt) == Y_LIST){
+    if (yt == NULL || !yang_config(yt) || yang_keyword_get(yt) != Y_LIST){
 	clicon_err(OE_YANG, EINVAL, "yt is not a config true list node");
 	goto done;
     }
