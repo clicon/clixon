@@ -348,7 +348,7 @@ module clixon-config {
 	    default true;
 	    description
 		"If false, skip Yang list check sanity checks from RFC 7950, Sec 7.8.2: 
-                   The 'key' statement, which MUST be present if the list represents configuration.
+                 The 'key' statement, which MUST be present if the list represents configuration.
                  Some yang specs seem not to fulfil this. However, if you reset this, there may
                  be follow-up errors due to code that assumes a configuration list has keys";
 	}

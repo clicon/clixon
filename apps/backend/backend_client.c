@@ -640,7 +640,7 @@ from_client_edit_config(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    /* Maybe validate xml here as in text_modify_top? */
+    /* Mark all nodes that are not configure data and set return */
     if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
 	goto done;
     if (non_config){
@@ -649,7 +649,7 @@ from_client_edit_config(clicon_handle h,
 	goto ok;
     }
     /* xmldb_put (difflist handling) requires list keys */
-    if ((ret = xml_yang_validate_list_key_only(h, xc, &xret)) < 0)
+    if ((ret = xml_yang_validate_list_key_only(xc, &xret)) < 0)
 	goto done;
     if (ret == 0){
 	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)

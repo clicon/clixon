@@ -436,6 +436,59 @@ check_choice(cxobj     *xt,
     goto done;
 }
 
+/*! Check that an XML tree of type list has valid keys
+ * @param[in]  xt    XML tree
+ * @param[in]  yt    Yang spec of xt of type LIST which is a config true node.
+ * @param[out] xret  Error XML tree. Free with xml_free after use
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (xret set)
+ * @retval    -1     Error
+ * This ensures that there are keys in XML corresponding to the Yang
+ * This function is broken out from generic validation since it needs specially checked in incoming
+ * edit-config
+ * XXX: It does not check double (more than one) key
+ * @see xml_yang_validate_list_key_only
+ */
+static int
+check_list_key(cxobj     *xt, 
+	       yang_stmt *yt,
+	       cxobj    **xret)
+
+{
+    int        retval = -1;
+    yang_stmt *yc;
+    cvec      *cvk = NULL; /* vector of index keys */
+    cg_var    *cvi;
+    char      *keyname;
+    
+    if (yt == NULL || !yang_config(yt) || yang_keyword_get(yt) == Y_LIST){
+	clicon_err(OE_YANG, EINVAL, "yt is not a config true list node");
+	goto done;
+    }
+    yc = NULL;
+    while ((yc = yn_each(yt, yc)) != NULL) {
+	if (yang_keyword_get(yc) != Y_KEY)
+	    continue;
+	/* Check if a list does not have mandatory key leafs */
+	cvk = yang_cvec_get(yt); /* Use Y_LIST cache, see ys_populate_list() */
+	cvi = NULL;
+	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+	    keyname = cv_string_get(cvi);	    
+	    if (xml_find_type(xt, NULL, keyname, CX_ELMNT) == NULL){
+		if (netconf_missing_element_xml(xret, "application", keyname, "Mandatory key") < 0)
+		    goto done;
+		goto fail;
+	    }
+	}
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Check if an xml node lacks mandatory children
  * @param[in]  xt    XML node to be validated
  * @param[in]  yt    xt:s yang statement
@@ -455,28 +508,21 @@ check_mandatory(cxobj     *xt,
     yang_stmt *y;
     yang_stmt *yc;
     yang_stmt *yp;
-    cvec      *cvk = NULL; /* vector of index keys */
-    cg_var    *cvi;
-    char      *keyname;
     cbuf      *cb = NULL;
+    int        ret;
     
+    if (yt == NULL || !yang_config(yt)){
+	clicon_err(OE_YANG, EINVAL, "yt is not config true");
+	goto done;
+    }
+    if (yang_keyword_get(yt) == Y_LIST){
+	if ((ret = check_list_key(xt, yt, xret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
     yc = NULL;
     while ((yc = yn_each(yt, yc)) != NULL) {
-	/* Check if a list does not have mandatory key leafs */
-	if (yang_keyword_get(yt) == Y_LIST &&
-	    yang_keyword_get(yc) == Y_KEY &&
-	    yang_config(yt)){
-	    cvk = yang_cvec_get(yt); /* Use Y_LIST cache, see ys_populate_list() */
-	    cvi = NULL;
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		keyname = cv_string_get(cvi);	    
-		if (xml_find_type(xt, NULL, keyname, CX_ELMNT) == NULL){
-		    if (netconf_missing_element_xml(xret, "application", keyname, "Mandatory key") < 0)
-			goto done;
-		    goto fail;
-		}
-	    }
-	}
 	if (!yang_mandatory(yc))
 	    continue;
 	switch (yang_keyword_get(yc)){
@@ -529,47 +575,6 @@ check_mandatory(cxobj     *xt,
  done:
     if (cb)
 	cbuf_free(cb);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-
-/*!
- * @param[out] xret    Error XML tree. Free with xml_free after use
- */
-static int
-check_list_key(cxobj     *xt, 
-	       yang_stmt *yt,
-	       cxobj    **xret)
-
-{
-    int        retval = -1;
-    yang_stmt *yc;
-    cvec      *cvk = NULL; /* vector of index keys */
-    cg_var    *cvi;
-    char      *keyname;
-    
-    yc = NULL;
-    while ((yc = yn_each(yt, yc)) != NULL) {
-	/* Check if a list does not have mandatory key leafs */
-	if (yang_keyword_get(yt) == Y_LIST &&
-	    yang_keyword_get(yc) == Y_KEY &&
-	    yang_config(yt)){
-	    cvk = yang_cvec_get(yt); /* Use Y_LIST cache, see ys_populate_list() */
-	    cvi = NULL;
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		keyname = cv_string_get(cvi);	    
-		if (xml_find_type(xt, NULL, keyname, CX_ELMNT) == NULL){
-		    if (netconf_missing_element_xml(xret, "application", keyname, "Mandatory key") < 0)
-			goto done;
-		    goto fail;
-		}
-	    }
-	}
-    }
-    retval = 1;
- done:
     return retval;
  fail:
     retval = 0;
@@ -723,7 +728,7 @@ check_min_max(cxobj     *xp,
 
 /*! Detect unique constraint for duplicates from parent node and minmax
  * @param[in]  xt    XML parent (may have lists w unique constraints as child)
- * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (xret set)
  * @retval    -1     Error
@@ -753,7 +758,7 @@ check_min_max(cxobj     *xp,
  * gaps in the xml nodes given the ancestor Yang structure. 
  * But no gap analysis is done if the yang spec of the top-level xml is unknown
  * Example: 
- *   Yang structure:y1, y2, y3,
+ *   Yang structure: y1, y2, y3,
  *   XML structure: [x1, x1], [x3, x3] where [x2] list is missing
  * @note min-element constraints on empty lists are not detected on top-level.
  * Or more specifically, if no yang spec if associated with the top-level
@@ -820,6 +825,7 @@ check_list_unique_minmax(cxobj  *xt,
 		    goto fail;
 	    }
 	}
+	/* Here is only new list / leaf-list */
 	yprev = y; /* Restart min/max count */
 	nr = 1;
 	/* Gap analysis: Check if there is any empty list between y and yprev 
@@ -868,8 +874,7 @@ check_list_unique_minmax(cxobj  *xt,
 	    if (ret == 0)
 		goto fail;
 	}
-    }
-
+    } /* while x */
 
     /* yprev if set, is a list that has been traversed 
      * This check is made in the loop as well - this is for the last list
@@ -1010,11 +1015,11 @@ xml_yang_validate_add(clicon_handle h,
 }
 
 /*! Some checks done only at edit_config, eg keys in lists
- * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[in]  xt     XML tree
+ * @param[out] xret   Error XML tree. Free with xml_free after use
  */
 int
-xml_yang_validate_list_key_only(clicon_handle h,
-				cxobj        *xt, 
+xml_yang_validate_list_key_only(cxobj        *xt, 
 				cxobj       **xret)
 {
     int        retval = -1;
@@ -1024,7 +1029,9 @@ xml_yang_validate_list_key_only(clicon_handle h,
     
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
-    if ((yt = xml_spec(xt)) != NULL && yang_config(yt) != 0){
+    if ((yt = xml_spec(xt)) != NULL &&
+	yang_config(yt) != 0 &&
+	yang_keyword_get(yt) == Y_LIST){
 	if ((ret = check_list_key(xt, yt, xret)) < 0)
 	    goto done;
 	if (ret == 0)
@@ -1032,7 +1039,7 @@ xml_yang_validate_list_key_only(clicon_handle h,
     }
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_yang_validate_list_key_only(h, x, xret)) < 0)
+	if ((ret = xml_yang_validate_list_key_only(x, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
