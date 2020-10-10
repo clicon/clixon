@@ -107,7 +107,7 @@ clicon_strsep(char *string,
     } 
     memset(vec, 0, siz);
     ptr = (char*)vec + (nvec+1)* sizeof(char*); /* this is where ptr starts */
-    strncpy(ptr, string, strlen(string)+1);
+    strcpy(ptr, string);
     i = 0;
     while ((p = strsep(&ptr, delim)) != NULL)
 	vec[i++] = p;

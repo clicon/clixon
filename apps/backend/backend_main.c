@@ -415,7 +415,7 @@ usage(clicon_handle h,
     	    "\t-1\t\tRun once and then quit (dont wait for events)\n"
 	    "\t-s <mode>\tSpecify backend startup mode: none|startup|running|init)\n"
 	    "\t-c <file>\tLoad extra xml configuration, but don't commit.\n"
-	    "\t-q \tQuit startup directly after upgrading and print result on stdout\n"
+	    "\t-q \t\tQuit startup directly after upgrading and print result on stdout\n"
 	    "\t-U <user>\tRun backend daemon as this user AND drop privileges permanently\n"
 	    "\t-g <group>\tClient membership required to this group (default: %s)\n"
 
