@@ -655,7 +655,7 @@ clicon_cliread(clicon_handle h,
     if (clicon_quiet_mode(h))
 	cli_prompt_set(h, "");
     else
-	cli_prompt_set(h, cli_prompt(pfmt ? pfmt : mode->csm_prompt));
+	cli_prompt_set(h, cli_prompt(h, pfmt ? pfmt : mode->csm_prompt));
     cligen_tree_active_set(cli_cligen(h), mode->csm_name);
 
     if (cliread(cli_cligen(h), stringp) < 0){
@@ -724,14 +724,16 @@ cli_set_prompt(clicon_handle h,
 }
 
 /*! Format prompt 
+ * @param[in]     h       Clicon handle
  * @param[out]    prompt  Prompt string to be written
  * @param[in]     plen    Length of prompt string
- * @param[in]     fmt     Stdarg fmt string
+ * @param[in]     str     Stdarg fmt string
  */
 static int
-prompt_fmt(char  *prompt,
-	   size_t plen,
-	   char  *fmt, ...)
+prompt_fmt(clicon_handle h,
+	   char         *prompt,
+	   size_t        plen,
+	   char         *fmt,...)
 {
   va_list ap;
   char   *s = fmt;
@@ -740,6 +742,7 @@ prompt_fmt(char  *prompt,
   char   *tmp;
   int     ret = -1;
   cbuf   *cb = NULL;
+  char   *path = NULL;
 
   if ((cb = cbuf_new()) == NULL){
       clicon_err(OE_XML, errno, "cbuf_new");
@@ -763,6 +766,13 @@ prompt_fmt(char  *prompt,
 	      if(ttyname_r(fileno(stdin), tty, sizeof(tty)-1) < 0)
 		  strcpy(tty, "notty");
 	      cprintf(cb, "%s", tty);
+	      break;
+	  case 'W': /* working edit path */
+	      if (clicon_data_get(h, "cli-edit-mode", &path) == 0 &&
+		  strlen(path))
+		  cprintf(cb, "%s", path);
+	      else
+		  cprintf(cb, "/");
 	      break;
 	  default:
 	      cprintf(cb, "%%");
@@ -798,11 +808,12 @@ done:
  * @param[in]     fmt      Format string
  */
 char *
-cli_prompt(char *fmt)
+cli_prompt(clicon_handle h,
+	   char         *fmt)
 {
     static char prompt[CLI_PROMPT_LEN];
 
-    if (prompt_fmt(prompt, sizeof(prompt), fmt) < 0)
+    if (prompt_fmt(h, prompt, sizeof(prompt), fmt) < 0)
 	return CLI_DEFAULT_PROMPT;
     
     return prompt;

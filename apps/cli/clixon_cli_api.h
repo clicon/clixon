@@ -53,7 +53,7 @@ char *cli_syntax_mode(clicon_handle h);
 int cli_syntax_load(clicon_handle h);
 int cli_handler_err(FILE *fd);
 int cli_set_prompt(clicon_handle h, const char *mode, const char *prompt);
-char *cli_prompt(char *fmt);
+char *cli_prompt(clicon_handle h, char *fmt);
 int cli_ptpush(clicon_handle h, char *mode, char *string, char *op);
 int cli_ptpop(clicon_handle h, char *mode, char *op);
 
