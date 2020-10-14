@@ -29,6 +29,12 @@ Expected: 15 October 2020
 
 ### New features
 
+* New YANG generated auto-cli feature with syntax modes
+  * The existing autocli does not support modes, complete paths must be given, eg: `set a b c d 42`.
+  * In the new auto-cli, automatic modes are present at each YANG syntax node level, eg the above can be given as: `edit a b c; set d 4; top`
+  * The existing CLI API remains, the new API is as follows: `cli_auto_edit()`, `cli_auto_up()`, `cli_auto_top()`, `cli_auto_show()`, `cli_auto_set()`, `cli_auto_merge()`, `cli_auto_create()`, `cli_auto_del()`.
+  * See `test/test_cli_auto.sh` for an example of the new API, and `apps/cli/cli_auto.c` for the source code of the new callback API.
+  * Documentation will be appear and full integration with the main example.
 * Added support for the following XPATH functions:
   * `count`, `name`, `contains`, `not`, as defined in [xpath 1.0](https://www.w3.org/TR/xpath-10)
   * `deref`, `derived-from` and `derived-from-or-self` from RFC7950 Section 10.
@@ -54,8 +60,10 @@ Users may have to change how they access the system
 * Not implemented XPath functions will cause a backend exit on startup, instead of being ignored.
 * More explanatory validation error messages for when and augments error messages.
   * Example: error-message: `Mandatory variable` -> `Mandatory variable of edit-config in module ietf-netconf`.
+
 ### Minor changes
 
+* Added inline state field to clixon-example.yang
 * Added stricter check on schema-node identifier checking, such as for augments.
   * These checks are now made at YANG loading time
 * Added sanity check that a yang module name matches the filename

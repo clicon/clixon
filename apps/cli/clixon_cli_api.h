@@ -71,6 +71,8 @@ int cli_notification_register(clicon_handle h, char *stream, enum format_enum fo
 
 int cli_dbxml(clicon_handle h, cvec *vars, cvec *argv, enum operation_type op, cvec *nsctx);
 
+int cli_dbxml(clicon_handle h, cvec *vars, cvec *argv, enum operation_type op, cvec *nsctx);
+
 int cli_set(clicon_handle h, cvec *vars, cvec *argv);
 
 int cli_merge(clicon_handle h, cvec *vars, cvec *argv);
@@ -136,5 +138,16 @@ int cli_show_auto(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_show_auto_state(clicon_handle h, cvec *cvv, cvec *argv);
 
 int cli_show_options(clicon_handle h, cvec *cvv, cvec *argv);
+
+/* cli_auto.c: Autocli mode support */
+
+int cli_auto_edit(clicon_handle h, cvec *cvv1, cvec *argv);
+int cli_auto_up(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_auto_top(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_auto_show(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_auto_set(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_auto_merge(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_auto_create(clicon_handle h, cvec *cvv,	cvec *argv);
+int cli_auto_del(clicon_handle h, cvec *cvv, cvec *argv);
 
 #endif /* _CLIXON_CLI_API_H_ */

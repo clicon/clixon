@@ -120,8 +120,16 @@ static int
 gen_parse_tree(clicon_handle     h,
 	       cli_syntaxmode_t *m)
 {
-    cligen_tree_add(cli_cligen(h), m->csm_name, m->csm_pt);
-    return 0;
+    int       retval = -1;
+    pt_head  *ph;
+    
+    if ((ph = cligen_ph_add(cli_cligen(h), m->csm_name)) == NULL)
+	goto done;
+    if (cligen_ph_parsetree_set(ph, m->csm_pt) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Append syntax
@@ -568,13 +576,13 @@ clicon_parse(clicon_handle  h,
     }
     if (smode){
 	modename0 = NULL;
-	if ((pt = cligen_tree_active_get(cli_cligen(h))) != NULL)
+	if ((pt = cligen_ph_active_get(cli_cligen(h))) != NULL)
 	    modename0 = pt_name_get(pt);
-	if (cligen_tree_active_set(cli_cligen(h), modename) < 0){
+	if (cligen_ph_active_set(cli_cligen(h), modename) < 0){
 	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
 	    goto done;
 	}
-	if ((pt = cligen_tree_active_get(cli_cligen(h))) == NULL){
+	if ((pt = cligen_ph_active_get(cli_cligen(h))) == NULL){
 	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
 	    goto done;
 	}
@@ -589,7 +597,7 @@ clicon_parse(clicon_handle  h,
 	if (*result != CG_MATCH)
 	    pt_expand_cleanup(pt); /* XXX change to pt_expand_treeref_cleanup */
 	if (modename0){
-	    cligen_tree_active_set(cli_cligen(h), modename0);
+	    cligen_ph_active_set(cli_cligen(h), modename0);
 	    modename0 = NULL;
 	}
 	switch (*result) {
@@ -607,7 +615,8 @@ clicon_parse(clicon_handle  h,
 	    }
 	    if ((r = clicon_eval(h, cmd, match_obj, cvv)) < 0)
 		cli_handler_err(stdout);
-	    pt_expand_cleanup(pt); /* XXX change to pt_expand_treeref_cleanup */
+	    pt_expand_cleanup(pt);
+	    pt_expand_treeref_cleanup(pt);
 	    if (evalres)
 		*evalres = r;
 	    break;
@@ -656,7 +665,7 @@ clicon_cliread(clicon_handle h,
 	cli_prompt_set(h, "");
     else
 	cli_prompt_set(h, cli_prompt(h, pfmt ? pfmt : mode->csm_prompt));
-    cligen_tree_active_set(cli_cligen(h), mode->csm_name);
+    cligen_ph_active_set(cli_cligen(h), mode->csm_name);
 
     if (cliread(cli_cligen(h), stringp) < 0){
 	clicon_err(OE_FATAL, errno, "CLIgen");

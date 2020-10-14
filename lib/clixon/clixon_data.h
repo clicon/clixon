@@ -65,6 +65,10 @@ int clicon_data_get(clicon_handle h, const char *name, char **val);
 int clicon_data_set(clicon_handle h, const char *name, char *val);
 int clicon_data_del(clicon_handle h, const char *name);
 
+cvec *clicon_data_cvec_get(clicon_handle h, const char *name);
+int   clicon_data_cvec_set(clicon_handle h, const char *name, cvec *cvv);
+int   clicon_data_cvec_del(clicon_handle h, const char *name);
+
 yang_stmt * clicon_dbspec_yang(clicon_handle h);
 int clicon_dbspec_yang_set(clicon_handle h, yang_stmt *ys);
 
