@@ -179,7 +179,6 @@ clicon_data_cvec_set(clicon_handle h,
 	fprintf(stderr, "%s free %p\n", __FUNCTION__, cvv0);
 	cvec_free(cvv0);
     }
-    fprintf(stderr, "%s set %p\n", __FUNCTION__, cvv);
     if (clicon_hash_add(cdat, (char*)name, &cvv, sizeof(cvv)) == NULL)
 	return -1;
     return 0;

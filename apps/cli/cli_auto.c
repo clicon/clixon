@@ -158,7 +158,6 @@ cli_auto_edit(clicon_handle h,
     }
     if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv1)) == NULL)
 	goto done;
-    fprintf(stderr, "%s alloc %p\n", __FUNCTION__, cvv2);
     /* First argv argument: API_path format */
     if ((api_path_fmt = co2apipath(coorig)) == NULL){
 	clicon_err(OE_YANG, EINVAL, "No apipath found");
