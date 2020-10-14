@@ -201,7 +201,7 @@ cli_auto_up(clicon_handle h,
     cvec    *cvv1 = NULL; /* copy */
     char    *api_path_fmt0;  /* from */
     char    *api_path_fmt1;  /* to */
-    char    *api_path;
+    char    *api_path = NULL;
     int      i;
     int      j;
     
