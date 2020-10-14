@@ -175,10 +175,8 @@ clicon_data_cvec_set(clicon_handle h,
     /* It is the pointer to cvec that should be copied by hash,
        so we send a ptr to the ptr to indicate what to copy.
      */
-    if ((cvv0 = clicon_data_cvec_get(h, name)) != NULL){
-	fprintf(stderr, "%s free %p\n", __FUNCTION__, cvv0);
+    if ((cvv0 = clicon_data_cvec_get(h, name)) != NULL)
 	cvec_free(cvv0);
-    }
     if (clicon_hash_add(cdat, (char*)name, &cvv, sizeof(cvv)) == NULL)
 	return -1;
     return 0;
@@ -198,10 +196,8 @@ clicon_data_cvec_del(clicon_handle h,
     /* It is the pointer to cvec that should be copied by hash,
        so we send a ptr to the ptr to indicate what to copy.
      */
-    if ((cvv0 = clicon_data_cvec_get(h, name)) != NULL){
-	fprintf(stderr, "%s free %p\n", __FUNCTION__, cvv0);
+    if ((cvv0 = clicon_data_cvec_get(h, name)) != NULL)
 	cvec_free(cvv0);
-    }
     return clicon_hash_del(cdat, (char*)name);
 }
 
