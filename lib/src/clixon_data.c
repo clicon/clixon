@@ -134,6 +134,78 @@ clicon_data_del(clicon_handle h,
     return clicon_hash_del(cdat, (char*)name);
 }
 
+/*! Get generic cligen varaibel vector (cvv) on the form <name>=<val> where <val> is cvv
+ *
+ * @param[in]  h     Clicon handle
+ * @param[in]  name  Data name
+ * @retval     cvv   Data value as cvv
+ * @retval     NULL  Not found (or error)
+ * @code
+ *   cvec *cvv = NULL;
+ *   if (clicon_data_cvec_get(h, "mycvv", &cvv) < 0)
+ *     err;
+ * @endcode                                     
+ */
+cvec *
+clicon_data_cvec_get(clicon_handle h,
+		     const char   *name)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+    size_t          len = 0;
+    void           *p;
+    
+    if ((p = clicon_hash_value(cdat, (char*)name, &len)) != NULL)
+	return *(cvec **)p;
+    return NULL;
+}
+
+/*! Set generic cligen varaibel vector (cvv) on the form <name>=<val> where <val> is cvv
+ * @param[in]  h     Clicon handle
+ * @param[in]  name  Name
+ * @param[in]  cvv   CLIgen variable vector (cvv) (malloced)
+ */
+int
+clicon_data_cvec_set(clicon_handle h,
+		     const char   *name,
+		     cvec         *cvv)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    cvec          *cvv0;
+
+    /* It is the pointer to cvec that should be copied by hash,
+       so we send a ptr to the ptr to indicate what to copy.
+     */
+    if ((cvv0 = clicon_data_cvec_get(h, name)) != NULL){
+	fprintf(stderr, "%s free %p\n", __FUNCTION__, cvv0);
+	cvec_free(cvv0);
+    }
+    fprintf(stderr, "%s set %p\n", __FUNCTION__, cvv);
+    if (clicon_hash_add(cdat, (char*)name, &cvv, sizeof(cvv)) == NULL)
+	return -1;
+    return 0;
+}
+
+/*! Delete generic cligen varaibel vector (cvv)
+ * @param[in]  h     Clicon handle
+ * @param[in]  name  Name
+ */
+int
+clicon_data_cvec_del(clicon_handle h,
+		     const char   *name)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    cvec          *cvv0;
+
+    /* It is the pointer to cvec that should be copied by hash,
+       so we send a ptr to the ptr to indicate what to copy.
+     */
+    if ((cvv0 = clicon_data_cvec_get(h, name)) != NULL){
+	fprintf(stderr, "%s free %p\n", __FUNCTION__, cvv0);
+	cvec_free(cvv0);
+    }
+    return clicon_hash_del(cdat, (char*)name);
+}
+
 /*!
  * @param[in]  h     Clicon handle
  * @retval     yspec Yang spec

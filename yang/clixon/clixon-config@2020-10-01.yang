@@ -493,18 +493,23 @@ module clixon-config {
                  1: Generate a CLI specification for CLI completion of all loaded Yang modules. 
                     This CLI tree can be accessed in CLI-spec files using the tree reference syntax (eg
                      @datamodel).
-                 2: Same including state syntax in a tree called @datamodelstate.
+                 2: Same including state syntax in a tree called @datamodelstate and @datamodelshow
                  See also CLICON_CLI_MODEL_TREENAME.";
 	}
 	leaf CLICON_CLI_MODEL_TREENAME {
 	    type string;
 	    default "datamodel";
 	    description
-		"If set, CLI specs can reference the
-                 model syntax using this reference. 
+		"If CLICON_CLI_GENMOEL is set, CLI specs can reference the
+                 model syntax using a model tree set by this option.
+                 Three trees are generated with this name as a base, (assuming base is datamodel):
+                 - @datamodel - a clispec for navigating in editing a configuration (set/merge/delete)
+                 - @datamodelshow - a clispec for navigating in showing a configuration
+                 - @datamodelstate - a clispec for navigating in showing a configuration WITH state
                  Example: set @datamodel, cli_set();
-                 A second tree called eg @datamodelstate is created that
-                 also contains state together with config.";
+                          show @datamodelshow, cli_show_auto();
+                          show state @datamodelstate, cli_show_auto_state();
+                 ";
 	}
 	leaf CLICON_CLI_GENMODEL_COMPLETION {
 	    type int32;

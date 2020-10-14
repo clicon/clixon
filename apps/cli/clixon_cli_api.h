@@ -53,7 +53,7 @@ char *cli_syntax_mode(clicon_handle h);
 int cli_syntax_load(clicon_handle h);
 int cli_handler_err(FILE *fd);
 int cli_set_prompt(clicon_handle h, const char *mode, const char *prompt);
-char *cli_prompt(char *fmt);
+char *cli_prompt(clicon_handle h, char *fmt);
 int cli_ptpush(clicon_handle h, char *mode, char *string, char *op);
 int cli_ptpop(clicon_handle h, char *mode, char *op);
 
@@ -68,6 +68,8 @@ int cli_notification_register(clicon_handle h, char *stream, enum format_enum fo
 			      int (*fn)(int, void*), void *arg);
 
 /* cli_common.c: CLIgen new vector callbacks */
+
+int cli_dbxml(clicon_handle h, cvec *vars, cvec *argv, enum operation_type op, cvec *nsctx);
 
 int cli_dbxml(clicon_handle h, cvec *vars, cvec *argv, enum operation_type op, cvec *nsctx);
 
@@ -136,5 +138,16 @@ int cli_show_auto(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_show_auto_state(clicon_handle h, cvec *cvv, cvec *argv);
 
 int cli_show_options(clicon_handle h, cvec *cvv, cvec *argv);
+
+/* cli_auto.c: Autocli mode support */
+
+int cli_auto_edit(clicon_handle h, cvec *cvv1, cvec *argv);
+int cli_auto_up(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_auto_top(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_auto_show(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_auto_set(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_auto_merge(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_auto_create(clicon_handle h, cvec *cvv,	cvec *argv);
+int cli_auto_del(clicon_handle h, cvec *cvv, cvec *argv);
 
 #endif /* _CLIXON_CLI_API_H_ */

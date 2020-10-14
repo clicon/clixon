@@ -176,6 +176,7 @@ cli_terminate(clicon_handle h)
 	cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
+    clicon_data_cvec_del(h, "cli-edit-cvv");;
     xpath_optimize_exit();
     cli_plugin_finish(h);    
     cli_history_save(h);
@@ -266,6 +267,7 @@ autocli_tree(clicon_handle      h,
     int           retval = -1;
     parse_tree   *pt = NULL;  /* cli parse tree */
     yang_stmt    *yspec;
+    pt_head      *ph;
     
     if ((pt = pt_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "pt_new");
@@ -276,7 +278,9 @@ autocli_tree(clicon_handle      h,
     if (yang2cli(h, yspec, gt, printgen, state, show_tree, pt) < 0)
 	goto done;
     /* Append cligen tree and name it */
-    if (cligen_tree_add(cli_cligen(h), name, pt) < 0)
+    if ((ph = cligen_ph_add(cli_cligen(h), name)) == NULL)
+	goto done;
+    if (cligen_ph_parsetree_set(ph, pt) < 0)
 	goto done;
     retval = 0;
  done:
@@ -692,9 +696,8 @@ main(int    argc,
 	fprintf(stderr, "FATAL: No cli mode set (use -m or CLICON_CLI_MODE)\n");
 	goto done;
     }
-    if (cligen_tree_find(cli_cligen(h), cli_syntax_mode(h)) == NULL)
+    if (cligen_ph_find(cli_cligen(h), cli_syntax_mode(h)) == NULL)
 	clicon_log(LOG_WARNING, "No such cli mode: %s (Specify cli mode with CLICON_CLI_MODE in config file or -m <mode> on command line", cli_syntax_mode(h));
-
     /* CLIgen tab mode, ie how <tab>s behave */
     if ((tabmode = clicon_cli_tab_mode(h)) < 0){
 	fprintf(stderr, "FATAL: CLICON_CLI_TAB_MODE not set\n");

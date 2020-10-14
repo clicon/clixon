@@ -44,6 +44,11 @@ module clixon-example {
 	    leaf value{
 		type string;
 	    }
+	    leaf stat{
+		description "Inline state data for example application";
+		config false;
+		type int32;
+	    }
 	}
     }
     /* State data (not config) for the example application*/

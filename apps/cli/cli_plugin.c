@@ -120,8 +120,16 @@ static int
 gen_parse_tree(clicon_handle     h,
 	       cli_syntaxmode_t *m)
 {
-    cligen_tree_add(cli_cligen(h), m->csm_name, m->csm_pt);
-    return 0;
+    int       retval = -1;
+    pt_head  *ph;
+    
+    if ((ph = cligen_ph_add(cli_cligen(h), m->csm_name)) == NULL)
+	goto done;
+    if (cligen_ph_parsetree_set(ph, m->csm_pt) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Append syntax
@@ -568,13 +576,13 @@ clicon_parse(clicon_handle  h,
     }
     if (smode){
 	modename0 = NULL;
-	if ((pt = cligen_tree_active_get(cli_cligen(h))) != NULL)
+	if ((pt = cligen_ph_active_get(cli_cligen(h))) != NULL)
 	    modename0 = pt_name_get(pt);
-	if (cligen_tree_active_set(cli_cligen(h), modename) < 0){
+	if (cligen_ph_active_set(cli_cligen(h), modename) < 0){
 	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
 	    goto done;
 	}
-	if ((pt = cligen_tree_active_get(cli_cligen(h))) == NULL){
+	if ((pt = cligen_ph_active_get(cli_cligen(h))) == NULL){
 	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
 	    goto done;
 	}
@@ -589,7 +597,7 @@ clicon_parse(clicon_handle  h,
 	if (*result != CG_MATCH)
 	    pt_expand_cleanup(pt); /* XXX change to pt_expand_treeref_cleanup */
 	if (modename0){
-	    cligen_tree_active_set(cli_cligen(h), modename0);
+	    cligen_ph_active_set(cli_cligen(h), modename0);
 	    modename0 = NULL;
 	}
 	switch (*result) {
@@ -607,7 +615,8 @@ clicon_parse(clicon_handle  h,
 	    }
 	    if ((r = clicon_eval(h, cmd, match_obj, cvv)) < 0)
 		cli_handler_err(stdout);
-	    pt_expand_cleanup(pt); /* XXX change to pt_expand_treeref_cleanup */
+	    pt_expand_cleanup(pt);
+	    pt_expand_treeref_cleanup(pt);
 	    if (evalres)
 		*evalres = r;
 	    break;
@@ -655,8 +664,8 @@ clicon_cliread(clicon_handle h,
     if (clicon_quiet_mode(h))
 	cli_prompt_set(h, "");
     else
-	cli_prompt_set(h, cli_prompt(pfmt ? pfmt : mode->csm_prompt));
-    cligen_tree_active_set(cli_cligen(h), mode->csm_name);
+	cli_prompt_set(h, cli_prompt(h, pfmt ? pfmt : mode->csm_prompt));
+    cligen_ph_active_set(cli_cligen(h), mode->csm_name);
 
     if (cliread(cli_cligen(h), stringp) < 0){
 	clicon_err(OE_FATAL, errno, "CLIgen");
@@ -724,14 +733,16 @@ cli_set_prompt(clicon_handle h,
 }
 
 /*! Format prompt 
+ * @param[in]     h       Clicon handle
  * @param[out]    prompt  Prompt string to be written
  * @param[in]     plen    Length of prompt string
- * @param[in]     fmt     Stdarg fmt string
+ * @param[in]     str     Stdarg fmt string
  */
 static int
-prompt_fmt(char  *prompt,
-	   size_t plen,
-	   char  *fmt, ...)
+prompt_fmt(clicon_handle h,
+	   char         *prompt,
+	   size_t        plen,
+	   char         *fmt,...)
 {
   va_list ap;
   char   *s = fmt;
@@ -740,6 +751,7 @@ prompt_fmt(char  *prompt,
   char   *tmp;
   int     ret = -1;
   cbuf   *cb = NULL;
+  char   *path = NULL;
 
   if ((cb = cbuf_new()) == NULL){
       clicon_err(OE_XML, errno, "cbuf_new");
@@ -763,6 +775,13 @@ prompt_fmt(char  *prompt,
 	      if(ttyname_r(fileno(stdin), tty, sizeof(tty)-1) < 0)
 		  strcpy(tty, "notty");
 	      cprintf(cb, "%s", tty);
+	      break;
+	  case 'W': /* working edit path */
+	      if (clicon_data_get(h, "cli-edit-mode", &path) == 0 &&
+		  strlen(path))
+		  cprintf(cb, "%s", path);
+	      else
+		  cprintf(cb, "/");
 	      break;
 	  default:
 	      cprintf(cb, "%%");
@@ -798,11 +817,12 @@ done:
  * @param[in]     fmt      Format string
  */
 char *
-cli_prompt(char *fmt)
+cli_prompt(clicon_handle h,
+	   char         *fmt)
 {
     static char prompt[CLI_PROMPT_LEN];
 
-    if (prompt_fmt(prompt, sizeof(prompt), fmt) < 0)
+    if (prompt_fmt(h, prompt, sizeof(prompt), fmt) < 0)
 	return CLI_DEFAULT_PROMPT;
     
     return prompt;

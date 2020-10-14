@@ -82,6 +82,7 @@ LIBSRC	        = cli_common.c
 LIBSRC	       += cli_show.c
 LIBSRC	       += cli_handle.c
 LIBSRC	       += cli_plugin.c
+LIBSRC	       += cli_auto.c
 LIBOBJ		= $(LIBSRC:.c=.o)
 
 # Name of lib
