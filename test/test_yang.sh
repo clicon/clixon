@@ -212,7 +212,7 @@ new "cli show leaf-list"
 expectfn "$clixon_cli -1f $cfg show xpath /x/f/e urn:example:clixon" 0 "<e>foo</e>"
 
 new "netconf set state data (not allowed)"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><state xmlns=\"urn:example:clixon\"><op>42</op></state></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>State data not allowed</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><state xmlns=\"urn:example:clixon\"><op>42</op></state></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>state in module example: state data node unexpected</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "netconf set presence and not present"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><nopresence/><presence/></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
