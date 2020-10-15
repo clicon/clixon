@@ -70,6 +70,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: Validate/commit error with false positive yang choice changes detected in validation found in ietf-ipfix-psamp.yang.
 * Fixed: Accepted added subtrees containing lists with duplicate keys.
 * Fixed: [default state data returned with get-config](https://github.com/clicon/clixon/issues/140)
   * Generalized default code for both config and state

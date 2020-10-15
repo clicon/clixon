@@ -584,21 +584,11 @@ xml_diff1(cxobj     *x0,
 	     * if so, continute compare children but without yang
 	     */
 	    yc = xml_spec(x0c);
-	    if (yc && yang_choice(yc)){
-		/* if x0c and x1c are choice/case, then they are changed */
-		if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
-		    goto done;
-		(*changedlen)--; /* append two vectors */
-		if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
-		    goto done;
-	    }
-	    else if (yc && yang_keyword_get(yc) == Y_LEAF){
-		/* if x0c and x1c are leafs w bodies, then they are changed */
-		if ((b1 = xml_body(x0c)) == NULL) /* empty type */
-		    break;
-		if ((b2 = xml_body(x1c)) == NULL) /* empty type */
-		    break;
-		if (strcmp(b1, b2)){
+	    if (yc && yang_keyword_get(yc) == Y_LEAF){
+		/* if x0c and x1c are leafs w bodies, then they may be changed */
+		if ((b1 = xml_body(x0c)) != NULL && /* skip empty type */
+		    (b2 = xml_body(x1c)) != NULL && /* skip empty type */
+		    strcmp(b1, b2) != 0){
 		    if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
 			goto done;
 		    (*changedlen)--; /* append two vectors */
