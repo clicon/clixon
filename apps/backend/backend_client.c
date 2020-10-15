@@ -640,9 +640,14 @@ from_client_edit_config(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    /* Mark all nodes that are not configure data and set return */
-    if (xml_apply(xc, CX_ELMNT, xml_non_config_data, &non_config) < 0)
+    /* (Mark all nodes that are not configure data and) set return */
+    if ((ret = xml_non_config_data(xc, &xret)) < 0)
 	goto done;
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+	    goto done;
+	goto ok;
+    }
     if (non_config){
 	if (netconf_invalid_value(cbret, "protocol", "State data not allowed")< 0)
 	    goto done;
@@ -1143,7 +1148,7 @@ from_client_get(clicon_handle h,
 	/* Keep state data only, remove everything that is not config. Note that state data
 	 * may be a sub-part in a config tree, we need to traverse to find all
 	 */
-	if (xml_apply(xret, CX_ELMNT, xml_non_config_data, NULL) < 0)
+	if (xml_non_config_data(xret, NULL) < 0)
 	    goto done;
 	if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
 	    goto done;

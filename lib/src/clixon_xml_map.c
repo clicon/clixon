@@ -1440,28 +1440,55 @@ xml_sanity(cxobj *xt,
     return retval;
 }
 
-/*! Mark all nodes that are not configure data and set return
+/*! Detect state data: Either mark or break on first occurence and return xerror
  * @param[in]   xt      XML tree 
- * @param[out]  arg     If set, set to 1 as int* if not config data
+ * @param[out]  xerr    If set return netconf error, abort and return if a state variable found
+ * @retval      -1      Error
+ * @retval      0       Status node found and return xerror
+ * @retval      1       OK
+ * Note that the behaviour is quite different if xerr is set or not,...
  */
 int
-xml_non_config_data(cxobj *xt, 
-		    void   *arg) /* Set to 1 if state node */
+xml_non_config_data(cxobj  *xt, 
+		    cxobj **xerr) 
 {
     int        retval = -1;
-    yang_stmt *ys;
-
-    if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
-	retval = 0;
-	goto done;
+    cxobj     *x;
+    yang_stmt *y;
+    int        ret;
+    cbuf      *cb = NULL;
+    
+    x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	if ((y = (yang_stmt*)xml_spec(x)) == NULL)
+	    goto ok;
+	if (!yang_config(y)){ /* config == false means state data */
+	    if (xerr){        /* behaviour 1: return on error */
+		if ((cb = cbuf_new()) == NULL){
+		    clicon_err(OE_UNIX, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cb, "%s in module %s: state data node unexpected",
+			yang_argument_get(y), yang_argument_get(ys_module(y)));
+		if (netconf_invalid_value_xml(xerr, "application", cbuf_get(cb)) < 0)
+		    goto done;
+		retval = 0;
+		goto done;
+	    }
+	    xml_flag_set(x, XML_FLAG_MARK); /* behaviour 2: mark and continue */
+	}
+	if ((ret = xml_non_config_data(x, xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    retval = 0;
+	    goto done;
+	}
     }
-    if (!yang_config(ys)){ /* config == false means state data: mark for remove */
-	xml_flag_set(xt, XML_FLAG_MARK);
-	if (arg)
-	    (*(int*)arg) = 1;
-    }
-    retval = 0;
+ ok:
+    retval = 1;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 

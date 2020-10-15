@@ -69,8 +69,7 @@ int xml_global_defaults(clicon_handle h, cxobj *xn, cvec *nsc, const char *xpath
 int xml_nopresence_default(cxobj *xt);
 int xml_nopresence_default_mark(cxobj *x, void *arg);
 int xml_sanity(cxobj *x, void  *arg);
-int xml_non_config_data(cxobj *xt, void *arg);
-
+int xml_non_config_data(cxobj *xt, cxobj **xerr);
 int xml2xpath(cxobj *x, char **xpath);
 int assign_namespace_element(cxobj *x0, cxobj *x1, cxobj *x1p);
 int assign_namespace_body(cxobj *x0, char *x0bstr, cxobj *x1);
