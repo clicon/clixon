@@ -631,7 +631,7 @@ check_insert_duplicate(char **vec,
  * @param[in]  x     The first element in the list (on return the last)
  * @param[in]  xt    The parent of x
  * @param[in]  y     Its yang spec (Y_LIST)
- * @param[in]  yu    A yang unique spec (Y_UNIQUE)
+ * @param[in]  yu    A yang unique spec (Y_UNIQUE) for unique keyword or (Y_LIST) for list keys
  * @param[out] xret    Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
@@ -657,8 +657,12 @@ check_unique_list(cxobj     *x,
     char      *bi;
     int        sorted;
     
-    /* If list is sorted by system, then it is assumed elements are in key-order */
-    sorted = yang_find(y, Y_ORDERED_BY, "user") == NULL;
+    /* If list and is sorted by system, then it is assumed elements are in key-order which is optimized
+     * Other cases are "unique" constraint or list sorted by user which is quadratic in complexity
+     * This second case COULD be optimized if binary insert is made on the vec vector.
+     */
+    sorted = (yang_keyword_get(yu) == Y_LIST &&
+	      yang_find(y, Y_ORDERED_BY, "user") == NULL);
     cvk = yang_cvec_get(yu);
     vlen = cvec_len(cvk); /* nr of unique elements to check */
     if ((vec = calloc(vlen*xml_child_nr(xt), sizeof(char*))) == NULL){
