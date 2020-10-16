@@ -585,29 +585,46 @@ check_mandatory(cxobj     *xt,
  * @param[in]  vec   Vector of existing entries (new is last)
  * @param[in]  i1    The new entry is placed at vec[i1]
  * @param[in]  vlen  Lenght of entry
+ * @param[in]  sorted Sorted by system, ie sorted by key, otherwise no assumption
  * @retval     0     OK, entry is unique
  * @retval    -1     Duplicate detected
- * @note This is currently linear complexity. It could be improved by inserting new element sorted and binary search.
+ * @note This is currently quadratic complexity. It could be improved by inserting new element sorted and binary search.
  */
 static int
 check_insert_duplicate(char **vec,
 		       int    i1,
-		       int    vlen)
+		       int    vlen,
+		       int    sorted)
 {
     int i;
     int v;
     char *b;
-    
-    for (i=0; i<i1; i++){
+
+    if (sorted){
+	/* Just go look at previous element to see if it is duplicate (sorted by system) */
+	if (i1 == 0)
+	    return 0;
+	i = i1-1;
 	for (v=0; v<vlen; v++){
 	    b = vec[i*vlen+v];
 	    if (b == NULL || strcmp(b, vec[i1*vlen+v]))
+		return 0;
+	}
+	/* here we have passed thru all keys of previous element and they are all equal */
+	return -1;
+    }
+    else{
+	for (i=0; i<i1; i++){
+	    for (v=0; v<vlen; v++){
+		b = vec[i*vlen+v];
+		if (b == NULL || strcmp(b, vec[i1*vlen+v]))
+		    break;
+	    }
+	    if (v==vlen) /* duplicate */
 		break;
 	}
-	if (v==vlen) /* duplicate */
-	    break;
+	return i==i1?0:-1;
     }
-    return i==i1?0:-1;
 }
 
 /*! Given a list with unique constraint, detect duplicates
@@ -638,13 +655,19 @@ check_unique_list(cxobj     *x,
     int        i;
     int        v;
     char      *bi;
+    int        sorted;
     
+    /* If list is sorted by system, then it is assumed elements are in key-order */
+    sorted = yang_find(y, Y_ORDERED_BY, "user") == NULL;
     cvk = yang_cvec_get(yu);
     vlen = cvec_len(cvk); /* nr of unique elements to check */
     if ((vec = calloc(vlen*xml_child_nr(xt), sizeof(char*))) == NULL){
 	clicon_err(OE_UNIX, errno, "calloc");
 	goto done;
     }
+    /* A vector is built with key-values, for each iteration check "backward" in the vector
+     * for duplicates
+     */
     i = 0; /* x element index */
     do {
 	cvi = NULL;
@@ -660,7 +683,7 @@ check_unique_list(cxobj     *x,
 	}
 	if (cvi==NULL){
 	    /* Last element (i) is newly inserted, see if it is already there */
-	    if (check_insert_duplicate(vec, i, vlen) < 0){
+	    if (check_insert_duplicate(vec, i, vlen, sorted) < 0){
 		if (netconf_data_not_unique_xml(xret, x, cvk) < 0)
 		    goto done;
 		goto fail;
