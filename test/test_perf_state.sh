@@ -7,6 +7,7 @@
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fin=$dir/fin
 
 # Which format to use as datastore format internally
 : ${format:=xml}
@@ -160,13 +161,12 @@ new "restconf get $perfreq single reqs"
 done } 2>&1 | awk '/real/ {print $2}'
 
 # CLI get
+cat <<EOF >> $fin
+edit interfaces a foo b interface e1
+show state xml
+EOF
 new "cli get test single req"
-expectfn "$clixon_cli -1 -1f $cfg -l o show state xml interfaces a foo b interface e1" 0 '^<interface>
-   <name>e1</name>
-   <type>eth</type>
-   <enabled>true</enabled>
-   <status>up</status>
-</interface>$'
+expectpart "$($clixon_cli -F $fin -f $cfg)" 0 "<name>e1</name><type>ex:eth</type><enabled>true</enabled><status>up</status>$"
 
 new "cli get $perfreq single reqs"
 { time -p for (( i=0; i<$perfreq; i++ )); do

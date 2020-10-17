@@ -303,7 +303,7 @@ cli_auto_show(clicon_handle h,
 	      cvec         *cvv,
 	      cvec         *argv)
 {
-    int         retval = 1;
+    int         retval = -1;
     char       *treename;
     char       *db;
     char       *api_path = NULL;
@@ -318,7 +318,7 @@ cli_auto_show(clicon_handle h,
     yang_stmt  *yspec;
     cxobj      *xerr;
     cxobj      *xt = NULL;
-    cxobj     **vec;
+    cxobj     **vec = NULL;
     size_t      veclen;
     int         i;
     int         isroot;

@@ -32,19 +32,24 @@
 
 # Clixon example specification
 CLICON_MODE="example";
-CLICON_PROMPT="%U@%H> ";
+CLICON_PROMPT="%U@%H %W> ";
 CLICON_PLUGIN="example_cli";
 
-# Note, when switching to PT, change datamodel to only @datamodel
-set @datamodel, cli_set();
-merge @datamodel, cli_merge();
-create @datamodel, cli_create();
-delete("Delete a configuration item") @datamodel, cli_del();
+# Autocli syntax tree operations
+edit @datamodel, cli_auto_edit("datamodel", "candidate");
+up, cli_auto_up("datamodel", "candidate");
+top, cli_auto_top("datamodel", "candidate");
+set @datamodel, cli_auto_set();
+merge @datamodel, cli_auto_merge();
+create @datamodel, cli_auto_create();
+delete("Delete a configuration item") {
+      @datamodel, cli_auto_del(); 
+      all("Delete whole candidate configuration"), delete_all("candidate");
+}
 
 validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
-delete("Delete a configuration item")  all("Delete whole candidate configuration"), delete_all("candidate");
 
 no("Negate or remove") debug("Debugging parts of the system"), cli_debug_cli((int32)0);
 debug("Debugging parts of the system"), cli_debug_cli((int32)1);{
@@ -67,27 +72,15 @@ show("Show a particular state of the system"){
     		     xml("Show comparison in xml"), compare_dbs((int32)0);
 		     text("Show comparison in text"), compare_dbs((int32)1);
     }
-    state("Show configuration and state"), cli_show_config_state("running", "text", "/");{
-    	    xml("Show configuration and state as XML"), cli_show_config_state("running", "xml", "/");{
-	        @datamodel, cli_show_auto_state("running", "xml");		   
-	    }
+    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", false, false);{
+	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", false, false);
+	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", false, false, "set ");
+	    netconf("Show configuration as netconf edit-config operation"), cli_auto_show("datamodel", "candidate", "netconf", false, false);
+	    text("Show configuration as text"), cli_auto_show("datamodel", "candidate", "text", false, false);
+	    json("Show configuration as JSON"), cli_auto_show("datamodel", "candidate", "json", false, false);
     }
-    configuration("Show configuration"), cli_show_config("candidate", "text", "/");{
-	    xml("Show configuration as XML"), cli_show_config("candidate", "xml", "/");{
-	        @datamodel, cli_show_auto("candidate", "xml");		   
-	    }
-	    cli("Show configuration as CLI commands"), cli_show_config("candidate", "cli", "/", 0, "set ");{
-	        @datamodel, cli_show_auto("candidate", "cli", "set ");
-	    }
-	    netconf("Show configuration as netconf edit-config operation"), cli_show_config("candidate", "netconf", "/");{
-	        @datamodel, cli_show_auto("candidate", "netconf");
-	    }
-	    text("Show configuration as text"), cli_show_config("candidate","text","/");{
-	        @datamodel, cli_show_auto("candidate", "text");
-	    }
-	    json("Show configuration as JSON"), cli_show_config("candidate", "json", "/");{
-	    	@datamodel, cli_show_auto("candidate", "json");
-	    }
+    state("Show configuration and state"), cli_auto_show("datamodel", "running", "text", false, true); {
+    	    xml("Show configuration and state as XML"), cli_auto_show("datamodel", "running", "xml", false, true);
     }
 }
 
