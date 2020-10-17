@@ -49,11 +49,39 @@ if [ $BE -ne 0 ]; then
     wait_backend
 fi
 
-new "netconf hello"
-expecteof "$clixon_netconf -f $cfg" 0 "<rpc $DEFAULTNS message-id=\"101\"><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=2016-06-21&amp;module-set-id=42</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]><rpc-reply $DEFAULTNS message-id=\"101\"><data/></rpc-reply>]]>]]>$"
+# Framing. with -q to inhibit rcv hello
+new "Empty frame"
+expecteof "$clixon_netconf -qf $cfg" 0 ']]>]]>' ']]>]]>' 
 
-new "netconf hello, disable RFC7895/ietf-yang-library"
+if [ $valgrindtest -eq 0 ]; then # Some leakage in lex / error handling difficult to catch
+new "Frame invalid non-xml"
+expecteof "$clixon_netconf -qf $cfg" 0 "This is not XML]]>]]>" '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>rpc</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>xml_parse: line 0: syntax error: at or before: This</error-message></rpc-error></rpc-reply>]]>]]>' 2> /dev/null
+fi
+
+new "Frame with two messages"
+expecteof "$clixon_netconf -qf $cfg" 0 "<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello><rpc $DEFAULTNS message-id=\"101\"><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>rpc</error-type><error-tag>malformed-message</error-tag><error-severity>error</error-severity><error-message>More than one message in netconf rpc frame</error-message></rpc-error></rpc-reply>]]>]]>'
+
+new "Frame with unknown message"
+expecteof "$clixon_netconf -qf $cfg" 0 "<xxx $DEFAULTNS></xxx>]]>]]>" '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>protocol</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>xxx</bad-element></error-info><error-severity>error</error-severity><error-message>Unrecognized netconf operation</error-message></rpc-error></rpc-reply>]]>]]>$'
+
+# Hello
+new "Netconf snd hello with xmldecl"
+expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>]]>]]>" '^$'
+
+new "Netconf snd hello with wrong prefix"
+expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><xx:hello xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><nc:capabilities><nc:capability>urn:ietf:params:netconf:base:1.0</nc:capability></nc:capabilities></xx:hello>]]>]]>" '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>protocol</error-type><error-tag>unknown-namespace</error-tag><error-info><bad-namespace>xx</bad-namespace></error-info><error-severity>error</error-severity><error-message>No appropriate namespace associated with prefix</error-message></rpc-error></rpc-reply>]]>]]>'
+
+new "Netconf snd hello with prefix"
+expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><nc:hello xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><nc:capabilities><nc:capability>urn:ietf:params:netconf:base:1.0</nc:capability></nc:capabilities></nc:hello>]]>]]>" '^$'
+
+new "netconf snd + rcv hello"
+expecteof "$clixon_netconf -f $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>]]>]]>" "^<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=2016-06-21&amp;module-set-id=42</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]>$"
+
+new "netconf rcv hello, disable RFC7895/ietf-yang-library"
 expecteof "$clixon_netconf -f $cfg -o CLICON_MODULE_LIBRARY_RFC7895=0" 0 "<rpc $DEFAULTNS message-id=\"101\"><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]><rpc-reply $DEFAULTNS message-id=\"101\"><data/></rpc-reply>]]>]]>$"
+
+new "netconf get-config prefix"
+expecteof "$clixon_netconf -qf $cfg" 0 "<nc:rpc xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"101\"><nc:get-config><nc:source><nc:candidate/></nc:source></nc:get-config></nc:rpc>]]>]]>" "^<rpc-reply $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"101\"><data/></rpc-reply>]]>]]>$"
 
 new "netconf get-config double quotes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS message-id=\"101\"><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS message-id=\"101\"><data/></rpc-reply>]]>]]>$"

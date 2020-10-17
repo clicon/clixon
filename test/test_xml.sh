@@ -141,7 +141,7 @@ expecteof "$clixon_util_xml -o" 0 '<?foo something else ?><a/>' '<a/>'
 
 new "prolog element misc*"
 expecteof "$clixon_util_xml -o" 0 '<?foo something ?><a/><?bar more stuff ?><!-- a comment-->' '<a/>'
-
+					
 # We allow it as an internal necessity for parsing of xml fragments
 #new "double element error"
 #expecteof "$clixon_util_xml" 255 '<a/><b/>' ''
@@ -178,6 +178,8 @@ XML=$(cat <<EOF
 EOF
 )
 expecteof "$clixon_util_xml -o" 0 "$XML" '^<bk:book xmlns:bk="urn:loc.gov:books" xmlns:isbn="urn:ISBN:0-395-36341-6"><bk:title>Cheaper by the Dozen</bk:title><isbn:number>1568491379</isbn:number></bk:book>$'
+
+endtest
 
 rm -rf $dir
 

@@ -1594,6 +1594,9 @@ from_client_msg(clicon_handle        h,
     cxobj               *xret = NULL;
     uint32_t             id;
     enum nacm_credentials_t creds;
+    char                *rpcname;
+    char                *rpcprefix;
+    char                *namespace;
     
     clicon_debug(1, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h); 
@@ -1615,17 +1618,46 @@ from_client_msg(clicon_handle        h,
 	    goto done;
 	goto reply;
     }
-    if ((x = xpath_first(xt, NULL, "/rpc")) == NULL){
-	if ((x = xpath_first(xt, NULL, "/hello")) != NULL){
-	    if ((ret = from_client_hello(h, x, ce, cbret)) <0)
+    /* Check for empty frame (no mesaages), return empty message, not clear from RFC what to do */
+    if (xml_child_nr_type(xt, CX_ELMNT) == 0){
+	if (netconf_malformed_message(cbret, "Empty message in netconf rpc frame")< 0)
+	    goto done;
+	goto reply;
+    }
+    /* Check for multi-messages in frame */
+    if (xml_child_nr_type(xt, CX_ELMNT) != 1){
+	if (netconf_malformed_message(cbret, "More than one message in netconf rpc frame")< 0)
+	    goto done;
+	goto reply;
+    }
+    if ((x = xml_child_i_type(xt, 0, CX_ELMNT)) == NULL){ /* Shouldnt happen */
+	clicon_err(OE_XML, EFAULT, "No xml req (shouldnt happen)");
+	goto done;
+    }
+    rpcname = xml_name(x);
+    rpcprefix = xml_prefix(x);
+    if (0) { /* XXX notyet (4.8) restconf seems not to produce right namespace */
+	if (xml2ns(x, rpcprefix, &namespace) < 0)
+	    goto done;
+	/* Only accept resolved NETCONF base namespace */
+	if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
+	    if (netconf_unknown_namespace(cbret, "protocol", rpcprefix, "No appropriate namespace associated with prefix")< 0)
 		goto done;
 	    goto reply;
 	}
-	else{
-	    if (netconf_malformed_message(cbret, "rpc keyword expected")< 0)
-		goto done;
-	    goto reply;
-	}
+    }
+    if (strcmp(rpcname, "rpc") == 0){
+	; /* continue  below */
+    }
+    else if (strcmp(rpcname, "hello") == 0){
+	if ((ret = from_client_hello(h, x, ce, cbret)) <0)
+	    goto done;
+	goto reply;
+    }
+    else{
+	if (netconf_unknown_element(cbret, "protocol", rpcname, "Unrecognized netconf operation")< 0)
+	    goto done;
+	goto reply;
     }
     ce->ce_id = id;
     if ((ret = xml_yang_validate_rpc(h, x, &xret)) < 0)

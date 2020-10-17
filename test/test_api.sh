@@ -222,7 +222,7 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     new "start backend"
-    start_backend -s running -f $cfg
+    start_backend -s init -f $cfg
  fi
 
 new "waiting"

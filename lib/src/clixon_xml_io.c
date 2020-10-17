@@ -461,7 +461,7 @@ _xml_parse(const char *str,
 
     clicon_debug(2, "%s", __FUNCTION__);
     if (strlen(str) == 0)
-	return 0; /* OK */
+	return 1; /* OK */
     if (xt == NULL){
 	clicon_err(OE_XML, errno, "Unexpected NULL XML");
 	return -1;	

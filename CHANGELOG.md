@@ -63,6 +63,7 @@ Users may have to change how they access the system
 
 ### Minor changes
 
+* Added more sanity checks on incoming top-level rpc and hello messages, including verifying top-level namespace
 * Added inline state field to clixon-example.yang
 * Added stricter check on schema-node identifier checking, such as for augments.
   * These checks are now made at YANG loading time
@@ -70,7 +71,8 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
-* Fixed [Crash seen with startup mode as running with the XML_DB format being set to JSON. [clixon : 4.7.0] #138](https://github.com/clicon/clixon/issues/138)
+* Fixed: [namespace prefix nc is not supported](https://github.com/clicon/clixon/issues/143)
+* Fixed: [Crash seen with startup mode as running with the XML_DB format being set to JSON. [clixon : 4.7.0] #138](https://github.com/clicon/clixon/issues/138)
 * Fixed: Performance enhancement of unique list check (of duplicate keys)
 * Fixed: Validate/commit error with false positive yang choice changes detected in validation found in ietf-ipfix-psamp.yang.
 * Fixed: Accepted added subtrees containing lists with duplicate keys.

@@ -79,7 +79,8 @@
 static int ignore_packet_errors = 1;
 
 static int
-netconf_hello(cxobj *xn)
+netconf_hello(clicon_handle h,
+	      cxobj        *xn)
 {
 #ifdef nyi
     cxobj *x;
@@ -93,125 +94,230 @@ netconf_hello(cxobj *xn)
     return 0;
 }
 
+/*! Process incoming Netconf RPC netconf message 
+ * @param[in]   h     Clicon handle
+ * @param[in]   xreq  XML tree containing netconf RPC message
+ * @param[in]   yspec YANG spec
+ * @retval      0     OK
+ * @retval     -1     Error
+ */
 int
-netconf_hello_dispatch(cxobj *xn)
+netconf_rpc_message(clicon_handle h,
+		    cxobj        *xrpc,
+		    yang_stmt    *yspec)
 {
-    cxobj *xp;
-    int retval = -1;
+    int    retval = -1;
+    cxobj *xret = NULL; /* Return (out) */
+    int    ret;
+    cbuf  *cbret = NULL;
+    cxobj *xc;
+    cxobj *xa;
+    cxobj *xa2;
 
-    if ((xp = xpath_first(xn, NULL, "//hello")) != NULL)
-	retval = netconf_hello(xp);
+    if ((ret = xml_bind_yang_rpc(xrpc, yspec, &xret)) < 0)
+	goto done;
+    if (ret > 0 &&
+	(ret = xml_yang_validate_rpc(h, xrpc, &xret)) < 0) 
+	goto done;
+    if (ret == 0){
+	if ((cbret = cbuf_new()) == NULL){ 
+	    clicon_err(LOG_ERR, errno, "cbuf_new");
+	    goto done;
+	}
+	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
+	netconf_output_encap(1, cbret, "rpc-error");
+	goto ok;
+    }
+    if (netconf_rpc_dispatch(h, xrpc, &xret) < 0){
+	goto done;
+    }
+    else{ /* there is a return message in xret */
+	if (xret == NULL){
+	    if ((cbret = cbuf_new()) == NULL){ 
+		clicon_err(LOG_ERR, errno, "cbuf_new");
+		goto done;
+	    }
+	    if (netconf_operation_failed(cbret, "rpc", "Internal error: no xml return")< 0)
+		goto done;
+	    netconf_output_encap(1, cbret, "rpc-error");
+	    goto done;
+	}
+	if ((xc = xml_child_i(xret, 0))!=NULL){
+	    xa=NULL;
+	    /* Copy message-id attribute from incoming to reply. 
+	     * RFC 6241:
+	     * If additional attributes are present in an <rpc> element, a NETCONF
+	     * peer MUST return them unmodified in the <rpc-reply> element.  This
+	     * includes any "xmlns" attributes.
+	     */
+	    while ((xa = xml_child_each(xrpc, xa, CX_ATTR)) != NULL){
+		/* If attribute already exists, dont copy it */
+		if (xml_find_type(xc, NULL, xml_name(xa), CX_ATTR) != NULL)
+		    continue;
+		if ((xa2 = xml_dup(xa)) ==NULL)
+		    goto done;
+		if (xml_addsub(xc, xa2) < 0)
+		    goto done;
+	    }
+	    if ((cbret = cbuf_new()) == NULL){ 
+		clicon_err(LOG_ERR, errno, "cbuf_new");
+		goto done;
+	    }
+	    clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0, -1);
+	    if (netconf_output_encap(1, cbret, "rpc-reply") < 0){
+		cbuf_free(cbret);
+		goto done;
+	    }
+	}
+    }
+ ok:
+    retval = 0;
+ done:
+    if (cbret)
+	cbuf_free(cbret);
+    if (xret)
+	xml_free(xret);
     return retval;
 }
 
-/*! Process incoming packet 
- * @param[in]   h    Clicon handle
- * @param[in]   cb   Packet buffer
+/*! Process incoming a single netconf message parsed as XML
+ * Identify what netconf message it is
+ * @param[in]   h     Clicon handle
+ * @param[in]   xreq  XML tree containing netconf
+ * @param[in]   yspec YANG spec
+ * @retval      0     OK
+ * @retval     -1     Error
  */
 static int
-netconf_input_packet(clicon_handle h, 
-		     cbuf         *cb)
+netconf_input_packet(clicon_handle h,
+		     cxobj        *xreq,
+		     yang_stmt    *yspec)
 {
     int        retval = -1;
-    char      *str;
-    char      *str0;
-    cxobj     *xreq = NULL; /* Request (in) */
-    int        isrpc = 0;   /* either hello or rpc */
     cbuf      *cbret = NULL;
+    char      *rpcname;
+    char      *rpcprefix;
+    char      *namespace = NULL;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    rpcname = xml_name(xreq);
+    rpcprefix = xml_prefix(xreq);
+    if (xml2ns(xreq, rpcprefix, &namespace) < 0)
+	goto done;
+    /* Only accept resolved NETCONF base namespace */
+    if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
+	if ((cbret = cbuf_new()) == NULL){ 
+	    clicon_err(LOG_ERR, errno, "cbuf_new");
+	    goto done;
+	}
+	if (netconf_unknown_namespace(cbret, "protocol", rpcprefix, "No appropriate namespace associated with prefix")< 0)
+	    goto done;
+	netconf_output_encap(1, cbret, "rpc-error");
+    }
+    if (strcmp(rpcname, "rpc") == 0){
+	if (netconf_rpc_message(h, xreq, yspec) < 0)
+	    goto done;
+    }
+    else if (strcmp(rpcname, "hello") == 0){
+	if (netconf_hello(h, xreq) < 0)
+	    goto done;
+    }
+    else{
+	if ((cbret = cbuf_new()) == NULL){ 
+	    clicon_err(LOG_ERR, errno, "cbuf_new");
+	    goto done;
+	}
+	if (netconf_unknown_element(cbret, "protocol", rpcname, "Unrecognized netconf operation")< 0)
+	    goto done;
+	netconf_output_encap(1, cbret, "rpc-error");
+    }
+    retval = 0;
+ done:
+    if (cbret)
+	cbuf_free(cbret);
+    return retval;
+}
+
+/*! Process incoming frame, ie a char message framed by ]]>]]>
+ * Parse string to xml, check only one netconf message within a frame
+ * @param[in]   h    Clicon handle
+ * @param[in]   cb   Packet buffer
+ * @retval      0    OK
+ * @retval     -1    Fatal error
+ */
+static int
+netconf_input_frame(clicon_handle h, 
+		    cbuf         *cb)
+{
+    int        retval = -1;
+    char      *str = NULL;
+    cxobj     *xtop = NULL; /* Request (in) */
+    cxobj     *xreq = NULL;
     cxobj     *xret = NULL; /* Return (out) */
-    cxobj     *xrpc;
-    cxobj     *xc;
+    cbuf      *cbret = NULL;
     yang_stmt *yspec;
     int        ret;
-    cxobj     *xa;
-    cxobj     *xa2;
 
     clicon_debug(1, "%s", __FUNCTION__);
     clicon_debug(2, "%s: \"%s\"", __FUNCTION__, cbuf_get(cb));
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(LOG_ERR, errno, "cbuf_new");
+    yspec = clicon_dbspec_yang(h);
+    if ((str = strdup(cbuf_get(cb))) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
     }
-    yspec = clicon_dbspec_yang(h);
-    if ((str0 = strdup(cbuf_get(cb))) == NULL){
-	clicon_log(LOG_ERR, "%s: strdup: %s", __FUNCTION__, strerror(errno));
-	return -1;
-    }
-    str = str0;
     /* Parse incoming XML message */
-    if (clixon_xml_parse_string(str, YB_MODULE, yspec, &xreq, NULL) < 0){ 
-	free(str0);
+    if ((ret = clixon_xml_parse_string(str, YB_RPC, yspec, &xtop, &xret)) < 0){ 
+	if ((cbret = cbuf_new()) == NULL){ 
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
 	if (netconf_operation_failed(cbret, "rpc", clicon_err_reason)< 0)
 	    goto done;
+	netconf_output_encap(1, cbret, "rpc-error"); /* XXX */
+	goto ok;
+    }
+    if (ret == 0){
+	if ((cbret = cbuf_new()) == NULL){ 
+	    clicon_err(LOG_ERR, errno, "cbuf_new");
+	    goto done;
+	}
+	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
 	netconf_output_encap(1, cbret, "rpc-error");
+	goto ok;
+    }
+    /* Check for empty frame (no mesaages), return empty message, not clear from RFC what to do */
+    if (xml_child_nr_type(xtop, CX_ELMNT) == 0){
+	if ((cbret = cbuf_new()) == NULL){ 
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	netconf_output_encap(1, cbret, "rpc-error");
+	goto ok;
+    }
+    /* Check for multi-messages in frame */
+    if (xml_child_nr_type(xtop, CX_ELMNT) != 1){
+	if ((cbret = cbuf_new()) == NULL){ 
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	if (netconf_malformed_message(cbret, "More than one message in netconf rpc frame")< 0)
+	    goto done;
+	netconf_output_encap(1, cbret, "rpc-error"); 
+	goto ok;
+    }
+    if ((xreq = xml_child_i_type(xtop, 0, CX_ELMNT)) == NULL){ /* Shouldnt happen */
+	clicon_err(OE_XML, EFAULT, "No xml req (shouldnt happen)");
 	goto done;
     }
-    free(str0);
-    if ((xrpc=xpath_first(xreq, NULL, "//rpc")) != NULL){
-        isrpc++;
-	if ((ret = xml_bind_yang_rpc(xrpc, yspec, &xret)) < 0)
-	    goto done;
-	if (ret > 0 &&
-	    (ret = xml_yang_validate_rpc(h, xrpc, &xret)) < 0) 
-	    goto done;
-	if (ret == 0){
-	    clicon_xml2cbuf(cbret, xret, 0, 0, -1);
-	    netconf_output_encap(1, cbret, "rpc-error");
-	    goto ok;
-	}
-    }
-    else
-        if (xpath_first(xreq, NULL, "//hello") != NULL)
-	    ;
-        else{
-            clicon_log(LOG_WARNING, "Invalid netconf msg: neither rpc or hello: dropped");
-            goto done;
-        }
-    if (!isrpc){ /* hello */
-	if (netconf_hello_dispatch(xreq) < 0)
-	    goto done;
-    }
-    else  /* rpc */
-	if (netconf_rpc_dispatch(h, xrpc, &xret) < 0){
-	    goto done;
-	}
-	else{ /* there is a return message in xret */
-
-	    if (xret == NULL){
-		if (netconf_operation_failed(cbret, "rpc", "Internal error: no xml return")< 0)
-		    goto done;
-		netconf_output_encap(1, cbret, "rpc-error");
-		goto done;
-	    }
-	    if ((xc = xml_child_i(xret, 0))!=NULL){
-		xa=NULL;
-		/* Copy message-id attribute from incoming to reply. 
-		 * RFC 6241:
-		 * If additional attributes are present in an <rpc> element, a NETCONF
-		 * peer MUST return them unmodified in the <rpc-reply> element.  This
-		 * includes any "xmlns" attributes.
-		 */
-		while ((xa = xml_child_each(xrpc, xa, CX_ATTR)) != NULL){
-		    /* If attribute already exists, dont copy it */
-		    if (xml_find_type(xc, NULL, xml_name(xa), CX_ATTR) != NULL)
-			continue;
-		    if ((xa2 = xml_dup(xa)) ==NULL)
-			goto done;
-		    if (xml_addsub(xc, xa2) < 0)
-			goto done;
-		}
-		clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0, -1);
-		if (netconf_output_encap(1, cbret, "rpc-reply") < 0){
-		    cbuf_free(cbret);
-		    goto done;
-		}
-	    }
-	}
+    if (netconf_input_packet(h, xreq, yspec) < 0)
+	goto done;
  ok:
     retval = 0;
-  done:
-    if (xreq)
-	xml_free(xreq);
+ done:
+    if (str)
+	free(str);
+    if (xtop)
+	xml_free(xtop);
     if (xret)
 	xml_free(xret);
     if (cbret)
@@ -269,7 +375,7 @@ netconf_input_cb(int   s,
 		/* OK, we have an xml string from a client */
 		/* Remove trailer */
 		*(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
-		if (netconf_input_packet(h, cb) < 0 &&
+		if (netconf_input_frame(h, cb) < 0 &&
 		    !ignore_packet_errors) // default is to ignore errors
 		    goto done; 
 		if (cc_closed)

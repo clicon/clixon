@@ -433,7 +433,7 @@ expectpart(){
 # Pipe stdin to command
 # Arguments:
 # - Command
-# - expected command return value (0 if OK)
+# - expected command return value (0 if OK) XXX SHOULD SWITCH w next
 # - stdin input
 # - expected stdout outcome
 # Use this if you want regex eg  ^foo$
