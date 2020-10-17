@@ -1230,7 +1230,11 @@ _json_parse(char      *str,
 	/* RFC 7951 Section 4: A namespace-qualified member name MUST be used for all 
 	 * members of a top-level JSON object 
 	 */
-	if (yspec && xml_prefix(x) == NULL){
+	if (yspec && xml_prefix(x) == NULL
+#ifdef XMLDB_CONFIG_HACK
+	    && strcmp(xml_name(x), "config") != 0 
+#endif
+	    ){
 	    if ((cberr = cbuf_new()) == NULL){
 		clicon_err(OE_UNIX, errno, "cbuf_new");
 		goto done;
