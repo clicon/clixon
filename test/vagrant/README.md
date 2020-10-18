@@ -25,7 +25,7 @@ You can also run a single vagrant test as follows:
 The current vagrant boxes are verified continuously:
 * ubuntu/bionic64
 * generic/centos8
-* freebsd/FreeBSD-12.1-STABLE
+* generic/freebsd12 
 
 For other vagrant boxes, see [search vagrant boxes](https://vagrantcloud.com/search)
 

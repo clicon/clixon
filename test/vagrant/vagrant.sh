@@ -139,7 +139,7 @@ case $release in
 	    $sshcmd sudo useradd -M $wwwuser    
 	fi
 	# packages for building
-	$sshcmd sudo yum install -y git
+	$sshcmd sudo yum install -y git make
 	# cligen
 	$sshcmd sudo yum install -y bison flex
 	# clixon utilities
@@ -182,6 +182,7 @@ case $release in
 	esac
 	;;
     ubuntu) # ubuntu/apt based
+	$sshcmd sudo apt-get update --fix-missing
 	$sshcmd sudo apt install -y git
 	# restconf user: $wwwuser
 	if [ ! $($sshcmd id -u $wwwuser) ]; then
@@ -199,10 +200,9 @@ case $release in
 		$sshcmd sudo apt install -y nginx
 		;;
 	    evhtp)
-		$sshcmd sudo apt install -y libevent-2.1
+#		$sshcmd sudo apt install -y libevent-2.1
 		buildevhtp=true
 		$sshcmd sudo apt install -y libevent-dev cmake libssl-dev
-
 		;;
 	esac
 	;;
@@ -211,7 +211,6 @@ case $release in
             $sshcmd sudo adduser -D -H $wwwuser
 	fi
 	$sshcmd sudo apk add --update git make build-base gcc flex bison curl-dev g++
-
 	# restconf
 	case ${with_restconf} in
 	    fcgi)
@@ -222,13 +221,18 @@ case $release in
 	esac
 	;;
     arch)
-	$sshcmd	sudo pacman -S --noconfirm git
+	$sshcmd sudo useradd -M $wwwuser    
+	useradd -m -G additional_groups -s login_shell username
+	$sshcmd sudo pacman -Syu --noconfirm git
+	# cligen
+	$sshcmd sudo pacman -Syu --noconfirm bison flex make
 	# restconf
 	case ${with_restconf} in
 	    fcgi)
-		$sshcmd	sudo pacman -S --noconfirm nginx fcgi
+		$sshcmd	sudo pacman -Syu --noconfirm nginx fcgi
 		;;
 	    evhtp)
+		$sshcmd	sudo pacman -Syu --noconfirm libevent cmake
 		;;
 	esac
 	;;
@@ -262,7 +266,7 @@ case ${with_restconf} in
 		test -d libevhtp || sudo git clone https://github.com/criticalstack/libevhtp.git
 		cd libevhtp/build; 
 		CMAKE=$(which cmake)
-		sudo $CMAKE -DEVHTP_DISABLE_REGEX=ON -DEVHTP_DISABLE_EVTHR=ON ..
+		sudo $CMAKE -DEVHTP_DISABLE_REGEX=ON -DEVHTP_DISABLE_EVTHR=ON -DBUILD_SHARED_LIBS=OFF ..
 		sudo make
 		sudo make install
 EOF

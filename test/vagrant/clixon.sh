@@ -39,6 +39,9 @@ git pull
 if [ $release = "freebsd" ]; then
     ./configure
     MAKE=$(which gmake)
+elif [ $release = "arch" ]; then
+    ./configure --prefix=/usr
+    MAKE=/usr/bin/make
 else
     ./configure --prefix=/usr
     MAKE=$(which make)
