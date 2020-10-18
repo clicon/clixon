@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [4.8.0](#480) Expected: 15 October 2020
+* [4.8.0](#480) 18 October 2020
 * [4.7.0](#470) 14 September 2020
 * [4.6.0](#460) 14 August 2020
 * [4.5.0](#450) 12 May 2020
@@ -25,7 +25,9 @@
 * [3.3.1](#331) June 7 2017
 
 ## 4.8.0
-Expected: 15 October 2020
+18 October 2020
+
+The Clixon 4.8 release features a new auto-cli implementation, a new "conf.d"-style configuration directory and more XPATH functionality.
 
 ### New features
 
@@ -34,11 +36,11 @@ Expected: 15 October 2020
   * In the new auto-cli, automatic modes are present at each YANG syntax node level, eg the above can be given as: `edit a b c; set d 4; top`
   * The existing CLI API remains, the new API is as follows: `cli_auto_edit()`, `cli_auto_up()`, `cli_auto_top()`, `cli_auto_show()`, `cli_auto_set()`, `cli_auto_merge()`, `cli_auto_create()`, `cli_auto_del()`.
   * See `test/test_cli_auto.sh` for an example of the new API, and `apps/cli/cli_auto.c` for the source code of the new callback API.
-  * Documentation will be appear and full integration with the main example.
+  * See the [auto-cli documentation](https://clixon-docs.readthedocs.io/en/latest/cli.html#the-auto-cli) and main example.
 * Added support for the following XPATH functions:
   * `count`, `name`, `contains`, `not`, as defined in [xpath 1.0](https://www.w3.org/TR/xpath-10)
   * `deref`, `derived-from` and `derived-from-or-self` from RFC7950 Section 10.
-    * in particular in augment/when statements
+    * these are in particular used in YANG augment/when statements
   * Improved error handling
     * Verification of XPath functions is done at startup when yang modules are loaded, not when XPaths are evaluated.
     * Separation of "not found" and "not implemented" XPath functions
@@ -63,6 +65,7 @@ Users may have to change how they access the system
 
 ### Minor changes
 
+* Removed string limit on cli prompt and cli mode name
 * Added more sanity checks on incoming top-level rpc and hello messages, including verifying top-level namespace
 * Added inline state field to clixon-example.yang
 * Added stricter check on schema-node identifier checking, such as for augments.

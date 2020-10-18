@@ -68,6 +68,12 @@
 #include "cli_handle.h"
 #include "cli_generate.h"
 
+
+/*
+ * Constants
+ */
+#define CLI_DEFAULT_PROMPT	"cli> "
+
 /*
  *
  * CLI PLUGIN INTERFACE, INTERNAL SECTION
@@ -81,35 +87,41 @@ syntax_mode_find(cli_syntax_t *stx,
 		 const char   *mode,
 		 int           create)
 {
-    cli_syntaxmode_t *m;
+    cli_syntaxmode_t *csm;
 
-    m = stx->stx_modes;
-    if (m) {
+    csm = stx->stx_modes;
+    if (csm) {
 	do {
-	    if (strcmp(m->csm_name, mode) == 0)
-		return m;
-	    m = NEXTQ(cli_syntaxmode_t *, m);
-	} while (m && m != stx->stx_modes);
+	    if (strcmp(csm->csm_name, mode) == 0)
+		return csm;
+	    csm = NEXTQ(cli_syntaxmode_t *, csm);
+	} while (csm && csm != stx->stx_modes);
     }
     
     if (create == 0)
 	return  NULL;
 
-   if ((m = malloc(sizeof(cli_syntaxmode_t))) == NULL) {
+   if ((csm = malloc(sizeof(cli_syntaxmode_t))) == NULL) {
        clicon_err(OE_UNIX, errno, "malloc");
+       return NULL;
+    }
+    memset(csm, 0, sizeof(*csm));
+    if ((csm->csm_name = strdup(mode)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
 	return NULL;
     }
-    memset(m, 0, sizeof(*m));
-    strncpy(m->csm_name, mode, sizeof(m->csm_name)-1);
-    strncpy(m->csm_prompt, CLI_DEFAULT_PROMPT, sizeof(m->csm_prompt)-1);
-    if ((m->csm_pt = pt_new()) == NULL){
+    if ((csm->csm_prompt = strdup(CLI_DEFAULT_PROMPT)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	return NULL;
+    }
+    if ((csm->csm_pt = pt_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "pt_new");
 	return NULL;
     }
-    INSQ(m, stx->stx_modes);
+    INSQ(csm, stx->stx_modes);
     stx->stx_nmodes++;
 
-    return m;
+    return csm;
 }
 
 /*! Generate parse tree for syntax mode 
@@ -141,12 +153,12 @@ syntax_append(clicon_handle h,
 	      const char   *name, 
 	      parse_tree   *pt)
 {
-    cli_syntaxmode_t *m;
+    cli_syntaxmode_t *csm;
 
-    if ((m = syntax_mode_find(stx, name, 1)) == NULL) 
+    if ((csm = syntax_mode_find(stx, name, 1)) == NULL) 
 	return -1;
 
-    if (cligen_parsetree_merge(m->csm_pt, NULL, pt) < 0)
+    if (cligen_parsetree_merge(csm->csm_pt, NULL, pt) < 0)
 	return -1;
     
     return 0;
@@ -159,16 +171,20 @@ static int
 cli_syntax_unload(clicon_handle h)
 {
     cli_syntax_t            *stx = cli_syntax(h);
-    cli_syntaxmode_t        *m;
+    cli_syntaxmode_t        *csm;
 
     if (stx == NULL)
 	return 0;
 
     while (stx->stx_nmodes > 0) {
-	m = stx->stx_modes;
-	DELQ(m, stx->stx_modes, cli_syntaxmode_t *);
-	if (m){
-	    free(m);
+	csm = stx->stx_modes;
+	DELQ(csm, stx->stx_modes, cli_syntaxmode_t *);
+	if (csm){
+	    if (csm->csm_name)
+		free(csm->csm_name);
+	    if (csm->csm_prompt)
+		free(csm->csm_prompt);
+	    free(csm);
 	}
 	stx->stx_nmodes--;
     }
@@ -552,7 +568,7 @@ clicon_parse(clicon_handle  h,
     char         *modename0;
     int           r;
     cli_syntax_t *stx = NULL;
-    cli_syntaxmode_t *smode;
+    cli_syntaxmode_t *csm;
     parse_tree   *pt;     /* Orig */
     cg_obj       *match_obj;
     cvec         *cvv = NULL;
@@ -565,16 +581,16 @@ clicon_parse(clicon_handle  h,
 	f = stderr;
     stx = cli_syntax(h);
     if ((modename = *modenamep) == NULL) {
-	smode = stx->stx_active_mode;
-	modename = smode->csm_name;
+	csm = stx->stx_active_mode;
+	modename = csm->csm_name;
     }
     else {
-	if ((smode = syntax_mode_find(stx, modename, 0)) == NULL) {
+	if ((csm = syntax_mode_find(stx, modename, 0)) == NULL) {
 	    fprintf(f, "Can't find syntax mode '%s'\n", modename);
 	    goto done;
 	}
     }
-    if (smode){
+    if (csm != NULL){
 	modename0 = NULL;
 	if ((pt = cligen_ph_active_get(cli_cligen(h))) != NULL)
 	    modename0 = pt_name_get(pt);
@@ -634,6 +650,84 @@ done:
     return retval;
 }
 
+/*! Return a malloced expanded prompt string from printf-like format
+ * @param[in]   h        Clixon handle
+ * @param[in]   fmt      Format string, using %H, %
+ * @retval      prompt   Malloced string, free after use
+ * @retval      NULL     Error
+ */
+static char *
+cli_prompt_get(clicon_handle h,
+	       char         *fmt)
+{
+    char   *s = fmt;
+    char    hname[1024];
+    char    tty[32];
+    char   *tmp;
+    cbuf   *cb = NULL;
+    char   *path = NULL;
+    char   *promptstr = NULL;
+    char   *str0;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    /* Start with empty string */
+    while(*s) {
+	if (*s == '%' && *++s) {
+	    switch(*s) {
+	    case 'H': /* Hostname */
+		if (gethostname(hname, sizeof(hname)) != 0)
+		    strncpy(hname, "unknown", sizeof(hname)-1);
+		cprintf(cb, "%s", hname);
+		break;
+	    case 'U': /* Username */
+		tmp = getenv("USER");
+		cprintf(cb, "%s", tmp?tmp:"nobody");
+		break;
+	    case 'T': /* TTY */
+		if(ttyname_r(fileno(stdin), tty, sizeof(tty)-1) < 0)
+		    strcpy(tty, "notty");
+		cprintf(cb, "%s", tty);
+		break;
+	    case 'W': /* working edit path */
+		if (clicon_data_get(h, "cli-edit-mode", &path) == 0 &&
+		    strlen(path))
+		    cprintf(cb, "%s", path);
+		else
+		    cprintf(cb, "/");
+		break;
+	    default:
+		cprintf(cb, "%%");
+		cprintf(cb, "%c", *s);
+	    }
+	}
+	else if (*s == '\\' && *++s) {
+	    switch(*s) {
+	    case 'n':
+		cprintf(cb, "\n");
+		break;
+	    default:
+		cprintf(cb, "\\");
+		cprintf(cb, "%c", *s);
+	    }
+	}
+	else 
+	    cprintf(cb, "%c", *s);
+	s++;
+    }
+    str0 = cbuf_len(cb) ? cbuf_get(cb) : CLI_DEFAULT_PROMPT;
+    if ((promptstr = strdup(str0)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return promptstr;
+}
+
 /*! Read command from CLIgen's cliread() using current syntax mode.
  * @param[in]  h       Clicon handle
  * @param[out] stringp Pointer to command buffer or NULL on EOF
@@ -649,7 +743,8 @@ clicon_cliread(clicon_handle h,
     cli_syntaxmode_t *mode;
     cli_syntax_t     *stx;
     cli_prompthook_t *fn;
-    clixon_plugin     *cp;
+    clixon_plugin    *cp;
+    char             *promptstr;
     
     stx = cli_syntax(h);
     mode = stx->stx_active_mode;
@@ -663,8 +758,12 @@ clicon_cliread(clicon_handle h,
     }
     if (clicon_quiet_mode(h))
 	cli_prompt_set(h, "");
-    else
-	cli_prompt_set(h, cli_prompt(h, pfmt ? pfmt : mode->csm_prompt));
+    else{
+	if ((promptstr = cli_prompt_get(h, pfmt ? pfmt : mode->csm_prompt)) == NULL)
+	    goto done;
+	cli_prompt_set(h, promptstr);
+	free(promptstr);
+    }
     cligen_ph_active_set(cli_cligen(h), mode->csm_name);
 
     if (cliread(cli_cligen(h), stringp) < 0){
@@ -717,114 +816,27 @@ cli_syntax_mode(clicon_handle h)
  * @param[in]  h       Clicon handle
  * @param[in]  name    Name of syntax mode 
  * @param[in]  prompt  Prompt format
+ * @retvak     0       OK
+ * @retvak    -1       Error
  */
 int
 cli_set_prompt(clicon_handle h,
 	       const char   *name,
 	       const char   *prompt)
 {
-    cli_syntaxmode_t *m;
+    cli_syntaxmode_t *csm;
 
-    if ((m = syntax_mode_find(cli_syntax(h), name, 1)) == NULL)
+    if ((csm = syntax_mode_find(cli_syntax(h), name, 1)) == NULL)
 	return -1;
     
-    strncpy(m->csm_prompt, prompt, sizeof(m->csm_prompt)-1);
+    if (csm->csm_prompt != NULL){
+	free(csm->csm_prompt);
+	csm->csm_prompt = NULL;
+    }
+    if ((csm->csm_prompt = strdup(prompt)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	return -1;
+    }
     return 0;
-}
-
-/*! Format prompt 
- * @param[in]     h       Clicon handle
- * @param[out]    prompt  Prompt string to be written
- * @param[in]     plen    Length of prompt string
- * @param[in]     str     Stdarg fmt string
- */
-static int
-prompt_fmt(clicon_handle h,
-	   char         *prompt,
-	   size_t        plen,
-	   char         *fmt,...)
-{
-  va_list ap;
-  char   *s = fmt;
-  char    hname[1024];
-  char    tty[32];
-  char   *tmp;
-  int     ret = -1;
-  cbuf   *cb = NULL;
-  char   *path = NULL;
-
-  if ((cb = cbuf_new()) == NULL){
-      clicon_err(OE_XML, errno, "cbuf_new");
-      goto done;
-  }
-  
-  /* Start with empty string */
-  while(*s) {
-      if (*s == '%' && *++s) {
-	  switch(*s) {
-	  case 'H': /* Hostname */
-	      if (gethostname(hname, sizeof(hname)) != 0)
-		  strncpy(hname, "unknown", sizeof(hname)-1);
-	      cprintf(cb, "%s", hname);
-	      break;
-	  case 'U': /* Username */
-	      tmp = getenv("USER");
-	      cprintf(cb, "%s", tmp?tmp:"nobody");
-	      break;
-	  case 'T': /* TTY */
-	      if(ttyname_r(fileno(stdin), tty, sizeof(tty)-1) < 0)
-		  strcpy(tty, "notty");
-	      cprintf(cb, "%s", tty);
-	      break;
-	  case 'W': /* working edit path */
-	      if (clicon_data_get(h, "cli-edit-mode", &path) == 0 &&
-		  strlen(path))
-		  cprintf(cb, "%s", path);
-	      else
-		  cprintf(cb, "/");
-	      break;
-	  default:
-	      cprintf(cb, "%%");
-	      cprintf(cb, "%c", *s);
-	  }
-      }
-      else if (*s == '\\' && *++s) {
-	  switch(*s) {
-	  case 'n':
-	      cprintf(cb, "\n");
-              break;
-	  default:
-	      cprintf(cb, "\\");
-	      cprintf(cb, "%c", *s);
-	  }
-      }
-      else 
-	  cprintf(cb, "%c", *s);
-      s++;
-  }
-done:
-  if (cb)
-      fmt = cbuf_get(cb);
-  va_start(ap, fmt);
-  ret = vsnprintf(prompt, plen, fmt, ap);
-  va_end(ap);
-  if (cb)
-      cbuf_free(cb);
-  return ret;
-}
-
-/*! Return a formatted prompt string
- * @param[in]     fmt      Format string
- */
-char *
-cli_prompt(clicon_handle h,
-	   char         *fmt)
-{
-    static char prompt[CLI_PROMPT_LEN];
-
-    if (prompt_fmt(h, prompt, sizeof(prompt), fmt) < 0)
-	return CLI_DEFAULT_PROMPT;
-    
-    return prompt;
 }
 
