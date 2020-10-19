@@ -477,16 +477,6 @@ from_validate_common(clicon_handle       h,
     /* Clear flags xpath for get */
     xml_apply0(td->td_target, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
 	       (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
-    /* Validate the target state. It is not completely clear this should be done 
-     * here. It is being made in generic_validate below. 
-     * But xml_diff requires some basic validation, at least check that yang-specs
-     * have been assigned
-     */
-    if ((ret = xml_yang_validate_all_top(h, td->td_target, xret)) < 0)
-	goto done;
-    if (ret == 0)
-	goto fail;
-
     /* 2. Parse xml trees 
      * This is the state we are going from */
     if (xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, &td->td_src, NULL) < 0)

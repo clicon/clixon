@@ -159,7 +159,7 @@ xml2txt_recurse(FILE             *f,
 	    (*fn)(f, "%s;\n", xml_value(x));
 	    break;
 	case CX_ELMNT:
-	    (*fn)(f, "%*s;\n", 4*level, xml_name(x));
+	    (*fn)(f, "%*s%s;\n", 4*level, "", xml_name(x));
 	    break;
 	default:
 	    break;

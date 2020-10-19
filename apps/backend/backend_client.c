@@ -1596,7 +1596,7 @@ from_client_msg(clicon_handle        h,
     enum nacm_credentials_t creds;
     char                *rpcname;
     char                *rpcprefix;
-    char                *namespace;
+    char                *namespace = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h); 
@@ -1636,16 +1636,17 @@ from_client_msg(clicon_handle        h,
     }
     rpcname = xml_name(x);
     rpcprefix = xml_prefix(x);
-    if (0) { /* XXX notyet (4.8) restconf seems not to produce right namespace */
-	if (xml2ns(x, rpcprefix, &namespace) < 0)
+    /* Note that this validation is also made in xml_yang_validate_rpc, but not for hello
+     */
+    if (xml2ns(x, rpcprefix, &namespace) < 0)
+	goto done;
+    /* Only accept resolved NETCONF base namespace */
+    if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
+	if (netconf_unknown_namespace(cbret, "protocol", rpcprefix, "No appropriate namespace associated with prefix") < 0)
 	    goto done;
-	/* Only accept resolved NETCONF base namespace */
-	if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
-	    if (netconf_unknown_namespace(cbret, "protocol", rpcprefix, "No appropriate namespace associated with prefix")< 0)
-		goto done;
-	    goto reply;
-	}
+	goto reply;
     }
+
     if (strcmp(rpcname, "rpc") == 0){
 	; /* continue  below */
     }

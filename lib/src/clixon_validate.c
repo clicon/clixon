@@ -330,10 +330,24 @@ xml_yang_validate_rpc(clicon_handle h,
     int        retval = -1;
     yang_stmt *yn=NULL;  /* rpc name */
     cxobj     *xn;       /* rpc name */
+    char      *rpcprefix;
+    char      *namespace = NULL;
     
     if (strcmp(xml_name(xrpc), "rpc")){
 	clicon_err(OE_XML, EINVAL, "Expected RPC");
 	goto done;
+    }
+    rpcprefix = xml_prefix(xrpc);
+    if (xml2ns(xrpc, rpcprefix, &namespace) < 0){
+	fprintf(stderr, "%s ERROR\n", __FUNCTION__);
+	goto done;
+    }
+    /* Only accept resolved NETCONF base namespace */
+    if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
+	fprintf(stderr, "%s UNKNOWN\n", __FUNCTION__);
+	if (netconf_unknown_namespace_xml(xret, "protocol", rpcprefix, "No appropriate namespace associated with prefix")< 0)
+	    goto done;
+	goto fail;
     }
     xn = NULL;
     /* xn is name of rpc, ie <rcp><xn/></rpc> */

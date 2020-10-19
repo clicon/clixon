@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [4.9.0](#490) Expected 15 December 2020
 * [4.8.0](#480) 18 October 2020
 * [4.7.0](#470) 14 September 2020
 * [4.6.0](#460) 14 August 2020
@@ -23,6 +24,8 @@
 * [3.3.3](#333) 25 November 2017
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
+
+## 4.9.0 Expected: 15 Dec 2020
 
 ## 4.8.0
 18 October 2020

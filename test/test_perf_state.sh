@@ -166,7 +166,7 @@ edit interfaces a foo b interface e1
 show state xml
 EOF
 new "cli get test single req"
-expectpart "$($clixon_cli -F $fin -f $cfg)" 0 "<name>e1</name><type>ex:eth</type><enabled>true</enabled><status>up</status>$"
+expectpart "$($clixon_cli -F $fin -f $cfg)" 0 "<name>e1</name>" "<type>ex:eth</type>" "<enabled>true</enabled>" "<status>up</status>$"
 
 new "cli get $perfreq single reqs"
 { time -p for (( i=0; i<$perfreq; i++ )); do

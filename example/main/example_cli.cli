@@ -72,15 +72,15 @@ show("Show a particular state of the system"){
     		     xml("Show comparison in xml"), compare_dbs((int32)0);
 		     text("Show comparison in text"), compare_dbs((int32)1);
     }
-    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", false, false);{
-	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", false, false);
-	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", false, false, "set ");
-	    netconf("Show configuration as netconf edit-config operation"), cli_auto_show("datamodel", "candidate", "netconf", false, false);
-	    text("Show configuration as text"), cli_auto_show("datamodel", "candidate", "text", false, false);
-	    json("Show configuration as JSON"), cli_auto_show("datamodel", "candidate", "json", false, false);
+    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
+	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", true, false);
+	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", true, false, "set ");
+	    netconf("Show configuration as netconf edit-config operation"), cli_auto_show("datamodel", "candidate", "netconf", true, false);
+	    text("Show configuration as text"), cli_auto_show("datamodel", "candidate", "text", true, false);
+	    json("Show configuration as JSON"), cli_auto_show("datamodel", "candidate", "json", true, false);
     }
-    state("Show configuration and state"), cli_auto_show("datamodel", "running", "text", false, true); {
-    	    xml("Show configuration and state as XML"), cli_auto_show("datamodel", "running", "xml", false, true);
+    state("Show configuration and state"), cli_auto_show("datamodel", "running", "text", true, true); {
+    	    xml("Show configuration and state as XML"), cli_auto_show("datamodel", "running", "xml", true, true);
     }
 }
 

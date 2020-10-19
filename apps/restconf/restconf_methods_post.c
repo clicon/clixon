@@ -756,7 +756,6 @@ api_operations_post(clicon_handle h,
     cxobj     *xbot = NULL;
     yang_stmt *y = NULL;
     cxobj     *xoutput = NULL;
-    cxobj     *xa;
     cxobj     *xe;
     char      *username;
     cbuf      *cbret = NULL;
@@ -822,17 +821,18 @@ api_operations_post(clicon_handle h,
     /* 3. Build xml tree with user and rpc: 
      * <rpc username="foo"><myfn xmlns="uri"/>
      */
-    if ((xtop = xml_new("rpc", NULL, CX_ELMNT)) == NULL)
+    if ((username = clicon_username_get(h)) != NULL){
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xtop, NULL, "<rpc xmlns=\"%s\" username=\"%s\"/>",
+				NETCONF_BASE_NAMESPACE, username) < 0)
+	    goto done;
+    }
+    else
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xtop, NULL, "<rpc xmlns=\"%s\"/>",
+				NETCONF_BASE_NAMESPACE) < 0)
+	    goto done;
+    if (xml_rootchild(xtop, 0, &xtop) < 0)
 	goto done;
     xbot = xtop;
-    /* Here xtop is: <rpc/> */
-    if ((username = clicon_username_get(h)) != NULL){
-	if ((xa = xml_new("username", xtop, CX_ATTR)) == NULL)
-	    goto done;
-	if (xml_value_set(xa, username) < 0)
-	    goto done;
-	/* Here xtop is: <rpc username="foo"/> */
-    }
     if ((ret = api_path2xml(oppath, yspec, xtop, YC_SCHEMANODE, 1, &xbot, &y, &xerr)) < 0)
 	goto done;
     if (ret == 0){ /* validation failed */
