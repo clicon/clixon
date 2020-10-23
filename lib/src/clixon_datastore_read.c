@@ -85,6 +85,9 @@
 #define handle(xh) (assert(text_handle_check(xh)==0),(struct text_handle *)(xh))
 
 /*! Ensure that xt only has a single sub-element and that is "config" 
+ * @retval    -1     Top element not "config" or "config" element not unique or
+ *                   other error, check specific clicon_errno, clicon_suberrno
+ * @retval     0     There exists a single "config" sub-element
  */
 static int
 singleconfigroot(cxobj  *xt, 
@@ -123,6 +126,8 @@ singleconfigroot(cxobj  *xt,
 }
 
 /*! Recurse up from x0 up to x0t then create objects from x1t down to new object x1
+ * @retval     -1    General error, check specific clicon_errno, clicon_suberrno
+ * @retval     0     OK
  */
 static int
 xml_copy_bottom_recurse(cxobj  *x0t, 
@@ -198,6 +203,10 @@ xml_copy_bottom_recurse(cxobj  *x0t,
     return retval;
 }
 
+/*! Copy an XML tree bottom-up
+ * @retval     -1    General error, check specific clicon_errno, clicon_suberrno
+ * @retval     0     OK
+ */
 static int
 xml_copy_from_bottom(cxobj  *x0t, 
 		     cxobj  *x0,
@@ -213,7 +222,7 @@ xml_copy_from_bottom(cxobj  *x0t,
 	goto ok;
     x0p = xml_parent(x0);
     if (xml_copy_bottom_recurse(x0t, x0p, x1t, &x1p) < 0)
-	return -1;
+	goto done;
     if ((y = xml_spec(x0)) != NULL){
 	/* Look if it exists */
 	if (match_base_child(x1p, x0, y, &x1) < 0)
@@ -237,6 +246,8 @@ xml_copy_from_bottom(cxobj  *x0t,
  * @param[in]  yspec  Top-level yang spec 
  * @param[in]  xt     XML tree
  * @param[out] msdiff Modules-state differences
+ * @retval     -1     General error, check specific clicon_errno, clicon_suberrno
+ * @retval     0      OK
  *
  * The modstate difference contains:
  * - if there is a modstate
@@ -357,8 +368,8 @@ text_read_modstate(clicon_handle       h,
 /*! Check if nacm only contains default values, if so disable NACM
  * @param[in]  xt    Top-level XML
  * @param[in]  yspec YANG spec  
+ * @retval     -1     General error, check specific clicon_errno, clicon_suberrno
  * @retval     0     OK
- * @retval    -1     Error
  */
 static int
 disable_nacm_on_empty(cxobj     *xt,
@@ -408,10 +419,11 @@ disable_nacm_on_empty(cxobj     *xt,
  * @param[out] xp     XML tree read from file
  * @param[out] de     If set, return db-element status (eg empty flag)
  * @param[out] msdiff If set, return modules-state differences
- * @retval    -1      Error
+ * @retval     -1     General error, check specific clicon_errno, clicon_suberrno
  * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
  * @retval     1      OK
- * @note retval 0 is NYI because of functions calling this function cannot handle it yet
+ * @note Use of 1 for OK
+ * @note retval 0 is NYI because calling functions cannot handle it yet
  */
 #undef XMLDB_READFILE_FAIL /* See comment on retval = 0 above */
 int
@@ -508,9 +520,10 @@ xmldb_readfile(clicon_handle    h,
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msdiff    If set, return modules-state differences
- * @retval     -1     Error
+ * @retval     -1     General error, check specific clicon_errno, clicon_suberrno
  * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
  * @retval     1      OK
+ * @note Use of 1 for OK
  * @see xmldb_get  the generic API function
  */
 static int
@@ -615,9 +628,10 @@ xmldb_get_nocache(clicon_handle    h,
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msdiff    If set, return modules-state differences
- * @retval     -1     Error
+ * @retval     -1     General error, check specific clicon_errno, clicon_suberrno
  * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
  * @retval     1      OK
+ * @note Use of 1 for OK
  * @see xmldb_get  the generic API function
  */
 static int
@@ -755,9 +769,10 @@ xmldb_get_cache(clicon_handle    h,
  * @param[in]  config If set only configuration data, else also state
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msdiff    If set, return modules-state differences
- * @retval     -1     Error
+ * @retval     -1     General error, check specific clicon_errno, clicon_suberrno
  * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
  * @retval     1      OK
+ * @note Use of 1 for OK
  */
 static int
 xmldb_get_zerocopy(clicon_handle    h,
@@ -844,8 +859,10 @@ xmldb_get_zerocopy(clicon_handle    h,
  * @param[in]  nsc    XML namespace context for XPATH
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[out] xret   Single return XML tree. Free with xml_free()
- * @retval     0      OK
- * @retval     -1     Error
+ * @retval     -1     General error, check specific clicon_errno, clicon_suberrno
+ * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
+ * @retval     1      OK
+ * @note Use of 1 for OK
  * @code
  *   if (xmldb_get(xh, "running", NULL, "/interfaces/interface[name="eth"]", &xt) < 0)
  *      err;
@@ -879,8 +896,10 @@ xmldb_get(clicon_handle    h,
  * @param[in]  copy   Force copy. Overrides cache_zerocopy -> cache 
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msdiff If set, return modules-state differences (upgrade code)
- * @retval     0      OK
- * @retval     -1     Error
+ * @retval     -1     General error, check specific clicon_errno, clicon_suberrno
+ * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
+ * @retval     1      OK
+ * @note Use of 1 for OK
  * @code
  *   cxobj   *xt;
  *   if (xmldb_get0(xh, "running", YB_MODULE, nsc, "/interface[name="eth"]", 0, &xt, NULL) < 0)
@@ -937,7 +956,9 @@ xmldb_get0(clicon_handle    h,
  *
  * @param[in]  h    Clicon handle
  * @param[in]  db   Name of datastore
- * "Clear" an xml tree means removing default values and resetting all flags.
+ * @retval     -1     General error, check specific clicon_errno, clicon_suberrno
+ * @retval     0      OK
+ * @note "Clear" an xml tree means removing default values and resetting all flags.
  * @see xmldb_get0
  */
 int 
@@ -967,6 +988,7 @@ xmldb_get0_clear(clicon_handle    h,
 /*! Free xml tree obtained with xmldb_get0
  * @param[in]     h   Clixon handle
  * @param[in,out] xp  Pointer to XML cache. 
+ * @retval     0      Always.
  * @see xmldb_get0
  */
 int 
@@ -975,6 +997,8 @@ xmldb_get0_free(clicon_handle    h,
 {
     if (*xp == NULL)
 	return 0;
+    /* Note that if clicon_datastore_cache(h) fails (returns -1), the following
+     * xml_free can fail (if **xp not obtained using xmldb_get0) */
     if (clicon_datastore_cache(h) != DATASTORE_CACHE_ZEROCOPY)
 	xml_free(*xp);
     *xp = NULL;
