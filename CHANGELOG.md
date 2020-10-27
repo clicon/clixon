@@ -27,6 +27,10 @@
 
 ## 4.9.0 Expected: 15 Dec 2020
 
+### Minor changes
+
+* Added XPATH functions `position`
+
 ## 4.8.0
 18 October 2020
 

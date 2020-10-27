@@ -494,6 +494,7 @@ xp_eval_predicate(xp_ctx     *xc,
 	    xcc->xc_type = XT_NODESET;
 	    xcc->xc_initial = xc->xc_initial;
 	    xcc->xc_node = x;
+	    xcc->xc_position = i;
 	    /* For each node in the node-set to be filtered, the PredicateExpr is
 	     * evaluated with that node as the context node */
 	    if (cxvec_append(x, &xcc->xc_nodeset, &xcc->xc_size) < 0)
@@ -746,12 +747,35 @@ xp_relop(xp_ctx    *xc1,
 	    xr->xc_bool = (xc1->xc_bool == xc2->xc_bool);
 	    break;
 	case XT_NUMBER:
-	    xr->xc_bool = (xc1->xc_number == xc2->xc_number);
+	    switch(op){
+	    case XO_EQ:
+		xr->xc_bool = (xc1->xc_number == xc2->xc_number);
+		break;
+	    case XO_NE:
+		xr->xc_bool = (xc1->xc_number != xc2->xc_number);
+		break;
+	    case XO_GE:
+		xr->xc_bool = (xc1->xc_number >= xc2->xc_number);
+		break;
+	    case XO_LE:
+		xr->xc_bool = (xc1->xc_number <= xc2->xc_number);
+		break;
+	    case XO_LT:
+		xr->xc_bool = (xc1->xc_number < xc2->xc_number);
+		break;
+	    case XO_GT:
+		xr->xc_bool = (xc1->xc_number > xc2->xc_number);
+		break;
+	    default:
+		clicon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
+		goto done;
+		break;
+	    }
 	    break;
 	case XT_STRING:
 	    xr->xc_bool = (strcmp(xc1->xc_string, xc2->xc_string)==0);
 	    break;
-	}
+	} /* switch xc1 */
     }
     else if (xc1->xc_type != XT_NODESET &&
 	     xc2->xc_type != XT_NODESET){
@@ -988,6 +1012,11 @@ xp_eval(xp_ctx     *xc,
 		break;
 	    case XPATHFN_DERIVED_FROM_OR_SELF:
 		if (xp_function_derived_from(xc, xs->xs_c0, nsc, localonly, 1, xrp) < 0)
+		    goto done;
+		goto ok;
+		break;
+	    case XPATHFN_POSITION:
+		if (xp_function_position(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
 		    goto done;
 		goto ok;
 		break;

@@ -534,7 +534,7 @@ from_client_get_config(clicon_handle h,
 	}
 	if (ret == 0){
 	    if (netconf_bad_attribute(cbret, "application",
-				      "<bad-attribute>depth</bad-attribute>", "Unrecognized value of depth attribute") < 0)
+				      "depth", "Unrecognized value of depth attribute") < 0)
 		goto done;
 	    goto ok;
 	}
@@ -1044,6 +1044,7 @@ from_client_get(clicon_handle h,
     int             i;
     cxobj          *xerr = NULL;
     int             ret;
+    char           *reason = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
     username = clicon_username_get(h);
@@ -1074,14 +1075,13 @@ from_client_get(clicon_handle h,
 	content = netconf_content_str2int(attr);
     /* Clixon extensions: depth */
     if ((attr = xml_find_value(xe, "depth")) != NULL){
-	char *reason = NULL;
 	if ((ret = parse_int32(attr, &depth, &reason)) < 0){
 	    clicon_err(OE_XML, errno, "parse_int32");
 	    goto done;
 	}
 	if (ret == 0){
 	    if (netconf_bad_attribute(cbret, "application",
-				      "<bad-attribute>depth</bad-attribute>", "Unrecognized value of depth attribute") < 0)
+				      "depth", "Unrecognized value of depth attribute") < 0)
 		goto done;
 	    goto ok;
 	}
@@ -1206,6 +1206,8 @@ from_client_get(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (reason)
+	free(reason);
     if (xerr)
 	xml_free(xerr);
     if (xpath)

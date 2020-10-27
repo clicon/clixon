@@ -376,6 +376,41 @@ xp_function_derived_from(xp_ctx            *xc,
     return retval;
 }
 
+/*! Return a number equal to the context position from the expression evaluation context.
+ *
+ * Signature: number position(node-set)
+ * @param[in]  xc0  Incoming context
+ * @param[in]  xs   XPATH node tree
+ * @param[in]  nsc  XML Namespace context
+ * @param[in]  localonly Skip prefix and namespace tests (non-standard)
+ * @param[out] xrp  Resulting context
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+xp_function_position(xp_ctx            *xc0,
+		     struct xpath_tree *xs,
+		     cvec              *nsc,
+		     int                localonly,
+		     xp_ctx           **xrp)
+{
+    int         retval = -1;
+    xp_ctx     *xr = NULL;
+    
+    if ((xr = malloc(sizeof(*xr))) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(xr, 0, sizeof(*xr));
+    xr->xc_initial = xc0->xc_initial;
+    xr->xc_type = XT_NUMBER;
+    xr->xc_number = xc0->xc_position;
+    *xrp = xr;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! The count function returns the number of nodes in the argument node-set.
  *
  * Signature: number count(node-set)
@@ -527,7 +562,7 @@ xp_function_contains(xp_ctx            *xc,
 
 /*! The not function returns true if its argument is false, and false otherwise.
  *
- * Signatire: boolean contains(boolean)
+ * Signature: boolean not(boolean)
  */
 int
 xp_function_not(xp_ctx            *xc0,

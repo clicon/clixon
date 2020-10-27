@@ -103,4 +103,12 @@ for cmd1 in $cmds; do
     println "Mem test $cmd1 done"
 done
 
+if [ $err -eq 0 ]; then 
+    echo OK
+else
+    echo -e "\e[31mError"
+    echo -ne "\e[0m"
+    exit -1
+fi
+
 unset pattern

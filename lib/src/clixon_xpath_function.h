@@ -55,7 +55,7 @@ enum clixon_xpath_function{
     XPATHFN_ENUM_VALUE,             /* RFC 7950 10.5.1 NYI */
     XPATHFN_BIT_IS_SET,             /* RFC 7950 10.6.1 NYI */
     XPATHFN_LAST,                   /* XPATH 1.0 4.1   NYI */
-    XPATHFN_POSITION,               /* XPATH 1.0 4.1   NYI */
+    XPATHFN_POSITION,               /* XPATH 1.0 4.1 */
     XPATHFN_COUNT,                  /* XPATH 1.0 4.1 */
     XPATHFN_ID,                     /* XPATH 1.0 4.1   NYI */
     XPATHFN_LOCAL_NAME,             /* XPATH 1.0 4.1   NYI */
@@ -96,6 +96,7 @@ const char *xp_fnname_int2str(enum clixon_xpath_function code);
 int xp_function_current(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_deref(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_derived_from(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, int self, xp_ctx **xrp);
+int xp_function_position(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_count(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_name(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_contains(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);

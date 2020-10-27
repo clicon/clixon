@@ -274,7 +274,7 @@ netconf_missing_attribute(cbuf *cb,
  * out of range, pattern mismatch.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
- * @param[in]  info    bad-attribute or bad-element xml
+ * @param[in]  info    Attribute name
  * @param[in]  message Error message (will be XML encoded)
  */
 int
@@ -303,7 +303,7 @@ netconf_bad_attribute(cbuf *cb,
  * out of range, pattern mismatch.
  * @param[out] xret    Error XML tree. Free with xml_free after use
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
- * @param[in]  info    bad-attribute or bad-element xml
+ * @param[in]  info    Attribute name
  * @param[in]  message Error message (will be XML encoded)
  */
 int
@@ -331,7 +331,7 @@ netconf_bad_attribute_xml(cxobj **xret,
 	goto done;
     if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>%s</error-type>"
 			    "<error-tag>bad-attribute</error-tag>"
-			    "<error-info>%s</error-info>"
+			    "<error-info><bad-attribute>%s</bad-attribute></error-info>"
 			    "<error-severity>error</error-severity>", type, info) < 0)
 	goto done;
     if (message){
@@ -347,7 +347,6 @@ netconf_bad_attribute_xml(cxobj **xret,
 	free(encstr);
     return retval;
 }
-
 
 /*! Create Netconf unknown-attribute error XML tree according to RFC 6241 App A
  *

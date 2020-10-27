@@ -98,8 +98,8 @@ done
 new "Openconfig test: $clixon_cli -1f $cfg -y $f show version ($m modules)"
 for f in $files; do
     if [ -n "$(head -1 $f|grep '^module')" ]; then
-	new "$clixon_cli -1f $cfg -y $f show version"
-	expectfn "$clixon_cli -1f $cfg -y $f show version" 0 "$version."
+	new "$clixon_cli -D $DBG  -1f $cfg -y $f show version"
+	expectfn "$clixon_cli -D $DBG -1f $cfg -y $f show version" 0 "$version."
     fi
 
 done

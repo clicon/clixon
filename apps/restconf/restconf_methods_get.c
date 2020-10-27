@@ -159,7 +159,7 @@ api_data_get2(clicon_handle  h,
 	clicon_debug(1, "%s content=%s", __FUNCTION__, attr);
 	if ((int)(content = netconf_content_str2int(attr)) == -1){
 	    if (netconf_bad_attribute_xml(&xerr, "application",
-					  "<bad-attribute>content</bad-attribute>", "Unrecognized value of content attribute") < 0)
+					  "content", "Unrecognized value of content attribute") < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
@@ -181,7 +181,7 @@ api_data_get2(clicon_handle  h,
 	    }
 	    if (ret==0){
 		if (netconf_bad_attribute_xml(&xerr, "application",
-					      "<bad-attribute>depth</bad-attribute>", "Unrecognized value of depth attribute") < 0)
+					      "depth", "Unrecognized value of depth attribute") < 0)
 		    goto done;
 		if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
 		    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");

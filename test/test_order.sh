@@ -301,7 +301,7 @@ new "add one entry (c) to leaf-list"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\">c</y0></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "add one entry (a) to leaf-list first (with no yang namespace - error)"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\" yang:insert=\"first\">a</y0></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-attribute</error-tag><error-info>insert</error-info><error-severity>error</error-severity><error-message>Unresolved attribute prefix (no namespace?)</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\" yang:insert=\"first\">a</y0></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-attribute</error-tag><error-info><bad-attribute>insert</bad-attribute></error-info><error-severity>error</error-severity><error-message>Unresolved attribute prefix (no namespace?)</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "add one entry (b) to leaf-list first"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"first\">b</y0></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -354,7 +354,7 @@ new "add one entry (key c) to list"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><y2 xmlns=\"urn:example:order\"><k>c</k><a>foo</a></y2></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "add one entry (key a) to list first (with no yang namespace - error)"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><y2 xmlns=\"urn:example:order\" yang:insert=\"first\"><k>a</k><a>foo</a></y2></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-attribute</error-tag><error-info>insert</error-info><error-severity>error</error-severity><error-message>Unresolved attribute prefix (no namespace?)</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><y2 xmlns=\"urn:example:order\" yang:insert=\"first\"><k>a</k><a>foo</a></y2></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-attribute</error-tag><error-info><bad-attribute>insert</bad-attribute></error-info><error-severity>error</error-severity><error-message>Unresolved attribute prefix (no namespace?)</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "add one entry (key b) to list first"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><y2 xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"first\"><k>b</k><a>bar</a></y2></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"

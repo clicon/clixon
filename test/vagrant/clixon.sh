@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # Setup cligen and clixon
-
-set -ux
-
-#!/usr/bin/env bash
-set -eux # x
+set -eux
 
 if [ $# -ne 3 ]; then 
     echo "usage: $0 <release> <wwwuser> <with_restconf>"
