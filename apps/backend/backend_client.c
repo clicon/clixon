@@ -1335,6 +1335,305 @@ from_client_kill_session(clicon_handle h,
     return retval;
 }
 
+/*! Help function for parsing restconf query parameter and setting netconf attribute
+ *
+ * If not "unbounded", parse and set a numeric value
+ * @param[in]     h         Clixon handle
+ * @param[in]     name      Name of attribute
+ * @param[in,out] cbret     Output buffer for internal RPC message
+ * @param[out]    value     Value
+ * @retval       -1         Error
+ * @retval        0         Invalid, cbret set
+ * @retval        1         OK
+ */
+static int
+element2value(clicon_handle  h,
+	      cxobj         *xe,
+	      char          *name,
+	      cbuf          *cbret,
+	      uint32_t      *value)
+{
+    int    retval = -1;
+    char  *valstr;
+    int    ret;
+    char  *reason = NULL;
+    cxobj *x;
+    
+    *value = 0;
+    if ((x = xml_find_type(xe, NULL, name, CX_ELMNT)) != NULL &&
+	(valstr = xml_body(x)) != NULL &&
+	strcmp(valstr, "unbounded") != 0){
+	if ((ret = parse_uint32(valstr, value, &reason)) < 0){
+	    clicon_err(OE_XML, errno, "parse_uint32");
+	    goto done;
+	}
+	if (ret == 0){
+	    if (netconf_bad_attribute(cbret, "application",
+				      "count", "Unrecognized value of count attribute") < 0)
+		goto done;
+	    goto fail;
+	}
+    }
+    retval = 1;
+ done:
+    if (reason)
+	free(reason);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Retrieve collection configuration and device state information
+ * 
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ *
+ * @see from_client_get
+ */
+static int
+from_client_get_collection(clicon_handle h,
+			   cxobj        *xe,
+			   cbuf         *cbret,
+			   void         *arg, 
+			   void         *regarg)
+{
+    int             retval = -1;
+    cxobj          *x;
+    char           *xpath = NULL;
+    cxobj          *xret = NULL;
+    cxobj         **xvec = NULL;
+    size_t          xlen;    
+    cxobj          *xnacm = NULL;
+    char           *username;
+    cvec           *nsc = NULL; /* Create a netconf namespace context from filter */
+    char           *attr;
+    netconf_content content = CONTENT_ALL;
+    int32_t         depth = -1; /* Nr of levels to print, -1 is all, 0 is none */
+    yang_stmt      *yspec;
+    int             i;
+    cxobj          *xerr = NULL;
+    int             ret;
+    uint32_t        count = 0;
+    uint32_t        skip = 0;
+    char           *direction = NULL;
+    char           *sort = NULL;
+    char           *where = NULL;
+    char           *datastore = NULL;
+    char           *reason = NULL;
+    cbuf           *cb = NULL;
+    cxobj          *xtop = NULL;
+    cxobj          *xbot = NULL;
+    yang_stmt      *y;
+    char           *api_path = NULL;
+    char           *ns;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    username = clicon_username_get(h);
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec9");
+	goto done;
+    }
+    /* Clixon extensions: content */
+    if ((attr = xml_find_value(xe, "content")) != NULL)
+	content = netconf_content_str2int(attr);
+    /* Clixon extensions: depth */
+    if ((attr = xml_find_value(xe, "depth")) != NULL){
+	if ((ret = parse_int32(attr, &depth, &reason)) < 0){
+	    clicon_err(OE_XML, errno, "parse_int32");
+	    goto done;
+	}
+	if (ret == 0){
+	    if (netconf_bad_attribute(cbret, "application",
+				      "depth", "Unrecognized value of depth attribute") < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+    /* count */
+    if ((ret = element2value(h, xe, "count", cbret, &count)) < 0)
+	goto done;
+    /* skip */
+    if (ret && (ret = element2value(h, xe, "skip", cbret, &skip)) < 0)
+	goto done;
+    /* direction */
+    if (ret && (x = xml_find_type(xe, NULL, "direction", CX_ELMNT)) != NULL){
+	direction = xml_body(x);
+	if (strcmp(direction, "forward") != 0 && strcmp(direction, "reverse") != 0){
+	    if (netconf_bad_attribute(cbret, "application",
+				      "direction", "Unrecognized value of direction attribute") < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+    /* sort */
+    if (ret && (x = xml_find_type(xe, NULL, "sort", CX_ELMNT)) != NULL)
+	sort = xml_body(x);
+    if (sort) ; /* XXX */
+    /* where */
+    if (ret && (x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL)
+	where = xml_body(x);
+    /* datastore */
+    if (ret && (x = xml_find_type(xe, NULL, "datastore", CX_ELMNT)) != NULL)
+	datastore = xml_body(x);
+    if (ret == 0)
+	goto ok;
+    /* list-target, create (xml and) yang to check if is state (CF) or config (CT) */
+    if (ret && (x = xml_find_type(xe, NULL, "list-target", CX_ELMNT)) != NULL)
+	api_path = xml_body(x);
+    if ((xtop = xml_new("top", NULL, CX_ELMNT)) == NULL)
+	goto done;
+    if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
+	goto done;    
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+	    goto done;	
+	goto ok;
+    }
+    if (yang_keyword_get(y) != Y_LIST && yang_keyword_get(y) != Y_LEAF_LIST){
+	if (netconf_bad_element(cbret, "application", "list-target", "path invalid") < 0)
+	    goto done;
+	goto ok;
+    }
+    /* Create xpath from api-path for the datastore API */
+    if ((ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
+	goto done;
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+	    goto done;	
+	goto ok;	
+    }
+    /* Build a "predicate" cbuf */
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "%s", xpath);
+    if (where)
+	cprintf(cb, "[%s]", where);
+    if (skip){
+	cprintf(cb, "[%u < position()", skip);
+	if (count)
+	    cprintf(cb, " && position() < %u", count+skip);
+	cprintf(cb, "]");
+    }
+    else if (count)
+	cprintf(cb, "[position() < %u]", count);
+
+    /* Split into CT or CF */
+    if (yang_config_ancestor(y) == 1){ /* CT */
+	if (content == CONTENT_CONFIG || content == CONTENT_ALL){
+	    if (xmldb_get0(h, datastore, YB_MODULE, nsc, cbuf_get(cb), 1, &xret, NULL) < 0) {
+		if (netconf_operation_failed(cbret, "application", "read registry")< 0)
+		    goto done;
+		goto ok;
+	    }
+	}
+	/* There may be CF data in a CT collection */
+	if (content == CONTENT_ALL){ 
+	    if ((ret = client_statedata(h, cbuf_get(cb), nsc, content, &xret)) < 0)
+		goto done;
+	}
+    }
+    else { /* CF */
+	/* There can be no CT data in a CF collection */
+	if (content == CONTENT_NONCONFIG || content == CONTENT_ALL){
+	    if ((ret = client_statedata(h, cbuf_get(cb), nsc, content, &xret)) < 0)
+		goto done;
+	    if (ret == 0){ /* Error from callback (error in xret) */
+		if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+		    goto done;
+		goto ok;
+	    }
+	}
+    }
+    if (clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
+	/* Check XML  by validating it. return internal error with error cause 
+	 * Primarily intended for user-supplied state-data.
+	 * The whole config tree must be present in case the state data references config data
+	 */
+	if ((ret = xml_yang_validate_all_top(h, xret, &xerr)) < 0) 
+	    goto done;
+	if (ret > 0 &&
+	    (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if (clicon_debug_get())
+		clicon_log_xml(LOG_DEBUG, xret, "VALIDATE_STATE");
+	    if (clixon_netconf_internal_error(xerr,
+					      ". Internal error, state callback returned invalid XML",
+					      NULL) < 0)
+		goto done;
+	    if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+		goto done;
+	    goto ok;
+	}
+    } /* CLICON_VALIDATE_STATE_XML */
+
+    if (content == CONTENT_NONCONFIG){ /* state only, all config should be removed now */
+	/* Keep state data only, remove everything that is not config. Note that state data
+	 * may be a sub-part in a config tree, we need to traverse to find all
+	 */
+	if (xml_non_config_data(xret, NULL) < 0)
+	    goto done;
+	if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
+	    goto done;
+	if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	    goto done;
+    }
+    /* Code complex to filter out anything that is outside of xpath 
+     * Actually this is a safety catch, should really be done in plugins
+     * and modules_state functions.
+     */
+    if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	goto done;
+
+    /* Pre-NACM access step */
+    xnacm = clicon_nacm_cache(h);
+    if (xnacm != NULL){ /* Do NACM validation */
+	/* NACM datanode/module read validation */
+	if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0) 
+	    goto done;
+    }
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><collection xmlns=\"%s\">",
+	    NETCONF_BASE_NAMESPACE, NETCONF_COLLECTION_NAMESPACE);     /* OK */
+    if ((ns = yang_find_mynamespace(y)) != NULL)
+	for (i=0; i<xlen; i++){
+	    x = xvec[i];
+	    /* Add namespace */
+	    if (xmlns_set(x, NULL, ns) < 0)
+		goto done;
+	    /* Top level is data, so add 1 to depth if significant */
+	    if (clicon_xml2cbuf(cbret, x, 0, 0, depth>0?depth+1:depth) < 0)
+		goto done;
+	}
+    cprintf(cbret, "</collection></rpc-reply>");
+ ok:
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xtop)
+	xml_free(xtop);
+    if (cb)
+	cbuf_free(cb);
+    if (reason)
+	free(reason);
+    if (xerr)
+	xml_free(xerr);
+    if (xvec)
+	free(xvec);
+    if (nsc)
+	xml_nsctx_free(nsc);
+    if (xret)
+	xml_free(xret);
+    return retval;
+}
+
 /*! Create a notification subscription
  * @param[in]  h       Clicon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
@@ -1960,7 +2259,10 @@ backend_rpc_init(clicon_handle h)
     if (rpc_callback_register(h, from_client_validate, NULL,
 		      NETCONF_BASE_NAMESPACE, "validate") < 0)
 	goto done;
-
+    /* draft-ietf-netconf-restconf-collection-00 */
+    if (rpc_callback_register(h, from_client_get_collection, NULL,
+		      NETCONF_COLLECTION_NAMESPACE, "get-collection") < 0)
+	goto done;
     /* In backend_client.? RPC from RFC 5277 */
     if (rpc_callback_register(h, from_client_create_subscription, NULL,
 		      EVENT_RFC5277_NAMESPACE, "create-subscription") < 0)

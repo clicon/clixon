@@ -823,6 +823,7 @@ clicon_rpc_get(clicon_handle   h,
     if (depth != -1)
 	cprintf(cb, " depth=\"%d\"", depth);
     cprintf(cb, ">");
+    /* If xpath, add a filter */
     if (xpath && strlen(xpath)) {
 	cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
 		NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
@@ -877,7 +878,134 @@ clicon_rpc_get(clicon_handle   h,
     return retval;
 }
 
+/*! Get database configuration and state data collection
+ * @param[in]  h         Clicon handle
+ * @param[in]  apipath   To identify a list/leaf-list
+ * @param[in]  yli       Yang-stmt of list/leaf-list of collection
+ * @param[in]  namespace Namespace associated w xpath
+ * @param[in]  nsc       Namespace context for filter
+ * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
+ * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
+ * @param[in]  count     Collection/clixon extension
+ * @param[in]  skip      Collection/clixon extension
+ * @param[in]  direction Collection/clixon extension
+ * @param[in]  sort      Collection/clixon extension
+ * @param[in]  where     Collection/clixon extension
+ * @param[out] xt        XML tree. Free with xml_free. 
+ *                       Either <config> or <rpc-error>. 
+ * @retval    0          OK
+ * @retval   -1          Error, fatal or xml
+
+ * @see clicon_rpc_get
+ * @see draft-ietf-netconf-restconf-collection-00
+ * @note the netconf return message is yang populated, as well as the return data
+ */
+int
+clicon_rpc_get_collection(clicon_handle   h, 
+			  char           *apipath,
+			  yang_stmt      *yli,
+			  cvec           *nsc, /* namespace context for filter */
+			  netconf_content content,
+			  char           *depth,
+			  char           *count,
+			  char           *skip,
+			  char           *direction,
+			  char           *sort,
+			  char           *where,
+			  cxobj         **xt)
+{
+    int                retval = -1;
+    struct clicon_msg *msg = NULL;
+    cbuf              *cb = NULL;
+    cxobj             *xret = NULL;
+    cxobj             *xerr = NULL;
+    cxobj             *xr; 
+    char              *username;
+    uint32_t           session_id;
+    int                ret;
+    yang_stmt         *yspec;
+    cxobj             *x;
+    
+    if (session_id_check(h, &session_id) < 0)
+	goto done;
+    if ((cb = cbuf_new()) == NULL)
+	goto done;
+    cprintf(cb, "<rpc xmlns=\"%s\" ", NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL)
+	cprintf(cb, " username=\"%s\"", username);
+    cprintf(cb, " xmlns:%s=\"%s\"",
+	    NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    cprintf(cb, "><get-collection xmlns=\"%s\"", NETCONF_COLLECTION_NAMESPACE);
+    /* Clixon extension, content=all,config, or nonconfig */
+    if ((int)content != -1)
+	cprintf(cb, " content=\"%s\"", netconf_content_int2str(content));
+    if (depth)
+	cprintf(cb, " depth=\"%s\"", depth);
+    cprintf(cb, ">"); 
+    if (count)
+	cprintf(cb, "<list-target>%s</list-target>", apipath);
+    if (count)
+	cprintf(cb, "<count>%s</count>", count);
+    if (skip)
+	cprintf(cb, "<skip>%s</skip>", skip);
+    if (direction)
+	cprintf(cb, "<direction>%s</direction>", direction);
+    if (sort)
+	cprintf(cb, "<sort>%s</sort>", sort);
+    if (where)
+	cprintf(cb, "<where>%s</where>", where);
+    cprintf(cb, "</get-collection></rpc>");
+    if ((msg = clicon_msg_encode(session_id, "%s", cbuf_get(cb))) == NULL)
+	goto done;
+    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+	goto done;
+    /* Send xml error back: first check error, then ok */
+    if ((xr = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
+	xr = xml_parent(xr); /* point to rpc-reply */
+    else if ((xr = xpath_first(xret, NULL, "/rpc-reply/collection")) == NULL){
+	if ((xr = xml_new("collection", NULL, CX_ELMNT)) == NULL)
+	    goto done;
+    }
+    else{
+	yspec = clicon_dbspec_yang(h);
+	/* Populate all children with yco */
+	x = NULL;
+	while ((x = xml_child_each(xr, x, CX_ELMNT)) != NULL){
+	    xml_spec_set(x, yli);
+	    if ((ret = xml_bind_yang(x, YB_PARENT, yspec, &xerr)) < 0)
+		goto done;
+	    if (ret == 0){
+		if (clixon_netconf_internal_error(xerr,
+						  ". Internal error, backend returned invalid XML.",
+						  NULL) < 0)
+		    goto done;
+		if ((xr = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		    clicon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
+		    goto done;
+		}
+	    }
+	}
+    }
+    if (xr){
+	if (xml_rm(xr) < 0)
+	    goto done;
+	*xt = xr;
+    }
+    retval = 0;
+  done:
+    if (cb)
+	cbuf_free(cb);
+    if (xerr)
+	xml_free(xerr);
+    if (xret)
+	xml_free(xret);
+    if (msg)
+	free(msg);
+    return retval;
+}
+
 /*! Send a close a netconf user session. Socket is also closed if still open
+ *
  * @param[in] h        CLICON handle
  * @retval    0        OK
  * @retval   -1        Error and logged to syslog

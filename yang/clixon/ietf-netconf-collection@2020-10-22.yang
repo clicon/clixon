@@ -1,0 +1,125 @@
+module ietf-netconf-collection {
+    namespace "urn:ietf:params:xml:ns:yang:ietf-netconf-collection";
+    prefix "rcoll";
+
+    organization
+	"IETF NETCONF (Network Configuration) Working Group";
+
+    contact
+	"WG Web:   <http://tools.ietf.org/wg/netconf/>
+        WG List:  <mailto:netconf@ietf.org>
+
+        WG Chair: Mehmet Ersue
+                  <mailto:mehmet.ersue@nsn.com>
+
+        WG Chair: Mahesh Jethanandani
+                  <mailto:mjethanandani@gmail.com>
+
+        Editor:   Andy Bierman
+                  <mailto:andy@yumaworks.com>
+
+        Editor:   Martin Bjorklund
+                  <mailto:mbj@tail-f.com>
+
+        Editor:   Kent Watsen
+                  <mailto:kwatsen@juniper.net>";
+
+    description
+	"This module contains conceptual YANG specifications
+        for the RESTCONF Collection resource type.
+        Note that the YANG definitions within this module do not
+        represent configuration data of any kind.
+        The YANG grouping statements provide a normative syntax
+        for XML and JSON message encoding purposes.
+
+        Copyright (c) 2015 IETF Trust and the persons identified as
+        authors of the code.  All rights reserved.
+
+        Redistribution and use in source and binary forms, with or
+        without modification, is permitted pursuant to, and subject
+        to the license terms contained in, the Simplified BSD License
+        set forth in Section 4.c of the IETF Trust's Legal Provisions
+        Relating to IETF Documents
+        (http://trustee.ietf.org/license-info).
+
+        This version of this YANG module is part of RFC XXXX; see
+        the RFC itself for full legal notices.";
+    /*
+         module: ietf-netconf-collection
+     rpcs:
+
+     +---x get-collection
+         +--w input
+            +--w module-name    string
+            +--w datastore      string
+            +--w list-target    string
+            +--w count          uint32
+            +--w skip           uint32
+            +--w direction      enum
+            +--w sort           string
+            +--w where          string
+         +--ro output
+            +-ro collection     anydata
+     */
+
+
+    revision 2020-10-22 {
+	description
+	    "Draft by Olof Hagsand / Clixon.";
+    }
+    rpc get-collection {
+	input {
+	    leaf module-name {
+		/* Not needed with proper list-target */
+		type string;
+	    }
+	    leaf datastore {
+		type string;
+		default "running";
+	    }
+	    leaf list-target {
+		description "api-path";
+		mandatory true;
+		type string;
+	    }
+	    leaf count {
+		type union {
+		    type uint32;
+		    type string {
+			pattern 'unbounded';
+		    }
+		}
+	    }
+	    leaf skip {
+		type union {
+		    type uint32;
+		    type string {
+			pattern 'unbounded';
+		    }
+		}
+	    }
+	    leaf direction {
+		type enumeration {
+		    enum forward;
+		    enum reverse;
+		}
+	    }
+	    leaf sort {
+		type string;
+	    }
+	    leaf where {
+		type string;
+	    }
+	}
+	output {
+	    anyxml collection {
+		description
+		    "Copy of the running datastore subset and/or state
+             data that matched the filter criteria (if any).
+             An empty data container indicates that the request did not
+             produce any results.";
+	    }
+	}
+    }
+
+}

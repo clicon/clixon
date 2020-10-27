@@ -533,6 +533,14 @@ Developers may need to change their code
   * See [namespace prefix nc is not supported in full #154](https://github.com/clicon/clixon/issues/154)
 * Fixed [Clixon backend generates wrong XML on empty string value #144](https://github.com/clicon/clixon/issues/144)
 
+### New features
+
+* Prototype of collection draft
+  * This is prototype work for ietf netconf work
+  * See draft-ietf-netconf-restconf-collection-00.txt
+  * New yang: ietf-restconf-collection@2020-10-22.yang
+  * New http media: application/yang.collection+xml/json
+
 ## 4.8.0
 18 October 2020
 

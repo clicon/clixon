@@ -203,10 +203,12 @@ static const map_str2int http_reason_phrase_map[] = {
  * @see restconf_media_str2int
  */
 static const map_str2int http_media_map[] = {
-    {"application/yang-data+xml",     YANG_DATA_XML},
-    {"application/yang-data+json",    YANG_DATA_JSON},
-    {"application/yang-patch+xml",    YANG_PATCH_XML},
-    {"application/yang-patch+json",   YANG_PATCH_JSON},
+    {"application/yang-data+xml",        YANG_DATA_XML},
+    {"application/yang-data+json",       YANG_DATA_JSON},
+    {"application/yang-patch+xml",       YANG_PATCH_XML},
+    {"application/yang-patch+json",      YANG_PATCH_JSON},
+    {"application/yang.collection+xml",  YANG_COLLECTION_XML},
+    {"application/yang.collection+json", YANG_COLLECTION_JSON},
     {NULL,                            -1}
 };
 

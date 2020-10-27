@@ -54,6 +54,10 @@
  */
 #define NETCONF_INPUT_CONFIG "config"
 
+/* Collections namespace from draft-ietf-netconf-restconf-collection-00.txt
+ */
+#define NETCONF_COLLECTION_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-netconf-collection"
+
 /* Output symbol for netconf get/get-config
  *    ietf-netconf.yang defines it as output:
  *       output {    anyxml data; 
