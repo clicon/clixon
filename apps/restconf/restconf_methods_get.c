@@ -534,6 +534,227 @@ api_data_collection(clicon_handle  h,
     return retval;
 }
 
+/*! GET Collection 
+ * According to restconf collection draft. Lists, work in progress
+ * @param[in]  h        Clixon handle
+ * @param[in]  req      Generic Www handle
+ * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
+ * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element 
+ * @param[in]  pi       Offset, where path starts  
+ * @param[in]  qvec     Vector of query string (QUERY_STRING)
+ * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_out Output media
+ * @param[in]  head   If 1 is HEAD, otherwise GET
+ * @code
+ *  curl -X GET http://localhost/restconf/data/interfaces
+ * @endcode                                     
+ * A collection resource contains a set of data resources.  It is used
+ * to represent a all instances or a subset of all instances in a YANG
+ * list or leaf-list.
+ * @see draft-ietf-netconf-restconf-collection-00.txt
+ */
+static int
+api_data_collection(clicon_handle  h,
+		    void          *req,
+		    char          *api_path, 
+		    cvec          *pcvec, /* XXX remove? */
+		    int            pi,
+		    cvec          *qvec,
+		    int            pretty,
+		    restconf_media media_out)
+{
+    int        retval = -1;
+    char      *xpath = NULL;
+    cbuf      *cbx = NULL;
+    yang_stmt *yspec;
+    cxobj     *xret = NULL;
+    cxobj     *xerr = NULL; /* malloced */
+    cxobj     *xe = NULL;   /* not malloced */
+    cxobj    **xvec = NULL;
+    int        i;
+    int        ret;
+    cvec      *nsc = NULL;
+    char      *attr; /* attribute value string */
+    netconf_content content = CONTENT_ALL;
+    cxobj     *xtop = NULL;
+    cxobj     *xbot = NULL;
+    yang_stmt *y = NULL;
+    cbuf      *cbrpc = NULL;
+    char      *depth;
+    char      *count;
+    char      *skip;
+    char      *direction;
+    char      *sort;
+    char      *where;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
+    /* strip /... from start */
+    for (i=0; i<pi; i++)
+	api_path = index(api_path+1, '/');
+    if (api_path){
+	if ((xtop = xml_new("top", NULL, CX_ELMNT)) == NULL)
+	    goto done;
+	/* Translate api-path to xml, but to validate the api-path, note: strict=1 
+	 * xtop and xbot unnecessary for this function but needed by function
+	 * Set strict=0 to accept list uri:s with =keys syntax
+	 */
+	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
+	    goto done;
+	/* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) 
+	 * XXX: xpath not used in collection?
+	 */
+	if (ret != 0 &&
+	    (ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){ /* validation failed */
+	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+	if (yang_keyword_get(y) != Y_LIST && yang_keyword_get(y) != Y_LEAF_LIST){
+    	    if (netconf_bad_element_xml(&xerr, "application",
+					yang_argument_get(y),
+					"Element is not list or leaf-list which is required for GET collection") < 0)
+		goto done;
+	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+
+    /* Check for content attribute */
+    if ((attr = cvec_find_str(qvec, "content")) != NULL){
+	clicon_debug(1, "%s content=%s", __FUNCTION__, attr);
+	if ((int)(content = netconf_content_str2int(attr)) == -1){
+	    if (netconf_bad_attribute_xml(&xerr, "application",
+					  "content", "Unrecognized value of content attribute") < 0)
+		goto done;
+	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+    clicon_debug(1, "%s path:%s", __FUNCTION__, xpath);
+    if (content != CONTENT_CONFIG && content != CONTENT_NONCONFIG && content != CONTENT_ALL){
+	clicon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);
+	goto done;
+    }
+    /* Clixon extensions and collection attributes */
+    depth = cvec_find_str(qvec, "depth");
+    count = cvec_find_str(qvec, "count");
+    skip = cvec_find_str(qvec, "skip");
+    direction = cvec_find_str(qvec, "direction");
+    sort = cvec_find_str(qvec, "sort");
+    where = cvec_find_str(qvec, "where");
+    
+    if (clicon_rpc_get_collection(h, api_path, y, nsc, content,
+				  depth, count, skip, direction, sort, where, 
+				  &xret) < 0){
+	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+	    goto done;
+	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+	    goto done;
+	}
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
+    }
+
+    /* We get return via netconf which is complete tree from root 
+     * We need to cut that tree to only the object.
+     */
+#if 0 /* DEBUG */
+    if (clicon_debug_get())
+	clicon_log_xml(LOG_DEBUG, xret, "%s xret:", __FUNCTION__);
+#endif
+    /* Check if error return  */
+    if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
+    }
+    /* Normal return, no error */
+    if ((cbx = cbuf_new()) == NULL)
+	goto done;
+    switch (media_out){
+    case YANG_COLLECTION_XML:
+	if (clicon_xml2cbuf(cbx, xret, 0, pretty, -1) < 0) /* Dont print top object?  */
+	    goto done;
+	break;
+    case YANG_COLLECTION_JSON:
+	if (xml2json_cbuf(cbx, xret, pretty) < 0)
+	    goto done;
+	break;
+    default:
+	if (restconf_unsupported_media(req) < 0)
+	    goto done;
+	goto ok;
+	break;
+    }
+#if 0
+    /* Check if not exists */
+    if (xlen == 0){
+	/* 4.3: If a retrieval request for a data resource represents an 
+	   instance that does not exist, then an error response containing 
+	   a "404 Not Found" status-line MUST be returned by the server.  
+	   The error-tag value "invalid-value" is used in this case. */
+	if (netconf_invalid_value_xml(&xerr, "application", "Instance does not exist") < 0)
+	    goto done;
+	/* override invalid-value default 400 with 404 */
+	if ((xe = xpath_first(xerr, NULL, "rpc-error")) != NULL){
+	    if (api_return_err(h, req, xe, pretty, media_out, 404) < 0)
+		goto done;
+	}
+	goto ok;
+    }
+#endif
+    clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
+    if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
+	goto done;
+    if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
+	goto done;
+    if (restconf_reply_send(req, 200, cbx) < 0)
+	goto done;
+ ok:
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (cbrpc)
+	cbuf_free(cbrpc);
+    if (xpath)
+	free(xpath);
+    if (nsc)
+	xml_nsctx_free(nsc);
+    if (xtop)
+        xml_free(xtop);
+    if (cbx)
+        cbuf_free(cbx);
+    if (xret)
+	xml_free(xret);
+    if (xerr)
+	xml_free(xerr);
+    if (xvec)
+	free(xvec);
+    return retval;
+}
+
 /*! REST HEAD method
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle

@@ -342,6 +342,6 @@ if [ -z "$match" ]; then
 fi
 
 rm -rf $dir
-
 new "endtest"
 endtest
+
