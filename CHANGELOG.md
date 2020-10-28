@@ -31,6 +31,10 @@
 
 * Added XPATH functions `position`
 
+### Corrected Bugs
+
+* Fixed [Clixon backend generates wrong XML on empty string value #144](https://github.com/clicon/clixon/issues/144)
+
 ## 4.8.0
 18 October 2020
 

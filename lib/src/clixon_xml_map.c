@@ -565,7 +565,7 @@ xml_diff1(cxobj     *x0,
 	    x0c = xml_child_each(x0, x0c, CX_ELMNT);
 	    continue;
 	}
-	/* Both x0c and x1c exists, check if they are equal. */
+	/* Both x0c and x1c exists, check if they are yang-equal. */
 	eq = xml_cmp(x0c, x1c, 0, 0, NULL);
 	if (eq < 0){
 	    if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
@@ -586,9 +586,11 @@ xml_diff1(cxobj     *x0,
 	    yc = xml_spec(x0c);
 	    if (yc && yang_keyword_get(yc) == Y_LEAF){
 		/* if x0c and x1c are leafs w bodies, then they may be changed */
-		if ((b1 = xml_body(x0c)) != NULL && /* skip empty type */
-		    (b2 = xml_body(x1c)) != NULL && /* skip empty type */
-		    strcmp(b1, b2) != 0){
+		b1 = xml_body(x0c);
+		b2 = xml_body(x1c);
+		if (b1 == NULL && b2 == NULL)
+		    ;
+		else if (b1 == NULL || b2 == NULL || strcmp(b1, b2) != 0){
 		    if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
 			goto done;
 		    (*changedlen)--; /* append two vectors */
