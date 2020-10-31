@@ -912,15 +912,19 @@ main(int    argc,
        demonized errors OK. Before this stage, errors are logged on stderr 
        also */
     if (foreground==0){
-	clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO,
+	/* Call plugin callbacks just before fork/daemonization */
+	if (clixon_plugin_pre_daemon_all(h) < 0)
+            goto done;
+  	clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO,
 			logdst==CLICON_LOG_FILE?CLICON_LOG_FILE:CLICON_LOG_SYSLOG);
 	if (daemon(0, 0) < 0){
 	    fprintf(stderr, "config: daemon");
 	    exit(-1);
 	}
-	    
     }
-    /* Call plugin callbacks when in background and before dropped privileges */
+    /* Call plugin callbacks when in background and before dropped privileges
+     * Possibly this should be within the foreground==0 clause after daemon?
+     */
     if (clixon_plugin_daemon_all(h) < 0)
 	goto done;
 

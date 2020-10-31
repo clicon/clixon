@@ -29,6 +29,7 @@
 
 ### Minor changes
 
+* Added new backend plugin: ca_pre-demon called if backend is daemonized just prior to forking.
 * Added XPATH functions `position`
 
 ### Corrected Bugs

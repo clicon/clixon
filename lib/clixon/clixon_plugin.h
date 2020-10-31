@@ -107,11 +107,12 @@ typedef int (*clicon_upgrade_cb)(
  */
 typedef int (plgstart_t)(clicon_handle); /* Plugin start */
 
-/* Called just after a server has "daemonized", ie put in background.
+/* Called just before or after a server has "daemonized", ie put in background.             
  * Backend: If daemon privileges are dropped this callback is called *before* privileges are dropped.
- * If daemon is started in foreground (-F) it is still called.
+ * If daemon is started in foreground (-F): pre-daemon is not called, but post-daemon called
  */
-typedef int (plgdaemon_t)(clicon_handle);              /* Plugin daemonized */
+typedef int (plgdaemon_t)(clicon_handle);              /* Plugin pre/post daemonized */
+
 
 /* Called just before plugin unloaded. 
  */
@@ -219,6 +220,7 @@ struct clixon_plugin_api{
 	struct { /* netconf-specific */
 	} cau_netconf;
 	struct { /* backend-specific */
+            plgdaemon_t      *cb_pre_daemon;     /* Plugin just before daemonization */
             plgdaemon_t      *cb_daemon;         /* Plugin daemonized */
 	    plgreset_t       *cb_reset;          /* Reset system status */
 	    plgstatedata_t   *cb_statedata;      /* Get state data from plugin (backend only) */
@@ -239,6 +241,7 @@ struct clixon_plugin_api{
 #define ca_suspend        u.cau_cli.ci_suspend
 #define ca_interrupt      u.cau_cli.ci_interrupt
 #define ca_auth           u.cau_restconf.cr_auth
+#define ca_pre_daemon     u.cau_backend.cb_daemon
 #define ca_daemon         u.cau_backend.cb_daemon
 #define ca_reset          u.cau_backend.cb_reset
 #define ca_statedata      u.cau_backend.cb_statedata

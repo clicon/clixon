@@ -72,7 +72,7 @@ typedef struct {
 int clixon_plugin_reset_one(clixon_plugin *cp, clicon_handle h, char *db);
 int clixon_plugin_reset_all(clicon_handle h, char *db);
 
-int clixon_plugin_daemon_one(clixon_plugin *cp, clicon_handle h);
+int clixon_plugin_pre_daemon_all(clicon_handle h);
 int clixon_plugin_daemon_all(clicon_handle h);
 
 int clixon_plugin_statedata_all(clicon_handle h, yang_stmt *yspec, cvec *nsc, char *xpath, cxobj **xtop);

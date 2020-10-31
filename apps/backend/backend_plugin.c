@@ -118,13 +118,65 @@ clixon_plugin_reset_all(clicon_handle h,
     return retval;
 }
 
+/*! Call single plugin "pre-" daemonize callback
+ * @param[in]  cp      Plugin handle
+ * @param[in]  h       Clixon handle
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+clixon_plugin_pre_daemon_one(clixon_plugin *cp,
+                             clicon_handle  h)
+{
+    int          retval = -1;
+    plgdaemon_t *fn;          /* Daemonize plugin callback function */
+
+    if ((fn = cp->cp_api.ca_pre_daemon) != NULL){
+        if (fn(h) < 0) {
+            if (clicon_errno < 0)
+                clicon_log(LOG_WARNING, "%s: Internal error: Pre-daemon callback in plugin:\
+ %s returned -1 but did not make a clicon_err call",
+                           __FUNCTION__, cp->cp_name);
+            goto done;
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Call all plugins "pre-" daemonize callbacks
+ *
+ * This point in time is after "start" and before
+ * before daemonization/fork,
+ * It is not called if backend is started in daemon mode.
+ * @param[in]  h       Clicon handle
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clixon_plugin_pre_daemon_all(clicon_handle h)
+{
+    int            retval = -1;
+    clixon_plugin *cp = NULL;
+
+    /* Loop through all plugins, call callbacks in each */
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+        if (clixon_plugin_pre_daemon_one(cp, h) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Call single plugin "post-" daemonize callback
  * @param[in]  cp      Plugin handle
  * @param[in]  h       Clixon handle
  * @retval     0       OK
  * @retval    -1       Error
  */
-int
+static int
 clixon_plugin_daemon_one(clixon_plugin *cp,
 			 clicon_handle  h)
 {
@@ -145,9 +197,15 @@ clixon_plugin_daemon_one(clixon_plugin *cp,
 }
     
 /*! Call all plugins "post-" daemonize callbacks
+ *                           
+ * This point in time is after "start" and after "pre-daemon" and
+ * after daemonization/fork, ie when
+ * daemon is in the background but before dropped privileges.
+ * In case of foreground mode (-F) it is still called but no fork has occured.
  * @param[in]  h       Clicon handle
  * @retval     0       OK
  * @retval    -1       Error
+ * @note Also called for non-background mode
  */
 int
 clixon_plugin_daemon_all(clicon_handle h)
