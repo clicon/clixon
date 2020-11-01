@@ -241,7 +241,7 @@ struct clixon_plugin_api{
 #define ca_suspend        u.cau_cli.ci_suspend
 #define ca_interrupt      u.cau_cli.ci_interrupt
 #define ca_auth           u.cau_restconf.cr_auth
-#define ca_pre_daemon     u.cau_backend.cb_daemon
+#define ca_pre_daemon     u.cau_backend.cb_pre_daemon
 #define ca_daemon         u.cau_backend.cb_daemon
 #define ca_reset          u.cau_backend.cb_reset
 #define ca_statedata      u.cau_backend.cb_statedata
