@@ -79,26 +79,35 @@
 #include "restconf_err.h"
 #include "restconf_root.h"
 
+
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:E:l:p:d:y:a:u:ro:scP:"
+#define RESTCONF_OPTS "hD:f:E:l:p:d:y:a:u:ro:bscP:"
 
 /* See see listen(5) */
 #define SOCKET_LISTEN_BACKLOG 16
 
-/* Need global variable to for signal handler XXX */
-static clicon_handle _CLICON_HANDLE = NULL;
-
-static struct evhtp_handle{
+/* clixon evhtp handle */
+typedef struct {
     evhtp_t           *eh_htp;
     struct event_base *eh_evbase;
     evhtp_ssl_cfg_t   *eh_ssl_config;
-} _EVHTP_HANDLE = {0,};
+} cx_evhtp_handle;
+
+/* Need this global to pass to signal handler 
+ * XXX Try to get rid of code in signal handler
+ */
+static cx_evhtp_handle *_EVHTP_HANDLE = NULL;
+
+/* Need global variable to for signal handler XXX */
+static clicon_handle _CLICON_HANDLE = NULL;
 
 static void
-evhtp_terminate(struct evhtp_handle *eh)
+evhtp_terminate(cx_evhtp_handle *eh)
 {
     evhtp_ssl_cfg_t *sc;
     
+    if (eh == NULL)
+	return;
     if (eh->eh_htp){
 	evhtp_unbind_socket(eh->eh_htp);
 	evhtp_free(eh->eh_htp);
@@ -114,9 +123,11 @@ evhtp_terminate(struct evhtp_handle *eh)
 	    free(sc->privfile);
 	free(sc);
     }
+    free(eh);
 }
 
 /*! Signall terminates process
+ * XXX Try to get rid of code in signal handler -> so we can get rid of global variables
  */
 static void
 restconf_sig_term(int arg)
@@ -128,7 +139,8 @@ restconf_sig_term(int arg)
 		   __PROGRAM__, __FUNCTION__, getpid(), arg);
     else
 	exit(-1);
-    evhtp_terminate(&_EVHTP_HANDLE);
+    if (_EVHTP_HANDLE) /* global */
+	evhtp_terminate(_EVHTP_HANDLE);
     if (_CLICON_HANDLE){
 	//	stream_child_freeall(_CLICON_HANDLE);
 	restconf_terminate(_CLICON_HANDLE);
@@ -492,9 +504,84 @@ cx_path_restconf(evhtp_request_t *req,
     return; /* void */
 }
 
+/*! Get Server cert ssl info
+ * @param[in]     h                Clicon handle
+ * @param[in]     server_cert_path Path to server ssl cert file
+ * @param[in]     server_key_path  Path to server ssl key file
+ * @param[in,out] ssl_config       evhtp ssl config struct
+ * @retval        0                OK
+ * @retval        -1               Error
+ */
+static int
+cx_get_ssl_server_certs(clicon_handle    h,
+			const char      *server_cert_path,
+			const char      *server_key_path,
+			evhtp_ssl_cfg_t *ssl_config)
+{
+    int         retval = -1;
+    struct stat f_stat;
+
+    if (ssl_config == NULL || server_cert_path == NULL){
+	clicon_err(OE_CFG, EINVAL, "Input parameter is NULL");
+	goto done;
+    }
+    if ((ssl_config->pemfile = strdup(server_cert_path)) == NULL){
+	clicon_err(OE_CFG, errno, "strdup");
+	goto done;
+    }
+    if (stat(ssl_config->pemfile, &f_stat) != 0) {
+	clicon_err(OE_FATAL, errno, "Cannot load SSL cert '%s'", ssl_config->pemfile);
+	goto done;
+    }
+    if ((ssl_config->privfile = strdup(server_key_path)) == NULL){
+	clicon_err(OE_CFG, errno, "strdup");
+	goto done;
+    }
+    if (stat(ssl_config->privfile, &f_stat) != 0) {
+	clicon_err(OE_FATAL, errno, "Cannot load SSL key '%s'", ssl_config->privfile);
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Get client ssl cert info
+ * @param[in]     h                   Clicon handle
+ * @param[in]     server_ca_cert_path Path to server ssl CA file for client certs
+ * @param[in,out] ssl_config          evhtp ssl config struct
+ * @retval        0                   OK
+ * @retval        -1                  Error
+ */
+static int
+cx_get_ssl_client_certs(clicon_handle    h,
+			const char      *server_ca_cert_path,
+			evhtp_ssl_cfg_t *ssl_config)
+{
+    int         retval = -1;
+    struct stat f_stat;
+
+    if (ssl_config == NULL || server_ca_cert_path == NULL){
+	clicon_err(OE_CFG, EINVAL, "Input parameter is NULL");
+	goto done;
+    }
+    if ((ssl_config->cafile = strdup(server_ca_cert_path)) == NULL){
+	clicon_err(OE_CFG, errno, "strdup");
+	goto done;
+    }
+    if (stat(ssl_config->cafile, &f_stat) != 0) {
+	clicon_err(OE_FATAL, errno, "Cannot load SSL key '%s'", ssl_config->privfile);
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Get Server cert info
- * @param[in]  h           Clicon handle
- * @param[out] ssl_config  evhtp ssl config struct
+ * @param[in]  h                  Clicon handle
+ * @param[in]  ssl_verify_clients If true, verify client certs
+ * @param[out] ssl_config         evhtp ssl config struct
  */
 static int
 cx_get_certs(clicon_handle    h,
@@ -602,10 +689,11 @@ usage(clicon_handle h,
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
 	    "\t-r \t\t  Do not drop privileges if run as root\n"
+	    "\t-b \t\t  Read config from backend - not local (same as CLICON_RESTCONF_CONF=true) \n"
 	    "\t-o <option>=<value> Set configuration option overriding config file (see clixon-config.yang)\n"
-	    "\t-s\t\t  SSL server, https\n"
-	    "\t-c\t\t  SSL verify client certs\n"
-    	    "\t-P <port>\t  HTTP port (default 80, or 443 if -s is given)\n"
+	    "\t-s\t\t  SSL server, https (local config)\n"
+	    "\t-c\t\t  SSL verify client certs (local config)\n"
+    	    "\t-P <port>\t  HTTP port (default 80, or 443 if -s is given) (local config)\n"
 	    ,
 	    argv0,
 	    clicon_restconf_dir(h)
@@ -613,37 +701,255 @@ usage(clicon_handle h,
     exit(0);
 }
 
-    
-
 /*! Main routine for libevhtp restconf
  */
+/*! Phase 2 of start per-socket config
+ * @param[in]  h         Clicon handle
+ * @param[in]  xs        socket config
+ * @param[in]  nsc       Namespace context
+ * @param[out] namespace 
+ * @param[out] address
+ * @param[out] port
+ * @param[out] ssl
+ */
+static int
+cx_evhtp_socket(clicon_handle h,
+	     cxobj        *xs,
+	     cvec         *nsc,
+	     char        **namespace,
+	     char        **address,
+	     uint16_t     *port,
+	     uint16_t     *ssl)
+{
+    int       retval = -1;
+    cxobj    *x;
+    char     *str = NULL;
+    char     *reason = NULL;
+    int       ret;
+
+    if ((x = xpath_first(xs, nsc, "namespace")) == NULL){
+	clicon_err(OE_XML, EINVAL, "Mandatory namespace not given");
+	goto done;
+    }
+    *namespace = xml_body(x);
+    if ((x = xpath_first(xs, nsc, "address")) == NULL){
+	clicon_err(OE_XML, EINVAL, "Mandatory address not given");
+	goto done;
+    }
+    *address = xml_body(x);
+    if ((x = xpath_first(xs, nsc, "port")) != NULL &&
+	(str = xml_body(x)) != NULL){
+	if ((ret = parse_uint16(str, port, &reason)) < 0){
+	    clicon_err(OE_XML, errno, "parse_uint16");
+	    goto done;
+	}
+	if (ret == 0){
+	    clicon_err(OE_XML, EINVAL, "Unrecognized value of port: %s", str);
+	    goto done;
+	}
+    }
+    if ((x = xpath_first(xs, nsc, "ssl")) != NULL &&
+	(str = xml_body(x)) != NULL){
+	/* XXX use parse_bool but it is legacy static */
+	if (strcmp(str, "false") == 0)
+	    *ssl = 0;
+	else if (strcmp(str, "true") == 0)
+	    *ssl = 1;
+	else {
+	    clicon_err(OE_XML, EINVAL, "Unrecognized value of ssl: %s", str);
+	    goto done;
+	}
+    }
+    retval = 0;
+ done:
+    if (reason)
+	free(reason);
+    return retval;
+}
+
+/*! Phase 2 of evhtp init, config has been retrieved from backend
+ * @param[in]  h        Clicon handle
+ * @param[in]  xconfig  XML config
+ * @param[in]  nsc      Namespace context
+ * @param[in]  eh       Evhtp handle
+ * @note only one socket allowed in this implementation
+ */
+static int
+cx_evhtp_init(clicon_handle     h,
+	      cxobj            *xconfig,
+	      cvec             *nsc,
+	      cx_evhtp_handle  *eh)
+
+{
+    int                  retval = -1;
+    int                  auth_type_client_certifificate = 0;
+    uint16_t             port = 0;
+    cxobj               *xrestconf;
+    cxobj              **vec = NULL;
+    size_t               veclen;
+    char                *auth_type = NULL;
+    char                *server_cert_path = NULL;
+    char                *server_key_path = NULL;
+    char                *server_ca_cert_path = NULL;
+    //XXX    char                *client_cert_ca = NULL;
+    cxobj               *x;
+    char                *namespace = NULL;
+    char                *address = NULL;
+    uint16_t             use_ssl_server = 0;
+    
+    /* Extract socket fields from xconfig */
+    if ((xrestconf = xpath_first(xconfig, nsc, "restconf")) == NULL){
+	clicon_err(OE_CFG, ENOENT, "restconf top symbol not found");
+	goto done;
+    }
+    /* get common fields */
+    if ((x = xpath_first(xrestconf, nsc, "auth-type")) != NULL) /* XXX: leaf-list? */
+	auth_type = xml_body(x);
+    if (auth_type && strcmp(auth_type, "client-certificate") == 0)
+	auth_type_client_certifificate = 1;
+    if ((x = xpath_first(xrestconf, nsc, "server-cert-path")) != NULL)
+	server_cert_path = xml_body(x);
+    if ((x = xpath_first(xrestconf, nsc, "server-key-path")) != NULL)
+	server_key_path = xml_body(x);
+    if ((x = xpath_first(xrestconf, nsc, "server-ca-cert-path")) != NULL)
+	server_ca_cert_path = xml_body(x);
+    // XXX   if ((x = xpath_first(xrestconf, nsc, "client-cert-ca")) != NULL)
+    // XXX client_cert_ca = xml_body(x);
+    /* get the list of socket config-data */
+    if (xpath_vec(xrestconf, nsc, "socket", &vec, &veclen) < 0)
+	goto done;
+    /* Accept only a single socket XXX */
+    if (veclen != 1){
+	clicon_err(OE_XML, EINVAL, "Only single socket supported"); /* XXX warning: accept more? */
+	goto done;
+    }
+    if (cx_evhtp_socket(h, vec[0], nsc, &namespace, &address, &port, &use_ssl_server) < 0)
+	goto done;
+    if (use_ssl_server &&
+	(server_cert_path==NULL || server_key_path == NULL)){
+	clicon_err(OE_XML, EINVAL, "Enabled SSL server requires server_cert_path and server_key_path"); 
+	goto done;
+    }
+    if (auth_type_client_certifificate){
+	if (!use_ssl_server){
+	    clicon_err(OE_XML, EINVAL, "Client certificate authentication type requires SSL"); 
+	    goto done;
+	}
+	if (server_ca_cert_path == NULL){
+	    clicon_err(OE_XML, EINVAL, "Client certificate authentication type requires server-ca-cert-path"); 
+	    goto done;
+	}
+    }
+    /* Init evhtp */
+    if ((eh->eh_evbase = event_base_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "event_base_new");
+	goto done;
+    }
+    /* create a new evhtp_t instance */
+    if ((eh->eh_htp = evhtp_new(eh->eh_evbase, NULL)) == NULL){
+	clicon_err(OE_UNIX, errno, "evhtp_new");
+	goto done;
+    }
+    if (use_ssl_server){ 
+	/* Init evhtp ssl config struct */
+	if ((eh->eh_ssl_config = malloc(sizeof(evhtp_ssl_cfg_t))) == NULL){
+	    clicon_err(OE_UNIX, errno, "malloc");
+	    goto done;
+	}
+	memset(eh->eh_ssl_config, 0, sizeof(evhtp_ssl_cfg_t));
+	eh->eh_ssl_config->ssl_opts = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1;
+
+	if (cx_get_ssl_server_certs(h, server_cert_path,
+				    server_key_path,
+				    eh->eh_ssl_config) < 0)
+	    goto done;
+	if (auth_type_client_certifificate)
+	    if (cx_get_ssl_client_certs(h, server_ca_cert_path, eh->eh_ssl_config) < 0)
+		goto done;
+	eh->eh_ssl_config->x509_verify_cb = cx_verify_certs; /* Is extra verification necessary? */
+	if (auth_type_client_certifificate){
+	    eh->eh_ssl_config->verify_peer = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+	    eh->eh_ssl_config->x509_verify_cb = cx_verify_certs;
+	    eh->eh_ssl_config->verify_depth = 2;
+	}
+	//    ssl_verify_mode             = htp_sslutil_verify2opts(optarg);
+    }
+    assert(SSL_VERIFY_NONE == 0);
+
+    /* Init evhtp */
+    if ((eh->eh_evbase = event_base_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "event_base_new");
+	goto done;
+    }
+    /* create a new evhtp_t instance */
+    if ((eh->eh_htp = evhtp_new(eh->eh_evbase, NULL)) == NULL){
+	clicon_err(OE_UNIX, errno, "evhtp_new");
+	goto done;
+    }
+    /* Here the daemon either uses SSL or not, ie you cant seem to mix http and https :-( */
+    if (use_ssl_server){
+	if (evhtp_ssl_init(eh->eh_htp, eh->eh_ssl_config) < 0){
+	    clicon_err(OE_UNIX, errno, "evhtp_new");
+	    goto done;
+	}
+    }
+#ifndef EVHTP_DISABLE_EVTHR /* threads */
+    evhtp_use_threads_wexit(eh->eh_htp, NULL, NULL, 4, NULL);
+#endif
+    /* Callback before the connection is accepted. */
+    evhtp_set_pre_accept_cb(eh->eh_htp, cx_pre_accept, h);
+    /* Callback right after a connection is accepted. */
+    evhtp_set_post_accept_cb(eh->eh_htp, cx_post_accept, h);
+    /* Callback to be executed for all /restconf api calls */
+    if (evhtp_set_cb(eh->eh_htp, "/" RESTCONF_API, cx_path_restconf, h) == NULL){
+    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
+    	goto done;
+    }
+    /* Callback to be executed for all /restconf api calls */
+    if (evhtp_set_cb(eh->eh_htp, RESTCONF_WELL_KNOWN, cx_path_wellknown, h) == NULL){
+    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
+    	goto done;
+    }
+    /* Generic callback called if no other callbacks are matched */
+    evhtp_set_gencb(eh->eh_htp, cx_gencb, h);
+    
+    if (evhtp_bind_socket(eh->eh_htp,           /* evhtp handle */
+			  address,              /* string address, eg ipv4:<ipv4addr> */
+			  port,                 /* port */
+			  SOCKET_LISTEN_BACKLOG /* backlog flag, see listen(5)  */
+			  ) < 0){
+	clicon_err(OE_UNIX, errno, "evhtp_bind_socket");
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (vec)
+	free(vec);
+    return retval;
+}
+
+/*! Read config from backend */ 
 int
-main(int    argc,
-     char **argv)
+restconf_config_backend(clicon_handle h,
+			int           argc,
+			char        **argv,
+			int           drop_privileges)
 {
     int                retval = -1;
     char	      *argv0 = argv[0];
-    int                c;
-    clicon_handle      h;
     char              *dir;
-    int                logdst = CLICON_LOG_SYSLOG;
     yang_stmt         *yspec = NULL;
     char              *str;
     clixon_plugin     *cp = NULL;
     cvec              *nsctx_global = NULL; /* Global namespace context */
     size_t             cligen_buflen;
     size_t             cligen_bufthreshold;
-    uint16_t           defaultport;
-    uint16_t           port = 0;
-    int                dbg = 0;
-    int                use_ssl = 0;
-    int                ssl_verify_clients = 0;
-    char              *restconf_ipv4_addr = NULL;
-    char              *restconf_ipv6_addr = NULL;
-    int                i;
-    struct evhtp_handle *eh = &_EVHTP_HANDLE;
-    int                  drop_priveleges = 1;
+    cvec              *nsc = NULL;
+    cxobj             *xconfig = NULL;
+    uint32_t           id = 0; /* Session id, to poll backend up */
+    cx_evhtp_handle   *eh = NULL;
 
+#if 0
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
 
@@ -705,13 +1011,6 @@ main(int    argc,
     /* Find and read configfile */
     if (clicon_options_main(h) < 0)
 	goto done;
-    //    stream_path = clicon_option_str(h, "CLICON_STREAM_PATH");
-    /* Start with http default port, but change this later if -s is set to https default port */
-    if ((i = clicon_option_int(h, "CLICON_RESTCONF_HTTP_PORT")) < 0){
-	clicon_err(OE_CFG, EINVAL, "CLICON_RESTCONF_HTTP_PORT not found");
-	goto done;
-    }
-    defaultport = (uint16_t)i;
     
     /* Now rest of options, some overwrite option file */
     optind = 1;
@@ -745,7 +1044,7 @@ main(int    argc,
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
 	case 'r':{ /* Do not drop privileges if run as root */
-	    drop_priveleges = 0;
+	    drop_privileges = 0;
 	    break;
 	}
 	case 'o':{ /* Configuration option */
@@ -757,32 +1056,178 @@ main(int    argc,
 		goto done;
 	    break;
 	}
-	case 's': /* ssl: use https */
-	    use_ssl = 1;
-	    /* Set to port - note can be overrifden by -P */
-	    if ((i = clicon_option_int(h, "CLICON_RESTCONF_HTTPS_PORT")) < 0){
-		clicon_err(OE_CFG, EINVAL, "CLICON_RESTCONF_HTTPS_PORT not found");
-		goto done;
-	    }
-	    defaultport = (uint16_t)i;
-	    break;
-	case 'c': /* ssl: verify clients */
-	    ssl_verify_clients = 1;
-	    break;
-	case 'P': /* http port */
-	    if (!strlen(optarg))
-		usage(h, argv0);
-	    port=atoi(optarg);
-	    break;
         default:
             usage(h, argv0);
             break;
 	}
     argc -= optind;
     argv += optind;
+#endif
+    /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
+    xml_nsctx_namespace_netconf_default(h);
+    
+   assert(SSL_VERIFY_NONE == 0);
+
+    /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
+    clicon_argv_set(h, argv0, argc, argv);
+    
+#if 0 /* Drop privileges after evhtp and server key/cert read */
+    if (drop_privileges){
+	/* Drop privileges to WWWUSER if started as root */
+	if (restconf_drop_privileges(h, WWWUSER) < 0)
+	    goto done;
+    }
+#endif
+
+    /* Init cligen buffers */
+    cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
+    cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
+    cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
+
+    /* Add (hardcoded) netconf features in case ietf-netconf loaded here
+     * Otherwise it is loaded in netconf_module_load below
+     */
+    if (netconf_module_features(h) < 0)
+	goto done;
+    /* Create top-level yang spec and store as option */
+    if ((yspec = yspec_new()) == NULL)
+	goto done;
+    clicon_dbspec_yang_set(h, yspec);
+    /* Treat unknown XML as anydata */
+    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1)
+	xml_bind_yang_unknown_anydata(1);
+    
+    /* Load restconf plugins before yangs are loaded (eg extension callbacks) */
+    if ((dir = clicon_restconf_dir(h)) != NULL)
+	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
+	    return -1;
+    /* Create a pseudo-plugin to create extension callback to set the ietf-routing
+     * yang-data extension for api-root top-level restconf function.
+     */
+    if (clixon_pseudo_plugin(h, "pseudo restconf", &cp) < 0)
+	goto done;
+    cp->cp_api.ca_extension = restconf_main_extension_cb;
+
+    /* Load Yang modules
+     * 1. Load a yang module as a specific absolute filename */
+    if ((str = clicon_yang_main_file(h)) != NULL){
+	if (yang_spec_parse_file(h, str, yspec) < 0)
+	    goto done;
+    }
+    /* 2. Load a (single) main module */
+    if ((str = clicon_yang_module_main(h)) != NULL){
+	if (yang_spec_parse_module(h, str, clicon_yang_module_revision(h),
+				   yspec) < 0)
+	    goto done;
+    }
+    /* 3. Load all modules in a directory */
+    if ((str = clicon_yang_main_dir(h)) != NULL){
+	if (yang_spec_load_dir(h, str, yspec) < 0)
+	    goto done;
+    }
+    /* Load clixon lib yang module */
+    if (yang_spec_parse_module(h, "clixon-lib", NULL, yspec) < 0)
+	goto done;
+     /* Load yang module library, RFC7895 */
+    if (yang_modules_init(h) < 0)
+	goto done;
+
+    /* Load yang restconf module */
+    if (yang_spec_parse_module(h, "ietf-restconf", NULL, yspec)< 0)
+	goto done;
+    
+    /* Add netconf yang spec, used as internal protocol */
+    if (netconf_module_load(h) < 0)
+	goto done;
+    
+    /* Add system modules */
+     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
+	 yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec)< 0)
+	 goto done;
+     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277") &&
+	 yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
+	 goto done;
+
+     /* Here all modules are loaded 
+      * Compute and set canonical namespace context
+      */
+     if (xml_nsctx_yangspec(yspec, &nsctx_global) < 0)
+	 goto done;
+     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
+	 goto done;
+
+     /* Query backend of config. 
+      * Before evhtp, try again if not done */
+     while (1){
+	 if (clicon_session_id_get(h, &id) < 0){
+	     if (errno == ENOENT){
+		 fprintf(stderr, "waiting");
+		 sleep(1);
+		 continue;
+	     }
+	 }
+	 clicon_session_id_set(h, id);
+	 break;
+     }
+     if ((nsc = xml_nsctx_init(NULL, "https://clicon.org/restconf")) == NULL)
+	 goto done;
+     if (clicon_rpc_get_config(h, NULL, "running", "/restconf", nsc, &xconfig) < 0)
+	 goto done;
+     /* Initialize evhtp handle - fill it in cx_evhtp_init */
+     if ((eh = malloc(sizeof *eh)) == NULL){
+	 clicon_err(OE_UNIX, errno, "malloc");
+	 goto done;
+     }
+     memset(eh, 0, sizeof *eh);
+     _EVHTP_HANDLE = eh; /* global */
+     if (cx_evhtp_init(h, xconfig, nsc, eh) < 0)
+	 goto done;
+     /* Drop privileges after evhtp and server key/cert read */
+     if (drop_privileges){
+	 /* Drop privileges to WWWUSER if started as root */
+	 if (restconf_drop_privileges(h, WWWUSER) < 0)
+	     goto done;
+     }
+     /* libevent main loop */
+     event_base_loop(eh->eh_evbase, 0); /* XXX: replace with clixon_event_loop() */
+
+     retval = 0;
+ done:
+    if (xconfig)
+	xml_free(xconfig);
+    if (nsc)
+	cvec_free(nsc);
+    clicon_debug(1, "restconf_main_evhtp done");
+    //    stream_child_freeall(h);
+    evhtp_terminate(eh);
+    restconf_terminate(h);    
+    return retval;
+}
+
+/*! Read config locally */ 
+int
+restconf_config_local(clicon_handle h,
+		      int      argc,
+		      char   **argv,
+		      uint16_t port,
+		      int      ssl_verify_clients,
+		      int      use_ssl,
+		      int      drop_privileges)
+{
+    int                retval = -1;
+    char	      *argv0 = argv[0];
+    char              *dir;
+    yang_stmt         *yspec = NULL;
+    char              *str;
+    clixon_plugin     *cp = NULL;
+    cvec              *nsctx_global = NULL; /* Global namespace context */
+    size_t             cligen_buflen;
+    size_t             cligen_bufthreshold;
+    char              *restconf_ipv4_addr = NULL;
+    char              *restconf_ipv6_addr = NULL;
+    cx_evhtp_handle   *eh = NULL;
+
     /* port = defaultport unless explicitly set -P */
-    if (port == 0)
-	port = defaultport;
     if (port == 0){
 	clicon_err(OE_DAEMON, EINVAL, "Restconf bind port is 0");
 	goto done;
@@ -790,6 +1235,13 @@ main(int    argc,
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
     
+    /* Initialize evhtp handle */
+    if ((eh = malloc(sizeof *eh)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(eh, 0, sizeof *eh);
+    _EVHTP_HANDLE = eh; /* global */
     /* Check server ssl certs */
     if (use_ssl){
 	/* Init evhtp ssl config struct */
@@ -835,7 +1287,6 @@ main(int    argc,
 #ifndef EVHTP_DISABLE_EVTHR
     evhtp_use_threads_wexit(eh->eh_htp, NULL, NULL, 4, NULL);
 #endif
-
     /* Callback before the connection is accepted. */
     evhtp_set_pre_accept_cb(eh->eh_htp, cx_pre_accept, h);
 
@@ -901,7 +1352,8 @@ main(int    argc,
 	if (cb)
 	    cbuf_free(cb);
     }
-    if (drop_priveleges){
+
+    if (drop_privileges){
 	/* Drop privileges to WWWUSER if started as root */
 	if (restconf_drop_privileges(h, WWWUSER) < 0)
 	    goto done;
@@ -984,10 +1436,11 @@ main(int    argc,
      if (clicon_nsctx_global_set(h, nsctx_global) < 0)
 	 goto done;
 
-     /* Dump configuration options on debug */
-    if (dbg)      
-	clicon_option_dump(h, dbg);
-
+    /* Call start function in all plugins before we go interactive 
+     */
+     if (clixon_plugin_start_all(h) < 0)
+	 goto done;
+     
     /* Call start function in all plugins before we go interactive 
      */
      if (clixon_plugin_start_all(h) < 0)
@@ -999,7 +1452,196 @@ main(int    argc,
  done:
     clicon_debug(1, "restconf_main_evhtp done");
     //    stream_child_freeall(h);
-    evhtp_terminate(&_EVHTP_HANDLE);    
+    evhtp_terminate(eh);    
+    restconf_terminate(h);    
+    return retval;
+}
+
+int
+main(int    argc,
+     char **argv)
+{
+    int                retval = -1;
+    char	      *argv0 = argv[0];
+    int                c;
+    clicon_handle      h;
+    int                logdst = CLICON_LOG_SYSLOG;
+    int                dbg = 0;
+    int                i;
+    cx_evhtp_handle   *eh = NULL;
+    int                drop_privileges = 1;
+    uint16_t           defaultport = 0;
+    int                use_ssl = 0;
+    int                ssl_verify_clients = 0;
+    uint16_t           port = 0;
+
+    /* In the startup, logs to stderr & debug flag set later */
+    clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
+
+    /* Create handle */
+    if ((h = restconf_handle_init()) == NULL)
+	goto done;
+
+    _CLICON_HANDLE = h; /* for termination handling */
+
+    while ((c = getopt(argc, argv, RESTCONF_OPTS)) != -1)
+	switch (c) {
+	case 'h':
+	    usage(h, argv0);
+	    break;
+	case 'D' : /* debug */
+	    if (sscanf(optarg, "%d", &dbg) != 1)
+		usage(h, argv0);
+	    break;
+	 case 'f': /* override config file */
+	    if (!strlen(optarg))
+		usage(h, argv0);
+	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
+	    break;
+	case 'E': /* extra config directory */
+	    if (!strlen(optarg))
+		usage(h, argv[0]);
+	    clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
+	    break;
+	 case 'l': /* Log destination: s|e|o */
+	     if ((logdst = clicon_log_opt(optarg[0])) < 0)
+		usage(h, argv0);
+	    if (logdst == CLICON_LOG_FILE &&
+		strlen(optarg)>1 &&
+		clicon_log_file(optarg+1) < 0)
+		goto done;
+	   break;
+	} /* switch getopt */
+
+    /* 
+     * Logs, error and debug to stderr or syslog, set debug level
+     */
+    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
+
+    clicon_debug_init(dbg, NULL); 
+    clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
+    if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
+	clicon_err(OE_DAEMON, errno, "Setting signal");
+	goto done;
+    }
+    if (set_signal(SIGINT, restconf_sig_term, NULL) < 0){
+	clicon_err(OE_DAEMON, errno, "Setting signal");
+	goto done;
+    }
+    if (set_signal(SIGCHLD, restconf_sig_child, NULL) < 0){
+	clicon_err(OE_DAEMON, errno, "Setting signal");
+	goto done;
+    }
+    
+    /* Find and read configfile */
+    if (clicon_options_main(h) < 0)
+	goto done;
+    //    stream_path = clicon_option_str(h, "CLICON_STREAM_PATH");
+    /* XXX only local conf */
+    defaultport = (uint16_t)clicon_option_int(h, "CLICON_RESTCONF_HTTP_PORT"); 
+    
+    /* Now rest of options, some overwrite option file */
+    optind = 1;
+    opterr = 0;
+    while ((c = getopt(argc, argv, RESTCONF_OPTS)) != -1)
+	switch (c) {
+	case 'h' : /* help */
+	case 'D' : /* debug */
+	case 'f':  /* config file */
+	case 'E':  /* extra config dir */
+	case 'l':  /* log  */
+	    break; /* see above */
+	case 'p' : /* yang dir path */
+	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+		goto done;
+	    break;
+	case 'd':  /* Plugin directory */
+	    if (!strlen(optarg))
+		usage(h, argv0);
+	    clicon_option_str_set(h, "CLICON_RESTCONF_DIR", optarg);
+	    break;
+	case 'y' : /* Load yang spec file (override yang main module) */
+	    clicon_option_str_set(h, "CLICON_YANG_MAIN_FILE", optarg);
+	    break;
+	case 'a': /* internal backend socket address family */
+	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
+	    break;
+	case 'u': /* internal backend socket unix domain path or ip host */
+	    if (!strlen(optarg))
+		usage(h, argv0);
+	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
+	    break;
+	case 'r':{ /* Do not drop privileges if run as root */
+	    drop_privileges = 0;
+	    break;
+	}
+	case 'o':{ /* Configuration option */
+	    char          *val;
+	    if ((val = index(optarg, '=')) == NULL)
+		usage(h, argv0);
+	    *val++ = '\0';
+	    if (clicon_option_add(h, optarg, val) < 0)
+		goto done;
+	    break;
+	}
+	case 'b': /* Read config from backend - not local */
+	    clicon_option_bool_set(h, "CLICON_RESTCONF_CONFIG", 1);
+	    break;
+	case 's': /* ssl: use https */
+	    use_ssl = 1;
+	    /* Set to port - note can be overrifden by -P */
+	    if ((i = clicon_option_int(h, "CLICON_RESTCONF_HTTPS_PORT")) < 0){
+		clicon_err(OE_CFG, EINVAL, "CLICON_RESTCONF_HTTPS_PORT not found");
+		goto done;
+	    }
+	    defaultport = (uint16_t)i;
+	    break;
+	case 'c': /* ssl: verify clients */
+	    ssl_verify_clients = 1;
+	    break;
+	case 'P': /* http port */
+	    if (!strlen(optarg))
+		usage(h, argv0);
+	    port=atoi(optarg);
+	    break;
+        default:
+            usage(h, argv0);
+            break;
+	}
+    argc -= optind;
+    argv += optind;
+
+     /* Dump configuration options on debug */
+    if (dbg)      
+	clicon_option_dump(h, dbg);
+
+    /* port = defaultport unless explicitly set -P */
+    if (port == 0)
+	port = defaultport;
+
+    if (clicon_option_bool(h, "CLICON_RESTCONF_CONFIG") == 0){
+	/* Read config locally */ 
+	if (restconf_config_local(h, argc, argv,
+				  port,
+				  ssl_verify_clients,
+				  use_ssl,
+				  drop_privileges
+				  ) < 0)
+	    goto done;
+    }
+    else {
+	/* Read config from backend */ 
+	if (restconf_config_backend(h, argc, argv, drop_privileges) < 0)
+	    goto done;
+    }
+
+    event_base_loop(eh->eh_evbase, 0);
+
+    retval = 0;
+ done:
+    clicon_debug(1, "restconf_main_evhtp done");
+    //    stream_child_freeall(h);
+    evhtp_terminate(eh);    
     restconf_terminate(h);    
     return retval;
 }

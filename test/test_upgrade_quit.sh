@@ -301,7 +301,7 @@ cat <<EOF > $dir/startup_db
 </config>
 EOF
 
-MODSTATE='<modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"><module-set-id>0</module-set-id><module><name>clixon-lib</name><revision>2020-04-23</revision><namespace>http://clicon.org/lib</namespace></module><module><name>ietf-inet-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace></module><module><name>ietf-netconf</name><revision>2011-06-01</revision><namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace></module><module><name>ietf-restconf</name><revision>2017-01-26</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-restconf</namespace></module><module><name>ietf-yang-library</name><revision>2016-06-21</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace></module><module><name>ietf-yang-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace></module><module><name>interfaces</name><revision>2018-02-20</revision><namespace>urn:example:interfaces</namespace></module></modules-state>'
+MODSTATE='<modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"><module-set-id>0</module-set-id><module><name>clixon-lib</name><revision>2020-04-23</revision><namespace>http://clicon.org/lib</namespace></module><module><name>ietf-inet-types</name><revision>2020-07-06</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace></module><module><name>ietf-netconf</name><revision>2011-06-01</revision><namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace></module>'
 
 XML='<interfaces xmlns="urn:example:interfaces"><interface><name>e0</name><docs><descr>First interface</descr></docs><type>eth</type><admin-status>up</admin-status><statistics><in-octets>54326.432</in-octets><in-unicast-pkts>8458765</in-unicast-pkts></statistics></interface><interface><name>e1</name><type>eth</type><admin-status>down</admin-status></interface></interfaces>'
 
@@ -315,12 +315,18 @@ sudo clixon_backend -zf $cfg
 if [ $? -ne 0 ]; then
     err
 fi
+
 new "start backend -s startup -f $cfg -q -- -u"
 output=$(sudo $clixon_backend -F -D $DBG -s startup -f $cfg -q -- -u)
-#echo "$output"
 
-if [ "$ALL" != "$output" ]; then
-    err "$ALL" "$output"
+match=$(echo "$output" | grep --null -o "$MODSTATE")
+if [ -z "$match" ]; then
+    err "$MODSTATE" "$output"
+fi
+
+match=$(echo "$output" | grep --null -o "$XML")
+if [ -z "$match" ]; then
+    err "$XML" "$output"
 fi
 
 rm -rf $dir

@@ -1,0 +1,190 @@
+module clixon-restconf {
+    yang-version 1.1;
+    namespace "https://clicon.org/restconf";
+    prefix "clrc";
+
+    import ietf-inet-types {
+	prefix inet;
+    }
+
+    organization
+	"Clixon";
+
+    contact
+	"Olof Hagsand <olof@hagsand.se>";
+
+    description
+	"This YANG module provides a data-model for the Clixon RESTCONF daemon.
+       ***** BEGIN LICENSE BLOCK *****
+       Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+       
+       This file is part of CLIXON
+
+       Licensed under the Apache License, Version 2.0 (the \"License\");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
+            http://www.apache.org/licenses/LICENSE-2.0
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an \"AS IS\" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+
+       Alternatively, the contents of this file may be used under the terms of
+       the GNU General Public License Version 3 or later (the \"GPL\"),
+       in which case the provisions of the GPL are applicable instead
+       of those above. If you wish to allow use of your version of this file only
+       under the terms of the GPL, and not to allow others to
+       use your version of this file under the terms of Apache License version 2, 
+       indicate your decision by deleting the provisions above and replace them with
+       the notice and other provisions required by the GPL. If you do not delete
+       the provisions above, a recipient may use your version of this file under
+       the terms of any one of the Apache License version 2 or the GPL.
+
+       ***** END LICENSE BLOCK *****";
+
+    revision 2020-10-30 {
+	description
+	    "Initial release";
+    }
+    typedef http-auth-type {
+	type enumeration {
+	    enum client-certificate {
+		description
+		    "TLS client certificate";
+	    }
+	    enum password {
+		description
+		"PAM password auth";
+	    }
+	    enum none {
+		description
+		"No authentication, no security.";
+	    }
+	}
+	description
+	    "Enumeration of HTTP authorization types.";
+    }
+    typedef service-operation {
+        type enumeration {
+            enum start {
+                description
+                    "Start if not already running";
+            }
+            enum stop {
+                description
+                    "Stop if running";
+            }
+            enum restart {
+                description
+                    "Stop if running, then start";
+            }
+            enum status {
+                description
+                    "Check status";
+            }
+        }
+        description
+            "Common operations that can be performed on a service";
+    }
+    container restconf {
+	presence "Enables RESTCONF";
+	description
+	    "HTTP daemon configuration.";
+	list socket {
+	    key "namespace address port";
+	    leaf namespace {
+		type string;
+		description "indicates a namespace for instance. On platforms where namespaces are not suppported, always 'default'";
+	    }
+	    leaf address {
+		type inet:ip-address;
+		description "IP address to bind to";
+	    }
+	    leaf port {
+		type inet:port-number;
+		description "IP port to bind to";
+	    }
+	    leaf ssl {
+		type boolean;
+		default true;
+		description "Enable for HTTPS otherwise HTTP protocol";
+	    }
+	}
+	leaf auth-type {
+	    type http-auth-type;
+	    description
+		"The authentication type.
+                 Note client-certificate applies only if socket has ssl enabled";
+	}
+	leaf server-cert-path {
+	    type string;
+	    description
+		"Path to server certificate file. 
+                 Note only applies if socket has ssl enabled";
+	    default "/etc/ssl/private/clixon-server-crt.pem";
+	    /* See CLICON_SSL_SERVER_CERT */
+	}
+	leaf server-key-path {
+	    type string;
+	    description
+		"Path to server key file
+                 Note only applies if socket has ssl enabled";
+	    default "/etc/ssl/private/clixon-server-key.pem";
+	    /* See CLICON_SSL_SERVER_KEY */
+	}
+	leaf server-ca-cert-path {
+	    type string;
+	    description
+		"Path to server CA cert file
+	         Note only applies if socket has ssl enabled";
+	    default "/etc/ssl/certs/clixon-ca_crt.pem";
+	    /* CLICON_SSL_CA_CERT */
+	}
+	leaf client-cert-ca {
+	    type string;
+	    description
+		"Path to client certificate file
+                 Note only applies if socket has ssl enabled AND auth-type has client-certificate
+                 XXX: Is this relevant?";
+	}
+    }
+    rpc restconf-control {
+	input {
+	    leaf operation {
+		type service-operation;
+		mandatory true;
+		description
+		    "One of the strings 'start', 'stop', 'restart', or 'status'.";
+	    }
+	    leaf namespace {
+		type string;
+		description
+		    "Network namespace.";
+	    }
+	}
+	output {
+	    leaf stdout {
+		type string;
+	    }
+	}
+    }
+    rpc restconf-coredump {
+	input {
+	    leaf operation {
+		type boolean;
+		mandatory true;
+	    }
+	    leaf namespace {
+		type string;
+		description
+		    "Network namespace.";
+	    }
+	}
+	output {
+	    leaf stdout {
+		type string;
+	    }
+	}
+    }
+}

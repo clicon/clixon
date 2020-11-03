@@ -27,6 +27,23 @@
 
 ## 4.9.0 Expected: 15 Dec 2020
 
+### New features
+
+* Restconf configuration has a new configure model: `clixon-restconf.yang` enabling restconf daemon configuration from datastore instead of from config file. 
+  * Restconf config data, such as addresses, authentication type, etc, is read from the backend datastore instead of the clixon-config file on startup.
+  * This is enabled by setting `CLIXON_RESTCONF_CONFIG` to true (or start clixon-restconf with `-b`), in which case restconf data can be set in the datastore.
+  * This only applies to the evhtp restconf daemon, not fcgi/nginx.
+  * If enabled, most RESTCONF clixon-config options are obsolete
+  * Thanks to Dave Cornejo for the idea
+  * Example: instead of setting `<CLICON_SSL_SERVER_CERT>file</CLICON_SSL_SERVER_CERT>` in clixon.xml, set: `arestconf><socket><server-cert-path>file</server-cert-path></socket></restconf>` in the running datastore before starting restconf.
+  
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* New clixon-config@2020-11-03.yang revision
+  * Added option: `CLICON_RESTCONF_CONFIG` for reading restconf daemon config frm datastore
+
 ### Minor changes
 
 * Added new backend plugin: ca_pre-demon called if backend is daemonized just prior to forking.

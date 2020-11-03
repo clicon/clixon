@@ -1379,6 +1379,10 @@ netconf_module_load(clicon_handle h)
     if (clicon_option_bool(h, "CLICON_XML_CHANGELOG"))
 	if (yang_spec_parse_module(h, "clixon-xml-changelog", NULL, yspec)< 0)
 	    goto done;
+    /* Clixon restconf daemon */
+    if (clicon_option_bool(h, "CLICON_RESTCONF_CONFIG"))
+	if (yang_spec_parse_module(h, "clixon-restconf", NULL, yspec)< 0)
+	    goto done;
     retval = 0;
  done:
     return retval;

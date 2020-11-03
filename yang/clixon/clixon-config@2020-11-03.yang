@@ -40,8 +40,21 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
-    /* 	    Deleted:  clixon-stats state for clixon XML and memory statistics. (moved to clixon-lib)
-     */
+    revision 2020-11-03 {
+	description
+	    "Added: CLICON_RESTCONF_CONFIG";
+    }
+    revision 2020-10-01 {
+	description
+	    "Added: CLICON_CONFIGDIR.";
+    }
+    revision 2020-08-17 {
+	description
+	    "Added: CLICON_RESTCONF_IPV4_ADDR, CLICON_RESTCONF_IPV6_ADDR, 
+                    CLICON_RESTCONF_HTTP_PORT, CLICON_RESTCONF_HTTPS_PORT
+                    CLICON_NAMESPACE_NETCONF_DEFAULT, 
+                    CLICON_CLI_HELPSTRING_TRUNCATE, CLICON_CLI_HELPSTRING_LINES";
+    }
     revision 2020-06-17 {
 	description
 	    "Added: CLICON_CLI_LINES_DEFAULT
@@ -267,14 +280,6 @@ module clixon-config {
                 *:<feature> means enable the specific feature in all modules";
 	   type string;
         }
-	leaf CLICON_CONFIGFILE{
-	    type string;
-	    description
-               "Location of configuration-file for default values (this file).
-                 Default is CLIXON_DEFAULT_CONFIG=/usr/local/etc/clicon.xml
-                 set in configure. Note that due to bootstrapping, a default
-                 value here does not work.";
-	}
 	leaf-list CLICON_YANG_DIR {
 	    ordered-by user;
 	    type string;
@@ -284,6 +289,28 @@ module clixon-config {
                  When loading a Yang module, Clixon searches this list in the order
                  they appear. Ensure that YANG_INSTALLDIR(default 
                  /usr/local/share/clixon) is present in the path";
+	}
+	leaf CLICON_CONFIGFILE{
+	    type string;
+	    description
+               "Location of the main configuration-file.
+                Default is CLIXON_DEFAULT_CONFIG=/usr/local/etc/clicon.xml set in configure. 
+                Note that due to bootstrapping, this value is not actually read from file
+                and therefore a default value would be meaningless.";
+	}
+	leaf CLICON_CONFIGDIR{
+	    type string;
+	    description
+               "Location of directory of extra configuration files. 
+                If not given, only main configfile is read.
+                If given, and if the directory exists, all files in this directory will be loaded
+                AFTER the main config file (CLICON_CONFIGFILE) in the following way:
+                - leaf values are overwritten
+                - leaf-list values are appended
+                The files in this directory will be loaded alphabetically.
+                If the dir is given but does not exist will result in an error.
+                You can override file setting with -E <dir> command-line option.
+                Note that due to bootstraping this value is only meaningful in the main config file";
 	}
 	leaf CLICON_YANG_MAIN_FILE {
 	    type string;
@@ -325,7 +352,7 @@ module clixon-config {
 	    default true;
 	    description
 		"If false, skip Yang list check sanity checks from RFC 7950, Sec 7.8.2: 
-                   The 'key' statement, which MUST be present if the list represents configuration.
+                 The 'key' statement, which MUST be present if the list represents configuration.
                  Some yang specs seem not to fulfil this. However, if you reset this, there may
                  be follow-up errors due to code that assumes a configuration list has keys";
 	}
@@ -369,7 +396,8 @@ module clixon-config {
 	    default "/www-data/fastcgi_restconf.sock";
 	    description
 		"FastCGI unix socket. Should be specified in webserver
-         	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock";
+         	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
+                 Only if with-restconf=fcgi, NOT evhtp";
 	}
 	leaf CLICON_RESTCONF_PRETTY {
 	    type boolean;
@@ -384,26 +412,83 @@ module clixon-config {
                  Setting this value to false makes restconf return not pretty-printed
                  which may be desirable for performance or tests";
 	}
+	leaf CLICON_RESTCONF_CONFIG {
+	    type boolean;
+	    default false;
+	    description
+		"If set, load clixon-restconf module automatically. This also means
+                 that the clixon restconf daemon gets its restconf-specific configuration 
+                 from that yang loaded in the backend running datastore instead of from
+                 the clixon XML config file.
+                 This only works with-restconf=evhtp, NOT with restconf=fcgi (nginx)
+                 A consequence is that if set, the following option in this YANG are obsolete:
+	           CLICON_RESTCONF_IPV4_ADDR
+                   CLICON_RESTCONF_IPV6_ADDR
+	           CLICON_RESTCONF_HTTP_PORT
+                   CLICON_RESTCONF_HTTPS_PORT
+	           CLICON_SSL_SERVER_CERT
+                   CLICON_SSL_SERVER_KEY
+	           CLICON_SSL_CA_CERT
+                 ";
+	}
+	leaf CLICON_RESTCONF_IPV4_ADDR {
+	    type string;
+	    default "0.0.0.0";
+	    description
+		"RESTCONF IPv4 socket binding address.
+                 Applies to native http by config option --with-restconf=evhtp.
+                 Obsolete if CLICON_RESTCONF_CONFIG is true";
+	}
+	leaf CLICON_RESTCONF_IPV6_ADDR {
+	    type string;
+	    default "::";
+	    description
+		"RESTCONF IPv6 socket binding address.
+                 Applies to native http by config option --with-restconf=evhtp.
+                 Obsolete if CLICON_RESTCONF_CONFIG is true";
+	}
+	leaf CLICON_RESTCONF_HTTP_PORT {
+	    type uint16;
+	    default 80;
+	    description
+		"RESTCONF socket binding port, non-ssl
+                 In the restconf daemon, it can be overriden by -P <port>
+                 Applies to native http only by config option --with-restconf=evhtp.
+                 Obsolete if CLICON_RESTCONF_CONFIG is true";
+	}
+	leaf CLICON_RESTCONF_HTTPS_PORT {
+	    type uint16;
+	    default 443;
+	    description
+		"RESTCONF socket binding port, ssl
+                 In the restconf daemon, this is the port chosen if -s is given. 
+                 Note it can be overriden by -P <port>
+                 Applies to native http by config option --with-restconf=evhtp.
+                 Obsolete if CLICON_RESTCONF_CONFIG is true";
+	}
 	leaf CLICON_SSL_SERVER_CERT {
 	    type string;
 	    default "/etc/ssl/certs/clixon-server-crt.pem";
 	    description
-		"SSL server cert for restconf https. This is not required if you use
-                 --with-restconf=fcgi, ie a reverse-proxy based such as nginx over fcgi";
+		"SSL server cert for restconf https. 
+                 Applies to native http only by config option --with-restconf=evhtp.
+                 Obsolete if CLICON_RESTCONF_CONFIG is true";
 	}
 	leaf CLICON_SSL_SERVER_KEY {
 	    type string;
 	    default "/etc/ssl/private/clixon-server-key.pem";
 	    description
-		"SSL server private key for restconf https. This is not required if you use
-                 --with-restconf=fcgi, ie a reverse-proxy based such as nginx over fcgi";
+		"SSL server private key for restconf https.
+                 Applies to native http only by config option --with-restconf=evhtp.
+                 Obsolete if CLICON_RESTCONF_CONFIG is true";
 	}
 	leaf CLICON_SSL_CA_CERT {
 	    type string;
 	    default "/etc/ssl/certs/clixon-ca_crt.pem";
 	    description
-		"SSL CA cert for client authentication. This is not required if you use
-                 --with-restconf=fcgi, ie a reverse-proxy based such as nginx over fcgi";
+		"SSL CA cert for client authentication.
+                 Applies to native http only by config option --with-restconf=evhtp.
+                 Obsolete if CLICON_RESTCONF_CONFIG is true";
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;
@@ -439,18 +524,23 @@ module clixon-config {
                  1: Generate a CLI specification for CLI completion of all loaded Yang modules. 
                     This CLI tree can be accessed in CLI-spec files using the tree reference syntax (eg
                      @datamodel).
-                 2: Same including state syntax in a tree called @datamodelstate.
+                 2: Same including state syntax in a tree called @datamodelstate and @datamodelshow
                  See also CLICON_CLI_MODEL_TREENAME.";
 	}
 	leaf CLICON_CLI_MODEL_TREENAME {
 	    type string;
 	    default "datamodel";
 	    description
-		"If set, CLI specs can reference the
-                 model syntax using this reference. 
+		"If CLICON_CLI_GENMOEL is set, CLI specs can reference the
+                 model syntax using a model tree set by this option.
+                 Three trees are generated with this name as a base, (assuming base is datamodel):
+                 - @datamodel - a clispec for navigating in editing a configuration (set/merge/delete)
+                 - @datamodelshow - a clispec for navigating in showing a configuration
+                 - @datamodelstate - a clispec for navigating in showing a configuration WITH state
                  Example: set @datamodel, cli_set();
-                 A second tree called eg @datamodelstate is created that
-                 also contains state together with config.";
+                          show @datamodelshow, cli_show_auto();
+                          show state @datamodelstate, cli_show_auto_state();
+                 ";
 	}
 	leaf CLICON_CLI_GENMODEL_COMPLETION {
 	    type int32;
@@ -547,6 +637,22 @@ module clixon-config {
                  value to the buffer length.
                  If 0, the growth continues with quadratic growth.
                  See CLICON_CLI_BUF_THRESHOLD";
+	}
+	leaf CLICON_CLI_HELPSTRING_TRUNCATE {
+	    type boolean;
+	    default false;
+	    description
+		"CLIgen help string on query (?): Truncate help string on right margin mode
+                 This only applies if you have long help strings, such as when generating them from a
+                 spec such as the autocli";
+	}
+	leaf CLICON_CLI_HELPSTRING_LINES {
+	    type int32;
+	    default 0;
+	    description
+		"CLIgen help string on query (?) limit of number of lines to show, 0 means unlimited.
+                 This only applies if you have multi-line help strings, such as when generating 
+                 from a spec, such as in the autocli.";
 	}
 	leaf CLICON_SOCK_FAMILY {
 	    type string;
@@ -675,6 +781,17 @@ module clixon-config {
                  lists, therefore it is recommended to enable it during development and debugging
                  but disable it in production, until this has been resolved.";
 	}
+	leaf CLICON_NAMESPACE_NETCONF_DEFAULT {
+	    type boolean;
+	    default false;
+	    description
+		"Undefine if you want to ensure strict namespace assignment on all netconf
+                 and XML statements according to the standard RFC 6241.
+                 If defined, top-level rpc calls need not have namespaces (eg using xmlns=<ns>) 
+                 since the default NETCONF namespace will be assumed. (This is not standard).
+                 See rfc6241 3.1: urn:ietf:params:xml:ns:netconf:base:1.0.";
+
+	}
 	leaf CLICON_STARTUP_MODE {
 	    type startup_mode;
 	    description "Which method to boot/start clicon backend";
@@ -726,10 +843,8 @@ module clixon-config {
                  configs can not be edited.
                  This means that a startup config must always have a NACM configuration or
                  that the NACM recovery session is used to edit an empty config.
-                 If this option is set, Clixon disables NACM if a datastore is empty on load.
-                 Note that it only makes the check on initial load, not if a store 'becomes'
-                 empty, but enables a clixon nacm system to start empty and add an NACM
-                 config after boot.";
+                 If this option is set, Clixon disables NACM if a datastore does NOT contain a
+                 NACM config on load.";
 	}
 	leaf CLICON_MODULE_LIBRARY_RFC7895 {
 	    type boolean;
