@@ -771,7 +771,7 @@ load_config_file(clicon_handle h,
     cg_var     *cv;
     char       *opstr;
     char       *varstr;
-    int         fd = -1;
+    FILE       *fp = NULL;
     cxobj      *xt = NULL;
     cxobj      *x;
     cbuf       *cbxml;
@@ -804,11 +804,11 @@ load_config_file(clicon_handle h,
 	goto done;
     }
     /* Open and parse local file into xml */
-    if ((fd = open(filename, O_RDONLY)) < 0){
+    if ((fp = fopen(filename, "r")) < 0){
 	clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	goto done;
     }
-    if (clixon_xml_parse_file(fd, YB_NONE, NULL, NULL, &xt, NULL) < 0)
+    if (clixon_xml_parse_file(fp, YB_NONE, NULL, NULL, &xt, NULL) < 0)
 	goto done;
     if (xt == NULL)
 	goto done;
@@ -831,8 +831,8 @@ load_config_file(clicon_handle h,
  done:
     if (xt)
 	xml_free(xt);
-    if (fd != -1)
-	close(fd);
+    if (fp)
+	fclose(fp);
     return ret;
 }
 

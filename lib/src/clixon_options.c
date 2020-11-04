@@ -204,19 +204,19 @@ parse_configfile_one(const char *filename,
 		     cxobj     **xconfig)
 {
     int    retval = -1;
-    int    fd = -1;
+    FILE  *fp = NULL;
     cxobj *xt = NULL;
     cxobj *xerr = NULL;
     cxobj *xa;
     cbuf  *cbret = NULL;
     int    ret;
 
-    if ((fd = open(filename, O_RDONLY)) < 0){
+    if ((fp = fopen(filename, "r")) < 0){
 	clicon_err(OE_UNIX, errno, "open configure file: %s", filename);
 	return -1;
     }
     clicon_debug(2, "%s: Reading config file %s", __FUNCTION__, filename);
-    if ((ret = clixon_xml_parse_file(fd, yspec?YB_MODULE:YB_NONE, yspec, NULL, &xt, &xerr)) < 0)
+    if ((ret = clixon_xml_parse_file(fp, yspec?YB_MODULE:YB_NONE, yspec, NULL, &xt, &xerr)) < 0)
 	goto done;
     if (ret == 0){
 	if ((cbret = cbuf_new()) ==NULL){
@@ -249,8 +249,8 @@ parse_configfile_one(const char *filename,
  done:
     if (xt)
 	xml_free(xt);
-    if (fd != -1)
-	close(fd);
+    if (fp)
+	fclose(fp);
     if (cbret)
 	cbuf_free(cbret);
     if (xerr)

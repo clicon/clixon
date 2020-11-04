@@ -154,8 +154,8 @@ main(int    argc,
     int           output = 0;
     clicon_handle h;
     struct stat   st;
-    int           fd = 0; /* base file, stdin */
-    int           tfd = -1; /* top file */
+    FILE         *fp = stdin; /* base file, stdin */
+    FILE         *tfp = NULL; /* top file */
     cxobj        *xcfg = NULL;
     cbuf         *cbret = NULL;
     cxobj        *xtop = NULL; /* Top tree if any */
@@ -263,11 +263,11 @@ main(int    argc,
      * Always validated
      */
     if (top_input_filename){
-	if ((tfd = open(top_input_filename, O_RDONLY)) < 0){
-	    clicon_err(OE_YANG, errno, "open(%s)", top_input_filename);	
+	if ((tfp = fopen(top_input_filename, "r")) < 0){
+	    clicon_err(OE_YANG, errno, "fopen(%s)", top_input_filename);	
 	    goto done;
 	}
-	if ((ret = clixon_xml_parse_file(tfd, YB_MODULE, yspec, NULL, &xtop, &xerr)) < 0){
+	if ((ret = clixon_xml_parse_file(tfp, YB_MODULE, yspec, NULL, &xtop, &xerr)) < 0){
 	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
 	    goto done;
 	}
@@ -288,14 +288,14 @@ main(int    argc,
 	xt = xbot;
     }
     if (input_filename){
-	if ((fd = open(input_filename, O_RDONLY)) < 0){
+	if ((fp = fopen(input_filename, "r")) < 0){
 	    clicon_err(OE_YANG, errno, "open(%s)", input_filename);	
 	    goto done;
 	}
     }
     /* 2. Parse data (xml/json) */
     if (jsonin){
-	if ((ret = clixon_json_parse_file(fd, top_input_filename?YB_PARENT:YB_MODULE, yspec, &xt, &xerr)) < 0)
+	if ((ret = clixon_json_parse_file(fp, top_input_filename?YB_PARENT:YB_MODULE, yspec, &xt, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    clixon_netconf_error(xerr, "util_xml", NULL);
@@ -309,7 +309,7 @@ main(int    argc,
 	    yb = YB_MODULE;
 	else
 	    yb = YB_PARENT;
-	if ((ret = clixon_xml_parse_file(fd, yb, yspec, NULL, &xt, &xerr)) < 0){
+	if ((ret = clixon_xml_parse_file(fp, yb, yspec, NULL, &xt, &xerr)) < 0){
 	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
 	    goto done;
 	}
@@ -345,6 +345,10 @@ main(int    argc,
     }
     retval = 0;
  done:
+    if (tfp)
+	fclose(tfp);
+    if (fp)
+	fclose(fp);
     if (nsc)
 	cvec_free(nsc);
     if (cbret)

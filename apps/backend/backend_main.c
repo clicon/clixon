@@ -186,7 +186,6 @@ nacm_load_external(clicon_handle h)
     cxobj      *xt = NULL;
     struct stat st;
     FILE       *f = NULL;
-    int         fd;
 
     filename = clicon_option_str(h, "CLICON_NACM_FILE");
     if (filename == NULL || strlen(filename)==0){
@@ -209,9 +208,8 @@ nacm_load_external(clicon_handle h)
 	goto done;
     if (yang_spec_parse_module(h, "ietf-netconf-acm", NULL, yspec) < 0)
 	goto done;
-    fd = fileno(f);
     /* Read configfile */
-    if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
+    if (clixon_xml_parse_file(f, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
 	goto done;
     if (xt == NULL){
 	clicon_err(OE_XML, 0, "No xml tree in %s", filename);

@@ -370,7 +370,7 @@ example_statedata(clicon_handle h,
     cvec   *nsc1 = NULL;
     cvec   *nsc2 = NULL;
     yang_stmt *yspec = NULL;
-    int     fd;
+    FILE      *fp = NULL;
 
     if (!_state)
 	goto ok;
@@ -395,15 +395,14 @@ example_statedata(clicon_handle h,
 	}
 	else{
 	    cxobj *x1;
-	    if ((fd = open(_state_file, O_RDONLY)) < 0){
+	    if ((fp = fopen(_state_file, "r")) < 0){
 		clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
 		goto done;
 	    }
 	    if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
 		goto done;
-	    if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
+	    if (clixon_xml_parse_file(fp, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
 		goto done;
-	    close(fd);
 	    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
 		goto done;
 	    for (i=0; i<xlen; i++){
@@ -477,6 +476,8 @@ example_statedata(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (fp)
+	fclose(fp);
     if (nsc1)
 	xml_nsctx_free(nsc1);
     if (nsc2)
@@ -968,21 +969,20 @@ example_start(clicon_handle h)
 int
 example_daemon(clicon_handle h)
 {
-    int retval = -1;
-    int ret;
+    int        retval = -1;
+    int        ret;
+    FILE      *fp = NULL;
+    yang_stmt *yspec;
 
     /* Read state file (or should this be in init/start?) */
     if (_state && _state_file && _state_file_init){
-	int fd;
-	yang_stmt *yspec = clicon_dbspec_yang(h);
-	
-	if ((fd = open(_state_file, O_RDONLY)) < 0){
+	yspec = clicon_dbspec_yang(h);
+	if ((fp = fopen(_state_file, "r")) < 0){
 	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
 	    goto done;
 	}
-	if ((ret = clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &_state_xstate, NULL)) < 0)
+	if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, NULL, &_state_xstate, NULL)) < 0)
 	    goto done;
-	close(fd);
 	if (ret == 0){
 	    fprintf(stderr, "%s error\n", __FUNCTION__);
 	    goto done;
@@ -991,6 +991,8 @@ example_daemon(clicon_handle h)
     }
     retval = 0;
  done:
+    if (fp)
+	fclose(fp);
     return retval;
 }
 

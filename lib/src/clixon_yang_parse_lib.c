@@ -704,7 +704,7 @@ yang_parse_str(char         *str,
  * @note this function simply parse a yang spec, no dependencies or checks
  */
 yang_stmt *
-yang_parse_file(int         fd,
+yang_parse_file(FILE       *fp,
 		const char *name,
 		yang_stmt  *yspec)
 {
@@ -723,7 +723,7 @@ yang_parse_file(int         fd,
     memset(buf, 0, len);
     i = 0; /* position in buf */
     while (1){ /* read the whole file */
-	if ((ret = read(fd, &c, 1)) < 0){
+	if ((ret = fread(&c, 1, 1, fp)) < 0){
 	    clicon_err(OE_XML, errno, "read");
 	    break;
 	}
@@ -872,7 +872,7 @@ yang_parse_filename(const char *filename,
 		    yang_stmt  *yspec)
 {
     yang_stmt    *ymod = NULL;
-    int           fd = -1;
+    FILE         *fp = NULL;
     struct stat   st;
 
     clicon_debug(1, "%s %s", __FUNCTION__, filename);
@@ -880,15 +880,15 @@ yang_parse_filename(const char *filename,
 	clicon_err(OE_YANG, errno, "%s not found", filename);
 	goto done;
     }
-    if ((fd = open(filename, O_RDONLY)) < 0){
-	clicon_err(OE_YANG, errno, "open(%s)", filename);	
+    if ((fp = fopen(filename, "r")) == NULL){
+	clicon_err(OE_YANG, errno, "fopen(%s)", filename);	
 	goto done;
     }
-    if ((ymod = yang_parse_file(fd, filename, yspec)) < 0)
+    if ((ymod = yang_parse_file(fp, filename, yspec)) < 0)
 	goto done;
   done:
-    if (fd != -1)
-	close(fd);
+    if (fp)
+	fclose(fp);
     return ymod; /* top-level (sub)module */
 }
 

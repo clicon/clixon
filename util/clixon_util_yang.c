@@ -106,7 +106,7 @@ main(int argc, char **argv)
     clicon_debug_init(dbg, NULL);
     if ((yspec = yspec_new()) == NULL)
 	goto done;
-    if (yang_parse_file(0, "yang test", yspec) == NULL){
+    if (yang_parse_file(stdin, "yang test", yspec) == NULL){
 	fprintf(stderr, "yang parse error %s\n", clicon_err_reason);
 	return -1;
     }

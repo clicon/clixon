@@ -126,7 +126,7 @@ main(int    argc,
     int         len;
     char       *buf = NULL;
     int         ret;
-    int         fd = 0; /* unless overriden by argv[1] */
+    FILE       *fp = stdin; /* unless overriden by argv[1] */
     char       *yang_file_dir = NULL;
     yang_stmt  *yspec = NULL;
     char       *xpath = NULL;
@@ -168,7 +168,7 @@ main(int    argc,
 	    break;
 	case 'f': /* XML file */
 	    filename = optarg;
-	    if ((fd = open(filename, O_RDONLY)) < 0){
+	    if ((fp = fopen(filename, "r")) < 0){
 		clicon_err(OE_UNIX, errno, "open(%s)", argv[1]);
 		goto done;
 	    }
@@ -295,10 +295,10 @@ main(int    argc,
     }
 
     /* 
-     * If fd=0, then continue reading from stdin (after CR)
-     * If fd>0, reading from file opened as argv[1]
+     * If fp=stdin, then continue reading from stdin (after CR)
+     * XXX Note 0 above, stdin here
      */
-    if (clixon_xml_parse_file(fd, YB_NONE, NULL, NULL, &x0, NULL) < 0){
+    if (clixon_xml_parse_file(fp, YB_NONE, NULL, NULL, &x0, NULL) < 0){
 	fprintf(stderr, "Error: parsing: %s\n", clicon_err_reason);
 	return -1;
     }
@@ -375,7 +375,7 @@ main(int    argc,
 	free(buf);
     if (x0)
 	xml_free(x0);
-    if (fd > 0)
-	close(fd);
+    if (fp)
+	fclose(fp);
     return retval;
 }

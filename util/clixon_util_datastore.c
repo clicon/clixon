@@ -250,14 +250,14 @@ main(int argc, char **argv)
 	    usage(argv0);
 	}
 	if (argc == 2){
-	    int fd;
-	    if ((fd = open(xmlfilename, O_RDONLY)) < 0){
-		clicon_err(OE_UNIX, errno, "open(%s)", xmlfilename);
+	    FILE *fp;
+	    if ((fp = fopen(xmlfilename, "r")) < 0){
+		clicon_err(OE_UNIX, errno, "fopen(%s)", xmlfilename);
 		goto done;
 	    }
-	    if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
+	    if (clixon_xml_parse_file(fp, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
 		goto done;
-	    close(fd);
+	    fclose(fp);
 	}
 	else
 	    if (clixon_xml_parse_string(argv[2], YB_MODULE, yspec, &xt, NULL) < 0)

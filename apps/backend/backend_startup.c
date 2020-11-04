@@ -168,17 +168,17 @@ load_extraxml(clicon_handle h,
 {
     int        retval =  -1;
     cxobj     *xt = NULL;
-    int        fd = -1;
+    FILE      *fp = NULL;
     yang_stmt *yspec = NULL;
 
     if (filename == NULL)
 	return 1;
-    if ((fd = open(filename, O_RDONLY)) < 0){
+    if ((fp = fopen(filename, "r")) < 0){
 	clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	goto done;
     }
     yspec = clicon_dbspec_yang(h);
-    if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
+    if (clixon_xml_parse_file(fp, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
 	goto done;
     /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)
@@ -186,8 +186,8 @@ load_extraxml(clicon_handle h,
     /* Merge user reset state */
     retval = xmldb_put(h, (char*)db, OP_MERGE, xt, clicon_username_get(h), cbret);
  done:
-    if (fd != -1)
-	close(fd);
+    if (fp)
+	fclose(fp);
     if (xt)
 	xml_free(xt);
     return retval;

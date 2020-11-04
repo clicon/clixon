@@ -87,7 +87,7 @@ main(int    argc,
     char              *retdata = NULL;
     int                jsonin = 0;
     char              *input_filename = NULL;
-    int                fd = 0; /* stdin */
+    FILE              *fp = stdin;
     cxobj             *xt = NULL;
     cxobj             *xc;
     cxobj             *xerr = NULL;
@@ -138,14 +138,14 @@ main(int    argc,
 	usage(argv[0]);
     }
     if (input_filename){
-	if ((fd = open(input_filename, O_RDONLY)) < 0){
+	if ((fp = fopen(input_filename, "r")) < 0){
 	    clicon_err(OE_YANG, errno, "open(%s)", input_filename);	
 	    goto done;
 	}
     }
     /* 2. Parse data (xml/json) */
     if (jsonin){
-	if ((ret = clixon_json_parse_file(fd, YB_NONE, NULL, &xt, &xerr)) < 0)
+	if ((ret = clixon_json_parse_file(fp, YB_NONE, NULL, &xt, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    fprintf(stderr, "Invalid JSON\n");
@@ -153,7 +153,7 @@ main(int    argc,
 	}
     }
     else{
-	if (clixon_xml_parse_file(fd, YB_NONE, NULL, NULL, &xt, NULL) < 0){
+	if (clixon_xml_parse_file(fp, YB_NONE, NULL, NULL, &xt, NULL) < 0){
 	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
 	    goto done;
 	}
@@ -176,6 +176,8 @@ main(int    argc,
     fprintf(stdout, "%s\n", retdata);
     retval = 0;
  done:
+    if (fp)
+	fclose(fp);
     if (xerr)
 	xml_free(xerr);
     if (xt)

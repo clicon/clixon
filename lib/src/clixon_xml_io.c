@@ -578,9 +578,9 @@ FSM(char *tag,
  * @code
  *  cxobj *xt = NULL;
  *  cxobj *xerr = NULL;
- *  int    fd;
- *  fd = open(filename, O_RDONLY);
- *  if ((ret = clixon_xml_parse_file(fd, YB_MODULE, yspec, "</config>", &xt, &xerr)) < 0)
+ *  FILE  *f;
+ *  f = fopen(filename, "r");
+ *  if ((ret = clixon_xml_parse_file(f, YB_MODULE, yspec, "</config>", &xt, &xerr)) < 0)
  *    err;
  *  xml_free(xt);
  * @endcode
@@ -590,7 +590,7 @@ FSM(char *tag,
  * @note May block on file I/O
  */
 int 
-clixon_xml_parse_file(int        fd, 
+clixon_xml_parse_file(FILE      *fp, 
 		      yang_bind  yb,
 		      yang_stmt *yspec,
 		      char      *endtag,
@@ -626,9 +626,8 @@ clixon_xml_parse_file(int        fd,
     memset(xmlbuf, 0, xmlbuflen);
     ptr = xmlbuf;
     while (1){
-	if ((ret = read(fd, &ch, 1)) < 0){
-	    clicon_err(OE_XML, errno, "read: [pid:%d]", 
-		    (int)getpid());
+	if ((ret = fread(&ch, 1, 1, fp)) < 0){
+	    clicon_err(OE_XML, errno, "read");
 	    break;
 	}
 	if (ret != 0){

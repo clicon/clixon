@@ -44,8 +44,17 @@ Users may have to change how they access the system
 * New clixon-config@2020-11-03.yang revision
   * Added option: `CLICON_RESTCONF_CONFIG` for reading restconf daemon config frm datastore
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Changed first parameter from `int fd` to `FILE *f` in the following functions:
+  * clixon_xml_parse_file(), clixon_json_parse_file(), yang_parse_file()
+  * See [Bytewise read() of files is slow #146](https://github.com/clicon/clixon/issues/146)
+
 ### Minor changes
 
+* Improved performance of parsing files as described in [Bytewise read() of files is slow #146](https://github.com/clicon/clixon/issues/146), thanks: @hjelmeland
 * Added new backend plugin: ca_pre-demon called if backend is daemonized just prior to forking.
 * Added XPATH functions `position`
 

@@ -1367,14 +1367,14 @@ clixon_json_parse_string(char      *str,
  *   eg: name="a:b" -> prefix="a", name="b"
  * But this is not done if yspec=NULL, and is not part of the JSON spec
  * 
- * @param[in]     fd    File descriptor to the JSON file (ASCII string)
+ * @param[in]     fp    File descriptor to the JSON file (ASCII string)
  * @param[in]     yspec Yang specification, or NULL
  * @param[in,out] xt    Pointer to (XML) parse tree. If empty, create.
  * @param[out]    xerr  Reason for invalid returned as netconf err msg 
  *
  * @code
  *  cxobj *xt = NULL;
- *  if (clixon_json_parse_file(0, YB_MODULE, yspec, &xt) < 0)
+ *  if (clixon_json_parse_file(stdin, YB_MODULE, yspec, &xt) < 0)
  *    err;
  *  xml_free(xt);
  * @endcode
@@ -1390,7 +1390,7 @@ clixon_json_parse_string(char      *str,
  * @see RFC7951
  */
 int
-clixon_json_parse_file(int        fd,
+clixon_json_parse_file(FILE      *fp,
 		       yang_bind  yb,
 		       yang_stmt *yspec,
 		       cxobj    **xt,
@@ -1404,7 +1404,7 @@ clixon_json_parse_file(int        fd,
     char     *ptr;
     char      ch;
     int       len = 0;
-    
+
     if (xt==NULL){
 	clicon_err(OE_XML, EINVAL, "xt is NULL");
 	return -1;
@@ -1416,7 +1416,7 @@ clixon_json_parse_file(int        fd,
     memset(jsonbuf, 0, jsonbuflen);
     ptr = jsonbuf;
     while (1){
-	if ((ret = read(fd, &ch, 1)) < 0){
+	if ((ret = fread(&ch, 1, 1, fp)) < 0){
 	    clicon_err(OE_XML, errno, "read");
 	    break;
 	}

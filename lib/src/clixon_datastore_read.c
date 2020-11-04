@@ -438,7 +438,7 @@ xmldb_readfile(clicon_handle    h,
     int        retval = -1;
     cxobj     *x0 = NULL;
     char      *dbfile = NULL;
-    int        fd = -1;
+    FILE      *fp = NULL;
     char      *format;
     int        ret;
     
@@ -453,15 +453,15 @@ xmldb_readfile(clicon_handle    h,
 	goto done;
     }
     /* Parse file into internal XML tree from different formats */
-    if ((fd = open(dbfile, O_RDONLY)) < 0) {
+    if ((fp = fopen(dbfile, "r")) < 0) {
 	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
 	goto done;
     }    
     if (strcmp(format, "json")==0){
-	if ((ret = clixon_json_parse_file(fd, yb, yspec, &x0, NULL)) < 0) /* XXX: ret == 0*/
+	if ((ret = clixon_json_parse_file(fp, yb, yspec, &x0, NULL)) < 0) /* XXX: ret == 0*/
 	    goto done;
     }
-    else if ((ret = clixon_xml_parse_file(fd, yb, yspec, "</config>", &x0, NULL)) < 0)
+    else if ((ret = clixon_xml_parse_file(fp, yb, yspec, "</config>", &x0, NULL)) < 0)
 	goto done;
 #ifdef XMLDB_READFILE_FAIL /* The functions calling this function cannot handle a failed parse yet */
     if (ret == 0)
@@ -495,8 +495,8 @@ xmldb_readfile(clicon_handle    h,
     }
     retval = 1;
  done:
-    if (fd != -1)
-	close(fd);
+    if (fp)
+	fclose(fp);
     if (dbfile)
 	free(dbfile);
     if (x0)

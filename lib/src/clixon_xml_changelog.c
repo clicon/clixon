@@ -436,7 +436,7 @@ clixon_xml_changelog_init(clicon_handle h)
 {
     int        retval = -1;
     char      *filename;
-    int        fd = -1;
+    FILE      *fp = NULL;
     cxobj     *xt = NULL;
     yang_stmt *yspec;
     int        ret;
@@ -445,11 +445,11 @@ clixon_xml_changelog_init(clicon_handle h)
 
     yspec = clicon_dbspec_yang(h);
     if ((filename = clicon_option_str(h, "CLICON_XML_CHANGELOG_FILE")) != NULL){
-	if ((fd = open(filename, O_RDONLY)) < 0){
-	    clicon_err(OE_UNIX, errno, "open(%s)", filename);
+	if ((fp = fopen(filename, "r")) < 0){
+	    clicon_err(OE_UNIX, errno, "fopen(%s)", filename);
 	    goto done;
 	}    
-	if (clixon_xml_parse_file(fd, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
+	if (clixon_xml_parse_file(fp, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
 	    goto done;
 	if (xml_rootchild(xt, 0, &xt) < 0)
 	    goto done;
@@ -477,8 +477,8 @@ clixon_xml_changelog_init(clicon_handle h)
 	cbuf_free(cbret);
     if (xret)
 	xml_free(xret);
-    if (fd != -1)
-	close(fd);
+    if (fp)
+	fclose(fp);
     if (xt)
 	xml_free(xt);
     return retval;

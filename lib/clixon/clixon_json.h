@@ -51,6 +51,6 @@ int xml2json_cb(FILE *f, cxobj *x, int pretty, clicon_output_cb *fn);
 int json_print(FILE *f, cxobj *x);
 int xml2json_vec(FILE *f, cxobj **vec, size_t veclen, int pretty);
 int clixon_json_parse_string(char *str, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xret);
-int clixon_json_parse_file(int fd, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xret);
+int clixon_json_parse_file(FILE *fp, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xret);
 
 #endif /* _CLIXON_JSON_H */
