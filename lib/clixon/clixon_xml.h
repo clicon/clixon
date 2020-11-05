@@ -56,7 +56,7 @@
 
 /* Collections namespace from draft-ietf-netconf-restconf-collection-00.txt
  */
-#define NETCONF_COLLECTION_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-netconf-collection"
+#define NETCONF_COLLECTION_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination"
 
 /* See RFC 7950 Sec 5.3.1: YANG defines an XML namespace for NETCONF <edit-config> 
  * operations, <error-info> content, and the <action> element.

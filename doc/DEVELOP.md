@@ -142,8 +142,14 @@ $ wget -O config.sub 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_p
 How to debug
 
 ### Configure in debug mode
+
 ```
-   CFLAGS="-g -Wall" INSTALLFLAGS="" ./configure
+   ./configure --enable-debug
+```
+
+Send debug level in run-time to backend:
+```
+  echo "<rpc username=\"root\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><debug xmlns=\"http://clicon.org/lib\"><level>1</level></debug></rpc>]]>]]>" | clixon_netconf -q
 ```
 
 ### Set backend debug
