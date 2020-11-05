@@ -47,6 +47,7 @@ YANGSPECS += ietf-interfaces@2018-02-20.yang
 YANGSPECS += ietf-ip@2014-06-16.yang
 YANGSPECS += ietf-netconf-monitoring@2010-10-04.yang
 YANGSPECS += ietf-routing@2018-03-13.yang
+YANGSPECS += iana-crypt-hash@2014-08-06.yang # collection example-module
 
 all:	
 

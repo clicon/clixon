@@ -75,6 +75,7 @@ typedef struct {
 /*
  * Prototypes
  */
+int clixon_path_free(clixon_path *cplist);
 int xml_yang_root(cxobj *x, cxobj **xr);
 int yang2api_path_fmt(yang_stmt *ys, int inclkey, char **api_path_fmt);
 int api_path_fmt2api_path(const char *api_path_fmt, cvec *cvv, char **api_path, int *cvvi);
@@ -90,10 +91,12 @@ int clixon_xml_find_api_path(cxobj *xt, yang_stmt *yt, cxobj ***xvec, int *xlen,
 int clixon_xml_find_instance_id(cxobj *xt, yang_stmt *yt, cxobj ***xvec, int *xlen, const char *format,
 		     ...) __attribute__ ((format (printf, 5, 6)));;
 int clixon_instance_id_bind(yang_stmt *yt, cvec *nsctx, const char *format, ...) __attribute__ ((format (printf, 3, 4)));
+int clixon_instance_id_parse(yang_stmt *yt, clixon_path **cplistp, const char *format, ...) __attribute__ ((format (printf, 3, 4)));
 #else
 int clixon_xml_find_api_path(cxobj *xt, yang_stmt *yt,  cxobj ***xvec, int *xlen, const char *format, ...);
 int clixon_xml_find_instance_id(cxobj *xt, yang_stmt *yt, cxobj ***xvec, int *xlen, const char *format, ...);
 int clixon_instance_id_bind(yang_stmt *yt, cvec *nsctx, const char *format, ...);
+int clixon_instance_id_parse(yang_stmt *yt, clixon_path **cplistp, const char *format, ...);
 #endif
 
 #endif  /* _CLIXON_PATH_H_ */

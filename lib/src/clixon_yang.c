@@ -1834,15 +1834,13 @@ yang_deviation(yang_stmt *ys,
  */
 static int
 ys_populate_leaf(clicon_handle h,
-		 yang_stmt *ys)
+		 yang_stmt    *ys)
 {
     int             retval = -1;
     cg_var         *cv = NULL;
-    yang_stmt      *yparent; 
     yang_stmt      *ydef; 
     enum cv_type    cvtype = CGV_ERR;
     int             cvret;
-    int             ret;
     char           *reason = NULL;
     yang_stmt      *yrestype;  /* resolved type */
     char           *restype;  /* resolved type */
@@ -1851,7 +1849,6 @@ ys_populate_leaf(clicon_handle h,
     int             options = 0x0;
     yang_stmt      *ytypedef; /* where type is define */
 
-    yparent = ys->ys_parent;     /* Find parent: list/container */
     /* 1. Find type specification and set cv type accordingly */
     if (yang_type_get(ys, &origtype, &yrestype, &options, NULL, NULL, NULL, &fraction_digits) < 0)
 	goto done;

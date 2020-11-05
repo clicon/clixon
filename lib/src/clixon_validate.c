@@ -1028,13 +1028,14 @@ xml_yang_validate_add(clicon_handle h,
 		      cxobj        *xt, 
 		      cxobj       **xret)
 {
-    int        retval = -1;
-    cg_var    *cv = NULL;
-    char      *reason = NULL;
-    yang_stmt *yt;   /* yang spec of xt going in */
-    char      *body;
-    int        ret;
-    cxobj     *x;
+    int          retval = -1;
+    cg_var      *cv = NULL;
+    char        *reason = NULL;
+    yang_stmt   *yt;   /* yang spec of xt going in */
+    char        *body;
+    int          ret;
+    cxobj       *x;
+    cg_var      *cv0;
     enum cv_type cvtype;
     
     /* if not given by argument (overide) use default link 
@@ -1054,7 +1055,9 @@ xml_yang_validate_add(clicon_handle h,
 	    /* fall thru */
 	case Y_LEAF_LIST:
 	    /* validate value against ranges, etc */
-	    if ((cv = cv_dup(yang_cv_get(yt))) == NULL){
+	    if ((cv0 = yang_cv_get(yt)) == NULL)
+		break;
+	    if ((cv = cv_dup(cv0)) == NULL){
 		clicon_err(OE_UNIX, errno, "cv_dup");
 		goto done;
 	    }

@@ -1340,6 +1340,7 @@ from_client_kill_session(clicon_handle h,
  * If not "unbounded", parse and set a numeric value
  * @param[in]     h         Clixon handle
  * @param[in]     name      Name of attribute
+ * @param[in]     defaultstr   Default string which is accepted and sets value to 0
  * @param[in,out] cbret     Output buffer for internal RPC message
  * @param[out]    value     Value
  * @retval       -1         Error
@@ -1350,6 +1351,7 @@ static int
 element2value(clicon_handle  h,
 	      cxobj         *xe,
 	      char          *name,
+	      char          *defaultstr,
 	      cbuf          *cbret,
 	      uint32_t      *value)
 {
@@ -1362,14 +1364,14 @@ element2value(clicon_handle  h,
     *value = 0;
     if ((x = xml_find_type(xe, NULL, name, CX_ELMNT)) != NULL &&
 	(valstr = xml_body(x)) != NULL &&
-	strcmp(valstr, "unbounded") != 0){
+	strcmp(valstr, defaultstr) != 0){
 	if ((ret = parse_uint32(valstr, value, &reason)) < 0){
 	    clicon_err(OE_XML, errno, "parse_uint32");
 	    goto done;
 	}
 	if (ret == 0){
-	    if (netconf_bad_attribute(cbret, "application",
-				      "count", "Unrecognized value of count attribute") < 0)
+	    if (netconf_bad_element(cbret, "application",
+				    name, "Unrecognized value") < 0)
 		goto done;
 	    goto fail;
 	}
@@ -1397,11 +1399,11 @@ element2value(clicon_handle  h,
  * @see from_client_get
  */
 static int
-from_client_get_collection(clicon_handle h,
-			   cxobj        *xe,
-			   cbuf         *cbret,
-			   void         *arg, 
-			   void         *regarg)
+from_client_get_pageable_list(clicon_handle h,
+			      cxobj        *xe,
+			      cbuf         *cbret,
+			      void         *arg, 
+			      void         *regarg)
 {
     int             retval = -1;
     cxobj          *x;
@@ -1428,10 +1430,10 @@ from_client_get_collection(clicon_handle h,
     char           *reason = NULL;
     cbuf           *cb = NULL;
     cxobj          *xtop = NULL;
-    cxobj          *xbot = NULL;
     yang_stmt      *y;
-    char           *api_path = NULL;
     char           *ns;
+    clixon_path    *path_tree = NULL;
+    clixon_path    *cp;
     
     clicon_debug(1, "%s", __FUNCTION__);
     username = clicon_username_get(h);
@@ -1456,10 +1458,10 @@ from_client_get_collection(clicon_handle h,
 	}
     }
     /* count */
-    if ((ret = element2value(h, xe, "count", cbret, &count)) < 0)
+    if ((ret = element2value(h, xe, "count", "unbounded", cbret, &count)) < 0)
 	goto done;
     /* skip */
-    if (ret && (ret = element2value(h, xe, "skip", cbret, &skip)) < 0)
+    if (ret && (ret = element2value(h, xe, "skip", "none", cbret, &skip)) < 0)
 	goto done;
     /* direction */
     if (ret && (x = xml_find_type(xe, NULL, "direction", CX_ELMNT)) != NULL){
@@ -1479,34 +1481,44 @@ from_client_get_collection(clicon_handle h,
     if (ret && (x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL)
 	where = xml_body(x);
     /* datastore */
-    if (ret && (x = xml_find_type(xe, NULL, "datastore", CX_ELMNT)) != NULL)
-	datastore = xml_body(x);
+    if (ret && (x = xml_find_type(xe, NULL, "datastore", CX_ELMNT)) != NULL){
+	if (nodeid_split(xml_body(x), NULL, &datastore) < 0)
+	    goto done;
+    }
     if (ret == 0)
 	goto ok;
-    /* list-target, create (xml and) yang to check if is state (CF) or config (CT) */
-    if (ret && (x = xml_find_type(xe, NULL, "list-target", CX_ELMNT)) != NULL)
-	api_path = xml_body(x);
+    /* list-target, create (xml and) yang to check if is state (CF) or config (CT) 
+     * is mandatory
+     */
+    if (ret && (x = xml_find_type(xe, NULL, "list-target", CX_ELMNT)) != NULL){
+	xpath = xml_body(x);
+	if (xml_nsctx_node(x, &nsc) < 0)
+	    goto done;
+    }
     if ((xtop = xml_new("top", NULL, CX_ELMNT)) == NULL)
 	goto done;
-    if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
-	goto done;    
+    if ((ret = clixon_instance_id_parse(yspec, &path_tree, "%s", xpath)) < 0) 
+	goto done;
     if (ret == 0){
 	if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
 	    goto done;	
+	goto ok;
+    }
+    /* get last element */
+    if ((cp = PREVQ(clixon_path *, path_tree)) == NULL){
+	if (netconf_bad_element(cbret, "application", "list-target", "path invalid") < 0)
+	    goto done;
+	goto ok;
+    }
+    if ((y = cp->cp_yang) == NULL){
+	if (netconf_bad_element(cbret, "application", "list-target", "No yang associated with path") < 0)
+	    goto done;
 	goto ok;
     }
     if (yang_keyword_get(y) != Y_LIST && yang_keyword_get(y) != Y_LEAF_LIST){
 	if (netconf_bad_element(cbret, "application", "list-target", "path invalid") < 0)
 	    goto done;
 	goto ok;
-    }
-    /* Create xpath from api-path for the datastore API */
-    if ((ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
-	goto done;
-    if (ret == 0){
-	if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
-	    goto done;	
-	goto ok;	
     }
     /* Build a "predicate" cbuf */
     if ((cb = cbuf_new()) == NULL){
@@ -1600,7 +1612,7 @@ from_client_get_collection(clicon_handle h,
 	if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0) 
 	    goto done;
     }
-    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><collection xmlns=\"%s\">",
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><pageable-list xmlns=\"%s\">",
 	    NETCONF_BASE_NAMESPACE, NETCONF_COLLECTION_NAMESPACE);     /* OK */
     if ((ns = yang_find_mynamespace(y)) != NULL)
 	for (i=0; i<xlen; i++){
@@ -1612,11 +1624,15 @@ from_client_get_collection(clicon_handle h,
 	    if (clicon_xml2cbuf(cbret, x, 0, 0, depth>0?depth+1:depth) < 0)
 		goto done;
 	}
-    cprintf(cbret, "</collection></rpc-reply>");
+    cprintf(cbret, "</pageable-list></rpc-reply>");
  ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (datastore)
+	free(datastore);
+    if (path_tree)
+	clixon_path_free(path_tree);
     if (xtop)
 	xml_free(xtop);
     if (cb)
@@ -2260,8 +2276,8 @@ backend_rpc_init(clicon_handle h)
 		      NETCONF_BASE_NAMESPACE, "validate") < 0)
 	goto done;
     /* draft-ietf-netconf-restconf-collection-00 */
-    if (rpc_callback_register(h, from_client_get_collection, NULL,
-		      NETCONF_COLLECTION_NAMESPACE, "get-collection") < 0)
+    if (rpc_callback_register(h, from_client_get_pageable_list, NULL,
+		      NETCONF_COLLECTION_NAMESPACE, "get-pageable-list") < 0)
 	goto done;
     /* In backend_client.? RPC from RFC 5277 */
     if (rpc_callback_register(h, from_client_create_subscription, NULL,
