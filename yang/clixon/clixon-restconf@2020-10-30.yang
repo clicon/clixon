@@ -141,13 +141,6 @@ module clixon-restconf {
 	    default "/etc/ssl/certs/clixon-ca_crt.pem";
 	    /* CLICON_SSL_CA_CERT */
 	}
-	leaf client-cert-ca {
-	    type string;
-	    description
-		"Path to client certificate file
-                 Note only applies if socket has ssl enabled AND auth-type has client-certificate
-                 XXX: Is this relevant?";
-	}
     }
     rpc restconf-control {
 	input {

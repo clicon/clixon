@@ -42,6 +42,7 @@ test -d $certdir || mkdir $certdir
 
 # Use yang in example
 
+# Get config from backend?
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -204,72 +205,114 @@ done
 
 fi # genkeys
 
-# Startup DB with proper NACM config
-cat <<EOF > $dir/startup_db
-<config>
-  $RULES
-</config>
+# Set a clixon-restconf config
+if [ ${RCPROTO} = "https" ]; then
+    ssl=true
+    port=443
+else
+    ssl=false
+    port=80
+fi
+authtype=client-certificate
+
+# Run with and without getting config from backend
+# arg 1: false: local config; true: use config backend 
+testrun()
+{
+    USEBACKEND=$1
+
+    # Startup DB with proper NACM config
+    if $USEBACKEND; then
+	cat <<EOF > $dir/startup_db
+    <config>
+       <restconf xmlns="https://clicon.org/restconf">
+         <socket>
+           <namespace>default</namespace>
+           <address>0.0.0.0</address>
+           <port>$port</port>
+           <ssl>$ssl</ssl>
+         </socket>
+         <auth-type>$authtype</auth-type>
+         <server-cert-path>$srvcert</server-cert-path>
+         <server-key-path>$srvkey</server-key-path>
+         <server-ca-cert-path>$cacert</server-ca-cert-path>
+       </restconf>
+       $RULES
+    </config>
 EOF
-
-if [ $BE -ne 0 ]; then
-    new "kill old backend"
-    sudo clixon_backend -zf $cfg
-    if [ $? -ne 0 ]; then
-	err
+    else
+	cat <<EOF > $dir/startup_db
+    <config>
+       $RULES
+    </config>
+EOF
     fi
-    sudo pkill -f clixon_backend # to be sure
+    if [ $BE -ne 0 ]; then
+	new "kill old backend"
+	sudo clixon_backend -zf $cfg
+	if [ $? -ne 0 ]; then
+	    err
+	fi
+	sudo pkill -f clixon_backend # to be sure
+	
+	new "start backend -s startup -f $cfg"
+	start_backend -s startup -f $cfg
+    fi
 
-    new "start backend -s startup -f $cfg"
-    start_backend -s startup -f $cfg
-fi
+    if [ $RC -ne 0 ]; then
+	new "kill old restconf daemon"
+	stop_restconf_pre
+	if $USEBACKEND; then
+	    new "start restconf daemon -b -- -s"
+	    start_restconf -f $cfg -b -- -s
+	else
+	    new "start restconf daemon -s -c  -- -s"
+	    start_restconf -f $cfg -s -c -- -s
+	fi
+    fi
 
-new "wait for backend"
-wait_backend
+    new "wait for backend"
+    wait_backend
 
-if [ $RC -ne 0 ]; then
-    new "kill old restconf daemon"
-    stop_restconf_pre
+    new "wait for restconf"
+    wait_restconf --key $certdir/andy.key --cert $certdir/andy.crt
 
-    new "start restconf daemon -c means client certs, -- -s means ssl client cert authentication in example"
-    start_restconf -f $cfg -c -- -s
-fi
+    new "enable nacm"
+    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 204 No Content"
 
-new "wait for restconf"
-wait_restconf --key $certdir/andy.key --cert $certdir/andy.crt
+    new "admin get x"
+    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 200 OK" '{"example:x":0}'
 
-new "enable nacm"
-expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 204 No Content"
+    new "guest get x"
+    expectpart "$(curl $CURLOPTS --key $certdir/guest.key --cert $certdir/guest.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
-new "admin get x"
-expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 200 OK" '{"example:x":0}'
+    new "admin set x 42"
+    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:x":42}' $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 204 No Content"
 
-new "guest get x"
-expectpart "$(curl $CURLOPTS --key $certdir/guest.key --cert $certdir/guest.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
+    new "admin get x 42"
+    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 200 OK" '{"example:x":42}'
 
-new "admin set x 42"
-expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:x":42}' $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 204 No Content"
+    if [ $RC -ne 0 ]; then
+	new "Kill restconf daemon"
+	stop_restconf
+    fi
+    if [ $BE -ne 0 ]; then
+	new "Kill backend"
+	# Check if premature kill
+	pid=$(pgrep -u root -f clixon_backend)
+	if [ -z "$pid" ]; then
+	    err "backend already dead"
+	fi
+	# kill backend
+	stop_backend -f $cfg
+    fi
+}
 
-new "admin get x 42"
-expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 200 OK" '{"example:x":42}'
+new "Use local restconf config"
+testrun false
 
-
-if [ $RC -ne 0 ]; then
-    new "Kill restconf daemon"
-    stop_restconf
-fi
-
-if [ $BE -eq 0 ]; then
-    exit # BE
-fi
-
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
+new "Get restconf config from backend"
+testrun true
 
 rm -rf $dir
 

@@ -88,7 +88,7 @@
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:E:l:p:d:y:a:u:ro:"
+#define RESTCONF_OPTS "hD:f:E:l:p:d:y:a:u:ro:b"
 
 /*! Convert FCGI parameters to clixon runtime data
  * @param[in]  h     Clixon handle
@@ -180,6 +180,7 @@ usage(clicon_handle h,
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
 	    "\t-r \t\t  Do not drop privileges if run as root\n"
+	    "\t-b \t\t  Read config from backend - no-op only applies to evhtp \n"
 	    "\t-o \"<option>=<value>\" Give configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_restconf_dir(h)
@@ -289,6 +290,7 @@ main(int    argc,
 	case 'f':  /* config file */
 	case 'E':  /* extra config dir */
 	case 'l':  /* log  */
+	case 'b':  /* backend config no-op for fcgi  */
 	    break; /* see above */
 	case 'p' : /* yang dir path */
 	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)

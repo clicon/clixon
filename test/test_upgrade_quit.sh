@@ -301,7 +301,10 @@ cat <<EOF > $dir/startup_db
 </config>
 EOF
 
-MODSTATE='<modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"><module-set-id>0</module-set-id><module><name>clixon-lib</name><revision>2020-04-23</revision><namespace>http://clicon.org/lib</namespace></module><module><name>ietf-inet-types</name><revision>2020-07-06</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace></module><module><name>ietf-netconf</name><revision>2011-06-01</revision><namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace></module>'
+MODSTATE1='<modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"><module-set-id>0</module-set-id><module><name>clixon-lib</name><revision>2020-04-23</revision><namespace>http://clicon.org/lib</namespace></module>'
+
+MODSTATE2='<module><name>interfaces</name><revision>2018-02-20</revision><namespace>urn:example:interfaces</namespace></module>'
+
 
 XML='<interfaces xmlns="urn:example:interfaces"><interface><name>e0</name><docs><descr>First interface</descr></docs><type>eth</type><admin-status>up</admin-status><statistics><in-octets>54326.432</in-octets><in-unicast-pkts>8458765</in-unicast-pkts></statistics></interface><interface><name>e1</name><type>eth</type><admin-status>down</admin-status></interface></interfaces>'
 
@@ -319,11 +322,19 @@ fi
 new "start backend -s startup -f $cfg -q -- -u"
 output=$(sudo $clixon_backend -F -D $DBG -s startup -f $cfg -q -- -u)
 
-match=$(echo "$output" | grep --null -o "$MODSTATE")
+new "check modstate1"
+match=$(echo "$output" | grep --null -o "$MODSTATE1")
 if [ -z "$match" ]; then
-    err "$MODSTATE" "$output"
+    err "$MODSTATE1" "$output"
 fi
 
+new "check modstate"
+match=$(echo "$output" | grep --null -o "$MODSTATE2")
+if [ -z "$match" ]; then
+    err "$MODSTATE2" "$output"
+fi
+
+new "check xml"
 match=$(echo "$output" | grep --null -o "$XML")
 if [ -z "$match" ]; then
     err "$XML" "$output"

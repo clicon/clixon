@@ -49,6 +49,22 @@ if [ -f ./site.sh ]; then
     done
 fi
 
+# Auto-start nginx
+nginxactive=$(systemctl show nginx |grep ActiveState=active)
+if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+    if [ -z "$nginxactive" ]; then
+	echo -e "\e[31m\nwith-restconf=fcgi set but nginx not running, start with systemctl start nginx"
+	echo -e "\e[0m"
+	exit -1
+    fi
+else
+    if [ -n "$nginxactive" ]; then
+	echo -e "\e[31m\nwith-restconf=fcgi not set but nginx running, stop with systemctl stop nginx"
+	echo -e "\e[0m"
+	exit -1
+    fi
+fi
+
 # Test number from start
 : ${testnr:=0}
 

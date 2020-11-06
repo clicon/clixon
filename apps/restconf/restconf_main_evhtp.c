@@ -772,6 +772,7 @@ cx_evhtp_socket(clicon_handle h,
  * @param[in]  xconfig  XML config
  * @param[in]  nsc      Namespace context
  * @param[in]  eh       Evhtp handle
+ * @note only if CLICON_RESTCONF_CONFIG is true (-b)
  * @note only one socket allowed in this implementation
  */
 static int
@@ -782,7 +783,7 @@ cx_evhtp_init(clicon_handle     h,
 
 {
     int                  retval = -1;
-    int                  auth_type_client_certifificate = 0;
+    int                  auth_type_client_certificate = 0;
     uint16_t             port = 0;
     cxobj               *xrestconf;
     cxobj              **vec = NULL;
@@ -806,15 +807,13 @@ cx_evhtp_init(clicon_handle     h,
     if ((x = xpath_first(xrestconf, nsc, "auth-type")) != NULL) /* XXX: leaf-list? */
 	auth_type = xml_body(x);
     if (auth_type && strcmp(auth_type, "client-certificate") == 0)
-	auth_type_client_certifificate = 1;
+	auth_type_client_certificate = 1;
     if ((x = xpath_first(xrestconf, nsc, "server-cert-path")) != NULL)
 	server_cert_path = xml_body(x);
     if ((x = xpath_first(xrestconf, nsc, "server-key-path")) != NULL)
 	server_key_path = xml_body(x);
     if ((x = xpath_first(xrestconf, nsc, "server-ca-cert-path")) != NULL)
 	server_ca_cert_path = xml_body(x);
-    // XXX   if ((x = xpath_first(xrestconf, nsc, "client-cert-ca")) != NULL)
-    // XXX client_cert_ca = xml_body(x);
     /* get the list of socket config-data */
     if (xpath_vec(xrestconf, nsc, "socket", &vec, &veclen) < 0)
 	goto done;
@@ -830,7 +829,7 @@ cx_evhtp_init(clicon_handle     h,
 	clicon_err(OE_XML, EINVAL, "Enabled SSL server requires server_cert_path and server_key_path"); 
 	goto done;
     }
-    if (auth_type_client_certifificate){
+    if (auth_type_client_certificate){
 	if (!use_ssl_server){
 	    clicon_err(OE_XML, EINVAL, "Client certificate authentication type requires SSL"); 
 	    goto done;
@@ -863,11 +862,11 @@ cx_evhtp_init(clicon_handle     h,
 				    server_key_path,
 				    eh->eh_ssl_config) < 0)
 	    goto done;
-	if (auth_type_client_certifificate)
+	if (auth_type_client_certificate)
 	    if (cx_get_ssl_client_certs(h, server_ca_cert_path, eh->eh_ssl_config) < 0)
 		goto done;
 	eh->eh_ssl_config->x509_verify_cb = cx_verify_certs; /* Is extra verification necessary? */
-	if (auth_type_client_certifificate){
+	if (auth_type_client_certificate){
 	    eh->eh_ssl_config->verify_peer = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 	    eh->eh_ssl_config->x509_verify_cb = cx_verify_certs;
 	    eh->eh_ssl_config->verify_depth = 2;
@@ -949,120 +948,6 @@ restconf_config_backend(clicon_handle h,
     uint32_t           id = 0; /* Session id, to poll backend up */
     cx_evhtp_handle   *eh = NULL;
 
-#if 0
-    /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
-
-    /* Create handle */
-    if ((h = restconf_handle_init()) == NULL)
-	goto done;
-
-    _CLICON_HANDLE = h; /* for termination handling */
-
-    while ((c = getopt(argc, argv, RESTCONF_OPTS)) != -1)
-	switch (c) {
-	case 'h':
-	    usage(h, argv0);
-	    break;
-	case 'D' : /* debug */
-	    if (sscanf(optarg, "%d", &dbg) != 1)
-		usage(h, argv0);
-	    break;
-	 case 'f': /* override config file */
-	    if (!strlen(optarg))
-		usage(h, argv0);
-	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
-	    break;
-	case 'E': /* extra config directory */
-	    if (!strlen(optarg))
-		usage(h, argv[0]);
-	    clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
-	    break;
-	 case 'l': /* Log destination: s|e|o */
-	     if ((logdst = clicon_log_opt(optarg[0])) < 0)
-		usage(h, argv0);
-	    if (logdst == CLICON_LOG_FILE &&
-		strlen(optarg)>1 &&
-		clicon_log_file(optarg+1) < 0)
-		goto done;
-	   break;
-	} /* switch getopt */
-
-    /* 
-     * Logs, error and debug to stderr or syslog, set debug level
-     */
-    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
-
-    clicon_debug_init(dbg, NULL); 
-    clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
-    if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
-	clicon_err(OE_DAEMON, errno, "Setting signal");
-	goto done;
-    }
-    if (set_signal(SIGINT, restconf_sig_term, NULL) < 0){
-	clicon_err(OE_DAEMON, errno, "Setting signal");
-	goto done;
-    }
-    if (set_signal(SIGCHLD, restconf_sig_child, NULL) < 0){
-	clicon_err(OE_DAEMON, errno, "Setting signal");
-	goto done;
-    }
-    
-    /* Find and read configfile */
-    if (clicon_options_main(h) < 0)
-	goto done;
-    
-    /* Now rest of options, some overwrite option file */
-    optind = 1;
-    opterr = 0;
-    while ((c = getopt(argc, argv, RESTCONF_OPTS)) != -1)
-	switch (c) {
-	case 'h' : /* help */
-	case 'D' : /* debug */
-	case 'f':  /* config file */
-	case 'E':  /* extra config dir */
-	case 'l':  /* log  */
-	    break; /* see above */
-	case 'p' : /* yang dir path */
-	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
-		goto done;
-	    break;
-	case 'd':  /* Plugin directory */
-	    if (!strlen(optarg))
-		usage(h, argv0);
-	    clicon_option_str_set(h, "CLICON_RESTCONF_DIR", optarg);
-	    break;
-	case 'y' : /* Load yang spec file (override yang main module) */
-	    clicon_option_str_set(h, "CLICON_YANG_MAIN_FILE", optarg);
-	    break;
-	case 'a': /* internal backend socket address family */
-	    clicon_option_str_set(h, "CLICON_SOCK_FAMILY", optarg);
-	    break;
-	case 'u': /* internal backend socket unix domain path or ip host */
-	    if (!strlen(optarg))
-		usage(h, argv0);
-	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
-	    break;
-	case 'r':{ /* Do not drop privileges if run as root */
-	    drop_privileges = 0;
-	    break;
-	}
-	case 'o':{ /* Configuration option */
-	    char          *val;
-	    if ((val = index(optarg, '=')) == NULL)
-		usage(h, argv0);
-	    *val++ = '\0';
-	    if (clicon_option_add(h, optarg, val) < 0)
-		goto done;
-	    break;
-	}
-        default:
-            usage(h, argv0);
-            break;
-	}
-    argc -= optind;
-    argv += optind;
-#endif
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
     
@@ -1071,14 +956,6 @@ restconf_config_backend(clicon_handle h,
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
     
-#if 0 /* Drop privileges after evhtp and server key/cert read */
-    if (drop_privileges){
-	/* Drop privileges to WWWUSER if started as root */
-	if (restconf_drop_privileges(h, WWWUSER) < 0)
-	    goto done;
-    }
-#endif
-
     /* Init cligen buffers */
     cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
     cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
@@ -1159,12 +1036,14 @@ restconf_config_backend(clicon_handle h,
      /* Query backend of config. 
       * Before evhtp, try again if not done */
      while (1){
-	 if (clicon_session_id_get(h, &id) < 0){
+	 if (clicon_hello_req(h, &id) < 0){
 	     if (errno == ENOENT){
 		 fprintf(stderr, "waiting");
 		 sleep(1);
 		 continue;
 	     }
+	     //	     clicon_err(OE_UNIX, errno, "clicon_session_id_get");
+	     goto done;
 	 }
 	 clicon_session_id_set(h, id);
 	 break;
@@ -1198,9 +1077,6 @@ restconf_config_backend(clicon_handle h,
     if (nsc)
 	cvec_free(nsc);
     clicon_debug(1, "restconf_main_evhtp done");
-    //    stream_child_freeall(h);
-    evhtp_terminate(eh);
-    restconf_terminate(h);    
     return retval;
 }
 
@@ -1451,9 +1327,6 @@ restconf_config_local(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "restconf_main_evhtp done");
-    //    stream_child_freeall(h);
-    evhtp_terminate(eh);    
-    restconf_terminate(h);    
     return retval;
 }
 
