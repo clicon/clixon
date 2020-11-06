@@ -416,11 +416,10 @@ module clixon-config {
 	    type boolean;
 	    default false;
 	    description
-		"If set, load clixon-restconf module automatically. This also means
-                 that the clixon restconf daemon gets its restconf-specific configuration 
-                 from that yang loaded in the backend running datastore instead of from
-                 the clixon XML config file.
-                 This only works with-restconf=evhtp, NOT with restconf=fcgi (nginx)
+		"If set, get restconf-specific configuration from the backend running datastore,
+                 using clixon-restconf.yang.
+                 If not set, load all config from local clixon XML config file.
+                 This only applies to with-restconf=evhtp, NOT with restconf=fcgi (nginx)
                  A consequence is that if set, the following option in this YANG are obsolete:
 	           CLICON_RESTCONF_IPV4_ADDR
                    CLICON_RESTCONF_IPV6_ADDR

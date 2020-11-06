@@ -50,6 +50,7 @@ if [ -f ./site.sh ]; then
 fi
 
 # Auto-start nginx
+if false; then # Does not work on some platforms
 nginxactive=$(systemctl show nginx |grep ActiveState=active)
 if [ "${WITH_RESTCONF}" = "fcgi" ]; then
     if [ -z "$nginxactive" ]; then
@@ -64,7 +65,7 @@ else
 	exit -1
     fi
 fi
-
+fi
 # Test number from start
 : ${testnr:=0}
 
