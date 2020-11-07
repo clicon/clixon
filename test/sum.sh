@@ -1,14 +1,29 @@
 #!/usr/bin/env bash
-# Run, eg as:
-# ./sum.sh # to run all tests and print 
+# Run test_*.sh tests, continue on error, no logging, print pass/fail summary.
+#
+# This script requires the user to be in the sudo group.
+#
+# The 'pattern' variable determines which test files are executed.
+# By default, run all the tests in the test_*.sh files in this directory.
 
+: ${pattern:=test_*.sh}
+
+# You can specify tests files to exclude using the 'SKIPLIST' variable in a
+# site.sh file. See example in README.md. Files excluded by the 'SKIPLIST'
+# variable have precedence over files included by the 'pattern' variable.
+
+# This script does not take arguments, so if arguments exist, print the Usage
+# in http://docopt.org/ format.
 if [ $# -gt 0 ]; then 
-    echo "usage: $0 # pipe to dev/null and continue on error"
+    echo "Usage:"
+    echo "    ${0}                             # Run all 'test_*.sh' files"
+    echo "    pattern=<Bash glob pattern> ${0} # Run only files matching the pattern"
+    echo ""
+    echo "Example:"
+    echo "    ${0} 2>&1 | tee test.log         # Run all tests, output to 'test.log'"
+    echo "    pattern=test_feature.sh ${0}     # Run only the tests in 'test_feature.sh'"
     exit -1
 fi
-
-# Pattern to run tests, default is all, but you may want to narrow it down
-: ${pattern:=test_*.sh}
 
 err=0
 for testfile in $pattern; do # For lib.sh the variable must be called testfile

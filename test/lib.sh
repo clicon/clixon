@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # Define test functions.
+# See numerous configuration variables later on in this file that you can set
+# in the environment or the site.sh file. The definitions in the site.sh file 
+# override 
+#
 # Create working dir as variable "dir"
 # The functions are somewhat wildgrown, a little too many:
 # - expectfn
@@ -17,8 +21,11 @@
 # Testfile (not including path)
 : ${testfile:=$(basename $0)}
 
-# Add test to this list that you dont want run
-# Typically add them in your site file
+# SKIPLIST lists the filenames of the test files that you do *not* want to run.
+# The format is a whitespace separated list of filenames. Specify the SKIPLIST
+# either in the shell environment or in the site.sh file. Any SKIPLIST specified
+# in site.sh overrides a SKIPLIST specified in the environment. If not specified
+# in either the environment or the site.sh, then the default SKIPLIST is empty.
 : ${SKIPLIST:=""}
 
 # Some tests (openconfig/yang_models) just test for the cli to return a version
@@ -32,21 +39,6 @@ if [ -f ./config.sh ]; then
     if [ $? -ne 0 ]; then
 	return -1 # error
     fi
-fi
-
-# Site file, an example of this file in README.md
-if [ -f ./site.sh ]; then
-    . ./site.sh
-    if [ $? -ne 0 ]; then
-	return -1 # skip
-    fi
-    # test skiplist.
-    for f in $SKIPLIST; do
-	if [ "$testfile" = "$f" ]; then
-	    echo "...skipped (see site.sh)"
-	    return -1 # skip
-	fi
-    done
 fi
 
 # Test number from start
@@ -122,7 +114,6 @@ fi
 
 # Standard IETF RFC yang files. 
 : ${IETFRFC=../yang/standard}
-#: ${IETFRFC=$YANGMODELS/standard/ietf/RFC}
 
 # Backend user
 BUSER=clicon
@@ -140,6 +131,23 @@ BUSER=clicon
 : ${clixon_restconf:=$WWWDIR/clixon_restconf}
 
 : ${clixon_backend:=clixon_backend}
+
+# Source the site-specific definitions for test script variables, if site.sh
+# exists. The variables defined in site.sh override any variables of the same
+# names in the environment in the current execution.
+if [ -f ./site.sh ]; then
+    . ./site.sh
+    if [ $? -ne 0 ]; then
+	return -1 # skip
+    fi
+    # test skiplist.
+    for f in $SKIPLIST; do
+	if [ "$testfile" = "$f" ]; then
+	    echo "...skipped (see site.sh)"
+	    return -1 # skip
+	fi
+    done
+fi
 
 dir=/var/tmp/$0
 if [ ! -d $dir ]; then
