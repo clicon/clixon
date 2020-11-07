@@ -46,14 +46,14 @@ int api_data_options(clicon_handle h, void *req);
 int api_data_put(clicon_handle h, void *req, char *api_path, 
 		 cvec *pcvec, int pi, 
 		 cvec *qvec, char *data,
-		 int pretty, restconf_media media_out);
+		 int pretty, restconf_media media_out, ietf_ds_t ds);
 
 int api_data_patch(clicon_handle h, void *req, char *api_path, 
 		   cvec *pcvec, int pi, 
 		   cvec *qvec, char *data, int pretty,
-		   restconf_media media_out);
+		   restconf_media media_out, ietf_ds_t ds);
 
 int api_data_delete(clicon_handle h, void *req, char *api_path, int pi,
-		    int pretty, restconf_media media_out);
+		    int pretty, restconf_media media_out, ietf_ds_t ds);
 
 #endif /* _RESTCONF_METHODS_H_ */

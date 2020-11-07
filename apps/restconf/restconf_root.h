@@ -42,6 +42,7 @@
  * Constants
  */
 #define RESTCONF_API       "restconf"
+#define IETF_YANG_LIBRARY_REVISION    "2019-01-04"
 
 /* RESTCONF enables deployments to specify where the RESTCONF API is 
    located.  The client discovers this by getting the "/.well-known/host-meta"

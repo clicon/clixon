@@ -230,6 +230,7 @@ match_list_keys(yang_stmt *y,
  * PUT:   If it does not, set op to create, otherwise replace
  * PATCH: If it does not, fail, otherwise replace/merge
  * @param[in] plain_patch  fail if object does not exists AND merge (not replace)
+ * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
  */ 
 static int
 api_data_write(clicon_handle h,
@@ -242,7 +243,8 @@ api_data_write(clicon_handle h,
 	       int           pretty,
 	       restconf_media media_in,
 	       restconf_media media_out,
-	       int            plain_patch)
+	       int            plain_patch,
+	       ietf_ds_t      ds)
 {
     int            retval = -1;
     enum operation_type op;
@@ -596,12 +598,12 @@ api_data_write(clicon_handle h,
 	    NETCONF_BASE_NAMESPACE); /* bind nc to netconf namespace */
     cprintf(cbx, "<edit-config");
     /* RFC8040 Sec 1.4:
-     * If the NETCONF server supports :startup, the RESTCONF server MUST
-     * automatically update the non-volatile startup configuration
-     * datastore, after the "running" datastore has been altered as a
-     * consequence of a RESTCONF edit operation.
+     * If this is a "data" request and the NETCONF server supports :startup,
+     * the RESTCONF server MUST automatically update the non-volatile startup
+     * configuration datastore, after the "running" datastore has been altered
+     * as a consequence of a RESTCONF edit operation.
      */
-    if (if_feature(yspec, "ietf-netconf", "startup"))
+    if ((IETF_DS_NONE == ds) && if_feature(yspec, "ietf-netconf", "startup"))
 	cprintf(cbx, " copystartup=\"true\"");
     cprintf(cbx, " autocommit=\"true\"");
     cprintf(cbx, "><target><candidate /></target>");
@@ -695,13 +697,14 @@ api_data_put(clicon_handle h,
 	     cvec         *qvec, 
 	     char         *data,
 	     int           pretty,
-	     restconf_media media_out)
+	     restconf_media media_out,
+	     ietf_ds_t     ds)
 {
     restconf_media media_in;
 
     media_in = restconf_content_type(h);
     return api_data_write(h, req, api_path0, pcvec, pi, qvec, data, pretty,
-			  media_in, media_out, 0);
+			  media_in, media_out, 0, ds);
 } 
 
 /*! Generic REST PATCH method for plain patch 
@@ -730,7 +733,8 @@ api_data_patch(clicon_handle h,
 	       cvec         *qvec, 
 	       char         *data,
 	       int           pretty,
-	       restconf_media media_out)
+	       restconf_media media_out,
+	       ietf_ds_t     ds)
 {
     restconf_media media_in;
     int ret;
@@ -740,7 +744,7 @@ api_data_patch(clicon_handle h,
     case YANG_DATA_XML:
     case YANG_DATA_JSON: 	/* plain patch */
 	ret = api_data_write(h, req, api_path0, pcvec, pi, qvec, data, pretty,
-			     media_in, media_out, 1);
+			     media_in, media_out, 1, ds);
 	break;
     case YANG_PATCH_XML:
     case YANG_PATCH_JSON: 	/* RFC 8072 patch */
@@ -760,6 +764,7 @@ api_data_patch(clicon_handle h,
  * @param[in]  pi       Offset, where path starts
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
+ * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
  * See RFC 8040 Sec 4.7
  * Example:
  *  curl -X DELETE http://127.0.0.1/restconf/data/interfaces/interface=eth0
@@ -771,7 +776,8 @@ api_data_delete(clicon_handle h,
 		char         *api_path,
 		int           pi,
 		int           pretty,
-		restconf_media media_out)
+		restconf_media media_out,
+		ietf_ds_t     ds)
 {
     int        retval = -1;
     int        i;
@@ -834,12 +840,12 @@ api_data_delete(clicon_handle h,
 
     cprintf(cbx, "<edit-config");
     /* RFC8040 Sec 1.4:
-     * If the NETCONF server supports :startup, the RESTCONF server MUST
-     * automatically update the non-volatile startup configuration
-     * datastore, after the "running" datastore has been altered as a
-     * consequence of a RESTCONF edit operation.
+     * If this is a "data" request and the NETCONF server supports :startup,
+     * the RESTCONF server MUST automatically update the non-volatile startup
+     * configuration datastore, after the "running" datastore has been altered
+     * as a consequence of a RESTCONF edit operation.
      */
-    if (if_feature(yspec, "ietf-netconf", "startup"))
+    if ((IETF_DS_NONE == ds) && if_feature(yspec, "ietf-netconf", "startup"))
 	cprintf(cbx, " copystartup=\"true\"");
     cprintf(cbx, " autocommit=\"true\"");
     cprintf(cbx, "><target><candidate /></target>");
