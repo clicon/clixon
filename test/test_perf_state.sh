@@ -139,7 +139,9 @@ expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]
 new "netconf get test single req"
 sel="/ex:interfaces/ex:a[ex:name='foo']/ex:b/ex:interface[ex:name='e1']"
 msg="<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>"
-expecteof "$clixon_netconf -qf $cfg" 0 "$msg" "^<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b><interface><name>e1</name><type>ex:eth</type><enabled>true</enabled><status>up</status></interface></b></a></interfaces></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$msg" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b><interface><name>e1</name><enabled>true</enabled><status>up</status></interface></b></a></interfaces></data></rpc-reply>]]>]]>"
+
+# '^<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b><interface><name>e1</name><type>ex:eth</type><enabled>true</enabled><status>up</status></interface></b></a></interfaces></data></rpc-reply>]]>]]>$"
 
 new "netconf get $perfreq single reqs"
 { time -p for (( i=0; i<$perfreq; i++ )); do
@@ -150,7 +152,7 @@ done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF get
 new "restconf get test single req"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 "HTTP/1.1 200 OK" '{"example:interface":\[{"name":"e1","type":"ex:eth","enabled":true,"status":"up"}\]}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 "HTTP/1.1 200 OK" '{"example:interface":\[{"name":"e1","enabled":true,"status":"up"}\]}'
 
 new "restconf get $perfreq single reqs"
 #curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e67
@@ -166,7 +168,8 @@ edit interfaces a foo b interface e1
 show state xml
 EOF
 new "cli get test single req"
-expectpart "$($clixon_cli -F $fin -f $cfg)" 0 "<name>e1</name>" "<type>ex:eth</type>" "<enabled>true</enabled>" "<status>up</status>$"
+expectpart "$($clixon_cli -F $fin -f $cfg)" 0 "<name>e1</name>" "<enabled>true</enabled>" "<status>up</status>$"
+#expectpart "$($clixon_cli -F $fin -f $cfg)" 0 "<name>e1</name>" "<type>ex:eth</type>" "<enabled>true</enabled>" "<status>up</status>$"
 
 new "cli get $perfreq single reqs"
 { time -p for (( i=0; i<$perfreq; i++ )); do

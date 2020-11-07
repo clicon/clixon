@@ -26,6 +26,9 @@ module clixon-example {
     import iana-if-type {
       prefix ianaift;
     }
+    import ietf-datastores {
+      prefix ds;
+    }
 
     /* Example interface type for tests, local callbacks, etc */
     identity eth {
