@@ -57,12 +57,20 @@ cat <<'EOF' > $dir/startup_db
            <number>3</number>
          </preference>
          <skill>
-           <name>Problem Solving</name>
-           <rank>98</rank>
-         </skill>
-         <skill>
            <name>Conflict Resolution</name>
            <rank>93</rank>
+         </skill>
+         <skill>
+           <name>Management</name>
+           <rank>23</rank>
+         </skill>
+         <skill>
+           <name>Organization</name>
+           <rank>44</rank>
+         </skill>
+         <skill>
+           <name>Problem Solving</name>
+           <rank>98</rank>
          </skill>
        </admin>
        <admin>
@@ -296,13 +304,17 @@ if [ $RC -ne 0 ]; then
     wait_restconf
 fi
 
+# draft-wwlh-netconf-list-pagination-nc-00.txt
 new "C.1. 'count' Parameter NETCONF"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc message-id=\"101\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:exm=\"http://example.com/ns/example-module\">/exm:admins/exm:admin[exm:name='Bob']/exm:skill</list-target><count>2</count></get-pageable-list></rpc>]]>]]>" '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101"><pageable-list xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination"><skill xmlns="http://example.com/ns/example-module"><name>Conflict Resolution</name><rank>93</rank></skill><skill xmlns="http://example.com/ns/example-module"><name>Problem Solving</name><rank>98</rank></skill></pageable-list></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc message-id=\"101\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:exm=\"http://example.com/ns/example-module\">/exm:admins/exm:admin[exm:name='Bob']/exm:skill</list-target><count>2</count></get-pageable-list></rpc>]]>]]>" '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101"><pageable-list xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination"><skill xmlns="http://example.com/ns/example-module"><name>Conflict Resolution</name><rank>93</rank></skill><skill xmlns="http://example.com/ns/example-module"><name>Management</name><rank>23</rank></skill></pageable-list></rpc-reply>]]>]]>$'
 
-if false; then # XXX notyet
-new "C.1. 'count' Parameter RESTCONF"
-expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang.collection+xml" $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album/?count=2)" 0  "HTTP/1.1 200 OK" "application/yang.collection+xml" '<collection xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-collection"><album xmlns="http://example.com/ns/example-jukebox"><name>Crime and Punishment</name><year>1995</year></album><album xmlns="http://example.com/ns/example-jukebox"><name>One by One</name><year>2002</year></album></collection>'
-fi
+new "C.2. 'skip' Parameter NETCONF"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc message-id=\"101\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:exm=\"http://example.com/ns/example-module\">/exm:admins/exm:admin[exm:name='Bob']/exm:skill</list-target><count>2</count><skip>2</skip></get-pageable-list></rpc>]]>]]>" '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101"><pageable-list xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination"><skill xmlns="http://example.com/ns/example-module"><name>Organization</name><rank>44</rank></skill><skill xmlns="http://example.com/ns/example-module"><name>Problem Solving</name><rank>98</rank></skill></pageable-list></rpc-reply>]]>]]>$'
+
+# draft-wwlh-netconf-list-pagination-rc-00.txt
+#new "A.1. 'count' Parameter RESTCONF"
+#expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang.collection+xml" $RCPROTO://localhost/restconf/data/example-module:get-list-pagination/library/artist=Foo%20Fighters/album/?count=2)" 0  "HTTP/1.1 200 OK" "application/yang.collection+xml" '<collection xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-collection"><album xmlns="http://example.com/ns/example-jukebox"><name>Crime and Punishment</name><year>1995</year></album><album xmlns="http://example.com/ns/example-jukebox"><name>One by One</name><year>2002</year></album></collection>'
+
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
     stop_restconf
