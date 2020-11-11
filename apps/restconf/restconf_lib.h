@@ -56,6 +56,18 @@ enum restconf_media{
 };
 typedef enum restconf_media restconf_media;
 
+/* @See https://tools.ietf.org/html/rfc8342, ietf-datastores@2018-02-14.yang */
+enum ietf_ds {
+    IETF_DS_NONE        = 0,
+    IETF_DS_RUNNING,
+    IETF_DS_CANDIDATE,
+    IETF_DS_STARTUP,
+    IETF_DS_INTENDED,
+    IETF_DS_DYNAMIC,
+    IETF_DS_OPERATIONAL
+};
+typedef enum ietf_ds ietf_ds_t;
+
 /*
  * Prototypes
  */

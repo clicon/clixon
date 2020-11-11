@@ -153,7 +153,8 @@ api_root_restconf_exact(clicon_handle  h,
 	goto done;
     
     if (clixon_xml_parse_string("<restconf xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><data/>"
-				"<operations/><yang-library-version>2016-06-21</yang-library-version></restconf>",
+				"<operations/><yang-library-version>" IETF_YANG_LIBRARY_REVISION
+				"</yang-library-version></restconf>",
 				YB_MODULE, yspec, &xt, NULL) < 0)
 	goto done;
 
@@ -187,6 +188,24 @@ api_root_restconf_exact(clicon_handle  h,
     return retval;
 }
 
+/** A stub implementation of the operational state datastore. The full
+ * implementation is required by https://tools.ietf.org/html/rfc8527#section-3.1
+ */
+static int
+api_operational_state(clicon_handle  h,
+			void          *req,
+			char          *request_method,
+			int            pretty,
+			restconf_media media_out)
+
+{
+    clicon_debug(1, "%s request method:%s", __FUNCTION__, request_method);
+
+    /* We are not implementing this method at this time, 20201105 despite it
+     * being mandatory https://tools.ietf.org/html/rfc8527#section-3.1 */
+    return restconf_notimplemented(req);
+}
+
 /*!
  * See https://tools.ietf.org/html/rfc7895
  */
@@ -200,7 +219,6 @@ api_yang_library_version(clicon_handle h,
     int    retval = -1;
     cxobj *xt = NULL;
     cbuf  *cb = NULL;
-    char  *ietf_yang_library_revision = "2016-06-21"; /* XXX */
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
@@ -209,7 +227,7 @@ api_yang_library_version(clicon_handle h,
 	goto done;
     if (clixon_xml_parse_va(YB_NONE, NULL, &xt, NULL,
 			    "<yang-library-version>%s</yang-library-version>",
-			    ietf_yang_library_revision) < 0)
+			    IETF_YANG_LIBRARY_REVISION) < 0)
 	goto done;
     if (xml_rootchild(xt, 0, &xt) < 0)
 	goto done;
@@ -250,6 +268,7 @@ api_yang_library_version(clicon_handle h,
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  media_in  Input media
  * @param[in]  media_out Output media
+ * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
  */
 static int
 api_data(clicon_handle h,
@@ -260,28 +279,58 @@ api_data(clicon_handle h,
 	 cvec         *qvec, 
 	 char         *data,
 	 int           pretty,
-	 restconf_media media_out)
+	 restconf_media media_out,
+	 ietf_ds_t     ds)
 {
     int     retval = -1;
+    int     read_only = 0, dynamic = 0;
     char   *request_method;
 
     clicon_debug(1, "%s", __FUNCTION__);
     request_method = restconf_param_get(h, "REQUEST_METHOD");
     clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
+
+    /* https://tools.ietf.org/html/rfc8527#section-3.2 */
+    /* We assume that dynamic datastores are read only at this time 20201105 */
+    if (IETF_DS_DYNAMIC == ds)
+	    dynamic = 1;
+    if ((IETF_DS_INTENDED == ds) || (IETF_DS_RUNNING == ds)
+            || (IETF_DS_DYNAMIC == ds) || (IETF_DS_OPERATIONAL == ds)) {
+	read_only = 1;
+    }
+
     if (strcmp(request_method, "OPTIONS")==0)
 	retval = api_data_options(h, req);
-    else if (strcmp(request_method, "HEAD")==0)
-	retval = api_data_head(h, req, api_path, pcvec, pi, qvec, pretty, media_out);
-    else if (strcmp(request_method, "GET")==0)
-	retval = api_data_get(h, req, api_path, pcvec, pi, qvec, pretty, media_out);
-    else if (strcmp(request_method, "POST")==0)
-	retval = api_data_post(h, req, api_path, pi, qvec, data, pretty, media_out);
-    else if (strcmp(request_method, "PUT")==0)
-	retval = api_data_put(h, req, api_path, pcvec, pi, qvec, data, pretty, media_out);
-    else if (strcmp(request_method, "PATCH")==0)
-	retval = api_data_patch(h, req, api_path, pcvec, pi, qvec, data, pretty, media_out);
-    else if (strcmp(request_method, "DELETE")==0)
-	retval = api_data_delete(h, req, api_path, pi, pretty, media_out);
+    else if (strcmp(request_method, "HEAD")==0) {
+	if (dynamic) {
+            retval = restconf_method_notallowed(req, "GET,POST");
+	}
+	retval = api_data_head(h, req, api_path, pcvec, pi, qvec, pretty, media_out, ds);
+    }
+    else if (strcmp(request_method, "GET")==0) {
+	retval = api_data_get(h, req, api_path, pcvec, pi, qvec, pretty, media_out, ds);
+    }
+    else if (strcmp(request_method, "POST")==0) {
+	retval = api_data_post(h, req, api_path, pi, qvec, data, pretty, media_out, ds);
+    }
+    else if (strcmp(request_method, "PUT")==0) {
+	if (read_only) {
+            retval = restconf_method_notallowed(req, "GET,POST");
+	}
+	retval = api_data_put(h, req, api_path, pcvec, pi, qvec, data, pretty, media_out, ds);
+    }
+    else if (strcmp(request_method, "PATCH")==0) {
+	if (read_only) {
+            retval = restconf_method_notallowed(req, "GET,POST");
+	}
+	retval = api_data_patch(h, req, api_path, pcvec, pi, qvec, data, pretty, media_out, ds);
+    }
+    else if (strcmp(request_method, "DELETE")==0) {
+	if (read_only) {
+            retval = restconf_method_notallowed(req, "GET,POST");
+	}
+	retval = api_data_delete(h, req, api_path, pi, pretty, media_out, ds);
+    }
     else
 	retval = restconf_notfound(h, req);
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -441,7 +490,41 @@ api_root_restconf(clicon_handle h,
     }
     else if (strcmp(api_resource, "data") == 0){ /* restconf, skip /api/data */
 	if (api_data(h, req, path, pcvec, 2, qvec, indata,
-		     pretty, media_out) < 0)
+		     pretty, media_out, IETF_DS_NONE) < 0)
+	    goto done;
+    }
+    else if (strcmp(api_resource, "ds") == 0) {
+	/* We should really be getting the supported datastore types from the
+	 * application model, but at this time the datastore model of startup/
+	 * running/cadidate is hardcoded into the clixon implementation. 20201104 */
+	ietf_ds_t ds = IETF_DS_NONE;
+
+	if (4 > pn) { /* Malformed request, no "ietf-datastores:<datastore>" component */
+           restconf_notfound(h, req);
+	   goto done;
+        }
+
+	/* Assign ds; See https://tools.ietf.org/html/rfc8342#section-7 */
+	if (0 == strcmp(pvec[3], "ietf-datastores:running"))
+	    ds = IETF_DS_RUNNING;
+        else if (0 == strcmp(pvec[3], "ietf-datastores:candidate"))
+	    ds = IETF_DS_CANDIDATE;
+        else if (0 == strcmp(pvec[3], "ietf-datastores:startup"))
+	    ds = IETF_DS_STARTUP;
+        else if (0 == strcmp(pvec[3], "ietf-datastores:operational")) {
+            /* See https://tools.ietf.org/html/rfc8527#section-3.1
+	     *     https://tools.ietf.org/html/rfc8342#section-5.3 */
+	    if (0 > api_operational_state(h, req, request_method, pretty, media_out)) {
+                goto done;
+            }
+	    goto ok;
+        }
+        else { /* Malformed request, unsupported datastore type */
+           restconf_notfound(h, req);
+	   goto done;
+	}
+	/* ds is assigned at this point */
+	if (0 > api_data(h, req, path, pcvec, 3, qvec, indata, pretty, media_out, ds))
 	    goto done;
     }
     else if (strcmp(api_resource, "operations") == 0){ /* rpc */

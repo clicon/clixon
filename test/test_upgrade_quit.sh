@@ -305,7 +305,6 @@ MODSTATE1='<modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
 
 MODSTATE2='<module><name>interfaces</name><revision>2018-02-20</revision><namespace>urn:example:interfaces</namespace></module>'
 
-
 XML='<interfaces xmlns="urn:example:interfaces"><interface><name>e0</name><docs><descr>First interface</descr></docs><type>eth</type><admin-status>up</admin-status><statistics><in-octets>54326.432</in-octets><in-unicast-pkts>8458765</in-unicast-pkts></statistics></interface><interface><name>e1</name><type>eth</type><admin-status>down</admin-status></interface></interfaces>'
 
 ALL="<config>$MODSTATE$XML</config>"
