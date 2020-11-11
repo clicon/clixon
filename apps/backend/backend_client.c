@@ -1643,9 +1643,21 @@ from_client_msg(clicon_handle        h,
     if (xml2ns(x, rpcprefix, &namespace) < 0)
 	goto done;
     /* Only accept resolved NETCONF base namespace */
-    if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
-	if (netconf_unknown_namespace(cbret, "protocol", rpcprefix, "No appropriate namespace associated with prefix") < 0)
+    if (namespace == NULL){
+	if (netconf_bad_element(cbret, "protocol", rpcname, "No namespace associated with prefix") < 0)
 	    goto done;
+	goto reply;
+    }
+    else if (strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
+	cbuf *cbmsg;
+	if ((cbmsg = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cbmsg, "No appropriate namespace found for: %s %s", rpcprefix, rpcname);
+	if (netconf_unknown_namespace(cbret, "protocol", namespace, cbuf_get(cbmsg)) < 0)
+	    goto done;
+	cbuf_free(cbmsg);
 	goto reply;
     }
 
