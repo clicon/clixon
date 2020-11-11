@@ -76,7 +76,6 @@ testrun()
 	new "kill old restconf daemon"
 	stop_restconf_pre
 
-
 	if $USEBACKEND; then
 	    new "start restconf daemon -b"
 	    start_restconf -f $cfg -b
@@ -84,7 +83,6 @@ testrun()
 	    new "start restconf daemon"
 	    start_restconf -f $cfg
 	fi
-
     fi
     new "wait restconf"
     wait_restconf
@@ -93,11 +91,11 @@ testrun()
     expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
     new "restconf get restconf resource. RFC 8040 3.3 (json)"
-    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf)" 0 'HTTP/1.1 200 OK' '{"ietf-restconf:restconf":{"data":{},"operations":{},"yang-library-version":"2016-06-21"}}'
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf)" 0 'HTTP/1.1 200 OK' '{"ietf-restconf:restconf":{"data":{},"operations":{},"yang-library-version":"2019-01-04"}}'
 
-    new "restconf get restconf resource. RFC 8040 3.3 (xml)"
-    # Get XML instead of JSON?
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf)" 0 'HTTP/1.1 200 OK' '<restconf xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><data/><operations/><yang-library-version>2016-06-21</yang-library-version></restconf>'
+new "restconf get restconf resource. RFC 8040 3.3 (xml)"
+# Get XML instead of JSON?
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf)" 0 'HTTP/1.1 200 OK' '<restconf xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><data/><operations/><yang-library-version>2019-01-04</yang-library-version></restconf>'
 
     # Should be alphabetically ordered
     new "restconf get restconf/operations. RFC8040 3.3.2 (json)"
@@ -112,11 +110,11 @@ testrun()
     fi
 
     new "restconf get restconf/yang-library-version. RFC8040 3.3.3"
-    expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/yang-library-version)" 0 'HTTP/1.1 200 OK' '{"yang-library-version":"2016-06-21"}'
+    expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/yang-library-version)" 0 'HTTP/1.1 200 OK' '{"yang-library-version":"2019-01-04"}'
 
     new "restconf get restconf/yang-library-version. RFC8040 3.3.3 (xml)"
     ret=$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/yang-library-version)
-    expect="<yang-library-version>2016-06-21</yang-library-version>"
+    expect="<yang-library-version>2019-01-04</yang-library-version>"
     match=`echo $ret | grep --null -Eo "$expect"`
     if [ -z "$match" ]; then
 	err "$expect" "$ret"

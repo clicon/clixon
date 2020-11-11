@@ -56,7 +56,7 @@ As restconf using curl on exposed port 80:
     "ietf-restconf:restconf": {
       "data": {},
       "operations": {},
-      "yang-library-version": "2016-06-21"
+      "yang-library-version": "2019-01-04"
     }
   }
 ```

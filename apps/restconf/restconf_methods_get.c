@@ -363,7 +363,8 @@ api_data_head(clicon_handle h,
 	      int           pi,
 	      cvec         *qvec,
 	      int           pretty,
-	      restconf_media media_out)
+	      restconf_media media_out,
+	      ietf_ds_t     ds)
 {
     return api_data_get2(h, req, api_path, pcvec, pi, qvec, pretty, media_out, 1);
 }
@@ -402,7 +403,8 @@ api_data_get(clicon_handle h,
              int           pi,
              cvec         *qvec,
 	     int           pretty,
-	     restconf_media media_out)
+	     restconf_media media_out,
+	     ietf_ds_t     ds)
 {
     return api_data_get2(h, req, api_path, pcvec, pi, qvec, pretty, media_out, 0);
 }

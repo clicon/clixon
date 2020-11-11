@@ -152,7 +152,8 @@ api_data_post(clicon_handle h,
 	      cvec         *qvec, 
 	      char         *data,
 	      int           pretty,
-	      restconf_media media_out)
+	      restconf_media media_out,
+	      ietf_ds_t     ds)
 {
     int            retval = -1;
     enum operation_type op = OP_CREATE;
@@ -377,12 +378,12 @@ api_data_post(clicon_handle h,
 
     cprintf(cbx, "<edit-config");
     /* RFC8040 Sec 1.4:
-     * If the NETCONF server supports :startup, the RESTCONF server MUST
-     * automatically update the non-volatile startup configuration
-     * datastore, after the "running" datastore has been altered as a
-     * consequence of a RESTCONF edit operation.
+     * If this is a "data" request and the NETCONF server supports :startup,
+     * the RESTCONF server MUST automatically update the non-volatile startup
+     * configuration datastore, after the "running" datastore has been altered
+     * as a consequence of a RESTCONF edit operation.
      */
-    if (if_feature(yspec, "ietf-netconf", "startup"))
+    if ((IETF_DS_NONE == ds) && if_feature(yspec, "ietf-netconf", "startup"))
 	cprintf(cbx, " copystartup=\"true\"");
     cprintf(cbx, " autocommit=\"true\"");
     cprintf(cbx, "><target><candidate /></target>");
