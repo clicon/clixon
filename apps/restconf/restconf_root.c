@@ -505,7 +505,7 @@ api_root_restconf(clicon_handle h,
         }
 
 	/* Assign ds; See https://tools.ietf.org/html/rfc8342#section-7 */
-	if      (0 == strcmp(pvec[3], "ietf-datastores:running"))
+	if (0 == strcmp(pvec[3], "ietf-datastores:running"))
 	    ds = IETF_DS_RUNNING;
         else if (0 == strcmp(pvec[3], "ietf-datastores:candidate"))
 	    ds = IETF_DS_CANDIDATE;
