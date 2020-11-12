@@ -58,12 +58,28 @@ SUBDIRS1 = include lib
 SUBDIRS2 = apps etc yang # without include lib for circular dependency
 SUBDIRS= $(SUBDIRS1) $(SUBDIRS2)
 
-.PHONY:	doc example all clean depend $(SUBDIRS) install loc TAGS .config.status docker test
+.PHONY:	doc example install-example clean-example all clean depend $(SUBDIRS) \
+	install loc TAGS .config.status docker test util checkroot mrproper \
+	checkinstall warnroot
 
-all:	$(SUBDIRS2)
+all:	$(SUBDIRS2) warnroot
+	@echo "\e[32mAfter 'make install' as euid root, build example app and test utils: 'make example'\e[0m"
+
+checkroot:
+	@if [ "$${DESTDIR}" = "" -a $$(id -u) != "0" ]; \
+	then echo "\e[31mThis target must be made as euid root\e[0m"; exit 1; fi;
+
+warnroot:
+	@if [ $$(id -u) = 0 ]; \
+		then echo "\e[36mWarning: You built this target as uid root\e[0m"; exit 0; fi;
+
+checkinstall:
+	@if [ ! -f $(prefix)/include/clixon/clixon.h ]; then \
+	  echo "\e[31mclixon must be installed first to build this target. "\
+	  "Run 'make'. Then run 'make install' as root.\e[0m"; exit 1; fi; }
 
 # May cause circular include->include,lib
-$(SUBDIRS2): include lib # Cannot build app before lib (for parallel make -j)
+$(SUBDIRS2): $(SUBDIRS1) # Cannot build app before lib (for parallel make -j)
 	(cd $@ && $(MAKE) $(MFLAGS) all)
 
 $(SUBDIRS1): 
@@ -73,7 +89,8 @@ depend:
 	for i in $(SUBDIRS) doc example docker; \
 	do (cd $$i && $(MAKE) $(MFLAGS) depend); done
 
-install:  
+# Needs root permissions on most systems by default
+install: checkroot
 	for i in $(SUBDIRS) doc; \
 	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done; 
 	$(MAKE) $(MFLAGS) install-include
@@ -81,30 +98,47 @@ install:
 install-include:
 	for i in $(SUBDIRS) doc; \
 	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done; 
-	echo "To install example app: cd example; make; make install"
+	@echo "\e[32mTo install example app and test utils: make install-example\e[0m"
 
-uninstall:
-	for i in $(SUBDIRS) doc example docker; \
+uninstall: checkroot
+	for i in $(SUBDIRS) doc example util docker; \
 	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done; 
 
-doc:	
+doc: warnroot
 	cd $@; $(MAKE) $(MFLAGS) $@
+
+util:
+	cd $@; $(MAKE) $(MFLAGS)
+
+clean-example:
+	for i in example util; \
+	  do (cd $$i && $(MAKE) $(MFLAGS) clean) || exit 1; done;
+
+install-example: checkroot
+	for i in example util; \
+	  do (cd $$i && $(MAKE) $(MFLAGS) install) || exit 1; done;
+
+uninstall-example: checkroot
+	for i in example util; \
+	  do (cd $$i && $(MAKE) $(MFLAGS) uninstall) || exit 1; done;
 
 config.status:	configure
 	$(SHELL) config.status --recheck
 
-configure:	configure.ac
+configure: configure.ac
 	cd $(srcdir) && autoconf
 
 clean:
-	for i in $(SUBDIRS) doc example docker; \
+	for i in $(SUBDIRS) doc example util docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; 
+
+mrproper: uninstall uninstall-example clean clean-example
 
 distclean:
 	rm -f Makefile TAGS config.status config.log *~ .depend
 	rm -rf autom4te.cache build-root/rpmbuild
 	rm -f build-root/*.tar.xz build-root/*.rpm extras/rpm/Makefile
-	for i in $(SUBDIRS) doc example docker; \
+	for i in $(SUBDIRS) doc example util docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done
 
 export BR=$(CURDIR)/build-root
@@ -146,8 +180,10 @@ pkg-rpm: dist
 pkg-srpm: dist
 	make -C extras/rpm srpm
 
-example:	
+# To make the example you need to run the "install-include" target first
+example: checkinstall util warnroot
 	(cd $@ && $(MAKE) $(MFLAGS) all)
+	@echo "\e[36mRemember to run 'make install-example' as euid root\e[0m"
 
 # Run a clixon test container.
 # Alt: cd test; ./all.sh
