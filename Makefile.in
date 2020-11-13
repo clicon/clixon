@@ -76,7 +76,7 @@ warnroot:
 checkinstall:
 	@if [ ! -f $(prefix)/include/clixon/clixon.h ]; then \
 	  echo "\e[31mclixon must be installed first to build this target. "\
-	  "Run 'make'. Then run 'make install' as root.\e[0m"; exit 1; fi; }
+	  "Run 'make'. Then run 'make install' as root.\e[0m"; exit 1; fi;
 
 # May cause circular include->include,lib
 $(SUBDIRS2): $(SUBDIRS1) # Cannot build app before lib (for parallel make -j)
