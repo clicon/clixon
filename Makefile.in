@@ -60,7 +60,7 @@ SUBDIRS= $(SUBDIRS1) $(SUBDIRS2)
 
 .PHONY:	doc example install-example clean-example all clean depend $(SUBDIRS) \
 	install loc TAGS .config.status docker test util checkroot mrproper \
-	checkinstall warnroot
+	checkinstall warnroot install-util clean-util
 
 all:	$(SUBDIRS2) warnroot
 	@echo "\e[32mAfter 'make install' as euid root, build example app and test utils: 'make example'\e[0m"
@@ -110,6 +110,15 @@ doc: warnroot
 util:
 	cd $@; $(MAKE) $(MFLAGS)
 
+clean-util:
+	cd $@; $(MAKE) $(MFLAGS) clean
+
+install-util:
+	cd $@; $(MAKE) $(MFLAGS) install
+
+uninstall-util:
+	cd $@; $(MAKE) $(MFLAGS) uninstall
+
 clean-example:
 	for i in example util; \
 	  do (cd $$i && $(MAKE) $(MFLAGS) clean) || exit 1; done;
@@ -132,7 +141,7 @@ clean:
 	for i in $(SUBDIRS) doc example util docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; 
 
-mrproper: uninstall uninstall-example clean clean-example
+mrproper: uninstall uninstall-example uninstall-util clean clean-example clean-util
 
 distclean:
 	rm -f Makefile TAGS config.status config.log *~ .depend
