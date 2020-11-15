@@ -40,6 +40,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/draft/802</CLICON_YANG_DIR> 
   <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/draft/802</CLICON_YANG_DIR> 
   <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/published/802.1</CLICON_YANG_DIR> 
+  <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/published/802</CLICON_YANG_DIR> 
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_LIST_CHECK>false</CLICON_YANG_LIST_CHECK>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>

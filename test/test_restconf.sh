@@ -22,11 +22,6 @@ APPNAME=example
 
 cfg=$dir/conf.xml
 
-# Must explicitly enable IPv6 testing
-: ${IPv6:=false}
-
-# Use yang in example
-
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -56,9 +51,15 @@ if [ "${WITH_RESTCONF}" = "evhtp" ]; then
     test -d $certdir || mkdir $certdir
     . ./certs.sh
     cat <<EOF >> $cfg
-  <CLICON_SSL_SERVER_CERT>$srvcert</CLICON_SSL_SERVER_CERT>
-  <CLICON_SSL_SERVER_KEY>$srvkey</CLICON_SSL_SERVER_KEY>
-  <CLICON_SSL_CA_CERT>$srvcert</CLICON_SSL_CA_CERT>	
+    <CLICON_SSL_SERVER_CERT>$srvcert</CLICON_SSL_SERVER_CERT>
+    <CLICON_SSL_SERVER_KEY>$srvkey</CLICON_SSL_SERVER_KEY>
+    <CLICON_SSL_CA_CERT>$srvcert</CLICON_SSL_CA_CERT>	
+EOF
+fi
+
+if $IPv6; then
+    cat <<EOF >> $cfg
+    <CLICON_RESTCONF_IPV6_ADDR>::</CLICON_RESTCONF_IPV6_ADDR>
 EOF
 fi
 
@@ -69,8 +70,9 @@ EOF
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
 state='{"clixon-example:state":{"op":\["41","42","43"\]}'
 
-# For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
-RESTCONFCONFIG=$(cat <<EOF
+if $IPv6; then
+    # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
+    RESTCONFCONFIG=$(cat <<EOF
 <restconf xmlns="https://clicon.org/restconf">
    <ssl-enable>true</ssl-enable>
    <auth-type>password</auth-type>
@@ -78,12 +80,27 @@ RESTCONFCONFIG=$(cat <<EOF
    <server-key-path>$srvkey</server-key-path>
    <server-ca-cert-path>$cakey</server-ca-cert-path>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
-   <socket><namespace>default</namespace><address>::</address><port>80</port><ssl>false</ssl></socket>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket>
+   <socket><namespace>default</namespace><address>::</address><port>80</port><ssl>false</ssl></socket>
    <socket><namespace>default</namespace><address>::</address><port>443</port><ssl>true</ssl></socket>
 </restconf>
 EOF
 )
+else
+       # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
+    RESTCONFCONFIG=$(cat <<EOF
+<restconf xmlns="https://clicon.org/restconf">
+   <ssl-enable>true</ssl-enable>
+   <auth-type>password</auth-type>
+   <server-cert-path>$srvcert</server-cert-path>
+   <server-key-path>$srvkey</server-key-path>
+   <server-ca-cert-path>$cakey</server-ca-cert-path>
+   <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
+   <socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket>
+</restconf>
+EOF
+)
+fi
 
 # Restconf test routine with arguments:
 # 1. proto:http/https

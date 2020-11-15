@@ -182,14 +182,14 @@ int clicon_err_fn(const char *fn,
     strncpy(clicon_err_reason, msg, ERR_STRLEN-1);
 
     /* Actually log it */
-    if (errno){
+    if (suberr){
 	/* Here we could take care of specific errno, like application-defined errors */
 	clicon_log(LOG_ERR, "%s: %d: %s: %s: %s", 
 		   fn,
 		   line,
 		   clicon_strerror(category),
 		   msg,
-		   errno==XMLPARSE_ERRNO?"XML parse error":strerror(errno));
+		   suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
     }
     else
 	clicon_log(LOG_ERR, "%s: %d: %s: %s", 

@@ -927,10 +927,10 @@ yang_parse_module(clicon_handle h,
 	goto done;
     if (nr == 0){
 	if (revision)
-	    clicon_err(OE_YANG, errno, "No yang files found matching \"%s@%s\" in the list of CLICON_YANG_DIRs",
+	    clicon_err(OE_YANG, ENOENT, "No1 yang files found matching \"%s@%s\" in the list of CLICON_YANG_DIRs",
 		       module, revision);
 	else
-	    clicon_err(OE_YANG, errno, "No yang files found matching \"%s\" in the list of CLICON_YANG_DIRs", module);
+	    clicon_err(OE_YANG, ENOENT, "No2 yang files found matching \"%s\" in the list of CLICON_YANG_DIRs", module);
 	goto done;
     }
     filename = cbuf_get(fbuf);

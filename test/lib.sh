@@ -133,6 +133,10 @@ fi
 # Standard IETF RFC yang files. 
 : ${IETFRFC=../yang/standard}
 
+# Some restconf tests can run IPv6, but its complicated because:
+# - docker by default does not run IPv6
+: ${IPv6:=false}
+
 # Backend user
 BUSER=clicon
 

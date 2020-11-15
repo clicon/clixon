@@ -15,8 +15,12 @@
 #OPENCONFIG=/usr/local/share/openconfig/public
 #
 # Parse yangmodels from https://github.com/YangModels/yang
-#YANGMODELS=/usr/local/share/yangmodels
+#YANGMODELS=/usr/local/share/yang
 #
 # Specify alternative directory for the standard IETF RFC yang files. 
 #IETFRFC=$YANGMODELS/standard/ietf/RFC
 
+# Some restconf tests can run IPv6, but its complicated because:
+# - docker by default does not run IPv6
+# - for fcgi nginx needs to be configured properly (shouldnt be a problem)
+#IPv6=false
