@@ -375,6 +375,10 @@ xml_stats(cxobj    *xt,
 char*
 xml_name(cxobj *xn)
 {
+    if (xn == NULL) {
+	clicon_err(OE_XML, EINVAL, "x is NULL");
+	return NULL;
+    }
     return xn->x_name;
 }
 
@@ -565,6 +569,10 @@ nscache_clear(cxobj *x)
 cxobj*
 xml_parent(cxobj *xn)
 {
+    if (xn == NULL) {
+	clicon_err(OE_XML, EINVAL, "xn is NULL");
+	return NULL;
+    }
     return xn->x_up;
 }
 
@@ -704,6 +712,10 @@ xml_value_append(cxobj *xn,
 enum cxobj_type
 xml_type(cxobj *xn)
 {
+    if (xn == NULL) {
+	clicon_err(OE_XML, EINVAL, "xn is NULL");
+	return CX_ERROR;
+    }
     return xn->x_type;
 }
 
@@ -731,6 +743,9 @@ xml_type_set(cxobj          *xn,
 int   
 xml_child_nr(cxobj *xn)
 {
+    if (xn == NULL) {
+	return 0;
+    }
     if (!is_element(xn))
 	return 0;
     return xn->x_childvec_len;
@@ -792,6 +807,10 @@ cxobj *
 xml_child_i(cxobj *xn, 
 	    int    i)
 {
+    if (xn == NULL || i < 0) {
+	clicon_err(OE_XML, EINVAL, "xn is NULL or invalid child nr");
+	return NULL;
+    }
     if (!is_element(xn))
 	return NULL;
     if (i < xn->x_childvec_len)
@@ -1183,7 +1202,7 @@ xml_cv_set(cxobj  *x,
  * Get first XML node directly under x_up in the xml hierarchy with
  * name "name".
  *
- * @param[in]  x_up   Base XML object
+ * @param[in]  xp   Base XML object
  * @param[in]  name   Node name
  *
  * @retval xmlobj     if found.
@@ -1201,6 +1220,10 @@ xml_find(cxobj *xp,
 {
     cxobj *x = NULL;
 
+    if (xp == NULL || name == NULL) {
+	clicon_err(OE_XML, EINVAL, "xp or name is NULL");
+	return NULL;
+    }
     if (!is_element(xp))
 	return NULL;
     while ((x = xml_child_each(xp, x, -1)) != NULL) 
@@ -1814,6 +1837,10 @@ xml_free(cxobj *x)
     int    i;
     cxobj *xc;
 
+    if (x == NULL){
+	clicon_err(OE_XML, EINVAL, "x is NULL");
+	return -1;
+    }
     if (x->x_name)
 	free(x->x_name);
     if (x->x_prefix)
