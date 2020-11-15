@@ -57,10 +57,6 @@ module clixon-restconf {
 		description
 		"PAM password auth";
 	    }
-	    enum none {
-		description
-		"No authentication, no security.";
-	    }
 	}
 	description
 	    "Enumeration of HTTP authorization types.";
@@ -91,31 +87,22 @@ module clixon-restconf {
 	presence "Enables RESTCONF";
 	description
 	    "HTTP daemon configuration.";
-	list socket {
-	    key "namespace address port";
-	    leaf namespace {
-		type string;
-		description "indicates a namespace for instance. On platforms where namespaces are not suppported, always 'default'";
-	    }
-	    leaf address {
-		type inet:ip-address;
-		description "IP address to bind to";
-	    }
-	    leaf port {
-		type inet:port-number;
-		description "IP port to bind to";
-	    }
-	    leaf ssl {
-		type boolean;
-		default true;
-		description "Enable for HTTPS otherwise HTTP protocol";
-	    }
+	leaf ssl-enable {
+	    description
+		"Enable ssl server functionality.
+                 Setting to false means the following are invalid: 
+                   - auth-type=client-certificate 
+                   - socket entries with ssl=true
+                  Also, the following are not releveant: server-cert-path, server-key-path, 
+                  server-ca-cert-path";
+	    type boolean;
+	    default false;
 	}
-	leaf auth-type {
+	leaf-list auth-type {
 	    type http-auth-type;
 	    description
 		"The authentication type.
-                 Note client-certificate applies only if socket has ssl enabled";
+                 Note client-certificate applies only if ssl-enable is true and socket has ssl";
 	}
 	leaf server-cert-path {
 	    type string;
@@ -140,6 +127,26 @@ module clixon-restconf {
 	         Note only applies if socket has ssl enabled";
 	    default "/etc/ssl/certs/clixon-ca_crt.pem";
 	    /* CLICON_SSL_CA_CERT */
+	}
+	list socket {
+	    key "namespace address port";
+	    leaf namespace {
+		type string;
+		description "indicates a namespace for instance. On platforms where namespaces are not suppported, always 'default'";
+	    }
+	    leaf address {
+		type inet:ip-address;
+		description "IP address to bind to";
+	    }
+	    leaf port {
+		type inet:port-number;
+		description "IP port to bind to";
+	    }
+	    leaf ssl {
+		type boolean;
+		default true;
+		description "Enable for HTTPS otherwise HTTP protocol";
+	    }
 	}
     }
     rpc restconf-control {

@@ -221,7 +221,7 @@ compile_pattern2regexp(clicon_handle h,
 /*! Resolve types: populate type caches 
  * @param[in]  ys  This is a type statement
  * @param[in]  arg Not used
- * Typically only called once when loading te yang type system.
+ * Typically only called once when loading the yang type system.
  * @note unions not cached
  */
 int
@@ -741,7 +741,7 @@ cv_validate1(clicon_handle h,
 
 /* Forward */
 static int ys_cv_validate_union(clicon_handle h,yang_stmt *ys, char **reason,
-				yang_stmt *yrestype, char *type, char *val);
+				yang_stmt *yrestype, char *type, char *val, yang_stmt **ysubp);
 
 /*!
  * @param[out] reason  If given and return val is 0, contains a malloced string
@@ -767,6 +767,7 @@ ys_cv_validate_union_one(clicon_handle h,
     char        *restype;
     enum cv_type cvtype;
     cg_var      *cvt=NULL;
+    yang_stmt   *ysubt = NULL;
 
     if ((regexps = cvec_new(0)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
@@ -781,7 +782,7 @@ ys_cv_validate_union_one(clicon_handle h,
 	goto done;
     restype = yrt?yang_argument_get(yrt):NULL;
     if (restype && strcmp(restype, "union") == 0){      /* recursive union */
-	if ((retval = ys_cv_validate_union(h, ys, reason, yrt, type, val)) < 0)
+	if ((retval = ys_cv_validate_union(h, ys, reason, yrt, type, val, &ysubt)) < 0)
 	    goto done;
     }
     else {
@@ -828,18 +829,23 @@ ys_cv_validate_union_one(clicon_handle h,
 }
 
 /*! Validate union
+ * @param[in]  h       Clixon handle
+ * @param[in]  ys      Yang statement (union)
  * @param[out] reason  If given, and return value is 0, contains malloced string
+ * @param[in]  val     Value to match
+ * @param[out] ysubp   Sub-type of ys that matches val
  * @retval -1  Error (fatal), with errno set to indicate error
  * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
  * @retval 1   Validation OK
  */
 static int
 ys_cv_validate_union(clicon_handle h,
-		     yang_stmt *ys,
-		     char     **reason,
-		     yang_stmt *yrestype,
-		     char      *type,  /* orig type */
-		     char      *val)
+		     yang_stmt    *ys,
+		     char        **reason,
+		     yang_stmt    *yrestype,
+		     char         *type,  /* orig type */
+		     char         *val,
+		     yang_stmt   **ysubp)
 {
     int        retval = 1; /* valid */
     yang_stmt *yt = NULL;
@@ -859,8 +865,13 @@ ys_cv_validate_union(clicon_handle h,
 	    reason1 = *reason;
 	    *reason = NULL;
 	}
-	if (retval == 1) /* Enough that one type validates value */
+	/* Enough that one type validates value, return that value
+	 */
+	if (retval == 1) {
+	    if (ysubp)
+		*ysubp = yt;
 	    break;
+	}
     }
  done:
     if (retval == 0 && reason1){
@@ -877,6 +888,7 @@ ys_cv_validate_union(clicon_handle h,
  * @param[in]  h       Clicon handle     
  * @param[in]  cv      A cligen variable to validate. This is a correctly parsed cv.
  * @param[in]  ys      A yang statement, must be leaf or leaf-list.
+ * @param[out] ysub    Sub-type that matches val (in case of union, otherwise ys)
  * @param[out] reason  If given, and if return value is 0, contains malloced 
  *                     string describing reason why validation failed. 
  * @retval -1  Error (fatal), with errno set to indicate error
@@ -889,6 +901,7 @@ int
 ys_cv_validate(clicon_handle h,
 	       cg_var       *cv, 
 	       yang_stmt    *ys, 
+	       yang_stmt   **ysub, 
 	       char        **reason)
 {
     int             retval = -1; 
@@ -948,7 +961,7 @@ ys_cv_validate(clicon_handle h,
 	 */
 	if ((val = cv_string_get(cv)) == NULL)
 	    val = "";
-	if ((retval2 = ys_cv_validate_union(h, ys, reason, yrestype, origtype, val)) < 0)
+	if ((retval2 = ys_cv_validate_union(h, ys, reason, yrestype, origtype, val, ysub)) < 0)
 	    goto done;
 	retval = retval2; /* invalid (0) with latest reason or valid 1 */
     }
@@ -969,6 +982,8 @@ ys_cv_validate(clicon_handle h,
 	if ((retval = cv_validate1(h, cv, cvtype, options, cvv,
 				   regexps, yrestype, restype, reason)) < 0)
 	    goto done;
+	if (ysub)
+	    *ysub = ys;
     }
   done:
     if (origtype)

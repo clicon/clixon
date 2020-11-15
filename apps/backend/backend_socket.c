@@ -75,7 +75,7 @@
 
 /*! Open an INET stream socket and bind it to a file descriptor
  *
-o * @param[in]  h    Clicon handle
+ * @param[in]  h    Clicon handle
  * @param[in]  dst  IPv4 address (see inet_pton(3))
  * @retval     s    Socket file descriptor (see socket(2))
  * @retval    -1    Error

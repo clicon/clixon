@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Restconf basic functionality
 # Assume http server setup, such as nginx described in apps/restconf/README.md
+# Systematic tests of restconf operations GET/POST/PUT/DELETE
+# See also test_restconf.sh
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

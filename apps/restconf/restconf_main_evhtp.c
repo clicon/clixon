@@ -60,6 +60,9 @@
 #include <sys/wait.h>
 #include <assert.h>
 #include <sys/stat.h> /* chmod */
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 /* evhtp */
 #include <evhtp/evhtp.h>
@@ -88,8 +91,9 @@
 
 /* clixon evhtp handle */
 typedef struct {
-    evhtp_t           *eh_htp;
-    struct event_base *eh_evbase;
+    evhtp_t          **eh_htpvec; /* One per socket */
+    int                eh_htplen; /* Number of sockets */
+    struct event_base *eh_evbase; /* Change to list */
     evhtp_ssl_cfg_t   *eh_ssl_config;
 } cx_evhtp_handle;
 
@@ -105,12 +109,16 @@ static void
 evhtp_terminate(cx_evhtp_handle *eh)
 {
     evhtp_ssl_cfg_t *sc;
+    int              i;
     
     if (eh == NULL)
 	return;
-    if (eh->eh_htp){
-	evhtp_unbind_socket(eh->eh_htp);
-	evhtp_free(eh->eh_htp);
+    if (eh->eh_htpvec){
+	for (i=0; i<eh->eh_htplen; i++){
+	    evhtp_unbind_socket(eh->eh_htpvec[i]);
+	    evhtp_free(eh->eh_htpvec[i]);
+	}
+	free(eh->eh_htpvec);
     }
     if (eh->eh_evbase)
 	event_base_free(eh->eh_evbase);
@@ -554,9 +562,9 @@ cx_get_ssl_server_certs(clicon_handle    h,
  * @retval        -1                  Error
  */
 static int
-cx_get_ssl_client_certs(clicon_handle    h,
-			const char      *server_ca_cert_path,
-			evhtp_ssl_cfg_t *ssl_config)
+cx_get_ssl_client_ca_certs(clicon_handle    h,
+			   const char      *server_ca_cert_path,
+			   evhtp_ssl_cfg_t *ssl_config)
 {
     int         retval = -1;
     struct stat f_stat;
@@ -643,7 +651,7 @@ static int
 cx_verify_certs(int pre_verify,
 		evhtp_x509_store_ctx_t *store)
 {
-#ifdef NOTYET
+#if 0 //def NOTYET
     char                 buf[256];
     X509               * err_cert;
     int                  err;
@@ -666,6 +674,88 @@ cx_verify_certs(int pre_verify,
 #endif
     return pre_verify;
 }
+
+/*!
+ * 
+ * @param[out] addr      Address as string, eg "0.0.0.0", "::"
+ * @param[in]  addrtype  One of inet:ipv4-address or inet:ipv6-address
+ * @param[out] ss        Server socket (bound for accept)
+ */
+static int
+restconf_socket_init(clicon_handle h,
+		     const char   *addr,
+		     const char   *addrtype,
+		     uint16_t      port,
+		     int          *ss)
+{
+    int                 retval = -1;
+    int                 s = -1;
+    struct sockaddr   * sa;
+    struct sockaddr_in6 sin6   = { 0 };
+    struct sockaddr_in  sin    = { 0 };
+    size_t              sin_len;
+    int                 on = 1;
+
+    if (strcmp(addrtype, "inet:ipv6-address") == 0) {
+        sin_len          = sizeof(struct sockaddr_in6);
+        sin6.sin6_port   = htons(port);
+        sin6.sin6_family = AF_INET6;
+
+        evutil_inet_pton(AF_INET6, addr, &sin6.sin6_addr);
+        sa = (struct sockaddr *)&sin6;
+    }
+    else if (strcmp(addrtype, "inet:ipv4-address") == 0) {
+        sin_len             = sizeof(struct sockaddr_in);
+        sin.sin_family      = AF_INET;
+        sin.sin_port        = htons(port);
+        sin.sin_addr.s_addr = inet_addr(addr);
+
+        sa = (struct sockaddr *)&sin;
+    }
+    else{
+	clicon_err(OE_XML, EINVAL, "Unexpected addrtype: %s", addrtype);
+	return -1;
+    }
+    /* create inet socket */
+    if ((s = socket(sa->sa_family, SOCK_STREAM, 0)) < 0) {
+	clicon_err(OE_UNIX, errno, "socket");
+	goto done;
+    }
+    //    evutil_make_socket_closeonexec(s); // XXX
+    //    evutil_make_socket_nonblocking(s); // XXX
+
+    if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, sizeof(on)) == -1) {
+	clicon_err(OE_UNIX, errno, "setsockopt SO_KEEPALIVE");
+	goto done;
+    }
+    if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on)) == -1) {
+	clicon_err(OE_UNIX, errno, "setsockopt SO_REUSEADDR");
+	goto done;
+    }
+    /* only bind ipv6, otherwise it may bind to ipv4 as well which is strange but seems default */
+    if (sa->sa_family == AF_INET6 &&
+	setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1) {
+	clicon_err(OE_UNIX, errno, "setsockopt IPPROTO_IPV6");
+	goto done;
+    }
+    if (bind(s, sa, sin_len) == -1) {
+	clicon_err(OE_UNIX, errno, "bind port %u", port);
+	goto done;
+    }
+    if (listen(s, SOCKET_LISTEN_BACKLOG) < 0){
+	clicon_err(OE_UNIX, errno, "listen");
+	goto done;
+    }
+    if (ss)
+	*ss = s;
+    retval = 0;
+ done:
+    if (retval != 0 && s != -1)
+	evutil_closesocket(s);
+    return retval;
+    //    return evhtp_bind_sockaddr(htp, sa, sin_len, SOCKET_LISTEN_BACKLOG);
+}
+
 
 /*! Usage help routine
  * @param[in]  argv0  command line
@@ -701,31 +791,35 @@ usage(clicon_handle h,
     exit(0);
 }
 
-/*! Main routine for libevhtp restconf
- */
-/*! Phase 2 of start per-socket config
+/*! Extract socket info from backend config 
  * @param[in]  h         Clicon handle
  * @param[in]  xs        socket config
  * @param[in]  nsc       Namespace context
  * @param[out] namespace 
- * @param[out] address
+ * @param[out] address   Address as string, eg "0.0.0.0", "::"
+ * @param[out] addrtype  One of inet:ipv4-address or inet:ipv6-address
  * @param[out] port
  * @param[out] ssl
  */
 static int
-cx_evhtp_socket(clicon_handle h,
-	     cxobj        *xs,
-	     cvec         *nsc,
-	     char        **namespace,
-	     char        **address,
-	     uint16_t     *port,
-	     uint16_t     *ssl)
+cx_evhtp_socket_extract(clicon_handle h,
+			cxobj        *xs,
+			cvec         *nsc,
+			char        **namespace,
+			char        **address,
+			char        **addrtype,
+			uint16_t     *port,
+			uint16_t     *ssl)
 {
-    int       retval = -1;
-    cxobj    *x;
-    char     *str = NULL;
-    char     *reason = NULL;
-    int       ret;
+    int        retval = -1;
+    cxobj     *x;
+    char      *str = NULL;
+    char      *reason = NULL;
+    int        ret;
+    char      *body;
+    cg_var    *cv = NULL;
+    yang_stmt *y;
+    yang_stmt *ysub = NULL;
 
     if ((x = xpath_first(xs, nsc, "namespace")) == NULL){
 	clicon_err(OE_XML, EINVAL, "Mandatory namespace not given");
@@ -736,7 +830,35 @@ cx_evhtp_socket(clicon_handle h,
 	clicon_err(OE_XML, EINVAL, "Mandatory address not given");
 	goto done;
     }
-    *address = xml_body(x);
+    /* address is a union type and needs a special investigation to see which type (ipv4 or ipv6)
+     * the address is
+     */
+    body = xml_body(x);
+    y = xml_spec(x);
+    if ((cv = cv_dup(yang_cv_get(y))) == NULL){
+	clicon_err(OE_UNIX, errno, "cv_dup");
+	goto done;
+    }
+    if ((ret = cv_parse1(body, cv, &reason)) < 0){
+	clicon_err(OE_XML, errno, "cv_parse1");
+	goto done;
+    }
+    if (ret == 0){
+	clicon_err(OE_XML, EFAULT, "%s", reason);
+	goto done;
+    }
+    if ((ret = ys_cv_validate(h, cv, y, &ysub, &reason)) < 0)
+	goto done;
+    if (ret == 0){
+	clicon_err(OE_XML, EFAULT, "Validation os address: %s", reason);
+	goto done;
+    }
+    if (ysub == NULL){
+	clicon_err(OE_XML, EFAULT, "No address union type");
+	goto done;
+    }
+    *address = body;
+    *addrtype = yang_argument_get(ysub);
     if ((x = xpath_first(xs, nsc, "port")) != NULL &&
 	(str = xml_body(x)) != NULL){
 	if ((ret = parse_uint16(str, port, &reason)) < 0){
@@ -767,7 +889,110 @@ cx_evhtp_socket(clicon_handle h,
     return retval;
 }
 
-/*! Phase 2 of evhtp init, config has been retrieved from backend
+static int
+cx_htp_add(cx_evhtp_handle *eh,
+	   evhtp_t         *htp)
+{
+    eh->eh_htplen++;
+    if ((eh->eh_htpvec = realloc(eh->eh_htpvec, eh->eh_htplen*sizeof(htp))) == NULL){
+	clicon_err(OE_UNIX, errno, "realloc");
+	return -1;
+    }
+    eh->eh_htpvec[eh->eh_htplen-1] = htp;
+    return 0;
+}
+
+/*! Phase 2 of backend evhtp init, config single socket
+ * @param[in]  h        Clicon handle
+ * @param[in]  eh       Evhtp handle
+ * @param[in]  ssl_enable Server is SSL enabled
+ * @param[in]  xs       XML config of single restconf socket
+ * @param[in]  nsc      Namespace context
+ */
+static int
+cx_evhtp_socket(clicon_handle    h,
+		cx_evhtp_handle *eh,
+		int              ssl_enable,
+		cxobj           *xs,
+		cvec            *nsc,
+		char            *server_cert_path,
+		char            *server_key_path,
+		char            *server_ca_cert_path,
+		int              auth_type_client_certificate)
+{
+    int          retval = -1;
+    char        *namespace = NULL;
+    char        *address = NULL;
+    char        *addrtype = NULL;
+    uint16_t     ssl = 0;
+    uint16_t     port = 0;
+    int          ss;
+    evhtp_t     *htp = NULL;
+
+    /* This is socket create a new evhtp_t instance */
+    if ((htp = evhtp_new(eh->eh_evbase, NULL)) == NULL){
+	clicon_err(OE_UNIX, errno, "evhtp_new");
+	goto done;
+    }
+
+#ifndef EVHTP_DISABLE_EVTHR /* threads */
+    evhtp_use_threads_wexit(htp, NULL, NULL, 4, NULL);
+#endif
+    /* Callback before the connection is accepted. */
+    evhtp_set_pre_accept_cb(htp, cx_pre_accept, h);
+    /* Callback right after a connection is accepted. */
+    evhtp_set_post_accept_cb(htp, cx_post_accept, h);
+    /* Callback to be executed for all /restconf api calls */
+    if (evhtp_set_cb(htp, "/" RESTCONF_API, cx_path_restconf, h) == NULL){
+    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
+    	goto done;
+    }
+    /* Callback to be executed for all /restconf api calls */
+    if (evhtp_set_cb(htp, RESTCONF_WELL_KNOWN, cx_path_wellknown, h) == NULL){
+    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
+    	goto done;
+   }
+    /* Generic callback called if no other callbacks are matched */
+    evhtp_set_gencb(htp, cx_gencb, h);
+
+    /* Extract socket parameters from single socket config: ns, addr, port, ssl */
+    if (cx_evhtp_socket_extract(h, xs, nsc, &namespace, &address, &addrtype, &port, &ssl) < 0)
+	goto done;
+    /* Sanity checks of socket parameters */
+    if (ssl){
+	if (ssl_enable == 0 || server_cert_path==NULL || server_key_path == NULL){
+	    clicon_err(OE_XML, EINVAL, "Enabled SSL server requires server_cert_path and server_key_path"); 
+	    goto done;
+	}
+	//    ssl_verify_mode             = htp_sslutil_verify2opts(optarg);
+	if (evhtp_ssl_init(htp, eh->eh_ssl_config) < 0){
+	    clicon_err(OE_UNIX, errno, "evhtp_new");
+	    goto done;
+	}
+    }
+    /* Open restconf socket and bind */
+    if (restconf_socket_init(h, address, addrtype, port, &ss) < 0)
+	goto done;
+    /* ss is a server socket that the clients connect to. The callback
+       therefore accepts clients on ss */
+    /* XXX address in evhtp should be prefixed with eg "ipv4:" */
+    evutil_make_socket_closeonexec(ss); // XXX
+    evutil_make_socket_nonblocking(ss); // XXX
+    if (evhtp_accept_socket(htp, ss, SOCKET_LISTEN_BACKLOG) < 0) {
+        /* accept_socket() does not close the descriptor
+         * on error, but this function does.
+         */
+        evutil_closesocket(ss);
+	goto done;
+    }
+    if (cx_htp_add(eh, htp) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Phase 2 of backend evhtp init, config has been retrieved from backend
  * @param[in]  h        Clicon handle
  * @param[in]  xconfig  XML config
  * @param[in]  nsc      Namespace context
@@ -780,30 +1005,29 @@ cx_evhtp_init(clicon_handle     h,
 	      cxobj            *xconfig,
 	      cvec             *nsc,
 	      cx_evhtp_handle  *eh)
-
 {
-    int                  retval = -1;
-    int                  auth_type_client_certificate = 0;
-    uint16_t             port = 0;
-    cxobj               *xrestconf;
-    cxobj              **vec = NULL;
-    size_t               veclen;
-    char                *auth_type = NULL;
-    char                *server_cert_path = NULL;
-    char                *server_key_path = NULL;
-    char                *server_ca_cert_path = NULL;
+    int          retval = -1;
+    cxobj       *xrestconf;
+    cxobj      **vec = NULL;
+    size_t       veclen;
+    char        *server_cert_path = NULL;
+    char        *server_key_path = NULL;
+    char        *server_ca_cert_path = NULL;
+    char        *auth_type = NULL;
+    int          auth_type_client_certificate = 0;
     //XXX    char                *client_cert_ca = NULL;
-    cxobj               *x;
-    char                *namespace = NULL;
-    char                *address = NULL;
-    uint16_t             use_ssl_server = 0;
-    
+    cxobj       *x;
+    int          i;
+    int          ssl_enable = 0;
+
     /* Extract socket fields from xconfig */
     if ((xrestconf = xpath_first(xconfig, nsc, "restconf")) == NULL){
 	clicon_err(OE_CFG, ENOENT, "restconf top symbol not found");
 	goto done;
     }
     /* get common fields */
+    if ((x = xpath_first(xrestconf, nsc, "ssl-enable")) != NULL)
+	ssl_enable = (strcmp(xml_body(x),"true")==0);
     if ((x = xpath_first(xrestconf, nsc, "auth-type")) != NULL) /* XXX: leaf-list? */
 	auth_type = xml_body(x);
     if (auth_type && strcmp(auth_type, "client-certificate") == 0)
@@ -814,42 +1038,9 @@ cx_evhtp_init(clicon_handle     h,
 	server_key_path = xml_body(x);
     if ((x = xpath_first(xrestconf, nsc, "server-ca-cert-path")) != NULL)
 	server_ca_cert_path = xml_body(x);
-    /* get the list of socket config-data */
-    if (xpath_vec(xrestconf, nsc, "socket", &vec, &veclen) < 0)
-	goto done;
-    /* Accept only a single socket XXX */
-    if (veclen != 1){
-	clicon_err(OE_XML, EINVAL, "Only single socket supported"); /* XXX warning: accept more? */
-	goto done;
-    }
-    if (cx_evhtp_socket(h, vec[0], nsc, &namespace, &address, &port, &use_ssl_server) < 0)
-	goto done;
-    if (use_ssl_server &&
-	(server_cert_path==NULL || server_key_path == NULL)){
-	clicon_err(OE_XML, EINVAL, "Enabled SSL server requires server_cert_path and server_key_path"); 
-	goto done;
-    }
-    if (auth_type_client_certificate){
-	if (!use_ssl_server){
-	    clicon_err(OE_XML, EINVAL, "Client certificate authentication type requires SSL"); 
-	    goto done;
-	}
-	if (server_ca_cert_path == NULL){
-	    clicon_err(OE_XML, EINVAL, "Client certificate authentication type requires server-ca-cert-path"); 
-	    goto done;
-	}
-    }
-    /* Init evhtp */
-    if ((eh->eh_evbase = event_base_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "event_base_new");
-	goto done;
-    }
-    /* create a new evhtp_t instance */
-    if ((eh->eh_htp = evhtp_new(eh->eh_evbase, NULL)) == NULL){
-	clicon_err(OE_UNIX, errno, "evhtp_new");
-	goto done;
-    }
-    if (use_ssl_server){ 
+    
+    /* Here the daemon either uses SSL or not, ie you cant seem to mix http and https :-( */
+    if (ssl_enable){
 	/* Init evhtp ssl config struct */
 	if ((eh->eh_ssl_config = malloc(sizeof(evhtp_ssl_cfg_t))) == NULL){
 	    clicon_err(OE_UNIX, errno, "malloc");
@@ -858,12 +1049,12 @@ cx_evhtp_init(clicon_handle     h,
 	memset(eh->eh_ssl_config, 0, sizeof(evhtp_ssl_cfg_t));
 	eh->eh_ssl_config->ssl_opts = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1;
 
-	if (cx_get_ssl_server_certs(h, server_cert_path,
-				    server_key_path,
-				    eh->eh_ssl_config) < 0)
+	/* Read server ssl files cert and key */
+	if (cx_get_ssl_server_certs(h, server_cert_path, server_key_path, eh->eh_ssl_config) < 0)
 	    goto done;
+	/* If client auth get client CA cert */
 	if (auth_type_client_certificate)
-	    if (cx_get_ssl_client_certs(h, server_ca_cert_path, eh->eh_ssl_config) < 0)
+	    if (cx_get_ssl_client_ca_certs(h, server_ca_cert_path, eh->eh_ssl_config) < 0)
 		goto done;
 	eh->eh_ssl_config->x509_verify_cb = cx_verify_certs; /* Is extra verification necessary? */
 	if (auth_type_client_certificate){
@@ -873,52 +1064,15 @@ cx_evhtp_init(clicon_handle     h,
 	}
 	//    ssl_verify_mode             = htp_sslutil_verify2opts(optarg);
     }
-    assert(SSL_VERIFY_NONE == 0);
-
-    /* Init evhtp */
-    if ((eh->eh_evbase = event_base_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "event_base_new");
-	goto done;
-    }
-    /* create a new evhtp_t instance */
-    if ((eh->eh_htp = evhtp_new(eh->eh_evbase, NULL)) == NULL){
-	clicon_err(OE_UNIX, errno, "evhtp_new");
-	goto done;
-    }
-    /* Here the daemon either uses SSL or not, ie you cant seem to mix http and https :-( */
-    if (use_ssl_server){
-	if (evhtp_ssl_init(eh->eh_htp, eh->eh_ssl_config) < 0){
-	    clicon_err(OE_UNIX, errno, "evhtp_new");
-	    goto done;
-	}
-    }
-#ifndef EVHTP_DISABLE_EVTHR /* threads */
-    evhtp_use_threads_wexit(eh->eh_htp, NULL, NULL, 4, NULL);
-#endif
-    /* Callback before the connection is accepted. */
-    evhtp_set_pre_accept_cb(eh->eh_htp, cx_pre_accept, h);
-    /* Callback right after a connection is accepted. */
-    evhtp_set_post_accept_cb(eh->eh_htp, cx_post_accept, h);
-    /* Callback to be executed for all /restconf api calls */
-    if (evhtp_set_cb(eh->eh_htp, "/" RESTCONF_API, cx_path_restconf, h) == NULL){
-    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
-    	goto done;
-    }
-    /* Callback to be executed for all /restconf api calls */
-    if (evhtp_set_cb(eh->eh_htp, RESTCONF_WELL_KNOWN, cx_path_wellknown, h) == NULL){
-    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
-    	goto done;
-    }
-    /* Generic callback called if no other callbacks are matched */
-    evhtp_set_gencb(eh->eh_htp, cx_gencb, h);
     
-    if (evhtp_bind_socket(eh->eh_htp,           /* evhtp handle */
-			  address,              /* string address, eg ipv4:<ipv4addr> */
-			  port,                 /* port */
-			  SOCKET_LISTEN_BACKLOG /* backlog flag, see listen(5)  */
-			  ) < 0){
-	clicon_err(OE_UNIX, errno, "evhtp_bind_socket");
+    /* get the list of socket config-data */
+    if (xpath_vec(xrestconf, nsc, "socket", &vec, &veclen) < 0)
 	goto done;
+    for (i=0; i<veclen; i++){
+	if (cx_evhtp_socket(h, eh, ssl_enable, vec[i], nsc,
+			    server_cert_path, server_key_path, server_ca_cert_path,
+			    auth_type_client_certificate) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -929,10 +1083,11 @@ cx_evhtp_init(clicon_handle     h,
 
 /*! Read config from backend */ 
 int
-restconf_config_backend(clicon_handle h,
-			int           argc,
-			char        **argv,
-			int           drop_privileges)
+restconf_config_backend(clicon_handle    h,
+			cx_evhtp_handle *eh,
+			int              argc,
+			char           **argv,
+			int              drop_privileges)
 {
     int                retval = -1;
     char	      *argv0 = argv[0];
@@ -945,8 +1100,8 @@ restconf_config_backend(clicon_handle h,
     size_t             cligen_bufthreshold;
     cvec              *nsc = NULL;
     cxobj             *xconfig = NULL;
+    cxobj             *xerr = NULL;
     uint32_t           id = 0; /* Session id, to poll backend up */
-    cx_evhtp_handle   *eh = NULL;
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
@@ -1052,13 +1207,16 @@ restconf_config_backend(clicon_handle h,
 	 goto done;
      if (clicon_rpc_get_config(h, NULL, "running", "/restconf", nsc, &xconfig) < 0)
 	 goto done;
-     /* Initialize evhtp handle - fill it in cx_evhtp_init */
-     if ((eh = malloc(sizeof *eh)) == NULL){
-	 clicon_err(OE_UNIX, errno, "malloc");
+     if ((xerr = xpath_first(xconfig, NULL, "/rpc-error")) != NULL){
+	 clixon_netconf_error(xerr, "Get backend restconf config", NULL);
 	 goto done;
      }
-     memset(eh, 0, sizeof *eh);
-     _EVHTP_HANDLE = eh; /* global */
+    /* Init evhtp, common stuff */
+    if ((eh->eh_evbase = event_base_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "event_base_new");
+	goto done;
+    }
+
      if (cx_evhtp_init(h, xconfig, nsc, eh) < 0)
 	 goto done;
      /* Drop privileges after evhtp and server key/cert read */
@@ -1069,7 +1227,6 @@ restconf_config_backend(clicon_handle h,
      }
      /* libevent main loop */
      event_base_loop(eh->eh_evbase, 0); /* XXX: replace with clixon_event_loop() */
-
      retval = 0;
  done:
     if (xconfig)
@@ -1083,6 +1240,7 @@ restconf_config_backend(clicon_handle h,
 /*! Read config locally */ 
 int
 restconf_config_local(clicon_handle h,
+		      cx_evhtp_handle *eh,
 		      int      argc,
 		      char   **argv,
 		      uint16_t port,
@@ -1101,7 +1259,7 @@ restconf_config_local(clicon_handle h,
     size_t             cligen_bufthreshold;
     char              *restconf_ipv4_addr = NULL;
     char              *restconf_ipv6_addr = NULL;
-    cx_evhtp_handle   *eh = NULL;
+    evhtp_t           *htp;
 
     /* port = defaultport unless explicitly set -P */
     if (port == 0){
@@ -1111,13 +1269,6 @@ restconf_config_local(clicon_handle h,
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
     
-    /* Initialize evhtp handle */
-    if ((eh = malloc(sizeof *eh)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
-    }
-    memset(eh, 0, sizeof *eh);
-    _EVHTP_HANDLE = eh; /* global */
     /* Check server ssl certs */
     if (use_ssl){
 	/* Init evhtp ssl config struct */
@@ -1148,39 +1299,6 @@ restconf_config_local(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "event_base_new");
 	goto done;
     }
-    /* create a new evhtp_t instance */
-    if ((eh->eh_htp = evhtp_new(eh->eh_evbase, NULL)) == NULL){
-	clicon_err(OE_UNIX, errno, "evhtp_new");
-	goto done;
-    }
-    /* Here the daemon either uses SSL or not, ie you cant seem to mix http and https :-( */
-    if (use_ssl){
-	if (evhtp_ssl_init(eh->eh_htp, eh->eh_ssl_config) < 0){
-	    clicon_err(OE_UNIX, errno, "evhtp_new");
-	    goto done;
-	}
-    }
-#ifndef EVHTP_DISABLE_EVTHR
-    evhtp_use_threads_wexit(eh->eh_htp, NULL, NULL, 4, NULL);
-#endif
-    /* Callback before the connection is accepted. */
-    evhtp_set_pre_accept_cb(eh->eh_htp, cx_pre_accept, h);
-
-    /* Callback right after a connection is accepted. */
-    evhtp_set_post_accept_cb(eh->eh_htp, cx_post_accept, h);
-
-    /* Callback to be executed for all /restconf api calls */
-    if (evhtp_set_cb(eh->eh_htp, "/" RESTCONF_API, cx_path_restconf, h) == NULL){
-    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
-    	goto done;
-    }
-    /* Callback to be executed for all /restconf api calls */
-    if (evhtp_set_cb(eh->eh_htp, RESTCONF_WELL_KNOWN, cx_path_wellknown, h) == NULL){
-    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
-    	goto done;
-    }
-    /* Generic callback called if no other callbacks are matched */
-    evhtp_set_gencb(eh->eh_htp, cx_gencb, h);
 
     /* bind to a socket, optionally with specific protocol support formatting 
      */
@@ -1193,12 +1311,47 @@ restconf_config_local(clicon_handle h,
     }
     if (restconf_ipv4_addr != NULL && strlen(restconf_ipv4_addr)){
 	cbuf *cb;
+
+	/* create a new evhtp_t instance */
+	if ((htp = evhtp_new(eh->eh_evbase, NULL)) == NULL){
+	    clicon_err(OE_UNIX, errno, "evhtp_new");
+	    goto done;
+	}
+	/* Here the daemon either uses SSL or not, ie you cant seem to mix http and https :-( */
+	if (use_ssl){
+	    if (evhtp_ssl_init(htp, eh->eh_ssl_config) < 0){
+		clicon_err(OE_UNIX, errno, "evhtp_new");
+		goto done;
+	    }
+	}
+#ifndef EVHTP_DISABLE_EVTHR
+	evhtp_use_threads_wexit(htp, NULL, NULL, 4, NULL);
+#endif
+	/* Callback before the connection is accepted. */
+	evhtp_set_pre_accept_cb(htp, cx_pre_accept, h);
+
+	/* Callback right after a connection is accepted. */
+	evhtp_set_post_accept_cb(htp, cx_post_accept, h);
+
+	/* Callback to be executed for all /restconf api calls */
+	if (evhtp_set_cb(htp, "/" RESTCONF_API, cx_path_restconf, h) == NULL){
+	    clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
+	    goto done;
+	}
+	/* Callback to be executed for all /restconf api calls */
+	if (evhtp_set_cb(htp, RESTCONF_WELL_KNOWN, cx_path_wellknown, h) == NULL){
+	    clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
+	    goto done;
+	}
+	/* Generic callback called if no other callbacks are matched */
+	evhtp_set_gencb(htp, cx_gencb, h);
+	
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
 	}
 	cprintf(cb, "ipv4:%s", restconf_ipv4_addr);
-	if (evhtp_bind_socket(eh->eh_htp,                  /* evhtp handle */
+	if (evhtp_bind_socket(htp,                  /* evhtp handle */
 			      cbuf_get(cb),         /* string address, eg ipv4:<ipv4addr> */
 			      port,                 /* port */
 			      SOCKET_LISTEN_BACKLOG /* backlog flag, see listen(5)  */
@@ -1208,16 +1361,51 @@ restconf_config_local(clicon_handle h,
 	}
 	if (cb)
 	    cbuf_free(cb);
+	if (cx_htp_add(eh, htp) < 0)
+	    goto done;
     }
     /* Eeh can only bind one */
-    if (0 && restconf_ipv6_addr != NULL && strlen(restconf_ipv6_addr)){
+    if (restconf_ipv6_addr != NULL && strlen(restconf_ipv6_addr)){
 	cbuf *cb;
+	/* create a new evhtp_t instance */
+	if ((htp = evhtp_new(eh->eh_evbase, NULL)) == NULL){
+	    clicon_err(OE_UNIX, errno, "evhtp_new");
+	    goto done;
+	}
+	/* Here the daemon either uses SSL or not, ie you cant seem to mix http and https :-( */
+	if (use_ssl){
+	    if (evhtp_ssl_init(htp, eh->eh_ssl_config) < 0){
+		clicon_err(OE_UNIX, errno, "evhtp_new");
+		goto done;
+	    }
+	}
+#ifndef EVHTP_DISABLE_EVTHR
+	evhtp_use_threads_wexit(htp, NULL, NULL, 4, NULL);
+#endif
+	/* Callback before the connection is accepted. */
+	evhtp_set_pre_accept_cb(htp, cx_pre_accept, h);
+
+	/* Callback right after a connection is accepted. */
+	evhtp_set_post_accept_cb(htp, cx_post_accept, h);
+
+	/* Callback to be executed for all /restconf api calls */
+	if (evhtp_set_cb(htp, "/" RESTCONF_API, cx_path_restconf, h) == NULL){
+	    clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
+	    goto done;
+	}
+	/* Callback to be executed for all /restconf api calls */
+	if (evhtp_set_cb(htp, RESTCONF_WELL_KNOWN, cx_path_wellknown, h) == NULL){
+	    clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
+	    goto done;
+	}
+	/* Generic callback called if no other callbacks are matched */
+	evhtp_set_gencb(htp, cx_gencb, h);
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
 	}
 	cprintf(cb, "ipv6:%s", restconf_ipv6_addr);
-	if (evhtp_bind_socket(eh->eh_htp,                  /* evhtp handle */
+	if (evhtp_bind_socket(htp,                  /* evhtp handle */
 			      cbuf_get(cb),         /* string address, eg ipv6:<ipv6addr> */
       			      port,                 /* port */
 			      SOCKET_LISTEN_BACKLOG /* backlog flag, see listen(5)  */
@@ -1227,6 +1415,8 @@ restconf_config_local(clicon_handle h,
 	}
 	if (cb)
 	    cbuf_free(cb);
+	if (cx_htp_add(eh, htp) < 0)
+	    goto done;
     }
 
     if (drop_privileges){
@@ -1329,7 +1519,7 @@ restconf_config_local(clicon_handle h,
     clicon_debug(1, "restconf_main_evhtp done");
     return retval;
 }
-
+    
 int
 main(int    argc,
      char **argv)
@@ -1491,10 +1681,16 @@ main(int    argc,
     /* port = defaultport unless explicitly set -P */
     if (port == 0)
 	port = defaultport;
+    if ((eh = malloc(sizeof *eh)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(eh, 0, sizeof *eh);
+    _EVHTP_HANDLE = eh; /* global */
 
     if (clicon_option_bool(h, "CLICON_RESTCONF_CONFIG") == 0){
 	/* Read config locally */ 
-	if (restconf_config_local(h, argc, argv,
+	if (restconf_config_local(h, eh, argc, argv,
 				  port,
 				  ssl_verify_clients,
 				  use_ssl,
@@ -1504,11 +1700,9 @@ main(int    argc,
     }
     else {
 	/* Read config from backend */ 
-	if (restconf_config_backend(h, argc, argv, drop_privileges) < 0)
+	if (restconf_config_backend(h, eh, argc, argv, drop_privileges) < 0)
 	    goto done;
     }
-
-    event_base_loop(eh->eh_evbase, 0);
 
     retval = 0;
  done:

@@ -29,6 +29,7 @@
 
 ### New features
 
+* Initial NBMA functionality (thanks: @benavrhm): "ds" resource
 * Restconf configuration has a new configure model: `clixon-restconf.yang` enabling restconf daemon configuration from datastore instead of from config file. 
   * Restconf config data, such as addresses, authentication type, etc, is read from the backend datastore instead of the clixon-config file on startup.
   * This is enabled by setting `CLIXON_RESTCONF_CONFIG` to true (or start clixon-restconf with `-b`), in which case restconf data can be set in the datastore.
@@ -48,6 +49,7 @@ Users may have to change how they access the system
 
 Developers may need to change their code
 
+* Added by-ref parameter to `ys_cv_validate()` returning which sub-yang spec was validated in a union.
 * Changed first parameter from `int fd` to `FILE *f` in the following functions:
   * clixon_xml_parse_file(), clixon_json_parse_file(), yang_parse_file()
   * See [Bytewise read() of files is slow #146](https://github.com/clicon/clixon/issues/146)

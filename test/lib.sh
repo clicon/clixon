@@ -42,6 +42,7 @@ if [ -f ./config.sh ]; then
 fi
 
 # Sanity nginx running on systemd platforms
+# ./lib.sh: line 45: systemctl: command not found
 if systemctl > /dev/null; then
     nginxactive=$(systemctl show nginx |grep ActiveState=active)
     if [ "${WITH_RESTCONF}" = "fcgi" ]; then
@@ -273,8 +274,8 @@ wait_backend(){
 # @see wait_restconf
 start_restconf(){
     # Start in background 
-    if [ $RCPROTO = https ]; then
-	EXTRA="-s" # server certs
+    if [ $RCPROTO = https -a "${WITH_RESTCONF}" = "evhtp" ]; then
+	EXTRA="-s" # server certs ONLY evhtp
     else
 	EXTRA=
     fi

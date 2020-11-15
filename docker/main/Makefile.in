@@ -31,6 +31,10 @@
 #
 # ***** END LICENSE BLOCK *****
 #
+# Build, compile and test a clixon-system container
+# This is used in CI
+# NOTE: restconf config is controlled at install time with ./configure --with-restconf=... option
+
 VPATH       	= @srcdir@
 srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@

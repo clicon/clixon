@@ -23,10 +23,12 @@ fyang=$dir/example.yang
 
 cfg=$dir/conf.xml
 
+# Local for test here
 certdir=$dir/certs
 srvkey=$certdir/srv_key.pem
 srvcert=$certdir/srv_cert.pem
 cakey=$certdir/ca_key.pem # needed?
+
 cacert=$certdir/ca_cert.pem
 
 users="andy guest" # generate certs for some users in nacm.sh
@@ -117,72 +119,13 @@ EOF
 )
 
 if $genkeys; then
-# Create certs
-# 1. CA
-cat<<EOF > $dir/ca.cnf
-[ ca ]
-default_ca      = CA_default
 
-[ CA_default ]
-serial = ca-serial
-crl = ca-crl.pem
-database = ca-database.txt
-name_opt = CA_default
-cert_opt = CA_default
-default_crl_days = 9999
-default_md = md5
+    # Server certs
+    . ./certs.sh
 
-[ req ]
-default_bits           = 2048
-days                   = 1
-distinguished_name     = req_distinguished_name
-attributes             = req_attributes
-prompt                 = no
-output_password        = password
-
-[ req_distinguished_name ]
-C                      = SE
-L                      = Stockholm
-O                      = Clixon
-OU                     = clixon
-CN                     = ca
-emailAddress           = olof@hagsand.se
-
-[ req_attributes ]
-challengePassword      = test
-
-EOF
-
-# Generate CA cert
-openssl req -x509 -days 1 -config $dir/ca.cnf -keyout $cakey -out $cacert
-
-cat<<EOF > $dir/srv.cnf
-[req]
-prompt = no
-distinguished_name = dn
-req_extensions = ext
-[dn]
-CN = www.clicon.org # localhost
-emailAddress = olof@hagsand.se
-O = Clixon
-L = Stockholm
-C = SE
-[ext]
-subjectAltName = DNS:clicon.org
-EOF
-
-# Generate server key
-openssl genrsa -out $srvkey 2048
-
-# Generate CSR (signing request)
-openssl req -new -config $dir/srv.cnf -key $srvkey -out $certdir/srv_csr.pem
-
-# Sign server cert by CA
-openssl x509 -req -extfile $dir/srv.cnf -days 1 -passin "pass:password" -in $certdir/srv_csr.pem -CA $cacert -CAkey $cakey -CAcreateserial -out $srvcert
-
-# create client certs
-for name in $users; do
-    cat<<EOF > $dir/$name.cnf
+    # create client certs
+    for name in $users; do
+	cat<<EOF > $dir/$name.cnf
 [req]
 prompt = no
 distinguished_name = dn
@@ -193,15 +136,15 @@ O = Clixon
 L = Stockholm
 C = SE
 EOF
-    # Create client key
-    openssl genrsa -out "$certdir/$name.key" 2048
+	# Create client key
+	openssl genrsa -out "$certdir/$name.key" 2048
 
-    # Generate CSR (signing request)
-    openssl req -new -config $dir/$name.cnf -key $certdir/$name.key -out $certdir/$name.csr
+	# Generate CSR (signing request)
+	openssl req -new -config $dir/$name.cnf -key $certdir/$name.key -out $certdir/$name.csr
 
-    # Sign by CA
-    openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt
-done
+	# Sign by CA
+	openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt
+    done # client key
 
 fi # genkeys
 
@@ -226,16 +169,18 @@ testrun()
 	cat <<EOF > $dir/startup_db
     <config>
        <restconf xmlns="https://clicon.org/restconf">
+         <auth-type>$authtype</auth-type>
+         <ssl-enable>true</ssl-enable>
+         <server-cert-path>$srvcert</server-cert-path>
+         <server-key-path>$srvkey</server-key-path>
+         <server-ca-cert-path>$cacert</server-ca-cert-path>
+
          <socket>
            <namespace>default</namespace>
            <address>0.0.0.0</address>
            <port>$port</port>
            <ssl>$ssl</ssl>
          </socket>
-         <auth-type>$authtype</auth-type>
-         <server-cert-path>$srvcert</server-cert-path>
-         <server-key-path>$srvkey</server-key-path>
-         <server-ca-cert-path>$cacert</server-ca-cert-path>
        </restconf>
        $RULES
     </config>
@@ -259,6 +204,9 @@ EOF
 	start_backend -s startup -f $cfg
     fi
 
+    new "wait for backend"
+    wait_backend
+
     if [ $RC -ne 0 ]; then
 	new "kill old restconf daemon"
 	stop_restconf_pre
@@ -270,9 +218,6 @@ EOF
 	    start_restconf -f $cfg -s -c -- -s
 	fi
     fi
-
-    new "wait for backend"
-    wait_backend
 
     new "wait for restconf"
     wait_restconf --key $certdir/andy.key --cert $certdir/andy.crt

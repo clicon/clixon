@@ -1024,7 +1024,7 @@ xml_yang_validate_add(clicon_handle h,
 		    goto fail;
 		}
 	    }
-	    if ((ret = ys_cv_validate(h, cv, yt, &reason)) < 0)
+	    if ((ret = ys_cv_validate(h, cv, yt, NULL, &reason)) < 0)
 		goto done;
 	    if (ret == 0){
 		if (netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), reason) < 0)
