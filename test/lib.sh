@@ -42,8 +42,7 @@ if [ -f ./config.sh ]; then
 fi
 
 # Sanity nginx running on systemd platforms
-# ./lib.sh: line 45: systemctl: command not found
-if systemctl > /dev/null; then
+if systemctl > /dev/null 2>&1 ; then
     nginxactive=$(systemctl show nginx |grep ActiveState=active)
     if [ "${WITH_RESTCONF}" = "fcgi" ]; then
 	if [ -z "$nginxactive" ]; then

@@ -10,6 +10,7 @@
 # - evhtp: generate self-signed server certs 
 # (3) IPv4/IPv6 (only loopback 127.0.0.1 / ::1)
 # - The tests runs through both
+# - IPv6 by default disabled since docker does not support it out-of-the box
 # (4) local/backend config. Evhtp only
 # - The tests runs through both (if compiled with evhtp)
 # See also test_restconf2.sh
@@ -20,6 +21,9 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 APPNAME=example
 
 cfg=$dir/conf.xml
+
+# Must explicitly enable IPv6 testing
+: ${IPv6:=false}
 
 # Use yang in example
 
@@ -372,7 +376,11 @@ if [ "${WITH_RESTCONF}" = "evhtp" ]; then
     protos="$protos https"
 fi
 for proto in $protos; do
-    for addr in 127.0.0.1 "\[::1\]"; do
+    addrs="127.0.0.1"
+    if $IPv6 ; then
+	addrs="$addrs \[::1\]"
+    fi
+    for addr in $addrs; do
 	configs="local"
 	if [ "${WITH_RESTCONF}" = "evhtp" ]; then
 	    # backend config retrieval only implemented for evhtp
