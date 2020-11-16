@@ -111,13 +111,13 @@ util:
 	cd $@; $(MAKE) $(MFLAGS)
 
 clean-util:
-	cd $@; $(MAKE) $(MFLAGS) clean
+	cd util; $(MAKE) $(MFLAGS) clean
 
 install-util:
-	cd $@; $(MAKE) $(MFLAGS) install
+	cd util; $(MAKE) $(MFLAGS) install
 
 uninstall-util:
-	cd $@; $(MAKE) $(MFLAGS) uninstall
+	cd util; $(MAKE) $(MFLAGS) uninstall
 
 clean-example:
 	for i in example util; \
@@ -141,6 +141,9 @@ clean:
 	for i in $(SUBDIRS) doc example util docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; 
 
+# Uninstall and clean all the targets used for testing, but without cloning or
+# checking-out from git. Provides a reliabily clean slate for testing changes
+# before commit.
 mrproper: uninstall uninstall-example uninstall-util clean clean-example clean-util
 
 distclean:
