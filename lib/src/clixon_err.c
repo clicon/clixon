@@ -224,7 +224,7 @@ clicon_err_save(void)
 	return NULL;
     es->es_errno = clicon_errno;
     es->es_suberrno = clicon_suberrno;
-    strncpy(es->es_reason, clicon_err_reason, ERR_STRLEN-1);
+    strncpy(es->es_reason, clicon_err_reason, ERR_STRLEN);
     return (void*)es;
 }
 
@@ -238,7 +238,7 @@ clicon_err_restore(void* handle)
     if ((es = (struct err_state *)handle) != NULL){
 	clicon_errno = es->es_errno;
 	clicon_suberrno = es->es_suberrno;
-	strncpy(clicon_err_reason, es->es_reason, ERR_STRLEN-1);
+	strncpy(clicon_err_reason, es->es_reason, ERR_STRLEN);
 	free(es);
     }
     return 0;

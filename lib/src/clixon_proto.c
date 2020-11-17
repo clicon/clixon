@@ -292,26 +292,32 @@ atomicio(ssize_t (*fn) (int, void *, size_t),
 static int
 msg_dump(struct clicon_msg *msg)
 {
-    int  i;
-    char buf[9*8+1];
-    char buf2[9*8+1];
+    int   retval = -1;
+    cbuf *cb = NULL;
+    int   i;
     
-    memset(buf2, 0, sizeof(buf2));
-    snprintf(buf2, sizeof(buf2), "%s:", __FUNCTION__);
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_CFG, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "%s:", __FUNCTION__);
     for (i=0; i<ntohl(msg->op_len); i++){
-	snprintf(buf, sizeof(buf), "%s%02x", buf2, ((char*)msg)[i]&0xff);
+	cprintf(cb, "%02x", ((char*)msg)[i]&0xff);
 	if ((i+1)%32==0){
-	    clicon_debug(2, "%s", buf);
-	    snprintf(buf, sizeof(buf), "%s:", __FUNCTION__);
+	    clicon_debug(2, "%s", cbuf_get(cb));
+	    cbuf_reset(cb);
+	    cprintf(cb, "%s:", __FUNCTION__);
 	}
 	else
 	    if ((i+1)%4==0)
-		snprintf(buf, sizeof(buf), "%s ", buf2);
-	strncpy(buf2, buf, sizeof(buf2));
+		cprintf(cb, " ");
     }
-    if (i%32)
-	clicon_debug(2, "%s", buf);
-    return 0;
+    clicon_debug(2, "%s", cbuf_get(cb));
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
 }
 
 /*! Send a CLICON netconf message

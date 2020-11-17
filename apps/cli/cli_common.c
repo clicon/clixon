@@ -648,14 +648,14 @@ compare_xmls(cxobj *xc1,
     FILE  *f;
     char   filename1[MAXPATHLEN];
     char   filename2[MAXPATHLEN];
-    char   cmd[MAXPATHLEN];
     int    retval = -1;
     cxobj *xc;
+    cbuf  *cb = NULL;
 
     snprintf(filename1, sizeof(filename1), "/tmp/cliconXXXXXX");
     snprintf(filename2, sizeof(filename2), "/tmp/cliconXXXXXX");
     if ((fd = mkstemp(filename1)) < 0){
-	clicon_err(OE_UNDEF, errno, "tmpfile: %s", strerror (errno));
+	clicon_err(OE_UNDEF, errno, "tmpfile");
 	goto done;
     }
     if ((f = fdopen(fd, "w")) == NULL)
@@ -687,12 +687,19 @@ compare_xmls(cxobj *xc1,
     fclose(f);
     close(fd);
 
-    snprintf(cmd, sizeof(cmd), "/usr/bin/diff -dU 1 %s %s |  grep -v @@ | sed 1,2d", 		 filename1, filename2);
-    if (system(cmd) < 0)
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_CFG, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "/usr/bin/diff -dU 1 %s %s |  grep -v @@ | sed 1,2d",
+	    filename1, filename2);
+    if (system(cbuf_get(cb)) < 0)
 	goto done;
 
     retval = 0;
   done:
+    if (cb)
+	cbuf_free(cb);
     unlink(filename1);
     unlink(filename2);
     return retval;
