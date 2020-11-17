@@ -72,7 +72,7 @@ state='{"clixon-example:state":{"op":\["41","42","43"\]}'
 
 if $IPv6; then
     # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
-    RESTCONFCONFIG=$(cat <<EOF
+    RESTCONFIG=$(cat <<EOF
 <restconf xmlns="https://clicon.org/restconf">
    <ssl-enable>true</ssl-enable>
    <auth-type>password</auth-type>
@@ -88,7 +88,7 @@ EOF
 )
 else
        # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
-    RESTCONFCONFIG=$(cat <<EOF
+    RESTCONFIG=$(cat <<EOF
 <restconf xmlns="https://clicon.org/restconf">
    <ssl-enable>true</ssl-enable>
    <auth-type>password</auth-type>
@@ -136,7 +136,7 @@ testrun()
     if [ $config = backend ] ; then # Create a backend config
 	# restconf backend config
 	new "netconf edit config"
-	expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFCONFIG</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+	expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 	new "netconf commit"
 	expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -147,11 +147,11 @@ testrun()
 	stop_restconf_pre
 
 	if [ $config = backend ] ; then # Add -b option
-	    new "start restconf daemon -b"
-	    start_restconf -f $cfg -b
+	    new "start restconf daemon -o CLICON_RESTCONF_CONFIG=true"
+	    start_restconf -f $cfg -o CLICON_RESTCONF_CONFIG=true
 	else
-	    new "start restconf daemon"
-	    start_restconf -f $cfg
+	    new "start restconf daemon -o CLICON_RESTCONF_CONFIG=false"
+	    start_restconf -f $cfg -o CLICON_RESTCONF_CONFIG=false
 	fi
     fi
     new "wait restconf"

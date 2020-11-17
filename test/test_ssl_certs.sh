@@ -156,13 +156,8 @@ EOF
 fi # genkeys
 
 # Set a clixon-restconf config
-if [ ${RCPROTO} = "https" ]; then
-    ssl=true
-    port=443
-else
-    ssl=false
-    port=80
-fi
+ssl=true
+port=443
 authtype=client-certificate
 
 # Run with and without getting config from backend
@@ -219,10 +214,10 @@ EOF
 	stop_restconf_pre
 	if $USEBACKEND; then
 	    new "start restconf daemon -b -- -s"
-	    start_restconf -f $cfg -b -- -s
+	    start_restconf -f $cfg -o CLICON_RESTCONF_CONFIG=true -- -s
 	else
 	    new "start restconf daemon -s -c  -- -s"
-	    start_restconf -f $cfg -s -c -- -s
+	    start_restconf -f $cfg -s -c -o CLICON_RESTCONF_CONFIG=false -- -s
 	fi
     fi
 

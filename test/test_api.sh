@@ -228,6 +228,9 @@ if [ $BE -ne 0 ]; then
 new "waiting"
 wait_backend
 
+# Load restconf config
+. ./restconf_config.sh
+
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
     stop_restconf_pre

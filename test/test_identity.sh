@@ -154,6 +154,9 @@ fi
 new "waiting"
 wait_backend
 
+# Load restconf config
+. ./restconf_config.sh
+
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
     stop_restconf_pre
@@ -276,7 +279,7 @@ new "restconf get own identity"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"aes"}'
 
 new "netconf get own identity as set by restconf"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><crypto xmlns=\"urn:example:my-crypto\">aes</crypto></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><crypto xmlns=\"urn:example:my-crypto\">aes</crypto>"
 
 new "restconf delete identity"
 expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/example:crypto)" 0 "HTTP/1.1 204 No Content"
@@ -297,7 +300,7 @@ new "restconf get other identity"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"example-des:des3"}'
 
 new "netconf get other identity"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><crypto xmlns=\"urn:example:my-crypto\" xmlns:des=\"urn:example:des\">des:des3</crypto></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><crypto xmlns=\"urn:example:my-crypto\" xmlns:des=\"urn:example:des\">des:des3</crypto>"
 
 new "restconf delete identity"
 expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/example:crypto)" 0 "HTTP/1.1 204 No Content"
@@ -313,7 +316,7 @@ new "restconf get other identity (set by netconf)"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:crypto)" 0 'HTTP/1.1 200 OK' '{"example:crypto":"example-des:des3"}'
 
 new "netconf get other identity"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><crypto xmlns=\"urn:example:my-crypto\" xmlns:des=\"urn:example:des\">des:des3</crypto></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><crypto xmlns=\"urn:example:my-crypto\" xmlns:des=\"urn:example:des\">des:des3</crypto>"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
