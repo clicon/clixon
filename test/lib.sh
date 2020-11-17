@@ -205,6 +205,7 @@ err(){
       echo "Received: $2"
   fi
   echo -e "\e[0m"
+  echo "Diff between Expected and Received:"
   echo "$ret"| od -t c > $dir/clixon-ret
   echo "$expect"| od -t c > $dir/clixon-expect
   diff $dir/clixon-expect $dir/clixon-ret 

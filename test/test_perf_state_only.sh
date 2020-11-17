@@ -20,6 +20,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # time function (this is a mess to get right on freebsd/linux)
 : ${TIMEFN:=time -p} # portability: 2>&1 | awk '/real/ {print $2}'
+if ! $TIMEFN true; then err "A working time function" "'$TIMEFN' does not work"; fi
 
 APPNAME=example
 
