@@ -8,7 +8,6 @@
 
 RESTCONFIG=$(cat <<EOF
 <restconf xmlns="https://clicon.org/restconf">
-   <ssl-enable>false</ssl-enable>
    <auth-type>password</auth-type>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
 </restconf>

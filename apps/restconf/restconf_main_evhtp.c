@@ -1026,9 +1026,9 @@ cx_evhtp_init(clicon_handle     h,
 	clicon_err(OE_CFG, ENOENT, "restconf top symbol not found");
 	goto done;
     }
+    /* If at least one socket has ssl then enable global ssl_enable */
+    ssl_enable = xpath_first(xrestconf, nsc, "socket[ssl='true']") != NULL;
     /* get common fields */
-    if ((x = xpath_first(xrestconf, nsc, "ssl-enable")) != NULL)
-	ssl_enable = (strcmp(xml_body(x),"true")==0);
     if ((x = xpath_first(xrestconf, nsc, "auth-type")) != NULL) /* XXX: leaf-list? */
 	auth_type = xml_body(x);
     if (auth_type && strcmp(auth_type, "client-certificate") == 0)
@@ -1065,7 +1065,6 @@ cx_evhtp_init(clicon_handle     h,
 	}
 	//    ssl_verify_mode             = htp_sslutil_verify2opts(optarg);
     }
-    
     /* get the list of socket config-data */
     if (xpath_vec(xrestconf, nsc, "socket", &vec, &veclen) < 0)
 	goto done;

@@ -74,7 +74,6 @@ if $IPv6; then
     # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
     RESTCONFIG=$(cat <<EOF
 <restconf xmlns="https://clicon.org/restconf">
-   <ssl-enable>true</ssl-enable>
    <auth-type>password</auth-type>
    <server-cert-path>$srvcert</server-cert-path>
    <server-key-path>$srvkey</server-key-path>
@@ -90,7 +89,6 @@ else
        # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
     RESTCONFIG=$(cat <<EOF
 <restconf xmlns="https://clicon.org/restconf">
-   <ssl-enable>true</ssl-enable>
    <auth-type>password</auth-type>
    <server-cert-path>$srvcert</server-cert-path>
    <server-key-path>$srvkey</server-key-path>

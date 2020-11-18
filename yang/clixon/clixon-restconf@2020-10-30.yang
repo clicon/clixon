@@ -87,17 +87,6 @@ module clixon-restconf {
 	presence "Enables RESTCONF";
 	description
 	    "HTTP daemon configuration.";
-	leaf ssl-enable {
-	    description
-		"Enable ssl server functionality.
-                 Setting to false means the following are invalid: 
-                   - auth-type=client-certificate 
-                   - socket entries with ssl=true
-                  Also, the following are not releveant: server-cert-path, server-key-path, 
-                  server-ca-cert-path";
-	    type boolean;
-	    default false;
-	}
 	leaf-list auth-type {
 	    type http-auth-type;
 	    description

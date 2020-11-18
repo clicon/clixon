@@ -172,7 +172,6 @@ testrun()
     <config>
        <restconf xmlns="https://clicon.org/restconf">
          <auth-type>$authtype</auth-type>
-         <ssl-enable>true</ssl-enable>
          <server-cert-path>$srvcert</server-cert-path>
          <server-key-path>$srvkey</server-key-path>
          <server-ca-cert-path>$cacert</server-ca-cert-path>
