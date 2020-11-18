@@ -69,6 +69,7 @@ NACM0="<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">
    </rule-list>
  </nacm>
 "
+
 cat<<EOF > $startupdb
 <config>
    $NACM0
@@ -115,9 +116,9 @@ if [ $RC -ne 0 ]; then
     stop_restconf_pre
 
     new "start restconf daemon (-a is enable basic authentication)"
-    start_restconf -f $cfg -- -a 
+    start_restconf -f $cfg -o CLICON_RESTCONF_CONFIG=false -- -a 
 
-    new "waiting"
+    new "waiting restconf"
     wait_restconf
 fi
 
@@ -172,7 +173,7 @@ if [ $RC -ne 0 ]; then
     stop_restconf_pre
 	
     new "start restconf daemon (-a is enable basic authentication)"
-    start_restconf -f $cfg -- -a 
+    start_restconf -f $cfg -o CLICON_RESTCONF_CONFIG=false -- -a 
 
     new "waiting"
     wait_restconf

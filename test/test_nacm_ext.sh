@@ -143,6 +143,12 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg -- -s
 fi
 
+# Load restconf config for evhtp backend config
+if [ "${WITH_RESTCONF}" = "evhtp" ]; then
+    . ./restconfig.sh
+    restconfigrun
+fi
+
 new "waiting"
 wait_backend
 
@@ -191,13 +197,13 @@ new "guest edit nacm"
 expectpart "$(curl -u guest:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 3}' $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "cli show conf as admin"
-expectfn "$clixon_cli -1 -U andy -l o -f $cfg show conf" 0 "^x 1;$"
+expectpart "$($clixon_cli -1 -U andy -l o -f $cfg show conf)" 0 "x 1;"
 
 new "cli show conf as limited"
-expectfn "$clixon_cli -1 -U wilma -l o -f $cfg show conf" 0 "^x 1;$"
+expectpart "$($clixon_cli -1 -U wilma -l o -f $cfg show conf)" 0 "x 1;"
 
 new "cli show conf as guest"
-expectfn "$clixon_cli -1 -U guest -l o -f $cfg show conf" 255 "application access-denied"
+expectpart "$($clixon_cli -1 -U guest -l o -f $cfg show conf)" 255 "application access-denied"
 
 new "cli rpc as admin"
 expectfn "$clixon_cli -1 -U andy -l o -f $cfg rpc ipv4" 0 '<x xmlns="urn:example:clixon">ipv4</x><y xmlns="urn:example:clixon">42</y>'

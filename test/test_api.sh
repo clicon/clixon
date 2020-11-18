@@ -213,7 +213,7 @@ new "compile $cfile"
 # -I /usr/local_include for eg freebsd
 expectpart "$($CC -g -Wall -rdynamic -fPIC -shared -I/usr/local/include $cfile -o $sofile)" 0 ""
 
-new "test params: -s running -f $cfg"
+new "test params: -s init -f $cfg"
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -228,8 +228,11 @@ if [ $BE -ne 0 ]; then
 new "waiting"
 wait_backend
 
-# Load restconf config
-. ./restconf_config.sh
+# Load restconf config for evhtp backend config
+if [ "${WITH_RESTCONF}" = "evhtp" ]; then
+    . ./restconfig.sh
+    restconfigrun
+fi
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"

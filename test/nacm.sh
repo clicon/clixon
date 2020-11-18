@@ -9,6 +9,7 @@ NGROUPS=$(cat <<EOF
      <groups>
        <group>
          <name>admin</name>
+         <user-name>root</user-name>
          <user-name>admin</user-name>
          <user-name>andy</user-name>
          <user-name>$USER</user-name>

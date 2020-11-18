@@ -551,8 +551,6 @@ main(int    argc,
 		goto done;
 	    break;
 	case 'U': /* Clixon 'pseudo' user */
-	    if (!strlen(optarg))
-		usage(h, argv[0]);
 	    if (clicon_username_set(h, optarg) < 0)
 		goto done;
 	    break;

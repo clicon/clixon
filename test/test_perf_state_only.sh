@@ -108,6 +108,12 @@ if [ $BE -ne 0 ]; then
     wait_backend
 fi
 
+# Load restconf config for evhtp backend config
+if [ "${WITH_RESTCONF}" = "evhtp" ]; then
+    . ./restconfig.sh
+    restconfigrun
+fi
+
 if [ $RC -ne 0 ]; then
 
     new "kill old restconf daemon"

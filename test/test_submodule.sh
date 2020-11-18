@@ -161,6 +161,12 @@ fi
 new "wait backend"
 wait_backend
 
+# Load restconf config for evhtp backend config
+if [ "${WITH_RESTCONF}" = "evhtp" ]; then
+    . ./restconfig.sh
+    restconfigrun
+fi
+
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
     stop_restconf_pre
@@ -216,7 +222,7 @@ new "restconf edit sub2"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"main:sub2":{"x":"foo","ext2":"foo"}}')" 0 'HTTP/1.1 201 Created'
 
 new "restconf check main/sub1/sub2 contents"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data?content=config)" 0 'HTTP/1.1 200 OK' '{"data":{"main:main":{"ext":"foo","x":"foo"},"main:sub1":{"ext1":"foo","x":"foo"},"main:sub2":{"ext2":"foo","x":"foo"}}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data?content=config)" 0 'HTTP/1.1 200 OK' '{"data":{"main:main":{"ext":"foo","x":"foo"},"main:sub1":{"ext1":"foo","x":"foo"},"main:sub2":{"ext2":"foo","x":"foo"}'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

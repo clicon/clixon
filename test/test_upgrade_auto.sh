@@ -258,24 +258,8 @@ fi
 new "waiting"
 wait_backend
 
-if [ $RC -ne 0 ]; then
-    new "kill old restconf daemon"
-    stop_restconf_pre
-
-    new "start restconf daemon"
-    start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
-fi
-
 new "Check running db content"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>]]>]]>$"
-
-if [ $RC -ne 0 ]; then
-    new "Kill restconf daemon"
-    stop_restconf
-fi
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

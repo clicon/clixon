@@ -82,7 +82,7 @@ if [ $RC -ne 0 ]; then
     stop_restconf_pre
 
     new "start restconf daemon"
-    start_restconf -f $cfg 
+    start_restconf -f $cfg  -o CLICON_RESTCONF_CONFIG=false
 
     new "waiting"
     wait_restconf

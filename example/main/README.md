@@ -303,11 +303,11 @@ inserts in as a proper yang statement in the example module.
 
 ## Systemd
 
-Example systemd files for backend and restconf daemons are found under the systemd directory. Install them under /etc/systemd/system for example.
+Example systemd files for backend and restconf daemons are found under the [systemd](systemd) directory. Install them under /etc/systemd/system for example.
 
 ## Docker
 
-See [../../docker/system] for instructions on how to build this example
+See [docker](../../docker/system) for instructions on how to build this example
 as a docker container.
 
 ## Plugins

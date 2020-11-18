@@ -175,17 +175,17 @@ EOF
 	new "waiting"
 	wait_backend
     fi
+
     if [ $RC -ne 0 ]; then
 	new "kill old restconf daemon"
 	stop_restconf_pre
 
 	new "start restconf daemon"
-	start_restconf -f $cfg
+	start_restconf -f $cfg  -o CLICON_RESTCONF_CONFIG=false
 
     fi
     new "wait restconf"
     wait_restconf
-
 
     if ! $startup; then # If not startup, add xml using netconf
 	new "Put anydata"

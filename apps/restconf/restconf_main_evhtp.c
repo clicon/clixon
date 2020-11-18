@@ -56,6 +56,7 @@
 #include <time.h>
 #include <limits.h>
 #include <signal.h>
+#include <pwd.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <assert.h>
@@ -1102,6 +1103,7 @@ restconf_config_backend(clicon_handle    h,
     cxobj             *xconfig = NULL;
     cxobj             *xerr = NULL;
     uint32_t           id = 0; /* Session id, to poll backend up */
+    struct passwd     *pw;
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
@@ -1205,7 +1207,11 @@ restconf_config_backend(clicon_handle    h,
      }
      if ((nsc = xml_nsctx_init(NULL, "https://clicon.org/restconf")) == NULL)
 	 goto done;
-     if (clicon_rpc_get_config(h, NULL, "running", "/restconf", nsc, &xconfig) < 0)
+    if ((pw = getpwuid(getuid())) == NULL){
+	clicon_err(OE_UNIX, errno, "getpwuid");
+	goto done;
+    }
+     if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, &xconfig) < 0)
 	 goto done;
      if ((xerr = xpath_first(xconfig, NULL, "/rpc-error")) != NULL){
 	 clixon_netconf_error(xerr, "Get backend restconf config", NULL);

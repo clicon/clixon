@@ -601,7 +601,7 @@ main(int    argc,
 	    extraxml_file = optarg;
 	    break;
 	case 'U': /* config user (for socket and drop privileges) */
-	    if (clicon_option_add(h, "CLICON_USER", optarg) < 0)
+	    if (clicon_username_set(h, optarg) < 0)
 		goto done;
 	    if (clicon_option_add(h, "CLICON_BACKEND_PRIVILEGES", "drop_permanent") < 0)
 		goto done;

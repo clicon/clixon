@@ -110,8 +110,9 @@ EOF
     new "kill old restconf daemon"
     stop_restconf_pre
 
+    # Cannot use CLICON_RESTCONF_CONFIG=true because of bootstrap problem
     new "start restconf daemon (-a is enable basic authentication)"
-    start_restconf -f $cfg -- -a
+    start_restconf -f $cfg -o CLICON_RESTCONF_CONFIG=false -- -a
 
     new "waiting"
     wait_restconf

@@ -440,7 +440,6 @@ module clixon-config {
 	}
 	leaf CLICON_RESTCONF_IPV6_ADDR {
 	    type string;
-	    default "::";
 	    description
 		"RESTCONF IPv6 socket binding address.
                  Applies to native http by config option --with-restconf=evhtp.

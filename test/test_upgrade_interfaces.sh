@@ -270,20 +270,8 @@ testrun(){
     new "waiting"
     wait_backend
     
-    new "kill old restconf daemon"
-    stop_restconf_pre
-
-    new "start restconf daemon"
-    start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
-
     new "Check running db content"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$runxml</data></rpc-reply>]]>]]>$"
-
-    new "Kill restconf daemon"
-    stop_restconf
 
     if [ $BE -ne 0 ]; then
 	new "Kill backend"

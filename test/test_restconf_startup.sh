@@ -64,6 +64,12 @@ testrun(){
     new "waiting"
     wait_backend
     
+    # Load restconf config for evhtp backend config
+    if [ "${WITH_RESTCONF}" = "evhtp" ]; then
+	. ./restconfig.sh
+	restconfigrun
+    fi
+
     new "kill old restconf daemon"
     stop_restconf_pre
     
