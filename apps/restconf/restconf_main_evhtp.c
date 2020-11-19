@@ -154,7 +154,7 @@ restconf_sig_term(int arg)
 	//	stream_child_freeall(_CLICON_HANDLE);
 	restconf_terminate(_CLICON_HANDLE);
     }
-    clicon_exit_set(); /* checked in clixon_event_loop() */
+    clicon_exit_set(); /* XXX should rather signal event_base_loop */
     exit(-1);
 }
 
@@ -885,6 +885,8 @@ cx_evhtp_socket_extract(clicon_handle h,
     }
     retval = 0;
  done:
+    if (cv)
+        cv_free(cv);
     if (reason)
 	free(reason);
     return retval;
@@ -1229,6 +1231,15 @@ restconf_config_backend(clicon_handle    h,
 	 /* Drop privileges to WWWUSER if started as root */
 	 if (restconf_drop_privileges(h, WWWUSER) < 0)
 	     goto done;
+     }
+     /* Exit can go via signal handler without returning here */
+     if (xconfig){
+        xml_free(xconfig);
+        xconfig = NULL;
+     }
+     if (nsc){
+       cvec_free(nsc);
+       nsc = NULL;
      }
      /* libevent main loop */
      event_base_loop(eh->eh_evbase, 0); /* XXX: replace with clixon_event_loop() */

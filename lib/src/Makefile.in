@@ -214,7 +214,7 @@ distclean: clean
 .SUFFIXES:
 .SUFFIXES: .c .o
 
-.c.o: $(GENSRC)
+.c.o:
 	rm -f $@ && $(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
 
 # Compute the length of the date command (and add some extra with XXX)

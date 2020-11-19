@@ -409,4 +409,7 @@ for proto in $protos; do
     done
 done
 
+# unset conditional parameters
+unset RCPROTO
+
 rm -rf $dir

@@ -69,6 +69,7 @@ sudo $MAKE install
 sudo ldconfig
 cd test
 echo "#!/usr/bin/env bash" > ./site.sh
+echo "IPv6=true" >> ./site.sh
 if [ $release = "freebsd" ]; then
   echo "make=gmake" >> ./site.sh
 fi
