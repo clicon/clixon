@@ -375,11 +375,9 @@ parse_configfile(clicon_handle  h,
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 	name = xml_name(x);
 	body = xml_body(x);
-	if (name == NULL || body == NULL){
-	    clicon_log(LOG_WARNING, "%s option NULL: name:%s body:%s",
-		       __FUNCTION__, name, body);
+	/* Ignored non-leafs */
+	if (name == NULL || body == NULL)
 	    continue;
-	}
 	/* Ignored from file due to bootstrapping */
 	if (strcmp(name,"CLICON_CONFIGFILE")==0)
 	    continue;

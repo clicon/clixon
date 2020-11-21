@@ -176,6 +176,15 @@ if [ ! -d $dir ]; then
     mkdir $dir
 fi
 
+# Default restconf configuration: http IPv4 
+# Can be placed in clixon-config
+# Note that https clause assumes there exists certs and keys in /etc/ssl,...
+if [ $RCPROTO = http ]; then
+    RESTCONFIG="<restconf><auth-type>password</auth-type><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
+else
+    RESTCONFIG="<restconf><auth-type>password</auth-type><server-cert-path>/etc/ssl/certs/clixon-server-crt.pem</server-cert-path><server-key-path>/etc/ssl/private/clixon-server-key.pem</server-key-path><server-ca-cert-path>/etc/ssl/certs/clixon-ca-crt.pem</server-ca-cert-path><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
+fi
+
 # Some tests may set owner of testdir to something strange and quit, need
 # to reset to me
 if [ ! -G $dir ]; then 
@@ -278,13 +287,8 @@ wait_backend(){
 # @see wait_restconf
 start_restconf(){
     # Start in background 
-    if [ $RCPROTO = https -a "${WITH_RESTCONF}" = "evhtp" ]; then
-	EXTRA="-s" # server certs ONLY evhtp
-    else
-	EXTRA=
-    fi
-    echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $EXTRA $*"
-    sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $EXTRA $* &
+    echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $*"
+    sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $* &
     if [ $? -ne 0 ]; then
 	err
     fi

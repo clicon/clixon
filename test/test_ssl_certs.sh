@@ -43,42 +43,6 @@ fi
 test -d $certdir || mkdir $certdir
 
 # Use yang in example
-
-# Get config from backend?
-cat <<EOF > $cfg
-<clixon-config xmlns="http://clicon.org/config">
-  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
-  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
-  <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
-  <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
-  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
-  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
-  <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
-  <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
-  <CLICON_SSL_SERVER_CERT>$srvcert</CLICON_SSL_SERVER_CERT>
-  <CLICON_SSL_SERVER_KEY>$srvkey</CLICON_SSL_SERVER_KEY>
-  <CLICON_SSL_CA_CERT>$cacert</CLICON_SSL_CA_CERT>
-EOF
-
-if $IPv6; then
-    cat <<EOF >> $cfg
-    <CLICON_RESTCONF_IPV6_ADDR>::</CLICON_RESTCONF_IPV6_ADDR>
-EOF
-fi
-
-cat <<EOF >> $cfg
-</clixon-config>
-EOF
-
 cat <<EOF > $fyang
 module example{
   yang-version 1.1;
@@ -155,44 +119,49 @@ EOF
 
 fi # genkeys
 
-# Set a clixon-restconf config
-ssl=true
-port=443
-authtype=client-certificate
+# Write local config
+cat <<EOF > $cfg
+<clixon-config xmlns="http://clicon.org/config">
+  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
+  <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
+  <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
+  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+  <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
+  <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
+  <restconf>
+     <auth-type>client-certificate</auth-type>
+     <server-cert-path>$srvcert</server-cert-path>
+     <server-key-path>$srvkey</server-key-path>
+     <server-ca-cert-path>$cacert</server-ca-cert-path>
+     <socket>
+        <namespace>default</namespace>
+        <address>0.0.0.0</address>
+        <port>443</port>
+        <ssl>true</ssl>
+     </socket>
+  </restconf>
+</clixon-config>
+EOF
 
-# Run with and without getting config from backend
-# arg 1: false: local config; true: use config backend 
+# Run The test, ssl config is in local config
 testrun()
 {
-    USEBACKEND=$1
-
-    # Startup DB with proper NACM config
-    if $USEBACKEND; then
-	cat <<EOF > $dir/startup_db
-    <config>
-       <restconf xmlns="https://clicon.org/restconf">
-         <auth-type>$authtype</auth-type>
-         <server-cert-path>$srvcert</server-cert-path>
-         <server-key-path>$srvkey</server-key-path>
-         <server-ca-cert-path>$cacert</server-ca-cert-path>
-
-         <socket>
-           <namespace>default</namespace>
-           <address>0.0.0.0</address>
-           <port>$port</port>
-           <ssl>$ssl</ssl>
-         </socket>
-       </restconf>
-       $RULES
-    </config>
-EOF
-    else
-	cat <<EOF > $dir/startup_db
+    cat <<EOF > $dir/startup_db
     <config>
        $RULES
     </config>
 EOF
-    fi
     if [ $BE -ne 0 ]; then
 	new "kill old backend"
 	sudo clixon_backend -zf $cfg
@@ -211,13 +180,8 @@ EOF
     if [ $RC -ne 0 ]; then
 	new "kill old restconf daemon"
 	stop_restconf_pre
-	if $USEBACKEND; then
-	    new "start restconf daemon -b -- -s"
-	    start_restconf -f $cfg -o CLICON_RESTCONF_CONFIG=true -- -s
-	else
-	    new "start restconf daemon -s -c  -- -s"
-	    start_restconf -f $cfg -s -c -o CLICON_RESTCONF_CONFIG=false -- -s
-	fi
+	new "start restconf daemon -s -c  -- -s"
+	start_restconf -f $cfg -- -s
     fi
 
     new "wait for restconf"
@@ -254,11 +218,8 @@ EOF
     fi
 }
 
-new "Use local restconf config"
-testrun false
-
-new "Get restconf config from backend"
-testrun true
+new "Run test"
+testrun 
 
 rm -rf $dir
 

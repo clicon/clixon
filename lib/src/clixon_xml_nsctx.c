@@ -294,7 +294,7 @@ xml_nsctx_node(cxobj *xn,
     return retval;
 }
 
-/*! Create and initialize XML namespace context from Yang node
+/*! Create and initialize XML namespace context from Yang node (non-spec)
  * Primary use is Yang path statements, eg leafrefs and others
  * Fully explore all prefix:namespace pairs from context of one node
  * @param[in]  yn     Yang statement in module tree (or module itself)
@@ -330,6 +330,10 @@ xml_nsctx_yang(yang_stmt *yn,
     char      *mynamespace;
     char      *myprefix;
     
+    if (yang_keyword_get(yn) == Y_SPEC){
+	clicon_err(OE_YANG, EINVAL, "yang spec node is invalid argument");
+	goto done;
+    }
     if ((nc = cvec_new(0)) == NULL){
 	clicon_err(OE_XML, errno, "cvec_new");
 	goto done;

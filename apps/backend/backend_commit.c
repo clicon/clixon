@@ -594,15 +594,6 @@ candidate_commit(clicon_handle h,
      if (xmldb_get0_clear(h, td->td_src) < 0)
 	 goto done;
 
-     /* Optionally write (potentially modified) tree back to candidate 
-      */
-     if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD")){
-	 if ((ret = xmldb_put(h, candidate, OP_REPLACE, td->td_target,
-			      clicon_username_get(h), cbret)) < 0)
-	     goto done;
-	 if (ret == 0)
-	     goto fail;
-     }
      /* 8. Success: Copy candidate to running 
       */
      if (xmldb_copy(h, candidate, "running") < 0)
@@ -829,14 +820,6 @@ from_client_validate(clicon_handle h,
 	goto done;
     }
 
-    /* Optionally write (potentially modified) tree back to candidate */
-    if (clicon_option_bool(h, "CLICON_TRANSACTION_MOD")){
-	plugin_transaction_abort_all(h, td);
-	if ((ret = xmldb_put(h, "candidate", OP_REPLACE, td->td_target,
-			     clicon_username_get(h), cbret)) < 0)
-	    goto done;
-	goto ok;
-    }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
     /* Call plugin transaction end callbacks */
     plugin_transaction_end_all(h, td);

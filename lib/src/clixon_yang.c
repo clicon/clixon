@@ -2621,10 +2621,8 @@ schema_nodeid_iterate(yang_stmt    *yn,
 }
 
 /*! Given an absolute schema-nodeid (eg /a/b/c) find matching yang spec  
- * @param[in]  yspec         Yang specification.
- * @param[in]  yn            Original yang stmt (where call is made) if any
+ * @param[in]  yn            Original yang stmt (where call is made)
  * @param[in]  schema_nodeid Absolute schema-node-id, ie /a/b
- * @param[in]  keyword       A schemode of this type, or -1 if any
  * @param[out] yres          Result yang statement node, or NULL if not found
  * @retval    -1             Error, with clicon_err called
  * @retval     0             OK , with result in yres
@@ -2676,15 +2674,19 @@ yang_abs_schema_nodeid(yang_stmt    *yn,
 	}
     }
     /* Make a namespace context from yang for the prefixes (names) of nodeid_cvv */
-    if (xml_nsctx_yang(yn, &nsc) < 0)
-	goto done;
+    if (yang_keyword_get(yn) == Y_SPEC){
+	if (xml_nsctx_yangspec(yn, &nsc) < 0)
+	    goto done;
+    }
+    else if (xml_nsctx_yang(yn, &nsc) < 0)
+	    goto done;
     /* Since this is an _absolute_ schema nodeid start from top 
      * Get namespace */
     cv = cvec_i(nodeid_cvv, 0);
     prefix = cv_name_get(cv);
     if ((ns = xml_nsctx_get(nsc, prefix)) == NULL){
-	clicon_err(OE_YANG, EFAULT, "No namespace for prefix: %s in schema node identifier: %s in module %s",
-		   prefix, schema_nodeid, yang_argument_get(ys_module(yn)));
+	clicon_err(OE_YANG, EFAULT, "No namespace for prefix: %s in schema node identifier: %s",
+		   prefix, schema_nodeid);
 	goto done;
     }
     /* Get yang module */

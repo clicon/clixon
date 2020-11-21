@@ -21,6 +21,7 @@ cat <<EOF > $cfg
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>$dir/restconf.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -79,12 +80,6 @@ fi
 
 new "waiting"
 wait_backend
-
-# Load restconf config for evhtp backend config
-if [ "${WITH_RESTCONF}" = "evhtp" ]; then
-    . ./restconfig.sh
-    restconfigrun
-fi
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"

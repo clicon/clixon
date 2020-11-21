@@ -3,6 +3,9 @@ module clixon-config {
     namespace "http://clicon.org/config";
     prefix cc;
 
+    import clixon-restconf {
+	prefix clrc;
+    }    
     organization
 	"Clicon / Clixon";
 
@@ -42,7 +45,15 @@ module clixon-config {
 
     revision 2020-11-03 {
 	description
-	    "Added: CLICON_RESTCONF_CONFIG";
+	    "Moved to clixon-restconf.yang and marked as obsolete:
+	           CLICON_RESTCONF_IPV4_ADDR
+                   CLICON_RESTCONF_IPV6_ADDR
+	           CLICON_RESTCONF_HTTP_PORT
+                   CLICON_RESTCONF_HTTPS_PORT
+	           CLICON_SSL_SERVER_CERT
+                   CLICON_SSL_SERVER_KEY
+	           CLICON_SSL_CA_CERT
+             Removed obsolete option CLICON_TRANSACTION_MOD";
     }
     revision 2020-10-01 {
 	description
@@ -270,6 +281,9 @@ module clixon-config {
     }
 
     container clixon-config {
+	container restconf {
+	    uses clrc:clixon-restconf;
+	}
        leaf-list CLICON_FEATURE {
            description
                "Supported features as used by YANG feature/if-feature
@@ -412,81 +426,69 @@ module clixon-config {
                  Setting this value to false makes restconf return not pretty-printed
                  which may be desirable for performance or tests";
 	}
-	leaf CLICON_RESTCONF_CONFIG {
-	    type boolean;
-	    default false;
-	    description
-		"If set, get restconf-specific configuration from the backend running datastore,
-                 using clixon-restconf.yang.
-                 If not set, load all config from local clixon XML config file.
-                 This only applies to with-restconf=evhtp, NOT with restconf=fcgi (nginx)
-                 A consequence is that if set, the following option in this YANG are obsolete:
-	           CLICON_RESTCONF_IPV4_ADDR
-                   CLICON_RESTCONF_IPV6_ADDR
-	           CLICON_RESTCONF_HTTP_PORT
-                   CLICON_RESTCONF_HTTPS_PORT
-	           CLICON_SSL_SERVER_CERT
-                   CLICON_SSL_SERVER_KEY
-	           CLICON_SSL_CA_CERT
-                 ";
-	}
 	leaf CLICON_RESTCONF_IPV4_ADDR {
 	    type string;
 	    default "0.0.0.0";
+	    status obsolete;
 	    description
 		"RESTCONF IPv4 socket binding address.
                  Applies to native http by config option --with-restconf=evhtp.
-                 Obsolete if CLICON_RESTCONF_CONFIG is true";
+	         This config is moved to clixon-restconf.yang.";
 	}
 	leaf CLICON_RESTCONF_IPV6_ADDR {
 	    type string;
+	    status obsolete;
 	    description
 		"RESTCONF IPv6 socket binding address.
                  Applies to native http by config option --with-restconf=evhtp.
-                 Obsolete if CLICON_RESTCONF_CONFIG is true";
+	         This config is moved to clixon-restconf.yang.";
 	}
 	leaf CLICON_RESTCONF_HTTP_PORT {
 	    type uint16;
 	    default 80;
+	    status obsolete;
 	    description
 		"RESTCONF socket binding port, non-ssl
                  In the restconf daemon, it can be overriden by -P <port>
                  Applies to native http only by config option --with-restconf=evhtp.
-                 Obsolete if CLICON_RESTCONF_CONFIG is true";
+	         This config is moved to clixon-restconf.yang.";
 	}
 	leaf CLICON_RESTCONF_HTTPS_PORT {
 	    type uint16;
 	    default 443;
+	    status obsolete;
 	    description
 		"RESTCONF socket binding port, ssl
                  In the restconf daemon, this is the port chosen if -s is given. 
                  Note it can be overriden by -P <port>
                  Applies to native http by config option --with-restconf=evhtp.
-                 Obsolete if CLICON_RESTCONF_CONFIG is true";
+	         This config is moved to clixon-restconf.yang.";
 	}
 	leaf CLICON_SSL_SERVER_CERT {
 	    type string;
 	    default "/etc/ssl/certs/clixon-server-crt.pem";
+	    status obsolete;
 	    description
 		"SSL server cert for restconf https. 
                  Applies to native http only by config option --with-restconf=evhtp.
-                 Obsolete if CLICON_RESTCONF_CONFIG is true";
+                 This config is moved to clixon-restconf.yang.";
 	}
 	leaf CLICON_SSL_SERVER_KEY {
 	    type string;
 	    default "/etc/ssl/private/clixon-server-key.pem";
+	    status obsolete;
 	    description
 		"SSL server private key for restconf https.
                  Applies to native http only by config option --with-restconf=evhtp.
-                 Obsolete if CLICON_RESTCONF_CONFIG is true";
+                 This config is moved to clixon-restconf.yang.";
 	}
 	leaf CLICON_SSL_CA_CERT {
 	    type string;
 	    default "/etc/ssl/certs/clixon-ca_crt.pem";
+	    status obsolete;
 	    description
 		"SSL CA cert for client authentication.
-                 Applies to native http only by config option --with-restconf=evhtp.
-                 Obsolete if CLICON_RESTCONF_CONFIG is true";
+                 This config is moved to clixon-restconf.yang.";
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;

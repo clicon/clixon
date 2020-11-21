@@ -36,6 +36,7 @@ cat <<EOF > $cfg
   <CLICON_NACM_MODE>external</CLICON_NACM_MODE>
   <CLICON_NACM_FILE>$nacmfile</CLICON_NACM_FILE>
   <CLICON_NACM_CREDENTIALS>none</CLICON_NACM_CREDENTIALS>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -145,12 +146,6 @@ fi
 
 new "waiting"
 wait_backend
-
-# Load restconf config for evhtp backend config
-if [ "${WITH_RESTCONF}" = "evhtp" ]; then
-    . ./restconfig.sh
-    restconfigrun
-fi
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"

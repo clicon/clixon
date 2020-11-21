@@ -27,6 +27,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -82,7 +83,7 @@ if [ $RC -ne 0 ]; then
     stop_restconf_pre
 
     new "start restconf daemon"
-    start_restconf -f $cfg  -o CLICON_RESTCONF_CONFIG=false
+    start_restconf -f $cfg
 
     new "waiting"
     wait_restconf
@@ -116,7 +117,6 @@ expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+jso
 #new "restconf get config example1"
 #expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example1:x)" 0 "HTTP/1.1 200 OK" '{"example1:x":42}'
 
-
 # XXX GET ../example2:x is translated to select=/x which gets both example1&2
 #new "restconf get config example2"
 #expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example2:x)" 0 "HTTP/1.1 200 OK" '{"example2:x":{"y":42}}'
@@ -134,20 +134,20 @@ if [ $RC -ne 0 ]; then
     stop_restconf 
 fi
 
-if [ $BE -eq 0 ]; then
-    exit # BE
-fi
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-sudo clixon_backend -z -f $cfg
-if [ $? -ne 0 ]; then
-    err "kill backend"
-fi
-sudo pkill -u root -f clixon_backend
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    sudo clixon_backend -z -f $cfg
 
-rm -rf $dir
+    if [ $? -ne 0 ]; then
+	err "kill backend"
+    fi
+    sudo pkill -u root -f clixon_backend
+fi
+
+#rm -rf $dir

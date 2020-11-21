@@ -39,6 +39,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
+</clixon-config>
 EOF
 
 if [ "${WITH_RESTCONF}" = "evhtp" ]; then
@@ -50,22 +51,7 @@ if [ "${WITH_RESTCONF}" = "evhtp" ]; then
     cacert=$certdir/ca_cert.pem
     test -d $certdir || mkdir $certdir
     . ./certs.sh
-    cat <<EOF >> $cfg
-    <CLICON_SSL_SERVER_CERT>$srvcert</CLICON_SSL_SERVER_CERT>
-    <CLICON_SSL_SERVER_KEY>$srvkey</CLICON_SSL_SERVER_KEY>
-    <CLICON_SSL_CA_CERT>$srvcert</CLICON_SSL_CA_CERT>	
-EOF
 fi
-
-if $IPv6; then
-    cat <<EOF >> $cfg
-    <CLICON_RESTCONF_IPV6_ADDR>::</CLICON_RESTCONF_IPV6_ADDR>
-EOF
-fi
-
-cat <<EOF >> $cfg
-</clixon-config>
-EOF
 
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
 state='{"clixon-example:state":{"op":\["41","42","43"\]}'
@@ -93,7 +79,8 @@ else
    <server-cert-path>$srvcert</server-cert-path>
    <server-key-path>$srvkey</server-key-path>
    <server-ca-cert-path>$cakey</server-ca-cert-path>
-   <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
+   <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></sock
+et>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket>
 </restconf>
 EOF
@@ -108,12 +95,10 @@ testrun()
 {
     proto=$1  # http/https
     addr=$2   # 127.0.0.1/::1
-    config=$3 # local/backend
 
     RCPROTO=$proto # for start/wait of restconf
     echo "proto:$proto"
     echo "addr:$addr"
-    echo "config:$config"
 
     new "test params: -f $cfg -- -s"
     if [ $BE -ne 0 ]; then
@@ -131,26 +116,19 @@ testrun()
     new "wait backend"
     wait_backend
 
-    if [ $config = backend ] ; then # Create a backend config
-	# restconf backend config
-	new "netconf edit config"
-	expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+    new "netconf edit config"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-	new "netconf commit"
-	expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
-    fi
+    new "netconf commit"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
     if [ $RC -ne 0 ]; then
 	new "kill old restconf daemon"
 	stop_restconf_pre
 
-	if [ $config = backend ] ; then # Add -b option
-	    new "start restconf daemon -o CLICON_RESTCONF_CONFIG=true"
-	    start_restconf -f $cfg -o CLICON_RESTCONF_CONFIG=true
-	else
-	    new "start restconf daemon -o CLICON_RESTCONF_CONFIG=false"
-	    start_restconf -f $cfg -o CLICON_RESTCONF_CONFIG=false
-	fi
+	new "start restconf daemon ZZZ"
+	echo "cfg:$cfg"
+	start_restconf -f $cfg
     fi
     new "wait restconf"
     wait_restconf
@@ -396,16 +374,8 @@ for proto in $protos; do
 	addrs="$addrs \[::1\]"
     fi
     for addr in $addrs; do
-	configs="local"
-	if [ "${WITH_RESTCONF}" = "evhtp" ]; then
-	    # backend config retrieval only implemented for evhtp
-	    configs="$configs backend"
-	fi
-	echo "configs:$configs"
-	for config in $configs; do
-	    new "restconf test: proto:$proto addr:$addr config:$config"
-	    testrun $proto $addr $config
-	done
+	new "restconf test: proto:$proto addr:$addr config:$config"
+	testrun $proto $addr
     done
 done
 

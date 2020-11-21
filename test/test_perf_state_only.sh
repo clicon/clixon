@@ -46,6 +46,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_DIR>/usr/local/lib/example/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/example/clispec</CLICON_CLISPEC_DIR>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -106,12 +107,6 @@ if [ $BE -ne 0 ]; then
 
     new "waiting"
     wait_backend
-fi
-
-# Load restconf config for evhtp backend config
-if [ "${WITH_RESTCONF}" = "evhtp" ]; then
-    . ./restconfig.sh
-    restconfigrun
 fi
 
 if [ $RC -ne 0 ]; then

@@ -32,6 +32,7 @@ cat <<EOF > $cfg
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
   <CLICON_NACM_DISABLED_ON_EMPTY>true</CLICON_NACM_DISABLED_ON_EMPTY>
   <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -110,9 +111,8 @@ EOF
     new "kill old restconf daemon"
     stop_restconf_pre
 
-    # Cannot use CLICON_RESTCONF_CONFIG=true because of bootstrap problem
     new "start restconf daemon (-a is enable basic authentication)"
-    start_restconf -f $cfg -o CLICON_RESTCONF_CONFIG=false -- -a
+    start_restconf -f $cfg -- -a
 
     new "waiting"
     wait_restconf

@@ -83,8 +83,7 @@ module clixon-restconf {
         description
             "Common operations that can be performed on a service";
     }
-    container restconf {
-	presence "Enables RESTCONF";
+    grouping clixon-restconf{
 	description
 	    "HTTP daemon configuration.";
 	leaf-list auth-type {
@@ -98,24 +97,18 @@ module clixon-restconf {
 	    description
 		"Path to server certificate file. 
                  Note only applies if socket has ssl enabled";
-	    default "/etc/ssl/private/clixon-server-crt.pem";
-	    /* See CLICON_SSL_SERVER_CERT */
 	}
 	leaf server-key-path {
 	    type string;
 	    description
 		"Path to server key file
                  Note only applies if socket has ssl enabled";
-	    default "/etc/ssl/private/clixon-server-key.pem";
-	    /* See CLICON_SSL_SERVER_KEY */
 	}
 	leaf server-ca-cert-path {
 	    type string;
 	    description
 		"Path to server CA cert file
 	         Note only applies if socket has ssl enabled";
-	    default "/etc/ssl/certs/clixon-ca_crt.pem";
-	    /* CLICON_SSL_CA_CERT */
 	}
 	list socket {
 	    key "namespace address port";
@@ -137,6 +130,10 @@ module clixon-restconf {
 		description "Enable for HTTPS otherwise HTTP protocol";
 	    }
 	}
+    }
+    container restconf {
+	presence "Enables RESTCONF";
+	uses clixon-restconf;
     }
     rpc restconf-control {
 	input {

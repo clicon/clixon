@@ -39,6 +39,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -227,12 +228,6 @@ if [ $BE -ne 0 ]; then
 
 new "waiting"
 wait_backend
-
-# Load restconf config for evhtp backend config
-if [ "${WITH_RESTCONF}" = "evhtp" ]; then
-    . ./restconfig.sh
-    restconfigrun
-fi
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"

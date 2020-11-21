@@ -46,6 +46,7 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -167,12 +168,6 @@ fi
 
 new "waiting"
 wait_backend
-
-# Load restconf config for evhtp backend config
-if [ "${WITH_RESTCONF}" = "evhtp" ]; then
-    . ./restconfig.sh
-    restconfigrun
-fi
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"

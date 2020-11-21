@@ -145,6 +145,7 @@ testrun()
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_YANG_UNKNOWN_ANYDATA>$unknown</CLICON_YANG_UNKNOWN_ANYDATA>
   $F
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -181,7 +182,7 @@ EOF
 	stop_restconf_pre
 
 	new "start restconf daemon"
-	start_restconf -f $cfg  -o CLICON_RESTCONF_CONFIG=false
+	start_restconf -f $cfg
 
     fi
     new "wait restconf"

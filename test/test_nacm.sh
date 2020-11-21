@@ -34,6 +34,7 @@ cat <<EOF > $cfg
   <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
   <CLICON_NACM_DISABLED_ON_EMPTY>true</CLICON_NACM_DISABLED_ON_EMPTY>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -132,7 +133,7 @@ if [ $RC -ne 0 ]; then
     stop_restconf_pre
 
     new "start restconf daemon (-a is enable basic authentication)"
-    start_restconf -f $cfg -o CLICON_RESTCONF_CONFIG=false -- -a
+    start_restconf -f $cfg -- -a
 
     new "waiting"
     wait_restconf

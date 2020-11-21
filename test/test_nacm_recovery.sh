@@ -85,6 +85,7 @@ cat <<EOF > $cfg
   <CLICON_NACM_RECOVERY_USER>$recovery</CLICON_NACM_RECOVERY_USER>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
   <CLICON_NACM_CREDENTIALS>$cred</CLICON_NACM_CREDENTIALS>
+  $RESTCONFIG
 </clixon-config>
 EOF
     if [ $BE -ne 0 ]; then
@@ -103,7 +104,7 @@ EOF
 	stop_restconf_pre
 
 	new "start restconf daemon (-a is enable basic authentication)"
-	start_restconf -f $cfg -o CLICON_RESTCONF_CONFIG=false -- -a
+	start_restconf -f $cfg -- -a
 
 	new "waiting"
 	wait_restconf
