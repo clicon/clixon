@@ -79,8 +79,7 @@ else
    <server-cert-path>$srvcert</server-cert-path>
    <server-key-path>$srvkey</server-key-path>
    <server-ca-cert-path>$cakey</server-ca-cert-path>
-   <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></sock
-et>
+   <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket>
 </restconf>
 EOF
