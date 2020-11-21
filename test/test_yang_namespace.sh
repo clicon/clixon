@@ -142,12 +142,7 @@ if [ $BE -ne 0 ]; then
 	err "backend already dead"
     fi
     # kill backend
-    sudo clixon_backend -z -f $cfg
-
-    if [ $? -ne 0 ]; then
-	err "kill backend"
-    fi
-    sudo pkill -u root -f clixon_backend
+    stop_backend -f $cfg
 fi
 
-#rm -rf $dir
+rm -rf $dir

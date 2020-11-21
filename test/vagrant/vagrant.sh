@@ -5,6 +5,7 @@
 # 3. Compile and install clixon
 # 4. Run tests
 # Example run:  ./vagrant.sh generic/centos8 2>&1 | tee cilog
+# Default runs evhtp (not fcgi)
 
 set -eux #
 

@@ -29,21 +29,27 @@
 
 ### New features
 
-* Initial NBMA functionality (thanks: @benavrhm): "ds" resource
-* Restconf configuration has a new configure model: `clixon-restconf.yang` enabling restconf daemon configuration from datastore instead of from config file. 
-  * Restconf config data, such as addresses, authentication type, etc, is read from the backend datastore instead of the clixon-config file on startup.
-  * This is enabled by setting `CLIXON_RESTCONF_CONFIG` to true (or start clixon-restconf with `-b`), in which case restconf data can be set in the datastore.
-  * This only applies to the evhtp restconf daemon, not fcgi/nginx.
-  * If enabled, most RESTCONF clixon-config options are obsolete
+* Restconf configuration has a new configure model: `clixon-restconf.yang` enabling more flexible socket config
+  * The new restconf config, including addresses, authentication type, is set either in clixon-config local config or in backend datastore (ie running)
+  * This only applies to the evhtp restconf daemon, not fcgi/nginx, where the nginx config is used.
+  * The RESTCONF clixon-config options are obsolete
   * Thanks to Dave Cornejo for the idea
-  * Example: instead of setting `<CLICON_SSL_SERVER_CERT>file</CLICON_SSL_SERVER_CERT>` in clixon.xml, set: `arestconf><socket><server-cert-path>file</server-cert-path></socket></restconf>` in the running datastore before starting restconf.
+* Initial NBMA functionality (thanks: @benavrhm): "ds" resource
   
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
 * New clixon-config@2020-11-03.yang revision
-  * Added option: `CLICON_RESTCONF_CONFIG` for reading restconf daemon config frm datastore
+  * Moved to clixon-restconf.yang and marked as obsolete:
+    - CLICON_RESTCONF_IPV4_ADDR
+    - CLICON_RESTCONF_IPV6_ADDR
+    - CLICON_RESTCONF_HTTP_PORT
+    - CLICON_RESTCONF_HTTPS_PORT
+    - CLICON_SSL_SERVER_CERT
+    - CLICON_SSL_SERVER_KEY
+    - CLICON_SSL_CA_CERT
+  * Removed obsolete option CLICON_TRANSACTION_MOD";
 
 ### C/CLI-API changes on existing features
 

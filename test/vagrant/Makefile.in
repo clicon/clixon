@@ -45,8 +45,10 @@ SHELL	= /bin/sh
 # The "site.mk" file if it exists and define the VAGRANTS variables
 # eg:
 # VAGRANTS += freebsd/FreeBSD-12.1-STABLE
-
 VAGRANTS =
+
+# evhtp or fcgi
+RESTCONF=evhtp
 
 -include site.mk
 
@@ -61,9 +63,9 @@ logs:
 # appear eg as generic/centos8.log
 $(VAGRANTS): logs
 ifdef LOGDIR
-	./vagrant.sh $@ 2>&1 > "$(LOGDIR)/$(subst /,-,$@).log"
+	with_restconf=$(RESTCONF) ./vagrant.sh $@ 2>&1 > "$(LOGDIR)/$(subst /,-,$@).$(RESTCONF).log"
 else
-	./vagrant.sh $@ 2>&1 | tee "logs/$(subst /,-,$@).log"
+	with_restconf=$(RESTCONF) ./vagrant.sh $@ 2>&1 | tee "logs/$(subst /,-,$@).$(RESTCONF).log"
 endif
 
 destroy:
