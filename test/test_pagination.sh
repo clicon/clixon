@@ -23,6 +23,9 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>$dir/restconf.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_STREAM_DISCOVERY_RFC8040>true</CLICON_STREAM_DISCOVERY_RFC8040>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
 </clixon-config>
 EOF
 
@@ -286,11 +289,12 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     sudo pkill -f clixon_backend # to be sure
+
     new "start backend -s startup -f $cfg -- -sS $mystate"
     start_backend -s startup -f $cfg -- -sS $fstate
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 if [ $RC -ne 0 ]; then
@@ -300,7 +304,7 @@ if [ $RC -ne 0 ]; then
     new "start restconf daemon"
     start_restconf -f $cfg
 
-    new "waiting"
+    new "wait restconf"
     wait_restconf
 fi
 
@@ -310,6 +314,11 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc message-id=\"101\" xmlns=\"urn:ietf
 
 new "C.2. 'skip' Parameter NETCONF"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc message-id=\"101\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:exm=\"http://example.com/ns/example-module\">/exm:admins/exm:admin[exm:name='Bob']/exm:skill</list-target><count>2</count><skip>2</skip></get-pageable-list></rpc>]]>]]>" '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101"><pageable-list xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination"><skill xmlns="http://example.com/ns/example-module"><name>Organization</name><rank>44</rank></skill><skill xmlns="http://example.com/ns/example-module"><name>Problem Solving</name><rank>98</rank></skill></pageable-list></rpc-reply>]]>]]>$'
+
+# CLI
+# XXX This relies on a very specific clispec command: need a more generic test
+new "cli show"
+expectpart "$($clixon_cli -1 -f $cfg -l o show pagination)" 0 "<skill xmlns=\"http://example.com/ns/example-module\"><name>Conflict Resolution</name><rank>93</rank></skill>" "<skill xmlns=\"http://example.com/ns/example-module\"><name>Management</name><rank>23</rank></skill>" --not-- "<skill xmlns=\"http://example.com/ns/example-module\"><name>Organization</name><rank>44</rank></skill>"
 
 # draft-wwlh-netconf-list-pagination-rc-00.txt
 #new "A.1. 'count' Parameter RESTCONF"

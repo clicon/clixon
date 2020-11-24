@@ -1041,7 +1041,7 @@ xml_default_create1(yang_stmt *y,
 
 /*! Create leaf from default value
  *
- * @param[in]   yt      Yang spec
+ * @param[in]   y       Yang spec
  * @param[in]   xt      XML tree
  * @param[in]   top     Use default namespace (if you create xmlns statement)
  * @retval      0       OK
@@ -1056,13 +1056,18 @@ xml_default_create(yang_stmt *y,
     cxobj     *xc = NULL;
     cxobj     *xb;
     char      *str;
+    cg_var    *cv;
 	
     if (xml_default_create1(y, xt, top, &xc) < 0)
 	goto done;
     xml_flag_set(xc, XML_FLAG_DEFAULT);
     if ((xb = xml_new("body", xc, CX_BODY)) == NULL)
 	goto done;
-    if ((str = cv2str_dup(yang_cv_get(y))) == NULL){
+    if ((cv = yang_cv_get(y)) == NULL){
+	clicon_err(OE_UNIX, ENOENT, "No yang cv of %s", yang_argument_get(y));
+	goto done;
+    }
+    if ((str = cv2str_dup(cv)) == NULL){
 	clicon_err(OE_UNIX, errno, "cv2str_dup");
 	goto done;
     }

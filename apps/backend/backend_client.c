@@ -1530,6 +1530,7 @@ from_client_get_pageable_list(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
+    /* This uses xpath. Maybe count/limit should use parameters */
     cprintf(cb, "%s", xpath);
     if (where)
 	cprintf(cb, "[%s]", where);

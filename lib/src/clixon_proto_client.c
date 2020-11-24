@@ -880,8 +880,8 @@ clicon_rpc_get(clicon_handle   h,
 
 /*! Get database configuration and state data collection
  * @param[in]  h         Clicon handle
- * @param[in]  apipath   To identify a list/leaf-list
- * @param[in]  yli       Yang-stmt of list/leaf-list of collection
+ * @param[in]  xpath     To identify a list/leaf-list
+ * @param[in]  yli       Yang-stmt of list/leaf-list of collection, if given make sanity check
  * @param[in]  namespace Namespace associated w xpath
  * @param[in]  nsc       Namespace context for filter
  * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
@@ -901,18 +901,19 @@ clicon_rpc_get(clicon_handle   h,
  * @note the netconf return message is yang populated, as well as the return data
  */
 int
-clicon_rpc_get_collection(clicon_handle   h, 
-			  char           *apipath,
-			  yang_stmt      *yli,
-			  cvec           *nsc, /* namespace context for filter */
-			  netconf_content content,
-			  char           *depth,
-			  char           *count,
-			  char           *skip,
-			  char           *direction,
-			  char           *sort,
-			  char           *where,
-			  cxobj         **xt)
+clicon_rpc_get_pageable_list(clicon_handle   h, 
+			     char           *datastore,
+			     char           *xpath,
+			     yang_stmt      *yli,
+			     cvec           *nsc, /* namespace context for xpath */
+			     netconf_content content,
+			     char           *depth,
+			     char           *count,
+			     char           *skip,
+			     char           *direction,
+			     char           *sort,
+			     char           *where,
+			     cxobj         **xt)
 {
     int                retval = -1;
     struct clicon_msg *msg = NULL;
@@ -926,6 +927,9 @@ clicon_rpc_get_collection(clicon_handle   h,
     yang_stmt         *yspec;
     cxobj             *x;
     
+    if (datastore == NULL){
+	clicon_err(OE_XML, EINVAL, "datastore not given");
+    }
     if (session_id_check(h, &session_id) < 0)
 	goto done;
     if ((cb = cbuf_new()) == NULL)
@@ -935,15 +939,20 @@ clicon_rpc_get_collection(clicon_handle   h,
 	cprintf(cb, " username=\"%s\"", username);
     cprintf(cb, " xmlns:%s=\"%s\"",
 	    NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    cprintf(cb, "><get-collection xmlns=\"%s\"", NETCONF_COLLECTION_NAMESPACE);
+    cprintf(cb, "><get-pageable-list xmlns=\"%s\"", NETCONF_COLLECTION_NAMESPACE);
     /* Clixon extension, content=all,config, or nonconfig */
     if ((int)content != -1)
 	cprintf(cb, " content=\"%s\"", netconf_content_int2str(content));
     if (depth)
 	cprintf(cb, " depth=\"%s\"", depth);
     cprintf(cb, ">"); 
-    if (count)
-	cprintf(cb, "<list-target>%s</list-target>", apipath);
+    cprintf(cb, "<datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:%s</datastore>", datastore);
+    if (xpath){
+	cprintf(cb, "<list-target");
+	if (xml_nsctx_cbuf(cb, nsc) < 0)
+	    goto done;
+	cprintf(cb, ">%s</list-target>", xpath);
+    }
     if (count)
 	cprintf(cb, "<count>%s</count>", count);
     if (skip)
@@ -954,7 +963,7 @@ clicon_rpc_get_collection(clicon_handle   h,
 	cprintf(cb, "<sort>%s</sort>", sort);
     if (where)
 	cprintf(cb, "<where>%s</where>", where);
-    cprintf(cb, "</get-collection></rpc>");
+    cprintf(cb, "</get-pageable-list></rpc>");
     if ((msg = clicon_msg_encode(session_id, "%s", cbuf_get(cb))) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
@@ -962,13 +971,13 @@ clicon_rpc_get_collection(clicon_handle   h,
     /* Send xml error back: first check error, then ok */
     if ((xr = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
 	xr = xml_parent(xr); /* point to rpc-reply */
-    else if ((xr = xpath_first(xret, NULL, "/rpc-reply/collection")) == NULL){
-	if ((xr = xml_new("collection", NULL, CX_ELMNT)) == NULL)
+    else if ((xr = xpath_first(xret, NULL, "/rpc-reply/pageable-list")) == NULL){
+	if ((xr = xml_new("pageable_list", NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
-    else{
+    else if (yli != NULL) {
 	yspec = clicon_dbspec_yang(h);
-	/* Populate all children with yco */
+	/* Populate all children with y */
 	x = NULL;
 	while ((x = xml_child_each(xr, x, CX_ELMNT)) != NULL){
 	    xml_spec_set(x, yli);
@@ -976,8 +985,8 @@ clicon_rpc_get_collection(clicon_handle   h,
 		goto done;
 	    if (ret == 0){
 		if (clixon_netconf_internal_error(xerr,
-						  ". Internal error, backend returned invalid XML.",
-						  NULL) < 0)
+						  ". Internal error, backend returned XML tat doid not match given YANG.",
+						  yli?yang_argument_get(yli):NULL) < 0)
 		    goto done;
 		if ((xr = xpath_first(xerr, NULL, "rpc-error")) == NULL){
 		    clicon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");

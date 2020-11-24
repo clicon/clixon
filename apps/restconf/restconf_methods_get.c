@@ -663,9 +663,9 @@ api_data_collection(clicon_handle  h,
     sort = cvec_find_str(qvec, "sort");
     where = cvec_find_str(qvec, "where");
     
-    if (clicon_rpc_get_collection(h, api_path, y, nsc, content,
-				  depth, count, skip, direction, sort, where, 
-				  &xret) < 0){
+    if (clicon_rpc_get_pageable_list(h, "running", xpath, y, nsc, content,
+				     depth, count, skip, direction, sort, where, 
+				     &xret) < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;
 	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){

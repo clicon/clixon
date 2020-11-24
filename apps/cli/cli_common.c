@@ -1312,3 +1312,76 @@ cli_help(clicon_handle h, cvec *vars, cvec *argv)
     return cligen_help(ch, stdout, pt);
 }
 
+/*! Show pagination/collection
+ * XXX: This is hardcoded only for test_pagination.sh
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. Format: <xpath> <prefix> <namespace>
+ */
+int
+cli_pagination(clicon_handle h, cvec *vars, cvec *argv)
+{
+    int           retval = -1;
+    cbuf         *cb = NULL;    
+    char         *xpath = NULL;
+    char         *prefix = NULL;
+    char         *namespace = NULL;
+    cxobj        *xret = NULL;
+    cxobj        *xerr;
+    cvec         *nsc = NULL;
+    char         *formatstr;
+    enum format_enum format;
+    cxobj        *xc;
+    
+    if (cvec_len(argv) != 4){
+	clicon_err(OE_PLUGIN, 0, "Expected usage: <xpath> <prefix> <namespace> <format>");
+	goto done;
+    }
+    xpath = cvec_i_str(argv, 0);
+    prefix = cvec_i_str(argv, 1);
+    namespace = cvec_i_str(argv, 2);
+    formatstr = cv_string_get(cvec_i(argv, 3));     /* Fourthformat: output format */
+    if ((int)(format = format_str2int(formatstr)) < 0){
+	clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
+	goto done;
+    }
+    if ((nsc = xml_nsctx_init(prefix, namespace)) == NULL)
+	goto done;
+    if (clicon_rpc_get_pageable_list(h, "running", xpath, NULL, nsc, CONTENT_CONFIG, NULL,
+				    "2", "0",
+				    NULL, NULL, NULL,
+				    &xret) < 0){
+       goto done;
+   }
+    if ((xerr = xpath_first(xret, NULL, "/rpc-error")) != NULL){
+	clixon_netconf_error(xerr, "Get configuration", NULL);
+	goto done;
+    }
+    xc = NULL;
+    while ((xc = xml_child_each(xret, xc, CX_ELMNT)) != NULL)
+	switch (format){
+	case FORMAT_XML:
+	    clicon_xml2file(stdout, xc, 0, 0);
+	    fprintf(stdout, "\n");
+	    break;
+	case FORMAT_JSON:
+	    xml2json_cb(stdout, xc, 1, cligen_output);
+	    break;
+	case FORMAT_TEXT:
+	    xml2txt_cb(stdout, xc, cligen_output); /* tree-formed text */
+	    break;
+	case FORMAT_CLI:
+	    xml2cli_cb(stdout, xc, NULL, GT_HIDE, cligen_output); /* cli syntax */
+	    break;
+	case FORMAT_NETCONF:
+	    break;
+	}
+    retval = 0;
+ done:
+    if (xret)
+	xml_free(xret);
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
