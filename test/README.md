@@ -45,7 +45,7 @@ You can prefix a test with `BE=0` if you want to run your own backend.
 To run with debug flags, use the `DBG=<number>` environment variable.
 
 Other variables include:
-* RCWAIT Number of seconds to sleep after daemons have started
+* DEMWAIT Number of seconds to sleep after daemons have started
 
 ## Run all tests
 

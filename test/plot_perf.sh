@@ -335,8 +335,7 @@ if $run; then
     start_restconf -f $cfg -y $fyang
 
     new "waiting"
-    sleep $RCWAIT
-
+    sleep $DEMWAIT
 
     to=$to0
     step=$step0

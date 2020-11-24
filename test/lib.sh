@@ -113,10 +113,14 @@ DEFAULTNS='xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"'
 
 # Wait after daemons (backend/restconf) start. See mem.sh for valgrind
 if [ "$(uname -m)" = "armv7l" ]; then
-    : ${RCWAIT:=8}
+    : ${DEMWAIT:=8}
 else
-    : ${RCWAIT:=2}
+    : ${DEMWAIT:=2}
 fi
+
+# Multiplication factor to sleep less than whole seconds
+DEMSLEEP=.5
+let DEMWAIT*=2;
 
 # RESTCONF protocol, eg http or https
 : ${RCPROTO:=http}
@@ -276,12 +280,12 @@ wait_backend(){
     reply=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101"><ping xmlns="http://clicon.org/lib"/></rpc>]]>]]>' | $clixon_netconf -qef $cfg 2> /dev/null) 
     let i=0;
     while [[ $reply != "<rpc-reply"* ]]; do
-	sleep 1
+	sleep $DEMSLEEP
 	reply=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101" xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>' | clixon_netconf -qef $cfg 2> /dev/null)
 	let i++;
 #	echo "wait_backend  $i"
-	if [ $i -ge $RCWAIT ]; then
-	    err "backend timeout $RCWAIT seconds"
+	if [ $i -ge $DEMWAIT ]; then
+	    err "backend timeout $DEMWAIT seconds"
 	fi
     done
 }
@@ -324,13 +328,13 @@ wait_restconf(){
 #    echo "hdr:\"$hdr\""
     let i=0;
     while [[ $hdr != *"200 OK"* ]]; do
-	sleep 1
+	sleep $DEMSLEEP
 	hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf)
 #	echo "hdr:\"$hdr\""
 	let i++;
 #	echo "wait_restconf $i"
-	if [ $i -ge $RCWAIT ]; then
-	    err "restconf timeout $RCWAIT seconds"
+	if [ $i -ge $DEMWAIT ]; then
+	    err "restconf timeout $DEMWAIT seconds"
 	fi
     done
     if [ $valgrindtest -eq 3 ]; then 

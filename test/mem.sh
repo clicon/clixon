@@ -17,17 +17,17 @@ memonce(){
     case "$what" in
 	'cli')
 	    valgrindtest=1
-	    : ${RCWAIT:=5} # valgrind backend needs some time to get up 
+	    : ${DEMWAIT:=5} # valgrind backend needs some time to get up 
 	    clixon_cli="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp  --track-fds=yes --trace-children=no --child-silent-after-fork=yes --log-file=$valgrindfile clixon_cli"
 	    ;;
 	'netconf')
 	    valgrindtest=1
-    	    : ${RCWAIT:=5} # valgrind backend needs some time to get up 
+    	    : ${DEMWAIT:=5} # valgrind backend needs some time to get up 
 	    clixon_netconf="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp  --track-fds=yes  --trace-children=no --child-silent-after-fork=yes --log-file=$valgrindfile clixon_netconf"
 	    ;;
 	'backend')
 	    valgrindtest=2 # This means backend valgrind test
-	    : ${RCWAIT:=10} # valgrind backend needs some time to get up 
+	    : ${DEMWAIT:=10} # valgrind backend needs some time to get up 
 
 	    clixon_backend="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=yes --log-file=$valgrindfile clixon_backend"
 	    ;;
@@ -35,7 +35,7 @@ memonce(){
 	    valgrindtest=3 # This means backend valgrind test
 	    sudo chmod 660 $valgrindfile
 	    sudo chown www-data $valgrindfile
-	    : ${RCWAIT:=15} # valgrind backend needs some time to get up 
+	    : ${DEMWAIT:=15} # valgrind backend needs some time to get up 
 	    clixon_restconf="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile /www-data/clixon_restconf"
 
 	    ;;

@@ -137,7 +137,7 @@ case $release in
 	;;
     centos)
         # enable ipv6
-        sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
+        $sshcmd sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
 	# add restconf user: $wwwuser
 	if [ ! $($sshcmd id -u $wwwuser) ]; then
 	    $sshcmd sudo useradd -M $wwwuser    
