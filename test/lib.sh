@@ -120,7 +120,9 @@ fi
 
 # Multiplication factor to sleep less than whole seconds
 DEMSLEEP=.5
-let DEMWAIT*=2;
+
+# DEMWAIT is expressed in seconds, but really * DEMSLEEP
+let DEMLOOP=2*DEMWAIT
 
 # RESTCONF protocol, eg http or https
 : ${RCPROTO:=http}
@@ -284,7 +286,7 @@ wait_backend(){
 	reply=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101" xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>' | clixon_netconf -qef $cfg 2> /dev/null)
 	let i++;
 #	echo "wait_backend  $i"
-	if [ $i -ge $DEMWAIT ]; then
+	if [ $i -ge $DEMLOOP ]; then
 	    err "backend timeout $DEMWAIT seconds"
 	fi
     done
@@ -333,7 +335,7 @@ wait_restconf(){
 #	echo "hdr:\"$hdr\""
 	let i++;
 #	echo "wait_restconf $i"
-	if [ $i -ge $DEMWAIT ]; then
+	if [ $i -ge $DEMLOOP ]; then
 	    err "restconf timeout $DEMWAIT seconds"
 	fi
     done
