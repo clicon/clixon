@@ -18,6 +18,7 @@ box=$1 # As defined in https://vagrantcloud.com/search
 
 #with_restconf=fcgi
 : ${with_restconf:=evhtp}
+echo "with-restconf:${with_restconf}"
 
 VCPUS=1
 MEM=1024
@@ -135,6 +136,8 @@ case $release in
 	esac
 	;;
     centos)
+        # enable ipv6
+        sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
 	# add restconf user: $wwwuser
 	if [ ! $($sshcmd id -u $wwwuser) ]; then
 	    $sshcmd sudo useradd -M $wwwuser    

@@ -43,16 +43,19 @@ fi
 
 # Sanity nginx running on systemd platforms
 if systemctl > /dev/null 2>&1 ; then
+    # even if systemd exists, nginx may be started in other ways
     nginxactive=$(systemctl show nginx |grep ActiveState=active)
     if [ "${WITH_RESTCONF}" = "fcgi" ]; then
-	if [ -z "$nginxactive" ]; then
-	    echo -e "\e[31m\nwith-restconf=fcgi set but nginx not running, start with systemctl start nginx"
+	if [ -z "$nginxactive"  -a ! -f /var/run/nginx.pid ]; then
+	    echo -e "\e[31m\nwith-restconf=fcgi set but nginx not running, start with:"
+	    echo "systemctl start nginx"
 	    echo -e "\e[0m"
 	    exit -1
 	fi
     else
-	if [ -n "$nginxactive" ]; then
-	    echo -e "\e[31m\nwith-restconf=fcgi not set but nginx running, stop with systemctl stop nginx"
+	if [ -n "$nginxactive" -o -f /var/run/nginx.pid ]; then
+	    echo -e "\e[31m\nwith-restconf=fcgi not set but nginx running, stop with:"
+	    echo "systemctl stop nginx"
 	    echo -e "\e[0m"
 	    exit -1
 	fi

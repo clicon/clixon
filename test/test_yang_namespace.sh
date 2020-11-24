@@ -68,15 +68,11 @@ if [ $BE -ne 0 ]; then
     fi
 
     new "start backend -s init -f $cfg"
-    # start new backend
-    sudo $clixon_backend -s init -f $cfg -D $DBG
-    if [ $? -ne 0 ]; then
-	err
-    fi
-fi
+    start_backend -s init -f $cfg
 
-new "waiting"
-wait_backend
+    new "waiting"
+    wait_backend
+fi
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"

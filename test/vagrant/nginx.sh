@@ -67,6 +67,7 @@ http {
 }
 EOF
 $scpcmd $dir/nginx.conf vagrant@127.0.0.1:
+# This is problematic since it does not use systemctl (lib.sh check does)
 cat<<'EOF' > $dir/startnginx.sh
     #!/usr/bin/env bash
     set -x
@@ -83,7 +84,9 @@ cat<<'EOF' > $dir/startnginx.sh
    	  sudo sh -c ' echo 'nginx_enable="YES"' >> /etc/rc.conf'
         fi		
         sudo /usr/local/etc/rc.d/nginx restart
-    else
+    elif systemctl > /dev/null 2>&1 ; then
+       sudo systemctl start nginx
+    else	 
 	sudo pkill nginx
         nginxbin=$(sudo which nginx)
 	sudo $nginxbin -c $prefix/etc/nginx/nginx.conf
