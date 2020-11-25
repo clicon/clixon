@@ -22,5 +22,9 @@
 
 # Some restconf tests can run IPv6, but its complicated because:
 # - docker by default does not run IPv6
-# - for fcgi nginx needs to be configured properly (shouldnt be a problem)
 #IPv6=false
+
+# Check sanity between --with-restconf setting and if nginx is started by systemd or not
+# This check is optional because some installs, such as vagrant make a non-systemd/direct
+# start
+#NGINXCHECK=false

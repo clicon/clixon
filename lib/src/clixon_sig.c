@@ -161,7 +161,11 @@ pidfile_zapold(pid_t pid)
     clicon_log(LOG_NOTICE, "Killing old daemon with pid: %d", pid);
     killpg(pid, SIGTERM);
     kill(pid, SIGTERM);
-    sleep(1); /* check again */
+    /* Need to sleep process properly and then check again */
+    if (usleep(100000) < 0){ 
+	clicon_err(OE_UNIX, errno, "usleep");
+	return -1;
+    }
     if ((kill (pid, 0)) != 0 && errno == ESRCH) /* Nothing there */
 	;
     else{ /* problem: couldnt kill it */

@@ -41,26 +41,29 @@ if [ -f ./config.sh ]; then
     fi
 fi
 
+: ${SKIPLIST:=false}
 # Sanity nginx running on systemd platforms
-if systemctl > /dev/null 2>&1 ; then
-    # even if systemd exists, nginx may be started in other ways
-    nginxactive=$(systemctl show nginx |grep ActiveState=active)
-    if [ "${WITH_RESTCONF}" = "fcgi" ]; then
-	if [ -z "$nginxactive"  -a ! -f /var/run/nginx.pid ]; then
-	    echo -e "\e[31m\nwith-restconf=fcgi set but nginx not running, start with:"
-	    echo "systemctl start nginx"
-	    echo -e "\e[0m"
-	    exit -1
+if $NGINXCHECK; then
+    if systemctl > /dev/null 2>&1 ; then
+	# even if systemd exists, nginx may be started in other ways
+	nginxactive=$(systemctl show nginx |grep ActiveState=active)
+	if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+	    if [ -z "$nginxactive"  -a ! -f /var/run/nginx.pid ]; then
+		echo -e "\e[31m\nwith-restconf=fcgi set but nginx not running, start with:"
+		echo "systemctl start nginx"
+		echo -e "\e[0m"
+		exit -1
+	    fi
+	else
+	    if [ -n "$nginxactive" -o -f /var/run/nginx.pid ]; then
+		echo -e "\e[31m\nwith-restconf=fcgi not set but nginx running, stop with:"
+		echo "systemctl stop nginx"
+		echo -e "\e[0m"
+		exit -1
+	    fi
 	fi
-    else
-	if [ -n "$nginxactive" -o -f /var/run/nginx.pid ]; then
-	    echo -e "\e[31m\nwith-restconf=fcgi not set but nginx running, stop with:"
-	    echo "systemctl stop nginx"
-	    echo -e "\e[0m"
-	    exit -1
-	fi
-    fi
-fi # systemctl
+    fi # systemctl
+fi
 
 # Test number from start
 : ${testnr:=0}
@@ -119,10 +122,10 @@ else
 fi
 
 # Multiplication factor to sleep less than whole seconds
-DEMSLEEP=.5
+DEMSLEEP=.2
 
 # DEMWAIT is expressed in seconds, but really * DEMSLEEP
-let DEMLOOP=2*DEMWAIT
+let DEMLOOP=5*DEMWAIT
 
 # RESTCONF protocol, eg http or https
 : ${RCPROTO:=http}

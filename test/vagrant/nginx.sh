@@ -84,8 +84,6 @@ cat<<'EOF' > $dir/startnginx.sh
    	  sudo sh -c ' echo 'nginx_enable="YES"' >> /etc/rc.conf'
         fi		
         sudo /usr/local/etc/rc.d/nginx restart
-    elif systemctl > /dev/null 2>&1 ; then
-       sudo systemctl start nginx
     else	 
 	sudo pkill nginx
         nginxbin=$(sudo which nginx)
