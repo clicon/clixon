@@ -55,6 +55,7 @@ Users may have to change how they access the system
 
 Developers may need to change their code
 
+* Auto-cli changed singature of `yang2cli()`.
 * Added by-ref parameter to `ys_cv_validate()` returning which sub-yang spec was validated in a union.
 * Changed first parameter from `int fd` to `FILE *f` in the following functions:
   * clixon_xml_parse_file(), clixon_json_parse_file(), yang_parse_file()
@@ -62,6 +63,8 @@ Developers may need to change their code
 
 ### Minor changes
 
+* Auto-cli: create generated CLI for sub-parts of a YANG spec
+  * Experimental, see `yang2cli_sub()`
 * Improved performance of parsing files as described in [Bytewise read() of files is slow #146](https://github.com/clicon/clixon/issues/146), thanks: @hjelmeland
 * Added new backend plugin: ca_pre-demon called if backend is daemonized just prior to forking.
 * Added XPATH functions `position`

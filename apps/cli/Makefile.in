@@ -74,7 +74,6 @@ APPL		= clixon_cli
 
 # Not accessible from plugin
 APPSRC		= cli_main.c
-APPSRC	       += cli_generate.c
 APPOBJ		= $(APPSRC:.c=.o)
 
 # Accessible from plugin
@@ -83,6 +82,7 @@ LIBSRC	       += cli_show.c
 LIBSRC	       += cli_handle.c
 LIBSRC	       += cli_plugin.c
 LIBSRC	       += cli_auto.c
+LIBSRC	       += cli_generate.c
 LIBOBJ		= $(LIBSRC:.c=.o)
 
 # Name of lib
@@ -118,7 +118,7 @@ install-lib: $(MYLIB)
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_cli.so
 	install -d -m 0755 $(DESTDIR)$(libdir)/clixon/plugins/cli
 
-install-include:	clixon_cli.h clixon_cli_api.h
+install-include:	clixon_cli.h clixon_cli_api.h cli_generate.h
 	install -d -m 0755 $(DESTDIR)$(includedir)/clixon
 	install -m 0644 $^ $(DESTDIR)$(includedir)/clixon
 

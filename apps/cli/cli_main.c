@@ -250,7 +250,9 @@ cli_interactive(clicon_handle h)
  * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the "tree reference"
  * syntax, ie @datamodel
  * @param[in]  h        Clixon handle
+ * @param[in]  state     Set to include state syntax
  * @param[in]  printgen Print CLI syntax generated from dbspec
+ * @param[in]  show_tree Is tree for show cli command
  * @retval     0        OK
  * @retval    -1        Error
  *
@@ -259,7 +261,6 @@ cli_interactive(clicon_handle h)
 static int
 autocli_tree(clicon_handle      h,
 	     char              *name,
-	     enum genmodel_type gt,
 	     int                state,
 	     int                printgen,
 	     int                show_tree)
@@ -275,7 +276,7 @@ autocli_tree(clicon_handle      h,
     }
     yspec = clicon_dbspec_yang(h);
     /* Generate tree (this is where the action is) */
-    if (yang2cli(h, yspec, gt, printgen, state, show_tree, pt) < 0)
+    if (yang2cli(h, yspec, printgen, state, show_tree, NULL, NULL, pt) < 0)
 	goto done;
     /* Append cligen tree and name it */
     if ((ph = cligen_ph_add(cli_cligen(h), name)) == NULL)
@@ -307,13 +308,11 @@ autocli_start(clicon_handle h,
     int                retval = -1;
     int                autocli_model = 0;
     cbuf              *show_treename = NULL, *treename = NULL;
-    enum genmodel_type gt;
 	
     /* If autocli disabled quit */
     if ((autocli_model = clicon_cli_genmodel(h)) == 0)
 	goto ok;
     /* Get the autocli type, ie HOW the cli is generated (could be much more here) */
-    gt = clicon_cli_genmodel_type(h);
     /* Create show_treename cbuf */
     if ((show_treename = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -325,21 +324,21 @@ autocli_start(clicon_handle h,
 	goto done;
     }
     /* The tree name is by default @datamodel but can be changed by option (why would one do that?) */
-	cprintf(treename, "%s", clicon_cli_model_treename(h));
-	if (autocli_tree(h, cbuf_get(treename), gt, 0, printgen, 0) < 0)
-	    goto done;
+    cprintf(treename, "%s", clicon_cli_model_treename(h));
+    if (autocli_tree(h, cbuf_get(treename), 0, printgen, 0) < 0)
+	goto done;
 
     /* The tree name is by default @datamodelshow but can be changed by option (why would one do that?) */
     cprintf(show_treename, "%s", clicon_cli_model_treename(h));
     cprintf(show_treename, "show");
-    if (autocli_tree(h, cbuf_get(show_treename), gt, 0, printgen, 1) < 0)
+    if (autocli_tree(h, cbuf_get(show_treename), 0, printgen, 1) < 0)
 	goto done;
 
-    /* Create a tree for config+state. This tree's name has appended "state" to @datamodel (XXX)
+    /* Create a tree for config+state. This tree's name has appended "state" to @datamodel
      */
     if (autocli_model > 1){
 	cprintf(treename, "state");
-	if (autocli_tree(h, cbuf_get(treename), gt, 1, printgen, 1) < 0)
+	if (autocli_tree(h, cbuf_get(treename), 1, printgen, 1) < 0)
 	    goto done;
     }
 
@@ -654,6 +653,7 @@ main(int    argc,
 	if (yang_spec_load_dir(h, str, yspec) < 0)
 	    goto done;
     }
+
     /* Load clixon lib yang module */
     if (yang_spec_parse_module(h, "clixon-lib", NULL, yspec) < 0)
 	goto done;

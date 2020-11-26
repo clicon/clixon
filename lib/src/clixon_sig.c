@@ -149,30 +149,35 @@ pidfile_get(char  *pidfile,
 }
 
 /*! Given a pid, kill that process
+
  *
  * @param[in] pid   Process id
  * @retval    0     Killed OK
- * @retval    -1    Could not kill. 
- * Maybe shouldk not belong to pidfile code,..
+ * @retval    -1    Could not kill.
+ * Maybe should not belong to pidfile code,..
  */
 int
 pidfile_zapold(pid_t pid)
 {
+    int retval = -1;
+
     clicon_log(LOG_NOTICE, "Killing old daemon with pid: %d", pid);
     killpg(pid, SIGTERM);
     kill(pid, SIGTERM);
     /* Need to sleep process properly and then check again */
-    if (usleep(100000) < 0){ 
-	clicon_err(OE_UNIX, errno, "usleep");
-	return -1;
+    if (usleep(100000) < 0){
+        clicon_err(OE_UNIX, errno, "usleep");
+        goto done;
     }
-    if ((kill (pid, 0)) != 0 && errno == ESRCH) /* Nothing there */
-	;
-    else{ /* problem: couldnt kill it */
-	clicon_err(OE_DAEMON, errno, "Killing old demon");
-	return -1;
+    if ((kill (pid, 0)) < 0){
+        if (errno != ESRCH){
+            clicon_err(OE_DAEMON, errno, "Killing old demon");
+            goto done;
+        }
     }
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Write a pid-file

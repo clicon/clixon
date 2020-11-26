@@ -105,6 +105,8 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
  * @param[in]  cvtype Type of the cligen variable
  * @param[in]  options 
  * @param[in]  fraction_digits
+ * @param[in]  yp0     Build the path of ys only to this level not root (optional)
+ * @param[in]  yp0path Use this path if stop at yp0 (not root)
  * @param[out] cb     The string where the result format string is inserted.
 
  * @see expand_dbvar  This is where the expand string is used
@@ -116,12 +118,14 @@ cli_expand_var_generate(clicon_handle h,
 			enum cv_type  cvtype,
 			int           options,
 			uint8_t       fraction_digits,
+			yang_stmt    *yp0,
+			char         *yp0_path,
 			cbuf         *cb)
 {
     int   retval = -1;
     char *api_path_fmt = NULL;
 
-    if (yang2api_path_fmt(ys, 1, &api_path_fmt) < 0)
+    if (yang2api_path_fmt(ys, 1, yp0, yp0_path, &api_path_fmt) < 0)
 	goto done;
     cprintf(cb, "|<%s:%s",  yang_argument_get(ys), 
 	    cv_type2str(cvtype));
@@ -140,6 +144,8 @@ cli_expand_var_generate(clicon_handle h,
 /*! Create callback with api_path format string as argument
  * @param[in]  h   clicon handle
  * @param[in]  ys  yang_stmt of the node at hand
+ * @param[in]  yp0     Build the path of ys only to this level not root (optional)
+ * @param[in]  yp0path Use this path if stop at yp0 (not root)
  * @param[out] cb  The string where the result format string is inserted.
  * @see cli_dbxml  This is where the xmlkeyfmt string is used
  * @see pt_callback_reference  in CLIgen where the actual callback overwrites the template
@@ -147,12 +153,14 @@ cli_expand_var_generate(clicon_handle h,
 static int
 cli_callback_generate(clicon_handle h, 
 		      yang_stmt    *ys, 
+		      yang_stmt    *yp0,
+		      char         *yp0_path,
 		      cbuf         *cb)
 {
     int        retval = -1;
     char      *api_path_fmt = NULL;
 
-    if (yang2api_path_fmt(ys, 0, &api_path_fmt) < 0)
+    if (yang2api_path_fmt(ys, 0, yp0, yp0_path, &api_path_fmt) < 0)
 	goto done;
     cprintf(cb, ",%s(\"%s\")", GENERATE_CALLBACK, 
 	    api_path_fmt);
@@ -161,6 +169,19 @@ cli_callback_generate(clicon_handle h,
     if (api_path_fmt)
 	free(api_path_fmt);
     return retval;
+}
+
+/*! Print cligen help string as ("<helpstring>")
+ * @param[in]  cb       CLIgen buf holding generated CLIspec
+ * @param[in]  helptext Help text
+ */
+static int
+yang2cli_helptext(cbuf *cb,
+		  char *helptext)
+{
+    if (helptext)
+	cprintf(cb, "(\"%s\")", helptext);
+    return 0;
 }
 
 /*! Generate identityref statements for CLI variables
@@ -195,8 +216,7 @@ yang2cli_var_identityref(yang_stmt *ys,
 	if (cvec_len(idrefvec) > 0){
 	    /* Add a wildchar string first -let validate take it for default prefix */
 	    cprintf(cb, ">");
-	    if (helptext)
-		cprintf(cb, "(\"%s\")", helptext);
+	    yang2cli_helptext(cb, helptext);
 	    cprintf(cb, "|<%s:%s choice:", yang_argument_get(ys), cvtypestr);
 	    yspec = ys_spec(ys);
 	    i = 0;
@@ -342,12 +362,13 @@ yang2cli_var_pattern(clicon_handle h,
 
 /* Forward */
 static int yang2cli_stmt(clicon_handle h, yang_stmt *ys, enum genmodel_type gt,
-			 int level, int state, int show_tree, cbuf *cb);
+			 int level, int state, int show_tree,
+			 yang_stmt *yp0, char *yp0_path, cbuf *cb);
 
 static int yang2cli_var_union(clicon_handle h, yang_stmt *ys, char *origtype,
 			      yang_stmt *ytype, char *helptext, cbuf *cb);
 
-/*! Generate CLI code for Yang leaf statement to CLIgen variable of specific type
+/*! Generate CLI code for Yang leaf state ment to CLIgen variable of specific type
  * Check for completion (of already existent values), ranges (eg range[min:max]) and
  * patterns, (eg regexp:"[0.9]*").
  * @param[in]  h        Clixon handle
@@ -431,8 +452,7 @@ yang2cli_var_sub(clicon_handle h,
 	    goto done;
     }
     cprintf(cb, ">");
-    if (helptext)
-	cprintf(cb, "(\"%s\")", helptext);
+    yang2cli_helptext(cb, helptext);
     if (type && strcmp(type, "identityref") == 0)
 	cprintf(cb, ")");
     retval = 0;
@@ -502,7 +522,7 @@ yang2cli_var_union_one(clicon_handle h,
  * @param[in]  origtype Name of original type in the call
  * @param[in]  ytype Yang resolved type (a union in this case)
  * @param[in]  helptext  CLI help text
- * @param[out]  cb    Buffer where cligen code is written
+ * @param[out] cb    Buffer where cligen code is written
  */
 static int
 yang2cli_var_union(clicon_handle h,
@@ -538,6 +558,8 @@ yang2cli_var_union(clicon_handle h,
  * @param[in]  h        Clixon handle
  * @param[in]  ys       Yang statement
  * @param[in]  helptext CLI help text
+ * @param[in]  yp0     Build the path of ys only to this level not root (optional)
+ * @param[in]  yp0path Use this path if stop at yp0 (not root)
  * @param[out] cb       Buffer where cligen code is written
 
  *
@@ -551,6 +573,8 @@ static int
 yang2cli_var(clicon_handle h,
 	     yang_stmt    *ys, 
 	     char         *helptext,
+	     yang_stmt    *yp0,
+	     char         *yp0_path,
 	     cbuf         *cb)
 {
     int           retval = -1;
@@ -588,10 +612,11 @@ yang2cli_var(clicon_handle h,
 	    goto done;
 	if (clicon_cli_genmodel_completion(h)){
 	    if (cli_expand_var_generate(h, ys, cvtype, 
-					options, fraction_digits, cb) < 0)
+					options, fraction_digits,
+					yp0, yp0_path, 
+					cb) < 0)
 		goto done;
-	    if (helptext)
-		cprintf(cb, "(\"%s\")", helptext);
+	    yang2cli_helptext(cb, helptext);
 	}
 	cprintf(cb, ")");
     }
@@ -611,10 +636,11 @@ yang2cli_var(clicon_handle h,
 	    goto done;
 	if (completionp){
 	    if (cli_expand_var_generate(h, ys, cvtype, 
-					options, fraction_digits, cb) < 0)
+					options, fraction_digits,
+					yp0, yp0_path, 
+					cb) < 0)
 		goto done;
-	    if (helptext)
-		cprintf(cb, "(\"%s\")", helptext);
+	    yang2cli_helptext(cb, helptext);
 	    cprintf(cb, ")");
 	}
     }
@@ -635,6 +661,8 @@ yang2cli_var(clicon_handle h,
  * @param[in]  callback  If set, include a "; cli_set()" callback, otherwise not
  * @param[in]  show_tree   Is tree for show cli command
  * @param[in]  key_leaf    Is leaf in a key in a list module
+ * @param[in]  yp0     Build the path of ys only to this level not root (optional)
+ * @param[in]  yp0path Use this path if stop at yp0 (not root)
  * @param[out] cb  Buffer where cligen code is written
  */
 static int
@@ -645,6 +673,8 @@ yang2cli_leaf(clicon_handle h,
 	      int           callback,
 	      int	    show_tree,
 	      int 	    key_leaf,
+	      yang_stmt    *yp0,
+	      char         *yp0_path,
 	      cbuf         *cb)
 {
     yang_stmt    *yd;  /* description */
@@ -664,22 +694,21 @@ yang2cli_leaf(clicon_handle h,
     cprintf(cb, "%*s", level*3, "");
     if (gt == GT_VARS|| gt == GT_ALL || gt == GT_HIDE){
 	cprintf(cb, "%s", yang_argument_get(ys));
-	if (helptext)
-	    cprintf(cb, "(\"%s\")", helptext);
+	yang2cli_helptext(cb, helptext);
 	cprintf(cb, " ");
 	if ((show_tree == 0) || (key_leaf == 1)) {
-	if (yang2cli_var(h, ys, helptext, cb) < 0)
-	    goto done;
+	    if (yang2cli_var(h, ys, helptext, yp0, yp0_path, cb) < 0)
+		goto done;
 	}
     }
     else
 	if ((show_tree == 0) || (key_leaf == 1)) {
-	if (yang2cli_var(h, ys, helptext, cb) < 0)
-	    goto done;
+	    if (yang2cli_var(h, ys, helptext, yp0, yp0_path, cb) < 0)
+		goto done;
 	}
 
     if (callback){
-	if (cli_callback_generate(h, ys, cb) < 0)
+	if (cli_callback_generate(h, ys, yp0, yp0_path, cb) < 0)
 	    goto done;
 	cprintf(cb, ";\n");
     }
@@ -698,6 +727,8 @@ yang2cli_leaf(clicon_handle h,
  * @param[in]  level Indentation level
  * @param[in]  state Include syntax for state not only config
  * @param[in]  show_tree Is tree for show cli command
+ * @param[in]  yp0     Build the path of ys only to this level not root (optional)
+ * @param[in]  yp0path Use this path if stop at yp0 (not root)
  * @param[out] cb  Buffer where cligen code is written
  */
 static int
@@ -707,6 +738,8 @@ yang2cli_container(clicon_handle h,
 		   int           level,
 		   int           state,
 		   int 	         show_tree,
+		   yang_stmt    *yp0,
+		   char         *yp0_path,
 		   cbuf         *cb)
 {
     yang_stmt    *yc;
@@ -729,16 +762,16 @@ yang2cli_container(clicon_handle h,
 	    }
 	    if ((s = strstr(helptext, "\n\n")) != NULL)
 		*s = '\0';
-	    cprintf(cb, "(\"%s\")", helptext);
+	    yang2cli_helptext(cb, helptext);
 	}
-	if (cli_callback_generate(h, ys, cb) < 0)
+	if (cli_callback_generate(h, ys, yp0, yp0_path, cb) < 0)
 	    goto done;
 	cprintf(cb, ";{\n");
     }
 
     yc = NULL;
     while ((yc = yn_each(ys, yc)) != NULL) 
-	if (yang2cli_stmt(h, yc, gt, level+1, state, show_tree, cb) < 0)
+	if (yang2cli_stmt(h, yc, gt, level+1, state, show_tree, yp0, yp0_path, cb) < 0)
 	   goto done;
     if (hide == 0)
 	cprintf(cb, "%*s}\n", level*3, "");
@@ -756,6 +789,8 @@ yang2cli_container(clicon_handle h,
  * @param[in]  level Indentation level
  * @param[in]  state Include syntax for state not only config
  * @param[in]  show_tree Is tree for show cli command
+ * @param[in]  yp0     Build the path of ys only to this level not root (optional)
+ * @param[in]  yp0path Use this path if stop at yp0 (not root)
  * @param[out] cb    Buffer where cligen code is written
  */
 static int
@@ -765,6 +800,8 @@ yang2cli_list(clicon_handle      h,
 	      int                level,
 	      int                state,
 	      int 		 show_tree,
+	      yang_stmt         *yp0,
+	      char              *yp0_path,
 	      cbuf              *cb)
 {
     yang_stmt    *yc;
@@ -786,7 +823,7 @@ yang2cli_list(clicon_handle      h,
 	}
 	if ((s = strstr(helptext, "\n\n")) != NULL)
 	    *s = '\0';
-	cprintf(cb, "(\"%s\")", helptext);
+	yang2cli_helptext(cb, helptext);
     }
     /* Loop over all key variables */
     cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
@@ -805,7 +842,7 @@ yang2cli_list(clicon_handle      h,
 	list_has_callback = cvec_next(cvk, cvi)?0:1;
 	if (show_tree == 1) {
 		if (list_has_callback) {
-			if (cli_callback_generate(h, ys, cb) < 0)
+			if (cli_callback_generate(h, ys, yp0, yp0_path, cb) < 0)
 				goto done;
 			cprintf(cb, ";\n");
 			cprintf(cb, "{\n");
@@ -814,7 +851,9 @@ yang2cli_list(clicon_handle      h,
 
 	if (yang2cli_leaf(h, yleaf,
 			  (gt==GT_VARS||gt==GT_HIDE)?GT_NONE:gt, level+1, 
-			  list_has_callback, show_tree, 1, cb) < 0)
+			  list_has_callback, show_tree, 1,
+			  yp0, yp0_path, 
+			  cb) < 0)
 	    goto done;
     }
 
@@ -832,7 +871,7 @@ yang2cli_list(clicon_handle      h,
 	}
 	if (cvi != NULL)
 	    continue;
-	if (yang2cli_stmt(h, yc, gt, level+1, state, show_tree, cb) < 0)
+	if (yang2cli_stmt(h, yc, gt, level+1, state, show_tree, yp0, yp0_path, cb) < 0)
 	    goto done;
     }
     cprintf(cb, "%*s}\n", level*3, "");
@@ -854,6 +893,8 @@ yang2cli_list(clicon_handle      h,
  * @param[in]  level Indentation level
  * @param[in]  state Include syntax for state not only config
  * @param[in]  show_tree Is tree for show cli command
+ * @param[in]  yp0     Build the path of ys only to this level not root (optional)
+ * @param[in]  yp0path Use this path if stop at yp0 (not root)
  * @param[out] cb    Buffer where cligen code is written
 @example
   choice interface-type {
@@ -871,6 +912,8 @@ yang2cli_choice(clicon_handle h,
 		int           level,
 		int           state,
 		int 	      show_tree,
+		yang_stmt    *yp0,
+		char         *yp0_path,
     		cbuf         *cb)
 {
     int           retval = -1;
@@ -880,7 +923,7 @@ yang2cli_choice(clicon_handle h,
     while ((yc = yn_each(ys, yc)) != NULL) {
 	switch (yang_keyword_get(yc)){
 	case Y_CASE:
-	    if (yang2cli_stmt(h, yc, gt, level+2, state, show_tree, cb) < 0)
+	    if (yang2cli_stmt(h, yc, gt, level+2, state, show_tree, yp0, yp0_path, cb) < 0)
 		goto done;
 	    break;
 	case Y_CONTAINER:
@@ -888,7 +931,7 @@ yang2cli_choice(clicon_handle h,
 	case Y_LEAF_LIST:
 	case Y_LIST:
 	default:
-	    if (yang2cli_stmt(h, yc, gt, level+1, state, show_tree, cb) < 0)
+	    if (yang2cli_stmt(h, yc, gt, level+1, state, show_tree, yp0, yp0_path, cb) < 0)
 		goto done;
 	    break;
 	}
@@ -905,6 +948,8 @@ yang2cli_choice(clicon_handle h,
  * @param[in]  level Indentation level
  * @param[in]  state Include syntax for state not only config
  * @param[in]  show_tree Is tree for show cli command
+ * @param[in]  yp0     Build the path of ys only to this level not root (optional)
+ * @param[in]  yp0path Use this path if stop at yp0 (not root)
  * @param[out] cb    Buffer where cligen code is written
  */
 static int
@@ -914,6 +959,8 @@ yang2cli_stmt(clicon_handle h,
 	      int           level, 
 	      int           state,
 	      int 	    show_tree,
+	      yang_stmt    *yp0,
+	      char         *yp0_path,
 	      cbuf         *cb)
 {
     yang_stmt    *yc;
@@ -922,20 +969,24 @@ yang2cli_stmt(clicon_handle h,
     if (state || yang_config(ys)){
 	switch (yang_keyword_get(ys)){
 	case Y_CONTAINER:
-	    if (yang2cli_container(h, ys, gt, level, state, show_tree, cb) < 0)
+	    if (yang2cli_container(h, ys, gt, level, state, show_tree,
+				   yp0, yp0_path, cb) < 0)
 		goto done;
 	    break;
 	case Y_LIST:
-	    if (yang2cli_list(h, ys, gt, level, state, show_tree, cb) < 0)
+	    if (yang2cli_list(h, ys, gt, level, state, show_tree,
+			      yp0, yp0_path, cb) < 0)
 		goto done;
 	    break;
 	case Y_CHOICE:
-	    if (yang2cli_choice(h, ys, gt, level, state, show_tree, cb) < 0)
+	    if (yang2cli_choice(h, ys, gt, level, state, show_tree,
+				yp0, yp0_path, cb) < 0)
 		goto done;
 	    break;
 	case Y_LEAF_LIST:
 	case Y_LEAF:
-	    if (yang2cli_leaf(h, ys, gt, level, 1, show_tree, 0, cb) < 0)
+	    if (yang2cli_leaf(h, ys, gt, level, 1, show_tree, 0,
+			      yp0, yp0_path, cb) < 0)
 		goto done;
 	    break;
 	case Y_CASE:
@@ -943,7 +994,8 @@ yang2cli_stmt(clicon_handle h,
 	case Y_MODULE:
 	    yc = NULL;
 	    while ((yc = yn_each(ys, yc)) != NULL)
-		if (yang2cli_stmt(h, yc, gt, level+1, state, show_tree, cb) < 0)
+		if (yang2cli_stmt(h, yc, gt, level+1, state, show_tree,
+				  yp0, yp0_path, cb) < 0)
 		    goto done;
 	    break;
 	default: /* skip */
@@ -956,40 +1008,47 @@ yang2cli_stmt(clicon_handle h,
 }
 
 /*! Generate CLI code for Yang specification
- * @param[in]  h        Clixon handle
- * @param[in]  yspec    Yang specification
- * @param[in]  gt       CLI Generate style
- * @param[in]  printgen Log generated CLIgen syntax
- * @param[in]  state    Also include state syntax
+ * @param[in]  h         Clixon handle
+ * @param[in]  yn        Create parse-tree from this yang node
+ * @param[in]  printgen  Log generated CLIgen syntax
+ * @param[in]  state     Set to include state syntax
  * @param[in]  show_tree Is tree for show cli command
- * @param[out] ptnew    CLIgen parse-tree
- *
- * Code generation styles:
- *    VARS: generate keywords for regular vars only not index
- *    ALL:  generate keywords for all variables including index
+ * @param[in]  yp0       Build the path of ys only to this level not root (optional)
+ * @param[in]  yp0path   Use this path if stop at yp0 (not root)
+ * @param[out] pt        CLIgen parse-tree (must be created on input)
+ * @retval     0         OK
+ * @retval    -1         Error
  */
 int
 yang2cli(clicon_handle      h, 
-	 yang_stmt         *yspec, 
-	 enum genmodel_type gt,
+	 yang_stmt         *yn, 
 	 int                printgen,
 	 int                state,
 	 int 		    show_tree,
-	 parse_tree        *ptnew)
+	 yang_stmt         *yp0,
+	 char              *yp0_path,
+	 parse_tree        *pt)
 {
-    cbuf           *cb = NULL;
-    int             retval = -1;
-    yang_stmt      *ymod = NULL;
-    cvec           *globals;       /* global variables from syntax */
+    int                retval = -1;
+    cbuf              *cb = NULL;
+    yang_stmt         *yc;
+    cvec              *globals;       /* global variables from syntax */
+    enum genmodel_type gt;
 
+    if (pt == NULL){
+	clicon_err(OE_YANG, EINVAL, "pt is NULL");
+	goto done;
+    }
+    gt = clicon_cli_genmodel_type(h);
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
     /* Traverse YANG, loop through all modules and generate CLI */
-    ymod = NULL;
-    while ((ymod = yn_each(yspec, ymod)) != NULL)
-	if (yang2cli_stmt(h, ymod, gt, 0, state, show_tree, cb) < 0)
+    yc = NULL;
+    while ((yc = yn_each(yn, yc)) != NULL)
+	if (yang2cli_stmt(h, yc, gt, 0, state, show_tree,
+			  yp0, yp0_path, cb) < 0)
 	    goto done;
     if (printgen)
 	clicon_log(LOG_NOTICE, "%s: Generated CLI spec:\n%s", __FUNCTION__, cbuf_get(cb));
@@ -1000,7 +1059,7 @@ yang2cli(clicon_handle      h,
 	goto done;
     /* load cli syntax */
     if (cligen_parse_str(cli_cligen(h), cbuf_get(cb), 
-			 "yang2cli", ptnew, globals) < 0)
+			 "yang2cli", pt, globals) < 0)
 	goto done;
     cvec_free(globals);
     /* Resolve the expand callback functions in the generated syntax.
@@ -1008,12 +1067,60 @@ yang2cli(clicon_handle      h,
      * handle=NULL for global namespace, this means expand callbacks must be in
      * CLICON namespace, not in a cli frontend plugin.
      */
-    if (cligen_expandv_str2fn(ptnew, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)     
+    if (cligen_expandv_str2fn(pt, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)     
 	goto done;
 
     retval = 0;
   done:
     if (cb)
 	cbuf_free(cb);
+    return retval;
+}
+
+/*! Generate CLI code for Yang specification
+ * @param[in]  h         Clixon handle
+ * @param[in]  api_path  API-path of sub-xml/yang
+ * @param[in]  name      Name of tree: use @<name> in clispec
+ * @param[in]  printgen  Log generated CLIgen syntax
+ * @param[in]  state     Also include state syntax
+ * @retval    -1         Error, with clicon_err called
+ * @retval     0         OK , with result in yres
+ */
+int
+yang2cli_sub(clicon_handle  h,
+	     char          *api_path,
+	     char          *name,
+	     int            printgen,
+	     int            state)
+{
+    int         retval = -1;
+    yang_stmt  *yspec;
+    yang_stmt  *yn = NULL;
+    pt_head    *ph;
+    parse_tree *pt = NULL;  /* cli parse tree */
+
+    /* Get yspec */
+    yspec = clicon_dbspec_yang(h);
+    if (api_path2xml(api_path, yspec, NULL, YC_DATANODE, 1, NULL, &yn, NULL) < 0)
+	goto done;
+    if (yn == NULL)
+	goto ok; /* not found */
+    /* Create empty parse-tree */
+    if ((pt = pt_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "pt_new");
+	goto done;
+    }
+    /* Generate tree from yangnode yn */
+    if (yang2cli(h, yn, printgen, state, 0, yn, api_path, pt) < 0)
+	goto done;
+    /* Add a new parse-tree header */
+    if ((ph = cligen_ph_add(cli_cligen(h), name)) == NULL)
+	goto done;
+    /* Add generated parse-tree to header */
+    if (cligen_ph_parsetree_set(ph, pt) < 0)
+	goto done;
+ ok:
+    retval = 0;
+ done:
     return retval;
 }
