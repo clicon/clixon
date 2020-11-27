@@ -45,9 +45,9 @@ CLICON_PROMPT="%U@%H %W> ";
 CLICON_PLUGIN="example_cli";
 
 # Autocli syntax tree operations
-edit @datamodel, cli_auto_edit("datamodel", "candidate");
-up, cli_auto_up("datamodel", "candidate");
-top, cli_auto_top("datamodel", "candidate");
+edit @datamodel, cli_auto_edit("datamodel");
+up, cli_auto_up("datamodel");
+top, cli_auto_top("datamodel");
 set @datamodel, cli_auto_set();
 merge @datamodel, cli_auto_merge();
 create @datamodel, cli_auto_create();
@@ -212,6 +212,15 @@ show config
 EOF
 new "set value 71"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table>" "<parameter><name>a</name><value>42</value></parameter><parameter><name>b</name><value>71</value></parameter>"
+
+cat <<EOF > $fin
+edit table parameter a
+top
+edit table parameter b
+show config
+EOF
+new "edit parameter b show"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table/parameter=b/>" "<name>b</name><value>71</value>" --not-- "<parameter>"
 
 cat <<EOF > $fin
 edit table parameter b

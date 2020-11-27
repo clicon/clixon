@@ -253,7 +253,7 @@ cli_dbxml(clicon_handle       h,
     cg_var    *cv;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "Requires one element to be xml key format string");
+	clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be xml key format string");
 	goto done;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -438,7 +438,7 @@ cli_debug_cli(clicon_handle h,
 
     if ((cv = cvec_find(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
-	    clicon_err(OE_PLUGIN, 0, "Requires either label var or single arg: 0|1");
+	    clicon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
 	    goto done;
 	}
 	cv = cvec_i(argv, 0);
@@ -469,7 +469,7 @@ cli_debug_backend(clicon_handle h,
 
     if ((cv = cvec_find(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
-	    clicon_err(OE_PLUGIN, 0, "Requires either label var or single arg: 0|1");
+	    clicon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
 	    goto done;
 	}
 	cv = cvec_i(argv, 0);
@@ -499,7 +499,7 @@ cli_debug_restconf(clicon_handle h,
 
     if ((cv = cvec_find(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
-	    clicon_err(OE_PLUGIN, 0, "Requires either label var or single arg: 0|1");
+	    clicon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
 	    goto done;
 	}
 	cv = cvec_i(argv, 0);
@@ -524,7 +524,7 @@ cli_set_mode(clicon_handle h,
     char   *str = NULL;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "Requires one element to be cli mode");
+	clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be cli mode");
 	goto done;
     }
     str = cv_string_get(cvec_i(argv, 0));
@@ -722,7 +722,7 @@ compare_dbs(clicon_handle h,
     int    astext;
 
     if (cvec_len(argv) > 1){
-	clicon_err(OE_PLUGIN, 0, "Requires 0 or 1 element. If given: astext flag 0|1");
+	clicon_err(OE_PLUGIN, EINVAL, "Requires 0 or 1 element. If given: astext flag 0|1");
 	goto done;
     }
     if (cvec_len(argv))
@@ -785,9 +785,9 @@ load_config_file(clicon_handle h,
 
     if (cvec_len(argv) != 2){
 	if (cvec_len(argv)==1)
-	    clicon_err(OE_PLUGIN, 0, "Got single argument:\"%s\". Expected \"<varname>,<op>\"", cv_string_get(cvec_i(argv,0)));
+	    clicon_err(OE_PLUGIN, EINVAL, "Got single argument:\"%s\". Expected \"<varname>,<op>\"", cv_string_get(cvec_i(argv,0)));
 	else
-	    clicon_err(OE_PLUGIN, 0, "Got %d arguments. Expected: <varname>,<op>", cvec_len(argv));
+	    clicon_err(OE_PLUGIN, EINVAL, "Got %d arguments. Expected: <varname>,<op>", cvec_len(argv));
 	goto done;
     }
     varstr = cv_string_get(cvec_i(argv, 0));
@@ -874,10 +874,10 @@ save_config_file(clicon_handle h,
 
     if (cvec_len(argv) != 2){
 	if (cvec_len(argv)==1)
-	    clicon_err(OE_PLUGIN, 0, "Got single argument:\"%s\". Expected \"<dbname>,<varname>\"",
+	    clicon_err(OE_PLUGIN, EINVAL, "Got single argument:\"%s\". Expected \"<dbname>,<varname>\"",
 		       cv_string_get(cvec_i(argv,0)));
 	else
-	    clicon_err(OE_PLUGIN, 0, " Got %d arguments. Expected: <dbname>,<varname>",
+	    clicon_err(OE_PLUGIN, EINVAL, " Got %d arguments. Expected: <dbname>,<varname>",
 		       cvec_len(argv));
 
 	goto done;
@@ -938,7 +938,7 @@ delete_all(clicon_handle h,
     int              retval = -1;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "Requires one element: dbname");
+	clicon_err(OE_PLUGIN, EINVAL, "Requires one element: dbname");
 	goto done;
     }
     dbstr = cv_string_get(cvec_i(argv, 0));
@@ -1070,7 +1070,7 @@ cli_notify(clicon_handle h,
     enum format_enum format = FORMAT_TEXT;
 
     if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
-	clicon_err(OE_PLUGIN, 0, "Requires arguments: <logstream> <status> [<format>]");
+	clicon_err(OE_PLUGIN, EINVAL, "Requires arguments: <logstream> <status> [<format>]");
 	goto done;
     }
     stream = cv_string_get(cvec_i(argv, 0));
@@ -1112,7 +1112,7 @@ cli_lock(clicon_handle h,
     int              retval = -1;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "Requires arguments: <db>");
+	clicon_err(OE_PLUGIN, EINVAL, "Requires arguments: <db>");
 	goto done;
     }
     db = cv_string_get(cvec_i(argv, 0));
@@ -1142,7 +1142,7 @@ cli_unlock(clicon_handle h,
     int              retval = -1;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "Requires arguments: <db>");
+	clicon_err(OE_PLUGIN, EINVAL, "Requires arguments: <db>");
 	goto done;
     }
     db = cv_string_get(cvec_i(argv, 0));
@@ -1203,7 +1203,7 @@ cli_copy_config(clicon_handle h,
     cvec        *nsc = NULL;
 
     if (cvec_len(argv) != 6){
-	clicon_err(OE_PLUGIN, 0, "Requires 6 elements: <db> <xpath> <namespace> <keyname> <from> <to>");
+	clicon_err(OE_PLUGIN, EINVAL, "Requires 6 elements: <db> <xpath> <namespace> <keyname> <from> <to>");
 	goto done;
     }
     /* First argv argument: Database */

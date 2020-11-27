@@ -132,24 +132,10 @@ example_client_rpc(clicon_handle h,
     return retval;
 }
 
-/* Plugin start 
- * Example on creating a generated tree from a sub-part of a yang spec.
- * which can then be used in a clispec as: @datamodelexample.
- * @see test_cli_gen_sub.sh
- * @note still experimental
- */
-int
-example_start(clicon_handle h)
-{
-    if (yang2cli_sub(h, "/example2:table/parameter=abc", "datamodelexample", 1, 0) < 0)
-	return -1;
-    return 0;
-}
-
 static clixon_plugin_api api = {
     "example",          /* name */
     clixon_plugin_init, /* init */
-    example_start,      /* start */
+    NULL,               /* start */
     NULL,               /* exit */
     .ca_prompt=NULL,    /* cli_prompthook_t */
     .ca_suspend=NULL,   /* cligen_susp_cb_t */

@@ -134,7 +134,7 @@ clicon_data_del(clicon_handle h,
     return clicon_hash_del(cdat, (char*)name);
 }
 
-/*! Get generic cligen varaibel vector (cvv) on the form <name>=<val> where <val> is cvv
+/*! Get generic cligen variable vector (cvv) on the form <name>=<val> where <val> is cvv
  *
  * @param[in]  h     Clicon handle
  * @param[in]  name  Data name

@@ -287,8 +287,6 @@ xml_yang_root(cxobj  *x,
  *   path: /modname:a/b/%s/d
  * @param[in]  ys      Yang statement
  * @param[in]  inclkey If set include key leaf (eg last leaf d in ex)
- * @param[in]  yp0     Build the path of ys only to this level not root (optional)
- * @param[in]  yp0path Use this path if stop at yp0 (not root)
  * @param[out] cb      api_path_fmt,
  * @retval     0    OK
  * @retval    -1    Error
@@ -297,8 +295,6 @@ xml_yang_root(cxobj  *x,
 static int
 yang2api_path_fmt_1(yang_stmt *ys, 
 		    int        inclkey,
-		    yang_stmt *yp0,
-		    char      *yp0_path,
 		    cbuf      *cb)
 {
     yang_stmt *yp; /* parent */
@@ -312,14 +308,11 @@ yang2api_path_fmt_1(yang_stmt *ys,
 	clicon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
 	goto done;
     }
-    if (yp == yp0){ /* Skip building path to root if match, use given path */
-	cprintf(cb, "%s/", yp0_path);
-    }
-    else if (yp != NULL && /* XXX rm */
+    if (yp != NULL && /* XXX rm */
 	yang_keyword_get(yp) != Y_MODULE && 
 	yang_keyword_get(yp) != Y_SUBMODULE){
 
-	if (yang2api_path_fmt_1((yang_stmt *)yp, 1, yp0, yp0_path, cb) < 0) /* recursive call */
+	if (yang2api_path_fmt_1((yang_stmt *)yp, 1, cb) < 0) /* recursive call */
 	    goto done;
 	if (yang_keyword_get(yp) != Y_CHOICE && yang_keyword_get(yp) != Y_CASE){
 #if 0
@@ -398,8 +391,6 @@ yang2api_path_fmt_1(yang_stmt *ys,
 int
 yang2api_path_fmt(yang_stmt   *ys, 
 		  int          inclkey,
-		    yang_stmt *yp0,
-		    char      *yp0_path,
 		  char       **api_path_fmt)
 {
     int   retval = -1;
@@ -409,7 +400,7 @@ yang2api_path_fmt(yang_stmt   *ys,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    if (yang2api_path_fmt_1(ys, inclkey, yp0, yp0_path, cb) < 0)
+    if (yang2api_path_fmt_1(ys, inclkey, cb) < 0)
 	goto done;
     if ((*api_path_fmt = strdup(cbuf_get(cb))) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
@@ -433,6 +424,8 @@ yang2api_path_fmt(yang_stmt   *ys,
  * @param[in]  api_path_fmt  XML key format, eg /aaa/%s/name
  * @param[in]  cvv           cligen variable vector, one for every wildchar in api_path_fmt
  * @param[out] api_path      api_path, eg /aaa/17. Free after use
+ * @retval     0             OK
+ * @retval     -1            Error
  * @note first and last elements of cvv are not used,..
  * @see api_path_fmt2xpath
  * @example
@@ -445,15 +438,15 @@ yang2api_path_fmt(yang_stmt   *ys,
  *  api_path:     /interfaces/interface=e0/name
  * @example
  *  api_path_fmt: /subif-entry=%s,%s/subid
- *  cvv:          foo
- *  api_path:     /subif-entry=foo/subid
+ *  cvv:          foo, bar
+ *  api_path:     /subif-entry=foo,bar/subid
  *
  * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
  */
 int
-api_path_fmt2api_path(char  *api_path_fmt, 
-		      cvec  *cvv, 
-		      char **api_path)
+api_path_fmt2api_path(const char *api_path_fmt, 
+		      cvec       *cvv, 
+		      char      **api_path)
 {
     int   retval = -1;
     char  c;

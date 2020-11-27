@@ -276,7 +276,7 @@ autocli_tree(clicon_handle      h,
     }
     yspec = clicon_dbspec_yang(h);
     /* Generate tree (this is where the action is) */
-    if (yang2cli(h, yspec, printgen, state, show_tree, NULL, NULL, pt) < 0)
+    if (yang2cli(h, yspec, printgen, state, show_tree, pt) < 0)
 	goto done;
     /* Append cligen tree and name it */
     if ((ph = cligen_ph_add(cli_cligen(h), name)) == NULL)

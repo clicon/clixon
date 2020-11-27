@@ -141,5 +141,6 @@ int cli_auto_set(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_auto_merge(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_auto_create(clicon_handle h, cvec *cvv,	cvec *argv);
 int cli_auto_del(clicon_handle h, cvec *cvv, cvec *argv);
+int cli_auto_sub_enter(clicon_handle h, cvec *cvv, cvec *argv);
 
 #endif /* _CLIXON_CLI_API_H_ */

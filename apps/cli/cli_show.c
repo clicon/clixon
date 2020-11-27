@@ -123,7 +123,7 @@ expand_dbvar(void   *h,
     int              ret;
     
     if (argv == NULL || cvec_len(argv) != 2){
-	clicon_err(OE_PLUGIN, 0, "requires arguments: <db> <xmlkeyfmt>");
+	clicon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <xmlkeyfmt>");
 	goto done;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -451,7 +451,7 @@ cli_show_config1(clicon_handle h,
     char            *prefix = NULL;
     
     if (cvec_len(argv) < 3 || cvec_len(argv) > 5){
-	clicon_err(OE_PLUGIN, 0, "Got %d arguments. Expected: <dbname>,<format>,<xpath>[,<namespace>, [<prefix>]]", cvec_len(argv));
+	clicon_err(OE_PLUGIN, EINVAL, "Got %d arguments. Expected: <dbname>,<format>,<xpath>[,<namespace>, [<prefix>]]", cvec_len(argv));
 
 	goto done;
     }
@@ -618,7 +618,7 @@ show_conf_xpath(clicon_handle h,
     cvec            *nsc = NULL;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, 0, "Requires one element to be <dbname>");
+	clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be <dbname>");
 	goto done;
     }
     str = cv_string_get(cvec_i(argv, 0));
@@ -713,7 +713,7 @@ cli_show_auto1(clicon_handle h,
     int		     i = 0;
 
     if (cvec_len(argv) < 3 || cvec_len(argv) > 4){
-	clicon_err(OE_PLUGIN, 0, "Usage: <api-path-fmt>* <database> <format> <prefix>. (*) generated.");
+	clicon_err(OE_PLUGIN, EINVAL, "Usage: <api-path-fmt>* <database> <format> <prefix>. (*) generated.");
 	goto done;
     }
     /* First argv argument: API_path format */
