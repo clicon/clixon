@@ -63,6 +63,8 @@ Developers may need to change their code
 
 ### Minor changes
 
+* Change comment character to be active anywhere to beginning of _word_ only.
+  * See [Change CLIgen comments](https://github.com/clicon/cligen/issues/55)
 * Improved performance of parsing files as described in [Bytewise read() of files is slow #146](https://github.com/clicon/clixon/issues/146), thanks: @hjelmeland
 * Added new backend plugin: ca_pre-demon called if backend is daemonized just prior to forking.
 * Added XPATH functions `position`

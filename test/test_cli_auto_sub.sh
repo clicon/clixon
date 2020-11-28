@@ -24,6 +24,7 @@ fi
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
@@ -35,7 +36,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_GENMODEL_TYPE>VARS</CLICON_CLI_GENMODEL_TYPE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
 </clixon-config>
 EOF
@@ -58,6 +59,9 @@ module $APPNAME {
 	leaf i{
 	  type string;
 	}
+	leaf iv{
+          type string;
+        }
       }
     }
   }
@@ -66,13 +70,14 @@ EOF
 
 cat <<EOF > $clidir/ex.cli
 CLICON_MODE="example";
-CLICON_PROMPT="%U@%H> ";
+CLICON_PROMPT="%U@%H %W> ";
 
 # Manual command form where a sub-mode is created from @datamodel
 # It gives: cvv eg:
 # 0 : cmd = parameter 123
 # 1 : string = "123"
-enter <string>, cli_auto_sub_enter("datamodel", "/example:table/parameter=%s/index=%s/", "x");
+enter0 <string>, cli_auto_sub_enter("datamodel", "/example:table/parameter=%s/");
+enter1 <string>, cli_auto_sub_enter("datamodel", "/example:table/parameter=%s/index=%s/", "p1");
 leave, cli_auto_top("datamodel", "candidate");
 
 # Autocli syntax tree operations
@@ -87,8 +92,25 @@ delete("Delete a configuration item") {
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 show("Show a particular state of the system"){
-    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);
+    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
+      xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", false, false);
 }
+}
+EOF
+
+cat <<EOF > $dir/startup_db
+<config>
+  <table xmlns="urn:example:clixon">
+    <parameter>
+      <name>p1</name>
+      <value>42</value>
+      <index>
+        <i>i1</i>
+        <iv>abc</iv>
+      </index>
+    </parameter>
+  </table>
+</config>
 EOF
 
 new "test params: -f $cfg"
@@ -98,21 +120,37 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
-    new "start backend -s init -f $cfg"
-    start_backend -s init -f $cfg
+    new "start backend -s startup -f $cfg"
+    start_backend -s startup -f $cfg
 
     new "waiting"
     wait_backend
 fi
 
 cat <<EOF > $fin
-enter a
+enter0 p1 # table/parameter=p1
+show config xml
 leave
 EOF
-new "enter leave"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 'enter a' 'leave' 
+new "enter; show config; leave"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 'enter0 p1' 'leave' '<name>p1</name><value>42</value><index><i>i1</i><iv>abc</iv></index>' --not-- '<table>' '<parameter>'
 
-# XXX much more
+cat <<EOF > $fin
+enter0 p1 # table/parameter=p1
+leave
+show config xml
+EOF
+new "enter; leave; show config"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 'enter0 p1' 'leave' '<table xmlns="urn:example:clixon"><parameter><name>p1</name><value>42</value><index><i>i1</i><iv>abc</iv></index></parameter></table>'
+
+cat <<EOF > $fin
+enter0 p1 # table/parameter=p1
+set  set index i2 iv def
+leave
+show config xml
+EOF
+new "set p1 i2"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>p1</name><value>42</value><index><i>i1</i><iv>abc</iv></index></parameter></table>'
 
 new "Kill backend"
 # Check if premature kill

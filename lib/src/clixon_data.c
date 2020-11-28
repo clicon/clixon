@@ -159,7 +159,7 @@ clicon_data_cvec_get(clicon_handle h,
     return NULL;
 }
 
-/*! Set generic cligen varaibel vector (cvv) on the form <name>=<val> where <val> is cvv
+/*! Set generic cligen variable vector (cvv) on the form <name>=<val> where <val> is cvv
  * @param[in]  h     Clicon handle
  * @param[in]  name  Name
  * @param[in]  cvv   CLIgen variable vector (cvv) (malloced)
@@ -182,7 +182,7 @@ clicon_data_cvec_set(clicon_handle h,
     return 0;
 }
 
-/*! Delete generic cligen varaibel vector (cvv)
+/*! Delete generic cligen variable vector (cvv)
  * @param[in]  h     Clicon handle
  * @param[in]  name  Name
  */

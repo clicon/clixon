@@ -57,7 +57,7 @@ validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
 show("Show a particular state of the system"){
-    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "xml", false, false);{
+    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
 	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", false, false);
 	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", false, false, "set ");
 	    netconf("Show configuration as netconf edit-config operation"), cli_auto_show("datamodel", "candidate", "netconf", false, false);
@@ -105,25 +105,25 @@ fi
 
 # First go down in structure and show config
 new "show top tree"
-expectpart "$(echo "show config" | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
+expectpart "$(echo "show config xml" | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
 
 cat <<EOF > $fin
 up
-show config
+show config xml
 EOF
 new "up show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
 
 cat <<EOF > $fin
 edit table
-show config
+show config xml
 EOF
 new "edit table; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table>" "<parameter><name>a</name><value>42</value></parameter>$" --not-- '<table xmlns="urn:example:clixon">'
 
 cat <<EOF > $fin
 edit table parameter a
-show config
+show config xml
 EOF
 new "edit table parameter a; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table/parameter=a/>" "<name>a</name><value>42</value>" --not-- '<table xmlns="urn:example:clixon">' "<parameter>"
@@ -131,14 +131,14 @@ expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table/par
 cat <<EOF > $fin
 edit table
 edit parameter a
-show config
+show config xml
 EOF
 new "edit table; edit parameter a; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<name>a</name><value>42</value>" --not-- '<table xmlns="urn:example:clixon">' "<parameter>"
 
 cat <<EOF > $fin
 edit table parameter a value 42
-show config
+show config xml
 EOF
 new "edit table parameter a value 42; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 --not-- '<table xmlns="urn:example:clixon">' "<parameter>" "<name>a</name>" "<value>42</value>"
@@ -147,7 +147,7 @@ expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 --not-- '<table xmlns="urn
 cat <<EOF > $fin
 edit table parameter a value 42
 top
-show config
+show config xml
 EOF
 new "edit table parameter a value 42; top; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
@@ -155,7 +155,7 @@ expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example
 cat <<EOF > $fin
 edit table parameter a
 top
-show config
+show config xml
 EOF
 new "edit table parameter a; top; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
@@ -165,7 +165,7 @@ expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example
 cat <<EOF > $fin
 edit table
 up
-show config
+show config xml
 EOF
 new "edit table; up; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
@@ -173,7 +173,7 @@ expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example
 cat <<EOF > $fin
 edit table parameter a
 up
-show config
+show config xml
 EOF
 new "edit table parameter a; up; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table>" "<parameter><name>a</name><value>42</value></parameter>$" --not-- '<table xmlns="urn:example:clixon">'
@@ -182,7 +182,7 @@ cat <<EOF > $fin
 edit table parameter a
 up
 up
-show config
+show config xml
 EOF
 new "edit table parameter a; up up; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
@@ -191,7 +191,7 @@ cat <<EOF > $fin
 edit table parameter a
 up
 edit parameter a
-show config
+show config xml
 EOF
 new "edit table parameter a; up; edit parameter a; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table/parameter=a/>" "<name>a</name><value>42</value>" --not-- '<table xmlns="urn:example:clixon">' "<parameter>"
@@ -199,7 +199,7 @@ expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table/par
 # Create new field b, and remove it
 cat <<EOF > $fin
 edit table parameter b
-show config
+show config xml
 EOF
 new "edit table parameter b; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table/parameter=b/>" --not-- "<name>a</name><value>42</value>"  '<table xmlns="urn:example:clixon">' "<parameter>"
@@ -208,7 +208,7 @@ cat <<EOF > $fin
 edit table parameter b
 set value 71
 up
-show config
+show config xml
 EOF
 new "set value 71"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table>" "<parameter><name>a</name><value>42</value></parameter><parameter><name>b</name><value>71</value></parameter>"
@@ -217,7 +217,7 @@ cat <<EOF > $fin
 edit table parameter a
 top
 edit table parameter b
-show config
+show config xml
 EOF
 new "edit parameter b show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table/parameter=b/>" "<name>b</name><value>71</value>" --not-- "<parameter>"
@@ -225,7 +225,7 @@ expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table/par
 cat <<EOF > $fin
 edit table parameter b
 delete value 17
-show config
+show config xml
 EOF
 new "delete value 71"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<name>b</name>" --not-- "<value>71</value>"
@@ -234,7 +234,7 @@ cat <<EOF > $fin
 edit table
 delete parameter b
 up
-show config
+show config xml
 EOF
 new "delete parameter b"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'

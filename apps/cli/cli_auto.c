@@ -289,8 +289,7 @@ cli_auto_top(clicon_handle h,
     cligen_ph_workpoint_set(ph, NULL);
     /* Store this as edit-mode */
     clicon_data_set(h, "cli-edit-mode", "");
-    if (clicon_data_cvec_get(h, "cli-edit-cvv") != NULL)
-	clicon_data_del(h, "cli-edit-cvv");
+    clicon_data_cvec_del(h, "cli-edit-cvv");
     retval = 0;
  done:
     return retval;
@@ -617,11 +616,12 @@ cli_auto_sub_enter(clicon_handle h,
 		   cvec         *cvv,
 		   cvec         *argv)
 {
-    int          retval = -1;
-    char        *api_path_fmt;    /* Contains wildcards as %.. */
-    char        *api_path = NULL;
+    int           retval = -1;
+    char         *api_path_fmt;    /* Contains wildcards as %.. */
+    char         *api_path = NULL;
     char         *treename;
     cvec         *cvv1 = NULL;
+    cvec         *cvv2 = NULL;
     int           i;
     cg_var       *cv = NULL;
     pt_head      *ph;
@@ -662,23 +662,28 @@ cli_auto_sub_enter(clicon_handle h,
     }
     if (api_path_fmt2api_path(api_path_fmt, cvv1, &api_path) < 0)
 	goto done;
-    /* Set the mode as a static variable to this command */
+    /* Assign the variables */
+    if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv1)) == NULL)
+	goto done;
+    /* Store this as edit-mode */
     if (clicon_data_set(h, "cli-edit-mode", api_path) < 0)
 	goto done;
-    /* Assign the variables */
-    if (cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv1) == NULL)
+    if (clicon_data_cvec_set(h, "cli-edit-cvv", cvv2) < 0)
 	goto done;
     /* Find current cligen tree */
     if ((ph = cligen_ph_find(cli_cligen(h), treename)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
+	clicon_err(OE_PLUGIN, ENOENT, "No such parsetree header: %s", treename);
 	goto done;
     }
     /* Find the point in the generated clispec tree where workpoint should be set */
     fa.fa_str = api_path_fmt;
     if (pt_apply(cligen_ph_parsetree_get(ph), cli_auto_findpt, &fa) < 0)
 	goto done;
-    if (fa.fa_co)
-	cligen_ph_workpoint_set(ph, fa.fa_co);
+    if (fa.fa_co == NULL){
+	clicon_err(OE_PLUGIN, ENOENT, "No such cligen object found %s", api_path);
+	goto done;
+    }
+    cligen_ph_workpoint_set(ph, fa.fa_co);
     retval = 0;
  done:
     if (api_path)
