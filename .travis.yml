@@ -8,6 +8,6 @@ branches:
 script:
 - ./configure --with-restconf=fcgi && make && sudo make install && (cd example; make; sudo make install) && (cd util; make; sudo make install) && (cd test; make all)
 before_script:
-- sudo apt install -y libfcgi-dev
-- sudo apt install -y nginx
-- - ./test/travis/before_script.sh
+  - sudo apt-get install -y libfcgi-dev
+  - sudo apt-get install -y nginx
+  - ./test/travis/before_script.sh
