@@ -41,7 +41,11 @@ if [ -f ./config.sh ]; then
     fi
 fi
 
-: ${SKIPLIST:=false}
+# Check sanity between --with-restconf setting and if nginx is started by systemd or not
+# This check is optional because some installs, such as vagrant make a non-systemd/direct
+# start
+: ${NGINXCHECK:=false}
+
 # Sanity nginx running on systemd platforms
 if $NGINXCHECK; then
     if systemctl > /dev/null 2>&1 ; then
