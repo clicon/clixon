@@ -5,15 +5,8 @@
 git clone https://github.com/clicon/cligen.git
 (cd cligen && ./configure && make && sudo make install)
 
-# clixon utilities
-sudo apt install -y libcurl4-openssl-dev
-sudo apt install -y g++
-
 # This is for nginx/restconf
 wwwuser=www-data
-apt-get install -y libfcgi-dev
-sudo useradd -M $wwwuser
-sudo apt install -y nginx
 
 # Nginx conf file
 cat<<EOF > /etc/nginx/nginx.conf
@@ -64,6 +57,6 @@ sudo nginx -c /etc/nginx/nginx.conf
 
 # Start clixon
 sudo useradd -M -U clicon;
-sudo usermod -a -G clicon vagrant; # start clixon tests as this users
+sudo usermod -a -G clicon $(whoami); # start clixon tests as this users
 sudo usermod -a -G clicon $wwwuser;
 
