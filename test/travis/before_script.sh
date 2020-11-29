@@ -4,3 +4,66 @@
 # Note travis builds and installs, then starts a clixon container where all tests are run from.
 git clone https://github.com/clicon/cligen.git
 (cd cligen && ./configure && make && sudo make install)
+
+# clixon utilities
+sudo apt install -y libcurl4-openssl-dev
+sudo apt install -y g++
+
+# This is for nginx/restconf
+wwwuser=www-data
+apt-get install -y libfcgi-dev
+sudo useradd -M $wwwuser
+sudo apt install -y nginx
+
+# Nginx conf file
+cat<<EOF > /etc/nginx/nginx.conf
+#
+user $wwwuser;
+error_log  /var/log/nginx/error.log;
+worker_processes  1;
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    #access_log  logs/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    #keepalive_timeout  0;
+    keepalive_timeout  65;
+
+    #gzip  on;
+  server {
+        listen 80 default_server;
+        listen localhost:80 default_server;
+        listen [::]:80 default_server;
+	server_name localhost;
+	server_name _;
+      #:well-known is in root, otherwise restconf would be ok
+	location / {
+	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+	    include fastcgi_params;
+        }
+	location /streams {
+	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+	    include fastcgi_params;
+ 	    proxy_http_version 1.1;
+	    proxy_set_header Connection "";
+        }
+  }
+}
+EOF
+
+sudo pkill nginx
+sudo nginx -c /etc/nginx/nginx.conf
+
+# Start clixon
+sudo useradd -M -U clicon;
+sudo usermod -a -G clicon vagrant; # start clixon tests as this users
+sudo usermod -a -G clicon $wwwuser;
+
