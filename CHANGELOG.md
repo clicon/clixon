@@ -63,6 +63,7 @@ Developers may need to change their code
 
 ### Minor changes
 
+* Support for building static lib: `LINKAGE=static configure`
 * Change comment character to be active anywhere to beginning of _word_ only.
   * See [Change CLIgen comments](https://github.com/clicon/cligen/issues/55)
 * Improved performance of parsing files as described in [Bytewise read() of files is slow #146](https://github.com/clicon/clixon/issues/146), thanks: @hjelmeland

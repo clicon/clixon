@@ -43,6 +43,7 @@ AC_INIT(lib/clixon/clixon.h.in)
 # Default CFLAGS and INSTALLFLAGS unless set by environment
 : ${CFLAGS="-O2 -Wall"}
 : ${INSTALLFLAGS="-s"}
+: ${LINKAGE=dynamic}
 
 # where autotool scripts are: install-sh, config.sub, config.guess
 AC_CONFIG_AUX_DIR(aux)
@@ -93,6 +94,7 @@ AC_SUBST(INSTALLFLAGS)
 AC_SUBST(CLIXON_DEFAULT_CONFIG)
 AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
+AC_SUBST(LINKAGE)
 AC_SUBST(with_restconf) # Set to evhtp or fcgi -> compile apps/restconf
 AC_SUBST(with_libxml2)  
 AC_SUBST(enable_optyangs) 

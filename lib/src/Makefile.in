@@ -46,15 +46,19 @@ localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 HOST_VENDOR     = @host_vendor@
 
-SH_SUFFIX	= @SH_SUFFIX@
-
 CLIXON_VERSION  = @CLIXON_VERSION@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 VPATH       	= @srcdir@
 CC		= @CC@
-CFLAGS  	= -fPIC @CFLAGS@
+LINKAGE         = @LINKAGE@
+ifeq ($(LINKAGE),dynamic)
+	CFLAGS  	= -fPIC @CFLAGS@
+else
+	CFLAGS		= @CFLAGS@
+endif
+SH_SUFFIX	= @SH_SUFFIX@
 INSTALL		= @INSTALL@
 INSTALL_LIB	= @INSTALL@
 INSTALLFLAGS  	= @INSTALLFLAGS@
@@ -97,9 +101,17 @@ GENOBJS  = $(GENSRC:.c=.o)
 # Linker-name: libclixon.so
 # so-name: libclixon.so.2
 # real-name: libclixon.so.2.0
-MYLIB        = libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
-MYLIBSO      = libclixon$(SH_SUFFIX).$(CLIXON_MAJOR)
-MYLIBLINK    = libclixon$(SH_SUFFIX)
+MYNAME	     = clixon
+MYLIBDYNAMIC = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+MYLIBSO      = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR)
+MYLIBLINK    = lib$(MYNAME)$(SH_SUFFIX)
+MYLIBSTATIC  = lib$(MYNAME).a
+
+ifeq ($(LINKAGE),dynamic)
+	MYLIB        = $(MYLIBDYNAMIC)
+else
+	MYLIB        = $(MYLIBSTATIC)
+endif
 
 all:	 $(MYLIB) $(MYLIBLINK)
 
@@ -225,19 +237,18 @@ build.c:
 	date +"const char CLIXON_BUILDSTR[$(DATELEN)]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; > build.c;
 	echo "const char CLIXON_VERSION[64]=\"$(CLIXON_VERSION)\""\; >> build.c;
 
-$(MYLIB) : $(GENOBJS) $(OBJS) 
+$(MYLIBDYNAMIC) : $(GENOBJS) $(OBJS) 
 ifeq ($(HOST_VENDOR),apple)
 	$(CC) $(LDFLAGS) -shared -o $@ $(GENOBJS) $(OBJS) $(LIBS) -undefined dynamic_lookup -o $@
 else
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(GENOBJS) $(OBJS) $(LIBS) -Wl,-soname=$(MYLIBSO)
 endif
 
-# link-name is needed for application linking, eg for clixon_cli and clixon_config
+# link-name is needed for application linking, eg for clixon_backend/clixon_cli
 $(MYLIBLINK) : $(MYLIB)
-#	ln -sf $(MYLIB) $@
 
-#	ar cru $@ $^
-#	ranlib $@
+$(MYLIBSTATIC) :  $(GENOBJS) $(OBJS) 
+	ar -crs $@  $(GENOBJS) $(OBJS)
 
 install: install-lib
 
@@ -246,8 +257,10 @@ install-include:
 install-lib: $(MYLIB)
 	$(INSTALL) -m 0755 -d $(DESTDIR)$(libdir)
 	$(INSTALL_LIB) -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
+ifeq ($(LINKAGE),dynamic)
 	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon.so.3
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon.so
+endif
 
 uninstall: 
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*

@@ -38,6 +38,13 @@ srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
+LINKAGE         = @LINKAGE@
+ifeq ($(LINKAGE),dynamic)
+	CPPFLAGS  	= @CPPFLAGS@ -fPIC
+else
+	CPPFLAGS  	= @CPPFLAGS@
+endif
+SH_SUFFIX	= @SH_SUFFIX@
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
 
@@ -53,20 +60,23 @@ sysconfdir	= @sysconfdir@
 includedir	= @includedir@
 HOST_VENDOR     = @host_vendor@
 
-SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 # Use this clixon lib for linking
-CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+ifeq ($(LINKAGE),dynamic)
+	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+else
+	CLIXON_LIB	= libclixon.a
+endif
 
 # For dependency. A little strange that we rely on it being built in the src dir
 # even though it may exist in $(libdir). But the new version may not have been installed yet.
 LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
-LIBS          = -L$(top_srcdir)/lib/src @LIBS@  $(top_srcdir)/lib/src/$(CLIXON_LIB) #-lpthread
+LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@ #-lpthread
 
-CPPFLAGS  	= @CPPFLAGS@ -fPIC
+
 INCLUDES	= -I. -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
 # Name of application
@@ -87,9 +97,16 @@ LIBOBJ		= $(LIBSRC:.c=.o)
 
 # Name of lib
 MYNAME		= clixon_cli
+MYLIBDYNAMIC    = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+MYLIBSO         = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR)
 MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
-MYLIB           = $(MYLIBLINK).$(CLIXON_MAJOR).$(CLIXON_MINOR)
-MYLIBSO         = $(MYLIBLINK).$(CLIXON_MAJOR)
+MYLIBSTATIC     = lib$(MYNAME).a
+
+ifeq ($(LINKAGE),dynamic)
+	MYLIB        = $(MYLIBDYNAMIC)
+else
+	MYLIB        = $(MYLIBSTATIC)
+endif
 
 all:	 $(MYLIB) $(APPL) test
 
@@ -114,9 +131,11 @@ install: install-lib $(APPL)
 install-lib: $(MYLIB)
 	install -d -m 0755 $(DESTDIR)$(libdir)
 	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
+	install -d -m 0755 $(DESTDIR)$(libdir)/clixon/plugins/cli
+ifeq ($(LINKAGE),dynamic)
 	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon_cli.so.2
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_cli.so
-	install -d -m 0755 $(DESTDIR)$(libdir)/clixon/plugins/cli
+endif
 
 install-include:	clixon_cli.h clixon_cli_api.h cli_generate.h
 	install -d -m 0755 $(DESTDIR)$(includedir)/clixon
@@ -140,10 +159,10 @@ test.c	:
 test: 	test.c $(LIBOBJ) $(MYLIB)
 	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
-$(APPL): $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)	
+$(APPL): $(APPOBJ) $(MYLIB) $(LIBDEPS)	
 	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
-$(MYLIB) : $(LIBOBJ) $(LIBDEPS)
+$(MYLIBDYNAMIC) : $(LIBOBJ) $(LIBDEPS)
 ifeq ($(HOST_VENDOR),apple)
 	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJ) $(LIBS)
 else
@@ -154,6 +173,9 @@ endif
 $(MYLIBLINK) : $(MYLIB)
 #	ln -sf $(MYLIB) $(MYLIBSO)
 #	ln -sf $(MYLIB) $@
+
+$(MYLIBSTATIC) : $(LIBOBJ) $(LIBDEPS)
+	ar -crs $@ $(LIBOBJ) $(LIBDEPS)
 
 TAGS:
 	find . -name '*.[chyl]' -print | etags -

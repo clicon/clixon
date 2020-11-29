@@ -639,6 +639,7 @@ wwwuser
 enable_optyangs
 with_libxml2
 with_restconf
+LINKAGE
 SH_SUFFIX
 CLIXON_DEFAULT_CONFIG
 INSTALLFLAGS
@@ -2224,6 +2225,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 # Default CFLAGS and INSTALLFLAGS unless set by environment
 : ${CFLAGS="-O2 -Wall"}
 : ${INSTALLFLAGS="-s"}
+: ${LINKAGE=dynamic}
 
 # where autotool scripts are: install-sh, config.sub, config.guess
 ac_aux_dir=
@@ -3341,6 +3343,7 @@ test -z "$INSTALL_PROGRAM" && INSTALL_PROGRAM='${INSTALL}'
 test -z "$INSTALL_SCRIPT" && INSTALL_SCRIPT='${INSTALL}'
 
 test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
+
 
 
 
