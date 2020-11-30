@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Travis pre-config script.
-
+set -eux
 
 # Clone and install CLIgen (needed for clixon configure and make)
 # Note travis builds and installs, then starts a clixon container where all tests are run from.
@@ -11,7 +11,7 @@ git clone https://github.com/clicon/cligen.git
 wwwuser=www-data
 
 # Nginx conf file
-cat<<EOF > /etc/nginx/nginx.conf
+cat<<EOF > nginx.conf
 #
 user $wwwuser;
 error_log  /var/log/nginx/error.log;
@@ -53,7 +53,7 @@ http {
   }
 }
 EOF
-
+sudo cp nginx.conf /etc/nginx/nginx.conf
 sudo pkill nginx
 sudo nginx -c /etc/nginx/nginx.conf
 
