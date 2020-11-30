@@ -292,7 +292,7 @@ wait_backend(){
 	sleep $DEMSLEEP
 	reply=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101" xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>' | clixon_netconf -qef $cfg 2> /dev/null)
 	let i++;
-#	echo "wait_backend  $i"
+	echo "wait_backend  $i"
 	if [ $i -ge $DEMLOOP ]; then
 	    err "backend timeout $DEMWAIT seconds"
 	fi
