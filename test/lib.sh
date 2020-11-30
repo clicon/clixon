@@ -41,33 +41,6 @@ if [ -f ./config.sh ]; then
     fi
 fi
 
-# Check sanity between --with-restconf setting and if nginx is started by systemd or not
-# This check is optional because some installs, such as vagrant make a non-systemd/direct
-# start
-: ${NGINXCHECK:=false}
-
-# Sanity nginx running on systemd platforms
-if $NGINXCHECK; then
-    if systemctl > /dev/null 2>&1 ; then
-	# even if systemd exists, nginx may be started in other ways
-	nginxactive=$(systemctl show nginx |grep ActiveState=active)
-	if [ "${WITH_RESTCONF}" = "fcgi" ]; then
-	    if [ -z "$nginxactive"  -a ! -f /var/run/nginx.pid ]; then
-		echo -e "\e[31m\nwith-restconf=fcgi set but nginx not running, start with:"
-		echo "systemctl start nginx"
-		echo -e "\e[0m"
-		exit -1
-	    fi
-	else
-	    if [ -n "$nginxactive" -o -f /var/run/nginx.pid ]; then
-		echo -e "\e[31m\nwith-restconf=fcgi not set but nginx running, stop with:"
-		echo "systemctl stop nginx"
-		echo -e "\e[0m"
-		exit -1
-	    fi
-	fi
-    fi # systemctl
-fi
 
 # Test number from start
 : ${testnr:=0}
@@ -187,6 +160,34 @@ if [ -f ./site.sh ]; then
     done
 fi
 
+# Check sanity between --with-restconf setting and if nginx is started by systemd or not
+# This check is optional because some installs, such as vagrant make a non-systemd/direct
+# start
+: ${NGINXCHECK:=false}
+
+# Sanity nginx running on systemd platforms
+if $NGINXCHECK; then
+    if systemctl > /dev/null 2>&1 ; then
+	# even if systemd exists, nginx may be started in other ways
+	nginxactive=$(systemctl show nginx |grep ActiveState=active)
+	if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+	    if [ -z "$nginxactive"  -a ! -f /var/run/nginx.pid ]; then
+		echo -e "\e[31m\nwith-restconf=fcgi set but nginx not running, start with:"
+		echo "systemctl start nginx"
+		echo -e "\e[0m"
+		exit -1
+	    fi
+	else
+	    if [ -n "$nginxactive" -o -f /var/run/nginx.pid ]; then
+		echo -e "\e[31m\nwith-restconf=fcgi not set but nginx running, stop with:"
+		echo "systemctl stop nginx"
+		echo -e "\e[0m"
+		exit -1
+	    fi
+	fi
+    fi # systemctl
+fi
+
 dir=/var/tmp/$0
 if [ ! -d $dir ]; then
     mkdir $dir
@@ -291,7 +292,7 @@ wait_backend(){
     while [[ $reply != "<rpc-reply"* ]]; do
 	echo "sleep $DEMSLEEP"
 	sleep $DEMSLEEP
-	reply=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101" xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>' | clixon_netconf -qef $cfg )
+	reply=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101" xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>' | clixon_netconf -qef $cfg 2> /dev/null)
 	echo "reply:$reply"
 	let i++;
 	echo "wait_backend  $i"
