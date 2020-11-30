@@ -234,7 +234,8 @@ DATELEN = $(shell date +"%Y.%m.%d %H:%M by `whoami` on `hostname`XXXX"|wc -c)
 
 .PHONY: build.c
 build.c:	
-	date +"const char CLIXON_BUILDSTR[$(DATELEN)]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; > build.c;
+	echo "/* This file is generated from the Clixon Makefile */" > build.c;
+	date +"const char CLIXON_BUILDSTR[$(DATELEN)]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; >> build.c;
 	echo "const char CLIXON_VERSION[64]=\"$(CLIXON_VERSION)\""\; >> build.c;
 
 $(MYLIBDYNAMIC) : $(GENOBJS) $(OBJS) 
