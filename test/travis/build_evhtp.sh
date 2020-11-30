@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Travis pre-config script.
 # build libevhtp
 git clone https://github.com/criticalstack/libevhtp.git

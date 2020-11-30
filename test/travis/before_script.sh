@@ -1,5 +1,8 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Travis pre-config script.
+sudo apt-get install -y libfcgi-dev
+sudo apt-get install -y nginx
+
 # Clone and install CLIgen (needed for clixon configure and make)
 # Note travis builds and installs, then starts a clixon container where all tests are run from.
 git clone https://github.com/clicon/cligen.git

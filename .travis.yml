@@ -5,9 +5,6 @@ arch: amd64
 branches:
   only:
   - master
-script:
-- ./configure --with-restconf=fcgi && make && sudo make install && (cd example; make; sudo make install) && (cd util; make; sudo make install) && sudo ldconfig && (cd test; ./all.sh)
+script: ./test/travis/script.sh
 before_script:
-  - sudo apt-get install -y libfcgi-dev
-  - sudo apt-get install -y nginx
   - ./test/travis/before_script.sh
