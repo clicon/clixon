@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -eux
 ./configure --with-restconf=fcgi
 make
 sudo make install

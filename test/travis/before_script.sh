@@ -59,7 +59,7 @@ sudo nginx -c /etc/nginx/nginx.conf
 
 # Start clixon
 sudo useradd -M -U clicon;
-sudo usermod -a -G clicon $(whoami); # start clixon tests as this users
+sudo usermod -a -G clicon $(whoami); # start clixon tests as this users (travis)
 sudo usermod -a -G clicon $wwwuser;
 
 # This is a clixon site test file. 
