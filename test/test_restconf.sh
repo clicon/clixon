@@ -23,7 +23,7 @@ APPNAME=example
 cfg=$dir/conf.xml
 
 # clixon-example and clixon-restconf is used, copy here
-cp /usr/local/share/clixon/clixon-example@2020-03-11.yang $dir/
+cp /usr/local/share/clixon/clixon-example@2020-12-01.yang $dir/
 cp /usr/local/share/clixon/clixon-restconf@2020-10-30.yang $dir/
 
 cat <<EOF > $cfg
@@ -148,7 +148,7 @@ testrun()
 
     # Should be alphabetically ordered
     new "restconf get restconf/operations. RFC8040 3.3.2 (json)"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/operations)" 0 'HTTP/1.1 200 OK' '{"operations":{"clixon-example:client-rpc":\[null\],"clixon-example:empty":\[null\],"clixon-example:optional":\[null\],"clixon-example:example":\[null\]' '"clixon-lib:debug":\[null\],"clixon-lib:ping":\[null\],"clixon-lib:stats":\[null\],"clixon-lib:restart-plugin":\[null\],"ietf-netconf:get-config":\[null\],"ietf-netconf:edit-config":\[null\],"ietf-netconf:copy-config":\[null\],"ietf-netconf:delete-config":\[null\],"ietf-netconf:lock":\[null\],"ietf-netconf:unlock":\[null\],"ietf-netconf:get":\[null\],"ietf-netconf:close-session":\[null\],"ietf-netconf:kill-session":\[null\],"ietf-netconf:commit":\[null\],"ietf-netconf:discard-changes":\[null\],"ietf-netconf:validate":\[null\]'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/operations)" 0 'HTTP/1.1 200 OK' '{"operations":{' '"clixon-example:client-rpc":\[null\],"clixon-example:empty":\[null\],"clixon-example:optional":\[null\],"clixon-example:example":\[null\]' '"clixon-lib:debug":\[null\],"clixon-lib:ping":\[null\],"clixon-lib:stats":\[null\],"clixon-lib:restart-plugin":\[null\]' '"ietf-netconf:get-config":\[null\],"ietf-netconf:edit-config":\[null\],"ietf-netconf:copy-config":\[null\],"ietf-netconf:delete-config":\[null\],"ietf-netconf:lock":\[null\],"ietf-netconf:unlock":\[null\],"ietf-netconf:get":\[null\],"ietf-netconf:close-session":\[null\],"ietf-netconf:kill-session":\[null\],"ietf-netconf:commit":\[null\],"ietf-netconf:discard-changes":\[null\],"ietf-netconf:validate":\[null\]'
 
     new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
     ret=$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $proto://$addr/restconf/operations)
@@ -173,7 +173,7 @@ testrun()
     expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state/module=ietf-interfaces,2018-02-20)" 0 'HTTP/1.1 200 OK' '{"ietf-yang-library:module":\[{"name":"ietf-interfaces","revision":"2018-02-20","namespace":"urn:ietf:params:xml:ns:yang:ietf-interfaces","conformance-type":"implement"}\]}'
 
     new "restconf schema resource, mod-state top-level"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state)" 0 'HTTP/1.1 200 OK' '{"ietf-yang-library:modules-state":{"module-set-id":"0","module":\[{"name":"clixon-example","revision":"2020-03-11","namespace":"urn:example:clixon","conformance-type":"implement"},{"name":"clixon-lib","revision":"2020-04-23","'
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state)" 0 'HTTP/1.1 200 OK' '{"ietf-yang-library:modules-state":{"module-set-id":"0","module":\[{"name":"clixon-example","revision":"2020-12-01","namespace":"urn:example:clixon","conformance-type":"implement"},{"name":"clixon-lib","revision":"2020-04-23","'
 
     new "restconf options. RFC 8040 4.1"
     expectpart "$(curl $CURLOPTS -X OPTIONS $proto://$addr/restconf/data)" 0 "HTTP/1.1 200 OK" "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE"

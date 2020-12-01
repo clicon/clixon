@@ -10,6 +10,7 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 histfile=$dir/histfile
+histsize=10
 
 # Use yang in example
 
@@ -24,7 +25,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLI_HIST_FILE>$histfile</CLICON_CLI_HIST_FILE>
-  <CLICON_CLI_HIST_SIZE>10</CLICON_CLI_HIST_SIZE>
+  <CLICON_CLI_HIST_SIZE>$histsize</CLICON_CLI_HIST_SIZE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
@@ -77,7 +78,7 @@ if [ $nr -ne 1 ]; then
 fi
 
 new "cli add entry and create newhist file"
-expecteof "$clixon_cli -f $cfg -o CLICON_CLI_HIST_FILE=$dir/newhist" 0 "example 43" "data"
+expecteof "$clixon_cli -f $cfg -o CLICON_CLI_HIST_FILE=$dir/newhist" 0 "example 43" "data" 2> /dev/null
 
 new "Check newhist exists"
 if [ ! -f $dir/newhist ]; then
@@ -111,18 +112,27 @@ if [ $nr -ne 2 ]; then
     err "2" "$nr"
 fi
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+# Add lots of entries (so it wraps)
+for (( i=0; i<$histsize; i++ )); do 
+    echo "example $i" | $clixon_cli -f $cfg > /dev/null 2>&1
+done
+
+new "Check $histfile is $histsize long (wraps)"
+nr=$(cat $histfile | wc -l)
+if [ $nr -ne $histsize ]; then
+    err "$histsize" "$nr"
 fi
 
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-# kill backend
-stop_backend -f $cfg
 
 unset nr
 rm -rf $dir
