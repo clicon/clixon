@@ -427,7 +427,7 @@ api_return_err(clicon_handle h,
 	if ((code = restconf_err2code(tagstr)) < 0)
 	    code = 500; /* internal server error */
     }  
-    if (restconf_reply_header(req, "Content_Type", "%s", restconf_media_int2str(media)) < 0)
+    if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media)) < 0) // XXX
 	goto done;
     switch (media){
     case YANG_DATA_XML:
