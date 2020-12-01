@@ -40,6 +40,7 @@
 
 Users may have to change how they access the system
 
+* Error-type changed from protocol to application for data-not-unique netconf/restconf errors
 * New clixon-config@2020-11-03.yang revision
   * Moved to clixon-restconf.yang and marked as obsolete:
     - CLICON_RESTCONF_IPV4_ADDR
@@ -63,6 +64,7 @@ Developers may need to change their code
 
 ### Minor changes
 
+* Added new revision of main example yang: `clixon-example@2020-12-01.yang`
 * Support for building static lib: `LINKAGE=static configure`
 * Change comment character to be active anywhere to beginning of _word_ only.
   * See [Change CLIgen comments](https://github.com/clicon/cligen/issues/55)
@@ -72,6 +74,9 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed [YANG: key statement in rpc/notification list #148](https://github.com/clicon/clixon/issues/148)
+  * Do not check uniqueness among lists without keys
+  
 * Fixed typo: [False Header Content_type in restconf error #152](https://github.com/clicon/clixon/issues/152)
 * Added message-id attributes in error and hello replies
   * See [namespace prefix nc is not supported in full #154](https://github.com/clicon/clixon/issues/154)

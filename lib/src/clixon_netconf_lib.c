@@ -1184,7 +1184,7 @@ netconf_data_not_unique_xml(cxobj **xret,
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
     if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
-			    "<error-type>protocol</error-type>"
+			    "<error-type>application</error-type>"
 			    "<error-tag>operation-failed</error-tag>"
 			    "<error-app-tag>data-not-unique</error-app-tag>"
 			    "<error-severity>error</error-severity>") < 0)

@@ -2853,7 +2853,7 @@ yang_config(yang_stmt *ys)
  *
  * config statement is default true. 
  * @param[in] ys  Yang statement
- * @retval    0   Node or one of its ancestor has config false
+ * @retval    0   Node or one of its ancestor has config false or is RPC or notification
  * @retval    1   Neither node nor any of its ancestors has config false
  */
 int
@@ -2864,6 +2864,8 @@ yang_config_ancestor(yang_stmt *ys)
     yp = ys;
     do {
 	if (yang_config(yp) == 0)
+	    return 0;
+	if (yang_keyword_get(yp) == Y_INPUT || yang_keyword_get(yp) == Y_OUTPUT || yang_keyword_get(yp) == Y_NOTIFICATION)
 	    return 0;
     } while((yp = yang_parent_get(yp)) != NULL);
     return 1;

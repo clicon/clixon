@@ -144,7 +144,7 @@ new "restconf DELETE"
 expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/1.1 204 No Content"
 
 new "restconf POST from top containing duplicate keys expect error"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"example:cont1":{"interface":[{"name":"TEST","type":"eth0"},{"name":"TEST","type":"eth0"}]}}')" 0 "HTTP/1.1 412 Precondition Failed" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-app-tag":"data-not-unique","error-severity":"error","error-info":{"non-unique":{"name":"TEST"}}}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"example:cont1":{"interface":[{"name":"TEST","type":"eth0"},{"name":"TEST","type":"eth0"}]}}')" 0 "HTTP/1.1 412 Precondition Failed" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"operation-failed","error-app-tag":"data-not-unique","error-severity":"error","error-info":{"non-unique":{"name":"TEST"}}}}}'
 
 new "restconf GET null datastore"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/1.1 404 Not Found" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'

@@ -4,7 +4,12 @@ module clixon-example {
     prefix ex;
     description
 	"Clixon example used as a part of the Clixon test suite.
-         It can be used as a basis for making new Clixon applications.";
+         It can be used as a basis for making new Clixon applications.
+         Note, may change without updating revision, just for testing current master.
+         ";
+    revision 2020-12-01 {
+	description "Added table/paramater/value as the primary data example";
+    }
     revision 2020-03-11 {
 	description "Added container around translation list. Released in Clixon 4.4.0";
     }
@@ -26,6 +31,9 @@ module clixon-example {
     import iana-if-type {
       prefix ianaift;
     }
+    import ietf-datastores {
+      prefix ds;
+    }
     /* Example interface type for tests, local callbacks, etc */
     identity eth {
 	base if:interface-type;
@@ -33,16 +41,20 @@ module clixon-example {
     identity loopback {
 	base if:interface-type;
     }
-    /* Translation function example - See also example_cli */
-    container translate{
-	description "dont have lists directly under top since restconf cant address list directly";
-	list translate{
-	    key k;
-	    leaf k{
+    /* Generic config data */
+    container table{
+	list parameter{
+	    key name;
+	    leaf name{
 		type string;
 	    }
 	    leaf value{
 		type string;
+	    }
+	    leaf stat{
+		description "Inline state data for example application";
+		config false;
+		type int32;
 	    }
 	}
     }
@@ -82,7 +94,6 @@ module clixon-example {
     ex:e4 arg1{
       uses bar;
     }
-
     /* Example notification as used in RFC 5277 and RFC 8040 */
     notification event {
          description "Example notification event.";
@@ -166,6 +177,22 @@ module clixon-example {
 		type string;
 		when "/translate/k=5/value='w'";
 	    }
+	    list u0 {
+		description "list without key";
+		leaf uk{
+		    type string;
+		}
+	    }
+    	    list u1 {
+		description "list with key";
+		key uk;
+		leaf uk{
+		    type string;
+		}
+		leaf val{
+		    type string;
+		}
+	    }
 	}
 	output {
 	    leaf x {
@@ -179,6 +206,17 @@ module clixon-example {
 	    }
 	    leaf w {
 		type string;
+	    }
+	    list u0 {
+		leaf uk{
+		    type string;
+		}
+	    } 
+    	    list u1 {
+		key uk;
+		leaf uk{
+		    type string;
+		}
 	    }
 	}
     }

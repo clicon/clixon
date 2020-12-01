@@ -1091,7 +1091,7 @@ ys_schemanode_check(yang_stmt *ys,
     return retval;
 }
 
-/*! Check lists: non-config lists MUST have keys
+/*! Check lists: config lists MUST have keys
  * @param[in] h   Clicon handle
  * @param[in] ys  Yang statement
  * Verify the following rule:
