@@ -55,10 +55,10 @@ EOF
 	fi
 	new "start backend -s init -f $cfg"
 	start_backend -s init -f $cfg
-    fi
 
-    new "waiting"
-    wait_backend
+	new "wait backend"
+	wait_backend
+    fi
 
     new "$clixon_cli -1f $cfg show version"
     expectfn "$clixon_cli -1f $cfg show version" 0 "$version."

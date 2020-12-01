@@ -1108,7 +1108,10 @@ restconf_config(clicon_handle    h,
     /* Add netconf yang spec, used as internal protocol */
     if (netconf_module_load(h) < 0)
 	goto done;
-    
+    /* Clixon restconf daemon config */
+    if (yang_spec_parse_module(h, "clixon-restconf", NULL, yspec)< 0)
+	goto done;
+
     /* Add system modules */
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
 	yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec)< 0)
@@ -1148,7 +1151,7 @@ restconf_config(clicon_handle    h,
 		    sleep(1);
 		    continue;
 		}
-		//	     clicon_err(OE_UNIX, errno, "clicon_session_id_get");
+		clicon_err(OE_UNIX, errno, "clicon_session_id_get");
 		goto done;
 	    }
 	    clicon_session_id_set(h, id);

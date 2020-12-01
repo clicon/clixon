@@ -1553,6 +1553,7 @@ from_client_hello(clicon_handle       h,
 {
     int      retval = -1;
     uint32_t id;
+    char    *msgid;
 
     if (clicon_session_id_get(h, &id) < 0){
 	clicon_err(OE_NETCONF, ENOENT, "session_id not set");
@@ -1560,8 +1561,12 @@ from_client_hello(clicon_handle       h,
     }
     id++;
     clicon_session_id_set(h, id);
-    cprintf(cbret, "<hello xmlns=\"%s\"><session-id>%u</session-id></hello>",
-	    NETCONF_BASE_NAMESPACE, id);
+    if ((msgid = xml_find_value(x, "message-id")) != NULL)
+	cprintf(cbret, "<hello xmlns=\"%s\" message-id=\"%s\"><session-id>%u</session-id></hello>",
+		NETCONF_BASE_NAMESPACE, msgid, id);
+    else
+	cprintf(cbret, "<hello xmlns=\"%s\"><session-id>%u</session-id></hello>",
+		NETCONF_BASE_NAMESPACE, id);
     retval = 0;
  done:
     return retval;

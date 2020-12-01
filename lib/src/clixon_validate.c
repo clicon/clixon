@@ -72,6 +72,7 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_options.h"
 #include "clixon_xml_nsctx.h"
+#include "clixon_xml_io.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_yang_module.h"
@@ -332,6 +333,7 @@ xml_yang_validate_rpc(clicon_handle h,
     cxobj     *xn;       /* rpc name */
     char      *rpcprefix;
     char      *namespace = NULL;
+    int        ret;
     
     if (strcmp(xml_name(xrpc), "rpc")){
 	clicon_err(OE_XML, EINVAL, "Expected RPC");
@@ -357,10 +359,14 @@ xml_yang_validate_rpc(clicon_handle h,
 		goto done;
 	    goto fail;
 	}
-	if ((retval = xml_yang_validate_all(h, xn, xret)) < 1) 
+	if ((ret = xml_yang_validate_all(h, xn, xret)) < 0) 
 	    goto done; /* error or validation fail */
-	if ((retval = xml_yang_validate_add(h, xn, xret)) < 1)
+	if (ret == 0)
+	    goto fail;
+	if ((ret = xml_yang_validate_add(h, xn, xret)) < 0)
 	    goto done; /* error or validation fail */
+	if (ret == 0)
+	    goto fail;
 	if (xml_default_recurse(xn, 0) < 0)
 	    goto done;
     }
@@ -369,6 +375,8 @@ xml_yang_validate_rpc(clicon_handle h,
  done:
     return retval;
  fail:
+    if (xret && *xret && clixon_xml_attr_copy(xrpc, *xret, "message-id") < 0)
+	goto done;
     retval = 0;
     goto done;
 }

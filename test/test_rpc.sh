@@ -158,7 +158,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config xmlns=\"urn
 
 # Negative errors (namespace/module missing)
 new "netconf wrong rpc namespace: should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc xmlns=\"urn:example:xxx\"><get/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>get</bad-element></error-info><error-severity>error</error-severity><error-message>Unrecognized RPC (wrong namespace?)</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc xmlns=\"urn:example:xxx\" message-id=\"42\"><get/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>get</bad-element></error-info><error-severity>error</error-severity><error-message>Unrecognized RPC (wrong namespace?)</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "restconf wrong rpc: should fail"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" u $RCPROTO://localhost/restconf/operations/clixon-foo:get)" 0 'HTTP/1.1 412 Precondition Failed' '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"yang module not found"}}}'

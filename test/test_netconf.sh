@@ -59,10 +59,10 @@ expecteof "$clixon_netconf -qf $cfg" 0 "This is not XML]]>]]>" '<rpc-reply xmlns
 fi
 
 new "Frame with two messages"
-expecteof "$clixon_netconf -qf $cfg" 0 "<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello><rpc $DEFAULTNS message-id=\"101\"><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>rpc</error-type><error-tag>malformed-message</error-tag><error-severity>error</error-severity><error-message>More than one message in netconf rpc frame</error-message></rpc-error></rpc-reply>]]>]]>'
+expecteof "$clixon_netconf -qf $cfg" 0 "<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello><rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>rpc</error-type><error-tag>malformed-message</error-tag><error-severity>error</error-severity><error-message>More than one message in netconf rpc frame</error-message></rpc-error></rpc-reply>]]>]]>'
 
 new "Frame with unknown message"
-expecteof "$clixon_netconf -qf $cfg" 0 "<xxx $DEFAULTNS></xxx>]]>]]>" '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>protocol</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>xxx</bad-element></error-info><error-severity>error</error-severity><error-message>Unrecognized netconf operation</error-message></rpc-error></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<xxx $DEFAULTNS></xxx>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>xxx</bad-element></error-info><error-severity>error</error-severity><error-message>Unrecognized netconf operation</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 # Hello
 new "Netconf snd hello with xmldecl"
@@ -78,22 +78,22 @@ new "netconf snd + rcv hello"
 expecteof "$clixon_netconf -f $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>]]>]]>" "^<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=2019-01-04&amp;module-set-id=42</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]>$"
 
 new "netconf rcv hello, disable RFC7895/ietf-yang-library"
-expecteof "$clixon_netconf -f $cfg -o CLICON_MODULE_LIBRARY_RFC7895=0" 0 "<rpc $DEFAULTNS message-id=\"101\"><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]><rpc-reply $DEFAULTNS message-id=\"101\"><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -f $cfg -o CLICON_MODULE_LIBRARY_RFC7895=0" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]><rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
 
 new "netconf get-config prefix"
-expecteof "$clixon_netconf -qf $cfg" 0 "<nc:rpc xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"101\"><nc:get-config><nc:source><nc:candidate/></nc:source></nc:get-config></nc:rpc>]]>]]>" "^<rpc-reply $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"101\"><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<nc:rpc xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:message-id=\"42\"><nc:get-config><nc:source><nc:candidate/></nc:source></nc:get-config></nc:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:message-id=\"42\"><data/></rpc-reply>]]>]]>$"
 
 new "netconf get-config double quotes"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS message-id=\"101\"><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS message-id=\"101\"><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
 
 new "netconf get-config single quotes"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS message-id='101'><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS message-id=\"101\"><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
 
 new "Add subtree eth/0/0 using none which should not change anything"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><default-operation>none</default-operation><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth/0/0</name></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Check nothing added"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS message-id=\"101\"><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS message-id=\"101\"><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
 
 new "Add subtree eth/0/0 using none and create which should add eth/0/0"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface nc:operation=\"create\"><name>eth/0/0</name><type>ex:eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -113,7 +113,7 @@ new "Delete eth/0/0 using none config"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface nc:operation=\"delete\"><name>eth/0/0</name><type>ex:eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Check deleted eth/0/0 (non-presence container)"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS message-id=\"101\"><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS message-id=\"101\"><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
 
 new "Re-Delete eth/0/0 using none should generate error"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface nc:operation=\"delete\"><name>eth/0/0</name><type>ex:eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error>"

@@ -160,7 +160,7 @@ new "netconf commit protocol tcp"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "netconf changing from TCP to UDP (RFC7950 7.9.6)"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS message-id=\"101\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\"><protocol><udp nc:operation=\"create\"/></protocol></system></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS message-id=\"101\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\"><protocol><udp nc:operation=\"create\"/></protocol></system></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get protocol udp"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:config\"><protocol><udp/></protocol></system>"
@@ -216,7 +216,7 @@ new "netconf set shorthand tcp"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\"><shorthand><tcp/></shorthand></system></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "netconf changing from TCP to UDP (RFC7950 7.9.6)"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS message-id=\"101\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\"><shorthand><udp/></shorthand></system></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS message-id=\"101\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\"><shorthand><udp/></shorthand></system></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><ok/></rpc-reply>]]>]]>$"
 
 new "netconf get shorthand udp"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:config\"><shorthand><udp/></shorthand></system></data></rpc-reply>]]>]]>$"

@@ -82,7 +82,9 @@ testname=
 : ${RCLOG:=}
 
 # Default netconf namespace statement, typically as placed on top-level <rpc xmlns=""
-DEFAULTNS='xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"'
+DEFAULTONLY='xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"'
+# Default netconf namespace + message-id
+DEFAULTNS="$DEFAULTONLY message-id=\"42\""
 
 # Options passed to curl calls
 # -s : silent
@@ -164,7 +166,6 @@ fi
 # This check is optional because some installs, such as vagrant make a non-systemd/direct
 # start
 : ${NGINXCHECK:=false}
-
 # Sanity nginx running on systemd platforms
 if $NGINXCHECK; then
     if systemctl > /dev/null 2>&1 ; then
@@ -295,7 +296,7 @@ wait_backend(){
 	reply=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101" xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>' | clixon_netconf -qef $cfg 2> /dev/null)
 	echo "reply:$reply"
 	let i++;
-	echo "wait_backend  $i"
+#	echo "wait_backend  $i"
 	if [ $i -ge $DEMLOOP ]; then
 	    err "backend timeout $DEMWAIT seconds"
 	fi

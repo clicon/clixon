@@ -790,8 +790,8 @@ clicon_rpc_close_session(clicon_handle h)
 	goto done;
     username = clicon_username_get(h);
     if ((msg = clicon_msg_encode(session_id,
-				 "<rpc xmlns=\"%s\" username=\"%s\"><close-session/></rpc>",
-				 NETCONF_BASE_NAMESPACE, username?username:"")) == NULL)
+				 "<rpc xmlns=\"%s\" username=\"%s\" message-id=\"%u\"><close-session/></rpc>",
+				 NETCONF_BASE_NAMESPACE, username?username:"", 42)) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
@@ -1084,7 +1084,7 @@ clicon_hello_req(clicon_handle h,
     int                ret;
 
     username = clicon_username_get(h);
-    if ((msg = clicon_msg_encode(0, "<hello username=\"%s\" xmlns=\"%s\"><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>",
+    if ((msg = clicon_msg_encode(0, "<hello username=\"%s\" xmlns=\"%s\" message-id=\"42\"><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>",
 				 username?username:"",
 				 NETCONF_BASE_NAMESPACE)) == NULL)
 	goto done;
@@ -1111,5 +1111,3 @@ clicon_hello_req(clicon_handle h,
 	xml_free(xret);
     return retval;
 }
-
-

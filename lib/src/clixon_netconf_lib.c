@@ -1379,9 +1379,6 @@ netconf_module_load(clicon_handle h)
     if (clicon_option_bool(h, "CLICON_XML_CHANGELOG"))
 	if (yang_spec_parse_module(h, "clixon-xml-changelog", NULL, yspec)< 0)
 	    goto done;
-    /* Clixon restconf daemon */
-    if (yang_spec_parse_module(h, "clixon-restconf", NULL, yspec)< 0)
-	goto done;
     retval = 0;
  done:
     return retval;
@@ -1538,7 +1535,7 @@ netconf_hello_server(clicon_handle h,
 
     module_set_id = clicon_option_str(h, "CLICON_MODULE_SET_ID");
 
-    cprintf(cb, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, "<hello xmlns=\"%s\" message-id=\"%u\">", NETCONF_BASE_NAMESPACE, 42);
     cprintf(cb, "<capabilities>");
     cprintf(cb, "<capability>urn:ietf:params:netconf:base:1.0</capability>");
     /* Check if RFC7895 loaded and revision found */

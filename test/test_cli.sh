@@ -123,7 +123,8 @@ new "cli debug reset"
 expectfn "$clixon_cli -1 -f $cfg -l o debug level 0" 0 "^$"
 
 new "cli rpc"
-expectpart "$($clixon_cli -1 -f $cfg -l o rpc ipv4)" 0 "<rpc-reply $DEFAULTNS><x xmlns=\"urn:example:clixon\">ipv4</x><y xmlns=\"urn:example:clixon\">42</y></rpc-reply>"
+# We dont know which message-id the cli app uses
+expectpart "$($clixon_cli -1 -f $cfg -l o rpc ipv4)" 0 "<rpc-reply $DEFAULTONLY message-id=" "><x xmlns=\"urn:example:clixon\">ipv4</x><y xmlns=\"urn:example:clixon\">42</y></rpc-reply>"
 
 if [ $BE -eq 0 ]; then
     exit # BE

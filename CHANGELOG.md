@@ -72,6 +72,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Added message-id attributes in error and hello replies
+  * See [namespace prefix nc is not supported in full #154](https://github.com/clicon/clixon/issues/154)
 * Fixed [Clixon backend generates wrong XML on empty string value #144](https://github.com/clicon/clixon/issues/144)
 
 ## 4.8.0

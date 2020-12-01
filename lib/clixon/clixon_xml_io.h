@@ -60,5 +60,6 @@ int clixon_xml_parse_va(yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr
 int clixon_xml_parse_va(yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr,
 			const char *format, ...);
 #endif
+int clixon_xml_attr_copy(cxobj *xin, cxobj *xout, char *name);
 
 #endif	/* _CLIXON_XML_IO_H_ */

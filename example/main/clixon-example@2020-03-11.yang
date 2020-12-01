@@ -29,7 +29,6 @@ module clixon-example {
     import ietf-datastores {
       prefix ds;
     }
-
     /* Example interface type for tests, local callbacks, etc */
     identity eth {
 	base if:interface-type;
@@ -90,7 +89,6 @@ module clixon-example {
     ex:e4 arg1{
       uses bar;
     }
-
     /* Example notification as used in RFC 5277 and RFC 8040 */
     notification event {
          description "Example notification event.";

@@ -22,12 +22,16 @@ APPNAME=example
 
 cfg=$dir/conf.xml
 
+# clixon-example and clixon-restconf is used, copy here
+cp ../example/main/clixon-example@2020-03-11.yang $dir/
+cp ../yang/clixon/clixon-restconf@2020-10-30.yang $dir/
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
@@ -136,19 +140,19 @@ testrun()
     expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
     new "restconf get restconf resource. RFC 8040 3.3 (json)"
-expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $proto://$addr/restconf)" 0 'HTTP/1.1 200 OK' '{"ietf-restconf:restconf":{"data":{},"operations":{},"yang-library-version":"2019-01-04"}}'
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $proto://$addr/restconf)" 0 'HTTP/1.1 200 OK' '{"ietf-restconf:restconf":{"data":{},"operations":{},"yang-library-version":"2019-01-04"}}'
 
-new "restconf get restconf resource. RFC 8040 3.3 (xml)"
-# Get XML instead of JSON?
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $proto://$addr/restconf)" 0 'HTTP/1.1 200 OK' '<restconf xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><data/><operations/><yang-library-version>2019-01-04</yang-library-version></restconf>'
+    new "restconf get restconf resource. RFC 8040 3.3 (xml)"
+    # Get XML instead of JSON?
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $proto://$addr/restconf)" 0 'HTTP/1.1 200 OK' '<restconf xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><data/><operations/><yang-library-version>2019-01-04</yang-library-version></restconf>'
 
     # Should be alphabetically ordered
     new "restconf get restconf/operations. RFC8040 3.3.2 (json)"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/operations)" 0 'HTTP/1.1 200 OK' '{"operations":{"clixon-example:client-rpc":\[null\],"clixon-example:empty":\[null\],"clixon-example:optional":\[null\],"clixon-example:example":\[null\],"clixon-lib:debug":\[null\],"clixon-lib:ping":\[null\],"clixon-lib:stats":\[null\],"clixon-lib:restart-plugin":\[null\],"ietf-netconf:get-config":\[null\],"ietf-netconf:edit-config":\[null\],"ietf-netconf:copy-config":\[null\],"ietf-netconf:delete-config":\[null\],"ietf-netconf:lock":\[null\],"ietf-netconf:unlock":\[null\],"ietf-netconf:get":\[null\],"ietf-netconf:close-session":\[null\],"ietf-netconf:kill-session":\[null\],"ietf-netconf:commit":\[null\],"ietf-netconf:discard-changes":\[null\],"ietf-netconf:validate":\[null\]'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/operations)" 0 'HTTP/1.1 200 OK' '{"operations":{"clixon-example:client-rpc":\[null\],"clixon-example:empty":\[null\],"clixon-example:optional":\[null\],"clixon-example:example":\[null\]' '"clixon-lib:debug":\[null\],"clixon-lib:ping":\[null\],"clixon-lib:stats":\[null\],"clixon-lib:restart-plugin":\[null\],"ietf-netconf:get-config":\[null\],"ietf-netconf:edit-config":\[null\],"ietf-netconf:copy-config":\[null\],"ietf-netconf:delete-config":\[null\],"ietf-netconf:lock":\[null\],"ietf-netconf:unlock":\[null\],"ietf-netconf:get":\[null\],"ietf-netconf:close-session":\[null\],"ietf-netconf:kill-session":\[null\],"ietf-netconf:commit":\[null\],"ietf-netconf:discard-changes":\[null\],"ietf-netconf:validate":\[null\]'
 
     new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
     ret=$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $proto://$addr/restconf/operations)
-    expect='<operations><client-rpc xmlns="urn:example:clixon"/><empty xmlns="urn:example:clixon"/><optional xmlns="urn:example:clixon"/><example xmlns="urn:example:clixon"/><debug xmlns="http://clicon.org/lib"/><ping xmlns="http://clicon.org/lib"/><stats xmlns="http://clicon.org/lib"/><restart-plugin xmlns="http://clicon.org/lib"/><get-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><edit-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><copy-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><delete-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><lock xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><unlock xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><get xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><close-session xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><kill-session xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><commit xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><discard-changes xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/><validate xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"/>'
+    expect='<operations><client-rpc xmlns="urn:example:clixon"/><empty xmlns="urn:example:clixon"/><optional xmlns="urn:example:clixon"/><example xmlns="urn:example:clixon"/>'
     match=`echo $ret | grep --null -Eo "$expect"`
     if [ -z "$match" ]; then
 	err "$expect" "$ret"

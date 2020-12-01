@@ -526,8 +526,11 @@ _xml_parse(const char *str,
 	case YB_RPC:
 	    if ((ret = xml_bind_yang_rpc(x, yspec, xerr)) < 0)
 		goto done;
-	    if (ret == 0)
+	    if (ret == 0){ /* Add message-id */
+		if (*xerr && clixon_xml_attr_copy(x, *xerr, "message-id") < 0)
+		    goto done;
 		failed++;
+	    }
 	    break;
 	} /* switch */
     }
@@ -769,3 +772,38 @@ clixon_xml_parse_va(yang_bind   yb,
     return retval;
 }
 
+/*! Copy an attribute value(eg message-id) from one xml (eg rpc input) to another xml (eg rpc outgoing)
+ * @param[in]  xin   Get attr value from this XML
+ * @param[in]  xout  Set attr value to this XML
+ * @param[in]  name  Attribute name
+ * @retval     0     OK
+ * @retval    -1     Error
+ * Alternative is to use: char *val = xml_find_value(x, name);
+ * @code
+ *  if (clixon_xml_attr_copy(xin, xout, "message-id") < 0)
+ *    err;
+ * @endcode
+ */
+int
+clixon_xml_attr_copy(cxobj *xin,
+		     cxobj *xout,
+		     char  *name)
+{
+    int    retval = -1;
+    char  *msgid;
+    cxobj *xa;
+
+    if (xin == NULL || xout == NULL){
+	clicon_err(OE_XML, EINVAL, "xin or xout NULL");
+	goto done;
+    }
+    if ((msgid = xml_find_value(xin, "message-id")) != NULL){
+	if ((xa = xml_new("message-id", xout, CX_ATTR)) == NULL)
+	    goto done;
+	if (xml_value_set(xa, msgid) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
