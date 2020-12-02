@@ -1406,6 +1406,7 @@ netconf_db_find(cxobj *xn,
     cxobj *xi;
     char  *db = NULL;
 
+    /* XXX should use prefix cf edit_config */
     if ((xs = xml_find(xn, name)) == NULL)
 	goto done;
     if ((xi = xml_child_i(xs, 0)) == NULL)

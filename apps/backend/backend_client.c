@@ -509,6 +509,7 @@ from_client_get_config(clicon_handle h,
 	    goto done;
 	goto ok;
     }
+    /* XXX should use prefix cf edit_config */
     if ((xfilter = xml_find(xe, "filter")) != NULL){
 	if ((xpath0 = xml_find_value(xfilter, "select"))==NULL)
 	    xpath0="/";
@@ -587,6 +588,8 @@ from_client_edit_config(clicon_handle h,
     char               *attr;
     int                 autocommit = 0;
     char               *val = NULL;
+    cvec               *nsc = NULL;
+    char               *prefix = NULL;
 
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
@@ -616,15 +619,28 @@ from_client_edit_config(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    if ((x = xpath_first(xn, NULL, "default-operation")) != NULL){
+    if (xml_nsctx_node(xn, &nsc) < 0)
+	goto done;
+    /* Get prefix of netconf base namespace in the incoming message */
+    if (xml_nsctx_get_prefix(nsc, NETCONF_BASE_NAMESPACE, &prefix) == 0){
+	cprintf(cbx, "No appropriate prefix exists for: %s", NETCONF_BASE_NAMESPACE);
+	if (netconf_unknown_namespace(cbret, "protocol", xml_name(xn), cbuf_get(cbx)) < 0)
+	    goto done;
+	goto ok;
+    }
+    /* Get default-operation element */
+    if ((x = xpath_first(xn, nsc, "%s%sdefault-operation", prefix?prefix:"", prefix?":":"")) != NULL){
 	if (xml_operation(xml_body(x), &operation) < 0){
 	    if (netconf_invalid_value(cbret, "protocol", "Wrong operation")< 0)
 		goto done;
 	    goto ok;
 	}
     }
-    if ((xc = xpath_first(xn, NULL, "config")) == NULL){
-	if (netconf_missing_element(cbret, "protocol", "config", NULL) < 0)
+    /* Get config element */
+    if ((xc = xpath_first(xn, nsc, "%s%sconfig", prefix?prefix:"", prefix?":":"")) == NULL){
+	cprintf(cbx, "Element not found, or mismatching prefix %s for namespace %s",
+		prefix?prefix:"null", NETCONF_BASE_NAMESPACE);
+	if (netconf_missing_element(cbret, "protocol", "config", cbuf_get(cbx)) < 0)
 	    goto done;
 	goto ok;
     }
@@ -713,6 +729,8 @@ from_client_edit_config(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (nsc)
+	cvec_free(nsc);
     if (xret)
 	xml_free(xret);
     if (cbx)
@@ -822,6 +840,7 @@ from_client_delete_config(clicon_handle h,
     uint32_t             myid = ce->ce_id;
     cbuf                *cbx = NULL; /* Assist cbuf */
 
+    /* XXX should use prefix cf edit_config */
     if ((target = netconf_db_find(xe, "target")) == NULL ||
 	strcmp(target, "running")==0){
 	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
@@ -1340,6 +1359,7 @@ from_client_create_subscription(clicon_handle h,
     struct timeval       stop;
     cvec                *nsc = NULL;
     
+    /* XXX should use prefix cf edit_config */
     if ((nsc = xml_nsctx_init(NULL, EVENT_RFC5277_NAMESPACE)) == NULL)
 	goto done;
     if ((x = xpath_first(xe, nsc, "//stream")) != NULL)
@@ -1654,7 +1674,7 @@ from_client_msg(clicon_handle        h,
 	goto reply;
     }
     else if (strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
-	cbuf *cbmsg;
+	cbuf *cbmsg = NULL;
 	if ((cbmsg = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;

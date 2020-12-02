@@ -1697,7 +1697,7 @@ xml_find_type_value(cxobj           *xt,
  *
  * The value can be of an attribute only
  * @param[in]   xt          xml tree node
- * @param[in]   prefix      Prefix (namespace local name) or NULL
+ * @param[in]   prefix      Prefix (namespace local name) or NULL (any prefix)
  * @param[in]   name        name of xml tree node (eg attr name or "body")
  * @param[in]   type        Matching type or -1 for any
  * @retval      val         Pointer to the name string

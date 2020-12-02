@@ -74,9 +74,10 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [namespace prefix nc is not supported in full #154](https://github.com/clicon/clixon/issues/154)
+  * edit-config "config" parameter did not work with prefix other than null
 * Fixed [YANG: key statement in rpc/notification list #148](https://github.com/clicon/clixon/issues/148)
   * Do not check uniqueness among lists without keys
-  
 * Fixed typo: [False Header Content_type in restconf error #152](https://github.com/clicon/clixon/issues/152)
 * Added message-id attributes in error and hello replies
   * See [namespace prefix nc is not supported in full #154](https://github.com/clicon/clixon/issues/154)

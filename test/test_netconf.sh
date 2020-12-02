@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Basic Netconf functionality
+# Mainly default/null prefix, but also xx: prefix
+# XXX: could add tests for dual prefixes xx and xy with doppelganger names, ie xy:filter that is
+# syntactic correct but wrong
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -80,8 +83,11 @@ expecteof "$clixon_netconf -f $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?
 new "netconf rcv hello, disable RFC7895/ietf-yang-library"
 expecteof "$clixon_netconf -f $cfg -o CLICON_MODULE_LIBRARY_RFC7895=0" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]><rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
 
-new "netconf get-config prefix"
+new "netconf get-config nc prefix"
 expecteof "$clixon_netconf -qf $cfg" 0 "<nc:rpc xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:message-id=\"42\"><nc:get-config><nc:source><nc:candidate/></nc:source></nc:get-config></nc:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:message-id=\"42\"><data/></rpc-reply>]]>]]>$"
+
+new "netconf get-config xx prefix"
+expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:get-config><xx:source><xx:candidate/></xx:source></xx:get-config></xx:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><data/></rpc-reply>]]>]]>$"
 
 new "netconf get-config double quotes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
@@ -91,6 +97,13 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><can
 
 new "Add subtree eth/0/0 using none which should not change anything"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><default-operation>none</default-operation><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth/0/0</name></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+# Trying prefixes
+new "Add subtree eth/0/0 using nc prefix"
+expecteof "$clixon_netconf -qf $cfg" 0 "<nc:rpc xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:message-id=\"42\"><nc:edit-config><nc:default-operation>none</nc:default-operation><nc:target><nc:candidate/></nc:target><nc:config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth/0/0</name></interface></interfaces></nc:config></nc:edit-config></nc:rpc>]]>]]>" "^<rpc-reply $DEFAULTONLY xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:message-id=\"42\"><ok/></rpc-reply>]]>]]>$"
+
+new "Add subtree eth/0/0 using xx prefix"
+expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:edit-config><xx:default-operation>none</xx:default-operation><xx:target><xx:candidate/></xx:target><xx:config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth/0/0</name></interface></interfaces></xx:config></xx:edit-config></xx:rpc>]]>]]>" "^<rpc-reply $DEFAULTONLY xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><ok/></rpc-reply>]]>]]>$"
 
 new "Check nothing added"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
@@ -124,6 +137,9 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><ca
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
+new "netconf discard-changes using xx prefix"
+expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:discard-changes/></xx:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><ok/></rpc-reply>]]>]]>$"
+
 new "netconf edit config"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth/0/0</name></interface><interface xmlns:ip=\"urn:ietf:params:xml:ns:yang:ietf-ip\"><name>eth1</name><enabled>true</enabled><ip:ipv4><ip:address><ip:ip>9.2.3.4</ip:ip><ip:prefix-length>24</ip:prefix-length></ip:address></ip:ipv4></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
@@ -146,6 +162,9 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$(cat $tmp)" "^<rpc-reply $DEFAULTNS><da
 new "netconf validate missing type"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error>"
 
+new "netconf validate using xx prefix"
+expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:validate><xx:source><xx:candidate/></xx:source></xx:validate></xx:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><rpc-error>"
+
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
@@ -166,6 +185,9 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><validate><source><candi
 
 new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "netconf commit using prefix xx"
+expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:commit/></xx:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><ok/></rpc-reply>]]>]]>$"
 
 new "netconf edit config merge eth2"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth2</name><type>ex:eth</type></interface></interfaces></config><default-operation>merge</default-operation></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -196,11 +218,20 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><ca
 new "netconf get state operation"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/if:interfaces\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth1</name><type>ex:eth</type><enabled>true</enabled><oper-status>up</oper-status><ex:my-status xmlns:ex=\"urn:example:clixon\"><ex:int>42</ex:int><ex:str>foo</ex:str></ex:my-status></interface></interfaces></data></rpc-reply>]]>]]>$"
 
+new "netconf get state operation use prefix xx"
+expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:get><xx:filter xx:type=\"xpath\" xx:select=\"/if:interfaces\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" /></xx:get></xx:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth1</name><type>ex:eth</type><enabled>true</enabled><oper-status>up</oper-status><ex:my-status xmlns:ex=\"urn:example:clixon\"><ex:int>42</ex:int><ex:str>foo</ex:str></ex:my-status></interface></interfaces></data></rpc-reply>]]>]]>$"
+
 new "netconf lock" 
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><lock><target><candidate/></target></lock></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "netconf unlock" 
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>0</session-id></error-info><error-severity>error</error-severity><error-message>Unlock failed, lock is not currently active</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+new "netconf lock using prefix xx" 
+expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:lock><xx:target><xx:candidate/></xx:target></xx:lock></xx:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><ok/></rpc-reply>]]>]]>$"
+
+new "netconf unlock using prefix xx" 
+expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:unlock><xx:target><xx:candidate/></xx:target></xx:unlock></xx:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>0</session-id></error-info><error-severity>error</error-severity><error-message>Unlock failed, lock is not currently active</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "netconf lock/unlock"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><lock><target><candidate/></target></lock></rpc>]]>]]><rpc $DEFAULTNS><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]><rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -214,9 +245,15 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><unlock><target><candida
 new "close-session"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><close-session/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
+new "close-session using prefix xx"
+expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:close-session/></xx:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><ok/></rpc-reply>]]>]]>$"
+
 # XXX NOTE that this does not actually kill a running session - and may even kill some random process,...
 new "kill-session"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "kill-session using prefix xx"
+expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:kill-session><xx:session-id>44</xx:session-id></xx:kill-session></xx:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><ok/></rpc-reply>]]>]]>$"
 
 # modify candidate, then lock, should fail.
 new "netconf edit config"
@@ -234,17 +271,26 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><lock><target><candidate
 new "copy startup to candidate"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><copy-config><target><startup/></target><source><candidate/></source></copy-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
+new "copy startup to candidate using prefix xx"
+expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:copy-config><xx:target><xx:startup/></xx:target><xx:source><xx:candidate/></xx:source></xx:copy-config></xx:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><ok/></rpc-reply>]]>]]>$"
+
 new "netconf get startup"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><startup/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth1</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>$"
 
 new "netconf delete startup"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><delete-config><target><startup/></target></delete-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
+new "netconf delete startup using prefix xx"
+expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:delete-config><xx:target><xx:startup/></xx:target></xx:delete-config></xx:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><ok/></rpc-reply>]]>]]>$"
+
 new "netconf check empty startup"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><startup/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
 
 new "netconf example rpc"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><example xmlns=\"urn:example:clixon\"><x>42</x></example></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><x xmlns=\"urn:example:clixon\">42</x><y xmlns=\"urn:example:clixon\">42</y></rpc-reply>]]>]]>$"
+
+new "netconf example rpc using prefix xx"
+expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><example xmlns=\"urn:example:clixon\"><x>42</x></example></xx:rpc>]]>]]>" "^<rpc-reply $DEFAULTNS xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><x xmlns=\"urn:example:clixon\">42</x><y xmlns=\"urn:example:clixon\">42</y></rpc-reply>]]>]]>$"
 
 new "netconf empty rpc"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><empty xmlns=\"urn:example:clixon\"/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
