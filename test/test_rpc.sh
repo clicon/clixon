@@ -165,8 +165,9 @@ expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+jso
 
 # test rpc lists with / without keys
 LIST='<u0 xmlns="urn:example:clixon"><uk>foo</uk></u0><u0 xmlns="urn:example:clixon"><uk>bar</uk></u0><u0 xmlns="urn:example:clixon"><uk>bar</uk></u0>'
+# On docker /fcgi the return is bar,foo,bar                                                          
 new "netconf example rpc input list without key with non-unique entries"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><example xmlns=\"urn:example:clixon\"><x>mandatory</x>$LIST</example></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><x xmlns=\"urn:example:clixon\">mandatory</x><y xmlns=\"urn:example:clixon\">42</y>$LIST</rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><example xmlns=\"urn:example:clixon\"><x>mandatory</x>$LIST</example></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><x xmlns=\"urn:example:clixon\">mandatory</x><y xmlns=\"urn:example:clixon\">42</y>" '<u0 xmlns="urn:example:clixon">' '<uk>foo</uk></u0><u0 xmlns="urn:example:clixon"><uk>bar</uk></u0>' "</rpc-reply>]]>]]>$"
 
 LIST='<u1 xmlns="urn:example:clixon"><uk>bar</uk><val>1</val></u1><u1 xmlns="urn:example:clixon"><uk>foo</uk><val>2</val></u1>'
 new "netconf example rpc input list with key"

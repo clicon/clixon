@@ -280,7 +280,7 @@ ctx2number(xp_ctx *xc,
 {
     int     retval = -1;
     char   *str = NULL;
-    double  n;
+    double  n = NAN;
     
     switch (xc->xc_type){
     case XT_NODESET:
