@@ -49,6 +49,8 @@ else
 DOCKERFILE      = Dockerfile
 endif
 
+#DOCKERFLAGS="--no-cache"
+
 # Example docker image. CHANGE THIS IF YOU PUSH
 IMG   = clixon/clixon-system
 
@@ -70,7 +72,7 @@ distclean: clean
 	rm -f Makefile *~ .depend
 
 docker: clixon $(DOCKERFILE)
-	sudo docker build -f $(DOCKERFILE) -t $(IMG) .  # --no-cache
+	sudo docker build -f $(DOCKERFILE) -t $(IMG)  $(DOCKERFLAGS) .
 
 push:
 	sudo docker push $(IMG)
