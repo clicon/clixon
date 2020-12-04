@@ -231,8 +231,9 @@ xmldb_copy(clicon_handle h,
 	if (de2)
 	    de0 = *de2;
 	de0.de_xml = x2; /* The new tree */
-	clicon_db_elmnt_set(h, to, &de0);
     }
+    clicon_db_elmnt_set(h, to, &de0);
+
     /* Copy the files themselves (above only in-memory cache) */
     if (xmldb_db2file(h, from, &fromfile) < 0)
 	goto done;
@@ -382,12 +383,10 @@ xmldb_clear(clicon_handle h,
     cxobj    *xt = NULL;
     db_elmnt *de = NULL;
     
-    if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
-	if ((de = clicon_db_elmnt_get(h, db)) != NULL){
-	    if ((xt = de->de_xml) != NULL){
-		xml_free(xt);
-		de->de_xml = NULL;
-	    }
+    if ((de = clicon_db_elmnt_get(h, db)) != NULL){
+	if ((xt = de->de_xml) != NULL){
+	    xml_free(xt);
+	    de->de_xml = NULL;
 	}
     }
     return 0;
@@ -439,12 +438,10 @@ xmldb_create(clicon_handle h,
     db_elmnt           *de = NULL;
     cxobj              *xt = NULL;
 
-    if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){ 
-	if ((de = clicon_db_elmnt_get(h, db)) != NULL){
-	    if ((xt = de->de_xml) != NULL){
-		xml_free(xt);
-		de->de_xml = NULL;
-	    }
+    if ((de = clicon_db_elmnt_get(h, db)) != NULL){
+	if ((xt = de->de_xml) != NULL){
+	    xml_free(xt);
+	    de->de_xml = NULL;
 	}
     }
     if (xmldb_db2file(h, db, &filename) < 0)

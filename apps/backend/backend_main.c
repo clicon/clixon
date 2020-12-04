@@ -890,7 +890,8 @@ main(int    argc,
     /* Initiate the shared candidate. */
     if (xmldb_copy(h, "running", "candidate") < 0)
 	goto done;
-    xmldb_modified_set(h, "candidate", 0);
+    if (xmldb_modified_set(h, "candidate", 0) <0)
+	goto done;
     
     /* Set startup status */
     if (clicon_startup_status_set(h, status) < 0)

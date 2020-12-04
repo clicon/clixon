@@ -47,6 +47,7 @@ cat <<EOF > $cfg
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -72,8 +73,19 @@ if [ $BE -ne 0 ]; then
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
 
-    new "waiting"
+    new "wait backend"
     wait_backend
+fi
+
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    stop_restconf_pre
+
+    new "start restconf daemon"
+    start_restconf -f $cfg
+
+    new "wait restconf"
+    wait_restconf
 fi
 
 new "Add config to candidate"
@@ -150,28 +162,31 @@ new "copy startup->candidate"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><copy-config><target><candidate/></target><source><startup/></source></copy-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 if ! $YANG_UNKNOWN_ANYDATA ; then
-new "copy startup->running not allowed"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><copy-config><target><running/></target><source><startup/></source></copy-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>running</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: running with parent: target in namespace: urn:ietf:params:xml:ns:netconf:base:1.0</error-message></rpc-error></rpc-reply>]]>]]>$"
+    new "copy startup->running not allowed"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><copy-config><target><running/></target><source><startup/></source></copy-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>running</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: running with parent: target in namespace: urn:ietf:params:xml:ns:netconf:base:1.0</error-message></rpc-error></rpc-reply>]]>]]>$"
 fi
+
+# restconf copy
+new "restconf copy-config smoketest, json"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" http://127.0.0.1/restconf/operations/ietf-netconf:copy-config -d '{"ietf-netconf:input": {"target": {"startup": [null]},"source": {"running": [null]}}}')" 0 'HTTP/1.1 204 No Content'
+
+new "restconf copy-config smoketest, xml"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" http://127.0.0.1/restconf/operations/ietf-netconf:copy-config -d '<input xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target><startup></startup></target><source><running></running></source></input>')" 0 'HTTP/1.1 204 No Content'
 
 # Here running is empty
 new "Check running empty"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
+exit
 
-if [ $BE -eq 0 ]; then
-    exit # BE
-fi
-
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-sudo clixon_backend -z -f $cfg
-if [ $? -ne 0 ]; then
-    err "kill backend"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
 
 rm -rf $dir
