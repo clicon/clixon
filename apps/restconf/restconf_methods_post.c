@@ -611,11 +611,11 @@ api_operations_post_output(clicon_handle h,
     cxobj     *xok;
     int        isempty;
     
-    //    clicon_debug(1, "%s", __FUNCTION__);
-    /* Validate that exactly only <rpc-reply> tag */
+    clicon_debug(1, "%s", __FUNCTION__);
+    /* Validate that exactly only <rpc-reply> tag with exactly one element child */
     if ((xoutput = xml_child_i_type(xret, 0, CX_ELMNT)) == NULL ||
 	strcmp(xml_name(xoutput),"rpc-reply") != 0 ||
-	xml_child_nr_type(xret, CX_ELMNT) != 1){
+	xml_child_nr_type(xoutput, CX_ELMNT) != 1){
 	if (netconf_malformed_message_xml(&xerr, "restconf RPC does not have single input") < 0)
 	    goto done;	
 	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){

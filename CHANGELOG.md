@@ -74,6 +74,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [ Calling copy-config RPC from restconf #158](https://github.com/clicon/clixon/issues/158)
 * Fixed: [namespace prefix nc is not supported in full #154](https://github.com/clicon/clixon/issues/154)
   * edit-config "config" parameter did not work with prefix other than null
 * Fixed [YANG: key statement in rpc/notification list #148](https://github.com/clicon/clixon/issues/148)
