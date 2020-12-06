@@ -614,8 +614,13 @@ api_operations_post_output(clicon_handle h,
     clicon_debug(1, "%s", __FUNCTION__);
     /* Validate that exactly only <rpc-reply> tag with exactly one element child */
     if ((xoutput = xml_child_i_type(xret, 0, CX_ELMNT)) == NULL ||
-	strcmp(xml_name(xoutput),"rpc-reply") != 0 ||
-	xml_child_nr_type(xoutput, CX_ELMNT) != 1){
+	strcmp(xml_name(xoutput),"rpc-reply") != 0
+	/* See https://github.com/clicon/clixon/issues/158 
+	 * This is an internal error, they should not be double but the error should not be detected
+	 * here, it should be detected in the backend plugin caller.
+	 ||	xml_child_nr_type(xrpc, CX_ELMNT) != 1 XXX backend can have multiple callbacks
+	*/
+	){
 	if (netconf_malformed_message_xml(&xerr, "restconf RPC does not have single input") < 0)
 	    goto done;	
 	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){

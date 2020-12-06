@@ -176,7 +176,6 @@ expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml
 # Here running is empty
 new "Check running empty"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
-exit
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
