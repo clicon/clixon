@@ -211,7 +211,7 @@ parse_configfile_one(const char *filename,
     cbuf  *cbret = NULL;
     int    ret;
 
-    if ((fp = fopen(filename, "r")) < 0){
+    if ((fp = fopen(filename, "r")) == NULL){
 	clicon_err(OE_UNIX, errno, "open configure file: %s", filename);
 	return -1;
     }

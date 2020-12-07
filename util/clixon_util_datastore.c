@@ -251,7 +251,7 @@ main(int argc, char **argv)
 	}
 	if (argc == 2){
 	    FILE *fp;
-	    if ((fp = fopen(xmlfilename, "r")) < 0){
+	    if ((fp = fopen(xmlfilename, "r")) == NULL){
 		clicon_err(OE_UNIX, errno, "fopen(%s)", xmlfilename);
 		goto done;
 	    }

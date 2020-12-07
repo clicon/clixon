@@ -10,7 +10,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 : ${format:=xml}
 
 # Number of list/leaf-list entries in file
-: ${perfnr:=10000}
+: ${perfnr:=20000}
 
 # Number of requests made get/put
 : ${perfreq:=10}

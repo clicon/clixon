@@ -138,7 +138,7 @@ main(int    argc,
 	usage(argv[0]);
     }
     if (input_filename){
-	if ((fp = fopen(input_filename, "r")) < 0){
+	if ((fp = fopen(input_filename, "r")) == NULL){
 	    clicon_err(OE_YANG, errno, "open(%s)", input_filename);	
 	    goto done;
 	}

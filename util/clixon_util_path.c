@@ -135,7 +135,7 @@ main(int    argc,
 	    break;
 	case 'f': /* XML file */
 	    filename = optarg;
-	    if ((fp = fopen(filename, "r")) < 0){
+	    if ((fp = fopen(filename, "r")) == NULL){
 		clicon_err(OE_UNIX, errno, "fopen(%s)", optarg);
 		goto done;
 	    }

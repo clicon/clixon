@@ -173,7 +173,7 @@ load_extraxml(clicon_handle h,
 
     if (filename == NULL)
 	return 1;
-    if ((fp = fopen(filename, "r")) < 0){
+    if ((fp = fopen(filename, "r")) == NULL){
 	clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	goto done;
     }

@@ -7,7 +7,7 @@
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Number of list/leaf-list entries in file
-: ${perfnr:=10000}
+: ${perfnr:=20000}
 
 APPNAME=example
 

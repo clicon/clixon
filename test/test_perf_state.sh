@@ -13,7 +13,7 @@ fin=$dir/fin
 : ${format:=xml}
 
 # Number of list/leaf-list entries in file (cant be less than 2)
-: ${perfnr:=1000}
+: ${perfnr:=20000}
 
 # Number of requests made get/put
 : ${perfreq:=10}

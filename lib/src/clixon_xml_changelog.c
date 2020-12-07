@@ -445,7 +445,7 @@ clixon_xml_changelog_init(clicon_handle h)
 
     yspec = clicon_dbspec_yang(h);
     if ((filename = clicon_option_str(h, "CLICON_XML_CHANGELOG_FILE")) != NULL){
-	if ((fp = fopen(filename, "r")) < 0){
+	if ((fp = fopen(filename, "r")) == NULL){
 	    clicon_err(OE_UNIX, errno, "fopen(%s)", filename);
 	    goto done;
 	}    

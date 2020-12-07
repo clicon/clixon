@@ -168,10 +168,10 @@ fi
 
 # restconf copy
 new "restconf copy-config smoketest, json"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" http://127.0.0.1/restconf/operations/ietf-netconf:copy-config -d '{"ietf-netconf:input": {"target": {"startup": [null]},"source": {"running": [null]}}}')" 0 'HTTP/1.1 204 No Content'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://127.0.0.1/restconf/operations/ietf-netconf:copy-config -d '{"ietf-netconf:input": {"target": {"startup": [null]},"source": {"running": [null]}}}')" 0 'HTTP/1.1 204 No Content'
 
 new "restconf copy-config smoketest, xml"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" http://127.0.0.1/restconf/operations/ietf-netconf:copy-config -d '<input xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target><startup></startup></target><source><running></running></source></input>')" 0 'HTTP/1.1 204 No Content'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://127.0.0.1/restconf/operations/ietf-netconf:copy-config -d '<input xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><target><startup></startup></target><source><running></running></source></input>')" 0 'HTTP/1.1 204 No Content'
 
 # Here running is empty
 new "Check running empty"

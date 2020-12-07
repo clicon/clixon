@@ -582,7 +582,8 @@ FSM(char *tag,
  *  cxobj *xt = NULL;
  *  cxobj *xerr = NULL;
  *  FILE  *f;
- *  f = fopen(filename, "r");
+ *  if ((f = fopen(filename, "r")) == NULL)
+ *    err;
  *  if ((ret = clixon_xml_parse_file(f, YB_MODULE, yspec, "</config>", &xt, &xerr)) < 0)
  *    err;
  *  xml_free(xt);

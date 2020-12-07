@@ -453,7 +453,7 @@ xmldb_readfile(clicon_handle    h,
 	goto done;
     }
     /* Parse file into internal XML tree from different formats */
-    if ((fp = fopen(dbfile, "r")) < 0) {
+    if ((fp = fopen(dbfile, "r")) == NULL) {
 	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
 	goto done;
     }    

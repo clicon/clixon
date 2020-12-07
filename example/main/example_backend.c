@@ -402,7 +402,7 @@ example_statedata(clicon_handle h,
 	}
 	else{
 	    cxobj *x1;
-	    if ((fp = fopen(_state_file, "r")) < 0){
+	    if ((fp = fopen(_state_file, "r")) == NULL){
 		clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
 		goto done;
 	    }
@@ -984,7 +984,7 @@ example_daemon(clicon_handle h)
     /* Read state file (or should this be in init/start?) */
     if (_state && _state_file && _state_file_init){
 	yspec = clicon_dbspec_yang(h);
-	if ((fp = fopen(_state_file, "r")) < 0){
+	if ((fp = fopen(_state_file, "r")) == NULL){
 	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
 	    goto done;
 	}

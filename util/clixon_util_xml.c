@@ -263,7 +263,7 @@ main(int    argc,
      * Always validated
      */
     if (top_input_filename){
-	if ((tfp = fopen(top_input_filename, "r")) < 0){
+	if ((tfp = fopen(top_input_filename, "r")) == NULL){
 	    clicon_err(OE_YANG, errno, "fopen(%s)", top_input_filename);	
 	    goto done;
 	}
@@ -288,7 +288,7 @@ main(int    argc,
 	xt = xbot;
     }
     if (input_filename){
-	if ((fp = fopen(input_filename, "r")) < 0){
+	if ((fp = fopen(input_filename, "r")) == NULL){
 	    clicon_err(OE_YANG, errno, "open(%s)", input_filename);	
 	    goto done;
 	}
