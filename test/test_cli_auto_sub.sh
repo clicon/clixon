@@ -81,7 +81,7 @@ enter1 <string>, cli_auto_sub_enter("datamodel", "/example:table/parameter=%s/in
 leave, cli_auto_top("datamodel", "candidate");
 
 # Autocli syntax tree operations
-edit @datamodel, cli_auto_edit("interface");
+edit @datamodel, cli_auto_edit("datamodel");
 up, cli_auto_up("datamodel");
 top, cli_auto_top("datamodel");
 set @datamodel, cli_auto_set();

@@ -14,6 +14,8 @@
 #
 # 2) The extensions results in in a node data definition.
 # Second, the example is run without the extension enabled, then it is enabled.
+#
+# @see test_cli_auto_extension
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

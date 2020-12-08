@@ -985,8 +985,8 @@ yang_find_schemanode(yang_stmt *yn,
  * @retval     NULL      No prefix found. This is an error
  * @retval     prefix    OK: Prefix as char* pointer into yang tree
  * @code
- * char *myprefix;
- * myprefix = yang_find_myprefix(ys);
+ *   char *myprefix;
+ *   myprefix = yang_find_myprefix(ys);
  * @endcode
  */
 char *
@@ -3234,6 +3234,65 @@ yang_anydata_add(yang_stmt *yp,
     }
  done:
     return ys;
+}
+
+/*! Find extension argument and return extension argument value
+ * @param[in]  ys     Yang statement
+ * @param[in]  name   Name of the extension 
+ * @param[in]  ns     The namespace
+ * @param[out] value  clispec operator (hide/none) - direct pointer into yang, dont free
+ * This is for extensions with an argument
+ * @code
+ *     char *value = NULL;
+ *     if (yang_extension_value(ys, "mymode", "urn:example:lib", &value) < 0)
+ *        err;
+ *     if (value != NULL){
+ *        // use extension value
+ *     }
+ * @endcode
+ */
+int
+yang_extension_value(yang_stmt *ys,
+		     char      *name,
+		     char      *ns,
+		     char     **value)
+{
+    int        retval = -1;
+    yang_stmt *yext;
+    yang_stmt *ymod;
+    cg_var    *cv;
+    char      *prefix = NULL;
+    cbuf      *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    yext = NULL; /* This loop gets complicated in trhe case the extension is augmented */
+    while ((yext = yn_each(ys, yext)) != NULL) {
+	if (yang_keyword_get(yext) != Y_UNKNOWN)
+	    continue;
+	if ((ymod = ys_module(yext)) == NULL)
+	    continue;
+	if (yang_find_prefix_by_namespace(ymod, ns, &prefix) < 0)
+	    goto ok;
+	cprintf(cb, "%s:%s", prefix, name);
+	if (strcmp(yang_argument_get(yext), cbuf_get(cb)) != 0)
+	    continue;
+	break;
+    }
+    if (yext != NULL){ /* Found */
+	if ((cv = yang_cv_get(yext)) == NULL)
+	    goto ok;
+	if (value)
+	    *value = cv_string_get(cv);
+    }
+ ok:
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
 }
 
 #ifdef XML_EXPLICIT_INDEX

@@ -64,6 +64,11 @@ Developers may need to change their code
 
 ### Minor changes
 
+* More YANG extension functionality,
+  * See [Augment auto-cli for hiding/modifying cli syntax #156](https://github.com/clicon/clixon/issues/156) and [hiding auto-generated CLI entries #153](https://github.com/clicon/clixon/issues/153)
+  * Extensions can be used in augmentations
+  * Extension `autocli-op` has been added to add "hidden" commands in the autocli
+  * Documentation: https://clixon-docs.readthedocs.io/en/latest/misc.html#extensions
 * Added new revision of main example yang: `clixon-example@2020-12-01.yang`
 * Support for building static lib: `LINKAGE=static configure`
 * Change comment character to be active anywhere to beginning of _word_ only.

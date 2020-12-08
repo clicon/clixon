@@ -253,15 +253,6 @@ yang_augment_node(yang_stmt *ys)
     /* The target node MUST be either a container, list, choice, case, input, output, or notification node.
      * which means it is slightly different than a schema-nodeid ? */
     targetkey = yang_keyword_get(ytarget);
-    if (targetkey != Y_CONTAINER && targetkey != Y_LIST && targetkey != Y_CHOICE &&
-	targetkey != Y_CASE && targetkey != Y_INPUT &&
-	targetkey != Y_OUTPUT && targetkey != Y_NOTIFICATION){
-	clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: target node %s has wrong type %s",
-		   yang_argument_get(ys_module(ys)),
-		   schema_nodeid,
-		   yang_key2str(targetkey));
-	goto ok;
-    }
 
     /* Find when statement, if present */
     if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL){
@@ -272,16 +263,17 @@ yang_augment_node(yang_stmt *ys)
     /* Extend ytarget with ys' schemanode children */
     yc0 = NULL;
     while ((yc0 = yn_each(ys, yc0)) != NULL) {
-	if (!yang_schemanode(yc0))
-	    continue;
 	childkey = yang_keyword_get(yc0);
+	/* Only shemanodes and extensions */
+	if (!yang_schemanode(yc0) && childkey != Y_UNKNOWN) 
+	    continue;
 	switch (targetkey){
 	case Y_CONTAINER:
 	case Y_LIST:
 	    /* If the target node is a container or list node, the "action" and
 	       "notification" statements can be used within the "augment" statement.
 	    */
-	    if (childkey != Y_ACTION && childkey != Y_NOTIFICATION &&
+	    if (childkey != Y_ACTION && childkey != Y_NOTIFICATION && childkey != Y_UNKNOWN &&
 		childkey != Y_CONTAINER && childkey != Y_LEAF && childkey != Y_LIST &&
 		childkey != Y_LEAF_LIST && childkey != Y_USES && childkey != Y_CHOICE){
 		clicon_log(LOG_WARNING, "Warning: A Augment failed in module %s: node %s %d cannot be added to target node %s",
@@ -300,8 +292,9 @@ yang_augment_node(yang_stmt *ys)
 	       notification node, the "container", "leaf", "list", "leaf-list",
 	       "uses", and "choice" statements can be used within the "augment"
 	       statement. */
-	    if (childkey != Y_CONTAINER && childkey != Y_LEAF && childkey != Y_LIST &&
-		childkey != Y_LEAF_LIST && childkey != Y_USES && childkey != Y_CHOICE){
+	    if (childkey != Y_CONTAINER && childkey != Y_LEAF && childkey != Y_LIST && 
+		childkey != Y_LEAF_LIST && childkey != Y_USES && childkey != Y_CHOICE &&
+		childkey != Y_UNKNOWN){
 		clicon_log(LOG_WARNING, "Warning: B Augment failed in module %s: node %s %d cannot be added to target node %s",
 			   yang_argument_get(ys_module(ys)),
 			   yang_key2str(childkey),

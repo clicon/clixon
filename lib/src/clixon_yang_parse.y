@@ -1393,6 +1393,7 @@ augment_substmt : when_stmt          { clicon_debug(3,"augment-substmt -> when-s
               | case_stmt            { clicon_debug(3,"augment-substmt -> case-stmt");}
               | action_stmt          { clicon_debug(3,"augment-substmt -> action-stmt");} 
               | notification_stmt    { clicon_debug(3,"augment-substmt -> notification-stmt");} 
+              | unknown_stmt         { clicon_debug(3,"augment-substmt -> unknown-stmt");} 
               |                      { clicon_debug(3,"augment-substmt -> "); }
               ;
 
