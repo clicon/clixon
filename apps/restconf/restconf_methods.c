@@ -479,10 +479,22 @@ api_data_write(clicon_handle h,
      * Replace xparent with x, ie bottom of api-path with data 
      */	    
     dname = xml_name(xdata);
-    if (api_path==NULL && strcmp(dname,"data")==0){
+    if (api_path==NULL) {
+	if (strcmp(dname, "data")!=0){
+	    if (netconf_bad_element_xml(&xerr, "application", dname,
+					"Data element does not match top-level data") < 0)
+		goto done;
+	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+		goto done;
+	    }
+	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
 	if (xml_addsub(NULL, xdata) < 0)
 	    goto done;
-	if (xtop)
+	if (xtop) /* also xbot */
 	    xml_free(xtop);
 	xtop = xdata;
 	xml_name_set(xtop, "config");
@@ -494,7 +506,7 @@ api_data_write(clicon_handle h,
 		goto done;
 	}
     }
-    else {
+    else { /* api-path != NULL */
 	/* There is an api-path that defines an element in the datastore tree.
 	 * Not top-of-tree.
 	 */
@@ -502,7 +514,8 @@ api_data_write(clicon_handle h,
 
 	/* Check same symbol in api-path as data */	    
 	if (strcmp(dname, xml_name(xbot))){
-	    if (netconf_operation_failed_xml(&xerr, "protocol", "Not same symbol in api-path as data") < 0)
+	    if (netconf_bad_element_xml(&xerr, "application", dname,
+					"Data element does not match api-path") < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
@@ -564,8 +577,9 @@ api_data_write(clicon_handle h,
 		}
 	    }
 	}
-	xml_purge(xbot);
-	if (xml_addsub(xparent, xdata) < 0)
+	if (xtop != xbot) /* Should always be true */
+	    xml_purge(xbot);
+	if (xml_addsub(xparent, xdata) < 0) 
 	    goto done;
 	/* If restconf insert/point attributes are present, translate to netconf */
 	if (restconf_insert_attributes(xdata, qvec) < 0)
@@ -584,7 +598,7 @@ api_data_write(clicon_handle h,
 	    if (namespace && strcmp(namespace, xml_value(xa))==0)
 		xml_purge(xa);
 	}
-    }
+    } /* api-path != NULL */
     /* For internal XML protocol: add username attribute for access control
      */
     username = clicon_username_get(h);
