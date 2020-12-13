@@ -57,35 +57,27 @@ module clixon-restconf {
 		description
 		"PAM password auth";
 	    }
+	    enum none {
+		description
+		"No authentication, no security.";
+	    }
 	}
 	description
 	    "Enumeration of HTTP authorization types.";
     }
-    typedef service-operation {
-        type enumeration {
-            enum start {
-                description
-                    "Start if not already running";
-            }
-            enum stop {
-                description
-                    "Stop if running";
-            }
-            enum restart {
-                description
-                    "Stop if running, then start";
-            }
-            enum status {
-                description
-                    "Check status";
-            }
-        }
-        description
-            "Common operations that can be performed on a service";
-    }
     grouping clixon-restconf{
 	description
-	    "HTTP daemon configuration.";
+	    "HTTP RESTCONF configuration.";
+	leaf enable {
+	    type boolean;
+	    default "false"; 
+	    description
+		"Enables RESTCONF functionality.
+                 Note that starting/stopping of a restconf daemon is different from it being
+                 enabled or not.
+                 For example, if the restconf daemon is under systemd management, the restconf
+                 daemon will only start if enable=true.";
+	}
 	leaf-list auth-type {
 	    type http-auth-type;
 	    description
@@ -134,43 +126,5 @@ module clixon-restconf {
     container restconf {
 	presence "Enables RESTCONF";
 	uses clixon-restconf;
-    }
-    rpc restconf-control {
-	input {
-	    leaf operation {
-		type service-operation;
-		mandatory true;
-		description
-		    "One of the strings 'start', 'stop', 'restart', or 'status'.";
-	    }
-	    leaf namespace {
-		type string;
-		description
-		    "Network namespace.";
-	    }
-	}
-	output {
-	    leaf stdout {
-		type string;
-	    }
-	}
-    }
-    rpc restconf-coredump {
-	input {
-	    leaf operation {
-		type boolean;
-		mandatory true;
-	    }
-	    leaf namespace {
-		type string;
-		description
-		    "Network namespace.";
-	    }
-	}
-	output {
-	    leaf stdout {
-		type string;
-	    }
-	}
     }
 }

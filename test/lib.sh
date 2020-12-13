@@ -198,9 +198,9 @@ fi
 # Can be placed in clixon-config
 # Note that https clause assumes there exists certs and keys in /etc/ssl,...
 if [ $RCPROTO = http ]; then
-    RESTCONFIG="<restconf><auth-type>password</auth-type><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
+    RESTCONFIG="<restconf><enable>true</enable><auth-type>password</auth-type><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
 else
-    RESTCONFIG="<restconf><auth-type>password</auth-type><server-cert-path>/etc/ssl/certs/clixon-server-crt.pem</server-cert-path><server-key-path>/etc/ssl/private/clixon-server-key.pem</server-key-path><server-ca-cert-path>/etc/ssl/certs/clixon-ca-crt.pem</server-ca-cert-path><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
+    RESTCONFIG="<restconf><enable>true</enable><auth-type>password</auth-type><server-cert-path>/etc/ssl/certs/clixon-server-crt.pem</server-cert-path><server-key-path>/etc/ssl/private/clixon-server-key.pem</server-key-path><server-ca-cert-path>/etc/ssl/certs/clixon-ca-crt.pem</server-ca-cert-path><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
 fi
 
 # Some tests may set owner of testdir to something strange and quit, need

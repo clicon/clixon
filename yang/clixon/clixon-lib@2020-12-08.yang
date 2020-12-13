@@ -44,6 +44,7 @@ module clixon-lib {
     revision 2020-12-08 {
 	description
 	    "Added: autocli-op extension.
+                    rpc process-control for process/daemon management
              Released in clixon 4.9";
     }
     revision 2020-04-23 {
@@ -62,6 +63,28 @@ module clixon-lib {
     revision 2019-01-02 {
 	description
 	    "Released in Clixon 3.9";
+    }
+    typedef service-operation {
+        type enumeration {
+            enum start {
+                description
+                    "Start if not already running";
+            }
+            enum stop {
+                description
+                    "Stop if running";
+            }
+            enum restart {
+                description
+                    "Stop if running, then start";
+            }
+            enum status {
+                description
+                    "Check status";
+            }
+        }
+        description
+            "Common operations that can be performed on a service";
     }
     extension autocli-op {
       description 
@@ -120,6 +143,36 @@ module clixon-lib {
 	    leaf-list plugin {
 		description "Name of plugin to restart";
 		type string;
+	    }
+	}
+    }
+
+    rpc process-control {
+	description
+	    "Control a specific process or daemon: start/stop, etc.
+             This is for direct managing of a porcess by the backend. 
+             Alternatively one can manage a daemon via systemd, containerd, kubernetes, etc.";
+	input {
+	    leaf name {
+		description "Name of process";
+		type string;
+		mandatory true;
+	    }
+	    leaf operation {
+		type service-operation;
+		mandatory true;
+		description
+		    "One of the strings 'start', 'stop', 'restart', or 'status'.";
+	    }
+	    leaf namespace {
+		type string;
+		description
+		    "Network namespace.";
+	    }
+	}
+	output {
+	    leaf status {
+		type boolean;
 	    }
 	}
     }

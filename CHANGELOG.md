@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [4.9.0](#490) Expected 15 December 2020
+* [4.9.0](#490) Expected 19 December 2020
 * [4.8.0](#480) 18 October 2020
 * [4.7.0](#470) 14 September 2020
 * [4.6.0](#460) 14 August 2020
@@ -25,10 +25,15 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
-## 4.9.0 Expected: 15 Dec 2020
+## 4.9.0 Expected: 19 Dec 2020
 
 ### New features
 
+* More YANG extension functionality,
+  * See [Augment auto-cli for hiding/modifying cli syntax #156](https://github.com/clicon/clixon/issues/156) and [hiding auto-generated CLI entries #153](https://github.com/clicon/clixon/issues/153)
+  * Extensions can be used in augmentations
+  * Extension `autocli-op` has been added to add "hidden" commands in the autocli
+  * Documentation: https://clixon-docs.readthedocs.io/en/latest/misc.html#extensions
 * Restconf configuration has a new configure model: `clixon-restconf.yang` enabling more flexible socket config
   * The new restconf config, including addresses, authentication type, is set either in clixon-config local config or in backend datastore (ie running)
   * This only applies to the evhtp restconf daemon, not fcgi/nginx, where the nginx config is used.
@@ -41,6 +46,9 @@
 Users may have to change how they access the system
 
 * Error-type changed from protocol to application for data-not-unique netconf/restconf errors
+* New clixon-lib@2020-12-08.yang revision
+  * Added: autocli-op extension (see new features)
+  * Added: rpc process-control for process/daemon management
 * New clixon-config@2020-11-03.yang revision
   * Moved to clixon-restconf.yang and marked as obsolete:
     - CLICON_RESTCONF_IPV4_ADDR
@@ -64,11 +72,6 @@ Developers may need to change their code
 
 ### Minor changes
 
-* More YANG extension functionality,
-  * See [Augment auto-cli for hiding/modifying cli syntax #156](https://github.com/clicon/clixon/issues/156) and [hiding auto-generated CLI entries #153](https://github.com/clicon/clixon/issues/153)
-  * Extensions can be used in augmentations
-  * Extension `autocli-op` has been added to add "hidden" commands in the autocli
-  * Documentation: https://clixon-docs.readthedocs.io/en/latest/misc.html#extensions
 * Added new revision of main example yang: `clixon-example@2020-12-01.yang`
 * Support for building static lib: `LINKAGE=static configure`
 * Change comment character to be active anywhere to beginning of _word_ only.

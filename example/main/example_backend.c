@@ -1122,7 +1122,10 @@ clixon_plugin_init(clicon_handle h)
 			      "example"/* Xml tag when callback is made */
 			      ) < 0)
 	goto done;
-    /* Called after the regular system copy_config callback */
+    /* Called before the regular system copy_config callback 
+     * If you want to have it called _after_ the system callback, place this call in 
+     * the _start function.
+     */
     if (rpc_callback_register(h, example_copy_extra, 
 			      NULL, 
 			      NETCONF_BASE_NAMESPACE,

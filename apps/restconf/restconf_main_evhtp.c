@@ -934,6 +934,9 @@ cx_evhtp_socket(clicon_handle    h,
  * @param[in]  xconfig  XML config
  * @param[in]  nsc      Namespace context
  * @param[in]  eh       Evhtp handle
+ * @retval     -1       Error
+ * @retval     0        OK, but restconf disenabled, proceed with other if possible
+ * @retval     1        OK
  */
 static int
 cx_evhtp_init(clicon_handle     h,
@@ -942,6 +945,8 @@ cx_evhtp_init(clicon_handle     h,
 	      cx_evhtp_handle  *eh)
 {
     int          retval = -1;
+    char*        enable;
+    int          ssl_enable = 0;
     cxobj      **vec = NULL;
     size_t       veclen;
     char        *server_cert_path = NULL;
@@ -949,11 +954,14 @@ cx_evhtp_init(clicon_handle     h,
     char        *server_ca_cert_path = NULL;
     char        *auth_type = NULL;
     int          auth_type_client_certificate = 0;
-    //XXX    char                *client_cert_ca = NULL;
     cxobj       *x;
     int          i;
-    int          ssl_enable = 0;
 
+    if ((x = xpath_first(xrestconf, nsc, "enable")) != NULL &&
+	(enable = xml_body(x)) != NULL){
+	if (strcmp(enable, "false") == 0)
+	    goto disable;
+    }
     /* If at least one socket has ssl then enable global ssl_enable */
     ssl_enable = xpath_first(xrestconf, nsc, "socket[ssl='true']") != NULL;
     /* get common fields */
@@ -1002,11 +1010,14 @@ cx_evhtp_init(clicon_handle     h,
 			    auth_type_client_certificate) < 0)
 	    goto done;
     }
-    retval = 0;
+    retval = 1;
  done:
     if (vec)
 	free(vec);
     return retval;
+ disable:
+    retval = 0;
+    goto done;
 }
 
 /*! Read restconf from config 
@@ -1026,22 +1037,24 @@ int
 restconf_config(clicon_handle    h,
 		cx_evhtp_handle *eh)
 {
-    int                retval = -1;
-    char              *dir;
-    yang_stmt         *yspec = NULL;
-    char              *str;
-    clixon_plugin     *cp = NULL;
-    cvec              *nsctx_global = NULL; /* Global namespace context */
-    size_t             cligen_buflen;
-    size_t             cligen_bufthreshold;
-    cvec              *nsc = NULL;
-    cxobj             *xerr = NULL;
-    uint32_t           id = 0; /* Session id, to poll backend up */
-    struct passwd     *pw;
-    cxobj             *xconfig1 = NULL;
-    cxobj             *xrestconf1 = NULL;
-    cxobj             *xconfig2 = NULL;
-    cxobj             *xrestconf2 = NULL;
+    int            retval = -1;
+    char          *dir;
+    yang_stmt     *yspec = NULL;
+    char          *str;
+    clixon_plugin *cp = NULL;
+    cvec          *nsctx_global = NULL; /* Global namespace context */
+    size_t         cligen_buflen;
+    size_t         cligen_bufthreshold;
+    cvec          *nsc = NULL;
+    cxobj         *xerr = NULL;
+    uint32_t       id = 0; /* Session id, to poll backend up */
+    struct passwd *pw;
+    cxobj         *xconfig1 = NULL;
+    cxobj         *xrestconf1 = NULL;
+    cxobj         *xconfig2 = NULL;
+    cxobj         *xrestconf2 = NULL;
+    int            ret;
+    int            backend = 1; /* query backend for config */
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
@@ -1137,13 +1150,14 @@ restconf_config(clicon_handle    h,
     /* First get local config */
     xconfig1 = clicon_conf_xml(h);
     if ((xrestconf1 = xpath_first(xconfig1, NULL, "restconf")) != NULL){
-	/* Initialize evhtp with local config  */
-	if (cx_evhtp_init(h, xrestconf1, NULL, eh) < 0)
+	/* Initialize evhtp with local config: ret 0 means disabled -> need to query remote */
+	if ((ret = cx_evhtp_init(h, xrestconf1, NULL, eh)) < 0)
 	    goto done;
+	if (ret == 1)
+	    backend = 0;
     }
-    else {
-	/* Query backend of config. 
-	 * Before evhtp, try again if not done */
+    if (backend){     /* Query backend of config. */
+	/* Before evhtp, try again if not done */
 	while (1){
 	    if (clicon_hello_req(h, &id) < 0){
 		if (errno == ENOENT){

@@ -37,7 +37,7 @@
  * features:
  * - nacm
  * - transaction test
- *  -t  enable transaction logging (cal syslog for every transaction)
+ *  -t  enable transaction logging (call syslog for every transaction)
  *  -v <xpath> Failing validate and commit if <xpath> is present (synthetic error)
  */
 #include <stdio.h>
@@ -57,6 +57,9 @@
 
 /* These include signatures for plugin and transaction callbacks. */
 #include <clixon/clixon_backend.h> 
+
+/* Command line options to be passed to getopt(3) */
+#define BACKEND_NACM_OPTS "tv:"
 
 /*! Variable to control transaction logging (for debug)
  * If set, call syslog for every transaction callback
@@ -233,7 +236,7 @@ clixon_plugin_init(clicon_handle h)
 	goto done;
     opterr = 0;
     optind = 1;
-    while ((c = getopt(argc, argv, "tv:")) != -1)
+    while ((c = getopt(argc, argv, BACKEND_NACM_OPTS)) != -1)
 	switch (c) {
 	case 't': /* transaction log */
 	    _transaction_log = 1;

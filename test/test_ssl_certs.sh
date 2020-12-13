@@ -140,6 +140,7 @@ cat <<EOF > $cfg
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
   <restconf>
+     <enable>true</enable>
      <auth-type>client-certificate</auth-type>
      <server-cert-path>$srvcert</server-cert-path>
      <server-key-path>$srvkey</server-key-path>

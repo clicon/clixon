@@ -40,7 +40,7 @@ for test in $pattern; do
     fi
 done
 if [ $err -eq 0 ]; then 
-    echo OK
+    echo "OK, ${testnr} tests"
 else
     echo -e "\e[31mError"
     echo -ne "\e[0m"
