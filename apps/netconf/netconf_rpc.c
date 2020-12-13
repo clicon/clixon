@@ -164,6 +164,16 @@ netconf_get_config(clicon_handle h,
      int        retval = -1;
      cxobj     *xfilter; /* filter */
      char      *ftype = NULL;
+     cvec      *nsc = NULL;
+     char      *prefix = NULL;
+
+     if(xml_nsctx_node(xn, &nsc) < 0)
+         goto done;
+
+     /* Get prefix of netconf base namespace in the incoming message */
+     if (xml_nsctx_get_prefix(nsc, NETCONF_BASE_NAMESPACE, &prefix) == 0){
+         goto done;
+     }
 
      /* ie <filter>...</filter> */
      if ((xfilter = xpath_first(xn, NULL, "filter")) != NULL) 
@@ -193,6 +203,8 @@ netconf_get_config(clicon_handle h,
      }
     retval = 0;
  done:
+    if (nsc)
+        cvec_free(nsc);
     return retval;
 }
 
@@ -364,6 +376,16 @@ netconf_get(clicon_handle h,
      int        retval = -1;
      cxobj     *xfilter; /* filter */
      char      *ftype = NULL;
+     cvec      *nsc = NULL;
+     char      *prefix = NULL;
+
+     if(xml_nsctx_node(xn, &nsc) < 0)
+         goto done;
+
+     /* Get prefix of netconf base namespace in the incoming message */
+     if (xml_nsctx_get_prefix(nsc, NETCONF_BASE_NAMESPACE, &prefix) == 0){
+         goto done;
+     }
 
        /* ie <filter>...</filter> */
      if ((xfilter = xpath_first(xn, NULL, "filter")) != NULL) 
@@ -393,6 +415,8 @@ netconf_get(clicon_handle h,
      }
     retval = 0;
  done:
+    if(nsc)
+        cvec_free(nsc);	
     return retval;
 }
 
