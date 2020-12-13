@@ -176,7 +176,7 @@ netconf_get_config(clicon_handle h,
      }
 
      /* ie <filter>...</filter> */
-     if ((xfilter = xpath_first(xn, NULL, "filter")) != NULL) 
+     if ((xfilter = xpath_first(xn, nsc, "%s%sfilter", prefix ? prefix : "", prefix ? ":" : "")) != NULL)
 	 ftype = xml_find_value(xfilter, "type");
      if (xfilter == NULL || ftype == NULL || strcmp(ftype, "xpath")==0){
 	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
@@ -388,7 +388,7 @@ netconf_get(clicon_handle h,
      }
 
        /* ie <filter>...</filter> */
-     if ((xfilter = xpath_first(xn, NULL, "filter")) != NULL) 
+     if ((xfilter = xpath_first(xn, nsc, "%s%sfilter", prefix ? prefix : "", prefix ? ":" : "")) != NULL)
 	 ftype = xml_find_value(xfilter, "type");
      if (xfilter == NULL || ftype == NULL || strcmp(ftype, "xpath")==0){
 	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
