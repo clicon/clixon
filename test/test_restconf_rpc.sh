@@ -10,8 +10,8 @@ APPNAME=example
 cfg=$dir/conf.xml
 
 # Cant get it to work in the general case, single tests work fine
-# More specifically, if mem.sh background netconf, netconf crashes
-if [ $valgrindtest -ne 0 ]; then
+# More specifically, if mem.sh background netconf, netconf crashes which is valgrindtest 1
+if [ $valgrindtest -eq 1 ]; then
     echo "...skipped "
     return 0 # skip
 fi
@@ -110,10 +110,12 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><process-control xmlns=\
 new "8)check status on"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><process-control xmlns=\"http://clicon.org/lib\"><name>restconf</name><operation>status</operation></process-control></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><status xmlns=\"http://clicon.org/lib\">true</status></rpc-reply>]]>]]>"
 
-new "9)check new pid"
-pid1=$(pgrep clixon_restconf)
-if [ $pid0 -eq $pid1 ]; then
-    err "Different pids" "pid0:$pid0 = pid1:$pid1"
+if [ $valgrindtest -eq 0 ]; then # Cant get pgrep to work properly
+    new "9)check new pid"
+    pid1=$(pgrep clixon_restconf)
+    if [ $pid0 -eq $pid1 ]; then
+	err "Different pids" "pid0:$pid0 = pid1:$pid1"
+    fi
 fi
 
 if [ $BE -ne 0 ]; then
