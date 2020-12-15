@@ -1560,7 +1560,49 @@ from_client_restart_plugin(clicon_handle h,
     return retval;
 }
 
-/*!
+/*! Control a specific process or daemon: start/stop, etc
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+from_client_process_control(clicon_handle  h,
+			    cxobj         *xe,
+			    cbuf          *cbret,
+			    void          *arg,
+			    void          *regarg)
+{
+    int      retval = -1;
+    cxobj   *x;
+    char    *name = NULL;
+    char    *operation = NULL;
+    int      status = 0;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    if ((x = xml_find_type(xe, NULL, "name", CX_ELMNT)) != NULL)
+	name = xml_body(x);
+    if ((x = xml_find_type(xe, NULL, "operation", CX_ELMNT)) != NULL)
+	operation = xml_body(x);
+    /* Make the actual process operation */
+    if (clixon_process_operation(h, name, operation, &status) < 0)
+	goto done;
+    if (strcmp(operation, "status") == 0)
+	cprintf(cbret, "<rpc-reply xmlns=\"%s\"><status xmlns=\"%s\">%s</status></rpc-reply>",
+		NETCONF_BASE_NAMESPACE,
+		CLIXON_LIB_NS,
+		status?"true":"false");
+    else
+	cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Clixon hello to check liveness
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -1569,7 +1611,6 @@ from_client_hello(clicon_handle       h,
 		  cxobj               *x,
 		  struct client_entry *ce,
 		  cbuf                *cbret)
-    
 {
     int      retval = -1;
     uint32_t id;
@@ -1591,6 +1632,7 @@ from_client_hello(clicon_handle       h,
  done:
     return retval;
 }
+
 
 /*! An internal clicon message has arrived from a client. Receive and dispatch.
  * @param[in]   h    Clicon handle
@@ -1921,6 +1963,9 @@ backend_rpc_init(clicon_handle h)
 	goto done;
     if (rpc_callback_register(h, from_client_restart_plugin, NULL,
 			      CLIXON_LIB_NS, "restart-plugin") < 0)
+	goto done;
+    if (rpc_callback_register(h, from_client_process_control, NULL,
+			      CLIXON_LIB_NS, "process-control") < 0)
 	goto done;
     retval =0;
  done:

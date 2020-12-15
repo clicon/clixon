@@ -2,7 +2,9 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
+  Copyright (C) 2017-2019 Olof Hagsand
+  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -33,24 +35,17 @@
 
  */
 
-#ifndef _CLIXON_SIG_H_
-#define _CLIXON_SIG_H_
-
-/*
- * Types
- */
-typedef void (*sigfn_t)(int);
+#ifndef _CLIXON_PROC_H_
+#define _CLIXON_PROC_H_
 
 /*
  * Prototypes
  */ 
-int  set_signal(int signo, void (*handler)(int), void (**oldhandler)(int));
-void clicon_signal_block(int);
-void clicon_signal_unblock(int);
+int clixon_proc_run(char **argv, void (outcb)(char *), int doerr);
+int clixon_proc_background(char **argv, char *netns, pid_t *pid);
+int clixon_proc_daemon(char **argv, pid_t *pid);
+int clixon_process_register(clicon_handle h, const char *name, const char *netns, char **argv, int argc);
+int clixon_process_delete_all(clicon_handle h);
+int clixon_process_operation(clicon_handle h, char *name, char *op, int *status);
 
-int  pidfile_get_fd(FILE *f, pid_t *pid0);
-int  pidfile_get(char *pidfile, pid_t *pid0);
-int  pidfile_write(char *pidfile);
-int  pidfile_zapold(pid_t pid);
-
-#endif  /* _CLIXON_SIG_H_ */
+#endif  /* _CLIXON_PROC_H_ */

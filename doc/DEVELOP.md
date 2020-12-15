@@ -38,7 +38,7 @@ However, releases are made periodically (ca every 1 month) which is more tested.
 
 A release branch can be made, eg release-4.0 where 4.0.0, 4.0.1 are tagged
 
-## How the meta-configure stuff works
+## How the autotools stuff works
 ```
 configure.ac --.
                     |   .------> autoconf* -----> configure

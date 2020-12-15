@@ -250,6 +250,7 @@ if test "x${with_restconf}" != "x"; then
    fi
    AC_MSG_RESULT(www user is $wwwuser)	
    AC_DEFINE_UNQUOTED(WWWUSER, "$wwwuser", [WWW user for restconf daemon])
+   AC_DEFINE_UNQUOTED(WWWDIR, "$wwwdir", [WWW dir for restconf daemon])
 fi
 
 # Set default config file location
@@ -272,7 +273,7 @@ if test "${with_libxml2}"; then
 fi 
 
 #
-AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort getpeereid)
+AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort getpeereid setns)
 
 # Checks for getsockopt options for getting unix socket peer credentials on
 # Linux

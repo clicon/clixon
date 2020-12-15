@@ -5397,6 +5397,11 @@ cat >>confdefs.h <<_ACEOF
 #define WWWUSER "$wwwuser"
 _ACEOF
 
+
+cat >>confdefs.h <<_ACEOF
+#define WWWDIR "$wwwdir"
+_ACEOF
+
 fi
 
 # Set default config file location
@@ -5560,7 +5565,7 @@ fi
 fi
 
 #
-for ac_func in inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort getpeereid
+for ac_func in inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort getpeereid setns
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"

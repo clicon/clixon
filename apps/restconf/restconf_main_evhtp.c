@@ -1196,7 +1196,6 @@ restconf_config(clicon_handle    h,
 	xml_free(xconfig2);
     if (nsc)
 	cvec_free(nsc);
-    clicon_debug(1, "restconf_main_evhtp done");
     return retval;
 }
     

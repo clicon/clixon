@@ -39,11 +39,20 @@
 /* Define to 1 if you have the `cligen' library (-lcligen). */
 #undef HAVE_LIBCLIGEN
 
+/* Define to 1 if you have the `crypto' library (-lcrypto). */
+#undef HAVE_LIBCRYPTO
+
 /* Define to 1 if you have the `curl' library (-lcurl). */
 #undef HAVE_LIBCURL
 
 /* Define to 1 if you have the `dl' library (-ldl). */
 #undef HAVE_LIBDL
+
+/* Define to 1 if you have the `event' library (-levent). */
+#undef HAVE_LIBEVENT
+
+/* Define to 1 if you have the `event_openssl' library (-levent_openssl). */
+#undef HAVE_LIBEVENT_OPENSSL
 
 /* Define to 1 if you have the `evhtp' library (-levhtp). */
 #undef HAVE_LIBEVHTP
@@ -54,14 +63,23 @@
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM
 
+/* Define to 1 if you have the `pthread' library (-lpthread). */
+#undef HAVE_LIBPTHREAD
+
 /* Define to 1 if you have the `socket' library (-lsocket). */
 #undef HAVE_LIBSOCKET
+
+/* Define to 1 if you have the `ssl' library (-lssl). */
+#undef HAVE_LIBSSL
 
 /* Define to 1 if you have the `xml2' library (-lxml2). */
 #undef HAVE_LIBXML2
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the `setns' function. */
+#undef HAVE_SETNS
 
 /* Define to 1 if you have the `sigaction' function. */
 #undef HAVE_SIGACTION
@@ -128,6 +146,9 @@
 
 /* Restconf package */
 #undef WITH_RESTCONF
+
+/* WWW dir for restconf daemon */
+#undef WWWDIR
 
 /* WWW user for restconf daemon */
 #undef WWWUSER

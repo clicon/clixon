@@ -164,14 +164,10 @@ module clixon-lib {
 		description
 		    "One of the strings 'start', 'stop', 'restart', or 'status'.";
 	    }
-	    leaf namespace {
-		type string;
-		description
-		    "Network namespace.";
-	    }
 	}
 	output {
 	    leaf status {
+		description "For status: is the process running?";
 		type boolean;
 	    }
 	}

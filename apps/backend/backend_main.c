@@ -126,7 +126,10 @@ backend_terminate(clicon_handle h)
     /* Delete all backend plugin RPC callbacks */
     rpc_callback_delete_all(h);
     /* Delete all backend plugin upgrade callbacks */
-    upgrade_callback_delete_all(h); 
+    upgrade_callback_delete_all(h);
+    /* Delete all process-control entries */
+    clixon_process_delete_all(h); 
+
     xpath_optimize_exit();
 
     if (pidfile)
@@ -529,6 +532,10 @@ main(int    argc,
 	    usage(h, argv[0]);
 	goto done;
     }
+    /* Add some specific options from autotools configure NOT config file */
+    clicon_option_str_set(h, "CLICON_WWWUSER", WWWUSER);
+    clicon_option_str_set(h, "CLICON_WWWDIR", WWWDIR);
+    
     /* External NACM file? */
     nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (nacm_mode && strcmp(nacm_mode, "external") == 0)

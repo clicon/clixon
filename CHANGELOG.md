@@ -29,6 +29,13 @@
 
 ### New features
 
+* New process-control RPC feature in clixon-lib.yang to manage processes
+  * This is an alternative to manage a clixon daemon via sudtemd, containerd or other
+  * One important special case is starting the clixon-restconf daemon internally
+  * This is how it works:
+    * Register a process via `clixon_process_register(h, name, namespace, argv, argc)`
+    * Use process-control RPC defined in clixon-lib.yang to start/stop/restart or query status on that process
+  * Example code in the main example
 * More YANG extension functionality,
   * See [Augment auto-cli for hiding/modifying cli syntax #156](https://github.com/clicon/clixon/issues/156) and [hiding auto-generated CLI entries #153](https://github.com/clicon/clixon/issues/153)
   * Extensions can be used in augmentations

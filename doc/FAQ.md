@@ -1,5 +1,7 @@
 # Clixon FAQ
 
+This FAQ may be outdated. Main [Clixon documentation](clixon-docs.readthedocs.io/) contains more detailed information.
+
   * [What is Clixon?](#what-is-clixon)
   * [Why should I use Clixon?](#why-should-i-use-clixon)
   * [What license is available?](#what-license-is-available)
