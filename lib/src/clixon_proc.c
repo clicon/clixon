@@ -60,7 +60,6 @@
 #include <sys/wait.h>
 #include <sys/param.h>
 #include <sys/user.h>
-#include <sys/sysctl.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 
@@ -288,7 +287,7 @@ clixon_proc_background(char **argv,
     *pid0 = child;
     retval = 0;
  quit:
-    clicon_debug(1, "%s retval:%d child:%d", __FUNCTION__, retval, child);
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
