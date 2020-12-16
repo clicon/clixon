@@ -1503,8 +1503,9 @@ xml2xpath1(cxobj *x,
     char         *b;
     enum rfc_6020 keyword;
     
-    if (xp = xml_parent(x))
-	xml2xpath1(xp, cb);
+    if ((xp = xml_parent(x)) == NULL)
+	goto ok;
+    xml2xpath1(xp, cb);
     /* XXX: sometimes there should be a /, sometimes not */
     cprintf(cb, "/%s", xml_name(x));
     if ((y = xml_spec(x)) != NULL){
@@ -1533,6 +1534,7 @@ xml2xpath1(cxobj *x,
 	    break;
 	}
     }
+ ok:
     retval = 0;
  done:
     return retval;
