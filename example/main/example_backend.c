@@ -928,12 +928,15 @@ example_reset(clicon_handle h,
     cxobj *xt = NULL;
     int    ret;
     cbuf  *cbret = NULL;
+    yang_stmt *yspec;
 
     if (!_reset)
 	goto ok; /* Note not enabled by default */
+	
+    yspec = clicon_dbspec_yang(h);	
     if (clixon_xml_parse_string("<config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">"
 				"<interface><name>lo</name><type>ex:loopback</type>"
-				"</interface></interfaces></config>", YB_NONE, NULL, &xt, NULL) < 0)
+				"</interface></interfaces></config>", YB_MODULE, yspec, &xt, NULL) < 0)
 	goto done;
     /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)
