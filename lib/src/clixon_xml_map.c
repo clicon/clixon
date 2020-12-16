@@ -1503,8 +1503,7 @@ xml2xpath1(cxobj *x,
     char         *b;
     enum rfc_6020 keyword;
     
-    if ((xp = xml_parent(x)) != NULL &&
-	xml_spec(xp) != NULL)
+    if (xp = xml_parent(x))
 	xml2xpath1(xp, cb);
     /* XXX: sometimes there should be a /, sometimes not */
     cprintf(cb, "/%s", xml_name(x));
