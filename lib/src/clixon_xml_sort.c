@@ -1135,6 +1135,7 @@ xml_sort_verify(cxobj *x0,
  * @retval     0       OK
  * @retval    -1       Error
  * @note only handles first match
+ * @see xml_cmp regarding what "match" means in this context (model-match not value-match)
  */
 int
 match_base_child(cxobj      *x0, 

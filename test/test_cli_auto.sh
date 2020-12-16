@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
-# Backend and cli basic functionality
-# Start backend server
-# Add an ethernet interface and an address
-# Show configuration
-# Validate without a mandatory type
-# Set the mandatory type
-# Commit
+# Auto-cli test using modes up and down and table/parameter configs
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -224,7 +218,7 @@ expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table/par
 
 cat <<EOF > $fin
 edit table parameter b
-delete value 17
+delete value 71
 show config xml
 EOF
 new "delete value 71"

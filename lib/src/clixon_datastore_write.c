@@ -465,8 +465,20 @@ text_modify(clicon_handle       h,
 		    if (ret == 0)
 			goto fail;
 		}
-		if (xml_purge(x0) < 0)
-		    goto done;
+		x0bstr = xml_body(x0); 
+		/* Purge if x1 value is NULL(match-all) or both values are equal */
+		if ((x1bstr == NULL) ||
+		    ((x0bstr=xml_body(x0)) != NULL && strcmp(x0bstr, x1bstr)==0)){
+		    if (xml_purge(x0) < 0)
+			goto done;
+		}
+		else {
+		    if (op == OP_DELETE){
+			if (netconf_data_missing(cbret, NULL, "Data does not exist; cannot delete resource") < 0)
+			    goto done;
+			goto fail;
+		    }
+		}
 	    }
 	    break;
 	default:
@@ -540,7 +552,7 @@ text_modify(clicon_handle       h,
 	    } /* OP_MERGE & insert */
 	case OP_NONE: /* fall thru */
 	    /* Special case: anyxml, just replace tree, 
-	       See rfc6020 7.10.3:n
+	       See rfc6020 7.10.3
 	       An anyxml node is treated as an opaque chunk of data.  This data
 	       can be modified in its entirety only.
 	       Any "operation" attributes present on subelements of an anyxml 

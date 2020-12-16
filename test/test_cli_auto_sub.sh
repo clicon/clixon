@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for generating clispec from a yang subtree 
+# Tests for generating clispec from a yang subtree, ie not the whole yang
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

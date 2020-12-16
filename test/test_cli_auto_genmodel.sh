@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Tests for using the generated cli.
+# Tests for using the auto cli.
 # In particular setting a config, displaying as cli commands and reconfigure it 
 # Tests:
 # Make a config in CLI. Show output as CLI, save it and ensure it is the same
+# Try the different GENMODEL settings
+# NOTE this uses the "Old" autocli (eg cli_set()), see test_cli_auto.sh for "new" autocli using the cli_auto_*() API
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -130,7 +132,6 @@ testrun()
     fi
 
     new "set a"
-    echo "$clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg"
     expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg set$table parameter$name a value x)" 0 ""
 
     new "set b"
@@ -147,11 +148,23 @@ SAVED=$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show config)
     new "show match a & b xml"
     expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show xml)" 0 "<table xmlns=\"urn:example:clixon\">" "<parameter>" "<name>a</name>" "<value>x</value>" "</parameter>" "<parameter>" "<name>b</name>" "<value>z</value>" "</parameter>" "</table>"
 
+    # https://github.com/clicon/clixon/issues/157
+    new "delete a y expect fail"
+    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg delete$table parameter$name a value y 2>&1)" 0 ""
+
+    new "show match a & b xml" # Expect same
+    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show xml)" 0 "<table xmlns=\"urn:example:clixon\">" "<parameter>" "<name>a</name>" "<value>x</value>" "</parameter>" "<parameter>" "<name>b</name>" "<value>z</value>" "</parameter>" "</table>"
+
+    new "delete a x"
+    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg delete$table parameter$name a value x)" 0 ""
+
+    new "show match a & b xml" 
+    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show xml)" 0 "<table xmlns=\"urn:example:clixon\">" "<parameter>" "<name>a</name>"  "</parameter>" "<parameter>" "<name>b</name>" "<value>z</value>" "</parameter>" "</table>" --not-- "<value>x</value>"
+
     new "delete a"
     expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg delete$table parameter$name a)" 0 ""
 
     new "show match b"
-echo "$clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show config"
     expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show config)" 0  "$table parameter$name b" "$table parameter$name b value z" --not-- "$table parameter$name a" "$table parameter$name a value x" "$table parameter$name b value y"
 
     new "discard"

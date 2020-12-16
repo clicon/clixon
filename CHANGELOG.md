@@ -89,6 +89,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* [Delete and show config are oblivious to the leaf value #157](https://github.com/clicon/clixon/issues/157)
+  * Added equality of values necessary condition in edit-config delete/remove of leafs
 * Fixed error memory in RESTCONF PATCH/PUT when accessing top-level data node.
 * Fixed: [ Calling copy-config RPC from restconf #158](https://github.com/clicon/clixon/issues/158)
 * Fixed: [namespace prefix nc is not supported in full #154](https://github.com/clicon/clixon/issues/154)
