@@ -164,9 +164,19 @@ netconf_get_config(clicon_handle h,
      int        retval = -1;
      cxobj     *xfilter; /* filter */
      char      *ftype = NULL;
+     cvec      *nsc = NULL;
+     char      *prefix = NULL;
+
+     if(xml_nsctx_node(xn, &nsc) < 0)
+         goto done;
+
+     /* Get prefix of netconf base namespace in the incoming message */
+     if (xml_nsctx_get_prefix(nsc, NETCONF_BASE_NAMESPACE, &prefix) == 0){
+         goto done;
+     }
 
      /* ie <filter>...</filter> */
-     if ((xfilter = xpath_first(xn, NULL, "filter")) != NULL) 
+     if ((xfilter = xpath_first(xn, nsc, "%s%sfilter", prefix ? prefix : "", prefix ? ":" : "")) != NULL)
 	 ftype = xml_find_value(xfilter, "type");
      if (xfilter == NULL || ftype == NULL || strcmp(ftype, "xpath")==0){
 	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
@@ -193,6 +203,8 @@ netconf_get_config(clicon_handle h,
      }
     retval = 0;
  done:
+    if (nsc)
+        cvec_free(nsc);
     return retval;
 }
 
@@ -364,9 +376,19 @@ netconf_get(clicon_handle h,
      int        retval = -1;
      cxobj     *xfilter; /* filter */
      char      *ftype = NULL;
+     cvec      *nsc = NULL;
+     char      *prefix = NULL;
+
+     if(xml_nsctx_node(xn, &nsc) < 0)
+         goto done;
+
+     /* Get prefix of netconf base namespace in the incoming message */
+     if (xml_nsctx_get_prefix(nsc, NETCONF_BASE_NAMESPACE, &prefix) == 0){
+         goto done;
+     }
 
        /* ie <filter>...</filter> */
-     if ((xfilter = xpath_first(xn, NULL, "filter")) != NULL) 
+     if ((xfilter = xpath_first(xn, nsc, "%s%sfilter", prefix ? prefix : "", prefix ? ":" : "")) != NULL)
 	 ftype = xml_find_value(xfilter, "type");
      if (xfilter == NULL || ftype == NULL || strcmp(ftype, "xpath")==0){
 	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
@@ -393,6 +415,8 @@ netconf_get(clicon_handle h,
      }
     retval = 0;
  done:
+    if(nsc)
+        cvec_free(nsc);	
     return retval;
 }
 
