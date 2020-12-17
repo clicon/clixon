@@ -35,7 +35,7 @@
   * This is how it works:
     * Register a process via `clixon_process_register(h, name, namespace, argv, argc)`
     * Use process-control RPC defined in clixon-lib.yang to start/stop/restart or query status on that process
-  * Example code in the main example
+  * Enable in backend for restconf using `CLICON_BACKEND_RESTCONF_PROCESS`.
 * More YANG extension functionality,
   * See [Augment auto-cli for hiding/modifying cli syntax #156](https://github.com/clicon/clixon/issues/156) and [hiding auto-generated CLI entries #153](https://github.com/clicon/clixon/issues/153)
   * Extensions can be used in augmentations
@@ -57,7 +57,8 @@ Users may have to change how they access the system
   * Added: autocli-op extension (see new features)
   * Added: rpc process-control for process/daemon management
 * New clixon-config@2020-11-03.yang revision
-  * Moved to clixon-restconf.yang and marked as obsolete:
+  * Added CLICON_BACKEND_RESTCONF_PROCESS
+  * Copied to clixon-restconf.yang and marked as obsolete:
     - CLICON_RESTCONF_IPV4_ADDR
     - CLICON_RESTCONF_IPV6_ADDR
     - CLICON_RESTCONF_HTTP_PORT

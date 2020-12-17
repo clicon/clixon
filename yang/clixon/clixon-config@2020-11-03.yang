@@ -45,7 +45,8 @@ module clixon-config {
 
     revision 2020-11-03 {
 	description
-	    "Moved to clixon-restconf.yang and marked as obsolete:
+	    "Added CLICON_BACKEND_RESTCONF_PROCESS 
+             Copied to clixon-restconf.yang and marked as obsolete:
 	           CLICON_RESTCONF_IPV4_ADDR
                    CLICON_RESTCONF_IPV6_ADDR
 	           CLICON_RESTCONF_HTTP_PORT
@@ -711,6 +712,15 @@ module clixon-config {
 	    type string;
 	    mandatory true;
 	    description "Process-id file of backend daemon";
+	}
+	leaf CLICON_BACKEND_RESTCONF_PROCESS {
+	    type boolean;
+	    default false;
+	    description
+		"If set:
+                   - enable process-control of restconf daemon, ie start/stop restconf
+                     daemon internally using fork/exec. 
+                 Set to false if you start the restconf daemon by other means.";
 	}
 	leaf CLICON_AUTOCOMMIT {
 	    type int32;

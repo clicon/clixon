@@ -1153,36 +1153,6 @@ clixon_plugin_init(clicon_handle h)
     else
 	if (upgrade_callback_register(h, xml_changelog_upgrade, NULL, NULL) < 0)
 	    goto done;
-    {
-	char **argv = NULL;
-	int i;
-	int nr;
-	char dbgstr[8];
-	char wwwstr[64];
-
-	nr = 4;
-	if (clicon_debug_get() != 0)
-	    nr += 2;
-	if ((argv = calloc(nr, sizeof(char *))) == NULL){
-	    clicon_err(OE_UNIX, errno, "calloc");
-	    goto done;
-	}
-	i = 0;
-	snprintf(wwwstr, sizeof(wwwstr)-1, "%s/clixon_restconf", clicon_option_str(h, "CLICON_WWWDIR"));
-	argv[i++] = wwwstr;
-	argv[i++] = "-f";
-	argv[i++] = clicon_option_str(h, "CLICON_CONFIGFILE");
-	if (clicon_debug_get() != 0){
-	    argv[i++] = "-D";
-	    snprintf(dbgstr, sizeof(dbgstr)-1, "%d", clicon_debug_get());
-	    argv[i++] = dbgstr;
-	}
-	argv[i++] = NULL;
-	if (clixon_process_register(h, "restconf", _proc_netns, argv, nr) < 0)
-	    goto done;
-	if (argv != NULL)
-	    free(argv);
-    }
     /* Return plugin API */
     return &api;
  done:

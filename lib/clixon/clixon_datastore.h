@@ -67,7 +67,7 @@ int xmldb_clear(clicon_handle h, const char *db);
 int xmldb_delete(clicon_handle h, const char *db);
 int xmldb_create(clicon_handle h, const char *db);
 /* utility functions */
-int xmldb_db_reset(clicon_handle h, char *db);
+int xmldb_db_reset(clicon_handle h, const char *db);
 
 cxobj *xmldb_cache_get(clicon_handle h, const char *db);
 

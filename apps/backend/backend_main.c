@@ -178,6 +178,50 @@ backend_server_socket(clicon_handle h)
     return ss;
 }
 
+/*! Enable process-control of restconf daemon, ie start/stop restconf 
+ * @param[in]  h  Clicon handle
+ * @note Could also look in clixon-restconf and start process if enable is true, but that needs to 
+ *       be in start callback using a pseudo plugin.
+ */
+static int
+backend_restconf_process_control(clicon_handle h)
+{
+    int    retval = -1;
+    char **argv = NULL;
+    int    i;
+    int    nr;
+    char   dbgstr[8];
+    char   wwwstr[64];
+
+    nr = 4;
+    if (clicon_debug_get() != 0)
+	nr += 2;
+    if ((argv = calloc(nr, sizeof(char *))) == NULL){
+	clicon_err(OE_UNIX, errno, "calloc");
+	goto done;
+    }
+    i = 0;
+    snprintf(wwwstr, sizeof(wwwstr)-1, "%s/clixon_restconf", clicon_option_str(h, "CLICON_WWWDIR"));
+    argv[i++] = wwwstr;
+    argv[i++] = "-f";
+    argv[i++] = clicon_option_str(h, "CLICON_CONFIGFILE");
+    if (clicon_debug_get() != 0){
+	argv[i++] = "-D";
+	snprintf(dbgstr, sizeof(dbgstr)-1, "%d", clicon_debug_get());
+	argv[i++] = dbgstr;
+    }
+    argv[i++] = NULL;
+    if (clixon_process_register(h, "restconf",
+				NULL /* XXX network namespace */,
+				argv, nr) < 0)
+	goto done;
+    if (argv != NULL)
+	free(argv);
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Load external NACM file
  */
 static int
@@ -744,6 +788,12 @@ main(int    argc,
 	clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir,
 			    clicon_option_str(h, "CLICON_BACKEND_REGEXP")) < 0)
 	goto done;
+
+    /* Enable process-control of restconf daemon, ie start/stop restconf */
+    if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS")){
+	if (backend_restconf_process_control(h) < 0)
+	    goto done;
+    }
 
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */

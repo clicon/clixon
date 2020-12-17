@@ -466,7 +466,7 @@ xmldb_create(clicon_handle h,
  */
 int
 xmldb_db_reset(clicon_handle h, 
-	       char         *db)
+	       const char   *db)
 {
     if (xmldb_exists(h, db) == 1){
 	if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
