@@ -186,6 +186,9 @@ $TIMEFN curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfa
 new "cli get large config"
 $TIMEFN $clixon_cli -1f $cfg show state xml interfaces a foo b 2>&1 | awk '/real/ {print $2}'
 
+# mem test needs sleep here
+sleep $DEMSLEEP
+
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
     stop_restconf 

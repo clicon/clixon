@@ -805,8 +805,10 @@ clicon_sock_family(clicon_handle h)
 	return AF_INET;
     else  if (strcmp(s, "IPv6")==0)
 	return AF_INET6;
+    else if (strcmp(s, "UNIX")==0)
+	return AF_UNIX;
     else
-	return AF_UNIX; /* default */
+	return -1;
 }
 
 /*! Get port for backend socket in case of AF_INET or AF_INET6 

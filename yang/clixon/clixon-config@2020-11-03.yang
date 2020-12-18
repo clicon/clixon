@@ -280,6 +280,17 @@ module clixon-config {
 	    }
 	}
     }
+    typedef socket_address_family {
+	description "Address family for internal socket";
+	type enumeration{
+	    enum UNIX {
+		description "Unix domain socket";
+	    }
+	    enum IPv4 {
+		description "IPv4";
+	    }
+	}
+    }
 
     container clixon-config {
 	container restconf {
@@ -656,15 +667,15 @@ module clixon-config {
                  from a spec, such as in the autocli.";
 	}
 	leaf CLICON_SOCK_FAMILY {
-	    type string;
-	    default "UNIX";
+	    type socket_address_family;
+	    default UNIX;
 	    description
-		"Address family for communicating with clixon_backend 
-                 (UNIX|IPv4). IPv6 not yet implemented.
+		"Address family for communicating with clixon_backend with one of:
+                 Note IPv6 not implemented.
                  Note that UNIX socket makes credential check as follows:
                  (1) client needs rw access to the socket 
                  (2) NACM credentials can be checked according to CLICON_NACM_CREDENTIALS
-                 Warning: IPv4 and IPv6 sockets have no credential mechanism.
+                 Warning: Only UNIX (not IPv4) sockets have credential mechanism.
                  ";
 	}
 	leaf CLICON_SOCK {
@@ -717,10 +728,8 @@ module clixon-config {
 	    type boolean;
 	    default false;
 	    description
-		"If set:
-                   - enable process-control of restconf daemon, ie start/stop restconf
-                     daemon internally using fork/exec. 
-                 Set to false if you start the restconf daemon by other means.";
+		"If set, enable process-control of restconf daemon, ie start/stop restconf daemon internally using fork/exec. 
+                 Disable if you start the restconf daemon by other means.";
 	}
 	leaf CLICON_AUTOCOMMIT {
 	    type int32;

@@ -1873,7 +1873,7 @@ from_client(int   s,
     struct clicon_msg   *msg = NULL;
     struct client_entry *ce = (struct client_entry *)arg;
     clicon_handle        h = ce->ce_handle;
-    int                  eof;
+    int                  eof = 0;
 
     clicon_debug(1, "%s", __FUNCTION__);
     // assert(s == ce->ce_s);

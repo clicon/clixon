@@ -30,63 +30,62 @@
 ### New features
 
 * New process-control RPC feature in clixon-lib.yang to manage processes
-  * This is an alternative to manage a clixon daemon via sudtemd, containerd or other
+  * This is an alternative to manage a clixon daemon direct via systemd, containerd or other ways to manage processes
   * One important special case is starting the clixon-restconf daemon internally
   * This is how it works:
     * Register a process via `clixon_process_register(h, name, namespace, argv, argc)`
     * Use process-control RPC defined in clixon-lib.yang to start/stop/restart or query status on that process
-  * Enable in backend for restconf using `CLICON_BACKEND_RESTCONF_PROCESS`.
-* More YANG extension functionality,
-  * See [Augment auto-cli for hiding/modifying cli syntax #156](https://github.com/clicon/clixon/issues/156) and [hiding auto-generated CLI entries #153](https://github.com/clicon/clixon/issues/153)
-  * Extensions can be used in augmentations
-  * Extension `autocli-op` has been added to add "hidden" commands in the autocli
+  * Enable in backend for starting restconf internally using `CLICON_BACKEND_RESTCONF_PROCESS`.
+* New YANG extension functionality: mark YANG and use in plugins
   * Documentation: https://clixon-docs.readthedocs.io/en/latest/misc.html#extensions
-* Restconf configuration has a new configure model: `clixon-restconf.yang` enabling more flexible socket config
+  * As one usage of this extensions, the `autocli-op` extension has been added to annotate YANG with autocli properties, "hidden" commands being the first function.
+  * See [Augment auto-cli for hiding/modifying cli syntax #156](https://github.com/clicon/clixon/issues/156) and [hiding auto-generated CLI entries #153](https://github.com/clicon/clixon/issues/153)
+* New restconf configuration model: `clixon-restconf.yang`
   * The new restconf config, including addresses, authentication type, is set either in clixon-config local config or in backend datastore (ie running)
   * This only applies to the evhtp restconf daemon, not fcgi/nginx, where the nginx config is used.
   * The RESTCONF clixon-config options are obsolete
   * Thanks to Dave Cornejo for the idea
-* Initial NBMA functionality (thanks: @benavrhm): "ds" resource
   
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
-* Error-type changed from protocol to application for data-not-unique netconf/restconf errors
 * New clixon-lib@2020-12-08.yang revision
   * Added: autocli-op extension (see new features)
   * Added: rpc process-control for process/daemon management
 * New clixon-config@2020-11-03.yang revision
-  * Added CLICON_BACKEND_RESTCONF_PROCESS
-  * Copied to clixon-restconf.yang and marked as obsolete:
-    - CLICON_RESTCONF_IPV4_ADDR
-    - CLICON_RESTCONF_IPV6_ADDR
-    - CLICON_RESTCONF_HTTP_PORT
-    - CLICON_RESTCONF_HTTPS_PORT
-    - CLICON_SSL_SERVER_CERT
-    - CLICON_SSL_SERVER_KEY
-    - CLICON_SSL_CA_CERT
-  * Removed obsolete option CLICON_TRANSACTION_MOD";
+  * Added `CLICON_BACKEND_RESTCONF_PROCESS`
+  * Moved to clixon-restconf.yang, still remains but marked as obsolete:
+    - `CLICON_RESTCONF_IPV4_ADDR`
+    - `CLICON_RESTCONF_IPV6_ADDR`
+    - `CLICON_RESTCONF_HTTP_PORT`
+    - `CLICON_RESTCONF_HTTPS_PORT`
+    - `CLICON_SSL_SERVER_CERT`
+    - `CLICON_SSL_SERVER_KEY`
+    - `CLICON_SSL_CA_CERT`
+  * Removed obsolete option 'CLICON_TRANSACTION_MOD`;
 
 ### C/CLI-API changes on existing features
 
 Developers may need to change their code
 
-* Auto-cli changed singature of `yang2cli()`.
-* Added by-ref parameter to `ys_cv_validate()` returning which sub-yang spec was validated in a union.
+* Auto-cli changed signature of `yang2cli()`.
+* Added by-ref parameter to `ys_cv_validate()` returning sub-yang spec was validated in a union.
 * Changed first parameter from `int fd` to `FILE *f` in the following functions:
-  * clixon_xml_parse_file(), clixon_json_parse_file(), yang_parse_file()
-  * See [Bytewise read() of files is slow #146](https://github.com/clicon/clixon/issues/146)
+  * `clixon_xml_parse_file()`, `clixon_json_parse_file()`, `yang_parse_file()`
 
 ### Minor changes
 
-* Added new revision of main example yang: `clixon-example@2020-12-01.yang`
+* Initial NBMA functionality (thanks: @benavrhm): "ds" resource
 * Support for building static lib: `LINKAGE=static configure`
+  * One usecase is coverage and fuzzing
 * Change comment character to be active anywhere to beginning of _word_ only.
+  * ' # This is a comment', but ' This# is not a comment'
   * See [Change CLIgen comments](https://github.com/clicon/cligen/issues/55)
 * Improved performance of parsing files as described in [Bytewise read() of files is slow #146](https://github.com/clicon/clixon/issues/146), thanks: @hjelmeland
-* Added new backend plugin: ca_pre-demon called if backend is daemonized just prior to forking.
-* Added XPATH functions `position`
+* Added new backend plugin: `ca_pre-demon` when backend is daemonized just prior to forking.
+* Added XPATH function `position`
+* Added new revision of main example yang: `clixon-example@2020-12-01.yang`
 
 ### Corrected Bugs
 
