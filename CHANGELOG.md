@@ -31,8 +31,11 @@ Expected: February 2021
 
 ### Corrected Bugs
 
+* [Presence container configs not displayed in 'show config set' #164 ](https://github.com/clicon/clixon/issues/164)
+  * Treat presence container as a leaf: always print a placeholder regardless if it has children or not. An extra check for children could have been made to not print if it has, but this adds an extra minor complexity.
+
 ## 4.9.0
-18 Dec 2020
+18 December 2020
 
 ### New features
 

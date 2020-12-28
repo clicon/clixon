@@ -238,7 +238,9 @@ xml2cli_recurse(FILE              *f,
 	goto ok;
     if ((ys = xml_spec(x)) == NULL)
 	goto ok;
-    if (yang_keyword_get(ys) == Y_LEAF || yang_keyword_get(ys) == Y_LEAF_LIST){
+    /* If leaf/leaf-list or presence container, then print line */
+    if (yang_keyword_get(ys) == Y_LEAF ||
+	yang_keyword_get(ys) == Y_LEAF_LIST){
 	if (prepend)
 	    (*fn)(f, "%s", prepend);
 	if (gt == GT_ALL || gt == GT_VARS || gt == GT_HIDE)
@@ -266,8 +268,8 @@ xml2cli_recurse(FILE              *f,
     if (yang_container_cli_hide(ys, gt) == 0)
 	cprintf(cbpre, "%s ", xml_name(x));
 
+    /* If list then first loop through keys */
     if (yang_keyword_get(ys) == Y_LIST){
-	/* If list then first loop through keys */
 	xe = NULL;
 	while ((xe = xml_child_each(x, xe, -1)) != NULL){
 	    if ((match = yang_key_match(ys, xml_name(xe))) < 0)
@@ -279,6 +281,22 @@ xml2cli_recurse(FILE              *f,
 	    cprintf(cbpre, "%s ", xml_body(xe));
 	}
     }
+    else if ((yang_keyword_get(ys) == Y_CONTAINER) &&
+	     yang_find(ys, Y_PRESENCE, NULL) != NULL){
+	/* If presence container, then print as leaf (but continue to children) */
+	if (prepend)
+	    (*fn)(f, "%s", prepend);
+	if (gt == GT_ALL || gt == GT_VARS || gt == GT_HIDE)
+	    (*fn)(f, "%s ", xml_name(x));
+	if ((body = xml_body(x)) != NULL){
+	    if (index(body, ' '))
+		(*fn)(f, "\"%s\"", body);
+	    else
+		(*fn)(f, "%s", body);
+	}
+	(*fn)(f, "\n");
+    }
+
     /* Then loop through all other (non-keys) */
     xe = NULL;
     while ((xe = xml_child_each(x, xe, -1)) != NULL){

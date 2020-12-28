@@ -185,22 +185,22 @@ new "restconf set protocol tcp+udp fail again"
 expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/system:system/protocol -d '{"system:protocol":{"tcp": [null], "udp": [null]}}')" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"bad-element","error-info":{"bad-element":"tcp"},"error-severity":"error","error-message":"Element in choice statement already exists"}}}'
 
 new "cli set protocol udp"
-expectfn "$clixon_cli -1 -f $cfg -l o set system protocol udp" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o set system protocol udp)" 0 "^$"
 
 new "cli get protocol udp"
-expectfn "$clixon_cli -1 -f $cfg -l o show configuration cli " 0 "^set system protocol udp$"
+expectpart "$($clixon_cli -1 -f $cfg -l o show configuration cli)" 0 "set system protocol" "set system protocol udp"
 
 new "cli change protocol to tcp"
-expectfn "$clixon_cli -1 -f $cfg -l o set system protocol tcp" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o set system protocol tcp)" 0 "^$"
 
 new "cli get protocol tcp"
-expectfn "$clixon_cli -1 -f $cfg -l o show configuration cli " 0 "^set system protocol tcp$"
+expectpart "$($clixon_cli -1 -f $cfg -l o show configuration cli)" 0 "set system protocol" "set system protocol tcp"
 
 new "cli delete all"
-expectfn "$clixon_cli -1 -f $cfg -l o delete all" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o delete all)" 0 "^$"
 
 new "commit"
-expectfn "$clixon_cli -1 -f $cfg -l o commit" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
 
 # Second shorthand (no case)
 new "netconf set protocol both udp and tcp"
