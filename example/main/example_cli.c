@@ -162,15 +162,20 @@ clixon_plugin_init(clicon_handle h)
  * In this case, assume string and increment characters, eg HAL->IBM
  */
 int
-incstr(cligen_handle h,
-       cg_var       *cv)
+cli_incstr(cligen_handle h,
+	   cg_var       *cv)
 {
     char *str;
     int i;
     
-    if (cv_type_get(cv) != CGV_STRING)
+    /* Filter out other than strings 
+     * this is specific to this example, one can do translation */
+    if (cv == NULL || cv_type_get(cv) != CGV_STRING)
 	return 0;
-    str = cv_string_get(cv);
+    if ((str = cv_string_get(cv)) == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "cv string is NULL");
+	return -1;
+    }
     for (i=0; i<strlen(str); i++)
 	str[i]++;
     return 0;
