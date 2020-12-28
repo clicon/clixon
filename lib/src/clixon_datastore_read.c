@@ -675,6 +675,10 @@ xmldb_get_cache(clicon_handle    h,
     else
 	x0t = de->de_xml;
 
+    if (yb == YB_MODULE && !xml_spec(x0t))
+	if (xml_bind_yang(x0t, YB_MODULE, yspec, NULL) < 0)
+	    goto done;
+
     /* Here x0t looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec 
      * Can we do everything in one go?
