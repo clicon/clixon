@@ -4,6 +4,8 @@ This dir contains code for fuzzing clixon backend.
 
 It requires the preeny package to change sockets to stdio. 
 
+Plugins do not work
+
 ## Prereqs
 
 Preeny has a "desocketizing" module necessary to map stdio to the internal sockets that the backend uses. Install preeny example:

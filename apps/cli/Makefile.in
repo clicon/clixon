@@ -46,7 +46,11 @@ else
 endif
 SH_SUFFIX	= @SH_SUFFIX@
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
-LDFLAGS 	= @LDFLAGS@
+ifeq ($(LINKAGE),dynamic)
+	LDFLAGS 	= @LDFLAGS@
+else
+	LDFLAGS 	= @LDFLAGS@  -rdynamic -L.
+endif
 
 prefix 		= @prefix@
 datarootdir	= @datarootdir@
@@ -160,7 +164,11 @@ test: 	test.c $(LIBOBJ) $(MYLIB)
 	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
 $(APPL): $(APPOBJ) $(MYLIB) $(LIBDEPS)	
+ifeq ($(LINKAGE),dynamic)
 	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
+else
+	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(LIBOBJ) $(LIBS) -o $@
+endif
 
 $(MYLIBDYNAMIC) : $(LIBOBJ) $(LIBDEPS)
 ifeq ($(HOST_VENDOR),apple)

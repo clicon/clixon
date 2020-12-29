@@ -168,6 +168,7 @@ clicon_rpc_msg(clicon_handle      h,
  * @param[out] session_id  Session id
  * @retval     0           OK and session_id set
  * @retval    -1           Error
+ * @note This function may send a synchronous(blocking) HELLO request to the backend as a side-effect
  */
 static int
 session_id_check(clicon_handle h,

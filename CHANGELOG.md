@@ -42,6 +42,11 @@ Users may have to change how they access the system
 * CLIspec dbxml API: Ability to specify deletion of _any_ vs _specific_ entry.
   * In a cli_del() call, the cvv arg list either exactly matches the api-format-path in which case _any_ deletion is specified, otherwise, if there is an extra element in the cvv list, that is used for a specific delete.
 
+### Minor changes
+
+* Limited fuzz by AFL committed,
+  * see [fuzz/README.md](fuzz/README.md) for details
+
 ### Corrected Bugs
 
 * [Presence container configs not displayed in 'show config set' #164 ](https://github.com/clicon/clixon/issues/164)
