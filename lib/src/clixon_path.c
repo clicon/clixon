@@ -424,6 +424,8 @@ yang2api_path_fmt(yang_stmt   *ys,
  * @param[in]  api_path_fmt  XML key format, eg /aaa/%s/name
  * @param[in]  cvv           cligen variable vector, one for every wildchar in api_path_fmt
  * @param[out] api_path      api_path, eg /aaa/17. Free after use
+ * @param[out] cvvi          1..cvv-len. Index into cvv of last cvv entry used, For example, 
+ *                           if same as len of cvv, all were used, if < some entries were not
  * @retval     0             OK
  * @retval     -1            Error
  * @note first and last elements of cvv are not used,..
@@ -446,16 +448,17 @@ yang2api_path_fmt(yang_stmt   *ys,
 int
 api_path_fmt2api_path(const char *api_path_fmt, 
 		      cvec       *cvv, 
-		      char      **api_path)
+		      char      **api_path,
+		      int        *cvv_i)
 {
-    int   retval = -1;
-    char  c;
-    int   esc=0;
-    cbuf *cb = NULL;
-    int   i;
-    int   j;
-    char *str;
-    char *strenc=NULL;
+    int     retval = -1;
+    char    c;
+    int     esc=0;
+    cbuf   *cb = NULL;
+    int     i;
+    int     j;
+    char   *str;
+    char   *strenc=NULL;
     cg_var *cv;
     
     if ((cb = cbuf_new()) == NULL){
@@ -498,6 +501,8 @@ api_path_fmt2api_path(const char *api_path_fmt,
 	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
     }
+    if (cvv_i) /* Last entry in cvv used */
+	*cvv_i = j; 
     retval = 0;
  done:
     if (cb)

@@ -251,6 +251,7 @@ cli_dbxml(clicon_handle       h,
     cxobj     *xerr = NULL;
     int        ret;
     cg_var    *cv;
+    int        cvv_i = 0;
 
     if (cvec_len(argv) != 1){
 	clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be xml key format string");
@@ -262,7 +263,10 @@ cli_dbxml(clicon_handle       h,
     }
     arg = cvec_i(argv, 0);
     api_path_fmt = cv_string_get(arg);
-    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
+    /* Transform template format string + cvv to actual api-path 
+     * cvv_i indicates if all cvv entries were used
+     */
+    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvv_i) < 0)
 	goto done;
     /* Create config top-of-tree */
     if ((xtop = xml_new("config", NULL, CX_ELMNT)) == NULL)
@@ -292,9 +296,17 @@ cli_dbxml(clicon_handle       h,
     /* Add body last in case of leaf */
     if (cvec_len(cvv) > 1 &&
 	(yang_keyword_get(y) == Y_LEAF)){
-	/* Add the body last */
-	if (dbxml_body(xbot, cvv) < 0)
-	    goto done;
+	/* Add the body last if there is remaining element that was not used in the
+	 * earlier api-path transformation.
+	 * This is to handle differences between:
+	 * DELETE <foo>bar</foo> and DELETE <foo/>
+	 * i.e., (1) deletion of a specific leaf entry vs (2) deletion of any entry
+	 * Discussion: one can claim (1) is "bad" usage but one could see cases where
+	 * you would want to delete a value if it has a specific value but not otherwise
+	 */
+	if (cvv_i != cvec_len(cvv))
+	    if (dbxml_body(xbot, cvv) < 0)
+		goto done;
 	/* Loop over namespace context and add them to this leaf node */
 	cv = NULL;
 	while ((cv = cvec_each(nsctx, cv)) != NULL){

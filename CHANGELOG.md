@@ -29,6 +29,19 @@
 ## 4.10.0
 Expected: February 2021
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Added `cvv_i` output parameter to `api_path_fmt2api_path()` to see how many cvv entries were used.
+
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* CLIspec dbxml API: Ability to specify deletion of _any_ vs _specific_ entry.
+  * In a cli_del() call, the cvv arg list either exactly matches the api-format-path in which case _any_ deletion is specified, otherwise, if there is an extra element in the cvv list, that is used for a specific delete.
+
 ### Corrected Bugs
 
 * [Presence container configs not displayed in 'show config set' #164 ](https://github.com/clicon/clixon/issues/164)

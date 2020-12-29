@@ -59,7 +59,7 @@ if [ $BE -ne 0 ]; then
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
 
-    new "waiting"
+    new "wait backend"
     wait_backend
 fi
 
@@ -68,6 +68,9 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><ca
 
 new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+# race condition where backend is killed before flushed to disk
+sleep $DEMSLEEP
 
 new "Kill backend"
 # Check if premature kill

@@ -121,6 +121,7 @@ expand_dbvar(void   *h,
     char            *reason = NULL;
     cvec            *nsc = NULL;
     int              ret;
+    int              cvvi = 0;
     
     if (argv == NULL || cvec_len(argv) != 2){
 	clicon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <xmlkeyfmt>");
@@ -150,7 +151,7 @@ expand_dbvar(void   *h,
      * api_path: -->  /interface/eth0/address/.*
      * xpath:    -->  /interface/[name="eth0"]/address
      */
-    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
+    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
 	goto done;
     if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
 	goto done;
@@ -711,6 +712,7 @@ cli_show_auto1(clicon_handle h,
     char            *prefix = NULL;
     enum rfc_6020    ys_keyword;
     int		     i = 0;
+    int              cvvi = 0;
 
     if (cvec_len(argv) < 3 || cvec_len(argv) > 4){
 	clicon_err(OE_PLUGIN, EINVAL, "Usage: <api-path-fmt>* <database> <format> <prefix>. (*) generated.");
@@ -734,7 +736,7 @@ cli_show_auto1(clicon_handle h,
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }
-    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path) < 0)
+    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
 	goto done;
     if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
 	goto done;

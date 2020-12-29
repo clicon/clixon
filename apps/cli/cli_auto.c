@@ -172,7 +172,7 @@ cli_auto_edit(clicon_handle h,
 	goto done;
     }
     /* get api-path and xpath */
-    if (api_path_fmt2api_path(api_path_fmt, cvv2, &api_path) < 0)
+    if (api_path_fmt2api_path(api_path_fmt, cvv2, &api_path, NULL) < 0)
 	goto done;
     /* Store this as edit-mode */
     if (clicon_data_set(h, "cli-edit-mode", api_path) < 0)
@@ -250,7 +250,7 @@ cli_auto_up(clicon_handle h,
 	cvec_append_var(cvv1, cv);	
     }
     /* get api-path and xpath */
-    if (api_path_fmt2api_path(api_path_fmt1, cvv1, &api_path) < 0)
+    if (api_path_fmt2api_path(api_path_fmt1, cvv1, &api_path, NULL) < 0)
 	goto done;
     /* Store this as edit-mode */
     clicon_data_set(h, "cli-edit-mode", api_path);
@@ -660,7 +660,7 @@ cli_auto_sub_enter(clicon_handle h,
 	if (cvec_append_var(cvv1, cvec_i(cvv, i)) < 0)
 	    goto done;
     }
-    if (api_path_fmt2api_path(api_path_fmt, cvv1, &api_path) < 0)
+    if (api_path_fmt2api_path(api_path_fmt, cvv1, &api_path, NULL) < 0)
 	goto done;
     /* Assign the variables */
     if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv1)) == NULL)
