@@ -327,8 +327,6 @@ clicon_rpc_get_config(clicon_handle h,
     cxobj             *xret = NULL;
     cxobj             *xerr = NULL;    
     cxobj             *xd;
-    cg_var            *cv = NULL;
-    char              *prefix;
     uint32_t           session_id;
     int                ret;
     yang_stmt         *yspec;
@@ -349,12 +347,8 @@ clicon_rpc_get_config(clicon_handle h,
 	cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
 		NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
 		xpath);
-	while ((cv = cvec_each(nsc, cv)) != NULL){
-	    cprintf(cb, " xmlns");
-	    if ((prefix = cv_name_get(cv)))
-		cprintf(cb, ":%s", prefix);
-	    cprintf(cb, "=\"%s\"", cv_string_get(cv));
-	}
+	if (xml_nsctx_cbuf(cb, nsc) < 0)
+	    goto done;
 	cprintf(cb, "/>");
     }
     cprintf(cb, "</get-config></rpc>");
@@ -689,8 +683,6 @@ clicon_rpc_get(clicon_handle   h,
     cxobj             *xerr = NULL;
     cxobj             *xd;
     char              *username;
-    cg_var            *cv = NULL;
-    char              *prefix;
     uint32_t           session_id;
     int                ret;
     yang_stmt         *yspec;
@@ -716,13 +708,8 @@ clicon_rpc_get(clicon_handle   h,
 	cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
 		NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
 		xpath);
-
-	while ((cv = cvec_each(nsc, cv)) != NULL){
-	    cprintf(cb, " xmlns");
-	    if ((prefix = cv_name_get(cv)))
-		cprintf(cb, ":%s", prefix);
-	    cprintf(cb, "=\"%s\"", cv_string_get(cv));
-	}
+	if (xml_nsctx_cbuf(cb, nsc) < 0)
+	    goto done;
 	cprintf(cb, "/>");
     }
     cprintf(cb, "</get></rpc>");

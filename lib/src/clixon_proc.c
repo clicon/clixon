@@ -234,8 +234,10 @@ clixon_proc_background(char **argv,
 	goto done;
     }
     if (child == 0)  { /* Child */
+#ifdef HAVE_SETNS
         char nsfile[PATH_MAX];
 	int  nsfd;
+#endif
 
 	clicon_debug(1, "%s child", __FUNCTION__);
 	clicon_signal_unblock(0);

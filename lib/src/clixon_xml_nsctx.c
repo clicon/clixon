@@ -440,6 +440,33 @@ xml_nsctx_yangspec(yang_stmt *yspec,
     return retval;
 }
 
+/*! Print a namespace context to a cbuf using xmlns notation
+ * @param[in]  *cb   CLIgen buf written to
+ * @param[in]  *nsc  Namespace context
+ * @retval      0    OK
+ * @code
+ *    cbuf *cb = cbuf_new();
+ *    cprintf(cb, "<foo ");
+ *    if (xml_nsctx_cbuf(cb, nsc) < 0)
+ *      err;
+ * @endcode
+ */
+int
+xml_nsctx_cbuf(cbuf *cb,
+	       cvec *nsc)
+{
+    cg_var *cv = NULL;
+    char   *prefix;
+    
+    while ((cv = cvec_each(nsc, cv)) != NULL){
+	cprintf(cb, " xmlns");
+	if ((prefix = cv_name_get(cv)))
+	    cprintf(cb, ":%s", prefix);
+	cprintf(cb, "=\"%s\"", cv_string_get(cv));
+    }
+    return 0;
+}
+
 /*! Given an xml tree return URI namespace recursively : default or localname given
  *
  * Given an XML tree and a prefix (or NULL) return URI namespace.

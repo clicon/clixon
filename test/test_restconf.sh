@@ -23,9 +23,20 @@ APPNAME=example
 cfg=$dir/conf.xml
 
 # clixon-example and clixon-restconf is used in the test, need local copy
-cp ${TOP_SRCDIR}/example/main/clixon-example@2020-12-01.yang $dir/
-cp ${TOP_SRCDIR}/yang/clixon/clixon-restconf@2020-10-30.yang $dir/
-
+# This is a kludge: look in src otherwise assume it is installed in /usr/local/share
+# Note that revisions may change and may need to be updated
+y=clixon-example@2020-12-01.yang
+if [ -d ${TOP_SRCDIR}/example/main/$y ]; then 
+    cp ${TOP_SRCDIR}/example/main/$y $dir/
+else
+    cp /usr/local/share/clixon/$y $dir/
+fi
+y=clixon-restconf@2020-10-30.yang
+if [ -d ${TOP_SRCDIR}/yang/clixon ]; then 
+    cp ${TOP_SRCDIR}/yang/clixon/$y $dir/
+else
+    cp /usr/local/share/clixon/$y $dir/
+fi
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>

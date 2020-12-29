@@ -59,6 +59,7 @@ int     xml_nsctx_add(cvec *nsc, char *prefix, char *ns);
 int     xml_nsctx_node(cxobj *x, cvec **ncp);
 int     xml_nsctx_yang(yang_stmt *yn, cvec **ncp);
 int     xml_nsctx_yangspec(yang_stmt *yspec, cvec **ncp);
+int     xml_nsctx_cbuf(cbuf *cb, cvec *nsc);
 
 int     xml2ns(cxobj *x, char *localname, char **ns);
 int     xml2ns_recurse(cxobj *x);
