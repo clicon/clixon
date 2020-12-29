@@ -1361,8 +1361,7 @@ cli_pagination(clicon_handle h, cvec *vars, cvec *argv)
     while ((xc = xml_child_each(xret, xc, CX_ELMNT)) != NULL)
 	switch (format){
 	case FORMAT_XML:
-	    clicon_xml2file(stdout, xc, 0, 0);
-	    fprintf(stdout, "\n");
+	    clicon_xml2file_cb(stdout, xc, 0, 1, cligen_output);
 	    break;
 	case FORMAT_JSON:
 	    xml2json_cb(stdout, xc, 1, cligen_output);
