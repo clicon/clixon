@@ -6,11 +6,10 @@
 #
 # Create working dir as variable "dir"
 # The functions are somewhat wildgrown, a little too many:
-# - expectfn
 # - expectpart
 # - expecteof
-# - expecteofeq
 # - expecteofx
+# - expecteofeq
 # - expecteof_file
 # - expectwait
 # - expectmatch
@@ -369,63 +368,6 @@ new(){
     testi=`expr $testi + 1`
     testname=$1
     >&2 echo "Test $testi($testnr) [$1]"
-}
-
-# clixon command tester.
-# Arguments:
-# - command,
-# - expected command return value (0 if OK)
-# - expected* stdout outcome, (can be many)
-# Example: expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 "line1" "line2" 
-# XXX: for some reason some curl commands dont work here, eg
-#   curl -H 'Accept: application/xrd+xml'
-# NOTE: Please us expectpart instead!!
-expectfn(){
-    cmd=$1
-    retval=$2
-    expect="$3"
-
-    if [ $# = 4 ]; then
-	expect2=$4
-    else
-	expect2=
-    fi
-    ret=$($cmd)
-    r=$?
-#    echo "cmd:\"$cmd\""
-#    echo "retval:\"$retval\""
-#    echo "expect:\"$expect\""
-#    echo "ret:\"$ret\""
-#    echo "r:\"$r\""
-    if [ $r != $retval ]; then
-	echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
-	echo -e "\e[0m:"
-	exit -1
-    fi
-    #  if [ $ret -ne $retval ]; then
-    #      echo -e "\e[31m\nError in Test$testnr [$testname]:"
-    #      echo -e "\e[0m:"
-    #      exit -1
-    #  fi
-    # Match if both are empty string (special case)
-    if [ -z "$ret" -a -z "$expect" ]; then
-	return
-    fi
-    if [ -z "$ret" -a "$expect" = "^$" ]; then
-	return
-    fi
-    # Loop over all variable args expect strings
-    let i=0;
-    for exp in "$@"; do
-	if [ $i -gt 1 ]; then
-	    match=`echo $ret | grep --null -Eo "$exp"`
-	    if [ -z "$match" ]; then
-		err "$exp" "$ret"
-	    fi
-	fi
-	let i++;
-	
-    done
 }
 
 # Evaluate and return

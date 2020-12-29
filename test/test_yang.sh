@@ -157,7 +157,7 @@ if [ "$BE" -ne 0 ]; then
 fi
 
 new "cli defined extension"
-expectfn "$clixon_cli -1f $cfg show version" 0 "$version."
+expectpart "$($clixon_cli -1f $cfg show version)" 0 "$version."
 
 new "empty values in leaf-list"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><f><e>a</e></f></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -175,7 +175,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>
 #new "netconf not defined extension"
 #expecteof "$clixon_netconf -qf $cfg -l o" 0 "$YANG" "Extension ex:not-defined not found"
 # This text yields an error, but the test cannot detect the error message yet
-#expectfn "$clixon_cli -1f $cfg -y $fyangerr show version" 0 "Yang error: Extension ex:not-defined not found"
+#expectpart "$($clixon_cli -1f $cfg -y $fyangerr show version)" 0 "Yang error: Extension ex:not-defined not found"
 
 new "netconf schema resource, RFC 7895"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"yanglib:modules-state/yanglib:module\" xmlns:yanglib=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>]]>]]>" "<module><name>ietf-yang-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace><conformance-type>implement</conformance-type></module>"
@@ -206,10 +206,10 @@ new "netconf get (should be some)"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:clixon\"><y><a>1</a><b>2</b><c>5</c><val>one</val></y><d/></x>"
 
 new "cli set leaf-list"
-expectfn "$clixon_cli -1f $cfg set x f e foo" 0 ""
+expectpart "$($clixon_cli -1f $cfg set x f e foo)" 0 ""
 
 new "cli show leaf-list"
-expectfn "$clixon_cli -1f $cfg show xpath /x/f/e urn:example:clixon" 0 "<e>foo</e>"
+expectpart "$($clixon_cli -1f $cfg show xpath /x/f/e urn:example:clixon)" 0 "<e>foo</e>"
 
 new "netconf set state data (not allowed)"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><state xmlns=\"urn:example:clixon\"><op>42</op></state></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>state in module example: state data node unexpected</error-message></rpc-error></rpc-reply>]]>]]>$"

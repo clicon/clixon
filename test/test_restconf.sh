@@ -22,9 +22,9 @@ APPNAME=example
 
 cfg=$dir/conf.xml
 
-# clixon-example and clixon-restconf is used, copy here
-cp /usr/local/share/clixon/clixon-example@2020-12-01.yang $dir/
-cp /usr/local/share/clixon/clixon-restconf@2020-10-30.yang $dir/
+# clixon-example and clixon-restconf is used in the test, need local copy
+cp ${TOP_SRCDIR}/example/main/clixon-example@2020-12-01.yang $dir/
+cp ${TOP_SRCDIR}/yang/clixon/clixon-restconf@2020-10-30.yang $dir/
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

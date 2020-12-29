@@ -235,7 +235,7 @@ testrange(){
     expectpart "$($clixon_cli -1f $cfg -l o set l$t $eval)" 255 "$errmsg"
 
     new "generated cli set $t leaf OK"
-    expectfn "$clixon_cli -1f $cfg -l o set l$t $val" 0 '^$'
+    expectpart "$($clixon_cli -1f $cfg -l o set l$t $val)" 0 '^$'
 
     # XXX Error in cligen order: Unknown command vs Number out of range
     # olof@vandal> set luint8 0
@@ -245,14 +245,14 @@ testrange(){
     # CLI syntax error: "set luint8 0": Unknown command
 # (SAME AS FIRST ^)
     new "generated cli set $t leaf invalid"
-    expectfn "$clixon_cli -1f $cfg -l o set l$t $eval" 255 "$errmsg"
+    expectpart "$($clixon_cli -1f $cfg -l o set l$t $eval)" 255 "$errmsg"
 
     new "manual cli set $t leaf OK"
-    expectfn "$clixon_cli -1f $cfg -l o man h$t $val" 0 '^$'
+    expectpart "$($clixon_cli -1f $cfg -l o man h$t $val)" 0 '^$'
 
     new "manual cli set $t leaf invalid"
     echo "$clixon_cli -1f $cfg -l o set h$t $eval"
-    expectfn "$clixon_cli -1f $cfg -l o set l$t $eval" 255 "$errmsg"
+    expectpart "$($clixon_cli -1f $cfg -l o set l$t $eval)" 255 "$errmsg"
     
     new "discard"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"

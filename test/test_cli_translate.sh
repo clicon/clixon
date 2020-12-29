@@ -62,12 +62,12 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "translate abc -> table/parameter=translate/value = bcd"
-expectfn "$clixon_cli -1 -f $cfg translate abc" 0 ""
+expectpart "$($clixon_cli -1 -f $cfg translate abc)" 0 ""
 
 new "show config"
 expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "<table xmlns=\"urn:example:clixon\"><parameter><name>translate</name><value>bcd</value></parameter></table>"
 
-if [ $BE -new 0 ]; then
+if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)

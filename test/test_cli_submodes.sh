@@ -89,24 +89,24 @@ m=AAA
 # Tests using mode AAA that should pass
 for c in 1 2 5; do
     new "cli mode $m 1 cmd$c OK"
-    expectfn "$clixon_cli -1 -m $m -f $cfg cmd$c" 0 "^$"
+    expectpart "$($clixon_cli -1 -m $m -f $cfg cmd$c)" 0 "^$"
 done
 # Tests using mode AAA that should fail
 for c in 3 4 6; do
     new "cli mode $m 1 cmd$c Not OK"
-    expectfn "$clixon_cli -1 -m $m -f $cfg cmd$c" 255 "^$"
+    expectpart "$($clixon_cli -1 -m $m -f $cfg cmd$c)" 255 "^$"
 done
 
 m=BBB
 # Tests using mode BBB that should pass
 for c in 1 3 5 6; do
     new "cli mode $m 1 cmd$c OK"
-    expectfn "$clixon_cli -1 -m $m -f $cfg cmd$c" 0 "^$"
+    expectpart "$($clixon_cli -1 -m $m -f $cfg cmd$c)" 0 "^$"
 done
 # Tests using mode BBB that should fail
 for c in 2 4; do
     new "cli mode $m 1 cmd$c Not OK"
-    expectfn "$clixon_cli -1 -m $m -f $cfg cmd$c" 255 "^$"
+    expectpart "$($clixon_cli -1 -m $m -f $cfg cmd$c)" 255 "^$"
 done
 
 if [ $BE -eq 0 ]; then

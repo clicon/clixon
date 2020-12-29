@@ -92,13 +92,13 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "cli set transitive string"
-expectfn "$clixon_cli -1f $cfg -l o set c talle x" 0 "^$"
+expectpart "$($clixon_cli -1f $cfg -l o set c talle x)" 0 "^$"
 
 new "cli set transitive union"
-expectfn "$clixon_cli -1f $cfg -l o set c ulle 33" 0 "^$"
+expectpart "$($clixon_cli -1f $cfg -l o set c ulle 33)" 0 "^$"
 
 new "cli set transitive union error"
-expectfn "$clixon_cli -1f $cfg -l o set c ulle kalle" 255 "^CLI syntax error: \"set c ulle kalle\": 'kalle' is not a number$"
+expectpart "$($clixon_cli -1f $cfg -l o set c ulle kalle)" 255 "^CLI syntax error: \"set c ulle kalle\": 'kalle' is not a number$"
 
 if [ $BE -eq 0 ]; then
     exit # BE

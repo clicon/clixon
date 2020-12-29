@@ -157,7 +157,7 @@ done } 2>&1 | awk '/real/ {print $2}'
 if false; then
 # CLI get
 new "cli get test single req"
-expectfn "$clixon_cli -1 -1f $cfg -l o show state xml interfaces a foo b interface e1" 0 '^<interface>
+expectpart "$($clixon_cli -1 -1f $cfg -l o show state xml interfaces a foo b interface e1)" 0 '^<interface>
    <name>e1</name>
    <type>eth</type>
    <status>up</status>

@@ -743,68 +743,68 @@ testrun "p$pnr" false '248:197.7.89/8'
 
 # CLI tests
 new "CLI tests for RFC7950 Sec 9.4.7 ex 2 AB"
-expectfn "$clixon_cli -1f $cfg -l o set c rfc2 AB" 0 '^$'
+expectpart "$($clixon_cli -1f $cfg -l o set c rfc2 AB)" 0 '^$'
 
 new "CLI tests for RFC7950 Sec 9.4.7 ex 2 9A00"
-expectfn "$clixon_cli -1f $cfg -l o set c rfc2 9A00" 0 '^$'
+expectpart "$($clixon_cli -1f $cfg -l o set c rfc2 9A00)" 0 '^$'
 
 new "CLI tests for RFC7950 Sec 9.4.7 ex 2 00ABAB (should fail)"
-expectfn "$clixon_cli -1f $cfg -l o set c rfc2 00ABAB" 255 '^CLI syntax error:'
+expectpart "$($clixon_cli -1f $cfg -l o set c rfc2 00ABAB)" 255 '^CLI syntax error:'
 
 new "CLI tests for RFC7950 Sec 9.4.7 ex 2 xx00 (should fail)"
-expectfn "$clixon_cli -1f $cfg -l o set c rfc2 xx00" 255 '^CLI syntax error:'
+expectpart "$($clixon_cli -1f $cfg -l o set c rfc2 xx00)" 255 '^CLI syntax error:'
 
 new "CLI tests for RFC7950 Sec 9.4.7 ex 3 enabled"
-expectfn "$clixon_cli -1f $cfg -l o set c rfc3 enabled" 0 '^$'
+expectpart "$($clixon_cli -1f $cfg -l o set c rfc3 enabled)" 0 '^$'
 
 new "CLI tests for RFC7950 Sec 9.4.7 ex 3 10-mbit (should fail)"
-expectfn "$clixon_cli -1f $cfg -l o set c rfc3 10-mbit" 255 '^CLI syntax error:'
+expectpart "$($clixon_cli -1f $cfg -l o set c rfc3 10-mbit)" 255 '^CLI syntax error:'
 
 new "CLI tests for RFC7950 Sec 9.4.7 ex 3 xml-element (should fail)"
-expectfn "$clixon_cli -1f $cfg -l o set c rfc3 xml-element" 255 '^CLI syntax error:'
+expectpart "$($clixon_cli -1f $cfg -l o set c rfc3 xml-element)" 255 '^CLI syntax error:'
 
 new "CLI tests for two patterns gksdhfsakjhdks"
-expectfn "$clixon_cli -1f $cfg -l o set c twomatch gksdhfsakjhdks" 0 '^$'
+expectpart "$($clixon_cli -1f $cfg -l o set c twomatch gksdhfsakjhdks)" 0 '^$'
 
 new "CLI tests for two patterns xabcde (should fail)"
-expectfn "$clixon_cli -1f $cfg -l o set c twomatch xabcde" 255 '^CLI syntax error:'
+expectpart "$($clixon_cli -1f $cfg -l o set c twomatch xabcde)" 255 '^CLI syntax error:'
 
 new "CLI tests for two patterns gabcdefg (should fail)"
-expectfn "$clixon_cli -1f $cfg -l o set c twomatch gabcdefg" 255 '^CLI syntax error:'
+expectpart "$($clixon_cli -1f $cfg -l o set c twomatch gabcdefg)" 255 '^CLI syntax error:'
 
 # NOTE if the following two are swapped, it fails, the reason being:
 # valid "gks" is selected as a valid (expand) match although gk is not.
 # this may be a CLIgen error but ignored for now
 new "CLI tests for three patterns gk (should fail)"
-expectfn "$clixon_cli -1f $cfg -l o set c threematch gk" 255 '^CLI syntax error:'
+expectpart "$($clixon_cli -1f $cfg -l o set c threematch gk)" 255 '^CLI syntax error:'
 
 new "CLI tests for three patterns gks"
-expectfn "$clixon_cli -1f $cfg -l o set c threematch gks" 0 '^$'
+expectpart "$($clixon_cli -1f $cfg -l o set c threematch gks)" 0 '^$'
 
 new "CLI tests for three patterns abcg (should fail)"
-expectfn "$clixon_cli -1f $cfg -l o set c threematch abcg" 255 '^CLI syntax error:'
+expectpart "$($clixon_cli -1f $cfg -l o set c threematch abcg)" 255 '^CLI syntax error:'
 
 # Need to have failures first so there are no matches with existing entries
 new "CLI tests for CDATA, should fail"
-expectfn "$clixon_cli -1f $cfg -l o set c p45 <![CDATA[foo" 255 'CLI syntax error'
+expectpart "$($clixon_cli -1f $cfg -l o set c p45 "<![CDATA[foo")" 255 'CLI syntax error'
 
 new "CLI tests for CDATA, should fail"
-expectfn "$clixon_cli -1f $cfg -l o set c p45 <!CDATA[foo]]" 255 'CLI syntax error'
+expectpart "$($clixon_cli -1f $cfg -l o set c p45 "<!CDATA[foo]]")" 255 'CLI syntax error'
 
 new "CLI tests for CDATA, should fail"
-expectfn "$clixon_cli -1f $cfg -l o set c p45 <!CDATA[foo]>" 255 'CLI syntax error'
+expectpart "$($clixon_cli -1f $cfg -l o set c p45 "<!CDATA[foo]>")" 255 'CLI syntax error'
 
 new "CLI tests for CDATA, should fail"
-expectfn "$clixon_cli -1f $cfg -l o set c p45 <![CDATA[]]>" 255 'CLI syntax error'
+expectpart "$($clixon_cli -1f $cfg -l o set c p45 "<![CDATA[]]>")" 255 'CLI syntax error'
 
 new "CLI tests for CDATA, should fail"
-expectfn "$clixon_cli -1f $cfg -l o set c p45 ![CDATA[foo]]>" 255 'CLI syntax error'
+expectpart "$($clixon_cli -1f $cfg -l o set c p45 "![CDATA[foo]]>")" 255 'CLI syntax error'
 
 new "CLI tests for CDATA, should fail"
-expectfn "$clixon_cli -1f $cfg -l o set c p45 <![CDATA[foo]]" 255 'CLI syntax error'
+expectpart "$($clixon_cli -1f $cfg -l o set c p45 "<![CDATA[foo]]")" 255 'CLI syntax error'
 
 new "CLI tests for CDATA OK"
-expectfn "$clixon_cli -1f $cfg -l o set c p45 <![CDATA[foobar]]>" 0 '^$'
+expectpart "$($clixon_cli -1f $cfg -l o set c p45 "<![CDATA[foobar]]>")" 0 '^$'
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

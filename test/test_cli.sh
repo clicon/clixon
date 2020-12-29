@@ -68,10 +68,10 @@ expectpart "$($clixon_cli -1 -f $cfg show conf cli)" 0 "^set interfaces interfac
 
 new "cli configure using encoded chars data <&"
 # problems in changing to expectpart with escapes
-expectfn "$clixon_cli -1 -f $cfg set interfaces interface eth/0/0 description \"foo<&bar\"" 0 ""
+expectpart "$($clixon_cli -1 -f $cfg set interfaces interface eth/0/0 description "\"foo<&bar\"")" 0 ""
 
 new "cli configure using encoded chars name <&"
-expectfn "$clixon_cli -1 -f $cfg set interfaces interface fddi&< type ianaift:ethernetCsmacd" 0 ""
+expectpart "$($clixon_cli -1 -f $cfg set interfaces interface "fddi&<" type ianaift:ethernetCsmacd)" 0 ""
 
 new "cli failed validate"
 expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 255 "Validate failed. Edit and try again or discard changes: application missing-element Mandatory variable of interface in module ietf-interfaces <bad-element>type</bad-element>"
@@ -120,7 +120,7 @@ expectpart "$($clixon_cli -1 -f $cfg -l o debug level 1)" 0 "^$"
 
 # How to test this?
 new "cli debug reset"
-expectfn "$clixon_cli -1 -f $cfg -l o debug level 0" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o debug level 0)" 0 "^$"
 
 new "cli rpc"
 # We dont know which message-id the cli app uses

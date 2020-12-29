@@ -176,16 +176,16 @@ new "leafref discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "cli leafref lo"
-expectfn "$clixon_cli -1f $cfg -l o set default-address absname lo" 0 "^$"
+expectpart "$($clixon_cli -1f $cfg -l o set default-address absname lo)" 0 "^$"
 
 new "cli leafref validate"
-expectfn "$clixon_cli -1f $cfg -l o validate" 0 "^$"
+expectpart "$($clixon_cli -1f $cfg -l o validate)" 0 "^$"
 
 new "cli sender"
-expectfn "$clixon_cli -1f $cfg -l o set sender a" 0 "^$"
+expectpart "$($clixon_cli -1f $cfg -l o set sender a)" 0 "^$"
 
 new "cli sender template"
-expectfn "$clixon_cli -1f $cfg -l o set sender b template a" 0 "^$"
+expectpart "$($clixon_cli -1f $cfg -l o set sender b template a)" 0 "^$"
 
 if [ $BE -eq 0 ]; then
     exit # BE

@@ -200,7 +200,7 @@ new "netconf get replaced config"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth&amp;</name><type>t&lt;&gt;</type><enabled>true</enabled></interface><interface><name>eth1</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>eth2</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>$"
 
 new "cli show configuration eth& - encoding tests"
-expectfn "$clixon_cli -1 -f $cfg show conf cli" 0 "interfaces interface eth& type t<>
+expectpart "$($clixon_cli -1 -f $cfg show conf cli)" 0 "interfaces interface eth& type t<>
 interfaces interface eth& enabled true"
 
 new "netconf edit CDATA"

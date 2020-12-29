@@ -94,23 +94,23 @@ fi
 
 # Positive tests
 new "set x"
-expectfn "$clixon_cli -1 -f $cfg set x" 0 ""
+expectpart "$($clixon_cli -1 -f $cfg set x)" 0 ""
 
 new "set x a b"
-expectfn "$clixon_cli -1 -f $cfg set x a 99 b 22" 0 ""
+expectpart "$($clixon_cli -1 -f $cfg set x a 99 b 22)" 0 ""
 
 new "set x a b c"
-expectfn "$clixon_cli -1 -f $cfg set x a 22 b 33 c 55" 0 ""
+expectpart "$($clixon_cli -1 -f $cfg set x a 22 b 33 c 55)" 0 ""
 
 new "show conf x"
-expectfn "$clixon_cli -1 -f $cfg show conf x" 0 "x m1 a 22 b 33"
+expectpart "$($clixon_cli -1 -f $cfg show conf x)" 0 "x m1 a 22 b 33"
 
 # Negative tests
 new "err x"
-expectfn "$clixon_cli -1 -f $cfg err x" 255 "Config error: api-path syntax error \"/example2:x\": application unknown-element No such yang module prefix <bad-element>example2</bad-element>: Invalid argument"
+expectpart "$($clixon_cli -1 -f $cfg err x)" 255 "Config error: api-path syntax error \"/example2:x\": application unknown-element No such yang module prefix <bad-element>example2</bad-element>: Invalid argument"
 
 new "err x a"
-expectfn "$clixon_cli -1 -f $cfg err x a 99" 255 "Config error: api-path syntax error \"/example:x/m1=%s\": rpc malformed-message List key m1 length mismatch : Invalid argument"
+expectpart "$($clixon_cli -1 -f $cfg err x a 99)" 255 "Config error: api-path syntax error \"/example:x/m1=%s\": rpc malformed-message List key m1 length mismatch : Invalid argument"
 
 endtest
 

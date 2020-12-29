@@ -159,16 +159,16 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "cli enabled feature"
-expectfn "$clixon_cli -1f $cfg set x foo" 0 ""
+expectpart "$($clixon_cli -1f $cfg set x foo)" 0 ""
 
 new "cli disabled feature"
-expectfn "$clixon_cli -1f $cfg -l o set y foo" 255 "CLI syntax error: \"set y foo\": Unknown command"
+expectpart "$($clixon_cli -1f $cfg -l o set y foo)" 255 "CLI syntax error: \"set y foo\": Unknown command"
 
 new "cli enabled feature in other module"
-expectfn "$clixon_cli -1f $cfg set routing router-id 1.2.3.4" 0 ""
+expectpart "$($clixon_cli -1f $cfg set routing router-id 1.2.3.4)" 0 ""
 
 new "cli disabled feature in other module"
-expectfn "$clixon_cli -1f $cfg -l o set routing ribs rib default-rib false" 255 "CLI syntax error: \"set routing ribs rib default-rib false\": Unknown command"
+expectpart "$($clixon_cli -1f $cfg -l o set routing ribs rib default-rib false)" 255 "CLI syntax error: \"set routing ribs rib default-rib false\": Unknown command"
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"

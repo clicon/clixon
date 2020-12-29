@@ -55,3 +55,6 @@ wwwuser=@wwwuser@
 
 # Home dir for web user, by default /www-data
 WWWDIR=@wwwdir@
+
+# Top src dir
+TOP_SRCDIR=@top_srcdir@

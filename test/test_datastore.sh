@@ -61,103 +61,103 @@ rm -rf $mydir/*
 conf="-d candidate -b $mydir -y $dir/ietf-ip.yang"
 
 new "datastore init"
-expectfn "$clixon_util_datastore $conf init" 0 ""
+expectpart "$($clixon_util_datastore $conf init)" 0 ""
 
 new "datastore put all replace"
 ret=$($clixon_util_datastore $conf put replace "$xml")
 expectmatch "$ret" $? "0" ""
 
 new "datastore get"
-expectfn "$clixon_util_datastore $conf get /" 0 "^$xml$"
+expectpart "$($clixon_util_datastore $conf get /)" 0 "^$xml$"
 
 new "datastore put all remove"
-expectfn "$clixon_util_datastore $conf put remove <config/>" 0 ""
+expectpart "$($clixon_util_datastore $conf put remove "<config/>")" 0 ""
 
 new "datastore get"
-expectfn "$clixon_util_datastore $conf get /" 0 "^<config/>$" 
+expectpart "$($clixon_util_datastore $conf get /)" 0 "^<config/>$" 
 
 new "datastore put all merge"
 ret=$($clixon_util_datastore $conf put merge "$xml")
 expectmatch "$ret" $? "0" ""
 
-#    expectfn "$clixon_util_datastore $conf put merge $xml" 0 ""
+#    expectpart "$($clixon_util_datastore $conf put merge $xml)" 0 ""
 
 new "datastore get"
-expectfn "$clixon_util_datastore $conf get /" 0 "^$xml$"
+expectpart "$($clixon_util_datastore $conf get /)" 0 "^$xml$"
 
 new "datastore put all delete"
-expectfn "$clixon_util_datastore $conf put remove <config/>" 0 ""
+expectpart "$($clixon_util_datastore $conf put remove "<config/>")" 0 ""
 
 new "datastore get"
-expectfn "$clixon_util_datastore $conf get /" 0 "^<config/>$"
+expectpart "$($clixon_util_datastore $conf get /)" 0 "^<config/>$"
 
 new "datastore put all create"
 ret=$($clixon_util_datastore $conf put create "$xml")
 expectmatch "$ret" $? "0" ""
 
 new "datastore get"
-expectfn "$clixon_util_datastore $conf get /" 0 "^$xml$"
+expectpart "$($clixon_util_datastore $conf get /)" 0 "^$xml$"
 
 new "datastore put top create"
-expectfn "$clixon_util_datastore $conf put create <config><x/></config>" 0 "" # error
+expectpart "$($clixon_util_datastore $conf put create "<config><x/></config>")" 0 "" # error
 
 # Single key operations
 # leaf
 new "datastore put all delete"
-expectfn "$clixon_util_datastore $conf delete" 0 ""
+expectpart "$($clixon_util_datastore $conf delete)" 0 ""
 
 new "datastore init"
-expectfn "$clixon_util_datastore $conf init" 0 ""
+expectpart "$($clixon_util_datastore $conf init)" 0 ""
 
 new "datastore create leaf"
-expectfn "$clixon_util_datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
+expectpart "$($clixon_util_datastore $conf put create "<config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>")" 0 ""
 
 new "datastore create leaf"
-expectfn "$clixon_util_datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
+expectpart "$($clixon_util_datastore $conf put create '<config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>')" 0 ""
 
 new "datastore delete leaf"
-expectfn "$clixon_util_datastore $conf put delete <config><x><y><a>1</a><b>3</b></y></x></config>" 0 ""
+expectpart "$($clixon_util_datastore $conf put delete '<config><x><y><a>1</a><b>3</b></y></x></config>')" 0 ""
 
 new "datastore replace leaf"
-expectfn "$clixon_util_datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
+expectpart "$($clixon_util_datastore $conf put create '<config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>')" 0 ""
 
 new "datastore remove leaf"
-expectfn "$clixon_util_datastore $conf put remove <config><x><g/></x></config>" 0 ""
+expectpart "$($clixon_util_datastore $conf put remove '<config><x><g/></x></config>')" 0 ""
 
 new "datastore remove leaf"
-expectfn "$clixon_util_datastore $conf put remove <config><x><y><a>1</a><b>3</b><c/></y></x></config>" 0 ""
+expectpart "$($clixon_util_datastore $conf put remove '<config><x><y><a>1</a><b>3</b><c/></y></x></config>')" 0 ""
 
 new "datastore delete leaf"
-expectfn "$clixon_util_datastore $conf put delete <config><x><g/></x></config>" 0 ""
+expectpart "$($clixon_util_datastore $conf put delete '<config><x><g/></x></config>')" 0 ""
 
 new "datastore merge leaf"
-expectfn "$clixon_util_datastore $conf put merge <config><x><g>nalle</g></x></config>" 0 ""
+expectpart "$($clixon_util_datastore $conf put merge '<config><x><g>nalle</g></x></config>')" 0 ""
 
 new "datastore replace leaf"
-expectfn "$clixon_util_datastore $conf put replace <config><x><g>nalle</g></x></config>" 0 ""
+expectpart "$($clixon_util_datastore $conf put replace '<config><x><g>nalle</g></x></config>')" 0 ""
 
 new "datastore merge leaf"
-expectfn "$clixon_util_datastore $conf put merge <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
+expectpart "$($clixon_util_datastore $conf put merge '<config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>')" 0 ""
 
 new "datastore replace leaf"
-expectfn "$clixon_util_datastore $conf put replace <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
+expectpart "$($clixon_util_datastore $conf put replace '<config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>')" 0 ""
 
 new "datastore create leaf"
-expectfn "$clixon_util_datastore $conf put create <config><x><h><j>aaa</j></h></x></config>" 0 ""
+expectpart "$($clixon_util_datastore $conf put create '<config><x><h><j>aaa</j></h></x></config>')" 0 ""
 
 new "datastore create leaf"
-expectfn "$clixon_util_datastore $conf put create <config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>" 0 ""
+expectpart "$($clixon_util_datastore $conf put create '<config><x><y><a>1</a><b>3</b><c>newentry</c></y></x></config>')" 0 ""
 
 new "datastore other db init"
-expectfn "$clixon_util_datastore -d kalle -b $mydir -y $dir/ietf-ip.yang init" 0 ""
+expectpart "$($clixon_util_datastore -d kalle -b $mydir -y $dir/ietf-ip.yang init)" 0 ""
 
 new "datastore other db copy"
-expectfn "$clixon_util_datastore $conf copy kalle" 0 ""
+expectpart "$($clixon_util_datastore $conf copy kalle)" 0 ""
 
 diff $mydir/kalle_db $mydir/candidate_db
 
 new "datastore lock"
-expectfn "$clixon_util_datastore $conf lock 756" 0 ""
+expectpart "$($clixon_util_datastore $conf lock 756)" 0 ""
 
 # unset conditional parameters 
 unset clixon_util_datastore
