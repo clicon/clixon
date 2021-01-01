@@ -3,6 +3,9 @@ module clixon-config {
     namespace "http://clicon.org/config";
     prefix cc;
 
+    import clixon-restconf {
+	prefix clrc;
+    }    
     organization
 	"Clicon / Clixon";
 
@@ -40,9 +43,33 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2020-12-30 {
+	description
+	    "Removed obsolete options:
+	           CLICON_RESTCONF_IPV4_ADDR
+                   CLICON_RESTCONF_IPV6_ADDR
+	           CLICON_RESTCONF_HTTP_PORT
+                   CLICON_RESTCONF_HTTPS_PORT
+	           CLICON_SSL_SERVER_CERT
+                   CLICON_SSL_SERVER_KEY
+	           CLICON_SSL_CA_CERT";
+    }
+    revision 2020-11-03 {
+	description
+	    "Added CLICON_BACKEND_RESTCONF_PROCESS 
+             Copied to clixon-restconf.yang and marked as obsolete:
+	           CLICON_RESTCONF_IPV4_ADDR
+                   CLICON_RESTCONF_IPV6_ADDR
+	           CLICON_RESTCONF_HTTP_PORT
+                   CLICON_RESTCONF_HTTPS_PORT
+	           CLICON_SSL_SERVER_CERT
+                   CLICON_SSL_SERVER_KEY
+	           CLICON_SSL_CA_CERT
+             Removed obsolete option CLICON_TRANSACTION_MOD";
+    }
     revision 2020-10-01 {
 	description
-	    "Added: CLICON_CONFIGDIR";
+	    "Added: CLICON_CONFIGDIR.";
     }
     revision 2020-08-17 {
 	description
@@ -264,8 +291,22 @@ module clixon-config {
 	    }
 	}
     }
+    typedef socket_address_family {
+	description "Address family for internal socket";
+	type enumeration{
+	    enum UNIX {
+		description "Unix domain socket";
+	    }
+	    enum IPv4 {
+		description "IPv4";
+	    }
+	}
+    }
 
     container clixon-config {
+	container restconf {
+	    uses clrc:clixon-restconf;
+	}
        leaf-list CLICON_FEATURE {
            description
                "Supported features as used by YANG feature/if-feature
@@ -392,7 +433,8 @@ module clixon-config {
 	    default "/www-data/fastcgi_restconf.sock";
 	    description
 		"FastCGI unix socket. Should be specified in webserver
-         	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock";
+         	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
+                 Only if with-restconf=fcgi, NOT evhtp";
 	}
 	leaf CLICON_RESTCONF_PRETTY {
 	    type boolean;
@@ -406,58 +448,6 @@ module clixon-config {
                  RFC 8040 examples print XML and JSON in pretty-printed form.
                  Setting this value to false makes restconf return not pretty-printed
                  which may be desirable for performance or tests";
-	}
-	leaf CLICON_RESTCONF_IPV4_ADDR {
-	    type string;
-	    default "0.0.0.0";
-	    description
-		"RESTCONF IPv4 socket binding address.
-                 Applies to native http by config option --with-restconf=evhtp.";
-	}
-	leaf CLICON_RESTCONF_IPV6_ADDR {
-	    type string;
-	    default "::";
-	    description
-		"RESTCONF IPv6 socket binding address.
-                 Applies to native http by config option --with-restconf=evhtp.";
-	}
-	leaf CLICON_RESTCONF_HTTP_PORT {
-	    type uint16;
-	    default 80;
-	    description
-		"RESTCONF socket binding port, non-ssl
-                 In the restconf daemon, it can be overriden by -P <port>
-                 Applies to native http only by config option --with-restconf=evhtp.";
-	}
-	leaf CLICON_RESTCONF_HTTPS_PORT {
-	    type uint16;
-	    default 443;
-	    description
-		"RESTCONF socket binding port, ssl
-                 In the restconf daemon, this is the port chosen if -s is given. 
-                 Note it can be overriden by -P <port>
-                 Applies to native http by config option --with-restconf=evhtp.";
-	}
-	leaf CLICON_SSL_SERVER_CERT {
-	    type string;
-	    default "/etc/ssl/certs/clixon-server-crt.pem";
-	    description
-		"SSL server cert for restconf https. 
-                 Applies to native http only by config option --with-restconf=evhtp.";
-	}
-	leaf CLICON_SSL_SERVER_KEY {
-	    type string;
-	    default "/etc/ssl/private/clixon-server-key.pem";
-	    description
-		"SSL server private key for restconf https.
-                 Applies to native http only by config option --with-restconf=evhtp.";
-	}
-	leaf CLICON_SSL_CA_CERT {
-	    type string;
-	    default "/etc/ssl/certs/clixon-ca_crt.pem";
-	    description
-		"SSL CA cert for client authentication.
-                 Applies to native http only by config option --with-restconf=evhtp.";
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;
@@ -624,15 +614,15 @@ module clixon-config {
                  from a spec, such as in the autocli.";
 	}
 	leaf CLICON_SOCK_FAMILY {
-	    type string;
-	    default "UNIX";
+	    type socket_address_family;
+	    default UNIX;
 	    description
-		"Address family for communicating with clixon_backend 
-                 (UNIX|IPv4). IPv6 not yet implemented.
+		"Address family for communicating with clixon_backend with one of:
+                 Note IPv6 not implemented.
                  Note that UNIX socket makes credential check as follows:
                  (1) client needs rw access to the socket 
                  (2) NACM credentials can be checked according to CLICON_NACM_CREDENTIALS
-                 Warning: IPv4 and IPv6 sockets have no credential mechanism.
+                 Warning: Only UNIX (not IPv4) sockets have credential mechanism.
                  ";
 	}
 	leaf CLICON_SOCK {
@@ -680,6 +670,20 @@ module clixon-config {
 	    type string;
 	    mandatory true;
 	    description "Process-id file of backend daemon";
+	}
+	leaf CLICON_BACKEND_RESTCONF_PROCESS {
+	    type boolean;
+	    default false;
+	    description
+		"If set, enable process-control of restconf daemon, ie start/stop restconf 
+                 daemon internally from backend daemon.
+                 It uses clixon-restconf.yang for config and clixon-lib.yang for RPC
+                 Process control of restconf daemon is as follows:
+                 - on RPC start, if enable is true, start the service, if false, error or ignore it
+                 - on RPC stop, stop the service 
+                 - on backend start make the state as configured
+                 - on enable change, make the state as configured
+                 Disable if you start the restconf daemon by other means.";
 	}
 	leaf CLICON_AUTOCOMMIT {
 	    type int32;

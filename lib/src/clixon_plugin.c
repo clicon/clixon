@@ -317,6 +317,12 @@ done:
  * @param[out] cpp   Clixon plugin structure (direct pointer)
  * @retval     0     OK, with cpp set
  * @retval    -1     Error
+ * @code
+ *   clixon_plugin *cp = NULL;
+ *   if (clixon_pseudo_plugin(h, "pseudo plugin", &cp) < 0)
+ *     err;
+ *   cp->cp_api.ca_extension = my_ext_cb;
+ * @endcode
  */
 int
 clixon_pseudo_plugin(clicon_handle   h,

@@ -74,7 +74,7 @@ state='{"clixon-example:state":{"op":\["41","42","43"\]}'
 if $IPv6; then
     # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
     RESTCONFIG=$(cat <<EOF
-<restconf xmlns="https://clicon.org/restconf">
+<restconf xmlns="http://clicon.org/restconf">
    <enable>true</enable>
    <auth-type>password</auth-type>
    <server-cert-path>$srvcert</server-cert-path>
@@ -90,7 +90,7 @@ EOF
 else
        # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
     RESTCONFIG=$(cat <<EOF
-<restconf xmlns="https://clicon.org/restconf">
+<restconf xmlns="http://clicon.org/restconf">
    <enable>true</enable>
    <auth-type>password</auth-type>
    <server-cert-path>$srvcert</server-cert-path>
@@ -142,10 +142,12 @@ testrun()
 	new "kill old restconf daemon"
 	stop_restconf_pre
 
-	new "start restconf daemon ZZZ"
+	new "start restconf daemon"
 	echo "cfg:$cfg"
 	start_restconf -f $cfg
+
     fi
+
     new "wait restconf"
     wait_restconf
 
@@ -186,7 +188,7 @@ testrun()
     expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state/module=ietf-interfaces,2018-02-20)" 0 'HTTP/1.1 200 OK' '{"ietf-yang-library:module":\[{"name":"ietf-interfaces","revision":"2018-02-20","namespace":"urn:ietf:params:xml:ns:yang:ietf-interfaces","conformance-type":"implement"}\]}'
 
     new "restconf schema resource, mod-state top-level"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state)" 0 'HTTP/1.1 200 OK' '{"ietf-yang-library:modules-state":{"module-set-id":"0","module":\[{"name":"clixon-example","revision":"2020-12-01","namespace":"urn:example:clixon","conformance-type":"implement"},{"name":"clixon-lib","revision":"2020-12-08","'
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state)" 0 'HTTP/1.1 200 OK' '{"ietf-yang-library:modules-state":{"module-set-id":"0","module":\[{"name":"clixon-example","revision":"2020-12-01","namespace":"urn:example:clixon","conformance-type":"implement"},{"name":"clixon-lib","revision":"2020-12-30","'
 
     new "restconf options. RFC 8040 4.1"
     expectpart "$(curl $CURLOPTS -X OPTIONS $proto://$addr/restconf/data)" 0 "HTTP/1.1 200 OK" "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE"
@@ -390,7 +392,7 @@ for proto in $protos; do
 	addrs="$addrs \[::1\]"
     fi
     for addr in $addrs; do
-	new "restconf test: proto:$proto addr:$addr config:$config"
+	new "restconf test: proto:$proto addr:$addr"
 	testrun $proto $addr
     done
 done

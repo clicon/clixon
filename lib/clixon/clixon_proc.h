@@ -39,13 +39,21 @@
 #define _CLIXON_PROC_H_
 
 /*
+ * Types
+ */ 
+typedef struct process_entry_t process_entry_t;
+
+/* Process RPC callback function */
+typedef int (proc_cb_t)(clicon_handle h, process_entry_t *pe, char **operation); 
+
+/*
  * Prototypes
  */ 
 int clixon_proc_run(char **argv, void (outcb)(char *), int doerr);
-int clixon_proc_background(char **argv, char *netns, pid_t *pid);
+int clixon_proc_background(char **argv, const char *netns, pid_t *pid);
 int clixon_proc_daemon(char **argv, pid_t *pid);
-int clixon_process_register(clicon_handle h, const char *name, const char *netns, char **argv, int argc);
+int clixon_process_register(clicon_handle h, const char *name, const char *netns, proc_cb_t *callback, char **argv, int argc);
 int clixon_process_delete_all(clicon_handle h);
-int clixon_process_operation(clicon_handle h, char *name, char *op, int *status);
+int clixon_process_operation(clicon_handle h, const char *name, char *op, const int wrapit, uint32_t *pid);
 
 #endif  /* _CLIXON_PROC_H_ */

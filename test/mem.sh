@@ -28,8 +28,8 @@ memonce(){
 	'backend')
 	    valgrindtest=2 # This means backend valgrind test
 	    : ${DEMWAIT:=10} # valgrind backend needs some time to get up 
-
-	    clixon_backend="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=yes --log-file=$valgrindfile clixon_backend"
+	    # trace-children=no for test_restconf_rpc.sh
+	    clixon_backend="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no --log-file=$valgrindfile clixon_backend"
 	    ;;
 	'restconf')
 	    valgrindtest=3 # This means backend valgrind test

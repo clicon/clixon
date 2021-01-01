@@ -1121,9 +1121,6 @@ restconf_config(clicon_handle    h,
     /* Add netconf yang spec, used as internal protocol */
     if (netconf_module_load(h) < 0)
 	goto done;
-    /* Clixon restconf daemon config */
-    if (yang_spec_parse_module(h, "clixon-restconf", NULL, yspec)< 0)
-	goto done;
 
     /* Add system modules */
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
@@ -1171,7 +1168,7 @@ restconf_config(clicon_handle    h,
 	    clicon_session_id_set(h, id);
 	    break;
 	}
-	if ((nsc = xml_nsctx_init(NULL, "https://clicon.org/restconf")) == NULL)
+	if ((nsc = xml_nsctx_init(NULL, CLIXON_RESTCONF_NS)) == NULL)
 	    goto done;
 	if ((pw = getpwuid(getuid())) == NULL){
 	    clicon_err(OE_UNIX, errno, "getpwuid");

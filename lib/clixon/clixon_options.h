@@ -50,8 +50,9 @@
  * @see clixon-config.yang
  * @see clixon-lib.yang
  */
-#define CLIXON_CONF_NS "http://clicon.org/config"
-#define CLIXON_LIB_NS "http://clicon.org/lib"
+#define CLIXON_CONF_NS     "http://clicon.org/config"
+#define CLIXON_LIB_NS      "http://clicon.org/lib"
+#define CLIXON_RESTCONF_NS "http://clicon.org/restconf"
 
 /*
  * Types

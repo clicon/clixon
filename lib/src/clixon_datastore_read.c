@@ -902,7 +902,7 @@ xmldb_get(clicon_handle    h,
  * @note Use of 1 for OK
  * @code
  *   cxobj   *xt;
- *   if (xmldb_get0(xh, "running", YB_MODULE, nsc, "/interface[name="eth"]", 0, &xt, NULL) < 0)
+ *   if (xmldb_get0(h, "running", YB_MODULE, nsc, "/interface[name="eth"]", 0, &xt, NULL) < 0)
  *      err;
  *   ...
  *   xmldb_get0_clear(h, xt);   # Clear tree from default values and flags 
@@ -910,6 +910,19 @@ xmldb_get(clicon_handle    h,
  * @endcode
  * @see xml_nsctx_node  to get a XML namespace context from XML tree
  * @see xmldb_get for a copy version (old-style)
+ * @note An annoying issue is one with default values and xpath miss:
+ *   Assume a yang spec: 
+ *      module m { 
+ *         container c { 
+ *            leaf x { 
+ *               default 0;
+ *   And a db content:
+ *      <c><x>1</x></c>
+ *   With the following call:
+ *      xmldb_get0(h, "running", NULL, NULL, "/c[x=0]", 1, &xt, NULL)
+ *   which result in a miss (there is no c with x=0), but when the returned xt is printed 
+ *   (the existing tree is discarded), the default (empty) xml tree is:
+ *      <c><x>0</x></c>
  */
 int 
 xmldb_get0(clicon_handle    h, 

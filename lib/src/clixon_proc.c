@@ -77,6 +77,19 @@
 #include "clixon_proc.h"
 
 /*
+ * Types
+ */
+/* Process entry list */
+struct process_entry_t {
+    qelem_t    pe_qelem;   /* List header */
+    char      *pe_name;    /* Name of process used for internal use */
+    char      *pe_netns;   /* Network namespace */
+    char     **pe_argv;    /* argv with command as element 0 and NULL-terminated */
+    pid_t      pe_pid;     /* Running process id (state) or 0 if dead */
+    proc_cb_t *pe_callback; /* Wrapper function */
+};
+
+/*
  * Child process ID
  * XXX Really shouldn't be a global variable
  */
@@ -208,9 +221,9 @@ clixon_proc_run(char **argv,
  * @note SIGCHLD is set to IGN here. Maybe it should be done in main?
  */
 int
-clixon_proc_background(char **argv,
-		       char  *netns,
-		       pid_t *pid0)
+clixon_proc_background(char       **argv,
+		       const char  *netns,
+		       pid_t       *pid0)
 {
     int           retval = -1;
     pid_t         child;
@@ -273,7 +286,6 @@ clixon_proc_background(char **argv,
 	    }
 	}
 #endif /* HAVE_SETNS */
-	clicon_debug(1, "%s argv0:%s", __FUNCTION__, argv[0]);
 	if (execv(argv[0], argv) < 0) {
 	    clicon_err(OE_UNIX, errno, "execv");
 	    exit(1);
@@ -289,7 +301,7 @@ clixon_proc_background(char **argv,
     *pid0 = child;
     retval = 0;
  quit:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clicon_debug(1, "%s retval:%d child:%u", __FUNCTION__, retval, child);
     return retval;
 }
 
@@ -373,13 +385,6 @@ clixon_proc_daemon(char **argv,
 /*
  * Types
  */
-typedef struct {
-    qelem_t   pe_qelem;   /* List header */
-    char     *pe_name;    /* Name of process used for internal use */
-    char     *pe_netns;   /* Network namespace */
-    char    **pe_argv;    /* argv with command as element 0 and NULL-terminated */
-    pid_t     pe_pid;
-} process_entry_t;
 
 /* List of process callback entries */
 static process_entry_t *proc_entry_list = NULL;
@@ -398,6 +403,7 @@ int
 clixon_process_register(clicon_handle h,
 			const char   *name,
 			const char   *netns,
+			proc_cb_t    *callback,
 		        char        **argv,
 			int           argc)
 {
@@ -436,6 +442,7 @@ clixon_process_register(clicon_handle h,
 	    clicon_err(OE_UNIX, errno, "strdup");
 	}
     }
+    pe->pe_callback = callback;
     ADDQ(pe, proc_entry_list);
     retval = 0;
  done:
@@ -469,15 +476,15 @@ clixon_process_delete_all(clicon_handle h)
 }
 
 static int
-proc_op_run(process_entry_t *pe,
-	    int             *runp)
+proc_op_run(pid_t pid0,
+	    int  *runp)
 {
     int   retval = -1;
     int   run;
     pid_t pid;
 
     run = 0;
-    if ((pid = pe->pe_pid) != 0){ /* if 0 stopped */
+    if ((pid = pid0) != 0){ /* if 0 stopped */
 	/* Check if lives */
 	run = 1;
 	if ((kill(pid, 0)) < 0){
@@ -497,11 +504,53 @@ proc_op_run(process_entry_t *pe,
     return retval;
 }
 
-/*! Upgrade specific module identified by namespace, search matching callbacks
+/*! Perform process operation
+ *
+ */
+static int
+clixon_process_operation_one(const char *op,
+			     const char *netns,
+			     char      **argv,
+			     pid_t      *pidp)
+{
+    int retval = -1;
+    int run = 0;
+    
+    /* Check if running */
+    if (proc_op_run(*pidp, &run) < 0)
+	goto done;
+    if (strcmp(op, "stop") == 0 ||
+	strcmp(op, "restart") == 0){
+	if (run)
+	    pidfile_zapold(*pidp); /* Ensures its dead */
+	*pidp = 0; /* mark as dead */
+	run = 0;
+    }
+    if (strcmp(op, "start") == 0 ||
+	strcmp(op, "restart") == 0){
+	if (run == 1){
+	    ; /* Already runs */
+	}
+	else{
+	    if (clixon_proc_background(argv, netns, pidp) < 0)
+		goto done;
+	}
+    }
+    else if (strcmp(op, "status") == 0){
+	; /* status already set */
+    }
+
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Find process operation entry given name and op and perform operation if found
  *
  * @param[in]  h       clicon handle
  * @param[in]  name    Name of process
  * @param[in]  op      start, stop.
+ * @param[in]  wrapit  If set, call potential callback, if false, dont call it
  * @param[out] status  true if process is running / false if not running on entry
  * @retval -1  Error
  * @retval  0  OK
@@ -509,13 +558,13 @@ proc_op_run(process_entry_t *pe,
  */
 int
 clixon_process_operation(clicon_handle h,
-			 char         *name,
+			 const char   *name,
 			 char         *op,
-			 int          *status)
+			 int           wrapit,
+			 uint32_t     *pid)
 {
     int              retval = -1;
     process_entry_t *pe;
-    int              run;
 
     clicon_debug(1, "%s name:%s op:%s", __FUNCTION__, name, op);
     if (proc_entry_list == NULL)
@@ -523,31 +572,14 @@ clixon_process_operation(clicon_handle h,
     pe = proc_entry_list;
     do {
 	if (strcmp(pe->pe_name, name) == 0){
-	    /* Check if running */
-	    if (proc_op_run(pe, &run) < 0)
+	    /* Call wrapper function that eg changes op based on config */
+	    if (wrapit && pe->pe_callback != NULL)
+		if (pe->pe_callback(h, pe, &op) < 0)
+		    goto done;
+	    if (clixon_process_operation_one(op, pe->pe_netns, pe->pe_argv, &pe->pe_pid) < 0)
 		goto done;
-	    if (status) /* Store as output parameter */
-		*status = run;
-	    if (strcmp(op, "stop") == 0 ||
-		strcmp(op, "restart") == 0){
-		if (run)
-		    pidfile_zapold(pe->pe_pid); /* Ensures its dead */
-		pe->pe_pid = 0; /* mark as dead */
-		run = 0;
-	    }
-	    if (strcmp(op, "start") == 0 ||
-		strcmp(op, "restart") == 0){
-		if (run == 1){
-		    ; /* Already runs */
-		}
-		else{
-		    if (clixon_proc_background(pe->pe_argv, pe->pe_netns, &pe->pe_pid) < 0)
-			goto done;
-		}
-	    }
-	    else if (strcmp(op, "status") == 0){
-		; /* status already set */
-	    }
+	    if (pid)
+		*pid = pe->pe_pid;
 	    break; 	    /* hit break here */
 	}
 	pe = NEXTQ(process_entry_t *, pe);

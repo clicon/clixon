@@ -1,6 +1,6 @@
 module clixon-restconf {
     yang-version 1.1;
-    namespace "https://clicon.org/restconf";
+    namespace "http://clicon.org/restconf";
     prefix "clrc";
 
     import ietf-inet-types {
@@ -124,6 +124,13 @@ module clixon-restconf {
 	}
     }
     container restconf {
+	description
+	    "This presence is strictly not necessary since the enable flag
+             in clixon-restconf is the flag bearing the actual semantics.
+             However, removing the presence leads to default config in all
+             clixon installations, even those which do not use backend-started restconf.
+             One could see this as mostly cosmetically annoying.
+             Alternative would be to make the inclusion of this yang conditional.";
 	presence "Enables RESTCONF";
 	uses clixon-restconf;
     }

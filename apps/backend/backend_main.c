@@ -60,6 +60,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <libgen.h>
+#include <assert.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -67,7 +68,7 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include "clixon_backend_handle.h"
+#include "clixon_backend_transaction.h"
 #include "backend_socket.h"
 #include "backend_client.h"
 #include "backend_plugin.h"
@@ -176,50 +177,6 @@ backend_server_socket(clicon_handle h)
 	return -1;
     }
     return ss;
-}
-
-/*! Enable process-control of restconf daemon, ie start/stop restconf 
- * @param[in]  h  Clicon handle
- * @note Could also look in clixon-restconf and start process if enable is true, but that needs to 
- *       be in start callback using a pseudo plugin.
- */
-static int
-backend_restconf_process_control(clicon_handle h)
-{
-    int    retval = -1;
-    char **argv = NULL;
-    int    i;
-    int    nr;
-    char   dbgstr[8];
-    char   wwwstr[64];
-
-    nr = 4;
-    if (clicon_debug_get() != 0)
-	nr += 2;
-    if ((argv = calloc(nr, sizeof(char *))) == NULL){
-	clicon_err(OE_UNIX, errno, "calloc");
-	goto done;
-    }
-    i = 0;
-    snprintf(wwwstr, sizeof(wwwstr)-1, "%s/clixon_restconf", clicon_option_str(h, "CLICON_WWWDIR"));
-    argv[i++] = wwwstr;
-    argv[i++] = "-f";
-    argv[i++] = clicon_option_str(h, "CLICON_CONFIGFILE");
-    if (clicon_debug_get() != 0){
-	argv[i++] = "-D";
-	snprintf(dbgstr, sizeof(dbgstr)-1, "%d", clicon_debug_get());
-	argv[i++] = dbgstr;
-    }
-    argv[i++] = NULL;
-    if (clixon_process_register(h, "restconf",
-				NULL /* XXX network namespace */,
-				argv, nr) < 0)
-	goto done;
-    if (argv != NULL)
-	free(argv);
-    retval = 0;
- done:
-    return retval;
 }
 
 /*! Load external NACM file
@@ -426,6 +383,140 @@ ret2status(int                  ret,
     default:
 	clicon_err(OE_CFG, EINVAL, "No such retval %d", retval);
     } /* switch */
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*---------------------------------------------------------------------
+ * Restconf process pseudo plugin
+ */
+
+#define RESTCONF_PROCESS "restconf"
+
+/*! Process rpc callback function 
+ * - if RPC op is start, if enable is true, start the service, if false, error or ignore it
+ * - if RPC op is stop, stop the service 
+ * These rules give that if RPC op is start and enable is false -> change op to none
+ */
+int
+restconf_rpc_wrapper(clicon_handle    h,
+		     process_entry_t *pe,
+		     char           **operation)
+{
+    int    retval = -1;
+    cxobj *xt = NULL;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (strcmp(*operation, "stop") == 0){
+	/* if RPC op is stop, stop the service */
+    }
+    else if (strcmp(*operation, "start") == 0){
+	/* RPC op is start & enable is true, then start the service, 
+                           & enable is false, error or ignore it */
+	if (xmldb_get(h, "running", NULL,  "/restconf", &xt) < 0)
+	    goto done;
+	if (xt != NULL &&
+	    xpath_first(xt, NULL, "/restconf[enable='false']") != NULL) {
+	    *operation = "none";
+	}
+    }
+    retval = 0;
+ done:
+    if (xt)
+	xml_free(xt);
+    return retval;
+}
+
+/*! Enable process-control of restconf daemon, ie start/stop restconf by registering restconf process
+ * @param[in]  h  Clicon handle
+ * @note Could also look in clixon-restconf and start process if enable is true, but that needs to 
+ *       be in start callback using a pseudo plugin.
+ */
+static int
+restconf_pseudo_process_control(clicon_handle h)
+{
+    int    retval = -1;
+    char **argv = NULL;
+    int    i;
+    int    nr;
+    char   dbgstr[8];
+    char   wwwstr[64];
+
+    nr = 4;
+    if (clicon_debug_get() != 0)
+	nr += 2;
+    if ((argv = calloc(nr, sizeof(char *))) == NULL){
+	clicon_err(OE_UNIX, errno, "calloc");
+	goto done;
+    }
+    i = 0;
+    snprintf(wwwstr, sizeof(wwwstr)-1, "%s/clixon_restconf", clicon_option_str(h, "CLICON_WWWDIR"));
+    argv[i++] = wwwstr;
+    argv[i++] = "-f";
+    argv[i++] = clicon_option_str(h, "CLICON_CONFIGFILE");
+    if (clicon_debug_get() != 0){
+	argv[i++] = "-D";
+	snprintf(dbgstr, sizeof(dbgstr)-1, "%d", clicon_debug_get());
+	argv[i++] = dbgstr;
+    }
+    argv[i++] = NULL;
+    assert(i==nr);
+    if (clixon_process_register(h, RESTCONF_PROCESS,
+				NULL /* XXX network namespace */,
+				restconf_rpc_wrapper,
+				argv, nr) < 0)
+	goto done;
+    if (argv != NULL)
+	free(argv);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Restconf pseduo-plugin process commit
+ */
+static int
+restconf_pseudo_process_commit(clicon_handle    h,
+			       transaction_data td)
+{
+    int    retval = -1;
+    cxobj *xtarget;
+    cxobj *cx;
+    int    enabled = 0;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    xtarget = transaction_target(td);
+    if (xpath_first(xtarget, NULL, "/restconf[enable='true']") != NULL)
+	enabled++;
+    if ((cx = xpath_first(xtarget, NULL, "/restconf/enable")) != NULL &&
+	xml_flag(cx, XML_FLAG_CHANGE|XML_FLAG_ADD)){
+	if (clixon_process_operation(h, RESTCONF_PROCESS,
+				     enabled?"start":"stop", 0, NULL) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Register start/stop restconf RPC and create pseudo-plugin to monitor enable flag
+ * @param[in]  h  Clixon handle
+ */
+static int
+restconf_pseudo_process_reg(clicon_handle h,
+			    yang_stmt    *yspec)
+{
+    int            retval = -1;
+    clixon_plugin *cp = NULL;
+
+    if (clixon_pseudo_plugin(h, "restconf pseudo plugin", &cp) < 0)
+	goto done;
+    cp->cp_api.ca_trans_commit = restconf_pseudo_process_commit;
+
+    /* Register generic process-control of restconf daemon, ie start/stop restconf */
+    if (restconf_pseudo_process_control(h) < 0)
+	goto done;
     retval = 0;
  done:
     return retval;
@@ -789,12 +880,6 @@ main(int    argc,
 			    clicon_option_str(h, "CLICON_BACKEND_REGEXP")) < 0)
 	goto done;
 
-    /* Enable process-control of restconf daemon, ie start/stop restconf */
-    if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS")){
-	if (backend_restconf_process_control(h) < 0)
-	    goto done;
-    }
-
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
     if ((str = clicon_yang_main_file(h)) != NULL)
@@ -815,7 +900,7 @@ main(int    argc,
     /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
 	goto done;
-    /* Add netconf yang spec, used by netconf client and as internal protocol 
+    /* Add generic yang specs, used by netconf client and as internal protocol 
      */
     if (netconf_module_load(h) < 0)
 	goto done;
@@ -834,6 +919,11 @@ main(int    argc,
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE") &&
 	yang_spec_parse_module(h, "ietf-yang-library", NULL, yspec)< 0)
 	goto done;
+    /* Check restconf start/stop from backend */
+    if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS")){
+	if (restconf_pseudo_process_reg(h, yspec) < 0)
+	    goto done;
+    }
     /* Here all modules are loaded 
      * Compute and set canonical namespace context
      */

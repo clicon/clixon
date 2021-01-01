@@ -1580,23 +1580,18 @@ from_client_process_control(clicon_handle  h,
     cxobj   *x;
     char    *name = NULL;
     char    *operation = NULL;
-    int      status = 0;
+    uint32_t pid = 0;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((x = xml_find_type(xe, NULL, "name", CX_ELMNT)) != NULL)
 	name = xml_body(x);
     if ((x = xml_find_type(xe, NULL, "operation", CX_ELMNT)) != NULL)
 	operation = xml_body(x);
-    /* Make the actual process operation */
-    if (clixon_process_operation(h, name, operation, &status) < 0)
+    /* Make the actual process operation (with wrap function enabled) */
+    if (clixon_process_operation(h, name, operation, 1, &pid) < 0)
 	goto done;
-    if (strcmp(operation, "status") == 0)
-	cprintf(cbret, "<rpc-reply xmlns=\"%s\"><status xmlns=\"%s\">%s</status></rpc-reply>",
-		NETCONF_BASE_NAMESPACE,
-		CLIXON_LIB_NS,
-		status?"true":"false");
-    else
-	cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><pid xmlns=\"%s\">%u</pid></rpc-reply>",
+	    NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS, pid);
     retval = 0;
  done:
     return retval;
@@ -1632,7 +1627,6 @@ from_client_hello(clicon_handle       h,
  done:
     return retval;
 }
-
 
 /*! An internal clicon message has arrived from a client. Receive and dispatch.
  * @param[in]   h    Clicon handle

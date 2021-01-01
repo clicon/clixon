@@ -39,11 +39,23 @@ Developers may need to change their code
 
 Users may have to change how they access the system
 
+* New clixon-lib@2020-12-30.yang revision
+  * Changed: RPC process-control output parameter status to pid
+* New clixon-config@2020-12-30.yang revision
+  * Removed obsolete RESTCONF and SSL options
+* Changed namespace of clixon-restconf@2020-10-30.yang from https://clicon.org/restconf ->http://clicon.org/restconf ->
 * CLIspec dbxml API: Ability to specify deletion of _any_ vs _specific_ entry.
   * In a cli_del() call, the cvv arg list either exactly matches the api-format-path in which case _any_ deletion is specified, otherwise, if there is an extra element in the cvv list, that is used for a specific delete.
 
 ### Minor changes
 
+* Added callback to process-control RPC feature in clixon-lib.yang to manage processes
+  * WHen an RPC comes in, be able to look at configuration
+* Changed behavior of starting restconf internally using `CLICON_BACKEND_RESTCONF_PROCESS` monitoring changes in enable flag, not only the RPC. The semantics is as follows:
+  * on RPC start, if enable is true, start the service, if false, error or ignore it
+  * on RPC stop, stop the service 
+  * on backend start make the state as configured
+  * on enable change, make the state as configured
 * Limited fuzz by AFL committed,
   * see [fuzz/README.md](fuzz/README.md) for details
 
