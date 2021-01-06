@@ -144,7 +144,7 @@ xml2txt_recurse(FILE             *f,
     cxobj *xc = NULL;
     int    children=0;
     int    retval = -1;
-
+	char         *opext = NULL;
     if (f == NULL || x == NULL || fn == NULL){
 	clicon_err(OE_XML, EINVAL, "f, x or fn is NULL");
 	goto done;
@@ -153,6 +153,13 @@ xml2txt_recurse(FILE             *f,
     while ((xc = xml_child_each(x, xc, -1)) != NULL)
 	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
 	    children++;
+	/* Look for autocli-op defined in clixon-lib.yang */
+	if (yang_extension_value(xml_spec(x), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
+		goto ok;
+	}
+	if (opext != NULL && strcmp(opext, "hide") == 0) {
+		goto ok;
+	}
     if (!children){ /* If no children print line */
 	switch (xml_type(x)){
 	case CX_BODY:
