@@ -688,6 +688,10 @@ yang2cli_leaf(clicon_handle h,
 		cprintf(cb, ",hide{");
 		extralevel = 1;
 	    }
+		if (opext && strcmp(opext, "hide-database") == 0){
+		cprintf(cb, ",hide-database{");
+		extralevel = 1;
+		}
 	    if (yang2cli_var(h, ys, helptext, cb) < 0)
 		goto done;
 	}
@@ -695,6 +699,9 @@ yang2cli_leaf(clicon_handle h,
 	    if (opext && strcmp(opext, "hide") == 0){
 		cprintf(cb, ",hide");
 	    }
+		if (opext && strcmp(opext, "hide-database") == 0){
+		cprintf(cb, ",hide-database");
+		}
 	}
     }
     else{
@@ -763,6 +770,9 @@ yang2cli_container(clicon_handle h,
 	if (opext != NULL && strcmp(opext, "hide") == 0){
 		cprintf(cb, ",hide");
 	}
+	if (opext != NULL && strcmp(opext, "hide-database") == 0){
+		cprintf(cb, ",hide-database");
+	}
 	if (cli_callback_generate(h, ys, cb) < 0)
 	    goto done;
 	cprintf(cb, ";{\n");
@@ -820,6 +830,10 @@ yang2cli_list(clicon_handle      h,
 	cprintf(cb, ",hide");
 	extralevel = 1;
     }
+	if (opext != NULL && strcmp(opext, "hide-database") == 0){
+	cprintf(cb, ",hide-database");
+	extralevel = 1;
+	}
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
 	if ((helptext = strdup(yang_argument_get(yd))) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
