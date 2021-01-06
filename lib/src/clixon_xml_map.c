@@ -240,7 +240,14 @@ xml2cli_recurse(FILE              *f,
     yang_stmt       *ys;
     int              match;
     char            *body;
-
+	char         *opext = NULL;
+	/* Look for autocli-op defined in clixon-lib.yang */
+	if (yang_extension_value(xml_spec(x), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
+		goto ok;
+	}
+	if (opext != NULL && strcmp(opext, "hide") == 0) {
+		goto ok;
+	}
     if (xml_type(x)==CX_ATTR)
 	goto ok;
     if ((ys = xml_spec(x)) == NULL)

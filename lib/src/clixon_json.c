@@ -719,7 +719,15 @@ xml2json1_cbuf(cbuf                   *cb,
     yang_stmt       *ymod = NULL; /* yang module */
     int              commas;
     char            *modname = NULL;
+	char         *opext = NULL;
 
+	/* Look for autocli-op defined in clixon-lib.yang */
+	if (yang_extension_value(xml_spec(x), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
+		goto done;
+	}
+	if (opext != NULL && strcmp(opext, "hide") == 0) {
+		goto done;
+	}
     if ((ys = xml_spec(x)) != NULL){
 	if (ys_real_module(ys, &ymod) < 0)
 	    goto done;

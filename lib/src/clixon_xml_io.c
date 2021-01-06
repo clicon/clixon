@@ -116,11 +116,18 @@ xml2file_recurse(FILE             *f,
     int    haselement;
     char  *val;
     char  *encstr = NULL; /* xml encoded string */
-    
+    char         *opext = NULL;
     if (x == NULL)
 	goto ok;
     name = xml_name(x);
     namespace = xml_prefix(x);
+	/* Look for autocli-op defined in clixon-lib.yang */
+	if (yang_extension_value(xml_spec(x), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
+		goto ok;
+	}
+	if (opext != NULL && strcmp(opext, "hide") == 0) {
+		goto ok;
+	}
     switch(xml_type(x)){
     case CX_BODY:
 	if ((val = xml_value(x)) == NULL) /* incomplete tree */
