@@ -160,6 +160,9 @@ xml2txt_recurse(FILE             *f,
 	if (opext != NULL && strcmp(opext, "hide") == 0) {
 		goto ok;
 	}
+	if (opext != NULL && strcmp(opext, "hide-database") == 0) {
+		goto ok;
+	}
     if (!children){ /* If no children print line */
 	switch (xml_type(x)){
 	case CX_BODY:
@@ -246,6 +249,9 @@ xml2cli_recurse(FILE              *f,
 		goto ok;
 	}
 	if (opext != NULL && strcmp(opext, "hide") == 0) {
+		goto ok;
+	}
+	if (opext != NULL && strcmp(opext, "hide-database") == 0) {
 		goto ok;
 	}
     if (xml_type(x)==CX_ATTR)
