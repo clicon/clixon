@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [4.10.0](#4100) Expected: February
+* [4.10.0](#4100) Expected: February 2021
 * [4.9.0](#490) 18 December 2020
 * [4.8.0](#480) 18 October 2020
 * [4.7.0](#470) 14 September 2020
@@ -39,6 +39,7 @@ Developers may need to change their code
 
 Users may have to change how they access the system
 
+* Handling empty netconf XML messages "]]>]]>" is changed from being accepted to return an error.
 * New clixon-lib@2020-12-30.yang revision
   * Changed: RPC process-control output parameter status to pid
 * New clixon-config@2020-12-30.yang revision
@@ -49,6 +50,7 @@ Users may have to change how they access the system
 
 ### Minor changes
 
+* Use [https://github.com/clicon/libevhtp](https://github.com/clicon/libevhtp) instead of [https://github.com/criticalstack/libevhtp](https://github.com/criticalstack/libevhtp) as a source of the evhtp source
 * Added callback to process-control RPC feature in clixon-lib.yang to manage processes
   * WHen an RPC comes in, be able to look at configuration
 * Changed behavior of starting restconf internally using `CLICON_BACKEND_RESTCONF_PROCESS` monitoring changes in enable flag, not only the RPC. The semantics is as follows:
@@ -61,6 +63,9 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Netconf split lines input (input fragments) fixed
+  * Netconf input split on several lines, eg using stdin: "<a>\nfoo</a>]]>]]>" could under some circumstances be split so that only "</a>]]>]]>" be properly processed. This could also happen to a socket receiving a sub-string and then after a delay receive the rest.
+  * Fixed by storing residue and add that to the input string if later input is received on the same socket.
 * [Presence container configs not displayed in 'show config set' #164 ](https://github.com/clicon/clixon/issues/164)
   * Treat presence container as a leaf: always print a placeholder regardless if it has children or not. An extra check for children could have been made to not print if it has, but this adds an extra minor complexity.
 

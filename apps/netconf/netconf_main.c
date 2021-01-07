@@ -75,6 +75,12 @@
 
 #define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
 
+/* clixon-data value to save buffer between invocations.
+ * Saving data may be necessary if socket buffer contains partial netconf messages, such as:
+ * <foo/> ..wait 1min  ]]>]]>
+ */
+#define NETCONF_HASH_BUF "netconf_input_cbuf"
+
 /*! Ignore errors on packet errors: continue */
 static int ignore_packet_errors = 1;
 
@@ -265,6 +271,17 @@ netconf_input_frame(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
     }
+    /* Special case:  */
+    if (strlen(str) == 0){
+	if ((cbret = cbuf_new()) == NULL){ 
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	if (netconf_operation_failed(cbret, "rpc", "Empty XML")< 0)
+	    goto done;
+	netconf_output_encap(1, cbret, "rpc-error"); 
+	goto ok;
+    }
     /* Parse incoming XML message */
     if ((ret = clixon_xml_parse_string(str, YB_RPC, yspec, &xtop, &xret)) < 0){ 
 	if ((cbret = cbuf_new()) == NULL){ 
@@ -331,6 +348,10 @@ netconf_input_frame(clicon_handle h,
  * This routine continuously reads until no more data on s. There could
  * be risk of starvation, but the netconf client does little else than
  * read data so I do not see a danger of true starvation here.
+ * @note data is saved in clicon-handle at NETCONF_HASH_BUF since there is a potential issue if data
+ * is not completely present on the s, ie if eg:
+ *   <a>foo ..pause.. </a>]]>]]>
+ * then only "</a>" would be delivered to netconf_input_frame().
  */
 static int
 netconf_input_cb(int   s, 
@@ -344,10 +365,23 @@ netconf_input_cb(int   s,
     cbuf         *cb=NULL;
     int           xml_state = 0;
     int           poll;
+    clicon_hash_t *cdat = clicon_data(h); /* Save cbuf between calls if not done */
+    size_t         cdatlen = 0;
+    void          *ptr;
 
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	return retval;
+    if ((ptr = clicon_hash_value(cdat, NETCONF_HASH_BUF, &cdatlen)) != NULL){
+	if (cdatlen != sizeof(cb)){
+	    clicon_err(OE_XML, errno, "size mismatch %lu %lu", cdatlen, sizeof(cb));
+	    goto done;
+	}
+	cb = *(cbuf**)ptr;
+	clicon_hash_del(cdat, NETCONF_HASH_BUF);
+    }
+    else{
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
     }
     memset(buf, 0, sizeof(buf));
     while (1){
@@ -386,8 +420,15 @@ netconf_input_cb(int   s,
 	/* poll==1 if more, poll==0 if none */
 	if ((poll = clixon_event_poll(s)) < 0)
 	    goto done;
-	if (poll == 0)
-	    break; /* No data to read */
+	if (poll == 0){
+	    /* No data to read, save data and continue on next round */
+	    if (cbuf_len(cb) != 0){
+		if (clicon_hash_add(cdat, NETCONF_HASH_BUF, &cb, sizeof(cb)) == NULL)
+		    return -1;
+		cb = NULL;
+	    }
+	    break; 
+	}
     } /* while */
     retval = 0;
   done:

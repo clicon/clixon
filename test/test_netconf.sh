@@ -54,7 +54,7 @@ fi
 
 # Framing. with -q to inhibit rcv hello
 new "Empty frame"
-expecteof "$clixon_netconf -qf $cfg" 0 ']]>]]>' ']]>]]>' 
+expecteof "$clixon_netconf -qf $cfg" 0 ']]>]]>' '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>rpc</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Empty XML</error-message></rpc-error></rpc-reply>]]>]]>' 
 
 if [ $valgrindtest -eq 0 ]; then # Some leakage in lex / error handling difficult to catch
 new "Frame invalid non-xml"

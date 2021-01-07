@@ -267,7 +267,7 @@ case ${with_restconf} in
 	fi
 	if $buildevhtp; then
 		$sshcmd << 'EOF'
-		test -d libevhtp || sudo git clone https://github.com/criticalstack/libevhtp.git
+		test -d libevhtp || sudo git clone https://github.com/clicon/libevhtp.git
 		cd libevhtp/build; 
 		CMAKE=$(which cmake)
 		sudo $CMAKE -DEVHTP_DISABLE_REGEX=ON -DEVHTP_DISABLE_EVTHR=ON -DBUILD_SHARED_LIBS=OFF ..

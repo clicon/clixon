@@ -444,6 +444,14 @@ xmltree2cbuf(cbuf  *cb,
  * @see clixon_xml_parse_string
  * @see _json_parse
  * @note special case is empty XML where the parser is not invoked.
+ * It is questionable empty XML is legal. From https://www.w3.org/TR/2008/REC-xml-20081126 Sec 2.1:
+ *    A well-formed document ... contains one or more elements.
+ * But in clixon one can invoke a parser on a sub-part of a document where it makes sense to accept
+ * an empty XML. For example where an empty config: <config></config> is parsed.
+ * In other cases, such as receiving netconf ]]>]]> it should represent a complete document and 
+ * therefore not well-formed.
+ * Therefore checking for empty XML must be done by a calling function which knows wether the 
+ * the XML represents a full document or not.
  */
 static int 
 _xml_parse(const char *str, 
@@ -460,8 +468,9 @@ _xml_parse(const char *str,
     int             i;
 
     clicon_debug(2, "%s", __FUNCTION__);
-    if (strlen(str) == 0)
+    if (strlen(str) == 0){
 	return 1; /* OK */
+    }
     if (xt == NULL){
 	clicon_err(OE_XML, errno, "Unexpected NULL XML");
 	return -1;	

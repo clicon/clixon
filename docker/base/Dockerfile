@@ -47,7 +47,7 @@ RUN apk add --update libevent cmake libevent-dev
 
 # clone libevhtp
 WORKDIR /clixon
-RUN git clone https://github.com/criticalstack/libevhtp.git
+RUN git clone https://github.com/clicon/libevhtp.git
 WORKDIR /clixon/libevhtp/build
 RUN cmake -DEVHTP_DISABLE_REGEX=ON -DEVHTP_DISABLE_EVTHR=ON ..
 RUN make
