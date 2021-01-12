@@ -29,6 +29,8 @@
 ## 4.10.0
 Expected: February 2021
 
+### New features
+
 ### C/CLI-API changes on existing features
 
 Developers may need to change their code
@@ -51,6 +53,10 @@ Users may have to change how they access the system
 
 ### Minor changes
 
+* Experimental IPC API, `clixon_client`, to support a loose integration model
+  * Many systems using other tools employ such a model, and this API is an effort to make a usage of clixon easier
+  * see https://clixon-docs.readthedocs.io/en/latest/overview.html#loose-integration
+  * This is work-in-progress and is expected to change
 * Use [https://github.com/clicon/libevhtp](https://github.com/clicon/libevhtp) instead of [https://github.com/criticalstack/libevhtp](https://github.com/criticalstack/libevhtp) as a source of the evhtp source
 * Added callback to process-control RPC feature in clixon-lib.yang to manage processes
   * WHen an RPC comes in, be able to look at configuration
