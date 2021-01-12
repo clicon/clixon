@@ -706,7 +706,7 @@ xpath_first_localonly(cxobj      *xcur,
  * @retval    -1        Error
  * @code
  *   cvec   *nsc; // namespace context
- *   cxobj **vec;
+ *   cxobj **vec = NULL;
  *   size_t  veclen;
  *   if (xpath_vec(xcur, nsc, "//symbol/foo", &vec, &veclen) < 0) 
  *      err;

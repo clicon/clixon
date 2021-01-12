@@ -315,6 +315,7 @@ clicon_debug_init(int   dbglevel,
 		  FILE *f)
 {
     _clixon_debug = dbglevel; /* Global variable */
+    _logfile = f;
     return 0;
 }
 

@@ -562,16 +562,18 @@ clicon_msg_rcv(int                s,
  */
 int
 clicon_rpc_connect_unix(clicon_handle      h,
-			struct clicon_msg *msg, 
 			char              *sockpath,
-			char             **retdata,
 			int               *sock0)
 {
-    int retval = -1;
-    int s = -1;
-    struct stat sb;
+    int         retval = -1;
+    int         s = -1;
+    struct stat sb = {0,};
 
     clicon_debug(1, "Send msg on %s", sockpath);
+    if (sock0 == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "sock0 expected");
+	goto done;
+    }
     /* special error handling to get understandable messages (otherwise ENOENT) */
     if (stat(sockpath, &sb) < 0){
 	clicon_err(OE_PROTO, errno, "%s: config daemon not running?", sockpath);
@@ -583,14 +585,9 @@ clicon_rpc_connect_unix(clicon_handle      h,
     }
     if ((s = clicon_connect_unix(h, sockpath)) < 0)
 	goto done;
-    if (clicon_rpc(s, msg, retdata) < 0)
-	goto done;
-    if (sock0 != NULL)
-	*sock0 = s;
+    *sock0 = s;
     retval = 0;
   done:
-    if (sock0 == NULL && s >= 0)
-	close(s);
     return retval;
 }
 
@@ -608,10 +605,8 @@ clicon_rpc_connect_unix(clicon_handle      h,
  */
 int
 clicon_rpc_connect_inet(clicon_handle      h,
-			struct clicon_msg *msg, 
 			char              *dst,
 			uint16_t           port,
-			char             **retdata,
 			int               *sock0)
 {
     int                retval = -1;
@@ -619,7 +614,10 @@ clicon_rpc_connect_inet(clicon_handle      h,
     struct sockaddr_in addr;
 
     clicon_debug(1, "Send msg to %s:%hu", dst, port);
-
+    if (sock0 == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "sock0 expected");
+	goto done;
+    }
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
@@ -636,14 +634,9 @@ clicon_rpc_connect_inet(clicon_handle      h,
 	close(s);
 	goto done;
     }
-    if (clicon_rpc(s, msg, retdata) < 0)
-	goto done;
-    if (sock0 != NULL)
-	*sock0 = s;
+    *sock0 = s;
     retval = 0;
   done:
-    if (sock0 == NULL && s >= 0)
-	close(s);
     return retval;
 }
 

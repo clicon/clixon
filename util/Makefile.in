@@ -63,13 +63,14 @@ INSTALLFLAGS  	= @INSTALLFLAGS@
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
 CPPFLAGS  	= @CPPFLAGS@
+LINKAGE         = @LINKAGE@
 
 INCLUDES        = -I. @INCLUDES@ -I$(top_srcdir)/lib -I$(top_srcdir)/include
 
-ifeq ($(LINKAGE),dynamic)
-	CLIXON_LIB      = libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
-else
+ifeq ($(LINKAGE),static)
 	CLIXON_LIB	= libclixon.a
+else
+	CLIXON_LIB      = libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 endif
 
 # For dependency. A little strange that we rely on it being built in the src dir

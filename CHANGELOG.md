@@ -33,6 +33,7 @@ Expected: February 2021
 
 Developers may need to change their code
 
+* rpc msg C API rearranged to separate socket/connect from connect
 * Added `cvv_i` output parameter to `api_path_fmt2api_path()` to see how many cvv entries were used.
 
 ### API changes on existing protocol/config features

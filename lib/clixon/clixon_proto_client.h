@@ -42,6 +42,7 @@
 #ifndef _CLIXON_PROTO_CLIENT_H_
 #define _CLIXON_PROTO_CLIENT_H_
 
+int clicon_rpc_connect(clicon_handle h, int *sock0);
 int clicon_rpc_msg(clicon_handle h, struct clicon_msg *msg, cxobj **xret0,
 		   int *sock0);
 int clicon_rpc_netconf(clicon_handle h, char *xmlst, cxobj **xret, int *sp);

@@ -75,16 +75,12 @@ int clicon_connect_unix(clicon_handle h, char *sockpath);
 
 
 int clicon_rpc_connect_unix(clicon_handle         h,
-			    struct clicon_msg    *msg, 
 			    char                 *sockpath,
-			    char                **ret,
 			    int                  *sock0);
 
 int clicon_rpc_connect_inet(clicon_handle         h,
-			    struct clicon_msg    *msg, 
 			    char                 *dst, 
 			    uint16_t              port,
-			    char                **ret,
 			    int                  *sock0);
 
 int clicon_rpc(int s, struct clicon_msg *msg, char **xret);

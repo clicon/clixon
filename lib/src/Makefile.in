@@ -53,10 +53,10 @@ CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 VPATH       	= @srcdir@
 CC		= @CC@
 LINKAGE         = @LINKAGE@
-ifeq ($(LINKAGE),dynamic)
-	CFLAGS  	= -fPIC @CFLAGS@
-else
+ifeq ($(LINKAGE),static)
 	CFLAGS		= @CFLAGS@
+else
+	CFLAGS  	= -fPIC @CFLAGS@
 endif
 SH_SUFFIX	= @SH_SUFFIX@
 INSTALL		= @INSTALL@
@@ -107,10 +107,10 @@ MYLIBSO      = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR)
 MYLIBLINK    = lib$(MYNAME)$(SH_SUFFIX)
 MYLIBSTATIC  = lib$(MYNAME).a
 
-ifeq ($(LINKAGE),dynamic)
-	MYLIB        = $(MYLIBDYNAMIC)
-else
+ifeq ($(LINKAGE),static)
 	MYLIB        = $(MYLIBSTATIC)
+else
+	MYLIB        = $(MYLIBDYNAMIC)
 endif
 
 all:	 $(MYLIB) $(MYLIBLINK)

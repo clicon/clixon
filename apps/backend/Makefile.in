@@ -39,12 +39,12 @@ top_srcdir  	= @top_srcdir@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
 LINKAGE         = @LINKAGE@
-ifeq ($(LINKAGE),dynamic)
-	CPPFLAGS  	= @CPPFLAGS@ -fPIC
-	SH_SUFFIX	= @SH_SUFFIX@
-else
+ifeq ($(LINKAGE),static)
 	CPPFLAGS  	= @CPPFLAGS@
 	SH_SUFFIX	= a
+else
+	CPPFLAGS  	= @CPPFLAGS@ -fPIC
+	SH_SUFFIX	= @SH_SUFFIX@
 endif
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
@@ -64,10 +64,10 @@ CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 # Use this clixon lib for linking
-ifeq ($(LINKAGE),dynamic)
-	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
-else
+ifeq ($(LINKAGE),static)
 	CLIXON_LIB	= libclixon.a
+else
+	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 endif
 
 # For dependency. A little strange that we rely on it being built in the src dir
@@ -100,10 +100,10 @@ MYLIBSO         = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR)
 MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
 MYLIBSTATIC     = lib$(MYNAME).a
 
-ifeq ($(LINKAGE),dynamic)
-	MYLIB        = $(MYLIBDYNAMIC)
-else
+ifeq ($(LINKAGE),static)
 	MYLIB        = $(MYLIBSTATIC)
+else
+	MYLIB        = $(MYLIBDYNAMIC)
 endif
 
 all:	  $(MYLIB) $(APPL) test

@@ -82,31 +82,16 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_proto_client.h"
 
-/*! Send internal netconf rpc from client to backend
- * @param[in]    h      CLICON handle
- * @param[in]    msg    Encoded message. Deallocate with free
- * @param[out]   xret0  Return value from backend as xml tree. Free w xml_free
- * @param[inout] sock0  If pointer exists, do not close socket to backend on success 
- *                      and return it here. For keeping a notify socket open
- * @note sock0 is if connection should be persistent, like a notification/subscribe api
- * @note xret is populated with yangspec according to standard handle yangspec
+/*! Connect to internal netconf socket
  */
 int
-clicon_rpc_msg(clicon_handle      h, 
-	       struct clicon_msg *msg, 
-	       cxobj            **xret0,
-	       int               *sock0)
+clicon_rpc_connect(clicon_handle h,
+		   int          *sock0)
 {
-    int                retval = -1;
-    char              *sock;
-    int                port;
-    char              *retdata = NULL;
-    cxobj             *xret = NULL;
+    int    retval = -1;
+    char  *sock = NULL;
+    int    port;
 
-#ifdef RPC_USERNAME_ASSERT
-    assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
-#endif
-    clicon_debug(1, "%s request:%s", __FUNCTION__, msg->op_body);
     if ((sock = clicon_sock(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
 	goto done;
@@ -114,7 +99,7 @@ clicon_rpc_msg(clicon_handle      h,
     /* What to do if inet socket? */
     switch (clicon_sock_family(h)){
     case AF_UNIX:
-	if (clicon_rpc_connect_unix(h, msg, sock, &retdata, sock0) < 0){
+	if (clicon_rpc_connect_unix(h, sock, sock0) < 0){
 #if 0
 	    if (errno == ESHUTDOWN)
 		/* Maybe could reconnect on a higher layer, but lets fail
@@ -133,10 +118,45 @@ clicon_rpc_msg(clicon_handle      h,
 	    clicon_err(OE_FATAL, 0, "CLICON_SOCK_PORT not set");
 	    goto done;
 	}
-	if (clicon_rpc_connect_inet(h, msg, sock, port, &retdata, sock0) < 0)
+	if (clicon_rpc_connect_inet(h, sock, port, sock0) < 0)
 	    goto done;
 	break;
     }
+    retval = 0;
+ done:
+    return retval;
+}
+    
+/*! Send internal netconf rpc from client to backend
+ * @param[in]    h      CLICON handle
+ * @param[in]    msg    Encoded message. Deallocate with free
+ * @param[out]   xret0  Return value from backend as xml tree. Free w xml_free
+ * @param[inout] sock0  If pointer exists, do not close socket to backend on success 
+ *                      and return it here. For keeping a notify socket open
+ * @note sock0 is if connection should be persistent, like a notification/subscribe api
+ * @note xret is populated with yangspec according to standard handle yangspec
+ */
+int
+clicon_rpc_msg(clicon_handle      h, 
+	       struct clicon_msg *msg, 
+	       cxobj            **xret0,
+	       int               *sock0)
+{
+    int     retval = -1;
+    char   *retdata = NULL;
+    cxobj  *xret = NULL;
+    int     s = -1;
+
+#ifdef RPC_USERNAME_ASSERT
+    assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
+#endif
+    clicon_debug(1, "%s request:%s", __FUNCTION__, msg->op_body);
+    /* Create a socket and connect to it, either UNIX, IPv4 or IPv6 per config options */
+    if (clicon_rpc_connect(h, &s) < 0)
+	goto done;
+    if (clicon_rpc(s, msg, &retdata) < 0)
+	goto done;
+
     clicon_debug(1, "%s retdata:%s", __FUNCTION__, retdata);
 
     if (retdata){
@@ -150,8 +170,15 @@ clicon_rpc_msg(clicon_handle      h,
 	*xret0 = xret;
 	xret = NULL;
     }
+    /* If returned, keep socket open, otherwise close it below */
+    if (sock0){ 
+	*sock0 = s;
+	s = -1;
+    }
     retval = 0;
  done:
+    if (s != -1)
+	close(s);
     if (retdata)
 	free(retdata);
     if (xret)
