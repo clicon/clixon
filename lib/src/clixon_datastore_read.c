@@ -3,7 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
-  Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+  Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -66,6 +66,7 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_sort.h"
+#include "clixon_xml_bind.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_xpath_ctx.h"

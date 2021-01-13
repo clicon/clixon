@@ -12,19 +12,19 @@
 #SKIPLIST="test_[a-t]*\.sh test_openconfig.sh test_yangmodels.sh"
 #
 # Parse yang openconfig models from https://github.com/openconfig/public
-#OPENCONFIG=/usr/local/share/openconfig/public
+OPENCONFIG=/usr/local/share/openconfig/public
 #
 # Parse yangmodels from https://github.com/YangModels/yang
-#YANGMODELS=/usr/local/share/yang
+YANGMODELS=/usr/local/share/yang
 #
 # Specify alternative directory for the standard IETF RFC yang files. 
 #IETFRFC=$YANGMODELS/standard/ietf/RFC
 
 # Some restconf tests can run IPv6, but its complicated because:
 # - docker by default does not run IPv6
-#IPv6=false
+IPv6=true
 
 # Check sanity between --with-restconf setting and if nginx is started by systemd or not
 # This check is optional because some installs, such as vagrant make a non-systemd/direct
 # start
-#NGINXCHECK=false
+NGINXCHECK=true
