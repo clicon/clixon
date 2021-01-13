@@ -71,7 +71,6 @@ static int _logflags = 0x0;
 /* Set to open file to write debug messages directly to file */
 static FILE *_logfile = NULL;
 
-
 /*! Initialize system logger.
  *
  * Make syslog(3) calls with specified ident and gates calls of level upto specified level (upto).
@@ -144,6 +143,7 @@ clicon_log_opt(char c)
  * @param[in]   filename   File to log to
  * @retval      0          OK
  * @retval     -1          Error
+ * @see clicon_debug_init where a strean
  */
 int
 clicon_log_file(char *filename)
@@ -236,9 +236,7 @@ clicon_log_str(int           level,
 	flogtime(_logfile);
 	fprintf(_logfile, "%s\n", msg);
 	fflush(_logfile);
-
     }
-
     /* Enable this if you want syslog in a stream. But there are problems with 
      * recursion
      */
@@ -305,17 +303,23 @@ clicon_log(int         level,
  * debugging.
  *
  * @param[in] dbglevel  0 is show no debug messages, 1 is normal, 2.. is high debug. 
-                        Note this is _not_ level from syslog(3)
+ *                      Note this is _not_ level from syslog(3)
  * @param[in] f         Debug-file. Open file where debug messages are directed. 
-                        This overrides the clicon_log settings which is otherwise where 
-			debug messages are directed.
+ *                      If not NULL, it overrides the clicon_log settings which is otherwise
+ *			where debug messages are directed.
+ * @see clicon_log_file where a filename can be given
  */
 int
 clicon_debug_init(int   dbglevel,
 		  FILE *f)
 {
     _clixon_debug = dbglevel; /* Global variable */
-    _logfile = f;
+    
+    if (f != NULL){
+	if (_logfile)
+	    fclose(_logfile);
+	_logfile = f;
+    }
     return 0;
 }
 
