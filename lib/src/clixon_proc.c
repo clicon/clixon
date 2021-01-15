@@ -226,7 +226,7 @@ clixon_proc_background(char       **argv,
 		       pid_t       *pid0)
 {
     int           retval = -1;
-    pid_t         child;
+    pid_t         child = 0;
     int           i;
     sigfn_t       oldhandler = NULL;
     sigset_t      oset;
