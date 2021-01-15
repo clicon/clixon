@@ -70,6 +70,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [Behaviour of Empty LIST Input in RESTCONF JSON #166](https://github.com/clicon/clixon/issues/166)
 * Netconf split lines input (input fragments) fixed
   * Netconf input split on several lines, eg using stdin: "<a>\nfoo</a>]]>]]>" could under some circumstances be split so that only "</a>]]>]]>" be properly processed. This could also happen to a socket receiving a sub-string and then after a delay receive the rest.
   * Fixed by storing residue and add that to the input string if later input is received on the same socket.

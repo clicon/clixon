@@ -59,8 +59,13 @@ expecteofx "$clixon_util_json" 0 '{"foo": -23}' "<foo>-23</foo>"
 new "json parse to json" # should be {"foo": -23}
 expecteofx "$clixon_util_json -j" 0 '{"foo": -23}' '{"foo":"-23"}'
 
-new "json parse list xml"
+new "json parse list to xml"
 expecteofx "$clixon_util_json" 0 '{"a":[0,1,2,3]}' "<a>0</a><a>1</a><a>2</a><a>3</a>"
+
+# See test_restconf.sh
+new "json parse empty list to xml"
+expecteofx "$clixon_util_json" 0 '{"a":[]}' "
+" # XXX empty
 
 new "json parse list json" # should be {"a":[0,1,2,3]}
 expecteofx "$clixon_util_json -j" 0 '{"a":[0,1,2,3]}' '{"a":"0"}{"a":"1"}{"a":"2"}{"a":"3"}'

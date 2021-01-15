@@ -264,6 +264,10 @@ testrun()
     new "restconf Add subtree eth/0/0 to datastore using POST"
     expectpart "$(curl $CURLOPTS -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}}' $proto://$addr/restconf/data)" 0 'HTTP/1.1 201 Created' "Location: $proto://$addr/restconf/data/ietf-interfaces:interfaces"
 
+# See test_json.sh
+    new "restconf empty list"
+    expectpart "$(curl $CURLOPTS -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" -d '{"clixon-example:route":{"ipv4":[]}}' $proto://$addr/restconf/data)" 0 'HTTP/1.1 201 Created' "Location: $proto://$addr/restconf/data/clixon-example:route"
+
     new "restconf Re-add subtree eth/0/0 which should give error"
     expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}}' $proto://$addr/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
 

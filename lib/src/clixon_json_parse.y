@@ -133,6 +133,13 @@ object.
 
 #include "clixon_json_parse.h"
 
+/* Enable for debugging, steals some cycles otherwise */
+#if 0
+#define _PARSE_DEBUG(s) clicon_debug(1,(s))
+#else
+#define _PARSE_DEBUG(s)
+#endif
+
 extern int clixon_json_parseget_lineno  (void);
 
 /* 
@@ -239,56 +246,63 @@ json_current_body(clixon_json_yacc *jy,
     return retval;
  }
 
+static int
+json_empty_list(clixon_json_yacc *jy)
+{
+    xml_rm(jy->jy_current);
+    xml_free(jy->jy_current);
+    jy->jy_current = NULL;
+    return 0;
+}
 
 %} 
  
 %%
 
-
-
 /*
 */
 
  /* top: json -> value is also possible */
-json          : value J_EOF { clicon_debug(3,"json->object"); YYACCEPT; } 
+json          : value J_EOF { _PARSE_DEBUG("json->value"); YYACCEPT; } 
               ;
 
-value         : J_TRUE  { json_current_body(_JY, "true");}
-              | J_FALSE { json_current_body(_JY, "false");}
-              | J_NULL  { json_current_body(_JY, NULL);}
-              | object
-	      | array
-              | number  { json_current_body(_JY, $1); free($1);}
-              | string  { json_current_body(_JY, $1); free($1);}
+value         : J_TRUE  { json_current_body(_JY, "true");       _PARSE_DEBUG("value->TRUE");}
+              | J_FALSE { json_current_body(_JY, "false");      _PARSE_DEBUG("value->FALSE");}
+              | J_NULL  { json_current_body(_JY, NULL);         _PARSE_DEBUG("value->NULL");}
+              | object                                        { _PARSE_DEBUG("value->object"); }
+	      | array                                         { _PARSE_DEBUG("value->array"); }
+              | number  { json_current_body(_JY, $1); free($1); _PARSE_DEBUG("value->number");}
+              | string  { json_current_body(_JY, $1); free($1); _PARSE_DEBUG("value->string");}
 
               ;
 
-object        : '{' '}' { clicon_debug(3,"object->{}");}
-              | '{' objlist '}' { clicon_debug(3,"object->{ objlist }");}
+object        : '{' '}'         { _PARSE_DEBUG("object->{}"); _PARSE_DEBUG("object->{}");}
+              | '{' objlist '}' { _PARSE_DEBUG("object->{ objlist }"); _PARSE_DEBUG("object->{ objlist }");}
               ;
 
-objlist       : pair  { clicon_debug(3,"objlist->pair");}
-              | objlist ',' pair { clicon_debug(3,"objlist->objlist , pair");}
+objlist       : pair             { _PARSE_DEBUG("objlist->pair");}
+              | objlist ',' pair { _PARSE_DEBUG("objlist->objlist , pair");}
               ;
 
 pair          : string { json_current_new(_JY, $1);free($1);} ':' 
-                value { json_current_pop(_JY);}{ clicon_debug(3,"pair->string : value");}
+                value { json_current_pop(_JY);}{ _PARSE_DEBUG("pair->string : value");}
               ;
 
-array         : '[' ']'
-              | '[' valuelist ']'
+array         : '[' ']'           { json_empty_list(_JY); _PARSE_DEBUG("array->[]"); }
+              | '[' valuelist ']' { _PARSE_DEBUG("array->[ valuelist ]"); }
               ;
 
-valuelist     : value 
-              | valuelist { if (json_current_clone(_JY)< 0) _YYERROR("stack?");} ',' value 
+valuelist     : value             { _PARSE_DEBUG("valuelist->value"); }
+              | valuelist { if (json_current_clone(_JY)< 0) _YYERROR("stack?");}
+                ',' value         { _PARSE_DEBUG("valuelist->valuelist , value");}
               ;
 
 /* quoted string */
-string        : J_DQ ustring J_DQ {  clicon_debug(3,"string->\" ustring \"");$$=$2; }
-              | J_DQ J_DQ {  clicon_debug(3,"string->\" ustring \"");$$=strdup(""); }
+string        : J_DQ ustring J_DQ { _PARSE_DEBUG("string->\" ustring \"");$$=$2; }
+              | J_DQ J_DQ         { _PARSE_DEBUG("string->\" \"");$$=strdup(""); }
               ;
 
-/* unquoted string */
+/* unquoted string: can be optimized by reading whole string in lex */
 ustring       : ustring J_CHAR 
                      {
 			 int len = strlen($1);
