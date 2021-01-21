@@ -2,6 +2,18 @@ module clixon-example {
     yang-version 1.1;
     namespace "urn:example:clixon";
     prefix ex;
+    import ietf-interfaces {
+	prefix if;
+    }
+    import ietf-ip {
+	prefix ip;
+    }
+    import iana-if-type {
+      prefix ianaift;
+    }
+    import ietf-datastores {
+      prefix ds;
+    }
     description
 	"Clixon example used as a part of the Clixon test suite.
          It can be used as a basis for making new Clixon applications.
@@ -21,18 +33,6 @@ module clixon-example {
     }
     revision 2019-01-13 {
 	description "Released in Clixon 3.9";
-    }
-    import ietf-interfaces {
-	prefix if;
-    }
-    import ietf-ip {
-	prefix ip;
-    }
-    import iana-if-type {
-      prefix ianaift;
-    }
-    import ietf-datastores {
-      prefix ds;
     }
     /* Example interface type for tests, local callbacks, etc */
     identity eth {
@@ -175,7 +175,6 @@ module clixon-example {
                     'false',then this node MUST NOT be present in the input tree.
                      (XXX not supported)";
 		type string;
-		when "/translate/k=5/value='w'";
 	    }
 	    list u0 {
 		description "list without key";

@@ -486,6 +486,8 @@ clicon_options_main(clicon_handle h)
 	clicon_option_str_set(h, "CLICON_CONFIGFILE", CLIXON_DEFAULT_CONFIG);
     }
     configfile = clicon_hash_value(copt, "CLICON_CONFIGFILE", NULL);
+    if (strlen(configfile) == 0)
+	configfile = clicon_hash_value(copt, "CLICON_CONFIGFILE", NULL);
     clicon_debug(1, "CLICON_CONFIGFILE=%s", configfile);
     /* File must end with .xml */
     if ((suffix = rindex(configfile, '.')) != NULL){

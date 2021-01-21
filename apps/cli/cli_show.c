@@ -823,6 +823,7 @@ cli_show_auto1(clicon_handle h,
  *   <prefix>   to print before cli syntax outptu
  * @see cli_show_auto_state  For config and state
  * @note SHOULD be used: ... @datamodel, cli_show_auto(<dbname>,...) to get correct #args
+ * @see cli_auto_show
  */
 int 
 cli_show_auto(clicon_handle h,

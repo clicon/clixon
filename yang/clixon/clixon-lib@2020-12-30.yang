@@ -154,7 +154,7 @@ module clixon-lib {
     rpc process-control {
 	description
 	    "Control a specific process or daemon: start/stop, etc.
-             This is for direct managing of a porcess by the backend. 
+             This is for direct managing of a process by the backend. 
              Alternatively one can manage a daemon via systemd, containerd, kubernetes, etc.";
 	input {
 	    leaf name {

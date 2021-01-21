@@ -306,6 +306,7 @@ cli_auto_top(clicon_handle h,
  *   <pretty>       true|false: pretty-print or not
  *   <state>        true|false: pretty-print or not
  *   <prefix>       to print before cli syntax output
+ * @see cli_show_auto
  */
 int
 cli_auto_show(clicon_handle h,
