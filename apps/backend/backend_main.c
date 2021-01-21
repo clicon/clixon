@@ -474,6 +474,35 @@ restconf_pseudo_process_control(clicon_handle h)
     return retval;
 }
 
+/*! Restconf pseduo-plugin process validate
+ */
+static int
+restconf_pseudo_process_validate(clicon_handle    h,
+				 transaction_data td)
+{
+    int    retval = -1;
+    cxobj *xtarget;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    xtarget = transaction_target(td);
+    /* If ssl-enable is true and (at least a) socket has ssl,
+     * then server-cert-path and server-key-path must exist */
+    if (xpath_first(xtarget, NULL, "restconf/enable[.='true']") &&
+	xpath_first(xtarget, NULL, "restconf/socket[ssl='true']")){
+	/* Should filepath be checked? One could claim this is a runtime system,... */
+	if (xpath_first(xtarget, 0, "restconf/server-cert-path") == NULL){
+	    clicon_err(OE_CFG, 0, "SSL enabled but server-cert-path not set");
+	    return -1; /* induce fail */
+	}
+	if (xpath_first(xtarget, 0, "restconf/server-key-path") == NULL){
+	    clicon_err(OE_CFG, 0, "SSL enabled but server-key-path not set");
+	    return -1; /* induce fail */
+	}
+    }
+    retval = 0;
+    return retval;
+}
+
 /*! Restconf pseduo-plugin process commit
  */
 static int
@@ -513,6 +542,7 @@ restconf_pseudo_process_reg(clicon_handle h,
     if (clixon_pseudo_plugin(h, "restconf pseudo plugin", &cp) < 0)
 	goto done;
     cp->cp_api.ca_trans_commit = restconf_pseudo_process_commit;
+    cp->cp_api.ca_trans_validate = restconf_pseudo_process_validate;
 
     /* Register generic process-control of restconf daemon, ie start/stop restconf */
     if (restconf_pseudo_process_control(h) < 0)

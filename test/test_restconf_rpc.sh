@@ -262,6 +262,14 @@ new "check status RPC off"
 pid=$(testrpc status 0)
 if [ $? -ne 0 ]; then exit -1; fi
 
+# Negative validation checks of clixon-restconf / socket
+
+new "netconf edit config invalid ssl"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><restconf xmlns=\"http://clicon.org/restconf\" nc:operation=\"replace\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><enable>true</enable><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>true</ssl></socket></restconf></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "netconf validate should fail"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>SSL enabled but server-cert-path not set</error-message></rpc-error></rpc-reply>]]>]]>$"
+
 if false; then # Work in progress - namespace
 #-------------------------------
 # Now in a separate network namespace
@@ -313,6 +321,11 @@ fi
 sudo ip netns delete $netns
 
 fi # namespaces
+
+unset pid
+sleep $DEMWAIT # Lots of processes need to die before next test
+
+endtest
 
 rm -rf $dir
 

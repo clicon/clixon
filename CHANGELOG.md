@@ -53,6 +53,8 @@ Users may have to change how they access the system
 
 ### Minor changes
 
+* Added validation of clixon-restconf.yang: server-key-path and server-cert-path must be present if ssl enabled.
+  * Only if `CLICON_BACKEND_RESTCONF_PROCESS` is true
 * Experimental IPC API, `clixon_client`, to support a loose integration model
   * Many systems using other tools employ such a model, and this API is an effort to make a usage of clixon easier
   * see https://clixon-docs.readthedocs.io/en/latest/overview.html#loose-integration
@@ -338,7 +340,7 @@ Users may have to change how they access the system
 Developers may need to change their code
 
 * Added yang-binding `yb` parameter to `xmldb_get0()` and all xmldb get functions.
-* Simplified the _module-specific upgrade API.
+* Simplified the _module-specific_ upgrade API.
   * The new API is documented here: [Module-specific upgrade](https://clixon-docs.readthedocs.io/en/latest/upgrade.html#module-specific-upgrade)
   * The change is not backward compatible. The API has been simplified which means more has to be done by the programmer.
   * In summary, a user registers an upgrade callback per module. The callback is called at startup if the module is added, has been removed or if the revision on file is different from the one in the system. 

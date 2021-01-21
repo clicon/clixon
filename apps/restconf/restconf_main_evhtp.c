@@ -530,8 +530,16 @@ cx_get_ssl_server_certs(clicon_handle    h,
     int         retval = -1;
     struct stat f_stat;
 
-    if (ssl_config == NULL || server_cert_path == NULL){
-	clicon_err(OE_CFG, EINVAL, "Input parameter is NULL");
+    if (ssl_config == NULL){
+	clicon_err(OE_CFG, EINVAL, "ssl_config is NULL");
+	goto done;
+    }
+    if (server_cert_path == NULL){
+	clicon_err(OE_CFG, EINVAL, "server_cert_path is not set but is required when ssl is enabled");
+	goto done;
+    }
+    if (server_key_path == NULL){
+	clicon_err(OE_CFG, EINVAL, "server_key_path is not set but is required when ssl is enabled");
 	goto done;
     }
     if ((ssl_config->pemfile = strdup(server_cert_path)) == NULL){
@@ -694,7 +702,6 @@ restconf_socket_init(clicon_handle h,
     return retval;
     //    return evhtp_bind_sockaddr(htp, sa, sin_len, SOCKET_LISTEN_BACKLOG);
 }
-
 
 /*! Usage help routine
  * @param[in]  argv0  command line

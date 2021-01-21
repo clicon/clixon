@@ -106,7 +106,6 @@ fi
 # Restconf test routine with arguments:
 # 1. proto:http/https
 # 2: addr: 127.0.0.1/::1 # IPv4 or IPv6
-# 3: config: local / backend config (evhtp only)
 testrun()
 {
     proto=$1  # http/https
