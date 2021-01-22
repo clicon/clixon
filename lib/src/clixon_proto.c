@@ -67,9 +67,7 @@
 /* clicon */
 #include "clixon_err.h"
 #include "clixon_queue.h"
-#ifdef CLIXON_PROTO_PLAIN
 #include "clixon_event.h"
-#endif
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_log.h"
@@ -323,7 +321,7 @@ msg_dump(struct clicon_msg *msg)
     return retval;
 }
 
-/*! Send a CLICON netconf message
+/*! Send a CLICON netconf message using internal IPC message
  * @param[in]   s      socket (unix or inet) to communicate with backend
  * @param[out]  msg    CLICON msg data reply structure. Free with free()
  */
@@ -337,20 +335,6 @@ clicon_msg_send(int                s,
 		 __FUNCTION__, ntohl(msg->op_len));
     if (clicon_debug_get() > 2)
 	msg_dump(msg);
-#ifdef CLIXON_PROTO_PLAIN
-    {
-       cbuf *cb = NULL;
-       if ((cb = cbuf_new()) == NULL)
-           goto done;
-       cprintf(cb, "%s]]>]]>", (char*)&msg->op_body);
-       if (atomicio((ssize_t (*)(int, void *, size_t))write, 
-                    s, cbuf_get(cb), cbuf_len(cb)+1) < 0){
-           clicon_err(OE_CFG, errno, "atomicio");
-           clicon_log(LOG_WARNING, "%s: write: %s", __FUNCTION__, strerror(errno));
-           goto done;
-       }
-    }
-#else
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
 		 s, msg, ntohl(msg->op_len)) < 0){
 	clicon_err(OE_CFG, errno, "atomicio");
@@ -358,123 +342,12 @@ clicon_msg_send(int                s,
 		   strerror(errno), ntohs(msg->op_len), msg->op_body);
 	goto done;
     }
-#endif /* CLIXON_PROTO_PLAIN */
     retval = 0;
   done:
     return retval;
 }
 
-#ifdef CLIXON_PROTO_PLAIN
-/*! Receive a message using plain ascii 
- * @see netconf_input_cb()
- */
-static int
-clicon_msg_rcv1(int           s,
-               cbuf        **cb1,
-               int          *eof)
-{
-    int           retval = -1;
-    unsigned char buf[BUFSIZ];
-    int           i;
-    int           len;
-    cbuf         *cb=NULL;
-    int           xml_state = 0;
-    int           poll;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    if ((cb = cbuf_new()) == NULL){
-       clicon_err(OE_XML, errno, "cbuf_new");
-       return retval;
-    }
-    memset(buf, 0, sizeof(buf));
-    while (1){
-       if ((len = read(s, buf, sizeof(buf))) < 0){
-           if (errno == ECONNRESET)
-               len = 0; /* emulate EOF */
-           else{
-               clicon_log(LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
-               goto done;
-           }
-       } /* read */
-       if (len == 0){  /* EOF */
-           //      cc_closed++;
-           close(s);
-           goto ok;
-       }
-       for (i=0; i<len; i++){
-           if (buf[i] == 0)
-               continue; /* Skip NULL chars (eg from terminals) */
-           cprintf(cb, "%c", buf[i]);
-           if (detect_endtag("]]>]]>",
-                             buf[i],
-                             &xml_state)) {
-               /* OK, we have an xml string from a client */
-               /* Remove trailer */
-               *(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
-               *cb1 = cb;
-               clicon_debug(2, "%s", cbuf_get(cb));
-               cb = NULL;
-               goto ok;
-           }
-       }
-       /* poll==1 if more, poll==0 if none */
-       if ((poll = clixon_event_poll(s)) < 0)
-           goto done;
-       if (poll == 0)
-           break; /* No data to read */
-    } /* while */
- ok:
-    retval = 0;
- done:
-    clicon_debug(1, "%s done", __FUNCTION__);
-    if (cb)
-       cbuf_free(cb);
-    //    if (cc_closed) 
-    // retval = -1;
-    return retval;
-}
-
-/*! Receive a message using plain ascii 
- * @note message is copied once too many
- * @note session-id is made up
- */
-static int
-clicon_msg_rcv_plain(int                s,
-                    struct clicon_msg **msg0,
-                    int                *eof)
-{ 
-    int       retval = -1;
-    cbuf      *cb = NULL;
-    size_t     sz;
-    static int ii = 0;
-    struct clicon_msg *msg = NULL;
-
-    if (clicon_msg_rcv1(s, &cb, eof) < 0)
-       goto done;
-    if (cb == NULL){
-       clicon_err(OE_CFG, EFAULT, "unrecognized input");
-       *eof = 1;
-       goto ok;
-    }
-    sz = sizeof(struct clicon_msg) + cbuf_len(cb) + 1;
-    if ((msg = (struct clicon_msg *)malloc(sz)) == NULL){
-       clicon_err(OE_CFG, errno, "malloc");
-       goto done;
-    }
-    memset(msg, 0, sz);
-    msg->op_len = htonl(sz);
-    msg->op_id = htonl(ii++); /* XXX seesion-ids are randomized */
-    strcpy((char*)&msg->op_body, cbuf_get(cb)); /* XXX message data copied */
-    cbuf_free(cb);
-    *msg0 = msg;
- ok:
-    retval = 0;
- done:
-    return retval;
-}
-#endif /* CLIXON_PROTO_PLAIN */
-
-/*! Receive a CLICON message
+/*! Receive a CLICON message using IPC message struct
  *
  * XXX: timeout? and signals?
  * There is rudimentary code for turning on signals and handling them 
@@ -500,12 +373,6 @@ clicon_msg_rcv(int                s,
     uint32_t  len2;
     sigfn_t   oldhandler;
     uint32_t  mlen;
-
-#ifdef CLIXON_PROTO_PLAIN /* for testing, eg fuzzing */
-    if (clicon_msg_rcv_plain(s, msg, eof) < 0)
-	goto done;
-    return 0;
-#endif
 
     *eof = 0;
     if (0)
@@ -546,6 +413,90 @@ clicon_msg_rcv(int                s,
   done:
     if (0)
 	set_signal(SIGINT, oldhandler, NULL);
+    return retval;
+}
+
+/*! Receive a message using plain ascii 
+ * @param[in]   s      socket (unix or inet) to communicate with backend
+ * @param[out]  cb1    cligen buf struct containing the incoming message
+ * @param[out]  eof    Set if eof encountered
+ * @see netconf_input_cb()
+ */
+int
+clicon_msg_rcv1(int   s,
+		cbuf *cb,
+		int  *eof)
+{
+    int           retval = -1;
+    unsigned char buf[BUFSIZ];
+    int           i;
+    int           len;
+    int           xml_state = 0;
+    int           poll;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    memset(buf, 0, sizeof(buf));
+    while (1){
+       if ((len = read(s, buf, sizeof(buf))) < 0){
+           if (errno == ECONNRESET)
+               len = 0; /* emulate EOF */
+           else{
+               clicon_log(LOG_ERR, "%s: read: %s errno:%d", __FUNCTION__, strerror(errno), errno);
+               goto done;
+           }
+       } /* read */
+       if (len == 0){  /* EOF */
+           //      cc_closed++;
+           close(s);
+           goto ok;
+       }
+       for (i=0; i<len; i++){
+           if (buf[i] == 0)
+               continue; /* Skip NULL chars (eg from terminals) */
+           cprintf(cb, "%c", buf[i]);
+           if (detect_endtag("]]>]]>",
+                             buf[i],
+                             &xml_state)) {
+               /* OK, we have an xml string from a client */
+               /* Remove trailer */
+               *(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
+               goto ok;
+           }
+       }
+       /* poll==1 if more, poll==0 if none */
+       if ((poll = clixon_event_poll(s)) < 0)
+           goto done;
+       if (poll == 0)
+           break; /* No data to read */
+    } /* while */
+ ok:
+    retval = 0;
+ done:
+    clicon_debug(1, "%s done", __FUNCTION__);
+    //    if (cc_closed) 
+    // retval = -1;
+    return retval;
+}
+
+/*! Send a CLICON netconf message plain text
+ * @param[in]   s      socket (unix or inet) to communicate with backend
+ * @param[out]  msg    CLICON msg data reply structure. Free with free()
+ */
+int
+clicon_msg_send1(int   s, 
+		 cbuf *cb)
+{ 
+    int retval = -1;
+
+    cprintf(cb, "]]>]]>");
+    if (atomicio((ssize_t (*)(int, void *, size_t))write, 
+		 s, cbuf_get(cb), cbuf_len(cb)+1) < 0){
+	clicon_err(OE_CFG, errno, "atomicio");
+	clicon_log(LOG_WARNING, "%s: write: %s", __FUNCTION__, strerror(errno));
+	goto done;
+    }
+    retval = 0;
+  done:
     return retval;
 }
 
@@ -593,8 +544,7 @@ clicon_rpc_connect_unix(clicon_handle      h,
 
 /*! Connect to server, send a clicon_msg message and wait for result using an inet socket
  *
- * @param[in]  h       Clicon handle
- * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
+ * @param[in]  h       Clicon handle (not used)
  * @param[in]  dst     IPv4 address
  * @param[in]  port    TCP port
  * @param[out] retdata  Returned data as string netconf xml tree.
@@ -647,14 +597,16 @@ clicon_rpc_connect_inet(clicon_handle      h,
  * errno set to ENOTCONN which means that socket is now closed probably
  * due to remote peer disconnecting. The caller may have to do something,...
  *
- * @param[in]  s       Socket to communicate with backend
+ * @param[in]  fdin    Input file descriptor
+ * @param[in]  fdout   Output file descriptor (for socket same as fdin)
  * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
  * @param[out] xret    Returned data as netconf xml tree.
  * @retval     0       OK
  * @retval     -1      Error
  */
 int
-clicon_rpc(int                   s, 
+clicon_rpc(int                   fdin,
+	   int                   fdout, 
 	   struct clicon_msg    *msg, 
 	   char                **ret)
 {
@@ -662,15 +614,14 @@ clicon_rpc(int                   s,
     struct clicon_msg *reply = NULL;
     int                eof;
     char              *data = NULL;
-    cxobj             *cx = NULL;
 
-    if (clicon_msg_send(s, msg) < 0)
+    if (clicon_msg_send(fdout, msg) < 0)
 	goto done;
-    if (clicon_msg_rcv(s, &reply, &eof) < 0)
+    if (clicon_msg_rcv(fdin, &reply, &eof) < 0)
 	goto done;
     if (eof){
 	clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
-	close(s);
+	close(fdin); /* assume socket */
 	errno = ESHUTDOWN;
 	goto done;
     }
@@ -682,10 +633,49 @@ clicon_rpc(int                   s,
 	}
     retval = 0;
   done:
-    if (cx)
-	xml_free(cx);
     if (reply)
 	free(reply);
+    return retval;
+}
+
+/*! Send a netconf message and recevive result.
+ *
+ * TBD: timeout, interrupt?
+ * retval may be -1 and
+ * errno set to ENOTCONN which means that socket is now closed probably
+ * due to remote peer disconnecting. The caller may have to do something,...
+ *
+ * @param[in]  fdin    Input file descriptor
+ * @param[in]  fdout   Output file descriptor (for socket same as fdin)
+ * @param[in]  msgin   CLICON msg data structure. It has fixed header and variable body.
+ * @param[out] msgret  Returned data as netconf xml tree.
+ * @retval     0       OK
+ * @retval     -1      Error
+ * see clicon_rpc using clicon_msg
+ */
+int
+clicon_rpc1(int     fdin,
+	    int     fdout, 
+	    cbuf   *msg,
+	    cbuf   *msgret) 
+{
+    int    retval = -1;
+    int    eof;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (clicon_msg_send1(fdout, msg) < 0)
+	goto done;
+    if (clicon_msg_rcv1(fdin, msgret, &eof) < 0)
+	goto done;
+    if (eof){
+	clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
+	close(fdin); /* assume socket */
+	errno = ESHUTDOWN;
+	goto done;
+    }
+    retval = 0;
+  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 

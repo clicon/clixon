@@ -88,7 +88,7 @@ EOF
 # - test_order.sh XXX this is a bug need debugging
 cat <<EOF > /usr/local/bin/test/site.sh
 # Add your local site specific env variables (or tests) here.
-SKIPLIST="test_api.sh test_c++.sh test_yangmodels.sh test_openconfig.sh test_install.sh test_privileges.sh"
+SKIPLIST="test_api.sh test_client.sh test_c++.sh test_yangmodels.sh test_openconfig.sh test_install.sh test_privileges.sh"
 #IETFRFC=
 EOF
 

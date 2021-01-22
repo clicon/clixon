@@ -105,35 +105,23 @@ clixon_proc_sigint(int sig)
 	kill(_clicon_proc_child, SIGINT);
 }
 
-/*! Fork a child process, setup a pipe between parent and child.
- * Allowing parent to read the output of the child. 
- * @param[in]   doerr   If non-zero, stderr will be directed to the pipe as well. 
- * The pipe for the parent to write
- * to the child is closed and cannot be used.
- *
- * When child process is done with the pipe setup, execute the specified
- * command, execv(argv[0], argv).
- *
- * When parent is done with the pipe setup it will read output from the child
- * until eof. The read output will be sent to the specified output callback,
- * 'outcb' function.
- *
+/*!
  * @param[in]  argv    NULL-terminated Argument vector
- * @param[in]  outcb
- * @param[in]  doerr
- * @retval     number  Matches (processes affected). 
+ * @param[in]  doerr   If non-zero, stderr will be directed to the pipe as well. 
+ * @param[out] s       Socket
+ * @retval     O       OK
  * @retval     -1      Error.
+ * @note need to cleanup and wait on sub-process
  */
 int
-clixon_proc_run(char **argv,
-		void  (outcb)(char *), 
-		int    doerr)
+clixon_proc_socket(char **argv,
+		   pid_t *pid,
+		   int   *fdin,
+		   int   *fdout)
 {
     int      retval = -1;
-    char     buf[512];
-    int      outfd[2] = { -1, -1 };
-    int      n;
-    int      status;
+    int      p2c[2] = { -1, -1 }; /* parent->child */
+    int      c2p[2] = { -1, -1 }; /* child->parent */
     pid_t    child;
     sigfn_t  oldhandler = NULL;
     sigset_t oset;
@@ -143,70 +131,83 @@ clixon_proc_run(char **argv,
 	clicon_err(OE_UNIX, EINVAL, "argv is NULL");
 	goto done;
     }
-    if (pipe(outfd) == -1){
+    if (pipe2(p2c, O_DIRECT) == -1){ /* parent->child */
 	clicon_err(OE_UNIX, errno, "pipe");
 	goto done;
     }
+    if (pipe2(c2p, O_DIRECT) == -1){ /* child->parent */
+	clicon_err(OE_UNIX, errno, "pipe");
+	goto done;
+    }
+    //    clicon_debug(1, "%s p2c: %d -> %d   c2p: %d <- %d", __FUNCTION__, p2c[1], p2c[0], c2p[0], c2p[1]);
     sigprocmask(0, NULL, &oset);
     set_signal(SIGINT, clixon_proc_sigint, &oldhandler);
     sig++;
-
     if ((child = fork()) < 0) {
 	clicon_err(OE_UNIX, errno, "fork");
 	goto done;
     }
-
     if (child == 0) {	/* Child */
-
 	/* Unblock all signals except TSTP */
 	clicon_signal_unblock(0);
 	signal(SIGTSTP, SIG_IGN);
 
-	close(outfd[0]);	/* Close unused read ends */
-	outfd[0] = -1;
+	close(0);
 
-	/* Divert stdout and stderr to pipes */
-	dup2(outfd[1], STDOUT_FILENO);
-	if (doerr)
-	  dup2(outfd[1], STDERR_FILENO);
-	
-	execvp(argv[0], argv);
-	perror("execvp"); /* Shouldnt reach here */
-	exit(-1);
-    }
-
-    /* Parent */
-
-    /* Close unused write ends */
-    close(outfd[1]);
-    outfd[1] = -1;
-    
-    /* Read from pipe */
-    while ((n = read(outfd[0], buf, sizeof(buf)-1)) != 0) {
-	if (n < 0) {
-	    if (errno == EINTR)
-		continue;
-	    break;
+	if (dup2(p2c[0], STDIN_FILENO) < 0){
+	    //	if (dup(p2c[0]) < 0){
+	    perror("dup2");
+	    return -1;
 	}
-	buf[n] = '\0';
-	/* Pass read data to callback function is defined */
-	if (outcb)
-	    outcb(buf);
+	close(p2c[1]); 
+	close(p2c[0]); 
+
+	close(1);
+	if (dup2(c2p[1], STDOUT_FILENO) < 0){
+	    //	if (dup(c2p[1]) < 0){
+	    perror("dup2");
+	    return -1;
+	}
+	close(c2p[1]); 
+	close(c2p[0]); 
+	
+	if (execvp(argv[0], argv) < 0){
+	    perror("execvp");
+	    return -1;
+	}
+	exit(-1); 	 /* Shouldnt reach here */
     }
-    
-    /* Wait for child to finish */
-    if(waitpid(child, &status, 0) == child)
-	retval = WEXITSTATUS(status);
+    /* Parent */
+    close(p2c[0]);
+    close(c2p[1]);
+    *pid = child;
+    *fdout = p2c[1];
+    *fdin = c2p[0];
+    retval = 0;
  done:
-    /* Clean up all pipes */
-    if (outfd[0] != -1)
-      close(outfd[0]);
-    if (outfd[1] != -1)
-      close(outfd[1]);
     if (sig){ 	/* Restore sigmask and fn */
 	sigprocmask(SIG_SETMASK, &oset, NULL);
 	set_signal(SIGINT, oldhandler, NULL);
     }
+    return retval;
+}
+
+int
+clixon_proc_socket_close(pid_t pid,
+			 int   fdin,
+			 int   fdout)
+{
+    int   retval = -1;
+    int      status;
+
+    if (fdin != -1)
+	close(fdin);
+    if (fdout != -1)
+	close(fdout); /* Usually kills */
+    kill(pid, SIGTERM);
+    //    usleep(100000);     /* Wait for child to finish */
+    if(waitpid(pid, &status, 0) == pid)
+	retval = WEXITSTATUS(status);
     return retval;
 }
 
@@ -217,7 +218,6 @@ clixon_proc_run(char **argv,
  * @param[out] pid
  * @retval     0     OK
  * @retval     -1    Error.
- * @see clixon_proc_daemon
  * @note SIGCHLD is set to IGN here. Maybe it should be done in main?
  */
 int
@@ -302,79 +302,6 @@ clixon_proc_background(char       **argv,
     retval = 0;
  quit:
     clicon_debug(1, "%s retval:%d child:%u", __FUNCTION__, retval, child);
-    return retval;
-}
-
-/*! Double fork and exec a sub-process as a daemon, let it run and return pid
- *
- * @param[in]  argv  NULL-terminated Argument vector
- * @param[out] pid
- * @retval     0     OK
- * @retval     -1    Error.
- * @see clixon_proc_background
- */
-int
-clixon_proc_daemon(char **argv,
-		   pid_t *pid0)
-{
-    int           retval = -1;
-    int           status;
-    pid_t         child;
-    pid_t         pid;
-    int           i;
-    struct rlimit rlim = {0, };
-    FILE         *fpid = NULL;
-
-    if (argv == NULL){
-	clicon_err(OE_UNIX, EINVAL, "argv is NULL");
-	goto done;
-    }
-    if ((fpid = tmpfile()) == NULL){
-	clicon_err(OE_UNIX, errno, "tmpfile");
-	goto done;
-    }
-    if ((child = fork()) < 0) {
-	clicon_err(OE_UNIX, errno, "fork");
-	goto done;
-    }
-    if (child == 0)  { /* Child */
-	clicon_signal_unblock(0);
-	if ((pid = fork()) < 0) {
-	    clicon_err(OE_UNIX, errno, "fork");
-	    return -1;
-	}
-	if (pid == 0) { /* Grandchild,  create new session */
-	    setsid();
-	    if (chdir("/") < 0){
-		clicon_err(OE_UNIX, errno, "chdirq");
-		exit(1);
-	    }
-	    /* Close open descriptors */
-	    if ( ! getrlimit(RLIMIT_NOFILE, &rlim))
-		for (i = 0; i < rlim.rlim_cur; i++)
-		    close(i);
-	    if (execv(argv[0], argv) < 0) {
-		clicon_err(OE_UNIX, errno, "execv");
-		exit(1);
-	    }
-	    /* Not reached */
-	}
-	if (fprintf(fpid, "%ld\n", (long) pid) < 1){
-	    clicon_err(OE_DAEMON, errno, "fprintf Could not write pid");
-	    goto done;
-	}
-	fclose(fpid);
-	//	waitpid(pid, &status2, 0);
-	exit(pid);
-    }
-
-    if (waitpid(child, &status, 0) > 0){
-	pidfile_get_fd(fpid, pid0);
-	retval = 0;
-    }
-    fclose(fpid);
- done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 

@@ -154,7 +154,7 @@ clicon_rpc_msg(clicon_handle      h,
     /* Create a socket and connect to it, either UNIX, IPv4 or IPv6 per config options */
     if (clicon_rpc_connect(h, &s) < 0)
 	goto done;
-    if (clicon_rpc(s, msg, &retdata) < 0)
+    if (clicon_rpc(s, s, msg, &retdata) < 0)
 	goto done;
 
     clicon_debug(1, "%s retdata:%s", __FUNCTION__, retdata);

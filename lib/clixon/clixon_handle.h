@@ -46,6 +46,7 @@
    Note that its contents is different dependending on if invoked from a 
    cli/backend/netconf or other plugin. But this is hidden under-the-hood.
 */
+typedef void *clixon_handle;
 typedef void *clicon_handle;
 
 /* The dynamicically loadable plugin object handle (should be in clixon_plugin.h) */

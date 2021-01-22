@@ -83,11 +83,17 @@ int clicon_rpc_connect_inet(clicon_handle         h,
 			    uint16_t              port,
 			    int                  *sock0);
 
-int clicon_rpc(int s, struct clicon_msg *msg, char **xret);
+int clicon_rpc(int fdin, int fdout, struct clicon_msg *msg, char **xret);
+
+int clicon_rpc1(int fdin, int fdout, cbuf *msgin, cbuf *msgret);
 
 int clicon_msg_send(int s, struct clicon_msg *msg);
 
+int clicon_msg_send1(int s, cbuf *cb);
+
 int clicon_msg_rcv(int s, struct clicon_msg **msg, int *eof);
+
+int clicon_msg_rcv1(int s, cbuf *cb, int *eof);
 
 int send_msg_notify_xml(clicon_handle h, int s, cxobj *xev);
 
