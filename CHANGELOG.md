@@ -31,6 +31,8 @@ Expected: February 2021
 
 ### New features
 
+* New clixon_client API for external access
+
 ### C/CLI-API changes on existing features
 
 Developers may need to change their code

@@ -2,7 +2,6 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
   Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
@@ -31,10 +30,24 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
+  *
   */
 
 #ifndef _CLIXON_CLIENT_H
 #define _CLIXON_CLIENT_H
+
+/*
+ * Types
+ */
+typedef void *clixon_handle;
+typedef void *clixon_client_handle;
+
+/* Connection type as parameter to connect */
+typedef enum {
+    CLIXON_CLIENT_IPC,      /* Internal IPC API, only experimental use */
+    CLIXON_CLIENT_NETCONF,  /* External Netconf */
+    CLIXON_CLIENT_SSH       /* External Netconf over SSH */
+} clixon_client_type;
 
 /*
  * Prototypes
@@ -44,24 +57,16 @@
 extern "C" {
 #endif
     
-int clixon_client_connect(void *h, const struct sockaddr* srv, int srv_sz);
-int clixon_client_close(int sock);
-int clixon_client_session_start(void *h, const char *db);
-int clixon_client_session_end(void *h);
-int clixon_client_subscribe(int sock, int priority, int nspace,
-                         int *spoint, const char *fmt, ...);
-int clixon_client_subscribe_done(int sock);
-int clixon_client_read_subscription_socket(int sock, int sub_points[], int *resultlen);
-int clixon_client_num_instances(int sock, const char *xnamespace, const char *xpath);
-int clixon_client_get_bool(int sock, int *rval, const char *xnamespace, const char *xpath);
-int clixon_client_get_str(int sock, char *rval, int n, const char *xnamespace, const char *xpath);
-int clixon_client_get_u_int8(int sock, uint8_t *rval, const char *xnamespace, const char *xpath);
-int clixon_client_get_u_int16(int sock, uint16_t *rval, const char *xnamespace, const char *xpath);
-int clixon_client_get_u_int32(int sock, uint32_t *rval, const char *xnamespace, const char *xpath);
-int clixon_client_get_u_int64(int sock, uint64_t *rval, const char *xnamespace, const char *xpath);
-
-void *clixon_client_init(const char *name, FILE *estream, const int debug, const char *config_file);
-int clixon_client_terminate(void *h);
+clixon_handle clixon_client_init(const char *config_file);
+int   clixon_client_terminate(clixon_handle h);
+clixon_client_handle clixon_client_connect(clixon_handle h, clixon_client_type socktype);
+int   clixon_client_disconnect(clixon_client_handle ch);
+int   clixon_client_get_bool(clixon_client_handle ch, int *rval, const char *xnamespace, const char *xpath);
+int   clixon_client_get_str(clixon_client_handle ch, char *rval, int n, const char *xnamespace, const char *xpath);
+int   clixon_client_get_uint8(clixon_client_handle ch, uint8_t *rval, const char *xnamespace, const char *xpath);
+int   clixon_client_get_uint16(clixon_client_handle ch, uint16_t *rval, const char *xnamespace, const char *xpath);
+int   clixon_client_get_uint32(clixon_client_handle ch, uint32_t *rval, const char *xnamespace, const char *xpath);
+int   clixon_client_get_uint64(clixon_client_handle ch, uint64_t *rval, const char *xnamespace, const char *xpath);
     
 #ifdef __cplusplus
 }

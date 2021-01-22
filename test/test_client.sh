@@ -14,7 +14,7 @@ cfg=$dir/conf_yang.xml
 fyang=$dir/example-client.yang
 cfile=$dir/example-client.c
 pdir=$dir/plugin
-app=$pdir/example-api
+app=$dir/clixon-app
 
 if [ ! -d $pdir ]; then
     mkdir $pdir
@@ -67,43 +67,45 @@ EOF
 cat<<EOF > $cfile
 #include <unistd.h>
 #include <stdio.h>
-#include <sys/socket.h>
-#include <netinet/in.h> /* sockaddr_in */
-#include <arpa/inet.h>  /* inet_addr */
-#include <clixon/clixon_client.h>
+#include <stdint.h>
 
-#define CLIXONCONF "$cfg"
+#include <clixon/clixon_log.h>
+#include <clixon/clixon_client.h>
 
 int
 main(int    argc,
      char **argv)
 {
-    int   s;
-    void *h = NULL; /* clixon handle */
+    clixon_handle         h = NULL; /* clixon handle */
+    clixon_client_handle ch = NULL; /* clixon client handle */
 
-    if ((h = clixon_client_init("server", stderr, 0, CLIXONCONF)) == NULL)
+//    clicon_log_init("client", LOG_DEBUG, CLICON_LOG_STDERR);  // debug
+//    clicon_debug_init(1, NULL);                               // debug
+
+    /* Provide a clixon config-file, get a clixon handle */
+    if ((h = clixon_client_init("$cfg")) == NULL)
        return -1;
-    if ((s = clixon_client_connect(h)) < 0){
+    /* Make a conenction over netconf or ssh/netconf */
+    if ((ch = clixon_client_connect(h, CLIXON_CLIENT_NETCONF)) == NULL)
        return -1;
-    }
     /* Here are read functions depending on an example YANG 
      * (Need an example YANG and XML input to confd)
      */
     {
        uint32_t u = 0;
-       if (clixon_client_get_uint32(s, &u, "urn:example:clixon-client", "/table/parameter[name='a']/value") < 0)
+       if (clixon_client_get_uint32(ch, &u, "urn:example:clixon-client", "/table/parameter[name='a']/value") < 0)
           return -1;
+       printf("%u\n", u); /* for test output */
     }
-    clixon_client_close(s);
+    clixon_client_disconnect(ch);
     clixon_client_terminate(h);
     return 0;
 }
 EOF
 
 new "compile $cfile -> $app"
-echo "$CC -g -Wall -I/usr/local/include $cfile -o $app -lclixon"
 expectpart "$($CC -g -Wall -I/usr/local/include $cfile -o $app -lclixon)" 0 ""
-exit
+
 new "test params: -s init -f $cfg"
 
 if [ $BE -ne 0 ]; then
@@ -130,17 +132,17 @@ if [ $RC -ne 0 ]; then
     wait_restconf
 fi
 
-XML='<c xmlns="urn:example:api"><y3><k>2</k></y3><y3><k>3</k></y3><y3><k>5</k><val>zorro</val></y3><y3><k>7</k></y3></c>'
+XML='<table xmlns="urn:example:clixon-client"><parameter><name>a</name><value>42</value></parameter></table>'
 
 # Add a set of entries using restconf
-new "PUT a set of entries"
-expectpart "$(curl $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example-api:c -d "$XML")" 0 "HTTP/1.1 201 Created"
+new "POST the XML"
+expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data -d "$XML")" 0 "HTTP/1.1 201 Created"
 
 new "Check entries"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-api:c -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' "$XML"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-client:table -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' "$XML"
 
-new "Send a trigger"
-expectpart "$(curl $CURLOPTS -X POST $RCPROTO://localhost/restconf/operations/example-api:trigger -H 'Accept: application/yang-data+json')" 0 'HTTP/1.1 204 No Content'
+new "Run $app"
+expectpart "$($app)" 0 '^42$'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
