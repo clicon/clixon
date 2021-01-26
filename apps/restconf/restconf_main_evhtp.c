@@ -623,33 +623,39 @@ cx_verify_certs(int pre_verify,
     return pre_verify;
 }
 
-/*!
+/*! Create and bind restconf socket
  * 
- * @param[out] addr      Address as string, eg "0.0.0.0", "::"
+ * @param[in]  netns0    Network namespace, special value "default" is same as NULL
+ * @param[in]  addr      Address as string, eg "0.0.0.0", "::"
  * @param[in]  addrtype  One of inet:ipv4-address or inet:ipv6-address
+ * @param[in]  port      TCP port
  * @param[out] ss        Server socket (bound for accept)
  */
 static int
-restconf_socket_init(clicon_handle h,
+restconf_socket_init(const char   *netns0,
 		     const char   *addr,
 		     const char   *addrtype,
 		     uint16_t      port,
 		     int          *ss)
 {
     int                 retval = -1;
-    int                 s = -1;
     struct sockaddr   * sa;
     struct sockaddr_in6 sin6   = { 0 };
     struct sockaddr_in  sin    = { 0 };
     size_t              sin_len;
-    int                 on = 1;
+    const char         *netns;
 
+    /* netns default -> NULL */
+    if (netns0 != NULL && strcmp(netns0, "default")==0)
+	netns = NULL;
+    else
+	netns = netns0;
     if (strcmp(addrtype, "inet:ipv6-address") == 0) {
         sin_len          = sizeof(struct sockaddr_in6);
         sin6.sin6_port   = htons(port);
         sin6.sin6_family = AF_INET6;
 
-        evutil_inet_pton(AF_INET6, addr, &sin6.sin6_addr);
+        inet_pton(AF_INET6, addr, &sin6.sin6_addr);
         sa = (struct sockaddr *)&sin6;
     }
     else if (strcmp(addrtype, "inet:ipv4-address") == 0) {
@@ -664,43 +670,11 @@ restconf_socket_init(clicon_handle h,
 	clicon_err(OE_XML, EINVAL, "Unexpected addrtype: %s", addrtype);
 	return -1;
     }
-    /* create inet socket */
-    if ((s = socket(sa->sa_family, SOCK_STREAM, 0)) < 0) {
-	clicon_err(OE_UNIX, errno, "socket");
+    if (clixon_netns_socket(netns, sa, sin_len, SOCKET_LISTEN_BACKLOG, ss) < 0)
 	goto done;
-    }
-    evutil_make_socket_closeonexec(s);
-    evutil_make_socket_nonblocking(s);
-    if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, sizeof(on)) == -1) {
-	clicon_err(OE_UNIX, errno, "setsockopt SO_KEEPALIVE");
-	goto done;
-    }
-    if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on)) == -1) {
-	clicon_err(OE_UNIX, errno, "setsockopt SO_REUSEADDR");
-	goto done;
-    }
-    /* only bind ipv6, otherwise it may bind to ipv4 as well which is strange but seems default */
-    if (sa->sa_family == AF_INET6 &&
-	setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1) {
-	clicon_err(OE_UNIX, errno, "setsockopt IPPROTO_IPV6");
-	goto done;
-    }
-    if (bind(s, sa, sin_len) == -1) {
-	clicon_err(OE_UNIX, errno, "bind port %u", port);
-	goto done;
-    }
-    if (listen(s, SOCKET_LISTEN_BACKLOG) < 0){
-	clicon_err(OE_UNIX, errno, "listen");
-	goto done;
-    }
-    if (ss)
-	*ss = s;
     retval = 0;
  done:
-    if (retval != 0 && s != -1)
-	evutil_closesocket(s);
     return retval;
-    //    return evhtp_bind_sockaddr(htp, sa, sin_len, SOCKET_LISTEN_BACKLOG);
 }
 
 /*! Usage help routine
@@ -865,12 +839,12 @@ cx_evhtp_socket(clicon_handle    h,
 		int              auth_type_client_certificate)
 {
     int          retval = -1;
-    char        *namespace = NULL;
+    char        *netns = NULL;
     char        *address = NULL;
     char        *addrtype = NULL;
     uint16_t     ssl = 0;
     uint16_t     port = 0;
-    int          ss;
+    int          ss = -1;
     evhtp_t     *htp = NULL;
 
     /* This is socket create a new evhtp_t instance */
@@ -900,7 +874,7 @@ cx_evhtp_socket(clicon_handle    h,
     evhtp_set_gencb(htp, cx_gencb, h);
 
     /* Extract socket parameters from single socket config: ns, addr, port, ssl */
-    if (cx_evhtp_socket_extract(h, xs, nsc, &namespace, &address, &addrtype, &port, &ssl) < 0)
+    if (cx_evhtp_socket_extract(h, xs, nsc, &netns, &address, &addrtype, &port, &ssl) < 0)
 	goto done;
     /* Sanity checks of socket parameters */
     if (ssl){
@@ -915,7 +889,7 @@ cx_evhtp_socket(clicon_handle    h,
 	}
     }
     /* Open restconf socket and bind */
-    if (restconf_socket_init(h, address, addrtype, port, &ss) < 0)
+    if (restconf_socket_init(netns, address, addrtype, port, &ss) < 0)
 	goto done;
     /* ss is a server socket that the clients connect to. The callback
        therefore accepts clients on ss */

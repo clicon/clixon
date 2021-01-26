@@ -55,6 +55,7 @@ Users may have to change how they access the system
 
 ### Minor changes
 
+* Restconf evhtp using network namespaces implemented
 * Added validation of clixon-restconf.yang: server-key-path and server-cert-path must be present if ssl enabled.
   * Only if `CLICON_BACKEND_RESTCONF_PROCESS` is true
 * Experimental IPC API, `clixon_client`, to support a loose integration model
@@ -63,7 +64,7 @@ Users may have to change how they access the system
   * This is work-in-progress and is expected to change
 * Use [https://github.com/clicon/libevhtp](https://github.com/clicon/libevhtp) instead of [https://github.com/criticalstack/libevhtp](https://github.com/criticalstack/libevhtp) as a source of the evhtp source
 * Added callback to process-control RPC feature in clixon-lib.yang to manage processes
-  * WHen an RPC comes in, be able to look at configuration
+  * When an RPC comes in, be able to look at configuration
 * Changed behavior of starting restconf internally using `CLICON_BACKEND_RESTCONF_PROCESS` monitoring changes in enable flag, not only the RPC. The semantics is as follows:
   * on RPC start, if enable is true, start the service, if false, error or ignore it
   * on RPC stop, stop the service 

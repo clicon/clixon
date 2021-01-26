@@ -6,7 +6,7 @@
 # - on backend start make the state as configured
 # - on enable change, make the state as configured
 # - No restconf config means enable: false (extra rule)
-# Also work-in-progress network namespaces, ip netns 
+# See test_restconf_netns for network namespaces
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -270,61 +270,10 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><ca
 new "netconf validate should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>SSL enabled but server-cert-path not set</error-message></rpc-error></rpc-reply>]]>]]>$"
 
-if false; then # Work in progress - namespace
-#-------------------------------
-# Now in a separate network namespace
-new "restconf rpc in network namespace"
-netns=xxx
-sudo ip netns delete $netns
-#sudo ip netns add $netns
-
-new "test params: -f $cfg"
-if [ $BE -ne 0 ]; then
-    new "kill old backend"
-    sudo clixon_backend -z -f $cfg
-    if [ $? -ne 0 ]; then
-	err
-    fi
-    new "start backend -s init -f $cfg -- -n $netns"
-    start_backend -s init -f $cfg -- -n $netns
-
-    new "waiting"
-    wait_backend
-fi
-
-new "kill old restconf"
-stop_restconf_pre
-
-new "netconf start restconf"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><process-control xmlns=\"http://clicon.org/lib\"><name>restconf</name><operation>start</operation></process-control></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
-
-new "10)check status on"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><process-control xmlns=\"http://clicon.org/lib\"><name>restconf</name><operation>status</operation></process-control></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><status xmlns=\"http://clicon.org/lib\">true</status></rpc-reply>]]>]]>"
-
-new "stop restconf"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><process-control xmlns=\"http://clicon.org/lib\"><name>restconf</name><operation>stop</operation></process-control></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
-
-if [ $BE -ne 0 ]; then
-    new "Kill backend"
-    # Check if premature kill
-    pid=$(pgrep -u root -f clixon_backend)
-    if [ -z "$pid" ]; then
-	err "backend already dead"
-    fi
-    # kill backend
-    stop_backend -f $cfg
-
-    new "11)check no restconf"
-    ps=$(ps aux|grep "$WWWDIR/clixon_restconf" | grep -v grep)
-fi
-
-sudo ip netns delete $netns
-
-fi # namespaces
-
 unset pid
 sleep $DEMWAIT # Lots of processes need to die before next test
 
+new "endtest"
 endtest
 
 rm -rf $dir
