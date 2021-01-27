@@ -105,23 +105,21 @@ clixon_proc_sigint(int sig)
 	kill(_clicon_proc_child, SIGINT);
 }
 
-/*!
+/*! Fork a child, exec a child and setup socket to child and return to caller
  * @param[in]  argv    NULL-terminated Argument vector
  * @param[in]  doerr   If non-zero, stderr will be directed to the pipe as well. 
  * @param[out] s       Socket
  * @retval     O       OK
  * @retval     -1      Error.
- * @note need to cleanup and wait on sub-process
+ * @see clixon_proc_socket_close  close sockets, kill child and wait for child termination
  */
 int
 clixon_proc_socket(char **argv,
 		   pid_t *pid,
-		   int   *fdin,
-		   int   *fdout)
+		   int   *sock)
 {
     int      retval = -1;
-    int      p2c[2] = { -1, -1 }; /* parent->child */
-    int      c2p[2] = { -1, -1 }; /* child->parent */
+    int      sp[2] = {-1, -1};
     pid_t    child;
     sigfn_t  oldhandler = NULL;
     sigset_t oset;
@@ -131,15 +129,10 @@ clixon_proc_socket(char **argv,
 	clicon_err(OE_UNIX, EINVAL, "argv is NULL");
 	goto done;
     }
-    if (pipe2(p2c, O_DIRECT) == -1){ /* parent->child */
-	clicon_err(OE_UNIX, errno, "pipe");
+    if (socketpair(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0, sp) < 0){
+	clicon_err(OE_UNIX, errno, "socketpair");
 	goto done;
     }
-    if (pipe2(c2p, O_DIRECT) == -1){ /* child->parent */
-	clicon_err(OE_UNIX, errno, "pipe");
-	goto done;
-    }
-    //    clicon_debug(1, "%s p2c: %d -> %d   c2p: %d <- %d", __FUNCTION__, p2c[1], p2c[0], c2p[0], c2p[1]);
     sigprocmask(0, NULL, &oset);
     set_signal(SIGINT, clixon_proc_sigint, &oldhandler);
     sig++;
@@ -152,24 +145,18 @@ clixon_proc_socket(char **argv,
 	clicon_signal_unblock(0);
 	signal(SIGTSTP, SIG_IGN);
 
+	close(sp[0]);
 	close(0);
-
-	if (dup2(p2c[0], STDIN_FILENO) < 0){
-	    //	if (dup(p2c[0]) < 0){
+	if (dup2(sp[1], STDIN_FILENO) < 0){
 	    perror("dup2");
 	    return -1;
 	}
-	close(p2c[1]); 
-	close(p2c[0]); 
-
 	close(1);
-	if (dup2(c2p[1], STDOUT_FILENO) < 0){
-	    //	if (dup(c2p[1]) < 0){
+	if (dup2(sp[1], STDOUT_FILENO) < 0){
 	    perror("dup2");
 	    return -1;
 	}
-	close(c2p[1]); 
-	close(c2p[0]); 
+	close(sp[1]); 
 	
 	if (execvp(argv[0], argv) < 0){
 	    perror("execvp");
@@ -178,11 +165,9 @@ clixon_proc_socket(char **argv,
 	exit(-1); 	 /* Shouldnt reach here */
     }
     /* Parent */
-    close(p2c[0]);
-    close(c2p[1]);
+    close(sp[1]);
     *pid = child;
-    *fdout = p2c[1];
-    *fdin = c2p[0];
+    *sock = sp[0];
     retval = 0;
  done:
     if (sig){ 	/* Restore sigmask and fn */
@@ -192,18 +177,18 @@ clixon_proc_socket(char **argv,
     return retval;
 }
 
+/*! 
+ * @see clixon_proc_socket which creates the child and sockets closed and killed here
+ */
 int
 clixon_proc_socket_close(pid_t pid,
-			 int   fdin,
-			 int   fdout)
+			 int   sock)
 {
-    int   retval = -1;
-    int      status;
+    int retval = -1;
+    int status;
 
-    if (fdin != -1)
-	close(fdin);
-    if (fdout != -1)
-	close(fdout); /* Usually kills */
+    if (sock != -1)
+	close(sock); /* usually kills */
     kill(pid, SIGTERM);
     //    usleep(100000);     /* Wait for child to finish */
     if(waitpid(pid, &status, 0) == pid)

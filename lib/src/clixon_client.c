@@ -84,9 +84,9 @@
 struct clixon_client_handle{
     uint32_t           cch_magic;  /* magic number */
     clixon_client_type cch_type;   /* Clixon socket type */
-    int                cch_fdin;   /* Input file descriptor */
-    int                cch_fdout;  /* Output file descriptor, Only applies for NETCONF/SSH */
+    int                cch_socket; /* Input/output socket */
     int                cch_pid;    /* Sub-process-id Only applies for NETCONF/SSH */
+    int                cch_locked; /* State variable: 1 means locked */
 };
 
 /*! Check struct magic number for sanity checks
@@ -104,10 +104,9 @@ clixon_client_handle_check(clixon_client_handle ch)
 }
 
 /*! Initialize Clixon client API
- * @param[in]  name        Name of client (NYI)
- * @param[in]  estream     Error/debug file (NULL: syslog)
- * @param[in]  debug       Clixon debug flag
  * @param[in]  config_file Clixon configuration file, or NULL for default
+ * @retval     h        Clixon handler
+ * @retval     NULL     Error
  * @see clixon_client_close
  */
 clixon_handle
@@ -129,6 +128,7 @@ clixon_client_init(const char *config_file)
 }
 
 /*! Deallocate everything from client_init
+ * @param[in]  h     Clixon handle
  * @see clixon_client_init
  */
 int
@@ -139,12 +139,67 @@ clixon_client_terminate(clicon_handle h)
     return 0;
 }
 
+/*! Send a lock request (internal)
+ * @param[in]  sock   Open socket
+ * @param[in]  lock   0: unlock, 1: lock  
+ * @param[in]  db     Datastore name
+ * @retval     0      OK
+ * @retval     -1     Error
+ */
+static int
+clixon_client_lock(int         sock,
+		   const int   lock,
+		   const char *db)
+{
+    int                retval = -1;
+    cxobj             *xret = NULL;
+    cxobj             *xd;
+    cbuf              *msg = NULL;
+    cbuf              *msgret = NULL;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (db == NULL){
+	clicon_err(OE_XML, EINVAL, "Expected db");
+	goto done;
+    }
+    if ((msg = cbuf_new()) == NULL){
+	clicon_err(OE_PLUGIN, errno, "cbuf_new");
+	goto done;
+    }
+    if ((msgret = cbuf_new()) == NULL){
+	clicon_err(OE_PLUGIN, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(msg, "<rpc xmlns=\"%s\">"
+	    "<%slock><target><%s/></target></%slock></rpc>",
+	    NETCONF_BASE_NAMESPACE,
+	    lock?"":"un", db, lock?"":"un");
+    if (clicon_rpc1(sock, msg, msgret) < 0)
+	goto done;
+    if (clixon_xml_parse_string(cbuf_get(msgret), YB_NONE, NULL, &xret, NULL) < 0)
+	goto done;
+    if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL){
+	xd = xml_parent(xd); /* point to rpc-reply */
+	clixon_netconf_error(xd, "Get config", NULL);
+	goto done; /* Not fatal */
+    }
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xret)
+	xml_free(xret);
+    if (msg)
+	cbuf_free(msg);
+    if (msgret)
+	cbuf_free(msgret);
+    return retval;
+}
+
 /*! Connect client to clixon backend according to config and return a socket
- * @param[in]  h       Clixon handle
- * @param[out] fdin    Open netconf output file descr
- * @param[out] fdout   Open netconf output file descr. If socket same as fdin
- * @retval     cs      Clixon session handler
- * @retval     NULL    Error
+ * @param[in]  h        Clixon handle
+ * @param[in]  socktype Type of socket, internal/external/netconf/ssh
+ * @retval     ch       Clixon session handler
+ * @retval     NULL     Error
  * @see clixon_client_disconnect  Close the socket returned here
  */
 clixon_client_handle
@@ -170,9 +225,8 @@ clixon_client_connect(clicon_handle      h,
     cch->cch_type = socktype;
     switch (socktype){
     case CLIXON_CLIENT_IPC:
-	if (clicon_rpc_connect(h, &cch->cch_fdin) < 0)
+	if (clicon_rpc_connect(h, &cch->cch_socket) < 0)
 	    goto err;
-	cch->cch_fdout = cch->cch_fdin;
 	break;
     case CLIXON_CLIENT_NETCONF:
 	nr = 7;
@@ -203,23 +257,29 @@ clixon_client_connect(clicon_handle      h,
 	}
 	argv[i++] = NULL;
 	assert(i==nr);
-	if (clixon_proc_socket(argv, &cch->cch_pid, &cch->cch_fdin, &cch->cch_fdout) < 0){
+	if (clixon_proc_socket(argv, &cch->cch_pid, &cch->cch_socket) < 0){
 	    goto err;
 	}
 	break;
     case CLIXON_CLIENT_SSH:
 	break;
     } /* switch */
+    /* lock */
+    if (clixon_client_lock(cch->cch_socket, 1, "running") < 0)
+	goto err;
+    cch->cch_locked = 1;
  done:
+    clicon_debug(1, "%s retval:%p", __FUNCTION__, cch);
     return cch;
  err:
-    free(cch);
+    if (cch)
+	clixon_client_disconnect(cch);
     cch = NULL;
     goto done;
 }
 
 /*! Connect client to clixon backend according to config and return a socket
- * @param[in]    cch        Clixon client session handle
+ * @param[in]    ch        Clixon client session handle
  * @see clixon_client_connect where the handle is created
  * The handle is deallocated
  */
@@ -234,14 +294,17 @@ clixon_client_disconnect(clixon_client_handle ch)
 	clicon_err(OE_XML, EINVAL, "Expected cch handle");
 	goto done;
     }
+    /* unlock (if locked) */
+    if (cch->cch_locked)
+	;//	(void)clixon_client_lock(cch->cch_socket, 0, "running");
+
     switch(cch->cch_type){
     case CLIXON_CLIENT_IPC:
-	close(cch->cch_fdin);
+	close(cch->cch_socket);
 	break;
     case CLIXON_CLIENT_NETCONF:
 	if (clixon_proc_socket_close(cch->cch_pid,
-				     cch->cch_fdin,
-				     cch->cch_fdout) < 0)
+				     cch->cch_socket) < 0)
 	    goto done;
 	break;
     case CLIXON_CLIENT_SSH:
@@ -253,6 +316,11 @@ clixon_client_disconnect(clixon_client_handle ch)
     return retval;
 }
 
+/*! Get the bottom-most leaf in an xml tree being a result of xpath
+ * @param[in]    xtop    Pointer to XML top-of-tree
+ * @param[out]   xbotp   Pointer to XML bottom node
+ * @retval     0         OK
+ */
 static int
 clixon_xml_bottom(cxobj  *xtop,
 		  cxobj **xbotp)
@@ -283,14 +351,15 @@ clixon_xml_bottom(cxobj  *xtop,
 
 /*! Internal function to construct a get-config and query a value from the backend
  *
- * @param[in]  sock      Stream socket
- * @param[in]  xpath     XPath
+ * @param[in]  sock      Socket
  * @param[in]  namespace Default namespace used for non-prefixed entries in xpath. (Alt use nsc)
- * @param[out] val       String value
+ * @param[in]  xpath     XPath
+ * @param[out] xdata     XML data tree (may or may not include the intended data)
+ * @retval     0         OK
+ * @retval     -1        Error
  */
 static int
-clixon_client_get_xdata(int         fdin,
-			int         fdout,
+clixon_client_get_xdata(int         sock,
 			const char *namespace,
 			const char *xpath,
 			cxobj     **xdata)
@@ -303,6 +372,7 @@ clixon_client_get_xdata(int         fdin,
     const char        *db = "running";
     cvec              *nsc = NULL; 
     
+    clicon_debug(1, "%s", __FUNCTION__);
     if ((msg = cbuf_new()) == NULL){
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");
 	goto done;
@@ -327,7 +397,7 @@ clixon_client_get_xdata(int         fdin,
 	cprintf(msg, "/>");
     }
     cprintf(msg, "</get-config></rpc>");
-    if (clicon_rpc1(fdin, fdout, msg, msgret) < 0)
+    if (clicon_rpc1(sock, msg, msgret) < 0)
 	goto done;
     if (clixon_xml_parse_string(cbuf_get(msgret), YB_NONE, NULL, &xret, NULL) < 0)
 	goto done;
@@ -357,35 +427,61 @@ clixon_client_get_xdata(int         fdin,
     return retval;
 }
 
+/*! Generic get value of body
+ * @param[in]  sock      Open socket
+ * @param[in]  namespace Default namespace used for non-prefixed entries in xpath.
+ * @param[in]  xpath     XPath
+ * @param[out] val       Output value
+ * @retval     0         OK
+ * @retval     -1        Error
+ */
 static int
-clixon_client_get_val(int         fdin,
-		      int         fdout,
-		      const char *namespace,
-		      const char *xpath,
-		      char      **val)
+clixon_client_get_body_val(int         sock,
+			   const char *namespace,
+			   const char *xpath,
+			   char      **val)
 {
     int    retval = -1;
     cxobj *xdata = NULL;
-    cxobj *xobj;
+    cxobj *xobj = NULL;
     
+    clicon_debug(1, "%s", __FUNCTION__);
     if (val == NULL){
 	clicon_err(OE_XML, EINVAL, "Expected val");
 	goto done;
     }
-    if (clixon_client_get_xdata(fdin, fdout, namespace, xpath, &xdata) < 0)
+    if (clixon_client_get_xdata(sock, namespace, xpath, &xdata) < 0)
 	goto done;
+    if (xdata == NULL){
+	clicon_err(OE_XML, ENODATA, "No xml obj found"); 
+	goto done;
+    }
+    /* Is this an error, maybe an "unset" retval ? */
+    if (xml_child_nr_type(xdata, CX_ELMNT) == 0){
+	clicon_err(OE_XML, ENODATA, "Value not found"); 
+	goto done;
+    }
     if (clixon_xml_bottom(xdata, &xobj) < 0)
 	goto done;
     if (xobj == NULL){
-	clicon_err(OE_XML, EFAULT, "No bottom xml found"); 
+	clicon_err(OE_XML, ENODATA, "No xml value found"); 
 	goto done;
     }
     *val = xml_body(xobj);
     retval = 0;
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
+/*! Client-api get boolean
+ * @param[in]  ch     Clixon client handle
+ * @param[out] rval   Return value 
+ * @param[in]  namespace Default namespace used for non-prefixed entries in xpath. (Alt use nsc)
+ * @param[in]  xpath  XPath
+ * @retval     0         OK
+ * @retval     -1        Error
+ */
 int
 clixon_client_get_bool(clixon_client_handle ch,
 		       int                 *rval,
@@ -400,9 +496,8 @@ clixon_client_get_bool(clixon_client_handle ch,
     uint8_t                      val0=0;
     
     clicon_debug(1, "%s", __FUNCTION__);
-    if (clixon_client_get_val(cch->cch_fdin,
-			      cch->cch_fdout,
-			      namespace, xpath, &val) < 0)
+    if (clixon_client_get_body_val(cch->cch_socket,
+				   namespace, xpath, &val) < 0)
 	goto done;
     if ((ret = parse_bool(val, &val0, &reason)) < 0){
 	clicon_err(OE_XML, errno, "parse_bool"); 
@@ -420,12 +515,14 @@ clixon_client_get_bool(clixon_client_handle ch,
     return retval;
 }
 
-/*! Get string using get-config
- * @param[in]  sock   Stream socket
+/*! Client-api get string
+ * @param[in]  ch     Clixon client handle
  * @param[out] rval   Return value string  
  * @param[in]  n      Length of string
- * @param[in]  xpath  XPath
  * @param[in]  namespace Default namespace used for non-prefixed entries in xpath. (Alt use nsc)
+ * @param[in]  xpath  XPath
+ * @retval     0         OK
+ * @retval     -1        Error
  */
 int
 clixon_client_get_str(clixon_client_handle ch,
@@ -439,9 +536,8 @@ clixon_client_get_str(clixon_client_handle ch,
     char                        *val = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
-    if (clixon_client_get_val(cch->cch_fdin,
-			      cch->cch_fdout,
-			      namespace, xpath, &val) < 0)
+    if (clixon_client_get_body_val(cch->cch_socket,
+				   namespace, xpath, &val) < 0)
 	goto done;
     strncpy(rval, val, n-1);
     rval[n-1]= '\0';
@@ -450,6 +546,14 @@ clixon_client_get_str(clixon_client_handle ch,
     return retval;
 }
 
+/*! Client-api get uint8
+ * @param[in]  ch     Clixon client handle
+ * @param[out] rval   Return value  
+ * @param[in]  namespace Default namespace used for non-prefixed entries in xpath. (Alt use nsc)
+ * @param[in]  xpath  XPath
+ * @retval     0         OK
+ * @retval     -1        Error
+ */
 int
 clixon_client_get_uint8(clixon_client_handle ch,
 			uint8_t             *rval,
@@ -463,9 +567,8 @@ clixon_client_get_uint8(clixon_client_handle ch,
     int                          ret;
     
     clicon_debug(1, "%s", __FUNCTION__);
-    if (clixon_client_get_val(cch->cch_fdin,
-			      cch->cch_fdout,
-			      namespace, xpath, &val) < 0)
+    if (clixon_client_get_body_val(cch->cch_socket,
+				   namespace, xpath, &val) < 0)
 	goto done;
     if ((ret = parse_uint8(val, rval, &reason)) < 0){
 	clicon_err(OE_XML, errno, "parse_bool"); 
@@ -482,6 +585,14 @@ clixon_client_get_uint8(clixon_client_handle ch,
     return retval;
 }
 
+/*! Client-api get uint16
+ * @param[in]  ch     Clixon client handle
+ * @param[out] rval   Return value  
+ * @param[in]  namespace Default namespace used for non-prefixed entries in xpath. (Alt use nsc)
+ * @param[in]  xpath  XPath
+ * @retval     0         OK
+ * @retval     -1        Error
+ */
 int
 clixon_client_get_uint16(clixon_client_handle ch,
 			 uint16_t            *rval,
@@ -495,9 +606,8 @@ clixon_client_get_uint16(clixon_client_handle ch,
     int                          ret;
     
     clicon_debug(1, "%s", __FUNCTION__);
-    if (clixon_client_get_val(cch->cch_fdin,
-			      cch->cch_fdout,
-			      namespace, xpath, &val) < 0)
+    if (clixon_client_get_body_val(cch->cch_socket,
+				   namespace, xpath, &val) < 0)
 	goto done;
     if ((ret = parse_uint16(val, rval, &reason)) < 0){
 	clicon_err(OE_XML, errno, "parse_bool"); 
@@ -514,6 +624,14 @@ clixon_client_get_uint16(clixon_client_handle ch,
     return retval;
 }
 
+/*! Client-api get uint32
+ * @param[in]  ch     Clixon client handle
+ * @param[out] rval   Return value  
+ * @param[in]  namespace Default namespace used for non-prefixed entries in xpath. (Alt use nsc)
+ * @param[in]  xpath  XPath
+ * @retval     0         OK
+ * @retval     -1        Error
+ */
 int
 clixon_client_get_uint32(clixon_client_handle ch,
 			 uint32_t            *rval,
@@ -527,10 +645,13 @@ clixon_client_get_uint32(clixon_client_handle ch,
     int                          ret;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    if (clixon_client_get_val(cch->cch_fdin,
-			      cch->cch_fdout,
-			      namespace, xpath, &val) < 0)
+    if (clixon_client_get_body_val(cch->cch_socket,
+				   namespace, xpath, &val) < 0)
 	goto done;
+    if (val == NULL){
+	clicon_err(OE_XML, EFAULT, "val is NULL"); 
+	goto done;
+    }
     if ((ret = parse_uint32(val, rval, &reason)) < 0){
 	clicon_err(OE_XML, errno, "parse_bool"); 
 	goto done;
@@ -541,11 +662,20 @@ clixon_client_get_uint32(clixon_client_handle ch,
     }
     retval = 0;
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (reason)
 	free(reason);
     return retval;
 }
 
+/*! Client-api get uint64
+ * @param[in]  ch     Clixon client handle
+ * @param[out] rval   Return value  
+ * @param[in]  namespace Default namespace used for non-prefixed entries in xpath. (Alt use nsc)
+ * @param[in]  xpath  XPath
+ * @retval     0         OK
+ * @retval     -1        Error
+ */
 int
 clixon_client_get_uint64(clixon_client_handle  ch,
 			 uint64_t             *rval,
@@ -559,9 +689,8 @@ clixon_client_get_uint64(clixon_client_handle  ch,
     int                          ret;
     
     clicon_debug(1, "%s", __FUNCTION__);
-    if (clixon_client_get_val(cch->cch_fdin,
-			      cch->cch_fdout,
-			      namespace, xpath, &val) < 0)
+    if (clixon_client_get_body_val(cch->cch_socket,
+				   namespace, xpath, &val) < 0)
 	goto done;
     if ((ret = parse_uint64(val, rval, &reason)) < 0){
 	clicon_err(OE_XML, errno, "parse_bool"); 
@@ -576,4 +705,18 @@ clixon_client_get_uint64(clixon_client_handle  ch,
     if (reason)
 	free(reason);
     return retval;
+}
+
+/* Access functions */
+/*! Client-api get uint64
+ * @param[in]  ch     Clixon client handle
+ * @retval     s      Open socket
+ * @retval    -1      No/closed socket
+ */
+int
+clixon_client_socket_get(clixon_client_handle ch)
+{
+    struct clixon_client_handle *cch = chandle(ch);
+
+    return cch->cch_socket;
 }

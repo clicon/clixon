@@ -49,8 +49,8 @@ typedef int (proc_cb_t)(clicon_handle h, process_entry_t *pe, char **operation);
 /*
  * Prototypes
  */ 
-int clixon_proc_socket(char **argv, pid_t *pid, int *fdin, int *fdout);
-int clixon_proc_socket_close(pid_t pid, int fdin, int fdout);
+int clixon_proc_socket(char **argv, pid_t *pid, int *sock);
+int clixon_proc_socket_close(pid_t pid, int sock);
 int clixon_proc_background(char **argv, const char *netns, pid_t *pid);
 int clixon_process_register(clicon_handle h, const char *name, const char *netns, proc_cb_t *callback, char **argv, int argc);
 int clixon_process_delete_all(clicon_handle h);

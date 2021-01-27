@@ -167,7 +167,7 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' http:
 
 # Negative
 new "restconf get config on wrong port in netns:$netns"
-expectpart "$(sudo ip netns exec $netns curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://$vaddr:8888/restconf/data/clixon-example:table)" 7 
+expectpart "$(sudo ip netns exec $netns curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://$vaddr:8888/restconf/data/clixon-example:table 2> /dev/null)" 7 
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
@@ -192,4 +192,3 @@ new "endtest"
 endtest
 
 rm -rf $dir
-

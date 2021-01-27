@@ -189,7 +189,7 @@ static inline int clicon_cli_tab_mode(clicon_handle h){
 static inline char *clicon_cli_model_treename(clicon_handle h){
     return clicon_option_str(h, "CLICON_CLI_MODEL_TREENAME");
 }
-static inline char *clicon_sock(clicon_handle h){
+static inline char *clicon_sock_str(clicon_handle h){
     return clicon_option_str(h, "CLICON_SOCK");
 }
 static inline char *clicon_sock_group(clicon_handle h){

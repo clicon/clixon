@@ -435,6 +435,7 @@ clicon_msg_rcv1(int   s,
     int           poll;
 
     clicon_debug(1, "%s", __FUNCTION__);
+    *eof = 0;
     memset(buf, 0, sizeof(buf));
     while (1){
        if ((len = read(s, buf, sizeof(buf))) < 0){
@@ -446,7 +447,7 @@ clicon_msg_rcv1(int   s,
            }
        } /* read */
        if (len == 0){  /* EOF */
-           //      cc_closed++;
+	   *eof = 1;
            close(s);
            goto ok;
        }
@@ -473,8 +474,6 @@ clicon_msg_rcv1(int   s,
     retval = 0;
  done:
     clicon_debug(1, "%s done", __FUNCTION__);
-    //    if (cc_closed) 
-    // retval = -1;
     return retval;
 }
 
@@ -597,31 +596,29 @@ clicon_rpc_connect_inet(clicon_handle      h,
  * errno set to ENOTCONN which means that socket is now closed probably
  * due to remote peer disconnecting. The caller may have to do something,...
  *
- * @param[in]  fdin    Input file descriptor
- * @param[in]  fdout   Output file descriptor (for socket same as fdin)
+ * @param[in]  sock    Socket / file descriptor
  * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
  * @param[out] xret    Returned data as netconf xml tree.
  * @retval     0       OK
  * @retval     -1      Error
  */
 int
-clicon_rpc(int                   fdin,
-	   int                   fdout, 
-	   struct clicon_msg    *msg, 
-	   char                **ret)
+clicon_rpc(int                sock,
+	   struct clicon_msg *msg, 
+	   char             **ret)
 {
     int                retval = -1;
     struct clicon_msg *reply = NULL;
     int                eof;
     char              *data = NULL;
 
-    if (clicon_msg_send(fdout, msg) < 0)
+    if (clicon_msg_send(sock, msg) < 0)
 	goto done;
-    if (clicon_msg_rcv(fdin, &reply, &eof) < 0)
+    if (clicon_msg_rcv(sock, &reply, &eof) < 0)
 	goto done;
     if (eof){
 	clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
-	close(fdin); /* assume socket */
+	close(sock); /* assume socket */
 	errno = ESHUTDOWN;
 	goto done;
     }
@@ -645,8 +642,7 @@ clicon_rpc(int                   fdin,
  * errno set to ENOTCONN which means that socket is now closed probably
  * due to remote peer disconnecting. The caller may have to do something,...
  *
- * @param[in]  fdin    Input file descriptor
- * @param[in]  fdout   Output file descriptor (for socket same as fdin)
+ * @param[in]  sock    Socket / file descriptor
  * @param[in]  msgin   CLICON msg data structure. It has fixed header and variable body.
  * @param[out] msgret  Returned data as netconf xml tree.
  * @retval     0       OK
@@ -654,22 +650,21 @@ clicon_rpc(int                   fdin,
  * see clicon_rpc using clicon_msg
  */
 int
-clicon_rpc1(int     fdin,
-	    int     fdout, 
-	    cbuf   *msg,
-	    cbuf   *msgret) 
+clicon_rpc1(int   sock,
+	    cbuf *msg,
+	    cbuf *msgret) 
 {
     int    retval = -1;
     int    eof;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    if (clicon_msg_send1(fdout, msg) < 0)
+    if (clicon_msg_send1(sock, msg) < 0)
 	goto done;
-    if (clicon_msg_rcv1(fdin, msgret, &eof) < 0)
+    if (clicon_msg_rcv1(sock, msgret, &eof) < 0)
 	goto done;
     if (eof){
 	clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
-	close(fdin); /* assume socket */
+	close(sock);
 	errno = ESHUTDOWN;
 	goto done;
     }

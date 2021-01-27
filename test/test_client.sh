@@ -15,6 +15,7 @@ fyang=$dir/example-client.yang
 cfile=$dir/example-client.c
 pdir=$dir/plugin
 app=$dir/clixon-app
+debug=0
 
 if [ ! -d $pdir ]; then
     mkdir $pdir
@@ -68,19 +69,21 @@ cat<<EOF > $cfile
 #include <unistd.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <syslog.h> // debug
 
-#include <clixon/clixon_log.h>
+#include <clixon/clixon_log.h> // debug
 #include <clixon/clixon_client.h>
 
 int
 main(int    argc,
      char **argv)
 {
+    int retval = -1;
     clixon_handle         h = NULL; /* clixon handle */
     clixon_client_handle ch = NULL; /* clixon client handle */
 
-//    clicon_log_init("client", LOG_DEBUG, CLICON_LOG_STDERR);  // debug
-//    clicon_debug_init(1, NULL);                               // debug
+    clicon_log_init("client", LOG_DEBUG, CLICON_LOG_STDERR);  // debug
+    clicon_debug_init($debug, NULL);                          // debug
 
     /* Provide a clixon config-file, get a clixon handle */
     if ((h = clixon_client_init("$cfg")) == NULL)
@@ -94,12 +97,15 @@ main(int    argc,
     {
        uint32_t u = 0;
        if (clixon_client_get_uint32(ch, &u, "urn:example:clixon-client", "/table/parameter[name='a']/value") < 0)
-          return -1;
+         goto done;
        printf("%u\n", u); /* for test output */
     }
+    retval = 0;
+  done:
     clixon_client_disconnect(ch);
     clixon_client_terminate(h);
-    return 0;
+    printf("done\n"); /* for test output */	
+    return retval;
 }
 EOF
 

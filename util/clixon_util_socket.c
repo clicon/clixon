@@ -176,7 +176,7 @@ main(int    argc,
     else
 	if (clicon_rpc_connect_inet(h, sockpath, 4535, &s) < 0)
 	    goto done;
-    if (clicon_rpc(s, s, msg, &retdata) < 0)
+    if (clicon_rpc(s, msg, &retdata) < 0)
 	goto done;
     close(s);
     fprintf(stdout, "%s\n", retdata);

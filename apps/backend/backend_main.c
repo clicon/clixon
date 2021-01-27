@@ -91,7 +91,7 @@ backend_terminate(clicon_handle h)
     yang_stmt *yspec;
     char      *pidfile = clicon_backend_pidfile(h);
     int       sockfamily = clicon_sock_family(h);
-    char      *sockpath = clicon_sock(h);
+    char      *sockpath = clicon_sock_str(h);
     cxobj     *x;
     struct stat st;
     int        ss;
@@ -552,6 +552,36 @@ restconf_pseudo_process_reg(clicon_handle h,
     return retval;
 }
 
+/* Debug timer */
+int
+backend_timer_setup(int   fd,
+		    void *arg)
+{
+    int            retval = -1;
+    clicon_handle  h = (clicon_handle)arg;
+    struct timeval now;
+    struct timeval t;
+    struct timeval t1 = {10, 0};
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    gettimeofday(&now, NULL);
+
+    backend_client_print(h, stderr);
+    xmldb_print(h, stderr);
+    fprintf(stderr, "\n");
+
+    /* Initiate new timer */
+    timeradd(&now, &t1, &t);
+    if (clixon_event_reg_timeout(t,
+				 backend_timer_setup, /* this function */
+				 h,                  /* clicon handle */
+				 "backend timer setup") < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! usage
  */
 static void
@@ -559,7 +589,7 @@ usage(clicon_handle h,
       char         *argv0)
 {
     char *plgdir   = clicon_backend_dir(h);
-    char *confsock = clicon_sock(h);
+    char *confsock = clicon_sock_str(h);
     char *confpid  = clicon_backend_pidfile(h);
     char *group    = clicon_sock_group(h);
 
@@ -829,7 +859,7 @@ main(int    argc,
 	goto done;
     }
     sockfamily = clicon_sock_family(h);
-    if ((sock = clicon_sock(h)) == NULL){
+    if ((sock = clicon_sock_str(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "sock not set");
 	goto done;
     }
@@ -1132,7 +1162,9 @@ main(int    argc,
 
     /* Start session-id for clients */
     clicon_session_id_set(h, 0);
-
+    if (clicon_debug_get() && 
+	backend_timer_setup(0, h) < 0)
+	goto done;
     if (stream_timer_setup(0, h) < 0)
 	goto done;
     if (clixon_event_loop() < 0)

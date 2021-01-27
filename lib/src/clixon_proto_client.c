@@ -86,20 +86,20 @@
  */
 int
 clicon_rpc_connect(clicon_handle h,
-		   int          *sock0)
+		   int          *sockp)
 {
     int    retval = -1;
-    char  *sock = NULL;
+    char  *sockstr = NULL;
     int    port;
 
-    if ((sock = clicon_sock(h)) == NULL){
+    if ((sockstr = clicon_sock_str(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
 	goto done;
     }
     /* What to do if inet socket? */
     switch (clicon_sock_family(h)){
     case AF_UNIX:
-	if (clicon_rpc_connect_unix(h, sock, sock0) < 0){
+	if (clicon_rpc_connect_unix(h, sockstr, sockp) < 0){
 #if 0
 	    if (errno == ESHUTDOWN)
 		/* Maybe could reconnect on a higher layer, but lets fail
@@ -118,7 +118,7 @@ clicon_rpc_connect(clicon_handle h,
 	    clicon_err(OE_FATAL, 0, "CLICON_SOCK_PORT not set");
 	    goto done;
 	}
-	if (clicon_rpc_connect_inet(h, sock, port, sock0) < 0)
+	if (clicon_rpc_connect_inet(h, sockstr, port, sockp) < 0)
 	    goto done;
 	break;
     }
@@ -152,9 +152,12 @@ clicon_rpc_msg(clicon_handle      h,
 #endif
     clicon_debug(1, "%s request:%s", __FUNCTION__, msg->op_body);
     /* Create a socket and connect to it, either UNIX, IPv4 or IPv6 per config options */
-    if (clicon_rpc_connect(h, &s) < 0)
-	goto done;
-    if (clicon_rpc(s, s, msg, &retdata) < 0)
+    if ((s = clicon_client_socket_get(h)) < 0){
+	if (clicon_rpc_connect(h, &s) < 0)
+	    goto done;
+	clicon_client_socket_set(h, s);
+    }
+    if (clicon_rpc(s, msg, &retdata) < 0)
 	goto done;
 
     clicon_debug(1, "%s retdata:%s", __FUNCTION__, retdata);
@@ -177,8 +180,6 @@ clicon_rpc_msg(clicon_handle      h,
     }
     retval = 0;
  done:
-    if (s != -1)
-	close(s);
     if (retdata)
 	free(retdata);
     if (xret)
@@ -307,7 +308,6 @@ clicon_rpc_netconf_xml(clicon_handle  h,
 	cbuf_free(cb);
     return retval;
 }
-
 
 /*! Get database configuration
  * Same as clicon_proto_change just with a cvec instead of lvec
@@ -786,10 +786,12 @@ clicon_rpc_get(clicon_handle   h,
     return retval;
 }
 
-/*! Close a (user) session
+/*! Send a close a netconf user session. Socket is also closed if still open
  * @param[in] h        CLICON handle
  * @retval    0        OK
  * @retval   -1        Error and logged to syslog
+ * Session is implicitly created in eg clicon_rpc_netconf
+ * @note Maybe separate closing session and closing socket.
  */
 int
 clicon_rpc_close_session(clicon_handle h)
@@ -800,6 +802,7 @@ clicon_rpc_close_session(clicon_handle h)
     cxobj             *xerr;
     char              *username;
     uint32_t           session_id;
+    int                s;
     
     if (session_id_check(h, &session_id) < 0)
 	goto done;
@@ -810,6 +813,10 @@ clicon_rpc_close_session(clicon_handle h)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
 	goto done;
+    if ((s = clicon_client_socket_get(h)) >= 0){
+	close(s);
+	clicon_client_socket_set(h, -1);
+    }
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Close session", NULL);
 	goto done;

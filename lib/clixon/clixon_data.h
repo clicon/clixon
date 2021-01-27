@@ -102,9 +102,13 @@ int clicon_username_set(clicon_handle h, void *username);
 enum startup_status clicon_startup_status_get(clicon_handle h);
 int clicon_startup_status_set(clicon_handle h, enum startup_status status);
 
-/* Set and get socket fd (ie backend server socket / restconf fcgx socket */
+/* Set and get server socket fd (ie backend server socket / restconf fcgi socket */
 int clicon_socket_get(clicon_handle h);
 int clicon_socket_set(clicon_handle h, int s);
+
+/* Set and get client socket fd (ie client cli / netconf / restconf / client-api socket */
+int clicon_client_socket_get(clicon_handle h);
+int clicon_client_socket_set(clicon_handle h, int s);
 
 /*! Set and get module state full and brief cached tree */
 cxobj *clicon_modst_cache_get(clicon_handle h, int brief);

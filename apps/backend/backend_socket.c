@@ -198,7 +198,7 @@ backend_socket_init(clicon_handle h)
 {
     char *sock; /* unix path or ip address string */
 
-    if ((sock = clicon_sock(h)) == NULL){
+    if ((sock = clicon_sock_str(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
 	return -1;
     }

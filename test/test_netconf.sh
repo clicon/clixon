@@ -236,6 +236,9 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:n
 new "netconf lock/unlock"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><lock><target><candidate/></target></lock></rpc>]]>]]><rpc $DEFAULTNS><unlock><target><candidate/></target></unlock></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]><rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
+new "netconf lock/unlock/lock"
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><lock><target><candidate/></target></lock></rpc>]]>]]><rpc $DEFAULTNS><unlock><target><candidate/></target></unlock></rpc>]]>]]><rpc $DEFAULTNS><lock><target><candidate/></target></lock></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]><rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]><rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
 new "netconf lock/lock"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><lock><target><candidate/></target></lock></rpc>]]>]]><rpc $DEFAULTNS><lock><target><candidate/></target></lock></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]><rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>" 
 

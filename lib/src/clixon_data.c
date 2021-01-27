@@ -520,7 +520,7 @@ clicon_startup_status_set(clicon_handle       h,
     return 0;
 }
 
-/*! Get socket fd (ie backend server socket / restconf fcgx socket)
+/*! Get server socket fd (ie backend server socket / restconf fcgi socket)
  * @param[in]  h   Clicon handle
  * @retval    -1   No open socket
  * @retval     s   Socket
@@ -536,7 +536,7 @@ clicon_socket_get(clicon_handle h)
     return *(int*)p;
 }
 
-/*! Set socket fd (ie backend server socket / restconf fcgx socket)
+/*! Set server socket fd (ie backend server socket / restconf fcgi socket)
  * @param[in]  h   Clicon handle
  * @param[in]  s   Open socket (or -1 to close)
  * @retval    0       OK
@@ -551,6 +551,39 @@ clicon_socket_set(clicon_handle h,
     if (s == -1)
 	return clicon_hash_del(cdat, "socket");
     return clicon_hash_add(cdat, "socket", &s, sizeof(int))==NULL?-1:0;
+}
+
+/*! Get client socket fd (ie client cli / netconf / restconf / client-api socket
+ * @param[in]  h   Clicon handle
+ * @retval    -1   No open socket
+ * @retval     s   Socket
+ */
+int
+clicon_client_socket_get(clicon_handle h)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    void           *p;
+
+    if ((p = clicon_hash_value(cdat, "client-socket", NULL)) == NULL)
+	return -1;
+    return *(int*)p;
+}
+
+/*! Set client socket fd (ie client cli / netconf / restconf / client-api socket
+ * @param[in]  h   Clicon handle
+ * @param[in]  s   Open socket (or -1 to close)
+ * @retval    0       OK
+ * @retval   -1       Error
+ */
+int
+clicon_client_socket_set(clicon_handle h, 
+			 int           s)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    if (s == -1)
+	return clicon_hash_del(cdat, "client-socket");
+    return clicon_hash_add(cdat, "client-socket", &s, sizeof(int))==NULL?-1:0;
 }
 
 /*! Get module state cache

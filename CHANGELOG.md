@@ -55,6 +55,11 @@ Users may have to change how they access the system
 
 ### Minor changes
 
+* Corrected client session handling to make internal IPC socket persistent
+  * Applies to cli/netconf/restconf/client-api code
+  * Previous behaviour:
+    * Close socket after each rpc, but now keeps the socket open until the client terminates
+    * Kept locks over socket life-cycle, but according to RFC 6241 7.5 a lock should be relaeased when session ends
 * Restconf evhtp using network namespaces implemented
 * Added validation of clixon-restconf.yang: server-key-path and server-cert-path must be present if ssl enabled.
   * Only if `CLICON_BACKEND_RESTCONF_PROCESS` is true

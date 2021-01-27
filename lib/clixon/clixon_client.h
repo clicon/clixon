@@ -46,7 +46,7 @@ typedef void *clixon_client_handle;
 typedef enum {
     CLIXON_CLIENT_IPC,      /* Internal IPC API, only experimental use */
     CLIXON_CLIENT_NETCONF,  /* External Netconf */
-    CLIXON_CLIENT_SSH       /* External Netconf over SSH */
+    CLIXON_CLIENT_SSH       /* NYI External Netconf over SSH */
 } clixon_client_type;
 
 /*
@@ -68,6 +68,9 @@ int   clixon_client_get_uint16(clixon_client_handle ch, uint16_t *rval, const ch
 int   clixon_client_get_uint32(clixon_client_handle ch, uint32_t *rval, const char *xnamespace, const char *xpath);
 int   clixon_client_get_uint64(clixon_client_handle ch, uint64_t *rval, const char *xnamespace, const char *xpath);
     
+/* Access functions */
+int   clixon_client_socket_get(clixon_client_handle ch);
+
 #ifdef __cplusplus
 }
 #endif

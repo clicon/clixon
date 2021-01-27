@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/param.h>
+#include <sys/wait.h>
 #include <netinet/in.h>
 
 #include "clixon_err.h"
@@ -158,6 +159,14 @@ create_socket(struct sockaddr *sa,
     return retval;
 }
 
+/*! Fork a child, create and bind a socket in a separate network namespace and send back to parent
+ *
+ * @param[in]  netns    Network namespace
+ * @param[in]  sa       Socketaddress
+ * @param[in]  sa_len   Length of sa. Tecynicaliyu to be independent of sockaddr sa_len
+ * @param[in]  backlog  Listen backlog, queie of pending connections
+ * @param[out] sock     Server socket (bound for accept)
+ */
 int
 fork_netns_socket(const char      *netns,
 		  struct sockaddr *sa,
@@ -166,8 +175,9 @@ fork_netns_socket(const char      *netns,
 		  int             *sock)
 {
     int   retval = -1;
-    int   sp[2] = {0,};
+    int   sp[2] = {-1, -1};
     pid_t child;
+    int   status = 0;
 
     if (socketpair(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0, sp) < 0){
 	clicon_err(OE_UNIX, errno, "socketpair");
@@ -209,7 +219,8 @@ fork_netns_socket(const char      *netns,
     if (get_sock(sp[0], sock) < 0)
 	goto done;
     close(sp[0]);
-    retval = 0;
+    if(waitpid(child, &status, 0) == child)
+	retval = WEXITSTATUS(status);
  done:
     return retval;
 }
