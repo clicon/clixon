@@ -188,3 +188,25 @@ backend_client_delete(clicon_handle        h,
     return 0;
 }
 
+/*! Debug print backend clients
+ * @param[in]  h   Clicon handle
+ * @param[in]  f   UNIX output stream
+ */
+int
+backend_client_print(clicon_handle h,
+		     FILE         *f)
+{
+    struct backend_handle *bh = handle(h);
+    struct client_entry   *ce;
+
+    for (ce = bh->bh_ce_list; ce; ce = ce->ce_next){
+	fprintf(f, "Client:     %d\n", ce->ce_nr);
+	fprintf(f, "  Session:  %d\n", ce->ce_id);
+	fprintf(f, "  Socket:   %d\n", ce->ce_s);
+	fprintf(f, "  Msgs in:  %d\n", ce->ce_stat_in);
+	fprintf(f, "  Msgs out: %d\n", ce->ce_stat_out);
+	fprintf(f, "  Username: %s\n", ce->ce_username);
+    }
+    return 0;
+}
+

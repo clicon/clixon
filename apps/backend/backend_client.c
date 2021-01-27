@@ -132,9 +132,9 @@ int
 backend_client_rm(clicon_handle        h, 
 		  struct client_entry *ce)
 {
-    struct client_entry   *c;
-    struct client_entry   *c0;
-    struct client_entry  **ce_prev;
+    struct client_entry  *c;
+    struct client_entry  *c0;
+    struct client_entry **ce_prev;
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* for all streams: XXX better to do it top-level? */
@@ -147,6 +147,7 @@ backend_client_rm(clicon_handle        h,
 		clixon_event_unreg_fd(ce->ce_s, from_client);
 		close(ce->ce_s);
 		ce->ce_s = 0;
+		xmldb_unlock_all(h, ce->ce_id);
 	    }
 	    break;
 	}
@@ -1308,8 +1309,8 @@ from_client_kill_session(clicon_handle h,
     }
     /* may or may not be in active client list, probably not */
     if ((ce = ce_find_byid(backend_client_list(h), id)) != NULL){
-	xmldb_unlock_all(h, id);
-	backend_client_rm(h, ce);
+	xmldb_unlock_all(h, id);  /* Removes locks on all databases */
+	backend_client_rm(h, ce); /* Removes client struct */
     }
     if (xmldb_islocked(h, db) == id)
 	xmldb_unlock(h, db);

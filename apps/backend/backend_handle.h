@@ -54,4 +54,6 @@ struct client_entry *backend_client_list(clicon_handle h);
 
 int backend_client_delete(clicon_handle h, struct client_entry *ce);
 
+int backend_client_print(clicon_handle h, FILE *f);
+
 #endif  /* _BACKEND_HANDLE_H_ */

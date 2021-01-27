@@ -148,7 +148,7 @@ Merge a branch back:
 
 ## Use of constants etc
 
-Use MAXPATHLEN (not PATH_MAX)
+Use MAXPATHLEN (not PATH_MAX) in sys/param.h
 
 ## Emulating a serial console
 

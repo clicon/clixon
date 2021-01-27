@@ -78,7 +78,7 @@ module clixon-restconf {
                  For example, if the restconf daemon is under systemd management, the restconf
                  daemon will only start if enable=true.";
 	}
-	leaf-list auth-type {
+	leaf auth-type {
 	    type http-auth-type;
 	    description
 		"The authentication type.

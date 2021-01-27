@@ -75,5 +75,6 @@ int xmldb_modified_get(clicon_handle h, const char *db);
 int xmldb_modified_set(clicon_handle h, const char *db, int value);
 int xmldb_empty_get(clicon_handle h, const char *db);
 int xmldb_dump(clicon_handle h, FILE *f, cxobj *xt);
+int xmldb_print(clicon_handle h, FILE *f);
 
 #endif /* _CLIXON_DATASTORE_H */

@@ -946,7 +946,7 @@ cx_evhtp_init(clicon_handle     h,
     /* If at least one socket has ssl then enable global ssl_enable */
     ssl_enable = xpath_first(xrestconf, nsc, "socket[ssl='true']") != NULL;
     /* get common fields */
-    if ((x = xpath_first(xrestconf, nsc, "auth-type")) != NULL) /* XXX: leaf-list? */
+    if ((x = xpath_first(xrestconf, nsc, "auth-type")) != NULL)
 	auth_type = xml_body(x);
     if (auth_type && strcmp(auth_type, "client-certificate") == 0)
 	auth_type_client_certificate = 1;

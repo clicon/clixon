@@ -560,3 +560,32 @@ xmldb_modified_set(clicon_handle h,
     de->de_modified = value;
     return 0;
 }
+
+/* Print the datastore meta-info to file
+ */
+int
+xmldb_print(clicon_handle h,
+	    FILE         *f)
+{
+    int       retval = -1;
+    db_elmnt *de = NULL;    
+    char    **keys = NULL;
+    size_t    klen;
+    int       i;
+
+    if (clicon_hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
+	goto done;
+    for (i = 0; i < klen; i++){
+	/* XXX name */
+	if ((de = clicon_db_elmnt_get(h, keys[i])) == NULL)
+	    continue;
+	fprintf(f, "Datastore:  %s\n", keys[i]);
+	fprintf(f, "  Session:  %u\n", de->de_id);
+	fprintf(f, "  XML:      %p\n", de->de_xml);
+	fprintf(f, "  Modified: %d\n", de->de_modified);
+	fprintf(f, "  Empty:    %d\n", de->de_empty);
+    }
+    retval = 0;
+ done:
+    return retval;
+}

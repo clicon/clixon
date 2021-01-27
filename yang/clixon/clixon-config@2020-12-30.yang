@@ -300,9 +300,11 @@ module clixon-config {
 	    enum IPv4 {
 		description "IPv4";
 	    }
+	    enum IPv6 {
+		description "IPv6";
+	    }
 	}
     }
-
     container clixon-config {
 	container restconf {
 	    uses clrc:clixon-restconf;
@@ -629,8 +631,12 @@ module clixon-config {
 	    type string;
 	    mandatory true;
 	    description
-		"If family above is AF_UNIX: Unix socket for communicating 
-       	         with clixon_backend. If family is AF_INET: IPv4 address";
+		"String description of Clixon Internal (IPC) socket that connects a clixon
+                 client to the clixon backend. This string is dependent on family.
+                 If CLICON_SOCK_FAMILY is:
+                 - UNIX: The value is a Unix socket path
+                 - IPv4: IPv4 address string
+                 - IPv6: IPv6 address string (NYI)";
 	}
 	leaf CLICON_SOCK_PORT {
 	    type int32;

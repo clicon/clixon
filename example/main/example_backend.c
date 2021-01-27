@@ -66,7 +66,7 @@
 #include <clixon/clixon_backend.h> 
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_EXAMPLE_OPTS "rsS:iuUt:v:n:"
+#define BACKEND_EXAMPLE_OPTS "rsS:iuUt:v:"
 
 /*! Variable to control if reset code is run.
  * The reset code inserts "extra XML" which assumes ietf-interfaces is
@@ -118,11 +118,6 @@ static int _transaction_log = 0;
  */
 static char *_validate_fail_xpath = NULL;
 static int   _validate_fail_toggle = 0; /* fail at validate and commit */
-
-/* -n <ns>
- * Network namespace for starting restconf process in another namespace
-*/
-static char *_proc_netns = NULL;
 
 /* forward */
 static int example_stream_timer_setup(clicon_handle h);
@@ -1086,9 +1081,6 @@ clixon_plugin_init(clicon_handle h)
 	    break;
 	case 'v': /* validate fail */
 	    _validate_fail_xpath = optarg;
-	    break;
-	case 'n': /* process restconf namespace*/
-	    _proc_netns = optarg;
 	    break;
 	}
 
