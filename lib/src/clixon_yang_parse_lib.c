@@ -530,13 +530,13 @@ yang_expand_grouping(yang_stmt *yn)
 	    if ((ygrouping2 = ys_dup(ygrouping)) == NULL)
 		goto done;
 
-	    /* Only replace data/schemanodes:
+	    /* Only replace data/schemanodes and unknowns:
 	     * Compute the number of such nodes, and extend the child vector with that below
 	     */
 	    glen = 0;
 	    yg = NULL;
 	    while ((yg = yn_each(ygrouping2, yg)) != NULL) {
-		if (yang_schemanode(yg))
+		if (yang_schemanode(yg) || yang_keyword_get(yg) == Y_UNKNOWN)
 		    glen++;
 	    }
 	    /* 
@@ -584,7 +584,7 @@ yang_expand_grouping(yang_stmt *yn)
 	    for (j=0; j<yang_len_get(ygrouping2); j++){
 		yg = ygrouping2->ys_stmt[j]; /* Child of refined copy */
 		/* Only replace data/schemanodes */
-		if (!yang_schemanode(yg)){
+		if (!yang_schemanode(yg) && yang_keyword_get(yg) != Y_UNKNOWN){
 		    ys_free(yg);
 		    continue;
 		}
