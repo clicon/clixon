@@ -774,7 +774,14 @@ cx_evhtp_socket_extract(clicon_handle h,
 	goto done;
     }
     *address = body;
-    *addrtype = yang_argument_get(ysub);
+    /* This is YANG type name of ip-address:
+     *   typedef ip-address {
+     *     type union {
+     *       type inet:ipv4-address; <---
+     *       type inet:ipv6-address; <---
+     *     }
+     */
+    *addrtype = yang_argument_get(ysub); 
     if ((x = xpath_first(xs, nsc, "port")) != NULL &&
 	(str = xml_body(x)) != NULL){
 	if ((ret = parse_uint16(str, port, &reason)) < 0){
@@ -893,14 +900,11 @@ cx_evhtp_socket(clicon_handle    h,
 	goto done;
     /* ss is a server socket that the clients connect to. The callback
        therefore accepts clients on ss */
-    /* XXX address in evhtp should be prefixed with eg "ipv4:" */
-    //    evutil_make_socket_closeonexec(ss);
-    //    evutil_make_socket_nonblocking(ss);
     if (evhtp_accept_socket(htp, ss, SOCKET_LISTEN_BACKLOG) < 0) {
         /* accept_socket() does not close the descriptor
          * on error, but this function does.
          */
-        evutil_closesocket(ss);
+        close(ss);
 	goto done;
     }
     if (cx_htp_add(eh, htp) < 0)

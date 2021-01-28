@@ -68,6 +68,7 @@ EOF
 # Yang specs must be here first for backend. But then the specs are changed but just for CLI
 # Annotate original Yang spec example  directly
 # First annotate /table/parameter 
+# Had a problem with unknown in grouping -> test uses uses/grouping
 cat <<EOF > $fyang
 module example {
   namespace "urn:example:clixon";
@@ -75,12 +76,8 @@ module example {
   import clixon-lib{
       prefix cl;
   }
-  container table{
-    list parameter{
-      key name;
-      leaf name{
-        type string;
-      }
+
+  grouping pg {
       cl:autocli-op hide; /* This is the extension */
       leaf value{
         description "a value";
@@ -94,7 +91,15 @@ module example {
 	leaf iv{
           type string;
         }
+     }
+   }
+   container table{
+    list parameter{
+      key name;
+      leaf name{
+        type string;
       }
+      uses pg;
     }
   }
 }

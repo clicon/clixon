@@ -9,12 +9,7 @@
 # - stream retention time
 # - native vs nchan implementation
 # Focussing on 1-3
-# 2a) start sub 8s - expect 2 notifications
-# 2b) start sub 8s - stoptime after 5s - expect 1 notifications
-# 2c) start sub 8s - replay from start -8s - expect 4 notifications
-# 2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications
-# 2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications
-# Note the sleeps are mainly for valgrind usage
+# @see test_restconf_notifications.sh
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
