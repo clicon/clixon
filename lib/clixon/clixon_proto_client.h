@@ -43,8 +43,8 @@
 #define _CLIXON_PROTO_CLIENT_H_
 
 int clicon_rpc_connect(clicon_handle h, int *sock0);
-int clicon_rpc_msg(clicon_handle h, struct clicon_msg *msg, cxobj **xret0,
-		   int *sock0);
+int clicon_rpc_msg(clicon_handle h, struct clicon_msg *msg, cxobj **xret0);
+int clicon_rpc_msg_persistent(clicon_handle h, struct clicon_msg *msg, cxobj **xret0, int *sock0);
 int clicon_rpc_netconf(clicon_handle h, char *xmlst, cxobj **xret, int *sp);
 int clicon_rpc_netconf_xml(clicon_handle h, cxobj *xml, cxobj **xret, int *sp);
 int clicon_rpc_get_config(clicon_handle h, char *username, char *db, char *xpath, cvec *nsc, cxobj **xret);
@@ -60,8 +60,7 @@ int clicon_rpc_kill_session(clicon_handle h, uint32_t session_id);
 int clicon_rpc_validate(clicon_handle h, char *db);
 int clicon_rpc_commit(clicon_handle h);
 int clicon_rpc_discard_changes(clicon_handle h);
-int clicon_rpc_create_subscription(clicon_handle h, char *stream, char *filter, 
-				   int *s);
+int clicon_rpc_create_subscription(clicon_handle h, char *stream, char *filter, int *s);
 int clicon_rpc_debug(clicon_handle h, int level);
 int clicon_hello_req(clicon_handle h, uint32_t *id);
 

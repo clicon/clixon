@@ -131,16 +131,15 @@ clicon_rpc_connect(clicon_handle h,
  * @param[in]    h      CLICON handle
  * @param[in]    msg    Encoded message. Deallocate with free
  * @param[out]   xret0  Return value from backend as xml tree. Free w xml_free
- * @param[inout] sock0  If pointer exists, do not close socket to backend on success 
- *                      and return it here. For keeping a notify socket open
- * @note sock0 is if connection should be persistent, like a notification/subscribe api
  * @note xret is populated with yangspec according to standard handle yangspec
+ * @note side-effect, a socket created here is cached
+ * @see clicon_rpc_msg_persistent
+ * @see clicon_rpc_close_session
  */
 int
 clicon_rpc_msg(clicon_handle      h, 
 	       struct clicon_msg *msg, 
-	       cxobj            **xret0,
-	       int               *sock0)
+	       cxobj            **xret0)
 {
     int     retval = -1;
     char   *retdata = NULL;
@@ -173,13 +172,72 @@ clicon_rpc_msg(clicon_handle      h,
 	*xret0 = xret;
 	xret = NULL;
     }
-    /* If returned, keep socket open, otherwise close it below */
-    if (sock0){ 
-	*sock0 = s;
-	s = -1;
-    }
     retval = 0;
  done:
+    if (retval < 0 && s >= 0){
+	close(s);
+	clicon_client_socket_set(h, -1);
+    }
+    if (retdata)
+	free(retdata);
+    if (xret)
+	xml_free(xret);
+    return retval;
+}
+
+/*! Send internal netconf rpc from client to backend and return a persistent socket
+ * @param[in]   h      CLICON handle
+ * @param[in]   msg    Encoded message. Deallocate with free
+ * @param[out]  xret0  Return value from backend as xml tree. Free w xml_free
+ * @param[out]  sock0  If pointer exists, do not close socket to backend on success 
+ *                     and return it here. For keeping a notify socket open
+ * @note xret is populated with yangspec according to standard handle yangspec
+ */
+int
+clicon_rpc_msg_persistent(clicon_handle      h, 
+			  struct clicon_msg *msg, 
+			  cxobj            **xret0,
+			  int               *sock0)
+{
+    int     retval = -1;
+    char   *retdata = NULL;
+    cxobj  *xret = NULL;
+    int     s = -1;
+
+    if (sock0 == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "Missing socket pointer");
+	goto done;
+    }
+#ifdef RPC_USERNAME_ASSERT
+    assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
+#endif
+    clicon_debug(1, "%s request:%s", __FUNCTION__, msg->op_body);
+    /* Create a socket and connect to it, either UNIX, IPv4 or IPv6 per config options */
+    if (clicon_rpc_connect(h, &s) < 0)
+	goto done;
+    if (clicon_rpc(s, msg, &retdata) < 0)
+	goto done;
+
+    clicon_debug(1, "%s retdata:%s", __FUNCTION__, retdata);
+
+    if (retdata){
+	/* Cannot populate xret here because need to know RPC name (eg "lock") in order to associate yang
+	 * to reply.
+	 */
+	if (clixon_xml_parse_string(retdata, YB_NONE, NULL, &xret, NULL) < 0)
+	    goto done;
+    }
+    if (xret0){
+	*xret0 = xret;
+	xret = NULL;
+    }
+    /* If returned, keep socket open, otherwise close it below */
+    *sock0 = s;
+    s = -1;
+    retval = 0;
+ done:
+    if (s >= 0)
+	close(s);
     if (retdata)
 	free(retdata);
     if (xret)
@@ -216,7 +274,7 @@ session_id_check(clicon_handle h,
     return retval;
 }
 
-/*! Generic xml netconf clicon rpc
+/*! Generic xml netconf clicon rpc for persistent
  * Want to go over to use netconf directly between client and server,...
  * @param[in]  h       clicon handle
  * @param[in]  xmlstr  XML netconf tree as string
@@ -224,7 +282,8 @@ session_id_check(clicon_handle h,
  * @param[out] sp      Socket pointer for notification, otherwise NULL
  * @code
  *   cxobj *xret = NULL;
- *   if (clicon_rpc_netconf(h, "<rpc></rpc>", &xret, NULL) < 0)
+ *   int s = -1;
+ *   if (clicon_rpc_netconf(h, "<rpc></rpc>", &xret, &s) < 0)
  *	err;
  *   xml_free(xret);
  * @endcode
@@ -244,8 +303,13 @@ clicon_rpc_netconf(clicon_handle  h,
 	goto done;
     if ((msg = clicon_msg_encode(session_id, "%s", xmlstr)) < 0)
 	goto done;
-    if (clicon_rpc_msg(h, msg, xret, sp) < 0)
-	goto done;
+    if (sp){
+	if (clicon_rpc_msg_persistent(h, msg, xret, sp) < 0)
+	    goto done;
+    }
+    else
+	if (clicon_rpc_msg(h, msg, xret) < 0)
+	    goto done;
     retval = 0;
  done:
     if (msg)
@@ -382,7 +446,7 @@ clicon_rpc_get_config(clicon_handle h,
     cprintf(cb, "</get-config></rpc>");
     if ((msg = clicon_msg_encode(session_id, "%s", cbuf_get(cb))) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     /* Send xml error back: first check error, then ok */
     if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
@@ -468,7 +532,7 @@ clicon_rpc_edit_config(clicon_handle       h,
     cprintf(cb, "</edit-config></rpc>");
     if ((msg = clicon_msg_encode(session_id, "%s", cbuf_get(cb))) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Editing configuration", NULL);
@@ -520,7 +584,7 @@ clicon_rpc_copy_config(clicon_handle h,
 				 username?username:"",
 				 db1, db2)) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Copying configuration", NULL);
@@ -565,7 +629,7 @@ clicon_rpc_delete_config(clicon_handle h,
 				 NETCONF_BASE_NAMESPACE,
 				 username?username:"", db)) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Deleting configuration", NULL);
@@ -606,7 +670,7 @@ clicon_rpc_lock(clicon_handle h,
 				 NETCONF_BASE_NAMESPACE,
 				 username?username:"", db)) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Locking configuration", NULL);
@@ -647,7 +711,7 @@ clicon_rpc_unlock(clicon_handle h,
 				 NETCONF_BASE_NAMESPACE,
 				 username?username:"", db)) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Configuration unlock", NULL);
@@ -744,7 +808,7 @@ clicon_rpc_get(clicon_handle   h,
     if ((msg = clicon_msg_encode(session_id,
 				 "%s", cbuf_get(cb))) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     /* Send xml error back: first check error, then ok */
     if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
@@ -811,7 +875,7 @@ clicon_rpc_close_session(clicon_handle h)
 				 "<rpc xmlns=\"%s\" username=\"%s\" message-id=\"%u\"><close-session/></rpc>",
 				 NETCONF_BASE_NAMESPACE, username?username:"", 42)) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     if ((s = clicon_client_socket_get(h)) >= 0){
 	close(s);
@@ -855,7 +919,7 @@ clicon_rpc_kill_session(clicon_handle h,
 				 NETCONF_BASE_NAMESPACE,
 				 username?username:"", session_id)) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Kill session", NULL);
@@ -895,7 +959,7 @@ clicon_rpc_validate(clicon_handle h,
 				 NETCONF_BASE_NAMESPACE,
 				 username?username:"", db)) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, CLIXON_ERRSTR_VALIDATE_FAILED, NULL);
@@ -933,7 +997,7 @@ clicon_rpc_commit(clicon_handle h)
 				 NETCONF_BASE_NAMESPACE,
 				 username?username:"")) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, CLIXON_ERRSTR_COMMIT_FAILED, NULL);
@@ -971,7 +1035,7 @@ clicon_rpc_discard_changes(clicon_handle h)
 				 NETCONF_BASE_NAMESPACE,
 				 username?username:"")) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Discard changes", NULL);
@@ -1022,7 +1086,7 @@ clicon_rpc_create_subscription(clicon_handle    h,
 				 EVENT_RFC5277_NAMESPACE,
 				 stream?stream:"", filter?filter:"")) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, s0) < 0)
+    if (clicon_rpc_msg_persistent(h, msg, &xret, s0) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Create subscription", NULL);
@@ -1064,7 +1128,7 @@ clicon_rpc_debug(clicon_handle h,
 				 CLIXON_LIB_NS,
 				 level)) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Debug", NULL);
@@ -1110,7 +1174,7 @@ clicon_hello_req(clicon_handle h,
 				 username?username:"",
 				 NETCONF_BASE_NAMESPACE)) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Hello", NULL);
