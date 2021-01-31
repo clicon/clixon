@@ -66,18 +66,19 @@ EOF
 	err "$expect1" "$ret"
     fi
 
+#    >&2 echo "ret:$ret" # debug
+    
     expect2="</pid></rpc-reply>]]>]]>"
     match=$(echo "$ret" | grep --null -Go "$expect2")
     if [ -z "$match" ]; then
 	err "$expect2" "$ret"
     fi
-    
     new "check rpc $operation get pid"
     pid=$(echo "$ret" | awk -F'[<>]' '{print $5}')
+    >&2 echo "pid:$pid" # debug
     if [ -z "$pid" ]; then
 	err "Running process" "$ret"
     fi
-    
     new "check restconf retvalue"
     if [ $expectret -eq 0 ]; then
 	if [ $pid -ne 0 ]; then
@@ -89,7 +90,7 @@ EOF
 	fi
     fi
 
-    >&2 echo "pid:$pid" # debug
+
     echo $pid # cant use return that only uses 0-255
 }
 
@@ -123,27 +124,27 @@ fi
 
 # Get pid of running process and check return xml
 new "Get rpc status"
-pid0=$(testrpc status 1)
-if [ $? -ne 0 ]; then exit -1; fi
+pid0=$(testrpc status 1) # Save pid0
+if [ $? -ne 0 ]; then echo "$pid0";exit -1; fi
 
 new "check restconf process running using ps pid0:$pid0"
-ps=$(ps -hp $pid0)
+ps=$(ps -hp $pid0) 
 
 if [ -z "$ps" ]; then
     err "A restconf running"
 fi
 
 new "stop restconf RPC"
-pid1=$(testrpc stop 0)
-if [ $? -ne 0 ]; then exit -1; fi
+pid=$(testrpc stop 0)
+if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
 new "Get rpc status stopped"
-pid2=$(testrpc status 0)
-if [ $? -ne 0 ]; then exit -1; fi
+pid=$(testrpc status 0)
+if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
 new "Start rpc again"
-pid3=$(testrpc start 1)
-if [ $? -ne 0 ]; then exit -1; fi
+pid3=$(testrpc start 1) # Save pid3
+if [ $? -ne 0 ]; then echo "$pid3";exit -1; fi
 
 new "check restconf process running using ps"
 ps=$(ps -hp $pid3)
@@ -159,20 +160,20 @@ new "kill restconf"
 stop_restconf_pre
 
 new "start restconf RPC"
-pid4=$(testrpc start 1)
-if [ $? -ne 0 ]; then exit -1; fi
+pid=$(testrpc start 1)
+if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
 new "check status RPC on"
-pid5=$(testrpc status 1)
-if [ $? -ne 0 ]; then exit -1; fi
+pid5=$(testrpc status 1) # Save pid5
+if [ $? -ne 0 ]; then echo "$pid5";exit -1; fi
 
 new "restart restconf RPC"
-pid6=$(testrpc restart 1)
-if [ $? -ne 0 ]; then exit -1; fi
+pid=$(testrpc restart 1)
+if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
 new "Get restconf status rpc"
-pid7=$(testrpc status 1)
-if [ $? -ne 0 ]; then exit -1; fi
+pid7=$(testrpc status 1) # Save pid7
+if [ $? -ne 0 ]; then echo "$pid7";exit -1; fi
 
 if [ $pid5 -eq $pid7 ]; then
     err "A different pid" "$pid7"
@@ -199,9 +200,42 @@ if [ $BE -ne 0 ]; then
     fi
     # kill backend
     stop_backend -f $cfg
- fi
+fi
 
-# So far, no restconf config enable flag has been true. Now change enable flag.
+# Restconf is enabled and restconf was running but was killed by stop ^.
+# Start backend with -s none should start restconf too via ca_reset rule
+
+new "Restart backend -s none"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -z -f $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s none -f $cfg"
+    start_backend -s none -f $cfg
+
+    new "waiting"
+    wait_backend
+fi
+
+new "Get restconf (running) after restart"
+pid=$(testrpc status 1)
+if [ $? -ne 0 ]; then echo "$pid"; exit -1; fi
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+fi
+#--------------------------
+
+# So far, restconf config enable flag has been true. Now change enable flag.
 
 new "ENABLE false"
 # Second basic operation with restconf enable is false
@@ -232,15 +266,15 @@ fi
 
 new "check status RPC off"
 pid=$(testrpc status 0)
-if [ $? -ne 0 ]; then exit -1; fi
+if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
 new "start restconf RPC"
 pid=$(testrpc start 0)
-if [ $? -ne 0 ]; then exit -1; fi
+if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
 new "check status RPC off"
 pid=$(testrpc status 0)
-if [ $? -ne 0 ]; then exit -1; fi
+if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
 new "Enable restconf"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config><restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable></restconf></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -250,7 +284,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "
 
 new "check status RPC on"
 pid=$(testrpc status 1)
-if [ $? -ne 0 ]; then exit -1; fi
+if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
 new "Disable restconf"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config><restconf xmlns=\"http://clicon.org/restconf\"><enable>false</enable></restconf></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -260,7 +294,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "
 
 new "check status RPC off"
 pid=$(testrpc status 0)
-if [ $? -ne 0 ]; then exit -1; fi
+if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
 # Negative validation checks of clixon-restconf / socket
 
@@ -269,6 +303,20 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><ca
 
 new "netconf validate should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>SSL enabled but server-cert-path not set</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+# stop backend
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+fi
+
+#Start backend -s none should start 
 
 unset pid
 sleep $DEMWAIT # Lots of processes need to die before next test

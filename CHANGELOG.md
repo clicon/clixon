@@ -55,6 +55,7 @@ Users may have to change how they access the system
 
 ### Minor changes
 
+* Add ca_reset plugin also when backend starts as `-s none`
 * Corrected client session handling to make internal IPC socket persistent
   * Applies to cli/netconf/restconf/client-api code
   * Previous behaviour:

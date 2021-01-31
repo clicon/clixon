@@ -529,6 +529,24 @@ restconf_pseudo_process_commit(clicon_handle    h,
     return retval;
 }
 
+static int
+restconf_pseudo_reset(clicon_handle h,
+		      const char   *db)
+{
+    int    retval = -1;
+    cxobj *xt = NULL;
+
+    /* Get data as xml from db1 */
+    if (xmldb_get(h, (char*)db, NULL, "/restconf[enable='true']", &xt) < 0)
+	goto done;
+    if (xt && xml_child_nr(xt))
+	if (clixon_process_operation(h, RESTCONF_PROCESS, "start", 0, NULL) < 0)
+	    goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+			       
 /*! Register start/stop restconf RPC and create pseudo-plugin to monitor enable flag
  * @param[in]  h  Clixon handle
  */
@@ -541,6 +559,7 @@ restconf_pseudo_process_reg(clicon_handle h,
 
     if (clixon_pseudo_plugin(h, "restconf pseudo plugin", &cp) < 0)
 	goto done;
+    cp->cp_api.ca_reset = restconf_pseudo_reset;
     cp->cp_api.ca_trans_commit = restconf_pseudo_process_commit;
     cp->cp_api.ca_trans_validate = restconf_pseudo_process_validate;
 
@@ -1078,12 +1097,18 @@ main(int    argc,
     }
     /* Merge extra XML from file and reset function to running  
      */
-    if (status == STARTUP_OK && startup_mode != SM_NONE){
-	if ((ret = startup_extraxml(h, extraxml_file, cbret)) < 0)
-	    goto done;
-	if (ret2status(ret, &status) < 0)
-	    goto done;
-	/* if status = STARTUP_INVALID, cbret contains info */
+    if (status == STARTUP_OK){
+	if (startup_mode == SM_NONE){
+	    if (clixon_plugin_reset_all(h, "running") < 0)   
+		goto done;
+	}
+	else {
+	    if ((ret = startup_extraxml(h, extraxml_file, cbret)) < 0)
+		goto done;
+	    if (ret2status(ret, &status) < 0)
+		goto done;
+	    /* if status = STARTUP_INVALID, cbret contains info */
+	}
     }
 
     if (status != STARTUP_OK){
