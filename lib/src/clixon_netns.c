@@ -154,6 +154,7 @@ create_socket(struct sockaddr *sa,
 	*sock = s;
     retval = 0;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (retval != 0 && s != -1)
 	close(s);
     return retval;
@@ -178,9 +179,18 @@ fork_netns_socket(const char      *netns,
     int   sp[2] = {-1, -1};
     pid_t child;
     int   status = 0;
+    char  nspath[MAXPATHLEN]; /* Path to namespace file */
+    struct stat st;
 
+    clicon_debug(1, "%s %s", __FUNCTION__, netns);
     if (socketpair(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0, sp) < 0){
 	clicon_err(OE_UNIX, errno, "socketpair");
+	goto done;
+    }
+    /* Check namespace exists */
+    sprintf(nspath,"/var/run/netns/%s", netns);	
+    if (stat(nspath, &st) < 0){
+ 	clicon_err(OE_UNIX, errno, ": stat(%s)", nspath);
 	goto done;
     }
     if ((child = fork()) < 0) {
@@ -188,19 +198,17 @@ fork_netns_socket(const char      *netns,
 	goto done;
     }
     if (child == 0) {	/* Child */
-	char path[MAXPATHLEN];
 	int  fd;
 	int  s = -1;
 
 	close(sp[0]);
 	/* Switch to namespace */
-	sprintf(path,"/var/run/netns/%s", netns);	
-	if ((fd=open(path, O_RDONLY)) < 0) {
-	    clicon_err(OE_UNIX, errno, "open");
+	if ((fd=open(nspath, O_RDONLY)) < 0) {
+	    clicon_err(OE_UNIX, errno, "open(%s)", nspath);
 	    return -1;
 	}
 	if (setns(fd, CLONE_NEWNET) < 0){
-	    clicon_err(OE_UNIX, errno, "setns");
+	    clicon_err(OE_UNIX, errno, "setns(%s)%d", netns, errno);
 	    return -1;
 	}
 	close(fd);
@@ -220,8 +228,10 @@ fork_netns_socket(const char      *netns,
 	goto done;
     close(sp[0]);
     if(waitpid(child, &status, 0) == child)
-	retval = WEXITSTATUS(status);
+	; // retval = WEXITSTATUS(status); /* Dont know what to do with status */
+    retval = 0;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -254,5 +264,6 @@ clixon_netns_socket(const char      *netns,
  ok:
     retval = 0;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }

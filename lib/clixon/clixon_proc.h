@@ -55,5 +55,6 @@ int clixon_proc_background(char **argv, const char *netns, pid_t *pid);
 int clixon_process_register(clicon_handle h, const char *name, const char *netns, proc_cb_t *callback, char **argv, int argc);
 int clixon_process_delete_all(clicon_handle h);
 int clixon_process_operation(clicon_handle h, const char *name, char *op, const int wrapit, uint32_t *pid);
+int clixon_process_start_all(clicon_handle h);
 
 #endif  /* _CLIXON_PROC_H_ */

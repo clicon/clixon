@@ -529,24 +529,6 @@ restconf_pseudo_process_commit(clicon_handle    h,
     return retval;
 }
 
-static int
-restconf_pseudo_reset(clicon_handle h,
-		      const char   *db)
-{
-    int    retval = -1;
-    cxobj *xt = NULL;
-
-    /* Get data as xml from db1 */
-    if (xmldb_get(h, (char*)db, NULL, "/restconf[enable='true']", &xt) < 0)
-	goto done;
-    if (xt && xml_child_nr(xt))
-	if (clixon_process_operation(h, RESTCONF_PROCESS, "start", 0, NULL) < 0)
-	    goto done;
-    retval = 0;
- done:
-    return retval;
-}
-			       
 /*! Register start/stop restconf RPC and create pseudo-plugin to monitor enable flag
  * @param[in]  h  Clixon handle
  */
@@ -559,7 +541,6 @@ restconf_pseudo_process_reg(clicon_handle h,
 
     if (clixon_pseudo_plugin(h, "restconf pseudo plugin", &cp) < 0)
 	goto done;
-    cp->cp_api.ca_reset = restconf_pseudo_reset;
     cp->cp_api.ca_trans_commit = restconf_pseudo_process_commit;
     cp->cp_api.ca_trans_validate = restconf_pseudo_process_validate;
 
@@ -1054,6 +1035,8 @@ main(int    argc,
 	    goto done;
     case SM_NONE: /* Fall through *
 		   * Load plugins and call plugin_init() */
+	if (clixon_plugin_reset_all(h, "running") < 0)   
+	    goto done;
 	status = STARTUP_OK;
 	break;
     case SM_RUNNING: /* Use running as startup */
@@ -1099,7 +1082,10 @@ main(int    argc,
      */
     if (status == STARTUP_OK){
 	if (startup_mode == SM_NONE){
-	    if (clixon_plugin_reset_all(h, "running") < 0)   
+	    /* Special case for mode none: no commits are made therefore need to run
+	     * start all processes
+	     */
+	    if (clixon_process_start_all(h) < 0)
 		goto done;
 	}
 	else {

@@ -645,6 +645,7 @@ restconf_socket_init(const char   *netns0,
     size_t              sin_len;
     const char         *netns;
 
+    clicon_debug(1, "%s %s %s %s", __FUNCTION__, netns0, addrtype, addr);
     /* netns default -> NULL */
     if (netns0 != NULL && strcmp(netns0, "default")==0)
 	netns = NULL;
@@ -674,6 +675,7 @@ restconf_socket_init(const char   *netns0,
 	goto done;
     retval = 0;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -854,6 +856,7 @@ cx_evhtp_socket(clicon_handle    h,
     int          ss = -1;
     evhtp_t     *htp = NULL;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     /* This is socket create a new evhtp_t instance */
     if ((htp = evhtp_new(eh->eh_evbase, NULL)) == NULL){
 	clicon_err(OE_UNIX, errno, "evhtp_new");
@@ -911,6 +914,7 @@ cx_evhtp_socket(clicon_handle    h,
 	goto done;
     retval = 0;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -920,7 +924,7 @@ cx_evhtp_socket(clicon_handle    h,
  * @param[in]  nsc      Namespace context
  * @param[in]  eh       Evhtp handle
  * @retval     -1       Error
- * @retval     0        OK, but restconf disenabled, proceed with other if possible
+ * @retval     0        OK, but restconf disabled, proceed with other if possible
  * @retval     1        OK
  */
 static int
@@ -942,10 +946,13 @@ cx_evhtp_init(clicon_handle     h,
     cxobj       *x;
     int          i;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     if ((x = xpath_first(xrestconf, nsc, "enable")) != NULL &&
 	(enable = xml_body(x)) != NULL){
-	if (strcmp(enable, "false") == 0)
+	if (strcmp(enable, "false") == 0){
+	    clicon_debug(1, "%s restconf disabled", __FUNCTION__);
 	    goto disable;
+	}
     }
     /* If at least one socket has ssl then enable global ssl_enable */
     ssl_enable = xpath_first(xrestconf, nsc, "socket[ssl='true']") != NULL;
@@ -997,6 +1004,7 @@ cx_evhtp_init(clicon_handle     h,
     }
     retval = 1;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (vec)
 	free(vec);
     return retval;

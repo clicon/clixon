@@ -86,7 +86,7 @@ struct process_entry_t {
     char      *pe_netns;   /* Network namespace */
     char     **pe_argv;    /* argv with command as element 0 and NULL-terminated */
     pid_t      pe_pid;     /* Running process id (state) or 0 if dead */
-    proc_cb_t *pe_callback; /* Wrapper function */
+    proc_cb_t *pe_callback; /* Wrapper function, may be called from process_operation  */
 };
 
 /*
@@ -303,12 +303,14 @@ static process_entry_t *proc_entry_list = NULL;
 
 /*! Register an internal process
  *
- * @param[in]  h       Clixon handle
- * @param[in]  name    Process name
- * @param[in]  netns   Namespace netspace (or NULL)
- * @param[in]  argv    NULL-terminated vector of vectors 
- * @retval     0       OK
- * @retval    -1       Error
+ * @param[in]  h        Clixon handle
+ * @param[in]  name     Process name
+ * @param[in]  netns    Namespace netspace (or NULL)
+ * @param[in]  callback
+ * @param[in]  argv     NULL-terminated vector of vectors 
+ * @param[in]  argc     Length of argv
+ * @retval     0        OK
+ * @retval    -1        Error
  * @note name, netns, argv and its elements are all copied / re-alloced.
  */
 int
@@ -494,6 +496,40 @@ clixon_process_operation(clicon_handle h,
 		*pid = pe->pe_pid;
 	    break; 	    /* hit break here */
 	}
+	pe = NEXTQ(process_entry_t *, pe);
+    } while (pe != proc_entry_list);
+ ok:
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    return retval;
+}
+
+/*! Start all processes that are enabled
+ * @param[in]  h   Clixon handle
+ * Commit rules should have done this, but there are some cases such as backend -s none mode
+ * where commits are not made.
+ */
+int
+clixon_process_start_all(clicon_handle h)
+{
+    int              retval = -1;
+    process_entry_t *pe;
+    char            *op;
+
+    clicon_debug(1, "%s",__FUNCTION__);
+    if (proc_entry_list == NULL)
+	goto ok;
+    pe = proc_entry_list;
+    do {
+	op = "start";
+	/* Call wrapper function that eg changes op based on config */
+	if (pe->pe_callback != NULL)
+	    if (pe->pe_callback(h, pe, &op) < 0)
+		goto done;
+	if (strcmp(op, "start") == 0)
+	    if (clixon_process_operation_one("start", pe->pe_netns, pe->pe_argv, &pe->pe_pid) < 0)
+		goto done;
 	pe = NEXTQ(process_entry_t *, pe);
     } while (pe != proc_entry_list);
  ok:
