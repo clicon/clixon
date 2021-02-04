@@ -48,7 +48,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-testrun(){
+function testrun(){
     option=$1
 
     new "test params: -f $cfg -y $fyang $option"

@@ -124,7 +124,7 @@ EOF
 # Run netconf feature test
 # 1: syntax node
 # 2: disabled or enabled
-testrun()
+function testrun()
 {
     node=$1
     enabled=$2

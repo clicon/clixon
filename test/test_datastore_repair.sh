@@ -80,7 +80,7 @@ AFTER=$(cat <<EOF
 EOF
 )
 
-testrun(){
+function testrun(){
     new "test params: -f $cfg -- -U"
     # Bring your own backend
     if [ $BE -ne 0 ]; then

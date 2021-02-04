@@ -61,7 +61,7 @@ brokenvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><inte
 # The configs are identified by an interface called run, startup, extra.
 # Depending on startup mode (init, none, running, or startup)
 # expect different output of an initial get-config of running
-testrun(){
+function testrun(){
     mode=$1
     rdb=$2    # running db at start
     sdb=$3    # startup db at start
@@ -110,7 +110,7 @@ testrun(){
 
 
 # The backend should fail with 255 and all db:s should be unaffected
-testfail(){
+function testfail(){
     mode=$1
     rdb=$2    # running db at start
     sdb=$3    # startup db at start

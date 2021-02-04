@@ -379,7 +379,7 @@ EOF
 # 1: leaf tag in yang
 # 2: expected match(true) or fail(false)
 # 3: match string
-testrun(){
+function testrun(){
     leaf="$1"   # leaf tag under <c> with pattern to test
     mat="$2"     # expected match (1) or fail (0)
     str0="$3"    # content string (to match against)

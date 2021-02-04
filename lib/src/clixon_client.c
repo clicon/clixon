@@ -240,8 +240,8 @@ clixon_client_connect(clicon_handle      h,
 	if ((netconf_bin = getenv("CLIXON_NETCONF_BIN")) == NULL)
 	    netconf_bin = CLIXON_NETCONF_BIN;
 	if (stat(netconf_bin, &st) < 0){
-	    clicon_err(OE_NETCONF, 0, "netconf binary %s: %s. Set with CLIXON_NETCONF_BIN=", 
-		       netconf_bin, strerror(errno));
+	    clicon_err(OE_NETCONF, errno, "netconf binary %s. Set with CLIXON_NETCONF_BIN=", 
+		       netconf_bin);
 	    goto err;
 	}
 	argv[i++] = netconf_bin;

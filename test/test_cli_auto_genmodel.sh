@@ -117,7 +117,7 @@ fi
 # then deleting it, and reloading it
 # 1. mode - either VARS Keywords on non-key variables: a <x> y <y> or
 #                  ALL  Keywords on all variables: a x <x> y <y>
-testrun()
+function testrun()
 {
     mode=$1
     if [ $mode = ALL ]; then

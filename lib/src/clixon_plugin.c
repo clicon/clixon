@@ -702,7 +702,7 @@ rpc_callback_register(clicon_handle  h,
 	goto done;
     }
     if ((rc = malloc(sizeof(rpc_callback_t))) == NULL) {
-	clicon_err(OE_DB, errno, "malloc: %s", strerror(errno));
+	clicon_err(OE_DB, errno, "malloc");
 	goto done;
     }
     memset(rc, 0, sizeof(*rc));
@@ -829,7 +829,7 @@ upgrade_callback_reg_fn(clicon_handle     h,
     upgrade_callback_t *uc;
 
     if ((uc = malloc(sizeof(upgrade_callback_t))) == NULL) {
-	clicon_err(OE_DB, errno, "malloc: %s", strerror(errno));
+	clicon_err(OE_DB, errno, "malloc");
 	goto done;
     }
     memset(uc, 0, sizeof(*uc));

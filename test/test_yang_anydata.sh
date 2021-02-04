@@ -103,7 +103,7 @@ STATE1='<sa xmlns="urn:example:any"><sb><k>22</k><u5>55</u5></sb><u4><u5>a strin
 # Args:
 # 1: bool: startup (or not)
 # 2: bool: treat unknown as anydata (or not)
-testrun()
+function testrun()
 {
     startup=$1
     unknown=$2

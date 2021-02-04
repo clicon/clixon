@@ -818,8 +818,7 @@ load_config_file(clicon_handle h,
     }
     filename = cv_string_get(cv);
     if (stat(filename, &st) < 0){
- 	clicon_err(OE_UNIX, 0, "load_config: stat(%s): %s", 
-		   filename, strerror(errno));
+ 	clicon_err(OE_UNIX, errno, "load_config: stat(%s)", filename);
 	goto done;
     }
     /* Open and parse local file into xml */
@@ -1338,3 +1337,4 @@ cli_help(clicon_handle h, cvec *vars, cvec *argv)
     pt = cligen_ph_active_get(ch);
     return cligen_help(ch, stdout, pt);
 }
+

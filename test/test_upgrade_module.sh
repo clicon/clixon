@@ -75,7 +75,7 @@ EOF
 # Create 5 startup files 1-5 according to the 5 cases above (columns in the matrix)
 # Argument:
 # 1: payload, eg whats in the config apart from modstate
-createstartups()
+function createstartups()
 {
     payload=$1
 
@@ -150,7 +150,7 @@ EOF
 # Check statements in log
 # arg1: a statement to look for
 # arg2: expected line number
-checklog(){
+function checklog(){
     s=$1 # statement
     l0=$2 # linenr
     new "Check $s in log on line $l0"
@@ -178,7 +178,7 @@ checklog(){
 
 # Check statements are not in log
 # arg1: a statement to look for
-checknolog(){
+function checknolog(){
     s=$1 # statement
     new "Check $s not in log"
 #    echo "grep -n "$s" $log"
@@ -200,7 +200,7 @@ checknolog(){
 # 2: v: verb: true or false. The next statement should be there or not
 # 3: what to look for in log (if v=true it should be there, if v=false it should not be there)
 # 4: Linenr in log
-testrun(){
+function testrun(){
     i=$1
     flag=$2
     match=$3
@@ -248,7 +248,7 @@ testrun(){
 # Arguments:
 # 1 : payload with loaded YANG
 # 2 : payload without loaded YANG
-testall()
+function testall()
 {
     payload1=$1
     payload2=$2

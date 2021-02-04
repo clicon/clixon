@@ -70,7 +70,7 @@ cat <<EOF > $fyang
 EOF
 
 # No args
-testrun(){
+function testrun(){
     # Initial data (default y not given)
     XML='<a xmlns="urn:example:default"><b><c>0</c></b></a>'
 

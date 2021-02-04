@@ -122,7 +122,7 @@ clicon_hash_init(void)
   clicon_hash_t *hash;
 
   if ((hash = (clicon_hash_t *)malloc(sizeof(clicon_hash_t) * HASH_SIZE)) == NULL){
-      clicon_err(OE_UNIX, errno, "malloc: %s", strerror(errno));
+      clicon_err(OE_UNIX, errno, "malloc");
       return NULL;
   }
   memset(hash, 0, sizeof(clicon_hash_t)*HASH_SIZE);
@@ -240,14 +240,14 @@ clicon_hash_add(clicon_hash_t *hash,
     h = clicon_hash_lookup(hash, key);
     if (h == NULL) {
 	if ((new = (clicon_hash_t)malloc(sizeof(*new))) == NULL){
-	    clicon_err(OE_UNIX, errno, "malloc: %s", strerror(errno));
+	    clicon_err(OE_UNIX, errno, "malloc");
 	    goto catch;
 	}
 	memset(new, 0, sizeof(*new));
 	
 	new->h_key = strdup(key);
 	if (new->h_key == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup: %s", strerror(errno));
+	    clicon_err(OE_UNIX, errno, "strdup");
 	    goto catch;
 	}
 	
@@ -258,7 +258,7 @@ clicon_hash_add(clicon_hash_t *hash,
 	/* Make copy of value. aligned */
 	newval = malloc(align4(vlen+3)); 
 	if (newval == NULL){
-	    clicon_err(OE_UNIX, errno, "malloc: %s", strerror(errno));
+	    clicon_err(OE_UNIX, errno, "malloc");
 	    goto catch;
 	}
 	memcpy(newval, val, vlen);
@@ -349,7 +349,7 @@ clicon_hash_keys(clicon_hash_t *hash,
 		break;
 	    tmp = realloc(keys, ((*nkeys)+1) * sizeof(char *));
 	    if (tmp == NULL){
-		clicon_err(OE_UNIX, errno, "realloc: %s", strerror(errno));
+		clicon_err(OE_UNIX, errno, "realloc");
 		goto catch;
 	    }
 	    keys = tmp;

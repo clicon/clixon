@@ -22,7 +22,7 @@ fyang=$dir/socket.yang
 # 1: UNIX|IPv4|IPv6
 # 2: unix file or ipv4 address or ipv6 address
 # 3: session-id
-testrun(){
+function testrun(){
     family=$1
     sock=$2
     id=$3

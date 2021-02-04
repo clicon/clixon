@@ -58,7 +58,7 @@ EOF
 # Check statements in log
 # arg1: a statement to look for
 # arg2: expected line number
-checklog(){
+function checklog(){
     s=$1 # statement
     l0=$2 # linenr
     new "Check $s in log"

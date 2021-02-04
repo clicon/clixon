@@ -221,7 +221,7 @@ fi
 # error and exit,
 # arg1: expected
 # arg2: errmsg[optional]
-err(){
+function err(){
   echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
       echo "Expected: $1"
@@ -240,7 +240,7 @@ err(){
 }
 
 # Test is previous test had valgrind errors if so quit
-checkvalgrind(){
+function checkvalgrind(){
     if [ -f $valgrindfile ]; then
 	res=$(cat $valgrindfile | grep -e "Invalid" |awk '{print  $4}' | grep -v '^0$')
 	if [ -n "$res" ]; then
@@ -260,7 +260,7 @@ checkvalgrind(){
 
 # Start backend with all varargs.
 # If valgrindtest == 2, start valgrind
-start_backend(){
+function start_backend(){
     if [ $valgrindtest -eq 2 ]; then
 	# Start in background since daemon version creates two traces: parent,
 	# child. If background then only the single relevant.
@@ -273,7 +273,7 @@ start_backend(){
     fi
 }
 
-stop_backend(){
+function stop_backend(){
     sudo clixon_backend -z $*
     if [ $? -ne 0 ]; then
 	err "kill backend"
@@ -286,7 +286,7 @@ stop_backend(){
 }
 
 # Wait for restconf to stop sending  502 Bad Gateway
-wait_backend(){
+function wait_backend(){
     reply=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101"><ping xmlns="http://clicon.org/lib"/></rpc>]]>]]>' | $clixon_netconf -qef $cfg 2> /dev/null) 
     let i=0;
     while [[ $reply != "<rpc-reply"* ]]; do
@@ -304,7 +304,7 @@ wait_backend(){
 
 # Start restconf daemon
 # @see wait_restconf
-start_restconf(){
+function start_restconf(){
     # Start in background 
     echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $*"
     sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $* &
@@ -314,7 +314,7 @@ start_restconf(){
 }
 
 # Stop restconf daemon before test
-stop_restconf_pre(){
+function stop_restconf_pre(){
     sudo pkill -f clixon_restconf
 }
 
@@ -322,7 +322,7 @@ stop_restconf_pre(){
 # Two caveats in pkill:
 # 1) Dont use $clixon_restconf (dont work in valgrind)
 # 2) Dont use -u $WWWUSER since clixon_restconf may drop privileges.
-stop_restconf(){
+function stop_restconf(){
     #    sudo pkill -u $wwwuser -f clixon_restconf # Dont use $clixon_restoconf doesnt work in valgrind
     sudo pkill -f clixon_restconf
     if [ $valgrindtest -eq 3 ]; then 
@@ -335,7 +335,7 @@ stop_restconf(){
 # @see start_restconf
 # Reasons for not working: if you run evhtp is nginx running?
 # @note assumes port=80 if RCPROTO=http and port=443 if RCPROTO=https
-wait_restconf(){
+function wait_restconf(){
 # echo "curl $CURLOPTS $* $RCPROTO://localhost/restconf"
     hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf) 2> /dev/null
 #    echo "hdr:\"$hdr\""
@@ -355,7 +355,7 @@ wait_restconf(){
     fi
 }
 
-endtest()
+function endtest()
 {
     if [ $valgrindtest -eq 1 ]; then 
 	checkvalgrind
@@ -363,7 +363,7 @@ endtest()
 }
 
 # Increment test number and print a nice string
-new(){
+function new(){
     endtest # finalize previous test
     testnr=`expr $testnr + 1`
     testi=`expr $testi + 1`
@@ -381,7 +381,7 @@ new(){
 # Example:
 # expectpart "$(a-shell-cmd arg)" 0 'expected match 1' 'expected match 2' --not-- 'not expected 1'
 # @note need to escape \[\]
-expectpart(){
+function expectpart(){
   r=$?
   ret=$1
   retval=$2
@@ -435,7 +435,7 @@ expectpart(){
 # - stdin input
 # - expected stdout outcome
 # Use this if you want regex eg  ^foo$
-expecteof(){
+function expecteof(){
   cmd=$1
   retval=$2
   input=$3
@@ -482,7 +482,7 @@ EOF
 # - expected command return value (0 if OK)
 # - stdin input
 # - expected stdout outcome
-expecteofx(){
+function expecteofx(){
   cmd=$1
   retval=$2
   input=$3
@@ -528,7 +528,7 @@ EOF
 # - expected command return value (0 if OK)
 # - stdin input
 # - expected stdout outcome
-expecteofeq(){
+function expecteofeq(){
   cmd=$1
   retval=$2
   input=$3
@@ -567,7 +567,7 @@ EOF
 # - Command
 # - Filename to pipe to stdin 
 # - expected stdout outcome
-expecteof_file(){
+function expecteof_file(){
   cmd=$1
   retval=$2
   file=$3
@@ -601,7 +601,7 @@ expecteof_file(){
 # - not expected stdout outcome*
 #
 # XXX do expectwait like expectpart with multiple matches
-expectwait(){
+function expectwait(){
   cmd=$1
   input=$2
   expect=$3
@@ -632,7 +632,7 @@ expectwait(){
   fi
 }
 
-expectmatch(){
+function expectmatch(){
     ret=$1
     r=$2
     expret=$3

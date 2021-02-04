@@ -203,7 +203,6 @@ clixon_proc_socket_close(pid_t pid,
  * @param[out] pid
  * @retval     0     OK
  * @retval     -1    Error.
- * @note SIGCHLD is set to IGN here. Maybe it should be done in main?
  */
 int
 clixon_proc_background(char       **argv,
@@ -280,9 +279,6 @@ clixon_proc_background(char       **argv,
  done:
     sigprocmask(SIG_SETMASK, &oset, NULL);
     set_signal(SIGINT, oldhandler, NULL);
-    /* Ensure reap proc child in same session */
-    if (set_signal(SIGCHLD, SIG_IGN, NULL) < 0)
-	goto quit;
     *pid0 = child;
     retval = 0;
  quit:

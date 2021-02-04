@@ -13,6 +13,11 @@ if [ "${WITH_RESTCONF}" != "evhtp" ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
+# Skip if valgrind restconf (actually valgrind version < 3.16 27 May 2020)
+if [ $valgrindtest -eq 3 ]; then
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
+fi
+
 APPNAME=example
 
 cfg=$dir/conf.xml

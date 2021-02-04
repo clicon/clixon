@@ -156,7 +156,7 @@ cat <<EOF > $cfg
 EOF
 
 # Run The test, ssl config is in local config
-testrun()
+function testrun()
 {
     cat <<EOF > $dir/startup_db
     <config>

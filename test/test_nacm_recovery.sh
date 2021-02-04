@@ -51,7 +51,7 @@ DEFAULT='<nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm"><enable-nacm
 # recovery: recovery user
 # getp:     true: get works; false: get does not work
 # putp:     true: expected to work; false: not work
-testrun()
+function testrun()
 {
     cred=$1
     realuser=$2

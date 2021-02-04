@@ -144,7 +144,13 @@ typedef int (plgextension_t)(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
  */
 typedef int (plgauth_t)(clicon_handle, void *);
 
-typedef int (plgreset_t)(clicon_handle h, const char *db); /* Reset system status */
+/*! Reset system status 
+ * @param[in]  h   Clicon handle
+ * @param[in]  db  Database name (eg "running")
+ * @retval    -1   Fatal error
+ * @retval     0   OK
+*/
+typedef int (plgreset_t)(clicon_handle h, const char *db); 
 
 /* Plugin statedata
  * @param[in]  Clicon handle

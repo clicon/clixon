@@ -117,7 +117,7 @@ EOF
 # Arguments
 # - expected config
 # - expected state
-testrun()
+function testrun()
 {
     config=$1
     state=$2

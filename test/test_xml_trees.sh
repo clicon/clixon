@@ -56,7 +56,7 @@ EOF
 # 4: xpath
 # 5: retval
 # 6: result
-testrun(){
+function testrun(){
     op=$1
     x0=$2
     x1=$3

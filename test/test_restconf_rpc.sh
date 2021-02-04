@@ -44,7 +44,7 @@ EOF
 # Args:
 # 1: operation
 # 2: expectret  0: means expect pi 0 as return, else something else
-testrpc()
+function testrpc()
 {
     operation=$1
     expectret=$2

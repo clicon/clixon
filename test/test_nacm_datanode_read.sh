@@ -164,7 +164,7 @@ EOF
 # - read other in same module
 # - read table
 # - read parameter
-testrun(){
+function testrun(){
     readdefault=$1
     module=$2
     table=$3

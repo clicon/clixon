@@ -40,7 +40,7 @@ EOF
 # 3: expected user: Expected user after drop (or no drop then startuser)
 # 4: privileged mode (none, drop_perm, drop_temp)
 # 5: expect error: 0 or 1
-testrun(){
+function testrun(){
     startuser=$1
     beuser=$2
     expectuser=$3

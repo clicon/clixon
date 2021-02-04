@@ -64,7 +64,7 @@ EOF
 # Test function
 # Arguments:
 # 1: nr   size of large list
-testrun(){
+function testrun(){
     nr=$1
 
     new "test params: -f $cfg"

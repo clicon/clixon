@@ -142,7 +142,7 @@ EOF
 # - read
 # - update
 # - delete
-testrun(){
+function testrun(){
     writedefault=$1
     paramaccess=$2
     paramaction=$3

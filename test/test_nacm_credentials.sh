@@ -103,7 +103,7 @@ EOF
 # - socket family
 # - socket file/addr
 # - precommand /(eg sudo to raise to root)
-testrun(){
+function testrun(){
     mode=$1
     username=$2
     family=$3

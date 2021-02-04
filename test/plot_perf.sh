@@ -89,7 +89,7 @@ EOF
 
 # Generate file with n entries
 # argument: <n> <proto>
-genfile(){
+function genfile(){
     if [ $2 = netconf ]; then
 	echo -n "<rpc><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">" > $fxml
 	for (( i=0; i<$1; i++ )); do  
@@ -114,7 +114,7 @@ genfile(){
 #   netconf, restconf
 # where op is one of:
 #   get put delete commit
-runnet(){
+function runnet(){
     op=$1
     nr=$2 # Number of entries in DB (keep diff from n due to shell dynamic binding)
     reqs=$3
@@ -165,7 +165,7 @@ done | $clixon_netconf -qf $cfg -y $fyang; } 2>&1 | awk '/real/ {print $2}' | tr
 #   netconf, restconf
 # where op is one of:
 #   get put delete 
-runrest(){
+function runrest(){
     op=$1
     nr=$2 # Number of entries in DB
     reqs=$3
@@ -210,12 +210,12 @@ runrest(){
 }
 
 
-commit(){
+function commit(){
     # commit to running
     expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$"
 }
 
-reset(){
+function reset(){
     # delete all in candidate
     expecteof "$clixon_netconf -qf $cfg -y $fyang" 0 "<rpc><edit-config><target><candidate/></target><default-operation>none</default-operation><config operation='delete'/></edit-config></rpc>]]>]]>" '^<rpc-reply><ok/></rpc-reply>]]>]]>$'
     # commit to running
@@ -224,7 +224,7 @@ reset(){
 
 # Load n entries into candidate
 # Args: <n>
-load(){
+function load(){
     # Generate file ($fxml)
     genfile $1 netconf
     # Write it to backend in one chunk
@@ -236,7 +236,7 @@ load(){
 # args: <op> <protocol> <from> <step> <to> <reqs> <cand> <run>
 # <reqs>=0 means all in one go
 # <cand> <run> means a priori loaded into datastore
-plot(){
+function plot(){
     op=$1
     proto=$2
     from=$3
@@ -275,7 +275,7 @@ plot(){
 # Each operation do <reqs> times
 # args: <op> <protocol> <from> <step> <to> <reqs> <cand> <run>
 # <reqs>=0 means all in one go
-startup(){
+function startup(){
     from=$1
     step=$2
     to=$3

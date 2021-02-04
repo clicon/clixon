@@ -8,12 +8,16 @@
 
 # Run valgrindtest once, args:
 # what: (cli|netconf|restconf|backend)* # no args means all
-memonce(){
+function memonce(){
     what=$1
 
     valgrindfile=$(mktemp)
     echo "valgrindfile:$valgrindfile"
 
+    clixon_cli=
+    clixon_netconf=
+    clixon_backend=
+    clixon_restconf=
     case "$what" in
 	'cli')
 	    valgrindtest=1
@@ -32,7 +36,7 @@ memonce(){
 	    clixon_backend="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no --log-file=$valgrindfile clixon_backend"
 	    ;;
 	'restconf')
-	    valgrindtest=3 # This means backend valgrind test
+	    valgrindtest=3 # This means restconf valgrind test
 	    sudo chmod 660 $valgrindfile
 	    sudo chown www-data $valgrindfile
 	    : ${DEMWAIT:=15} # valgrind backend needs some time to get up 
@@ -66,7 +70,7 @@ memonce(){
 }
 
 # Print a line with ==== under
-println(){
+function println(){
     str=$1
     echo "$str"
     length=$(echo "$str" | wc -c)

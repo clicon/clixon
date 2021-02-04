@@ -133,7 +133,7 @@ if [ $BE -ne 0 ]; then
     wait_backend
 fi
 
-testparam()
+function testparam()
 {
 
     # Try hidden parameter list
@@ -149,7 +149,7 @@ EOF
 
 }
 
-testvalue()
+function testvalue()
 {
     # Try not hidden parameter list
     new "query table parameter hidden"

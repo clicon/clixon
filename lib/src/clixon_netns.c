@@ -208,7 +208,7 @@ fork_netns_socket(const char      *netns,
 	    return -1;
 	}
 	if (setns(fd, CLONE_NEWNET) < 0){
-	    clicon_err(OE_UNIX, errno, "setns(%s)%d", netns, errno);
+	    clicon_err(OE_UNIX, errno, "setns(%s)", netns);
 	    return -1;
 	}
 	close(fd);

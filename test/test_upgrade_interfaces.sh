@@ -250,7 +250,7 @@ cat <<EOF > $cfg
 EOF
 
 # Start from startup and upgrade, check running 
-testrun(){
+function testrun(){
     runxml=$1 
 
     # -u means trigger example upgrade

@@ -64,7 +64,7 @@ EOF
 # 6: expected return value of test2
 # 7: expected return value of test3
 # 8: startup mode: startup or init
-testrun(){
+function testrun(){
     enablenacm=$1
     readdefault=$2
     writedefault=$3

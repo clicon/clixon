@@ -137,7 +137,7 @@ clicon_file_dirent(const char     *dir,
 	   snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
 	   res = lstat(filename, &st);
 	   if (res != 0) {
-	       clicon_err(OE_UNIX, 0, "lstat: %s", strerror(errno));
+	       clicon_err(OE_UNIX, errno, "lstat");
 	       goto quit;
 	   }
 	   if ((type & st.st_mode) == 0)

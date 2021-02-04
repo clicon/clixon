@@ -50,7 +50,7 @@ EOF
 # Args:
 # 1: base tree
 # 2: sub tree
-testrun(){
+function testrun(){
     x0=$1
     xi="<c xmlns=\"urn:example:example\">$2</c>"
     xp=c

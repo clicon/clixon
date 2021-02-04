@@ -161,7 +161,7 @@ if [ $RC -ne 0 ]; then
 fi
 
 # Set nacm from scratch
-nacm(){
+function nacm(){
     new "auth set authentication config"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config operation='replace'>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 

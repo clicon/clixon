@@ -210,7 +210,7 @@ EOF
 # Type tests.
 # Parameters:
 # 1: dbcache: cache, nocache, cache-zerocopy
-testrun(){
+function testrun(){
     dbcache=$1
     new "test params: -f $cfg  # dbcache: $dbcache"
 

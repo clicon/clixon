@@ -192,7 +192,7 @@ EOF
 #             3: min value (for errmsg)
 #             4: max value (for errmsg)
 #             5: post (eg .000 - special for decimal64, others should have "") (NYI)
-testbuiltin(){
+function testbuiltin(){
     t=$1
     val=$2
     rmin=$3
@@ -218,7 +218,7 @@ testbuiltin(){
 #             2: val OK
 #             3: eval Invalid value
 #             4: post (eg .000 - special for decimal64, others should have "")
-testrange(){
+function testrange(){
     t=$1
     val=$2
     eval=$3

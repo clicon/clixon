@@ -106,7 +106,7 @@ fi
 # Restconf test routine with arguments:
 # 1. proto:http/https
 # 2: addr: 127.0.0.1/::1 # IPv4 or IPv6
-testrun()
+function testrun()
 {
     proto=$1  # http/https
     addr=$2   # 127.0.0.1/::1
