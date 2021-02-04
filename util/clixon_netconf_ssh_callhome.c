@@ -54,10 +54,16 @@
 
 Example sshd-config (-c option):n
   Port 2592
-  UsePrivilegeSeparation no
   TCPKeepAlive yes
   AuthorizedKeysFile ~.ssh/authorized_keys
   Subsystem netconf /usr/local/bin/clixon_netconf
+
+
+ssh -s -v -o ProxyUseFdpass=yes -o ProxyCommand="clixon_netconf_ssh_callhome_client -a 127.0.0.1" . netconf
+sudo clixon_netconf_ssh_callhome -a 127.0.0.1 -c /var/tmp/./test_netconf_ssh_callhome.sh/conf_yang.xml
+
+ssh -s -v -o ProxyUseFdpass=yes -o ProxyCommand='/home/olof/src/clixon/util/clixon_netconf_ssh_callhome_client -a 0.0.0.0' -l olof . netconf
+sudo ./clixon_netconf_ssh_callhome -a 127.0.0.1 -c ./sshdcfg
  */
 
 #include <stdio.h>
@@ -71,7 +77,7 @@ Example sshd-config (-c option):n
 
 #define NETCONF_CH_SSH 4334
 #define SSHDBIN_DEFAULT "/usr/sbin/sshd"
-#define UTIL_OPTS "hD:f:a:p:s:c:"
+#define UTIL_OPTS "hD:f:a:p:s:c:C:"
 
 static int
 callhome_connect(struct sockaddr *sa,
@@ -99,12 +105,17 @@ callhome_connect(struct sockaddr *sa,
 static int
 exec_sshd(int   s,
 	  char *sshdbin,
-	  char *configfile)
+	  char *sshdconfigfile,
+    	  char *clixonconfigfile,
+	  int   dbg)
 {
     int    retval = -1;
     char **argv = NULL;
     int    i;
     int    nr;
+    char  *optstr = NULL;
+    size_t len;
+    const char *formatstr = "Subsystem netconf /usr/local/bin/clixon_netconf -f %s";
 
     if (s < 0){
 	errno = EINVAL;
@@ -116,29 +127,52 @@ exec_sshd(int   s,
 	perror("sshdbin");
 	goto done;
     }
-    if (configfile == NULL){
+    if (sshdconfigfile == NULL){
 	errno = EINVAL;
-	perror("configfile");
+	perror("sshdconfigfile");
 	goto done;
     }
-    nr = 7; // XXX
+    if (clixonconfigfile == NULL){
+	errno = EINVAL;
+	perror("clixonconfigfile");
+	goto done;
+    }
+    /* Construct subsystem string */
+    len = strlen(formatstr)+strlen(clixonconfigfile)+1;
+    if ((optstr = malloc(len)) == NULL){
+	perror("malloc");
+	goto done;
+    }
+    snprintf(optstr, len, formatstr, clixonconfigfile);
+
+    nr = 9; /* See below */
+    if (dbg)
+	nr++;
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
 	perror("calloc");
 	goto done;
     }
+
     i = 0;
+    /* Note if you change here, also change in nr = above */
     argv[i++] = sshdbin;
     argv[i++] = "-i"; /* Specifies that sshd is being run from inetd(8) */
-    argv[i++] = "-d";
-    argv[i++] = "-e";
-    argv[i++] = "-f";
-    argv[i++] = configfile;
+    argv[i++] = "-D";  /* Foreground ? */
+    if (dbg)
+	argv[i++] = "-d"; /* Debug mode */
+    argv[i++] = "-e"; /* write debug logs to stderr */
+    argv[i++] = "-o"; /* option */
+    argv[i++] = optstr;
+    argv[i++] = "-f"; /* config file */
+    argv[i++] = sshdconfigfile;
     argv[i++] = NULL;
     assert(i==nr);
     if (setreuid(0, 0) < 0){
 	perror("setreuid");
 	goto done;
     }
+    close(0);
+    close(1);
     if (dup2(s, STDIN_FILENO) < 0){
 	perror("dup2");
 	return -1;
@@ -167,7 +201,8 @@ usage(char *argv0)
 	    "\t-f ipv4|ipv6 \tSocket address family(ipv4 default)\n"
 	    "\t-a <addrstr> \tIP address (eg 1.2.3.4) - mandatory\n"
 	    "\t-p <port>    \tPort (default 4334)\n"
-	    "\t-c <file>    \tSSHD config file - mandatory\n"
+	    "\t-c <file>    \tCLixon config file - (default /usr/local/etc/clixon.xml)\n"
+	    "\t-C <file>    \tSSHD config file - (default /dev/null)\n"
 	    "\t-s <sshd>    \tPath to sshd binary, default %s\n"
 	    ,
 	    argv0, SSHDBIN_DEFAULT);
@@ -186,11 +221,12 @@ main(int    argc,
     struct sockaddr_in6 sin6   = { 0 };
     struct sockaddr_in  sin    = { 0 };
     size_t              sin_len;
-    int                 debug = 0;
+    int                 dbg = 0;
     uint16_t            port = NETCONF_CH_SSH;
     int                 s = -1;
     char               *sshdbin = SSHDBIN_DEFAULT;
-    char               *configfile = NULL;
+    char               *sshdconfigfile = "/dev/null";
+    char               *clixonconfigfile = "/usr/local/etc/clixon.xml";
 
     optind = 1;
     opterr = 0;
@@ -200,7 +236,7 @@ main(int    argc,
 	    usage(argv[0]);
 	    break;
     	case 'D':
-	    debug++;
+	    dbg++;
 	    break;
 	case 'f':
 	    family = optarg;
@@ -211,8 +247,11 @@ main(int    argc,
 	case 'p':
 	    port = atoi(optarg);
 	    break;
+	case 'C':
+	    sshdconfigfile = optarg;
+	    break;
 	case 'c':
-	    configfile = optarg;
+	    clixonconfigfile = optarg;
 	    break;
 	case 's':
 	    sshdbin = optarg;
@@ -228,11 +267,6 @@ main(int    argc,
     }
     if (addr == NULL){
 	fprintf(stderr, "-a <addr> is NULL\n");
-	usage(argv[0]);
-	goto done;
-    }
-    if (configfile == NULL){
-	fprintf(stderr, "-c <file> is NULL\n");
 	usage(argv[0]);
 	goto done;
     }
@@ -256,13 +290,13 @@ main(int    argc,
     }
     if (callhome_connect(sa, sin_len, &s) < 0)
 	goto done;
-    if (exec_sshd(s, sshdbin, configfile) < 0)
+    /* For some reason this sshd returns -1 which is unclear why */
+    if (exec_sshd(s, sshdbin, sshdconfigfile, clixonconfigfile, dbg) < 0)
 	goto done;
+    /* Should not reach here */
     if (s >= 0)
 	close(s);
     retval = 0;
  done:
     return retval;
 }
-
-

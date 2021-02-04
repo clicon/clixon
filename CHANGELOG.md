@@ -31,7 +31,12 @@ Expected: February 2021
 
 ### New features
 
+* NETCONF Call Home Call Home RFC 8071
+  * Solution description using openssh and utility functions, no changes to core clixon
+  * Example: test/test_netconf_ssh_callhome.sh
+  * RESTCONF Call home not done
 * New clixon_client API for external access
+  * See [client api docs](https://clixon-docs.readthedocs.io/en/latest/client.html)
 
 ### C/CLI-API changes on existing features
 

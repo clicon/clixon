@@ -64,6 +64,8 @@ util/clixon_util_xml
 util/clixon_util_xml_mod
 util/clixon_util_xpath
 util/clixon_util_yang
+util/clixon_netconf_ssh_callhome
+util/clixon_netconf_ssh_callhome_client
 
 test/config.sh
 test/site.sh

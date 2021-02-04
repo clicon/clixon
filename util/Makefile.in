@@ -90,6 +90,8 @@ ifdef with_restconf
 APPSRC   += clixon_util_stream.c # Needs curl
 endif
 APPSRC   += clixon_util_socket.c
+APPSRC   += clixon_netconf_ssh_callhome.c
+APPSRC   += clixon_netconf_ssh_callhome_client.c
 #APPSRC   += clixon_util_ssl.c
 #APPSRC   += clixon_util_grpc.c
 
