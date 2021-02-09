@@ -34,6 +34,9 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 fyang=$dir/nacm-example.yang
 
+# Define default restconfig config: RESTCONFIG
+restconf_config user
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -155,8 +158,8 @@ if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
     stop_restconf_pre
 
-    new "start restconf daemon (-a is enable basic authentication)"
-    start_restconf -f $cfg -- -a
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
     new "waiting"
     wait_restconf
@@ -167,7 +170,6 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><ca
 
 new "commit it"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
-
 
 new "enable nacm"
 expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 204 No Content"
@@ -238,5 +240,8 @@ if [ -z "$pid" ]; then
 fi
 # kill backend
 stop_backend -f $cfg
+
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir 

@@ -382,13 +382,11 @@ api_stream(clicon_handle h,
     cvec          *pcvec = NULL; /* for rest api */
     cbuf          *cb = NULL;
     char          *indata;
-    int            authenticated = 0;
     int            pretty;
     restconf_media media_out = YANG_DATA_XML; /* XXX default */
     cbuf          *cbret = NULL;
-    cxobj         *xret = NULL;
-    cxobj         *xerr;
     int            s = -1;
+    int            ret;
 #ifdef STREAM_FORK
     int            pid;
     struct stream_child *sc;
@@ -430,26 +428,10 @@ api_stream(clicon_handle h,
     /* If present, check credentials. See "plugin_credentials" in plugin  
      * See RFC 8040 section 2.5
      */
-    if ((authenticated = clixon_plugin_auth_all(h, req)) < 0)
+    if ((ret = restconf_authentication_cb(h, req, pretty, media_out)) < 0)
 	goto done;
-    clicon_debug(1, "%s auth:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
-
-    /* If set but no user, we set a dummy user */
-    if (authenticated){
-	if (clicon_username_get(h) == NULL)
-	    clicon_username_set(h, "none");
-    }
-    else{
-	if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
-	    goto done;
-	if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	    if (api_return_err(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
+    if (ret == 0)
 	goto ok;
-    }
-    clicon_debug(1, "%s auth2:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
     if (restconf_stream(h, req, method, qvec, pretty, media_out, &s) < 0)
 	goto done;
     if (s != -1){
@@ -465,8 +447,6 @@ api_stream(clicon_handle h,
 		cbuf_free(cb);
 	    if (cbret)
 		cbuf_free(cbret);
-	    if (xret)
-		xml_free(xret);
 #endif /* STREAM_FORK */
 	    /* Listen to backend socket */
 	    if (clixon_event_reg_fd(s, 
@@ -523,7 +503,5 @@ api_stream(clicon_handle h,
 	cbuf_free(cb);
     if (cbret)
 	cbuf_free(cbret);
-    if (xret)
-	xml_free(xret);
     return retval;
 }

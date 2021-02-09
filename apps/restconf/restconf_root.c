@@ -374,15 +374,15 @@ api_operations(clicon_handle h,
 }
 
 /*! Process a /restconf root input, this is the root of the restconf processing
- * @param[in]  h     Clicon handle
- * @param[in]  req   Generic Www handle (can be part of clixon handle)
- * @param[in]  qvec  Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
+ * @param[in]  h         Clicon handle
+ * @param[in]  req       Generic Www handle (can be part of clixon handle)
+ * @param[in]  qvec      Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
  * @see api_root_restconf_exact for accessing /restconf/ exact
  */
 int
-api_root_restconf(clicon_handle h,
-		  void         *req,
-		  cvec         *qvec)
+api_root_restconf(clicon_handle        h,
+		  void                *req,
+		  cvec                *qvec)
 {
     int            retval = -1;
     char          *request_method = NULL; /* GET,.. */
@@ -396,9 +396,8 @@ api_root_restconf(clicon_handle h,
     char          *media_str = NULL;
     restconf_media media_out = YANG_DATA_JSON;
     char          *indata = NULL;
-    int            authenticated = 0;
-    cxobj         *xret = NULL;
-    cxobj         *xerr;
+    char          *username = NULL;
+    int            ret;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (req == NULL){
@@ -425,7 +424,6 @@ api_root_restconf(clicon_handle h,
 	    goto done;
 	}
     }
-
 
     clicon_debug(1, "%s ACCEPT: %s %s", __FUNCTION__, media_str, restconf_media_int2str(media_out));
 
@@ -464,26 +462,10 @@ api_root_restconf(clicon_handle h,
     /* If present, check credentials. See "plugin_credentials" in plugin  
      * See RFC 8040 section 2.5
      */
-    if ((authenticated = clixon_plugin_auth_all(h, req)) < 0)
+    if ((ret = restconf_authentication_cb(h, req, pretty, media_out)) < 0)
 	goto done;
-    clicon_debug(1, "%s auth:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
-
-    /* If set but no user, set a dummy user */
-    if (authenticated){
-	if (clicon_username_get(h) == NULL)
-	    clicon_username_set(h, "none");
-    }
-    else{
-	if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
-	    goto done;
-	if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	    if (api_return_err(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
+    if (ret == 0)
 	goto ok;
-    }
-    clicon_debug(1, "%s auth2:%d %s", __FUNCTION__, authenticated, clicon_username_get(h));
     if (strcmp(api_resource, "yang-library-version")==0){
 	if (api_yang_library_version(h, req, pretty, media_out) < 0)
 	    goto done;
@@ -538,14 +520,14 @@ api_root_restconf(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (username)
+	free(username);
     if (pcvec)
 	cvec_free(pcvec);
     if (pvec)
 	free(pvec);
     if (cb)
 	cbuf_free(cb);
-    if (xret)
-	xml_free(xret);
     return retval;
 }
 

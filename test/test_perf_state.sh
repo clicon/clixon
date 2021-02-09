@@ -29,6 +29,9 @@ fyang=$dir/$APPNAME.yang
 fconfig=$dir/large.xml
 fstate=$dir/state.xml
 
+# Define default restconfig config: RESTCONFIG
+restconf_config none
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -214,4 +217,6 @@ unset format
 unset perfnr
 unset perfreq
 
+# Set by restconf_config
+unset RESTCONFIG
 

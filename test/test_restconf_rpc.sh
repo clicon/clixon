@@ -16,6 +16,9 @@ APPNAME=example
 cfg=$dir/conf.xml
 startupdb=$dir/startup_db
 
+# Define default restconfig config: RESTCONFIG
+restconf_config none
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -323,6 +326,9 @@ sleep $DEMWAIT # Lots of processes need to die before next test
 
 new "endtest"
 endtest
+
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir
 

@@ -2,7 +2,6 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
@@ -32,22 +31,13 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
+  *
+  * Pseudo backend plugin for starting restconf daemon
+  */
 
- *
- */
+#ifndef _BACKEND_PLUGIN_RESTCONF_H_
+#define _BACKEND_PLUGIN_RESTCONF_H_
 
-#ifndef _RESTCONF_HANDLE_H_
-#define _RESTCONF_HANDLE_H_
+int backend_plugin_restconf_register(clicon_handle h, yang_stmt *yspec);
 
-/*
- * Prototypes 
- */
-clicon_handle restconf_handle_init(void);
-int           restconf_handle_exit(clicon_handle h);
-char         *restconf_param_get(clicon_handle h, const char *param);
-int           restconf_param_set(clicon_handle h, const char *param, char *val);
-int           restconf_param_del_all(clicon_handle h);
-clixon_auth_type_t restconf_auth_type_get(clicon_handle h);
-int           restconf_auth_type_set(clicon_handle h, clixon_auth_type_t type);
-
-#endif  /* _RESTCONF_HANDLE_H_ */
+#endif  /* _BACKEND_PLUGIN_RESTCONF_H_ */

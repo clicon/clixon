@@ -21,6 +21,9 @@ if [ ! -d $pdir ]; then
     mkdir $pdir
 fi
 
+# Define default restconfig config: RESTCONFIG
+restconf_config none
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -170,5 +173,8 @@ stop_backend -f $cfg
 
 # unset conditional parameters 
 unset format
+
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir

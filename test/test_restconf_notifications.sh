@@ -41,6 +41,9 @@ cfg=$dir/conf.xml
 fyang=$dir/stream.yang
 xml=$dir/xml.xml
 
+# Define default restconfig config: RESTCONFIG
+restconf_config none
+
 #  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -63,6 +66,7 @@ cat <<EOF > $cfg
   <CLICON_STREAM_PATH>streams</CLICON_STREAM_PATH>
   <CLICON_STREAM_URL>https://localhost</CLICON_STREAM_URL>
   <CLICON_STREAM_RETENTION>60</CLICON_STREAM_RETENTION>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -284,6 +288,9 @@ if [ $BE -ne 0 ]; then
 fi
 
 rm -rf $dir
+
+# Set by restconf_config
+unset RESTCONFIG
 
 # unset conditional parameters 
 unset clixon_util_stream

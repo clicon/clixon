@@ -13,6 +13,9 @@ fyang=$dir/nacm-example.yang
 # Which format to use as datastore format internally
 : ${format:=xml}
 
+# Define default restconfig config: RESTCONFIG
+restconf_config user
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -112,8 +115,8 @@ EOF
 	new "kill old restconf daemon"
 	stop_restconf_pre
 
-	new "start restconf daemon (-a is enable basic authentication)"
-	start_restconf -f $cfg -- -a
+	new "start restconf daemon"
+	start_restconf -f $cfg
 
 	new "wait restconf"
 	wait_restconf
@@ -233,6 +236,9 @@ done
 endtest
 
 rm -rf $dir
+
+# Set by restconf_config
+unset RESTCONFIG
 
 # unset conditional parameters 
 unset format

@@ -20,6 +20,9 @@ fyang=$dir/nacm-example.yang
 
 # cred:none, exact, except
 
+# Define default restconfig config: RESTCONFIG
+restconf_config user
+
 cat <<EOF > $fyang
 module nacm-example{
   yang-version 1.1;
@@ -103,8 +106,8 @@ EOF
 	new "kill old restconf daemon"
 	stop_restconf_pre
 
-	new "start restconf daemon (-a is enable basic authentication)"
-	start_restconf -f $cfg -- -a
+	new "start restconf daemon"
+	start_restconf -f $cfg
 
 	new "waiting"
 	wait_restconf
@@ -225,5 +228,8 @@ new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
 testrun $CRED $REALUSER $PSEUDO $RECOVERY false false
 
 endtest
+
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir

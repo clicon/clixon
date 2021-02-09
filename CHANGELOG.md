@@ -32,6 +32,7 @@ Expected: February 2021
 ### New features
 
 * NETCONF Call Home Call Home RFC 8071
+  * See [Netconf/ssh callhome](https://clixon-docs.readthedocs.io/en/latest/netconf.html#callhome)
   * Solution description using openssh and utility functions, no changes to core clixon
   * Example: test/test_netconf_ssh_callhome.sh
   * RESTCONF Call home not done
@@ -42,6 +43,14 @@ Expected: February 2021
 
 Developers may need to change their code
 
+* Restconf authentication callback (ca_auth) signature changed
+  * Not backward compatible: All uses of the ca-auth callback in restconf plugins must be changed
+  * New version is: `int ca_auth(h, req, auth_type, authp, userp)`
+    * where `auth_type` is the requested authentication-type (none, client-cert or user-defined)
+    * `authp` is the returned authentication flag
+    * `userp` is the returned associated authenticated user
+    * and the return value is three-valued: -1: Error, 0: ignored, 1: OK
+  * For more info see [clixon-docs](https://clixon-docs.readthedocs.io/en/latest/restconf.html)
 * rpc msg C API rearranged to separate socket/connect from connect
 * Added `cvv_i` output parameter to `api_path_fmt2api_path()` to see how many cvv entries were used.
 
@@ -50,6 +59,10 @@ Developers may need to change their code
 Users may have to change how they access the system
 
 * Handling empty netconf XML messages "]]>]]>" is changed from being accepted to return an error.
+* New clixon-restconf@2020-12-30.yang revision
+  * Added: debug field
+  * Added 'none' as default value for auth-type
+  * Changed http-auth-type enum from 'password' to 'user'
 * New clixon-lib@2020-12-30.yang revision
   * Changed: RPC process-control output parameter status to pid
 * New clixon-config@2020-12-30.yang revision
@@ -710,7 +723,7 @@ Patch release based on testing by Dave Cornejo, Netgate
 
 ### Summary
 
-The main improvement in this release concerns security in terms of priveleges and credentials of accessing the clixon backend. There is also stricter multi-namespace checks which primarily effects where augmented models are used.
+The main improvement in this release concerns security in terms of privileges and credentials of accessing the clixon backend. There is also stricter multi-namespace checks which primarily effects where augmented models are used.
 
 ### Major New features
 * The backend daemon can drop privileges after initialization to run as non-privileged user
@@ -718,7 +731,7 @@ The main improvement in this release concerns security in terms of priveleges an
     * use `-U <user>` clixon_backend command-line option to drop to `user`
   * Generic options are the following:
     * `CLICON_BACKEND_USER` drop of privileges to this user
-    * `CLICON_BACKEND_PRIVELEGES` can have the following values:
+    * `CLICON_BACKEND_PRIVILEGES` can have the following values:
       * `none` Make no drop/change in privileges. This is currently the default.
       * `drop_perm`  After initialization, drop privileges permanently
       * `drop_perm` After initialization, drop privileges temporarily (to a euid)
@@ -749,8 +762,8 @@ a="urn:example:a" xmlns:b="urn:example:b"/>`
 * New clixon-config@2019-09-11.yang revision
   * Added: CLICON_BACKEND_USER: Drop of privileges to this user, owner of backend socket (default: `clicon`)
     * Therefore new installation should now add a UNIX `clicon` user
-  * Added: CLICON_BACKEND_PRIVELEGES: If and how to drop privileges
-  * Added: CLICON_NACM_CREDENTIALS: If and how to check backend socket priveleges with NACM
+  * Added: CLICON_BACKEND_PRIVILEGES: If and how to drop privileges
+  * Added: CLICON_NACM_CREDENTIALS: If and how to check backend socket privileges with NACM
   * Added: CLICON_NACM_RECOVERY_USER: Name of NACM recovery user.
 * Restconf top-level operations GET root resource modified to comply with RFC 8040 Sec 3.1 
   * non-pretty print remove all spaces, eg `{"operations":{"clixon-example:client-rpc":[null]`

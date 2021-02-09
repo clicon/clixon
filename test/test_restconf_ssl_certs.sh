@@ -33,6 +33,8 @@ cacert=$certdir/ca_cert.pem
 
 users="andy guest" # generate certs for some users in nacm.sh
 
+xusers="limited"   # Set invalid cert
+
 # Whether to generate new keys or not (only if $dir is not removed)
 # Here dont generate keys if restconf started stand-alone (RC=0)
 : ${genkeys:=true}
@@ -95,7 +97,7 @@ if $genkeys; then
     . ./certs.sh
 
     # create client certs
-    for name in $users; do
+    for name in $users $xusers; do
 	cat<<EOF > $dir/$name.cnf
 [req]
 prompt = no
@@ -117,6 +119,10 @@ EOF
 	openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt
     done # client key
 
+    # invalid
+    for name in $xusers; do
+	openssl x509 -req -extfile $dir/$name.cnf -days 0 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt
+    done # invalid
 fi # genkeys
 
 # Write local config
@@ -145,6 +151,7 @@ cat <<EOF > $cfg
      <server-cert-path>$srvcert</server-cert-path>
      <server-key-path>$srvkey</server-key-path>
      <server-ca-cert-path>$cacert</server-ca-cert-path>
+     <!--debug>1</debug-->
      <socket>
         <namespace>default</namespace>
         <address>0.0.0.0</address>
@@ -181,8 +188,8 @@ EOF
     if [ $RC -ne 0 ]; then
 	new "kill old restconf daemon"
 	stop_restconf_pre
-	new "start restconf daemon -s -c  -- -s"
-	start_restconf -f $cfg -- -s
+	new "start restconf daemon -s -c"
+	start_restconf -f $cfg
     fi
 
     new "wait for restconf"
@@ -202,6 +209,18 @@ EOF
 
     new "admin get x 42"
     expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 200 OK" '{"example:x":42}'
+
+    # Negative tests
+    new "Unknown yyy no cert get x 42"
+    echo "dummy" > $certdir/yyy.key
+    echo "dummy" > $certdir/yyy.crt
+    expectpart "$(curl $CURLOPTS --key $certdir/yyy.key --cert $certdir/yyy.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 58 " could not load PEM client certificate"
+
+    new "Certificate required"
+    expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "55 56"
+
+    new "limited invalid cert"
+    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 56 "certificate expired"
 
     if [ $RC -ne 0 ]; then
 	new "Kill restconf daemon"
@@ -226,3 +245,5 @@ rm -rf $dir
 
 # unset conditional parameters
 unset RCPROTO
+
+endtest

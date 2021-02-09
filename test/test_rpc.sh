@@ -13,6 +13,9 @@ APPNAME=example
 
 cfg=$dir/conf.xml
 
+# Define default restconfig config: RESTCONFIG
+restconf_config none
+
 # Use yang in example
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -198,5 +201,8 @@ if [ -z "$pid" ]; then
 fi
 # kill backend
 stop_backend -f $cfg
+
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir

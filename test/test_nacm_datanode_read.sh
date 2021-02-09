@@ -25,6 +25,9 @@ cfg=$dir/conf_yang.xml
 fyang=$dir/nacm-example.yang
 fyang2=$dir/nacm-example2.yang
 
+# Define default restconfig config: RESTCONFIG
+restconf_config user
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -237,8 +240,8 @@ if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
     stop_restconf_pre
     
-    new "start restconf daemon (-a is enable basic authentication)"
-    start_restconf -f $cfg -- -a
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
     new "waiting"
     wait_restconf
@@ -296,5 +299,8 @@ if [ $BE -ne 0 ]; then     # Bring your own backend
     # kill backend
     stop_backend -f $cfg
 fi
+
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir

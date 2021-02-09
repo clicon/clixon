@@ -51,6 +51,7 @@
  * Types
  */
 
+    
 /*! Registered RPC callback function 
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      Request: <rpc><xn></rpc> 
@@ -92,9 +93,18 @@ typedef int (*clicon_upgrade_cb)(
     cbuf         *cbret
 );  
 
-/*
- * Prototypes
+/* Clixon authentication type
+ * @see http-auth-type in clixon-restconf.yang
+ * For now only used by restconf frontend
  */
+enum clixon_auth_type {
+    CLIXON_AUTH_NONE = 0,           /* Message is authenticated automatically, Do not call ca-auth callback */
+    CLIXON_AUTH_CLIENT_CERTIFICATE, /* TLS Client certification authentication */
+    CLIXON_AUTH_USER,               /* User-defined authentication according to ca-auth callback. 
+				       Such as "password" authentication */
+};
+typedef enum clixon_auth_type clixon_auth_type_t;
+
 /* Common plugin function names, function types and signatures. 
  * This plugin code is exytended by backend, cli, netconf, restconf plugins
  *   Cli     see cli_plugin.c
@@ -135,14 +145,41 @@ typedef int (plgextension_t)(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 /*! Called by restconf on each incoming request to check credentials and return username
  */
 
-/* Plugin authorization. Set username option (or not)
- * @param[in]  Clicon handle
- * @param[in]  void*, eg Fastcgihandle request restconf
- * @retval  -1 Fatal error
- * @retval   0 Credential not OK
- * @retval   1 Credential OK
+/*! Plugin callback for authenticating messages (for restconf)
+ *
+ * Given a message (its headers) and authentication type, determine if the message
+ * passes authentication.
+ *
+ * If the message is not authenticated, an error message is returned with tag: "access denied" and 
+ * HTTP error code 401 Unauthorized  - Client is not authenticated
+ *
+ * If the message is authenticated, a user is associated with the message. This user can be derived
+ * from the headers or mapped in an application-dependent way. This user is used internally in Clixon and
+ * sent via the IPC protocol to the backend where it may be used for NACM authorization.
+ *
+ * The auth-type parameter specifies how the authentication is made and what default value is:
+ *  none:        Message is authenticated. No callback is called, authenticated user is set to special user
+ *               "none". Typically assumes NACM is not enabled.
+ *  client-cert: Default: Set to authenticated and extract the username from the SSL_CN parameter
+ *               A callback can revise this behavior
+ *  user:        Default: Message is not authenticated (401 returned)
+ *               Typically done by basic auth, eg HTTP_AUTHORIZATION header, and verify password
+ * 
+ * If there are multiple callbacks, the first result which is not "ignore" is returned. This is to allow for
+ * different callbacks registering different classes, or grouping of authentication.
+ *
+ * @param[in]  h         Clicon handle
+ * @param[in]  req       Per-message request www handle to use with restconf_api.h
+ * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
+ * @param[out] authp     0: Credentials failed, no user set (401 returned). 1: Credentials OK and user set
+ * @param[out] userp     The associated user, malloced by plugin. Only if retval is 1/OK and authp=1, 
+ * @retval    -1         Fatal error
+ * @retval     0         Ignore, undecided, not handled, same as no callback
+ * @retval     1         OK, see auth parameter on result.
+ *
+ * @note user should be freed by caller
  */
-typedef int (plgauth_t)(clicon_handle, void *);
+typedef int (plgauth_t)(clicon_handle h, void *req, clixon_auth_type_t auth_type, int *authp, char **userp);
 
 /*! Reset system status 
  * @param[in]  h   Clicon handle
@@ -305,8 +342,7 @@ int clixon_plugin_start_all(clicon_handle h);
 int clixon_plugin_exit_one(clixon_plugin *cp, clicon_handle h);
 int clixon_plugin_exit_all(clicon_handle h);
 
-int clixon_plugin_auth_one(clixon_plugin *cp, clicon_handle h, void *arg);
-int clixon_plugin_auth_all(clicon_handle h, void *arg);
+int clixon_plugin_auth_all(clicon_handle h, void *req, clixon_auth_type_t auth_type, int *authp, char **userp);
 
 int clixon_plugin_extension_one(clixon_plugin *cp, clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 int clixon_plugin_extension_all(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
@@ -323,5 +359,9 @@ int rpc_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg);
 int upgrade_callback_reg_fn(clicon_handle h, clicon_upgrade_cb cb, const char *strfn, const char *ns, void *arg);
 int upgrade_callback_delete_all(clicon_handle h);
 int upgrade_callback_call(clicon_handle h, cxobj *xt, char *ns, uint16_t op, uint32_t from, uint32_t to, cbuf *cbret);
+
+const clixon_auth_type_t clixon_auth_type_str2int(char *auth_type);
+const char *clixon_auth_type_int2str(clixon_auth_type_t auth_type);
+
 
 #endif  /* _CLIXON_PLUGIN_H_ */

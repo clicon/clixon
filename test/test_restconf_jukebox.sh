@@ -23,6 +23,9 @@ cat <<EOF > $dir/example-system.yang
    }
 EOF
 
+# Define default restconfig config: RESTCONFIG
+restconf_config none
+
 #  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -266,5 +269,8 @@ if [ -z "$pid" ]; then
 fi
 # kill backend
 stop_backend -f $cfg
+
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir

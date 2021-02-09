@@ -46,6 +46,7 @@
 #include <dlfcn.h>
 #include <dirent.h>
 #include <syslog.h>
+#include <assert.h>
 
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -55,6 +56,7 @@
 
 #include "clixon_err.h"
 #include "clixon_queue.h"
+#include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_log.h"
 #include "clixon_file.h"
@@ -462,73 +464,91 @@ clixon_plugin_exit_all(clicon_handle h)
 }
 
 /*! Run the restconf user-defined credentials callback 
- * @param[in]  cp   Plugin handle
- * @param[in]  h    Clicon handle
- * @param[in]  arg  Argument, such as fastcgi handler for restconf
- * @retval    -1    Error
- * @retval     0    Not authenticated
- * @retval     1    Authenticated 
+ * @param[in]  h         Clicon handle
+ * @param[in]  req       Per-message request www handle to use with restconf_api.h
+ * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
+ * @param[out] authp     0: Credentials failed, no user set (401 returned). 1: Credentials OK and user set
+ * @param[out] userp     The associated user, malloced by plugin. Only if retval is 1/OK and authp=1, 
+ * @retval    -1         Fatal error
+ * @retval     0         Ignore, undecided, not handled, same as no callback
+ * @retval     1         OK, see auth parameter on result.
  * @note If authenticated either a callback was called and clicon_username_set() 
  *       Or no callback was found.
  */
-int
-clixon_plugin_auth_one(clixon_plugin *cp,
-		       clicon_handle h, 
-		       void         *arg)
+static int
+clixon_plugin_auth_one(clixon_plugin     *cp,
+		       clicon_handle      h, 
+		       void              *req,
+		       clixon_auth_type_t auth_type,
+		       int               *authp,
+		       char             **userp)
 {
-    int        retval = 1;  /* Authenticated */
+    int        retval = -1; 
     plgauth_t *fn;          /* Plugin auth */
 
+    clicon_debug(1, "%s", __FUNCTION__);
     if ((fn = cp->cp_api.ca_auth) != NULL){
-	if ((retval = fn(h, arg)) < 0) {
+	if ((retval = fn(h, req, auth_type, authp, userp)) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Auth callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
     }
+    else
+	retval = 0; /* Ignored / no callback */
  done:
+    clicon_debug(1, "%s retval:%d user:%s", __FUNCTION__, retval, *userp);
     return retval;
 }
 
 /*! Run the restconf user-defined credentials callback for all plugins
  * Find first authentication callback and call that, then return.
  * The callback is to set the authenticated user
- * @param[in]  cp      Plugin handle
- * @param[in]  h    Clicon handle
- * @param[in]  arg  Argument, such as fastcgi handler for restconf
- * @retval    -1    Error
- * @retval     0    Not authenticated
- * @retval     1    Authenticated 
- * @note If authenticated either a callback was called and clicon_username_set() 
- *       Or no callback was found.
+ * @param[in]  h         Clicon handle
+ * @param[in]  req       Per-message request www handle to use with restconf_api.h
+ * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
+ * @param[out] authp     0: Credentials failed, no user set (401 returned). 1: Credentials OK and user set
+ * @param[out] userp     The associated user, malloced by plugin. Only if retval is 1/OK and authp=1, 
+ * @retval    -1         Fatal error
+ * @retval     0         Ignore, undecided, not handled, same as no callback
+ * @retval     1         OK, see auth parameter on result.
  */
 int
-clixon_plugin_auth_all(clicon_handle h, 
-		       void         *arg)
+clixon_plugin_auth_all(clicon_handle      h, 
+		       void              *req,
+		       clixon_auth_type_t auth_type,
+		       int               *authp,
+		       char             **userp)
 {
     int            retval = -1;
     clixon_plugin *cp = NULL;
-    int            i = 0;
-    int            ret;
+    int            ret = 0; 
     
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (authp == NULL || userp == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "Output parameter is NULL");
+	goto done;
+    }    
+    *authp = -1;
+    *userp = NULL;
+    ret = 0; /* ignore */
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
-	i++;
-	if ((ret = clixon_plugin_auth_one(cp, h, arg)) < 0)
+	if ((ret = clixon_plugin_auth_one(cp, h, req, auth_type, authp, userp)) < 0)
 	    goto done;
 	if (ret == 1)
-	    goto authenticated;
-	break;
+	    break; /* result, not ignored */
+	/* ret == 0, ignore try next */
     }
-    if (i==0)
-	retval = 1;
-    else
-	retval = 0;
+    retval = ret;
+    if (retval == 1){
+	assert(*authp != -1);
+	if (*authp == 1)
+	    assert(*userp != NULL);
+    }
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
- authenticated:
-    retval = 1;
-    goto done;
 }
 
 /*! Callback for a yang extension (unknown) statement single plugin
@@ -931,3 +951,29 @@ upgrade_callback_call(clicon_handle h,
     goto done;
 }
 
+/* Authentication type
+ * @see http-auth-type in clixon-restconf.yang
+ * @see restconf_media_str2int
+ */
+static const map_str2int clixon_auth_type[] = {
+    {"none",               CLIXON_AUTH_NONE},
+    {"client-certificate", CLIXON_AUTH_CLIENT_CERTIFICATE},
+    {"user",               CLIXON_AUTH_USER},
+    {NULL,                 -1}
+};
+
+/*! Translate from string to auth-type
+ */
+const clixon_auth_type_t
+clixon_auth_type_str2int(char *auth_type)
+{
+    return clicon_str2int(clixon_auth_type, auth_type);
+}
+
+/*! Translate from auth-type to string
+ */
+const char *
+clixon_auth_type_int2str(clixon_auth_type_t auth_type)
+{
+    return clicon_int2str(clixon_auth_type, auth_type);
+}

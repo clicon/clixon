@@ -52,6 +52,9 @@ module scaling{
 }
 EOF
 
+# Define default restconfig config: RESTCONFIG
+restconf_config none
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -209,6 +212,9 @@ fi
 stop_backend -f $cfg
 
 rm -rf $dir
+
+# Set by restconf_config
+unset RESTCONFIG
 
 # unset conditional parameters 
 unset format

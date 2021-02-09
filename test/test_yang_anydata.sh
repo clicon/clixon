@@ -21,6 +21,9 @@ fanydata=$dir/yang/anydata.yang
 funknown=$dir/yang/unknown.yang 
 fstate=$dir/state.xml
 
+# Define default restconfig config: RESTCONFIG
+restconf_config none
+
 cat <<EOF > $fanydata
 module any{
    yang-version 1.1;
@@ -276,5 +279,8 @@ testrun false true
 
 new "startup, treat unknown as anydata----"
 testrun true true
+
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir

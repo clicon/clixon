@@ -83,19 +83,22 @@
 #include "restconf_err.h"
 #include "restconf_root.h"
 
-
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hD:f:E:l:p:d:y:a:u:ro:"
 
 /* See see listen(5) */
 #define SOCKET_LISTEN_BACKLOG 16
 
-/* clixon evhtp handle */
+/* Clixon evhtp handle 
+ * Global data about evhtp lib, 
+ * See evhtp_request_t *req for per-message state data
+ */
 typedef struct {
-    evhtp_t          **eh_htpvec; /* One per socket */
-    int                eh_htplen; /* Number of sockets */
-    struct event_base *eh_evbase; /* Change to list */
-    evhtp_ssl_cfg_t   *eh_ssl_config;
+    clicon_handle        eh_h;
+    evhtp_t            **eh_htpvec; /* One per socket */
+    int                  eh_htplen; /* Number of sockets */
+    struct event_base   *eh_evbase; /* Change to list */
+    evhtp_ssl_cfg_t     *eh_ssl_config;
 } cx_evhtp_handle;
 
 /* Need this global to pass to signal handler 
@@ -150,7 +153,7 @@ restconf_sig_term(int arg)
 	exit(-1);
     if (_EVHTP_HANDLE) /* global */
 	evhtp_terminate(_EVHTP_HANDLE);
-    if (_CLICON_HANDLE){
+    if (_CLICON_HANDLE){ /* could be replaced by eh->eh_h */
 	//	stream_child_freeall(_CLICON_HANDLE);
 	restconf_terminate(_CLICON_HANDLE);
     }
@@ -448,8 +451,9 @@ static void
 cx_path_wellknown(evhtp_request_t *req,
 		  void            *arg)
 {
-    clicon_handle h = arg;
-    int           ret;
+    cx_evhtp_handle *eh = (cx_evhtp_handle*)arg;
+    clicon_handle    h = eh->eh_h;
+    int              ret;
 
     clicon_debug(1, "------------");
     /* input debug */
@@ -479,15 +483,15 @@ static void
 cx_path_restconf(evhtp_request_t *req,
 		 void            *arg)
 {
-    clicon_handle h = arg;
-    int           ret;
-    cvec         *qvec = NULL;
+    cx_evhtp_handle *eh = (cx_evhtp_handle*)arg;
+    clicon_handle    h = eh->eh_h;
+    int              ret;
+    cvec            *qvec = NULL;
 
     clicon_debug(1, "------------");
     /* input debug */
     if (clicon_debug_get())
 	evhtp_headers_for_each(req->headers_in, print_header, h);
-
     
     /* get accepted connection */
     /* Query vector, ie the ?a=x&b=y stuff */
@@ -844,8 +848,7 @@ cx_evhtp_socket(clicon_handle    h,
 		cvec            *nsc,
 		char            *server_cert_path,
 		char            *server_key_path,
-		char            *server_ca_cert_path,
-		int              auth_type_client_certificate)
+		char            *server_ca_cert_path)
 {
     int          retval = -1;
     char        *netns = NULL;
@@ -862,7 +865,6 @@ cx_evhtp_socket(clicon_handle    h,
 	clicon_err(OE_UNIX, errno, "evhtp_new");
 	goto done;
     }
-
 #ifndef EVHTP_DISABLE_EVTHR /* threads */
     evhtp_use_threads_wexit(htp, NULL, NULL, 4, NULL);
 #endif
@@ -871,12 +873,12 @@ cx_evhtp_socket(clicon_handle    h,
     /* Callback right after a connection is accepted. */
     evhtp_set_post_accept_cb(htp, cx_post_accept, h);
     /* Callback to be executed for all /restconf api calls */
-    if (evhtp_set_cb(htp, "/" RESTCONF_API, cx_path_restconf, h) == NULL){
+    if (evhtp_set_cb(htp, "/" RESTCONF_API, cx_path_restconf, eh) == NULL){
     	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
     	goto done;
     }
     /* Callback to be executed for all /restconf api calls */
-    if (evhtp_set_cb(htp, RESTCONF_WELL_KNOWN, cx_path_wellknown, h) == NULL){
+    if (evhtp_set_cb(htp, RESTCONF_WELL_KNOWN, cx_path_wellknown, eh) == NULL){
     	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
     	goto done;
    }
@@ -933,41 +935,41 @@ cx_evhtp_init(clicon_handle     h,
 	      cvec             *nsc,
 	      cx_evhtp_handle  *eh)
 {
-    int          retval = -1;
-    char*        enable;
-    int          ssl_enable = 0;
-    cxobj      **vec = NULL;
-    size_t       veclen;
-    char        *server_cert_path = NULL;
-    char        *server_key_path = NULL;
-    char        *server_ca_cert_path = NULL;
-    char        *auth_type = NULL;
-    int          auth_type_client_certificate = 0;
-    cxobj       *x;
-    int          i;
+    int     retval = -1;
+    int     ssl_enable = 0;
+    int     dbg = 0;
+    cxobj **vec = NULL;
+    size_t  veclen;
+    char   *server_cert_path = NULL;
+    char   *server_key_path = NULL;
+    char   *server_ca_cert_path = NULL;
+    cxobj  *x;
+    char   *bstr;
+    int     i;
+    int     ret;
+    clixon_auth_type_t auth_type;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    if ((x = xpath_first(xrestconf, nsc, "enable")) != NULL &&
-	(enable = xml_body(x)) != NULL){
-	if (strcmp(enable, "false") == 0){
-	    clicon_debug(1, "%s restconf disabled", __FUNCTION__);
-	    goto disable;
-	}
-    }
+    if ((ret = restconf_config_init(h, xrestconf)) < 0)
+	goto done;
+    if (ret == 0)
+	goto disable;
+    auth_type = restconf_auth_type_get(h);
     /* If at least one socket has ssl then enable global ssl_enable */
     ssl_enable = xpath_first(xrestconf, nsc, "socket[ssl='true']") != NULL;
-    /* get common fields */
-    if ((x = xpath_first(xrestconf, nsc, "auth-type")) != NULL)
-	auth_type = xml_body(x);
-    if (auth_type && strcmp(auth_type, "client-certificate") == 0)
-	auth_type_client_certificate = 1;
+
     if ((x = xpath_first(xrestconf, nsc, "server-cert-path")) != NULL)
 	server_cert_path = xml_body(x);
     if ((x = xpath_first(xrestconf, nsc, "server-key-path")) != NULL)
 	server_key_path = xml_body(x);
     if ((x = xpath_first(xrestconf, nsc, "server-ca-cert-path")) != NULL)
 	server_ca_cert_path = xml_body(x);
-    
+    if ((x = xpath_first(xrestconf, nsc, "debug")) != NULL &&
+	(bstr = xml_body(x)) != NULL){
+	dbg = atoi(bstr);
+	clicon_debug_init(dbg, NULL); 	
+    }
+
     /* Here the daemon either uses SSL or not, ie you cant seem to mix http and https :-( */
     if (ssl_enable){
 	/* Init evhtp ssl config struct */
@@ -982,11 +984,11 @@ cx_evhtp_init(clicon_handle     h,
 	if (cx_get_ssl_server_certs(h, server_cert_path, server_key_path, eh->eh_ssl_config) < 0)
 	    goto done;
 	/* If client auth get client CA cert */
-	if (auth_type_client_certificate)
+	if (auth_type == CLIXON_AUTH_CLIENT_CERTIFICATE)
 	    if (cx_get_ssl_client_ca_certs(h, server_ca_cert_path, eh->eh_ssl_config) < 0)
 		goto done;
 	eh->eh_ssl_config->x509_verify_cb = cx_verify_certs; /* Is extra verification necessary? */
-	if (auth_type_client_certificate){
+	if (auth_type == CLIXON_AUTH_CLIENT_CERTIFICATE){
 	    eh->eh_ssl_config->verify_peer = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 	    eh->eh_ssl_config->x509_verify_cb = cx_verify_certs;
 	    eh->eh_ssl_config->verify_depth = 2;
@@ -998,8 +1000,7 @@ cx_evhtp_init(clicon_handle     h,
 	goto done;
     for (i=0; i<veclen; i++){
 	if (cx_evhtp_socket(h, eh, ssl_enable, vec[i], nsc,
-			    server_cert_path, server_key_path, server_ca_cert_path,
-			    auth_type_client_certificate) < 0)
+			    server_cert_path, server_key_path, server_ca_cert_path) < 0)
 	    goto done;
     }
     retval = 1;
@@ -1318,16 +1319,24 @@ main(int    argc,
 
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
+
+    /* Init restconf auth-type */
+    restconf_auth_type_set(h, CLIXON_AUTH_NONE);
     
-     /* Dump configuration options on debug */
+    /* Dump configuration options on debug */
     if (dbg)      
 	clicon_option_dump(h, dbg);
+
+    /* Call start function in all plugins before we go interactive */
+     if (clixon_plugin_start_all(h) < 0)
+	 goto done;
 
     if ((eh = malloc(sizeof *eh)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
     memset(eh, 0, sizeof *eh);
+    eh->eh_h = h;
     _EVHTP_HANDLE = eh; /* global */
 
     /* Read config */ 

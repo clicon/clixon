@@ -61,6 +61,7 @@
 /* clicon */
 #include <clixon/clixon.h>
 
+#include "restconf_lib.h"
 #include "restconf_handle.h"
 
 /* header part is copied from struct clicon_handle in lib/src/clixon_handle.c */
@@ -90,6 +91,7 @@ struct restconf_handle {
     
     /* ------ end of common handle ------ */
     clicon_hash_t           *rh_params;    /* restconf parameters, including http headers */
+    clixon_auth_type_t       rh_auth_type; /* authentication type */
 };
 
 /*! Creates and returns a clicon config handle for other CLICON API calls
@@ -171,4 +173,34 @@ restconf_param_del_all(clicon_handle h)
     retval = 0;
  done:
     return retval;
+}
+
+/*! Get restconf http parameter
+ * @param[in]  h         Clicon handle
+ * @retval     auth_type
+ */
+clixon_auth_type_t
+restconf_auth_type_get(clicon_handle h)
+{
+    struct restconf_handle *rh = handle(h);
+
+    return rh->rh_auth_type;
+}
+
+/*! Set restconf http parameter
+ * @param[in]  h    Clicon handle
+ * @param[in]  name Data name
+ * @param[in]  val  Data value as null-terminated string
+ * @retval     0    OK
+ * @retval    -1    Error
+ * Currently using clixon runtime data but there is risk for colliding names
+ */
+int
+restconf_auth_type_set(clicon_handle        h,
+		       clixon_auth_type_t type)
+{
+    struct restconf_handle *rh = handle(h);
+
+    rh->rh_auth_type = type;
+    return 0;
 }

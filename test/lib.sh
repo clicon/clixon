@@ -196,11 +196,16 @@ fi
 # Default restconf configuration: http IPv4 
 # Can be placed in clixon-config
 # Note that https clause assumes there exists certs and keys in /etc/ssl,...
-if [ $RCPROTO = http ]; then
-    RESTCONFIG="<restconf><enable>true</enable><auth-type>password</auth-type><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
-else
-    RESTCONFIG="<restconf><enable>true</enable><auth-type>password</auth-type><server-cert-path>/etc/ssl/certs/clixon-server-crt.pem</server-cert-path><server-key-path>/etc/ssl/private/clixon-server-key.pem</server-key-path><server-ca-cert-path>/etc/ssl/certs/clixon-ca-crt.pem</server-ca-cert-path><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
-fi
+function restconf_config()
+{
+    AUTH=$1
+    if [ $RCPROTO = http ]; then
+	RESTCONFIG="<restconf><enable>true</enable><auth-type>$AUTH</auth-type><debug>1</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
+    else
+	RESTCONFIG="<restconf><enable>true</enable><auth-type>$AUTH</auth-type><server-cert-path>/etc/ssl/certs/clixon-server-crt.pem</server-cert-path><server-key-path>/etc/ssl/private/clixon-server-key.pem</server-key-path><server-ca-cert-path>/etc/ssl/certs/clixon-ca-crt.pem</server-ca-cert-path><debug>1</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
+    fi
+}
+
 
 # Some tests may set owner of testdir to something strange and quit, need
 # to reset to me
@@ -374,7 +379,7 @@ function new(){
 # Evaluate and return
 # Example: expectpart $(fn arg) 0 "my return" -- "foo"
 # - evaluated expression
-# - expected command return value (0 if OK)
+# - expected command return value (0 if OK) or list of values, eg "55 56"
 # - expected stdout outcome*
 # - the token "--not--"
 # - not expected stdout outcome*
@@ -391,10 +396,24 @@ function expectpart(){
 #  echo "ret:\"$ret\""
 #  echo "retval:$retval"
 #  echo "expect:\"$expect\""
-  if [ $r != $retval ]; then
-      echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
-      echo -e "\e[0m:"
-      exit -1
+  if [ "$retval" -eq "$retval" 2> /dev/null ] ; then # single retval
+      if [ $r != $retval ]; then 
+	  echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
+	  echo -e "\e[0m:"
+	  exit -1
+      fi
+  else # List of retvals
+      found=0
+      for rv in $retval; do
+	  if [ $r == $rv ]; then 
+	      found=1
+	  fi
+      done
+      if [ $found -eq 0 ]; then
+	  echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
+	  echo -e "\e[0m:"
+	  exit -1
+      fi
   fi
   if [ -z "$ret" -a -z "$expect" ]; then
       return

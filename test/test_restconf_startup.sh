@@ -34,6 +34,9 @@ EOF
 
 # Use yang in example
 
+# Define default restconfig config: RESTCONFIG
+restconf_config none
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -127,5 +130,8 @@ new "Check startup is empty"
 if [ -f $dir/startup_db ]; then
     err "startup should not exist"
 fi
+
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir

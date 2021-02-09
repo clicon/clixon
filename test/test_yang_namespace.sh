@@ -13,6 +13,9 @@ cfg=$dir/conf_yang.xml
 fyang1=$dir/example1.yang
 fyang2=$dir/example2.yang
 
+# Define default restconfig config: RESTCONFIG
+restconf_config none
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -140,5 +143,8 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
+
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir

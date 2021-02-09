@@ -23,6 +23,9 @@ cfg=$dir/conf_yang.xml
 fyang=$dir/main.yang
 fyang2=$dir/ietf-interfaces@2019-03-04.yang
 
+# Define default restconfig config: RESTCONFIG
+restconf_config none
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -272,5 +275,8 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
+
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir

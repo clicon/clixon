@@ -3,6 +3,7 @@
 # Use nacm module in example/main/example_restconf.c hardcoded to
 # andy:bar and wilma:bar
 
+
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
@@ -11,6 +12,9 @@ APPNAME=example
 cfg=$dir/conf.xml
 startupdb=$dir/startup_db
 fjukebox=$dir/example-jukebox.yang
+
+# Define default restconfig config: RESTCONFIG
+restconf_config user
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -116,8 +120,8 @@ if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
     stop_restconf_pre
 
-    new "start restconf daemon (-a is enable basic authentication)"
-    start_restconf -f $cfg -- -a 
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
     new "waiting restconf"
     wait_restconf
@@ -173,8 +177,8 @@ if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
     stop_restconf_pre
 	
-    new "start restconf daemon (-a is enable basic authentication)"
-    start_restconf -f $cfg -- -a 
+    new "start restconf daemon"
+    start_restconf -f $cfg
 
     new "waiting"
     wait_restconf
@@ -259,5 +263,8 @@ if [ -z "$pid" ]; then
 fi
 # kill backend
 stop_backend -f $cfg
+
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir

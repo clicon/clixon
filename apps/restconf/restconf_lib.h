@@ -82,6 +82,8 @@ int   restconf_insert_attributes(cxobj *xdata, cvec *qvec);
 int   restconf_main_extension_cb(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 char *restconf_uripath(clicon_handle h);
 int   restconf_drop_privileges(clicon_handle h, char *user);
+int   restconf_authentication_cb(clicon_handle h, void *req, int pretty, restconf_media media_out);
+int   restconf_config_init(clicon_handle h, cxobj *xrestconf);
 
 #endif /* _RESTCONF_LIB_H_ */
 

@@ -60,8 +60,9 @@
 #include <clixon/clixon.h>
 
 #include "restconf_api.h"
-#include "restconf_handle.h"
 #include "restconf_lib.h"
+#include "restconf_err.h"
+#include "restconf_handle.h"
 
 /* See RFC 8040 Section 7:  Mapping from NETCONF<error-tag> to Status Code
  * and RFC 6241 Appendix A. NETCONF Error list
@@ -495,3 +496,123 @@ restconf_drop_privileges(clicon_handle h,
     return retval;
 }
 
+/*!
+ * @param[in]  h    Clicon handle
+ * @param[in]  req  Generic Www handle (can be part of clixon handle)
+ * @retval    -1    Error
+ * @retval     0    Not authenticated
+ * @retval     1    Authenticated
+ */
+int
+restconf_authentication_cb(clicon_handle  h,
+			   void          *req,
+			   int            pretty,
+			   restconf_media media_out)
+{
+    int                retval = -1;
+    clixon_auth_type_t auth_type;
+    int                authenticated;
+    int                ret;
+    char              *username = NULL;
+    cxobj             *xret = NULL;
+    cxobj             *xerr;
+    
+    auth_type = restconf_auth_type_get(h);
+    clicon_debug(1, "%s auth-type:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
+    ret = 0;
+    authenticated = 0;
+    if (auth_type != CLIXON_AUTH_NONE)
+	if ((ret = clixon_plugin_auth_all(h, req,
+					  auth_type,
+					  &authenticated,
+					  &username)) < 0)
+	    goto done;
+    if (ret == 1){ /* OK, tag username to handle */
+	clicon_username_set(h, username);
+    }
+    else {         /* Default behaviour */
+	switch (auth_type){
+	case CLIXON_AUTH_NONE:
+	    clicon_username_set(h, "none");	
+	    authenticated = 1;
+	    break;
+	case CLIXON_AUTH_CLIENT_CERTIFICATE: {
+	    char *cn;
+	    /* Check for cert subject common name (CN) */
+	    if ((cn = restconf_param_get(h, "SSL_CN")) != NULL){
+		clicon_username_set(h, cn);
+		authenticated = 1;
+	    }
+	    break;
+	}
+	case CLIXON_AUTH_USER:           
+	    authenticated = 0;
+	    break;
+	}
+    }
+    if (authenticated == 0){ /* Message is not authenticated (401 returned) */
+	if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
+	    goto done;
+	if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+	    if (api_return_err(h, req, xerr, pretty, media_out, 0) < 0)
+		goto done;
+	    goto notauth;
+	}
+	retval = 0;
+	goto notauth;
+    }
+    /* If set but no user, set a dummy user */
+    retval = 1;
+ done:
+    clicon_debug(1, "%s retval:%d authenticated:%d user:%s",
+		 __FUNCTION__, retval, authenticated, clicon_username_get(h));
+    if (xret)
+	xml_free(xret);
+    return retval;
+ notauth:
+    retval = 0;
+    goto done;
+}
+
+/*! Basic config init
+ * @param[in]  h         Clixon handle
+ * @param[in]  xrestconf XML config containing clixon-restconf top-level
+ * @retval    -1         Error
+ * @retval     0         Restconf is disable
+ * @retval     1         OK
+ */
+int
+restconf_config_init(clicon_handle h,
+		     cxobj        *xrestconf)
+{
+    int    retval = -1;
+    char  *enable;
+    cxobj *x;
+    char  *bstr;
+    cvec  *nsc = NULL;
+    clixon_auth_type_t auth_type;
+	 
+    if ((x = xpath_first(xrestconf, nsc, "enable")) != NULL &&
+	(enable = xml_body(x)) != NULL){
+	if (strcmp(enable, "false") == 0){
+	    clicon_debug(1, "%s restconf disabled", __FUNCTION__);
+	    goto disable;
+	}
+    }
+
+    /* get common fields */
+    if ((x = xpath_first(xrestconf, nsc, "auth-type")) != NULL &&
+	(bstr = xml_body(x)) != NULL){
+	if ((auth_type = clixon_auth_type_str2int(bstr)) < 0){
+	    clicon_err(OE_CFG, EFAULT, "Invalid restconf auth-type: %s", bstr);
+	    goto done;
+	}
+	restconf_auth_type_set(h, auth_type);
+    }
+    retval = 1;
+ done:
+    return retval;
+ disable:
+    retval = 0;
+    goto done;
+}

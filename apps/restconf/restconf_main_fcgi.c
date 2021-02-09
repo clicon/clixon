@@ -178,6 +178,7 @@ usage(clicon_handle h,
 	    "\t-d <dir>\t  Specify restconf plugin directory dir (default: %s)\n"
 	    "\t-y <file>\t  Load yang spec file (override yang main module)\n"
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
+
     	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
 	    "\t-r \t\t  Do not drop privileges if run as root\n"
 	    "\t-o \"<option>=<value>\" Give configuration option overriding config file (see clixon-config.yang)\n",
@@ -215,7 +216,10 @@ main(int    argc,
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
     int            dbg = 0;
-    int            drop_priveleges = 1;
+    int            drop_privileges = 1;
+    cxobj         *xconfig = NULL;
+    cxobj         *xrestconf = NULL;
+    int            ret;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -311,7 +315,7 @@ main(int    argc,
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
 	case 'r':{ /* Do not drop privileges if run as root */
-	    drop_priveleges = 0;
+	    drop_privileges = 0;
 	    break;
 	}
 	case 'o':{ /* Configuration option */
@@ -332,7 +336,10 @@ main(int    argc,
 
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
-    
+
+    /* Init restconf auth-type */
+    restconf_auth_type_set(h, CLIXON_AUTH_NONE);
+
     /* Init cligen buffers */
     cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
     cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
@@ -418,11 +425,18 @@ main(int    argc,
     if (dbg)      
 	clicon_option_dump(h, dbg);
 
-    /* Call start function in all plugins before we go interactive 
-     */
+    /* Call start function in all plugins before we go interactive */
      if (clixon_plugin_start_all(h) < 0)
 	 goto done;
-
+     xconfig = clicon_conf_xml(h); 	 /* Get local config */
+     if ((xrestconf = xpath_first(xconfig, NULL, "restconf")) != NULL){
+	 if ((ret = restconf_config_init(h, xrestconf)) < 0)
+	     goto done;
+	 if (ret == 0){
+	     clicon_err(OE_DAEMON, EFAULT, "Restconf daemon disabled in config");
+	     goto done;
+	 }
+     }
     if ((sockpath = clicon_option_str(h, "CLICON_RESTCONF_PATH")) == NULL){
 	clicon_err(OE_CFG, errno, "No CLICON_RESTCONF_PATH in clixon configure file");
 	goto done;
@@ -454,7 +468,7 @@ main(int    argc,
 	clicon_err(OE_UNIX, errno, "chmod");
 	goto done;
     }
-    if (drop_priveleges){
+    if (drop_privileges){
 	/* Drop privileges to WWWUSER if started as root */
 	if (restconf_drop_privileges(h, WWWUSER) < 0)
 	    goto done;

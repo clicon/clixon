@@ -41,7 +41,7 @@ test -d $certdir || mkdir $certdir
 RESTCONFIG=$(cat <<EOF
 <restconf>
    <enable>true</enable>
-   <auth-type>password</auth-type>
+   <auth-type>none</auth-type>
    <server-cert-path>$srvcert</server-cert-path>
    <server-key-path>$srvkey</server-key-path>
    <server-ca-cert-path>$cakey</server-ca-cert-path>

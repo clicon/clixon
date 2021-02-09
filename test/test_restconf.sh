@@ -37,6 +37,57 @@ if [ -d ${TOP_SRCDIR}/yang/clixon ]; then
 else
     cp /usr/local/share/clixon/$y $dir/
 fi
+
+if [ "${WITH_RESTCONF}" = "evhtp" ]; then
+    # Create server certs
+    certdir=$dir/certs
+    srvkey=$certdir/srv_key.pem
+    srvcert=$certdir/srv_cert.pem
+    cakey=$certdir/ca_key.pem # needed?
+    cacert=$certdir/ca_cert.pem
+    test -d $certdir || mkdir $certdir
+    . ./certs.sh
+else
+    # Define default restconfig config: RESTCONFIG
+    restconf_config none
+fi
+
+# This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
+state='{"clixon-example:state":{"op":\["41","42","43"\]}'
+
+if $IPv6; then
+    # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
+    RESTCONFIG1=$(cat <<EOF
+<restconf xmlns="http://clicon.org/restconf">
+   <enable>true</enable>
+   <auth-type>none</auth-type>
+   <server-cert-path>$srvcert</server-cert-path>
+   <server-key-path>$srvkey</server-key-path>
+   <server-ca-cert-path>$cakey</server-ca-cert-path>
+   <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
+   <socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket>
+   <socket><namespace>default</namespace><address>::</address><port>80</port><ssl>false</ssl></socket>
+   <socket><namespace>default</namespace><address>::</address><port>443</port><ssl>true</ssl></socket>
+</restconf>
+EOF
+)
+else
+       # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
+    RESTCONFIG1=$(cat <<EOF
+<restconf xmlns="http://clicon.org/restconf">
+   <enable>true</enable>
+   <auth-type>none</auth-type>
+   <server-cert-path>$srvcert</server-cert-path>
+   <server-key-path>$srvkey</server-key-path>
+   <server-ca-cert-path>$cakey</server-ca-cert-path>
+   <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
+   <socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket>
+</restconf>
+EOF
+)
+fi
+
+# Start with common config, then append fcgi/evhtp specific config
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -54,54 +105,10 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
+  $RESTCONFIG <!-- only fcgi -->
 </clixon-config>
 EOF
 
-if [ "${WITH_RESTCONF}" = "evhtp" ]; then
-    # Create server certs
-    certdir=$dir/certs
-    srvkey=$certdir/srv_key.pem
-    srvcert=$certdir/srv_cert.pem
-    cakey=$certdir/ca_key.pem # needed?
-    cacert=$certdir/ca_cert.pem
-    test -d $certdir || mkdir $certdir
-    . ./certs.sh
-fi
-
-# This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
-state='{"clixon-example:state":{"op":\["41","42","43"\]}'
-
-if $IPv6; then
-    # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
-    RESTCONFIG=$(cat <<EOF
-<restconf xmlns="http://clicon.org/restconf">
-   <enable>true</enable>
-   <auth-type>password</auth-type>
-   <server-cert-path>$srvcert</server-cert-path>
-   <server-key-path>$srvkey</server-key-path>
-   <server-ca-cert-path>$cakey</server-ca-cert-path>
-   <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
-   <socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket>
-   <socket><namespace>default</namespace><address>::</address><port>80</port><ssl>false</ssl></socket>
-   <socket><namespace>default</namespace><address>::</address><port>443</port><ssl>true</ssl></socket>
-</restconf>
-EOF
-)
-else
-       # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
-    RESTCONFIG=$(cat <<EOF
-<restconf xmlns="http://clicon.org/restconf">
-   <enable>true</enable>
-   <auth-type>password</auth-type>
-   <server-cert-path>$srvcert</server-cert-path>
-   <server-key-path>$srvkey</server-key-path>
-   <server-ca-cert-path>$cakey</server-ca-cert-path>
-   <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
-   <socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket>
-</restconf>
-EOF
-)
-fi
 
 # Restconf test routine with arguments:
 # 1. proto:http/https
@@ -132,7 +139,7 @@ function testrun()
     wait_backend
 
     new "netconf edit config"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG1</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
     new "netconf commit"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -402,5 +409,9 @@ done
 
 # unset conditional parameters
 unset RCPROTO
+
+# Set by restconf_config
+unset RESTCONFIG
+unset RESTCONFIG1
 
 rm -rf $dir

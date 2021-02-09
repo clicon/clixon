@@ -27,6 +27,9 @@ fextra=$dir/extra.yang       # Referenced from main (with same prefix)
 fextra1=$dir/extra1.yang     # Referenced from sub1
 fextra2=$dir/extra2.yang     # Referenced from sub2
 
+# Define default restconfig config: RESTCONFIG
+restconf_config none
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -237,5 +240,8 @@ fi
 # kill backend
 stop_backend -f $cfg
 sudo pkill -u root -f clixon_backend
+
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir
