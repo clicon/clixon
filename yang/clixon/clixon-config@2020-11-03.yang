@@ -93,7 +93,7 @@ module clixon-config {
 	description
 	    "Added: CLICON_BACKEND_USER: drop of privileges to user,
                     CLICON_BACKEND_PRIVILEGES: how to drop privileges
-                    CLICON_NACM_CREDENTIALS: If and how to check backend sock priveleges with NACM
+                    CLICON_NACM_CREDENTIALS: If and how to check backend sock privileges with NACM
                     CLICON_NACM_RECOVERY_USER: Name of NACM recovery user.";
     }
     revision 2019-06-05 {
@@ -241,7 +241,7 @@ module clixon-config {
     }
     typedef priv_mode{
 	description
-	    "Privilege mode, used for dropping (or not) priveleges to a non-provileged
+	    "Privilege mode, used for dropping (or not) privileges to a non-provileged
              user after initialization";
 	type enumeration{
 	    enum none {

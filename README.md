@@ -17,6 +17,6 @@ See [CHANGELOG.md](CHANGELOG.md) release history.
 
 Clixon interaction is best done posting issues, pull requests, or joining the
 [slack channel](https://clixondev.slack.com).
-[Slack invite](https://join.slack.com/t/clixondev/shared_invite/zt-jysz1bbp-Pua0_67fMWdPgG3GPbTIZA)
+[Slack invite](https://join.slack.com/t/clixondev/shared_invite/zt-l36yx3fp-Lmi3qJGQyu5PEC~Zxi2Z5Q) (updated 5/2 2021)
 
 Clixon is sponsored by [Rubicon Communications LLC(Netgate)](https://www.netgate.com/)

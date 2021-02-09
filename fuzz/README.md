@@ -10,4 +10,4 @@ Some issues are as follows:
 - Internal protocol 1: The internal protocol uses XML but deviates from netconf by using a (binary) header where the length is encoded, instead of ']]>]]>' as a terminating string. AFL does not like that. By setting CLIXON_PROTO_PLAIN the internal protocol uses pure netconf (with some limitations).
 - Internal protocol 2: The internal protocol uses TCP unix sockets while AFL requires stdio. One can use a package called "preeny" to translate stdio into sockets. But it is slow.
 
-Restconf also has the extra problem of running TSL sockets.
+Restconf also has the extra problem of running TLS sockets.

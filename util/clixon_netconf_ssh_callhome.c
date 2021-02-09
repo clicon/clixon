@@ -35,35 +35,37 @@
 
   * Create stream socket, connect to remote address, then exec sshd -e that takes over the 
   * tcp connection.
-        device                                 client
-  +-----------------+        tcp    4321 +-----------------+
-  | util_netconf_ssh| <----------------> |       xxx       |
-  |          |      |                    +-----------------+
-  |     exec v      |                        4322 | tcp
-  |                 |        ssh         +-----------------+
-  |     sshd -e     | <----------------> |       ssh       |
+
+   device/server                               client
+  +-----------------+   2) tcp connect   +-----------------+
+  |    callhome     | ---------------->  | callhome-client |
   +-----------------+                    +-----------------+
-           | stdio                                | stdio
+          | 3) c                                  ^
+          v                                    1) | 4)
+  +-----------------+        ssh         +-----------------+   5) stdio
+  |     sshd -i     | <----------------> |       ssh       |  <------  <rpc>...</rpc>]]>]]>"
+  +-----------------+                    |-----------------+   
+          | stdio                      
   +-----------------+
   | clixon_netconf  |
   +-----------------+
-           | 
+          | 
   +-----------------+
   | clixon_backend  |
   +-----------------+
 
-Example sshd-config (-c option):n
-  Port 2592
-  TCPKeepAlive yes
-  AuthorizedKeysFile ~.ssh/authorized_keys
-  Subsystem netconf /usr/local/bin/clixon_netconf
-
+1) Start ssh client using -o ProxyUseFdpass=yes -o ProxyCommand="callhome-client". 
+   Callhome-client listens on port 4334 for incoming TCP connections.
+2) Start callhome on server making tcp connect to client on port 4334 establishing a tcp stream
+3) Callhome starts sshd -i using the established stream socket (stdio)
+4) Callhome-client returns with an open stream socket to the ssh client establishing an SSH stream 
+   to server
+5) Client request sent on stdin to ssh client on established SSH stream using netconf subsystem
+   to clixon_netconf client
 
 ssh -s -v -o ProxyUseFdpass=yes -o ProxyCommand="clixon_netconf_ssh_callhome_client -a 127.0.0.1" . netconf
 sudo clixon_netconf_ssh_callhome -a 127.0.0.1 -c /var/tmp/./test_netconf_ssh_callhome.sh/conf_yang.xml
 
-ssh -s -v -o ProxyUseFdpass=yes -o ProxyCommand='/home/olof/src/clixon/util/clixon_netconf_ssh_callhome_client -a 0.0.0.0' -l olof . netconf
-sudo ./clixon_netconf_ssh_callhome -a 127.0.0.1 -c ./sshdcfg
  */
 
 #include <stdio.h>
@@ -103,7 +105,7 @@ callhome_connect(struct sockaddr *sa,
 }
 
 static int
-exec_sshd(int   s,
+ssh_server_exec(int   s,
 	  char *sshdbin,
 	  char *sshdconfigfile,
     	  char *clixonconfigfile,
@@ -291,7 +293,7 @@ main(int    argc,
     if (callhome_connect(sa, sin_len, &s) < 0)
 	goto done;
     /* For some reason this sshd returns -1 which is unclear why */
-    if (exec_sshd(s, sshdbin, sshdconfigfile, clixonconfigfile, dbg) < 0)
+    if (ssh_server_exec(s, sshdbin, sshdconfigfile, clixonconfigfile, dbg) < 0)
 	goto done;
     /* Should not reach here */
     if (s >= 0)

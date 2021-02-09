@@ -33,27 +33,37 @@
 
   ***** END LICENSE BLOCK *****
 
-  * Create stream listen socket, bind to address, then exec ssh client
-        device                                 client
-  +-----------------+        tcp    4321 +-----------------+
-  | util_netconf_ssh| <----------------> |       xxx       |
-  |          |      |                    +-----------------+
-  |     exec v      |                        4322 | tcp
-  |                 |        ssh         +-----------------+
-  |     sshd -e     | <----------------> |       ssh       |
+   device/server                               client
+  +-----------------+   2) tcp connect   +-----------------+
+  |    callhome     | ---------------->  | callhome-client |
   +-----------------+                    +-----------------+
-           | stdio                                | stdio
+          | 3) c                                  ^
+          v                                    1) | 4)
+  +-----------------+        ssh         +-----------------+   5) stdio
+  |     sshd -i     | <----------------> |       ssh       |  <------  <rpc>...</rpc>]]>]]>"
+  +-----------------+                    |-----------------+   
+          | stdio                      
   +-----------------+
   | clixon_netconf  |
   +-----------------+
-           | 
+          | 
   +-----------------+
   | clixon_backend  |
   +-----------------+
 
+1) Start ssh client using -o ProxyUseFdpass=yes -o ProxyCommand="callhome-client". 
+   Callhome-client listens on port 4334 for incoming TCP connections.
+2) Start callhome on server making tcp connect to client on port 4334 establishing a tcp stream
+3) Callhome starts sshd -i using the established stream socket (stdio)
+4) Callhome-client returns with an open stream socket to the ssh client establishing an SSH stream 
+   to server
+5) Client request sent on stdin to ssh client on established SSH stream using netconf subsystem
+   to clixon_netconf client
+
 Example sshd-config (-c option):n
-  ssh -s -v -o ProxyUseFdpass=yes -o ProxyCommand='/home/olof/src/clixon/util/clixon_netconf_ssh_callhome_client -a 0.0.0.0' -l olof . netconf
-  sudo ./clixon_netconf_ssh_callhome -a 127.0.0.1 -c ./sshdcfg
+  ssh -s -v -o ProxyUseFdpass=yes -o ProxyCommand="clixon_netconf_ssh_callhome_client -a 127.0.0.1" . netconf
+  sudo clixon_netconf_ssh_callhome -a 127.0.0.1
+
  */
 
 #include <stdio.h>
