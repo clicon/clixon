@@ -31,6 +31,8 @@ Expected: February 2021
 
 ### New features
 
+* RESTCONF failed authentication changed error return code from 403 Forbiden to 401 Unauthorized following RFC 8040
+  * Authentication OK but failed on access, remains as 403 Forbidden
 * NETCONF Call Home Call Home RFC 8071
   * See [Netconf/ssh callhome](https://clixon-docs.readthedocs.io/en/latest/netconf.html#callhome)
   * Solution description using openssh and utility functions, no changes to core clixon

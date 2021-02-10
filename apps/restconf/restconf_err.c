@@ -430,6 +430,20 @@ api_return_err(clicon_handle h,
     else{
 	if ((code = restconf_err2code(tagstr)) < 0)
 	    code = 500; /* internal server error */
+	if (code == 403){
+	    /* Special case: netconf only has "access denied" while restconf 
+	     * differentiates between:
+	     *   401 Unauthorized If the RESTCONF client is not authenticated (sec 2.5)
+	     *   403 Forbidden    If the user is not authorized to access a target resource or invoke 
+	     *                    an operation
+	     */
+	    cxobj *xmsg;
+	    char  *mb;
+	    if ((xmsg = xpath_first(xerr, NULL, "error-message")) != NULL &&
+		(mb = xml_body(xmsg)) != NULL &&
+		strcmp(mb, "The requested URL was unauthorized") == 0)
+		code = 401;
+	}
     }  
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media)) < 0) // XXX
 	goto done;

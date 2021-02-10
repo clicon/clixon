@@ -156,10 +156,10 @@ new "commit it"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "auth get (no user: access denied)"
-expectpart "$(curl $CURLOPTS -X GET -H \"Accept:\ application/yang-data+json\" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"access-denied","error-severity":"error","error-message":"The requested URL was unauthorized"}}}'
+expectpart "$(curl $CURLOPTS -X GET -H \"Accept:\ application/yang-data+json\" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 401 Unauthorized" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"access-denied","error-severity":"error","error-message":"The requested URL was unauthorized"}}}'
 
 new "auth get (wrong passwd: access denied)"
-expectpart "$(curl -u andy:foo $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"access-denied","error-severity":"error","error-message":"The requested URL was unauthorized"}}}'
+expectpart "$(curl -u andy:foo $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 401 Unauthorized" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"access-denied","error-severity":"error","error-message":"The requested URL was unauthorized"}}}'
 
 new "auth get (access)"
 expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "HTTP/1.1 200 OK" '{"nacm-example:x":0}'

@@ -81,8 +81,8 @@ static const map_str2int netconf_restconf_map[] = {
     {"bad-element",            400},
     {"unknown-element",        400},
     {"unknown-namespace",      400},
-    {"access-denied",          403}, 
-    {"access-denied",          401}, /* or 403 */
+    {"access-denied",          403}, /* or 401 special case if tagstr is: "The requested URL was unauthorized" handled in api_return_err */
+    {"access-denied",          401}, 
     {"lock-denied",            409},
     {"resource-denied",        409},
     {"rollback-failed",        500},
