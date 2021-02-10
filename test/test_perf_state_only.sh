@@ -201,8 +201,9 @@ fi
 
 rm -rf $dir
 
-# Define default restconfig config: RESTCONFIG
-restconf_config none
+# Set by restconf_config
+unset RESTCONFIG
+
 # unset conditional parameters 
 unset format
 unset perfnr

@@ -371,7 +371,8 @@ netconf_input_cb(int   s,
 
     if ((ptr = clicon_hash_value(cdat, NETCONF_HASH_BUF, &cdatlen)) != NULL){
 	if (cdatlen != sizeof(cb)){
-	    clicon_err(OE_XML, errno, "size mismatch %lu %lu", cdatlen, sizeof(cb));
+	    clicon_err(OE_XML, errno, "size mismatch %lu %lu",
+		       (unsigned long)cdatlen, (unsigned long)sizeof(cb));
 	    goto done;
 	}
 	cb = *(cbuf**)ptr;

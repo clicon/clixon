@@ -8,7 +8,7 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-# Skip it other than evhtp
+# Skip if other than evhtp
 if [ "${WITH_RESTCONF}" != "evhtp" ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
@@ -17,6 +17,14 @@ fi
 if [ $valgrindtest -eq 3 ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
+
+# Check if ip netns is implemented (Alpine does not have it)
+ip netns 2> /dev/null
+if [ $? -ne 0 ]; then
+    echo "...ip netns does not work"
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
+fi
+
 
 APPNAME=example
 

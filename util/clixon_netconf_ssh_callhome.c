@@ -203,7 +203,7 @@ usage(char *argv0)
 	    "\t-f ipv4|ipv6 \tSocket address family(ipv4 default)\n"
 	    "\t-a <addrstr> \tIP address (eg 1.2.3.4) - mandatory\n"
 	    "\t-p <port>    \tPort (default 4334)\n"
-	    "\t-c <file>    \tCLixon config file - (default /usr/local/etc/clixon.xml)\n"
+	    "\t-c <file>    \tClixon config file - (default /usr/local/etc/clixon.xml)\n"
 	    "\t-C <file>    \tSSHD config file - (default /dev/null)\n"
 	    "\t-s <sshd>    \tPath to sshd binary, default %s\n"
 	    ,
