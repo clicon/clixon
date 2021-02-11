@@ -22,7 +22,7 @@ funknown=$dir/yang/unknown.yang
 fstate=$dir/state.xml
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none
+restconf_config none false
 
 cat <<EOF > $fanydata
 module any{
@@ -145,7 +145,6 @@ function testrun()
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_YANG_UNKNOWN_ANYDATA>$unknown</CLICON_YANG_UNKNOWN_ANYDATA>
   $F
   $RESTCONFIG

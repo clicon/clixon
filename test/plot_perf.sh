@@ -81,7 +81,6 @@ cat <<EOF > $cfg
   <CLICON_YANG_MODULE_MAIN>scaling</CLICON_YANG_MODULE_MAIN>
   <CLICON_SOCK>/usr/local/var/example/example.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/example/example.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
 </clixon-config>

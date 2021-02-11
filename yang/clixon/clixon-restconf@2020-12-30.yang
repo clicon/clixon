@@ -53,6 +53,15 @@ module clixon-restconf {
 	description
 	    "Initial release";
     }
+    feature fcgi {
+	description
+	    "This feature indicates that the restconf server supports the fast-cgi reverse
+             proxy solution.
+             That is, a reverse proxy is the HTTP front-end and the restconf daemon listens
+             to a fcgi socket.
+             The alternative is the internal HTTP solution using evhtp.";
+    }
+
     typedef http-auth-type {
 	type enumeration {
 	    enum none {
@@ -125,6 +134,30 @@ module clixon-restconf {
 	    type uint32;	    
 	    default 0;
 	}
+	leaf pretty {
+	    type boolean;
+	    default true; 
+	    description
+		"Restconf return value pretty print. 
+                 Restconf clients may add HTTP header:
+                      Accept: application/yang-data+json, or
+                      Accept: application/yang-data+xml
+                 to get return value in XML or JSON. 
+                 RFC 8040 examples print XML and JSON in pretty-printed form.
+                 Setting this value to false makes restconf return not pretty-printed
+                 which may be desirable for performance or tests
+                 This replaces the CLICON_RESTCONF_PRETTY option in clixon-config.yang";
+	}
+	leaf fcgi-socket {
+	    if-feature fcgi;
+	    type string;
+	    default "/www-data/fastcgi_restconf.sock";
+	    description
+		"FastCGI unix socket. Should be specified in webserver
+         	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
+                 Only if with-restconf=fcgi, NOT evhtp
+                 This replaces CLICON_RESTCONF_PATH option in clixon-config.yang";
+	}	
 	list socket {
 	    key "namespace address port";
 	    leaf namespace {

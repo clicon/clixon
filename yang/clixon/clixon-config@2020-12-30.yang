@@ -52,7 +52,11 @@ module clixon-config {
                    CLICON_RESTCONF_HTTPS_PORT
 	           CLICON_SSL_SERVER_CERT
                    CLICON_SSL_SERVER_KEY
-	           CLICON_SSL_CA_CERT";
+	           CLICON_SSL_CA_CERT
+	           CLICON_TRANSACTION_MOD
+             Marked as obsolete and moved to clixon-restconf.yang:
+	           CLICON_RESTCONF_PATH
+                   CLICON_RESTCONF_PRETTY";
     }
     revision 2020-11-03 {
 	description
@@ -428,7 +432,10 @@ module clixon-config {
 	    type string;
 	    description
 		"Location of restconf (frontend) .so plugins. Load all .so
-       	         plugins in this dir as restconf code plugins";
+       	         plugins in this dir as restconf code plugins
+                 Note: This cannot be moved to clixon-restconf.yang because it is needed
+                 early in the bootstrapping phase, before clixon-restconf.yang config may
+                 be loaded.";
 	}
 	leaf CLICON_RESTCONF_PATH {
 	    type string;
@@ -436,8 +443,11 @@ module clixon-config {
 	    description
 		"FastCGI unix socket. Should be specified in webserver
          	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
-                 Only if with-restconf=fcgi, NOT evhtp";
+                 Only if with-restconf=fcgi, NOT evhtp
+                 Note: Obsolete, use fcgi-socket in clixon-restconf.yang instead";
+	    status obsolete;
 	}
+
 	leaf CLICON_RESTCONF_PRETTY {
 	    type boolean;
 	    default true;
@@ -449,7 +459,9 @@ module clixon-config {
                  to get return value in XML or JSON. 
                  RFC 8040 examples print XML and JSON in pretty-printed form.
                  Setting this value to false makes restconf return not pretty-printed
-                 which may be desirable for performance or tests";
+                 which may be desirable for performance or tests
+                 Note: Obsolete, use pretty in clixon-restconf.yang instead";
+	    status obsolete;
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;
@@ -774,14 +786,6 @@ module clixon-config {
 	leaf CLICON_STARTUP_MODE {
 	    type startup_mode;
 	    description "Which method to boot/start clicon backend";
-	}
-	leaf CLICON_TRANSACTION_MOD {
-	    type boolean;
-	    default false;
-	    description "If set, modifications in validation and commit 
-                         callbacks are written back into the datastore.
-                         This is a bad idea and therefore obsoleted.";
-	    status obsolete;
 	}
 	leaf CLICON_NACM_MODE {
 	    type nacm_mode;

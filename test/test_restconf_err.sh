@@ -31,7 +31,7 @@ fxml=$dir/initial.xml
 fstate=$dir/state.xml
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none
+restconf_config none false
 
 #  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
 cat <<EOF > $cfg
@@ -40,7 +40,6 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>$dir/restconf.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>

@@ -14,7 +14,7 @@ APPNAME=example
 cfg=$dir/conf.xml
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none
+restconf_config none false
 
 # Use yang in example
 cat <<EOF > $cfg
@@ -27,7 +27,6 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>

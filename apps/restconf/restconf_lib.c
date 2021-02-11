@@ -599,7 +599,6 @@ restconf_config_init(clicon_handle h,
 	    goto disable;
 	}
     }
-
     /* get common fields */
     if ((x = xpath_first(xrestconf, nsc, "auth-type")) != NULL &&
 	(bstr = xml_body(x)) != NULL){
@@ -608,6 +607,16 @@ restconf_config_init(clicon_handle h,
 	    goto done;
 	}
 	restconf_auth_type_set(h, auth_type);
+    }
+    if ((x = xpath_first(xrestconf, nsc, "pretty")) != NULL &&
+	(bstr = xml_body(x)) != NULL){
+	/* XXX redirection to (obsolete) option, fix by replacing its accesses */
+	clicon_option_str_set(h, "CLICON_RESTCONF_PRETTY", bstr);
+    }
+    if ((x = xpath_first(xrestconf, nsc, "fcgi-socket")) != NULL &&
+	(bstr = xml_body(x)) != NULL){
+	/* XXX redirection to (obsolete) option, fix by replacing its accesses */
+	clicon_option_str_set(h, "CLICON_RESTCONF_PATH", bstr);
     }
     retval = 1;
  done:

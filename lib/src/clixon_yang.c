@@ -1964,6 +1964,7 @@ if_feature(yang_stmt    *yspec,
  *
  * @param[in] h    Clicon handle
  * @param[in] ys   Feature yang statement to populate.
+ * Bootstrapping: A feature is enabled if found in clixon-config
  */
 static int
 ys_populate_feature(clicon_handle h,
@@ -1980,7 +1981,9 @@ ys_populate_feature(clicon_handle h,
     char      *m;
     char      *f;
 
-    /* get clicon config file in xml form */
+    /* get clicon config file in xml form.
+     * Bootstrapping: A feature is enabled if found in clixon-config
+     */
     if ((x = clicon_conf_xml(h)) == NULL)
 	goto ok;
     if ((ymod = ys_module(ys)) == NULL){

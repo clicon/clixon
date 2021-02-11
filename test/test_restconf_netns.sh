@@ -25,7 +25,6 @@ if [ $? -ne 0 ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
-
 APPNAME=example
 
 cfg=$dir/conf.xml
@@ -53,6 +52,7 @@ RESTCONFIG=$(cat <<EOF
    <server-cert-path>$srvcert</server-cert-path>
    <server-key-path>$srvkey</server-key-path>
    <server-ca-cert-path>$cakey</server-ca-cert-path>
+   <pretty>false</pretty>
    <socket>     <!-- reference and to get wait-restconf to work -->
       <namespace>default</namespace>
       <address>0.0.0.0</address>
@@ -88,7 +88,6 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>

@@ -30,7 +30,7 @@ fconfig=$dir/large.xml
 fstate=$dir/state.xml
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none
+restconf_config none false
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -41,7 +41,6 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/example/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
   <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>

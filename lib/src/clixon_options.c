@@ -519,6 +519,19 @@ clicon_options_main(clicon_handle h)
     
     clicon_conf_xml_set(h, xconfig);
 
+#if defined(WITH_RESTCONF) && WITH_RESTCONF == fcgi
+    /* Enable fcgi feature
+     * Due to boot-strapping in first load of clixon config, a feature cannot be added
+     * programmatically after config file load
+     * It could be added to all clixon config files but since it is a compile time option
+     * this is a way to not be so intrusive
+     * If fcgi option gets secondary this should probably be changed
+     */
+    if (clixon_xml_parse_string("<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>",
+				YB_PARENT, NULL, &xconfig, NULL) < 0)
+	goto done;
+#endif
+    
     /* Parse clixon yang spec */
     if (yang_spec_parse_module(h, "clixon-config", NULL, yspec) < 0)
 	goto done;    

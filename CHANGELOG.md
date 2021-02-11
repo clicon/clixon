@@ -31,15 +31,43 @@ Expected: February 2021
 
 ### New features
 
-* RESTCONF failed authentication changed error return code from 403 Forbiden to 401 Unauthorized following RFC 8040
-  * Authentication OK but failed on access, remains as 403 Forbidden
 * NETCONF Call Home Call Home RFC 8071
   * See [Netconf/ssh callhome](https://clixon-docs.readthedocs.io/en/latest/netconf.html#callhome)
   * Solution description using openssh and utility functions, no changes to core clixon
   * Example: test/test_netconf_ssh_callhome.sh
-  * RESTCONF Call home not done
+  * RESTCONF Call home not yet implemented
 * New clixon_client API for external access
   * See [client api docs](https://clixon-docs.readthedocs.io/en/latest/client.html)
+
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* RESTCONF configuration is unified and moved from clixon-config.yang to clixon-restconf.yang
+  * Except `CLICON_RESTCONF_DIR` which remains in clixon-config.yang due to bootstrapping
+    * -d <dir> option removed
+  * This applies to both evhtp and fcgi RESTCONF
+    * Both can also read config from backend, and be started from backend
+  * You may need to move config as follows (from clixon-config.yang to clixon-restconf.yang)
+    * CLICON_RESTCONF_PRETTY -> restconf/pretty
+    * CLICON_RESTCONF_PATH -> restconf/fcgi-path
+  * For more info see [clixon-docs](https://clixon-docs.readthedocs.io/en/latest/restconf.html)
+* RESTCONF failed authentication changed error return code from 403 Forbiden to 401 Unauthorized following RFC 8040
+  * Authentication OK but failed on access, remains as 403 Forbidden
+* Handling empty netconf XML messages "]]>]]>" is changed from being accepted to return an error.
+* New clixon-restconf@2020-12-30.yang revision
+  * Added: debug field
+  * Added 'none' as default value for auth-type
+  * Changed http-auth-type enum from 'password' to 'user'
+* New clixon-lib@2020-12-30.yang revision
+  * Changed: RPC process-control output parameter status to pid
+* New clixon-config@2020-12-30.yang revision
+  * Removed obsolete RESTCONF and SSL options (CLICON_SSL_* and CLICON_RESTCONF_IP*/HTTP*)
+  * Removed obsolete: CLICON_TRANSACTION_MOD option
+  * Marked as obsolete: CLICON_RESTCONF_PATH CLICON_RESTCONF_PRETTY
+* Changed namespace of clixon-restconf@2020-10-30.yang from https://clicon.org/restconf ->http://clicon.org/restconf ->
+* CLIspec dbxml API: Ability to specify deletion of _any_ vs _specific_ entry.
+  * In a cli_del() call, the cvv arg list either exactly matches the api-format-path in which case _any_ deletion is specified, otherwise, if there is an extra element in the cvv list, that is used for a specific delete.
 
 ### C/CLI-API changes on existing features
 
@@ -55,23 +83,6 @@ Developers may need to change their code
   * For more info see [clixon-docs](https://clixon-docs.readthedocs.io/en/latest/restconf.html)
 * rpc msg C API rearranged to separate socket/connect from connect
 * Added `cvv_i` output parameter to `api_path_fmt2api_path()` to see how many cvv entries were used.
-
-### API changes on existing protocol/config features
-
-Users may have to change how they access the system
-
-* Handling empty netconf XML messages "]]>]]>" is changed from being accepted to return an error.
-* New clixon-restconf@2020-12-30.yang revision
-  * Added: debug field
-  * Added 'none' as default value for auth-type
-  * Changed http-auth-type enum from 'password' to 'user'
-* New clixon-lib@2020-12-30.yang revision
-  * Changed: RPC process-control output parameter status to pid
-* New clixon-config@2020-12-30.yang revision
-  * Removed obsolete RESTCONF and SSL options
-* Changed namespace of clixon-restconf@2020-10-30.yang from https://clicon.org/restconf ->http://clicon.org/restconf ->
-* CLIspec dbxml API: Ability to specify deletion of _any_ vs _specific_ entry.
-  * In a cli_del() call, the cvv arg list either exactly matches the api-format-path in which case _any_ deletion is specified, otherwise, if there is an extra element in the cvv list, that is used for a specific delete.
 
 ### Minor changes
 

@@ -394,6 +394,7 @@ api_stream(clicon_handle h,
 
     clicon_debug(1, "%s", __FUNCTION__);
     path = restconf_uripath(h);
+    /* XXX see restconf_config_init access directly */
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;

@@ -84,7 +84,7 @@
 #include "restconf_root.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:E:l:p:d:y:a:u:ro:"
+#define RESTCONF_OPTS "hD:f:E:l:p:y:a:u:ro:"
 
 /* See see listen(5) */
 #define SOCKET_LISTEN_BACKLOG 16
@@ -700,15 +700,13 @@ usage(clicon_handle h,
 	    "\t-E <dir> \t  Extra configuration file directory\n"
 	    "\t-l <s|f<file>> \t  Log on (s)yslog, (f)ile (syslog is default)\n"
 	    "\t-p <dir>\t  Yang directory path (see CLICON_YANG_DIR)\n"
-	    "\t-d <dir>\t  Specify restconf plugin directory dir (default: %s)\n"
 	    "\t-y <file>\t  Load yang spec file (override yang main module)\n"
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
 	    "\t-r \t\t  Do not drop privileges if run as root\n"
 	    "\t-o <option>=<value> Set configuration option overriding config file (see clixon-config.yang)\n"
 	    ,
-	    argv0,
-	    clicon_restconf_dir(h)
+	    argv0
 	    );
     exit(0);
 }
@@ -1043,12 +1041,11 @@ restconf_config(clicon_handle    h,
     cxobj         *xerr = NULL;
     uint32_t       id = 0; /* Session id, to poll backend up */
     struct passwd *pw;
-    cxobj         *xconfig1 = NULL;
-    cxobj         *xrestconf1 = NULL;
+    cxobj         *xrestconf1 = NULL; /* Local config file */
     cxobj         *xconfig2 = NULL;
-    cxobj         *xrestconf2 = NULL;
+    cxobj         *xrestconf2 = NULL; /* Config from backend */
     int            ret;
-    int            backend = 1; /* query backend for config */
+    int            configure_done = 0; /* First try local then backend */
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
@@ -1126,6 +1123,7 @@ restconf_config(clicon_handle    h,
 
     /* Here all modules are loaded 
      * Compute and set canonical namespace context
+
      */
     if (xml_nsctx_yangspec(yspec, &nsctx_global) < 0)
 	goto done;
@@ -1138,17 +1136,17 @@ restconf_config(clicon_handle    h,
 	goto done;
     }
 
-    /* First get local config */
-    xconfig1 = clicon_conf_xml(h);
-    if ((xrestconf1 = xpath_first(xconfig1, NULL, "restconf")) != NULL){
+    /* First try to get restconf config from local config-file */
+    if ((xrestconf1 = clicon_conf_restconf(h)) != NULL){
 	/* Initialize evhtp with local config: ret 0 means disabled -> need to query remote */
 	if ((ret = cx_evhtp_init(h, xrestconf1, NULL, eh)) < 0)
 	    goto done;
 	if (ret == 1)
-	    backend = 0;
+	    configure_done = 1;
     }
-    if (backend){     /* Query backend of config. */
-	/* Before evhtp, try again if not done */
+    /* If no local config, or it is disabled, try to query backend of config. */
+    if (!configure_done){     
+	/* Loop to wait for backend starting, try again if not done */
 	while (1){
 	    if (clicon_hello_req(h, &id) < 0){
 		if (errno == ENOENT){
@@ -1174,12 +1172,18 @@ restconf_config(clicon_handle    h,
 	    clixon_netconf_error(xerr, "Get backend restconf config", NULL);
 	    goto done;
 	}
-	/* Extract socket fields from xconfig */
+	/* Extract restconf configuration */
 	if ((xrestconf2 = xpath_first(xconfig2, nsc, "restconf")) != NULL){
 	    /* Initialize evhtp with config from backend */
-	    if (cx_evhtp_init(h, xrestconf2, nsc, eh) < 0)
+	    if ((ret = cx_evhtp_init(h, xrestconf2, nsc, eh)) < 0)
 		goto done;
+	    if (ret == 1)
+		configure_done = 1;
 	}
+    }
+    if (!configure_done){     /* Query backend of config. */
+	clicon_err(OE_DAEMON, EFAULT, "Restconf daemon config not found or disabled");
+	goto done;
     }
     retval = 0;
  done:
@@ -1280,11 +1284,6 @@ main(int    argc,
 	case 'p' : /* yang dir path */
 	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
 		goto done;
-	    break;
-	case 'd':  /* Plugin directory */
-	    if (!strlen(optarg))
-		usage(h, argv0);
-	    clicon_option_str_set(h, "CLICON_RESTCONF_DIR", optarg);
 	    break;
 	case 'y' : /* Load yang spec file (override yang main module) */
 	    clicon_option_str_set(h, "CLICON_YANG_MAIN_FILE", optarg);

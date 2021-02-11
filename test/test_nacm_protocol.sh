@@ -35,7 +35,7 @@ cfg=$dir/conf_yang.xml
 fyang=$dir/nacm-example.yang
 
 # Define default restconfig config: RESTCONFIG
-restconf_config user
+restconf_config user false
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -52,7 +52,6 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
   <CLICON_NACM_CREDENTIALS>none</CLICON_NACM_CREDENTIALS>
   <CLICON_NACM_DISABLED_ON_EMPTY>true</CLICON_NACM_DISABLED_ON_EMPTY>

@@ -196,13 +196,18 @@ fi
 # Default restconf configuration: http IPv4 
 # Can be placed in clixon-config
 # Note that https clause assumes there exists certs and keys in /etc/ssl,...
+# Args:
+# 1: auth-type (one of none, client-cert, user)
+# 2: pretty (if true pretty-print restconf return values)
 function restconf_config()
 {
     AUTH=$1
+    PRETTY=$2
+
     if [ $RCPROTO = http ]; then
-	RESTCONFIG="<restconf><enable>true</enable><auth-type>$AUTH</auth-type><debug>1</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
+	RESTCONFIG="<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
     else
-	RESTCONFIG="<restconf><enable>true</enable><auth-type>$AUTH</auth-type><server-cert-path>/etc/ssl/certs/clixon-server-crt.pem</server-cert-path><server-key-path>/etc/ssl/private/clixon-server-key.pem</server-key-path><server-ca-cert-path>/etc/ssl/certs/clixon-ca-crt.pem</server-ca-cert-path><debug>1</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
+	RESTCONFIG="<restconf><enable>true</enable><auth-type>$AUTH</auth-type><server-cert-path>/etc/ssl/certs/clixon-server-crt.pem</server-cert-path><server-key-path>/etc/ssl/private/clixon-server-key.pem</server-key-path><server-ca-cert-path>/etc/ssl/certs/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
     fi
 }
 

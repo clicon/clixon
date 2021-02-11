@@ -49,7 +49,7 @@ if [ "${WITH_RESTCONF}" = "evhtp" ]; then
     . ./certs.sh
 else
     # Define default restconfig config: RESTCONFIG
-    restconf_config none
+    restconf_config none false
 fi
 
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
@@ -64,6 +64,7 @@ if $IPv6; then
    <server-cert-path>$srvcert</server-cert-path>
    <server-key-path>$srvkey</server-key-path>
    <server-ca-cert-path>$cakey</server-ca-cert-path>
+   <pretty>false</pretty>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket>
    <socket><namespace>default</namespace><address>::</address><port>80</port><ssl>false</ssl></socket>
@@ -80,6 +81,7 @@ else
    <server-cert-path>$srvcert</server-cert-path>
    <server-key-path>$srvkey</server-key-path>
    <server-ca-cert-path>$cakey</server-ca-cert-path>
+   <pretty>false</pretty>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket>
 </restconf>
@@ -98,7 +100,6 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
@@ -108,7 +109,6 @@ cat <<EOF > $cfg
   $RESTCONFIG <!-- only fcgi -->
 </clixon-config>
 EOF
-
 
 # Restconf test routine with arguments:
 # 1. proto:http/https

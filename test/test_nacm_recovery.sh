@@ -21,7 +21,7 @@ fyang=$dir/nacm-example.yang
 # cred:none, exact, except
 
 # Define default restconfig config: RESTCONFIG
-restconf_config user
+restconf_config user false
 
 cat <<EOF > $fyang
 module nacm-example{
@@ -84,7 +84,6 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_NACM_RECOVERY_USER>$recovery</CLICON_NACM_RECOVERY_USER>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
   <CLICON_NACM_CREDENTIALS>$cred</CLICON_NACM_CREDENTIALS>

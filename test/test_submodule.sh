@@ -28,7 +28,7 @@ fextra1=$dir/extra1.yang     # Referenced from sub1
 fextra2=$dir/extra2.yang     # Referenced from sub2
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none
+restconf_config none false
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -43,7 +43,6 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
   $RESTCONFIG

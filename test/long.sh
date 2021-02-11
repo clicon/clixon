@@ -21,6 +21,9 @@ cfg=$dir/scaling-conf.xml
 fyang=$dir/scaling.yang
 fconfig=$dir/large.xml
 
+# Define default restconfig config: RESTCONFIG
+restconf_config none false
+
 cat <<EOF > $fyang
 module scaling{
    yang-version 1.1;
@@ -52,10 +55,10 @@ cat <<EOF > $cfg
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -122,17 +125,18 @@ done
 new "Kill restconf daemon"
 stop_restconf 
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=`pgrep -u root -f clixon_backend`
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
 
-new "Kill backend"
-# Check if premature kill
-pid=`pgrep -u root -f clixon_backend`
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
+# Set by restconf_config
+unset RESTCONFIG
 
 rm -rf $dir

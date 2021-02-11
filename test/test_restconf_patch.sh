@@ -13,7 +13,7 @@ startupdb=$dir/startup_db
 fjukebox=$dir/example-jukebox.yang
 
 # Define default restconfig config: RESTCONFIG
-restconf_config user
+restconf_config user false
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -23,7 +23,6 @@ cat <<EOF > $cfg
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_BACKEND_PIDFILE>$dir/restconf.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>

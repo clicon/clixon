@@ -406,6 +406,7 @@ api_root_restconf(clicon_handle        h,
     }
     request_method = restconf_param_get(h, "REQUEST_METHOD");
     path = restconf_uripath(h);
+    /* XXX see restconf_config_init access directly */
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     /* Get media for output (proactive negotiation) RFC7231 by using
      * Accept:. This is for methods that have output, such as GET, 

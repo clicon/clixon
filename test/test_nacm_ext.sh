@@ -16,7 +16,7 @@ fyang=$dir/nacm-example.yang
 nacmfile=$dir/nacmfile
 
 # Define default restconfig config: RESTCONFIG
-restconf_config user
+restconf_config user false
 
 # Note filter out example_backend_nacm.so in CLICON_BACKEND_REGEXP below
 cat <<EOF > $cfg
@@ -35,7 +35,6 @@ cat <<EOF > $cfg
   <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  <CLICON_RESTCONF_PRETTY>false</CLICON_RESTCONF_PRETTY>
   <CLICON_NACM_MODE>external</CLICON_NACM_MODE>
   <CLICON_NACM_FILE>$nacmfile</CLICON_NACM_FILE>
   <CLICON_NACM_CREDENTIALS>none</CLICON_NACM_CREDENTIALS>
