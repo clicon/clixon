@@ -76,6 +76,7 @@ sudo clixon_netconf_ssh_callhome -a 127.0.0.1 -c /var/tmp/./test_netconf_ssh_cal
 #include <assert.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 
 #define NETCONF_CH_SSH 4334
 #define SSHDBIN_DEFAULT "/usr/sbin/sshd"

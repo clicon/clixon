@@ -75,6 +75,7 @@ Example sshd-config (-c option):n
 #include <assert.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 
 #define NETCONF_CH_SSH 4334
 #define UTIL_OPTS "hD:f:a:p:"

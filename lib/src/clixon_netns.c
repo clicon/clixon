@@ -27,8 +27,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-
-#include <sched.h>
+#ifdef HAVE_SETNS /* linux network namespaces */
+#include <sched.h>  /* setns / unshare */
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -207,10 +208,12 @@ fork_netns_socket(const char      *netns,
 	    clicon_err(OE_UNIX, errno, "open(%s)", nspath);
 	    return -1;
 	}
+#ifdef HAVE_SETNS
 	if (setns(fd, CLONE_NEWNET) < 0){
 	    clicon_err(OE_UNIX, errno, "setns(%s)", netns);
 	    return -1;
 	}
+#endif
 	close(fd);
 	/* Create socket in this namespace */
 	if (create_socket(sa, sin_len, backlog, &s) < 0)
@@ -258,8 +261,13 @@ clixon_netns_socket(const char      *netns,
 	goto ok;
     }
     else {
+#ifdef HAVE_SETNS
 	if (fork_netns_socket(netns, sa, sin_len, backlog, sock) < 0)
 	    goto done;
+#else
+	clicon_err(OE_UNIX, errno, "No namespace support on platform: %s", netns);
+	return -1;	
+#endif
     }
  ok:
     retval = 0;

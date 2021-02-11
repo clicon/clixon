@@ -15,8 +15,15 @@ fi
 
 APPNAME=example
 cfg=$dir/conf_yang.xml
+sshcfg=$dir/ssh.conf
 sshdcfg=$dir/sshd.conf
 rpccmd=$dir/rpccmd.xml
+keydir=$dir/keydir
+test -d $keydir || mkdir $keydir
+chmod 700 $keydir
+key=$keydir/mykey
+# XXX cant get it to work with this file under tmp dir so have to place it in homedir
+authfile=$HOME/.ssh/clixon_authorized_keys_removeme 
 
 # Use yang in example
 
@@ -48,14 +55,27 @@ cat <<EOF > $rpccmd
 </rpc>]]>]]>
 EOF
 
+# Generate temporary ssh keys without passphrase
+# This is to avoid being prompt for password or passhrase
+rm -f $key $key.pub
+ssh-keygen -q -f $key -b 256 -t ed25519 -N "" -C "Clixon test temporary key"
+cp $key.pub $authfile
+
 # Make the callback after a sleep in separate thread simulating the server
 # The result is not checked, only the client-side
 function callhomefn()
 {
     sleep 1
 
+    cat<<EOF>$sshdcfg
+PasswordAuthentication no
+AuthorizedKeysFile     $authfile
+
+EOF
     new "Start Callhome in background"
-    expectpart "$(sudo ${clixon_netconf_ssh_callhome} -a 127.0.0.1 -c $cfg)" 255 ""    
+    echo "sudo clixon_netconf_ssh_callhome} -D 1 -a 127.0.0.1 -C $sshdcfg -c $cfg"
+    expectpart "$(sudo ${clixon_netconf_ssh_callhome} -D 1 -a 127.0.0.1 -C $sshdcfg -c $cfg)" 255 "" 
+    rm -f $authfile
 }
 
 new "test params: -f $cfg"
@@ -77,8 +97,31 @@ fi
 # Start callhome server-side in background thread
 callhomefn &
 
+# Choose unhashed host key
+# See rfc8071 Sec 3.1
+#    C5  As part of establishing an SSH or TLS connection, the NETCONF/
+#       RESTCONF client MUST validate the server's presented host key or
+#       certificate.  This validation MAY be accomplished by certificate
+#       path validation or by comparing the host key or certificate to a
+#       previously trusted or "pinned" value.  If a certificate is
+#       presented and it contains revocation-checking information, the
+#       NETCONF/RESTCONF client SHOULD check the revocation status of the
+#       certificate.  If it is determined that a certificate has been
+#       revoked, the client MUST immediately close the connection.
+
+cat<<EOF > $dir/knownhosts
+. $(cat /etc/ssh/ssh_host_ed25519_key.pub)
+EOF
+cat<<EOF > $sshcfg
+StrictHostKeyChecking yes
+UserKnownHostsFile $dir/knownhosts
+HashKnownHosts no
+EOF
+
 new "Start Listener client"
-expectpart "$(ssh -s -v -o ProxyUseFdpass=yes -o ProxyCommand="${clixon_netconf_ssh_callhome_client} -a 127.0.0.1" . netconf < $rpccmd)" 0 "<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=2019-01-04&amp;module-set-id=42</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>2</session-id></hello>]]>]]>" "<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>"
+echo "ssh -s -v -i $key -o ProxyUseFdpass=yes -o ProxyCommand=\"clixon_netconf_ssh_callhome_client -a 127.0.0.1\" . netconf"
+#-F $sshcfg
+expectpart "$(ssh -s -F $sshcfg -v -i $key -o ProxyUseFdpass=yes -o ProxyCommand="${clixon_netconf_ssh_callhome_client} -a 127.0.0.1" . netconf < $rpccmd)" 0 "<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=2019-01-04&amp;module-set-id=42</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>2</session-id></hello>]]>]]>" "<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>"
 
 # Wait 
 wait
@@ -96,4 +139,7 @@ fi
 
 new "Endtest"
 endtest
+
+rm -f $authfile
+
 rm -rf $dir

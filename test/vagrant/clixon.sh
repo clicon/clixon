@@ -30,7 +30,7 @@ fi
 test -d src || mkdir src
 test -d src/cligen || (cd src;git clone https://github.com/clicon/cligen.git)
 cd src/cligen
-git pull
+git pull origin master
 
 if [ $release = "freebsd" ]; then
     ./configure
@@ -51,7 +51,7 @@ sudo $MAKE install
 cd
 test -d src/clixon || (cd src;git clone https://github.com/clicon/clixon.git)
 cd src/clixon
-git pull
+git pull origin master
 
 if [ $release = "freebsd" ]; then
     LDFLAGS=-L/usr/local/lib ./configure --with-cligen=/usr/local --enable-optyangs --with-restconf=${with_restconf}

@@ -453,18 +453,18 @@ clixon_client_get_body_val(int         sock,
     if (clixon_client_get_xdata(sock, namespace, xpath, &xdata) < 0)
 	goto done;
     if (xdata == NULL){
-	clicon_err(OE_XML, ENODATA, "No xml obj found"); 
+	clicon_err(OE_XML, EINVAL, "No xml obj found"); 
 	goto done;
     }
     /* Is this an error, maybe an "unset" retval ? */
     if (xml_child_nr_type(xdata, CX_ELMNT) == 0){
-	clicon_err(OE_XML, ENODATA, "Value not found"); 
+	clicon_err(OE_XML, EINVAL, "Value not found"); 
 	goto done;
     }
     if (clixon_xml_bottom(xdata, &xobj) < 0)
 	goto done;
     if (xobj == NULL){
-	clicon_err(OE_XML, ENODATA, "No xml value found"); 
+	clicon_err(OE_XML, EINVAL, "No xml value found"); 
 	goto done;
     }
     *val = xml_body(xobj);

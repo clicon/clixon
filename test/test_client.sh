@@ -112,7 +112,7 @@ main(int    argc,
 EOF
 
 new "compile $cfile -> $app"
-expectpart "$($CC -g -Wall -I/usr/local/include $cfile -o $app -lclixon)" 0 ""
+expectpart "$($CC -g -Wall -I/usr/local/include $cfile -o $app -L /usr/local/lib -lclixon)" 0 ""
 
 new "test params: -s init -f $cfg"
 
