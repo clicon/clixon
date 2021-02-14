@@ -105,24 +105,6 @@ module clixon-restconf {
                  Note client-certificate applies only if ssl-enable is true and socket has ssl";
 	    default none;
 	}
-	leaf server-cert-path {
-	    type string;
-	    description
-		"Path to server certificate file. 
-                 Note only applies if socket has ssl enabled";
-	}
-	leaf server-key-path {
-	    type string;
-	    description
-		"Path to server key file
-                 Note only applies if socket has ssl enabled";
-	}
-	leaf server-ca-cert-path {
-	    type string;
-	    description
-		"Path to server CA cert file
-	         Note only applies if socket has ssl enabled";
-	}
 	leaf debug {
 	    description
 		"Set debug level of restconf daemon. 
@@ -148,21 +130,47 @@ module clixon-restconf {
                  which may be desirable for performance or tests
                  This replaces the CLICON_RESTCONF_PRETTY option in clixon-config.yang";
 	}
+	/* From this point only specific options 
+	 * First fcgi-specific options
+	 */
 	leaf fcgi-socket {
-	    if-feature fcgi;
+	    if-feature fcgi; /* Set by default by fcgi clixon_restconf daemon */
 	    type string;
 	    default "/www-data/fastcgi_restconf.sock";
 	    description
-		"FastCGI unix socket. Should be specified in webserver
+		"Path to FastCGI unix socket. Should be specified in webserver
          	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
                  Only if with-restconf=fcgi, NOT evhtp
                  This replaces CLICON_RESTCONF_PATH option in clixon-config.yang";
 	}	
+	/* Second, evhtp-specific options */
+	leaf server-cert-path {
+	    type string;
+	    description
+		"Path to server certificate file. 
+                 Note only applies if socket has ssl enabled";
+	}
+	leaf server-key-path {
+	    type string;
+	    description
+		"Path to server key file
+                 Note only applies if socket has ssl enabled";
+	}
+	leaf server-ca-cert-path {
+	    type string;
+	    description
+		"Path to server CA cert file
+	         Note only applies if socket has ssl enabled";
+	}
 	list socket {
+	    description
+		"List of server sockets that the restconf daemon listens to";
 	    key "namespace address port";
 	    leaf namespace {
 		type string;
-		description "indicates a namespace for instance. On platforms where namespaces are not suppported, always 'default'";
+		description
+		    "Network namespace.
+                     On platforms where namespaces are not suppported, always 'default'";
 	    }
 	    leaf address {
 		type inet:ip-address;
@@ -170,7 +178,7 @@ module clixon-restconf {
 	    }
 	    leaf port {
 		type inet:port-number;
-		description "IP port to bind to";
+		description "TCP port to bind to";
 	    }
 	    leaf ssl {
 		type boolean;

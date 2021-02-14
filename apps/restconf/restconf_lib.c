@@ -566,6 +566,8 @@ restconf_authentication_cb(clicon_handle  h,
  done:
     clicon_debug(1, "%s retval:%d authenticated:%d user:%s",
 		 __FUNCTION__, retval, authenticated, clicon_username_get(h));
+    if (username)
+	free(username);
     if (xret)
 	xml_free(xret);
     return retval;

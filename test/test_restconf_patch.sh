@@ -150,6 +150,12 @@ expectpart "$(curl -u wilma:bar $CURLOPTS -X PATCH -H 'Content-Type: application
 new 'user is authorized'
 expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash -d '{"example-jukebox:artist":{"name":"Clash","album":{"name":"London Calling"}}}')" 0 "HTTP/1.1 204 No Content"
 
+# Kill old
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
+
 # Restart
 cat<<EOF > $startupdb
 <config>
@@ -249,18 +255,16 @@ if [ $RC -ne 0 ]; then
     stop_restconf
 fi
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
 
 # Set by restconf_config
 unset RESTCONFIG

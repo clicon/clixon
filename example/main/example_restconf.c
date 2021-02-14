@@ -254,10 +254,13 @@ example_basic_auth(clicon_handle h,
 	goto fail;
     /* authenticated */
     *userp = user;
+    user=NULL; /* to avoid free below */
     *authp = 1;
     retval = 0;
  done: /* error */
     clicon_debug(1, "%s retval:%d authp:%d userp:%s", __FUNCTION__, retval, *authp, *userp);
+    if (user)
+       free(user);
     if (cb)
 	cbuf_free(cb);
     if (xt)
