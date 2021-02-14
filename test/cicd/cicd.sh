@@ -55,3 +55,4 @@ else
     ssh -t $h sudo systemctl stop nginx
 fi
 ssh -t $h "(cd src/clixon/test; ./sum.sh)"
+exit 0

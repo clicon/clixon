@@ -180,6 +180,11 @@ expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml
 new "Check running empty"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
 
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
@@ -193,5 +198,8 @@ fi
 
 # Set by restconf_config
 unset RESTCONFIG
+
+new "Endtest"
+endtest
 
 rm -rf $dir

@@ -12,6 +12,7 @@ APPNAME=example
 
 cfg=$dir/conf_startup.xml
 
+# Dont run this test with valgrind
 if [ $valgrindtest -ne 0 ]; then
     echo "...skipped "
     return 0 # skip

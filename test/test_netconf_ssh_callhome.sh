@@ -4,10 +4,16 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-# Skip it no openssh
+# Skip it if no openssh
 if ! [ -x "$(command -v ssh)" ]; then
     echo "...ssh not installed"
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
+fi
+
+# Dont run this test with valgrind
+if [ $valgrindtest -ne 0 ]; then
+    echo "...skipped "
+    return 0 # skip
 fi
 
 : ${clixon_netconf_ssh_callhome:="clixon_netconf_ssh_callhome"}
@@ -65,16 +71,19 @@ cp $key.pub $authfile
 # The result is not checked, only the client-side
 function callhomefn()
 {
-    sleep 1
-
-    cat<<EOF>$sshdcfg
+     cat<<EOF>$sshdcfg
 PasswordAuthentication no
 AuthorizedKeysFile     $authfile
 
 EOF
+    sleep 1 # There may be a far-fetched race condition here if this is too early
+
     new "Start Callhome in background"
-    echo "sudo clixon_netconf_ssh_callhome} -D 1 -a 127.0.0.1 -C $sshdcfg -c $cfg"
-    expectpart "$(sudo ${clixon_netconf_ssh_callhome} -D 1 -a 127.0.0.1 -C $sshdcfg -c $cfg)" 255 "" 
+    # sudo does not look in /usr/local/bin on eg cento8
+    cmd=$(which ${clixon_netconf_ssh_callhome})
+    echo "sudo ${cmd} -D 1 -a 127.0.0.1 -C $sshdcfg -c $cfg"
+    expectpart "$(sudo ${cmd} -D 1 -a 127.0.0.1 -C $sshdcfg -c $cfg)" 255 "" 
+
     rm -f $authfile
 }
 
@@ -111,6 +120,7 @@ callhomefn &
 
 cat<<EOF > $dir/knownhosts
 . $(cat /etc/ssh/ssh_host_ed25519_key.pub)
+. $(cat /etc/ssh/ssh_host_ecdsa_key.pub)
 EOF
 cat<<EOF > $sshcfg
 StrictHostKeyChecking yes
@@ -119,7 +129,7 @@ HashKnownHosts no
 EOF
 
 new "Start Listener client"
-echo "ssh -s -v -i $key -o ProxyUseFdpass=yes -o ProxyCommand=\"clixon_netconf_ssh_callhome_client -a 127.0.0.1\" . netconf"
+echo "ssh -s -F $sshcfg -v -i $key -o ProxyUseFdpass=yes -o ProxyCommand=\"clixon_netconf_ssh_callhome_client -a 127.0.0.1\" . netconf"
 #-F $sshcfg
 expectpart "$(ssh -s -F $sshcfg -v -i $key -o ProxyUseFdpass=yes -o ProxyCommand="${clixon_netconf_ssh_callhome_client} -a 127.0.0.1" . netconf < $rpccmd)" 0 "<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=2019-01-04&amp;module-set-id=42</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>2</session-id></hello>]]>]]>" "<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>"
 
