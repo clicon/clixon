@@ -460,7 +460,7 @@ cli_syntax_load(clicon_handle h)
 	    if (cli_susp_hook(h, fns) < 0)
 		goto done;
 	if (fni==NULL && (fni = cp->cp_api.ca_interrupt) != NULL)
-	    if (cli_susp_hook(h, fns) < 0)
+	    if (cli_interrupt_hook(h, fni) < 0)
 		goto done;
     }
 
