@@ -216,6 +216,9 @@ module clixon-example {
 		leaf uk{
 		    type string;
 		}
+		leaf val{
+		    type string;
+		}
 	    }
 	}
     }

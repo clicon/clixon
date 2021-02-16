@@ -323,6 +323,8 @@ clicon_rpc_netconf(clicon_handle  h,
  * @param[in]  xml     XML netconf tree 
  * @param[out] xret    Return XML netconf tree, error or OK
  * @param[out] sp      Socket pointer for notification, otherwise NULL
+ * @retval     0       OK
+ * @retval    -1       Error
  * @code
  *   cxobj *xret = NULL;
  *   int    s; 
@@ -345,6 +347,8 @@ clicon_rpc_netconf_xml(clicon_handle  h,
     char      *rpcname;
     cxobj     *xreply;
     yang_stmt *yspec;
+    cxobj     *xerr = NULL;
+    int        ret;
 
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
@@ -363,11 +367,24 @@ clicon_rpc_netconf_xml(clicon_handle  h,
 	xml_find_type(xreply, NULL, "rpc-error", CX_ELMNT) == NULL){
 	yspec = clicon_dbspec_yang(h);
 	/* Here use rpc name to bind to yang */
-	if (xml_bind_yang_rpc_reply(xreply, rpcname, yspec, NULL) < 0) 
+	if ((ret = xml_bind_yang_rpc_reply(xreply, rpcname, yspec, &xerr)) < 0) 
 	    goto done;
+	if (ret == 0){
+	    /* Replace reply with error */
+	    if (*xret) {
+		cxobj *xc;
+		if ((xc = xml_child_i(*xret, 0)) != NULL)
+		    xml_purge(xc);
+		if (xml_addsub(*xret, xerr) < 0)
+		    goto done;
+		xerr = NULL;
+	    }
+	}
     }
     retval = 0;
  done:
+    if (xerr)
+	xml_free(xerr);
     if (cb)
 	cbuf_free(cb);
     return retval;

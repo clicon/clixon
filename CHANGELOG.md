@@ -112,6 +112,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed [xml bind yang error in xml_bind_yang_rpc_reply #175](https://github.com/clicon/clixon/issues/175)
 * Fixed: [Is there an error with plugin's ca_interrupt setting ? #173](https://github.com/clicon/clixon/issues/173)
 * Fixed: unknown nodes (for extenstions) did not work when placed directly under a grouping clause
 * Fixed: [Behaviour of Empty LIST Input in RESTCONF JSON #166](https://github.com/clicon/clixon/issues/166)

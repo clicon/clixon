@@ -309,7 +309,7 @@ example_rpc(clicon_handle h,            /* Clicon handle */
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     if ((xp = xml_parent(xe)) != NULL &&
 	(msgid = xml_find_value(xp, "message-id"))){
-	cprintf(cbret, " message-id=\"%s\">", msgid);
+	cprintf(cbret, " message-id=\"%s\"", msgid);
     }
     cprintf(cbret, ">");
     if (!xml_child_nr_type(xe, CX_ELMNT))

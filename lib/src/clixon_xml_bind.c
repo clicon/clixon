@@ -613,9 +613,9 @@ xml_bind_yang_rpc(cxobj     *xrpc,
 
 /*! Find yang spec association of XML node for outgoing RPC starting with <rpc-reply>
  * 
- * Incoming RPC has an "input" structure that is not taken care of by xml_bind_yang
- * @param[in]   xrpc  XML rpc node
- * @param[in]   name  Name of RPC (not seen in output/reply)
+ * Outgoing RPC has an "output" structure that is not taken care of by xml_bind_yang
+ * @param[in]   xrpc   XML rpc node
+ * @param[in]   name   Name of RPC (not seen in output/reply)
  * @param[in]   yspec  Yang spec
  * @param[out]  xerr   Reason for failure, or NULL
  * @retval      1      OK yang assignment made
@@ -640,10 +640,20 @@ xml_bind_yang_rpc_reply(cxobj     *xrpc,
     yang_stmt *yo = NULL;      /* output */
     cxobj     *x;
     int        ret;
+    cxobj     *xerr1 = NULL;
+    char      *opname;
+    cbuf      *cberr = NULL;
     
-    if (strcmp(xml_name(xrpc), "rpc-reply")){
-	clicon_err(OE_UNIX, EINVAL, "rpc-reply expected");
-	goto done;
+    opname = xml_name(xrpc);
+    if (strcmp(opname, "rpc-reply")){
+	if ((cberr = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cberr, "Internal error, unrecognized netconf operation in backend reply, expected rpc-reply but received: %s", opname);
+	if (xerr && netconf_operation_failed_xml(xerr, "application", cbuf_get(cberr)) < 0)
+	    goto done;
+	goto fail;
     }
     x = NULL;
     while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {
@@ -663,18 +673,31 @@ xml_bind_yang_rpc_reply(cxobj     *xrpc,
     }
     if (yo != NULL){
 	xml_spec_set(xrpc, yo); 
-	if ((ret = xml_bind_yang(xrpc, YB_MODULE, yspec, xerr)) < 0)
+	/* Use a temporary xml error tree since it is stringified in the original error on error */
+	if ((ret = xml_bind_yang(xrpc, YB_PARENT, NULL, &xerr1)) < 0)
 	    goto done;
-	if (ret == 0)
+	if (ret == 0){
+	    if ((cberr = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    cprintf(cberr, "Internal error in backend reply: ");
+	    if (netconf_err2cb(xerr1, cberr) < 0)
+		goto done;
+	    if (xerr && netconf_operation_failed_xml(xerr, "application", cbuf_get(cberr)) < 0)
+		goto done;
 	    goto fail;
+	}
     }
     retval = 1;
  done:
+    if (cberr)
+	cbuf_free(cberr);
+    if (xerr1)
+	xml_free(xerr1);
     return retval;
  fail:
     retval = 0;
     goto done;
 }
-
-
 
