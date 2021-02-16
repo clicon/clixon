@@ -86,6 +86,7 @@ Developers may need to change their code
 
 ### Minor changes
 
+* Implemented: [Simplifying error messages for regex validations. #174](https://github.com/clicon/clixon/issues/174)
 * Add ca_reset plugin also when backend starts as `-s none`
 * Corrected client session handling to make internal IPC socket persistent
   * Applies to cli/netconf/restconf/client-api code

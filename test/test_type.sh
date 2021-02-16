@@ -249,7 +249,7 @@ EOF
     expectpart "$($clixon_cli -1f $cfg -l o set c talle x99)" 0 '^$'
 
     new "cli set transitive string error. Wrong type"
-    expectpart "$($clixon_cli -1f $cfg -l o set c talle 9xx)" 255 '^CLI syntax error: "set c talle 9xx": regexp match fail: 9xx does not match \[a-z\]\[0-9\]\*$'
+    expectpart "$($clixon_cli -1f $cfg -l o set c talle 9xx)" 255 '^CLI syntax error: "set c talle 9xx": "9xx" is invalid input for cli command: talle$'
 
     new "netconf discard-changes"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -576,13 +576,13 @@ EOF
     expectpart "$($clixon_cli -1f $cfg -l o set digit4 0123)" 0 '^$'
 
     new "cli yang pattern \d error"
-    expectpart "$($clixon_cli -1f $cfg -l o set digit4 01b2)" 255 '^CLI syntax error: "set digit4 01b2": regexp match fail: 01b2 does not match'
+    expectpart "$($clixon_cli -1f $cfg -l o set digit4 01b2)" 255 '^CLI syntax error: "set digit4 01b2": "01b2" is invalid input for cli command: digit4$'
 
     new "cli yang pattern \w ok"
     expectpart "$($clixon_cli -1f $cfg -l o set word4 abc9)" 0 '^$'
 
     new "cli yang pattern \w error"
-    expectpart "$($clixon_cli -1f $cfg -l o set word4 ab%3)" 255 '^CLI syntax error: "set word4 ab%3": regexp match fail: ab%3 does not match'
+    expectpart "$($clixon_cli -1f $cfg -l o set word4 ab%3)" 255 '^CLI syntax error: "set word4 ab%3": "ab%3" is invalid input for cli command: word4$'
 
     new "netconf pattern \w"
     expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><word4 xmlns=\"urn:example:clixon\">aXG9</word4></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
