@@ -435,7 +435,8 @@ main(int    argc,
 	goto done;
 
     cligen_comment_set(cli_cligen(h), '#'); /* Default to handle #! clicon_cli scripts */
-
+    cligen_lexicalorder_set(cli_cligen(h), 1);
+    
     /*
      * First-step command-line options for help, debug, config-file and log, 
      */
