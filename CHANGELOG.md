@@ -86,6 +86,7 @@ Developers may need to change their code
 
 ### Minor changes
 
+* Augment target node check strict, instead of printing a warning, it will terminate with error.
 * Implemented: [Simplifying error messages for regex validations. #174](https://github.com/clicon/clixon/issues/174)
 * Add ca_reset plugin also when backend starts as `-s none`
 * Corrected client session handling to make internal IPC socket persistent
@@ -113,6 +114,9 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Augment that reference a submodule as target node fails #178](https://github.com/clicon/clixon/issues/178)
+* Fixed a memory error that was reported in slack by Pawel Maslanka
+  * The crash printout was: `realloc(): invalid next size Aborted`
 * Fixed: [Irregular ordering of cli command + help text when integer is a part of command #176](https://github.com/clicon/clixon/issues/176)
   * Enabled by default `cligen_lexicalorder_set()` using strversmp instead of strcmp
 * Fixed: [xml bind yang error in xml_bind_yang_rpc_reply #175](https://github.com/clicon/clixon/issues/175)

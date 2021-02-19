@@ -1791,7 +1791,7 @@ desc_schema_nodeid_str : desc_schema_nodeid
 desc_schema_nodeid : node_identifier
                      { $$= $1; clicon_debug(3,"descendant-schema-nodeid -> node_identifier"); }
                    | node_identifier abs_schema_nodeid
-		   { if (($$=string_del_join($1, " ", $2)) == NULL) _YYERROR("desc_schema_nodeid");clicon_debug(3,"descendant-schema-nodeid -> node_identifier abs_schema_nodeid"); }
+		   { if (($$=string_del_join($1, "", $2)) == NULL) _YYERROR("desc_schema_nodeid");clicon_debug(3,"descendant-schema-nodeid -> node_identifier abs_schema_nodeid"); }
                    ;
 
 identifier_str : '"' IDENTIFIER '"' { $$ = $2;

@@ -695,7 +695,7 @@ usage(clicon_handle h,
     fprintf(stderr, "usage:%s [options]\n"
 	    "where options are\n"
             "\t-h \t\t  Help\n"
-	    "\t-D <level>\t  Debug level\n"
+	    "\t-D <level>\t  Debug level _ overrides any config debug setting\n"
     	    "\t-f <file>\t  Configuration file (mandatory)\n"
 	    "\t-E <dir> \t  Extra configuration file directory\n"
 	    "\t-l <s|f<file>> \t  Log on (s)yslog, (f)ile (syslog is default)\n"
@@ -923,6 +923,7 @@ cx_evhtp_socket(clicon_handle    h,
  * @param[in]  xconfig  XML config
  * @param[in]  nsc      Namespace context
  * @param[in]  eh       Evhtp handle
+ * @param[in]  dbg0     Manually set debug flag, if set overrides configuration setting
  * @retval     -1       Error
  * @retval     0        OK, but restconf disabled, proceed with other if possible
  * @retval     1        OK
@@ -931,7 +932,8 @@ static int
 cx_evhtp_init(clicon_handle     h,
 	      cxobj            *xrestconf,
 	      cvec             *nsc,
-	      cx_evhtp_handle  *eh)
+	      cx_evhtp_handle  *eh,
+	      int               dbg0)
 {
     int     retval = -1;
     int     ssl_enable = 0;
@@ -962,7 +964,9 @@ cx_evhtp_init(clicon_handle     h,
 	server_key_path = xml_body(x);
     if ((x = xpath_first(xrestconf, nsc, "server-ca-cert-path")) != NULL)
 	server_ca_cert_path = xml_body(x);
-    if ((x = xpath_first(xrestconf, nsc, "debug")) != NULL &&
+    /* Only set debug from config if not set manually */
+    if (dbg0 == 0 &&
+	(x = xpath_first(xrestconf, nsc, "debug")) != NULL &&
 	(bstr = xml_body(x)) != NULL){
 	dbg = atoi(bstr);
 	clicon_debug_init(dbg, NULL); 	
@@ -1022,12 +1026,14 @@ cx_evhtp_init(clicon_handle     h,
  * That is, EITHER local config OR read config from backend once
  * @param[in]  h     Clicon handle
  * @param[in]  eh    Clixon's evhtp handle
+ * @param[in]  dbg0     Manually set debug flag, if set overrides configuration setting
  * @retval     0     OK
  * @retval    -1     Error
  */ 
 int
 restconf_config(clicon_handle    h,
-		cx_evhtp_handle *eh)
+		cx_evhtp_handle *eh,
+		int              dbg)
 {
     int            retval = -1;
     char          *dir;
@@ -1139,7 +1145,7 @@ restconf_config(clicon_handle    h,
     /* First try to get restconf config from local config-file */
     if ((xrestconf1 = clicon_conf_restconf(h)) != NULL){
 	/* Initialize evhtp with local config: ret 0 means disabled -> need to query remote */
-	if ((ret = cx_evhtp_init(h, xrestconf1, NULL, eh)) < 0)
+	if ((ret = cx_evhtp_init(h, xrestconf1, NULL, eh, dbg)) < 0)
 	    goto done;
 	if (ret == 1)
 	    configure_done = 1;
@@ -1175,7 +1181,7 @@ restconf_config(clicon_handle    h,
 	/* Extract restconf configuration */
 	if ((xrestconf2 = xpath_first(xconfig2, nsc, "restconf")) != NULL){
 	    /* Initialize evhtp with config from backend */
-	    if ((ret = cx_evhtp_init(h, xrestconf2, nsc, eh)) < 0)
+	    if ((ret = cx_evhtp_init(h, xrestconf2, nsc, eh, dbg)) < 0)
 		goto done;
 	    if (ret == 1)
 		configure_done = 1;
@@ -1221,7 +1227,7 @@ main(int    argc,
 	case 'h':
 	    usage(h, argv0);
 	    break;
-	case 'D' : /* debug */
+	case 'D' : /* debug. Note this overrides any setting in the config */
 	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(h, argv0);
 	    break;
@@ -1339,7 +1345,7 @@ main(int    argc,
     _EVHTP_HANDLE = eh; /* global */
 
     /* Read config */ 
-    if (restconf_config(h, eh) < 0)
+    if (restconf_config(h, eh, dbg) < 0)
 	goto done;
     /* Drop privileges after evhtp and server key/cert read */
     if (drop_privileges){

@@ -97,6 +97,7 @@ static int yang_search_index_extension(clicon_handle h, yang_stmt *yext, yang_st
  * Here is also the place where doc on some types store variables (cv)
  */
 static const map_str2int ykmap[] = {
+    {"action",           Y_ACTION}, 
     {"anydata",          Y_ANYDATA}, 
     {"anyxml",           Y_ANYXML}, 
     {"argument",         Y_ARGUMENT}, 
@@ -497,12 +498,15 @@ ys_prune(yang_stmt *yp,
     
     if (i >= yp->ys_len)
 	goto done;
-    size = (yp->ys_len - i - 1)*sizeof(struct yang_stmt *);
     yc = yp->ys_stmt[i];
-    memmove(&yp->ys_stmt[i],
-	    &yp->ys_stmt[i+1],
-	    size);
-    yp->ys_stmt[yp->ys_len--] = NULL;
+    if (i < yp->ys_len - 1){
+	size = (yp->ys_len - i - 1)*sizeof(struct yang_stmt *);
+	memmove(&yp->ys_stmt[i],
+		&yp->ys_stmt[i+1],
+		size);
+    }
+    yp->ys_len--;
+    yp->ys_stmt[yp->ys_len] = NULL;
  done:
     return yc;
 }
@@ -931,10 +935,16 @@ yang_find_schemanode(yang_stmt *yn,
 
     for (i=0; i<yn->ys_len; i++){
 	ys = yn->ys_stmt[i];
-	if (ys->ys_keyword == Y_CHOICE){ /* Look for its children */
+	if (yang_keyword_get(ys) == Y_CHOICE){ 
+	    /* First check choice itself */
+	    if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0){
+		ysmatch = ys;
+		goto match;
+	    }
+	    /* Then look for its children (case) */
 	    for (j=0; j<ys->ys_len; j++){
 		yc = ys->ys_stmt[j];
-		if (yc->ys_keyword == Y_CASE) /* Look for its children */
+		if (yang_keyword_get(yc) == Y_CASE) /* Look for its children */
 		    ysmatch = yang_find_schemanode(yc, argument);
 		else
 		    if (yang_schemanode(yc)){
@@ -950,7 +960,9 @@ yang_find_schemanode(yang_stmt *yn,
 	} /* Y_CHOICE */
 	else
 	    if (yang_schemanode(ys)){
-		if (argument == NULL)
+		if (yang_keyword_get(ys) == Y_INPUT || yang_keyword_get(ys) == Y_OUTPUT)
+		    ysmatch = ys;
+		else if (argument == NULL)
 		    ysmatch = ys;
 		else
 		    if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
@@ -1070,7 +1082,7 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
     yang_stmt *yimport;
     yang_stmt *yprefix; 
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(2, "%s", __FUNCTION__);
     /* First check if namespace is my own module */
     myns = yang_find_mynamespace(ys);
     if (strcmp(myns, ns) == 0){
@@ -2559,7 +2571,6 @@ schema_nodeid_iterate(yang_stmt    *yn,
     char            *prefix; /* node-identifier     = [prefix ":"] identifier */
     char            *id;    
     yang_stmt       *ys;
-    yang_stmt       *ym2;
     yang_stmt       *yp;
     cg_var          *cv;
     char            *ns;
@@ -2586,34 +2597,28 @@ schema_nodeid_iterate(yang_stmt    *yn,
 	    clicon_err(OE_YANG, EFAULT, "No module for namespace: %s", ns);
 	    goto done;
 	}
-       /* Iterate over children of current node to get a match 
-	* XXX namespace?????
-	*/
-	ys = NULL;
-	while ((ys = yn_each(yp, ys)) != NULL) {
-	    if (!yang_schemanode(ys))
-		continue;
-
-	    /* some keys dont have arguments, match on key */
-	    if (ys->ys_keyword == Y_INPUT || ys->ys_keyword == Y_OUTPUT){
-		if (strcmp(id, yang_key2str(ys->ys_keyword)) == 0){
-		    break;
-		}
-	    }
-	    else {
-		if (ys->ys_argument && strcmp(id, ys->ys_argument) == 0){
-		    /* Also check for right prefix/module */
-		    ym2 = ys->ys_mymodule?ys->ys_mymodule:ys_module(ys);
-		    if (ym2 == ymod)
-			break;
-		}
-	    }
-	} /* while ys */
+	ys = yang_find_schemanode(yp, id);
+	/* Special case: if rpc/action, an empty input/output may need to be created, it is optional but may 
+	 * still be referenced.
+	 * XXX: maybe input/output should always be created when rpc/action is created?
+	 */
+	if (ys == NULL &&
+	    (yang_keyword_get(yp) == Y_RPC || yang_keyword_get(yp) == Y_ACTION) &&
+	    (strcmp(id, "input") == 0 || strcmp(id, "output") == 0)){
+	    enum rfc_6020 kw;
+	    kw = clicon_str2int(ykmap, id);
+	    /* Add ys as id to yp */
+	    if ((ys = ys_new(kw)) == NULL)
+		goto done;
+	    if (yn_insert(yp, ys) < 0) /* Insert into hierarchy */
+		goto done;
+	}
 	if (ys == NULL){
 	    clicon_debug(1, "%s: %s not found", __FUNCTION__, id);
 	    goto ok;
 	}
-	yp = ys;
+	yp = ys; /* ys is matched */
+
     } /* while cv */
     assert(yp && yang_schemanode((yang_stmt*)yp));
     *yres = (yang_stmt*)yp;

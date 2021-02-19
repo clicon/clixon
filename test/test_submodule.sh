@@ -66,6 +66,12 @@ module main{
         type string;
       }
    }
+   /* Augment something in sub module */
+   augment /ex:sub2 {
+     leaf aug0{
+        type string;
+     }
+   }
 }
 EOF
 
@@ -86,6 +92,18 @@ submodule sub1 {
       leaf x{
         type string;
       }
+   }
+   /* Augment something in module */
+   augment /ex:main {
+     leaf aug1{
+        type string;
+     }
+   }
+   /* Augment something in another submodule */
+   augment /ex:sub2 {
+     leaf aug2{
+        type string;
+     }
    }
 }
 EOF
@@ -220,6 +238,15 @@ expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+jso
 
 new "restconf check main/sub1/sub2 contents"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data?content=config)" 0 'HTTP/1.1 200 OK' '{"data":{"main:main":{"ext":"foo","x":"foo"},"main:sub1":{"ext1":"foo","x":"foo"},"main:sub2":{"ext2":"foo","x":"foo"}'
+
+new "restconf edit augment 0"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:sub2 -d '{"main:aug0":"foo"}')" 0 'HTTP/1.1 201 Created'
+
+new "restconf edit augment 1"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:main -d '{"main:aug1":"foo"}')" 0 'HTTP/1.1 201 Created'
+
+new "restconf edit augment 2"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:sub2 -d '{"main:aug2":"foo"}')" 0 'HTTP/1.1 201 Created'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

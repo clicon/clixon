@@ -1011,7 +1011,8 @@ main(int    argc,
 
     /* Start session-id for clients */
     clicon_session_id_set(h, 0);
-    if (clicon_debug_get() && 
+    /* Enable this to get prints of datastore and session status */
+    if (0 && clicon_debug_get() && 
 	backend_timer_setup(0, h) < 0)
 	goto done;
     if (stream_timer_setup(0, h) < 0)

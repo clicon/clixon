@@ -238,12 +238,18 @@ yang_augment_node(yang_stmt *ys)
 	goto done;
 
     if (ytarget == NULL){
-#if 0 /* Lots of yang models fail here */
+#if 1
+	/* Fail with fatal error if augment target not found 
+	 * This is "correct"
+	 */
 	clicon_err(OE_YANG, 0, "Augment failed in module %s: target node %s not found",
 		   yang_argument_get(ys_module(ys)),
 		   schema_nodeid);
 	goto done; 
 #else
+	/* Log a warning and proceed if augment target not found 
+	 * This may be necessary with some broken models
+	 */
 	clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: target node %s not found",
 		   yang_argument_get(ys_module(ys)),
 		   schema_nodeid);
@@ -276,7 +282,7 @@ yang_augment_node(yang_stmt *ys)
 	    if (childkey != Y_ACTION && childkey != Y_NOTIFICATION && childkey != Y_UNKNOWN &&
 		childkey != Y_CONTAINER && childkey != Y_LEAF && childkey != Y_LIST &&
 		childkey != Y_LEAF_LIST && childkey != Y_USES && childkey != Y_CHOICE){
-		clicon_log(LOG_WARNING, "Warning: A Augment failed in module %s: node %s %d cannot be added to target node %s",
+		clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: node %s %d cannot be added to target node %s",
 			   yang_argument_get(ys_module(ys)),
 			   yang_key2str(childkey),
 			   childkey,
@@ -295,7 +301,7 @@ yang_augment_node(yang_stmt *ys)
 	    if (childkey != Y_CONTAINER && childkey != Y_LEAF && childkey != Y_LIST && 
 		childkey != Y_LEAF_LIST && childkey != Y_USES && childkey != Y_CHOICE &&
 		childkey != Y_UNKNOWN){
-		clicon_log(LOG_WARNING, "Warning: B Augment failed in module %s: node %s %d cannot be added to target node %s",
+		clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: node %s %d cannot be added to target node %s",
 			   yang_argument_get(ys_module(ys)),
 			   yang_key2str(childkey),
 			   childkey,
@@ -316,7 +322,7 @@ yang_augment_node(yang_stmt *ys)
 		childkey != Y_CHOICE && childkey != Y_CONTAINER && childkey != Y_LEAF &&
 		childkey != Y_LIST && childkey != Y_LEAF_LIST){
 
-		clicon_log(LOG_WARNING, "Warning: C Augment failed in module %s: node %s %d cannot be added to target node %s",
+		clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: node %s %d cannot be added to target node %s",
 			   yang_argument_get(ys_module(ys)),
 			   yang_key2str(childkey),
 			   childkey,

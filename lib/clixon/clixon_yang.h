@@ -181,7 +181,7 @@ typedef int (yang_applyfn_t)(yang_stmt *ys, void *arg);
  *       leaf, leaf-list, list, choice, case, rpc, input, output,
  *       notification, anydata, and anyxml.
  */
-#define yang_schemanode(y) (yang_datanode(y) || yang_keyword_get(y) == Y_RPC || yang_keyword_get(y) == Y_CHOICE || yang_keyword_get(y) == Y_CASE || yang_keyword_get(y) == Y_INPUT || yang_keyword_get(y) == Y_OUTPUT || yang_keyword_get(y) == Y_NOTIFICATION)
+#define yang_schemanode(y) (yang_datanode(y) || yang_keyword_get(y) == Y_RPC || yang_keyword_get(y) == Y_CHOICE || yang_keyword_get(y) == Y_CASE || yang_keyword_get(y) == Y_INPUT || yang_keyword_get(y) == Y_OUTPUT || yang_keyword_get(y) == Y_NOTIFICATION || yang_keyword_get(y) == Y_ACTION)
 
 /*
  * Prototypes

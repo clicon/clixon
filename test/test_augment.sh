@@ -85,6 +85,20 @@ module ietf-interfaces {
          type uint16;
        }
    }
+   /* Original choice that gets augmented */
+   choice target {
+      case stream {
+        leaf one{
+           type string;
+        }
+      }
+   }
+   notification started {
+     leaf id{
+       type string;
+     }
+   }
+
 }
 EOF
 
@@ -145,6 +159,9 @@ module example-augment {
             refine port {
               default 80;
             }
+            refine ip {
+	      description "double refine triggered mem error";             
+            }
           }
           uses localgroup {
             description "Use a local grouping defining lip and lport";
@@ -153,7 +170,22 @@ module example-augment {
             }
           }
        }
+       /* augment choice */
+       augment "/if:target" {
+           case datastore {
+	      leaf two{
+                 type uint32;
+              }
+           }
+       }
+       /* augment notification */
+       augment "/if:started" {
+          leaf argument{
+             type string;
+          }
+       }
 }
+
 EOF
 
 new "test params: -f $cfg"
