@@ -45,7 +45,9 @@ module clixon-config {
 
     revision 2020-12-30 {
 	description
-	    "Removed obsolete options:
+	    "Added option:
+                   CLICON_ANONYMOUS_USER
+             Removed obsolete options:
 	           CLICON_RESTCONF_IPV4_ADDR
                    CLICON_RESTCONF_IPV6_ADDR
 	           CLICON_RESTCONF_HTTP_PORT
@@ -786,6 +788,14 @@ module clixon-config {
 	leaf CLICON_STARTUP_MODE {
 	    type startup_mode;
 	    description "Which method to boot/start clicon backend";
+	}
+        leaf CLICON_ANONYMOUS_USER {
+	    type string;
+	    default "anonymous";
+	    description
+		"Name of anonymous user.
+                 The current only case where such a user is used is in RESTCONF authentication when
+                 auth-type=none and no known user is known.";
 	}
 	leaf CLICON_NACM_MODE {
 	    type nacm_mode;

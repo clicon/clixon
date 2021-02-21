@@ -62,6 +62,9 @@ Users may have to change how they access the system
 * New clixon-lib@2020-12-30.yang revision
   * Changed: RPC process-control output parameter status to pid
 * New clixon-config@2020-12-30.yang revision
+  * Added CLICON_ANONYMOUS_USER
+    * Only applies to restconf
+    * used to be hardcoded as "none", now default value is "anonymous"
   * Removed obsolete RESTCONF and SSL options (CLICON_SSL_* and CLICON_RESTCONF_IP*/HTTP*)
   * Removed obsolete: CLICON_TRANSACTION_MOD option
   * Marked as obsolete: CLICON_RESTCONF_PATH CLICON_RESTCONF_PRETTY

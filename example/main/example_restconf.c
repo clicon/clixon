@@ -52,8 +52,6 @@
 #include <clixon/clixon_restconf.h>  /* minor use */
 
 /* Command line options to be passed to getopt(3) 
- * -a  basic authentication
- * -s  ssl client certificates
  */
 #define RESTCONF_EXAMPLE_OPTS ""
 
@@ -194,16 +192,16 @@ b64_decode(const char *src,
  * @param[out] authp     0: Credentials failed, no user set (401 returned). 1: Credentials OK and user set
  * @param[out] userp     If retval is OK and auth=1, the associated user, malloced by plugin
  * @retval    -1         Fatal error
- * @retval     0         OK, see auth parameter on result.
+ * @retval     0         Ignore, undecided, not handled, same as no callback
+ * @retval     1         OK, see auth parameter on result.
  * @note user should be malloced
  * @note: Three hardwired users: andy, wilma, guest w password "bar".
- * Enabled by passing -- -a to the main function
  */
 static int
-example_basic_auth(clicon_handle h,
-		   void         *req,
-		   int          *authp,
-		   char        **userp)
+example_basic_auth(clicon_handle      h,
+		   void              *req,
+		   int               *authp,
+		   char             **userp)
 {
     int     retval = -1;
     cxobj  *xt = NULL;
@@ -242,7 +240,7 @@ example_basic_auth(clicon_handle h,
     *passwd = '\0';
     passwd++;
     clicon_debug(1, "%s http user:%s passwd:%s", __FUNCTION__, user, passwd);
-    /* Here get auth sub-tree whjere all the users are */
+    /* Here get auth sub-tree where all the users are */
     if ((cb = cbuf_new()) == NULL)
 	goto done;
     /* XXX Three hardcoded user/passwd (from RFC8341 A.1)*/
@@ -252,11 +250,10 @@ example_basic_auth(clicon_handle h,
     }
     if (strcmp(passwd, passwd2))
 	goto fail;
-    /* authenticated */
-    *userp = user;
+    *userp = user;     /* authenticated */
     user=NULL; /* to avoid free below */
     *authp = 1;
-    retval = 0;
+    retval = 1;
  done: /* error */
     clicon_debug(1, "%s retval:%d authp:%d userp:%s", __FUNCTION__, retval, *authp, *userp);
     if (user)
@@ -268,7 +265,78 @@ example_basic_auth(clicon_handle h,
     return retval;
  fail:  /* unauthenticated */
     *authp = 0;
-    retval = 0;
+    retval = 1;
+    goto done;
+}
+
+/*! HTTP "no auth" but uses basic authentication to get a user
+ * @param[in]  h         Clicon handle
+ * @param[in]  req       Per-message request www handle to use with restconf_api.h
+ * @param[out] authp     0: Credentials failed, no user set (401 returned). 1: Credentials OK and user set
+ * @param[out] userp     If retval is OK and auth=1, the associated user, malloced by plugin
+ * @retval    -1         Fatal error
+ * @retval     0         Ignore, undecided, not handled, same as no callback
+ * @retval     1         OK, see auth parameter on result.
+ * @note user should be malloced
+ */
+static int
+example_no_auth(clicon_handle      h,
+		void              *req,
+		int               *authp,
+		char             **userp)
+{
+    int     retval = -1;
+    cxobj  *xt = NULL;
+    char   *user = NULL;
+    cbuf   *cb = NULL;
+    char   *auth;
+    char   *passwd;
+    size_t  authlen;
+    int     ret;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (authp == NULL || userp == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "Output parameter is NULL");
+	goto done;
+    }
+    /* At this point in the code we must use HTTP basic authentication */
+    if ((auth = restconf_param_get(h, "HTTP_AUTHORIZATION")) == NULL)
+	goto fail;
+    if (strlen(auth) < strlen("Basic "))
+	goto fail;
+    if (strncmp("Basic ", auth, strlen("Basic ")))
+	goto fail;
+    auth += strlen("Basic ");
+    authlen = strlen(auth)*2;
+    if ((user = malloc(authlen)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(user, 0, authlen);
+    if ((ret = b64_decode(auth, user, authlen)) < 0)
+	goto done;
+    /* auth string is on the format user:passwd */
+    if ((passwd = index(user,':')) == NULL)
+	goto fail;
+    *passwd = '\0';
+    passwd++;
+    clicon_debug(1, "%s http user:%s passwd:%s", __FUNCTION__, user, passwd);
+    *userp = user;     /* authenticated */
+    user=NULL; /* to avoid free below */
+    *authp = 1;
+    retval = 1;
+ done: /* error */
+    clicon_debug(1, "%s retval:%d authp:%d userp:%s", __FUNCTION__, retval, *authp, *userp);
+    if (user)
+       free(user);
+    if (cb)
+	cbuf_free(cb);
+    if (xt)
+        xml_free(xt);
+    return retval;
+ fail:  /* unauthenticated */
+    *authp = 0;
+    retval = 0; /* Ignore use anonymous */
     goto done;
 }
 
@@ -295,16 +363,15 @@ example_restconf_credentials(clicon_handle      h,
     clicon_debug(1, "%s auth:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
     switch (auth_type){
     case CLIXON_AUTH_NONE:
-	/* Shouldnt happen */
-	retval = 0; /* Ignore, shouldnt happen */
+	if ((retval = example_no_auth(h, req, authp, userp)) < 0)
+	    goto done;
 	break;
     case CLIXON_AUTH_CLIENT_CERTIFICATE:
 	retval = 0; /* Ignore, use default */
 	break;
     case CLIXON_AUTH_USER:
-	if (example_basic_auth(h, req, authp, userp) < 0)
+	if ((retval = example_basic_auth(h, req, authp, userp)) < 0)
 	    goto done;
-	retval = 1;
 	break;
     }
  done:
@@ -369,8 +436,6 @@ static clixon_plugin_api api = {
  * @retval     NULL Error with clicon_err set
  * @retval     api  Pointer to API struct
  * Arguments are argc/argv after --
- * Currently defined: -a  enable http basic authentication
- * @note There are three hardwired users andy, wilma and guest from RFC8341 A.1
  */
 clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)

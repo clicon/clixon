@@ -89,7 +89,7 @@ EOF
 )
 fi
 
-# Start with common config, then append fcgi/evhtp specific config
+# Clixon config
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -149,7 +149,6 @@ function testrun()
 	stop_restconf_pre
 
 	new "start restconf daemon"
-	echo "cfg:$cfg"
 	start_restconf -f $cfg
 
     fi

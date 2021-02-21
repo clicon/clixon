@@ -457,7 +457,7 @@ restconf_drop_privileges(clicon_handle h,
 	return -1;
     }
     if (group_name2gid(group, &gid) < 0){
-	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.\n" /* \n required here due to multi-line log */
+	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group." /* \n required here due to multi-line log */
 		   "The config demon requires a valid group to create a server UNIX socket\n"
 		   "Define a valid CLICON_SOCK_GROUP in %s or via the -g option\n"
 		   "or create the group and add the user to it. Check documentation for how to do this on your platform",
@@ -516,24 +516,30 @@ restconf_authentication_cb(clicon_handle  h,
     char              *username = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr;
+    char              *anonymous = NULL;
     
     auth_type = restconf_auth_type_get(h);
     clicon_debug(1, "%s auth-type:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
     ret = 0;
     authenticated = 0;
-    if (auth_type != CLIXON_AUTH_NONE)
-	if ((ret = clixon_plugin_auth_all(h, req,
-					  auth_type,
-					  &authenticated,
-					  &username)) < 0)
-	    goto done;
+    /* ret: -1 Error, 0: Ignore/not handled, 1: OK see authenticated parameter */
+    if ((ret = clixon_plugin_auth_all(h, req,
+				      auth_type,
+				      &authenticated,
+				      &username)) < 0)
+	goto done;
     if (ret == 1){ /* OK, tag username to handle */
-	clicon_username_set(h, username);
+	if (authenticated == 1)
+	    clicon_username_set(h, username);
     }
     else {         /* Default behaviour */
 	switch (auth_type){
 	case CLIXON_AUTH_NONE:
-	    clicon_username_set(h, "none");	
+	    /* if not handled by callback, use anonymous user */
+	    if ((anonymous = clicon_option_str(h, "CLICON_ANONYMOUS_USER")) == NULL){
+		break; /* not authenticated */
+	    }
+	    clicon_username_set(h, anonymous);	
 	    authenticated = 1;
 	    break;
 	case CLIXON_AUTH_CLIENT_CERTIFICATE: {

@@ -451,6 +451,7 @@ static void
 cx_path_wellknown(evhtp_request_t *req,
 		  void            *arg)
 {
+    int              retval = -1;
     cx_evhtp_handle *eh = (cx_evhtp_handle*)arg;
     clicon_handle    h = eh->eh_h;
     int              ret;
@@ -472,17 +473,32 @@ cx_path_wellknown(evhtp_request_t *req,
     /* Clear (fcgi) paramaters from this request */
     if (restconf_param_del_all(h) < 0)
 	goto done;
+    retval = 0;
  done:
+    /* Catch all on fatal error. This does not terminate the process but closes request stream */
+    if (retval < 0) 
+	evhtp_send_reply(req, EVHTP_RES_ERROR);
     return; /* void */
 }
 
-/*! /restconf callback
+/*! Callback for each incoming http request for path /
+ *
+ * This are all messages except /.well-known, Registered with evhtp_set_cb
+ *
+ * @param[in] req  evhtp request structure defining the incoming message
+ * @param[in] arg  cx_evhtp handle clixon specific fields
+ * @retval    void
+ * Discussion: problematic if fatal error -1 is returneod from clixon routines 
+ * without actually terminating. Consider:
+ * 1) sending some error? and/or
+ * 2) terminating the process? 
  * @see cx_genb
  */
 static void
 cx_path_restconf(evhtp_request_t *req,
 		 void            *arg)
 {
+    int              retval = -1;
     cx_evhtp_handle *eh = (cx_evhtp_handle*)arg;
     clicon_handle    h = eh->eh_h;
     int              ret;
@@ -505,13 +521,17 @@ cx_path_restconf(evhtp_request_t *req,
     if (ret == 1){
 	/* call generic function */
 	if (api_root_restconf(h, req, qvec) < 0)
-	    goto done;
+	    goto done;   
     }
 
     /* Clear (fcgi) paramaters from this request */
     if (restconf_param_del_all(h) < 0)
 	goto done;
+    retval = 0;
  done:
+    /* Catch all on fatal error. This does not terminate the process but closes request stream */
+    if (retval < 0) 
+	evhtp_send_reply(req, EVHTP_RES_ERROR);
     if (qvec)
 	cvec_free(qvec);
     return; /* void */
