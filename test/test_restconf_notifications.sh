@@ -30,9 +30,10 @@ if [ "${WITH_RESTCONF}" != "fcgi" -o "$RCPROTO" = https ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
+SLEEP2=1
+SLEEP5=.5
 APPNAME=example
 : ${clixon_util_stream:=clixon_util_stream}
-NCWAIT=10 # Wait (netconf valgrind may need more time)
 
 # Ensure UTC
 DATE=$(date -u +"%Y-%m-%d")
@@ -152,11 +153,11 @@ new "2. Restconf RFC8040 stream testing"
 new "restconf event stream discovery RFC8040 Sec 6.2"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams)" 0 "HTTP/1.1 200 OK" '{"ietf-restconf-monitoring:streams":{"stream":\[{"name":"EXAMPLE","description":"Example event stream","replay-support":true,"access":\[{"encoding":"xml","location":"https://localhost/streams/EXAMPLE"}\]}\]}'
 
-sleep 1
+sleep $SLEEP2
 new "restconf subscribe RFC8040 Sec 6.3, get location"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=EXAMPLE/access=xml/location)" 0 "HTTP/1.1 200 OK" '{"ietf-restconf-monitoring:location":"https://localhost/streams/EXAMPLE"}'
 
-sleep 1
+sleep $SLEEP2
 # Restconf stream subscription RFC8040 Sec 6.3
 # Start Subscription w error
 new "restconf monitor event nonexist stream"
@@ -178,7 +179,7 @@ if [ $nr -lt 1 -o $nr -gt 2 ]; then
     err 2 "$nr"
 fi
 
-sleep 1
+sleep $SLEEP2
 
 # 2b) start subscription 8s - stoptime after 5s - expect 1-2 notifications
 new "2b) start subscriptions 8s - stoptime after 5s - expect 1-2 notifications"
@@ -193,7 +194,7 @@ if [ $nr -lt 1 -o $nr -gt 2 ]; then
     err 1 "$nr"
 fi
 
-sleep 1
+sleep $SLEEP2
 
 # 2c
 new "2c) start sub 8s - replay from start -8s - expect 3-4 notifications"
@@ -208,7 +209,7 @@ nr=$(echo "$ret" | grep -c "data:")
 if [ $nr -lt 3 ]; then
     err 4 "$nr"
 fi
-sleep 1
+sleep $SLEEP2
 
 # 2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications
 new "2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications"
@@ -224,12 +225,14 @@ if [ $nr -lt 4 ]; then
     err 6 "$nr"
 fi
 
-sleep 1
+sleep $SLEEP2
 
 # 2e) start sub 8s - replay from -90s w retention 60s - expect 9-14 notifications
 new "2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications"
+echo "$clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 10 -s -90 -e +0"
 ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 10 -s -90 -e +0)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -240,7 +243,7 @@ if [ $nr -lt 8 -o $nr -gt 14 ]; then
     err "8-14" "$nr"
 fi
 
-sleep 1
+sleep $SLEEP2
 
 # Try parallell
 # start background job
@@ -269,7 +272,7 @@ echo "Add <CLICON_STREAM_PUB>http://localhost/pub</CLICON_STREAM_PUB> to config"
 echo "Eg: curl $CURLOPTS -H \"Accept: text/event-stream\" -s -X GET $RCPROTO://localhost/sub/EXAMPLE"
 
 #-----------------
-sleep 5
+sleep $SLEEP5
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
     stop_restconf
@@ -286,11 +289,14 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
 fi
 
-rm -rf $dir
-
 # Set by restconf_config
 unset RESTCONFIG
 
 # unset conditional parameters 
 unset clixon_util_stream
 unset nr
+
+new "Endtest"
+endtest
+
+rm -rf $dir

@@ -74,20 +74,3 @@ expectpart "$($clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/s
 
 rm -rf $dir
 
-exit 0
-
-# Diff to make it work
-
-diff --git a/standard/ieee/published/802.3/ieee802-ethernet-pon.yang b/standard/ieee/published/802.3/ieee802-ethernet-pon.yang
-index 37c54c2a..a56b5f50 100755
---- a/standard/ieee/published/802.3/ieee802-ethernet-pon.yang
-+++ b/standard/ieee/published/802.3/ieee802-ethernet-pon.yang
-@@ -2421,7 +2421,7 @@ module ieee802-ethernet-pon {
-     }
- 
-     leaf mpcp-maximum-queue-count-per-report {
--      when "../ompe-mode = olt'";
-+      when "../ompe-mode = 'olt'";^M
-       type mpcp-maximum-queue-count-per-report;
- 
-       config false;

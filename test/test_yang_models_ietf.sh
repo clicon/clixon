@@ -45,21 +45,3 @@ echo "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/
 expectpart "$($clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ietf/RFC show version)" 0 "$version."
 
 rm -rf $dir
-
-exit 0
-
-# Diff to make it work
-
-diff --git a/standard/ietf/RFC/ietf-mud@2019-01-28.yang b/standard/ietf/RFC/ietf-mud@2019-01-28.yang
-index 1842284e..4197ad46 100644
---- a/standard/ietf/RFC/ietf-mud@2019-01-28.yang
-+++ b/standard/ietf/RFC/ietf-mud@2019-01-28.yang
-@@ -297,7 +297,7 @@ module ietf-mud {
-     }
-   }
-   augment "/acl:acls/acl:acl/acl:aces/acl:ace/acl:matches"
--        + "/acl:l4/acl:tcp/acl:tcp" {
-+      + "/acl:l4/acl:tcp" { /* Olof: rm extra /acl:tcp */
-     description
-       "add direction-initiated";
-     leaf direction-initiated {

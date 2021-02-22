@@ -217,10 +217,10 @@ EOF
     expectpart "$(curl $CURLOPTS --key $certdir/yyy.key --cert $certdir/yyy.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 58 " could not load PEM client certificate"
 
     new "Certificate required"
-    expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "55 56"
+    expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "35 55 56"
 
     new "limited invalid cert"
-    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "55 56" # 55 "certificate expired"
+    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "35 55 56" # 55 "certificate expired"
 
     if [ $RC -ne 0 ]; then
 	new "Kill restconf daemon"

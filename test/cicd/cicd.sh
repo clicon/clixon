@@ -39,12 +39,12 @@ ssh -t $h "(cd /tmp; chmod 750 $SCRIPTS)"
 # pull git changes and build cligen
 ssh -t $h "test -d src || mkdir src"
 ssh -t $h "test -d src/cligen || (cd src;git clone https://github.com/clicon/cligen.git)"
-ssh -t $h "(cd src/cligen;git pull)"
+ssh -t $h "(cd src/cligen;git pull origin master)"
 ssh -t $h "(cd src/cligen;./configure)"
 ssh -t $h "(cd src/cligen; /tmp/cligen-mk.sh)"
 # pull git changes and build clixon
 ssh -t $h "test -d src/clixon || (cd src;git clone https://github.com/clicon/clixon.git)"
-ssh -t $h "(cd src/clixon;git pull)"
+ssh -t $h "(cd src/clixon;git pull origin master)"
 ssh -t $h "(cd src/clixon; /tmp/clixon-config.sh $restconf)"
 ssh -t $h "(cd src/clixon; /tmp/clixon-mk.sh)"
 ssh -t $h sudo ldconfig
