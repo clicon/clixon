@@ -74,6 +74,9 @@
 #include "clixon_xpath_eval.h"
 #include "clixon_xpath_function.h"
 
+/*! xpath function translation table
+ * @see enum clixon_xpath_function
+ */
 static const map_str2int xpath_fnname_map[] = { /* alphabetic order */
     {"bit-is-set",           XPATHFN_BIT_IS_SET},
     {"boolean",              XPATHFN_BOOLEAN},
@@ -379,7 +382,7 @@ xp_function_derived_from(xp_ctx            *xc,
 /*! Return a number equal to the context position from the expression evaluation context.
  *
  * Signature: number position(node-set)
- * @param[in]  xc0  Incoming context
+ * @param[in]  xc   Incoming context
  * @param[in]  xs   XPATH node tree
  * @param[in]  nsc  XML Namespace context
  * @param[in]  localonly Skip prefix and namespace tests (non-standard)
@@ -388,7 +391,7 @@ xp_function_derived_from(xp_ctx            *xc,
  * @retval    -1    Error
  */
 int
-xp_function_position(xp_ctx            *xc0,
+xp_function_position(xp_ctx            *xc,
 		     struct xpath_tree *xs,
 		     cvec              *nsc,
 		     int                localonly,
@@ -402,9 +405,9 @@ xp_function_position(xp_ctx            *xc0,
 	goto done;
     }
     memset(xr, 0, sizeof(*xr));
-    xr->xc_initial = xc0->xc_initial;
+    xr->xc_initial = xc->xc_initial;
     xr->xc_type = XT_NUMBER;
-    xr->xc_number = xc0->xc_position;
+    xr->xc_number = xc->xc_position;
     *xrp = xr;
     retval = 0;
  done:
@@ -416,14 +419,13 @@ xp_function_position(xp_ctx            *xc0,
  * Signature: number count(node-set)
  */
 int
-xp_function_count(xp_ctx            *xc0,
+xp_function_count(xp_ctx            *xc,
 		  struct xpath_tree *xs,
 		  cvec              *nsc,
 		  int                localonly,
 		  xp_ctx           **xrp)
 {
     int         retval = -1;
-    xp_ctx     *xc = NULL;
     xp_ctx     *xr = NULL;
     xp_ctx     *xr0 = NULL;
     
@@ -440,7 +442,7 @@ xp_function_count(xp_ctx            *xc0,
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_NUMBER;
     xr->xc_number = xr0->xc_number;
-    *xrp = xc;
+    *xrp = xr;
     retval = 0;
  done:
     if (xr0)
@@ -456,14 +458,13 @@ xp_function_count(xp_ctx            *xc0,
  * XXX: should return expanded-name, should namespace be included?
  */
 int
-xp_function_name(xp_ctx            *xc0,
+xp_function_name(xp_ctx            *xc,
 		 struct xpath_tree *xs,
 		 cvec              *nsc,
 		 int                localonly,
 		 xp_ctx           **xrp)
 {
     int         retval = -1;
-    xp_ctx     *xc = NULL;
     xp_ctx     *xr = NULL;
     xp_ctx     *xr0 = NULL;
     char       *s0 = NULL;
@@ -491,7 +492,7 @@ xp_function_name(xp_ctx            *xc0,
 	}
 	break;
     }
-    *xrp = xc;
+    *xrp = xr;
     retval = 0;
  done:
     if (xr0)
@@ -565,14 +566,13 @@ xp_function_contains(xp_ctx            *xc,
  * Signature: boolean not(boolean)
  */
 int
-xp_function_not(xp_ctx            *xc0,
+xp_function_not(xp_ctx            *xc,
 		struct xpath_tree *xs,
 		cvec              *nsc,
 		int                localonly,
 		xp_ctx           **xrp)
 {
     int         retval = -1;
-    xp_ctx     *xc = NULL;
     xp_ctx     *xr = NULL;
     xp_ctx     *xr0 = NULL;
     int         bool;
@@ -591,10 +591,64 @@ xp_function_not(xp_ctx            *xc0,
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_BOOL;
     xr->xc_bool = !bool;
-    *xrp = xc;
+    *xrp = xr;
     retval = 0;
  done:
     if (xr0)
 	ctx_free(xr0);
+    return retval;
+}
+
+/*! The true function returns true.
+ *
+ * Signature: boolean true()
+ */
+int
+xp_function_true(xp_ctx            *xc,
+		 struct xpath_tree *xs,
+		 cvec              *nsc,
+		 int                localonly,
+		 xp_ctx           **xrp)
+{
+    int         retval = -1;
+    xp_ctx     *xr = NULL;
+    
+    if ((xr = malloc(sizeof(*xr))) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(xr, 0, sizeof(*xr));
+    xr->xc_type = XT_BOOL;
+    xr->xc_bool = 1;
+    *xrp = xr;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! The false function returns false.
+ *
+ * Signature: boolean false()
+ */
+int
+xp_function_false(xp_ctx            *xc,
+		  struct xpath_tree *xs,
+		  cvec              *nsc,
+		  int                localonly,
+		  xp_ctx           **xrp)
+{
+    int         retval = -1;
+    xp_ctx     *xr = NULL;
+    
+    if ((xr = malloc(sizeof(*xr))) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(xr, 0, sizeof(*xr));
+    xr->xc_type = XT_BOOL;
+    xr->xc_bool = 0;
+    *xrp = xr;
+    retval = 0;
+ done:
     return retval;
 }

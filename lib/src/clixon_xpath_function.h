@@ -43,8 +43,8 @@
  */
 /*
  * XPath functions from Xpath 1.0 spec or YANG
- * @see xp_checkfn where they are parsed and checked
- * @see clixon_xpath_function.c for implementations
+ * @see xp_eval,xp_primary_function where they are parsed and checked
+ * @see clixon_xpath_function.ch] for implementation
  */
 enum clixon_xpath_function{
     XPATHFN_CURRENT,                /* RFC 7950 10.1.1 */
@@ -73,8 +73,8 @@ enum clixon_xpath_function{
     XPATHFN_TRANSLATE,              /* XPATH 1.0 4.2   NYI */
     XPATHFN_BOOLEAN,                /* XPATH 1.0 4.3   NYI */
     XPATHFN_NOT,                    /* XPATH 1.0 4.3 */
-    XPATHFN_TRUE,                   /* XPATH 1.0 4.3   NYI */
-    XPATHFN_FALSE,                  /* XPATH 1.0 4.3   NYI */
+    XPATHFN_TRUE,                   /* XPATH 1.0 4.3 */
+    XPATHFN_FALSE,                  /* XPATH 1.0 4.3 */
     XPATHFN_LANG,                   /* XPATH 1.0 4.3   NYI */
     XPATHFN_NUMBER,                 /* XPATH 1.0 4.4   NYI */
     XPATHFN_SUM,                    /* XPATH 1.0 4.4   NYI */
@@ -101,5 +101,7 @@ int xp_function_count(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonl
 int xp_function_name(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_contains(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_not(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_true(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_false(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 
 #endif /* _CLIXON_XPATH_FUNCTION_H */

@@ -1040,6 +1040,16 @@ xp_eval(xp_ctx     *xc,
 		    goto done;
 		goto ok;
 		break;
+	    case XPATHFN_TRUE:
+		if (xp_function_true(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+		    goto done;
+		goto ok;
+		break;
+	    case XPATHFN_FALSE:
+		if (xp_function_false(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+		    goto done;
+		goto ok;
+		break;
 	    default:
 		clicon_err(OE_XML, EFAULT, "XPATH function not implemented: %s", xs->xs_s0);
 		goto done;
