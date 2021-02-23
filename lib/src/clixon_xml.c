@@ -2192,9 +2192,7 @@ xml_apply_ancestor(cxobj          *xn,
     int        ret;
 
     while ((xp = xml_parent(xn)) != NULL) {
-	if (fn(xp, arg) < 0)
-	    goto done;
-	if ((ret = xml_apply_ancestor(xp, fn, arg)) < 0)
+	if ((ret = fn(xp, arg)) < 0)
 	    goto done;
 	if (ret > 0){
 	    retval = ret;

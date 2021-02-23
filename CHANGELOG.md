@@ -119,6 +119,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Recursive calling xml_apply_ancestor is no need #180](https://github.com/clicon/clixon/issues/180)
 * Fixed: [Negation operator in 'must' statement makes backend segmentation fault](https://github.com/clicon/clixon/issues/179)
 * Fixed extension/unknown problem shown in latest openconfig where other than a single space was used between the unknown identifier and string
 * Fixed: [Augment that reference a submodule as target node fails #178](https://github.com/clicon/clixon/issues/178)
