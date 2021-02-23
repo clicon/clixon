@@ -41,6 +41,7 @@ Make a modification to how Clixon sends internal messages in `include/clixon_cus
 ```
   #define CLIXON_PROTO_PLAIN
 ```
+(Note this is obsolete)
 
 Build clixon statically with the afl-clang compiler:
 ```

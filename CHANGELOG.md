@@ -117,6 +117,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed extension/unknown problem shown in latest openconfig where other than a single space was used between the unknown identifier and string
 * Fixed: [Augment that reference a submodule as target node fails #178](https://github.com/clicon/clixon/issues/178)
 * Fixed a memory error that was reported in slack by Pawel Maslanka
   * The crash printout was: `realloc(): invalid next size Aborted`
@@ -494,6 +495,7 @@ Thanks to everyone at Netgate for making this possible
 
 ### C-API changes on existing features (For developers)
 
+* Removed `xsock0` parameter from `clicon_rpc_msg()`, use `clicon_rpc_msg_persistent()` instead
 * Length of xml vector in many structs changed from `size_t` to `int`since it is a vector size, not byte size.
   * Example: `transaction_data_t`
 * `xml_merge()` changed to use 3-value return: 1:OK, 0:Yang failed, -1: Error

@@ -18,6 +18,7 @@ fyang=$dir/test.yang
 YANGMODELS=/home/olof/tmp/yang
 if [ ! -d "$YANGMODELS" ]; then
 #    err "Hmm Yangmodels dir does not seem to exist, try git clone https://github.com/YangModels/yang?"
+    echo "...skipped: YANGMODELS not set"
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 

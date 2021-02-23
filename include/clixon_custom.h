@@ -92,14 +92,3 @@
  * clixon-4.4
  */
 #define STATE_ORDERED_BY_SYSTEM
-
-/*! Make internal XML protocol use plain strings instead of binary header
- * Experimental
- * This is only for testing, a specific usecase is fuzzing as described in fuzz/backend
- * Note session-ids are not handled properly (a bunch of other things too)
- * This could be mitigated by sending the session-id as an attribute
- * But doing this one should probably revise/remove the code around clicon_msg_encode/decode
- * which currently is somewhat hardwired. I.e., it may be difficult to have both variants as ifdef:s
- * and you may consider replacing the old code altogether.
- */
-#undef CLIXON_PROTO_PLAIN

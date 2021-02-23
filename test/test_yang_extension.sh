@@ -82,6 +82,21 @@ module $APPNAME{
    ex:e4 arg1{
       uses bar;
    }
+   
+   extension posix-pattern {
+      argument "pattern";
+   }
+   typedef dotted-quad {
+      description "Only present for complex parsing of unknown-stmt";
+      type string {
+         pattern 
+             "[a-f]" + "[0-9]";
+         ex:posix-pattern
+          // Strictly this comment is not supported if you see RFC syntax with only a SEP
+          // in unknwon-stmt: identifier [sep string]
+            '[f-w]' + '[o-q]';
+      }
+   }
 }
 EOF
 
@@ -110,7 +125,7 @@ new "Add extension bar (is implemented)"
 expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><bar xmlns=\"urn:example:clixon\">a string</bar></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
 
 new "netconf get config"
-expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><bar xmlns=\"urn:example:clixon\">a string</bar></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><bar xmlns=\"urn:example:clixon\">a string</bar></data></rpc-reply>]]>]]>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

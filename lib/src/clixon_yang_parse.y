@@ -193,11 +193,16 @@
 #include "clixon_yang_parse_lib.h"
 #include "clixon_yang_parse.h"
 
-/* Enable for debugging, steals some cycles otherwise */
+/* Best debugging is to enable PARSE_DEBUG below and add -d to the LEX compile statement in the Makefile
+ * And then run the testcase with -D 1
+ * Disable it to stop any calls to clicon_debug. Having it on by default would mean very large debug outputs.
+ */
 #if 0
 #define _PARSE_DEBUG(s) clicon_debug(1,(s))
+#define _PARSE_DEBUG1(s, s1) clicon_debug(1,(s), (s1))
 #else
 #define _PARSE_DEBUG(s)
+#define _PARSE_DEBUG1(s, s1)
 #endif
     
 extern int clixon_yang_parseget_lineno  (void);
@@ -219,7 +224,7 @@ clixon_yang_parseerror(void *_yy,
 }
 
 int
-    yang_parse_init(clixon_yang_yacc *yy)
+yang_parse_init(clixon_yang_yacc *yy)
 {
     return 0;
 }
@@ -1567,12 +1572,12 @@ deviate_substmt : type_stmt         { _PARSE_DEBUG("deviate-substmt -> type-stmt
 unknown_stmt  : ustring ':' ustring optsep ';'
                  { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
 		   if (ysp_add(_yy, Y_UNKNOWN, id, NULL) == NULL) _YYERROR("unknown_stmt"); 
-		   _PARSE_DEBUG("unknown-stmt -> ustring : ustring");
+		   _PARSE_DEBUG("unknown-stmt -> ustring : ustring ;");
 	       }
               | ustring ':' ustring SEP string optsep ';'
 	        { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
-		   if (ysp_add(_yy, Y_UNKNOWN, id, $5) == NULL){ _YYERROR("unknwon_stmt"); }
-		   _PARSE_DEBUG("unknown-stmt -> ustring : ustring string");
+		   if (ysp_add(_yy, Y_UNKNOWN, id, $5) == NULL){ _YYERROR("unknown_stmt"); }
+		   _PARSE_DEBUG("unknown-stmt -> ustring : ustring SEP string ;");
 	       }
               | ustring ':' ustring optsep
                  { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
@@ -1744,7 +1749,7 @@ qstrings      : qstrings '+' qstring
 			 $$ = realloc($1, len + strlen($3) + 1); 
 			 sprintf($$+len, "%s", $3);
 			 free($3); 
-			 _PARSE_DEBUG("qstrings-> qstrings + qstring"); 
+			 _PARSE_DEBUG("qstrings-> qstrings '+' qstring"); 
 		     }
               | qstring    
                      { $$=$1;
@@ -1752,13 +1757,13 @@ qstrings      : qstrings '+' qstring
               ;
 
 qstring        : '"' ustring '"'  { $$=$2;
-		   _PARSE_DEBUG("string-> \" ustring \"");}
+		   _PARSE_DEBUG("qstring-> \" ustring \"");}
                | '"' '"'  { $$=strdup("");
-		   _PARSE_DEBUG("string-> \"  \"");} 
+		   _PARSE_DEBUG("qstring-> \"  \"");} 
                | SQ ustring SQ  { $$=$2;
-		   _PARSE_DEBUG("string-> ' ustring '"); }
+		   _PARSE_DEBUG("qstring-> ' ustring '"); }
                | SQ SQ  { $$=strdup("");
-		   _PARSE_DEBUG("string-> '  '");} 
+		   _PARSE_DEBUG("qstring-> '  '");} 
                ;
 
 /* unquoted string */
@@ -1767,11 +1772,11 @@ ustring       : ustring CHARS
 			 int len = strlen($1);
 			 $$ = realloc($1, len+strlen($2) + 1);
 			 sprintf($$+len, "%s", $2); 
+ 			 _PARSE_DEBUG1("ustring-> string + CHARS(%s)", $2); 
 			 free($2);
- 			 _PARSE_DEBUG("ustring-> string + CHARS"); 
 		     }
               | CHARS 
-	             {$$=$1; } 
+	              {  _PARSE_DEBUG1("ustring-> CHARS(%s)", $1); $$=$1; } 
               ;
 
 abs_schema_nodeid : abs_schema_nodeid '/' node_identifier
@@ -1861,4 +1866,3 @@ stmtend        : ';'
                ;
 
 %%
-

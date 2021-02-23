@@ -102,15 +102,16 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 %s COMMENT1
 %s COMMENT2
 %s UNKNOWN
+%s UNKNOWN2
 
 %%
  /* Common tokens */
 <KEYWORD,BOOLEAN,INTEGER,STRARG,STRING>[ \t]            
-<KEYWORD,STRING,UNKNOWN,COMMENT2><<EOF>> { return MY_EOF; }
-<KEYWORD,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN>\n   { _YY->yy_linenum++; }
-<KEYWORD,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN>\r   
-<KEYWORD,STRING>"/*"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT1); }
-<KEYWORD,STRING>"//"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT2); }
+<KEYWORD,STRING,UNKNOWN,UNKNOWN2,COMMENT2><<EOF>> { return MY_EOF; }
+<KEYWORD,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\n   { _YY->yy_linenum++; }
+<KEYWORD,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\r   
+<KEYWORD,STRING,UNKNOWN,UNKNOWN2>"/*"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT1); }
+<KEYWORD,STRING,UNKNOWN,UNKNOWN2>"//"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT2); }
 
 
 <KEYWORD>input            { return K_INPUT; } /* No argument */
@@ -194,15 +195,21 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <KEYWORD>\}               { return *yytext; }
 <KEYWORD>;                { return *yytext; }
 <KEYWORD>.                { clixon_yang_parselval.string = strdup(yytext);
-                             BEGIN(UNKNOWN); return CHARS; }
+                            BEGIN(UNKNOWN); return CHARS; }
 
 <UNKNOWN>:                { return *yytext; }
 <UNKNOWN>;                { BEGIN(KEYWORD); return *yytext; }
-<UNKNOWN>\"               { _YY->yy_lex_string_state =UNKNOWN; BEGIN(STRINGDQ); return *yytext; }
 <UNKNOWN>\{               { BEGIN(KEYWORD); return *yytext; }
-<UNKNOWN>[ \t]+           { return SEP; }
-<UNKNOWN>[^{";: \t]+      { clixon_yang_parselval.string = strdup(yytext);
+<UNKNOWN>[ \t\n]+         { BEGIN(UNKNOWN2);return SEP; }
+<UNKNOWN>[^{"';: \t\n]+   { clixon_yang_parselval.string = strdup(yytext);
                             return CHARS; }
+
+<UNKNOWN2>;                { BEGIN(KEYWORD); return *yytext; }
+<UNKNOWN2>\"               { _YY->yy_lex_string_state =STRING; BEGIN(STRINGDQ); return *yytext; }
+<UNKNOWN2>\'               { _YY->yy_lex_string_state =STRING; BEGIN(STRINGSQ); return SQ; }
+<UNKNOWN2>\{               { BEGIN(KEYWORD); return *yytext; }
+<UNKNOWN2>[^{"'; \t\n]+    { clixon_yang_parselval.string = strdup(yytext);
+                             return CHARS; }
 
 <BOOLEAN>true             { clixon_yang_parselval.string = strdup(yytext);
                             return BOOL; }
@@ -229,7 +236,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <STRING>\"                { _YY->yy_lex_string_state =STRING; BEGIN(STRINGDQ); return *yytext; }
 <STRING>\'                { _YY->yy_lex_string_state =STRING; BEGIN(STRINGSQ); return SQ; }
 <STRING>\+                { return *yytext; }
-<STRING>.                 { clixon_yang_parselval.string = strdup(yytext);
+<STRING>[^\"\'\+\{\;\n \t]+    { clixon_yang_parselval.string = strdup(yytext); /* XXX [.]+ */
                             return CHARS;}
 
 <STRINGDQ>\\              { _YY->yy_lex_state = STRINGDQ; BEGIN(DQESC); }

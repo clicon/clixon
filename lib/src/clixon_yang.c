@@ -2077,11 +2077,11 @@ ys_populate_unknown(clicon_handle h,
     if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
 	goto done;
     if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "Extension %s:%s, module not found", prefix, id);
+	clicon_err(OE_YANG, ENOENT, "Extension \"%s:%s\", module not found", prefix, id);
 	goto done;
     }
     if ((yext = yang_find(ymod, Y_EXTENSION, id)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "Extension %s:%s not found", prefix, id);
+	clicon_err(OE_YANG, ENOENT, "Extension \"%s:%s\" not found", prefix, id);
 	goto done;
     }
     /* Optional argument (only if "argument") - save it in ys_cv */
