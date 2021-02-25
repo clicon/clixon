@@ -47,6 +47,7 @@
 #include <stdarg.h>
 #include <syslog.h>
 #include <errno.h>
+#define __USE_GNU /* For RTLD_DEFAULT */
 #include <dlfcn.h>
 #include <dirent.h>
 #include <libgen.h>
@@ -212,8 +213,6 @@ clixon_str2fn(char  *name,
 	      char **error)
 {
     void *fn = NULL;
-
-
 	
     /* Reset error */
     *error = NULL;
@@ -236,7 +235,9 @@ clixon_str2fn(char  *name,
      * master plugin if it exists 
      */
     dlerror();	/* Clear any existing error */
-    fn = dlsym(NULL, name);
+    /* RTLD_DEFAULT instead of NULL for linux + FreeBSD:
+     * Use default search algorithm. Thanks jdl@netgate.com */
+    fn = dlsym(RTLD_DEFAULT, name);
     if ((*error = (char*)dlerror()) == NULL)
 	return fn;  /* If no error we found the address of the callback */
 
