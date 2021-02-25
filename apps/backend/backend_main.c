@@ -48,6 +48,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <time.h>
+#include <wait.h>
 #include <syslog.h>
 #include <ifaddrs.h>
 #include <sys/time.h>
@@ -156,6 +157,21 @@ backend_sig_term(int arg)
 	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
 		   __PROGRAM__, __FUNCTION__, getpid(), arg);
     clicon_exit_set(); /* checked in clixon_event_loop() */
+}
+
+/*! wait for killed child
+ * primary use in case restconf daemon forked using process-control API
+ * This may cause EINTR in eg select() in clixon_event_loop() which will be ignored
+ */
+static void
+backend_sig_child(int arg)
+{
+    int status;
+    int pid;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if ((pid = waitpid(-1, &status, 0)) != -1 && WIFEXITED(status)){
+    }
 }
 
 /*! Create backend server socket and register callback
@@ -996,7 +1012,11 @@ main(int    argc,
 	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
     }
-
+    /* This is in case restconf daemon forked using process-control API */
+    if (set_signal(SIGCHLD, backend_sig_child, NULL) < 0){
+	clicon_err(OE_DAEMON, errno, "Setting signal");
+	goto done;
+    }
     /* Initialize server socket and save it to handle */
     if ((ss = backend_server_socket(h)) < 0)
 	goto done;

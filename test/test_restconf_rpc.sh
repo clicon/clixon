@@ -136,6 +136,9 @@ if [ -z "$ps" ]; then
     err "A restconf running"
 fi
 
+new "try restconf rpc"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}')" 0 "HTTP/1.1 200 OK" '{"clixon-lib:output":{"pid":'
+
 new "stop restconf RPC"
 pid=$(testrpc stop 0)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi

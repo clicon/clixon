@@ -55,6 +55,7 @@
 #include "clixon_queue.h"
 #include "clixon_log.h"
 #include "clixon_err.h"
+#include "clixon_sig.h"
 #include "clixon_event.h"
 
 /*
@@ -199,7 +200,7 @@ clixon_event_unreg_fd(int   s,
  * Note also that the callback is not periodic, you need to make a new 
  * registration for each period, see example above.
  * Note also that the first argument to fn is a dummy, just to get the same
- * signatute as for file-descriptor callbacks.
+ * signature as for file-descriptor callbacks.
  * @see clixon_event_reg_fd
  * @see clixon_event_unreg_timeout
  */
@@ -319,10 +320,18 @@ clixon_event_loop(void)
 	if (clicon_exit_get())
 	    break;
 	if (n == -1) {
+	    /* Signals either set clixon_exit, then the function returns 0
+	     * Typically for set_signal() of SIGTERM,SIGINT, etc
+	     * Other signals are ignored, and the select is rerun, eg SIGCHLD
+	     */
 	    if (errno == EINTR){
 		clicon_debug(1, "%s select: %s", __FUNCTION__, strerror(errno));
-		clicon_err(OE_EVENTS, errno, "select");
-		retval = 0;
+		if (clicon_exit_get()){
+		    clicon_err(OE_EVENTS, errno, "select");
+		    retval = 0;
+		}
+		else
+		    continue;
 	    }
 	    else
 		clicon_err(OE_EVENTS, errno, "select");

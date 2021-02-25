@@ -112,6 +112,9 @@ Developers may need to change their code
 
 ### Minor changes
 
+* If a signal handler runs during `select()` loop in `clixon_event_loop()` and unless the signal handler sets clixon_exit, the select will be restarted.
+  * Existing behavior for SIGTERM/SIGINT to exit is maintained
+  * This was for supporting SIGCHLD of forked restconf that crashes or being killed externally.
 * Look for symbols in plugins using `dlsym(RTLD_DEFAULT)` instead of `dlsym(NULL)` for more portable use
   * Thanks jdl@netgate.com
 * Added support for the following XPATH functions:

@@ -68,7 +68,7 @@ set_signal(int     signo,
 
     snew.sa_handler = handler;
     sigemptyset(&snew.sa_mask);
-     snew.sa_flags = 0;
+     snew.sa_flags = SA_RESTART;
      if (sigaction(signo, &snew, &sold) < 0){
 	clicon_err(OE_UNIX, errno, "sigaction");
 	return -1;
