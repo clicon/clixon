@@ -346,19 +346,19 @@ function stop_restconf(){
 # Reasons for not working: if you run evhtp is nginx running?
 # @note assumes port=80 if RCPROTO=http and port=443 if RCPROTO=https
 function wait_restconf(){
-# echo "curl $CURLOPTS $* $RCPROTO://localhost/restconf"
-    hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf) 2> /dev/null
+#    echo "curl $CURLOPTS $* $RCPROTO://localhost/restconf"
+    hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
 #    echo "hdr:\"$hdr\""
     let i=0;
     while [[ $hdr != *"200 OK"* ]]; do
-	sleep $DEMSLEEP
-	hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf)
-#	echo "hdr:\"$hdr\""
-	let i++;
 #	echo "wait_restconf $i"
 	if [ $i -ge $DEMLOOP ]; then
 	    err "restconf timeout $DEMWAIT seconds"
 	fi
+	sleep $DEMSLEEP
+	hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
+#	echo "hdr:\"$hdr\""
+	let i++;
     done
     if [ $valgrindtest -eq 3 ]; then 
 	sleep 2 # some problems with valgrind

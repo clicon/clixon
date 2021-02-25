@@ -1518,7 +1518,7 @@ xml_rootchild(cxobj  *xp,
 	goto done;
     }
     if ((xc = xml_child_i(xp, i)) == NULL){
-	clicon_err(OE_XML, 0, "Child not found");
+	clicon_err(OE_XML, ENOENT, "Child %d of parent %s not found", i, xml_name(xp));
 	goto done;
     }
     if (xml_child_rm(xp, i) < 0)

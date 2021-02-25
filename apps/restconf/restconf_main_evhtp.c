@@ -1277,7 +1277,7 @@ main(int    argc,
     clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
 
     clicon_debug_init(dbg, NULL); 
-    clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
+    clicon_log(LOG_NOTICE, "%s evhtp: %u Started", __PROGRAM__, getpid());
     if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
 	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;

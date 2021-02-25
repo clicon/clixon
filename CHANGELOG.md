@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [4.10.0](#4100) Expected: February 2021
+* [5.0.0](#4100) Expected: February 2021
 * [4.9.0](#490) 18 December 2020
 * [4.8.0](#480) 18 October 2020
 * [4.7.0](#470) 14 September 2020
@@ -26,11 +26,23 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
-## 4.10.0
+## 5.0.0
 Expected: February 2021
+
+The 5.0.0 release is a major new release because of large changes to
+RESTCONF configuration. Other changes include NETCONF call home and a
+new client API, and a changed lock behavior.
 
 ### New features
 
+* RESTCONF configuration is extended and changed for both fcgi and evhtp
+  * RESTCONF options is moved from clixon-config.yang to clixon-restconf.yang
+  * This applies to both evhtp and fcgi RESTCONF
+  * The RESTCONF daemon can be read both from clixon config, as well from backend datastore
+    * Controlled by `CLICON_BACKEND_RESTCONF_PROCESS` option
+  * Network namespaces implemented for evhtp
+  * For more info see [clixon-docs/restconf](https://clixon-docs.readthedocs.io/en/latest/restconf.html)
+    * See also API changes section below for details
 * NETCONF Call Home Call Home RFC 8071
   * See [Netconf/ssh callhome](https://clixon-docs.readthedocs.io/en/latest/netconf.html#callhome)
   * Solution description using openssh and utility functions, no changes to core clixon
@@ -38,27 +50,38 @@ Expected: February 2021
   * RESTCONF Call home not yet implemented
 * New clixon_client API for external access
   * See [client api docs](https://clixon-docs.readthedocs.io/en/latest/client.html)
+  * Many systems using other tools employ such a model, and this API is an effort to make a usage of clixon easier
+  * See [client-docs/client-integration](https://clixon-docs.readthedocs.io/en/latest/overview.html#client-integration)
+  * This is work-in-progress and is still limiyed in scope
+* Add a new process-control API clixon-lib.yang to manage processes
+  * See [Example usage for RESTCONF](https://clixon-docs.readthedocs.io/en/latest/restconf.html#internal-start)
 
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
+* Changed Netconf client session handling to make internal IPC socket persistent
+  * Follows RFC 6241 7.5 closer
+  * Previous behavior:
+    * Close socket after each rpc
+    * Release lockwhen socket closes (after each rpc)
+  * New behavior
+    * Keep socket open until the client terminates, not close after each RPC
+    * Release lock until session (not socket) ends
+  * Applies to all `cli/netconf/restconf/client-api` code
 * RESTCONF configuration is unified and moved from clixon-config.yang to clixon-restconf.yang
   * Except `CLICON_RESTCONF_DIR` which remains in clixon-config.yang due to bootstrapping
-    * -d <dir> option removed
-  * This applies to both evhtp and fcgi RESTCONF
-    * Both can also read config from backend, and be started from backend
+    * `-d <dir>` command-line option removed
+  * Failed authentication changed error return code from 403 Forbiden to 401 Unauthorized following RFC 8040
   * You may need to move config as follows (from clixon-config.yang to clixon-restconf.yang)
-    * CLICON_RESTCONF_PRETTY -> restconf/pretty
-    * CLICON_RESTCONF_PATH -> restconf/fcgi-path
-  * For more info see [clixon-docs](https://clixon-docs.readthedocs.io/en/latest/restconf.html)
-* RESTCONF failed authentication changed error return code from 403 Forbiden to 401 Unauthorized following RFC 8040
-  * Authentication OK but failed on access, remains as 403 Forbidden
-* Handling empty netconf XML messages "]]>]]>" is changed from being accepted to return an error.
+    * `CLICON_RESTCONF_PRETTY` -> restconf/pretty
+    * `CLICON_RESTCONF_PATH` -> restconf/fcgi-path
 * New clixon-restconf@2020-12-30.yang revision
   * Added: debug field
   * Added 'none' as default value for auth-type
   * Changed http-auth-type enum from 'password' to 'user'
+  * Changed namespace from `https://clicon.org/restconf` to `http://clicon.org/restconf`
+* Handling empty netconf XML messages "]]>]]>" is changed from being accepted to return an error.
 * New clixon-lib@2020-12-30.yang revision
   * Changed: RPC process-control output parameter status to pid
 * New clixon-config@2020-12-30.yang revision
@@ -68,9 +91,6 @@ Users may have to change how they access the system
   * Removed obsolete RESTCONF and SSL options (CLICON_SSL_* and CLICON_RESTCONF_IP*/HTTP*)
   * Removed obsolete: CLICON_TRANSACTION_MOD option
   * Marked as obsolete: CLICON_RESTCONF_PATH CLICON_RESTCONF_PRETTY
-* Changed namespace of clixon-restconf@2020-10-30.yang from https://clicon.org/restconf ->http://clicon.org/restconf ->
-* CLIspec dbxml API: Ability to specify deletion of _any_ vs _specific_ entry.
-  * In a cli_del() call, the cvv arg list either exactly matches the api-format-path in which case _any_ deletion is specified, otherwise, if there is an extra element in the cvv list, that is used for a specific delete.
 
 ### C/CLI-API changes on existing features
 
@@ -82,38 +102,27 @@ Developers may need to change their code
     * where `auth_type` is the requested authentication-type (none, client-cert or user-defined)
     * `authp` is the returned authentication flag
     * `userp` is the returned associated authenticated user
-    * and the return value is three-valued: -1: Error, 0: ignored, 1: OK
-  * For more info see [clixon-docs](https://clixon-docs.readthedocs.io/en/latest/restconf.html)
-* rpc msg C API rearranged to separate socket/connect from connect
+    * and the return value is three-valued: -1: Error, 0: not handled, 1: OK
+  * For more info see [clixon-docs/restconf](https://clixon-docs.readthedocs.io/en/latest/restconf.html)
+* RPC msg C API rearranged to separate socket/connect from connect
+  * Removed `xsock0` parameter from `clicon_rpc_msg()`, use `clicon_rpc_msg_persistent()` instead
 * Added `cvv_i` output parameter to `api_path_fmt2api_path()` to see how many cvv entries were used.
+* CLIspec dbxml API: Ability to specify deletion of _any_ vs _specific_ entry.
+  * In a cli_del() call, the cvv arg list either exactly matches the api-format-path in which case _any_ deletion is specified, otherwise, if there is an extra element in the cvv list, that is used for a specific delete.
 
 ### Minor changes
 
+* Look for symbols in plugins using `dlsym(RTLD_DEFAULT)` instead of `dlsym(NULL)` for more portable use
+  * Thanks jdl@netgate.com
 * Added support for the following XPATH functions:
-  * `false`, `true`
-* Augment target node check strict, instead of printing a warning, it will terminate with error.
+  * `false()`, `true()`
+* Make the yang `augment` target node check stricter,
+  * Instead of printing a warning, it will terminate with error.
 * Implemented: [Simplifying error messages for regex validations. #174](https://github.com/clicon/clixon/issues/174)
-* Add ca_reset plugin also when backend starts as `-s none`
-* Corrected client session handling to make internal IPC socket persistent
-  * Applies to cli/netconf/restconf/client-api code
-  * Previous behaviour:
-    * Close socket after each rpc, but now keeps the socket open until the client terminates
-    * Kept locks over socket life-cycle, but according to RFC 6241 7.5 a lock should be relaeased when session ends
-* Restconf evhtp using network namespaces implemented
+* For backend, also `ca_reset` callback also when the startup-mode is `none`, such as the command-line `-s none`
 * Added validation of clixon-restconf.yang: server-key-path and server-cert-path must be present if ssl enabled.
   * Only if `CLICON_BACKEND_RESTCONF_PROCESS` is true
-* Experimental IPC API, `clixon_client`, to support a loose integration model
-  * Many systems using other tools employ such a model, and this API is an effort to make a usage of clixon easier
-  * see https://clixon-docs.readthedocs.io/en/latest/overview.html#loose-integration
-  * This is work-in-progress and is expected to change
 * Use [https://github.com/clicon/libevhtp](https://github.com/clicon/libevhtp) instead of [https://github.com/criticalstack/libevhtp](https://github.com/criticalstack/libevhtp) as a source of the evhtp source
-* Added callback to process-control RPC feature in clixon-lib.yang to manage processes
-  * When an RPC comes in, be able to look at configuration
-* Changed behavior of starting restconf internally using `CLICON_BACKEND_RESTCONF_PROCESS` monitoring changes in enable flag, not only the RPC. The semantics is as follows:
-  * on RPC start, if enable is true, start the service, if false, error or ignore it
-  * on RPC stop, stop the service 
-  * on backend start make the state as configured
-  * on enable change, make the state as configured
 * Limited fuzz by AFL committed,
   * see [fuzz/README.md](fuzz/README.md) for details
 
@@ -121,7 +130,7 @@ Developers may need to change their code
 
 * Fixed: [Recursive calling xml_apply_ancestor is no need #180](https://github.com/clicon/clixon/issues/180)
 * Fixed: [Negation operator in 'must' statement makes backend segmentation fault](https://github.com/clicon/clixon/issues/179)
-* Fixed extension/unknown problem shown in latest openconfig where other than a single space was used between the unknown identifier and string
+* Fixed YANG extension/unknown problem shown in latest openconfig where other than a single space was used between the unknown identifier and string
 * Fixed: [Augment that reference a submodule as target node fails #178](https://github.com/clicon/clixon/issues/178)
 * Fixed a memory error that was reported in slack by Pawel Maslanka
   * The crash printout was: `realloc(): invalid next size Aborted`
@@ -129,13 +138,12 @@ Developers may need to change their code
   * Enabled by default `cligen_lexicalorder_set()` using strversmp instead of strcmp
 * Fixed: [xml bind yang error in xml_bind_yang_rpc_reply #175](https://github.com/clicon/clixon/issues/175)
 * Fixed: [Is there an error with plugin's ca_interrupt setting ? #173](https://github.com/clicon/clixon/issues/173)
-* Fixed: unknown nodes (for extenstions) did not work when placed directly under a grouping clause
+* Fixed: Unknown nodes (for extensions) did not work when placed directly under a grouping clause
 * Fixed: [Behaviour of Empty LIST Input in RESTCONF JSON #166](https://github.com/clicon/clixon/issues/166)
 * Netconf split lines input (input fragments) fixed
-  * Netconf input split on several lines, eg using stdin: "<a>\nfoo</a>]]>]]>" could under some circumstances be split so that only "</a>]]>]]>" be properly processed. This could also happen to a socket receiving a sub-string and then after a delay receive the rest.
-  * Fixed by storing residue and add that to the input string if later input is received on the same socket.
+  * If netconf input is split on several lines, eg using stdin: "<a>\nfoo</a>]]>]]>", then under some circumstances, the string could be split so that the initial string was dropped and only "</a>]]>]]>" was properly processed. This could also happen to a socket receiving a sub-string and then after a delay receive the rest.
 * [Presence container configs not displayed in 'show config set' #164 ](https://github.com/clicon/clixon/issues/164)
-  * Treat presence container as a leaf: always print a placeholder regardless if it has children or not. An extra check for children could have been made to not print if it has, but this adds an extra minor complexity.
+  * Treat presence container as a leaf: always print a placeholder regardless if it has children or not.
 
 ## 4.9.0
 18 December 2020
@@ -499,7 +507,6 @@ Thanks to everyone at Netgate for making this possible
 
 ### C-API changes on existing features (For developers)
 
-* Removed `xsock0` parameter from `clicon_rpc_msg()`, use `clicon_rpc_msg_persistent()` instead
 * Length of xml vector in many structs changed from `size_t` to `int`since it is a vector size, not byte size.
   * Example: `transaction_data_t`
 * `xml_merge()` changed to use 3-value return: 1:OK, 0:Yang failed, -1: Error

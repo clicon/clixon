@@ -69,7 +69,7 @@ set_signal(int     signo,
     snew.sa_handler = handler;
     sigemptyset(&snew.sa_mask);
      snew.sa_flags = 0;
-     if (sigaction (signo, &snew, &sold) < 0){
+     if (sigaction(signo, &snew, &sold) < 0){
 	clicon_err(OE_UNIX, errno, "sigaction");
 	return -1;
      }
@@ -86,36 +86,36 @@ set_signal(int     signo,
  * @param[in] sig   Signal number to block, If 0, block all signals
  */
 void
-clicon_signal_block (int sig)
+clicon_signal_block(int sig)
 {
 	sigset_t
 		set;
 
-	sigemptyset (&set);
+	sigemptyset(&set);
 	if (sig)
-		sigaddset (&set, sig);
+		sigaddset(&set, sig);
 	else 
-		sigfillset (&set);
+		sigfillset(&set);
 
-	sigprocmask (SIG_BLOCK, &set, NULL);
+	sigprocmask(SIG_BLOCK, &set, NULL);
 }
 
 /*! Unblock signal. 
  * @param[in] sig   Signal number to unblock. If 0, unblock all signals
  */
 void
-clicon_signal_unblock (int sig)
+clicon_signal_unblock(int sig)
 {
 	sigset_t
 		set;
 
-	sigemptyset (&set);
+	sigemptyset(&set);
 	if (sig)
-		sigaddset (&set, sig);
+		sigaddset(&set, sig);
 	else 
-		sigfillset (&set);
+		sigfillset(&set);
 
-	sigprocmask (SIG_UNBLOCK, &set, NULL);
+	sigprocmask(SIG_UNBLOCK, &set, NULL);
 }
 
 /*! Read pidfile and return pid using file descriptor
