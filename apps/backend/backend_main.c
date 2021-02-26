@@ -48,9 +48,9 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <time.h>
-#include <wait.h>
 #include <syslog.h>
 #include <ifaddrs.h>
+#include <sys/wait.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/stat.h>

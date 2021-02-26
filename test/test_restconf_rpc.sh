@@ -125,7 +125,7 @@ if [ $BE -ne 0 ]; then
 fi
 
 # Get pid of running process and check return xml
-new "Get rpc status"
+new "1. Get rpc status"
 pid0=$(testrpc status 1) # Save pid0
 if [ $? -ne 0 ]; then echo "$pid0";exit -1; fi
 
@@ -136,18 +136,21 @@ if [ -z "$ps" ]; then
     err "A restconf running"
 fi
 
+new "wait restconf"
+wait_restconf
+
 new "try restconf rpc"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}')" 0 "HTTP/1.1 200 OK" '{"clixon-lib:output":{"pid":'
 
-new "stop restconf RPC"
+new "2. stop restconf RPC"
 pid=$(testrpc stop 0)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
-new "Get rpc status stopped"
+new "3. Get rpc status stopped"
 pid=$(testrpc status 0)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
-new "Start rpc again"
+new "4. Start rpc again"
 pid3=$(testrpc start 1) # Save pid3
 if [ $? -ne 0 ]; then echo "$pid3";exit -1; fi
 
@@ -164,19 +167,19 @@ fi
 new "kill restconf"
 stop_restconf_pre
 
-new "start restconf RPC"
+new "5. start restconf RPC"
 pid=$(testrpc start 1)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
-new "check status RPC on"
+new "6. check status RPC on"
 pid5=$(testrpc status 1) # Save pid5
 if [ $? -ne 0 ]; then echo "$pid5";exit -1; fi
 
-new "restart restconf RPC"
+new "7. restart restconf RPC"
 pid=$(testrpc restart 1)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
-new "Get restconf status rpc"
+new "8. Get restconf status rpc"
 pid7=$(testrpc status 1) # Save pid7
 if [ $? -ne 0 ]; then echo "$pid7";exit -1; fi
 
@@ -224,7 +227,7 @@ if [ $BE -ne 0 ]; then
     wait_backend
 fi
 
-new "Get restconf (running) after restart"
+new "9. Get restconf (running) after restart"
 pid=$(testrpc status 1)
 if [ $? -ne 0 ]; then echo "$pid"; exit -1; fi
 
@@ -269,15 +272,15 @@ if [ $BE -ne 0 ]; then
     wait_backend
 fi
 
-new "check status RPC off"
+new "10. check status RPC off"
 pid=$(testrpc status 0)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
-new "start restconf RPC"
+new "11. start restconf RPC"
 pid=$(testrpc start 0)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
-new "check status RPC off"
+new "12. check status RPC off"
 pid=$(testrpc status 0)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
@@ -287,7 +290,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><default-op
 new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-new "check status RPC on"
+new "13. check status RPC on"
 pid=$(testrpc status 1)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
@@ -297,7 +300,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><default-op
 new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-new "check status RPC off"
+new "14. check status RPC off"
 pid=$(testrpc status 0)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
