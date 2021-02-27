@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [5.0.0](#4100) Expected: February 2021
+* [5.0.0](#500) 27 February 2021
 * [4.9.0](#490) 18 December 2020
 * [4.8.0](#480) 18 October 2020
 * [4.7.0](#470) 14 September 2020
@@ -27,11 +27,15 @@
 * [3.3.1](#331) June 7 2017
 
 ## 5.0.0
-Expected: February 2021
+27 February 2021
 
-The 5.0.0 release is a major new release because of large changes to
-RESTCONF configuration. Other changes include NETCONF call home and a
-new client API, and a changed lock behavior.
+The 5.0.0 release is a new major release. The last major release was
+4.0.0 in 13 July 2019.  Recently, large changes to RESTCONF
+configuration has been made which is the primary reason for a new
+major version. Other changes include NETCONF call home and a new
+client API, and a changed lock behavior.
+
+Thanks Netgate and clixon community input for making this possible!
 
 ### New features
 
@@ -938,7 +942,6 @@ a="urn:example:a" xmlns:b="urn:example:b"/>`
   * See also API changes above
 * Yang Unique statements with multiple schema identifiers did not work on some platforms due to memory error.
 
-
 ## 4.0.0
 13 July 2019
 
@@ -947,18 +950,18 @@ a="urn:example:a" xmlns:b="urn:example:b"/>`
 This release is a major uplift of Yang and XML features which
 motivates a major version number increment.
 
-In short, I consider the Yang and XML support good enough for most
+In short, the Yang and XML support is now good enough for most
 use-cases. There are still features not supported, but hopefully they
-are relatively uncommon (see [README](https://github.com/clicon/clixon/#yang).
+are relatively uncommon (see [README](https://github.com/clicon/clixon/#yang))
 
 The next task for uplifting is RESTCONF where several use-cases are
 not supported. There is also a need for NETCONF modernization and
 added optional features.
 
-Going forward I plan to make more regular minor releases. With the
-current Trevor CI in place, making releases should not be a large
-thing, and it is also safer to just pull a master commit. However, for
-synchronizing and tracing I will try to make monthly releases.
+Going forward it is planned to make more regular minor releases. With
+the current Trevor CI in place, making releases should be easy, and it
+is also safer to just pull a master commit. However, for synchronizing
+and tracing an effort will be made to make monthly releases.
 
 Thanks to Netgate for that enabled me to spend full time on Clixon!
 
