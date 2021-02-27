@@ -61,7 +61,7 @@ EOF
     fi
 
     new "$clixon_cli -1f $cfg show version"
-    expectpart "$($clixon_cli -1f $cfg show version)" 0 "$version."
+    expectpart "$($clixon_cli -1f $cfg show version)" 0 "${CLIXON_VERSION}"
  
     new "hello session-id 2"
     expecteof "$clixon_util_socket -a $family -s $sock -D $DBG" 0 "<hello $DEFAULTNS/>" "<hello $DEFAULTNS><session-id>3</session-id></hello>"

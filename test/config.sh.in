@@ -58,3 +58,6 @@ WWWDIR=@wwwdir@
 
 # Top src dir
 TOP_SRCDIR=@top_srcdir@
+
+# Clixon version
+CLIXON_VERSION=@CLIXON_VERSION@

@@ -31,9 +31,10 @@
 
 The 5.0.0 release is a new major release. The last major release was
 4.0.0 in 13 July 2019.  Recently, large changes to RESTCONF
-configuration has been made which is the primary reason for a new
-major version. Other changes include NETCONF call home and a new
-client API, and a changed lock behavior.
+configuration has been made which is the primary reason for a new major version.
+
+Other changes since 4.9 include NETCONF call home and a new
+client API, and a modified lock behavior.
 
 Thanks Netgate and clixon community input for making this possible!
 

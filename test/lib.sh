@@ -27,9 +27,6 @@
 # in either the environment or the site.sh, then the default SKIPLIST is empty.
 : ${SKIPLIST:=""}
 
-# Some tests (openconfig/yang_models) just test for the cli to return a version
-version=4
-
 >&2 echo "Running $testfile"
 
 # Generated config file from autotools / configure
@@ -39,7 +36,6 @@ if [ -f ./config.sh ]; then
 	return -1 # error
     fi
 fi
-
 
 # Test number from start
 : ${testnr:=0}
