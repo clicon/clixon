@@ -1580,16 +1580,18 @@ from_client_process_control(clicon_handle  h,
     int      retval = -1;
     cxobj   *x;
     char    *name = NULL;
-    char    *operation = NULL;
+    char    *opstr = NULL;
     uint32_t pid = 0;
+    proc_operation op = PROC_OP_NONE;
     
-    clicon_debug(1, "%s", __FUNCTION__);
     if ((x = xml_find_type(xe, NULL, "name", CX_ELMNT)) != NULL)
 	name = xml_body(x);
-    if ((x = xml_find_type(xe, NULL, "operation", CX_ELMNT)) != NULL)
-	operation = xml_body(x);
+    if ((x = xml_find_type(xe, NULL, "operation", CX_ELMNT)) != NULL){
+	opstr = xml_body(x);
+	op = clixon_process_op_str2int(opstr);
+    }
     /* Make the actual process operation (with wrap function enabled) */
-    if (clixon_process_operation(h, name, operation, 1, &pid) < 0)
+    if (clixon_process_operation(h, name, op, 1, &pid) < 0)
 	goto done;
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><pid xmlns=\"%s\">%u</pid></rpc-reply>",
 	    NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS, pid);

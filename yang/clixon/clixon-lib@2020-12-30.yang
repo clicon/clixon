@@ -171,11 +171,8 @@ module clixon-lib {
 	}
 	output {
 	    leaf pid {
-		description "Process-id of running process if operation is start, 
-                             restart or status. 0 if not running.
-                             This is for two reasons: 
-                             - to check process running for status
-                             - get the actual pid for targeting the actual process";
+		description "Process-id of running process or 0 if not running
+                             Value is only valid for operation status";
 		type uint32;
 	    }
 	}

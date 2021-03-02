@@ -30,6 +30,16 @@
 ## 5.1.0
 Expected: April
 
+### Minor features
+
+* Introduced a delay before making process start/stop/restart processes for race conditions when configuring eg restconf
+* For restconf `CLICON_BACKEND_RESTCONF_PROCESS`, restart restconf if restconf is edited.
+
+### Corrected Bugs
+
+* Reverted blocked signal behavior introduced in 5.0.
+
+
 ## 5.0.0
 27 February 2021
 

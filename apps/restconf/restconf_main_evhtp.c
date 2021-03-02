@@ -169,6 +169,7 @@ restconf_sig_child(int arg)
 
     if ((pid = waitpid(-1, &status, 0)) != -1 && WIFEXITED(status)){
     }
+    clicon_sig_ignore_set(1);
 }
 
 static char*

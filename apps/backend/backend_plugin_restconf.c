@@ -69,24 +69,28 @@
 int
 restconf_rpc_wrapper(clicon_handle    h,
 		     process_entry_t *pe,
-		     char           **operation)
+		     proc_operation  *operation)
 {
     int    retval = -1;
     cxobj *xt = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
-    if (strcmp(*operation, "stop") == 0){
+    switch (*operation){
+    case PROC_OP_STOP:
 	/* if RPC op is stop, stop the service */
-    }
-    else if (strcmp(*operation, "start") == 0){
+	break;
+    case PROC_OP_START:
 	/* RPC op is start & enable is true, then start the service, 
                            & enable is false, error or ignore it */
 	if (xmldb_get(h, "running", NULL,  "/restconf", &xt) < 0)
 	    goto done;
 	if (xt != NULL &&
 	    xpath_first(xt, NULL, "/restconf[enable='false']") != NULL) {
-	    *operation = "none";
+	    *operation = PROC_OP_NONE;
 	}
+	break;
+    default:
+	break;
     }
     retval = 0;
  done:
@@ -188,11 +192,24 @@ restconf_pseudo_process_commit(clicon_handle    h,
     xtarget = transaction_target(td);
     if (xpath_first(xtarget, NULL, "/restconf[enable='true']") != NULL)
 	enabled++;
+    /* Toggle start/stop */
     if ((cx = xpath_first(xtarget, NULL, "/restconf/enable")) != NULL &&
 	xml_flag(cx, XML_FLAG_CHANGE|XML_FLAG_ADD)){
 	if (clixon_process_operation(h, RESTCONF_PROCESS,
-				     enabled?"start":"stop", 0, NULL) < 0)
+				     enabled?PROC_OP_START:PROC_OP_STOP, 0, NULL) < 0)
 	    goto done;
+    }
+    else if (enabled){     /* If something changed and running, restart process */
+	if (transaction_dlen(xtarget) != 0 ||
+	    transaction_alen(xtarget) != 0 ||
+	    transaction_clen(xtarget) != 0){
+	    /* A restart can terminate a restconf connection (cut the tree limb you are sitting on)
+	     * Specifically, the socket is terminated where the reply is sent, which will
+	     * cause the curl to fail.
+	     */
+	    if (clixon_process_operation(h, RESTCONF_PROCESS, PROC_OP_RESTART, 0, NULL) < 0)
+		goto done;
+	}
     }
     retval = 0;
  done:
@@ -211,8 +228,9 @@ backend_plugin_restconf_register(clicon_handle h,
 
     if (clixon_pseudo_plugin(h, "restconf pseudo plugin", &cp) < 0)
 	goto done;
-    cp->cp_api.ca_trans_commit = restconf_pseudo_process_commit;
+
     cp->cp_api.ca_trans_validate = restconf_pseudo_process_validate;
+    cp->cp_api.ca_trans_commit = restconf_pseudo_process_commit;
 
     /* Register generic process-control of restconf daemon, ie start/stop restconf */
     if (restconf_pseudo_process_control(h) < 0)

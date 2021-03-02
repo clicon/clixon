@@ -43,8 +43,17 @@
  */ 
 typedef struct process_entry_t process_entry_t;
 
+/* Process operations */
+typedef enum proc_operation {
+    PROC_OP_NONE = 0,
+    PROC_OP_START,
+    PROC_OP_STOP,
+    PROC_OP_RESTART,
+    PROC_OP_STATUS
+} proc_operation;
+
 /* Process RPC callback function */
-typedef int (proc_cb_t)(clicon_handle h, process_entry_t *pe, char **operation); 
+typedef int (proc_cb_t)(clicon_handle h, process_entry_t *pe, proc_operation *operation);
 
 /*
  * Prototypes
@@ -52,9 +61,11 @@ typedef int (proc_cb_t)(clicon_handle h, process_entry_t *pe, char **operation);
 int clixon_proc_socket(char **argv, pid_t *pid, int *sock);
 int clixon_proc_socket_close(pid_t pid, int sock);
 int clixon_proc_background(char **argv, const char *netns, pid_t *pid);
+proc_operation clixon_process_op_str2int(char *opstr);
 int clixon_process_register(clicon_handle h, const char *name, const char *netns, proc_cb_t *callback, char **argv, int argc);
 int clixon_process_delete_all(clicon_handle h);
-int clixon_process_operation(clicon_handle h, const char *name, char *op, const int wrapit, uint32_t *pid);
+int clixon_process_operation(clicon_handle h, const char *name, proc_operation op, const int wrapit, uint32_t *pid);
 int clixon_process_start_all(clicon_handle h);
+int clixon_process_sched_register(clicon_handle h);
 
 #endif  /* _CLIXON_PROC_H_ */

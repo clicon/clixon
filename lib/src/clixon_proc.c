@@ -40,7 +40,6 @@
 #include "clixon_config.h"
 #endif
 
-
 #ifdef HAVE_SETNS /* linux network namespaces */
 #define _GNU_SOURCE
 #endif
@@ -51,6 +50,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <signal.h>
+#include <syslog.h>
 #include <grp.h>
 #include <fcntl.h>
 #ifdef HAVE_SETNS /* linux network namespaces */
@@ -69,6 +69,7 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_queue.h"
+#include "clixon_event.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_sig.h"
@@ -79,6 +80,7 @@
 /*
  * Types
  */
+
 /* Process entry list */
 struct process_entry_t {
     qelem_t    pe_qelem;   /* List header */
@@ -86,23 +88,14 @@ struct process_entry_t {
     char      *pe_netns;   /* Network namespace */
     char     **pe_argv;    /* argv with command as element 0 and NULL-terminated */
     pid_t      pe_pid;     /* Running process id (state) or 0 if dead */
+    proc_operation pe_op;  /* Operation pending? */
     proc_cb_t *pe_callback; /* Wrapper function, may be called from process_operation  */
 };
 
-/*
- * Child process ID
- * XXX Really shouldn't be a global variable
- */
-static int _clicon_proc_child = 0;
-
-/*
- * Make sure child is killed by ctrl-C
- */
 static void
 clixon_proc_sigint(int sig)
 {
-    if (_clicon_proc_child > 0)
-	kill(_clicon_proc_child, SIGINT);
+    /* XXX does nothing */
 }
 
 /*! Fork a child, exec a child and setup socket to child and return to caller
@@ -200,7 +193,7 @@ clixon_proc_socket_close(pid_t pid,
  *
  * @param[in]  argv  NULL-terminated Argument vector
  * @param[in]  netns Network namespace (or NULL)
- * @param[out] pid
+ * @param[out] pid   Process id
  * @retval     0     OK
  * @retval     -1    Error.
  */
@@ -290,12 +283,25 @@ clixon_proc_background(char       **argv,
  * Process management: start/stop registered processes for internal use
  */
 
-/*
- * Types
+/* Process operations
  */
+static const map_str2int proc_operation_map[] = {
+    {"none",                  PROC_OP_NONE},
+    {"start",                 PROC_OP_START},
+    {"stop",                  PROC_OP_STOP},
+    {"restart",               PROC_OP_RESTART},
+    {"status",                PROC_OP_STATUS},
+    {NULL,                    -1}
+};
 
-/* List of process callback entries */
-static process_entry_t *proc_entry_list = NULL;
+/* List of process callback entries XXX move to handle */
+static process_entry_t *_proc_entry_list = NULL;
+
+proc_operation
+clixon_process_op_str2int(char *opstr)
+{
+    return clicon_str2int(proc_operation_map, opstr);
+}
 
 /*! Register an internal process
  *
@@ -353,7 +359,7 @@ clixon_process_register(clicon_handle h,
 	}
     }
     pe->pe_callback = callback;
-    ADDQ(pe, proc_entry_list);
+    ADDQ(pe, _proc_entry_list);
     retval = 0;
  done:
     return retval;
@@ -367,8 +373,8 @@ clixon_process_delete_all(clicon_handle h)
     process_entry_t *pe;
     char           **pa;
 
-    while((pe = proc_entry_list) != NULL) {
-	DELQ(pe, proc_entry_list, process_entry_t *);
+    while((pe = _proc_entry_list) != NULL) {
+	DELQ(pe, _proc_entry_list, process_entry_t *);
 	if (pe->pe_name)
 	    free(pe->pe_name);
 	if (pe->pe_netns)
@@ -416,12 +422,16 @@ proc_op_run(pid_t pid0,
 
 /*! Perform process operation
  *
+ * @param[in]  op      One of: start, stop, restart, status
+ * @param[in]  netns   Network namespace
+ * @param[in]  argv    NULL-terminated Argument vector
+ * @param[out] pidp    Process-id
  */
 static int
-clixon_process_operation_one(const char *op,
-			     const char *netns,
-			     char      **argv,
-			     pid_t      *pidp)
+clixon_process_operation_one(const proc_operation op,
+			     const char          *netns,
+			     char               **argv,
+			     pid_t               *pidp)
 {
     int retval = -1;
     int run = 0;
@@ -429,37 +439,33 @@ clixon_process_operation_one(const char *op,
     /* Check if running */
     if (proc_op_run(*pidp, &run) < 0)
 	goto done;
-    if (strcmp(op, "stop") == 0 ||
-	strcmp(op, "restart") == 0){
-	if (run)
+    if (op == PROC_OP_STOP || op == PROC_OP_RESTART){
+	if (run){
 	    pidfile_zapold(*pidp); /* Ensures its dead */
+	}
 	*pidp = 0; /* mark as dead */
 	run = 0;
     }
-    if (strcmp(op, "start") == 0 ||
-	strcmp(op, "restart") == 0){
+    if (op == PROC_OP_START || op == PROC_OP_RESTART){
 	if (run == 1){
 	    ; /* Already runs */
 	}
 	else{
 	    if (clixon_proc_background(argv, netns, pidp) < 0)
 		goto done;
+	    clicon_debug(1, "%s started pid:%d", __FUNCTION__, *pidp);
 	}
     }
-    else if (strcmp(op, "status") == 0){
-	; /* status already set */
-    }
-
     retval = 0;
  done:
-    return retval;
+     return retval;
 }
 
 /*! Find process operation entry given name and op and perform operation if found
  *
  * @param[in]  h       clicon handle
  * @param[in]  name    Name of process
- * @param[in]  op      start, stop.
+ * @param[in]  op      start, stop, restart, status
  * @param[in]  wrapit  If set, call potential callback, if false, dont call it
  * @param[out] status  true if process is running / false if not running on entry
  * @retval -1  Error
@@ -467,41 +473,46 @@ clixon_process_operation_one(const char *op,
  * @see upgrade_callback_reg_fn  which registers the callbacks
  */
 int
-clixon_process_operation(clicon_handle h,
-			 const char   *name,
-			 char         *op,
-			 int           wrapit,
-			 uint32_t     *pid)
+clixon_process_operation(clicon_handle  h,
+			 const char    *name,
+			 proc_operation op,
+			 int            wrapit,
+			 uint32_t      *pid)
 {
     int              retval = -1;
     process_entry_t *pe;
+    int              sched = 0; /* If set, process action should be scheduled, register a timeout */
 
-    clicon_debug(1, "%s name:%s op:%s", __FUNCTION__, name, op);
-    if (proc_entry_list == NULL)
+    clicon_debug(1, "%s name:%s op:%s", __FUNCTION__, name, clicon_int2str(proc_operation_map, op));
+    if (_proc_entry_list == NULL)
 	goto ok;
-    pe = proc_entry_list;
+    pe = _proc_entry_list;
     do {
 	if (strcmp(pe->pe_name, name) == 0){
 	    /* Call wrapper function that eg changes op based on config */
 	    if (wrapit && pe->pe_callback != NULL)
 		if (pe->pe_callback(h, pe, &op) < 0)
 		    goto done;
-	    if (clixon_process_operation_one(op, pe->pe_netns, pe->pe_argv, &pe->pe_pid) < 0)
-		goto done;
+	    if (op == PROC_OP_START || op == PROC_OP_STOP || op == PROC_OP_RESTART){
+		pe->pe_op = op;
+		sched++;
+	    }
 	    if (pid)
 		*pid = pe->pe_pid;
 	    break; 	    /* hit break here */
 	}
 	pe = NEXTQ(process_entry_t *, pe);
-    } while (pe != proc_entry_list);
+    } while (pe != _proc_entry_list);
+    if (sched && clixon_process_sched_register(h) < 0)
+	goto done;
  ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
-/*! Start all processes that are enabled
+/*! Go through process list and start all processes that are enabled via config wrap function
  * @param[in]  h   Clixon handle
  * Commit rules should have done this, but there are some cases such as backend -s none mode
  * where commits are not made.
@@ -511,26 +522,87 @@ clixon_process_start_all(clicon_handle h)
 {
     int              retval = -1;
     process_entry_t *pe;
-    char            *op;
+    proc_operation   op;
+    int              sched = 0; /* If set, process action should be scheduled, register a timeout */
 
     clicon_debug(1, "%s",__FUNCTION__);
-    if (proc_entry_list == NULL)
+    if (_proc_entry_list == NULL)
 	goto ok;
-    pe = proc_entry_list;
+    pe = _proc_entry_list;
     do {
-	op = "start";
+	op = PROC_OP_START;
 	/* Call wrapper function that eg changes op based on config */
 	if (pe->pe_callback != NULL)
 	    if (pe->pe_callback(h, pe, &op) < 0)
 		goto done;
-	if (strcmp(op, "start") == 0)
-	    if (clixon_process_operation_one("start", pe->pe_netns, pe->pe_argv, &pe->pe_pid) < 0)
-		goto done;
+	if (op == PROC_OP_START){
+	    pe->pe_op = op;
+	    sched++;
+	}
 	pe = NEXTQ(process_entry_t *, pe);
-    } while (pe != proc_entry_list);
+    } while (pe != _proc_entry_list);
+    if (sched && clixon_process_sched_register(h) < 0)
+	goto done;
  ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    return retval;
+}
+
+/*! Traverse all processes and check pending start/stop/restarts
+ * @param[in]  h   Clixon handle
+ * Typical cases where postponing process start/stop is necessary:
+ * (1) at startup, if started before deamoninization, process will get as child of 1
+ * (2) edit changes or rpc restart especially of restconf where you may saw of your arm and terminate
+ *     return socket.
+ */
+static int
+clixon_process_sched(int           fd,
+		     clicon_handle h)
+{
+    int              retval = -1;
+    process_entry_t *pe;
+    proc_operation   op;
+
+    clicon_debug(2, "%s",__FUNCTION__);
+    if (_proc_entry_list == NULL)
+	goto ok;
+    pe = _proc_entry_list;
+    do {
+	if ((op = pe->pe_op) != PROC_OP_NONE){
+	    if (clixon_process_operation_one(op, pe->pe_netns, pe->pe_argv, &pe->pe_pid) < 0)
+		goto done;
+	    clicon_debug(1, "%s op:%s pid:%d", __FUNCTION__, clicon_int2str(proc_operation_map, op), pe->pe_pid);
+	    pe->pe_op = PROC_OP_NONE;
+	}
+	pe = NEXTQ(process_entry_t *, pe);
+    } while (pe != _proc_entry_list);
+ ok:
+    retval = 0;
+ done:
+    clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
+    return retval;
+}
+
+/*! Register scheduling of process start/stop/restart
+ * After a delay t1, schedule the process
+ * @note The delay is for mitigating a race condition if a process is restarted that is used in the session
+ *       restarting it. In this way, the process "should have" time to exit.
+ */
+int
+clixon_process_sched_register(clicon_handle h)
+{
+    int            retval = -1;
+    struct timeval t;
+    struct timeval t1 = {0, 1000}; /* XXX See discussion ^*/
+
+    gettimeofday(&t, NULL);
+    timeradd(&t, &t1, &t);
+    if (clixon_event_reg_timeout(t, clixon_process_sched, h, "process") < 0)
+	goto done;
+    retval = 0;
+ done:
+    clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
