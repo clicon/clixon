@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [5.1.0](#510) Expected: April
 * [5.0.0](#500) 27 February 2021
 * [4.9.0](#490) 18 December 2020
 * [4.8.0](#480) 18 October 2020
@@ -26,6 +27,9 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
+## 5.1.0
+Expected: April
+
 ## 5.0.0
 27 February 2021
 
@@ -33,10 +37,9 @@ The 5.0.0 release is a new major release. The last major release was
 4.0.0 in 13 July 2019.  Recently, large changes to RESTCONF
 configuration has been made which is the primary reason for a new major version.
 
-Other changes since 4.9 include NETCONF call home and a new
-client API, and a modified lock behavior.
+Other changes since 4.9 include NETCONF call home, a new client API, and a modified lock behavior.
 
-Thanks Netgate and clixon community input for making this possible!
+Thanks Netgate and input from the Clixon community for making this possible!
 
 ### New features
 
@@ -48,7 +51,7 @@ Thanks Netgate and clixon community input for making this possible!
   * Network namespaces implemented for evhtp
   * For more info see [clixon-docs/restconf](https://clixon-docs.readthedocs.io/en/latest/restconf.html)
     * See also API changes section below for details
-* NETCONF Call Home Call Home RFC 8071
+* NETCONF Call Home RFC 8071
   * See [Netconf/ssh callhome](https://clixon-docs.readthedocs.io/en/latest/netconf.html#callhome)
   * Solution description using openssh and utility functions, no changes to core clixon
   * Example: test/test_netconf_ssh_callhome.sh
