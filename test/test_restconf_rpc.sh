@@ -81,19 +81,21 @@ EOF
     if [ -z "$pid" ]; then
 	err "Running process" "$ret"
     fi
+
     new "check restconf retvalue"
-    if [ $expectret -eq 0 ]; then
-	if [ $pid -ne 0 ]; then
-	    err "No process" "$pid"
-	fi
-    else
-	if [ $pid -eq 0 ]; then
-	    err "Running process"
+    if [ $operation = "status" ]; then
+	if [ $expectret -eq 0 ]; then
+	    if [ $pid -ne 0 ]; then
+		err "No process" "$pid"
+	    fi
+	else
+	    if [ $pid -eq 0 ]; then
+		err "Running process"
+	    fi
 	fi
     fi
 
-
-    echo $pid # cant use return that only uses 0-255
+    echo "$pid" # cant use return that only uses 0-255
 }
 
 new "ENABLE true"
@@ -124,34 +126,68 @@ if [ $BE -ne 0 ]; then
     wait_backend
 fi
 
+# For debug
+#>&2 echo "curl $CURLOPTS -X POST -H \"Content-Type: application/yang-data+json\" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{\"clixon-lib:input\":{\"name\":\"restconf\",\"operation\":\"status\"}}'"
+
 # Get pid of running process and check return xml
 new "1. Get rpc status"
 pid0=$(testrpc status 1) # Save pid0
 if [ $? -ne 0 ]; then echo "$pid0";exit -1; fi
 
-new "check restconf process running using ps pid0:$pid0"
+new "check restconf process runnng using ps pid:$pid0"
 ps=$(ps -hp $pid0) 
 
 if [ -z "$ps" ]; then
-    err "A restconf running"
+    err "Restconf $pid0 not found"
+fi
+
+new "check parent process of pid:$pid0"
+ppid=$(ps -o ppid= -p $pid0)
+if [ "$ppid" -eq 1 -o "$ppid" -eq "$pid0" ]; then
+    err "Restconf parent pid of $pid0 is $ppid is wrong"
 fi
 
 new "wait restconf"
 wait_restconf
 
-new "try restconf rpc"
+new "try restconf rpc status"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}')" 0 "HTTP/1.1 200 OK" '{"clixon-lib:output":{"pid":'
 
+new "1.1. Get status"
+pid1=$(testrpc status 1)
+if [ $? -ne 0 ]; then echo "$pid1";exit -1; fi
+
+new "Check same pid"
+if [ "$pid0" -ne "$pid1" ]; then
+    err "$pid0" "$pid1"
+fi
+
+new "try restconf rpc restart"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"restart"}}')" 0 "HTTP/1.1 200 OK" '{"clixon-lib:output":{"pid":'
+
+new "1.1. Get status"
+pid1=$(testrpc status 1)
+if [ $? -ne 0 ]; then echo "$pid1";exit -1; fi
+
+new "check different pids"
+if [ "$pid0" -eq "$pid1" ]; then
+    err "not $pid0"
+fi
+
 new "2. stop restconf RPC"
-pid=$(testrpc stop 0)
-if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
+testrpc stop 0
+if [ $? -ne 0 ]; then exit -1; fi
 
 new "3. Get rpc status stopped"
 pid=$(testrpc status 0)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
 new "4. Start rpc again"
-pid3=$(testrpc start 1) # Save pid3
+testrpc start 0
+if [ $? -ne 0 ]; then exit -1; fi
+
+new "4.1. Get rpc status"
+pid3=$(testrpc status 1)
 if [ $? -ne 0 ]; then echo "$pid3";exit -1; fi
 
 new "check restconf process running using ps"
@@ -161,43 +197,31 @@ if [ -z "$ps" ]; then
 fi
 
 if [ $pid0 -eq $pid3 ]; then
-    err "A different pid" "$pid3"
+    err "A different pid" "same pid: $pid3"
 fi
 
 new "kill restconf"
 stop_restconf_pre
 
 new "5. start restconf RPC"
-pid=$(testrpc start 1)
-if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
+testrpc start 0
+if [ $? -ne 0 ]; then exit -1; fi
 
 new "6. check status RPC on"
 pid5=$(testrpc status 1) # Save pid5
 if [ $? -ne 0 ]; then echo "$pid5";exit -1; fi
 
 new "7. restart restconf RPC"
-pid=$(testrpc restart 1)
-if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
+testrpc restart 0
+if [ $? -ne 0 ]; then exit -1; fi
 
 new "8. Get restconf status rpc"
 pid7=$(testrpc status 1) # Save pid7
 if [ $? -ne 0 ]; then echo "$pid7";exit -1; fi
 
 if [ $pid5 -eq $pid7 ]; then
-    err "A different pid" "$pid7"
+    err "A different pid" "samepid: $pid7"
 fi
-
-#if [ $valgrindtest -eq 0 ]; then # Cant get pgrep to work properly
-#    new "check new pid"
-#    sleep $DEMWAIT # Slows the tests down considerably, but needed in eg docker test
-#    pid1=$(pgrep clixon_restconf)
-#    if [ -z "$pid0" -o -z "$pid1" ]; then
-#        err "Pids expected" "pid0:$pid0 = pid1:$pid1"
-#    fi
-#    if [ $pid0 -eq $pid1 ]; then#
-#	err "Different pids" "pid0:$pid0 = pid1:$pid1"
-#    fi
-#fi
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -214,6 +238,7 @@ fi
 # Start backend with -s none should start restconf too via ca_reset rule
 
 new "Restart backend -s none"
+
 if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
@@ -277,8 +302,8 @@ pid=$(testrpc status 0)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
 new "11. start restconf RPC"
-pid=$(testrpc start 0)
-if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
+testrpc start 0
+if [ $? -ne 0 ]; then exit -1; fi
 
 new "12. check status RPC off"
 pid=$(testrpc status 0)
@@ -293,6 +318,18 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "
 new "13. check status RPC on"
 pid=$(testrpc status 1)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
+
+# Edit a field, eg debug
+new "Edit a field via restconf"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/clixon-restconf:restconf/debug -d '{"clixon-restconf:debug":1}' )" 0 "HTTP/1.1 201 Created"
+
+new "check status RPC new pid"
+pid1=$(testrpc status 1)
+
+if [ $? -ne 0 ]; then echo "$pid1";exit -1; fi
+if [ $pid -eq $pid1 ]; then
+    err "A different pid" "Same pid: $pid"
+fi
 
 new "Disable restconf"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config><restconf xmlns=\"http://clicon.org/restconf\"><enable>false</enable></restconf></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -327,7 +364,7 @@ fi
 #Start backend -s none should start 
 
 unset pid
-sleep $DEMWAIT # Lots of processes need to die before next test
+sleep $DEMSLEEP # Lots of processes need to die before next test
 
 new "endtest"
 endtest

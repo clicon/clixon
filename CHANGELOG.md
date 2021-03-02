@@ -1,6 +1,7 @@
 # Clixon Changelog
 
 * [5.0.0](#500) 27 February 2021
+  * [5.0.1](#501) 10 March 2021
 * [4.9.0](#490) 18 December 2020
 * [4.8.0](#480) 18 October 2020
 * [4.7.0](#470) 14 September 2020
@@ -26,6 +27,18 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
+## 5.0.1
+10 March 2021
+
+### Minor features
+
+* Introduced a delay before making process start/stop/restart processes for race conditions when configuring eg restconf
+* For restconf `CLICON_BACKEND_RESTCONF_PROCESS`, restart restconf if restconf is edited.
+
+### Corrected Bugs
+
+* Reverted blocked signal behavior introduced in 5.0.
+
 ## 5.0.0
 27 February 2021
 
@@ -37,6 +50,10 @@ Other changes since 4.9 include NETCONF call home and a new
 client API, and a modified lock behavior.
 
 Thanks Netgate and clixon community input for making this possible!
+
+### Known Issues
+
+* Changed behavior in signal handlers and some race conditions fixed by 5.0.1
 
 ### New features
 

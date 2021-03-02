@@ -334,7 +334,7 @@ clixon_pseudo_plugin(clicon_handle   h,
     int            retval = -1;
     clixon_plugin *cp = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__); 
+    clicon_debug(1, "%s %s", __FUNCTION__, name); 
 
     /* Create a pseudo plugins */
     /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */

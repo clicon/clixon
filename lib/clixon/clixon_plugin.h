@@ -114,17 +114,20 @@ typedef enum clixon_auth_type clixon_auth_type_t;
 /* Called when application is "started", (almost) all initialization is complete 
  * Backend: daemon is in the background. If daemon privileges are dropped 
  *          this callback is called *before* privileges are dropped.
+ * @param[in] h    Clixon handle
  */
 typedef int (plgstart_t)(clicon_handle); /* Plugin start */
 
 /* Called just before or after a server has "daemonized", ie put in background.             
  * Backend: If daemon privileges are dropped this callback is called *before* privileges are dropped.
- * If daemon is started in foreground (-F): pre-daemon is not called, but post-daemon called
+ * If daemon is started in foreground (-F): pre-daemon is not called, but daemon called
+ * @param[in] h    Clixon handle
  */
 typedef int (plgdaemon_t)(clicon_handle);              /* Plugin pre/post daemonized */
 
 
 /* Called just before plugin unloaded. 
+ * @param[in] h    Clixon handle
  */
 typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
 
@@ -263,8 +266,8 @@ struct clixon_plugin_api{
 	struct { /* netconf-specific */
 	} cau_netconf;
 	struct { /* backend-specific */
-            plgdaemon_t      *cb_pre_daemon;     /* Plugin just before daemonization */
-            plgdaemon_t      *cb_daemon;         /* Plugin daemonized */
+            plgdaemon_t      *cb_pre_daemon;     /* Plugin just before daemonization (only daemon) */
+            plgdaemon_t      *cb_daemon;         /* Plugin daemonized (always called) */
 	    plgreset_t       *cb_reset;          /* Reset system status */
 	    plgstatedata_t   *cb_statedata;      /* Get state data from plugin (backend only) */
 	    trans_cb_t       *cb_trans_begin;	 /* Transaction start */

@@ -172,6 +172,7 @@ backend_sig_child(int arg)
     clicon_debug(1, "%s", __FUNCTION__);
     if ((pid = waitpid(-1, &status, 0)) != -1 && WIFEXITED(status)){
     }
+    clicon_sig_ignore_set(1);
 }
 
 /*! Create backend server socket and register callback
@@ -936,8 +937,8 @@ main(int    argc,
      */
     if (status == STARTUP_OK){
 	if (startup_mode == SM_NONE){
-	    /* Special case for mode none: no commits are made therefore need to run
-	     * start all processes
+	    /* Special case for mode none: no commits are made therefore need to go through all processes
+	     * registered in plugins (specifically the restconf pseudo plugin)
 	     */
 	    if (clixon_process_start_all(h) < 0)
 		goto done;

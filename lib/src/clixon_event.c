@@ -86,7 +86,11 @@ static struct event_data *ee_timers = NULL;
 /* Set if element in ee is deleted (clixon_event_unreg_fd). Check in ee loops */
 static int _ee_unreg = 0;
 
+/* If set (eg by signal handler) exit select loop on next run and return 0 */
 static int _clicon_exit = 0;
+
+/* If set (eg by signal handler) ignore EINTR and continue select loop */
+static int _clicon_sig_ignore = 0;
 
 /*! For signal handlers: instead of doing exit, set a global variable to exit
  * Status is then checked in event_loop.
@@ -115,6 +119,19 @@ int
 clicon_exit_get(void)
 {
     return _clicon_exit;
+}
+
+int
+clicon_sig_ignore_set(int val)
+{
+    _clicon_sig_ignore = val;
+    return 0;
+}
+
+int
+clicon_sig_ignore_get(void)
+{
+    return _clicon_sig_ignore;
 }
 
 /*! Register a callback function to be called on input on a file descriptor.
@@ -320,18 +337,26 @@ clixon_event_loop(void)
 	if (clicon_exit_get())
 	    break;
 	if (n == -1) {
-	    /* Signals either set clixon_exit, then the function returns 0
-	     * Typically for set_signal() of SIGTERM,SIGINT, etc
-	     * Other signals are ignored, and the select is rerun, eg SIGCHLD
-	     */
 	    if (errno == EINTR){
+		/* Signals are checked and are in three classes:
+		 * (1) Signals that exit gracefully, the function returns 0
+		 *     Must be registered such as by set_signal() of SIGTERM,SIGINT, etc with a handler that calls
+		 *     clicon_exit_set().
+		 * (2) Signals that are ignored, and the select is rerun, eg SIGCHLD if handler calls clicon_sig_ignore()
+		 *     New select loop is called
+		 * (3) Other signals result in an error and return -1.
+		 */
 		clicon_debug(1, "%s select: %s", __FUNCTION__, strerror(errno));
 		if (clicon_exit_get()){
 		    clicon_err(OE_EVENTS, errno, "select");
 		    retval = 0;
 		}
-		else
+		else if (clicon_sig_ignore_get()){
+		    clicon_sig_ignore_set(0);
 		    continue;
+		}
+		else
+		    clicon_err(OE_EVENTS, errno, "select");
 	    }
 	    else
 		clicon_err(OE_EVENTS, errno, "select");

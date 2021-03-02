@@ -49,6 +49,10 @@ int clicon_exit_reset(void);
 
 int clicon_exit_get(void);
 
+int clicon_sig_ignore_set(int val);
+
+int clicon_sig_ignore_get(void);
+
 int clixon_event_reg_fd(int fd, int (*fn)(int, void*), void *arg, char *str);
 
 int clixon_event_unreg_fd(int s, int (*fn)(int, void*));
