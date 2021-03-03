@@ -71,12 +71,19 @@ function testrun(){
 	err 
     fi
     sleep 1 # wait for backend to exit
+    
     pid=$(pgrep -f clixon_backend)    
     if [ $? -ne 0 ]; then
 	if [ $expecterr -eq 1 ]; then
 	    return 0
 	fi
 	err
+    fi
+
+    new "Number of clixon_backend processes"
+    c=$(pgrep -c -f clixon_backend)
+    if [ $c -ne 1 ]; then
+	err 1 $c
     fi
 
     new "waiting"

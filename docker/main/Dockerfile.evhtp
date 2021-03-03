@@ -47,14 +47,18 @@ RUN apk add --update libevent cmake libevent-dev
 
 # clone libevhtp
 WORKDIR /clixon
-RUN git clone https://github.com/clicon/libevhtp.git
-WORKDIR /clixon/libevhtp/build
-RUN cmake -DEVHTP_DISABLE_REGEX=ON -DEVHTP_DISABLE_EVTHR=ON -DBUILD_SHARED_LIBS=OFF ..
-RUN make
-RUN make install
 
-# NOTE: Patch include queue.h to use the queue.h included in the evhtp release instead
-RUN (cd /usr/local/include/evhtp/; sed -i -e 's/<sys\/queue.h>/<evhtp\/sys\/queue.h>/' evhtp.h)
+#RUN git clone https://github.com/criticalstack/libevhtp.git
+#WORKDIR /clixon/libevhtp/build
+#RUN cmake -DEVHTP_DISABLE_REGEX=ON -DEVHTP_DISABLE_EVTHR=ON -DBUILD_SHARED_LIBS=OFF ..
+
+RUN git clone https://github.com/clicon/libevhtp.git
+WORKDIR /clixon/libevhtp
+RUN ./configure
+
+RUN make
+RUN mkdir /usr/local/include
+RUN make install
 
 RUN mkdir /clixon/build
 WORKDIR /clixon
@@ -118,7 +122,7 @@ RUN adduser -D -H www-data
 RUN apk add --update openssl libevent
 
 # Test-specific (for test scripts)
-RUN apk add --update sudo curl procps grep make bash
+RUN apk add --update sudo curl procps grep make bash # iproute2 # contains ip - but CAP_SYS_ADMIN isssue
 
 # Expose https port for restconf
 EXPOSE 80/tcp
@@ -130,6 +134,7 @@ RUN adduser www-data clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
 COPY --from=0 /www-data /www-data
+COPY --from=0 /usr/local/lib/libevhtp.so* /usr/local/lib/
 
 # Manually created
 RUN chown www-data /www-data

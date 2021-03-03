@@ -68,6 +68,11 @@ How to debug
    CFLAGS="-g -Wall" INSTALLFLAGS="" ./configure
 ```
 
+### Set backend debug flag using curl
+
+curl -Ssik -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/operations/clixon-lib:debug -d '{"clixon-lib:input":{"level":1}}' 
+
+
 ### Make your own simplified yang and configuration file.
 ```
 cat <<EOF > /tmp/my.yang

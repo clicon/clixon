@@ -98,7 +98,6 @@ system=$($sshcmd uname) # we use the release "hack" instead
 # Some release have packages, some need to be built from source
 buildfcgi=false
 buildevhtp=false
-buildcmake=false # Some releases (eg centos/7) has too old cmake to build libevhtp
 case $release in
     openbsd)
 	# packages for building
@@ -159,7 +158,6 @@ case $release in
 	    evhtp)
 		$sshcmd sudo yum install -y libevent openssl
 		buildevhtp=true
-		buildcmake=true # Actually, only necessary on centos/7
 		$sshcmd sudo yum install -y libevent-devel openssl-devel
 		;;
 	esac
@@ -259,19 +257,12 @@ case ${with_restconf} in
 	. ./nginx.sh $dir $idfile $port $wwwuser
 	;;
     evhtp)
-	if $buildcmake; then
-	    $sshcmd "test -d cmake || sudo git clone https://gitlab.kitware.com/cmake/cmake.git"
-	    $sshcmd "(cd cmake; sudo ./bootstrap)"
-    	    $sshcmd "(cd cmake; sudo make)"
-	    $sshcmd "(cd cmake; sudo make install)"
-	fi
 	if $buildevhtp; then
 		$sshcmd << 'EOF'
-		test -d libevhtp || sudo git clone https://github.com/clicon/libevhtp.git
-		cd libevhtp/build; 
-		CMAKE=$(which cmake)
-		sudo $CMAKE -DEVHTP_DISABLE_REGEX=ON -DEVHTP_DISABLE_EVTHR=ON -DBUILD_SHARED_LIBS=OFF ..
-		sudo make
+		test -d libevhtp || git clone https://github.com/clicon/libevhtp.git
+		cd libevhtp; 
+		./configure
+                make
 		sudo make install
 EOF
 	fi

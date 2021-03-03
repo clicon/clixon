@@ -1,10 +1,29 @@
 #!/usr/bin/env bash
 # Parse "all" IETF yangmodels from https://github.com/YangModels/yang/standard/ieee and experimental/ieee
 # Notes:
-# - Only a simple smoketest (CLI check) is made, A full system may not work
+# - Only a simple smoketest (CLI check) is made, essentially YANG parsing. A full system may not work
 # - Env variable YANGMODELS should point to checkout place. (define it in site.sh for example)
 # - Some FEATURES are set to make it work
-# - Some DIFFs are necessary in yangmodels (see end of script)
+# - Some DIFFs are necessary in yangmodels
+#     - standard/ietf/RFC/ietf-mud@2019-01-28.yang
+#           -      + "/acl:l4/acl:tcp/acl:tcp" {
+#           +      + "/acl:l4/acl:tcp" {
+#     - standard/ietf/RFC/ietf-acldns@2019-01-28.yang
+#                augment "/acl:acls/acl:acl/acl:aces/acl:ace/acl:matches"
+#            -        + "/acl:l3/acl:ipv4/acl:ipv4" {
+#            +        + "/acl:l3/acl:ipv4" {
+#                 description
+#                   "Adding domain names to matching.";
+#            +    if-feature acl:match-on-ipv4;
+#                 uses dns-matches;
+#               }
+#               augment "/acl:acls/acl:acl/acl:aces/acl:ace/acl:matches"
+#            -        + "/acl:l3/acl:ipv6/acl:ipv6" {
+#            +        + "/acl:l3/acl:ipv6" {
+#                 description
+#                   "Adding domain names to matching.";
+#            +    if-feature acl:match-on-ipv6;
+
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -15,7 +34,6 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 fyang=$dir/test.yang
 
-YANGMODELS=/home/olof/tmp/yang
 if [ ! -d "$YANGMODELS" ]; then
 #    err "Hmm Yangmodels dir does not seem to exist, try git clone https://github.com/YangModels/yang?"
     echo "...skipped: YANGMODELS not set"

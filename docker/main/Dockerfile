@@ -94,7 +94,7 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 RUN apk add --update flex bison fcgi-dev
 
 # Test-specific (for test scripts)
-RUN apk add --update sudo curl procps grep make bash
+RUN apk add --update sudo curl procps grep make bash # iproute2 # contains ip
 
 # Create clicon user and group
 RUN adduser -D -H clicon

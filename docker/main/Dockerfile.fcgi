@@ -103,7 +103,7 @@ RUN adduser -D -H www-data
 RUN apk add --update nginx
 
 # Test-specific (for test scripts)
-RUN apk add --update sudo curl procps grep make bash
+RUN apk add --update sudo curl procps grep make bash # iproute2 # contains ip
 
 # Expose nginx port for restconf
 EXPOSE 80

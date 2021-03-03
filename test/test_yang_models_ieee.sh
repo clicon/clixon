@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # Parse "all" IEEE yangmodels from https://github.com/YangModels/yang/standard/ietf/RFC
 # Notes:
-# - Only a simple smoketest (CLI check) is made, A full system may not work
+# - Only a simple smoketest (CLI check) is made, essentially YANG parsing. A full system may not work
 # - Env variable YANGMODELS should point to checkout place. (define it in site.sh for example)
 # - Some FEATURES are set to make it work
-# - Some DIFFs are necessary in yangmodels (see end of script)
+# - Some DIFFs are necessary in yangmodels
+#    - standard/ieee/published/802.3/ieee802-ethernet-pon.yang:
+#        -      when "../ompe-mode = olt'";
+#        +      when "../ompe-mode = 'olt'";
+
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

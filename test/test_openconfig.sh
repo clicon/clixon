@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
-# Parse yang openconfig yangs from https://github.com/openconfig/public
+# Parse "all" openconfig yangs from https://github.com/openconfig/public
 # Notes:
+# Notes:
+# - A simple smoketest (CLI check) is made, essentially YANG parsing. 
+#    - A full system is worked on
 # - Env-var OPENCONFIG should point to checkout place. (define it in site.sh for example)
+# - Env variable YANGMODELS should point to checkout place. (define it in site.sh for example)
+# - Some DIFFs are necessary in yangmodels
+#         release/models/wifi/openconfig-ap-interfaces.yang
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -23,6 +29,9 @@ OCDIR=$OPENCONFIG/release/models
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <!--CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR-->
   <CLICON_YANG_DIR>$OCDIR</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$OCDIR/acl</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$OCDIR/aft</CLICON_YANG_DIR>
@@ -60,14 +69,13 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>$OCDIR/wifi/mac</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$OCDIR/wifi/phy</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$OCDIR/wifi/types</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
+
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
 </clixon-config>
 EOF
@@ -103,6 +111,53 @@ for f in $files; do
 	expectpart "$($clixon_cli -D $DBG -1f $cfg -y $f show version)" 0 "${CLIXON_VERSION}"
     fi
 done
+
+if false; then # NYI
+
+# Example system
+cat <<EOF > $dir/startup_db
+<config>
+   <interfaces xmlns="http://openconfig.net/yang/interfaces">
+      <interface>
+         <name>eth0</name>
+         <config2>
+            <type>ianaift:usb</type>
+         </config2>
+      </interface>
+   </interfaces>
+</config>
+EOF
+
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    sudo pkill -f clixon_backend # to be sure
+    
+    new "start backend -s startup -f $cfg -y openconfig-interfaces -p /usr/local/share/openconfig/public/release/models/interfaces"
+    start_backend -s startup -f $cfg -y /usr/local/share/openconfig/public/release/models/interfaces/openconfig-interfaces.yang
+
+    new "wait backend"
+    wait_backend
+fi
+
+new "$clixon_cli -D $DBG -1f $cfg -y $f show version"
+expectpart "$($clixon_cli -D $DBG -1f $cfg -y $f show version)" 0 "${CLIXON_VERSION}"
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+fi
+
+fi
 
 rm -rf $dir
 
