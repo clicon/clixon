@@ -964,7 +964,7 @@ static const map_str2int clixon_auth_type[] = {
 
 /*! Translate from string to auth-type
  */
-const clixon_auth_type_t
+const int
 clixon_auth_type_str2int(char *auth_type)
 {
     return clicon_str2int(clixon_auth_type, auth_type);

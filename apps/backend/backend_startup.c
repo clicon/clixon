@@ -88,6 +88,7 @@ db_merge(clicon_handle h,
     /* Get data as xml from db1 */
     if (xmldb_get0(h, (char*)db1, YB_MODULE, NULL, NULL, 0, &xt, NULL) < 0)
 	goto done;
+    xml_name_set(xt, NETCONF_INPUT_CONFIG);
     /* Merge xml into db2. Without commit */
     retval = xmldb_put(h, (char*)db2, OP_MERGE, xt, clicon_username_get(h), cbret);
  done:
@@ -168,8 +169,10 @@ load_extraxml(clicon_handle h,
 {
     int        retval =  -1;
     cxobj     *xt = NULL;
+    cxobj     *xerr = NULL;
     FILE      *fp = NULL;
     yang_stmt *yspec = NULL;
+    int        ret;
 
     if (filename == NULL)
 	return 1;
@@ -178,11 +181,25 @@ load_extraxml(clicon_handle h,
 	goto done;
     }
     yspec = clicon_dbspec_yang(h);
-    if (clixon_xml_parse_file(fp, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
+    /* No yang check yet because it has <config> as top symbol, do it later after that is removed */
+    if (clixon_xml_parse_file(fp, YB_NONE, yspec, NULL, &xt, &xerr) < 0)
 	goto done;
     /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)
+    	goto done;
+    /* Ensure edit-config "config" statement */
+    if (xt)
+	xml_name_set(xt, NETCONF_INPUT_CONFIG);
+    /* Now we can yang bind */
+    if ((ret = xml_bind_yang(xt, YB_MODULE, yspec, &xerr)) < 0)
 	goto done;
+    if (ret == 0){
+	if (netconf_err2cb(xerr, cbret) < 0)
+	    goto done;
+	retval = 0;
+	goto done;
+    }
+
     /* Merge user reset state */
     retval = xmldb_put(h, (char*)db, OP_MERGE, xt, clicon_username_get(h), cbret);
  done:

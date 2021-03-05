@@ -253,21 +253,22 @@ if [ $RC -ne 0 ]; then
     stop_restconf
 fi
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+    sudo pkill -u root -f clixon_backend
 fi
-
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
-sudo pkill -u root -f clixon_backend
 
 # Set by restconf_config
 unset RESTCONFIG
 
 rm -rf $dir
+
+new "endtest"
+endtest

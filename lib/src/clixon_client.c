@@ -407,7 +407,7 @@ clixon_client_get_xdata(int         sock,
 	goto done; /* Not fatal */
     }
     else if ((xd = xpath_first(xret, NULL, "/rpc-reply/data")) == NULL){
-	if ((xd = xml_new("data", NULL, CX_ELMNT)) == NULL)
+	if ((xd = xml_new(NETCONF_OUTPUT_DATA, NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
     else{

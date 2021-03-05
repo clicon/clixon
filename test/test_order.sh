@@ -129,7 +129,7 @@ EOF
 rm -f $dbdir/candidate_db
 # alt
 cat <<EOF > $dbdir/running_db
-<config>
+<${DATASTORE_TOP}>
   <y0 xmlns="urn:example:order">d</y0>
   <y1 xmlns="urn:example:order">d</y1>
   <y2 xmlns="urn:example:order"><k>d</k><a>bar</a></y2>
@@ -148,7 +148,7 @@ cat <<EOF > $dbdir/running_db
   <y3 xmlns="urn:example:order"><k>c</k><a>bar</a></y3>
   <y2 xmlns="urn:example:order"><k>b</k><a>bar</a></y2>
   <y3 xmlns="urn:example:order"><k>b</k><a>bar</a></y3>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 new "test params: -s running -f $cfg -- -s"
@@ -391,20 +391,21 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><ca
 new "check ordered-by-user: e,a,71,b,42,c,d"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><y2 xmlns=\"urn:example:order\"><k>e</k><a>bar</a></y2><y2 xmlns=\"urn:example:order\"><k>a</k><a>foo</a></y2><y2 xmlns=\"urn:example:order\"><k>71</k><a>fie</a></y2><y2 xmlns=\"urn:example:order\"><k>b</k><a>bar</a></y2><y2 xmlns=\"urn:example:order\"><k>42</k><a>fum</a></y2><y2 xmlns=\"urn:example:order\"><k>c</k><a>foo</a></y2><y2 xmlns=\"urn:example:order\"><k>d</k><a>fie</a></y2></data></rpc-reply>]]>]]>$"
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
 
 rm -rf $dir
 
 # unset conditional parameters 
 unset format
+
+new "endtest"
+endtest

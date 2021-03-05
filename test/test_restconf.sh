@@ -414,3 +414,6 @@ unset RESTCONFIG
 unset RESTCONFIG1
 
 rm -rf $dir
+
+new "endtest"
+endtest

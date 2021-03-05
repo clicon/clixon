@@ -79,3 +79,6 @@ if [ $BE -ne 0 ]; then
 fi
 
 rm -rf $dir
+
+new "endtest"
+endtest

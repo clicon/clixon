@@ -260,3 +260,7 @@ unset nr
 unset clixon_util_path 
 
 rm -rf $dir
+
+new "endtest"
+endtest
+

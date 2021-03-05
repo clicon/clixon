@@ -80,17 +80,18 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get><filter type='xpath
 new "get xpath one"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get><filter type='xpath' select=\"/fi:x/fi:y[fi:a='1']\" xmlns:fi='urn:example:filter' /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
 
 rm -rf $dir
+
+new "endtest"
+endtest

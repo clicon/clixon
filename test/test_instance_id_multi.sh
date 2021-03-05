@@ -99,4 +99,5 @@ expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /ex:table/ex:parameter/ex:n
 rm -rf $dir
 unset clixon_util_path # for other script reusing it
 
-
+new "endtest"
+endtest

@@ -63,14 +63,14 @@ show("Show a particular state of the system"){
 EOF
 
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
   <table xmlns="urn:example:clixon">
     <parameter>
       <name>a</name>
       <value>42</value>
     </parameter>
   </table>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 # Add inline state

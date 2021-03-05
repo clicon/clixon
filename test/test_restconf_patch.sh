@@ -74,9 +74,9 @@ NACM0="<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">
 "
 
 cat<<EOF > $startupdb
-<config>
+<${DATASTORE_TOP}>
    $NACM0
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 # An extra testmodule that includes nacm
@@ -158,9 +158,9 @@ fi
 
 # Restart
 cat<<EOF > $startupdb
-<config>
+<${DATASTORE_TOP}>
    $NACM0
-</config>
+</${DATASTORE_TOP}>
 EOF
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -270,3 +270,6 @@ fi
 unset RESTCONFIG
 
 rm -rf $dir
+
+new "endtest"
+endtest

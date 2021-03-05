@@ -73,15 +73,15 @@ EOF
 
 # Create failsafe db
 cat <<EOF > $dir/failsafe_db
-<config>
+<${DATASTORE_TOP}>
    $SAMEXML
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 # Create non-compat startup db
 # startup config XML with following (A obsolete, B OK, C lacking)
 cat <<EOF > $dir/non-compat-invalid.xml
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -92,7 +92,7 @@ cat <<EOF > $dir/non-compat-invalid.xml
    </modules-state>
    $OLDXML
    $SAMEXML
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
@@ -147,7 +147,9 @@ if [ $BE -ne 0 ]; then
     fi
     # kill backend
     stop_backend -f $cfg
-
-    rm -rf $dir
 fi
 
+rm -rf $dir
+
+new "endtest"
+endtest

@@ -679,3 +679,6 @@ testrun cache
 testrun cache-zerocopy
 
 rm -rf $dir
+
+new "endtest"
+endtest

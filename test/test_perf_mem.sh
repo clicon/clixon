@@ -70,11 +70,11 @@ function testrun(){
 
     if [ $BE -ne 0 ]; then
 	new "generate config with $nr list entries"
-	echo -n "<config><x xmlns=\"urn:example:clixon\">" > $dir/startup_db
+	echo -n "<${DATASTORE_TOP}><x xmlns=\"urn:example:clixon\">" > $dir/startup_db
 	for (( i=0; i<$nr; i++ )); do  
 	    echo -n "<y><a>$i</a><b>$i</b></y>" >> $dir/startup_db
 	done
-	echo "</x></config>" >> $dir/startup_db
+	echo "</x></${DATASTORE_TOP}>" >> $dir/startup_db
 
 	new "kill old backend"
 	sudo clixon_backend -zf $cfg
@@ -173,5 +173,7 @@ b:
   childvec:     8
   (ns-cache:     115)  # only in startup?
 
-
 fi
+
+new "endtest"
+endtest

@@ -76,7 +76,7 @@ function testrun(){
 
     db=startup
     if [ $db = startup ]; then
-	sudo echo "<config>$XML</config>" > $dir/startup_db
+	sudo echo "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>" > $dir/startup_db
     fi
     if [ $BE -ne 0 ]; then     # Bring your own backend
 	new "kill old backend"
@@ -96,15 +96,15 @@ function testrun(){
     sudo chmod 666 $dir/startup_db
 
     new "Checking startup unchanged"
-    ret=$(diff $dir/startup_db <(echo "<config>$XML</config>"))
+    ret=$(diff $dir/startup_db <(echo "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>"))
     if [ $? -ne 0 ]; then
-	err "<config>$XML</config>" "$ret"
+	err "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>" "$ret"
     fi
 
     new "Checking running unchanged"
-    ret=$(diff $dir/running_db <(echo -n "<config>$XML</config>"))
+    ret=$(diff $dir/running_db <(echo -n "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>"))
     if [ $? -ne 0 ]; then
-	err "<config>$XML</config>" "$ret"
+	err "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>" "$ret"
     fi
 
     new "check running defaults"
@@ -125,3 +125,6 @@ function testrun(){
 testrun
 
 rm -rf $dir
+
+new "endtest"
+endtest

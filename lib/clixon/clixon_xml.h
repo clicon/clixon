@@ -57,6 +57,26 @@
  * operations, <error-info> content, and the <action> element.
  */
 #define YANG_XML_NAMESPACE "urn:ietf:params:xml:ns:yang:1"
+
+/* Input symbol for netconf edit-config (+validate)
+ * ietf-netconf.yang defines is as input:
+ *    choice edit-content {
+ *       anyxml config;
+ * See also DATASTORE_TOP_SYMBOL which is the clixon datastore top symbol. By default also config
+ */
+#define NETCONF_INPUT_CONFIG "config"
+
+/* Output symbol for netconf get/get-config
+ *    ietf-netconf.yang defines it as output:
+ *       output {    anyxml data; 
+ */
+#define NETCONF_OUTPUT_DATA "data"
+
+/* Name of xml top object created by xml parse functions 
+ * This is a "neutral" symbol without any meaning as opposed to the previous symbols ^
+ */
+#define XML_TOP_SYMBOL "top" 
+
 /*
  * Types
  */
@@ -147,6 +167,7 @@ typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c
 #define XML_FLAG_CHANGE  0x08  /* Node is changed (commits) or child changed rec */
 #define XML_FLAG_NONE    0x10  /* Node is added as NONE */
 #define XML_FLAG_DEFAULT 0x20  /* Added when a value is set as default @see xml_default */
+#define XML_FLAG_TOP     0x40  /* Top datastore symbol */
 
 /*
  * Prototypes

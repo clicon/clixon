@@ -126,17 +126,18 @@ new "cli rpc"
 # We dont know which message-id the cli app uses
 expectpart "$($clixon_cli -1 -f $cfg -l o rpc ipv4)" 0 "<rpc-reply $DEFAULTONLY message-id=" "><x xmlns=\"urn:example:clixon\">ipv4</x><y xmlns=\"urn:example:clixon\">42</y></rpc-reply>"
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
 
 rm -rf $dir
+
+new "endtest"
+endtest

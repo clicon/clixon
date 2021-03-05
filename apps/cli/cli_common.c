@@ -269,7 +269,7 @@ cli_dbxml(clicon_handle       h,
     if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvv_i) < 0)
 	goto done;
     /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL, CX_ELMNT)) == NULL)
+    if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
 	goto done;
     xbot = xtop;
     if (api_path){
@@ -834,8 +834,8 @@ load_config_file(clicon_handle h,
 	goto done;
     x = NULL;
     while ((x = xml_child_each(xt, x, -1)) != NULL) {
-	/* Ensure top-level is "config", maybe this is too rough? */
-	xml_name_set(x, "config");
+	/* Read as datastore-top but transformed into an edit-config "config" */
+	xml_name_set(x, NETCONF_INPUT_CONFIG);
 	if (clicon_xml2cbuf(cbxml, x, 0, 0, -1) < 0)
 	    goto done;
     }
@@ -919,7 +919,7 @@ save_config_file(clicon_handle h,
     /* get-config returns a <data> tree. Save as <config> tree so it can be used
      * as data-store.
      */
-    if (xml_name_set(xt, "config") < 0)
+    if (xml_name_set(xt, DATASTORE_TOP_SYMBOL) < 0)
 	goto done;
     if ((f = fopen(filename, "w")) == NULL){
 	clicon_err(OE_CFG, errno, "Creating file %s", filename);
@@ -1166,7 +1166,7 @@ cli_unlock(clicon_handle h,
 
 /*! Copy one configuration object to antother
  *
- * Works for objects that are items ina yang list with a keyname, eg as:
+ * Works for objects that are items in a yang list with a keyname, eg as:
  *   list sender{ 
  *      key name;	
  *	leaf name{...
@@ -1270,11 +1270,11 @@ cli_copy_config(clicon_handle h,
     }
     toname = cv_string_get(tocv);
     /* Create copy xml tree x2 */
-    if ((x2 = xml_new("config", NULL, CX_ELMNT)) == NULL)
+    if ((x2 = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_copy(x1, x2) < 0)
 	goto done;
-    xml_name_set(x2, "config");
+    xml_name_set(x2, NETCONF_INPUT_CONFIG);
     cprintf(cb, "/%s", keyname);	
 
     if ((x = xpath_first(x2, nsc, "%s", cbuf_get(cb))) == NULL){

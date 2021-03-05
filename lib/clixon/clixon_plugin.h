@@ -363,7 +363,7 @@ int upgrade_callback_reg_fn(clicon_handle h, clicon_upgrade_cb cb, const char *s
 int upgrade_callback_delete_all(clicon_handle h);
 int upgrade_callback_call(clicon_handle h, cxobj *xt, char *ns, uint16_t op, uint32_t from, uint32_t to, cbuf *cbret);
 
-const clixon_auth_type_t clixon_auth_type_str2int(char *auth_type);
+const int clixon_auth_type_str2int(char *auth_type);
 const char *clixon_auth_type_int2str(clixon_auth_type_t auth_type);
 
 

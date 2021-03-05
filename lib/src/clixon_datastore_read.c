@@ -102,9 +102,9 @@ singleconfigroot(cxobj  *xt,
     x = NULL;
     while ((x = xml_child_each(xt, x,  CX_ELMNT)) != NULL){
 	i++;
-	if (strcmp(xml_name(x), "config")){
-	    clicon_err(OE_DB, ENOENT, "Wrong top-element %s expected config", 
-		       xml_name(x));
+	if (strcmp(xml_name(x), DATASTORE_TOP_SYMBOL)){
+	    clicon_err(OE_DB, ENOENT, "Wrong top-element %s expected %s", 
+		       xml_name(x), DATASTORE_TOP_SYMBOL);
 	    goto done;
 	}
     }
@@ -462,7 +462,7 @@ xmldb_readfile(clicon_handle    h,
 	if ((ret = clixon_json_parse_file(fp, yb, yspec, &x0, NULL)) < 0) /* XXX: ret == 0*/
 	    goto done;
     }
-    else if ((ret = clixon_xml_parse_file(fp, yb, yspec, "</config>", &x0, NULL)) < 0)
+    else if ((ret = clixon_xml_parse_file(fp, yb, yspec, NULL /* "</config>" XXX */, &x0, NULL)) < 0)
 	goto done;
 #ifdef XMLDB_READFILE_FAIL /* The functions calling this function cannot handle a failed parse yet */
     if (ret == 0)
@@ -473,7 +473,7 @@ xmldb_readfile(clicon_handle    h,
      * 1. File is empty <top/> -> rename top-level to "config" 
      */
     if (xml_child_nr(x0) == 0){ 
-	if (xml_name_set(x0, "config") < 0)
+	if (xml_name_set(x0, DATASTORE_TOP_SYMBOL) < 0)
 	    goto done;     
     }
     /* 2. File is not empty <top><config>...</config></top> -> replace root */
@@ -482,6 +482,7 @@ xmldb_readfile(clicon_handle    h,
 	if (singleconfigroot(x0, &x0) < 0)
 	    goto done;
     }
+    xml_flag_set(x0, XML_FLAG_TOP);
     if (xml_child_nr(x0) == 0 && de)
 	de->de_empty = 1;
 
@@ -695,6 +696,7 @@ xmldb_get_cache(clicon_handle    h,
     /* Make new tree by copying top-of-tree from x0t to x1t */
     if ((x1t = xml_new(xml_name(x0t), NULL, CX_ELMNT)) == NULL)
 	goto done;
+    xml_flag_set(x1t, XML_FLAG_TOP);    
     xml_spec_set(x1t, xml_spec(x0t));
     
     if (xlen < 1000){
@@ -996,7 +998,7 @@ xmldb_get0_clear(clicon_handle    h,
 
     /* clear mark and change */
     xml_apply0(x, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
-	       (void*)(0xffff));
+	       (void*)(XML_FLAG_MARK|XML_FLAG_ADD|XML_FLAG_CHANGE));
  ok:
     retval = 0;
  done:

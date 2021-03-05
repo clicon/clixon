@@ -64,3 +64,6 @@ echo "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/
 expectpart "$($clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ietf/RFC show version)" 0 "${CLIXON_VERSION}"
 
 rm -rf $dir
+
+new "endtest"
+endtest

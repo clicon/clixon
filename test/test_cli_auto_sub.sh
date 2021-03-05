@@ -99,7 +99,7 @@ show("Show a particular state of the system"){
 EOF
 
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
   <table xmlns="urn:example:clixon">
     <parameter>
       <name>p1</name>
@@ -110,7 +110,7 @@ cat <<EOF > $dir/startup_db
       </index>
     </parameter>
   </table>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 new "test params: -f $cfg"
@@ -162,3 +162,6 @@ fi
 stop_backend -f $cfg
 
 rm -rf $dir
+
+new "endtest"
+endtest

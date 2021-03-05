@@ -195,7 +195,7 @@ EOF
 # Create startup db revision from 2014-05-08 to be upgraded to 2018-02-20
 # This is 2014 syntax
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -233,7 +233,7 @@ cat <<EOF > $dir/startup_db
       <admin-status>testing</admin-status>
     </interface>
   </interfaces-state>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 # Create configuration
@@ -260,7 +260,7 @@ EOF
 
 # This is 2014 syntax
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -298,7 +298,7 @@ cat <<EOF > $dir/startup_db
       <admin-status>testing</admin-status>
     </interface>
   </interfaces-state>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 MODSTATE1='<modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"><module-set-id>0</module-set-id><module><name>clixon-lib</name><revision>2020-12-30</revision><namespace>http://clicon.org/lib</namespace></module>'
@@ -307,7 +307,7 @@ MODSTATE2='<module><name>interfaces</name><revision>2018-02-20</revision><namesp
 
 XML='<interfaces xmlns="urn:example:interfaces"><interface><name>e0</name><docs><descr>First interface</descr></docs><type>eth</type><admin-status>up</admin-status><statistics><in-octets>54326.432</in-octets><in-unicast-pkts>8458765</in-unicast-pkts></statistics></interface><interface><name>e1</name><type>eth</type><admin-status>down</admin-status></interface></interfaces>'
 
-ALL="<config>$MODSTATE$XML</config>"
+ALL="<${DATASTORE_TOP}>$MODSTATE$XML</${DATASTORE_TOP}>"
 
 # -u means trigger example upgrade
 
@@ -341,4 +341,5 @@ fi
 
 rm -rf $dir
 
-
+new "endtest"
+endtest

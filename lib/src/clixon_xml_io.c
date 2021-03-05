@@ -82,9 +82,6 @@
 #define BUFLEN 1024  
 /* Indentation for xml pretty-print. Consider option? */
 #define XML_INDENT 3
-/* Name of xml top object created by xml parse functions */
-#define XML_TOP_SYMBOL "top" 
-
 
 /*------------------------------------------------------------------------
  * XML printing functions. Output a parse tree to file, string cligen buf
@@ -516,8 +513,11 @@ _xml_parse(const char *str,
 	     * x:   <a> <-- populate from modules
 	     */
 #ifdef XMLDB_CONFIG_HACK
-	    if (strcmp(xml_name(x),"config") == 0 ||
-		strcmp(xml_name(x),"data") == 0){
+	    if (
+		//		 xml_flag(x, XML_FLAG_TOP)
+		strcmp(xml_name(x), DATASTORE_TOP_SYMBOL) == 0
+		|| strcmp(xml_name(x), NETCONF_OUTPUT_DATA) == 0
+		){
 		/* xt:<top>         nospec
 		 * x:   <config>
 		 *         <a>  <-- populate from modules

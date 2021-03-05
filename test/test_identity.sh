@@ -323,7 +323,7 @@ if [ $RC -ne 0 ]; then
     stop_restconf
 fi
 
-if [ $BE -eq 0 ]; then
+if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)

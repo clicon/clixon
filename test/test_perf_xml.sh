@@ -30,3 +30,5 @@ rm -rf $dir
 unset clixon_util_xml
 unset perfnr
 
+new "endtest"
+endtest

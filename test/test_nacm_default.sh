@@ -91,7 +91,7 @@ EOF
 
     # Use startup or set values with POST (below)
     if [ $db = startup ]; then
-	sudo echo "<config>$NACM$XML</config>" > $dir/startup_db
+	sudo echo "<${DATASTORE_TOP}>$NACM$XML</${DATASTORE_TOP}>" > $dir/startup_db
     fi
 
     if [ $BE -ne 0 ]; then     # Bring your own backend

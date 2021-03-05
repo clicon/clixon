@@ -100,17 +100,18 @@ expectpart "$($clixon_cli -1f $cfg -l o set c ulle 33)" 0 "^$"
 new "cli set transitive union error"
 expectpart "$($clixon_cli -1f $cfg -l o set c ulle kalle)" 255 "^CLI syntax error: \"set c ulle kalle\": 'kalle' is not a number$"
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
 
 rm -rf $dir
+
+new "endtest"
+endtest

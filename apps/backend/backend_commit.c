@@ -399,32 +399,37 @@ startup_commit(clicon_handle  h,
 	goto done;
     if (ret == 0)
 	goto fail;
-     /* 8. Call plugin transaction commit callbacks */
-     if (plugin_transaction_commit_all(h, td) < 0)
-	 goto done;
-     /* After commit, make a post-commit call (sure that all plugins have committed) */
-     if (plugin_transaction_commit_done_all(h, td) < 0)
-	 goto done;
-     /* Clear cached trees from default values and marking */
-     if (xmldb_get0_clear(h, td->td_target) < 0)
-	 goto done;
+    /* 8. Call plugin transaction commit callbacks */
+    if (plugin_transaction_commit_all(h, td) < 0)
+	goto done;
+    /* After commit, make a post-commit call (sure that all plugins have committed) */
+    if (plugin_transaction_commit_done_all(h, td) < 0)
+	goto done;
+    /* Clear cached trees from default values and marking */
+    if (xmldb_get0_clear(h, td->td_target) < 0)
+	goto done;
 
-     /* [Delete and] create running db */
-     if (xmldb_exists(h, "running") == 1){
+    /* [Delete and] create running db */
+    if (xmldb_exists(h, "running") == 1){
 	if (xmldb_delete(h, "running") != 0 && errno != ENOENT) 
 	    goto done;;
     }
     if (xmldb_create(h, "running") < 0)
 	goto done;
-     /* 9, write (potentially modified) tree to running
-      * XXX note here startup is copied to candidate, which may confuse everything
-      * XXX default values are overwritten
-      */
-     if ((ret = xmldb_put(h, "running", OP_REPLACE, td->td_target,
-			  clicon_username_get(h), cbret)) < 0)
-	 goto done;
-     if (ret == 0)
-	 goto fail;
+    /* 9, write (potentially modified) tree to running
+     * XXX note here startup is copied to candidate, which may confuse everything
+     * XXX default values are overwritten
+     */
+    if (td->td_target)
+	/* target is datastore, but is here transformed to mimic an incoming 
+	 * edit-config
+	 */
+	xml_name_set(td->td_target,  NETCONF_INPUT_CONFIG);
+    if ((ret = xmldb_put(h, "running", OP_REPLACE, td->td_target,
+			 clicon_username_get(h), cbret)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
     /* 10. Call plugin transaction end callbacks */
     plugin_transaction_end_all(h, td);
     retval = 1;
@@ -432,8 +437,8 @@ startup_commit(clicon_handle  h,
     if (td){
 	if (retval < 1)
 	    plugin_transaction_abort_all(h, td);
-	 xmldb_get0_free(h, &td->td_target);
-	 transaction_free(td);
+	xmldb_get0_free(h, &td->td_target);
+	transaction_free(td);
     }
     return retval;
  fail: /* cbret should be set */

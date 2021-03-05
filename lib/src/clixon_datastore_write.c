@@ -154,7 +154,7 @@ check_body_namespace(cxobj     *x0,
 
     /* XXX: need to identify root better than hiereustics and strcmp,... */
     isroot = xml_parent(x1p)==NULL &&
-	strcmp(xml_name(x1p), "config") == 0 &&
+	strcmp(xml_name(x1p), DATASTORE_TOP_SYMBOL) == 0 &&
 	xml_prefix(x1p)==NULL;
     if (nodeid_split(x1bstr, &prefix, NULL) < 0)
 	goto done;
@@ -935,14 +935,14 @@ xmldb_put(clicon_handle       h,
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if (x1 && strcmp(xml_name(x1), "config") != 0){
-	clicon_err(OE_XML, 0, "Top-level symbol of modification tree is %s, expected \"config\"",
-		   xml_name(x1));
+    if (x1 && strcmp(xml_name(x1), NETCONF_INPUT_CONFIG) != 0){
+	clicon_err(OE_XML, 0, "Top-level symbol of modification tree is %s, expected \"%s\"",
+		   xml_name(x1), NETCONF_INPUT_CONFIG);
 	goto done;
     }
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
 	if (clicon_datastore_cache(h) != DATASTORE_NOCACHE)
-	    x0 = de->de_xml; 
+	    x0 = de->de_xml; /* XXX flag is not XML_FLAG_TOP */
     }
     /* If there is no xml x0 tree (in cache), then read it from file */
     if (x0 == NULL){
@@ -952,9 +952,10 @@ xmldb_put(clicon_handle       h,
 	if (ret == 0)
 	    goto fail;
     }
-    if (strcmp(xml_name(x0), "config")!=0){
-	clicon_err(OE_XML, 0, "Top-level symbol is %s, expected \"config\"",
-		   xml_name(x0));
+    if (strcmp(xml_name(x0), DATASTORE_TOP_SYMBOL) !=0 ||
+	xml_flag(x0, XML_FLAG_TOP) == 0){
+	clicon_err(OE_XML, 0, "Top-level symbol is %s, expected \"%s\"",
+		   xml_name(x0), DATASTORE_TOP_SYMBOL);
 	goto done;
     }
     /* Here x0 looks like: <config>...</config> */

@@ -155,9 +155,9 @@ EOF
 	# Only positive startup test, ie dont add XMLU if unknown not treated as anyxml
 	# and check for errors
 	cat <<EOF > $dir/startup_db
-<config>    
+<${DATASTORE_TOP}>    
   $XML
-</config>
+</${DATASTORE_TOP}>
 EOF
     fi
 
@@ -283,3 +283,6 @@ testrun true true
 unset RESTCONFIG
 
 rm -rf $dir
+
+new "endtest"
+endtest

@@ -42,6 +42,17 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
+cat <<EOF > $dir/example.yang
+module example {
+   namespace "urn:example:clixon";
+   prefix ex;
+   revision 2021-03-05;
+   leaf val{
+      type string;
+   }
+}
+EOF
+
 # Subroutine send a process control RPC and tricks to echo process-id returned
 # Args:
 # 1: operation
@@ -101,11 +112,11 @@ EOF
 new "ENABLE true"
 # First basic operation with restconf enable is true
 cat<<EOF > $startupdb
-<config>
+<${DATASTORE_TOP}>
    <restconf xmlns="http://clicon.org/restconf">
       <enable>true</enable>
    </restconf>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 new "kill old restconf"
@@ -273,11 +284,11 @@ fi
 new "ENABLE false"
 # Second basic operation with restconf enable is false
 cat<<EOF > $startupdb
-<config>
+<${DATASTORE_TOP}>
    <restconf xmlns="http://clicon.org/restconf">
       <enable>false</enable>
    </restconf>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 new "kill old restconf"
@@ -320,7 +331,7 @@ pid=$(testrpc status 1)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
 # Edit a field, eg debug
-new "Edit a field via restconf"
+new "Edit a restconf field via restconf"
 expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/clixon-restconf:restconf/debug -d '{"clixon-restconf:debug":1}' )" 0 "HTTP/1.1 201 Created"
 
 new "check status RPC new pid"
@@ -329,6 +340,18 @@ pid1=$(testrpc status 1)
 if [ $? -ne 0 ]; then echo "$pid1";exit -1; fi
 if [ $pid -eq $pid1 ]; then
     err "A different pid" "Same pid: $pid"
+fi
+
+new "Edit a non-restconf field via restconf"
+echo "curl $CURLOPTS -X POST -H \"Content-Type: application/yang-data+json\" $RCPROTO://localhost/restconf/data -d '{\"example:val\":\"xyz\"}'"
+
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"example:val":"xyz"}' )" 0 "HTTP/1.1 201 Created"
+
+new "check status RPC same pid"
+pid2=$(testrpc status 1)
+if [ $? -ne 0 ]; then echo "$pid2";exit -1; fi
+if [ $pid1 -ne $pid2 ]; then
+    err "Same pid $pid1" "$pid2"
 fi
 
 new "Disable restconf"

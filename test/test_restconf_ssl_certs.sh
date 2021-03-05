@@ -166,9 +166,9 @@ EOF
 function testrun()
 {
     cat <<EOF > $dir/startup_db
-    <config>
+    <${DATASTORE_TOP}>
        $RULES
-    </config>
+    </${DATASTORE_TOP}>
 EOF
     if [ $BE -ne 0 ]; then
 	new "kill old backend"

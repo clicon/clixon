@@ -128,3 +128,5 @@ stop_backend -f $cfg
 
 rm -rf $dir
 
+new "endtest"
+endtest

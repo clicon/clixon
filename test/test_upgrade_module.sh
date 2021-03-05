@@ -81,26 +81,26 @@ function createstartups()
 
     # no  : there is no modstate in the file             (1)
     cat <<EOF > $dir/startup1.xml
-<config>
+<${DATASTORE_TOP}>
    $payload
-</config>
+</${DATASTORE_TOP}>
 EOF
 
     # Create startup datastore:
     # -  : there is modstate but module is not present   (2)
     cat <<EOF > $dir/startup2.xml
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
    </modules-state>
    $payload
-</config>
+</${DATASTORE_TOP}>
 EOF
 
     # Create startup datastore:
     # <Y : there is modstate and revision is less than Y (3)
     cat <<EOF > $dir/startup3.xml
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -110,13 +110,13 @@ EOF
       </module>
    </modules-state>
    $payload
-</config>
+</${DATASTORE_TOP}>
 EOF
 
     # Create startup datastore:
     # =Y : there is modstate and revision is exactly Y   (4)
     cat <<EOF > $dir/startup4.xml
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -126,13 +126,13 @@ EOF
       </module>
    </modules-state>
    $payload
-</config>
+</${DATASTORE_TOP}>
 EOF
 
     # Create startup datastore:
     # >Y : there is modstate and revision is exactly Y   (5)
     cat <<EOF > $dir/startup5.xml
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -142,7 +142,7 @@ EOF
       </module>
    </modules-state>
    $payload
-</config>
+</${DATASTORE_TOP}>
 EOF
 }
 
@@ -313,3 +313,5 @@ testall '' ''
 
 rm -rf $dir
 
+new "endtest"
+endtest

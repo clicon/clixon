@@ -187,17 +187,18 @@ expectpart "$($clixon_cli -1f $cfg -l o set sender a)" 0 "^$"
 new "cli sender template"
 expectpart "$($clixon_cli -1f $cfg -l o set sender b template a)" 0 "^$"
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
 
 rm -rf $dir
+
+new "endtest"
+endtest

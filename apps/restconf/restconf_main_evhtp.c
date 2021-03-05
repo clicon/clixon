@@ -716,7 +716,7 @@ usage(clicon_handle h,
     fprintf(stderr, "usage:%s [options]\n"
 	    "where options are\n"
             "\t-h \t\t  Help\n"
-	    "\t-D <level>\t  Debug level _ overrides any config debug setting\n"
+	    "\t-D <level>\t  Debug level, overrides any config debug setting\n"
     	    "\t-f <file>\t  Configuration file (mandatory)\n"
 	    "\t-E <dir> \t  Extra configuration file directory\n"
 	    "\t-l <s|f<file>> \t  Log on (s)yslog, (f)ile (syslog is default)\n"

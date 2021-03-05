@@ -72,3 +72,6 @@ rm -rf $dir
 
 # unset conditional parameters 
 unset make
+
+new "endtest"
+endtest

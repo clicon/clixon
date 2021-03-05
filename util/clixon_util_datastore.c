@@ -102,6 +102,7 @@ usage(char *argv0)
 int
 main(int argc, char **argv)
 {
+    int                 retval = -1;
     int                 c;
     clicon_handle       h;
     char               *argv0;
@@ -119,6 +120,7 @@ main(int argc, char **argv)
     char               *xpath;
     cbuf               *cbret = NULL;
     int                 dbg = 0;
+    cxobj              *xerr = NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -259,16 +261,21 @@ main(int argc, char **argv)
 		goto done;
 	    fclose(fp);
 	}
-	else
-	    if (clixon_xml_parse_string(argv[2], YB_MODULE, yspec, &xt, NULL) < 0)
+	else{
+	    if ((ret = clixon_xml_parse_string(argv[2], YB_MODULE, yspec, &xt, &xerr)) < 0)
 		goto done;
-	if (xml_rootchild(xt, 0, &xt) < 0)
+	    if (ret == 0){
+		xml_print(stderr, xerr);
+		goto done;
+	    }
+	}
+	if (xml_name_set(xt, NETCONF_INPUT_CONFIG) < 0)
 	    goto done;
 	if ((cbret = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
 	}
-	if (xmldb_put(h, db, op, xt, NULL, cbret) < 1)
+	if ((ret = xmldb_put(h, db, op, xt, NULL, cbret)) < 0)
 	    goto done;
     }
     else if (strcmp(cmd, "copy")==0){
@@ -329,6 +336,7 @@ main(int argc, char **argv)
     }
     if (xmldb_disconnect(h) < 0)
 	goto done;
+    retval = 0;
   done:
     if (cbret)
 	cbuf_free(cbret);
@@ -338,6 +346,6 @@ main(int argc, char **argv)
 	clicon_handle_exit(h);
     if (yspec)
 	yspec_free(yspec);
-    return 0;
+    return retval;
 }
 

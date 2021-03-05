@@ -217,6 +217,7 @@ xmldb_copy(clicon_handle h,
 	else  if (x2 == NULL){ /* create x2 and copy from x1 */
 	    if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
 		goto done;
+	    xml_flag_set(x2, XML_FLAG_TOP);
 	    if (xml_copy(x1, x2) < 0) 
 		goto done;
 	}
@@ -224,6 +225,7 @@ xmldb_copy(clicon_handle h,
 	    xml_free(x2);
 	    if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
 		goto done;
+	    xml_flag_set(x2, XML_FLAG_TOP);
 	    if (xml_copy(x1, x2) < 0) 
 		goto done;
 	}
@@ -372,7 +374,7 @@ xmldb_exists(clicon_handle h,
     return retval;
 }
 
-/*! Clear database cache if any for mem/size optimization only
+/*! Clear database cache if any for mem/size optimization only, not file itself
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database
  * @retval -1  Error

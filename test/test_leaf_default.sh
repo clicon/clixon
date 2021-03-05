@@ -158,9 +158,9 @@ fi
 # From startup 1, only r1, all else should be filled in
 SXML='<r1 xmlns="urn:example:clixon">99</r1>'
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
   $SXML
-</config>
+</${DATASTORE_TOP}>
 EOF
 XML='<r1 xmlns="urn:example:clixon">99</r1><r2 xmlns="urn:example:clixon">22</r2><np3 xmlns="urn:example:clixon"><s3>33</s3><np31><s31>31</s31></np31></np3>'
 
@@ -186,11 +186,11 @@ sudo chmod 666 $dir/running_db
 new "Check running no defaults: r1 only"
 # Running should have only non-defaults, ie only r1 that is set to 99
 
-moreret=$(diff $dir/running_db <(echo "<config>
+moreret=$(diff $dir/running_db <(echo "<${DATASTORE_TOP}>
    $SXML
-</config>"))
+</${DATASTORE_TOP}>"))
 if [ $? -ne 0 ]; then
-    err "<config>$SXML</config>" "$moreret"
+    err "<${DATASTORE_TOP}>$SXML</${DATASTORE_TOP}>" "$moreret"
 fi	
 
 new "Change default value r2"
@@ -201,12 +201,12 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "
 
 new "Check running no defaults: r1 and r2"
 # Again, running should have only non-defaults, ie only r1 and r2
-moreret=$(diff $dir/running_db <(echo "<config>
+moreret=$(diff $dir/running_db <(echo "<${DATASTORE_TOP}>
    $SXML
    <r2 xmlns=\"urn:example:clixon\">88</r2>
-</config>"))
+</${DATASTORE_TOP}>"))
 if [ $? -ne 0 ]; then
-    err "<config>$SXML<r2 xmlns=\"urn:example:clixon\">88</r2></config>" "$moreret"
+    err "<${DATASTORE_TOP}>$SXML<r2 xmlns=\"urn:example:clixon\">88</r2></${DATASTORE_TOP}>" "$moreret"
 fi	
 
 new "Kill backend"
@@ -218,9 +218,9 @@ fi
 
 # From startup 2, only presence p4, s4/np5 should be filled in
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
   <p4 xmlns="urn:example:clixon"></p4>
-</config>
+</${DATASTORE_TOP}>
 EOF
 XML='<r1 xmlns="urn:example:clixon">11</r1><r2 xmlns="urn:example:clixon">22</r2><np3 xmlns="urn:example:clixon"><s3>33</s3><np31><s31>31</s31></np31></np3><p4 xmlns="urn:example:clixon"><s4>44</s4><np45><s5>45</s5></np45></p4>'
 if [ $BE -ne 0 ]; then
@@ -248,9 +248,9 @@ fi
 
 # Only single x list element
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
    <xs-config xmlns="urn:example:clixon"><x><name>a</name></x></xs-config>
-</config>
+</${DATASTORE_TOP}>
 EOF
 XML='<r1 xmlns="urn:example:clixon">11</r1><r2 xmlns="urn:example:clixon">22</r2><np3 xmlns="urn:example:clixon"><s3>33</s3><np31><s31>31</s31></np31></np3>'
 if [ $BE -ne 0 ]; then
@@ -277,3 +277,6 @@ if [ -z "$pid" ]; then
 fi
 
 rm -rf $dir
+
+new "endtest"
+endtest

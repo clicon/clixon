@@ -188,7 +188,7 @@ EOF
 # Create startup db revision from 2014-05-08 to be upgraded to 2018-02-20
 # This is 2014 syntax
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -226,7 +226,7 @@ cat <<EOF > $dir/startup_db
       <admin-status>testing</admin-status>
     </interface>
   </interfaces-state>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 # Create configuration
@@ -292,7 +292,7 @@ testrun "$XML"
 
 # This is "2016" syntax
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -336,7 +336,7 @@ cat <<EOF > $dir/startup_db
       <admin-status>testing</admin-status>
     </interface>
   </interfaces-state>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 # 2. Upgrade from intermediate 2016-01-01 to 2018-02-20
@@ -345,7 +345,7 @@ testrun "$XML"
 
 # Again 2014 syntax
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -383,7 +383,7 @@ cat <<EOF > $dir/startup_db
       <admin-status>testing</admin-status>
     </interface>
   </interfaces-state>
-</config>
+</${DATASTORE_TOP}>
 
 EOF
 rm $if2018
@@ -397,7 +397,9 @@ testrun "$XML"
 #new "4. No model at all"
 #testrun "$XML"
 
-if [ $BE -ne 0 ]; then
-    rm -rf $dir
-fi
+rm -rf $dir
+
+new "endtest"
+endtest
+
 

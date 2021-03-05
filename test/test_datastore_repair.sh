@@ -81,7 +81,7 @@ EOF
 )
 
 function testrun(){
-    new "test params: -f $cfg -- -U"
+    new "test params: -f $cfg -- -U" # -U : upgrade
     # Bring your own backend
     if [ $BE -ne 0 ]; then
 	# kill old backend (if any)
@@ -116,7 +116,7 @@ function testrun(){
 # Create startup db of "old" db with incorrect augment namespace tagging
 # without modstate
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
    <x xmlns="urn:example:a">
      <y>
         <z>
@@ -126,10 +126,13 @@ cat <<EOF > $dir/startup_db
    </x>
    <remove_me xmlns="urn:example:a"><k>This node is obsolete</k></remove_me>
    <remove_me xmlns="urn:example:a"><k>this too</k></remove_me>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 new "general-purpose upgrade without modstate"
 testrun
 
 rm -rf $dir
+
+new "endtest"
+endtest

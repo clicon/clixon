@@ -56,7 +56,7 @@ EOF
 
 # Create empty startup
 cat <<EOF > $dir/startup_db
-<config/>
+<${DATASTORE_TOP}/>
 EOF
 
 # rm candidate and running

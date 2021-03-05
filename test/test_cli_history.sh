@@ -136,3 +136,6 @@ fi
 
 unset nr
 rm -rf $dir
+
+new "endtest"
+endtest

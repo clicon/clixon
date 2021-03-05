@@ -1905,7 +1905,7 @@ xml_copy_one(cxobj *x0,
     default:
 	break;
     }
-    xml_flag_set(x1, xml_flag(x0, XML_FLAG_DEFAULT)); /* Maybe more flags */
+    xml_flag_set(x1, xml_flag(x0, XML_FLAG_DEFAULT | XML_FLAG_TOP)); /* Maybe more flags */
     retval = 0;
  done:
     return retval;

@@ -126,3 +126,6 @@ new "Start with 2 extra configfiles + command-line"
 expectpart "$($clixon_cli -1 -f $cfg -o CLICON_MODULE_SET_ID=4 -o CLICON_FEATURE=test4 -l o show options)" 0 'CLICON_MODULE_SET_ID: "4"' 'CLICON_FEATURE: "test1"' 'CLICON_FEATURE: "test2"' 'CLICON_FEATURE: "test3"' 'CLICON_FEATURE: "test4"'
 
 rm -rf $dir
+
+new "endtest"
+endtest

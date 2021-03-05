@@ -824,3 +824,6 @@ rm -rf $dir
 
 # unset conditional parameters 
 unset regex
+
+new "endtest"
+endtest

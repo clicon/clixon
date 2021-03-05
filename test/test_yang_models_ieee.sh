@@ -78,3 +78,5 @@ expectpart "$($clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/s
 
 rm -rf $dir
 
+new "endtest"
+endtest

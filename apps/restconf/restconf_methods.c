@@ -305,7 +305,7 @@ api_data_write(clicon_handle h,
     else
 	op = OP_REPLACE; /* OP_CREATE if it does not exist */
     /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL, CX_ELMNT)) == NULL)
+    if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
 	goto done;
     /* Translate api_path to xml in the form of xtop/xbot */
     xbot = xtop;
@@ -480,7 +480,7 @@ api_data_write(clicon_handle h,
      */	    
     dname = xml_name(xdata);
     if (api_path==NULL) {
-	if (strcmp(dname, "data")!=0){
+	if (strcmp(dname, NETCONF_OUTPUT_DATA)!=0){
 	    if (netconf_bad_element_xml(&xerr, "application", dname,
 					"Data element does not match top-level data") < 0)
 		goto done;
@@ -497,7 +497,7 @@ api_data_write(clicon_handle h,
 	if (xtop) /* also xbot */
 	    xml_free(xtop);
 	xtop = xdata;
-	xml_name_set(xtop, "config");
+	xml_name_set(xtop, NETCONF_INPUT_CONFIG);
 	/* remove default namespace */
 	if ((xa = xml_find_type(xtop, NULL, "xmlns", CX_ATTR)) != NULL){
 	    if (xml_rm(xa) < 0)
@@ -818,7 +818,7 @@ api_data_delete(clicon_handle h,
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
     /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL, CX_ELMNT)) == NULL)
+    if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
 	goto done;
     xbot = xtop;
     if (api_path){

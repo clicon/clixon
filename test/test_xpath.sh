@@ -230,3 +230,6 @@ rm -rf $dir
 
 # unset conditional parameters 
 unset clixon_util_xpath
+
+new "endtest"
+endtest

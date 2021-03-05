@@ -1329,7 +1329,7 @@ xml_global_defaults(clicon_handle h,
     /* First get or compute global xml tree cache */
     if ((de = clicon_db_elmnt_get(h, key)) == NULL){
 	/* Create it */
-	if ((xcache = xml_new("config", NULL, CX_ELMNT)) == NULL)
+	if ((xcache = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
 	if (xml_global_defaults_create(xcache, yspec, state) < 0)
 	    goto done;
@@ -1353,7 +1353,7 @@ xml_global_defaults(clicon_handle h,
 	xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
     /* Create a new tree and copy over the parts from the cache that matches xpath */
-    if ((xpart = xml_new("config", NULL, CX_ELMNT)) == NULL)
+    if ((xpart = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	goto done;
     if (xml_copy_marked(xcache, xpart) < 0) /* config */
 	goto done;
@@ -1763,11 +1763,12 @@ assign_namespace_element(cxobj *x0, /* source */
     char      *prefix0 = NULL;;
     int        isroot;
     
-    /* XXX: need to identify root better than hiereustics and strcmp,... */
+    /* XXX: need to identify root better than hiereustics and strcmp,... 
+     * see XMLDB_CONFIG_HACK
+     */
     isroot = xml_parent(x1p)==NULL &&
-	(strcmp(xml_name(x1p), "config") == 0 || strcmp(xml_name(x1p), "top") == 0)&&
+	xml_flag(x1p, XML_FLAG_TOP) &&
 	xml_prefix(x1p)==NULL;
-
     /* 1. Find N=namespace(x0) in x0 element */
     prefix0 = xml_prefix(x0);
     if (xml2ns(x0, prefix0, &namespace) < 0)

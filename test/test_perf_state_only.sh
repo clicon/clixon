@@ -208,5 +208,5 @@ unset format
 unset perfnr
 unset perfreq
 
-
-
+new "endtest"
+endtest

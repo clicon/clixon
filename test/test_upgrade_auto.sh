@@ -126,17 +126,17 @@ EOF
 
 # Create failsafe db
 cat <<EOF > $dir/failsafe_db
-<config>
+<${DATASTORE_TOP}>
   <system xmlns="urn:example:a">
     <a>Failsafe</a>
   </system>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 # Create startup db revision example-a and example-b 2017-12-01
 # this should be automatically upgraded to 2017-12-20
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -162,7 +162,7 @@ cat <<EOF > $dir/startup_db
   <system-b xmlns="urn:example:b">
     <b>Obsolete</b>
   </system-b>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 # Wanted new XML
@@ -270,6 +270,9 @@ if [ $BE -ne 0 ]; then
     fi
     # kill backend
     stop_backend -f $cfg
-
-    rm -rf $dir
 fi
+
+rm -rf $dir
+
+new "endtest"
+endtest

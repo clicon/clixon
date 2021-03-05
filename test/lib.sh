@@ -361,6 +361,7 @@ function wait_restconf(){
     fi
 }
 
+# End of test, final tests before normal exit of test
 function endtest()
 {
     if [ $valgrindtest -eq 1 ]; then 
@@ -657,6 +658,10 @@ function expectmatch(){
     r=$2
     expret=$3
     expect=$4
+#    echo "ret:$ret"
+#    echo "ret:$r"
+#    echo "expret:$expret"
+#    echo "expect:$expect"
     if [ $r != $expret ]; then
 	echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
 	echo -e "\e[0m:"

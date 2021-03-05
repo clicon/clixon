@@ -443,7 +443,7 @@ client_get_config_only(clicon_handle h,
     if (xret==NULL)
 	cprintf(cbret, "<data/>");
     else{
-	if (xml_name_set(xret, "data") < 0)
+	if (xml_name_set(xret, NETCONF_OUTPUT_DATA) < 0)
 	    goto done;
 	if (clicon_xml2cbuf(cbret, xret, 0, 0, depth>0?depth+1:depth) < 0)
 	    goto done;
@@ -638,10 +638,13 @@ from_client_edit_config(clicon_handle h,
 	}
     }
     /* Get config element */
-    if ((xc = xpath_first(xn, nsc, "%s%sconfig", prefix?prefix:"", prefix?":":"")) == NULL){
+    if ((xc = xpath_first(xn, nsc, "%s%s%s",
+			  prefix?prefix:"",
+			  prefix?":":"",
+			  NETCONF_INPUT_CONFIG)) == NULL){
 	cprintf(cbx, "Element not found, or mismatching prefix %s for namespace %s",
 		prefix?prefix:"null", NETCONF_BASE_NAMESPACE);
-	if (netconf_missing_element(cbret, "protocol", "config", cbuf_get(cbx)) < 0)
+	if (netconf_missing_element(cbret, "protocol", NETCONF_INPUT_CONFIG, cbuf_get(cbx)) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1215,7 +1218,7 @@ from_client_get(clicon_handle h,
     if (xret==NULL)
 	cprintf(cbret, "<data/>");
     else{
-	if (xml_name_set(xret, "data") < 0)
+	if (xml_name_set(xret, NETCONF_OUTPUT_DATA) < 0)
 	    goto done;
 	/* Top level is data, so add 1 to depth if significant */
 	if (clicon_xml2cbuf(cbret, xret, 0, 0, depth>0?depth+1:depth) < 0)

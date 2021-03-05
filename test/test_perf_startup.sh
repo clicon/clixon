@@ -163,3 +163,6 @@ rm -rf $dir
 
 # unset conditional parameters 
 unset perfnr
+
+new "endtest"
+endtest

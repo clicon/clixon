@@ -92,3 +92,11 @@
  * clixon-4.4
  */
 #define STATE_ORDERED_BY_SYSTEM
+
+/* Top-symbol in clixon datastores
+ * This is traditionally same as NETCONF_INPUT_CONFIG ("config") but can be different
+ * If you change this, you need to change test shell variable in lib.sh: DATASTORE_TOP
+ * Consider making this an option or configure option 
+ * see XMLDB_CONFIG_HACK 
+ */
+#define DATASTORE_TOP_SYMBOL "config"

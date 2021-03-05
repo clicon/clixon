@@ -277,3 +277,6 @@ unset format
 unset RESTCONFIG
 
 rm -rf $dir
+
+new "endtest"
+endtest

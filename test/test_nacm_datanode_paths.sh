@@ -68,7 +68,7 @@ EOF
 
 # Set initial NACM rules in startup enabling admin and a single param config
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
    <table xmlns="urn:example:nacm">
      <parameters>
        <parameter>
@@ -86,7 +86,7 @@ cat <<EOF > $dir/startup_db
      $NGROUPS
      $NADMIN
    </nacm>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 new "test params: -f $cfg"
@@ -171,3 +171,6 @@ fi
 unset RESTCONFIG
 
 rm -rf $dir
+
+new "endtest"
+endtest

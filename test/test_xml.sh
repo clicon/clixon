@@ -179,9 +179,10 @@ EOF
 )
 expecteof "$clixon_util_xml -o" 0 "$XML" '^<bk:book xmlns:bk="urn:loc.gov:books" xmlns:isbn="urn:ISBN:0-395-36341-6"><bk:title>Cheaper by the Dozen</bk:title><isbn:number>1568491379</isbn:number></bk:book>$'
 
-endtest
-
 rm -rf $dir
 
 # unset conditional parameters 
 unset clixon_util_xml
+
+new "endtest"
+endtest

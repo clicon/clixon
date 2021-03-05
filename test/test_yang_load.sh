@@ -427,4 +427,5 @@ if [ $BE -ne 0 ]; then
     rm -rf $dir
 fi
 
-
+new "endtest"
+endtest

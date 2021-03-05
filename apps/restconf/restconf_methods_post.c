@@ -188,7 +188,7 @@ api_data_post(clicon_handle h,
     for (i=0; i<pi; i++)
 	api_path = index(api_path+1, '/');
     /* Create config top-of-tree */
-    if ((xtop = xml_new("config", NULL, CX_ELMNT)) == NULL)
+    if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
 	goto done;
     /* Translate api_path to xtop/xbot */
     xbot = xtop;
@@ -524,7 +524,7 @@ api_operations_post_input(clicon_handle h,
 	goto fail;
 	break;
     } /* switch media_in */
-    xml_name_set(xdata, "data");
+    xml_name_set(xdata, NETCONF_OUTPUT_DATA);
     /* Here xdata is: 
      * <data><input xmlns="urn:example:clixon">...</input></data>
      */

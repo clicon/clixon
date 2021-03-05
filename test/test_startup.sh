@@ -69,9 +69,9 @@ function testrun(){
     exprun=$5 # expected running_db after startup
 
     sudo rm -f  $dir/*_db
-    echo "<config>$rdb</config>" > $dir/running_db
-    echo "<config>$sdb</config>" > $dir/startup_db
-    echo "<config>$edb</config>" > $dir/extra_db
+    echo "<${DATASTORE_TOP}>$rdb</${DATASTORE_TOP}>" > $dir/running_db
+    echo "<${DATASTORE_TOP}>$sdb</${DATASTORE_TOP}>" > $dir/startup_db
+    echo "<${DATASTORE_TOP}>$edb</${DATASTORE_TOP}>" > $dir/extra_db
 
     if [ $BE -ne 0 ]; then     # Bring your own backend
 	# kill old backend (if any)
@@ -118,9 +118,9 @@ function testfail(){
 
     sudo rm -f  $dir/*_db
 
-    echo "<config>$rdb</config>" > $dir/running_db
-    echo "<config>$sdb</config>" > $dir/startup_db
-    echo "<config>$edb</config>" > $dir/extra_db
+    echo "<${DATASTORE_TOP}>$rdb</${DATASTORE_TOP}>" > $dir/running_db
+    echo "<${DATASTORE_TOP}>$sdb</${DATASTORE_TOP}>" > $dir/startup_db
+    echo "<${DATASTORE_TOP}>$edb</${DATASTORE_TOP}>" > $dir/extra_db
 
     # kill old backend (if any)
     new "kill old backend"
@@ -138,20 +138,20 @@ function testfail(){
     sudo chmod 666 $dir/running_db
     sudo chmod 666 $dir/startup_db
     new "Checking running unchanged"
-    ret=$(diff $dir/running_db <(echo "<config>$rdb</config>"))
+    ret=$(diff $dir/running_db <(echo "<${DATASTORE_TOP}>$rdb</${DATASTORE_TOP}>"))
     if [ $? -ne 0 ]; then
-	err "<config>$rdb</config>" "$ret"
+	err "<${DATASTORE_TOP}>$rdb</${DATASTORE_TOP}>" "$ret"
     fi	
     new "Checking startup unchanged"
-    ret=$(diff $dir/startup_db <(echo "<config>$sdb</config>"))
+    ret=$(diff $dir/startup_db <(echo "<${DATASTORE_TOP}>$sdb</${DATASTORE_TOP}>"))
     if [ $? -ne 0 ]; then
-	err "<config>$sdb</config>" "$ret"
+	err "<${DATASTORE_TOP}>$sdb</${DATASTORE_TOP}>" "$ret"
     fi
 
     new "Checking extra unchanged"
-    ret=$(diff $dir/extra_db <(echo "<config>$edb</config>"))
+    ret=$(diff $dir/extra_db <(echo "<${DATASTORE_TOP}>$edb</${DATASTORE_TOP}>"))
     if [ $? -ne 0 ]; then
-	err "<config>$edb</config>" "$ret"
+	err "<${DATASTORE_TOP}>$edb</${DATASTORE_TOP}>" "$ret"
     fi
 }
 
@@ -190,3 +190,6 @@ rm -rf $dir
 
 # unset conditional parameters 
 unset format
+
+new "endtest"
+endtest

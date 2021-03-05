@@ -175,17 +175,18 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"nonconfig
 new "netconf get / config-only ok"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"config\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>y</name></sender-config></data></rpc-reply>]]>]]>$"
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
 
 rm -rf $dir
+
+new "endtest"
+endtest

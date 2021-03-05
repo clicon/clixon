@@ -131,19 +131,20 @@ done
 new "Send restart to nonexistatn plugin expect fail"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><restart-plugin xmlns=\"http://clicon.org/lib\"><plugin>xxx</plugin></restart-plugin></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>plugin</bad-element></error-info><error-severity>error</error-severity><error-message>No such plugin</error-message></rpc-error></rpc-reply>]]>]]>$"
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
 
 rm -rf $dir
 
 unset nr
+
+new "endtest"
+endtest

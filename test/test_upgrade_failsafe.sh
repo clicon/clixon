@@ -112,15 +112,15 @@ EOF
 
 # Create failsafe db
 cat <<EOF > $dir/failsafe_db
-<config>
+<${DATASTORE_TOP}>
    <a1 xmlns="urn:example:a">always work</a1>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 # Create compatible startup db
 # startup config XML with following 
 cat <<EOF > $dir/compat-valid.xml
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -136,13 +136,13 @@ cat <<EOF > $dir/compat-valid.xml
    </modules-state>
    <a1 xmlns="urn:example:a">always work</a1>
    <b xmlns="urn:example:b">other text</b>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 # Create compatible startup db
 # startup config XML with following 
 cat <<EOF > $dir/compat-invalid.xml
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -160,7 +160,7 @@ cat <<EOF > $dir/compat-invalid.xml
    <a1 xmlns="urn:example:a">always work</a1>
    <b xmlns="urn:example:b">other text</b>
    <c xmlns="urn:example:c">bla bla</c>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 
@@ -168,7 +168,7 @@ EOF
 # startup config XML with following (A obsolete, B OK, C lacking)
 # But XML is OK
 cat <<EOF > $dir/non-compat-valid.xml
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -189,13 +189,13 @@ cat <<EOF > $dir/non-compat-valid.xml
    </modules-state>
    <a1 xmlns="urn:example:a">always work</a1>
    <b xmlns="urn:example:b">other text</b>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 # Create non-compat startup db
 # startup config XML with following (A obsolete, B OK, C lacking)
 cat <<EOF > $dir/non-compat-invalid.xml
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -218,12 +218,12 @@ cat <<EOF > $dir/non-compat-invalid.xml
    <a1 xmlns="urn:example:a">always work</a1>
    <b xmlns="urn:example:b">other text</b>
    <c xmlns="urn:example:c">bla bla</c>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 # Compatible startup with syntax errors
 cat <<EOF > $dir/compat-err.xml
-<config>
+<${DATASTORE_TOP}>
    <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
       <module-set-id>42</module-set-id>
       <module>
@@ -239,7 +239,7 @@ cat <<EOF > $dir/compat-err.xml
    </modules-state>
    <<a3 xmlns="urn:example:a">always work</a2>
    <b xmlns="urn:example:b">other text
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 #! Start system in given mode and check database contents
@@ -365,6 +365,8 @@ new "8. Load non-compat startup. Syntax fail, enter failsafe, startup invalid"
 runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>read registry</error-message></rpc-error>'
 fi # valgrindtest
 
-if [ $BE -ne 0 ]; then
-    rm -rf $dir
-fi
+rm -rf $dir
+
+new "endtest"
+endtest
+

@@ -255,7 +255,7 @@ clixon_plugin_statedata_one(clixon_plugin  *cp,
     cxobj          *x = NULL;
     
     if ((fn = cp->cp_api.ca_statedata) != NULL){
-	if ((x = xml_new("config", NULL, CX_ELMNT)) == NULL)
+	if ((x = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
 	if (fn(h, nsc, xpath, x) < 0){
 	    if (clicon_errno < 0) 

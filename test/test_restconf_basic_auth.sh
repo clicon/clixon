@@ -98,7 +98,7 @@ EOF
 
 # NACM rules and top/ config
 cat <<EOF > $dir/startup_db
-<config>
+<${DATASTORE_TOP}>
    <nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
      <enable-nacm>true</enable-nacm>
      <read-default>deny</read-default>
@@ -163,7 +163,7 @@ cat <<EOF > $dir/startup_db
      <anonymous>42</anonymous>
      <wilma>71</wilma>
    </top>
-</config>
+</${DATASTORE_TOP}>
 EOF
 
 # Restconf auth test with arguments:
@@ -316,3 +316,6 @@ unset MSGERR1
 unset MSGERR2
 
 rm -rf $dir
+
+new "endtest"
+endtest

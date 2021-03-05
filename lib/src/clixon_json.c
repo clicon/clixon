@@ -1232,7 +1232,8 @@ _json_parse(char      *str,
 	 */
 	if (yspec && xml_prefix(x) == NULL
 #ifdef XMLDB_CONFIG_HACK
-	    && strcmp(xml_name(x), "config") != 0 
+	    //	     && !xml_flag(x, XML_FLAG_TOP)
+	    	    && strcmp(xml_name(x), DATASTORE_TOP_SYMBOL) != 0 
 #endif
 	    ){
 	    if ((cberr = cbuf_new()) == NULL){
@@ -1261,8 +1262,11 @@ _json_parse(char      *str,
 	    break;
 	case YB_MODULE:
 #ifdef XMLDB_CONFIG_HACK
-	    if (strcmp(xml_name(x),"config") == 0 ||
-		strcmp(xml_name(x),"data") == 0){
+	    if (
+		//			xml_flag(x, XML_FLAG_TOP)
+	        strcmp(xml_name(x), DATASTORE_TOP_SYMBOL) == 0 
+	    || strcmp(xml_name(x), NETCONF_OUTPUT_DATA) == 0
+	    ){
 		/* xt:<top>         nospec
 		 * x:   <config>
 		 *         <a>  <-- populate from modules

@@ -134,3 +134,6 @@ new "Start as non-privileged, try to drop (but fail)"
 testrun $(whoami) $BUSER $BUSER drop_perm 1
 
 sudo rm -rf $dir
+
+new "endtest"
+endtest

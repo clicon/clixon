@@ -471,7 +471,7 @@ api_root_restconf(clicon_handle        h,
 	if (api_yang_library_version(h, req, pretty, media_out) < 0)
 	    goto done;
     }
-    else if (strcmp(api_resource, "data") == 0){ /* restconf, skip /api/data */
+    else if (strcmp(api_resource, NETCONF_OUTPUT_DATA) == 0){ /* restconf, skip /api/data */
 	if (api_data(h, req, path, pcvec, 2, qvec, indata,
 		     pretty, media_out, IETF_DS_NONE) < 0)
 	    goto done;
