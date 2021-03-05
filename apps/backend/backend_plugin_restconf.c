@@ -192,7 +192,7 @@ restconf_pseudo_process_commit(clicon_handle    h,
     xtarget = transaction_target(td);
     if (xpath_first(xtarget, NULL, "/restconf[enable='true']") != NULL)
 	enabled++;
-    /* Toggle start/stop */
+    /* Toggle start/stop if enable flag changed */
     if ((cx = xpath_first(xtarget, NULL, "/restconf/enable")) != NULL &&
 	xml_flag(cx, XML_FLAG_CHANGE|XML_FLAG_ADD)){
 	if (clixon_process_operation(h, RESTCONF_PROCESS,
@@ -203,12 +203,15 @@ restconf_pseudo_process_commit(clicon_handle    h,
 	if (transaction_dlen(xtarget) != 0 ||
 	    transaction_alen(xtarget) != 0 ||
 	    transaction_clen(xtarget) != 0){
-	    /* A restart can terminate a restconf connection (cut the tree limb you are sitting on)
-	     * Specifically, the socket is terminated where the reply is sent, which will
-	     * cause the curl to fail.
-	     */
-	    if (clixon_process_operation(h, RESTCONF_PROCESS, PROC_OP_RESTART, 0, NULL) < 0)
-		goto done;
+	    if ((cx = xpath_first(xtarget, NULL, "/restconf")) != NULL &&
+		xml_flag(cx, XML_FLAG_CHANGE|XML_FLAG_ADD)){
+		/* A restart can terminate a restconf connection (cut the tree limb you are sitting on)
+		 * Specifically, the socket is terminated where the reply is sent, which will
+		 * cause the curl to fail.
+		 */
+		if (clixon_process_operation(h, RESTCONF_PROCESS, PROC_OP_RESTART, 0, NULL) < 0)
+		    goto done;
+	    }
 	}
     }
     retval = 0;

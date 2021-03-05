@@ -431,6 +431,7 @@ static int
 clixon_process_operation_one(const proc_operation op,
 			     const char          *netns,
 			     char               **argv,
+			     const char          *name,
 			     pid_t               *pidp)
 {
     int retval = -1;
@@ -441,7 +442,8 @@ clixon_process_operation_one(const proc_operation op,
 	goto done;
     if (op == PROC_OP_STOP || op == PROC_OP_RESTART){
 	if (run){
-	    pidfile_zapold(*pidp); /* Ensures its dead */
+	    clicon_log(LOG_NOTICE, "Killing old daemon %s with pid: %d", name, *pidp);
+	    kill(*pidp, SIGTERM);
 	}
 	*pidp = 0; /* mark as dead */
 	run = 0;
@@ -571,7 +573,7 @@ clixon_process_sched(int           fd,
     pe = _proc_entry_list;
     do {
 	if ((op = pe->pe_op) != PROC_OP_NONE){
-	    if (clixon_process_operation_one(op, pe->pe_netns, pe->pe_argv, &pe->pe_pid) < 0)
+	    if (clixon_process_operation_one(op, pe->pe_netns, pe->pe_argv, pe->pe_name, &pe->pe_pid) < 0)
 		goto done;
 	    clicon_debug(1, "%s op:%s pid:%d", __FUNCTION__, clicon_int2str(proc_operation_map, op), pe->pe_pid);
 	    pe->pe_op = PROC_OP_NONE;
