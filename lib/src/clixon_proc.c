@@ -589,15 +589,18 @@ clixon_process_sched(int           fd,
 
 /*! Register scheduling of process start/stop/restart
  * After a delay t1, schedule the process
- * @note The delay is for mitigating a race condition if a process is restarted that is used in the session
- *       restarting it. In this way, the process "should have" time to exit.
+ * @note The delay is for mitigating a race condition if a process is restarted that is used in the 
+ * session restarting it. In this way, the process "should have" time to exit.
+ * However, for slow machines, this delay may need to be longer.
+ * On a Raspberry pi it was measured to need be 1.5ms.
+ * However, if it is much longer, it may kill restconf as an unrelated session has been opened.
  */
 int
 clixon_process_sched_register(clicon_handle h)
 {
     int            retval = -1;
     struct timeval t;
-    struct timeval t1 = {0, 1000}; /* XXX See discussion ^*/
+    struct timeval t1 = {0, 1500}; /* See discussion ^*/
 
     gettimeofday(&t, NULL);
     timeradd(&t, &t1, &t);

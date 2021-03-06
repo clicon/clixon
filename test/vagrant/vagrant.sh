@@ -261,7 +261,7 @@ case ${with_restconf} in
 		$sshcmd << 'EOF'
 		test -d libevhtp || git clone https://github.com/clicon/libevhtp.git
 		cd libevhtp; 
-		./configure
+		./configure --libdir=/usr/lib # otherwise in /usr/local/lib where RH dont look
                 make
 		sudo make install
 EOF
