@@ -467,11 +467,12 @@ clixon_plugin_exit_all(clicon_handle h)
  * @param[in]  h         Clicon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
  * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
- * @param[out] authp     0: Credentials failed, no user set (401 returned). 1: Credentials OK and user set
- * @param[out] userp     The associated user, malloced by plugin. Only if retval is 1/OK and authp=1, 
+ * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
+ *                       String: Credentials OK, the associated user, must be mallloc:ed
+ *                       Parameter signtificant only if retval is 1/OK
  * @retval    -1         Fatal error
  * @retval     0         Ignore, undecided, not handled, same as no callback
- * @retval     1         OK, see auth parameter on result.
+ * @retval     1         OK, see authp parameter on result.
  * @note If authenticated either a callback was called and clicon_username_set() 
  *       Or no callback was found.
  */
@@ -480,15 +481,14 @@ clixon_plugin_auth_one(clixon_plugin     *cp,
 		       clicon_handle      h, 
 		       void              *req,
 		       clixon_auth_type_t auth_type,
-		       int               *authp,
-		       char             **userp)
+		       char             **authp)
 {
     int        retval = -1; 
     plgauth_t *fn;          /* Plugin auth */
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((fn = cp->cp_api.ca_auth) != NULL){
-	if ((retval = fn(h, req, auth_type, authp, userp)) < 0) {
+	if ((retval = fn(h, req, auth_type, authp)) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Auth callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, cp->cp_name);
@@ -498,7 +498,7 @@ clixon_plugin_auth_one(clixon_plugin     *cp,
     else
 	retval = 0; /* Ignored / no callback */
  done:
-    clicon_debug(1, "%s retval:%d user:%s", __FUNCTION__, retval, *userp);
+    clicon_debug(1, "%s retval:%d auth:%s", __FUNCTION__, retval, *authp);
     return retval;
 }
 
@@ -508,44 +508,39 @@ clixon_plugin_auth_one(clixon_plugin     *cp,
  * @param[in]  h         Clicon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
  * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
- * @param[out] authp     0: Credentials failed, no user set (401 returned). 1: Credentials OK and user set
- * @param[out] userp     The associated user, malloced by plugin. Only if retval is 1/OK and authp=1, 
+ * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
+ *                       String: Credentials OK, the associated user, must be mallloc:ed
+ *                       Parameter signtificant only if retval is 1/OK
  * @retval    -1         Fatal error
  * @retval     0         Ignore, undecided, not handled, same as no callback
- * @retval     1         OK, see auth parameter on result.
+ * @retval     1         OK, see authp parameter for result.
+ * @note If authp returns string, it should be malloced
  */
 int
 clixon_plugin_auth_all(clicon_handle      h, 
 		       void              *req,
 		       clixon_auth_type_t auth_type,
-		       int               *authp,
-		       char             **userp)
+		       char             **authp)
 {
     int            retval = -1;
     clixon_plugin *cp = NULL;
     int            ret = 0; 
     
     clicon_debug(1, "%s", __FUNCTION__);
-    if (authp == NULL || userp == NULL){
-	clicon_err(OE_PLUGIN, EINVAL, "Output parameter is NULL");
+    if (authp == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
 	goto done;
     }    
-    *authp = -1;
-    *userp = NULL;
+    *authp = NULL;
     ret = 0; /* ignore */
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
-	if ((ret = clixon_plugin_auth_one(cp, h, req, auth_type, authp, userp)) < 0)
+	if ((ret = clixon_plugin_auth_one(cp, h, req, auth_type, authp)) < 0)
 	    goto done;
 	if (ret == 1)
 	    break; /* result, not ignored */
 	/* ret == 0, ignore try next */
     }
     retval = ret;
-    if (retval == 1){
-	assert(*authp != -1);
-	if (*authp == 1)
-	    assert(*userp != NULL);
-    }
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;

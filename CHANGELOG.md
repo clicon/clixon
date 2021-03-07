@@ -30,6 +30,16 @@
 ## 5.1.0
 Expected: April
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Restconf authentication callback (ca_auth) signature changed (again)
+  * Minor modification to 5.0 change: userp removed.
+  * New version is: `int ca_auth(h, req, auth_type, authp)`, where
+    * `authp` is NULL for not authenticated, or the returned associated authenticated user
+  * For more info see [clixon-docs/restconf](https://clixon-docs.readthedocs.io/en/latest/restconf.html)
+
 ### Minor features
 
 * Made a separate Clixon datastore XML/JSON top-level symbol

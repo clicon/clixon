@@ -513,7 +513,7 @@ restconf_authentication_cb(clicon_handle  h,
     clixon_auth_type_t auth_type;
     int                authenticated;
     int                ret;
-    char              *username = NULL;
+    char              *username = NULL; /* Assume malloced if set */
     cxobj             *xret = NULL;
     cxobj             *xerr;
     char              *anonymous = NULL;
@@ -525,12 +525,13 @@ restconf_authentication_cb(clicon_handle  h,
     /* ret: -1 Error, 0: Ignore/not handled, 1: OK see authenticated parameter */
     if ((ret = clixon_plugin_auth_all(h, req,
 				      auth_type,
-				      &authenticated,
 				      &username)) < 0)
 	goto done;
     if (ret == 1){ /* OK, tag username to handle */
-	if (authenticated == 1)
+	if (username != NULL){
+	    authenticated = 1;
 	    clicon_username_set(h, username);
+	}
     }
     else {         /* Default behaviour */
 	switch (auth_type){

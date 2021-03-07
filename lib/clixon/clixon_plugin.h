@@ -174,15 +174,17 @@ typedef int (plgextension_t)(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
  * @param[in]  h         Clicon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
  * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
- * @param[out] authp     0: Credentials failed, no user set (401 returned). 1: Credentials OK and user set
- * @param[out] userp     The associated user, malloced by plugin. Only if retval is 1/OK and authp=1, 
+ * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
+ *                       String: Credentials OK, the associated user, must be mallloc:ed
+ *                       Parameter signtificant only if retval is 1/OK
  * @retval    -1         Fatal error
  * @retval     0         Ignore, undecided, not handled, same as no callback
- * @retval     1         OK, see auth parameter on result.
+ * @retval     1         OK, see authp parameter for result.
+ * @note If authp returns string, it should be malloced
  *
  * @note user should be freed by caller
  */
-typedef int (plgauth_t)(clicon_handle h, void *req, clixon_auth_type_t auth_type, int *authp, char **userp);
+typedef int (plgauth_t)(clicon_handle h, void *req, clixon_auth_type_t auth_type, char **authp);
 
 /*! Reset system status 
  * @param[in]  h   Clicon handle
@@ -345,7 +347,7 @@ int clixon_plugin_start_all(clicon_handle h);
 int clixon_plugin_exit_one(clixon_plugin *cp, clicon_handle h);
 int clixon_plugin_exit_all(clicon_handle h);
 
-int clixon_plugin_auth_all(clicon_handle h, void *req, clixon_auth_type_t auth_type, int *authp, char **userp);
+int clixon_plugin_auth_all(clicon_handle h, void *req, clixon_auth_type_t auth_type, char **authp);
 
 int clixon_plugin_extension_one(clixon_plugin *cp, clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 int clixon_plugin_extension_all(clicon_handle h, yang_stmt *yext, yang_stmt *ys);

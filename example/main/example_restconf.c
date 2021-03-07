@@ -189,19 +189,19 @@ b64_decode(const char *src,
 /*! HTTP basic authentication example (note hardwired)
  * @param[in]  h         Clicon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
- * @param[out] authp     0: Credentials failed, no user set (401 returned). 1: Credentials OK and user set
- * @param[out] userp     If retval is OK and auth=1, the associated user, malloced by plugin
+ * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
+ *                       String: Credentials OK, the associated user, must be mallloc:ed
+ *                       Parameter signtificant only if retval is 1/OK
  * @retval    -1         Fatal error
  * @retval     0         Ignore, undecided, not handled, same as no callback
- * @retval     1         OK, see auth parameter on result.
- * @note user should be malloced
+ * @retval     1         OK, see authp parameter for result.
+ * @note authp should be malloced
  * @note: Three hardwired users: andy, wilma, guest w password "bar".
  */
 static int
 example_basic_auth(clicon_handle      h,
 		   void              *req,
-		   int               *authp,
-		   char             **userp)
+		   char             **authp)
 {
     int     retval = -1;
     cxobj  *xt = NULL;
@@ -214,8 +214,8 @@ example_basic_auth(clicon_handle      h,
     int     ret;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    if (authp == NULL || userp == NULL){
-	clicon_err(OE_PLUGIN, EINVAL, "Output parameter is NULL");
+    if (authp == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
 	goto done;
     }    
     /* At this point in the code we must use HTTP basic authentication */
@@ -250,12 +250,11 @@ example_basic_auth(clicon_handle      h,
     }
     if (strcmp(passwd, passwd2))
 	goto fail;
-    *userp = user;     /* authenticated */
+    *authp = user;     /* authenticated */
     user=NULL; /* to avoid free below */
-    *authp = 1;
     retval = 1;
  done: /* error */
-    clicon_debug(1, "%s retval:%d authp:%d userp:%s", __FUNCTION__, retval, *authp, *userp);
+    clicon_debug(1, "%s retval:%d authp:%s", __FUNCTION__, retval, *authp);
     if (user)
        free(user);
     if (cb)
@@ -264,7 +263,7 @@ example_basic_auth(clicon_handle      h,
         xml_free(xt);
     return retval;
  fail:  /* unauthenticated */
-    *authp = 0;
+    *authp = NULL;
     retval = 1;
     goto done;
 }
@@ -272,18 +271,18 @@ example_basic_auth(clicon_handle      h,
 /*! HTTP "no auth" but uses basic authentication to get a user
  * @param[in]  h         Clicon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
- * @param[out] authp     0: Credentials failed, no user set (401 returned). 1: Credentials OK and user set
- * @param[out] userp     If retval is OK and auth=1, the associated user, malloced by plugin
+ * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
+ *                       String: Credentials OK, the associated user, must be mallloc:ed
+ *                       Parameter signtificant only if retval is 1/OK
  * @retval    -1         Fatal error
  * @retval     0         Ignore, undecided, not handled, same as no callback
- * @retval     1         OK, see auth parameter on result.
- * @note user should be malloced
+ * @retval     1         OK, see authp parameter for result.
+ * @note authp should be malloced
  */
 static int
 example_no_auth(clicon_handle      h,
 		void              *req,
-		int               *authp,
-		char             **userp)
+		char             **authp)
 {
     int     retval = -1;
     cxobj  *xt = NULL;
@@ -295,8 +294,8 @@ example_no_auth(clicon_handle      h,
     int     ret;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    if (authp == NULL || userp == NULL){
-	clicon_err(OE_PLUGIN, EINVAL, "Output parameter is NULL");
+    if (authp == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
 	goto done;
     }
     /* At this point in the code we must use HTTP basic authentication */
@@ -321,12 +320,11 @@ example_no_auth(clicon_handle      h,
     *passwd = '\0';
     passwd++;
     clicon_debug(1, "%s http user:%s passwd:%s", __FUNCTION__, user, passwd);
-    *userp = user;     /* authenticated */
+    *authp = user;     /* authenticated */
     user=NULL; /* to avoid free below */
-    *authp = 1;
     retval = 1;
  done: /* error */
-    clicon_debug(1, "%s retval:%d authp:%d userp:%s", __FUNCTION__, retval, *authp, *userp);
+    clicon_debug(1, "%s retval:%d authp:%s", __FUNCTION__, retval, *authp);
     if (user)
        free(user);
     if (cb)
@@ -335,7 +333,7 @@ example_no_auth(clicon_handle      h,
         xml_free(xt);
     return retval;
  fail:  /* unauthenticated */
-    *authp = 0;
+    *authp = NULL;
     retval = 0; /* Ignore use anonymous */
     goto done;
 }
@@ -344,38 +342,38 @@ example_no_auth(clicon_handle      h,
  * @param[in]  h         Clicon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
  * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
- * @param[out] authp     0: Credentials failed, no user set (401 returned). 1: Credentials OK and user set
- * @param[out] userp     The associated user, malloced by plugin. Only if retval is 1/OK and authp=1, 
+ * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
+ *                       String: Credentials OK, the associated user, must be mallloc:ed
+ *                       Parameter signtificant only if retval is 1/OK
  * @retval    -1         Fatal error
  * @retval     0         Ignore, undecided, not handled, same as no callback
- * @retval     1         OK, see auth parameter on result.
- * @note user should be malloced
+ * @retval     1         OK, see authp parameter for result.
+ * @note authp should be malloced
  */
 int
 example_restconf_credentials(clicon_handle      h,
 			     void              *req,
 			     clixon_auth_type_t auth_type,
-			     int               *authp,
-			     char             **userp)
+			     char             **authp)
 {
     int retval = -1;
     
     clicon_debug(1, "%s auth:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
     switch (auth_type){
     case CLIXON_AUTH_NONE:
-	if ((retval = example_no_auth(h, req, authp, userp)) < 0)
+	if ((retval = example_no_auth(h, req, authp)) < 0)
 	    goto done;
 	break;
     case CLIXON_AUTH_CLIENT_CERTIFICATE:
 	retval = 0; /* Ignore, use default */
 	break;
     case CLIXON_AUTH_USER:
-	if ((retval = example_basic_auth(h, req, authp, userp)) < 0)
+	if ((retval = example_basic_auth(h, req, authp)) < 0)
 	    goto done;
 	break;
     }
  done:
-    clicon_debug(1, "%s retval:%d auth:%d user:%s", __FUNCTION__, retval, *authp, *userp);
+    clicon_debug(1, "%s retval:%d authp:%s", __FUNCTION__, retval, *authp);
     return retval;
 }
 
