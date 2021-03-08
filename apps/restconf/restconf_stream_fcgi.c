@@ -418,7 +418,7 @@ api_stream(clicon_handle h,
     }
     clicon_debug(1, "%s: method=%s", __FUNCTION__, method);
 
-    if (str2cvec(path, '/', '=', &pcvec) < 0) /* rest url eg /album=ricky/foo */
+    if (uri_str2cvec(path, '/', '=', 1, &pcvec) < 0) /* rest url eg /album=ricky/foo */
 	goto done;
     /* data */
     if ((cb = restconf_get_indata(req)) == NULL)

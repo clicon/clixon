@@ -607,7 +607,7 @@ api_path_fmt2xpath(char  *api_path_fmt,
  *   cbuf *xpath = cbuf_new();
  *   cvec *cvv = NULL; 
  *   cvec *nsc = NULL;
- *   if (str2cvec("www.foo.com/restconf/a/b=c", '/', '=', &cvv) < 0)
+ *   if (uri_str2cvec("www.foo.com/restconf/a/b=c", '/', '=', 0, &cvv) < 0)
  *      err;
  *   if ((ret = api_path2xpath_cvv(yspec, cvv, 0, cxpath, &nsc, NULL)) < 0)
  *      err;
@@ -653,6 +653,8 @@ api_path2xpath_cvv(cvec       *api_path,
     cbuf      *cberr = NULL;
     char      *namespace = NULL;
     cvec      *nsc = NULL;
+    char      *val1;
+    char      *decval;
 			
     cprintf(xpath, "/");
     /* Initialize namespace context */
@@ -712,6 +714,7 @@ api_path2xpath_cvv(cvec       *api_path,
 	}
 	/* Check if has value, means '=' */
         if (cv2str(cv, NULL, 0) > 0){
+	    /* val is uri percent encoded, eg x%2Cy,z */
             if ((val = cv2str_dup(cv)) == NULL)
                 goto done;
 	    switch (yang_keyword_get(y)){
@@ -737,7 +740,15 @@ api_path2xpath_cvv(cvec       *api_path,
 		    cprintf(xpath, "[");
 		    if (xprefix)
 			cprintf(xpath, "%s:", xprefix);
-		    cprintf(xpath, "%s='%s']", cv_string_get(cvi), valvec[vi++]);
+		    val1 = valvec[vi++];
+		    /* valvec is uri encoded, needs decoding */
+		    if (uri_percent_decode(val1, &decval) < 0)
+			goto done;
+		    cprintf(xpath, "%s='%s']", cv_string_get(cvi), decval);
+		    if (decval){
+			free(decval);
+			decval = NULL;
+		    }
 		}
 		break;
 	    case Y_LEAF_LIST: /* XXX: LOOP? */
@@ -837,8 +848,9 @@ api_path2xpath(char       *api_path,
 	clicon_err(OE_XML, EINVAL, "api_path is NULL");
 	goto done;
     }
-    /* Split api-path into cligen variable vector */
-    if (str2cvec(api_path, '/', '=', &cvv) < 0)
+    /* Split api-path into cligen variable vector, 
+     * dont decode since api_path2xpath_cvv takes uri encode as input */
+    if (uri_str2cvec(api_path, '/', '=', 0, &cvv) < 0)
 	goto done;
     if ((xpath = cbuf_new()) == NULL)
         goto done;
@@ -896,8 +908,7 @@ api_path2xml_vec(char      **vec,
     char      *nodeid;
     char      *name = NULL;
     char      *prefix = NULL;
-    char      *restval = NULL;
-    char      *restval_enc;
+    char      *restval;
     cxobj     *xn = NULL; /* new */
     cxobj     *xb;        /* body */
     cvec      *cvk = NULL; /* vector of index keys */
@@ -912,6 +923,7 @@ api_path2xml_vec(char      **vec,
     yang_stmt *ykey;
     char      *namespace = NULL;
     cbuf      *cberr = NULL;
+    char      *val = NULL;
 
     if ((nodeid = vec[0]) == NULL || strlen(nodeid)==0){
 	if (xbotp)
@@ -925,11 +937,9 @@ api_path2xml_vec(char      **vec,
 	goto done;
     }
     /* restval is RFC 3896 encoded */
-    if ((restval_enc = index(nodeid, '=')) != NULL){
-	*restval_enc = '\0';
-	restval_enc++;
-	if (uri_percent_decode(restval_enc, &restval) < 0)
-	    goto done;
+    if ((restval = index(nodeid, '=')) != NULL){
+	*restval = '\0';
+	restval++;
     }
     /* Split into prefix and localname */
     if (nodeid_split(nodeid, &prefix, &name) < 0)
@@ -986,7 +996,11 @@ api_path2xml_vec(char      **vec,
 	xml_spec_set(x, y);
 	if ((xb = xml_new("body", x, CX_BODY)) == NULL)
 	    goto done; 
-	if (restval && xml_value_set(xb, restval) < 0)
+	if (restval){
+	    if (uri_percent_decode(restval, &val) < 0)
+		goto done;
+	}
+	if (val && xml_value_set(xb, val) < 0)
 	    goto done;
 	break;
     case Y_LIST:
@@ -1007,6 +1021,7 @@ api_path2xml_vec(char      **vec,
 	else{
 	    /* Transform restval "a,b,c" to "a" "b" "c" (nvalvec=3) 
 	     * Note that vnr can be < length of cvk, due to empty or unset values
+	     * Note also that valvec entries are encoded
 	     */
 	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
 		goto done;
@@ -1044,8 +1059,16 @@ api_path2xml_vec(char      **vec,
 		if ((xb = xml_new("body", xn, CX_BODY)) == NULL)
 		    goto done;
 		if (vi++ < nvalvec){
-		    if (xml_value_set(xb, valvec[vi-1]) < 0)
+		    /* Here assign and decode key values */
+		    val = NULL;
+		    if (uri_percent_decode(valvec[vi-1], &val) < 0)
 			goto done;
+		    if (xml_value_set(xb, val) < 0)
+			goto done;
+		    if (val){
+			free(val);
+			val = NULL;
+		    }
 		}
 	    }
 	}
@@ -1078,10 +1101,10 @@ api_path2xml_vec(char      **vec,
 	free(prefix);
     if (name)
 	free(name);
-    if (restval)
-	free(restval);
     if (valvec)
 	free(valvec);
+    if (val)
+	free(val);
     return retval;
  fail:
     retval = 0; /* invalid api-path or XML */

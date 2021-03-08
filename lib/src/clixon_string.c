@@ -314,6 +314,10 @@ uri_percent_decode(char  *enc,
     int   len;
     char *ptr;
     
+    if (enc == NULL){
+	clicon_err(OE_UNIX, EINVAL, "enc is NULL");
+	goto done;
+    }
     /* This is max */
     len = strlen(enc)+1;
     if ((str = malloc(len)) == NULL){
@@ -538,18 +542,21 @@ xml_chardata_cbuf_append(cbuf *cb,
     return retval;
 }
 
-/*! Split a string into a cligen variable vector using 1st and 2nd delimiter 
- * Split a string first into elements delimited by delim1, then into
- * pairs delimited by delim2.
+/*! Split a string into a cligen variable vector using 1st and 2nd delimiter
+ * 
+ * (1) Split a string into elements delimited by delim1, 
+ * (2) split elements into pairs delimited by delim2, 
+ * (3) Optionally URI-decode values
  * @param[in]  string String to split
  * @param[in]  delim1 First delimiter char that delimits between elements
  * @param[in]  delim2 Second delimiter char for pairs within an element
+ * @param[in]  decode If set, URI decode values. The caller may want to decode, or add another level
  * @param[out] cvp    Created cligen variable vector, deallocate w cvec_free
  * @retval     0      OK
  * @retval    -1      error
  * @code
  * cvec  *cvv = NULL;
- * if (str2cvec("a=b&c=d", ';', '=', &cvv) < 0)
+ * if (uri_str2cvec("a=b&c=d", ';', '=', 1, &cvv) < 0)
  *   err;
  * @endcode
  *
@@ -558,10 +565,11 @@ xml_chardata_cbuf_append(cbuf *cb,
  * XXX differentiate between error and null cvec.
  */
 int
-str2cvec(char  *string, 
-	 char   delim1, 
-	 char   delim2, 
-	 cvec **cvp)
+uri_str2cvec(char  *string, 
+	     char   delim1, 
+	     char   delim2, 
+	     int    decode,
+	     cvec **cvp)
 {
     int     retval = -1;
     char   *s;
@@ -593,8 +601,15 @@ str2cvec(char  *string,
 	    *(snext++) = '\0';
 	if ((val = index(s, delim2)) != NULL){
 	    *(val++) = '\0';
-	    if (uri_percent_decode(val, &valu) < 0)
-		goto err;
+	    if (decode){
+		if (uri_percent_decode(val, &valu) < 0)
+		    goto err;
+	    }
+	    else
+		if ((valu = strdup(val)) == NULL){
+		    clicon_err(OE_UNIX, errno, "strdup");
+		    goto err;
+		}
 	    if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
 		clicon_err(OE_UNIX, errno, "cvec_add");
 		goto err;

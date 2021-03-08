@@ -23,6 +23,7 @@ cat <<EOF > $cfg
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>$dir/restconf.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
   $RESTCONFIG
 </clixon-config>
 EOF
@@ -165,6 +166,12 @@ expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json
 
 new "restconf PUT change list+leaf-list entry (expect fail)"
 expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x,y/f=u -d '{"list:f":"w"}')" 0 '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
+
+new "restconf PUT (x,y),z -> x%2Cy,z percent-encoded"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x%2Cy,z/nonkey -d '{"list:nonkey":"foo"}')" 0 "HTTP/1.1 201 Created"
+
+new "restconf GET check percent-encoded"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x%2Cy,z)" 0 "HTTP/1.1 200 OK" '{"list:a":\[{"b":"x,y","c":"z","nonkey":"foo"}\]}'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

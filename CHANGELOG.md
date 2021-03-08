@@ -50,6 +50,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [comma in yang list name will lead to cli setting error #186](https://github.com/clicon/clixon/issues/186)
 * Reverted blocked signal behavior introduced in 5.0.
 
 ## 5.0.0

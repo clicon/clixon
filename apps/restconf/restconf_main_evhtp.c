@@ -363,7 +363,7 @@ evhtp_params_set(clicon_handle    h,
 	    goto done;
 	/* SSL subject fields, eg CN (Common Name) , can add more here? */
 	if ((subject = (char*)htp_sslutil_subject_tostr(req->conn->ssl)) != NULL){
-	    if (str2cvec(subject, '/', '=', &cvv) < 0)
+	    if (uri_str2cvec(subject, '/', '=', 1, &cvv) < 0)
 		goto done;
 	    if ((cn = cvec_find_str(cvv, "CN")) != NULL){
 		if (restconf_param_set(h, "SSL_CN", cn) < 0)

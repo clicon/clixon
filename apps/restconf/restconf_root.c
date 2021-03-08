@@ -452,7 +452,7 @@ api_root_restconf(clicon_handle        h,
 	goto done;
     }
     clicon_debug(1, "%s: api_resource=%s", __FUNCTION__, api_resource);
-    if (str2cvec(path, '/', '=', &pcvec) < 0) /* rest url eg /album=ricky/foo */
+    if (uri_str2cvec(path, '/', '=', 1, &pcvec) < 0) /* rest url eg /album=ricky/foo */
       goto done;
     /* data */
     if ((cb = restconf_get_indata(req)) == NULL) /* XXX NYI ACTUALLY not always needed, do this later? */

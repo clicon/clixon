@@ -2666,7 +2666,7 @@ yang_abs_schema_nodeid(yang_stmt    *yn,
     }
     /* Split nodeid on the form /p0:i0/p1:i1 to a cvec with [name:p0 value:i0][...]
      */
-    if (str2cvec(schema_nodeid, '/', ':', &nodeid_cvv) < 0)
+    if (uri_str2cvec(schema_nodeid, '/', ':', 1, &nodeid_cvv) < 0)
 	goto done;
     if (cvec_len(nodeid_cvv) == 0)
 	goto ok;
@@ -2749,7 +2749,7 @@ yang_desc_schema_nodeid(yang_stmt    *yn,
     }
     /* Split nodeid on the form /p0:i0/p1:i1 to a cvec with [name:p0 value:i0][...]
      */
-    if (str2cvec(schema_nodeid, '/', ':', &nodeid_cvv) < 0)
+    if (uri_str2cvec(schema_nodeid, '/', ':', 1, &nodeid_cvv) < 0)
 	goto done;
     if (cvec_len(nodeid_cvv) == 0)
 	goto ok;

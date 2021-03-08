@@ -214,7 +214,7 @@ get_user_cookie(char  *cookiestr,
     cvec  *cvv = NULL;
     char  *c;
 
-    if (str2cvec(cookiestr, ';', '=', &cvv) < 0)
+    if (uri_str2cvec(cookiestr, ';', '=', 1, &cvv) < 0)
 	goto done;
     if ((c = cvec_find_str(cvv, attribute)) != NULL){
 	if ((*val = strdup(c)) == NULL)

@@ -88,25 +88,25 @@ static inline char * strdup4(char *str)
  * Prototypes
  */ 
 char **clicon_strsep(char *string, char *delim, int  *nvec0);
-char *clicon_strjoin (int argc, char **argv, char *delim);
-int clixon_strsplit(char *nodeid, const int delim, char **prefix, char **id);
-int str2cvec(char *string, char delim1, char delim2, cvec **cvp);
+char  *clicon_strjoin (int argc, char **argv, char *delim);
+int    clixon_strsplit(char *nodeid, const int delim, char **prefix, char **id);
+int    uri_str2cvec(char *string, char delim1, char delim2, int decode, cvec **cvp);
 #if defined(__GNUC__) && __GNUC__ >= 3
-int uri_percent_encode(char **encp, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
-int xml_chardata_encode(char **escp, const char *fmt, ... ) __attribute__ ((format (printf, 2, 3)));
+int    uri_percent_encode(char **encp, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
+int    xml_chardata_encode(char **escp, const char *fmt, ... ) __attribute__ ((format (printf, 2, 3)));
 #else
-int uri_percent_encode(char **encp, const char *str, ...);
-int xml_chardata_encode(char **escp, const char *fmt, ...);
+int    uri_percent_encode(char **encp, const char *str, ...);
+int    xml_chardata_encode(char **escp, const char *fmt, ...);
 #endif
-int xml_chardata_cbuf_append(cbuf *cb, char *str);
-int uri_percent_decode(char *enc, char **str);
+int    xml_chardata_cbuf_append(cbuf *cb, char *str);
+int    uri_percent_decode(char *enc, char **str);
 const char *clicon_int2str(const map_str2int *mstab, int i);
-int clicon_str2int(const map_str2int *mstab, char *str);
-int clicon_str2int_search(const map_str2int *mstab, char *str, int upper);
-int nodeid_split(char *nodeid,	char **prefix, char **id);
-char *clixon_trim(char *str);
-char *clixon_trim2(char *str, char *trims);
-int clicon_strcmp(char *s1, char *s2);
+int    clicon_str2int(const map_str2int *mstab, char *str);
+int    clicon_str2int_search(const map_str2int *mstab, char *str, int upper);
+int    nodeid_split(char *nodeid,	char **prefix, char **id);
+char  *clixon_trim(char *str);
+char  *clixon_trim2(char *str, char *trims);
+int   clicon_strcmp(char *s1, char *s2);
 
 #ifndef HAVE_STRNDUP
 char *clicon_strndup (const char *, size_t);

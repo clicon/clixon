@@ -537,7 +537,7 @@ main(int    argc,
 		cvec  *qvec = NULL;
 		query = restconf_param_get(h, "QUERY_STRING");
 		if (query != NULL && strlen(query))
-		    if (str2cvec(query, '&', '=', &qvec) < 0)
+		    if (uri_str2cvec(query, '&', '=', 1, &qvec) < 0)
 			goto done;
 		api_root_restconf(h, req, qvec); /* This is the function */
 		if (qvec){
@@ -550,7 +550,7 @@ main(int    argc,
 		cvec  *qvec = NULL;
 		query = restconf_param_get(h, "QUERY_STRING");
 		if (query != NULL && strlen(query))
-		    if (str2cvec(query, '&', '=', &qvec) < 0)
+		    if (uri_str2cvec(query, '&', '=', 1, &qvec) < 0)
 			goto done;
 		api_stream(h, req, qvec, stream_path, &finish); 
 		if (qvec){
