@@ -115,23 +115,23 @@ EOF
     if $getp; then
 	# default is read allowed so this should always succeed.
 	new "get startup default ok"
-	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$DEFAULT</data></rpc-reply>]]>]]>$"
+	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$DEFAULT</data></rpc-reply>]]>]]>$"
 	# This would normally not work except in recovery situations
     else
 	new "get startup not ok"
-	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>User $realuser credential not matching NACM user $pseudo</error-message></rpc-error></rpc-reply>]]>]]>$"
+	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>User $realuser credential not matching NACM user $pseudo</error-message></rpc-error></rpc-reply>]]>]]>$"
 	return;
     fi
 	
     if $putp; then
 	new "put, expect ok"
-	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
+	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
 
 	new "get rules ok"
-	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$RULES</data></rpc-reply>]]>]]>$"
+	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$RULES</data></rpc-reply>]]>]]>$"
     else
 	new "put, expect fail"
-	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>default deny</error-message></rpc-error></rpc-reply>]]>]]>$"
+	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>default deny</error-message></rpc-error></rpc-reply>]]>]]>$"
     fi
     if [ $RC -ne 0 ]; then
 	new "Kill restconf daemon"

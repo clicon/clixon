@@ -41,6 +41,31 @@
 #define _CLIXON_NETCONF_LIB_H
 
 /*
+ * Constants
+ */
+/* Default NETCONF namespace (see rfc6241 3.1)
+ * See USE_NETCONF_NS_AS_DEFAULT for use of this namespace as default
+ * Also, bind it to prefix:nc as used by, for example, the operation attribute
+ * (also in RFC4741 Sec 3.1)
+ * BTW this may not be the best way to keep them.
+ */
+#define NETCONF_BASE_NAMESPACE "urn:ietf:params:xml:ns:netconf:base:1.0"
+#define NETCONF_BASE_PREFIX "nc"
+
+/* Netconf base capability as defined in RFC4741, Sec 8.1
+ */
+#define NETCONF_BASE_CAPABILITY_1_0 "urn:ietf:params:netconf:base:1.0"
+
+/* Netconf base capability as defined in RFC6241, Sec 8.1
+ */
+#define NETCONF_BASE_CAPABILITY_1_1 "urn:ietf:params:netconf:base:1.1"
+
+/* See RFC 7950 Sec 5.3.1: YANG defines an XML namespace for NETCONF <edit-config> 
+ * operations, <error-info> content, and the <action> element.
+ */
+#define YANG_XML_NAMESPACE "urn:ietf:params:xml:ns:yang:1"
+ 
+/*
  * Types
  */
 /*! Content query parameter RFC 8040 Sec 4.8.1 

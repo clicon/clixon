@@ -93,6 +93,7 @@ main(int    argc,
     /* Make a conenction over netconf or ssh/netconf */
     if ((ch = clixon_client_connect(h, CLIXON_CLIENT_NETCONF)) == NULL)
        return -1;
+
     /* Here are read functions depending on an example YANG 
      * (Need an example YANG and XML input to confd)
      */

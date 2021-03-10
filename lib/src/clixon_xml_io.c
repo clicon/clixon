@@ -690,7 +690,7 @@ clixon_xml_parse_file(FILE      *fp,
  * @param[in,out] xt    Pointer to XML parse tree. If empty will be created.
  * @param[out]    xerr  Reason for failure (yang assignment not made) if retval = 0
  * @retval        1     Parse OK and all yang assignment made
- * @retval        0     Parse OK but yang assigment not made (or only partial)
+ * @retval        0     Parse OK but yang assigment not made (or only partial), xerr is set
  * @retval       -1     Error with clicon_err called. Includes parse error
  *
  * @code

@@ -1541,7 +1541,13 @@ netconf_hello_server(clicon_handle h,
 
     cprintf(cb, "<hello xmlns=\"%s\" message-id=\"%u\">", NETCONF_BASE_NAMESPACE, 42);
     cprintf(cb, "<capabilities>");
-    cprintf(cb, "<capability>urn:ietf:params:netconf:base:1.0</capability>");
+    /* Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" 
+     * RFC 6241 Sec 8.1
+     */
+    cprintf(cb, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_1);
+    /* A peer MAY include capabilities for previous NETCONF versions, to indicate
+       that it supports multiple protocol versions. */
+    cprintf(cb, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_0);
     /* Check if RFC7895 loaded and revision found */
     if ((ietf_yang_library_revision = yang_modules_revision(h)) != NULL){
 	if (xml_chardata_encode(&encstr, "urn:ietf:params:netconf:capability:yang-library:1.0?revision=%s&module-set-id=%s",
@@ -1575,7 +1581,7 @@ netconf_hello_req(clicon_handle h,
 
     cprintf(cb, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(cb, "<capabilities>");
-        cprintf(cb, "<capability>urn:ietf:params:netconf:base:1.0</capability>");
+    cprintf(cb, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_1);
     cprintf(cb, "</capabilities>");
     cprintf(cb, "</hello>");
     cprintf(cb, "]]>]]>");

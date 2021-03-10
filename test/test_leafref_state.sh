@@ -95,40 +95,40 @@ EOF
 )
 
 new "leafref config sender x"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 # Get path=/, state vs config
 new "netconf get / config+state"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"all\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>x</name></sender-config><sender-state xmlns=\"urn:example:example\"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"all\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>x</name></sender-config><sender-state xmlns=\"urn:example:example\"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$"
 
 new "netconf get / state-only"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-state xmlns=\"urn:example:example\"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-state xmlns=\"urn:example:example\"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$"
 
 new "netconf get / config-only"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"config\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>x</name></sender-config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"config\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>x</name></sender-config></data></rpc-reply>]]>]]>$"
 
 # Get path=/sender-state, state vs config
 new "netconf get /sender-state config+state"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"all\"><filter type=\"xpath\" select=\"/ex:sender-state\" xmlns:ex=\"urn:example:example\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-state xmlns=\"urn:example:example\"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"all\"><filter type=\"xpath\" select=\"/ex:sender-state\" xmlns:ex=\"urn:example:example\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-state xmlns=\"urn:example:example\"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$"
 
 new "netconf get /sender-state state-only"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"/ex:sender-state\" xmlns:ex=\"urn:example:example\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-state xmlns=\"urn:example:example\"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"/ex:sender-state\" xmlns:ex=\"urn:example:example\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-state xmlns=\"urn:example:example\"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$"
 
 new "netconf get /sender-state config-only"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"config\"><filter type=\"xpath\" select=\"/ex:sender-state\" xmlns:ex=\"urn:example:example\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"config\"><filter type=\"xpath\" select=\"/ex:sender-state\" xmlns:ex=\"urn:example:example\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
 
 # Get path=/sender-config, state vs config
 new "netconf get /sender-config config+state"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"all\"><filter type=\"xpath\" select=\"/ex:sender-config\" xmlns:ex=\"urn:example:example\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>x</name></sender-config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"all\"><filter type=\"xpath\" select=\"/ex:sender-config\" xmlns:ex=\"urn:example:example\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>x</name></sender-config></data></rpc-reply>]]>]]>$"
 
 new "netconf get /sender-config state-only"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"/ex:sender-config\" xmlns:ex=\"urn:example:example\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"/ex:sender-config\" xmlns:ex=\"urn:example:example\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
 
 new "netconf get /sender-config config-only"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"config\"><filter type=\"xpath\" select=\"/ex:sender-config\" xmlns:ex=\"urn:example:example\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>x</name></sender-config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"config\"><filter type=\"xpath\" select=\"/ex:sender-config\" xmlns:ex=\"urn:example:example\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>x</name></sender-config></data></rpc-reply>]]>]]>$"
 
 # Negative tests, 
 # Double xmlns attribute
@@ -139,7 +139,7 @@ cat <<EOF > $fstate
 EOF
 
 new "Merge same tree - check double xmlns attribute"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"all\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>x</name></sender-config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"all\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>x</name></sender-config></data></rpc-reply>]]>]]>$"
 
 # Back to original
 cat <<EOF > $fstate
@@ -160,20 +160,20 @@ EOF
 )
 # Negative tests, start with remove x and and add y instead
 new "leafref config delete sender x add y"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 # Leafref wrong
 new "netconf get / config+state should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"all\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>x</bad-element></error-info><error-severity>error</error-severity><error-message>Leafref validation failed: No leaf x matching path /ex:sender-config/ex:name. Internal error, state callback returned invalid XML</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"all\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>x</bad-element></error-info><error-severity>error</error-severity><error-message>Leafref validation failed: No leaf x matching path /ex:sender-config/ex:name. Internal error, state callback returned invalid XML</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "netconf get / state-only should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>x</bad-element></error-info><error-severity>error</error-severity><error-message>Leafref validation failed: No leaf x matching path /ex:sender-config/ex:name. Internal error, state callback returned invalid XML</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>x</bad-element></error-info><error-severity>error</error-severity><error-message>Leafref validation failed: No leaf x matching path /ex:sender-config/ex:name. Internal error, state callback returned invalid XML</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "netconf get / config-only ok"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get content=\"config\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>y</name></sender-config></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"config\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>y</name></sender-config></data></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

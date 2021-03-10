@@ -84,20 +84,92 @@
 /*! Ignore errors on packet errors: continue */
 static int ignore_packet_errors = 1;
 
+/* Hello request received */
+static int _netconf_hello_nr = 0;
+
+/*! Copy attributes from incoming request to reply. Skip already present (dont overwrite)
+ *
+ * RFC 6241:
+ * If additional attributes are present in an <rpc> element, a NETCONF
+ * peer MUST return them unmodified in the <rpc-reply> element.  This
+ * includes any "xmlns" attributes.
+ * @param[in]     xrpc  Incoming message on the form <rpc>...
+ * @param[in,out] xrep  Reply message on the form <rpc-reply>...
+ */
 static int
-netconf_hello(clicon_handle h,
-	      cxobj        *xn)
+netconf_add_request_attr(cxobj *xrpc,
+			 cxobj *xrep)
 {
-#ifdef nyi
-    cxobj *x;
+    int    retval = -1;
+    cxobj *xa;
+    cxobj *xa2 = NULL;
 
-    x = NULL;
-
-    while ((x = xpath_each(xn, "//capability", x)) != NULL) {
-	
+    xa = NULL;
+    while ((xa = xml_child_each(xrpc, xa, CX_ATTR)) != NULL){
+	/* If attribute already exists, dont copy it */
+	if (xml_find_type(xrep, NULL, xml_name(xa), CX_ATTR) != NULL)
+	    continue; /* Skip already present (dont overwrite) */
+	if ((xa2 = xml_dup(xa)) ==NULL)
+	    goto done;
+	if (xml_addsub(xrep, xa2) < 0)
+	    goto done;
     }
-#endif
-    return 0;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*
+ * A server receiving a <hello> message with a <session-id> element MUST
+ * terminate the NETCONF session. 
+ */
+static int
+netconf_hello_msg(clicon_handle h,
+		  cxobj        *xn)
+{
+    int     retval = -1;
+    cvec   *nsc = NULL; // namespace context
+    cxobj **vec = NULL;
+    cxobj  *x;
+    cxobj  *xcap;
+    size_t  veclen;
+    int     foundbase;
+    char   *body;
+
+    _netconf_hello_nr++;
+    if (xml_find_type(xn, NULL, "session-id", CX_ELMNT) != NULL) {
+	clicon_err(OE_XML, errno, "Server received hello with session-id from client, terminating (see RFC 6241 Sec 8.1");
+	cc_closed++;
+	goto done;
+    }
+    if (xpath_vec(xn, nsc, "capabilities/capability", &vec, &veclen) < 0)
+	goto done;
+    /* Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1"*/
+    foundbase=0;
+    if ((xcap = xml_find_type(xn, NULL, "capabilities", CX_ELMNT)) != NULL) {
+	x = NULL;
+	while ((x = xml_child_each(xcap, x, CX_ELMNT)) != NULL) {
+	    if (strcmp(xml_name(x), "capability") != 0)
+		continue;
+	    if ((body = xml_body(x)) == NULL)
+		continue;
+	    /* When comparing protocol version capability URIs, only the base part is used, in the 
+	     * event any parameters are encoded at the end of the URI string. */
+	    if (strncmp(body, NETCONF_BASE_CAPABILITY_1_0, strlen(NETCONF_BASE_CAPABILITY_1_0)) == 0) /* RFC 4741 */
+		foundbase++;
+	    else if (strncmp(body, NETCONF_BASE_CAPABILITY_1_1, strlen(NETCONF_BASE_CAPABILITY_1_1)) == 0) /* RFC 6241 */
+		foundbase++;
+	}
+    }
+    if (foundbase == 0){
+	clicon_err(OE_XML, errno, "Server received hello without netconf base capability %s, terminating (see RFC 6241 Sec 8.1",
+		   NETCONF_BASE_CAPABILITY_1_1);
+	cc_closed++;
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Process incoming Netconf RPC netconf message 
@@ -117,64 +189,69 @@ netconf_rpc_message(clicon_handle h,
     int    ret;
     cbuf  *cbret = NULL;
     cxobj *xc;
-    cxobj *xa;
-    cxobj *xa2;
 
+    if (_netconf_hello_nr == 0 &&
+	clicon_option_bool(h, "CLICON_NETCONF_HELLO_OPTIONAL") == 0){
+	if (netconf_operation_failed_xml(&xret, "rpc", "Client must send an hello element before any RPC")< 0)
+	    goto done;
+	/* Copy attributes from incoming request to reply. Skip already present (dont overwrite) */
+	if (netconf_add_request_attr(xrpc, xret) < 0)
+	    goto done;
+	if ((cbret = cbuf_new()) == NULL){ 
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
+	netconf_output_encap(1, cbret, "rpc-error");
+	cc_closed++;
+	goto ok;
+    }
     if ((ret = xml_bind_yang_rpc(xrpc, yspec, &xret)) < 0)
 	goto done;
     if (ret > 0 &&
 	(ret = xml_yang_validate_rpc(h, xrpc, &xret)) < 0) 
 	goto done;
     if (ret == 0){
+	if (netconf_add_request_attr(xrpc, xret) < 0)
+	    goto done;
 	if ((cbret = cbuf_new()) == NULL){ 
-	    clicon_err(LOG_ERR, errno, "cbuf_new");
+	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}
 	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
-	netconf_output_encap(1, cbret, "rpc-error");
+	if (netconf_output_encap(1, cbret, "rpc-error") < 0)
+	    goto done;
 	goto ok;
     }
     if (netconf_rpc_dispatch(h, xrpc, &xret) < 0){
 	goto done;
     }
-    else{ /* there is a return message in xret */
-	if (xret == NULL){
-	    if ((cbret = cbuf_new()) == NULL){ 
-		clicon_err(LOG_ERR, errno, "cbuf_new");
-		goto done;
-	    }
-	    if (netconf_operation_failed(cbret, "rpc", "Internal error: no xml return")< 0)
-		goto done;
-	    netconf_output_encap(1, cbret, "rpc-error");
+    /* Is there a return message in xret? */
+    if (xret == NULL){
+	if (netconf_operation_failed_xml(&xret, "rpc", "Internal error: no xml return")< 0)
+	    goto done;
+	if (netconf_add_request_attr(xrpc, xret) < 0)
+	    goto done;
+	if ((cbret = cbuf_new()) == NULL){ 
+	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}
-	if ((xc = xml_child_i(xret, 0))!=NULL){
-	    xa=NULL;
-	    /* Copy message-id attribute from incoming to reply. 
-	     * RFC 6241:
-	     * If additional attributes are present in an <rpc> element, a NETCONF
-	     * peer MUST return them unmodified in the <rpc-reply> element.  This
-	     * includes any "xmlns" attributes.
-	     */
-	    while ((xa = xml_child_each(xrpc, xa, CX_ATTR)) != NULL){
-		/* If attribute already exists, dont copy it */
-		if (xml_find_type(xc, NULL, xml_name(xa), CX_ATTR) != NULL)
-		    continue;
-		if ((xa2 = xml_dup(xa)) ==NULL)
-		    goto done;
-		if (xml_addsub(xc, xa2) < 0)
-		    goto done;
-	    }
-	    if ((cbret = cbuf_new()) == NULL){ 
-		clicon_err(LOG_ERR, errno, "cbuf_new");
-		goto done;
-	    }
-	    clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0, -1);
-	    if (netconf_output_encap(1, cbret, "rpc-reply") < 0){
-		cbuf_free(cbret);
-		goto done;
-	    }
+	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
+	if (netconf_output_encap(1, cbret, "rpc-error") < 0)
+	    goto done;
+	goto ok;
+    }
+    if ((xc = xml_child_i(xret, 0))!=NULL){
+	/* Copy attributes from incoming request to reply. Skip already present (dont overwrite) */
+	if (netconf_add_request_attr(xrpc, xc) < 0)
+	    goto done;
+	if ((cbret = cbuf_new()) == NULL){ 
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
 	}
+	clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0, -1);
+	if (netconf_output_encap(1, cbret, "rpc-reply") < 0)
+	    goto done;
     }
  ok:
     retval = 0;
@@ -199,44 +276,55 @@ netconf_input_packet(clicon_handle h,
 		     cxobj        *xreq,
 		     yang_stmt    *yspec)
 {
-    int        retval = -1;
-    cbuf      *cbret = NULL;
-    char      *rpcname;
-    char      *rpcprefix;
-    char      *namespace = NULL;
+    int     retval = -1;
+    cbuf   *cbret = NULL;
+    char   *rpcname;
+    char   *rpcprefix;
+    char   *namespace = NULL;
+    cxobj  *xret = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
     rpcname = xml_name(xreq);
     rpcprefix = xml_prefix(xreq);
     if (xml2ns(xreq, rpcprefix, &namespace) < 0)
 	goto done;
-    /* Only accept resolved NETCONF base namespace */
-    if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
-	if ((cbret = cbuf_new()) == NULL){ 
-	    clicon_err(LOG_ERR, errno, "cbuf_new");
-	    goto done;
-	}
-	if (netconf_unknown_namespace(cbret, "protocol", rpcprefix, "No appropriate namespace associated with prefix")< 0)
-	    goto done;
-	netconf_output_encap(1, cbret, "rpc-error");
-    }
     if (strcmp(rpcname, "rpc") == 0){
+	/* Only accept resolved NETCONF base namespace */
+	if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
+	    if (netconf_unknown_namespace_xml(&xret, "protocol", rpcprefix, "No appropriate namespace associated with prefix")< 0)
+		goto done;
+	    if (netconf_add_request_attr(xreq, xret) < 0)
+		goto done;
+	    if ((cbret = cbuf_new()) == NULL){ 
+		clicon_err(OE_XML, errno, "cbuf_new");
+		goto done;
+	    }
+	    clicon_xml2cbuf(cbret, xret, 0, 0, -1);
+	    netconf_output_encap(1, cbret, "rpc-error");
+	    goto ok;
+	}
 	if (netconf_rpc_message(h, xreq, yspec) < 0)
 	    goto done;
     }
     else if (strcmp(rpcname, "hello") == 0){
-	if (netconf_hello(h, xreq) < 0)
+    /* Only accept resolved NETCONF base namespace */
+	if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
+	    clicon_err(OE_XML, EFAULT, "No appropriate namespace associated with prefix:%s", rpcprefix);
+	    goto done;
+	}
+	if (netconf_hello_msg(h, xreq) < 0)
 	    goto done;
     }
     else{
 	if ((cbret = cbuf_new()) == NULL){ 
-	    clicon_err(LOG_ERR, errno, "cbuf_new");
+	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}
 	if (netconf_unknown_element(cbret, "protocol", rpcname, "Unrecognized netconf operation")< 0)
 	    goto done;
 	netconf_output_encap(1, cbret, "rpc-error");
     }
+ ok:
     retval = 0;
  done:
     if (cbret)
@@ -250,6 +338,17 @@ netconf_input_packet(clicon_handle h,
  * @param[in]   cb   Packet buffer
  * @retval      0    OK
  * @retval     -1    Fatal error
+ * @note there are errors detected here prior to whether you know what kind if message it is, and
+ * these errors are returned as "rpc-error".
+ * This is problematic since RFC6241 only says to return rpc-error on errors to <rpc>.
+ * Not at this early stage, the incoming message can be something else such as <hello> or
+ * something else.
+ * In section 8.1 regarding handling of <hello> it says just to "terminate" the session which I
+ * interpret as not sending anything back, just closing the session.
+ * Anyway, clixon therefore does the following on error:
+ * - Before we know what it is: send rpc-error
+ * - Hello messages: terminate
+ * - RPC messages: send rpc-error
  */
 static int
 netconf_input_frame(clicon_handle h, 
@@ -290,12 +389,16 @@ netconf_input_frame(clicon_handle h,
 	}
 	if (netconf_operation_failed(cbret, "rpc", clicon_err_reason)< 0)
 	    goto done;
-	netconf_output_encap(1, cbret, "rpc-error"); /* XXX */
+	netconf_output_encap(1, cbret, "rpc-error");
 	goto ok;
     }
     if (ret == 0){
+	/* Note: xtop can be "hello" in which case one (maybe) should drop the session and log
+	 * However, its not until netconf_input_packet that rpc vs hello vs other identification is 
+	 * actually made
+	 */
 	if ((cbret = cbuf_new()) == NULL){ 
-	    clicon_err(LOG_ERR, errno, "cbuf_new");
+	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}
 	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
@@ -413,8 +516,9 @@ netconf_input_cb(int   s,
 		if (netconf_input_frame(h, cb) < 0 &&
 		    !ignore_packet_errors) // default is to ignore errors
 		    goto done; 
-		if (cc_closed)
+		if (cc_closed){
 		    break;
+		}
 		cbuf_reset(cb);
 	    }
 	}

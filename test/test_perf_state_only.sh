@@ -133,14 +133,14 @@ $TIMEFN $clixon_cli -1f $cfg show xpath /interfaces urn:example:clixon 2>&1 > /d
 # NETCONF get
 new "netconf get test single req"
 sel="/ex:interfaces/ex:a[ex:name='foo']/ex:b/ex:interface[ex:name='e1']"
-msg="<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>"
+msg="$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>"
 time -p expecteof "$clixon_netconf -qf $cfg" 0 "$msg" "^<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b><interface><name>e1</name><type>ex:eth</type><status>up</status></interface></b></a></interfaces></data></rpc-reply>]]>]]>$"
 
 new "netconf get $perfreq single reqs"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
     sel="/ex:interfaces/ex:a[ex:name='foo']/ex:b/ex:interface[ex:name='e$rnd']"
-    echo "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>"
+    echo "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF get
@@ -174,7 +174,7 @@ fi
 
 # Get config in one large get
 new "netconf get large config"
-{ time -p echo "<rpc $DEFAULTNS><get> <filter type=\"xpath\" select=\"/ex:interfaces/ex:a[name='foo']/ex:b\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg  > /tmp/netconf; } 2>&1 | awk '/real/ {print $2}'
+{ time -p echo "$DEFAULTHELLO<rpc $DEFAULTNS><get> <filter type=\"xpath\" select=\"/ex:interfaces/ex:a[name='foo']/ex:b\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg  > /tmp/netconf; } 2>&1 | awk '/real/ {print $2}'
 
 new "restconf get large config"
 $TIMEFN curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b 2>&1 | awk '/real/ {print $2}'

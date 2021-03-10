@@ -144,10 +144,10 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "auth set authentication config"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "commit it"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 
 new "enable nacm"
@@ -161,7 +161,7 @@ new "admin read ok"
 expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:table)" 0 'HTTP/1.1 200 OK' '{"clixon-example:table":{"parameter":\[{"name":"key42","value":"val42"},{"name":"key43","value":"val43"}\]}}'
 
 new "admin read netconf ok"
-expecteof "$clixon_netconf -U andy -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/t:table\" xmlns:t=\"urn:example:clixon\" /></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><table xmlns=\"urn:example:clixon\"><parameter><name>key42</name><value>val42</value></parameter><parameter><name>key43</name><value>val43</value></parameter></table></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -U andy -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/t:table\" xmlns:t=\"urn:example:clixon\" /></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><table xmlns=\"urn:example:clixon\"><parameter><name>key42</name><value>val42</value></parameter><parameter><name>key43</name><value>val43</value></parameter></table></data></rpc-reply>]]>]]>$"
 
 new "admin read element ok"
 expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:table/parameter=key42/value)" 0 'HTTP/1.1 200 OK' '{"clixon-example:value":"val42"}'
@@ -186,7 +186,7 @@ new "limit read ok"
 expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:table)" 0 'HTTP/1.1 200 OK' '{"clixon-example:table":{"parameter":\[{"name":"key42","value":"val42"},{"name":"key43","value":"val43"}\]}}'
 
 new "limit read netconf ok"
-expecteof "$clixon_netconf -U wilma -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/t:table\" xmlns:t=\"urn:example:clixon\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><table xmlns=\"urn:example:clixon\"><parameter><name>key42</name><value>val42</value></parameter><parameter><name>key43</name><value>val43</value></parameter></table></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -U wilma -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/t:table\" xmlns:t=\"urn:example:clixon\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><table xmlns=\"urn:example:clixon\"><parameter><name>key42</name><value>val42</value></parameter><parameter><name>key43</name><value>val43</value></parameter></table></data></rpc-reply>]]>]]>$"
 
 new "limit read element ok"
 expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:table/parameter=key42/value)" 0 'HTTP/1.1 200 OK' '{"clixon-example:value":"val42"}'
@@ -206,7 +206,7 @@ new "guest read forbidden"
 expectpart "$(curl -u guest:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:table)" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "guest read netconf fail"
-expecteof "$clixon_netconf -U guest -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/t:table\" xmlns:t=\"urn:example:clixon\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>default deny</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -U guest -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/t:table\" xmlns:t=\"urn:example:clixon\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>default deny</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "guest read element forbidden"
 expectpart "$(curl -u guest:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:table/parameter=key42/value)" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
@@ -226,19 +226,19 @@ new "admin rpc ok"
 expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":"78"}}' $RCPROTO://localhost/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 200 OK' '{"clixon-example:output":{"x":"78","y":"42"}}'
 
 new "admin rpc netconf ok"
-expecteof "$clixon_netconf -U andy -qf $cfg" 0 "<rpc $DEFAULTNS><example xmlns=\"urn:example:clixon\"><x>0</x></example></rpc>]]>]]>" 0 "^<rpc-reply $DEFAULTNS><x xmlns=\"urn:example:clixon\">0</x><y xmlns=\"urn:example:clixon\">42</y></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -U andy -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><example xmlns=\"urn:example:clixon\"><x>0</x></example></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><x xmlns=\"urn:example:clixon\">0</x><y xmlns=\"urn:example:clixon\">42</y></rpc-reply>]]>]]>$"
 
 new "limit rpc ok"
 expectpart "$(curl -u wilma:bar $CURLOPTS -X POST $RCPROTO://localhost/restconf/operations/clixon-example:example -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":42}}' )" 0 'HTTP/1.1 200 OK' '{"clixon-example:output":{"x":"42","y":"42"}}'
 
 new "limit rpc netconf ok"
-expecteof "$clixon_netconf -U wilma -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>0</x></example></rpc>]]>]]>' 0 '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><x xmlns="urn:example:clixon">0</x><y xmlns="urn:example:clixon">42</y></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -U wilma -qf $cfg" 0 "$DEFAULTHELLO<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><example xmlns=\"urn:example:clixon\"><x>0</x></example></rpc>]]>]]>" '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><x xmlns="urn:example:clixon">0</x><y xmlns="urn:example:clixon">42</y></rpc-reply>]]>]]>$'
 
 new "guest rpc fail"
 expectpart "$(curl -u guest:bar $CURLOPTS -X POST $RCPROTO://localhost/restconf/operations/clixon-example:example -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":42}}' )" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "guest rpc netconf fail"
-expecteof "$clixon_netconf -U guest -qf $cfg" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><example xmlns="urn:example:clixon"><x>0</x></example></rpc>]]>]]>' 0 '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -U guest -qf $cfg" 0 "$DEFAULTHELLO<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><example xmlns=\"urn:example:clixon\"><x>0</x></example></rpc>]]>]]>" '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$'
 
 #------------------ Set read-default permit
 

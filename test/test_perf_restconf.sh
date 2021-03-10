@@ -75,6 +75,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
+
 new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -119,7 +120,7 @@ expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply $DEF
 
 # Now commit it from candidate to running 
 new "netconf commit large config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF get
 new "restconf get $perfreq small config 1 key index"
@@ -151,7 +152,7 @@ new "cli delete $perfreq small config"
 done } 2>&1 | awk '/real/ {print $2}'
 
 #new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 # XXX This takes time
 # 18.69 without startup feature
@@ -165,7 +166,7 @@ done > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 # Now do leaf-lists istead of leafs
 
 #new "generate leaf-list config"
-echo -n "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">" > $fconfig2
+echo -n "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">" > $fconfig2
 for (( i=0; i<$perfnr; i++ )); do  
     echo -n "<c>$i</c>" >> $fconfig2
 done
@@ -175,28 +176,27 @@ new "netconf replace large list-leaf config"
 expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig2" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 new "netconf commit large leaf-list config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 new "netconf add $perfreq small leaf-list config"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    echo "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>$rnd</c></x></config></edit-config></rpc>]]>]]>"
+    echo "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>$rnd</c></x></config></edit-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 new "netconf add small leaf-list config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>x</c></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>x</c></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 new "netconf commit small leaf-list config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 new "netconf get large leaf-list config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:clixon\"><c>0</c><c>1</c>" 2>&1 | awk '/real/ {print $2}'
+expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:clixon\"><c>0</c><c>1</c>" 2>&1 | awk '/real/ {print $2}'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
     stop_restconf
 fi
-
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
@@ -207,7 +207,6 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
-
 rm -rf $dir
 
 # Set by restconf_config

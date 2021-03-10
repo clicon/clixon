@@ -157,10 +157,10 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "add sample config w netconf"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>a</name><value>42</value></parameter></table></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>a</name><value>42</value></parameter></table></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "restconf http get config on default netns"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' http://127.0.0.1/restconf/data/clixon-example:table)" 0 "HTTP/1.1 200 OK" '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'

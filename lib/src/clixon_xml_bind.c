@@ -543,8 +543,38 @@ xml_bind_yang_rpc(cxobj     *xrpc,
     cxobj     *xc;
     
     opname = xml_name(xrpc);
-    if ((strcmp(opname, "hello")) == 0) /* Hello: dont bind, dont appear in any yang spec  */
+    if ((strcmp(opname, "hello")) == 0){ 
+	/* Hello: dont bind, dont appear in any yang spec, just ensure there is nothing apart from
+	 * session-id or capabilities/capability tags
+	 * If erro, just log, drop and close, rpc-error should not be sent since it is not rpc
+	 */
+	x = NULL;
+	while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {
+	    name = xml_name(x);
+	    if (strcmp(name, "session-id") == 0)
+		continue;
+	    else if (strcmp(name, "capabilities") == 0){
+		xc = NULL;
+		while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
+		    if (strcmp(xml_name(xc), "capability") != 0){
+			if (xerr &&
+			    netconf_unknown_element_xml(xerr, "protocol", xml_name(xc),
+							"Unrecognized hello/capabilities element") < 0)
+			    goto done;
+			goto fail;
+		    }
+		}
+	    }
+	    else {
+		if (xerr &&
+		    netconf_unknown_element_xml(xerr, "protocol", name,	"Unrecognized hello element") < 0)
+		    goto done;
+		clicon_err(OE_XML, EFAULT, "Unrecognized hello element: %s", name);
+		goto fail;
+	    }
+	}
 	goto ok;
+    }
     else if ((strcmp(opname, "notification")) == 0)
 	goto ok;
     else if ((strcmp(opname, "rpc")) == 0)

@@ -170,7 +170,7 @@ xml_parse_version(clixon_xml_yacc *xy,
 		  char            *ver)
 {
     if(strcmp(ver, "1.0")){
-	clicon_err(OE_XML, XMLPARSE_ERRNO, "Wrong XML version %s expected 1.0", ver);
+	clicon_err(OE_XML, XMLPARSE_ERRNO, "Unsupported XML version: %s expected 1.0", ver);
 	free(ver);
 	return -1;
     }
@@ -179,6 +179,31 @@ xml_parse_version(clixon_xml_yacc *xy,
     return 0;
 }
 
+/*! Parse XML encoding
+ * From under Encoding Declaration:
+ * In an encoding declaration, the values UTF-8, UTF-16, ISO-10646-UCS-2, and ISO-10646-UCS-4
+ * SHOULD be used for the various encodings and transformations of Unicode / ISO/IEC 10646, the 
+ * values ISO-8859-1, ISO-8859-2, ... ISO-8859- n (where n is the part number) SHOULD be used for
+ * the parts of ISO 8859, and the values ISO-2022-JP, Shift_JIS, and EUC-JP " SHOULD be used for
+ * the various encoded forms of JIS X-0208-1997.
+ * [UTF-8 is default]
+ * Note that since ASCII is a subset of UTF-8, ordinary ASCII entities do not strictly need an
+ * encoding declaration.
+ *
+ * Clixon supports only UTF-8 (or no declaration)
+ */
+static int
+xml_parse_encoding(clixon_xml_yacc *xy,
+		   char            *enc)
+{
+    if(strcmp(enc, "UTF-8")){
+	clicon_err(OE_XML, XMLPARSE_ERRNO, "Unsupported XML encoding: %s expected UTF-8", enc);
+	free(enc);
+	return -1;
+    }
+    return 0;
+}
+ 
 /*! Parse Qualified name -> (Un)PrefixedName
  *
  * This is where all (parsed) xml elements are created
@@ -358,6 +383,7 @@ misc        : comment    { _PARSE_DEBUG("misc->comment"); }
             | WHITESPACE { _PARSE_DEBUG("misc->white space"); }
 	    ;
 
+/* [23] XMLDecl ::=   	'<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'*/
 xmldcl      : BXMLDCL verinfo encodingdecl sddecl EQMARK
 	          { _PARSE_DEBUG("xmldcl->verinfo encodingdecl? sddecl?"); }
             ;
@@ -370,8 +396,12 @@ verinfo     : VER '=' '\"' STRING '\"'
 		     _PARSE_DEBUG("verinfo->version='STRING'");}
             ;
 
-encodingdecl : ENC '=' '\"' STRING '\"' {if ($4)free($4);}
-            | ENC '=' '\'' STRING '\'' {if ($4)free($4);}
+encodingdecl : ENC '=' '\"' STRING '\"'
+                 { if (xml_parse_encoding(_XY, $4) <0) YYABORT; if ($4)free($4);
+		     _PARSE_DEBUG("encodingdecl-> encoding = \" STRING \"");}
+            | ENC '=' '\'' STRING '\''
+	         { if (xml_parse_encoding(_XY, $4) <0) YYABORT; if ($4)free($4);
+		     _PARSE_DEBUG("encodingdecl-> encoding = ' STRING '");}
             |
             ;
 

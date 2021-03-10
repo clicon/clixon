@@ -30,6 +30,16 @@
 ## 5.1.0
 Expected: April
 
+### API changes on existing protocol/config features
+
+* NETCONF Hello message semantics has been made stricter according to RFC 6241 Sec 8.1, for example:
+  * A client MUST send a <hello> element.
+  * Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" (or 1.0 for RFC 4741)
+  * The netconf client will terminate (close the socket) if the client does not comply
+  * You can set `CLICON_NETCONF_HELLO_OPTIONAL` to true to use the old behavior of essentially ignoring hellos.
+* New clixon-config@2020-03-08.yang revision
+  * Added: `CLICON_NETCONF_HELLO_OPTIONAL`
+
 ### C/CLI-API changes on existing features
 
 Developers may need to change their code
@@ -42,6 +52,7 @@ Developers may need to change their code
 
 ### Minor features
 
+* The base capability has been changed to "urn:ietf:params:netconf:base:1.1" following RFC6241.
 * Made a separate Clixon datastore XML/JSON top-level symbol
   * Replaces the hardcoded "config" keyword.
   * Implemented by a compile-time option called `DATASTORE_TOP_SYMBOL` option in clixon_custom.h
@@ -50,6 +61,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [CLIXON is not waiting for the hello message #184](https://github.com/clicon/clixon/issues/184)
+  * See also API changes
 * Fixed: [comma in yang list name will lead to cli setting error #186](https://github.com/clicon/clixon/issues/186)
 * Reverted blocked signal behavior introduced in 5.0.
 

@@ -68,6 +68,7 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_yang_module.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_xml_nsctx.h"
 
 /* Undefine if you want to ensure strict namespace assignment on all netconf

@@ -98,7 +98,7 @@ function testrun(){
     fi
     
     new "netconf get config"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$AFTER</data></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$AFTER</data></rpc-reply>]]>]]>$"
 
     if [ $BE -ne 0 ]; then
 	new "Kill backend"

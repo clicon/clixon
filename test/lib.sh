@@ -55,10 +55,6 @@ testname=
 # 
 : ${valgrindtest=0}
 
-# Valgrind log file. This should be removed automatically. Note that mktemp
-# actually creates a file so do not call it by default
-#: ${valgrindfile=$(mktemp)}
-
 # If set to 0, override starting of clixon_backend in test (you bring your own)
 : ${BE:=1}
 
@@ -78,8 +74,12 @@ testname=
 
 # Default netconf namespace statement, typically as placed on top-level <rpc xmlns=""
 DEFAULTONLY='xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"'
+
 # Default netconf namespace + message-id
 DEFAULTNS="$DEFAULTONLY message-id=\"42\""
+
+# Minimal hello message as a prelude to netconf rpcs
+DEFAULTHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>"
 
 # Options passed to curl calls
 # -s : silent
@@ -455,18 +455,30 @@ function expectpart(){
 # - expected command return value (0 if OK) XXX SHOULD SWITCH w next
 # - stdin input
 # - expected stdout outcome
+# - expected stderr outcome (can be null)
 # Use this if you want regex eg  ^foo$
 function expecteof(){
   cmd=$1
   retval=$2
   input=$3
   expect=$4
+  if [ $# -gt 4 ]; then
+      errfile=$(mktemp)
+      expecterr=$5
 # Do while read stuff
-ret=$($cmd<<EOF 
-$input
+      ret=$($cmd 2> $errfile <<EOF 
+$input 
 EOF
-)
+	 )
+      r=$? 
+  else
+# Do while read stuff
+      ret=$($cmd <<EOF 
+$input 
+EOF
+ )
   r=$? 
+  fi
   if [ $r != $retval ]; then
       echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
       echo -e "\e[0m:"
@@ -478,22 +490,33 @@ EOF
 #  fi
   # Match if both are empty string
   if [ -z "$ret" -a -z "$expect" ]; then
-      return
-  fi
-  # -G for basic regexp (eg ^$). -E for extended regular expression - differs in \
-  # --null for nul character, -x for implicit ^$ -q for quiet
-  # -o only matching
-  # Two variants: --null -Eo and -Fxq
-  #  match=`echo "$ret" | grep --null -Fo "$expect"`
-  r=$(echo "$ret" | grep --null -Go "$expect")
-  match=$?
+      : # null
+  else
+      # -G for basic regexp (eg ^$). -E for extended regular expression - differs in \
+	  # --null for nul character, -x for implicit ^$ -q for quiet
+      # -o only matching
+      # Two variants: --null -Eo and -Fxq
+      #  match=`echo "$ret" | grep --null -Fo "$expect"`
+      if [ $# -gt 4 ]; then # stderr
+	  rerr=$(cat $errfile)
+	  rm -f $errfile
+	  r=$(echo "$rerr" | grep --null -Go "$expecterr")
+	  match=$?
+	  if [ $match -ne 0 ]; then
+	      err "$expecterr" "$rerr"
+	  fi
+      fi
+
+      r=$(echo "$ret" | grep --null -Go "$expect")
+      match=$?
 
 #  echo "r:\"$r\""
 #  echo "ret:\"$ret\""
 #  echo "expect:\"$expect\""
 #  echo "match:\"$match\""
-  if [ $match -ne 0 ]; then
-      err "$expect" "$ret"
+      if [ $match -ne 0 ]; then
+	  err "$expect" "$ret"
+      fi
   fi
 }
 

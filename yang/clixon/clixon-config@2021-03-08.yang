@@ -16,7 +16,7 @@ module clixon-config {
       "Clixon configuration file
        ***** BEGIN LICENSE BLOCK *****
        Copyright (C) 2009-2019 Olof Hagsand
-       Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+       Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
        
        This file is part of CLIXON
 
@@ -43,6 +43,28 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2021-03-08 {
+	description
+	    "Added option:
+                   CLICON_NETCONF_HELLO_OPTIONAL";
+    }
+    revision 2020-12-30 {
+	description
+	    "Added option:
+                   CLICON_ANONYMOUS_USER
+             Removed obsolete options:
+	           CLICON_RESTCONF_IPV4_ADDR
+                   CLICON_RESTCONF_IPV6_ADDR
+	           CLICON_RESTCONF_HTTP_PORT
+                   CLICON_RESTCONF_HTTPS_PORT
+	           CLICON_SSL_SERVER_CERT
+                   CLICON_SSL_SERVER_KEY
+	           CLICON_SSL_CA_CERT
+	           CLICON_TRANSACTION_MOD
+             Marked as obsolete and moved to clixon-restconf.yang:
+	           CLICON_RESTCONF_PATH
+                   CLICON_RESTCONF_PRETTY";
+    }
     revision 2020-11-03 {
 	description
 	    "Added CLICON_BACKEND_RESTCONF_PROCESS 
@@ -289,9 +311,11 @@ module clixon-config {
 	    enum IPv4 {
 		description "IPv4";
 	    }
+	    enum IPv6 {
+		description "IPv6";
+	    }
 	}
     }
-
     container clixon-config {
 	container restconf {
 	    uses clrc:clixon-restconf;
@@ -411,11 +435,28 @@ module clixon-config {
 	    type string;
 	    description "Location of netconf (frontend) .so plugins";
 	}
+	leaf CLICON_NETCONF_HELLO_OPTIONAL {
+	    type boolean;
+	    default false;
+	    description
+		"This option relates to RFC 6241 Sec 8.1 Capabilies Exchange where it says:
+                   When the NETCONF session is opened, each peer (both client and server) MUST 
+                   send a <hello> element...
+                 If true, an RPC can be processed directly with no preceeding hello message.
+                 This is legacy clixon but invalid according to the RFC.
+                 If false, NETCONF hello messages are mandatory before any RPC can be processed.
+                 That is, if clixon receives an rpc with no previous hello message, an error
+                 is returned, which conforms to the RFC.
+                 Note this applies only to external NETCONF, not the internal (IPC) netconf";
+	}
 	leaf CLICON_RESTCONF_DIR {
 	    type string;
 	    description
 		"Location of restconf (frontend) .so plugins. Load all .so
-       	         plugins in this dir as restconf code plugins";
+       	         plugins in this dir as restconf code plugins
+                 Note: This cannot be moved to clixon-restconf.yang because it is needed
+                 early in the bootstrapping phase, before clixon-restconf.yang config may
+                 be loaded.";
 	}
 	leaf CLICON_RESTCONF_PATH {
 	    type string;
@@ -423,8 +464,11 @@ module clixon-config {
 	    description
 		"FastCGI unix socket. Should be specified in webserver
          	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
-                 Only if with-restconf=fcgi, NOT evhtp";
+                 Only if with-restconf=fcgi, NOT evhtp
+                 Note: Obsolete, use fcgi-socket in clixon-restconf.yang instead";
+	    status obsolete;
 	}
+
 	leaf CLICON_RESTCONF_PRETTY {
 	    type boolean;
 	    default true;
@@ -436,71 +480,9 @@ module clixon-config {
                  to get return value in XML or JSON. 
                  RFC 8040 examples print XML and JSON in pretty-printed form.
                  Setting this value to false makes restconf return not pretty-printed
-                 which may be desirable for performance or tests";
-	}
-	leaf CLICON_RESTCONF_IPV4_ADDR {
-	    type string;
-	    default "0.0.0.0";
+                 which may be desirable for performance or tests
+                 Note: Obsolete, use pretty in clixon-restconf.yang instead";
 	    status obsolete;
-	    description
-		"RESTCONF IPv4 socket binding address.
-                 Applies to native http by config option --with-restconf=evhtp.
-	         This config is moved to clixon-restconf.yang.";
-	}
-	leaf CLICON_RESTCONF_IPV6_ADDR {
-	    type string;
-	    status obsolete;
-	    description
-		"RESTCONF IPv6 socket binding address.
-                 Applies to native http by config option --with-restconf=evhtp.
-	         This config is moved to clixon-restconf.yang.";
-	}
-	leaf CLICON_RESTCONF_HTTP_PORT {
-	    type uint16;
-	    default 80;
-	    status obsolete;
-	    description
-		"RESTCONF socket binding port, non-ssl
-                 In the restconf daemon, it can be overriden by -P <port>
-                 Applies to native http only by config option --with-restconf=evhtp.
-	         This config is moved to clixon-restconf.yang.";
-	}
-	leaf CLICON_RESTCONF_HTTPS_PORT {
-	    type uint16;
-	    default 443;
-	    status obsolete;
-	    description
-		"RESTCONF socket binding port, ssl
-                 In the restconf daemon, this is the port chosen if -s is given. 
-                 Note it can be overriden by -P <port>
-                 Applies to native http by config option --with-restconf=evhtp.
-	         This config is moved to clixon-restconf.yang.";
-	}
-	leaf CLICON_SSL_SERVER_CERT {
-	    type string;
-	    default "/etc/ssl/certs/clixon-server-crt.pem";
-	    status obsolete;
-	    description
-		"SSL server cert for restconf https. 
-                 Applies to native http only by config option --with-restconf=evhtp.
-                 This config is moved to clixon-restconf.yang.";
-	}
-	leaf CLICON_SSL_SERVER_KEY {
-	    type string;
-	    default "/etc/ssl/private/clixon-server-key.pem";
-	    status obsolete;
-	    description
-		"SSL server private key for restconf https.
-                 Applies to native http only by config option --with-restconf=evhtp.
-                 This config is moved to clixon-restconf.yang.";
-	}
-	leaf CLICON_SSL_CA_CERT {
-	    type string;
-	    default "/etc/ssl/certs/clixon-ca_crt.pem";
-	    status obsolete;
-	    description
-		"SSL CA cert for client authentication.
-                 This config is moved to clixon-restconf.yang.";
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;
@@ -682,8 +664,12 @@ module clixon-config {
 	    type string;
 	    mandatory true;
 	    description
-		"If family above is AF_UNIX: Unix socket for communicating 
-       	         with clixon_backend. If family is AF_INET: IPv4 address";
+		"String description of Clixon Internal (IPC) socket that connects a clixon
+                 client to the clixon backend. This string is dependent on family.
+                 If CLICON_SOCK_FAMILY is:
+                 - UNIX: The value is a Unix socket path
+                 - IPv4: IPv4 address string
+                 - IPv6: IPv6 address string (NYI)";
 	}
 	leaf CLICON_SOCK_PORT {
 	    type int32;
@@ -728,7 +714,14 @@ module clixon-config {
 	    type boolean;
 	    default false;
 	    description
-		"If set, enable process-control of restconf daemon, ie start/stop restconf daemon internally using fork/exec. 
+		"If set, enable process-control of restconf daemon, ie start/stop restconf 
+                 daemon internally from backend daemon.
+                 It uses clixon-restconf.yang for config and clixon-lib.yang for RPC
+                 Process control of restconf daemon is as follows:
+                 - on RPC start, if enable is true, start the service, if false, error or ignore it
+                 - on RPC stop, stop the service 
+                 - on backend start make the state as configured
+                 - on enable change, make the state as configured
                  Disable if you start the restconf daemon by other means.";
 	}
 	leaf CLICON_AUTOCOMMIT {
@@ -815,13 +808,13 @@ module clixon-config {
 	    type startup_mode;
 	    description "Which method to boot/start clicon backend";
 	}
-	leaf CLICON_TRANSACTION_MOD {
-	    type boolean;
-	    default false;
-	    description "If set, modifications in validation and commit 
-                         callbacks are written back into the datastore.
-                         This is a bad idea and therefore obsoleted.";
-	    status obsolete;
+        leaf CLICON_ANONYMOUS_USER {
+	    type string;
+	    default "anonymous";
+	    description
+		"Name of anonymous user.
+                 The current only case where such a user is used is in RESTCONF authentication when
+                 auth-type=none and no known user is known.";
 	}
 	leaf CLICON_NACM_MODE {
 	    type nacm_mode;

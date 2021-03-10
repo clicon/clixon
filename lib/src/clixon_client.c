@@ -195,6 +195,40 @@ clixon_client_lock(int         sock,
     return retval;
 }
 
+/*! Internal function to construct the encoding and hello message
+ *
+ * @param[in]  sock      Socket
+ * @param[in]  namespace Default namespace used for non-prefixed entries in xpath. (Alt use nsc)
+ * @param[in]  xpath     XPath
+ * @param[out] xdata     XML data tree (may or may not include the intended data)
+ * @retval     0         OK
+ * @retval     -1        Error
+ */
+static int
+clixon_client_hello(int sock)
+{
+    int   retval = -1;
+    cbuf *msg = NULL;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    if ((msg = cbuf_new()) == NULL){
+	clicon_err(OE_PLUGIN, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(msg, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+    cprintf(msg, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
+    cprintf(msg, "<capabilities><capability>%s</capability></capabilities>", NETCONF_BASE_CAPABILITY_1_1);
+    cprintf(msg, "</hello>");
+    if (clicon_msg_send1(sock, msg) < 0)
+	goto done;
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (msg)
+	cbuf_free(msg);
+    return retval;
+}
+
 /*! Connect client to clixon backend according to config and return a socket
  * @param[in]  h        Clixon handle
  * @param[in]  socktype Type of socket, internal/external/netconf/ssh
@@ -260,6 +294,9 @@ clixon_client_connect(clicon_handle      h,
 	if (clixon_proc_socket(argv, &cch->cch_pid, &cch->cch_socket) < 0){
 	    goto err;
 	}
+	/* Start with encoding and hello message */
+	if (clixon_client_hello(cch->cch_socket) < 0)
+	    goto err;
 	break;
     case CLIXON_CLIENT_SSH:
 	break;
@@ -348,6 +385,7 @@ clixon_xml_bottom(cxobj  *xtop,
     // done:
     return retval;
 }
+
 
 /*! Internal function to construct a get-config and query a value from the backend
  *

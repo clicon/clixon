@@ -88,13 +88,13 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "1. Set newex"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Set oldex should fail (since oldex is in old revision and only the new is loaded)"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>oldex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: oldex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>oldex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: oldex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "Set other should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: other with parent: config in namespace: urn:example:clixon2</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: other with parent: config in namespace: urn:example:clixon2</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -136,13 +136,13 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "Set oldex"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Set newex should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>newex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: newex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>newex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: newex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "Set other should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: other with parent: config in namespace: urn:example:clixon2</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: other with parent: config in namespace: urn:example:clixon2</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -180,13 +180,13 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "Set newex"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Set oldex should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>oldex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: oldex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>oldex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: oldex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "Set other should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: other with parent: config in namespace: urn:example:clixon2</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: other with parent: config in namespace: urn:example:clixon2</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -224,13 +224,13 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "Set oldex"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Set newex should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>newex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: newex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>newex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: newex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "Set other should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: other with parent: config in namespace: urn:example:clixon2</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: other with parent: config in namespace: urn:example:clixon2</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -268,13 +268,13 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "Set newex"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Set oldex should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>oldex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: oldex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>oldex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: oldex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "Set other"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -313,13 +313,13 @@ if [ $BE -ne 0 ]; then
     wait_backend
 fi
 new "Set oldex"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Set newex should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>newex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: newex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>newex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: newex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>"
 
 new "Set other"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>"  "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>"  "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -359,13 +359,13 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "Set oldex"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Set newex should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>newex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: newex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>newex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: newex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "Set other"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>"  "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>"  "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -405,13 +405,13 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "Set oldex"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><oldex xmlns=\"urn:example:clixon\">str</oldex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Set newex should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>newex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: newex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><newex xmlns=\"urn:example:clixon\">str</newex></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>newex</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: newex with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "Set other should fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: other with parent: config in namespace: urn:example:clixon2</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><other xmlns=\"urn:example:clixon2\">str</other></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>other</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: other with parent: config in namespace: urn:example:clixon2</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

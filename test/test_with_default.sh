@@ -96,10 +96,10 @@ TRIM='<c xmlns="urn:example:default"><x><k>default</k></x><x><k>notset</k></x><x
 EXPLICIT='<c xmlns="urn:example:default"><x><k>default</k><y>42</y></x><x><k>notset</k><y>42</y></x><x><k>other</k><y>99</y></x></c>'
 
 new "Set defaults"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Check config (Clixon supports explicit)"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$EXPLICIT</data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$EXPLICIT</data></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

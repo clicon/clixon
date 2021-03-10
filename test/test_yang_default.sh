@@ -108,7 +108,7 @@ function testrun(){
     fi
 
     new "check running defaults"
-    expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>0</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>0</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>]]>]]>$"
 
     if [ $BE -ne 0 ]; then     # Bring your own backend
 	new "Kill backend"

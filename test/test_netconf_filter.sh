@@ -60,25 +60,25 @@ new "waiting"
 wait_backend
 
 new "Add two entries"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y><y><a>2</a><b>2</b></y></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y><y><a>2</a><b>2</b></y></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "netconf commit"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "wrong filter type"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get><filter type='foo'><x xmlns='urn:example:filter'><y><a>1</a></y></x></filter></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-tag>operation-failed</error-tag><error-type>applicatio</error-type><error-severity>error</error-severity><error-message>filter type not supported</error-message><error-info>type</error-info></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type='foo'><x xmlns='urn:example:filter'><y><a>1</a></y></x></filter></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-tag>operation-failed</error-tag><error-type>applicatio</error-type><error-severity>error</error-severity><error-message>filter type not supported</error-message><error-info>type</error-info></rpc-error></rpc-reply>]]>]]>$"
 
 new "get-config subtree one"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><running/></source><filter type='subtree'><x xmlns='urn:example:filter'><y><a>1</a></y></x></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type='subtree'><x xmlns='urn:example:filter'><y><a>1</a></y></x></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
 
 new "get subtree one"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get><filter type='subtree'><x xmlns='urn:example:filter'><y><a>1</a></y></x></filter></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type='subtree'><x xmlns='urn:example:filter'><y><a>1</a></y></x></filter></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
 
 new "get-config xpath one"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get><filter type='xpath' select=\"/fi:x/fi:y[fi:a='1']\" xmlns:fi='urn:example:filter' /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type='xpath' select=\"/fi:x/fi:y[fi:a='1']\" xmlns:fi='urn:example:filter' /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
 
 new "get xpath one"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get><filter type='xpath' select=\"/fi:x/fi:y[fi:a='1']\" xmlns:fi='urn:example:filter' /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type='xpath' select=\"/fi:x/fi:y[fi:a='1']\" xmlns:fi='urn:example:filter' /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

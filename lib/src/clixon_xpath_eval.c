@@ -182,19 +182,22 @@ nodetest_eval_node_localonly(cxobj      *x,
 			     xpath_tree *xs,
 			     cvec       *nsc)
 {
-    int  retval = -1;
+    int   retval = -1;
     char *name1 = xml_name(x);
     char *name2 = NULL;
 
     /* Namespaces is s0, name is s1 */
-    if (strcmp(xs->xs_s1, "*")==0)
-	return 1;
-    name2 = xs->xs_s1;
-    /* Before going into namespaces, check name equality and filter out noteq  */
-    if (strcmp(name1, name2) != 0){
-	retval = 0; /* no match */
+    if (strcmp(xs->xs_s1, "*")==0){
+	retval = 1;
 	goto done;
     }
+    name2 = xs->xs_s1;
+    /* Before going into namespaces, check name equality and filter out noteq  */
+    if (strcmp(name1, name2) == 0){
+	retval = 1;
+	goto done;
+    }
+    retval = 0; /* no match */
  done:	/* retval set in preceding statement */
     return retval;
 }

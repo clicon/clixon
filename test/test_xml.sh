@@ -116,19 +116,22 @@ new "XMLdecl version, single quotes"
 expecteof "$clixon_util_xml -o" 0 "<?xml version='1.0'?><a/>" '<a/>'
 
 new "XMLdecl version no element"
-expecteof "$clixon_util_xml -o" 255 '<?xml version="1.0"?>' ''
+expecteof "$clixon_util_xml -o" 255 '<?xml version="1.0"?>' '' 2> /dev/null
 
 new "XMLdecl no version"
-expecteof "$clixon_util_xml -o" 255 '<?xml ?><a/>' ''
+expecteof "$clixon_util_xml -o" 255 '<?xml ?><a/>' '' 2> /dev/null
 
 new "XMLdecl misspelled version"
-expecteof "$clixon_util_xml -ol o" 255 '<?xml verion="1.0"?><a/>' ''
+expecteof "$clixon_util_xml -ol o" 255 '<?xml verion="1.0"?><a/>' '' 2> /dev/null
 
 new "XMLdecl version + encoding"
-expecteof "$clixon_util_xml -o" 0 '<?xml version="1.0" encoding="UTF-16"?><a/>' '<a/>'
+expecteof "$clixon_util_xml -o" 0 '<?xml version="1.0" encoding="UTF-8"?><a/>' '<a/>'
+
+new "XMLdecl version + wrong encoding"
+expecteof "$clixon_util_xml -o" 255 '<?xml version="1.0" encoding="UTF-16"?><a/>' '' 2> /dev/null
 
 new "XMLdecl version + misspelled encoding"
-expecteof "$clixon_util_xml -ol o" 255 '<?xml version="1.0" encding="UTF-16"?><a/>' 'syntax error: at or before: e'
+expecteof "$clixon_util_xml -ol o" 255 '<?xml version="1.0" encding="UTF-16"?><a/>' 'syntax error: at or before: e' 2> /dev/null
 
 new "XMLdecl version + standalone"
 expecteof "$clixon_util_xml -o" 0 '<?xml version="1.0" standalone="yes"?><a/>' '<a/>'
