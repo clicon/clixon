@@ -353,7 +353,7 @@ yang2cli_var_pattern(clicon_handle h,
 }
 
 /* Forward */
-static int yang2cli_stmt(clicon_handle h, yang_stmt *ys, enum genmodel_type gt,
+static int yang2cli_stmt(clicon_handle h, yang_stmt *ys, genmodel_type gt,
 			 int level, int state, int show_tree,
 			 cbuf *cb);
 
@@ -652,7 +652,7 @@ yang2cli_var(clicon_handle h,
 static int
 yang2cli_leaf(clicon_handle h, 
 	      yang_stmt    *ys, 
-	      enum genmodel_type gt,
+	      genmodel_type gt,
 	      int           level,
 	      int           callback,
 	      int	    show_tree,
@@ -729,7 +729,7 @@ yang2cli_leaf(clicon_handle h,
 static int
 yang2cli_container(clicon_handle h, 
 		   yang_stmt    *ys, 
-		   enum genmodel_type gt,
+		   genmodel_type gt,
 		   int           level,
 		   int           state,
 		   int 	         show_tree,
@@ -785,13 +785,13 @@ yang2cli_container(clicon_handle h,
  * @param[out] cb    Buffer where cligen code is written
  */
 static int
-yang2cli_list(clicon_handle      h, 
-	      yang_stmt         *ys, 
-	      enum genmodel_type gt,
-	      int                level,
-	      int                state,
-	      int 		 show_tree,
-	      cbuf              *cb)
+yang2cli_list(clicon_handle h,
+	      yang_stmt    *ys, 
+	      genmodel_type gt,
+	      int           level,
+	      int           state,
+	      int 	    show_tree,
+	      cbuf         *cb)
 {
     yang_stmt    *yc;
     yang_stmt    *yd;
@@ -903,7 +903,7 @@ yang2cli_list(clicon_handle      h,
 static int
 yang2cli_choice(clicon_handle h, 
 		yang_stmt    *ys, 
-		enum genmodel_type gt,
+		genmodel_type gt,
 		int           level,
 		int           state,
 		int 	      show_tree,
@@ -946,7 +946,7 @@ yang2cli_choice(clicon_handle h,
 static int
 yang2cli_stmt(clicon_handle h, 
 	      yang_stmt    *ys, 
-	      enum genmodel_type gt,
+	      genmodel_type gt,
 	      int           level, 
 	      int           state,
 	      int 	    show_tree,
@@ -1009,11 +1009,11 @@ yang2cli(clicon_handle      h,
 	 int 		    show_tree,
 	 parse_tree        *pt)
 {
-    int                retval = -1;
-    cbuf              *cb = NULL;
-    yang_stmt         *yc;
-    cvec              *globals;       /* global variables from syntax */
-    enum genmodel_type gt;
+    int           retval = -1;
+    cbuf         *cb = NULL;
+    yang_stmt    *yc;
+    cvec         *globals;       /* global variables from syntax */
+    genmodel_type gt;
 
     if (pt == NULL){
 	clicon_err(OE_YANG, EINVAL, "pt is NULL");

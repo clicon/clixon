@@ -56,7 +56,6 @@ struct client_entry{
     clicon_handle         ce_handle;  /* clicon config handle (all clients have same?) */
 };
 
-
 /*
  * Prototypes
  */ 

@@ -141,7 +141,7 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "netconf event stream discovery RFC8040 Sec 6.2"
-expecteof "$clixon_netconf -D $DBG -qf $cfg" 0 "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"r:restconf-state/r:streams\" xmlns:r=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\"/></get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><restconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\"><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>true</replay-support><access><encoding>xml</encoding><location>https://localhost/streams/EXAMPLE</location></access></stream></streams></restconf-state></data></rpc-reply>]]>]]>"
+expecteof "$clixon_netconf -D $DBG -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"r:restconf-state/r:streams\" xmlns:r=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\"/></get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><restconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\"><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>true</replay-support><access><encoding>xml</encoding><location>https://localhost/streams/EXAMPLE</location></access></stream></streams></restconf-state></data></rpc-reply>]]>]]>"
 
 #
 # 1.2 Netconf stream subscription

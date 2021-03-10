@@ -78,6 +78,7 @@ enum genmodel_type{
     GT_ALL,     /* Keywords on all variables */
     GT_HIDE,    /* Keywords on all variables and hide container around lists */
 };
+typedef enum genmodel_type genmodel_type;
 
 /*! See clixon-config.yang type startup_mode */
 enum startup_mode_t{
