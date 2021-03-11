@@ -67,9 +67,9 @@
 /* clicon */
 #include "clixon_err.h"
 #include "clixon_queue.h"
-#include "clixon_event.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_event.h"
 #include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_sig.h"

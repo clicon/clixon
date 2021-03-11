@@ -463,7 +463,7 @@ api_stream(clicon_handle h,
 	    /* Poll upstream errors */
 	    stream_timeout(0, req);
 	    /* Start loop */
-	    clixon_event_loop();
+	    clixon_event_loop(h);
 	    close(s);
 	    clixon_event_unreg_fd(s, restconf_stream_cb);
 	    clixon_event_unreg_fd(rfcgi->listen_sock,

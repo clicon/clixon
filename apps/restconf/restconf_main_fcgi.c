@@ -63,7 +63,6 @@
 #include <pwd.h>
 #include <time.h>
 #include <limits.h>
-#include <signal.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <libgen.h>
@@ -146,9 +145,13 @@ restconf_sig_term(int arg)
 	restconf_terminate(_CLICON_HANDLE);
     }
     clicon_exit_set(); /* checked in clixon_event_loop() */
+    clicon_debug(1, "%s done", __FUNCTION__);
     exit(-1);
 }
 
+/*! Reap stream child
+ * XXX The -1 should be changed to proper pid, see eg clixon_process_waitpid
+ */
 static void
 restconf_sig_child(int arg)
 {

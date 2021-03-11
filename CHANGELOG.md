@@ -53,6 +53,8 @@ Developers may need to change their code
 
 ### Minor features
 
+* Changed signal handling
+  * Moved clixon-proc sigchild handling	from handler to clixon_events
 * The base capability has been changed to "urn:ietf:params:netconf:base:1.1" following RFC6241.
 * Made a separate Clixon datastore XML/JSON top-level symbol
   * Replaces the hardcoded "config" keyword.

@@ -54,8 +54,11 @@
 
 #include "clixon_queue.h"
 #include "clixon_log.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
 #include "clixon_err.h"
 #include "clixon_sig.h"
+#include "clixon_proc.h"
 #include "clixon_event.h"
 
 /*
@@ -89,6 +92,9 @@ static int _ee_unreg = 0;
 /* If set (eg by signal handler) exit select loop on next run and return 0 */
 static int _clicon_exit = 0;
 
+/* If set (eg by signal handler) call waitpid on waiting processes, ignore EINTR, continue select loop */
+static int _clicon_sig_child = 0;
+
 /* If set (eg by signal handler) ignore EINTR and continue select loop */
 static int _clicon_sig_ignore = 0;
 
@@ -119,6 +125,19 @@ int
 clicon_exit_get(void)
 {
     return _clicon_exit;
+}
+
+int
+clicon_sig_child_set(int val)
+{
+    _clicon_sig_child = val;
+    return 0;
+}
+
+int
+clicon_sig_child_get(void)
+{
+    return _clicon_sig_child;
 }
 
 int
@@ -308,7 +327,7 @@ clixon_event_poll(int fd)
  * @retval -1  Error: eg select, callback, timer, 
  */
 int
-clixon_event_loop(void)
+clixon_event_loop(clicon_handle h)
 {
     struct event_data *e;
     struct event_data *e_next;
@@ -321,6 +340,12 @@ clixon_event_loop(void)
 
     while (!clicon_exit_get()){
 	FD_ZERO(&fdset);
+	if (clicon_sig_child_get()){
+	    /* Go through processes and wait for child processes */
+	    if (clixon_process_waitpid(h) < 0)
+		goto err;
+	    clicon_sig_child_set(0);
+	}
 	for (e=ee; e; e=e->e_next)
 	    if (e->e_type == EVENT_FD)
 		FD_SET(e->e_fd, &fdset);
@@ -333,7 +358,7 @@ clixon_event_loop(void)
 		n = select(FD_SETSIZE, &fdset, NULL, NULL, &t); 
 	}
 	else
-	    n = select(FD_SETSIZE, &fdset, NULL, NULL, NULL); 
+	    n = select(FD_SETSIZE, &fdset, NULL, NULL, NULL);
 	if (clicon_exit_get())
 	    break;
 	if (n == -1) {
@@ -342,7 +367,9 @@ clixon_event_loop(void)
 		 * (1) Signals that exit gracefully, the function returns 0
 		 *     Must be registered such as by set_signal() of SIGTERM,SIGINT, etc with a handler that calls
 		 *     clicon_exit_set().
-		 * (2) Signals that are ignored, and the select is rerun, eg SIGCHLD if handler calls clicon_sig_ignore()
+		 * (2) SIGCHILD Childs that exit(), go through clixon_proc list and cal waitpid
+		 *     New select loop is called
+		 * (2) Signals are ignored, and the select is rerun, ie handler calls clicon_sig_ignore_get
 		 *     New select loop is called
 		 * (3) Other signals result in an error and return -1.
 		 */
@@ -350,6 +377,13 @@ clixon_event_loop(void)
 		if (clicon_exit_get()){
 		    clicon_err(OE_EVENTS, errno, "select");
 		    retval = 0;
+		}
+		else if (clicon_sig_child_get()){
+		    /* Go through processes and wait for child processes */
+		    if (clixon_process_waitpid(h) < 0)
+			goto err;
+		    clicon_sig_child_set(0);
+		    continue;
 		}
 		else if (clicon_sig_ignore_get()){
 		    clicon_sig_ignore_set(0);

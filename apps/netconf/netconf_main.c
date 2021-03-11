@@ -873,7 +873,7 @@ main(int    argc,
 	if (clixon_event_reg_timeout(t, timeout_fn, NULL, "timeout") < 0)
 	    goto done;
     }
-    if (clixon_event_loop() < 0)
+    if (clixon_event_loop(h) < 0)
 	goto done;
     retval = 0;
   done:

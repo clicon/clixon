@@ -7,6 +7,7 @@
 # - on enable change, make the state as configured
 # - No restconf config means enable: false (extra rule)
 # See test_restconf_netns for network namespaces
+# XXX Lots of sleeps to remove race conditions. I am sure there are others way to fix this
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -62,6 +63,7 @@ function testrpc()
     operation=$1
     expectret=$2
     
+    sleep $DEMSLEEP
     new "send rpc $operation"
     ret=$($clixon_netconf -qf $cfg<<EOF
 $DEFAULTHELLO
@@ -106,7 +108,7 @@ EOF
 	    fi
 	fi
     fi
-
+    sleep $DEMSLEEP
     echo "$pid" # cant use return that only uses 0-255
 }
 
@@ -165,7 +167,7 @@ wait_restconf
 new "try restconf rpc status"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}')" 0 "HTTP/1.1 200 OK" '{"clixon-lib:output":{"pid":'
 
-new "1.1. Get status"
+new "2. Get status"
 pid1=$(testrpc status 1)
 if [ $? -ne 0 ]; then echo "$pid1";exit -1; fi
 
@@ -177,7 +179,7 @@ fi
 new "try restconf rpc restart"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"restart"}}')" 0 "HTTP/1.1 200 OK" '{"clixon-lib:output":{"pid":'
 
-new "1.1. Get status"
+new "3. Get status"
 pid1=$(testrpc status 1)
 if [ $? -ne 0 ]; then echo "$pid1";exit -1; fi
 
@@ -186,19 +188,19 @@ if [ "$pid0" -eq "$pid1" ]; then
     err "not $pid0"
 fi
 
-new "2. stop restconf RPC"
+new "4. stop restconf RPC"
 testrpc stop 0
 if [ $? -ne 0 ]; then exit -1; fi
 
-new "3. Get rpc status stopped"
+new "5. Get rpc status stopped"
 pid=$(testrpc status 0)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
-new "4. Start rpc again"
+new "6. Start rpc again"
 testrpc start 0
 if [ $? -ne 0 ]; then exit -1; fi
 
-new "4.1. Get rpc status"
+new "7. Get rpc status"
 pid3=$(testrpc status 1)
 if [ $? -ne 0 ]; then echo "$pid3";exit -1; fi
 
@@ -215,19 +217,19 @@ fi
 new "kill restconf"
 stop_restconf_pre
 
-new "5. start restconf RPC"
+new "8. start restconf RPC"
 testrpc start 0
 if [ $? -ne 0 ]; then exit -1; fi
 
-new "6. check status RPC on"
+new "9. check status RPC on"
 pid5=$(testrpc status 1) # Save pid5
 if [ $? -ne 0 ]; then echo "$pid5";exit -1; fi
 
-new "7. restart restconf RPC"
+new "10. restart restconf RPC"
 testrpc restart 0
 if [ $? -ne 0 ]; then exit -1; fi
 
-new "8. Get restconf status rpc"
+new "11. Get restconf status rpc"
 pid7=$(testrpc status 1) # Save pid7
 if [ $? -ne 0 ]; then echo "$pid7";exit -1; fi
 
@@ -264,7 +266,7 @@ if [ $BE -ne 0 ]; then
     wait_backend
 fi
 
-new "9. Get restconf (running) after restart"
+new "12. Get restconf (running) after restart"
 pid=$(testrpc status 1)
 if [ $? -ne 0 ]; then echo "$pid"; exit -1; fi
 
@@ -309,15 +311,15 @@ if [ $BE -ne 0 ]; then
     wait_backend
 fi
 
-new "10. check status RPC off"
+new "13. check status RPC off"
 pid=$(testrpc status 0)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
-new "11. start restconf RPC"
+new "14. start restconf RPC"
 testrpc start 0
 if [ $? -ne 0 ]; then exit -1; fi
 
-new "12. check status RPC off"
+new "15. check status RPC off"
 pid=$(testrpc status 0)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
@@ -327,7 +329,9 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-confi
 new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-new "13. check status RPC on"
+sleep $DEMSLEEP
+
+new "16. check status RPC on"
 pid=$(testrpc status 1)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 
@@ -343,9 +347,9 @@ if [ $pid -eq $pid1 ]; then
     err "A different pid" "Same pid: $pid"
 fi
 
-new "Edit a non-restconf field via restconf"
-echo "curl $CURLOPTS -X POST -H \"Content-Type: application/yang-data+json\" $RCPROTO://localhost/restconf/data -d '{\"example:val\":\"xyz\"}'"
+sleep $DEMSLEEP
 
+new "Edit a non-restconf field via restconf"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"example:val":"xyz"}' )" 0 "HTTP/1.1 201 Created"
 
 new "check status RPC same pid"
@@ -361,7 +365,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-confi
 new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-new "14. check status RPC off"
+new "17. check status RPC off"
 pid=$(testrpc status 0)
 if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
 

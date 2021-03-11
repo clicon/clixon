@@ -160,17 +160,6 @@ restconf_sig_term(int arg)
     exit(-1);
 }
 
-static void
-restconf_sig_child(int arg)
-{
-    int status;
-    int pid;
-
-    if ((pid = waitpid(-1, &status, 0)) != -1 && WIFEXITED(status)){
-    }
-    clicon_sig_ignore_set(1);
-}
-
 static char*
 evhtp_method2str(enum htp_method m)
 {
@@ -1286,11 +1275,6 @@ main(int    argc,
 	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
     }
-    if (set_signal(SIGCHLD, restconf_sig_child, NULL) < 0){
-	clicon_err(OE_DAEMON, errno, "Setting signal");
-	goto done;
-    }
-    
     /* Find and read configfile */
     if (clicon_options_main(h) < 0)
 	goto done;

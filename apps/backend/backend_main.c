@@ -166,13 +166,8 @@ backend_sig_term(int arg)
 static void
 backend_sig_child(int arg)
 {
-    int status;
-    int pid;
-
     clicon_debug(1, "%s", __FUNCTION__);
-    if ((pid = waitpid(-1, &status, 0)) != -1 && WIFEXITED(status)){
-    }
-    clicon_sig_ignore_set(1);
+    clicon_sig_child_set(1);
 }
 
 /*! Create backend server socket and register callback
@@ -1038,7 +1033,7 @@ main(int    argc,
 	goto done;
     if (stream_timer_setup(0, h) < 0)
 	goto done;
-    if (clixon_event_loop() < 0)
+    if (clixon_event_loop(h) < 0)
 	goto done;
  ok:
     retval = 0;
