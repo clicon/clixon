@@ -261,6 +261,14 @@ startup_common(clicon_handle       h,
 	    goto done;
 	goto fail; 
     }
+    /* After upgrade check no state data */
+    if ((ret = xml_non_config_data(xt, &xret)) < 0)
+	goto done;
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+	    goto done;
+	goto fail; 
+    }
     /* Sort xml */
     if (xml_sort_recurse(xt) < 0)
 	goto done;

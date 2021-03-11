@@ -6,7 +6,7 @@
 # - An extra xml configuration file starts with an "extra" interface
 # - running db starts with a "run" interface
 # - startup db starts with a "start" interface
-# There is also an "invalid" XML and a "broken" XML
+# There is also an "invalid" XML and a "broken" XML and a "state" XML
 # There are two steps, first run through everything OK
 # Then try with invalid and broken XML and ensure the backend quits and all is untouched
 
@@ -56,6 +56,9 @@ invalidvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><int
 
 # Broken XML (contains </nmae>)
 brokenvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>broken</nmae><type>ex:eth</type><enabled>true</enabled></interface></interfaces>'
+
+# Startup XML with state
+statevar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>startup</name><oper-status>up</oper-status><type>ex:eth</type><enabled>true</enabled></interface></interfaces>'
 
 # Create a pre-set running, startup and (extra) config.
 # The configs are identified by an interface called run, startup, extra.
@@ -184,6 +187,9 @@ if [ $valgrindtest -ne 2 ]; then
 
     new "Run broken startup in startup mode"
     testfail startup "$runvar" "$brokenvar" "$extravar"
+
+    new "Run broken startup with state data in startup mode"
+    testfail startup "$runvar" "$statevar" "$extravar"
 fi
 
 rm -rf $dir

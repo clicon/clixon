@@ -2,6 +2,7 @@
 
 * [5.1.0](#510) Expected: April
 * [5.0.0](#500) 27 February 2021
+  * [5.0.1](#501) 10 March 2021
 * [4.9.0](#490) 18 December 2020
 * [4.8.0](#480) 18 October 2020
 * [4.7.0](#470) 14 September 2020
@@ -61,9 +62,23 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [The config false leaf shouldn't be configed in startup stage #189](https://github.com/clicon/clixon/issues/189)
 * Fixed: [CLIXON is not waiting for the hello message #184](https://github.com/clicon/clixon/issues/184)
   * See also API changes
 * Fixed: [comma in yang list name will lead to cli setting error #186](https://github.com/clicon/clixon/issues/186)
+* Reverted blocked signal behavior introduced in 5.0.
+
+## 5.0.1
+
+10 March 2021
+
+### Minor features
+
+* Introduced a delay before making process start/stop/restart processes for race conditions when configuring eg restconf
+* For restconf `CLICON_BACKEND_RESTCONF_PROCESS`, restart restconf if restconf is edited.
+
+### Corrected Bugs
+
 * Reverted blocked signal behavior introduced in 5.0.
 
 ## 5.0.0
@@ -76,6 +91,10 @@ configuration has been made which is the primary reason for a new major version.
 Other changes since 4.9 include NETCONF call home, a new client API, and a modified lock behavior.
 
 Thanks Netgate and input from the Clixon community for making this possible!
+
+### Known Issues
+
+* Changed behavior in signal handlers and some race conditions, use 5.0.1 instead
 
 ### New features
 

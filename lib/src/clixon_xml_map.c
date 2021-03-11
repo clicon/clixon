@@ -1478,9 +1478,8 @@ xml_non_config_data(cxobj  *xt,
 		    clicon_err(OE_UNIX, errno, "cbuf_new");
 		    goto done;
 		}
-		cprintf(cb, "%s in module %s: state data node unexpected",
-			yang_argument_get(y), yang_argument_get(ys_module(y)));
-		if (netconf_invalid_value_xml(xerr, "application", cbuf_get(cb)) < 0)
+		cprintf(cb, "module %s: state data node unexpected", yang_argument_get(ys_module(y)));
+		if (netconf_bad_element_xml(xerr, "application", yang_argument_get(y), cbuf_get(cb)) < 0)
 		    goto done;
 		retval = 0;
 		goto done;
