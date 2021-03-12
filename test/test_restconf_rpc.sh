@@ -141,8 +141,8 @@ if [ $BE -ne 0 ]; then
 fi
 
 # For debug
-#>&2 echo "curl $CURLOPTS -X POST -H \"Content-Type: application/yang-data+json\" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{\"clixon-lib:input\":{\"name\":\"restconf\",\"operation\":\"status\"}}'"
-
+>&2 echo "curl $CURLOPTS -X POST -H \"Content-Type: application/yang-data+json\" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{\"clixon-lib:input\":{\"name\":\"restconf\",\"operation\":\"status\"}}'"
+exit
 # Get pid of running process and check return xml
 new "1. Get rpc status"
 pid0=$(testrpc status 1) # Save pid0

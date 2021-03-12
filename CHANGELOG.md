@@ -38,6 +38,8 @@ Expected: April
   * Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" (or 1.0 for RFC 4741)
   * The netconf client will terminate (close the socket) if the client does not comply
   * You can set `CLICON_NETCONF_HELLO_OPTIONAL` to true to use the old behavior of essentially ignoring hellos.
+* New clixon-lib@2020-03-08.yang revision
+  * Changed: RPC process-control output to choice dependent on operation
 * New clixon-config@2020-03-08.yang revision
   * Added: `CLICON_NETCONF_HELLO_OPTIONAL`
 

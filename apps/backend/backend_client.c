@@ -1596,8 +1596,14 @@ from_client_process_control(clicon_handle  h,
     /* Make the actual process operation (with wrap function enabled) */
     if (clixon_process_operation(h, name, op, 1, &pid) < 0)
 	goto done;
-    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><pid xmlns=\"%s\">%u</pid></rpc-reply>",
-	    NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS, pid);
+    if (op == PROC_OP_STATUS)
+	cprintf(cbret, "<rpc-reply xmlns=\"%s\"><status xmlns=\"%s\">%s</status><pid xmlns=\"%s\">%u</pid></rpc-reply>",
+		NETCONF_BASE_NAMESPACE,
+		CLIXON_LIB_NS, pid?"true":"false",
+		CLIXON_LIB_NS, pid);
+    else
+	cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok xmlns=\"%s\"/></rpc-reply>",
+		NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS);
     retval = 0;
  done:
     return retval;

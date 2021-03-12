@@ -494,10 +494,14 @@ proc_op_run(pid_t pid0,
  * @param[in]  name    Name of process
  * @param[in]  op      start, stop, restart, status
  * @param[in]  wrapit  If set, call potential callback, if false, dont call it
- * @param[out] status  true if process is running / false if not running on entry
+ * @param[out] pid     >0 process# and is running / 0: not running 
  * @retval -1  Error
  * @retval  0  OK
  * @see upgrade_callback_reg_fn  which registers the callbacks
+ * @note operations are not made directly but postponed by a scheduling the actions.
+ *       This is not really necessary for all operations (like start) but made for all
+ *       for reducing complexity of code.
+ * @see clixon_process_sched where operations are actually executed
  */
 int
 clixon_process_operation(clicon_handle  h,
@@ -516,19 +520,26 @@ clixon_process_operation(clicon_handle  h,
     pe = _proc_entry_list;
     do {
 	if (strcmp(pe->pe_name, name) == 0){
-	    /* Call wrapper function that eg changes op based on config */
-	    if (wrapit && pe->pe_callback != NULL)
-		if (pe->pe_callback(h, pe, &op) < 0)
-		    goto done;
-	    clicon_debug(1, "%s name: %s pid:%d op: %s", __FUNCTION__,
-			 name, pe->pe_pid, clicon_int2str(proc_operation_map, op));
-	    if (op == PROC_OP_START || op == PROC_OP_STOP || op == PROC_OP_RESTART){
-		pe->pe_op = op;
-		clicon_debug(1, "%s scheduling %s pid:%d", __FUNCTION__, name, pe->pe_pid);
-		sched++;
+	    if (op == PROC_OP_STATUS){
+		if (pe->pe_clone)
+		    continue; /* this may be a dying duplicate */
+		if (pid)
+		    *pid = pe->pe_pid;
 	    }
-	    if (pid)
-		*pid = pe->pe_pid;
+	    else {
+		/* Call wrapper function that eg changes op based on config */
+		if (wrapit && pe->pe_callback != NULL)
+		    if (pe->pe_callback(h, pe, &op) < 0)
+			goto done;
+		clicon_debug(1, "%s name: %s pid:%d op: %s", __FUNCTION__,
+			     name, pe->pe_pid, clicon_int2str(proc_operation_map, op));
+		if (op == PROC_OP_START || op == PROC_OP_STOP || op == PROC_OP_RESTART){
+		    pe->pe_op = op;
+		    clicon_debug(1, "%s scheduling %s pid:%d", __FUNCTION__, name, pe->pe_pid);
+		    sched++;
+		}
+
+	    }
 	    break; 	    /* hit break here */
 	}
 	pe = NEXTQ(process_entry_t *, pe);
@@ -587,6 +598,7 @@ clixon_process_start_all(clicon_handle h)
  * (2) edit changes or rpc restart especially of restconf where you may saw of your arm and terminate
  *     return socket.
  * A special complexity is restarting processes, where the old is killed, but state must be kept until it is reaped
+ * @see clixon_process_waitpid where killed/restarted processes are "reaped"
  */
 static int
 clixon_process_sched(int           fd,

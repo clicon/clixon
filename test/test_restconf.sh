@@ -25,7 +25,8 @@ cfg=$dir/conf.xml
 # clixon-example and clixon-restconf is used in the test, need local copy
 # This is a kludge: look in src otherwise assume it is installed in /usr/local/share
 # Note that revisions may change and may need to be updated
-y=clixon-example@2020-12-01.yang
+y="clixon-example@${CLIXON_EXAMPLE_REV}.yang"
+
 if [ -d ${TOP_SRCDIR}/example/main/$y ]; then 
     cp ${TOP_SRCDIR}/example/main/$y $dir/
 else
@@ -193,7 +194,7 @@ function testrun()
     expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state/module=ietf-interfaces,2018-02-20)" 0 'HTTP/1.1 200 OK' '{"ietf-yang-library:module":\[{"name":"ietf-interfaces","revision":"2018-02-20","namespace":"urn:ietf:params:xml:ns:yang:ietf-interfaces","conformance-type":"implement"}\]}'
 
     new "restconf schema resource, mod-state top-level"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state)" 0 'HTTP/1.1 200 OK' '{"ietf-yang-library:modules-state":{"module-set-id":"0","module":\[{"name":"clixon-example","revision":"2020-12-01","namespace":"urn:example:clixon","conformance-type":"implement"},{"name":"clixon-lib","revision":"2020-12-30","'
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state)" 0 'HTTP/1.1 200 OK' "{\"ietf-yang-library:modules-state\":{\"module-set-id\":\"0\",\"module\":\[{\"name\":\"clixon-example\",\"revision\":\"${CLIXON_EXAMPLE_REV}\",\"namespace\":\"urn:example:clixon\",\"conformance-type\":\"implement\"},{\"name\":\"clixon-lib\",\"revision\":\"${CLIXON_LIB_REV}\",\""
 
     new "restconf options. RFC 8040 4.1"
     expectpart "$(curl $CURLOPTS -X OPTIONS $proto://$addr/restconf/data)" 0 "HTTP/1.1 200 OK" "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE"

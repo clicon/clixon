@@ -301,7 +301,7 @@ cat <<EOF > $dir/startup_db
 </${DATASTORE_TOP}>
 EOF
 
-MODSTATE1='<modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"><module-set-id>0</module-set-id><module><name>clixon-lib</name><revision>2020-12-30</revision><namespace>http://clicon.org/lib</namespace></module>'
+MODSTATE1="<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set-id>0</module-set-id><module><name>clixon-lib</name><revision>${CLIXON_LIB_REV}</revision><namespace>http://clicon.org/lib</namespace></module>"
 
 MODSTATE2='<module><name>interfaces</name><revision>2018-02-20</revision><namespace>urn:example:interfaces</namespace></module>'
 

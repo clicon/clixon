@@ -68,10 +68,19 @@ How to debug
    CFLAGS="-g -Wall" INSTALLFLAGS="" ./configure
 ```
 
-### Set backend debug flag using curl
+### Set backend debug using curl
 
-curl -Ssik -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/operations/clixon-lib:debug -d '{"clixon-lib:input":{"level":1}}' 
+Set backend debug using rpc
+curl -Ssik -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/operations/clixon-lib:debug -d '{"clixon-lib:input":{"level":1}}'
 
+### Set restconf debug using curl
+
+Only if using clixon-restconf.yang
+
+curl -Ssik -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-rstconf:restconf/debug -d '{"clixon-restconf:debug":{"level":1}}' 
+
+Get restconf daemon status
+curl -Ssik -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}'
 
 ### Make your own simplified yang and configuration file.
 ```
