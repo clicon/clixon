@@ -76,22 +76,18 @@ $DEFAULTHELLO
 EOF
 )
 
-    expect1="<rpc-reply $DEFAULTNS><pid xmlns=\"http://clicon.org/lib\">"
-    match=$(echo "$ret" | grep --null -Go "$expect1")
-    if [ -z "$match" ]; then
-	err "$expect1" "$ret"
-    fi
-
 #    >&2 echo "ret:$ret" # debug
-    
-    expect2="</pid></rpc-reply>]]>]]>"
-    match=$(echo "$ret" | grep --null -Go "$expect2")
+
+    expect1="<pid xmlns=\"http://clicon.org/lib\">[0-9]*</pid>"
+    match=$(echo "$ret" | grep --null -Go "$expect1")
+#    >&2 echo "match:$match" # debug
     if [ -z "$match" ]; then
-	err "$expect2" "$ret"
+	pid=0
+    else
+	pid=$(echo "$match" | awk -F'[<>]' '{print $3}')
     fi
-    new "check rpc $operation get pid"
-    pid=$(echo "$ret" | awk -F'[<>]' '{print $5}')
     >&2 echo "pid:$pid" # debug
+
     if [ -z "$pid" ]; then
 	err "Running process" "$ret"
     fi
@@ -107,9 +103,9 @@ EOF
 		err "Running process"
 	    fi
 	fi
+	echo "$pid" # cant use return that only uses 0-255
     fi
     sleep $DEMSLEEP
-    echo "$pid" # cant use return that only uses 0-255
 }
 
 new "ENABLE true"
@@ -141,8 +137,8 @@ if [ $BE -ne 0 ]; then
 fi
 
 # For debug
->&2 echo "curl $CURLOPTS -X POST -H \"Content-Type: application/yang-data+json\" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{\"clixon-lib:input\":{\"name\":\"restconf\",\"operation\":\"status\"}}'"
-exit
+#>&2 echo "curl $CURLOPTS -X POST -H \"Content-Type: application/yang-data+json\" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{\"clixon-lib:input\":{\"name\":\"restconf\",\"operation\":\"status\"}}'"
+
 # Get pid of running process and check return xml
 new "1. Get rpc status"
 pid0=$(testrpc status 1) # Save pid0
@@ -165,7 +161,7 @@ new "wait restconf"
 wait_restconf
 
 new "try restconf rpc status"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}')" 0 "HTTP/1.1 200 OK" '{"clixon-lib:output":{"pid":'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}')" 0 "HTTP/1.1 200 OK" '{"clixon-lib:output":' '"active":' '"pid":'
 
 new "2. Get status"
 pid1=$(testrpc status 1)
@@ -177,7 +173,7 @@ if [ "$pid0" -ne "$pid1" ]; then
 fi
 
 new "try restconf rpc restart"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"restart"}}')" 0 "HTTP/1.1 200 OK" '{"clixon-lib:output":{"pid":'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"restart"}}')" 0 "HTTP/1.1 204 No Content"
 
 new "3. Get status"
 pid1=$(testrpc status 1)

@@ -71,10 +71,14 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_options.h"
 #include "clixon_event.h"
 #include "clixon_sig.h"
 #include "clixon_string.h"
 #include "clixon_queue.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_proc.h"
 
 /*
@@ -85,6 +89,7 @@
 struct process_entry_t {
     qelem_t        pe_qelem;     /* List header */
     char          *pe_name;     /* Name of process used for internal use. Unique with exiting=0 */
+    char          *pe_description; /* Description of service */
     char          *pe_netns;    /* Network namespace */
     char         **pe_argv;     /* argv with command as element 0 and NULL-terminated */
     int            pe_argc;     /* Length of argc */
@@ -93,6 +98,7 @@ struct process_entry_t {
     int            pe_clone;    /* Duplicate when restarting, delete when reaped */
     pid_t          pe_status;   /* Status on exit as defined in waitpid */
     proc_operation pe_op;       /* Operation pending? */
+    struct timeval pe_starttime; /* Start time */
     proc_cb_t     *pe_callback; /* Wrapper function, may be called from process_operation  */
 };
 
@@ -336,6 +342,10 @@ clixon_process_register_dup(process_entry_t  *pe0,
 	clicon_err(OE_DB, errno, "strdup name");
 	goto done;
     }
+    if (pe0->pe_description && (pe1->pe_description = strdup(pe0->pe_description)) == NULL){
+	clicon_err(OE_DB, errno, "strdup name");
+	goto done;
+    }
     if (pe0->pe_netns && (pe1->pe_netns = strdup(pe0->pe_netns)) == NULL){
 	clicon_err(OE_DB, errno, "strdup netns");
 	goto done;
@@ -363,6 +373,7 @@ clixon_process_register_dup(process_entry_t  *pe0,
  *
  * @param[in]  h        Clixon handle
  * @param[in]  name     Process name
+ * @param[in]  description  Description of process
  * @param[in]  netns    Namespace netspace (or NULL)
  * @param[in]  callback
  * @param[in]  argv     NULL-terminated vector of vectors 
@@ -374,6 +385,7 @@ clixon_process_register_dup(process_entry_t  *pe0,
 int
 clixon_process_register(clicon_handle h,
 			const char   *name,
+			const char   *description,
 			const char   *netns,
 			proc_cb_t    *callback,
 		        char        **argv,
@@ -398,6 +410,10 @@ clixon_process_register(clicon_handle h,
     memset(pe, 0, sizeof(*pe));
     if ((pe->pe_name = strdup(name)) == NULL){
 	clicon_err(OE_DB, errno, "strdup name");
+	goto done;
+    }
+    if (description && (pe->pe_description = strdup(description)) == NULL){
+	clicon_err(OE_DB, errno, "strdup description");
 	goto done;
     }
     if (netns && (pe->pe_netns = strdup(netns)) == NULL){
@@ -430,6 +446,8 @@ clixon_process_delete_only(process_entry_t *pe)
 
     if (pe->pe_name)
 	free(pe->pe_name);
+    if (pe->pe_description)
+	free(pe->pe_description);
     if (pe->pe_netns)
 	free(pe->pe_netns);
     if (pe->pe_argv){
@@ -488,13 +506,12 @@ proc_op_run(pid_t pid0,
     return retval;
 }
 
-/*! Find process operation entry given name and op and perform operation if found
+/*! Find process entry given name and schedule operation
  *
  * @param[in]  h       clicon handle
  * @param[in]  name    Name of process
  * @param[in]  op      start, stop, restart, status
  * @param[in]  wrapit  If set, call potential callback, if false, dont call it
- * @param[out] pid     >0 process# and is running / 0: not running 
  * @retval -1  Error
  * @retval  0  OK
  * @see upgrade_callback_reg_fn  which registers the callbacks
@@ -507,8 +524,7 @@ int
 clixon_process_operation(clicon_handle  h,
 			 const char    *name,
 			 proc_operation op,
-			 int            wrapit,
-			 uint32_t      *pid)
+			 int            wrapit)
 {
     int              retval = -1;
     process_entry_t *pe;
@@ -520,25 +536,16 @@ clixon_process_operation(clicon_handle  h,
     pe = _proc_entry_list;
     do {
 	if (strcmp(pe->pe_name, name) == 0){
-	    if (op == PROC_OP_STATUS){
-		if (pe->pe_clone)
-		    continue; /* this may be a dying duplicate */
-		if (pid)
-		    *pid = pe->pe_pid;
-	    }
-	    else {
-		/* Call wrapper function that eg changes op based on config */
-		if (wrapit && pe->pe_callback != NULL)
-		    if (pe->pe_callback(h, pe, &op) < 0)
-			goto done;
-		clicon_debug(1, "%s name: %s pid:%d op: %s", __FUNCTION__,
-			     name, pe->pe_pid, clicon_int2str(proc_operation_map, op));
-		if (op == PROC_OP_START || op == PROC_OP_STOP || op == PROC_OP_RESTART){
-		    pe->pe_op = op;
-		    clicon_debug(1, "%s scheduling %s pid:%d", __FUNCTION__, name, pe->pe_pid);
-		    sched++;
-		}
-
+	    /* Call wrapper function that eg changes op based on config */
+	    if (wrapit && pe->pe_callback != NULL)
+		if (pe->pe_callback(h, pe, &op) < 0)
+		    goto done;
+	    clicon_debug(1, "%s name: %s pid:%d op: %s", __FUNCTION__,
+			 name, pe->pe_pid, clicon_int2str(proc_operation_map, op));
+	    if (op == PROC_OP_START || op == PROC_OP_STOP || op == PROC_OP_RESTART){
+		pe->pe_op = op;
+		clicon_debug(1, "%s scheduling %s pid:%d", __FUNCTION__, name, pe->pe_pid);
+		sched++;
 	    }
 	    break; 	    /* hit break here */
 	}
@@ -546,6 +553,66 @@ clixon_process_operation(clicon_handle  h,
     } while (pe != _proc_entry_list);
     if (sched && clixon_process_sched_register(h) < 0)
 	goto done;
+ ok:
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    return retval;
+}
+
+/*! Get process status according to clixon-lib.yang
+ *
+ * @param[in]  h       clicon handle
+ * @param[in]  name    Name of process
+ * @param[out] cbret   XML status string
+ * @retval -1  Error
+ * @retval  0  OK
+ */
+int
+clixon_process_status(clicon_handle  h,
+		      const char    *name,
+		      cbuf          *cbret)
+		      
+{
+    int              retval = -1;
+    process_entry_t *pe;
+    int              run;
+    int              i;
+    char             timestr[28];
+
+    if (_proc_entry_list == NULL)
+	goto ok;
+    pe = _proc_entry_list;
+    do {
+	if (strcmp(pe->pe_name, name) == 0){
+	    if (pe->pe_clone)
+		continue; /* this may be a dying duplicate */
+	    /* Check if running */
+	    run = 0;
+	    if (pe->pe_pid && proc_op_run(pe->pe_pid, &run) < 0)
+		goto done;
+	    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><active xmlns=\"%s\">%s</active>",
+		    NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS, run?"true":"false");
+	    if (pe->pe_description)
+		cprintf(cbret, "<description xmlns=\"%s\">%s</description>", CLIXON_LIB_NS, pe->pe_description);
+	    if (pe->pe_pid)
+		cprintf(cbret, "<pid xmlns=\"%s\">%u</pid>", CLIXON_LIB_NS, pe->pe_pid);
+	    cprintf(cbret, "<command xmlns=\"%s\">", CLIXON_LIB_NS);
+	    for (i=0; i<pe->pe_argc-1; i++){
+		if (i)
+		    cprintf(cbret, " ");
+		cprintf(cbret, "%s", pe->pe_argv[i]);
+	    }
+	    cprintf(cbret, "</command>");
+	    cprintf(cbret, "<status xmlns=\"%s\">%u</status>", CLIXON_LIB_NS, pe->pe_status);
+	    if (run && time2str(pe->pe_starttime, timestr, sizeof(timestr)) < 0)
+		goto done;
+	    cprintf(cbret, "<starttime xmlns=\"%s\">%s</starttime>", CLIXON_LIB_NS, timestr);
+	    cprintf(cbret, "</rpc-reply>");
+	    break; 	    /* hit break here */
+	}
+	pe = NEXTQ(process_entry_t *, pe);
+    } while (pe != _proc_entry_list);
  ok:
     retval = 0;
  done:
@@ -623,7 +690,6 @@ clixon_process_sched(int           fd,
 	    pe->pe_exiting == 0){
 	    /* Check if running */
 	    run = 0;
-	    clicon_debug(1, "%s run: %d", __FUNCTION__, run);
 	    if (proc_op_run(pe->pe_pid, &run) < 0)
 		goto done;
 	    switch (op){
@@ -642,6 +708,7 @@ clixon_process_sched(int           fd,
 		    break;
 		if (clixon_proc_background(pe->pe_argv, pe->pe_netns, &newpid) < 0)
 		    goto done;
+		gettimeofday(&pe->pe_starttime, NULL);
 		clicon_debug(1, "%s restart pid:%d -> %d", __FUNCTION__, pe->pe_pid, newpid);
 		/* Create a new pe */
 		if (clixon_process_register_dup(pe, &pe1) < 0)
@@ -655,6 +722,7 @@ clixon_process_sched(int           fd,
 		    break;
 		if (clixon_proc_background(pe->pe_argv, pe->pe_netns, &pe->pe_pid) < 0)
 		    goto done;
+		gettimeofday(&pe->pe_starttime, NULL);
 		clicon_debug(1, "%s started pid:%d", __FUNCTION__, pe->pe_pid);
 		break;
 	    default:

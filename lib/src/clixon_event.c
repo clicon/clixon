@@ -52,6 +52,8 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+#include <cligen/cligen.h>
+
 #include "clixon_queue.h"
 #include "clixon_log.h"
 #include "clixon_hash.h"

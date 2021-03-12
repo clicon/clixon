@@ -137,6 +137,7 @@ restconf_pseudo_process_control(clicon_handle h)
     argv[i++] = NULL;
     assert(i==nr);
     if (clixon_process_register(h, RESTCONF_PROCESS,
+				"Clixon RESTCONF process",
 				NULL /* XXX network namespace */,
 				restconf_rpc_wrapper,
 				argv, nr) < 0)
@@ -196,7 +197,7 @@ restconf_pseudo_process_commit(clicon_handle    h,
     if ((cx = xpath_first(xtarget, NULL, "/restconf/enable")) != NULL &&
 	xml_flag(cx, XML_FLAG_CHANGE|XML_FLAG_ADD)){
 	if (clixon_process_operation(h, RESTCONF_PROCESS,
-				     enabled?PROC_OP_START:PROC_OP_STOP, 0, NULL) < 0)
+				     enabled?PROC_OP_START:PROC_OP_STOP, 0) < 0)
 	    goto done;
     }
     else if (enabled){     /* If something changed and running, restart process */
@@ -209,7 +210,7 @@ restconf_pseudo_process_commit(clicon_handle    h,
 		 * Specifically, the socket is terminated where the reply is sent, which will
 		 * cause the curl to fail.
 		 */
-		if (clixon_process_operation(h, RESTCONF_PROCESS, PROC_OP_RESTART, 0, NULL) < 0)
+		if (clixon_process_operation(h, RESTCONF_PROCESS, PROC_OP_RESTART, 0) < 0)
 		    goto done;
 	    }
 	}

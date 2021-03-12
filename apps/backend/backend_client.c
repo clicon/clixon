@@ -1584,7 +1584,6 @@ from_client_process_control(clicon_handle  h,
     cxobj   *x;
     char    *name = NULL;
     char    *opstr = NULL;
-    uint32_t pid = 0;
     proc_operation op = PROC_OP_NONE;
     
     if ((x = xml_find_type(xe, NULL, "name", CX_ELMNT)) != NULL)
@@ -1594,16 +1593,16 @@ from_client_process_control(clicon_handle  h,
 	op = clixon_process_op_str2int(opstr);
     }
     /* Make the actual process operation (with wrap function enabled) */
-    if (clixon_process_operation(h, name, op, 1, &pid) < 0)
-	goto done;
-    if (op == PROC_OP_STATUS)
-	cprintf(cbret, "<rpc-reply xmlns=\"%s\"><status xmlns=\"%s\">%s</status><pid xmlns=\"%s\">%u</pid></rpc-reply>",
-		NETCONF_BASE_NAMESPACE,
-		CLIXON_LIB_NS, pid?"true":"false",
-		CLIXON_LIB_NS, pid);
-    else
+    if (op == PROC_OP_STATUS){
+	if (clixon_process_status(h, name, cbret) < 0)
+	    goto done;
+    }
+    else{
+	if (clixon_process_operation(h, name, op, 1) < 0)
+	    goto done;
 	cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok xmlns=\"%s\"/></rpc-reply>",
 		NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS);
+    }
     retval = 0;
  done:
     return retval;

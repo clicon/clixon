@@ -3,6 +3,9 @@ module clixon-lib {
     namespace "http://clicon.org/lib";
     prefix cl;
 
+    import ietf-yang-types {
+	prefix yang;
+    }    
     organization
 	"Clicon / Clixon";
 
@@ -178,13 +181,28 @@ module clixon-lib {
 		case status {
 		    description
 			"Output from status rpc";
-		    leaf status {
+		    leaf active {
 			description "True if process is running, false if not";
 			type boolean;
 		    }
+		    leaf description {
+			type string;
+			description "Description of process. This is a static string";
+		    }
+		    leaf command {
+			type string;
+			description "Start command with arguments";
+		    }
+		    leaf status {
+			description "Exit Status as defined by waitpid() - if exited";
+			type int32;
+		    }
+		    leaf starttime {
+			description "Time of starting process UTC";
+			type yang:date-and-time;
+		    }
 		    leaf pid {
-			description "Process-id of running process or 0 if not running
-                             Value is only valid for operation status";
+			description "Process-id of main running process (if active)";
 			type uint32;
 		    }
 		}

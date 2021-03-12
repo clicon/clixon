@@ -39,7 +39,7 @@ Expected: April
   * The netconf client will terminate (close the socket) if the client does not comply
   * You can set `CLICON_NETCONF_HELLO_OPTIONAL` to true to use the old behavior of essentially ignoring hellos.
 * New clixon-lib@2020-03-08.yang revision
-  * Changed: RPC process-control output to choice dependent on operation
+  * Changed: RPC process-control output to choice with status fields
 * New clixon-config@2020-03-08.yang revision
   * Added: `CLICON_NETCONF_HELLO_OPTIONAL`
 
@@ -55,6 +55,7 @@ Developers may need to change their code
 
 ### Minor features
 
+* Added several fields to process-control status operation: active, description, command, status, starttime, pid
 * Changed signal handling
   * Moved clixon-proc sigchild handling	from handler to clixon_events
 * The base capability has been changed to "urn:ietf:params:netconf:base:1.1" following RFC6241.
