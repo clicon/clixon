@@ -67,6 +67,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Backend can not read datastore with container named "config" #147](https://github.com/clicon/clixon/issues/147)
 * Fixed: [The config false leaf shouldn't be configed in startup stage #189](https://github.com/clicon/clixon/issues/189)
 * Fixed: [CLIXON is not waiting for the hello message #184](https://github.com/clicon/clixon/issues/184)
   * See also API changes

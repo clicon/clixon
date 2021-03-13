@@ -125,7 +125,14 @@ enum cxobj_type {CX_ERROR=-1,
  */
 enum yang_bind{ 
     YB_NONE=0,   /* Dont do Yang binding */
-    YB_MODULE,   /* Search for matching yang binding among top-level symbols of Yang modules */
+    YB_MODULE,   /* Search for matching yang binding among top-level symbols of Yang modules of direct
+		  * children
+		  * Ie, xml looks like: <top><x>... where "x" is a top-level symbol in a module
+		  */
+    YB_MODULE_NEXT, /* Search for matching yang binding among top-level symbols of Yang modules of
+		  * next-level children
+		  * Ie, xml looks like: <top><config><x>... where "x" is a top-level symbol in a module
+		  */
     YB_PARENT,   /* Assume yang binding of existing parent and match its children by name */
     YB_RPC,      /* Assume top-level xml is an netconf RPC message (or hello) */
 

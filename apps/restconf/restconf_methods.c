@@ -340,7 +340,7 @@ api_data_write(clicon_handle h,
     }
     /* Create a dummy data tree parent to hook in the parsed data.
      */
-    if ((xdata0 = xml_new("data0", NULL, CX_ELMNT)) == NULL)
+    if ((xdata0 = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	goto done;
     if (api_path){ /* XXX mv to copy? */
 	cxobj *xfrom;
@@ -357,8 +357,12 @@ api_data_write(clicon_handle h,
 		goto done;
 	}
     }
-    if (xml_spec(xdata0)==NULL)
-	yb = YB_MODULE;
+    if (xml_spec(xdata0)==NULL){
+	if (api_path==NULL)
+	    yb = YB_MODULE_NEXT; /*  data is eg: <data><x> */
+	else
+	    yb = YB_MODULE;      /*  data is eg: <x> */
+    }
     else
 	yb = YB_PARENT;
 

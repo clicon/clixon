@@ -1762,9 +1762,6 @@ assign_namespace_element(cxobj *x0, /* source */
     char      *prefix0 = NULL;;
     int        isroot;
     
-    /* XXX: need to identify root better than hiereustics and strcmp,... 
-     * see XMLDB_CONFIG_HACK
-     */
     isroot = xml_parent(x1p)==NULL &&
 	xml_flag(x1p, XML_FLAG_TOP) &&
 	xml_prefix(x1p)==NULL;

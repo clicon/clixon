@@ -947,7 +947,8 @@ xmldb_put(clicon_handle       h,
     /* If there is no xml x0 tree (in cache), then read it from file */
     if (x0 == NULL){
 	firsttime++; /* to avoid leakage on error, see fail from text_modify */
-	if ((ret = xmldb_readfile(h, db, YB_MODULE, yspec, &x0, de, NULL)) < 0)
+	/* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
+	if ((ret = xmldb_readfile(h, db, YB_MODULE_NEXT, yspec, &x0, de, NULL)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;

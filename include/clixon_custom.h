@@ -72,16 +72,6 @@
  */
 #define XML_EXPLICIT_INDEX
 
-/*! Treat <config> and <data> specially in a xmldb datastore.
- * config/data is treated as a "neutral" tag that does not have a yang spec.
- * In particular when binding xml to yang, if <config> is encountered as top-of-tree, do not
- * try to bind a yang-spec to this symbol.
- * The root of this is GET and PUT commands where the <config> and <data> tag belongs to the
- * RPC rather than the data.
- * This is a hack, there must be a way to make this more generic
- */
-#define XMLDB_CONFIG_HACK
-
 /*! Let state data be ordered-by system
  * RFC 7950 is cryptic about this
  * It says in 7.7.7:
@@ -97,6 +87,5 @@
  * This is traditionally same as NETCONF_INPUT_CONFIG ("config") but can be different
  * If you change this, you need to change test shell variable in lib.sh: DATASTORE_TOP
  * Consider making this an option or configure option 
- * see XMLDB_CONFIG_HACK 
  */
 #define DATASTORE_TOP_SYMBOL "config"

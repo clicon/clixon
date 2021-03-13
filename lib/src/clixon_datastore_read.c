@@ -442,7 +442,7 @@ xmldb_readfile(clicon_handle    h,
     FILE      *fp = NULL;
     char      *format;
     int        ret;
-    
+
     if (xmldb_db2file(h, db, &dbfile) < 0)
 	goto done;
     if (dbfile==NULL){
@@ -462,8 +462,11 @@ xmldb_readfile(clicon_handle    h,
 	if ((ret = clixon_json_parse_file(fp, yb, yspec, &x0, NULL)) < 0) /* XXX: ret == 0*/
 	    goto done;
     }
-    else if ((ret = clixon_xml_parse_file(fp, yb, yspec, NULL /* "</config>" XXX */, &x0, NULL)) < 0)
-	goto done;
+    else {
+	if ((ret = clixon_xml_parse_file(fp, yb, yspec, NULL, &x0, NULL)) < 0){
+	    goto done;
+	}
+    }
 #ifdef XMLDB_READFILE_FAIL /* The functions calling this function cannot handle a failed parse yet */
     if (ret == 0)
     	goto fail;
@@ -553,7 +556,10 @@ xmldb_get_nocache(clicon_handle    h,
 	clicon_err(OE_YANG, ENOENT, "No yang spec");
 	goto done;
     }
-    if ((ret = xmldb_readfile(h, db, YB_MODULE, yspec, &xt, &de0, msdiff)) < 0)
+    /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
+    if ((ret = xmldb_readfile(h, db,
+			      yb==YB_MODULE?YB_MODULE_NEXT:yb,
+			      yspec, &xt, &de0, msdiff)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -664,7 +670,10 @@ xmldb_get_cache(clicon_handle    h,
     de = clicon_db_elmnt_get(h, db);
     if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
 	/* If there is no xml x0 tree (in cache), then read it from file */
-	if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, &de0, msdiff)) < 0)
+	/* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
+	if ((ret = xmldb_readfile(h, db,
+				  yb==YB_MODULE?YB_MODULE_NEXT:yb,
+				  yspec, &x0t, &de0, msdiff)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -808,7 +817,10 @@ xmldb_get_zerocopy(clicon_handle    h,
     de = clicon_db_elmnt_get(h, db);
     if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
 	/* If there is no xml x0 tree (in cache), then read it from file */
-	if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, &de0, msdiff)) < 0)
+	/* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
+	if ((ret = xmldb_readfile(h, db,
+				  yb==YB_MODULE?YB_MODULE_NEXT:yb,
+				  yspec, &x0t, &de0, msdiff)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;

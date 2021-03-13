@@ -1231,10 +1231,7 @@ _json_parse(char      *str,
 	 * members of a top-level JSON object 
 	 */
 	if (yspec && xml_prefix(x) == NULL
-#ifdef XMLDB_CONFIG_HACK
-	    //	     && !xml_flag(x, XML_FLAG_TOP)
-	    	    && strcmp(xml_name(x), DATASTORE_TOP_SYMBOL) != 0 
-#endif
+	    /* && yb != YB_MODULE_NEXT   XXX Dont know what this is for */
 	    ){
 	    if ((cberr = cbuf_new()) == NULL){
 		clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -1260,24 +1257,15 @@ _json_parse(char      *str,
 	    if (ret == 0)
 		failed++;
 	    break;
+	case YB_MODULE_NEXT:
+	    if ((ret = xml_bind_yang(x, YB_MODULE, yspec, xerr)) < 0)
+		goto done;
+	    if (ret == 0)
+		failed++;
+	    break;
 	case YB_MODULE:
-#ifdef XMLDB_CONFIG_HACK
-	    if (
-		//			xml_flag(x, XML_FLAG_TOP)
-	        strcmp(xml_name(x), DATASTORE_TOP_SYMBOL) == 0 
-	    || strcmp(xml_name(x), NETCONF_OUTPUT_DATA) == 0
-	    ){
-		/* xt:<top>         nospec
-		 * x:   <config>
-		 *         <a>  <-- populate from modules
-		 */
-		if ((ret = xml_bind_yang(x, yb, yspec, xerr)) < 0)
-		    goto done;
-	    }
-	    else
-#endif
-		if ((ret = xml_bind_yang0(x, yb, yspec, xerr)) < 0)
-		    goto done;
+	    if ((ret = xml_bind_yang0(x, yb, yspec, xerr)) < 0)
+		goto done;
 	    if (ret == 0)
 		failed++;
 	    break;
