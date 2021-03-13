@@ -130,9 +130,9 @@ netconf_hello_msg(clicon_handle h,
     int     retval = -1;
     cvec   *nsc = NULL; // namespace context
     cxobj **vec = NULL;
+    size_t  veclen;
     cxobj  *x;
     cxobj  *xcap;
-    size_t  veclen;
     int     foundbase;
     char   *body;
 
@@ -169,6 +169,8 @@ netconf_hello_msg(clicon_handle h,
     }
     retval = 0;
  done:
+    if (vec)
+	free(vec);
     return retval;
 }
 

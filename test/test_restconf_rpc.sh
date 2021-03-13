@@ -264,7 +264,9 @@ fi
 
 new "12. Get restconf (running) after restart"
 pid=$(testrpc status 1)
-if [ $? -ne 0 ]; then echo "$pid"; exit -1; fi
+if  [ valgrindtest -ne 2 ]; then # XXX does not work w backend valgrind test
+    if [ $? -ne 0 ]; then echo "$pid"; exit -1; fi
+fi
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
