@@ -257,7 +257,7 @@ main(int argc, char **argv)
 		clicon_err(OE_UNIX, errno, "fopen(%s)", xmlfilename);
 		goto done;
 	    }
-	    if (clixon_xml_parse_file(fp, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
+	    if (clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL) < 0)
 		goto done;
 	    fclose(fp);
 	}

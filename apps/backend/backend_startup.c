@@ -182,7 +182,7 @@ load_extraxml(clicon_handle h,
     }
     yspec = clicon_dbspec_yang(h);
     /* No yang check yet because it has <config> as top symbol, do it later after that is removed */
-    if (clixon_xml_parse_file(fp, YB_NONE, yspec, NULL, &xt, &xerr) < 0)
+    if (clixon_xml_parse_file(fp, YB_NONE, yspec, &xt, &xerr) < 0)
 	goto done;
     /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)

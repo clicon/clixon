@@ -216,7 +216,7 @@ parse_configfile_one(const char *filename,
 	return -1;
     }
     clicon_debug(2, "%s: Reading config file %s", __FUNCTION__, filename);
-    if ((ret = clixon_xml_parse_file(fp, yspec?YB_MODULE:YB_NONE, yspec, NULL, &xt, &xerr)) < 0)
+    if ((ret = clixon_xml_parse_file(fp, yspec?YB_MODULE:YB_NONE, yspec, &xt, &xerr)) < 0)
 	goto done;
     if (ret == 0){
 	if ((cbret = cbuf_new()) ==NULL){

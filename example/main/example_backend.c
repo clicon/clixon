@@ -408,7 +408,7 @@ example_statedata(clicon_handle h,
 	    }
 	    if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
 		goto done;
-	    if (clixon_xml_parse_file(fp, YB_MODULE, yspec, NULL, &xt, NULL) < 0)
+	    if (clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL) < 0)
 		goto done;
 	    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
 		goto done;
@@ -991,7 +991,7 @@ example_daemon(clicon_handle h)
 	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
 	    goto done;
 	}
-	if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, NULL, &_state_xstate, NULL)) < 0)
+	if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &_state_xstate, NULL)) < 0)
 	    goto done;
 	if (ret == 0){
 	    fprintf(stderr, "%s error\n", __FUNCTION__);

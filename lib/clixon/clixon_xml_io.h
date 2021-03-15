@@ -50,7 +50,7 @@ int clicon_xml2cbuf(cbuf *cb, cxobj *x, int level, int prettyprint, int32_t dept
 char *clicon_xml2str(cxobj *x);
 int xmltree2cbuf(cbuf *cb, cxobj *x, int level);
 
-int clixon_xml_parse_file(FILE *f, yang_bind yb, yang_stmt *yspec, char *endtag, cxobj **xt, cxobj **xerr);
+int clixon_xml_parse_file(FILE *f, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
 int clixon_xml_parse_string(const char *str, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
 
 #if defined(__GNUC__) && __GNUC__ >= 3

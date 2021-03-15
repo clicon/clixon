@@ -826,7 +826,7 @@ load_config_file(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	goto done;
     }
-    if (clixon_xml_parse_file(fp, YB_NONE, NULL, NULL, &xt, NULL) < 0)
+    if (clixon_xml_parse_file(fp, YB_NONE, NULL, &xt, NULL) < 0)
 	goto done;
     if (xt == NULL)
 	goto done;

@@ -572,8 +572,8 @@ FSM(char *tag,
  * @param[in]     fd    A file descriptor containing the XML file (as ASCII characters)
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification (only if bind is TOP or CONFIG)
- * @param[in]     endtag  Read until encounter "endtag" in the stream, or NULL
  * @param[in,out] xt    Pointer to XML parse tree. If empty, create.
+ * @param[out]    xerr  Pointer to XML error tree, if retval is 0
  * @retval        1     Parse OK and all yang assignment made
  * @retval        0     Parse OK but yang assigment not made (or only partial) and xerr set
  * @retval       -1     Error with clicon_err called. Includes parse error
@@ -584,7 +584,7 @@ FSM(char *tag,
  *  FILE  *f;
  *  if ((f = fopen(filename, "r")) == NULL)
  *    err;
- *  if ((ret = clixon_xml_parse_file(f, YB_MODULE, yspec, "</config>", &xt, &xerr)) < 0)
+ *  if ((ret = clixon_xml_parse_file(f, YB_MODULE, yspec, &xt, &xerr)) < 0)
  *    err;
  *  xml_free(xt);
  * @endcode
@@ -597,7 +597,6 @@ int
 clixon_xml_parse_file(FILE      *fp, 
 		      yang_bind  yb,
 		      yang_stmt *yspec,
-		      char      *endtag,
 		      cxobj    **xt,
 		      cxobj    **xerr)
 {
@@ -608,8 +607,6 @@ clixon_xml_parse_file(FILE      *fp,
     char *xmlbuf = NULL;
     char *ptr;
     int   xmlbuflen = BUFLEN; /* start size */
-    int   endtaglen = 0;
-    int   state = 0;
     int   oldxmlbuflen;
     int   failed = 0;
 
@@ -621,8 +618,6 @@ clixon_xml_parse_file(FILE      *fp,
 	clicon_err(OE_XML, EINVAL, "yspec is required if yb == YB_MODULE");
 	return -1;
     }
-    if (endtag != NULL)
-	endtaglen = strlen(endtag);
     if ((xmlbuf = malloc(xmlbuflen)) == NULL){
 	clicon_err(OE_XML, errno, "malloc");
 	goto done;
@@ -635,13 +630,9 @@ clixon_xml_parse_file(FILE      *fp,
 	    break;
 	}
 	if (ret != 0){
-	    if (endtag)
-		state = FSM(endtag, ch, state);
 	    xmlbuf[len++] = ch;
 	}
-	if (ret == 0 ||
-	    (endtag && (state == endtaglen))){
-	    state = 0;
+	if (ret == 0) {
 	    if (*xt == NULL)
 		if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 		    goto done;

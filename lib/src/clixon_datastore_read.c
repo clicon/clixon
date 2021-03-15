@@ -463,7 +463,7 @@ xmldb_readfile(clicon_handle    h,
 	    goto done;
     }
     else {
-	if ((ret = clixon_xml_parse_file(fp, yb, yspec, NULL, &x0, NULL)) < 0){
+	if ((ret = clixon_xml_parse_file(fp, yb, yspec, &x0, NULL)) < 0){
 	    goto done;
 	}
     }

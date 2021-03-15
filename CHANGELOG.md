@@ -48,6 +48,7 @@ Expected: April
 
 Developers may need to change their code
 
+* Removed `endtag` parameter of `clixon_xml_parse_file()`
 * Restconf authentication callback (ca_auth) signature changed (again)
   * Minor modification to 5.0 change: userp removed.
   * New version is: `int ca_auth(h, req, auth_type, authp)`, where

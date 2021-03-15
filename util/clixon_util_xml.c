@@ -267,7 +267,7 @@ main(int    argc,
 	    clicon_err(OE_YANG, errno, "fopen(%s)", top_input_filename);	
 	    goto done;
 	}
-	if ((ret = clixon_xml_parse_file(tfp, YB_MODULE, yspec, NULL, &xtop, &xerr)) < 0){
+	if ((ret = clixon_xml_parse_file(tfp, YB_MODULE, yspec, &xtop, &xerr)) < 0){
 	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
 	    goto done;
 	}
@@ -309,7 +309,7 @@ main(int    argc,
 	    yb = YB_MODULE;
 	else
 	    yb = YB_PARENT;
-	if ((ret = clixon_xml_parse_file(fp, yb, yspec, NULL, &xt, &xerr)) < 0){
+	if ((ret = clixon_xml_parse_file(fp, yb, yspec, &xt, &xerr)) < 0){
 	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
 	    goto done;
 	}

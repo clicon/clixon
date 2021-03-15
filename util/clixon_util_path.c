@@ -215,7 +215,7 @@ main(int    argc,
      * If fp=stdin, then continue reading from stdin (after CR)
      * XXX Note 0 above, stdin here
      */
-    if (clixon_xml_parse_file(fp, YB_NONE, NULL, NULL, &x, NULL) < 0){
+    if (clixon_xml_parse_file(fp, YB_NONE, NULL, &x, NULL) < 0){
 	fprintf(stderr, "Error: parsing: %s\n", clicon_err_reason);
 	return -1;
     }

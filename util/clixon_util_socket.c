@@ -156,7 +156,7 @@ main(int    argc,
 	}
     }
     else{
-	if (clixon_xml_parse_file(fp, YB_NONE, NULL, NULL, &xt, NULL) < 0){
+	if (clixon_xml_parse_file(fp, YB_NONE, NULL, &xt, NULL) < 0){
 	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
 	    goto done;
 	}
