@@ -2,7 +2,8 @@ module clixon-example {
     yang-version 1.1;
     namespace "urn:example:clixon";
     prefix ex;
-    import ietf-interfaces {
+    import ietf-interfaces { 
+	/* is in yang/optional which means clixon must be installed using --opt-yang-installdir */
 	prefix if;
     }
     import ietf-ip {

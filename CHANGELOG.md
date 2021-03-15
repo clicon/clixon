@@ -42,6 +42,7 @@ Expected: April
   * Changed: RPC process-control output to choice with status fields
 * New clixon-config@2020-03-08.yang revision
   * Added: `CLICON_NETCONF_HELLO_OPTIONAL`
+  * Added: `CLICON_CLI_AUTOCLI_EXCLUDE`
 
 ### C/CLI-API changes on existing features
 

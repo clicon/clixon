@@ -46,7 +46,8 @@ module clixon-config {
     revision 2021-03-08 {
 	description
 	    "Added option:
-                   CLICON_NETCONF_HELLO_OPTIONAL";
+                   CLICON_NETCONF_HELLO_OPTIONAL;
+		   CLICON_CLI_AUTOCLI_EXCLUDE";
     }
     revision 2020-12-30 {
 	description
@@ -202,7 +203,7 @@ module clixon-config {
     }
     typedef cli_genmodel_type{
 	description
-	    "How to generate CLI from YANG model, 
+	    "How to generate auto CLI from YANG model, 
              eg {container c {list a{ key x; leaf x; leaf y;}}";
 	type enumeration{
 	    enum NONE{
@@ -525,7 +526,7 @@ module clixon-config {
 	    type string;
 	    default "datamodel";
 	    description
-		"If CLICON_CLI_GENMOEL is set, CLI specs can reference the
+		"If CLICON_CLI_GENMODEL is set, CLI specs can reference the
                  model syntax using a model tree set by this option.
                  Three trees are generated with this name as a base, (assuming base is datamodel):
                  - @datamodel - a clispec for navigating in editing a configuration (set/merge/delete)
@@ -545,7 +546,16 @@ module clixon-config {
 	leaf CLICON_CLI_GENMODEL_TYPE {
 	    type cli_genmodel_type;
 	    default "VARS";
-	    description "How to generate and show CLI syntax: VARS|ALL";
+	    description "How to generate and show auto CLI syntax: VARS|ALL|HIDE";
+	}
+	leaf CLICON_CLI_AUTOCLI_EXCLUDE {
+	    type string;
+	    description
+		"List of module names that should not be generated autocli from
+                 Example: 
+                    <CLICON_CLI_AUTOCLI_EXCLUDE>clixon-restconf</CLICON_CLI_AUTOCLI_EXCLUDE> 
+                 means generate autocli for all models except clixon-restconf.yang
+                 The value can be a list of space separated module names";
 	}
 	leaf CLICON_CLI_VARONLY {
 	    type int32;

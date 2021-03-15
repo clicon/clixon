@@ -7,6 +7,11 @@ automatically run as part of the all.sh, sum.sh tests etc. The scripts
 need to follow some rules to work properly, please look at one or two
 to get the idea.
 
+Note that configure must ensure optional yangs be installed:
+```
+  ./configure --enable-optyangs
+```
+
 See also the [site.sh](#site-sh) for example for skipping tests or setting some site-specific variables.
 
 ## Continuous Integration

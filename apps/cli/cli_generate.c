@@ -1014,10 +1014,19 @@ yang2cli(clicon_handle      h,
     yang_stmt    *yc;
     cvec         *globals;       /* global variables from syntax */
     genmodel_type gt;
-
+    char         *excludelist;
+    char        **exvec = NULL;
+    int           nexvec = 0;
+    int           e;
+    
     if (pt == NULL){
 	clicon_err(OE_YANG, EINVAL, "pt is NULL");
 	goto done;
+    }
+    /* List of modules that should not generate autocli */
+    if ((excludelist = clicon_option_str(h, "CLICON_CLI_AUTOCLI_EXCLUDE")) != NULL){
+	if ((exvec = clicon_strsep(excludelist, " \t", &nexvec)) == NULL)
+	    goto done;
     }
     gt = clicon_cli_genmodel_type(h);
     if ((cb = cbuf_new()) == NULL){
@@ -1026,9 +1035,17 @@ yang2cli(clicon_handle      h,
     }
     /* Traverse YANG, loop through all modules and generate CLI */
     yc = NULL;
-    while ((yc = yn_each(yn, yc)) != NULL)
+    while ((yc = yn_each(yn, yc)) != NULL){
+	/* Check if module is in exclude list */
+	for (e = 0; e < nexvec; e++){
+	    if (strcmp(yang_argument_get(yc), exvec[e]) == 0)
+		break;
+	}
+	if (e < nexvec)
+	    continue;
 	if (yang2cli_stmt(h, yc, gt, 0, state, show_tree, cb) < 0)
 	    goto done;
+    }
     if (printgen)
 	clicon_log(LOG_NOTICE, "%s: Generated CLI spec:\n%s", __FUNCTION__, cbuf_get(cb));
     else
@@ -1050,6 +1067,8 @@ yang2cli(clicon_handle      h,
 
     retval = 0;
   done:
+    if (exvec)
+	free(exvec);
     if (cb)
 	cbuf_free(cb);
     return retval;

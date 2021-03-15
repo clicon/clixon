@@ -32,7 +32,6 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 APPNAME=example
 
 cfg=$dir/conf_yang.xml
-fyang=$dir/test.yang
 
 if [ ! -d "$YANGMODELS" ]; then
 #    err "Hmm Yangmodels dir does not seem to exist, try git clone https://github.com/YangModels/yang?"
@@ -49,6 +48,7 @@ cat <<EOF > $cfg
   <CLICON_FEATURE>ietf-access-control-list:match-on-tcp</CLICON_FEATURE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/published/802.1</CLICON_YANG_DIR> 
+  <CLICON_YANG_DIR>$YANGMODELS/standard/ietf/RFC</CLICON_YANG_DIR>	
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -59,9 +59,16 @@ cat <<EOF > $cfg
 EOF
 
 # Standard IETF
-new "yangmodel Standard IETF: $YANGMODELS/standard/ietf/RFC"
-echo "$clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ietf/RFC show version"
-expectpart "$($clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=$YANGMODELS/standard/ietf/RFC show version)" 0 "${CLIXON_VERSION}"
+files=$(find $YANGMODELS/standard/ietf/RFC -name "*.yang")
+for f in $files; do
+    if [ -n "$(head -1 $f|grep '^module')" ]; then
+	# Mask old revision
+	if [ $f != $YANGMODELS/standard/ietf/RFC/ietf-yang-types@2010-09-24.yang ]; then
+	    new "$clixon_cli -D $DBG -1f $cfg -y $f show version"
+	    expectpart "$($clixon_cli -D $DBG -1f $cfg -y $f show version)" 0 "${CLIXON_VERSION}"
+	fi
+    fi
+done
 
 rm -rf $dir
 

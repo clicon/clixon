@@ -81,10 +81,10 @@ cat <<EOF > $fyang
 module myexample{
   yang-version 1.1;
   namespace "urn:example:auth";
+  prefix ex;
   import ietf-netconf-acm {
 	prefix nacm;
   }
-  prefix ex;
   container top {
      leaf anonymous{
         type string;
