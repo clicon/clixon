@@ -419,14 +419,21 @@ client_get_config_only(clicon_handle h,
     cxobj  *xret = NULL;
     cxobj  *xnacm = NULL;
     cxobj **xvec = NULL;
+    cxobj  *xerr = NULL;
     size_t  xlen;    
+    int     ret;
 
     /* Note xret can be pruned by nacm below (and change name),
      * so zero-copy cant be used
      * Also, must use external namespace context here due to <filter stmt
      */
-    if (xmldb_get0(h, db, YB_MODULE, nsc, xpath, 1, &xret, NULL) < 0) {
+    if ((ret = xmldb_get0(h, db, YB_MODULE, nsc, xpath, 1, &xret, NULL, &xerr)) < 0) {
 	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
+	    goto done;
+	goto ok;
+    }
+    if (ret == 0){
+	if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
 	    goto done;
 	goto ok;
     }
@@ -452,6 +459,8 @@ client_get_config_only(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (xerr)
+	xml_free(xerr);
     if (xvec)
 	free(xvec);
     if (xret)
@@ -1120,14 +1129,14 @@ from_client_get(clicon_handle h,
      * Also, must use external namespace context here due to <filter> stmt
      */
     if (clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
-	if (xmldb_get0(h, "running", YB_MODULE, nsc, NULL, 1, &xret, NULL) < 0) {
+	if (xmldb_get0(h, "running", YB_MODULE, nsc, NULL, 1, &xret, NULL, NULL) < 0) {
 	    if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 		goto done;
 	    goto ok;
 	}
     }
     else{
-	if (xmldb_get0(h, "running", YB_MODULE, nsc, xpath, 1, &xret, NULL) < 0) {
+	if (xmldb_get0(h, "running", YB_MODULE, nsc, xpath, 1, &xret, NULL, NULL) < 0) {
 	    if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 		goto done;
 	    goto ok;

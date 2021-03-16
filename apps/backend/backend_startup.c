@@ -86,7 +86,7 @@ db_merge(clicon_handle h,
     cxobj *xt = NULL;
     
     /* Get data as xml from db1 */
-    if (xmldb_get0(h, (char*)db1, YB_MODULE, NULL, NULL, 0, &xt, NULL) < 0)
+    if (xmldb_get0(h, (char*)db1, YB_MODULE, NULL, NULL, 0, &xt, NULL, NULL) < 0)
 	goto done;
     xml_name_set(xt, NETCONF_INPUT_CONFIG);
     /* Merge xml into db2. Without commit */

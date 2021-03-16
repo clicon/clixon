@@ -1212,7 +1212,7 @@ nacm_access_pre(clicon_handle  h,
 		goto done;
     }
     else if (strcmp(mode, "internal")==0){
-	if (xmldb_get0(h, "running", YB_MODULE, nsc, "nacm", 1, &xnacm0, NULL) < 0)
+	if (xmldb_get0(h, "running", YB_MODULE, nsc, "nacm", 1, &xnacm0, NULL, NULL) < 0)
 	    goto done;
     }
     else{

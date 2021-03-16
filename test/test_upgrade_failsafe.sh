@@ -98,6 +98,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_DIR>/usr/local/lib/example/backend</CLICON_BACKEND_DIR>
@@ -266,12 +267,11 @@ runtest(){
 	new "start backend -s $mode -f $cfg -o \"CLICON_XMLDB_MODSTATE=$modstate\""
 	start_backend -s $mode -f $cfg -o "CLICON_XMLDB_MODSTATE=$modstate"
 
-	new "waiting"
-	wait_backend
-    else
-	new "Restart backend as eg follows: -Ff $cfg -s $mode -o \"CLICON_XMLDB_MODSTATE=$modstate\" ($BETIMEOUT s)"
-#	sleep $BETIMEOUT
+#	new "Restart backend as eg follows: -Ff $cfg -s $mode -o \"CLICON_XMLDB_MODSTATE=$modstate\" ($BETIMEOUT s)"
     fi
+
+    new "wait backend"
+    wait_backend
 
     new "Check running db content"
     expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS>$exprun</rpc-reply>]]>]]>$"
@@ -333,14 +333,13 @@ new "4. Load non-compat valid startup"
 # Just test that a valid db survives start from running
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp non-compat-valid.xml startup_db)
-runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>'
+runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' #'<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>'
 
 new "5. Load non-compat invalid startup. Enter failsafe, startup invalid."
 # A test that if a non-valid startup is encountered, validation fails and failsafe is entered
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp non-compat-invalid.xml startup_db)
-runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>' # sorted
-#runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><c xmlns="urn:example:c">bla bla</c><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' # unsorted
+runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' # '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>' # sorted
 
 new "6. Load non-compat invalid running. Enter failsafe, startup invalid."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
@@ -353,8 +352,7 @@ runtest true running '<data><a1 xmlns="urn:example:a">always work</a1></data>' '
 new "7. Load compatible invalid startup."
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp compat-invalid.xml startup_db)
-runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>' # sorted
-#runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<data><a0 xmlns="urn:example:a">old version</a0><c xmlns="urn:example:c">bla bla</c><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' # unsorted
+runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' # '<data><a0 xmlns="urn:example:a">old version</a0><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b><c xmlns="urn:example:c">bla bla</c></data>' # sorted
 
 # This testcase contains an error/exception of the clixon xml parser, and
 # I cant track down the memory leakage.

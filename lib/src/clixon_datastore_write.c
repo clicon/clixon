@@ -910,22 +910,23 @@ xmldb_put(clicon_handle       h,
 	  char               *username,
 	  cbuf               *cbret)
 {
-    int                 retval = -1;
-    char               *dbfile = NULL;
-    FILE               *f = NULL;
-    cbuf               *cb = NULL;
-    yang_stmt          *yspec;
-    cxobj              *x0 = NULL;
-    db_elmnt           *de = NULL;
-    int                 ret;
-    cxobj              *xnacm = NULL;
-    cxobj              *xmodst = NULL;
-    cxobj              *x;
-    int                 permit = 0; /* nacm permit all */
-    char               *format;
-    cvec               *nsc = NULL; /* nacm namespace context */
-    int                 firsttime = 0;
-    int                 pretty;
+    int         retval = -1;
+    char       *dbfile = NULL;
+    FILE       *f = NULL;
+    cbuf       *cb = NULL;
+    yang_stmt  *yspec;
+    cxobj      *x0 = NULL;
+    db_elmnt   *de = NULL;
+    int         ret;
+    cxobj      *xnacm = NULL;
+    cxobj      *xmodst = NULL;
+    cxobj      *x;
+    int         permit = 0; /* nacm permit all */
+    char       *format;
+    cvec       *nsc = NULL; /* nacm namespace context */
+    int         firsttime = 0;
+    int         pretty;
+    cxobj      *xerr = NULL;
 
     if (cbret == NULL){
 	clicon_err(OE_XML, EINVAL, "cbret is NULL");
@@ -948,7 +949,7 @@ xmldb_put(clicon_handle       h,
     if (x0 == NULL){
 	firsttime++; /* to avoid leakage on error, see fail from text_modify */
 	/* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
-	if ((ret = xmldb_readfile(h, db, YB_MODULE_NEXT, yspec, &x0, de, NULL)) < 0)
+	if ((ret = xmldb_readfile(h, db, YB_MODULE, yspec, &x0, de, NULL, &xerr)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -1052,6 +1053,8 @@ xmldb_put(clicon_handle       h,
  done:
     if (f != NULL)
 	fclose(f);
+    if (xerr)
+	xml_free(xerr);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (dbfile)

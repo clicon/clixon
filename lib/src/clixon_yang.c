@@ -452,7 +452,7 @@ ys_new(enum rfc_6020 keyw)
  * @retval    -1    Error
  * @see ys_free
  */
-static int 
+int 
 ys_free1(yang_stmt *ys,
 	 int        self)
 {
@@ -705,6 +705,20 @@ yn_insert(yang_stmt *ys_parent,
 	return -1;
     ys_parent->ys_stmt[pos] = ys_child;
     ys_child->ys_parent = ys_parent;
+    return 0;
+}
+
+/*! Variant of yn_insert where parent is not set
+ */
+int
+yn_insert1(yang_stmt *ys_parent, 
+	   yang_stmt *ys_child)
+{
+    int pos = ys_parent->ys_len;
+
+    if (yn_realloc(ys_parent) < 0)
+	return -1;
+    ys_parent->ys_stmt[pos] = ys_child;
     return 0;
 }
 

@@ -946,6 +946,8 @@ main(int    argc,
 	if (startup_failsafe(h) < 0){
 	    goto done;
 	}
+	status = STARTUP_OK;
+	cbuf_reset(cbret); /* cbret contains error info */
     }
     
     /* Initiate the shared candidate. */

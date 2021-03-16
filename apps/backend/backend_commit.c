@@ -203,8 +203,9 @@ startup_common(clicon_handle       h,
     /* Get the startup datastore WITHOUT binding to YANG, sorting and default setting. 
      * It is done below, later in this function
      */
-    if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, &xt, msdiff) < 0)
+    if ((ret = xmldb_get0(h, db, YB_NONE, NULL, "/", 0, &xt, msdiff, NULL)) < 0)
 	goto done;
+    /* ret should not be 0 */
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, 0, "Yang spec not set");
 	goto done;
@@ -484,7 +485,7 @@ from_validate_common(clicon_handle       h,
 	goto done;
     }	
     /* This is the state we are going to */
-    if (xmldb_get0(h, candidate, YB_MODULE, NULL, "/", 0, &td->td_target, NULL) < 0)
+    if (xmldb_get0(h, candidate, YB_MODULE, NULL, "/", 0, &td->td_target, NULL, NULL) < 0)
 	goto done;
 
     /* Clear flags xpath for get */
@@ -492,7 +493,7 @@ from_validate_common(clicon_handle       h,
 	       (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
     /* 2. Parse xml trees 
      * This is the state we are going from */
-    if (xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, &td->td_src, NULL) < 0)
+    if (xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, &td->td_src, NULL, NULL) < 0)
 	goto done;
     /* Clear flags xpath for get */
     xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
@@ -884,7 +885,7 @@ from_client_restart_one(clicon_handle h,
     if ((td = transaction_new()) == NULL)
 	goto done;
     /* This is the state we are going to */
-    if (xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, &td->td_target, NULL) < 0)
+    if (xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, &td->td_target, NULL, NULL) < 0)
 	goto done;
     if ((ret = xml_yang_validate_all_top(h, td->td_target, &xerr)) < 0)
 	goto done;
@@ -894,7 +895,7 @@ from_client_restart_one(clicon_handle h,
 	goto fail;
     }
     /* This is the state we are going from */
-    if (xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, &td->td_src, NULL) < 0)
+    if (xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, &td->td_src, NULL, NULL) < 0)
 	goto done;
 
     /* 3. Compute differences */

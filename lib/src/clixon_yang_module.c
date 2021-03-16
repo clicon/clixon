@@ -86,6 +86,7 @@ modstate_diff_t *
 modstate_diff_new(void)
 {
     modstate_diff_t *md;
+
     if ((md = malloc(sizeof(modstate_diff_t))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	return NULL;
@@ -577,6 +578,83 @@ yang_find_module_by_namespace(yang_stmt *yspec,
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
 	if (yang_find(ymod, Y_NAMESPACE, ns) != NULL)
 	    break;
+    }
+ done:
+    return ymod;
+}
+
+/*! Given a yang spec, a namespace and revision, return yang module 
+ *
+ * @param[in]  yspec      A yang specification
+ * @param[in]  ns         Namespace
+ * @param[in]  rev        Revision
+ * @retval     ymod       Yang module statement if found
+ * @retval     NULL       not found
+ * @see yang_find_module_by_namespace
+ * @note a module may have many revisions, but only the first is significant
+ */
+yang_stmt *
+yang_find_module_by_namespace_revision(yang_stmt  *yspec, 
+				       const char *ns,
+    				       const char *rev)
+{
+    yang_stmt *ymod = NULL;
+    yang_stmt *yrev;
+    char      *rev1;
+
+    if (ns == NULL || rev == NULL){
+	clicon_err(OE_CFG, EINVAL, "No ns or rev");
+	goto done;
+    }
+    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+	if (yang_find(ymod, Y_NAMESPACE, ns) != NULL)
+	    /* Get FIRST revision */
+	    if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL){
+		rev1 = yang_argument_get(yrev);
+		if (strcmp(rev, rev1) == 0)
+		    break; /* return this ymod */
+	    }
+    }
+ done:
+    return ymod;
+}
+
+/*! Given a yang spec, name and revision, return yang module 
+ *
+ * @param[in]  yspec      A yang specification
+ * @param[in]  name       Name
+ * @param[in]  rev        Revision
+ * @retval     ymod       Yang module statement if found
+ * @retval     NULL       not found
+ * @see yang_find_module_by_namespace
+ * @note a module may have many revisions, but only the first is significant
+ */
+yang_stmt *
+yang_find_module_by_name_revision(yang_stmt  *yspec, 
+				  const char *name,
+				  const char *rev)
+{
+    yang_stmt *ymod = NULL;
+    yang_stmt *yrev;
+    char      *rev1;
+
+    if (name == NULL){
+	clicon_err(OE_CFG, EINVAL, "No ns or rev");
+	goto done;
+    }
+    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+	if (yang_keyword_get(ymod) != Y_MODULE)
+	    continue;
+	if (strcmp(yang_argument_get(ymod), name) != 0)
+	    continue;
+	if (rev == NULL)
+	    break; /* Matching revision is NULL, match that */
+	/* Get FIRST revision */
+	if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL){
+	    rev1 = yang_argument_get(yrev);
+	    if (strcmp(rev, rev1) == 0)
+		break; /* return this ymod */
+	}
     }
  done:
     return ymod;

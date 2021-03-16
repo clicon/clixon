@@ -73,6 +73,8 @@ int clixon_module_upgrade(clicon_handle h, cxobj *xt, modstate_diff_t *msd, cbuf
 yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
 yang_stmt *yang_find_module_by_prefix_yspec(yang_stmt *yspec, char *prefix);
 yang_stmt *yang_find_module_by_namespace(yang_stmt *yspec, char *ns);
+yang_stmt *yang_find_module_by_namespace_revision(yang_stmt *yspec, const char *ns, const char *revision);
+yang_stmt *yang_find_module_by_name_revision(yang_stmt *yspec, const char *name, const char *revision);
 yang_stmt *yang_find_module_by_name(yang_stmt *yspec, char *name);
 
 #endif  /* _CLIXON_YANG_MODULE_H_ */

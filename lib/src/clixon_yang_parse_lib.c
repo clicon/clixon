@@ -1404,7 +1404,7 @@ yang_parse_post(clicon_handle h,
  */
 int
 yang_spec_parse_module(clicon_handle h, 
-		       const char   *module, 
+		       const char   *name,
 		       const char   *revision, 
 		       yang_stmt    *yspec)
 {
@@ -1416,16 +1416,16 @@ yang_spec_parse_module(clicon_handle h,
 	clicon_err(OE_YANG, EINVAL, "yang spec is NULL");
 	goto done;
     }
-    if (module == NULL){
+    if (name == NULL){
 	clicon_err(OE_YANG, EINVAL, "yang module not set");
 	goto done;
     }
     /* Apply steps 2.. on new modules, ie ones after modmin. */
     modmin = yang_len_get(yspec);
     /* Do not load module if it already exists */
-    if (yang_find(yspec, Y_MODULE, module) != NULL)
+    if (yang_find_module_by_name_revision(yspec, name, revision) != NULL)
 	goto ok;
-    if (yang_parse_module(h, module, revision, yspec) == NULL)
+    if (yang_parse_module(h, name, revision, yspec) == NULL)
 	goto done;
     if (yang_parse_post(h, yspec, modmin) < 0)
 	goto done;

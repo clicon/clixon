@@ -355,7 +355,6 @@ xml_bind_yang(cxobj     *xt,
     int    retval = -1;
     cxobj *xc;         /* xml child */
     int    ret;
-    int    failed = 0; /* we continue loop after failure, should we stop at fail?`*/
 
     strip_whitespace(xt);
     xc = NULL;     /* Apply on children */
@@ -363,10 +362,8 @@ xml_bind_yang(cxobj     *xt,
 	if ((ret = xml_bind_yang0(xc, yb, yspec, xerr)) < 0)
 	    goto done;
 	if (ret == 0)
-	    failed++;
+	    goto fail;
     }
-    if (failed)
-	goto fail;
     retval = 1;
  done:
     return retval;
@@ -384,7 +381,6 @@ xml_bind_yang0_opt(cxobj     *xt,
     int        retval = -1;
     cxobj     *xc;           /* xml child */
     int        ret;
-    int        failed = 0; /* we continue loop after failure, should we stop at fail?`*/
     yang_stmt *yc0 = NULL;
     cxobj     *xc0 = NULL;
     cxobj     *xs;
@@ -428,14 +424,12 @@ xml_bind_yang0_opt(cxobj     *xt,
 	else if ((ret = xml_bind_yang0_opt(xc, YB_PARENT, NULL, xerr)) < 0)
 	    goto done;
 	if (ret == 0)
-	    failed++;
+	    goto fail;
 	xc0 = xc;
 	yc0 = xml_spec(xc); /* cache */
 	name0 = xml_name(xc);
 	prefix0 = xml_prefix(xc);
     }
-    if (failed)
-	goto fail;
  ok:
     retval = 1;
  done:
@@ -466,7 +460,6 @@ xml_bind_yang0(cxobj     *xt,
     int        retval = -1;
     cxobj     *xc;           /* xml child */
     int        ret;
-    int        failed = 0; /* we continue loop after failure, should we stop at fail?`*/
 
     switch (yb){
     case YB_MODULE:
@@ -495,10 +488,8 @@ xml_bind_yang0(cxobj     *xt,
 	if ((ret = xml_bind_yang0_opt(xc, YB_PARENT, NULL, xerr)) < 0)
 	    goto done;
 	if (ret == 0)
-	    failed++;
+	    goto fail;
     }
-    if (failed)
-	goto fail;
  ok:
     retval = 1;
  done:

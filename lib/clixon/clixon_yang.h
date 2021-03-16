@@ -211,10 +211,12 @@ yang_stmt *yspec_new(void);
 yang_stmt *ys_new(enum rfc_6020 keyw);
 yang_stmt *ys_prune(yang_stmt *yp, int i);
 
+int        ys_free1(yang_stmt *ys, int self);
 int        ys_free(yang_stmt *ys);
 int        ys_cp(yang_stmt *nw, yang_stmt *old);
 yang_stmt *ys_dup(yang_stmt *old);
 int        yn_insert(yang_stmt *ys_parent, yang_stmt *ys_child);
+int        yn_insert1(yang_stmt *ys_parent, yang_stmt *ys_child);
 yang_stmt *yn_each(yang_stmt *yn, yang_stmt *ys);
 char      *yang_key2str(int keyword);
 int        ys_module_by_xml(yang_stmt *ysp, struct xml *xt, yang_stmt **ymodp);

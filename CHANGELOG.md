@@ -33,14 +33,17 @@ Expected: April
 
 ### New features
 
-	
+* Add multiple yang support also for obsolete versions
+  * This means that files and datastores supporting modstate also looks for deleted or updated yang modules.
+  * A stricter binding which gives error if loading outdated YANG file does not exist.
+
 ### API changes on existing protocol/config features
 
 * Native RESTCONF mode
   * Renamed restconf "evhtp" mode to "native" mode
     * To configure native mode use: `configure --with-restconf=native`, changed from: `configure --with-restconf=evhtp`
   * Native mode MUST use libevhtp from https://github.com/clixon/clixon-libevhtp.git instead from criticalstack
-
+* Stricter yang checks: you cannot do get-config on datastores that have obsolete YANG.
 * NETCONF Hello message semantics has been made stricter according to RFC 6241 Sec 8.1, for example:
   * A client MUST send a <hello> element.
   * Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" (or 1.0 for RFC 4741)
@@ -59,6 +62,7 @@ Developers may need to change their code
 
 * Removed `cli_debug()`. Use `cli_debug_backend()` or `cli_debug_restconf()` instead.
 * Removed `yspec_free()` - replace with `ys_free()`
+* Added xerr output parameter to `xmldb_get0()`
 * Removed `endtag` parameter of `clixon_xml_parse_file()`
 * Restconf authentication callback (ca_auth) signature changed (again)
   * Minor modification to 5.0 change: userp removed.
