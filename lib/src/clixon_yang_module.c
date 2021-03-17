@@ -180,6 +180,9 @@ yms_build(clicon_handle    h,
     yang_stmt  *yc;
     yang_stmt  *ymod;        /* generic module */
     yang_stmt  *yns = NULL;  /* namespace */
+    yang_stmt  *yinc;
+    yang_stmt  *ysub;
+    char       *name;
 
     if ((ylib = yang_find(yspec, Y_MODULE, module)) == NULL &&
 	(ylib = yang_find(yspec, Y_SUBMODULE, module)) == NULL){
@@ -196,8 +199,7 @@ yms_build(clicon_handle    h,
 
     ymod = NULL;
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	if (yang_keyword_get(ymod) != Y_MODULE &&
-	    yang_keyword_get(ymod) != Y_SUBMODULE)
+	if (yang_keyword_get(ymod) != Y_MODULE)
 	    continue;
 	cprintf(cb,"<module>");
 	cprintf(cb,"<name>%s</name>", yang_argument_get(ymod));
@@ -228,21 +230,20 @@ yms_build(clicon_handle    h,
 	    }
 	    cprintf(cb, "<conformance-type>implement</conformance-type>");
 	}
-	yc = NULL;
-	while ((yc = yn_each(ymod, yc)) != NULL) {
-	    switch(yang_keyword_get(yc)){
-	    case Y_SUBMODULE:
-		cprintf(cb,"<submodule>");
-		cprintf(cb,"<name>%s</name>", yang_argument_get(yc));
-		if ((ys = yang_find(yc, Y_REVISION, NULL)) != NULL)
+	yinc = NULL;
+	while ((yinc = yn_each(ymod, yinc)) != NULL) {
+	    if (yang_keyword_get(yinc) != Y_INCLUDE)
+		continue;
+	    cprintf(cb,"<submodule>");
+	    name = yang_argument_get(yinc);
+	    cprintf(cb,"<name>%s</name>", name);
+	    if ((ysub = yang_find(yspec, Y_SUBMODULE, name)) != NULL){
+		if ((ys = yang_find(ysub, Y_REVISION, NULL)) != NULL)
 		    cprintf(cb,"<revision>%s</revision>", yang_argument_get(ys));
 		else
 		    cprintf(cb,"<revision></revision>");
-		cprintf(cb,"</submodule>");
-		break;
-	    default:
-		break;
 	    }
+	    cprintf(cb,"</submodule>");
 	}
 	cprintf(cb,"</module>");
     }

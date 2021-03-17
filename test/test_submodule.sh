@@ -32,6 +32,7 @@ restconf_config none false
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
+  <CLICON_FEATURE>main:A</CLICON_FEATURE>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
@@ -44,7 +45,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
+  <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
   $RESTCONFIG
 </clixon-config>
 EOF
@@ -55,10 +56,18 @@ module main{
    yang-version 1.1;
    prefix ex;
    namespace "urn:example:clixon";
+
    include sub1;
    import extra{
      description "Uses the same prefix as submodule but for another module";
      prefix xtra;
+   }
+   revision 2021-03-08;
+   feature A{
+      description "This test feature is enabled";
+   }
+   feature B{
+      description "This test feature is not enabled";
    }
    container main{
       uses xtra:mygroup;
@@ -247,6 +256,12 @@ expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+jso
 
 new "restconf edit augment 2"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:sub2 -d '{"main:aug2":"foo"}')" 0 'HTTP/1.1 201 Created'
+
+new "NETCONF get module state"
+expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/yl:modules-state/yl:module[yl:name='main']\" xmlns:yl=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>]]>]]>" "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module><name>main</name><revision>2021-03-08</revision><namespace>urn:example:clixon</namespace><feature>A</feature><conformance-type>implement</conformance-type><submodule><name>sub1</name><revision/></submodule></module>"
+
+new "RESTCONF get module state"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data/ietf-yang-library:modules-state/module=main,2021-03-08?config=nonconfig)" 0 'HTTP/1.1 200 OK' "<module xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><name>main</name><revision>2021-03-08</revision><namespace>urn:example:clixon</namespace><feature>A</feature><conformance-type>implement</conformance-type><submodule><name>sub1</name><revision/></submodule></module>"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
