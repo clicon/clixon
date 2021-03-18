@@ -169,9 +169,9 @@ cli_terminate(clicon_handle h)
 
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
-	yspec_free(yspec);
+	ys_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
-	yspec_free(yspec);
+	ys_free(yspec);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
 	cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)

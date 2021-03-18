@@ -212,7 +212,6 @@ yang_stmt *ys_new(enum rfc_6020 keyw);
 yang_stmt *ys_prune(yang_stmt *yp, int i);
 
 int        ys_free(yang_stmt *ys);
-int        yspec_free(yang_stmt *yspec);
 int        ys_cp(yang_stmt *nw, yang_stmt *old);
 yang_stmt *ys_dup(yang_stmt *old);
 int        yn_insert(yang_stmt *ys_parent, yang_stmt *ys_child);

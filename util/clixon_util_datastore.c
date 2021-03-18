@@ -345,7 +345,7 @@ main(int argc, char **argv)
     if (h)
 	clicon_handle_exit(h);
     if (yspec)
-	yspec_free(yspec);
+	ys_free(yspec);
     return retval;
 }
 

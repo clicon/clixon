@@ -298,7 +298,7 @@ main(int argc, char **argv)
     if (reason)
 	free(reason);
     if (yspec)
-	yspec_free(yspec);
+	ys_free(yspec);
     if (fd > 0)
 	close(fd);
     return retval;

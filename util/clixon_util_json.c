@@ -155,7 +155,7 @@ main(int    argc,
     retval = 0;
  done:
     if (yspec)
-	yspec_free(yspec);
+	ys_free(yspec);
     if (xt)
 	xml_free(xt);
     if (cb)

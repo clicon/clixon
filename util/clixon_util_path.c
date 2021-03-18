@@ -286,7 +286,7 @@ main(int    argc,
     retval = 0;
  done:
     if (yspec != NULL)
-	yspec_free(yspec);
+	ys_free(yspec);
     if (cb)
 	cbuf_free(cb);
     if (xvec)

@@ -401,7 +401,7 @@ yang_when_nsc_set(yang_stmt *ys,
 /* End access functions */
 
 /*! Create new yang specification
- * @retval  yspec    Free with yspec_free() 
+ * @retval  yspec    Free with ys_free() 
  * @retval  NULL     Error
  */
 yang_stmt *
@@ -529,24 +529,6 @@ ys_free(yang_stmt *ys)
     if (ys->ys_stmt)
 	free(ys->ys_stmt);
     ys_free1(ys, 1);
-    return 0;
-}
-
-/*! Free a yang specification recursively 
- */
-int 
-yspec_free(yang_stmt *yspec)
-{
-    int i;
-    yang_stmt *ys;
-
-    for (i=0; i<yspec->ys_len; i++){
-	if ((ys = yspec->ys_stmt[i]) != NULL)
-	    ys_free(ys);
-    }
-    if (yspec->ys_stmt)
-	free(yspec->ys_stmt);
-    free(yspec);
     return 0;
 }
 

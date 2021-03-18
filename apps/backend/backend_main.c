@@ -113,11 +113,11 @@ backend_terminate(clicon_handle h)
     if ((x = clicon_xml_changelog_get(h)) != NULL)
 	xml_free(x);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
-	yspec_free(yspec);
+	ys_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
-	yspec_free(yspec);
+	ys_free(yspec);
     if ((yspec = clicon_nacm_ext_yang(h)) != NULL)
-	yspec_free(yspec);
+	ys_free(yspec);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
 	cvec_free(nsctx);
     if ((x = clicon_nacm_ext(h)) != NULL)
