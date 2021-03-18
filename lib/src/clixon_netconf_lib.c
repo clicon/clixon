@@ -1372,9 +1372,14 @@ netconf_module_load(clicon_handle h)
     /* Load yang spec */
     if (yang_spec_parse_module(h, "ietf-netconf", NULL, yspec)< 0)
 	goto done;
+    /* Load yang Netconf stream discovery */
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277"))
 	if (yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
 	    goto done;
+    /* Load yang Restconf stream discovery */
+    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
+	yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec)< 0)
+	goto done;
     /* YANG module revision change management */
     if (clicon_option_bool(h, "CLICON_XML_CHANGELOG"))
 	if (yang_spec_parse_module(h, "clixon-xml-changelog", NULL, yspec)< 0)
