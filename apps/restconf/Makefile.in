@@ -77,7 +77,6 @@ endif
 LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
 LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@ 
-#LIBS          += -lpthread -levent -levent_openssl -lssl -lcrypto
 
 ifeq ($(LINKAGE),dynamic)
 	CPPFLAGS  	= @CPPFLAGS@ -fPIC

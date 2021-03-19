@@ -1419,7 +1419,7 @@ xml_child_rm(cxobj *xp,
 /*! Remove this xml node from parent xml node. No freeing and node is new root
  * @param[in]   xc     xml child node to be removed
  * @retval      0      OK
- * @retval      -1
+ * @retval      -1     Error
  * @note you should not remove xchild in loop (unless yoy keep track of xprev)
  *
  * @see xml_child_rm  Remove a child of a node

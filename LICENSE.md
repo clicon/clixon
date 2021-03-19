@@ -9,6 +9,9 @@ You choose.
 
 Except as otherwise noted,
 - see lib/src/clixon_sha1.c
+- see apps/restconf/libevhtp_parser.[ch]
+  BSD 3-clause: Copyright (c) 2010-2018, Mark Ellzey, Nathan French, Marcus Sundberg
+
 
 The two licenses are included below.
 

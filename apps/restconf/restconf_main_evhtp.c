@@ -32,7 +32,89 @@
 
   ***** END LICENSE BLOCK *****
 
-  * libevhtp code  
+  * libssl 1.1 API
+  * Data structures:
+  *                     1                                             1
+  * +--------------------+   restconf_handle_get  +--------------------+
+  * | rh restconf_handle | <--------------------- |  h  clicon_handle  |
+  * +--------------------+                        +--------------------+
+  *  common SSL config     \                                  ^         
+  *                          \                                |       n
+  *                            \  rh_sockets      +--------------------+
+  *                              +----------->    | rs restconf_socket | 
+  *                                               +--------------------+
+  *                     n                          per-socket SSL config
+  * +--------------------+
+  * | rr restconf_request| per-packet
+  * +--------------------+
+  * Note restconf_request may need to be extended eg backpointer to rs?
+  *
+  * +--------------------+           +--------------------+
+  * | evhtp_connection   |  ----->   | evhtp_t (core)     |
+  * +--------------------+           +--------------------+
+  *     |request ^
+  *     v        | conn
+  * +--------------------+           +--------------------+
+  * | evhtp_request      |  --> uri  | evhtp_uri          |
+  * +--------------------+           +--------------------+
+  *  | (created by parser)                |       |       |
+  *  v                                    v       v       v
+  * headers/buffers/method/...       authority  path   query
+  *
+  * Buffer handling:
+  *          c
+  *          |
+  * +--------------------+
+  * | bufferevent        | 
+  * +--------------------+
+  *    |            |
+  *  input        output
+  *
+  * Three special cases and expected (typical replies):
+  *
+  * Note (1) http to https port:
+  * olof@alarik> curl -Ssik -X GET http://www.hagsand.se:443
+  * HTTP/1.1 400 Bad Request
+  * Server: nginx
+  * Date: Tue, 30 Mar 2021 06:46:34 GMT
+  * Content-Type: text/html
+  * Content-Length: 248
+  * Connection: close
+  * 
+  * <html>
+  * <head><title>400 The plain HTTP request was sent to HTTPS port</title></head>
+  * <body>
+  * <center><h1>400 Bad Request</h1></center>
+  * <center>The plain HTTP request was sent to HTTPS port</center>
+  * <hr><center>nginx</center>
+  * </body>
+  * </html>
+  *
+  * Note (2) https to http port:
+  * olof@alarik> curl -Ssik -X GET https://www.hagsand.se:80
+  * curl: (35) error:1408F10B:SSL routines:ssl3_get_record:wrong version number
+  *
+  * Note (3) client-cert is NULL:
+  * curl -i -m 40 -k -H 'Content-Type: application/yang-data+json'    https://10.255.10.1/restconf/data/netgate-system:system/auth
+  * HTTP/2 400 
+  * [1mserver[0m: nginx/1.16.1
+  * [1mdate[0m: Sun, 28 Feb 2021 17:34:08 GMT
+  * [1mcontent-type[0m: text/html
+  * [1mcontent-length[0m: 237
+  * <html>
+  * <head><title>400 No required SSL certificate was sent</title></head>
+  * <body>
+  * <center><h1>400 Bad Request</h1></center>
+  * <center>No required SSL certificate was sent</center>
+  * <hr><center>nginx/1.16.1</center>
+  * </body>
+  * </html>
+  *
+  * Example links regarding certificate verification
+  * https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_verify.html
+  * http://fm4dd.com/openssl/certverify.htm
+  * https://wiki.openssl.org/index.php/Simple_TLS_Server
+  * https://wiki.openssl.org/index.php/Hostname_validation
  */
 
 #ifdef HAVE_CONFIG_H
@@ -45,28 +127,21 @@
  * Default in testing is disabled threads.
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
 #include <unistd.h>
-#include <errno.h>
-#include <signal.h>
+#include <string.h>
 #include <syslog.h>
-#include <fcntl.h>
-#include <ctype.h>
-#include <time.h>
-#include <limits.h>
 #include <pwd.h>
-#include <sys/time.h>
-#include <sys/wait.h>
+#include <ctype.h>
 #include <assert.h>
-#include <sys/stat.h> /* chmod */
+#include <sys/stat.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 
-/* evhtp */
-#include <evhtp/evhtp.h>
-#include <evhtp/sslutils.h>
+#include <openssl/ssl.h>
+#include <openssl/rand.h>
+#include <openssl/err.h>
+#include <openssl/x509v3.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -74,90 +149,118 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-/* restconf */
+/* evhtp */
+#include <event2/buffer.h> /* evbuffer */
+#include <evhtp/evhtp.h>
+#include <evhtp/sslutils.h> /* XXX inline this / use SSL directly */
 
+/* restconf */
 #include "restconf_lib.h"       /* generic shared with plugins */
 #include "restconf_handle.h"
 #include "restconf_api.h"       /* generic not shared with plugins */
 #include "restconf_err.h"
 #include "restconf_root.h"
+#include "restconf_openssl.h"   /* Restconf-openssl mode specific headers*/
 
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hD:f:E:l:p:y:a:u:ro:"
 
 /* See see listen(5) */
-#define SOCKET_LISTEN_BACKLOG 16
+#define SOCKET_LISTEN_BACKLOG 8
 
-/* Clixon evhtp handle 
- * Global data about evhtp lib, 
- * See evhtp_request_t *req for per-message state data
+/* Cert verify depth */
+#define VERIFY_DEPTH 1
+
+/* Forward */
+static int restconf_connection(int s, void* arg);
+
+/*! Get restconf openssl global handle
+ * @param[in]  h     Clicon handle
+ * @retval     rh    Openssl global handle
  */
-typedef struct {
-    clicon_handle        eh_h;
-    evhtp_t            **eh_htpvec; /* One per socket */
-    int                  eh_htplen; /* Number of sockets */
-    struct event_base   *eh_evbase; /* Change to list */
-    evhtp_ssl_cfg_t     *eh_ssl_config;
-} cx_evhtp_handle;
-
-/* Need this global to pass to signal handler 
- * XXX Try to get rid of code in signal handler
- */
-static cx_evhtp_handle *_EVHTP_HANDLE = NULL;
-
-/* Need global variable to for signal handler XXX */
-static clicon_handle _CLICON_HANDLE = NULL;
-
-static void
-evhtp_terminate(cx_evhtp_handle *eh)
+static restconf_handle *
+restconf_handle_get(clicon_handle h)
 {
-    evhtp_ssl_cfg_t *sc;
-    int              i;
-    
-    if (eh == NULL)
-	return;
-    if (eh->eh_htpvec){
-	for (i=0; i<eh->eh_htplen; i++){
-	    evhtp_unbind_socket(eh->eh_htpvec[i]);
-	    evhtp_free(eh->eh_htpvec[i]);
-	}
-	free(eh->eh_htpvec);
-    }
-    if (eh->eh_evbase)
-	event_base_free(eh->eh_evbase);
-    if ((sc = eh->eh_ssl_config) != NULL){
-	if (sc->cafile)
-	    free(sc->cafile);
-	if (sc->pemfile)
-	    free(sc->pemfile);
-	if (sc->privfile)
-	    free(sc->privfile);
-	free(sc);
-    }
-    free(eh);
+    clicon_hash_t  *cdat = clicon_data(h);
+    size_t          len;
+    void           *p;
+
+    if ((p = clicon_hash_value(cdat, "restconf_openssl_handle", &len)) != NULL)
+	return *(restconf_handle **)p;
+    return NULL;
 }
 
-/*! Signall terminates process
- * XXX Try to get rid of code in signal handler -> so we can get rid of global variables
+/*! Set restconf openssl global handle
+ * @param[in]  h     Clicon handle
+ * @param[in]  rh    Openssl handle (malloced pointer)
+ * @see clicon_config_yang_set  for the configuration yang
  */
-static void
-restconf_sig_term(int arg)
+static int
+openspec_handle_set(clicon_handle   h, 
+		    restconf_handle *rh)
 {
-    static int i=0;
+    clicon_hash_t  *cdat = clicon_data(h);
 
-    if (i++ == 0)
-	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
-		   __PROGRAM__, __FUNCTION__, getpid(), arg);
-    else
-	exit(-1);
-    if (_EVHTP_HANDLE) /* global */
-	evhtp_terminate(_EVHTP_HANDLE);
-    if (_CLICON_HANDLE){ /* could be replaced by eh->eh_h */
-	//	stream_child_freeall(_CLICON_HANDLE);
-	restconf_terminate(_CLICON_HANDLE);
+    /* It is the pointer to ys that should be copied by hash,
+       so we send a ptr to the ptr to indicate what to copy.
+     */
+    if (clicon_hash_add(cdat, "restconf_openssl_handle", &rh, sizeof(rh)) == NULL)
+	return -1;
+    return 0;
+}
+
+/* Write evbuf to socket
+ * see also this function in restcont_api_openssl.c
+ */
+static ssize_t
+evbuf_write(struct evbuffer *ev,
+	    int              s,
+	    SSL             *ssl)
+{
+    ssize_t        retval = -1;
+    size_t         buflen;
+    unsigned char *buf;
+    int            ret;
+
+    if ((buflen = evbuffer_get_length(ev)) > 0){
+	buf = evbuffer_pullup(ev, -1);
+	if (ssl){
+	    if ((ret = SSL_write(ssl, buf, buflen)) <= 0){
+		clicon_err(OE_SSL, 0, "SSL_write");
+		goto done;
+	    }
+	}
+	else{
+	    if (write(s, buf, buflen) < 0){
+		clicon_err(OE_UNIX, errno, "write");
+		goto done;
+	    }
+	}
     }
-    clicon_exit_set(); /* XXX should rather signal event_base_loop */
-    exit(-1);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/* util function to append log string
+ */
+static int
+print_cb(const char *str, size_t len, void *cb)
+{
+    return cbuf_append_str((cbuf*)cb, (char*)str); /* Assume string */
+}
+
+/* Clixon error category log callback 
+ * @param[in]    handle  Application-specific handle
+ * @param[out]   cb      Read log/error string into this buffer
+ */
+static int
+openssl_cat_log_cb(void *handle,
+		   cbuf *cb)
+{
+    clicon_debug(1, "%s", __FUNCTION__);
+    ERR_print_errors_cb(print_cb, cb);
+    return 0;
 }
 
 static char*
@@ -216,6 +319,14 @@ evhtp_method2str(enum htp_method m)
 	return "UNKNOWN";
 	break;
     }
+}
+
+static int
+print_header(evhtp_header_t *header,
+	     void           *arg)
+{
+    clicon_debug(1, "%s %s %s", __FUNCTION__, header->key, header->val);
+    return 0;
 }
 
 static int
@@ -314,7 +425,6 @@ evhtp_params_set(clicon_handle    h,
     cvec         *cvv = NULL;
     char         *cn;
 
-    
     if ((uri = req->uri) == NULL){
 	clicon_err(OE_DAEMON, EFAULT, "No uri");
 	goto done;
@@ -377,123 +487,37 @@ evhtp_params_set(clicon_handle    h,
     goto done;
 }
 
-static int
-print_header(evhtp_header_t *header,
-	     void           *arg)
-{
-    //    clicon_handle  h = (clicon_handle)arg;
-    
-    clicon_debug(1, "%s %s %s",
-		 __FUNCTION__, header->key, header->val);
-    return 0;
-}
-
-static evhtp_res
-cx_pre_accept(evhtp_connection_t *conn,
-	      void               *arg)
-{
-    //    clicon_handle  h = (clicon_handle)arg;
-
-    clicon_debug(1, "%s", __FUNCTION__);    
-    return EVHTP_RES_OK;
-}
-
-static evhtp_res
-cx_post_accept(evhtp_connection_t *conn,
-	       void               *arg)
-{
-    //    clicon_handle  h = (clicon_handle)arg;
-
-    clicon_debug(1, "%s", __FUNCTION__);    
-    return EVHTP_RES_OK;
-}
-
-/*! Generic callback called if no other callbacks are matched
- */
-static void
-cx_gencb(evhtp_request_t *req,
-	 void            *arg)
-{
-    evhtp_connection_t *conn;
-    //    clicon_handle       h = arg;
-
-    clicon_debug(1, "%s", __FUNCTION__);    
-    if (req == NULL){
-	errno = EINVAL;
-	return;
-    }
-    if ((conn = evhtp_request_get_connection(req)) == NULL)
-	goto done;
-    htp_sslutil_add_xheaders(
-        req->headers_out,
-        conn->ssl,
-        HTP_SSLUTILS_XHDR_ALL);
-    evhtp_send_reply(req, EVHTP_RES_NOTFOUND);
- done:
-    return; /* void */
-}
-
-/*! /.well-known callback
- * @see cx_genb
- */
-static void
-cx_path_wellknown(evhtp_request_t *req,
-		  void            *arg)
-{
-    int              retval = -1;
-    cx_evhtp_handle *eh = (cx_evhtp_handle*)arg;
-    clicon_handle    h = eh->eh_h;
-    int              ret;
-
-    clicon_debug(1, "------------");
-    /* input debug */
-    if (clicon_debug_get())
-	evhtp_headers_for_each(req->headers_in, print_header, h);
-    /* get accepted connection */
-
-    /* set fcgi-like paramaters (ignore query vector) */
-    if ((ret = evhtp_params_set(h, req, NULL)) < 0)
-	goto done;
-    if (ret == 1){
-	/* call generic function */
-	if (api_well_known(h, req) < 0)
-	    goto done;
-    }
-    /* Clear (fcgi) paramaters from this request */
-    if (restconf_param_del_all(h) < 0)
-	goto done;
-    retval = 0;
- done:
-    /* Catch all on fatal error. This does not terminate the process but closes request stream */
-    if (retval < 0) 
-	evhtp_send_reply(req, EVHTP_RES_ERROR);
-    return; /* void */
-}
-
 /*! Callback for each incoming http request for path /
  *
  * This are all messages except /.well-known, Registered with evhtp_set_cb
  *
- * @param[in] req  evhtp request structure defining the incoming message
+ * @param[in] req  evhtp http request structure defining the incoming message
  * @param[in] arg  cx_evhtp handle clixon specific fields
  * @retval    void
  * Discussion: problematic if fatal error -1 is returneod from clixon routines 
  * without actually terminating. Consider:
  * 1) sending some error? and/or
  * 2) terminating the process? 
- * @see cx_genb
  */
 static void
-cx_path_restconf(evhtp_request_t *req,
-		 void            *arg)
+restconf_path_root(evhtp_request_t *req,
+		   void            *arg)
 {
-    int              retval = -1;
-    cx_evhtp_handle *eh = (cx_evhtp_handle*)arg;
-    clicon_handle    h = eh->eh_h;
-    int              ret;
-    cvec            *qvec = NULL;
+    int                 retval = -1;
+    clicon_handle       h;
+    evhtp_connection_t *conn;
+    int                 ret;
+    cvec               *qvec = NULL;
 
     clicon_debug(1, "------------");
+    if ((h = (clicon_handle)arg) == NULL){
+	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
+	goto done;
+    }
+    if ((conn = req->conn) == NULL){
+	clicon_err(OE_RESTCONF, EINVAL, "req->conn is NULL");
+	goto done;
+    }
     /* input debug */
     if (clicon_debug_get())
 	evhtp_headers_for_each(req->headers_in, print_header, h);
@@ -519,56 +543,79 @@ cx_path_restconf(evhtp_request_t *req,
     retval = 0;
  done:
     /* Catch all on fatal error. This does not terminate the process but closes request stream */
-    if (retval < 0) 
+    if (retval < 0){
 	evhtp_send_reply(req, EVHTP_RES_ERROR);
+    }
     if (qvec)
 	cvec_free(qvec);
     return; /* void */
 }
 
-/*! Get Server cert ssl info
- * @param[in]     h                Clicon handle
- * @param[in]     server_cert_path Path to server ssl cert file
- * @param[in]     server_key_path  Path to server ssl key file
- * @param[in,out] ssl_config       evhtp ssl config struct
- * @retval        0                OK
- * @retval        -1               Error
+/*! /.well-known callback
+ *
+ * @param[in] req  evhtp http request structure defining the incoming message
+ * @param[in] arg  cx_evhtp handle clixon specific fields
+ * @retval    void
+ */
+static void
+restconf_path_wellknown(evhtp_request_t *req,
+			void            *arg)
+{
+    int                 retval = -1;
+    clicon_handle       h;
+    evhtp_connection_t *conn;
+    int                 ret;
+
+    clicon_debug(1, "------------");
+    if ((h = (clicon_handle)arg) == NULL){
+	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
+	goto done;
+    }
+    if ((conn = req->conn) == NULL){
+	clicon_err(OE_RESTCONF, EINVAL, "req->conn is NULL");
+	goto done;
+    }
+    /* input debug */
+    if (clicon_debug_get())
+	evhtp_headers_for_each(req->headers_in, print_header, h);
+    /* get accepted connection */
+
+    /* set fcgi-like paramaters (ignore query vector) */
+    if ((ret = evhtp_params_set(h, req, NULL)) < 0)
+	goto done;
+    if (ret == 1){
+	/* call generic function */
+	if (api_well_known(h, req) < 0)
+	    goto done;
+    }
+    /* Clear (fcgi) paramaters from this request */
+    if (restconf_param_del_all(h) < 0)
+	goto done;
+    retval = 0;
+ done:
+    /* Catch all on fatal error. This does not terminate the process but closes request stream */
+    if (retval < 0){
+	evhtp_send_reply(req, EVHTP_RES_ERROR);
+    }
+    return; /* void */
+}
+
+/*
+ * see restconf_config ->cv_evhtp_init(x2) -> cx_evhtp_socket -> 
+ * evhtp_ssl_init:4757
  */
 static int
-cx_get_ssl_server_certs(clicon_handle    h,
-			const char      *server_cert_path,
-			const char      *server_key_path,
-			evhtp_ssl_cfg_t *ssl_config)
-{
-    int         retval = -1;
-    struct stat f_stat;
+init_openssl(void)
+{ 
+    int           retval = -1;
 
-    if (ssl_config == NULL){
-	clicon_err(OE_CFG, EINVAL, "ssl_config is NULL");
-	goto done;
-    }
-    if (server_cert_path == NULL){
-	clicon_err(OE_CFG, EINVAL, "server_cert_path is not set but is required when ssl is enabled");
-	goto done;
-    }
-    if (server_key_path == NULL){
-	clicon_err(OE_CFG, EINVAL, "server_key_path is not set but is required when ssl is enabled");
-	goto done;
-    }
-    if ((ssl_config->pemfile = strdup(server_cert_path)) == NULL){
-	clicon_err(OE_CFG, errno, "strdup");
-	goto done;
-    }
-    if (stat(ssl_config->pemfile, &f_stat) != 0) {
-	clicon_err(OE_FATAL, errno, "Cannot load SSL cert '%s'", ssl_config->pemfile);
-	goto done;
-    }
-    if ((ssl_config->privfile = strdup(server_key_path)) == NULL){
-	clicon_err(OE_CFG, errno, "strdup");
-	goto done;
-    }
-    if (stat(ssl_config->privfile, &f_stat) != 0) {
-	clicon_err(OE_FATAL, errno, "Cannot load SSL key '%s'", ssl_config->privfile);
+    /* In Openssl 1.1 lib inits itself (?)
+     * eg SSL_load_error_strings();
+    */
+    /* This isn't strictly necessary... OpenSSL performs RAND_poll
+     * automatically on first use of random number generator. */
+    if (RAND_poll() != 1) {
+	clicon_err(OE_SSL, errno, "Random generator has not been seeded with enough data");
 	goto done;
     }
     retval = 0;
@@ -576,403 +623,695 @@ cx_get_ssl_server_certs(clicon_handle    h,
     return retval;
 }
 
-/*! Get client ssl cert info
- * @param[in]     h                   Clicon handle
- * @param[in]     server_ca_cert_path Path to server ssl CA file for client certs
- * @param[in,out] ssl_config          evhtp ssl config struct
- * @retval        0                   OK
- * @retval        -1                  Error
+/*!
+ * The verify_callback function is used to control the behaviour when the SSL_VERIFY_PEER flag
+ * is set. It must be supplied by the application and receives two arguments: preverify_ok
+ * indicates, whether the verification of the certificate in question was passed 
+ * (preverify_ok=1) or not (preverify_ok=0). x509_ctx is a pointer to the complete context
+ * used for the certificate chain verification.
  */
 static int
-cx_get_ssl_client_ca_certs(clicon_handle    h,
-			   const char      *server_ca_cert_path,
-			   evhtp_ssl_cfg_t *ssl_config)
+restconf_verify_certs(int                     preverify_ok,
+		      evhtp_x509_store_ctx_t *store)
 {
-    int         retval = -1;
-    struct stat f_stat;
-
-    if (ssl_config == NULL || server_ca_cert_path == NULL){
-	clicon_err(OE_CFG, EINVAL, "Input parameter is NULL");
-	goto done;
-    }
-    if ((ssl_config->cafile = strdup(server_ca_cert_path)) == NULL){
-	clicon_err(OE_CFG, errno, "strdup");
-	goto done;
-    }
-    if (stat(ssl_config->cafile, &f_stat) != 0) {
-	clicon_err(OE_FATAL, errno, "Cannot load SSL key '%s'", ssl_config->privfile);
-	goto done;
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
-static int
-cx_verify_certs(int pre_verify,
-		evhtp_x509_store_ctx_t *store)
-{
-#if 0 //def NOTYET
-    char                 buf[256];
-    X509               * err_cert;
-    int                  err;
-    int                  depth;
-    SSL                * ssl;
-    evhtp_connection_t * connection;
-    evhtp_ssl_cfg_t    * ssl_cfg;
+    char                buf[256];
+    X509               *err_cert;
+    int                 err;
+    int                 depth;
+    //    SSL                *ssl;
+    //    clicon_handle       h;
     
-    fprintf(stderr, "%s %d\n", __FUNCTION__, pre_verify);
-
+    clicon_debug(1, "%s %d", __FUNCTION__, preverify_ok);
     err_cert   = X509_STORE_CTX_get_current_cert(store);
     err        = X509_STORE_CTX_get_error(store);
     depth      = X509_STORE_CTX_get_error_depth(store);
-    ssl        = X509_STORE_CTX_get_ex_data(store, SSL_get_ex_data_X509_STORE_CTX_idx());
+    //    ssl        = X509_STORE_CTX_get_ex_data(store, SSL_get_ex_data_X509_STORE_CTX_idx());
 
+    clicon_debug(1, "%s preverify_ok:%d err:%d depth:%d", __FUNCTION__, preverify_ok, err, depth);
     X509_NAME_oneline(X509_get_subject_name(err_cert), buf, 256);
-    
-    connection = SSL_get_app_data(ssl);
-    ssl_cfg    = connection->htp->ssl_cfg;
-#endif
-    return pre_verify;
+    switch (err){
+    case X509_V_ERR_HOSTNAME_MISMATCH:
+	clicon_debug(1, "%s X509_V_ERR_HOSTNAME_MISMATCH", __FUNCTION__);
+	break;
+    }
+    /* Catch a too long certificate chain. should be +1 in SSL_CTX_set_verify_depth() */
+    if (depth > 1) {
+        preverify_ok = 0;
+        err = X509_V_ERR_CERT_CHAIN_TOO_LONG;
+        X509_STORE_CTX_set_error(store, err);
+    } 
+    if (depth == VERIFY_DEPTH){
+	/* Verify the CA name */
+	
+    }
+    //    h = SSL_get_app_data(ssl);
+    return preverify_ok;
 }
 
-/*! Create and bind restconf socket
- * 
- * @param[in]  netns0    Network namespace, special value "default" is same as NULL
- * @param[in]  addr      Address as string, eg "0.0.0.0", "::"
- * @param[in]  addrtype  One of inet:ipv4-address or inet:ipv6-address
- * @param[in]  port      TCP port
- * @param[out] ss        Server socket (bound for accept)
+static int             session_id_context = 1;
+ 
+/*
+ * see restconf_config ->cv_evhtp_init(x2) -> cx_evhtp_socket -> 
+ * evhtp_ssl_init:4794
+ */
+static SSL_CTX *
+restconf_ssl_context_create(clicon_handle h)
+{
+    const SSL_METHOD *method;
+    SSL_CTX *ctx = NULL;
+
+    method = TLS_server_method();
+
+    if ((ctx = SSL_CTX_new(method)) == NULL) {
+	clicon_err(OE_SSL, 0, "SSL_CTX_new");
+	goto done;
+    }
+    /* Options
+    * As of OpenSSL 1.0.2g the SSL_OP_NO_SSLv2 option is set by default. *
+    * It is recommended that applications should set SSL_OP_NO_SSLv3. 
+    * The question is which TLS to disable
+    * SSL_OP_NO_TLSv1, SSL_OP_NO_TLSv1_1, SSL_OP_NO_TLSv1_2
+    */
+    SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1);
+
+    SSL_CTX_set_options(ctx, SSL_MODE_RELEASE_BUFFERS | SSL_OP_NO_COMPRESSION);
+    //    SSL_CTX_set_timeout(ctx, cfg->ssl_ctx_timeout); /* default 300s */
+ done:
+    return ctx;
+}
+
+/*
+ * see restconf_config ->cv_evhtp_init(x2) -> cx_evhtp_socket -> 
+ * evhtp_ssl_init: 4886
+ * @param[in]  ctx                 SSL context
+ * @param[in]  server_cert_path    Server cert
+ * @param[in]  server_key_path     Server private key
+ * @param[in]  server_ca_cert_path CA cert Only if auth-type = client cert
+ * @see restconf_ssl_context_create
  */
 static int
-restconf_socket_init(const char   *netns0,
-		     const char   *addr,
-		     const char   *addrtype,
-		     uint16_t      port,
-		     int          *ss)
+restconf_ssl_context_configure(clixon_handle h,
+			       SSL_CTX      *ctx,
+			       const char   *server_cert_path,
+			       const char   *server_key_path,
+			       const char   *server_ca_cert_path)
+{
+    int retval = -1;
+
+    SSL_CTX_set_ecdh_auto(ctx, 1);
+
+    /* Specifies the locations where CA certificates are located. The certificates available via
+     * CAfile and CApath are trusted. 
+     * retval= 0: The operation failed because CAfile and CApath are NULL or the
+     * processing at one of the locations specified failed. Check the error stack to 
+     * find out the reason.
+     */
+    if (server_ca_cert_path){
+	if (SSL_CTX_load_verify_locations(ctx, server_ca_cert_path, NULL) != 1){
+	    clicon_err(OE_SSL, 0, "SSL_CTX_load_verify_locations(%s)", server_ca_cert_path);
+	    goto done;
+	}
+	SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER /*| SSL_VERIFY_FAIL_IF_NO_PEER_CERT */,
+			   restconf_verify_certs);
+	SSL_CTX_set_verify_depth(ctx, VERIFY_DEPTH+1);
+    }
+
+
+    X509_STORE_set_flags(SSL_CTX_get_cert_store(ctx), 0);
+
+    SSL_CTX_set_session_id_context(ctx, (void *)&session_id_context, sizeof(session_id_context));
+    SSL_CTX_set_app_data(ctx, h);
+    SSL_CTX_set_session_cache_mode(ctx, 0);
+
+    /* Set the key and cert */
+    if (SSL_CTX_use_certificate_chain_file(ctx, server_cert_path) != 1) {
+        ERR_print_errors_fp(stderr);
+	goto done;
+    }
+
+    if (SSL_CTX_use_PrivateKey_file(ctx,
+				    server_key_path,
+				    SSL_FILETYPE_PEM) <= 0 ) {
+        ERR_print_errors_fp(stderr);
+	goto done;
+    }
+
+    retval = 0;
+ done:
+    return retval;
+}
+
+static int
+close_openssl_socket(int  s,
+		     SSL *ssl)
+{
+    int retval = -1;
+    int ret;
+    
+    if (ssl){
+	//            SSL_set_shutdown(ssl, SSL_RECEIVED_SHUTDOWN);
+	/* SSL_shutdown() must not be called if a previous fatal error has occurred on a connection 
+	 * i.e. if SSL_get_error() has returned SSL_ERROR_SYSCALL or SSL_ERROR_SSL.
+	 */
+	if ((ret = SSL_shutdown(ssl)) < 0){
+	    int e = SSL_get_error(ssl, ret);
+	    clicon_err(OE_SSL, 0, "SSL_shutdown, err:%d", e);
+	    goto done;
+	}
+	SSL_free(ssl);
+    }
+    close(s);
+    clixon_event_unreg_fd(s, restconf_connection);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! New data connection after accept, receive and reply on data sockte
+ *
+ * @param[in]   s    Socket where message arrived. read from this.
+ * @param[in]   arg  Client entry (from).
+ * @retval      0    OK
+ * @retval      -1   Error Terminates backend and is never called). Instead errors are
+ *                   propagated back to client.
+ * @see restconf_accept_client where this callback is registered
+ */
+static int
+restconf_connection(int   s, 
+		    void* arg)
 {
     int                 retval = -1;
-    struct sockaddr   * sa;
-    struct sockaddr_in6 sin6   = { 0 };
-    struct sockaddr_in  sin    = { 0 };
-    size_t              sin_len;
-    const char         *netns;
+    evhtp_connection_t *conn = NULL;
+    size_t              n;
+    char                buf[1024];
+    SSL                *ssl;
+    clicon_handle       h;
 
-    clicon_debug(1, "%s %s %s %s", __FUNCTION__, netns0, addrtype, addr);
-    /* netns default -> NULL */
-    if (netns0 != NULL && strcmp(netns0, "default")==0)
-	netns = NULL;
-    else
-	netns = netns0;
-    if (strcmp(addrtype, "inet:ipv6-address") == 0) {
-        sin_len          = sizeof(struct sockaddr_in6);
-        sin6.sin6_port   = htons(port);
-        sin6.sin6_family = AF_INET6;
-
-        inet_pton(AF_INET6, addr, &sin6.sin6_addr);
-        sa = (struct sockaddr *)&sin6;
+    clicon_debug(1, "%s", __FUNCTION__);
+    if ((conn = (evhtp_connection_t*)arg) == NULL){
+	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
+	goto done;
     }
-    else if (strcmp(addrtype, "inet:ipv4-address") == 0) {
-        sin_len             = sizeof(struct sockaddr_in);
-        sin.sin_family      = AF_INET;
-        sin.sin_port        = htons(port);
-        sin.sin_addr.s_addr = inet_addr(addr);
-
-        sa = (struct sockaddr *)&sin;
+    h = (clicon_handle*)conn->htp->arg;
+    /* Example: curl -Ssik -u wilma:bar -X GET https://localhost/restconf/data/example:x */
+    if (conn->ssl){
+	/* Non-ssl gets n == 0 here!
+	   curl -Ssik --key /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.key --cert /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.crt -X GET https://localhost/restconf/data/example:x
+*/
+	if ((n = SSL_read(conn->ssl, buf, sizeof(buf))) < 0){
+	    clicon_err(OE_XML, errno, "SSL_read");
+	    goto done;
+	}
     }
     else{
-	clicon_err(OE_XML, EINVAL, "Unexpected addrtype: %s", addrtype);
-	return -1;
+	if ((n = read(conn->sock, buf, sizeof(buf))) < 0){ /* XXX atomicio ? */
+	    clicon_err(OE_XML, errno, "SSL_read");
+	    goto done;
+	}
     }
-    if (clixon_netns_socket(netns, sa, sin_len, SOCKET_LISTEN_BACKLOG, ss) < 0)
-	goto done;
+    if (n == 0){
+	ssl = conn->ssl;
+	conn->ssl = NULL;
+	evhtp_connection_free(conn); /* evhtp */
+	if (close_openssl_socket(s, ssl) < 0)
+	    goto done;
+	goto ok;
+    }
+    /* parse incoming packet 
+     * signature: 
+     */
+    if (connection_parse_nobev(buf, n, conn) < 0){
+	evhtp_request_t *er;
+	er = evhtp_request_new(NULL, NULL);
+	er->conn = conn;
+	conn->request = er;
+	htparser_set_major(conn->parser, '\1');
+	htparser_set_minor(conn->parser, '\1');
+	if (restconf_badrequest(h, er) < 0) 
+	    goto done;
+		if (conn->bev != NULL)
+		    if (evbuf_write(bufferevent_get_output(conn->bev), s, NULL) < 0)
+			goto done;
+	evhtp_connection_free(conn);
+	if (close_openssl_socket(s, NULL) < 0)
+	    goto done;
+	goto ok;
+    }
+    if (conn->bev != NULL){
+	/* This is for 100 Continue, typically bev is set but output is empty
+	 * if sent by fini callback
+	 */
+	if (evbuf_write(bufferevent_get_output(conn->bev), conn->sock, conn->ssl) < 0)
+	    goto done;
+    }
+ ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clicon_debug(1, "%s retval %d", __FUNCTION__, retval);
     return retval;
 }
 
-/*! Usage help routine
- * @param[in]  argv0  command line
- * @param[in]  h      Clicon handle
- */
-static void
-usage(clicon_handle h,
-      char         *argv0)
-
-{
-    fprintf(stderr, "usage:%s [options]\n"
-	    "where options are\n"
-            "\t-h \t\t  Help\n"
-	    "\t-D <level>\t  Debug level, overrides any config debug setting\n"
-    	    "\t-f <file>\t  Configuration file (mandatory)\n"
-	    "\t-E <dir> \t  Extra configuration file directory\n"
-	    "\t-l <s|f<file>> \t  Log on (s)yslog, (f)ile (syslog is default)\n"
-	    "\t-p <dir>\t  Yang directory path (see CLICON_YANG_DIR)\n"
-	    "\t-y <file>\t  Load yang spec file (override yang main module)\n"
-    	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
-    	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
-	    "\t-r \t\t  Do not drop privileges if run as root\n"
-	    "\t-o <option>=<value> Set configuration option overriding config file (see clixon-config.yang)\n"
-	    ,
-	    argv0
-	    );
-    exit(0);
-}
-
-/*! Extract socket info from backend config 
- * @param[in]  h         Clicon handle
- * @param[in]  xs        socket config
- * @param[in]  nsc       Namespace context
- * @param[out] namespace 
- * @param[out] address   Address as string, eg "0.0.0.0", "::"
- * @param[out] addrtype  One of inet:ipv4-address or inet:ipv6-address
- * @param[out] port
- * @param[out] ssl
+/*! Debug print all loaded certs
  */
 static int
-cx_evhtp_socket_extract(clicon_handle h,
-			cxobj        *xs,
-			cvec         *nsc,
-			char        **namespace,
-			char        **address,
-			char        **addrtype,
-			uint16_t     *port,
-			uint16_t     *ssl)
+restconf_listcerts(SSL *ssl)
 {
-    int        retval = -1;
-    cxobj     *x;
-    char      *str = NULL;
-    char      *reason = NULL;
-    int        ret;
-    char      *body;
-    cg_var    *cv = NULL;
-    yang_stmt *y;
-    yang_stmt *ysub = NULL;
+    X509 *cert;
+    char *line;
 
-    if ((x = xpath_first(xs, nsc, "namespace")) == NULL){
-	clicon_err(OE_XML, EINVAL, "Mandatory namespace not given");
-	goto done;
-    }
-    *namespace = xml_body(x);
-    if ((x = xpath_first(xs, nsc, "address")) == NULL){
-	clicon_err(OE_XML, EINVAL, "Mandatory address not given");
-	goto done;
-    }
-    /* address is a union type and needs a special investigation to see which type (ipv4 or ipv6)
-     * the address is
-     */
-    body = xml_body(x);
-    y = xml_spec(x);
-    if ((cv = cv_dup(yang_cv_get(y))) == NULL){
-	clicon_err(OE_UNIX, errno, "cv_dup");
-	goto done;
-    }
-    if ((ret = cv_parse1(body, cv, &reason)) < 0){
-	clicon_err(OE_XML, errno, "cv_parse1");
-	goto done;
-    }
-    if (ret == 0){
-	clicon_err(OE_XML, EFAULT, "%s", reason);
-	goto done;
-    }
-    if ((ret = ys_cv_validate(h, cv, y, &ysub, &reason)) < 0)
-	goto done;
-    if (ret == 0){
-	clicon_err(OE_XML, EFAULT, "Validation os address: %s", reason);
-	goto done;
-    }
-    if (ysub == NULL){
-	clicon_err(OE_XML, EFAULT, "No address union type");
-	goto done;
-    }
-    *address = body;
-    /* This is YANG type name of ip-address:
-     *   typedef ip-address {
-     *     type union {
-     *       type inet:ipv4-address; <---
-     *       type inet:ipv6-address; <---
-     *     }
-     */
-    *addrtype = yang_argument_get(ysub); 
-    if ((x = xpath_first(xs, nsc, "port")) != NULL &&
-	(str = xml_body(x)) != NULL){
-	if ((ret = parse_uint16(str, port, &reason)) < 0){
-	    clicon_err(OE_XML, errno, "parse_uint16");
-	    goto done;
+    clicon_debug(1, "%s get peer certificates:", __FUNCTION__);
+    if ((cert = SSL_get_peer_certificate(ssl)) != NULL) { /* Get certificates (if available) */
+        if ((line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0)) != NULL){
+	    clicon_debug(1, "Subject: %s", line);
+	    free(line);
 	}
-	if (ret == 0){
-	    clicon_err(OE_XML, EINVAL, "Unrecognized value of port: %s", str);
-	    goto done;
+	if ((line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0)) != NULL){
+	    clicon_debug(1, "Issuer: %s", line);
+	    free(line);
 	}
-    }
-    if ((x = xpath_first(xs, nsc, "ssl")) != NULL &&
-	(str = xml_body(x)) != NULL){
-	/* XXX use parse_bool but it is legacy static */
-	if (strcmp(str, "false") == 0)
-	    *ssl = 0;
-	else if (strcmp(str, "true") == 0)
-	    *ssl = 1;
-	else {
-	    clicon_err(OE_XML, EINVAL, "Unrecognized value of ssl: %s", str);
-	    goto done;
+        if ((line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0)) != NULL){
+	    clicon_debug(1, "Subject: %s", line);
+	    free(line);
 	}
+        X509_free(cert);
     }
-    retval = 0;
- done:
-    if (cv)
-        cv_free(cv);
-    if (reason)
-	free(reason);
-    return retval;
-}
-
-static int
-cx_htp_add(cx_evhtp_handle *eh,
-	   evhtp_t         *htp)
-{
-    eh->eh_htplen++;
-    if ((eh->eh_htpvec = realloc(eh->eh_htpvec, eh->eh_htplen*sizeof(htp))) == NULL){
-	clicon_err(OE_UNIX, errno, "realloc");
-	return -1;
-    }
-    eh->eh_htpvec[eh->eh_htplen-1] = htp;
     return 0;
 }
 
-/*! Phase 2 of backend evhtp init, config single socket
+/*! Check if a "cert" file exists
+ * 
+ * @param[in]  xrestconf XML tree containing restconf config
+ * @param[in]  name      Name of configured "cert" name
+ * @param[out] var       String variable
+ * @retval     0         OK, exists
+ * @retval    -1         No, does not exist
+ */
+static int
+restconf_checkcert_file(cxobj      *xrestconf,
+			const char *name,
+			char      **var)
+{
+    int         retval = -1;
+    cxobj      *x;
+    struct stat fstat;
+    cvec       *nsc = NULL;
+    char       *filename;
+
+    if ((x = xpath_first(xrestconf, nsc, "%s", name)) == NULL){
+	clicon_err(OE_FATAL, EFAULT, "cert '%s' not found in config", name);
+	goto done;
+    }
+    if ((filename = xml_body(x)) == NULL){
+	clicon_err(OE_FATAL, EFAULT, "cert '%s' NULL value in config", name);
+	goto done;
+    }
+    if (stat(filename, &fstat) < 0) {
+	clicon_err(OE_FATAL, errno, "cert '%s'", filename);
+	goto done;
+    }
+    *var = filename;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Send initial bad request reply before actual packet received, just after accept
+ * @param[in]  ssl  if set, it will be freed
+ */
+static int
+accept_badrequest(clicon_handle       h,
+		  int                 s,
+		  SSL                *ssl,
+		  evhtp_connection_t *conn)
+{
+    int retval = -1;
+    evhtp_request_t *er;
+    
+    /*
+     * Since message has not been read, the reply is constructed manually
+     * using http 1.1
+     * See note (1) http to https port:
+     */
+    er = evhtp_request_new(NULL, NULL);
+    er->conn = conn;
+    conn->request = er;
+    conn->ssl = NULL;
+    htparser_set_major(conn->parser, '\1');
+    htparser_set_minor(conn->parser, '\1');
+    if (restconf_badrequest(h, er) < 0) 
+	goto done;
+    /* XXX: should there be a body? */
+    if (conn->bev != NULL)
+	if (evbuf_write(bufferevent_get_output(conn->bev), s, ssl) < 0)
+	    goto done;
+    evhtp_connection_free(conn);
+    if (close_openssl_socket(s, ssl) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Accept new socket client
+ * @param[in]  fd   Socket (unix or ip)
+ * @param[in]  arg  typecast clicon_handle
+ * @see openssl_init_socket where this callback is registered
+ */
+static int
+restconf_accept_client(int   fd,
+		       void *arg) 
+{
+    int                retval = -1;
+    restconf_socket   *rsock = (restconf_socket *)arg;
+    restconf_handle   *rh = NULL;
+    clicon_handle      h;
+    int                s;
+    struct sockaddr    from = {0,};
+    socklen_t          len;
+    char               *name = NULL;
+    SSL                *ssl = NULL;  /* structure for ssl connection */
+    int                 ret;
+    evhtp_t            *evhtp = NULL;
+    evhtp_connection_t *conn;
+
+    clicon_debug(1, "%s %d", __FUNCTION__, fd);
+    if (rsock == NULL){
+	clicon_err(OE_YANG, EINVAL, "rsock is NULL");
+	goto done;
+    }
+    h = rsock->rs_h;
+    if ((rh = restconf_handle_get(h)) == NULL){
+	clicon_err(OE_XML, EFAULT, "No openssl handle");
+	goto done;
+    }
+    len = sizeof(from);
+    if ((s = accept(rsock->rs_ss, &from, &len)) < 0){
+	clicon_err(OE_UNIX, errno, "accept");
+	goto done;
+    }
+    evhtp = rh->rh_evhtp;
+    if ((conn = evhtp_connection_new_server(evhtp, s)) == NULL){
+	clicon_err(OE_UNIX, errno, "evhtp_connection_new_server");
+	goto done;
+    }
+    if (rsock->rs_ssl){
+	if ((ssl = SSL_new(rh->rh_ctx)) == NULL){
+	    clicon_err(OE_SSL, 0, "SSL_new");
+	    goto done;
+	}
+	/* CCL_CTX_set_verify already set, need not call SSL_set_verify again for this server
+	 */
+	/* X509_CHECK_FLAG_NO_WILDCARDS disables wildcard expansion */
+	SSL_set_hostflags(ssl, X509_CHECK_FLAG_NO_WILDCARDS);
+#if 0
+	/* Enable this if you want to restrict client certs to a specific set.
+	 * Otherwise this is done in restcon ca-auth callback and ultimately NACM
+	 * SSL_set1_host() sets the expected DNS hostname to name
+	   C                      = SE  
+	   L                      = Stockholm
+	   O                      = Clixon
+	   OU                     = clixon
+	   CN                     = ca <---
+	   emailAddress           = olof@hagsand.se
+	*/
+	if (SSL_set1_host(ssl, "andy") != 1) { /* for peer cert */
+	    clicon_err(OE_SSL, 0, "SSL_set1_host");
+	    goto done;
+	}
+	if (SSL_add1_host(ssl, "olof") != 1) { /* for peer cert */
+	    clicon_err(OE_SSL, 0, "SSL_set1_host");
+	    goto done;
+	}
+#endif
+	conn->ssl = ssl; /* evhtp */
+	if (SSL_set_fd(ssl, s) != 1){
+	    clicon_err(OE_SSL, 0, "SSL_set_fd");
+	    goto done;
+	}
+	/* 1: OK, -1 fatal, 0: TLS/SSL handshake was not successful
+	 * Both error cases: Call SSL_get_error() with the return value ret 
+	 */
+	if ((ret = SSL_accept(ssl)) != 1) {
+	    int e = SSL_get_error(ssl, ret);
+	    switch (e){
+	    case SSL_ERROR_SSL: {                 /* 1 */
+		if (accept_badrequest(h, s, NULL, conn) < 0)
+		    goto done;
+		SSL_free(ssl);
+		goto ok;
+	    }
+		break;
+	    case SSL_ERROR_SYSCALL:              /* 5 */
+		/* look at error stack/return value/errno */
+		SSL_free(ssl);
+		if (close_openssl_socket(s, NULL) < 0)
+		    goto done;
+		conn->ssl = NULL;
+		evhtp_connection_free(conn);
+		goto ok;
+		break;
+	    case SSL_ERROR_NONE:                 /* 0 */
+	    case SSL_ERROR_ZERO_RETURN:          /* 6 */
+	    case SSL_ERROR_WANT_READ:            /* 2 */
+	    case SSL_ERROR_WANT_WRITE:           /* 3 */
+	    case SSL_ERROR_WANT_CONNECT:         /* 7 */
+	    case SSL_ERROR_WANT_ACCEPT:          /* 8 */
+	    case SSL_ERROR_WANT_X509_LOOKUP:     /* 4 */
+	    case SSL_ERROR_WANT_ASYNC:           /* 8 */
+	    case SSL_ERROR_WANT_ASYNC_JOB:       /* 10 */
+	    case SSL_ERROR_WANT_CLIENT_HELLO_CB: /* 11 */
+		break;
+	    }
+	    clicon_err(OE_SSL, 0, "SSL_accept:%d", e);
+	    goto done;
+	}
+	/* For client-cert authentication, check if any certs are present,
+	* if not, send bad request
+	* Alt: set SSL_CTX_set_verify(ctx, SSL_VERIFY_FAIL_IF_NO_PEER_CERT)
+	* but then SSL_accept fails.
+	*/
+	if (restconf_auth_type_get(h) == CLIXON_AUTH_CLIENT_CERTIFICATE &&
+	    SSL_get_peer_certificate(ssl) == NULL) { /* Get certificates (if available) */
+	    if (accept_badrequest(h, s, ssl, conn) < 0)
+		goto done;
+	    goto ok;
+	}
+	/* Get the actual peer, XXX this maybe could be done in ca-auth client-cert code ? 
+	 * Note this _only_ works if SSL_set1_host() was set previously,...
+	 */
+	if (SSL_get_verify_result(ssl) == X509_V_OK) { /* for peer cert */
+	    const char *peername = SSL_get0_peername(ssl);
+
+	    if (peername != NULL) {
+		/* Name checks were in scope and matched the peername */
+		clicon_debug(1, "%s peername:%s", __FUNCTION__, peername);
+	    }
+	}
+
+	if (clicon_debug_get())
+	    restconf_listcerts(ssl);
+    }
+    /*
+     * Register callbacks for actual data socket 
+     */
+    if (clixon_event_reg_fd(s, restconf_connection, (void*)conn, "restconf client socket") < 0)
+	goto done;
+ ok:
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval %d", __FUNCTION__, retval);
+    if (name)
+	free(name);
+    return retval;
+}
+
+static int
+restconf_openssl_terminate(clicon_handle h)
+{
+    restconf_handle *rh;
+    restconf_socket *rsock;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if ((rh = restconf_handle_get(h)) != NULL){
+	while ((rsock = rh->rh_sockets) != NULL){
+	    clixon_event_unreg_fd(rsock->rs_ss, restconf_accept_client);
+	    close(rsock->rs_ss);
+	    DELQ(rsock, rh->rh_sockets, restconf_socket *);
+	    free(rsock);
+	}
+	if (rh->rh_ctx)
+	    SSL_CTX_free(rh->rh_ctx);
+	if (rh->rh_evhtp){
+	    if (rh->rh_evhtp->evbase)
+		event_base_free(rh->rh_evhtp->evbase);
+	    evhtp_free(rh->rh_evhtp);
+	}
+	free(rh);
+    }
+    EVP_cleanup();
+    return 0;
+}
+
+
+/*! Query backend of config.
+ * Loop to wait for backend starting, try again if not done 
+ * @param[out] xrestconf XML restconf config, malloced (if retval = 1)
+ * @retval     1         OK  (and xrestconf set)
+ * @retval     0         Fail - no config
+ * @retval    -1         Error
+ */
+static int
+restconf_clixon_backend(clicon_handle h,
+			cxobj       **xrestconfp)
+{
+    int            retval = -1;
+    uint32_t       id = 0; /* Session id, to poll backend up */
+    cvec          *nsc = NULL;
+    struct passwd *pw;
+    cxobj         *xconfig = NULL;
+    cxobj         *xrestconf = NULL;
+    cxobj         *xerr;
+    int            ret;
+
+    /* Loop to wait for backend starting, try again if not done */
+    while (1){
+	if (clicon_hello_req(h, &id) < 0){
+	    if (errno == ENOENT){
+		fprintf(stderr, "waiting");
+		sleep(1);
+		continue;
+	    }
+	    clicon_err(OE_UNIX, errno, "clicon_session_id_get");
+	    goto done;
+	}
+	clicon_session_id_set(h, id);
+	break;
+    }
+    if ((nsc = xml_nsctx_init(NULL, CLIXON_RESTCONF_NS)) == NULL)
+	goto done;
+    if ((pw = getpwuid(getuid())) == NULL){
+	clicon_err(OE_UNIX, errno, "getpwuid");
+	goto done;
+    }
+    /* XXX xconfig leaked */
+    if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, &xconfig) < 0)
+	goto done;
+    if ((xerr = xpath_first(xconfig, NULL, "/rpc-error")) != NULL){
+	clixon_netconf_error(xerr, "Get backend restconf config", NULL);
+	goto done;
+    }
+    /* Extract restconf configuration */
+    if ((xrestconf = xpath_first(xconfig, nsc, "restconf")) == NULL)
+    	goto fail;
+    if ((ret = restconf_config_init(h, xrestconf)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
+    if (xml_rm(xrestconf) < 0)
+	goto done;
+    *xrestconfp = xrestconf;
+    retval = 1;
+ done:
+    if (nsc)
+	cvec_free(nsc);
+    if (xconfig)
+	xml_free(xconfig);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+
+/*! Per-socket openssl inits
  * @param[in]  h        Clicon handle
- * @param[in]  eh       Evhtp handle
- * @param[in]  ssl_enable Server is SSL enabled
  * @param[in]  xs       XML config of single restconf socket
  * @param[in]  nsc      Namespace context
  */
 static int
-cx_evhtp_socket(clicon_handle    h,
-		cx_evhtp_handle *eh,
-		int              ssl_enable,
-		cxobj           *xs,
-		cvec            *nsc,
-		char            *server_cert_path,
-		char            *server_key_path,
-		char            *server_ca_cert_path)
+openssl_init_socket(clicon_handle h,
+		    cxobj        *xs,
+		    cvec         *nsc)
 {
-    int          retval = -1;
-    char        *netns = NULL;
-    char        *address = NULL;
-    char        *addrtype = NULL;
-    uint16_t     ssl = 0;
-    uint16_t     port = 0;
-    int          ss = -1;
-    evhtp_t     *htp = NULL;
+    int             retval = -1;
+    char           *netns = NULL;
+    char           *address = NULL;
+    char           *addrtype = NULL;
+    uint16_t        ssl = 0;
+    uint16_t        port = 0;
+    int             ss = -1;
+    restconf_handle *rh = NULL;
+    restconf_socket *rsock = NULL; /* openssl per socket struct */
 
     clicon_debug(1, "%s", __FUNCTION__);
-    /* This is socket create a new evhtp_t instance */
-    if ((htp = evhtp_new(eh->eh_evbase, NULL)) == NULL){
-	clicon_err(OE_UNIX, errno, "evhtp_new");
-	goto done;
-    }
-#ifndef EVHTP_DISABLE_EVTHR /* threads */
-    evhtp_use_threads_wexit(htp, NULL, NULL, 4, NULL);
-#endif
-    /* Callback before the connection is accepted. */
-    evhtp_set_pre_accept_cb(htp, cx_pre_accept, h);
-    /* Callback right after a connection is accepted. */
-    evhtp_set_post_accept_cb(htp, cx_post_accept, h);
-    /* Callback to be executed for all /restconf api calls */
-    if (evhtp_set_cb(htp, "/" RESTCONF_API, cx_path_restconf, eh) == NULL){
-    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
-    	goto done;
-    }
-    /* Callback to be executed for all /restconf api calls */
-    if (evhtp_set_cb(htp, RESTCONF_WELL_KNOWN, cx_path_wellknown, eh) == NULL){
-    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
-    	goto done;
-   }
-    /* Generic callback called if no other callbacks are matched */
-    evhtp_set_gencb(htp, cx_gencb, h);
-
     /* Extract socket parameters from single socket config: ns, addr, port, ssl */
-    if (cx_evhtp_socket_extract(h, xs, nsc, &netns, &address, &addrtype, &port, &ssl) < 0)
+    if (restconf_socket_extract(h, xs, nsc, &netns, &address, &addrtype, &port, &ssl) < 0)
 	goto done;
-    /* Sanity checks of socket parameters */
-    if (ssl){
-	if (ssl_enable == 0 || server_cert_path==NULL || server_key_path == NULL){
-	    clicon_err(OE_XML, EINVAL, "Enabled SSL server requires server_cert_path and server_key_path"); 
-	    goto done;
-	}
-	//    ssl_verify_mode             = htp_sslutil_verify2opts(optarg);
-	if (evhtp_ssl_init(htp, eh->eh_ssl_config) < 0){
-	    clicon_err(OE_UNIX, errno, "evhtp_new");
-	    goto done;
-	}
-    }
     /* Open restconf socket and bind */
-    if (restconf_socket_init(netns, address, addrtype, port, &ss) < 0)
+    if (restconf_socket_init(netns, address, addrtype, port,
+			     SOCKET_LISTEN_BACKLOG, SOCK_NONBLOCK, &ss) < 0)
 	goto done;
+    if ((rh = restconf_handle_get(h)) == NULL){
+	clicon_err(OE_XML, EFAULT, "No openssl handle");
+	goto done;
+    }
+    /*
+     * Create per-socket openssl handle
+     */
+    if ((rsock = malloc(sizeof *rsock)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(rsock, 0, sizeof *rsock);
+    rsock->rs_h = h;
+    rsock->rs_ss = ss;
+    rsock->rs_ssl = ssl;
+    INSQ(rsock, rh->rh_sockets);
+
     /* ss is a server socket that the clients connect to. The callback
        therefore accepts clients on ss */
-    if (evhtp_accept_socket(htp, ss, SOCKET_LISTEN_BACKLOG) < 0) {
-        /* accept_socket() does not close the descriptor
-         * on error, but this function does.
-         */
-        close(ss);
-	goto done;
-    }
-    if (cx_htp_add(eh, htp) < 0)
+    if (clixon_event_reg_fd(ss, restconf_accept_client, rsock, "restconf socket") < 0) 
 	goto done;
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 
-/*! Phase 2 of backend evhtp init, config has been retrieved from backend
- * @param[in]  h        Clicon handle
- * @param[in]  xconfig  XML config
- * @param[in]  nsc      Namespace context
- * @param[in]  eh       Evhtp handle
- * @param[in]  dbg0     Manually set debug flag, if set overrides configuration setting
- * @retval     -1       Error
- * @retval     0        OK, but restconf disabled, proceed with other if possible
- * @retval     1        OK
+/*! Init openssl, open and register server socket (ready for accept)
+ * @param[in]  h         Clicon handle
+ * @param[in]  dbg0      Manually set debug flag, if set overrides configuration setting
+ * @param[in]  xrestconf XML tree containing restconf config
+ * @retval     0     OK
+ * @retval    -1     Error
  */
-static int
-cx_evhtp_init(clicon_handle     h,
-	      cxobj            *xrestconf,
-	      cvec             *nsc,
-	      cx_evhtp_handle  *eh,
-	      int               dbg0)
+int
+restconf_openssl_init(clicon_handle h,
+		      int           dbg0,
+		      cxobj        *xrestconf)
 {
-    int     retval = -1;
-    int     ssl_enable = 0;
-    int     dbg = 0;
-    cxobj **vec = NULL;
-    size_t  veclen;
-    char   *server_cert_path = NULL;
-    char   *server_key_path = NULL;
-    char   *server_ca_cert_path = NULL;
-    cxobj  *x;
-    char   *bstr;
-    int     i;
-    int     ret;
+    int                retval = -1;
+    SSL_CTX           *ctx; /* SSL context */
+    cxobj             *x;
+    cvec              *nsc = NULL;
+    int                ssl_enable = 0;
+    char              *server_cert_path = NULL;
+    char              *server_key_path = NULL;
+    char              *server_ca_cert_path = NULL;
+    restconf_handle   *rh;
     clixon_auth_type_t auth_type;
+    int                dbg;
+    char              *bstr;
+    cxobj            **vec = NULL;
+    size_t             veclen;
+    int                i;
+    evhtp_t           *evhtp = NULL;
+    struct event_base *evbase = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    if ((ret = restconf_config_init(h, xrestconf)) < 0)
-	goto done;
-    if (ret == 0)
-	goto disable;
-    auth_type = restconf_auth_type_get(h);
-    /* If at least one socket has ssl then enable global ssl_enable */
+    /* flag used for sanity of certs */
     ssl_enable = xpath_first(xrestconf, nsc, "socket[ssl='true']") != NULL;
-
-    if ((x = xpath_first(xrestconf, nsc, "server-cert-path")) != NULL)
-	server_cert_path = xml_body(x);
-    if ((x = xpath_first(xrestconf, nsc, "server-key-path")) != NULL)
-	server_key_path = xml_body(x);
-    if ((x = xpath_first(xrestconf, nsc, "server-ca-cert-path")) != NULL)
-	server_ca_cert_path = xml_body(x);
+    /* Auth type set in config */
+    auth_type = restconf_auth_type_get(h);
     /* Only set debug from config if not set manually */
     if (dbg0 == 0 &&
 	(x = xpath_first(xrestconf, nsc, "debug")) != NULL &&
@@ -987,91 +1326,89 @@ cx_evhtp_init(clicon_handle     h,
 	    yang_spec_dump(clicon_dbspec_yang(h), dbg);
 	}
     }
-    /* Here the daemon either uses SSL or not, ie you cant seem to mix http and https :-( */
-    if (ssl_enable){
-	/* Init evhtp ssl config struct */
-	if ((eh->eh_ssl_config = malloc(sizeof(evhtp_ssl_cfg_t))) == NULL){
-	    clicon_err(OE_UNIX, errno, "malloc");
-	    goto done;
-	}
-	memset(eh->eh_ssl_config, 0, sizeof(evhtp_ssl_cfg_t));
-	eh->eh_ssl_config->ssl_opts = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1;
 
-	/* Read server ssl files cert and key */
-	if (cx_get_ssl_server_certs(h, server_cert_path, server_key_path, eh->eh_ssl_config) < 0)
+    if (init_openssl() < 0)
+	goto done;
+    if ((ctx = restconf_ssl_context_create(h)) == NULL)
+	goto done;
+    /* Check certs */
+    if (ssl_enable){
+	if (restconf_checkcert_file(xrestconf, "server-cert-path", &server_cert_path) < 0)
 	    goto done;
-	/* If client auth get client CA cert */
+	if (restconf_checkcert_file(xrestconf, "server-key-path", &server_key_path) < 0)
+	    goto done;
 	if (auth_type == CLIXON_AUTH_CLIENT_CERTIFICATE)
-	    if (cx_get_ssl_client_ca_certs(h, server_ca_cert_path, eh->eh_ssl_config) < 0)
+	    if (restconf_checkcert_file(xrestconf, "server-ca-cert-path", &server_ca_cert_path) < 0)
 		goto done;
-	eh->eh_ssl_config->x509_verify_cb = cx_verify_certs; /* Is extra verification necessary? */
-	if (auth_type == CLIXON_AUTH_CLIENT_CERTIFICATE){
-	    eh->eh_ssl_config->verify_peer = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-	    eh->eh_ssl_config->x509_verify_cb = cx_verify_certs;
-	    eh->eh_ssl_config->verify_depth = 2;
+	if (restconf_ssl_context_configure(h, ctx, server_cert_path, server_key_path, server_ca_cert_path) < 0)
+	    goto done;
+    }
+    rh = restconf_handle_get(h);
+    rh->rh_ctx = ctx;
+    /* evhtp stuff */ /* XXX move this to global level */
+    if ((evbase = event_base_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "event_base_new");
+	goto done;
 	}
-	//    ssl_verify_mode             = htp_sslutil_verify2opts(optarg);
+    /* This is socket create a new evhtp_t instance */
+    if ((evhtp = evhtp_new((void*)evbase, h)) == NULL){
+	clicon_err(OE_UNIX, errno, "evhtp_new");
+	goto done;
+    }
+    rh->rh_evhtp = evhtp;
+    if (evhtp_set_cb(evhtp, "/" RESTCONF_API, restconf_path_root, h) == NULL){
+    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
+    	goto done;
+    }
+    /* Callback to be executed for all /restconf api calls */
+    if (evhtp_set_cb(evhtp, RESTCONF_WELL_KNOWN, restconf_path_wellknown, h) == NULL){
+    	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
+    	goto done;
     }
     /* get the list of socket config-data */
     if (xpath_vec(xrestconf, nsc, "socket", &vec, &veclen) < 0)
 	goto done;
     for (i=0; i<veclen; i++){
-	if (cx_evhtp_socket(h, eh, ssl_enable, vec[i], nsc,
-			    server_cert_path, server_key_path, server_ca_cert_path) < 0)
+	if (openssl_init_socket(h, vec[i], nsc) < 0)
 	    goto done;
     }
     retval = 1;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (vec)
 	free(vec);
     return retval;
- disable:
-    retval = 0;
-    goto done;
 }
 
 /*! Read restconf from config 
  * After SEVERAL iterations the code now does as follows:
  * - init clixon
- * - init evhtp
  * - look for local config (in clixon-config file) 
  * - if local config found, open sockets accordingly and exit function
  * - If no local config found, query backend for config and open sockets.
  * That is, EITHER local config OR read config from backend once
- * @param[in]  h     Clicon handle
- * @param[in]  eh    Clixon's evhtp handle
- * @param[in]  dbg0     Manually set debug flag, if set overrides configuration setting
- * @retval     0     OK
- * @retval    -1     Error
+ * @param[in]  h         Clicon handle
+ * @param[out] xrestconf XML restconf config, malloced (if retval = 1)
+ * @retval     1         OK  (and xrestconf set)
+ * @retval     0         Fail - no config
+ * @retval    -1         Error
  */ 
 int
-restconf_config(clicon_handle    h,
-		cx_evhtp_handle *eh,
-		int              dbg)
+restconf_clixon_init(clicon_handle h,
+		     cxobj       **xrestconfp)
 {
     int            retval = -1;
     char          *dir;
-    yang_stmt     *yspec = NULL;
-    char          *str;
-    clixon_plugin *cp = NULL;
-    cvec          *nsctx_global = NULL; /* Global namespace context */
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
-    cvec          *nsc = NULL;
-    cxobj         *xerr = NULL;
-    uint32_t       id = 0; /* Session id, to poll backend up */
-    struct passwd *pw;
-    cxobj         *xrestconf1 = NULL; /* Local config file */
-    cxobj         *xconfig2 = NULL;
-    cxobj         *xrestconf2 = NULL; /* Config from backend */
+    yang_stmt     *yspec = NULL;
+    clixon_plugin *cp = NULL;
+    char          *str;
+    cvec          *nsctx_global = NULL; /* Global namespace context */
+    cxobj         *xrestconf;
     int            ret;
-    int            configure_done = 0; /* First try local then backend */
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
-    
-    assert(SSL_VERIFY_NONE == 0);
 
     /* Init cligen buffers */
     cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
@@ -1083,6 +1420,7 @@ restconf_config(clicon_handle    h,
      */
     if (netconf_module_features(h) < 0)
 	goto done;
+
     /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;
@@ -1144,98 +1482,109 @@ restconf_config(clicon_handle    h,
 
     /* Here all modules are loaded 
      * Compute and set canonical namespace context
-
      */
     if (xml_nsctx_yangspec(yspec, &nsctx_global) < 0)
 	goto done;
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
 	goto done;
 
-    /* Init evhtp, common stuff */
-    if ((eh->eh_evbase = event_base_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "event_base_new");
-	goto done;
-    }
-
     /* First try to get restconf config from local config-file */
-    if ((xrestconf1 = clicon_conf_restconf(h)) != NULL){
-	/* Initialize evhtp with local config: ret 0 means disabled -> need to query remote */
-	if ((ret = cx_evhtp_init(h, xrestconf1, NULL, eh, dbg)) < 0)
+    ret = 0;
+    if ((xrestconf = clicon_conf_restconf(h)) != NULL){
+	/*! Basic config init, set auth-type, pretty, etc ret 0 means disabled */
+	if ((ret = restconf_config_init(h, xrestconf)) < 0)
 	    goto done;
-	if (ret == 1)
-	    configure_done = 1;
+	/* ret == 1 means this config is OK */
+	if (ret == 0){
+	    xrestconf = NULL; /* Dont free since it is part of conf tree */
+	}
+	else
+	    if ((*xrestconfp = xml_dup(xrestconf)) == NULL)
+		goto done;
     }
     /* If no local config, or it is disabled, try to query backend of config. */
-    if (!configure_done){     
-	/* Loop to wait for backend starting, try again if not done */
-	while (1){
-	    if (clicon_hello_req(h, &id) < 0){
-		if (errno == ENOENT){
-		    fprintf(stderr, "waiting");
-		    sleep(1);
-		    continue;
-		}
-		clicon_err(OE_UNIX, errno, "clicon_session_id_get");
-		goto done;
-	    }
-	    clicon_session_id_set(h, id);
-	    break;
-	}
-	if ((nsc = xml_nsctx_init(NULL, CLIXON_RESTCONF_NS)) == NULL)
+    if (ret == 0){
+	assert(*xrestconfp == NULL);
+	if ((ret = restconf_clixon_backend(h, xrestconfp)) < 0)
 	    goto done;
-	if ((pw = getpwuid(getuid())) == NULL){
-	    clicon_err(OE_UNIX, errno, "getpwuid");
-	    goto done;
-	}
-	if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, &xconfig2) < 0)
-	    goto done;
-	if ((xerr = xpath_first(xconfig2, NULL, "/rpc-error")) != NULL){
-	    clixon_netconf_error(xerr, "Get backend restconf config", NULL);
-	    goto done;
-	}
-	/* Extract restconf configuration */
-	if ((xrestconf2 = xpath_first(xconfig2, nsc, "restconf")) != NULL){
-	    /* Initialize evhtp with config from backend */
-	    if ((ret = cx_evhtp_init(h, xrestconf2, nsc, eh, dbg)) < 0)
-		goto done;
-	    if (ret == 1)
-		configure_done = 1;
-	}
+	if (ret == 0)
+	    goto fail;
     }
-    if (!configure_done){     /* Query backend of config. */
-	clicon_err(OE_DAEMON, EFAULT, "Restconf daemon config not found or disabled");
-	goto done;
-    }
-    retval = 0;
+    retval = 1;
  done:
-    if (xconfig2)
-	xml_free(xconfig2);
-    if (nsc)
-	cvec_free(nsc);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
-    
+
+/*! Signal terminates process
+ * Just set exit flag for proper exit in event loop
+ */
+static void
+restconf_sig_term(int arg)
+{
+    static int i=0;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (i++ == 0){
+	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d",  /* XYZXYZ */
+		   __PROGRAM__, __FUNCTION__, getpid(), arg);
+    }
+    else
+	exit(-1);
+    clicon_exit_set(); /* XXX should rather signal event_base_loop */
+}
+
+/*! Usage help routine
+ * @param[in]  argv0  command line
+ * @param[in]  h      Clicon handle
+ */
+static void
+usage(clicon_handle h,
+      char         *argv0)
+
+{
+    fprintf(stderr, "usage:%s [options]\n"
+	    "where options are\n"
+            "\t-h \t\t  Help\n"
+	    "\t-D <level>\t  Debug level, overrides any config debug setting\n"
+    	    "\t-f <file>\t  Configuration file (mandatory)\n"
+	    "\t-E <dir> \t  Extra configuration file directory\n"
+	    "\t-l <s|f<file>> \t  Log on (s)yslog, (f)ile (syslog is default)\n"
+	    "\t-p <dir>\t  Yang directory path (see CLICON_YANG_DIR)\n"
+	    "\t-y <file>\t  Load yang spec file (override yang main module)\n"
+    	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
+    	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
+	    "\t-r \t\t  Do not drop privileges if run as root\n"
+	    "\t-o <option>=<value> Set configuration option overriding config file (see clixon-config.yang)\n"
+	    ,
+	    argv0
+	    );
+    exit(0);
+}
+
 int
 main(int    argc,
      char **argv)
 {
-    int                retval = -1;
-    char	      *argv0 = argv[0];
-    int                c;
-    clicon_handle      h;
-    int                logdst = CLICON_LOG_SYSLOG;
-    int                dbg = 0;
-    cx_evhtp_handle   *eh = NULL;
-    int                drop_privileges = 1;
+    int             retval = -1;
+    char	   *argv0 = argv[0];
+    int             c;
+    clicon_handle   h;
+    int             dbg = 0;
+    int             logdst = CLICON_LOG_SYSLOG;
+    int             drop_privileges = 1;
+    restconf_handle *rh = NULL;
+    int             ret;
+    cxobj          *xrestconf = NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
-
+    clicon_log_init(__PROGRAM__, LOG_INFO, logdst); /* XYZXYZ */
+    
     /* Create handle */
     if ((h = restconf_handle_init()) == NULL)
 	goto done;
-
-    _CLICON_HANDLE = h; /* for termination handling */
 
     while ((c = getopt(argc, argv, RESTCONF_OPTS)) != -1)
 	switch (c) {
@@ -1271,13 +1620,25 @@ main(int    argc,
      */
     clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
 
+    /*
+     * Register error category and error/log callbacks for openssl special error handling
+     */
+    if (clixon_err_cat_reg(OE_SSL,              /* category */
+			   h,                   /* handle (can be NULL) */
+			   openssl_cat_log_cb   /* log fn */
+			   ) < 0)
+	goto done;
     clicon_debug_init(dbg, NULL); 
-    clicon_log(LOG_NOTICE, "%s evhtp: %u Started", __PROGRAM__, getpid());
+    clicon_log(LOG_NOTICE, "%s openssl: %u Started", __PROGRAM__, getpid()); /* XYZXYZ */
     if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
 	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
     }
     if (set_signal(SIGINT, restconf_sig_term, NULL) < 0){
+	clicon_err(OE_DAEMON, errno, "Setting signal");
+	goto done;
+    }
+    if (set_signal(SIGPIPE, SIG_IGN, NULL) < 0){
 	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
     }
@@ -1343,34 +1704,44 @@ main(int    argc,
 	clicon_option_dump(h, dbg);
 
     /* Call start function in all plugins before we go interactive */
-     if (clixon_plugin_start_all(h) < 0)
-	 goto done;
+    if (clixon_plugin_start_all(h) < 0)
+	goto done;
 
-    if ((eh = malloc(sizeof *eh)) == NULL){
+    /* Clixon inits / configs */ 
+    if ((ret = restconf_clixon_init(h, &xrestconf)) < 0)
+	goto done;
+    if (ret == 0){ /* restconf disabled */
+	clicon_debug(1, "restconf configuration not found or disabled");
+	retval = 0;
+	goto done;
+    }
+    /* Create and stroe global openssl handle */ 
+    if ((rh = malloc(sizeof *rh)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
-    memset(eh, 0, sizeof *eh);
-    eh->eh_h = h;
-    _EVHTP_HANDLE = eh; /* global */
-
-    /* Read config */ 
-    if (restconf_config(h, eh, dbg) < 0)
+    memset(rh, 0, sizeof *rh);
+    if (openspec_handle_set(h, rh) < 0)
 	goto done;
-    /* Drop privileges after evhtp and server key/cert read */
+    /* Openssl inits */ 
+    if (restconf_openssl_init(h, dbg, xrestconf) < 0)
+	goto done;
+    /* Drop privileges after clixon and openssl init */
     if (drop_privileges){
 	/* Drop privileges to WWWUSER if started as root */
 	if (restconf_drop_privileges(h, WWWUSER) < 0)
 	    goto done;
     }
-    /* libevent main loop */
-    event_base_loop(eh->eh_evbase, 0); /* Replace with clixon_event_loop() if libevent is replaced */
-
+    /* Main event loop */ 
+    if (clixon_event_loop(h) < 0)
+	goto done;
+    clicon_debug(1, "%s after", __FUNCTION__);
     retval = 0;
  done:
-    clicon_debug(1, "restconf_main_evhtp done");
-    //    stream_child_freeall(h);
-    evhtp_terminate(eh);    
-    restconf_terminate(h);    
+    clicon_debug(1, "restconf_main_openssl done");
+    if (xrestconf)
+	xml_free(xrestconf);
+    restconf_openssl_terminate(h);
+    restconf_terminate(h);
     return retval;
 }

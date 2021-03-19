@@ -109,12 +109,14 @@ get_sock(int  usock,
  * @param[in]  sa       Socketaddress
  * @param[in]  sa_len   Length of sa. Tecynicaliyu to be independent of sockaddr sa_len
  * @param[in]  backlog  Listen backlog, queie of pending connections
+ * @param[in]  flags    Socket flags Or:ed in with the socket(2) type parameter
  * @param[out] sock     Server socket (bound for accept)
  */
-int
+static int
 create_socket(struct sockaddr *sa,
 	      size_t           sin_len,		    
 	      int              backlog,
+	      int              flags,
 	      int             *sock)
 {
     int    retval = -1;
@@ -128,7 +130,7 @@ create_socket(struct sockaddr *sa,
     }
     /* create inet socket */
     if ((s = socket(sa->sa_family,
-		    SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC,
+		    SOCK_STREAM | SOCK_CLOEXEC | flags,
 		    0)) < 0) {
 	clicon_err(OE_UNIX, errno, "socket");
 	goto done;
@@ -141,6 +143,7 @@ create_socket(struct sockaddr *sa,
 	clicon_err(OE_UNIX, errno, "setsockopt SO_REUSEADDR");
 	goto done;
     }
+
     /* only bind ipv6, otherwise it may bind to ipv4 as well which is strange but seems default */
     if (sa->sa_family == AF_INET6 &&
 	setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1) {
@@ -151,7 +154,7 @@ create_socket(struct sockaddr *sa,
 	clicon_err(OE_UNIX, errno, "bind");
 	goto done;
     }
-    if (listen(s, backlog) < 0){
+    if (listen(s, backlog ) < 0){
 	clicon_err(OE_UNIX, errno, "listen");
 	goto done;
     }
@@ -171,13 +174,15 @@ create_socket(struct sockaddr *sa,
  * @param[in]  sa       Socketaddress
  * @param[in]  sa_len   Length of sa. Tecynicaliyu to be independent of sockaddr sa_len
  * @param[in]  backlog  Listen backlog, queie of pending connections
+ * @param[in]  flags    Socket flags OR:ed in with the socket(2) type parameter
  * @param[out] sock     Server socket (bound for accept)
  */
-int
+static int
 fork_netns_socket(const char      *netns,
 		  struct sockaddr *sa,
 		  size_t           sin_len,		    
 		  int              backlog,
+		  int              flags,
 		  int             *sock)
 {
     int   retval = -1;
@@ -220,7 +225,7 @@ fork_netns_socket(const char      *netns,
 #endif
 	close(fd);
 	/* Create socket in this namespace */
-	if (create_socket(sa, sin_len, backlog, &s) < 0)
+	if (create_socket(sa, sin_len, backlog, flags, &s) < 0)
 	    return -1;
 	/* Send socket to parent */
 	if (send_sock(sp[1], s) < 0)
@@ -247,6 +252,7 @@ fork_netns_socket(const char      *netns,
  * @param[in]  sa       Socketaddress
  * @param[in]  sa_len   Length of sa. Tecynicaliyu to be independent of sockaddr sa_len
  * @param[in]  backlog  Listen backlog, queie of pending connections
+ * @param[in]  flags    Socket flags OR:ed in with the socket(2) type parameter
  * @param[out] sock     Server socket (bound for accept)
  */
 int
@@ -254,19 +260,20 @@ clixon_netns_socket(const char      *netns,
 		    struct sockaddr *sa,
 		    size_t           sin_len,		    
 		    int              backlog,
+		    int              flags,
 		    int             *sock)
 {
     int    retval = -1;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if (netns == NULL){
-	if (create_socket(sa, sin_len, backlog, sock) < 0)
+	if (create_socket(sa, sin_len, backlog, flags, sock) < 0)
 	    goto done;
 	goto ok;
     }
     else {
 #ifdef HAVE_SETNS
-	if (fork_netns_socket(netns, sa, sin_len, backlog, sock) < 0)
+	if (fork_netns_socket(netns, sa, sin_len, backlog, flags, sock) < 0)
 	    goto done;
 #else
 	clicon_err(OE_UNIX, errno, "No namespace support on platform: %s", netns);

@@ -5044,28 +5044,13 @@ else
 fi
 
 elif test "x${with_restconf}" == xevhtp; then
-   for ac_header in evhtp/evhtp.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "evhtp/evhtp.h" "ac_cv_header_evhtp_evhtp_h" "$ac_includes_default"
-if test "x$ac_cv_header_evhtp_evhtp_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_EVHTP_EVHTP_H 1
-_ACEOF
-
-else
-  as_fn_error $? "evhtp header missing. See https://github.com/clicon/libevhtp" "$LINENO" 5
-fi
-
-done
-
-#LIBS          += -lpthread -levent -levent_openssl -lssl -lcrypto
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lpthread" >&5
-$as_echo_n "checking for pthread_create in -lpthread... " >&6; }
-if ${ac_cv_lib_pthread_pthread_create+:} false; then :
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
+$as_echo_n "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
+if ${ac_cv_lib_ssl_OPENSSL_init_ssl_+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
-LIBS="-lpthread  $LIBS"
+LIBS="-lssl  $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -5075,35 +5060,82 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 #ifdef __cplusplus
 extern "C"
 #endif
-char pthread_create ();
+char OPENSSL_init_ssl  ();
 int
 main ()
 {
-return pthread_create ();
+return OPENSSL_init_ssl  ();
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_pthread_pthread_create=yes
+  ac_cv_lib_ssl_OPENSSL_init_ssl_=yes
 else
-  ac_cv_lib_pthread_pthread_create=no
+  ac_cv_lib_ssl_OPENSSL_init_ssl_=no
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_pthread_pthread_create" >&5
-$as_echo "$ac_cv_lib_pthread_pthread_create" >&6; }
-if test "x$ac_cv_lib_pthread_pthread_create" = xyes; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssl_OPENSSL_init_ssl_" >&5
+$as_echo "$ac_cv_lib_ssl_OPENSSL_init_ssl_" >&6; }
+if test "x$ac_cv_lib_ssl_OPENSSL_init_ssl_" = xyes; then :
   cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBPTHREAD 1
+#define HAVE_LIBSSL 1
 _ACEOF
 
-  LIBS="-lpthread $LIBS"
+  LIBS="-lssl $LIBS"
 
 else
-  as_fn_error $? "libpthread missing" "$LINENO" 5
+  as_fn_error $? "libssl missing" "$LINENO" 5
+fi
+
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for CRYPTO_new_ex_data in -lcrypto" >&5
+$as_echo_n "checking for CRYPTO_new_ex_data in -lcrypto... " >&6; }
+if ${ac_cv_lib_crypto_CRYPTO_new_ex_data+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcrypto  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char CRYPTO_new_ex_data ();
+int
+main ()
+{
+return CRYPTO_new_ex_data ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_crypto_CRYPTO_new_ex_data=yes
+else
+  ac_cv_lib_crypto_CRYPTO_new_ex_data=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypto_CRYPTO_new_ex_data" >&5
+$as_echo "$ac_cv_lib_crypto_CRYPTO_new_ex_data" >&6; }
+if test "x$ac_cv_lib_crypto_CRYPTO_new_ex_data" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBCRYPTO 1
+_ACEOF
+
+  LIBS="-lcrypto $LIBS"
+
+else
+  as_fn_error $? "libcrypto missing" "$LINENO" 5
 fi
 
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for event_init in -levent" >&5
@@ -5153,146 +5185,19 @@ else
   as_fn_error $? "libevent missing" "$LINENO" 5
 fi
 
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for bufferevent_openssl_socket_new in -levent_openssl" >&5
-$as_echo_n "checking for bufferevent_openssl_socket_new in -levent_openssl... " >&6; }
-if ${ac_cv_lib_event_openssl_bufferevent_openssl_socket_new+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-levent_openssl  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char bufferevent_openssl_socket_new ();
-int
-main ()
-{
-return bufferevent_openssl_socket_new ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_event_openssl_bufferevent_openssl_socket_new=yes
-else
-  ac_cv_lib_event_openssl_bufferevent_openssl_socket_new=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_event_openssl_bufferevent_openssl_socket_new" >&5
-$as_echo "$ac_cv_lib_event_openssl_bufferevent_openssl_socket_new" >&6; }
-if test "x$ac_cv_lib_event_openssl_bufferevent_openssl_socket_new" = xyes; then :
+   for ac_header in evhtp/evhtp.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "evhtp/evhtp.h" "ac_cv_header_evhtp_evhtp_h" "$ac_includes_default"
+if test "x$ac_cv_header_evhtp_evhtp_h" = xyes; then :
   cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBEVENT_OPENSSL 1
+#define HAVE_EVHTP_EVHTP_H 1
 _ACEOF
 
-  LIBS="-levent_openssl $LIBS"
-
 else
-  as_fn_error $? "libevent_openssl missing" "$LINENO" 5
+  as_fn_error $? "evhtp header missing. See https://github.com/clicon/libevhtp" "$LINENO" 5
 fi
 
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
-$as_echo_n "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
-if ${ac_cv_lib_ssl_OPENSSL_init_ssl_+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lssl  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char OPENSSL_init_ssl  ();
-int
-main ()
-{
-return OPENSSL_init_ssl  ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_ssl_OPENSSL_init_ssl_=yes
-else
-  ac_cv_lib_ssl_OPENSSL_init_ssl_=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssl_OPENSSL_init_ssl_" >&5
-$as_echo "$ac_cv_lib_ssl_OPENSSL_init_ssl_" >&6; }
-if test "x$ac_cv_lib_ssl_OPENSSL_init_ssl_" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBSSL 1
-_ACEOF
-
-  LIBS="-lssl $LIBS"
-
-else
-  as_fn_error $? "libssl missing" "$LINENO" 5
-fi
-
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for AES_encrypt in -lcrypto" >&5
-$as_echo_n "checking for AES_encrypt in -lcrypto... " >&6; }
-if ${ac_cv_lib_crypto_AES_encrypt+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lcrypto  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char AES_encrypt ();
-int
-main ()
-{
-return AES_encrypt ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_crypto_AES_encrypt=yes
-else
-  ac_cv_lib_crypto_AES_encrypt=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypto_AES_encrypt" >&5
-$as_echo "$ac_cv_lib_crypto_AES_encrypt" >&6; }
-if test "x$ac_cv_lib_crypto_AES_encrypt" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBCRYPTO 1
-_ACEOF
-
-  LIBS="-lcrypto $LIBS"
-
-else
-  as_fn_error $? "libcrypto missing" "$LINENO" 5
-fi
+done
 
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for evhtp_new in -levhtp" >&5
 $as_echo_n "checking for evhtp_new in -levhtp... " >&6; }

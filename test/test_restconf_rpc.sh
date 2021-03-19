@@ -8,6 +8,8 @@
 # - No restconf config means enable: false (extra rule)
 # See test_restconf_netns for network namespaces
 # XXX Lots of sleeps to remove race conditions. I am sure there are others way to fix this
+# XXX It is wrong to use $RESTCONF in clixon-config when using CLICON_BACKEND_RESTCONF_PROCESS
+# XXX the tests should be rewritten to use running datastore
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

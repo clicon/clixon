@@ -108,7 +108,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg -- -sS $fstate
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 if [ $RC -ne 0 ]; then
@@ -117,10 +117,10 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 new "generate 'large' config with $perfnr list entries"
 echo -n "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b>" > $fconfig
@@ -189,7 +189,8 @@ new "cli get large config"
 $TIMEFN $clixon_cli -1f $cfg show state xml interfaces a foo b 2>&1 | awk '/real/ {print $2}'
 
 # mem test needs sleep here
-sleep $DEMSLEEP
+new "wait restconf"
+wait_restconf
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

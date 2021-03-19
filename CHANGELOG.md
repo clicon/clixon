@@ -31,8 +31,13 @@
 ## 5.1.0
 Expected: April
 
+### New features
+
+
+	
 ### API changes on existing protocol/config features
 
+* Restconf "evhtp" mode MUST use libevhtp from https://github.com/clixon/clixon-libevhtp.git instead from criticalstack
 * NETCONF Hello message semantics has been made stricter according to RFC 6241 Sec 8.1, for example:
   * A client MUST send a <hello> element.
   * Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" (or 1.0 for RFC 4741)
@@ -59,6 +64,12 @@ Developers may need to change their code
 
 ### Minor features
 
+* Updated "evhtp" restconf mode
+  * No reliance on libevent or libevhtp, but on libssl >= 1.1 directly
+    * Moved out event handling to clixon event handling
+    * Moved out all ssl calls to clixon
+  * New code MUST use libevhtp from https://github.com/clixon/clixon-libevhtp.git
+    * This does NOT work: libevhtp from https://github.com/criticalstack/libevhtp.git
 * Application specialized error handling for specific error categories
   * See: https://clixon-docs.readthedocs.io/en/latest/misc.html#specialized-error-handling
 * Added several fields to process-control status operation: active, description, command, status, starttime, pid

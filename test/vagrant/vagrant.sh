@@ -130,7 +130,7 @@ case $release in
 		$sshcmd sudo pkg install -y fcgi-devkit nginx
 		;;
 	    evhtp)
-		$sshcmd sudo pkg install -y libevent cmake libevhtp
+		$sshcmd sudo pkg install -y libevent libevhtp
 		;;
 	esac
 	;;
@@ -204,7 +204,7 @@ case $release in
 	    evhtp)
 #		$sshcmd sudo apt install -y libevent-2.1
 		buildevhtp=true
-		$sshcmd sudo apt install -y libevent-dev cmake libssl-dev
+		$sshcmd sudo apt install -y libevent-dev libssl-dev
 		;;
 	esac
 	;;
@@ -234,7 +234,7 @@ case $release in
 		$sshcmd	sudo pacman -Syu --noconfirm nginx fcgi
 		;;
 	    evhtp)
-		$sshcmd	sudo pacman -Syu --noconfirm libevent cmake
+		$sshcmd	sudo pacman -Syu --noconfirm libevent
 		;;
 	esac
 	;;

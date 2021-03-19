@@ -75,7 +75,7 @@ if $IPv6; then
 EOF
 )
 else
-       # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
+       # For backend config, create 2 sockets, all combinations IPv4 + http/https
     RESTCONFIG1=$(cat <<EOF
 <restconf xmlns="http://clicon.org/restconf">
    <enable>true</enable>
@@ -152,7 +152,6 @@ function testrun()
 
 	new "start restconf daemon"
 	start_restconf -f $cfg
-
     fi
 
     new "wait restconf"
@@ -161,6 +160,16 @@ function testrun()
     new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
     expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
+    # Negative test GET datastore
+    if [ $proto = http ]; then # see (2) https to http port in restconf_main_openssl.c
+	new "Wrong proto=https on http port, expect err 35 wrong version number"
+	expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 "wrong version number"
+    else # see (1) http to https port in restconf_main_openssl.c
+	new "Wrong proto=http on https port, expect bad request"
+	expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/1.1 400 Bad Request"
+    fi
+    
+    # Exact match
     new "restconf get restconf resource. RFC 8040 3.3 (json)"
     expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $proto://$addr/restconf)" 0 'HTTP/1.1 200 OK' '{"ietf-restconf:restconf":{"data":{},"operations":{},"yang-library-version":"2019-01-04"}}'
 

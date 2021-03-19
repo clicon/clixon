@@ -55,7 +55,7 @@
 
 /*
  * Types
- * Add error category here, but must also add an entry in EV variable.
+ * Add error category here, but must also add an entry in EV variable in clixon_err.c
  */ 
 enum clicon_err{
     /* 0 means error not set) */  
@@ -71,6 +71,7 @@ enum clicon_err{
     OE_ROUTING,  /* routing daemon error (eg quagga) */
     OE_XML,      /* xml parsing etc */
     OE_SSL,      /* Openssl errors, see eg ssl_get_error */
+    OE_RESTCONF, /* RESTCONF errors */
     OE_PLUGIN,   /* plugin loading, etc */
     OE_YANG ,    /* Yang error */
     OE_FATAL,    /* Fatal error */

@@ -211,13 +211,10 @@ if test "x${with_restconf}" == xfcgi; then
    # Lives in libfcgi-dev
    AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
 elif test "x${with_restconf}" == xevhtp; then
-   AC_CHECK_HEADERS(evhtp/evhtp.h,, AC_MSG_ERROR([evhtp header missing. See https://github.com/clicon/libevhtp]))
-#LIBS          += -lpthread -levent -levent_openssl -lssl -lcrypto
-   AC_CHECK_LIB(pthread, pthread_create,, AC_MSG_ERROR([libpthread missing]))
-   AC_CHECK_LIB(event, event_init,, AC_MSG_ERROR([libevent missing]))
-   AC_CHECK_LIB(event_openssl, bufferevent_openssl_socket_new,, AC_MSG_ERROR([libevent_openssl missing]))
    AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
-   AC_CHECK_LIB(crypto, AES_encrypt,, AC_MSG_ERROR([libcrypto missing])) 
+   AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
+   AC_CHECK_LIB(event, event_init,, AC_MSG_ERROR([libevent missing]))
+   AC_CHECK_HEADERS(evhtp/evhtp.h,, AC_MSG_ERROR([evhtp header missing. See https://github.com/clicon/libevhtp]))
    AC_CHECK_LIB(evhtp, evhtp_new,, AC_MSG_ERROR([libevhtp missing]),[-lpthread -levent -levent_openssl -lssl -lcrypto]) 
 
 elif test "x${with_restconf}" == xno; then

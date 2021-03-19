@@ -38,6 +38,8 @@ However, releases are made periodically (ca every 1 month) which is more tested.
 
 A release branch can be made, eg release-4.0 where 4.0.0, 4.0.1 are tagged
 
+Commit messages: https://chris.beams.io/posts/git-commit/
+
 ## How the autotools stuff works
 ```
 configure.ac --.
@@ -190,5 +192,5 @@ Use MAXPATHLEN (not PATH_MAX) in sys/param.h
 
 ## Emulating a serial console
 
-olof@alarik> socat PTY,link=/tmp/clixon-tty,rawer EXEC:"/usr/local/bin/clixon_cli -f /usr/local/etc/example.xml",pty,stderr &
-olof@alarik> screen /tmp/clixon-tty
+socat PTY,link=/tmp/clixon-tty,rawer EXEC:"/usr/local/bin/clixon_cli -f /usr/local/etc/example.xml",pty,stderr &
+screen /tmp/clixon-tty

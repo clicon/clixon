@@ -85,7 +85,7 @@ static FILE *_logfile = NULL;
  *                              if CLICON_LOG_SYSLOG, then print logs to syslog
  *				You can do a combination of both
  * @code
- *  clicon_log_init(h, __PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
+ *  clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
  * @endcode
  */
 int

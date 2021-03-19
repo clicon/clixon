@@ -38,9 +38,9 @@ xusers="limited"   # Set invalid cert
 # Whether to generate new keys or not (only if $dir is not removed)
 # Here dont generate keys if restconf started stand-alone (RC=0)
 : ${genkeys:=true}
-if [ $RC -eq 0 ]; then
-    genkeys=false
-fi
+#if [ $RC -eq 0 ]; then
+#    genkeys=false
+#fi
 
 test -d $certdir || mkdir $certdir
 
@@ -92,7 +92,6 @@ EOF
 )
 
 if $genkeys; then
-
     # Server certs
     . ./certs.sh
 
@@ -103,7 +102,7 @@ if $genkeys; then
 prompt = no
 distinguished_name = dn
 [dn]
-CN = $name
+CN = $name # This can be verified using SSL_set1_host
 emailAddress = $name@foo.bar
 O = Clixon
 L = Stockholm
@@ -216,11 +215,16 @@ EOF
     echo "dummy" > $certdir/yyy.crt
     expectpart "$(curl $CURLOPTS --key $certdir/yyy.key --cert $certdir/yyy.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 58 " could not load PEM client certificate"
 
-    new "Certificate required"
-    expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "35 55 56"
+    # See (3) client-cert is NULL in restconf_main_openssl.c
+    new "No cert: certificate required"
+    expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0 "HTTP/1.1 400 Bad Request"
 
     new "limited invalid cert"
     expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "35 55 56" # 55 "certificate expired"
+
+    # Just ensure all is OK
+    new "admin get x 42"
+    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 200 OK" '{"example:x":42}'
 
     if [ $RC -ne 0 ]; then
 	new "Kill restconf daemon"
