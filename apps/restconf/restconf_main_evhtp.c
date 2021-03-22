@@ -979,8 +979,14 @@ cx_evhtp_init(clicon_handle     h,
 	(bstr = xml_body(x)) != NULL){
 	dbg = atoi(bstr);
 	clicon_debug_init(dbg, NULL); 	
+	/* If debug was enabled here from config and not initially,
+	 * print clixn options and loaded yang files
+	 */
+	if (dbg) {
+	    clicon_option_dump(h, dbg);
+	    yang_spec_dump(clicon_dbspec_yang(h), dbg);
+	}
     }
-
     /* Here the daemon either uses SSL or not, ie you cant seem to mix http and https :-( */
     if (ssl_enable){
 	/* Init evhtp ssl config struct */

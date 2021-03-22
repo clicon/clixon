@@ -1466,6 +1466,40 @@ yang_print(FILE      *f,
     return yang_print_cb(f, yn, fprintf);
 }
 
+/* Log/debug info about top-level (sub)modules no recursion
+ * @param[in]  f         File to print to.
+ * @param[in]  yspec     Yang spec
+ */
+int
+yang_spec_dump(yang_stmt *yspec,
+	       int        dbglevel)
+{
+    int        retval = -1;
+    yang_stmt *ym = NULL;
+    yang_stmt *yrev;
+    cbuf      *cb = NULL;
+
+    if ((cb = cbuf_new()) ==NULL){
+	clicon_err(OE_YANG, errno, "cbuf_new");
+	goto done;
+    }
+    while ((ym = yn_each(yspec, ym)) != NULL) {
+	cprintf(cb, "%s", yang_key2str(ym->ys_keyword));
+	cprintf(cb, " %s", ym->ys_argument);
+	if ((yrev = yang_find(ym, Y_REVISION, NULL)) != NULL){
+	    cprintf(cb, "@%u", cv_uint32_get(yang_cv_get(yrev)));
+	}
+	cprintf(cb, ".yang");
+    	clicon_debug(dbglevel, "%s", cbuf_get(cb));
+	cbuf_reset(cb);
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
 /*! Print yang specification to cligen buf
  * @param[in]  cb        Cligen buffer. This is where the pretty print is.
  * @param[in]  yn        Yang node to print

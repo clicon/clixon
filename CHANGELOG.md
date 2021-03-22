@@ -48,6 +48,7 @@ Expected: April
 
 Developers may need to change their code
 
+* Removed `cli_debug()`. Use `cli_debug_backend()` or `cli_debug_restconf()` instead.
 * Removed `yspec_free()` - replace with `ys_free()`
 * Removed `endtag` parameter of `clixon_xml_parse_file()`
 * Restconf authentication callback (ca_auth) signature changed (again)

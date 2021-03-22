@@ -68,19 +68,43 @@ How to debug
    CFLAGS="-g -Wall" INSTALLFLAGS="" ./configure
 ```
 
-### Set backend debug using curl
+### Set backend debug
 
-Set backend debug using rpc
+Using netconf:
+```
+<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><debug xmlns="http://clicon.org/lib"><level>1</level></debug></rpc>
+```
+
+Using curl:
+```
 curl -Ssik -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/operations/clixon-lib:debug -d '{"clixon-lib:input":{"level":1}}'
+```
 
-### Set restconf debug using curl
+### Set restconf debug
 
-Only if using clixon-restconf.yang
+All three must be true:
+  1. clixon-restconf.yang is used (so that debug config can be set)
+  2. AND the <restconf> XML is in running db not in clixon-config (so that restconf reads the new config from backend)
+  3 CLICON_BACKEND_RESTCONF_PROCESS is true (so that backend restarts restconf)
 
-curl -Ssik -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-rstconf:restconf/debug -d '{"clixon-restconf:debug":{"level":1}}' 
+Otherwise you need to restart clixon_restconf manually
 
-Get restconf daemon status
+Using netconf:
+```
+clixon_netconf -q -o CLICON_NETCONF_HELLO_OPTIONAL=true <<EOF
+<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config><target><candidate/></target><config><restconf xmlns="http://clicon.org/restconf"><debug>1</debug></restconf></config></edit-config></rpc>]]>]]>
+<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><commit/></rpc>]]>]]>
+EOF
+```
+Using restconf/curl
+```
+curl -Ssik -X PUT -H "Content-Type: application/yang-data+json" http://localhost/restconf/data/clixon-restconf:restconf/debug -d '{"clixon-restconf:debug":1}' 
+```
+
+Get restconf daemon status:
+```
 curl -Ssik -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}'
+```
 
 ### Make your own simplified yang and configuration file.
 ```

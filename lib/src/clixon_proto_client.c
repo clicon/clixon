@@ -1164,6 +1164,57 @@ clicon_rpc_debug(clicon_handle h,
     return retval;
 }
 
+/*! Send a debug request to backend server to set restconf debug
+ * @param[in] h        CLICON handle
+ * @param[in] level    Debug level
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
+ * @note The following must hold:
+ *  1. clixon-restconf.yang is used (so that debug config can be set)
+ *  2. AND the <restconf> XML is in running db not in clixon-config (so that restconf reads the new config from backend)
+ *  3 CLICON_BACKEND_RESTCONF_PROCESS is true (so that backend restarts restconf)
+ */
+int
+clicon_rpc_restconf_debug(clicon_handle h, 
+			  int           level)
+{
+    int                retval = -1;
+    struct clicon_msg *msg = NULL;
+    cxobj             *xret = NULL;
+    cxobj             *xerr;
+    char              *username;
+    uint32_t           session_id;
+    
+    if (session_id_check(h, &session_id) < 0)
+	goto done;
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode(session_id,
+				 "<rpc xmlns=\"%s\" username=\"%s\"><edit-config><target><candidate/></target><config><restconf xmlns=\"%s\"><debug>%d</debug></restconf></config></edit-config></rpc>",
+				 NETCONF_BASE_NAMESPACE,
+				 username?username:"",
+				 CLIXON_RESTCONF_NS,
+				 level)) == NULL)
+	goto done;
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
+	goto done;
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+	clixon_netconf_error(xerr, "Debug", NULL);
+	goto done;
+    }
+    if (xpath_first(xret, NULL, "//rpc-reply/ok") == NULL){
+	clicon_err(OE_XML, 0, "rpc error"); /* XXX extract info from rpc-error */
+	goto done;
+    }
+    if ((retval = clicon_rpc_commit(h)) < 0)
+	goto done;
+ done:
+    if (msg)
+	free(msg);
+    if (xret)
+	xml_free(xret);
+    return retval;
+}
+
 /*! Send a hello request to the backend server
  * @param[in] h        CLICON handle
  * @param[in] level    Debug level

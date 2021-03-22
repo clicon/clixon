@@ -499,6 +499,10 @@ cli_debug_backend(clicon_handle h,
  * @param[in] arg   Else use the integer value of argument
  * @note The level is either what is specified in arg as int argument.
  *       _or_ if a 'level' variable is present in vars use that value instead.
+ * @notes
+ *  1. clixon-restconf.yang is used (so that debug config can be set)
+ *  2. AND the <restconf> XML is in running db not in clixon-config (so that restconf read the new config from backend)
+ *  3 CLICON_BACKEND_RESTCONF_PROCESS is true (so that backend restarts restconf)
  */
 int
 cli_debug_restconf(clicon_handle h, 
@@ -518,8 +522,7 @@ cli_debug_restconf(clicon_handle h,
     }
     level = cv_int32_get(cv);
     /* restconf daemon */
-    if (0) /* XXX notyet */
-	retval = clicon_rpc_debug(h, level);
+    retval = clicon_rpc_restconf_debug(h, level);
  done:
     return retval;
 }
@@ -1300,32 +1303,6 @@ cli_copy_config(clicon_handle h,
     if (x2 != NULL)
 	xml_free(x2);
     return retval;
-}
-
-
-/*! set debug level on stderr (not syslog).
- * The level is either what is specified in arg as int argument.
- * _or_ if a 'level' variable is present in vars use that value instead.
- * XXX obsolete. Use cli_debug_cliv or cli_debug_backendv instead
- */
-int
-cli_debug(clicon_handle h, 
-	  cvec         *vars, 
-	  cg_var       *arg)
-{
-    cg_var *cv;
-    int     level;
-
-    if ((cv = cvec_find(vars, "level")) == NULL)
-	cv = arg;
-    level = cv_int32_get(cv);
-    /* cli */
-    clicon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
-    /* config daemon */
-    if (clicon_rpc_debug(h, level) < 0)
-	goto done;
-  done:
-    return 0;
 }
 
 int

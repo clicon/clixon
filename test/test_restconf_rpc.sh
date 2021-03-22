@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Restconf direct start/stop using RPC and config enable flag (as alternative to systemd or other)
-# According tot he following behaviour:
+# According to the following behaviour:
 # - on RPC start, if enable is true, start the service, if false, error or ignore it
 # - on RPC stop, stop the service 
 # - on backend start make the state as configured
