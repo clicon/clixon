@@ -111,8 +111,7 @@ restconf_pseudo_process_control(clicon_handle h)
     char **argv = NULL;
     int    i;
     int    nr;
-    char   dbgstr[8];
-    char   wwwstr[64];
+    cbuf  *cb = NULL;
 
     nr = 4;
     if (clicon_debug_get() != 0)
@@ -122,8 +121,12 @@ restconf_pseudo_process_control(clicon_handle h)
 	goto done;
     }
     i = 0;
-    snprintf(wwwstr, sizeof(wwwstr)-1, "%s/clixon_restconf", clicon_option_str(h, "CLICON_WWWDIR"));
-    argv[i++] = wwwstr;
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "%s/clixon_restconf", clicon_option_str(h, "CLICON_WWWDIR"));
+    argv[i++] = cbuf_get(cb);
     argv[i++] = "-f";
     argv[i++] = clicon_option_str(h, "CLICON_CONFIGFILE");
     /* Add debug if backend has debug. 
@@ -131,8 +134,9 @@ restconf_pseudo_process_control(clicon_handle h)
      */
     if (clicon_debug_get() != 0){
 	argv[i++] = "-D";
-	snprintf(dbgstr, sizeof(dbgstr)-1, "%d", clicon_debug_get());
-	argv[i++] = dbgstr;
+	cbuf_reset(cb);
+	cprintf(cb, "%d", clicon_debug_get());
+	argv[i++] = cbuf_get(cb);
     }
     argv[i++] = NULL;
     assert(i==nr);
@@ -146,6 +150,8 @@ restconf_pseudo_process_control(clicon_handle h)
 	free(argv);
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
