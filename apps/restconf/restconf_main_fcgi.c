@@ -468,7 +468,7 @@ main(int    argc,
 	}
 	/* Extract restconf configuration */
 	if ((xrestconf2 = xpath_first(xconfig2, nsc, "restconf")) != NULL){
-	    if ((ret = restconf_config_init(h, xrestconf1)) < 0)
+	    if ((ret = restconf_config_init(h, xrestconf2)) < 0)
 		goto done;
 	    if (ret == 1)
 		configure_done = 1;

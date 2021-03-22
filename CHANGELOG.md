@@ -70,6 +70,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [clixon_restconf not properly configed and started by clixon_backend #193](clixon_restconf not properly configed and started by clixon_backend #193)
 * Fixed: [backend start resconf failed due to path string truncated #192](https://github.com/clicon/clixon/issues/192)
 * Fixed: [state showing error in cli with CLICON_STREAM_DISCOVERY_RFC8040 #191](https://github.com/clicon/clixon/issues/191)
 * Fixed: [yang submodule show error in modules-state #190](yang submodule show error in modules-state #190)
