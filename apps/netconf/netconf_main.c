@@ -598,6 +598,7 @@ netconf_terminate(clicon_handle h)
     xpath_optimize_exit();
     clixon_event_exit();
     clicon_handle_exit(h);
+    clixon_err_exit();
     clicon_log_exit();
     return 0;
 }

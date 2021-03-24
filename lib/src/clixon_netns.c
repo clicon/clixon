@@ -37,6 +37,10 @@
 #include <sys/wait.h>
 #include <netinet/in.h>
 
+/* cligen */
+#include <cligen/cligen.h>
+
+/* clixon */
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_netns.h"

@@ -48,7 +48,10 @@
 #include <syslog.h>
 #include <errno.h>
 
-/* clicon */
+/* cligen */
+#include <cligen/cligen.h>
+
+/* clixon */
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_sig.h"

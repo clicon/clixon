@@ -142,6 +142,7 @@ backend_terminate(clicon_handle h)
     backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
     clixon_event_exit();
     clicon_debug(1, "%s done", __FUNCTION__); 
+    clixon_err_exit();
     clicon_log_exit();
     return 0;
 }

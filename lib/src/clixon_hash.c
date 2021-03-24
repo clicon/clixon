@@ -90,7 +90,10 @@
 #include <errno.h>
 #include <inttypes.h>
 
-/* clicon */
+/* cligen */
+#include <cligen/cligen.h>
+
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_err.h"
 #include "clixon_hash.h"

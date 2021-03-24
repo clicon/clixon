@@ -59,6 +59,8 @@ Developers may need to change their code
 
 ### Minor features
 
+* Application specialized error handling for specific error categories
+  * See: https://clixon-docs.readthedocs.io/en/latest/misc.html#specialized-error-handling
 * Added several fields to process-control status operation: active, description, command, status, starttime, pid
 * Changed signal handling
   * Moved clixon-proc sigchild handling	from handler to clixon_events

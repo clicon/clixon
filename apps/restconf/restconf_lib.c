@@ -255,6 +255,7 @@ restconf_terminate(clicon_handle h)
 	xml_free(x);
     xpath_optimize_exit();
     restconf_handle_exit(h);
+    clixon_err_exit();
     clicon_log_exit();
     clicon_debug(1, "%s done", __FUNCTION__);
     return 0;

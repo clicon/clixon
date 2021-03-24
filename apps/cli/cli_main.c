@@ -181,6 +181,7 @@ cli_terminate(clicon_handle h)
     cli_plugin_finish(h);    
     cli_history_save(h);
     cli_handle_exit(h);
+    clixon_err_exit();
     clicon_log_exit();
     return 0;
 }

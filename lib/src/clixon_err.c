@@ -57,6 +57,10 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
+/* cligen */
+#include <cligen/cligen.h>
+
+/* clixon */
 #include "clixon_log.h"
 #include "clixon_queue.h"
 #include "clixon_err.h"
@@ -75,11 +79,26 @@ struct err_state{
     char es_reason[ERR_STRLEN];
 };
 
+/* Clixon error category callbacks provides a way to specialize
+ * error handling to something that clixon is not aware of
+ * An example is Openssl BIO I/O abstraction objects, see man BIO_new()
+ */
+struct clixon_err_cats {
+    qelem_t             cec_qelem; /* List header */
+    enum clicon_err     cec_category;
+    void               *cec_handle;
+    clixon_cat_log_cb  *cec_logfn;
+};
+typedef struct clixon_err_cats clixon_err_cats;
+
+/* Internal global list of category callbacks */
+static clixon_err_cats *_err_cat_list = NULL;
+
 /*
  * Variables
  */
-int clicon_errno  = 0;    /* See enum clicon_err XXX: hide this and change to err_category */
-int clicon_suberrno  = 0; /* Corresponds to errno.h XXX: change to errno */
+int  clicon_errno  = 0;    /* See enum clicon_err XXX: hide this and change to err_category */
+int  clicon_suberrno  = 0; /* Corresponds to errno.h XXX: change to errno */
 char clicon_err_reason[ERR_STRLEN] = {0, };
 
 /*
@@ -97,6 +116,7 @@ static struct errvec EV[] = {
     {"Syslog error",           OE_SYSLOG},
     {"Routing demon error",    OE_ROUTING},
     {"XML error",              OE_XML},
+    {"OpenSSL error",          OE_SSL},
     {"Plugins",                OE_PLUGIN},
     {"Yang error",             OE_YANG},
     {"FATAL",                  OE_FATAL},
@@ -129,6 +149,21 @@ clicon_err_reset(void)
     return 0;
 }
 
+static struct clixon_err_cats *
+find_category(int category)
+{
+    clixon_err_cats *cec = NULL;
+
+    if ((cec = _err_cat_list) != NULL){
+	do {
+	    if (cec->cec_category == category)
+		break;
+	    cec = NEXTQ(clixon_err_cats *, cec);
+	} while (cec && cec != _err_cat_list);
+    }
+    return cec;
+}
+
 /*! Report an error.
  *
  * Library routines should call this function when an error occurs.
@@ -142,20 +177,22 @@ clicon_err_reset(void)
  * @param[in]    line     Inline file line number (when called from clicon_err() macro)
  * @param[in]    category Clixon error category, See enum clicon_err
  * @param[in]    suberr   Error number, typically errno
- * @param[in]    reason   Error string, format with argv
+ * @param[in]    format   Error string, format with argv
  * @see clicon_err_reset  Reset the global error variables.
  */
-int clicon_err_fn(const char *fn,
-		  const int  line,
-		  int        category,
-		  int        suberr,
-		  const char *format, ...) 
+int
+clicon_err_fn(const char *fn,
+	      const int  line,
+	      int        category,
+	      int        suberr,
+	      const char *format, ...) 
 {
     va_list args;
     int     len;
     char   *msg    = NULL;
     int     retval = -1;
-
+    struct clixon_err_cats *cec;
+    
     /* Set the global variables */
     clicon_errno    = category;
     clicon_suberrno = suberr;
@@ -181,8 +218,27 @@ int clicon_err_fn(const char *fn,
     va_end(args);
     strncpy(clicon_err_reason, msg, ERR_STRLEN-1);
 
-    /* Actually log it */
-    if (suberr){
+    /* Check category callbacks */
+    if ((cec = find_category(category)) != NULL &&
+	cec->cec_logfn){
+	cbuf *cb = NULL;
+	if ((cb = cbuf_new()) == NULL){
+	    fprintf(stderr, "cbuf_new: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+	    goto done;
+	}
+	if (cec->cec_logfn(cec->cec_handle, cb) < 0)
+	    goto done;
+	/* Here we could take care of specific errno, like application-defined errors */
+	clicon_log(LOG_ERR, "%s: %d: %s: %s: %s",
+		   fn,
+		   line,
+		   clicon_strerror(category),
+		   cbuf_get(cb),
+		   msg);
+	if (cb)
+	    cbuf_free(cb);
+    }
+    else if (suberr){   /* Actually log it */
 	/* Here we could take care of specific errno, like application-defined errors */
 	clicon_log(LOG_ERR, "%s: %d: %s: %s: %s", 
 		   fn,
@@ -197,7 +253,6 @@ int clicon_err_fn(const char *fn,
 		   line,
 		   clicon_strerror(category),
 		   msg);
-
     retval = 0;
   done:
     if (msg)
@@ -241,5 +296,41 @@ clicon_err_restore(void* handle)
 	strncpy(clicon_err_reason, es->es_reason, ERR_STRLEN);
 	free(es);
     }
+    return 0;
+}
+
+/*! Register error categories for application-based error handling
+ *
+ * @param[in]  category  Applies for this category (first arg to clicon_err())
+ * @param[in]  logfn     Call att error for generating application-defined errstring
+ */
+int
+clixon_err_cat_reg(enum clicon_err       category,
+		   void                 *handle,
+		   clixon_cat_log_cb     logfn)
+{
+    clixon_err_cats *cec;
+
+    if ((cec = malloc(sizeof *cec)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	return -1;
+    }
+    memset(cec, 0, sizeof *cec);
+    cec->cec_category = category;
+    cec->cec_handle = handle;
+    cec->cec_logfn = logfn;
+    INSQ(cec, _err_cat_list);    
+    return 0;
+}
+
+int
+clixon_err_exit(void)
+{
+    clixon_err_cats *cec = NULL;
+
+    while ((cec = _err_cat_list) != NULL){
+	DELQ(cec, _err_cat_list, clixon_err_cats *);
+	free(cec);
+    } 
     return 0;
 }

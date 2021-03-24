@@ -112,6 +112,7 @@ restconf_pseudo_process_control(clicon_handle h)
     int    i;
     int    nr;
     cbuf  *cb = NULL;
+    cbuf  *cbdbg = NULL;
 
     nr = 4;
     if (clicon_debug_get() != 0)
@@ -134,9 +135,12 @@ restconf_pseudo_process_control(clicon_handle h)
      */
     if (clicon_debug_get() != 0){
 	argv[i++] = "-D";
-	cbuf_reset(cb);
-	cprintf(cb, "%d", clicon_debug_get());
-	argv[i++] = cbuf_get(cb);
+	if ((cbdbg = cbuf_new()) == NULL){ /* Cant use cb since it would overwrite it */
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cbdbg, "%d", clicon_debug_get());
+	argv[i++] = cbuf_get(cbdbg);
     }
     argv[i++] = NULL;
     assert(i==nr);
@@ -152,6 +156,8 @@ restconf_pseudo_process_control(clicon_handle h)
  done:
     if (cb)
 	cbuf_free(cb);
+    if (cbdbg)
+	cbuf_free(cbdbg);
     return retval;
 }
 
