@@ -251,6 +251,9 @@ if test "x${with_restconf}" != "x"; then
    AC_MSG_RESULT(www user is $wwwuser)	
    AC_DEFINE_UNQUOTED(WWWUSER, "$wwwuser", [WWW user for restconf daemon])
    AC_DEFINE_UNQUOTED(WWWDIR, "$wwwdir", [WWW dir for restconf daemon])
+else
+   AC_DEFINE_UNQUOTED(WWWUSER, "", [WWW user for restconf daemon])
+   AC_DEFINE_UNQUOTED(WWWDIR, "", [WWW dir for restconf daemon])
 fi
 
 # Set default config file location
