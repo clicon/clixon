@@ -149,19 +149,24 @@ clicon_err_reset(void)
     return 0;
 }
 
+/*! Find error category struct given name
+ */
 static struct clixon_err_cats *
 find_category(int category)
 {
     clixon_err_cats *cec = NULL;
+    int              found = 0;
 
     if ((cec = _err_cat_list) != NULL){
 	do {
-	    if (cec->cec_category == category)
+	    if (cec->cec_category == category){
+		found++;
 		break;
+	    }
 	    cec = NEXTQ(clixon_err_cats *, cec);
 	} while (cec && cec != _err_cat_list);
     }
-    return cec;
+    return found?cec:NULL;
 }
 
 /*! Report an error.

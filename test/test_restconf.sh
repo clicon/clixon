@@ -33,7 +33,7 @@ if [ -d ${TOP_SRCDIR}/example/main/$y ]; then
 else
     cp /usr/local/share/clixon/$y $dir/
 fi
-y=clixon-restconf@2020-12-30.yang
+y=clixon-restconf@${CLIXON_RESTCONF_REV}.yang
 if [ -d ${TOP_SRCDIR}/yang/clixon ]; then 
     cp ${TOP_SRCDIR}/yang/clixon/$y $dir/
 else
