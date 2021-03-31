@@ -50,6 +50,9 @@
 #include <openssl/err.h>
 
 /* evhtp */ 
+#define EVHTP_DISABLE_REGEX
+#define EVHTP_DISABLE_EVTHR
+#define EVHTP_EXPORT
 #include <evhtp/evhtp.h>
 
 /* cligen */

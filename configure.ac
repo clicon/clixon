@@ -205,7 +205,6 @@ AC_ARG_WITH([restconf],
 	AS_HELP_STRING([--with-restconf=fcgi],[FCGI interface for stand-alone web rev-proxy eg nginx (default)]),
 	,
 	[with_restconf=fcgi])
-
 # Actions for each specific package
 if test "x${with_restconf}" == xfcgi; then
    # Lives in libfcgi-dev
@@ -214,15 +213,22 @@ elif test "x${with_restconf}" == xevhtp; then
    AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
    AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
    AC_CHECK_LIB(event, event_init,, AC_MSG_ERROR([libevent missing]))
-   AC_CHECK_HEADERS(evhtp/evhtp.h,, AC_MSG_ERROR([evhtp header missing. See https://github.com/clicon/libevhtp]))
+   AC_CHECK_HEADERS(evhtp/evhtp.h,
+       [],
+       AC_MSG_ERROR([evhtp header missing. See https://github.com/clicon/libevhtp]),
+       [AC_INCLUDES_DEFAULT[
+       #define EVHTP_DISABLE_REGEX
+       #define EVHTP_DISABLE_EVTHR
+       #define  EVHTP_EXPORT
+       ]])
    AC_CHECK_LIB(evhtp, evhtp_new,, AC_MSG_ERROR([libevhtp missing]),[-lpthread -levent -levent_openssl -lssl -lcrypto]) 
-
 elif test "x${with_restconf}" == xno; then
    # Cant get around "no" as an answer for --without-restconf that is reset here to undefined
    with_restconf=   
 else
    AC_MSG_ERROR([No such restconf package: ${with_restconf}])
 fi
+
 
 if test "x${with_restconf}" != "x"; then
    # This is so it appears in config.h

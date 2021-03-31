@@ -254,7 +254,7 @@ example_basic_auth(clicon_handle      h,
     user=NULL; /* to avoid free below */
     retval = 1;
  done: /* error */
-    clicon_debug(1, "%s retval:%d authp:%s", __FUNCTION__, retval, *authp);
+    clicon_debug(1, "%s retval:%d authp:%s", __FUNCTION__, retval, authp?"":*authp);
     if (user)
        free(user);
     if (cb)
@@ -324,7 +324,7 @@ example_no_auth(clicon_handle      h,
     user=NULL; /* to avoid free below */
     retval = 1;
  done: /* error */
-    clicon_debug(1, "%s retval:%d authp:%s", __FUNCTION__, retval, *authp);
+    clicon_debug(1, "%s retval:%d authp:%s", __FUNCTION__, retval, authp?"":*authp);
     if (user)
        free(user);
     if (cb)

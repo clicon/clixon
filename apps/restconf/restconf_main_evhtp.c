@@ -134,6 +134,7 @@
 #include <pwd.h>
 #include <ctype.h>
 #include <assert.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -151,6 +152,9 @@
 
 /* evhtp */
 #include <event2/buffer.h> /* evbuffer */
+#define EVHTP_DISABLE_REGEX
+#define EVHTP_DISABLE_EVTHR
+#define EVHTP_EXPORT
 #include <evhtp/evhtp.h>
 #include <evhtp/sslutils.h> /* XXX inline this / use SSL directly */
 
@@ -213,28 +217,24 @@ openspec_handle_set(clicon_handle   h,
  * see also this function in restcont_api_openssl.c
  */
 static ssize_t
-evbuf_write(struct evbuffer *ev,
-	    int              s,
-	    SSL             *ssl)
+buf_write(char   *buf,
+	  size_t  buflen,
+	  int     s,
+	  SSL    *ssl)
 {
     ssize_t        retval = -1;
-    size_t         buflen;
-    unsigned char *buf;
     int            ret;
 
-    if ((buflen = evbuffer_get_length(ev)) > 0){
-	buf = evbuffer_pullup(ev, -1);
-	if (ssl){
-	    if ((ret = SSL_write(ssl, buf, buflen)) <= 0){
-		clicon_err(OE_SSL, 0, "SSL_write");
-		goto done;
-	    }
+    if (ssl){
+	if ((ret = SSL_write(ssl, buf, buflen)) <= 0){
+	    clicon_err(OE_SSL, 0, "SSL_write");
+	    goto done;
 	}
-	else{
-	    if (write(s, buf, buflen) < 0){
-		clicon_err(OE_UNIX, errno, "write");
-		goto done;
-	    }
+    }
+    else{
+	if (write(s, buf, buflen) < 0){
+	    clicon_err(OE_UNIX, errno, "write");
+	    goto done;
 	}
     }
     retval = 0;
@@ -787,6 +787,25 @@ close_openssl_socket(int  s,
     return retval;
 }
 
+/*! Send initial bad request reply before actual packet received, just after accept
+ * @param[in]  ssl  if set, it will be freed
+ */
+static int
+accept_badrequest(clicon_handle       h,
+		  int                 s,
+		  SSL                *ssl)
+{
+    int retval = -1;
+    char *buf = "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\nContent-Type: text/plain\r\n\r\n";
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (buf_write(buf, strlen(buf)+1, s, ssl) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! New data connection after accept, receive and reply on data sockte
  *
  * @param[in]   s    Socket where message arrived. read from this.
@@ -798,7 +817,7 @@ close_openssl_socket(int  s,
  */
 static int
 restconf_connection(int   s, 
-		    void* arg)
+		    void *arg)
 {
     int                 retval = -1;
     evhtp_connection_t *conn = NULL;
@@ -830,6 +849,7 @@ restconf_connection(int   s,
 	}
     }
     if (n == 0){
+	clicon_debug(1, "%s n=0 closing socket", __FUNCTION__);
 	ssl = conn->ssl;
 	conn->ssl = NULL;
 	evhtp_connection_free(conn); /* evhtp */
@@ -841,27 +861,43 @@ restconf_connection(int   s,
      * signature: 
      */
     if (connection_parse_nobev(buf, n, conn) < 0){
-	evhtp_request_t *er;
-	er = evhtp_request_new(NULL, NULL);
-	er->conn = conn;
-	conn->request = er;
-	htparser_set_major(conn->parser, '\1');
-	htparser_set_minor(conn->parser, '\1');
-	if (restconf_badrequest(h, er) < 0) 
+	clicon_debug(1, "%s connection_parse error", __FUNCTION__);
+	if (accept_badrequest(h, s, conn->ssl) < 0)
 	    goto done;
-		if (conn->bev != NULL)
-		    if (evbuf_write(bufferevent_get_output(conn->bev), s, NULL) < 0)
-			goto done;
-	evhtp_connection_free(conn);
+	SSL_free(ssl);
 	if (close_openssl_socket(s, NULL) < 0)
 	    goto done;
+	conn->ssl = NULL;
+	evhtp_connection_free(conn);
 	goto ok;
     }
     if (conn->bev != NULL){
-	/* This is for 100 Continue, typically bev is set but output is empty
-	 * if sent by fini callback
-	 */
-	if (evbuf_write(bufferevent_get_output(conn->bev), conn->sock, conn->ssl) < 0)
+	char     *buf = NULL;
+	size_t    buflen;
+	struct evbuffer *ev;
+
+	if ((ev = bufferevent_get_output(conn->bev)) != NULL){
+	    buf = (char*)evbuffer_pullup(ev, -1);
+	    buflen = evbuffer_get_length(ev);
+	    if (buflen){
+		if (buf_write(buf, buflen, conn->sock, conn->ssl) < 0)
+		    goto done;
+	    }
+	    else{
+		clicon_debug(1, "%s bev is NULL 1", __FUNCTION__);
+		if (accept_badrequest(h, s, conn->ssl) < 0) /* actually error */
+		    goto done;
+	    }
+	}
+	else{
+	    clicon_debug(1, "%s bev is NULL 2", __FUNCTION__);
+	    if (accept_badrequest(h, s, conn->ssl) < 0) /* actually error */
+		goto done;
+	}	
+    }
+    else{
+	clicon_debug(1, "%s bev is NULL 3", __FUNCTION__);
+	if (accept_badrequest(h, s, conn->ssl) < 0) /* actually error */
 	    goto done;
     }
  ok:
@@ -935,43 +971,6 @@ restconf_checkcert_file(cxobj      *xrestconf,
     return retval;
 }
 
-/*! Send initial bad request reply before actual packet received, just after accept
- * @param[in]  ssl  if set, it will be freed
- */
-static int
-accept_badrequest(clicon_handle       h,
-		  int                 s,
-		  SSL                *ssl,
-		  evhtp_connection_t *conn)
-{
-    int retval = -1;
-    evhtp_request_t *er;
-    
-    /*
-     * Since message has not been read, the reply is constructed manually
-     * using http 1.1
-     * See note (1) http to https port:
-     */
-    er = evhtp_request_new(NULL, NULL);
-    er->conn = conn;
-    conn->request = er;
-    conn->ssl = NULL;
-    htparser_set_major(conn->parser, '\1');
-    htparser_set_minor(conn->parser, '\1');
-    if (restconf_badrequest(h, er) < 0) 
-	goto done;
-    /* XXX: should there be a body? */
-    if (conn->bev != NULL)
-	if (evbuf_write(bufferevent_get_output(conn->bev), s, ssl) < 0)
-	    goto done;
-    evhtp_connection_free(conn);
-    if (close_openssl_socket(s, ssl) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Accept new socket client
  * @param[in]  fd   Socket (unix or ip)
  * @param[in]  arg  typecast clicon_handle
@@ -993,7 +992,8 @@ restconf_accept_client(int   fd,
     int                 ret;
     evhtp_t            *evhtp = NULL;
     evhtp_connection_t *conn;
-
+    int                 e;
+    
     clicon_debug(1, "%s %d", __FUNCTION__, fd);
     if (rsock == NULL){
 	clicon_err(OE_YANG, EINVAL, "rsock is NULL");
@@ -1052,17 +1052,23 @@ restconf_accept_client(int   fd,
 	 * Both error cases: Call SSL_get_error() with the return value ret 
 	 */
 	if ((ret = SSL_accept(ssl)) != 1) {
-	    int e = SSL_get_error(ssl, ret);
+	    e = SSL_get_error(ssl, ret);
+
 	    switch (e){
-	    case SSL_ERROR_SSL: {                 /* 1 */
-		if (accept_badrequest(h, s, NULL, conn) < 0)
+	    case SSL_ERROR_SSL:                  /* 1 */
+		clicon_debug(1, "%s SSL_ERROR_SSL (not ssl mesage on ssl socket)", __FUNCTION__);
+		if (accept_badrequest(h, s, NULL) < 0)
 		    goto done;
 		SSL_free(ssl);
+		if (close_openssl_socket(s, NULL) < 0)
+		    goto done;
+		conn->ssl = NULL;
+		evhtp_connection_free(conn);
 		goto ok;
-	    }
 		break;
 	    case SSL_ERROR_SYSCALL:              /* 5 */
 		/* look at error stack/return value/errno */
+		clicon_debug(1, "%s SSL_ERROR_SYSCALL", __FUNCTION__);
 		SSL_free(ssl);
 		if (close_openssl_socket(s, NULL) < 0)
 		    goto done;
@@ -1092,8 +1098,18 @@ restconf_accept_client(int   fd,
 	*/
 	if (restconf_auth_type_get(h) == CLIXON_AUTH_CLIENT_CERTIFICATE &&
 	    SSL_get_peer_certificate(ssl) == NULL) { /* Get certificates (if available) */
-	    if (accept_badrequest(h, s, ssl, conn) < 0)
+	    if (accept_badrequest(h, s, ssl) < 0)
 		goto done;
+           if (ssl){
+               if ((ret = SSL_shutdown(ssl)) < 0){
+                   int e = SSL_get_error(ssl, ret);
+                   clicon_err(OE_SSL, 0, "SSL_shutdown, err:%d", e);
+                   goto done;
+               }
+               SSL_free(ssl);
+           }
+           // close(s); Error (56 != 0) in Test14 [No cert: certificate required]:
+           //      clixon_event_unreg_fd(s, restconf_connection);
 	    goto ok;
 	}
 	/* Get the actual peer, XXX this maybe could be done in ca-auth client-cert code ? 

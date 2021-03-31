@@ -97,7 +97,6 @@ system=$($sshcmd uname) # we use the release "hack" instead
 
 # Some release have packages, some need to be built from source
 buildfcgi=false
-buildevhtp=false
 case $release in
     openbsd)
 	# packages for building
@@ -130,7 +129,7 @@ case $release in
 		$sshcmd sudo pkg install -y fcgi-devkit nginx
 		;;
 	    evhtp)
-		$sshcmd sudo pkg install -y libevent libevhtp
+		$sshcmd sudo pkg install -y libevent
 		;;
 	esac
 	;;
@@ -157,7 +156,6 @@ case $release in
 		;;
 	    evhtp)
 		$sshcmd sudo yum install -y libevent openssl
-		buildevhtp=true
 		$sshcmd sudo yum install -y libevent-devel openssl-devel
 		;;
 	esac
@@ -203,7 +201,6 @@ case $release in
 		;;
 	    evhtp)
 #		$sshcmd sudo apt install -y libevent-2.1
-		buildevhtp=true
 		$sshcmd sudo apt install -y libevent-dev libssl-dev
 		;;
 	esac
@@ -257,15 +254,13 @@ case ${with_restconf} in
 	. ./nginx.sh $dir $idfile $port $wwwuser
 	;;
     evhtp)
-	if $buildevhtp; then
-		$sshcmd << 'EOF'
-		test -d libevhtp || git clone https://github.com/clicon/libevhtp.git
-		cd libevhtp; 
-		./configure --libdir=/usr/lib # otherwise in /usr/local/lib where RH dont look
-                make
-		sudo make install
+	$sshcmd << 'EOF'
+	test -d clixon-libevhtp || git clone https://github.com/clicon/clixon-libevhtp.git
+	cd clixon-libevhtp; 
+	./configure --libdir=/usr/lib # otherwise in /usr/local/lib where RH dont look
+        make
+	sudo make install
 EOF
-	fi
 	;;
 esac
 

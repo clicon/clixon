@@ -4992,7 +4992,6 @@ else
   with_restconf=fcgi
 fi
 
-
 # Actions for each specific package
 if test "x${with_restconf}" == xfcgi; then
    # Lives in libfcgi-dev
@@ -5187,7 +5186,12 @@ fi
 
    for ac_header in evhtp/evhtp.h
 do :
-  ac_fn_c_check_header_mongrel "$LINENO" "evhtp/evhtp.h" "ac_cv_header_evhtp_evhtp_h" "$ac_includes_default"
+  ac_fn_c_check_header_compile "$LINENO" "evhtp/evhtp.h" "ac_cv_header_evhtp_evhtp_h" "$ac_includes_default
+       #define EVHTP_DISABLE_REGEX
+       #define EVHTP_DISABLE_EVTHR
+       #define  EVHTP_EXPORT
+
+"
 if test "x$ac_cv_header_evhtp_evhtp_h" = xyes; then :
   cat >>confdefs.h <<_ACEOF
 #define HAVE_EVHTP_EVHTP_H 1
@@ -5246,13 +5250,13 @@ else
   as_fn_error $? "libevhtp missing" "$LINENO" 5
 fi
 
-
 elif test "x${with_restconf}" == xno; then
    # Cant get around "no" as an answer for --without-restconf that is reset here to undefined
    with_restconf=
 else
    as_fn_error $? "No such restconf package: ${with_restconf}" "$LINENO" 5
 fi
+
 
 if test "x${with_restconf}" != "x"; then
    # This is so it appears in config.h

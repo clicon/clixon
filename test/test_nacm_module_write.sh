@@ -184,10 +184,10 @@ nacm
 # delete    |  p/d   | xp/dx  |  p/d
 
 # replace all, then must include NACM rules as well
+# This usually triggers a 'HTTP/1.1 100 Continue' from curl as well
 MSG="<data>$RULES</data>"
 new "update root list permit"
 expectpart "$(curl -u andy:bar $CURLOPTS -H 'Content-Type: application/yang-data+xml' -X PUT $RCPROTO://localhost/restconf/data -d "$MSG")" 0 'HTTP/1.1 204 No Content'
-# Usually a 'HTTP/1.1 100 Continue' as well
 
 new "delete root list deny"
 expectpart "$(curl -u wilma:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'

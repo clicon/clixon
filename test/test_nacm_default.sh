@@ -105,10 +105,9 @@ EOF
 
 	new "wait backend"
 	wait_backend
-    else
-	new "Restart backend as eg follows: -Ff $cfg -s $db"
-	sleep 2
     fi
+    new "wait backend"
+    wait_backend
     
     if [ $RC -ne 0 ]; then     # Bring your own restconf
 	new "kill old restconf daemon"
@@ -116,10 +115,9 @@ EOF
 
 	new "start restconf daemon"
 	start_restconf -f $cfg
-
-	new "wait restconf"
-	wait_restconf
     fi
+    new "wait restconf"
+    wait_restconf
 
     # Use  POST (instead of startup)
     # Note this only works because CLICON_NACM_DISABLED_ON_EMPTY is true
@@ -177,9 +175,12 @@ EOF
 	   status="HTTP/1.1 200 OK"
 	   ;;
     esac
+
     new "get 99"
     expectpart "$(curl -u guest:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "$status" "$ret"
     
+    sleep $DEMSLEEP
+
     if [ $RC -ne 0 ]; then     # Bring your own restconf
 	new "Kill restconf daemon"
 	stop_restconf
