@@ -12,9 +12,9 @@ There are two installation instructions: for libevhtp and nginx.
 
 Download, build and install libevhtp from source. Prereqs: libevent and cmake.
 ```
-   git clone https://github.com/clicon/libevhtp.git
-   cd libevhtp/build
-   cmake -DEVHTP_DISABLE_REGEX=ON -DEVHTP_DISABLE_EVTHR=ON ..
+   sudo git clone https://github.com/clicon/clixon-libevhtp.git
+   cd clixon-libevhtp
+   ./configure --libdir=/usr/lib
    make
    sudo make install
 ```

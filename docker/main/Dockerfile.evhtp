@@ -41,15 +41,15 @@ RUN apk add --update git make build-base gcc flex bison curl-dev
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
 
-# libevht
+# evhtp
 # dependencies
-RUN apk add --update libevent cmake libevent-dev
+RUN apk add --update libevent libevent-dev
 
 # clone libevhtp
 WORKDIR /clixon
 
 RUN git clone https://github.com/clicon/clixon-libevhtp.git
-WORKDIR /clixon/libevhtp
+WORKDIR /clixon/clixon-libevhtp
 RUN ./configure
 
 RUN make
