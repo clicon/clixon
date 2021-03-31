@@ -154,7 +154,7 @@
 #include <event2/buffer.h> /* evbuffer */
 #define EVHTP_DISABLE_REGEX
 #define EVHTP_DISABLE_EVTHR
-#define EVHTP_EXPORT
+
 #include <evhtp/evhtp.h>
 #include <evhtp/sslutils.h> /* XXX inline this / use SSL directly */
 
@@ -1066,7 +1066,7 @@ restconf_accept_client(int   fd,
     int                 er;
     int                 readmore;
     X509               *peercert;
-    
+
     clicon_debug(1, "%s %d", __FUNCTION__, fd);
     if (rsock == NULL){
 	clicon_err(OE_YANG, EINVAL, "rsock is NULL");
