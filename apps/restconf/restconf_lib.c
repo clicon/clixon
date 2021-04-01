@@ -606,7 +606,7 @@ restconf_config_init(clicon_handle h,
     cxobj *x;
     char  *bstr;
     cvec  *nsc = NULL;
-    clixon_auth_type_t auth_type;
+    int    auth_type;
 	 
     if ((x = xpath_first(xrestconf, nsc, "enable")) != NULL &&
 	(enable = xml_body(x)) != NULL){

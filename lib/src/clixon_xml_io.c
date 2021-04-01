@@ -554,19 +554,6 @@ _xml_parse(const char *str,
     goto done;
 }
 
-/*! FSM to detect substring
- */
-static inline int
-FSM(char *tag, 
-    char  ch, 
-    int   state)
-{
-    if (tag[state] == ch)
-	return state+1;
-    else
-	return 0;
-}
-
 /*! Read an XML definition from file and parse it into a parse-tree, advanced API
  *
  * @param[in]     fd    A file descriptor containing the XML file (as ASCII characters)

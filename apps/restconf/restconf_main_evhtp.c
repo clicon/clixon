@@ -821,7 +821,7 @@ restconf_connection(int   s,
 {
     int                 retval = -1;
     evhtp_connection_t *conn = NULL;
-    size_t              n;
+    ssize_t             n;
     char                buf[1024];
     SSL                *ssl;
     clicon_handle       h;
@@ -864,7 +864,7 @@ restconf_connection(int   s,
 	clicon_debug(1, "%s connection_parse error", __FUNCTION__);
 	if (accept_badrequest(h, s, conn->ssl) < 0)
 	    goto done;
-	SSL_free(ssl);
+	SSL_free(conn->ssl);
 	if (close_openssl_socket(s, NULL) < 0)
 	    goto done;
 	conn->ssl = NULL;
@@ -1085,7 +1085,9 @@ restconf_accept_client(int   fd,
 	    case SSL_ERROR_WANT_X509_LOOKUP:     /* 4 */
 	    case SSL_ERROR_WANT_ASYNC:           /* 8 */
 	    case SSL_ERROR_WANT_ASYNC_JOB:       /* 10 */
+#ifdef SSL_ERROR_WANT_CLIENT_HELLO_CB
 	    case SSL_ERROR_WANT_CLIENT_HELLO_CB: /* 11 */
+#endif
 		break;
 	    }
 	    clicon_err(OE_SSL, 0, "SSL_accept:%d", e);
