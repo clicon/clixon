@@ -877,7 +877,7 @@ cli_show_options(clicon_handle h,
 		fprintf(stdout, "%s: 0x%p , length %zu\n", keys[i], val, vlen);
 	}
 	else
-	    fprintf(stdout, "%s: NULL", keys[i]);
+	    fprintf(stdout, "%s: NULL\n", keys[i]);
     }
     /* Next print CLICON_FEATURE and CLICON_YANG_DIR from config tree
      * Since they are lists they are placed in the config tree.

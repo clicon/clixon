@@ -464,7 +464,7 @@ netconf_input_cb(int   s,
 {
     int           retval = -1;
     clicon_handle h = arg;
-    unsigned char buf[BUFSIZ];
+    unsigned char buf[BUFSIZ]; /* from stdio.h, typically 8K */
     int           i;
     int           len;
     cbuf         *cb=NULL;

@@ -84,6 +84,9 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed [making cli_show_options's output more human readable #199](https://github.com/clicon/clixon/issues/199)
+* Fixed Yang parsing of comments in (extension) unknown statements, to allow multiple white space
+  * this also caused spaces to be printed to stdout after clixon-restconf was terminated
 * Fixed: [clixon_restconf not properly configed and started by clixon_backend #193](clixon_restconf not properly configed and started by clixon_backend #193)
 * Fixed: [backend start resconf failed due to path string truncated #192](https://github.com/clicon/clixon/issues/192)
 * Fixed: [state showing error in cli with CLICON_STREAM_DISCOVERY_RFC8040 #191](https://github.com/clicon/clixon/issues/191)

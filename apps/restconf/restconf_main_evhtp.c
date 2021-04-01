@@ -227,8 +227,28 @@ buf_write(char   *buf,
 
     if (ssl){
 	if ((ret = SSL_write(ssl, buf, buflen)) <= 0){
-	    clicon_err(OE_SSL, 0, "SSL_write");
-	    goto done;
+	    int e = errno;
+            switch (SSL_get_error(ssl, ret)){
+            case SSL_ERROR_SYSCALL:              /* 5 */
+              if (e == ECONNRESET) {/* Connection reset by peer */
+                clicon_debug(1, "%s HERE", __FUNCTION__);
+		if (ssl)
+		    SSL_free(ssl);
+		close(s);
+		clixon_event_unreg_fd(s, restconf_connection);
+                goto ok; /* Close socket and ssl */
+              }
+              else{
+                clicon_err(OE_RESTCONF, e, "SSL_write %d", e);
+                goto done;
+              }
+              break;
+            default:
+              clicon_err(OE_SSL, 0, "SSL_write");
+              goto done;
+              break;
+            }
+            goto done;
 	}
     }
     else{
@@ -237,6 +257,7 @@ buf_write(char   *buf,
 	    goto done;
 	}
     }
+ ok:
     retval = 0;
  done:
     return retval;
@@ -477,6 +498,7 @@ evhtp_params_set(clicon_handle    h,
 	goto done;
     retval = 1;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (subject)
 	free(subject);
     if (cvv)
@@ -542,6 +564,7 @@ restconf_path_root(evhtp_request_t *req,
 	goto done;
     retval = 0;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     /* Catch all on fatal error. This does not terminate the process but closes request stream */
     if (retval < 0){
 	evhtp_send_reply(req, EVHTP_RES_ERROR);
@@ -791,7 +814,7 @@ close_openssl_socket(int  s,
  * @param[in]  ssl  if set, it will be freed
  */
 static int
-accept_badrequest(clicon_handle       h,
+send_badrequest(clicon_handle       h,
 		  int                 s,
 		  SSL                *ssl)
 {
@@ -814,6 +837,10 @@ accept_badrequest(clicon_handle       h,
  * @retval      -1   Error Terminates backend and is never called). Instead errors are
  *                   propagated back to client.
  * @see restconf_accept_client where this callback is registered
+ * @note read buffer is limited. More data can be read in two ways: either evhtp returns a buffer
+ * with 100 Continue, in which case that is replied and the function returns and the client sends 
+ * more data.
+ * OR evhtp returns 0 with no reply, then this is assumed to mean read more data from the socket.
  */
 static int
 restconf_connection(int   s, 
@@ -822,9 +849,10 @@ restconf_connection(int   s,
     int                 retval = -1;
     evhtp_connection_t *conn = NULL;
     ssize_t             n;
-    char                buf[1024];
+    char                buf[BUFSIZ]; /* from stdio.h, typically 8K */
     SSL                *ssl;
     clicon_handle       h;
+    int                 readmore = 1;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((conn = (evhtp_connection_t*)arg) == NULL){
@@ -832,74 +860,85 @@ restconf_connection(int   s,
 	goto done;
     }
     h = (clicon_handle*)conn->htp->arg;
-    /* Example: curl -Ssik -u wilma:bar -X GET https://localhost/restconf/data/example:x */
-    if (conn->ssl){
-	/* Non-ssl gets n == 0 here!
-	   curl -Ssik --key /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.key --cert /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.crt -X GET https://localhost/restconf/data/example:x
-*/
-	if ((n = SSL_read(conn->ssl, buf, sizeof(buf))) < 0){
-	    clicon_err(OE_XML, errno, "SSL_read");
-	    goto done;
-	}
-    }
-    else{
-	if ((n = read(conn->sock, buf, sizeof(buf))) < 0){ /* XXX atomicio ? */
-	    clicon_err(OE_XML, errno, "SSL_read");
-	    goto done;
-	}
-    }
-    if (n == 0){
-	clicon_debug(1, "%s n=0 closing socket", __FUNCTION__);
-	ssl = conn->ssl;
-	conn->ssl = NULL;
-	evhtp_connection_free(conn); /* evhtp */
-	if (close_openssl_socket(s, ssl) < 0)
-	    goto done;
-	goto ok;
-    }
-    /* parse incoming packet 
-     * signature: 
-     */
-    if (connection_parse_nobev(buf, n, conn) < 0){
-	clicon_debug(1, "%s connection_parse error", __FUNCTION__);
-	if (accept_badrequest(h, s, conn->ssl) < 0)
-	    goto done;
-	SSL_free(conn->ssl);
-	if (close_openssl_socket(s, NULL) < 0)
-	    goto done;
-	conn->ssl = NULL;
-	evhtp_connection_free(conn);
-	goto ok;
-    }
-    if (conn->bev != NULL){
-	char     *buf = NULL;
-	size_t    buflen;
-	struct evbuffer *ev;
-
-	if ((ev = bufferevent_get_output(conn->bev)) != NULL){
-	    buf = (char*)evbuffer_pullup(ev, -1);
-	    buflen = evbuffer_get_length(ev);
-	    if (buflen){
-		if (buf_write(buf, buflen, conn->sock, conn->ssl) < 0)
-		    goto done;
-	    }
-	    else{
-		clicon_debug(1, "%s bev is NULL 1", __FUNCTION__);
-		if (accept_badrequest(h, s, conn->ssl) < 0) /* actually error */
-		    goto done;
+    while (readmore) {
+	readmore = 0;
+	/* Example: curl -Ssik -u wilma:bar -X GET https://localhost/restconf/data/example:x */
+	if (conn->ssl){
+	    /* Non-ssl gets n == 0 here!
+	       curl -Ssik --key /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.key --cert /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.crt -X GET https://localhost/restconf/data/example:x
+	    */
+	    if ((n = SSL_read(conn->ssl, buf, sizeof(buf))) < 0){
+		clicon_err(OE_XML, errno, "SSL_read");
+		goto done;
 	    }
 	}
 	else{
-	    clicon_debug(1, "%s bev is NULL 2", __FUNCTION__);
-	    if (accept_badrequest(h, s, conn->ssl) < 0) /* actually error */
+	    if ((n = read(conn->sock, buf, sizeof(buf))) < 0){ /* XXX atomicio ? */
+		clicon_err(OE_XML, errno, "SSL_read");
 		goto done;
-	}	
-    }
-    else{
-	clicon_debug(1, "%s bev is NULL 3", __FUNCTION__);
-	if (accept_badrequest(h, s, conn->ssl) < 0) /* actually error */
-	    goto done;
-    }
+	    }
+	}
+	if (n == 0){
+	    clicon_debug(1, "%s n=0 closing socket", __FUNCTION__);
+	    ssl = conn->ssl;
+	    conn->ssl = NULL;
+	    evhtp_connection_free(conn); /* evhtp */
+	    if (close_openssl_socket(s, ssl) < 0)
+		goto done;
+	    goto ok;
+	}
+	/* parse incoming packet 
+	 * signature: 
+	 */
+	if (connection_parse_nobev(buf, n, conn) < 0){
+	    clicon_debug(1, "%s connection_parse error", __FUNCTION__);
+	    if (send_badrequest(h, s, conn->ssl) < 0)
+		goto done;
+	    SSL_free(conn->ssl);
+	    if (close_openssl_socket(s, NULL) < 0)
+		goto done;
+	    conn->ssl = NULL;
+	    evhtp_connection_free(conn);
+	    goto ok;
+	}
+	clicon_debug(1, "%s connection_parse OK", __FUNCTION__);
+	if (conn->bev != NULL){
+	    char     *buf = NULL;
+	    size_t    buflen;
+	    struct evbuffer *ev;
+
+	    if ((ev = bufferevent_get_output(conn->bev)) != NULL){
+		buf = (char*)evbuffer_pullup(ev, -1);
+		buflen = evbuffer_get_length(ev);
+		clicon_debug(1, "buf:%s", buf);
+		if (buflen){
+		    if (buf_write(buf, buflen, conn->sock, conn->ssl) < 0)
+			goto done;
+		}
+		else{
+#if 1
+		    /* Return 0 from evhtp parser can be that it needs more data.
+		     */
+		    readmore = 1; /* Readmore */
+#else
+		    clicon_debug(1, "%s bev is NULL 1", __FUNCTION__);
+		    if (send_badrequest(h, s, conn->ssl) < 0) /* actually error */
+			goto done;
+#endif
+		}
+	    }
+	    else{
+		clicon_debug(1, "%s bev is NULL 2", __FUNCTION__);
+		if (send_badrequest(h, s, conn->ssl) < 0) /* actually error */
+		    goto done;
+	    }	
+	}
+	else{
+	    clicon_debug(1, "%s bev is NULL 3", __FUNCTION__);
+	    if (send_badrequest(h, s, conn->ssl) < 0) /* actually error */
+		goto done;
+	}
+    } /* while moredata */
  ok:
     retval = 0;
  done:
@@ -1057,7 +1096,7 @@ restconf_accept_client(int   fd,
 	    switch (e){
 	    case SSL_ERROR_SSL:                  /* 1 */
 		clicon_debug(1, "%s SSL_ERROR_SSL (not ssl mesage on ssl socket)", __FUNCTION__);
-		if (accept_badrequest(h, s, NULL) < 0)
+		if (send_badrequest(h, s, NULL) < 0)
 		    goto done;
 		SSL_free(ssl);
 		if (close_openssl_socket(s, NULL) < 0)
@@ -1089,6 +1128,8 @@ restconf_accept_client(int   fd,
 	    case SSL_ERROR_WANT_CLIENT_HELLO_CB: /* 11 */
 #endif
 		break;
+	    default:
+		break;
 	    }
 	    clicon_err(OE_SSL, 0, "SSL_accept:%d", e);
 	    goto done;
@@ -1100,7 +1141,7 @@ restconf_accept_client(int   fd,
 	*/
 	if (restconf_auth_type_get(h) == CLIXON_AUTH_CLIENT_CERTIFICATE &&
 	    SSL_get_peer_certificate(ssl) == NULL) { /* Get certificates (if available) */
-	    if (accept_badrequest(h, s, ssl) < 0)
+	    if (send_badrequest(h, s, ssl) < 0)
 		goto done;
            if (ssl){
                if ((ret = SSL_shutdown(ssl)) < 0){

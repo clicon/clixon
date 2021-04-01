@@ -550,8 +550,7 @@ cli_set_mode(clicon_handle h,
 }
 
 /*! Start bash from cli callback
- * XXX Application specific??
- * XXX replace fprintf with clicon_err?
+ * Typical usage: shell("System Bash") <source:rest>, cli_start_shell();
  */ 
 int
 cli_start_shell(clicon_handle h, 
@@ -567,13 +566,11 @@ cli_start_shell(clicon_handle h,
     cmd = (cvec_len(vars)>1 ? cv_string_get(cv1) : NULL);
 
     if ((pw = getpwuid(getuid())) == NULL){
-	fprintf(stderr, "%s: getpwuid: %s\n", 
-               __FUNCTION__, strerror(errno));
+	clicon_err(OE_UNIX, errno, "getpwuid");
 	goto done;
     }
     if (chdir(pw->pw_dir) < 0){
-	fprintf(stderr, "%s: chdir(%s): %s\n",
-		__FUNCTION__, pw->pw_dir, strerror(errno));
+	clicon_err(OE_UNIX, errno, "chdir");
 	endpwent();
 	goto done;
     }
@@ -584,22 +581,20 @@ cli_start_shell(clicon_handle h,
 	snprintf(bcmd, 128, "bash -l -c \"%s\"", cmd);
 	if (system(bcmd) < 0){
 	    cli_signal_block(h);
-	    fprintf(stderr, "%s: system(bash -c): %s\n", 
-		    __FUNCTION__, strerror(errno));
+	    clicon_err(OE_UNIX, errno, "system(bash -c)");
 	    goto done;
 	}
     }
     else
 	if (system("bash -l") < 0){
 	    cli_signal_block(h);
-	    fprintf(stderr, "%s: system(bash): %s\n", 
-		    __FUNCTION__, strerror(errno));
+	    clicon_err(OE_UNIX, errno, "system(bash)");
 	    goto done;
 	}
     cli_signal_block(h);
 #if 0 /* Allow errcodes from bash */
     if (retval != 0){
-	fprintf(stderr, "%s: system(%s) code=%d\n", __FUNCTION__, cmd, retval);
+	clicon_err(OE_UNIX, errno, "system(%s) %d", cmd, retval);
 	goto done;
     }
 #endif

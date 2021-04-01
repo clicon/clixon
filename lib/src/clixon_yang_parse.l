@@ -200,7 +200,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <UNKNOWN>:                { return *yytext; }
 <UNKNOWN>;                { BEGIN(KEYWORD); return *yytext; }
 <UNKNOWN>\{               { BEGIN(KEYWORD); return *yytext; }
-<UNKNOWN>[ \t\n]+         { BEGIN(UNKNOWN2);return SEP; }
+<UNKNOWN>[ \t\n]+         { BEGIN(UNKNOWN2); return WS; /* mandatory sep for string */ }
 <UNKNOWN>[^{"';: \t\n]+   { clixon_yang_parselval.string = strdup(yytext);
                             return CHARS; }
 
@@ -208,6 +208,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <UNKNOWN2>\"               { _YY->yy_lex_string_state =STRING; BEGIN(STRINGDQ); return *yytext; }
 <UNKNOWN2>\'               { _YY->yy_lex_string_state =STRING; BEGIN(STRINGSQ); return SQ; }
 <UNKNOWN2>\{               { BEGIN(KEYWORD); return *yytext; }
+<UNKNOWN2>[ \t\n]+         { return WS; }
 <UNKNOWN2>[^{"'; \t\n]+    { clixon_yang_parselval.string = strdup(yytext);
                              return CHARS; }
 

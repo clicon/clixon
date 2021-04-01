@@ -56,6 +56,7 @@ no("Negate or remove") debug("Debugging parts of the system"), cli_debug_cli((in
 debug("Debugging parts of the system"), cli_debug_cli((int32)1);{
     level("Set debug level: 1..n") <level:int32>("Set debug level (0..n)"), cli_debug_backend();
 }
+shell("System command") <source:rest>, cli_start_shell();
 copy("Copy and create a new object") {
     running("Copy from running db")  startup("Copy to startup config"), db_copy("running", "startup");
     interface("Copy interface"){

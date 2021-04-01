@@ -57,8 +57,9 @@
 
 %token MY_EOF 
 %token SQ           /* Single quote: ' */
-%token SEP          /* Separators (at least one) */
+%token WS           /* white space (at least one) */
 %token <string>   CHARS
+%token <string>   ERRCHARS /* Error chars */
 %token <string>   IDENTIFIER
 %token <string>   BOOL
 %token <string>   INT
@@ -1574,10 +1575,10 @@ unknown_stmt  : ustring ':' ustring optsep ';'
 		   if (ysp_add(_yy, Y_UNKNOWN, id, NULL) == NULL) _YYERROR("unknown_stmt"); 
 		   _PARSE_DEBUG("unknown-stmt -> ustring : ustring ;");
 	       }
-              | ustring ':' ustring SEP string optsep ';'
+              | ustring ':' ustring sep string optsep ';'
 	        { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
 		   if (ysp_add(_yy, Y_UNKNOWN, id, $5) == NULL){ _YYERROR("unknown_stmt"); }
-		   _PARSE_DEBUG("unknown-stmt -> ustring : ustring SEP string ;");
+		   _PARSE_DEBUG("unknown-stmt -> ustring : ustring sep string ;");
 	       }
               | ustring ':' ustring optsep
                  { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
@@ -1585,7 +1586,7 @@ unknown_stmt  : ustring ':' ustring optsep ';'
 	         '{' yang_stmts '}'
 	               { if (ystack_pop(_yy) < 0) _YYERROR("unknown_stmt");
 			 _PARSE_DEBUG("unknown-stmt -> ustring : ustring { yang-stmts }"); }
-              | ustring ':' ustring SEP string optsep
+              | ustring ':' ustring sep string optsep
  	         { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
 		     if (ysp_add_push(_yy, Y_UNKNOWN, id, $5) == NULL) _YYERROR("unknown_stmt"); }
 	         '{' yang_stmts '}'
@@ -1777,6 +1778,8 @@ ustring       : ustring CHARS
 		     }
               | CHARS 
 	              {  _PARSE_DEBUG1("ustring-> CHARS(%s)", $1); $$=$1; } 
+              | ERRCHARS 
+                      {  _PARSE_DEBUG1("ustring-> ERRCHARS(%s)", $1); _YYERROR("Invalid string chars"); }
               ;
 
 abs_schema_nodeid : abs_schema_nodeid '/' node_identifier
@@ -1855,10 +1858,19 @@ node_identifier : IDENTIFIER
 identifier_ref : node_identifier { $$=$1;}
                ;
 
-optsep :       SEP
+/*   optsep = *(WSP / line-break) */
+optsep :       sep
                |
                ;
 
+/*      sep = 1*(WSP / line-break) 
+ * Note WS can in turn contain multiple white-space. 
+ * Reason for doing list here is that the lex stage filters comments, 
+ * For example, "   // foo\n \t  " will return WS WS
+ */
+sep            : sep WS
+               | WS
+               ;
 
 stmtend        : ';'
                | '{' '}'
