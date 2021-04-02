@@ -45,6 +45,7 @@
 #include "clixon_log.h"
 #include "clixon_netns.h"
 
+#ifdef HAVE_SETNS
 /*
  * @thanks Anders Franzén
  */
@@ -104,6 +105,7 @@ get_sock(int  usock,
  done:
     return retval;
 }
+#endif /* HAVE_SETNS */
 
 /*! Create and bind stream socket
  * @param[in]  sa       Socketaddress

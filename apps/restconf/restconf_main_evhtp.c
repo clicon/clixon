@@ -216,47 +216,65 @@ openspec_handle_set(clicon_handle   h,
 /* Write evbuf to socket
  * see also this function in restcont_api_openssl.c
  */
-static ssize_t
+static int
 buf_write(char   *buf,
 	  size_t  buflen,
 	  int     s,
 	  SSL    *ssl)
 {
-    ssize_t        retval = -1;
-    int            ret;
+    int     retval = -1;
+    ssize_t len;
+    ssize_t totlen = 0;
 
-    if (ssl){
-	if ((ret = SSL_write(ssl, buf, buflen)) <= 0){
-	    int e = errno;
-            switch (SSL_get_error(ssl, ret)){
-            case SSL_ERROR_SYSCALL:              /* 5 */
-              if (e == ECONNRESET) {/* Connection reset by peer */
-                clicon_debug(1, "%s HERE", __FUNCTION__);
-		if (ssl)
-		    SSL_free(ssl);
-		close(s);
-		clixon_event_unreg_fd(s, restconf_connection);
-                goto ok; /* Close socket and ssl */
-              }
-              else{
-                clicon_err(OE_RESTCONF, e, "SSL_write %d", e);
-                goto done;
-              }
-              break;
-            default:
-              clicon_err(OE_SSL, 0, "SSL_write");
-              goto done;
-              break;
-            }
-            goto done;
+    clicon_debug(1, "%s %lu", __FUNCTION__, buflen);
+    while (totlen < buflen){
+	if (ssl){
+	    clicon_debug(1, "%s ssl", __FUNCTION__);
+	    if ((len = SSL_write(ssl, buf+totlen, buflen-totlen)) <= 0){
+		int e = errno;
+		switch (SSL_get_error(ssl, len)){
+		case SSL_ERROR_SYSCALL:              /* 5 */
+		    if (e == ECONNRESET) {/* Connection reset by peer */
+			if (ssl)
+			    SSL_free(ssl);
+			close(s);
+			clixon_event_unreg_fd(s, restconf_connection);
+			goto ok; /* Close socket and ssl */
+		    }
+		    else if (e == EAGAIN){
+			clicon_debug(1, "%s write EAGAIN", __FUNCTION__);
+			usleep(10000);
+			continue;
+		    }
+		    else{
+			clicon_err(OE_RESTCONF, e, "SSL_write %d", e);
+			goto done;
+		    }
+		    break;
+		default:
+		    clicon_err(OE_SSL, 0, "SSL_write");
+		    goto done;
+		    break;
+		}
+		goto done;
+	    }
 	}
-    }
-    else{
-	if (write(s, buf, buflen) < 0){
-	    clicon_err(OE_UNIX, errno, "write");
-	    goto done;
+	else{
+	    if ((len = write(s, buf+totlen, buflen-totlen)) < 0){
+		if (errno == EAGAIN){
+		    clicon_debug(1, "%s write EAGAIN", __FUNCTION__);
+		    usleep(10000);
+		    continue;
+		}
+		else{
+		    clicon_err(OE_UNIX, errno, "write");
+		    goto done;
+		}
+	    }
+	    assert(len != 0);
 	}
-    }
+	totlen += len;
+    } /* while */
  ok:
     retval = 0;
  done:
@@ -916,15 +934,9 @@ restconf_connection(int   s,
 			goto done;
 		}
 		else{
-#if 1
 		    /* Return 0 from evhtp parser can be that it needs more data.
 		     */
 		    readmore = 1; /* Readmore */
-#else
-		    clicon_debug(1, "%s bev is NULL 1", __FUNCTION__);
-		    if (send_badrequest(h, s, conn->ssl) < 0) /* actually error */
-			goto done;
-#endif
 		}
 	    }
 	    else{
@@ -1032,6 +1044,7 @@ restconf_accept_client(int   fd,
     evhtp_t            *evhtp = NULL;
     evhtp_connection_t *conn;
     int                 e;
+    int                 readmore;
     
     clicon_debug(1, "%s %d", __FUNCTION__, fd);
     if (rsock == NULL){
@@ -1087,53 +1100,65 @@ restconf_accept_client(int   fd,
 	    clicon_err(OE_SSL, 0, "SSL_set_fd");
 	    goto done;
 	}
-	/* 1: OK, -1 fatal, 0: TLS/SSL handshake was not successful
-	 * Both error cases: Call SSL_get_error() with the return value ret 
-	 */
-	if ((ret = SSL_accept(ssl)) != 1) {
-	    e = SSL_get_error(ssl, ret);
-
-	    switch (e){
-	    case SSL_ERROR_SSL:                  /* 1 */
-		clicon_debug(1, "%s SSL_ERROR_SSL (not ssl mesage on ssl socket)", __FUNCTION__);
-		if (send_badrequest(h, s, NULL) < 0)
-		    goto done;
-		SSL_free(ssl);
-		if (close_openssl_socket(s, NULL) < 0)
-		    goto done;
-		conn->ssl = NULL;
-		evhtp_connection_free(conn);
-		goto ok;
-		break;
-	    case SSL_ERROR_SYSCALL:              /* 5 */
-		/* look at error stack/return value/errno */
-		clicon_debug(1, "%s SSL_ERROR_SYSCALL", __FUNCTION__);
-		SSL_free(ssl);
-		if (close_openssl_socket(s, NULL) < 0)
-		    goto done;
-		conn->ssl = NULL;
-		evhtp_connection_free(conn);
-		goto ok;
-		break;
-	    case SSL_ERROR_NONE:                 /* 0 */
-	    case SSL_ERROR_ZERO_RETURN:          /* 6 */
-	    case SSL_ERROR_WANT_READ:            /* 2 */
-	    case SSL_ERROR_WANT_WRITE:           /* 3 */
-	    case SSL_ERROR_WANT_CONNECT:         /* 7 */
-	    case SSL_ERROR_WANT_ACCEPT:          /* 8 */
-	    case SSL_ERROR_WANT_X509_LOOKUP:     /* 4 */
-	    case SSL_ERROR_WANT_ASYNC:           /* 8 */
-	    case SSL_ERROR_WANT_ASYNC_JOB:       /* 10 */
+	readmore = 1;
+	while (readmore){
+	    readmore = 0;
+	    /* 1: OK, -1 fatal, 0: TLS/SSL handshake was not successful
+	     * Both error cases: Call SSL_get_error() with the return value ret 
+	     */
+	    if ((ret = SSL_accept(ssl)) != 1) {
+		e = SSL_get_error(ssl, ret);
+		switch (e){
+		case SSL_ERROR_SSL:                  /* 1 */
+		    clicon_debug(1, "%s SSL_ERROR_SSL (not ssl mesage on ssl socket)", __FUNCTION__);
+		    if (send_badrequest(h, s, NULL) < 0)
+			goto done;
+		    SSL_free(ssl);
+		    if (close_openssl_socket(s, NULL) < 0)
+			goto done;
+		    conn->ssl = NULL;
+		    evhtp_connection_free(conn);
+		    goto ok;
+		    break;
+		case SSL_ERROR_SYSCALL:              /* 5 */
+		    /* look at error stack/return value/errno */
+		    clicon_debug(1, "%s SSL_ERROR_SYSCALL", __FUNCTION__);
+		    SSL_free(ssl);
+		    if (close_openssl_socket(s, NULL) < 0)
+			goto done;
+		    conn->ssl = NULL;
+		    evhtp_connection_free(conn);
+		    goto ok;
+		    break;
+		case SSL_ERROR_WANT_READ:            /* 2 */
+		case SSL_ERROR_WANT_WRITE:           /* 3 */
+		    /* SSL_ERROR_WANT_READ is returned when the last operation was a read operation 
+		     * from a nonblocking BIO. 
+		     * That is, it can happen if restconf_socket_init() below is called 
+		     * with SOCK_NONBLOCK
+		     */
+		    clicon_debug(1, "%s write SSL_ERROR_WANT_READ", __FUNCTION__);
+		    usleep(10000);
+		    readmore = 1;
+		    break;
+		case SSL_ERROR_NONE:                 /* 0 */
+		case SSL_ERROR_ZERO_RETURN:          /* 6 */
+		case SSL_ERROR_WANT_CONNECT:         /* 7 */
+		case SSL_ERROR_WANT_ACCEPT:          /* 8 */
+		case SSL_ERROR_WANT_X509_LOOKUP:     /* 4 */
+		case SSL_ERROR_WANT_ASYNC:           /* 8 */
+		case SSL_ERROR_WANT_ASYNC_JOB:       /* 10 */
 #ifdef SSL_ERROR_WANT_CLIENT_HELLO_CB
-	    case SSL_ERROR_WANT_CLIENT_HELLO_CB: /* 11 */
+		case SSL_ERROR_WANT_CLIENT_HELLO_CB: /* 11 */
 #endif
-		break;
-	    default:
-		break;
+		    break;
+		default:
+		    break;
+		}
+		clicon_err(OE_SSL, 0, "SSL_accept:%d", e);
+		goto done;
 	    }
-	    clicon_err(OE_SSL, 0, "SSL_accept:%d", e);
-	    goto done;
-	}
+	} /* while(readmore) */
 	/* For client-cert authentication, check if any certs are present,
 	* if not, send bad request
 	* Alt: set SSL_CTX_set_verify(ctx, SSL_VERIFY_FAIL_IF_NO_PEER_CERT)
@@ -1308,7 +1333,9 @@ openssl_init_socket(clicon_handle h,
 	goto done;
     /* Open restconf socket and bind */
     if (restconf_socket_init(netns, address, addrtype, port,
-			     SOCKET_LISTEN_BACKLOG, SOCK_NONBLOCK, &ss) < 0)
+			     SOCKET_LISTEN_BACKLOG,
+			     SOCK_NONBLOCK, /* Also 0 is possible */
+			     &ss) < 0)
 	goto done;
     if ((rh = restconf_handle_get(h)) == NULL){
 	clicon_err(OE_XML, EFAULT, "No openssl handle");
