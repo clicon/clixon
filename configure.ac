@@ -219,7 +219,6 @@ elif test "x${with_restconf}" == xevhtp; then
        [AC_INCLUDES_DEFAULT[
        #define EVHTP_DISABLE_REGEX
        #define EVHTP_DISABLE_EVTHR
-       #define  EVHTP_EXPORT
        ]])
    AC_CHECK_LIB(evhtp, evhtp_new,, AC_MSG_ERROR([libevhtp missing]),[-lpthread -levent -levent_openssl -lssl -lcrypto]) 
 elif test "x${with_restconf}" == xno; then

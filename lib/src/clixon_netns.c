@@ -168,6 +168,7 @@ create_socket(struct sockaddr *sa,
     return retval;
 }
 
+#ifdef HAVE_SETNS
 /*! Fork a child, create and bind a socket in a separate network namespace and send back to parent
  *
  * @param[in]  netns    Network namespace
@@ -246,6 +247,7 @@ fork_netns_socket(const char      *netns,
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }
+#endif /* HAVE_SETNS */
 
 /*! Create and bind stream socket in network namespace
  * @param[in]  netns    Network namespace

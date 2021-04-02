@@ -254,7 +254,9 @@ case ${with_restconf} in
 	. ./nginx.sh $dir $idfile $port $wwwuser
 	;;
     evhtp)
-	$sshcmd << 'EOF'
+	$sshcmd << EOF
+        test -d src || mkdir src
+        cd src
 	test -d clixon-libevhtp || git clone https://github.com/clicon/clixon-libevhtp.git
 	cd clixon-libevhtp; 
 	./configure --libdir=/usr/lib # otherwise in /usr/local/lib where RH dont look

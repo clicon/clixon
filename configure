@@ -5189,7 +5189,6 @@ do :
   ac_fn_c_check_header_compile "$LINENO" "evhtp/evhtp.h" "ac_cv_header_evhtp_evhtp_h" "$ac_includes_default
        #define EVHTP_DISABLE_REGEX
        #define EVHTP_DISABLE_EVTHR
-       #define  EVHTP_EXPORT
 
 "
 if test "x$ac_cv_header_evhtp_evhtp_h" = xyes; then :
