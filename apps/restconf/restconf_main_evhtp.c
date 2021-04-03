@@ -169,6 +169,15 @@
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hD:f:E:l:p:y:a:u:ro:"
 
+/* If set, open outwards socket non-blocking, as opposed to blocking
+ * Should work both ways, but in the ninblocking case,
+ * the read/write/accept calls have an iteration to read/write/accept again in case
+ * they are not completed in time. Note, in the accept case it has to do with SSL handshake.
+ * Currently, the end-result is the same in both cases.
+ * But it gets important in a multi-threaded setup.
+ */
+#define RESTCONF_OPENSSL_NONBLOCKING 1
+
 /* See see listen(5) */
 #define SOCKET_LISTEN_BACKLOG 8
 
@@ -1151,12 +1160,11 @@ restconf_accept_client(int   fd,
 #ifdef SSL_ERROR_WANT_CLIENT_HELLO_CB
 		case SSL_ERROR_WANT_CLIENT_HELLO_CB: /* 11 */
 #endif
-		    break;
 		default:
+		    clicon_err(OE_SSL, 0, "SSL_accept:%d", e);
+		    goto done;
 		    break;
 		}
-		clicon_err(OE_SSL, 0, "SSL_accept:%d", e);
-		goto done;
 	    }
 	} /* while(readmore) */
 	/* For client-cert authentication, check if any certs are present,
@@ -1334,8 +1342,12 @@ openssl_init_socket(clicon_handle h,
     /* Open restconf socket and bind */
     if (restconf_socket_init(netns, address, addrtype, port,
 			     SOCKET_LISTEN_BACKLOG,
+#ifdef RESTCONF_OPENSSL_NONBLOCKING
 			     SOCK_NONBLOCK, /* Also 0 is possible */
-			     &ss) < 0)
+#else /* blocking */
+			     &ss
+#endif
+			     ) < 0)
 	goto done;
     if ((rh = restconf_handle_get(h)) == NULL){
 	clicon_err(OE_XML, EFAULT, "No openssl handle");
