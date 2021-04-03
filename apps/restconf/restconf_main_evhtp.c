@@ -1345,8 +1345,9 @@ openssl_init_socket(clicon_handle h,
 #ifdef RESTCONF_OPENSSL_NONBLOCKING
 			     SOCK_NONBLOCK, /* Also 0 is possible */
 #else /* blocking */
-			     &ss
+			     0,
 #endif
+			     &ss
 			     ) < 0)
 	goto done;
     if ((rh = restconf_handle_get(h)) == NULL){
