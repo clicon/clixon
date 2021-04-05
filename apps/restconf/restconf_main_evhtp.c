@@ -234,29 +234,29 @@ buf_write(char   *buf,
     int     retval = -1;
     ssize_t len;
     ssize_t totlen = 0;
+    int     er;
 
     clicon_debug(1, "%s %lu", __FUNCTION__, buflen);
     while (totlen < buflen){
 	if (ssl){
-	    clicon_debug(1, "%s ssl", __FUNCTION__);
 	    if ((len = SSL_write(ssl, buf+totlen, buflen-totlen)) <= 0){
-		int e = errno;
+		er = errno;
 		switch (SSL_get_error(ssl, len)){
 		case SSL_ERROR_SYSCALL:              /* 5 */
-		    if (e == ECONNRESET) {/* Connection reset by peer */
+		    if (er == ECONNRESET) {/* Connection reset by peer */
 			if (ssl)
 			    SSL_free(ssl);
 			close(s);
 			clixon_event_unreg_fd(s, restconf_connection);
 			goto ok; /* Close socket and ssl */
 		    }
-		    else if (e == EAGAIN){
+		    else if (er == EAGAIN){
 			clicon_debug(1, "%s write EAGAIN", __FUNCTION__);
 			usleep(10000);
 			continue;
 		    }
 		    else{
-			clicon_err(OE_RESTCONF, e, "SSL_write %d", e);
+			clicon_err(OE_RESTCONF, er, "SSL_write %d", er);
 			goto done;
 		    }
 		    break;
@@ -287,6 +287,7 @@ buf_write(char   *buf,
  ok:
     retval = 0;
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -811,29 +812,38 @@ restconf_ssl_context_configure(clixon_handle h,
     return retval;
 }
 
+/*! Utility function to close restconf server ssl/evhtp socket.
+ * There are many variants to closing, one could probably make this more generic
+ * and always use this function, but it is difficult.
+ */
 static int
-close_openssl_socket(int  s,
-		     SSL *ssl)
+close_ssl_evhtp_socket(int                 s,
+		       evhtp_connection_t *conn,
+		       int                 shutdown)
 {
     int retval = -1;
     int ret;
-    
-    if (ssl){
-	//            SSL_set_shutdown(ssl, SSL_RECEIVED_SHUTDOWN);
-	/* SSL_shutdown() must not be called if a previous fatal error has occurred on a connection 
-	 * i.e. if SSL_get_error() has returned SSL_ERROR_SYSCALL or SSL_ERROR_SSL.
-	 */
-	if ((ret = SSL_shutdown(ssl)) < 0){
+    SSL *ssl;
+
+    ssl = conn->ssl;
+    clicon_debug(1, "%s conn-free (%p) 1", __FUNCTION__, conn);
+    evhtp_connection_free(conn); /* evhtp */
+    if (ssl != NULL){
+	if (shutdown && (ret = SSL_shutdown(ssl)) < 0){
 	    int e = SSL_get_error(ssl, ret);
 	    clicon_err(OE_SSL, 0, "SSL_shutdown, err:%d", e);
 	    goto done;
 	}
 	SSL_free(ssl);
     }
-    close(s);
+    if (close(s) < 0){
+	clicon_err(OE_UNIX, errno, "close");
+	goto done;
+    }
     clixon_event_unreg_fd(s, restconf_connection);
     retval = 0;
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -842,8 +852,8 @@ close_openssl_socket(int  s,
  */
 static int
 send_badrequest(clicon_handle       h,
-		  int                 s,
-		  SSL                *ssl)
+		int                 s,
+		SSL                *ssl)
 {
     int retval = -1;
     char *buf = "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\nContent-Type: text/plain\r\n\r\n";
@@ -877,7 +887,6 @@ restconf_connection(int   s,
     evhtp_connection_t *conn = NULL;
     ssize_t             n;
     char                buf[BUFSIZ]; /* from stdio.h, typically 8K */
-    SSL                *ssl;
     clicon_handle       h;
     int                 readmore = 1;
 
@@ -907,10 +916,7 @@ restconf_connection(int   s,
 	}
 	if (n == 0){
 	    clicon_debug(1, "%s n=0 closing socket", __FUNCTION__);
-	    ssl = conn->ssl;
-	    conn->ssl = NULL;
-	    evhtp_connection_free(conn); /* evhtp */
-	    if (close_openssl_socket(s, ssl) < 0)
+	    if (close_ssl_evhtp_socket(s, conn, 1) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -922,9 +928,13 @@ restconf_connection(int   s,
 	    if (send_badrequest(h, s, conn->ssl) < 0)
 		goto done;
 	    SSL_free(conn->ssl);
-	    if (close_openssl_socket(s, NULL) < 0)
+	    if (close(s) < 0){
+		clicon_err(OE_UNIX, errno, "close");
 		goto done;
+	    }
+	    clixon_event_unreg_fd(s, restconf_connection);
 	    conn->ssl = NULL;
+	    clicon_debug(1, "%s conn-free (%p) 2", __FUNCTION__, conn);
 	    evhtp_connection_free(conn);
 	    goto ok;
 	}
@@ -937,7 +947,7 @@ restconf_connection(int   s,
 	    if ((ev = bufferevent_get_output(conn->bev)) != NULL){
 		buf = (char*)evbuffer_pullup(ev, -1);
 		buflen = evbuffer_get_length(ev);
-		clicon_debug(1, "buf:%s", buf);
+		clicon_debug(1, "%s buf:%s", __FUNCTION__, buf);
 		if (buflen){
 		    if (buf_write(buf, buflen, conn->sock, conn->ssl) < 0)
 			goto done;
@@ -1053,7 +1063,9 @@ restconf_accept_client(int   fd,
     evhtp_t            *evhtp = NULL;
     evhtp_connection_t *conn;
     int                 e;
+    int                 er;
     int                 readmore;
+    X509               *peercert;
     
     clicon_debug(1, "%s %d", __FUNCTION__, fd);
     if (rsock == NULL){
@@ -1075,11 +1087,13 @@ restconf_accept_client(int   fd,
 	clicon_err(OE_UNIX, errno, "evhtp_connection_new_server");
 	goto done;
     }
+    clicon_debug(1, "%s conn-new (%p)", __FUNCTION__, conn);
     if (rsock->rs_ssl){
 	if ((ssl = SSL_new(rh->rh_ctx)) == NULL){
 	    clicon_err(OE_SSL, 0, "SSL_new");
 	    goto done;
 	}
+	clicon_debug(1, "%s SSL_new(%p)", __FUNCTION__, ssl);
 	/* CCL_CTX_set_verify already set, need not call SSL_set_verify again for this server
 	 */
 	/* X509_CHECK_FLAG_NO_WILDCARDS disables wildcard expansion */
@@ -1116,27 +1130,33 @@ restconf_accept_client(int   fd,
 	     * Both error cases: Call SSL_get_error() with the return value ret 
 	     */
 	    if ((ret = SSL_accept(ssl)) != 1) {
+		clicon_debug(1, "%s SSL_accept() ret:%d errno:%d", __FUNCTION__, ret, er=errno);
 		e = SSL_get_error(ssl, ret);
 		switch (e){
 		case SSL_ERROR_SSL:                  /* 1 */
-		    clicon_debug(1, "%s SSL_ERROR_SSL (not ssl mesage on ssl socket)", __FUNCTION__);
+		    clicon_debug(1, "%s SSL_ERROR_SSL (non-ssl message on ssl socket)", __FUNCTION__);
 		    if (send_badrequest(h, s, NULL) < 0)
 			goto done;
 		    SSL_free(ssl);
-		    if (close_openssl_socket(s, NULL) < 0)
+		    if (close(s) < 0){
+			clicon_err(OE_UNIX, errno, "close");
 			goto done;
+		    }
+		    clixon_event_unreg_fd(s, restconf_connection);
 		    conn->ssl = NULL;
-		    evhtp_connection_free(conn);
+		    clicon_debug(1, "%s conn-free (%p) 3", __FUNCTION__, conn);
+		    evhtp_connection_free(conn); /* evhtp */
 		    goto ok;
 		    break;
 		case SSL_ERROR_SYSCALL:              /* 5 */
-		    /* look at error stack/return value/errno */
-		    clicon_debug(1, "%s SSL_ERROR_SYSCALL", __FUNCTION__);
-		    SSL_free(ssl);
-		    if (close_openssl_socket(s, NULL) < 0)
+		    /* Some non-recoverable, fatal I/O error occurred. The OpenSSL error queue 
+		       may contain more information on the error. For socket I/O on Unix systems, 
+		       consult errno for details. If this error occurs then no further I/O
+		       operations should be performed on the connection and SSL_shutdown() must 
+		       not be called.*/
+		    clicon_debug(1, "%s SSL_accept() SSL_ERROR_SYSCALL %d", __FUNCTION__, er);
+		    if (close_ssl_evhtp_socket(s, conn, 0) < 0)
 			goto done;
-		    conn->ssl = NULL;
-		    evhtp_connection_free(conn);
 		    goto ok;
 		    break;
 		case SSL_ERROR_WANT_READ:            /* 2 */
@@ -1172,21 +1192,25 @@ restconf_accept_client(int   fd,
 	* Alt: set SSL_CTX_set_verify(ctx, SSL_VERIFY_FAIL_IF_NO_PEER_CERT)
 	* but then SSL_accept fails.
 	*/
-	if (restconf_auth_type_get(h) == CLIXON_AUTH_CLIENT_CERTIFICATE &&
-	    SSL_get_peer_certificate(ssl) == NULL) { /* Get certificates (if available) */
-	    if (send_badrequest(h, s, ssl) < 0)
-		goto done;
-           if (ssl){
-               if ((ret = SSL_shutdown(ssl)) < 0){
-                   int e = SSL_get_error(ssl, ret);
-                   clicon_err(OE_SSL, 0, "SSL_shutdown, err:%d", e);
-                   goto done;
-               }
-               SSL_free(ssl);
-           }
-           // close(s); Error (56 != 0) in Test14 [No cert: certificate required]:
-           //      clixon_event_unreg_fd(s, restconf_connection);
-	    goto ok;
+	if (restconf_auth_type_get(h) == CLIXON_AUTH_CLIENT_CERTIFICATE){
+	    if ((peercert = SSL_get_peer_certificate(ssl)) != NULL){
+		X509_free(peercert);
+	    }
+	    else { /* Get certificates (if available) */
+		if (send_badrequest(h, s, ssl) < 0)
+		    goto done;
+		clicon_debug(1, "%s conn-free (%p) 5", __FUNCTION__, conn);
+		evhtp_connection_free(conn); /* evhtp */
+		if (ssl){
+		    if ((ret = SSL_shutdown(ssl)) < 0){
+			int e = SSL_get_error(ssl, ret);
+			clicon_err(OE_SSL, 0, "SSL_shutdown, err:%d", e);
+			goto done;
+		    }
+		    SSL_free(ssl);
+		}
+		goto ok;
+	    }
 	}
 	/* Get the actual peer, XXX this maybe could be done in ca-auth client-cert code ? 
 	 * Note this _only_ works if SSL_set1_host() was set previously,...
@@ -1627,7 +1651,7 @@ restconf_sig_term(int arg)
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (i++ == 0){
-	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d",  /* XYZXYZ */
+	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
 		   __PROGRAM__, __FUNCTION__, getpid(), arg);
     }
     else
@@ -1679,7 +1703,7 @@ main(int    argc,
     cxobj          *xrestconf = NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, logdst); /* XYZXYZ */
+    clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
     
     /* Create handle */
     if ((h = restconf_handle_init()) == NULL)
@@ -1728,7 +1752,7 @@ main(int    argc,
 			   ) < 0)
 	goto done;
     clicon_debug_init(dbg, NULL); 
-    clicon_log(LOG_NOTICE, "%s openssl: %u Started", __PROGRAM__, getpid()); /* XYZXYZ */
+    clicon_log(LOG_NOTICE, "%s openssl: %u Started", __PROGRAM__, getpid());
     if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
 	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
