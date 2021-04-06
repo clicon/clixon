@@ -480,6 +480,7 @@ xpath_tree_free(xpath_tree *xs)
  *	xpath_tree_free(xpt);
  * @endcode
  * @see xpath_tree_free 
+ * @see xpath_tree2cbuf  for unparsing, ie producing an original xpath string
  */
 int
 xpath_parse(const char  *xpath,

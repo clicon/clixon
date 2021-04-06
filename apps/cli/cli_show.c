@@ -72,6 +72,74 @@
 #include "clixon_cli_api.h"
 #include "cli_common.h" /* internal functions */
 
+/*! Given an xpath encoded in a cbuf, append a second xpath into the first
+ * The method reuses prefixes from xpath1 if they exist, otherwise the module prefix
+ * from y is used. Unless the element is .., .
+ * XXX: Predicates not handled
+ * The algorithm is not fool-proof, there are many cases it may not work
+ * To make it more complete, maybe parse the xpath to a tree and put it
+ * back to an xpath after modifcations, something like:
+   if (xpath_parse(yang_argument_get(ypath), &xpt) < 0)
+     goto done;
+   if (xpath_tree2cbuf(xpt, xcb) < 0)
+     goto done;
+and
+traverse_canonical
+ */
+static int
+xpath_myappend(cbuf      *xpath0,
+	       char      *xpath1,
+	       yang_stmt *y,
+	       cvec      *nsc)
+{
+    int    retval = -1;
+    char **vec = NULL;
+    char  *v;
+    int    nvec;
+    int    i;
+    char  *myprefix;
+    char  *id = NULL;
+    char  *prefix = NULL;
+
+    if (xpath0 == NULL){
+	clicon_err(OE_XML, EINVAL, "xpath0 is NULL");
+	goto done;
+    }
+    if ((myprefix = yang_find_myprefix(y)) == NULL)
+	goto done;
+    if ((vec = clicon_strsep(xpath1, "/", &nvec)) == NULL)
+	goto done;
+    if (xpath1 && xpath1[0] == '/')
+	cbuf_reset(xpath0);
+    for (i=0; i<nvec; i++){
+	v = vec[i];
+	if (strlen(v) == 0)
+	    continue;
+	if (nodeid_split(v, &prefix, &id) < 0)
+	    goto done;
+	if (strcmp(id, "..") == 0 || strcmp(id, ".") == 0)
+	    cprintf(xpath0, "/%s", id);
+	else
+	    cprintf(xpath0, "/%s:%s", prefix?prefix:myprefix, id);
+	if (prefix){
+	    free(prefix);
+	    prefix = NULL;
+	}
+	if (id){
+	    free(id);
+	    id = NULL;
+	}
+    }
+    retval = 0;
+ done:
+    if (prefix)
+	free(prefix);
+    if (id)
+	free(id);
+    free(vec); 
+    return retval;
+}
+
 /*! Completion callback intended for automatically generated data model
  *
  * Returns an expand-type list of commands as used by cligen 'expand' 
@@ -116,12 +184,11 @@ expand_dbvar(void   *h,
     yang_stmt       *yp;
     yang_stmt       *ytype;
     yang_stmt       *ypath;
-    cxobj           *xcur;
-    char            *xpathcur;
     char            *reason = NULL;
     cvec            *nsc = NULL;
     int              ret;
     int              cvvi = 0;
+    cbuf            *cbxpath = NULL;
     
     if (argv == NULL || cvec_len(argv) != 2){
 	clicon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <xmlkeyfmt>");
@@ -153,18 +220,6 @@ expand_dbvar(void   *h,
      */
     if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
 	goto done;
-    if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
-	goto done;
-
-    /* Get configuration */
-    if (clicon_rpc_get_config(h, NULL, dbstr, xpath, nsc, &xt) < 0) /* XXX */
-    	goto done;
-    if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(xe, "Get configuration", NULL);
-	goto ok; 
-    }
-    xcur = xt; /* default top-of-tree */
-    xpathcur = xpath;
     /* Create config top-of-tree */
     if ((xtop = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	goto done;
@@ -184,34 +239,65 @@ expand_dbvar(void   *h,
     if (y==NULL)
 	goto ok;
 
+    /* Transform api-path to xpath for netconf */
+    if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
+	goto done;
+    if (nsc != NULL){
+	cvec_free(nsc);
+	nsc = NULL;
+    }
+    if (xml_nsctx_yang(y, &nsc) < 0)
+	goto done;
+    if ((cbxpath = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cbxpath, "%s", xpath);
+    if ((ytype = yang_find(y, Y_TYPE, NULL)) != NULL &&
+	strcmp(yang_argument_get(ytype), "leafref") == 0){
+	/* Special case for leafref. Detect leafref via Yang-type, 
+	 * Get Yang path element, tentatively add the new syntax to the whole
+	 * tree and apply the path to that.
+	 * Last, the reference point for the xpath code below is changed to 
+	 * the point of the tentative new xml.
+	 * Here the whole syntax tree is loaded, and it would be better to offload
+	 * such operations to the datastore by a generic xpath function.
+	 */
 
-    /* Special case for leafref. Detect leafref via Yang-type, 
-     * Get Yang path element, tentatively add the new syntax to the whole
-     * tree and apply the path to that.
-     * Last, the reference point for the xpath code below is changed to 
-     * the point of the tentative new xml.
-     * Here the whole syntax tree is loaded, and it would be better to offload
-     * such operations to the datastore by a generic xpath function.
-     */
-    if ((ytype = yang_find(y, Y_TYPE, NULL)) != NULL)
-	if (strcmp(yang_argument_get(ytype), "leafref")==0){
-	    if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
-		clicon_err(OE_DB, 0, "Leafref %s requires path statement", yang_argument_get(ytype));
-		goto done;
-	    }
-	    xpathcur = yang_argument_get(ypath);
-	    if (xml_merge(xt, xtop, yspec, &reason) < 0) /* Merge xtop into xt */
-		goto done;
-	    if (reason){
-		fprintf(stderr, "%s\n", reason);
-		goto done;
-	    }	    
-	    if ((xcur = xpath_first(xt, nsc, "%s", xpath)) == NULL){
-		clicon_err(OE_DB, 0, "xpath %s should return merged content", xpath);
-		goto done;
-	    }
+	/* 
+	 * The syntax for a path argument is a subset of the XPath abbreviated
+	 * syntax.  Predicates are used only for constraining the values for the
+	 * key nodes for list entries.  Each predicate consists of exactly one
+	 * equality test per key, and multiple adjacent predicates MAY be
+	 * present if a list has multiple keys.  The syntax is formally defined
+	 * by the rule "path-arg" in Section 14.
+	 * The "path" XPath expression is conceptually evaluated in the
+	 * following context, in addition to the definition in Section 6.4.1:
+	 *
+	 * - If the "path" statement is defined within a typedef, the context
+	 * node is the leaf or leaf-list node in the data tree that
+	 * references the typedef.
+	 * - Otherwise, the context node is the node in the data tree for which
+	 * the "path" statement is defined.
+	 */
+	if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
+	    clicon_err(OE_DB, 0, "Leafref %s requires path statement", yang_argument_get(ytype));
+	    goto done;
 	}
-    if (xpath_vec(xcur, nsc, "%s", &xvec, &xlen, xpathcur) < 0) 
+	/*  */
+	/* Extend xpath with leafref path: Append yang_argument_get(ypath) to xpath
+	 */
+	if (xpath_myappend(cbxpath, yang_argument_get(ypath), y, nsc) < 0)
+	    goto done;
+    }
+    /* Get configuration based on cbxpath */
+    if (clicon_rpc_get_config(h, NULL, dbstr, cbuf_get(cbxpath), nsc, &xt) < 0) 
+	goto done;
+    if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+	clixon_netconf_error(xe, "Get configuration", NULL);
+	goto ok; 
+    }
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
 	goto done;
     /* Loop for inserting into commands cvec. 
      * Detect duplicates: for ordered-by system assume list is ordered, so you need
@@ -252,6 +338,8 @@ expand_dbvar(void   *h,
  ok:
     retval = 0;
   done:
+    if (cbxpath)
+	cbuf_free(cbxpath);
     if (xerr)
 	xml_free(xerr);
     if (nsc)
