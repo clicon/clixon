@@ -465,7 +465,7 @@ module clixon-config {
 	    description
 		"FastCGI unix socket. Should be specified in webserver
          	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
-                 Only if with-restconf=fcgi, NOT evhtp
+                 Only if with-restconf=fcgi, NOT native
                  Note: Obsolete, use fcgi-socket in clixon-restconf.yang instead";
 	    status obsolete;
 	}

@@ -339,7 +339,7 @@ function stop_restconf(){
 
 # Wait for restconf to stop sending  502 Bad Gateway
 # @see start_restconf
-# Reasons for not working: if you run evhtp is nginx running?
+# Reasons for not working: if you run native is nginx running?
 # @note assumes port=80 if RCPROTO=http and port=443 if RCPROTO=https
 function wait_restconf(){
 #    echo "curl $CURLOPTS $* $RCPROTO://localhost/restconf"

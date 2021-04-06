@@ -33,11 +33,11 @@
 # Generated from autotools, ie from the ./configure run,
 # See configure.ac for source
 
-# This is for RESTCONF. There are three options:
-# --without-restconf    No restconf support
-# --with-restconf=fcgi  FCGI interface for separate web reverse proxy like nginx
-# --with-restconf=evhtp Integration with embedded web server libevhtp
-WITH_RESTCONF=@with_restconf@ # evhtp, fcgi or ""
+# This is for RESTCONF.  There are three options:
+# --without-restconf     No restconf support
+# --with-restconf=fcgi   FCGI interface for separate web reverse proxy like nginx
+# --with-restconf=native Integration with embedded web server libevhtp
+WITH_RESTCONF=@with_restconf@ # native, fcgi or ""
 
 # This is for libxml2 XSD regex engine
 # Note this only enables the compiling of the code. In order to actually

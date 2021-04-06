@@ -19,7 +19,7 @@ default_crl_days = 9999
 default_md = md5
 
 [ req ]
-default_bits           = 1024
+default_bits           = ${CERTKEYLEN}
 days                   = 1
 distinguished_name     = req_distinguished_name
 attributes             = req_attributes
@@ -58,7 +58,7 @@ subjectAltName = DNS:clicon.org
 EOF
 
 # Generate server key
-openssl genrsa -out $srvkey 1024
+openssl genrsa -out $srvkey ${CERTKEYLEN}
 
 # Generate CSR (signing request)
 openssl req -new -config $dir/srv.cnf -key $srvkey -out $certdir/srv_csr.pem

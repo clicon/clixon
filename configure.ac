@@ -95,7 +95,7 @@ AC_SUBST(CLIXON_DEFAULT_CONFIG)
 AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(LINKAGE)
-AC_SUBST(with_restconf) # Set to evhtp or fcgi -> compile apps/restconf
+AC_SUBST(with_restconf) # Set to native or fcgi -> compile apps/restconf
 AC_SUBST(with_libxml2)  
 AC_SUBST(enable_optyangs) 
 # Web user default (ie what RESTCONF daemon runs as).
@@ -197,10 +197,10 @@ AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR([CLIgen missing. Try: git clone 
 
 AC_CHECK_LIB(cligen, cligen_init,, AC_MSG_ERROR([CLIgen missing. Try: git clone https://github.com/clicon/cligen.git]))
 
-# This is for restconf. There are three options:
-# --without-restconf    No restconf support
-# --with-restconf=fcgi  FCGI interface for separate web reverse proxy like nginx
-# --with-restconf=evhtp Integration with embedded web server libevhtp
+# This is for restconf.  There are three options:
+# --without-restconf     No restconf support
+# --with-restconf=fcgi   FCGI interface for separate web reverse proxy like nginx
+# --with-restconf=native Integration with embedded web server
 AC_ARG_WITH([restconf],
 	AS_HELP_STRING([--with-restconf=fcgi],[FCGI interface for stand-alone web rev-proxy eg nginx (default)]),
 	,
@@ -209,7 +209,7 @@ AC_ARG_WITH([restconf],
 if test "x${with_restconf}" == xfcgi; then
    # Lives in libfcgi-dev
    AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
-elif test "x${with_restconf}" == xevhtp; then
+elif test "x${with_restconf}" == xnative; then
    AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
    AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
    AC_CHECK_LIB(event, event_init,, AC_MSG_ERROR([libevent missing]))
@@ -220,7 +220,7 @@ elif test "x${with_restconf}" == xevhtp; then
        #define EVHTP_DISABLE_REGEX
        #define EVHTP_DISABLE_EVTHR
        ]])
-   AC_CHECK_LIB(evhtp, evhtp_new,, AC_MSG_ERROR([libevhtp missing]),[-lpthread -levent -levent_openssl -lssl -lcrypto]) 
+   AC_CHECK_LIB(evhtp, evhtp_new,, AC_MSG_ERROR([libevhtp missing]),[-levent -lssl -lcrypto]) 
 elif test "x${with_restconf}" == xno; then
    # Cant get around "no" as an answer for --without-restconf that is reset here to undefined
    with_restconf=   
@@ -237,7 +237,7 @@ fi
 AC_ARG_WITH([restconf],
 	AS_HELP_STRING([--with-restconf=fcgi],[FCGI interface for stand-alone web rev-proxy eg nginx (default)]))
 AC_ARG_WITH([restconf],
-            AS_HELP_STRING([--with-restconf=evhtp],[Integrate restconf with libevhtp server]))
+            AS_HELP_STRING([--with-restconf=native],[Integrate restconf with embedded http server]))
 AC_ARG_WITH([restconf],
 	    AS_HELP_STRING([--without-restconf],[Disable restconf altogether]))
 

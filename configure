@@ -1374,7 +1374,7 @@ Optional Packages:
   --with-cligen=dir       Use CLIGEN installation in this dir
   --with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg
                           nginx (default)
-  --with-restconf=evhtp   Integrate restconf with libevhtp server
+  --with-restconf=native  Integrate restconf with embedded http server
   --without-restconf      Disable restconf altogether
   --with-wwwuser=<user>   Set www user different from www-data
   --with-configfile=FILE  Set default path to config file
@@ -3352,7 +3352,7 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
 
- # Set to evhtp or fcgi -> compile apps/restconf
+ # Set to native or fcgi -> compile apps/restconf
 
 
 # Web user default (ie what RESTCONF daemon runs as).
@@ -4980,10 +4980,10 @@ else
 fi
 
 
-# This is for restconf. There are three options:
-# --without-restconf    No restconf support
-# --with-restconf=fcgi  FCGI interface for separate web reverse proxy like nginx
-# --with-restconf=evhtp Integration with embedded web server libevhtp
+# This is for restconf.  There are three options:
+# --without-restconf     No restconf support
+# --with-restconf=fcgi   FCGI interface for separate web reverse proxy like nginx
+# --with-restconf=native Integration with embedded web server
 
 # Check whether --with-restconf was given.
 if test "${with_restconf+set}" = set; then :
@@ -5042,7 +5042,7 @@ else
   as_fn_error $? "libfcgi-dev missing" "$LINENO" 5
 fi
 
-elif test "x${with_restconf}" == xevhtp; then
+elif test "x${with_restconf}" == xnative; then
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
 $as_echo_n "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
 if ${ac_cv_lib_ssl_OPENSSL_init_ssl_+:} false; then :
@@ -5208,7 +5208,7 @@ if ${ac_cv_lib_evhtp_evhtp_new+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
-LIBS="-levhtp -lpthread -levent -levent_openssl -lssl -lcrypto $LIBS"
+LIBS="-levhtp -levent -lssl -lcrypto $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 

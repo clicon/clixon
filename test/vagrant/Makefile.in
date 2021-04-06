@@ -47,8 +47,8 @@ SHELL	= /bin/sh
 # VAGRANTS += freebsd/FreeBSD-12.1-STABLE
 VAGRANTS =
 
-# evhtp or fcgi
-RESTCONF=evhtp
+# internal or fcgi
+RESTCONF=internal
 
 -include site.mk
 

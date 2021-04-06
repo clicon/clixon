@@ -7,8 +7,8 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-# Only works with evhtp and https
-if [ "${WITH_RESTCONF}" != "evhtp" ]; then
+# Only works with native and https
+if [ "${WITH_RESTCONF}" != "native" ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 

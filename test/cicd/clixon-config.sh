@@ -4,7 +4,7 @@ set -eux
 
 if [ $# -ne 1 ]; then
     echo "usage: $0 <restconf>"
-    echo "      where <restconf> is fcgi or evhtp"
+    echo "      where <restconf> is fcgi or native"
     exit -1
 fi
 restconf=$1

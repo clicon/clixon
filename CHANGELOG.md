@@ -33,11 +33,12 @@ Expected: April
 
 ### New features
 
-
 	
 ### API changes on existing protocol/config features
 
-* Restconf "evhtp" mode MUST use libevhtp from https://github.com/clixon/clixon-libevhtp.git instead from criticalstack
+* Native RESTCONF mode
+  * Restconf "evhtp" mode MUST use libevhtp from https://github.com/clixon/clixon-libevhtp.git instead from criticalstack
+  * To configure native mode use: `configure --with-restconf=native`, changed from: `configure --with-restconf=evhtp`
 * NETCONF Hello message semantics has been made stricter according to RFC 6241 Sec 8.1, for example:
   * A client MUST send a <hello> element.
   * Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" (or 1.0 for RFC 4741)

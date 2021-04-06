@@ -23,7 +23,7 @@ set -eux # x
 
 if [ $# -ne 2 ]; then 
     echo "usage: $0 <host> <restconf>"
-    echo "      where <restconf> is fcgi or evhtp"
+    echo "      where <restconf> is fcgi or native"
     exit -1
 fi
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restconf evhtp using socket network namespace (netns) support
+# Restconf native using socket network namespace (netns) support
 # Listen to a default and a separate netns
 # Init running with a=42
 # Get the config from default and netns namespace with/without SSL
@@ -8,8 +8,8 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-# Skip if other than evhtp
-if [ "${WITH_RESTCONF}" != "evhtp" ]; then
+# Skip if other than native
+if [ "${WITH_RESTCONF}" != "native" ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 

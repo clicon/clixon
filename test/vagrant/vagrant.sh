@@ -5,7 +5,7 @@
 # 3. Compile and install clixon
 # 4. Run tests
 # Example run:  ./vagrant.sh generic/centos8 2>&1 | tee cilog
-# Default runs evhtp (not fcgi)
+# Default runs native (not fcgi)
 
 set -eux #
 
@@ -17,7 +17,7 @@ fi
 box=$1 # As defined in https://vagrantcloud.com/search
 
 #with_restconf=fcgi
-: ${with_restconf:=evhtp}
+: ${with_restconf:=native}
 echo "with-restconf:${with_restconf}"
 
 VCPUS=1
@@ -111,7 +111,7 @@ case $release in
 	    fcgi)
 		$sshcmd sudo pkg install -y fcgi-devkit nginx
 		;;
-	    evhtp)
+	    native)
 		;;
 	esac
     ;;
@@ -128,7 +128,7 @@ case $release in
 	    fcgi)
 		$sshcmd sudo pkg install -y fcgi-devkit nginx
 		;;
-	    evhtp)
+	    native)
 		$sshcmd sudo pkg install -y libevent
 		;;
 	esac
@@ -154,7 +154,7 @@ case $release in
 		#			$sshcmd sudo yum update
 		$sshcmd sudo yum install -y nginx
 		;;
-	    evhtp)
+	    native)
 		$sshcmd sudo yum install -y libevent openssl
 		$sshcmd sudo yum install -y libevent-devel openssl-devel
 		;;
@@ -177,7 +177,7 @@ case $release in
 		$sshcmd sudo zypper install -y nginx
 		buildfcgi=true # build fcgi from source
 		;;
-	    evhtp)
+	    native)
 		;;
 	esac
 	;;
@@ -199,7 +199,7 @@ case $release in
 		buildfcgi=true # some ubuntu dont have fcgi-dev
 		$sshcmd sudo apt install -y nginx
 		;;
-	    evhtp)
+	    native)
 #		$sshcmd sudo apt install -y libevent-2.1
 		$sshcmd sudo apt install -y libevent-dev libssl-dev
 		;;
@@ -215,7 +215,7 @@ case $release in
 	    fcgi)
 		$sshcmd sudo apk add --update nginx fcgi-dev
 		;;
-	    evhtp)
+	    native)
 		;;
 	esac
 	;;
@@ -230,7 +230,7 @@ case $release in
 	    fcgi)
 		$sshcmd	sudo pacman -Syu --noconfirm nginx fcgi
 		;;
-	    evhtp)
+	    native)
 		$sshcmd	sudo pacman -Syu --noconfirm libevent
 		;;
 	esac
@@ -253,7 +253,7 @@ case ${with_restconf} in
 	# Hide all complex nginx config in sub-script
 	. ./nginx.sh $dir $idfile $port $wwwuser
 	;;
-    evhtp)
+    native)
 	$sshcmd << EOF
         test -d src || mkdir src
         cd src

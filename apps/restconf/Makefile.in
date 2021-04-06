@@ -59,7 +59,7 @@ HOST_VENDOR     = @host_vendor@
 # XXX why is not wwwdir under prefix?
 wwwdir  	= @wwwdir@
 wwwuser         = @wwwuser@
-# one of fcgi or evhtp:
+# one of fcgi or native:
 with_restconf	= @with_restconf@
 
 SH_SUFFIX	= @SH_SUFFIX@
@@ -89,10 +89,10 @@ INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/inclu
 # Application
 APPL	  = clixon_restconf
 
-# Common source - not accessible from plugin - independent of restconf package (fcgi|evhtp)
+# Common source - not accessible from plugin - independent of restconf package (fcgi|native)
 APPSRC    =
 APPSRC   += restconf_api.c # maybe empty
-APPSRC   += restconf_api_$(with_restconf).c # cant be .so since libevhtp is a.
+APPSRC   += restconf_api_$(with_restconf).c 
 APPSRC   += restconf_err.c 
 APPSRC   += restconf_methods.c
 APPSRC   += restconf_methods_post.c

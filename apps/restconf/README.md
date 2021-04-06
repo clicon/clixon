@@ -1,6 +1,6 @@
 # Clixon Restconf
 
-  * [Evhtp](#evhtp)
+  * [Native](#native)
   * [Nginx](#nginx)
   * [Streams](#streams)
   * [Nchan Streams](#nchan)
@@ -8,9 +8,9 @@
 
 There are two installation instructions: for libevhtp and nginx.
 
-## Evhtp
+## Native
 
-Download, build and install libevhtp from source. Prereqs: libevent and cmake.
+Download, build and install libevhtp from source. Prereqs: libevent and ssl
 ```
    sudo git clone https://github.com/clicon/clixon-libevhtp.git
    cd clixon-libevhtp
@@ -19,9 +19,9 @@ Download, build and install libevhtp from source. Prereqs: libevent and cmake.
    sudo make install
 ```
 
-Configure clixon with evhtp:
+Configure clixon with native restconf:
 ```
-  ./configure --with-restconf=evhtp
+  ./configure --with-restconf=native
 ```
 
 Ensure www-data is member of the CLICON_SOCK_GROUP (default clicon). If not, add it:

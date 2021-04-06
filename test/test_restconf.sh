@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # Restconf basic functionality also uri encoding using eth/0/0
-# Note there are many variants: (1)fcgi/evhtp, (2) http/https, (3) IPv4/IPv6, (4)local or backend-config
-# (1) fcgi/evhtp
-# This is compile-time --with-restconf=fcgi or evhtp, so either or
+# Note there are many variants: (1)fcgi/native, (2) http/https, (3) IPv4/IPv6, (4)local or backend-config
+# (1) fcgi/native
+# This is compile-time --with-restconf=fcgi or native, so either or
 # - fcgi: Assume http server setup, such as nginx described in apps/restconf/README.md
-# - evhtp: test both local config and get config from backend 
+# - native: test both local config and get config from backend 
 # (2) http/https
 # - fcgi: relies on nginx has https setup
-# - evhtp: generate self-signed server certs 
+# - native: generate self-signed server certs 
 # (3) IPv4/IPv6 (only loopback 127.0.0.1 / ::1)
 # - The tests runs through both
 # - IPv6 by default disabled since docker does not support it out-of-the box
-# (4) local/backend config. Evhtp only
-# - The tests runs through both (if compiled with evhtp)
+# (4) local/backend config. Native only
+# - The tests runs through both (if compiled with native)
 # See also test_restconf2.sh
 # See test_restconf_rpc.sh for cases when CLICON_BACKEND_RESTCONF_PROCESS is set
 
@@ -40,7 +40,7 @@ else
     cp /usr/local/share/clixon/$y $dir/
 fi
 
-if [ "${WITH_RESTCONF}" = "evhtp" ]; then
+if [ "${WITH_RESTCONF}" = "native" ]; then
     # Create server certs
     certdir=$dir/certs
     srvkey=$certdir/srv_key.pem
@@ -402,12 +402,12 @@ function testrun()
 
 # Go thru all combinations of IPv4/IPv6, http/https, local/backend config
 protos="http"
-if [ "${WITH_RESTCONF}" = "evhtp" ]; then
-    # http only relevant for evhtp (for fcgi: need nginx config)
+if [ "${WITH_RESTCONF}" = "native" ]; then
+    # http only relevant for internal (for fcgi: need nginx config)
     protos="$protos https"
 fi
 for proto in $protos; do
-    addrs="127.0.0.1"
+#    addrs="127.0.0.1"
     if $IPv6 ; then
 	addrs="$addrs \[::1\]"
     fi

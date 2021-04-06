@@ -3,7 +3,7 @@
 # Note this is not supported by core clixon: you need ca-auth callback implemented a la the example
 # For auth-type=none and auth-type=user, 
 # For auth-type=ssl-certs, See test_restconf.sh test_restconf_ssl_certs.sh
-# evhtp? and http only
+# native? and http only
 # Use the following user settings:
 #  1. none (eg no -u to curl)
 #  2. anonymous - the registered anonymous user
@@ -29,7 +29,7 @@ fyang=$dir/myexample.yang
 # No ssl
 RCPROTO=http 
 
-# Start with common config, then append fcgi/evhtp specific config
+# Start with common config, then append fcgi/native specific config
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -52,7 +52,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-# Start with common config, then append fcgi/evhtp specific config
+# Start with common config, then append fcgi/native specific config
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -195,7 +195,7 @@ function testrun()
     # Change restconf configuration before start restconf daemon
     restconf_config $auth false
 
-    # Start with common config, then append fcgi/evhtp specific config
+    # Start with common config, then append fcgi/native specific config
     cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
