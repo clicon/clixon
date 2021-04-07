@@ -42,7 +42,9 @@ srvcert=$certdir/srv_cert.pem
 cakey=$certdir/ca_key.pem # needed?
 cacert=$certdir/ca_cert.pem
 test -d $certdir || mkdir $certdir
-. ./certs.sh
+
+# Create server certs and CA
+servercerts $cakey $cacert $srvkey $srvcert
 
 # XXX Note default port need to be 80 for wait_restconf to work
 RESTCONFIG=$(cat <<EOF
@@ -81,6 +83,7 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>

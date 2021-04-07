@@ -5,7 +5,7 @@
 # For auth-type=ssl-certs, See test_restconf.sh test_restconf_ssl_certs.sh
 # native? and http only
 # Use the following user settings:
-#  1. none (eg no -u to curl)
+#  1. none 
 #  2. anonymous - the registered anonymous user
 #  3. andy      - a well-known user
 #  3. unknown   - unknown user
@@ -200,6 +200,7 @@ function testrun()
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
@@ -225,10 +226,10 @@ EOF
 
 	new "start restconf daemon"
 	start_restconf -f $cfg
-
-	new "wait restconf"
-	wait_restconf
     fi
+
+    new "wait restconf"
+    wait_restconf
     
     new "curl $CURLOPTS $user -X GET $RCPROTO://localhost/restconf/data/myexample:top"
     expectpart "$(curl $CURLOPTS $user -X GET $RCPROTO://localhost/restconf/data/myexample:top)" 0 $expectcode "$expectmsg"
@@ -249,10 +250,10 @@ if [ $BE -ne 0 ]; then
     
     new "start backend -s startup -f $cfg"
     start_backend -s startup -f $cfg
-
-    new "wait backend"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 MSGANON='{"myexample:top":{"anonymous":"42"}}'
 MSGWILMA='{"myexample:top":{"wilma":"71"}}'
@@ -270,14 +271,10 @@ new "auth-type=$AUTH anonymous"
 testrun $AUTH "-u ${anonymous}:foo" "HTTP/1.1 200 OK" "$MSGANON" # OK - anonymous
 
 new "auth-type=$AUTH wilma"
-testrun $AUTH "-u wilma:bar" "HTTP/1.1 200 OK" "$MSGWILMA"    # OK - wilma
+testrun $AUTH "-u wilma:bar" "HTTP/1.1 200 OK" "$MSGANON"    # OK - wilma
 
 new "auth-type=$AUTH wilma wrong passwd"
-testrun $AUTH "-u wilma:wrong" "HTTP/1.1 200 OK" "$MSGWILMA"  # OK - wilma
-
-new "auth-type=$AUTH unknown"
-testrun $AUTH "-u unknown:any" "HTTP/1.1 403 Forbidden" "$MSGERR2"   # OK, but nacm authorization fail
-
+testrun $AUTH "-u wilma:wrong" "HTTP/1.1 200 OK" "$MSGANON"  # OK - wilma
 
 AUTH=user
 

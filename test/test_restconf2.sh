@@ -18,6 +18,7 @@ restconf_config none false
 #  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
+  <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>

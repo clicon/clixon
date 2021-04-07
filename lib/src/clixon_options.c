@@ -519,7 +519,7 @@ clicon_options_main(clicon_handle h)
     
     clicon_conf_xml_set(h, xconfig);
 
-#if defined(WITH_RESTCONF) && WITH_RESTCONF == fcgi
+#ifdef WITH_RESTCONF_FCGI
     /* Enable fcgi feature
      * Due to boot-strapping in first load of clixon config, a feature cannot be added
      * programmatically after config file load
@@ -531,16 +531,17 @@ clicon_options_main(clicon_handle h)
 				YB_PARENT, NULL, &xconfig, NULL) < 0)
 	goto done;
 #endif
-    
     /* Parse clixon yang spec */
     if (yang_spec_parse_module(h, "clixon-config", NULL, yspec) < 0)
 	goto done;    
+    /* Load restconf yang. Note this is also a part of clixon-config */
+    if (yang_spec_parse_module(h, "clixon-restconf", NULL, yspec)< 0)
+	goto done;
     clicon_conf_xml_set(h, NULL);
     if (xconfig){
 	xml_free(xconfig);
 	xconfig = NULL;
     }
-
     /* Read configfile second time now with check yang spec */
     if (parse_configfile(h, configfile, extraconfdir, yspec, &xconfig) < 0)
 	goto done;

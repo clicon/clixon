@@ -2009,7 +2009,7 @@ ys_populate_feature(clicon_handle h,
     char      *m;
     char      *f;
 
-    /* get clicon config file in xml form.
+    /* Get clicon config file in xml form.
      * Bootstrapping: A feature is enabled if found in clixon-config
      */
     if ((x = clicon_conf_xml(h)) == NULL)
@@ -2046,7 +2046,7 @@ ys_populate_feature(clicon_handle h,
     cv_name_set(cv, feature);
     cv_bool_set(cv, found);
     if (found)
-	clicon_debug(2, "%s %s:%s", __FUNCTION__, module, feature);
+	clicon_debug(1, "%s %s:%s", __FUNCTION__, module, feature);
     ys->ys_cv = cv;
  ok:
     retval = 0;

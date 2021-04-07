@@ -209,6 +209,7 @@ AC_ARG_WITH([restconf],
 if test "x${with_restconf}" == xfcgi; then
    # Lives in libfcgi-dev
    AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
+   AC_DEFINE(WITH_RESTCONF_FCGI, 1, [Use fcgi restconf mode]) # For c-code that cant use strings
 elif test "x${with_restconf}" == xnative; then
    AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
    AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
@@ -221,13 +222,13 @@ elif test "x${with_restconf}" == xnative; then
        #define EVHTP_DISABLE_EVTHR
        ]])
    AC_CHECK_LIB(evhtp, evhtp_new,, AC_MSG_ERROR([libevhtp missing]),[-levent -lssl -lcrypto]) 
+   AC_DEFINE(WITH_RESTCONF_NATIVE, 1, [Use native restconf mode]) # For c-code that cant use strings
 elif test "x${with_restconf}" == xno; then
    # Cant get around "no" as an answer for --without-restconf that is reset here to undefined
    with_restconf=   
 else
    AC_MSG_ERROR([No such restconf package: ${with_restconf}])
 fi
-
 
 if test "x${with_restconf}" != "x"; then
    # This is so it appears in config.h

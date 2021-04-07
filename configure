@@ -5042,6 +5042,9 @@ else
   as_fn_error $? "libfcgi-dev missing" "$LINENO" 5
 fi
 
+
+$as_echo "#define WITH_RESTCONF_FCGI 1" >>confdefs.h
+ # For c-code that cant use strings
 elif test "x${with_restconf}" == xnative; then
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
 $as_echo_n "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
@@ -5249,13 +5252,15 @@ else
   as_fn_error $? "libevhtp missing" "$LINENO" 5
 fi
 
+
+$as_echo "#define WITH_RESTCONF_NATIVE 1" >>confdefs.h
+ # For c-code that cant use strings
 elif test "x${with_restconf}" == xno; then
    # Cant get around "no" as an answer for --without-restconf that is reset here to undefined
    with_restconf=
 else
    as_fn_error $? "No such restconf package: ${with_restconf}" "$LINENO" 5
 fi
-
 
 if test "x${with_restconf}" != "x"; then
    # This is so it appears in config.h

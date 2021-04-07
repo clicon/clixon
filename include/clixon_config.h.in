@@ -51,9 +51,6 @@
 /* Define to 1 if you have the `event' library (-levent). */
 #undef HAVE_LIBEVENT
 
-/* Define to 1 if you have the `event_openssl' library (-levent_openssl). */
-#undef HAVE_LIBEVENT_OPENSSL
-
 /* Define to 1 if you have the `evhtp' library (-levhtp). */
 #undef HAVE_LIBEVHTP
 
@@ -62,9 +59,6 @@
 
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM
-
-/* Define to 1 if you have the `pthread' library (-lpthread). */
-#undef HAVE_LIBPTHREAD
 
 /* Define to 1 if you have the `socket' library (-lsocket). */
 #undef HAVE_LIBSOCKET
@@ -146,6 +140,12 @@
 
 /* Restconf package */
 #undef WITH_RESTCONF
+
+/* Use fcgi restconf mode */
+#undef WITH_RESTCONF_FCGI
+
+/* Use native restconf mode */
+#undef WITH_RESTCONF_NATIVE
 
 /* WWW dir for restconf daemon */
 #undef WWWDIR

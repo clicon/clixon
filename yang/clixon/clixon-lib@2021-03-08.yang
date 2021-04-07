@@ -182,7 +182,9 @@ module clixon-lib {
 		    description
 			"Output from status rpc";
 		    leaf active {
-			description "True if process is running, false if not";
+			description
+			    "True if process is running, false if not. 
+                             More specifically, there is a process-id and it exists (in Linux: kill(pid,0)";
 			type boolean;
 		    }
 		    leaf description {

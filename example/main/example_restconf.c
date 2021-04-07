@@ -33,8 +33,6 @@
 
   ***** END LICENSE BLOCK *****
  * 
- * This code uses WITH_RESTCONF_FCGI to identify its run with fcgi intreface for ca_auth
- * This should be changed.
  */
 
 #include <stdlib.h>
@@ -268,76 +266,6 @@ example_basic_auth(clicon_handle      h,
     goto done;
 }
 
-/*! HTTP "no auth" but uses basic authentication to get a user
- * @param[in]  h         Clicon handle
- * @param[in]  req       Per-message request www handle to use with restconf_api.h
- * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
- *                       String: Credentials OK, the associated user, must be mallloc:ed
- *                       Parameter signtificant only if retval is 1/OK
- * @retval    -1         Fatal error
- * @retval     0         Ignore, undecided, not handled, same as no callback
- * @retval     1         OK, see authp parameter for result.
- * @note authp should be malloced
- */
-static int
-example_no_auth(clicon_handle      h,
-		void              *req,
-		char             **authp)
-{
-    int     retval = -1;
-    cxobj  *xt = NULL;
-    char   *user = NULL;
-    cbuf   *cb = NULL;
-    char   *auth;
-    char   *passwd;
-    size_t  authlen;
-    int     ret;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (authp == NULL){
-	clicon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
-	goto done;
-    }
-    /* At this point in the code we must use HTTP basic authentication */
-    if ((auth = restconf_param_get(h, "HTTP_AUTHORIZATION")) == NULL)
-	goto fail;
-    if (strlen(auth) < strlen("Basic "))
-	goto fail;
-    if (strncmp("Basic ", auth, strlen("Basic ")))
-	goto fail;
-    auth += strlen("Basic ");
-    authlen = strlen(auth)*2;
-    if ((user = malloc(authlen)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
-    }
-    memset(user, 0, authlen);
-    if ((ret = b64_decode(auth, user, authlen)) < 0)
-	goto done;
-    /* auth string is on the format user:passwd */
-    if ((passwd = index(user,':')) == NULL)
-	goto fail;
-    *passwd = '\0';
-    passwd++;
-    clicon_debug(1, "%s http user:%s passwd:%s", __FUNCTION__, user, passwd);
-    *authp = user;     /* authenticated */
-    user=NULL; /* to avoid free below */
-    retval = 1;
- done: /* error */
-    clicon_debug(1, "%s retval:%d authp:%s", __FUNCTION__, retval, authp?"":*authp);
-    if (user)
-       free(user);
-    if (cb)
-	cbuf_free(cb);
-    if (xt)
-        xml_free(xt);
-    return retval;
- fail:  /* unauthenticated */
-    *authp = NULL;
-    retval = 0; /* Ignore use anonymous */
-    goto done;
-}
-
 /*! Authentication callback
  * @param[in]  h         Clicon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
@@ -360,9 +288,8 @@ example_restconf_credentials(clicon_handle      h,
     
     clicon_debug(1, "%s auth:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
     switch (auth_type){
-    case CLIXON_AUTH_NONE:
-	if ((retval = example_no_auth(h, req, authp)) < 0)
-	    goto done;
+    case CLIXON_AUTH_NONE: /* FEATURE clixon-restconf:allow-auth-none must be enabled */
+	retval = 0;
 	break;
     case CLIXON_AUTH_CLIENT_CERTIFICATE:
 	retval = 0; /* Ignore, use default */

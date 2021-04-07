@@ -92,8 +92,8 @@ EOF
 )
 
 if $genkeys; then
-    # Server certs
-    . ./certs.sh
+    # Create server certs
+    servercerts $cakey $cacert $srvkey $srvcert
 
     # create client certs
     for name in $users $xusers; do
@@ -118,7 +118,7 @@ EOF
 	openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt
     done # client key
 
-    # invalid
+    # invalid (days = 0)
     for name in $xusers; do
 	openssl x509 -req -extfile $dir/$name.cnf -days 0 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt
     done # invalid

@@ -98,7 +98,9 @@ typedef int (*clicon_upgrade_cb)(
  * For now only used by restconf frontend
  */
 enum clixon_auth_type {
-    CLIXON_AUTH_NONE = 0,           /* Message is authenticated automatically, Do not call ca-auth callback */
+    CLIXON_AUTH_NONE = 0,           /* Message is authenticated automatically to 
+				       anonymous user, maye be changed by ca-auth callback 
+				       FEATURE clixon-restconf:allow-auth-none must be enabled */
     CLIXON_AUTH_CLIENT_CERTIFICATE, /* TLS Client certification authentication */
     CLIXON_AUTH_USER,               /* User-defined authentication according to ca-auth callback. 
 				       Such as "password" authentication */

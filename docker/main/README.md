@@ -10,13 +10,13 @@ The directory contains the following files:
   - cleanup.sh       Kill containers
   - Dockerfile       Docker build instructions without restconf
   - Dockerfile.fcgi  Docker build instructions with nginx/fcgi restconf (this is default)
-  - Dockerfile.evhtp Docker build instructions with libevhtp restconf
+  - Dockerfile.native Docker build instructions with native restconf
   - Makefile.in      "make docker" builds the container
   - README.md	  This file
   - start.sh         Start containers
   - startsystem.sh   Internal start script copied to inside the container (dont run from shell).
   - startsystem_fcgi.sh  Variant for nginx/fcgi (default)
-  - startsystem_evhtp.sh Variant for libevhtp
+  - startsystem_native.sh Variant for native restconf
 
 How to run the tests:
 ```

@@ -195,6 +195,7 @@ fi
 # Args:
 # 1: auth-type (one of none, client-cert, user)
 # 2: pretty (if true pretty-print restconf return values)
+# Note, if AUTH=none then FEATURE clixon-restconf:allow-auth-none must be enabled
 function restconf_config()
 {
     AUTH=$1
@@ -706,3 +707,89 @@ function expectmatch(){
     fi
 }
 
+# Create server certs
+# Output variables set as filenames on entry, set as cert/keys on exit:
+# Vars:
+# 1: cakey   filename
+# 2: cacert  filename
+# 3: srvkey  filename
+# 4: srvcert filename
+function servercerts()
+{
+    if [ $# -ne 4 ]; then
+	echo "servercerts function: Expected: cakey cacert srvkey srvcert"
+	exit 1
+    fi
+    cakey=$1
+    cacert=$2
+    srvkey=$3
+    srvcert=$4
+
+    tmpdir=$dir/tmpcertdir
+
+    test -d $tmpdir || mkdir $tmpdir
+
+    # 1. CA
+    cat<<EOF > $tmpdir/ca.cnf
+[ ca ]
+default_ca      = CA_default
+
+[ CA_default ]
+serial = ca-serial
+crl = ca-crl.pem
+database = ca-database.txt
+name_opt = CA_default
+cert_opt = CA_default
+default_crl_days = 9999
+default_md = md5
+
+[ req ]
+default_bits           = ${CERTKEYLEN}
+days                   = 1
+distinguished_name     = req_distinguished_name
+attributes             = req_attributes
+prompt                 = no
+output_password        = password
+
+[ req_distinguished_name ]
+C                      = SE
+L                      = Stockholm
+O                      = Clixon
+OU                     = clixon
+CN                     = ca
+emailAddress           = olof@hagsand.se
+
+[ req_attributes ]
+challengePassword      = test
+
+EOF
+
+    # Generate CA cert
+    openssl req -x509 -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert
+
+    cat<<EOF > $tmpdir/srv.cnf
+[req]
+prompt = no
+distinguished_name = dn
+req_extensions = ext
+[dn]
+CN = www.clicon.org # localhost
+emailAddress = olof@hagsand.se
+O = Clixon
+L = Stockholm
+C = SE
+[ext]
+subjectAltName = DNS:clicon.org
+EOF
+
+    # Generate server key
+    openssl genrsa -out $srvkey ${CERTKEYLEN}
+
+    # Generate CSR (signing request)
+    openssl req -new -config $tmpdir/srv.cnf -key $srvkey -out $tmpdir/srv_csr.pem
+
+    # Sign server cert by CA
+    openssl x509 -req -extfile $tmpdir/srv.cnf -days 1 -passin "pass:password" -in $tmpdir/srv_csr.pem -CA $cacert -CAkey $cakey -CAcreateserial -out $srvcert
+
+    rm -rf $tmpdir
+}

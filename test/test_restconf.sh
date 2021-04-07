@@ -48,7 +48,8 @@ if [ "${WITH_RESTCONF}" = "native" ]; then
     cakey=$certdir/ca_key.pem # needed?
     cacert=$certdir/ca_cert.pem
     test -d $certdir || mkdir $certdir
-    . ./certs.sh
+    # Create server certs and CA
+    servercerts $cakey $cacert $srvkey $srvcert
 else
     # Define default restconfig config: RESTCONFIG
     restconf_config none false
@@ -95,6 +96,7 @@ fi
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
