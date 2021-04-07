@@ -5310,6 +5310,17 @@ cat >>confdefs.h <<_ACEOF
 #define WWWDIR "$wwwdir"
 _ACEOF
 
+else
+
+cat >>confdefs.h <<_ACEOF
+#define WWWUSER ""
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define WWWDIR ""
+_ACEOF
+
 fi
 
 # Set default config file location
