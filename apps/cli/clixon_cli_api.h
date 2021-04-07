@@ -114,7 +114,6 @@ int cli_copy_config(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_help(clicon_handle h, cvec *vars, cvec *argv);
 
 /* In cli_show.c */
-int expand_dir(char *dir, int *nr, char ***commands, mode_t flags, int detail);
 int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv, 
 		  cvec *commands, cvec *helptexts);
 

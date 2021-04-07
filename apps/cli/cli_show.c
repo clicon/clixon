@@ -359,125 +359,6 @@ expand_dbvar(void   *h,
     return retval;
 }
 
-/*! List files in a directory
- */
-int
-expand_dir(char   *dir, 
-	   int    *nr, 
-	   char ***commands, 
-	   mode_t  flags, 
-	   int     detail)
-{
-    DIR	          *dirp;
-    struct dirent *dp;
-    struct stat    st;
-    char          *str;
-    char          *cmd;
-    int            len;
-    int            retval = -1;
-    struct passwd *pw;
-    char           filename[MAXPATHLEN];
-
-    if ((dirp = opendir(dir)) == 0){
-	fprintf(stderr, "expand_dir: opendir(%s) %s\n", 
-		dir, strerror(errno));
-	return -1;
-    }
-    *nr = 0;
-    while ((dp = readdir(dirp)) != NULL) {
-	if (
-#if 0
-	    strcmp(dp->d_name, ".") != 0 &&
-	    strcmp(dp->d_name, "..") != 0
-#else
-	    dp->d_name[0] != '.'
-#endif	    
-	    ) {
-	    snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp->d_name);
-	    if (lstat(filename, &st) == 0){
-		if ((st.st_mode & flags) == 0)
-		    continue;
-
-#if EXPAND_RECURSIVE
-		if (S_ISDIR(st.st_mode)) {
-		    int nrsav = *nr;
-		    if(expand_dir(filename, nr, commands, detail) < 0)
-			goto quit;
-		    while(nrsav < *nr) {
-			len = strlen(dp->d_name) +  strlen((*commands)[nrsav]) + 2;
-			if((str = malloc(len)) == NULL) {
-			    fprintf(stderr, "expand_dir: malloc: %s\n",
-				    strerror(errno));
-			    goto quit;
-			}
-			snprintf(str, len-1, "%s/%s",
-				 dp->d_name, (*commands)[nrsav]);
-			free((*commands)[nrsav]);
-			(*commands)[nrsav] = str;
-			
-			nrsav++;
-		    }
-		    continue;
-		}
-#endif
-		if ((cmd = strdup(dp->d_name)) == NULL) {
-		    fprintf(stderr, "expand_dir: strdup: %s\n",
-			    strerror(errno));
-		    goto quit;
-		}
-#ifndef __APPLE__
-		if (0 &&detail){
-		    if ((pw = getpwuid(st.st_uid)) == NULL){
-			fprintf(stderr, "expand_dir: getpwuid(%d): %s\n",
-				st.st_uid, strerror(errno));
-			goto quit;
-		    }
-		    len = strlen(cmd) + 
-			strlen(pw->pw_name) +
-#ifdef __FreeBSD__
-			strlen(ctime(&st.st_mtimespec.tv_sec)) +
-#else
-			strlen(ctime(&st.st_mtim.tv_sec)) +
-#endif
-
-			strlen("{ by }") + 1 /* \0 */;
-		    if ((str=realloc(cmd, strlen(cmd)+len)) == NULL) {
-			fprintf(stderr, "expand_dir: malloc: %s\n",
-				strerror(errno));
-			goto quit;
-		    }
-		    snprintf(str + strlen(dp->d_name), 
-			     len - strlen(dp->d_name),
-			     "{%s by %s}",
-#ifdef __FreeBSD__
-			     ctime(&st.st_mtimespec.tv_sec),
-#else
-			     ctime(&st.st_mtim.tv_sec),
-#endif
-
-			     pw->pw_name
-			);
-		    cmd = str;
-		}
-#endif /* __APPLE__ */
-		if (((*commands) =
-		     realloc(*commands, ((*nr)+1)*sizeof(char**))) == NULL){
-		    perror("expand_dir: realloc");
-		    goto quit;
-		}
-		(*commands)[(*nr)] = cmd;
-		(*nr)++;
-		if (*nr >= 128) /* Limit number of options */
-		    break;
-	    }
-	}
-    }
-    retval = 0;
-  quit:
-    closedir(dirp);
-    return retval;
-}
-
 /*! CLI callback show yang spec. If arg given matches yang argument string */
 int
 show_yang(clicon_handle h, 
@@ -974,7 +855,7 @@ cli_show_options(clicon_handle h,
     while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
 	if (strcmp(xml_name(x), "CLICON_YANG_DIR") != 0)
 	    continue;
-	fprintf(stdout, "%s: \"%s\"", xml_name(x), xml_body(x));
+	fprintf(stdout, "%s: \"%s\"\n", xml_name(x), xml_body(x));
     }
     x = NULL;
     while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {

@@ -46,7 +46,7 @@ AC_INIT(lib/clixon/clixon.h.in)
 : ${LINKAGE=dynamic}
 
 # where autotool scripts are: install-sh, config.sub, config.guess
-AC_CONFIG_AUX_DIR(aux)
+AC_CONFIG_AUX_DIR(config-aux)
 
 CLIXON_VERSION_MAJOR="5"
 CLIXON_VERSION_MINOR="1"

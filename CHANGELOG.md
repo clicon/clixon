@@ -85,6 +85,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed ["aux" folder issue with Windows. #198](https://github.com/clicon/clixon/issues/198)
 * Fixed [changing interface name not support with openconfig module #195](https://github.com/clicon/clixon/issues/195)
 * Fixed [making cli_show_options's output more human readable #199](https://github.com/clicon/clixon/issues/199)
 * Fixed Yang parsing of comments in (extension) unknown statements, to allow multiple white space
