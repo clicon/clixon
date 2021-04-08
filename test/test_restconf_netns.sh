@@ -44,6 +44,7 @@ cacert=$certdir/ca_cert.pem
 test -d $certdir || mkdir $certdir
 
 # Create server certs and CA
+cacerts $cakey $cacert
 servercerts $cakey $cacert $srvkey $srvcert
 
 # XXX Note default port need to be 80 for wait_restconf to work

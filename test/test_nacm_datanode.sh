@@ -46,7 +46,7 @@ fyang=$dir/nacm-example.yang
 fyang2=$dir/itf.yang
 
 # Define default restconfig config: RESTCONFIG
-restconf_config user false
+RESTCONFIG=$(restconf_config user false)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

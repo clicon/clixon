@@ -11,7 +11,7 @@ cfg=$dir/conf_yang.xml
 fyang=$dir/example-my-crypto.yang
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none false
+RESTCONFIG=$(restconf_config none false)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

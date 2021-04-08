@@ -202,9 +202,9 @@ function restconf_config()
     PRETTY=$2
 
     if [ $RCPROTO = http ]; then
-	RESTCONFIG="<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
+	echo "<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
     else
-	RESTCONFIG="<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>/etc/ssl/certs/clixon-server-crt.pem</server-cert-path><server-key-path>/etc/ssl/private/clixon-server-key.pem</server-key-path><server-ca-cert-path>/etc/ssl/certs/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
+	echo "<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>/etc/ssl/certs/clixon-server-crt.pem</server-cert-path><server-key-path>/etc/ssl/private/clixon-server-key.pem</server-key-path><server-ca-cert-path>/etc/ssl/certs/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
     fi
 }
 
@@ -707,23 +707,19 @@ function expectmatch(){
     fi
 }
 
-# Create server certs
+# Create CA certs
 # Output variables set as filenames on entry, set as cert/keys on exit:
 # Vars:
 # 1: cakey   filename
 # 2: cacert  filename
-# 3: srvkey  filename
-# 4: srvcert filename
-function servercerts()
+function cacerts()
 {
-    if [ $# -ne 4 ]; then
-	echo "servercerts function: Expected: cakey cacert srvkey srvcert"
+    if [ $# -ne 2 ]; then
+	echo "cacerts function: Expected: cakey cacert"
 	exit 1
     fi
     cakey=$1
     cacert=$2
-    srvkey=$3
-    srvcert=$4
 
     tmpdir=$dir/tmpcertdir
 
@@ -765,7 +761,32 @@ challengePassword      = test
 EOF
 
     # Generate CA cert
-    openssl req -x509 -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert
+    openssl req -x509 -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert || err "Generate CA cert"
+
+    rm -rf $tmpdir
+}
+
+# Create server certs
+# Output variables set as filenames on entry, set as cert/keys on exit:
+# Vars:
+# 1: cakey   filename (input)
+# 2: cacert  filename (input)
+# 3: srvkey  filename (output)
+# 4: srvcert filename (output)
+function servercerts()
+{
+    if [ $# -ne 4 ]; then
+	echo "servercerts function: Expected: cakey cacert srvkey srvcert"
+	exit 1
+    fi
+    cakey=$1
+    cacert=$2
+    srvkey=$3
+    srvcert=$4
+
+    tmpdir=$dir/tmpcertdir
+
+    test -d $tmpdir || mkdir $tmpdir
 
     cat<<EOF > $tmpdir/srv.cnf
 [req]
@@ -783,13 +804,13 @@ subjectAltName = DNS:clicon.org
 EOF
 
     # Generate server key
-    openssl genrsa -out $srvkey ${CERTKEYLEN}
+    openssl genrsa -out $srvkey ${CERTKEYLEN}  || err "Generate server key"
 
     # Generate CSR (signing request)
-    openssl req -new -config $tmpdir/srv.cnf -key $srvkey -out $tmpdir/srv_csr.pem
+    openssl req -new -config $tmpdir/srv.cnf -key $srvkey -out $tmpdir/srv_csr.pem || err "Generate signing request"
 
     # Sign server cert by CA
-    openssl x509 -req -extfile $tmpdir/srv.cnf -days 1 -passin "pass:password" -in $tmpdir/srv_csr.pem -CA $cacert -CAkey $cakey -CAcreateserial -out $srvcert
+    openssl x509 -req -extfile $tmpdir/srv.cnf -days 1 -passin "pass:password" -in $tmpdir/srv_csr.pem -CA $cacert -CAkey $cakey -CAcreateserial -out $srvcert || err "Sign server cert"
 
     rm -rf $tmpdir
 }

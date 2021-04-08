@@ -22,7 +22,7 @@ funknown=$dir/yang/unknown.yang
 fstate=$dir/state.xml
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none false
+RESTCONFIG=$(restconf_config none false)
 
 cat <<EOF > $fanydata
 module any{

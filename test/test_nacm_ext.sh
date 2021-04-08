@@ -16,7 +16,7 @@ fyang=$dir/nacm-example.yang
 nacmfile=$dir/nacmfile
 
 # Define default restconfig config: RESTCONFIG
-restconf_config user false
+RESTCONFIG=$(restconf_config user false)
 
 # Note filter out example_backend_nacm.so in CLICON_BACKEND_REGEXP below
 cat <<EOF > $cfg

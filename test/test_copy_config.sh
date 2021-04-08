@@ -30,7 +30,7 @@ cfg=$dir/conf_yang.xml
 # Use yang in example
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none true
+RESTCONFIG=$(restconf_config none true)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

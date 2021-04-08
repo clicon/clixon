@@ -28,7 +28,7 @@ fextra1=$dir/extra1.yang     # Referenced from sub1
 fextra2=$dir/extra2.yang     # Referenced from sub2
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none false
+RESTCONFIG=$(restconf_config none false)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

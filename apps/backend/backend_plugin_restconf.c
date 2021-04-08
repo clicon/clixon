@@ -61,6 +61,44 @@
 
 #define RESTCONF_PROCESS "restconf"
 
+/*! Set current debug flag when starting process using -D <dbg>
+ *
+ * process argv list including -D is set on start. But the debug flags may change and this is a way
+ * to set it dynamically, ie at the time the process is started, not when the backend is started.
+ * @param[in]  h      Clixon backend
+ * @param[in]  dbg    Debug string , eg "0" or "1"
+ */
+static int
+restconf_pseudo_set_debug(clicon_handle h,
+			  char         *dbg)
+{
+    int    retval = -1;
+    char **argv;
+    int    argc;
+    int    i;
+
+    if (dbg == NULL)
+	goto ok;
+    if (clixon_process_argv_get(h, RESTCONF_PROCESS, &argv, &argc) < 0)
+	goto done;
+    for (i=0; i<argc; i++){
+	if (argv[i] == NULL)
+	    break;
+	if (strcmp(argv[i], "-D") == 0 && argc > i+1 && argv[i+1]){
+	    free(argv[i+1]);
+	    if ((argv[i+1] = strdup(dbg)) == NULL){
+		clicon_err(OE_UNIX, errno, "strdup");
+		goto done;
+	    }
+	    break;
+	}
+    }
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Process rpc callback function 
  * - if RPC op is start, if enable is true, start the service, if false, error or ignore it
  * - if RPC op is stop, stop the service 
@@ -73,6 +111,7 @@ restconf_rpc_wrapper(clicon_handle    h,
 {
     int    retval = -1;
     cxobj *xt = NULL;
+    cxobj *xb;
     
     clicon_debug(1, "%s", __FUNCTION__);
     switch (*operation){
@@ -87,6 +126,17 @@ restconf_rpc_wrapper(clicon_handle    h,
 	if (xt != NULL &&
 	    xpath_first(xt, NULL, "/restconf[enable='false']") != NULL) {
 	    *operation = PROC_OP_NONE;
+	}
+	else{
+	    /* Get debug flag of restconf config, set the restconf start -D daemon flag according
+	     * to it. The restconf daemon cannoit read its debug flag from config initially,
+	     * but in this way it is set directly in its input args.
+	     * Its a trick.
+	     */
+	    if ((xb = xpath_first(xt, NULL, "/restconf/debug")) != NULL){
+		if (restconf_pseudo_set_debug(h, xml_body(xb)) < 0)
+		    goto done;
+	    }
 	}
 	break;
     default:
@@ -103,6 +153,8 @@ restconf_rpc_wrapper(clicon_handle    h,
  * @param[in]  h  Clicon handle
  * @note Could also look in clixon-restconf and start process if enable is true, but that needs to 
  *       be in start callback using a pseudo plugin.
+ *      - Debug flag inheritance only works if backend is started with debug. If debug is set later
+ *        this is ignored.
  */
 static int
 restconf_pseudo_process_control(clicon_handle h)
@@ -112,11 +164,8 @@ restconf_pseudo_process_control(clicon_handle h)
     int    i;
     int    nr;
     cbuf  *cb = NULL;
-    cbuf  *cbdbg = NULL;
 
-    nr = 4;
-    if (clicon_debug_get() != 0)
-	nr += 2;
+    nr = 6;
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
 	clicon_err(OE_UNIX, errno, "calloc");
 	goto done;
@@ -133,15 +182,8 @@ restconf_pseudo_process_control(clicon_handle h)
     /* Add debug if backend has debug. 
      * There is also a debug flag in clixon-restconf.yang but it kicks in after it starts
      */
-    if (clicon_debug_get() != 0){
-	argv[i++] = "-D";
-	if ((cbdbg = cbuf_new()) == NULL){ /* Cant use cb since it would overwrite it */
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	cprintf(cbdbg, "%d", clicon_debug_get());
-	argv[i++] = cbuf_get(cbdbg);
-    }
+    argv[i++] = "-D";
+    argv[i++] = "0";
     argv[i++] = NULL;
     assert(i==nr);
     if (clixon_process_register(h, RESTCONF_PROCESS,
@@ -156,8 +198,6 @@ restconf_pseudo_process_control(clicon_handle h)
  done:
     if (cb)
 	cbuf_free(cb);
-    if (cbdbg)
-	cbuf_free(cbdbg);
     return retval;
 }
 
@@ -200,14 +240,26 @@ restconf_pseudo_process_commit(clicon_handle    h,
     cxobj *xtarget;
     cxobj *cx;
     int    enabled = 0;
-
+    cxobj *xb;
+    
     clicon_debug(1, "%s", __FUNCTION__);
     xtarget = transaction_target(td);
     if (xpath_first(xtarget, NULL, "/restconf[enable='true']") != NULL)
 	enabled++;
+    /* Get debug flag of restconf config, set the restconf start -D daemon flag according
+     * to it. The restconf daemon cannoit read its debug flag from config initially,
+     * but in this way it is set directly in its input args.
+     * Its a trick.
+     */
+    if ((xb = xpath_first(xtarget, NULL, "/restconf/debug")) != NULL){
+	if (restconf_pseudo_set_debug(h, xml_body(xb)) < 0)
+	    goto done;
+    }
     /* Toggle start/stop if enable flag changed */
     if ((cx = xpath_first(xtarget, NULL, "/restconf/enable")) != NULL &&
 	xml_flag(cx, XML_FLAG_CHANGE|XML_FLAG_ADD)){
+
+
 	if (clixon_process_operation(h, RESTCONF_PROCESS,
 				     enabled?PROC_OP_START:PROC_OP_STOP, 0) < 0)
 	    goto done;

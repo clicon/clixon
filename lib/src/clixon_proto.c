@@ -331,6 +331,7 @@ clicon_msg_send(int                s,
 		struct clicon_msg *msg)
 { 
     int retval = -1;
+    int e;
 
     clicon_debug(2, "%s: send msg len=%d", 
 		 __FUNCTION__, ntohl(msg->op_len));
@@ -338,9 +339,10 @@ clicon_msg_send(int                s,
 	msg_dump(msg);
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
 		 s, msg, ntohl(msg->op_len)) < 0){
-	clicon_err(OE_CFG, errno, "atomicio");
+	e = errno;
+	clicon_err(OE_CFG, e, "atomicio");
 	clicon_log(LOG_WARNING, "%s: write: %s len:%u msg:%s", __FUNCTION__,
-		   strerror(errno), ntohs(msg->op_len), msg->op_body);
+		   strerror(e), ntohs(msg->op_len), msg->op_body);
 	goto done;
     }
     retval = 0;

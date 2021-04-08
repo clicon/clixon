@@ -25,15 +25,19 @@ cfg=$dir/conf.xml
 
 # Local for test here
 certdir=$dir/certs
+cakey=$certdir/ca_key.pem
+cacert=$certdir/ca_cert.pem
 srvkey=$certdir/srv_key.pem
 srvcert=$certdir/srv_cert.pem
-cakey=$certdir/ca_key.pem # needed?
 
-cacert=$certdir/ca_cert.pem
+# These is another CA (invalid) for creating invalid client certs
+xcakey=$certdir/xca_key.pem
+xcacert=$certdir/xca_cert.pem
 
 users="andy guest" # generate certs for some users in nacm.sh
 
-xusers="limited"   # Set invalid cert
+x1users="limited"   # Set invalid cert
+x2users="invalid"   # Wrong CA
 
 # Whether to generate new keys or not (only if $dir is not removed)
 # Here dont generate keys if restconf started stand-alone (RC=0)
@@ -93,10 +97,14 @@ EOF
 
 if $genkeys; then
     # Create server certs
+    cacerts $cakey $cacert
     servercerts $cakey $cacert $srvkey $srvcert
 
+    # Other (invalid)
+    cacerts $xcakey $xcacert
+    
     # create client certs
-    for name in $users $xusers; do
+    for name in $users $x1users; do
 	cat<<EOF > $dir/$name.cnf
 [req]
 prompt = no
@@ -119,9 +127,33 @@ EOF
     done # client key
 
     # invalid (days = 0)
-    for name in $xusers; do
+    for name in $x1users; do
 	openssl x509 -req -extfile $dir/$name.cnf -days 0 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt
     done # invalid
+
+        # create client certs from invalid CA
+    for name in $x2users; do
+	cat<<EOF > $dir/$name.cnf
+[req]
+prompt = no
+distinguished_name = dn
+[dn]
+CN = $name # This can be verified using SSL_set1_host
+emailAddress = $name@foo.bar
+O = Clixon
+L = Stockholm
+C = SE
+EOF
+	# Create client key
+	openssl genrsa -out "$certdir/$name.key" 2048
+
+	# Generate CSR (signing request)
+	openssl req -new -config $dir/$name.cnf -key $certdir/$name.key -out $certdir/$name.csr
+
+	# Sign by CA
+	openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $xcacert -CAkey $xcakey -CAcreateserial -out $certdir/$name.crt
+    done # client key
+
 fi # genkeys
 
 # Write local config
@@ -221,6 +253,9 @@ EOF
 
     new "limited invalid cert"
     expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "35 55 56" # 55 "certificate expired"
+
+    new "invalid cert from wrong CA"
+    expectpart "$(curl $CURLOPTS --key $certdir/invalid.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 58 "unable to set private key file" # 58 unable to set private key file
 
     # Just ensure all is OK
     new "admin get x 42"

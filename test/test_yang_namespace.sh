@@ -14,7 +14,7 @@ fyang1=$dir/example1.yang
 fyang2=$dir/example2.yang
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none false
+RESTCONFIG=$(restconf_config none false)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

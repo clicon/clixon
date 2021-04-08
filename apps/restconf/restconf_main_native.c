@@ -181,8 +181,8 @@
 /* See see listen(5) */
 #define SOCKET_LISTEN_BACKLOG 8
 
-/* Cert verify depth */
-#define VERIFY_DEPTH 1
+/* Cert verify depth: dont know what to set here? */
+#define VERIFY_DEPTH 5
 
 /* Forward */
 static int restconf_connection(int s, void* arg);

@@ -193,7 +193,7 @@ function testrun()
 #    echo "expectmsg:$expectmsg"
     
     # Change restconf configuration before start restconf daemon
-    restconf_config $auth false
+    RESTCONFIG=$(restconf_config $auth false)
 
     # Start with common config, then append fcgi/native specific config
     cat <<EOF > $cfg

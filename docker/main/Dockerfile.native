@@ -100,7 +100,7 @@ RUN install *.sh /clixon/build/bin/test
 
 # Copy startscript
 WORKDIR /clixon
-COPY startsystem_evhtp.sh startsystem.sh 
+COPY startsystem_native.sh startsystem.sh 
 RUN install startsystem.sh /clixon/build/bin/
 
 #

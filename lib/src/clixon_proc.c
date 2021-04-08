@@ -34,6 +34,20 @@
   ***** END LICENSE BLOCK *****
 
   * Processes daemons
+  * States of processes:
+  A description of process states.
+  It starts in a STOPPED state. On operation "start" or "restart" it gets a pid and goes into RUNNING:
+       STOPPED  --(re)start--> RUNNING
+  In RUNNING several things can happen:
+  - It is killed externally: the process then gets a SIGCHLD which triggers a wait and it goes into STOPPED:
+       RUNNING  --sigchld/wait-->  STOPPED
+  It is stopped due to an rpc or by config commit removing the config. In that case the parent 
+  process kills the process and enters into EXITING waiting for a SIGCHLD that triggers a wait:
+       RUNNING --stop--> EXITING --sigchld/wait--> STOPPED
+  It is restarted due to an rpc or config change (eg a server is added, a key modified, etc). Then 
+  a new process is started which enters RUNNING, while the old process (the dying clone) enters EXITING:
+       STOPPED  --restart--> RUNNING(newpid)
+       RUNNING --stop--> EXITING --sigchld/wait--> REMOVED (oldpid/clone)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -313,7 +327,40 @@ clixon_process_op_str2int(char *opstr)
     return clicon_str2int(proc_operation_map, opstr);
 }
 
-/*! Make a copy of process-entry struct */
+/*! Access function process list argv list
+ *
+ * @param[in]  h     Clixon handle 
+ * @param[in]  name  Name of process
+ * @param[out] argv  Malloced argv list (Null terminated)
+ * @param[out] argc  Length of argv
+ *
+ * @note Can be used to change in the argv list elements directly with care: Dont change list 
+ * itself, but its elements can be freed and re-alloced.
+ */
+int
+clixon_process_argv_get(clicon_handle h,
+			const char   *name,
+			char       ***argv,
+			int          *argc)
+{
+    process_entry_t *pe;
+
+    pe = _proc_entry_list;
+    do {
+	if (strcmp(pe->pe_name, name) == 0){
+	    *argv = pe->pe_argv;
+	    *argc = pe->pe_argc;
+	}
+	pe = NEXTQ(process_entry_t *, pe);
+    } while (pe != _proc_entry_list);
+    return 0;
+}
+
+/*! Make a copy of process-entry struct 
+ *
+ * @param[in]  pe0   Original process-entry
+ * @param[in]  pnew  New copy of pe0
+ */
 static int
 clixon_process_register_dup(process_entry_t  *pe0,
 			    process_entry_t **pnew)
@@ -604,10 +651,13 @@ clixon_process_status(clicon_handle  h,
 		cprintf(cbret, "%s", pe->pe_argv[i]);
 	    }
 	    cprintf(cbret, "</command>");
-	    cprintf(cbret, "<status xmlns=\"%s\">%u</status>", CLIXON_LIB_NS, pe->pe_status);
-	    if (run && time2str(pe->pe_starttime, timestr, sizeof(timestr)) < 0)
-		goto done;
-	    cprintf(cbret, "<starttime xmlns=\"%s\">%s</starttime>", CLIXON_LIB_NS, timestr);
+	    if (run && timerisset(&pe->pe_starttime)){
+		if (time2str(pe->pe_starttime, timestr, sizeof(timestr)) < 0){
+		    clicon_err(OE_UNIX, errno, "time2str");
+		    goto done;
+		}
+		cprintf(cbret, "<starttime xmlns=\"%s\">%s</starttime>", CLIXON_LIB_NS, timestr);
+	    }
 	    cprintf(cbret, "</rpc-reply>");
 	    break; 	    /* hit break here */
 	}
@@ -706,16 +756,26 @@ clixon_process_sched(int           fd,
 		}
 		if (op == PROC_OP_STOP)
 		    break;
-		if (clixon_proc_background(pe->pe_argv, pe->pe_netns, &newpid) < 0)
-		    goto done;
-		gettimeofday(&pe->pe_starttime, NULL);
-		clicon_debug(1, "%s restart pid:%d -> %d", __FUNCTION__, pe->pe_pid, newpid);
-		/* Create a new pe */
-		if (clixon_process_register_dup(pe, &pe1) < 0)
-		    goto done;
-		pe->pe_clone = 1; /* Delete when reaped */
-		pe1->pe_op = PROC_OP_NONE; /* Dont restart again */
-		pe1->pe_pid = newpid;
+		if (!run){
+		    if (clixon_proc_background(pe->pe_argv, pe->pe_netns, &pe->pe_pid) < 0)
+			goto done;
+		    gettimeofday(&pe->pe_starttime, NULL);
+		    clicon_debug(1, "%s started pid:%d", __FUNCTION__, pe->pe_pid);
+		}
+		else {
+		    /* This is the case where there is an existing process running.
+		     * it was killed above but still runs and needs to be reaped */
+		    if (clixon_proc_background(pe->pe_argv, pe->pe_netns, &newpid) < 0)
+			goto done;
+		    gettimeofday(&pe->pe_starttime, NULL);
+		    clicon_debug(1, "%s restart pid:%d -> %d", __FUNCTION__, pe->pe_pid, newpid);
+		    /* Create a new pe */
+		    if (clixon_process_register_dup(pe, &pe1) < 0)
+			goto done;
+		    pe->pe_clone = 1; /* Delete when reaped */
+		    pe1->pe_op = PROC_OP_NONE; /* Dont restart again */
+		    pe1->pe_pid = newpid;
+		}
 		break;
 	    case PROC_OP_START:
 		if (run) /* Already runs */

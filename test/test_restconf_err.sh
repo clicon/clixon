@@ -31,7 +31,7 @@ fxml=$dir/initial.xml
 fstate=$dir/state.xml
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none false
+RESTCONFIG=$(restconf_config none false)
 
 #  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
 cat <<EOF > $cfg

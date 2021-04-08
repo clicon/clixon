@@ -29,7 +29,4 @@ IPv6=true
 # start
 NGINXCHECK=true
 
-# Lenght of TSL RSA key
-# Problem with small key such as 1024 not allowed in centos8 for example (why is this)
-# Problem with long keys are they take time to generate, eg on ARM
-CERTKEYLEN=2048
+

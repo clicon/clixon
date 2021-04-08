@@ -14,7 +14,7 @@ APPNAME=example
 cfg=$dir/conf.xml
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none false
+RESTCONFIG=$(restconf_config none false)
 
 # Use yang in example
 cat <<EOF > $cfg

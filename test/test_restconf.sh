@@ -49,10 +49,11 @@ if [ "${WITH_RESTCONF}" = "native" ]; then
     cacert=$certdir/ca_cert.pem
     test -d $certdir || mkdir $certdir
     # Create server certs and CA
+    cacerts $cakey $cacert
     servercerts $cakey $cacert $srvkey $srvcert
 else
     # Define default restconfig config: RESTCONFIG
-    restconf_config none false
+    RESTCONFIG=$(restconf_config none false)
 fi
 
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there

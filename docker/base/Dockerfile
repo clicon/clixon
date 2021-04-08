@@ -47,14 +47,13 @@ RUN apk add --update libevent cmake libevent-dev
 
 # clone libevhtp
 WORKDIR /clixon
-RUN git clone https://github.com/clicon/libevhtp.git
-WORKDIR /clixon/libevhtp/build
-RUN cmake -DEVHTP_DISABLE_REGEX=ON -DEVHTP_DISABLE_EVTHR=ON ..
-RUN make
-RUN make install
+RUN git clone https://github.com/clicon/clixon-libevhtp.git
+WORKDIR /clixon/clixon-libevhtp
+RUN ./configure
 
-# NOTE: Patch include queue.h to use the queue.h included in the evhtp release instead
-RUN (cd /usr/local/include/evhtp/; sed -i -e 's/<sys\/queue.h>/<evhtp\/sys\/queue.h>/' evhtp.h)
+RUN make
+RUN mkdir /usr/local/include
+RUN make install
 
 RUN mkdir /clixon/build
 WORKDIR /clixon
@@ -77,7 +76,7 @@ COPY clixon .
 RUN adduser -D -H www-data
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data --enable-optyangs --with-restconf=evhtp
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data --enable-optyangs --with-restconf=native
 
 RUN make
 RUN make install

@@ -30,7 +30,7 @@ fconfig=$dir/large.xml
 fstate=$dir/state.xml
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none false
+RESTCONFIG=$(restconf_config none false)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

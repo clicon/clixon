@@ -21,7 +21,7 @@ fyang=$dir/nacm-example.yang
 # cred:none, exact, except
 
 # Define default restconfig config: RESTCONFIG
-restconf_config user false
+RESTCONFIG=$(restconf_config user false)
 
 cat <<EOF > $fyang
 module nacm-example{

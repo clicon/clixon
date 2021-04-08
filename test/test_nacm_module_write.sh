@@ -32,7 +32,7 @@ cfg=$dir/conf_yang.xml
 fyang=$dir/nacm-example.yang
 
 # Define default restconfig config: RESTCONFIG
-restconf_config user false
+RESTCONFIG=$(restconf_config user false)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

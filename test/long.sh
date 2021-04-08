@@ -22,7 +22,7 @@ fyang=$dir/scaling.yang
 fconfig=$dir/large.xml
 
 # Define default restconfig config: RESTCONFIG
-restconf_config none false
+RESTCONFIG=$(restconf_config none false)
 
 cat <<EOF > $fyang
 module scaling{
