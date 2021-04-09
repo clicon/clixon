@@ -258,16 +258,14 @@ restconf_pseudo_process_commit(clicon_handle    h,
     /* Toggle start/stop if enable flag changed */
     if ((cx = xpath_first(xtarget, NULL, "/restconf/enable")) != NULL &&
 	xml_flag(cx, XML_FLAG_CHANGE|XML_FLAG_ADD)){
-
-
 	if (clixon_process_operation(h, RESTCONF_PROCESS,
 				     enabled?PROC_OP_START:PROC_OP_STOP, 0) < 0)
 	    goto done;
     }
     else if (enabled){     /* If something changed and running, restart process */
-	if (transaction_dlen(xtarget) != 0 ||
-	    transaction_alen(xtarget) != 0 ||
-	    transaction_clen(xtarget) != 0){
+	if (transaction_dlen(td) != 0 ||
+	    transaction_alen(td) != 0 ||
+	    transaction_clen(td) != 0){
 	    if ((cx = xpath_first(xtarget, NULL, "/restconf")) != NULL &&
 		xml_flag(cx, XML_FLAG_CHANGE|XML_FLAG_ADD)){
 		/* A restart can terminate a restconf connection (cut the tree limb you are sitting on)

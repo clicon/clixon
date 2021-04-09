@@ -72,8 +72,10 @@ testname=
 # eg logging to a file: RCLOG="-l f/www-data/restconf.log"
 : ${RCLOG:=}
 
+BASENS='urn:ietf:params:xml:ns:netconf:base:1.0'
+
 # Default netconf namespace statement, typically as placed on top-level <rpc xmlns=""
-DEFAULTONLY='xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"'
+DEFAULTONLY="xmlns=\"$BASENS\""
 
 # Default netconf namespace + message-id
 DEFAULTNS="$DEFAULTONLY message-id=\"42\""
