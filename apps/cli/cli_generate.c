@@ -741,6 +741,7 @@ yang2cli_container(clicon_handle h,
     char         *helptext = NULL;
     char         *s;
     int           hide = 0;
+    char         *opext = NULL;
 
     /* If non-presence container && HIDE mode && only child is 
      * a list, then skip container keyword
@@ -759,6 +760,13 @@ yang2cli_container(clicon_handle h,
 	}
 	if (cli_callback_generate(h, ys, cb) < 0)
 	    goto done;
+
+    /* Look for autocli-op defined in clixon-lib.yang */
+    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
+	goto done;
+    if (opext != NULL && strcmp(opext, "hide") == 0){
+	cprintf(cb, ",hide");
+    }
 	cprintf(cb, ";{\n");
     }
 
