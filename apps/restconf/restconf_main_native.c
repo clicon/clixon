@@ -1610,24 +1610,25 @@ restconf_clixon_init(clicon_handle h,
 	goto done;
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
 	goto done;
-
-    /* First try to get restconf config from local config-file */
     ret = 0;
-    if ((xrestconf = clicon_conf_restconf(h)) != NULL){
-	/*! Basic config init, set auth-type, pretty, etc ret 0 means disabled */
-	if ((ret = restconf_config_init(h, xrestconf)) < 0)
-	    goto done;
-	/* ret == 1 means this config is OK */
-	if (ret == 0){
-	    xrestconf = NULL; /* Dont free since it is part of conf tree */
-	}
-	else
-	    if ((*xrestconfp = xml_dup(xrestconf)) == NULL)
+    if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS") == 0){
+	/* If not read from backend, try to get restconf config from local config-file */
+	if ((xrestconf = clicon_conf_restconf(h)) != NULL){
+	    /*! Basic config init, set auth-type, pretty, etc ret 0 means disabled */
+	    if ((ret = restconf_config_init(h, xrestconf)) < 0)
 		goto done;
+	    /* ret == 1 means this config is OK */
+	    if (ret == 0){
+		xrestconf = NULL; /* Dont free since it is part of conf tree */
+	    }
+	    else
+		if ((*xrestconfp = xml_dup(xrestconf)) == NULL)
+		    goto done;
+	}
     }
-    /* If no local config, or it is disabled, try to query backend of config. */
-    if (ret == 0){
-	assert(*xrestconfp == NULL);
+    /* If no local config, or it is disabled, try to query backend of config. 
+     */
+    else {
 	if ((ret = restconf_clixon_backend(h, xrestconfp)) < 0)
 	    goto done;
 	if (ret == 0)

@@ -726,6 +726,8 @@ module clixon-config {
 	    description
 		"If set, enable process-control of restconf daemon, ie start/stop restconf 
                  daemon internally from backend daemon.
+                 Also, if set, restconf daemon queries backend for its config
+                 if not set, restconf daemon reads its config from main config file
                  It uses clixon-restconf.yang for config and clixon-lib.yang for RPC
                  Process control of restconf daemon is as follows:
                  - on RPC start, if enable is true, start the service, if false, error or ignore it

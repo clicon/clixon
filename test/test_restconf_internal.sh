@@ -7,9 +7,8 @@
 # - on enable change, make the state as configured
 # - No restconf config means enable: false (extra rule)
 # See test_restconf_netns for network namespaces
+# See test_restconf_internal_cases for some special use-cases
 # XXX Lots of sleeps to remove race conditions. I am sure there are others way to fix this
-# XXX It is wrong to use $RESTCONF in clixon-config when using CLICON_BACKEND_RESTCONF_PROCESS
-# XXX the tests should be rewritten to use running datastore
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -19,14 +18,21 @@ APPNAME=example
 cfg=$dir/conf.xml
 startupdb=$dir/startup_db
 
-# Define default restconfig config: RESTCONFIG
-RESTCONFIG=$(restconf_config none false)
+# Restconf debug
+RESTCONFDBG=$DBG
+RCPROTO=http # no ssl here
 
+if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+    EXTRACONF="<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
+else
+    EXTRACONF=""
+fi
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
+  $EXTRACONF
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
@@ -42,7 +48,6 @@ cat <<EOF > $cfg
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
   <!-- start restconf from backend -->
   <CLICON_BACKEND_RESTCONF_PROCESS>true</CLICON_BACKEND_RESTCONF_PROCESS>
-  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -58,58 +63,73 @@ module example {
 EOF
 
 # Subroutine send a process control RPC and tricks to echo process-id returned
-# Args:
-# 1: operation
-# 2: expectret  0: means expect pi 0 as return, else something else
-function testrpc()
+# Args, expected values of:
+# 0: ACTIVE: true or false
+# 1: STATUS: stopped/running/exiting
+# retvalue:
+# $pid
+function rpcstatus()
 {
-    operation=$1
-    expectret=$2
+    if [ $# -ne 2 ]; then
+	err1 "rpcstatus: # arguments: 2" "$#"
+    fi
+    active=$1
+    status=$2
     
     sleep $DEMSLEEP
-    new "send rpc $operation"
+    new "send rpc status"
     ret=$($clixon_netconf -qf $cfg<<EOF
 $DEFAULTHELLO
 <rpc $DEFAULTNS>
   <process-control xmlns="http://clicon.org/lib">
     <name>restconf</name>
-    <operation>$operation</operation>
+    <operation>status</operation>
   </process-control>
 </rpc>]]>]]>
 EOF
 )
-
-#    >&2 echo "ret:$ret" # debug
-
-    expect1="<pid xmlns=\"http://clicon.org/lib\">[0-9]*</pid>"
-    match=$(echo "$ret" | grep --null -Go "$expect1")
-#    >&2 echo "match:$match" # debug
+    # Check pid
+    expect="<pid xmlns=\"http://clicon.org/lib\">[0-9]*</pid>"
+    match=$(echo "$ret" | grep --null -Go "$expect")
     if [ -z "$match" ]; then
 	pid=0
     else
 	pid=$(echo "$match" | awk -F'[<>]' '{print $3}')
     fi
-    >&2 echo "pid:$pid" # debug
-
     if [ -z "$pid" ]; then
-	err "Running process" "$ret"
+	err "No pid return value" "$ret"
     fi
+    if $active; then
+	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>]]>]]>$"
+    else
+	# inactive, no startime or pid
+	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status></rpc-reply>]]>]]>$"
+    fi
+    match=$(echo "$ret" | grep --null -Go "$expect")
+    if [ -z "$match" ]; then
+	err "$expect" "$ret"
+    fi
+}
 
-    new "check restconf retvalue"
-    if [ $operation = "status" ]; then
-	if [ $expectret -eq 0 ]; then
-	    if [ $pid -ne 0 ]; then
-		err "No process" "$pid"
-	    fi
-	else
-	    if [ $pid -eq 0 ]; then
-		err "Running process"
-	    fi
-	fi
-	echo "$pid" # cant use return that only uses 0-255
-    fi
+# Subroutine send a process control RPC and tricks to echo process-id returned
+# Args:
+# 1: operation   One of stop/start/restart
+function rpcoperation()
+{
+    operation=$1
+    
+    sleep $DEMSLEEP
+    new "send rpc $operation"
+    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><process-control xmlns=\"http://clicon.org/lib\"><name>restconf</name><operation>$operation</operation></process-control></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok xmlns=\"http://clicon.org/lib\"/></rpc-reply>]]>]]>$"
+
     sleep $DEMSLEEP
 }
+
+# This test is confusing:
+# The whole restconf config is in clixon-config wich binds 0.0.0.0:80 which will be the only
+# config the restconf daemon ever reads.
+# However, enable (and debug) flag is stored in running db but only backend will ever read that.
+# It just controls how restconf is started, but thereafter the restconf daemon reads the static db in clixon-config file
 
 new "ENABLE true"
 # First basic operation with restconf enable is true
@@ -117,6 +137,15 @@ cat<<EOF > $startupdb
 <${DATASTORE_TOP}>
    <restconf xmlns="http://clicon.org/restconf">
       <enable>true</enable>
+      <auth-type>none</auth-type>
+      <pretty>false</pretty>
+      <debug>$RESTCONFDBG</debug>
+      <socket>
+         <namespace>default</namespace>
+	 <address>0.0.0.0</address>
+	 <port>80</port>
+	 <ssl>false</ssl>
+      </socket>
    </restconf>
 </${DATASTORE_TOP}>
 EOF
@@ -134,18 +163,19 @@ if [ $BE -ne 0 ]; then
 
     new "start backend -s startup -f $cfg"
     start_backend -s startup -f $cfg
-
-    new "wait backend"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 # For debug
 #>&2 echo "curl $CURLOPTS -X POST -H \"Content-Type: application/yang-data+json\" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{\"clixon-lib:input\":{\"name\":\"restconf\",\"operation\":\"status\"}}'"
 
 # Get pid of running process and check return xml
 new "1. Get rpc status"
-pid0=$(testrpc status 1) # Save pid0
-if [ $? -ne 0 ]; then echo "$pid0";exit -1; fi
+rpcstatus true running 
+pid0=$pid # Save pid0
+if [ $pid0 -eq 0 ]; then err "Pid" 0; fi
 
 new "check restconf process runnng using ps pid:$pid0"
 ps=$(ps -hp $pid0) 
@@ -167,8 +197,9 @@ new "try restconf rpc status"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}')" 0 "HTTP/1.1 200 OK" '{"clixon-lib:output":' '"active":' '"pid":'
 
 new "2. Get status"
-pid1=$(testrpc status 1)
-if [ $? -ne 0 ]; then echo "$pid1";exit -1; fi
+rpcstatus true running
+pid1=$pid
+if [ $pid1 -eq 0 ]; then err "pid" 0; fi
 
 new "Check same pid"
 if [ "$pid0" -ne "$pid1" ]; then
@@ -179,29 +210,31 @@ new "try restconf rpc restart"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"restart"}}')" 0 "HTTP/1.1 204 No Content"
 
 new "3. Get status"
-pid1=$(testrpc status 1)
-if [ $? -ne 0 ]; then echo "$pid1";exit -1; fi
+rpcstatus true running
+pid1=$pid
+if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
 
 new "check different pids"
 if [ "$pid0" -eq "$pid1" ]; then
-    err "not $pid0"
+    err1 "not $pid0" "$pid1"
 fi
 
 new "4. stop restconf RPC"
-testrpc stop 0
+rpcoperation stop
 if [ $? -ne 0 ]; then exit -1; fi
 
 new "5. Get rpc status stopped"
-pid=$(testrpc status 0)
-if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
+rpcstatus false stopped
+if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
 
 new "6. Start rpc again"
-testrpc start 0
+rpcoperation start
 if [ $? -ne 0 ]; then exit -1; fi
 
 new "7. Get rpc status"
-pid3=$(testrpc status 1)
-if [ $? -ne 0 ]; then echo "$pid3";exit -1; fi
+rpcstatus true running
+pid3=$pid
+if [ $pid3 -eq 0 ]; then err "Pid" 0; fi
 
 new "check restconf process running using ps"
 ps=$(ps -hp $pid3)
@@ -210,30 +243,32 @@ if [ -z "$ps" ]; then
 fi
 
 if [ $pid0 -eq $pid3 ]; then
-    err "A different pid" "same pid: $pid3"
+    err1 "A different pid" "same pid: $pid3"
 fi
 
 new "kill restconf"
 stop_restconf_pre
 
 new "8. start restconf RPC"
-testrpc start 0
+rpcoperation start
 if [ $? -ne 0 ]; then exit -1; fi
 
 new "9. check status RPC on"
-pid5=$(testrpc status 1) # Save pid5
-if [ $? -ne 0 ]; then echo "$pid5";exit -1; fi
+rpcstatus true running
+pid5=$pid
+if [ $pid5 -eq 0 ]; then err "Pid" 0; fi
 
 new "10. restart restconf RPC"
-testrpc restart 0
+rpcoperation restart
 if [ $? -ne 0 ]; then exit -1; fi
 
 new "11. Get restconf status rpc"
-pid7=$(testrpc status 1) # Save pid7
-if [ $? -ne 0 ]; then echo "$pid7";exit -1; fi
+rpcstatus true running
+pid7=$pid
+if [ $pid7 -eq 0 ]; then err "Pid" 0; fi
 
 if [ $pid5 -eq $pid7 ]; then
-    err "A different pid" "samepid: $pid7"
+    err1 "A different pid" "samepid: $pid7"
 fi
 
 if [ $BE -ne 0 ]; then
@@ -261,14 +296,17 @@ if [ $BE -ne 0 ]; then
     new "start backend -s none -f $cfg"
     start_backend -s none -f $cfg
 
-    new "waiting"
+    new "wait backend"
     wait_backend
 fi
 
-new "12. Get restconf (running) after restart"
-pid=$(testrpc status 1)
-if  [ valgrindtest -ne 2 ]; then # XXX does not work w backend valgrind test
-    if [ $? -ne 0 ]; then echo "$pid"; exit -1; fi
+new "wait restconf"
+wait_restconf
+
+if  [ $valgrindtest -ne 2 ]; then # Restart with same restconf pid does not work w backend valgrind test
+    new "12. Get restconf (running) after restart"
+    rpcstatus true running
+    if [ $pid -eq 0 ]; then err "Pid" 0; fi
 fi
 
 if [ $BE -ne 0 ]; then
@@ -283,14 +321,23 @@ if [ $BE -ne 0 ]; then
 fi
 #--------------------------
 
-# So far, restconf config enable flag has been true. Now change enable flag.
+# Now start with enable=false
 
-new "ENABLE false"
+new "enable false"
 # Second basic operation with restconf enable is false
 cat<<EOF > $startupdb
 <${DATASTORE_TOP}>
    <restconf xmlns="http://clicon.org/restconf">
       <enable>false</enable>
+      <auth-type>none</auth-type>
+      <pretty>false</pretty>
+      <debug>$RESTCONFDBG</debug>
+      <socket>
+         <namespace>default</namespace>
+	 <address>0.0.0.0</address>
+	 <port>80</port>
+	 <ssl>false</ssl>
+      </socket>
    </restconf>
 </${DATASTORE_TOP}>
 EOF
@@ -307,68 +354,74 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s startup -f $cfg"
     start_backend -s startup -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "13. check status RPC off"
-pid=$(testrpc status 0)
-if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
+rpcstatus false stopped
+if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
 
-new "14. start restconf RPC"
-testrpc start 0
+new "14. start restconf RPC (but disabled)"
+rpcoperation start
 if [ $? -ne 0 ]; then exit -1; fi
 
-new "15. check status RPC off"
-pid=$(testrpc status 0)
-if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
+new "15. check status RPC still off"
+rpcstatus false stopped
+if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
 
 new "Enable restconf"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config><restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable></restconf></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config><restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><debug>$RESTCONFDBG</debug></restconf></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-new "netconf commit"
+new "commit enable"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-sleep $DEMSLEEP
-
 new "16. check status RPC on"
-pid=$(testrpc status 1)
-if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
+rpcstatus true running
+pid1=$pid
+if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
 
-# Edit a field, eg debug
-new "Edit a restconf field via restconf"
-expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/clixon-restconf:restconf/debug -d '{"clixon-restconf:debug":1}' )" 0 "HTTP/1.1 201 Created"
+new "wait restconf"
+wait_restconf
+
+# Edit a field, eg pretty to trigger a restart
+new "Edit a restconf field via restconf" # XXX fcgi fails here
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/clixon-restconf:restconf/pretty -d '{"clixon-restconf:pretty":true}' )" 0 "HTTP/1.1 204 No Content"
 
 new "check status RPC new pid"
-pid1=$(testrpc status 1)
+rpcstatus true running
+pid2=$pid
+if [ $pid2 -eq 0 ]; then err "Pid" 0; fi
 
-if [ $? -ne 0 ]; then echo "$pid1";exit -1; fi
-if [ $pid -eq $pid1 ]; then
-    err "A different pid" "Same pid: $pid"
+if [ $pid1 -eq $pid2 ]; then
+    err1 "A different pid" "$pid1"
 fi
 
-sleep $DEMSLEEP
+new "wait restconf"
+wait_restconf
 
 new "Edit a non-restconf field via restconf"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"example:val":"xyz"}' )" 0 "HTTP/1.1 201 Created"
 
-new "check status RPC same pid"
-pid2=$(testrpc status 1)
-if [ $? -ne 0 ]; then echo "$pid2";exit -1; fi
-if [ $pid1 -ne $pid2 ]; then
-    err "Same pid $pid1" "$pid2"
+new "17. check status RPC same pid"
+rpcstatus true running
+pid3=$pid
+if [ $pid3 -eq 0 ]; then err "Pid" 0; fi
+
+if [ $pid2 -ne $pid3 ]; then
+    err1 "Same pid $pid2" "$pid3"
 fi
 
 new "Disable restconf"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config><restconf xmlns=\"http://clicon.org/restconf\"><enable>false</enable></restconf></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-new "netconf commit"
+new "commit disable"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "17. check status RPC off"
-pid=$(testrpc status 0)
-if [ $? -ne 0 ]; then echo "$pid";exit -1; fi
+rpcstatus false stopped
+if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
 
 # Negative validation checks of clixon-restconf / socket
 
@@ -400,6 +453,8 @@ endtest
 
 # Set by restconf_config
 unset RESTCONFIG
+unset RESTCONFDBG
+unset RCPROTO
 
 rm -rf $dir
 

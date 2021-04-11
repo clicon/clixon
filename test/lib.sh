@@ -72,7 +72,11 @@ testname=
 # eg logging to a file: RCLOG="-l f/www-data/restconf.log"
 : ${RCLOG:=}
 
+# Namespace: netconf base
 BASENS='urn:ietf:params:xml:ns:netconf:base:1.0'
+
+# Namespace: Clixon lib
+LIBNS='xmlns="http://clicon.org/lib"'
 
 # Default netconf namespace statement, typically as placed on top-level <rpc xmlns=""
 DEFAULTONLY="xmlns=\"$BASENS\""
@@ -230,6 +234,7 @@ fi
 # error and exit,
 # arg1: expected
 # arg2: errmsg[optional]
+# Assumes: $dir and $expect are set
 function err(){
   echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
@@ -245,6 +250,20 @@ function err(){
   echo "$expect"| od -t c > $dir/clixon-expect
   diff $dir/clixon-expect $dir/clixon-ret 
 
+  exit -1 #$testnr
+}
+
+# Dont print diffs
+function err1(){
+  echo -e "\e[31m\nError in Test$testnr [$testname]:"
+  if [ $# -gt 0 ]; then 
+      echo "Expected: $1"
+      echo
+  fi
+  if [ $# -gt 1 ]; then 
+      echo "Received: $2"
+  fi
+  echo -e "\e[0m"
   exit -1 #$testnr
 }
 
@@ -318,7 +337,7 @@ function start_restconf(){
     echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $*"
     sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $* &
     if [ $? -ne 0 ]; then
-	err
+	err1 "expected 0" "$?"
     fi
 }
 
@@ -352,7 +371,7 @@ function wait_restconf(){
     while [[ $hdr != *"200 OK"* ]]; do
 #	echo "wait_restconf $i"
 	if [ $i -ge $DEMLOOP ]; then
-	    err "restconf timeout $DEMWAIT seconds"
+	    err1 "restconf timeout $DEMWAIT seconds"
 	fi
 	sleep $DEMSLEEP
 	hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)

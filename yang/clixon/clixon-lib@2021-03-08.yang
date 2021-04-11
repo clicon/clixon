@@ -184,7 +184,10 @@ module clixon-lib {
 		    leaf active {
 			description
 			    "True if process is running, false if not. 
-                             More specifically, there is a process-id and it exists (in Linux: kill(pid,0)";
+                             More specifically, there is a process-id and it exists (in Linux: kill(pid,0).
+                             Note that this is actual state and status is administrative state,
+                             which means that changing the administrative state, eg stopped->running
+                             may not immediately switch active to true.";
 			type boolean;
 		    }
 		    leaf description {
@@ -196,8 +199,13 @@ module clixon-lib {
 			description "Start command with arguments";
 		    }
 		    leaf status {
-			description "Exit Status as defined by waitpid() - if exited";
-			type int32;
+			description
+			    "Administrative status (except on external kill where it enters stopped
+                             directly from running):
+                             stopped: pid=0,   No process running
+                             running: pid set, Process started and believed to be running
+                             exiting: pid set, Process is killed by parent but not waited for";
+			type string;
 		    }
 		    leaf starttime {
 			description "Time of starting process UTC";

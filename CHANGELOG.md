@@ -37,8 +37,10 @@ Expected: April
 ### API changes on existing protocol/config features
 
 * Native RESTCONF mode
-  * Restconf "evhtp" mode MUST use libevhtp from https://github.com/clixon/clixon-libevhtp.git instead from criticalstack
-  * To configure native mode use: `configure --with-restconf=native`, changed from: `configure --with-restconf=evhtp`
+  * Renamed restconf "evhtp" mode to "native" mode
+    * To configure native mode use: `configure --with-restconf=native`, changed from: `configure --with-restconf=evhtp`
+  * Native mode MUST use libevhtp from https://github.com/clixon/clixon-libevhtp.git instead from criticalstack
+
 * NETCONF Hello message semantics has been made stricter according to RFC 6241 Sec 8.1, for example:
   * A client MUST send a <hello> element.
   * Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" (or 1.0 for RFC 4741)
@@ -46,6 +48,7 @@ Expected: April
   * You can set `CLICON_NETCONF_HELLO_OPTIONAL` to true to use the old behavior of essentially ignoring hellos.
 * New clixon-lib@2020-03-08.yang revision
   * Changed: RPC process-control output to choice with status fields
+    * The fields are: active, description, command, status, starttime, pid (or just ok).
 * New clixon-config@2020-03-08.yang revision
   * Added: `CLICON_NETCONF_HELLO_OPTIONAL`
   * Added: `CLICON_CLI_AUTOCLI_EXCLUDE`

@@ -238,12 +238,14 @@ restconf_pseudo_process_commit(clicon_handle    h,
 {
     int    retval = -1;
     cxobj *xtarget;
+    cxobj *xsource;
     cxobj *cx;
     int    enabled = 0;
     cxobj *xb;
     
     clicon_debug(1, "%s", __FUNCTION__);
     xtarget = transaction_target(td);
+    xsource = transaction_src(td);
     if (xpath_first(xtarget, NULL, "/restconf[enable='true']") != NULL)
 	enabled++;
     /* Get debug flag of restconf config, set the restconf start -D daemon flag according
@@ -271,7 +273,15 @@ restconf_pseudo_process_commit(clicon_handle    h,
 		/* A restart can terminate a restconf connection (cut the tree limb you are sitting on)
 		 * Specifically, the socket is terminated where the reply is sent, which will
 		 * cause the curl to fail.
+		 * Note that it should really be a START if the process is stopped, but the
+		 * commit code need not know any of that
 		 */
+		if (clixon_process_operation(h, RESTCONF_PROCESS, PROC_OP_RESTART, 0) < 0)
+		    goto done;
+	    }
+	    else if ((cx = xpath_first(xsource, NULL, "/restconf")) != NULL &&
+		     xml_flag(cx, XML_FLAG_CHANGE|XML_FLAG_DEL)){
+		/* Or something deleted */
 		if (clixon_process_operation(h, RESTCONF_PROCESS, PROC_OP_RESTART, 0) < 0)
 		    goto done;
 	    }

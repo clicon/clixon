@@ -431,15 +431,17 @@ main(int    argc,
     if (clixon_plugin_start_all(h) < 0)
 	goto done;
 
-    /* First try to get restconf config from local config-file */
-    if ((xrestconf1 = clicon_conf_restconf(h)) != NULL){
-	if ((ret = restconf_config_init(h, xrestconf1)) < 0)
-	    goto done;
-	if (ret == 1)
-	    configure_done = 1;
+    if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS") == 0){
+	/* If not read from backend, try to get restconf config from local config-file */
+	if ((xrestconf1 = clicon_conf_restconf(h)) != NULL){
+	    if ((ret = restconf_config_init(h, xrestconf1)) < 0)
+		goto done;
+	    if (ret == 1)
+		configure_done = 1;
+	}
     }
     /* If no local config, or it is disabled, try to query backend of config. */
-    if (!configure_done){
+    else {
 	/* Loop to wait for backend starting, try again if not done */
 	while (1){
 	    if (clicon_hello_req(h, &id) < 0){

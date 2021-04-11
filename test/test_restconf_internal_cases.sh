@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Send restconf rpc:s when starting from backend
 # Two specific usecases that have been problematic are tested here
-# In comparison test_restconf_rpc.sh:
+# In comparison test_restconf_internal.sh:
 # - uses externally started restconf, here started by backend
 # - generic tests, here specific
 # The first usecases is: empty status message
@@ -26,14 +26,21 @@ cfg=$dir/conf.xml
 startupdb=$dir/startup_db
 
 # Restconf debug
-RESTCONFDBG=0
+RESTCONFDBG=$DBG
 RCPROTO=http # no ssl here
+
+if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+    EXTRACONF="<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
+else
+    EXTRACONF=""
+fi
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
+  $EXTRACONF
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
@@ -63,54 +70,54 @@ module example {
 }
 EOF
 
-function testrpc()
+# Subroutine send a process control RPC and tricks to echo process-id returned
+# Args, expected values of:
+# 0: ACTIVE: true or false
+# 1: STATUS: stopped/running/exiting
+# retvalue:
+# $pid
+# See also in test_restconf_internal.sh
+function rpcstatus()
 {
-    operation=$1
-    expectret=$2
+    if [ $# -ne 2 ]; then
+	err1 "rpcstatus: # arguments: 2" "$#"
+    fi
+    active=$1
+    status=$2
     
     sleep $DEMSLEEP
-    new "send rpc $operation"
+    new "send rpc status"
     ret=$($clixon_netconf -qf $cfg<<EOF
 $DEFAULTHELLO
 <rpc $DEFAULTNS>
   <process-control xmlns="http://clicon.org/lib">
     <name>restconf</name>
-    <operation>$operation</operation>
+    <operation>status</operation>
   </process-control>
 </rpc>]]>]]>
 EOF
 )
-
-#    >&2 echo "ret:$ret" # debug
-
-    expect1="<pid xmlns=\"http://clicon.org/lib\">[0-9]*</pid>"
-    match=$(echo "$ret" | grep --null -Go "$expect1")
-#    >&2 echo "match:$match" # debug
+    # Check pid
+    expect="<pid xmlns=\"http://clicon.org/lib\">[0-9]*</pid>"
+    match=$(echo "$ret" | grep --null -Go "$expect")
     if [ -z "$match" ]; then
 	pid=0
     else
 	pid=$(echo "$match" | awk -F'[<>]' '{print $3}')
     fi
-#    >&2 echo "pid:$pid" # debug
-
     if [ -z "$pid" ]; then
-	err "Running process" "$ret"
+	err "No pid return value" "$ret"
     fi
-
-    new "check restconf retvalue"
-    if [ $operation = "status" ]; then
-	if [ $expectret -eq 0 ]; then
-	    if [ $pid -ne 0 ]; then
-		err "No process" "$pid"
-	    fi
-	else
-	    if [ $pid -eq 0 ]; then
-		err "Running process"
-	    fi
-	fi
-	echo "$pid" # cant use return that only uses 0-255
+    if $active; then
+	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>]]>]]>$"
+    else
+	# inactive, no startime or pid
+	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status></rpc-reply>]]>]]>$"
     fi
-    sleep $DEMSLEEP
+    match=$(echo "$ret" | grep --null -Go "$expect")
+    if [ -z "$match" ]; then
+	err "$expect" "$ret"
+    fi
 }
 
 # FIRST usecase
@@ -127,7 +134,6 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
-
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
 fi
@@ -142,53 +148,33 @@ RESTCONFIG1=$(cat <<EOF
 EOF
 )
 
-LIBNS='xmlns="http://clicon.org/lib"'
-
-new "get status 1"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><process-control xmlns=\"http://clicon.org/lib\"><name>restconf</name><operation>status</operation></process-control></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><active $LIBNS>false</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D $RESTCONFDBG</command></rpc-reply>]]>]]>$"
+new "1. get status"
+rpcstatus false stopped
+if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
 
 new "enable minimal restconf, no server"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG1</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-new "netconf commit"
+new "commit minimal server"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-# Get pid2
-new "get pid"
-pid2=$(testrpc status 1)
-echo "pid2:$pid2"
+new "2. get status, get pid1"
+rpcstatus true running
+pid1=$pid
+if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
 
-new "get status 2"
-ret=$($clixon_netconf -qf $cfg<<EOF
-$DEFAULTHELLO
-<rpc $DEFAULTNS>
-  <process-control xmlns="http://clicon.org/lib">
-    <name>restconf</name>
-    <operation>status</operation>
-  </process-control>
-</rpc>]]>]]>
-EOF
-)
-expect="^<rpc-reply $DEFAULTNS><active $LIBNS>true</active><description $LIBNS>Clixon RESTCONF process</description><pid $LIBNS>$pid2</pid><command $LIBNS>/www-data/clixon_restconf -f $cfg -D $RESTCONFDBG</command><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime>"
-match=$(echo "$ret" | grep --null -Go "$expect")
-if [ -z "$match" ]; then
-    err "$expect" "$ret"
-fi
-
-# Kill it
-new "kill $pid2"
-sudo kill $pid2
+new "kill $pid1 externally"
+sudo kill $pid1
 sleep $DEMSLEEP
 
-# Why kill it twice?
-# I should really debug this,... it happens in docker somethimes but its not the aim of the test
-new "kill $pid2 again"
-sudo kill $pid2
+# Why kill it twice? it happens in docker somethimes but is not the aim of the test
+new "kill $pid1 again"
+sudo kill $pid1 2> /dev/null
 sleep $DEMSLEEP
 
-new "Check killed"
-# Ensure no pid
-testrpc status 0 > /dev/null
+new "3. get status: Check killed"
+rpcstatus false stopped
+if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
 
 RESTCONFIG2=$(cat <<EOF
 <restconf xmlns="http://clicon.org/restconf">
@@ -196,16 +182,15 @@ RESTCONFIG2=$(cat <<EOF
 </restconf>
 EOF
 )
-new "create a server"
+new "create server"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG2</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-new "netconf commit"
+new "commit create server"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-# 3. get status
-
-new "get status 3"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><process-control xmlns=\"http://clicon.org/lib\"><name>restconf</name><operation>status</operation></process-control></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><active $LIBNS>true</active><description $LIBNS>Clixon RESTCONF process</description><pid $LIBNS>"
+new "4. get status"
+rpcstatus true running
+if [ $pid -eq 0 ]; then err "Pid" 0; fi
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -238,8 +223,9 @@ fi
 new "wait backend"
 wait_backend
 
-new "get status 1"
-testrpc status 0 > /dev/null
+new "5. get status not started"
+rpcstatus false stopped
+if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
 
 RESTCONFIG1=$(cat <<EOF
 <restconf xmlns="http://clicon.org/restconf">
@@ -255,7 +241,7 @@ EOF
 new "Create server with invalid address"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG1</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-new "netconf commit"
+new "commit invalid server"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 sleep $DEMSLEEP
@@ -285,6 +271,9 @@ if [ -n "$ret" ]; then
     err "No zombie process" "$ret"
 fi
 
+# THIRD usecase
+# NOTE this does not apply for fcgi where servers cant be "removed"
+if [ "${WITH_RESTCONF}" != "fcgi" ]; then
 new "3. restconf not removed"
 
 new "kill old restconf"
@@ -304,8 +293,9 @@ fi
 new "wait backend"
 wait_backend
 
-new "get status 1"
-testrpc status 0 > /dev/null
+new "6. get status stopped"
+rpcstatus false stopped
+if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
 
 RESTCONFIG1=$(cat <<EOF
 <restconf xmlns="http://clicon.org/restconf">
@@ -325,12 +315,14 @@ new "commit create"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 # pid
-pid1=$(testrpc status 1)
-
+new "7. get status, get pid1"
+rpcstatus true running
+pid1=$pid
+if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
 sleep $DEMSLEEP
 
 new "Get restconf config 1"
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf)" 0 "HTTP/1.1 200 OK" "<restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><auth-type>none</auth-type><debug>0</debug><pretty>false</pretty><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf)" 0 "HTTP/1.1 200 OK" "<restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><auth-type>none</auth-type><debug>$RESTCONFDBG</debug><pretty>false</pretty><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
 
 # remove it
 new "Delete server"
@@ -339,14 +331,20 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS xmlns:nc=\"
 new "commit delete"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-new "Get restconf config 2"
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf)" 0 "HTTP/1.1 200 OK" "<restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><auth-type>none</auth-type><debug>0</debug><pretty>false</pretty></restconf>"
+# Here restconf should have been restarted with no listener, the process is up but does not
+# reply on restconf
 
-pid2=$(testrpc status 1)
+new "8. get status, get different pid2"
+rpcstatus true running
+pid2=$pid
+if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
 
-if [ $pid1 -ne $pid2 ]; then
-    err "Same pid:$pid1" "$pid2"
+if [ $pid1 -eq $pid2 ]; then
+    err1 "A different pid" "same pid: $pid1"
 fi
+
+new "Get restconf config 2: no server"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf 2>&1)" 7 "Failed to connect" "Connection refused"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -358,6 +356,8 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
+
+fi # "${WITH_RESTCONF}" != "fcgi"
 
 new "endtest"
 endtest
