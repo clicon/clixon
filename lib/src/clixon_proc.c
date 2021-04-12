@@ -627,7 +627,7 @@ clixon_process_operation(clicon_handle  h,
     proc_operation   op;
     int              sched = 0; /* If set, process action should be scheduled, register a timeout */
 
-    clicon_debug(1, "%s name:%s op:%s", __FUNCTION__, name, clicon_int2str(proc_operation_map, op));
+    clicon_debug(1, "%s name:%s op:%s", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));
     if (_proc_entry_list == NULL)
 	goto ok;
     pe = _proc_entry_list;

@@ -52,10 +52,12 @@ validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
 
-no("Negate or remove") debug("Debugging parts of the system"), cli_debug_cli((int32)0);
-debug("Debugging parts of the system"), cli_debug_cli((int32)1);{
-    level("Set debug level: 1..n") <level:int32>("Set debug level (0..n)"), cli_debug_backend();
+debug("Debugging parts of the system"){
+    cli("Set cli debug")	 <level:int32>("Set debug level (0..n)"), cli_debug_cli();
+    backend("Set backend debug") <level:int32>("Set debug level (0..n)"), cli_debug_backend();
+    restconf("Set restconf debug") <level:int32>("Set debug level (0..n)"), cli_debug_restconf();
 }
+
 shell("System command") <source:rest>, cli_start_shell();
 copy("Copy and create a new object") {
     running("Copy from running db")  startup("Copy to startup config"), db_copy("running", "startup");
