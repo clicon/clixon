@@ -2,7 +2,7 @@
 # Test of the general-purpose (raw) upgrade mechanism.
 # Input is a startup db without mod-state info.
 # It has wrong namespace bindings and needs to remove some nodes
-# Output is a valid config woith correct namespaces and removed nods
+# Output is a valid config with correct namespaces and removed nods
 # The code for this is in the main example backend plugin.
 
 # Magic line must be first in script (see README.md)
@@ -26,6 +26,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_MODSTATE>true</CLICON_XMLDB_MODSTATE>
+  <CLICON_XMLDB_UPGRADE_CHECKOLD>false</CLICON_XMLDB_UPGRADE_CHECKOLD>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>

@@ -192,6 +192,7 @@ startup_common(clicon_handle       h,
     cxobj              *xt = NULL;
     cxobj              *x;
     cxobj              *xret = NULL;
+    cxobj              *xerr = NULL;
 
     /* If CLICON_XMLDB_MODSTATE is enabled, then get the db XML with 
      * potentially non-matching module-state in msdiff
@@ -203,9 +204,19 @@ startup_common(clicon_handle       h,
     /* Get the startup datastore WITHOUT binding to YANG, sorting and default setting. 
      * It is done below, later in this function
      */
-    if ((ret = xmldb_get0(h, db, YB_NONE, NULL, "/", 0, &xt, msdiff, NULL)) < 0)
-	goto done;
-    /* ret should not be 0 */
+    if (clicon_option_bool(h, "CLICON_XMLDB_UPGRADE_CHECKOLD")){
+	if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, &xt, msdiff, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){     /* ret should not be 0 */
+	    if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+		goto done;
+	    goto fail;
+	}
+    }
+    else {
+	if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, &xt, msdiff, &xerr) < 0)
+	    goto done;
+    }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, 0, "Yang spec not set");
 	goto done;
@@ -315,6 +326,8 @@ startup_common(clicon_handle       h,
  ok:
     retval = 1;
  done:
+    if (xerr)
+	xml_free(xerr);
     if (xret)
 	xml_free(xret);
     if (xt)

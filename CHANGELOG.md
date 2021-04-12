@@ -33,10 +33,11 @@ Expected: April
 
 ### New features
 
-* Add multiple yang support also for obsolete versions
-  * This means that files and datastores supporting modstate also looks for deleted or updated yang modules.
+* Add multiple yang support also for old/previous versions
+  * This means that files and datastores supporting modstate also look for deleted or updated yang modules.
   * A stricter binding which gives error if loading outdated YANG file does not exist.
-
+  * Keep old behavior: dont check old config file: set `CLICON_XMLDB_UPGRADE_CHECKOLD` to false.
+	
 ### API changes on existing protocol/config features
 
 * Native RESTCONF mode
@@ -55,6 +56,7 @@ Expected: April
 * New clixon-config@2020-03-08.yang revision
   * Added: `CLICON_NETCONF_HELLO_OPTIONAL`
   * Added: `CLICON_CLI_AUTOCLI_EXCLUDE`
+  * Added: `CLICON_XMLDB_UPGRADE_CHECKOLD`
 
 ### C/CLI-API changes on existing features
 

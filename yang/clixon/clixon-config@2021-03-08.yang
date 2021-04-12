@@ -46,8 +46,9 @@ module clixon-config {
     revision 2021-03-08 {
 	description
 	    "Added option:
-                   CLICON_NETCONF_HELLO_OPTIONAL;
-		   CLICON_CLI_AUTOCLI_EXCLUDE";
+                   CLICON_NETCONF_HELLO_OPTIONAL
+		   CLICON_CLI_AUTOCLI_EXCLUDE
+	           CLICON_XMLDB_UPGRADE_CHECKOLD";
     }
     revision 2020-12-30 {
 	description
@@ -778,6 +779,16 @@ module clixon-config {
                  info. When loaded at startup, a check is made if the system
                  yang modules match.
                  See also CLICON_MODULE_LIBRARY_RFC7895";
+	}
+	leaf CLICON_XMLDB_UPGRADE_CHECKOLD {
+	    type boolean;
+	    default true;
+	    description
+		"Controls behavior of check of startup in upgrade scenarios.
+                 If set, yang bind and check datastore syntax against the old Yang. 
+                 The old yang must be accessible via YANG_DIR.
+                 Will fail startup if old yang not found or if old config does not match.
+                 If not set, no yang check of old config is made until it is upgraded to new yang.";
 	}
 	leaf CLICON_XML_CHANGELOG {
 	    type boolean;

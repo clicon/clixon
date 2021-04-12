@@ -376,11 +376,8 @@ yang_modules_state_get(clicon_handle    h,
 /*! For single module state with namespace, get revisions and send upgrade callbacks
  * @param[in]  h        Clicon handle
  * @param[in]  xt       Top-level XML tree to be updated (includes other ns as well)
- * @param[in]  xd       XML module state diff (for one yang module)
- * @param[in]  xvec     Help vector where to store XML child nodes (??)
- * @param[in]  xlen     Length of xvec
- * @param[in]  ns0      Namespace of module state we are looking for
- * @param[in]  op       add,del, or mod
+ * @param[in]  xmod     XML module state diff (for one yang module)
+ * @param[in]  ns       Namespace of module state we are looking for
  * @param[out] cbret    Netconf error message if invalid
  * @retval     1        OK
  * @retval     0        Validation failed (cbret set)

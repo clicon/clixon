@@ -116,11 +116,11 @@ new "cli check load"
 expectpart "$($clixon_cli -1 -f $cfg -l o show conf cli)" 0 "interfaces interface eth/0/0 ipv4 enabled true"
 
 new "cli debug set"
-expectpart "$($clixon_cli -1 -f $cfg -l o debug level 1)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o debug cli 1)" 0 "^$"
 
 # How to test this?
 new "cli debug reset"
-expectpart "$($clixon_cli -1 -f $cfg -l o debug level 0)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o debug cli 0)" 0 "^$"
 
 new "cli rpc"
 # We dont know which message-id the cli app uses

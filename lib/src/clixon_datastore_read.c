@@ -475,7 +475,12 @@ xmldb_readfile(clicon_handle    h,
 	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
 	goto done;
     }    
-    /* ret == 0 should not happen with YB_NONE. Binding is done later */
+    /* Read whole datastore file on the form:
+     * <config>
+     *   modstate*  # this is analyzed, stripped and returned as msdiff in text_read_modstate
+     *   config*
+     * </config>
+     * ret == 0 should not happen with YB_NONE. Binding is done later */
     if (strcmp(format, "json")==0){
 	if (clixon_json_parse_file(fp, YB_NONE, yspec, &x0, xerr) < 0) 
 	    goto done;
@@ -502,17 +507,17 @@ xmldb_readfile(clicon_handle    h,
     xml_flag_set(x0, XML_FLAG_TOP);
     if (xml_child_nr(x0) == 0 && de)
 	de->de_empty = 1;
-
-    /* Datastore files may contain module-state defining
-     * which modules are used in the file. 
-     * Strip module-state and return msdiff
-     */
+    /* Check if we support modstate */
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
 	if ((msdiff = modstate_diff_new()) == NULL)
 	    goto done;
     if ((x = xml_find_type(x0, NULL, "modules-state", CX_ELMNT)) != NULL)
 	if ((xmodfile = xml_dup(x)) == NULL)
 	    goto done;
+    /* Datastore files may contain module-state defining
+     * which modules are used in the file. 
+     * Strip module-state, analyze it with CHANGE/ADD/RM and return msdiff
+     */
     if (text_read_modstate(h, yspec, x0, msdiff) < 0)
 	goto done;
     if (yb == YB_MODULE){
@@ -534,6 +539,7 @@ xmldb_readfile(clicon_handle    h,
 		/* Extract revision */
 		if ((rev = xml_find_body(xmsd, "revision")) == NULL)
 		    continue;
+		/* Add old/deleted yangs not present in the loaded/running yangspec. */
 		if ((ymod = yang_find_module_by_namespace_revision(yspec, ns, rev)) == NULL){
 		    /* Append it */
 		    if (yang_spec_parse_module(h, name, rev, yspec) < 0){
@@ -575,13 +581,15 @@ xmldb_readfile(clicon_handle    h,
 			goto done;
 		}
 	    }
-	}
+	} /* if msdiff */
 	/* xml looks like: <top><config><x>... actually YB_MODULE_NEXT 
 	 */
 	if ((ret = xml_bind_yang(x0, YB_MODULE, yspec1?yspec1:yspec, xerr)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
+	if (xml_sort_recurse(x0) < 0)
+	    goto done;
     }
     if (xp){
 	*xp = x0;
@@ -1026,11 +1034,16 @@ xmldb_get(clicon_handle    h,
  * @note Use of 1 for OK
  * @code
  *   cxobj   *xt;
- *   if (xmldb_get0(h, "running", YB_MODULE, nsc, "/interface[name="eth"]", 0, &xt, NULL, NULL) < 0)
+ *   cxobj   *xerr = NULL;
+ *   if (xmldb_get0(h, "running", YB_MODULE, nsc, "/interface[name="eth"]", 0, &xt, NULL, &xerr) < 0)
  *      err;
+ *   if (ret == 0){ # Not if YB_NONE
+ *      # Error handling
+ *   }
  *   ...
  *   xmldb_get0_clear(h, xt);   # Clear tree from default values and flags 
  *   xmldb_get0_free(h, &xt);   # Free tree
+ *   xml_free(xerr);
  * @endcode
  * @see xml_nsctx_node  to get a XML namespace context from XML tree
  * @see xmldb_get for a copy version (old-style)
