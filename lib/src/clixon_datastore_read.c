@@ -563,6 +563,7 @@ xmldb_readfile(clicon_handle    h,
 	    }
 	    /* If we found an obsolete yang module, we need to make a clone yspec with the
 	     * exactly the yang modules found 
+	     * Same ymodules are inserted into yspec1, ie pointers only
 	     */
 	    if (needclone && xmodfile){
 		if ((yspec1 = yspec_new()) == NULL)
@@ -602,9 +603,8 @@ xmldb_readfile(clicon_handle    h,
     }
     retval = 1;
  done:
-    if (yspec1){
-	ys_free1(yspec1, 1); // XXX free childvec
-    }
+    if (yspec1)
+	ys_free1(yspec1, 1);
     if (xmodfile)
 	xml_free(xmodfile);
     if (msdiff)
