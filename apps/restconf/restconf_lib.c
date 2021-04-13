@@ -645,7 +645,7 @@ restconf_config_init(clicon_handle h,
 /*! Create and bind restconf socket
  * 
  * @param[in]  netns0    Network namespace, special value "default" is same as NULL
- * @param[in]  addr      Address as string, eg "0.0.0.0", "::"
+ * @param[in]  addrstr   Address as string, eg "0.0.0.0", "::"
  * @param[in]  addrtype  One of inet:ipv4-address or inet:ipv6-address
  * @param[in]  port      TCP port
  * @param[in]  backlog  Listen backlog, queie of pending connections
@@ -654,7 +654,7 @@ restconf_config_init(clicon_handle h,
  */
 int
 restconf_socket_init(const char   *netns0,
-		     const char   *addr,
+		     const char   *addrstr,
 		     const char   *addrtype,
 		     uint16_t      port,
 		     int           backlog,
@@ -668,7 +668,7 @@ restconf_socket_init(const char   *netns0,
     size_t              sin_len;
     const char         *netns;
 
-    clicon_debug(1, "%s %s %s %s %hu", __FUNCTION__, netns0, addrtype, addr, port);
+    clicon_debug(1, "%s %s %s %s %hu", __FUNCTION__, netns0, addrtype, addrstr, port);
     /* netns default -> NULL */
     if (netns0 != NULL && strcmp(netns0, "default")==0)
 	netns = NULL;
@@ -679,14 +679,14 @@ restconf_socket_init(const char   *netns0,
         sin6.sin6_port   = htons(port);
         sin6.sin6_family = AF_INET6;
 
-        inet_pton(AF_INET6, addr, &sin6.sin6_addr);
+        inet_pton(AF_INET6, addrstr, &sin6.sin6_addr);
         sa = (struct sockaddr *)&sin6;
     }
     else if (strcmp(addrtype, "inet:ipv4-address") == 0) {
         sin_len             = sizeof(struct sockaddr_in);
         sin.sin_family      = AF_INET;
         sin.sin_port        = htons(port);
-        sin.sin_addr.s_addr = inet_addr(addr);
+        sin.sin_addr.s_addr = inet_addr(addrstr);
 
         sa = (struct sockaddr *)&sin;
     }
@@ -694,7 +694,7 @@ restconf_socket_init(const char   *netns0,
 	clicon_err(OE_XML, EINVAL, "Unexpected addrtype: %s", addrtype);
 	return -1;
     }
-    if (clixon_netns_socket(netns, sa, sin_len, backlog, flags, ss) < 0)
+    if (clixon_netns_socket(netns, sa, sin_len, backlog, flags, addrstr, ss) < 0)
 	goto done;
     clicon_debug(1, "%s ss=%d", __FUNCTION__, *ss);
     retval = 0;

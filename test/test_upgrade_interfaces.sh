@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Upgrade a module by registering a manually programmed callback
 # The usecase is inspired by the ietf-interfaces upgrade from
-# 2014-05-08 to 2018-02-20.
+# 2014-05-08 to 2016-01-01 to 2018-02-20.
 # That includes moving parts from interfaces-state to interfaces and then
 # deprecating the whole /interfaces-state tree.
 # A preliminary change list is in Appendix A of
@@ -28,6 +28,28 @@ APPNAME=example
 cfg=$dir/conf.xml
 if2014=$dir/interfaces@2014-05-08.yang
 if2018=$dir/interfaces@2018-02-20.yang
+
+# Create configuration
+cat <<EOF > $cfg
+<clixon-config xmlns="http://clicon.org/config">
+  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_FEATURE>interfaces:if-mib</CLICON_FEATURE>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
+  <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_DIR>/usr/local/lib/example/backend</CLICON_BACKEND_DIR>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_MODSTATE>true</CLICON_XMLDB_MODSTATE>
+  <CLICON_XML_CHANGELOG>false</CLICON_XML_CHANGELOG>
+  <CLICON_XMLDB_UPGRADE_CHECKOLD>false</CLICON_XMLDB_UPGRADE_CHECKOLD>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+</clixon-config>
+EOF
 
 # Original simplified version - note all is config to allow for storing in
 # datastore
@@ -104,7 +126,6 @@ module interfaces{
 	}
     }
 }
-
 EOF
 
 cat <<EOF > $if2018
@@ -227,27 +248,6 @@ cat <<EOF > $dir/startup_db
     </interface>
   </interfaces-state>
 </${DATASTORE_TOP}>
-EOF
-
-# Create configuration
-cat <<EOF > $cfg
-<clixon-config xmlns="http://clicon.org/config">
-  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
-  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_FEATURE>interfaces:if-mib</CLICON_FEATURE>
-  <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_DIR>/usr/local/lib/example/backend</CLICON_BACKEND_DIR>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
-  <CLICON_XMLDB_MODSTATE>true</CLICON_XMLDB_MODSTATE>
-  <CLICON_XML_CHANGELOG>false</CLICON_XML_CHANGELOG>
-  <CLICON_XMLDB_UPGRADE_CHECKOLD>false</CLICON_XMLDB_UPGRADE_CHECKOLD>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
-  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-</clixon-config>
 EOF
 
 # Start from startup and upgrade, check running 

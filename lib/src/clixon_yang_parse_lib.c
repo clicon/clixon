@@ -828,7 +828,9 @@ yang_parse_find_match(clicon_handle h,
 		module);
     xc = NULL;
     while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
-	if (strcmp(xml_name(xc), "CLICON_YANG_DIR") != 0)
+	/* Skip if not yang dir */
+	if (strcmp(xml_name(xc), "CLICON_YANG_DIR") != 0 &&
+	    strcmp(xml_name(xc), "CLICON_YANG_MAIN_DIR") != 0)
 	    continue;
 	dir = xml_body(xc);
 	/* get all matching files in this directory */
@@ -1425,6 +1427,7 @@ yang_spec_parse_module(clicon_handle h,
     /* Do not load module if it already exists */
     if (yang_find_module_by_name_revision(yspec, name, revision) != NULL)
 	goto ok;
+    /* Find a yang module and parse it and all its submodules */
     if (yang_parse_module(h, name, revision, yspec) == NULL)
 	goto done;
     if (yang_parse_post(h, yspec, modmin) < 0)

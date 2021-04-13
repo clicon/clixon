@@ -541,7 +541,7 @@ xmldb_readfile(clicon_handle    h,
 		    continue;
 		/* Add old/deleted yangs not present in the loaded/running yangspec. */
 		if ((ymod = yang_find_module_by_namespace_revision(yspec, ns, rev)) == NULL){
-		    /* Append it */
+		    /* YANG Module not found, look for it and append if found */
 		    if (yang_spec_parse_module(h, name, rev, yspec) < 0){
 			/* Special case: file-not-found errors */
 			if (clicon_suberrno == ENOENT){

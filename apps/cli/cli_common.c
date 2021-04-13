@@ -682,7 +682,7 @@ compare_xmls(cxobj *xc1,
     close(fd);
 
     if ((fd = mkstemp(filename2)) < 0){
-	clicon_err(OE_UNDEF, errno, "mkstemp: %s", strerror (errno));
+	clicon_err(OE_UNDEF, errno, "mkstemp: %s", strerror(errno));
 	goto done;
     }
     if ((f = fdopen(fd, "w")) == NULL)

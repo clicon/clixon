@@ -16,6 +16,10 @@
 #   1. Start server
 #   2. Remove server
 #   3. Check status (Error: still up)
+# The fourth usecase is failing one of several sockets but still reach the working
+#   1. Start two servers, where one fails
+#   2. Reach one not the other
+#   (Wanted to bind an invalid port, but then such a port must be bound and later killed)
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -28,6 +32,7 @@ startupdb=$dir/startup_db
 # Restconf debug
 RESTCONFDBG=$DBG
 RCPROTO=http # no ssl here
+INVALIDADDR=251.1.1.1 # used by fourth usecase as invalid
 
 if [ "${WITH_RESTCONF}" = "fcgi" ]; then
     EXTRACONF="<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
@@ -122,7 +127,7 @@ EOF
 
 # FIRST usecase
 
-new "1. Empty status message"
+new "FIRST usecase: Empty status message"
 
 new "kill old restconf"
 stop_restconf_pre
@@ -163,14 +168,15 @@ rpcstatus true running
 pid1=$pid
 if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
 
-new "kill $pid1 externally"
-sudo kill $pid1
-sleep $DEMSLEEP
+new "Check $pid1 exists"
+while kill -0 $pid1 2> /dev/null; do
+    new "kill $pid1 externally"
+    sudo kill $pid1
+    sleep $DEMSLEEP
+done
 
-# Why kill it twice? it happens in docker somethimes but is not the aim of the test
-new "kill $pid1 again"
-sudo kill $pid1 2> /dev/null
-sleep $DEMSLEEP
+
+
 
 new "3. get status: Check killed"
 rpcstatus false stopped
@@ -204,7 +210,7 @@ if [ $BE -ne 0 ]; then
 fi
 
 # SECOND usecase
-new "2. zombie process on exit"
+new "SECOND usecase: zombie process on exit"
 
 new "kill old restconf"
 stop_restconf_pre
@@ -274,7 +280,7 @@ fi
 # THIRD usecase
 # NOTE this does not apply for fcgi where servers cant be "removed"
 if [ "${WITH_RESTCONF}" != "fcgi" ]; then
-new "3. restconf not removed"
+new "THIRD usecase: restconf not removed"
 
 new "kill old restconf"
 stop_restconf_pre
@@ -314,6 +320,9 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-confi
 new "commit create"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
+new "wait restconf"
+wait_restconf
+
 # pid
 new "7. get status, get pid1"
 rpcstatus true running
@@ -345,6 +354,78 @@ fi
 
 new "Get restconf config 2: no server"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf 2>&1)" 7 "Failed to connect" "Connection refused"
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+fi
+
+fi # "${WITH_RESTCONF}" != "fcgi"
+
+# FOURTH usecase
+
+if [ "${WITH_RESTCONF}" != "fcgi" ]; then
+# Does not apply for fcgi where servers are configured in nginx
+
+new "FOURTH usecase. One server fails, others working"
+
+new "kill old restconf"
+stop_restconf_pre
+
+new "test params: -f $cfg"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -z -f $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
+fi
+new "wait backend"
+wait_backend
+
+new "9. get status stopped"
+rpcstatus false stopped
+if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
+
+RESTCONFIG1=$(cat <<EOF
+<restconf xmlns="http://clicon.org/restconf">
+   <enable>true</enable>
+   <debug>$RESTCONFDBG</debug>
+   <auth-type>none</auth-type>
+   <pretty>false</pretty>
+   <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
+   <socket><namespace>default</namespace><address>$INVALIDADDR</address><port>8080</port><ssl>false</ssl></socket>
+</restconf>
+EOF
+)
+
+new "Create server"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG1</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "commit create"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "wait restconf"
+wait_restconf
+
+# pid
+new "10. get status, get pid1"
+rpcstatus true running
+pid1=$pid
+if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
+sleep $DEMSLEEP
+
+new "Get restconf config"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf)" 0 "HTTP/1.1 200 OK" "<restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><auth-type>none</auth-type><debug>$RESTCONFDBG</debug><pretty>false</pretty><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket><socket><namespace>default</namespace><address>$INVALIDADDR</address><port>8080</port><ssl>false</ssl></socket></restconf>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

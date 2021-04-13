@@ -1338,7 +1338,6 @@ restconf_clixon_backend(clicon_handle h,
     goto done;
 }
 
-
 /*! Per-socket openssl inits
  * @param[in]  h        Clicon handle
  * @param[in]  xs       XML config of single restconf socket
@@ -1492,8 +1491,13 @@ restconf_openssl_init(clicon_handle h,
     if (xpath_vec(xrestconf, nsc, "socket", &vec, &veclen) < 0)
 	goto done;
     for (i=0; i<veclen; i++){
-	if (openssl_init_socket(h, vec[i], nsc) < 0)
-	    goto done;
+	if (openssl_init_socket(h, vec[i], nsc) < 0){
+	    /* Bind errors are ignored, proceed with next after log */
+	    if (clicon_errno == OE_UNIX && clicon_suberrno == EADDRNOTAVAIL)
+		clicon_err_reset();
+	    else
+		goto done;
+	}
     }
     retval = 1;
  done:

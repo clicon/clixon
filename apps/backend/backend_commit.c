@@ -208,6 +208,14 @@ startup_common(clicon_handle       h,
 	if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, &xt, msdiff, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){     /* ret should not be 0 */
+	    /* Print upgraded db: -q backend switch for debugging/ showing upgraded config only */
+	    if (clicon_quit_upgrade_get(h) == 1){
+		xml_print(stderr, xerr);
+		clicon_err(OE_XML, 0, "invalid configuration before upgrade");
+		exit(0);  /* This is fairly abrupt , but need to avoid side-effects of rewinding 
+			   * See similar clause below
+			   */
+	    }
 	    if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
 		goto done;
 	    goto fail;
@@ -236,10 +244,10 @@ startup_common(clicon_handle       h,
 	if (ret == 0)
 	    goto fail;
     }
-    /* Print upgraded db: -q backend switch */
+    /* Print upgraded db: -q backend switch for debugging/ showing upgraded config only */
     if (clicon_quit_upgrade_get(h) == 1){
 	/* bind yang */
-	if ((ret = (xml_bind_yang(xt, YB_MODULE, yspec, &xret)) < 1)){
+	if ((ret = xml_bind_yang(xt, YB_MODULE, yspec, &xret)) < 1){
 	    if (ret == 0){
 		/* invalid */
 		clicon_err(OE_XML, EFAULT, "invalid configuration");
@@ -249,7 +257,6 @@ startup_common(clicon_handle       h,
 		xml_print(stderr, xret);
 		clicon_err(OE_XML, 0, "%s: YANG binding error", __func__);
 	    }
-
 	}	/* sort yang */
 	else if (xml_sort_recurse(xt) < 0) {
 	    clicon_err(OE_XML, EFAULT, "Yang sort error");

@@ -9,6 +9,6 @@
 /*
  * Prototypes
  */
-int clixon_netns_socket(const char *netns, struct sockaddr *sa, size_t sin_len, int backlog, int flags, int *sock);
+int clixon_netns_socket(const char *netns, struct sockaddr *sa, size_t sin_len, int backlog, int flags, const char *addrstr, int *sock);
 
 #endif  /* _CLIXON_NETNS_H_ */

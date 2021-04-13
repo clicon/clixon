@@ -112,6 +112,7 @@ get_sock(int  usock,
  * @param[in]  sa_len   Length of sa. Tecynicaliyu to be independent of sockaddr sa_len
  * @param[in]  backlog  Listen backlog, queie of pending connections
  * @param[in]  flags    Socket flags Or:ed in with the socket(2) type parameter
+ * @param[in]  addrstr  Address string for debug
  * @param[out] sock     Server socket (bound for accept)
  */
 static int
@@ -119,6 +120,7 @@ create_socket(struct sockaddr *sa,
 	      size_t           sin_len,		    
 	      int              backlog,
 	      int              flags,
+	      const char      *addrstr,
 	      int             *sock)
 {
     int    retval = -1;
@@ -153,7 +155,8 @@ create_socket(struct sockaddr *sa,
 	goto done;
     }
     if (bind(s, sa, sin_len) == -1) {
-	clicon_err(OE_UNIX, errno, "bind");
+	/* Note may be ignored in upper layer by checking for EADDRNOTAVAIL, see eg restconf_openssl_init */
+	clicon_err(OE_UNIX, errno, "bind(%s)", addrstr);
 	goto done;
     }
     if (listen(s, backlog ) < 0){
@@ -176,8 +179,9 @@ create_socket(struct sockaddr *sa,
  * @param[in]  netns    Network namespace
  * @param[in]  sa       Socketaddress
  * @param[in]  sa_len   Length of sa. Tecynicaliyu to be independent of sockaddr sa_len
- * @param[in]  backlog  Listen backlog, queie of pending connections
+ * @param[in]  backlog  Listen backlog, queue of pending connections
  * @param[in]  flags    Socket flags OR:ed in with the socket(2) type parameter
+ * @param[in]  addrstr  Address string for debug
  * @param[out] sock     Server socket (bound for accept)
  */
 static int
@@ -186,13 +190,14 @@ fork_netns_socket(const char      *netns,
 		  size_t           sin_len,		    
 		  int              backlog,
 		  int              flags,
+		  const char      *addrstr,
 		  int             *sock)
 {
-    int   retval = -1;
-    int   sp[2] = {-1, -1};
-    pid_t child;
-    int   status = 0;
-    char  nspath[MAXPATHLEN]; /* Path to namespace file */
+    int         retval = -1;
+    int         sp[2] = {-1, -1};
+    pid_t       child;
+    int         status = 0;
+    char        nspath[MAXPATHLEN]; /* Path to namespace file */
     struct stat st;
 
     clicon_debug(1, "%s %s", __FUNCTION__, netns);
@@ -228,7 +233,7 @@ fork_netns_socket(const char      *netns,
 #endif
 	close(fd);
 	/* Create socket in this namespace */
-	if (create_socket(sa, sin_len, backlog, flags, &s) < 0)
+	if (create_socket(sa, sin_len, backlog, flags, addrstr, &s) < 0)
 	    return -1;
 	/* Send socket to parent */
 	if (send_sock(sp[1], s) < 0)
@@ -257,6 +262,7 @@ fork_netns_socket(const char      *netns,
  * @param[in]  sa_len   Length of sa. Tecynicaliyu to be independent of sockaddr sa_len
  * @param[in]  backlog  Listen backlog, queie of pending connections
  * @param[in]  flags    Socket flags OR:ed in with the socket(2) type parameter
+ * @param[in]  addrstr  Address string for debug
  * @param[out] sock     Server socket (bound for accept)
  */
 int
@@ -265,19 +271,20 @@ clixon_netns_socket(const char      *netns,
 		    size_t           sin_len,		    
 		    int              backlog,
 		    int              flags,
+		    const char      *addrstr,
 		    int             *sock)
 {
     int    retval = -1;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if (netns == NULL){
-	if (create_socket(sa, sin_len, backlog, flags, sock) < 0)
+	if (create_socket(sa, sin_len, backlog, flags, addrstr, sock) < 0)
 	    goto done;
 	goto ok;
     }
     else {
 #ifdef HAVE_SETNS
-	if (fork_netns_socket(netns, sa, sin_len, backlog, flags, sock) < 0)
+	if (fork_netns_socket(netns, sa, sin_len, backlog, flags, addrstr, sock) < 0)
 	    goto done;
 #else
 	clicon_err(OE_UNIX, errno, "No namespace support on platform: %s", netns);
