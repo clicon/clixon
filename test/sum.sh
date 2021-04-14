@@ -25,21 +25,21 @@ if [ $# -gt 0 ]; then
     exit -1
 fi
 
-let err=0 # error counter
+let sumerr=0 # error counter
 for testfile in $pattern; do # For lib.sh the variable must be called testfile
     echo "Running $testfile"
     ./$testfile  > /dev/null 2>&1
     errcode=$?
     if [ $errcode -ne 0 ]; then
-        let err++
+        let sumerr++
 	echo -e "\e[31mError in $testfile errcode=$errcode"
 	echo -ne "\e[0m"
     fi
 done
-if [ $err -eq 0 ]; then 
+if [ $sumerr -eq 0 ]; then 
     echo "OK"
 else
-    echo -e "\e[31m${err} Errors"
+    echo -e "\e[31m${sumerr} Errors"
     echo -ne "\e[0m"
     exit -1
 fi

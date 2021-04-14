@@ -25,7 +25,7 @@ if [ $# -gt 0 ]; then
     exit -1
 fi
 
-err=0
+allerr=0
 testnr=0
 for test in $pattern; do
     if [ $testnr != 0 ]; then echo; fi
@@ -33,13 +33,13 @@ for test in $pattern; do
     . ./$test 
     errcode=$?
     if [ $errcode -ne 0 ]; then
-	err=1
+	allerr=1
 	echo -e "\e[31mError in $test errcode=$errcode"
 	echo -ne "\e[0m"
 	exit $errcode
     fi
 done
-if [ $err -eq 0 ]; then 
+if [ $allerr -eq 0 ]; then 
     echo "OK, ${testnr} tests"
 else
     echo -e "\e[31mError"
