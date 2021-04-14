@@ -45,7 +45,7 @@ YANGSPECS	 = clixon-config@2021-03-08.yang
 YANGSPECS	+= clixon-lib@2021-03-08.yang
 YANGSPECS	+= clixon-rfc5277@2008-07-01.yang
 YANGSPECS	+= clixon-xml-changelog@2019-03-21.yang
-YANGSPECS	+= clixon-restconf@2021-03-15.yang
+YANGSPECS	+= clixon-restconf@2021-04-12.yang
 
 APPNAME	        = clixon  # subdir ehere these files are installed
 
