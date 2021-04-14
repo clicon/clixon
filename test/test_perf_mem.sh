@@ -91,7 +91,13 @@ function testrun(){
     pid=$(cat $pidfile)
 
     new "netconf get stats"
-    res=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><stats xmlns="http://clicon.org/lib"/></rpc>]]>]]>' | $clixon_netconf -qf $cfg)
+    res=$(echo "$DEFAULTHELLO<rpc $DEFAULTNS><stats $LIBNS/></rpc>]]>]]>" | $clixon_netconf -qf $cfg)
+    echo "res:$res"
+    err0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/rpc-error")
+    err=${err0#"nodeset:"}
+    if [ -n "$err" ]; then
+	err1 "<rpc-reply><global>" "$err"
+    fi
     objects=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/global/xmlnr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}')
 
     echo "Total"
@@ -105,8 +111,11 @@ function testrun(){
     fi
     for db in running candidate startup; do
 	echo "$db"
-	resdb=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/datastore[name=\"$db\"]")
-	resdb=${resdb#"nodeset:0:"}
+	resdb0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/datastore[name=\"$db\"]")
+	resdb=${resdb0#"nodeset:0:"}
+	if [ "$resdb0" = "$resdb" ]; then
+	    err1 "nodeset:0:" "$resdb0"
+	fi
 	echo -n "   objects: "
 	echo $resdb | $clixon_util_xpath -p "datastore/nr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}'
 	echo -n "   mem: "

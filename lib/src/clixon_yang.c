@@ -447,7 +447,7 @@ ys_new(enum rfc_6020 keyw)
 /*! Free a single yang statement, dont remove children
  * 
  * @param[in]  ys   Yang node to remove 
- * @param[in]  self Free own node
+ * @param[in]  self Free own node including child vector
  * @retval     0    OK
  * @retval    -1    Error
  * @see ys_free
@@ -476,6 +476,8 @@ ys_free1(yang_stmt *ys,
 	free(ys->ys_when_xpath);
     if (ys->ys_when_nsc)
 	cvec_free(ys->ys_when_nsc);
+    if (ys->ys_stmt)
+	free(ys->ys_stmt);
     if (self)
 	free(ys);
     return 0;
@@ -526,8 +528,6 @@ ys_free(yang_stmt *ys)
 	if ((yc = ys->ys_stmt[i]) != NULL)
 	    ys_free(yc);
     }
-    if (ys->ys_stmt)
-	free(ys->ys_stmt);
     ys_free1(ys, 1);
     return 0;
 }

@@ -50,14 +50,16 @@ function memonce(){
 	    ;;
     esac
 
-    err=0
+
+    memerr=0
     for test in $pattern; do
 	if [ $testnr != 0 ]; then echo; fi
+	perfnr=1000 # Limit performance tests
 	testfile=$test
 	. ./$test 
 	errcode=$?
 	if [ $errcode -ne 0 ]; then
-	    err=1
+	    memerr=1
 	    echo -e "\e[31mError in $test errcode=$errcode"
 	    echo -ne "\e[0m"
 	    exit $errcode
@@ -100,6 +102,8 @@ done
 
 # Then actual run
 testnr=0
+memerr=0
+
 for cmd1 in $cmds; do
     if [ $testnr != 0 ]; then echo; fi
     println "Mem test $cmd1 begin"
@@ -107,7 +111,7 @@ for cmd1 in $cmds; do
     println "Mem test $cmd1 done"
 done
 
-if [ $err -eq 0 ]; then 
+if [ $memerr -eq 0 ]; then 
     echo OK
 else
     echo -e "\e[31mError"

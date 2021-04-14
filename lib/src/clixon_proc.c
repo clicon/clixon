@@ -322,7 +322,7 @@ clixon_proc_background(char       **argv,
 	    }
 	}
 #endif /* HAVE_SETNS */
-	if (execv(argv[0], argv) < 0) {
+	if (execvp(argv[0], argv) < 0) {
 	    clicon_err(OE_UNIX, errno, "execv");
 	    exit(1);
 	}

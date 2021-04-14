@@ -169,14 +169,11 @@ pid1=$pid
 if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
 
 new "Check $pid1 exists"
-while kill -0 $pid1 2> /dev/null; do
+while sudo kill -0 $pid1 2> /dev/null; do
     new "kill $pid1 externally"
     sudo kill $pid1
     sleep $DEMSLEEP
 done
-
-
-
 
 new "3. get status: Check killed"
 rpcstatus false stopped
@@ -353,7 +350,7 @@ if [ $pid1 -eq $pid2 ]; then
 fi
 
 new "Get restconf config 2: no server"
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf 2>&1)" 7 "Failed to connect" "Connection refused"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf 2>&1)" 7 # curl 7.58: "Failed to connect" "Connection refused", curl 7.74: "Couldn't connect to server"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
