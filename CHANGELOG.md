@@ -31,7 +31,7 @@
 ## 5.1.0
 15 April 2021
 
-This release contains more RESTCONF native mode restructuring, but also new multi-yang support in upgrade scenarios and a stricter NETCONF HELLO handling.
+The 5.1 release contains more RESTCONF native mode restructuring, new multi-yang support in upgrade scenarios and a stricter NETCONF HELLO handling, and many minor updates and bugfixes.
 
 ### New features
 
