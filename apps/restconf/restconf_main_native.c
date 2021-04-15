@@ -138,6 +138,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <sys/resource.h>
 
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
@@ -1446,6 +1447,21 @@ restconf_openssl_init(clicon_handle h,
 	if (dbg) {
 	    clicon_option_dump(h, dbg);
 	    yang_spec_dump(clicon_dbspec_yang(h), dbg);
+	}
+    }
+    if ((x = xpath_first(xrestconf, nsc, "enable-core-dump")) != NULL) {
+	/* core dump is enabled on RESTCONF process */
+	struct rlimit rlp;
+	if (strcmp(xml_body(x), "true") == 0) {
+	    rlp.rlim_cur = RLIM_INFINITY;
+	    rlp.rlim_max = RLIM_INFINITY;
+	} else {
+	    rlp.rlim_cur = 0;
+	    rlp.rlim_max = 0;
+	}
+	int status = setrlimit(RLIMIT_CORE, &rlp);
+	if (status != 0) {
+	    clicon_log(LOG_NOTICE, "%s: setrlimit() failed, %s", __func__, strerror(errno));
 	}
     }
 
