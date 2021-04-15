@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [5.1.0](#510) Expected: April
+* [5.1.0](#510) 15 April 2021
 * [5.0.0](#500) 27 February 2021
   * [5.0.1](#501) 10 March 2021
 * [4.9.0](#490) 18 December 2020
@@ -29,27 +29,40 @@
 * [3.3.1](#331) June 7 2017
 
 ## 5.1.0
-Expected: April
+15 April 2021
+
+This release contains more RESTCONF native mode restructuring, but also new multi-yang support in upgrade scenarios and a stricter NETCONF HELLO handling.
 
 ### New features
 
+* Restructuring of RESTCONF native mode
+  * Configure native mode changed to: `configure --with-restconf=native`, NOT `evhtp`
+  * Use libevhtp from https://github.com/clixon/clixon-libevhtp.git, NOT from criticalstack
+    * Moved out event handling to clixon event handling
+    * Moved out all ssl calls to clixon
+    * Plan is to remove reliance on libevhtp and libevent altogether
+  * Extended status restconf process message with: 
+  * If `CLICON_BACKEND_RESTCONF_PROCESS` is set, RESTCONF is started as internal process from backend
+    * Otherwise restconf daemon must be started externally by user, such as by systemd.
+* Netconf HELLO made mandatory
+  * See RFC 6241 Sec 8.1
+  * A client MUST send a <hello> element.
+  * Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" (or 1.0 for RFC 4741)
+  * The netconf client will terminate (close the socket) if the client does not comply
+  * Set `CLICON_NETCONF_HELLO_OPTIONAL` to use the old behavior with optional hellos.
 * Add multiple yang support also for old/previous versions
-  * This means that files and datastores supporting modstate also look for deleted or updated yang modules.
-  * A stricter binding which gives error if loading outdated YANG file does not exist.
-  * Keep old behavior: dont check old config file: set `CLICON_XMLDB_UPGRADE_CHECKOLD` to false.
+  * Files and datastores supporting modstate also look for deleted or updated yang modules.
+  * Stricter binding which gives error if loading outdated YANG file does not exist.
+  * Keep old behavior: disable `CLICON_XMLDB_UPGRADE_CHECKOLD`.
 	
 ### API changes on existing protocol/config features
 
 * Native RESTCONF mode
-  * Renamed restconf "evhtp" mode to "native" mode
-    * To configure native mode use: `configure --with-restconf=native`, changed from: `configure --with-restconf=evhtp`
-  * Native mode MUST use libevhtp from https://github.com/clixon/clixon-libevhtp.git instead from criticalstack
+  * Configure native mode changed to: `configure --with-restconf=native`, NOT `evhtp`
+  * Use libevhtp from https://github.com/clixon/clixon-libevhtp.git, NOT from criticalstack
 * Stricter yang checks: you cannot do get-config on datastores that have obsolete YANG.
-* NETCONF Hello message semantics has been made stricter according to RFC 6241 Sec 8.1, for example:
-  * A client MUST send a <hello> element.
-  * Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" (or 1.0 for RFC 4741)
-  * The netconf client will terminate (close the socket) if the client does not comply
-  * You can set `CLICON_NETCONF_HELLO_OPTIONAL` to true to use the old behavior of essentially ignoring hellos.
+* Netconf HELLO is mandatory
+  * Set `CLICON_NETCONF_HELLO_OPTIONAL` to use the old behavior with optional hellos.
 * New clixon-lib@2020-03-08.yang revision
   * Changed: RPC process-control output to choice with status fields
     * The fields are: active, description, command, status, starttime, pid (or just ok).
@@ -74,23 +87,15 @@ Developers may need to change their code
 
 ### Minor features
 
-* Updated "evhtp" restconf mode
-  * No reliance on libevent or libevhtp, but on libssl >= 1.1 directly
-    * Moved out event handling to clixon event handling
-    * Moved out all ssl calls to clixon
-  * New code MUST use libevhtp from https://github.com/clixon/clixon-libevhtp.git
-    * This does NOT work: libevhtp from https://github.com/criticalstack/libevhtp.git
 * Application specialized error handling for specific error categories
   * See: https://clixon-docs.readthedocs.io/en/latest/misc.html#specialized-error-handling
-* Added several fields to process-control status operation: active, description, command, status, starttime, pid
+* Added several fields to process-control status operation: active, description, command, status, starttime, pid, coredump
 * Changed signal handling
   * Moved clixon-proc sigchild handling	from handler to clixon_events
 * The base capability has been changed to "urn:ietf:params:netconf:base:1.1" following RFC6241.
 * Made a separate Clixon datastore XML/JSON top-level symbol
   * Replaces the hardcoded "config" keyword.
   * Implemented by a compile-time option called `DATASTORE_TOP_SYMBOL` option in clixon_custom.h
-* Introduced a delay before making process start/stop/restart processes for race conditions when configuring eg restconf
-* For restconf `CLICON_BACKEND_RESTCONF_PROCESS`, restart restconf if restconf is edited.
 
 ### Corrected Bugs
 
