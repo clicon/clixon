@@ -45,7 +45,8 @@ module clixon-restconf {
 
     revision 2021-03-15 {
 	description
-	    "make authentication-type none a feature";
+	    "make authentication-type none a feature
+	     Added flag to enable core dumps";
     }
     revision 2020-12-30 {
 	description
@@ -126,6 +127,13 @@ module clixon-restconf {
                     level: LOG_DEBUG";
 	    type uint32;
 	    default 0;
+	}
+	leaf enable-core-dump {
+	    description
+	        "enable core dumps.
+                 this is a no-op on systems that don't support it.";
+	    type boolean;
+	    default false;
 	}
 	leaf pretty {
 	    type boolean;

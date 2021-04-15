@@ -1455,14 +1455,14 @@ restconf_openssl_init(clicon_handle h,
 	if (strcmp(xml_body(x), "true") == 0) {
 	    rlp.rlim_cur = RLIM_INFINITY;
 	    rlp.rlim_max = RLIM_INFINITY;
-	    clicon_log(LOG_NOTICE, "%s: core dump emanbled", __func__);
 	} else {
 	    rlp.rlim_cur = 0;
 	    rlp.rlim_max = 0;
-	    clicon_log(LOG_NOTICE, "%s: core dump disnbled", __func__);
 	}
 	int status = setrlimit(RLIMIT_CORE, &rlp);
-	clicon_log(LOG_NOTICE, "%s: setrlimit=%ld", __func__, status);
+	if (status != 0) {
+	    clicon_log(LOG_NOTICE, "%s: setrlimit() failed, %s", __func__, strerror(errno));
+	}
     }
 
     if (init_openssl() < 0)
