@@ -1,13 +1,5 @@
 #!/usr/bin/env bash
-# Parse "all" openconfig yangs from https://github.com/openconfig/public
-# Notes:
-# Notes:
-# - A simple smoketest (CLI check) is made, essentially YANG parsing. 
-#    - A full system is worked on
-# - Env-var OPENCONFIG should point to checkout place. (define it in site.sh for example)
-# - Env variable YANGMODELS should point to checkout place. (define it in site.sh for example)
-# - Some DIFFs are necessary in yangmodels
-#         release/models/wifi/openconfig-ap-interfaces.yang
+# Run a system around openconfig interface, ie: openconfig-if-ethernet
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -93,8 +85,8 @@ module clixon-example{
   import ietf-interfaces { 
     prefix ietf-if; 
   }
-  import openconfig-interfaces {
-    prefix oc-if;
+  import openconfig-if-ethernet {
+    prefix oc-eth;
   }
   identity eth { /* Need to create an interface-type identity for leafrefs */
     base ietf-if:interface-type;
@@ -144,7 +136,13 @@ new "$clixon_cli -D $DBG -1f $cfg -y $f show version"
 expectpart "$($clixon_cli -D $DBG -1f $cfg show version)" 0 "${CLIXON_VERSION}"
 
 new "$clixon_netconf -qf $cfg"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"http://openconfig.net/yang/interfaces\"><interface><name>e</name><config><name>e</name><type>ex:eth</type><loopback-mode>false</loopback-mode><enabled>true</enabled></config><hold-time><config><up>0</up><down>0</down></config></hold-time></interface></interfaces></data></rpc-reply>]]>]]>"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"http://openconfig.net/yang/interfaces\"><interface><name>e</name><config><name>e</name><type>ex:eth</type><loopback-mode>false</loopback-mode><enabled>true</enabled></config><hold-time><config><up>0</up><down>0</down></config></hold-time><oc-eth:ethernet xmlns:oc-eth=\"http://openconfig.net/yang/interfaces/ethernet\"><oc-eth:config><oc-eth:auto-negotiate>true</oc-eth:auto-negotiate><oc-eth:enable-flow-control>false</oc-eth:enable-flow-control></oc-eth:config></oc-eth:ethernet></interface></interfaces></data></rpc-reply>]]>]]>"
+
+new "cli show configuration"
+expectpart "$($clixon_cli -1 -f $cfg show conf xml)" 0 "^<interfaces xmlns=\"http://openconfig.net/yang/interfaces\">" "<oc-eth:ethernet xmlns:oc-eth=\"http://openconfig.net/yang/interfaces/ethernet\">"
+
+new "cli set interfaces interface <tab> complete: e"
+expectpart "$(echo "set interfaces interface 	" | $clixon_cli -f $cfg)" 0 "interface e"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

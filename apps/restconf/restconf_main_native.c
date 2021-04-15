@@ -236,7 +236,7 @@ buf_write(char   *buf,
     ssize_t totlen = 0;
     int     er;
 
-    clicon_debug(1, "%s %lu", __FUNCTION__, buflen);
+    clicon_debug(1, "%s", __FUNCTION__);
     while (totlen < buflen){
 	if (ssl){
 	    if ((len = SSL_write(ssl, buf+totlen, buflen-totlen)) <= 0){
