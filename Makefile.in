@@ -138,6 +138,7 @@ configure: configure.ac
 	cd $(srcdir) && autoconf
 
 clean:
+	rm -f *.gcov
 	for i in $(SUBDIRS) doc example util docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; 
 

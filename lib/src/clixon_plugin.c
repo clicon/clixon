@@ -209,7 +209,7 @@ plugin_load_one(clicon_handle   h,
     dlerror();    /* Clear any existing error */
     if ((handle = dlopen(file, dlflags)) == NULL) {
         error = (char*)dlerror();
-	clicon_err(OE_PLUGIN, errno, "dlopen: %s", error ? error : "Unknown error");
+	clicon_err(OE_PLUGIN, errno, "dlopen(%s): %s", file, error ? error : "Unknown error");
 	goto done;
     }
     /* call plugin_init() if defined, eg CLIXON_PLUGIN_INIT or CLIXON_BACKEND_INIT */
@@ -691,6 +691,24 @@ typedef struct {
 
 /* List of rpc callback entries XXX hang on handle */
 static rpc_callback_t *rpc_cb_list = NULL;
+
+#if 0 /* Debugging */
+static int
+rpc_callback_dump(clicon_handle h,
+		  FILE         *f)
+{
+    rpc_callback_t *rc;
+
+    if ((rc = rpc_cb_list) != NULL)
+	do {
+	    fprintf(f, "%s %s\n", __FUNCTION__, rc->rc_name);
+
+	    rc = NEXTQ(rpc_callback_t *, rc);
+	} while (rc != rpc_cb_list);
+    fprintf(f, "%s--------------\n", __FUNCTION__);
+    return 0;
+}
+#endif
 
 /*! Register a RPC callback by appending a new RPC to the list
  *

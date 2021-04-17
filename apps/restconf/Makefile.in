@@ -92,7 +92,6 @@ APPL	  = clixon_restconf
 # Common source - not accessible from plugin - independent of restconf package (fcgi|native)
 APPSRC    =
 APPSRC   += restconf_api.c # maybe empty
-APPSRC   += restconf_api_$(with_restconf).c 
 APPSRC   += restconf_err.c 
 APPSRC   += restconf_methods.c
 APPSRC   += restconf_methods_post.c
@@ -114,6 +113,7 @@ APPOBJ    = $(APPSRC:.c=.o)
 # are not in the lib.
 LIBSRC    = restconf_lib.c
 LIBSRC   += restconf_handle.c 
+LIBSRC   += restconf_api_$(with_restconf).c 
 
 LIBOBJ    = $(LIBSRC:.c=.o)
 

@@ -53,10 +53,9 @@ CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 VPATH       	= @srcdir@
 CC		= @CC@
 LINKAGE         = @LINKAGE@
-ifeq ($(LINKAGE),static)
-	CFLAGS		= @CFLAGS@
-else
-	CFLAGS  	= -fPIC @CFLAGS@
+CFLAGS		= @CFLAGS@
+ifeq ($(LINKAGE),dynamic)
+CFLAGS  	+= -fPIC
 endif
 SH_SUFFIX	= @SH_SUFFIX@
 INSTALL		= @INSTALL@

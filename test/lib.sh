@@ -75,6 +75,9 @@ testname=
 # Namespace: netconf base
 BASENS='urn:ietf:params:xml:ns:netconf:base:1.0'
 
+# Namespace: Clixon config
+CONFNS='xmlns="http://clicon.org/config"'
+
 # Namespace: Clixon lib
 LIBNS='xmlns="http://clicon.org/lib"'
 
@@ -315,12 +318,12 @@ function stop_backend(){
 
 # Wait for restconf to stop sending  502 Bad Gateway
 function wait_backend(){
-    reply=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101"><ping xmlns="http://clicon.org/lib"/></rpc>]]>]]>' | $clixon_netconf -qef $cfg 2> /dev/null) 
+    reply=$(echo "<rpc $DEFAULTNS><ping $LIBNS/></rpc>]]>]]>" | $clixon_netconf -qef $cfg 2> /dev/null) 
     let i=0;
     while [[ $reply != "<rpc-reply"* ]]; do
 #	echo "sleep $DEMSLEEP"
 	sleep $DEMSLEEP
-	reply=$(echo '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101" xmlns="http://clicon.org/lib"><ping/></rpc>]]>]]>' | clixon_netconf -qef $cfg 2> /dev/null)
+	reply=$(echo "<rpc $ÐEFAULTSNS $LIBNS><ping/></rpc>]]>]]>" | clixon_netconf -qef $cfg 2> /dev/null)
 #	echo "reply:$reply"
 	let i++;
 #	echo "wait_backend  $i"

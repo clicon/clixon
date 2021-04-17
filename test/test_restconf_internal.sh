@@ -28,7 +28,7 @@ else
     EXTRACONF=""
 fi
 cat <<EOF > $cfg
-<clixon-config xmlns="http://clicon.org/config">
+<clixon-config $CONFNS>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
@@ -81,7 +81,7 @@ function rpcstatus()
     ret=$($clixon_netconf -qf $cfg<<EOF
 $DEFAULTHELLO
 <rpc $DEFAULTNS>
-  <process-control xmlns="http://clicon.org/lib">
+  <process-control $LIBNS>
     <name>restconf</name>
     <operation>status</operation>
   </process-control>
@@ -89,7 +89,7 @@ $DEFAULTHELLO
 EOF
 )
     # Check pid
-    expect="<pid xmlns=\"http://clicon.org/lib\">[0-9]*</pid>"
+    expect="<pid $LIBNS>[0-9]*</pid>"
     match=$(echo "$ret" | grep --null -Go "$expect")
     if [ -z "$match" ]; then
 	pid=0
@@ -120,7 +120,7 @@ function rpcoperation()
     
     sleep $DEMSLEEP
     new "send rpc $operation"
-    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><process-control xmlns=\"http://clicon.org/lib\"><name>restconf</name><operation>$operation</operation></process-control></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok xmlns=\"http://clicon.org/lib\"/></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><process-control $LIBNS><name>restconf</name><operation>$operation</operation></process-control></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok $LIBNS/></rpc-reply>]]>]]>$"
 
     sleep $DEMSLEEP
 }

@@ -1773,7 +1773,7 @@ main(int    argc,
 			   ) < 0)
 	goto done;
     clicon_debug_init(dbg, NULL); 
-    clicon_log(LOG_NOTICE, "%s openssl: %u Started", __PROGRAM__, getpid());
+    clicon_log(LOG_NOTICE, "%s native %u Started", __PROGRAM__, getpid());
     if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
 	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;

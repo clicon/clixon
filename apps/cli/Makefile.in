@@ -39,17 +39,15 @@ top_srcdir  	= @top_srcdir@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
 LINKAGE         = @LINKAGE@
+CPPFLAGS  	= @CPPFLAGS@
 ifeq ($(LINKAGE),dynamic)
-	CPPFLAGS  	= @CPPFLAGS@ -fPIC
-else
-	CPPFLAGS  	= @CPPFLAGS@
+	CPPFLAGS  	+= -fPIC
 endif
 SH_SUFFIX	= @SH_SUFFIX@
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
-ifeq ($(LINKAGE),dynamic)
-	LDFLAGS 	= @LDFLAGS@
-else
-	LDFLAGS 	= @LDFLAGS@  -rdynamic -L.
+LDFLAGS 	= @LDFLAGS@	
+ifeq ($(LINKAGE),static)
+LDFLAGS 	+=  -rdynamic -L.
 endif
 
 prefix 		= @prefix@

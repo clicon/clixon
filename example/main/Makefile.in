@@ -51,12 +51,17 @@ YANG_INSTALLDIR  = @YANG_INSTALLDIR@
 CLIXON_DEFAULT_CONFIG = @CLIXON_DEFAULT_CONFIG@
 
 CC		= @CC@
-CFLAGS  	= @CFLAGS@ -fPIC 
+CFLAGS  	= @CFLAGS@ -fPIC
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
 with_restconf	= @with_restconf@
 
 INCLUDES 	= -I$(includedir) @INCLUDES@ 
-CPPFLAGS  	= @CPPFLAGS@ -fPIC
+LDFLAGS 	= @LDFLAGS@
+CPPFLAGS  	= @CPPFLAGS@
+ifeq ($(LINKAGE),dynamic)
+CPPFLAGS       	+= -fPIC
+endif
+LINKAGE         = @LINKAGE@
 
 BE_PLUGIN       = $(APPNAME)_backend.so
 BE2_PLUGIN      = $(APPNAME)_backend_nacm.so
@@ -87,32 +92,52 @@ YANGSPECS	= clixon-example@2020-12-01.yang
 BE_SRC   = $(APPNAME)_backend.c
 BE_OBJ   = $(BE_SRC:%.c=%.o)
 $(BE_PLUGIN): $(BE_OBJ)
-	$(CC) -Wall -shared -o $@ -lc $<
+ifeq ($(LINKAGE),static)
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
+else
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
+endif
 
 # Secondary NACM backend plugin
 BE2_SRC  = $(APPNAME)_backend_nacm.c
 BE2_OBJ  = $(BE2_SRC:%.c=%.o)
 $(BE2_PLUGIN): $(BE2_OBJ)
-	$(CC) -Wall -shared -o $@ -lc $<
+ifeq ($(LINKAGE),static)
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
+else
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
+endif
 
 # CLI frontend plugin
 CLI_SRC  = $(APPNAME)_cli.c
 CLI_OBJ  = $(CLI_SRC:%.c=%.o)
 $(CLI_PLUGIN): $(CLI_OBJ)
-	$(CC) -Wall -shared -o $@ -lc $^ 
+ifeq ($(LINKAGE),static)
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -L ../../apps/cli/ -lclixon_cli
+else
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_cli
+endif
 
 # NETCONF frontend plugin
 NETCONF_SRC  = $(APPNAME)_netconf.c
 NETCONF_OBJ  = $(NETCONF_SRC:%.c=%.o)
 $(NETCONF_PLUGIN): $(NETCONF_OBJ)
-	$(CC) -Wall -shared -o $@ -lc $^
+ifeq ($(LINKAGE),static)
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -L ../../apps/netconf/ -lclixon_netconf
+else
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_netconf
+endif
 
 # See configure.ac
 # RESTCONF frontend plugin
 RESTCONF_SRC  = $(APPNAME)_restconf.c
 RESTCONF_OBJ  = $(RESTCONF_SRC:%.c=%.o)
 $(RESTCONF_PLUGIN): $(RESTCONF_OBJ)
-	$(CC) -Wall -shared -o $@ -lc $^ 
+ifeq ($(LINKAGE),static)
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -L ../../apps/restconf/ -lclixon_restconf 
+else
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_restconf
+endif
 
 SRC     = $(BE_SRC) $(BE2_SRC) $(CLI_SRC) $(NETCONF_SRC)
 SRC    +=  $(RESTCONF_SRC)

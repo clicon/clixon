@@ -49,9 +49,9 @@ AC_INIT(lib/clixon/clixon.h.in)
 AC_CONFIG_AUX_DIR(config-aux)
 
 CLIXON_VERSION_MAJOR="5"
-CLIXON_VERSION_MINOR="1"
+CLIXON_VERSION_MINOR="2"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
 # Check CLIgen
 if test "$prefix" = "NONE"; then
@@ -148,7 +148,13 @@ if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}
 fi
 
-SH_SUFFIX=".so"
+if test "$LINKAGE" = "dynamic" ; then
+   SH_SUFFIX=".so"
+elif test "$LINKAGE" = "static" ; then
+   SH_SUFFIX=".a"
+else
+   AC_MSG_ERROR([No such linkage: ${LINKAGE}])
+fi	
 
 # This is for cligen
 AC_ARG_WITH([cligen], AS_HELP_STRING([--with-cligen=dir],[Use CLIGEN installation in this dir]))

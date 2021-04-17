@@ -39,13 +39,11 @@ top_srcdir  	= @top_srcdir@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
 LINKAGE         = @LINKAGE@
-ifeq ($(LINKAGE),static)
-	CPPFLAGS  	= @CPPFLAGS@
-	SH_SUFFIX	= a
-else
-	CPPFLAGS  	= @CPPFLAGS@ -fPIC
-	SH_SUFFIX	= @SH_SUFFIX@
+CPPFLAGS  	= @CPPFLAGS@
+ifeq ($(LINKAGE),dynamic)
+CPPFLAGS       	+= -fPIC
 endif
+SH_SUFFIX	= @SH_SUFFIX@
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
 
@@ -65,7 +63,7 @@ CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 # Use this clixon lib for linking
 ifeq ($(LINKAGE),static)
-	CLIXON_LIB	= libclixon.a
+	CLIXON_LIB	= libclixon$(SH_SUFFIX)
 else
 	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 endif

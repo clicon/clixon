@@ -38,7 +38,7 @@ module trans{
 EOF
 
 cat <<EOF > $cfg
-<clixon-config xmlns="http://clicon.org/config">
+<clixon-config  $CONFNS>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
@@ -115,7 +115,7 @@ xml="<table xmlns=\"urn:example:clixon\"><parameter><name>0</name></parameter></
 checklog "$nr nacm_end add: $xml" $line
 
 new "Send restart nacm plugin"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><restart-plugin xmlns=\"http://clicon.org/lib\"><plugin>example_backend_nacm</plugin></restart-plugin></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><restart-plugin $LIBNS><plugin>example_backend_nacm</plugin></restart-plugin></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
 
 # Now analyze log:
 # all transactions come from nacm plugin only.
@@ -129,7 +129,7 @@ done
 
 # Negative test: restart a plugin that does not exist
 new "Send restart to nonexistatn plugin expect fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><restart-plugin xmlns=\"http://clicon.org/lib\"><plugin>xxx</plugin></restart-plugin></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>plugin</bad-element></error-info><error-severity>error</error-severity><error-message>No such plugin</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><restart-plugin $LIBNS><plugin>xxx</plugin></restart-plugin></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>plugin</bad-element></error-info><error-severity>error</error-severity><error-message>No such plugin</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

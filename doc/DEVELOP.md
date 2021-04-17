@@ -194,3 +194,10 @@ Use MAXPATHLEN (not PATH_MAX) in sys/param.h
 
 socat PTY,link=/tmp/clixon-tty,rawer EXEC:"/usr/local/bin/clixon_cli -f /usr/local/etc/example.xml",pty,stderr &
 screen /tmp/clixon-tty
+
+## Coverage
+
+```
+LDFLAGS=-coverage LINKAGE=static CFLAGS="-O2 -Wall -coverage" ./configure
+bash <(curl -s https://codecov.io/bash) -t <token>
+```

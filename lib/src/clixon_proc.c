@@ -398,68 +398,6 @@ clixon_process_argv_get(clicon_handle h,
     return 0;
 }
 
-#ifdef NYI
-/*! Make a copy of process-entry struct 
- *
- * @param[in]  pe0   Original process-entry
- * @param[in]  pnew  New copy of pe0
- */
-static int
-clixon_process_register_dup(process_entry_t  *pe0,
-			    process_entry_t **pnew)
-{
-    int              retval = -1;
-    process_entry_t *pe1 = NULL;
-    int              i;
-    
-    if (pe0 == NULL){
-	clicon_err(OE_DB, EINVAL, "pe0 is NULL");
-	goto done;
-    }
-    if (pnew == NULL){
-	clicon_err(OE_DB, EINVAL, "pnew is NULL");
-	goto done;
-    }
-    if ((pe1 = malloc(sizeof(process_entry_t))) == NULL) {
-	clicon_err(OE_DB, errno, "malloc");
-	goto done;
-    }
-    memset(pe1, 0, sizeof(*pe1));
-    memcpy(pe1, pe0, sizeof(process_entry_t)); /* Note lots of malloced memory that needs to be handled after this copy*/
-    pe1->pe_exiting = 0;
-    pe1->pe_clone = 0;
-    if ((pe1->pe_name = strdup(pe0->pe_name)) == NULL){
-	clicon_err(OE_DB, errno, "strdup name");
-	goto done;
-    }
-    if (pe0->pe_description && (pe1->pe_description = strdup(pe0->pe_description)) == NULL){
-	clicon_err(OE_DB, errno, "strdup name");
-	goto done;
-    }
-    if (pe0->pe_netns && (pe1->pe_netns = strdup(pe0->pe_netns)) == NULL){
-	clicon_err(OE_DB, errno, "strdup netns");
-	goto done;
-    }
-    if ((pe1->pe_argv = calloc(pe0->pe_argc, sizeof(char *))) == NULL){
-	clicon_err(OE_UNIX, errno, "calloc");
-	goto done;
-    }
-    for (i=0; i<pe0->pe_argc; i++){
-	if (pe0->pe_argv[i] != NULL &&
-	    (pe1->pe_argv[i] = strdup(pe0->pe_argv[i])) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
-	}
-    }
-    ADDQ(pe1, _proc_entry_list);
-    *pnew = pe1;
-    retval = 0;
- done:
-    /* dealloc pe1 on error */
-    return retval;
-}
-#endif
-
 /*! Register an internal process
  *
  * @param[in]  h        Clixon handle
