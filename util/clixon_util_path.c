@@ -279,7 +279,7 @@ main(int    argc,
     for (i = 0; i < xlen; i++){
 	xc = xvec[i];
 	fprintf(stdout, "%d: ", i);
-	clicon_xml2file(stdout, xc, 0, 0);
+	clicon_xml2file(stdout, xc, 0, 0, 0);
 	fprintf(stdout, "\n");
 	fflush(stdout);
     }

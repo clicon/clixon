@@ -43,8 +43,8 @@
 /*
  * Prototypes
  */
-int clicon_xml2file_cb(FILE *f, cxobj *x, int level, int prettyprint, clicon_output_cb *fn);
-int clicon_xml2file(FILE *f, cxobj *x, int level, int prettyprint);
+int clicon_xml2file_cb(FILE *f, cxobj *x, int level, int prettyprint, clicon_output_cb *fn, int used_for_show_command);
+int clicon_xml2file(FILE *f, cxobj *x, int level, int prettyprint, int used_for_show_command);
 int xml_print(FILE *f, cxobj *xn);
 int clicon_xml2cbuf(cbuf *cb, cxobj *x, int level, int prettyprint, int32_t depth);
 char *clicon_xml2str(cxobj *x);

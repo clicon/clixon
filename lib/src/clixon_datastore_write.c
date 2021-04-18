@@ -1043,7 +1043,7 @@ xmldb_put(clicon_handle       h,
 	if (xml2json(f, x0, pretty) < 0)
 	    goto done;
     }
-    else if (clicon_xml2file(f, x0, 0, pretty) < 0)
+    else if (clicon_xml2file(f, x0, 0, pretty, 0) < 0)
 	goto done;
     /* Remove modules state after writing to file
      */
@@ -1101,7 +1101,7 @@ xmldb_dump(clicon_handle   h,
 	if (xml2json(f, xt, pretty) < 0)
 	    goto done;
     }
-    else if (clicon_xml2file(f, xt, 0, pretty) < 0)
+    else if (clicon_xml2file(f, xt, 0, pretty, 0) < 0)
 	goto done;
     retval = 0;
  done:

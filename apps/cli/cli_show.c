@@ -476,7 +476,7 @@ cli_show_config1(clicon_handle h,
     case FORMAT_XML:
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	    clicon_xml2file_cb(stdout, xc, 0, 1, cligen_output);
+	    clicon_xml2file_cb(stdout, xc, 0, 1, cligen_output, 1);
 	break;
     case FORMAT_JSON:
 	xml2json_cb(stdout, xt, 1, cligen_output);
@@ -499,7 +499,7 @@ cli_show_config1(clicon_handle h,
 		      NETCONF_BASE_NAMESPACE);
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	    clicon_xml2file_cb(stdout, xc, 2, 1, cligen_output);
+	    clicon_xml2file_cb(stdout, xc, 2, 1, cligen_output, 1);
 	cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	break;
     }
@@ -747,14 +747,14 @@ cli_show_auto1(clicon_handle h,
 	    break;
 	case FORMAT_NETCONF:
 	    fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
-	    clicon_xml2file(stdout, xp, 2, 1);
+	    clicon_xml2file(stdout, xp, 2, 1, 1);
 	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	    break;
 	default:
 	    for (; i < xml_child_nr(xml_parent(xp)) ; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
 		switch (format){
 		case FORMAT_XML:
-		    clicon_xml2file(stdout, xp_helper, 0, 1);
+		    clicon_xml2file(stdout, xp_helper, 0, 1, 1);
 		    break;
 		case FORMAT_JSON:
 		    xml2json_cb(stdout, xp_helper, 1, cligen_output);

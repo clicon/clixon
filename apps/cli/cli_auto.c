@@ -413,10 +413,10 @@ cli_auto_show(clicon_handle h,
 	switch (format){
 	case FORMAT_XML:
 	    if (isroot)
-		clicon_xml2file(stdout, xp, 0, pretty);
+		clicon_xml2file(stdout, xp, 0, pretty, 1);
 	    else{
 		while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL)
-		    clicon_xml2file(stdout, xc, 0, pretty);
+		    clicon_xml2file(stdout, xc, 0, pretty, 1);
 	    }
 	    fprintf(stdout, "\n");
 	    break;
@@ -451,10 +451,10 @@ cli_auto_show(clicon_handle h,
 	    if (pretty)
 		fprintf(stdout, "\n");
 	    if (isroot)
-		clicon_xml2file(stdout, xp, 2, pretty);
+		clicon_xml2file(stdout, xp, 2, pretty, 1);
 	    else
 		while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL)
-		    clicon_xml2file(stdout, xc, 2, pretty);
+		    clicon_xml2file(stdout, xc, 2, pretty, 1);
 	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	    break;
 	} /* switch */
