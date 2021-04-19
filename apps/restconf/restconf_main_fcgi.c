@@ -431,9 +431,6 @@ main(int    argc,
     if (dbg)      
 	clicon_option_dump(h, dbg);
 
-    /* Initialize plugin module by creating a handle holding plugin and callback lists */
-    if (clixon_plugin_module_init(h) < 0)
-	goto done;
     /* Call start function in all plugins before we go interactive */
     if (clixon_plugin_start_all(h) < 0)
 	goto done;

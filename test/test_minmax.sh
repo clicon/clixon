@@ -245,7 +245,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS $DEFAULTNS>
 new "minmax: validate should fail empty list"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-few-elements</error-app-tag><error-severity>error</error-severity><error-path>/c/a1</error-path></rpc-error></rpc-reply>]]>]]>$"
 
-if [ $BE -ne 0]; then
+if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)

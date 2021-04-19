@@ -386,6 +386,25 @@ function wait_restconf(){
     fi
 }
 
+# Wait for restconf to stop 
+# @note assumes port=80 if RCPROTO=http and port=443 if RCPROTO=https
+# @see wait_restconf
+function wait_restconf_stopped(){
+    hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
+    let i=0;
+    while [[ $hdr = *"200 OK"* ]]; do
+	if [ $i -ge $DEMLOOP ]; then
+	    err1 "restconf timeout $DEMWAIT seconds"
+	fi
+	sleep $DEMSLEEP
+	hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
+	let i++;
+    done
+    if [ $valgrindtest -eq 3 ]; then 
+	sleep 2 # some problems with valgrind
+    fi
+}
+
 # End of test, final tests before normal exit of test
 function endtest()
 {

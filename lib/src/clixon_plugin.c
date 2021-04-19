@@ -646,9 +646,9 @@ clixon_plugin_auth_all(clicon_handle      h,
 		       clixon_auth_type_t auth_type,
 		       char             **authp)
 {
-    int            retval = -1;
+    int              retval = -1;
     clixon_plugin_t *cp = NULL;
-    int            ret = 0; 
+    int              ret = 0; 
     
     clicon_debug(1, "%s", __FUNCTION__);
     if (authp == NULL){
@@ -1115,6 +1115,10 @@ clixon_plugin_module_init(clicon_handle h)
     int                          retval = -1;
     struct plugin_module_struct *ph;
 
+    if (plugin_module_struct_get(h) != NULL){
+	clicon_err(OE_PLUGIN, EFAULT, "Already initialized");
+	goto done;
+    }
     if ((ph = malloc(sizeof(*ph))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;

@@ -223,6 +223,9 @@ new "4. stop restconf RPC"
 rpcoperation stop
 if [ $? -ne 0 ]; then exit -1; fi
 
+new "Wait for restrconf to stop"
+wait_restconf_stopped
+
 new "5. Get rpc status stopped"
 rpcstatus false stopped
 if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
