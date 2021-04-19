@@ -878,7 +878,7 @@ from_client_validate(clicon_handle h,
  */
 int
 from_client_restart_one(clicon_handle h,
-			clixon_plugin *cp,
+			clixon_plugin_t *cp,
 			cbuf         *cbret)
 {
     int                 retval = -1;
@@ -895,7 +895,7 @@ from_client_restart_one(clicon_handle h,
     if (xmldb_db_reset(h, db) < 0)
 	goto done;
     /* Application may define extra xml in its reset function*/
-    if ((resetfn = cp->cp_api.ca_reset) != NULL){
+    if ((resetfn = clixon_plugin_api_get(cp)->ca_reset) != NULL){
 	if ((retval = resetfn(h, db)) < 0) {
 	    clicon_debug(1, "plugin_start() failed");
 	    goto done;

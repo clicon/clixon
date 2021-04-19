@@ -111,6 +111,7 @@ $(top_srcdir)/lib/src/$(CLIXON_LIB):
 
 clean: 
 	rm -f $(APPL) $(APPOBJ) $(LIBOBJ) *.core  $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
+	rm -f *.gcda *.gcno *.gcov # coverage
 
 distclean: clean
 	rm -f Makefile *~ .depend

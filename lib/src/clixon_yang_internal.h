@@ -60,6 +60,8 @@ struct yang_type_cache{
 typedef struct yang_type_cache yang_type_cache;
 
 /*! yang statement 
+ * This is an internal type, not exposed in the API
+ * The external type is "yang_stmt" defined in clixon_yang.h
  */
 struct yang_stmt{
     int                ys_len;       /* Number of children */

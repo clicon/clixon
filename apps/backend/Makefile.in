@@ -46,7 +46,9 @@ endif
 SH_SUFFIX	= @SH_SUFFIX@
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
-
+ifeq ($(LINKAGE),static)
+LDFLAGS 	+=  -rdynamic -L.
+endif
 prefix 		= @prefix@
 exec_prefix 	= @exec_prefix@
 bindir 		= @bindir@
@@ -63,7 +65,7 @@ CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 # Use this clixon lib for linking
 ifeq ($(LINKAGE),static)
-	CLIXON_LIB	= libclixon$(SH_SUFFIX)
+	CLIXON_LIB	= libclixon.a
 else
 	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 endif
@@ -113,6 +115,7 @@ $(top_srcdir)/lib/src/$(CLIXON_LIB):
 
 clean:
 	rm -f *.core $(APPL) $(APPOBJ) $(LIBOBJ) $(MYLIB) $(MYLIBSO) $(MYLIBLINK) test test.c
+	rm -f *.gcda *.gcno *.gcov # coverage
 
 distclean: clean
 	rm -f Makefile *~ .depend
@@ -130,8 +133,8 @@ install-lib:	$(MYLIB)
 	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
 	install -d -m 0755 $(DESTDIR)$(libdir)/clixon/plugins/backend
 ifeq ($(LINKAGE),dynamic)
-	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)	   # -l:libclixon_config.so.2
-	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_config.so
+	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)	   # -l:libclixon_backend.so.2
+	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_backend.so
 endif
 
 uninstall:
@@ -147,7 +150,7 @@ install-include: clixon_backend.h clixon_backend_handle.h clixon_backend_transac
 .SUFFIXES: .c .o
 
 .c.o:
-	$(CC) $(INCLUDES) -D__PROGRAM__=\"$(APPL)\" $(CPPFLAGS) $(CFLAGS) -c $<
+	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$(APPL)\" $(CFLAGS) -c $<
 
 # Just link test programs
 test.c	:
@@ -157,7 +160,11 @@ test: 	test.c $(LIBOBJ) $(MYLIB)
 	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
 $(APPL) : $(APPOBJ) $(MYLIB) $(LIBDEPS)
+ifeq ($(LINKAGE),dynamic)
 	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
+else
+	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(LIBOBJ) $(LIBS) -o $@
+endif
 
 $(MYLIBDYNAMIC): $(LIBOBJ) $(LIBDEPS)
 ifeq ($(HOST_VENDOR),apple)

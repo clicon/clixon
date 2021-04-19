@@ -138,9 +138,9 @@ configure: configure.ac
 	cd $(srcdir) && autoconf
 
 clean:
-	rm -f *.gcov
 	for i in $(SUBDIRS) doc example util docker; \
 		do (cd $$i && $(MAKE) $(MFLAGS) $@); done; 
+	rm -f *.gcov test/*.gcov
 
 # Uninstall and clean all the targets used for testing, but without cloning or
 # checking-out from git. Provides a reliabily clean slate for testing changes

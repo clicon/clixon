@@ -1544,7 +1544,7 @@ restconf_clixon_init(clicon_handle h,
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
     yang_stmt     *yspec = NULL;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
     char          *str;
     cvec          *nsctx_global = NULL; /* Global namespace context */
     cxobj         *xrestconf;
@@ -1581,7 +1581,7 @@ restconf_clixon_init(clicon_handle h,
      */
     if (clixon_pseudo_plugin(h, "pseudo restconf", &cp) < 0)
 	goto done;
-    cp->cp_api.ca_extension = restconf_main_extension_cb;
+    clixon_plugin_api_get(cp)->ca_extension = restconf_main_extension_cb;
 
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
@@ -1614,7 +1614,6 @@ restconf_clixon_init(clicon_handle h,
     /* Add netconf yang spec, used as internal protocol */
     if (netconf_module_load(h) < 0)
 	goto done;
-
     /* Add system modules */
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
 	yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec)< 0)
@@ -1847,6 +1846,9 @@ main(int    argc,
     if (dbg)      
 	clicon_option_dump(h, dbg);
 
+    /* Initialize plugin module by creating a handle holding plugin and callback lists */
+    if (clixon_plugin_module_init(h) < 0)
+	goto done;
     /* Call start function in all plugins before we go interactive */
     if (clixon_plugin_start_all(h) < 0)
 	goto done;

@@ -41,7 +41,7 @@ CFLAGS  	= @CFLAGS@
 LINKAGE         = @LINKAGE@
 CPPFLAGS  	= @CPPFLAGS@
 ifeq ($(LINKAGE),dynamic)
-	CPPFLAGS  	+= -fPIC
+CPPFLAGS  	+= -fPIC
 endif
 SH_SUFFIX	= @SH_SUFFIX@
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
@@ -66,10 +66,10 @@ CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 # Use this clixon lib for linking
-ifeq ($(LINKAGE),dynamic)
-	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
-else
+ifeq ($(LINKAGE),static)
 	CLIXON_LIB	= libclixon.a
+else
+	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 endif
 
 # For dependency. A little strange that we rely on it being built in the src dir
@@ -77,7 +77,6 @@ endif
 LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
 LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@
-
 
 INCLUDES	= -I. -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
@@ -118,6 +117,7 @@ $(top_srcdir)/lib/src/$(CLIXON_LIB):
 
 clean:
 	rm -f $(LIBOBJ) $(APPOBJ) *.core $(APPL) $(MYLIB) $(MYLIBSO) $(MYLIBLINK) test test.c
+	rm -f *.gcda *.gcno *.gcov # coverage
 
 distclean: clean
 	rm -f Makefile *~ .depend 

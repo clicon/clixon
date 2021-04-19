@@ -247,8 +247,9 @@ restconf_terminate(clicon_handle h)
     clicon_debug(1, "%s", __FUNCTION__);
     if ((fs = clicon_socket_get(h)) != -1)
 	close(fs);
-    clixon_plugin_exit_all(h);
-    rpc_callback_delete_all(h);
+    /* Delete all plugins, and RPC callbacks */
+    clixon_plugin_module_exit(h);
+
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	ys_free(yspec);

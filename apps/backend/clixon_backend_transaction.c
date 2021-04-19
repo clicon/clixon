@@ -214,7 +214,7 @@ transaction_print(FILE               *f,
 	xn = td->td_avec[i];
 	xml_print(f, xn);
     }
-    fprintf(stderr, "Changed\n=========\n");
+    fprintf(f, "Changed\n=========\n");
     for (i=0; i<td->td_clen; i++){
 	xn = td->td_scvec[i];
 	xml_print(f, xn);

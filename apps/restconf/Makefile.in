@@ -78,10 +78,9 @@ LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB)
 
 LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@ 
 
+CPPFLAGS  	= @CPPFLAGS@
 ifeq ($(LINKAGE),dynamic)
-	CPPFLAGS  	= @CPPFLAGS@ -fPIC
-else
-	CPPFLAGS  	= @CPPFLAGS@
+CPPFLAGS  	+= -fPIC
 endif
 
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
@@ -139,6 +138,7 @@ $(top_srcdir)/lib/src/$(CLIXON_LIB):
 
 clean:
 	rm -f $(LIBOBJ) *.core $(APPL) $(APPOBJ) *.o $(MYLIB) $(MYLIBSO) $(MYLIBLINK) # extra .o to clean residue if with_restconf changes
+	rm -f *.gcda *.gcno *.gcov # coverage
 
 distclean: clean
 	rm -f Makefile *~ .depend
@@ -201,4 +201,3 @@ depend:
 	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(APPFCGI) $(APPSRC) > .depend
 
 #include .depend
-

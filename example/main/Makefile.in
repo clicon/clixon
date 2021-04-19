@@ -32,6 +32,14 @@
 #
 # ***** END LICENSE BLOCK *****
 #
+# Note, for linkage=static, libclixon is linked twice:
+# First static when building:
+#    libclixon_backend, libclixon_cli, libclixon_restconf and libclixon_netconf
+# Second in this Makefile dynamic using -lclixon
+# This means global variables used in plugin code is in separate domains and will not work
+# Dont know enough about dynamic/static linkage to fix it.
+# One way is to not use global variables in libraries, but there are still some, eg in error
+# and log modules
 VPATH       	= @srcdir@
 srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
@@ -56,12 +64,12 @@ INSTALLFLAGS  	= @INSTALLFLAGS@
 with_restconf	= @with_restconf@
 
 INCLUDES 	= -I$(includedir) @INCLUDES@ 
+LINKAGE         = @LINKAGE@
 LDFLAGS 	= @LDFLAGS@
 CPPFLAGS  	= @CPPFLAGS@
 ifeq ($(LINKAGE),dynamic)
 CPPFLAGS       	+= -fPIC
 endif
-LINKAGE         = @LINKAGE@
 
 BE_PLUGIN       = $(APPNAME)_backend.so
 BE2_PLUGIN      = $(APPNAME)_backend_nacm.so
@@ -93,7 +101,7 @@ BE_SRC   = $(APPNAME)_backend.c
 BE_OBJ   = $(BE_SRC:%.c=%.o)
 $(BE_PLUGIN): $(BE_OBJ)
 ifeq ($(LINKAGE),static)
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -L ../../apps/backend/ -lclixon_backend 
 else
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
 endif
@@ -103,7 +111,7 @@ BE2_SRC  = $(APPNAME)_backend_nacm.c
 BE2_OBJ  = $(BE2_SRC:%.c=%.o)
 $(BE2_PLUGIN): $(BE2_OBJ)
 ifeq ($(LINKAGE),static)
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -L ../../apps/backend/ -lclixon_backend 
 else
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
 endif
@@ -147,6 +155,7 @@ OBJS   += $(RESTCONF_OBJ)
 
 clean:
 	rm -f $(PLUGINS) $(OBJS) 
+	rm -f *.gcda *.gcno *.gcov # coverage
 
 distclean: clean
 	rm -f Makefile *~ .depend

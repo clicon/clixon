@@ -312,14 +312,9 @@ struct clixon_plugin_api{
 
 typedef struct clixon_plugin_api clixon_plugin_api;
 
-/* Internal plugin structure with dlopen() handle and plugin_api
- */
-struct clixon_plugin{
-    char              cp_name[MAXPATHLEN]; /* Plugin filename. Note api ca_name is given by plugin itself */
-    plghndl_t         cp_handle;  /* Handle to plugin using dlopen(3) */
-    clixon_plugin_api cp_api;
-};
-typedef struct clixon_plugin clixon_plugin;
+/* This is the external handle type exposed in the API.
+ * The internal struct is defined in clixon_plugin.c */
+typedef struct clixon_plugin clixon_plugin_t;
 
 /*
  * Prototypes
@@ -333,42 +328,43 @@ typedef struct clixon_plugin clixon_plugin;
  */
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
-clixon_plugin *clixon_plugin_each(clicon_handle h, clixon_plugin *cpprev);
 
-clixon_plugin *clixon_plugin_each_revert(clicon_handle h, clixon_plugin *cpprev, int nr);
+clixon_plugin_api *clixon_plugin_api_get(clixon_plugin_t *cp);
+char            *clixon_plugin_name_get(clixon_plugin_t *cp);
+plghndl_t        clixon_plugin_handle_get(clixon_plugin_t *cp);
 
-clixon_plugin *clixon_plugin_find(clicon_handle h, const char *name);
+clixon_plugin_t *clixon_plugin_each(clicon_handle h, clixon_plugin_t *cpprev);
+
+clixon_plugin_t *clixon_plugin_each_revert(clicon_handle h, clixon_plugin_t *cpprev, int nr);
+
+clixon_plugin_t *clixon_plugin_find(clicon_handle h, const char *name);
 
 int clixon_plugins_load(clicon_handle h, const char *function, const char *dir, const char *regexp);
 
-int clixon_pseudo_plugin(clicon_handle h, const char *name, clixon_plugin **cpp);
+int clixon_pseudo_plugin(clicon_handle h, const char *name, clixon_plugin_t **cpp);
 
-int clixon_plugin_start_one(clixon_plugin *cp, clicon_handle h);
+int clixon_plugin_start_one(clixon_plugin_t *cp, clicon_handle h);
 int clixon_plugin_start_all(clicon_handle h);
-
-int clixon_plugin_exit_one(clixon_plugin *cp, clicon_handle h);
-int clixon_plugin_exit_all(clicon_handle h);
 
 int clixon_plugin_auth_all(clicon_handle h, void *req, clixon_auth_type_t auth_type, char **authp);
 
-int clixon_plugin_extension_one(clixon_plugin *cp, clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+int clixon_plugin_extension_one(clixon_plugin_t *cp, clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 int clixon_plugin_extension_all(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 
-int clixon_plugin_datastore_upgrade_one(clixon_plugin *cp, clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
+int clixon_plugin_datastore_upgrade_one(clixon_plugin_t *cp, clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
 int clixon_plugin_datastore_upgrade_all(clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
 
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, const char *ns, const char *name);
-int rpc_callback_delete_all(clicon_handle h);
 int rpc_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg);
 
 /* upgrade callback API */
 int upgrade_callback_reg_fn(clicon_handle h, clicon_upgrade_cb cb, const char *strfn, const char *ns, void *arg);
-int upgrade_callback_delete_all(clicon_handle h);
 int upgrade_callback_call(clicon_handle h, cxobj *xt, char *ns, uint16_t op, uint32_t from, uint32_t to, cbuf *cbret);
 
 const int clixon_auth_type_str2int(char *auth_type);
 const char *clixon_auth_type_int2str(clixon_auth_type_t auth_type);
-
+int              clixon_plugin_module_init(clicon_handle h);
+int              clixon_plugin_module_exit(clicon_handle h);
 
 #endif  /* _CLIXON_PLUGIN_H_ */

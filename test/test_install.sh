@@ -7,6 +7,14 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 # Eg on FreeBSD use gmake
 : ${make:=make}
 
+
+# Check for soft links for .so files in case of dynamic linkage, but .a files f static linking
+if [ ${LINKAGE} = static ]; then
+    LIBOPT=-f
+else
+    LIBOPT=-h
+fi
+
 new "Set up installdir $dir"
 
 new "Make DESTDIR install ($dir)"
@@ -26,18 +34,18 @@ new "Check installed files clixon-config"
 if [ ! -f $dir/usr/local/share/clixon/clixon-config* ]; then
     err $dir/usr/local/share/clixon/clixon-config*
 fi
-new "Check installed files libclixon.so"
+new "Check installed files libclixon${SH_SUFFIX}"
 # Check both /usr/local/lib and /usr/lib 
 # This is a problem on some platforms that dont have /usr/local/ in LD_LIBRARY_PATH
-if [ ! -h $dir/usr/local/lib/libclixon.so ]; then
-    if [ ! -h $dir/usr/lib/libclixon.so ]; then
-	err $dir/usr/local/lib/libclixon.so
+if [ ! ${LIBOPT} $dir/usr/local/lib/libclixon${SH_SUFFIX} ]; then
+    if [ ! ${LIBOPT} $dir/usr/lib/libclixon${SH_SUFFIX} ]; then
+	err $dir/usr/local/lib/libclixon${SH_SUFFIX}
     fi
 fi
-new "Check installed files libclixon_backend.so"
-if [ ! -h $dir/usr/local/lib/libclixon_backend.so ]; then
-    if [ ! -h $dir/usr/lib/libclixon_backend.so ]; then
-	err $dir/usr/local/lib/libclixon_backend.so
+new "Check installed files libclixon_backend${SH_SUFFIX}"
+if [ ! ${LIBOPT} $dir/usr/local/lib/libclixon_backend${SH_SUFFIX} ]; then
+    if [ ! ${LIBOPT} $dir/usr/lib/libclixon_backend${SH_SUFFIX} ]; then
+	err $dir/usr/local/lib/libclixon_backend${SH_SUFFIX}
     fi
 fi
 

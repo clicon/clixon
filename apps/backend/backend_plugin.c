@@ -74,18 +74,18 @@
  * @retval    -1       Error
  */
 int
-clixon_plugin_reset_one(clixon_plugin *cp,
+clixon_plugin_reset_one(clixon_plugin_t *cp,
 			clicon_handle  h,
 			char         *db)
 {
     int          retval = -1;
     plgreset_t  *fn;       /* callback */
 
-    if ((fn = cp->cp_api.ca_reset) != NULL){
+    if ((fn = clixon_plugin_api_get(cp)->ca_reset) != NULL){
 	if (fn(h, db) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Reset callback in plugin: %s returned -1 but did not make a clicon_err call",
-			   __FUNCTION__, cp->cp_name);
+			   __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
     }
@@ -106,7 +106,7 @@ clixon_plugin_reset_all(clicon_handle h,
 			char         *db)
 {
     int             retval = -1;
-    clixon_plugin  *cp = NULL;
+    clixon_plugin_t  *cp = NULL;
     
     /* Loop through all plugins, call callbacks in each */
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
@@ -125,18 +125,18 @@ clixon_plugin_reset_all(clicon_handle h,
  * @retval    -1       Error
  */
 static int
-clixon_plugin_pre_daemon_one(clixon_plugin *cp,
+clixon_plugin_pre_daemon_one(clixon_plugin_t *cp,
                              clicon_handle  h)
 {
     int          retval = -1;
     plgdaemon_t *fn;          /* Daemonize plugin callback function */
 
-    if ((fn = cp->cp_api.ca_pre_daemon) != NULL){
+    if ((fn = clixon_plugin_api_get(cp)->ca_pre_daemon) != NULL){
         if (fn(h) < 0) {
             if (clicon_errno < 0)
                 clicon_log(LOG_WARNING, "%s: Internal error: Pre-daemon callback in plugin:\
  %s returned -1 but did not make a clicon_err call",
-                           __FUNCTION__, cp->cp_name);
+                           __FUNCTION__, clixon_plugin_name_get(cp));
             goto done;
         }
     }
@@ -158,7 +158,7 @@ int
 clixon_plugin_pre_daemon_all(clicon_handle h)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
 
     /* Loop through all plugins, call callbacks in each */
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
@@ -177,17 +177,17 @@ clixon_plugin_pre_daemon_all(clicon_handle h)
  * @retval    -1       Error
  */
 static int
-clixon_plugin_daemon_one(clixon_plugin *cp,
+clixon_plugin_daemon_one(clixon_plugin_t *cp,
 			 clicon_handle  h)
 {
     int          retval = -1;
     plgdaemon_t *fn;          /* Daemonize plugin callback function */    
 
-    if ((fn = cp->cp_api.ca_daemon) != NULL){
+    if ((fn = clixon_plugin_api_get(cp)->ca_daemon) != NULL){
 	if (fn(h) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Daemon callback in plugin: %s returned -1 but did not make a clicon_err call",
-			   __FUNCTION__, cp->cp_name);
+			   __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
     }
@@ -211,7 +211,7 @@ int
 clixon_plugin_daemon_all(clicon_handle h)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
     
     /* Loop through all plugins, call callbacks in each */
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
@@ -244,7 +244,7 @@ clixon_plugin_daemon_all(clicon_handle h)
  * @retval     1       OK if callback found (and called) xret is set
  */
 static int
-clixon_plugin_statedata_one(clixon_plugin  *cp,
+clixon_plugin_statedata_one(clixon_plugin_t  *cp,
 			    clicon_handle   h,
 			    cvec           *nsc,
 			    char           *xpath,
@@ -254,13 +254,13 @@ clixon_plugin_statedata_one(clixon_plugin  *cp,
     plgstatedata_t *fn;          /* Plugin statedata fn */
     cxobj          *x = NULL;
     
-    if ((fn = cp->cp_api.ca_statedata) != NULL){
+    if ((fn = clixon_plugin_api_get(cp)->ca_statedata) != NULL){
 	if ((x = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
 	if (fn(h, nsc, xpath, x) < 0){
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: State callback in plugin: %s returned -1 but did not make a clicon_err call",
-			   __FUNCTION__, cp->cp_name);
+			   __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto fail;  /* Dont quit here on user callbacks */
 	}
 
@@ -298,7 +298,7 @@ clixon_plugin_statedata_all(clicon_handle    h,
     int             retval = -1;
     int             ret;
     cxobj          *x = NULL;
-    clixon_plugin  *cp = NULL;
+    clixon_plugin_t  *cp = NULL;
     cbuf           *cberr = NULL; 
     cxobj          *xerr = NULL;
     
@@ -313,7 +313,7 @@ clixon_plugin_statedata_all(clicon_handle    h,
 	    }
 	    /* error reason should be in clicon_err_reason */
 	    cprintf(cberr, "Internal error, state callback in plugin %s returned invalid XML: %s",
-		    cp->cp_name, clicon_err_reason);
+		    clixon_plugin_name_get(cp), clicon_err_reason);
 	    if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
 		goto done;
 	    xml_free(*xret);
@@ -338,7 +338,7 @@ clixon_plugin_statedata_all(clicon_handle    h,
 	if (ret == 0){
 	    if (clixon_netconf_internal_error(xerr,
 					      ". Internal error, state callback returned invalid XML from plugin: ",
-					      cp->cp_name) < 0)
+					      clixon_plugin_name_get(cp)) < 0)
 		goto done;
 	    xml_free(*xret);
 	    *xret = xerr;
@@ -432,18 +432,18 @@ transaction_free(transaction_data_t *td)
  * @retval    -1       Error
  */
 int
-plugin_transaction_begin_one(clixon_plugin      *cp,
+plugin_transaction_begin_one(clixon_plugin_t      *cp,
 			     clicon_handle       h, 
 			     transaction_data_t *td)
 {
     int         retval = -1;
     trans_cb_t *fn;
     
-    if ((fn = cp->cp_api.ca_trans_begin) != NULL){
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_begin) != NULL){
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
-		       __FUNCTION__, cp->cp_name);
+		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
     }
@@ -465,7 +465,7 @@ plugin_transaction_begin_all(clicon_handle       h,
 			     transaction_data_t *td)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
 
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (plugin_transaction_begin_one(cp, h, td) < 0)
@@ -484,18 +484,18 @@ plugin_transaction_begin_all(clicon_handle       h,
  * @retval    -1       Error
  */
 int
-plugin_transaction_validate_one(clixon_plugin      *cp,
+plugin_transaction_validate_one(clixon_plugin_t      *cp,
 				clicon_handle       h, 
 				transaction_data_t *td)
 {
     int         retval = -1;
     trans_cb_t *fn;
     
-    if ((fn = cp->cp_api.ca_trans_validate) != NULL){
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_validate) != NULL){
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
-		       __FUNCTION__, cp->cp_name);
+		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
     }
@@ -515,7 +515,7 @@ plugin_transaction_validate_all(clicon_handle       h,
 				transaction_data_t *td)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
 
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (plugin_transaction_validate_one(cp, h, td) < 0)
@@ -535,18 +535,18 @@ plugin_transaction_validate_all(clicon_handle       h,
  * @retval    -1       Error
  */
 int
-plugin_transaction_complete_one(clixon_plugin      *cp,
+plugin_transaction_complete_one(clixon_plugin_t      *cp,
 				clicon_handle       h, 
 				transaction_data_t *td)
 {
     int         retval = -1;
     trans_cb_t *fn;
     
-    if ((fn = cp->cp_api.ca_trans_complete) != NULL){
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_complete) != NULL){
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
-		       __FUNCTION__, cp->cp_name);
+		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
     }
@@ -568,7 +568,7 @@ plugin_transaction_complete_all(clicon_handle       h,
 				transaction_data_t *td)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
 
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (plugin_transaction_complete_one(cp, h, td) < 0)
@@ -594,15 +594,15 @@ plugin_transaction_revert_all(clicon_handle       h,
 			      int                 nr)
 {
     int                retval = 0;
-    clixon_plugin     *cp = NULL;
+    clixon_plugin_t     *cp = NULL;
     trans_cb_t        *fn;
     
     while ((cp = clixon_plugin_each_revert(h, cp, nr)) != NULL) {
-	if ((fn = cp->cp_api.ca_trans_revert) == NULL)
+	if ((fn = clixon_plugin_api_get(cp)->ca_trans_revert) == NULL)
 	    continue;
 	if ((retval = fn(h, (transaction_data)td)) < 0){
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' trans_revert callback failed", 
-			   __FUNCTION__, cp->cp_name);
+			   __FUNCTION__, clixon_plugin_name_get(cp));
 		break; 
 	}
     }
@@ -618,18 +618,18 @@ plugin_transaction_revert_all(clicon_handle       h,
  * @retval    -1       Error
  */
 int
-plugin_transaction_commit_one(clixon_plugin      *cp,
+plugin_transaction_commit_one(clixon_plugin_t      *cp,
 			      clicon_handle       h, 
 			      transaction_data_t *td)
 {
     int         retval = -1;
     trans_cb_t *fn;
     
-    if ((fn = cp->cp_api.ca_trans_commit) != NULL){
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit) != NULL){
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
-		       __FUNCTION__, cp->cp_name);
+		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
     }
@@ -652,7 +652,7 @@ plugin_transaction_commit_all(clicon_handle       h,
 			      transaction_data_t *td)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
     int            i=0;
     
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
@@ -677,18 +677,18 @@ plugin_transaction_commit_all(clicon_handle       h,
  * @retval    -1       Error
  */
 int
-plugin_transaction_commit_done_one(clixon_plugin      *cp,
+plugin_transaction_commit_done_one(clixon_plugin_t      *cp,
 				   clicon_handle       h, 
 				   transaction_data_t *td)
 {
     int         retval = -1;
     trans_cb_t *fn;
     
-    if ((fn = cp->cp_api.ca_trans_commit_done) != NULL){
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit_done) != NULL){
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
-		       __FUNCTION__, cp->cp_name);
+		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
     }
@@ -709,7 +709,7 @@ plugin_transaction_commit_done_all(clicon_handle       h,
 				   transaction_data_t *td)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
 
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (plugin_transaction_commit_done_one(cp, h, td) < 0)
@@ -728,18 +728,18 @@ plugin_transaction_commit_done_all(clicon_handle       h,
  * @retval    -1       Error
  */
 int
-plugin_transaction_end_one(clixon_plugin      *cp,
+plugin_transaction_end_one(clixon_plugin_t      *cp,
 			   clicon_handle       h, 
 			   transaction_data_t *td)
 {
     int         retval = -1;
     trans_cb_t *fn;
     
-    if ((fn = cp->cp_api.ca_trans_end) != NULL){
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_end) != NULL){
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
-		       __FUNCTION__, cp->cp_name);
+		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
     }
@@ -759,7 +759,7 @@ plugin_transaction_end_all(clicon_handle h,
 			   transaction_data_t *td)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
 
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (plugin_transaction_end_one(cp, h, td) < 0)
@@ -771,18 +771,18 @@ plugin_transaction_end_all(clicon_handle h,
 }
 
 int
-plugin_transaction_abort_one(clixon_plugin      *cp,
+plugin_transaction_abort_one(clixon_plugin_t      *cp,
 			     clicon_handle       h, 
 			     transaction_data_t *td)
 {
     int         retval = -1;
     trans_cb_t *fn;
     
-    if ((fn = cp->cp_api.ca_trans_abort) != NULL){
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_abort) != NULL){
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
-		       __FUNCTION__, cp->cp_name);
+		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
     }
@@ -802,7 +802,7 @@ plugin_transaction_abort_all(clicon_handle       h,
 			     transaction_data_t *td)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
 
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (plugin_transaction_abort_one(cp, h, td) < 0)

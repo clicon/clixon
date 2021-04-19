@@ -2130,7 +2130,10 @@ ys_populate_unknown(clicon_handle h,
 	return -1;
     }
 #endif
-    /* Make extension callbacks that may alter yang structure */
+    /* Make extension callbacks that may alter yang structure 
+     * Note: this may be a "layering" violation: assuming plugins are loaded
+     * at yang parse time
+     */
     if (clixon_plugin_extension_all(h, yext, ys) < 0)
 	goto done;
 

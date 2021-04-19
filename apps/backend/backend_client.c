@@ -1547,7 +1547,7 @@ from_client_restart_plugin(clicon_handle h,
     cxobj        **vec = NULL;
     size_t         veclen;
     int            i;
-    clixon_plugin *cp;
+    clixon_plugin_t *cp;
     int            ret;
     
     if (xpath_vec(xe, NULL, "plugin", &vec, &veclen) < 0) 

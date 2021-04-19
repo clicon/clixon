@@ -46,7 +46,6 @@
 #include <dlfcn.h>
 #include <dirent.h>
 #include <syslog.h>
-#include <assert.h>
 
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -67,12 +66,128 @@
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 
-/* List of plugins XXX 
- * 1. Place in clixon handle not global variables
- * 2. Use qelem circular lists
+/*
+ * Private types
  */
-static clixon_plugin *_clixon_plugins = NULL;  /* List of plugins (of client) */
-static int            _clixon_nplugins = 0;  /* Number of plugins */
+
+/* Internal plugin structure with dlopen() handle and plugin_api
+ * This is an internal type, not exposed in the API
+ * The external type is "clixon_plugin_t" defined in clixon_plugin.h
+ */
+struct clixon_plugin{
+    qelem_t           cp_q;                /* queue header */
+    char              cp_name[MAXPATHLEN]; /* Plugin filename. Note api ca_name is given by plugin itself */
+    plghndl_t         cp_handle;  /* Handle to plugin using dlopen(3) */
+    clixon_plugin_api cp_api;
+};
+
+/*
+ * RPC callbacks for both client/frontend and backend plugins.
+ * RPC callbacks are explicitly registered in the plugin_init() function
+ * with a tag and a function
+ * When the the tag is encountered, the callback is called.
+ * Primarily backend, but also netconf and restconf frontend plugins.
+ * CLI frontend so far have direct callbacks, ie functions in the cligen
+ * specification are directly dlsym:ed to the CLI plugin.
+ * It would be possible to use this rpc registering API for CLI plugins as well.
+ * 
+ * When namespace and name match, the callback is made
+ */
+typedef struct {
+    qelem_t       rc_qelem;	/* List header */
+    clicon_rpc_cb rc_callback;  /* RPC Callback */
+    void         *rc_arg;	/* Application specific argument to cb */
+    char         *rc_namespace;/* Namespace to combine with name tag */
+    char         *rc_name;	/* Xml/json tag/name */
+} rpc_callback_t;
+
+/*
+ * Upgrade callbacks for backend upgrade of datastore
+ * Register upgrade callbacks in plugin_init() with a module and a "from" and "to"
+ * revision.
+ */
+typedef struct {
+    qelem_t           uc_qelem;	    /* List header */
+    clicon_upgrade_cb uc_callback;  /* RPC Callback */
+    const char       *uc_fnstr;     /* Stringified fn name for debug */
+    void             *uc_arg;	    /* Application specific argument to cb */
+    char             *uc_namespace; /* Module namespace */
+} upgrade_callback_t;
+
+/* Internal struct for accessing plugin list and rpc list. This handle is accessed
+ * via clixon-handle "cdata" structure (see clixon_data.h) using the key "clixon-plugin-handle"."
+ * It is just a way to avoid using global variables
+ */
+struct plugin_module_struct {
+    clixon_plugin_t    *ms_plugin_list;
+    rpc_callback_t     *ms_rpc_callbacks;
+    upgrade_callback_t *ms_upgrade_callbacks;
+};
+typedef struct plugin_module_struct plugin_module_struct;
+
+
+/*! Get plugin handle containing plugin and callback lists
+ * @param[in]  h     Clicon handle
+ */
+static plugin_module_struct *
+plugin_module_struct_get(clicon_handle h)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    size_t         len;
+    void          *p;
+
+    if ((p = clicon_hash_value(cdat, "plugin-module-struct", &len)) != NULL)
+	return *(plugin_module_struct **)p;
+    return NULL;
+}
+
+/*! Set plugin handle containing plugin and callback lists
+ * @param[in]  h     Clicon handle
+ * @param[in]  pl    Clixon plugin handle 
+ */
+static int
+plugin_module_struct_set(clicon_handle         h,
+			 plugin_module_struct *ms)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    /* It is the pointer to ys that should be copied by hash,
+       so we send a ptr to the ptr to indicate what to copy.
+     */
+    if (clicon_hash_add(cdat, "plugin-module-struct", &ms, sizeof(ms)) == NULL)
+	return -1;
+    return 0;
+}
+
+
+/* Access functions */
+
+/*! Get plugin api 
+ * @param[in]  cp   Clixon plugin handle
+ */ 
+clixon_plugin_api *
+clixon_plugin_api_get(clixon_plugin_t *cp)
+{
+    return &cp->cp_api;
+}
+
+/*! Get plugin name 
+ * @param[in]  cp   Clixon plugin handle
+ */ 
+char *
+clixon_plugin_name_get(clixon_plugin_t *cp)
+{
+    return cp->cp_name;
+}
+
+/*! Get plugin handle
+ * @param[in]  cp   Clixon plugin handle
+ */ 
+plghndl_t
+clixon_plugin_handle_get(clixon_plugin_t *cp)
+{
+    return cp->cp_handle;
+}
 
 /*! Iterator over clixon plugins
  *
@@ -87,27 +202,24 @@ static int            _clixon_nplugins = 0;  /* Number of plugins */
  *     ...
  *   }
  * @endcode
- * @note Not optimized, alwasy iterates from the start of the list
+ * @note Not optimized, always iterates from the start of the list
  */
-clixon_plugin *
-clixon_plugin_each(clicon_handle  h,
-		   clixon_plugin *cpprev)
+clixon_plugin_t *
+clixon_plugin_each(clicon_handle    h,
+		   clixon_plugin_t *cpprev)
 {
-    int            i;
-    clixon_plugin *cp;
-    clixon_plugin *cpnext = NULL; 
+    clixon_plugin_t      *cpnext = NULL; 
+    plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    if (cpprev == NULL)
-	cpnext = _clixon_plugins;
+    /* ms == NULL means plugins are not yet initialized */
+    if (ms == NULL || ms->ms_plugin_list == NULL)
+	cpnext = NULL;
+    else if (cpprev == NULL)
+	cpnext = ms->ms_plugin_list;
     else{
-	for (i = 0; i < _clixon_nplugins; i++) {
-	    cp = &_clixon_plugins[i];
-	    if (cp == cpprev)
-		break;
-	    cp = NULL;
-	}
-	if (cp && i < _clixon_nplugins-1)
-	    cpnext = &_clixon_plugins[i+1];
+	cpnext = NEXTQ(clixon_plugin_t *, cpprev);
+	if (cpnext == ms->ms_plugin_list)
+	    cpnext = NULL;
     }
     return cpnext;
 }
@@ -118,38 +230,47 @@ clixon_plugin_each(clicon_handle  h,
  * same object recursively
  *
  * @param[in]  h       Clicon handle
- * @param[in] plugin   previous plugin, or NULL on init
+ * @param[in]  plugin  previous plugin, or NULL on init
+ * @param[in]  nr      Start from this nr <= lngth of list 
  * @code
- *   clicon_plugin *cp = NULL;
+ *   clicon_plugin_t *cp = NULL;
  *   while ((cp = clixon_plugin_each_revert(h, cp, nr)) != NULL) {
  *     ...
  *   }
  * @endcode
- * @note Not optimized, alwasy iterates from the start of the list
+ * @note Not optimized, always iterates from the start of the list
  */
-clixon_plugin *
-clixon_plugin_each_revert(clicon_handle  h,
-			  clixon_plugin *cpprev,
-			  int            nr)
+clixon_plugin_t *
+clixon_plugin_each_revert(clicon_handle    h,
+			  clixon_plugin_t *cpprev,
+			  int              nr)
 {
     int            i;
-    clixon_plugin *cp = NULL;
-    clixon_plugin *cpnext = NULL; 
+    clixon_plugin_t *cpnext = NULL; 
+    plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    if (cpprev == NULL){
-	if (nr>0)
-	    cpnext = &_clixon_plugins[nr-1];
+    if (ms == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+	return NULL;
+    }
+    if (ms->ms_plugin_list == NULL)
+	cpnext = NULL;
+    else if (cpprev == NULL){
+	cpnext = ms->ms_plugin_list;
+	for (i = nr-1; i > 0; i--) {
+	    cpnext = NEXTQ(clixon_plugin_t *, cpnext);
+	    if (cpnext == ms->ms_plugin_list){
+		cpnext = NULL;
+		break;
+	    }
+	}
     }
     else{
-	for (i = nr-1; i >= 0; i--) {
-	    cp = &_clixon_plugins[i];
-	    if (cp == cpprev)
-		break;
-	    cp = NULL;
-	}
-	if (cp && i > 0)
-	    cpnext = &_clixon_plugins[i-1];
-    }
+	if (cpprev == ms->ms_plugin_list)
+	    cpnext = NULL;
+	else
+	    cpnext = PREVQ(clixon_plugin_t *, cpprev);
+    }    
     return cpnext;
 }
 
@@ -159,21 +280,27 @@ clixon_plugin_each_revert(clicon_handle  h,
  * @retval     p    Plugin if found
  * @retval     NULL Not found
  * @code
- *    clixon_plugin *cp;
+ *    clixon_plugin_t *cp;
  *    cp = clixon_plugin_find(h, "plugin-name");
  * @endcode
  */
-clixon_plugin *
+clixon_plugin_t *
 clixon_plugin_find(clicon_handle h,
 		   const char   *name)
 {
-    int            i;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t      *cp = NULL;
+    plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    for (i = 0; i < _clixon_nplugins; i++) {
-	cp = &_clixon_plugins[i];
-	if (strcmp(cp->cp_name, name) == 0)
-	    return cp;
+    if (ms == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+	return NULL;
+    }
+    if ((cp = ms->ms_plugin_list) != NULL){
+	do {
+	    if (strcmp(cp->cp_name, name) == 0)
+		return cp;
+	    cp = NEXTQ(clixon_plugin_t *, cp);
+	} while (cp && cp != ms->ms_plugin_list);
     }
     return NULL;
 }
@@ -194,14 +321,14 @@ plugin_load_one(clicon_handle   h,
 		char           *file, /* note modified */
 		const char     *function,
 		int             dlflags,
-		clixon_plugin **cpp)
+		clixon_plugin_t **cpp)
 {
     int                retval = -1;
     char              *error;
     void              *handle = NULL;
     plginit2_t        *initfn;
     clixon_plugin_api *api = NULL;
-    clixon_plugin     *cp = NULL;
+    clixon_plugin_t     *cp = NULL;
     char              *name;
     char              *p;
 
@@ -234,7 +361,7 @@ plugin_load_one(clicon_handle   h,
 	}
     }
     /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
-    if ((cp = (clixon_plugin *)malloc(sizeof(struct clixon_plugin))) == NULL){
+    if ((cp = (clixon_plugin_t *)malloc(sizeof(struct clixon_plugin))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
@@ -249,13 +376,13 @@ plugin_load_one(clicon_handle   h,
     snprintf(cp->cp_name, sizeof(cp->cp_name), "%*s",
 	     (int)strlen(name), name);
     cp->cp_api = *api;
-    clicon_debug(1, "%s", __FUNCTION__);
     if (cp){
 	*cpp = cp;
 	cp = NULL;
     }
     retval = 1;
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (retval != 1 && handle)
 	dlclose(handle);
     if (cp)
@@ -282,10 +409,15 @@ clixon_plugins_load(clicon_handle h,
     struct dirent *dp = NULL;
     int            i;
     char           filename[MAXPATHLEN];
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
     int            ret;
+    plugin_module_struct *ms = plugin_module_struct_get(h);
 
     clicon_debug(1, "%s", __FUNCTION__); 
+    if (ms == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+	goto done;
+    }
     /* Get plugin objects names from plugin directory */
     if((ndp = clicon_file_dirent(dir, &dp, regexp?regexp:"(.so)$", S_IFREG)) < 0)
 	goto done;
@@ -298,13 +430,7 @@ clixon_plugins_load(clicon_handle h,
 	    goto done;
 	if (ret == 0)
 	    continue;
-	_clixon_nplugins++;
-	if ((_clixon_plugins = realloc(_clixon_plugins, _clixon_nplugins*sizeof(clixon_plugin))) == NULL) {
-	    clicon_err(OE_UNIX, errno, "realloc");
-	    goto done;
-	}
-	_clixon_plugins[_clixon_nplugins-1] = *cp;
-	free(cp);
+	ADDQ(cp, ms->ms_plugin_list);
     }
     retval = 0;
 done:
@@ -320,39 +446,37 @@ done:
  * @retval     0     OK, with cpp set
  * @retval    -1     Error
  * @code
- *   clixon_plugin *cp = NULL;
+ *   clixon_plugin_t *cp = NULL;
  *   if (clixon_pseudo_plugin(h, "pseudo plugin", &cp) < 0)
  *     err;
  *   cp->cp_api.ca_extension = my_ext_cb;
  * @endcode
  */
 int
-clixon_pseudo_plugin(clicon_handle   h,
-		     const char     *name,
-		     clixon_plugin **cpp)
+clixon_pseudo_plugin(clicon_handle     h,
+		     const char       *name,
+		     clixon_plugin_t **cpp)
 {
-    int            retval = -1;
-    clixon_plugin *cp = NULL;
+    int              retval = -1;
+    clixon_plugin_t *cp = NULL;
+    plugin_module_struct *ms = plugin_module_struct_get(h);
 
     clicon_debug(1, "%s %s", __FUNCTION__, name); 
-
+    if (ms == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+	goto done;
+    }
     /* Create a pseudo plugins */
     /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
-    if ((cp = (clixon_plugin *)malloc(sizeof(struct clixon_plugin))) == NULL){
+    if ((cp = (clixon_plugin_t *)malloc(sizeof(struct clixon_plugin))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
     memset(cp, 0, sizeof(struct clixon_plugin));
     snprintf(cp->cp_name, sizeof(cp->cp_name), "%*s", (int)strlen(name), name);
-
-    _clixon_nplugins++;
-    if ((_clixon_plugins = realloc(_clixon_plugins, _clixon_nplugins*sizeof(clixon_plugin))) == NULL) {
-	clicon_err(OE_UNIX, errno, "realloc");
-	goto done;
-    }
-    _clixon_plugins[_clixon_nplugins-1] = *cp;
-    *cpp = &_clixon_plugins[_clixon_nplugins-1];
-
+    ADDQ(cp, ms->ms_plugin_list);
+    *cpp = cp;
+    cp = NULL;
     retval = 0;
 done:
     if (cp)
@@ -367,7 +491,7 @@ done:
  * @retval    -1       Error
  */
 int
-clixon_plugin_start_one(clixon_plugin *cp,
+clixon_plugin_start_one(clixon_plugin_t *cp,
 			clicon_handle  h)
 {
     int          retval = -1;
@@ -395,7 +519,7 @@ int
 clixon_plugin_start_all(clicon_handle h)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
 
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (clixon_plugin_start_one(cp, h) < 0)
@@ -413,8 +537,8 @@ clixon_plugin_start_all(clicon_handle h)
  * @retval     0       OK
  * @retval    -1       Error
  */
-int
-clixon_plugin_exit_one(clixon_plugin *cp,
+static int
+clixon_plugin_exit_one(clixon_plugin_t *cp,
 		       clicon_handle  h)
 {
     int          retval = -1;
@@ -443,21 +567,21 @@ clixon_plugin_exit_one(clixon_plugin *cp,
  * @retval     0       OK
  * @retval    -1       Error
  */
-int
+static int
 clixon_plugin_exit_all(clicon_handle h)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
-    
-    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
-	if (clixon_plugin_exit_one(cp, h) < 0)
-	    goto done;
+    clixon_plugin_t *cp = NULL;
+    plugin_module_struct *ms = plugin_module_struct_get(h);
+
+    if (ms != NULL){
+	while ((cp = ms->ms_plugin_list) != NULL){
+	    DELQ(cp, ms->ms_plugin_list, clixon_plugin_t *);
+	    if (clixon_plugin_exit_one(cp, h) < 0)
+		goto done;
+	    free(cp);
+	}
     }
-    if (_clixon_plugins){
-	free(_clixon_plugins);
-	_clixon_plugins = NULL;
-    }
-    _clixon_nplugins = 0;
     retval = 0;
  done:
     return retval;
@@ -477,7 +601,7 @@ clixon_plugin_exit_all(clicon_handle h)
  *       Or no callback was found.
  */
 static int
-clixon_plugin_auth_one(clixon_plugin     *cp,
+clixon_plugin_auth_one(clixon_plugin_t     *cp,
 		       clicon_handle      h, 
 		       void              *req,
 		       clixon_auth_type_t auth_type,
@@ -523,7 +647,7 @@ clixon_plugin_auth_all(clicon_handle      h,
 		       char             **authp)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
     int            ret = 0; 
     
     clicon_debug(1, "%s", __FUNCTION__);
@@ -556,7 +680,7 @@ clixon_plugin_auth_all(clicon_handle      h,
  * @retval   -1    Error 
  */
 int
-clixon_plugin_extension_one(clixon_plugin *cp,
+clixon_plugin_extension_one(clixon_plugin_t *cp,
 			    clicon_handle  h, 
 			    yang_stmt     *yext,
 			    yang_stmt     *ys)
@@ -595,7 +719,7 @@ clixon_plugin_extension_all(clicon_handle h,
 			    yang_stmt    *ys)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
     
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (clixon_plugin_extension_one(cp, h, yext, ys) < 0)
@@ -618,7 +742,7 @@ clixon_plugin_extension_all(clicon_handle h,
  * Upgrade datastore on load before or as an alternative to module-specific upgrading mechanism
  */
 int
-clixon_plugin_datastore_upgrade_one(clixon_plugin   *cp,
+clixon_plugin_datastore_upgrade_one(clixon_plugin_t   *cp,
 				    clicon_handle    h,
 				    const char      *db,
 				    cxobj           *xt,
@@ -658,7 +782,7 @@ clixon_plugin_datastore_upgrade_all(clicon_handle    h,
 				    modstate_diff_t *msd)
 {
     int            retval = -1;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
     
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (clixon_plugin_datastore_upgrade_one(cp, h, db, xt, msd) < 0)
@@ -671,41 +795,21 @@ clixon_plugin_datastore_upgrade_all(clicon_handle    h,
 
 /*--------------------------------------------------------------------
  * RPC callbacks for both client/frontend and backend plugins.
- * RPC callbacks are explicitly registered in the plugin_init() function
- * with a tag and a function
- * When the the tag is encountered, the callback is called.
- * Primarily backend, but also netconf and restconf frontend plugins.
- * CLI frontend so far have direct callbacks, ie functions in the cligen
- * specification are directly dlsym:ed to the CLI plugin.
- * It would be possible to use this rpc registering API for CLI plugins as well.
- * 
- * When namespace and name match, the callback is made
  */
-typedef struct {
-    qelem_t       rc_qelem;	/* List header */
-    clicon_rpc_cb rc_callback;  /* RPC Callback */
-    void         *rc_arg;	/* Application specific argument to cb */
-    char         *rc_namespace;/* Namespace to combine with name tag */
-    char         *rc_name;	/* Xml/json tag/name */
-} rpc_callback_t;
-
-/* List of rpc callback entries XXX hang on handle */
-static rpc_callback_t *rpc_cb_list = NULL;
 
 #if 0 /* Debugging */
 static int
-rpc_callback_dump(clicon_handle h,
-		  FILE         *f)
+rpc_callback_dump(clicon_handle h)
 {
     rpc_callback_t *rc;
+    plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    if ((rc = rpc_cb_list) != NULL)
+    clicon_debug(1, "%s--------------", __FUNCTION__);
+    if ((rc = ms->ms_rpc_callbacks) != NULL)
 	do {
-	    fprintf(f, "%s %s\n", __FUNCTION__, rc->rc_name);
-
+	    clicon_debug(1, "%s %s", __FUNCTION__, rc->rc_name);
 	    rc = NEXTQ(rpc_callback_t *, rc);
-	} while (rc != rpc_cb_list);
-    fprintf(f, "%s--------------\n", __FUNCTION__);
+	} while (rc != ms->ms_rpc_callbacks);
     return 0;
 }
 #endif
@@ -729,7 +833,13 @@ rpc_callback_register(clicon_handle  h,
 		      const char    *name)
 {
     rpc_callback_t *rc = NULL;
+    plugin_module_struct *ms = plugin_module_struct_get(h);
 
+    clicon_debug(1, "%s %s", __FUNCTION__, name);
+    if (ms == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+	goto done;
+    }
     if (name == NULL || ns == NULL){
 	clicon_err(OE_DB, EINVAL, "name or namespace NULL");
 	goto done;
@@ -743,7 +853,7 @@ rpc_callback_register(clicon_handle  h,
     rc->rc_arg  = arg;
     rc->rc_namespace  = strdup(ns);
     rc->rc_name  = strdup(name);
-    ADDQ(rc, rpc_cb_list);
+    ADDQ(rc, ms->ms_rpc_callbacks);
     return 0;
  done:
     if (rc){
@@ -758,19 +868,21 @@ rpc_callback_register(clicon_handle  h,
 
 /*! Delete all RPC callbacks
  */
-int
+static int
 rpc_callback_delete_all(clicon_handle h)
 {
     rpc_callback_t *rc;
+    plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    while((rc = rpc_cb_list) != NULL) {
-	DELQ(rc, rpc_cb_list, rpc_callback_t *);
-	if (rc->rc_namespace)
-	    free(rc->rc_namespace);
-	if (rc->rc_name)
-	    free(rc->rc_name);
-	free(rc);
-    }
+    if (ms != NULL)
+	while((rc = ms->ms_rpc_callbacks) != NULL) {
+	    DELQ(rc, ms->ms_rpc_callbacks, rpc_callback_t *);
+	    if (rc->rc_namespace)
+		free(rc->rc_namespace);
+	    if (rc->rc_name)
+		free(rc->rc_name);
+	    free(rc);
+	}
     return 0;
 }
 
@@ -800,25 +912,28 @@ rpc_callback_call(clicon_handle h,
     char           *prefix;
     char           *ns;
     int             nr = 0; /* How many callbacks */
+    plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    if (rpc_cb_list == NULL)
-	return 0;
+    if (ms == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+	goto done;
+    }
     name = xml_name(xe);
     prefix = xml_prefix(xe);
     xml2ns(xe, prefix, &ns);
-    rc = rpc_cb_list;
-    do {
-	if (strcmp(rc->rc_name, name) == 0 &&
-	    ns && rc->rc_namespace &&
-	    strcmp(rc->rc_namespace, ns) == 0){
-	    if (rc->rc_callback(h, xe, cbret, arg, rc->rc_arg) < 0){
-		clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_name);
-		goto done;
+    if ((rc = ms->ms_rpc_callbacks) != NULL)
+	do {
+	    if (strcmp(rc->rc_name, name) == 0 &&
+		ns && rc->rc_namespace &&
+		strcmp(rc->rc_namespace, ns) == 0){
+		if (rc->rc_callback(h, xe, cbret, arg, rc->rc_arg) < 0){
+		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_name);
+		    goto done;
+		}
+		nr++;
 	    }
-	    nr++;
-	}
-	rc = NEXTQ(rpc_callback_t *, rc);
-    } while (rc != rpc_cb_list);
+	    rc = NEXTQ(rpc_callback_t *, rc);
+	} while (rc != ms->ms_rpc_callbacks);
     retval = nr; /* 0: none found, >0 nr of handlers called */
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -827,19 +942,7 @@ rpc_callback_call(clicon_handle h,
 
 /*--------------------------------------------------------------------
  * Upgrade callbacks for backend upgrade of datastore
- * Register upgrade callbacks in plugin_init() with a module and a "from" and "to"
- * revision.
  */
-typedef struct {
-    qelem_t           uc_qelem;	    /* List header */
-    clicon_upgrade_cb uc_callback;  /* RPC Callback */
-    const char       *uc_fnstr;     /* Stringified fn name for debug */
-    void             *uc_arg;	    /* Application specific argument to cb */
-    char             *uc_namespace; /* Module namespace */
-} upgrade_callback_t;
-
-/* List of rpc callback entries XXX hang on handle */
-static upgrade_callback_t *upgrade_cb_list = NULL;
 
 /*! Register an upgrade callback by appending the new callback to the list
  *
@@ -860,7 +963,12 @@ upgrade_callback_reg_fn(clicon_handle     h,
 			void             *arg)
 {
     upgrade_callback_t *uc;
+    plugin_module_struct *ms = plugin_module_struct_get(h);
 
+    if (ms == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+	goto done;
+    }
     if ((uc = malloc(sizeof(upgrade_callback_t))) == NULL) {
 	clicon_err(OE_DB, errno, "malloc");
 	goto done;
@@ -871,7 +979,7 @@ upgrade_callback_reg_fn(clicon_handle     h,
     uc->uc_arg  = arg;
     if (ns)
 	uc->uc_namespace  = strdup(ns);
-    ADDQ(uc, upgrade_cb_list);
+    ADDQ(uc, ms->ms_upgrade_callbacks);
     return 0;
  done:
     if (uc){
@@ -884,17 +992,19 @@ upgrade_callback_reg_fn(clicon_handle     h,
 
 /*! Delete all Upgrade callbacks
  */
-int
+static int
 upgrade_callback_delete_all(clicon_handle h)
 {
     upgrade_callback_t *uc;
+    plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    while((uc = upgrade_cb_list) != NULL) {
-	DELQ(uc, upgrade_cb_list, upgrade_callback_t *);
-	if (uc->uc_namespace)
-	    free(uc->uc_namespace);
-	free(uc);
-    }
+    if (ms != NULL)
+	while((uc = ms->ms_upgrade_callbacks) != NULL) {
+	    DELQ(uc, ms->ms_upgrade_callbacks, upgrade_callback_t *);
+	    if (uc->uc_namespace)
+		free(uc->uc_namespace);
+	    free(uc);
+	}
     return 0;
 }
 
@@ -925,36 +1035,39 @@ upgrade_callback_call(clicon_handle h,
     upgrade_callback_t *uc;
     int                 nr = 0; /* How many callbacks */
     int                 ret;
+    plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    if (upgrade_cb_list == NULL)
-	return 1;
-    uc = upgrade_cb_list;
-    do {
-	/* For matching an upgrade callback:
-	 * - No module name registered (matches all modules) OR
-	 * - Names match
-	 * AND
-	 * - No registered from revision (matches all revisions) OR
-	 *   - Registered from revision >= from AND
-         *   - Registered to revision <= to (which includes case both 0)
-	 */
-	if (uc->uc_namespace == NULL || strcmp(uc->uc_namespace, ns)==0){
-	    if ((ret = uc->uc_callback(h, xt, ns, op, from, to, uc->uc_arg, cbret)) < 0){
-		clicon_debug(1, "%s Error in: %s", __FUNCTION__, uc->uc_namespace);
-		goto done;
-	    }
-	    if (ret == 0){
-		if (cbuf_len(cbret)==0){	
-		    clicon_err(OE_CFG, 0, "Validation fail %s(%s): cbret not set",
-			       uc->uc_fnstr, ns);
+    if (ms == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+	goto done;
+    }
+    if ((uc = ms->ms_upgrade_callbacks) != NULL)
+	do {
+	    /* For matching an upgrade callback:
+	     * - No module name registered (matches all modules) OR
+	     * - Names match
+	     * AND
+	     * - No registered from revision (matches all revisions) OR
+	     *   - Registered from revision >= from AND
+	     *   - Registered to revision <= to (which includes case both 0)
+	     */
+	    if (uc->uc_namespace == NULL || strcmp(uc->uc_namespace, ns)==0){
+		if ((ret = uc->uc_callback(h, xt, ns, op, from, to, uc->uc_arg, cbret)) < 0){
+		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, uc->uc_namespace);
 		    goto done;
 		}
-		goto fail;
+		if (ret == 0){
+		    if (cbuf_len(cbret)==0){	
+			clicon_err(OE_CFG, 0, "Validation fail %s(%s): cbret not set",
+				   uc->uc_fnstr, ns);
+			goto done;
+		    }
+		    goto fail;
+		}
+		nr++;
 	    }
-	    nr++;
-	}
-	uc = NEXTQ(upgrade_callback_t *, uc);
-    } while (uc != upgrade_cb_list);
+	    uc = NEXTQ(upgrade_callback_t *, uc);
+	} while (uc != ms->ms_upgrade_callbacks);
     retval = 1;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -989,4 +1102,50 @@ const char *
 clixon_auth_type_int2str(clixon_auth_type_t auth_type)
 {
     return clicon_int2str(clixon_auth_type, auth_type);
+}
+
+/*! Initialize plugin module by creating a handle holding plugin and callback lists
+ * This should be called once at start by every application
+ * @param[in]  h   Clixon handle
+ * @see clixon_plugin_module_exit
+ */
+int
+clixon_plugin_module_init(clicon_handle h)
+{
+    int                          retval = -1;
+    struct plugin_module_struct *ph;
+
+    if ((ph = malloc(sizeof(*ph))) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(ph, 0, sizeof(*ph));
+    if (plugin_module_struct_set(h, ph) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Delete plugin module
+ * This should be called once at exit by every application
+ * @param[in]  h   Clixon handle
+ */
+int
+clixon_plugin_module_exit(clicon_handle h)
+{
+    struct plugin_module_struct *ph;
+
+    /* Delete all plugins */
+    clixon_plugin_exit_all(h);
+    /* Delete all RPC callbacks */
+    rpc_callback_delete_all(h);
+    /* Delete all backend plugin upgrade callbacks (only backend) */
+    upgrade_callback_delete_all(h);
+    /* Delete plugin_module itself */
+    if ((ph = plugin_module_struct_get(h)) != NULL){
+	free(ph);
+	plugin_module_struct_set(h, NULL);
+    }
+    return 0;
 }

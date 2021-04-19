@@ -155,7 +155,9 @@ typedef enum yang_class yang_class;
 
 struct xml;
 
-typedef struct yang_stmt yang_stmt; /* Defined in clixon_yang_internal */
+/* This is the external handle type exposed in the API.
+ * The internal struct is defined in clixon_yang_internal.h */
+typedef struct yang_stmt yang_stmt; 
 
 /*! Yang apply function worker
  * @param[in]  yn   yang node

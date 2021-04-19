@@ -69,7 +69,7 @@ typedef struct {
 /*
  * Prototypes
  */
-int clixon_plugin_reset_one(clixon_plugin *cp, clicon_handle h, char *db);
+int clixon_plugin_reset_one(clixon_plugin_t *cp, clicon_handle h, char *db);
 int clixon_plugin_reset_all(clicon_handle h, char *db);
 
 int clixon_plugin_pre_daemon_all(clicon_handle h);
@@ -80,25 +80,25 @@ int clixon_plugin_statedata_all(clicon_handle h, yang_stmt *yspec, cvec *nsc, ch
 transaction_data_t * transaction_new(void);
 int transaction_free(transaction_data_t *);
 
-int plugin_transaction_begin_one(clixon_plugin *cp, clicon_handle h, transaction_data_t *td);
+int plugin_transaction_begin_one(clixon_plugin_t *cp, clicon_handle h, transaction_data_t *td);
 int plugin_transaction_begin_all(clicon_handle h, transaction_data_t *td);
 
-int plugin_transaction_validate_one(clixon_plugin *cp, clicon_handle h, transaction_data_t *td);
+int plugin_transaction_validate_one(clixon_plugin_t *cp, clicon_handle h, transaction_data_t *td);
 int plugin_transaction_validate_all(clicon_handle h, transaction_data_t *td);
 
-int plugin_transaction_complete_one(clixon_plugin *cp, clicon_handle h, transaction_data_t *td);
+int plugin_transaction_complete_one(clixon_plugin_t *cp, clicon_handle h, transaction_data_t *td);
 int plugin_transaction_complete_all(clicon_handle h, transaction_data_t *td);
 
-int plugin_transaction_commit_one(clixon_plugin *cp, clicon_handle h, transaction_data_t *td);
+int plugin_transaction_commit_one(clixon_plugin_t *cp, clicon_handle h, transaction_data_t *td);
 int plugin_transaction_commit_all(clicon_handle h, transaction_data_t *td);
 
-int plugin_transaction_commit_done_one(clixon_plugin *cp, clicon_handle h, transaction_data_t *td);
+int plugin_transaction_commit_done_one(clixon_plugin_t *cp, clicon_handle h, transaction_data_t *td);
 int plugin_transaction_commit_done_all(clicon_handle h, transaction_data_t *td);
 
-int plugin_transaction_end_one(clixon_plugin *cp, clicon_handle h, transaction_data_t *td);
+int plugin_transaction_end_one(clixon_plugin_t *cp, clicon_handle h, transaction_data_t *td);
 int plugin_transaction_end_all(clicon_handle h, transaction_data_t *td);
 
-int plugin_transaction_abort_one(clixon_plugin *cp, clicon_handle h, transaction_data_t *td);
+int plugin_transaction_abort_one(clixon_plugin_t *cp, clicon_handle h, transaction_data_t *td);
 int plugin_transaction_abort_all(clicon_handle h, transaction_data_t *td);
 
 #endif  /* _BACKEND_PLUGIN_H_ */

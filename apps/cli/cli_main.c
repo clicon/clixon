@@ -178,7 +178,11 @@ cli_terminate(clicon_handle h)
 	xml_free(x);
     clicon_data_cvec_del(h, "cli-edit-cvv");;
     xpath_optimize_exit();
-    cli_plugin_finish(h);    
+    /* Delete all plugins, and RPC callbacks */
+    clixon_plugin_module_exit(h);
+    /* Delete CLI syntax et al */
+    cli_plugin_finish(h);  
+
     cli_history_save(h);
     cli_handle_exit(h);
     clixon_err_exit();
@@ -615,6 +619,10 @@ main(int    argc,
      */
     cv_exclude_keys(clicon_cli_varonly(h)); 
 
+    /* Initialize plugin module by creating a handle holding plugin and callback lists */
+    if (clixon_plugin_module_init(h) < 0)
+	goto done;
+
     /* Load cli plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_cli_dir(h)) != NULL &&
 	clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
@@ -625,7 +633,6 @@ main(int    argc,
      */
     if (netconf_module_features(h) < 0)
 	goto done;
-
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
     

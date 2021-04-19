@@ -584,8 +584,9 @@ netconf_terminate(clicon_handle h)
     cvec       *nsctx;
     cxobj      *x;
     
-    clixon_plugin_exit_all(h);
-    rpc_callback_delete_all(h);
+    /* Delete all plugins, and RPC callbacks */
+    clixon_plugin_module_exit(h);
+
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	ys_free(yspec);
@@ -794,6 +795,10 @@ main(int    argc,
      * Otherwise it is loaded in netconf_module_load below
      */
     if (netconf_module_features(h) < 0)
+	goto done;
+    
+    /* Initialize plugin module by creating a handle holding plugin and callback lists */
+    if (clixon_plugin_module_init(h) < 0)
 	goto done;
     
     /* Create top-level yang spec and store as option */

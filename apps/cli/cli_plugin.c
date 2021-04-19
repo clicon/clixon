@@ -271,7 +271,7 @@ cli_load_syntax_file(clicon_handle h,
     char         **vec = NULL;
     int            i, nvec;
     char          *plgnam;
-    clixon_plugin *cp;
+    clixon_plugin_t *cp;
 
     if ((pt = pt_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "pt_new");
@@ -313,7 +313,7 @@ cli_load_syntax_file(clicon_handle h,
 
     if (plgnam != NULL) { /* Find plugin for callback resolving */
 	if ((cp = clixon_plugin_find(h, plgnam)) != NULL)
-	    handle = cp->cp_handle;
+	    handle = clixon_plugin_handle_get(cp);
 	if (handle == NULL){
 	    clicon_err(OE_PLUGIN, 0, "CLICON_PLUGIN set to '%s' in %s but plugin %s.so not found in %s", 
 		       plgnam, filename, plgnam, 
@@ -393,7 +393,7 @@ cli_syntax_load(clicon_handle h)
     cli_syntaxmode_t  *m;
     cligen_susp_cb_t  *fns = NULL;
     cligen_interrupt_cb_t *fni = NULL;
-    clixon_plugin     *cp;
+    clixon_plugin_t     *cp;
     parse_tree        *ptall = NULL; /* Universal CLIgen parse tree all modes */
 
     /* Syntax already loaded.  XXX should we re-load?? */
@@ -457,10 +457,10 @@ cli_syntax_load(clicon_handle h)
     /* Set susp and interrupt callbacks into  CLIgen */
     cp = NULL;
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
-	if (fns==NULL && (fns = cp->cp_api.ca_suspend) != NULL)
+	if (fns==NULL && (fns = clixon_plugin_api_get(cp)->ca_suspend) != NULL)
 	    if (cli_susp_hook(h, fns) < 0)
 		goto done;
-	if (fni==NULL && (fni = cp->cp_api.ca_interrupt) != NULL)
+	if (fni==NULL && (fni = clixon_plugin_api_get(cp)->ca_interrupt) != NULL)
 	    if (cli_interrupt_hook(h, fni) < 0)
 		goto done;
     }
@@ -469,7 +469,6 @@ cli_syntax_load(clicon_handle h)
     retval = 0;
 done:
     if (retval != 0) {
-	clixon_plugin_exit_all(h);
 	cli_syntax_unload(h);
 	cli_syntax_set(h, NULL);
     }
@@ -485,8 +484,6 @@ done:
 int
 cli_plugin_finish(clicon_handle h)
 {
-    /* Remove all CLI plugins */
-    clixon_plugin_exit_all(h);
     /* Remove all cligen syntax modes */
     cli_syntax_unload(h);
     cli_syntax_set(h, NULL);
@@ -744,7 +741,7 @@ clicon_cliread(clicon_handle h,
     cli_syntaxmode_t *mode;
     cli_syntax_t     *stx;
     cli_prompthook_t *fn;
-    clixon_plugin    *cp;
+    clixon_plugin_t    *cp;
     char             *promptstr;
     
     stx = cli_syntax(h);
@@ -752,7 +749,7 @@ clicon_cliread(clicon_handle h,
     /* Get prompt from plugin callback? */
     cp = NULL;
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
-	if ((fn = cp->cp_api.ca_prompt) == NULL)
+	if ((fn = clixon_plugin_api_get(cp)->ca_prompt) == NULL)
 	    continue;
 	pfmt = fn(h, mode->csm_name);
 	break;

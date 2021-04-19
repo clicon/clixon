@@ -105,6 +105,7 @@ $(top_srcdir)/lib/src/$(CLIXON_LIB):
 
 clean:
 	rm -f $(APPS) clixon_util_stream *.core
+	rm -f *.gcda *.gcno *.gcov # coverage
 
 # APPS
 clixon_util_xml: clixon_util_xml.c $(LIBDEPS)

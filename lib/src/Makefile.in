@@ -128,6 +128,7 @@ clean:
 	rm -f lex.clixon_xpath_parse.c
 	rm -f lex.clixon_api_path_parse.c
 	rm -f lex.clixon_instance_id_parse.c
+	rm -f *.gcda *.gcno *.gcov # coverage
 
 #############################################################################
 # Implicit rules for lex and yacc.

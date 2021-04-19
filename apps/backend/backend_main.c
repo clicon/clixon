@@ -125,11 +125,8 @@ backend_terminate(clicon_handle h)
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
     stream_publish_exit();
-    clixon_plugin_exit_all(h);
-    /* Delete all backend plugin RPC callbacks */
-    rpc_callback_delete_all(h);
-    /* Delete all backend plugin upgrade callbacks */
-    upgrade_callback_delete_all(h);
+    /* Delete all plugins, RPC callbacks, and upgrade callbacks */
+    clixon_plugin_module_exit(h);
     /* Delete all process-control entries */
     clixon_process_delete_all(h); 
 
@@ -517,7 +514,6 @@ main(int    argc,
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
 	return -1;
-    
     foreground = 0;
     once = 0;
     zap = 0;
@@ -582,12 +578,10 @@ main(int    argc,
     clicon_option_str_set(h, "CLICON_WWWUSER", WWWUSER);
     clicon_option_str_set(h, "CLICON_WWWDIR", WWWDIR);
     
-    /* External NACM file? */
-    nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
-    if (nacm_mode && strcmp(nacm_mode, "external") == 0)
-	if (nacm_load_external(h) < 0)
-	    goto done;
-    
+    /* Initialize plugin module by creating a handle holding plugin and callback lists */
+    if (clixon_plugin_module_init(h) < 0)
+	goto done;
+
     /* Now run through the operational args */
     opterr = 1;
     optind = 1;
@@ -779,6 +773,14 @@ main(int    argc,
      */
     if (netconf_module_features(h) < 0)
 	goto done;
+
+    /* External NACM file? 
+     * Note, loads yang -> extensions -> plugins
+     */
+    nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
+    if (nacm_mode && strcmp(nacm_mode, "external") == 0)
+	if (nacm_load_external(h) < 0)
+	    goto done;
 
     /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)

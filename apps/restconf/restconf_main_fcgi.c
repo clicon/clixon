@@ -211,7 +211,7 @@ main(int    argc,
     char          *stream_path;
     int            finish = 0;
     char          *str;
-    clixon_plugin *cp = NULL;
+    clixon_plugin_t *cp = NULL;
     uint32_t       id = 0;
     cvec          *nsctx_global = NULL; /* Global namespace context */
     size_t         cligen_buflen;
@@ -362,6 +362,10 @@ main(int    argc,
     /* Treat unknown XML as anydata */
     if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1)
 	xml_bind_yang_unknown_anydata(1);
+
+    /* Initialize plugin module by creating a handle holding plugin and callback lists */
+    if (clixon_plugin_module_init(h) < 0)
+	goto done;
     
     /* Load restconf plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_restconf_dir(h)) != NULL)
@@ -372,7 +376,7 @@ main(int    argc,
      */
     if (clixon_pseudo_plugin(h, "pseudo restconf", &cp) < 0)
 	goto done;
-    cp->cp_api.ca_extension = restconf_main_extension_cb;
+    clixon_plugin_api_get(cp)->ca_extension = restconf_main_extension_cb;
 
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
@@ -427,6 +431,9 @@ main(int    argc,
     if (dbg)      
 	clicon_option_dump(h, dbg);
 
+    /* Initialize plugin module by creating a handle holding plugin and callback lists */
+    if (clixon_plugin_module_init(h) < 0)
+	goto done;
     /* Call start function in all plugins before we go interactive */
     if (clixon_plugin_start_all(h) < 0)
 	goto done;
