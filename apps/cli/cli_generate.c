@@ -611,6 +611,7 @@ yang2cli_var(clicon_handle h,
 					cb);
 		if (result < 0)
 		goto done;
+		if (result == 0)
 	    yang2cli_helptext(cb, helptext);
 	}
 	cprintf(cb, ")");
@@ -635,6 +636,7 @@ yang2cli_var(clicon_handle h,
 					cb);
 		if (result < 0)
 		goto done;
+		if (result == 0)
 	    yang2cli_helptext(cb, helptext);
 	    cprintf(cb, ")");
 	}
