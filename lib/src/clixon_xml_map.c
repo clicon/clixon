@@ -208,7 +208,7 @@ xml2txt(FILE  *f,
 	cxobj *x, 
 	int    level)
 {
-    return xml2txt_recurse(f, x, fprintf, 0);
+    return xml2txt_recurse(f, x, fprintf, level);
 }
 
 /*! Translate from XML to CLI commands

@@ -79,10 +79,12 @@ The 5.1 release contains more RESTCONF native mode restructuring, new multi-yang
 
 Developers may need to change their code
 
+* `str2cvec`: Renamed to `uri_str2cvec` and added a decode parameter:
+  * To keep existing semantics: `str2cvec(...,cvp) -> str2cvec(...,1, cvp)`
 * Removed `cli_debug()`. Use `cli_debug_backend()` or `cli_debug_restconf()` instead.
 * Removed `yspec_free()` - replace with `ys_free()`
-* Added xerr output parameter to `xmldb_get0()`
-* Removed `endtag` parameter of `clixon_xml_parse_file()`
+* `xmldb_get0()`:  Added xerr output parameter to 
+* `clixon_xml_parse_file()`: Removed `endtag` parameter.
 * Restconf authentication callback (ca_auth) signature changed (again)
   * Minor modification to 5.0 change: userp removed.
   * New version is: `int ca_auth(h, req, auth_type, authp)`, where

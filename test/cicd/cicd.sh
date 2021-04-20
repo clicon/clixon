@@ -19,7 +19,7 @@
 #
 # Typical run:  ./cicd.sh 2>&1 | tee cilog
 
-set -eux # x
+set -eux
 
 if [ $# -ne 2 ]; then 
     echo "usage: $0 <host> <restconf>"

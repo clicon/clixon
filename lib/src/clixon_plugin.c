@@ -962,7 +962,7 @@ upgrade_callback_reg_fn(clicon_handle     h,
 			const char       *ns,
 			void             *arg)
 {
-    upgrade_callback_t *uc;
+    upgrade_callback_t *uc = NULL;
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
     if (ms == NULL){
