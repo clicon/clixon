@@ -120,6 +120,114 @@ cvec_append(cvec *cvv0,
     return cvv2;
 }
 
+/*! Print an XML tree structure to an output stream and encode chars "<>&"
+ *
+ * @param[in]   xn          clicon xml tree
+ * @param[in]   level       how many spaces to insert before each line
+ * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
+ * @param[in]   fn          Callback to make print function
+ * @see clicon_xml2cbuf
+ * One can use clicon_xml2cbuf to get common code, but using fprintf is
+ * much faster than using cbuf and then printing that,...
+ */
+int xml2file (cxobj *xn, int level, int prettyprint, clicon_output_cb *fn)
+{
+    int    retval = -1;
+    char  *name;
+    char  *namespace;
+    cxobj *xc;
+    int    hasbody;
+    int    haselement;
+    char  *val;
+    char  *encstr = NULL; /* xml encoded string */
+    char  *opext = NULL;
+
+    if (x == NULL)
+	goto ok;
+	/* Look for autocli-op defined in clixon-lib.yang */
+	if (yang_extension_value(xml_spec(x), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
+		goto ok;
+	}
+	if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
+		goto ok;
+	}
+    name = xml_name(x);
+    namespace = xml_prefix(x);
+    switch(xml_type(x)){
+    case CX_BODY:
+	if ((val = xml_value(x)) == NULL) /* incomplete tree */
+	    break;
+	if (xml_chardata_encode(&encstr, "%s", val) < 0)
+	    goto done;
+	(*fn)(stdout, "%s", encstr);
+	break;
+    case CX_ATTR:
+	(*fn)(stdout, " ");
+	if (namespace)
+	    (*fn)(stdout, "%s:", namespace);
+	(*fn)(stdout, "%s=\"%s\"", name, xml_value(x));
+	break;
+    case CX_ELMNT:
+	(*fn)(stdout, "%*s<", prettyprint?(level*XML_INDENT):0, "");
+	if (namespace)
+	    (*fn)(stdout, "%s:", namespace);
+	(*fn)(stdout, "%s", name);
+	hasbody = 0;
+	haselement = 0;
+	xc = NULL;
+	/* print attributes only */
+	while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+	    switch (xml_type(xc)){
+	    case CX_ATTR:
+		if (xml2file(xc, level+1, prettyprint, fprintf) <0)
+		    goto done;
+		break;
+	    case CX_BODY:
+		hasbody=1;
+		break;
+	    case CX_ELMNT:
+		haselement=1;
+		break;
+	    default:
+		break;
+	    }
+	}
+	/* Check for special case <a/> instead of <a></a>:
+	 * Ie, no CX_BODY or CX_ELMNT child.
+	 */
+	if (hasbody==0 && haselement==0) 
+	    (*fn)(stdout, "/>");
+	else{
+	    (*fn)(stdout, ">");
+	    if (prettyprint && hasbody == 0)
+		    (*fn)(stdout, "\n");
+	    xc = NULL;
+	    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+		if (xml_type(xc) != CX_ATTR)
+		    if (xml2file(xc, level+1, prettyprint, fprintf) <0)
+			goto done;
+	    }
+	    if (prettyprint && hasbody==0)
+		(*fn)(stdout, "%*s", level*XML_INDENT, "");
+	    (*fn)(stdout, "</");
+	    if (namespace)
+		(*fn)(stdout, "%s:", namespace);
+	    (*fn)(stdout, "%s>", name);
+	}
+	if (prettyprint)
+	    (*fn)(stdout, "\n");
+	break;
+    default:
+	break;
+    }/* switch */
+ ok:
+    retval = 0;
+ done:
+    if (encstr)
+	free(encstr);
+    return retval;
+}
+
 /*! Enter a CLI edit mode
  * @param[in]  h    CLICON handle
  * @param[in]  cvv  Vector of variables from CLIgen command-line
@@ -413,10 +521,10 @@ cli_auto_show(clicon_handle h,
 	switch (format){
 	case FORMAT_XML:
 	    if (isroot)
-		clicon_xml2file(stdout, xp, 0, pretty, 1);
+		stdout(xp, 0, pretty, 1);
 	    else{
 		while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL)
-		    clicon_xml2file(stdout, xc, 0, pretty, 1);
+		    stdout(xc, 0, pretty, 1);
 	    }
 	    fprintf(stdout, "\n");
 	    break;
@@ -451,10 +559,10 @@ cli_auto_show(clicon_handle h,
 	    if (pretty)
 		fprintf(stdout, "\n");
 	    if (isroot)
-		clicon_xml2file(stdout, xp, 2, pretty, 1);
+		xml2file(xp, 2, pretty, fprintf);
 	    else
 		while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL)
-		    clicon_xml2file(stdout, xc, 2, pretty, 1);
+		    xml2file(xc, 2, pretty, fprintf);
 	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	    break;
 	} /* switch */

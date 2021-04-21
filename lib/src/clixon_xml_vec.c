@@ -341,7 +341,7 @@ clixon_xvec_print(FILE        *f,
     int i;
     
     for (i=0; i<xv->xv_len; i++)
-	clicon_xml2file(f, xv->xv_vec[i], 0, 1, 0);
+	clicon_xml2file(f, xv->xv_vec[i], 0, 1);
     return 0;
 }
 

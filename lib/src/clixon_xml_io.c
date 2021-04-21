@@ -104,8 +104,7 @@ xml2file_recurse(FILE             *f,
 		 cxobj            *x, 
 		 int               level, 
 		 int               prettyprint,
-		 clicon_output_cb *fn,
-		 int 			   used_for_show_command)
+		 clicon_output_cb *fn)
 {
     int    retval = -1;
     char  *name;
@@ -115,17 +114,8 @@ xml2file_recurse(FILE             *f,
     int    haselement;
     char  *val;
     char  *encstr = NULL; /* xml encoded string */
-    char  *opext = NULL;
-
     if (x == NULL)
 	goto ok;
-	/* Look for autocli-op defined in clixon-lib.yang */
-	if (yang_extension_value(xml_spec(x), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
-		goto ok;
-	}
-	if ((used_for_show_command == 1) && (opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
-		goto ok;
-	}
     name = xml_name(x);
     namespace = xml_prefix(x);
     switch(xml_type(x)){
@@ -154,7 +144,7 @@ xml2file_recurse(FILE             *f,
 	while ((xc = xml_child_each(x, xc, -1)) != NULL) {
 	    switch (xml_type(xc)){
 	    case CX_ATTR:
-		if (xml2file_recurse(f, xc, level+1, prettyprint, fn, used_for_show_command) <0)
+		if (xml2file_recurse(f, xc, level+1, prettyprint, fn) <0)
 		    goto done;
 		break;
 	    case CX_BODY:
@@ -179,7 +169,7 @@ xml2file_recurse(FILE             *f,
 	    xc = NULL;
 	    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
 		if (xml_type(xc) != CX_ATTR)
-		    if (xml2file_recurse(f, xc, level+1, prettyprint, fn, used_for_show_command) <0)
+		    if (xml2file_recurse(f, xc, level+1, prettyprint, fn) <0)
 			goto done;
 	    }
 	    if (prettyprint && hasbody==0)
@@ -209,7 +199,6 @@ xml2file_recurse(FILE             *f,
  * @param[in]   xn          clicon xml tree
  * @param[in]   level       how many spaces to insert before each line
  * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
- * @param[in]   used_for_show_command is the function used for a cli show command. 
  * @see clicon_xml2cbuf print to a cbuf string
  * @see clicon_xml2cbuf_cb print using a callback
  */
@@ -217,10 +206,9 @@ int
 clicon_xml2file(FILE  *f, 
 		cxobj *x, 
 		int    level, 
-		int    prettyprint,
-		int    used_for_show_command)
+		int    prettyprint)
 {
-    return xml2file_recurse(f, x, level, prettyprint, fprintf, used_for_show_command);
+    return xml2file_recurse(f, x, level, prettyprint, fprintf);
 }
 
 /*! Print an XML tree structure to an output stream and encode chars "<>&"
@@ -229,7 +217,6 @@ clicon_xml2file(FILE  *f,
  * @param[in]   xn          clicon xml tree
  * @param[in]   level       how many spaces to insert before each line
  * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
- * @param[in]   used_for_show_command is the function used for a cli show command. 
  * @see clicon_xml2cbuf
  */
 int
@@ -237,10 +224,9 @@ clicon_xml2file_cb(FILE             *f,
 		   cxobj            *x, 
 		   int               level, 
 		   int               prettyprint,
-		   clicon_output_cb *fn,
-		   int    			 used_for_show_command)
+		   clicon_output_cb *fn)
 {
-    return xml2file_recurse(f, x, level, prettyprint, fn, used_for_show_command);
+    return xml2file_recurse(f, x, level, prettyprint, fn);
 }
 
 /*! Print an XML tree structure to an output stream
@@ -249,7 +235,6 @@ clicon_xml2file_cb(FILE             *f,
  *
  * @param[in]   f           UNIX output stream
  * @param[in]   xn          clicon xml tree
- * used_for_show_command
  * @see clicon_xml2cbuf
  * @see clicon_xml2cbuf_cb print using a callback
  */
@@ -257,7 +242,7 @@ int
 xml_print(FILE  *f, 
 	  cxobj *x)
 {
-    return xml2file_recurse(f, x, 0, 1, fprintf, 0);
+    return xml2file_recurse(f, x, 0, 1, fprintf);
 }
 
 /*! Print an XML tree structure to a cligen buffer and encode chars "<>&"

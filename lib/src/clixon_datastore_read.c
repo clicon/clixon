@@ -713,7 +713,7 @@ xmldb_get_nocache(clicon_handle    h,
 	clicon_log(LOG_NOTICE, "%s: sort verify failed #2", __FUNCTION__);
 #endif
     if (clicon_debug_get()>1)
-    	clicon_xml2file(stderr, xt, 0, 1, 0);
+    	clicon_xml2file(stderr, xt, 0, 1);
     *xtop = xt;
     xt = NULL;
     retval = 1;
@@ -872,7 +872,7 @@ xmldb_get_cache(clicon_handle    h,
      * If cache was empty, also update to datastore cache
      */
     if (clicon_debug_get()>1)
-    	clicon_xml2file(stderr, x1t, 0, 1, 0);
+    	clicon_xml2file(stderr, x1t, 0, 1);
     *xtop = x1t;
     retval = 1;
  done:
@@ -971,7 +971,7 @@ xmldb_get_zerocopy(clicon_handle    h,
 	    goto done;
     }
     if (clicon_debug_get()>1)
-    	clicon_xml2file(stderr, x0t, 0, 1, 0);
+    	clicon_xml2file(stderr, x0t, 0, 1);
     *xtop = x0t;
     retval = 1;
  done:

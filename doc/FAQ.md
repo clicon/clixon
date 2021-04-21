@@ -485,7 +485,7 @@ Suppose you want to print all added interfaces:
 	cxobj *target = transaction_target(td); # wanted XML tree
 	vec = xpath_vec_flag(target, NULL, "//interface", &len, XML_FLAG_ADD); /* Get added i/fs */
 	for (i=0; i<len; i++)             /* Loop over added i/fs */
-	  clicon_xml2file(stdout, vec[i], 0, 1, 0); /* Print the added interface */
+	  clicon_xml2file(stdout, vec[i], 0, 1); /* Print the added interface */
 ```
 You can look for added, deleted and changed entries in this way.
 

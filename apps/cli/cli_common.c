@@ -676,7 +676,7 @@ compare_xmls(cxobj *xc1,
 	    xml2txt_cb(f, xc, cligen_output);
     else
 	while ((xc = xml_child_each(xc1, xc, -1)) != NULL)
-	    clicon_xml2file_cb(f, xc, 0, 1, cligen_output, 0);
+	    clicon_xml2file_cb(f, xc, 0, 1, cligen_output);
 
     fclose(f);
     close(fd);
@@ -693,7 +693,7 @@ compare_xmls(cxobj *xc1,
 	    xml2txt_cb(f, xc, cligen_output);
     else
 	while ((xc = xml_child_each(xc2, xc, -1)) != NULL)
-	    clicon_xml2file_cb(f, xc, 0, 1, cligen_output, 0);
+	    clicon_xml2file_cb(f, xc, 0, 1, cligen_output);
     fclose(f);
     close(fd);
 
@@ -923,7 +923,7 @@ save_config_file(clicon_handle h,
 	clicon_err(OE_CFG, errno, "Creating file %s", filename);
 	goto done;
     } 
-    if (clicon_xml2file(f, xt, 0, 1, 0) < 0)
+    if (clicon_xml2file(f, xt, 0, 1) < 0)
 	goto done;
     retval = 0;
     /* Fall through */
@@ -1029,7 +1029,7 @@ cli_notification_cb(int   s,
 	while ((x = xml_child_each(xe, x, -1)) != NULL) {
 	    switch (format){
 	    case FORMAT_XML:
-		if (clicon_xml2file_cb(stdout, x, 0, 1, cligen_output, 0) < 0)
+		if (clicon_xml2file_cb(stdout, x, 0, 1, cligen_output) < 0)
 		    goto done;
 		break;
 	    case FORMAT_TEXT:

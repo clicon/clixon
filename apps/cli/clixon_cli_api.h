@@ -116,6 +116,7 @@ int cli_help(clicon_handle h, cvec *vars, cvec *argv);
 /* In cli_show.c */
 int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv, 
 		  cvec *commands, cvec *helptexts);
+int xml2file (cxobj *xn, int level, int prettyprint, clicon_output_cb *fn);
 
 /* cli_show.c: CLIgen new vector arg callbacks */
 int show_yang(clicon_handle h, cvec *vars, cvec *argv);
