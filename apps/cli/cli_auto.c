@@ -142,20 +142,20 @@ int xml2file (cxobj *xn, int level, int prettyprint, clicon_output_cb *fn)
     char  *encstr = NULL; /* xml encoded string */
     char  *opext = NULL;
 
-    if (x == NULL)
+    if (xn == NULL)
 	goto ok;
 	/* Look for autocli-op defined in clixon-lib.yang */
-	if (yang_extension_value(xml_spec(x), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
+	if (yang_extension_value(xml_spec(xn), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
 		goto ok;
 	}
 	if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
 		goto ok;
 	}
-    name = xml_name(x);
-    namespace = xml_prefix(x);
-    switch(xml_type(x)){
+    name = xml_name(xn);
+    namespace = xml_prefix(xn);
+    switch(xml_type(xn)){
     case CX_BODY:
-	if ((val = xml_value(x)) == NULL) /* incomplete tree */
+	if ((val = xml_value(xn)) == NULL) /* incomplete tree */
 	    break;
 	if (xml_chardata_encode(&encstr, "%s", val) < 0)
 	    goto done;
@@ -165,10 +165,10 @@ int xml2file (cxobj *xn, int level, int prettyprint, clicon_output_cb *fn)
 	(*fn)(stdout, " ");
 	if (namespace)
 	    (*fn)(stdout, "%s:", namespace);
-	(*fn)(stdout, "%s=\"%s\"", name, xml_value(x));
+	(*fn)(stdout, "%s=\"%s\"", name, xml_value(xn));
 	break;
     case CX_ELMNT:
-	(*fn)(stdout, "%*s<", prettyprint?(level*XML_INDENT):0, "");
+	(*fn)(stdout, "%*s<", prettyprint?(level*3):0, "");
 	if (namespace)
 	    (*fn)(stdout, "%s:", namespace);
 	(*fn)(stdout, "%s", name);
@@ -176,7 +176,7 @@ int xml2file (cxobj *xn, int level, int prettyprint, clicon_output_cb *fn)
 	haselement = 0;
 	xc = NULL;
 	/* print attributes only */
-	while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+	while ((xc = xml_child_each(xn, xc, -1)) != NULL) {
 	    switch (xml_type(xc)){
 	    case CX_ATTR:
 		if (xml2file(xc, level+1, prettyprint, fprintf) <0)
@@ -202,13 +202,13 @@ int xml2file (cxobj *xn, int level, int prettyprint, clicon_output_cb *fn)
 	    if (prettyprint && hasbody == 0)
 		    (*fn)(stdout, "\n");
 	    xc = NULL;
-	    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+	    while ((xc = xml_child_each(xn, xc, -1)) != NULL) {
 		if (xml_type(xc) != CX_ATTR)
 		    if (xml2file(xc, level+1, prettyprint, fprintf) <0)
 			goto done;
 	    }
 	    if (prettyprint && hasbody==0)
-		(*fn)(stdout, "%*s", level*XML_INDENT, "");
+		(*fn)(stdout, "%*s", level*3, "");
 	    (*fn)(stdout, "</");
 	    if (namespace)
 		(*fn)(stdout, "%s:", namespace);
