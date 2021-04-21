@@ -205,7 +205,7 @@ main(int argc, char **argv)
 	    xpath = "/";
 	if (xmldb_get(h, db, NULL, xpath, &xt) < 0)
 	    goto done;
-	clicon_xml2file(stdout, xt, 0, 0, 0);	
+	clicon_xml2file(stdout, xt, 0, 0);	
 	fprintf(stdout, "\n");
 	if (xt){
 	    xml_free(xt);
@@ -228,7 +228,7 @@ main(int argc, char **argv)
 		clicon_err(OE_DB, 0, "xt is NULL");
 		goto done;
 	    }
-	    clicon_xml2file(stdout, xt, 0, 0, 0);
+	    clicon_xml2file(stdout, xt, 0, 0);
 	    if (xt){
 		xml_free(xt);
 		xt = NULL;

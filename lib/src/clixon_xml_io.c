@@ -94,7 +94,6 @@
  * @param[in]   level       how many spaces to insert before each line
  * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
  * @param[in]   fn          Callback to make print function
- * @param[in]   used_for_show_command is the function used for a cli show command. 
  * @see clicon_xml2cbuf
  * One can use clicon_xml2cbuf to get common code, but using fprintf is
  * much faster than using cbuf and then printing that,...
@@ -114,6 +113,7 @@ xml2file_recurse(FILE             *f,
     int    haselement;
     char  *val;
     char  *encstr = NULL; /* xml encoded string */
+	
     if (x == NULL)
 	goto ok;
     name = xml_name(x);

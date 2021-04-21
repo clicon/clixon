@@ -521,10 +521,10 @@ cli_auto_show(clicon_handle h,
 	switch (format){
 	case FORMAT_XML:
 	    if (isroot)
-		stdout(xp, 0, pretty, 1);
+		xml2file(xp, 0, pretty, fprintf);
 	    else{
 		while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL)
-		    stdout(xc, 0, pretty, 1);
+		    xml2file(xc, 0, pretty, fprintf);
 	    }
 	    fprintf(stdout, "\n");
 	    break;
