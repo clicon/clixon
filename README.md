@@ -2,7 +2,7 @@
   <img src="https://www.clicon.org/Clixon_logga_liggande_med-ikon.png" width="400">
 </div>
 
-[![Build Status](https://travis-ci.org/clicon/clixon.png)](https://travis-ci.org/clicon/clixon) [![Documentation Status](https://readthedocs.org/projects/clixon-docs/badge/?version=latest)](https://clixon-docs.readthedocs.io/en/latest/?badge=latest) [![codecov](https://codecov.io/gh/clicon/clixon/branch/master/graph/badge.svg?token=6HXN51SARU)](https://codecov.io/gh/clicon/clixon)
+[![Build Status](https://travis-ci.org/clicon/clixon.png)](https://travis-ci.org/clicon/clixon) [![Documentation Status](https://readthedocs.org/projects/clixon-docs/badge/?version=latest)](https://clixon-docs.readthedocs.io/en/latest/?badge=latest) [![codecov](https://codecov.io/gh/clicon/clixon/branch/master/graph/badge.svg?token=qyc6ssg9E7)](https://codecov.io/gh/clicon/clixon)
 
 Clixon is a YANG-based configuration manager, with interactive CLI,
 NETCONF and RESTCONF interfaces, an embedded database and transaction

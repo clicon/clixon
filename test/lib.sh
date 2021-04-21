@@ -390,14 +390,18 @@ function wait_restconf(){
 # @note assumes port=80 if RCPROTO=http and port=443 if RCPROTO=https
 # @see wait_restconf
 function wait_restconf_stopped(){
+#    echo "curl $CURLOPTS $* $RCPROTO://localhost/restconf"
     hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
+#    echo "hdr:\"$hdr\""
     let i=0;
     while [[ $hdr = *"200 OK"* ]]; do
+#	echo "wait_restconf_stopped $i"
 	if [ $i -ge $DEMLOOP ]; then
 	    err1 "restconf timeout $DEMWAIT seconds"
 	fi
 	sleep $DEMSLEEP
 	hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
+#	echo "hdr:\"$hdr\""
 	let i++;
     done
     if [ $valgrindtest -eq 3 ]; then 
