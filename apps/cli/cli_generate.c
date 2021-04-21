@@ -815,13 +815,6 @@ yang2cli_list(clicon_handle h,
     char         *opext = NULL;
 
     cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
-    /* Look for autocli-op defined in clixon-lib.yang */
-    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
-	goto done;
-    if (opext != NULL && strcmp(opext, "hide") == 0){
-	cprintf(cb, ",hide");
-	extralevel = 1;
-    }
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
 	if ((helptext = strdup(yang_argument_get(yd))) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
@@ -830,6 +823,13 @@ yang2cli_list(clicon_handle h,
 	if ((s = strstr(helptext, "\n\n")) != NULL)
 	    *s = '\0';
 	yang2cli_helptext(cb, helptext);
+    }
+    /* Look for autocli-op defined in clixon-lib.yang */
+    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
+	goto done;
+    if (opext != NULL && strcmp(opext, "hide") == 0){
+	cprintf(cb, ",hide");
+	extralevel = 1;
     }
     /* Loop over all key variables */
     cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
