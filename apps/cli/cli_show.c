@@ -476,7 +476,7 @@ cli_show_config1(clicon_handle h,
     case FORMAT_XML:
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	    xml2file(xc, 0, 1, cligen_output);
+	    cli_xml2file(xc, 0, 1, cligen_output);
 	break;
     case FORMAT_JSON:
 	xml2json_cb(stdout, xt, 1, cligen_output);
@@ -484,7 +484,7 @@ cli_show_config1(clicon_handle h,
     case FORMAT_TEXT:
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	    xml2txt_cb(stdout, xc, cligen_output); /* tree-formed text */
+	    cli_xml2txt(xc, cligen_output, 0); /* tree-formed text */
 	break;
     case FORMAT_CLI:
 	/* get CLI generatade mode: VARS|ALL */
@@ -492,14 +492,14 @@ cli_show_config1(clicon_handle h,
 	    goto done;
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
-	    xml2cli_cb(stdout, xc, prefix, gt, cligen_output); /* cli syntax */
+	    cli_xml2cli(xc, prefix, gt, cligen_output); /* cli syntax */
 	break;
     case FORMAT_NETCONF:
 	cligen_output(stdout, "<rpc xmlns=\"%s\"><edit-config><target><candidate/></target><config>\n",
 		      NETCONF_BASE_NAMESPACE);
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	    xml2file(xc, 2, 1, cligen_output);
+	    cli_xml2file(xc, 2, 1, cligen_output);
 	cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	break;
     }
@@ -623,7 +623,7 @@ show_conf_xpath(clicon_handle h,
     if (xpath_vec(xt, nsc, "%s", &xv, &xlen, xpath) < 0) 
 	goto done;
     for (i=0; i<xlen; i++)
-	xml2file(xv[i], 0, 1, fprintf);
+	cli_xml2file(xv[i], 0, 1, fprintf);
 
     retval = 0;
 done:
@@ -743,24 +743,24 @@ cli_show_auto1(clicon_handle h,
 	case FORMAT_CLI:
 	    if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
 		goto done;
-	    xml2cli_cb(stdout, xp, prefix, gt, cligen_output); /* cli syntax */
+	    cli_xml2cli(xp, prefix, gt, cligen_output); /* cli syntax */
 	    break;
 	case FORMAT_NETCONF:
 	    fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
-	    xml2file(xp, 2, 1, fprintf);
+	    cli_xml2file(xp, 2, 1, fprintf);
 	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	    break;
 	default:
 	    for (; i < xml_child_nr(xml_parent(xp)) ; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
 		switch (format){
 		case FORMAT_XML:
-		    xml2file(xp_helper, 0, 1, fprintf);
+		    cli_xml2file(xp_helper, 0, 1, fprintf);
 		    break;
 		case FORMAT_JSON:
 		    xml2json_cb(stdout, xp_helper, 1, cligen_output);
 		    break;
 		case FORMAT_TEXT:	
-		    xml2txt_cb(stdout, xp_helper, cligen_output);  /* tree-formed text */
+		    cli_xml2txt(xp_helper, cligen_output, 0);  /* tree-formed text */
 		    break;
 		default: /* see cli_show_config() */
 		    break;

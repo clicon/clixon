@@ -144,19 +144,11 @@ xml2txt_recurse(FILE             *f,
     cxobj *xc = NULL;
     int    children=0;
     int    retval = -1;
-    char  *opext = NULL;
 
     if (f == NULL || x == NULL || fn == NULL){
 	clicon_err(OE_XML, EINVAL, "f, x or fn is NULL");
 	goto done;
     }
-	/* Look for autocli-op defined in clixon-lib.yang */
-	if (yang_extension_value(xml_spec(x), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
-		goto ok;
-	}
-	if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
-		goto ok;
-	}
     xc = NULL;     /* count children (elements and bodies, not attributes) */
     while ((xc = xml_child_each(x, xc, -1)) != NULL)
 	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
@@ -241,19 +233,11 @@ xml2cli_recurse(FILE              *f,
     yang_stmt       *ys;
     int              match;
     char            *body;
-	char         	*opext = NULL;
 
     if (xml_type(x)==CX_ATTR)
 	goto ok;
     if ((ys = xml_spec(x)) == NULL)
 	goto ok;
-	/* Look for autocli-op defined in clixon-lib.yang */
-	if (yang_extension_value(xml_spec(x), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
-		goto ok;
-	}
-	if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
-		goto ok;
-	}
     /* If leaf/leaf-list or presence container, then print line */
     if (yang_keyword_get(ys) == Y_LEAF ||
 	yang_keyword_get(ys) == Y_LEAF_LIST){

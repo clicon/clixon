@@ -130,7 +130,7 @@ cvec_append(cvec *cvv0,
  * One can use clicon_xml2cbuf to get common code, but using fprintf is
  * much faster than using cbuf and then printing that,...
  */
-int xml2file (cxobj *xn, int level, int prettyprint, clicon_output_cb *fn)
+int cli_xml2file (cxobj *xn, int level, int prettyprint, clicon_output_cb *fn)
 {
     int    retval = -1;
     char  *name;
@@ -179,7 +179,7 @@ int xml2file (cxobj *xn, int level, int prettyprint, clicon_output_cb *fn)
 	while ((xc = xml_child_each(xn, xc, -1)) != NULL) {
 	    switch (xml_type(xc)){
 	    case CX_ATTR:
-		if (xml2file(xc, level+1, prettyprint, fprintf) <0)
+		if (cli_xml2file(xc, level+1, prettyprint, fn) <0)
 		    goto done;
 		break;
 	    case CX_BODY:
@@ -204,7 +204,7 @@ int xml2file (cxobj *xn, int level, int prettyprint, clicon_output_cb *fn)
 	    xc = NULL;
 	    while ((xc = xml_child_each(xn, xc, -1)) != NULL) {
 		if (xml_type(xc) != CX_ATTR)
-		    if (xml2file(xc, level+1, prettyprint, fprintf) <0)
+		    if (cli_xml2file(xc, level+1, prettyprint, fn) <0)
 			goto done;
 	    }
 	    if (prettyprint && hasbody==0)
@@ -225,6 +225,172 @@ int xml2file (cxobj *xn, int level, int prettyprint, clicon_output_cb *fn)
  done:
     if (encstr)
 	free(encstr);
+    return retval;
+}
+
+/*! Translate XML to a "pseudo-code" textual format using a callback - internal function
+ * @param[in]  xn     XML object to print
+ * @param[in]  fn     Callback to make print function
+ * @param[in]  level  print 4 spaces per level in front of each line
+ */
+int cli_xml2txt(cxobj *xn, clicon_output_cb *fn, int level) {
+    cxobj *xc = NULL;
+    int    children=0;
+    int    retval = -1;
+    char  *opext = NULL;
+
+    if (xn == NULL || fn == NULL){
+	clicon_err(OE_XML, EINVAL, "xn or fn is NULL");
+	goto done;
+    }
+	/* Look for autocli-op defined in clixon-lib.yang */
+	if (yang_extension_value(xml_spec(xn), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
+		goto ok;
+	}
+	if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
+		goto ok;
+	}
+    xc = NULL;     /* count children (elements and bodies, not attributes) */
+    while ((xc = xml_child_each(xn, xc, -1)) != NULL)
+	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
+	    children++;
+    if (!children){ /* If no children print line */
+	switch (xml_type(xn)){
+	case CX_BODY:
+	    (*fn)(stdout, "%s;\n", xml_value(xn));
+	    break;
+	case CX_ELMNT:
+	    (*fn)(stdout, "%*s%s;\n", 4*level, "", xml_name(xn));
+	    break;
+	default:
+	    break;
+	}
+	goto ok;
+    }
+    (*fn)(stdout, "%*s", 4*level, "");
+    (*fn)(stdout, "%s ", xml_name(xn));
+    if (!tleaf(xn))
+	(*fn)(stdout, "{\n");
+    xc = NULL;
+    while ((xc = xml_child_each(xn, xc, -1)) != NULL){
+	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
+	    if (cli_xml2txt(xc, fn, level+1) < 0)
+		break;
+    }
+    if (!tleaf(xn))
+	(*fn)(stdout, "%*s}\n", 4*level, "");
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Translate from XML to CLI commands
+ * Howto: join strings and pass them down. 
+ * Identify unique/index keywords for correct set syntax.
+ * @param[in] xn        XML Parse-tree (to translate)
+ * @param[in] prepend  Print this text in front of all commands.
+ * @param[in] gt       option to steer cli syntax
+ * @param[in] fn       Callback to make print function
+ */
+int cli_xml2cli(cxobj *xn, char *prepend, enum genmodel_type gt, clicon_output_cb  *fn) {
+    int              retval = -1;
+    cxobj           *xe = NULL;
+    cbuf            *cbpre = NULL;
+    yang_stmt       *ys;
+    int              match;
+    char            *body;
+	char         	*opext = NULL;
+
+    if (xml_type(xn)==CX_ATTR)
+	goto ok;
+    if ((ys = xml_spec(xn)) == NULL)
+	goto ok;
+	/* Look for autocli-op defined in clixon-lib.yang */
+	if (yang_extension_value(xml_spec(xn), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
+		goto ok;
+	}
+	if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
+		goto ok;
+	}
+    /* If leaf/leaf-list or presence container, then print line */
+    if (yang_keyword_get(ys) == Y_LEAF ||
+	yang_keyword_get(ys) == Y_LEAF_LIST){
+	if (prepend)
+	    (*fn)(stdout, "%s", prepend);
+	if (gt == GT_ALL || gt == GT_VARS || gt == GT_HIDE)
+	    (*fn)(stdout, "%s ", xml_name(xn));
+	if ((body = xml_body(xn)) != NULL){
+	    if (index(body, ' '))
+		(*fn)(stdout, "\"%s\"", body);
+	    else
+		(*fn)(stdout, "%s", body);
+	}
+	(*fn)(stdout, "\n");
+	goto ok;
+    }
+    /* Create prepend variable string */
+    if ((cbpre = cbuf_new()) == NULL){
+	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
+	goto done;
+    }
+    if (prepend)
+	cprintf(cbpre, "%s", prepend);
+
+    /* If non-presence container && HIDE mode && only child is 
+     * a list, then skip container keyword
+     * See also yang2cli_container */
+    if (yang_container_cli_hide(ys, gt) == 0)
+	cprintf(cbpre, "%s ", xml_name(xn));
+
+    /* If list then first loop through keys */
+    if (yang_keyword_get(ys) == Y_LIST){
+	xe = NULL;
+	while ((xe = xml_child_each(xn, xe, -1)) != NULL){
+	    if ((match = yang_key_match(ys, xml_name(xe))) < 0)
+		goto done;
+	    if (!match)
+		continue;
+	    if (gt == GT_ALL)
+		cprintf(cbpre, "%s ", xml_name(xe));
+	    cprintf(cbpre, "%s ", xml_body(xe));
+	}
+    }
+    else if ((yang_keyword_get(ys) == Y_CONTAINER) &&
+	     yang_find(ys, Y_PRESENCE, NULL) != NULL){
+	/* If presence container, then print as leaf (but continue to children) */
+	if (prepend)
+	    (*fn)(stdout, "%s", prepend);
+	if (gt == GT_ALL || gt == GT_VARS || gt == GT_HIDE)
+	    (*fn)(stdout, "%s ", xml_name(xn));
+	if ((body = xml_body(xn)) != NULL){
+	    if (index(body, ' '))
+		(*fn)(stdout, "\"%s\"", body);
+	    else
+		(*fn)(stdout, "%s", body);
+	}
+	(*fn)(stdout, "\n");
+    }
+
+    /* Then loop through all other (non-keys) */
+    xe = NULL;
+    while ((xe = xml_child_each(xn, xe, -1)) != NULL){
+	if (yang_keyword_get(ys) == Y_LIST){
+	    if ((match = yang_key_match(ys, xml_name(xe))) < 0)
+		goto done;
+	    if (match){
+		(*fn)(stdout, "%s\n", cbuf_get(cbpre));	
+		continue; /* Not key itself */
+	    }
+	}
+	if (cli_xml2cli(xe, cbuf_get(cbpre), gt, fn) < 0)
+	    goto done;
+    }
+ ok:
+    retval = 0;
+  done:
+    if (cbpre)
+	cbuf_free(cbpre);
     return retval;
 }
 
@@ -521,10 +687,10 @@ cli_auto_show(clicon_handle h,
 	switch (format){
 	case FORMAT_XML:
 	    if (isroot)
-		xml2file(xp, 0, pretty, fprintf);
+		cli_xml2file(xp, 0, pretty, fprintf);
 	    else{
 		while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL)
-		    xml2file(xc, 0, pretty, fprintf);
+		    cli_xml2file(xc, 0, pretty, fprintf);
 	    }
 	    fprintf(stdout, "\n");
 	    break;
@@ -539,19 +705,19 @@ cli_auto_show(clicon_handle h,
 	    break;
 	case FORMAT_TEXT:
 	    if (isroot)
-		xml2txt_cb(stdout, xp, cligen_output); /* tree-formed text */
+		cli_xml2txt(xp, cligen_output, 0); /* tree-formed text */
 	    else
 		while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL)
-		    xml2txt_cb(stdout, xc, cligen_output); /* tree-formed text */
+		    cli_xml2txt(xc, cligen_output, 0); /* tree-formed text */
 	    break;
 	case FORMAT_CLI:
 	    if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
 		goto done;
 	    if (isroot)
-		xml2cli_cb(stdout, xp, prefix, gt, cligen_output); /* cli syntax */
+		cli_xml2cli(xp, prefix, gt, cligen_output); /* cli syntax */
 	    else
 		while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL)
-		    xml2cli_cb(stdout, xc, prefix, gt, cligen_output); /* cli syntax */
+		    cli_xml2cli(xc, prefix, gt, cligen_output); /* cli syntax */
 	    break;
 	case FORMAT_NETCONF:
 	    fprintf(stdout, "<rpc xmlns=\"%s\"><edit-config><target><candidate/></target><config>",
@@ -559,10 +725,10 @@ cli_auto_show(clicon_handle h,
 	    if (pretty)
 		fprintf(stdout, "\n");
 	    if (isroot)
-		xml2file(xp, 2, pretty, fprintf);
+		cli_xml2file(xp, 2, pretty, fprintf);
 	    else
 		while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL)
-		    xml2file(xc, 2, pretty, fprintf);
+		    cli_xml2file(xc, 2, pretty, fprintf);
 	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	    break;
 	} /* switch */
