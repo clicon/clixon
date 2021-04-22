@@ -120,6 +120,28 @@ cvec_append(cvec *cvv0,
     return cvv2;
 }
 
+/*! x is element and has exactly one child which in turn has none 
+ * @see child_type in clixon_json.c
+ */
+static int
+tleaf(cxobj *x)
+{
+    cxobj *xc;
+
+    if (xml_type(x) != CX_ELMNT)
+	return 0;
+    if (xml_child_nr_notype(x, CX_ATTR) != 1)
+	return 0;
+    /* From here exactly one noattr child, get it */
+    xc = NULL;
+    while ((xc = xml_child_each(x, xc, -1)) != NULL)
+	if (xml_type(xc) != CX_ATTR)
+	    break;
+    if (xc == NULL)
+	return -1; /* n/a */
+    return (xml_child_nr_notype(xc, CX_ATTR) == 0);
+}
+
 /*! Print an XML tree structure to an output stream and encode chars "<>&"
  *
  * @param[in]   xn          clicon xml tree
