@@ -119,7 +119,14 @@ cli_expand_var_generate(clicon_handle h,
 			cbuf         *cb)
 {
     int   retval = -1;
-    char *api_path_fmt = NULL;
+    char *api_path_fmt = NULL, *opext = NULL;
+
+	if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
+	goto done;
+	if (opext && strcmp(opext, "hide-database") == 0) {
+		retval = 1;
+		goto done;
+	}
 
     if (yang2api_path_fmt(ys, 1, &api_path_fmt) < 0)
 	goto done;
@@ -574,7 +581,7 @@ yang2cli_var(clicon_handle h,
     uint8_t       fraction_digits = 0;
     enum cv_type  cvtype;
     int           options = 0;
-    int           completionp;
+    int           completionp, result;
     char         *type;
 
     if ((patterns = cvec_new(0)) == NULL){
@@ -599,10 +606,12 @@ yang2cli_var(clicon_handle h,
 	if (yang2cli_var_union(h, ys, origtype, yrestype, helptext, cb) < 0)
 	    goto done;
 	if (clicon_cli_genmodel_completion(h)){
-	    if (cli_expand_var_generate(h, ys, cvtype, 
+	    result = cli_expand_var_generate(h, ys, cvtype, 
 					options, fraction_digits,
-					cb) < 0)
+					cb);
+		if (result < 0)
 		goto done;
+		if (result == 0)
 	    yang2cli_helptext(cb, helptext);
 	}
 	cprintf(cb, ")");
@@ -622,10 +631,12 @@ yang2cli_var(clicon_handle h,
 				       options, cvv, patterns, fraction_digits, cb)) < 0)
 	    goto done;
 	if (completionp){
-	    if (cli_expand_var_generate(h, ys, cvtype, 
+	    result = cli_expand_var_generate(h, ys, cvtype, 
 					options, fraction_digits,
-					cb) < 0)
+					cb);
+		if (result < 0)
 		goto done;
+		if (result == 0)
 	    yang2cli_helptext(cb, helptext);
 	    cprintf(cb, ")");
 	}
@@ -688,6 +699,10 @@ yang2cli_leaf(clicon_handle h,
 		cprintf(cb, ",hide{");
 		extralevel = 1;
 	    }
+		if (opext && strcmp(opext, "hide-database-auto-completion") == 0){
+		cprintf(cb, ",hide-database-auto-completion{");
+		extralevel = 1;
+		}
 	    if (yang2cli_var(h, ys, helptext, cb) < 0)
 		goto done;
 	}
@@ -695,6 +710,9 @@ yang2cli_leaf(clicon_handle h,
 	    if (opext && strcmp(opext, "hide") == 0){
 		cprintf(cb, ",hide");
 	    }
+		if (opext && strcmp(opext, "hide-database-auto-completion") == 0){
+		cprintf(cb, ",hide-database-auto-completion");
+		}
 	}
     }
     else{
@@ -767,6 +785,9 @@ yang2cli_container(clicon_handle h,
     if (opext != NULL && strcmp(opext, "hide") == 0){
 	cprintf(cb, ",hide");
     }
+	if (opext != NULL && strcmp(opext, "hide-database-auto-completion") == 0){
+		cprintf(cb, ",hide-database-auto-completion");
+	}
 	cprintf(cb, ";{\n");
     }
 
@@ -815,13 +836,6 @@ yang2cli_list(clicon_handle h,
     char         *opext = NULL;
 
     cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
-    /* Look for autocli-op defined in clixon-lib.yang */
-    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
-	goto done;
-    if (opext != NULL && strcmp(opext, "hide") == 0){
-	cprintf(cb, ",hide");
-	extralevel = 1;
-    }
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
 	if ((helptext = strdup(yang_argument_get(yd))) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
@@ -831,6 +845,17 @@ yang2cli_list(clicon_handle h,
 	    *s = '\0';
 	yang2cli_helptext(cb, helptext);
     }
+	/* Look for autocli-op defined in clixon-lib.yang */
+    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
+	goto done;
+    if (opext != NULL && strcmp(opext, "hide") == 0){
+	cprintf(cb, ",hide");
+	extralevel = 1;
+    }
+	if (opext != NULL && strcmp(opext, "hide-database-auto-completion") == 0){
+	cprintf(cb, ",hide-database-auto-completion");
+ 	extralevel = 1;
+	}
     /* Loop over all key variables */
     cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;

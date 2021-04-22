@@ -171,13 +171,13 @@ static int
 flogtime(FILE *f)
 {
     struct timeval tv;
-    struct tm tm;
+    struct tm *tm;
 
     gettimeofday(&tv, NULL);
-    localtime_r((time_t*)&tv.tv_sec, &tm);
+    tm = localtime((time_t*)&tv.tv_sec);
     fprintf(f, "%s %2d %02d:%02d:%02d: ", 
-	    mon2name(tm.tm_mon), tm.tm_mday,
-	    tm.tm_hour, tm.tm_min, tm.tm_sec);
+	    mon2name(tm->tm_mon), tm->tm_mday,
+	    tm->tm_hour, tm->tm_min, tm->tm_sec);
     return 0;
 }
 

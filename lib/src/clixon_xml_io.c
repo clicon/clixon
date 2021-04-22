@@ -113,7 +113,7 @@ xml2file_recurse(FILE             *f,
     int    haselement;
     char  *val;
     char  *encstr = NULL; /* xml encoded string */
-    
+	
     if (x == NULL)
 	goto ok;
     name = xml_name(x);

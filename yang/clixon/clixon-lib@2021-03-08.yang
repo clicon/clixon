@@ -103,7 +103,9 @@ module clixon-lib {
          this point in the YANG tree for the automated generated CLI.
          Note that this extension is only used in clixon_cli.
          Operations is expected to be extended, but the following operations are defined:
-         - hide  This command is active but not shown by ? or TAB";
+         - hide  		 				  This command is active but not shown by ? or TAB (meaning, it hides the auto-completion of commands)
+		 - hide-database 				  This command hides the database
+         - hide-database-auto-completion  This command hides the database and the auto completion (meaning, this command acts as both commands above)";
       argument cliop;
    }
    rpc debug {
