@@ -35,7 +35,10 @@ Expected: June 2021
 ### Minor features
 
 * Add default network namespace constant: `RESTCONF_NETNS_DEFAULT` with default value "default".
-
+* CLI: Two new hide variables added (thanks: shmuelnatan)
+  * hide-database : specifies that a command is not visible in database. This can be useful for setting passwords and not exposing them to users.
+	* hide-database-auto-completion : specifies that a command is not visible in database and in auto completion. This can be useful for a password that was put in device by super user, not be changed.
+	
 ## 5.1.0
 15 April 2021
 
