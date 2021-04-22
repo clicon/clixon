@@ -26,5 +26,5 @@ find . -name "*.gcda" | xargs sudo chmod 777
 #GITHUB_SHA=
 # Push upstream
 # The -f dont seem to work
-bash <(curl -s https://codecov.io/bash) -f '!clixon_util*' -f '!example' -t ${TOKEN}
+bash <(curl -s https://codecov.io/bash) -t ${TOKEN}
 

@@ -189,7 +189,8 @@ module clixon-restconf {
 		type string;
 		description
 		    "Network namespace.
-                     On platforms where namespaces are not suppported, always 'default'";
+                     On platforms where namespaces are not suppported, 'default'
+                     Default value can be changed by RESTCONF_NETNS_DEFAULT";
 	    }
 	    leaf address {
 		type inet:ip-address;

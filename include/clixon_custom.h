@@ -89,3 +89,7 @@
  * Consider making this an option or configure option 
  */
 #define DATASTORE_TOP_SYMBOL "config"
+
+/* Name of default netns for clixon-restconf.yang socket/namespace field
+ */
+#define RESTCONF_NETNS_DEFAULT "default"

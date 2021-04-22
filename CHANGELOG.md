@@ -32,6 +32,10 @@
 ## 5.2.0
 Expected: June 2021
 
+### Minor features
+
+* Add default network namespace constant: `RESTCONF_NETNS_DEFAULT` with default value "default".
+
 ## 5.1.0
 15 April 2021
 
@@ -181,7 +185,7 @@ Users may have to change how they access the system
   * Follows RFC 6241 7.5 closer
   * Previous behavior:
     * Close socket after each rpc
-    * Release lockwhen socket closes (after each rpc)
+    * Release lock when socket closes (after each rpc)
   * New behavior
     * Keep socket open until the client terminates, not close after each RPC
     * Release lock until session (not socket) ends

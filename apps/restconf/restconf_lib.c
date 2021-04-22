@@ -671,7 +671,7 @@ restconf_socket_init(const char   *netns0,
 
     clicon_debug(1, "%s %s %s %s %hu", __FUNCTION__, netns0, addrtype, addrstr, port);
     /* netns default -> NULL */
-    if (netns0 != NULL && strcmp(netns0, "default")==0)
+    if (netns0 != NULL && strcmp(netns0, RESTCONF_NETNS_DEFAULT)==0)
 	netns = NULL;
     else
 	netns = netns0;
