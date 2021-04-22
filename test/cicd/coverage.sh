@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Run coverage using codecov
 # Assume pwd is in top-level srcdir
 
