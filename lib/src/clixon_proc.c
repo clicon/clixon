@@ -540,6 +540,39 @@ proc_op_run(pid_t pid0,
     return retval;
 }
 
+int
+clixon_process_pid(clicon_handle h, 
+            const char *name, 
+            pid_t   *pid)
+{
+    int             retval = -1;
+    process_entry_t *pe;
+	int              isrunning; /* Process is actually running */
+
+    if (_proc_entry_list == NULL || !pid)
+    goto done;
+
+    pe = _proc_entry_list;
+    do {
+    if (strcmp(pe->pe_name, name) == 0) {
+		isrunning = 0;
+		if (proc_op_run(pe->pe_pid, &isrunning) < 0)
+		    goto done;
+
+		if (!isrunning)
+			goto done;
+
+        *pid = pe->pe_pid;
+        retval = 0;
+        break;
+    }
+    pe = NEXTQ(process_entry_t *, pe);
+    } while (pe != _proc_entry_list);
+
+done:
+    return retval;
+}
+
 /*! Find process entry given name and schedule operation
  *
  * @param[in]  h       clicon handle
