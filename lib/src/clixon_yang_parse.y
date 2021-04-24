@@ -156,6 +156,13 @@
 %token K_YIN_ELEMENT
 
 
+/* Deviate keywords
+ */
+%token D_NOT_SUPPORTED
+%token D_ADD
+%token D_DELETE
+%token D_REPLACE
+
 %lex-param     {void *_yy} /* Add this argument to parse() and lex() function */
 %parse-param   {void *_yy}
 
@@ -1522,45 +1529,92 @@ deviation_substmts : deviation_substmts deviation_substmt
 
 deviation_substmt : description_stmt  { _PARSE_DEBUG("deviation-substmt -> description-stmt"); }
                   | reference_stmt    { _PARSE_DEBUG("deviation-substmt -> reference-stmt"); }
-                  | deviate_stmt      { _PARSE_DEBUG("deviation-substmt -> deviate-stmt"); }
+                  | deviate_not_supported_stmt { _PARSE_DEBUG("yang-stmt -> deviate-not-supported-stmt");}
+                  | deviate_add_stmt     { _PARSE_DEBUG("deviation-stmt -> deviate-add-stmt");}
+                  | deviate_delete_stmt  { _PARSE_DEBUG("deviation-stmt -> deviate-delete-stmt");}
+                  | deviate_replace_stmt { _PARSE_DEBUG("deviation-stmt -> deviate-replace-stmt");}
 		  ;
 
-/* RFC7950 differentiates between deviate-not-supported, deviate-add, 
- * deviate-replave, and deviate-delete. Here all are bundled into a single
- * deviate rule. For now, until "deviate" gets supported.
- */
-deviate_stmt      : K_DEVIATE string ';'
-	                { if (ysp_add(_yy, Y_DEVIATE, $2, NULL) == NULL) _YYERROR("notification_stmt");
-    			   _PARSE_DEBUG("deviate-not-supported-stmt -> DEVIATE string ;"); }
-                  | K_DEVIATE string
-		  { if (ysp_add_push(_yy, Y_DEVIATE, $2, NULL) == NULL) _YYERROR("deviate_stmt"); }
-	            '{' deviate_substmts '}' 
+deviate_not_supported_stmt
+                  : K_DEVIATE D_NOT_SUPPORTED ';'
+		  { if (ysp_add(_yy, Y_DEVIATE, strdup("not-supported") /* D_NOT_SUPPORTED*/, NULL) == NULL) _YYERROR("notification_stmt");
+    			   _PARSE_DEBUG("deviate-not-supported-stmt -> DEVIATE not-supported ;"); }
+                  ;
+
+deviate_add_stmt   : K_DEVIATE D_ADD ';'
+                  { if (ysp_add(_yy, Y_DEVIATE, strdup("add") /* D_NOT_SUPPORTED*/, NULL) == NULL) _YYERROR("notification_stmt");
+    			   _PARSE_DEBUG("deviate-add-stmt -> DEVIATE add ;"); }
+                  | K_DEVIATE D_ADD
+		  { if (ysp_add_push(_yy, Y_DEVIATE, strdup("add"), NULL) == NULL) _YYERROR("deviate_stmt"); }
+	            '{' deviate_add_substmts '}' 
                         { if (ystack_pop(_yy) < 0) _YYERROR("deviate_stmt");
-			     _PARSE_DEBUG("deviate-stmt -> DEVIATE string { deviate-substmts }"); }
+			     _PARSE_DEBUG("deviate-add-stmt -> DEVIATE add { deviate-substmts }"); }
                    ;
 
-/* RFC7950 differentiates between deviate-not-supported, deviate-add, 
- * deviate-replave, and deviate-delete. Here all are bundled into a single
- * deviate-substmt rule. For now, until "deviate" gets supported.
- */
-deviate_substmts     : deviate_substmts deviate_substmt 
-                         { _PARSE_DEBUG("deviate-substmts -> deviate-substmts deviate-substmt"); }
-                     | deviate_substmt 
-                         { _PARSE_DEBUG("deviate-substmts -> deviate-substmt"); }
+deviate_add_substmts : deviate_add_substmts deviate_add_substmt 
+                         { _PARSE_DEBUG("deviate-add-substmts -> deviate-add-substmts deviate-add-substmt"); }
+                     | deviate_add_substmt 
+                         { _PARSE_DEBUG("deviate-add-substmts -> deviate-add-substmt"); }
                      ;
-/* Bundled */
-deviate_substmt : type_stmt         { _PARSE_DEBUG("deviate-substmt -> type-stmt"); }
-                | units_stmt        { _PARSE_DEBUG("deviate-substmt -> units-stmt"); }
-                | must_stmt         { _PARSE_DEBUG("deviate-substmt -> must-stmt"); }
-                | unique_stmt       { _PARSE_DEBUG("deviate-substmt -> unique-stmt"); }
-                | default_stmt      { _PARSE_DEBUG("deviate-substmt -> default-stmt"); }
-                | config_stmt       { _PARSE_DEBUG("deviate-substmt -> config-stmt"); }
-                | mandatory_stmt    { _PARSE_DEBUG("deviate-substmt -> mandatory-stmt"); }
-                | min_elements_stmt { _PARSE_DEBUG("deviate-substmt -> min-elements-stmt"); }
-                | max_elements_stmt { _PARSE_DEBUG("deviate-substmt -> max-elements-stmt"); }
-                |                   { _PARSE_DEBUG("deviate-substmt -> "); }
+deviate_add_substmt : units_stmt    { _PARSE_DEBUG("deviate-add-substmt -> units-stmt"); }
+                | must_stmt         { _PARSE_DEBUG("deviate-add-substmt -> must-stmt"); }
+                | unique_stmt       { _PARSE_DEBUG("deviate-add-substmt -> unique-stmt"); }
+                | default_stmt      { _PARSE_DEBUG("deviate-add-substmt -> default-stmt"); }
+                | config_stmt       { _PARSE_DEBUG("deviate-add-substmt -> config-stmt"); }
+                | mandatory_stmt    { _PARSE_DEBUG("deviate-add-substmt -> mandatory-stmt"); }
+                | min_elements_stmt { _PARSE_DEBUG("deviate-add-substmt -> min-elements-stmt"); }
+                | max_elements_stmt { _PARSE_DEBUG("deviate-add-substmt -> max-elements-stmt"); }
+                |                   { _PARSE_DEBUG("deviate-add-substmt -> "); }
                 ;
 
+
+deviate_delete_stmt   : K_DEVIATE D_DELETE ';'
+                  { if (ysp_add(_yy, Y_DEVIATE, strdup("add") /* D_NOT_SUPPORTED*/, NULL) == NULL) _YYERROR("notification_stmt");
+    			   _PARSE_DEBUG("deviate-delete-stmt -> DEVIATE add ;"); }
+                  | K_DEVIATE D_DELETE
+		  { if (ysp_add_push(_yy, Y_DEVIATE, strdup("add"), NULL) == NULL) _YYERROR("deviate_stmt"); }
+	            '{' deviate_delete_substmts '}' 
+                        { if (ystack_pop(_yy) < 0) _YYERROR("deviate_stmt");
+			     _PARSE_DEBUG("deviate-delete-stmt -> DEVIATE add { deviate-substmts }"); }
+                   ;
+
+deviate_delete_substmts : deviate_delete_substmts deviate_delete_substmt 
+                         { _PARSE_DEBUG("deviate-delete-substmts -> deviate-delete-substmts deviate-delete-substmt"); }
+                     | deviate_delete_substmt 
+                         { _PARSE_DEBUG("deviate-delete-substmts -> deviate-delete-substmt"); }
+                     ;
+deviate_delete_substmt : units_stmt { _PARSE_DEBUG("deviate-delete-substmt -> units-stmt"); }
+                | must_stmt         { _PARSE_DEBUG("deviate-delete-substmt -> must-stmt"); }
+                | unique_stmt       { _PARSE_DEBUG("deviate-delete-substmt -> unique-stmt"); }
+                | default_stmt      { _PARSE_DEBUG("deviate-delete-substmt -> default-stmt"); }
+                |                   { _PARSE_DEBUG("deviate-delete-substmt -> "); }
+                ;
+
+
+deviate_replace_stmt   : K_DEVIATE D_REPLACE ';'
+                  { if (ysp_add(_yy, Y_DEVIATE, strdup("add") /* D_NOT_SUPPORTED*/, NULL) == NULL) _YYERROR("notification_stmt");
+    			   _PARSE_DEBUG("deviate-replace-stmt -> DEVIATE add ;"); }
+                  | K_DEVIATE D_REPLACE
+		  { if (ysp_add_push(_yy, Y_DEVIATE, strdup("add"), NULL) == NULL) _YYERROR("deviate_stmt"); }
+	            '{' deviate_replace_substmts '}' 
+                        { if (ystack_pop(_yy) < 0) _YYERROR("deviate_stmt");
+			     _PARSE_DEBUG("deviate-replace-stmt -> DEVIATE add { deviate-substmts }"); }
+                   ;
+
+deviate_replace_substmts : deviate_replace_substmts deviate_replace_substmt 
+                         { _PARSE_DEBUG("deviate-replace-substmts -> deviate-replace-substmts deviate-replace-substmt"); }
+                     | deviate_replace_substmt 
+                         { _PARSE_DEBUG("deviate-replace-substmts -> deviate-replace-substmt"); }
+                     ;
+deviate_replace_substmt : type_stmt         { _PARSE_DEBUG("deviate-replace-substmt -> type-stmt"); }
+                | units_stmt        { _PARSE_DEBUG("deviate-replace-substmt -> units-stmt"); }
+                | default_stmt      { _PARSE_DEBUG("deviate-replace-substmt -> default-stmt"); }
+                | config_stmt       { _PARSE_DEBUG("deviate-replace-substmt -> config-stmt"); }
+                | mandatory_stmt    { _PARSE_DEBUG("deviate-replace-substmt -> mandatory-stmt"); }
+                | min_elements_stmt { _PARSE_DEBUG("deviate-replace-substmt -> min-elements-stmt"); }
+                | max_elements_stmt { _PARSE_DEBUG("deviate-replace-substmt -> max-elements-stmt"); }
+                |                   { _PARSE_DEBUG("deviate-replace-substmt -> "); }
+                ;
 
 /* Represents the usage of an extension
    unknown-statement   = prefix ":" identifier [sep string] optsep
@@ -1612,12 +1666,10 @@ yang_stmt     : action_stmt          { _PARSE_DEBUG("yang-stmt -> action-stmt");
               | container_stmt       { _PARSE_DEBUG("yang-stmt -> container-stmt");}
               | default_stmt         { _PARSE_DEBUG("yang-stmt -> default-stmt");}
               | description_stmt     { _PARSE_DEBUG("yang-stmt -> description-stmt");}
-              | deviate_stmt         { _PARSE_DEBUG("yang-stmt -> deviate-stmt");}
-              /* deviate is not yet implemented, the above may be replaced by the following lines
+              | deviate_not_supported_stmt { _PARSE_DEBUG("yang-stmt -> deviate-not-supported-stmt");}
               | deviate_add_stmt     { _PARSE_DEBUG("yang-stmt -> deviate-add-stmt");}
-              | deviate_delete_stmt  { _PARSE_DEBUG("yang-stmt -> deviate-add-stmt");}
-              | deviate_replace_stmt { _PARSE_DEBUG("yang-stmt -> deviate-add-stmt");}
-              */
+              | deviate_delete_stmt  { _PARSE_DEBUG("yang-stmt -> deviate-delete-stmt");}
+              | deviate_replace_stmt { _PARSE_DEBUG("yang-stmt -> deviate-replace-stmt");}
               | deviation_stmt       { _PARSE_DEBUG("yang-stmt -> deviation-stmt");}
               | enum_stmt            { _PARSE_DEBUG("yang-stmt -> enum-stmt");}
               | error_app_tag_stmt   { _PARSE_DEBUG("yang-stmt -> error-app-tag-stmt");}

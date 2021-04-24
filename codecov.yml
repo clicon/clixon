@@ -20,4 +20,5 @@ comment:
   require_changes: no
 
 ignore:
-  - "util"  # ignore folders and all its contents
+  - "util/"  # ignore folders and all its contents
+

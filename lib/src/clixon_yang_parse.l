@@ -92,6 +92,7 @@ clixon_yang_parsewrap(void)
 identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 
 %x KEYWORD
+%x DEVIATE
 %s BOOLEAN
 %s INTEGER
 %s STRARG
@@ -106,12 +107,12 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 
 %%
  /* Common tokens */
-<KEYWORD,BOOLEAN,INTEGER,STRARG,STRING>[ \t]            
-<KEYWORD,STRING,UNKNOWN,UNKNOWN2,COMMENT2><<EOF>> { return MY_EOF; }
-<KEYWORD,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\n   { _YY->yy_linenum++; }
-<KEYWORD,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\r   
-<KEYWORD,STRING,UNKNOWN,UNKNOWN2>"/*"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT1); }
-<KEYWORD,STRING,UNKNOWN,UNKNOWN2>"//"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT2); }
+<KEYWORD,DEVIATE,BOOLEAN,INTEGER,STRARG,STRING>[ \t]            
+<KEYWORD,DEVIATE,STRING,UNKNOWN,UNKNOWN2,COMMENT2><<EOF>> { return MY_EOF; }
+<KEYWORD,DEVIATE,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\n   { _YY->yy_linenum++; }
+<KEYWORD,DEVIATE,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\r   
+<KEYWORD,DEVIATE,STRING,UNKNOWN,UNKNOWN2>"/*"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT1); }
+<KEYWORD,DEVIATE,STRING,UNKNOWN,UNKNOWN2>"//"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT2); }
 
 
 <KEYWORD>input            { return K_INPUT; } /* No argument */
@@ -163,7 +164,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <KEYWORD>contact          { BEGIN(STRING);  return K_CONTACT; }
 <KEYWORD>default          { BEGIN(STRING);  return K_DEFAULT; }
 <KEYWORD>description      { BEGIN(STRING);  return K_DESCRIPTION; }
-<KEYWORD>deviate          { BEGIN(STRING);  return K_DEVIATE; }
+<KEYWORD>deviate          { BEGIN(DEVIATE); return K_DEVIATE; }
 <KEYWORD>deviation        { BEGIN(STRING);  return K_DEVIATION; }
 <KEYWORD>enum             { BEGIN(STRING);  return K_ENUM; }
 <KEYWORD>error-app-tag    { BEGIN(STRING);  return K_ERROR_APP_TAG; }
@@ -182,7 +183,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <KEYWORD>pattern          { BEGIN(STRING);  return K_PATTERN; }
 <KEYWORD>presence         { BEGIN(STRING);  return K_PRESENCE; }
 <KEYWORD>unique           { BEGIN(STRING);  return K_UNIQUE; }
-<KEYWORD>range            { BEGIN(STRING);   return K_RANGE; }
+<KEYWORD>range            { BEGIN(STRING);  return K_RANGE; }
 <KEYWORD>reference        { BEGIN(STRING);  return K_REFERENCE; }
 <KEYWORD>revision         { BEGIN(STRING);  return K_REVISION; }
 <KEYWORD>revision-date    { BEGIN(STRING);  return K_REVISION_DATE; }
@@ -197,6 +198,11 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <KEYWORD>.                { clixon_yang_parselval.string = strdup(yytext);
                             BEGIN(UNKNOWN); return CHARS; }
 
+<DEVIATE>not-supported    { BEGIN(KEYWORD); return D_NOT_SUPPORTED; }
+<DEVIATE>add              { BEGIN(KEYWORD); return D_ADD; }
+<DEVIATE>delete           { BEGIN(KEYWORD); return D_DELETE; }
+<DEVIATE>replace          { BEGIN(KEYWORD); return D_REPLACE; }
+<DEVIATE>.                { BEGIN(KEYWORD); return *yytext; }
 <UNKNOWN>:                { return *yytext; }
 <UNKNOWN>;                { BEGIN(KEYWORD); return *yytext; }
 <UNKNOWN>\{               { BEGIN(KEYWORD); return *yytext; }

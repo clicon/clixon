@@ -132,6 +132,7 @@ restconf_reply_send(void  *req0,
     evhtp_connection_t *conn;
     struct evbuffer    *eb = NULL;
     
+    clicon_debug(1, "%s code:%d", __FUNCTION__, code);
     req->status = code;
     if ((reason_phrase = restconf_code2reason(code)) == NULL)
 	reason_phrase="";

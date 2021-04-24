@@ -32,6 +32,12 @@
 ## 5.2.0
 Expected: June 2021
 
+### New features
+
+* Yang Deviation/deviate [deviation statement not yet support #211](https://github.com/clicon/clixon/issues/211)
+  * See RFC7950 Sec 5.6.3
+  * Work-in-progress
+
 ### Minor features
 
 * Add default network namespace constant: `RESTCONF_NETNS_DEFAULT` with default value "default".
