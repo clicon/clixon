@@ -28,3 +28,5 @@ find . -name "*.gcda" | xargs sudo chmod 777
 # The -f dont seem to work
 bash <(curl -s https://codecov.io/bash) -t ${TOKEN}
 
+sleep 1 # ensure OK is last                                                     
+echo OK

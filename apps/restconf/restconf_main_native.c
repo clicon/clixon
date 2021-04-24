@@ -332,6 +332,13 @@ evhtp_method2str(enum htp_method m)
     case htp_method_DELETE:
 	return "DELETE";
 	break;
+    case htp_method_OPTIONS:
+	return "OPTIONS";
+	break;
+    case htp_method_PATCH:
+	return "PATCH";
+	break;
+#ifdef NOTUSED
     case htp_method_MKCOL:
 	return "MKCOL";
 	break;
@@ -362,9 +369,7 @@ evhtp_method2str(enum htp_method m)
     case htp_method_CONNECT:
 	return "CONNECT";
 	break;
-    case htp_method_PATCH:
-	return "PATCH";
-	break;
+#endif /* NOTUSED */
     default:
 	return "UNKNOWN";
 	break;
@@ -898,6 +903,7 @@ restconf_connection(int   s,
     }
     h = (clicon_handle*)conn->htp->arg;
     while (readmore) {
+	clicon_debug(1, "%s readmore", __FUNCTION__);
 	readmore = 0;
 	/* Example: curl -Ssik -u wilma:bar -X GET https://localhost/restconf/data/example:x */
 	if (conn->ssl){
@@ -991,6 +997,7 @@ restconf_connection(int   s,
     return retval;
 }
 
+#if 0 /* debug */
 /*! Debug print all loaded certs
  */
 static int
@@ -1017,6 +1024,7 @@ restconf_listcerts(SSL *ssl)
     }
     return 0;
 }
+#endif/* debug */
 
 /*! Check if a "cert" file exists
  * 
@@ -1237,9 +1245,10 @@ restconf_accept_client(int   fd,
 		clicon_debug(1, "%s peername:%s", __FUNCTION__, peername);
 	    }
 	}
-
+#if 0 /* debug */
 	if (clicon_debug_get())
 	    restconf_listcerts(ssl);
+#endif
     }
     /*
      * Register callbacks for actual data socket 

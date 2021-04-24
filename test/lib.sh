@@ -81,6 +81,9 @@ CONFNS='xmlns="http://clicon.org/config"'
 # Namespace: Clixon lib
 LIBNS='xmlns="http://clicon.org/lib"'
 
+# Namespace: Clixon restconf
+RESTCONFNS='xmlns="http://clicon.org/restconf"'
+
 # Default netconf namespace statement, typically as placed on top-level <rpc xmlns=""
 DEFAULTONLY="xmlns=\"$BASENS\""
 

@@ -100,6 +100,12 @@ expectpart "$($clixon_cli -1 -f $cfg copy interface eth/0/0 to eth99)" 0 "^$"
 new "cli success validate"
 expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 0 "^$"
 
+new "cli compare diff"
+expectpart "$($clixon_cli -1 -f $cfg -l o compare)" 0 "+                ip 1.2.3.4;"
+
+new "cli start shell"
+expectpart "$($clixon_cli -1 -f $cfg -l o shell echo foo)" 0 "foo" 
+
 new "cli commit"
 expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
 
