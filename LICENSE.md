@@ -8,7 +8,6 @@ Either Apache License, Version 2.0 or GNU General Public License Version 3.
 You choose.
 
 Except as otherwise noted,
-- see lib/src/clixon_sha1.c
 - see apps/restconf/libevhtp_parser.[ch]
   BSD 3-clause: Copyright (c) 2010-2018, Mark Ellzey, Nathan French, Marcus Sundberg
 

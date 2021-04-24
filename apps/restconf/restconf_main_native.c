@@ -1253,7 +1253,7 @@ restconf_accept_client(int   fd,
     /*
      * Register callbacks for actual data socket 
      */
-#ifdef LIBEVENT_POS_PATCH
+#ifdef RESTCONF_LIBEVENT_POS_PATCH
     /* patch to keep track os position in output buffer 
      * cannot use drain/copyout since the start position is "freezed" in bufferevent_socket_new
      */

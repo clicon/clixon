@@ -63,7 +63,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 if [ $RC -ne 0 ]; then
@@ -72,16 +72,16 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 new "Set backend debug using netconf"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><debug $LIBNS><level>1</level></debug></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Set backend debug using restconf"
-expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' http://localhost/restconf/operations/clixon-lib:debug -d '{"clixon-lib:input":{"level":1}}')" 0 'HTTP/1.1 204 No Content'
+expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/operations/clixon-lib:debug -d '{"clixon-lib:input":{"level":1}}')" 0 'HTTP/1.1 204 No Content'
 
 new "Set restconf debug using netconf"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><restconf $RESTCONFNS><debug>1</debug></restconf></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -90,7 +90,7 @@ new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Set restconf debug using restconf"
-expectpart "$(curl $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+json' http://localhost/restconf/data/clixon-restconf:restconf/debug -d '{"clixon-restconf:debug":1}')" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf/debug -d '{"clixon-restconf:debug":1}')" 0 "HTTP/1.1 204 No Content"
 
 new "Set cli debug using cli"
 expectpart "$($clixon_cli -1 -f $cfg -l o debug cli 1)" 0 "^$"

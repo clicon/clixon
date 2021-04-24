@@ -78,9 +78,11 @@ int cc_closed = 0; /* XXX Please remove (or at least hide in handle) this global
 int
 add_preamble(cbuf *cb)
 {
+#ifdef NOTUSED
     if (transport == NETCONF_SOAP)
 	cprintf(cb, "\n<soapenv:Envelope\n xmlns:soapenv=\"http://www.w3.org/2003/05/soap-envelope\">\n"
 	"<soapenv:Body>");
+#endif
     return 0;
 }
 
@@ -95,9 +97,11 @@ add_postamble(cbuf *cb)
     case NETCONF_SSH:
 	cprintf(cb, "]]>]]>");     /* Add RFC4742 end-of-message marker */
 	break;
+#ifdef NOTUSED
     case NETCONF_SOAP:
 	cprintf(cb, "\n</soapenv:Body>" "</soapenv:Envelope>");
 	break;
+#endif
     }
     return 0;
 }
@@ -112,6 +116,7 @@ add_error_preamble(cbuf *cb,
 		   char *reason)
 {
     switch (transport){
+#ifdef NOTUSED
     case NETCONF_SOAP:
 	cprintf(cb, "<soapenv:Envelope xmlns:soapenv=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:xml=\"http://www.w3.org/XML/1998/namespace\">"
 		"<soapenv:Body>"
@@ -124,6 +129,7 @@ add_error_preamble(cbuf *cb,
 		"</soapenv:Reason>"
 		"<detail>", reason);
 	break;
+#endif
     default:
 	if (add_preamble(cb) < 0)
 	    return -1;
@@ -141,42 +147,16 @@ int
 add_error_postamble(cbuf *cb)
 {
     switch (transport){
+#ifdef NOTUSED
     case NETCONF_SOAP:
 	cprintf(cb, "</detail>" "</soapenv:Fault>");
+#endif
     default: /* fall through */
 	if (add_postamble(cb) < 0)
 	    return -1;
 	break;
     }
     return 0;
-}
-
-
-/*! Get "target" attribute, return actual database given candidate or running
- * Caller must do error handling
- * @param[in]  xn       XML tree
- * @param[in]  path
- * @retval     dbname   Actual database file name
- */
-char *
-netconf_get_target(cxobj        *xn, 
-		   char         *path)
-{
-    cxobj *x;    
-    char  *target = NULL;
-
-    if ((x = xpath_first(xn, NULL, "%s", path)) != NULL){
-	if (xpath_first(x, NULL, "candidate") != NULL)
-	    target = "candidate";
-	else
-	    if (xpath_first(x, NULL, "running") != NULL)
-		target = "running";
-	else
-	    if (xpath_first(x, NULL, "startup") != NULL)
-		target = "startup";
-    }
-    return target;
-    
 }
 
 /*! Send netconf message from cbuf on socket
