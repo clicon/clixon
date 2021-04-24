@@ -946,12 +946,25 @@ restconf_connection(int   s,
 	    struct evbuffer *ev;
 
 	    if ((ev = bufferevent_get_output(conn->bev)) != NULL){
-		buf = (char*)evbuffer_pullup(ev, -1);
 		buflen = evbuffer_get_length(ev);
-		clicon_debug(1, "%s buf:%s", __FUNCTION__, buf);
 		if (buflen){
+#ifdef RESTCONF_LIBEVENT_POS_PATCH
+		    size_t    pos;
+
+		    pos = (size_t)conn->arg;
+#endif
+		    buf = (char*)evbuffer_pullup(ev, -1);
+		    clicon_debug(1, "%s buf:%s", __FUNCTION__, buf);
+#ifdef RESTCONF_LIBEVENT_POS_PATCH
+		    if (buf_write(buf+pos, buflen, conn->sock, conn->ssl) < 0)
+			goto done;
+		    pos += buflen;
+		    conn->arg = (void*)pos;
+#else
+		    /* Does not work w multiple requests */
 		    if (buf_write(buf, buflen, conn->sock, conn->ssl) < 0)
 			goto done;
+#endif
 		}
 		else{
 		    /* Return 0 from evhtp parser can be that it needs more data.
@@ -1231,6 +1244,12 @@ restconf_accept_client(int   fd,
     /*
      * Register callbacks for actual data socket 
      */
+#ifdef LIBEVENT_POS_PATCH
+    /* patch to keep track os position in output buffer 
+     * cannot use drain/copyout since the start position is "freezed" in bufferevent_socket_new
+     */
+    conn->arg = (void*)0; 
+#endif
     if (clixon_event_reg_fd(s, restconf_connection, (void*)conn, "restconf client socket") < 0)
 	goto done;
  ok:

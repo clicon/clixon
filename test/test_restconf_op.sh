@@ -197,6 +197,13 @@ expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json
 new "restconf GET datastore eth"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1/interface=local0)" 0 "HTTP/1.1 200 OK" '{"example:interface":\[{"name":"local0","type":"eth0"}\]}'
 
+new "restconf DELETE whole datastore"
+expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 204 No Content"
+
+#--------------- Multiple request in single TCP tests
+
+expectpart "$(curl $CURLOPTS -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data?content=config --next $CURLOPTS -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data -d '{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}')" 0 "HTTP/1.1 200 OK" '<data/>' 'HTTP/1.1 201 Created'
+
 #--------------- json type tests
 new "restconf POST type x3 POST"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created" "Location: $RCPROTO://localhost/restconf/data/example:types"

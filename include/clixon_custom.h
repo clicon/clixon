@@ -93,3 +93,14 @@
 /* Name of default netns for clixon-restconf.yang socket/namespace field
  */
 #define RESTCONF_NETNS_DEFAULT "default"
+
+/* Patch to keep track os position in output buffer for native restconf using libevent
+ * It addresses that multiple requests in a single TCP HTTP session will only reply first
+ * reply again
+ * Cannot use drain/copyout since the start position is "freezed" in bufferevent_socket_new
+ * Strange thing is that evbuffer_drain / evbuffer_copyout cannot be used due to freeze set
+ * One could have thought freeze was in place for writing only?
+ * Note may not wrap-around correctly at size-t boundary
+
+ */
+#define RESTCONF_LIBEVENT_POS_PATCH

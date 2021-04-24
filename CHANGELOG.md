@@ -45,6 +45,10 @@ Expected: June 2021
   * hide-database : specifies that a command is not visible in database. This can be useful for setting passwords and not exposing them to users.
 	* hide-database-auto-completion : specifies that a command is not visible in database and in auto completion. This can be useful for a password that was put in device by super user, not be changed.
 	
+### Corrected Bugs
+
+* Fixed: [Multiple http requests in native restconf yields same reply #212](https://github.com/clicon/clixon/issues/212)
+
 ## 5.1.0
 15 April 2021
 
