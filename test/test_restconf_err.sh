@@ -18,6 +18,7 @@
 #
 # Also generate an invalid state XML. This should generate an "Internal" error and the name of the
 # plugin should be visible in the error message.
+# XXX does not test rpc-error from backend in api_return_err?
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -29,6 +30,8 @@ fyang=$dir/example.yang
 fyang2=$dir/augment.yang
 fxml=$dir/initial.xml
 fstate=$dir/state.xml
+RCPROTO=http # Force to http due to netcat
+
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
@@ -187,7 +190,57 @@ new "restconf POST initial tree"
 expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -d "$XML" $RCPROTO://localhost/restconf/data)" 0 'HTTP/1.1 201 Created'
 
 new "restconf GET initial datastore"
+#echo "curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:a=0"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:a=0)" 0 'HTTP/1.1 200 OK' "$XML"
+
+# XXX cannot get this to work for all combinations of nc/netcat fcgi/native
+# But leave it here for debugging where netcat works properly
+if false; then
+    # Look for netcat or nc for direct socket http calls
+    if [ -n "$(type netcat 2> /dev/null)" ]; then
+	netcat="netcat -w 1" # -N works on evhtp but not fcgi
+    elif [ -n "$(type nc 2> /dev/null)" ]; then
+	netcat=nc
+    else
+	err1 "netcat/nc not found"
+    fi
+
+    new "restconf GET initial datastore netcat"
+    expectpart "$(${netcat} 127.0.0.1 80 <<EOF
+GET /restconf/data/example:a=0 HTTP/1.1
+Host: localhost
+Accept: application/yang-data+xml
+
+EOF
+)" 0 "HTTP/1.1 200 OK" "$XML"
+
+    new "restconf XYZ not found"
+    expectpart "$(${netcat} 127.0.0.1 80 <<EOF
+XYZ /restconf/data/example:a=0 HTTP/1.1
+Host: localhost
+Accept: application/yang-data+xml
+
+EOF
+)" 0 "HTTP/1.1 404 Not Found"
+    
+    new "restconf HEAD not allowed"
+    expectpart "$(${netcat} 127.0.0.1 80 <<EOF
+HEAD /restconf HTTP/1.1
+Host: localhost
+Accept: application/yang-data+xml
+
+EOF
+)" 0 "HTTP/1.1 405" "Not Allowed" # nginx uses "method not allowed" evhtp "not allowed"
+fi # Cannot get to work
+
+new "restconf XYZ not found"
+expectpart "$(curl $CURLOPTS -X XYS -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:a=0)" 0 'HTTP/1.1 404 Not Found'
+
+# XXX dont work w fcgi
+if [ "${WITH_RESTCONF}" = "native" ]; then
+    new "restconf HEAD not allowed"
+    expectpart "$(curl $CURLOPTS -X HEAD -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf)" 0 "HTTP/1.1 405" "Not Allowed"
+fi
 
 new "restconf GET non-qualified list"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:a)" 0 'HTTP/1.1 400 Bad Request' "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"rpc\",\"error-tag\":\"malformed-message\",\"error-severity\":\"error\",\"error-message\":\"malformed key =example:a, expected '=restval'\"}}}"

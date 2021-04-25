@@ -461,6 +461,10 @@ api_root_restconf(clicon_handle        h,
     clicon_debug(1, "%s DATA=%s", __FUNCTION__, indata);
 
     /* If present, check credentials. See "plugin_credentials" in plugin  
+     * retvals:
+     *    -1    Error
+     *     0    Not authenticated
+     *     1    Authenticated
      * See RFC 8040 section 2.5
      */
     if ((ret = restconf_authentication_cb(h, req, pretty, media_out)) < 0)

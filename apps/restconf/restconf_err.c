@@ -116,6 +116,94 @@ restconf_badrequest(clicon_handle h,
     return retval;
 }
 
+/*! HTTP error 404
+ * @param[in]  h    Clicon handle
+ * @param[in]  req  Generic Www handle
+ * XXX skip body?
+ */
+int
+restconf_notfound(clicon_handle h,
+		  void         *req)
+{
+    int   retval = -1;
+#ifdef SKIP_BODY /* Remove the body - should it really be there? */
+    if (restconf_reply_send(req, 404, NULL) < 0)
+	goto done;
+    retval = 0;
+ done:
+#else
+    char *path;
+    cbuf *cb = NULL;
+    
+    /* Create body */
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    path = restconf_param_get("REQUEST_URI", r->envp);
+    if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
+	goto done;
+    cprintf(cb, "The requested URL %s was not found on this server.\n", path);
+    if (restconf_reply_send(req, 404, cb) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+#endif
+    return retval;
+}
+
+/*! HTTP error 405
+ * @param[in]  req      Generic Www handle
+ * @param[in]  allow    Which methods are allowed
+ */
+int
+restconf_method_notallowed(void  *req,
+			   char  *allow)
+{
+    int retval = -1;
+    
+    if (restconf_reply_header(req, "Allow", "%s", allow) < 0)
+	goto done;
+    if (restconf_reply_send(req, 405, NULL) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! HTTP error 409 Unsupporte dmedia
+ * @param[in]  req      Generic Www handle
+ */
+int
+restconf_unsupported_media(void  *req)
+{
+    int   retval = -1;
+
+    if (restconf_reply_send(req, 415, NULL) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! HTTP error 501 Not implemented
+ * @param[in]  req    Generic Www handle
+ */
+int
+restconf_notimplemented(void *req)
+{
+    int   retval = -1;
+
+    if (restconf_reply_send(req, 501, NULL) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+#ifdef NOTUSED
 /*! HTTP error 401
  * @param[in]  h    Clicon handle
  * @param[in]  req  Generic Www handle
@@ -193,63 +281,6 @@ restconf_forbidden(clicon_handle h,
     return retval;
 }
 
-/*! HTTP error 404
- * @param[in]  h    Clicon handle
- * @param[in]  req  Generic Www handle
- * XXX skip body?
- */
-int
-restconf_notfound(clicon_handle h,
-		  void         *req)
-{
-    int   retval = -1;
-#ifdef SKIP_BODY /* Remove the body - should it really be there? */
-    if (restconf_reply_send(req, 404, NULL) < 0)
-	goto done;
-    retval = 0;
- done:
-#else
-    char *path;
-    cbuf *cb = NULL;
-    
-    /* Create body */
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    path = restconf_param_get("REQUEST_URI", r->envp);
-    if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
-	goto done;
-    cprintf(cb, "The requested URL %s was not found on this server.\n", path);
-    if (restconf_reply_send(req, 404, cb) < 0)
-	goto done;
-    retval = 0;
- done:
-    if (cb)
-	cbuf_free(cb);
-#endif
-    return retval;
-}
-
-/*! HTTP error 405
- * @param[in]  req      Generic Www handle
- * @param[in]  allow    Which methods are allowed
- */
-int
-restconf_method_notallowed(void  *req,
-			   char  *allow)
-{
-    int retval = -1;
-    
-    if (restconf_reply_header(req, "Allow", "%s", allow) < 0)
-	goto done;
-    if (restconf_reply_send(req, 405, NULL) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! HTTP error 406 Not acceptable
  * @param[in]  h      Clicon handle
  * @param[in]  req    Generic Www handle
@@ -304,21 +335,6 @@ restconf_conflict(void    *req)
     return retval;
 }
 
-/*! HTTP error 409 Unsupporte dmedia
- * @param[in]  req      Generic Www handle
- */
-int
-restconf_unsupported_media(void  *req)
-{
-    int   retval = -1;
-
-    if (restconf_reply_send(req, 415, NULL) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! HTTP error 500 Internal server error
  * @param[in]  h      Clicon handle
  * @param[in]  req    Generic Www handle
@@ -355,21 +371,7 @@ restconf_internal_server_error(clicon_handle h,
 #endif
     return retval;
 }
-
-/*! HTTP error 501 Not implemented
- * @param[in]  req    Generic Www handle
- */
-int
-restconf_notimplemented(void *req)
-{
-    int   retval = -1;
-
-    if (restconf_reply_send(req, 501, NULL) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
+#endif /* NOTUSED */
 
 /*! Generic restconf error function on get/head request
  * @param[in]  h      Clixon handle
