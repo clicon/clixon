@@ -1074,6 +1074,15 @@ api_path2xml_vec(char      **vec,
 	}
 	break;
     default: /* eg Y_CONTAINER, Y_LEAF */
+	if (restval != NULL){
+	    if (strict){
+		cprintf(cberr, "malformed api-path, =%s not expected", restval);
+		if (xerr &&
+		    netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
+		    goto done;
+	        goto fail;
+	    }
+	}
 	if (x0 &&
 	    (x = xml_find_type(x0, NULL, name, CX_ELMNT)) == NULL){ /* eg key of list */
 	    if ((x = xml_new(name, x0, CX_ELMNT)) == NULL)

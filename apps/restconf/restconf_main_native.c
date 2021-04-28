@@ -1705,7 +1705,7 @@ restconf_sig_term(int arg)
     }
     else
 	exit(-1);
-    clicon_exit_set(); /* XXX should rather signal event_base_loop */
+    clicon_exit_set(); 
 }
 
 /*! Usage help routine

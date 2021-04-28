@@ -399,7 +399,7 @@ ret2status(int                  ret,
     return retval;
 }
 
-
+#if 0 /* DEBUG */
 /* Debug timer */
 int
 backend_timer_setup(int   fd,
@@ -429,6 +429,7 @@ backend_timer_setup(int   fd,
  done:
     return retval;
 }
+#endif /* DEBUG */
 
 /*! usage
  */
@@ -1024,10 +1025,12 @@ main(int    argc,
 
     /* Start session-id for clients */
     clicon_session_id_set(h, 0);
+#if 0 /* debug */
     /* Enable this to get prints of datastore and session status */
     if (0 && clicon_debug_get() && 
 	backend_timer_setup(0, h) < 0)
 	goto done;
+#endif
     if (stream_timer_setup(0, h) < 0)
 	goto done;
     if (clixon_event_loop(h) < 0)

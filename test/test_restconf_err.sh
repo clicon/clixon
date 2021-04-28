@@ -195,6 +195,8 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 
 # XXX cannot get this to work for all combinations of nc/netcat fcgi/native
 # But leave it here for debugging where netcat works properly
+# Alt try something like:
+# printf "Hello World!" | (exec 3<>/dev/tcp/127.0.0.1/80; cat >&3; cat <&3; exec 3<&-)
 if false; then
     # Look for netcat or nc for direct socket http calls
     if [ -n "$(type netcat 2> /dev/null)" ]; then
@@ -244,6 +246,9 @@ fi
 
 new "restconf GET non-qualified list"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:a)" 0 'HTTP/1.1 400 Bad Request' "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"rpc\",\"error-tag\":\"malformed-message\",\"error-severity\":\"error\",\"error-message\":\"malformed key =example:a, expected '=restval'\"}}}"
+
+new "restconf GET container with rest-api"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:table=x)" 0 'HTTP/1.1 400 Bad Request' "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"rpc\",\"error-tag\":\"malformed-message\",\"error-severity\":\"error\",\"error-message\":\"malformed api-path, =x not expected\"}}}"
 
 new "restconf GET non-qualified list subelements"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:a/k)" 0 'HTTP/1.1 400 Bad Request' "^{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"rpc\",\"error-tag\":\"malformed-message\",\"error-severity\":\"error\",\"error-message\":\"malformed key =example:a, expected '=restval'\"}}}"
