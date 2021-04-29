@@ -597,7 +597,8 @@ clixon_process_operation(clicon_handle  h,
     process_entry_t *pe;
     proc_operation   op;
     int              sched = 0; /* If set, process action should be scheduled, register a timeout */
-
+    int              isrunning = 0;
+    
     clicon_debug(1, "%s name:%s op:%s", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));
     if (_proc_entry_list == NULL)
 	goto ok;
@@ -609,12 +610,31 @@ clixon_process_operation(clicon_handle  h,
 	    if (wrapit && pe->pe_callback != NULL)
 		if (pe->pe_callback(h, pe, &op) < 0)
 		    goto done;
-
 	    if (op == PROC_OP_START || op == PROC_OP_STOP || op == PROC_OP_RESTART){
 		pe->pe_operation = op;
 		clicon_debug(1, "%s scheduling name: %s pid:%d op: %s", __FUNCTION__,
 			     name, pe->pe_pid,
 			     clicon_int2str(proc_operation_map, pe->pe_operation));
+		if (pe->pe_state==PROC_STATE_RUNNING &&
+		    (op == PROC_OP_STOP || op == PROC_OP_RESTART)){
+		    isrunning = 0;
+		    if (proc_op_run(pe->pe_pid, &isrunning) < 0)
+			goto done;
+		    if (isrunning) {
+			clicon_log(LOG_NOTICE, "Killing old process %s with pid: %d",
+				   pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
+			kill(pe->pe_pid, SIGTERM);
+
+		    }
+		    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
+				 pe->pe_name, pe->pe_pid,
+				 clicon_int2str(proc_state_map, pe->pe_state),
+				 clicon_int2str(proc_operation_map, pe->pe_operation),
+				 clicon_int2str(proc_state_map, PROC_STATE_EXITING)
+				 );
+		    pe->pe_state = PROC_STATE_EXITING; /* Keep operation stop/restart */
+		    //		    break;
+               }
 		sched++;
 	    }
 	    else{
@@ -750,6 +770,7 @@ clixon_process_sched(int           fd,
     int              retval = -1;
     process_entry_t *pe;
     int              isrunning; /* Process is actually running */
+    int              sched = 0;
 
     clicon_debug(1, "%s",__FUNCTION__);
     if (_proc_entry_list == NULL)
@@ -762,6 +783,21 @@ clixon_process_sched(int           fd,
 	if (pe->pe_operation != PROC_OP_NONE){
 	    switch (pe->pe_state){
 	    case PROC_STATE_EXITING:
+		switch (pe->pe_operation){
+		case PROC_OP_STOP: 
+		case PROC_OP_RESTART: /* Kill again */
+		    isrunning = 0;
+		    if (proc_op_run(pe->pe_pid, &isrunning) < 0)
+			goto done;		    
+		    if (isrunning) {
+			clicon_log(LOG_NOTICE, "Killing old process %s with pid: %d",
+				   pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
+			kill(pe->pe_pid, SIGTERM);
+			sched++;
+		    }
+		default:
+		    break;
+		}
 		break; /* only clixon_process_waitpid can change state in exiting */
 	    case PROC_STATE_STOPPED:
 		switch (pe->pe_operation){
@@ -794,24 +830,6 @@ clixon_process_sched(int           fd,
 		if (proc_op_run(pe->pe_pid, &isrunning) < 0)
 		    goto done;
 		switch (pe->pe_operation){
-		case PROC_OP_STOP:
-		    clicon_debug(1, "%s stop pid:%d", __FUNCTION__, pe->pe_pid);
-		case PROC_OP_RESTART:
-		    if (isrunning){
-			clicon_log(LOG_NOTICE, "Killing old process %s with pid: %d", pe->pe_name, pe->pe_pid);
-			kill(pe->pe_pid, SIGTERM);
-			/* Cant wait here because it would block the backend and terminating may involve
-			 * some protocol handling, instead SIGCHLD is receoved and 
-			 * clixon_process_waitpid is called that for waits/reaps the dead process */
-		    }
-		    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
-				 pe->pe_name, pe->pe_pid,
-				 clicon_int2str(proc_state_map, pe->pe_state),
-				 clicon_int2str(proc_operation_map, pe->pe_operation),
-				 clicon_int2str(proc_state_map, PROC_STATE_EXITING)
-				 );
-		    pe->pe_state = PROC_STATE_EXITING; /* Keep operation stop/restart */
-		    break;
 		case PROC_OP_START:
 		    if (isrunning) /* Already runs */
 			break;
@@ -835,6 +853,8 @@ clixon_process_sched(int           fd,
 	}
 	pe = NEXTQ(process_entry_t *, pe);
     } while (pe != _proc_entry_list);
+    if (sched && clixon_process_sched_register(h) < 0)
+	goto done;
  ok:
     retval = 0;
  done:

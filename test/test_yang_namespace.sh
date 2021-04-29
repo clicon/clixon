@@ -149,5 +149,7 @@ unset RESTCONFIG
 
 rm -rf $dir
 
+unset ret
+
 new "endtest"
 endtest

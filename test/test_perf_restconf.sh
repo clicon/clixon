@@ -249,6 +249,7 @@ unset RESTCONFIG
 unset format
 unset perfnr
 unset perfreq
+unset ret
 
 new "endtest"
 endtest

@@ -243,3 +243,4 @@ unset RESTCONFIG
 
 # unset conditional parameters 
 unset format
+unset ret

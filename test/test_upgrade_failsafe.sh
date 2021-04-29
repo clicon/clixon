@@ -367,5 +367,8 @@ fi # valgrindtest
 rm -rf $dir
 
 new "endtest"
+
+unset ret
+
 endtest
 

@@ -92,7 +92,7 @@ function rpcstatus()
     
     sleep $DEMSLEEP
     new "send rpc status"
-    ret=$($clixon_netconf -qf $cfg<<EOF
+    retx=$($clixon_netconf -qf $cfg<<EOF
 $DEFAULTHELLO
 <rpc $DEFAULTNS>
   <process-control $LIBNS>
@@ -104,14 +104,14 @@ EOF
 )
     # Check pid
     expect="<pid $LIBNS>[0-9]*</pid>"
-    match=$(echo "$ret" | grep --null -Go "$expect")
+    match=$(echo "$retx" | grep --null -Go "$expect")
     if [ -z "$match" ]; then
 	pid=0
     else
 	pid=$(echo "$match" | awk -F'[<>]' '{print $3}')
     fi
     if [ -z "$pid" ]; then
-	err "No pid return value" "$ret"
+	err "No pid return value" "$retx"
     fi
     if $active; then
 	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>]]>]]>$"
@@ -119,9 +119,9 @@ EOF
 	# inactive, no startime or pid
 	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status></rpc-reply>]]>]]>$"
     fi
-    match=$(echo "$ret" | grep --null -Go "$expect")
+    match=$(echo "$retx" | grep --null -Go "$expect")
     if [ -z "$match" ]; then
-	err "$expect" "$ret"
+	err "$expect" "$retx"
     fi
 }
 
@@ -142,6 +142,7 @@ if [ $BE -ne 0 ]; then
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
 fi
+
 new "wait backend"
 wait_backend
 
@@ -250,9 +251,9 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></
 sleep $DEMSLEEP
 new "Check zombies"
 # NOTE unsure where zombies actually appear
-ret=$(ps aux| grep clixon | grep defunc | grep -v grep)
-if [ -n "$ret" ]; then
-    err "No zombie process" "$ret"
+retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
+if [ -n "$retx" ]; then
+    err "No zombie process" "$retx"
 fi
 
 if [ $BE -ne 0 ]; then
@@ -269,9 +270,9 @@ fi
 sleep $DEMSLEEP
 new "Check zombies again"
 # NOTE unsure where zombies actually appear
-ret=$(ps aux| grep clixon | grep defunc | grep -v grep)
-if [ -n "$ret" ]; then
-    err "No zombie process" "$ret"
+retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
+if [ -n "$retx" ]; then
+    err "No zombie process" "$retx"
 fi
 
 # THIRD usecase
@@ -436,6 +437,9 @@ if [ $BE -ne 0 ]; then
 fi
 
 fi # "${WITH_RESTCONF}" != "fcgi"
+
+new "kill restconf"
+stop_restconf
 
 new "endtest"
 endtest

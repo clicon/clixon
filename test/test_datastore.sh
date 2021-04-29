@@ -163,6 +163,7 @@ expectpart "$($clixon_util_datastore $conf lock 756)" 0 ""
 
 # unset conditional parameters 
 unset clixon_util_datastore
+unset ret
 
 rm -rf $mydir
 

@@ -1326,7 +1326,6 @@ restconf_native_terminate(clicon_handle h)
     return 0;
 }
 
-
 /*! Query backend of config.
  * Loop to wait for backend starting, try again if not done 
  * @param[out] xrestconf XML restconf config, malloced (if retval = 1)
@@ -1733,6 +1732,10 @@ restconf_sig_term(int arg)
     }
     else
 	exit(-1);
+    /* This should ensure no more accepts or incoming packets are processed because next time eventloop
+     * is entered, it will terminate.
+     * However there may be a case of sockets closing rather abruptly for clients
+     */
     clicon_exit_set(); 
 }
 

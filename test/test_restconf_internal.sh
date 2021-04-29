@@ -78,7 +78,7 @@ function rpcstatus()
     
     sleep $DEMSLEEP
     new "send rpc status"
-    ret=$($clixon_netconf -qf $cfg<<EOF
+    retx=$($clixon_netconf -qf $cfg<<EOF
 $DEFAULTHELLO
 <rpc $DEFAULTNS>
   <process-control $LIBNS>
@@ -90,14 +90,14 @@ EOF
 )
     # Check pid
     expect="<pid $LIBNS>[0-9]*</pid>"
-    match=$(echo "$ret" | grep --null -Go "$expect")
+    match=$(echo "$retx" | grep --null -Go "$expect")
     if [ -z "$match" ]; then
 	pid=0
     else
 	pid=$(echo "$match" | awk -F'[<>]' '{print $3}')
     fi
     if [ -z "$pid" ]; then
-	err "No pid return value" "$ret"
+	err "No pid return value" "$retx"
     fi
     if $active; then
 	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>]]>]]>$"
@@ -105,9 +105,9 @@ EOF
 	# inactive, no startime or pid
 	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status></rpc-reply>]]>]]>$"
     fi
-    match=$(echo "$ret" | grep --null -Go "$expect")
+    match=$(echo "$retx" | grep --null -Go "$expect")
     if [ -z "$match" ]; then
-	err "$expect" "$ret"
+	err "$expect" "$retx"
     fi
 }
 
@@ -223,7 +223,7 @@ new "4. stop restconf RPC"
 rpcoperation stop
 if [ $? -ne 0 ]; then exit -1; fi
 
-new "Wait for restrconf to stop"
+new "Wait for restconf to stop"
 wait_restconf_stopped
 
 new "5. Get rpc status stopped"
@@ -422,7 +422,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-confi
 new "commit disable"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-new "17. check status RPC off"
+new "18. check status RPC off"
 rpcstatus false stopped
 if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
 
@@ -448,16 +448,19 @@ fi
 
 #Start backend -s none should start 
 
-unset pid
+new "kill restconf"
+stop_restconf
+
 sleep $DEMSLEEP # Lots of processes need to die before next test
 
 new "endtest"
 endtest
 
 # Set by restconf_config
+unset pid
 unset RESTCONFIG
 unset RESTCONFDBG
 unset RCPROTO
+unset retx
 
 rm -rf $dir
-

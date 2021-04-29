@@ -61,11 +61,11 @@ function testrun(){
     x0=$2
     x1=$3
     xp=$4
-    ret=$5
+    retx=$5
     res=$6
 
     echo "$clixon_util_xml_mod -o $op -y $fyang -b "$x0" -x "$x1" -p $xp $OPTS"
-    expectpart "$($clixon_util_xml_mod -o $op -y $fyang -b "$x0" -x "$x1" -p $xp $OPTS)" $ret "$res"
+    expectpart "$($clixon_util_xml_mod -o $op -y $fyang -b "$x0" -x "$x1" -p $xp $OPTS)" $retx "$res"
 }
 
 new "test params: -y $fyang $OPTS"
@@ -125,6 +125,7 @@ rm -rf $dir
 
 # unset conditional parameters 
 unset clixon_util_xml_mod
+unset retx
 
 new "endtest"
 endtest

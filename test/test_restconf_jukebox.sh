@@ -78,7 +78,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f "$cfg" -- -s
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 if [ $RC -ne 0 ]; then
@@ -88,10 +88,12 @@ if [ $RC -ne 0 ]; then
     new "start restconf daemon"
     start_restconf -f $cfg
 
-    new "waiting"
-    wait_restconf
+
 fi
 
+new "wait restconf"
+wait_restconf
+    
 new "B.1.1.  Retrieve the Top-Level API Resource root"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/xrd+xml' $RCPROTO://localhost/.well-known/host-meta)" 0 "HTTP/1.1 200 OK" "Content-Type: application/xrd+xml" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 

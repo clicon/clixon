@@ -125,8 +125,13 @@ fcgi_params_set(clicon_handle h,
     return retval;
 }
 
-/* Need global variable to for signal handler XXX */
+/* XXX Need global variable to for SIGCHLD signal handler
+*/
 static clicon_handle _CLICON_HANDLE = NULL;
+
+/* XXX Need global variable to break FCGI accept loop from signal handler see FCGX_Accept_r(req)
+ */
+static int _MYSOCK;
 
 /*! Signall terminates process
  */
@@ -135,18 +140,21 @@ restconf_sig_term(int arg)
 {
     static int i=0;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     if (i++ == 0)
 	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
 		   __PROGRAM__, __FUNCTION__, getpid(), arg);
-    else
+    else{
+	clicon_debug(1, "%s done", __FUNCTION__);
 	exit(-1);
-    if (_CLICON_HANDLE){
-	stream_child_freeall(_CLICON_HANDLE);
-	restconf_terminate(_CLICON_HANDLE);
     }
-    clicon_exit_set(); /* checked in clixon_event_loop() */
-    clicon_debug(1, "%s done", __FUNCTION__);
-    exit(-1);
+
+    /* This should ensure no more accepts or incoming packets are processed because next time eventloop
+     * is entered, it will terminate.
+     * However there may be a case of sockets closing rather abruptly for clients
+     */
+    clicon_exit_set(); 
+    close(_MYSOCK);
 }
 
 /*! Reap stream child
@@ -498,6 +506,7 @@ main(int    argc,
 	clicon_err(OE_CFG, errno, "FCGX_OpenSocket");
 	goto done;
     }
+    _MYSOCK = sock;
     /* Change group of fcgi sock fronting reverse proxy to WWWUSER, the effective group is clicon
      * which is backend. */
     gid_t wgid = -1;
@@ -581,6 +590,10 @@ main(int    argc,
 	    goto done;
 	if (finish)
 	    FCGX_Finish_r(req);
+	else if (clicon_exit_get()){
+	    FCGX_Finish_r(req);
+	    break;
+	}
 	else{ /* A handler is forked so we initiate a new request after instead 
 		 of finishing the old */
 	    if (FCGX_InitRequest(req, sock, 0) != 0){
@@ -588,7 +601,6 @@ main(int    argc,
 		goto done;
 	    }
 	}
-	
     } /* while */
     retval = 0;
  done:

@@ -272,6 +272,7 @@ fi
 
 # Set by restconf_config
 unset RESTCONFIG
+unset ret
 
 rm -rf $dir
 

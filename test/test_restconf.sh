@@ -413,7 +413,7 @@ if [ "${WITH_RESTCONF}" = "native" ]; then
     protos="$protos https"
 fi
 for proto in $protos; do
-#    addrs="127.0.0.1"
+    addrs="127.0.0.1"
     if $IPv6 ; then
 	addrs="$addrs \[::1\]"
     fi
@@ -429,6 +429,7 @@ unset RCPROTO
 # Set by restconf_config
 unset RESTCONFIG
 unset RESTCONFIG1
+unset ret
 
 rm -rf $dir
 
