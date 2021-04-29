@@ -27,8 +27,11 @@ APPNAME=example
 
 cfg=$dir/scaling-conf.xml
 fyang=$dir/scaling.yang
+fconfigonly=$dir/config.xml # only config for test
+ftest=$dir/test.xml
 fconfig=$dir/large.xml
-fconfig2=$dir/large2.xml
+fconfig2=$dir/large2.xml # leaf-list
+foutput=$dir/output.xml
 
 cat <<EOF > $fyang
 module scaling{
@@ -76,7 +79,6 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-
 new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -103,12 +105,17 @@ if [ $RC -ne 0 ]; then
     wait_restconf
 fi
 
+# Check this later with committed data
 new "generate config with $perfnr list entries"
-echo -n "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\">" > $fconfig
+echo -n "<x xmlns=\"urn:example:clixon\">" > $fconfigonly
 for (( i=0; i<$perfnr; i++ )); do  
-    echo -n "<y><a>$i</a><b>$i</b></y>" >> $fconfig
+    echo -n "<y><a>$i</a><b>$i</b></y>" >> $fconfigonly
 done
-echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig
+echo -n "</x>" >> $fconfigonly # No CR
+
+echo -n "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>" > $fconfig
+cat $fconfigonly >> $fconfig
+echo "</config></edit-config></rpc>]]>]]>" >> $fconfig
 
 # Now take large config file and write it via netconf to candidate
 new "test time exists"
@@ -122,6 +129,26 @@ expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply $DEF
 # Now commit it from candidate to running 
 new "netconf commit large config"
 expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+
+new "Check running-db contents"
+curl $CURLOPTS -X GET  -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=config > $foutput
+
+# Remove Content-Length line
+sed -i '/Content-Length:/d' $foutput
+
+# Create a file to compare with
+echo "HTTP/1.1 200 OK" > $ftest
+echo "Content-Type: application/yang-data+xml" >> $ftest
+echo "Cache-Control: no-cache" >> $ftest
+echo "">> $ftest
+echo -n "<data>">> $ftest
+cat $fconfigonly >> $ftest
+echo "</data>" >> $ftest
+
+ret=$(diff $ftest $foutput)
+if [ $? -ne 0 ]; then
+    err1 "Matching running-db with $fconfigonly"
+fi	
 
 # RESTCONF get
 new "restconf get $perfreq small config 1 key index"

@@ -165,7 +165,7 @@
 #include "restconf_api.h"       /* generic not shared with plugins */
 #include "restconf_err.h"
 #include "restconf_root.h"
-#include "restconf_openssl.h"   /* Restconf-openssl mode specific headers*/
+#include "restconf_native.h"   /* Restconf-openssl mode specific headers*/
 
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hD:f:E:l:p:y:a:u:ro:"
@@ -188,37 +188,36 @@
 /* Forward */
 static int restconf_connection(int s, void* arg);
 
-/*! Get restconf openssl global handle
+/*! Get restconf native handle
  * @param[in]  h     Clicon handle
- * @retval     rh    Openssl global handle
+ * @retval     rh    Restconf native handle
  */
-static restconf_handle *
-restconf_handle_get(clicon_handle h)
+static restconf_native_handle *
+restconf_native_handle_get(clicon_handle h)
 {
     clicon_hash_t  *cdat = clicon_data(h);
     size_t          len;
     void           *p;
 
-    if ((p = clicon_hash_value(cdat, "restconf_openssl_handle", &len)) != NULL)
-	return *(restconf_handle **)p;
+    if ((p = clicon_hash_value(cdat, "restconf-native-handle", &len)) != NULL)
+	return *(restconf_native_handle **)p;
     return NULL;
 }
 
-/*! Set restconf openssl global handle
+/*! Set restconf native handle
  * @param[in]  h     Clicon handle
- * @param[in]  rh    Openssl handle (malloced pointer)
- * @see clicon_config_yang_set  for the configuration yang
+ * @param[in]  rh    Restconf native handle (malloced pointer)
  */
 static int
-openspec_handle_set(clicon_handle   h, 
-		    restconf_handle *rh)
+restconf_native_handle_set(clicon_handle   h, 
+			   restconf_native_handle *rh)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
     /* It is the pointer to ys that should be copied by hash,
        so we send a ptr to the ptr to indicate what to copy.
      */
-    if (clicon_hash_add(cdat, "restconf_openssl_handle", &rh, sizeof(rh)) == NULL)
+    if (clicon_hash_add(cdat, "restconf-native-handle", &rh, sizeof(rh)) == NULL)
 	return -1;
     return 0;
 }
@@ -237,7 +236,7 @@ buf_write(char   *buf,
     ssize_t totlen = 0;
     int     er;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(1, "%s buflen:%lu buf:%s", __FUNCTION__, buflen, buf);
     while (totlen < buflen){
 	if (ssl){
 	    if ((len = SSL_write(ssl, buf+totlen, buflen-totlen)) <= 0){
@@ -276,6 +275,13 @@ buf_write(char   *buf,
 		    usleep(10000);
 		    continue;
 		}
+#if 1
+		else if (errno == ECONNRESET) {/* Connection reset by peer */
+		    close(s);
+		    clixon_event_unreg_fd(s, restconf_connection);
+		    goto ok; /* Close socket and ssl */
+		}
+#endif
 		else{
 		    clicon_err(OE_UNIX, errno, "write");
 		    goto done;
@@ -819,6 +825,23 @@ restconf_ssl_context_configure(clixon_handle h,
     return retval;
 }
 
+/*! Free clixon/cbuf resources related to an evhtp connection
+ */
+static int
+restconf_conn_free(evhtp_connection_t *conn)
+{
+    restconf_conn_h   *rc;
+    
+    if ((rc = conn->arg) != NULL){
+	if (rc->rc_outp_hdrs)
+	    cvec_free(rc->rc_outp_hdrs);
+	if (rc->rc_outp_buf)
+	    cbuf_free(rc->rc_outp_buf);
+	free(rc);
+    }
+    return 0;
+}
+
 /*! Utility function to close restconf server ssl/evhtp socket.
  * There are many variants to closing, one could probably make this more generic
  * and always use this function, but it is difficult.
@@ -831,9 +854,10 @@ close_ssl_evhtp_socket(int                 s,
     int retval = -1;
     int ret;
     SSL *ssl;
-
+    
     ssl = conn->ssl;
     clicon_debug(1, "%s conn-free (%p) 1", __FUNCTION__, conn);
+    restconf_conn_free(conn);
     evhtp_connection_free(conn); /* evhtp */
     if (ssl != NULL){
 	if (shutdown && (ret = SSL_shutdown(ssl)) < 0){
@@ -896,6 +920,7 @@ restconf_connection(int   s,
     char                buf[BUFSIZ]; /* from stdio.h, typically 8K */
     clicon_handle       h;
     int                 readmore = 1;
+    restconf_conn_h *rc;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((conn = (evhtp_connection_t*)arg) == NULL){
@@ -918,7 +943,13 @@ restconf_connection(int   s,
 	}
 	else{
 	    if ((n = read(conn->sock, buf, sizeof(buf))) < 0){ /* XXX atomicio ? */
-		clicon_err(OE_XML, errno, "SSL_read");
+		if (errno == ECONNRESET) {/* Connection reset by peer */
+		    close(conn->sock);
+		    restconf_conn_free(conn);
+		    clixon_event_unreg_fd(conn->sock, restconf_connection);
+		    goto ok; /* Close socket and ssl */
+		}
+		clicon_err(OE_XML, errno, "read");
 		goto done;
 	    }
 	}
@@ -943,47 +974,34 @@ restconf_connection(int   s,
 	    clixon_event_unreg_fd(s, restconf_connection);
 	    conn->ssl = NULL;
 	    clicon_debug(1, "%s conn-free (%p) 2", __FUNCTION__, conn);
+	    restconf_conn_free(conn);
 	    evhtp_connection_free(conn);
 	    goto ok;
 	}
 	clicon_debug(1, "%s connection_parse OK", __FUNCTION__);
 	if (conn->bev != NULL){
-	    char     *buf = NULL;
-	    size_t    buflen;
 	    struct evbuffer *ev;
-
+	    size_t           buflen;
+	    char            *buf = NULL;
+	    
+	    if ((rc = conn->arg) == NULL){
+		clicon_err(OE_RESTCONF, EFAULT, "Internal error: restconf-conn-h is NULL: shouldnt happen");
+		goto done;
+	    }
 	    if ((ev = bufferevent_get_output(conn->bev)) != NULL){
-		buflen = evbuffer_get_length(ev);
-		if (buflen){
-#ifdef RESTCONF_LIBEVENT_POS_PATCH
-		    size_t    pos;
-
-		    pos = (size_t)conn->arg;
-#endif
+		if ((buflen = evbuffer_get_length(ev)) != 0){
+		    //		    assert(0); /* 100 Cont ? */
 		    buf = (char*)evbuffer_pullup(ev, -1);
-		    clicon_debug(1, "%s buf:%s", __FUNCTION__, buf);
-#ifdef RESTCONF_LIBEVENT_POS_PATCH
-		    if (buf_write(buf+pos, buflen, conn->sock, conn->ssl) < 0)
+		    if (cbuf_append_buf(rc->rc_outp_buf, buf, buflen) < 0){
+			clicon_err(OE_UNIX, errno, "cbuf_append_buf");
 			goto done;
-		    pos += buflen;
-		    conn->arg = (void*)pos;
-#else
-		    /* Does not work w multiple requests */
-		    if (buf_write(buf, buflen, conn->sock, conn->ssl) < 0)
-			goto done;
-#endif
-		}
-		else{
-		    /* Return 0 from evhtp parser can be that it needs more data.
-		     */
-		    readmore = 1; /* Readmore */
+		    }
 		}
 	    }
-	    else{
-		clicon_debug(1, "%s bev is NULL 2", __FUNCTION__);
-		if (send_badrequest(h, s, conn->ssl) < 0) /* actually error */
-		    goto done;
-	    }	
+	    if (buf_write(cbuf_get(rc->rc_outp_buf), cbuf_len(rc->rc_outp_buf)+1, conn->sock, conn->ssl) < 0)
+	    	goto done;
+	    cvec_reset(rc->rc_outp_hdrs); /* Can be done in native_send_reply */
+	    cbuf_reset(rc->rc_outp_buf);
 	}
 	else{
 	    clicon_debug(1, "%s bev is NULL 3", __FUNCTION__);
@@ -1075,7 +1093,8 @@ restconf_accept_client(int   fd,
 {
     int                retval = -1;
     restconf_socket   *rsock = (restconf_socket *)arg;
-    restconf_handle   *rh = NULL;
+    restconf_native_handle *rh = NULL;
+    restconf_conn_h   *rc = NULL;
     clicon_handle      h;
     int                s;
     struct sockaddr    from = {0,};
@@ -1096,7 +1115,7 @@ restconf_accept_client(int   fd,
 	goto done;
     }
     h = rsock->rs_h;
-    if ((rh = restconf_handle_get(h)) == NULL){
+    if ((rh = restconf_native_handle_get(h)) == NULL){
 	clicon_err(OE_XML, EFAULT, "No openssl handle");
 	goto done;
     }
@@ -1168,6 +1187,7 @@ restconf_accept_client(int   fd,
 		    clixon_event_unreg_fd(s, restconf_connection);
 		    conn->ssl = NULL;
 		    clicon_debug(1, "%s conn-free (%p) 3", __FUNCTION__, conn);
+		    restconf_conn_free(conn);
 		    evhtp_connection_free(conn); /* evhtp */
 		    goto ok;
 		    break;
@@ -1223,6 +1243,7 @@ restconf_accept_client(int   fd,
 		if (send_badrequest(h, s, ssl) < 0)
 		    goto done;
 		clicon_debug(1, "%s conn-free (%p) 5", __FUNCTION__, conn);
+		restconf_conn_free(conn);
 		evhtp_connection_free(conn); /* evhtp */
 		if (ssl){
 		    if ((ret = SSL_shutdown(ssl)) < 0){
@@ -1254,12 +1275,19 @@ restconf_accept_client(int   fd,
     /*
      * Register callbacks for actual data socket 
      */
-#ifdef RESTCONF_LIBEVENT_POS_PATCH
-    /* patch to keep track os position in output buffer 
-     * cannot use drain/copyout since the start position is "freezed" in bufferevent_socket_new
-     */
-    conn->arg = (void*)0; 
-#endif
+    if ((rc = (restconf_conn_h*)malloc(sizeof(restconf_conn_h))) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    if ((rc->rc_outp_hdrs = cvec_new(0)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
+    if ((rc->rc_outp_buf = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    conn->arg = rc;
     if (clixon_event_reg_fd(s, restconf_connection, (void*)conn, "restconf client socket") < 0)
 	goto done;
  ok:
@@ -1272,13 +1300,13 @@ restconf_accept_client(int   fd,
 }
 
 static int
-restconf_openssl_terminate(clicon_handle h)
+restconf_native_terminate(clicon_handle h)
 {
-    restconf_handle *rh;
+    restconf_native_handle *rh;
     restconf_socket *rsock;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    if ((rh = restconf_handle_get(h)) != NULL){
+    if ((rh = restconf_native_handle_get(h)) != NULL){
 	while ((rsock = rh->rh_sockets) != NULL){
 	    clixon_event_unreg_fd(rsock->rs_ss, restconf_accept_client);
 	    close(rsock->rs_ss);
@@ -1385,7 +1413,7 @@ openssl_init_socket(clicon_handle h,
     uint16_t        ssl = 0;
     uint16_t        port = 0;
     int             ss = -1;
-    restconf_handle *rh = NULL;
+    restconf_native_handle *rh = NULL;
     restconf_socket *rsock = NULL; /* openssl per socket struct */
 
     clicon_debug(1, "%s", __FUNCTION__);
@@ -1403,7 +1431,7 @@ openssl_init_socket(clicon_handle h,
 			     &ss
 			     ) < 0)
 	goto done;
-    if ((rh = restconf_handle_get(h)) == NULL){
+    if ((rh = restconf_native_handle_get(h)) == NULL){
 	clicon_err(OE_XML, EFAULT, "No openssl handle");
 	goto done;
     }
@@ -1449,7 +1477,7 @@ restconf_openssl_init(clicon_handle h,
     char              *server_cert_path = NULL;
     char              *server_key_path = NULL;
     char              *server_ca_cert_path = NULL;
-    restconf_handle   *rh;
+    restconf_native_handle   *rh;
     clixon_auth_type_t auth_type;
     int                dbg;
     char              *bstr;
@@ -1510,7 +1538,7 @@ restconf_openssl_init(clicon_handle h,
 	if (restconf_ssl_context_configure(h, ctx, server_cert_path, server_key_path, server_ca_cert_path) < 0)
 	    goto done;
     }
-    rh = restconf_handle_get(h);
+    rh = restconf_native_handle_get(h);
     rh->rh_ctx = ctx;
     /* evhtp stuff */ /* XXX move this to global level */
     if ((evbase = event_base_new()) == NULL){
@@ -1747,7 +1775,7 @@ main(int    argc,
     int             dbg = 0;
     int             logdst = CLICON_LOG_SYSLOG;
     int             drop_privileges = 1;
-    restconf_handle *rh = NULL;
+    restconf_native_handle *rh = NULL;
     int             ret;
     cxobj          *xrestconf = NULL;
 
@@ -1896,7 +1924,7 @@ main(int    argc,
 	goto done;
     }
     memset(rh, 0, sizeof *rh);
-    if (openspec_handle_set(h, rh) < 0)
+    if (restconf_native_handle_set(h, rh) < 0)
 	goto done;
     /* Openssl inits */ 
     if (restconf_openssl_init(h, dbg, xrestconf) < 0)
@@ -1916,7 +1944,7 @@ main(int    argc,
     clicon_debug(1, "restconf_main_openssl done");
     if (xrestconf)
 	xml_free(xrestconf);
-    restconf_openssl_terminate(h);
+    restconf_native_terminate(h);
     restconf_terminate(h);
     return retval;
 }

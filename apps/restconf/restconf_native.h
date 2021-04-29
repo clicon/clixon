@@ -53,20 +53,29 @@
 extern "C" {
 #endif
     
-#ifndef _RESTCONF_OPENSSL_H_
-#define _RESTCONF_OPENSSL_H_
+#ifndef _RESTCONF_NATIVE_H_
+#define _RESTCONF_NATIVE_H_
 
 /*
  * Types
  */
+/* Restconf connection handle 
+ * Per connection request
+ */
+typedef struct {
+    //    qelem_t       rs_qelem;     /* List header */
+    cvec         *rc_outp_hdrs; /* List of output headers */
+    cbuf         *rc_outp_buf;  /* Output buffer */
+} restconf_conn_h;
+    
 /* Restconf request handle 
  * Per socket request
  */
 typedef struct {
-    qelem_t       rs_qelem; /* List header */
-    clicon_handle rs_h;     /* Clixon handle */
-    int           rs_ss;    /* Server socket (ready for accept) */
-    int           rs_ssl;   /* 0: Not SSL socket, 1:SSL socket */
+    qelem_t       rs_qelem;     /* List header */
+    clicon_handle rs_h;         /* Clixon handle */
+    int           rs_ss;        /* Server socket (ready for accept) */
+    int           rs_ssl;       /* 0: Not SSL socket, 1:SSL socket */
 } restconf_socket;
 
 /* Restconf handle 
@@ -76,14 +85,14 @@ typedef struct {
     SSL_CTX         *rh_ctx;       /* SSL context */
     evhtp_t         *rh_evhtp;     /* Evhtp struct */
     restconf_socket *rh_sockets;   /* List of restconf server (ready for accept) sockets */
-} restconf_handle;
+} restconf_native_handle;
 
 /*
  * Prototypes
  */
 int restconf_parse(void *req, const char *buf, size_t buflen);
 
-#endif /* _RESTCONF_OPENSSL_H_ */
+#endif /* _RESTCONF_NATIVE_H_ */
 
 #ifdef __cplusplus
 } /* extern "C" */

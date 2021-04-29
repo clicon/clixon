@@ -28,8 +28,11 @@ APPNAME=example
 
 cfg=$dir/scaling-conf.xml
 fyang=$dir/scaling.yang
-fconfig=$dir/large.xml
-fconfig2=$dir/large2.xml
+fconfig=$dir/large.xml  
+fconfigonly=$dir/config.xml # only config for test
+ftest=$dir/test.xml
+fconfig2=$dir/large2.xml # leaf-list
+foutput=$dir/output.xml
 
 cat <<EOF > $fyang
 module scaling{
@@ -87,12 +90,17 @@ fi
 new "waiting"
 wait_backend
 
+# Check this later with committed data
 new "generate config with $perfnr list entries"
-echo -n "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\">" > $fconfig
+echo -n "<x xmlns=\"urn:example:clixon\">" > $fconfigonly
 for (( i=0; i<$perfnr; i++ )); do  
-    echo -n "<y><a>$i</a><b>$i</b></y>" >> $fconfig
+    echo -n "<y><a>$i</a><b>$i</b></y>" >> $fconfigonly
 done
-echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig
+echo -n "</x>" >> $fconfigonly # No CR
+
+echo -n "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>" > $fconfig
+cat $fconfigonly >> $fconfig
+echo "</config></edit-config></rpc>]]>]]>" >> $fconfig
 
 # Now take large config file and write it via netconf to candidate
 new "test time exists"
@@ -106,6 +114,19 @@ expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply $DEF
 # Now commit it from candidate to running 
 new "netconf commit large config"
 expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+
+new "Check running-db contents"
+echo "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" | $clixon_netconf -qf $cfg > $foutput
+
+# Create a file to compare with
+echo -n "<rpc-reply $DEFAULTNS><data>" > $ftest
+cat $fconfigonly >> $ftest
+echo -n "</data></rpc-reply>]]>]]>" >> $ftest
+
+ret=$(diff $ftest $foutput)
+if [ $? -ne 0 ]; then
+    err1 "Matching running-db with $fconfigonly"
+fi	
 
 # Now commit it again from candidate (validation takes time when
 # comparing to existing)
