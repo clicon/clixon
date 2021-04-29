@@ -407,6 +407,7 @@ netconf_input_frame(clicon_handle h,
 	netconf_output_encap(1, cbret, "rpc-error");
 	goto ok;
     }
+
     /* Check for empty frame (no mesaages), return empty message, not clear from RFC what to do */
     if (xml_child_nr_type(xtop, CX_ELMNT) == 0){
 	if ((cbret = cbuf_new()) == NULL){ 
@@ -416,6 +417,7 @@ netconf_input_frame(clicon_handle h,
 	netconf_output_encap(1, cbret, "rpc-error");
 	goto ok;
     }
+
     /* Check for multi-messages in frame */
     if (xml_child_nr_type(xtop, CX_ELMNT) != 1){
 	if ((cbret = cbuf_new()) == NULL){ 
@@ -447,6 +449,68 @@ netconf_input_frame(clicon_handle h,
     return retval;
 }
 
+/*! Look for a chunked message header as described in RFC6242#section-4.2
+ *  @param[in]     ch           New input character
+ *  @param[in,out] state        A state integer holding how far we have parsed.
+ *  @param[in,out] chunkLength  A state integer holding the chunk size.
+ *  @retval        0            No chunk start has been detected
+ *  @retval        1            Chunk start has been detected
+ */
+int
+detect_netconf_chunk_start(char  ch, int  *state, long *chunkLength)
+{
+    switch(*state) {
+        case 0: // Looking for newline
+            if(ch == '\n') *state = 1;
+            break;
+        case 1: // Looking for #
+            if(ch == '#') *state = 2;
+            else *state = 0;
+            break;
+        case 2: // Looking for digit greater than 0
+            if(ch >= '1' && ch <= '9') {
+                *chunkLength = ch - '0';
+                *state = 3;
+            }
+            else *state = 0;
+            break;
+        case 3: // Looking for more digits or newline
+            if(ch == '\n') *state = 5;
+            else  if(ch >= '0' && ch <= '9') *chunkLength = ((*chunkLength) * 10) + (ch - '0');
+            else *state = 0;
+            break;
+    }
+
+    return *state == 5;
+}
+
+static int
+netconf_input_get_msg_buf(clicon_hash_t *cacheTable, cbuf **cb) {
+    void *hashValue;
+    size_t cdatlen = 0;
+    int returnValue = -1;
+
+    if ((hashValue = clicon_hash_value(cacheTable, NETCONF_HASH_BUF, &cdatlen)) != NULL) {
+        if (cdatlen != sizeof(cb)) {
+            clicon_err(OE_XML, errno, "size mismatch %lu %lu",
+                       (unsigned long) cdatlen, (unsigned long) sizeof(cb));
+            goto done;
+        }
+        *cb = *(cbuf **) hashValue;
+        clicon_hash_del(cacheTable, NETCONF_HASH_BUF);
+    } else {
+        if ((*cb = cbuf_new()) == NULL) {
+            clicon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
+    }
+
+    returnValue = 0;
+
+    done:
+    return returnValue;
+}
+
 /*! Get netconf message: detect end-of-msg 
  * @param[in]   s    Socket where input arrived. read from this.
  * @param[in]   arg  Clicon handle.
@@ -468,27 +532,17 @@ netconf_input_cb(int   s,
     int           i;
     int           len;
     cbuf         *cb=NULL;
-    int           xml_state = 0;
+    int           endOfMessageState = 0;
+    int           chunkStartState = 0;
+    int           chunkEndState = 0;
+    long          chunkLength = 0;
+    long          chunkRemainingLength = -1;
     int           poll;
     clicon_hash_t *cdat = clicon_data(h); /* Save cbuf between calls if not done */
-    size_t         cdatlen = 0;
-    void          *ptr;
 
-    if ((ptr = clicon_hash_value(cdat, NETCONF_HASH_BUF, &cdatlen)) != NULL){
-	if (cdatlen != sizeof(cb)){
-	    clicon_err(OE_XML, errno, "size mismatch %lu %lu",
-		       (unsigned long)cdatlen, (unsigned long)sizeof(cb));
-	    goto done;
-	}
-	cb = *(cbuf**)ptr;
-	clicon_hash_del(cdat, NETCONF_HASH_BUF);
-    }
-    else{
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_XML, errno, "cbuf_new");
-	    goto done;
-	}
-    }
+    if(netconf_input_get_msg_buf(cdat, &cb) < 0)
+        goto done;
+
     memset(buf, 0, sizeof(buf));
     while (1){
 	if ((len = read(s, buf, sizeof(buf))) < 0){
@@ -499,19 +553,23 @@ netconf_input_cb(int   s,
 		goto done;
 	    }
 	} /* read */
+
 	if (len == 0){ 	/* EOF */
 	    cc_closed++;
 	    close(s);
 	    retval = 0;
 	    goto done;
 	}
+
 	for (i=0; i<len; i++){
 	    if (buf[i] == 0)
 		continue; /* Skip NULL chars (eg from terminals) */
+
 	    cprintf(cb, "%c", buf[i]);
+
 	    if (detect_endtag("]]>]]>",
 			      buf[i],
-			      &xml_state)) {
+			      &endOfMessageState)) {
 		/* OK, we have an xml string from a client */
 		/* Remove trailer */
 		*(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
@@ -523,10 +581,24 @@ netconf_input_cb(int   s,
 		}
 		cbuf_reset(cb);
 	    }
+
+            if(chunkRemainingLength == -1) {
+                if(detect_netconf_chunk_start(buf[i], &chunkStartState, &chunkLength)) {
+                    clicon_log(LOG_INFO, "%s: detected chunk with size %i", __FUNCTION__, chunkLength);
+                    chunkRemainingLength = chunkLength;
+                }
+            } else if(chunkRemainingLength == 0) {
+                if (detect_endtag("\n##\n", buf[i], &chunkEndState)) {
+                    clicon_log(LOG_INFO, "%s: detected chunk end tag", __FUNCTION__);
+                }
+            } else if(chunkRemainingLength > 0) {
+                chunkRemainingLength -= 1;
+            }
 	}
 	/* poll==1 if more, poll==0 if none */
 	if ((poll = clixon_event_poll(s)) < 0)
 	    goto done;
+
 	if (poll == 0){
 	    /* No data to read, save data and continue on next round */
 	    if (cbuf_len(cb) != 0){
