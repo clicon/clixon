@@ -133,8 +133,13 @@ expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><co
 new "Check running-db contents"
 curl $CURLOPTS -X GET  -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=config > $foutput
 
-# Remove Content-Length line
+# Remove Content-Length line (depends on size)
 sed -i '/Content-Length:/d' $foutput
+# Remove (nginx) web-server specific lines
+sed -i '/Server:/d' $foutput
+sed -i '/Date:/d' $foutput
+sed -i '/Transfer-Encoding:/d' $foutput
+sed -i '/Connection:/d' $foutput
 
 # Create a file to compare with
 echo "HTTP/1.1 200 OK" > $ftest
