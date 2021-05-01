@@ -674,7 +674,7 @@ netconf_input_cb(int   s,
                     if (cc_closed)
                         break;
 
-                    cbuf_reset(chunkBuffer);
+                    cbuf_reset(cb);
 	        }
 	    }
 	}

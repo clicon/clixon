@@ -214,14 +214,13 @@ netconf_output_encap(int   s,
 {
     int  retval = -1;
     cbuf *cb1 = NULL;
-    
+
     if ((cb1 = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    add_preamble(cb1);
-    cprintf(cb1, "%s", cbuf_get(cb));
-    add_postamble(cb1);
+
+    cprintf(cb1, "\n#%i\n%s\n##\n", cbuf_len(cb), cbuf_get(cb));
     retval = netconf_output(s, cb1, msg);
  done:
     if (cb1)
