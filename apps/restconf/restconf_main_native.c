@@ -884,16 +884,31 @@ close_ssl_evhtp_socket(int                 s,
 static int
 send_badrequest(clicon_handle       h,
 		int                 s,
-		SSL                *ssl)
+		SSL                *ssl,
+    		char               *body)
 {
     int retval = -1;
-    char *buf = "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\nContent-Type: text/plain\r\n\r\n";
+    cbuf *cb = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
-    if (buf_write(buf, strlen(buf)+1, s, ssl) < 0)
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\nContent-Type: text/plain\r\n\r\n");
+    if (body)
+	cprintf(cb, "Content-Length: %lu\r\n", strlen(body)+2);
+    else
+	cprintf(cb, "Content-Length: 0\r\n");
+    cprintf(cb, "\r\n");
+    if (body)
+	cprintf(cb, "%s\r\n", body);
+    if (buf_write(cbuf_get(cb), cbuf_len(cb)+1, s, ssl) < 0)
 	goto done;
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
@@ -964,7 +979,7 @@ restconf_connection(int   s,
 	 */
 	if (connection_parse_nobev(buf, n, conn) < 0){
 	    clicon_debug(1, "%s connection_parse error", __FUNCTION__);
-	    if (send_badrequest(h, s, conn->ssl) < 0)
+	    if (send_badrequest(h, s, conn->ssl, NULL) < 0)
 		goto done;
 	    SSL_free(conn->ssl);
 	    if (close(s) < 0){
@@ -1005,7 +1020,7 @@ restconf_connection(int   s,
 	}
 	else{
 	    clicon_debug(1, "%s bev is NULL 3", __FUNCTION__);
-	    if (send_badrequest(h, s, conn->ssl) < 0) /* actually error */
+	    if (send_badrequest(h, s, conn->ssl, NULL) < 0) /* actually error */
 		goto done;
 	}
     } /* while moredata */
@@ -1177,7 +1192,7 @@ restconf_accept_client(int   fd,
 		switch (e){
 		case SSL_ERROR_SSL:                  /* 1 */
 		    clicon_debug(1, "%s SSL_ERROR_SSL (non-ssl message on ssl socket)", __FUNCTION__);
-		    if (send_badrequest(h, s, NULL) < 0)
+		    if (send_badrequest(h, s, NULL, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>Non-ssl message on ssl socket: certificate required</error-message></error></errors>") < 0)
 			goto done;
 		    SSL_free(ssl);
 		    if (close(s) < 0){
@@ -1240,7 +1255,7 @@ restconf_accept_client(int   fd,
 		X509_free(peercert);
 	    }
 	    else { /* Get certificates (if available) */
-		if (send_badrequest(h, s, ssl) < 0)
+		if (send_badrequest(h, s, ssl, NULL) < 0)
 		    goto done;
 		clicon_debug(1, "%s conn-free (%p) 5", __FUNCTION__, conn);
 		restconf_conn_free(conn);
