@@ -449,39 +449,118 @@ netconf_input_frame(clicon_handle h,
     return retval;
 }
 
-/*! Look for a chunked message header as described in RFC6242#section-4.2
- *  @param[in]     ch           New input character
- *  @param[in,out] state        A state integer holding how far we have parsed.
- *  @param[in,out] chunkLength  A state integer holding the chunk size.
- *  @retval        0            No chunk start has been detected
- *  @retval        1            Chunk start has been detected
+/*! Look for an endtag in a cubf
+ *  @param[in]     cb           The cbuf holding the received message
+ *  @retval        0            No end tag has been detected
+ *  @retval        1            End tag has been detected
  */
-int
-detect_netconf_chunk_start(char  ch, int  *state, long *chunkLength)
-{
+int detect_netconf_end_tag(cbuf * cb, char * endTag) {
+    int currentBufferLength = cbuf_len(cb);
+    char * buffer = cbuf_get(cb);
+    int endTagLength = (int) strlen(endTag);
+
+    if(currentBufferLength < endTagLength)
+        return 0;
+
+    int expectedStartIndex = currentBufferLength - endTagLength;
+
+    for(int i = 0; i < endTagLength; i++) {
+        char currentChar = buffer[expectedStartIndex + i];
+        if(currentChar != endTag[i])
+            return 0;
+    }
+
+    return 1;
+}
+
+int detect_netconf_chunk_header(char ch, int * state, int * chunkLength) {
     switch(*state) {
-        case 0: // Looking for newline
-            if(ch == '\n') *state = 1;
+        case 0: // Looking for \n
+            if(ch == '\n') { *state = 1; *chunkLength = 0; }
             break;
         case 1: // Looking for #
             if(ch == '#') *state = 2;
-            else *state = 0;
+            else { *state = 0; return detect_netconf_chunk_header(ch, state, chunkLength); }
             break;
-        case 2: // Looking for digit greater than 0
+        case 2: // Looking for 1-9
             if(ch >= '1' && ch <= '9') {
                 *chunkLength = ch - '0';
                 *state = 3;
             }
-            else *state = 0;
+            else { *state = 0; return detect_netconf_chunk_header(ch, state, chunkLength); }
             break;
-        case 3: // Looking for more digits or newline
-            if(ch == '\n') *state = 5;
-            else  if(ch >= '0' && ch <= '9') *chunkLength = ((*chunkLength) * 10) + (ch - '0');
-            else *state = 0;
+        case 3: // Looking for 0-9 or \n
+            if(ch == '\n') *state = 4;
+            else if(ch >= '0' && ch <= '9') *chunkLength = ((*chunkLength) * 10) + (ch - '0');
+            else { *state = 0; return detect_netconf_chunk_header(ch, state, chunkLength); }
             break;
     }
 
-    return *state == 5;
+    return *state == 4;
+}
+
+/*! Look for a chunked message header as described in RFC6242#section-4.2
+ *  @param[in]     cb           The cbuf holding the received message
+ *  @retval        0            No chunk start has been detected
+ *  @retval        1            Chunk start has been detected
+ */
+int detect_netconf_chunk(cbuf * cb, cbuf ** bodyBuffer) {
+    int bufferLength = cbuf_len(cb);
+    char currentChar;
+    char * buffer = cbuf_get(cb);
+    *bodyBuffer = cbuf_new();
+    int currentPos = -1;
+    int chunkLength = 0;
+    int chunkHeaderState = 0;
+    int chunkEndState = 0;
+    int chunkState = 0;
+    int chunkRemainingLength = 0;
+
+    while(1) {
+        if(currentPos++ >= bufferLength) return 0;
+        currentChar = buffer[currentPos];
+
+        switch (chunkState) {
+            case 0: // Detect Header
+                if(detect_netconf_chunk_header(currentChar, &chunkHeaderState, &chunkLength)) {
+                    chunkState = 1;
+                    chunkHeaderState = 0;
+
+                    chunkRemainingLength = chunkLength;
+                    // currentChunk.bodyEndPosition = currentPos + 1;
+                }
+                break;
+
+            case 1: // Read Body
+                cprintf(*bodyBuffer, "%c", currentChar);
+                chunkRemainingLength--;
+                if(chunkRemainingLength <= 0) {
+                    chunkEndState = 0;
+                    chunkHeaderState = 0;
+                    chunkState = 2;
+
+                    // currentChunk.bodyEndPosition = currentPos;
+                }
+                break;
+
+            case 2: // Looking for next chunk or end
+                if(detect_netconf_chunk_header(currentChar, &chunkHeaderState, &chunkLength)) {
+                    chunkState = 1;
+                    chunkHeaderState = 0;
+
+                    chunkRemainingLength = chunkLength;
+                    //currentChunk.bodyEndPosition = currentPos + 1;
+                }
+                if(detect_endtag("\n##\n", currentChar, &chunkEndState))  {
+                    return 1;
+                }
+        }
+    }
+
+    if(*bodyBuffer)
+        cbuf_free(*bodyBuffer);
+
+    return 0;
 }
 
 static int
@@ -528,15 +607,12 @@ netconf_input_cb(int   s,
 {
     int           retval = -1;
     clicon_handle h = arg;
-    unsigned char buf[BUFSIZ]; /* from stdio.h, typically 8K */
+    unsigned char buf[BUFSIZ];  /* from stdio.h, typically 8K */
     int           i;
     int           len;
     cbuf         *cb=NULL;
+    cbuf         *chunkBuffer=NULL;
     int           endOfMessageState = 0;
-    int           chunkStartState = 0;
-    int           chunkEndState = 0;
-    long          chunkLength = 0;
-    long          chunkRemainingLength = -1;
     int           poll;
     clicon_hash_t *cdat = clicon_data(h); /* Save cbuf between calls if not done */
 
@@ -567,33 +643,31 @@ netconf_input_cb(int   s,
 
 	    cprintf(cb, "%c", buf[i]);
 
-	    if (detect_endtag("]]>]]>",
-			      buf[i],
-			      &endOfMessageState)) {
+	    if (detect_netconf_end_tag(cb, "]]>]]>")) {
 		/* OK, we have an xml string from a client */
 		/* Remove trailer */
 		*(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
-		if (netconf_input_frame(h, cb) < 0 &&
-		    !ignore_packet_errors) // default is to ignore errors
-		    goto done; 
-		if (cc_closed){
+
+		if (netconf_input_frame(h, cb) < 0 && !ignore_packet_errors) // default is to ignore errors
+		    goto done;
+
+		if (cc_closed)
 		    break;
-		}
+
 		cbuf_reset(cb);
 	    }
 
-            if(chunkRemainingLength == -1) {
-                if(detect_netconf_chunk_start(buf[i], &chunkStartState, &chunkLength)) {
-                    clicon_log(LOG_INFO, "%s: detected chunk with size %i", __FUNCTION__, chunkLength);
-                    chunkRemainingLength = chunkLength;
-                }
-            } else if(chunkRemainingLength == 0) {
-                if (detect_endtag("\n##\n", buf[i], &chunkEndState)) {
-                    clicon_log(LOG_INFO, "%s: detected chunk end tag", __FUNCTION__);
-                }
-            } else if(chunkRemainingLength > 0) {
-                chunkRemainingLength -= 1;
-            }
+	    if(detect_netconf_end_tag(cb, "\n##\n")) {
+	        if(detect_netconf_chunk(cb, &chunkBuffer)) {
+                    if (netconf_input_frame(h, chunkBuffer) < 0 && !ignore_packet_errors) // default is to ignore errors
+                        goto done;
+
+                    if (cc_closed)
+                        break;
+
+                    cbuf_reset(chunkBuffer);
+	        }
+	    }
 	}
 	/* poll==1 if more, poll==0 if none */
 	if ((poll = clixon_event_poll(s)) < 0)
