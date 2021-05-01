@@ -473,6 +473,14 @@ int detect_netconf_end_tag(cbuf * cb, char * endTag) {
     return 1;
 }
 
+/*!
+ * Looking for a chunk as defined in RFC6242#section-4.2
+ * @param[in]       ch              The current character that should be processed
+ * @param[in,out]   state           A state variable saving the current matching progress
+ * @param[out]      chunkLength     The length of the matched chunk. Only if the return value is positive.
+ * @retval          1               Found a chunk header. Length is returned in chunkLength.
+ * @retval          0               No chunk header found
+ */
 int detect_netconf_chunk_header(char ch, int * state, int * chunkLength) {
     switch(*state) {
         case 0: // Looking for \n
@@ -499,10 +507,11 @@ int detect_netconf_chunk_header(char ch, int * state, int * chunkLength) {
     return *state == 4;
 }
 
-/*! Look for a chunked message header as described in RFC6242#section-4.2
+/*! Look for a chunked message as described in RFC6242#section-4.2
  *  @param[in]     cb           The cbuf holding the received message
- *  @retval        0            No chunk start has been detected
- *  @retval        1            Chunk start has been detected
+ *  @param[out]    bodyBuffer   The netconf message without the chunk information. Only if return value is 1.
+ *  @retval        0            No chunk has been detected
+ *  @retval        1            Chunk has been detected
  */
 int detect_netconf_chunk(cbuf * cb, cbuf ** bodyBuffer) {
     int bufferLength = cbuf_len(cb);
