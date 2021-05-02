@@ -449,12 +449,16 @@ netconf_input_frame(clicon_handle h,
     return retval;
 }
 
-/*! Look for an endtag in a cubf
- *  @param[in]     cb           The cbuf holding the received message
- *  @retval        0            No end tag has been detected
- *  @retval        1            End tag has been detected
+/*! @brief          Detect a given character sequence at the end of a \b cbuf
+ *  @details        This function matches the last characters of a \b cbuf against a given string sequence and
+ *                  returns whether a match has been found.
+ *
+ *  @param[in]      cb          The \b cbuf containing some text
+ *  @param[in]      endTag      The sequence of characters that are matched
+ *  @retval         0           The string in \b cb does not end with \b endTag
+ *  @retval         1           The string in \b cb ends with the expected \b endTag
  */
-int detect_netconf_end_tag(cbuf * cb, char * endTag) {
+static int cbuf_ends_with(cbuf * cb, char * endTag) {
     int currentBufferLength = cbuf_len(cb);
     char * buffer = cbuf_get(cb);
     int endTagLength = (int) strlen(endTag);
@@ -473,15 +477,18 @@ int detect_netconf_end_tag(cbuf * cb, char * endTag) {
     return 1;
 }
 
-/*!
- * Looking for a chunk as defined in RFC6242#section-4.2
- * @param[in]       ch              The current character that should be processed
- * @param[in,out]   state           A state variable saving the current matching progress
- * @param[out]      chunkLength     The length of the matched chunk. Only if the return value is positive.
- * @retval          1               Found a chunk header. Length is returned in chunkLength.
- * @retval          0               No chunk header found
+/*! @brief           Looking for a chunk header as defined in RFC6242 section 4.2
+ *  @details         This function detects a chunk header by looking at a stream of characters and returns the expected
+ *                   length on a successful match. It uses the \b state parameter to persist the matching progress
+ *                   between invocations.
+ *
+ *  @param[in]       ch              The current character that should be processed.
+ *  @param[in,out]   state           A state variable saving the current matching progress.
+ *  @param[out]      chunkLength     The length of the matched chunk. Only if the return value is positive.
+ *  @retval          1               Found a chunk header. Length is returned in \b chunkLength.
+ *  @retval          0               No chunk header found.
  */
-int detect_netconf_chunk_header(char ch, int * state, int * chunkLength) {
+static int detect_netconf_chunk_header(char ch, int * state, int * chunkLength) {
     switch(*state) {
         case 0: // Looking for \n
             if(ch == '\n') { *state = 1; *chunkLength = 0; }
@@ -507,13 +514,16 @@ int detect_netconf_chunk_header(char ch, int * state, int * chunkLength) {
     return *state == 4;
 }
 
-/*! Look for a chunked message as described in RFC6242#section-4.2
- *  @param[in]     cb           The cbuf holding the received message
- *  @param[out]    bodyBuffer   The netconf message without the chunk information. Only if return value is 1.
- *  @retval        0            No chunk has been detected
- *  @retval        1            Chunk has been detected
+/*! @brief          Parses a netconf chunk as defined in RFC6242 section 4.2
+ *  @details        This function parses a complete chunk of a netconf message transmitted over SSH and returns
+ *                  the body of the message in a new \b cbuf.
+ *
+ *  @param[in]      cb              The \b cbuf holding the received chunk
+ *  @param[out]     bodyBuffer      The netconf message without the chunk information. Only if return value is positive.
+ *  @retval         0               No chunk has been detected
+ *  @retval         1               Chunk has been detected. Body is returned in \b bodyBuffer.
  */
-int detect_netconf_chunk(cbuf * cb, cbuf ** bodyBuffer) {
+static int detect_netconf_chunk(cbuf * cb, cbuf ** bodyBuffer) {
     int bufferLength = cbuf_len(cb);
     char currentChar;
     char * buffer = cbuf_get(cb);
@@ -525,8 +535,7 @@ int detect_netconf_chunk(cbuf * cb, cbuf ** bodyBuffer) {
     int chunkState = 0;
     int chunkRemainingLength = 0;
 
-    while(1) {
-        if(currentPos++ >= bufferLength) return 0;
+    while(currentPos++ < bufferLength) {
         currentChar = buffer[currentPos];
 
         switch (chunkState) {
@@ -572,8 +581,14 @@ int detect_netconf_chunk(cbuf * cb, cbuf ** bodyBuffer) {
     return 0;
 }
 
-static int
-netconf_input_get_msg_buf(clicon_hash_t *cacheTable, cbuf **cb) {
+/*! @brief          Gets or creates the input buffer for incoming netconf messages
+ *
+ *  @param[in]      cacheTable      The cache table on which to look for existing input buffers
+ *  @param[out]     cb              The input buffer
+ *  @retval         -1              Unable to create input buffer
+ *  @retval         0               Input buffer returned in \b cb
+ */
+static int netconf_input_get_msg_buf(clicon_hash_t *cacheTable, cbuf **cb) {
     void *hashValue;
     size_t cdatlen = 0;
     int returnValue = -1;
@@ -599,6 +614,64 @@ netconf_input_get_msg_buf(clicon_hash_t *cacheTable, cbuf **cb) {
     return returnValue;
 }
 
+/*! @brief          This function processes a set of new bytes that are expected to contain a netconf message
+ *  @details        Given a message buffer \b msgBuffer that might already contain parts of a message and
+ *                  a set of new bytes that were received, this function appends the bytes to the \b msgBuffer
+ *                  and meanwhile detects and directly processes the first found netconf message.
+ *
+ * @param[in]       h               The clicon handle associated with this netconf channel
+ * @param[in,out]   msgBuffer       A message buffer that might already contain parts of a netconf message
+ * @param[in]       newBytes        A char array containing the new received bytes
+ * @param[in]       newByteCount    The number of received bytes that are present in \b newBytes
+ * @retval          -1              Unable process bytes
+ * @retval          0               Successfully processed the new bytes
+ */
+static int netconf_input_process_msg_bytes(clicon_handle h, cbuf *msgBuffer, unsigned char *newBytes, int newByteCount) {
+    int i;
+    int returnValue = -1;
+    cbuf * chunkBuffer;
+
+    for (i = 0; i < newByteCount; i++) {
+        if (newBytes[i] == 0)
+            continue; /* Skip NULL chars (eg from terminals) */
+
+        cprintf(msgBuffer, "%c", newBytes[i]);
+
+        if (cbuf_ends_with(msgBuffer, "]]>]]>")) {
+            // Received netconf message with old end-of-message-based formatting
+            // Remove the trailing char sequence "]]>]]>"
+            *(((char *) cbuf_get(msgBuffer)) + cbuf_len(msgBuffer) - strlen("]]>]]>")) = '\0';
+
+            if (netconf_input_frame(h, msgBuffer) < 0 && !ignore_packet_errors) // default is to ignore errors
+                goto done;
+
+            if (cc_closed)
+                break;
+
+            cbuf_reset(msgBuffer);
+        }
+
+        if (cbuf_ends_with(msgBuffer, "\n##\n")) {
+            // Detected an end-of-chunks tag. Trying to parse the chunk and extract the body.
+            if (detect_netconf_chunk(msgBuffer, &chunkBuffer)) {
+                if (netconf_input_frame(h, chunkBuffer) < 0 && !ignore_packet_errors) // default is to ignore errors
+                    goto done;
+
+                if (cc_closed)
+                    break;
+
+                cbuf_reset(msgBuffer);
+            }
+        }
+    }
+
+    ok:
+    returnValue = 0;
+
+    done:
+    return returnValue;
+}
+
 /*! Get netconf message: detect end-of-msg 
  * @param[in]   s    Socket where input arrived. read from this.
  * @param[in]   arg  Clicon handle.
@@ -617,11 +690,8 @@ netconf_input_cb(int   s,
     int           retval = -1;
     clicon_handle h = arg;
     unsigned char buf[BUFSIZ];  /* from stdio.h, typically 8K */
-    int           i;
     int           len;
     cbuf         *cb=NULL;
-    cbuf         *chunkBuffer=NULL;
-    int           endOfMessageState = 0;
     int           poll;
     clicon_hash_t *cdat = clicon_data(h); /* Save cbuf between calls if not done */
 
@@ -646,38 +716,9 @@ netconf_input_cb(int   s,
 	    goto done;
 	}
 
-	for (i=0; i<len; i++){
-	    if (buf[i] == 0)
-		continue; /* Skip NULL chars (eg from terminals) */
+        if(netconf_input_process_msg_bytes(h, cb, buf, len) < 0)
+            goto done;
 
-	    cprintf(cb, "%c", buf[i]);
-
-	    if (detect_netconf_end_tag(cb, "]]>]]>")) {
-		/* OK, we have an xml string from a client */
-		/* Remove trailer */
-		*(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
-
-		if (netconf_input_frame(h, cb) < 0 && !ignore_packet_errors) // default is to ignore errors
-		    goto done;
-
-		if (cc_closed)
-		    break;
-
-		cbuf_reset(cb);
-	    }
-
-	    if(detect_netconf_end_tag(cb, "\n##\n")) {
-	        if(detect_netconf_chunk(cb, &chunkBuffer)) {
-                    if (netconf_input_frame(h, chunkBuffer) < 0 && !ignore_packet_errors) // default is to ignore errors
-                        goto done;
-
-                    if (cc_closed)
-                        break;
-
-                    cbuf_reset(cb);
-	        }
-	    }
-	}
 	/* poll==1 if more, poll==0 if none */
 	if ((poll = clixon_event_poll(s)) < 0)
 	    goto done;
