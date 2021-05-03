@@ -35,84 +35,137 @@ module example-base{
    prefix base;
    namespace "urn:example:base";
    container system {
-       must "daytime or time";
-       leaf daytime{
-	   type string;
-       }
-       list name-server {
+      must "daytime or time";
+      leaf daytime{ 	    /* not supported removes this */
+         type string;
+      }
+      list name-server {
          key name;
          leaf name {
-	   type string;
+            type string;
          } 
-       }
-       list user {
+      }
+      list user {
          key name;
          leaf name {
-	   type string;
+            type string;
          } 
          leaf type {
-	   type string;
+            type string;
+	    /* add rule adds default here */
          } 
-       }
+      }
    }
 }
 EOF
+
+# Args:
+# 0: daytime implemented: true/false
+# 1: admin type default: true/false
+function testrun()
+{
+    daytime=$1
+    admindefault=$2
+    
+    new "test params: -f $cfg"
+
+    if [ "$BE" -ne 0 ]; then
+	new "kill old backend"
+	sudo clixon_backend -zf "$cfg"
+	if [ $? -ne 0 ]; then
+	    err
+	fi
+	new "start backend -s init -f $cfg"
+	start_backend -s init -f "$cfg"
+    fi
+
+    new "wait backend"
+    wait_backend
+
+    if ! $daytime; then # Not supported - dont continue
+	new "Add example-base daytime - should not be supported"
+	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:base\"><daytime>Sept17</daytime></system></config></edit-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>daytime</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: daytime with parent: system in namespace: urn:example:base</error-message></rpc-error></rpc-reply>]]>]]"
+    else
+	new "Add example-base daytime - supported"
+	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:base\"><daytime>Sept17</daytime></system></config></edit-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]"
+
+	new "Add user bob"
+	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:base\"><user><name>bob</name></user></system></config></edit-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]"
+
+	new "netconf commit"
+	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+	
+	if $admindefault; then 
+	    new "Get type admin expected"
+	    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/base:system/base:user[base:name='bob']\" xmlns:base=\"urn:example:base\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:base\"><user><name>bob</name><type>admin</type></user></system></data></rpc-reply>]]>]]>$"
+# XXX Cannot select a default value??	    
+#	    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/base:system/base:user[base:name='bob']/base:type\" xmlns:base=\"urn:example:base\"/></get-config></rpc>]]>]]>" foo
+	else
+	    new "Get type none expected"
+	    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/base:system/base:user[base:name='bob']/base:type\" xmlns:base=\"urn:example:base\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
+	fi
+    fi
+    if [ "$BE" -ne 0 ]; then
+	new "Kill backend"
+	# Check if premature kill
+	pid=$(pgrep -u root -f clixon_backend)
+	if [ -z "$pid" ]; then
+	    err "backend already dead"
+	fi
+	# kill backend
+	stop_backend -f "$cfg"
+    fi
+} # testrun
 
 # Example from RFC 7950 Sec 7.20.3.3
 cat <<EOF > $fyangdev
-module $APPNAME{
+module example-deviations{
    yang-version 1.1;
    prefix md;
    namespace "urn:example:deviations";
-
    import example-base {
          prefix base;
    }
+}
+EOF
+new "daytime supported"
+testrun true false
 
+# Example from RFC 7950 Sec 7.20.3.3
+cat <<EOF > $fyangdev
+module example-deviations{
+   yang-version 1.1;
+   prefix md;
+   namespace "urn:example:deviations";
+   import example-base {
+         prefix base;
+   }
    deviation /base:system/base:daytime {
-        deviate not-supported;
-   }
-   deviation /base:system/base:user/base:type {
-       deviate add {
-         default "admin"; // new users are 'admin' by default
-       }
-   }
-   deviation /base:system {
-       deviate delete {
-         must "daytime or time";
-       }
+      deviate not-supported;
    }
 }
 EOF
+new "daytime not supported"
+testrun false false
 
-new "test params: -f $cfg"
-
-if [ "$BE" -ne 0 ]; then
-    new "kill old backend"
-    sudo clixon_backend -zf "$cfg"
-    if [ $? -ne 0 ]; then
-	err
-    fi
-    new "start backend -s init -f $cfg"
-    start_backend -s init -f "$cfg"
-
-    new "waiting"
-    wait_backend
-fi
-
-
-if [ "$BE" -eq 0 ]; then
-    exit # BE
-fi
-
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f "$cfg"
+# Example from RFC 7950 Sec 7.20.3.3
+cat <<EOF > $fyangdev
+module example-deviations{
+   yang-version 1.1;
+   prefix md;
+   namespace "urn:example:deviations";
+   import example-base {
+         prefix base;
+   }
+   deviation /base:system/base:user/base:type {
+      deviate add {
+         default "admin"; // new users are 'admin' by default
+      }
+   }
+}
+EOF
+new "deviate add, check admin default"
+testrun true true
 
 rm -rf "$dir"
 
