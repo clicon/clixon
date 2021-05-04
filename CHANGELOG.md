@@ -34,10 +34,8 @@ Expected: June 2021
 
 ### New features
 
-* Yang Deviation/deviate [deviation statement not yet support #211](https://github.com/clicon/clixon/issues/211)
+* Yang deviation [deviation statement not yet support #211](https://github.com/clicon/clixon/issues/211)
   * See RFC7950 Sec 5.6.3
-  * Implemented: "not-supported" and "add"
-  * Not yet: "replace" and "delete"
 
 ### Minor features
 

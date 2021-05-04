@@ -770,11 +770,21 @@ send_msg_notify_xml(clicon_handle h,
 }
 
 /*! Look for a text pattern in an input string, one char at a time
- *  @param[in]     tag     What to look for
- *  @param[in]     ch      New input character
- *  @param[in,out] state   A state integer holding how far we have parsed.
- *  @retval        0       No, we havent detected end tag
- *  @retval        1       Yes, we have detected end tag!
+ * @param[in]     tag     What to look for
+ * @param[in]     ch      New input character
+ * @param[in,out] state   A state integer holding how far we have parsed.
+ * @retval        0       No, we havent detected end tag
+ * @retval        1       Yes, we have detected end tag!
+ * @code
+ *   int state = 0;
+ *   char ch;
+ *   while (1) {
+ *     // read ch
+ *     if (detect_endtag("mypattern", ch, &state)) {
+ *       // mypattern is matched
+ *     }
+ *   }
+ * @endcode
  */
 int
 detect_endtag(char *tag, 

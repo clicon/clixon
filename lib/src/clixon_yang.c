@@ -517,7 +517,8 @@ ys_prune(yang_stmt *yp,
  * @param[in]  ys   Yang node to remove
  * @retval     0    OK
  * @retval     -1   Error
- * @see ys_prune  if parent and position is known
+ * @see ys_prune  if parent and position is know
+ * @see ys_free Deallocate yang node
  * @note Do not call this in a loop of yang children (unless you know what you are doing)
  */
 static int
@@ -1608,6 +1609,7 @@ yang_deviation(yang_stmt *ys,
     yang_stmt    *yd;
     yang_stmt    *yc;
     yang_stmt    *yc1;
+    yang_stmt    *ytc;
     char         *devop;
     clicon_handle h = (clicon_handle)arg;
     enum rfc_6020 kw;
@@ -1648,8 +1650,7 @@ yang_deviation(yang_stmt *ys,
 	else if (strcmp(devop, "add") == 0){
 	    yc = NULL; 
 	    while ((yc = yn_each(yd, yc)) != NULL) {
-		/* If a property can only appear once, the property MUST NOT
-		   exist in the target node. */
+		/* If a property can only appear once, the property MUST NOT exist in the target node. */
 		kw = yang_keyword_get(yc);
 		if (yang_find(ytarget, kw, NULL) != NULL){
 		    if (yang_cardinality_interval(h,
@@ -1674,8 +1675,48 @@ yang_deviation(yang_stmt *ys,
 	    }
 	}
 	else if (strcmp(devop, "replace") == 0){
+	    yc = NULL;
+	    while ((yc = yn_each(yd, yc)) != NULL) {
+		/* The properties to replace MUST exist in the target node.*/
+		kw = yang_keyword_get(yc);
+		if ((ytc = yang_find(ytarget, kw, NULL)) == NULL){
+		    clicon_err(OE_YANG, 0, "deviation %s: \"%s %s\" replaced but node does not exist in target %s",
+			       nodeid,
+			       yang_key2str(kw), yang_argument_get(yc),
+			       yang_argument_get(ytarget));
+		    goto done;
+		}
+		/* Remove old */
+		if (ys_prune_self(ytc) < 0)
+		    goto done;
+		if (ys_free(ytc) < 0)
+		    goto done;
+		/* Make a copy of deviate child and insert. */
+		if ((yc1 = ys_dup(yc)) == NULL)
+		    goto done;
+		if (yn_insert(ytarget, yc1) < 0)
+		    goto done;
+	    }
 	}
 	else if (strcmp(devop, "delete") == 0){
+	    yc = NULL;
+	    while ((yc = yn_each(yd, yc)) != NULL) {
+		/* The substatement's keyword MUST match a corresponding keyword in the target node, and the 
+		 * argument's string MUST be equal to the corresponding keyword's argument string in the 
+		 * target node. */
+		kw = yang_keyword_get(yc);
+		if ((ytc = yang_find(ytarget, kw, NULL)) == NULL){
+		    clicon_err(OE_YANG, 0, "deviation %s: \"%s %s\" replaced but node does not exist in target %s",
+			       nodeid,
+			       yang_key2str(kw), yang_argument_get(yc),
+			       yang_argument_get(ytarget));
+		    goto done;
+		}
+		if (ys_prune_self(ytc) < 0)
+		    goto done;
+		if (ys_free(ytc) < 0)
+		    goto done;
+	    }
 	}
 	else{ /* Shouldnt happen, lex/yacc takes it */
 	    clicon_err(OE_YANG, EINVAL, "%s: invalid deviate operator", devop);
