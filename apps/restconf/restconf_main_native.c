@@ -878,13 +878,17 @@ close_ssl_evhtp_socket(int                 s,
     return retval;
 }
 
-/*! Send initial bad request reply before actual packet received, just after accept
- * @param[in]  ssl  if set, it will be freed
+/*! Send early bad request reply before actual packet received, just after accept
+ * @param[in]  h    Clixon handle
+ * @param[in]  s    Socket
+ * @param[in]  ssl  If set, it will be freed
+ * @param[in]  body If given add message body using media 
  */
 static int
 send_badrequest(clicon_handle       h,
 		int                 s,
 		SSL                *ssl,
+		char               *media,
     		char               *body)
 {
     int retval = -1;
@@ -895,9 +899,11 @@ send_badrequest(clicon_handle       h,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    cprintf(cb, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\nContent-Type: text/plain\r\n\r\n");
-    if (body)
+    cprintf(cb, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n");
+    if (body){
+       cprintf(cb, "Content-Type: %s\r\n", media);
 	cprintf(cb, "Content-Length: %lu\r\n", strlen(body)+2);
+    }
     else
 	cprintf(cb, "Content-Length: 0\r\n");
     cprintf(cb, "\r\n");
@@ -978,8 +984,10 @@ restconf_connection(int   s,
 	 * signature: 
 	 */
 	if (connection_parse_nobev(buf, n, conn) < 0){
+	    /* One error is: (2) https to http port*/
 	    clicon_debug(1, "%s connection_parse error", __FUNCTION__);
-	    if (send_badrequest(h, s, conn->ssl, NULL) < 0)
+	    if (send_badrequest(h, s, conn->ssl, "application/yang-data+xml",
+				"<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>Error from evhtp</error-message></error></errors>") < 0)
 		goto done;
 	    SSL_free(conn->ssl);
 	    if (close(s) < 0){
@@ -1019,9 +1027,9 @@ restconf_connection(int   s,
 	    cbuf_reset(rc->rc_outp_buf);
 	}
 	else{
-	    clicon_debug(1, "%s bev is NULL 3", __FUNCTION__);
-	    if (send_badrequest(h, s, conn->ssl, NULL) < 0) /* actually error */
-		goto done;
+	    if (send_badrequest(h, s, conn->ssl, "application/yang-data+xml",
+                                "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>No evhtp output</error-message></error></errors>") < 0)
+                goto done;
 	}
     } /* while moredata */
  ok:
@@ -1192,7 +1200,8 @@ restconf_accept_client(int   fd,
 		switch (e){
 		case SSL_ERROR_SSL:                  /* 1 */
 		    clicon_debug(1, "%s SSL_ERROR_SSL (non-ssl message on ssl socket)", __FUNCTION__);
-		    if (send_badrequest(h, s, NULL, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>Non-ssl message on ssl socket: certificate required</error-message></error></errors>") < 0)
+		    if (send_badrequest(h, s, NULL, "application/yang-data+xml",
+					"<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The plain HTTP request was sent to HTTPS port</error-message></error></errors>") < 0)
 			goto done;
 		    SSL_free(ssl);
 		    if (close(s) < 0){
@@ -1255,9 +1264,8 @@ restconf_accept_client(int   fd,
 		X509_free(peercert);
 	    }
 	    else { /* Get certificates (if available) */
-		if (send_badrequest(h, s, ssl, NULL) < 0)
+               if (send_badrequest(h, s, ssl, "application/yang-data+xml",  "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>Peer certificate required</error-message></error></errors>") < 0)
 		    goto done;
-		clicon_debug(1, "%s conn-free (%p) 5", __FUNCTION__, conn);
 		restconf_conn_free(conn);
 		evhtp_connection_free(conn); /* evhtp */
 		if (ssl){

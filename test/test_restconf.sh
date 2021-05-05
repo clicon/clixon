@@ -167,10 +167,10 @@ function testrun()
     expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
     # Negative test GET datastore
-    if [ $proto = http ]; then # see (2) https to http port in restconf_main_openssl.c
+    if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
 	new "Wrong proto=https on http port, expect err 35 wrong version number"
 	expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
-    else # see (1) http to https port in restconf_main_openssl.c
+    else # see (1) http to https port in restconf_main_native.c
 	new "Wrong proto=http on https port, expect bad request"
 	expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/1.1 400 Bad Request"
     fi
