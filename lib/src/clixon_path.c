@@ -713,7 +713,7 @@ api_path2xpath_cvv(cvec       *api_path,
 		goto done;
 	}
 	/* Check if has value, means '=' */
-        if (cv2str(cv, NULL, 0) > 0){
+	if (cv_type_get(cv) == CGV_STRING){
 	    /* val is uri percent encoded, eg x%2Cy,z */
             if ((val = cv2str_dup(cv)) == NULL)
                 goto done;

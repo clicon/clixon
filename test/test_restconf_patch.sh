@@ -111,7 +111,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s startup -f $cfg
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 if [ $RC -ne 0 ]; then
@@ -120,10 +120,10 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting restconf"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 # also in test_restconf.sh
 new "MUST support the PATCH method for a plain patch" 
@@ -174,7 +174,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s startup -f $cfg
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
     
 if [ $RC -ne 0 ]; then
@@ -183,10 +183,10 @@ if [ $RC -ne 0 ]; then
 	
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 # 4.6.1.  Plain Patch
 new "Create album London Calling with PUT"

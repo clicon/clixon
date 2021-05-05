@@ -37,6 +37,15 @@ Expected: June 2021
 * Yang deviation [deviation statement not yet support #211](https://github.com/clicon/clixon/issues/211)
   * See RFC7950 Sec 5.6.3
 
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* RESTCONF in Clixon used empty key as "wildchar". But according to RFC 8040 it should mean the "empty string".
+  * Example: `GET restconf/data/x:a=`
+  * Previous meaning (wrong): Return all `a` elements.
+  * New meaning (correct): Return the `a` instance with empty key string: "".
+
 ### Minor features
 
 * Add default network namespace constant: `RESTCONF_NETNS_DEFAULT` with default value "default".
@@ -46,6 +55,8 @@ Expected: June 2021
 	
 ### Corrected Bugs
 
+* [RESTCONF GET request of single-key list with empty string returns all elements #213](https://github.com/clicon/clixon/issues/213)
+* [RESTCONF GETof lists with empty string keys does not work #214](https://github.com/clicon/clixon/issues/214)
 * Fixed: [Multiple http requests in native restconf yields same reply #212](https://github.com/clicon/clixon/issues/212)
 
 ## 5.1.0
@@ -76,6 +87,8 @@ The 5.1 release contains more RESTCONF native mode restructuring, new multi-yang
   * Keep old behavior: disable `CLICON_XMLDB_UPGRADE_CHECKOLD`.
 	
 ### API changes on existing protocol/config features
+
+Users may have to change how they access the system
 
 * Native RESTCONF mode
   * Configure native mode changed to: `configure --with-restconf=native`, NOT `evhtp`

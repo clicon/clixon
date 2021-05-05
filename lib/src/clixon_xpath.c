@@ -251,7 +251,7 @@ xpath_tree2cbuf(xpath_tree *xs,
 	cprintf(xcb, "/");
 	break;
     case XP_PRIME_STR:
-	cprintf(xcb, "'%s'", xs->xs_s0);
+	cprintf(xcb, "'%s'", xs->xs_s0?xs->xs_s0:"");
 	break;
     case XP_PRIME_NR:
 	cprintf(xcb, "%s", xs->xs_strnr?xs->xs_strnr:"0"); 
