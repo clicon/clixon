@@ -901,15 +901,15 @@ send_badrequest(clicon_handle       h,
     }
     cprintf(cb, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n");
     if (body){
-       cprintf(cb, "Content-Type: %s\r\n", media);
-	cprintf(cb, "Content-Length: %lu\r\n", strlen(body)+2);
+	cprintf(cb, "Content-Type: %s\r\n", media);
+	cprintf(cb, "Content-Length: %lu\r\n", strlen(body));
     }
     else
 	cprintf(cb, "Content-Length: 0\r\n");
     cprintf(cb, "\r\n");
     if (body)
 	cprintf(cb, "%s\r\n", body);
-    if (buf_write(cbuf_get(cb), cbuf_len(cb)+1, s, ssl) < 0)
+    if (buf_write(cbuf_get(cb), cbuf_len(cb), s, ssl) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1021,7 +1021,7 @@ restconf_connection(int   s,
 		    }
 		}
 	    }
-	    if (buf_write(cbuf_get(rc->rc_outp_buf), cbuf_len(rc->rc_outp_buf)+1, conn->sock, conn->ssl) < 0)
+	    if (buf_write(cbuf_get(rc->rc_outp_buf), cbuf_len(rc->rc_outp_buf), conn->sock, conn->ssl) < 0)
 	    	goto done;
 	    cvec_reset(rc->rc_outp_hdrs); /* Can be done in native_send_reply */
 	    cbuf_reset(rc->rc_outp_buf);
