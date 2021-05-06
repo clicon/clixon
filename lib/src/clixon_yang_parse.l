@@ -93,6 +93,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 
 %x KEYWORD
 %x DEVIATE
+%x DEVIATESTR
 %s BOOLEAN
 %s INTEGER
 %s STRARG
@@ -107,12 +108,12 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 
 %%
  /* Common tokens */
-<KEYWORD,DEVIATE,BOOLEAN,INTEGER,STRARG,STRING>[ \t]            
-<KEYWORD,DEVIATE,STRING,UNKNOWN,UNKNOWN2,COMMENT2><<EOF>> { return MY_EOF; }
-<KEYWORD,DEVIATE,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\n   { _YY->yy_linenum++; }
-<KEYWORD,DEVIATE,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\r   
-<KEYWORD,DEVIATE,STRING,UNKNOWN,UNKNOWN2>"/*"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT1); }
-<KEYWORD,DEVIATE,STRING,UNKNOWN,UNKNOWN2>"//"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT2); }
+<KEYWORD,DEVIATE,DEVIATESTR,BOOLEAN,INTEGER,STRARG,STRING>[ \t]            
+<KEYWORD,DEVIATE,DEVIATESTR,STRING,UNKNOWN,UNKNOWN2,COMMENT2><<EOF>> { return MY_EOF; }
+<KEYWORD,DEVIATE,DEVIATESTR,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\n   { _YY->yy_linenum++; }
+<KEYWORD,DEVIATE,DEVIATESTR,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\r   
+<KEYWORD,DEVIATE,DEVIATESTR,STRING,UNKNOWN,UNKNOWN2>"/*"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT1); }
+<KEYWORD,DEVIATE,DEVIATESTR,STRING,UNKNOWN,UNKNOWN2>"//"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT2); }
 
 
 <KEYWORD>input            { return K_INPUT; } /* No argument */
@@ -202,7 +203,14 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <DEVIATE>add              { BEGIN(KEYWORD); return D_ADD; }
 <DEVIATE>delete           { BEGIN(KEYWORD); return D_DELETE; }
 <DEVIATE>replace          { BEGIN(KEYWORD); return D_REPLACE; }
+<DEVIATE>\"               { BEGIN(DEVIATESTR); return *yytext; }
+<DEVIATE>\'               { BEGIN(DEVIATESTR); return *yytext; }
 <DEVIATE>.                { BEGIN(KEYWORD); return *yytext; }
+<DEVIATESTR>not-supported { return D_NOT_SUPPORTED; }
+<DEVIATESTR>add           { return D_ADD; }
+<DEVIATESTR>delete        { return D_DELETE; }
+<DEVIATESTR>replace       { return D_REPLACE; }
+<DEVIATESTR>.             { BEGIN(KEYWORD); return *yytext; }
 <UNKNOWN>:                { return *yytext; }
 <UNKNOWN>;                { BEGIN(KEYWORD); return *yytext; }
 <UNKNOWN>\{               { BEGIN(KEYWORD); return *yytext; }

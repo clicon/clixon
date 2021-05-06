@@ -1529,16 +1529,26 @@ deviation_substmt : description_stmt  { _PARSE_DEBUG("deviation-substmt -> descr
                   | deviate_replace_stmt { _PARSE_DEBUG("deviation-stmt -> deviate-replace-stmt");}
 		  ;
 
+not_supported_keyword_str : D_NOT_SUPPORTED
+                          | '"' D_NOT_SUPPORTED '"'
+                          | SQ D_NOT_SUPPORTED SQ
+                          ;
+
 deviate_not_supported_stmt
-                  : K_DEVIATE D_NOT_SUPPORTED ';'
-		  { if (ysp_add(_yy, Y_DEVIATE, strdup("not-supported") /* D_NOT_SUPPORTED*/, NULL) == NULL) _YYERROR("notification_stmt");
+                  : K_DEVIATE not_supported_keyword_str ';'
+		  { if (ysp_add(_yy, Y_DEVIATE, strdup("not-supported"), NULL) == NULL) _YYERROR("notification_stmt");
     			   _PARSE_DEBUG("deviate-not-supported-stmt -> DEVIATE not-supported ;"); }
                   ;
 
-deviate_add_stmt   : K_DEVIATE D_ADD ';'
-                  { if (ysp_add(_yy, Y_DEVIATE, strdup("add") /* D_NOT_SUPPORTED*/, NULL) == NULL) _YYERROR("notification_stmt");
+add_keyword_str    : D_ADD 
+                   | '"' D_ADD '"'
+                   | SQ D_ADD SQ
+                   ;
+
+deviate_add_stmt   : K_DEVIATE add_keyword_str ';'
+                  { if (ysp_add(_yy, Y_DEVIATE, strdup("add"), NULL) == NULL) _YYERROR("notification_stmt");
     			   _PARSE_DEBUG("deviate-add-stmt -> DEVIATE add ;"); }
-                  | K_DEVIATE D_ADD
+                  | K_DEVIATE add_keyword_str
 		  { if (ysp_add_push(_yy, Y_DEVIATE, strdup("add"), NULL) == NULL) _YYERROR("deviate_stmt"); }
 	            '{' deviate_add_substmts '}' 
                         { if (ystack_pop(_yy) < 0) _YYERROR("deviate_stmt");
@@ -1562,10 +1572,15 @@ deviate_add_substmt : units_stmt    { _PARSE_DEBUG("deviate-add-substmt -> units
                 ;
 
 
-deviate_delete_stmt   : K_DEVIATE D_DELETE ';'
+delete_keyword_str : D_DELETE 
+                   | '"' D_DELETE '"'
+                   | SQ D_DELETE SQ
+                   ;
+
+deviate_delete_stmt   : K_DEVIATE delete_keyword_str ';'
                   { if (ysp_add(_yy, Y_DEVIATE, strdup("delete"), NULL) == NULL) _YYERROR("notification_stmt");
     			   _PARSE_DEBUG("deviate-delete-stmt -> DEVIATE delete ;"); }
-                  | K_DEVIATE D_DELETE
+                  | K_DEVIATE delete_keyword_str
 		  { if (ysp_add_push(_yy, Y_DEVIATE, strdup("delete"), NULL) == NULL) _YYERROR("deviate_stmt"); }
 	            '{' deviate_delete_substmts '}' 
                         { if (ystack_pop(_yy) < 0) _YYERROR("deviate_stmt");
@@ -1584,10 +1599,15 @@ deviate_delete_substmt : units_stmt { _PARSE_DEBUG("deviate-delete-substmt -> un
                 |                   { _PARSE_DEBUG("deviate-delete-substmt -> "); }
                 ;
 
-deviate_replace_stmt   : K_DEVIATE D_REPLACE ';'
+replace_keyword_str : D_REPLACE 
+                   | '"' D_REPLACE '"'
+                   | SQ D_REPLACE SQ
+                   ;
+
+deviate_replace_stmt   : K_DEVIATE replace_keyword_str ';'
                   { if (ysp_add(_yy, Y_DEVIATE, strdup("replace"), NULL) == NULL) _YYERROR("notification_stmt");
     			   _PARSE_DEBUG("deviate-replace-stmt -> DEVIATE replace ;"); }
-                  | K_DEVIATE D_REPLACE
+                  | K_DEVIATE replace_keyword_str
 		  { if (ysp_add_push(_yy, Y_DEVIATE, strdup("replace"), NULL) == NULL) _YYERROR("deviate_stmt"); }
 	            '{' deviate_replace_substmts '}' 
                         { if (ystack_pop(_yy) < 0) _YYERROR("deviate_stmt");

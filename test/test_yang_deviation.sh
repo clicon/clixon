@@ -175,7 +175,7 @@ module example-deviations{
          prefix base;
    }
    deviation /base:system/base:daytime {
-      deviate not-supported;
+      deviate "not-supported"; // Note a string
    }
 }
 EOF
