@@ -207,7 +207,13 @@ restconf_reply_send(void  *req0,
 	clicon_err(OE_DAEMON, EFAULT, "evhtp_request_get_connection");
 	goto done;
     }
-    /* If body, add a content-length header */
+    /* If body, add a content-length header 
+     *    A server MUST NOT send a Content-Length header field in any response
+     * with a status code of 1xx (Informational) or 204 (No Content).  A
+     * server MUST NOT send a Content-Length header field in any 2xx
+     * (Successful) response to a CONNECT request (Section 4.3.6 of
+     * [RFC7231]).
+     */
     if (cb != NULL && cbuf_len(cb)){
 	cprintf(cb, "\r\n");
 	if (restconf_reply_header(req, "Content-Length", "%d", cbuf_len(cb)) < 0)

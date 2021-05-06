@@ -1323,21 +1323,13 @@ yang_parse_post(clicon_handle h,
 	if (yang_features(h, yang_child_i(yspec, i)) < 0)
 	    goto done;
 
-    /* 4: Check deviations: not-supported add/delete/replace statements 
-     *    done after if-features since they may affect deviations but before populate since target yang statements
-     *    may be removed or changed
-     */
-    for (i=modmin; i<modmax; i++) /* Really only under (sub)modules no need to traverse whole tree */
-	if (yang_apply(yang_child_i(yspec, i), -1, yang_deviation, 1, (void*)h) < 0)
-	    goto done;
-    
-    /* 5: Go through parse tree and populate it with cv types */
+    /* 4: Go through parse tree and populate it with cv types */
     for (i=modmin; i<modmax; i++){
 	if (yang_apply(yang_child_i(yspec, i), -1, ys_populate, 0, (void*)h) < 0)
 	    goto done;
     }
 
-    /* 6: Resolve all types: populate type caches. Requires eg length/range cvecs
+    /* 5: Resolve all types: populate type caches. Requires eg length/range cvecs
      * from ys_populate step.
      * Must be done using static binding.
      */
@@ -1352,14 +1344,14 @@ yang_parse_post(clicon_handle h,
      * single tree as they are used.
      */
 
-    /* 7: Macro expansion of all grouping/uses pairs. Expansion needs marking */
+    /* 6: Macro expansion of all grouping/uses pairs. Expansion needs marking */
     for (i=0; i<ylen; i++){
 	if (yang_expand_grouping(ylist[i]) < 0)
 	    goto done;
 	yang_apply(ylist[i], -1, (yang_applyfn_t*)yang_flag_reset, 1, (void*)YANG_FLAG_MARK);
     }
 
-    /* 8: Top-level augmentation of all modules. 
+    /* 7: Top-level augmentation of all modules. 
      * Note: Clixon does not implement augment in USES 
      * Note: There is an ordering problem, where an augment in one module depends on an augment in
      * another module not yet augmented.
@@ -1368,6 +1360,13 @@ yang_parse_post(clicon_handle h,
 	if (yang_augment_module(ylist[i]) < 0)
 	    goto done;
 
+    /* 8: Check deviations: not-supported add/delete/replace statements 
+     *    done late since eg groups must be expanded
+     */
+    for (i=modmin; i<modmax; i++) /* Really only under (sub)modules no need to traverse whole tree */
+	if (yang_apply(yang_child_i(yspec, i), -1, yang_deviation, 1, (void*)h) < 0)
+	    goto done;
+    
     /* 9: Go through parse tree and do 2nd step populate (eg default) */
     for (i=0; i<ylen; i++)
 	if (yang_apply(ylist[i], -1, ys_populate2, 1, (void*)h) < 0)

@@ -1627,6 +1627,7 @@ yang_deviation(yang_stmt *ys,
     if (yang_abs_schema_nodeid(ys, nodeid, &ytarget) < 0)
 	goto done;
     if (ytarget == NULL){ 
+	clicon_log(LOG_WARNING, "deviation %s: target not found", nodeid); 
 	goto ok;
 	/* The RFC does not explicitly say the target node MUST exist 
 	clicon_err(OE_YANG, 0, "schemanode sanity check of %s", nodeid);

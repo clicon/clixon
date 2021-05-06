@@ -2,6 +2,9 @@
 # Yang deviate tests
 # See RFC 7950 5.6.3 and 7.20.3
 # Four examples: not supported, add, replace, delete
+# Also:
+# - keyword with/without string
+# - use grouping
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = "$0" ]; then exit 0; else return 0; fi
@@ -34,7 +37,8 @@ module example-base{
    yang-version 1.1;
    prefix base;
    namespace "urn:example:base";
-   container system {
+   grouping system-top {
+     container system {
       must "daytime or time"; /* deviate delete removes this */
       leaf daytime{ 	      /* deviate not-supported removes this */
          type string;
@@ -59,7 +63,9 @@ module example-base{
 	    /* deviate add adds "default admin" here */
          } 
       }
+     }
    }
+   uses system-top;
 }
 EOF
 
@@ -162,7 +168,7 @@ module example-deviations{
    }
 }
 EOF
-new "1. daytime supported"
+new "1. Baseline: no deviations"
 testrun true false true true
 
 # Example from RFC 7950 Sec 7.20.3.3
@@ -193,7 +199,7 @@ module example-deviations{
    }
    deviation /base:system/base:user/base:type {
       deviate add {
-         default "admin"; // new users are 'admin' by default
+         default "admin"; 
       }
    }
 }
