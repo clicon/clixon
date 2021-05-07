@@ -156,13 +156,15 @@ typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c
 /*
  * xml_flag() flags:
  */
-#define XML_FLAG_MARK    0x01  /* Marker for dynamic algorithms, eg expand */
-#define XML_FLAG_ADD     0x02  /* Node is added (commits) or parent added rec*/
-#define XML_FLAG_DEL     0x04  /* Node is deleted (commits) or parent deleted rec */
-#define XML_FLAG_CHANGE  0x08  /* Node is changed (commits) or child changed rec */
-#define XML_FLAG_NONE    0x10  /* Node is added as NONE */
-#define XML_FLAG_DEFAULT 0x20  /* Added when a value is set as default @see xml_default */
-#define XML_FLAG_TOP     0x40  /* Top datastore symbol */
+#define XML_FLAG_MARK      0x01 /* General-purpose eg expand and xpath_vec selection and
+				 * diffs between candidate and running */
+#define XML_FLAG_TRANSIENT 0x02 /* Marker for dynamic algorithms, unmark asap */
+#define XML_FLAG_ADD       0x04 /* Node is added (commits) or parent added rec*/
+#define XML_FLAG_DEL       0x08 /* Node is deleted (commits) or parent deleted rec */
+#define XML_FLAG_CHANGE    0x10 /* Node is changed (commits) or child changed rec */
+#define XML_FLAG_NONE      0x20 /* Node is added as NONE */
+#define XML_FLAG_DEFAULT   0x40 /* Added when a value is set as default @see xml_default */
+#define XML_FLAG_TOP       0x80 /* Top datastore symbol */
 
 /*
  * Prototypes

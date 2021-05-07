@@ -994,11 +994,11 @@ xmldb_put(clicon_handle       h,
     if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, 
 		  (void*)(XML_FLAG_NONE|XML_FLAG_MARK)) < 0)
 	goto done;
-    /* Mark non-presence containers as XML_FLAG_DEFAULT */
-    if (xml_apply(x0, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_DEFAULT) < 0)
+    /* Mark non-presence containers */
+    if (xml_apply(x0, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_TRANSIENT) < 0)
 	goto done;
     /* Clear XML tree of defaults */
-    if (xml_tree_prune_flagged(x0, XML_FLAG_DEFAULT, 1) < 0)
+    if (xml_tree_prune_flagged(x0, XML_FLAG_TRANSIENT, 1) < 0)
 	goto done;
 #if 0 /* debug */
     if (xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)

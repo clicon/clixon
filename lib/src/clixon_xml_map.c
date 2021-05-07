@@ -1409,9 +1409,9 @@ xml_nopresence_default(cxobj *xt)
  * @param[in] x
  * @param[in] arg  (flag value)
  * @code
- *    if (xml_apply(xt, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_DEFAULT) < 0)
+ *    if (xml_apply(xt, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_TRANSIENT) < 0)
  *	err;
- *    if (xml_tree_prune_flagged(xt, XML_FLAG_DEFAULT, 1) < 0)
+ *    if (xml_tree_prune_flagged(xt, XML_FLAG_TRANSIENT, 1) < 0)
  *	goto done;
  * @endcode
  */
