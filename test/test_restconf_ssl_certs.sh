@@ -37,7 +37,8 @@ xcacert=$certdir/xca_cert.pem
 users="andy guest" # generate certs for some users in nacm.sh
 
 x1users="limited"   # Set invalid cert
-x2users="invalid"   # Wrong CA
+#x2users="invalid"   # Wrong CA
+x3users="mymd5"     # Too weak ca 
 
 # Whether to generate new keys or not (only if $dir is not removed)
 # Here dont generate keys if restconf started stand-alone (RC=0)
@@ -117,21 +118,46 @@ L = Stockholm
 C = SE
 EOF
 	# Create client key
-	openssl genrsa -out "$certdir/$name.key" 2048
+	openssl genpkey -algorithm RSA -out "$certdir/$name.key" ||  err "Generate client key"
 
 	# Generate CSR (signing request)
 	openssl req -new -config $dir/$name.cnf -key $certdir/$name.key -out $certdir/$name.csr
 
 	# Sign by CA
-	openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt
+	openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt  ||  err "Generate signing client cert"
     done # client key
 
     # invalid (days = 0)
     for name in $x1users; do
-	openssl x509 -req -extfile $dir/$name.cnf -days 0 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt
+	openssl x509 -req -extfile $dir/$name.cnf -days 0 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt ||  err "Generate signing client cert"
     done # invalid
 
-        # create client certs from invalid CA
+    
+        # create client certs with md5 -- too weak ca
+    for name in $x3users; do
+	cat<<EOF > $dir/$name.cnf
+[req]
+prompt = no
+distinguished_name = dn
+[dn]
+CN = $name # This can be verified using SSL_set1_host
+emailAddress = $name@foo.bar
+O = Clixon
+L = Stockholm
+C = SE
+EOF
+	# Create client key
+	openssl genpkey -algorithm RSA -out "$certdir/$name.key" ||  err "Generate client key"
+
+	# Generate CSR (signing request)
+	openssl req -new -config $dir/$name.cnf -key $certdir/$name.key -out $certdir/$name.csr
+
+	# Sign by CA
+	openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -md5 -out $certdir/$name.crt  ||  err "Generate signing client cert"
+    done # too weak ca
+    
+    if false; then # XXX: How do you generate an "invalid" cert?
+    # create client certs from invalid CA
     for name in $x2users; do
 	cat<<EOF > $dir/$name.cnf
 [req]
@@ -145,14 +171,15 @@ L = Stockholm
 C = SE
 EOF
 	# Create client key
-	openssl genrsa -out "$certdir/$name.key" 2048
+	openssl genpkey -algorithm RSA -out "$certdir/$name.key" ||  err "Generate client key"
 
 	# Generate CSR (signing request)
 	openssl req -new -config $dir/$name.cnf -key $certdir/$name.key -out $certdir/$name.csr
 
 	# Sign by CA
 	openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $xcacert -CAkey $xcakey -CAcreateserial -out $certdir/$name.crt
-    done # client key
+    done # invalid ca
+    fi # XXX
 
 fi # genkeys
 
@@ -255,8 +282,12 @@ EOF
     new "limited invalid cert"
     expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "35 55 56" # 55 "certificate expired"
 
-    new "invalid cert from wrong CA"
-    expectpart "$(curl $CURLOPTS --key $certdir/invalid.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 58 "unable to set private key file" # 58 unable to set private key file
+    new "too weak cert (sign w md5)"
+    expectpart "$(curl $CURLOPTS --key $certdir/mymd5.key --cert $certdir/mymd5.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 58 "md too weak"
+
+# Havent been able to generate "wrong CA"
+#    new "invalid cert from wrong CA"
+#    expectpart "$(curl $CURLOPTS --key $certdir/invalid.key --cert $certdir/invalid.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0 foo # 58 "unable to set private key file" # 58 unable to set private key file
 
     # Just ensure all is OK
     new "admin get x 42"

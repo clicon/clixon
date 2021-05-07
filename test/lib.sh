@@ -854,7 +854,7 @@ subjectAltName = DNS:clicon.org
 EOF
 
     # Generate server key
-    openssl genrsa -out $srvkey ${CERTKEYLEN}  || err "Generate server key"
+    openssl genpkey -algorithm RSA -out $srvkey  || err "Generate server key"
 
     # Generate CSR (signing request)
     openssl req -new -config $tmpdir/srv.cnf -key $srvkey -out $tmpdir/srv_csr.pem || err "Generate signing request"
@@ -864,3 +864,4 @@ EOF
 
     rm -rf $tmpdir
 }
+
