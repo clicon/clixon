@@ -144,11 +144,7 @@ api_data_get2(clicon_handle  h,
 	    (ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -161,11 +157,7 @@ api_data_get2(clicon_handle  h,
 	    if (netconf_bad_attribute_xml(&xerr, "application",
 					  "content", "Unrecognized value of content attribute") < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -183,11 +175,7 @@ api_data_get2(clicon_handle  h,
 		if (netconf_bad_attribute_xml(&xerr, "application",
 					      "depth", "Unrecognized value of depth attribute") < 0)
 		    goto done;
-		if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		    goto done;
-		}
-		if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+		if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		    goto done;
 		goto ok;
 	    }
@@ -209,11 +197,7 @@ api_data_get2(clicon_handle  h,
     if (ret < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -261,11 +245,7 @@ api_data_get2(clicon_handle  h,
 	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0){
 	    if (netconf_operation_failed_xml(&xerr, "application", clicon_err_reason) < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -278,10 +258,8 @@ api_data_get2(clicon_handle  h,
 	    if (netconf_invalid_value_xml(&xerr, "application", "Instance does not exist") < 0)
 		goto done;
 	    /* override invalid-value default 400 with 404 */
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) != NULL){
-		if (api_return_err(h, req, xe, pretty, media_out, 404) < 0)
-		    goto done;
-	    }
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 404) < 0)
+		goto done;
 	    goto ok;
 	}
 	switch (media_out){

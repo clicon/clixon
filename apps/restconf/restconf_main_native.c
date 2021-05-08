@@ -485,6 +485,8 @@ evhtp_params_set(clicon_handle    h,
     char         *subject = NULL;
     cvec         *cvv = NULL;
     char         *cn;
+    cxobj        *xerr = NULL;
+    int           pretty;
 
     if ((uri = req->uri) == NULL){
 	clicon_err(OE_DAEMON, EFAULT, "No uri");
@@ -510,10 +512,14 @@ evhtp_params_set(clicon_handle    h,
     if (restconf_param_set(h, "REQUEST_URI", path->full) < 0)
 	goto done;
     clicon_debug(1, "%s proto:%d", __FUNCTION__, req->proto);
+    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     /* XXX: Any two http numbers seem accepted by evhtp, like 1.99, 99.3 as http/1.1*/
     if (req->proto != EVHTP_PROTO_10 &&
 	req->proto != EVHTP_PROTO_11){
-	if (restconf_badrequest(h, req)	< 0)
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid HTTP version number") < 0)
+	    goto done;
+	/* Select json as default since content-type header may not be accessible yet */
+	if (api_return_err0(h, req, xerr, pretty, YANG_DATA_JSON, 0) < 0)
 	    goto done;
 	goto fail;
     }
@@ -542,6 +548,8 @@ evhtp_params_set(clicon_handle    h,
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (subject)
 	free(subject);
+    if (xerr)
+	xml_free(xerr);
     if (cvv)
 	cvec_free(cvv);
     return retval;
@@ -878,11 +886,12 @@ close_ssl_evhtp_socket(int                 s,
     return retval;
 }
 
-/*! Send early bad request reply before actual packet received, just after accept
+/*! Send early handcoded bad request reply before actual packet received, just after accept
  * @param[in]  h    Clixon handle
  * @param[in]  s    Socket
  * @param[in]  ssl  If set, it will be freed
  * @param[in]  body If given add message body using media 
+ * @see restconf_badrequest which can only be called in a request context
  */
 static int
 send_badrequest(clicon_handle       h,
@@ -941,7 +950,8 @@ restconf_connection(int   s,
     char                buf[BUFSIZ]; /* from stdio.h, typically 8K */
     clicon_handle       h;
     int                 readmore = 1;
-    restconf_conn_h *rc;
+    restconf_conn_h    *rc;
+    cbuf               *cberr = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((conn = (evhtp_connection_t*)arg) == NULL){
@@ -984,10 +994,12 @@ restconf_connection(int   s,
 	 * signature: 
 	 */
 	if (connection_parse_nobev(buf, n, conn) < 0){
-	    /* One error is: (2) https to http port*/
 	    clicon_debug(1, "%s connection_parse error", __FUNCTION__);
+	    /* XXX To get more nuanced evhtp error check
+	     * htparser_get_error(conn->parser)
+	     */
 	    if (send_badrequest(h, s, conn->ssl, "application/yang-data+xml",
-				"<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>Error from evhtp</error-message></error></errors>") < 0)
+				"<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The requested URL or a header is in some way badly formed</error-message></error></errors>") < 0)
 		goto done;
 	    SSL_free(conn->ssl);
 	    if (close(s) < 0){
@@ -1036,6 +1048,8 @@ restconf_connection(int   s,
     retval = 0;
  done:
     clicon_debug(1, "%s retval %d", __FUNCTION__, retval);
+    if (cberr)
+	cbuf_free(cberr);
     return retval;
 }
 

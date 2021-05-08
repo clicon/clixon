@@ -69,7 +69,57 @@
 #include "restconf_err.h"
 #include "restconf_handle.h"
 
-/* See RFC 8040 Section 7:  Mapping from NETCONF<error-tag> to Status Code
+/*
+   +----------------------------+--------------------------------------+
+   | 100 Continue               | POST accepted, 201 should follow     |
+   | 200 OK                     | Success with response message-body   |
+   | 201 Created                | POST to create a resource success    |
+   | 204 No Content             | Success without response message-    |
+   |                            | body                                 |
+   | 304 Not Modified           | Conditional operation not done       |
+   | 400 Bad Request            | Invalid request message              |
+   | 401 Unauthorized           | Client cannot be authenticated       |
+   | 403 Forbidden              | Access to resource denied            |
+   | 404 Not Found              | Resource target or resource node not |
+   |                            | found                                |
+   | 405 Method Not Allowed     | Method not allowed for target        |
+   |                            | resource                             |
+   | 409 Conflict               | Resource or lock in use              |
+   | 412 Precondition Failed    | Conditional method is false          |
+   | 413 Request Entity Too     | too-big error                        |
+   | Large                      |                                      |
+   | 414 Request-URI Too Large  | too-big error                        |
+   | 415 Unsupported Media Type | non RESTCONF media type              |
+   | 500 Internal Server Error  | operation-failed                     |
+   | 501 Not Implemented        | unknown-operation                    |
+   | 503 Service Unavailable    | Recoverable server error             |
+   +----------------------------+--------------------------------------+
+Mapping netconf error-tag -> status code
+                 +-------------------------+-------------+
+                 | <error&#8209;tag>       | status code |
+                 +-------------------------+-------------+
+                 | in-use                  | 409         |
+                 | invalid-value           | 400         |
+                 | too-big                 | 413         |
+                 | missing-attribute       | 400         |
+                 | bad-attribute           | 400         |
+                 | unknown-attribute       | 400         |
+                 | bad-element             | 400         |
+                 | unknown-element         | 400         |
+                 | unknown-namespace       | 400         |
+                 | access-denied           | 403         |
+                 | lock-denied             | 409         |
+                 | resource-denied         | 409         |
+                 | rollback-failed         | 500         |
+                 | data-exists             | 409         |
+                 | data-missing            | 409         |
+                 | operation-not-supported | 405 or 501  |
+                 | operation-failed        | 500         |
+                 | partial-operation       | 500         |
+                 | malformed-message       | 400         |
+                 +-------------------------+-------------+
+
+ * See RFC 8040 Section 7:  Mapping from NETCONF<error-tag> to Status Code
  * and RFC 6241 Appendix A. NETCONF Error list
  */
 static const map_str2int netconf_restconf_map[] = {
@@ -505,11 +555,13 @@ restconf_drop_privileges(clicon_handle h,
 }
 
 /*!
- * @param[in]  h    Clicon handle
- * @param[in]  req  Generic Www handle (can be part of clixon handle)
- * @retval    -1    Error
- * @retval     0    Not authenticated
- * @retval     1    Authenticated
+ * @param[in]  h         Clicon handle
+ * @param[in]  req       Generic Www handle (can be part of clixon handle)
+ * @param[in]  pretty    Pretty-print
+ * @param[in]  media_out Restconf output media
+ * @retval    -1         Error
+ * @retval     0         Not authenticated
+ * @retval     1         Authenticated
  */
 int
 restconf_authentication_cb(clicon_handle  h,

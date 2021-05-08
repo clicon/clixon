@@ -84,6 +84,7 @@ api_well_known(clicon_handle h,
     int       retval = -1;
     char     *request_method;
     cbuf     *cb = NULL;
+    int       pretty;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (req == NULL){
@@ -92,7 +93,9 @@ api_well_known(clicon_handle h,
     }
     request_method = restconf_param_get(h, "REQUEST_METHOD");
     if (strcmp(request_method, "GET") != 0){
-	restconf_method_notallowed(req, "GET");
+	pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
+	if (restconf_method_notallowed(h, req, "GET", pretty, YANG_DATA_JSON) < 0)
+	    goto done;
 	goto ok;
     }
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
@@ -119,8 +122,12 @@ api_well_known(clicon_handle h,
 }
 
 /*! Retrieve the Top-Level API Resource /restconf/ (exact)
- * @param[in]  h        Clicon handle
- * @param[in]  r        Fastcgi request handle
+ * @param[in]  h         Clicon handle
+ * @param[in]  req       Generic request handle
+ * @param[in]  method    Http method
+ * @param[in]  pretty    Pretty print
+ * @param[in]  media_out Restconf output media
+
  * @note Only returns null for operations and data,...
  * See RFC8040 3.3
  * @see api_root_restconf for accessing /restconf/ *
@@ -140,7 +147,8 @@ api_root_restconf_exact(clicon_handle  h,
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (strcmp(request_method, "GET") != 0){
-	restconf_method_notallowed(req, "GET");
+	if (restconf_method_notallowed(h, req, "GET", pretty, media_out) < 0)
+	    goto done;
 	goto ok;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -190,6 +198,10 @@ api_root_restconf_exact(clicon_handle  h,
 
 /** A stub implementation of the operational state datastore. The full
  * implementation is required by https://tools.ietf.org/html/rfc8527#section-3.1
+ * @param[in]  h         Clicon handle
+ * @param[in]  req       Generic http handle
+ * @param[in]  pretty    Pretty-print
+ * @param[in]  media_out Restconf output media
  */
 static int
 api_operational_state(clicon_handle  h,
@@ -203,11 +215,13 @@ api_operational_state(clicon_handle  h,
 
     /* We are not implementing this method at this time, 20201105 despite it
      * being mandatory https://tools.ietf.org/html/rfc8527#section-3.1 */
-    return restconf_notimplemented(req);
+    return restconf_notimplemented(h, req, pretty, media_out);
 }
 
 /*!
  * See https://tools.ietf.org/html/rfc7895
+ * @param[in]  pretty    Pretty-print
+ * @param[in]  media_out Restconf output media
  */
 static int
 api_yang_library_version(clicon_handle h,
@@ -259,15 +273,14 @@ api_yang_library_version(clicon_handle h,
 }
 
 /*! Generic REST method, GET, PUT, DELETE, etc
- * @param[in]  h      CLIXON handle
- * @param[in]  r      Fastcgi request handle
- * @param[in]  api_path According to restconf (Sec 3.5.1.1 in [draft])
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element
- * @param[in]  pi     Offset, where to start pcvec
- * @param[in]  qvec   Vector of query string (QUERY_STRING)
- * @param[in]  pretty Set to 1 for pretty-printed xml/json output
- * @param[in]  media_in  Input media
- * @param[in]  media_out Output media
+ * @param[in]  h         CLIXON handle
+ * @param[in]  r         Fastcgi request handle
+ * @param[in]  api_path  According to restconf (Sec 3.5.1.1 in [draft])
+ * @param[in]  pcvec     Vector of path ie DOCUMENT_URI element
+ * @param[in]  pi        Offset, where to start pcvec
+ * @param[in]  qvec      Vector of query string (QUERY_STRING)
+ * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_out Restconf output media
  * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
  */
 static int
@@ -285,6 +298,7 @@ api_data(clicon_handle h,
     int     retval = -1;
     int     read_only = 0, dynamic = 0;
     char   *request_method;
+    cxobj  *xerr = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     request_method = restconf_param_get(h, "REQUEST_METHOD");
@@ -302,10 +316,10 @@ api_data(clicon_handle h,
     if (strcmp(request_method, "OPTIONS")==0)
 	retval = api_data_options(h, req);
     else if (strcmp(request_method, "HEAD")==0) {
-	if (dynamic) {
-            retval = restconf_method_notallowed(req, "GET,POST");
-	}
-	retval = api_data_head(h, req, api_path, pcvec, pi, qvec, pretty, media_out, ds);
+	if (dynamic) 
+            retval = restconf_method_notallowed(h, req, "GET,POST", pretty, media_out);
+	else
+	    retval = api_data_head(h, req, api_path, pcvec, pi, qvec, pretty, media_out, ds);
     }
     else if (strcmp(request_method, "GET")==0) {
 	retval = api_data_get(h, req, api_path, pcvec, pi, qvec, pretty, media_out, ds);
@@ -314,26 +328,32 @@ api_data(clicon_handle h,
 	retval = api_data_post(h, req, api_path, pi, qvec, data, pretty, media_out, ds);
     }
     else if (strcmp(request_method, "PUT")==0) {
-	if (read_only) {
-            retval = restconf_method_notallowed(req, "GET,POST");
-	}
-	retval = api_data_put(h, req, api_path, pcvec, pi, qvec, data, pretty, media_out, ds);
+	if (read_only) 
+            retval = restconf_method_notallowed(h, req, "GET,POST", pretty, media_out);
+	else
+	    retval = api_data_put(h, req, api_path, pcvec, pi, qvec, data, pretty, media_out, ds);
     }
     else if (strcmp(request_method, "PATCH")==0) {
 	if (read_only) {
-            retval = restconf_method_notallowed(req, "GET,POST");
+            retval = restconf_method_notallowed(h, req, "GET,POST", pretty, media_out);
 	}
 	retval = api_data_patch(h, req, api_path, pcvec, pi, qvec, data, pretty, media_out, ds);
     }
     else if (strcmp(request_method, "DELETE")==0) {
-	if (read_only) {
-            retval = restconf_method_notallowed(req, "GET,POST");
-	}
-	retval = api_data_delete(h, req, api_path, pi, pretty, media_out, ds);
+	if (read_only) 
+            retval = restconf_method_notallowed(h, req, "GET,POST", pretty, media_out);
+	else
+	    retval = api_data_delete(h, req, api_path, pi, pretty, media_out, ds);
     }
-    else
-	retval = restconf_notfound(h, req);
+    else{
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid HTTP data method") < 0)
+	    goto done;	
+	retval = api_return_err0(h, req, xerr, pretty, media_out, 0);
+    }
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+ done:
+    if (xerr)
+	xml_free(xerr);
     return retval;
 }
 
@@ -360,7 +380,8 @@ api_operations(clicon_handle h,
 	       int           pretty,
 	       restconf_media media_out)
 {
-    int retval;
+    int    retval;
+    cxobj *xerr = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (strcmp(request_method, "GET")==0)
@@ -368,8 +389,14 @@ api_operations(clicon_handle h,
     else if (strcmp(request_method, "POST")==0)
 	retval = api_operations_post(h, req, path, pi, qvec, data,
 				     pretty, media_out);
-    else
-	retval = restconf_notfound(h, req);
+    else{
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid HTTP operations method") < 0)
+	    goto done;	
+	retval = api_return_err0(h, req, xerr, pretty, media_out, 0);
+    }
+ done:
+    if (xerr)
+	xml_free(xerr);
     return retval;
 }
 
@@ -398,6 +425,7 @@ api_root_restconf(clicon_handle        h,
     char          *indata = NULL;
     char          *username = NULL;
     int            ret;
+    cxobj         *xerr = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (req == NULL){
@@ -414,15 +442,19 @@ api_root_restconf(clicon_handle        h,
      * If accept is * default is yang-json
      */
     if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
-	// retval = restconf_unsupported_media(r);
-	// goto done;
+#if 0 /* Use default +json */
+	if (restconf_not_acceptable(h, r, pretty, media_out) < 0)
+	    goto done;
+	goto ok;
+#endif
     }
-    else    if ((int)(media_out = restconf_media_str2int(media_str)) == -1){
+    else if ((int)(media_out = restconf_media_str2int(media_str)) == -1){
 	if (strcmp(media_str, "*/*") == 0) /* catch-all */
 	    media_out = YANG_DATA_JSON;
 	else{
-	    retval = restconf_unsupported_media(req);
-	    goto done;
+	    if (restconf_not_acceptable(h, req, pretty, YANG_DATA_JSON) < 0)
+		goto done;
+	    goto ok;
 	}
     }
 
@@ -432,24 +464,36 @@ api_root_restconf(clicon_handle        h,
 	goto done;
     /* Sanity check of path. Should be /restconf/ */
     if (pn < 2){
-	restconf_notfound(h, req);
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /restconf/ expected") < 0)
+	    goto done; 
+	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+	    goto done;
 	goto ok;
     }
     if (strlen(pvec[0]) != 0){
-	retval = restconf_notfound(h, req);
-	goto done;
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /restconf/ expected") < 0)
+	    goto done; 
+	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
     }
     if (strcmp(pvec[1], RESTCONF_API)){
-	retval = restconf_notfound(h, req);
-	goto done;
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /restconf/ expected") < 0)
+	    goto done; 
+	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
     }
     if (pn == 2){
 	retval = api_root_restconf_exact(h, req, request_method, pretty, media_out);
 	goto done;
     }
     if ((api_resource = pvec[2]) == NULL){
-	retval = restconf_notfound(h, req);
-	goto done;
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /restconf/ expected") < 0)
+	    goto done; 
+	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
     }
     clicon_debug(1, "%s: api_resource=%s", __FUNCTION__, api_resource);
     if (uri_str2cvec(path, '/', '=', 1, &pcvec) < 0) /* rest url eg /album=ricky/foo */
@@ -487,8 +531,11 @@ api_root_restconf(clicon_handle        h,
 	ietf_ds_t ds = IETF_DS_NONE;
 
 	if (4 > pn) { /* Malformed request, no "ietf-datastores:<datastore>" component */
-           restconf_notfound(h, req);
-	   goto done;
+	    if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, No ietf-datastores:<datastore> component") < 0)
+		goto done; 
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
         }
 
 	/* Assign ds; See https://tools.ietf.org/html/rfc8342#section-7 */
@@ -507,8 +554,11 @@ api_root_restconf(clicon_handle        h,
 	    goto ok;
         }
         else { /* Malformed request, unsupported datastore type */
-           restconf_notfound(h, req);
-	   goto done;
+	    if (netconf_invalid_value_xml(&xerr, "protocol", "Unsupported datastore type") < 0)
+		goto done; 
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+		goto done;
+	   goto ok;
 	}
 	/* ds is assigned at this point */
 	if (0 > api_data(h, req, path, pcvec, 3, qvec, indata, pretty, media_out, ds))
@@ -519,12 +569,20 @@ api_root_restconf(clicon_handle        h,
 			   pretty, media_out) < 0)
 	    goto done;
     }
-    else
-	restconf_notfound(h, req);
+    else{
+	if (netconf_invalid_value_xml(&xerr, "protocol", "API-resource type") < 0)
+	    goto done; 
+	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
+    }
+
  ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xerr)
+	xml_free(xerr);
     if (username)
 	free(username);
     if (pcvec)

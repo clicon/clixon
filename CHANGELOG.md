@@ -41,6 +41,10 @@ Expected: June 2021
 
 Users may have to change how they access the system
 
+* RESTCONF error replies have changed
+  * Added Restconf-style xml/json message bodies everywhere
+    * Clixon removed the message body from many errors in the 4.6 version since they used html encoding. 
+    * However, the RFC Section 7.1 mandates to use RESTCONF-style message bodies.
 * RESTCONF in Clixon used empty key as "wildchar". But according to RFC 8040 it should mean the "empty string".
   * Example: `GET restconf/data/x:a=`
   * Previous meaning (wrong): Return all `a` elements.

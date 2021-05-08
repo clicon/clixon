@@ -45,56 +45,6 @@
  * This is the interface:
  * api/data/profile=<name>/metric=<name> PUT data:enable=<flag>
  * api/test
-   +----------------------------+--------------------------------------+
-   | 100 Continue               | POST accepted, 201 should follow     |
-   | 200 OK                     | Success with response message-body   |
-   | 201 Created                | POST to create a resource success    |
-   | 204 No Content             | Success without response message-    |
-   |                            | body                                 |
-   | 304 Not Modified           | Conditional operation not done       |
-   | 400 Bad Request            | Invalid request message              |
-   | 401 Unauthorized           | Client cannot be authenticated       |
-   | 403 Forbidden              | Access to resource denied            |
-   | 404 Not Found              | Resource target or resource node not |
-   |                            | found                                |
-   | 405 Method Not Allowed     | Method not allowed for target        |
-   |                            | resource                             |
-   | 409 Conflict               | Resource or lock in use              |
-   | 412 Precondition Failed    | Conditional method is false          |
-   | 413 Request Entity Too     | too-big error                        |
-   | Large                      |                                      |
-   | 414 Request-URI Too Large  | too-big error                        |
-   | 415 Unsupported Media Type | non RESTCONF media type              |
-   | 500 Internal Server Error  | operation-failed                     |
-   | 501 Not Implemented        | unknown-operation                    |
-   | 503 Service Unavailable    | Recoverable server error             |
-   +----------------------------+--------------------------------------+
-Mapping netconf error-tag -> status code
-                 +-------------------------+-------------+
-                 | <error&#8209;tag>       | status code |
-                 +-------------------------+-------------+
-                 | in-use                  | 409         |
-                 | invalid-value           | 400         |
-                 | too-big                 | 413         |
-                 | missing-attribute       | 400         |
-                 | bad-attribute           | 400         |
-                 | unknown-attribute       | 400         |
-                 | bad-element             | 400         |
-                 | unknown-element         | 400         |
-                 | unknown-namespace       | 400         |
-                 | access-denied           | 403         |
-                 | lock-denied             | 409         |
-                 | resource-denied         | 409         |
-                 | rollback-failed         | 500         |
-                 | data-exists             | 409         |
-                 | data-missing            | 409         |
-                 | operation-not-supported | 501         |
-                 | operation-failed        | 500         |
-                 | partial-operation       | 500         |
-                 | malformed-message       | 400         |
-                 +-------------------------+-------------+
-
- * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
  */
 
 #ifdef HAVE_CONFIG_H
@@ -231,6 +181,9 @@ match_list_keys(yang_stmt *y,
  * PATCH: If it does not, fail, otherwise replace/merge
  * @param[in] plain_patch  fail if object does not exists AND merge (not replace)
  * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @param[in]  pretty    Pretty-print
+ * @param[in]  media_in  Restconf input media
+ * @param[in]  media_out Restconf output media
  */ 
 static int
 api_data_write(clicon_handle h,
@@ -291,11 +244,7 @@ api_data_write(clicon_handle h,
 	if ((ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -313,11 +262,7 @@ api_data_write(clicon_handle h,
 	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -330,11 +275,7 @@ api_data_write(clicon_handle h,
     if (data == NULL || strlen(data) == 0){
 	if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
 	    goto done;
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -377,20 +318,12 @@ api_data_write(clicon_handle h,
 	if ((ret = clixon_xml_parse_string(data, yb, yspec, &xdata0, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
 	if (ret == 0){
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -399,26 +332,18 @@ api_data_write(clicon_handle h,
 	if ((ret = clixon_json_parse_string(data, yb, yspec, &xdata0, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
 	if (ret == 0){
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
 	break;
     default:
-	restconf_unsupported_media(req);
+	restconf_unsupported_media(h, req, pretty, media_out);
 	goto ok;
 	break;
     } /* switch media_in */
@@ -429,11 +354,7 @@ api_data_write(clicon_handle h,
     if (xml_child_nr_type(xdata0, CX_ELMNT) != 1){
 	if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
 	    goto done;
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -448,11 +369,7 @@ api_data_write(clicon_handle h,
 	if (ymoddata != ymodapi){
 	    if (netconf_malformed_message_xml(&xerr, "Data is not prefixed with matching namespace") < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -488,11 +405,7 @@ api_data_write(clicon_handle h,
 	    if (netconf_bad_element_xml(&xerr, "application", dname,
 					"Data element does not match top-level data") < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -521,11 +434,7 @@ api_data_write(clicon_handle h,
 	    if (netconf_bad_element_xml(&xerr, "application", dname,
 					"Data element does not match api-path") < 0)
 		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -546,11 +455,7 @@ api_data_write(clicon_handle h,
 	    if (match_list_keys(ybot, xdata, xbot) < 0){
 		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
 		    goto done;
-		if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		    goto done;
-		}
-		if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+		if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		    goto done;
 		goto ok;
 	    }
@@ -570,11 +475,7 @@ api_data_write(clicon_handle h,
 		    if (parbod == NULL || strcmp(parbod, xml_body(xdata))){
 			if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
 			    goto done;
-			if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-			    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-			    goto done;
-			}
-			if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+			if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 			    goto done;
 			goto ok;
 		    }
@@ -766,10 +667,10 @@ api_data_patch(clicon_handle h,
 	break;
     case YANG_PATCH_XML:
     case YANG_PATCH_JSON: 	/* RFC 8072 patch */
-	ret = restconf_notimplemented(req);
+	ret = restconf_notimplemented(h, req, pretty, media_out);
 	break;
     default:
-	ret = restconf_unsupported_media(req);
+	ret = restconf_unsupported_media(h, req, pretty, media_out);
 	break;
     }
     return ret;
@@ -829,11 +730,7 @@ api_data_delete(clicon_handle h,
 	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){ /* validation failed */
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 		goto done;
 	    goto ok;
 	}

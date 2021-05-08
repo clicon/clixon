@@ -581,7 +581,14 @@ main(int    argc,
 	    }
 	    else{
 		clicon_debug(1, "top-level %s not found", path);
-		restconf_notfound(h, req);
+		if (netconf_invalid_value_xml(&xerr, "protocol", "Top-level path not found") < 0)
+		    goto done; 
+		if (api_return_err0(h, req, xerr, 1, YANG_DATA_JSON, 0) < 0)
+		    goto done;
+		if (xerr){
+		    xml_free(xerr);
+		    xerr = NULL;
+		}
 	    }
 	}
 	else

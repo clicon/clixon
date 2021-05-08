@@ -114,6 +114,9 @@ expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:c
 new "restconf GET interface subtree"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1/interface=local0)" 0 "HTTP/1.1 200 OK" '{"example:interface":\[{"name":"local0","type":"regular"}\]}'
 
+new "restconf PUT interface without media"
+expectpart "$(curl $CURLOPTS -X PUT $RCPROTO://localhost/restconf/data/example:cont1/interface=local0 -d '{"example:interface":{"name":"local0","type":"foo"}}')" 0 "HTTP/1.1 415 Unsupported Media Type" 
+
 new "restconf GET interface subtree xml"
 ret=$(curl $CURLOPTS -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data/example:cont1/interface=local0)
 expect='<interface xmlns="urn:example:clixon"><name>local0</name><type>regular</type></interface>'

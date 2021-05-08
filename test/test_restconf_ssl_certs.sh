@@ -266,6 +266,9 @@ EOF
     new "admin set x 42"
     expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:x":42}' $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 204 No Content"
 
+    new "admin set x 42 without media"
+    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -d '{"example:x":42}' $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 415 Unsupported Media Type" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-not-supported","error-severity":"error","error-message":"Unsupported Media Type"}}}'
+
     new "admin get x 42"
     expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 200 OK" '{"example:x":42}'
 
