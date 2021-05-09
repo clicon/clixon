@@ -786,7 +786,6 @@ alpn_select_proto_cb(SSL                  *ssl,
 
     if (clicon_debug_get())
 	dump_alpn_proto_list(in, inlen);
-    inp = (unsigned char*)in;
     /* select http/1.1 */
     inp = (unsigned char*)in;
     while ((len = *inp) != 0) {
