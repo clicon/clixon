@@ -188,6 +188,8 @@
 /* Forward */
 static int restconf_connection(int s, void* arg);
 
+static int             session_id_context = 1;
+
 /*! Get restconf native handle
  * @param[in]  h     Clicon handle
  * @retval     rh    Restconf native handle
@@ -740,8 +742,67 @@ restconf_verify_certs(int                     preverify_ok,
     return preverify_ok;
 }
 
-static int             session_id_context = 1;
- 
+/*! Debug print of all incoming alpn alternatives, eg h2 and http/1.1
+ */
+static int
+dump_alpn_proto_list(const unsigned char *in,
+		     unsigned int         inlen)
+{
+    unsigned char *inp;
+    unsigned char len;
+    char         *str;
+
+    inp = (unsigned char*)in;
+    while ((len = *inp) != 0) {
+	inp++;
+	if ((str = malloc(len+1)) == NULL){
+	    clicon_err(OE_UNIX, errno, "malloc");
+	    return -1;
+	}
+	strncpy(str, (const char*)inp, len);
+	str[len] = '\0';
+	clicon_debug(1, "%s %s", __FUNCTION__, str);
+	free(str);
+	inp += len;
+    }
+    return 0;
+}
+
+/*! Application-layer Protocol Negotiation (alpn) callback
+ * The value of the out, outlen vector should be set to the value of a single protocol selected from
+ * the in, inlen vector. The out buffer may point directly into in, or to a buffer that outlives the
+ * handshake.
+ */
+static int
+alpn_select_proto_cb(SSL                  *ssl,
+		     const unsigned char **out,
+		     unsigned char        *outlen,
+		     const unsigned char  *in,
+		     unsigned int          inlen,
+		     void                 *arg)
+{
+    unsigned char *inp;
+    unsigned char len;
+
+    if (clicon_debug_get())
+	dump_alpn_proto_list(in, inlen);
+    inp = (unsigned char*)in;
+    /* select http/1.1 */
+    inp = (unsigned char*)in;
+    while ((len = *inp) != 0) {
+	inp++;
+	if (len == 8 && strncmp((char*)inp, "http/1.1", len) == 0)
+	    //      if (len == 2 && strncmp((char*)inp, "h2", len) == 0)
+	    break;
+	inp += len;
+    }
+    if (len == 0)
+	return SSL_TLSEXT_ERR_NOACK;
+    *outlen = len;
+    *out = inp;
+    return SSL_TLSEXT_ERR_OK;
+}
+
 /*
  * see restconf_config ->cv_evhtp_init(x2) -> cx_evhtp_socket -> 
  * evhtp_ssl_init:4794
@@ -768,6 +829,8 @@ restconf_ssl_context_create(clicon_handle h)
 
     SSL_CTX_set_options(ctx, SSL_MODE_RELEASE_BUFFERS | SSL_OP_NO_COMPRESSION);
     //    SSL_CTX_set_timeout(ctx, cfg->ssl_ctx_timeout); /* default 300s */
+    /* Application Layer Protocol Negotiation (alpn) callback */
+    SSL_CTX_set_alpn_select_cb(ctx, alpn_select_proto_cb, h);
  done:
     return ctx;
 }
@@ -1145,6 +1208,8 @@ restconf_accept_client(int   fd,
     int                 er;
     int                 readmore;
     X509               *peercert;
+    const unsigned char *alpn = NULL;
+    unsigned int         alpnlen = 0;
 
     clicon_debug(1, "%s %d", __FUNCTION__, fd);
     if (rsock == NULL){
@@ -1292,6 +1357,17 @@ restconf_accept_client(int   fd,
 		}
 		goto ok;
 	    }
+	}
+	/* Sets data and len to point to the client's requested protocol for this connection. */
+	SSL_get0_next_proto_negotiated(ssl, &alpn, &alpnlen);
+	if (alpn == NULL) {
+	    /* Returns a pointer to the selected protocol in data with length len. */
+	    SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
+	}
+	clicon_debug(1, "%s ALPN: %d %s", __FUNCTION__, alpnlen, alpn);
+	if (alpn == NULL || alpnlen != 8 || memcmp("http/1.1", alpn, 8) != 0) {
+	    clicon_err(OE_RESTCONF, 0, "Protocol http/1.1 not selected: %s", alpn);
+	    goto done;
 	}
 	/* Get the actual peer, XXX this maybe could be done in ca-auth client-cert code ? 
 	 * Note this _only_ works if SSL_set1_host() was set previously,...
