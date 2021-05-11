@@ -69,7 +69,6 @@ int clixon_process_delete_all(clicon_handle h);
 int clixon_process_operation(clicon_handle h, const char *name, proc_operation op, const int wrapit);
 int clixon_process_status(clicon_handle h, const char *name, cbuf *cbret);
 int clixon_process_start_all(clicon_handle h);
-int clixon_process_sched_register(clicon_handle h);
 int clixon_process_waitpid(clicon_handle h);
 
 #endif  /* _CLIXON_PROC_H_ */
