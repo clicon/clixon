@@ -1080,7 +1080,7 @@ restconf_connection(int   s,
 	    struct evbuffer *ev;
 	    size_t           buflen;
 	    char            *buf = NULL;
-	    
+
 	    if ((rc = conn->arg) == NULL){
 		clicon_err(OE_RESTCONF, EFAULT, "Internal error: restconf-conn-h is NULL: shouldnt happen");
 		goto done;
@@ -1837,12 +1837,9 @@ restconf_sig_term(int arg)
 {
     static int i=0;
 
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (i++ == 0){
-	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
-		   __PROGRAM__, __FUNCTION__, getpid(), arg);
-    }
-    else
+    clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
+	       __PROGRAM__, __FUNCTION__, getpid(), arg);
+    if (i++ > 0) /* Allow one sigterm before proper exit */
 	exit(-1);
     /* This should ensure no more accepts or incoming packets are processed because next time eventloop
      * is entered, it will terminate.

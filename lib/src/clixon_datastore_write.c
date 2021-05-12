@@ -203,13 +203,79 @@ check_body_namespace(cxobj     *x0,
     return retval;
 }
 
+/*! Check yang when condition between a new xml x1 and old x0
+ *
+ * check if there is a when condition. First try it on the new request (x1), then on the
+ * existing (x0). 
+ * @param[in]  x0p      Parent of x0
+ * @param[in]  x1       XML tree which modifies base
+ * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL
+ * @param[out] cbret    Initialized cligen buffer. Contains return XML if retval is 0.
+ * @retval    -1        Error
+ * @retval     0        Failed (cbret set)
+ * @retval     1        OK
+ * @note There may be some combination cases (x0+x1) that are not covered in this function.
+ */
+static int
+check_when_condition(cxobj              *x0p,
+		     cxobj              *x1,
+		     yang_stmt          *y0,
+		     cbuf               *cbret)
+{
+    int       retval = -1;
+    char      *xpath = NULL;
+    cvec      *nsc = NULL;
+    int        nr;
+    cxobj     *x1p;
+    yang_stmt *y = NULL;
+    cbuf      *cberr = NULL;
+
+    if ((y = y0) != NULL ||
+	(y = (yang_stmt*)xml_spec(x1)) != NULL){
+	if ((xpath = yang_when_xpath_get(y)) != NULL){ 
+	    nsc = yang_when_nsc_get(y);
+	    x1p = xml_parent(x1);
+	    if ((nr = xpath_vec_bool(x1p, nsc, "%s", xpath)) < 0) /* Try request */
+		goto done;
+	    if (nr == 0){
+		/* Try existing tree */
+		if ((nr = xpath_vec_bool(x0p, nsc, "%s", xpath)) < 0)
+		    goto done;
+		if (nr == 0){
+		    if ((cberr = cbuf_new()) == NULL){
+			clicon_err(OE_UNIX, errno, "cbuf_new");
+			goto done;
+		    }
+		    cprintf(cberr, "Node '%s' tagged with 'when' condition '%s' in module '%s' evaluates to false in edit-config operation (see RFC 7950 Sec 8.3.2)",
+			    yang_argument_get(y),
+			    xpath,
+			    yang_argument_get(ys_module(y)));
+		    if (netconf_unknown_element(cbret, "application", yang_argument_get(y),
+						cbuf_get(cberr)) < 0)
+			goto done;
+		    goto fail;
+		}
+	    }
+	}
+    }
+    retval = 1;
+ done:
+    if (cberr)
+	cbuf_free(cberr);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
  * @param[in]  h        Clicon handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
- * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  x0p      Parent of x0
+ * @param[in]  x0t
  * @param[in]  x1       XML tree which modifies base
  * @param[in]  x1t      Request root node (nacm needs this)
+ * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  op       OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
  * @param[in]  username User name of requestor for nacm
  * @param[in]  xnacm    NACM XML tree (only if !permit)
@@ -264,6 +330,10 @@ text_modify(clicon_handle       h,
 	clicon_err(OE_XML, EINVAL, "x1 is missing");
 	goto done;
     }
+    if ((ret = check_when_condition(x0p, x1, y0, cbret)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
     /* Check for operations embedded in tree according to netconf */
     if ((ret = attr_ns_value(x1, "operation", NETCONF_BASE_NAMESPACE,
 			     cbret, &opstr)) < 0)

@@ -199,11 +199,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "wait backend"
-    wait_backend
 fi
 
+new "wait backend"
+wait_backend
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
@@ -211,10 +210,10 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "wait restconf"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 # mandatory-leaf See RFC7950 Sec 7.17
 new "netconf set interface with augmented type and mandatory leaf"

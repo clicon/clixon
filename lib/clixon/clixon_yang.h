@@ -136,7 +136,7 @@ enum rfc_6020{
     Y_UNKNOWN,
     Y_USES,
     Y_VALUE,
-    Y_WHEN,
+    Y_WHEN, /* See also ys_when_xpath / ys_when_nsc */
     Y_YANG_VERSION,
     Y_YIN_ELEMENT,
     Y_SPEC  /* XXX: NOTE NOT YANG STATEMENT, reserved for top level spec */

@@ -186,7 +186,7 @@ nacm
 # replace all, then must include NACM rules as well
 # This usually triggers a 'HTTP/1.1 100 Continue' from curl as well
 MSG="<data>$RULES</data>"
-new "update root list permit"
+new "update root list permit (trigger 100 Continue)"
 expectpart "$(curl -u andy:bar $CURLOPTS -H 'Content-Type: application/yang-data+xml' -X PUT $RCPROTO://localhost/restconf/data -d "$MSG")" 0 'HTTP/1.1 204 No Content'
 
 new "delete root list deny"

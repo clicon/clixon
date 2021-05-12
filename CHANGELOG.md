@@ -34,7 +34,13 @@ Expected: June 2021
 
 ### New features
 
-* Yang deviation [deviation statement not yet support #211](https://github.com/clicon/clixon/issues/211)
+* YANG when statement in conjunction with grouping/uses/augment
+  * Several cases were not implemented fully according to RFC 7950:
+    * Do not extend default values if when statements evaluate to false
+    * Do not allow edit-config of nodes if when statements evaluate to false (Sec 8.3.2)
+    *  If a key leaf is defined in a grouping that is used in a list, the "uses" statement MUST NOT have a "when" statement. (See 7.21.5)
+  * See [yang uses's substatement when has no effect #218](https://github.com/clicon/clixon/issues/2$
+* YANG deviation [deviation statement not yet support #211](https://github.com/clicon/clixon/issues/211)
   * See RFC7950 Sec 5.6.3
 
 ### API changes on existing protocol/config features

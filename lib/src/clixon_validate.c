@@ -1227,7 +1227,7 @@ xml_yang_validate_all(clicon_handle h,
 		nsc = NULL;
 	    }
 	}
-	/* "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
+	/* First variant of when, actual "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
 	if ((yc = yang_find(ys, Y_WHEN, NULL)) != NULL){
 	    xpath = yang_argument_get(yc); /* "when" has xpath argument */
 	    /* WHEN xpath needs namespace context */
@@ -1253,7 +1253,9 @@ xml_yang_validate_all(clicon_handle h,
 		goto fail;
 	    }
 	}
-	/* Augmented when using special struct. */
+	/* Second variants of WHEN:
+	 * Augmented and uses when using special info in node
+	 */
 	if ((xpath = yang_when_xpath_get(ys)) != NULL){
 	    if ((nr = xpath_vec_bool(xml_parent(xt), yang_when_nsc_get(ys),
 				     "%s", xpath)) < 0)
@@ -1263,7 +1265,7 @@ xml_yang_validate_all(clicon_handle h,
 		    clicon_err(OE_UNIX, errno, "cbuf_new");
 		    goto done;
 		}
-		cprintf(cb, "Failed augmented WHEN condition %s of node %s in module %s",
+		cprintf(cb, "Failed augmented 'when' condition '%s' of node '%s' in module '%s'",
 			xpath,
 			xml_name(xt),
 			yang_argument_get(ys_module(ys)));

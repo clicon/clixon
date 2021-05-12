@@ -144,10 +144,10 @@ typedef enum yang_bind yang_bind;
 typedef struct xml cxobj; /* struct defined in clicon_xml.c */
 
 /*! Callback function type for xml_apply 
- * @retval    -1    Error, aborted at first error encounter
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
  * @retval     0    OK, continue
- * @retval     1    Abort, dont continue with others
- * @retval     2    Locally, just abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     2    Locally abort this subtree, continue with others
  */
 typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 

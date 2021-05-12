@@ -104,6 +104,9 @@
 /* Size of json read buffer when reading from file*/
 #define BUFLEN 1024
 
+/* Forward */
+static int yang_expand_grouping(yang_stmt *yn);
+
 /*! Resolve a grouping name from a module, includes looking in submodules
  */
 static yang_stmt *
@@ -340,7 +343,9 @@ yang_augment_node(yang_stmt *ys)
 
 	if (yn_insert(ytarget, yc) < 0)
 	    goto done;
-	/* If there is an associated when statement, add a special when struct to the yang */
+	/* If there is an associated when statement, add a special when struct to the yang 
+	 * see xml_yang_validate_all
+	 */
 	if (ywhen){
 	    if (yang_when_xpath_set(yc, wxpath) < 0) 
 		goto done;
@@ -454,6 +459,208 @@ ys_do_refine(yang_stmt *yr,
     return retval;
 }
 
+/*! Yang node yg is a leaf in yang node list yn
+ * Could be made to a generic function used elsewhere as well
+ * @param[in]  y    Yang leaf
+ * @param[in]  yp   Yang list parent 
+ * @retval     0    No, y is not a key leaf in list yp
+ * @retval     1    Yes, y is a key leaf in list yp
+ */
+static int
+ys_iskey(yang_stmt *y,
+	 yang_stmt *yp)
+{
+    cvec      *cvv;
+    cg_var    *cv;
+    char     *name;    
+
+    if (yang_keyword_get(y) != Y_LEAF)
+	return 0;
+    if (yang_keyword_get(yp) != Y_LIST)
+	return 0;
+    if ((cvv = yang_cvec_get(yp)) == NULL)
+	return 0;
+    name = yang_argument_get(y);
+    cv = NULL;
+    while ((cv = cvec_each(cvv, cv)) != NULL) {
+	if (strcmp(name, cv_string_get(cv)) == 0)
+	    return 1;
+    }
+    return 0;
+}
+
+
+/*! Helper function to yang_expand_grouping
+ * @param[in] yn     Yang parent node of uses ststement
+ * @param[in] ys     Uses statement
+ * @retval    0      OK
+ * @retval    -1     Error
+ */
+static int
+yang_expand_uses_node(yang_stmt *yn,
+		      yang_stmt *ys,
+		      int i)
+{
+    int        retval = -1;
+    char      *id = NULL;
+    char      *prefix = NULL;
+    yang_stmt *ygrouping;  /* grouping original */
+    yang_stmt *ygrouping2; /* grouping copy */
+    yang_stmt *yg;         /* grouping child */
+    yang_stmt *yr;         /* refinement */
+    yang_stmt *yp;
+    int        glen;
+    size_t     size;
+    int        j;
+    int        k;
+    yang_stmt *ywhen;
+    char      *wxpath = NULL; /* xpath of when statement */
+    cvec      *wnsc = NULL;   /* namespace context of when statement */
+    
+    /* Split argument into prefix and name */
+    if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
+	goto done;
+    if (ys_grouping_resolve(ys, prefix, id, &ygrouping) < 0)
+	goto done;
+    if (ygrouping == NULL){
+	clicon_log(LOG_NOTICE, "%s: Yang error : grouping \"%s\" not found in module \"%s\"", 
+		   __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
+	goto done;
+    }
+    /* Check so that this uses statement is not a descendant of the grouping
+     */
+    yp = yn;
+    do {
+	if (yp == ygrouping){
+	    clicon_err(OE_YANG, EFAULT, "Yang use of grouping %s in module %s is defined inside the grouping (recursion), see RFC 7950 Sec 7.12: A grouping MUST NOT reference itself",
+		       yang_argument_get(ys),
+		       yang_argument_get(ys_module(yn))
+		       );
+	    goto done;
+	}
+    } while((yp = yang_parent_get(yp)) != NULL);
+    if (yang_flag_get(ygrouping, YANG_FLAG_MARK) == 0){ 
+	/* Check mark flag to see if this grouping has been expanded before, 
+	 * here below in the traverse section 
+	 * A mark could be completely normal (several uses) or it could be a recursion.
+	 */
+	yang_flag_set(ygrouping, YANG_FLAG_MARK); /* Mark as (being)  expanded */
+	if (yang_expand_grouping(ygrouping) < 0)
+	    goto done;
+    }
+    /* Make a copy of the grouping, then make refinements to this copy
+     * Note this ygrouping2 object does not gave a parent and does not work in many
+     * functions which assume a full hierarchy, use the original ygrouping in those cases.
+     */
+    if ((ygrouping2 = ys_dup(ygrouping)) == NULL)
+	goto done;
+
+    /* Only replace data/schemanodes and unknowns:
+     * Compute the number of such nodes, and extend the child vector with that below
+     */
+    glen = 0;
+    yg = NULL;
+    while ((yg = yn_each(ygrouping2, yg)) != NULL) {
+	if (yang_schemanode(yg) || yang_keyword_get(yg) == Y_UNKNOWN)
+	    glen++;
+    }
+    /* 
+     * yn is parent: the children of ygrouping replaces ys.
+     * Is there a case when glen == 0?  YES AND THIS BREAKS
+     */
+    if (glen != 1){
+	size = (yang_len_get(yn) - i - 1)*sizeof(struct yang_stmt *);
+	yn->ys_len += glen - 1;
+	if (glen && (yn->ys_stmt = realloc(yn->ys_stmt, (yang_len_get(yn))*sizeof(yang_stmt *))) == 0){
+	    clicon_err(OE_YANG, errno, "realloc");
+	    goto done;
+	}
+	/* Then move all existing elements up from i+1 (not uses-stmt) */
+	if (size)
+	    memmove(&yn->ys_stmt[i+glen],
+		    &yn->ys_stmt[i+1],
+		    size);
+    }
+    /* Find when statement, if present */
+    if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL){
+	wxpath = yang_argument_get(ywhen);
+	if (xml_nsctx_yang(ywhen, &wnsc) < 0)
+	    goto done;
+    }
+    /* Iterate through refinements and modify grouping copy 
+     * See RFC 7950 7.13.2 yrt is the refine target node
+     */
+    yr = NULL;
+    while ((yr = yn_each(ys, yr)) != NULL) {
+	yang_stmt *yrt; /* refine target node */
+	if (yang_keyword_get(yr) != Y_REFINE)
+	    continue;
+	/* Find a node */
+	if (yang_desc_schema_nodeid(ygrouping, /* Cannot use ygrouping2 */
+				    yang_argument_get(yr),
+				    &yrt) < 0)
+	    goto done;
+	/* Not found, try next */
+	if (yrt == NULL) 		
+	    continue;
+	/* Do the actual refinement */
+	if (ys_do_refine(yr, yrt) < 0)
+	    goto done;
+	/* RFC: The argument is a string that identifies a node in the 
+	 * grouping.  I interpret that as only one node --> break */
+	break;
+    } /* while yr */
+    /* Then copy and insert each child element from ygrouping2 to yn */
+    k=0;
+    for (j=0; j<yang_len_get(ygrouping2); j++){
+	yg = ygrouping2->ys_stmt[j]; /* Child of refined copy */
+	/* Only replace data/schemanodes */
+	if (!yang_schemanode(yg) && yang_keyword_get(yg) != Y_UNKNOWN){
+	    ys_free(yg);
+	    continue;
+	}
+	/* If there is an associated when statement, add a special when struct to the yang 
+	 * see xml_yang_validate_all
+	 */
+	if (ywhen){
+	    if (ys_iskey(yg, yn)){
+		/* RFC 7950 Sec 7.21.5:
+		 * If a key leaf is defined in a grouping that is used in a list, the
+		 * "uses" statement MUST NOT have a "when" statement.
+		 */
+		
+		clicon_err(OE_YANG, 0, "Key leaf '%s' defined in grouping '%s' is used in a 'uses' statement, This is not allowed according to RFC 7950 Sec 7.21.5",
+		       yang_argument_get(yg),
+		       yang_argument_get(ygrouping)
+		       );
+	    goto done;
+	    }
+	    if (yang_when_xpath_set(yg, wxpath) < 0) 
+		goto done;
+	    if (yang_when_nsc_set(yg, wnsc) < 0) 
+		goto done;
+	}
+	yn->ys_stmt[i+k] = yg;
+	yg->ys_parent = yn;
+	k++;
+    }
+    /* Remove 'uses' node */
+    ys_free(ys); 
+    /* Remove the grouping copy */
+    ygrouping2->ys_len = 0; /* Cant do with get access function */
+    ys_free(ygrouping2);
+
+    retval = 0;
+ done:
+    if (wnsc)
+	cvec_free(wnsc);
+    if (prefix)
+	free(prefix); 
+    if (id)
+	free(id); 
+    return retval;
+}
+
 /*! Macro expansion of grouping/uses done in step 2 of yang parsing 
  * RFC7950:
  * Identifiers appearing inside the grouping are resolved
@@ -464,24 +671,16 @@ ys_do_refine(yang_stmt *yr,
  * until the contents of the grouping are added to the schema tree via a
  * "uses" statement that does not appear inside a "grouping" statement,
  * at which point they are bound to the namespace of the current module.
+ * @param[in] yn     Yang node for recursive iteration
+ * @retval    0      OK
+ * @retval    -1     Error
  */
 static int
 yang_expand_grouping(yang_stmt *yn)
 {
     int        retval = -1;
     yang_stmt *ys = NULL;
-    yang_stmt *ygrouping;  /* grouping original */
-    yang_stmt *ygrouping2; /* grouping copy */
-    yang_stmt *yg;         /* grouping child */
-    yang_stmt *yr;         /* refinement */
-    int        glen;
     int        i;
-    int        j;
-    int        k;
-    char      *id = NULL;
-    char      *prefix = NULL;
-    size_t     size;
-    yang_stmt *yp;
 
     /* Cannot use yang_apply here since child-list is modified (is destructive) */
     i = 0;
@@ -489,120 +688,8 @@ yang_expand_grouping(yang_stmt *yn)
 	ys = yn->ys_stmt[i]; 
 	switch (yang_keyword_get(ys)){
 	case Y_USES:
-	    /* Split argument into prefix and name */
-	    if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
+	    if (yang_expand_uses_node(yn, ys, i) < 0)
 		goto done;
-	    if (ys_grouping_resolve(ys, prefix, id, &ygrouping) < 0)
-		goto done;
-	    if (prefix){
-		free(prefix); 
-		prefix = NULL;
-	    }
-	    if (id){
-		free(id); 
-		id = NULL;
-	    }
-	    if (ygrouping == NULL){
-		clicon_log(LOG_NOTICE, "%s: Yang error : grouping \"%s\" not found in module \"%s\"", 
-			   __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
-		goto done;
-		break;
-	    }
-	    /* Check so that this uses statement is not a descendant of the grouping
-	     */
-	    yp = yn;
-	    do {
-		if (yp == ygrouping){
-		    clicon_err(OE_YANG, EFAULT, "Yang use of grouping %s in module %s is defined inside the grouping (recursion), see RFC 7950 Sec 7.12: A grouping MUST NOT reference itself",
-			       yang_argument_get(ys),
-			       yang_argument_get(ys_module(yn))
-			       );
-		    goto done;
-		}
-	    } while((yp = yang_parent_get(yp)) != NULL);
-	    if (yang_flag_get(ygrouping, YANG_FLAG_MARK) == 0){ 
-		/* Check mark flag to see if this grouping has been expanded before, 
-		 * here below in the traverse section 
-		 * A mark could be completely normal (several uses) or it could be a recursion.
-		 */
-		yang_flag_set(ygrouping, YANG_FLAG_MARK); /* Mark as (being)  expanded */
-		if (yang_expand_grouping(ygrouping) < 0)
-		    goto done;
-	    }
-	    /* Make a copy of the grouping, then make refinements to this copy
-	     * Note this ygrouping2 object does not gave a parent and does not work in many
-	     * functions which assume a full hierarchy, use the original ygrouping in those cases.
-	     */
-	    if ((ygrouping2 = ys_dup(ygrouping)) == NULL)
-		goto done;
-
-	    /* Only replace data/schemanodes and unknowns:
-	     * Compute the number of such nodes, and extend the child vector with that below
-	     */
-	    glen = 0;
-	    yg = NULL;
-	    while ((yg = yn_each(ygrouping2, yg)) != NULL) {
-		if (yang_schemanode(yg) || yang_keyword_get(yg) == Y_UNKNOWN)
-		    glen++;
-	    }
-	    /* 
-	     * yn is parent: the children of ygrouping replaces ys.
-	     * Is there a case when glen == 0?  YES AND THIS BREAKS
-	     */
-	    if (glen != 1){
-		size = (yang_len_get(yn) - i - 1)*sizeof(struct yang_stmt *);
-		yn->ys_len += glen - 1;
-		if (glen && (yn->ys_stmt = realloc(yn->ys_stmt, (yang_len_get(yn))*sizeof(yang_stmt *))) == 0){
-		    clicon_err(OE_YANG, errno, "realloc");
-		    goto done;
-		}
-		/* Then move all existing elements up from i+1 (not uses-stmt) */
-		if (size)
-		    memmove(&yn->ys_stmt[i+glen],
-			    &yn->ys_stmt[i+1],
-			    size);
-	    }
-	    /* Iterate through refinements and modify grouping copy 
-	     * See RFC 7950 7.13.2 yrt is the refine target node
-	     */
-	    yr = NULL;
-	    while ((yr = yn_each(ys, yr)) != NULL) {
-		yang_stmt *yrt; /* refine target node */
-		if (yang_keyword_get(yr) != Y_REFINE)
-		    continue;
-		/* Find a node */
-		if (yang_desc_schema_nodeid(ygrouping, /* Cannot use ygrouping2 */
-					    yang_argument_get(yr),
-					    &yrt) < 0)
-		    goto done;
-		/* Not found, try next */
-		if (yrt == NULL) 		
-		    continue;
-		/* Do the actual refinement */
-		if (ys_do_refine(yr, yrt) < 0)
-		    goto done;
-		/* RFC: The argument is a string that identifies a node in the 
-		 * grouping.  I interpret that as only one node --> break */
-		break;
-	    }
-	    /* Then copy and insert each child element from ygrouping2 to yn */
-	    k=0;
-	    for (j=0; j<yang_len_get(ygrouping2); j++){
-		yg = ygrouping2->ys_stmt[j]; /* Child of refined copy */
-		/* Only replace data/schemanodes */
-		if (!yang_schemanode(yg) && yang_keyword_get(yg) != Y_UNKNOWN){
-		    ys_free(yg);
-		    continue;
-		}
-		yn->ys_stmt[i+k] = yg;
-		yg->ys_parent = yn;
-		k++;
-	    }
-	    /* Remove 'uses' node */
-	    ys_free(ys); 
-	    /* Remove the grouping copy */
-	    ygrouping2->ys_len = 0; /* Cant do with get access function */
-	    ys_free(ygrouping2);
 	    break; /* Note same child is re-iterated since it may be changed */
 	default:
 	    i++;
@@ -630,10 +717,6 @@ yang_expand_grouping(yang_stmt *yn)
     }
     retval = 0;
  done:
-    if (prefix)
-	free(prefix); 
-    if (id)
-	free(id); 
     return retval;
 }
 

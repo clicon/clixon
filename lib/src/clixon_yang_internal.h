@@ -90,8 +90,8 @@ struct yang_stmt{
 					   types as <module>:<id> list
 				     */
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
-    char              *ys_when_xpath; /* Special conditional for a "when"-associated augment xpath */
-    cvec              *ys_when_nsc;   /* Special conditional for a "when"-associated augment namespace ctx */
+    char              *ys_when_xpath; /* Special conditional for a "when"-associated augment/uses xpath */
+    cvec              *ys_when_nsc;   /* Special conditional for a "when"-associated augment/uses namespace ctx */
     int               _ys_vector_i;   /* internal use: yn_each */
 
 };

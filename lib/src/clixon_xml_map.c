@@ -1142,6 +1142,8 @@ xml_default1(yang_stmt *yt,
     cxobj     *xc;
     int        top=0; /* Top symbol (set default namespace) */
     int        create = 0;
+    char      *xpath;
+    int        nr;
 
     if (xt == NULL){ /* No xml */
 	clicon_err(OE_XML, EINVAL, "No XML argument");
@@ -1162,6 +1164,13 @@ xml_default1(yang_stmt *yt,
 	    switch (yang_keyword_get(yc)){
 	    case Y_LEAF:
 		if (!cv_flag(yang_cv_get(yc), V_UNSET)){  /* Default value exists */
+		    /* Check when statement from uses or augment */
+		    if ((xpath = yang_when_xpath_get(yc)) != NULL){
+			if ((nr = xpath_vec_bool(xt, yang_when_nsc_get(yc), "%s", xpath)) < 0)
+			    goto done;
+			if (nr == 0)
+			    break; /* Do not create default if xpath fails */
+		    }
 		    if (xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
 			/* No such child exist, create this leaf */
 			if (xml_default_create(yc, xt, top) < 0)
@@ -1172,6 +1181,13 @@ xml_default1(yang_stmt *yt,
 		break;
 	    case Y_CONTAINER:
 		if (yang_find(yc, Y_PRESENCE, NULL) == NULL){
+		    /* Check when statement from uses or augment */
+		    if ((xpath = yang_when_xpath_get(yc)) != NULL){
+			if ((nr = xpath_vec_bool(xt, yang_when_nsc_get(yc), "%s", xpath)) < 0)
+			    goto done;
+			if (nr == 0)
+			    break; /* Do not create default if xpath fails */
+		    }
 		    /* If this is non-presence, (and it does not exist in xt) call 
 		     * recursively and create nodes if any default value exist first. 
 		     * Then continue and populate?

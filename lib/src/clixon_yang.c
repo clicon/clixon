@@ -3192,7 +3192,7 @@ yang_container_cli_hide(yang_stmt         *ys,
 /*! Check if yang node yn has key-stmt as child which matches name
  *
  * The function looks at the LIST argument string (not actual children)
- * @param[in]  yn   Yang node with sub-statements (look for a key child)
+ * @param[in]  yn   Yang list node with sub-statements (look for a key child)
  * @param[in]  name Check if this name (eg "b") is a key in the yang key statement
  *
  * @retval   -1     Error

@@ -380,7 +380,7 @@ api_operations(clicon_handle h,
 	       int           pretty,
 	       restconf_media media_out)
 {
-    int    retval;
+    int    retval = -1;
     cxobj *xerr = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
