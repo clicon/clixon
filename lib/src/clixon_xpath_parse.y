@@ -387,7 +387,7 @@ addexpr     : addexpr ADDOP unionexpr { $$=xp_new(XP_ADD,$2,NULL,NULL,NULL,$1, $
             ;
 
 /* node-set */
-unionexpr   : unionexpr '|' pathexpr { $$=xp_new(XP_UNION,A_NAN,NULL,NULL,NULL,$1, $3);clicon_debug(3,"unionexpr-> unionexpr | pathexpr"); } 
+unionexpr   : unionexpr '|' pathexpr { $$=xp_new(XP_UNION,XO_UNION,NULL,NULL,NULL,$1, $3);clicon_debug(3,"unionexpr-> unionexpr | pathexpr"); } 
             | pathexpr { $$=xp_new(XP_UNION,A_NAN,NULL,NULL,NULL,$1, NULL);clicon_debug(3,"unionexpr-> pathexpr"); } 
             ;
 

@@ -121,13 +121,12 @@ cli_expand_var_generate(clicon_handle h,
     int   retval = -1;
     char *api_path_fmt = NULL, *opext = NULL;
 
-	if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
+    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
 	goto done;
-	if (opext && strcmp(opext, "hide-database") == 0) {
-		retval = 1;
-		goto done;
-	}
-
+    if (opext && strcmp(opext, "hide-database") == 0) {
+	retval = 1;
+	goto done;
+    }
     if (yang2api_path_fmt(ys, 1, &api_path_fmt) < 0)
 	goto done;
     cprintf(cb, "|<%s:%s",  yang_argument_get(ys), 

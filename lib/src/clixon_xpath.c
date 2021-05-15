@@ -34,6 +34,14 @@
 
  * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10
  *
+ * Note on xcur parameter to most xpath functions:
+ * The W3 standard defines the document root / element as the top-level.
+ * In the clixon xpath API, the document root is defined as the top of the xml tree. 
+ * The xcur argument of xpath_first and others is the "current" xml node (xcur) which can
+ * be any node in that tree, not necessarily the document root.
+ * This is convenient if you want to use relative xpaths from any location in the tree (eg ../../foo/bar).
+ * It may be confusing if you expect xcur to be the root node.
+ *
  * Some notes on namespace extensions in Netconf/Yang
  * 1) The xpath is not "namespace-aware" in the sense that if you look for a path, eg 
  *    "n:a/n:b", those must match the XML, so they need to match prefixes AND name in the xml 

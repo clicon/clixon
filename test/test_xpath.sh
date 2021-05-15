@@ -88,6 +88,9 @@ new "xpath /aaa/bbb"
 expecteof "$clixon_util_xpath -f $xml -p /aaa/bbb" 0 "" "^0:<bbb x=\"hello\"><ccc>42</ccc></bbb>
 1:<bbb x=\"bye\"><ccc>99</ccc></bbb>$"
 
+new "xpath /aaa/bbb union "
+expecteof "$clixon_util_xpath -f $xml -p aaa/bbb[ccc=42]|aaa/ddd[ccc=22]" 0 "" '^nodeset:0:<bbb x="hello"><ccc>42</ccc></bbb>1:<ddd><ccc>22</ccc></ddd>$'
+
 new "xpath //bbb"
 expecteof "$clixon_util_xpath -f $xml -p //bbb" 0 "" "0:<bbb x=\"hello\"><ccc>42</ccc></bbb>
 1:<bbb x=\"bye\"><ccc>99</ccc></bbb>"

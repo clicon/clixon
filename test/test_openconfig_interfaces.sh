@@ -111,6 +111,10 @@ expectpart "$($clixon_cli -1 -f $cfg show conf xml)" 0 "^<interfaces xmlns=\"htt
 new "cli set interfaces interface <tab> complete: e"
 expectpart "$(echo "set interfaces interface 	" | $clixon_cli -f $cfg)" 0 "interface e"
 
+# XXX See https://github.com/clicon/clixon/issues/218
+#new "cli set interfaces interface e <tab> complete: not ethernet"
+#expectpart "$(echo "set interfaces interface e 	" | $clixon_cli -f $cfg)" 0 config hold-time subinterfaces --not-- ethernet 
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
