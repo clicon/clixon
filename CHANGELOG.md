@@ -65,6 +65,8 @@ Users may have to change how they access the system
 	
 ### Corrected Bugs
 
+* Fixed  problems with XPATH composite operations and functions in netconf get/get-config operations.
+  * See [XPATH issues #219](https://github.com/clicon/clixon/issues/219)
 * Fix Union in xpath [XPATH issues #219](https://github.com/clicon/clixon/issues/219)
 * Fix: XPath:s used in netconf (eg get-config) did not correctly access default values
 * [RESTCONF GET request of single-key list with empty string returns all elements #213](https://github.com/clicon/clixon/issues/213)

@@ -239,7 +239,7 @@ xpath_tree_print(FILE       *f,
  * @param[in]  xs    XPATH tree
  * @param[out] xpath XPath string as CLIgen buf
  * @see xpath_tree_print
- * @note NOT COMPLETE, just simple xpaths eg a/b
+ * @note XXX Not complete 
  */
 int
 xpath_tree2cbuf(xpath_tree *xs,
@@ -248,21 +248,10 @@ xpath_tree2cbuf(xpath_tree *xs,
     int   retval = -1;
 
     switch (xs->xs_type){
-    case XP_NODE: /* s0 is namespace prefix, s1 is name */
-	if (xs->xs_s0)
-	    cprintf(xcb, "%s:", xs->xs_s0);
-	cprintf(xcb, "%s", xs->xs_s1);
-	break;
     case XP_ABSPATH:
 	if (xs->xs_int == A_DESCENDANT_OR_SELF)
 	    cprintf(xcb, "/");
 	cprintf(xcb, "/");
-	break;
-    case XP_PRIME_STR:
-	cprintf(xcb, "'%s'", xs->xs_s0?xs->xs_s0:"");
-	break;
-    case XP_PRIME_NR:
-	cprintf(xcb, "%s", xs->xs_strnr?xs->xs_strnr:"0"); 
 	break;
     case XP_STEP:
 	switch (xs->xs_int){
@@ -276,12 +265,34 @@ xpath_tree2cbuf(xpath_tree *xs,
 	    break;
 	}
 	break;
+    case XP_NODE: /* s0 is namespace prefix, s1 is name */
+	if (xs->xs_s0)
+	    cprintf(xcb, "%s:", xs->xs_s0);
+	cprintf(xcb, "%s", xs->xs_s1);
+	break;
+    case XP_PRIME_NR:
+	cprintf(xcb, "%s", xs->xs_strnr?xs->xs_strnr:"0"); 
+	break;
+    case XP_PRIME_STR:
+	cprintf(xcb, "'%s'", xs->xs_s0?xs->xs_s0:"");
+	break;
+    case XP_PRIME_FN:
+	if (xs->xs_s0)
+	    cprintf(xcb, "%s(", xs->xs_s0);
+	break;
     default:
 	break;
     }
     if (xs->xs_c0 && xpath_tree2cbuf(xs->xs_c0, xcb) < 0)
 	goto done;
     switch (xs->xs_type){
+    case XP_AND: /* and or */
+    case XP_ADD: /* div mod + * - */
+    case XP_RELEX: /* !=, >= <= < > = */
+    case XP_UNION:
+	if (xs->xs_c1)
+	    cprintf(xcb, " %s ", clicon_int2str(xpopmap, xs->xs_int));
+	break;
     case XP_RELLOCPATH:
 	if (xs->xs_c1){
 	    if (xs->xs_int == A_DESCENDANT_OR_SELF)
@@ -293,9 +304,9 @@ xpath_tree2cbuf(xpath_tree *xs,
 	if (xs->xs_c1)
 	    cprintf(xcb, "[");
 	break;
-    case XP_RELEX:
-	if (xs->xs_c1)
-	    cprintf(xcb, "%s", clicon_int2str(xpopmap, xs->xs_int));
+    case XP_EXP:
+	if (xs->xs_c0 && xs->xs_c1) /* Function name and two arguments, insert , */
+	    cprintf(xcb, ",");
 	break;
     default:
 	break;
@@ -307,6 +318,9 @@ xpath_tree2cbuf(xpath_tree *xs,
 	if (xs->xs_c1)
 	    cprintf(xcb, "]");
 	break;
+    case XP_PRIME_FN:
+	if (xs->xs_s0)
+	    cprintf(xcb, ")");
     default:
 	break;
     }

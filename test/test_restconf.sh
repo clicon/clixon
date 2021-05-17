@@ -13,7 +13,7 @@
 # - IPv6 by default disabled since docker does not support it out-of-the box
 # (4) local/backend config. Native only
 # - The tests runs through both (if compiled with native)
-# See also test_restconf2.sh
+# See also test_restconf_op.sh
 # See test_restconf_rpc.sh for cases when CLICON_BACKEND_RESTCONF_PROCESS is set
 
 # Magic line must be first in script (see README.md)

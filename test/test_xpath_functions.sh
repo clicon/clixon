@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# From both:
+# test xpath functions in YANG conditionals
 # XPATH base https://www.w3.org/TR/xpath-10/
 # YANG XPATH functions: https://tools.ietf.org/html/rfc7950
 # Tests:
