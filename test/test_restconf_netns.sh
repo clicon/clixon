@@ -4,6 +4,10 @@
 # Init running with a=42
 # Get the config from default and netns namespace with/without SSL
 # Write b=99 in netns and read from default
+# Also a failed usecase is failed bind in other namespace causes two processes/zombie
+#   1. Configure one valid and one invalid address in other dataplane
+#   2. Two restconf processes, one may be zombie
+
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -35,6 +39,10 @@ veth=veth0
 vethpeer=veth1
 vaddr=10.23.1.1 # address in netns
 
+vaddr2=10.23.10.1 # Used as invalid
+
+RESTCONFDBG=$DBG
+
 # Create server certs
 certdir=$dir/certs
 srvkey=$certdir/srv_key.pem
@@ -56,6 +64,7 @@ RESTCONFIG=$(cat <<EOF
    <server-key-path>$srvkey</server-key-path>
    <server-ca-cert-path>$cakey</server-ca-cert-path>
    <pretty>false</pretty>
+   <debug>$RESTCONFDBG</debug>
    <socket>     <!-- reference and to get wait-restconf to work -->
       <namespace>default</namespace>
       <address>0.0.0.0</address>
@@ -134,7 +143,6 @@ sudo ip netns exec $netns ip link set dev lo up
 #sudo ip netns exec $netns ping $vaddr
 
 #-----------------
-
 new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -144,10 +152,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
@@ -155,11 +163,11 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf # need to use port 80/443
 fi
 
+new "wait restconf"
+wait_restconf 
+    
 new "add sample config w netconf"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>a</name><value>42</value></parameter></table></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
@@ -188,6 +196,109 @@ expectpart "$(sudo ip netns exec $netns curl $CURLOPTS -X GET -H 'Accept: applic
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
     stop_restconf
+fi
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+fi
+
+#-----------------------------------------
+
+RESTCONFIG=$(cat <<EOF
+<restconf>
+   <enable>true</enable>
+   <debug>$RESTCONFDBG</debug>
+   <auth-type>none</auth-type>
+   <pretty>false</pretty>
+   <socket>
+      <namespace>default</namespace>
+      <address>127.0.0.1</address>
+      <port>80</port>
+      <ssl>false</ssl>
+   </socket>
+   <socket>
+      <namespace>$netns</namespace>
+      <address>$vaddr</address>
+      <port>80</port>
+      <ssl>false</ssl>
+   </socket>
+   <socket>
+      <namespace>$netns</namespace>
+      <address>$vaddr2</address>
+      <port>80</port>
+      <ssl>false</ssl>
+   </socket>
+</restconf>
+EOF
+)
+
+cat <<EOF > $cfg
+<clixon-config xmlns="http://clicon.org/config">
+  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
+  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
+  <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
+  <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+  <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
+  $RESTCONFIG
+</clixon-config>
+EOF
+
+new "Failed usecase. Fail to bind in other namespace causes two processes/zombie"
+
+new "kill old restconf"
+stop_restconf_pre
+
+new "test params: -f $cfg"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -z -f $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
+fi
+
+new "wait backend"
+wait_backend
+
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    stop_restconf_pre
+
+    new "start restconf daemon"
+    start_restconf -f $cfg
+fi
+
+new "wait restconf"
+wait_restconf 
+
+
+sleep $DEMSLEEP
+new "Check zombies"
+
+retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
+if [ -n "$retx" ]; then
+    err "No zombie process" "$retx"
 fi
 
 if [ $BE -ne 0 ]; then

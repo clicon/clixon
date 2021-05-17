@@ -105,6 +105,7 @@ get_sock(int  usock,
  done:
     return retval;
 }
+
 #endif /* HAVE_SETNS */
 
 /*! Create and bind stream socket
@@ -196,7 +197,7 @@ fork_netns_socket(const char      *netns,
     int         retval = -1;
     int         sp[2] = {-1, -1};
     pid_t       child;
-    int         status = 0;
+    int         wstatus = 0;
     char        nspath[MAXPATHLEN]; /* Path to namespace file */
     struct stat st;
 
@@ -223,21 +224,25 @@ fork_netns_socket(const char      *netns,
 	/* Switch to namespace */
 	if ((fd=open(nspath, O_RDONLY)) < 0) {
 	    clicon_err(OE_UNIX, errno, "open(%s)", nspath);
-	    return -1;
+	    send_sock(sp[1], sp[1]); /* Dummy to wake parent */
+	    exit(1); /* Dont do return here, need to exit child */
 	}
 #ifdef HAVE_SETNS
 	if (setns(fd, CLONE_NEWNET) < 0){
 	    clicon_err(OE_UNIX, errno, "setns(%s)", netns);
-	    return -1;
+	    send_sock(sp[1], sp[1]); /* Dummy to wake parent */
+	    exit(1); /* Dont do return here, need to exit child */
 	}
 #endif
 	close(fd);
 	/* Create socket in this namespace */
-	if (create_socket(sa, sin_len, backlog, flags, addrstr, &s) < 0)
-	    return -1;
+	if (create_socket(sa, sin_len, backlog, flags, addrstr, &s) < 0){
+	    send_sock(sp[1], sp[1]); /* Dummy to wake parent */
+	    exit(1); /* Dont do return here, need to exit child */
+	}
 	/* Send socket to parent */
 	if (send_sock(sp[1], s) < 0)
-	    return -1;
+	    exit(1); /* Dont do return here, need to exit child */
 	close(s);
 	close(sp[1]);
 	exit(0);
@@ -247,8 +252,14 @@ fork_netns_socket(const char      *netns,
     if (get_sock(sp[0], sock) < 0)
 	goto done;
     close(sp[0]);
-    if(waitpid(child, &status, 0) == child)
+    if(waitpid(child, &wstatus, 0) == child)
 	; // retval = WEXITSTATUS(status); /* Dont know what to do with status */
+    if (WEXITSTATUS(wstatus)){
+	clicon_debug(1, "%s wstatus:%d", __FUNCTION__, WEXITSTATUS(wstatus));
+	*sock = -1;
+	clicon_err(OE_UNIX, EADDRNOTAVAIL, "bind(%s)", addrstr);
+	goto done;
+    }
     retval = 0;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);

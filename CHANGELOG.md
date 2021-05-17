@@ -65,6 +65,7 @@ Users may have to change how they access the system
 	
 ### Corrected Bugs
 
+* Fixed: RESTCONF Native: Failed binding of socket in network namespace caused process zombie
 * Fixed  problems with XPATH composite operations and functions in netconf get/get-config operations.
   * See [XPATH issues #219](https://github.com/clicon/clixon/issues/219)
 * Fix Union in xpath [XPATH issues #219](https://github.com/clicon/clixon/issues/219)
