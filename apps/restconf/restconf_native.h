@@ -66,6 +66,7 @@ typedef struct {
     //    qelem_t       rs_qelem;     /* List header */
     cvec         *rc_outp_hdrs; /* List of output headers */
     cbuf         *rc_outp_buf;  /* Output buffer */
+    size_t        rc_bufferevent_output_offset; /* Kludge to drain libevent output buffer */
 } restconf_conn_h;
     
 /* Restconf request handle 

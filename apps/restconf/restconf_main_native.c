@@ -238,7 +238,22 @@ buf_write(char   *buf,
     ssize_t totlen = 0;
     int     er;
 
-    clicon_debug(1, "%s buflen:%lu buf:%s", __FUNCTION__, buflen, buf);
+    /* Two problems with debugging buffers from libevent that this fixes:
+     * 1. they are not "strings" in the sense they are not NULL-terminated
+     * 2. they are often very long
+     */
+    if (clicon_debug_get()) { 
+	char *dbgstr = NULL;
+	size_t sz;
+	sz = buflen>256?256:buflen; /* Truncate to 256 */
+	if ((dbgstr = malloc(sz+1)) == NULL){
+	    clicon_err(OE_UNIX, errno, "malloc");
+	    goto done;
+	}
+	memcpy(dbgstr, buf, sz);
+	dbgstr[sz] = '\0';
+	clicon_debug(1, "%s buflen:%lu buf:%s", __FUNCTION__, buflen, dbgstr);
+    }
     while (totlen < buflen){
 	if (ssl){
 	    if ((len = SSL_write(ssl, buf+totlen, buflen-totlen)) <= 0){
@@ -1078,6 +1093,7 @@ restconf_connection(int   s,
 	clicon_debug(1, "%s connection_parse OK", __FUNCTION__);
 	if (conn->bev != NULL){
 	    struct evbuffer *ev;
+	    size_t           buflen0;
 	    size_t           buflen;
 	    char            *buf = NULL;
 
@@ -1086,17 +1102,30 @@ restconf_connection(int   s,
 		goto done;
 	    }
 	    if ((ev = bufferevent_get_output(conn->bev)) != NULL){
-		if ((buflen = evbuffer_get_length(ev)) != 0){
-		    //		    assert(0); /* 100 Cont ? */
+		buflen0 = evbuffer_get_length(ev);
+		buflen = buflen0 - rc->rc_bufferevent_output_offset;
+		if (buflen == 0)
+		    readmore = 1;
+		else if (buflen > 0){
 		    buf = (char*)evbuffer_pullup(ev, -1);
+		    /* If evhtp has print an output buffer, clixon whould not have done it 
+		     * Shouldnt happen		     
+		     */
+		    clicon_debug(1, "%s Warning: evhtp printed output buffer, but clixon output buffer is non-empty %s",
+				 __FUNCTION__, cbuf_get(rc->rc_outp_buf));
+		    cbuf_reset(rc->rc_outp_buf);
 		    if (cbuf_append_buf(rc->rc_outp_buf, buf, buflen) < 0){
 			clicon_err(OE_UNIX, errno, "cbuf_append_buf");
 			goto done;
 		    }
+		    /* XXX Cant get drain to work, need to keep an offset */
+		    evbuffer_drain(ev, -1);
+		    rc->rc_bufferevent_output_offset += buflen;
 		}
 	    }
-	    if (buf_write(cbuf_get(rc->rc_outp_buf), cbuf_len(rc->rc_outp_buf), conn->sock, conn->ssl) < 0)
-	    	goto done;
+	    if (cbuf_len(rc->rc_outp_buf) &&
+		buf_write(cbuf_get(rc->rc_outp_buf), cbuf_len(rc->rc_outp_buf), conn->sock, conn->ssl) < 0)
+		    goto done;
 	    cvec_reset(rc->rc_outp_hdrs); /* Can be done in native_send_reply */
 	    cbuf_reset(rc->rc_outp_buf);
 	}
@@ -1105,7 +1134,7 @@ restconf_connection(int   s,
                                 "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>No evhtp output</error-message></error></errors>") < 0)
                 goto done;
 	}
-    } /* while moredata */
+    } /* while readmore */
  ok:
     retval = 0;
  done:
@@ -1391,6 +1420,7 @@ restconf_accept_client(int   fd,
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
+    memset(rc, 0, sizeof(restconf_conn_h));
     if ((rc->rc_outp_hdrs = cvec_new(0)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto done;
