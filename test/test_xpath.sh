@@ -221,6 +221,11 @@ expectpart "$($clixon_util_xpath -f $xml3 -p "/bbb/ccc/self::node()")" 0 "nodese
 new "xpath nodetest: comment nyi"
 expectpart "$($clixon_util_xpath -f $xml3 -l o -p "/descendant-or-self::comment()")" 255 "XPATH function \"comment\" is not implemented"
 
+# Count
+
+new "find bbb with 3 ccc children using count"
+expectpart "$($clixon_util_xpath -f $xml3 -l o -p "(/bbb[count(ccc)=3])")" 0 "<bbb x=\"hello\"><ccc>foo</ccc><ccc>42</ccc><ccc>bar</ccc></bbb>"
+
 # Negative
 
 new "xpath dontexist"

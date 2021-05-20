@@ -1028,7 +1028,6 @@ restconf_connection(int   s,
     clicon_handle       h;
     int                 readmore = 1;
     restconf_conn_h    *rc;
-    cbuf               *cberr = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((conn = (evhtp_connection_t*)arg) == NULL){
@@ -1139,8 +1138,6 @@ restconf_connection(int   s,
     retval = 0;
  done:
     clicon_debug(1, "%s retval %d", __FUNCTION__, retval);
-    if (cberr)
-	cbuf_free(cberr);
     return retval;
 }
 

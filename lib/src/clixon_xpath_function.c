@@ -441,7 +441,7 @@ xp_function_count(xp_ctx            *xc,
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_NUMBER;
-    xr->xc_number = xr0->xc_number;
+    xr->xc_number = xr0->xc_size;
     *xrp = xr;
     retval = 0;
  done:
