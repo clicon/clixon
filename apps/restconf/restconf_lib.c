@@ -312,7 +312,7 @@ restconf_terminate(clicon_handle h)
     xpath_optimize_exit();
     restconf_handle_exit(h);
     clixon_err_exit();
-    clicon_debug(1, "%s done", __FUNCTION__);
+    clicon_debug(1, "%s pid:%u done", __FUNCTION__, getpid());
     clicon_log_exit(); /* Must be after last clicon_debug */
     return 0;
 }
@@ -495,18 +495,18 @@ restconf_uripath(clicon_handle h)
 
 /*! Drop privileges from root to user (or already at user)
  * @param[in]  h    Clicon handle
- * @param[in]  user Drop to this level
  * Group set to clicon to communicate with backend
  */
 int
-restconf_drop_privileges(clicon_handle h,
-			 char         *user)
+restconf_drop_privileges(clicon_handle h)
 {
     int   retval = -1;
     uid_t newuid = -1;
     uid_t uid;
     char *group;
     gid_t gid = -1;
+    char *user;
+    enum priv_mode_t priv_mode = PM_NONE;
     
     clicon_debug(1, "%s", __FUNCTION__);
     /* Sanity check: backend group exists */
@@ -523,12 +523,19 @@ restconf_drop_privileges(clicon_handle h,
 		   clicon_configfile(h));
 	goto done;
     }
+
+    /* Get privileges mode (for dropping privileges) */
+    if ((priv_mode = clicon_restconf_privileges_mode(h)) == PM_NONE)
+	goto ok;
+    if ((user = clicon_option_str(h, "CLICON_RESTCONF_USER")) == NULL)
+	goto ok;
+
     /* Get (wanted) new www user id */
     if (name2uid(user, &newuid) < 0){
 	clicon_err(OE_DAEMON, errno, "'%s' is not a valid user .\n", user);
 	goto done;
     }
-    /* get current backend userid, if already at this level OK */
+    /* get current userid, if already at this level OK */
     if ((uid = getuid()) == newuid)
 	goto ok;
     if (uid != 0){
@@ -539,12 +546,22 @@ restconf_drop_privileges(clicon_handle h,
 	clicon_err(OE_DAEMON, errno, "setgid %d", gid);
 	goto done;
     }
-    if (drop_priv_perm(newuid) < 0)
-	goto done;
-    /* Verify you cannot regain root privileges */
-    if (setuid(0) != -1){
-	clicon_err(OE_DAEMON, EPERM, "Could regain root privilieges");
-	goto done;
+    switch (priv_mode){
+    case PM_DROP_PERM:
+	if (drop_priv_perm(newuid) < 0)
+	    goto done;
+	/* Verify you cannot regain root privileges */
+	if (setuid(0) != -1){
+	    clicon_err(OE_DAEMON, EPERM, "Could regain root privilieges");
+	    goto done;
+	}
+	break;
+    case PM_DROP_TEMP:
+	if (drop_priv_temp(newuid) < 0)
+	    goto done;
+	break;
+    case PM_NONE:
+	break; /* catched above */
     }
     clicon_debug(1, "%s dropped privileges from root to %s(%d)",
 		 __FUNCTION__, user, newuid);

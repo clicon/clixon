@@ -46,8 +46,6 @@ set -ux # e but clixon_backend may fail if test is run in parallell
 
 DBG=${DBG:-0}
 
-WWWUSER=${WWWUSER:-www-data}
-
 # Initiate clixon configuration (env variable)
 echo "$CONFIG" > /usr/local/etc/clixon.xml
 
@@ -96,7 +94,6 @@ EOF
 # sudo: setrlimit(RLIMIT_CORE): Operation not permitted
 echo "Set disable_coredump false" > /etc/sudo.conf
 
-
 chmod 775 /usr/local/bin/test/site.sh 
 
 if [ ! -d /run/nginx ]; then
@@ -109,7 +106,7 @@ fi
 >&2 echo "nginx started"
 
 # Start clixon_restconf (tests will kill this)
-su -c "/www-data/clixon_restconf -l f/www-data/restconf.log -D $DBG" -s /bin/sh $WWWUSER &
+/usr/local/sbin/clixon_restconf -l f/var/log/restconf.log -D $DBG &
 >&2 echo "clixon_restconf started"
 
 # Set grp write XXX do this when creating

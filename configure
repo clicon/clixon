@@ -635,7 +635,6 @@ CXXFLAGS
 CXX
 CPP
 wwwdir
-wwwuser
 enable_optyangs
 with_libxml2
 with_restconf
@@ -719,7 +718,6 @@ with_cligen
 enable_optyangs
 enable_publish
 with_restconf
-with_wwwuser
 with_configfile
 with_libxml2
 with_yang_installdir
@@ -1376,7 +1374,6 @@ Optional Packages:
                           nginx (default)
   --with-restconf=native  Integrate restconf with embedded http server
   --without-restconf      Disable restconf altogether
-  --with-wwwuser=<user>   Set www user different from www-data
   --with-configfile=FILE  Set default path to config file
   --with-libxml2          Use gnome/libxml2 regex engine
   --with-yang-installdir=DIR
@@ -3355,9 +3352,6 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
  # Set to native or fcgi -> compile apps/restconf
 
 
-# Web user default (ie what RESTCONF daemon runs as).
-wwwuser=www-data
-
 # Home dir for web user
 wwwdir=/www-data
 
@@ -5298,35 +5292,12 @@ fi
 
 # Common actions for all restconf packages
 if test "x${with_restconf}" != "x"; then
-   # Web user default (ie what RESTCONF daemon runs as). Default: www-data
-   # Should this be a runtime option?
-
-# Check whether --with-wwwuser was given.
-if test "${with_wwwuser+set}" = set; then :
-  withval=$with_wwwuser;
-fi
-
-   if test "${with_wwwuser}"; then
-      wwwuser=${with_wwwuser}
-   fi
-   { $as_echo "$as_me:${as_lineno-$LINENO}: result: www user is $wwwuser" >&5
-$as_echo "www user is $wwwuser" >&6; }
-
-cat >>confdefs.h <<_ACEOF
-#define WWWUSER "$wwwuser"
-_ACEOF
-
 
 cat >>confdefs.h <<_ACEOF
 #define WWWDIR "$wwwdir"
 _ACEOF
 
 else
-
-cat >>confdefs.h <<_ACEOF
-#define WWWUSER ""
-_ACEOF
-
 
 cat >>confdefs.h <<_ACEOF
 #define WWWDIR ""

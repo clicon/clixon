@@ -10,7 +10,7 @@ fi
 restconf=$1
 
 if [ $(uname) = "FreeBSD" ]; then
-    ./configure  --with-cligen=/usr/local --with-wwwuser=www --enable-optyangs --with-restconf=$restconf
+    ./configure  --with-cligen=/usr/local --enable-optyangs --with-restconf=$restconf
 else
    ./configure --enable-optyangs --with-restconf=$restconf
 fi

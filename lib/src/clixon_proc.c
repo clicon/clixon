@@ -277,11 +277,17 @@ clixon_proc_background(char       **argv,
 	clicon_err(OE_UNIX, EINVAL, "argv is NULL");
 	goto quit;
     }
+    if (clicon_debug_get()){
+	i = 0;
+	while (argv[i]){
+	    clicon_debug(1, "%s argv[%d]:%s", __FUNCTION__, i, argv[i]);
+	    i++;
+	}
+    }
     /* Before here call quit on error */
     sigprocmask(0, NULL, &oset);
     set_signal(SIGINT, clixon_proc_sigint, &oldhandler);
     /* Now call done on error */
-    
     if ((child = fork()) < 0) {
 	clicon_err(OE_UNIX, errno, "fork");
 	goto done;
@@ -327,7 +333,7 @@ clixon_proc_background(char       **argv,
 	}
 #endif /* HAVE_SETNS */
 	if (execvp(argv[0], argv) < 0) {
-	    clicon_err(OE_UNIX, errno, "execv");
+	    clicon_err(OE_UNIX, errno, "execv(%s)", argv[0]);
 	    exit(1);
 	}
 	/* Not reached */

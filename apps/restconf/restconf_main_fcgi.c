@@ -88,7 +88,7 @@
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:E:l:p:d:y:a:u:ro:"
+#define RESTCONF_OPTS "hD:f:E:l:p:d:y:a:u:rW:o:"
 
 /*! Convert FCGI parameters to clixon runtime data
  * @param[in]  h     Clixon handle
@@ -192,6 +192,7 @@ usage(clicon_handle h,
 
     	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
 	    "\t-r \t\t  Do not drop privileges if run as root\n"
+	    "\t-W <user>\tRun restconf daemon as this user, drop according to CLICON_RESTCONF_PRIVILEGES\n"
 	    "\t-o \"<option>=<value>\" Give configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0
 	    );
@@ -225,7 +226,6 @@ main(int    argc,
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
     int            dbg = 0;
-    int            drop_privileges = 1;
     int            ret;
     cxobj         *xrestconf1 = NULL; /* Local config file */
     cxobj         *xconfig2 = NULL;   
@@ -234,6 +234,7 @@ main(int    argc,
     cvec          *nsc = NULL;
     cxobj         *xerr = NULL;
     struct passwd *pw;
+    char          *wwwuser;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -272,6 +273,7 @@ main(int    argc,
 		goto done;
 	    break;
 	} /* switch getopt */
+    dbg=1;
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
@@ -324,7 +326,8 @@ main(int    argc,
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
 	case 'r':{ /* Do not drop privileges if run as root */
-	    drop_privileges = 0;
+	    if (clicon_option_add(h, "CLICON_RESTCONF_PRIVILEGES", "none") < 0)
+		goto done;
 	    break;
 	}
 	case 'o':{ /* Configuration option */
@@ -507,11 +510,12 @@ main(int    argc,
 	goto done;
     }
     _MYSOCK = sock;
-    /* Change group of fcgi sock fronting reverse proxy to WWWUSER, the effective group is clicon
-     * which is backend. */
+    /* Change group of fcgi sock fronting reverse proxy to CLICON_RESTCONF_USER, 
+     * the effective group is clicon which is backend. */
     gid_t wgid = -1;
-    if (group_name2gid(WWWUSER, &wgid) < 0){
-	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.", WWWUSER);
+    wwwuser = clicon_option_str(h, "CLICON_RESTCONF_USER");
+    if (group_name2gid(wwwuser, &wgid) < 0){
+	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.", wwwuser);
 	goto done;
     }
     if (chown(sockpath, -1, wgid) < 0){
@@ -525,11 +529,11 @@ main(int    argc,
 	clicon_err(OE_UNIX, errno, "chmod");
 	goto done;
     }
-    if (drop_privileges){
-	/* Drop privileges to WWWUSER if started as root */
-	if (restconf_drop_privileges(h, WWWUSER) < 0)
-	    goto done;
-    }
+    /* Drop privileges if started as root to CLICON_RESTCONF_USER
+     * and use drop mode: CLICON_RESTCONF_PRIVILEGES
+     */
+    if (restconf_drop_privileges(h) < 0)
+	goto done;
     if (FCGX_InitRequest(req, sock, 0) != 0){
 	clicon_err(OE_CFG, errno, "FCGX_InitRequest");
 	goto done;

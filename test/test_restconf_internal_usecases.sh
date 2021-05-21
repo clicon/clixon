@@ -34,6 +34,10 @@ RESTCONFDBG=$DBG
 RCPROTO=http # no ssl here
 INVALIDADDR=251.1.1.1 # used by fourth usecase as invalid
 
+# log-destination in restconf xml: syslog or file
+LOGDST=syslog
+LOGDST_CMD="s"
+
 if [ "${WITH_RESTCONF}" = "fcgi" ]; then
     EXTRACONF="<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
 else
@@ -114,10 +118,10 @@ EOF
 	err "No pid return value" "$retx"
     fi
     if $active; then
-	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>]]>]]>$"
+	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] -l ${LOGDST_CMD}</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>]]>]]>$"
     else
 	# inactive, no startime or pid
-	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status></rpc-reply>]]>]]>$"
+	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] -l ${LOGDST_CMD}</command><status $LIBNS>$status</status></rpc-reply>]]>]]>$"
     fi
     match=$(echo "$retx" | grep --null -Go "$expect")
     if [ -z "$match" ]; then
@@ -157,6 +161,8 @@ EOF
 new "1. get status"
 rpcstatus false stopped
 if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
+
+
 
 new "enable minimal restconf, no server"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG1</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -235,6 +241,7 @@ RESTCONFIG1=$(cat <<EOF
 <restconf xmlns="http://clicon.org/restconf">
    <enable>true</enable>
    <debug>$RESTCONFDBG</debug>
+   <log-destination>$LOGDST</log-destination>
    <auth-type>none</auth-type>
    <pretty>false</pretty>
    <socket><namespace>default</namespace><address>221.0.0.1</address><port>80</port><ssl>false</ssl></socket>
@@ -305,6 +312,7 @@ RESTCONFIG1=$(cat <<EOF
 <restconf xmlns="http://clicon.org/restconf">
    <enable>true</enable>
    <debug>$RESTCONFDBG</debug>
+   <log-destination>$LOGDST</log-destination>
    <auth-type>none</auth-type>
    <pretty>false</pretty>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
@@ -329,7 +337,7 @@ if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
 sleep $DEMSLEEP
 
 new "Get restconf config 1"
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf)" 0 "HTTP/1.1 200 OK" "<restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><auth-type>none</auth-type><debug>$RESTCONFDBG</debug><enable-core-dump>false</enable-core-dump><pretty>false</pretty><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf)" 0 "HTTP/1.1 200 OK" "<restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><auth-type>none</auth-type><debug>$RESTCONFDBG</debug><log-destination>$LOGDST</log-destination><enable-core-dump>false</enable-core-dump><pretty>false</pretty><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
 
 # remove it
 new "Delete server"
@@ -398,6 +406,7 @@ RESTCONFIG1=$(cat <<EOF
 <restconf xmlns="http://clicon.org/restconf">
    <enable>true</enable>
    <debug>$RESTCONFDBG</debug>
+   <log-destination>$LOGDST</log-destination>
    <auth-type>none</auth-type>
    <pretty>false</pretty>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
@@ -423,7 +432,7 @@ if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
 sleep $DEMSLEEP
 
 new "Get restconf config"
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf)" 0 "HTTP/1.1 200 OK" "<restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><auth-type>none</auth-type><debug>$RESTCONFDBG</debug><enable-core-dump>false</enable-core-dump><pretty>false</pretty><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket><socket><namespace>default</namespace><address>$INVALIDADDR</address><port>8080</port><ssl>false</ssl></socket></restconf>"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf)" 0 "HTTP/1.1 200 OK" "<restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><auth-type>none</auth-type><debug>$RESTCONFDBG</debug><log-destination>$LOGDST</log-destination><enable-core-dump>false</enable-core-dump><pretty>false</pretty><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket><socket><namespace>default</namespace><address>$INVALIDADDR</address><port>8080</port><ssl>false</ssl></socket></restconf>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -445,6 +454,8 @@ new "endtest"
 endtest
 
 # Set by restconf_config
+unset LOGDST
+unset LOGDST_CMD
 unset RESTCONFIG1
 unset RESTCONFIG2
 unset RESTCONFDBG

@@ -50,12 +50,6 @@ CXX=@CXX@
 # C compiler
 CC=@CC@
 
-# Web user default (ie what RESTCONF daemon runs as). Default: www-data
-wwwuser=@wwwuser@
-
-# Home dir for web user, by default /www-data
-WWWDIR=@wwwdir@
-
 # Top src dir
 TOP_SRCDIR=@top_srcdir@
 
@@ -68,8 +62,8 @@ DATASTORE_TOP="config"
 
 # clixon yang revisions occuring in tests
 CLIXON_LIB_REV="2021-03-08"
-CLIXON_CONFIG_REV="2021-03-08"
-CLIXON_RESTCONF_REV="2021-03-15"
+CLIXON_CONFIG_REV="2021-05-20"
+CLIXON_RESTCONF_REV="2021-05-20"
 CLIXON_EXAMPLE_REV="2020-12-01"
 
 # Length of TSL RSA key
@@ -80,3 +74,4 @@ CERTKEYLEN=2048
 # Linking: static or dynamic
 LINKAGE=@LINKAGE@
 SH_SUFFIX=@SH_SUFFIX@
+

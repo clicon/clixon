@@ -81,7 +81,7 @@ int   restconf_terminate(clicon_handle h);
 int   restconf_insert_attributes(cxobj *xdata, cvec *qvec);
 int   restconf_main_extension_cb(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 char *restconf_uripath(clicon_handle h);
-int   restconf_drop_privileges(clicon_handle h, char *user);
+int   restconf_drop_privileges(clicon_handle h);
 int   restconf_authentication_cb(clicon_handle h, void *req, int pretty, restconf_media media_out);
 int   restconf_config_init(clicon_handle h, cxobj *xrestconf);
 int   restconf_socket_init(const char *netns0, const char *addrstr, const char *addrtype, uint16_t port, int backlog, int flags, int *ss);

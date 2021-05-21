@@ -287,9 +287,9 @@ check_drop_priv(clicon_handle h,
     enum priv_mode_t priv_mode = PM_NONE;
     char            *backend_user = NULL;
 
+
     /* Get privileges mode (for dropping privileges) */
-    priv_mode = clicon_backend_privileges_mode(h);
-    if (priv_mode == PM_NONE)
+    if ((priv_mode = clicon_backend_privileges_mode(h)) == PM_NONE)
 	goto ok;
 
     /* From here, drop privileges */
@@ -575,9 +575,6 @@ main(int    argc,
 	    usage(h, argv[0]);
 	goto done;
     }
-    /* Add some specific options from autotools configure NOT config file */
-    clicon_option_str_set(h, "CLICON_WWWUSER", WWWUSER);
-    clicon_option_str_set(h, "CLICON_WWWDIR", WWWDIR);
     
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)

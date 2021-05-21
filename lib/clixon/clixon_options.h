@@ -219,6 +219,7 @@ int   clicon_sock_port(clicon_handle h);
 int   clicon_autocommit(clicon_handle h);
 int   clicon_startup_mode(clicon_handle h);
 enum priv_mode_t clicon_backend_privileges_mode(clicon_handle h);
+enum priv_mode_t clicon_restconf_privileges_mode(clicon_handle h);
 enum nacm_credentials_t clicon_nacm_credentials(clicon_handle h);
 
 enum datastore_cache clicon_datastore_cache(clicon_handle h);

@@ -47,6 +47,19 @@ Expected: June 2021
 
 Users may have to change how they access the system
 
+* Changed config and install options for Restconf
+  * clixon_restconf daemon is installed in /usr/local/sbin (as clixon_backend), instead of /www-data
+    * `configure --with-wwwdir=<dir>` remains but only applies to fcgi socket and log
+    * New option `CLICON_RESTCONF_INSTALL_DIR` is set to where clixon_restconf is installed, with default `/usr/local/sbin/` 
+  * Restconf drop privileges user is defined by `CLICON_RESTCONF_USER`
+    * `configure --with-wwwuser=<user>` is removed
+  * clixon_restconf drop of privileges is defined by `CLICON_RESTCONF_PRIVILEGES` option
+* New clixon-config@2020-05-20.yang revision
+  * Added: `CLICON_RESTCONF_USER`
+  * Added: `CLICON_RESTCONF_PRIVILEGES`
+  * Added: `CLICON_RESTCONF_INSTALL_DIR`
+* New clixon-restconf@2020-05-20.yang revision
+  * Added: restconf `log-destination` 
 * RESTCONF error replies have changed
   * Added Restconf-style xml/json message bodies everywhere
     * Clixon removed the message body from many errors in the 4.6 version since they used html encoding. 

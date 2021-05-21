@@ -168,7 +168,7 @@
 #include "restconf_native.h"   /* Restconf-openssl mode specific headers*/
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:E:l:p:y:a:u:ro:"
+#define RESTCONF_OPTS "hD:f:E:l:p:y:a:u:rW:o:"
 
 /* If set, open outwards socket non-blocking, as opposed to blocking
  * Should work both ways, but in the ninblocking case,
@@ -1093,7 +1093,7 @@ restconf_connection(int   s,
 	if (conn->bev != NULL){
 	    struct evbuffer *ev;
 	    size_t           buflen0;
-	    size_t           buflen;
+	    size_t           buflen1;
 	    char            *buf = NULL;
 
 	    if ((rc = conn->arg) == NULL){
@@ -1102,31 +1102,34 @@ restconf_connection(int   s,
 	    }
 	    if ((ev = bufferevent_get_output(conn->bev)) != NULL){
 		buflen0 = evbuffer_get_length(ev);
-		buflen = buflen0 - rc->rc_bufferevent_output_offset;
-		if (buflen == 0)
-		    readmore = 1;
-		else if (buflen > 0){
+		buflen1 = buflen0 - rc->rc_bufferevent_output_offset;
+		if (buflen1 > 0){
 		    buf = (char*)evbuffer_pullup(ev, -1);
 		    /* If evhtp has print an output buffer, clixon whould not have done it 
 		     * Shouldnt happen		     
 		     */
-		    clicon_debug(1, "%s Warning: evhtp printed output buffer, but clixon output buffer is non-empty %s",
-				 __FUNCTION__, cbuf_get(rc->rc_outp_buf));
-		    cbuf_reset(rc->rc_outp_buf);
-		    if (cbuf_append_buf(rc->rc_outp_buf, buf, buflen) < 0){
+		    if (cbuf_len(rc->rc_outp_buf)){
+			clicon_debug(1, "%s Warning: evhtp printed output buffer, but clixon output buffer is non-empty %s",
+				     __FUNCTION__, cbuf_get(rc->rc_outp_buf));
+			cbuf_reset(rc->rc_outp_buf);
+		    }
+		    if (cbuf_append_buf(rc->rc_outp_buf, buf, buflen1) < 0){
 			clicon_err(OE_UNIX, errno, "cbuf_append_buf");
 			goto done;
 		    }
 		    /* XXX Cant get drain to work, need to keep an offset */
 		    evbuffer_drain(ev, -1);
-		    rc->rc_bufferevent_output_offset += buflen;
+		    rc->rc_bufferevent_output_offset += buflen1;
 		}
 	    }
-	    if (cbuf_len(rc->rc_outp_buf) &&
-		buf_write(cbuf_get(rc->rc_outp_buf), cbuf_len(rc->rc_outp_buf), conn->sock, conn->ssl) < 0)
+	    if (cbuf_len(rc->rc_outp_buf) == 0)
+		readmore = 1;
+	    else {
+		if (buf_write(cbuf_get(rc->rc_outp_buf), cbuf_len(rc->rc_outp_buf), conn->sock, conn->ssl) < 0)
 		    goto done;
-	    cvec_reset(rc->rc_outp_hdrs); /* Can be done in native_send_reply */
-	    cbuf_reset(rc->rc_outp_buf);
+		cvec_reset(rc->rc_outp_hdrs); /* Can be done in native_send_reply */
+		cbuf_reset(rc->rc_outp_buf);
+	    }
 	}
 	else{
 	    if (send_badrequest(h, s, conn->ssl, "application/yang-data+xml",
@@ -1896,6 +1899,7 @@ usage(clicon_handle h,
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
 	    "\t-r \t\t  Do not drop privileges if run as root\n"
+	    "\t-W <user>\tRun restconf daemon as this user, drop according to CLICON_RESTCONF_PRIVILEGES\n"
 	    "\t-o <option>=<value> Set configuration option overriding config file (see clixon-config.yang)\n"
 	    ,
 	    argv0
@@ -1913,7 +1917,6 @@ main(int    argc,
     clicon_handle   h;
     int             dbg = 0;
     int             logdst = CLICON_LOG_SYSLOG;
-    int             drop_privileges = 1;
     restconf_native_handle *rh = NULL;
     int             ret;
     cxobj          *xrestconf = NULL;
@@ -2012,10 +2015,14 @@ main(int    argc,
 		usage(h, argv0);
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
-	case 'r':{ /* Do not drop privileges if run as root */
-	    drop_privileges = 0;
+	case 'r':  /* Do not drop privileges if run as root */
+	    if (clicon_option_add(h, "CLICON_RESTCONF_PRIVILEGES", "none") < 0)
+		goto done;
 	    break;
-	}
+	case 'W':  /* Run restconf daemon as this user (afetr drop) */
+	    if (clicon_option_add(h, "CLICON_RESTCONF_USER", optarg) < 0)
+		goto done;
+	    break;
 	case 'o':{ /* Configuration option */
 	    char          *val;
 	    if ((val = index(optarg, '=')) == NULL)
@@ -2068,12 +2075,12 @@ main(int    argc,
     /* Openssl inits */ 
     if (restconf_openssl_init(h, dbg, xrestconf) < 0)
 	goto done;
-    /* Drop privileges after clixon and openssl init */
-    if (drop_privileges){
-	/* Drop privileges to WWWUSER if started as root */
-	if (restconf_drop_privileges(h, WWWUSER) < 0)
-	    goto done;
-    }
+    /* Drop privileges if started as root to CLICON_RESTCONF_USER
+     * and use drop mode: CLICON_RESTCONF_PRIVILEGES
+     */
+    if (restconf_drop_privileges(h) < 0)
+	goto done;
+
     /* Main event loop */ 
     if (clixon_event_loop(h) < 0)
 	goto done;

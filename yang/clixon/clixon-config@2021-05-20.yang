@@ -43,6 +43,22 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2021-05-20 {
+	description
+	    "Added option:
+	            CLICON_RESTCONF_USER
+	            CLICON_RESTCONF_PRIVILEGES
+	            CLICON_RESTCONF_INSTALL_DIR
+             Released in Clixon 5.2";
+    }
+    revision 2021-03-08 {
+	description
+	    "Added option:
+                   CLICON_NETCONF_HELLO_OPTIONAL
+		   CLICON_CLI_AUTOCLI_EXCLUDE
+	           CLICON_XMLDB_UPGRADE_CHECKOLD
+	     Released in Clixon 5.1";
+    }
     revision 2020-12-30 {
 	description
 	    "Added option:
@@ -197,7 +213,7 @@ module clixon-config {
     }
     typedef cli_genmodel_type{
 	description
-	    "How to generate CLI from YANG model, 
+	    "How to generate auto CLI from YANG model, 
              eg {container c {list a{ key x; leaf x; leaf y;}}";
 	type enumeration{
 	    enum NONE{
@@ -430,6 +446,20 @@ module clixon-config {
 	    type string;
 	    description "Location of netconf (frontend) .so plugins";
 	}
+	leaf CLICON_NETCONF_HELLO_OPTIONAL {
+	    type boolean;
+	    default false;
+	    description
+		"This option relates to RFC 6241 Sec 8.1 Capabilies Exchange where it says:
+                   When the NETCONF session is opened, each peer (both client and server) MUST 
+                   send a <hello> element...
+                 If true, an RPC can be processed directly with no preceeding hello message.
+                 This is legacy clixon but invalid according to the RFC.
+                 If false, NETCONF hello messages are mandatory before any RPC can be processed.
+                 That is, if clixon receives an rpc with no previous hello message, an error
+                 is returned, which conforms to the RFC.
+                 Note this applies only to external NETCONF, not the internal (IPC) netconf";
+	}
 	leaf CLICON_RESTCONF_DIR {
 	    type string;
 	    description
@@ -445,9 +475,19 @@ module clixon-config {
 	    description
 		"FastCGI unix socket. Should be specified in webserver
          	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
-                 Only if with-restconf=fcgi, NOT evhtp
+                 Only if with-restconf=fcgi, NOT native
                  Note: Obsolete, use fcgi-socket in clixon-restconf.yang instead";
 	    status obsolete;
+	}
+	leaf CLICON_RESTCONF_INSTALL_DIR {
+	    type string;
+	    default "/usr/local/sbin";
+	    description
+		"Path to clixon-restconf daemon binary as used by backend if started internally
+                 Discussion: Somewhat problematic to have it as run time option. It may think it
+                 should be known at configure or install time, but for example the main docker
+                 installation moves the binaries, and this may be true elsewehere too.
+                 Maybe one could locate it via PATHs search";
 	}
 
 	leaf CLICON_RESTCONF_PRETTY {
@@ -464,6 +504,22 @@ module clixon-config {
                  which may be desirable for performance or tests
                  Note: Obsolete, use pretty in clixon-restconf.yang instead";
 	    status obsolete;
+	}
+	leaf CLICON_RESTCONF_USER {
+	    type string;
+	    description 
+		"User name for restconf. 
+                 In pre-5.2 code this was configured as compile-time constant WWWUSER with
+                 default value www-data
+                 See also CLICON_PRIVILEGES setting";
+	    default www-data;
+	}
+	leaf CLICON_RESTCONF_PRIVILEGES {
+	    type priv_mode;
+	    default drop_perm;
+	    description 
+		"Restconf privileges mode. 
+                 If drop_perm or drop_temp then drop privileges to CLICON_RESTCONF_USER.";
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;
@@ -506,7 +562,7 @@ module clixon-config {
 	    type string;
 	    default "datamodel";
 	    description
-		"If CLICON_CLI_GENMOEL is set, CLI specs can reference the
+		"If CLICON_CLI_GENMODEL is set, CLI specs can reference the
                  model syntax using a model tree set by this option.
                  Three trees are generated with this name as a base, (assuming base is datamodel):
                  - @datamodel - a clispec for navigating in editing a configuration (set/merge/delete)
@@ -526,7 +582,16 @@ module clixon-config {
 	leaf CLICON_CLI_GENMODEL_TYPE {
 	    type cli_genmodel_type;
 	    default "VARS";
-	    description "How to generate and show CLI syntax: VARS|ALL";
+	    description "How to generate and show auto CLI syntax: VARS|ALL|HIDE";
+	}
+	leaf CLICON_CLI_AUTOCLI_EXCLUDE {
+	    type string;
+	    description
+		"List of module names that should not be generated autocli from
+                 Example: 
+                    <CLICON_CLI_AUTOCLI_EXCLUDE>clixon-restconf</CLICON_CLI_AUTOCLI_EXCLUDE> 
+                 means generate autocli for all models except clixon-restconf.yang
+                 The value can be a list of space separated module names";
 	}
 	leaf CLICON_CLI_VARONLY {
 	    type int32;
@@ -676,7 +741,7 @@ module clixon-config {
                  user (eg datastores).
                  It also sets the backend unix socket owner to this user, but its group
                  is set by CLICON_SOCK_GROUP.
-                 See also CLICON_PRIVILEGES setting";
+                 See also CLICON_BACKEND_PRIVILEGES setting";
 	}
 	leaf CLICON_BACKEND_PRIVILEGES {
 	    type priv_mode;
@@ -697,6 +762,8 @@ module clixon-config {
 	    description
 		"If set, enable process-control of restconf daemon, ie start/stop restconf 
                  daemon internally from backend daemon.
+                 Also, if set, restconf daemon queries backend for its config
+                 if not set, restconf daemon reads its config from main config file
                  It uses clixon-restconf.yang for config and clixon-lib.yang for RPC
                  Process control of restconf daemon is as follows:
                  - on RPC start, if enable is true, start the service, if false, error or ignore it
@@ -747,6 +814,16 @@ module clixon-config {
                  info. When loaded at startup, a check is made if the system
                  yang modules match.
                  See also CLICON_MODULE_LIBRARY_RFC7895";
+	}
+	leaf CLICON_XMLDB_UPGRADE_CHECKOLD {
+	    type boolean;
+	    default true;
+	    description
+		"Controls behavior of check of startup in upgrade scenarios.
+                 If set, yang bind and check datastore syntax against the old Yang. 
+                 The old yang must be accessible via YANG_DIR.
+                 Will fail startup if old yang not found or if old config does not match.
+                 If not set, no yang check of old config is made until it is upgraded to new yang.";
 	}
 	leaf CLICON_XML_CHANGELOG {
 	    type boolean;
