@@ -117,6 +117,7 @@ EOF
     if [ -z "$pid" ]; then
 	err "No pid return value" "$retx"
     fi
+echo "retx:$retx"
     if $active; then
 	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] -l ${LOGDST_CMD}</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>]]>]]>$"
     else
@@ -162,18 +163,22 @@ new "1. get status"
 rpcstatus false stopped
 if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
 
-
-
 new "enable minimal restconf, no server"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG1</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "commit minimal server"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
+echo "pid:$pid"
+ps aux|grep clixon_
+
 new "2. get status, get pid1"
 rpcstatus true running
 pid1=$pid
 if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
+
+echo "pid1:$pid1"
+ps aux|grep clixon_
 
 new "Check $pid1 exists"
 while sudo kill -0 $pid1 2> /dev/null; do
@@ -181,6 +186,9 @@ while sudo kill -0 $pid1 2> /dev/null; do
     sudo kill $pid1
     sleep $DEMSLEEP
 done
+
+echo "pid1:$pid1"
+ps aux|grep clixon_
 
 new "3. get status: Check killed"
 rpcstatus false stopped
