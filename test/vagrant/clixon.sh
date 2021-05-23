@@ -26,6 +26,13 @@ if [ ! $(id -u clicon) ]; then
    fi
 fi
 
+# Fcgi restconf requires /www-data directory for fcgi socket
+if [ ${with_restconf} = fcgi ]; then
+    sudo mkdir /www-data
+    sudo chown $wwwuser /www-data 
+    sudo chgrp $wwwuser /www-data
+fi
+
 # cligen
 test -d src || mkdir src
 test -d src/cligen || (cd src;git clone https://github.com/clicon/cligen.git)

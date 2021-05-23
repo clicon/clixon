@@ -20,6 +20,7 @@
 #   1. Start two servers, where one fails
 #   2. Reach one not the other
 #   (Wanted to bind an invalid port, but then such a port must be bound and later killed)
+# Note there are debug printfs marked as XXX for a race condition in travis
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -117,7 +118,7 @@ EOF
     if [ -z "$pid" ]; then
 	err "No pid return value" "$retx"
     fi
-echo "retx:$retx"
+echo "retx:$retx" # XXX
     if $active; then
 	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] -l ${LOGDST_CMD}</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>]]>]]>$"
     else
@@ -169,16 +170,16 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-confi
 new "commit minimal server"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-echo "pid:$pid"
-ps aux|grep clixon_
+echo "pid:$pid"     # XXX
+ps aux|grep clixon_ # XXX
 
 new "2. get status, get pid1"
 rpcstatus true running
 pid1=$pid
 if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
 
-echo "pid1:$pid1"
-ps aux|grep clixon_
+echo "pid1:$pid1"   # XXX
+ps aux|grep clixon_ # XXX
 
 new "Check $pid1 exists"
 while sudo kill -0 $pid1 2> /dev/null; do
@@ -187,8 +188,8 @@ while sudo kill -0 $pid1 2> /dev/null; do
     sleep $DEMSLEEP
 done
 
-echo "pid1:$pid1"
-ps aux|grep clixon_
+echo "pid1:$pid1"   # XXX
+ps aux|grep clixon_ # XXX
 
 new "3. get status: Check killed"
 rpcstatus false stopped

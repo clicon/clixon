@@ -29,3 +29,11 @@ The current vagrant boxes are verified continuously:
 
 For other vagrant boxes, see [search vagrant boxes](https://vagrantcloud.com/search)
 
+Inaccessible
+------------
+Sometimes Vagrant says: ”Your VM has become inaccessible”
+
+```
+VBoxManage list vms
+VBoxManage unregistervm xxx
+```

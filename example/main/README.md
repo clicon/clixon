@@ -56,11 +56,11 @@ Send netconf command:
 ```
 Start clixon restconf daemon
 ```
-    sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+    sudo /usr/local/bin/clixon_restconf -f /usr/local/etc/example.xml
 ```
 Send restconf command
 ```
-    curl -G http://127.0.0.1/restconf/data
+    curl -X GET http://127.0.0.1/restconf/data
 ```
 
 ## Using the CLI
@@ -148,7 +148,7 @@ Start nginx daemon
 ```
 Start the clixon restconf daemon
 ```
-   sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+   sudo /usr/local/sbin/clixon_restconf -f /usr/local/etc/example.xml
 ```
 then access using curl or wget:
 ```
@@ -206,7 +206,7 @@ clixon_netconf -qf /usr/local/etc/example.xml
 ```
 Restconf (assuming nginx started):
 ```
-sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data&
+sudo /usr/local/sbin/clixon_restconf -f /usr/local/etc/example.xml
 curl -X POST  http://localhost/restconf/operations/clixon-example:example -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":"ipv4"}}'
 {
   "clixon-example:output": {
