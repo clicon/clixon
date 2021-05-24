@@ -743,10 +743,15 @@ static int ys_cv_validate_union(clicon_handle h,yang_stmt *ys, char **reason,
 				yang_stmt *yrestype, char *type, char *val, yang_stmt **ysubp);
 
 /*!
- * @param[out] reason  If given and return val is 0, contains a malloced string
- * @retval -1  Error (fatal), with errno set to indicate error
- * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
- * @retval 1   Validation OK
+ * @param[in]  h      Clixon handle
+ * @param[in]  ys     Yang statement (union)
+ * @param[out] reason If given, and return value is 0, contains malloced string
+ * param[in]   yt     One of the types in the union
+ * param[in]   type   Original type
+ * @param[in]  val    Value to match
+ * @retval     -1     Error (fatal), with errno set to indicate error
+ * @retval     0      Validation not OK, malloced reason is returned. Free reason with free()
+ * @retval     1      Validation OK
  */
 static int
 ys_cv_validate_union_one(clicon_handle h,
@@ -792,6 +797,8 @@ ys_cv_validate_union_one(clicon_handle h,
 	    clicon_err(OE_UNIX, errno, "cv_new");
 	    goto done;
 	}
+	if (cvtype == CGV_DEC64)
+	    cv_dec64_n_set(cvt, fraction);
 	if (val == NULL){ /* Fail validation on NULL */
 	    retval = 0;
 	    goto done;
@@ -828,21 +835,23 @@ ys_cv_validate_union_one(clicon_handle h,
 }
 
 /*! Validate union
- * @param[in]  h       Clixon handle
- * @param[in]  ys      Yang statement (union)
- * @param[out] reason  If given, and return value is 0, contains malloced string
- * @param[in]  val     Value to match
- * @param[out] ysubp   Sub-type of ys that matches val
- * @retval -1  Error (fatal), with errno set to indicate error
- * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
- * @retval 1   Validation OK
+ * @param[in]  h        Clixon handle
+ * @param[in]  ys       Yang statement (union)
+ * @param[out] reason   If given, and return value is 0, contains malloced string
+ * param[in]   yrestype Resolved Yang type 
+ * param[in]   type     Original type
+ * @param[in]  val      Value to match
+ * @param[out] ysubp    Sub-type of ys that matches val
+ * @retval     -1       Error (fatal), with errno set to indicate error
+ * @retval     0        Validation not OK, malloced reason is returned. Free reason with free()
+ * @retval     1        Validation OK
  */
 static int
 ys_cv_validate_union(clicon_handle h,
 		     yang_stmt    *ys,
 		     char        **reason,
 		     yang_stmt    *yrestype,
-		     char         *type,  /* orig type */
+		     char         *type,  
 		     char         *val,
 		     yang_stmt   **ysubp)
 {
