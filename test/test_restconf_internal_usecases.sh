@@ -195,13 +195,14 @@ ps aux|grep clixon_ # XXX
 new "Check $pid1 exists"
 # Here backend dies / is killed
 #while sudo kill -0 $pid1 2> /dev/null; do
-while sudo kill -0 $pid1; do # XXX
+if sudo kill -0 $pid1; then # XXX
     new "kill $pid1 externally"
     sudo kill $pid1
     sleep 1 # There is a race condition here when restconf is killed while waiting for reply from backend
     echo "pid1:$pid1"   # XXX
     ps aux|grep clixon_ # XXX
-done
+fi
+#done
 
 echo "pid1:$pid1"   # XXX
 ps aux|grep clixon_ # XXX
