@@ -57,6 +57,8 @@ sysconfdir	= @sysconfdir@
 includedir	= @includedir@
 HOST_VENDOR     = @host_vendor@
 
+wwwdir          = @wwwdir@
+
 # one of fcgi or native:
 with_restconf	= @with_restconf@
 
@@ -151,6 +153,9 @@ distclean: clean
 install:	install-lib $(APPL)
 	install -d -m 0755 $(DESTDIR)$(sbindir)
 	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(sbindir)
+ifeq ($(with_restconf),fcgi)
+	install -d -m 0755 $(DESTDIR)$(wwwdir)
+endif
 
 install-lib: $(MYLIB)
 	install -d -m 0755 $(DESTDIR)$(libdir)

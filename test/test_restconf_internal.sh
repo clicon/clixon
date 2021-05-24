@@ -23,6 +23,8 @@ startupdb=$dir/startup_db
 RESTCONFDBG=$DBG
 RCPROTO=http # no ssl here
 
+RESTCONFDIR=$(dirname $(which clixon_restconf))
+
 # log-destination in restconf xml: syslog or file
 : ${LOGDST:=syslog}
 # Set daemon command-line to -f
@@ -52,6 +54,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
+  <CLICON_RESTCONF_INSTALL_DIR>$RESTCONFDIR</CLICON_RESTCONF_INSTALL_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
@@ -272,8 +275,11 @@ if [ $pid0 -eq $pid3 ]; then
     err1 "A different pid" "same pid: $pid3"
 fi
 
-new "kill restconf"
+new "kill restconf using kill"
 stop_restconf_pre
+
+new "Wait for restconf to stop"
+wait_restconf_stopped
 
 new "8. start restconf RPC"
 rpcoperation start

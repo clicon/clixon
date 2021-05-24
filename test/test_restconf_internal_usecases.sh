@@ -33,11 +33,21 @@ startupdb=$dir/startup_db
 # Restconf debug
 RESTCONFDBG=$DBG
 RCPROTO=http # no ssl here
+
+RESTCONFDIR=$(dirname $(which clixon_restconf))
+
 INVALIDADDR=251.1.1.1 # used by fourth usecase as invalid
 
 # log-destination in restconf xml: syslog or file
-LOGDST=syslog
-LOGDST_CMD="s"
+: ${LOGDST:=syslog}
+# Set daemon command-line to -f
+if [ "$LOGDST" = syslog ]; then
+    LOGDST_CMD="s"      
+elif [ "$LOGDST" = file ]; then
+    LOGDST_CMD="f/var/log/clixon_restconf.log" 
+else
+    err1 "No such logdst: $LOGDST"
+fi
 
 if [ "${WITH_RESTCONF}" = "fcgi" ]; then
     EXTRACONF="<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
@@ -58,6 +68,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
+  <CLICON_RESTCONF_INSTALL_DIR>$RESTCONFDIR</CLICON_RESTCONF_INSTALL_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
@@ -182,10 +193,14 @@ echo "pid1:$pid1"   # XXX
 ps aux|grep clixon_ # XXX
 
 new "Check $pid1 exists"
-while sudo kill -0 $pid1 2> /dev/null; do
+# Here backend dies / is killed
+#while sudo kill -0 $pid1 2> /dev/null; do
+while sudo kill -0 $pid1; do # XXX
     new "kill $pid1 externally"
     sudo kill $pid1
-    sleep $DEMSLEEP
+    sleep 1 # There is a race condition here when restconf is killed while waiting for reply from backend
+    echo "pid1:$pid1"   # XXX
+    ps aux|grep clixon_ # XXX
 done
 
 echo "pid1:$pid1"   # XXX

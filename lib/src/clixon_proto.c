@@ -402,7 +402,7 @@ clicon_msg_rcv(int                s,
 	goto done;
     }
     memcpy(*msg, &hdr, hlen);
-    if ((len2 = atomicio(read, s, (*msg)->op_body, mlen - sizeof(hdr))) == 0){ 
+    if ((len2 = atomicio(read, s, (*msg)->op_body, mlen - sizeof(hdr))) < 0){ 
  	clicon_err(OE_CFG, errno, "read");
 	goto done;
     }

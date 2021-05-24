@@ -35,6 +35,13 @@ linuxrelease()
 	    break
 	fi
     done
+    # Special cases
+    if [ "$release" = "unknown" ]; then
+	if [ -n "$(echo "$box" | grep -io "bionic")" ]; then
+	    release=ubuntu
+	    break;
+	fi
+    fi
     echo "$release"
 }
 
@@ -52,6 +59,11 @@ wwwuser=www-data
 # XXX ad.hoc to get release (lsb-release is too heavyweight)
 release=$(linuxrelease $box)
 echo "release:$release"
+
+if [ "$release" = unknown ]; then
+    echo "$box not recognized"
+    exit 255
+fi
 
 test -d $dir || mkdir -p $dir
 

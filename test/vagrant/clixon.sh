@@ -28,7 +28,9 @@ fi
 
 # Fcgi restconf requires /www-data directory for fcgi socket
 if [ ${with_restconf} = fcgi ]; then
-    sudo mkdir /www-data
+    if [ ! -d /www-data ]; then
+	sudo mkdir /www-data
+    fi
     sudo chown $wwwuser /www-data 
     sudo chgrp $wwwuser /www-data
 fi
