@@ -4,7 +4,6 @@
 # 1. set/get/validate matching and non-matching when statement
 # 2 RFC 7950 7.21.5: If a key leaf is defined in a grouping that is used in a list, the
 #  "uses" statement MUST NOT have a "when" statement.
-# XXX:Originally for cli tests but not specific to cli (clean when done?)
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -69,7 +68,7 @@ commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
 EOF
 
-
+# Start backend, add entry with matching name / non-matrching and check get/validation
 function testrun()
 {
     new "test params: -f $cfg"
@@ -81,8 +80,6 @@ function testrun()
 	fi
 	new "start backend -s init -f $cfg"
 	start_backend -s init -f $cfg
-
-
     fi
     new "wait backend"
     wait_backend
@@ -129,14 +126,16 @@ function testrun()
     new "netconf validate default set"
     expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-    new "Kill backend"
-    # Check if premature kill
-    pid=$(pgrep -u root -f clixon_backend)
-    if [ -z "$pid" ]; then
-	err "backend already dead"
+    if [ $BE -ne 0 ]; then
+	new "Kill backend"
+	# Check if premature kill
+	pid=$(pgrep -u root -f clixon_backend)
+	if [ -z "$pid" ]; then
+	    err "backend already dead"
+	fi
+	# kill backend
+	stop_backend -f $cfg
     fi
-    # kill backend
-    stop_backend -f $cfg
 }
 
 cat <<EOF > $fyang
@@ -198,9 +197,6 @@ EOF
 new "2. augment/uses/when test edit,default (same but with augment)"
 testrun
 
-new "3. RFC 7950 7.21.5: If a key leaf is defined in a grouping that is used in a list"
-# the "uses" statement MUST NOT have a "when" statement.
-
 cat <<EOF > $fyang
 module example {
   namespace "urn:example:clixon";
@@ -221,14 +217,91 @@ module example {
   }
 }
 EOF
+new "3. RFC 7950 7.21.5: If a key leaf is defined in a grouping that is used in a list"
+# the "uses" statement MUST NOT have a "when" statement.
 
 if [ ${valgrindtest} -eq 0 ]; then # Error dont cleanup mem OK
     new "start backend -s init -f $cfg, expect yang when fail"
     expectpart "$(sudo $clixon_backend -F -D $DBG -s init -f $cfg 2>&1)" 255 "Yang error: Key leaf 'name' defined in grouping 'value-top' is used in a 'uses' statement, This is not allowed according to RFC 7950 Sec 7.21.5"
 fi
 
-# kill backend
-stop_backend -f $cfg
+cat <<EOF > $fyang
+module example {
+  namespace "urn:example:clixon";
+  prefix ex;
+
+  leaf allow {
+     type boolean;
+     default false;
+  }
+  grouping value-top {
+    leaf value{
+       type string;
+       default foo;
+    }
+  }
+  container table{
+    list parameter{
+      key name;
+      leaf name{
+        type string;
+      }
+      uses value-top {
+        when "../../ex:allow = 'true'";
+      }
+    }
+  }
+}
+EOF
+
+
+new "3. Check a top-level value as allowed value"
+
+new "test params: -f $cfg"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -z -f $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
+fi
+
+new "wait backend"
+wait_backend
+
+new "netconf set allow true"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><allow xmlns=\"urn:example:clixon\">true</allow></config><default-operation>merge</default-operation></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "netconf commit"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "netconf set value expect OK"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>kalle</name><value>42</value></parameter></table></config><default-operation>merge</default-operation></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "netconf discard-changes"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "netconf set allow false"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><allow xmlns=\"urn:example:clixon\">false</allow></config><default-operation>merge</default-operation></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "netconf commit"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "netconf set value expect fail"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>kalle</name><value>42</value></parameter></table></config><default-operation>merge</default-operation></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>value</bad-element></error-info><error-severity>error</error-severity><error-message>Node 'value' tagged with 'when' condition '../../ex:allow = 'true'' in module 'example' evaluates to false in edit-config operation (see RFC 7950 Sec 8.3.2)</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+fi
 
 rm -rf $dir
 

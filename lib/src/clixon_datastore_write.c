@@ -205,7 +205,7 @@ check_body_namespace(cxobj     *x0,
 
 /*! Check yang when condition between a new xml x1 and old x0
  *
- * check if there is a when condition. First try it on the new request (x1), then on the
+ * Check if there is a when condition. First try it on the new request (x1), then on the
  * existing (x0). 
  * @param[in]  x0p      Parent of x0
  * @param[in]  x1       XML tree which modifies base
@@ -226,9 +226,9 @@ check_when_condition(cxobj              *x0p,
     char      *xpath = NULL;
     cvec      *nsc = NULL;
     int        nr;
-    cxobj     *x1p;
     yang_stmt *y = NULL;
     cbuf      *cberr = NULL;
+    cxobj     *x1p;
 
     if ((y = y0) != NULL ||
 	(y = (yang_stmt*)xml_spec(x1)) != NULL){
@@ -272,7 +272,7 @@ check_when_condition(cxobj              *x0p,
  * @param[in]  h        Clicon handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
  * @param[in]  x0p      Parent of x0
- * @param[in]  x0t
+ * @param[in]  x0t      Top level of existing tree, eg needed for NACM rules
  * @param[in]  x1       XML tree which modifies base
  * @param[in]  x1t      Request root node (nacm needs this)
  * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL
@@ -662,7 +662,9 @@ text_modify(clicon_handle       h,
 		if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
 		    goto done;
 		xml_spec_set(x0, y0);
-
+#ifdef XML_PARENT_CANDIDATE
+		xml_parent_candidate_set(x0, x0p);
+#endif
 		changed++;
 		/* Get namespace from x1
 		 * Check if namespace exists in x0 parent
@@ -730,8 +732,8 @@ text_modify(clicon_handle       h,
 	    x1c = NULL;
 	    i = 0;
 	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
-		x1cname = xml_name(x1c);
 		x0c = x0vec[i++];
+		x1cname = xml_name(x1c);
 		yc = yang_find_datanode(y0, x1cname);
 		if ((ret = text_modify(h, x0c, x0, x0t, x1c, x1t,
 				       yc, op,
@@ -742,6 +744,9 @@ text_modify(clicon_handle       h,
 		    goto fail;
 	    }
 	    if (changed){
+#ifdef XML_PARENT_CANDIDATE
+		xml_parent_candidate_set(x0, NULL);
+#endif
 		if (xml_insert(x0p, x0, insert, keystr, nscx1) < 0)
 		    goto done;
 	    }
@@ -786,7 +791,7 @@ text_modify(clicon_handle       h,
 /*! Modify a top-level base tree x0 with modification tree x1
  * @param[in]  h        Clicon handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
- * @param[in]  x0t
+ * @param[in]  x0t      Top level of existing tree, eg needed for NACM rules
  * @param[in]  x1       XML tree which modifies base
  * @param[in]  x1t      Request root node (nacm needs this)
  * @param[in]  yspec    Top-level yang spec (if y is NULL)

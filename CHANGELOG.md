@@ -38,7 +38,7 @@ Expected: June 2021
   * Several cases were not implemented fully according to RFC 7950:
     * Do not extend default values if when statements evaluate to false
     * Do not allow edit-config of nodes if when statements evaluate to false (Sec 8.3.2)
-    *  If a key leaf is defined in a grouping that is used in a list, the "uses" statement MUST NOT have a "when" statement. (See 7.21.5)
+    * If a key leaf is defined in a grouping that is used in a list, the "uses" statement MUST NOT have a "when" statement. (See 7.21.5)
   * See [yang uses's substatement when has no effect #218](https://github.com/clicon/clixon/issues/218)
 * YANG deviation [deviation statement not yet support #211](https://github.com/clicon/clixon/issues/211)
   * See RFC7950 Sec 5.6.3
@@ -81,6 +81,7 @@ Users may have to change how they access the system
 	
 ### Corrected Bugs
 
+* Fixed: [when condition error under augment in restconf #227](https://github.com/clicon/clixon/issues/227)
 * Fixed: [Using YANG union with decimal64 and string leads to regexp match fail #226](https://github.com/clicon/clixon/issues/226)
 * Fixed: [xpath function count did not work properly #224](https://github.com/clicon/clixon/issues/224)
 * Fixed: RESTCONF Native: Failed binding of socket in network namespace caused process zombie

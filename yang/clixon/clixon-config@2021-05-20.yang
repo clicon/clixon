@@ -484,7 +484,7 @@ module clixon-config {
 	    type string;
 	    default "/usr/local/sbin";
 	    description
-		"Path to clixon-restconf daemon binary as used by backend if started internally
+		"Path to dir of clixon-restconf daemon binary as used by backend if started internally
                  Discussion: Somewhat problematic to have it as run time option. It may think it
                  should be known at configure or install time, but for example the main docker
                  installation moves the binaries, and this may be true elsewehere too.
@@ -520,7 +520,8 @@ module clixon-config {
 	leaf CLICON_RESTCONF_USER {
 	    type string;
 	    description 
-		"User name for restconf. 
+		"Run clixon_daemon as this user
+                 When drop privileges is used, the daemon will drop privileges to this user.
                  In pre-5.2 code this was configured as compile-time constant WWWUSER with
                  default value www-data
                  See also CLICON_PRIVILEGES setting";
