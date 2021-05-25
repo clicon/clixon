@@ -202,12 +202,12 @@ restconf_pseudo_process_control(clicon_handle h)
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    /* CLICON_RESTCONF_INSTALL_DIR is where we think clixon_restconf is installed
+    /* CLICON_RESTCONF_INSTALLDIR is where we think clixon_restconf is installed
      * Problem is where to define it? Now in config file, but maybe it should be in configure?
      * Tried Makefile but didnt work on Docker since it was moved around.
      * Use PATH?
      */
-    cprintf(cb, "%s/clixon_restconf", clicon_option_str(h, "CLICON_RESTCONF_INSTALL_DIR"));
+    cprintf(cb, "%s/clixon_restconf", clicon_option_str(h, "CLICON_RESTCONF_INSTALLDIR"));
     argv[i++] = cbuf_get(cb);
     argv[i++] = "-f";
     argv[i++] = clicon_option_str(h, "CLICON_CONFIGFILE");

@@ -522,8 +522,11 @@ api_data_write(clicon_handle h,
      * configuration datastore, after the "running" datastore has been altered
      * as a consequence of a RESTCONF edit operation.
      */
-    if ((IETF_DS_NONE == ds) && if_feature(yspec, "ietf-netconf", "startup"))
+    if ((IETF_DS_NONE == ds) &&
+	if_feature(yspec, "ietf-netconf", "startup") &&
+	!clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE")){
 	cprintf(cbx, " copystartup=\"true\"");
+    }
     cprintf(cbx, " autocommit=\"true\"");
     cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
@@ -760,8 +763,11 @@ api_data_delete(clicon_handle h,
      * configuration datastore, after the "running" datastore has been altered
      * as a consequence of a RESTCONF edit operation.
      */
-    if ((IETF_DS_NONE == ds) && if_feature(yspec, "ietf-netconf", "startup"))
+    if ((IETF_DS_NONE == ds) &&
+	if_feature(yspec, "ietf-netconf", "startup") &&
+	!clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE")){
 	cprintf(cbx, " copystartup=\"true\"");
+    }
     cprintf(cbx, " autocommit=\"true\"");
     cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");

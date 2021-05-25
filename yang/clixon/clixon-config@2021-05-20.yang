@@ -48,7 +48,8 @@ module clixon-config {
 	    "Added option:
 	            CLICON_RESTCONF_USER
 	            CLICON_RESTCONF_PRIVILEGES
-	            CLICON_RESTCONF_INSTALL_DIR
+	            CLICON_RESTCONF_INSTALLDIR
+	            CLICON_RESTCONF_STARTUP_DONTUPDATE
              Released in Clixon 5.2";
     }
     revision 2021-03-08 {
@@ -479,7 +480,7 @@ module clixon-config {
                  Note: Obsolete, use fcgi-socket in clixon-restconf.yang instead";
 	    status obsolete;
 	}
-	leaf CLICON_RESTCONF_INSTALL_DIR {
+	leaf CLICON_RESTCONF_INSTALLDIR {
 	    type string;
 	    default "/usr/local/sbin";
 	    description
@@ -489,7 +490,18 @@ module clixon-config {
                  installation moves the binaries, and this may be true elsewehere too.
                  Maybe one could locate it via PATHs search";
 	}
-
+	leaf CLICON_RESTCONF_STARTUP_DONTUPDATE {
+	    type boolean;
+	    default false;
+	    description
+		"According to RFC 8040 Sec 1.4:
+                    If the NETCONF server supports :startup, the RESTCONF server MUST automatically
+                    update the [...] startup configuration [...] as a consequence of a RESTCONF
+                    edit operation.
+                 Setting this option disables this behaviour, ie the startup configuration is NOT
+                 automatically updated.
+                 If this option is false, the startup is autoamtically updated following the RFC";
+	}
 	leaf CLICON_RESTCONF_PRETTY {
 	    type boolean;
 	    default true;

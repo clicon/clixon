@@ -68,7 +68,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
-  <CLICON_RESTCONF_INSTALL_DIR>$RESTCONFDIR</CLICON_RESTCONF_INSTALL_DIR>
+  <CLICON_RESTCONF_INSTALLDIR>$RESTCONFDIR</CLICON_RESTCONF_INSTALLDIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
@@ -194,15 +194,15 @@ ps aux|grep clixon_ # XXX
 
 new "Check $pid1 exists"
 # Here backend dies / is killed
-#while sudo kill -0 $pid1 2> /dev/null; do
-if sudo kill -0 $pid1; then # XXX
+# if sudo kill -0 $pid1; then # XXX 
+while sudo kill -0 $pid1 2> /dev/null; do
     new "kill $pid1 externally"
     sudo kill $pid1
     sleep 1 # There is a race condition here when restconf is killed while waiting for reply from backend
     echo "pid1:$pid1"   # XXX
     ps aux|grep clixon_ # XXX
-fi
-#done
+done
+# fi
 
 echo "pid1:$pid1"   # XXX
 ps aux|grep clixon_ # XXX

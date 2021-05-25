@@ -66,16 +66,18 @@ function testrun(){
 	start_backend -s init -f $cfg -y $fyang $option
     fi
     
-    new "waiting"
+    new "wait backend"
     wait_backend
     
-    new "kill old restconf daemon"
-    stop_restconf_pre
+    if [ $RC -ne 0 ]; then
+	new "kill old restconf daemon"
+	stop_restconf_pre
     
-    new "start restconf daemon"
-    start_restconf -f $cfg -y $fyang $option
+	new "start restconf daemon"
+	start_restconf -f $cfg -y $fyang $option
+    fi
     
-    new "waiting"
+    new "wait restconf"
     wait_restconf
 
     new "restconf put 42"
@@ -90,9 +92,11 @@ function testrun(){
     new "restconf delete 42"
     expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/example:x/y=42)" 0 "HTTP/1.1 204 No Content"
 
-    new "Kill restconf daemon"
-    stop_restconf 
-
+    if [ $RC -ne 0 ]; then
+	new "Kill restconf daemon"
+	stop_restconf 
+    fi
+    
     if [ $BE -ne 0 ]; then
 	new "Kill backend"
 	# Check if premature kill

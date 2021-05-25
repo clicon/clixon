@@ -50,14 +50,15 @@ Users may have to change how they access the system
 * Changed config and install options for Restconf
   * clixon_restconf daemon is installed in /usr/local/sbin (as clixon_backend), instead of /www-data
     * `configure --with-wwwdir=<dir>` remains but only applies to fcgi socket and log
-    * New option `CLICON_RESTCONF_INSTALL_DIR` is set to where clixon_restconf is installed, with default `/usr/local/sbin/` 
+    * New option `CLICON_RESTCONF_INSTALLDIR` is set to where clixon_restconf is installed, with default `/usr/local/sbin/` 
   * Restconf drop privileges user is defined by `CLICON_RESTCONF_USER`
     * `configure --with-wwwuser=<user>` is removed
   * clixon_restconf drop of privileges is defined by `CLICON_RESTCONF_PRIVILEGES` option
 * New clixon-config@2020-05-20.yang revision
   * Added: `CLICON_RESTCONF_USER`
   * Added: `CLICON_RESTCONF_PRIVILEGES`
-  * Added: `CLICON_RESTCONF_INSTALL_DIR`
+  * Added: `CLICON_RESTCONF_INSTALLDIR`
+  * Added: `CLICON_RESTCONF_STARTUP_DONTUPDATE`	
 * New clixon-restconf@2020-05-20.yang revision
   * Added: restconf `log-destination` 
 * RESTCONF error replies have changed
@@ -71,6 +72,8 @@ Users may have to change how they access the system
 
 ### Minor features
 
+* [Need an option to disable restconf mandatory action of overwriting startup_db #230](https://github.com/clicon/clixon/issues/230)
+  * Disable RFC 8040 mandatory copy of running to startup after commit
 * Add default network namespace constant: `RESTCONF_NETNS_DEFAULT` with default value "default".
 * CLI: Two new hide variables added (thanks: shmuelnatan)
   * hide-database : specifies that a command is not visible in database. This can be useful for setting passwords and not exposing them to users.
