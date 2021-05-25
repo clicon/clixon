@@ -72,8 +72,9 @@ Users may have to change how they access the system
 
 ### Minor features
 
+* Restconf: added inline configuration using `-R <xml>` command line as an alternative to making advanced restconf configuration
 * [Need an option to disable restconf mandatory action of overwriting startup_db #230](https://github.com/clicon/clixon/issues/230)
-  * Disable RFC 8040 mandatory copy of running to startup after commit
+  * Configure option `CLICON_RESTCONF_STARTUP_DONTUPDATE` added to disable RFC 8040 mandatory copy of running to startup after commit
 * Add default network namespace constant: `RESTCONF_NETNS_DEFAULT` with default value "default".
 * CLI: Two new hide variables added (thanks: shmuelnatan)
   * hide-database : specifies that a command is not visible in database. This can be useful for setting passwords and not exposing them to users.

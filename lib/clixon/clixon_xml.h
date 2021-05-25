@@ -272,7 +272,6 @@ int       xml_search_child_insert(cxobj *xp, cxobj *x);
 int       xml_search_child_rm(cxobj *xp, cxobj *x);
 cxobj    *xml_child_index_each(cxobj *xparent, char *name, cxobj *xprev, enum cxobj_type type);
 
-
 #endif
 
 #endif /* _CLIXON_XML_H */

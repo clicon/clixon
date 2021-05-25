@@ -168,7 +168,7 @@
 #include "restconf_native.h"   /* Restconf-openssl mode specific headers*/
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:E:l:p:y:a:u:rW:o:"
+#define RESTCONF_OPTS "hD:f:E:l:p:y:a:u:rW:R:o:"
 
 /* If set, open outwards socket non-blocking, as opposed to blocking
  * Should work both ways, but in the ninblocking case,
@@ -1727,14 +1727,16 @@ restconf_openssl_init(clicon_handle h,
  * - if local config found, open sockets accordingly and exit function
  * - If no local config found, query backend for config and open sockets.
  * That is, EITHER local config OR read config from backend once
- * @param[in]  h         Clicon handle
- * @param[out] xrestconf XML restconf config, malloced (if retval = 1)
- * @retval     1         OK  (and xrestconf set)
- * @retval     0         Fail - no config
- * @retval    -1         Error
+ * @param[in]  h             Clicon handle
+ * @param[in]  inline_config XML restconf config, malloced (if retval = 1)
+ * @param[out] xrestconf     XML restconf config, malloced (if retval = 1)
+ * @retval     1             OK  (and xrestconf set)
+ * @retval     0             Fail - no config
+ * @retval    -1             Error
  */ 
 int
 restconf_clixon_init(clicon_handle h,
+		     char         *inline_config,
 		     cxobj       **xrestconfp)
 {
     int            retval = -1;
@@ -1746,6 +1748,7 @@ restconf_clixon_init(clicon_handle h,
     char          *str;
     cvec          *nsctx_global = NULL; /* Global namespace context */
     cxobj         *xrestconf;
+    cxobj         *xerr = NULL;
     int            ret;
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
@@ -1827,8 +1830,29 @@ restconf_clixon_init(clicon_handle h,
 	goto done;
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
 	goto done;
-    ret = 0;
-    if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS") == 0){
+    if (inline_config != NULL && strlen(inline_config)){
+	clicon_debug(1, "%s using restconf inline config", __FUNCTION__);
+	if ((ret = clixon_xml_parse_string(inline_config, YB_MODULE, yspec, &xrestconf, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    clixon_netconf_error(xerr, "Inline restconf config", NULL);
+	    goto done;
+	}
+	/* Replace parent w first child */
+	if (xml_rootchild(xrestconf, 0, &xrestconf) < 0)
+	    goto done;
+	if ((ret = restconf_config_init(h, xrestconf)) < 0)
+	    goto done;
+	/* ret == 1 means this config is OK */
+	if (ret == 0){
+	    xml_free(xrestconf);
+	    xrestconf = NULL;
+	}
+	else
+	    if ((*xrestconfp = xrestconf) == NULL)
+		goto done;
+    }
+    else if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS") == 0){
 	/* If not read from backend, try to get restconf config from local config-file */
 	if ((xrestconf = clicon_conf_restconf(h)) != NULL){
 	    /*! Basic config init, set auth-type, pretty, etc ret 0 means disabled */
@@ -1853,6 +1877,8 @@ restconf_clixon_init(clicon_handle h,
     }
     retval = 1;
  done:
+    if (xerr)
+	xml_free(xerr);
     return retval;
  fail:
     retval = 0;
@@ -1885,7 +1911,6 @@ restconf_sig_term(int arg)
 static void
 usage(clicon_handle h,
       char         *argv0)
-
 {
     fprintf(stderr, "usage:%s [options]\n"
 	    "where options are\n"
@@ -1899,7 +1924,8 @@ usage(clicon_handle h,
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
 	    "\t-r \t\t  Do not drop privileges if run as root\n"
-	    "\t-W <user>\tRun restconf daemon as this user, drop according to CLICON_RESTCONF_PRIVILEGES\n"
+	    "\t-W <user>\t  Run restconf daemon as this user, drop according to CLICON_RESTCONF_PRIVILEGES\n"
+   	    "\t-R <xml> \t  Restconf configuration in-line overriding config file\n"
 	    "\t-o <option>=<value> Set configuration option overriding config file (see clixon-config.yang)\n"
 	    ,
 	    argv0
@@ -1920,6 +1946,7 @@ main(int    argc,
     restconf_native_handle *rh = NULL;
     int             ret;
     cxobj          *xrestconf = NULL;
+    char           *inline_config = NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -2023,6 +2050,9 @@ main(int    argc,
 	    if (clicon_option_add(h, "CLICON_RESTCONF_USER", optarg) < 0)
 		goto done;
 	    break;
+	case 'R':  /* Restconf on-line config */
+	    inline_config = optarg;
+	    break;
 	case 'o':{ /* Configuration option */
 	    char          *val;
 	    if ((val = index(optarg, '=')) == NULL)
@@ -2057,7 +2087,7 @@ main(int    argc,
 	goto done;
 
     /* Clixon inits / configs */ 
-    if ((ret = restconf_clixon_init(h, &xrestconf)) < 0)
+    if ((ret = restconf_clixon_init(h, inline_config, &xrestconf)) < 0)
 	goto done;
     if (ret == 0){ /* restconf disabled */
 	clicon_debug(1, "restconf configuration not found or disabled");

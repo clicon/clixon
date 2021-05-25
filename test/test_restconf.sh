@@ -157,7 +157,11 @@ function testrun()
 	stop_restconf_pre
 
 	new "start restconf daemon"
-	start_restconf -f $cfg
+	# inline of start_restconf, cant make quotes to work
+	sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R "$RESTCONFIG1" &
+	if [ $? -ne 0 ]; then
+	    err1 "expected 0" "$?"
+	fi
     fi
 
     new "wait restconf"
