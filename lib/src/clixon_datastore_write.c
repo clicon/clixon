@@ -325,6 +325,8 @@ text_modify(clicon_handle       h,
     int        changed = 0; /* Only if x0p's children have changed-> sort necessary */
     cvec      *nscx1 = NULL;
     char      *createstr = NULL;	
+    yang_stmt *yrestype = NULL;
+    char      *restype;
     
     if (x1 == NULL){
 	clicon_err(OE_XML, EINVAL, "x1 is missing");
@@ -461,20 +463,20 @@ text_modify(clicon_handle       h,
 			goto done; 
 		}
 	    }
+	    /* Some bodies (eg identityref) requires proper namespace setup, so a type lookup is
+	     * necessary.
+	     */
+	    if (yang_type_get(y0, NULL, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+		goto done;
+	    if (yrestype == NULL){
+		clicon_err(OE_CFG, EFAULT, "No restype (internal error)");
+		goto done;
+	    }
+	    restype = yang_argument_get(yrestype);
+	    /* Differentiate between an empty type (NULL) and an empty string "" */
+	    if (x1bstr==NULL && strcmp(restype,"string")==0)
+		x1bstr="";
 	    if (x1bstr){
-		/* Some bodies (eg identityref) requires proper namespace setup, so a type lookup is
-		 * necessary.
-		 */
-		yang_stmt *yrestype = NULL;
-		char      *restype;
-
-		if (yang_type_get(y0, NULL, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
-		    goto done;
-		if (yrestype == NULL){
-		    clicon_err(OE_CFG, EFAULT, "No restype (internal error)");
-		    goto done;
-		}
-		restype = yang_argument_get(yrestype);
 		if (strcmp(restype, "identityref") == 0){
 		    x1bstr = clixon_trim2(x1bstr, " \t\n"); 
 		    if (check_body_namespace(x1, x0, x0p, x1bstr, y0) < 0)
@@ -515,7 +517,7 @@ text_modify(clicon_handle       h,
 			    xml_flag_reset(x0, XML_FLAG_DEFAULT);
 		    }
 		}
-	    }
+	    } /* x1bstr */
 	    if (changed){ 
 		if (xml_insert(x0p, x0, insert, valstr, NULL) < 0) 
 		    goto done;

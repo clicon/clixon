@@ -82,6 +82,7 @@ Users may have to change how they access the system
 	
 ### Corrected Bugs
 
+* Fixed: [restconf patch method unable to chage value to empty string #229](https://github.com/clicon/clixon/issues/229)
 * Fixed: [when condition error under augment in restconf #227](https://github.com/clicon/clixon/issues/227)
 * Fixed: [Using YANG union with decimal64 and string leads to regexp match fail #226](https://github.com/clicon/clixon/issues/226)
 * Fixed: [xpath function count did not work properly #224](https://github.com/clicon/clixon/issues/224)
