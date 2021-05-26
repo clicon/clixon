@@ -890,11 +890,12 @@ main(int    argc,
 	/* If ret fails, copy tmp back to running */
 	if (ret != 1)
 	    if (xmldb_copy(h, "tmp", "running") < 0)
-		goto done;
+		goto try_startup;
 	if (ret2status(ret, &status) < 0)
 	    goto done;
 	break;
     case SM_STARTUP: 
+try_startup:
 	/* Copy original running to tmp as backup (restore if error) */
 	if (xmldb_copy(h, "running", "tmp") < 0)
 	    goto done;
