@@ -509,6 +509,7 @@ main(int    argc,
     size_t        cligen_buflen;
     size_t        cligen_bufthreshold;
     int           dbg;
+    int           user_running_config_exist = 1;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -862,9 +863,11 @@ main(int    argc,
 
     /* Init running db if it is not there
      */
-    if (xmldb_exists(h, "running") != 1)
-	if (xmldb_create(h, "running") < 0)
-	    return -1;
+    if (xmldb_exists(h, "running") != 1) {
+        user_running_config_exist = 0;
+        if (xmldb_create(h, "running") < 0)
+            return -1;
+    }
     xmldb_delete(h, "candidate");
     /* If startup fails, lib functions report invalidation info in a cbuf */
     if ((cbret = cbuf_new()) == NULL){
@@ -883,6 +886,8 @@ main(int    argc,
 	status = STARTUP_OK;
 	break;
     case SM_RUNNING: /* Use running as startup */
+    if (!user_running_config_exist)
+        goto try_startup;
 	/* Copy original running to tmp as backup (restore if error) */
 	if (xmldb_copy(h, "running", "tmp") < 0)
 	    goto done;
@@ -895,6 +900,7 @@ main(int    argc,
 	    goto done;
 	break;
     case SM_STARTUP: 
+try_startup:
 	/* Copy original running to tmp as backup (restore if error) */
 	if (xmldb_copy(h, "running", "tmp") < 0)
 	    goto done;
