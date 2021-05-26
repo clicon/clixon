@@ -1211,8 +1211,9 @@ xml_yang_validate_all(clicon_handle h,
 	    if (yang_keyword_get(yc) != Y_MUST)
 		continue;
 	    xpath = yang_argument_get(yc); /* "must" has xpath argument */
-	    if (xml_nsctx_yang(yc, &nsc) < 0)
-		goto done;
+	    /* the context node is the node in the accessible tree for
+	     * which the "must" statement is defined. */
+	    nsc = NULL;
 	    if ((nr = xpath_vec_bool(xt, nsc, "%s", xpath)) < 0)
 		goto done;
 	    if (!nr){
