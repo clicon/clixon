@@ -82,10 +82,11 @@ typedef enum genmodel_type genmodel_type;
 
 /*! See clixon-config.yang type startup_mode */
 enum startup_mode_t{
-    SM_NONE=0,
-    SM_STARTUP,
-    SM_RUNNING,
-    SM_INIT
+    SM_NONE=0,         /* Do not touch running state */
+    SM_INIT,           /* Initialize running state */
+    SM_RUNNING,        /* Commit running db configuration into running state */
+    SM_STARTUP,        /* Commit startup configuration into running state */
+    SM_RUNNING_STARTUP /* First try running db, if it is empty try startup db */
 };
 
 /*! See clixon-config.yang type priv_mode (privileges mode) */

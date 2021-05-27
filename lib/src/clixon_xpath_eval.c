@@ -140,7 +140,7 @@ nodetest_eval_node(cxobj      *x,
 	retval = 0; /* no match */
 	goto done;
     }
-    /* here names are equal 
+    /* Here names are equal 
      * Now look for namespaces
      * 1) prefix1 and prefix2 point to same namespace <<-- try this first
      * 2) prefix1 is equal to prefix2 <<-- then try this
@@ -345,7 +345,8 @@ xp_eval_step(xp_ctx     *xc0,
 		if (ret == 0){/* regular code, no optimization made */
 		    while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
 			/* xs->xs_c0 is nodetest */
-			if (nodetest == NULL || nodetest_eval(x, nodetest, nsc, localonly) == 1){
+			if (nodetest == NULL ||
+			    nodetest_eval(x, nodetest, nsc, localonly) == 1){
 			    if (cxvec_append(x, &vec, &veclen) < 0)
 				goto done;
 			}

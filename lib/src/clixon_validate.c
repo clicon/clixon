@@ -1218,8 +1218,14 @@ xml_yang_validate_all(clicon_handle h,
 		goto done;
 	    if (!nr){
 		ye = yang_find(yc, Y_ERROR_MESSAGE, NULL);
+		if ((cb = cbuf_new()) == NULL){
+		    clicon_err(OE_UNIX, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cb, "Failed MUST xpath '%s' of '%s' in module %s",
+			xpath, xml_name(xt),  yang_argument_get(ys_module(ys)));
 		if (netconf_operation_failed_xml(xret, "application", 
-						 ye?yang_argument_get(ye):"must xpath validation failed") < 0)
+						 ye?yang_argument_get(ye):cbuf_get(cb)) < 0)
 		    goto done;
 		goto fail;
 	    }

@@ -181,6 +181,10 @@ module clixon-config {
 		"Commit startup configuration into running state
                  After reboot when no persistent running db exists";
 	    }
+	    enum running-startup{
+		description
+		    "First try running db, if it is empty try startup db.";
+	    }
 	}
     }
     typedef datastore_format{

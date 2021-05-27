@@ -72,6 +72,8 @@ Users may have to change how they access the system
 
 ### Minor features
 
+* Added new startup-mode: `running-startup`: First try running db, if it is empty try startup db.
+  * See [Can startup mode to be extended to support running-startup mode? #234](https://github.com/clicon/clixon/issues/234)
 * Restconf: added inline configuration using `-R <xml>` command line as an alternative to making advanced restconf configuration
 * [Need an option to disable restconf mandatory action of overwriting startup_db #230](https://github.com/clicon/clixon/issues/230)
   * Configure option `CLICON_RESTCONF_STARTUP_DONTUPDATE` added to disable RFC 8040 mandatory copy of running to startup after commit

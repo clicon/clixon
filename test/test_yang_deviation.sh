@@ -101,7 +101,7 @@ function testrun()
 
     if $mustdate; then # fail since there is neither date or daytime (delete rule)
 	new "netconf validate expect error"
-	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>must xpath validation failed</error-message></rpc-error></rpc-reply>]]>]]>$"
+	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Failed MUST xpath 'daytime or time' of 'system' in module example-base</error-message></rpc-error></rpc-reply>]]>]]>$"
     else
 	new "netconf validate ok"
 	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]"
