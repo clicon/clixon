@@ -1212,8 +1212,11 @@ xml_yang_validate_all(clicon_handle h,
 		continue;
 	    xpath = yang_argument_get(yc); /* "must" has xpath argument */
 	    /* the context node is the node in the accessible tree for
-	     * which the "must" statement is defined. */
-	    nsc = NULL;
+	     * which the "must" statement is defined. 
+	     * The set of namespace declarations is the set of all "import" statements' 
+	     */
+           if (xml_nsctx_yang(yc, &nsc) < 0)
+               goto done;
 	    if ((nr = xpath_vec_bool(xt, nsc, "%s", xpath)) < 0)
 		goto done;
 	    if (!nr){

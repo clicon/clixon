@@ -96,9 +96,10 @@ static const map_str2int cli_genmodel_map[] = {
    see clixon-config.yang type startup_mode */
 static const map_str2int startup_mode_map[] = {
     {"none",     SM_NONE}, 
-    {"running",  SM_RUNNING}, 
-    {"startup",  SM_STARTUP}, 
     {"init",     SM_INIT}, 
+    {"running",  SM_RUNNING}, 
+    {"startup",  SM_STARTUP},
+    {"startup",  SM_RUNNING_STARTUP}, 
     {NULL,       -1}
 };
 

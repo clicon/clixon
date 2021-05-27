@@ -151,6 +151,13 @@ nodetest_eval_node(cxobj      *x,
 	nsxpath = xml_nsctx_get(nsc, prefix2);
 	if (nsxml != NULL && nsxpath != NULL)
 	    retval = (strcmp(nsxml, nsxpath) == 0);
+	else if (nsxpath == NULL){
+	    /* We have a namespace from xml, but none in yang.
+	     * This can happen in eg augments and ../foo, where foo is
+	     * augmented from another namespace
+	     */
+	    retval = 1; 
+	}
 	else
 	    retval = (nsxml == nsxpath); /* True only if both are NULL */
     }
