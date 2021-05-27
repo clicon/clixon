@@ -95,12 +95,12 @@ static const map_str2int cli_genmodel_map[] = {
 /* Mapping between Clicon startup modes string <--> constants, 
    see clixon-config.yang type startup_mode */
 static const map_str2int startup_mode_map[] = {
-    {"none",     SM_NONE}, 
-    {"init",     SM_INIT}, 
-    {"running",  SM_RUNNING}, 
-    {"startup",  SM_STARTUP},
-    {"startup",  SM_RUNNING_STARTUP}, 
-    {NULL,       -1}
+    {"none",            SM_NONE}, 
+    {"init",            SM_INIT}, 
+    {"running",         SM_RUNNING}, 
+    {"startup",         SM_STARTUP},
+    {"running-startup", SM_RUNNING_STARTUP}, 
+    {NULL,              -1}
 };
 
 /* Mapping between Clicon privileges modes string <--> constants, 

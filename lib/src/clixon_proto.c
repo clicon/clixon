@@ -373,7 +373,7 @@ clicon_msg_rcv(int                s,
     int       retval = -1;
     struct clicon_msg hdr;
     int       hlen;
-    uint32_t  len2;
+    ssize_t   len2;
     sigfn_t   oldhandler;
     uint32_t  mlen;
 
@@ -638,7 +638,7 @@ clicon_rpc(int                sock,
     return retval;
 }
 
-/*! Send a netconf message and recevive result.
+/*! Send a netconf message and recieve result.
  *
  * TBD: timeout, interrupt?
  * retval may be -1 and

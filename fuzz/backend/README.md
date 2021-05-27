@@ -1,6 +1,6 @@
 # Clixon fuzzing
 
-This dir contains code for fuzzing clixon backend. 
+This dir contains code for fuzzing clixon backend.  (NOTE DOES NOT WORK)
 
 It requires the preeny package to change sockets to stdio. 
 
@@ -8,32 +8,7 @@ Plugins do not work
 
 ## Prereqs
 
-Preeny has a "desocketizing" module necessary to map stdio to the internal sockets that the backend uses. Install preeny example:
-```
-  sudo apt install libini-config-dev # debian/ubuntu
-  sudo apt install libseccomp-dev # debian/ubuntu
-  git clone https://github.com/zardus/preeny.git
-  cd preeny
-  make
-  sudo cp x86_64-linux-gnu/desock.so /usr/local/lib/ # install
-```
-
-See [AFL docs](https://afl-1.readthedocs.io/en/latest) for installing afl.
-On ubuntu this may be enough:
-```
-  sudo apt install afl
-```
-
-You may have to change cpu frequency:
-```
-  cd /sys/devices/system/cpu
-  echo performance | tee cpu?/cpufreq/scaling_governor
-```
-
-And possibly change core behaviour:
-```
-  echo core >/proc/sys/kernel/core_pattern
-```
+Install AFL and preeny, see [..](..)
 
 ## Build
 
