@@ -422,6 +422,8 @@ wait_restconf
 new "Edit a restconf field via restconf" # XXX fcgi fails here
 expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/clixon-restconf:restconf/pretty -d '{"clixon-restconf:pretty":true}' )" 0 "HTTP/1.1 204 No Content"
 
+sleep $DEMSLEEP
+
 new "check status RPC new pid"
 rpcstatus true running
 pid2=$pid

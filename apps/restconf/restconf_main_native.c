@@ -799,6 +799,7 @@ alpn_select_proto_cb(SSL                  *ssl,
     unsigned char *inp;
     unsigned char len;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     if (clicon_debug_get())
 	dump_alpn_proto_list(in, inlen);
     /* select http/1.1 */
@@ -839,7 +840,7 @@ restconf_ssl_context_create(clicon_handle h)
     * The question is which TLS to disable
     * SSL_OP_NO_TLSv1, SSL_OP_NO_TLSv1_1, SSL_OP_NO_TLSv1_2
     */
-    SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1);
+    SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1);
 
     SSL_CTX_set_options(ctx, SSL_MODE_RELEASE_BUFFERS | SSL_OP_NO_COMPRESSION);
     //    SSL_CTX_set_timeout(ctx, cfg->ssl_ctx_timeout); /* default 300s */
@@ -1307,9 +1308,14 @@ restconf_accept_client(int   fd,
 		switch (e){
 		case SSL_ERROR_SSL:                  /* 1 */
 		    clicon_debug(1, "%s SSL_ERROR_SSL (non-ssl message on ssl socket)", __FUNCTION__);
+#if 0
+		    /* XXX sending a bad request here may crash
+		     * eg when run nmap --script ssl*
+		     */
 		    if (send_badrequest(h, s, NULL, "application/yang-data+xml",
 					"<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The plain HTTP request was sent to HTTPS port</error-message></error></errors>") < 0)
 			goto done;
+#endif
 		    SSL_free(ssl);
 		    if (close(s) < 0){
 			clicon_err(OE_UNIX, errno, "close");
@@ -1394,8 +1400,20 @@ restconf_accept_client(int   fd,
 	}
 	clicon_debug(1, "%s ALPN: %d %s", __FUNCTION__, alpnlen, alpn);
 	if (alpn == NULL || alpnlen != 8 || memcmp("http/1.1", alpn, 8) != 0) {
-	    clicon_err(OE_RESTCONF, 0, "Protocol http/1.1 not selected: %s", alpn);
-	    goto done;
+	    clicon_log(LOG_NOTICE, "------Warning1 Protocol http/1.1 not selected: %s", alpn);
+	    if (send_badrequest(h, s, ssl, "application/yang-data+xml",  "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>Peer certificate required</error-message></error></errors>") < 0)
+		    goto done;
+	    restconf_conn_free(conn);
+	    evhtp_connection_free(conn); /* evhtp */
+	    if (ssl){
+		if ((ret = SSL_shutdown(ssl)) < 0){
+		    int e = SSL_get_error(ssl, ret);
+		    clicon_err(OE_SSL, 0, "SSL_shutdown, err:%d", e);
+		    goto done;
+		}
+		SSL_free(ssl);
+	    }
+	    goto ok;
 	}
 	/* Get the actual peer, XXX this maybe could be done in ca-auth client-cert code ? 
 	 * Note this _only_ works if SSL_set1_host() was set previously,...

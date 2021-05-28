@@ -158,6 +158,7 @@ function testrun()
 
 	new "start restconf daemon"
 	# inline of start_restconf, cant make quotes to work
+	echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R <xml>"
 	sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R "$RESTCONFIG1" &
 	if [ $? -ne 0 ]; then
 	    err1 "expected 0" "$?"
@@ -170,10 +171,10 @@ function testrun()
     new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
     expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
-if [ "${WITH_RESTCONF}" = "native" ]; then # XXX does not work with nginx
-    new "restconf GET http/1.0  - returns 1.0"
-    expectpart "$(curl $CURLOPTS --http1.0 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.0 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
-fi
+    if [ "${WITH_RESTCONF}" = "native" ]; then # XXX does not work with nginx
+	new "restconf GET http/1.0  - returns 1.0"
+	expectpart "$(curl $CURLOPTS --http1.0 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.0 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+    fi
     new "restconf GET http/1.1"
     expectpart "$(curl $CURLOPTS --http1.1 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
@@ -194,7 +195,9 @@ fi
 	expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
     else # see (1) http to https port in restconf_main_native.c
 	new "Wrong proto=http on https port, expect bad request"
-	expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/1.1 400 Bad Request"
+	# When run nmap --script ssl* I can crash restconf if try to return a bad request here
+	#	expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/1.1 400 Bad Request"
+	expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
     fi
     
     # Exact match
