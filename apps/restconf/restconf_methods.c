@@ -287,7 +287,10 @@ api_data_write(clicon_handle h,
 	cxobj *xfrom;
 	cxobj *xac;
 	
-	xfrom = (api_path && strcmp(api_path,"/"))?xml_parent(xbot):xbot; // XXX xbot is /config has NULL parent
+	if (api_path && (strcmp(api_path, "/") != 0))
+	    xfrom = xml_parent(xbot);
+	else
+	    xfrom = xbot; // XXX xbot is /config has NULL parent
 	if (xml_copy_one(xfrom, xdata0) < 0)
 	    goto done;
 	xa = NULL;

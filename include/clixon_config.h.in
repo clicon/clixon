@@ -60,6 +60,9 @@
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM
 
+/* Define to 1 if you have the `nghttp2' library (-lnghttp2). */
+#undef HAVE_LIBNGHTTP2
+
 /* Define to 1 if you have the `socket' library (-lsocket). */
 #undef HAVE_LIBSOCKET
 
@@ -71,6 +74,9 @@
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the <nghttp2/nghttp2.h> header file. */
+#undef HAVE_NGHTTP2_NGHTTP2_H
 
 /* Define to 1 if you have the `setns' function. */
 #undef HAVE_SETNS
@@ -147,7 +153,7 @@
 /* Use native restconf mode */
 #undef WITH_RESTCONF_NATIVE
 
-/* WWW dir for restconf daemon */
+/* WWW dir for fcgi stuff / nginx */
 #undef WWWDIR
 
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a

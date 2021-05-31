@@ -49,11 +49,13 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+#ifdef HAVE_LIBEVHTP
 /* evhtp */ 
 #define EVHTP_DISABLE_REGEX
 #define EVHTP_DISABLE_EVTHR
 
 #include <evhtp/evhtp.h>
+#endif /* HAVE_LIBEVHTP */
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -77,6 +79,7 @@ restconf_reply_header(void       *req0,
 		      const char *vfmt,
 		      ...)
 {
+#ifdef HAVE_LIBEVHTP
     evhtp_request_t *req = (evhtp_request_t *)req0;
     int              retval = -1;
     size_t           vlen;
@@ -122,8 +125,12 @@ restconf_reply_header(void       *req0,
     if (value)
     	free(value);
     return retval;
+#else /* HAVE_LIBEVHTP */
+    return 0;
+#endif /* HAVE_LIBEVHTP */
 }
 
+#ifdef HAVE_LIBEVHTP
 /*! Send reply
  * @see htp__create_reply_
  */
@@ -177,6 +184,7 @@ native_send_reply(restconf_conn_h *rc,
  done:
     return retval;
 }
+#endif /* HAVE_LIBEVHTP */
 
 /*! Send HTTP reply with potential message body
  * @param[in]     req         Evhtp http request handle
@@ -189,6 +197,7 @@ restconf_reply_send(void  *req0,
 		    int    code,
 		    cbuf  *cb)
 {
+#ifdef HAVE_LIBEVHTP
     evhtp_request_t    *req = (evhtp_request_t *)req0;
     int                 retval = -1;
     const char         *reason_phrase;
@@ -237,6 +246,9 @@ restconf_reply_send(void  *req0,
     retval = 0;
  done:
     return retval;
+#else /* HAVE_LIBEVHTP */
+    return 0;
+#endif /* HAVE_LIBEVHTP */
 }
 
 /*! get input data
@@ -246,8 +258,10 @@ restconf_reply_send(void  *req0,
 cbuf *
 restconf_get_indata(void *req0)
 {
-    evhtp_request_t *req = (evhtp_request_t *)req0;    
     cbuf            *cb = NULL;
+#ifdef HAVE_LIBEVHTP
+    evhtp_request_t *req = (evhtp_request_t *)req0;    
+
     size_t           len;
     unsigned char   *buf;
 
@@ -262,7 +276,9 @@ restconf_get_indata(void *req0)
 	/* Note the pullup may not be null-terminated */
 	cbuf_append_buf(cb, buf, len);
     }
-
     return cb;
+#else  /* HAVE_LIBEVHTP */
+    return  cb;
+#endif /* HAVE_LIBEVHTP */
 }
 

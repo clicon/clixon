@@ -195,9 +195,8 @@ function testrun()
 	expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
     else # see (1) http to https port in restconf_main_native.c
 	new "Wrong proto=http on https port, expect bad request"
-	# When run nmap --script ssl* I can crash restconf if try to return a bad request here
-	#	expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/1.1 400 Bad Request"
-	expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
+	expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/1.1 400 Bad Request"
+	# expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
     fi
     
     # Exact match

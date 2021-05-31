@@ -68,6 +68,14 @@ enum ietf_ds {
 };
 typedef enum ietf_ds ietf_ds_t;
 
+/* Just used in native */
+enum restconf_http_proto{
+    HTTP_10,
+    HTTP_11,
+    HTTP_2
+};
+typedef enum restconf_http_proto restconf_http_proto;
+    
 /*
  * Prototypes
  */
@@ -75,6 +83,8 @@ int restconf_err2code(char *tag);
 const char *restconf_code2reason(int code);
 const restconf_media restconf_media_str2int(char *media);
 const char *restconf_media_int2str(restconf_media media);
+int   restconf_str2proto(char *str);
+const char *restconf_proto2str(int proto);
 restconf_media restconf_content_type(clicon_handle h);
 int   get_user_cookie(char *cookiestr, char  *attribute, char **val);
 int   restconf_terminate(clicon_handle h);

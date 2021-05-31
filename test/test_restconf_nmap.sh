@@ -1,20 +1,18 @@
 #!/usr/bin/env bash
 # Restconf basic functionality also uri encoding using eth/0/0
-# Note there are many variants: (1)fcgi/native, (2) http/https, (3) IPv4/IPv6, (4)local or backend-config
-# (1) fcgi/native
-# This is compile-time --with-restconf=fcgi or native, so either or
-# - fcgi: Assume http server setup, such as nginx described in apps/restconf/README.md
-# - native: test both local config and get config from backend 
-# (2) http/https
-# - fcgi: relies on nginx has https setup
-# - native: generate self-signed server certs 
-# (3) IPv4/IPv6 (only loopback 127.0.0.1 / ::1)
-# - The tests runs through both
-# - IPv6 by default disabled since docker does not support it out-of-the box
-# (4) local/backend config. Native only
-# - The tests runs through both (if compiled with native)
-# See also test_restconf_op.sh
-# See test_restconf_rpc.sh for cases when CLICON_BACKEND_RESTCONF_PROCESS is set
+# NMAP ssl script testing.
+# The following tests are run:
+# - ssl-ccs-injection, but not deterministic, need to repeat (10 times) maybe this is wrong?
+# - ssl-cert-intaddr
+# - ssl-cert
+# - ssl-date
+# - ssl-dh-params
+# - ssl-enum-ciphers
+# - ssl-heartbleed
+# - ssl-known-key
+# - ssl-poodle
+# - sslv2-drown
+# - sslv2
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -62,49 +60,22 @@ if [ "${WITH_RESTCONF}" = "native" ]; then
     # Create server certs and CA
     cacerts $cakey $cacert
     servercerts $cakey $cacert $srvkey $srvcert
-    USEBACKEND=true
-else
-    # Define default restconfig config: RESTCONFIG
-    RESTCONFIG=$(restconf_config none false)
-    USEBACKEND=false
 fi
 
-# This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
-state='{"clixon-example:state":{"op":\["41","42","43"\]}'
-
-if $IPv6; then
-    # For backend config, create 4 sockets, all combinations IPv4/IPv6 + http/https
-    RESTCONFIG1=$(cat <<EOF
-<restconf xmlns="http://clicon.org/restconf">
+# Create a single IPv4 https socket
+RESTCONFIG=$(cat <<EOF
+<restconf>
    <enable>true</enable>
    <auth-type>none</auth-type>
    <server-cert-path>$srvcert</server-cert-path>
    <server-key-path>$srvkey</server-key-path>
    <server-ca-cert-path>$cakey</server-ca-cert-path>
    <pretty>false</pretty>
-   <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
-   <socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket>
-   <socket><namespace>default</namespace><address>::</address><port>80</port><ssl>false</ssl></socket>
-   <socket><namespace>default</namespace><address>::</address><port>443</port><ssl>true</ssl></socket>
-</restconf>
-EOF
-)
-else
-       # For backend config, create 2 sockets, all combinations IPv4 + http/https
-    RESTCONFIG1=$(cat <<EOF
-<restconf xmlns="http://clicon.org/restconf">
-   <enable>true</enable>
-   <auth-type>none</auth-type>
-   <server-cert-path>$srvcert</server-cert-path>
-   <server-key-path>$srvkey</server-key-path>
-   <server-ca-cert-path>$cakey</server-ca-cert-path>
-   <pretty>false</pretty>
-   <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket>
 </restconf>
 EOF
 )
-fi
+
 
 # Clixon config
 cat <<EOF > $cfg
@@ -124,8 +95,8 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
-  <CLICON_BACKEND_RESTCONF_PROCESS>$USEBACKEND</CLICON_BACKEND_RESTCONF_PROCESS>
-  $RESTCONFIG <!-- only fcgi -->
+  <CLICON_BACKEND_RESTCONF_PROCESS>false</CLICON_BACKEND_RESTCONF_PROCESS>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -145,11 +116,11 @@ fi
 new "wait backend"
 wait_backend
 
-new "netconf edit config"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG1</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+#new "netconf edit config"
+#expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-new "netconf commit"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+#new "netconf commit"
+#expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
@@ -158,7 +129,7 @@ if [ $RC -ne 0 ]; then
     new "start restconf daemon"
     # inline of start_restconf, cant make quotes to work
     echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R <xml>"
-    sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R "$RESTCONFIG1" &
+    sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg &
     if [ $? -ne 0 ]; then
 	err1 "expected 0" "$?"
     fi
@@ -167,10 +138,54 @@ fi
 new "wait restconf"
 wait_restconf
 
-sleep 1  # Sometimes nmap test fails with no reply from server, _maybe_ this helps?
-new "nmap test"
+# Try 10 times, dont know why this is undeterministic?
+let i=0;
+new "nmap ssl-ccs-injection$i"
+result=$(nmap --script ssl-ccs-injection -p 443 127.0.0.1)
+# echo "result:$result"
+while [[ "$result" = *"No reply from server"* ]]; do
+    if [ $i -ge 10 ]; then
+	err "ssl-ccs-injection"
+    fi
+    sleep 1
+    let i++;
+    new "nmap ssl-ccs-injection$i"
+    result=$(nmap --script ssl-ccs-injection -p 443 127.0.0.1)
+    # echo "result:$result"
+done
 
-expectpart "$(nmap --script ssl* -p 443 127.0.0.1)" 0 "443/tcp open  https" "least strength: A" "Nmap done: 1 IP address (1 host up) scanned in" --not-- "No reply from server" "TLSv1.0:" "TLSv1.1:"
+new "nmap ssl-cert-intaddr"
+expectpart "$(nmap --script ssl-cert-intaddr -p 443 127.0.0.1)" 0 "443/tcp open  https"
+
+new "nmap ssl-cert"
+expectpart "$(nmap --script ssl-cert -p 443 127.0.0.1)" 0 "443/tcp open  https" "| ssl-cert: Subject: commonName=www.clicon.org/organizationName=Clixon/countryName=SE"
+
+new "nmap ssl-date"
+expectpart "$(nmap --script ssl-date -p 443 127.0.0.1)" 0 "443/tcp open  https"
+
+new "nmap ssl-dh-params"
+expectpart "$(nmap --script ssl-dh-params -p 443 127.0.0.1)" 0 "443/tcp open  https"
+
+new "nmap ssl-enum-ciphers"
+expectpart "$(nmap --script ssl-enum-ciphers -p 443 127.0.0.1)" 0 "443/tcp open  https" "least strength: A" "TLSv1.2" --not-- "No reply from server" "TLSv1.0:" "TLSv1.1:"
+
+new "nmap ssl-heartbleed"
+expectpart "$(nmap --script ssl-heartbleed -p 443 127.0.0.1)" 0 "443/tcp open  https"
+
+new "nmap ssl-known-key"
+expectpart "$(nmap --script ssl-known-key -p 443 127.0.0.1)" 0 "443/tcp open  https"
+
+new "nmap ssl-poodle"
+expectpart "$(nmap --script ssl-poodle -p 443 127.0.0.1)" 0 "443/tcp open  https"
+
+new "nmap sslv2-drown"
+expectpart "$(nmap --script sslv2-drown -p 443 127.0.0.1)" 0 "443/tcp open  https"
+
+new "nmap sslv2"
+expectpart "$(nmap --script sslv2 -p 443 127.0.0.1)" 0 "443/tcp open  https"
+
+new "restconf get. Just ensure restconf is alive"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://127.0.0.1/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
@@ -192,8 +207,8 @@ fi
 unset RCPROTO
 
 # Set by restconf_config
+unset result
 unset RESTCONFIG
-unset RESTCONFIG1
 
 rm -rf $dir
 

@@ -848,6 +848,14 @@ api_path2xpath(char       *api_path,
 	clicon_err(OE_XML, EINVAL, "api_path is NULL");
 	goto done;
     }
+    /* Special case: "//" is not handled proerly by uri_str2cvec 
+     * and is an invalid api-path
+     */
+    if (strlen(api_path)>1 && api_path[0] == '/' && api_path[1] == '/'){
+	if (xerr && netconf_invalid_value_xml(xerr, "application", "Invalid api-path beginning with //") < 0)
+	    goto done;
+	goto fail;
+    }
     /* Split api-path into cligen variable vector, 
      * dont decode since api_path2xpath_cvv takes uri encode as input */
     if (uri_str2cvec(api_path, '/', '=', 0, &cvv) < 0)

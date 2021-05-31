@@ -1917,6 +1917,10 @@ xml_copy_one(cxobj *x0,
     int   retval = -1;
     char *s;
     
+    if (x0 == NULL || x1 == NULL){
+	clicon_err(OE_XML, EINVAL, "x0 or x1 is NULL");
+	goto done;
+    }
     xml_type_set(x1, xml_type(x0));
     if ((s = xml_name(x0))) /* malloced string */
 	if ((xml_name_set(x1, s)) < 0)

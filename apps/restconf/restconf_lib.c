@@ -210,6 +210,14 @@ static const map_str2int http_media_map[] = {
     {NULL,                            -1}
 };
 
+/* Mapping to http proto types */
+static const map_str2int http_proto_map[] = {
+    {"http/1.0",  HTTP_10},
+    {"http/1.1",  HTTP_11},
+    {"http/2",    HTTP_2}, 
+    {NULL,        -1}
+};
+
 int
 restconf_err2code(char *tag)
 {
@@ -232,6 +240,18 @@ const char *
 restconf_media_int2str(restconf_media media)
 {
     return clicon_int2str(http_media_map, media);
+}
+
+int
+restconf_str2proto(char *str)
+{
+    return clicon_str2int(http_proto_map, str);
+}
+
+const char *
+restconf_proto2str(int proto)
+{
+    return clicon_int2str(http_proto_map, proto);
 }
 
 /*! Return media_in from Content-Type, -1 if not found or unrecognized

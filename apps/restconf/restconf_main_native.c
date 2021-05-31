@@ -151,6 +151,7 @@
 /* clicon */
 #include <clixon/clixon.h>
 
+#ifdef HAVE_LIBEVHTP
 /* evhtp */
 #include <event2/buffer.h> /* evbuffer */
 #define EVHTP_DISABLE_REGEX
@@ -158,6 +159,12 @@
 
 #include <evhtp/evhtp.h>
 #include <evhtp/sslutils.h> /* XXX inline this / use SSL directly */
+#endif /* HAVE_LIBEVHTP */
+
+#ifdef HAVE_LIBNGHTTP2
+/* nghttp2 */
+#include <nghttp2/nghttp2.h>
+#endif
 
 /* restconf */
 #include "restconf_lib.h"       /* generic shared with plugins */
@@ -336,6 +343,7 @@ openssl_cat_log_cb(void *handle,
     return 0;
 }
 
+#ifdef HAVE_LIBEVHTP
 static char*
 evhtp_method2str(enum htp_method m)
 {
@@ -399,17 +407,18 @@ evhtp_method2str(enum htp_method m)
     }
 }
 
+
 static int
-print_header(evhtp_header_t *header,
-	     void           *arg)
+evhtp_print_header(evhtp_header_t *header,
+		   void           *arg)
 {
     clicon_debug(1, "%s %s %s", __FUNCTION__, header->key, header->val);
     return 0;
 }
 
 static int
-query_iterator(evhtp_header_t *hdr,
-	       void           *arg)
+evhtp_query_iterator(evhtp_header_t *hdr,
+		     void           *arg)
 {
     cvec   *qvec = (cvec *)arg;
     char   *key;
@@ -436,8 +445,8 @@ query_iterator(evhtp_header_t *hdr,
  * Example: Host -> HTTP_HOST 
  */
 static int
-convert_fcgi(evhtp_header_t *hdr,
-	     void           *arg)
+evhtp_convert_fcgi(evhtp_header_t *hdr,
+		   void           *arg)
 {
     int           retval = -1;
     clicon_handle h = (clicon_handle)arg;
@@ -520,7 +529,7 @@ evhtp_params_set(clicon_handle    h,
      * that would mean double parsing,...
      */
     if (qvec && uri->query)
-	if (evhtp_kvs_for_each(uri->query, query_iterator, qvec) < 0){
+	if (evhtp_kvs_for_each(uri->query, evhtp_query_iterator, qvec) < 0){
 	    clicon_err(OE_CFG, errno, "evhtp_kvs_for_each");
 	    goto done;
 	}
@@ -558,7 +567,7 @@ evhtp_params_set(clicon_handle    h,
     /* Translate all http headers by capitalizing, prepend w HTTP_ and - -> _
      * Example: Host -> HTTP_HOST 
      */
-    if (evhtp_headers_for_each(req->headers_in, convert_fcgi, h) < 0)
+    if (evhtp_headers_for_each(req->headers_in, evhtp_convert_fcgi, h) < 0)
 	goto done;
     retval = 1;
  done:
@@ -593,7 +602,6 @@ restconf_path_root(evhtp_request_t *req,
 {
     int                 retval = -1;
     clicon_handle       h;
-    evhtp_connection_t *conn;
     int                 ret;
     cvec               *qvec = NULL;
 
@@ -602,13 +610,9 @@ restconf_path_root(evhtp_request_t *req,
 	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
 	goto done;
     }
-    if ((conn = req->conn) == NULL){
-	clicon_err(OE_RESTCONF, EINVAL, "req->conn is NULL");
-	goto done;
-    }
     /* input debug */
     if (clicon_debug_get())
-	evhtp_headers_for_each(req->headers_in, print_header, h);
+	evhtp_headers_for_each(req->headers_in, evhtp_print_header, h);
     
     /* get accepted connection */
     /* Query vector, ie the ?a=x&b=y stuff */
@@ -652,7 +656,6 @@ restconf_path_wellknown(evhtp_request_t *req,
 {
     int                 retval = -1;
     clicon_handle       h;
-    evhtp_connection_t *conn;
     int                 ret;
 
     clicon_debug(1, "------------");
@@ -660,13 +663,9 @@ restconf_path_wellknown(evhtp_request_t *req,
 	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
 	goto done;
     }
-    if ((conn = req->conn) == NULL){
-	clicon_err(OE_RESTCONF, EINVAL, "req->conn is NULL");
-	goto done;
-    }
     /* input debug */
     if (clicon_debug_get())
-	evhtp_headers_for_each(req->headers_in, print_header, h);
+	evhtp_headers_for_each(req->headers_in, evhtp_print_header, h);
     /* get accepted connection */
 
     /* set fcgi-like paramaters (ignore query vector) */
@@ -688,6 +687,7 @@ restconf_path_wellknown(evhtp_request_t *req,
     }
     return; /* void */
 }
+#endif /* HAVE_LIBEVHTP */
 
 /*
  * see restconf_config ->cv_evhtp_init(x2) -> cx_evhtp_socket -> 
@@ -720,8 +720,8 @@ init_openssl(void)
  * used for the certificate chain verification.
  */
 static int
-restconf_verify_certs(int                     preverify_ok,
-		      evhtp_x509_store_ctx_t *store)
+restconf_verify_certs(int             preverify_ok,
+		      X509_STORE_CTX *store)
 {
     char                buf[256];
     X509               *err_cert;
@@ -768,7 +768,8 @@ dump_alpn_proto_list(const unsigned char *in,
     char         *str;
 
     inp = (unsigned char*)in;
-    while ((len = *inp) != 0) {
+    while ((inp-in) < inlen) {
+	len = *inp;
 	inp++;
 	if ((str = malloc(len+1)) == NULL){
 	    clicon_err(OE_UNIX, errno, "malloc");
@@ -798,23 +799,33 @@ alpn_select_proto_cb(SSL                  *ssl,
 {
     unsigned char *inp;
     unsigned char len;
+    int           pref = 0;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (clicon_debug_get())
 	dump_alpn_proto_list(in, inlen);
     /* select http/1.1 */
     inp = (unsigned char*)in;
-    while ((len = *inp) != 0) {
+    while ((inp-in) < inlen) {
+	len = *inp;
 	inp++;
-	if (len == 8 && strncmp((char*)inp, "http/1.1", len) == 0)
-	    //      if (len == 2 && strncmp((char*)inp, "h2", len) == 0)
-	    break;
+	if (pref < 10 && len == 8 && strncmp((char*)inp, "http/1.1", len) == 0){
+	    *outlen = len;
+	    *out = inp;
+	    pref = 10;
+	}
+#ifdef HAVE_LIBNGHTTP2
+	/* Higher pref than http/1.1 */
+	else if (pref < 20 && len == 2 && strncmp((char*)inp, "h2", len) == 0){
+	    *outlen = len;
+	    *out = inp;
+	    pref = 20;
+	}
+#endif
 	inp += len;
     }
-    if (len == 0)
+    if (pref == 0)
 	return SSL_TLSEXT_ERR_NOACK;
-    *outlen = len;
-    *out = inp;
     return SSL_TLSEXT_ERR_OK;
 }
 
@@ -912,13 +923,12 @@ restconf_ssl_context_configure(clixon_handle h,
 }
 
 /*! Free clixon/cbuf resources related to an evhtp connection
+ * @param[in]  rc   restconf connection
  */
 static int
-restconf_conn_free(evhtp_connection_t *conn)
+restconf_conn_free(restconf_conn_h *rc)
 {
-    restconf_conn_h   *rc;
-    
-    if ((rc = conn->arg) != NULL){
+    if (rc != NULL){
 	if (rc->rc_outp_hdrs)
 	    cvec_free(rc->rc_outp_hdrs);
 	if (rc->rc_outp_buf)
@@ -933,31 +943,33 @@ restconf_conn_free(evhtp_connection_t *conn)
  * and always use this function, but it is difficult.
  */
 static int
-close_ssl_evhtp_socket(int                 s,
-		       evhtp_connection_t *conn,
-		       int                 shutdown)
+close_ssl_socket(restconf_conn_h    *rc,
+		 int                 shutdown)
 {
     int retval = -1;
-    int ret;
-    SSL *ssl;
-    
-    ssl = conn->ssl;
-    clicon_debug(1, "%s conn-free (%p) 1", __FUNCTION__, conn);
-    restconf_conn_free(conn);
-    evhtp_connection_free(conn); /* evhtp */
-    if (ssl != NULL){
-	if (shutdown && (ret = SSL_shutdown(ssl)) < 0){
-	    int e = SSL_get_error(ssl, ret);
+    int                 ret;
+#ifdef HAVE_LIBEVHTP
+    evhtp_connection_t *evconn;
+
+    evconn = (evhtp_connection_t *)rc->rc_arg;
+    clicon_debug(1, "%s evconn-free (%p) 1", __FUNCTION__, evconn);
+    evhtp_connection_free(evconn); /* evhtp */
+#endif /* HAVE_LIBEVHTP */
+    if (rc->rc_ssl != NULL){
+	if (shutdown && (ret = SSL_shutdown(rc->rc_ssl)) < 0){
+	    int e = SSL_get_error(rc->rc_ssl, ret);
 	    clicon_err(OE_SSL, 0, "SSL_shutdown, err:%d", e);
 	    goto done;
 	}
-	SSL_free(ssl);
+	SSL_free(rc->rc_ssl);
+	rc->rc_ssl = NULL;
     }
-    if (close(s) < 0){
+    if (close(rc->rc_s) < 0){
 	clicon_err(OE_UNIX, errno, "close");
 	goto done;
     }
-    clixon_event_unreg_fd(s, restconf_connection);
+    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
+    restconf_conn_free(rc);    
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -1019,89 +1031,93 @@ send_badrequest(clicon_handle       h,
  * OR evhtp returns 0 with no reply, then this is assumed to mean read more data from the socket.
  */
 static int
-restconf_connection(int   s, 
+restconf_connection(int   s,
 		    void *arg)
 {
     int                 retval = -1;
-    evhtp_connection_t *conn = NULL;
+    restconf_conn_h    *rc = NULL;
     ssize_t             n;
     char                buf[BUFSIZ]; /* from stdio.h, typically 8K */
-    clicon_handle       h;
     int                 readmore = 1;
-    restconf_conn_h    *rc;
+#ifdef HAVE_LIBEVHTP
+    clicon_handle       h;
+    evhtp_connection_t *evconn = NULL;
+#endif
 
-    clicon_debug(1, "%s", __FUNCTION__);
-    if ((conn = (evhtp_connection_t*)arg) == NULL){
+    clicon_debug(1, "%s %d", __FUNCTION__, s);
+    if ((rc = (restconf_conn_h*)arg) == NULL){
 	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
 	goto done;
     }
-    h = (clicon_handle*)conn->htp->arg;
+    assert(s == rc->rc_s);
     while (readmore) {
 	clicon_debug(1, "%s readmore", __FUNCTION__);
 	readmore = 0;
 	/* Example: curl -Ssik -u wilma:bar -X GET https://localhost/restconf/data/example:x */
-	if (conn->ssl){
+	if (rc->rc_ssl){
 	    /* Non-ssl gets n == 0 here!
 	       curl -Ssik --key /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.key --cert /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.crt -X GET https://localhost/restconf/data/example:x
 	    */
-	    if ((n = SSL_read(conn->ssl, buf, sizeof(buf))) < 0){
+	    if ((n = SSL_read(rc->rc_ssl, buf, sizeof(buf))) < 0){
 		clicon_err(OE_XML, errno, "SSL_read");
 		goto done;
 	    }
 	}
 	else{
-	    if ((n = read(conn->sock, buf, sizeof(buf))) < 0){ /* XXX atomicio ? */
+	    if ((n = read(rc->rc_s, buf, sizeof(buf))) < 0){ /* XXX atomicio ? */
 		if (errno == ECONNRESET) {/* Connection reset by peer */
-		    close(conn->sock);
-		    restconf_conn_free(conn);
-		    clixon_event_unreg_fd(conn->sock, restconf_connection);
+		    clicon_debug(1, "%s %d Connection reset by peer", __FUNCTION__, rc->rc_s);
+		    close(rc->rc_s);
+		    restconf_conn_free(rc);
+		    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
 		    goto ok; /* Close socket and ssl */
 		}
 		clicon_err(OE_XML, errno, "read");
 		goto done;
 	    }
 	}
+	clicon_debug(1, "%s read:%ld", __FUNCTION__, n);
 	if (n == 0){
 	    clicon_debug(1, "%s n=0 closing socket", __FUNCTION__);
-	    if (close_ssl_evhtp_socket(s, conn, 1) < 0)
+	    if (close_ssl_socket(rc, 1) < 0)
 		goto done;
 	    goto ok;
 	}
-	/* parse incoming packet 
+#ifdef HAVE_LIBEVHTP
+	h = rc->rc_h;
+	/* parse incoming packet using evhtp
 	 * signature: 
 	 */
-	if (connection_parse_nobev(buf, n, conn) < 0){
+	evconn = (evhtp_connection_t*)rc->rc_arg;
+	if (connection_parse_nobev(buf, n, evconn) < 0){
 	    clicon_debug(1, "%s connection_parse error", __FUNCTION__);
 	    /* XXX To get more nuanced evhtp error check
 	     * htparser_get_error(conn->parser)
 	     */
-	    if (send_badrequest(h, s, conn->ssl, "application/yang-data+xml",
+	    if (send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
 				"<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The requested URL or a header is in some way badly formed</error-message></error></errors>") < 0)
 		goto done;
-	    SSL_free(conn->ssl);
-	    if (close(s) < 0){
+	    SSL_free(rc->rc_ssl);
+	    rc->rc_ssl = NULL;
+	    evconn->ssl = NULL;
+	    if (close(rc->rc_s) < 0){
 		clicon_err(OE_UNIX, errno, "close");
 		goto done;
 	    }
-	    clixon_event_unreg_fd(s, restconf_connection);
-	    conn->ssl = NULL;
-	    clicon_debug(1, "%s conn-free (%p) 2", __FUNCTION__, conn);
-	    restconf_conn_free(conn);
-	    evhtp_connection_free(conn);
+	    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
+	    clicon_debug(1, "%s evconn-free (%p) 2", __FUNCTION__, evconn);
+	    restconf_conn_free(rc);
+	    evhtp_connection_free(evconn);
 	    goto ok;
 	}
 	clicon_debug(1, "%s connection_parse OK", __FUNCTION__);
-	if (conn->bev != NULL){
+	if (evconn->bev != NULL){
 	    struct evbuffer *ev;
 	    size_t           buflen0;
 	    size_t           buflen1;
 	    char            *buf = NULL;
 
-	    if ((rc = conn->arg) == NULL){
-		clicon_err(OE_RESTCONF, EFAULT, "Internal error: restconf-conn-h is NULL: shouldnt happen");
-		goto done;
-	    }
-	    if ((ev = bufferevent_get_output(conn->bev)) != NULL){
+	    if ((ev = bufferevent_get_output(evconn->bev)) != NULL){
 		buflen0 = evbuffer_get_length(ev);
 		buflen1 = buflen0 - rc->rc_bufferevent_output_offset;
 		if (buflen1 > 0){
@@ -1126,17 +1142,19 @@ restconf_connection(int   s,
 	    if (cbuf_len(rc->rc_outp_buf) == 0)
 		readmore = 1;
 	    else {
-		if (buf_write(cbuf_get(rc->rc_outp_buf), cbuf_len(rc->rc_outp_buf), conn->sock, conn->ssl) < 0)
+		if (buf_write(cbuf_get(rc->rc_outp_buf), cbuf_len(rc->rc_outp_buf),
+			      rc->rc_s, rc->rc_ssl) < 0)
 		    goto done;
 		cvec_reset(rc->rc_outp_hdrs); /* Can be done in native_send_reply */
 		cbuf_reset(rc->rc_outp_buf);
 	    }
 	}
 	else{
-	    if (send_badrequest(h, s, conn->ssl, "application/yang-data+xml",
+	    if (send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
                                 "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>No evhtp output</error-message></error></errors>") < 0)
                 goto done;
 	}
+#endif /* HAVE_LIBEVHTP */
     } /* while readmore */
  ok:
     retval = 0;
@@ -1211,6 +1229,89 @@ restconf_checkcert_file(cxobj      *xrestconf,
     return retval;
 }
 
+/*! Check ALPN result
+ * @proto[out] proto 
+ * @retval     1      OK with proto set
+ * @retval     0      Fail, ALPN null or not recognized
+ * @retval    -1      Error
+*/
+static int
+ssl_alpn_check(clicon_handle        h,
+	       const unsigned char *alpn,
+	       unsigned int         alpnlen,
+	       restconf_conn_h     *rc,
+	       restconf_http_proto *proto)
+{
+    int   retval = -1;
+    int   ret;
+    cbuf *cberr = NULL;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    /* Alternatively, call  restconf_str2proto but alpn is not a proper string */
+    if (alpn && alpnlen == 8 && memcmp("http/1.1", alpn, 8) == 0){
+	*proto = HTTP_11;
+	retval = 1; /* http/1.1 */
+	goto done; 
+    }
+#ifdef HAVE_LIBNGHTTP2
+    else if (alpn && alpnlen == 2 && memcmp("h2", alpn, 2) == 0){
+	*proto = HTTP_2;
+	retval = 1; /* http/2 */
+	goto done;
+    }
+#endif
+    else {
+	if ((cberr = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	if (alpn != NULL){
+	    cprintf(cberr, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>ALPN: protocol not recognized: %s</error-message></error></errors>", alpn);
+	    clicon_log(LOG_NOTICE, "Warning: %s", cbuf_get(cberr));
+	    if (send_badrequest(h, rc->rc_s, rc->rc_ssl,
+				"application/yang-data+xml",
+				cbuf_get(cberr)) < 0)
+		goto done;
+	}
+	else{
+	    /* XXX Sending badrequest here gives a segv in SSL_shutdown() later or a SIGPIPE here */
+	    clicon_log(LOG_NOTICE, "Warning: ALPN: No protocol selected");
+	}
+	restconf_conn_free(rc);
+#ifdef HAVE_LIBEVHTP
+	{
+	    evhtp_connection_t *evconn;
+
+	    if ((evconn = (evhtp_connection_t *)rc->rc_arg) != NULL)
+		evhtp_connection_free(evconn); /* evhtp */
+	}
+#endif /* HAVE_LIBEVHTP */
+	if (rc->rc_ssl){
+            /* nmap ssl-known-key SEGV at s->method->ssl_shutdown(s); 
+	     * OR OpenSSL error: : SSL_shutdown, err: SSL_ERROR_SYSCALL(5)
+	     */
+	    if ((ret = SSL_shutdown(rc->rc_ssl)) < 0){ 
+		int e = SSL_get_error(rc->rc_ssl, ret);
+		if (e == SSL_ERROR_SYSCALL){
+		    clicon_log(LOG_NOTICE, "Warning: SSL_shutdown SSL_ERROR_SYSCALL");
+		    /* Continue */
+		}
+		else {
+		    clicon_err(OE_SSL, 0, "SSL_shutdown, err:%d", e);
+		    goto done;
+		}
+	    }
+	    SSL_free(rc->rc_ssl);
+	}
+    }
+    retval = 0; /* ALPN not OK */
+ done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (cberr)
+	cbuf_free(cberr);
+    return retval;
+}
+
 /*! Accept new socket client
  * @param[in]  fd   Socket (unix or ip)
  * @param[in]  arg  typecast clicon_handle
@@ -1220,31 +1321,33 @@ static int
 restconf_accept_client(int   fd,
 		       void *arg) 
 {
-    int                retval = -1;
-    restconf_socket   *rsock = (restconf_socket *)arg;
+    int                     retval = -1;
+    restconf_socket        *rsock;
     restconf_native_handle *rh = NULL;
-    restconf_conn_h   *rc = NULL;
-    clicon_handle      h;
-    int                s;
-    struct sockaddr    from = {0,};
-    socklen_t          len;
-    char               *name = NULL;
-    SSL                *ssl = NULL;  /* structure for ssl connection */
-    int                 ret;
-    evhtp_t            *evhtp = NULL;
-    evhtp_connection_t *conn;
-    int                 e;
-    int                 er;
-    int                 readmore;
-    X509               *peercert;
-    const unsigned char *alpn = NULL;
-    unsigned int         alpnlen = 0;
+    restconf_conn_h        *rc = NULL;
+    clicon_handle           h;
+    int                     s;
+    struct sockaddr         from = {0,};
+    socklen_t               len;
+    char                   *name = NULL;
+    int                     ret;
+    int                     e;
+    int                     er;
+    int                     readmore;
+    X509                   *peercert;
+    const unsigned char    *alpn = NULL;
+    unsigned int            alpnlen = 0;
+    restconf_http_proto     proto = HTTP_11; /* Non-SSL negotiation NYI */
 
     clicon_debug(1, "%s %d", __FUNCTION__, fd);
-    if (rsock == NULL){
+    if ((rsock = (restconf_socket *)arg) == NULL){
 	clicon_err(OE_YANG, EINVAL, "rsock is NULL");
 	goto done;
     }
+    clicon_debug(1, "%s type:%s addr:%s port:%hu", __FUNCTION__,
+		 rsock->rs_addrtype,
+		 rsock->rs_addrstr,
+		 rsock->rs_port);
     h = rsock->rs_h;
     if ((rh = restconf_native_handle_get(h)) == NULL){
 	clicon_err(OE_XML, EFAULT, "No openssl handle");
@@ -1255,24 +1358,38 @@ restconf_accept_client(int   fd,
 	clicon_err(OE_UNIX, errno, "accept");
 	goto done;
     }
-    evhtp = rh->rh_evhtp;
-    if ((conn = evhtp_connection_new_server(evhtp, s)) == NULL){
-	clicon_err(OE_UNIX, errno, "evhtp_connection_new_server");
+    /*
+     * Register callbacks for actual data socket 
+     */
+    if ((rc = (restconf_conn_h*)malloc(sizeof(restconf_conn_h))) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
-    clicon_debug(1, "%s conn-new (%p)", __FUNCTION__, conn);
+    memset(rc, 0, sizeof(restconf_conn_h));
+    rc->rc_h = h;
+    rc->rc_s = s;
+    clicon_debug(1, "%s s:%d", __FUNCTION__, rc->rc_s);
+    if ((rc->rc_outp_hdrs = cvec_new(0)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
+    if ((rc->rc_outp_buf = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
     if (rsock->rs_ssl){
-	if ((ssl = SSL_new(rh->rh_ctx)) == NULL){
+	if ((rc->rc_ssl = SSL_new(rh->rh_ctx)) == NULL){
 	    clicon_err(OE_SSL, 0, "SSL_new");
 	    goto done;
 	}
-	clicon_debug(1, "%s SSL_new(%p)", __FUNCTION__, ssl);
+	clicon_debug(1, "%s SSL_new(%p)", __FUNCTION__, rc->rc_ssl);
 	/* CCL_CTX_set_verify already set, need not call SSL_set_verify again for this server
 	 */
 	/* X509_CHECK_FLAG_NO_WILDCARDS disables wildcard expansion */
-	SSL_set_hostflags(ssl, X509_CHECK_FLAG_NO_WILDCARDS);
+	SSL_set_hostflags(rc->rc_ssl, X509_CHECK_FLAG_NO_WILDCARDS);
 #if 0
-	/* Enable this if you want to restrict client certs to a specific set.
+	/* XXX This code is kept for the time being just for reference, it does not belong here.
+	 * If you want to restrict client certs to a specific set.
 	 * Otherwise this is done in restcon ca-auth callback and ultimately NACM
 	 * SSL_set1_host() sets the expected DNS hostname to name
 	   C                      = SE  
@@ -1282,17 +1399,16 @@ restconf_accept_client(int   fd,
 	   CN                     = ca <---
 	   emailAddress           = olof@hagsand.se
 	*/
-	if (SSL_set1_host(ssl, "andy") != 1) { /* for peer cert */
+	if (SSL_set1_host(rc->rc_ssl, "andy") != 1) { /* for peer cert */
 	    clicon_err(OE_SSL, 0, "SSL_set1_host");
 	    goto done;
 	}
-	if (SSL_add1_host(ssl, "olof") != 1) { /* for peer cert */
+	if (SSL_add1_host(rc->rc_ssl, "olof") != 1) { /* for peer cert */
 	    clicon_err(OE_SSL, 0, "SSL_set1_host");
 	    goto done;
 	}
 #endif
-	conn->ssl = ssl; /* evhtp */
-	if (SSL_set_fd(ssl, s) != 1){
+	if (SSL_set_fd(rc->rc_ssl, rc->rc_s) != 1){
 	    clicon_err(OE_SSL, 0, "SSL_set_fd");
 	    goto done;
 	}
@@ -1302,30 +1418,25 @@ restconf_accept_client(int   fd,
 	    /* 1: OK, -1 fatal, 0: TLS/SSL handshake was not successful
 	     * Both error cases: Call SSL_get_error() with the return value ret 
 	     */
-	    if ((ret = SSL_accept(ssl)) != 1) {
+	    if ((ret = SSL_accept(rc->rc_ssl)) != 1) {
 		clicon_debug(1, "%s SSL_accept() ret:%d errno:%d", __FUNCTION__, ret, er=errno);
-		e = SSL_get_error(ssl, ret);
+		e = SSL_get_error(rc->rc_ssl, ret);
 		switch (e){
 		case SSL_ERROR_SSL:                  /* 1 */
 		    clicon_debug(1, "%s SSL_ERROR_SSL (non-ssl message on ssl socket)", __FUNCTION__);
-#if 0
-		    /* XXX sending a bad request here may crash
-		     * eg when run nmap --script ssl*
-		     */
-		    if (send_badrequest(h, s, NULL, "application/yang-data+xml",
+#if 1
+		    if (send_badrequest(h, rc->rc_s, NULL, "application/yang-data+xml",
 					"<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The plain HTTP request was sent to HTTPS port</error-message></error></errors>") < 0)
 			goto done;
 #endif
-		    SSL_free(ssl);
-		    if (close(s) < 0){
+		    SSL_free(rc->rc_ssl);
+		    rc->rc_ssl = NULL;
+		    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
+		    if (close(rc->rc_s) < 0){
 			clicon_err(OE_UNIX, errno, "close");
 			goto done;
 		    }
-		    clixon_event_unreg_fd(s, restconf_connection);
-		    conn->ssl = NULL;
-		    clicon_debug(1, "%s conn-free (%p) 3", __FUNCTION__, conn);
-		    restconf_conn_free(conn);
-		    evhtp_connection_free(conn); /* evhtp */
+		    restconf_conn_free(rc);
 		    goto ok;
 		    break;
 		case SSL_ERROR_SYSCALL:              /* 5 */
@@ -1335,7 +1446,7 @@ restconf_accept_client(int   fd,
 		       operations should be performed on the connection and SSL_shutdown() must 
 		       not be called.*/
 		    clicon_debug(1, "%s SSL_accept() SSL_ERROR_SYSCALL %d", __FUNCTION__, er);
-		    if (close_ssl_evhtp_socket(s, conn, 0) < 0)
+		    if (close_ssl_socket(rc, 0) < 0)
 			goto done;
 		    goto ok;
 		    break;
@@ -1365,7 +1476,7 @@ restconf_accept_client(int   fd,
 		    goto done;
 		    break;
 		}
-	    }
+	    } /* SSL_accept */
 	} /* while(readmore) */
 	/* For client-cert authentication, check if any certs are present,
 	* if not, send bad request
@@ -1373,53 +1484,43 @@ restconf_accept_client(int   fd,
 	* but then SSL_accept fails.
 	*/
 	if (restconf_auth_type_get(h) == CLIXON_AUTH_CLIENT_CERTIFICATE){
-	    if ((peercert = SSL_get_peer_certificate(ssl)) != NULL){
+	    if ((peercert = SSL_get_peer_certificate(rc->rc_ssl)) != NULL){
 		X509_free(peercert);
 	    }
 	    else { /* Get certificates (if available) */
-               if (send_badrequest(h, s, ssl, "application/yang-data+xml",  "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>Peer certificate required</error-message></error></errors>") < 0)
+		if (send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
+				    "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>Peer certificate required</error-message></error></errors>") < 0)
 		    goto done;
-		restconf_conn_free(conn);
-		evhtp_connection_free(conn); /* evhtp */
-		if (ssl){
-		    if ((ret = SSL_shutdown(ssl)) < 0){
-			int e = SSL_get_error(ssl, ret);
+		restconf_conn_free(rc);
+		if (rc->rc_ssl){
+		    if ((ret = SSL_shutdown(rc->rc_ssl)) < 0){
+			int e = SSL_get_error(rc->rc_ssl, ret);
 			clicon_err(OE_SSL, 0, "SSL_shutdown, err:%d", e);
 			goto done;
 		    }
-		    SSL_free(ssl);
+		    SSL_free(rc->rc_ssl);
+		    rc->rc_ssl = NULL;
 		}
 		goto ok;
 	    }
 	}
 	/* Sets data and len to point to the client's requested protocol for this connection. */
-	SSL_get0_next_proto_negotiated(ssl, &alpn, &alpnlen);
+	SSL_get0_next_proto_negotiated(rc->rc_ssl, &alpn, &alpnlen);
 	if (alpn == NULL) {
 	    /* Returns a pointer to the selected protocol in data with length len. */
-	    SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
+	    SSL_get0_alpn_selected(rc->rc_ssl, &alpn, &alpnlen);
 	}
-	clicon_debug(1, "%s ALPN: %d %s", __FUNCTION__, alpnlen, alpn);
-	if (alpn == NULL || alpnlen != 8 || memcmp("http/1.1", alpn, 8) != 0) {
-	    clicon_log(LOG_NOTICE, "------Warning1 Protocol http/1.1 not selected: %s", alpn);
-	    if (send_badrequest(h, s, ssl, "application/yang-data+xml",  "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>Peer certificate required</error-message></error></errors>") < 0)
-		    goto done;
-	    restconf_conn_free(conn);
-	    evhtp_connection_free(conn); /* evhtp */
-	    if (ssl){
-		if ((ret = SSL_shutdown(ssl)) < 0){
-		    int e = SSL_get_error(ssl, ret);
-		    clicon_err(OE_SSL, 0, "SSL_shutdown, err:%d", e);
-		    goto done;
-		}
-		SSL_free(ssl);
-	    }
+	if ((ret = ssl_alpn_check(h, alpn, alpnlen, rc, &proto)) < 0)
+	    goto done;
+	if (ret == 0)
 	    goto ok;
-	}
+	clicon_debug(1, "%s proto:%s", __FUNCTION__, restconf_proto2str(proto));
 	/* Get the actual peer, XXX this maybe could be done in ca-auth client-cert code ? 
 	 * Note this _only_ works if SSL_set1_host() was set previously,...
 	 */
-	if (SSL_get_verify_result(ssl) == X509_V_OK) { /* for peer cert */
-	    const char *peername = SSL_get0_peername(ssl);
+	if (SSL_get_verify_result(rc->rc_ssl) == X509_V_OK) { /* for peer cert */
+
+	    const char *peername = SSL_get0_peername(rc->rc_ssl);
 
 	    if (peername != NULL) {
 		/* Name checks were in scope and matched the peername */
@@ -1428,27 +1529,33 @@ restconf_accept_client(int   fd,
 	}
 #if 0 /* debug */
 	if (clicon_debug_get())
-	    restconf_listcerts(ssl);
+	    restconf_listcerts(rc->rc_ssl);
 #endif
+    } /* if ssl */
+    rc->rc_proto = proto;
+    switch (rc->rc_proto){
+#ifdef HAVE_LIBEVHTP
+    case HTTP_10:
+    case HTTP_11:{
+	evhtp_connection_t  *evconn;
+	/* Create evhtp-specific struct */
+	if ((evconn = evhtp_connection_new_server(rh->rh_evhtp, rc->rc_s)) == NULL){
+	    clicon_err(OE_UNIX, errno, "evhtp_connection_new_server");
+	    goto done;
+	}
+	/* Mutual pointers, from generic rc to evhtp specific and from evhtp conn to generic
+	 */
+	rc->rc_arg = evconn; /* Generic to specific */
+	evconn->arg = rc;    /* Specific to generic */
+	evconn->ssl = rc->rc_ssl; /* evhtp */
     }
-    /*
-     * Register callbacks for actual data socket 
-     */
-    if ((rc = (restconf_conn_h*)malloc(sizeof(restconf_conn_h))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
-    }
-    memset(rc, 0, sizeof(restconf_conn_h));
-    if ((rc->rc_outp_hdrs = cvec_new(0)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto done;
-    }
-    if ((rc->rc_outp_buf = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    conn->arg = rc;
-    if (clixon_event_reg_fd(s, restconf_connection, (void*)conn, "restconf client socket") < 0)
+	break;
+#endif /* HAVE_LIBEVHTP */
+    case HTTP_2:
+    default:
+	break;
+    } /* switch proto */
+    if (clixon_event_reg_fd(rc->rc_s, restconf_connection, (void*)rc, "restconf client socket") < 0)
 	goto done;
  ok:
     retval = 0;
@@ -1463,7 +1570,7 @@ static int
 restconf_native_terminate(clicon_handle h)
 {
     restconf_native_handle *rh;
-    restconf_socket *rsock;
+    restconf_socket        *rsock;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((rh = restconf_native_handle_get(h)) != NULL){
@@ -1471,15 +1578,22 @@ restconf_native_terminate(clicon_handle h)
 	    clixon_event_unreg_fd(rsock->rs_ss, restconf_accept_client);
 	    close(rsock->rs_ss);
 	    DELQ(rsock, rh->rh_sockets, restconf_socket *);
+	    if (rsock->rs_addrstr)
+		free(rsock->rs_addrstr);
+	    if (rsock->rs_addrtype)
+		free(rsock->rs_addrtype);
 	    free(rsock);
 	}
 	if (rh->rh_ctx)
 	    SSL_CTX_free(rh->rh_ctx);
+#ifdef HAVE_LIBEVHTP
 	if (rh->rh_evhtp){
 	    if (rh->rh_evhtp->evbase)
 		event_base_free(rh->rh_evhtp->evbase);
 	    evhtp_free(rh->rh_evhtp);
 	}
+#endif /* HAVE_LIBEVHTP */
+
 	free(rh);
     }
     EVP_cleanup();
@@ -1596,6 +1710,7 @@ openssl_init_socket(clicon_handle h,
     }
     /*
      * Create per-socket openssl handle
+     * See restconf_native_terminate for freeing
      */
     if ((rsock = malloc(sizeof *rsock)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
@@ -1605,6 +1720,15 @@ openssl_init_socket(clicon_handle h,
     rsock->rs_h = h;
     rsock->rs_ss = ss;
     rsock->rs_ssl = ssl;
+    if ((rsock->rs_addrstr = strdup(address)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    if ((rsock->rs_addrtype = strdup(addrtype)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    rsock->rs_port = port;
     INSQ(rsock, rh->rh_sockets);
 
     /* ss is a server socket that the clients connect to. The callback
@@ -1643,8 +1767,10 @@ restconf_openssl_init(clicon_handle h,
     cxobj            **vec = NULL;
     size_t             veclen;
     int                i;
+#ifdef HAVE_LIBEVHTP
     evhtp_t           *evhtp = NULL;
     struct event_base *evbase = NULL;
+#endif /* HAVE_LIBEVHTP */
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* flag used for sanity of certs */
@@ -1699,6 +1825,7 @@ restconf_openssl_init(clicon_handle h,
     }
     rh = restconf_native_handle_get(h);
     rh->rh_ctx = ctx;
+#ifdef HAVE_LIBEVHTP
     /* evhtp stuff */ /* XXX move this to global level */
     if ((evbase = event_base_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "event_base_new");
@@ -1719,6 +1846,7 @@ restconf_openssl_init(clicon_handle h,
     	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
     	goto done;
     }
+#endif /* HAVE_LIBEVHTP */
     /* get the list of socket config-data */
     if (xpath_vec(xrestconf, nsc, "socket", &vec, &veclen) < 0)
 	goto done;

@@ -63,10 +63,15 @@ extern "C" {
  * Per connection request
  */
 typedef struct {
-    //    qelem_t       rs_qelem;     /* List header */
-    cvec         *rc_outp_hdrs; /* List of output headers */
-    cbuf         *rc_outp_buf;  /* Output buffer */
-    size_t        rc_bufferevent_output_offset; /* Kludge to drain libevent output buffer */
+    //    qelem_t       rs_qelem; /* List header */
+    cvec           *rc_outp_hdrs; /* List of output headers */
+    cbuf           *rc_outp_buf;  /* Output buffer */
+    size_t          rc_bufferevent_output_offset; /* Kludge to drain libevent output buffer */
+    restconf_http_proto rc_proto; /* HTTP protocol: http/1 or http/2 */
+    int             rc_s;         /* Connection socket */
+    clicon_handle   rc_h;         /* Clixon handle */
+    SSL            *rc_ssl;       /* Structure for SSL connection */
+    void           *rc_arg;       /* Specific connection pointer, eg evhtp conn struct */
 } restconf_conn_h;
     
 /* Restconf request handle 
@@ -77,6 +82,10 @@ typedef struct {
     clicon_handle rs_h;         /* Clixon handle */
     int           rs_ss;        /* Server socket (ready for accept) */
     int           rs_ssl;       /* 0: Not SSL socket, 1:SSL socket */
+    char         *rs_addrtype;  /* Address type according to ietf-inet-types:
+                                   eg inet:ipv4-address or inet:ipv6-address */
+    char         *rs_addrstr;   /* Address as string, eg 127.0.0.1, ::1 */
+    uint16_t      rs_port;      /* Protocol port */
 } restconf_socket;
 
 /* Restconf handle 
@@ -84,8 +93,10 @@ typedef struct {
  */
 typedef struct {
     SSL_CTX         *rh_ctx;       /* SSL context */
-    evhtp_t         *rh_evhtp;     /* Evhtp struct */
     restconf_socket *rh_sockets;   /* List of restconf server (ready for accept) sockets */
+#ifdef HAVE_LIBEVHTP
+    evhtp_t         *rh_evhtp;     /* Evhtp struct */
+#endif
 } restconf_native_handle;
 
 /*

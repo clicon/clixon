@@ -34,6 +34,8 @@ Expected: June 2021
 
 ### New features
 
+* Started EXPERIMENTAL HTTP/2 work using nghttp2
+  * Added autoconf config options, temporary for nghttp2 development: `--disable-evhtp`and `--enable-nghttp2` enabling http/1 only / http/2 only linking
 * YANG when statement in conjunction with grouping/uses/augment
   * Several cases were not implemented fully according to RFC 7950:
     * Do not extend default values if when statements evaluate to false
