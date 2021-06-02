@@ -1,10 +1,5 @@
-PUT /restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0 HTTP/1.1
-Host: 127.0.0.1
-Accept: */*
-Content-Type: application/yang-data+json
-Content-Length: 91
-
-{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}
-
+GET /restconf/data/ HTTP/1.1
+Host: localhost
+Accept: application/yang-data+xml
 
 

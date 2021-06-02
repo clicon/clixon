@@ -40,7 +40,7 @@ function memonce(){
 	    sudo chmod 660 $valgrindfile
 	    sudo chown www-data $valgrindfile
 	    : ${DEMWAIT:=15} # valgrind backend needs some time to get up 
-	    clixon_restconf="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile /www-data/clixon_restconf"
+	    clixon_restconf="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile clixon_restconf"
 
 	    ;;
 	*)

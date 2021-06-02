@@ -206,6 +206,9 @@ if false; then
 	err1 "netcat/nc not found"
     fi
 
+#    new "restconf try fuzz crash"
+#    expectpart "$(${netcat} 127.0.0.1 80 < ~/tmp/crashes/id:000000,sig:06,src:000493+000365,op:splice,rep:8)" 0 "HTTP/1.1 400 Bad Request"
+    
     new "restconf GET initial datastore netcat"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
 GET /restconf/data/example:a=0 HTTP/1.1

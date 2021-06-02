@@ -128,7 +128,7 @@ if [ $RC -ne 0 ]; then
     
     new "start restconf daemon"
     # inline of start_restconf, cant make quotes to work
-    echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R <xml>"
+    echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg"
     sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg &
     if [ $? -ne 0 ]; then
 	err1 "expected 0" "$?"

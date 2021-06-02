@@ -250,7 +250,6 @@ static int
 json_empty_list(clixon_json_yacc *jy)
 {
     xml_rm(jy->jy_current);
-    xml_free(jy->jy_current);
     jy->jy_current = NULL;
     return 0;
 }

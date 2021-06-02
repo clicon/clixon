@@ -51,10 +51,15 @@ sudo clixon_backend -z -f $cfg -s init
 # Start backend
 sudo clixon_backend -f $cfg -s init
 
+# Dryrun without afl (comment this if you run for real)
+sudo LD_PRELOAD="/usr/local/lib/desock.so" clixon_restconf -rf $cfg < input/1.http || true
+sudo LD_PRELOAD="/usr/local/lib/desock.so" clixon_restconf -rf $cfg < input/2.http || true
+sudo LD_PRELOAD="/usr/local/lib/desock.so" clixon_restconf -rf $cfg < input/3.http || true
+sudo LD_PRELOAD="/usr/local/lib/desock.so" clixon_restconf -rf $cfg < input/4.http || true
+exit
+
 # Run script 
 #  CC=/usr/bin/afl-clang 
 sudo LD_PRELOAD="/usr/local/lib/desock.so" afl-fuzz -i input -o output -d -m $MEGS -- /usr/local/sbin/clixon_restconf -rf $cfg
 
-# Dryrun without afl:
-#echo "sudo LD_PRELOAD=\"/usr/local/lib/desock.so\" 
-#sudo LD_PRELOAD="/usr/local/lib/desock.so" clixon_restconf -rf $cfg < input/1.http
+
