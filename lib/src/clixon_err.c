@@ -116,12 +116,14 @@ static struct errvec EV[] = {
     {"Syslog error",           OE_SYSLOG},
     {"Routing demon error",    OE_ROUTING},
     {"XML error",              OE_XML},
-    {"OpenSSL error",          OE_SSL},
     {"RESTCONF error",         OE_RESTCONF},
     {"Plugins",                OE_PLUGIN},
     {"Yang error",             OE_YANG},
     {"FATAL",                  OE_FATAL},
     {"Undefined",              OE_UNDEF},
+    /* From here error extensions using clixon_err_cat_reg */
+    {"OpenSSL error",          OE_SSL},
+    {"Nghttp2 error",          OE_NGHTTP2},
     {NULL,                     -1}
 };
 
@@ -224,7 +226,7 @@ clicon_err_fn(const char *fn,
     va_end(args);
     strncpy(clicon_err_reason, msg, ERR_STRLEN-1);
 
-    /* Check category callbacks */
+    /* Check category callbacks as defined in clixon_err_cat_reg */
     if ((cec = find_category(category)) != NULL &&
 	cec->cec_logfn){
 	cbuf *cb = NULL;
@@ -232,7 +234,7 @@ clicon_err_fn(const char *fn,
 	    fprintf(stderr, "cbuf_new: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
 	    goto done;
 	}
-	if (cec->cec_logfn(cec->cec_handle, cb) < 0)
+	if (cec->cec_logfn(cec->cec_handle, suberr, cb) < 0)
 	    goto done;
 	/* Here we could take care of specific errno, like application-defined errors */
 	clicon_log(LOG_ERR, "%s: %d: %s: %s: %s",

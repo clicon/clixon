@@ -86,6 +86,7 @@ const char *restconf_media_int2str(restconf_media media);
 int   restconf_str2proto(char *str);
 const char *restconf_proto2str(int proto);
 restconf_media restconf_content_type(clicon_handle h);
+int   restconf_convert_hdr(clicon_handle h, char *name, char *val);
 int   get_user_cookie(char *cookiestr, char  *attribute, char **val);
 int   restconf_terminate(clicon_handle h);
 int   restconf_insert_attributes(cxobj *xdata, cvec *qvec);
@@ -96,6 +97,7 @@ int   restconf_authentication_cb(clicon_handle h, void *req, int pretty, restcon
 int   restconf_config_init(clicon_handle h, cxobj *xrestconf);
 int   restconf_socket_init(const char *netns0, const char *addrstr, const char *addrtype, uint16_t port, int backlog, int flags, int *ss);
 int   restconf_socket_extract(clicon_handle h, cxobj *xs, cvec *nsc, char **namespace, char **address, char **addrtype, uint16_t *port, uint16_t *ssl);
+int   restconf_convert_hdr(clicon_handle h, char *name, char *val);
 
 #endif /* _RESTCONF_LIB_H_ */
 

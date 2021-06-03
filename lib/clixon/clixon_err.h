@@ -70,19 +70,23 @@ enum clicon_err{
     OE_SYSLOG,   /* syslog error */
     OE_ROUTING,  /* routing daemon error (eg quagga) */
     OE_XML,      /* xml parsing etc */
-    OE_SSL,      /* Openssl errors, see eg ssl_get_error */
+
     OE_RESTCONF, /* RESTCONF errors */
     OE_PLUGIN,   /* plugin loading, etc */
     OE_YANG ,    /* Yang error */
     OE_FATAL,    /* Fatal error */
     OE_UNDEF,
+    /*-- From here error extensions using clixon_err_cat_reg, XXX register dynamically? --*/
+    OE_SSL,      /* Openssl errors, see eg ssl_get_error */
+    OE_NGHTTP2,  /* nghttp2 errors, see HAVE_LIBNGHTTP2 */
 };
 
 /* Clixon error category log callback 
  * @param[in]    handle  Application-specific handle
+ * @param[in]    suberr  Application-specific handle
  * @param[out]   cb      Read log/error string into this buffer
  */
-typedef int (clixon_cat_log_cb)(void *handle, cbuf *cb);
+typedef int (clixon_cat_log_cb)(void *handle, int suberr, cbuf *cb);
 
 /*
  * Variables

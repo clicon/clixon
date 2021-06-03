@@ -173,6 +173,12 @@
 #include "restconf_err.h"
 #include "restconf_root.h"
 #include "restconf_native.h"   /* Restconf-openssl mode specific headers*/
+#ifdef HAVE_LIBEVHTP
+#include "restconf_evhtp.h"   /* http/1 */
+#endif
+#ifdef HAVE_LIBNGHTTP2
+#include "restconf_nghttp2.h"  /* http/2 */
+#endif
 
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hD:f:E:l:p:y:a:u:rW:R:o:"
@@ -332,362 +338,18 @@ print_cb(const char *str, size_t len, void *cb)
 
 /* Clixon error category log callback 
  * @param[in]    handle  Application-specific handle
+ * @param[in]    suberr  Application-specific handle
  * @param[out]   cb      Read log/error string into this buffer
  */
 static int
-openssl_cat_log_cb(void *handle,
-		   cbuf *cb)
+clixon_openssl_log_cb(void *handle,
+		      int   suberr,
+		      cbuf *cb)
 {
     clicon_debug(1, "%s", __FUNCTION__);
     ERR_print_errors_cb(print_cb, cb);
     return 0;
 }
-
-#ifdef HAVE_LIBEVHTP
-static char*
-evhtp_method2str(enum htp_method m)
-{
-    switch (m){
-    case htp_method_GET:
-	return "GET";
-	break;
-    case htp_method_HEAD:
-	return "HEAD";
-	break;
-    case htp_method_POST:
-	return "POST";
-	break;
-    case htp_method_PUT:
-	return "PUT";
-	break;
-    case htp_method_DELETE:
-	return "DELETE";
-	break;
-    case htp_method_OPTIONS:
-	return "OPTIONS";
-	break;
-    case htp_method_PATCH:
-	return "PATCH";
-	break;
-#ifdef NOTUSED
-    case htp_method_MKCOL:
-	return "MKCOL";
-	break;
-    case htp_method_COPY:
-	return "COPY";
-	break;
-    case htp_method_MOVE:
-	return "MOVE";
-	break;
-    case htp_method_OPTIONS:
-	return "OPTIONS";
-	break;
-    case htp_method_PROPFIND:
-	return "PROPFIND";
-	break;
-    case htp_method_PROPPATCH:
-	return "PROPPATCH";
-	break;
-    case htp_method_LOCK:
-	return "LOCK";
-	break;
-    case htp_method_UNLOCK:
-	return "UNLOCK";
-	break;
-    case htp_method_TRACE:
-	return "TRACE";
-	break;
-    case htp_method_CONNECT:
-	return "CONNECT";
-	break;
-#endif /* NOTUSED */
-    default:
-	return "UNKNOWN";
-	break;
-    }
-}
-
-
-static int
-evhtp_print_header(evhtp_header_t *header,
-		   void           *arg)
-{
-    clicon_debug(1, "%s %s %s", __FUNCTION__, header->key, header->val);
-    return 0;
-}
-
-static int
-evhtp_query_iterator(evhtp_header_t *hdr,
-		     void           *arg)
-{
-    cvec   *qvec = (cvec *)arg;
-    char   *key;
-    char   *val;
-    char   *valu = NULL;    /* unescaped value */
-    cg_var *cv;
-
-    key = hdr->key;
-    val = hdr->val;
-    if (uri_percent_decode(val, &valu) < 0)
-	return -1;
-    if ((cv = cvec_add(qvec, CGV_STRING)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_add");
-	return -1;
-    }
-    cv_name_set(cv, key);
-    cv_string_set(cv, valu);
-    if (valu)
-	free(valu); 
-    return 0;
-}
-
-/*! Translate http header by capitalizing, prepend w HTTP_ and - -> _
- * Example: Host -> HTTP_HOST 
- */
-static int
-evhtp_convert_fcgi(evhtp_header_t *hdr,
-		   void           *arg)
-{
-    int           retval = -1;
-    clicon_handle h = (clicon_handle)arg;
-    cbuf         *cb = NULL;
-    int           i;
-    char          c;
-    
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    /* convert key name */
-    cprintf(cb, "HTTP_");
-    for (i=0; i<strlen(hdr->key); i++){
-	c = hdr->key[i] & 0xff;
-	if (islower(c))
-	    cprintf(cb, "%c", toupper(c));
-	else if (c == '-')
-	    cprintf(cb, "_");
-	else
-	    cprintf(cb, "%c", c);
-    }
-    if (restconf_param_set(h, cbuf_get(cb), hdr->val) < 0)
-	goto done;
-    retval = 0;
- done:
-    if (cb)
-	cbuf_free(cb);
-    return retval;
-}
-
-/*! Map from evhtp information to "fcgi" type parameters used in clixon code
- *
- * While all these params come via one call in fcgi, the information must be taken from
- * several different places in evhtp 
- * @param[in]  h    Clicon handle
- * @param[in]  req  Evhtp request struct
- * @param[out] qvec Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
- * @retval     1    OK continue
- * @retval     0    Fail, dont continue
- * @retval    -1    Error
- * The following parameters are set:
- * QUERY_STRING
- * REQUEST_METHOD
- * REQUEST_URI
- * HTTPS
- * HTTP_HOST
- * HTTP_ACCEPT
- * HTTP_CONTENT_TYPE
- * @note there may be more used by an application plugin
- */
-static int
-evhtp_params_set(clicon_handle    h,
-		 evhtp_request_t *req,
-    		 cvec            *qvec)
-{
-    int           retval = -1;
-    htp_method    meth;
-    evhtp_uri_t  *uri;
-    evhtp_path_t *path;
-    evhtp_ssl_t  *ssl = NULL;
-    char         *subject = NULL;
-    cvec         *cvv = NULL;
-    char         *cn;
-    cxobj        *xerr = NULL;
-    int           pretty;
-
-    if ((uri = req->uri) == NULL){
-	clicon_err(OE_DAEMON, EFAULT, "No uri");
-	goto done;
-    }
-    if ((path = uri->path) == NULL){
-	clicon_err(OE_DAEMON, EFAULT, "No path");
-	goto done;
-    }
-    meth = evhtp_request_get_method(req);
-
-    /* QUERY_STRING in fcgi but go direct to the info instead of putting it in a string?
-     * This is different from all else: Ie one could have re-created a string here but
-     * that would mean double parsing,...
-     */
-    if (qvec && uri->query)
-	if (evhtp_kvs_for_each(uri->query, evhtp_query_iterator, qvec) < 0){
-	    clicon_err(OE_CFG, errno, "evhtp_kvs_for_each");
-	    goto done;
-	}
-    if (restconf_param_set(h, "REQUEST_METHOD", evhtp_method2str(meth)) < 0)
-	goto done;
-    if (restconf_param_set(h, "REQUEST_URI", path->full) < 0)
-	goto done;
-    clicon_debug(1, "%s proto:%d", __FUNCTION__, req->proto);
-    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-    /* XXX: Any two http numbers seem accepted by evhtp, like 1.99, 99.3 as http/1.1*/
-    if (req->proto != EVHTP_PROTO_10 &&
-	req->proto != EVHTP_PROTO_11){
-	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid HTTP version number") < 0)
-	    goto done;
-	/* Select json as default since content-type header may not be accessible yet */
-	if (api_return_err0(h, req, xerr, pretty, YANG_DATA_JSON, 0) < 0)
-	    goto done;
-	goto fail;
-    }
-    clicon_debug(1, "%s conn->ssl:%d", __FUNCTION__, req->conn->ssl?1:0);
-    if ((ssl = req->conn->ssl) != NULL){
-	if (restconf_param_set(h, "HTTPS", "https") < 0) /* some string or NULL */
-	    goto done;
-	/* SSL subject fields, eg CN (Common Name) , can add more here? */
-	if ((subject = (char*)htp_sslutil_subject_tostr(req->conn->ssl)) != NULL){
-	    if (uri_str2cvec(subject, '/', '=', 1, &cvv) < 0)
-		goto done;
-	    if ((cn = cvec_find_str(cvv, "CN")) != NULL){
-		if (restconf_param_set(h, "SSL_CN", cn) < 0)
-		    goto done;
-	    }
-	}
-    }
-
-    /* Translate all http headers by capitalizing, prepend w HTTP_ and - -> _
-     * Example: Host -> HTTP_HOST 
-     */
-    if (evhtp_headers_for_each(req->headers_in, evhtp_convert_fcgi, h) < 0)
-	goto done;
-    retval = 1;
- done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
-    if (subject)
-	free(subject);
-    if (xerr)
-	xml_free(xerr);
-    if (cvv)
-	cvec_free(cvv);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-
-/*! Callback for each incoming http request for path /
- *
- * This are all messages except /.well-known, Registered with evhtp_set_cb
- *
- * @param[in] req  evhtp http request structure defining the incoming message
- * @param[in] arg  cx_evhtp handle clixon specific fields
- * @retval    void
- * Discussion: problematic if fatal error -1 is returneod from clixon routines 
- * without actually terminating. Consider:
- * 1) sending some error? and/or
- * 2) terminating the process? 
- */
-static void
-restconf_path_root(evhtp_request_t *req,
-		   void            *arg)
-{
-    int                 retval = -1;
-    clicon_handle       h;
-    int                 ret;
-    cvec               *qvec = NULL;
-
-    clicon_debug(1, "------------");
-    if ((h = (clicon_handle)arg) == NULL){
-	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
-	goto done;
-    }
-    /* input debug */
-    if (clicon_debug_get())
-	evhtp_headers_for_each(req->headers_in, evhtp_print_header, h);
-    
-    /* get accepted connection */
-    /* Query vector, ie the ?a=x&b=y stuff */
-    if ((qvec = cvec_new(0)) ==NULL){
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto done;
-    }
-    /* set fcgi-like paramaters (ignore query vector) */
-    if ((ret = evhtp_params_set(h, req, qvec)) < 0)
-	goto done;
-    if (ret == 1){
-	/* call generic function */
-	if (api_root_restconf(h, req, qvec) < 0)
-	    goto done;   
-    }
-
-    /* Clear (fcgi) paramaters from this request */
-    if (restconf_param_del_all(h) < 0)
-	goto done;
-    retval = 0;
- done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
-    /* Catch all on fatal error. This does not terminate the process but closes request stream */
-    if (retval < 0){
-	evhtp_send_reply(req, EVHTP_RES_ERROR);
-    }
-    if (qvec)
-	cvec_free(qvec);
-    return; /* void */
-}
-
-/*! /.well-known callback
- *
- * @param[in] req  evhtp http request structure defining the incoming message
- * @param[in] arg  cx_evhtp handle clixon specific fields
- * @retval    void
- */
-static void
-restconf_path_wellknown(evhtp_request_t *req,
-			void            *arg)
-{
-    int                 retval = -1;
-    clicon_handle       h;
-    int                 ret;
-
-    clicon_debug(1, "------------");
-    if ((h = (clicon_handle)arg) == NULL){
-	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
-	goto done;
-    }
-    /* input debug */
-    if (clicon_debug_get())
-	evhtp_headers_for_each(req->headers_in, evhtp_print_header, h);
-    /* get accepted connection */
-
-    /* set fcgi-like paramaters (ignore query vector) */
-    if ((ret = evhtp_params_set(h, req, NULL)) < 0)
-	goto done;
-    if (ret == 1){
-	/* call generic function */
-	if (api_well_known(h, req) < 0)
-	    goto done;
-    }
-    /* Clear (fcgi) paramaters from this request */
-    if (restconf_param_del_all(h) < 0)
-	goto done;
-    retval = 0;
- done:
-    /* Catch all on fatal error. This does not terminate the process but closes request stream */
-    if (retval < 0){
-	evhtp_send_reply(req, EVHTP_RES_ERROR);
-    }
-    return; /* void */
-}
-#endif /* HAVE_LIBEVHTP */
 
 /*
  * see restconf_config ->cv_evhtp_init(x2) -> cx_evhtp_socket -> 
@@ -951,7 +613,7 @@ close_ssl_socket(restconf_conn_h    *rc,
 #ifdef HAVE_LIBEVHTP
     evhtp_connection_t *evconn;
 
-    evconn = (evhtp_connection_t *)rc->rc_arg;
+    evconn = rc->rc_evconn;
     clicon_debug(1, "%s evconn-free (%p) 1", __FUNCTION__, evconn);
     evhtp_connection_free(evconn); /* evhtp */
 #endif /* HAVE_LIBEVHTP */
@@ -1037,7 +699,7 @@ restconf_connection(int   s,
     int                 retval = -1;
     restconf_conn_h    *rc = NULL;
     ssize_t             n;
-    char                buf[BUFSIZ]; /* from stdio.h, typically 8K */
+    char                buf[BUFSIZ]; /* from stdio.h, typically 8K XXX: reduce for test */
     int                 readmore = 1;
 #ifdef HAVE_LIBEVHTP
     clicon_handle       h;
@@ -1083,12 +745,15 @@ restconf_connection(int   s,
 		goto done;
 	    goto ok;
 	}
+	switch (rc->rc_proto){
 #ifdef HAVE_LIBEVHTP
+	case HTTP_10:
+	case HTTP_11:
 	h = rc->rc_h;
 	/* parse incoming packet using evhtp
 	 * signature: 
 	 */
-	evconn = (evhtp_connection_t*)rc->rc_arg;
+	evconn = rc->rc_evconn;
 	if (connection_parse_nobev(buf, n, evconn) < 0){
 	    clicon_debug(1, "%s connection_parse error", __FUNCTION__);
 	    /* XXX To get more nuanced evhtp error check
@@ -1155,6 +820,15 @@ restconf_connection(int   s,
                 goto done;
 	}
 #endif /* HAVE_LIBEVHTP */
+#ifdef HAVE_LIBNGHTTP2
+	case HTTP_2:
+	    if (http2_recv(rc, (unsigned char *)buf, n) < 0)
+		goto done;
+	    break;
+#endif /* HAVE_LIBNGHTTP2 */
+    default:
+	break;
+	} /* switch rc_proto */
     } /* while readmore */
  ok:
     retval = 0;
@@ -1282,7 +956,7 @@ ssl_alpn_check(clicon_handle        h,
 	{
 	    evhtp_connection_t *evconn;
 
-	    if ((evconn = (evhtp_connection_t *)rc->rc_arg) != NULL)
+	    if ((evconn = rc->rc_evconn) != NULL)
 		evhtp_connection_free(evconn); /* evhtp */
 	}
 #endif /* HAVE_LIBEVHTP */
@@ -1537,21 +1211,29 @@ restconf_accept_client(int   fd,
 #ifdef HAVE_LIBEVHTP
     case HTTP_10:
     case HTTP_11:{
+	evhtp_t             *evhtp = (evhtp_t *)rh->rh_arg;
 	evhtp_connection_t  *evconn;
+
 	/* Create evhtp-specific struct */
-	if ((evconn = evhtp_connection_new_server(rh->rh_evhtp, rc->rc_s)) == NULL){
+	if ((evconn = evhtp_connection_new_server(evhtp, rc->rc_s)) == NULL){
 	    clicon_err(OE_UNIX, errno, "evhtp_connection_new_server");
 	    goto done;
 	}
 	/* Mutual pointers, from generic rc to evhtp specific and from evhtp conn to generic
 	 */
-	rc->rc_arg = evconn; /* Generic to specific */
+	rc->rc_evconn = evconn; /* Generic to specific */
 	evconn->arg = rc;    /* Specific to generic */
 	evconn->ssl = rc->rc_ssl; /* evhtp */
     }
 	break;
 #endif /* HAVE_LIBEVHTP */
-    case HTTP_2:
+#ifdef HAVE_LIBNGHTTP2
+    case HTTP_2:{
+	if (http2_session_init(rc) < 0)
+	    goto done;
+	break;
+    }
+#endif /* HAVE_LIBNGHTTP2 */
     default:
 	break;
     } /* switch proto */
@@ -1587,10 +1269,14 @@ restconf_native_terminate(clicon_handle h)
 	if (rh->rh_ctx)
 	    SSL_CTX_free(rh->rh_ctx);
 #ifdef HAVE_LIBEVHTP
-	if (rh->rh_evhtp){
-	    if (rh->rh_evhtp->evbase)
-		event_base_free(rh->rh_evhtp->evbase);
-	    evhtp_free(rh->rh_evhtp);
+	{
+	    evhtp_t *evhtp = (evhtp_t *)rh->rh_arg;
+	    if (evhtp){
+		if (evhtp->evbase)
+		    event_base_free(evhtp->evbase);
+		evhtp_free(evhtp);
+		rh->rh_arg = NULL;
+	    }
 	}
 #endif /* HAVE_LIBEVHTP */
 
@@ -1836,7 +1522,7 @@ restconf_openssl_init(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "evhtp_new");
 	goto done;
     }
-    rh->rh_evhtp = evhtp;
+    rh->rh_arg = evhtp;
     if (evhtp_set_cb(evhtp, "/" RESTCONF_API, restconf_path_root, h) == NULL){
     	clicon_err(OE_EVENTS, errno, "evhtp_set_cb");
     	goto done;
@@ -2140,9 +1826,19 @@ main(int    argc,
      */
     if (clixon_err_cat_reg(OE_SSL,              /* category */
 			   h,                   /* handle (can be NULL) */
-			   openssl_cat_log_cb   /* log fn */
+			   clixon_openssl_log_cb   /* log fn */
 			   ) < 0)
 	goto done;
+#ifdef HAVE_LIBNGHTTP2
+    /*
+     * Register error category and error/log callbacks for openssl special error handling
+     */
+    if (clixon_err_cat_reg(OE_NGHTTP2,          /* category */
+			   h,                   /* handle (can be NULL) */
+			   clixon_nghttp2_log_cb   /* log fn */
+			   ) < 0)
+	goto done;
+#endif
     clicon_debug_init(dbg, NULL); 
     clicon_log(LOG_NOTICE, "%s native %u Started", __PROGRAM__, getpid());
     if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){

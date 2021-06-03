@@ -53,9 +53,13 @@
 /* evhtp */ 
 #define EVHTP_DISABLE_REGEX
 #define EVHTP_DISABLE_EVTHR
-
 #include <evhtp/evhtp.h>
 #endif /* HAVE_LIBEVHTP */
+
+#ifdef HAVE_LIBNGHTTP2
+#include <nghttp2/nghttp2.h>
+#endif
+
 
 /* cligen */
 #include <cligen/cligen.h>

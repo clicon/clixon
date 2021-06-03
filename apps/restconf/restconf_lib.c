@@ -275,6 +275,43 @@ restconf_content_type(clicon_handle h)
     return m;
 }
 
+/*! Translate http header by capitalizing, prepend w HTTP_ and - -> _
+ * Example: Host -> HTTP_HOST 
+ */
+int
+restconf_convert_hdr(clicon_handle h,
+		     char         *name,
+		     char         *val)
+{
+    int           retval = -1;
+    cbuf         *cb = NULL;
+    int           i;
+    char          c;
+    
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    /* convert key name */
+    cprintf(cb, "HTTP_");
+    for (i=0; i<strlen(name); i++){
+	c = name[i] & 0xff;
+	if (islower(c))
+	    cprintf(cb, "%c", toupper(c));
+	else if (c == '-')
+	    cprintf(cb, "_");
+	else
+	    cprintf(cb, "%c", c);
+    }
+    if (restconf_param_set(h, cbuf_get(cb), val) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
 /*! Parse a cookie string and return value of cookie attribute
  * @param[in]  cookiestr  cookie string according to rfc6265 (modified)
  * @param[in]  attribute  cookie attribute

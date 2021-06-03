@@ -59,19 +59,36 @@ extern "C" {
 /*
  * Types
  */
+/* http/2 session stream struct
+ */
+typedef struct  {
+    qelem_t   sd_qelem;     /* List header */
+    int32_t   sd_stream_id;
+    int       sd_fd;
+} restconf_stream_data;
+
 /* Restconf connection handle 
  * Per connection request
  */
 typedef struct {
     //    qelem_t       rs_qelem; /* List header */
-    cvec           *rc_outp_hdrs; /* List of output headers */
-    cbuf           *rc_outp_buf;  /* Output buffer */
-    size_t          rc_bufferevent_output_offset; /* Kludge to drain libevent output buffer */
+    cvec               *rc_outp_hdrs; /* List of output headers */
+    cbuf               *rc_outp_buf;  /* Output buffer */
+    size_t              rc_bufferevent_output_offset; /* Kludge to drain libevent output buffer */
     restconf_http_proto rc_proto; /* HTTP protocol: http/1 or http/2 */
-    int             rc_s;         /* Connection socket */
-    clicon_handle   rc_h;         /* Clixon handle */
-    SSL            *rc_ssl;       /* Structure for SSL connection */
-    void           *rc_arg;       /* Specific connection pointer, eg evhtp conn struct */
+    int                 rc_s;         /* Connection socket */
+    clicon_handle       rc_h;         /* Clixon handle */
+    SSL                *rc_ssl;       /* Structure for SSL connection */
+    restconf_stream_data *rc_streams;   /* List of http/2 session streams */
+    /* Decision to keep lib-specific data here, otherwise new struct necessary
+     * drawback is specific includes need to go everywhere */
+#ifdef HAVE_LIBEVHTP
+    evhtp_connection_t *rc_evconn;
+#endif
+#ifdef HAVE_LIBNGHTTP2
+
+    nghttp2_session    *rc_ngsession;
+#endif
 } restconf_conn_h;
     
 /* Restconf request handle 
@@ -94,9 +111,7 @@ typedef struct {
 typedef struct {
     SSL_CTX         *rh_ctx;       /* SSL context */
     restconf_socket *rh_sockets;   /* List of restconf server (ready for accept) sockets */
-#ifdef HAVE_LIBEVHTP
-    evhtp_t         *rh_evhtp;     /* Evhtp struct */
-#endif
+    void            *rh_arg;       /* Packet specific handle (eg evhtp) */
 } restconf_native_handle;
 
 /*
