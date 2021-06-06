@@ -435,9 +435,11 @@ netconf_input_frame(clicon_handle h,
     }
     if (netconf_input_packet(h, xreq, yspec) < 0)
 	goto done;
- ok:
+
+ok:
     retval = 0;
- done:
+
+done:
     if (str)
 	free(str);
     if (xtop)
@@ -449,9 +451,10 @@ netconf_input_frame(clicon_handle h,
     return retval;
 }
 
-/*! @brief          Detect a given character sequence at the end of a \b cbuf
- *  @details        This function matches the last characters of a \b cbuf against a given string sequence and
- *                  returns whether a match has been found.
+/*! Detect a given character sequence at the end of a \b cbuf
+ *
+ *  This function matches the last characters of a \b cbuf against a given string sequence and
+ *  returns whether a match has been found.
  *
  *  @param[in]      cb          The \b cbuf containing some text
  *  @param[in]      endTag      The sequence of characters that are matched
@@ -477,10 +480,11 @@ static int cbuf_ends_with(cbuf * cb, char * endTag) {
     return 1;
 }
 
-/*! @brief           Looking for a chunk header as defined in RFC6242 section 4.2
- *  @details         This function detects a chunk header by looking at a stream of characters and returns the expected
- *                   length on a successful match. It uses the \b state parameter to persist the matching progress
- *                   between invocations.
+/*! Looking for a chunk header as defined in RFC6242 section 4.2
+ *
+ *  This function detects a chunk header by looking at a stream of characters and returns the expected
+ *  length on a successful match. It uses the \b state parameter to persist the matching progress
+ *  between invocations.
  *
  *  @param[in]       ch              The current character that should be processed.
  *  @param[in,out]   state           A state variable saving the current matching progress.
@@ -514,9 +518,10 @@ static int detect_netconf_chunk_header(char ch, int * state, int * chunkLength) 
     return *state == 4;
 }
 
-/*! @brief          Parses a netconf chunk as defined in RFC6242 section 4.2
- *  @details        This function parses a complete chunk of a netconf message transmitted over SSH and returns
- *                  the body of the message in a new \b cbuf.
+/*! Parses a netconf chunk as defined in RFC6242 section 4.2
+ *
+ *  This function parses a complete chunk of a netconf message transmitted over SSH and returns
+ *  the body of the message in a new \b cbuf.
  *
  *  @param[in]      cb              The \b cbuf holding the received chunk
  *  @param[out]     bodyBuffer      The netconf message without the chunk information. Only if return value is positive.
@@ -545,7 +550,6 @@ static int detect_netconf_chunk(cbuf * cb, cbuf ** bodyBuffer) {
                     chunkHeaderState = 0;
 
                     chunkRemainingLength = chunkLength;
-                    // currentChunk.bodyEndPosition = currentPos + 1;
                 }
                 break;
 
@@ -556,8 +560,6 @@ static int detect_netconf_chunk(cbuf * cb, cbuf ** bodyBuffer) {
                     chunkEndState = 0;
                     chunkHeaderState = 0;
                     chunkState = 2;
-
-                    // currentChunk.bodyEndPosition = currentPos;
                 }
                 break;
 
@@ -567,7 +569,6 @@ static int detect_netconf_chunk(cbuf * cb, cbuf ** bodyBuffer) {
                     chunkHeaderState = 0;
 
                     chunkRemainingLength = chunkLength;
-                    //currentChunk.bodyEndPosition = currentPos + 1;
                 }
                 if(detect_endtag("\n##\n", currentChar, &chunkEndState))  {
                     return 1;
@@ -581,7 +582,7 @@ static int detect_netconf_chunk(cbuf * cb, cbuf ** bodyBuffer) {
     return 0;
 }
 
-/*! @brief          Gets or creates the input buffer for incoming netconf messages
+/*! Gets or creates the input buffer for incoming netconf messages
  *
  *  @param[in]      cacheTable      The cache table on which to look for existing input buffers
  *  @param[out]     cb              The input buffer
@@ -614,16 +615,17 @@ static int netconf_input_get_msg_buf(clicon_hash_t *cacheTable, cbuf **cb) {
     return returnValue;
 }
 
-/*! @brief          This function processes a set of new bytes that are expected to contain a netconf message
- *  @details        Given a message buffer \b msgBuffer that might already contain parts of a message and
- *                  a set of new bytes that were received, this function appends the bytes to the \b msgBuffer
- *                  and meanwhile detects and directly processes the first found netconf message.
+/*! This function processes a set of new bytes that are expected to contain a netconf message
+ *
+ *  Given a message buffer \b msgBuffer that might already contain parts of a message and
+ *  a set of new bytes that were received, this function appends the bytes to the \b msgBuffer
+ *  and meanwhile detects and directly processes the first found netconf message.
  *
  * @param[in]       h               The clicon handle associated with this netconf channel
  * @param[in,out]   msgBuffer       A message buffer that might already contain parts of a netconf message
  * @param[in]       newBytes        A char array containing the new received bytes
  * @param[in]       newByteCount    The number of received bytes that are present in \b newBytes
- * @retval          -1              Unable process bytes
+ * @retval          -1              Unable to process bytes
  * @retval          0               Successfully processed the new bytes
  */
 static int netconf_input_process_msg_bytes(clicon_handle h, cbuf *msgBuffer, unsigned char *newBytes, int newByteCount) {
@@ -665,7 +667,6 @@ static int netconf_input_process_msg_bytes(clicon_handle h, cbuf *msgBuffer, uns
         }
     }
 
-    ok:
     returnValue = 0;
 
     done:
@@ -782,8 +783,8 @@ netconf_terminate(clicon_handle h)
     
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
-
     clicon_rpc_close_session(h);
+
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	ys_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
@@ -792,6 +793,7 @@ netconf_terminate(clicon_handle h)
 	cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
+
     xpath_optimize_exit();
     clixon_event_exit();
     clicon_handle_exit(h);
