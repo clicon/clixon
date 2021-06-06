@@ -100,7 +100,9 @@ netconf_capabilities_get_store(clicon_handle ch,
  * @returnval   0                  Capabilities table locked successfully
 
  */
-int netconf_capabilities_lock(clicon_handle ch, enum netconf_capability_store store)
+int
+netconf_capabilities_lock(clicon_handle ch,
+                          enum netconf_capability_store store)
 {
     struct netconf_capabilities *capabilities;
 
@@ -120,7 +122,8 @@ int netconf_capabilities_lock(clicon_handle ch, enum netconf_capability_store st
  * @returnval   -1      Unable to initialize
  * @returnval   -2      Hashtable already initialized
  */
-int netconf_capabilities_init(clicon_handle ch)
+int
+netconf_capabilities_init(clicon_handle ch)
 {
     void          *hashValue;
     int           returnValue   = -1;
@@ -166,7 +169,9 @@ int netconf_capabilities_init(clicon_handle ch)
  * @returnval   -1                  Unable to add capability
  * @returnval   0                   Capability added successfully
  */
-int netconf_capabilities_put(clicon_handle ch, char *rawCapability, enum netconf_capability_store store)
+int netconf_capabilities_put(clicon_handle ch,
+                             char *rawCapability,
+                             enum netconf_capability_store store)
 {
     int                         returnValue = -1;
     struct netconf_capabilities *capabilities;
@@ -203,7 +208,9 @@ int netconf_capabilities_put(clicon_handle ch, char *rawCapability, enum netconf
  * @returnval   0                   Capability not supported
  * @returnval   1                   Capability supported
  */
-int netconf_capabilities_check(clicon_handle ch, char *capabilityName, enum netconf_capability_store store)
+int netconf_capabilities_check(clicon_handle ch,
+                               char *capabilityName,
+                               enum netconf_capability_store store)
 {
     struct netconf_capabilities *capabilities;
     size_t                      hashValueSize = 0;
