@@ -489,7 +489,7 @@ netconf_notification_cb(int   s,
     if (clicon_xml2cbuf(cb, xn, 0, 0, -1) < 0)
 	goto done;
     /* Send it to listening client on stdout */
-    if (netconf_output_encap(1, cb, "notification") < 0){
+    if (netconf_output_encap(h, 1, cb, "notification") < 0){
 	cbuf_free(cb);
 	goto done;
     }

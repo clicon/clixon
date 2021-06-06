@@ -65,6 +65,7 @@
 
 #include "netconf_rpc.h"
 #include "netconf_lib.h"
+#include "netconf_capabilities.h"
 
 /*
  * Exported variables
@@ -208,11 +209,13 @@ netconf_output(int   s,
  * @see netconf_output  without encapsulation
  */
 int 
-netconf_output_encap(int   s, 
+netconf_output_encap(clicon_handle  h,
+                     int   s,
 		     cbuf *cb, 
 		     char *msg)
 {
     int  retval = -1;
+    int clientSupportsNetconf11;
     cbuf *cb1 = NULL;
 
     if ((cb1 = cbuf_new()) == NULL){
@@ -220,7 +223,21 @@ netconf_output_encap(int   s,
 	goto done;
     }
 
-    cprintf(cb1, "\n#%i\n%s\n##\n", cbuf_len(cb), cbuf_get(cb));
+    // The chunked framing mechanism (https://datatracker.ietf.org/doc/html/rfc6242#section-4.2)
+    // should be used if both, the client and server announce NETCONF 1.1 capabilities
+    clientSupportsNetconf11 = netconf_capabilities_check(h, NETCONF_BASE_CAPABILITY_1_1, CLIENT);
+
+    // clixon always announces the netconf 1.1 capability, so no need to check it explicitly
+    if(clientSupportsNetconf11) {
+        // Use chunked framing mechanism
+        cprintf(cb1, "\n#%i\n%s\n##\n", cbuf_len(cb), cbuf_get(cb));
+    } else {
+        // Use old end-of-message-based mechanism
+        add_preamble(cb1);
+        cprintf(cb1, "%s", cbuf_get(cb));
+        add_postamble(cb1);
+    }
+
     retval = netconf_output(s, cb1, msg);
  done:
     if (cb1)

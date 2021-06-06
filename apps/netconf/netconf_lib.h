@@ -78,6 +78,6 @@ int add_postamble(cbuf *xf);
 int add_error_preamble(cbuf *xf, char *reason);
 int add_error_postamble(cbuf *xf);
 int netconf_output(int s, cbuf *xf, char *msg);
-int netconf_output_encap(int s, cbuf *cb, char *msg);
+int netconf_output_encap(clicon_handle h, int s, cbuf *cb, char *msg);
 
 #endif  /* _NETCONF_LIB_H_ */
