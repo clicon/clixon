@@ -80,6 +80,7 @@
  * <foo/> ..wait 1min  ]]>]]>
  */
 #define NETCONF_HASH_BUF "netconf_input_cbuf"
+#define NETCONF_HASH_ENC "netconf_encoding_format"
 
 /*! Ignore errors on packet errors: continue */
 static int ignore_packet_errors = 1;
@@ -153,10 +154,12 @@ netconf_hello_msg(clicon_handle h,
 		continue;
 	    if ((body = xml_body(x)) == NULL)
 		continue;
+
 	    /* When comparing protocol version capability URIs, only the base part is used, in the 
 	     * event any parameters are encoded at the end of the URI string. */
 	    if (strncmp(body, NETCONF_BASE_CAPABILITY_1_0, strlen(NETCONF_BASE_CAPABILITY_1_0)) == 0) /* RFC 4741 */
 		foundbase++;
+
 	    else if (strncmp(body, NETCONF_BASE_CAPABILITY_1_1, strlen(NETCONF_BASE_CAPABILITY_1_1)) == 0) /* RFC 6241 */
 		foundbase++;
 	}
@@ -609,6 +612,53 @@ static int netconf_input_get_msg_buf(clicon_hash_t *cacheTable, cbuf **cb) {
         }
     }
 
+    returnValue = 0;
+
+    done:
+    return returnValue;
+}
+
+/*! Sets an integer flag in the clicon_handle hashtable that indicates the used encoding format
+ *
+ *  @param[in] h
+ *  @param[in] encodingFormat   0 for old end-of-message format or 1 for chunked based transfer
+ *  @returnval 0                Encoding set successfully
+ */
+static int netconf_input_set_encoding(clicon_handle h, int encodingFormat) {
+    void *hashValue;
+    int *encodingValue;
+
+    size_t hashValueSize = 0;
+    clicon_hash_t *hashTable = clicon_data(h);
+
+    if((hashValue = clicon_hash_value(hashTable, NETCONF_HASH_ENC, &hashValueSize)) != NULL) {
+        free((int*) hashValue);
+        clicon_hash_del(hashTable, NETCONF_HASH_ENC);
+    }
+
+    encodingValue = malloc(sizeof(int));
+    *encodingValue = encodingFormat;
+
+    clicon_hash_add(hashTable, NETCONF_HASH_ENC, encodingValue, sizeof(encodingValue));
+
+    return 0;
+}
+
+static int netconf_input_get_encoding(clicon_handle h, int* encodingFormat) {
+    void *hashValue;
+    int returnValue = -1;
+
+    size_t hashValueSize = 0;
+    clicon_hash_t *hashTable = clicon_data(h);
+
+    if((hashValue = clicon_hash_value(hashTable, NETCONF_HASH_ENC, &hashValueSize)) != NULL) {
+        *encodingFormat = * (int*) hashValue;
+        goto ok;
+    }
+
+    goto done;
+
+    ok:
     returnValue = 0;
 
     done:
