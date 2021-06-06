@@ -1,5 +1,5 @@
-#include <clixon/clixon_hash.h>
-#include <clixon/clixon_handle.h>
+#include <cligen/cligen.h>
+#include <clixon/clixon.h>
 #include <malloc.h>
 #include <string.h>
 
@@ -37,7 +37,6 @@ static int netconf_capabilities_get_root(clicon_handle ch, struct netconf_capabi
 
     *capabilities = hashValue;
 
-    ok:
     returnValue = 0;
 
     done:
@@ -75,7 +74,6 @@ int netconf_capabilities_init(clicon_handle ch) {
     int             returnValue   = -1;
     size_t          hashValueSize = 0;
     clicon_hash_t   *cliconData   = clicon_data(ch);
-    clicon_hash_t   *capabilitiesTable;
 
     struct netconf_capabilities *capabilities;
 
@@ -95,7 +93,6 @@ int netconf_capabilities_init(clicon_handle ch) {
         goto done;
     }
 
-    ok:
     returnValue = 0;
 
     done:
@@ -130,7 +127,6 @@ int netconf_capabilities_put(clicon_handle ch, char * rawCapability) {
 
     clicon_hash_add(capabilities->hashTable, capability->name, capability, sizeof(struct netconf_capability));
 
-    ok:
     returnValue = 0;
 
     done:
@@ -162,8 +158,6 @@ int netconf_capabilities_check(clicon_handle ch, char * capabilityName) {
 
 int netconf_capabilities_free(clicon_handle ch) {
     struct netconf_capabilities *capabilities;
-    size_t hashValueSize = 0;
-    void *hashValue;
 
     if(netconf_capabilities_get_root(ch, &capabilities) < 0) {
         return -1;
@@ -171,4 +165,6 @@ int netconf_capabilities_free(clicon_handle ch) {
 
     clicon_hash_free(capabilities->hashTable);
     free(capabilities);
+
+    return 0;
 }

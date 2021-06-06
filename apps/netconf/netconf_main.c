@@ -69,6 +69,7 @@
 #include "clixon_netconf.h"
 #include "netconf_lib.h"
 #include "netconf_rpc.h"
+#include "netconf_capabilities.h"
 
 /* Command line options to be passed to getopt(3) */
 #define NETCONF_OPTS "hD:f:E:l:qa:u:d:p:y:U:t:eo:"
@@ -80,7 +81,6 @@
  * <foo/> ..wait 1min  ]]>]]>
  */
 #define NETCONF_HASH_BUF "netconf_input_cbuf"
-#define NETCONF_HASH_ENC "netconf_encoding_format"
 
 /*! Ignore errors on packet errors: continue */
 static int ignore_packet_errors = 1;
@@ -155,6 +155,8 @@ netconf_hello_msg(clicon_handle h,
 	    if ((body = xml_body(x)) == NULL)
 		continue;
 
+            netconf_capabilities_put(h, body);
+
 	    /* When comparing protocol version capability URIs, only the base part is used, in the 
 	     * event any parameters are encoded at the end of the URI string. */
 	    if (strncmp(body, NETCONF_BASE_CAPABILITY_1_0, strlen(NETCONF_BASE_CAPABILITY_1_0)) == 0) /* RFC 4741 */
@@ -164,6 +166,9 @@ netconf_hello_msg(clicon_handle h,
 		foundbase++;
 	}
     }
+
+    netconf_capabilities_lock(h);
+
     if (foundbase == 0){
 	clicon_err(OE_XML, errno, "Server received hello without netconf base capability %s, terminating (see RFC 6241 Sec 8.1",
 		   NETCONF_BASE_CAPABILITY_1_1);
@@ -618,53 +623,6 @@ static int netconf_input_get_msg_buf(clicon_hash_t *cacheTable, cbuf **cb) {
     return returnValue;
 }
 
-/*! Sets an integer flag in the clicon_handle hashtable that indicates the used encoding format
- *
- *  @param[in] h
- *  @param[in] encodingFormat   0 for old end-of-message format or 1 for chunked based transfer
- *  @returnval 0                Encoding set successfully
- */
-static int netconf_input_set_encoding(clicon_handle h, int encodingFormat) {
-    void *hashValue;
-    int *encodingValue;
-
-    size_t hashValueSize = 0;
-    clicon_hash_t *hashTable = clicon_data(h);
-
-    if((hashValue = clicon_hash_value(hashTable, NETCONF_HASH_ENC, &hashValueSize)) != NULL) {
-        free((int*) hashValue);
-        clicon_hash_del(hashTable, NETCONF_HASH_ENC);
-    }
-
-    encodingValue = malloc(sizeof(int));
-    *encodingValue = encodingFormat;
-
-    clicon_hash_add(hashTable, NETCONF_HASH_ENC, encodingValue, sizeof(encodingValue));
-
-    return 0;
-}
-
-static int netconf_input_get_encoding(clicon_handle h, int* encodingFormat) {
-    void *hashValue;
-    int returnValue = -1;
-
-    size_t hashValueSize = 0;
-    clicon_hash_t *hashTable = clicon_data(h);
-
-    if((hashValue = clicon_hash_value(hashTable, NETCONF_HASH_ENC, &hashValueSize)) != NULL) {
-        *encodingFormat = * (int*) hashValue;
-        goto ok;
-    }
-
-    goto done;
-
-    ok:
-    returnValue = 0;
-
-    done:
-    return returnValue;
-}
-
 /*! This function processes a set of new bytes that are expected to contain a netconf message
  *
  *  Given a message buffer \b msgBuffer that might already contain parts of a message and
@@ -1100,6 +1058,10 @@ main(int    argc,
     /* XXX get session id from backend hello */
     clicon_session_id_set(h, getpid()); 
 #endif
+
+    /* Initialize the capabilities hashtable */
+    if(netconf_capabilities_init(h) < 0)
+        goto done;
 
     /* Send hello request to backend to get session-id back
      * This is done once at the beginning of the session and then this is
