@@ -40,10 +40,15 @@
 #ifndef NETCONF_NETCONF_CAPABILITIES_H
 #define NETCONF_NETCONF_CAPABILITIES_H
 
+enum netconf_capability_store {
+    SERVER,
+    CLIENT
+};
+
 int netconf_capabilities_init(clicon_handle ch);
-int netconf_capabilities_lock(clicon_handle ch);
-int netconf_capabilities_put(clicon_handle ch, char * capability);
-int netconf_capabilities_check(clicon_handle ch, char * capability);
+int netconf_capabilities_lock(clicon_handle ch, enum netconf_capability_store store);
+int netconf_capabilities_put(clicon_handle ch, char * rawCapability, enum netconf_capability_store store);
+int netconf_capabilities_check(clicon_handle ch, char * capability, enum netconf_capability_store store);
 int netconf_capabilities_free(clicon_handle ch);
 
 #endif //NETCONF_NETCONF_CAPABILITIES_H

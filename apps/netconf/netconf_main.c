@@ -155,7 +155,7 @@ netconf_hello_msg(clicon_handle h,
 	    if ((body = xml_body(x)) == NULL)
 		continue;
 
-            netconf_capabilities_put(h, body);
+            netconf_capabilities_put(h, body, CLIENT);
 
 	    /* When comparing protocol version capability URIs, only the base part is used, in the 
 	     * event any parameters are encoded at the end of the URI string. */
@@ -167,7 +167,7 @@ netconf_hello_msg(clicon_handle h,
 	}
     }
 
-    netconf_capabilities_lock(h);
+    netconf_capabilities_lock(h, CLIENT);
 
     if (foundbase == 0){
 	clicon_err(OE_XML, errno, "Server received hello without netconf base capability %s, terminating (see RFC 6241 Sec 8.1",
@@ -604,7 +604,7 @@ static int netconf_input_get_msg_buf(clicon_hash_t *cacheTable, cbuf **cb) {
     int returnValue = -1;
 
     if ((hashValue = clicon_hash_value(cacheTable, NETCONF_HASH_BUF, &cdatlen)) != NULL) {
-        if (cdatlen != sizeof(cb)) {
+        if (cdatlen != sizeof(cbuf **)) {
             clicon_err(OE_XML, errno, "size mismatch %lu %lu",
                        (unsigned long) cdatlen, (unsigned long) sizeof(cb));
             goto done;
@@ -802,6 +802,8 @@ netconf_terminate(clicon_handle h)
 	cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
+
+    netconf_capabilities_free(h);
 
     xpath_optimize_exit();
     clixon_event_exit();
