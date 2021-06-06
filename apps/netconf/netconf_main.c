@@ -139,7 +139,7 @@ netconf_hello_msg(clicon_handle h,
 
     _netconf_hello_nr++;
     if (xml_find_type(xn, NULL, "session-id", CX_ELMNT) != NULL) {
-	clicon_err(OE_XML, errno, "Server received hello with session-id from client, terminating (see RFC 6241 Sec 8.1");
+	clicon_err(OE_XML, errno, "Server received hello with session-id from client, terminating (see RFC 6241 Sec 8.1)");
 	cc_closed++;
 	goto done;
     }
@@ -175,6 +175,7 @@ netconf_hello_msg(clicon_handle h,
 	cc_closed++;
 	goto done;
     }
+
     retval = 0;
  done:
     if (vec)
