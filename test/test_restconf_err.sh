@@ -172,7 +172,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg -- -sS $fstate -v /table/parameter[name="4242"]
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 if [ $RC -ne 0 ]; then
@@ -181,16 +181,15 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 new "restconf POST initial tree"
 expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -d "$XML" $RCPROTO://localhost/restconf/data)" 0 'HTTP/1.1 201 Created'
 
 new "restconf GET initial datastore"
-#echo "curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:a=0"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:a=0)" 0 'HTTP/1.1 200 OK' "$XML"
 
 # XXX cannot get this to work for all combinations of nc/netcat fcgi/native
@@ -207,6 +206,9 @@ if false; then
 	err1 "netcat/nc not found"
     fi
 
+#    new "restconf try fuzz crash"
+#    expectpart "$(${netcat} 127.0.0.1 80 < ~/tmp/crashes/id:000000,sig:06,src:000493+000365,op:splice,rep:8)" 0 "HTTP/1.1 400 Bad Request"
+    
     new "restconf GET initial datastore netcat"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
 GET /restconf/data/example:a=0 HTTP/1.1
@@ -233,7 +235,18 @@ Accept: application/yang-data+xml
 
 EOF
 )" 0 "HTTP/1.1 405" "Not Allowed" # nginx uses "method not allowed" evhtp "not allowed"
-fi # Cannot get to work
+
+    # XXX error from evhtp parsing, should pick up error code
+    new "restconf GET wrong http version raw"
+    expectpart "$(${netcat} 127.0.0.1 80 <<EOF
+GET /restconf/data/example:a=0 HTTP/a.1
+Host: localhost
+Accept: application/yang-data+xml
+
+EOF
+)" 0 "HTTP/1.1 400 Bad Request" # native: '<error-tag>malformed-message</error-tag><error-message>The requested URL or a header is in some way badly formed</error-message>'
+
+fi # netcat Cannot get to work on all platforms
 
 new "restconf XYZ not found"
 expectpart "$(curl $CURLOPTS -X XYS -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:a=0)" 0 'HTTP/1.1 404 Not Found'
@@ -241,7 +254,7 @@ expectpart "$(curl $CURLOPTS -X XYS -H 'Accept: application/yang-data+xml' $RCPR
 # XXX dont work w fcgi
 if [ "${WITH_RESTCONF}" = "native" ]; then
     new "restconf HEAD not allowed"
-    expectpart "$(curl $CURLOPTS -X HEAD -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf)" 0 "HTTP/1.1 405" "Not Allowed"
+    expectpart "$(curl $CURLOPTS -X HEAD -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf)" 0 "HTTP/1.1 405" "Not Allowed" "Allow: GET"
 fi
 
 new "restconf GET non-qualified list"

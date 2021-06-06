@@ -94,22 +94,26 @@ if [ $BE -ne 0 ]; then
     
     new "start backend -s startup -f $cfg"
     start_backend -s startup -f $cfg
-
-    new "wait backend"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "$clixon_cli -D $DBG -1f $cfg -y $f show version"
 expectpart "$($clixon_cli -D $DBG -1f $cfg show version)" 0 "${CLIXON_VERSION}"
 
 new "$clixon_netconf -qf $cfg"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"http://openconfig.net/yang/interfaces\"><interface><name>e</name><config><name>e</name><type>ex:eth</type><loopback-mode>false</loopback-mode><enabled>true</enabled></config><hold-time><config><up>0</up><down>0</down></config></hold-time><oc-eth:ethernet xmlns:oc-eth=\"http://openconfig.net/yang/interfaces/ethernet\"><oc-eth:config><oc-eth:auto-negotiate>true</oc-eth:auto-negotiate><oc-eth:enable-flow-control>false</oc-eth:enable-flow-control></oc-eth:config></oc-eth:ethernet></interface></interfaces></data></rpc-reply>]]>]]>"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"http://openconfig.net/yang/interfaces\"><interface><name>e</name><config><name>e</name><type>ex:eth</type><loopback-mode>false</loopback-mode><enabled>true</enabled></config><hold-time><config><up>0</up><down>0</down></config></hold-time></interface></interfaces></data></rpc-reply>]]>]]>"
 
 new "cli show configuration"
-expectpart "$($clixon_cli -1 -f $cfg show conf xml)" 0 "^<interfaces xmlns=\"http://openconfig.net/yang/interfaces\">" "<oc-eth:ethernet xmlns:oc-eth=\"http://openconfig.net/yang/interfaces/ethernet\">"
+expectpart "$($clixon_cli -1 -f $cfg show conf xml)" 0 "^<interfaces xmlns=\"http://openconfig.net/yang/interfaces\">" --not-- "<oc-eth:ethernet xmlns:oc-eth=\"http://openconfig.net/yang/interfaces/ethernet\">"
 
 new "cli set interfaces interface <tab> complete: e"
 expectpart "$(echo "set interfaces interface 	" | $clixon_cli -f $cfg)" 0 "interface e"
+
+# XXX See https://github.com/clicon/clixon/issues/218
+#new "cli set interfaces interface e <tab> complete: not ethernet"
+#expectpart "$(echo "set interfaces interface e 	" | $clixon_cli -f $cfg)" 0 config hold-time subinterfaces --not-- ethernet 
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

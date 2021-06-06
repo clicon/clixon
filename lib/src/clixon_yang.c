@@ -513,6 +513,41 @@ ys_prune(yang_stmt *yp,
     return yc;
 }
 
+/*! Remove yang node from parent (dont free
+ * @param[in]  ys   Yang node to remove
+ * @retval     0    OK
+ * @retval     -1   Error
+ * @see ys_prune  if parent and position is know
+ * @see ys_free Deallocate yang node
+ * @note Do not call this in a loop of yang children (unless you know what you are doing)
+ */
+static int
+ys_prune_self(yang_stmt *ys)
+{
+    int        retval = -1;
+    yang_stmt *yp;
+    yang_stmt *yc;
+    int        i;
+
+    if ((yp = yang_parent_get(ys)) != NULL){
+	yc = NULL;
+	i = 0;
+	/* Find order of ys in child-list */
+	while ((yc = yn_each(yp, yc)) != NULL) {
+	    if (ys == yc)
+		break;
+	    i++;
+	}
+	if (yc != NULL){
+	    assert(yc == ys);
+	    ys_prune(yp, i);
+	}
+    }
+    retval = 0;
+    // done:
+    return retval;
+}
+
 /*! Free a yang statement tree recursively 
  * @param[in]  ys   Yang node to remove and all its children recursively
  * @note does not remove yang node from tree
@@ -1555,6 +1590,146 @@ yang_print_cbuf(cbuf      *cb,
     return 0;
 }
 
+/*! Yang deviation/deviate 
+ *
+ * Identify deviation target node, and go through all its deviate statements.
+ * Features/if-feature must have run before
+ * @param[in] ys    The yang deviation to populate.
+ * @param[in] h     Clicon handle
+ * @see RFC 7950 5.6.3 and 7.20.3
+ */
+int
+yang_deviation(yang_stmt *ys,
+	       void      *arg)
+
+{
+    int           retval = -1;
+    char         *nodeid; 
+    yang_stmt    *ytarget = NULL;
+    yang_stmt    *yd;
+    yang_stmt    *yc;
+    yang_stmt    *yc1;
+    yang_stmt    *ytc;
+    char         *devop;
+    clicon_handle h = (clicon_handle)arg;
+    enum rfc_6020 kw;
+    int           min;
+    int           max;
+
+    if (yang_keyword_get(ys) != Y_DEVIATION)
+	goto ok;
+    /* Absolute schema node identifier identifying target node */
+    if ((nodeid = yang_argument_get(ys)) == NULL){
+	clicon_err(OE_YANG, EINVAL, "No argument to deviation");
+	goto done;
+    }
+    /* Get target node */
+    if (yang_abs_schema_nodeid(ys, nodeid, &ytarget) < 0)
+	goto done;
+    if (ytarget == NULL){ 
+	clicon_log(LOG_WARNING, "deviation %s: target not found", nodeid); 
+	goto ok;
+	/* The RFC does not explicitly say the target node MUST exist 
+	clicon_err(OE_YANG, 0, "schemanode sanity check of %s", nodeid);
+	goto done;
+	*/
+    }
+    /* Go through deviates of deviation */
+    yd = NULL; 
+    while ((yd = yn_each(ys, yd)) != NULL) {
+	/* description / if-feature / reference */
+	if (yang_keyword_get(yd) != Y_DEVIATE)
+	    continue;
+	devop = yang_argument_get(yd);
+	if (strcmp(devop, "not-supported") == 0){
+	    if (ys_prune_self(ytarget) < 0)
+		goto done;
+	    if (ys_free(ytarget) < 0)
+		goto done;
+	    goto ok; /* Target node removed, no other deviates possible */
+	}
+	else if (strcmp(devop, "add") == 0){
+	    yc = NULL; 
+	    while ((yc = yn_each(yd, yc)) != NULL) {
+		/* If a property can only appear once, the property MUST NOT exist in the target node. */
+		kw = yang_keyword_get(yc);
+		if (yang_find(ytarget, kw, NULL) != NULL){
+		    if (yang_cardinality_interval(h,
+						  yang_keyword_get(ytarget),
+						  kw,
+						  &min,
+						  &max) < 0)
+			goto done;
+		    if (max == 1){
+			clicon_err(OE_YANG, 0, "deviation %s: \"%s %s\" added but node already exist in target %s",
+				   nodeid,
+				   yang_key2str(kw), yang_argument_get(yc),
+				   yang_argument_get(ytarget));
+			goto done;
+		    }
+		}
+		/* Make a copy of deviate child and insert. */
+		if ((yc1 = ys_dup(yc)) == NULL)
+		    goto done;
+		if (yn_insert(ytarget, yc1) < 0)
+		    goto done;
+	    }
+	}
+	else if (strcmp(devop, "replace") == 0){
+	    yc = NULL;
+	    while ((yc = yn_each(yd, yc)) != NULL) {
+		/* The properties to replace MUST exist in the target node.*/
+		kw = yang_keyword_get(yc);
+		if ((ytc = yang_find(ytarget, kw, NULL)) == NULL){
+		    clicon_err(OE_YANG, 0, "deviation %s: \"%s %s\" replaced but node does not exist in target %s",
+			       nodeid,
+			       yang_key2str(kw), yang_argument_get(yc),
+			       yang_argument_get(ytarget));
+		    goto done;
+		}
+		/* Remove old */
+		if (ys_prune_self(ytc) < 0)
+		    goto done;
+		if (ys_free(ytc) < 0)
+		    goto done;
+		/* Make a copy of deviate child and insert. */
+		if ((yc1 = ys_dup(yc)) == NULL)
+		    goto done;
+		if (yn_insert(ytarget, yc1) < 0)
+		    goto done;
+	    }
+	}
+	else if (strcmp(devop, "delete") == 0){
+	    yc = NULL;
+	    while ((yc = yn_each(yd, yc)) != NULL) {
+		/* The substatement's keyword MUST match a corresponding keyword in the target node, and the 
+		 * argument's string MUST be equal to the corresponding keyword's argument string in the 
+		 * target node. */
+		kw = yang_keyword_get(yc);
+		if ((ytc = yang_find(ytarget, kw, NULL)) == NULL){
+		    clicon_err(OE_YANG, 0, "deviation %s: \"%s %s\" replaced but node does not exist in target %s",
+			       nodeid,
+			       yang_key2str(kw), yang_argument_get(yc),
+			       yang_argument_get(ytarget));
+		    goto done;
+		}
+		if (ys_prune_self(ytc) < 0)
+		    goto done;
+		if (ys_free(ytc) < 0)
+		    goto done;
+	    }
+	}
+	else{ /* Shouldnt happen, lex/yacc takes it */
+	    clicon_err(OE_YANG, EINVAL, "%s: invalid deviate operator", devop);
+	    goto done;
+	}
+    }
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Populate yang leafs after parsing. Create cv and fill it in.
  *
  * Populate leaf in 2nd round of yang parsing, now that context is complete:
@@ -2507,6 +2682,7 @@ yang_features(clicon_handle h,
  * @param[in]  yn   yang node
  * @param[in]  key  yang keyword to use as filer or -1 for all
  * @param[in]  fn   Callback
+ * @param[in]  depth Depth argument: where to start. If <=0 call the calling node yn, if 1 start with its children, etc
  * @param[in]  arg  Argument
  * @retval    -1    Error, aborted at first error encounter
  * @retval     0    OK, all nodes traversed
@@ -2516,7 +2692,7 @@ yang_features(clicon_handle h,
  * {
  *   return 0;
  * }
- * yang_apply(ys, Y_TYPE, ys_fn, NULL);
+ * yang_apply(ys, Y_TYPE, ys_fn, 1, NULL); // Call all yn:s children recursively
  * @endcode
  * @note do not delete or move around any children during this function
  */
@@ -2524,6 +2700,7 @@ int
 yang_apply(yang_stmt     *yn, 
 	   enum rfc_6020  keyword,
 	   yang_applyfn_t fn, 
+	   int            depth,
 	   void          *arg)
 {
     int        retval = -1;
@@ -2531,17 +2708,19 @@ yang_apply(yang_stmt     *yn,
     int        i;
     int        ret;
 
-    for (i=0; i<yn->ys_len; i++){
-	ys = yn->ys_stmt[i];
-	if ((int)keyword == -1 || keyword == ys->ys_keyword){
-	    if ((ret = fn(ys, arg)) < 0)
+    if (depth <= 0){
+	if ((int)keyword == -1 || keyword == yn->ys_keyword){
+	    if ((ret = fn(yn, arg)) < 0)
 		goto done;
 	    if (ret > 0){
 		retval = ret;
 		goto done;
 	    }
 	}
-	if ((ret = yang_apply(ys, keyword, fn, arg)) < 0)
+    }
+    for (i=0; i<yn->ys_len; i++){
+	ys = yn->ys_stmt[i];
+	if ((ret = yang_apply(ys, keyword, fn, depth-1, arg)) < 0)
 	    goto done;
 	if (ret > 0){
 	    retval = ret;
@@ -2551,7 +2730,7 @@ yang_apply(yang_stmt     *yn,
     retval = 0;
   done:
     return retval;
-}
+}    
 
 /*! Check if a node is a yang "data node"
  * @param[in]  ys  Yang statement node
@@ -2706,6 +2885,8 @@ yang_abs_schema_nodeid(yang_stmt    *yn,
     /* If p0 is NULL an entry will be: [i0] which needs to be transformed to [NULL:i0] */
     cv = NULL;    
     while ((cv = cvec_each(nodeid_cvv, cv)) != NULL){
+	if (cv_type_get(cv) != CGV_STRING)
+        cv_type_set(cv, CGV_STRING);
 	if ((str = cv_string_get(cv)) == NULL || !strlen(str)){
 	    if (cv_string_set(cv, cv_name_get(cv)) < 0){
 		clicon_err(OE_UNIX, errno, "cv_string_set");
@@ -2789,6 +2970,8 @@ yang_desc_schema_nodeid(yang_stmt    *yn,
     /* If p0 is NULL an entry will be: [i0] which needs to be transformed to [NULL:i0] */
     cv = NULL;    
     while ((cv = cvec_each(nodeid_cvv, cv)) != NULL){
+	if (cv_type_get(cv) != CGV_STRING)
+	    cv_type_set(cv, CGV_STRING);
 	if ((str = cv_string_get(cv)) == NULL || !strlen(str)){
 	    if (cv_string_set(cv, cv_name_get(cv)) < 0){
 		clicon_err(OE_UNIX, errno, "cv_string_set");
@@ -3011,7 +3194,7 @@ yang_container_cli_hide(yang_stmt         *ys,
 /*! Check if yang node yn has key-stmt as child which matches name
  *
  * The function looks at the LIST argument string (not actual children)
- * @param[in]  yn   Yang node with sub-statements (look for a key child)
+ * @param[in]  yn   Yang list node with sub-statements (look for a key child)
  * @param[in]  name Check if this name (eg "b") is a key in the yang key statement
  *
  * @retval   -1     Error

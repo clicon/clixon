@@ -166,6 +166,9 @@ struct xml{
     char             *x_prefix;     /* namespace localname N, called prefix */
     uint16_t          x_flags;      /* Flags according to XML_FLAG_* */
     struct xml       *x_up;         /* parent node in hierarchy if any */
+#ifdef XML_PARENT_CANDIDATE
+    struct xml       *x_up_candidate; /* Candidate parent node for special cases (when+xpath) */
+#endif
     int              _x_vector_i;   /* internal use: xml_child_each */
     int              _x_i;          /* internal use for sorting: 
 				       see xml_enumerate and xml_cmp */
@@ -196,6 +199,9 @@ struct xmlbody{
     char             *xb_prefix;     /* namespace localname N, called prefix */
     uint16_t          xb_flags;      /* Flags according to XML_FLAG_* */
     struct xml       *xb_up;         /* parent node in hierarchy if any */
+#ifdef XML_PARENT_CANDIDATE
+    struct xml       *xb_up_candidate; /* Candidate parent node for special cases (when+xpath) */
+#endif
     int              _xb_vector_i;   /* internal use: xml_child_each */
     int              _xb_i;          /* internal use for sorting: 
 				       see xml_enumerate and xml_cmp */
@@ -250,6 +256,7 @@ xml_stats_one(cxobj    *x,
 	      size_t   *szp)
 {
     size_t sz = 0;
+
 
     if (x->x_name)
 	sz += strlen(x->x_name) + 1;
@@ -586,6 +593,34 @@ xml_parent_set(cxobj *xn,
     xn->x_up = parent;
     return 0;
 }
+
+#ifdef XML_PARENT_CANDIDATE
+/*! Get candidate parent of xnode
+ * @param[in]  xn    xml node
+ * @retval     parent xml node
+ */
+cxobj*
+xml_parent_candidate(cxobj *xn)
+{
+    if (xn == NULL) {
+	return NULL;
+    }
+    return xn->x_up_candidate;
+}
+
+/*! Set candidate parent of xml node
+ * @param[in]  xn      xml node
+ * @param[in]  parent  pointer to candidate parent xml node
+ * @retval     0       OK
+ */
+int
+xml_parent_candidate_set(cxobj *xn, 
+			 cxobj *parent)
+{
+    xn->x_up_candidate = parent;
+    return 0;
+}
+#endif /* XML_PARENT_CANDIDATE */
 
 /*! Get xml node flags, used for internal algorithms
  * @param[in]  xn    xml node
@@ -1420,8 +1455,7 @@ xml_child_rm(cxobj *xp,
  * @param[in]   xc     xml child node to be removed
  * @retval      0      OK
  * @retval      -1     Error
- * @note you should not remove xchild in loop (unless yoy keep track of xprev)
- *
+ * @note you should not remove xchild in loop (unless you keep track of xprev)
  * @see xml_child_rm  Remove a child of a node
  */
 int
@@ -1883,6 +1917,10 @@ xml_copy_one(cxobj *x0,
     int   retval = -1;
     char *s;
     
+    if (x0 == NULL || x1 == NULL){
+	clicon_err(OE_XML, EINVAL, "x0 or x1 is NULL");
+	goto done;
+    }
     xml_type_set(x1, xml_type(x0));
     if ((s = xml_name(x0))) /* malloced string */
 	if ((xml_name_set(x1, s)) < 0)

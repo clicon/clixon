@@ -75,7 +75,7 @@
 	  |                   stop/|  | 
           |                 restart|  | restart
           |                        v  |
-          wait(stop) ------- EXITING(dying pid)
+          wait(stop) ------- EXITING(dying pid) <----> kill after timeout
  */
 
 #ifdef HAVE_CONFIG_H
@@ -150,6 +150,10 @@ struct process_entry_t {
     struct timeval pe_starttime; /* Start time */
     proc_cb_t     *pe_callback; /* Wrapper function, may be called from process_operation  */
 };
+
+
+/* Forward declaration */
+static int clixon_process_sched_register(clicon_handle h, int delay);
 
 static void
 clixon_proc_sigint(int sig)
@@ -273,11 +277,17 @@ clixon_proc_background(char       **argv,
 	clicon_err(OE_UNIX, EINVAL, "argv is NULL");
 	goto quit;
     }
+    if (clicon_debug_get()){
+	i = 0;
+	while (argv[i]){
+	    clicon_debug(1, "%s argv[%d]:%s", __FUNCTION__, i, argv[i]);
+	    i++;
+	}
+    }
     /* Before here call quit on error */
     sigprocmask(0, NULL, &oset);
     set_signal(SIGINT, clixon_proc_sigint, &oldhandler);
     /* Now call done on error */
-    
     if ((child = fork()) < 0) {
 	clicon_err(OE_UNIX, errno, "fork");
 	goto done;
@@ -323,7 +333,7 @@ clixon_proc_background(char       **argv,
 	}
 #endif /* HAVE_SETNS */
 	if (execvp(argv[0], argv) < 0) {
-	    clicon_err(OE_UNIX, errno, "execv");
+	    clicon_err(OE_UNIX, errno, "execv(%s)", argv[0]);
 	    exit(1);
 	}
 	/* Not reached */
@@ -598,6 +608,7 @@ clixon_process_operation(clicon_handle  h,
     proc_operation   op;
     int              sched = 0; /* If set, process action should be scheduled, register a timeout */
     int              isrunning = 0;
+    int              delay = 0;
     
     clicon_debug(1, "%s name:%s op:%s", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));
     if (_proc_entry_list == NULL)
@@ -624,7 +635,7 @@ clixon_process_operation(clicon_handle  h,
 			clicon_log(LOG_NOTICE, "Killing old process %s with pid: %d",
 				   pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
 			kill(pe->pe_pid, SIGTERM);
-
+			delay = 1;
 		    }
 		    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
 				 pe->pe_name, pe->pe_pid,
@@ -633,9 +644,8 @@ clixon_process_operation(clicon_handle  h,
 				 clicon_int2str(proc_state_map, PROC_STATE_EXITING)
 				 );
 		    pe->pe_state = PROC_STATE_EXITING; /* Keep operation stop/restart */
-		    //		    break;
-               }
-		sched++;
+		}
+		sched++;/* start: immediate stop/restart: not immediate: wait timeout */
 	    }
 	    else{
 		clicon_debug(1, "%s name:%s op %s cancelled by wrwap", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));		
@@ -644,7 +654,7 @@ clixon_process_operation(clicon_handle  h,
 	}
 	pe = NEXTQ(process_entry_t *, pe);
     } while (pe != _proc_entry_list);
-    if (sched && clixon_process_sched_register(h) < 0)
+    if (sched && clixon_process_sched_register(h, delay) < 0)
 	goto done;
  ok:
     retval = 0;
@@ -687,11 +697,15 @@ clixon_process_status(clicon_handle  h,
 	    if (pe->pe_description)
 		cprintf(cbret, "<description xmlns=\"%s\">%s</description>", CLIXON_LIB_NS, pe->pe_description);
 	    cprintf(cbret, "<command xmlns=\"%s\">", CLIXON_LIB_NS);
+	    /* the command may include any data, including XML (such as restconf -R command) and 
+	       therefore needs CDATA encoding */
+	    cprintf(cbret, "<![CDATA[");
 	    for (i=0; i<pe->pe_argc-1; i++){
 		if (i)
 		    cprintf(cbret, " ");
 		cprintf(cbret, "%s", pe->pe_argv[i]);
 	    }
+	    cprintf(cbret, "]]>");
 	    cprintf(cbret, "</command>");
 	    cprintf(cbret, "<status xmlns=\"%s\">%s</status>", CLIXON_LIB_NS,
 		    clicon_int2str(proc_state_map, pe->pe_state));
@@ -741,11 +755,11 @@ clixon_process_start_all(clicon_handle h)
 		goto done;
 	if (op == PROC_OP_START){
 	    pe->pe_operation = op;
-	    sched++;
+	    sched++; /* Immediate dont delay for start */
 	}
 	pe = NEXTQ(process_entry_t *, pe);
     } while (pe != _proc_entry_list);
-    if (sched && clixon_process_sched_register(h) < 0)
+    if (sched && clixon_process_sched_register(h, 0) < 0)
 	goto done;
  ok:
     retval = 0;
@@ -793,7 +807,7 @@ clixon_process_sched(int           fd,
 			clicon_log(LOG_NOTICE, "Killing old process %s with pid: %d",
 				   pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
 			kill(pe->pe_pid, SIGTERM);
-			sched++;
+			sched++; /* Not immediate: wait timeout */
 		    }
 		default:
 		    break;
@@ -853,7 +867,7 @@ clixon_process_sched(int           fd,
 	}
 	pe = NEXTQ(process_entry_t *, pe);
     } while (pe != _proc_entry_list);
-    if (sched && clixon_process_sched_register(h) < 0)
+    if (sched && clixon_process_sched_register(h, 1) < 0)
 	goto done;
  ok:
     retval = 0;
@@ -863,23 +877,25 @@ clixon_process_sched(int           fd,
 }
 
 /*! Register scheduling of process start/stop/restart
- * After a delay t1, schedule the process
- * @note The delay is for mitigating a race condition if a process is restarted that is used in the 
- * session restarting it. In this way, the process "should have" time to exit.
- * However, for slow machines, this delay may need to be longer.
- * On a Raspberry pi it was measured to need be 1.5ms.
- * However, if it is much longer, it may kill restconf as an unrelated session has been opened.
+ *
+ * Schedule a process event. There are two cases:
+ * 1) A process has been killed and is in EXITING, after a delay kill again. 
+ * 2) A process is started, dont delay
+ * @param[in]  h     Clixon handle
+ * @param[in]  delay If 0 dont add a delay, if 1 add a delay
  */
-int
-clixon_process_sched_register(clicon_handle h)
+static int
+clixon_process_sched_register(clicon_handle h,
+			      int           delay)
 {
     int            retval = -1;
     struct timeval t;
-    struct timeval t1 = {0, 1500}; /* See discussion ^*/
+    struct timeval t1 = {0, 100000}; /* 100ms */
 
     clicon_debug(2, "%s", __FUNCTION__);
     gettimeofday(&t, NULL);
-    timeradd(&t, &t1, &t);
+    if (delay)
+	timeradd(&t, &t1, &t);
     if (clixon_event_reg_timeout(t, clixon_process_sched, h, "process") < 0)
 	goto done;
     retval = 0;

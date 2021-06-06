@@ -504,6 +504,11 @@ xmldb_readfile(clicon_handle    h,
 	if (singleconfigroot(x0, &x0) < 0)
 	    goto done;
     }
+    /* Purge all top-level body objects */
+    x = NULL;
+    while ((x = xml_find_type(x0, NULL, "body", CX_BODY)) != NULL)
+	xml_purge(x);
+
     xml_flag_set(x0, XML_FLAG_TOP);
     if (xml_child_nr(x0) == 0 && de)
 	de->de_empty = 1;
@@ -799,8 +804,15 @@ xmldb_get_cache(clicon_handle    h,
 	    goto done;
 	if (ret == 0)
 	    ; /* XXX */
+	else {
+	    /* Add default global values (to make xpath below include defaults) */
+	    if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
+		goto done;
+	    /* Add default recursive values */
+	    if (xml_default_recurse(x0t, 0) < 0)
+		goto done;
+	}
     }
-
     /* Here x0t looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec 
      * Can we do everything in one go?
@@ -848,11 +860,14 @@ xmldb_get_cache(clicon_handle    h,
 	    goto done;
     }
     /* Remove global defaults from cache 
-     * Mark non-presence containers as XML_FLAG_DEFAULT */
-    if (xml_apply(x0t, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_DEFAULT) < 0)
+     * Mark non-presence containers */
+    if (xml_apply(x0t, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_TRANSIENT) < 0)
+	goto done;
+    /* clear XML tree of defaults */
+    if (xml_tree_prune_flagged(x0t, XML_FLAG_DEFAULT, 1) < 0)
 	goto done;
     /* Clear XML tree of defaults */
-    if (xml_tree_prune_flagged(x0t, XML_FLAG_DEFAULT, 1) < 0)
+    if (xml_tree_prune_flagged(x0t, XML_FLAG_TRANSIENT, 1) < 0)
 	goto done;
     if (yb != YB_NONE){
 	/* Add default global values */
@@ -1120,11 +1135,11 @@ xmldb_get0_clear(clicon_handle    h,
     
     if (x == NULL)
 	goto ok;
-    /* Mark non-presence containers as XML_FLAG_DEFAULT */
-    if (xml_apply(x, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_DEFAULT) < 0)
+    /* Mark non-presence containers */
+    if (xml_apply(x, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_TRANSIENT) < 0)
 	goto done;
     /* Clear XML tree of defaults */
-    if (xml_tree_prune_flagged(x, XML_FLAG_DEFAULT, 1) < 0)
+    if (xml_tree_prune_flagged(x, XML_FLAG_TRANSIENT, 1) < 0)
 	goto done;
 
     /* clear mark and change */

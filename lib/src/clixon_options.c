@@ -95,11 +95,12 @@ static const map_str2int cli_genmodel_map[] = {
 /* Mapping between Clicon startup modes string <--> constants, 
    see clixon-config.yang type startup_mode */
 static const map_str2int startup_mode_map[] = {
-    {"none",     SM_NONE}, 
-    {"running",  SM_RUNNING}, 
-    {"startup",  SM_STARTUP}, 
-    {"init",     SM_INIT}, 
-    {NULL,       -1}
+    {"none",            SM_NONE}, 
+    {"init",            SM_INIT}, 
+    {"running",         SM_RUNNING}, 
+    {"startup",         SM_STARTUP},
+    {"running-startup", SM_RUNNING_STARTUP}, 
+    {NULL,              -1}
 };
 
 /* Mapping between Clicon privileges modes string <--> constants, 
@@ -871,7 +872,7 @@ clicon_startup_mode(clicon_handle h)
     return clicon_str2int(startup_mode_map, mode);
 }
 
-/*! Which privileges drop method to use
+/*! Which privileges drop method to use for backend
  * @param[in] h     Clicon handle
  * @retval    mode  Privileges mode
  */
@@ -881,6 +882,20 @@ clicon_backend_privileges_mode(clicon_handle h)
     char *mode;
 
     if ((mode = clicon_option_str(h, "CLICON_BACKEND_PRIVILEGES")) == NULL)
+	return -1;
+    return clicon_str2int(priv_mode_map, mode);
+}
+
+/*! Which privileges drop method to use for restconf
+ * @param[in] h     Clicon handle
+ * @retval    mode  Privileges mode
+ */
+enum priv_mode_t
+clicon_restconf_privileges_mode(clicon_handle h)
+{
+    char *mode;
+
+    if ((mode = clicon_option_str(h, "CLICON_RESTCONF_PRIVILEGES")) == NULL)
 	return -1;
     return clicon_str2int(priv_mode_map, mode);
 }

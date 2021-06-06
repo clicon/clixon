@@ -713,7 +713,7 @@ api_path2xpath_cvv(cvec       *api_path,
 		goto done;
 	}
 	/* Check if has value, means '=' */
-        if (cv2str(cv, NULL, 0) > 0){
+	if (cv_type_get(cv) == CGV_STRING){
 	    /* val is uri percent encoded, eg x%2Cy,z */
             if ((val = cv2str_dup(cv)) == NULL)
                 goto done;
@@ -847,6 +847,14 @@ api_path2xpath(char       *api_path,
     if (api_path == NULL){
 	clicon_err(OE_XML, EINVAL, "api_path is NULL");
 	goto done;
+    }
+    /* Special case: "//" is not handled proerly by uri_str2cvec 
+     * and is an invalid api-path
+     */
+    if (strlen(api_path)>1 && api_path[0] == '/' && api_path[1] == '/'){
+	if (xerr && netconf_invalid_value_xml(xerr, "application", "Invalid api-path beginning with //") < 0)
+	    goto done;
+	goto fail;
     }
     /* Split api-path into cligen variable vector, 
      * dont decode since api_path2xpath_cvv takes uri encode as input */

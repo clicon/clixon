@@ -287,9 +287,9 @@ check_drop_priv(clicon_handle h,
     enum priv_mode_t priv_mode = PM_NONE;
     char            *backend_user = NULL;
 
+
     /* Get privileges mode (for dropping privileges) */
-    priv_mode = clicon_backend_privileges_mode(h);
-    if (priv_mode == PM_NONE)
+    if ((priv_mode = clicon_backend_privileges_mode(h)) == PM_NONE)
 	goto ok;
 
     /* From here, drop privileges */
@@ -575,9 +575,6 @@ main(int    argc,
 	    usage(h, argv[0]);
 	goto done;
     }
-    /* Add some specific options from autotools configure NOT config file */
-    clicon_option_str_set(h, "CLICON_WWWUSER", WWWUSER);
-    clicon_option_str_set(h, "CLICON_WWWDIR", WWWDIR);
     
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)
@@ -857,17 +854,24 @@ main(int    argc,
 	goto done;
     }
     /* Check that netconf :startup is enabled */
-    if (startup_mode == SM_STARTUP &&
+    if ((startup_mode == SM_STARTUP || startup_mode == SM_RUNNING_STARTUP) &&
 	!if_feature(yspec, "ietf-netconf", "startup")){
 	clicon_log(LOG_ERR, "Startup mode selected but Netconf :startup feature is not enabled. Enable with option: <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>"); 
 	goto done;
     }
 
     /* Init running db if it is not there
+     * change running_startup -> running or startup depending on if running exists or not
      */
-    if (xmldb_exists(h, "running") != 1)
+    if (xmldb_exists(h, "running") != 1){
+	if (startup_mode == SM_RUNNING_STARTUP)
+	    startup_mode = SM_STARTUP; 
 	if (xmldb_create(h, "running") < 0)
 	    return -1;
+    }
+    else
+	if (startup_mode == SM_RUNNING_STARTUP)
+	    startup_mode = SM_RUNNING;
     xmldb_delete(h, "candidate");
     /* If startup fails, lib functions report invalidation info in a cbuf */
     if ((cbret = cbuf_new()) == NULL){
@@ -912,6 +916,9 @@ main(int    argc,
 	if (ret2status(ret, &status) < 0)
 	    goto done;
 	/* if status = STARTUP_INVALID, cbret contains info */
+	break;	
+    default:;
+	break;	
     }
     /* Quit after upgrade catch-all, running/startup quits in upgrade code */
     if (clicon_quit_upgrade_get(h) == 1)

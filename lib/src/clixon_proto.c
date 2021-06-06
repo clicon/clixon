@@ -373,7 +373,7 @@ clicon_msg_rcv(int                s,
     int       retval = -1;
     struct clicon_msg hdr;
     int       hlen;
-    uint32_t  len2;
+    ssize_t   len2;
     sigfn_t   oldhandler;
     uint32_t  mlen;
 
@@ -402,7 +402,7 @@ clicon_msg_rcv(int                s,
 	goto done;
     }
     memcpy(*msg, &hdr, hlen);
-    if ((len2 = atomicio(read, s, (*msg)->op_body, mlen - sizeof(hdr))) == 0){ 
+    if ((len2 = atomicio(read, s, (*msg)->op_body, mlen - sizeof(hdr))) < 0){ 
  	clicon_err(OE_CFG, errno, "read");
 	goto done;
     }
@@ -638,7 +638,7 @@ clicon_rpc(int                sock,
     return retval;
 }
 
-/*! Send a netconf message and recevive result.
+/*! Send a netconf message and recieve result.
  *
  * TBD: timeout, interrupt?
  * retval may be -1 and
@@ -770,11 +770,21 @@ send_msg_notify_xml(clicon_handle h,
 }
 
 /*! Look for a text pattern in an input string, one char at a time
- *  @param[in]     tag     What to look for
- *  @param[in]     ch      New input character
- *  @param[in,out] state   A state integer holding how far we have parsed.
- *  @retval        0       No, we havent detected end tag
- *  @retval        1       Yes, we have detected end tag!
+ * @param[in]     tag     What to look for
+ * @param[in]     ch      New input character
+ * @param[in,out] state   A state integer holding how far we have parsed.
+ * @retval        0       No, we havent detected end tag
+ * @retval        1       Yes, we have detected end tag!
+ * @code
+ *   int state = 0;
+ *   char ch;
+ *   while (1) {
+ *     // read ch
+ *     if (detect_endtag("mypattern", ch, &state)) {
+ *       // mypattern is matched
+ *     }
+ *   }
+ * @endcode
  */
 int
 detect_endtag(char *tag, 

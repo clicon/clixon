@@ -945,6 +945,62 @@ netconf_data_missing_xml(cxobj **xret,
  *
  * Request could not be completed because the requested operation is not
  * supported by this implementation.
+ * @param[out] xret    Error XML tree 
+ * @param[in]  type    Error type: "application" or "protocol"
+ * @param[in]  message Error message
+ * @code
+ *  cxobj *xret = NULL;
+ *  if (netconf_operation_not_supported_xml(&xret, "protocol", "Unauthorized") < 0)
+ *    err;
+ *  xml_free(xret);
+ * @endcode
+ * @see netconf_operation_not_supported  Same but returns cligen buffer
+ */
+int
+netconf_operation_not_supported_xml(cxobj **xret,
+				    char   *type,
+				    char   *message)
+{
+    int   retval =-1;
+    cxobj *xerr;
+    char  *encstr = NULL;
+    cxobj *xa;
+    
+    if (*xret == NULL){
+	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
+	    goto done;
+    }
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
+	goto done;
+    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+	goto done;
+    if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
+	goto done;
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>%s</error-type>"
+			    "<error-tag>operation-not-supported</error-tag>"
+			    "<error-severity>error</error-severity>",
+			    type) < 0)
+	goto done;
+    if (message){
+	 if (xml_chardata_encode(&encstr, "%s", message) < 0)
+	     goto done;
+	 if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
+				 encstr) < 0)
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (encstr)
+	free(encstr);
+    return retval;
+}
+
+/*! Create Netconf operation-not-supported error XML according to RFC 6241 App A
+ *
+ * Request could not be completed because the requested operation is not
+ * supported by this implementation.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  message Error message
@@ -955,30 +1011,17 @@ netconf_operation_not_supported(cbuf *cb,
 				char *message)
 {
     int   retval = -1;
-    char *encstr = NULL;
+    cxobj *xret = NULL;
 
-    if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
-		"<error-type>%s</error-type>"
-		"<error-tag>operation-not-supported</error-tag>"
-		"<error-severity>error</error-severity>",
-		NETCONF_BASE_NAMESPACE, type) <0)
-	goto err;
-    if (message){
-	if (xml_chardata_encode(&encstr, "%s", message) < 0)
-	    goto done;
-	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
-	    goto err;
-    }
-    if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
-	goto err;
+    if (netconf_operation_not_supported_xml(&xret, type, message) < 0)
+	goto done;
+    if (clicon_xml2cbuf(cb, xret, 0, 0, -1) < 0)
+	goto done;
     retval = 0;
  done:
-    if (encstr)
-	free(encstr);
+    if (xret)
+	xml_free(xret);
     return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
 }
 
 /*! Create Netconf operation-failed error XML tree according to RFC 6241 App A
@@ -1028,7 +1071,6 @@ int
 netconf_operation_failed_xml(cxobj **xret,
 			     char  *type,
 			     char  *message)
-
 {
     int   retval =-1;
     cxobj *xerr;

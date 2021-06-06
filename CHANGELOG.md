@@ -34,12 +34,57 @@ Expected: June 2021
 
 ### New features
 
-* Yang Deviation/deviate [deviation statement not yet support #211](https://github.com/clicon/clixon/issues/211)
+* Started EXPERIMENTAL HTTP/2 work using nghttp2
+  * Added autoconf config options, temporary for nghttp2 development: `--disable-evhtp`and `--enable-nghttp2` enabling http/1 only / http/2 only linki and compile.
+* YANG when statement in conjunction with grouping/uses/augment
+  * Several cases were not implemented fully according to RFC 7950:
+    * Do not extend default values if when statements evaluate to false
+    * Do not allow edit-config of nodes if when statements evaluate to false (Sec 8.3.2)
+    * If a key leaf is defined in a grouping that is used in a list, the "uses" statement MUST NOT have a "when" statement. (See 7.21.5)
+  * See [yang uses's substatement when has no effect #218](https://github.com/clicon/clixon/issues/218)
+* YANG deviation [deviation statement not yet support #211](https://github.com/clicon/clixon/issues/211)
   * See RFC7950 Sec 5.6.3
-  * Work-in-progress
+
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* Changed config and install options for Restconf
+  * clixon_restconf daemon is installed in /usr/local/sbin (as clixon_backend), instead of /www-data
+    * `configure --with-wwwdir=<dir>` remains but only applies to fcgi socket and log
+    * New option `CLICON_RESTCONF_INSTALLDIR` is set to where clixon_restconf is installed, with default `/usr/local/sbin/` 
+  * Restconf drop privileges user is defined by `CLICON_RESTCONF_USER`
+    * `configure --with-wwwuser=<user>` is removed
+  * clixon_restconf drop of privileges is defined by `CLICON_RESTCONF_PRIVILEGES` option
+* New clixon-config@2020-05-20.yang revision
+  * Added: `CLICON_RESTCONF_USER`
+  * Added: `CLICON_RESTCONF_PRIVILEGES`
+  * Added: `CLICON_RESTCONF_INSTALLDIR`
+  * Added: `CLICON_RESTCONF_STARTUP_DONTUPDATE`	
+* New clixon-restconf@2020-05-20.yang revision
+  * Added: restconf `log-destination` 
+* RESTCONF error replies have changed
+  * Added Restconf-style xml/json message bodies everywhere
+    * Clixon removed the message body from many errors in the 4.6 version since they used html encoding. 
+    * However, the RFC Section 7.1 mandates to use RESTCONF-style message bodies.
+* RESTCONF in Clixon used empty key as "wildchar". But according to RFC 8040 it should mean the "empty string".
+  * Example: `GET restconf/data/x:a=`
+  * Previous meaning (wrong): Return all `a` elements.
+  * New meaning (correct): Return the `a` instance with empty key string: "".
+
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* 
 
 ### Minor features
 
+* Added new startup-mode: `running-startup`: First try running db, if it is empty try startup db.
+  * See [Can startup mode to be extended to support running-startup mode? #234](https://github.com/clicon/clixon/issues/234)
+* Restconf: added inline configuration using `-R <xml>` command line as an alternative to making advanced restconf configuration
+* [Need an option to disable restconf mandatory action of overwriting startup_db #230](https://github.com/clicon/clixon/issues/230)
+  * Configure option `CLICON_RESTCONF_STARTUP_DONTUPDATE` added to disable RFC 8040 mandatory copy of running to startup after commit
 * Add default network namespace constant: `RESTCONF_NETNS_DEFAULT` with default value "default".
 * CLI: Two new hide variables added (thanks: shmuelnatan)
   * hide-database : specifies that a command is not visible in database. This can be useful for setting passwords and not exposing them to users.
@@ -47,6 +92,17 @@ Expected: June 2021
 	
 ### Corrected Bugs
 
+* Fixed: [restconf patch method unable to chage value to empty string #229](https://github.com/clicon/clixon/issues/229)
+* Fixed: [when condition error under augment in restconf #227](https://github.com/clicon/clixon/issues/227)
+* Fixed: [Using YANG union with decimal64 and string leads to regexp match fail #226](https://github.com/clicon/clixon/issues/226)
+* Fixed: [xpath function count did not work properly #224](https://github.com/clicon/clixon/issues/224)
+* Fixed: RESTCONF Native: Failed binding of socket in network namespace caused process zombie
+* Fixed  problems with XPATH composite operations and functions in netconf get/get-config operations.
+  * See [XPATH issues #219](https://github.com/clicon/clixon/issues/219)
+* Fix Union in xpath [XPATH issues #219](https://github.com/clicon/clixon/issues/219)
+* Fix: XPath:s used in netconf (eg get-config) did not correctly access default values
+* [RESTCONF GET request of single-key list with empty string returns all elements #213](https://github.com/clicon/clixon/issues/213)
+* [RESTCONF GETof lists with empty string keys does not work #214](https://github.com/clicon/clixon/issues/214)
 * Fixed: [Multiple http requests in native restconf yields same reply #212](https://github.com/clicon/clixon/issues/212)
 
 ## 5.1.0
@@ -77,6 +133,8 @@ The 5.1 release contains more RESTCONF native mode restructuring, new multi-yang
   * Keep old behavior: disable `CLICON_XMLDB_UPGRADE_CHECKOLD`.
 	
 ### API changes on existing protocol/config features
+
+Users may have to change how they access the system
 
 * Native RESTCONF mode
   * Configure native mode changed to: `configure --with-restconf=native`, NOT `evhtp`

@@ -1211,14 +1211,24 @@ xml_yang_validate_all(clicon_handle h,
 	    if (yang_keyword_get(yc) != Y_MUST)
 		continue;
 	    xpath = yang_argument_get(yc); /* "must" has xpath argument */
-	    if (xml_nsctx_yang(yc, &nsc) < 0)
-		goto done;
+	    /* the context node is the node in the accessible tree for
+	     * which the "must" statement is defined. 
+	     * The set of namespace declarations is the set of all "import" statements' 
+	     */
+           if (xml_nsctx_yang(yc, &nsc) < 0)
+               goto done;
 	    if ((nr = xpath_vec_bool(xt, nsc, "%s", xpath)) < 0)
 		goto done;
 	    if (!nr){
 		ye = yang_find(yc, Y_ERROR_MESSAGE, NULL);
+		if ((cb = cbuf_new()) == NULL){
+		    clicon_err(OE_UNIX, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cb, "Failed MUST xpath '%s' of '%s' in module %s",
+			xpath, xml_name(xt),  yang_argument_get(ys_module(ys)));
 		if (netconf_operation_failed_xml(xret, "application", 
-						 ye?yang_argument_get(ye):"must xpath validation failed") < 0)
+						 ye?yang_argument_get(ye):cbuf_get(cb)) < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -1227,7 +1237,7 @@ xml_yang_validate_all(clicon_handle h,
 		nsc = NULL;
 	    }
 	}
-	/* "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
+	/* First variant of when, actual "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
 	if ((yc = yang_find(ys, Y_WHEN, NULL)) != NULL){
 	    xpath = yang_argument_get(yc); /* "when" has xpath argument */
 	    /* WHEN xpath needs namespace context */
@@ -1253,7 +1263,9 @@ xml_yang_validate_all(clicon_handle h,
 		goto fail;
 	    }
 	}
-	/* Augmented when using special struct. */
+	/* Second variants of WHEN:
+	 * Augmented and uses when using special info in node
+	 */
 	if ((xpath = yang_when_xpath_get(ys)) != NULL){
 	    if ((nr = xpath_vec_bool(xml_parent(xt), yang_when_nsc_get(ys),
 				     "%s", xpath)) < 0)
@@ -1263,7 +1275,7 @@ xml_yang_validate_all(clicon_handle h,
 		    clicon_err(OE_UNIX, errno, "cbuf_new");
 		    goto done;
 		}
-		cprintf(cb, "Failed augmented WHEN condition %s of node %s in module %s",
+		cprintf(cb, "Failed augmented 'when' condition '%s' of node '%s' in module '%s'",
 			xpath,
 			xml_name(xt),
 			yang_argument_get(ys_module(ys)));

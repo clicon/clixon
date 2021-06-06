@@ -140,7 +140,7 @@ nodetest_eval_node(cxobj      *x,
 	retval = 0; /* no match */
 	goto done;
     }
-    /* here names are equal 
+    /* Here names are equal 
      * Now look for namespaces
      * 1) prefix1 and prefix2 point to same namespace <<-- try this first
      * 2) prefix1 is equal to prefix2 <<-- then try this
@@ -151,6 +151,13 @@ nodetest_eval_node(cxobj      *x,
 	nsxpath = xml_nsctx_get(nsc, prefix2);
 	if (nsxml != NULL && nsxpath != NULL)
 	    retval = (strcmp(nsxml, nsxpath) == 0);
+	else if (nsxpath == NULL){
+	    /* We have a namespace from xml, but none in yang.
+	     * This can happen in eg augments and ../foo, where foo is
+	     * augmented from another namespace
+	     */
+	    retval = 1; 
+	}
 	else
 	    retval = (nsxml == nsxpath); /* True only if both are NULL */
     }
@@ -345,7 +352,8 @@ xp_eval_step(xp_ctx     *xc0,
 		if (ret == 0){/* regular code, no optimization made */
 		    while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
 			/* xs->xs_c0 is nodetest */
-			if (nodetest == NULL || nodetest_eval(x, nodetest, nsc, localonly) == 1){
+			if (nodetest == NULL ||
+			    nodetest_eval(x, nodetest, nsc, localonly) == 1){
 			    if (cxvec_append(x, &vec, &veclen) < 0)
 				goto done;
 			}
@@ -392,7 +400,12 @@ xp_eval_step(xp_ctx     *xc0,
 	xc->xc_nodeset = NULL;
 	for (i=0; i<veclen; i++){
 	    x = vec[i];
-	    if ((xp = xml_parent(x)) != NULL)
+	    if ((xp = xml_parent(x)) != NULL
+#ifdef XML_PARENT_CANDIDATE
+		/* Also check "candidate" parent for special when use-case */
+		|| (xp = xml_parent_candidate(x)) != NULL
+#endif /* XML_PARENT_CANDIDATE */
+		)
 		if (cxvec_append(xp, &xc->xc_nodeset, &xc->xc_size) < 0)
 		    goto done;
 	}
@@ -824,8 +837,12 @@ xp_relop(xp_ctx    *xc1,
 		s1 = xml_body(x);
 		switch(op){
 		case XO_EQ:
-		    if (s1 == NULL || s2 == NULL)
-			xr->xc_bool = (s1==NULL && s2 == NULL);
+		    if (s1 == NULL && s2 == NULL)
+			xr->xc_bool = 1;
+		    else if (s1 == NULL && strlen(s2) == 0)
+			xr->xc_bool = 1;
+		    else if (strlen(s1) == 0 && s2 == NULL)
+			xr->xc_bool = 1;
 		    else
 			xr->xc_bool = (strcmp(s1, s2)==0);
 		    break;
@@ -975,8 +992,13 @@ xp_eval(xp_ctx     *xc,
     case XP_ABSPATH:
 	/* Set context node to top node, and nodeset to that node only */
 	x = xc->xc_node;
+#ifdef XML_PARENT_CANDIDATE
+	while (xml_parent(x) != NULL || xml_parent_candidate(x) != NULL)
+	    x = xml_parent(x)?xml_parent(x):xml_parent_candidate(x);
+#else
 	while (xml_parent(x) != NULL)
 	    x = xml_parent(x);
+#endif
 	xc->xc_node = x;
 	xc->xc_nodeset[0] = x;
 	xc->xc_size=1;

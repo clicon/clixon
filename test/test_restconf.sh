@@ -13,7 +13,7 @@
 # - IPv6 by default disabled since docker does not support it out-of-the box
 # (4) local/backend config. Native only
 # - The tests runs through both (if compiled with native)
-# See also test_restconf2.sh
+# See also test_restconf_op.sh
 # See test_restconf_rpc.sh for cases when CLICON_BACKEND_RESTCONF_PROCESS is set
 
 # Magic line must be first in script (see README.md)
@@ -157,7 +157,12 @@ function testrun()
 	stop_restconf_pre
 
 	new "start restconf daemon"
-	start_restconf -f $cfg
+	# inline of start_restconf, cant make quotes to work
+	echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R <xml>"
+	sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R "$RESTCONFIG1" &
+	if [ $? -ne 0 ]; then
+	    err1 "expected 0" "$?"
+	fi
     fi
 
     new "wait restconf"
@@ -166,13 +171,32 @@ function testrun()
     new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
     expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
+    if [ "${WITH_RESTCONF}" = "native" ]; then # XXX does not work with nginx
+	new "restconf GET http/1.0  - returns 1.0"
+	expectpart "$(curl $CURLOPTS --http1.0 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.0 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+    fi
+    new "restconf GET http/1.1"
+    expectpart "$(curl $CURLOPTS --http1.1 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+
+    new "restconf GET http/2"
+    expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+
+    if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
+	new "restconf GET http/2 prior-knowledge (http)"
+	expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta 2>&1)" "16 52 55" # "Error in the HTTP2 framing layer" "Connection reset by peer"
+    else
+    	new "restconf GET http/2 prior-knowledge (https)"
+	expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+    fi
+
     # Negative test GET datastore
-    if [ $proto = http ]; then # see (2) https to http port in restconf_main_openssl.c
+    if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
 	new "Wrong proto=https on http port, expect err 35 wrong version number"
 	expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
-    else # see (1) http to https port in restconf_main_openssl.c
+    else # see (1) http to https port in restconf_main_native.c
 	new "Wrong proto=http on https port, expect bad request"
 	expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/1.1 400 Bad Request"
+	# expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
     fi
     
     # Exact match

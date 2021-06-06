@@ -1508,12 +1508,6 @@ notification_substmt : if_feature_stmt  { _PARSE_DEBUG("notification-substmt -> 
                      |                  { _PARSE_DEBUG("notification-substmt -> "); }
                      ;
 
-/* deviation /oc-sys:system/oc-sys:config/oc-sys:hostname {
-	     deviate not-supported;
-      }
- * XXX abs-schema-nodeid-str is too difficult, it needs the + semantics
-
-*/
 deviation_stmt : K_DEVIATION string
                         { if (ysp_add_push(_yy, Y_DEVIATION, $2, NULL) == NULL) _YYERROR("deviation_stmt"); }
 	            '{' deviation_substmts '}' 
@@ -1535,16 +1529,26 @@ deviation_substmt : description_stmt  { _PARSE_DEBUG("deviation-substmt -> descr
                   | deviate_replace_stmt { _PARSE_DEBUG("deviation-stmt -> deviate-replace-stmt");}
 		  ;
 
+not_supported_keyword_str : D_NOT_SUPPORTED
+                          | '"' D_NOT_SUPPORTED '"'
+                          | SQ D_NOT_SUPPORTED SQ
+                          ;
+
 deviate_not_supported_stmt
-                  : K_DEVIATE D_NOT_SUPPORTED ';'
-		  { if (ysp_add(_yy, Y_DEVIATE, strdup("not-supported") /* D_NOT_SUPPORTED*/, NULL) == NULL) _YYERROR("notification_stmt");
+                  : K_DEVIATE not_supported_keyword_str ';'
+		  { if (ysp_add(_yy, Y_DEVIATE, strdup("not-supported"), NULL) == NULL) _YYERROR("notification_stmt");
     			   _PARSE_DEBUG("deviate-not-supported-stmt -> DEVIATE not-supported ;"); }
                   ;
 
-deviate_add_stmt   : K_DEVIATE D_ADD ';'
-                  { if (ysp_add(_yy, Y_DEVIATE, strdup("add") /* D_NOT_SUPPORTED*/, NULL) == NULL) _YYERROR("notification_stmt");
+add_keyword_str    : D_ADD 
+                   | '"' D_ADD '"'
+                   | SQ D_ADD SQ
+                   ;
+
+deviate_add_stmt   : K_DEVIATE add_keyword_str ';'
+                  { if (ysp_add(_yy, Y_DEVIATE, strdup("add"), NULL) == NULL) _YYERROR("notification_stmt");
     			   _PARSE_DEBUG("deviate-add-stmt -> DEVIATE add ;"); }
-                  | K_DEVIATE D_ADD
+                  | K_DEVIATE add_keyword_str
 		  { if (ysp_add_push(_yy, Y_DEVIATE, strdup("add"), NULL) == NULL) _YYERROR("deviate_stmt"); }
 	            '{' deviate_add_substmts '}' 
                         { if (ystack_pop(_yy) < 0) _YYERROR("deviate_stmt");
@@ -1568,14 +1572,19 @@ deviate_add_substmt : units_stmt    { _PARSE_DEBUG("deviate-add-substmt -> units
                 ;
 
 
-deviate_delete_stmt   : K_DEVIATE D_DELETE ';'
-                  { if (ysp_add(_yy, Y_DEVIATE, strdup("add") /* D_NOT_SUPPORTED*/, NULL) == NULL) _YYERROR("notification_stmt");
-    			   _PARSE_DEBUG("deviate-delete-stmt -> DEVIATE add ;"); }
-                  | K_DEVIATE D_DELETE
-		  { if (ysp_add_push(_yy, Y_DEVIATE, strdup("add"), NULL) == NULL) _YYERROR("deviate_stmt"); }
+delete_keyword_str : D_DELETE 
+                   | '"' D_DELETE '"'
+                   | SQ D_DELETE SQ
+                   ;
+
+deviate_delete_stmt   : K_DEVIATE delete_keyword_str ';'
+                  { if (ysp_add(_yy, Y_DEVIATE, strdup("delete"), NULL) == NULL) _YYERROR("notification_stmt");
+    			   _PARSE_DEBUG("deviate-delete-stmt -> DEVIATE delete ;"); }
+                  | K_DEVIATE delete_keyword_str
+		  { if (ysp_add_push(_yy, Y_DEVIATE, strdup("delete"), NULL) == NULL) _YYERROR("deviate_stmt"); }
 	            '{' deviate_delete_substmts '}' 
                         { if (ystack_pop(_yy) < 0) _YYERROR("deviate_stmt");
-			     _PARSE_DEBUG("deviate-delete-stmt -> DEVIATE add { deviate-substmts }"); }
+			     _PARSE_DEBUG("deviate-delete-stmt -> DEVIATE delete { deviate-delete-substmts }"); }
                    ;
 
 deviate_delete_substmts : deviate_delete_substmts deviate_delete_substmt 
@@ -1590,15 +1599,19 @@ deviate_delete_substmt : units_stmt { _PARSE_DEBUG("deviate-delete-substmt -> un
                 |                   { _PARSE_DEBUG("deviate-delete-substmt -> "); }
                 ;
 
+replace_keyword_str : D_REPLACE 
+                   | '"' D_REPLACE '"'
+                   | SQ D_REPLACE SQ
+                   ;
 
-deviate_replace_stmt   : K_DEVIATE D_REPLACE ';'
-                  { if (ysp_add(_yy, Y_DEVIATE, strdup("add") /* D_NOT_SUPPORTED*/, NULL) == NULL) _YYERROR("notification_stmt");
-    			   _PARSE_DEBUG("deviate-replace-stmt -> DEVIATE add ;"); }
-                  | K_DEVIATE D_REPLACE
-		  { if (ysp_add_push(_yy, Y_DEVIATE, strdup("add"), NULL) == NULL) _YYERROR("deviate_stmt"); }
+deviate_replace_stmt   : K_DEVIATE replace_keyword_str ';'
+                  { if (ysp_add(_yy, Y_DEVIATE, strdup("replace"), NULL) == NULL) _YYERROR("notification_stmt");
+    			   _PARSE_DEBUG("deviate-replace-stmt -> DEVIATE replace ;"); }
+                  | K_DEVIATE replace_keyword_str
+		  { if (ysp_add_push(_yy, Y_DEVIATE, strdup("replace"), NULL) == NULL) _YYERROR("deviate_stmt"); }
 	            '{' deviate_replace_substmts '}' 
                         { if (ystack_pop(_yy) < 0) _YYERROR("deviate_stmt");
-			     _PARSE_DEBUG("deviate-replace-stmt -> DEVIATE add { deviate-substmts }"); }
+			     _PARSE_DEBUG("deviate-replace-stmt -> DEVIATE replace { deviate-replace-substmts }"); }
                    ;
 
 deviate_replace_substmts : deviate_replace_substmts deviate_replace_substmt 
@@ -1688,40 +1701,40 @@ yang_stmt     : action_stmt          { _PARSE_DEBUG("yang-stmt -> action-stmt");
               | leaf_stmt            { _PARSE_DEBUG("yang-stmt -> leaf-stmt");}
               | length_stmt          { _PARSE_DEBUG("yang-stmt -> length-stmt");}
               | list_stmt            { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | mandatory_stmt       { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | max_elements_stmt    { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | min_elements_stmt    { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | modifier_stmt        { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | module_stmt          { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | must_stmt            { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | namespace_stmt       { _PARSE_DEBUG("yang-stmt -> list-stmt");}
+              | mandatory_stmt       { _PARSE_DEBUG("yang-stmt -> mandatory-stmt");}
+              | max_elements_stmt    { _PARSE_DEBUG("yang-stmt -> max-elements-stmt");}
+              | min_elements_stmt    { _PARSE_DEBUG("yang-stmt -> min-elements-stmt");}
+              | modifier_stmt        { _PARSE_DEBUG("yang-stmt -> modifier-stmt");}
+              | module_stmt          { _PARSE_DEBUG("yang-stmt -> module-stmt");}
+              | must_stmt            { _PARSE_DEBUG("yang-stmt -> must-stmt");}
+              | namespace_stmt       { _PARSE_DEBUG("yang-stmt -> namespace-stmt");}
               | notification_stmt    { _PARSE_DEBUG("yang-stmt -> notification-stmt");}
-              | ordered_by_stmt      { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | organization_stmt    { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | output_stmt          { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | path_stmt            { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | pattern_stmt         { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | position_stmt        { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | prefix_stmt          { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | presence_stmt        { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | range_stmt           { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | reference_stmt       { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | refine_stmt          { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | require_instance_stmt { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | revision_date_stmt   { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | revision_stmt        { _PARSE_DEBUG("yang-stmt -> list-stmt");}
+              | ordered_by_stmt      { _PARSE_DEBUG("yang-stmt -> ordered-by-stmt");}
+              | organization_stmt    { _PARSE_DEBUG("yang-stmt -> organization-stmt");}
+              | output_stmt          { _PARSE_DEBUG("yang-stmt -> output-stmt");}
+              | path_stmt            { _PARSE_DEBUG("yang-stmt -> path-stmt");}
+              | pattern_stmt         { _PARSE_DEBUG("yang-stmt -> pattern-stmt");}
+              | position_stmt        { _PARSE_DEBUG("yang-stmt -> position-stmt");}
+              | prefix_stmt          { _PARSE_DEBUG("yang-stmt -> prefix-stmt");}
+              | presence_stmt        { _PARSE_DEBUG("yang-stmt -> presence-stmt");}
+              | range_stmt           { _PARSE_DEBUG("yang-stmt -> range-stmt");}
+              | reference_stmt       { _PARSE_DEBUG("yang-stmt -> reference-stmt");}
+              | refine_stmt          { _PARSE_DEBUG("yang-stmt -> refine-stmt");}
+              | require_instance_stmt { _PARSE_DEBUG("yang-stmt -> require-instance-stmt");}
+              | revision_date_stmt   { _PARSE_DEBUG("yang-stmt -> revision-date-stmt");}
+              | revision_stmt        { _PARSE_DEBUG("yang-stmt -> revision-stmt");}
               | rpc_stmt             { _PARSE_DEBUG("yang-stmt -> rpc-stmt");}
-              | status_stmt          { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | submodule_stmt       { _PARSE_DEBUG("yang-stmt -> list-stmt");}
+              | status_stmt          { _PARSE_DEBUG("yang-stmt -> status-stmt");}
+              | submodule_stmt       { _PARSE_DEBUG("yang-stmt -> submodule-stmt");}
               | typedef_stmt         { _PARSE_DEBUG("yang-stmt -> typedef-stmt");}
-              | type_stmt            { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | unique_stmt          { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | units_stmt           { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | uses_augment_stmt    { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | uses_stmt            { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | value_stmt           { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | when_stmt            { _PARSE_DEBUG("yang-stmt -> list-stmt");}
-              | yang_version_stmt    { _PARSE_DEBUG("yang-stmt -> list-stmt");}
+              | type_stmt            { _PARSE_DEBUG("yang-stmt -> type-stmt");}
+              | unique_stmt          { _PARSE_DEBUG("yang-stmt -> unique-stmt");}
+              | units_stmt           { _PARSE_DEBUG("yang-stmt -> units-stmt");}
+              | uses_augment_stmt    { _PARSE_DEBUG("yang-stmt -> uses-augment-stmt");}
+              | uses_stmt            { _PARSE_DEBUG("yang-stmt -> uses-stmt");}
+              | value_stmt           { _PARSE_DEBUG("yang-stmt -> value-stmt");}
+              | when_stmt            { _PARSE_DEBUG("yang-stmt -> when-stmt");}
+              | yang_version_stmt    { _PARSE_DEBUG("yang-stmt -> yang-version-stmt");}
               /*              | yin_element_stmt     { _PARSE_DEBUG("yang-stmt -> list-stmt");} */
               ;
 

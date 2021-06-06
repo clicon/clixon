@@ -49,6 +49,7 @@ datarootdir	= @datarootdir@
 exec_prefix 	= @exec_prefix@
 bindir 		= @bindir@
 libdir		= @libdir@
+sbindir 	= @sbindir@
 mandir		= @mandir@
 libexecdir	= @libexecdir@
 localstatedir	= @localstatedir@
@@ -56,9 +57,8 @@ sysconfdir	= @sysconfdir@
 includedir	= @includedir@
 HOST_VENDOR     = @host_vendor@
 
-# XXX why is not wwwdir under prefix?
-wwwdir  	= @wwwdir@
-wwwuser         = @wwwuser@
+wwwdir          = @wwwdir@
+
 # one of fcgi or native:
 with_restconf	= @with_restconf@
 
@@ -79,6 +79,8 @@ LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB)
 LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@ 
 
 CPPFLAGS  	= @CPPFLAGS@
+
+
 ifeq ($(LINKAGE),dynamic)
 CPPFLAGS  	+= -fPIC
 endif
@@ -97,6 +99,10 @@ APPSRC   += restconf_methods_post.c
 APPSRC   += restconf_methods_get.c
 APPSRC   += restconf_root.c
 APPSRC   += restconf_main_$(with_restconf).c
+ifeq ($(with_restconf),native)
+APPSRC   += restconf_evhtp.c   # HTTP/1
+APPSRC   += restconf_nghttp2.c # HTTP/2
+endif
 
 # Fcgi-specific source including main
 ifeq ($(with_restconf),fcgi)
@@ -149,12 +155,11 @@ distclean: clean
 # Put config file in etc/
 # Also a rule for letting www-dir be owned by www-data, which only works for sudo
 install:	install-lib $(APPL)
-ifeq ($(shell whoami),root)
-	install -d -m 0755 -o $(wwwuser) -g $(wwwuser) $(DESTDIR)$(wwwdir)
-else
+	install -d -m 0755 $(DESTDIR)$(sbindir)
+	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(sbindir)
+ifeq ($(with_restconf),fcgi)
 	install -d -m 0755 $(DESTDIR)$(wwwdir)
 endif
-	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(wwwdir)
 
 install-lib: $(MYLIB)
 	install -d -m 0755 $(DESTDIR)$(libdir)
@@ -169,7 +174,7 @@ install-include:	clixon_restconf.h
 	install -m 0644 $^ $(DESTDIR)$(includedir)/clixon
 
 uninstall:
-	rm -f $(DESTDIR)$(wwwdir)/$(APPL)
+	rm -f $(DESTDIR)$(sbindir)/$(APPL)
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
 
 .SUFFIXES:

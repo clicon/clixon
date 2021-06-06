@@ -26,10 +26,6 @@ new "Check installed files /usr"
 if [ ! -d $dir/usr ]; then
     err $dir/usr
 fi
-new "Check installed files /www-data"
-if [ ! -d $dir/www-data ]; then
-    err $dir/www-data
-fi
 new "Check installed files clixon-config"
 if [ ! -f $dir/usr/local/share/clixon/clixon-config* ]; then
     err $dir/usr/local/share/clixon/clixon-config*
@@ -48,6 +44,7 @@ if [ ! ${LIBOPT} $dir/usr/local/lib/libclixon_backend${SH_SUFFIX} ]; then
 	err $dir/usr/local/lib/libclixon_backend${SH_SUFFIX}
     fi
 fi
+
 
 new "Make DESTDIR install include"
 (cd ..; $make DESTDIR=$dir install-include)

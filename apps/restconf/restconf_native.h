@@ -59,13 +59,36 @@ extern "C" {
 /*
  * Types
  */
+/* http/2 session stream struct
+ */
+typedef struct  {
+    qelem_t   sd_qelem;     /* List header */
+    int32_t   sd_stream_id;
+    int       sd_fd;
+} restconf_stream_data;
+
 /* Restconf connection handle 
  * Per connection request
  */
 typedef struct {
-    //    qelem_t       rs_qelem;     /* List header */
-    cvec         *rc_outp_hdrs; /* List of output headers */
-    cbuf         *rc_outp_buf;  /* Output buffer */
+    //    qelem_t       rs_qelem; /* List header */
+    cvec               *rc_outp_hdrs; /* List of output headers */
+    cbuf               *rc_outp_buf;  /* Output buffer */
+    size_t              rc_bufferevent_output_offset; /* Kludge to drain libevent output buffer */
+    restconf_http_proto rc_proto; /* HTTP protocol: http/1 or http/2 */
+    int                 rc_s;         /* Connection socket */
+    clicon_handle       rc_h;         /* Clixon handle */
+    SSL                *rc_ssl;       /* Structure for SSL connection */
+    restconf_stream_data *rc_streams;   /* List of http/2 session streams */
+    /* Decision to keep lib-specific data here, otherwise new struct necessary
+     * drawback is specific includes need to go everywhere */
+#ifdef HAVE_LIBEVHTP
+    evhtp_connection_t *rc_evconn;
+#endif
+#ifdef HAVE_LIBNGHTTP2
+
+    nghttp2_session    *rc_ngsession;
+#endif
 } restconf_conn_h;
     
 /* Restconf request handle 
@@ -76,6 +99,10 @@ typedef struct {
     clicon_handle rs_h;         /* Clixon handle */
     int           rs_ss;        /* Server socket (ready for accept) */
     int           rs_ssl;       /* 0: Not SSL socket, 1:SSL socket */
+    char         *rs_addrtype;  /* Address type according to ietf-inet-types:
+                                   eg inet:ipv4-address or inet:ipv6-address */
+    char         *rs_addrstr;   /* Address as string, eg 127.0.0.1, ::1 */
+    uint16_t      rs_port;      /* Protocol port */
 } restconf_socket;
 
 /* Restconf handle 
@@ -83,8 +110,8 @@ typedef struct {
  */
 typedef struct {
     SSL_CTX         *rh_ctx;       /* SSL context */
-    evhtp_t         *rh_evhtp;     /* Evhtp struct */
     restconf_socket *rh_sockets;   /* List of restconf server (ready for accept) sockets */
+    void            *rh_arg;       /* Packet specific handle (eg evhtp) */
 } restconf_native_handle;
 
 /*

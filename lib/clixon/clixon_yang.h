@@ -136,7 +136,7 @@ enum rfc_6020{
     Y_UNKNOWN,
     Y_USES,
     Y_VALUE,
-    Y_WHEN,
+    Y_WHEN, /* See also ys_when_xpath / ys_when_nsc */
     Y_YANG_VERSION,
     Y_YIN_ELEMENT,
     Y_SPEC  /* XXX: NOTE NOT YANG STATEMENT, reserved for top level spec */
@@ -238,12 +238,12 @@ int        yang_order(yang_stmt *y);
 int        yang_print_cb(FILE *f, yang_stmt *yn, clicon_output_cb *fn);
 int        yang_print(FILE *f, yang_stmt *yn);
 int        yang_print_cbuf(cbuf *cb, yang_stmt *yn, int marginal);
+int        yang_deviation(yang_stmt *ys, void *arg);
 int        yang_spec_dump(yang_stmt *yspec, int debuglevel);
 int        if_feature(yang_stmt *yspec, char *module, char *feature);
 int        ys_populate(yang_stmt *ys, void *arg);
 int        ys_populate2(yang_stmt *ys, void *arg);
-int        yang_apply(yang_stmt *yn, enum rfc_6020 key, yang_applyfn_t fn, 
-		      void *arg);
+int        yang_apply(yang_stmt *yn, enum rfc_6020 key, yang_applyfn_t fn, int from, void *arg);
 int        yang_datanode(yang_stmt *ys);
 int        yang_abs_schema_nodeid(yang_stmt *ys, char *schema_nodeid, yang_stmt **yres);
 int        yang_desc_schema_nodeid(yang_stmt *yn, char *schema_nodeid, yang_stmt **yres);

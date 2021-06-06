@@ -20,6 +20,7 @@
 #   1. Start two servers, where one fails
 #   2. Reach one not the other
 #   (Wanted to bind an invalid port, but then such a port must be bound and later killed)
+# Note there are debug printfs marked as XXX for a race condition in travis
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -32,7 +33,21 @@ startupdb=$dir/startup_db
 # Restconf debug
 RESTCONFDBG=$DBG
 RCPROTO=http # no ssl here
+
+RESTCONFDIR=$(dirname $(which clixon_restconf))
+
 INVALIDADDR=251.1.1.1 # used by fourth usecase as invalid
+
+# log-destination in restconf xml: syslog or file
+: ${LOGDST:=syslog}
+# Set daemon command-line to -f
+if [ "$LOGDST" = syslog ]; then
+    LOGDST_CMD="s"      
+elif [ "$LOGDST" = file ]; then
+    LOGDST_CMD="f/var/log/clixon_restconf.log" 
+else
+    err1 "No such logdst: $LOGDST"
+fi
 
 if [ "${WITH_RESTCONF}" = "fcgi" ]; then
     EXTRACONF="<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
@@ -53,6 +68,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
+  <CLICON_RESTCONF_INSTALLDIR>$RESTCONFDIR</CLICON_RESTCONF_INSTALLDIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
@@ -113,11 +129,12 @@ EOF
     if [ -z "$pid" ]; then
 	err "No pid return value" "$retx"
     fi
+echo "retx:$retx" # XXX
     if $active; then
-	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>]]>]]>$"
+	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS><!\[CDATA\[/.*/.*/clixon_restconf -f $cfg -D [0-9] .*\]\]></command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>]]>]]>$"
     else
 	# inactive, no startime or pid
-	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status></rpc-reply>]]>]]>$"
+	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS><!\[CDATA\[/.*/clixon_restconf -f $cfg -D [0-9] .*\]\]></command><status $LIBNS>$status</status></rpc-reply>]]>]]>$"
     fi
     match=$(echo "$retx" | grep --null -Go "$expect")
     if [ -z "$match" ]; then
@@ -164,17 +181,31 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-confi
 new "commit minimal server"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
+echo "pid:$pid"     # XXX
+ps aux|grep clixon_ # XXX
+
 new "2. get status, get pid1"
 rpcstatus true running
 pid1=$pid
 if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
 
+echo "pid1:$pid1"   # XXX
+ps aux|grep clixon_ # XXX
+
 new "Check $pid1 exists"
+# Here backend dies / is killed
+# if sudo kill -0 $pid1; then # XXX 
 while sudo kill -0 $pid1 2> /dev/null; do
     new "kill $pid1 externally"
     sudo kill $pid1
-    sleep $DEMSLEEP
+    sleep 1 # There is a race condition here when restconf is killed while waiting for reply from backend
+    echo "pid1:$pid1"   # XXX
+    ps aux|grep clixon_ # XXX
 done
+# fi
+
+echo "pid1:$pid1"   # XXX
+ps aux|grep clixon_ # XXX
 
 new "3. get status: Check killed"
 rpcstatus false stopped
@@ -235,6 +266,7 @@ RESTCONFIG1=$(cat <<EOF
 <restconf xmlns="http://clicon.org/restconf">
    <enable>true</enable>
    <debug>$RESTCONFDBG</debug>
+   <log-destination>$LOGDST</log-destination>
    <auth-type>none</auth-type>
    <pretty>false</pretty>
    <socket><namespace>default</namespace><address>221.0.0.1</address><port>80</port><ssl>false</ssl></socket>
@@ -305,6 +337,7 @@ RESTCONFIG1=$(cat <<EOF
 <restconf xmlns="http://clicon.org/restconf">
    <enable>true</enable>
    <debug>$RESTCONFDBG</debug>
+   <log-destination>$LOGDST</log-destination>
    <auth-type>none</auth-type>
    <pretty>false</pretty>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
@@ -329,7 +362,7 @@ if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
 sleep $DEMSLEEP
 
 new "Get restconf config 1"
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf)" 0 "HTTP/1.1 200 OK" "<restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><auth-type>none</auth-type><debug>$RESTCONFDBG</debug><enable-core-dump>false</enable-core-dump><pretty>false</pretty><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf)" 0 "HTTP/1.1 200 OK" "<restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><auth-type>none</auth-type><debug>$RESTCONFDBG</debug><log-destination>$LOGDST</log-destination><enable-core-dump>false</enable-core-dump><pretty>false</pretty><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
 
 # remove it
 new "Delete server"
@@ -398,6 +431,7 @@ RESTCONFIG1=$(cat <<EOF
 <restconf xmlns="http://clicon.org/restconf">
    <enable>true</enable>
    <debug>$RESTCONFDBG</debug>
+   <log-destination>$LOGDST</log-destination>
    <auth-type>none</auth-type>
    <pretty>false</pretty>
    <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
@@ -423,7 +457,7 @@ if [ $pid1 -eq 0 ]; then err "Pid" 0; fi
 sleep $DEMSLEEP
 
 new "Get restconf config"
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf)" 0 "HTTP/1.1 200 OK" "<restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><auth-type>none</auth-type><debug>$RESTCONFDBG</debug><enable-core-dump>false</enable-core-dump><pretty>false</pretty><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket><socket><namespace>default</namespace><address>$INVALIDADDR</address><port>8080</port><ssl>false</ssl></socket></restconf>"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf)" 0 "HTTP/1.1 200 OK" "<restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><auth-type>none</auth-type><debug>$RESTCONFDBG</debug><log-destination>$LOGDST</log-destination><enable-core-dump>false</enable-core-dump><pretty>false</pretty><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket><socket><namespace>default</namespace><address>$INVALIDADDR</address><port>8080</port><ssl>false</ssl></socket></restconf>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -445,6 +479,8 @@ new "endtest"
 endtest
 
 # Set by restconf_config
+unset LOGDST
+unset LOGDST_CMD
 unset RESTCONFIG1
 unset RESTCONFIG2
 unset RESTCONFDBG

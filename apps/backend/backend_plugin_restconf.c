@@ -61,41 +61,123 @@
 
 #define RESTCONF_PROCESS "restconf"
 
-/*! Set current debug flag when starting process using -D <dbg>
+/*! Set current debug and log flags when starting process using -D <dbg> -l <logdst>
  *
- * process argv list including -D is set on start. But the debug flags may change and this is a way
- * to set it dynamically, ie at the time the process is started, not when the backend is started.
- * @param[in]  h      Clixon backend
- * @param[in]  dbg    Debug string , eg "0" or "1"
+ * process argv list including -D and -l are set on start. But the debug/log flags may change and
+ * this is a way to set it dynamically, ie at the time the process is started, not when the backend
+ * is started.
+ * @param[in]  h    Clixon backend
+ * @param[in]  xt   XML target
  */
 static int
-restconf_pseudo_set_debug(clicon_handle h,
-			  char         *dbg)
+restconf_pseudo_set_log(clicon_handle h,
+			cxobj        *xt)
 {
     int    retval = -1;
     char **argv;
     int    argc;
-    int    i;
+    int    i; 
+    char  *log = NULL;   
+    char  *dbg = NULL;
+    cxobj *xb;
 
-    if (dbg == NULL)
+    if ((xb = xpath_first(xt, NULL, "/restconf/log-destination")) != NULL)
+	log = xml_body(xb);
+    if ((xb = xpath_first(xt, NULL, "/restconf/debug")) != NULL)
+	dbg = xml_body(xb);
+    if (dbg == NULL && log == NULL)
 	goto ok;
     if (clixon_process_argv_get(h, RESTCONF_PROCESS, &argv, &argc) < 0)
 	goto done;
     for (i=0; i<argc; i++){
 	if (argv[i] == NULL)
 	    break;
-	if (strcmp(argv[i], "-D") == 0 && argc > i+1 && argv[i+1]){
-	    free(argv[i+1]);
-	    if ((argv[i+1] = strdup(dbg)) == NULL){
-		clicon_err(OE_UNIX, errno, "strdup");
-		goto done;
+	if (strcmp(argv[i], "-l") == 0 && argc > i+1 && argv[i+1]){
+	    if (log){
+		if (strcmp(log, "syslog") == 0){
+		    if (argv[i+1])
+			free(argv[i+1]);
+		    if ((argv[i+1] = strdup("s")) == NULL){
+			clicon_err(OE_UNIX, errno, "strdup");
+			goto done;
+		    }
+		}
+		else if (strcmp(log, "file") == 0){
+		    if (argv[i+1])
+			free(argv[i+1]);
+		    if ((argv[i+1] = strdup("f/var/log/clixon_restconf.log")) == NULL){
+			clicon_err(OE_UNIX, errno, "strdup");
+			goto done;
+		    }
+		}
 	    }
-	    break;
+	    i++;
+	}
+	if (strcmp(argv[i], "-D") == 0 && argc > i+1 && argv[i+1]){
+	    if (dbg){
+		free(argv[i+1]);
+		if ((argv[i+1] = strdup(dbg)) == NULL){
+		    clicon_err(OE_UNIX, errno, "strdup");
+		    goto done;
+		}
+	    }
+	    i++;
 	}
     }
  ok:
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Set current restconf inline config when starting process using -R <config>
+ *
+ * process argv list including -R is set on start. Get the running restconfig config, stringify it
+ * and insert it as a optimization to reading it from the backend.
+ * @param[in]  h    Clixon backend
+ * @param[in]  xt   XML target
+ */
+static int
+restconf_pseudo_set_inline(clicon_handle h,
+			   cxobj        *xt)
+{
+    int    retval = -1;
+    char **argv;
+    int    argc;
+    int    i; 
+    char  *str = NULL;
+    cxobj *xrestconf;
+    cbuf  *cb = NULL;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (clixon_process_argv_get(h, RESTCONF_PROCESS, &argv, &argc) < 0)
+	goto done;
+    if ((xrestconf = xpath_first(xt, NULL, "restconf")) != NULL)
+	for (i=0; i<argc; i++){
+	    if (argv[i] == NULL)
+		break;
+	    if (strcmp(argv[i], "-R") == 0 && argc > i+1 && argv[i+1]){
+		if ((cb = cbuf_new()) == NULL){
+		    clicon_err(OE_XML, errno, "cbuf_new");
+		    goto done;
+		}
+		if (clicon_xml2cbuf(cb, xrestconf, 0, 0, -1) < 0)
+		    goto done;
+		if ((str = strdup(cbuf_get(cb))) == NULL){
+		    clicon_err(OE_XML, errno, "stdup");
+		    goto done;
+		}
+		clicon_debug(1, "%s str:%s", __FUNCTION__, str);
+		if (argv[i+1])
+		    free(argv[i+1]);
+		argv[i+1] = str;
+		break;
+	    }
+	}
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
@@ -111,7 +193,6 @@ restconf_rpc_wrapper(clicon_handle    h,
 {
     int    retval = -1;
     cxobj *xt = NULL;
-    cxobj *xb;
     
     clicon_debug(1, "%s", __FUNCTION__);
     switch (*operation){
@@ -133,10 +214,10 @@ restconf_rpc_wrapper(clicon_handle    h,
 	     * but in this way it is set directly in its input args.
 	     * Its a trick.
 	     */
-	    if ((xb = xpath_first(xt, NULL, "/restconf/debug")) != NULL){
-		if (restconf_pseudo_set_debug(h, xml_body(xb)) < 0)
-		    goto done;
-	    }
+	    if (restconf_pseudo_set_log(h, xt) < 0)
+		goto done;
+	    if (restconf_pseudo_set_inline(h, xt) < 0)
+		goto done;
 	}
 	break;
     default:
@@ -165,7 +246,7 @@ restconf_pseudo_process_control(clicon_handle h)
     int    nr;
     cbuf  *cb = NULL;
 
-    nr = 6;
+    nr = 10;
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
 	clicon_err(OE_UNIX, errno, "calloc");
 	goto done;
@@ -175,15 +256,25 @@ restconf_pseudo_process_control(clicon_handle h)
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    cprintf(cb, "%s/clixon_restconf", clicon_option_str(h, "CLICON_WWWDIR"));
+    /* CLICON_RESTCONF_INSTALLDIR is where we think clixon_restconf is installed
+     * Problem is where to define it? Now in config file, but maybe it should be in configure?
+     * Tried Makefile but didnt work on Docker since it was moved around.
+     * Use PATH?
+     */
+    cprintf(cb, "%s/clixon_restconf", clicon_option_str(h, "CLICON_RESTCONF_INSTALLDIR"));
     argv[i++] = cbuf_get(cb);
     argv[i++] = "-f";
     argv[i++] = clicon_option_str(h, "CLICON_CONFIGFILE");
     /* Add debug if backend has debug. 
      * There is also a debug flag in clixon-restconf.yang but it kicks in after it starts
+     * see restconf_pseudo_set_log which sets flag when process starts
      */
     argv[i++] = "-D";
-    argv[i++] = "0";
+    argv[i++] = strdup("0");
+    argv[i++] = "-l";
+    argv[i++] = strdup("s"); /* There is also log-destination in clixon-restconf.yang */
+    argv[i++] = "-R";
+    argv[i++] = strdup(""); 
     argv[i++] = NULL;
     assert(i==nr);
     if (clixon_process_register(h, RESTCONF_PROCESS,
@@ -201,7 +292,7 @@ restconf_pseudo_process_control(clicon_handle h)
     return retval;
 }
 
-/*! Restconf pseduo-plugin process validate
+/*! Restconf pseudo-plugin process validate
  */
 static int
 restconf_pseudo_process_validate(clicon_handle    h,
@@ -241,7 +332,6 @@ restconf_pseudo_process_commit(clicon_handle    h,
     cxobj *xsource;
     cxobj *cx;
     int    enabled = 0;
-    cxobj *xb;
     
     clicon_debug(1, "%s", __FUNCTION__);
     xtarget = transaction_target(td);
@@ -253,10 +343,10 @@ restconf_pseudo_process_commit(clicon_handle    h,
      * but in this way it is set directly in its input args.
      * Its a trick.
      */
-    if ((xb = xpath_first(xtarget, NULL, "/restconf/debug")) != NULL){
-	if (restconf_pseudo_set_debug(h, xml_body(xb)) < 0)
-	    goto done;
-    }
+    if (restconf_pseudo_set_log(h, xtarget) < 0)
+	goto done;
+    if (restconf_pseudo_set_inline(h, xtarget) < 0)
+	goto done;
     /* Toggle start/stop if enable flag changed */
     if ((cx = xpath_first(xtarget, NULL, "/restconf/enable")) != NULL &&
 	xml_flag(cx, XML_FLAG_CHANGE|XML_FLAG_ADD)){

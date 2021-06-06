@@ -98,9 +98,7 @@ AC_SUBST(LINKAGE)
 AC_SUBST(with_restconf) # Set to native or fcgi -> compile apps/restconf
 AC_SUBST(with_libxml2)  
 AC_SUBST(enable_optyangs) 
-# Web user default (ie what RESTCONF daemon runs as).
-AC_SUBST(wwwuser,www-data)
-# Home dir for web user
+# Home dir for web user, such as nginx fcgi sockets
 AC_SUBST(wwwdir,/www-data)
 
 #
@@ -216,18 +214,46 @@ if test "x${with_restconf}" == xfcgi; then
    # Lives in libfcgi-dev
    AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
    AC_DEFINE(WITH_RESTCONF_FCGI, 1, [Use fcgi restconf mode]) # For c-code that cant use strings
+   AC_DEFINE_UNQUOTED(WWWDIR, "$wwwdir", [WWW dir for fcgi stuff / nginx])
 elif test "x${with_restconf}" == xnative; then
    AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
    AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
-   AC_CHECK_LIB(event, event_init,, AC_MSG_ERROR([libevent missing]))
-   AC_CHECK_HEADERS(evhtp/evhtp.h,
-       [],
-       AC_MSG_ERROR([evhtp header missing. See https://github.com/clicon/libevhtp]),
-       [AC_INCLUDES_DEFAULT[
-       #define EVHTP_DISABLE_REGEX
-       #define EVHTP_DISABLE_EVTHR
-       ]])
-   AC_CHECK_LIB(evhtp, evhtp_new,, AC_MSG_ERROR([libevhtp missing]),[-levent -lssl -lcrypto]) 
+   # Check if evhtp is enabled for http/1
+   AC_ARG_ENABLE(evhtp, AS_HELP_STRING([--disable-evhtp],[Disable evhtp for native restconf http/1, default: yes]),[
+   	  if test "$enableval" = no; then
+	      ac_enable_evhtp=no
+	  else	      
+	      ac_enable_evhtp=yes
+          fi
+        ],
+	[ ac_enable_evhtp=yes])
+   AC_MSG_RESULT(checking evhtp is enabled: $ac_enable_evhtp)
+   if test "$ac_enable_evhtp" = "yes"; then
+      AC_CHECK_HEADERS(evhtp/evhtp.h,
+          [],
+      	  AC_MSG_ERROR([evhtp header missing. See https://github.com/clicon/libevhtp]),
+	  [AC_INCLUDES_DEFAULT[
+	  #define EVHTP_DISABLE_REGEX
+	  #define EVHTP_DISABLE_EVTHR
+      ]])
+      AC_CHECK_LIB(event, event_init,, AC_MSG_ERROR([libevent missing]))
+      AC_CHECK_LIB(evhtp, evhtp_new,, AC_MSG_ERROR([libevhtp missing]),[-levent -lssl -lcrypto]) 
+   fi		  
+
+   # Check if nghttp2 is enabled for http/2
+   AC_ARG_ENABLE(nghttp2, AS_HELP_STRING([--enable-nghttp2],[Enable nghttp2 for native restconf http/2, default: no]),[
+	  if test "$enableval" = no; then
+	      ac_enable_nghttp2=no
+	  else	      
+	      ac_enable_nghttp2=yes
+          fi
+        ],
+	[ ac_enable_nghttp2=no])
+   AC_MSG_RESULT(checking nghttp2 is enabled: $ac_enable_nghttp2)
+   if test "$ac_enable_nghttp2" = "yes"; then
+      AC_CHECK_HEADERS(nghttp2/nghttp2.h,[], AC_MSG_ERROR([nghttp2 missing]))
+      AC_CHECK_LIB(nghttp2, nghttp2_session_server_new,, AC_MSG_ERROR([nghttp2 missing]))
+   fi    
    AC_DEFINE(WITH_RESTCONF_NATIVE, 1, [Use native restconf mode]) # For c-code that cant use strings
 elif test "x${with_restconf}" == xno; then
    # Cant get around "no" as an answer for --without-restconf that is reset here to undefined
@@ -247,23 +273,6 @@ AC_ARG_WITH([restconf],
             AS_HELP_STRING([--with-restconf=native],[Integrate restconf with embedded http server]))
 AC_ARG_WITH([restconf],
 	    AS_HELP_STRING([--without-restconf],[Disable restconf altogether]))
-
-# Common actions for all restconf packages
-if test "x${with_restconf}" != "x"; then
-   # Web user default (ie what RESTCONF daemon runs as). Default: www-data
-   # Should this be a runtime option?
-   AC_ARG_WITH([wwwuser],
-            [AS_HELP_STRING([--with-wwwuser=<user>],[Set www user different from www-data])])
-   if test "${with_wwwuser}"; then
-      wwwuser=${with_wwwuser}
-   fi
-   AC_MSG_RESULT(www user is $wwwuser)	
-   AC_DEFINE_UNQUOTED(WWWUSER, "$wwwuser", [WWW user for restconf daemon])
-   AC_DEFINE_UNQUOTED(WWWDIR, "$wwwdir", [WWW dir for restconf daemon])
-else
-   AC_DEFINE_UNQUOTED(WWWUSER, "", [WWW user for restconf daemon])
-   AC_DEFINE_UNQUOTED(WWWDIR, "", [WWW dir for restconf daemon])
-fi
 
 # Set default config file location
 CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml

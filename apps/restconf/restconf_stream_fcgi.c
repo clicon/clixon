@@ -240,6 +240,9 @@ restconf_stream_cb(int   s,
  * @param[in]  h     Clicon handle
  * @param[in]  req   Generic Www handle (can be part of clixon handle)
  * @param[in]  name  Stream name
+ * @param[in]  qvec
+ * @param[in]  pretty    Pretty-print json/xml reply
+ * @param[in]  media_out Restconf output media
  * @param[out] sp    Socket -1 if not set
  */
 static int
@@ -387,6 +390,7 @@ api_stream(clicon_handle h,
     cbuf          *cbret = NULL;
     int            s = -1;
     int            ret;
+    cxobj         *xerr = NULL;
 #ifdef STREAM_FORK
     int            pid;
     struct stream_child *sc;
@@ -400,21 +404,32 @@ api_stream(clicon_handle h,
 	goto done;
     /* Sanity check of path. Should be /stream/<name> */
     if (pn != 3){
-	restconf_notfound(h, req);
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
+	    goto done; 
+	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+	    goto done;
 	goto ok;
     }
     if (strlen(pvec[0]) != 0){
-	retval = restconf_notfound(h, req);
-	goto done;
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
+	    goto done; 
+	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
     }
     if (strcmp(pvec[1], streampath)){
-	retval = restconf_notfound(h, req);
-	goto done;
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
+	    goto done; 
+	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
     }
-
     if ((method = pvec[2]) == NULL){
-	retval = restconf_notfound(h, req);
-	goto done;
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
+	    goto done; 
+	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
     }
     clicon_debug(1, "%s: method=%s", __FUNCTION__, method);
 
@@ -496,6 +511,8 @@ api_stream(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xerr)
+	xml_free(xerr);
     if (pvec)
 	free(pvec);
     if (pcvec)

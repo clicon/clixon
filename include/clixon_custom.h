@@ -83,13 +83,32 @@
  */
 #define STATE_ORDERED_BY_SYSTEM
 
-/* Top-symbol in clixon datastores
+/*! Top-symbol in clixon datastores
  * This is traditionally same as NETCONF_INPUT_CONFIG ("config") but can be different
  * If you change this, you need to change test shell variable in lib.sh: DATASTORE_TOP
- * Consider making this an option or configure option 
+ * Consider making this an option (but this has bootstrap problems) or configure option 
  */
 #define DATASTORE_TOP_SYMBOL "config"
 
-/* Name of default netns for clixon-restconf.yang socket/namespace field
+/*! Name of default netns for clixon-restconf.yang socket/namespace field
+ * Restconf allows opening sockets in different network namespaces. This is teh name of 
+ * "host"/"default" namespace. Unsure what to really label this but seems like there is differing
+ * consensus on how to label it.
+ * Either find that proper label, or move it to a option
  */
 #define RESTCONF_NETNS_DEFAULT "default"
+
+/*! Set a temporary parent for use in special case "when" xpath calls
+ * Problem is when changing an existing (candidate) in-memory datastore that yang "when" conditionals
+ * should be changed in clixon_datastore_write.c:text_modify().
+ * Problem is that the tree is in an intermediate state so that a when condition may not see the
+ * full context.
+ * More specifically, new nodes (x0) are created without hooking them into the existing parent (x0p)
+ * and thus an xpath on the form ".."/PARENT may not be evaluated as they should. x0 is eventually 
+ * added to its parent but then it is more difficult to check trhe when condition.
+ * This fix add the parent x0p as a "candidate" so that the xpath-eval function can use it as
+ * an alernative if it exists.
+ * Note although this solves many usecases involving parents and absolute paths, itstill does not
+ * solve all usecases, such as absolute usecases where the added node is looked for
+ */
+#define XML_PARENT_CANDIDATE

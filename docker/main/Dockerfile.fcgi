@@ -63,7 +63,7 @@ RUN adduser -D -H www-data
 RUN apk add --update nginx
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data --enable-optyangs --with-restconf=fcgi
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --enable-optyangs --with-restconf=fcgi
 RUN make
 RUN make install
 
@@ -114,9 +114,9 @@ RUN adduser nginx clicon
 RUN adduser www-data clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
-COPY --from=0 /www-data /www-data
 
 # Manually created
+RUN mkdir /www-data
 RUN chown www-data /www-data
 RUN chgrp www-data /www-data
 

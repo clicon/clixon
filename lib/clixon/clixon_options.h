@@ -82,10 +82,11 @@ typedef enum genmodel_type genmodel_type;
 
 /*! See clixon-config.yang type startup_mode */
 enum startup_mode_t{
-    SM_NONE=0,
-    SM_STARTUP,
-    SM_RUNNING,
-    SM_INIT
+    SM_NONE=0,         /* Do not touch running state */
+    SM_INIT,           /* Initialize running state */
+    SM_RUNNING,        /* Commit running db configuration into running state */
+    SM_STARTUP,        /* Commit startup configuration into running state */
+    SM_RUNNING_STARTUP /* First try running db, if it is empty try startup db */
 };
 
 /*! See clixon-config.yang type priv_mode (privileges mode) */
@@ -219,6 +220,7 @@ int   clicon_sock_port(clicon_handle h);
 int   clicon_autocommit(clicon_handle h);
 int   clicon_startup_mode(clicon_handle h);
 enum priv_mode_t clicon_backend_privileges_mode(clicon_handle h);
+enum priv_mode_t clicon_restconf_privileges_mode(clicon_handle h);
 enum nacm_credentials_t clicon_nacm_credentials(clicon_handle h);
 
 enum datastore_cache clicon_datastore_cache(clicon_handle h);

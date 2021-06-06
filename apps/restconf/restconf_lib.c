@@ -69,7 +69,57 @@
 #include "restconf_err.h"
 #include "restconf_handle.h"
 
-/* See RFC 8040 Section 7:  Mapping from NETCONF<error-tag> to Status Code
+/*
+   +----------------------------+--------------------------------------+
+   | 100 Continue               | POST accepted, 201 should follow     |
+   | 200 OK                     | Success with response message-body   |
+   | 201 Created                | POST to create a resource success    |
+   | 204 No Content             | Success without response message-    |
+   |                            | body                                 |
+   | 304 Not Modified           | Conditional operation not done       |
+   | 400 Bad Request            | Invalid request message              |
+   | 401 Unauthorized           | Client cannot be authenticated       |
+   | 403 Forbidden              | Access to resource denied            |
+   | 404 Not Found              | Resource target or resource node not |
+   |                            | found                                |
+   | 405 Method Not Allowed     | Method not allowed for target        |
+   |                            | resource                             |
+   | 409 Conflict               | Resource or lock in use              |
+   | 412 Precondition Failed    | Conditional method is false          |
+   | 413 Request Entity Too     | too-big error                        |
+   | Large                      |                                      |
+   | 414 Request-URI Too Large  | too-big error                        |
+   | 415 Unsupported Media Type | non RESTCONF media type              |
+   | 500 Internal Server Error  | operation-failed                     |
+   | 501 Not Implemented        | unknown-operation                    |
+   | 503 Service Unavailable    | Recoverable server error             |
+   +----------------------------+--------------------------------------+
+Mapping netconf error-tag -> status code
+                 +-------------------------+-------------+
+                 | <error&#8209;tag>       | status code |
+                 +-------------------------+-------------+
+                 | in-use                  | 409         |
+                 | invalid-value           | 400         |
+                 | too-big                 | 413         |
+                 | missing-attribute       | 400         |
+                 | bad-attribute           | 400         |
+                 | unknown-attribute       | 400         |
+                 | bad-element             | 400         |
+                 | unknown-element         | 400         |
+                 | unknown-namespace       | 400         |
+                 | access-denied           | 403         |
+                 | lock-denied             | 409         |
+                 | resource-denied         | 409         |
+                 | rollback-failed         | 500         |
+                 | data-exists             | 409         |
+                 | data-missing            | 409         |
+                 | operation-not-supported | 405 or 501  |
+                 | operation-failed        | 500         |
+                 | partial-operation       | 500         |
+                 | malformed-message       | 400         |
+                 +-------------------------+-------------+
+
+ * See RFC 8040 Section 7:  Mapping from NETCONF<error-tag> to Status Code
  * and RFC 6241 Appendix A. NETCONF Error list
  */
 static const map_str2int netconf_restconf_map[] = {
@@ -160,6 +210,14 @@ static const map_str2int http_media_map[] = {
     {NULL,                            -1}
 };
 
+/* Mapping to http proto types */
+static const map_str2int http_proto_map[] = {
+    {"http/1.0",  HTTP_10},
+    {"http/1.1",  HTTP_11},
+    {"http/2",    HTTP_2}, 
+    {NULL,        -1}
+};
+
 int
 restconf_err2code(char *tag)
 {
@@ -184,6 +242,18 @@ restconf_media_int2str(restconf_media media)
     return clicon_int2str(http_media_map, media);
 }
 
+int
+restconf_str2proto(char *str)
+{
+    return clicon_str2int(http_proto_map, str);
+}
+
+const char *
+restconf_proto2str(int proto)
+{
+    return clicon_int2str(http_proto_map, proto);
+}
+
 /*! Return media_in from Content-Type, -1 if not found or unrecognized
  * @note media-type syntax does not support parameters
  * @see RFC7231 Sec 3.1.1.1 for media-type syntax type:
@@ -203,6 +273,43 @@ restconf_content_type(clicon_handle h)
     if ((int)(m = restconf_media_str2int(str)) == -1)
 	return -1;
     return m;
+}
+
+/*! Translate http header by capitalizing, prepend w HTTP_ and - -> _
+ * Example: Host -> HTTP_HOST 
+ */
+int
+restconf_convert_hdr(clicon_handle h,
+		     char         *name,
+		     char         *val)
+{
+    int           retval = -1;
+    cbuf         *cb = NULL;
+    int           i;
+    char          c;
+    
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    /* convert key name */
+    cprintf(cb, "HTTP_");
+    for (i=0; i<strlen(name); i++){
+	c = name[i] & 0xff;
+	if (islower(c))
+	    cprintf(cb, "%c", toupper(c));
+	else if (c == '-')
+	    cprintf(cb, "_");
+	else
+	    cprintf(cb, "%c", c);
+    }
+    if (restconf_param_set(h, cbuf_get(cb), val) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
 }
 
 /*! Parse a cookie string and return value of cookie attribute
@@ -262,7 +369,7 @@ restconf_terminate(clicon_handle h)
     xpath_optimize_exit();
     restconf_handle_exit(h);
     clixon_err_exit();
-    clicon_debug(1, "%s done", __FUNCTION__);
+    clicon_debug(1, "%s pid:%u done", __FUNCTION__, getpid());
     clicon_log_exit(); /* Must be after last clicon_debug */
     return 0;
 }
@@ -445,18 +552,18 @@ restconf_uripath(clicon_handle h)
 
 /*! Drop privileges from root to user (or already at user)
  * @param[in]  h    Clicon handle
- * @param[in]  user Drop to this level
  * Group set to clicon to communicate with backend
  */
 int
-restconf_drop_privileges(clicon_handle h,
-			 char         *user)
+restconf_drop_privileges(clicon_handle h)
 {
     int   retval = -1;
     uid_t newuid = -1;
     uid_t uid;
     char *group;
     gid_t gid = -1;
+    char *user;
+    enum priv_mode_t priv_mode = PM_NONE;
     
     clicon_debug(1, "%s", __FUNCTION__);
     /* Sanity check: backend group exists */
@@ -473,12 +580,19 @@ restconf_drop_privileges(clicon_handle h,
 		   clicon_configfile(h));
 	goto done;
     }
+
+    /* Get privileges mode (for dropping privileges) */
+    if ((priv_mode = clicon_restconf_privileges_mode(h)) == PM_NONE)
+	goto ok;
+    if ((user = clicon_option_str(h, "CLICON_RESTCONF_USER")) == NULL)
+	goto ok;
+
     /* Get (wanted) new www user id */
     if (name2uid(user, &newuid) < 0){
 	clicon_err(OE_DAEMON, errno, "'%s' is not a valid user .\n", user);
 	goto done;
     }
-    /* get current backend userid, if already at this level OK */
+    /* get current userid, if already at this level OK */
     if ((uid = getuid()) == newuid)
 	goto ok;
     if (uid != 0){
@@ -489,12 +603,22 @@ restconf_drop_privileges(clicon_handle h,
 	clicon_err(OE_DAEMON, errno, "setgid %d", gid);
 	goto done;
     }
-    if (drop_priv_perm(newuid) < 0)
-	goto done;
-    /* Verify you cannot regain root privileges */
-    if (setuid(0) != -1){
-	clicon_err(OE_DAEMON, EPERM, "Could regain root privilieges");
-	goto done;
+    switch (priv_mode){
+    case PM_DROP_PERM:
+	if (drop_priv_perm(newuid) < 0)
+	    goto done;
+	/* Verify you cannot regain root privileges */
+	if (setuid(0) != -1){
+	    clicon_err(OE_DAEMON, EPERM, "Could regain root privilieges");
+	    goto done;
+	}
+	break;
+    case PM_DROP_TEMP:
+	if (drop_priv_temp(newuid) < 0)
+	    goto done;
+	break;
+    case PM_NONE:
+	break; /* catched above */
     }
     clicon_debug(1, "%s dropped privileges from root to %s(%d)",
 		 __FUNCTION__, user, newuid);
@@ -505,11 +629,13 @@ restconf_drop_privileges(clicon_handle h,
 }
 
 /*!
- * @param[in]  h    Clicon handle
- * @param[in]  req  Generic Www handle (can be part of clixon handle)
- * @retval    -1    Error
- * @retval     0    Not authenticated
- * @retval     1    Authenticated
+ * @param[in]  h         Clicon handle
+ * @param[in]  req       Generic Www handle (can be part of clixon handle)
+ * @param[in]  pretty    Pretty-print
+ * @param[in]  media_out Restconf output media
+ * @retval    -1         Error
+ * @retval     0         Not authenticated
+ * @retval     1         Authenticated
  */
 int
 restconf_authentication_cb(clicon_handle  h,

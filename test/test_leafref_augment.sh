@@ -144,27 +144,6 @@ if [ $BE -ne 0 ]; then
     wait_backend
 fi
 
-# Test top-level, default prefix, wring leafref prefix and typedef path
-XML=$(cat <<EOF
-   <sender xmlns="urn:example:example">
-      <name>x</name>
-    </sender>
-   <sender xmlns="urn:example:example">
-      <name>y</name>
-      <ref>x</ref>
-   </sender>
-EOF
-)
-
-new "leafref augment+leafref config top-level"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
-
-new "leafref augment+leafref validate top-level wrong prefix"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>x</bad-element></error-info><error-severity>error</error-severity><error-message>Leafref validation failed: No leaf x matching path /ex:sender/ex:name</error-message></rpc-error></rpc-reply>]]>]]>$"
-
-new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
-
 # Test top-level, default prefix, correct leafref and typedef path
 XML=$(cat <<EOF
    <sender xmlns="urn:example:example">

@@ -77,7 +77,7 @@ COPY clixon .
 RUN adduser -D -H www-data
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data --enable-optyangs --with-restconf=native
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --enable-optyangs --with-restconf=native
 
 RUN make
 RUN make install
@@ -129,10 +129,10 @@ RUN adduser -D -H clicon
 RUN adduser www-data clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
-COPY --from=0 /www-data /www-data
 COPY --from=0 /usr/local/lib/libevhtp.so* /usr/local/lib/
 
 # Manually created
+RUN mkdir /www-data
 RUN chown www-data /www-data
 RUN chgrp www-data /www-data
 

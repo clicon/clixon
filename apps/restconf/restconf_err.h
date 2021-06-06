@@ -43,20 +43,13 @@
  * Prototypes
  */
 
-int restconf_badrequest(clicon_handle h, void *req);
-int restconf_notfound(clicon_handle h, void *req);  
-int restconf_method_notallowed(void *req, char *allow);
-int restconf_unsupported_media(void *req);
-int restconf_notimplemented(void *req);
-#ifdef NOTUSED
-int restconf_unauthorized(clicon_handle h, void *req);
-int restconf_forbidden(clicon_handle h, void *req);
-int restconf_notacceptable(clicon_handle h, void *req);
-int restconf_conflict(void *req);
-int restconf_internal_server_error(clicon_handle h, void *req);
-#endif /* NOTUSED */
+int restconf_method_notallowed(clicon_handle h, void *req, char *allow, int pretty, restconf_media media);
+int restconf_unsupported_media(clicon_handle h, void *req, int pretty, restconf_media media);
+int restconf_not_acceptable(clicon_handle h, void *req, int pretty, restconf_media media);
+int restconf_notimplemented(clicon_handle h, void *req, int pretty, restconf_media media);
 
 int api_return_err(clicon_handle h, void *req, cxobj *xerr, int pretty, restconf_media media, int code0);
+int api_return_err0(clicon_handle h, void *req, cxobj *xerr, int pretty, restconf_media media, int code0);
 
 
 #endif /* _RESTCONF_ERR_H_ */

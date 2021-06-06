@@ -17,6 +17,6 @@ Latest release is 5.1.0. See [CHANGELOG.md](CHANGELOG.md) release history.
 
 Clixon interaction is best done posting issues, pull requests, or joining the
 [slack channel](https://clixondev.slack.com).
-[Slack invite](https://join.slack.com/t/clixondev/shared_invite/zt-o8lv7ysk-vcLb7yY9S7XMEklqqVBziQ) (updated 24/3 2021)
+[Slack invite](https://join.slack.com/t/clixondev/shared_invite/zt-qk66zp47-ahdOlEHKEPmb~5ciVJilPQ) (updated 24/5 2021)
 
 Clixon is sponsored by [Rubicon Communications LLC(Netgate)](https://www.netgate.com/)

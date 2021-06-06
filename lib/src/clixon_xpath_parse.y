@@ -387,7 +387,7 @@ addexpr     : addexpr ADDOP unionexpr { $$=xp_new(XP_ADD,$2,NULL,NULL,NULL,$1, $
             ;
 
 /* node-set */
-unionexpr   : unionexpr '|' pathexpr { $$=xp_new(XP_UNION,A_NAN,NULL,NULL,NULL,$1, $3);clicon_debug(3,"unionexpr-> unionexpr | pathexpr"); } 
+unionexpr   : unionexpr '|' pathexpr { $$=xp_new(XP_UNION,XO_UNION,NULL,NULL,NULL,$1, $3);clicon_debug(3,"unionexpr-> unionexpr | pathexpr"); } 
             | pathexpr { $$=xp_new(XP_UNION,A_NAN,NULL,NULL,NULL,$1, NULL);clicon_debug(3,"unionexpr-> pathexpr"); } 
             ;
 
@@ -441,9 +441,9 @@ predicates  : predicates '[' expr ']' { $$=xp_new(XP_PRED,A_NAN,NULL, NULL, NULL
 primaryexpr : '(' expr ')'         { $$=xp_new(XP_PRI0,A_NAN,NULL, NULL, NULL, $2, NULL); clicon_debug(3,"primaryexpr-> ( expr )"); } 
             | NUMBER               { $$=xp_new(XP_PRIME_NR,A_NAN, $1, NULL, NULL, NULL, NULL);clicon_debug(3,"primaryexpr-> NUMBER(%s)", $1); /*XXX*/} 
             | QUOTE string QUOTE   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, $2, NULL, NULL, NULL);clicon_debug(3,"primaryexpr-> \" string \""); }
-            | QUOTE QUOTE          { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, NULL, NULL, NULL, NULL);clicon_debug(3,"primaryexpr-> \" \""); } 
+            | QUOTE QUOTE          { $$=xp_new(XP_PRIME_STR,A_NAN,NULL,  strdup(""), NULL, NULL, NULL);clicon_debug(3,"primaryexpr-> \" \""); } 
             | APOST string APOST   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, $2, NULL, NULL, NULL);clicon_debug(3,"primaryexpr-> ' string '"); }
-            | APOST APOST          { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, NULL, NULL, NULL, NULL);clicon_debug(3,"primaryexpr-> ' '"); } 
+            | APOST APOST          { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, strdup(""), NULL, NULL, NULL);clicon_debug(3,"primaryexpr-> ' '"); } 
             | FUNCTIONNAME ')'      { if (($$ = xp_primary_function(_XPY, $1, NULL)) == NULL) YYERROR; clicon_debug(3,"primaryexpr-> functionname ()"); }
             | FUNCTIONNAME args ')' { if (($$ = xp_primary_function(_XPY, $1, $2)) == NULL) YYERROR;  clicon_debug(3,"primaryexpr-> functionname (arguments)"); } 
             ;

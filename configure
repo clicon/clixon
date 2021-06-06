@@ -635,7 +635,6 @@ CXXFLAGS
 CXX
 CPP
 wwwdir
-wwwuser
 enable_optyangs
 with_libxml2
 with_restconf
@@ -719,7 +718,8 @@ with_cligen
 enable_optyangs
 enable_publish
 with_restconf
-with_wwwuser
+enable_evhtp
+enable_nghttp2
 with_configfile
 with_libxml2
 with_yang_installdir
@@ -1367,6 +1367,10 @@ Optional Features:
                           in clixon install, default: no
   --enable-publish        Enable publish of notification streams using SSE and
                           curl
+  --disable-evhtp         Disable evhtp for native restconf http/1, default:
+                          yes
+  --enable-nghttp2        Enable nghttp2 for native restconf http/2, default:
+                          no
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -1376,7 +1380,6 @@ Optional Packages:
                           nginx (default)
   --with-restconf=native  Integrate restconf with embedded http server
   --without-restconf      Disable restconf altogether
-  --with-wwwuser=<user>   Set www user different from www-data
   --with-configfile=FILE  Set default path to config file
   --with-libxml2          Use gnome/libxml2 regex engine
   --with-yang-installdir=DIR
@@ -3355,10 +3358,7 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
  # Set to native or fcgi -> compile apps/restconf
 
 
-# Web user default (ie what RESTCONF daemon runs as).
-wwwuser=www-data
-
-# Home dir for web user
+# Home dir for web user, such as nginx fcgi sockets
 wwwdir=/www-data
 
 
@@ -5051,6 +5051,11 @@ fi
 
 $as_echo "#define WITH_RESTCONF_FCGI 1" >>confdefs.h
  # For c-code that cant use strings
+
+cat >>confdefs.h <<_ACEOF
+#define WWWDIR "$wwwdir"
+_ACEOF
+
 elif test "x${with_restconf}" == xnative; then
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
 $as_echo_n "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
@@ -5146,7 +5151,42 @@ else
   as_fn_error $? "libcrypto missing" "$LINENO" 5
 fi
 
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for event_init in -levent" >&5
+   # Check if evhtp is enabled for http/1
+   # Check whether --enable-evhtp was given.
+if test "${enable_evhtp+set}" = set; then :
+  enableval=$enable_evhtp;
+   	  if test "$enableval" = no; then
+	      ac_enable_evhtp=no
+	  else
+	      ac_enable_evhtp=yes
+          fi
+
+else
+   ac_enable_evhtp=yes
+fi
+
+   { $as_echo "$as_me:${as_lineno-$LINENO}: result: checking evhtp is enabled: $ac_enable_evhtp" >&5
+$as_echo "checking evhtp is enabled: $ac_enable_evhtp" >&6; }
+   if test "$ac_enable_evhtp" = "yes"; then
+      for ac_header in evhtp/evhtp.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "evhtp/evhtp.h" "ac_cv_header_evhtp_evhtp_h" "$ac_includes_default
+	  #define EVHTP_DISABLE_REGEX
+	  #define EVHTP_DISABLE_EVTHR
+
+"
+if test "x$ac_cv_header_evhtp_evhtp_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_EVHTP_EVHTP_H 1
+_ACEOF
+
+else
+  as_fn_error $? "evhtp header missing. See https://github.com/clicon/libevhtp" "$LINENO" 5
+fi
+
+done
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for event_init in -levent" >&5
 $as_echo_n "checking for event_init in -levent... " >&6; }
 if ${ac_cv_lib_event_event_init+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -5193,25 +5233,7 @@ else
   as_fn_error $? "libevent missing" "$LINENO" 5
 fi
 
-   for ac_header in evhtp/evhtp.h
-do :
-  ac_fn_c_check_header_compile "$LINENO" "evhtp/evhtp.h" "ac_cv_header_evhtp_evhtp_h" "$ac_includes_default
-       #define EVHTP_DISABLE_REGEX
-       #define EVHTP_DISABLE_EVTHR
-
-"
-if test "x$ac_cv_header_evhtp_evhtp_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_EVHTP_EVHTP_H 1
-_ACEOF
-
-else
-  as_fn_error $? "evhtp header missing. See https://github.com/clicon/libevhtp" "$LINENO" 5
-fi
-
-done
-
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for evhtp_new in -levhtp" >&5
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for evhtp_new in -levhtp" >&5
 $as_echo_n "checking for evhtp_new in -levhtp... " >&6; }
 if ${ac_cv_lib_evhtp_evhtp_new+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -5258,6 +5280,87 @@ else
   as_fn_error $? "libevhtp missing" "$LINENO" 5
 fi
 
+   fi
+
+   # Check if nghttp2 is enabled for http/2
+   # Check whether --enable-nghttp2 was given.
+if test "${enable_nghttp2+set}" = set; then :
+  enableval=$enable_nghttp2;
+	  if test "$enableval" = no; then
+	      ac_enable_nghttp2=no
+	  else
+	      ac_enable_nghttp2=yes
+          fi
+
+else
+   ac_enable_nghttp2=no
+fi
+
+   { $as_echo "$as_me:${as_lineno-$LINENO}: result: checking nghttp2 is enabled: $ac_enable_nghttp2" >&5
+$as_echo "checking nghttp2 is enabled: $ac_enable_nghttp2" >&6; }
+   if test "$ac_enable_nghttp2" = "yes"; then
+      for ac_header in nghttp2/nghttp2.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "nghttp2/nghttp2.h" "ac_cv_header_nghttp2_nghttp2_h" "$ac_includes_default"
+if test "x$ac_cv_header_nghttp2_nghttp2_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_NGHTTP2_NGHTTP2_H 1
+_ACEOF
+
+else
+  as_fn_error $? "nghttp2 missing" "$LINENO" 5
+fi
+
+done
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for nghttp2_session_server_new in -lnghttp2" >&5
+$as_echo_n "checking for nghttp2_session_server_new in -lnghttp2... " >&6; }
+if ${ac_cv_lib_nghttp2_nghttp2_session_server_new+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lnghttp2  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char nghttp2_session_server_new ();
+int
+main ()
+{
+return nghttp2_session_server_new ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_nghttp2_nghttp2_session_server_new=yes
+else
+  ac_cv_lib_nghttp2_nghttp2_session_server_new=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_nghttp2_nghttp2_session_server_new" >&5
+$as_echo "$ac_cv_lib_nghttp2_nghttp2_session_server_new" >&6; }
+if test "x$ac_cv_lib_nghttp2_nghttp2_session_server_new" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBNGHTTP2 1
+_ACEOF
+
+  LIBS="-lnghttp2 $LIBS"
+
+else
+  as_fn_error $? "nghttp2 missing" "$LINENO" 5
+fi
+
+   fi
 
 $as_echo "#define WITH_RESTCONF_NATIVE 1" >>confdefs.h
  # For c-code that cant use strings
@@ -5295,44 +5398,6 @@ if test "${with_restconf+set}" = set; then :
   withval=$with_restconf;
 fi
 
-
-# Common actions for all restconf packages
-if test "x${with_restconf}" != "x"; then
-   # Web user default (ie what RESTCONF daemon runs as). Default: www-data
-   # Should this be a runtime option?
-
-# Check whether --with-wwwuser was given.
-if test "${with_wwwuser+set}" = set; then :
-  withval=$with_wwwuser;
-fi
-
-   if test "${with_wwwuser}"; then
-      wwwuser=${with_wwwuser}
-   fi
-   { $as_echo "$as_me:${as_lineno-$LINENO}: result: www user is $wwwuser" >&5
-$as_echo "www user is $wwwuser" >&6; }
-
-cat >>confdefs.h <<_ACEOF
-#define WWWUSER "$wwwuser"
-_ACEOF
-
-
-cat >>confdefs.h <<_ACEOF
-#define WWWDIR "$wwwdir"
-_ACEOF
-
-else
-
-cat >>confdefs.h <<_ACEOF
-#define WWWUSER ""
-_ACEOF
-
-
-cat >>confdefs.h <<_ACEOF
-#define WWWDIR ""
-_ACEOF
-
-fi
 
 # Set default config file location
 CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml

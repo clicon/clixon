@@ -148,7 +148,7 @@ BUSER=clicon
 
 : ${clixon_netconf:=$(which clixon_netconf)}
 
-: ${clixon_restconf:=$WWWDIR/clixon_restconf}
+: ${clixon_restconf:=clixon_restconf}
 
 : ${clixon_backend:=clixon_backend}
 
@@ -357,7 +357,6 @@ function stop_restconf_pre(){
 # 1) Dont use $clixon_restconf (dont work in valgrind)
 # 2) Dont use -u $WWWUSER since clixon_restconf may drop privileges.
 function stop_restconf(){
-    #    sudo pkill -u $wwwuser -f clixon_restconf # Dont use $clixon_restoconf doesnt work in valgrind
     sudo pkill -f clixon_restconf
     if [ $valgrindtest -eq 3 ]; then 
 	sleep 1
@@ -854,7 +853,7 @@ subjectAltName = DNS:clicon.org
 EOF
 
     # Generate server key
-    openssl genrsa -out $srvkey ${CERTKEYLEN}  || err "Generate server key"
+    openssl genpkey -algorithm RSA -out $srvkey  || err "Generate server key"
 
     # Generate CSR (signing request)
     openssl req -new -config $tmpdir/srv.cnf -key $srvkey -out $tmpdir/srv_csr.pem || err "Generate signing request"
@@ -864,3 +863,4 @@ EOF
 
     rm -rf $tmpdir
 }
+

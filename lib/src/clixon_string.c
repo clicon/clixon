@@ -560,8 +560,9 @@ xml_chardata_cbuf_append(cbuf *cb,
  *   err;
  * @endcode
  *
- * a=b&c=d    ->  [[a,"b"][c="d"]
- * kalle&c=d  ->  [[c="d"]]  # Discard elements with no delim2
+ * a=b&c=d    ->  [[a,"b"][c,"d"]
+ * a&b=       ->  [[a,null][b,""]]  
+ * Note difference between empty (CGV_EMPTY) and empty string (CGV_STRING)
  * XXX differentiate between error and null cvec.
  */
 int
@@ -622,12 +623,11 @@ uri_str2cvec(char  *string,
 	}
 	else{
 	    if (strlen(s)){
-		if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
+		if ((cv = cvec_add(cvv, CGV_EMPTY)) == NULL){
 		    clicon_err(OE_UNIX, errno, "cvec_add");
 		    goto err;
 		}
 		cv_name_set(cv, s);
-		cv_string_set(cv, "");
 	    }
 	}
 	s = snext;

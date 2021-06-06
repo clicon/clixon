@@ -9,6 +9,7 @@
 # See test_restconf_netns for network namespaces
 # See test_restconf_internal_cases for some special use-cases
 # XXX Lots of sleeps to remove race conditions. I am sure there are others way to fix this
+# Note you cant rely on ps aux|grep <cmd> since ps delays after fork from clixon_backend->restconf
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -21,6 +22,19 @@ startupdb=$dir/startup_db
 # Restconf debug
 RESTCONFDBG=$DBG
 RCPROTO=http # no ssl here
+
+RESTCONFDIR=$(dirname $(which clixon_restconf))
+
+# log-destination in restconf xml: syslog or file
+: ${LOGDST:=syslog}
+# Set daemon command-line to -f
+if [ "$LOGDST" = syslog ]; then
+    LOGDST_CMD="s"      
+elif [ "$LOGDST" = file ]; then
+    LOGDST_CMD="f/var/log/clixon_restconf.log" 
+else
+    err1 "No such logdst: $LOGDST"
+fi
 
 if [ "${WITH_RESTCONF}" = "fcgi" ]; then
     EXTRACONF="<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
@@ -40,6 +54,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
+  <CLICON_RESTCONF_INSTALLDIR>$RESTCONFDIR</CLICON_RESTCONF_INSTALLDIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
@@ -100,10 +115,10 @@ EOF
 	err "No pid return value" "$retx"
     fi
     if $active; then
-	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>]]>]]>$"
+	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS><!\[CDATA\[/.*/.*/clixon_restconf -f $cfg -D [0-9] .*\]\]></command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>]]>]]>$"
     else
 	# inactive, no startime or pid
-	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/www-data/clixon_restconf -f $cfg -D [0-9]</command><status $LIBNS>$status</status></rpc-reply>]]>]]>$"
+	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS><!\[CDATA\[/.*/clixon_restconf -f $cfg -D [0-9] .*\]\]></command><status $LIBNS>$status</status></rpc-reply>]]>]]>$"
     fi
     match=$(echo "$retx" | grep --null -Go "$expect")
     if [ -z "$match" ]; then
@@ -140,6 +155,7 @@ cat<<EOF > $startupdb
       <auth-type>none</auth-type>
       <pretty>false</pretty>
       <debug>$RESTCONFDBG</debug>
+      <log-destination>$LOGDST</log-destination>
       <socket>
          <namespace>default</namespace>
 	 <address>0.0.0.0</address>
@@ -174,8 +190,13 @@ wait_backend
 # Get pid of running process and check return xml
 new "1. Get rpc status"
 rpcstatus true running 
+
 pid0=$pid # Save pid0
 if [ $pid0 -eq 0 ]; then err "Pid" 0; fi
+
+# pid0 is active but doesnt mean socket is open, wait for that
+new "Wait for restconf to start"
+wait_restconf
 
 new "check restconf process runnng using ps pid:$pid0"
 ps=$(ps -hp $pid0) 
@@ -219,6 +240,11 @@ if [ "$pid0" -eq "$pid1" ]; then
     err1 "not $pid0" "$pid1"
 fi
 
+# This is to avoid a race condition: $pid1 is starting and may not have come up yet when we
+# we later stop it.
+new "Wait for $pid1 to start"
+wait_restconf
+
 new "4. stop restconf RPC"
 rpcoperation stop
 if [ $? -ne 0 ]; then exit -1; fi
@@ -249,8 +275,11 @@ if [ $pid0 -eq $pid3 ]; then
     err1 "A different pid" "same pid: $pid3"
 fi
 
-new "kill restconf"
+new "kill restconf using kill"
 stop_restconf_pre
+
+new "Wait for restconf to stop"
+wait_restconf_stopped
 
 new "8. start restconf RPC"
 rpcoperation start
@@ -335,6 +364,7 @@ cat<<EOF > $startupdb
       <auth-type>none</auth-type>
       <pretty>false</pretty>
       <debug>$RESTCONFDBG</debug>
+      <log-destination>$LOGDST</log-destination>
       <socket>
          <namespace>default</namespace>
 	 <address>0.0.0.0</address>
@@ -375,7 +405,7 @@ rpcstatus false stopped
 if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
 
 new "Enable restconf"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config><restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><debug>$RESTCONFDBG</debug></restconf></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config><restconf xmlns=\"http://clicon.org/restconf\"><enable>true</enable><debug>$RESTCONFDBG</debug><log-destination>$LOGDST</log-destination></restconf></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "commit enable"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -391,6 +421,8 @@ wait_restconf
 # Edit a field, eg pretty to trigger a restart
 new "Edit a restconf field via restconf" # XXX fcgi fails here
 expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/clixon-restconf:restconf/pretty -d '{"clixon-restconf:pretty":true}' )" 0 "HTTP/1.1 204 No Content"
+
+sleep $DEMSLEEP
 
 new "check status RPC new pid"
 rpcstatus true running
@@ -457,6 +489,8 @@ new "endtest"
 endtest
 
 # Set by restconf_config
+unset LOGDST
+unset LOGDST_CMD
 unset pid
 unset RESTCONFIG
 unset RESTCONFDBG

@@ -6,28 +6,15 @@ Note: cli plugins do not work.
 
 ## Prereqs
 
-See [AFL docs](https://afl-1.readthedocs.io/en/latest) for installing afl.
-On ubuntu this may be enough:
-```
-  sudo apt install afl
-```
+Install AFL, see [..](..)
 
-You may have to change cpu frequency:
-```
-  cd /sys/devices/system/cpu
-  echo performance | tee cpu?/cpufreq/scaling_governor
-```
-
-And possibly change core behaviour:
-```
-  echo core >/proc/sys/kernel/core_pattern
-```
+Build and install a clixon system (in particular the backend, the CLI will be replaced)
 
 ## Build
 
-Build clixon statically with the afl-clang compiler:
+Build clixon cli statically with the afl-clang compiler:
 ```
-  CC=/usr/bin/afl-clang-fast LINKAGE=static ./configure
+  CC=/usr/bin/afl-clang-fast LINKAGE=static ./configure # Dont care about restconf
   make clean
   cd apps/cli
   make clixon_cli
@@ -36,9 +23,9 @@ Build clixon statically with the afl-clang compiler:
 
 ## Run tests
 
-Start the backend and Use the script `runfuzz.sh` to run one test with a cli spec and an input string, eg:
+Run the script `runfuzz.sh` to run one test with a cli spec and an input string, eg:
 ```
-  ./runfuzz.sh /usr/local/etc/hello.xml "set table parameter a value 23"
+  ./runfuzz.sh
 ```
 
 After (or during) the test, investigate results in the output dir.

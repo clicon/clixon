@@ -88,7 +88,7 @@
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:E:l:p:d:y:a:u:ro:"
+#define RESTCONF_OPTS "hD:f:E:l:p:d:y:a:u:rW:R:o:"
 
 /*! Convert FCGI parameters to clixon runtime data
  * @param[in]  h     Clixon handle
@@ -177,7 +177,6 @@ restconf_sig_child(int arg)
 static void
 usage(clicon_handle h,
       char         *argv0)
-
 {
     fprintf(stderr, "usage:%s [options]\n"
 	    "where options are\n"
@@ -192,6 +191,8 @@ usage(clicon_handle h,
 
     	    "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
 	    "\t-r \t\t  Do not drop privileges if run as root\n"
+	    "\t-W <user>\t  Run restconf daemon as this user, drop according to CLICON_RESTCONF_PRIVILEGES\n"
+	    "\t-R <xml> \t  Restconf configuration in-line overriding config file\n"
 	    "\t-o \"<option>=<value>\" Give configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0
 	    );
@@ -225,15 +226,17 @@ main(int    argc,
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
     int            dbg = 0;
-    int            drop_privileges = 1;
     int            ret;
-    cxobj         *xrestconf1 = NULL; /* Local config file */
-    cxobj         *xconfig2 = NULL;   
-    cxobj         *xrestconf2 = NULL; /* Config from backend */
+    cxobj         *xrestconf1 = NULL; /* Inline */
+    cxobj         *xrestconf2 = NULL; /* Local config file */
+    cxobj         *xconfig3 = NULL;   
+    cxobj         *xrestconf3 = NULL; /* Config from backend */
     int            configure_done = 0; /* First try local then backend */
     cvec          *nsc = NULL;
     cxobj         *xerr = NULL;
     struct passwd *pw;
+    char          *wwwuser;
+    char          *inline_config = NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -272,6 +275,7 @@ main(int    argc,
 		goto done;
 	    break;
 	} /* switch getopt */
+    dbg=1;
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
@@ -324,9 +328,13 @@ main(int    argc,
 	    clicon_option_str_set(h, "CLICON_SOCK", optarg);
 	    break;
 	case 'r':{ /* Do not drop privileges if run as root */
-	    drop_privileges = 0;
+	    if (clicon_option_add(h, "CLICON_RESTCONF_PRIVILEGES", "none") < 0)
+		goto done;
 	    break;
 	}
+	case 'R':  /* Restconf on-line config */
+	    inline_config = optarg;
+	    break;
 	case 'o':{ /* Configuration option */
 	    char          *val;
 	    if ((val = index(optarg, '=')) == NULL)
@@ -443,16 +451,33 @@ main(int    argc,
     if (clixon_plugin_start_all(h) < 0)
 	goto done;
 
-    if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS") == 0){
-	/* If not read from backend, try to get restconf config from local config-file */
-	if ((xrestconf1 = clicon_conf_restconf(h)) != NULL){
-	    if ((ret = restconf_config_init(h, xrestconf1)) < 0)
+    /* 1. try inline configure option */
+    if (inline_config != NULL && strlen(inline_config)){
+	clicon_debug(1, "restconf_main_fcgi using restconf inline config");
+	if ((ret = clixon_xml_parse_string(inline_config, YB_MODULE, yspec, &xrestconf1, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    clixon_netconf_error(xerr, "Inline restconf config", NULL);
+	    goto done;
+	}
+	/* Replace parent w first child */
+	if (xml_rootchild(xrestconf1, 0, &xrestconf1) < 0)
+	    goto done;
+	if ((ret = restconf_config_init(h, xrestconf1)) < 0)
+	    goto done;
+	if (ret == 1)
+	    configure_done = 1;
+    }
+    else if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS") == 0){
+	/* 2. If not read from backend, try to get restconf config from local config-file */
+	if ((xrestconf2 = clicon_conf_restconf(h)) != NULL){
+	    if ((ret = restconf_config_init(h, xrestconf2)) < 0)
 		goto done;
 	    if (ret == 1)
 		configure_done = 1;
 	}
     }
-    /* If no local config, or it is disabled, try to query backend of config. */
+    /* 3. If no local config, or it is disabled, try to query backend of config. */
     else {
 	/* Loop to wait for backend starting, try again if not done */
 	while (1){
@@ -474,15 +499,15 @@ main(int    argc,
 	    clicon_err(OE_UNIX, errno, "getpwuid");
 	    goto done;
 	}
-	if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, &xconfig2) < 0)
+	if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, &xconfig3) < 0)
 	    goto done;
-	if ((xerr = xpath_first(xconfig2, NULL, "/rpc-error")) != NULL){
+	if ((xerr = xpath_first(xconfig3, NULL, "/rpc-error")) != NULL){
 	    clixon_netconf_error(xerr, "Get backend restconf config", NULL);
 	    goto done;
 	}
 	/* Extract restconf configuration */
-	if ((xrestconf2 = xpath_first(xconfig2, nsc, "restconf")) != NULL){
-	    if ((ret = restconf_config_init(h, xrestconf2)) < 0)
+	if ((xrestconf3 = xpath_first(xconfig3, nsc, "restconf")) != NULL){
+	    if ((ret = restconf_config_init(h, xrestconf3)) < 0)
 		goto done;
 	    if (ret == 1)
 		configure_done = 1;
@@ -507,11 +532,12 @@ main(int    argc,
 	goto done;
     }
     _MYSOCK = sock;
-    /* Change group of fcgi sock fronting reverse proxy to WWWUSER, the effective group is clicon
-     * which is backend. */
+    /* Change group of fcgi sock fronting reverse proxy to CLICON_RESTCONF_USER, 
+     * the effective group is clicon which is backend. */
     gid_t wgid = -1;
-    if (group_name2gid(WWWUSER, &wgid) < 0){
-	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.", WWWUSER);
+    wwwuser = clicon_option_str(h, "CLICON_RESTCONF_USER");
+    if (group_name2gid(wwwuser, &wgid) < 0){
+	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.", wwwuser);
 	goto done;
     }
     if (chown(sockpath, -1, wgid) < 0){
@@ -525,11 +551,11 @@ main(int    argc,
 	clicon_err(OE_UNIX, errno, "chmod");
 	goto done;
     }
-    if (drop_privileges){
-	/* Drop privileges to WWWUSER if started as root */
-	if (restconf_drop_privileges(h, WWWUSER) < 0)
-	    goto done;
-    }
+    /* Drop privileges if started as root to CLICON_RESTCONF_USER
+     * and use drop mode: CLICON_RESTCONF_PRIVILEGES
+     */
+    if (restconf_drop_privileges(h) < 0)
+	goto done;
     if (FCGX_InitRequest(req, sock, 0) != 0){
 	clicon_err(OE_CFG, errno, "FCGX_InitRequest");
 	goto done;
@@ -581,7 +607,14 @@ main(int    argc,
 	    }
 	    else{
 		clicon_debug(1, "top-level %s not found", path);
-		restconf_notfound(h, req);
+		if (netconf_invalid_value_xml(&xerr, "protocol", "Top-level path not found") < 0)
+		    goto done; 
+		if (api_return_err0(h, req, xerr, 1, YANG_DATA_JSON, 0) < 0)
+		    goto done;
+		if (xerr){
+		    xml_free(xerr);
+		    xerr = NULL;
+		}
 	    }
 	}
 	else
@@ -604,8 +637,10 @@ main(int    argc,
     } /* while */
     retval = 0;
  done:
-    if (xconfig2)
-	xml_free(xconfig2);
+    if (xrestconf1)
+	xml_free(xrestconf1);
+    if (xconfig3)
+	xml_free(xconfig3);
     if (nsc)
 	cvec_free(nsc);
     stream_child_freeall(h);

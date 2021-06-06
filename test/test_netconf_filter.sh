@@ -80,6 +80,33 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filte
 new "get xpath one"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type='xpath' select=\"/fi:x/fi:y[fi:a='1']\" xmlns:fi='urn:example:filter' /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
 
+new "put more entries"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:filter\"><y><a>3</a><b>1345</b></y><y><a>4</a><b>2567</b></y><y><a>5</a></y></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "netconf commit"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "get xpath function not b=1"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type='xpath' select=\"/fi:x/fi:y[not(fi:b='1')]\" xmlns:fi='urn:example:filter' /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>2</a><b>2</b></y><y><a>3</a><b>1345</b></y><y><a>4</a><b>2567</b></y><y><a>5</a></y></x></data></rpc-reply>]]>]]>$"
+
+new "get xpath function not(b)"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type='xpath' select=\"/fi:x/fi:y[not(fi:b)]\" xmlns:fi='urn:example:filter' /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>5</a></y></x></data></rpc-reply>]]>]]>$"
+
+new "get xpath function contains"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type='xpath' select=\"/fi:x/fi:y[contains(fi:b,'2')]\" xmlns:fi='urn:example:filter' /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>2</a><b>2</b></y><y><a>4</a><b>2567</b></y></x></data></rpc-reply>]]>]]>$"
+
+new "get xpath function not(contains(fib,2))"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type='xpath' select=\"/fi:x/fi:y[not(contains(fi:b,'2'))]\" xmlns:fi='urn:example:filter' /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y><y><a>3</a><b>1345</b></y><y><a>5</a></y></x></data></rpc-reply>]]>]]>$"
+
+new "get xpath function or"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type='xpath' select=\"/fi:x/fi:y[fi:a='3' or fi:b='2567']\" xmlns:fi='urn:example:filter' /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>3</a><b>1345</b></y><y><a>4</a><b>2567</b></y></x></data></rpc-reply>]]>]]>$"
+
+new "get xpath function and"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type='xpath' select=\"/fi:x/fi:y[not(fi:a='3') and contains(fi:b,'1')]\" xmlns:fi='urn:example:filter' /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
+
+new "get xpath function union"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type='xpath' select=\"/fi:x/fi:y[fi:b='1']|/fi:x/fi:y[fi:a='5']\" xmlns:fi='urn:example:filter' /></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y><y><a>5</a></y></x></data></rpc-reply>]]>]]>$"
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill

@@ -144,10 +144,10 @@ typedef enum yang_bind yang_bind;
 typedef struct xml cxobj; /* struct defined in clicon_xml.c */
 
 /*! Callback function type for xml_apply 
- * @retval    -1    Error, aborted at first error encounter
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
  * @retval     0    OK, continue
- * @retval     1    Abort, dont continue with others
- * @retval     2    Locally, just abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     2    Locally abort this subtree, continue with others
  */
 typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 
@@ -156,13 +156,15 @@ typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c
 /*
  * xml_flag() flags:
  */
-#define XML_FLAG_MARK    0x01  /* Marker for dynamic algorithms, eg expand */
-#define XML_FLAG_ADD     0x02  /* Node is added (commits) or parent added rec*/
-#define XML_FLAG_DEL     0x04  /* Node is deleted (commits) or parent deleted rec */
-#define XML_FLAG_CHANGE  0x08  /* Node is changed (commits) or child changed rec */
-#define XML_FLAG_NONE    0x10  /* Node is added as NONE */
-#define XML_FLAG_DEFAULT 0x20  /* Added when a value is set as default @see xml_default */
-#define XML_FLAG_TOP     0x40  /* Top datastore symbol */
+#define XML_FLAG_MARK      0x01 /* General-purpose eg expand and xpath_vec selection and
+				 * diffs between candidate and running */
+#define XML_FLAG_TRANSIENT 0x02 /* Marker for dynamic algorithms, unmark asap */
+#define XML_FLAG_ADD       0x04 /* Node is added (commits) or parent added rec*/
+#define XML_FLAG_DEL       0x08 /* Node is deleted (commits) or parent deleted rec */
+#define XML_FLAG_CHANGE    0x10 /* Node is changed (commits) or child changed rec */
+#define XML_FLAG_NONE      0x20 /* Node is added as NONE */
+#define XML_FLAG_DEFAULT   0x40 /* Added when a value is set as default @see xml_default */
+#define XML_FLAG_TOP       0x80 /* Top datastore symbol */
 
 /*
  * Prototypes
@@ -184,6 +186,10 @@ int       nscache_replace(cxobj *x, cvec *ns);
 int       xmlns_set(cxobj *x, char *prefix, char *ns);
 cxobj    *xml_parent(cxobj *xn);
 int       xml_parent_set(cxobj *xn, cxobj *parent);
+#ifdef XML_PARENT_CANDIDATE
+cxobj    *xml_parent_candidate(cxobj *xn);
+int       xml_parent_candidate_set(cxobj *xn, cxobj *parent);
+#endif /* XML_PARENT_CANDIDATE */
 
 uint16_t  xml_flag(cxobj *xn, uint16_t flag);
 int       xml_flag_set(cxobj *xn, uint16_t flag);
@@ -265,7 +271,6 @@ int       xml_search_vector_get(cxobj *x, char *name, clixon_xvec **xvec);
 int       xml_search_child_insert(cxobj *xp, cxobj *x);
 int       xml_search_child_rm(cxobj *xp, cxobj *x);
 cxobj    *xml_child_index_each(cxobj *xparent, char *name, cxobj *xprev, enum cxobj_type type);
-
 
 #endif
 

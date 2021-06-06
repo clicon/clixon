@@ -1,0 +1,5 @@
+GET /restconf/data/ HTTP/1.1
+Host: localhost
+Accept: application/yang-data+xml
+
+

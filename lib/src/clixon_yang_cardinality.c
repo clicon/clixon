@@ -459,7 +459,6 @@ ycard_find(enum rfc_6020       parent,
 	   enum rfc_6020       child,
 	   const struct ycard *yclist,
 	   int                 p)
-
 {
      const struct ycard *yc;
     
@@ -490,12 +489,12 @@ yang_cardinality(clicon_handle h,
 		 yang_stmt    *yt,
 		 char         *modname)
 {
-    int        retval = -1;
-    yang_stmt *ys = NULL;
-    int        pk;
-    int        ck;
-    int        i;
-    int        nr;
+    int                 retval = -1;
+    yang_stmt          *ys = NULL;
+    int                 pk;
+    int                 ck;
+    int                 i;
+    int                 nr;
     const struct ycard *ycplist; /* ycard parent table*/
     const struct ycard *yc;
     
@@ -556,3 +555,32 @@ yang_cardinality(clicon_handle h,
     return retval;
 }
 
+/*! Return cardinality interval [min,max] given yang parent and child keyword.
+ *
+ * @param[in]  h        Clicon handle
+ * @param[in]  parent_key
+ * @param[in]  child_key
+ * @param[out] minp    0 or 1
+ * @param[out] maxp    1 or NMAX (large number)
+ */
+int
+yang_cardinality_interval(clicon_handle h,
+			  enum rfc_6020 parent_key,
+			  enum rfc_6020 child_key,
+			  int          *min,
+			  int          *max)
+{
+    int                 retval = -1;
+    const struct ycard *ycplist; /* ycard parent table*/
+    
+    if ((ycplist = ycard_find(parent_key, child_key, yclist, 0)) == NULL){
+	clicon_err(OE_YANG, EINVAL, "keys %d %d do not have cardinality",
+		   parent_key, child_key);
+	goto done;
+    }
+    *min = ycplist->yc_min;
+    *max = ycplist->yc_max;
+    retval = 0;
+ done:
+    return retval;
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Testcases for Restconf list and leaf-list keys, check matching keys for RFC8040 4.5:
 # the key values must match in URL and data
+# Empty keys vs comma as a key
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -82,7 +83,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 if [ $RC -ne 0 ]; then
@@ -91,10 +92,10 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 new "restconf PUT add whole list entry"
 expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x,y -d '{"list:a":{"b":"x","c":"y","nonkey":"0"}}')" 0 "HTTP/1.1 201 Created"
@@ -112,6 +113,7 @@ expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCP
 new "restconf PUT add whole list entry XML"
 expectpart "$(curl $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+xml' -d '<a xmlns="urn:example:clixon"><b>xx</b><c>xy</c><nonkey>0</nonkey></a>' $RCPROTO://localhost/restconf/data/list:c/a=xx,xy)" 0 "HTTP/1.1 201 Created"
 
+new "restconf GET sub key"
 expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a/b)" 0 'HTTP/1.1 400 Bad Request' '^{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"malformed key =a, expected '
 
 new "restconf PUT change whole list entry (same keys)"
@@ -147,6 +149,15 @@ expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json
 new "restconf PUT list-list"
 expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x,y/e=z -d '{"list:e":{"f":"z","nonkey":"0"}}')" 0 "HTTP/1.1 201 Created"
 
+new "restconf GET e element with empty string key expect empty"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x,y/e=)" 0 "HTTP/1.1 404 Not Found" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+
+new "restconf PUT list-list empty string"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x,y/e= -d '{"list:e":{"f":"","nonkey":"42"}}')" 0 "HTTP/1.1 201 Created"
+
+new "restconf GET e element with empty string key"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data/list:c/a=x,y/e=)" 0 "HTTP/1.1 200 OK" '<e xmlns="urn:example:clixon"><f/><nonkey>42</nonkey></e>'
+
 new "restconf PUT change list-lst entry (wrong keys)(expect fail)"
 expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x,y/e=z -d '{"list:e":{"f":"wrong","nonkey":"0"}}')" 0 "HTTP/1.1 412 Precondition Failed" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
 
@@ -173,6 +184,33 @@ expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json
 
 new "restconf GET check percent-encoded"
 expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x%2Cy,z)" 0 "HTTP/1.1 200 OK" '{"list:a":\[{"b":"x,y","c":"z","nonkey":"foo"}\]}'
+
+new "restconf PUT ,z empty string as first key"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=,z -d '{"list:a":{"b":"","c":"z", "nonkey":"42"}}')" 0 "HTTP/1.1 201 Created"
+
+new "restconf GET ,z empty"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=,z)" 0 "HTTP/1.1 200 OK" '{"list:a":\[{"b":"","c":"z","nonkey":"42"}\]}'
+
+new "restconf PUT x, empty string as second key"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x, -d '{"list:a":{"b":"x","c":"", "nonkey":"43"}}')" 0 "HTTP/1.1 201 Created"
+
+new "restconf GET x, empty"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x,)" 0 "HTTP/1.1 200 OK" '{"list:a":\[{"b":"x","c":"","nonkey":"43"}\]}'
+
+new "restconf PUT , empty string as second key"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=, -d '{"list:a":{"b":"","c":"", "nonkey":"44"}}')" 0 "HTTP/1.1 201 Created"
+
+new "restconf GET , empty"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=,)" 0 "HTTP/1.1 200 OK" '{"list:a":\[{"b":"","c":"","nonkey":"44"}\]}'
+
+new "restconf PUT two commas as keys"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=%2C,%2C -d '{"list:a":{"b":",","c":",", "nonkey":"45"}}')" 0 "HTTP/1.1 201 Created"
+
+new "restconf GET two commas"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=%2C,%2C)" 0 "HTTP/1.1 200 OK" '{"list:a":\[{"b":",","c":",","nonkey":"45"}\]}'
+
+new "restconf GET all empty strings"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c)" 0 "HTTP/1.1 200 OK" '{"list:c":{"a":\[{"b":"","c":"","nonkey":"44"},{"b":"","c":"z","nonkey":"42"},{"b":",","c":",","nonkey":"45"},{"b":"x","c":"","nonkey":"43"}'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

@@ -203,13 +203,79 @@ check_body_namespace(cxobj     *x0,
     return retval;
 }
 
+/*! Check yang when condition between a new xml x1 and old x0
+ *
+ * Check if there is a when condition. First try it on the new request (x1), then on the
+ * existing (x0). 
+ * @param[in]  x0p      Parent of x0
+ * @param[in]  x1       XML tree which modifies base
+ * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL
+ * @param[out] cbret    Initialized cligen buffer. Contains return XML if retval is 0.
+ * @retval    -1        Error
+ * @retval     0        Failed (cbret set)
+ * @retval     1        OK
+ * @note There may be some combination cases (x0+x1) that are not covered in this function.
+ */
+static int
+check_when_condition(cxobj              *x0p,
+		     cxobj              *x1,
+		     yang_stmt          *y0,
+		     cbuf               *cbret)
+{
+    int       retval = -1;
+    char      *xpath = NULL;
+    cvec      *nsc = NULL;
+    int        nr;
+    yang_stmt *y = NULL;
+    cbuf      *cberr = NULL;
+    cxobj     *x1p;
+
+    if ((y = y0) != NULL ||
+	(y = (yang_stmt*)xml_spec(x1)) != NULL){
+	if ((xpath = yang_when_xpath_get(y)) != NULL){ 
+	    nsc = yang_when_nsc_get(y);
+	    x1p = xml_parent(x1);
+	    if ((nr = xpath_vec_bool(x1p, nsc, "%s", xpath)) < 0) /* Try request */
+		goto done;
+	    if (nr == 0){
+		/* Try existing tree */
+		if ((nr = xpath_vec_bool(x0p, nsc, "%s", xpath)) < 0)
+		    goto done;
+		if (nr == 0){
+		    if ((cberr = cbuf_new()) == NULL){
+			clicon_err(OE_UNIX, errno, "cbuf_new");
+			goto done;
+		    }
+		    cprintf(cberr, "Node '%s' tagged with 'when' condition '%s' in module '%s' evaluates to false in edit-config operation (see RFC 7950 Sec 8.3.2)",
+			    yang_argument_get(y),
+			    xpath,
+			    yang_argument_get(ys_module(y)));
+		    if (netconf_unknown_element(cbret, "application", yang_argument_get(y),
+						cbuf_get(cberr)) < 0)
+			goto done;
+		    goto fail;
+		}
+	    }
+	}
+    }
+    retval = 1;
+ done:
+    if (cberr)
+	cbuf_free(cberr);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
  * @param[in]  h        Clicon handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
- * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  x0p      Parent of x0
+ * @param[in]  x0t      Top level of existing tree, eg needed for NACM rules
  * @param[in]  x1       XML tree which modifies base
  * @param[in]  x1t      Request root node (nacm needs this)
+ * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  op       OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
  * @param[in]  username User name of requestor for nacm
  * @param[in]  xnacm    NACM XML tree (only if !permit)
@@ -259,11 +325,17 @@ text_modify(clicon_handle       h,
     int        changed = 0; /* Only if x0p's children have changed-> sort necessary */
     cvec      *nscx1 = NULL;
     char      *createstr = NULL;	
+    yang_stmt *yrestype = NULL;
+    char      *restype;
     
     if (x1 == NULL){
 	clicon_err(OE_XML, EINVAL, "x1 is missing");
 	goto done;
     }
+    if ((ret = check_when_condition(x0p, x1, y0, cbret)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail;
     /* Check for operations embedded in tree according to netconf */
     if ((ret = attr_ns_value(x1, "operation", NETCONF_BASE_NAMESPACE,
 			     cbret, &opstr)) < 0)
@@ -391,20 +463,20 @@ text_modify(clicon_handle       h,
 			goto done; 
 		}
 	    }
+	    /* Some bodies (eg identityref) requires proper namespace setup, so a type lookup is
+	     * necessary.
+	     */
+	    if (yang_type_get(y0, NULL, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+		goto done;
+	    if (yrestype == NULL){
+		clicon_err(OE_CFG, EFAULT, "No restype (internal error)");
+		goto done;
+	    }
+	    restype = yang_argument_get(yrestype);
+	    /* Differentiate between an empty type (NULL) and an empty string "" */
+	    if (x1bstr==NULL && strcmp(restype,"string")==0)
+		x1bstr="";
 	    if (x1bstr){
-		/* Some bodies (eg identityref) requires proper namespace setup, so a type lookup is
-		 * necessary.
-		 */
-		yang_stmt *yrestype = NULL;
-		char      *restype;
-
-		if (yang_type_get(y0, NULL, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
-		    goto done;
-		if (yrestype == NULL){
-		    clicon_err(OE_CFG, EFAULT, "No restype (internal error)");
-		    goto done;
-		}
-		restype = yang_argument_get(yrestype);
 		if (strcmp(restype, "identityref") == 0){
 		    x1bstr = clixon_trim2(x1bstr, " \t\n"); 
 		    if (check_body_namespace(x1, x0, x0p, x1bstr, y0) < 0)
@@ -418,10 +490,10 @@ text_modify(clicon_handle       h,
 
 		    /* If origin body has namespace definitions, copy them. The reason is that
 		     * some bodies rely on namespace prefixes, such as NACM path, but there is 
-		     * no way we can now this here.
+		     * no way we can know this here.
 		     * However, this may lead to namespace collisions if these prefixes are not
 		     * canonical, and may collide with the assign_namespace_element() above (but that 
-		     * is for element sysmbols)
+		     * is for element symbols)
 		     * Oh well.
 		     */
 		    if (assign_namespace_body(x1, x1bstr, x0) < 0)
@@ -445,7 +517,7 @@ text_modify(clicon_handle       h,
 			    xml_flag_reset(x0, XML_FLAG_DEFAULT);
 		    }
 		}
-	    }
+	    } /* x1bstr */
 	    if (changed){ 
 		if (xml_insert(x0p, x0, insert, valstr, NULL) < 0) 
 		    goto done;
@@ -592,7 +664,9 @@ text_modify(clicon_handle       h,
 		if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
 		    goto done;
 		xml_spec_set(x0, y0);
-
+#ifdef XML_PARENT_CANDIDATE
+		xml_parent_candidate_set(x0, x0p);
+#endif
 		changed++;
 		/* Get namespace from x1
 		 * Check if namespace exists in x0 parent
@@ -660,8 +734,8 @@ text_modify(clicon_handle       h,
 	    x1c = NULL;
 	    i = 0;
 	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
-		x1cname = xml_name(x1c);
 		x0c = x0vec[i++];
+		x1cname = xml_name(x1c);
 		yc = yang_find_datanode(y0, x1cname);
 		if ((ret = text_modify(h, x0c, x0, x0t, x1c, x1t,
 				       yc, op,
@@ -672,6 +746,9 @@ text_modify(clicon_handle       h,
 		    goto fail;
 	    }
 	    if (changed){
+#ifdef XML_PARENT_CANDIDATE
+		xml_parent_candidate_set(x0, NULL);
+#endif
 		if (xml_insert(x0p, x0, insert, keystr, nscx1) < 0)
 		    goto done;
 	    }
@@ -716,7 +793,7 @@ text_modify(clicon_handle       h,
 /*! Modify a top-level base tree x0 with modification tree x1
  * @param[in]  h        Clicon handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
- * @param[in]  x0t
+ * @param[in]  x0t      Top level of existing tree, eg needed for NACM rules
  * @param[in]  x1       XML tree which modifies base
  * @param[in]  x1t      Request root node (nacm needs this)
  * @param[in]  yspec    Top-level yang spec (if y is NULL)
@@ -994,11 +1071,11 @@ xmldb_put(clicon_handle       h,
     if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, 
 		  (void*)(XML_FLAG_NONE|XML_FLAG_MARK)) < 0)
 	goto done;
-    /* Mark non-presence containers as XML_FLAG_DEFAULT */
-    if (xml_apply(x0, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_DEFAULT) < 0)
+    /* Mark non-presence containers */
+    if (xml_apply(x0, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_TRANSIENT) < 0)
 	goto done;
     /* Clear XML tree of defaults */
-    if (xml_tree_prune_flagged(x0, XML_FLAG_DEFAULT, 1) < 0)
+    if (xml_tree_prune_flagged(x0, XML_FLAG_TRANSIENT, 1) < 0)
 	goto done;
 #if 0 /* debug */
     if (xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)

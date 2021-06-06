@@ -1106,7 +1106,10 @@ nacm_access_check(clicon_handle h,
     cxobj  *x;
     cvec  *nsc = NULL;
     char  *recovery_user;
-    
+#ifdef WITH_RESTCONF
+    char  *wwwuser;
+#endif    
+
     clicon_debug(1, "%s", __FUNCTION__);
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
 	goto done;
@@ -1148,9 +1151,10 @@ nacm_access_check(clicon_handle h,
 		strcmp(peername, "root") == 0)
 		goto permit;
 #ifdef WITH_RESTCONF
+	    wwwuser=clicon_option_str(h,"CLICON_RESTCONF_USER");
 	    if (strcmp(username, recovery_user) == 0 &&
-		strcmp(peername, WWWUSER) == 0)
-	    goto permit;
+		wwwuser && strcmp(peername, wwwuser) == 0)
+		goto permit;
 #endif
 	    break;
 	}
@@ -1252,6 +1256,8 @@ nacm_access_pre(clicon_handle  h,
 }
 
 /*! Verify nacm user with  peer uid credentials
+ *
+ * @param[in]  h         Clixon handle
  * @param[in]  mode      Peer credential mode: none, exact or except
  * @param[in]  peername  Peer username if any
  * @param[in]  username  username received in XML (eg for NACM)
@@ -1270,13 +1276,17 @@ nacm_access_pre(clicon_handle  h,
  * - peer user is www (can be any NACM user)
  */
 int
-verify_nacm_user(enum nacm_credentials_t cred,
+verify_nacm_user(clicon_handle           h,
+		 enum nacm_credentials_t cred,
 		 char                   *peername,
 		 char                   *nacmname,
 		 cbuf                   *cbret)
 {
     int   retval = -1;
     cbuf *cbmsg = NULL;
+#ifdef WITH_RESTCONF
+    char  *wwwuser;
+#endif    
 
     if (cred == NC_NONE)
 	return 1;
@@ -1294,7 +1304,8 @@ verify_nacm_user(enum nacm_credentials_t cred,
 	if (strcmp(peername, "root") == 0)
 	    goto ok;
 #ifdef WITH_RESTCONF
-	if (strcmp(peername, WWWUSER) == 0)
+	wwwuser=clicon_option_str(h,"CLICON_RESTCONF_USER");
+	if (wwwuser && strcmp(peername, wwwuser) == 0)
 	    goto ok;
 #endif
     }
