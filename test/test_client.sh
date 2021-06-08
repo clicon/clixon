@@ -146,10 +146,10 @@ XML='<table xmlns="urn:example:clixon-client"><parameter><name>a</name><value>42
 
 # Add a set of entries using restconf
 new "POST the XML"
-expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data -d "$XML")" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data -d "$XML")" 0 "HTTP/$HVER 201"
 
 new "Check entries"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-client:table -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' "$XML"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-client:table -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" "$XML"
 
 new "Run $app"
 expectpart "$($app)" 0 '^42$'

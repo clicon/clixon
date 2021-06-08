@@ -99,7 +99,7 @@ api_data_options(clicon_handle h,
 	goto done;
     if (restconf_reply_header(req, "Accept-Patch", "application/yang-data+xml,application/yang-data+json") < 0)
 	goto done;
-    if (restconf_reply_send(req, 200, NULL) < 0)
+    if (restconf_reply_send(req, 200, NULL, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -547,11 +547,11 @@ api_data_write(clicon_handle h,
     if ((xe = xpath_first(xret, NULL, "//ok")) != NULL &&
 	(attr = xml_find_value(xe, "objectexisted")) != NULL &&
 	strcmp(attr, "false")==0){
-	if (restconf_reply_send(req, 201, NULL) < 0) /* Created */
+	if (restconf_reply_send(req, 201, NULL, 0) < 0) /* Created */
 	    goto done;
     }
     else
-	if (restconf_reply_send(req, 204, NULL) < 0) /* No content */
+	if (restconf_reply_send(req, 204, NULL, 0) < 0) /* No content */
 	    goto done;	
  ok:
     retval = 0;
@@ -784,7 +784,7 @@ api_data_delete(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    if (restconf_reply_send(req, 204, NULL) < 0)
+    if (restconf_reply_send(req, 204, NULL, 0) < 0)
 	goto done;	
  ok:
     retval = 0;

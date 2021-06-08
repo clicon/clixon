@@ -252,69 +252,69 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></
 
 
 new "enable nacm"
-expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/$HVER 204"
 
 #--------------- nacm enabled
 
 #user:admin,wilma,guest
 new "admin can read /nacm"
-expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 'HTTP/1.1 200 OK' '{"ietf-netconf-acm:enable-nacm":true}'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/$HVER 200" '{"ietf-netconf-acm:enable-nacm":true}'
 
 new "1. limit can read /nacm"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 'HTTP/1.1 200 OK' '{"ietf-netconf-acm:enable-nacm":true}' 
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/$HVER 200" '{"ietf-netconf-acm:enable-nacm":true}' 
 
 # Comment: it should NOT be access-denied, it should be not found, since then you say it exists but you
 # dont have access to it which is insecure
 new "2. guest cannot read /nacm"
-expectpart "$(curl -u guest:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+expectpart "$(curl -u guest:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/$HVER 404" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 # 3. limited can read and set /config-parameters
 new "3. limited can read config-parameters"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:acme-netconf/config-parameters)" 0 'HTTP/1.1 200 OK' '{"nacm-example:config-parameters":{"parameter":\[{"name":"a","value":"72"}\]}}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:acme-netconf/config-parameters)" 0 "HTTP/$HVER 200" '{"nacm-example:config-parameters":{"parameter":\[{"name":"a","value":"72"}\]}}'
 
 new "3. limited can set config-parameters"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/nacm-example:acme-netconf/config-parameters/parameter=a -d '{"nacm-example:parameter":[{"name":"a","value":"93"}]}')" 0 'HTTP/1.1 204 No Content' 
+expectpart "$(curl -u wilma:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/nacm-example:acme-netconf/config-parameters/parameter=a -d '{"nacm-example:parameter":[{"name":"a","value":"93"}]}')" 0 "HTTP/$HVER 204"
 
 new "4. guest cannot set /config-parameter"
-expectpart "$(curl -u guest:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/nacm-example:acme-netconf/config-parameters/parameter=a -d '{"nacm-example:parameter":[{"name":"a","value":"93"}]}')" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expectpart "$(curl -u guest:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/nacm-example:acme-netconf/config-parameters/parameter=a -d '{"nacm-example:parameter":[{"name":"a","value":"93"}]}')" 0 "HTTP/$HVER 403" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 # 5. limit can read and update but not create or delete dummy interface
 
 new "5a. limit cannot create dummy interface"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces -d '{"itf:interface":[{"name":"dummy","value":"93"}]}')" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces -d '{"itf:interface":[{"name":"dummy","value":"93"}]}')" 0 "HTTP/$HVER 403" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "5b. admin can create dummy interface"
-expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces -d '{"itf:interface":[{"name":"dummy","value":"93"}]}')" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces -d '{"itf:interface":[{"name":"dummy","value":"93"}]}')" 0 "HTTP/$HVER 201"
 
 new "5b. admin can create other interface x as reference"
-expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces -d '{"itf:interface":[{"name":"x","value":"200"}]}')" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces -d '{"itf:interface":[{"name":"x","value":"200"}]}')" 0 "HTTP/$HVER 201"
 
 new "5c. limit can read dummy interface"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/itf:interfaces/interface=dummy)" 0 'HTTP/1.1 200 OK' '{"itf:interface":\[{"name":"dummy","value":"93"}\]}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/itf:interfaces/interface=dummy)" 0 "HTTP/$HVER 200" '{"itf:interface":\[{"name":"dummy","value":"93"}\]}'
 
 new "5c. limit can read other interface"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/itf:interfaces/interface=x)" 0 'HTTP/1.1 200 OK' '{"itf:interface":\[{"name":"x","value":"200"}\]}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/itf:interfaces/interface=x)" 0 "HTTP/$HVER 200" '{"itf:interface":\[{"name":"x","value":"200"}\]}'
 
 new "5d. limit can update dummy interface"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces/interface=dummy -d '{"itf:interface":[{"name":"dummy","value":"42"}]}')" 0 'HTTP/1.1 204 No Content'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces/interface=dummy -d '{"itf:interface":[{"name":"dummy","value":"42"}]}')" 0 "HTTP/$HVER 204"
 
 new "5d. admin can update dummy interface"
-expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces/interface=dummy -d '{"itf:interface":[{"name":"dummy","value":"17"}]}')" 0 'HTTP/1.1 204 No Content'
+expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces/interface=dummy -d '{"itf:interface":[{"name":"dummy","value":"17"}]}')" 0 "HTTP/$HVER 204"
 
 new "5d. limit can not update other interface"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces/interface=x -d '{"itf:interface":[{"name":"x","value":"42"}]}')" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces/interface=x -d '{"itf:interface":[{"name":"x","value":"42"}]}')" 0 "HTTP/$HVER 403" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "5d. admin can update other interface"
-expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces/interface=x -d '{"itf:interface":[{"name":"x","value":"42"}]}')" 0 'HTTP/1.1 204 No Content'
+expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/itf:interfaces/interface=x -d '{"itf:interface":[{"name":"x","value":"42"}]}')" 0 "HTTP/$HVER 204"
 
 new "5d. limit can read dummy interface (again)"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/itf:interfaces/interface=dummy)" 0 'HTTP/1.1 200 OK' '{"itf:interface":\[{"name":"dummy","value":"17"}\]}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/itf:interfaces/interface=dummy)" 0 "HTTP/$HVER 200" '{"itf:interface":\[{"name":"dummy","value":"17"}\]}'
 
 new "5e. limit can not delete dummy interface"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/itf:interfaces/interface=dummy)" 0 'HTTP/1.1 403 Forbidden' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/itf:interfaces/interface=dummy)" 0 "HTTP/$HVER 403" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
 
 new "5e. admin can delete dummy interface"
-expectpart "$(curl -u andy:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/itf:interfaces/interface=dummy)" 0 'HTTP/1.1 204 No Content' 
+expectpart "$(curl -u andy:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/itf:interfaces/interface=dummy)" 0 "HTTP/$HVER 204"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

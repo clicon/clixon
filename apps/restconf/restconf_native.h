@@ -46,7 +46,6 @@
   * | rr restconf_request| per-packet
   * +--------------------+
   *
-  * Parse functions 
   */
 
 #ifdef __cplusplus
@@ -59,40 +58,50 @@ extern "C" {
 /*
  * Types
  */
-/* http/2 session stream struct
+    
+/* Forward */
+struct restconf_conn;
+
+/* session stream struct, mainly for http/2 but htp/1 has a single pseudo-stream with id=0
  */
 typedef struct  {
-    qelem_t   sd_qelem;     /* List header */
-    int32_t   sd_stream_id;
-    int       sd_fd;
+    qelem_t               sd_qelem;     /* List header */
+    int32_t               sd_stream_id;
+    int                   sd_fd;        /* XXX Is this used? */
+    cvec                 *sd_outp_hdrs; /* List of output headers */
+    cbuf                 *sd_outp_buf;  /* Output buffer */
+    cbuf                 *sd_body;      /* http output body as cbuf terminated with \r\n */
+    size_t                sd_body_offset; /* Offset into body */
+    cbuf                 *sd_indata;    /* Receive/input data */
+    char                 *sd_path;      /* Uri path, uri-encoded, without args (eg ?) */
+    uint16_t              sd_code;      /* If != 0 send a reply XXX: need reply flag? */
+    struct restconf_conn *sd_conn;      /* Backpointer to connection this stream is part of */
+    restconf_http_proto   sd_proto;     /* http protocol XXX not sure this is needed */
+    void                 *sd_req;       /* Lib-specific request, eg evhtp_request_t * */
 } restconf_stream_data;
 
-/* Restconf connection handle 
+    /* Restconf connection handle 
  * Per connection request
  */
-typedef struct {
+typedef struct restconf_conn {
     //    qelem_t       rs_qelem; /* List header */
-    cvec               *rc_outp_hdrs; /* List of output headers */
-    cbuf               *rc_outp_buf;  /* Output buffer */
     size_t              rc_bufferevent_output_offset; /* Kludge to drain libevent output buffer */
     restconf_http_proto rc_proto; /* HTTP protocol: http/1 or http/2 */
     int                 rc_s;         /* Connection socket */
     clicon_handle       rc_h;         /* Clixon handle */
     SSL                *rc_ssl;       /* Structure for SSL connection */
-    restconf_stream_data *rc_streams;   /* List of http/2 session streams */
+    restconf_stream_data *rc_streams; /* List of http/2 session streams */
     /* Decision to keep lib-specific data here, otherwise new struct necessary
      * drawback is specific includes need to go everywhere */
 #ifdef HAVE_LIBEVHTP
     evhtp_connection_t *rc_evconn;
 #endif
 #ifdef HAVE_LIBNGHTTP2
-
-    nghttp2_session    *rc_ngsession;
+    nghttp2_session    *rc_ngsession; /* XXX Not sure it is needed */
 #endif
-} restconf_conn_h;
-    
-/* Restconf request handle 
- * Per socket request
+} restconf_conn;
+
+/* Restconf per socket handle
  */
 typedef struct {
     qelem_t       rs_qelem;     /* List header */
@@ -117,8 +126,13 @@ typedef struct {
 /*
  * Prototypes
  */
-int restconf_parse(void *req, const char *buf, size_t buflen);
-
+restconf_stream_data *restconf_stream_data_new(restconf_conn *rc, int32_t stream_id);
+restconf_stream_data *restconf_stream_find(restconf_conn *rc, int32_t id);
+int               restconf_stream_free(restconf_stream_data *sd);
+restconf_conn    *restconf_conn_new(clicon_handle h, int s);
+int               restconf_conn_free(restconf_conn *rc);
+int               ssl_x509_name_oneline(SSL *ssl, char **oneline);
+    
 #endif /* _RESTCONF_NATIVE_H_ */
 
 #ifdef __cplusplus

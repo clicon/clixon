@@ -243,33 +243,33 @@ MSGERR2='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag
 AUTH=none
 
 new "auth-type=$AUTH no user"
-testrun $AUTH "" "HTTP/1.1 200 OK" "$MSGANON"          # OK - anonymous
+testrun $AUTH "" "HTTP/$HPRE 200" "$MSGANON"          # OK - anonymous
 
 new "auth-type=$AUTH anonymous"
-testrun $AUTH "-u ${anonymous}:foo" "HTTP/1.1 200 OK" "$MSGANON" # OK - anonymous
+testrun $AUTH "-u ${anonymous}:foo" "HTTP/$HVER 200" "$MSGANON" # OK - anonymous
 
 new "auth-type=$AUTH wilma"
-testrun $AUTH "-u wilma:bar" "HTTP/1.1 200 OK" "$MSGANON"    # OK - wilma
+testrun $AUTH "-u wilma:bar" "HTTP/$HVER 200"    # OK - wilma
 
 new "auth-type=$AUTH wilma wrong passwd"
-testrun $AUTH "-u wilma:wrong" "HTTP/1.1 200 OK" "$MSGANON"  # OK - wilma
+testrun $AUTH "-u wilma:wrong" "HTTP/$HVER 200" "$MSGANON"  # OK - wilma
 
 AUTH=user
 
 new "auth-type=$AUTH no user"
-testrun $AUTH "" "HTTP/1.1 401 Unauthorized" "$MSGERR1"                   # denied
+testrun $AUTH "" "HTTP/$HVER 401" "$MSGERR1"                   # denied
 
 new "auth-type=$AUTH anonymous"
-testrun $AUTH "-u ${anonymous}:foo" "HTTP/1.1 401 Unauthorized" "$MSGERR1" # denied
+testrun $AUTH "-u ${anonymous}:foo" "HTTP/$HVER 401" # denied
 
 new "auth-type=$AUTH wilma"
-testrun $AUTH "-u wilma:bar" "HTTP/1.1 200 OK" "$MSGWILMA"                 # OK - wilma
+testrun $AUTH "-u wilma:bar" "HTTP/$HVER 200" "$MSGWILMA"                 # OK - wilma
 
 new "auth-type=$AUTH wilma wrong passwd"
-testrun $AUTH "-u wilma:wrong" "HTTP/1.1 401 Unauthorized" "$MSGERR1"      # denied
+testrun $AUTH "-u wilma:wrong" "HTTP/$HVER 401" "$MSGERR1"      # denied
 
 new "auth-type=$AUTH unknown"
-testrun $AUTH "-u unknown:any"  "HTTP/1.1 401 Unauthorized" "$MSGERR1"     # denied
+testrun $AUTH "-u unknown:any"  "HTTP/$HVER 401" "$MSGERR1"     # denied
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

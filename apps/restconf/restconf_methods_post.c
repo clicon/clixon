@@ -84,7 +84,8 @@ http_location_header(clicon_handle h,
 
     https = restconf_param_get(h, "HTTPS");
     host = restconf_param_get(h, "HTTP_HOST");
-    request_uri = restconf_param_get(h, "REQUEST_URI");
+    if ((request_uri = restconf_uripath(h)) == NULL)
+	goto done;
     if (xobj != NULL){
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, 0, "cbuf_new");
@@ -109,6 +110,8 @@ http_location_header(clicon_handle h,
  done:
     if (cb)
 	cbuf_free(cb);
+    if (request_uri)
+	free(request_uri);
     return retval;
 }
 
@@ -367,7 +370,7 @@ api_data_post(clicon_handle h,
     }
     if (http_location_header(h, req, xdata) < 0)
 	goto done;
-    if (restconf_reply_send(req, 201, NULL) < 0)
+    if (restconf_reply_send(req, 201, NULL, 0) < 0)
 	goto done;	
  ok:
     retval = 0;
@@ -621,7 +624,7 @@ api_operations_post_output(clicon_handle h,
 	 strcmp(xml_name(xok),"ok")==0);
     if (isempty) {
 	/* Internal error - invalid output from rpc handler */
-	if (restconf_reply_send(req, 204, NULL) < 0)
+	if (restconf_reply_send(req, 204, NULL, 0) < 0)
 	    goto done;	
 	goto fail;
     }
@@ -872,8 +875,9 @@ api_operations_post(clicon_handle h,
     default:
 	break;
     }
-    if (restconf_reply_send(req, 200, cbret) < 0)
-	goto done;	
+    if (restconf_reply_send(req, 200, cbret, 0) < 0)
+	goto done;
+    cbret = NULL;
  ok:
     retval = 0;
  done:

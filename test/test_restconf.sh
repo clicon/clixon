@@ -169,23 +169,26 @@ function testrun()
     wait_restconf
 
     new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+
+    if ! ${WITH_HTTP2}; then # http/2
 
     if [ "${WITH_RESTCONF}" = "native" ]; then # XXX does not work with nginx
 	new "restconf GET http/1.0  - returns 1.0"
 	expectpart "$(curl $CURLOPTS --http1.0 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.0 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
-    fi
+    fi 
     new "restconf GET http/1.1"
     expectpart "$(curl $CURLOPTS --http1.1 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
+    # Try http/2 - go back to http/1.1
     new "restconf GET http/2"
-    expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+    expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/1.1 200 OK" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
     if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
 	new "restconf GET http/2 prior-knowledge (http)"
 	expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta 2>&1)" "16 52 55" # "Error in the HTTP2 framing layer" "Connection reset by peer"
     else
-    	new "restconf GET http/2 prior-knowledge (https)"
+    	new "restconf GET http/2 prior-knowledge(http2)"
 	expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
     fi
 
@@ -195,21 +198,21 @@ function testrun()
 	expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
     else # see (1) http to https port in restconf_main_native.c
 	new "Wrong proto=http on https port, expect bad request"
-	expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/1.1 400 Bad Request"
+	expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/$HVER 400"
 	# expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
     fi
-    
+    fi # HTTP/2    
     # Exact match
     new "restconf get restconf resource. RFC 8040 3.3 (json)"
-    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $proto://$addr/restconf)" 0 'HTTP/1.1 200 OK' '{"ietf-restconf:restconf":{"data":{},"operations":{},"yang-library-version":"2019-01-04"}}'
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $proto://$addr/restconf)" 0 "HTTP/$HVER 200" '{"ietf-restconf:restconf":{"data":{},"operations":{},"yang-library-version":"2019-01-04"}}'
 
     new "restconf get restconf resource. RFC 8040 3.3 (xml)"
     # Get XML instead of JSON?
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $proto://$addr/restconf)" 0 'HTTP/1.1 200 OK' '<restconf xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><data/><operations/><yang-library-version>2019-01-04</yang-library-version></restconf>'
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $proto://$addr/restconf)" 0 "HTTP/$HVER 200" '<restconf xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><data/><operations/><yang-library-version>2019-01-04</yang-library-version></restconf>'
 
     # Should be alphabetically ordered
     new "restconf get restconf/operations. RFC8040 3.3.2 (json)"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/operations)" 0 'HTTP/1.1 200 OK' '{"operations":{' '"clixon-example:client-rpc":\[null\],"clixon-example:empty":\[null\],"clixon-example:optional":\[null\],"clixon-example:example":\[null\]' '"clixon-lib:debug":\[null\],"clixon-lib:ping":\[null\],"clixon-lib:stats":\[null\],"clixon-lib:restart-plugin":\[null\]' '"ietf-netconf:get-config":\[null\],"ietf-netconf:edit-config":\[null\],"ietf-netconf:copy-config":\[null\],"ietf-netconf:delete-config":\[null\],"ietf-netconf:lock":\[null\],"ietf-netconf:unlock":\[null\],"ietf-netconf:get":\[null\],"ietf-netconf:close-session":\[null\],"ietf-netconf:kill-session":\[null\],"ietf-netconf:commit":\[null\],"ietf-netconf:discard-changes":\[null\],"ietf-netconf:validate":\[null\]'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/operations)" 0 "HTTP/$HVER 200" '{"operations":{' '"clixon-example:client-rpc":\[null\],"clixon-example:empty":\[null\],"clixon-example:optional":\[null\],"clixon-example:example":\[null\]' '"clixon-lib:debug":\[null\],"clixon-lib:ping":\[null\],"clixon-lib:stats":\[null\],"clixon-lib:restart-plugin":\[null\]' '"ietf-netconf:get-config":\[null\],"ietf-netconf:edit-config":\[null\],"ietf-netconf:copy-config":\[null\],"ietf-netconf:delete-config":\[null\],"ietf-netconf:lock":\[null\],"ietf-netconf:unlock":\[null\],"ietf-netconf:get":\[null\],"ietf-netconf:close-session":\[null\],"ietf-netconf:kill-session":\[null\],"ietf-netconf:commit":\[null\],"ietf-netconf:discard-changes":\[null\],"ietf-netconf:validate":\[null\]'
 
     new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
     ret=$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $proto://$addr/restconf/operations)
@@ -220,7 +223,7 @@ function testrun()
     fi
 
     new "restconf get restconf/yang-library-version. RFC8040 3.3.3"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/yang-library-version)" 0 'HTTP/1.1 200 OK' '{"yang-library-version":"2019-01-04"}'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/yang-library-version)" 0 "HTTP/$HVER 200" '{"yang-library-version":"2019-01-04"}'
 
     new "restconf get restconf/yang-library-version. RFC8040 3.3.3 (xml)"
     ret=$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $proto://$addr/restconf/yang-library-version)
@@ -231,42 +234,41 @@ function testrun()
     fi
 
     new "restconf schema resource, RFC 8040 sec 3.7 according to RFC 7895 (explicit resource)"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state/module=ietf-interfaces,2018-02-20)" 0 'HTTP/1.1 200 OK' '{"ietf-yang-library:module":\[{"name":"ietf-interfaces","revision":"2018-02-20","namespace":"urn:ietf:params:xml:ns:yang:ietf-interfaces","conformance-type":"implement"}\]}'
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state/module=ietf-interfaces,2018-02-20)" 0 "HTTP/$HVER 200" '{"ietf-yang-library:module":\[{"name":"ietf-interfaces","revision":"2018-02-20","namespace":"urn:ietf:params:xml:ns:yang:ietf-interfaces","conformance-type":"implement"}\]}'
 
     new "restconf schema resource, mod-state top-level"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state)" 0 'HTTP/1.1 200 OK' "{\"ietf-yang-library:modules-state\":{\"module-set-id\":\"0\",\"module\":\[{\"name\":\"clixon-example\",\"revision\":\"${CLIXON_EXAMPLE_REV}\",\"namespace\":\"urn:example:clixon\",\"conformance-type\":\"implement\"},{\"name\":\"clixon-lib\",\"revision\":\"${CLIXON_LIB_REV}\",\""
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state)" 0 "HTTP/$HVER 200" "{\"ietf-yang-library:modules-state\":{\"module-set-id\":\"0\",\"module\":\[{\"name\":\"clixon-example\",\"revision\":\"${CLIXON_EXAMPLE_REV}\",\"namespace\":\"urn:example:clixon\",\"conformance-type\":\"implement\"},{\"name\":\"clixon-lib\",\"revision\":\"${CLIXON_LIB_REV}\",\""
 
     new "restconf options. RFC 8040 4.1"
-    expectpart "$(curl $CURLOPTS -X OPTIONS $proto://$addr/restconf/data)" 0 "HTTP/1.1 200 OK" "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE"
+    expectpart "$(curl $CURLOPTS -X OPTIONS $proto://$addr/restconf/data)" 0 "HTTP/$HVER 200" "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE"
 
-    # -I means HEAD
     new "restconf HEAD. RFC 8040 4.2"
-    expectpart "$(curl $CURLOPTS -I -H "Accept: application/yang-data+json" $proto://$addr/restconf/data)" 0 "HTTP/1.1 200 OK" "Content-Type: application/yang-data+json"
-
+    expectpart "$(curl $CURLOPTS --head -H "Accept: application/yang-data+json" $proto://$addr/restconf/data)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-data+json"
+    
     new "restconf empty rpc JSON"
-    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-example:input\":null} $proto://$addr/restconf/operations/clixon-example:empty)" 0  "HTTP/1.1 204 No Content"
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-example:input\":null} $proto://$addr/restconf/operations/clixon-example:empty)" 0  "HTTP/$HVER 204"
 
     new "restconf empty rpc XML"
-    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" -d '<input xmlns="urn:example:clixon"></input>' $proto://$addr/restconf/operations/clixon-example:empty)" 0  "HTTP/1.1 204 No Content"
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" -d '<input xmlns="urn:example:clixon"></input>' $proto://$addr/restconf/operations/clixon-example:empty)" 0  "HTTP/$HVER 204"
 
     new "restconf empty rpc, default media type should fail"
-    expectpart "$(curl $CURLOPTS -X POST -d {\"clixon-example:input\":null} $proto://$addr/restconf/operations/clixon-example:empty)" 0 'HTTP/1.1 415 Unsupported Media Type'
+    expectpart "$(curl $CURLOPTS -X POST -d {\"clixon-example:input\":null} $proto://$addr/restconf/operations/clixon-example:empty)" 0 "HTTP/$HVER 415"
 
     new "restconf empty rpc, default media type should fail (JSON)"
-    expectpart "$(curl $CURLOPTS -X POST -H "Accept: application/yang-data+json" -d {\"clixon-example:input\":null} $proto://$addr/restconf/operations/clixon-example:empty)" 0 'HTTP/1.1 415 Unsupported Media Type'
+    expectpart "$(curl $CURLOPTS -X POST -H "Accept: application/yang-data+json" -d {\"clixon-example:input\":null} $proto://$addr/restconf/operations/clixon-example:empty)" 0 "HTTP/$HVER 415"
 
     new "restconf empty rpc with extra args (should fail)"
-    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-example:input\":{\"extra\":null}} $proto://$addr/restconf/operations/clixon-example:empty)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"extra"},"error-severity":"error","error-message":"Unrecognized parameter: extra in rpc: empty"}}}'
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-example:input\":{\"extra\":null}} $proto://$addr/restconf/operations/clixon-example:empty)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"extra"},"error-severity":"error","error-message":"Unrecognized parameter: extra in rpc: empty"}}}'
 
     # Irritiating to get debugs on the terminal
     #new "restconf debug rpc"
-    #expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-lib:input\":{\"level\":0}} $proto://$addr/restconf/operations/clixon-lib:debug)" 0  "HTTP/1.1 204 No Content"
+    #expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-lib:input\":{\"level\":0}} $proto://$addr/restconf/operations/clixon-lib:debug)" 0  "HTTP/$HVER 204"
 
     new "restconf get empty config + state json"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/clixon-example:state)" 0 "HTTP/1.1 200 OK" '{"clixon-example:state":{"op":\["41","42","43"\]}}'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/clixon-example:state)" 0 "HTTP/$HVER 200" '{"clixon-example:state":{"op":\["41","42","43"\]}}'
 
     new "restconf get empty config + state json with wrong module name"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/badmodule:state)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"badmodule"},"error-severity":"error","error-message":"No such yang module prefix"}}}'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/badmodule:state)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"badmodule"},"error-severity":"error","error-message":"No such yang module prefix"}}}'
 
     #'HTTP/1.1 404 Not Found'
     #'{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"No such yang module: badmodule"}}}'
@@ -304,89 +306,89 @@ function testrun()
     fi
 
     new "restconf GET datastore"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/clixon-example:state)" 0 "HTTP/1.1 200 OK" '{"clixon-example:state":{"op":\["41","42","43"\]}}'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/clixon-example:state)" 0 "HTTP/$HVER 200" '{"clixon-example:state":{"op":\["41","42","43"\]}}'
 
     # Exact match
     new "restconf Add subtree eth/0/0 to datastore using POST"
-    expectpart "$(curl $CURLOPTS -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}}' $proto://$addr/restconf/data)" 0 'HTTP/1.1 201 Created' "Location: $proto://$addr/restconf/data/ietf-interfaces:interfaces"
+    expectpart "$(curl $CURLOPTS -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}}' $proto://$addr/restconf/data)" 0 "HTTP/$HVER 201" "Location: $proto://$addr/restconf/data/ietf-interfaces:interfaces"
 
 # See test_json.sh
     new "restconf empty list"
-    expectpart "$(curl $CURLOPTS -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" -d '{"clixon-example:table":{"parameter":[]}}' $proto://$addr/restconf/data)" 0 'HTTP/1.1 201 Created' "Location: $proto://$addr/restconf/data/clixon-example:table"
+    expectpart "$(curl $CURLOPTS -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" -d '{"clixon-example:table":{"parameter":[]}}' $proto://$addr/restconf/data)" 0 "HTTP/$HVER 201" "Location: $proto://$addr/restconf/data/clixon-example:table"
 
     new "restconf Re-add subtree eth/0/0 which should give error"
     expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}}' $proto://$addr/restconf/data)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
 
     new "restconf Check interfaces eth/0/0 added"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/1.1 200 OK" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}}'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}}'
 
     new "restconf delete interfaces"
-    expectpart "$(curl $CURLOPTS -X DELETE $proto://$addr/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl $CURLOPTS -X DELETE $proto://$addr/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 204"
 
     new "restconf Check empty config"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/clixon-example:state)" 0 "HTTP/1.1 200 OK" "$state"
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/clixon-example:state)" 0 "HTTP/$HVER 200" "$state"
 
     new "restconf Add interfaces subtree eth/0/0 using POST"
-    expectpart "$(curl $CURLOPTS -X POST $proto://$addr/restconf/data/ietf-interfaces:interfaces -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}')" 0 "HTTP/1.1 201 Created"
+    expectpart "$(curl $CURLOPTS -X POST $proto://$addr/restconf/data/ietf-interfaces:interfaces -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}')" 0 "HTTP/$HVER 201"
 
     new "restconf Check eth/0/0 added config"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-interfaces:interfaces)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}}'
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}}'
 
     new "restconf Check eth/0/0 GET augmented state level 1"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 'HTTP/1.1 200 OK' '{"ietf-interfaces:interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}'
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}'
 
     new "restconf Check eth/0/0 GET augmented state level 2"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0/clixon-example:my-status)" 0 'HTTP/1.1 200 OK' '{"clixon-example:my-status":{"int":42,"str":"foo"}}' 
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0/clixon-example:my-status)" 0 "HTTP/$HVER 200" '{"clixon-example:my-status":{"int":42,"str":"foo"}}' 
 
     new "restconf Check eth/0/0 added state XXXXXXX"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/clixon-example:state)" 0 'HTTP/1.1 200 OK' '{"clixon-example:state":{"op":\["41","42","43"\]}}'
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/clixon-example:state)" 0 "HTTP/$HVER 200" '{"clixon-example:state":{"op":\["41","42","43"\]}}'
 
     new "restconf Re-post eth/0/0 which should generate error"
     expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' $proto://$addr/restconf/data/ietf-interfaces:interfaces)" 0 '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
 
     new "Add leaf description using POST"
-    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:description":"The-first-interface"}' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 "HTTP/1.1 201 Created"
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:description":"The-first-interface"}' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 "HTTP/$HVER 201"
 
     new "Add nothing using POST (expect fail)"
-    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0  'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"The message-body MUST contain exactly one instance of the expected data resource"}}}'
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0  "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"The message-body MUST contain exactly one instance of the expected data resource"}}}'
 
     new "restconf Check description added"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/1.1 200 OK" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","description":"The-first-interface","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}}'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","description":"The-first-interface","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}}'
 
     new "restconf delete eth/0/0"
-    expectpart "$(curl $CURLOPTS -X DELETE $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl $CURLOPTS -X DELETE $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 "HTTP/$HVER 204"
 
     new "Check deleted eth/0/0"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data)" 0 "HTTP/1.1 200 OK" "$state"
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data)" 0 "HTTP/$HVER 200" "$state"
 
     new "restconf Re-Delete eth/0/0 using none should generate error"
-    expectpart "$(curl $CURLOPTS -X DELETE $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 "HTTP/1.1 409 Conflict" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-missing","error-severity":"error","error-message":"Data does not exist; cannot delete resource"}}}'
+    expectpart "$(curl $CURLOPTS -X DELETE $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 "HTTP/$HVER 409" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-missing","error-severity":"error","error-message":"Data does not exist; cannot delete resource"}}}'
 
     new "restconf Add subtree eth/0/0 using PUT"
-    expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 "HTTP/1.1 201 Created"
+    expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 "HTTP/$HVER 201"
 
     new "restconf get subtree"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/1.1 200 OK" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}}'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}}'
 
     new "restconf rpc using POST json"
-    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":42}}' $proto://$addr/restconf/operations/clixon-example:example)" 0 "HTTP/1.1 200 OK" '{"clixon-example:output":{"x":"42","y":"42"}}'
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":42}}' $proto://$addr/restconf/operations/clixon-example:example)" 0 "HTTP/$HVER 200" '{"clixon-example:output":{"x":"42","y":"42"}}'
 
     if ! $YANG_UNKNOWN_ANYDATA ; then
 	new "restconf rpc using POST json wrong"
-	expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"wrongelement":"ipv4"}}' $proto://$addr/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"wrongelement"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: wrongelement with parent: example in namespace: urn:example:clixon"}}}'
+	expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"wrongelement":"ipv4"}}' $proto://$addr/restconf/operations/clixon-example:example)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"wrongelement"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: wrongelement with parent: example in namespace: urn:example:clixon"}}}'
     fi
 
     new "restconf rpc non-existing rpc without namespace"
-    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{}' $proto://$addr/restconf/operations/kalle)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"kalle"},"error-severity":"error","error-message":"RPC not defined"}}'
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{}' $proto://$addr/restconf/operations/kalle)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"kalle"},"error-severity":"error","error-message":"RPC not defined"}}'
 
     new "restconf rpc non-existing rpc"
-    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{}' $proto://$addr/restconf/operations/clixon-example:kalle)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"kalle"},"error-severity":"error","error-message":"RPC not defined"}}'
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{}' $proto://$addr/restconf/operations/clixon-example:kalle)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"kalle"},"error-severity":"error","error-message":"RPC not defined"}}'
 
     new "restconf rpc missing name"
-    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{}' $proto://$addr/restconf/operations)" 0 'HTTP/1.1 412 Precondition Failed' '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"Operation name expected"}}}'
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{}' $proto://$addr/restconf/operations)" 0 "HTTP/$HVER 412" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"Operation name expected"}}}'
 
     new "restconf rpc missing input"
-    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{}' $proto://$addr/restconf/operations/clixon-example:example)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"restconf RPC does not have input statement"}}}'
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{}' $proto://$addr/restconf/operations/clixon-example:example)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"restconf RPC does not have input statement"}}}'
 
     new "restconf rpc using POST xml"
     ret=$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -H "Accept: application/yang-data+xml" -d '{"clixon-example:input":{"x":42}}' $proto://$addr/restconf/operations/clixon-example:example)
@@ -397,7 +399,7 @@ function testrun()
     fi
 
     new "restconf rpc using wrong prefix"
-    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"wrong:input":{"routing-instance-name":"ipv4"}}' $proto://$addr/restconf/operations/wrong:example)" 0 "HTTP/1.1 412 Precondition Failed" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"yang module not found"}}}'
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"wrong:input":{"routing-instance-name":"ipv4"}}' $proto://$addr/restconf/operations/wrong:example)" 0 "HTTP/$HVER 412" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"yang module not found"}}}'
 
     new "restconf local client rpc using POST xml"
     ret=$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -H "Accept: application/yang-data+xml" -d '{"clixon-example:input":{"x":"example"}}' $proto://$addr/restconf/operations/clixon-example:client-rpc)
@@ -408,10 +410,10 @@ function testrun()
     fi
 
     new "restconf Add subtree without key (expected error)"
-    expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"malformed key =interface, expected'
+    expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"malformed key =interface, expected'
 
     new "restconf Add subtree with too many keys (expected error)"
-    expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=a,b)" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"List key interface length mismatch"}}}'
+    expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=a,b)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"List key interface length mismatch"}}}'
 
     if [ $RC -ne 0 ]; then
 	new "Kill restconf daemon"

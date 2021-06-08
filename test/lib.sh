@@ -99,6 +99,14 @@ DEFAULTHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capab
 # -i : Include HTTP response headers
 # -k : insecure 
 : ${CURLOPTS:="-Ssik"}
+# Set HTTP version 1.1 or 2
+if ${WITH_HTTP2}; then
+    CURLOPTS="${CURLOPTS} --http2-prior-knowledge"
+    HVER=2
+else
+    HVER=1.1
+fi
+
 
 # Wait after daemons (backend/restconf) start. See mem.sh for valgrind
 if [ "$(uname -m)" = "armv7l" ]; then
@@ -373,7 +381,7 @@ function wait_restconf(){
     hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
 #    echo "hdr:\"$hdr\""
     let i=0;
-    while [[ $hdr != *"200 OK"* ]]; do
+    while [[ $hdr != *"200"* ]]; do
 #	echo "wait_restconf $i"
 	if [ $i -ge $DEMLOOP ]; then
 	    err1 "restconf timeout $DEMWAIT seconds"
@@ -480,7 +488,7 @@ function expectpart(){
 	  positive=false;
       elif [ $i -gt 1 ]; then
 #	   echo "echo \"$ret\" | grep --null -o \"$exp"\"
-	   match=$(echo "$ret" | grep --null -o "$exp") # XXX -EZo: -E cant handle {}
+	   match=$(echo "$ret" | grep --null -i -o "$exp") #-i ignore case XXX -EZo: -E cant handle {}
 	   r=$? 
 	   if $positive; then
 	       if [ $r != 0 ]; then

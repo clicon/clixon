@@ -147,7 +147,7 @@ restconf_not_acceptable(clicon_handle  h,
     /* Override with 415 netconf->restoconf translation which gives a 405 */
     if (api_return_err0(h, req, xerr, pretty, media, 415) < 0) 
 	goto done;
-    if (restconf_reply_send(req, 415, NULL) < 0)
+    if (restconf_reply_send(req, 415, NULL, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -301,8 +301,9 @@ api_return_err(clicon_handle h,
 	break;
     } /* switch media */
     assert(cbuf_len(cb));
-    if (restconf_reply_send(req, code, cb) < 0)
+    if (restconf_reply_send(req, code, cb, 0) < 0)
 	goto done;
+    cb = NULL;
     // ok:
     retval = 0;
  done:

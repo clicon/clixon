@@ -85,6 +85,7 @@ api_well_known(clicon_handle h,
     char     *request_method;
     cbuf     *cb = NULL;
     int       pretty;
+    int       head;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (req == NULL){
@@ -92,15 +93,16 @@ api_well_known(clicon_handle h,
 	goto done;
     }
     request_method = restconf_param_get(h, "REQUEST_METHOD");
-    if (strcmp(request_method, "GET") != 0){
+    head = strcmp(request_method, "HEAD") == 0;
+    if (!head && strcmp(request_method, "GET") != 0){
 	pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-	if (restconf_method_notallowed(h, req, "GET", pretty, YANG_DATA_JSON) < 0)
+	if (restconf_method_notallowed(h, req, "GET,HEAD", pretty, YANG_DATA_JSON) < 0)
 	    goto done;
 	goto ok;
     }
-    if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
-	goto done;
     if (restconf_reply_header(req, "Content-Type", "application/xrd+xml") < 0)
+	goto done;
+    if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
 	goto done;
     /* Create body */
     if ((cb = cbuf_new()) == NULL){
@@ -111,8 +113,9 @@ api_well_known(clicon_handle h,
     cprintf(cb, "   <Link rel='restconf' href='/restconf'/>\n");
     cprintf(cb, "</XRD>\r\n");
 
-    if (restconf_reply_send(req, 200, cb) < 0)
+    if (restconf_reply_send(req, 200, cb, head) < 0)
 	goto done;
+    cb = NULL;
  ok:
     retval = 0;
  done:
@@ -144,9 +147,11 @@ api_root_restconf_exact(clicon_handle  h,
     yang_stmt *yspec;
     cxobj     *xt = NULL;
     cbuf      *cb = NULL;
+    int        head;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    if (strcmp(request_method, "GET") != 0){
+    head = strcmp(request_method, "HEAD") == 0;
+    if (!head && strcmp(request_method, "GET") != 0){
 	if (restconf_method_notallowed(h, req, "GET", pretty, media_out) < 0)
 	    goto done;
 	goto ok;
@@ -155,11 +160,10 @@ api_root_restconf_exact(clicon_handle  h,
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }
-    if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
-	goto done;
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
 	goto done;
-    
+    if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
+	goto done;
     if (clixon_xml_parse_string("<restconf xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><data/>"
 				"<operations/><yang-library-version>" IETF_YANG_LIBRARY_REVISION
 				"</yang-library-version></restconf>",
@@ -184,8 +188,9 @@ api_root_restconf_exact(clicon_handle  h,
     default:
 	break;
     }
-    if (restconf_reply_send(req, 200, cb) < 0)
+    if (restconf_reply_send(req, 200, cb, head) < 0)
 	goto done;
+    cb = NULL;
  ok:
     retval = 0;
  done:
@@ -261,8 +266,9 @@ api_yang_library_version(clicon_handle h,
     default:
 	break;
     }
-    if (restconf_reply_send(req, 200, cb) < 0)
+    if (restconf_reply_send(req, 200, cb, 0) < 0)
 	goto done;
+    cb = NULL;
     retval = 0;
  done:
     if (cb)
@@ -414,7 +420,7 @@ api_root_restconf(clicon_handle        h,
     int            retval = -1;
     char          *request_method = NULL; /* GET,.. */
     char          *api_resource = NULL;   /* RFC8040 3.3: eg data/operations */
-    char          *path;
+    char          *path = NULL;
     char         **pvec = NULL;
     cvec          *pcvec = NULL; /* for rest api */
     int            pn;
@@ -433,7 +439,8 @@ api_root_restconf(clicon_handle        h,
 	goto done;
     }
     request_method = restconf_param_get(h, "REQUEST_METHOD");
-    path = restconf_uripath(h);
+    if ((path = restconf_uripath(h)) == NULL)
+	goto done;
     /* XXX see restconf_config_init access directly */
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     /* Get media for output (proactive negotiation) RFC7231 by using
@@ -462,6 +469,7 @@ api_root_restconf(clicon_handle        h,
 
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;
+
     /* Sanity check of path. Should be /restconf/ */
     if (pn < 2){
 	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /restconf/ expected") < 0)
@@ -576,7 +584,6 @@ api_root_restconf(clicon_handle        h,
 	    goto done;
 	goto ok;
     }
-
  ok:
     retval = 0;
  done:
@@ -589,8 +596,8 @@ api_root_restconf(clicon_handle        h,
 	cvec_free(pcvec);
     if (pvec)
 	free(pvec);
-    if (cb)
-	cbuf_free(cb);
+    if (path)
+	free(path);
     return retval;
 }
 

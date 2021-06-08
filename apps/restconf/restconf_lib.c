@@ -530,24 +530,30 @@ restconf_main_extension_cb(clicon_handle h,
     return retval;
 }
 
-/*! Extract uri-encoded uri-path from fastcgi parameters
+/*! Extract uri-encoded uri-path without arguments
+ *
  * Use REQUEST_URI parameter and strip ?args
- * REQUEST_URI have args and is encoded
- *   eg /interface=eth%2f0%2f0?insert=first
- * DOCUMENT_URI dont have args and is not encoded
- *   eg /interface=eth/0/0
- *  causes problems with eg /interface=eth%2f0%2f0
+ *   eg /interface=eth%2f0%2f0?insert=first -> /interface=eth%2f0%2f0
+ * @retval path malloced, need free
  */
 char *
 restconf_uripath(clicon_handle h)
 {
-    char *path;
+    char *path = NULL;
+    char *path2 = NULL;
     char *q;
 
-    path = restconf_param_get(h, "REQUEST_URI"); 
-    if ((q = index(path, '?')) != NULL)
+    if ((path = restconf_param_get(h, "REQUEST_URI")) == NULL){
+	clicon_err(OE_RESTCONF, 0, "No REQUEST_URI");
+	return NULL;
+    }
+    if ((path2 = strdup(path)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	return NULL;
+    }
+    if ((q = index(path2, '?')) != NULL)
 	*q = '\0';
-    return path;
+    return path2;
 }
 
 /*! Drop privileges from root to user (or already at user)
@@ -936,3 +942,4 @@ restconf_socket_extract(clicon_handle h,
 	free(reason);
     return retval;
 }
+

@@ -39,6 +39,8 @@
 # --with-restconf=native Integration with embedded web server libevhtp
 WITH_RESTCONF=@with_restconf@ # native, fcgi or ""
 
+WITH_HTTP2=@with_http2@ # true if nghttp2 is enabled, otherwise false
+
 # This is for libxml2 XSD regex engine
 # Note this only enables the compiling of the code. In order to actually
 # use it you need to set Clixon config option CLICON_YANG_REGEXP to libxml2

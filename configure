@@ -637,6 +637,7 @@ CPP
 wwwdir
 enable_optyangs
 with_libxml2
+with_http2
 with_restconf
 LINKAGE
 SH_SUFFIX
@@ -3356,6 +3357,8 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
  # Set to native or fcgi -> compile apps/restconf
+with_http2=false
+
 
 
 # Home dir for web user, such as nginx fcgi sockets
@@ -5360,6 +5363,7 @@ else
   as_fn_error $? "nghttp2 missing" "$LINENO" 5
 fi
 
+      with_http2=true
    fi
 
 $as_echo "#define WITH_RESTCONF_NATIVE 1" >>confdefs.h

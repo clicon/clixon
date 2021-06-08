@@ -81,7 +81,7 @@ new "Set backend debug using netconf"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><debug $LIBNS><level>1</level></debug></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Set backend debug using restconf"
-expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/operations/clixon-lib:debug -d '{"clixon-lib:input":{"level":1}}')" 0 'HTTP/1.1 204 No Content'
+expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/operations/clixon-lib:debug -d '{"clixon-lib:input":{"level":1}}')" 0 "HTTP/$HVER 204"
 
 new "Set restconf debug using netconf"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><restconf $RESTCONFNS><debug>1</debug></restconf></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -90,7 +90,7 @@ new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "Set restconf debug using restconf"
-expectpart "$(curl $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf/debug -d '{"clixon-restconf:debug":1}')" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/clixon-restconf:restconf/debug -d '{"clixon-restconf:debug":1}')" 0 "HTTP/$HVER 204"
 
 new "Set cli debug using cli"
 expectpart "$($clixon_cli -1 -f $cfg -l o debug cli 1)" 0 "^$"
@@ -101,9 +101,9 @@ expectpart "$($clixon_cli -1 -f $cfg -l o debug backend 1)" 0 "^$"
 new "Set restconf debug using cli"
 expectpart "$($clixon_cli -1 -f $cfg -l o debug restconf 1)" 0 "^$"
 
-# Exercse debug code
+# Exercise debug code
 new "get and put config using restconf"
-expectpart "$(curl $CURLOPTS -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data?content=config --next $CURLOPTS -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data -d '{"example:table":{"parameter":{"name":"local0","value":"foo"}}}')" 0 "HTTP/1.1 200 OK" '<data>' 'HTTP/1.1 201 Created'
+expectpart "$(curl $CURLOPTS -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data?content=config --next $CURLOPTS -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data -d '{"example:table":{"parameter":{"name":"local0","value":"foo"}}}')" 0 "HTTP/$HVER 200" '<data>' "HTTP/$HVER 201"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

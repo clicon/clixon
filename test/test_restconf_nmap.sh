@@ -185,7 +185,7 @@ new "nmap sslv2"
 expectpart "$(nmap --script sslv2 -p 443 127.0.0.1)" 0 "443/tcp open  https"
 
 new "restconf get. Just ensure restconf is alive"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://127.0.0.1/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://127.0.0.1/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

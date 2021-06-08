@@ -125,10 +125,10 @@ EOF
     if [ $db = init ]; then
 	# Must set NACM first
 	new "Set NACM using PATCH"
-	expectpart "$(curl -u guest:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+xml" -d "<data>$NACM$XML</data>" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
+	expectpart "$(curl -u guest:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+xml" -d "<data>$NACM$XML</data>" $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
 
 #	new "Set Initial data using POST"
-#	expectpart "$(curl -u guest:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" -d "$XML" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
+#	expectpart "$(curl -u guest:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" -d "$XML" $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
 	
 
     fi
@@ -136,13 +136,13 @@ EOF
     #----------- First get
     case "$ret1" in
 	0) ret='{"nacm-example:x":42}'
-	   status="HTTP/1.1 200 OK"
+	   status="HTTP/$HVER 200"
 	;;
 	1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
-	   status="HTTP/1.1 403 Forbidden"
+	   status="HTTP/$HVER 403"
 	   ;;
 	2) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
-	   status="HTTP/1.1 404 Not Found"
+	   status="HTTP/$HVER 404"
 	;;
     esac
 
@@ -152,10 +152,10 @@ EOF
     #----------- Then edit
     case "$ret2" in
 	0) ret=''
-	   status="HTTP/1.1 204 No Content"
+	   status="HTTP/$HVER 204"
 	;;
 	1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
-	   status="HTTP/1.1 403 Forbidden"
+	   status="HTTP/$HVER 403"
 	;;
     esac
     new "edit new 99"
@@ -164,16 +164,16 @@ EOF
     #----------- Then second get
     case "$ret3" in
 	0) ret='{"nacm-example:x":99}'
-	   status="HTTP/1.1 200 OK"
+	   status="HTTP/$HVER 200"
 	;;
 	1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
-	   status="HTTP/1.1 403 Forbidden"
+	   status="HTTP/$HVER 403"
         ;;
 	2) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
-	   status="HTTP/1.1 404 Not Found"
+	   status="HTTP/$HVER 404"
 	   ;;
 	3) ret='{"nacm-example:x":42}'
-	   status="HTTP/1.1 200 OK"
+	   status="HTTP/$HVER 200"
 	   ;;
     esac
 

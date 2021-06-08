@@ -238,31 +238,31 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-ch
 
 # Now same with restconf
 new "restconf edit main"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"main:main":{"x":"foo","ext":"foo"}}')" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"main:main":{"x":"foo","ext":"foo"}}')" 0 "HTTP/$HVER 201"
 
 new "restconf edit sub1"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"main:sub1":{"x":"foo","ext1":"foo"}}')" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"main:sub1":{"x":"foo","ext1":"foo"}}')" 0 "HTTP/$HVER 201"
 
 new "restconf edit sub2"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"main:sub2":{"x":"foo","ext2":"foo"}}')" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"main:sub2":{"x":"foo","ext2":"foo"}}')" 0 "HTTP/$HVER 201"
 
 new "restconf check main/sub1/sub2 contents"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data?content=config)" 0 'HTTP/1.1 200 OK' '{"data":{"main:main":{"ext":"foo","x":"foo"},"main:sub1":{"ext1":"foo","x":"foo"},"main:sub2":{"ext2":"foo","x":"foo"}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data?content=config)" 0 "HTTP/$HVER 200" '{"data":{"main:main":{"ext":"foo","x":"foo"},"main:sub1":{"ext1":"foo","x":"foo"},"main:sub2":{"ext2":"foo","x":"foo"}'
 
 new "restconf edit augment 0"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:sub2 -d '{"main:aug0":"foo"}')" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:sub2 -d '{"main:aug0":"foo"}')" 0 "HTTP/$HVER 201"
 
 new "restconf edit augment 1"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:main -d '{"main:aug1":"foo"}')" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:main -d '{"main:aug1":"foo"}')" 0 "HTTP/$HVER 201"
 
 new "restconf edit augment 2"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:sub2 -d '{"main:aug2":"foo"}')" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:sub2 -d '{"main:aug2":"foo"}')" 0 "HTTP/$HVER 201"
 
 new "NETCONF get module state"
 expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/yl:modules-state/yl:module[yl:name='main']\" xmlns:yl=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>]]>]]>" "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module><name>main</name><revision>2021-03-08</revision><namespace>urn:example:clixon</namespace><feature>A</feature><conformance-type>implement</conformance-type><submodule><name>sub1</name><revision/></submodule></module>"
 
 new "RESTCONF get module state"
-expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data/ietf-yang-library:modules-state/module=main,2021-03-08?config=nonconfig)" 0 'HTTP/1.1 200 OK' "<module xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><name>main</name><revision>2021-03-08</revision><namespace>urn:example:clixon</namespace><feature>A</feature><conformance-type>implement</conformance-type><submodule><name>sub1</name><revision/></submodule></module>"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data/ietf-yang-library:modules-state/module=main,2021-03-08?config=nonconfig)" 0 "HTTP/$HVER 200" "<module xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><name>main</name><revision>2021-03-08</revision><namespace>urn:example:clixon</namespace><feature>A</feature><conformance-type>implement</conformance-type><submodule><name>sub1</name><revision/></submodule></module>"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

@@ -304,7 +304,7 @@ restconf_stream(clicon_handle h,
 	goto done;
     if (restconf_reply_header(req, "X-Accel-Buffering", "no") < 0)
 	goto done;
-    if (restconf_reply_send(req, 201, NULL) < 0)
+    if (restconf_reply_send(req, 201, NULL, 0) < 0)
 	goto done;
     *sp = s;
  ok:
@@ -378,7 +378,7 @@ api_stream(clicon_handle h,
 {
     int            retval = -1;
     FCGX_Request  *rfcgi = (FCGX_Request *)req; /* XXX */
-    char          *path;
+    char          *path = NULL;
     char          *method;
     char         **pvec = NULL;
     int            pn;
@@ -397,7 +397,8 @@ api_stream(clicon_handle h,
 #endif
 
     clicon_debug(1, "%s", __FUNCTION__);
-    path = restconf_uripath(h);
+    if ((path = restconf_uripath(h)) == NULL)
+	goto done;
     /* XXX see restconf_config_init access directly */
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
@@ -521,5 +522,7 @@ api_stream(clicon_handle h,
 	cbuf_free(cb);
     if (cbret)
 	cbuf_free(cbret);
+    if (path)
+	free(path);
     return retval;
 }

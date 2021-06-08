@@ -34,8 +34,12 @@ Expected: June 2021
 
 ### New features
 
-* Started EXPERIMENTAL HTTP/2 work using nghttp2
-  * Added autoconf config options, temporary for nghttp2 development: `--disable-evhtp`and `--enable-nghttp2` enabling http/1 only / http/2 only linki and compile.
+* HTTP/2 support using nghttp2
+  * --with-restconf=fcgi not affected, only for --with-restconf=native
+  * Added autoconf config for --with-restconf=native:
+    * `--disable-evhtp`  disabling http/1
+    * `--enable-nghttp2` enabling http/2
+  * Remaining work: http (non ALPN) h1->h2 upgrade
 * YANG when statement in conjunction with grouping/uses/augment
   * Several cases were not implemented fully according to RFC 7950:
     * Do not extend default values if when statements evaluate to false
@@ -80,6 +84,7 @@ Developers may need to change their code
 
 ### Minor features
 
+* Restconf: ensure HEAD method works everywhere GET does.
 * Added new startup-mode: `running-startup`: First try running db, if it is empty try startup db.
   * See [Can startup mode to be extended to support running-startup mode? #234](https://github.com/clicon/clixon/issues/234)
 * Restconf: added inline configuration using `-R <xml>` command line as an alternative to making advanced restconf configuration

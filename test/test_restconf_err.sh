@@ -187,16 +187,16 @@ new "wait restconf"
 wait_restconf
 
 new "restconf POST initial tree"
-expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -d "$XML" $RCPROTO://localhost/restconf/data)" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -d "$XML" $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
 
 new "restconf GET initial datastore"
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:a=0)" 0 'HTTP/1.1 200 OK' "$XML"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:a=0)" 0 "HTTP/$HVER 200" "$XML"
 
 # XXX cannot get this to work for all combinations of nc/netcat fcgi/native
 # But leave it here for debugging where netcat works properly
 # Alt try something like:
 # printf "Hello World!" | (exec 3<>/dev/tcp/127.0.0.1/80; cat >&3; cat <&3; exec 3<&-)
-if false; then
+if [ false -a ! ${WITH_HTTP2} ] ; then
     # Look for netcat or nc for direct socket http calls
     if [ -n "$(type netcat 2> /dev/null)" ]; then
 	netcat="netcat -w 1" # -N works on evhtp but not fcgi
@@ -207,34 +207,34 @@ if false; then
     fi
 
 #    new "restconf try fuzz crash"
-#    expectpart "$(${netcat} 127.0.0.1 80 < ~/tmp/crashes/id:000000,sig:06,src:000493+000365,op:splice,rep:8)" 0 "HTTP/1.1 400 Bad Request"
+#    expectpart "$(${netcat} 127.0.0.1 80 < ~/tmp/crashes/id:000000,sig:06,src:000493+000365,op:splice,rep:8)" 0 "HTTP/$HVER 400"
     
     new "restconf GET initial datastore netcat"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
-GET /restconf/data/example:a=0 HTTP/1.1
+GET /restconf/data/example:a=0 HTTP/$HVER
 Host: localhost
 Accept: application/yang-data+xml
 
 EOF
-)" 0 "HTTP/1.1 200 OK" "$XML"
+)" 0 "HTTP/$HVER 200" "$XML"
 
     new "restconf XYZ not found"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
-XYZ /restconf/data/example:a=0 HTTP/1.1
+XYZ /restconf/data/example:a=0 HTTP/$HVER
 Host: localhost
 Accept: application/yang-data+xml
 
 EOF
-)" 0 "HTTP/1.1 404 Not Found"
+)" 0 "HTTP/$HVER 404"
     
-    new "restconf HEAD not allowed"
+    new "restconf PUT not allowed"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
-HEAD /restconf HTTP/1.1
+PUT /restconf/.well-known/host-meta HTTP/$HVER
 Host: localhost
 Accept: application/yang-data+xml
 
 EOF
-)" 0 "HTTP/1.1 405" "Not Allowed" # nginx uses "method not allowed" evhtp "not allowed"
+)" 0 "HTTP/$HVER 405" kalle # nginx uses "method not allowed" evhtp "not allowed"
 
     # XXX error from evhtp parsing, should pick up error code
     new "restconf GET wrong http version raw"
@@ -244,73 +244,70 @@ Host: localhost
 Accept: application/yang-data+xml
 
 EOF
-)" 0 "HTTP/1.1 400 Bad Request" # native: '<error-tag>malformed-message</error-tag><error-message>The requested URL or a header is in some way badly formed</error-message>'
+)" 0 "HTTP/$HVER 400" # native: '<error-tag>malformed-message</error-tag><error-message>The requested URL or a header is in some way badly formed</error-message>'
 
-fi # netcat Cannot get to work on all platforms
+fi # Http/1.1 and netcat Cannot get to work on all platforms
 
 new "restconf XYZ not found"
-expectpart "$(curl $CURLOPTS -X XYS -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:a=0)" 0 'HTTP/1.1 404 Not Found'
+expectpart "$(curl $CURLOPTS -X XYS -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:a=0)" 0 "HTTP/$HVER 404"
 
-# XXX dont work w fcgi
-if [ "${WITH_RESTCONF}" = "native" ]; then
-    new "restconf HEAD not allowed"
-    expectpart "$(curl $CURLOPTS -X HEAD -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf)" 0 "HTTP/1.1 405" "Not Allowed" "Allow: GET"
-fi
+new "restconf PUT not allowed"
+expectpart "$(curl $CURLOPTS -X PUT $RCPROTO://localhost/.well-known/host-meta)" 0 "HTTP/$HVER 405" "Allow: GET,HEAD"
 
 new "restconf GET non-qualified list"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:a)" 0 'HTTP/1.1 400 Bad Request' "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"rpc\",\"error-tag\":\"malformed-message\",\"error-severity\":\"error\",\"error-message\":\"malformed key =example:a, expected '=restval'\"}}}"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:a)" 0 "HTTP/$HVER 400" "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"rpc\",\"error-tag\":\"malformed-message\",\"error-severity\":\"error\",\"error-message\":\"malformed key =example:a, expected '=restval'\"}}}"
 
 new "restconf GET container with rest-api"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:table=x)" 0 'HTTP/1.1 400 Bad Request' "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"rpc\",\"error-tag\":\"malformed-message\",\"error-severity\":\"error\",\"error-message\":\"malformed api-path, =x not expected\"}}}"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:table=x)" 0 "HTTP/$HVER 400" "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"rpc\",\"error-tag\":\"malformed-message\",\"error-severity\":\"error\",\"error-message\":\"malformed api-path, =x not expected\"}}}"
 
 new "restconf GET non-qualified list subelements"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:a/k)" 0 'HTTP/1.1 400 Bad Request' "^{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"rpc\",\"error-tag\":\"malformed-message\",\"error-severity\":\"error\",\"error-message\":\"malformed key =example:a, expected '=restval'\"}}}"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:a/k)" 0 "HTTP/$HVER 400" "^{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"rpc\",\"error-tag\":\"malformed-message\",\"error-severity\":\"error\",\"error-message\":\"malformed key =example:a, expected '=restval'\"}}}"
 
 new "restconf GET non-existent container body"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:a=0/c)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:a=0/c)" 0 "HTTP/$HVER 404" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 new "restconf GET invalid (no yang) container body"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:a=0/xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:a=0/xxx)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'
 
 new "restconf GET invalid (no yang) element"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:xxx)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'
 
 new "restconf POST non-existent (no yang) element"
 # should be invalid element
-expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -d "$XML" $RCPROTO://localhost/restconf/data/example:a=23/xxx)" 0 'HTTP/1.1 400 Bad Request' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'
+expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -d "$XML" $RCPROTO://localhost/restconf/data/example:a=23/xxx)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"unknown-element","error-info":{"bad-element":"xxx"},"error-severity":"error","error-message":"Unknown element"}}}'
 
 # Test for multi-module path where an augment stretches across modules
 new "restconf POST augment multi-namespace path"
-expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -d '<route-config xmlns="urn:example:aug"><dynamic><ospf xmlns="urn:example:clixon"><reference-bandwidth>23</reference-bandwidth></ospf></dynamic></route-config>' $RCPROTO://localhost/restconf/data)" 0 'HTTP/1.1 201 Created'
+expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -d '<route-config xmlns="urn:example:aug"><dynamic><ospf xmlns="urn:example:clixon"><reference-bandwidth>23</reference-bandwidth></ospf></dynamic></route-config>' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
 
 new "restconf GET augment multi-namespace top"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/augment:route-config)" 0 'HTTP/1.1 200 OK' '{"augment:route-config":{"dynamic":{"example:ospf":{"reference-bandwidth":23}}}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/augment:route-config)" 0 "HTTP/$HVER 200" '{"augment:route-config":{"dynamic":{"example:ospf":{"reference-bandwidth":23}}}}'
 
 new "restconf GET augment multi-namespace level 1"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/augment:route-config/dynamic)" 0 'HTTP/1.1 200 OK' '{"augment:dynamic":{"example:ospf":{"reference-bandwidth":23}}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/augment:route-config/dynamic)" 0 "HTTP/$HVER 200" '{"augment:dynamic":{"example:ospf":{"reference-bandwidth":23}}}'
 
 new "restconf GET augment multi-namespace cross"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/augment:route-config/dynamic/example:ospf)" 0 'HTTP/1.1 200 OK' '{"example:ospf":{"reference-bandwidth":23}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/augment:route-config/dynamic/example:ospf)" 0 "HTTP/$HVER 200" '{"example:ospf":{"reference-bandwidth":23}}'
 
 new "restconf GET augment multi-namespace cross level 2"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/augment:route-config/dynamic/example:ospf/reference-bandwidth)" 0 'HTTP/1.1 200 OK' '{"example:reference-bandwidth":23}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/augment:route-config/dynamic/example:ospf/reference-bandwidth)" 0 "HTTP/$HVER 200" '{"example:reference-bandwidth":23}'
 
 # XXX actually no such element
 new "restconf GET augment multi-namespace, no 2nd module in api-path, fail"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/augment:route-config/dynamic/ospf)" 0 'HTTP/1.1 404 Not Found' '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/augment:route-config/dynamic/ospf)" 0 "HTTP/$HVER 404" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 #----------------------------------------------
 # Also generate an invalid state XML. This should generate an "Internal" error and the name of the
 new "restconf GET failed state"
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 '412 Precondition Failed' '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>mystate</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: mystate with parent: config in namespace: urn:example:foobar. Internal error, state callback returned invalid XML from plugin: example_backend</error-message></error></errors>'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/$HVER 412" '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>mystate</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: mystate with parent: config in namespace: urn:example:foobar. Internal error, state callback returned invalid XML from plugin: example_backend</error-message></error></errors>'
 
 # Add error XML a[4242] , it should fail on autocommit but may not be discarded, therefore still
 # there in candidate when want to add something else
 new "Add user-invalid entry (should fail)"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data -d '<table xmlns="urn:example:clixon"><parameter><name>4242</name></parameter></table>')" 0 "HTTP/1.1 412 Precondition Failed" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"operation-failed","error-severity":"error","error-message":"User error"}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data -d '<table xmlns="urn:example:clixon"><parameter><name>4242</name></parameter></table>')" 0 "HTTP/$HVER 412" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"operation-failed","error-severity":"error","error-message":"User error"}}}'
 
 new "Add OK entry"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data -d '<table xmlns="urn:example:clixon"><parameter><name>1</name></parameter></table>')" 0 "HTTP/1.1 201 Created" 
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data -d '<table xmlns="urn:example:clixon"><parameter><name>1</name></parameter></table>')" 0 "HTTP/$HVER 201" 
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

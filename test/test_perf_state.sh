@@ -155,7 +155,7 @@ done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF get
 new "restconf get test single req"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 "HTTP/1.1 200 OK" '{"example:interface":\[{"name":"e1","type":"ex:eth","enabled":true,"status":"up"}\]}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 "HTTP/$HVER 200" '{"example:interface":\[{"name":"e1","type":"ex:eth","enabled":true,"status":"up"}\]}'
 
 new "restconf get $perfreq single reqs"
 #curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e67
