@@ -97,6 +97,8 @@ Developers may need to change their code
 	
 ### Corrected Bugs
 
+* Fixed: [JSON parsing error for a specific input. #236](https://github.com/clicon/clixon/issues/236)
+  * JSON empty list parse problems, eg `a:[]`
 * Fixed: [restconf patch method unable to chage value to empty string #229](https://github.com/clicon/clixon/issues/229)
 * Fixed: [when condition error under augment in restconf #227](https://github.com/clicon/clixon/issues/227)
 * Fixed: [Using YANG union with decimal64 and string leads to regexp match fail #226](https://github.com/clicon/clixon/issues/226)

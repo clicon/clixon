@@ -209,6 +209,7 @@ json_current_new(clixon_json_yacc *jy,
 static int
 json_current_pop(clixon_json_yacc *jy)
 {
+    clicon_debug(2, "%s", __FUNCTION__);
     if (jy->jy_current) 
 	jy->jy_current = xml_parent(jy->jy_current);
     return 0;
@@ -219,6 +220,7 @@ json_current_clone(clixon_json_yacc *jy)
 {
     cxobj *xn;
 
+    clicon_debug(2, "%s", __FUNCTION__);
     if (jy->jy_current == NULL){
 	return -1;
     }
@@ -245,14 +247,6 @@ json_current_body(clixon_json_yacc *jy,
  done:
     return retval;
  }
-
-static int
-json_empty_list(clixon_json_yacc *jy)
-{
-    xml_rm(jy->jy_current);
-    jy->jy_current = NULL;
-    return 0;
-}
 
 %} 
  
@@ -284,15 +278,15 @@ objlist       : pair             { _PARSE_DEBUG("objlist->pair");}
               ;
 
 pair          : string { json_current_new(_JY, $1);free($1);} ':' 
-                value { json_current_pop(_JY);}{ _PARSE_DEBUG("pair->string : value");}
+                value  { json_current_pop(_JY);}{ _PARSE_DEBUG("pair->string : value");}
               ;
 
-array         : '[' ']'           { json_empty_list(_JY); _PARSE_DEBUG("array->[]"); }
+array         : '[' ']'           { _PARSE_DEBUG("array->[]"); }
               | '[' valuelist ']' { _PARSE_DEBUG("array->[ valuelist ]"); }
               ;
 
 valuelist     : value             { _PARSE_DEBUG("valuelist->value"); }
-              | valuelist { if (json_current_clone(_JY)< 0) _YYERROR("stack?");}
+              | valuelist         { if (json_current_clone(_JY)< 0) _YYERROR("stack?");}
                 ',' value         { _PARSE_DEBUG("valuelist->valuelist , value");}
               ;
 
