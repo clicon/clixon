@@ -933,7 +933,6 @@ add_namespace(cxobj *x,
     if (xml_value_set(xa, namespace) < 0)
 	goto done;
     xml_sort(xp); /* Ensure attr is first / XXX xml_insert? */
-	
     retval = 0;
  done:
     return retval;
@@ -1798,47 +1797,53 @@ assign_namespace_element(cxobj *x0, /* source */
     return retval;
 }
 
-/* If origin body has namespace definitions, copy them. The reason is that
+/*! Copy namespace declarations from source to target
+ *
+ * If origin body has namespace definitions, copy them. The reason is that
  * some bodies rely on namespace prefixes, such as NACM path, but there is 
  * no way we can now this here.
  * However, this may lead to namespace collisions if these prefixes are not
  * canonical, and may collide with the assign_namespace_element() above (but that 
- * is for element sysmbols)
+ * is for element symbols)
+ *
+ * @param[in]  x0     Source XML
+ * @param[in]  x1     Destination XML
  */
 int
 assign_namespace_body(cxobj *x0, /* source */
-		      char  *x0bstr,
 		      cxobj *x1) /* target */
 {
     int    retval = -1;
     char  *namespace = NULL;
+    char  *namespace1;
     char  *name;
-    char  *prefix;
-    char  *prefix0 = NULL;;
-    char  *pexisting = NULL;;
+    char  *prefix0;         
+    char  *prefix1 = NULL;  
     cxobj *xa;
     
     xa = NULL;
     while ((xa = xml_child_each(x0, xa, CX_ATTR)) != NULL) {
-	prefix = xml_prefix(xa);
+	prefix0 = xml_prefix(xa);
 	name = xml_name(xa);
 	namespace = xml_value(xa);
-	if ((strcmp(name, "xmlns")==0 && prefix==NULL) ||
-	    (prefix != NULL && strcmp(prefix, "xmlns")==0)){
-	    if (prefix == NULL)
-		prefix0 = NULL;
+	if ((strcmp(name, "xmlns")==0 && prefix0==NULL) ||
+	    (prefix0 != NULL && strcmp(prefix0, "xmlns")==0)){
+	    if (prefix0 == NULL)
+		prefix1 = NULL;
 	    else
-		prefix0 = name;
+		prefix1 = name;
+	    /* prefix1 contains actual prefix or NULL, prefix0 can be xmlns */
 	    if (strcmp(namespace, NETCONF_BASE_NAMESPACE) ==0 ||
 		strcmp(namespace, YANG_XML_NAMESPACE) ==0)
 		continue;
 	    /* Detect if prefix:namespace is declared already? */
-	    if (xml2prefix(x1, namespace, &pexisting) == 1){
-		/* Yes, and it has prefix pexist */
-		if (clicon_strcmp(pexisting, prefix0) ==0)
-		    continue;
-	    }
-	    if (add_namespace(x1, x1, prefix0, namespace) < 0)
+	    if (xml2ns(x1, prefix1, &namespace1) == 1)
+		continue;
+	    /* Does prefix already point at right namespace? */
+	    if (namespace1 && strcmp(namespace, namespace1)==0)
+		continue;
+	    /* No, add entry */
+	    if (add_namespace(x1, x1, prefix1, namespace) < 0)
 		goto done;
 	}
     }

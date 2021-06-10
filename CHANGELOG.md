@@ -34,12 +34,11 @@ Expected: June 2021
 
 ### New features
 
-* HTTP/2 support using nghttp2
-  * --with-restconf=fcgi not affected, only for --with-restconf=native
-  * Added autoconf config for --with-restconf=native:
-    * `--disable-evhtp`  disabling http/1
-    * `--enable-nghttp2` enabling http/2
-  * Remaining work: http (non ALPN) h1->h2 upgrade
+* Restconf native HTTP/2 support using nghttp2
+  * Enable using: `--with-restconf=native --enable-nghttp2`
+  * FCGI/nginx not affected only for `--with-restconf=native`
+  * HTTP/1 co-exists, unless `--disable-evhtp` which results in http/2 only
+  * TLS ALPN upgrade works but http (non SSL) http/1->http/2 upgrade is not yet implemented
 * YANG when statement in conjunction with grouping/uses/augment
   * Several cases were not implemented fully according to RFC 7950:
     * Do not extend default values if when statements evaluate to false
@@ -76,15 +75,8 @@ Users may have to change how they access the system
   * Previous meaning (wrong): Return all `a` elements.
   * New meaning (correct): Return the `a` instance with empty key string: "".
 
-### C/CLI-API changes on existing features
-
-Developers may need to change their code
-
-* 
-
 ### Minor features
 
-* Restconf: ensure HEAD method works everywhere GET does.
 * Added new startup-mode: `running-startup`: First try running db, if it is empty try startup db.
   * See [Can startup mode to be extended to support running-startup mode? #234](https://github.com/clicon/clixon/issues/234)
 * Restconf: added inline configuration using `-R <xml>` command line as an alternative to making advanced restconf configuration
@@ -97,8 +89,11 @@ Developers may need to change their code
 	
 ### Corrected Bugs
 
+* Fixed: [restconf patch method adds redundant namespaces #235](https://github.com/clicon/clixon/issues/235)
+* Fixed: Restconf HEAD did not work everywhere GET did, such as well-known and exact root.
 * Fixed: [JSON parsing error for a specific input. #236](https://github.com/clicon/clixon/issues/236)
   * JSON empty list parse problems, eg `a:[]`
+  * May also have fixed: [Json parser not work properly with empry array \[\] #228](https://github.com/clicon/clixon/issues/228)
 * Fixed: [restconf patch method unable to chage value to empty string #229](https://github.com/clicon/clixon/issues/229)
 * Fixed: [when condition error under augment in restconf #227](https://github.com/clicon/clixon/issues/227)
 * Fixed: [Using YANG union with decimal64 and string leads to regexp match fail #226](https://github.com/clicon/clixon/issues/226)

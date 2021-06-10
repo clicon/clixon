@@ -487,7 +487,6 @@ text_modify(clicon_handle       h,
 		    if (strcmp(restype, "enumeration") == 0 ||
 			strcmp(restype, "bits") == 0)
 			x1bstr = clixon_trim2(x1bstr, " \t\n"); 
-
 		    /* If origin body has namespace definitions, copy them. The reason is that
 		     * some bodies rely on namespace prefixes, such as NACM path, but there is 
 		     * no way we can know this here.
@@ -496,7 +495,7 @@ text_modify(clicon_handle       h,
 		     * is for element symbols)
 		     * Oh well.
 		     */
-		    if (assign_namespace_body(x1, x1bstr, x0) < 0)
+		    if (assign_namespace_body(x1, x0) < 0)
 			goto done;
 		}
 		if ((x0b = xml_body_get(x0)) != NULL){
