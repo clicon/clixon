@@ -536,7 +536,10 @@ module clixon-config {
 	    default drop_perm;
 	    description 
 		"Restconf privileges mode. 
-                 If drop_perm or drop_temp then drop privileges to CLICON_RESTCONF_USER.";
+                 If drop_perm or drop_temp then drop privileges to CLICON_RESTCONF_USER.
+                 If the platform does not support getresuid and accompanying functions, the mode
+                 must be set to 'none'.
+                 ";
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;

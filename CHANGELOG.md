@@ -77,6 +77,8 @@ Users may have to change how they access the system
 
 ### Minor features
 
+* Added autotool check for getresuid (+ related functions) necessary for lowering of priviliges for backend and restconf
+  * If getresuid is not available, CLICON_RESTCONF_PRIVILEGES must be set to 'none'
 * Added new startup-mode: `running-startup`: First try running db, if it is empty try startup db.
   * See [Can startup mode to be extended to support running-startup mode? #234](https://github.com/clicon/clixon/issues/234)
 * Restconf: added inline configuration using `-R <xml>` command line as an alternative to making advanced restconf configuration

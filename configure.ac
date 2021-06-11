@@ -296,7 +296,7 @@ if test "${with_libxml2}"; then
 fi 
 
 #
-AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort getpeereid setns)
+AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort getpeereid setns getresuid)
 
 # Checks for getsockopt options for getting unix socket peer credentials on
 # Linux

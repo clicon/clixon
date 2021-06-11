@@ -170,6 +170,7 @@ uid2name(const uid_t uid,
 int
 drop_priv_temp(uid_t new_uid)
 {
+#ifdef HAVE_GETRESUID
     int retval = -1;
     
     /* XXX: implicit declaration of function 'setresuid' on travis */
@@ -184,6 +185,10 @@ drop_priv_temp(uid_t new_uid)
     retval = 0;
  done:
     return retval;
+#else
+    clicon_debug(1, "%s Drop privileges not implemented on this platform since getresuid is not available", __FUNCTION__);
+    return 0;
+#endif
 }
 
 /*! Permanently drop privileges 
@@ -192,6 +197,7 @@ drop_priv_temp(uid_t new_uid)
 int
 drop_priv_perm(uid_t new_uid)
 {
+#ifdef HAVE_GETRESUID
     int retval = -1;
     uid_t ruid;
     uid_t euid;
@@ -214,12 +220,17 @@ drop_priv_perm(uid_t new_uid)
     retval = 0;
  done:
     return retval;
+#else
+    clicon_debug(1, "%s Drop privileges not implemented on this platform since getresuid is not available", __FUNCTION__);
+    return 0;
+#endif
 }
 
 /*! Restore privileges to saved level */
 int
 restore_priv(void)
 {
+#ifdef HAVE_GETRESUID
     int retval = -1;
     uid_t ruid;
     uid_t euid;
@@ -240,4 +251,8 @@ restore_priv(void)
     retval = 0;
  done:
     return retval;
+#else
+    clicon_debug(1, "%s Drop privileges not implemented on this platform since getresuid is not available", __FUNCTION__);
+    return 0;
+#endif
 }
