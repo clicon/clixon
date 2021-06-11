@@ -33,14 +33,11 @@
 
   ***** END LICENSE BLOCK *****
 
- * XML support functions.
- * @see https://www.w3.org/TR/2008/REC-xml-20081126
- *      https://www.w3.org/TR/2009/REC-xml-names-20091208
- * The function can do yang validation, process xml and json, etc.
- * On success, nothing is printed and exitcode 0
- * On failure, an error is printed on stderr and exitcode != 0
- * Failure error prints are different, it would be nice to make them more
- * uniform. (see clixon_netconf_error)
+  * 
+  * HTTP2 + OPENSSL client integrated with clixon events
+  * Ubuntu package:
+  *    apt install libnghttp2-dev
+  * Example run: clixon_util_ssl -H nghttp2.org
  */
 
 #ifdef HAVE_CONFIG_H
@@ -130,7 +127,7 @@ send_callback(nghttp2_session *session,
     int           ret;
 
     
-    clicon_debug(1, "%s %d:", __FUNCTION__, length);
+    clicon_debug(1, "%s %zu:", __FUNCTION__, length);
 #if 0
     {
 	int           i;
@@ -481,6 +478,7 @@ main(int    argc,
     int           ret;
     nghttp2_session *session = NULL;
     session_data    *sd = NULL;
+    int              dbg = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -493,7 +491,7 @@ main(int    argc,
 	    usage(argv[0]);
 	    break;
     	case 'D':
-	    if (sscanf(optarg, "%d", &debug) != 1)
+	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(argv[0]);
 	    break;
 	case 'H': /* hostname */
@@ -507,6 +505,7 @@ main(int    argc,
 	fprintf(stderr, "-H <hostname> is mandatory\n");
 	usage(argv[0]);
     }
+    clicon_debug_init(dbg, NULL);
     SSL_library_init();
     if ((ctx = InitCTX()) == NULL)
 	goto done;

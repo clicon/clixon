@@ -452,6 +452,7 @@ text_modify(clicon_handle       h,
 		 * Check if namespace exists in x0 parent
 		 * if not add new binding and replace in x0.
 		 * See also xmlns copying of attributes in the body section below
+		 * Note that this may add "unnecessary" namespace declarations
 		 */
 		if (assign_namespace_element(x1, x0, x0p) < 0)
 		    goto done;

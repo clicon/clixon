@@ -33,8 +33,7 @@
 
   ***** END LICENSE BLOCK *****
 
-  * 
-  * HTTP2 + OPENSSL client integrated with clixon events
+  * Actually  HTTP2 + OPENSSL client integrated with clixon events
   * Ubuntu package:
   *    apt install libnghttp2-dev
   * Example run: clixon_util_ssl -H nghttp2.org
@@ -54,9 +53,10 @@
 #include <arpa/inet.h>  /* inet_pton */
 #include <netinet/tcp.h> /* TCP_NODELAY */
 
-
 #include <openssl/ssl.h>
+#ifdef HAVE_LIBNGHTTP2
 #include <nghttp2/nghttp2.h>
+#endif
 
 /* cligen */
 #include <cligen/cligen.h>

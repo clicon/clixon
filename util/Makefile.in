@@ -86,14 +86,17 @@ APPSRC   += clixon_util_xpath.c
 APPSRC   += clixon_util_path.c
 APPSRC   += clixon_util_datastore.c
 APPSRC   += clixon_util_regexp.c
-ifdef with_restconf
-APPSRC   += clixon_util_stream.c # Needs curl
-endif
 APPSRC   += clixon_util_socket.c
 APPSRC   += clixon_netconf_ssh_callhome.c
 APPSRC   += clixon_netconf_ssh_callhome_client.c
-#APPSRC   += clixon_util_ssl.c
-#APPSRC   += clixon_util_grpc.c
+ifdef with_restconf
+APPSRC   += clixon_util_stream.c # Needs curl
+endif
+ifdef with_http2
+APPSRC   += clixon_util_ssl.c # requires http/2
+#APPSRC   += clixon_util_grpc.c # work in progress
+endif
+
 
 APPS	  = $(APPSRC:.c=)
 
@@ -132,19 +135,19 @@ clixon_util_xml_mod: clixon_util_xml_mod.c $(LIBDEPS)
 clixon_util_regexp: clixon_util_regexp.c $(LIBDEPS)
 	$(CC) $(INCLUDES) -I /usr/include/libxml2 $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 
-ifdef with_restconf
-clixon_util_stream: clixon_util_stream.c $(LIBDEPS)
-	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lcurl -o $@
-endif
-
 clixon_util_socket: clixon_util_socket.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 
-#clixon_util_ssl: clixon_util_ssl.c $(LIBDEPS)
-#	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lnghttp2 -lssl -lcrypto -o $@
+ifdef with_restconf
+clixon_util_stream: clixon_util_stream.c $(LIBDEPS)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lcurl -o $@
 
-#clixon_util_grpc: clixon_util_grpc.c $(LIBDEPS)
-#	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lnghttp2 -lssl -lcrypto -o $@
+clixon_util_ssl: clixon_util_ssl.c $(LIBDEPS)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
+
+clixon_util_grpc: clixon_util_grpc.c $(LIBDEPS)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
+endif
 
 distclean: clean
 	rm -f Makefile *~ .depend
