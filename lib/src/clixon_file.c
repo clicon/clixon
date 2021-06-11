@@ -50,7 +50,8 @@
 #include <sys/param.h>
 #include <unistd.h>
 #include <netinet/in.h>
- 
+#include <stddef.h>
+
 /* cligen */
 #include <cligen/cligen.h>
 
@@ -103,6 +104,7 @@ clicon_file_dirent(const char     *dir,
    DIR           *dirp;
    int            res;
    int            nent;
+   int            direntStructSize;
    regex_t        re;
    char           errbuf[128];
    char           filename[MAXPATHLEN];
@@ -143,12 +145,13 @@ clicon_file_dirent(const char     *dir,
 	   if ((type & st.st_mode) == 0)
 	       continue;
        }
-       if ((tmp = realloc(new, (nent+1)*sizeof(*dvecp))) == NULL) {
+       direntStructSize = offsetof(struct dirent, d_name) + strlen(dent->d_name) + 1;
+       if ((tmp = realloc(new, (nent+1)*direntStructSize)) == NULL) {
 	   clicon_err(OE_UNIX, errno, "realloc");
 	   goto quit;
        }
        new = tmp;
-       memcpy(&new[nent], dent, sizeof(*dent));
+       memcpy(&new[nent], dent, direntStructSize);
        nent++;
 
    } /* while */
