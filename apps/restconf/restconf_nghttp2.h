@@ -42,6 +42,7 @@
  * Prototypes
  */
 int clixon_nghttp2_log_cb(void *handle, int suberr, cbuf *cb);
+int http2_exec(restconf_conn *rc, restconf_stream_data *sd, nghttp2_session *session, int32_t stream_id);
 int http2_recv(restconf_conn *rc, const unsigned char *buf, size_t n);
 int http2_send_server_connection(restconf_conn *rc);
 int http2_session_init(restconf_conn *rc);

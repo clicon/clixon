@@ -174,10 +174,9 @@ EOF
 	    new "start backend -s init -f $cfg -- -sS $fstate"
 	    start_backend -s init -f $cfg -- -sS $fstate
 	fi
-
-	new "waiting"
-	wait_backend
     fi
+    new "wait backend"
+    wait_backend
 
     if [ $RC -ne 0 ]; then
 	new "kill old restconf daemon"
@@ -216,8 +215,8 @@ EOF
 
     new "restconf get config"
     expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=config)" 0 "HTTP/$HVER 200" "$XML"
-    
-    # Save partial state in state file with unknown removed (positive test)
+
+    new "Save partial state with unknowns removed in state file $fstate"
     echo "$STATE1" > $fstate 
 
     new "Get state (positive test)"
@@ -226,7 +225,7 @@ EOF
     new "restconf get state(positive)"
     expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/$HVER 200" "$STATE1"
 
-    # full state with unknowns
+    new "Save full state with unknowns in state file $fstate"
     echo "$STATE0" > $fstate 
 
     new "Get state (negative test)"

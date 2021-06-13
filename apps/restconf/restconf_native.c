@@ -139,6 +139,10 @@ restconf_stream_free(restconf_stream_data *sd)
 	cbuf_free(sd->sd_body);
     if (sd->sd_path)
 	free(sd->sd_path);
+    if (sd->sd_settings2)
+	free(sd->sd_settings2);
+    if (sd->sd_qvec)
+	cvec_free(sd->sd_qvec);
     free(sd);
     return 0;
 }

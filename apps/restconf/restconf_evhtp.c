@@ -195,7 +195,7 @@ evhtp_convert_fcgi(evhtp_header_t *hdr,
     return restconf_convert_hdr(h, hdr->key, hdr->val);
 }
 
-/*! Map from evhtp information to "fcgi" type parameters used in clixon code
+/*! convert parameters from evhtp to  fcgi-like parameters used by clixon
  *
  * While all these params come via one call in fcgi, the information must be taken from
  * several different places in evhtp 
@@ -216,9 +216,9 @@ evhtp_convert_fcgi(evhtp_header_t *hdr,
  * @note there may be more used by an application plugin
  */
 static int
-evhtp_params_set(clicon_handle    h,
-		 evhtp_request_t *req,
-    		 cvec            *qvec)
+convert_evhtp_params2clixon(clicon_handle    h,
+			    evhtp_request_t *req,
+			    cvec            *qvec)
 {
     int           retval = -1;
     htp_method    meth;
@@ -395,9 +395,9 @@ restconf_evhtp_reply(restconf_conn        *rc,
      * (Successful) response to a CONNECT request (Section 4.3.6 of
      * [RFC7231]).
      */
-    if (restconf_reply_header(sd, "Content-Length", "%d",
-			      (sd->sd_body!=NULL)?cbuf_len(sd->sd_body):0) < 0)
-	goto done;	
+    if (sd->sd_code != 204 && sd->sd_code > 199)
+	if (restconf_reply_header(sd, "Content-Length", "%lu", sd->sd_body_len) < 0)
+	    goto done;	
     /* Create reply and write headers */
     if (native_send_reply(rc, sd, req) < 0)
 	goto done;
@@ -409,6 +409,60 @@ restconf_evhtp_reply(restconf_conn        *rc,
  done:
     return retval;
 }
+
+#ifdef HAVE_LIBNGHTTP2
+/*! Check http/1 UPGRADE to http/2
+ * If upgrade headers are encountered AND http/2 is configured, then 
+ * - add upgrade headers or signal error
+ * - set http2 flag get settings to and signal to upper layer to do the actual transition.
+ * @retval   -1   Error
+ * @retval    0   Yes, upgrade dont proceed with request
+ * @retval    1   No upgrade, proceed with request
+ * @note currently upgrade header is checked always if nghttp2 is configured but may be a 
+ *       runtime config option
+ */
+static int
+evhtp_upgrade_http2(clicon_handle         h,
+		    restconf_stream_data *sd)
+{
+    int    retval = -1;
+    char  *str;
+    char  *settings;
+    cxobj *xerr = NULL;
+	
+    if ((str = restconf_param_get(h, "HTTP_UPGRADE")) != NULL){
+	/* Only accept "h2c" */
+	if (strcmp(str, "h2c") != 0){
+	    if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid upgrade token") < 0)
+		goto done; 
+	    if (api_return_err0(h, sd, xerr, 1, YANG_DATA_JSON, 0) < 0)
+		goto done;
+	    if (xerr)
+		xml_free(xerr);
+	}
+	else {
+	    if (restconf_reply_header(sd, "Connection", "Upgrade") < 0)
+		goto done;
+	    if (restconf_reply_header(sd, "Upgrade", "h2c") < 0)
+		goto done;
+	    if (restconf_reply_send(sd, 101, NULL, 0) < 0) /* Swithcing protocols */
+		goto done;
+	    /* Signal http/2 upgrade to http/2 to upper restconf_connection handling */
+	    sd->sd_upgrade2 = 1;
+	    if ((settings = restconf_param_get(h, "HTTP_HTTP2_Settings")) != NULL &&
+		(sd->sd_settings2 = (uint8_t*)strdup(settings)) == NULL){
+		clicon_err(OE_UNIX, errno, "strdup");
+		goto done;
+	    }
+	}
+	retval = 0; /* Yes, upgrade or error */
+    }
+    else
+	retval = 1; /* No upgrade, proceed with request */
+ done:
+    return retval;
+}
+#endif /* HAVE_LIBNGHTTP2 */
 
 /*! Callback for each incoming http request for path /
  *
@@ -429,10 +483,12 @@ restconf_path_root(evhtp_request_t *req,
     int                   retval = -1;
     clicon_handle         h;
     int                   ret;
-    cvec                 *qvec = NULL;
     evhtp_connection_t   *evconn;
     restconf_conn        *rc;
     restconf_stream_data *sd;
+    size_t                len;
+    unsigned char        *buf;
+    int                   keep_params = 0; /* set to 1 if dont delete params */
 
     clicon_debug(1, "------------");
     if ((h = (clicon_handle)arg) == NULL){
@@ -458,46 +514,48 @@ restconf_path_root(evhtp_request_t *req,
     /* input debug */
     if (clicon_debug_get())
 	evhtp_headers_for_each(req->headers_in, evhtp_print_header, h);
-    
-    /* get accepted connection */
     /* Query vector, ie the ?a=x&b=y stuff */
-    if ((qvec = cvec_new(0)) ==NULL){
+    if ((sd->sd_qvec = cvec_new(0)) ==NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	evhtp_internal_error(req);
 	goto done;
     }
     /* Get indata
      */
-    {
-	size_t            len;
-	unsigned char    *buf;
-	
-	len = evbuffer_get_length(req->buffer_in);
-	if (len > 0){
-	    if ((buf = evbuffer_pullup(req->buffer_in, len)) == NULL){
-		clicon_err(OE_CFG, errno, "evbuffer_pullup");
-		goto done;
-	    }
-	    /* Note the pullup may not be null-terminated */
-	    cbuf_append_buf(sd->sd_indata, buf, len);
+    if ((len = evbuffer_get_length(req->buffer_in)) > 0){
+	if ((buf = evbuffer_pullup(req->buffer_in, len)) == NULL){
+	    clicon_err(OE_CFG, errno, "evbuffer_pullup");
+	    goto done;
 	}
+	/* Note the pullup may not be null-terminated */
+	cbuf_append_buf(sd->sd_indata, buf, len);
     }
-    /* set fcgi-like paramaters (ignore query vector) 
+    /* Convert parameters from evhtp to  fcgi-like parameters used by clixon
      * ret = 0 means an error has already been sent
      */
-    if ((ret = evhtp_params_set(h, req, qvec)) < 0){
+    if ((ret = convert_evhtp_params2clixon(h, req, sd->sd_qvec)) < 0){
 	evhtp_internal_error(req);
 	goto done;
     }
+#ifdef HAVE_LIBNGHTTP2
+    if (ret == 1){
+	if ((ret = evhtp_upgrade_http2(h, sd)) < 0){
+	    evhtp_internal_error(req);
+	    goto done;
+	}
+	if (ret == 0)
+	    keep_params = 1;
+    }
+#endif
     if (ret == 1){
 	/* call generic function */
-	if (api_root_restconf(h, sd, qvec) < 0){
+	if (api_root_restconf(h, sd, sd->sd_qvec) < 0){
 	    evhtp_internal_error(req);
 	    goto done;
 	}
     }
     /* Clear input request parameters from this request */
-    if (restconf_param_del_all(h) < 0){
+    if (!keep_params && restconf_param_del_all(h) < 0){
 	evhtp_internal_error(req);
 	goto done;
     }
@@ -512,8 +570,6 @@ restconf_path_root(evhtp_request_t *req,
     retval = 0;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
-    if (qvec)
-	cvec_free(qvec);
     return; /* void */
 }
 
@@ -533,6 +589,7 @@ restconf_path_wellknown(evhtp_request_t *req,
     evhtp_connection_t   *evconn;
     restconf_conn        *rc;
     restconf_stream_data *sd;
+    int                   keep_params = 0; /* set to 1 if dont delete params */
 
     clicon_debug(1, "------------");
     if ((h = (clicon_handle)arg) == NULL){
@@ -558,13 +615,29 @@ restconf_path_wellknown(evhtp_request_t *req,
     /* input debug */
     if (clicon_debug_get())
 	evhtp_headers_for_each(req->headers_in, evhtp_print_header, h);
-    /* get accepted connection */
-
-    /* set fcgi-like paramaters (ignore query vector) */
-    if ((ret = evhtp_params_set(h, req, NULL)) < 0){
+    /* Query vector, ie the ?a=x&b=y stuff */
+    if ((sd->sd_qvec = cvec_new(0)) ==NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
 	evhtp_internal_error(req);
 	goto done;
     }
+    /* Convert parameters from evhtp to  fcgi-like parameters used by clixon
+     * ret = 0 means an error has already been sent
+     */
+    if ((ret = convert_evhtp_params2clixon(h, req, sd->sd_qvec)) < 0){
+	evhtp_internal_error(req);
+	goto done;
+    }
+#ifdef HAVE_LIBNGHTTP2
+    if (ret == 1){
+	if ((ret = evhtp_upgrade_http2(h, sd)) < 0){
+	    evhtp_internal_error(req);
+	    goto done;
+	}
+	if (ret == 0)
+	    keep_params = 1;
+    }
+#endif
     if (ret == 1){
 	/* call generic function */
 	if (api_well_known(h, sd) < 0){
@@ -573,7 +646,7 @@ restconf_path_wellknown(evhtp_request_t *req,
 	}
     }
     /* Clear input request parameters from this request */
-    if (restconf_param_del_all(h) < 0){
+    if (!keep_params && restconf_param_del_all(h) < 0){
 	evhtp_internal_error(req);
 	goto done;
     }

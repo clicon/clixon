@@ -96,7 +96,8 @@ AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(LINKAGE)
 AC_SUBST(with_restconf) # Set to native or fcgi -> compile apps/restconf
-AC_SUBST(with_http2,false) 
+AC_SUBST(HAVE_LIBEVHTP,false)   # consider using neutral constant such as with-http1
+AC_SUBST(HAVE_LIBNGHTTP2,false) # consider using neutral constant such as with-http2
 AC_SUBST(with_libxml2)  
 AC_SUBST(enable_optyangs) 
 # Home dir for web user, such as nginx fcgi sockets
@@ -239,6 +240,7 @@ elif test "x${with_restconf}" == xnative; then
       ]])
       AC_CHECK_LIB(event, event_init,, AC_MSG_ERROR([libevent missing]))
       AC_CHECK_LIB(evhtp, evhtp_new,, AC_MSG_ERROR([libevhtp missing]),[-levent -lssl -lcrypto]) 
+      HAVE_LIBEVHTP=true 
    fi		  
 
    # Check if nghttp2 is enabled for http/2
@@ -254,7 +256,7 @@ elif test "x${with_restconf}" == xnative; then
    if test "$ac_enable_nghttp2" = "yes"; then
       AC_CHECK_HEADERS(nghttp2/nghttp2.h,[], AC_MSG_ERROR([nghttp2 missing]))
       AC_CHECK_LIB(nghttp2, nghttp2_session_server_new,, AC_MSG_ERROR([nghttp2 missing]))
-      with_http2=true
+      HAVE_LIBNGHTTP2=true 
    fi    
    AC_DEFINE(WITH_RESTCONF_NATIVE, 1, [Use native restconf mode]) # For c-code that cant use strings
 elif test "x${with_restconf}" == xno; then

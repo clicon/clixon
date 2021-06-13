@@ -71,16 +71,20 @@ typedef struct  {
     cvec                 *sd_outp_hdrs; /* List of output headers */
     cbuf                 *sd_outp_buf;  /* Output buffer */
     cbuf                 *sd_body;      /* http output body as cbuf terminated with \r\n */
+    size_t                sd_body_len;  /* Content-Length, note for HEAD body body can be NULL and this non-zero */
     size_t                sd_body_offset; /* Offset into body */
     cbuf                 *sd_indata;    /* Receive/input data */
     char                 *sd_path;      /* Uri path, uri-encoded, without args (eg ?) */
     uint16_t              sd_code;      /* If != 0 send a reply XXX: need reply flag? */
     struct restconf_conn *sd_conn;      /* Backpointer to connection this stream is part of */
     restconf_http_proto   sd_proto;     /* http protocol XXX not sure this is needed */
+    cvec                 *sd_qvec;      /* Query parameters, ie ?a=b&c=d */
     void                 *sd_req;       /* Lib-specific request, eg evhtp_request_t * */
+    int                   sd_upgrade2;  /* Upgrade to http/2 */
+    uint8_t              *sd_settings2; /* Settings for upgrade to http/2 request */
 } restconf_stream_data;
 
-    /* Restconf connection handle 
+/* Restconf connection handle 
  * Per connection request
  */
 typedef struct restconf_conn {
@@ -132,6 +136,8 @@ int               restconf_stream_free(restconf_stream_data *sd);
 restconf_conn    *restconf_conn_new(clicon_handle h, int s);
 int               restconf_conn_free(restconf_conn *rc);
 int               ssl_x509_name_oneline(SSL *ssl, char **oneline);
+
+int restconf_close_ssl_socket(restconf_conn *rc, int shutdown); /* XXX in restconf_main_native.c */
     
 #endif /* _RESTCONF_NATIVE_H_ */
 

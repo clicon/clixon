@@ -151,12 +151,10 @@ restconf_reply_send(void  *req0,
     if (cb != NULL){
 	if (cbuf_len(cb)){
 	    cprintf(cb, "\r\n");
-#if 0 /* Double for evhtp, single for nghttp2 */
-	    if (restconf_reply_header(sd, "Content-Length", "%d", cbuf_len(cb)) < 0)
-		goto done;	
-#endif
-	    if (head)
+	    sd->sd_body_len = cbuf_len(cb); 
+	    if (head){
 		cbuf_free(cb);
+	    }
 	    else{
 		sd->sd_body = cb;
 		sd->sd_body_offset = 0;
@@ -164,17 +162,11 @@ restconf_reply_send(void  *req0,
 	}
 	else{
 	    cbuf_free(cb);
-#if 0
-	    if (restconf_reply_header(sd, "Content-Length", "0") < 0)
-		goto done;	
-#endif
+	    sd->sd_body_len = 0; 
 	}
     }
-#if 0
     else
-	if (restconf_reply_header(sd, "Content-Length", "0") < 0)
-	    goto done;	
-#endif
+	sd->sd_body_len = 0; 
     retval = 0;
  done:
     return retval;

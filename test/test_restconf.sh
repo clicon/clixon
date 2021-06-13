@@ -51,7 +51,7 @@ if [ "${WITH_RESTCONF}" = "native" ]; then
     # Create server certs and CA
     cacerts $cakey $cacert
     servercerts $cakey $cacert $srvkey $srvcert
-    USEBACKEND=true
+    USEBACKEND=false
 else
     # Define default restconfig config: RESTCONFIG
     RESTCONFIG=$(restconf_config none false)
@@ -169,9 +169,10 @@ function testrun()
     wait_restconf
 
     new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
+    echo "curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta"
     expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
-    if ! ${WITH_HTTP2}; then # http/2
+    if ! ${HAVE_LIBNGHTTP2}; then # http/2
 
     if [ "${WITH_RESTCONF}" = "native" ]; then # XXX does not work with nginx
 	new "restconf GET http/1.0  - returns 1.0"
@@ -244,7 +245,7 @@ function testrun()
 
     new "restconf HEAD. RFC 8040 4.2"
     expectpart "$(curl $CURLOPTS --head -H "Accept: application/yang-data+json" $proto://$addr/restconf/data)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-data+json"
-    
+
     new "restconf empty rpc JSON"
     expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-example:input\":null} $proto://$addr/restconf/operations/clixon-example:empty)" 0  "HTTP/$HVER 204"
 

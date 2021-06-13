@@ -99,9 +99,8 @@
 #include "restconf_err.h"
 #include "restconf_root.h"
 #include "restconf_native.h"    /* Restconf-openssl mode specific headers*/
+#ifdef HAVE_LIBNGHTTP2 
 #include "restconf_nghttp2.h"   /* Restconf-openssl mode specific headers*/
-
-#ifdef HAVE_LIBNGHTTP2 /* XXX MOVE */
 
 #define ARRLEN(x) (sizeof(x) / sizeof(x[0]))
 
@@ -283,27 +282,16 @@ restconf_nghttp2_path(restconf_stream_data *sd)
 {
     int            retval = -1;
     clicon_handle  h;
-    cvec          *qvec = NULL;
-    char          *query = NULL;
     restconf_conn *rc;
     char          *oneline = NULL;
     cvec          *cvv = NULL;
-    char         *cn;
+    char          *cn;
 
     clicon_debug(1, "------------");
     rc = sd->sd_conn;
     if ((h = rc->rc_h) == NULL){
 	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
 	goto done;
-    }
-    /* get accepted connection */
-    /* Query vector, ie the ?a=x&b=y stuff */
-    query = restconf_param_get(h, "REQUEST_URI");
-    if ((query = index(query, '?')) != NULL){
-	query++;
-	if (strlen(query) &&
-	    uri_str2cvec(query, '&', '=', 1, &qvec) < 0)
-		goto done;
     }
     /* Slightly awkward way of taking SSL cert subject and CN and add it to restconf parameters
      * instead of accessing it directly */
@@ -325,7 +313,7 @@ restconf_nghttp2_path(restconf_stream_data *sd)
 	if (api_well_known(h, sd) < 0)
 	    goto done;
     }
-    else if (api_root_restconf(h, sd, qvec) < 0)
+    else if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
 	goto done;   
     /* Clear (fcgi) paramaters from this request */
     if (restconf_param_del_all(h) < 0)
@@ -341,8 +329,6 @@ restconf_nghttp2_path(restconf_stream_data *sd)
 	cvec_free(cvv);
     if (oneline)
 	free(oneline);
-    if (qvec)
-	cvec_free(qvec);
     return retval; /* void */
 }
 
@@ -429,7 +415,6 @@ restconf_submit_response(nghttp2_session      *session,
     hdr->value = (uint8_t*)valstr;
     hdr->namelen = strlen(":status");
     hdr->valuelen = strlen(valstr);
-    clicon_debug(1, "%s val:'%s' valuelen:%lu", __FUNCTION__, hdr->value, hdr->valuelen);
     hdr->flags = 0;
 
     cv = NULL;
@@ -453,6 +438,49 @@ restconf_submit_response(nghttp2_session      *session,
     return retval;
 }
 
+/*! Simulate a received request in an upgrade scenario by talking the http/1 parameters
+ */
+int
+http2_exec(restconf_conn        *rc,
+	   restconf_stream_data *sd,
+	   nghttp2_session     *session,
+	   int32_t              stream_id)
+{
+    int retval = -1;
+
+    if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
+	goto done;
+    sd->sd_proto = HTTP_2; /* XXX is this necessary? */
+    if (strncmp(sd->sd_path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0 ||
+	strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0){
+	if (restconf_nghttp2_path(sd) < 0)
+	    goto done;
+    }
+    else
+	; /* ignore */
+    /* If body, add a content-length header 
+     *    A server MUST NOT send a Content-Length header field in any response
+     * with a status code of 1xx (Informational) or 204 (No Content).  A
+     * server MUST NOT send a Content-Length header field in any 2xx
+     * (Successful) response to a CONNECT request (Section 4.3.6 of
+     * [RFC7231]).
+     */
+    if (sd->sd_code != 204 && sd->sd_code > 199)
+	if (restconf_reply_header(sd, "Content-Length", "%lu", sd->sd_body_len) < 0)
+	    goto done;	
+    if (sd->sd_code){
+	if (restconf_submit_response(session, rc, stream_id, sd) < 0)
+	    goto done;
+    }
+    else {
+	/* 500 Internal server error ? */
+    }
+
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! A frame is received
  */
 static int
@@ -463,6 +491,7 @@ on_frame_recv_callback(nghttp2_session     *session,
     int                   retval = -1;
     restconf_conn        *rc = (restconf_conn *)user_data;
     restconf_stream_data *sd = NULL;
+    char                 *query;
     
     clicon_debug(1, "%s %s %d", __FUNCTION__, 
 		 clicon_int2str(nghttp2_frame_type_map, frame->hd.type),
@@ -473,33 +502,25 @@ on_frame_recv_callback(nghttp2_session     *session,
 	/* Check that the client request has finished */
 	if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
 	    /* For DATA and HEADERS frame, this callback may be called after
-	       on_stream_close_callback. Check that stream still alive. 
-	    */
+	     * on_stream_close_callback. Check that stream still alive. 
+	     */
 	    if ((sd = nghttp2_session_get_stream_user_data(session, frame->hd.stream_id)) == NULL)
 		return 0;
-	    if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
-		goto ok;
-	    sd->sd_proto = HTTP_2; /* XXX is this necessary? */
-	    if (strncmp(sd->sd_path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0 ||
-		strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0){
-		if (restconf_nghttp2_path(sd) < 0)
+	    /* Query vector, ie the ?a=x&b=y stuff */
+	    query = restconf_param_get(rc->rc_h, "REQUEST_URI");
+	    if ((query = index(query, '?')) != NULL){
+		query++;
+		if (strlen(query) &&
+		    uri_str2cvec(query, '&', '=', 1, &sd->sd_qvec) < 0)
 		    goto done;
 	    }
-	    else
-		; /* ignore */
-	    if (sd->sd_code){
-		if (restconf_submit_response(session, rc, frame->hd.stream_id, sd) < 0)
-		    goto done;
-	    }
-	    else {
-		/* 500 Internal server error ? */
-	    }
+	    if (http2_exec(rc, sd, session, frame->hd.stream_id) < 0)
+		goto done;
 	}
 	break;
     default:
 	break;
     }
- ok:
     retval = 0;
  done:
     return retval;
@@ -584,8 +605,16 @@ on_stream_close_callback(nghttp2_session   *session,
 			 void              *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clicon_debug(1, "%s", __FUNCTION__);
-    //session_data *sd = (session_data*)user_data;
+
+    clicon_debug(1, "%s %d %s", __FUNCTION__, error_code, nghttp2_strerror(error_code));
+#ifdef NOTNEEDED /* XXX think this is not necessary? */
+    if (error_code){
+	if (restconf_close_ssl_socket(rc, 0) < 0)
+	    return -1;
+	if (restconf_conn_free(rc) < 0)
+	    return -1;
+    }
+#endif
     return 0;
 }
 

@@ -39,7 +39,8 @@
 # --with-restconf=native Integration with embedded web server libevhtp
 WITH_RESTCONF=@with_restconf@ # native, fcgi or ""
 
-WITH_HTTP2=@with_http2@ # true if nghttp2 is enabled, otherwise false
+HAVE_LIBNGHTTP2=@HAVE_LIBNGHTTP2@
+HAVE_LIBEVHTP=@HAVE_LIBEVHTP@
 
 # This is for libxml2 XSD regex engine
 # Note this only enables the compiling of the code. In order to actually

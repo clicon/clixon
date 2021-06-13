@@ -38,7 +38,9 @@ Expected: June 2021
   * Enable using: `--with-restconf=native --enable-nghttp2`
   * FCGI/nginx not affected only for `--with-restconf=native`
   * HTTP/1 co-exists, unless `--disable-evhtp` which results in http/2 only
-  * TLS ALPN upgrade works but http (non SSL) http/1->http/2 upgrade is not yet implemented
+  * Upgrade from HTTP/1.1 to HTTP/2
+    * https: ALPN upgrade
+    * http: Upgrade header
 * YANG when statement in conjunction with grouping/uses/augment
   * Several cases were not implemented fully according to RFC 7950:
     * Do not extend default values if when statements evaluate to false

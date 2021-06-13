@@ -196,7 +196,7 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 # But leave it here for debugging where netcat works properly
 # Alt try something like:
 # printf "Hello World!" | (exec 3<>/dev/tcp/127.0.0.1/80; cat >&3; cat <&3; exec 3<&-)
-if [ false -a ! ${WITH_HTTP2} ] ; then
+if [ false -a ! ${HAVE_LIBNGHTTP2} ] ; then
     # Look for netcat or nc for direct socket http calls
     if [ -n "$(type netcat 2> /dev/null)" ]; then
 	netcat="netcat -w 1" # -N works on evhtp but not fcgi

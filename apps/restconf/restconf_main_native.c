@@ -585,7 +585,7 @@ restconf_ssl_context_configure(clixon_handle h,
  * There are many variants to closing, one could probably make this more generic
  * and always use this function, but it is difficult.
  */
-static int
+int
 restconf_close_ssl_socket(restconf_conn *rc,
 			  int            shutdown)
 {
@@ -594,9 +594,11 @@ restconf_close_ssl_socket(restconf_conn *rc,
 #ifdef HAVE_LIBEVHTP
     evhtp_connection_t *evconn;
 
-    evconn = rc->rc_evconn;
-    clicon_debug(1, "%s evconn-free (%p) 1", __FUNCTION__, evconn);
-    evhtp_connection_free(evconn); /* evhtp */
+    if ((evconn = rc->rc_evconn) != NULL){
+	clicon_debug(1, "%s evconn-free (%p)", __FUNCTION__, evconn);
+	if (evconn)
+	    evhtp_connection_free(evconn); /* evhtp */
+    }
 #endif /* HAVE_LIBEVHTP */
     if (rc->rc_ssl != NULL){
 	if (shutdown && (ret = SSL_shutdown(rc->rc_ssl)) < 0){
@@ -714,9 +716,9 @@ restconf_connection(int   s,
 	    if ((n = read(rc->rc_s, buf, sizeof(buf))) < 0){ /* XXX atomicio ? */
 		if (errno == ECONNRESET) {/* Connection reset by peer */
 		    clicon_debug(1, "%s %d Connection reset by peer", __FUNCTION__, rc->rc_s);
+		    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
 		    close(rc->rc_s);
 		    restconf_conn_free(rc);
-		    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
 		    goto ok; /* Close socket and ssl */
 		}
 		clicon_err(OE_XML, errno, "read");
@@ -762,7 +764,7 @@ restconf_connection(int   s,
 		restconf_conn_free(rc);
 		evhtp_connection_free(evconn);
 		goto ok;
-	    }
+	    } /* connection_parse_nobev */
 	    clicon_debug(1, "%s connection_parse OK", __FUNCTION__);
 	    /* default stream */
 	    if ((sd = restconf_stream_find(rc, 0)) == NULL){
@@ -816,6 +818,39 @@ restconf_connection(int   s,
 				    "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>No evhtp output</error-message></error></errors>") < 0)
 		    goto done;
 	    }
+#ifdef HAVE_LIBNGHTTP2
+	    if (sd->sd_upgrade2){
+		nghttp2_error ngerr;
+		/* Switch to http/2 according to RFC 7540 Sec 3.2 and RFC 7230 Sec 6.7 */
+		rc->rc_proto = HTTP_2;
+		if (http2_session_init(rc) < 0){
+		    restconf_close_ssl_socket(rc, 1);
+		    goto done;
+		}
+		/* The HTTP/1.1 request that is sent prior to upgrade is assigned a
+		 * stream identifier of 1 (see Section 5.1.1) with default priority
+		 */
+		sd->sd_stream_id = 1;
+		/* The first HTTP/2 frame sent by the server MUST be a server connection
+		 * preface (Section 3.5) consisting of a SETTINGS frame (Section 6.5).
+		 */
+		if ((ngerr = nghttp2_session_upgrade2(rc->rc_ngsession,
+						      sd->sd_settings2,
+						      sd->sd_settings2?strlen((const char*)sd->sd_settings2):0,
+						      0, /* XXX: 1 if HEAD */
+						      NULL)) < 0){
+		    clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_upgrade2");
+		    goto done;
+		}
+		if (http2_send_server_connection(rc) < 0){
+		    restconf_close_ssl_socket(rc, 1);
+		    goto done;
+		}
+		/* Use params from original http/1 session to http/2 stream */
+		if (http2_exec(rc, sd, rc->rc_ngsession, 1) < 0)
+		    goto done;
+	    }
+#endif
 	    break;
 #endif /* HAVE_LIBEVHTP */
 #ifdef HAVE_LIBNGHTTP2
@@ -834,7 +869,7 @@ restconf_connection(int   s,
  done:
     clicon_debug(1, "%s retval %d", __FUNCTION__, retval);
     return retval;
-}
+} /* restconf_connection */
 
 #if 0 /* debug */
 /*! Debug print all loaded certs
@@ -983,7 +1018,7 @@ ssl_alpn_check(clicon_handle        h,
     if (cberr)
 	cbuf_free(cberr);
     return retval;
-}
+} /* ssl_alpn_check */
 
 /*! Accept new socket client
  * @param[in]  fd   Socket (unix or ip)
@@ -1013,8 +1048,10 @@ restconf_accept_client(int   fd,
 
     clicon_debug(1, "%s %d", __FUNCTION__, fd);
 #ifdef HAVE_LIBNGHTTP2
-    /* If nghttp2 let default be 2.0 NOTE http protocol negotiation */
-    proto = HTTP_2; 
+#ifndef HAVE_LIBEVHTP
+    proto = HTTP_2;     /* If nghttp2 only let default be 2.0  */
+#endif
+    /* If also evhtp, keep HTTP_11 */
 #endif
     if ((rsock = (restconf_socket *)arg) == NULL){
 	clicon_err(OE_YANG, EINVAL, "rsock is NULL");
@@ -1266,7 +1303,7 @@ restconf_accept_client(int   fd,
     if (name)
 	free(name);
     return retval;
-}
+} /* restconf_accept_client */
 
 static int
 restconf_native_terminate(clicon_handle h)
@@ -1599,7 +1636,7 @@ restconf_clixon_init(clicon_handle h,
     clixon_plugin_t *cp = NULL;
     char          *str;
     cvec          *nsctx_global = NULL; /* Global namespace context */
-    cxobj         *xrestconf;
+    cxobj         *xrestconf = NULL;
     cxobj         *xerr = NULL;
     int            ret;
 

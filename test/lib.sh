@@ -100,13 +100,18 @@ DEFAULTHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capab
 # -k : insecure 
 : ${CURLOPTS:="-Ssik"}
 # Set HTTP version 1.1 or 2
-if ${WITH_HTTP2}; then
-    CURLOPTS="${CURLOPTS} --http2-prior-knowledge"
+if ${HAVE_LIBNGHTTP2}; then
     HVER=2
+    if ${HAVE_LIBEVHTP}; then
+	# This is if evhtp is enabled (unset proto=HTTP_2 in restconf_accept_client)
+	CURLOPTS="${CURLOPTS} --http2"
+    else
+	# This is if evhtp is disabled (set proto=HTTP_2 in restconf_accept_client)
+	CURLOPTS="${CURLOPTS} --http2-prior-knowledge"
+    fi
 else
     HVER=1.1
 fi
-
 
 # Wait after daemons (backend/restconf) start. See mem.sh for valgrind
 if [ "$(uname -m)" = "armv7l" ]; then

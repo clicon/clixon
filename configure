@@ -637,7 +637,8 @@ CPP
 wwwdir
 enable_optyangs
 with_libxml2
-with_http2
+HAVE_LIBNGHTTP2
+HAVE_LIBEVHTP
 with_restconf
 LINKAGE
 SH_SUFFIX
@@ -3357,8 +3358,10 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
  # Set to native or fcgi -> compile apps/restconf
-with_http2=false
-
+HAVE_LIBEVHTP=false
+   # consider using neutral constant such as with-http1
+HAVE_LIBNGHTTP2=false
+ # consider using neutral constant such as with-http2
 
 
 # Home dir for web user, such as nginx fcgi sockets
@@ -5283,6 +5286,7 @@ else
   as_fn_error $? "libevhtp missing" "$LINENO" 5
 fi
 
+      HAVE_LIBEVHTP=true
    fi
 
    # Check if nghttp2 is enabled for http/2
@@ -5363,7 +5367,7 @@ else
   as_fn_error $? "nghttp2 missing" "$LINENO" 5
 fi
 
-      with_http2=true
+      HAVE_LIBNGHTTP2=true
    fi
 
 $as_echo "#define WITH_RESTCONF_NATIVE 1" >>confdefs.h

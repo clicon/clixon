@@ -143,8 +143,16 @@ sed -i '/Transfer-Encoding:/d' $foutput
 sed -i '/Connection:/d' $foutput
 
 # Create a file to compare with
-if ${WITH_HTTP2}; then
-    echo "HTTP/$HVER 200 " > $ftest
+if ${HAVE_LIBNGHTTP2}; then
+    if ${HAVE_LIBEVHTP}; then
+	# Add 101 switch protocols for http 1->2 upgrade
+	echo "HTTP/1.1 101 Switching Protocols" > $ftest
+        echo "Upgrade: h2c" >> $ftest
+	echo "" >> $ftest
+	echo "HTTP/$HVER 200 " >> $ftest
+    else
+	echo "HTTP/$HVER 200 " > $ftest
+    fi
 else
     echo "HTTP/$HVER 200 OK" > $ftest
 fi
@@ -157,6 +165,7 @@ echo "</data>" >> $ftest
 
 ret=$(diff -i $ftest $foutput)
 if [ $? -ne 0 ]; then
+    echo "$ret"
     err1 "Matching running-db with $fconfigonly"
 fi	
 
