@@ -270,11 +270,11 @@ restconf_pseudo_process_control(clicon_handle h)
      * see restconf_pseudo_set_log which sets flag when process starts
      */
     argv[i++] = "-D";
-    argv[i++] = strdup("0");
+    argv[i++] = "0";
     argv[i++] = "-l";
-    argv[i++] = strdup("s"); /* There is also log-destination in clixon-restconf.yang */
+    argv[i++] = "s"; /* There is also log-destination in clixon-restconf.yang */
     argv[i++] = "-R";
-    argv[i++] = strdup(""); 
+    argv[i++] = ""; 
     argv[i++] = NULL;
     assert(i==nr);
     if (clixon_process_register(h, RESTCONF_PROCESS,
