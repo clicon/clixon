@@ -20,7 +20,7 @@ jobs:
     - name: install libevhtp
       run: (git clone https://github.com/clicon/clixon-libevhtp.git && cd clixon-libevhtp && ./configure && make && sudo make install)
     - name: clixon and www-data users
-      run:  sudo useradd -M www-data && sudo useradd -M -U clicon && sudo usermod -a -G clicon www-data
+      run:  sudo useradd -M -U clicon && sudo usermod -a -G clicon www-data
     - name: configure
       run: ./configure --with-restconf=native
     - name: make
