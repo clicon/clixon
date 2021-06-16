@@ -13,41 +13,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: install cligen
-      run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
-    - name: install libevent
-      run: sudo apt install -y libevent-dev libssl-dev
-    - name: install libevhtp
-      run: (git clone https://github.com/clicon/clixon-libevhtp.git && cd clixon-libevhtp && ./configure && make && sudo make install)
-    - name: clixon and www-data users
-      run:  sudo useradd -M -U clicon && sudo usermod -a -G clicon www-data
-    - name: prepare clixon tests
-      run: sudo apt install -y libcurl4-openssl-dev
     - name: configure
       run: ./configure --with-restconf=native
-    - name: make
-      run: make
-    - name: make install
-      run: sudo make install
-    - name: make install-include
-      run: sudo make install-include
-    - name: make example
-      run: (cd example; make)
-    - name: install example
-      run: (cd example; sudo make install)
-    - name: make util
-      run: (cd util; make)
-    - name: install util
-      run: (cd util; sudo make install)
-    - name: ldconfig
-      run: sudo ldconfig
-    - name: prepare test1
-      run: echo "#!/usr/bin/env bash" > test/site.sh
-    - name: prepare test2
-      run: echo "IPv6=true" >> test/site.sh
-    - name: prepare test3
-      run: echo "SKIPLIST=\"test_api.sh test_client.sh test_c++.sh test_install.sh test_privileges.sh\"" >> test/site.sh
-    - name: test
-      run: (cd test; ./all.sh)
-#    - name: make test # this is docker test
-#      run: make test
+    - name: make test # this is docker test
+      run: make test

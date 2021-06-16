@@ -337,12 +337,12 @@ function wait_backend(){
     reply=$(echo "<rpc $DEFAULTNS><ping $LIBNS/></rpc>]]>]]>" | $clixon_netconf -qef $cfg 2> /dev/null) 
     let i=0;
     while [[ $reply != "<rpc-reply"* ]]; do
-	echo "sleep $DEMSLEEP"
+#	echo "sleep $DEMSLEEP"
 	sleep $DEMSLEEP
 	reply=$(echo "<rpc $ÐEFAULTSNS $LIBNS><ping/></rpc>]]>]]>" | clixon_netconf -qef $cfg 2> /dev/null)
-	echo "reply:$reply"
+#	echo "reply:$reply"
 	let i++;
-	echo "wait_backend  $i"
+#	echo "wait_backend  $i"
 	if [ $i -ge $DEMLOOP ]; then
 	    err "backend timeout $DEMWAIT seconds"
 	fi
@@ -382,18 +382,18 @@ function stop_restconf(){
 # Reasons for not working: if you run native is nginx running?
 # @note assumes port=80 if RCPROTO=http and port=443 if RCPROTO=https
 function wait_restconf(){
-    echo "curl $CURLOPTS $* $RCPROTO://localhost/restconf"
+#    echo "curl $CURLOPTS $* $RCPROTO://localhost/restconf"
     hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
-    echo "hdr:\"$hdr\""
+#    echo "hdr:\"$hdr\""
     let i=0;
     while [[ $hdr != *"200"* ]]; do
-	echo "wait_restconf $i"
+#	echo "wait_restconf $i"
 	if [ $i -ge $DEMLOOP ]; then
 	    err1 "restconf timeout $DEMWAIT seconds"
 	fi
 	sleep $DEMSLEEP
 	hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
-	echo "hdr:\"$hdr\""
+#	echo "hdr:\"$hdr\""
 	let i++;
     done
     if [ $valgrindtest -eq 3 ]; then 
