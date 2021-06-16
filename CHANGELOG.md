@@ -88,6 +88,7 @@ Developers may need to change their code
 
 ### Minor features
 
+* Moved CI from travis to github actions
 * Added autotool check for getresuid (+ related functions) necessary for lowering of priviliges for backend and restconf
   * If getresuid is not available, CLICON_RESTCONF_PRIVILEGES must be set to 'none'
 * Added new startup-mode: `running-startup`: First try running db, if it is empty try startup db.

@@ -1,0 +1,27 @@
+name: Clixon CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: install cligen
+      run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure --with-restconf=native && make && sudo make install)
+    - name: configure
+      run: ./configure
+    - name: make
+      run: make
+    - name: make install
+      run: sudo make install
+    - name: ldconfig
+      run: sudo ldconfig
+    - name: make test
+      run: make test

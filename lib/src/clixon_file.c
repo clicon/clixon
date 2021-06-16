@@ -115,7 +115,6 @@ clicon_file_dirent(const char     *dir,
    int            direntStructSize;
 #endif
 
-   clicon_debug(1, "%s", __FUNCTION__);
    *ent = NULL;
    nent = 0;
    if (regexp && (res = regcomp(&re, regexp, REG_EXTENDED)) != 0) {
