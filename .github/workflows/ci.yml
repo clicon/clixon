@@ -21,6 +21,8 @@ jobs:
       run: (git clone https://github.com/clicon/clixon-libevhtp.git && cd clixon-libevhtp && ./configure && make && sudo make install)
     - name: clixon and www-data users
       run:  sudo useradd -M -U clicon && sudo usermod -a -G clicon www-data
+    - name: prepare clixon tests
+      run: sudo apt install -y libcurl4-openssl-dev
     - name: configure
       run: ./configure --with-restconf=native
     - name: make
