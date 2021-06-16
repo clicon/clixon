@@ -30,6 +30,6 @@ jobs:
     - name: ldconfig
       run: sudo ldconfig
     - name: test
-    - run: (cd test; ./all.sh)
+      run: (cd test; ./all.sh)
 #    - name: make test # this is docker test
 #      run: make test
