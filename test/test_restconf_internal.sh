@@ -454,6 +454,8 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-confi
 new "commit disable"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
+sleep $DEMSLEEP
+
 new "18. check status RPC off"
 rpcstatus false stopped
 if [ $pid -ne 0 ]; then err "Pid" "$pid"; fi
