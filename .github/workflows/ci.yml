@@ -13,7 +13,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+# 1) checkout and compile natively
+    - name: install cligen
+      run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
+    - name: install libevent
+      run: sudo apt install -y libevent-dev libssl-dev
+    - name: install libevhtp
+      run: (git clone https://github.com/clicon/clixon-libevhtp.git && cd clixon-libevhtp && ./configure && make && sudo make install)
     - name: configure
       run: ./configure --with-restconf=native
+# 2) Use docker for tests
     - name: make test # this is docker test
       run: make test
