@@ -74,10 +74,10 @@ WORKDIR /clixon/clixon
 COPY clixon .
 
 # Need to add www user manually
-RUN adduser -D -H www-data
+RUN adduser -D -H -G www-data www-data
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --enable-optyangs --with-restconf=native
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --enable-optyangs --with-restconf=native --disable-nghttp2 --enable-evhtp
 
 RUN make
 RUN make install
@@ -113,7 +113,7 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 RUN apk add --update flex bison
 
 # need to add www user manually
-RUN adduser -D -H www-data
+RUN adduser -D -H -G www-data www-data
 # for libevtp
 RUN apk add --update openssl libevent
 
@@ -126,15 +126,14 @@ EXPOSE 443/tcp
 
 # Create clicon user and group
 RUN adduser -D -H clicon
-RUN adduser www-data clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
 COPY --from=0 /usr/local/lib/libevhtp.so* /usr/local/lib/
 
 # Manually created
 RUN mkdir /www-data
-RUN chown www-data /www-data
-RUN chgrp www-data /www-data
+RUN chown clicon /www-data
+RUN chgrp clicon /www-data
 
 # Log to stderr.
 CMD /usr/local/bin/startsystem.sh
