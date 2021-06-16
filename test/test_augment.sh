@@ -198,8 +198,7 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     new "start backend -s init -f $cfg"
-    sudo $clixon_backend -F -D 1 -l e -s init -f $cfg
-#    start_backend -s init -f $cfg
+    start_backend -s init -f $cfg -D 1 -l e
 fi
 
 new "wait backend"
