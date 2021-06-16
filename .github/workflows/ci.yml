@@ -29,6 +29,10 @@ jobs:
       run: sudo make install
     - name: ldconfig
       run: sudo ldconfig
+    - name: prepare test
+      run: echo "#!/usr/bin/env bash" > test/site.sh
+      run  echo "IPv6=true" >> test//site.sh
+      run: echo 'SKIPLIST="test_api.sh test_client.sh test_c++.sh test_install.sh test_privileges.sh"' >> test/site.sh
     - name: test
       run: (cd test; ./all.sh)
 #    - name: make test # this is docker test
