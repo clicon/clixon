@@ -402,7 +402,6 @@ restconf_submit_response(nghttp2_session      *session,
     int                   i = 0;
     char                  valstr[16];
 
-    clicon_debug(1, "%s", __FUNCTION__);
     data_prd.source.ptr = sd;
     data_prd.read_callback = restconf_sd_read;
     if ((hdrs = (nghttp2_nv*)calloc(1+cvec_len(sd->sd_outp_hdrs), sizeof(nghttp2_nv))) == NULL){
@@ -412,6 +411,7 @@ restconf_submit_response(nghttp2_session      *session,
     hdr = &hdrs[i++];
     hdr->name = (uint8_t*)":status";
     snprintf(valstr, 15, "%u", sd->sd_code);
+    clicon_debug(1, "%s status %d", __FUNCTION__, sd->sd_code);
     hdr->value = (uint8_t*)valstr;
     hdr->namelen = strlen(":status");
     hdr->valuelen = strlen(valstr);
@@ -421,6 +421,7 @@ restconf_submit_response(nghttp2_session      *session,
     while ((cv = cvec_each(sd->sd_outp_hdrs, cv)) != NULL){
 	hdr = &hdrs[i++];
 	hdr->name = (uint8_t*)cv_name_get(cv);
+	clicon_debug(1, "%s hdr: %s", __FUNCTION__, hdr->name);
 	hdr->value = (uint8_t*)cv_string_get(cv);
 	hdr->namelen = strlen(cv_name_get(cv));
 	hdr->valuelen = strlen(cv_string_get(cv));
@@ -435,6 +436,7 @@ restconf_submit_response(nghttp2_session      *session,
     }
     retval = 0;
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -448,6 +450,7 @@ http2_exec(restconf_conn        *rc,
 {
     int retval = -1;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
 	goto done;
     sd->sd_proto = HTTP_2; /* XXX is this necessary? */
@@ -475,9 +478,9 @@ http2_exec(restconf_conn        *rc,
     else {
 	/* 500 Internal server error ? */
     }
-
     retval = 0;
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 

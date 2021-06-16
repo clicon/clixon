@@ -153,7 +153,7 @@ restconf_sig_term(int arg)
      * is entered, it will terminate.
      * However there may be a case of sockets closing rather abruptly for clients
      */
-    clicon_exit_set(); 
+    clixon_exit_set(1); 
     close(_MYSOCK);
 }
 
@@ -623,7 +623,7 @@ main(int    argc,
 	    goto done;
 	if (finish)
 	    FCGX_Finish_r(req);
-	else if (clicon_exit_get()){
+	else if (clixon_exit_get()){
 	    FCGX_Finish_r(req);
 	    break;
 	}

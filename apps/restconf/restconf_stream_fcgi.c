@@ -190,7 +190,7 @@ restconf_stream_cb(int   s,
 	FCGX_FPrintF(r->out, "SHUTDOWN\r\n");
 	FCGX_FPrintF(r->out, "\r\n");
 	FCGX_FFlush(r->out);
-	clicon_exit_set(); 
+	clixon_exit_set(1); 
 	goto done;
     }
     if ((ret = clicon_msg_decode(reply, NULL, NULL, &xtop, NULL)) < 0)  /* XXX pass yang_spec */
@@ -335,7 +335,7 @@ stream_checkuplink(int   s,
     clicon_debug(1, "%s", __FUNCTION__);
     if (FCGX_GetError(r->out) != 0){ /* break loop */
 	clicon_debug(1, "%s FCGX_GetError upstream", __FUNCTION__);
-	clicon_exit_set();
+	clixon_exit_set(1);
     }
     return 0;
 }
@@ -351,7 +351,7 @@ stream_timeout(int   s,
     clicon_debug(1, "%s", __FUNCTION__);
     if (FCGX_GetError(r->out) != 0){ /* break loop */
 	clicon_debug(1, "%s FCGX_GetError upstream", __FUNCTION__);
-	clicon_exit_set();
+	clixon_exit_set(1);
     }
     else{
 	gettimeofday(&t, NULL);
@@ -485,7 +485,7 @@ api_stream(clicon_handle h,
 	    clixon_event_unreg_fd(rfcgi->listen_sock,
 				  restconf_stream_cb);
 	    clixon_event_unreg_timeout(stream_timeout, (void*)req);
-	    clicon_exit_reset();
+	    clixon_exit_set(0); /* reset */
 #ifdef STREAM_FORK
 	    FCGX_Finish_r(rfcgi);
 	    FCGX_Free(rfcgi, 0);	    

@@ -43,11 +43,9 @@
 /*
  * Prototypes
  */
-int clicon_exit_set(void);
+int clixon_exit_set(int nr);
 
-int clicon_exit_reset(void);
-
-int clicon_exit_get(void);
+int clixon_exit_get(void);
 
 int clicon_sig_child_set(int val);
 

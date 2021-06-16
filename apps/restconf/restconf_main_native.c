@@ -849,6 +849,17 @@ restconf_connection(int   s,
 		/* Use params from original http/1 session to http/2 stream */
 		if (http2_exec(rc, sd, rc->rc_ngsession, 1) < 0)
 		    goto done;
+		/*
+		 * Very special case for http/1->http/2 upgrade and restconf "restart"
+		 * That is, the restconf daemon is restarted under the hood, and the session
+		 * is closed in mid-step: it needs a couple of extra rounds to complete the http/2
+		 * settings before it completes.
+		 * Maybe a more precise way would be to encode that semantics using recieved http/2
+		 * frames instead of just postponing nrof events?
+		 */
+		if (clixon_exit_get() == 1){
+		    clixon_exit_set(4);
+		}
 	    }
 #endif
 	    break;
@@ -1790,7 +1801,7 @@ restconf_sig_term(int arg)
      * is entered, it will terminate.
      * However there may be a case of sockets closing rather abruptly for clients
      */
-    clicon_exit_set(); 
+    clixon_exit_set(1); 
 }
 
 /*! Usage help routine

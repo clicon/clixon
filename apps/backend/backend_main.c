@@ -154,7 +154,7 @@ backend_sig_term(int arg)
     if (i++ == 0)
 	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
 		   __PROGRAM__, __FUNCTION__, getpid(), arg);
-    clicon_exit_set(); /* checked in clixon_event_loop() */
+    clixon_exit_set(1); /* checked in clixon_event_loop() */
 }
 
 /*! wait for killed child

@@ -77,6 +77,15 @@ Users may have to change how they access the system
   * Previous meaning (wrong): Return all `a` elements.
   * New meaning (correct): Return the `a` instance with empty key string: "".
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Event exit API changed to a single decrementing counter where 1 means exit.
+  * Removed: `clicon_exit_reset()`
+  * Changed: `clicon_exit_set()` --> `clixon_exit_set(int nr)`
+  * Changed: `clicon_exit_get()` --> `clixon_exit_get()`
+
 ### Minor features
 
 * Added autotool check for getresuid (+ related functions) necessary for lowering of priviliges for backend and restconf
