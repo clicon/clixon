@@ -14,9 +14,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: install cligen
-      run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure --with-restconf=native && make && sudo make install)
+      run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
     - name: configure
-      run: ./configure
+      run: ./configure --with-restconf=native
     - name: make
       run: make
     - name: make install
