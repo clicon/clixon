@@ -52,6 +52,8 @@ extern "C" {
 /* Common code (API and Backend daemon) */
 #include <clixon/clixon_backend_handle.h>
 #include <clixon/clixon_backend_transaction.h>
+#include <clixon/clixon_backend_commit.h>
+#include <clixon/clixon_backend_plugin.h>
 
 #endif /* _CLIXON_BACKEND_H_ */
 

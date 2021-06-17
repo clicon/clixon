@@ -61,7 +61,7 @@
 #include <clixon/clixon.h>
 
 #include "clixon_backend_transaction.h"
-#include "backend_plugin.h"
+#include "clixon_backend_plugin.h"
 
 /* Access functions for transaction-data handle in callbacks
  * Expressed in a transition from an current -> wanted state.

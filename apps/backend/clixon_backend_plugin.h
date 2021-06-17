@@ -35,8 +35,8 @@
 
   */
 
-#ifndef _BACKEND_PLUGIN_H_
-#define _BACKEND_PLUGIN_H_
+#ifndef _CLIXON_BACKEND_PLUGIN_H_
+#define _CLIXON_BACKEND_PLUGIN_H_
 
 /*
  * Types
@@ -101,4 +101,4 @@ int plugin_transaction_end_all(clicon_handle h, transaction_data_t *td);
 int plugin_transaction_abort_one(clixon_plugin_t *cp, clicon_handle h, transaction_data_t *td);
 int plugin_transaction_abort_all(clicon_handle h, transaction_data_t *td);
 
-#endif  /* _BACKEND_PLUGIN_H_ */
+#endif  /* _CLIXON_BACKEND_PLUGIN_H_ */

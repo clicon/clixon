@@ -36,14 +36,15 @@
  */
 
 
-#ifndef _BACKEND_COMMIT_H_
-#define _BACKEND_COMMIT_H_
+#ifndef _CLIXON_BACKEND_COMMIT_H_
+#define _CLIXON_BACKEND_COMMIT_H_
 
 /*
  * Prototypes
  */ 
 int startup_validate(clicon_handle h, char *db, cxobj **xtr, cbuf *cbret);
 int startup_commit(clicon_handle h, char *db, cbuf *cbret);
+int candidate_validate(clicon_handle h, char *db, cbuf *cbret);
 int candidate_commit(clicon_handle h, char *db, cbuf *cbret);
 
 int from_client_commit(clicon_handle h,	cxobj *xe, cbuf *cbret, void *arg, void *regarg);
@@ -52,4 +53,4 @@ int from_client_cancel_commit(clicon_handle h,	cxobj *xe, cbuf *cbret, void *arg
 int from_client_validate(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_restart_one(clicon_handle h, clixon_plugin_t *cp, cbuf *cbret);
 
-#endif  /* _BACKEND_COMMIT_H_ */
+#endif  /* _CLIXON_BACKEND_COMMIT_H_ */

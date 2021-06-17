@@ -81,6 +81,9 @@ Users may have to change how they access the system
 
 Developers may need to change their code
 
+* Made backend transaction and commit/validate API available to plugin code.
+  * This enables that RPOC handles can call commit and validate via lib
+  * The commit/validate API is now: `candidate_validate()` and `candidate_commit()`
 * Event exit API changed to a single decrementing counter where 1 means exit.
   * Removed: `clicon_exit_reset()`
   * Changed: `clicon_exit_set()` --> `clixon_exit_set(int nr)`
