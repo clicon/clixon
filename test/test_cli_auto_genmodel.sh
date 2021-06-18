@@ -109,10 +109,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s init -f $cfg -- -sS $fstate"
     start_backend -s init -f $cfg -- -sS $fstate
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 # Simple run trying setting a config,
 # then deleting it, and reloading it

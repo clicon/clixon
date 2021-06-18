@@ -127,7 +127,7 @@ DEMSLEEP=.2
 let DEMLOOP=5*DEMWAIT
 
 # RESTCONF protocol, eg http or https
-: ${RCPROTO:=http}
+: ${RCPROTO:=https}
 
 # www user (on linux typically www-data, freebsd www)
 # Start restconf user, can be root which is dropped to wwwuser
@@ -381,9 +381,16 @@ function stop_restconf(){
 # @see start_restconf
 # Reasons for not working: if you run native is nginx running?
 # @note assumes port=80 if RCPROTO=http and port=443 if RCPROTO=https
+# Args:
+# 1: (optional) override RCPROTO with http or https
 function wait_restconf(){
-#    echo "curl $CURLOPTS $* $RCPROTO://localhost/restconf"
-    hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
+    if [ $# = 1 ]; then
+	myproto=$1
+    else
+	myproto=${RCPROTO}
+    fi
+#    echo "curl $CURLOPTS $* $myproto://localhost/restconf"
+    hdr=$(curl $CURLOPTS $* $myproto://localhost/restconf 2> /dev/null)
 #    echo "hdr:\"$hdr\""
     let i=0;
     while [[ $hdr != *"200"* ]]; do
@@ -392,7 +399,7 @@ function wait_restconf(){
 	    err1 "restconf timeout $DEMWAIT seconds"
 	fi
 	sleep $DEMSLEEP
-	hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
+	hdr=$(curl $CURLOPTS $* $myproto://localhost/restconf 2> /dev/null)
 #	echo "hdr:\"$hdr\""
 	let i++;
     done

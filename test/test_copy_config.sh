@@ -76,10 +76,10 @@ if [ $BE -ne 0 ]; then
 
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "wait backend"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
@@ -87,10 +87,10 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "wait restconf"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 new "Add config to candidate"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface nc:operation=\"create\"><name>eth/0/0</name><type>ex:eth</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"

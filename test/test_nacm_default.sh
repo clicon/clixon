@@ -103,10 +103,8 @@ EOF
 	fi
 	new "start backend -s $db -f $cfg"
 	start_backend -s $db -f $cfg
-
-	new "wait backend"
-	wait_backend
     fi
+
     new "wait backend"
     wait_backend
     
@@ -117,6 +115,7 @@ EOF
 	new "start restconf daemon"
 	start_restconf -f $cfg
     fi
+
     new "wait restconf"
     wait_restconf
 

@@ -134,7 +134,7 @@ RULES=$(cat <<EOF
 
    </nacm>
 EOF
-)
+     )
 
 new "test params: -f $cfg"
 

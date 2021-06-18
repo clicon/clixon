@@ -198,10 +198,10 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "wait restconf"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 new "netconfig edit main module"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><main xmlns=\"urn:example:clixon\"><x>foo</x><ext>foo</ext></main></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"

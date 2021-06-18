@@ -49,10 +49,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend  -s init -f $cfg -- -s"
     start_backend -s init -f $cfg -- -s
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 # Hello
 new "Netconf snd hello with xmldecl"

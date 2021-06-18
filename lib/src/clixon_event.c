@@ -112,7 +112,7 @@ static int _clicon_sig_ignore = 0;
 int
 clixon_exit_set(int nr)
 {
-    _clicon_exit++;
+    _clicon_exit = nr;
     return 0;
 }
 

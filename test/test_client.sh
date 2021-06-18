@@ -137,10 +137,10 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 XML='<table xmlns="urn:example:clixon-client"><parameter><name>a</name><value>42</value></parameter></table>'
 

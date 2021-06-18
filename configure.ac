@@ -244,14 +244,14 @@ elif test "x${with_restconf}" == xnative; then
    fi		  
 
    # Check if nghttp2 is enabled for http/2
-   AC_ARG_ENABLE(nghttp2, AS_HELP_STRING([--enable-nghttp2],[Enable nghttp2 for native restconf http/2, default: no]),[
+   AC_ARG_ENABLE(nghttp2, AS_HELP_STRING([--disable-nghttp2],[Disable nghttp2 for native restconf http/2, default: yes]),[
 	  if test "$enableval" = no; then
 	      ac_enable_nghttp2=no
 	  else	      
 	      ac_enable_nghttp2=yes
           fi
         ],
-	[ ac_enable_nghttp2=no])
+	[ ac_enable_nghttp2=yes])
    AC_MSG_RESULT(checking nghttp2 is enabled: $ac_enable_nghttp2)
    if test "$ac_enable_nghttp2" = "yes"; then
       AC_CHECK_HEADERS(nghttp2/nghttp2.h,[], AC_MSG_ERROR([nghttp2 missing]))

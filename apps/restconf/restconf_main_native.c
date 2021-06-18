@@ -858,7 +858,7 @@ restconf_connection(int   s,
 		 * frames instead of just postponing nrof events?
 		 */
 		if (clixon_exit_get() == 1){
-		    clixon_exit_set(4);
+		    clixon_exit_set(3);
 		}
 	    }
 #endif
@@ -868,7 +868,9 @@ restconf_connection(int   s,
 	case HTTP_2:
 	    if (http2_recv(rc, (unsigned char *)buf, n) < 0)
 		goto done;
-	    // notused	    sd = restconf_stream_find(rc, 0); /* default stream */
+	    //notused	    sd = restconf_stream_find(rc, 0); /* default stream */
+	    /* There may be more data frames */
+	    readmore++;
 	    break;
 #endif /* HAVE_LIBNGHTTP2 */
 	default:

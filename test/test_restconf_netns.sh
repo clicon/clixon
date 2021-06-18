@@ -54,7 +54,6 @@ test -d $certdir || mkdir $certdir
 cacerts $cakey $cacert
 servercerts $cakey $cacert $srvkey $srvcert
 
-# XXX Note default port need to be 80 for wait_restconf to work
 RESTCONFIG=$(cat <<EOF
 <restconf>
    <enable>true</enable>
@@ -66,7 +65,7 @@ RESTCONFIG=$(cat <<EOF
    <debug>$RESTCONFDBG</debug>
    <socket>     <!-- reference and to get wait-restconf to work -->
       <namespace>default</namespace>
-      <address>0.0.0.0</address>
+      <address>127.0.0.1</address>
       <port>80</port>
       <ssl>false</ssl>
    </socket>
@@ -165,7 +164,7 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "wait restconf"
-wait_restconf 
+wait_restconf http # force to http on host ns
     
 new "add sample config w netconf"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>a</name><value>42</value></parameter></table></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -216,7 +215,7 @@ RESTCONFIG=$(cat <<EOF
    <debug>$RESTCONFDBG</debug>
    <auth-type>none</auth-type>
    <pretty>false</pretty>
-   <socket>
+   <socket>     <!-- reference and to get wait-restconf to work -->
       <namespace>default</namespace>
       <address>127.0.0.1</address>
       <port>80</port>
@@ -289,8 +288,7 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "wait restconf"
-wait_restconf 
-
+wait_restconf http # force to http on host ns
 
 sleep $DEMSLEEP
 new "Check zombies"

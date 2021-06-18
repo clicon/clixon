@@ -110,10 +110,10 @@ if [ $RC -ne 0 ]; then
     
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 new "admin read OK"
 expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 "HTTP/$HVER 200" '{"nacm-example:parameter":\[{"name":"a","value":"72"}\]}'

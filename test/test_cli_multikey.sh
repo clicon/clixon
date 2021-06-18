@@ -77,10 +77,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "set 1 v1"
 expectpart "$($clixon_cli -1 -f $cfg set ex x a 1 b v1)" 0 ""

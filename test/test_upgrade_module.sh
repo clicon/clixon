@@ -220,10 +220,10 @@ function testrun(){
 	fi
 	new "start backend -s startup -f $cfg -l f$log -- -u"
 	start_backend -s startup -f $cfg -l f$log  -- -u
-	
-	new "waiting"
-	wait_backend
     fi
+
+    new "wait backend"
+    wait_backend
 
     if $flag; then
 	checklog "$match" $line

@@ -240,10 +240,10 @@ EOF
 	fi
 	new "start backend -s init -f $cfg"
 	start_backend -s init -f $cfg
-
-	new "waiting"
-	wait_backend
     fi
+
+    new "wait backend"
+    wait_backend
 
     new "cli set transitive string. type is alpha followed by number and is defined in three levels of modules"
     expectpart "$($clixon_cli -1f $cfg -l o set c talle x99)" 0 '^$'

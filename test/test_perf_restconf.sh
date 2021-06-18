@@ -144,7 +144,7 @@ sed -i '/Connection:/d' $foutput
 
 # Create a file to compare with
 if ${HAVE_LIBNGHTTP2}; then
-    if ${HAVE_LIBEVHTP}; then
+    if [ ${HAVE_LIBEVHTP} -a ${RCPROTO} = http ]; then
 	# Add 101 switch protocols for http 1->2 upgrade
 	echo "HTTP/1.1 101 Switching Protocols" > $ftest
         echo "Upgrade: h2c" >> $ftest

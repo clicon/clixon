@@ -59,10 +59,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "wait backend"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "add hello world (with modstate)"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><hello xmlns=\"urn:example:simple\"><world/></hello></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"

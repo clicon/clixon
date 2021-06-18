@@ -77,7 +77,7 @@ COPY clixon .
 RUN adduser -D -H -G www-data www-data
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --enable-optyangs --with-restconf=native --disable-nghttp2 --enable-evhtp
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --enable-optyangs --with-restconf=native --enable-nghttp2 --enable-evhtp
 
 RUN make
 RUN make install

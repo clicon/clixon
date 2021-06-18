@@ -86,10 +86,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "cli set transitive string"
 expectpart "$($clixon_cli -1f $cfg -l o set c talle x)" 0 "^$"

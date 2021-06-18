@@ -327,11 +327,11 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s none -f $cfg"
     start_backend -s none -f $cfg
-
-    new "wait backend"
-    wait_backend
 fi
 
+new "wait backend"
+wait_backend
+    
 new "wait restconf"
 wait_restconf
 

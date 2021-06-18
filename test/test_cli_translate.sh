@@ -56,10 +56,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "translate abc -> table/parameter=translate/value = bcd"
 expectpart "$($clixon_cli -1 -f $cfg translate abc)" 0 ""

@@ -1371,8 +1371,8 @@ Optional Features:
                           curl
   --disable-evhtp         Disable evhtp for native restconf http/1, default:
                           yes
-  --enable-nghttp2        Enable nghttp2 for native restconf http/2, default:
-                          no
+  --disable-nghttp2       Disable nghttp2 for native restconf http/2, default:
+                          yes
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -5300,7 +5300,7 @@ if test "${enable_nghttp2+set}" = set; then :
           fi
 
 else
-   ac_enable_nghttp2=no
+   ac_enable_nghttp2=yes
 fi
 
    { $as_echo "$as_me:${as_lineno-$LINENO}: result: checking nghttp2 is enabled: $ac_enable_nghttp2" >&5

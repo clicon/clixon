@@ -543,6 +543,11 @@ on_invalid_frame_recv_callback(nghttp2_session *session,
 }
 
 /*! A chunk of data in DATA frame is received
+ *
+ *  ``(flags & NGHTTP2_FLAG_END_STREAM) != 0`` does not
+ * necessarily mean this chunk of data is the last one in the stream.
+ * You should use :type:`nghttp2_on_frame_recv_callback` to know all
+ * data frames are received.
  */
 static int
 on_data_chunk_recv_callback(nghttp2_session *session,
@@ -835,7 +840,7 @@ error_callback2(nghttp2_session *session,
  * XXX see session_recv
  */
 int
-http2_recv(restconf_conn     *rc,
+http2_recv(restconf_conn       *rc,
 	   const unsigned char *buf,
 	   size_t               n)
 {

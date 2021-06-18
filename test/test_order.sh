@@ -161,10 +161,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend"
     start_backend -s running -f $cfg -- -s
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 # STATE (should not be ordered)
 #new "state data (should be unordered: 42,41,43)"

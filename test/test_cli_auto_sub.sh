@@ -123,10 +123,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s startup -f $cfg"
     start_backend -s startup -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 cat <<EOF > $fin
 enter0 p1 # table/parameter=p1
