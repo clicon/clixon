@@ -34,6 +34,7 @@ Expected: June 2021
 
 ### New features
 
+* New utility: clixon_util_validate for stand-alone application that validates or commits datastores
 * Restconf native HTTP/2 support using nghttp2
   * Enable using: `--with-restconf=native --enable-nghttp2`
   * FCGI/nginx not affected only for `--with-restconf=native`

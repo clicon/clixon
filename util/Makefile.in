@@ -87,6 +87,7 @@ APPSRC   += clixon_util_path.c
 APPSRC   += clixon_util_datastore.c
 APPSRC   += clixon_util_regexp.c
 APPSRC   += clixon_util_socket.c
+APPSRC   += clixon_util_validate.c
 APPSRC   += clixon_netconf_ssh_callhome.c
 APPSRC   += clixon_netconf_ssh_callhome_client.c
 ifdef with_restconf
@@ -137,6 +138,9 @@ clixon_util_regexp: clixon_util_regexp.c $(LIBDEPS)
 
 clixon_util_socket: clixon_util_socket.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
+
+clixon_util_validate: clixon_util_validate.c $(LIBDEPS) 
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -l clixon_backend -o $@
 
 ifdef with_restconf
 clixon_util_stream: clixon_util_stream.c $(LIBDEPS)
