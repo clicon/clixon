@@ -92,6 +92,7 @@ Developers may need to change their code
 
 ### Minor features
 
+* Changed default CI to be restconf=native instead of fcgi
 * Moved CI from travis to github actions
 * Added autotool check for getresuid (+ related functions) necessary for lowering of priviliges for backend and restconf
   * If getresuid is not available, CLICON_RESTCONF_PRIVILEGES must be set to 'none'
