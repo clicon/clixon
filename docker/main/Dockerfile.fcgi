@@ -57,8 +57,8 @@ RUN mkdir /clixon/clixon
 WORKDIR /clixon/clixon
 COPY clixon .
 
-# Need to add www user manually
-RUN adduser -D -H www-data
+# Need to add www user manually, but group www-data already exists on Alpine
+RUN adduser -D -H -G www-data www-data
 # nginx adds group www-data
 RUN apk add --update nginx
 
@@ -97,8 +97,8 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 # For clixon and cligen
 RUN apk add --update flex bison fcgi-dev
 
-# need to add www user manually
-RUN adduser -D -H www-data
+# Need to add www user manually, but group www-data already exists on Alpine
+RUN adduser -D -H -G www-data www-data
 # nginx adds group www-data
 RUN apk add --update nginx
 

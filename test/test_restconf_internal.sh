@@ -278,6 +278,8 @@ fi
 new "kill restconf using kill"
 stop_restconf_pre
 
+sleep $DEMSLEEP
+
 new "Wait for restconf to stop"
 wait_restconf_stopped
 
