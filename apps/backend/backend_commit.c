@@ -612,20 +612,27 @@ candidate_validate(clicon_handle h,
 	 * use clicon_err. */
 	if (xret && clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
 	    goto done;
-	plugin_transaction_abort_all(h, td);
 	if (!cbuf_len(cbret) &&
 	    netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
 	    goto done;
 	goto fail;
     }
     if (xmldb_get0_clear(h, td->td_src) < 0 ||
-	xmldb_get0_clear(h, td->td_target) < 0){
-	plugin_transaction_abort_all(h, td);
+	xmldb_get0_clear(h, td->td_target) < 0)
 	goto done;
-    }
+
     plugin_transaction_end_all(h, td);
     retval = 1;
  done:
+    if (xret)
+	xml_free(xret);
+     if (td){
+	 if (retval < 1)
+	     plugin_transaction_abort_all(h, td);
+	 xmldb_get0_free(h, &td->td_target);
+	 xmldb_get0_free(h, &td->td_src);
+	 transaction_free(td);
+     }
     return retval;
  fail:
     retval = 0;

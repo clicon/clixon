@@ -682,48 +682,53 @@ clixon_process_status(clicon_handle  h,
     int              run;
     int              i;
     char             timestr[28];
+    int              match = 0;
 
-    if (_proc_entry_list == NULL)
-	goto ok;
-    pe = _proc_entry_list;
-    do {
-	if (strcmp(pe->pe_name, name) == 0){
-	    /* Check if running */
-	    run = 0;
-	    if (pe->pe_pid && proc_op_run(pe->pe_pid, &run) < 0)
-		goto done;
-	    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><active xmlns=\"%s\">%s</active>",
-		    NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS, run?"true":"false");
-	    if (pe->pe_description)
-		cprintf(cbret, "<description xmlns=\"%s\">%s</description>", CLIXON_LIB_NS, pe->pe_description);
-	    cprintf(cbret, "<command xmlns=\"%s\">", CLIXON_LIB_NS);
-	    /* the command may include any data, including XML (such as restconf -R command) and 
-	       therefore needs CDATA encoding */
-	    cprintf(cbret, "<![CDATA[");
-	    for (i=0; i<pe->pe_argc-1; i++){
-		if (i)
-		    cprintf(cbret, " ");
-		cprintf(cbret, "%s", pe->pe_argv[i]);
-	    }
-	    cprintf(cbret, "]]>");
-	    cprintf(cbret, "</command>");
-	    cprintf(cbret, "<status xmlns=\"%s\">%s</status>", CLIXON_LIB_NS,
-		    clicon_int2str(proc_state_map, pe->pe_state));
-	    if (timerisset(&pe->pe_starttime)){
-		if (time2str(pe->pe_starttime, timestr, sizeof(timestr)) < 0){
-		    clicon_err(OE_UNIX, errno, "time2str");
+    if (_proc_entry_list != NULL){
+	pe = _proc_entry_list;
+	do {
+	    if (strcmp(pe->pe_name, name) == 0){
+		/* Check if running */
+		run = 0;
+		if (pe->pe_pid && proc_op_run(pe->pe_pid, &run) < 0)
 		    goto done;
+		cprintf(cbret, "<rpc-reply xmlns=\"%s\"><active xmlns=\"%s\">%s</active>",
+			NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS, run?"true":"false");
+		if (pe->pe_description)
+		    cprintf(cbret, "<description xmlns=\"%s\">%s</description>", CLIXON_LIB_NS, pe->pe_description);
+		cprintf(cbret, "<command xmlns=\"%s\">", CLIXON_LIB_NS);
+		/* the command may include any data, including XML (such as restconf -R command) and 
+		   therefore needs CDATA encoding */
+		cprintf(cbret, "<![CDATA[");
+		for (i=0; i<pe->pe_argc-1; i++){
+		    if (i)
+			cprintf(cbret, " ");
+		    cprintf(cbret, "%s", pe->pe_argv[i]);
 		}
-		cprintf(cbret, "<starttime xmlns=\"%s\">%s</starttime>", CLIXON_LIB_NS, timestr);
+		cprintf(cbret, "]]>");
+		cprintf(cbret, "</command>");
+		cprintf(cbret, "<status xmlns=\"%s\">%s</status>", CLIXON_LIB_NS,
+			clicon_int2str(proc_state_map, pe->pe_state));
+		if (timerisset(&pe->pe_starttime)){
+		    if (time2str(pe->pe_starttime, timestr, sizeof(timestr)) < 0){
+			clicon_err(OE_UNIX, errno, "time2str");
+			goto done;
+		    }
+		    cprintf(cbret, "<starttime xmlns=\"%s\">%s</starttime>", CLIXON_LIB_NS, timestr);
+		}
+		if (pe->pe_pid)
+		    cprintf(cbret, "<pid xmlns=\"%s\">%u</pid>", CLIXON_LIB_NS, pe->pe_pid);
+		cprintf(cbret, "</rpc-reply>");
+		match++;
+		break; 	    /* hit break here */
 	    }
-	    if (pe->pe_pid)
-		cprintf(cbret, "<pid xmlns=\"%s\">%u</pid>", CLIXON_LIB_NS, pe->pe_pid);
-	    cprintf(cbret, "</rpc-reply>");
-	    break; 	    /* hit break here */
-	}
-	pe = NEXTQ(process_entry_t *, pe);
-    } while (pe != _proc_entry_list);
- ok:
+	    pe = NEXTQ(process_entry_t *, pe);
+	} while (pe != _proc_entry_list);
+    }
+    if (!match){ /* No match, return error */
+	if (netconf_unknown_element(cbret, "application", (char*)name, "Process service is not known") < 0)
+	    goto done;	    
+    }
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
