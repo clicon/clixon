@@ -1733,7 +1733,7 @@ restconf_clixon_init(clicon_handle h,
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
 	goto done;
     if (inline_config != NULL && strlen(inline_config)){
-	clicon_debug(1, "%s using restconf inline config", __FUNCTION__);
+	clicon_debug(1, "%s reading from inline config", __FUNCTION__);
 	if ((ret = clixon_xml_parse_string(inline_config, YB_MODULE, yspec, &xrestconf, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
@@ -1755,6 +1755,7 @@ restconf_clixon_init(clicon_handle h,
 		goto done;
     }
     else if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS") == 0){
+	clicon_debug(1, "%s reading from clixon config", __FUNCTION__);
 	/* If not read from backend, try to get restconf config from local config-file */
 	if ((xrestconf = clicon_conf_restconf(h)) != NULL){
 	    /*! Basic config init, set auth-type, pretty, etc ret 0 means disabled */
@@ -1772,6 +1773,7 @@ restconf_clixon_init(clicon_handle h,
     /* If no local config, or it is disabled, try to query backend of config. 
      */
     else {
+	clicon_debug(1, "%s reading from backend datastore config", __FUNCTION__);
 	if ((ret = restconf_clixon_backend(h, xrestconfp)) < 0)
 	    goto done;
 	if (ret == 0)

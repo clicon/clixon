@@ -539,7 +539,7 @@ xmldb_empty_get(clicon_handle h,
     return de->de_empty;
 }
 
-/*! Get modified flag from datastore
+/*! Set modified flag from datastore
  * @param[in]  h     Clicon handle
  * @param[in]  db    Database name
  * @param[in]  value 0 or 1

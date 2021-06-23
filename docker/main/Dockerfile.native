@@ -41,9 +41,11 @@ RUN apk add --update git make build-base gcc flex bison curl-dev
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
 
-# evhtp
-# dependencies
+# evhtp dependencies
 RUN apk add --update libevent libevent-dev
+
+# nghttp2 dependencies
+RUN apk add --update nghttp2
 
 # clone libevhtp
 WORKDIR /clixon
@@ -68,13 +70,13 @@ RUN ./configure --prefix=/clixon/build
 RUN make
 RUN make install
 
+# Need to add www user manually
+RUN adduser -D -H -G www-data www-data
+
 # Copy Clixon from local dir
 RUN mkdir /clixon/clixon
 WORKDIR /clixon/clixon
 COPY clixon .
-
-# Need to add www user manually
-RUN adduser -D -H -G www-data www-data
 
 # Configure, build and install clixon
 RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --enable-optyangs --with-restconf=native --enable-nghttp2 --enable-evhtp
@@ -117,6 +119,9 @@ RUN adduser -D -H -G www-data www-data
 # for libevtp
 RUN apk add --update openssl libevent
 
+# nghttp2 dependencies
+RUN apk add --update nghttp2
+
 # Test-specific (for test scripts)
 RUN apk add --update sudo curl procps grep make bash # iproute2 # contains ip - but CAP_SYS_ADMIN isssue
 
@@ -135,5 +140,5 @@ RUN mkdir /www-data
 RUN chown clicon /www-data
 RUN chgrp clicon /www-data
 
-# Log to stderr.
+# Start the backend and restconf deamons
 CMD /usr/local/bin/startsystem.sh

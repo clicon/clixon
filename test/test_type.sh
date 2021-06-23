@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Advanced union types and generated code
 # and enum w values
-# The test is run twice, first with dbcache turned on, then turned off.
+# The test is run three times, with dbcache turned on, cache off and zero-copy
 # It is the only test with dbcache off.
 
 # Magic line must be first in script (see README.md)
