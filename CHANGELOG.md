@@ -50,7 +50,9 @@ Expected: June 2021
   * See [yang uses's substatement when has no effect #218](https://github.com/clicon/clixon/issues/218)
 * YANG deviation [deviation statement not yet support #211](https://github.com/clicon/clixon/issues/211)
   * See RFC7950 Sec 5.6.3
-
+* Added ordering sanity check for YANG modules and sub-modules
+  * If YANG sub-statements are placed in wrong order, clixon fails on error.
+	
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system

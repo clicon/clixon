@@ -46,10 +46,10 @@ cat <<EOF > $fyang
 module nacm-example{
   yang-version 1.1;
   namespace "urn:example:nacm";
+  prefix nacm;
   import clixon-example {
 	prefix ex;
   }
-  prefix nacm;
   container authentication {
     presence "To keep this from auto-expanding"; 
     description "Example code for enabling www basic auth and some example 

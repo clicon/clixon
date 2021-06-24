@@ -44,8 +44,8 @@ EOF
 cat <<EOF > $fyang2
 module A{
   prefix a;
-  revision 2021-01-01;
   namespace "urn:example:a";
+  revision 2021-01-01;
   container upgraded{
   }
 }
@@ -95,8 +95,8 @@ for oldyang in true false; do
     cat <<EOF > $fyang1
 module A{
   prefix a;
-  revision 2016-01-01;
   namespace "urn:example:a";
+  revision 2016-01-01;
   container old{
   }
 }

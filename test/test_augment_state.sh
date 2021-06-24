@@ -35,8 +35,8 @@ cat <<EOF > $fyang2
 module example-lib {
   yang-version 1.1;
   namespace "urn:example:lib";
-  revision "2019-03-04";
   prefix lib;
+  revision "2019-03-04";
   container global-state {
     config false;
     leaf gbds{
@@ -81,10 +81,10 @@ module example-augment {
   yang-version 1.1;
   namespace "urn:example:augment";
   prefix aug;
-  revision "2020-09-25";
   import example-lib {
      prefix lib;
   }
+  revision "2020-09-25";
   /* Augments global state */
   augment "/lib:global-state" {
     leaf gads{

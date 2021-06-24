@@ -22,9 +22,9 @@ fyang3=$dir/other.yang
 cat <<EOF > $fyang1
 module example{
   prefix ex;
+  namespace "urn:example:clixon";
   revision $NEWDATE;
   revision $OLDDATE;
-  namespace "urn:example:clixon";
   leaf newex{
     type string;
   }
@@ -35,8 +35,8 @@ EOF
 cat <<EOF > $fyang2
 module example{
   prefix ex;
-  revision $OLDDATE;
   namespace "urn:example:clixon";
+  revision $OLDDATE;
   leaf oldex{
     type string;
   }
@@ -47,8 +47,8 @@ EOF
 cat <<EOF > $fyang3
 module other{
   prefix oth;
-  revision $NEWDATE;
   namespace "urn:example:clixon2";
+  revision $NEWDATE;
   leaf other{
     type string;
   }

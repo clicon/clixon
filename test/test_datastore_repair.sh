@@ -37,8 +37,8 @@ EOF
 cat <<EOF > $fyangA
 module A{
   prefix a;
-  revision 2020-02-11;
   namespace "urn:example:a";
+  revision 2020-02-11;
   container x {
     container y {
     }
@@ -56,11 +56,11 @@ EOF
 cat <<EOF > $fyangB
 module B{
   prefix b;
-  revision 2020-02-11;
   namespace "urn:example:b";
   import A {
      prefix "a";
   }
+  revision 2020-02-11;
   augment "/a:x/a:y" {
     container z {
       leaf w {

@@ -47,9 +47,9 @@ module example3{
 EOF
 cat <<EOF > $fyang2
 module example2{
-  import example3 { prefix ex3; }
   namespace "urn:example:example2";
   prefix ex2;
+  import example3 { prefix ex3; }
   grouping gr2 {
     leaf talle{
       type ex3:t;

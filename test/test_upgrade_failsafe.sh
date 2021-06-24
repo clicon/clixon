@@ -38,8 +38,8 @@ fyangB=$dir/B@2019-01-01.yang
 cat <<EOF > $fyangA0
 module A{
   prefix a;
-  revision 0814-01-28;
   namespace "urn:example:a";
+  revision 0814-01-28;
   leaf a0{
     type string;
   }
@@ -53,9 +53,9 @@ EOF
 cat <<EOF > $fyangA1
 module A{
   prefix a;
+  namespace "urn:example:a";
   revision 2019-01-01;
   revision 0814-01-28;
-  namespace "urn:example:a";
   /*  leaf a0 has been removed */
   leaf a1{
     description "exists in both versions";
@@ -72,8 +72,8 @@ EOF
 cat <<EOF > $fyangB
 module B{
   prefix b;
-  revision 2019-01-01;
   namespace "urn:example:b";
+  revision 2019-01-01;
   leaf b{
     type string;
   }
@@ -84,8 +84,8 @@ EOF
 cat <<EOF > /dev/null
 module C{
   prefix c;
-  revision 2019-01-01;
   namespace "urn:example:c";
+  revision 2019-01-01;
   leaf c{
     type string;
   }

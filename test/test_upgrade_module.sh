@@ -46,8 +46,8 @@ touch $log
 cat <<EOF > $fyangb
 module B{
   prefix b;
-  revision 2016-01-01;
   namespace "urn:example:b";
+  revision 2016-01-01;
   container dummy{
   }
 }
@@ -258,8 +258,8 @@ function testall()
     cat <<EOF > $fyang
 module A{
   prefix a;
-  revision 2016-01-01;
   namespace "urn:example:interfaces";
+  revision 2016-01-01;
   container dummy{
   }
 }
