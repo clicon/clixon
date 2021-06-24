@@ -591,15 +591,7 @@ restconf_close_ssl_socket(restconf_conn *rc,
 {
     int retval = -1;
     int                 ret;
-#ifdef HAVE_LIBEVHTP
-    evhtp_connection_t *evconn;
 
-    if ((evconn = rc->rc_evconn) != NULL){
-	clicon_debug(1, "%s evconn-free (%p)", __FUNCTION__, evconn);
-	if (evconn)
-	    evhtp_connection_free(evconn); /* evhtp */
-    }
-#endif /* HAVE_LIBEVHTP */
     if (rc->rc_ssl != NULL){
 	if (shutdown && (ret = SSL_shutdown(rc->rc_ssl)) < 0){
 #if 0
@@ -762,7 +754,6 @@ restconf_connection(int   s,
 		clixon_event_unreg_fd(rc->rc_s, restconf_connection);
 		clicon_debug(1, "%s evconn-free (%p) 2", __FUNCTION__, evconn);
 		restconf_conn_free(rc);
-		evhtp_connection_free(evconn);
 		goto ok;
 	    } /* connection_parse_nobev */
 	    clicon_debug(1, "%s connection_parse OK", __FUNCTION__);
@@ -998,15 +989,7 @@ ssl_alpn_check(clicon_handle        h,
 	    /* XXX Sending badrequest here gives a segv in SSL_shutdown() later or a SIGPIPE here */
 	    clicon_log(LOG_NOTICE, "Warning: ALPN: No protocol selected");
 	}
-	restconf_conn_free(rc);
-#ifdef HAVE_LIBEVHTP
-	{
-	    evhtp_connection_t *evconn;
 
-	    if ((evconn = rc->rc_evconn) != NULL)
-		evhtp_connection_free(evconn); /* evhtp */
-	}
-#endif /* HAVE_LIBEVHTP */
 	if (rc->rc_ssl){
             /* nmap ssl-known-key SEGV at s->method->ssl_shutdown(s); 
 	     * OR OpenSSL error: : SSL_shutdown, err: SSL_ERROR_SYSCALL(5)
@@ -1024,6 +1007,7 @@ ssl_alpn_check(clicon_handle        h,
 	    }
 	    SSL_free(rc->rc_ssl);
 	}
+	restconf_conn_free(rc);
     }
     retval = 0; /* ALPN not OK */
  done:

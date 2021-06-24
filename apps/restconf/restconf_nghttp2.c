@@ -397,7 +397,7 @@ restconf_submit_response(nghttp2_session      *session,
     nghttp2_data_provider data_prd;
     nghttp2_error         ngerr;
     cg_var               *cv;
-    nghttp2_nv           *hdrs;
+    nghttp2_nv           *hdrs = NULL;
     nghttp2_nv           *hdr;
     int                   i = 0;
     char                  valstr[16];
@@ -437,6 +437,8 @@ restconf_submit_response(nghttp2_session      *session,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (hdrs)
+	free(hdrs);
     return retval;
 }
 
@@ -933,7 +935,7 @@ http2_session_init(restconf_conn *rc)
     nghttp2_session_callbacks_set_error_callback2(callbacks, error_callback2);
 
     /* Create session for server use, register callbacks */
-    if ((ngerr = nghttp2_session_server_new(&session, callbacks, rc)) < 0){
+    if ((ngerr = nghttp2_session_server_new3(&session, callbacks, rc, NULL, NULL)) < 0){
 	clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_server_new");
 	goto done;
     }

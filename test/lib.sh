@@ -432,6 +432,7 @@ function wait_restconf_stopped(){
 }
 
 # End of test, final tests before normal exit of test
+# Note this is a single test started by new, not a total test suite
 function endtest()
 {
     if [ $valgrindtest -eq 1 ]; then 
@@ -446,6 +447,12 @@ function new(){
     testi=`expr $testi + 1`
     testname=$1
     >&2 echo "Test $testi($testnr) [$1]"
+}
+
+# End of complete test-suite, eg a test file
+function endsuite()
+{
+    unset CURLOPTS
 }
 
 # Evaluate and return

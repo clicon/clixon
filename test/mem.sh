@@ -58,6 +58,7 @@ function memonce(){
 	testfile=$test
 	. ./$test 
 	errcode=$?
+	endsuite
 	if [ $errcode -ne 0 ]; then
 	    memerr=1
 	    echo -e "\e[31mError in $test errcode=$errcode"

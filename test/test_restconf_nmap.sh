@@ -116,12 +116,7 @@ fi
 new "wait backend"
 wait_backend
 
-#new "netconf edit config"
-#expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
-
-#new "netconf commit"
-#expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
-
+# Explicit start of restconf for easier debugging
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
     stop_restconf_pre

@@ -177,6 +177,14 @@ restconf_conn_free(restconf_conn *rc)
 	clicon_err(OE_RESTCONF, EINVAL, "rc is NULL");
 	return -1;
     }
+#ifdef HAVE_LIBNGHTTP2
+    if (rc->rc_ngsession)
+	nghttp2_session_del(rc->rc_ngsession);
+#endif
+#ifdef HAVE_LIBEVHTP
+    if (rc->rc_evconn)
+	evhtp_connection_free(rc->rc_evconn); /* evhtp */
+#endif
     /* Free all streams */
     while ((sd = rc->rc_streams) != NULL) {
 	DELQ(sd, rc->rc_streams,  restconf_stream_data *);
