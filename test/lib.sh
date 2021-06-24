@@ -127,7 +127,12 @@ DEMSLEEP=.2
 let DEMLOOP=5*DEMWAIT
 
 # RESTCONF protocol, eg http or https
-: ${RCPROTO:=https}
+
+if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+    : ${RCPROTO:=http}
+else
+    : ${RCPROTO:=https}
+fi
 
 # www user (on linux typically www-data, freebsd www)
 # Start restconf user, can be root which is dropped to wwwuser
