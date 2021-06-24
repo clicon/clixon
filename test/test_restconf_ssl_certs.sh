@@ -288,7 +288,7 @@ EOF
 
 
     new "limited invalid cert"
-    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "35 55 56" # 55 "certificate expired"
+    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "16 35 55 56" # 55 "certificate expired"
 
     new "too weak cert (sign w md5)"
     expectpart "$(curl $CURLOPTS --key $certdir/mymd5.key --cert $certdir/mymd5.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 58 "md too weak"
