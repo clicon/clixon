@@ -182,6 +182,7 @@ session_send_callback(nghttp2_session *session,
     ssize_t        totlen = 0;
     int            s;
     SSL           *ssl; 
+    int            sslerr;
     
     clicon_debug(1, "%s buflen:%lu", __FUNCTION__, buflen);
     s = rc->rc_s;
@@ -190,7 +191,14 @@ session_send_callback(nghttp2_session *session,
 	if (ssl){
 	    if ((len = SSL_write(ssl, buf+totlen, buflen-totlen)) <= 0){
 		er = errno;
-		switch (SSL_get_error(ssl, len)){
+		sslerr = SSL_get_error(ssl, len);
+		clicon_debug(1, "%s errno:;%d sslerr:%d", __FUNCTION__, errno, sslerr);
+		switch (sslerr){
+		case SSL_ERROR_WANT_WRITE:           /* 3 */
+		    clicon_debug(1, "%s write SSL_ERROR_WANT_WRITE", __FUNCTION__);
+		    usleep(1000);
+		    continue;
+		    break;
 		case SSL_ERROR_SYSCALL:              /* 5 */
 		    if (er == ECONNRESET) {/* Connection reset by peer */
 			if (ssl)
@@ -200,8 +208,12 @@ session_send_callback(nghttp2_session *session,
 			goto ok; /* Close socket and ssl */
 		    }
 		    else if (er == EAGAIN){
+			/* same as want_write above, but different behaviour on different 
+			 * platforms, linux here, freebsd want_write, or possibly differnt
+			 * ssl lib versions?
+			 */
 			clicon_debug(1, "%s write EAGAIN", __FUNCTION__);
-			usleep(10000);
+			usleep(1000);
 			continue;
 		    }
 		    else{

@@ -32,6 +32,7 @@ ftest=$dir/test.xml
 fconfig=$dir/large.xml
 fconfig2=$dir/large2.xml # leaf-list
 foutput=$dir/output.xml
+foutput2=$dir/output2.xml
 
 cat <<EOF > $fyang
 module scaling{
@@ -132,15 +133,20 @@ expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><co
 
 new "Check running-db contents"
 curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=config > $foutput
+r=$?
+if [ $r -ne 0 ]; then
+    err1 "retval 0" $r
+fi
 
 # Remove Content-Length line (depends on size)
-sed -i '/Content-Length:/d' $foutput
-sed -i '/content-length:/d' $foutput
+# Note: do not use sed -i since it is not portable between gnu and bsd
+sed '/Content-Length:/d' $foutput > $foutput2 && mv $foutput2 $foutput
+sed '/content-length:/d' $foutput > $foutput2 && mv $foutput2 $foutput
 # Remove (nginx) web-server specific lines
-sed -i '/Server:/d' $foutput
-sed -i '/Date:/d' $foutput
-sed -i '/Transfer-Encoding:/d' $foutput
-sed -i '/Connection:/d' $foutput
+sed '/Server:/d' $foutput > $foutput2 && mv $foutput2 $foutput
+sed '/Date:/d' $foutput > $foutput2 && mv $foutput2 $foutput
+sed '/Transfer-Encoding:/d' $foutput > $foutput2 && mv $foutput2 $foutput
+sed '/Connection:/d' $foutput > $foutput2 && mv $foutput2 $foutput
 
 # Create a file to compare with
 if ${HAVE_LIBNGHTTP2}; then
@@ -165,7 +171,7 @@ echo "</data>" >> $ftest
 
 ret=$(diff -i $ftest $foutput)
 if [ $? -ne 0 ]; then
-    echo "$ret"
+    echo "diff -i $ftest $foutput"
     err1 "Matching running-db with $fconfigonly"
 fi	
 

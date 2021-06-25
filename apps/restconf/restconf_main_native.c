@@ -679,6 +679,8 @@ restconf_connection(int   s,
     ssize_t               n;
     char                  buf[BUFSIZ]; /* from stdio.h, typically 8K XXX: reduce for test */
     int                   readmore = 1;
+    int                   sslerr;
+
 #ifdef HAVE_LIBEVHTP
     clicon_handle         h;
     evhtp_connection_t   *evconn = NULL;
@@ -700,21 +702,47 @@ restconf_connection(int   s,
 	       curl -Ssik --key /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.key --cert /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.crt -X GET https://localhost/restconf/data/example:x
 	    */
 	    if ((n = SSL_read(rc->rc_ssl, buf, sizeof(buf))) < 0){
-		clicon_err(OE_XML, errno, "SSL_read");
-		goto done;
+		sslerr = SSL_get_error(rc->rc_ssl, n);
+		clicon_debug(1, "%s SSL_read() n:%ld errno:%d sslerr:%d", __FUNCTION__, n, errno, sslerr);
+		switch (sslerr){
+		case SSL_ERROR_WANT_READ:            /* 2 */
+		    /* SSL_ERROR_WANT_READ is returned when the last operation was a read operation 
+		     * from a nonblocking BIO. 
+		     * That is, it can happen if restconf_socket_init() below is called 
+		     * with SOCK_NONBLOCK
+		     */
+		    clicon_debug(1, "%s SSL_read SSL_ERROR_WANT_READ", __FUNCTION__);
+		    usleep(1000);
+		    readmore = 1;
+		    break;
+		default:
+		    clicon_err(OE_XML, errno, "SSL_read");
+		    goto done;              
+		} /* switch */
+		continue; /* readmore */
 	    }
 	}
 	else{
 	    if ((n = read(rc->rc_s, buf, sizeof(buf))) < 0){ /* XXX atomicio ? */
-		if (errno == ECONNRESET) {/* Connection reset by peer */
+		switch(errno){
+		case ECONNRESET:/* Connection reset by peer */
 		    clicon_debug(1, "%s %d Connection reset by peer", __FUNCTION__, rc->rc_s);
 		    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
 		    close(rc->rc_s);
 		    restconf_conn_free(rc);
 		    goto ok; /* Close socket and ssl */
+		    break;
+		case EAGAIN:
+		    clicon_debug(1, "%s read EAGAIN", __FUNCTION__);
+		    usleep(1000);
+		    readmore = 1;
+		    break;
+		default:;
+		    clicon_err(OE_XML, errno, "read");
+		    goto done;
+		    break;
 		}
-		clicon_err(OE_XML, errno, "read");
-		goto done;
+		continue;
 	    }
 	}
 	clicon_debug(1, "%s read:%ld", __FUNCTION__, n);
