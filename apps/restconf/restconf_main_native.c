@@ -604,6 +604,10 @@ Note that in this case SSL_ERROR_ZERO_RETURN does not necessarily indicate that 
 	}
 	SSL_free(rc->rc_ssl);
 	rc->rc_ssl = NULL;
+#ifdef HAVE_LIBEVHTP
+	if (rc->rc_evconn)
+	    rc->rc_evconn->ssl = NULL;
+#endif
     }
     if (close(rc->rc_s) < 0){
 	clicon_err(OE_UNIX, errno, "close");
@@ -641,7 +645,7 @@ send_badrequest(clicon_handle       h,
     cprintf(cb, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n");
     if (body){
 	cprintf(cb, "Content-Type: %s\r\n", media);
-	cprintf(cb, "Content-Length: %u\r\n", strlen(body));
+	cprintf(cb, "Content-Length: %zu\r\n", strlen(body));
     }
     else
 	cprintf(cb, "Content-Length: 0\r\n");
