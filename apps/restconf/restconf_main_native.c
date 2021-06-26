@@ -265,7 +265,7 @@ buf_write(char   *buf,
 	}
 	memcpy(dbgstr, buf, sz);
 	dbgstr[sz] = '\0';
-	clicon_debug(1, "%s buflen:%lu buf:%s", __FUNCTION__, buflen, dbgstr);
+	clicon_debug(1, "%s buflen:%zu buf:%s", __FUNCTION__, buflen, dbgstr);
 	free(dbgstr);
     }
     while (totlen < buflen){
@@ -641,7 +641,7 @@ send_badrequest(clicon_handle       h,
     cprintf(cb, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n");
     if (body){
 	cprintf(cb, "Content-Type: %s\r\n", media);
-	cprintf(cb, "Content-Length: %lu\r\n", strlen(body));
+	cprintf(cb, "Content-Length: %u\r\n", strlen(body));
     }
     else
 	cprintf(cb, "Content-Length: 0\r\n");
@@ -703,7 +703,7 @@ restconf_connection(int   s,
 	    */
 	    if ((n = SSL_read(rc->rc_ssl, buf, sizeof(buf))) < 0){
 		sslerr = SSL_get_error(rc->rc_ssl, n);
-		clicon_debug(1, "%s SSL_read() n:%ld errno:%d sslerr:%d", __FUNCTION__, n, errno, sslerr);
+		clicon_debug(1, "%s SSL_read() n:%zd errno:%d sslerr:%d", __FUNCTION__, n, errno, sslerr);
 		switch (sslerr){
 		case SSL_ERROR_WANT_READ:            /* 2 */
 		    /* SSL_ERROR_WANT_READ is returned when the last operation was a read operation 
@@ -745,10 +745,10 @@ restconf_connection(int   s,
 		continue;
 	    }
 	}
-	clicon_debug(1, "%s read:%ld", __FUNCTION__, n);
+	clicon_debug(1, "%s (ssl)read:%zd", __FUNCTION__, n);
 	if (n == 0){
 	    clicon_debug(1, "%s n=0 closing socket", __FUNCTION__);
-	    if (restconf_close_ssl_socket(rc, 1) < 0)
+	    if (restconf_close_ssl_socket(rc, 0) < 0)
 		goto done;
 	    restconf_conn_free(rc);    
 	    rc = NULL;

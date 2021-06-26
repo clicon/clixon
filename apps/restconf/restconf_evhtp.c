@@ -396,7 +396,7 @@ restconf_evhtp_reply(restconf_conn        *rc,
      * [RFC7231]).
      */
     if (sd->sd_code != 204 && sd->sd_code > 199)
-	if (restconf_reply_header(sd, "Content-Length", "%lu", sd->sd_body_len) < 0)
+	if (restconf_reply_header(sd, "Content-Length", "%zu", sd->sd_body_len) < 0)
 	    goto done;	
     /* Create reply and write headers */
     if (native_send_reply(rc, sd, req) < 0)

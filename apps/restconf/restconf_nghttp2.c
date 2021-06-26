@@ -184,7 +184,7 @@ session_send_callback(nghttp2_session *session,
     SSL           *ssl; 
     int            sslerr;
     
-    clicon_debug(1, "%s buflen:%lu", __FUNCTION__, buflen);
+    clicon_debug(1, "%s buflen:%zu", __FUNCTION__, buflen);
     s = rc->rc_s;
     ssl = rc->rc_ssl;
     while (totlen < buflen){
@@ -259,7 +259,7 @@ session_send_callback(nghttp2_session *session,
 	clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
 	return retval;
     }
-    clicon_debug(1, "%s retval:%lu", __FUNCTION__, totlen);
+    clicon_debug(1, "%s retval:%zd", __FUNCTION__, totlen);
     return totlen;
 }
 
@@ -379,7 +379,7 @@ restconf_sd_read(nghttp2_session     *session,
 #endif
     assert(cbuf_len(cb) > sd->sd_body_offset);
     remain = cbuf_len(cb) - sd->sd_body_offset;
-    clicon_debug(1, "%s length:%lu totlen:%d, offset:%lu remain:%lu",
+    clicon_debug(1, "%s length:%zu totlen:%d, offset:%zu remain:%zu",
 		 __FUNCTION__,
 		 length,
 		 cbuf_len(cb),
@@ -395,7 +395,7 @@ restconf_sd_read(nghttp2_session     *session,
     }
     memcpy(buf, cbuf_get(cb) + sd->sd_body_offset, len);
     sd->sd_body_offset += len;
-    clicon_debug(1, "%s retval:%lu", __FUNCTION__, len);
+    clicon_debug(1, "%s retval:%zu", __FUNCTION__, len);
     return len;
 }
 
@@ -483,7 +483,7 @@ http2_exec(restconf_conn        *rc,
      * [RFC7231]).
      */
     if (sd->sd_code != 204 && sd->sd_code > 199)
-	if (restconf_reply_header(sd, "Content-Length", "%lu", sd->sd_body_len) < 0)
+	if (restconf_reply_header(sd, "Content-Length", "%zu", sd->sd_body_len) < 0)
 	    goto done;	
     if (sd->sd_code){
 	if (restconf_submit_response(session, rc, stream_id, sd) < 0)
@@ -838,6 +838,20 @@ on_extension_chunk_recv_callback(nghttp2_session *session,
 /*! Library provides the error code, and message for debugging purpose.
  */
 static int
+error_callback(nghttp2_session *session,
+	       const char *msg,
+	       size_t len,
+	       void *user_data)
+{
+    //    restconf_conn *rc = (restconf_conn *)user_data;
+    clicon_debug(1, "%s", __FUNCTION__);
+    return 0;
+}
+
+#if (NGHTTP2_VERSION_NUM > 0x011201) /* Unsure of version number */
+/*! Library provides the error code, and message for debugging purpose.
+ */
+static int
 error_callback2(nghttp2_session *session,
 		int lib_error_code,
 		const char *msg,
@@ -849,6 +863,7 @@ error_callback2(nghttp2_session *session,
     clicon_err(OE_NGHTTP2, lib_error_code, "%s", msg);
     return 0;
 }
+#endif
 
 /*
  * XXX see session_recv
@@ -944,7 +959,10 @@ http2_session_init(restconf_conn *rc)
     nghttp2_session_callbacks_set_unpack_extension_callback(callbacks, unpack_extension_callback);
 #endif
     nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(callbacks, on_extension_chunk_recv_callback);
+    nghttp2_session_callbacks_set_error_callback(callbacks, error_callback);
+#if (NGHTTP2_VERSION_NUM > 0x011201) /* Unsure of version number */
     nghttp2_session_callbacks_set_error_callback2(callbacks, error_callback2);
+#endif
 
     /* Create session for server use, register callbacks */
     if ((ngerr = nghttp2_session_server_new3(&session, callbacks, rc, NULL, NULL)) < 0){
