@@ -382,9 +382,10 @@ function stop_restconf_pre(){
 }
 
 # Stop restconf daemon after test
-# Two caveats in pkill:
+# Some problems with pkill:
 # 1) Dont use $clixon_restconf (dont work in valgrind)
 # 2) Dont use -u $WWWUSER since clixon_restconf may drop privileges.
+# 3) After fork, it seems to take some time before name is right
 function stop_restconf(){
     sudo pkill -f clixon_restconf
     if [ $valgrindtest -eq 3 ]; then 

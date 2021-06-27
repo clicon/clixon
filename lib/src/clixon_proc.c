@@ -648,7 +648,7 @@ clixon_process_operation(clicon_handle  h,
 		sched++;/* start: immediate stop/restart: not immediate: wait timeout */
 	    }
 	    else{
-		clicon_debug(1, "%s name:%s op %s cancelled by wrwap", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));		
+		clicon_debug(1, "%s name:%s op %s cancelled by wrap", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));		
 	    }
 	    break; 	    /* hit break here */
 	}
@@ -688,6 +688,7 @@ clixon_process_status(clicon_handle  h,
 	pe = _proc_entry_list;
 	do {
 	    if (strcmp(pe->pe_name, name) == 0){
+		clicon_debug(1, "%s found %s pid:%d", __FUNCTION__, name, pe->pe_pid);
 		/* Check if running */
 		run = 0;
 		if (pe->pe_pid && proc_op_run(pe->pe_pid, &run) < 0)

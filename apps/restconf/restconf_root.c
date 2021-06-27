@@ -588,6 +588,10 @@ api_root_restconf(clicon_handle        h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+#ifdef WITH_RESTCONF_FCGI
+    if (cb)
+	cbuf_free(cb);
+#endif
     if (xerr)
 	xml_free(xerr);
     if (username)

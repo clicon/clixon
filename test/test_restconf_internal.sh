@@ -167,6 +167,7 @@ cat<<EOF > $startupdb
 EOF
 
 new "kill old restconf"
+sleep $DEMSLEEP
 stop_restconf_pre
 
 new "test params: -f $cfg"
@@ -276,9 +277,8 @@ if [ $pid0 -eq $pid3 ]; then
 fi
 
 new "kill restconf using kill"
-stop_restconf_pre
-
 sleep $DEMSLEEP
+stop_restconf_pre
 
 new "Wait for restconf to stop"
 wait_restconf_stopped
@@ -378,6 +378,7 @@ cat<<EOF > $startupdb
 EOF
 
 new "kill old restconf"
+sleep $DEMSLEEP
 stop_restconf_pre
 
 new "test params: -f $cfg"
@@ -485,9 +486,8 @@ fi
 #Start backend -s none should start 
 
 new "kill restconf"
+sleep $DEMSLEEP
 stop_restconf
-
-sleep $DEMSLEEP # Lots of processes need to die before next test
 
 new "endtest"
 endtest

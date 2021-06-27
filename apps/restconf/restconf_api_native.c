@@ -172,9 +172,9 @@ restconf_reply_send(void  *req0,
     return retval;
 }
 
-/*! get input data
- * @param[in]  req        Fastcgi request handle
- * @note Pulls up an event buffer and then copies it to a cbuf. This is not efficient.
+/*! Get input data from http request, eg such as curl -X PUT http://... <indata>
+ * @param[in]  req        Request handle
+ * @note: reuses cbuf from stream-data
  */
 cbuf *
 restconf_get_indata(void *req0)
