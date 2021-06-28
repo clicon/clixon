@@ -459,7 +459,7 @@ text_modify(clicon_handle       h,
 		changed++;
 		if (op==OP_NONE)
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
-		if (x1bstr){ /* empty type does not have body */
+		if (x1bstr){ /* empty type does not have body */ /* XXX Here x0 = <b></b> */
 		    if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
 			goto done; 
 		}
@@ -499,23 +499,26 @@ text_modify(clicon_handle       h,
 		    if (assign_namespace_body(x1, x0) < 0)
 			goto done;
 		}
-		if ((x0b = xml_body_get(x0)) != NULL){
-		    x0bstr = xml_value(x0b);
-		    if (x0bstr==NULL || strcmp(x0bstr, x1bstr)){
-			if ((op != OP_NONE) && !permit && xnacm){
-			    if ((ret = nacm_datanode_write(h, x1, x1t,
-							   x0bstr==NULL?NACM_CREATE:NACM_UPDATE,
-							   username, xnacm, cbret)) < 0)
-				goto done;
-			    if (ret == 0)
-				goto fail;
-			}
-			if (xml_value_set(x0b, x1bstr) < 0)
+		/* XXX here x1bstr is checked for null, while adding an empty string above */
+		if ((x0b = xml_body_get(x0)) == NULL && x1bstr && strlen(x1bstr)){
+		    if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
+			goto done;
+		}
+		x0bstr = xml_value(x0b);
+		if (x0bstr==NULL || strcmp(x0bstr, x1bstr)){
+		    if ((op != OP_NONE) && !permit && xnacm){
+			if ((ret = nacm_datanode_write(h, x1, x1t,
+						       x0bstr==NULL?NACM_CREATE:NACM_UPDATE,
+						       username, xnacm, cbret)) < 0)
 			    goto done;
-			/* If a default value ies replaced, then reset default flag */
-			if (xml_flag(x0, XML_FLAG_DEFAULT))
-			    xml_flag_reset(x0, XML_FLAG_DEFAULT);
+			if (ret == 0)
+			    goto fail;
 		    }
+		    if (xml_value_set(x0b, x1bstr) < 0)
+			goto done;
+		    /* If a default value ies replaced, then reset default flag */
+		    if (xml_flag(x0, XML_FLAG_DEFAULT))
+			xml_flag_reset(x0, XML_FLAG_DEFAULT);
 		}
 	    } /* x1bstr */
 	    if (changed){ 

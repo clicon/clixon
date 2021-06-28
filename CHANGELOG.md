@@ -110,6 +110,7 @@ Developers may need to change their code
 	
 ### Corrected Bugs
 
+* Fixed: [ restconf patch method unable to chage value to empty string #229](https://github.com/clicon/clixon/issues/229)
 * Fixed: [restconf patch method adds redundant namespaces #235](https://github.com/clicon/clixon/issues/235)
 * Fixed: Restconf HEAD did not work everywhere GET did, such as well-known and exact root.
 * Fixed: [JSON parsing error for a specific input. #236](https://github.com/clicon/clixon/issues/236)
