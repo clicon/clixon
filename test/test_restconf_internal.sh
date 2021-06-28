@@ -167,7 +167,6 @@ cat<<EOF > $startupdb
 EOF
 
 new "kill old restconf"
-sleep $DEMSLEEP
 stop_restconf_pre
 
 new "test params: -f $cfg"
@@ -276,9 +275,8 @@ if [ $pid0 -eq $pid3 ]; then
     err1 "A different pid" "same pid: $pid3"
 fi
 
-new "kill restconf using kill"
-sleep $DEMSLEEP
-stop_restconf_pre
+new "kill restconf"
+sudo kill $pid3
 
 new "Wait for restconf to stop"
 wait_restconf_stopped
