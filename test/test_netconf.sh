@@ -26,6 +26,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_NETCONF_DIR>/usr/local/lib/$APPNAME/netconf</CLICON_NETCONF_DIR>
+  <CLICON_NETCONF_MESSAGE_ID_OPTIONAL>false</CLICON_NETCONF_MESSAGE_ID_OPTIONAL>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -66,6 +67,9 @@ expecteof "$clixon_netconf -qf $cfg" 0 "<hello $DEFAULTNS><capabilities><capabil
 
 new "Frame with unknown message"
 expecteof "$clixon_netconf -qf $cfg" 0 "<xxx $DEFAULTNS></xxx>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>xxx</bad-element></error-info><error-severity>error</error-severity><error-message>Unrecognized netconf operation</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+new "Frame without message-id attribute"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTONLY><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTONLY><rpc-error><error-type>rpc</error-type><error-tag>missing-attribute</error-tag><error-info><bad-attribute>message-id</bad-attribute></error-info><error-severity>error</error-severity><error-message>Incoming rpc</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "netconf rcv hello, disable RFC7895/ietf-yang-library"
 expecteof "$clixon_netconf -f $cfg -o CLICON_MODULE_LIBRARY_RFC7895=0" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]><rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"

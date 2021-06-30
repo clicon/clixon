@@ -50,6 +50,7 @@ module clixon-config {
 	            CLICON_RESTCONF_PRIVILEGES
 	            CLICON_RESTCONF_INSTALLDIR
 	            CLICON_RESTCONF_STARTUP_DONTUPDATE
+                    CLICON_NETCONF_MESSAGE_ID_OPTIONAL
              Released in Clixon 5.2";
     }
     revision 2021-03-08 {
@@ -464,6 +465,16 @@ module clixon-config {
                  That is, if clixon receives an rpc with no previous hello message, an error
                  is returned, which conforms to the RFC.
                  Note this applies only to external NETCONF, not the internal (IPC) netconf";
+	}
+	leaf CLICON_NETCONF_MESSAGE_ID_OPTIONAL {
+	    type boolean;
+	    default false;
+	    description
+		"This option relates to RFC 6241 Sec 4.1 <rpc> Element
+                 The <rpc> element has a mandatory attribute 'message-id', which is a
+                 string chosen by the sender of the RPC.
+                 If true, an RPC can be sent without a message-id.
+                 This applies to both  external NETCONF and internal (IPC) netconf";
 	}
 	leaf CLICON_RESTCONF_DIR {
 	    type string;

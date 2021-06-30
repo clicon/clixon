@@ -495,8 +495,8 @@ cli_show_config1(clicon_handle h,
 	    cli_xml2cli(xc, prefix, gt, cligen_output); /* cli syntax */
 	break;
     case FORMAT_NETCONF:
-	cligen_output(stdout, "<rpc xmlns=\"%s\"><edit-config><target><candidate/></target><config>\n",
-		      NETCONF_BASE_NAMESPACE);
+	cligen_output(stdout, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target><config>\n",
+		      NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
 	    cli_xml2file(xc, 2, 1, cligen_output);

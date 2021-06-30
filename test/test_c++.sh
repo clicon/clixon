@@ -154,7 +154,7 @@ new "wait backend"
 wait_backend
 
 new "Netconf runtime test"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><example xmlns=\"urn:example:clixon\"><x>0</x></example></rpc>]]>]]>" '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><x xmlns="urn:example:clixon">0</x><y xmlns="urn:example:clixon">42</y></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><example xmlns=\"urn:example:clixon\"><x>0</x></example></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><x xmlns=\"urn:example:clixon\">0</x><y xmlns=\"urn:example:clixon\">42</y></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
    new "Kill backend"

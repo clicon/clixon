@@ -65,6 +65,7 @@
 #include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
+#include "clixon_xml_bind.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_io.h"
 #include "clixon_xpath_ctx.h"
@@ -231,41 +232,79 @@ netconf_too_big(cbuf *cb,
 /*! Create Netconf missing-attribute error XML tree according to RFC 6241 App A
  *
  * An expected attribute is missing.
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[in]  type    Error type: "rpc", "application" or "protocol"
+ * @param[in]  attr    bad-attribute and/or bad-element xml
+ * @param[in]  message Error message (will be XML encoded)
+ */
+int
+netconf_missing_attribute_xml(cxobj **xret,
+			      char   *type,
+			      char   *attr,
+			      char   *message)
+{
+    int   retval = -1;
+    cxobj *xerr = NULL;
+    char  *encstr = NULL;
+    cxobj *xa;
+
+    if (*xret == NULL){
+	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
+	    goto done;
+    }
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
+	goto done;
+    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+	goto done;
+    if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
+	goto done;
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>%s</error-type>"
+			    "<error-tag>missing-attribute</error-tag>"
+			    "<error-info><bad-attribute>%s</bad-attribute></error-info>"
+			    "<error-severity>error</error-severity>", type, attr) < 0)
+	goto done;
+    if (message){
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
+	    goto done;
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
+				encstr) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    if (encstr)
+	free(encstr);
+    return retval;
+}
+
+/*! Create Netconf missing-attribute error XML tree according to RFC 6241 App A
+ *
+ * An expected attribute is missing.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
- * @param[in]  info    bad-attribute or bad-element xml
- * @param[in]  message Error message (will be XML encoded)
+ * @param[in]  attr    bad-attribute 
+ * @param[in]  message Error message (will be XML encoded) or NULL
  */
 int
 netconf_missing_attribute(cbuf *cb,
 			  char *type,
-			  char *info,
+			  char *attr,
 			  char *message)
 {
-    int   retval = -1;
-    char *encstr = NULL;
+    int    retval = -1;
+    cxobj *xret = NULL;
 
-    if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
-		"<error-type>%s</error-type>"
-		"<error-tag>missing-attribute</error-tag>"
-		"<error-info>%s</error-info>"
-		"<error-severity>error</error-severity>",
-		NETCONF_BASE_NAMESPACE,	type, info) <0)
-	goto err;
-    if (message){
-	if (xml_chardata_encode(&encstr, "%s", message) < 0)
-	    goto done;
-	if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
-	    goto err;
-    }
-    if (cprintf(cb, "</rpc-error></rpc-reply>") <0)
-	goto err;
+    if (netconf_missing_attribute_xml(&xret, type, attr, message) < 0)
+	goto done;
+    if (clicon_xml2cbuf(cb, xret, 0, 0, -1) < 0)
+	goto done;
     retval = 0;
  done:
+    if (xret)
+	xml_free(xret);
     return retval;
- err:
-    clicon_err(OE_XML, errno, "cprintf");
-    goto done;
 }
 
 /*! Create Netconf bad-attribute error XML tree according to RFC 6241 App A
@@ -1429,6 +1468,16 @@ netconf_module_load(clicon_handle h)
     /* Load restconf yang. Note this is also a part of clixon-config */
     if (yang_spec_parse_module(h, "clixon-restconf", NULL, yspec)< 0)
 	goto done;
+#if 1
+    /* XXX: Both the following settings are because clicon-handle is not part of all API
+     * functions
+     * Treat unknown XML as anydata */
+    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1)
+	xml_bind_yang_unknown_anydata(1);
+    /* Make message-id attribute optional */
+    if (clicon_option_bool(h, "CLICON_NETCONF_MESSAGE_ID_OPTIONAL") == 1)
+	xml_bind_netconf_message_id_optional(1);
+#endif
     retval = 0;
  done:
     return retval;

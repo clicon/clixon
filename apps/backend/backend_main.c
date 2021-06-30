@@ -747,11 +747,6 @@ main(int    argc,
 		   clicon_configfile(h));
 	goto done;
     }
-
-    /* Treat unknown XML as anydata */
-    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1)
-	xml_bind_yang_unknown_anydata(1);
-
     /* Publish stream on pubsub channels.
      * CLICON_STREAM_PUB should be set to URL to where streams are published
      * and configure should be run with --enable-publish

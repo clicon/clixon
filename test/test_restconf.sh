@@ -393,7 +393,7 @@ function testrun()
 
     new "restconf rpc using POST xml"
     ret=$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -H "Accept: application/yang-data+xml" -d '{"clixon-example:input":{"x":42}}' $proto://$addr/restconf/operations/clixon-example:example)
-    expect='<output xmlns="urn:example:clixon"><x>42</x><y>42</y></output>'
+    expect='<output message-id="42" xmlns="urn:example:clixon"><x>42</x><y>42</y></output>'
     match=`echo $ret | grep --null -Eo "$expect"`
     if [ -z "$match" ]; then
 	err "$expect" "$ret"

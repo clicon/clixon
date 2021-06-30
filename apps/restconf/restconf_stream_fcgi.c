@@ -269,8 +269,8 @@ restconf_stream(clicon_handle h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    cprintf(cb, "<rpc xmlns=\"%s\"><create-subscription xmlns=\"%s\"><stream>%s</stream>",
-	    NETCONF_BASE_NAMESPACE, EVENT_RFC5277_NAMESPACE, name);
+    cprintf(cb, "<rpc xmlns=\"%s\" %s><create-subscription xmlns=\"%s\"><stream>%s</stream>",
+	    NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR, EVENT_RFC5277_NAMESPACE, name);
     /* Print all fields */
     for (i=0; i<cvec_len(qvec); i++){
         cv = cvec_i(qvec, i);

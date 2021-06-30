@@ -513,11 +513,12 @@ api_data_write(clicon_handle h,
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cbx, "<rpc xmlns=\"%s\" username=\"%s\" xmlns:%s=\"%s\">",
+    cprintf(cbx, "<rpc xmlns=\"%s\" username=\"%s\" xmlns:%s=\"%s\" %s>",
 	    NETCONF_BASE_NAMESPACE,
 	    username?username:"",
 	    NETCONF_BASE_PREFIX,
-	    NETCONF_BASE_NAMESPACE); /* bind nc to netconf namespace */
+	    NETCONF_BASE_NAMESPACE,  /* bind nc to netconf namespace */
+	    NETCONF_MESSAGE_ID_ATTR);
     cprintf(cbx, "<edit-config");
     /* RFC8040 Sec 1.4:
      * If this is a "data" request and the NETCONF server supports :startup,
@@ -753,11 +754,12 @@ api_data_delete(clicon_handle h,
     /* For internal XML protocol: add username attribute for access control
      */
     username = clicon_username_get(h);
-    cprintf(cbx, "<rpc xmlns=\"%s\" username=\"%s\" xmlns:%s=\"%s\">",
+    cprintf(cbx, "<rpc xmlns=\"%s\" username=\"%s\" xmlns:%s=\"%s\" %s>",
 	    NETCONF_BASE_NAMESPACE,
 	    username?username:"",
 	    NETCONF_BASE_PREFIX,
-	    NETCONF_BASE_NAMESPACE); /* bind nc to netconf namespace */
+	    NETCONF_BASE_NAMESPACE,
+	    NETCONF_MESSAGE_ID_ATTR); /* bind nc to netconf namespace */
 
     cprintf(cbx, "<edit-config");
     /* RFC8040 Sec 1.4:

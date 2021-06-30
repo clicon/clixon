@@ -91,7 +91,7 @@ main(int    argc,
     /* Provide a clixon config-file, get a clixon handle */
     if ((h = clixon_client_init("$cfg")) == NULL)
        return -1;
-    /* Make a conenction over netconf or ssh/netconf */
+    /* Make a connection over netconf or ssh/netconf */
     if ((ch = clixon_client_connect(h, CLIXON_CLIENT_NETCONF)) == NULL)
        return -1;
 

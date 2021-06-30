@@ -57,6 +57,10 @@ Expected: June 2021
 
 Users may have to change how they access the system
 
+* Netconf message-id attribute changed from optional to mandatory
+  * Made NETCONF message handling more strict according to RFC 6241
+  * Set `CLICON_NETCONF_MESSAGE_ID_OPTIONAL` to true to accept omission of message-id attribute
+  * See also [need make sure message-id exist in rpc validate #240](https://github.com/clicon/clixon/issues/240)
 * Changed config and install options for Restconf
   * clixon_restconf daemon is installed in /usr/local/sbin (as clixon_backend), instead of /www-data
     * `configure --with-wwwdir=<dir>` remains but only applies to fcgi socket and log
@@ -64,11 +68,13 @@ Users may have to change how they access the system
   * Restconf drop privileges user is defined by `CLICON_RESTCONF_USER`
     * `configure --with-wwwuser=<user>` is removed
   * clixon_restconf drop of privileges is defined by `CLICON_RESTCONF_PRIVILEGES` option
-* New clixon-config@2020-05-20.yang revision
+* New clixon-config@2021-05-20.yang revision
   * Added: `CLICON_RESTCONF_USER`
   * Added: `CLICON_RESTCONF_PRIVILEGES`
   * Added: `CLICON_RESTCONF_INSTALLDIR`
+  * Added: `CLICON_RESTCONF_STARTUP_DONTUPDATE`
   * Added: `CLICON_RESTCONF_STARTUP_DONTUPDATE`	
+  * Added: `CLICON_NETCONF_MESSAGE_ID_OPTIONAL`
 * New clixon-restconf@2020-05-20.yang revision
   * Added: restconf `log-destination` 
 * RESTCONF error replies have changed
@@ -110,7 +116,9 @@ Developers may need to change their code
 	
 ### Corrected Bugs
 
-* Fixed: [ restconf patch method unable to chage value to empty string #229](https://github.com/clicon/clixon/issues/229)
+* Fixed: [need make sure message-id exist in rpc validate #240](https://github.com/clicon/clixon/issues/240)
+  * Netconf message-id attribute changed from optional to mandatory (see API changes)
+* Fixed: [restconf patch method unable to chage value to empty string #229](https://github.com/clicon/clixon/issues/229)
 * Fixed: [restconf patch method adds redundant namespaces #235](https://github.com/clicon/clixon/issues/235)
 * Fixed: Restconf HEAD did not work everywhere GET did, such as well-known and exact root.
 * Fixed: [JSON parsing error for a specific input. #236](https://github.com/clicon/clixon/issues/236)

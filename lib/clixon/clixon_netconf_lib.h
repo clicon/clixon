@@ -52,6 +52,10 @@
 #define NETCONF_BASE_NAMESPACE "urn:ietf:params:xml:ns:netconf:base:1.0"
 #define NETCONF_BASE_PREFIX "nc"
 
+/* In cases where message-id is not given by external client, use this */
+#define NETCONF_MESSAGE_ID_DEFAULT "42"
+#define NETCONF_MESSAGE_ID_ATTR "message-id=\"42\""
+
 /* Netconf base capability as defined in RFC4741, Sec 8.1
  */
 #define NETCONF_BASE_CAPABILITY_1_0 "urn:ietf:params:netconf:base:1.0"
@@ -97,6 +101,7 @@ int netconf_invalid_value(cbuf *cb, char *type, char *message);
 int netconf_invalid_value_xml(cxobj **xret, char *type, char *message);
 int netconf_too_big(cbuf *cb, char *type, char *message);
 int netconf_missing_attribute(cbuf *cb,	char *type, char *info, char *message);
+int netconf_missing_attribute_xml(cxobj **xret, char *type, char *info, char *message);
 int netconf_bad_attribute(cbuf *cb, char *type, char *info, char *message);
 int netconf_bad_attribute_xml(cxobj **xret, char *type, char *info, char *message);
 int netconf_unknown_attribute(cbuf *cb,	char *type, char *info, char *message);
