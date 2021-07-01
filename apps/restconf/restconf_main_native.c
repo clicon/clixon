@@ -1210,7 +1210,9 @@ restconf_accept_client(int   fd,
 	    } /* SSL_accept */
 	} /* while(readmore) */
 	/* Sets data and len to point to the client's requested protocol for this connection. */
+#ifndef OPENSSL_NO_NEXTPROTONEG
 	SSL_get0_next_proto_negotiated(rc->rc_ssl, &alpn, &alpnlen);
+#endif /* !OPENSSL_NO_NEXTPROTONEG */
 	if (alpn == NULL) {
 	    /* Returns a pointer to the selected protocol in data with length len. */
 	    SSL_get0_alpn_selected(rc->rc_ssl, &alpn, &alpnlen);
