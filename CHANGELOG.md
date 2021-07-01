@@ -32,6 +32,8 @@
 ## 5.2.0
 1 July 2021
 
+The 5.2 release has new YANG support for deviation, when and statement ordering. The native restconf mode also supports http/2 using libnghttp2
+
 ### New features
 
 * Restconf native HTTP/2 support using nghttp2
@@ -42,18 +44,17 @@
     * https: ALPN upgrade
     * http: Upgrade header (using: `HTTP/1.1 101 Switching Protocols`)
 * Full support of YANG `when` statement in conjunction with grouping/uses/augment
-  * SeveralThe following cases are now supported according to RFC 7950:
+  * The following cases are now supported according to RFC 7950:
     * Do not extend default values if when statements evaluate to false
     * Do not allow edit-config of nodes if when statements evaluate to false (Sec 8.3.2)
     * If a key leaf is defined in a grouping that is used in a list, the "uses" statement MUST NOT have a "when" statement. (See 7.21.5)
   * See [yang uses's substatement when has no effect #218](https://github.com/clicon/clixon/issues/218)
-* YANG `deviation`support [deviation statement not yet support #211](https://github.com/clicon/clixon/issues/211)
+* YANG `deviation` support [deviation statement not yet support #211](https://github.com/clicon/clixon/issues/211)
   * See RFC7950 Sec 5.6.3
 * Added ordering sanity check for YANG modules and sub-modules
   * If YANG sub-statements are placed in wrong order, clixon fails with error.
 * New utility: clixon_util_validate for stand-alone application that validates or commits datastores
 
-	
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
