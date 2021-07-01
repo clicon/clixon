@@ -105,7 +105,6 @@ validate_leafref(cxobj     *xt,
 {
     int          retval = -1;
     yang_stmt   *ypath;
-    yang_stmt   *yp;
     cxobj      **xvec = NULL;
     cxobj       *x;
     int          i;
@@ -124,14 +123,8 @@ validate_leafref(cxobj     *xt,
 	goto fail;
     }
     /* See comment^: If path is defined in typedef or not */
-    if ((yp = yang_parent_get(ytype)) != NULL &&
-	yang_keyword_get(yp) == Y_TYPEDEF){
-	if (xml_nsctx_yang(ys, &nsc) < 0)
-	    goto done;
-    }
-    else
-	if (xml_nsctx_yang(ytype, &nsc) < 0)
-	    goto done;
+    if (xml_nsctx_node(xt, &nsc) < 0)
+	goto done;
     path = yang_argument_get(ypath);
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, path) < 0) 
 	goto done;

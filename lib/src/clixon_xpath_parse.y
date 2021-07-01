@@ -163,7 +163,7 @@ xpath_parse_exit(clixon_xpath_yacc *xpy)
  * @param[in]  type   XPATH tree node type
  * @param[in]  i0     step-> axis_type 
  * @param[in]  numstr original string xs_double: numeric value 
- * @param[in]  s0     String 0 set if XP_PRIME_STR, XP_PRIME_FN, XP_NODE[_FN] prefix
+ * @param[in]  s0     String 0 set if XP_PRIME_STR, XP_PRIME_FN, XP_NODE[_FN] PATHEXPRE prefix
  * @param[in]  s1     String 1 set if XP_NODE NAME
  * @param[in]  c0     Child 0
  * @param[in]  c1     Child 1
@@ -393,8 +393,8 @@ unionexpr   : unionexpr '|' pathexpr { $$=xp_new(XP_UNION,XO_UNION,NULL,NULL,NUL
 
 pathexpr    : locationpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL);clicon_debug(3,"pathexpr-> locationpath"); } 
             | filterexpr { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL);clicon_debug(3,"pathexpr-> filterexpr"); }
-            | filterexpr '/' rellocpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, $3);clicon_debug(3,"pathexpr-> filterexpr / rellocpath"); } 
-            /* Filterexpr // relativelocationpath */
+            | filterexpr '/' rellocpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,strdup("/"),NULL,$1, $3);clicon_debug(3,"pathexpr-> filterexpr / rellocpath"); }
+            | filterexpr DOUBLESLASH rellocpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,strdup("//"),NULL,$1, $3);clicon_debug(3,"pathexpr-> filterexpr // rellocpath"); } 
             ;
 
 filterexpr  : primaryexpr { $$=xp_new(XP_FILTEREXPR,A_NAN,NULL,NULL,NULL,$1, NULL);clicon_debug(3,"filterexpr-> primaryexpr"); } 

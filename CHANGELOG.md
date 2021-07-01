@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [5.2.0](#520) Expected: June 2021
+* [5.2.0](#520) Expected: July 2021
 * [5.1.0](#510) 15 April 2021
 * [5.0.0](#500) 27 February 2021
   * [5.0.1](#501) 10 March 2021
@@ -30,7 +30,7 @@
 * [3.3.1](#331) June 7 2017
 
 ## 5.2.0
-Expected: June 2021
+Expected: July 2021
 
 ### New features
 
@@ -116,6 +116,7 @@ Developers may need to change their code
 	
 ### Corrected Bugs
 
+* Fixed: [uses oc-if:interface-ref error with openconfig #233](https://github.com/clicon/clixon/issues/233)
 * Fixed: [need make sure message-id exist in rpc validate #240](https://github.com/clicon/clixon/issues/240)
   * Netconf message-id attribute changed from optional to mandatory (see API changes)
 * Fixed: [restconf patch method unable to chage value to empty string #229](https://github.com/clicon/clixon/issues/229)
