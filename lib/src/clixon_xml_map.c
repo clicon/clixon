@@ -1534,12 +1534,19 @@ xml2xpath1(cxobj *x,
     cxobj        *xb;
     char         *b;
     enum rfc_6020 keyword;
+    char         *xprefix = NULL;
     
     if ((xp = xml_parent(x)) == NULL)
 	goto ok;
     xml2xpath1(xp, cb);
+    y = xml_spec(x);
     /* XXX: sometimes there should be a /, sometimes not */
-    cprintf(cb, "/%s", xml_name(x));
+    xprefix = yang_find_myprefix(y);
+    if (xprefix)
+	cprintf(cb, "/%s:%s", xprefix, xml_name(x));
+    else
+	cprintf(cb, "/%s", xml_name(x));
+
     if ((y = xml_spec(x)) != NULL){
 	keyword = yang_keyword_get(y);
 	switch (keyword){
@@ -1559,7 +1566,10 @@ xml2xpath1(cxobj *x,
 		if ((xb = xml_find(x, keyname)) == NULL)
 		    goto done;
 		b = xml_body(xb);
-		cprintf(cb, "[%s=\"%s\"]", keyname, b?b:"");
+		cprintf(cb, "[");
+		if (xprefix)
+		cprintf(cb, "%s:", xprefix);
+		cprintf(cb, "%s=\"%s\"]", keyname, b?b:"");
 	    }
 	    break;
 	default:
