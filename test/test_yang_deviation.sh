@@ -137,7 +137,7 @@ function testrun()
     expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:base\"><name-server><name>aa</name></name-server><name-server><name>bb</name></name-server></system></config></edit-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]"
     if $maxel1; then # add two and check if it fails
 	new "netconf validate 2 element fail"
-	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-many-elements</error-app-tag><error-severity>error</error-severity><error-path>/system/name-server</error-path></rpc-error></rpc-reply>]]>]]>$"
+	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-many-elements</error-app-tag><error-severity>error</error-severity><error-path>/base:system/name-server</error-path></rpc-error></rpc-reply>]]>]]>$"
     else
 	new "netconf validate 2 elements ok"
 	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]"

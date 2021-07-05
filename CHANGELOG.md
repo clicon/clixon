@@ -565,7 +565,7 @@ Users may have to change how they access the system
   * See also "Netconf as default namespace has been disabled by default" above
 * Fixed: [Cannot create or modify NACM data node access rule with path using JSON encoding #129](https://github.com/clicon/clixon/issues/129). The evaluation of NACM datanode rule path is assumed to be canonical namespace and cannot be overruled with `xmlns` rules.
 * Corrected error message for list min/max-value to comply to RFC 7950: a proper path is now returned, previously only the final list symbol was returned. This error-path is also now exposed in the CLI error message correctly.
-  * Example: `<error-path>/c/a1</error-path>`
+  * Example: `<error-path>/ex:c/a1</error-path>`
 * Fixed: [Yang modules skipped if the name is a proper prefix of other module name](https://github.com/clicon/clixon/issues/130)
 * Fixed an error in global default values. Global default values were not written to datastore after startup, but AFTER an edit/commit.
 * Fixed: [Type / Endianism problem in yang_parse_file #128](https://github.com/clicon/clixon/issues/128)
