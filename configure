@@ -1378,6 +1378,7 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-cligen=dir       Use CLIGEN installation in this dir
+  --with-restconf=native  Integration with embedded web server (DEFAULT)
   --with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg
                           nginx (default)
   --with-restconf=native  Integrate restconf with embedded http server
@@ -4995,15 +4996,17 @@ fi
 # This is for restconf.  There are three options:
 # --without-restconf     No restconf support
 # --with-restconf=fcgi   FCGI interface for separate web reverse proxy like nginx
-# --with-restconf=native Integration with embedded web server
+# --with-restconf=native Integration with embedded web server (DEFAULT)
 
 # Check whether --with-restconf was given.
 if test "${with_restconf+set}" = set; then :
   withval=$with_restconf;
 else
-  with_restconf=fcgi
+  with_restconf=native
 fi
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: restconf mode ${with_restconf}" >&5
+$as_echo "restconf mode ${with_restconf}" >&6; }
 # Actions for each specific package
 if test "x${with_restconf}" == xfcgi; then
    # Lives in libfcgi-dev
@@ -5063,6 +5066,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 elif test "x${with_restconf}" == xnative; then
+
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
 $as_echo_n "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
 if ${ac_cv_lib_ssl_OPENSSL_init_ssl_+:} false; then :

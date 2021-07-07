@@ -33,6 +33,13 @@
 ## 5.3.0
 Expected: September, 2021
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Native Restconf is now default, not fcgi/nginx
+  * That is, to configure with fcgi, you need to explicitly configure: `--with-restconf=fcgi`
+
 ## 5.2.0
 1 July 2021
 
