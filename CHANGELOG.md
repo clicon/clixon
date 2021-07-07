@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [5.3.0](#530) Expected: September 2021
 * [5.2.0](#520) 1 July 2021
 * [5.1.0](#510) 15 April 2021
 * [5.0.0](#500) 27 February 2021
@@ -29,10 +30,13 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
+## 5.3.0
+Expected: September, 2021
+
 ## 5.2.0
 1 July 2021
 
-The 5.2 release has new YANG support for deviation, when and statement ordering. The native restconf mode also supports http/2 using libnghttp2
+The 5.2 release has YANG support for "deviation", "when" and statement ordering. The native restconf mode also supports http/2 using libnghttp2
 
 ### New features
 
