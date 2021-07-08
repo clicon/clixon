@@ -40,6 +40,10 @@ Developers may need to change their code
 * Native Restconf is now default, not fcgi/nginx
   * That is, to configure with fcgi, you need to explicitly configure: `--with-restconf=fcgi`
 
+### Corrected Bugs
+
+* Fixed: [RESTConf GET for a specific list instance retrieves data from other submodules that have same list name and key value #244](https://github.com/clicon/clixon/issues/244)
+
 ## 5.2.0
 1 July 2021
 

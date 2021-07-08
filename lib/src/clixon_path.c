@@ -731,7 +731,8 @@ api_path2xpath_cvv(cvec       *api_path,
 		cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
 		cvi = NULL;
 		/* Iterate over individual yang keys  */
-		cprintf(xpath, "/");
+		if (i != offset)
+		    cprintf(xpath, "/");
 		if (xprefix)
 		    cprintf(xpath, "%s:", xprefix);
 		cprintf(xpath, "%s", name);
@@ -752,7 +753,8 @@ api_path2xpath_cvv(cvec       *api_path,
 		}
 		break;
 	    case Y_LEAF_LIST: /* XXX: LOOP? */
-		cprintf(xpath, "/");
+		if (i != offset)
+		    cprintf(xpath, "/");
 		if (xprefix)
 		    cprintf(xpath, "%s:", xprefix);
 		cprintf(xpath, "%s", name);
@@ -1129,6 +1131,9 @@ api_path2xml_vec(char      **vec,
 }
 
 /*! Create xml tree from api-path
+ *
+ * Create an XML tree from "scratch" using api-path, ie no other input than the api-path itself,
+ * ie not from an existing datastore for example.
  * @param[in]     api_path   (Absolute) API-path as defined in RFC 8040
  * @param[in]     yspec      Yang spec
  * @param[in,out] xtop       Incoming XML tree

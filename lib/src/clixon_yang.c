@@ -1414,6 +1414,7 @@ ys_real_module(yang_stmt  *ys,
 {
     int        retval = -1;
     yang_stmt *ym = NULL;
+    yang_stmt *ysubm;
     yang_stmt *yb;
     char      *name;
     yang_stmt *yspec;
@@ -1433,8 +1434,12 @@ ys_real_module(yang_stmt  *ys,
 		clicon_err(OE_YANG, ENOENT, "Belongs-to statement of submodule %s has no argument", yang_argument_get(ym)); /* shouldnt happen */
 		goto done;
 	    }
-	    if ((ym = yang_find_module_by_name(yspec, name)) == NULL)
+	    if ((ysubm = yang_find_module_by_name(yspec, name)) == NULL){
+		clicon_err(OE_YANG, ENOENT, "submodule %s references non-existent module %s in its belongs-to statement",
+			   yang_argument_get(ym), name);
 		goto done;
+	    }
+	    ym = ysubm;
 	}
     }
     *ymod = ym;

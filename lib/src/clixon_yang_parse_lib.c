@@ -1032,6 +1032,10 @@ yang_parse_module(clicon_handle h,
 	ymod = NULL;
 	goto done;
     }
+    /* Sanity check that requested module name matches loaded module
+     * If this does not match, the filename and containing module do not match
+     * RFC 7950 Sec 5.2 
+     */
     if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL)
 	revm = cv_uint32_get(yang_cv_get(yrev));
     if (filename2revision(filename, NULL, &revf) < 0)
@@ -1064,14 +1068,18 @@ yang_parse_recurse(clicon_handle h,
 		   yang_stmt    *ymod,
 		   yang_stmt    *ysp)
 {
-    int         retval = -1;
-    yang_stmt  *yi = NULL; /* import */
-    yang_stmt  *yrev;
-    char       *submodule;
-    char       *subrevision;
-    yang_stmt  *subymod;
+    int           retval = -1;
+    yang_stmt    *yi = NULL; /* import */
+    yang_stmt    *yrev;
+    yang_stmt    *ybelongto;
+    yang_stmt    *yrealmod;
+    char         *submodule;
+    char         *subrevision;
+    yang_stmt    *subymod;
     enum rfc_6020 keyw;
 
+    if (ys_real_module(ymod, &yrealmod) < 0)
+	goto done;
     /* go through all import (modules) and include(submodules) of ysp */
     while ((yi = yn_each(ymod, yi)) != NULL){
 	keyw = yang_keyword_get(yi);
@@ -1091,6 +1099,21 @@ yang_parse_recurse(clicon_handle h,
 	    /* recursive call */
 	    if ((subymod = yang_parse_module(h, submodule, subrevision, ysp)) == NULL)
 		goto done;
+	    /* Sanity check: if submodule, its belongs-to statement shall point to the module */
+	    if (keyw == Y_INCLUDE){
+		ybelongto = yang_find(subymod, Y_BELONGS_TO, NULL);
+		if (ybelongto == NULL){
+		    clicon_err(OE_YANG, ENOENT, "Sub-module \"%s\" does not have a belongs-to statement", submodule); /* shouldnt happen */
+		    goto done;
+		}
+		if (strcmp(yang_argument_get(ybelongto), yang_argument_get(yrealmod)) != 0){
+		    clicon_err(OE_YANG, ENOENT, "Sub-module \"%s\" references module \"%s\" in its belongs-to statement but should reference %s",
+			       submodule,
+			       yang_argument_get(ybelongto),
+			       yang_argument_get(yrealmod));
+		    goto done;
+		}
+	    }
 	    /* Go through its sub-modules recursively */
 	    if (yang_parse_recurse(h, subymod, ysp) < 0){
 		ymod = NULL;
