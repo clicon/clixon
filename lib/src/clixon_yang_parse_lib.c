@@ -1107,7 +1107,7 @@ yang_parse_recurse(clicon_handle h,
 		    goto done;
 		}
 		if (strcmp(yang_argument_get(ybelongto), yang_argument_get(yrealmod)) != 0){
-		    clicon_err(OE_YANG, ENOENT, "Sub-module \"%s\" references module \"%s\" in its belongs-to statement but should reference %s",
+		    clicon_err(OE_YANG, ENOENT, "Sub-module \"%s\" references module \"%s\" in its belongs-to statement but should reference \"%s\"",
 			       submodule,
 			       yang_argument_get(ybelongto),
 			       yang_argument_get(yrealmod));

@@ -122,7 +122,7 @@ EOF
 cat <<EOF > $fsub2
 submodule sub2 {
    yang-version 1.1;
-   belongs-to sub1 {
+   belongs-to main {
       prefix ex;
    }
    import extra2{
