@@ -467,14 +467,16 @@ alpn_select_proto_cb(SSL                  *ssl,
 	inp++;
 	if (clicon_debug_get()) /* debug print the protoocol */
 	    alpn_proto_dump(__FUNCTION__, (const char*)inp, len);
+#ifdef HAVE_LIBEVHTP
 	if (pref < 10 && len == 8 && strncmp((char*)inp, "http/1.1", len) == 0){
 	    *outlen = len;
 	    *out = inp;
 	    pref = 10;
 	}
+#endif
 #ifdef HAVE_LIBNGHTTP2
 	/* Higher pref than http/1.1 */
-	else if (pref < 20 && len == 2 && strncmp((char*)inp, "h2", len) == 0){
+	if (pref < 20 && len == 2 && strncmp((char*)inp, "h2", len) == 0){
 	    *outlen = len;
 	    *out = inp;
 	    pref = 20;
@@ -684,7 +686,9 @@ restconf_connection(int   s,
     char                  buf[BUFSIZ]; /* from stdio.h, typically 8K XXX: reduce for test */
     int                   readmore = 1;
     int                   sslerr;
-
+#ifdef HAVE_LIBNGHTTP2
+    int                   ret;
+#endif
 #ifdef HAVE_LIBEVHTP
     clicon_handle         h;
     evhtp_connection_t   *evconn = NULL;
@@ -889,9 +893,14 @@ restconf_connection(int   s,
 #endif /* HAVE_LIBEVHTP */
 #ifdef HAVE_LIBNGHTTP2
 	case HTTP_2:
-	    if (http2_recv(rc, (unsigned char *)buf, n) < 0)
+	    if ((ret = http2_recv(rc, (unsigned char *)buf, n)) < 0)
 		goto done;
-	    //notused	    sd = restconf_stream_find(rc, 0); /* default stream */
+	    if (ret == 0){
+		restconf_close_ssl_socket(rc, 1);
+		if (restconf_conn_free(rc) < 0)
+		    goto done;
+		goto ok;
+	    }
 	    /* There may be more data frames */
 	    readmore++;
 	    break;
@@ -1011,7 +1020,7 @@ ssl_alpn_check(clicon_handle        h,
 	}
 	if (alpn != NULL){
 	    cprintf(cberr, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>ALPN: protocol not recognized: %s</error-message></error></errors>", alpn);
-	    clicon_log(LOG_NOTICE, "Warning: %s", cbuf_get(cberr));
+	    clicon_log(LOG_INFO, "%s Warning: %s", __FUNCTION__, cbuf_get(cberr));
 	    if (send_badrequest(h, rc->rc_s, rc->rc_ssl,
 				"application/yang-data+xml",
 				cbuf_get(cberr)) < 0)
@@ -1019,7 +1028,7 @@ ssl_alpn_check(clicon_handle        h,
 	}
 	else{
 	    /* XXX Sending badrequest here gives a segv in SSL_shutdown() later or a SIGPIPE here */
-	    clicon_log(LOG_NOTICE, "Warning: ALPN: No protocol selected");
+	    clicon_log(LOG_INFO, "%s Warning: ALPN: No protocol selected", __FUNCTION__);
 	}
 
 	if (rc->rc_ssl){
@@ -1029,7 +1038,7 @@ ssl_alpn_check(clicon_handle        h,
 	    if ((ret = SSL_shutdown(rc->rc_ssl)) < 0){ 
 		int e = SSL_get_error(rc->rc_ssl, ret);
 		if (e == SSL_ERROR_SYSCALL){
-		    clicon_log(LOG_NOTICE, "Warning: SSL_shutdown SSL_ERROR_SYSCALL");
+		    clicon_log(LOG_INFO, "%s Warning: SSL_shutdown SSL_ERROR_SYSCALL", __FUNCTION__);
 		    /* Continue */
 		}
 		else {
@@ -1577,7 +1586,7 @@ restconf_openssl_init(clicon_handle h,
 	}
 	int status = setrlimit(RLIMIT_CORE, &rlp);
 	if (status != 0) {
-	    clicon_log(LOG_NOTICE, "%s: setrlimit() failed, %s", __func__, strerror(errno));
+	    clicon_log(LOG_INFO, "%s: setrlimit() failed, %s", __FUNCTION__, strerror(errno));
 	}
     }
 

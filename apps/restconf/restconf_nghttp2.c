@@ -865,8 +865,14 @@ error_callback2(nghttp2_session *session,
 }
 #endif
 
-/*
- * XXX see session_recv
+/*! Process an HTTP/2 request received in buffer, process request and send reply
+ *
+ * @param[in] rc   Restconf connection
+ * @param[in] buf  Character buffer
+ * @param[in] n    Lenght of buf
+ * @retval    1    OK
+ * @retval    0    Invald request
+ * @retval   -1    Fatal error
  */
 int
 http2_recv(restconf_conn       *rc,
@@ -884,6 +890,18 @@ http2_recv(restconf_conn       *rc,
     }
     /* may make additional pending frames */
     if ((ngerr = nghttp2_session_mem_recv(rc->rc_ngsession, buf, n)) < 0){
+	if (ngerr == NGHTTP2_ERR_BAD_CLIENT_MAGIC){
+	    /* :enum:`NGHTTP2_ERR_BAD_CLIENT_MAGIC`
+	     *     Invalid client magic was detected.  This error only returns
+	     *     when |session| was configured as server and
+	     *     `nghttp2_option_set_no_recv_client_magic()` is not used with
+	     *     nonzero value. */
+	    clicon_log(LOG_INFO, "%s Received bad client magic byte strin", __FUNCTION__);
+	    /* unsure if this does anything, byt does not seem to hurt */
+	    if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, ngerr)) < 0)
+		clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
+	    goto fail;
+	}
 	clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_mem_recv");
 	goto done;
     }
@@ -895,9 +913,13 @@ http2_recv(restconf_conn       *rc,
 	clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_send");
 	goto done;
     }
-    retval = 0;
+    retval = 1; /* OK */
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /* Send HTTP/2 client connection header, which includes 24 bytes

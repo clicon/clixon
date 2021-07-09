@@ -42,6 +42,10 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Native RESTCONF fixes for http/1 or http/2 only modes
+  * Memleak in http/1-only
+  * Exit if http/1 request sent to http/2-only (bad client magic)
+  * Hang if http/1 TLS request sent to http/2 only (alpn accepted http/1.1)
 * Fixed: [RESTConf GET for a specific list instance retrieves data from other submodules that have same list name and key value #244](https://github.com/clicon/clixon/issues/244)
 
 ## 5.2.0

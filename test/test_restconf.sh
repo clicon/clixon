@@ -172,37 +172,86 @@ function testrun()
     echo "curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta"
     expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
-    if ! ${HAVE_LIBNGHTTP2}; then # http/2
+    if [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_LIBEVHTP} = false ]; then
+	echo "native + http/2 only"
+	# Important here is robustness of restconf daemon, not a meaningful reply
+	if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
+	    # http protocol mismatch can just close the socket if assumed its http/2
+	    # everything else would guess it is http/1 which is really wrong here
+	    # The tr statement replaces null char to get rid of annoying message:
+	    # ./test_restconf.sh: line 180: warning: command substitution: ignored null byte in input
+	    new "restconf GET http/1.0  - close"
+	    expectpart "$(curl $CURLOPTS --http1.0 -X GET $proto://$addr/.well-known/host-meta | tr '\0' '\n')" 0 "" --not-- 'HTTP'
+	else
+	    new "restconf GET https/1.0  - close"
+	    expectpart "$(curl $CURLOPTS --http1.0 -X GET $proto://$addr/.well-known/host-meta)" 52 "" --not-- 'HTTP'
 
-    if [ "${WITH_RESTCONF}" = "native" ]; then # XXX does not work with nginx
-	new "restconf GET http/1.0  - returns 1.0"
-	expectpart "$(curl $CURLOPTS --http1.0 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.0 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
-    fi 
-    new "restconf GET http/1.1"
-    expectpart "$(curl $CURLOPTS --http1.1 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+	fi
 
-    # Try http/2 - go back to http/1.1
-    new "restconf GET http/2"
-    expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/1.1 200 OK" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+	if [ $proto = http ]; then
+	    new "restconf GET http/1.1 - close"
+	    expectpart "$(curl $CURLOPTS --http1.1 -X GET $proto://$addr/.well-known/host-meta | tr '\0' '\n')" 0 --not-- 'HTTP'
+	else
+	    new "restconf GET https/1.1 - close"
+	    expectpart "$(curl $CURLOPTS --http1.1 -X GET $proto://$addr/.well-known/host-meta)" 52 --not-- 'HTTP'
+	fi
+	
+	if [ $proto = http ]; then
+	    new "restconf GET http/2 switch protocol"
+	    expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta | tr '\0' '\n')" 0 --not-- 'HTTP'
+	else
+	    new "restconf GET https/2 alpn protocol"
+	    expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+	fi
 
-    if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
-	new "restconf GET http/2 prior-knowledge (http)"
-	expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta 2>&1)" "16 52 55" # "Error in the HTTP2 framing layer" "Connection reset by peer"
+	# Wrong protocol http when https or vice versa
+	if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
+	    new "Wrong proto=https on http port, expect err 35 wrong version number"
+	    expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
+	else # see (1) http to https port in restconf_main_native.c
+	    new "Wrong proto=http on https port, expect bad request"
+	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" "16 52 55" --not-- 'HTTP'
+	fi
     else
-    	new "restconf GET http/2 prior-knowledge(http2)"
-	expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
-    fi
+	echo "fcgi or native+http/1 or native+http/1+http/2"
+	if [ "${WITH_RESTCONF}" = "native" ]; then # XXX does not work with nginx
+	    new "restconf GET http/1.0  - returns 1.0"
+	    expectpart "$(curl $CURLOPTS --http1.0 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.0 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+	fi 
+	new "restconf GET http/1.1"
+	expectpart "$(curl $CURLOPTS --http1.1 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
-    # Negative test GET datastore
-    if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
-	new "Wrong proto=https on http port, expect err 35 wrong version number"
-	expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
-    else # see (1) http to https port in restconf_main_native.c
-	new "Wrong proto=http on https port, expect bad request"
-	expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/$HVER 400"
-	# expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
-    fi
+	if ${HAVE_LIBNGHTTP2}; then
+	    # http/1 + http/2
+
+	    new "restconf GET http/2 switch protocol"
+	    expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 "" "HTTP/2 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"	    # Only if http:  HTTP/1.1 101 Switching Protocols
+	else
+	    # http/1 only Try http/2 - go back to http/1.1
+	    new "restconf GET http/2 switch protocol"
+	    expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/1.1 200 OK" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"	    
+	fi
+	
+	# http2-prior knowledge
+	if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
+	    new "restconf GET http/2 prior-knowledge (http)"
+	    expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta 2>&1)" "16 52 55" # "Error in the HTTP2 framing layer" "Connection reset by peer"
+	else
+    	    new "restconf GET https/2 prior-knowledge"
+	    expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+	fi
+	
+	# Wrong protocol http when https or vice versa
+	if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
+	    new "Wrong proto=https on http port, expect err 35 wrong version number"
+	    expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
+	else # see (1) http to https port in restconf_main_native.c
+	    new "Wrong proto=http on https port, expect bad request"
+	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/" "400"
+	    # expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
+	fi
     fi # HTTP/2    
+
     # Exact match
     new "restconf get restconf resource. RFC 8040 3.3 (json)"
     expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $proto://$addr/restconf)" 0 "HTTP/$HVER 200" '{"ietf-restconf:restconf":{"data":{},"operations":{},"yang-library-version":"2019-01-04"}}'
@@ -341,7 +390,7 @@ function testrun()
     new "restconf Check eth/0/0 GET augmented state level 2"
     expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0/clixon-example:my-status)" 0 "HTTP/$HVER 200" '{"clixon-example:my-status":{"int":42,"str":"foo"}}' 
 
-    new "restconf Check eth/0/0 added state XXXXXXX"
+    new "restconf Check eth/0/0 added state"
     expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/clixon-example:state)" 0 "HTTP/$HVER 200" '{"clixon-example:state":{"op":\["41","42","43"\]}}'
 
     new "restconf Re-post eth/0/0 which should generate error"

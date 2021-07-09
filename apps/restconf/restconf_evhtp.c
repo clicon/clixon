@@ -515,6 +515,8 @@ restconf_path_root(evhtp_request_t *req,
     if (clicon_debug_get())
 	evhtp_headers_for_each(req->headers_in, evhtp_print_header, h);
     /* Query vector, ie the ?a=x&b=y stuff */
+    if (sd->sd_qvec)
+	cvec_free(sd->sd_qvec);
     if ((sd->sd_qvec = cvec_new(0)) ==NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	evhtp_internal_error(req);
