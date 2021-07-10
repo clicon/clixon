@@ -69,6 +69,7 @@
 #include "clixon_netconf.h"
 #include "netconf_lib.h"
 #include "netconf_rpc.h"
+#include "netconf_capabilities.h"
 
 /* Command line options to be passed to getopt(3) */
 #define NETCONF_OPTS "hD:f:E:l:qa:u:d:p:y:U:t:eo:"
@@ -138,7 +139,7 @@ netconf_hello_msg(clicon_handle h,
 
     _netconf_hello_nr++;
     if (xml_find_type(xn, NULL, "session-id", CX_ELMNT) != NULL) {
-	clicon_err(OE_XML, errno, "Server received hello with session-id from client, terminating (see RFC 6241 Sec 8.1");
+	clicon_err(OE_XML, errno, "Server received hello with session-id from client, terminating (see RFC 6241 Sec 8.1)");
 	cc_closed++;
 	goto done;
     }
@@ -153,20 +154,28 @@ netconf_hello_msg(clicon_handle h,
 		continue;
 	    if ((body = xml_body(x)) == NULL)
 		continue;
+
+            netconf_capabilities_put(h, body, CLIENT);
+
 	    /* When comparing protocol version capability URIs, only the base part is used, in the 
 	     * event any parameters are encoded at the end of the URI string. */
 	    if (strncmp(body, NETCONF_BASE_CAPABILITY_1_0, strlen(NETCONF_BASE_CAPABILITY_1_0)) == 0) /* RFC 4741 */
 		foundbase++;
+
 	    else if (strncmp(body, NETCONF_BASE_CAPABILITY_1_1, strlen(NETCONF_BASE_CAPABILITY_1_1)) == 0) /* RFC 6241 */
 		foundbase++;
 	}
     }
+
+    netconf_capabilities_lock(h, CLIENT);
+
     if (foundbase == 0){
 	clicon_err(OE_XML, errno, "Server received hello without netconf base capability %s, terminating (see RFC 6241 Sec 8.1",
 		   NETCONF_BASE_CAPABILITY_1_1);
 	cc_closed++;
 	goto done;
     }
+
     retval = 0;
  done:
     if (vec)
@@ -204,7 +213,7 @@ netconf_rpc_message(clicon_handle h,
 	    goto done;
 	}
 	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
-	netconf_output_encap(1, cbret, "rpc-error");
+	netconf_output_encap(h, 1, cbret, "rpc-error");
 	cc_closed++;
 	goto ok;
     }
@@ -221,7 +230,7 @@ netconf_rpc_message(clicon_handle h,
 	    goto done;
 	}
 	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
-	if (netconf_output_encap(1, cbret, "rpc-error") < 0)
+	if (netconf_output_encap(h, 1, cbret, "rpc-error") < 0)
 	    goto done;
 	goto ok;
     }
@@ -239,7 +248,7 @@ netconf_rpc_message(clicon_handle h,
 	    goto done;
 	}
 	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
-	if (netconf_output_encap(1, cbret, "rpc-error") < 0)
+	if (netconf_output_encap(h, 1, cbret, "rpc-error") < 0)
 	    goto done;
 	goto ok;
     }
@@ -252,7 +261,7 @@ netconf_rpc_message(clicon_handle h,
 	    goto done;
 	}
 	clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0, -1);
-	if (netconf_output_encap(1, cbret, "rpc-reply") < 0)
+	if (netconf_output_encap(h, 1, cbret, "rpc-reply") < 0)
 	    goto done;
     }
  ok:
@@ -302,7 +311,7 @@ netconf_input_packet(clicon_handle h,
 		goto done;
 	    }
 	    clicon_xml2cbuf(cbret, xret, 0, 0, -1);
-	    netconf_output_encap(1, cbret, "rpc-error");
+	    netconf_output_encap(h, 1, cbret, "rpc-error");
 	    goto ok;
 	}
 	if (netconf_rpc_message(h, xreq, yspec) < 0)
@@ -324,7 +333,7 @@ netconf_input_packet(clicon_handle h,
 	}
 	if (netconf_unknown_element(cbret, "protocol", rpcname, "Unrecognized netconf operation")< 0)
 	    goto done;
-	netconf_output_encap(1, cbret, "rpc-error");
+	netconf_output_encap(h, 1, cbret, "rpc-error");
     }
  ok:
     retval = 0;
@@ -380,7 +389,7 @@ netconf_input_frame(clicon_handle h,
 	}
 	if (netconf_operation_failed(cbret, "rpc", "Empty XML")< 0)
 	    goto done;
-	netconf_output_encap(1, cbret, "rpc-error"); 
+	netconf_output_encap(h, 1, cbret, "rpc-error");
 	goto ok;
     }
     /* Parse incoming XML message */
@@ -391,7 +400,7 @@ netconf_input_frame(clicon_handle h,
 	}
 	if (netconf_operation_failed(cbret, "rpc", clicon_err_reason)< 0)
 	    goto done;
-	netconf_output_encap(1, cbret, "rpc-error");
+	netconf_output_encap(h, 1, cbret, "rpc-error");
 	goto ok;
     }
     if (ret == 0){
@@ -404,18 +413,20 @@ netconf_input_frame(clicon_handle h,
 	    goto done;
 	}
 	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
-	netconf_output_encap(1, cbret, "rpc-error");
+	netconf_output_encap(h, 1, cbret, "rpc-error");
 	goto ok;
     }
+
     /* Check for empty frame (no mesaages), return empty message, not clear from RFC what to do */
     if (xml_child_nr_type(xtop, CX_ELMNT) == 0){
 	if ((cbret = cbuf_new()) == NULL){ 
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
 	}
-	netconf_output_encap(1, cbret, "rpc-error");
+	netconf_output_encap(h, 1, cbret, "rpc-error");
 	goto ok;
     }
+
     /* Check for multi-messages in frame */
     if (xml_child_nr_type(xtop, CX_ELMNT) != 1){
 	if ((cbret = cbuf_new()) == NULL){ 
@@ -424,7 +435,7 @@ netconf_input_frame(clicon_handle h,
 	}
 	if (netconf_malformed_message(cbret, "More than one message in netconf rpc frame")< 0)
 	    goto done;
-	netconf_output_encap(1, cbret, "rpc-error"); 
+	netconf_output_encap(h, 1, cbret, "rpc-error");
 	goto ok;
     }
     if ((xreq = xml_child_i_type(xtop, 0, CX_ELMNT)) == NULL){ /* Shouldnt happen */
@@ -433,9 +444,11 @@ netconf_input_frame(clicon_handle h,
     }
     if (netconf_input_packet(h, xreq, yspec) < 0)
 	goto done;
- ok:
+
+ok:
     retval = 0;
- done:
+
+done:
     if (str)
 	free(str);
     if (xtop)
@@ -445,6 +458,228 @@ netconf_input_frame(clicon_handle h,
     if (cbret)
 	cbuf_free(cbret);
     return retval;
+}
+
+/*! Detect a given character sequence at the end of a \b cbuf
+ *
+ *  This function matches the last characters of a \b cbuf against a given string sequence and
+ *  returns whether a match has been found.
+ *
+ *  @param[in]      cb          The \b cbuf containing some text
+ *  @param[in]      endTag      The sequence of characters that are matched
+ *  @retval         0           The string in \b cb does not end with \b endTag
+ *  @retval         1           The string in \b cb ends with the expected \b endTag
+ */
+static int cbuf_ends_with(cbuf * cb, char * endTag) {
+    int currentBufferLength = cbuf_len(cb);
+    char * buffer = cbuf_get(cb);
+    int endTagLength = (int) strlen(endTag);
+
+    if(currentBufferLength < endTagLength)
+        return 0;
+
+    int expectedStartIndex = currentBufferLength - endTagLength;
+
+    for(int i = 0; i < endTagLength; i++) {
+        char currentChar = buffer[expectedStartIndex + i];
+        if(currentChar != endTag[i])
+            return 0;
+    }
+
+    return 1;
+}
+
+/*! Looking for a chunk header as defined in RFC6242 section 4.2
+ *
+ *  This function detects a chunk header by looking at a stream of characters and returns the expected
+ *  length on a successful match. It uses the \b state parameter to persist the matching progress
+ *  between invocations.
+ *
+ *  @param[in]       ch              The current character that should be processed.
+ *  @param[in,out]   state           A state variable saving the current matching progress.
+ *  @param[out]      chunkLength     The length of the matched chunk. Only if the return value is positive.
+ *  @retval          1               Found a chunk header. Length is returned in \b chunkLength.
+ *  @retval          0               No chunk header found.
+ */
+static int detect_netconf_chunk_header(char ch, int * state, int * chunkLength) {
+    switch(*state) {
+        case 0: // Looking for \n
+            if(ch == '\n') { *state = 1; *chunkLength = 0; }
+            break;
+        case 1: // Looking for #
+            if(ch == '#') *state = 2;
+            else { *state = 0; return detect_netconf_chunk_header(ch, state, chunkLength); }
+            break;
+        case 2: // Looking for 1-9
+            if(ch >= '1' && ch <= '9') {
+                *chunkLength = ch - '0';
+                *state = 3;
+            }
+            else { *state = 0; return detect_netconf_chunk_header(ch, state, chunkLength); }
+            break;
+        case 3: // Looking for 0-9 or \n
+            if(ch == '\n') *state = 4;
+            else if(ch >= '0' && ch <= '9') *chunkLength = ((*chunkLength) * 10) + (ch - '0');
+            else { *state = 0; return detect_netconf_chunk_header(ch, state, chunkLength); }
+            break;
+    }
+
+    return *state == 4;
+}
+
+/*! Parses a netconf chunk as defined in RFC6242 section 4.2
+ *
+ *  This function parses a complete chunk of a netconf message transmitted over SSH and returns
+ *  the body of the message in a new \b cbuf.
+ *
+ *  @param[in]      cb              The \b cbuf holding the received chunk
+ *  @param[out]     bodyBuffer      The netconf message without the chunk information. Only if return value is positive.
+ *  @retval         0               No chunk has been detected
+ *  @retval         1               Chunk has been detected. Body is returned in \b bodyBuffer.
+ */
+static int detect_netconf_chunk(cbuf * cb, cbuf ** bodyBuffer) {
+    int bufferLength = cbuf_len(cb);
+    char currentChar;
+    char * buffer = cbuf_get(cb);
+    *bodyBuffer = cbuf_new();
+    int currentPos = -1;
+    int chunkLength = 0;
+    int chunkHeaderState = 0;
+    int chunkEndState = 0;
+    int chunkState = 0;
+    int chunkRemainingLength = 0;
+
+    while(currentPos++ < bufferLength) {
+        currentChar = buffer[currentPos];
+
+        switch (chunkState) {
+            case 0: // Detect Header
+                if(detect_netconf_chunk_header(currentChar, &chunkHeaderState, &chunkLength)) {
+                    chunkState = 1;
+                    chunkHeaderState = 0;
+
+                    chunkRemainingLength = chunkLength;
+                }
+                break;
+
+            case 1: // Read Body
+                cprintf(*bodyBuffer, "%c", currentChar);
+                chunkRemainingLength--;
+                if(chunkRemainingLength <= 0) {
+                    chunkEndState = 0;
+                    chunkHeaderState = 0;
+                    chunkState = 2;
+                }
+                break;
+
+            case 2: // Looking for next chunk or end
+                if(detect_netconf_chunk_header(currentChar, &chunkHeaderState, &chunkLength)) {
+                    chunkState = 1;
+                    chunkHeaderState = 0;
+
+                    chunkRemainingLength = chunkLength;
+                }
+                if(detect_endtag("\n##\n", currentChar, &chunkEndState))  {
+                    return 1;
+                }
+        }
+    }
+
+    if(*bodyBuffer)
+        cbuf_free(*bodyBuffer);
+
+    return 0;
+}
+
+/*! Gets or creates the input buffer for incoming netconf messages
+ *
+ *  @param[in]      cacheTable      The cache table on which to look for existing input buffers
+ *  @param[out]     cb              The input buffer
+ *  @retval         -1              Unable to create input buffer
+ *  @retval         0               Input buffer returned in \b cb
+ */
+static int netconf_input_get_msg_buf(clicon_hash_t *cacheTable, cbuf **cb) {
+    void *hashValue;
+    size_t cdatlen = 0;
+    int returnValue = -1;
+
+    if ((hashValue = clicon_hash_value(cacheTable, NETCONF_HASH_BUF, &cdatlen)) != NULL) {
+        if (cdatlen != sizeof(cbuf **)) {
+            clicon_err(OE_XML, errno, "size mismatch %lu %lu",
+                       (unsigned long) cdatlen, (unsigned long) sizeof(cb));
+            goto done;
+        }
+        *cb = *(cbuf **) hashValue;
+        clicon_hash_del(cacheTable, NETCONF_HASH_BUF);
+    } else {
+        if ((*cb = cbuf_new()) == NULL) {
+            clicon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
+    }
+
+    returnValue = 0;
+
+    done:
+    return returnValue;
+}
+
+/*! This function processes a set of new bytes that are expected to contain a netconf message
+ *
+ *  Given a message buffer \b msgBuffer that might already contain parts of a message and
+ *  a set of new bytes that were received, this function appends the bytes to the \b msgBuffer
+ *  and meanwhile detects and directly processes the first found netconf message.
+ *
+ * @param[in]       h               The clicon handle associated with this netconf channel
+ * @param[in,out]   msgBuffer       A message buffer that might already contain parts of a netconf message
+ * @param[in]       newBytes        A char array containing the new received bytes
+ * @param[in]       newByteCount    The number of received bytes that are present in \b newBytes
+ * @retval          -1              Unable to process bytes
+ * @retval          0               Successfully processed the new bytes
+ */
+static int netconf_input_process_msg_bytes(clicon_handle h, cbuf *msgBuffer, unsigned char *newBytes, int newByteCount) {
+    int i;
+    int returnValue = -1;
+    cbuf * chunkBuffer;
+
+    for (i = 0; i < newByteCount; i++) {
+        if (newBytes[i] == 0)
+            continue; /* Skip NULL chars (eg from terminals) */
+
+        cprintf(msgBuffer, "%c", newBytes[i]);
+
+        if (cbuf_ends_with(msgBuffer, "]]>]]>")) {
+            // Received netconf message with old end-of-message-based formatting
+            // Remove the trailing char sequence "]]>]]>"
+            *(((char *) cbuf_get(msgBuffer)) + cbuf_len(msgBuffer) - strlen("]]>]]>")) = '\0';
+
+            if (netconf_input_frame(h, msgBuffer) < 0 && !ignore_packet_errors) // default is to ignore errors
+                goto done;
+
+            if (cc_closed)
+                break;
+
+            cbuf_reset(msgBuffer);
+        }
+
+        if (cbuf_ends_with(msgBuffer, "\n##\n")) {
+            // Detected an end-of-chunks tag. Trying to parse the chunk and extract the body.
+            if (detect_netconf_chunk(msgBuffer, &chunkBuffer)) {
+                if (netconf_input_frame(h, chunkBuffer) < 0 && !ignore_packet_errors) // default is to ignore errors
+                    goto done;
+
+                if (cc_closed)
+                    break;
+
+                cbuf_reset(msgBuffer);
+            }
+        }
+    }
+
+    returnValue = 0;
+
+    done:
+    return returnValue;
 }
 
 /*! Get netconf message: detect end-of-msg 
@@ -464,31 +699,15 @@ netconf_input_cb(int   s,
 {
     int           retval = -1;
     clicon_handle h = arg;
-    unsigned char buf[BUFSIZ]; /* from stdio.h, typically 8K */
-    int           i;
+    unsigned char buf[BUFSIZ];  /* from stdio.h, typically 8K */
     int           len;
     cbuf         *cb=NULL;
-    int           xml_state = 0;
     int           poll;
     clicon_hash_t *cdat = clicon_data(h); /* Save cbuf between calls if not done */
-    size_t         cdatlen = 0;
-    void          *ptr;
 
-    if ((ptr = clicon_hash_value(cdat, NETCONF_HASH_BUF, &cdatlen)) != NULL){
-	if (cdatlen != sizeof(cb)){
-	    clicon_err(OE_XML, errno, "size mismatch %lu %lu",
-		       (unsigned long)cdatlen, (unsigned long)sizeof(cb));
-	    goto done;
-	}
-	cb = *(cbuf**)ptr;
-	clicon_hash_del(cdat, NETCONF_HASH_BUF);
-    }
-    else{
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_XML, errno, "cbuf_new");
-	    goto done;
-	}
-    }
+    if(netconf_input_get_msg_buf(cdat, &cb) < 0)
+        goto done;
+
     memset(buf, 0, sizeof(buf));
     while (1){
 	if ((len = read(s, buf, sizeof(buf))) < 0){
@@ -499,34 +718,21 @@ netconf_input_cb(int   s,
 		goto done;
 	    }
 	} /* read */
+
 	if (len == 0){ 	/* EOF */
 	    cc_closed++;
 	    close(s);
 	    retval = 0;
 	    goto done;
 	}
-	for (i=0; i<len; i++){
-	    if (buf[i] == 0)
-		continue; /* Skip NULL chars (eg from terminals) */
-	    cprintf(cb, "%c", buf[i]);
-	    if (detect_endtag("]]>]]>",
-			      buf[i],
-			      &xml_state)) {
-		/* OK, we have an xml string from a client */
-		/* Remove trailer */
-		*(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
-		if (netconf_input_frame(h, cb) < 0 &&
-		    !ignore_packet_errors) // default is to ignore errors
-		    goto done; 
-		if (cc_closed){
-		    break;
-		}
-		cbuf_reset(cb);
-	    }
-	}
+
+        if(netconf_input_process_msg_bytes(h, cb, buf, len) < 0)
+            goto done;
+
 	/* poll==1 if more, poll==0 if none */
 	if ((poll = clixon_event_poll(s)) < 0)
 	    goto done;
+
 	if (poll == 0){
 	    /* No data to read, save data and continue on next round */
 	    if (cbuf_len(cb) != 0){
@@ -586,8 +792,8 @@ netconf_terminate(clicon_handle h)
     
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
-
     clicon_rpc_close_session(h);
+
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	ys_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
@@ -596,6 +802,9 @@ netconf_terminate(clicon_handle h)
 	cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
+
+    netconf_capabilities_free(h);
+
     xpath_optimize_exit();
     clixon_event_exit();
     clicon_handle_exit(h);
@@ -852,6 +1061,10 @@ main(int    argc,
     /* XXX get session id from backend hello */
     clicon_session_id_set(h, getpid()); 
 #endif
+
+    /* Initialize the capabilities hashtable */
+    if(netconf_capabilities_init(h) < 0)
+        goto done;
 
     /* Send hello request to backend to get session-id back
      * This is done once at the beginning of the session and then this is
