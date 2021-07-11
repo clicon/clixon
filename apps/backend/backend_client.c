@@ -1546,11 +1546,16 @@ from_client_get_pageable_list(clicon_handle h,
     /* Split into CT or CF */
     if (yang_config_ancestor(y) == 1){ /* CT */
 	if (content == CONTENT_CONFIG || content == CONTENT_ALL){
-	    if (xmldb_get0(h, datastore, YB_MODULE, nsc, cbuf_get(cb), 1, &xret, NULL) < 0) {
+	    if ((ret = xmldb_get0(h, datastore, YB_MODULE, nsc, cbuf_get(cb), 1, &xret, NULL, &xerr)) < 0) {
 		if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 		    goto done;
 		goto ok;
 	    }
+	}
+	if (ret == 0){
+	    if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+		goto done;
+	    goto ok;
 	}
 	/* There may be CF data in a CT collection */
 	if (content == CONTENT_ALL){ 

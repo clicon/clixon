@@ -1516,6 +1516,7 @@ netconf_module_load(clicon_handle h)
     /* Load restconf yang. Note this is also a part of clixon-config */
     if (yang_spec_parse_module(h, "clixon-restconf", NULL, yspec)< 0)
 	goto done;
+#if 1
     /* XXX: Both the following settings are because clicon-handle is not part of all API
      * functions
      * Treat unknown XML as anydata */
@@ -1525,10 +1526,7 @@ netconf_module_load(clicon_handle h)
     if (clicon_option_bool(h, "CLICON_NETCONF_MESSAGE_ID_OPTIONAL") == 1)
 	xml_bind_netconf_message_id_optional(1);
 #endif
-    /* Load restconf collection */
-    if (yang_spec_parse_module(h, "ietf-netconf-list-pagination", NULL, yspec)< 0)
-	goto done;    
-    /* Load restconf collection */
+    /* Load netconf list pagination */
     if (yang_spec_parse_module(h, "ietf-netconf-list-pagination", NULL, yspec)< 0)
 	goto done;    
     retval = 0;

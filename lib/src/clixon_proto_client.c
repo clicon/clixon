@@ -966,7 +966,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     cprintf(cb, "</get-pageable-list></rpc>");
     if ((msg = clicon_msg_encode(session_id, "%s", cbuf_get(cb))) == NULL)
 	goto done;
-    if (clicon_rpc_msg(h, msg, &xret, NULL) < 0)
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     /* Send xml error back: first check error, then ok */
     if ((xr = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)

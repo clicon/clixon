@@ -54,9 +54,12 @@ YANGSPECS += ietf-yang-patch@2017-02-22.yang
 YANGSPECS += ietf-origin@2018-02-14.yang
 YANGSPECS += ietf-yang-metadata@2016-08-05.yang
 YANGSPECS += ietf-netconf-with-defaults@2011-06-01.yang
+<<<<<<< HEAD
 # in draft-wwlh-netconf-list-pagination:
 YANGSPECS += ietf-netconf-list-pagination@2020-10-30.yang 
 
+=======
+>>>>>>> fixes for compilation
 
 all:	
 

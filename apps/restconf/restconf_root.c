@@ -432,7 +432,6 @@ api_root_restconf(clicon_handle        h,
     cbuf          *cb = NULL;
     char          *media_str = NULL;
     restconf_media media_out = YANG_DATA_JSON;
-    restconf_media media_in;
     char          *indata = NULL;
     char          *username = NULL;
     int            ret;
