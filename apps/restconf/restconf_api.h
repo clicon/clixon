@@ -52,4 +52,6 @@ int restconf_reply_send(void *req, int code, cbuf *cb, int head);
 
 cbuf *restconf_get_indata(void *req);
 
+#define YANG_PATCH
+
 #endif /* _RESTCONF_API_H_ */

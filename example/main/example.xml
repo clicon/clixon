@@ -1,6 +1,7 @@
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>/usr/local/etc/example.xml</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
   <CLICON_CLI_MODE>example</CLICON_CLI_MODE>
@@ -21,4 +22,5 @@
   <CLICON_NACM_MODE>disabled</CLICON_NACM_MODE>
   <CLICON_STREAM_DISCOVERY_RFC5277>true</CLICON_STREAM_DISCOVERY_RFC5277>
   <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
+  <restconf><enable>true</enable><auth-type>none</auth-type><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>
 </clixon-config>

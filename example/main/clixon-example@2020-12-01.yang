@@ -15,6 +15,9 @@ module clixon-example {
     import ietf-datastores {
       prefix ds;
     }
+    import example-jukebox {
+      prefix ej;
+    }
     description
 	"Clixon example used as a part of the Clixon test suite.
          It can be used as a basis for making new Clixon applications.
