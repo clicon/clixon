@@ -24,4 +24,5 @@
   <CLICON_STREAM_DISCOVERY_RFC5277>true</CLICON_STREAM_DISCOVERY_RFC5277>
   <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
   <restconf><enable>true</enable><auth-type>none</auth-type><socket><namespace>default</namespace><address>0.0.0.0</address><port>8081</port><ssl>false</ssl></socket></restconf>
+  <restconf><enable>true</enable><auth-type>none</auth-type><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>
 </clixon-config>

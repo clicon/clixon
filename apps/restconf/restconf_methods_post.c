@@ -155,6 +155,7 @@ api_data_post(clicon_handle h,
 	      cvec         *qvec, 
 	      char         *data,
 	      int           pretty,
+	      restconf_media media_in,
 	      restconf_media media_out,
 	      ietf_ds_t     ds)
 {
@@ -178,7 +179,6 @@ api_data_post(clicon_handle h,
     cxobj         *x;            
     char          *username;
     int            ret;
-    restconf_media media_in;
     int            nrchildren0 = 0;
     yang_bind      yb;
     
@@ -231,7 +231,6 @@ api_data_post(clicon_handle h,
      * If xbot is top-level (api_path=null) it does not have a spec therefore look for 
      * top-level (yspec) otherwise assume parent (xbot) is populated.
      */
-    media_in = restconf_content_type(h);
     switch (media_in){
     case YANG_DATA_XML:
 	if ((ret = clixon_xml_parse_string(data, yb, yspec, &xbot, &xerr)) < 0){
