@@ -198,6 +198,7 @@ char      *yang_argument_get(yang_stmt *ys);
 int        yang_argument_set(yang_stmt *ys, char *arg);
 
 cg_var    *yang_cv_get(yang_stmt *ys);
+int        yang_cv_set(yang_stmt *ys, cg_var *cv);
 cvec      *yang_cvec_get(yang_stmt *ys);
 int        yang_cvec_set(yang_stmt *ys, cvec *cvv);
 uint16_t   yang_flag_get(yang_stmt *ys, uint16_t flag);

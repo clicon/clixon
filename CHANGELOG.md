@@ -42,6 +42,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: mandatory leaf in a uses statement caused abort
+  * Occurence was in ietf-yang-patch.yang
 * Native RESTCONF fixes for http/1 or http/2 only modes
   * Memleak in http/1-only
   * Exit if http/1 request sent to http/2-only (bad client magic)
