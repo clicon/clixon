@@ -41,7 +41,7 @@ datarootdir     = @datarootdir@
 # See also OPT_YANG_INSTALLDIR for the standard yang files
 YANG_INSTALLDIR   = @YANG_INSTALLDIR@
 
-YANGSPECS	 = clixon-config@2021-05-20.yang   # 5.2
+YANGSPECS	 = clixon-config@2021-07-11.yang   # 5.3
 YANGSPECS	+= clixon-lib@2021-03-08.yang      # 5.1
 YANGSPECS	+= clixon-rfc5277@2008-07-01.yang
 YANGSPECS	+= clixon-xml-changelog@2019-03-21.yang

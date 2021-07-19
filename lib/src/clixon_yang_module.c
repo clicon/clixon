@@ -112,6 +112,7 @@ modstate_diff_free(modstate_diff_t *md)
  *
  * Load RFC7895 yang spec, module-set-id, etc.
  * @param[in]     h       Clicon handle
+ * @see netconf_module_load
  */
 int
 yang_modules_init(clicon_handle h)
