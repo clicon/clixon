@@ -33,6 +33,12 @@
 ## 5.3.0
 Expected: September, 2021
 
+### New features
+
+* Restconf YANG PATCH according to RFC 8072
+  * Experimental: enable by setting YANG_PATCH in include/clixon_custom.h
+  * Thanks to Alan Yaniger for providing this patch
+
 ### C/CLI-API changes on existing features
 
 Developers may need to change their code

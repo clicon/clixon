@@ -112,3 +112,8 @@
  * solve all usecases, such as absolute usecases where the added node is looked for
  */
 #define XML_PARENT_CANDIDATE
+
+/*! Enable yang patch RFC 8072 
+ * Remove this when regression test
+ */
+#undef YANG_PATCH
