@@ -53,8 +53,12 @@
  */
 #define YANG_FLAG_MARK  0x01  /* (Dynamic) marker for dynamic algorithms, eg expand and DAG */
 #define YANG_FLAG_TMP   0x02  /* (Dynamic) marker for dynamic algorithms, eg DAG detection */
+#define YANG_FLAG_NOKEY 0x04  /* Key not mandatory in this list, see eg yang-data extension in
+			       * RFC 8040 / ietf-restconf.yang
+			       * see restconf_main_extension_cb
+			       */
 #ifdef XML_EXPLICIT_INDEX
-#define YANG_FLAG_INDEX 0x04  /* This yang node under list is (extra) index. --> you can access
+#define YANG_FLAG_INDEX 0x08  /* This yang node under list is (extra) index. --> you can access
 			       * list elements using this index with binary search */
 #endif
 

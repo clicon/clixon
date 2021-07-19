@@ -633,13 +633,16 @@ yang_expand_uses_node(yang_stmt *yn,
 		       yang_argument_get(yg),
 		       yang_argument_get(ygrouping)
 		       );
-	    goto done;
+		goto done;
 	    }
 	    if (yang_when_xpath_set(yg, wxpath) < 0) 
 		goto done;
 	    if (yang_when_nsc_set(yg, wnsc) < 0) 
 		goto done;
 	}
+	/* This is for extensions that allow list keys to be optional, see restconf_main_extension_cb */
+	if (yang_flag_get(ys, YANG_FLAG_NOKEY))
+	    yang_flag_set(yg, YANG_FLAG_NOKEY);
 	yn->ys_stmt[i+k] = yg;
 	yg->ys_parent = yn;
 	k++;
@@ -1196,7 +1199,7 @@ ys_schemanode_check(yang_stmt *ys,
  * Verify the following rule:
  * RFC 7950 7.8.2: The "key" statement, which MUST be present if the list represents
  *                 configuration and MAY be present otherwise
- * Unless CLICON_YANG_LIST_CHECK is false
+ * Unless CLICON_YANG_LIST_CHECK is false (obsolete)
  * OR it is the "errors" rule of the ietf-restconf spec which seems to be a special case.
  */
 static int 
@@ -1222,28 +1225,22 @@ ys_list_check(clicon_handle h,
     if (keyw == Y_LIST &&
 	yang_find(ys, Y_KEY, NULL) == 0){
 	ymod = ys_module(ys);
-#if 1
-	/* Except restconf error extension from sanity check, dont know why it has no keys */
-	if (strcmp(yang_find_mynamespace(ys),"urn:ietf:params:xml:ns:yang:ietf-restconf")==0 &&
-	    strcmp(yang_argument_get(ys),"error") == 0)
-	    ;
-	else
-#endif
-	    {
-		if (clicon_option_bool(h, "CLICON_YANG_LIST_CHECK")){
-		    clicon_log(LOG_ERR, "Error: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
+	/* Except nokey exceptions such as rrc 8040 yang-data */
+	if (!yang_flag_get(yroot, YANG_FLAG_NOKEY)){
+	    /* Note obsolete */
+	    if (clicon_option_bool(h, "CLICON_YANG_LIST_CHECK")){
+		clicon_log(LOG_ERR, "Error: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
 			   yang_argument_get(ys),
 			   yang_argument_get(ymod)
 			   );
-
-		    goto done;
-		}
-		else
-		    clicon_log(LOG_WARNING, "Warning: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
-			   yang_argument_get(ys),
-			   yang_argument_get(ymod)
-			   );
+		goto done;
 	    }
+	    else
+		clicon_log(LOG_WARNING, "Warning: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
+			   yang_argument_get(ys),
+			   yang_argument_get(ymod)
+			   );
+	}
     }
     /* Traverse subs */
     if (yang_schemanode(ys) || keyw == Y_MODULE || keyw == Y_SUBMODULE){

@@ -42,6 +42,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: RFC 8040 yang-data extension allows non-key lists
+  * Added YANG_FLAG_NOKEY as exception to mandatory key lists
 * Fixed: mandatory leaf in a uses statement caused abort
   * Occurence was in ietf-yang-patch.yang
 * Native RESTCONF fixes for http/1 or http/2 only modes

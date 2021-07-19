@@ -259,11 +259,15 @@ yang_cv_get(yang_stmt *ys)
 /*! Set yang statement CLIgen variable
  * @param[in] ys  Yang statement node
  * @param[in] cv  cligen variable
+ * @note: Frees on replace, not if cv is NULL. This is for some ys_cp/ys_dup cases, which means 
+ *        you need to free it explicitly to set it to NULL proper.
  */
 int
 yang_cv_set(yang_stmt *ys,
 	    cg_var    *cv)
 {
+    if (cv != NULL && ys->ys_cv != NULL)
+	cv_free(ys->ys_cv);
     ys->ys_cv = cv;
     return 0;
 }
@@ -469,13 +473,14 @@ ys_free1(yang_stmt *ys,
 	 int        self)
 {
     cg_var *cv;
+
     if (ys->ys_argument){
 	free(ys->ys_argument);
 	ys->ys_argument = NULL;
     }
     if ((cv = yang_cv_get(ys)) != NULL){
+	yang_cv_set(ys, NULL); /* only frees on replace */
 	cv_free(cv);
-	yang_cv_set(ys, NULL);
     }
     if (ys->ys_cvec){
 	cvec_free(ys->ys_cvec);
@@ -629,6 +634,7 @@ ys_cp(yang_stmt *ynew,
 	    clicon_err(OE_YANG, errno, "strdup");
 	    goto done;
 	}
+    yang_cv_set(ynew, NULL);
     if ((cvo = yang_cv_get(yold)) != NULL){
 	if ((cvn = cv_dup(cvo)) == NULL){
 	    clicon_err(OE_YANG, errno, "cv_dup");
@@ -1469,7 +1475,8 @@ ys_real_module(yang_stmt  *ys,
  * @param[in] ys    Any yang statement in a yang tree
  * @retval    yspec The top yang specification
  * @see  ys_module
- * @see  yang_augment_node where shortcut is set
+ * @see  yang_augment_node where shortcut is set for augment
+ * @see  yang_myroot for first node under (sub)module
  */
 yang_stmt *
 ys_spec(yang_stmt *ys)
