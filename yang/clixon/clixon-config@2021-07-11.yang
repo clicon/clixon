@@ -43,12 +43,28 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2021-07-11 {
+	description
+	    "Added option
+                    CLICON_SYSTEM_CAPABILITIES";
+    }
+    revision 2021-05-20 {
+	description
+	    "Added option:
+	            CLICON_RESTCONF_USER
+	            CLICON_RESTCONF_PRIVILEGES
+	            CLICON_RESTCONF_INSTALLDIR
+	            CLICON_RESTCONF_STARTUP_DONTUPDATE
+                    CLICON_NETCONF_MESSAGE_ID_OPTIONAL
+             Released in Clixon 5.2";
+    }
     revision 2021-03-08 {
 	description
 	    "Added option:
                    CLICON_NETCONF_HELLO_OPTIONAL
 		   CLICON_CLI_AUTOCLI_EXCLUDE
-	           CLICON_XMLDB_UPGRADE_CHECKOLD";
+	           CLICON_XMLDB_UPGRADE_CHECKOLD
+	     Released in Clixon 5.1";
     }
     revision 2020-12-30 {
 	description
@@ -170,6 +186,10 @@ module clixon-config {
 		description
 		"Commit startup configuration into running state
                  After reboot when no persistent running db exists";
+	    }
+	    enum running-startup{
+		description
+		    "First try running db, if it is empty try startup db.";
 	    }
 	}
     }
@@ -406,7 +426,11 @@ module clixon-config {
 		"If false, skip Yang list check sanity checks from RFC 7950, Sec 7.8.2: 
                  The 'key' statement, which MUST be present if the list represents configuration.
                  Some yang specs seem not to fulfil this. However, if you reset this, there may
-                 be follow-up errors due to code that assumes a configuration list has keys";
+                 be follow-up errors due to code that assumes a configuration list has keys
+                 Marked as obsolete since the observation above seemed to be related to the
+                 yang-data extension in RFC8040 allows non-key lists. This has been implemented
+                 by a YANG_FLAG_NOKEY yang flag mechanism";
+	    status obsolete;
 	}
 	leaf CLICON_YANG_UNKNOWN_ANYDATA{
 	    type boolean;
@@ -420,6 +444,18 @@ module clixon-config {
                  The primary issue is that the unknown->anydata handling is not restricted to
                  only loading from startup but may occur in other circumstances as well. This
                  means that sanity checks of erroneous XML/JSON may not be properly signalled.";
+	}
+	leaf CLICON_SYSTEM_CAPABILITIES {
+	    type boolean;
+	    default false;
+	    description
+		"Enable module ietf-system-capabilities and ietf-notification-capabilities
+                 Note: There are several dependencies:
+                 - ietf-yang-library revision 2019-01-04 is REQUIRED 
+                 - nacm
+                 - ietf-yang-structure-ext.yang, 
+                 - ietf-yang-instance-data
+                 see draft-ietf-netconf-notification-capabilities-17";
 	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;
@@ -451,6 +487,16 @@ module clixon-config {
                  is returned, which conforms to the RFC.
                  Note this applies only to external NETCONF, not the internal (IPC) netconf";
 	}
+	leaf CLICON_NETCONF_MESSAGE_ID_OPTIONAL {
+	    type boolean;
+	    default false;
+	    description
+		"This option relates to RFC 6241 Sec 4.1 <rpc> Element
+                 The <rpc> element has a mandatory attribute 'message-id', which is a
+                 string chosen by the sender of the RPC.
+                 If true, an RPC can be sent without a message-id.
+                 This applies to both  external NETCONF and internal (IPC) netconf";
+	}
 	leaf CLICON_RESTCONF_DIR {
 	    type string;
 	    description
@@ -470,7 +516,28 @@ module clixon-config {
                  Note: Obsolete, use fcgi-socket in clixon-restconf.yang instead";
 	    status obsolete;
 	}
-
+	leaf CLICON_RESTCONF_INSTALLDIR {
+	    type string;
+	    default "/usr/local/sbin";
+	    description
+		"Path to dir of clixon-restconf daemon binary as used by backend if started internally
+                 Discussion: Somewhat problematic to have it as run time option. It may think it
+                 should be known at configure or install time, but for example the main docker
+                 installation moves the binaries, and this may be true elsewehere too.
+                 Maybe one could locate it via PATHs search";
+	}
+	leaf CLICON_RESTCONF_STARTUP_DONTUPDATE {
+	    type boolean;
+	    default false;
+	    description
+		"According to RFC 8040 Sec 1.4:
+                    If the NETCONF server supports :startup, the RESTCONF server MUST automatically
+                    update the [...] startup configuration [...] as a consequence of a RESTCONF
+                    edit operation.
+                 Setting this option disables this behaviour, ie the startup configuration is NOT
+                 automatically updated.
+                 If this option is false, the startup is autoamtically updated following the RFC";
+	}
 	leaf CLICON_RESTCONF_PRETTY {
 	    type boolean;
 	    default true;
@@ -485,6 +552,26 @@ module clixon-config {
                  which may be desirable for performance or tests
                  Note: Obsolete, use pretty in clixon-restconf.yang instead";
 	    status obsolete;
+	}
+	leaf CLICON_RESTCONF_USER {
+	    type string;
+	    description 
+		"Run clixon_daemon as this user
+                 When drop privileges is used, the daemon will drop privileges to this user.
+                 In pre-5.2 code this was configured as compile-time constant WWWUSER with
+                 default value www-data
+                 See also CLICON_PRIVILEGES setting";
+	    default www-data;
+	}
+	leaf CLICON_RESTCONF_PRIVILEGES {
+	    type priv_mode;
+	    default drop_perm;
+	    description 
+		"Restconf privileges mode. 
+                 If drop_perm or drop_temp then drop privileges to CLICON_RESTCONF_USER.
+                 If the platform does not support getresuid and accompanying functions, the mode
+                 must be set to 'none'.
+                 ";
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;
@@ -706,7 +793,7 @@ module clixon-config {
                  user (eg datastores).
                  It also sets the backend unix socket owner to this user, but its group
                  is set by CLICON_SOCK_GROUP.
-                 See also CLICON_PRIVILEGES setting";
+                 See also CLICON_BACKEND_PRIVILEGES setting";
 	}
 	leaf CLICON_BACKEND_PRIVILEGES {
 	    type priv_mode;
