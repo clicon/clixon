@@ -10,10 +10,14 @@ cfg=$dir/conf.xml
 fexample=$dir/example-module.yang
 fstate=$dir/mystate.xml
 
+# Define default restconfig config: RESTCONFIG
+RESTCONFIG=$(restconf_config none false)
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
@@ -26,6 +30,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -303,22 +308,23 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "wait restconf"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 # draft-wwlh-netconf-list-pagination-nc-00.txt
 new "C.1. 'count' Parameter NETCONF"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc message-id=\"101\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:exm=\"http://example.com/ns/example-module\">/exm:admins/exm:admin[exm:name='Bob']/exm:skill</list-target><count>2</count></get-pageable-list></rpc>]]>]]>" '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101"><pageable-list xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination"><skill xmlns="http://example.com/ns/example-module"><name>Conflict Resolution</name><rank>93</rank></skill><skill xmlns="http://example.com/ns/example-module"><name>Management</name><rank>23</rank></skill></pageable-list></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:exm=\"http://example.com/ns/example-module\">/exm:admins/exm:admin[exm:name='Bob']/exm:skill</list-target><count>2</count></get-pageable-list></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><skill xmlns=\"http://example.com/ns/example-module\"><name>Conflict Resolution</name><rank>93</rank></skill><skill xmlns=\"http://example.com/ns/example-module\"><name>Management</name><rank>23</rank></skill></pageable-list></rpc-reply>]]>]]>$"
 
 new "C.2. 'skip' Parameter NETCONF"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc message-id=\"101\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:exm=\"http://example.com/ns/example-module\">/exm:admins/exm:admin[exm:name='Bob']/exm:skill</list-target><count>2</count><skip>2</skip></get-pageable-list></rpc>]]>]]>" '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101"><pageable-list xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination"><skill xmlns="http://example.com/ns/example-module"><name>Organization</name><rank>44</rank></skill><skill xmlns="http://example.com/ns/example-module"><name>Problem Solving</name><rank>98</rank></skill></pageable-list></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:exm=\"http://example.com/ns/example-module\">/exm:admins/exm:admin[exm:name='Bob']/exm:skill</list-target><count>2</count><skip>2</skip></get-pageable-list></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><skill xmlns=\"http://example.com/ns/example-module\"><name>Organization</name><rank>44</rank></skill><skill xmlns=\"http://example.com/ns/example-module\"><name>Problem Solving</name><rank>98</rank></skill></pageable-list></rpc-reply>]]>]]>$"
 
 # CLI
 # XXX This relies on a very specific clispec command: need a more generic test
 new "cli show"
-expectpart "$($clixon_cli -1 -f $cfg -l o show pagination)" 0 "<skill xmlns=\"http://example.com/ns/example-module\"><name>Conflict Resolution</name><rank>93</rank></skill>" "<skill xmlns=\"http://example.com/ns/example-module\"><name>Management</name><rank>23</rank></skill>" --not-- "<skill xmlns=\"http://example.com/ns/example-module\"><name>Organization</name><rank>44</rank></skill>"
+echo "$clixon_cli -1 -f $cfg -l o show pagination"
+expectpart "$($clixon_cli -1 -f $cfg -l o show pagination)" 0 "<skill xmlns=\"http://example.com/ns/example-module\">" "<name>Conflict Resolution</name>" "<rank>93</rank>" "<name>Management</name>" "<rank>23</rank>" --not-- "<name>Organization</name>" "<rank>44</rank></skill>"
 
 # draft-wwlh-netconf-list-pagination-rc-00.txt
 #new "A.1. 'count' Parameter RESTCONF"
@@ -329,17 +335,20 @@ if [ $RC -ne 0 ]; then
     stop_restconf
 fi
 
-if [ $BE -eq 0 ]; then
-    exit # BE
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
 
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
-fi
-# kill backend
-stop_backend -f $cfg
+unset RESTCONFIG
 
 rm -rf $dir
+
+new "endtest"
+endtest

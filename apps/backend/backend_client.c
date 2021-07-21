@@ -1335,6 +1335,7 @@ from_client_kill_session(clicon_handle h,
     return retval;
 }
 
+#ifdef LIST_PAGINATION
 /*! Help function for parsing restconf query parameter and setting netconf attribute
  *
  * If not "unbounded", parse and set a numeric value
@@ -1660,6 +1661,7 @@ from_client_get_pageable_list(clicon_handle h,
 	xml_free(xret);
     return retval;
 }
+#endif /* LIST_PAGINATION */
 
 /*! Create a notification subscription
  * @param[in]  h       Clicon handle 
@@ -2286,10 +2288,12 @@ backend_rpc_init(clicon_handle h)
     if (rpc_callback_register(h, from_client_validate, NULL,
 		      NETCONF_BASE_NAMESPACE, "validate") < 0)
 	goto done;
+#ifdef LIST_PAGINATION
     /* draft-ietf-netconf-restconf-collection-00 */
     if (rpc_callback_register(h, from_client_get_pageable_list, NULL,
 		      NETCONF_COLLECTION_NAMESPACE, "get-pageable-list") < 0)
 	goto done;
+#endif
     /* In backend_client.? RPC from RFC 5277 */
     if (rpc_callback_register(h, from_client_create_subscription, NULL,
 		      EVENT_RFC5277_NAMESPACE, "create-subscription") < 0)

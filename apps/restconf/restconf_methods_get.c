@@ -311,6 +311,7 @@ api_data_get2(clicon_handle  h,
     return retval;
 }
 
+#ifdef LIST_PAGINATION
 /*! GET Collection 
  * According to restconf collection draft. Lists, work in progress
  * @param[in]  h        Clixon handle
@@ -528,6 +529,7 @@ api_data_collection(clicon_handle  h,
 	free(xvec);
     return retval;
 }
+#endif /* LIST_PAGINATION */
 
 /*! REST HEAD method
  * @param[in]  h        Clixon handle
@@ -605,8 +607,13 @@ api_data_get(clicon_handle h,
 	break;
     case YANG_COLLECTION_XML:
     case YANG_COLLECTION_JSON:
+#ifdef LIST_PAGINATION
 	if (api_data_collection(h, req, api_path, pcvec, pi, qvec, pretty, media_out) < 0)
 	    goto done;
+#else
+	if (restconf_notimplemented(h, req, pretty, media_out) < 0)
+	    goto done;
+#endif
 	break;
     default:
 	break;

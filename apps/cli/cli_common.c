@@ -1312,6 +1312,7 @@ cli_help(clicon_handle h, cvec *vars, cvec *argv)
     return cligen_help(ch, stdout, pt);
 }
 
+#ifdef LIST_PAGINATION
 /*! Show pagination/collection
  * XXX: This is hardcoded only for test_pagination.sh
  * @param[in]  h    Clicon handle
@@ -1383,4 +1384,12 @@ cli_pagination(clicon_handle h, cvec *vars, cvec *argv)
 	cbuf_free(cb);
     return retval;
 }
+#else
+int
+cli_pagination(clicon_handle h, cvec *vars, cvec *argv)
+{
+    fprintf(stderr, "Not yet implemented\n");
+    return 0;
+}
+#endif /* LIST_PAGINATION */
 

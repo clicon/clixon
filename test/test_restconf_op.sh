@@ -81,12 +81,14 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     sudo pkill -f clixon_backend # to be sure
+
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
+
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"

@@ -309,6 +309,8 @@ api_return_err(clicon_handle  h,
 	}
 	break;
     default: /* Just ignore the body so that there is a reply */
+	clicon_err(OE_YANG, EINVAL, "Invalid media type %d", media);
+	goto done;
 	break;
     } /* switch media */
     assert(cbuf_len(cb));

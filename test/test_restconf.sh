@@ -300,10 +300,6 @@ function testrun()
     new "restconf empty rpc JSON"
     expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d {\"clixon-example:input\":null} $proto://$addr/restconf/operations/clixon-example:empty)" 0  "HTTP/$HVER 204"
 
-    # -I / --head get headers only HEAD
-    new "restconf HEAD. RFC 8040 4.2"
-    expectpart "$(curl $CURLOPTS -I --head "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 200 OK" "Content-Type: application/yang-data+json"
-
     new "restconf empty rpc XML"
     expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" -d '<input xmlns="urn:example:clixon"></input>' $proto://$addr/restconf/operations/clixon-example:empty)" 0  "HTTP/$HVER 204"
 

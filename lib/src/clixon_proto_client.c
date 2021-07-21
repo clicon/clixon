@@ -878,6 +878,7 @@ clicon_rpc_get(clicon_handle   h,
     return retval;
 }
 
+#ifdef LIST_PAGINATION
 /*! Get database configuration and state data collection
  * @param[in]  h         Clicon handle
  * @param[in]  xpath     To identify a list/leaf-list
@@ -939,6 +940,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 	cprintf(cb, " username=\"%s\"", username);
     cprintf(cb, " xmlns:%s=\"%s\"",
 	    NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
     cprintf(cb, "><get-pageable-list xmlns=\"%s\"", NETCONF_COLLECTION_NAMESPACE);
     /* Clixon extension, content=all,config, or nonconfig */
     if ((int)content != -1)
@@ -1012,6 +1014,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 	free(msg);
     return retval;
 }
+#endif /* LIST_PAGINATION */
 
 /*! Send a close a netconf user session. Socket is also closed if still open
  *

@@ -1526,9 +1526,11 @@ netconf_module_load(clicon_handle h)
     if (clicon_option_bool(h, "CLICON_NETCONF_MESSAGE_ID_OPTIONAL") == 1)
 	xml_bind_netconf_message_id_optional(1);
 #endif
+#ifdef LIST_PAGINATION
     /* Load netconf list pagination */
     if (yang_spec_parse_module(h, "ietf-netconf-list-pagination", NULL, yspec)< 0)
-	goto done;    
+	goto done;
+#endif
     retval = 0;
  done:
     return retval;

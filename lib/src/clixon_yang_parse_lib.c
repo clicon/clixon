@@ -199,8 +199,9 @@ ys_grouping_resolve(yang_stmt  *yuses,
 }
 
 /*! This is an augment node, augment the original datamodel. 
- * @param[in] ys    The augment statement
- * @param[in] yspec Yang specification
+ *
+ * @param[in]  h    Clicon handle
+ * @param[in]  ys   The augment statement
  * @see RFC7950 Sec 7.17
  * The target node MUST be either a container, list, choice, case, input,
  * output, or notification node.
@@ -215,7 +216,8 @@ ys_grouping_resolve(yang_stmt  *yuses,
  * struct to the yang statements being inserted.
  */
 static int
-yang_augment_node(yang_stmt *ys)
+yang_augment_node(clicon_handle h,
+		  yang_stmt    *ys)
 {
     int           retval = -1;
     char         *schema_nodeid;
@@ -352,6 +354,13 @@ yang_augment_node(yang_stmt *ys)
 	    if (yang_when_nsc_set(yc, wnsc) < 0) 
 		goto done;
 	}
+	/* Note: ys_populate2 called as a special case here since the inserted child is
+	 * not covered by Step 9 in yang_parse_post
+	 */
+	if (ys_populate2(yc, h) < 0)
+	    goto done;
+	if (yang_apply(yc, -1, ys_populate2, 1, (void*)h) < 0)
+	    goto done;
     }
  ok:
    retval = 0;
@@ -362,6 +371,8 @@ yang_augment_node(yang_stmt *ys)
 }
 
 /*! Find all top-level augments in a module and change original datamodels. 
+ *
+ * @param[in]  h     Clicon handle
  * @param[in]  ymod  Yang statement of type module/sub-module
  * @retval     0     OK
  * @retval    -1     Error
@@ -369,7 +380,8 @@ yang_augment_node(yang_stmt *ys)
  * another module not yet augmented.
  */
 static int
-yang_augment_module(yang_stmt *ymod)
+yang_augment_module(clicon_handle h,
+		    yang_stmt    *ymod)
 
 {
     int        retval = -1;
@@ -379,7 +391,7 @@ yang_augment_module(yang_stmt *ymod)
     while ((ys = yn_each(ymod, ys)) != NULL){
 	switch (yang_keyword_get(ys)){
 	case Y_AUGMENT: /* top-level */
-	    if (yang_augment_node(ys) < 0)
+	    if (yang_augment_node(h, ys) < 0)
 		goto done;
 	    break;
 	default:
@@ -1463,7 +1475,7 @@ yang_parse_post(clicon_handle h,
      * another module not yet augmented.
      */
     for (i=0; i<ylen; i++)
-	if (yang_augment_module(ylist[i]) < 0)
+	if (yang_augment_module(h, ylist[i]) < 0)
 	    goto done;
 
     /* 8: Check deviations: not-supported add/delete/replace statements 
@@ -1473,7 +1485,11 @@ yang_parse_post(clicon_handle h,
 	if (yang_apply(yang_child_i(yspec, i), -1, yang_deviation, 1, (void*)h) < 0)
 	    goto done;
     
-    /* 9: Go through parse tree and do 2nd step populate (eg default) */
+    /* 9: Go through parse tree and do 2nd step populate (eg default) 
+     *    Note that augments in step 7 are not covered here since they apply to
+     *    modules already loaded. Therefore the call to ys_populate2 is made inline in
+     *    yang_augment_node()
+     */
     for (i=0; i<ylen; i++)
 	if (yang_apply(ylist[i], -1, ys_populate2, 1, (void*)h) < 0)
 	    goto done;

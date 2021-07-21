@@ -117,3 +117,10 @@
  * Remove this when regression test
  */
 #undef YANG_PATCH
+
+/*! Enable list pagination drafts
+ * draft-wwlh-netconf-list-pagination-00, 
+ * draft-wwlh-netconf-list-pagination-nc-00
+ * draft-wwlh-netconf-list-pagination-rc-00
+ */
+#define LIST_PAGINATION
