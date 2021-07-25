@@ -529,6 +529,7 @@ restconf_path_root(evhtp_request_t *req,
 	    clicon_err(OE_CFG, errno, "evbuffer_pullup");
 	    goto done;
 	}
+	cbuf_reset(sd->sd_indata);
 	/* Note the pullup may not be null-terminated */
 	cbuf_append_buf(sd->sd_indata, buf, len);
     }
