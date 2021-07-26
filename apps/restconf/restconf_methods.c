@@ -1329,16 +1329,15 @@ api_data_patch(clicon_handle h,
 	ret = api_data_write(h, req, api_path0, pcvec, pi, qvec, data, pretty,
 			     media_in, media_out, 1, ds);
 	break;
-    case YANG_PATCH_XML:
-	ret = restconf_notimplemented(h, req, pretty, media_out);
-	break;
     case YANG_PATCH_JSON: 	/* RFC 8072 patch */
+    case YANG_PATCH_XML:
 #ifdef YANG_PATCH
 	ret = api_data_yang_patch(h, req, api_path0, pcvec, pi, qvec, data, pretty,
 			     media_out, ds);
 #else
-	ret = restconf_unsupported_media(h, req, pretty, media_out);
+	ret = restconf_notimplemented(h, req, pretty, media_out);
 #endif
+	break;
     break;
     default:
 	ret = restconf_unsupported_media(h, req, pretty, media_out);
