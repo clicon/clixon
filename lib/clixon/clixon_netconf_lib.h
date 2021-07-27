@@ -127,8 +127,7 @@ int netconf_operation_failed(cbuf *cb, char *type, char *message);
 int netconf_operation_failed_xml(cxobj **xret, char *type, char *message);
 int netconf_malformed_message(cbuf *cb, char *message);
 int netconf_malformed_message_xml(cxobj **xret, char *message);
-int netconf_data_not_unique_xml(cxobj **xret, cxobj *x,	cvec *cvk);
-
+int netconf_data_not_unique_xml(cxobj **xret, cxobj *x, cvec *cvk);
 int netconf_minmax_elements_xml(cxobj **xret, cxobj *xp, char *name, int max);
 int netconf_trymerge(cxobj *x, yang_stmt *yspec, cxobj **xret);
 int netconf_module_features(clicon_handle h);
