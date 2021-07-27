@@ -65,6 +65,8 @@
 
 /* cligen */
 #include <cligen/cligen.h>
+// TODO - remove this include if cbuf_trunc() is added to cligen repo
+#include "../cligen/cligen_buf_internal.h"
 
 /* clicon */
 #include <clixon/clixon.h>
@@ -582,68 +584,34 @@ api_data_write(clicon_handle h,
 
 #ifdef YANG_PATCH
 
-char * init_str() 
+/*! Free memory after a NULL pointer check
+  *
+  * @param [in] str     void pointer to memory to be freed
+  *
+  */
+static void yang_patch_free_mem(void *p)
 {
-    char* s;
-    s = malloc(TEMP_STR_MALLOC_SIZE);
-    memset(s, 0, TEMP_STR_MALLOC_SIZE);
-    return s;
+    if (p != NULL)
+        free(p);
 }
 
-int cpy_str(char *dest, char *src, size_t size)
-{
-    if (src == NULL) {
-        return 0;
-    }
-    if (dest == NULL) {
-        init_str(dest);
-    }
-    if (size <= 0 || size > TEMP_STR_MALLOC_SIZE) {
-        return 0;
-    }
-    size_t i;
-    for (i = 0; i < size - 1 && src[i]; i++) {
-        dest[i] = src[i];
-    }
-    dest[i] = '\0';
-    return i;
-}
-
-int cat_str(char *dest, char *src, size_t size)
-{
-    if (src == NULL) {
-        return 0;
-    }
-    if (dest == NULL) {
-        init_str(dest);
-    }
-    if (size <= 0 || size > TEMP_STR_MALLOC_SIZE) {
-        return 0;
-    }
-    size_t i;
-    int old_len = strlen(dest);
-    for (i = 0; i < size - 1 && src[i]; i++) {
-        dest[i + old_len] = src[i];
-    }
-    dest[i + old_len] = '\0';
-    return i;
-}
-
-void free_mem(void *str)
-{
-    if (str != NULL)
-        free(str);
-}
-
-int get_xval(
+/*! Return a value within XML tags
+ * @param [in] nsc  namespace context
+ * @param [in] xn   cxobj containing XML with the current edit
+ * @param [in] val   cbuf to which the value will be written
+ * @param [in] key  string containing the tag
+ * @retval 0 success
+ * @retval <0 failure
+ */
+static int yang_patch_get_xval(
     cvec* nsc,
     cxobj* xn,
-    char* val,
-    cxobj **vec,
-    size_t veclen,
+    cbuf* val,
     const char* key
     )
 {
+    cxobj **vec = NULL;
+    size_t veclen = 0;
     char* tmp_val = NULL;
     int ret = xpath_vec(xn, nsc, "%s", &vec, &veclen, key);
     if (ret < 0) {
@@ -653,11 +621,128 @@ int get_xval(
         cxobj *xn = vec[j];
         tmp_val = xml_body(xn);
     }
-    cpy_str(val, tmp_val, TEMP_STR_MALLOC_SIZE);
+    cbuf_append_str(val, tmp_val);
     return 0;
 }
 
-int do_replace (
+// TODO - add this to cligen repo if it is approved
+/*! Truncate a cbuf
+  *
+  * @param [in]  cb  cligen buffer allocated by cbuf_new(), may be reallocated.
+  * @param [in]  int pos position at which to truncate
+  * @retval new cbuf containing the truncated string (old buffer remains as it was)
+  * @retval NULL   Error
+  */
+cbuf*
+cbuf_trunc(cbuf       *cb,
+		int       pos)
+{
+    if (pos < 0 || pos > cb->cb_strlen){
+	errno = EINVAL;
+	return NULL;
+    }
+    /* Ensure buffer is right size */
+    cbuf* new_buf = cbuf_new_alloc(pos + 1);
+    if (new_buf == NULL)
+        return NULL;
+    strncpy(new_buf->cb_buffer, cb->cb_buffer, pos);
+    new_buf->cb_strlen = pos;
+    return new_buf;
+}
+
+/*! Add square brackets after the surrounding curly brackets in JSON
+  * Needed, in order to modify the result of xml2json_cbuf() to be valid input
+  * to api_dta_post() and api_dta_write()
+  * @param [in]  x_simple_patch  a cxobj to pass to xml2json_cbuf()
+  * @retval new cbuf with the modified json
+  * @retval NULL   Error
+  */
+
+static cbuf* yang_patch_xml2json_modified_cbuf(cxobj* x_simple_patch)
+{
+    cbuf *json_simple_patch = cbuf_new();
+    if (json_simple_patch == NULL)
+        return NULL;
+    cbuf* cb = cbuf_new();
+    xml2json_cbuf(cb, x_simple_patch, 1);
+
+    // Insert a '[' after the first '{' to get the JSON to match what api_data_post/write() expect
+    char *json_simple_patch_tmp = cbuf_get(cb);
+    int brace_count = 0;
+    for (int l = 0; l < strlen(json_simple_patch_tmp); l++) {
+        char c = json_simple_patch_tmp[l];
+        if (c == '{') {
+            brace_count++;
+            if (brace_count == 2) {
+                cbuf_append(json_simple_patch,(int)'[');
+            }
+        }
+        cbuf_append(json_simple_patch,(int)c);
+    }
+    cbuf* json_simple_patch_2 = NULL;
+
+    // Insert a ']' before the last '}' to get the JSON to match what api_data_post() expects
+    for (int l = cbuf_len(json_simple_patch); l>= 0; l--) {
+        char c = cbuf_get(json_simple_patch)[l];
+        if (c == '}') {
+            // Truncate and add a string, as there is not a function to insert a char into a cbuf
+           json_simple_patch_2 = cbuf_trunc(json_simple_patch, l);
+           cbuf_append_str(json_simple_patch_2, "]}");
+           break;
+        }
+    }
+    cbuf_free(json_simple_patch);
+    cbuf_free(cb);
+    return json_simple_patch_2;
+}
+
+/*!yang_patch_strip_after_last_slash 
+ *
+ * Strip /... from end  of val
+ * so that e.g. "/interface=eth2" becomes "/"
+ * or "/interface_list=mylist/interface=eth2" becomes "/interface_list=mylist/"
+ *
+ * @param[in]  val         value to strip
+ * @retval new cbuf with the stripped string
+ * @retval NULL error
+ */
+static cbuf* yang_patch_strip_after_last_slash(cbuf* val)
+{
+      cbuf *cb = cbuf_new();
+      cbuf* val_tmp = cbuf_new();
+      cbuf_append_str(val_tmp, cbuf_get(val));
+      int idx = cbuf_len(val_tmp);
+      for (int l = cbuf_len(val_tmp); l>= 0; l--) {
+          if (cbuf_get(val_tmp)[l] == '/') {
+              idx = l;
+              break;
+          }
+      }
+      cbuf* val_tmp_2 = cbuf_trunc(val_tmp, idx + 1);
+      if (val_tmp_2 == NULL)
+          return NULL;
+      if (cbuf_append_str(cb, cbuf_get(val_tmp_2)) < 0)
+          return NULL;
+      cbuf_free(val_tmp);
+      cbuf_free(val_tmp_2);
+      return cb;
+}
+
+/*! YANG PATCH replace method
+ * @param[in]  h         Clixon handle
+ * @param[in]  req       Generic Www handle
+ * @param[in]  pi        Offset, where to start pcvec
+ * @param[in]  qvec      Vector of query string (QUERY_STRING)
+ * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_out Output media
+ * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @param[in]  simplepatch_request_uri URI for patch request, e.g. "/restconf/data/ietf-interfaces:interfaces"
+ * @param[in]  target_val       value in "target" field of edit in YANG patch
+ * @param[in]  value_vec_len    number of elements in the "value" array of an edit in YANG patch
+ * @param[in]  value_vec        pointer to the "value" array of an edit in YANG patch
+ * @param[in]  x_simple_patch   pointer to XML containing module name, e.g. <ietf-interfaces:interface/>
+ */
+static int yang_patch_do_replace (
         clicon_handle h,
 	    void         *req,
 	    int           pi,
@@ -665,93 +750,80 @@ int do_replace (
 	    int           pretty,
 	    restconf_media media_out,
 	    ietf_ds_t     ds,
-        char* simple_patch_request_uri,
-        char* target_val,       
+        cbuf* simple_patch_request_uri,
+        cbuf* target_val,       
         int value_vec_len,
         cxobj** value_vec,
-        cxobj * value_vec_tmp,
-        cxobj *x_simple_patch,
-        char *patch_header
+        cxobj *x_simple_patch
       )
 {
-      char *delete_req_uri = init_str();
+      cxobj * value_vec_tmp = NULL;
+      cbuf* delete_req_uri = cbuf_new();
       if (delete_req_uri == NULL)
           return 1;
 
-      if (cpy_str(delete_req_uri, simple_patch_request_uri, TEMP_STR_MALLOC_SIZE) <= 0)
+      // Make delete_req_uri something like "/restconf/data/ietf-interfaces:interfaces"
+      if (cbuf_append_str(delete_req_uri, cbuf_get(simple_patch_request_uri)) < 0)
           return 1;
 
-      if (cat_str(delete_req_uri, target_val, TEMP_STR_MALLOC_SIZE) <= 0)
+      // Add the target to delete_req_uri,
+      // so it's something like "/restconf/data/ietf-interfaces:interfaces/interface=eth2"
+      if (cbuf_append_str(delete_req_uri, cbuf_get(target_val)) <  0)
           return 1;
 
       // Delete the object with the old values
-      int ret = api_data_delete(h, req, delete_req_uri, pi, pretty, YANG_DATA_JSON, ds );
-      free_mem((void *)delete_req_uri);
+      int ret = api_data_delete(h, req, cbuf_get(delete_req_uri), pi, pretty, YANG_DATA_JSON, ds );
+      cbuf_free(delete_req_uri);
       if (ret != 0)
           return ret;
 
-      // Now insert the object with the new values
-      char *json_simple_patch = init_str();
-      if (json_simple_patch == NULL)
-          return 1; // goto done;
+      // Now set up for the post request.
+      // Strip /... from end  of target val
+      // so that e.g. "/interface=eth2" becomes "/"
+      // or "/interface_list=mylist/interface=eth2" becomes "/interface_list=mylist/"
+      cbuf* post_req_uri = yang_patch_strip_after_last_slash(target_val);
 
+      // Make post_req_uri something like "/restconf/data/ietf-interfaces:interfaces"
+      if (cbuf_append_str(simple_patch_request_uri, cbuf_get(post_req_uri)))
+          return 1;
+      cbuf_free(post_req_uri);
+
+      // Now insert the new values into the data
+      // (which will include the key value and all other mandatory values)
       for (int k = 0; k < value_vec_len; k++) {
           if (value_vec[k] != NULL) {
               value_vec_tmp = xml_dup(value_vec[k]);
               xml_addsub(x_simple_patch, value_vec_tmp);
           }
       }
-      cbuf* cb = cbuf_new();
-      xml2json_cbuf(cb, x_simple_patch, 1);
-
-      // Some ugly text processing to get the JSON to match what api_data_post() expects
-      char *json_simple_patch_tmp = cbuf_get(cb);
-      int brace_count = 0;
-      for (int l = 0; l < strlen(json_simple_patch_tmp); l++) {
-          char c = json_simple_patch_tmp[l];
-          if (c == '{') {
-              brace_count++;
-              if (brace_count == 2) {
-                  json_simple_patch[strlen(json_simple_patch)] = '[';
-              }
-          }
-          json_simple_patch[strlen(json_simple_patch)] = c;
-      }
-
-      /* strip /... from end */
-      char *post_req_uri = init_str();
-      if (post_req_uri == NULL)
-          return 1;
-
-      int idx = strlen(target_val);
-      for (int l = strlen(target_val); l>= 0; l--) {
-          if (target_val[l] == '/') {
-              idx = l;
-              break;
-          }
-      }
-      cpy_str(post_req_uri, target_val, idx);
-      cat_str(simple_patch_request_uri, post_req_uri, TEMP_STR_MALLOC_SIZE);
-      free_mem((void *)post_req_uri);
-      for (int l = strlen(json_simple_patch); l>= 0; l--) {
-          char c = json_simple_patch[l];
-          if (c == '}') {
-             json_simple_patch[l] = ']';
-             json_simple_patch[l + 1] = '}';
-             break;
-          }
-      }
+      // Convert the data to json
+     cbuf *json_simple_patch = cbuf_new();
+     if (json_simple_patch == NULL)
+         return 1;
+     xml2json_cbuf(json_simple_patch, x_simple_patch, 1);
 
       // Send the POST request
-      ret = api_data_post(h, req, simple_patch_request_uri, pi, qvec, json_simple_patch, pretty, YANG_DATA_JSON, media_out, ds );
+      ret = api_data_post(h, req, cbuf_get(simple_patch_request_uri), pi, qvec, cbuf_get(json_simple_patch), pretty, YANG_DATA_JSON, media_out, ds );
       
-      free_mem((void *)value_vec_tmp);
-      free_mem((void *)x_simple_patch);
-      free_mem((void *)patch_header);
+      cbuf_free(json_simple_patch);
+      xml_free(value_vec_tmp);
       return ret;
 }
 
-int do_create (
+/*! YANG PATCH create method
+ * @param[in]  h         Clixon handle
+ * @param[in]  req       Generic Www handle
+ * @param[in]  pi        Offset, where to start pcvec
+ * @param[in]  qvec      Vector of query string (QUERY_STRING)
+ * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_out Output media
+ * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @param[in]  simplepatch_request_uri URI for patch request, e.g. "/restconf/data/ietf-interfaces:interfaces"
+ * @param[in]  value_vec_len    number of elements in the "value" array of an edit in YANG patch
+ * @param[in]  value_vec        pointer to the "value" array of an edit in YANG patch
+ * @param[in]  x_simple_patch   pointer to XML containing module name, e.g. <ietf-interfaces:interface/>
+ */
+static int yang_patch_do_create (
         clicon_handle h,
 	    void         *req,
 	    int           pi,
@@ -759,14 +831,13 @@ int do_create (
 	    int           pretty,
 	    restconf_media media_out,
 	    ietf_ds_t     ds,
-        char* simple_patch_request_uri,
+        cbuf* simple_patch_request_uri,
         int value_vec_len,
         cxobj** value_vec,
-        cxobj * value_vec_tmp,
-        cxobj *x_simple_patch,
-        char *patch_header
+        cxobj *x_simple_patch
       )
 {
+     cxobj * value_vec_tmp = NULL;
      for (int k = 0; k < value_vec_len; k++) {
          if (value_vec[k] != NULL) {
              value_vec_tmp = xml_dup(value_vec[k]);
@@ -778,34 +849,43 @@ int do_create (
      cbuf* cb = cbuf_new();
      xml2json_cbuf(cb, x_simple_patch, 1);
      char *json_simple_patch = cbuf_get(cb);
-     int ret = api_data_post(h, req, simple_patch_request_uri, pi, qvec, json_simple_patch, pretty, YANG_DATA_JSON, media_out, ds );
-     free_mem((void *)value_vec_tmp);
-     free_mem((void *)x_simple_patch);
-     free_mem((void *)patch_header);
+     int ret = api_data_post(h, req, cbuf_get(simple_patch_request_uri), pi, qvec, json_simple_patch, pretty, YANG_DATA_JSON, media_out, ds );
+     xml_free(value_vec_tmp);
      return ret;
 }
 
-int do_insert (
+/*! YANG PATCH insert method
+ * @param[in]  h         Clixon handle
+ * @param[in]  req       Generic Www handle
+ * @param[in]  pi        Offset, where to start pcvec
+ * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_out Output media
+ * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @param[in]  simple_patch_request_uri URI for patch request, e.g. "/restconf/data/ietf-interfaces:interfaces"
+ * @param[in]  value_vec_len    number of elements in the "value" array of an edit in YANG patch
+ * @param[in]  value_vec        pointer to the "value" array of an edit in YANG patch
+ * @param[in]  x_simple_patch   pointer to XML containing module name, e.g. <ietf-interfaces:interface/>
+ * @param[in]  where_val       value in "where" field of edit in YANG patch
+ * @param[in]  api_path        full API path, e.g. "/restconf/data/example-jukebox:jukebox/playlist=Foo-One" 
+ * @param[in]  point_val       value in "point" field of edit in YANG patch
+ */
+static int yang_patch_do_insert (
         clicon_handle h,
 	    void         *req,
 	    int           pi,
 	    int           pretty,
 	    restconf_media media_out,
 	    ietf_ds_t     ds,
-        char* simple_patch_request_uri,
+        cbuf* simple_patch_request_uri,
         int value_vec_len,
         cxobj** value_vec,
-        cxobj * value_vec_tmp,
         cxobj *x_simple_patch,
-        char *patch_header,
-        char* where_val,
+        cbuf* where_val,
         char* api_path,
-        char *point_val
+        cbuf *point_val
       )
 {
-     char *json_simple_patch = init_str();
-     if (json_simple_patch == NULL)
-         return 1;
+     cxobj * value_vec_tmp = NULL;
 
      // Loop through the XML, and get each value
      for (int k = 0; k < value_vec_len; k++) {
@@ -814,30 +894,9 @@ int do_insert (
              xml_addsub(x_simple_patch, value_vec_tmp);
          }
      }
-     cbuf* cb = cbuf_new();
-     xml2json_cbuf(cb, x_simple_patch, 1);
-     
-     // Some ugly text processing to get the JSON to match what api_data_post() expects
-     char *json_simple_patch_tmp = cbuf_get(cb);
-     int brace_count = 0;
-     for (int l = 0; l < strlen(json_simple_patch_tmp); l++) {
-         char c = json_simple_patch_tmp[l];
-         if (c == '{') {
-             brace_count++;
-             if (brace_count == 2) {
-                 json_simple_patch[strlen(json_simple_patch)] = '[';
-             }
-         }
-         json_simple_patch[strlen(json_simple_patch)] = c;
-     }
-     for (int l = strlen(json_simple_patch); l>= 0; l--) {
-         char c = json_simple_patch[l];
-         if (c == '}') {
-            json_simple_patch[l] = ']';
-            json_simple_patch[l + 1] = '}';
-            break;
-         }
-     }
+     cbuf *json_simple_patch = yang_patch_xml2json_modified_cbuf(x_simple_patch);
+     if (json_simple_patch == NULL)
+         return 1;
 
      // Set the insert attributes
      cvec* qvec_tmp = NULL;
@@ -849,31 +908,43 @@ int do_insert (
          return 1;
      }
      cv_name_set(cv, "insert");
-     cv_string_set(cv, where_val);
-     char *point_str = init_str();
+     cv_string_set(cv, cbuf_get(where_val));
+     cbuf *point_str = cbuf_new();
      if (point_str == NULL)
          return 1;
-     cpy_str(point_str, api_path, TEMP_STR_MALLOC_SIZE);
-     cat_str(point_str, point_val, TEMP_STR_MALLOC_SIZE);
+     cbuf_append_str(point_str, api_path);
+     cbuf_append_str(point_str, cbuf_get(point_val));
      if ((cv = cvec_add(qvec_tmp, CGV_STRING)) == NULL){
          return 1;
      }
      cv_name_set(cv, "point");
-     cv_string_set(cv, point_str);
+     cv_string_set(cv, cbuf_get(point_str));
 
      // Send the POST request
-     int ret = api_data_post(h, req, simple_patch_request_uri, pi, qvec_tmp, json_simple_patch, pretty, YANG_DATA_JSON, media_out, ds );
-     if (cb != NULL)
-         cbuf_free(cb);
-     free_mem((void *)value_vec_tmp);
-     free_mem((void *)point_str);
-     free_mem((void *)json_simple_patch);
-     free_mem((void *)patch_header);
-     free_mem((void *)x_simple_patch);
+     int ret = api_data_post(h, req, cbuf_get(simple_patch_request_uri), pi, qvec_tmp, cbuf_get(json_simple_patch), pretty, YANG_DATA_JSON, media_out, ds );
+     xml_free(value_vec_tmp);
+     cbuf_free(point_str);
+     cbuf_free(json_simple_patch);
      return ret;
 }
 
-int do_merge (
+/*! YANG PATCH merge method
+ * @param[in]  h         Clixon handle
+ * @param[in]  req       Generic Www handle
+ * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element
+ * @param[in]  pi        Offset, where to start pcvec
+ * @param[in]  qvec      Vector of query string (QUERY_STRING)
+ * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_out Output media
+ * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @param[in]  simple_patch_request_uri URI for patch request, e.g. "/restconf/data/ietf-interfaces:interfaces"
+ * @param[in]  value_vec_len    number of elements in the "value" array of an edit in YANG patch
+ * @param[in]  value_vec        pointer to the "value" array of an edit in YANG patch
+ * @param[in]  x_simple_patch   pointer to XML containing module name, e.g. "<ietf-interfaces:interface/>"
+ * @param[in]  where_val       value in "where" field of edit in YANG patch
+ * @param[in]  key_xn          XML with key tag and value, e.g. "<name>Foo-One</name>"
+ */
+static int yang_patch_do_merge (
         clicon_handle h,
 	    void         *req,
 	    cvec         *pcvec,
@@ -882,24 +953,18 @@ int do_merge (
 	    int           pretty,
 	    restconf_media media_out,
 	    ietf_ds_t     ds,
-        char* simple_patch_request_uri,
+        cbuf* simple_patch_request_uri,
         int value_vec_len,
         cxobj** value_vec,
-        cxobj * value_vec_tmp,
         cxobj *x_simple_patch,
-        cxobj *key_xn,
-        int plain_patch_val,
-        char *patch_header
+        cxobj *key_xn
       )
 {
     int ret = -1;
+     cxobj * value_vec_tmp = NULL;
      if (key_xn != NULL)
          xml_addsub(x_simple_patch, key_xn);
     
-     char *json_simple_patch = init_str();
-     if (json_simple_patch == NULL)
-         return 1;
-
      // Loop through the XML, create JSON from each one, and submit a simple patch
      for (int k = 0; k < value_vec_len; k++) {
          if (value_vec[k] != NULL) {
@@ -909,36 +974,15 @@ int do_merge (
          cbuf* cb = cbuf_new();
          xml2json_cbuf(cb, x_simple_patch, 1);
 
-         // Some ugly text processing to get the JSON to match what api_data_write() expects for a simple patch
-         char *json_simple_patch_tmp = cbuf_get(cb);
-         memset(json_simple_patch, 0, TEMP_STR_MALLOC_SIZE);
-         int brace_count = 0;
-         for (int l = 0; l < strlen(json_simple_patch_tmp); l++) {
-             char c = json_simple_patch_tmp[l];
-             if (c == '{') {
-                 brace_count++;
-                 if (brace_count == 2) {
-                     json_simple_patch[strlen(json_simple_patch)] = '[';
-                 }
-             }
-             json_simple_patch[strlen(json_simple_patch)] = c;
-         }
-         for (int l = strlen(json_simple_patch); l>= 0; l--) {
-             char c = json_simple_patch[l];
-             if (c == '}') {
-                json_simple_patch[l] = ']';
-                json_simple_patch[l + 1] = '}';
-                break;
-             }
-         }
-         free_mem(value_vec_tmp);
+        cbuf *json_simple_patch = yang_patch_xml2json_modified_cbuf(x_simple_patch);
+        if (json_simple_patch == NULL)
+            return 1;
+         xml_free(value_vec_tmp);
          // Send the simple patch request
-         ret = api_data_write(h, req, simple_patch_request_uri, pcvec, pi, qvec, json_simple_patch, pretty, YANG_DATA_JSON, media_out, plain_patch_val, ds );
+         ret = api_data_write(h, req, cbuf_get(simple_patch_request_uri), pcvec, pi, qvec, cbuf_get(json_simple_patch), pretty, YANG_DATA_JSON, media_out, 1, ds );
          cbuf_free(cb);
+         cbuf_free(json_simple_patch);
      }
-     free_mem(json_simple_patch);
-     free_mem(patch_header);
-     free_mem(x_simple_patch);
      return ret;
 }
 
@@ -988,7 +1032,7 @@ api_data_yang_patch(clicon_handle h,
     cvec          *nsc = NULL;
     yang_bind      yb;
     char          *xpath = NULL;
-    char *path_orig_1 = NULL;
+    cbuf *path_orig_1 = NULL;
 
     clicon_debug(1, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -1057,11 +1101,11 @@ api_data_yang_patch(clicon_handle h,
 	    continue;
 	}
     }
-    path_orig_1 = init_str();
+    path_orig_1 = cbuf_new();
     if (path_orig_1 == NULL) {
         goto done;
     } else {
-        cpy_str(path_orig_1, restconf_uripath(h), TEMP_STR_MALLOC_SIZE);
+        cbuf_append_str(path_orig_1, restconf_uripath(h));
     }
 
     // Loop through the edits
@@ -1070,45 +1114,44 @@ api_data_yang_patch(clicon_handle h,
         size_t tmp_veclen = 0;
 
         cxobj *xn = vec[i];
+		clicon_log_xml(LOG_DEBUG, xn, "%s %d xn:", __FUNCTION__, __LINE__);
         // Get target
-        char *target_val = init_str();
-        ret = get_xval(nsc, xn, target_val, tmp_vec, tmp_veclen, "target");
+        cbuf *target_val = cbuf_new();
+        ret = yang_patch_get_xval(nsc, xn, target_val, "target");
         if (ret < 0) {
             goto done;
         }
         // Get operation
-        char *op_val = init_str();
-        ret = get_xval(nsc, xn, op_val, tmp_vec, tmp_veclen, "operation");
+        cbuf *op_val = cbuf_new();
+        ret = yang_patch_get_xval(nsc, xn, op_val, "operation");
         if (ret < 0) {
             goto done;
         }
         // Get "point" and "where" for insert operations
-        char *point_val = init_str();
-        char *where_val = init_str();
-        if (strcmp(op_val, "insert") == 0) { // TODO - test
-            point_val = init_str();
-            ret = get_xval(nsc, xn, point_val, tmp_vec, tmp_veclen, "point");
+        cbuf *point_val = NULL;
+        cbuf *where_val = cbuf_new();
+        if (strcmp(cbuf_get(op_val), "insert") == 0) {
+            point_val = cbuf_new();
+            ret = yang_patch_get_xval(nsc, xn, point_val, "point");
             if (ret < 0) {
                 goto done;
             }
-            where_val = init_str();
-            ret = get_xval(nsc, xn, where_val, tmp_vec, tmp_veclen, "where");
+            where_val = cbuf_new();
+            ret = yang_patch_get_xval(nsc, xn, where_val, "where");
             if (ret < 0) {
                 goto done;
             }
         }
 
         // Construct request URI
-        char* simple_patch_request_uri = init_str();
-        cpy_str(simple_patch_request_uri, path_orig_1, TEMP_STR_MALLOC_SIZE);
+        cbuf* simple_patch_request_uri = cbuf_new();
+        cbuf_append_str(simple_patch_request_uri, cbuf_get(path_orig_1));
 
-        int plain_patch_val = 0;
-        char* api_path_target = init_str();
-        cpy_str(api_path_target, api_path, TEMP_STR_MALLOC_SIZE);
-        if (strcmp(op_val, "merge") == 0) {
-            plain_patch_val = 1;
-            cat_str(api_path_target, target_val, TEMP_STR_MALLOC_SIZE);
-            cat_str(simple_patch_request_uri, target_val, TEMP_STR_MALLOC_SIZE);
+        cbuf* api_path_target = cbuf_new();
+        cbuf_append_str(api_path_target, api_path);
+        if (strcmp(cbuf_get(op_val), "merge") == 0) {
+            cbuf_append_str(api_path_target, cbuf_get(target_val));
+            cbuf_append_str(simple_patch_request_uri, cbuf_get(target_val));
         }
 
         if (xerr)
@@ -1119,7 +1162,7 @@ api_data_yang_patch(clicon_handle h,
         // Get key field
         /* Translate api_path to xml in the form of xtop/xbot */
         xbot_tmp = xtop;
-	    if ((ret = api_path2xml(api_path_target, yspec, xtop, YC_DATANODE, 1, &xbot_tmp, &ybot, &xerr)) < 0)
+	    if ((ret = api_path2xml(cbuf_get(api_path_target), yspec, xtop, YC_DATANODE, 1, &xbot_tmp, &ybot, &xerr)) < 0)
 	        goto done;
 	    if (ret == 0){ /* validation failed */
 	        if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -1142,7 +1185,6 @@ api_data_yang_patch(clicon_handle h,
         if (key_vec != NULL) {
             key_xn = key_vec[0];
         }
-
         // Get values (for "delete" and "remove", there are no values)
         xpath_vec(xn, nsc, "value", &tmp_vec, &tmp_veclen);
         key_node_id = NULL;
@@ -1154,68 +1196,73 @@ api_data_yang_patch(clicon_handle h,
             if (key_node_id == NULL)
                 key_node_id = xml_name(*values_child_vec);
 
-            char *patch_header = init_str();
+            cbuf *patch_header = cbuf_new();
             if (patch_header == NULL) {
                 goto done;
             }
-            cpy_str(patch_header, modname, TEMP_STR_MALLOC_SIZE);
-            cat_str(patch_header, ":", TEMP_STR_MALLOC_SIZE);
-            cat_str(patch_header, key_node_id, TEMP_STR_MALLOC_SIZE);
-            cxobj *x_simple_patch = xml_new(patch_header, NULL, CX_ELMNT);
+            cbuf_append_str(patch_header, modname);
+            cbuf_append_str(patch_header, ":");
+            cbuf_append_str(patch_header, key_node_id);
+            cxobj *x_simple_patch = xml_new(cbuf_get(patch_header), NULL, CX_ELMNT);
             if (x_simple_patch == NULL)
                 goto done;
             int value_vec_len = xml_child_nr(*values_child_vec);
             cxobj** value_vec = xml_childvec_get(*values_child_vec);
-            cxobj * value_vec_tmp = NULL;
             // For "replace", delete the item and then POST it
             // TODO - in an ordered list, insert it into its original position
-            if (strcmp(op_val,"replace") == 0) {
-                ret = do_replace(h, req, pi, qvec, pretty, media_out, ds, simple_patch_request_uri, target_val, value_vec_len, value_vec, value_vec_tmp, x_simple_patch, patch_header);
+            if (strcmp(cbuf_get(op_val),"replace") == 0) {
+                ret = yang_patch_do_replace(h, req, pi, qvec, pretty, media_out, ds, simple_patch_request_uri, target_val, value_vec_len, value_vec, x_simple_patch);
                 if (ret != 0) {
                     goto done;
                 }
             }
             // For "create", put all the data values into a single POST request
-            if (strcmp(op_val,"create") == 0) {
-                ret = do_create(h, req, pi, qvec, pretty, media_out, ds, simple_patch_request_uri, value_vec_len, value_vec, value_vec_tmp, x_simple_patch, patch_header);
+            if (strcmp(cbuf_get(op_val),"create") == 0) {
+                ret = yang_patch_do_create(h, req, pi, qvec, pretty, media_out, ds, simple_patch_request_uri, value_vec_len, value_vec, x_simple_patch);
                 if (ret != 0) {
                     goto done;
                 }
             }
-            // For "insert", make a api_data_post request // TODO - test
-            if (strcmp(op_val, "insert") == 0) {
-                ret = do_insert(h, req, pi, pretty, media_out, ds, simple_patch_request_uri, value_vec_len, value_vec, value_vec_tmp, x_simple_patch, patch_header, where_val, api_path, point_val);
+            // For "insert", make a api_data_post request
+            if (strcmp(cbuf_get(op_val), "insert") == 0) {
+                ret = yang_patch_do_insert(h, req, pi, pretty, media_out, ds, simple_patch_request_uri, value_vec_len, value_vec, x_simple_patch, where_val, api_path, point_val);
                 if (ret != 0) {
                     goto done;
                 }
             }
             // For merge", make single simple patch requests for each value
-            if (strcmp(op_val,"merge") == 0) {
-                ret = do_merge(h, req, pcvec, pi, qvec, pretty, media_out, ds, simple_patch_request_uri, value_vec_len, value_vec, value_vec_tmp, x_simple_patch, key_xn, plain_patch_val, patch_header);
+            if (strcmp(cbuf_get(op_val),"merge") == 0) {
+                ret = yang_patch_do_merge(h, req, pcvec, pi, qvec, pretty, media_out, ds, simple_patch_request_uri, value_vec_len, value_vec, x_simple_patch, key_xn);
                 if (ret != 0) {
                     goto done;
                 }
             }
+            cbuf_free(patch_header);
+            yang_patch_free_mem((void *)x_simple_patch); // Using xml_free() causes crash
         }
-        if ((strcmp(op_val, "delete") == 0) ||
-            (strcmp(op_val, "remove") == 0)) {
-                cat_str(simple_patch_request_uri, target_val, TEMP_STR_MALLOC_SIZE);
-                if (strcmp(op_val, "delete") == 0) {
+        if ((strcmp(cbuf_get(op_val), "delete") == 0) ||
+            (strcmp(cbuf_get(op_val), "remove") == 0)) {
+               cbuf_append_str(simple_patch_request_uri, cbuf_get(target_val));
+                if (strcmp(cbuf_get(op_val), "delete") == 0) {
                     // TODO - send error
                 } else {
                     // TODO - do not send error
                 }
-                api_data_delete(h, req, simple_patch_request_uri, pi, pretty, YANG_DATA_JSON, ds); 
+                api_data_delete(h, req, cbuf_get(simple_patch_request_uri), pi, pretty, YANG_DATA_JSON, ds); 
         }
-        free_mem((void *)simple_patch_request_uri);
-        free_mem((void *)api_path_target);
+        cbuf_free(simple_patch_request_uri);
+        cbuf_free(api_path_target);
+        cbuf_free(target_val);
+        cbuf_free(op_val);
+        cbuf_free(point_val);
+        cbuf_free(where_val);
     }
  ok:
     retval = 0;
  done:
-    free_mem((void *)path_orig_1);
-    free_mem((void *)vec);
-	free_mem((void *)xpath);
+    cbuf_free(path_orig_1);
+    yang_patch_free_mem((void *)vec);
+	yang_patch_free_mem((void *)xpath);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (xret)
