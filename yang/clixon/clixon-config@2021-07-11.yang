@@ -45,8 +45,13 @@ module clixon-config {
 
     revision 2021-07-11 {
 	description
-	    "Added option
-                    CLICON_SYSTEM_CAPABILITIES";
+	    "Added option:
+                    CLICON_SYSTEM_CAPABILITIES
+             Removed default value:
+	            CLICON_RESTCONF_INSTALLDIR
+             Marked as obsolete:
+                     CLICON_YANG_LIST_CHECK
+             (Will be) Released in Clixon 5.3";
     }
     revision 2021-05-20 {
 	description
@@ -518,13 +523,18 @@ module clixon-config {
 	}
 	leaf CLICON_RESTCONF_INSTALLDIR {
 	    type string;
-	    default "/usr/local/sbin";
 	    description
-		"Path to dir of clixon-restconf daemon binary as used by backend if started internally
-                 Discussion: Somewhat problematic to have it as run time option. It may think it
-                 should be known at configure or install time, but for example the main docker
-                 installation moves the binaries, and this may be true elsewehere too.
-                 Maybe one could locate it via PATHs search";
+		"If set, path to dir of clixon-restconf daemon binary as used by backend if 
+                 started internally (run-time).
+                 If this path is not set, clixon_restconf will be looked for according to
+                 configured installdir: $(sbindir) (install-time)
+                 Since programs can be moved around at install/cross-compile time the installed
+                 dir may be difficult to know at install time, which is the reason why 
+                 CLICON_RESTCONF_INSTALLDIR exists, in order to override the Makefile 
+                 installdir.
+                 Note on the installdir, DESTDIR is not included since according to man pages:
+                     by specifying DESTDIR should not change the operation of the software in 
+                     any way, so its value should not be included in any file contents. ";
 	}
 	leaf CLICON_RESTCONF_STARTUP_DONTUPDATE {
 	    type boolean;

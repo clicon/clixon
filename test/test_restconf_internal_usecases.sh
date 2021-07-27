@@ -34,8 +34,6 @@ startupdb=$dir/startup_db
 RESTCONFDBG=$DBG
 RCPROTO=http # no ssl here
 
-RESTCONFDIR=$(dirname $(which clixon_restconf))
-
 INVALIDADDR=251.1.1.1 # used by fourth usecase as invalid
 
 # log-destination in restconf xml: syslog or file
@@ -68,7 +66,6 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
-  <CLICON_RESTCONF_INSTALLDIR>$RESTCONFDIR</CLICON_RESTCONF_INSTALLDIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
