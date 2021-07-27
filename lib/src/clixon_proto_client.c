@@ -887,8 +887,8 @@ clicon_rpc_get(clicon_handle   h,
  * @param[in]  nsc       Namespace context for filter
  * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
  * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
- * @param[in]  count     Collection/clixon extension
- * @param[in]  skip      Collection/clixon extension
+ * @param[in]  limit     Collection/clixon extension
+ * @param[in]  offset      Collection/clixon extension
  * @param[in]  direction Collection/clixon extension
  * @param[in]  sort      Collection/clixon extension
  * @param[in]  where     Collection/clixon extension
@@ -909,8 +909,8 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 			     cvec           *nsc, /* namespace context for xpath */
 			     netconf_content content,
 			     char           *depth,
-			     char           *count,
-			     char           *skip,
+			     char           *limit,
+			     char           *offset,
 			     char           *direction,
 			     char           *sort,
 			     char           *where,
@@ -941,7 +941,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     cprintf(cb, " xmlns:%s=\"%s\"",
 	    NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
-    cprintf(cb, "><get-pageable-list xmlns=\"%s\"", NETCONF_COLLECTION_NAMESPACE);
+    cprintf(cb, "><get-pagable-list xmlns=\"%s\"", NETCONF_COLLECTION_NAMESPACE);
     /* Clixon extension, content=all,config, or nonconfig */
     if ((int)content != -1)
 	cprintf(cb, " content=\"%s\"", netconf_content_int2str(content));
@@ -955,17 +955,17 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 	    goto done;
 	cprintf(cb, ">%s</list-target>", xpath);
     }
-    if (count)
-	cprintf(cb, "<count>%s</count>", count);
-    if (skip)
-	cprintf(cb, "<skip>%s</skip>", skip);
+    if (limit)
+	cprintf(cb, "<limit>%s</limit>", limit);
+    if (offset)
+	cprintf(cb, "<offset>%s</offset>", offset);
     if (direction)
 	cprintf(cb, "<direction>%s</direction>", direction);
     if (sort)
 	cprintf(cb, "<sort>%s</sort>", sort);
     if (where)
 	cprintf(cb, "<where>%s</where>", where);
-    cprintf(cb, "</get-pageable-list></rpc>");
+    cprintf(cb, "</get-pagable-list></rpc>");
     if ((msg = clicon_msg_encode(session_id, "%s", cbuf_get(cb))) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret) < 0)

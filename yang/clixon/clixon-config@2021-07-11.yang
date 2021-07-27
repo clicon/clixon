@@ -204,7 +204,10 @@ module clixon-config {
 	    "Datastore format.";
 	type enumeration{
 	    enum xml{
-		description "Save and load xmldb as XML";
+		description
+		"Save and load xmldb as XML
+                 More specifically, such a file looks like: <config>...</config> provided
+                 DATASTORE_TOP_SYMBOL is 'config'";
 	    }
 	    enum json{
 		description "Save and load xmldb as JSON";

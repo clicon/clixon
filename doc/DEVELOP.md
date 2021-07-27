@@ -149,7 +149,7 @@ How to debug
 
 Send debug level in run-time to backend:
 ```
-  echo "<rpc username=\"root\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><debug xmlns=\"http://clicon.org/lib\"><level>1</level></debug></rpc>]]>]]>" | clixon_netconf -q
+  echo "<rpc username=\"root\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><debug xmlns=\"http://clicon.org/lib\"><level>1</level></debug></rpc>]]>]]>" | clixon_netconf -q -o CLICON_NETCONF_HELLO_OPTIONAL=true
 ```
 
 ### Set backend debug

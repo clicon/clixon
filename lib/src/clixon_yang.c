@@ -1604,8 +1604,8 @@ yang_print(FILE      *f,
 }
 
 /* Log/debug info about top-level (sub)modules no recursion
- * @param[in]  f         File to print to.
  * @param[in]  yspec     Yang spec
+ * @param[in]  dbglevel  Debug level
  */
 int
 yang_spec_dump(yang_stmt *yspec,
@@ -2402,7 +2402,6 @@ ys_populate_unknown(clicon_handle h,
      */
     if (clixon_plugin_extension_all(h, yext, ys) < 0)
 	goto done;
-
     retval = 0;
  done:
     if (prefix)

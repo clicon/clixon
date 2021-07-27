@@ -1256,9 +1256,9 @@ _json_parse(char      *str,
 	/* RFC 7951 Section 4: A namespace-qualified member name MUST be used for all 
 	 * members of a top-level JSON object 
 	 */
-	if (yspec && xml_prefix(x) == NULL
-	    /* && yb != YB_MODULE_NEXT   XXX Dont know what this is for */
-	    ){
+	if (yspec && xml_prefix(x) == NULL &&
+	    /* XXX: For top-level config file: */
+	    (yb != YB_NONE || strcmp(xml_name(x),DATASTORE_TOP_SYMBOL)!=0)){
 	    if ((cberr = cbuf_new()) == NULL){
 		clicon_err(OE_UNIX, errno, "cbuf_new");
 		goto done;

@@ -237,23 +237,25 @@ clixon_plugin_daemon_all(clicon_handle h)
  *
  * @param[in]  cp      Plugin handle
  * @param[in]  h       clicon handle
+ * @param[in]  nsc     namespace context for xpath
  * @param[in]  xpath   String with XPATH syntax. or NULL for all
- * @param[out] xret    If retval=1, state tree created and returned: <config>...
+ * @param[out] xp      If retval=1, state tree created and returned: <config>...
  * @retval    -1       Fatal error
  * @retval     0       Statedata callback failed. no XML tree returned
  * @retval     1       OK if callback found (and called) xret is set
  */
 static int
-clixon_plugin_statedata_one(clixon_plugin_t  *cp,
-			    clicon_handle   h,
-			    cvec           *nsc,
-			    char           *xpath,
-			    cxobj         **xp)
+clixon_plugin_statedata_one(clixon_plugin_t *cp,
+			    clicon_handle    h,
+			    cvec            *nsc,
+			    char            *xpath,
+			    cxobj          **xp)
 {
     int             retval = -1;
     plgstatedata_t *fn;          /* Plugin statedata fn */
     cxobj          *x = NULL;
     
+    clicon_debug(1, "%s %s", __FUNCTION__, clixon_plugin_name_get(cp));
     if ((fn = clixon_plugin_api_get(cp)->ca_statedata) != NULL){
 	if ((x = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -263,7 +265,6 @@ clixon_plugin_statedata_one(clixon_plugin_t  *cp,
 			   __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto fail;  /* Dont quit here on user callbacks */
 	}
-
     }
     if (xp && x)
 	*xp = x;
@@ -295,12 +296,12 @@ clixon_plugin_statedata_all(clicon_handle    h,
 			    char            *xpath,
 			    cxobj          **xret)
 {
-    int             retval = -1;
-    int             ret;
-    cxobj          *x = NULL;
-    clixon_plugin_t  *cp = NULL;
-    cbuf           *cberr = NULL; 
-    cxobj          *xerr = NULL;
+    int              retval = -1;
+    int              ret;
+    cxobj           *x = NULL;
+    clixon_plugin_t *cp = NULL;
+    cbuf            *cberr = NULL; 
+    cxobj           *xerr = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
@@ -328,10 +329,8 @@ clixon_plugin_statedata_all(clicon_handle    h,
 	    x = NULL;
 	    continue;
 	}
-#if 1
 	if (clicon_debug_get())
-	    clicon_log_xml(LOG_DEBUG, x, "%s STATE:", __FUNCTION__);
-#endif
+	    clicon_log_xml(LOG_DEBUG, x, "%s %s STATE:", __FUNCTION__, clixon_plugin_name_get(cp));
 	/* XXX: ret == 0 invalid yang binding should be handled as internal error */
 	if ((ret = xml_bind_yang(x, YB_MODULE, yspec, &xerr)) < 0)
 	    goto done;

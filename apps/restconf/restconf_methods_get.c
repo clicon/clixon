@@ -359,8 +359,8 @@ api_data_collection(clicon_handle  h,
     yang_stmt *y = NULL;
     cbuf      *cbrpc = NULL;
     char      *depth;
-    char      *count;
-    char      *skip;
+    char      *limit;
+    char      *offset;
     char      *direction;
     char      *sort;
     char      *where;
@@ -435,14 +435,14 @@ api_data_collection(clicon_handle  h,
     }
     /* Clixon extensions and collection attributes */
     depth = cvec_find_str(qvec, "depth");
-    count = cvec_find_str(qvec, "count");
-    skip = cvec_find_str(qvec, "skip");
+    limit = cvec_find_str(qvec, "limit");
+    offset = cvec_find_str(qvec, "offset");
     direction = cvec_find_str(qvec, "direction");
     sort = cvec_find_str(qvec, "sort");
     where = cvec_find_str(qvec, "where");
     
     if (clicon_rpc_get_pageable_list(h, "running", xpath, y, nsc, content,
-				     depth, count, skip, direction, sort, where, 
+				     depth, limit, offset, direction, sort, where, 
 				     &xret) < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;

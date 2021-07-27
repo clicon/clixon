@@ -359,6 +359,7 @@ client_statedata(clicon_handle h,
 	    goto done;
 	}
 	cbuf_reset(cb);
+	/* XXX This code does not filter state data with  xpath */
 	cprintf(cb, "<restconf-state xmlns=\"%s\"/>", namespace);
 	if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL) < 0)
 	    goto done;
@@ -1422,8 +1423,10 @@ from_client_get_pageable_list(clicon_handle h,
     int             i;
     cxobj          *xerr = NULL;
     int             ret;
-    uint32_t        count = 0;
-    uint32_t        skip = 0;
+    uint32_t        limit = 0;
+    uint32_t        offset = 0;
+    size_t          total = 0;
+    uint32_t        remaining = 0;
     char           *direction = NULL;
     char           *sort = NULL;
     char           *where = NULL;
@@ -1435,6 +1438,7 @@ from_client_get_pageable_list(clicon_handle h,
     char           *ns;
     clixon_path    *path_tree = NULL;
     clixon_path    *cp;
+    cxobj          *xa;              /* attribute */
     
     clicon_debug(1, "%s", __FUNCTION__);
     username = clicon_username_get(h);
@@ -1458,11 +1462,11 @@ from_client_get_pageable_list(clicon_handle h,
 	    goto ok;
 	}
     }
-    /* count */
-    if ((ret = element2value(h, xe, "count", "unbounded", cbret, &count)) < 0)
+    /* limit */
+    if ((ret = element2value(h, xe, "limit", "unbounded", cbret, &limit)) < 0)
 	goto done;
-    /* skip */
-    if (ret && (ret = element2value(h, xe, "skip", "none", cbret, &skip)) < 0)
+    /* offset */
+    if (ret && (ret = element2value(h, xe, "offset", "none", cbret, &offset)) < 0)
 	goto done;
     /* direction */
     if (ret && (x = xml_find_type(xe, NULL, "direction", CX_ELMNT)) != NULL){
@@ -1496,13 +1500,17 @@ from_client_get_pageable_list(clicon_handle h,
 	if (xml_nsctx_node(x, &nsc) < 0)
 	    goto done;
     }
+    if (xpath == NULL){
+	clicon_err(OE_NETCONF, 0, "Missing list-target/xpath, is mandatory");
+	goto done;
+    }
     if ((xtop = xml_new("top", NULL, CX_ELMNT)) == NULL)
 	goto done;
     /* Parse xpath -> stuctured path tree */   
-    if ((ret = clixon_instance_id_parse(yspec, &path_tree, "%s", xpath)) < 0) 
+    if ((ret = clixon_instance_id_parse(yspec, &path_tree, &xerr, "%s", xpath)) < 0) 
 	goto done;
     if (ret == 0){
-	if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+	if (xerr && clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
 	    goto done;	
 	goto ok;
     }
@@ -1524,39 +1532,50 @@ from_client_get_pageable_list(clicon_handle h,
 	goto ok;
     }
     /* Build a "predicate" cbuf 
-     * This solution uses xpath predicates to translate "count" and "skip" to
+     * This solution uses xpath predicates to translate "limit" and "offset" to
      * relational operators <>.
      */
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    /* This uses xpath. Maybe count/limit should use parameters */
+    /* This uses xpath. Maybe limit should use parameters */
     cprintf(cb, "%s", xpath);
     if (where)
 	cprintf(cb, "[%s]", where);
-    if (skip){
-	cprintf(cb, "[%u <= position()", skip);
-	if (count)
-	    cprintf(cb, " and position() < %u", count+skip);
+    if (offset){
+	cprintf(cb, "[%u <= position()", offset);
+	if (limit)
+	    cprintf(cb, " and position() < %u", limit+offset);
 	cprintf(cb, "]");
     }
-    else if (count)
-	cprintf(cb, "[position() < %u]", count);
+    else if (limit)
+	cprintf(cb, "[position() < %u]", limit);
 
     /* Split into CT or CF */
     if (yang_config_ancestor(y) == 1){ /* CT */
 	if (content == CONTENT_CONFIG || content == CONTENT_ALL){
-	    if ((ret = xmldb_get0(h, datastore, YB_MODULE, nsc, cbuf_get(cb), 1, &xret, NULL, &xerr)) < 0) {
+	    if ((ret = xmldb_get0(h, datastore, YB_MODULE, nsc, xpath, 1, &xret, NULL, &xerr)) < 0) {
 		if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 		    goto done;
 		goto ok;
 	    }
-	}
-	if (ret == 0){
-	    if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+	    if (ret == 0){
+		if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+		    goto done;
+		goto ok;
+	    }
+	    /* First get number of hits */
+	    if (xpath_vec(xret, nsc, "%s", &xvec, &total, xpath) < 0)
 		goto done;
-	    goto ok;
+	    if (xvec){
+		free(xvec);
+		xvec = NULL;
+	    }
+	    if (total < (offset + limit))
+		remaining = 0;
+	    else
+		remaining = total - (offset + limit);
 	}
 	/* There may be CF data in a CT collection */
 	if (content == CONTENT_ALL){ 
@@ -1576,7 +1595,8 @@ from_client_get_pageable_list(clicon_handle h,
 	    }
 	}
     }
-    if (clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
+    if (0 && clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
+	/* XXX: subset in collection may not have mandatory variables */
 	/* Check XML  by validating it. return internal error with error cause 
 	 * Primarily intended for user-supplied state-data.
 	 * The whole config tree must be present in case the state data references config data
@@ -1614,7 +1634,7 @@ from_client_get_pageable_list(clicon_handle h,
      * Actually this is a safety catch, should really be done in plugins
      * and modules_state functions.
      */
-    if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+    if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, cbuf_get(cb)) < 0)
 	goto done;
 
     /* Pre-NACM access step */
@@ -1632,6 +1652,21 @@ from_client_get_pageable_list(clicon_handle h,
 	    /* Add namespace */
 	    if (xmlns_set(x, NULL, ns) < 0)
 		goto done;
+	    if (i == 0 && remaining != total){
+		/* Add remaining annotation to first element 
+		 * If no elements were removed, this annotation MUST NOT appear
+		 */
+		if ((xa = xml_new("remaining", x, CX_ATTR)) == NULL)
+		    goto done;
+		cbuf_reset(cb); /* reuse */
+		cprintf(cb, "%u", remaining);
+		if (xml_value_set(xa, cbuf_get(cb)) < 0)
+		    goto done;
+		if (xml_prefix_set(xa, "lpg") < 0)
+		    goto done;
+		if (xmlns_set(x, "lpg", "urn:ietf:params:xml:ns:yang:ietf-list-pagination") < 0)
+		    goto done;
+	    }
 	    /* Top level is data, so add 1 to depth if significant */
 	    if (clicon_xml2cbuf(cbret, x, 0, 0, depth>0?depth+1:depth) < 0)
 		goto done;
@@ -2291,7 +2326,7 @@ backend_rpc_init(clicon_handle h)
 #ifdef LIST_PAGINATION
     /* draft-ietf-netconf-restconf-collection-00 */
     if (rpc_callback_register(h, from_client_get_pageable_list, NULL,
-		      NETCONF_COLLECTION_NAMESPACE, "get-pageable-list") < 0)
+		      NETCONF_COLLECTION_NAMESPACE, "get-pagable-list") < 0)
 	goto done;
 #endif
     /* In backend_client.? RPC from RFC 5277 */

@@ -76,5 +76,6 @@ yang_stmt *yang_find_module_by_namespace(yang_stmt *yspec, char *ns);
 yang_stmt *yang_find_module_by_namespace_revision(yang_stmt *yspec, const char *ns, const char *revision);
 yang_stmt *yang_find_module_by_name_revision(yang_stmt *yspec, const char *name, const char *revision);
 yang_stmt *yang_find_module_by_name(yang_stmt *yspec, char *name);
+int        yang_metadata_init(clicon_handle h);
 
 #endif  /* _CLIXON_YANG_MODULE_H_ */

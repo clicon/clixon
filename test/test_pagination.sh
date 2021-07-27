@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
-# Restconf RFC8040 Appendix A and B "jukebox" example
-# For pagination / scaling I-D activity
+# List pagination tests according to draft-wwlh-netconf-list-pagination-00
+# Backlog items:
+# 1. "remaining" annotation RFC 7952
+# 2. pattern '.*[\n].*' { modifier invert-match;
+
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
 cfg=$dir/conf.xml
-fexample=$dir/example-module.yang
+fexample=$dir/example-social.yang
 fstate=$dir/mystate.xml
+
+# Common example-module spec (fexample must be set)
+. ./example_social.sh
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
@@ -26,264 +32,229 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_PIDFILE>$dir/restconf.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_FORMAT>json</CLICON_XMLDB_FORMAT>
   <CLICON_STREAM_DISCOVERY_RFC8040>true</CLICON_STREAM_DISCOVERY_RFC8040>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   $RESTCONFIG
 </clixon-config>
 EOF
 
+# See draft-wwlh-netconf-list-pagination-00 A.2 (except stats and audit-log)
 cat <<'EOF' > $dir/startup_db
-<config>
-     <admins xmlns="http://example.com/ns/example-module">
-       <admin>
-         <name>Alice</name>
-         <access>permit</access>
-         <email-address>alice@example.com</email-address>
-         <password>$0$1543</password>
-         <preference>
-           <number>1</number>
-           <number>2</number>
-         </preference>
-         <skill>
-           <name>Customer Service</name>
-           <rank>99</rank>
-         </skill>
-         <skill>
-           <name>Problem Solving</name>
-           <rank>90</rank>
-         </skill>
-       </admin>
-       <admin>
-         <name>Bob</name>
-         <access>limited</access>
-         <email-address>bob@example.com</email-address>
-         <password>$0$2789</password>
-         <preference>
-           <number>2</number>
-           <number>3</number>
-         </preference>
-         <skill>
-           <name>Conflict Resolution</name>
-           <rank>93</rank>
-         </skill>
-         <skill>
-           <name>Management</name>
-           <rank>23</rank>
-         </skill>
-         <skill>
-           <name>Organization</name>
-           <rank>44</rank>
-         </skill>
-         <skill>
-           <name>Problem Solving</name>
-           <rank>98</rank>
-         </skill>
-       </admin>
-       <admin>
-         <name>Joe</name>
-         <access>permit</access>
-         <email-address>joe@example.com</email-address>
-         <password>$0$6523</password>
-         <preference>
-           <number>1</number>
-           <number>4</number>
-         </preference>
-         <skill>
-           <name>Management</name>
-           <rank>96</rank>
-         </skill>
-         <skill>
-           <name>Collaboration</name>
-           <rank>92</rank>
-         </skill>
-       </admin>
-       <admin>
-         <name>Frank</name>
-         <access>deny</access>
-         <email-address>frank@example.com</email-address>
-         <password>$0$4030</password>
-         <preference>
-           <number>5</number>
-           <number>9</number>
-         </preference>
-         <skill>
-           <name>Organization</name>
-           <rank>90</rank>
-         </skill>
-         <skill>
-           <name>Negotiation</name>
-           <rank>80</rank>
-         </skill>
-       </admin>
-       <admin>
-         <name>Tom</name>
-         <access>permit</access>
-         <email-address>tom@example.com</email-address>
-         <password>$0$2376</password>
-         <preference>
-           <number>2</number>
-           <number>5</number>
-         </preference>
-         <skill>
-           <name>Adaptability.</name>
-           <rank>98</rank>
-         </skill>
-         <skill>
-           <name>Active Listening</name>
-           <rank>85</rank>
-         </skill>
-       </admin>
-     </admins>
-     <rulebase  xmlns="http://example.com/ns/example-module">
-       <rule>
-         <name>SvrA-http</name>
-         <match>92.0.2.0/24</match>
-         <action>forwarding</action>
-       </rule>
-       <rule>
-         <name>SvrA-ftp</name>
-         <match>203.0.113.1/32</match>
-         <action>forwarding</action>
-       </rule>
-       <rule>
-         <name>p2p</name>
-         <match>p2p</match>
-         <action>logging</action>
-       </rule>
-       <rule>
-         <name>any</name>
-         <match>any</match>
-         <action>logging</action>
-       </rule>
-       <rule>
-         <name>SvrA-tcp</name>
-         <match>80</match>
-         <action>forwarding</action>
-       </rule>
-     </rulebase>
-     <prefixes  xmlns="http://example.com/ns/example-module">
-       <prefix-list>
-         <ip-prefix>10.0.0.0/8</ip-prefix>
-         <masklength-lower>17</masklength-lower>
-         <masklength-upper>18</masklength-upper>
-       </prefix-list>
-       <prefix-list>
-         <ip-prefix>2000:1::/48</ip-prefix>
-         <masklength-lower>48</masklength-lower>
-         <masklength-upper>48</masklength-upper>
-       </prefix-list>
-       <prefix-list>
-         <ip-prefix>2000:2::/48</ip-prefix>
-         <masklength-lower>48</masklength-lower>
-         <masklength-upper>48</masklength-upper>
-       </prefix-list>
-       <prefix-list>
-         <ip-prefix>2000:3::/48</ip-prefix>
-         <masklength-lower>16</masklength-lower>
-         <masklength-upper>16</masklength-upper>
-       </prefix-list>
-       <prefix-list>
-         <ip-prefix>::/0</ip-prefix>
-         <masklength-lower>0</masklength-lower>
-         <masklength-upper>128</masklength-upper>
-       </prefix-list>
-     </prefixes>
-</config>
+{"config":
+   {
+     "example-social:members": {
+       "member": [
+         {
+           "member-id": "alice",
+           "email-address": "alice@example.com",
+           "password": "$0$1543",
+           "avatar": "BASE64VALUE=",
+           "tagline": "Every day is a new day",
+           "privacy-settings": {
+             "hide-network": "false",
+             "post-visibility": "public"
+           },
+           "following": ["bob", "eric", "lin"],
+           "posts": {
+             "post": [
+               {
+                 "timestamp": "2020-07-08T13:12:45Z",
+                 "title": "My first post",
+                 "body": "Hiya all!"
+               },
+               {
+                 "timestamp": "2020-07-09T01:32:23Z",
+                 "title": "Sleepy...",
+                 "body": "Catch y'all tomorrow."
+               }
+             ]
+           },
+           "favorites": {
+             "uint8-numbers": [17, 13, 11, 7, 5, 3],
+             "int8-numbers": [-5, -3, -1, 1, 3, 5]
+           }
+         },
+         {
+           "member-id": "bob",
+           "email-address": "bob@example.com",
+           "password": "$0$1543",
+           "avatar": "BASE64VALUE=",
+           "tagline": "Here and now, like never before.",
+           "posts": {
+             "post": [
+               {
+                 "timestamp": "2020-08-14T03:32:25Z",
+                 "body": "Just got in."
+               },
+               {
+                 "timestamp": "2020-08-14T03:33:55Z",
+                 "body": "What's new?"
+               },
+               {
+                 "timestamp": "2020-08-14T03:34:30Z",
+                 "body": "I'm bored..."
+               }
+             ]
+           },
+           "favorites": {
+             "decimal64-numbers": ["3.14159", "2.71828"]
+           }
+         },
+         {
+           "member-id": "eric",
+           "email-address": "eric@example.com",
+           "password": "$0$1543",
+           "avatar": "BASE64VALUE=",
+           "tagline": "Go to bed with dreams; wake up with a purpose.",
+           "following": ["alice"],
+           "posts": {
+             "post": [
+               {
+                 "timestamp": "2020-09-17T18:02:04Z",
+                 "title": "Son, brother, husband, father",
+                 "body": "What's your story?"
+               }
+             ]
+           },
+           "favorites": {
+             "bits": ["two", "one", "zero"]
+           }
+         },
+         {
+           "member-id": "lin",
+           "email-address": "lin@example.com",
+           "password": "$0$1543",
+           "privacy-settings": {
+             "hide-network": "true",
+             "post-visibility": "followers-only"
+           },
+           "following": ["joe", "eric", "alice"]
+         },
+         {
+           "member-id": "joe",
+           "email-address": "joe@example.com",
+           "password": "$0$1543",
+           "avatar": "BASE64VALUE=",
+           "tagline": "Greatness is measured by courage and heart.",
+           "privacy-settings": {
+             "post-visibility": "unlisted"
+           },
+           "following": ["bob"],
+           "posts": {
+             "post": [
+               {
+                 "timestamp": "2020-10-17T18:02:04Z",
+                 "body": "What's your status?"
+               }
+             ]
+           }
+         }
+       ]
+     }
+   }
+}
 EOF
 
+# See draft-wwlh-netconf-list-pagination-00 A.2 (only stats and audit-log)
 cat<<EOF > $fstate
-  <admins xmlns="http://example.com/ns/example-module">
-    <admin>
-      <name>Alice</name>
-      <status>Available</status>
-    </admin>
-    <admin>
-      <name>Bob</name>
-      <status>Busy</status>
-    </admin>
-    <admin>
-      <name>Joe</name>
-      <status>Do Not Disturb</status>
-    </admin>	 
-    <admin>
-      <name>Frank</name>
-      <status>Offline</status>
-    </admin>
-    <admin>
-      <name>Tom</name>
-      <status>Do Not Disturb</status>
-    </admin>
-  </admins>
-     <device-logs  xmlns="http://example.com/ns/example-module">
-       <device-log>
-         <device-id>Cloud-IoT-Device-A</device-id>
-         <time-received>2020-07-08T12:38:32Z</time-received>
-         <time-generated>2020-07-08T12:37:12Z</time-generated>
-         <message>Upload contains 6 datapoints</message>
-       </device-log>
-       <device-log>
-         <device-id>Cloud-IoT-Device-B</device-id>
-         <time-received>2020-07-08T16:20:54Z</time-received>
-         <time-generated>2020-07-08T16:20:14Z</time-generated>
-         <message>Upload successful</message>
-       </device-log>
-       <device-log>
-         <device-id>Cloud-IoT-Device-C</device-id>
-         <time-received>2020-07-08T17:30:34Z</time-received>
-         <time-generated>2020-07-08T17:30:12Z</time-generated>
-         <message>Receive a configuration update</message>
-       </device-log>
-       <device-log>
-         <device-id>Cloud-IoT-Device-D</device-id>
-         <time-received>2020-07-08T18:40:13Z</time-received>
-         <time-generated>2020-07-08T18:40:00Z</time-generated>
-         <message>Keep-alive ping sent to server</message>
-       </device-log>
-       <device-log>
-         <device-id>Cloud-IoT-Device-E</device-id>
-         <time-received>2020-07-08T19:48:34Z</time-received>
-         <time-generated>2020-07-08T19:48:00Z</time-generated>
-         <message>Uploading data to DataPoint</message>
-       </device-log>
-     </device-logs>
-     <audit-logs  xmlns="http://example.com/ns/example-module">
-       <audit-log>
-         <source-ip>192.168.0.92</source-ip>
-         <log-creation>2020-11-01T06:47:59Z</log-creation>
-         <request>User-logged-out</request>
-         <outcome>true</outcome>
-       </audit-log>
-       <audit-log>
-         <source-ip>192.168.0.92</source-ip>
-         <log-creation>2020-11-01T06:49:03Z</log-creation>
-         <request>User-logged-in</request>
-         <outcome>true</outcome>
-       </audit-log>
-       <audit-log>
-         <source-ip>192.168.0.92</source-ip>
-         <log-creation>2020-11-01T06:51:34Z</log-creation>
-         <request>Patron-card-viewed</request>
-         <outcome>false</outcome>
-       </audit-log>
-       <audit-log>
-         <source-ip>192.168.0.92</source-ip>
-         <log-creation>2020-11-01T06:53:01Z</log-creation>
-         <request>User-logged-out</request>
-         <outcome>true</outcome>
-       </audit-log>
-       <audit-log>
-         <source-ip>192.168.0.92</source-ip>
-         <log-creation>2020-11-01T06:56:22Z</log-creation>
-         <request>User-logged-in</request>
-         <outcome>false</outcome>
-       </audit-log>
-     </audit-logs>
+<members xmlns="http://example.com/ns/example-social">
+   <member>
+      <member-id>alice</member-id>
+      <stats>
+          <joined>2020-07-08T12:38:32Z</joined>
+	  <membership-level>admin</membership-level>
+          <last-activity>2021-04-01T02:51:11Z</last-activity>
+      </stats>
+   </member>
+   <member>
+      <member-id>bob</member-id>
+      <stats>
+          <joined>2020-08-14T03:30:00Z</joined>
+	  <membership-level>standard</membership-level>
+          <last-activity>2020-08-14T03:34:30Z</last-activity>
+      </stats>
+   </member>
+   <member>
+      <member-id>eric</member-id>
+      <stats>
+          <joined>2020-09-17T19:38:32Z</joined>
+	  <membership-level>pro</membership-level>
+          <last-activity>2020-09-17T18:02:04Z</last-activity>
+      </stats>
+   </member>
+   <member>
+      <member-id>lin</member-id>
+      <stats>
+          <joined>2020-07-09T12:38:32Z</joined>
+	  <membership-level>standard</membership-level>
+          <last-activity>2021-04-01T02:51:11Z</last-activity>
+      </stats>
+   </member>
+   <member>
+      <member-id>joe</member-id>
+      <stats>
+          <joined>2020-10-08T12:38:32Z</joined>
+	  <membership-level>pro</membership-level>
+          <last-activity>2021-04-01T02:51:11Z</last-activity>
+      </stats>
+   </member>
+</members>
+<audit-logs xmlns="http://example.com/ns/example-social">
+   <audit-log>
+      <timestamp>": "2020-10-11T06:47:59Z",</timestamp>
+           <member-id>alice</member-id>
+           <source-ip>192.168.0.92</source-ip>
+           <request>POST /groups/group/2043</request>
+           <outcome>true</outcome>
+   </audit-log>
+   <audit-log>
+           <timestamp>2020-11-01T15:22:01Z</timestamp>
+           <member-id>bob</member-id>
+           <source-ip>192.168.2.16</source-ip>
+           <request>POST /groups/group/123</request>
+           <outcome>false</outcome>
+   </audit-log>
+   <audit-log>
+           <timestamp>2020-12-12T21:00:28Z</timestamp>
+           <member-id>eric</member-id>
+           <source-ip>192.168.254.1</source-ip>
+           <request>POST /groups/group/10</request>
+           <outcome>true</outcome>
+   </audit-log>
+   <audit-log>
+           <timestamp>2021-01-03T06:47:59Z</timestamp>
+           <member-id>alice</member-id>
+           <source-ip>192.168.0.92</source-ip>
+           <request>POST /groups/group/333</request>
+           <outcome>true</outcome>
+   </audit-log>
+   <audit-log>
+           <timestamp>2021-01-21T10:00:00Z</timestamp>
+           <member-id>bob</member-id>
+           <source-ip>192.168.2.16</source-ip>
+           <request>POST /groups/group/42</request>
+           <outcome>true</outcome>
+   </audit-log>
+   <audit-log>
+           <timestamp>2020-02-07T09:06:21Z</timestamp>
+           <member-id>alice</member-id>
+           <source-ip>192.168.0.92</source-ip>
+           <request>POST /groups/group/1202</request>
+           <outcome>true</outcome>
+   </audit-log>
+   <audit-log>
+           <timestamp>2020-02-28T02:48:11Z</timestamp>
+           <member-id>bob</member-id>
+           <source-ip>192.168.2.16</source-ip>
+           <request>POST /groups/group/345</request>
+           <outcome>true</outcome>
+   </audit-log>
+</audit-logs>
 EOF
-
-# Common example-module spec (fexample must be set)
-. ./example_module.sh
 
 new "test params: -f $cfg -s startup -- -sS $fstate"
 
@@ -295,7 +266,7 @@ if [ $BE -ne 0 ]; then
     fi
     sudo pkill -f clixon_backend # to be sure
 
-    new "start backend -s startup -f $cfg -- -sS $mystate"
+    new "start backend -s startup -f $cfg -- -sS $fstate"
     start_backend -s startup -f $cfg -- -sS $fstate
 fi
 
@@ -313,18 +284,24 @@ fi
 new "wait restconf"
 wait_restconf
 
-# draft-wwlh-netconf-list-pagination-nc-00.txt
-new "C.1. 'count' Parameter NETCONF"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:exm=\"http://example.com/ns/example-module\">/exm:admins/exm:admin[exm:name='Bob']/exm:skill</list-target><count>2</count></get-pageable-list></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><skill xmlns=\"http://example.com/ns/example-module\"><name>Conflict Resolution</name><rank>93</rank></skill><skill xmlns=\"http://example.com/ns/example-module\"><name>Management</name><rank>23</rank></skill></pageable-list></rpc-reply>]]>]]>$"
+new "A.3.1.1. 'limit=1' NETCONF"
+# XXX: augment GET instead, not RPC
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-pagable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:es=\"http://example.com/ns/example-social\">/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers</list-target><limit>1</limit></get-pagable-list></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><uint8-numbers xmlns=\"http://example.com/ns/example-social\" lpg:remaining=\"5\" xmlns:lpg=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\">17</uint8-numbers></pageable-list></rpc-reply>]]>]]>$"
 
-new "C.2. 'skip' Parameter NETCONF"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:exm=\"http://example.com/ns/example-module\">/exm:admins/exm:admin[exm:name='Bob']/exm:skill</list-target><count>2</count><skip>2</skip></get-pageable-list></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><skill xmlns=\"http://example.com/ns/example-module\"><name>Organization</name><rank>44</rank></skill><skill xmlns=\"http://example.com/ns/example-module\"><name>Problem Solving</name><rank>98</rank></skill></pageable-list></rpc-reply>]]>]]>$"
+#new "A.3.1.1. 'limit' Parameter RESTCONF"
+#expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang.collection+xml" $RCPROTO://localhost/restconf/data/ietf-netconf-list-pagination:get-pagable-list -d "<get-pagable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:es=\"http://example.com/ns/example-social\">/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers</list-target><limit>1</limit></get-pagable-list>")" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+xml" foo
+
+new "A.3.1.2. 'limit=2' NETCONF"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-pagable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:es=\"http://example.com/ns/example-social\">/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers</list-target><limit>2</limit></get-pagable-list></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><uint8-numbers xmlns=\"http://example.com/ns/example-social\" lpg:remaining=\"4\" xmlns:lpg=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\">17</uint8-numbers><uint8-numbers xmlns=\"http://example.com/ns/example-social\">13</uint8-numbers></pageable-list></rpc-reply>]]>]]>$"
+exit
+
+
+
 
 # CLI
 # XXX This relies on a very specific clispec command: need a more generic test
-new "cli show"
-echo "$clixon_cli -1 -f $cfg -l o show pagination"
-expectpart "$($clixon_cli -1 -f $cfg -l o show pagination)" 0 "<skill xmlns=\"http://example.com/ns/example-module\">" "<name>Conflict Resolution</name>" "<rank>93</rank>" "<name>Management</name>" "<rank>23</rank>" --not-- "<name>Organization</name>" "<rank>44</rank></skill>"
+#new "cli show"
+#expectpart "$($clixon_cli -1 -f $cfg -l o show pagination)" 0 "<skill xmlns=\"http://example.com/ns/example-module\">" "<name>Conflict Resolution</name>" "<rank>93</rank>" "<name>Management</name>" "<rank>23</rank>" --not-- "<name>Organization</name>" "<rank>44</rank></skill>"
 
 # draft-wwlh-netconf-list-pagination-rc-00.txt
 #new "A.1. 'count' Parameter RESTCONF"

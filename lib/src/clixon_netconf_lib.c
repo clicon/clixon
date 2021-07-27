@@ -50,6 +50,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <syslog.h>
+#include <sys/param.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -72,6 +73,8 @@
 #include "clixon_xpath.h"
 #include "clixon_yang_module.h"
 #include "clixon_yang_parse_lib.h"
+#include "clixon_plugin.h"
+
 #include "clixon_netconf_lib.h"
 
 /*! Create Netconf in-use error XML tree according to RFC 6241 Appendix A
@@ -1485,6 +1488,7 @@ netconf_module_features(clicon_handle h)
     return retval;
 }
 
+
 /*! Load generic yang specs, ie ietf netconf yang module and set enabled features
  * @param[in] h  Clixon handle
  * @retval    0  OK
@@ -1494,8 +1498,8 @@ netconf_module_features(clicon_handle h)
 int
 netconf_module_load(clicon_handle h)
 {
-    int        retval = -1;
-    yang_stmt *yspec;
+    int              retval = -1;
+    yang_stmt       *yspec;
     
     yspec = clicon_dbspec_yang(h);
     /* Load yang spec */
@@ -1530,6 +1534,15 @@ netconf_module_load(clicon_handle h)
     /* Load netconf list pagination */
     if (yang_spec_parse_module(h, "ietf-netconf-list-pagination", NULL, yspec)< 0)
 	goto done;
+#if 0
+    /* XXX Clixon test harness problem: when loading ietf-list-pagination, it loads
+     * ietf-system-capabilities which in turn loads  ietf-netconf-acm. As this is a 
+     * system module (always loaded) it means all test-cases 
+     */
+    /* Load list pagination */
+    if (yang_spec_parse_module(h, "ietf-list-pagination", NULL, yspec)< 0)
+	goto done;
+#endif
 #endif
     retval = 0;
  done:

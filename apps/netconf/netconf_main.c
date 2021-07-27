@@ -796,11 +796,13 @@ main(int    argc,
      */
     if (netconf_module_features(h) < 0)
 	goto done;
-    
+
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)
 	goto done;
-    
+    /* In case ietf-yang-metadata is loaded by application, handle annotation extension */
+    if (yang_metadata_init(h) < 0)
+	goto done;    
     /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;

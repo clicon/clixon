@@ -1403,9 +1403,8 @@ api_path_resolve(clixon_path *cplist,
 /*! Resolve instance-id prefix:names to yang statements
  * @param[in]  cplist   Lisp of clixon-path
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
- * @param[in]  xt       XML statement  for prefix context
  * @retval    -1        Error
- * @retval     0        Fail
+ * @retval     0        Fail error in xerr
  * @retval     1        OK
  * @note: The spec says: prefixes depend on the XML context in which the value occurs. 
  *  However, canonical prefixes/namespaces are used based on loaded yang modules.
@@ -1440,7 +1439,7 @@ instance_id_resolve(clixon_path *cplist,
 	    }
 	    if (yang_keyword_get(yt) == Y_SPEC){
 		if ((yt = yang_find_module_by_prefix_yspec(yspec, cp->cp_prefix)) == NULL){
-		    clicon_err(OE_YANG, ENOENT, "Prefix does not correspond to existing module.");
+		    clicon_err(OE_YANG, ENOENT, "Prefix \"%s\" does not correspond to any existing module", cp->cp_prefix);
 		    goto fail;
 		}
 	    }
@@ -1857,6 +1856,7 @@ clixon_instance_id_bind(yang_stmt  *yt,
  * example.
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
  * @param[out] cplistp  Path parse-tree
+ * @param[out] xerr     Contains error if retval=0
  * @param[in]  format   Format string for xpath syntax
  * @retval    -1        Error
  * @retval     0        Non-fatal failure, yang bind failures, etc, 
@@ -1865,6 +1865,7 @@ clixon_instance_id_bind(yang_stmt  *yt,
 int
 clixon_instance_id_parse(yang_stmt    *yt,
 			 clixon_path **cplistp,
+			 cxobj       **xerr,
 			 const char   *format,
 			 ...)
 {
@@ -1898,8 +1899,11 @@ clixon_instance_id_parse(yang_stmt    *yt,
     /* Resolve module:name to pointer to yang-stmt, fail if not successful */
     if ((ret = instance_id_resolve(cplist, yt)) < 0)
 	goto done;
-    if (ret == 0)
+    if (ret == 0){
+	if (xerr && netconf_invalid_value_xml(xerr, "application", clicon_err_reason) < 0)
+	    goto done;
 	goto fail;
+    }
     if (cplistp){
 	*cplistp = cplist;
 	cplist = NULL;

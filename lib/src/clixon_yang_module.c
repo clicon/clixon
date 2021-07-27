@@ -679,3 +679,60 @@ yang_find_module_by_name(yang_stmt *yspec,
 	    return ymod;
     return NULL;
 }
+
+/*! Callback for handling RFC 7952 annotations
+ *
+ * a server indicates that it is prepared to handle that annotation according to the
+ * annotation's definition.  That is, an annotation advertised by the
+ * server may be attached to an instance of a data node defined in any
+ * YANG module that is implemented by the server.
+ * Possibly add them to yang parsing, cardinality, etc?
+ * as described in Section 3.
+ * Note this is called by the module using the extension md:annotate, not by 
+ * ietf-yang-metadata.yang
+ */
+static int
+ietf_yang_metadata_extension_cb(clicon_handle h,
+				yang_stmt    *yext,
+				yang_stmt    *ys)
+{
+    int        retval = -1;
+    char      *extname;
+    char      *modname;
+    yang_stmt *ymod;
+    
+    ymod = ys_module(yext);
+    modname = yang_argument_get(ymod);
+    extname = yang_argument_get(yext);
+    if (strcmp(modname, "ietf-yang-metadata") != 0 || strcmp(extname, "annotation") != 0)
+	goto ok;
+    clicon_debug(1, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
+    /* XXX Nothing yet - this should signal that xml attribute annotations are allowed 
+     * Possibly, add an "annotation" YANG node.
+     */
+ ok:
+    retval = 0;
+    // done:
+    return retval;
+}
+
+/*! In case ietf-yang-metadata is loaded by application, handle annotation extension 
+ * Consider moving fn
+ */
+int
+yang_metadata_init(clicon_handle h)
+{
+    int              retval = -1;
+    clixon_plugin_t *cp = NULL;
+
+
+    /* Create a pseudo-plugin to create extension callback to set the ietf-yang-meta
+     * yang-data extension for api-root top-level restconf function.
+     */
+    if (clixon_pseudo_plugin(h, "pseudo yang metadata", &cp) < 0)
+	goto done;
+    clixon_plugin_api_get(cp)->ca_extension = ietf_yang_metadata_extension_cb;
+    retval = 0;
+ done:
+    return retval;
+}

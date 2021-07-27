@@ -120,7 +120,7 @@
 
 /*! Enable list pagination drafts
  * draft-wwlh-netconf-list-pagination-00, 
- * draft-wwlh-netconf-list-pagination-nc-00
- * draft-wwlh-netconf-list-pagination-rc-00
+ * draft-wwlh-netconf-list-pagination-nc-01
+ * draft-wwlh-netconf-list-pagination-rc-01
  */
 #define LIST_PAGINATION

@@ -3,6 +3,16 @@ module ietf-netconf-list-pagination {
   namespace "urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination";
   prefix ycoll;
 
+  import ietf-netconf {
+    prefix nc;
+    reference
+      "RFC 6241: Network Configuration Protocol (NETCONF)";
+  }
+  import ietf-netconf-with-defaults {
+    prefix ncwd;
+    reference
+      "RFC 6243: With-defaults Capability for NETCONF";
+  }
   import ietf-yang-types {
     prefix yang;
     reference
@@ -19,16 +29,6 @@ module ietf-netconf-list-pagination {
     reference
       "RFC 8342: Network Management Datastore Architecture
        (NMDA)";
-  }
-  import ietf-netconf {
-    prefix nc;
-    reference
-      "RFC 6241: Network Configuration Protocol (NETCONF)";
-  }
-  import ietf-netconf-with-defaults {
-    prefix ncwd;
-    reference
-      "RFC 6243: With-defaults Capability for NETCONF";
   }
 
   organization
@@ -64,7 +64,6 @@ module ietf-netconf-list-pagination {
 
      This version of this YANG module is part of RFC 8526; see
      the RFC itself for full legal notices.";
-
   revision 2020-10-30 {
     description
       "Initial revision.";
@@ -91,7 +90,7 @@ module ietf-netconf-list-pagination {
        Datastore Architecture, Section 3.1.1.2";
   }
 
-  rpc get-pageable-list {
+  rpc get-pagable-list {
     description
       "Use enhanced filtering features to retrieve data from a
        specific NMDA datastore. The content returned by get-data
@@ -240,7 +239,7 @@ module ietf-netconf-list-pagination {
         mandatory true;
         type string;
       }
-      leaf count {
+      leaf limit {
         type union {
           type uint32;
           type string {
@@ -254,7 +253,7 @@ module ietf-netconf-list-pagination {
            greater than or equal to 1, or the string 'unbounded'.
            The string 'unbounded' is the default value.";
       }
-      leaf skip {
+      leaf offset {
         type union {
           type uint32;
           type string {

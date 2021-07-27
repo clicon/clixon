@@ -736,7 +736,7 @@ xpath_first_localonly(cxobj      *xcur,
  * If result is not nodeset, return empty nodeset
  * @param[in]  xcur     xml-tree where to search
  * @param[in]  nsc      External XML namespace context, or NULL
- * @param[in]  xpformat  Format string for XPATH syntax
+ * @param[in]  xpformat Format string for XPATH syntax
  * @param[out] vec      vector of xml-trees. Vector must be free():d after use
  * @param[out] veclen   returns length of vector in return value
  * @retval     0        OK
