@@ -39,12 +39,15 @@ Expected: September, 2021
   * Experimental: enable by setting YANG_PATCH in include/clixon_custom.h
   * Thanks to Alan Yaniger for providing this patch
 
-### C/CLI-API changes on existing features
+### API changes on existing protocol/config features
 
-Developers may need to change their code
+Users may have to change how they access the system
 
 * Native Restconf is now default, not fcgi/nginx
   * That is, to configure with fcgi, you need to explicitly configure: `--with-restconf=fcgi`
+* New clixon-config@2021-07-11.yang revision
+   * Removed default of `CLICON_RESTCONF_INSTALLDIR`
+     * The default behaviour is changed to use the config $(sbindir) to locate `clixon_restconf` when starting restconf internally
 
 ### Corrected Bugs
 
