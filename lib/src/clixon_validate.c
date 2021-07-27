@@ -118,7 +118,7 @@ validate_leafref(cxobj     *xt,
     if ((leafrefbody = xml_body(xt)) == NULL)
 	goto ok;
     if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
-	if (netconf_missing_element_xml(xret, "application", yang_argument_get(ytype), "Leafref requires path statement") < 0)
+	if (xret && netconf_missing_element_xml(xret, "application", yang_argument_get(ytype), "Leafref requires path statement") < 0)
 	    goto done;
 	goto fail;
     }
@@ -141,7 +141,7 @@ validate_leafref(cxobj     *xt,
 	    goto done;
 	}
 	cprintf(cberr, "Leafref validation failed: No leaf %s matching path %s", leafrefbody, path);
-	if (netconf_bad_element_xml(xret, "application", leafrefbody, cbuf_get(cberr)) < 0)
+	if (xret && netconf_bad_element_xml(xret, "application", leafrefbody, cbuf_get(cberr)) < 0)
 	    goto done;
 	goto fail;
     }
@@ -211,7 +211,7 @@ validate_identityref(cxobj     *xt,
     /* Get idref value. Then see if this value is derived from ytype.
      */
     if ((node = xml_body(xt)) == NULL){ /* It may not be empty */
-	if (netconf_bad_element_xml(xret, "application", xml_name(xt), "Identityref should not be empty") < 0)
+	if (xret && netconf_bad_element_xml(xret, "application", xml_name(xt), "Identityref should not be empty") < 0)
 	    goto done;
 	goto fail;
     }
@@ -219,13 +219,13 @@ validate_identityref(cxobj     *xt,
 	goto done;
     /* This is the type's base reference */
     if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) == NULL){
-	if (netconf_missing_element_xml(xret, "application", yang_argument_get(ytype), "Identityref validation failed, no base") < 0)
+	if (xret && netconf_missing_element_xml(xret, "application", yang_argument_get(ytype), "Identityref validation failed, no base") < 0)
 	    goto done;
 	goto fail;
     }
     /* This is the actual base identity */
     if ((ybaseid = yang_find_identity(ybaseref, yang_argument_get(ybaseref))) == NULL){
-	if (netconf_missing_element_xml(xret, "application", yang_argument_get(ybaseref), "Identityref validation failed, no base identity") < 0)
+	if (xret && netconf_missing_element_xml(xret, "application", yang_argument_get(ybaseref), "Identityref validation failed, no base identity") < 0)
 	    goto done;
 	goto fail;
     }
@@ -254,7 +254,7 @@ validate_identityref(cxobj     *xt,
     if (cvec_find(idrefvec, idref) == NULL){
 	cprintf(cberr, "Identityref validation failed, %s not derived from %s", 
 		node, yang_argument_get(ybaseid));
-	if (netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
+	if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
 	    goto done;
 	goto fail;
     }
@@ -337,7 +337,7 @@ xml_yang_validate_rpc(clicon_handle h,
 	goto done;
     /* Only accept resolved NETCONF base namespace */
     if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
-	if (netconf_unknown_namespace_xml(xret, "protocol", rpcprefix, "No appropriate namespace associated with prefix")< 0)
+	if (xret && netconf_unknown_namespace_xml(xret, "protocol", rpcprefix, "No appropriate namespace associated with prefix")< 0)
 	    goto done;
 	goto fail;
     }
@@ -345,7 +345,7 @@ xml_yang_validate_rpc(clicon_handle h,
     /* xn is name of rpc, ie <rcp><xn/></rpc> */
     while ((xn = xml_child_each(xrpc, xn, CX_ELMNT)) != NULL) {
 	if ((yn = xml_spec(xn)) == NULL){
-	    if (netconf_unknown_element_xml(xret, "application", xml_name(xn), NULL) < 0)
+	    if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xn), NULL) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -434,7 +434,7 @@ check_choice(cxobj     *xt,
 	    continue; /* not choice */
 	    break;
 	}
-	if (netconf_bad_element_xml(xret, "application", xml_name(x), "Element in choice statement already exists") < 0)
+	if (xret && netconf_bad_element_xml(xret, "application", xml_name(x), "Element in choice statement already exists") < 0)
 	    goto done;
 	goto fail;
     } /* while */
@@ -487,7 +487,7 @@ check_list_key(cxobj     *xt,
 	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	    keyname = cv_string_get(cvi);	    
 	    if (xml_find_type(xt, NULL, keyname, CX_ELMNT) == NULL){
-		if (netconf_missing_element_xml(xret, "application", keyname, "Mandatory key") < 0)
+		if (xret && netconf_missing_element_xml(xret, "application", keyname, "Mandatory key") < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -557,7 +557,7 @@ check_mandatory(cxobj     *xt,
 		    goto done;
 		}
 		cprintf(cb, "Mandatory variable of %s in module %s", xml_name(xt), yang_argument_get(ys_module(yc)));
-		if (netconf_missing_element_xml(xret, "application", yang_argument_get(yc), cbuf_get(cb)) < 0)
+		if (xret && netconf_missing_element_xml(xret, "application", yang_argument_get(yc), cbuf_get(cb)) < 0)
 			    goto done;
 		goto fail;
 	    }
@@ -574,7 +574,7 @@ check_mandatory(cxobj     *xt,
 	    if (x == NULL){
 		/* @see RFC7950: 15.6 Error Message for Data That Violates 
 		 * a Mandatory "choice" Statement */
-		if (netconf_data_missing_xml(xret, yang_argument_get(yc), NULL) < 0)
+		if (xret && netconf_data_missing_xml(xret, yang_argument_get(yc), NULL) < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -707,7 +707,7 @@ check_unique_list(cxobj     *x,
 	if (cvi==NULL){
 	    /* Last element (i) is newly inserted, see if it is already there */
 	    if (check_insert_duplicate(vec, i, vlen, sorted) < 0){
-		if (netconf_data_not_unique_xml(xret, x, cvk) < 0)
+		if (xret && netconf_data_not_unique_xml(xret, x, cvk) < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -751,7 +751,7 @@ check_min_max(cxobj     *xp,
     if ((ymin = yang_find(y, Y_MIN_ELEMENTS, NULL)) != NULL){
 	cv = yang_cv_get(ymin);
 	if (nr < cv_uint32_get(cv)){
-	    if (netconf_minmax_elements_xml(xret, xp, yang_argument_get(y), 0) < 0)
+	    if (xret && netconf_minmax_elements_xml(xret, xp, yang_argument_get(y), 0) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -760,7 +760,7 @@ check_min_max(cxobj     *xp,
 	cv = yang_cv_get(ymax);
 	if (cv_uint32_get(cv) > 0 && /* 0 means unbounded */
 	    nr > cv_uint32_get(cv)){
-	    if (netconf_minmax_elements_xml(xret, xp, yang_argument_get(y), 1) < 0)
+	    if (xret && netconf_minmax_elements_xml(xret, xp, yang_argument_get(y), 1) < 0)
 		goto done;
 	    goto fail;
 	}
@@ -851,7 +851,7 @@ check_list_unique_minmax(cxobj  *xt,
 		/* Only lists and leaf-lists are allowed to be many 
 		 * This checks duplicate container and leafs
 		 */
-		if (netconf_minmax_elements_xml(xret, xt, xml_name(x), 1) < 0)
+		if (xret && netconf_minmax_elements_xml(xret, xt, xml_name(x), 1) < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -1018,14 +1018,14 @@ xml_yang_validate_add(clicon_handle h,
 		 * are considered as "" */
 		cvtype = cv_type_get(cv);
 		if (cv_isint(cvtype) || cvtype == CGV_BOOL || cvtype == CGV_DEC64){
-		    if (netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), "Invalid NULL value") < 0)
+		    if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), "Invalid NULL value") < 0)
 			goto done;
 		    goto fail;
 		}
 	    }
 	    else{
 		if (cv_parse1(body, cv, &reason) != 1){
-		    if (netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), reason) < 0)
+		    if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), reason) < 0)
 			goto done;
 		    goto fail;
 		}
@@ -1033,7 +1033,7 @@ xml_yang_validate_add(clicon_handle h,
 	    if ((ret = ys_cv_validate(h, cv, yt, NULL, &reason)) < 0)
 		goto done;
 	    if (ret == 0){
-		if (netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), reason) < 0)
+		if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), reason) < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -1158,7 +1158,7 @@ xml_yang_validate_all(clicon_handle h,
 	    goto done;
 	if (ns)
 	    cprintf(cb, " in namespace: %s", ns);
-	if (netconf_unknown_element_xml(xret, "application", xml_name(xt), cbuf_get(cb)) < 0)
+	if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xt), cbuf_get(cb)) < 0)
 	    goto done;
 	goto fail;
     }
@@ -1217,7 +1217,7 @@ xml_yang_validate_all(clicon_handle h,
 		}
 		cprintf(cb, "Failed MUST xpath '%s' of '%s' in module %s",
 			xpath, xml_name(xt),  yang_argument_get(ys_module(ys)));
-		if (netconf_operation_failed_xml(xret, "application", 
+		if (xret && netconf_operation_failed_xml(xret, "application", 
 						 ye?yang_argument_get(ye):cbuf_get(cb)) < 0)
 		    goto done;
 		goto fail;
@@ -1247,7 +1247,7 @@ xml_yang_validate_all(clicon_handle h,
 		cprintf(cb, "Failed WHEN condition of %s in module %s",
 			xml_name(xt),
 			yang_argument_get(ys_module(ys)));
-		if (netconf_operation_failed_xml(xret, "application", 
+		if (xret && netconf_operation_failed_xml(xret, "application", 
 						 cbuf_get(cb)) < 0)
 		    goto done;
 		goto fail;
@@ -1269,7 +1269,7 @@ xml_yang_validate_all(clicon_handle h,
 			xpath,
 			xml_name(xt),
 			yang_argument_get(ys_module(ys)));
-		if (netconf_operation_failed_xml(xret, "application", 
+		if (xret && netconf_operation_failed_xml(xret, "application", 
 						 cbuf_get(cb)) < 0)
 		    goto done;
 		goto fail;

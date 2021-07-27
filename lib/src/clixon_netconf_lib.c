@@ -131,6 +131,10 @@ netconf_invalid_value_xml(cxobj **xret,
     char  *encstr = NULL;
     cxobj *xa;
     
+    if (xret == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+	goto done;	
+    }
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -248,6 +252,10 @@ netconf_missing_attribute_xml(cxobj **xret,
     char  *encstr = NULL;
     cxobj *xa;
 
+    if (xret == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+	goto done;	
+    }
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -356,6 +364,10 @@ netconf_bad_attribute_xml(cxobj **xret,
     char  *encstr = NULL;
     cxobj *xa;
 
+    if (xret == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+	goto done;	
+    }
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -449,6 +461,10 @@ netconf_common_xml(cxobj **xret,
     char  *encstr = NULL;
     cxobj *xa;
     
+    if (xret == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+	goto done;	
+    }
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -705,6 +721,10 @@ netconf_access_denied_xml(cxobj **xret,
     char  *encstr = NULL;
     cxobj *xa;
 
+    if (xret == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+	goto done;	
+    }
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -941,6 +961,10 @@ netconf_data_missing_xml(cxobj **xret,
     cxobj *xerr;
     cxobj *xa;
 
+    if (xret == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+	goto done;	
+    }
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -1005,6 +1029,10 @@ netconf_operation_not_supported_xml(cxobj **xret,
     char  *encstr = NULL;
     cxobj *xa;
     
+    if (xret == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+	goto done;	
+    }
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -1116,6 +1144,10 @@ netconf_operation_failed_xml(cxobj **xret,
     char  *encstr = NULL;
     cxobj *xa;
     
+    if (xret == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+	goto done;	
+    }
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -1200,6 +1232,10 @@ netconf_malformed_message_xml(cxobj **xret,
     char  *encstr = NULL;
     cxobj *xa;
     
+    if (xret == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+	goto done;	
+    }
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -1250,8 +1286,12 @@ netconf_data_not_unique_xml(cxobj **xret,
     cxobj  *xerr;
     cxobj  *xinfo;
     cbuf   *cb = NULL;
-    cxobj *xa;
+    cxobj  *xa;
     
+    if (xret == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+	goto done;	
+    }
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -1316,6 +1356,10 @@ netconf_minmax_elements_xml(cxobj **xret,
     cbuf  *cb = NULL;
     cxobj *xa;
     
+    if (xret == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+	goto done;	
+    }
     if (*xret == NULL){
 	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -1373,6 +1417,10 @@ netconf_trymerge(cxobj       *x,
     char  *reason = NULL;
     cxobj *xc;
     
+    if (xret == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+	goto done;	
+    }
     if (*xret == NULL){
 	if ((*xret = xml_dup(x)) == NULL)
 	    goto done;

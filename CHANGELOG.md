@@ -42,6 +42,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: SEGV in clixon_netconf_lib functions from internal errors including validation.
+  * Check xerr argument both before and after call on netconf lib functions
 * Fixed: RFC 8040 yang-data extension allows non-key lists
   * Added YANG_FLAG_NOKEY as exception to mandatory key lists
 * Fixed: mandatory leaf in a uses statement caused abort
