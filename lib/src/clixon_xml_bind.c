@@ -83,6 +83,7 @@
  * Local variables
  */
 static int _yang_unknown_anydata = 0;
+static int _netconf_message_id_optional = 0;
 
 /*! Kludge to equate unknown XML with anydata
  * The problem with this is that its global and should be bound to a handle
@@ -91,6 +92,16 @@ int
 xml_bind_yang_unknown_anydata(int val)
 {
     _yang_unknown_anydata = val;
+    return 0;
+}
+
+/*! Kludge to set message_id_optional
+ * The problem with this is that its global and should be bound to a handle
+ */
+int
+xml_bind_netconf_message_id_optional(int val)
+{
+    _netconf_message_id_optional = val;
     return 0;
 }
 
@@ -510,16 +521,16 @@ xml_bind_yang0(cxobj     *xt,
  * @retval     -1      Error
  * The 
  * @code
- *   if (xml_bind_yang_rpc(h, x, NULL) < 0)
+ *   if (xml_bind_yang_rpc(x, NULL) < 0)
  *      err;
  * @endcode
  * @see xml_bind_yang  For other generic cases
  * @see xml_bind_yang_rpc_reply
  */
 int
-xml_bind_yang_rpc(cxobj     *xrpc,
-		  yang_stmt *yspec,
-		  cxobj    **xerr)
+xml_bind_yang_rpc(cxobj        *xrpc,
+		  yang_stmt    *yspec,
+		  cxobj       **xerr)
 {
     int        retval = -1;
     yang_stmt *yrpc = NULL;    /* yang node */
@@ -575,6 +586,17 @@ xml_bind_yang_rpc(cxobj     *xrpc,
 	    netconf_unknown_element_xml(xerr, "protocol", opname, "Unrecognized netconf operation") < 0)
 	    goto done;
 	goto fail;
+    }
+    if (_netconf_message_id_optional == 0){
+	/* RFC 6241 4.1:
+	 *    The <rpc> element has a mandatory attribute "message-id"
+	 */
+	if (xml_find_type(xrpc, NULL, "message-id", CX_ATTR) == NULL){
+	    if (xerr &&
+		netconf_missing_attribute_xml(xerr, "rpc", "message-id", "Incoming rpc") < 0)
+		goto done;
+	    goto fail;
+	}
     }
     x = NULL;
     while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {

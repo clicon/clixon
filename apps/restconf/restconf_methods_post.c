@@ -155,6 +155,7 @@ api_data_post(clicon_handle h,
 	      cvec         *qvec, 
 	      char         *data,
 	      int           pretty,
+	      restconf_media media_in,
 	      restconf_media media_out,
 	      ietf_ds_t     ds)
 {
@@ -178,7 +179,6 @@ api_data_post(clicon_handle h,
     cxobj         *x;            
     char          *username;
     int            ret;
-    restconf_media media_in;
     int            nrchildren0 = 0;
     yang_bind      yb;
     
@@ -231,7 +231,6 @@ api_data_post(clicon_handle h,
      * If xbot is top-level (api_path=null) it does not have a spec therefore look for 
      * top-level (yspec) otherwise assume parent (xbot) is populated.
      */
-    media_in = restconf_content_type(h);
     switch (media_in){
     case YANG_DATA_XML:
 	if ((ret = clixon_xml_parse_string(data, yb, yspec, &xbot, &xerr)) < 0){
@@ -336,11 +335,12 @@ api_data_post(clicon_handle h,
     /* For internal XML protocol: add username attribute for access control
      */
     username = clicon_username_get(h);
-    cprintf(cbx, "<rpc xmlns=\"%s\" username=\"%s\" xmlns:%s=\"%s\">",
+    cprintf(cbx, "<rpc xmlns=\"%s\" username=\"%s\" xmlns:%s=\"%s\" %s>",
 	    NETCONF_BASE_NAMESPACE,
 	    username?username:"",
 	    NETCONF_BASE_PREFIX,
-	    NETCONF_BASE_NAMESPACE); /* bind nc to netconf namespace */
+	    NETCONF_BASE_NAMESPACE,
+	    NETCONF_MESSAGE_ID_ATTR); /* bind nc to netconf namespace */
 
     cprintf(cbx, "<edit-config");
     /* RFC8040 Sec 1.4:
@@ -755,13 +755,13 @@ api_operations_post(clicon_handle h,
      * <rpc username="foo"><myfn xmlns="uri"/>
      */
     if ((username = clicon_username_get(h)) != NULL){
-	if (clixon_xml_parse_va(YB_NONE, NULL, &xtop, NULL, "<rpc xmlns=\"%s\" username=\"%s\"/>",
-				NETCONF_BASE_NAMESPACE, username) < 0)
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xtop, NULL, "<rpc xmlns=\"%s\" username=\"%s\" %s/>",
+				NETCONF_BASE_NAMESPACE, username, NETCONF_MESSAGE_ID_ATTR) < 0)
 	    goto done;
     }
     else
-	if (clixon_xml_parse_va(YB_NONE, NULL, &xtop, NULL, "<rpc xmlns=\"%s\"/>",
-				NETCONF_BASE_NAMESPACE) < 0)
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xtop, NULL, "<rpc xmlns=\"%s\" %s/>",
+				NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR) < 0)
 	    goto done;
     if (xml_rootchild(xtop, 0, &xtop) < 0)
 	goto done;

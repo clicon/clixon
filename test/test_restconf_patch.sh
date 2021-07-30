@@ -91,6 +91,9 @@ cat <<EOF > $dir/example-system.yang
         leaf enable-jukebox-streaming {
           type boolean;
         }
+        leaf extraleaf {
+          type string;
+        }
       }
    }
 EOF
@@ -249,6 +252,16 @@ expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH  -H "Content-Type: application
 
 new "GET check" # XXX: "data" should probably be namespaced?
 expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data?content=config -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" '<extra xmlns="http://example.com/ns/example-jukebox">c</extra>' '<data>'
+
+new "Add empty leaf"
+expectpart "$(curl -u andy:bar $CURLOPTS -X POST $RCPROTO://localhost/restconf/data -H 'Content-Type: application/yang-data+json' -d '{"example-system:system":{"extraleaf":""}}')" 0 "HTTP/$HVER 201"
+
+new "Add entry with PATCH"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH $RCPROTO://localhost/restconf/data/example-system:system -H 'Content-Type: application/yang-data+json' -d '{"example-system:system":{"extraleaf":"something"}}')" 0 "HTTP/$HVER 204"
+
+new "GET check"
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-system:system -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" '<system xmlns="http://example.com/ns/example-system"><extraleaf>something</extraleaf></system>'
+
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

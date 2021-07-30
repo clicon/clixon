@@ -38,8 +38,8 @@ cat <<EOF > $fyang
 module example-lib {
   yang-version 1.1;
   namespace "urn:example:lib";
-  revision "2019-03-04";
   prefix lib;
+  revision "2019-03-04";
   container base-config {
   }
   /* No prefix */
@@ -61,10 +61,10 @@ module example-augment1 {
   yang-version 1.1;
   namespace "urn:example:augment1";
   prefix aug1;
-  revision "2020-09-25";
   import example-lib {
      prefix lib;
   }
+  revision "2020-09-25";
   /* Augments config */
   augment "/lib:base-config/lib:parameter" {
     container aug1{
@@ -80,13 +80,13 @@ module example-augment2 {
   yang-version 1.1;
   namespace "urn:example:augment2";
   prefix aug2;
-  revision "2020-09-25";
   import example-lib {
      prefix lib;
   }
   import example-augment1 {
      prefix aug1;
   }
+  revision "2020-09-25";
   /* Augments config */
   augment "/lib:base-config/lib:parameter/aug1:aug1" {
 /*    when 'lib:name="foobar" and aug:aug1="foobar"'; */

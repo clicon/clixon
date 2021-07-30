@@ -275,10 +275,8 @@ if [ $pid0 -eq $pid3 ]; then
     err1 "A different pid" "same pid: $pid3"
 fi
 
-new "kill restconf using kill"
-stop_restconf_pre
-
-sleep $DEMSLEEP
+new "kill restconf"
+sudo kill $pid3
 
 new "Wait for restconf to stop"
 wait_restconf_stopped
@@ -378,6 +376,7 @@ cat<<EOF > $startupdb
 EOF
 
 new "kill old restconf"
+sleep $DEMSLEEP
 stop_restconf_pre
 
 new "test params: -f $cfg"
@@ -485,9 +484,8 @@ fi
 #Start backend -s none should start 
 
 new "kill restconf"
+sleep $DEMSLEEP
 stop_restconf
-
-sleep $DEMSLEEP # Lots of processes need to die before next test
 
 new "endtest"
 endtest

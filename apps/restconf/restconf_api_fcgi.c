@@ -220,8 +220,11 @@ restconf_reply_send(void  *req0,
     return retval;
 }
 
-/*!
+/*! Get input data from http request, eg such as curl -X PUT http://... <indata>
  * @param[in]  req        Fastcgi request handle
+ * @retval     indata     
+ * @retval     NULL       Error
+ * @note: creates a new cbuf which differs from native api where a pointer is returned
  */
 cbuf *
 restconf_get_indata(void *req0)

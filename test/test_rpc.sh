@@ -89,10 +89,10 @@ new "restconf example rpc xml/json"
 expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+json' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' $RCPROTO://localhost/restconf/operations/clixon-example:example)"  0 'Content-Type: application/yang-data+json' '{"clixon-example:output":{"x":"0","y":"42"}}'
 
 new "restconf example rpc json/xml"
-expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+xml' -d '{"clixon-example:input":{"x":"0"}}' $RCPROTO://localhost/restconf/operations/clixon-example:example)" 0 'Content-Type: application/yang-data+xml' '<output xmlns="urn:example:clixon"><x>0</x><y>42</y></output>'
+expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+xml' -d '{"clixon-example:input":{"x":"0"}}' $RCPROTO://localhost/restconf/operations/clixon-example:example)" 0 'Content-Type: application/yang-data+xml' '<output message-id="42" xmlns="urn:example:clixon"><x>0</x><y>42</y></output>'
 
 new "restconf example rpc xml/xml"
-expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+xml' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' $RCPROTO://localhost/restconf/operations/clixon-example:example)" 0 'Content-Type: application/yang-data+xml' '<output xmlns="urn:example:clixon"><x>0</x><y>42</y></output>'
+expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -H 'Accept: application/yang-data+xml' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' $RCPROTO://localhost/restconf/operations/clixon-example:example)" 0 'Content-Type: application/yang-data+xml' '<output message-id="42" xmlns="urn:example:clixon"><x>0</x><y>42</y></output>'
 
 new "restconf example rpc xml in w json encoding (expect fail)"
 expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' -H 'Accept: application/yang-data+xml' -d '<input xmlns="urn:example:clixon"><x>0</x></input>' $RCPROTO://localhost/restconf/operations/clixon-example:example)" 0 "HTTP/$HVER 400" "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>rpc</error-type><error-tag>malformed-message</error-tag><error-severity>error</error-severity><error-message>json_parse: line 1: syntax error at or before: '&lt;'</error-message></error></errors>"

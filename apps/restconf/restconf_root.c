@@ -331,7 +331,7 @@ api_data(clicon_handle h,
 	retval = api_data_get(h, req, api_path, pcvec, pi, qvec, pretty, media_out, ds);
     }
     else if (strcmp(request_method, "POST")==0) {
-	retval = api_data_post(h, req, api_path, pi, qvec, data, pretty, media_out, ds);
+	retval = api_data_post(h, req, api_path, pi, qvec, data, pretty, restconf_content_type(h), media_out, ds);
     }
     else if (strcmp(request_method, "PUT")==0) {
 	if (read_only) 
@@ -588,6 +588,10 @@ api_root_restconf(clicon_handle        h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+#ifdef WITH_RESTCONF_FCGI
+    if (cb)
+	cbuf_free(cb);
+#endif
     if (xerr)
 	xml_free(xerr);
     if (username)

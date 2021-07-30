@@ -52,8 +52,8 @@ cat <<EOF > $fyang2
 module ietf-interfaces {
   yang-version 1.1;
   namespace "urn:ietf:params:xml:ns:yang:ietf-interfaces";
-  revision "2019-03-04";
   prefix if;
+  revision "2019-03-04";
   identity interface-type {
     description
       "Base identity from which specific interface types are
@@ -110,10 +110,10 @@ module example-augment {
        yang-version 1.1;
        namespace "urn:example:augment";
        prefix mymod;
-       revision "2019-03-04";
        import ietf-interfaces {
          prefix if;
        }
+       revision "2019-03-04";
        identity some-new-iftype {
           base if:interface-type;
        }

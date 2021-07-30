@@ -626,18 +626,18 @@ yang2cli_var(clicon_handle h,
 	    completionp = clicon_cli_genmodel_completion(h);
 	if (completionp)
 	    cprintf(cb, "(");
-	if ((retval = yang2cli_var_sub(h, ys, yrestype, helptext, cvtype, 
-				       options, cvv, patterns, fraction_digits, cb)) < 0)
+	if (yang2cli_var_sub(h, ys, yrestype, helptext, cvtype, 
+			     options, cvv, patterns, fraction_digits, cb) < 0)
 	    goto done;
 	if (completionp){
 	    result = cli_expand_var_generate(h, ys, cvtype, 
 					options, fraction_digits,
 					cb);
 		if (result < 0)
-		goto done;
+		    goto done;
 		if (result == 0)
-	    yang2cli_helptext(cb, helptext);
-	    cprintf(cb, ")");
+		    yang2cli_helptext(cb, helptext);
+		cprintf(cb, ")");
 	}
     }
     retval = 0;

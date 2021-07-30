@@ -1238,7 +1238,7 @@ _json_parse(char      *str,
 		goto done;
 	    }
 	    cprintf(cberr, "Top-level JSON object %s is not qualified with namespace which is a MUST according to RFC 7951", xml_name(x));
-	    if (netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
+	    if (xerr && netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
 		goto done;
 	    goto fail;
 	}

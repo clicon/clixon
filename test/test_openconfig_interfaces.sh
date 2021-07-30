@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Run a system around openconfig interface, ie: openconfig-if-ethernet
+# Note first variant uses ietf-interfaces, maybe remove this?
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -22,13 +23,11 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
-  <CLICON_YANG_DIR>$OPENCONFIG/third_party/ietf/</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$OCDIR</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$OCDIR</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$OCDIR/interfaces</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$OCDIR/types</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$OCDIR/wifi</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/vlan</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -42,6 +41,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
+# First using ietf-interfaces (not openconfig-interfaces)
 # Example yang
 cat <<EOF > $fyang
 module clixon-example{
@@ -99,7 +99,7 @@ fi
 new "wait backend"
 wait_backend
 
-new "$clixon_cli -D $DBG -1f $cfg -y $f show version"
+new "$clixon_cli -D $DBG -1f $cfg show version"
 expectpart "$($clixon_cli -D $DBG -1f $cfg show version)" 0 "${CLIXON_VERSION}"
 
 new "$clixon_netconf -qf $cfg"
@@ -125,6 +125,76 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
+
+# Second using openconfig-interfaces instead
+# Example yang
+cat <<EOF > $fyang
+module clixon-example{
+  yang-version 1.1;
+  namespace "urn:example:example";
+  prefix ex;
+
+  import openconfig-vlan {
+    prefix oc-vlan;
+  }
+  import openconfig-if-ethernet {
+    prefix oc-eth;
+  }
+}
+EOF
+
+# Example system
+cat <<EOF > $dir/startup_db
+<config>
+   <interfaces xmlns="http://openconfig.net/yang/interfaces">
+      <interface>
+         <name>eth1</name>
+         <config>
+            <name>eth1</name>
+            <type>ianaift:ethernetCsmacd</type>
+            <mtu>9206</mtu>
+            <enabled>true</enabled>
+            <oc-vlan:tpid xmlns:oc-vlan="http://openconfig.net/yang/vlan">oc-vlan-types:TPID_0X8100</oc-vlan:tpid>
+         </config>
+         <oc-eth:ethernet xmlns:oc-eth="http://openconfig.net/yang/interfaces/ethernet">
+            <oc-eth:config>
+               <oc-eth:mac-address>2c:53:4a:09:59:73</oc-eth:mac-address>
+            </oc-eth:config>
+         </oc-eth:ethernet>
+      </interface>
+   </interfaces>
+</config>
+EOF
+
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    sudo pkill -f clixon_backend # to be sure
+    
+    new "start backend -s startup -f $cfg"
+    start_backend -s startup -f $cfg
+fi
+
+new "wait backend"
+wait_backend
+
+new "$clixon_cli -D $DBG -1f $cfg show version"
+expectpart "$($clixon_cli -D $DBG -1f $cfg show version)" 0 "${CLIXON_VERSION}"
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+fi
+
 
 rm -rf $dir
 

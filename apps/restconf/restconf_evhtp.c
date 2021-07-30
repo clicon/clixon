@@ -396,7 +396,7 @@ restconf_evhtp_reply(restconf_conn        *rc,
      * [RFC7231]).
      */
     if (sd->sd_code != 204 && sd->sd_code > 199)
-	if (restconf_reply_header(sd, "Content-Length", "%lu", sd->sd_body_len) < 0)
+	if (restconf_reply_header(sd, "Content-Length", "%zu", sd->sd_body_len) < 0)
 	    goto done;	
     /* Create reply and write headers */
     if (native_send_reply(rc, sd, req) < 0)
@@ -515,6 +515,8 @@ restconf_path_root(evhtp_request_t *req,
     if (clicon_debug_get())
 	evhtp_headers_for_each(req->headers_in, evhtp_print_header, h);
     /* Query vector, ie the ?a=x&b=y stuff */
+    if (sd->sd_qvec)
+	cvec_free(sd->sd_qvec);
     if ((sd->sd_qvec = cvec_new(0)) ==NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	evhtp_internal_error(req);
@@ -527,6 +529,7 @@ restconf_path_root(evhtp_request_t *req,
 	    clicon_err(OE_CFG, errno, "evbuffer_pullup");
 	    goto done;
 	}
+	cbuf_reset(sd->sd_indata);
 	/* Note the pullup may not be null-terminated */
 	cbuf_append_buf(sd->sd_indata, buf, len);
     }

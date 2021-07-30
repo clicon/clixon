@@ -91,7 +91,7 @@ APPSRC   += clixon_util_path.c
 APPSRC   += clixon_util_datastore.c
 APPSRC   += clixon_util_regexp.c
 APPSRC   += clixon_util_socket.c
-APPSRC   += clixon_util_validate.c
+APPSRC   += clixon_util_validate.c 
 APPSRC   += clixon_netconf_ssh_callhome.c
 APPSRC   += clixon_netconf_ssh_callhome_client.c
 ifdef with_restconf

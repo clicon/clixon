@@ -499,6 +499,14 @@ restconf_insert_attributes(cxobj *xdata,
  * @param[in] ys   Yang node of (unknown) statement belonging to extension
  * @retval     0   OK, all callbacks executed OK
  * @retval    -1   Error in one callback
+ * @note This extension adds semantics to YANG according to RFC8040 as follows:
+ *          - The list-stmt is not required to have a key-stmt defined.(NB!!)
+ *          - The if-feature-stmt is ignored if present.
+ *          - The config-stmt is ignored if present.
+ *          - The available identity values for any 'identityref'
+ *              leaf or leaf-list nodes are limited to the module
+ *              containing this extension statement and the modules
+ *              imported into that module.
  */
 int
 restconf_main_extension_cb(clicon_handle h,
@@ -522,6 +530,9 @@ restconf_main_extension_cb(clicon_handle h,
 	goto ok;
     if ((yn = ys_dup(yc)) == NULL)
 	goto done;
+    /* yang-data extension: The list-stmt is not required to have a key-stmt defined.
+     */
+    yang_flag_set(yn, YANG_FLAG_NOKEY);
     if (yn_insert(yang_parent_get(ys), yn) < 0)
 	goto done;
  ok:

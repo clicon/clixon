@@ -232,13 +232,13 @@ new "limit rpc ok"
 expectpart "$(curl -u wilma:bar $CURLOPTS -X POST $RCPROTO://localhost/restconf/operations/clixon-example:example -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":42}}' )" 0 "HTTP/$HVER 200" '{"clixon-example:output":{"x":"42","y":"42"}}'
 
 new "limit rpc netconf ok"
-expecteof "$clixon_netconf -U wilma -qf $cfg" 0 "$DEFAULTHELLO<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><example xmlns=\"urn:example:clixon\"><x>0</x></example></rpc>]]>]]>" '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><x xmlns="urn:example:clixon">0</x><y xmlns="urn:example:clixon">42</y></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -U wilma -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><example xmlns=\"urn:example:clixon\"><x>0</x></example></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><x xmlns=\"urn:example:clixon\">0</x><y xmlns=\"urn:example:clixon\">42</y></rpc-reply>]]>]]>$"
 
 new "guest rpc fail"
 expectpart "$(curl -u guest:bar $CURLOPTS -X POST $RCPROTO://localhost/restconf/operations/clixon-example:example -H "Content-Type: application/yang-data+json" -d '{"clixon-example:input":{"x":42}}' )" 0 "HTTP/$HVER 403" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
 new "guest rpc netconf fail"
-expecteof "$clixon_netconf -U guest -qf $cfg" 0 "$DEFAULTHELLO<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><example xmlns=\"urn:example:clixon\"><x>0</x></example></rpc>]]>]]>" '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$'
+expecteof "$clixon_netconf -U guest -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><example xmlns=\"urn:example:clixon\"><x>0</x></example></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 #------------------ Set read-default permit
 

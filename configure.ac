@@ -49,7 +49,7 @@ AC_INIT(lib/clixon/clixon.h.in)
 AC_CONFIG_AUX_DIR(config-aux)
 
 CLIXON_VERSION_MAJOR="5"
-CLIXON_VERSION_MINOR="2"
+CLIXON_VERSION_MINOR="3"
 CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
@@ -206,11 +206,12 @@ AC_CHECK_LIB(cligen, cligen_init,, AC_MSG_ERROR([CLIgen missing. Try: git clone 
 # This is for restconf.  There are three options:
 # --without-restconf     No restconf support
 # --with-restconf=fcgi   FCGI interface for separate web reverse proxy like nginx
-# --with-restconf=native Integration with embedded web server
+# --with-restconf=native Integration with embedded web server (DEFAULT)
 AC_ARG_WITH([restconf],
-	AS_HELP_STRING([--with-restconf=fcgi],[FCGI interface for stand-alone web rev-proxy eg nginx (default)]),
+	AS_HELP_STRING([--with-restconf=native],[Integration with embedded web server (DEFAULT)]),
 	,
-	[with_restconf=fcgi])
+	[with_restconf=native])
+AC_MSG_RESULT(restconf mode ${with_restconf})
 # Actions for each specific package
 if test "x${with_restconf}" == xfcgi; then
    # Lives in libfcgi-dev
@@ -218,6 +219,7 @@ if test "x${with_restconf}" == xfcgi; then
    AC_DEFINE(WITH_RESTCONF_FCGI, 1, [Use fcgi restconf mode]) # For c-code that cant use strings
    AC_DEFINE_UNQUOTED(WWWDIR, "$wwwdir", [WWW dir for fcgi stuff / nginx])
 elif test "x${with_restconf}" == xnative; then
+
    AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
    AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
    # Check if evhtp is enabled for http/1

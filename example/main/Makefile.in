@@ -101,6 +101,7 @@ BE_SRC   = $(APPNAME)_backend.c
 BE_OBJ   = $(BE_SRC:%.c=%.o)
 $(BE_PLUGIN): $(BE_OBJ)
 ifeq ($(LINKAGE),static)
+# can include -L in LDFLAGS?
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -L ../../apps/backend/ -lclixon_backend 
 else
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend

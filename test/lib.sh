@@ -127,7 +127,12 @@ DEMSLEEP=.2
 let DEMLOOP=5*DEMWAIT
 
 # RESTCONF protocol, eg http or https
-: ${RCPROTO:=https}
+
+if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+    : ${RCPROTO:=http}
+else
+    : ${RCPROTO:=https}
+fi
 
 # www user (on linux typically www-data, freebsd www)
 # Start restconf user, can be root which is dropped to wwwuser
@@ -221,6 +226,7 @@ fi
 # 1: auth-type (one of none, client-cert, user)
 # 2: pretty (if true pretty-print restconf return values)
 # Note, if AUTH=none then FEATURE clixon-restconf:allow-auth-none must be enabled
+# Note if https, check if server cert/key exists, if not generate them
 function restconf_config()
 {
     AUTH=$1
@@ -229,10 +235,20 @@ function restconf_config()
     if [ $RCPROTO = http ]; then
 	echo "<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
     else
-	echo "<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>/etc/ssl/certs/clixon-server-crt.pem</server-cert-path><server-key-path>/etc/ssl/private/clixon-server-key.pem</server-key-path><server-ca-cert-path>/etc/ssl/certs/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
+	certdir=$dir/certs
+	if [ ! -f ${dir}/clixon-server-crt.pem ]; then
+	    certdir=$dir/certs
+	    test -d $certdir || mkdir $certdir
+	    srvcert=${certdir}/clixon-server-crt.pem
+	    srvkey=${certdir}/clixon-server-key.pem
+	    cacert=${certdir}/clixon-ca-crt.pem
+	    cakey=${certdir}/clixon-ca-key.pem
+	    cacerts $cakey $cacert
+	    servercerts $cakey $cacert $srvkey $srvcert
+	fi
+	echo "<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>${certdir}/clixon-server-crt.pem</server-cert-path><server-key-path>${certdir}/clixon-server-key.pem</server-key-path><server-ca-cert-path>${certdir}/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
     fi
 }
-
 
 # Some tests may set owner of testdir to something strange and quit, need
 # to reset to me
@@ -366,9 +382,10 @@ function stop_restconf_pre(){
 }
 
 # Stop restconf daemon after test
-# Two caveats in pkill:
+# Some problems with pkill:
 # 1) Dont use $clixon_restconf (dont work in valgrind)
 # 2) Dont use -u $WWWUSER since clixon_restconf may drop privileges.
+# 3) After fork, it seems to take some time before name is right
 function stop_restconf(){
     sudo pkill -f clixon_restconf
     if [ $valgrindtest -eq 3 ]; then 
@@ -432,6 +449,7 @@ function wait_restconf_stopped(){
 }
 
 # End of test, final tests before normal exit of test
+# Note this is a single test started by new, not a total test suite
 function endtest()
 {
     if [ $valgrindtest -eq 1 ]; then 
@@ -446,6 +464,12 @@ function new(){
     testi=`expr $testi + 1`
     testname=$1
     >&2 echo "Test $testi($testnr) [$1]"
+}
+
+# End of complete test-suite, eg a test file
+function endsuite()
+{
+    unset CURLOPTS
 }
 
 # Evaluate and return

@@ -256,6 +256,22 @@ yang_cv_get(yang_stmt *ys)
     return ys->ys_cv;
 }
 
+/*! Set yang statement CLIgen variable
+ * @param[in] ys  Yang statement node
+ * @param[in] cv  cligen variable
+ * @note: Frees on replace, not if cv is NULL. This is for some ys_cp/ys_dup cases, which means 
+ *        you need to free it explicitly to set it to NULL proper.
+ */
+int
+yang_cv_set(yang_stmt *ys,
+	    cg_var    *cv)
+{
+    if (cv != NULL && ys->ys_cv != NULL)
+	cv_free(ys->ys_cv);
+    ys->ys_cv = cv;
+    return 0;
+}
+
 /*! Get yang statement CLIgen variable vector
  * @param[in] ys  Yang statement node
  */
@@ -456,13 +472,15 @@ int
 ys_free1(yang_stmt *ys,
 	 int        self)
 {
+    cg_var *cv;
+
     if (ys->ys_argument){
 	free(ys->ys_argument);
 	ys->ys_argument = NULL;
     }
-    if (ys->ys_cv){
-	cv_free(ys->ys_cv);
-	ys->ys_cv = NULL;
+    if ((cv = yang_cv_get(ys)) != NULL){
+	yang_cv_set(ys, NULL); /* only frees on replace */
+	cv_free(cv);
     }
     if (ys->ys_cvec){
 	cvec_free(ys->ys_cvec);
@@ -601,6 +619,8 @@ ys_cp(yang_stmt *ynew,
     int        i;
     yang_stmt *ycn; /* new child */
     yang_stmt *yco; /* old child */
+    cg_var    *cvn;
+    cg_var    *cvo;
 
     memcpy(ynew, yold, sizeof(*yold)); 
     ynew->ys_parent = NULL;
@@ -614,11 +634,14 @@ ys_cp(yang_stmt *ynew,
 	    clicon_err(OE_YANG, errno, "strdup");
 	    goto done;
 	}
-    if (yold->ys_cv)
-	if ((ynew->ys_cv = cv_dup(yold->ys_cv)) == NULL){
+    yang_cv_set(ynew, NULL);
+    if ((cvo = yang_cv_get(yold)) != NULL){
+	if ((cvn = cv_dup(cvo)) == NULL){
 	    clicon_err(OE_YANG, errno, "cv_dup");
 	    goto done;
 	}
+	yang_cv_set(ynew, cvn);
+    }
     if (yold->ys_cvec)
 	if ((ynew->ys_cvec = cvec_dup(yold->ys_cvec)) == NULL){
 	    clicon_err(OE_YANG, errno, "cvec_dup");
@@ -1414,6 +1437,7 @@ ys_real_module(yang_stmt  *ys,
 {
     int        retval = -1;
     yang_stmt *ym = NULL;
+    yang_stmt *ysubm;
     yang_stmt *yb;
     char      *name;
     yang_stmt *yspec;
@@ -1433,8 +1457,12 @@ ys_real_module(yang_stmt  *ys,
 		clicon_err(OE_YANG, ENOENT, "Belongs-to statement of submodule %s has no argument", yang_argument_get(ym)); /* shouldnt happen */
 		goto done;
 	    }
-	    if ((ym = yang_find_module_by_name(yspec, name)) == NULL)
+	    if ((ysubm = yang_find_module_by_name(yspec, name)) == NULL){
+		clicon_err(OE_YANG, ENOENT, "submodule %s references non-existent module %s in its belongs-to statement",
+			   yang_argument_get(ym), name);
 		goto done;
+	    }
+	    ym = ysubm;
 	}
     }
     *ymod = ym;
@@ -1447,7 +1475,8 @@ ys_real_module(yang_stmt  *ys,
  * @param[in] ys    Any yang statement in a yang tree
  * @retval    yspec The top yang specification
  * @see  ys_module
- * @see  yang_augment_node where shortcut is set
+ * @see  yang_augment_node where shortcut is set for augment
+ * @see  yang_myroot for first node under (sub)module
  */
 yang_stmt *
 ys_spec(yang_stmt *ys)
@@ -1765,8 +1794,7 @@ ys_populate_leaf(clicon_handle h,
 
     yparent = ys->ys_parent;     /* Find parent: list/container */
     /* 1. Find type specification and set cv type accordingly */
-    if (yang_type_get(ys, &origtype, &yrestype, &options, NULL, NULL, NULL, &fraction_digits)
- < 0)
+    if (yang_type_get(ys, &origtype, &yrestype, &options, NULL, NULL, NULL, &fraction_digits) < 0)
 	goto done;
     restype = yrestype?yrestype->ys_argument:NULL;
     if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0) /* This handles non-resolved also */
@@ -1823,7 +1851,7 @@ ys_populate_leaf(clicon_handle h,
 	if ((ret = yang_key_match(yparent, ys->ys_argument)) < 0)
 	    goto done;
     }
-    ys->ys_cv = cv;
+    yang_cv_set(ys, cv);
     retval = 0;
   done:
     if (origtype)
@@ -2236,7 +2264,7 @@ ys_populate_feature(clicon_handle h,
     cv_bool_set(cv, found);
     if (found)
 	clicon_debug(1, "%s %s:%s", __FUNCTION__, module, feature);
-    ys->ys_cv = cv;
+    yang_cv_set(ys, cv);
  ok:
     retval = 0;
  done:
@@ -2490,7 +2518,7 @@ yang_if_feature(clicon_handle h,
     yang_stmt  *yfeat; /* feature yang node */
     int         opand = -1; /* -1:not set, 0:or, 1:and */
     int         enabled = 0;
-    
+    cg_var     *cv;
     if ((vec = clicon_strsep(ys->ys_argument, " \t\r\n", &nvec)) == NULL)
 	goto done;
     /* Two steps: first detect operators
@@ -2579,7 +2607,8 @@ yang_if_feature(clicon_handle h,
 	/* Check if this feature is enabled or not 
 	 * Continue loop to catch unbound features and make verdict at end
 	 */
-	if (yfeat->ys_cv == NULL || !cv_bool_get(yfeat->ys_cv)){    /* disabled */
+	cv = yang_cv_get(yfeat);
+	if (cv == NULL || !cv_bool_get(cv)){    /* disabled */
 	    /* if AND then this is permanently disabled */
 	    if (opand && enabled)
 		enabled = 0;
@@ -3019,14 +3048,15 @@ int
 yang_mandatory(yang_stmt *ys)
 {
     yang_stmt *ym;
+    cg_var    *cv;
 
     /* 1) A leaf, choice, anydata, or anyxml node with a "mandatory"
      *    statement with the value "true". */
     if (ys->ys_keyword == Y_LEAF || ys->ys_keyword == Y_CHOICE ||
 	ys->ys_keyword == Y_ANYDATA || ys->ys_keyword == Y_ANYXML){
 	if ((ym = yang_find(ys, Y_MANDATORY, NULL)) != NULL){
-	    if (ym->ys_cv != NULL) /* shouldnt happen */
-		return cv_bool_get(ym->ys_cv);
+	    if ((cv = yang_cv_get(ym)) != NULL) /* shouldnt happen */
+		return cv_bool_get(cv);
 	}
     }
 #if 0 /* See note above */
@@ -3066,9 +3096,9 @@ yang_config(yang_stmt *ys)
     yang_stmt *ym;
 
     if ((ym = yang_find(ys, Y_CONFIG, NULL)) != NULL){
-	if (ym->ys_cv == NULL) /* shouldnt happen */
+	if (yang_cv_get(ym) == NULL) /* shouldnt happen */
 	    return 1; 
-	return cv_bool_get(ym->ys_cv);
+	return cv_bool_get(yang_cv_get(ym));
     }
     return 1;
 }

@@ -132,7 +132,7 @@ generic_validate(clicon_handle       h,
 		cprintf(cb, "Mandatory variable of %s in module %s",
 			xml_parent(x1)?xml_name(xml_parent(x1)):"",
 			yang_argument_get(ys_module(ys)));
-		if (netconf_missing_element_xml(xret, "protocol", xml_name(x1), cbuf_get(cb)) < 0)
+		if (xret && netconf_missing_element_xml(xret, "protocol", xml_name(x1), cbuf_get(cb)) < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -480,9 +480,9 @@ startup_commit(clicon_handle  h,
  * and call application callback validations.
  * @param[in]  h         Clicon handle
  * @param[in]  candidate The candidate database. The wanted backend state
- * @param[out] xret      Error XML tree. Free with xml_free after use
+ * @param[out] xret      Error XML tree, if retval is 0. Free with xml_free after use
  * @retval    -1         Error - or validation failed (but cbret not set)
- * @retval     0         Validation failed (with cbret set)
+ * @retval     0         Validation failed (with xret set)
  * @retval     1         Validation OK       
  * @note Need to differentiate between error and validation fail 
  *       (only done for generic_validate)
@@ -505,16 +505,19 @@ validate_common(clicon_handle       h,
 	goto done;
     }	
     /* This is the state we are going to */
-    if (xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, &td->td_target, NULL, NULL) < 0)
+    if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, &td->td_target, NULL, xret)) < 0)
 	goto done;
-
+    if (ret == 0)
+	goto fail;
     /* Clear flags xpath for get */
     xml_apply0(td->td_target, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
 	       (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
     /* 2. Parse xml trees 
      * This is the state we are going from */
-    if (xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, &td->td_src, NULL, NULL) < 0)
+    if ((ret = xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, &td->td_src, NULL, xret)) < 0)
 	goto done;
+    if (ret == 0)
+	goto fail;
     /* Clear flags xpath for get */
     xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
 	       (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
@@ -606,26 +609,45 @@ candidate_validate(clicon_handle h,
     if ((td = transaction_new()) == NULL)
 	goto done;
         /* Common steps (with commit) */
-    if ((ret = validate_common(h, db, td, &xret)) < 1){
+    if ((ret = validate_common(h, db, td, &xret)) < 0){
 	/* A little complex due to several sources of validation fails or errors.
 	 * (1) xerr is set -> translate to cbret; (2) cbret set use that; otherwise
-	 * use clicon_err. */
-	if (xret && clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+	 * use clicon_err. 
+	 * TODO: -1 return should be fatal error, not failed validation
+	 */
+	if (!cbuf_len(cbret) &&
+	    netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
 	    goto done;
-	plugin_transaction_abort_all(h, td);
+	goto fail;
+    }
+    if (ret == 0){
+	if (xret == NULL){
+	    clicon_err(OE_CFG, EINVAL, "xret is NULL");
+	    goto done;
+	}
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+	    goto done;
 	if (!cbuf_len(cbret) &&
 	    netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
 	    goto done;
 	goto fail;
     }
     if (xmldb_get0_clear(h, td->td_src) < 0 ||
-	xmldb_get0_clear(h, td->td_target) < 0){
-	plugin_transaction_abort_all(h, td);
+	xmldb_get0_clear(h, td->td_target) < 0)
 	goto done;
-    }
+
     plugin_transaction_end_all(h, td);
     retval = 1;
  done:
+    if (xret)
+	xml_free(xret);
+     if (td){
+	 if (retval < 1)
+	     plugin_transaction_abort_all(h, td);
+	 xmldb_get0_free(h, &td->td_target);
+	 xmldb_get0_free(h, &td->td_src);
+	 transaction_free(td);
+     }
     return retval;
  fail:
     retval = 0;

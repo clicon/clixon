@@ -265,7 +265,7 @@ buf_write(char   *buf,
 	}
 	memcpy(dbgstr, buf, sz);
 	dbgstr[sz] = '\0';
-	clicon_debug(1, "%s buflen:%lu buf:%s", __FUNCTION__, buflen, dbgstr);
+	clicon_debug(1, "%s buflen:%zu buf:%s", __FUNCTION__, buflen, dbgstr);
 	free(dbgstr);
     }
     while (totlen < buflen){
@@ -467,14 +467,16 @@ alpn_select_proto_cb(SSL                  *ssl,
 	inp++;
 	if (clicon_debug_get()) /* debug print the protoocol */
 	    alpn_proto_dump(__FUNCTION__, (const char*)inp, len);
+#ifdef HAVE_LIBEVHTP
 	if (pref < 10 && len == 8 && strncmp((char*)inp, "http/1.1", len) == 0){
 	    *outlen = len;
 	    *out = inp;
 	    pref = 10;
 	}
+#endif
 #ifdef HAVE_LIBNGHTTP2
 	/* Higher pref than http/1.1 */
-	else if (pref < 20 && len == 2 && strncmp((char*)inp, "h2", len) == 0){
+	if (pref < 20 && len == 2 && strncmp((char*)inp, "h2", len) == 0){
 	    *outlen = len;
 	    *out = inp;
 	    pref = 20;
@@ -591,15 +593,7 @@ restconf_close_ssl_socket(restconf_conn *rc,
 {
     int retval = -1;
     int                 ret;
-#ifdef HAVE_LIBEVHTP
-    evhtp_connection_t *evconn;
 
-    if ((evconn = rc->rc_evconn) != NULL){
-	clicon_debug(1, "%s evconn-free (%p)", __FUNCTION__, evconn);
-	if (evconn)
-	    evhtp_connection_free(evconn); /* evhtp */
-    }
-#endif /* HAVE_LIBEVHTP */
     if (rc->rc_ssl != NULL){
 	if (shutdown && (ret = SSL_shutdown(rc->rc_ssl)) < 0){
 #if 0
@@ -612,6 +606,10 @@ Note that in this case SSL_ERROR_ZERO_RETURN does not necessarily indicate that 
 	}
 	SSL_free(rc->rc_ssl);
 	rc->rc_ssl = NULL;
+#ifdef HAVE_LIBEVHTP
+	if (rc->rc_evconn)
+	    rc->rc_evconn->ssl = NULL;
+#endif
     }
     if (close(rc->rc_s) < 0){
 	clicon_err(OE_UNIX, errno, "close");
@@ -649,7 +647,7 @@ send_badrequest(clicon_handle       h,
     cprintf(cb, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n");
     if (body){
 	cprintf(cb, "Content-Type: %s\r\n", media);
-	cprintf(cb, "Content-Length: %lu\r\n", strlen(body));
+	cprintf(cb, "Content-Length: %zu\r\n", strlen(body));
     }
     else
 	cprintf(cb, "Content-Length: 0\r\n");
@@ -687,6 +685,10 @@ restconf_connection(int   s,
     ssize_t               n;
     char                  buf[BUFSIZ]; /* from stdio.h, typically 8K XXX: reduce for test */
     int                   readmore = 1;
+    int                   sslerr;
+#ifdef HAVE_LIBNGHTTP2
+    int                   ret;
+#endif
 #ifdef HAVE_LIBEVHTP
     clicon_handle         h;
     evhtp_connection_t   *evconn = NULL;
@@ -708,27 +710,53 @@ restconf_connection(int   s,
 	       curl -Ssik --key /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.key --cert /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.crt -X GET https://localhost/restconf/data/example:x
 	    */
 	    if ((n = SSL_read(rc->rc_ssl, buf, sizeof(buf))) < 0){
-		clicon_err(OE_XML, errno, "SSL_read");
-		goto done;
+		sslerr = SSL_get_error(rc->rc_ssl, n);
+		clicon_debug(1, "%s SSL_read() n:%zd errno:%d sslerr:%d", __FUNCTION__, n, errno, sslerr);
+		switch (sslerr){
+		case SSL_ERROR_WANT_READ:            /* 2 */
+		    /* SSL_ERROR_WANT_READ is returned when the last operation was a read operation 
+		     * from a nonblocking BIO. 
+		     * That is, it can happen if restconf_socket_init() below is called 
+		     * with SOCK_NONBLOCK
+		     */
+		    clicon_debug(1, "%s SSL_read SSL_ERROR_WANT_READ", __FUNCTION__);
+		    usleep(1000);
+		    readmore = 1;
+		    break;
+		default:
+		    clicon_err(OE_XML, errno, "SSL_read");
+		    goto done;              
+		} /* switch */
+		continue; /* readmore */
 	    }
 	}
 	else{
 	    if ((n = read(rc->rc_s, buf, sizeof(buf))) < 0){ /* XXX atomicio ? */
-		if (errno == ECONNRESET) {/* Connection reset by peer */
+		switch(errno){
+		case ECONNRESET:/* Connection reset by peer */
 		    clicon_debug(1, "%s %d Connection reset by peer", __FUNCTION__, rc->rc_s);
 		    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
 		    close(rc->rc_s);
 		    restconf_conn_free(rc);
 		    goto ok; /* Close socket and ssl */
+		    break;
+		case EAGAIN:
+		    clicon_debug(1, "%s read EAGAIN", __FUNCTION__);
+		    usleep(1000);
+		    readmore = 1;
+		    break;
+		default:;
+		    clicon_err(OE_XML, errno, "read");
+		    goto done;
+		    break;
 		}
-		clicon_err(OE_XML, errno, "read");
-		goto done;
+		continue;
 	    }
 	}
-	clicon_debug(1, "%s read:%ld", __FUNCTION__, n);
+	clicon_debug(1, "%s (ssl)read:%zd", __FUNCTION__, n);
 	if (n == 0){
 	    clicon_debug(1, "%s n=0 closing socket", __FUNCTION__);
-	    if (restconf_close_ssl_socket(rc, 1) < 0)
+	    if (restconf_close_ssl_socket(rc, 0) < 0)
 		goto done;
 	    restconf_conn_free(rc);    
 	    rc = NULL;
@@ -762,7 +790,6 @@ restconf_connection(int   s,
 		clixon_event_unreg_fd(rc->rc_s, restconf_connection);
 		clicon_debug(1, "%s evconn-free (%p) 2", __FUNCTION__, evconn);
 		restconf_conn_free(rc);
-		evhtp_connection_free(evconn);
 		goto ok;
 	    } /* connection_parse_nobev */
 	    clicon_debug(1, "%s connection_parse OK", __FUNCTION__);
@@ -866,9 +893,14 @@ restconf_connection(int   s,
 #endif /* HAVE_LIBEVHTP */
 #ifdef HAVE_LIBNGHTTP2
 	case HTTP_2:
-	    if (http2_recv(rc, (unsigned char *)buf, n) < 0)
+	    if ((ret = http2_recv(rc, (unsigned char *)buf, n)) < 0)
 		goto done;
-	    //notused	    sd = restconf_stream_find(rc, 0); /* default stream */
+	    if (ret == 0){
+		restconf_close_ssl_socket(rc, 1);
+		if (restconf_conn_free(rc) < 0)
+		    goto done;
+		goto ok;
+	    }
 	    /* There may be more data frames */
 	    readmore++;
 	    break;
@@ -988,7 +1020,7 @@ ssl_alpn_check(clicon_handle        h,
 	}
 	if (alpn != NULL){
 	    cprintf(cberr, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>ALPN: protocol not recognized: %s</error-message></error></errors>", alpn);
-	    clicon_log(LOG_NOTICE, "Warning: %s", cbuf_get(cberr));
+	    clicon_log(LOG_INFO, "%s Warning: %s", __FUNCTION__, cbuf_get(cberr));
 	    if (send_badrequest(h, rc->rc_s, rc->rc_ssl,
 				"application/yang-data+xml",
 				cbuf_get(cberr)) < 0)
@@ -996,17 +1028,9 @@ ssl_alpn_check(clicon_handle        h,
 	}
 	else{
 	    /* XXX Sending badrequest here gives a segv in SSL_shutdown() later or a SIGPIPE here */
-	    clicon_log(LOG_NOTICE, "Warning: ALPN: No protocol selected");
+	    clicon_log(LOG_INFO, "%s Warning: ALPN: No protocol selected", __FUNCTION__);
 	}
-	restconf_conn_free(rc);
-#ifdef HAVE_LIBEVHTP
-	{
-	    evhtp_connection_t *evconn;
 
-	    if ((evconn = rc->rc_evconn) != NULL)
-		evhtp_connection_free(evconn); /* evhtp */
-	}
-#endif /* HAVE_LIBEVHTP */
 	if (rc->rc_ssl){
             /* nmap ssl-known-key SEGV at s->method->ssl_shutdown(s); 
 	     * OR OpenSSL error: : SSL_shutdown, err: SSL_ERROR_SYSCALL(5)
@@ -1014,7 +1038,7 @@ ssl_alpn_check(clicon_handle        h,
 	    if ((ret = SSL_shutdown(rc->rc_ssl)) < 0){ 
 		int e = SSL_get_error(rc->rc_ssl, ret);
 		if (e == SSL_ERROR_SYSCALL){
-		    clicon_log(LOG_NOTICE, "Warning: SSL_shutdown SSL_ERROR_SYSCALL");
+		    clicon_log(LOG_INFO, "%s Warning: SSL_shutdown SSL_ERROR_SYSCALL", __FUNCTION__);
 		    /* Continue */
 		}
 		else {
@@ -1024,6 +1048,7 @@ ssl_alpn_check(clicon_handle        h,
 	    }
 	    SSL_free(rc->rc_ssl);
 	}
+	restconf_conn_free(rc);
     }
     retval = 0; /* ALPN not OK */
  done:
@@ -1194,7 +1219,9 @@ restconf_accept_client(int   fd,
 	    } /* SSL_accept */
 	} /* while(readmore) */
 	/* Sets data and len to point to the client's requested protocol for this connection. */
+#ifndef OPENSSL_NO_NEXTPROTONEG
 	SSL_get0_next_proto_negotiated(rc->rc_ssl, &alpn, &alpnlen);
+#endif /* !OPENSSL_NO_NEXTPROTONEG */
 	if (alpn == NULL) {
 	    /* Returns a pointer to the selected protocol in data with length len. */
 	    SSL_get0_alpn_selected(rc->rc_ssl, &alpn, &alpnlen);
@@ -1559,7 +1586,7 @@ restconf_openssl_init(clicon_handle h,
 	}
 	int status = setrlimit(RLIMIT_CORE, &rlp);
 	if (status != 0) {
-	    clicon_log(LOG_NOTICE, "%s: setrlimit() failed, %s", __func__, strerror(errno));
+	    clicon_log(LOG_INFO, "%s: setrlimit() failed, %s", __FUNCTION__, strerror(errno));
 	}
     }
 
@@ -1671,10 +1698,6 @@ restconf_clixon_init(clicon_handle h,
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);
-    /* Treat unknown XML as anydata */
-    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1)
-	xml_bind_yang_unknown_anydata(1);
-    
     /* Load restconf plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_restconf_dir(h)) != NULL)
 	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
@@ -1714,6 +1737,12 @@ restconf_clixon_init(clicon_handle h,
     if (yang_spec_parse_module(h, "ietf-restconf", NULL, yspec)< 0)
 	goto done;
     
+#ifdef YANG_PATCH
+    /* Load yang restconf patch module */
+    if (yang_spec_parse_module(h, "ietf-yang-patch", NULL, yspec)< 0)
+       goto done;
+#endif // YANG_PATCH
+
     /* Add netconf yang spec, used as internal protocol */
     if (netconf_module_load(h) < 0)
 	goto done;
@@ -1733,7 +1762,7 @@ restconf_clixon_init(clicon_handle h,
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
 	goto done;
     if (inline_config != NULL && strlen(inline_config)){
-	clicon_debug(1, "%s using restconf inline config", __FUNCTION__);
+	clicon_debug(1, "%s reading from inline config", __FUNCTION__);
 	if ((ret = clixon_xml_parse_string(inline_config, YB_MODULE, yspec, &xrestconf, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
@@ -1755,6 +1784,7 @@ restconf_clixon_init(clicon_handle h,
 		goto done;
     }
     else if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS") == 0){
+	clicon_debug(1, "%s reading from clixon config", __FUNCTION__);
 	/* If not read from backend, try to get restconf config from local config-file */
 	if ((xrestconf = clicon_conf_restconf(h)) != NULL){
 	    /*! Basic config init, set auth-type, pretty, etc ret 0 means disabled */
@@ -1772,6 +1802,7 @@ restconf_clixon_init(clicon_handle h,
     /* If no local config, or it is disabled, try to query backend of config. 
      */
     else {
+	clicon_debug(1, "%s reading from backend datastore config", __FUNCTION__);
 	if ((ret = restconf_clixon_backend(h, xrestconfp)) < 0)
 	    goto done;
 	if (ret == 0)

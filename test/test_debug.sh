@@ -105,6 +105,9 @@ expectpart "$($clixon_cli -1 -f $cfg -l o debug restconf 1)" 0 "^$"
 new "get and put config using restconf"
 expectpart "$(curl $CURLOPTS -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data?content=config --next $CURLOPTS -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data -d '{"example:table":{"parameter":{"name":"local0","value":"foo"}}}')" 0 "HTTP/$HVER 200" '<data>' "HTTP/$HVER 201"
 
+# In freebsd, backend dies in stop_restconf below unless sleep
+sleep $DEMSLEEP 
+
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
     stop_restconf 
@@ -115,7 +118,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+	err1 "backend pid !=0" 0
     fi
     # kill backend
     stop_backend -f $cfg

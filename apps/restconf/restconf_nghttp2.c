@@ -182,15 +182,23 @@ session_send_callback(nghttp2_session *session,
     ssize_t        totlen = 0;
     int            s;
     SSL           *ssl; 
+    int            sslerr;
     
-    clicon_debug(1, "%s buflen:%lu", __FUNCTION__, buflen);
+    clicon_debug(1, "%s buflen:%zu", __FUNCTION__, buflen);
     s = rc->rc_s;
     ssl = rc->rc_ssl;
     while (totlen < buflen){
 	if (ssl){
 	    if ((len = SSL_write(ssl, buf+totlen, buflen-totlen)) <= 0){
 		er = errno;
-		switch (SSL_get_error(ssl, len)){
+		sslerr = SSL_get_error(ssl, len);
+		clicon_debug(1, "%s errno:;%d sslerr:%d", __FUNCTION__, errno, sslerr);
+		switch (sslerr){
+		case SSL_ERROR_WANT_WRITE:           /* 3 */
+		    clicon_debug(1, "%s write SSL_ERROR_WANT_WRITE", __FUNCTION__);
+		    usleep(1000);
+		    continue;
+		    break;
 		case SSL_ERROR_SYSCALL:              /* 5 */
 		    if (er == ECONNRESET) {/* Connection reset by peer */
 			if (ssl)
@@ -200,8 +208,12 @@ session_send_callback(nghttp2_session *session,
 			goto ok; /* Close socket and ssl */
 		    }
 		    else if (er == EAGAIN){
+			/* same as want_write above, but different behaviour on different 
+			 * platforms, linux here, freebsd want_write, or possibly differnt
+			 * ssl lib versions?
+			 */
 			clicon_debug(1, "%s write EAGAIN", __FUNCTION__);
-			usleep(10000);
+			usleep(1000);
 			continue;
 		    }
 		    else{
@@ -247,7 +259,7 @@ session_send_callback(nghttp2_session *session,
 	clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
 	return retval;
     }
-    clicon_debug(1, "%s retval:%lu", __FUNCTION__, totlen);
+    clicon_debug(1, "%s retval:%zd", __FUNCTION__, totlen);
     return totlen;
 }
 
@@ -367,7 +379,7 @@ restconf_sd_read(nghttp2_session     *session,
 #endif
     assert(cbuf_len(cb) > sd->sd_body_offset);
     remain = cbuf_len(cb) - sd->sd_body_offset;
-    clicon_debug(1, "%s length:%lu totlen:%d, offset:%lu remain:%lu",
+    clicon_debug(1, "%s length:%zu totlen:%d, offset:%zu remain:%zu",
 		 __FUNCTION__,
 		 length,
 		 cbuf_len(cb),
@@ -383,7 +395,7 @@ restconf_sd_read(nghttp2_session     *session,
     }
     memcpy(buf, cbuf_get(cb) + sd->sd_body_offset, len);
     sd->sd_body_offset += len;
-    clicon_debug(1, "%s retval:%lu", __FUNCTION__, len);
+    clicon_debug(1, "%s retval:%zu", __FUNCTION__, len);
     return len;
 }
 
@@ -397,7 +409,7 @@ restconf_submit_response(nghttp2_session      *session,
     nghttp2_data_provider data_prd;
     nghttp2_error         ngerr;
     cg_var               *cv;
-    nghttp2_nv           *hdrs;
+    nghttp2_nv           *hdrs = NULL;
     nghttp2_nv           *hdr;
     int                   i = 0;
     char                  valstr[16];
@@ -437,6 +449,8 @@ restconf_submit_response(nghttp2_session      *session,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (hdrs)
+	free(hdrs);
     return retval;
 }
 
@@ -469,7 +483,7 @@ http2_exec(restconf_conn        *rc,
      * [RFC7231]).
      */
     if (sd->sd_code != 204 && sd->sd_code > 199)
-	if (restconf_reply_header(sd, "Content-Length", "%lu", sd->sd_body_len) < 0)
+	if (restconf_reply_header(sd, "Content-Length", "%zu", sd->sd_body_len) < 0)
 	    goto done;	
     if (sd->sd_code){
 	if (restconf_submit_response(session, rc, stream_id, sd) < 0)
@@ -824,6 +838,20 @@ on_extension_chunk_recv_callback(nghttp2_session *session,
 /*! Library provides the error code, and message for debugging purpose.
  */
 static int
+error_callback(nghttp2_session *session,
+	       const char *msg,
+	       size_t len,
+	       void *user_data)
+{
+    //    restconf_conn *rc = (restconf_conn *)user_data;
+    clicon_debug(1, "%s", __FUNCTION__);
+    return 0;
+}
+
+#if (NGHTTP2_VERSION_NUM > 0x011201) /* Unsure of version number */
+/*! Library provides the error code, and message for debugging purpose.
+ */
+static int
 error_callback2(nghttp2_session *session,
 		int lib_error_code,
 		const char *msg,
@@ -835,9 +863,16 @@ error_callback2(nghttp2_session *session,
     clicon_err(OE_NGHTTP2, lib_error_code, "%s", msg);
     return 0;
 }
+#endif
 
-/*
- * XXX see session_recv
+/*! Process an HTTP/2 request received in buffer, process request and send reply
+ *
+ * @param[in] rc   Restconf connection
+ * @param[in] buf  Character buffer
+ * @param[in] n    Lenght of buf
+ * @retval    1    OK
+ * @retval    0    Invald request
+ * @retval   -1    Fatal error
  */
 int
 http2_recv(restconf_conn       *rc,
@@ -855,6 +890,18 @@ http2_recv(restconf_conn       *rc,
     }
     /* may make additional pending frames */
     if ((ngerr = nghttp2_session_mem_recv(rc->rc_ngsession, buf, n)) < 0){
+	if (ngerr == NGHTTP2_ERR_BAD_CLIENT_MAGIC){
+	    /* :enum:`NGHTTP2_ERR_BAD_CLIENT_MAGIC`
+	     *     Invalid client magic was detected.  This error only returns
+	     *     when |session| was configured as server and
+	     *     `nghttp2_option_set_no_recv_client_magic()` is not used with
+	     *     nonzero value. */
+	    clicon_log(LOG_INFO, "%s Received bad client magic byte strin", __FUNCTION__);
+	    /* unsure if this does anything, byt does not seem to hurt */
+	    if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, ngerr)) < 0)
+		clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
+	    goto fail;
+	}
 	clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_mem_recv");
 	goto done;
     }
@@ -866,9 +913,13 @@ http2_recv(restconf_conn       *rc,
 	clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_send");
 	goto done;
     }
-    retval = 0;
+    retval = 1; /* OK */
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /* Send HTTP/2 client connection header, which includes 24 bytes
@@ -930,10 +981,13 @@ http2_session_init(restconf_conn *rc)
     nghttp2_session_callbacks_set_unpack_extension_callback(callbacks, unpack_extension_callback);
 #endif
     nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(callbacks, on_extension_chunk_recv_callback);
+    nghttp2_session_callbacks_set_error_callback(callbacks, error_callback);
+#if (NGHTTP2_VERSION_NUM > 0x011201) /* Unsure of version number */
     nghttp2_session_callbacks_set_error_callback2(callbacks, error_callback2);
+#endif
 
     /* Create session for server use, register callbacks */
-    if ((ngerr = nghttp2_session_server_new(&session, callbacks, rc)) < 0){
+    if ((ngerr = nghttp2_session_server_new3(&session, callbacks, rc, NULL, NULL)) < 0){
 	clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_server_new");
 	goto done;
     }

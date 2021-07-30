@@ -375,10 +375,6 @@ main(int    argc,
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);
-    /* Treat unknown XML as anydata */
-    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1)
-	xml_bind_yang_unknown_anydata(1);
-
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)
 	goto done;
@@ -423,6 +419,12 @@ main(int    argc,
     if (yang_spec_parse_module(h, "ietf-restconf", NULL, yspec)< 0)
 	goto done;
     
+#ifdef YANG_PATCH
+    /* Load yang restconf patch module */
+    if (yang_spec_parse_module(h, "ietf-yang-patch", NULL, yspec)< 0)
+       goto done;
+#endif // YANG_PATCH
+
     /* Add netconf yang spec, used as internal protocol */
     if (netconf_module_load(h) < 0)
 	goto done;

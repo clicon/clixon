@@ -1,5 +1,6 @@
 # Clixon main example
 
+  * [Background](#background)
   * [Content](#content)
   * [Compile and run](#compile)
   * [Using the CLI](#using-the-cli)
@@ -13,40 +14,45 @@
   * [Docker](#docker)
   * [Plugins](#plugins)
   
+
+## Background
+
+The aim of the main clixon example is to illustrate common features
+and for internal testing.  See the simpler [hello world](https://github.com/clicon/clixon-examples/tree/master/hello) if you want to start from the simplest possible example.
+
+See also other examples in: [clixon-examples](https://github.com/clicon/clixon-examples).
+
 ## Content
 
-This directory contains a Clixon example used primarily as a part of the Clixon test suites. It can be used as a basis for making new Clixon applications. But please consider also the minimal [hello](../hello) example as well. It contains the following files:
-* `example.xml`       The configuration file. See [yang/clixon-config@<date>.yang](../../yang/clixon-config@2019-03-05.yang) for the documentation of all available fields.
-* `clixon-example@2019-01-13.yang`      The yang spec of the example.
-* `example_cli.cli`   CLIgen specification.
-* `example_cli.c`     CLI callback plugin containing functions called in the cli file above: a generic callback (`mycallback`) and an example RPC call (`example_client_rpc`).
-* `example_backend.c` Backend callback plugin including example of:
-  * transaction callbacks (validate/commit),
-  * notification,
-  * rpc handler
-  * state-data handler, ie non-config data
+This directory contains a Clixon example used primarily as a part of the Clixon test suites. It can be used as a basis for making new Clixon applications.  It contains the following files:
+* `clixon-example@2020-12-20.yang`      The yang spec of the example.
+* `example_backend.c`      Backend callback plugin including example of:
 * `example_backend_nacm.c` Secondary backend plugin. Plugins are loaded alphabetically.
-* `example_restconf.c` Restconf callback plugin containing an HTTP basic authentication callback
-* `example_netconf.c` Netconf callback plugin
-* `Makefile.in`       Example makefile where plugins are built and installed
+* `example_cli.c`          CLI callback plugin containing functions called in the .cli file
+* `example_cli.cli`        CLIgen specification of example CLI commands
+* `example_netconf.c`      Netconf callback plugin
+* `example_restconf.c`     Restconf callback plugin containing HTTP basic authentication
+* `example.xml`            Main configuration file.
+* `Makefile.in`            Example makefile where plugins are built and installed
+
+See [yang/clixon-config@<date>.yang](https://github.com/clicon/clixon/blob/master/yang/clixon/clixon-config%402021-05-20.yang) for documentation of all available fields in `example.xml`.
 
 ## Compile and run
 
 Before you start,
-* You must configure with: `--enable-optyangs` to run the main example.
-* Make [group setup](../../doc/FAQ.md#do-i-need-to-setup-anything-important)
-* Setup [restconf](../../doc/FAQ.md#how-do-i-use-restconf)
-
+* You must configure with: `--enable-optyangs` to install all yang files required for the example. This is not necessary for the base colixon system
+* Setup clicon [groups](https://github.com/clicon/clixon/blob/master/doc/FAQ.md#do-i-need-to-setup-anything)
 
 ```
-    cd example
+    cd example/main
     make && sudo make install
 ```
+
 Start backend:
 ```
     sudo clixon_backend -f /usr/local/etc/example.xml -s init
 ```
-Edit cli:
+Start cli:
 ```
     clixon_cli -f /usr/local/etc/example.xml
 ```
@@ -54,13 +60,13 @@ Send netconf command:
 ```
     clixon_netconf -f /usr/local/etc/example.xml
 ```
-Start clixon restconf daemon
+Start clixon restconf daemon (default config listens on http IPv4 0.0.0.0 on port 8080):
 ```
-    sudo /usr/local/bin/clixon_restconf -f /usr/local/etc/example.xml
+    sudo clixon_restconf -f /usr/local/etc/example.xml
 ```
 Send restconf command
 ```
-    curl -X GET http://127.0.0.1/restconf/data
+    curl -X GET http://127.0.0.1:8080/restconf/data
 ```
 
 ## Using the CLI
@@ -71,53 +77,139 @@ There are also many other commands available as examples. View the source file (
 The following example shows how to add an interface in candidate, validate and commit it to running, then look at it (as xml) and finally delete it.
 ```
 clixon_cli -f /usr/local/etc/example.xml 
-cli> set interfaces interface eth9 ?
- description               enabled                   ipv4                     
- ipv6                      link-up-down-trap-enable  type                     
-cli> set interfaces interface eth9 type ex:eth
+cli> set interfaces interface eth1 ?
+  <cr>
+  description           A textual description of the interface.
+  enabled               This leaf contains the configured, desired state of the
+                        interface.
+  ipv4                  Parameters for the IPv4 address family.
+  ipv6                  Parameters for the IPv6 address family.
+  type                  The type of the interface.
+cli> set interfaces interface eth1 type ianaift:ip
+cli> set interfaces interface eth1 enabled true
+cli> set interfaces interface eth1 ipv4 address 1.2.3.4 prefix-length 24
 cli> validate 
 cli> commit 
 cli> show configuration xml 
 <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
    <interface>
-      <name>eth9</name>
-      <type>ex:eth</type>
+      <name>eth1</name>
+      <type>ianaift:ip</type>
       <enabled>true</enabled>
+      <ip:ipv4 xmlns:ip="urn:ietf:params:xml:ns:yang:ietf-ip">
+         <ip:enabled>true</ip:enabled>
+         <ip:forwarding>false</ip:forwarding>
+         <ip:address>
+            <ip:ip>1.2.3.4</ip:ip>
+            <ip:prefix-length>24</ip:prefix-length>
+         </ip:address>
+      </ip:ipv4>
    </interface>
 </interfaces>
-cli> delete interfaces interface eth9
+cli> delete interfaces interface eth1
+cli> commit
 ```
 
 ## Using Netconf
 
 The following example shows how to set data using netconf:
 ```
-<rpc><edit-config><target><candidate/></target><config>
-      <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
-         <interface>
-            <name>eth1</name>
-            <enabled>true</enabled>
-            <ipv4>
-               <address>
-                  <ip>9.2.3.4</ip>
-                  <prefix-length>24</prefix-length>
-               </address>
-            </ipv4>
-         </interface>
-      </interfaces>
-</config></edit-config></rpc>]]>]]>
+sh> clixon_netconf -qf /usr/local/etc/example.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>
+<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="0">
+   <edit-config>
+      <target><candidate/></target>
+      <config>
+         <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+            <interface>
+               <name>eth1</name>
+	       <type>ianaift:ip</type>
+               <enabled>true</enabled>
+               <ipv4 xmlns="urn:ietf:params:xml:ns:yang:ietf-ip">
+                  <address>
+                     <ip>1.2.3.4</ip>
+                     <prefix-length>24</prefix-length>
+                  </address>
+               </ipv4>
+            </interface>
+         </interfaces>
+      </config>
+   </edit-config>
+</rpc>]]>]]>
+# Reply: <rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="0"><ok/></rpc-reply>]]>]]>
+<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="1">
+   <commit/>
+</rpc>]]>]]>
 ```
 
-### Getting data using netconf
+Getting data:
 ```
-<rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>
-<rpc><get-config><source><candidate/></source><filter/></get-config></rpc>]]>]]>
-<rpc><get-config><source><candidate/></source><filter type="xpath"/></get-config></rpc>]]>]]>
-<rpc><get-config><source><candidate/></source><filter type="subtree"><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth9</name><type>ex:eth</type></interface></interfaces></data></filter></get-config></rpc>]]>]]>
-<rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface"/></get-config></rpc>]]>]]>
-<rpc><validate><source><candidate/></source></validate></rpc>]]>]]>
+# Reply: <rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="1"><ok/></rpc-reply>]]>]]>
+<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="2">
+   <get-config>
+      <source><candidate/></source>
+   </get-config>
+</rpc>]]>]]>
+# Reply: <rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="2"><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth1</name><type>ianaift:ip</type><enabled>true</enabled><ip:ipv4 xmlns:ip="urn:ietf:params:xml:ns:yang:ietf-ip"><ip:enabled>true</ip:enabled><ip:forwarding>false</ip:forwarding><ip:address><ip:ip>1.2.3.4</ip:ip><ip:prefix-length>24</ip:prefix-length></ip:address></ip:ipv4></interface></interfaces></data></rpc-reply>]]>]]>
 ```
-## Restconf
+
+Examples of a filtered GET statement:
+```
+<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="1"><get-config><source><candidate/></source><filter type="xpath" select="/if:interfaces/if:interface[if:name='eth1']" xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces"/></get-config></rpc>]]>]]>
+```
+
+## Restconf 
+
+By default clixon from release 5.3 uses "native" restconf, see next
+section for an alternative. General clixon [restconf
+documentation](https://clixon-docs.readthedocs.io/en/latest/restconf.html). By
+default restconf supports http/1.1 and http/2 with the standard way
+(ALPN vs switch protocol) of selecting and upgrading from 1.1 to 2.
+
+In the example, a restconf config is included in the [config file](example.xml):
+```
+  <restconf>
+     <enable>true</enable>
+     <auth-type>none</auth-type>
+     <socket>
+        <namespace>default</namespace>
+	<address>0.0.0.0</address>
+	<port>80</port>
+	<ssl>false</ssl>
+     </socket>
+  </restconf>
+```
+
+In this example, a listening socket is opened using http on port 80. You can extend the restconf config by modifying the entry or add multiple `<socket>` entries, such as IPv6, TLS and another network namespace, for example:
+```
+   <socket>
+      <namespace>dataplane</namespace>
+      <address>::</address>
+      <port>443</port>
+      <ssl>true</ssl>
+   </socket>
+```
+
+For TLS, cert files need to be given, such as follows:
+```
+<restconf>
+   ...
+   <server-cert-path>/path/to/server/cert</server-cert-path>
+   <server-key-path>/path/to/server/key</server-key-path>
+   <server-ca-cert-path>/path/to/ca/cert</server-ca-cert-path>
+```
+
+For more info, such as client-certs, authentication, etc, see: [restconf documentation](https://clixon-docs.readthedocs.io/en/latest/restconf.html)
+
+## Restconf using nginx
+
+Alternatively, restconf can use a reverse-proxy such as nginx.
+
+Configure:
+```
+  ./configure --with-restconf=fcgi
+```
 
 Setup a web/reverse-proxy server.
 For example, using nginx, install, and edit config file: /etc/nginx/sites-available/default:
@@ -141,11 +233,13 @@ server {
         }
 }
 ```
+
 Start nginx daemon
 ```
    sudo /etc/init.d/nginx start
    sudo systemctl start nginx.service # alternative using systemd
 ```
+
 Start the clixon restconf daemon
 ```
    sudo /usr/local/sbin/clixon_restconf -f /usr/local/etc/example.xml
@@ -154,8 +248,6 @@ then access using curl or wget:
 ```
    curl -X GET http://127.0.0.1/restconf/data/ietf-interfaces:interfaces/interface=eth1/type
 ```
-
-More info: (restconf)[../../apps/restconf/README.md].
 
 ## Streams
 
@@ -180,9 +272,6 @@ severity major;
 cli> no notify
 cli>
 ```
-
-Restconf support is also supported, see (restconf)[../../apps/restconf/README.md].
-
 
 ## RPC Operations
 
@@ -307,8 +396,7 @@ Example systemd files for backend and restconf daemons are found under the [syst
 
 ## Docker
 
-See [docker](../../docker/system) for instructions on how to build this example
-as a docker container.
+See [clixon docker main example](../../docker/main) for instructions on how to build this example as a docker container.
 
 ## Plugins
 

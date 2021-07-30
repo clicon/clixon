@@ -448,7 +448,7 @@ cli_debug_cli(clicon_handle h,
     cg_var *cv;
     int     level;
 
-    if ((cv = cvec_find(vars, "level")) == NULL){
+    if ((cv = cvec_find_var(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
 	    clicon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
 	    goto done;
@@ -479,7 +479,7 @@ cli_debug_backend(clicon_handle h,
     cg_var *cv;
     int     level;
 
-    if ((cv = cvec_find(vars, "level")) == NULL){
+    if ((cv = cvec_find_var(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
 	    clicon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
 	    goto done;
@@ -513,7 +513,7 @@ cli_debug_restconf(clicon_handle h,
     cg_var *cv;
     int     level;
 
-    if ((cv = cvec_find(vars, "level")) == NULL){
+    if ((cv = cvec_find_var(vars, "level")) == NULL){
 	if (cvec_len(argv) != 1){
 	    clicon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
 	    goto done;

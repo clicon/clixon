@@ -245,6 +245,7 @@ restconf_pseudo_process_control(clicon_handle h)
     int    i;
     int    nr;
     cbuf  *cb = NULL;
+    char  *dir = NULL;
 
     nr = 10;
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
@@ -256,12 +257,18 @@ restconf_pseudo_process_control(clicon_handle h)
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    /* CLICON_RESTCONF_INSTALLDIR is where we think clixon_restconf is installed
-     * Problem is where to define it? Now in config file, but maybe it should be in configure?
-     * Tried Makefile but didnt work on Docker since it was moved around.
+    /* Try to figure out where clixon_restconf is installed
+     * If config option CLICON_RESTCONF_INSTALLDIR is installed, use that.
+     * If not, use the Makefile 
      * Use PATH?
      */
-    cprintf(cb, "%s/clixon_restconf", clicon_option_str(h, "CLICON_RESTCONF_INSTALLDIR"));
+    if ((dir = clicon_option_str(h, "CLICON_RESTCONF_INSTALLDIR")) == NULL){
+	if ((dir = CLIXON_CONFIG_SBINDIR) == NULL){
+	    clicon_err(OE_RESTCONF, EINVAL, "Both option CLICON_RESTCONF_INSTALLDIR and makefile constant CLIXON_CONFIG_SBINDIR are NULL which make sit not possible to know where clixon_restconf is installed(shouldnt happen)");
+	    goto done;
+	}
+    }
+    cprintf(cb, "%s/clixon_restconf", dir);
     argv[i++] = cbuf_get(cb);
     argv[i++] = "-f";
     argv[i++] = clicon_option_str(h, "CLICON_CONFIGFILE");
@@ -270,11 +277,11 @@ restconf_pseudo_process_control(clicon_handle h)
      * see restconf_pseudo_set_log which sets flag when process starts
      */
     argv[i++] = "-D";
-    argv[i++] = strdup("0");
+    argv[i++] = "0";
     argv[i++] = "-l";
-    argv[i++] = strdup("s"); /* There is also log-destination in clixon-restconf.yang */
+    argv[i++] = "s"; /* There is also log-destination in clixon-restconf.yang */
     argv[i++] = "-R";
-    argv[i++] = strdup(""); 
+    argv[i++] = ""; 
     argv[i++] = NULL;
     assert(i==nr);
     if (clixon_process_register(h, RESTCONF_PROCESS,

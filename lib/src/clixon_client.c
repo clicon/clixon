@@ -170,9 +170,10 @@ clixon_client_lock(int         sock,
 	clicon_err(OE_PLUGIN, errno, "cbuf_new");
 	goto done;
     }
-    cprintf(msg, "<rpc xmlns=\"%s\">"
+    cprintf(msg, "<rpc xmlns=\"%s\" %s>"
 	    "<%slock><target><%s/></target></%slock></rpc>",
 	    NETCONF_BASE_NAMESPACE,
+	    NETCONF_MESSAGE_ID_ATTR,
 	    lock?"":"un", db, lock?"":"un");
     if (clicon_rpc1(sock, msg, msgret) < 0)
 	goto done;
@@ -422,6 +423,7 @@ clixon_client_get_xdata(int         sock,
     cprintf(msg, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(msg, " xmlns:%s=\"%s\"",
 	    NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    cprintf(msg, " %s", NETCONF_MESSAGE_ID_ATTR);
     cprintf(msg, "><get-config><source><%s/></source>", db);
     if (xpath && strlen(xpath)){
 	cprintf(msg, "<%s:filter %s:type=\"xpath\" xmlns=\"%s\" %s:select=\"%s\"",
