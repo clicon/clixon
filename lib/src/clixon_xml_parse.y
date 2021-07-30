@@ -65,6 +65,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <strings.h>
 #include <errno.h>
 #include <stdlib.h>
 
@@ -196,7 +197,7 @@ static int
 xml_parse_encoding(clixon_xml_yacc *xy,
 		   char            *enc)
 {
-    if(strcmp(enc, "UTF-8")){
+    if(strcasecmp(enc, "UTF-8")){
 	clicon_err(OE_XML, XMLPARSE_ERRNO, "Unsupported XML encoding: %s expected UTF-8", enc);
 	free(enc);
 	return -1;

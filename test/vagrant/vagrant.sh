@@ -169,7 +169,7 @@ case $release in
 	    native)
 		$sshcmd sudo yum install -y libevent openssl
 		$sshcmd sudo yum install -y libevent-devel openssl-devel
-		$sshcmd sudo dnf config-manager --set-enabled powertools
+		$sshcmd sudo yum-config-manager --enable powertools
 		$sshcmd sudo yum install -y libnghttp2-devel
 		;;
 	esac
@@ -215,9 +215,13 @@ case $release in
 		;;
 	    native)
 #		$sshcmd sudo apt install -y libevent-2.1
+<<<<<<< HEAD
 		$sshcmd sudo apt install -y libssl-dev
 		$sshcmd sudo apt install -y libevent-dev # evhtp
 		$sshcmd sudo apt install -y libnghttp2-dev # nghttp2
+=======
+		$sshcmd sudo apt install -y libevent-dev libssl-dev libnghttp2-dev
+>>>>>>> Testing dependency fixes, Netconf XML declaration and filter logic fix
 		;;
 	esac
 	;;
