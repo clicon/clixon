@@ -618,8 +618,8 @@ static int yang_patch_get_xval(
         return ret;
     }
     cxobj *xn_tmp = NULL;
-    if (veclen > 0) {
-        xn_tmp = vec[0]; //veclen should always be 1
+    if (veclen == 1) { //veclen should always be 1
+        xn_tmp = vec[0];
     }
     if (xn_tmp != NULL) {
         tmp_val = xml_body(xn_tmp);
