@@ -617,11 +617,14 @@ static int yang_patch_get_xval(
     if (ret < 0) {
         return ret;
     }
-    for (int j = 0; j < veclen; j++) {
-        cxobj *xn = vec[j];
-        tmp_val = xml_body(xn);
+    cxobj *xn_tmp = NULL;
+    if (veclen > 0) {
+        xn_tmp = vec[0]; //veclen should always be 1
     }
-    cbuf_append_str(val, tmp_val);
+    if (xn_tmp != NULL) {
+        tmp_val = xml_body(xn_tmp);
+        cbuf_append_str(val, tmp_val);
+    }
     return 0;
 }
 
@@ -673,7 +676,7 @@ static cbuf* yang_patch_xml2json_modified_cbuf(cxobj* x_simple_patch)
         char c = json_simple_patch_tmp[l];
         if (c == '{') {
             brace_count++;
-            if (brace_count == 2) {
+            if (brace_count == 2) { // We've reached the second brace, insert a '[' before it
                 cbuf_append(json_simple_patch,(int)'[');
             }
         }
@@ -682,7 +685,7 @@ static cbuf* yang_patch_xml2json_modified_cbuf(cxobj* x_simple_patch)
     cbuf* json_simple_patch_2 = NULL;
 
     // Insert a ']' before the last '}' to get the JSON to match what api_data_post() expects
-    for (int l = cbuf_len(json_simple_patch); l>= 0; l--) {
+    for (int l = cbuf_len(json_simple_patch) - 1; l >= 0; l--) {
         char c = cbuf_get(json_simple_patch)[l];
         if (c == '}') {
             // Truncate and add a string, as there is not a function to insert a char into a cbuf
@@ -712,15 +715,15 @@ static cbuf* yang_patch_strip_after_last_slash(cbuf* val)
       cbuf* val_tmp = cbuf_new();
       cbuf_append_str(val_tmp, cbuf_get(val));
       int idx = cbuf_len(val_tmp);
-      for (int l = cbuf_len(val_tmp); l>= 0; l--) {
+      for (int l = cbuf_len(val_tmp) - 1; l>= 0; l--) {
           if (cbuf_get(val_tmp)[l] == '/') {
               idx = l;
               break;
           }
       }
-      cbuf* val_tmp_2 = cbuf_trunc(val_tmp, idx + 1);
-      if (val_tmp_2 == NULL)
+      if (idx == cbuf_len(val_tmp)) // Didn't find a slash in the loop above
           return NULL;
+      cbuf* val_tmp_2 = cbuf_trunc(val_tmp, idx + 1);
       if (cbuf_append_str(cb, cbuf_get(val_tmp_2)) < 0)
           return NULL;
       cbuf_free(val_tmp);
