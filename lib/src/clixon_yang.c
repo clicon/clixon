@@ -340,11 +340,13 @@ yang_flag_reset(yang_stmt *ys,
  * @param[in]  ys     Yang statement
  * @retval     xpath  xpath should evaluate to true at validation
  * @retval     NULL   Not set
+ * Note xpath context is PARENT which is different from when actual when child which is 
+ * child itself
  */
 char*
 yang_when_xpath_get(yang_stmt *ys)
 {
-    return  ys->ys_when_xpath;
+    return ys->ys_when_xpath;
 }
 
 /*! Set yang xpath and namespace context for "when"-associated augment

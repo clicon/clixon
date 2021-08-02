@@ -1139,10 +1139,11 @@ xml_default1(yang_stmt *yt,
     int        retval = -1;
     yang_stmt *yc;
     cxobj     *xc;
-    int        top=0; /* Top symbol (set default namespace) */
+    int        top = 0; /* Top symbol (set default namespace) */
     int        create = 0;
     char      *xpath;
-    int        nr;
+    int        nr = 0;
+    int        hit = 0;
 
     if (xt == NULL){ /* No xml */
 	clicon_err(OE_XML, EINVAL, "No XML argument");
@@ -1181,12 +1182,10 @@ xml_default1(yang_stmt *yt,
 	    case Y_CONTAINER:
 		if (yang_find(yc, Y_PRESENCE, NULL) == NULL){
 		    /* Check when statement from uses or augment */
-		    if ((xpath = yang_when_xpath_get(yc)) != NULL){
-			if ((nr = xpath_vec_bool(xt, yang_when_nsc_get(yc), "%s", xpath)) < 0)
-			    goto done;
-			if (nr == 0)
-			    break; /* Do not create default if xpath fails */
-		    }
+		    if (yang_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
+			goto done;
+		    if (hit && nr == 0)
+			break; /* Do not create default if xpath fails */
 		    /* If this is non-presence, (and it does not exist in xt) call 
 		     * recursively and create nodes if any default value exist first. 
 		     * Then continue and populate?
@@ -2257,3 +2256,70 @@ xml_copy_marked(cxobj *x0,
     return retval;
 }
 
+/*! Check when condition 
+ * 
+ * @param[in]   h    Clixon handle
+ * @param[in]   xn   XML node, can be NULL, in which case it is added as dummy under xp
+ * @param[in]   xp   XML parent
+ * @param[in]   ys   Yang node
+ * First variants of WHEN: Augmented and uses when using special info in node
+ * Second variant of when, actual "when" sub-node RFC 7950 Sec 7.21.5. Can only be one.
+ */
+int
+yang_when_xpath(cxobj        *xn,
+		cxobj        *xp,
+		yang_stmt    *yn,
+		int          *hit,
+		int          *nrp,
+		char        **xpathp)
+{
+    int        retval = 1;
+    yang_stmt *yc;
+    char      *xpath = NULL;
+    cxobj     *x = NULL;
+    int        nr = 0;
+    cvec      *nsc = NULL;
+    int        xmalloc = 0;   /* ugly help variable to clean temporary object */
+    int        nscmalloc = 0; /* ugly help variable to remove */
+
+    /* First variant */
+    if ((xpath = yang_when_xpath_get(yn)) != NULL){
+	x = xp;
+	nsc = yang_when_nsc_get(yn);
+	*hit = 1;
+    }
+    /* Second variant */
+    else if ((yc = yang_find(yn, Y_WHEN, NULL)) != NULL){
+	xpath = yang_argument_get(yc); /* "when" has xpath argument */
+	/* Create dummy */
+	if (xn == NULL){
+	    if ((x = xml_new(yang_argument_get(yn), xp, CX_ELMNT)) == NULL)
+		goto done;
+	    xml_spec_set(x, yn);
+	    xmalloc++;
+	}
+	else
+	    x = xn;
+	if (xml_nsctx_yang(yn, &nsc) < 0)
+	    goto done;
+	nscmalloc++;
+	*hit = 1;
+    }
+    else
+	*hit = 0;
+    if (x && xpath){
+	if ((nr = xpath_vec_bool(x, nsc, "%s", xpath)) < 0)
+	    goto done;
+    }
+    if (nrp)
+	*nrp = nr;
+    if (xpathp)
+	*xpathp = xpath;
+    retval = 0;
+ done:
+    if (xmalloc)
+	xml_purge(x);
+    if (nsc && nscmalloc)
+	xml_nsctx_free(nsc);
+    return retval;
+}
