@@ -85,7 +85,7 @@
  * Response contains one of:                           
  *     Content-Type: application/yang-data+xml    
  *     Content-Type: application/yang-data+json  
- * NOTE: If a retrieval request for a data resource representing a YANG leaf-
+ * @note: If a retrieval request for a data resource representing a YANG leaf-
  * list or list object identifies more than one instance, and XML
  * encoding is used in the response, then an error response containing a
  * "400 Bad Request" status-line MUST be returned by the server.
@@ -217,16 +217,6 @@ api_data_get2(clicon_handle  h,
     /* Normal return, no error */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
-    if (head){
-	/* Same headers as the GET, but no body */
-	if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
-	    goto done;
-	if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
-	    goto done;
-	if (restconf_reply_send(req, 200, NULL) < 0)
-	    goto done;
-	goto ok;
-    }
     if (xpath==NULL || strcmp(xpath,"/")==0){ /* Special case: data root */
 	switch (media_out){
 	case YANG_DATA_XML:
@@ -295,8 +285,9 @@ api_data_get2(clicon_handle  h,
 	goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
 	goto done;
-    if (restconf_reply_send(req, 200, cbx) < 0)
+    if (restconf_reply_send(req, 200, cbx, head) < 0)
 	goto done;
+    cbx = NULL;
  ok:
     retval = 0;
  done:
@@ -489,13 +480,13 @@ api_operations_get(clicon_handle h,
     default:
 	break;
     }
-
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
 	goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
 	goto done;
-    if (restconf_reply_send(req, 200, cbx) < 0)
+    if (restconf_reply_send(req, 200, cbx, 0) < 0)
 	goto done;
+    cbx = NULL;
     // ok:
     retval = 0;
  done:

@@ -112,6 +112,7 @@ modstate_diff_free(modstate_diff_t *md)
  *
  * Load RFC7895 yang spec, module-set-id, etc.
  * @param[in]     h       Clicon handle
+ * @see netconf_module_load
  */
 int
 yang_modules_init(clicon_handle h)
@@ -328,7 +329,7 @@ yang_modules_state_get(clicon_handle    h,
 	 * Note, list is not sorted since it is state (should not be)
 	 */
 	if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, &x, NULL) < 0){
-	    if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
+	    if (xret && netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
 		goto done;
 	    goto fail;
 	}

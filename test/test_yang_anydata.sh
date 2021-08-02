@@ -174,10 +174,9 @@ EOF
 	    new "start backend -s init -f $cfg -- -sS $fstate"
 	    start_backend -s init -f $cfg -- -sS $fstate
 	fi
-
-	new "waiting"
-	wait_backend
     fi
+    new "wait backend"
+    wait_backend
 
     if [ $RC -ne 0 ]; then
 	new "kill old restconf daemon"
@@ -215,25 +214,25 @@ EOF
     expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
 
     new "restconf get config"
-    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=config)" 0 "HTTP/1.1 200 OK" "$XML"
-    
-    # Save partial state in state file with unknown removed (positive test)
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=config)" 0 "HTTP/$HVER 200" "$XML"
+
+    new "Save partial state with unknowns removed in state file $fstate"
     echo "$STATE1" > $fstate 
 
     new "Get state (positive test)"
     expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$STATE1</data></rpc-reply>]]>]]>"
 
     new "restconf get state(positive)"
-    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/1.1 200 OK" "$STATE1"
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/$HVER 200" "$STATE1"
 
-    # full state with unknowns
+    new "Save full state with unknowns in state file $fstate"
     echo "$STATE0" > $fstate 
 
     new "Get state (negative test)"
     expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"></get></rpc>]]>]]>" "error-message>Failed to find YANG spec of XML node: u5 with parent: sb in namespace: urn:example:unknown. Internal error, state callback returned invalid XML from plugin: example_backend</error-message>"
 
 	new "restconf get state(negative)"
-    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/1.1 412 Precondition Failed" "<error-tag>operation-failed</error-tag><error-info><bad-element>u5</bad-element></error-info>"
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/$HVER 412" "<error-tag>operation-failed</error-tag><error-info><bad-element>u5</bad-element></error-info>"
 
     # RPC:s take "not-supported" as OK: syntax OK and according to mdeol, just not implemented in
     # server. But "unknown-element" as truly unknwon.

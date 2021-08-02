@@ -637,6 +637,8 @@ CPP
 wwwdir
 enable_optyangs
 with_libxml2
+HAVE_LIBNGHTTP2
+HAVE_LIBEVHTP
 with_restconf
 LINKAGE
 SH_SUFFIX
@@ -1369,13 +1371,14 @@ Optional Features:
                           curl
   --disable-evhtp         Disable evhtp for native restconf http/1, default:
                           yes
-  --enable-nghttp2        Enable nghttp2 for native restconf http/2, default:
-                          no
+  --disable-nghttp2       Disable nghttp2 for native restconf http/2, default:
+                          yes
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-cligen=dir       Use CLIGEN installation in this dir
+  --with-restconf=native  Integration with embedded web server (DEFAULT)
   --with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg
                           nginx (default)
   --with-restconf=native  Integrate restconf with embedded http server
@@ -2262,7 +2265,7 @@ ac_configure="$SHELL $ac_aux_dir/configure"  # Please don't use this var.
 
 
 CLIXON_VERSION_MAJOR="5"
-CLIXON_VERSION_MINOR="2"
+CLIXON_VERSION_MINOR="3"
 CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
@@ -3356,6 +3359,10 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
  # Set to native or fcgi -> compile apps/restconf
+HAVE_LIBEVHTP=false
+   # consider using neutral constant such as with-http1
+HAVE_LIBNGHTTP2=false
+ # consider using neutral constant such as with-http2
 
 
 # Home dir for web user, such as nginx fcgi sockets
@@ -4989,15 +4996,17 @@ fi
 # This is for restconf.  There are three options:
 # --without-restconf     No restconf support
 # --with-restconf=fcgi   FCGI interface for separate web reverse proxy like nginx
-# --with-restconf=native Integration with embedded web server
+# --with-restconf=native Integration with embedded web server (DEFAULT)
 
 # Check whether --with-restconf was given.
 if test "${with_restconf+set}" = set; then :
   withval=$with_restconf;
 else
-  with_restconf=fcgi
+  with_restconf=native
 fi
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: restconf mode ${with_restconf}" >&5
+$as_echo "restconf mode ${with_restconf}" >&6; }
 # Actions for each specific package
 if test "x${with_restconf}" == xfcgi; then
    # Lives in libfcgi-dev
@@ -5057,6 +5066,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 elif test "x${with_restconf}" == xnative; then
+
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
 $as_echo_n "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
 if ${ac_cv_lib_ssl_OPENSSL_init_ssl_+:} false; then :
@@ -5280,6 +5290,7 @@ else
   as_fn_error $? "libevhtp missing" "$LINENO" 5
 fi
 
+      HAVE_LIBEVHTP=true
    fi
 
    # Check if nghttp2 is enabled for http/2
@@ -5293,7 +5304,7 @@ if test "${enable_nghttp2+set}" = set; then :
           fi
 
 else
-   ac_enable_nghttp2=no
+   ac_enable_nghttp2=yes
 fi
 
    { $as_echo "$as_me:${as_lineno-$LINENO}: result: checking nghttp2 is enabled: $ac_enable_nghttp2" >&5
@@ -5360,6 +5371,7 @@ else
   as_fn_error $? "nghttp2 missing" "$LINENO" 5
 fi
 
+      HAVE_LIBNGHTTP2=true
    fi
 
 $as_echo "#define WITH_RESTCONF_NATIVE 1" >>confdefs.h
@@ -5560,7 +5572,7 @@ fi
 fi
 
 #
-for ac_func in inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort getpeereid setns
+for ac_func in inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort getpeereid setns getresuid
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"

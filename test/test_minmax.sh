@@ -112,10 +112,10 @@ if [ $BE -ne 0 ]; then
     new "start backend -s init -f $cfg"
     # start new backend
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "minmax: minimal: 1x a1,b1 (should be [1:2]"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\">

@@ -101,32 +101,37 @@ static int _clicon_sig_child = 0;
 static int _clicon_sig_ignore = 0;
 
 /*! For signal handlers: instead of doing exit, set a global variable to exit
- * Status is then checked in event_loop.
+ * - zero means dont exit, 
+ * - one means exit, 
+ * - more than one means decrement and make another event loop
+ * Status is checked in event_loop and decremented by one.
+ * When it reaches one the exit is made.
  * Note it maybe would be better to do use on a handle basis, but a signal
  * handler is global
  */
 int
-clicon_exit_set(void)
+clixon_exit_set(int nr)
 {
-    _clicon_exit++;
-    return 0;
-}
-
-/*! Set exit to 0
- */
-int
-clicon_exit_reset(void)
-{
-    _clicon_exit = 0;
+    _clicon_exit = nr;
     return 0;
 }
 
 /*! Get the status of global exit variable, usually set by signal handlers
  */
 int
-clicon_exit_get(void)
+clixon_exit_get(void)
 {
     return _clicon_exit;
+}
+
+/*! If > 1 decrement exit counter 
+ */
+static int
+clixon_exit_decr(void)
+{
+    if (_clicon_exit > 1)
+	_clicon_exit--;
+    return 0;
 }
 
 int
@@ -340,7 +345,7 @@ clixon_event_loop(clicon_handle h)
     fd_set             fdset;
     int                retval = -1;
 
-    while (!clicon_exit_get()){
+    while (clixon_exit_get() != 1){
 	FD_ZERO(&fdset);
 	if (clicon_sig_child_get()){
 	    /* Go through processes and wait for child processes */
@@ -361,8 +366,9 @@ clixon_event_loop(clicon_handle h)
 	}
 	else
 	    n = select(FD_SETSIZE, &fdset, NULL, NULL, NULL);
-	if (clicon_exit_get())
+	if (clixon_exit_get() == 1){
 	    break;
+	}
 	if (n == -1) {
 	    if (errno == EINTR){
 		/* Signals are checked and are in three classes:
@@ -376,7 +382,7 @@ clixon_event_loop(clicon_handle h)
 		 * (3) Other signals result in an error and return -1.
 		 */
 		clicon_debug(1, "%s select: %s", __FUNCTION__, strerror(errno));
-		if (clicon_exit_get()){
+		if (clixon_exit_get() == 1){
 		    clicon_err(OE_EVENTS, errno, "select");
 		    retval = 0;
 		}
@@ -410,8 +416,9 @@ clixon_event_loop(clicon_handle h)
 	}
 	_ee_unreg = 0;
 	for (e=ee; e; e=e_next){
-	    if (clicon_exit_get())
+	    if (clixon_exit_get() == 1){
 		break;
+	    }
 	    e_next = e->e_next;
 	    if(e->e_type == EVENT_FD && FD_ISSET(e->e_fd, &fdset)){
 		clicon_debug(2, "%s: FD_ISSET: %s", __FUNCTION__, e->e_string);
@@ -426,8 +433,10 @@ clixon_event_loop(clicon_handle h)
 		}
 	    }
 	}
+	clixon_exit_decr(); /* If exit is set and > 1, decrement it (and exit when 1) */
 	continue;
       err:
+	clicon_debug(1, "%s err", __FUNCTION__);
 	break;
     }
     clicon_debug(1, "%s done:%d", __FUNCTION__, retval);

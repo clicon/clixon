@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Advanced union types and generated code
 # and enum w values
-# The test is run twice, first with dbcache turned on, then turned off.
+# The test is run three times, with dbcache turned on, cache off and zero-copy
 # It is the only test with dbcache off.
 
 # Magic line must be first in script (see README.md)
@@ -47,9 +47,9 @@ module example3{
 EOF
 cat <<EOF > $fyang2
 module example2{
-  import example3 { prefix ex3; }
   namespace "urn:example:example2";
   prefix ex2;
+  import example3 { prefix ex3; }
   grouping gr2 {
     leaf talle{
       type ex3:t;
@@ -240,10 +240,10 @@ EOF
 	fi
 	new "start backend -s init -f $cfg"
 	start_backend -s init -f $cfg
-
-	new "waiting"
-	wait_backend
     fi
+
+    new "wait backend"
+    wait_backend
 
     new "cli set transitive string. type is alpha followed by number and is defined in three levels of modules"
     expectpart "$($clixon_cli -1f $cfg -l o set c talle x99)" 0 '^$'

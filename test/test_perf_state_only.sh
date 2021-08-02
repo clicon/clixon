@@ -107,10 +107,10 @@ if [ $BE -ne 0 ]; then
 
     new "start backend -s init -f $cfg -- -sS $fstate"
     start_backend -s init -f $cfg -- -sS $fstate
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 if [ $RC -ne 0 ]; then
 
@@ -119,10 +119,10 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 new "cli get large config"
 # baseline on thinkpad i5-3320M CPU @ 2.60GHz and 500K entries: 39.71s

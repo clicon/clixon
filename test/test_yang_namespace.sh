@@ -72,10 +72,10 @@ if [ $BE -ne 0 ]; then
 
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
@@ -84,9 +84,10 @@ if [ $RC -ne 0 ]; then
     new "start restconf daemon"
     start_restconf -f $cfg
 
-    new "waiting"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 new "netconf set x in example1"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon1\">42</x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -104,21 +105,21 @@ new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "restconf set x in example1"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example1:x":42}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example1:x":42}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
 
 new "restconf get config example1"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example1:x)" 0 "HTTP/1.1 200 OK" '{"example1:x":42}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example1:x)" 0 "HTTP/$HVER 200" '{"example1:x":42}'
 
 new "restconf set x in example2"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example2:x":{"y":99}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example2:x":{"y":99}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
 
 # XXX GET ../example1:x is translated to select=/x which gets both example1&2
 #new "restconf get config example1"
-#expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example1:x)" 0 "HTTP/1.1 200 OK" '{"example1:x":42}'
+#expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example1:x)" 0 "HTTP/$HVER 200" '{"example1:x":42}'
 
 # XXX GET ../example2:x is translated to select=/x which gets both example1&2
 #new "restconf get config example2"
-#expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example2:x)" 0 "HTTP/1.1 200 OK" '{"example2:x":{"y":42}}'
+#expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example2:x)" 0 "HTTP/$HVER 200" '{"example2:x":{"y":42}}'
 
 new "restconf get config example1 and example2"
 ret=$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)

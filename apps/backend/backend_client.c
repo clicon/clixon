@@ -67,8 +67,8 @@
 #include <clixon/clixon.h>
 
 #include "clixon_backend_handle.h"
-#include "backend_plugin.h"
-#include "backend_commit.h"
+#include "clixon_backend_plugin.h"
+#include "clixon_backend_commit.h"
 #include "backend_client.h"
 #include "backend_handle.h"
 
@@ -238,7 +238,7 @@ client_get_streams(clicon_handle   h,
     cprintf(cb,"</%s>", top);
 
     if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, &x, NULL) < 0){
-	if (netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
+	if (xret && netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
 	    goto done;
 	goto fail;
     }

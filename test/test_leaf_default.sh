@@ -118,10 +118,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend  -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "get config"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>]]>]]>$"
@@ -172,10 +172,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend  -s startup -f $cfg"
     start_backend -s startup -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "get startup config"
 # Should have all defaults, except r1 that is set to 99
@@ -231,10 +231,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend  -s startup -f $cfg"
     start_backend -s startup -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "get startup config with presence"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>]]>]]>$"
@@ -261,10 +261,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend  -s startup -f $cfg"
     start_backend -s startup -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "get startup config with list default"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML<xs-config xmlns=\"urn:example:clixon\"><x><name>a</name><y><inside>false</inside></y><outside>false</outside></x></xs-config></data></rpc-reply>]]>]]>$"

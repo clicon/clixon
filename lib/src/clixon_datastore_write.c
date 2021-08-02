@@ -452,13 +452,14 @@ text_modify(clicon_handle       h,
 		 * Check if namespace exists in x0 parent
 		 * if not add new binding and replace in x0.
 		 * See also xmlns copying of attributes in the body section below
+		 * Note that this may add "unnecessary" namespace declarations
 		 */
 		if (assign_namespace_element(x1, x0, x0p) < 0)
 		    goto done;
 		changed++;
 		if (op==OP_NONE)
 		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
-		if (x1bstr){ /* empty type does not have body */
+		if (x1bstr){ /* empty type does not have body */ /* XXX Here x0 = <b></b> */
 		    if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
 			goto done; 
 		}
@@ -487,7 +488,6 @@ text_modify(clicon_handle       h,
 		    if (strcmp(restype, "enumeration") == 0 ||
 			strcmp(restype, "bits") == 0)
 			x1bstr = clixon_trim2(x1bstr, " \t\n"); 
-
 		    /* If origin body has namespace definitions, copy them. The reason is that
 		     * some bodies rely on namespace prefixes, such as NACM path, but there is 
 		     * no way we can know this here.
@@ -496,26 +496,29 @@ text_modify(clicon_handle       h,
 		     * is for element symbols)
 		     * Oh well.
 		     */
-		    if (assign_namespace_body(x1, x1bstr, x0) < 0)
+		    if (assign_namespace_body(x1, x0) < 0)
 			goto done;
 		}
-		if ((x0b = xml_body_get(x0)) != NULL){
-		    x0bstr = xml_value(x0b);
-		    if (x0bstr==NULL || strcmp(x0bstr, x1bstr)){
-			if ((op != OP_NONE) && !permit && xnacm){
-			    if ((ret = nacm_datanode_write(h, x1, x1t,
-							   x0bstr==NULL?NACM_CREATE:NACM_UPDATE,
-							   username, xnacm, cbret)) < 0)
-				goto done;
-			    if (ret == 0)
-				goto fail;
-			}
-			if (xml_value_set(x0b, x1bstr) < 0)
+		/* XXX here x1bstr is checked for null, while adding an empty string above */
+		if ((x0b = xml_body_get(x0)) == NULL && x1bstr && strlen(x1bstr)){
+		    if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
+			goto done;
+		}
+		x0bstr = xml_value(x0b);
+		if (x0bstr==NULL || strcmp(x0bstr, x1bstr)){
+		    if ((op != OP_NONE) && !permit && xnacm){
+			if ((ret = nacm_datanode_write(h, x1, x1t,
+						       x0bstr==NULL?NACM_CREATE:NACM_UPDATE,
+						       username, xnacm, cbret)) < 0)
 			    goto done;
-			/* If a default value ies replaced, then reset default flag */
-			if (xml_flag(x0, XML_FLAG_DEFAULT))
-			    xml_flag_reset(x0, XML_FLAG_DEFAULT);
+			if (ret == 0)
+			    goto fail;
 		    }
+		    if (xml_value_set(x0b, x1bstr) < 0)
+			goto done;
+		    /* If a default value ies replaced, then reset default flag */
+		    if (xml_flag(x0, XML_FLAG_DEFAULT))
+			xml_flag_reset(x0, XML_FLAG_DEFAULT);
 		}
 	    } /* x1bstr */
 	    if (changed){ 

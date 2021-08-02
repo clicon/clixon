@@ -74,10 +74,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend  -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 # This is the base XML with three values in the server: notset, default, other
 XML='<c xmlns="urn:example:default"><x><k>default</k><y>42</y></x><x><k>notset</k></x><x><k>other</k><y>99</y></x></c>'

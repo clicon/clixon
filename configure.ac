@@ -49,7 +49,7 @@ AC_INIT(lib/clixon/clixon.h.in)
 AC_CONFIG_AUX_DIR(config-aux)
 
 CLIXON_VERSION_MAJOR="5"
-CLIXON_VERSION_MINOR="2"
+CLIXON_VERSION_MINOR="3"
 CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
@@ -96,6 +96,8 @@ AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(LINKAGE)
 AC_SUBST(with_restconf) # Set to native or fcgi -> compile apps/restconf
+AC_SUBST(HAVE_LIBEVHTP,false)   # consider using neutral constant such as with-http1
+AC_SUBST(HAVE_LIBNGHTTP2,false) # consider using neutral constant such as with-http2
 AC_SUBST(with_libxml2)  
 AC_SUBST(enable_optyangs) 
 # Home dir for web user, such as nginx fcgi sockets
@@ -204,11 +206,12 @@ AC_CHECK_LIB(cligen, cligen_init,, AC_MSG_ERROR([CLIgen missing. Try: git clone 
 # This is for restconf.  There are three options:
 # --without-restconf     No restconf support
 # --with-restconf=fcgi   FCGI interface for separate web reverse proxy like nginx
-# --with-restconf=native Integration with embedded web server
+# --with-restconf=native Integration with embedded web server (DEFAULT)
 AC_ARG_WITH([restconf],
-	AS_HELP_STRING([--with-restconf=fcgi],[FCGI interface for stand-alone web rev-proxy eg nginx (default)]),
+	AS_HELP_STRING([--with-restconf=native],[Integration with embedded web server (DEFAULT)]),
 	,
-	[with_restconf=fcgi])
+	[with_restconf=native])
+AC_MSG_RESULT(restconf mode ${with_restconf})
 # Actions for each specific package
 if test "x${with_restconf}" == xfcgi; then
    # Lives in libfcgi-dev
@@ -216,6 +219,7 @@ if test "x${with_restconf}" == xfcgi; then
    AC_DEFINE(WITH_RESTCONF_FCGI, 1, [Use fcgi restconf mode]) # For c-code that cant use strings
    AC_DEFINE_UNQUOTED(WWWDIR, "$wwwdir", [WWW dir for fcgi stuff / nginx])
 elif test "x${with_restconf}" == xnative; then
+
    AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
    AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
    # Check if evhtp is enabled for http/1
@@ -238,21 +242,23 @@ elif test "x${with_restconf}" == xnative; then
       ]])
       AC_CHECK_LIB(event, event_init,, AC_MSG_ERROR([libevent missing]))
       AC_CHECK_LIB(evhtp, evhtp_new,, AC_MSG_ERROR([libevhtp missing]),[-levent -lssl -lcrypto]) 
+      HAVE_LIBEVHTP=true 
    fi		  
 
    # Check if nghttp2 is enabled for http/2
-   AC_ARG_ENABLE(nghttp2, AS_HELP_STRING([--enable-nghttp2],[Enable nghttp2 for native restconf http/2, default: no]),[
+   AC_ARG_ENABLE(nghttp2, AS_HELP_STRING([--disable-nghttp2],[Disable nghttp2 for native restconf http/2, default: yes]),[
 	  if test "$enableval" = no; then
 	      ac_enable_nghttp2=no
 	  else	      
 	      ac_enable_nghttp2=yes
           fi
         ],
-	[ ac_enable_nghttp2=no])
+	[ ac_enable_nghttp2=yes])
    AC_MSG_RESULT(checking nghttp2 is enabled: $ac_enable_nghttp2)
    if test "$ac_enable_nghttp2" = "yes"; then
       AC_CHECK_HEADERS(nghttp2/nghttp2.h,[], AC_MSG_ERROR([nghttp2 missing]))
       AC_CHECK_LIB(nghttp2, nghttp2_session_server_new,, AC_MSG_ERROR([nghttp2 missing]))
+      HAVE_LIBNGHTTP2=true 
    fi    
    AC_DEFINE(WITH_RESTCONF_NATIVE, 1, [Use native restconf mode]) # For c-code that cant use strings
 elif test "x${with_restconf}" == xno; then
@@ -294,7 +300,7 @@ if test "${with_libxml2}"; then
 fi 
 
 #
-AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort getpeereid setns)
+AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort getpeereid setns getresuid)
 
 # Checks for getsockopt options for getting unix socket peer credentials on
 # Linux

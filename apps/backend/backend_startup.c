@@ -66,9 +66,9 @@
 #include <clixon/clixon.h>
 
 #include "clixon_backend_transaction.h"
-#include "backend_plugin.h"
+#include "clixon_backend_plugin.h"
 #include "backend_handle.h"
-#include "backend_commit.h"
+#include "clixon_backend_commit.h"
 #include "backend_startup.h"
 
 /*! Merge db1 into db2 without commit 

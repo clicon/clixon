@@ -97,20 +97,21 @@ EOF
 	fi
 	new "start backend -s init -f $cfg"
 	start_backend -s init -f $cfg
-
-	new "waiting"
-	wait_backend
     fi
+
+    new "wait backend"
+    wait_backend
+
     if [ $RC -ne 0 ]; then
 	new "kill old restconf daemon"
 	stop_restconf_pre
 
 	new "start restconf daemon"
 	start_restconf -f $cfg
-
-	new "waiting"
-	wait_restconf
     fi
+
+    new "wait restconf"
+    wait_restconf
 
     if $getp; then
 	# default is read allowed so this should always succeed.

@@ -99,6 +99,19 @@ DEFAULTHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capab
 # -i : Include HTTP response headers
 # -k : insecure 
 : ${CURLOPTS:="-Ssik"}
+# Set HTTP version 1.1 or 2
+if ${HAVE_LIBNGHTTP2}; then
+    HVER=2
+    if ${HAVE_LIBEVHTP}; then
+	# This is if evhtp is enabled (unset proto=HTTP_2 in restconf_accept_client)
+	CURLOPTS="${CURLOPTS} --http2"
+    else
+	# This is if evhtp is disabled (set proto=HTTP_2 in restconf_accept_client)
+	CURLOPTS="${CURLOPTS} --http2-prior-knowledge"
+    fi
+else
+    HVER=1.1
+fi
 
 # Wait after daemons (backend/restconf) start. See mem.sh for valgrind
 if [ "$(uname -m)" = "armv7l" ]; then
@@ -114,7 +127,12 @@ DEMSLEEP=.2
 let DEMLOOP=5*DEMWAIT
 
 # RESTCONF protocol, eg http or https
-: ${RCPROTO:=http}
+
+if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+    : ${RCPROTO:=http}
+else
+    : ${RCPROTO:=https}
+fi
 
 # www user (on linux typically www-data, freebsd www)
 # Start restconf user, can be root which is dropped to wwwuser
@@ -208,6 +226,7 @@ fi
 # 1: auth-type (one of none, client-cert, user)
 # 2: pretty (if true pretty-print restconf return values)
 # Note, if AUTH=none then FEATURE clixon-restconf:allow-auth-none must be enabled
+# Note if https, check if server cert/key exists, if not generate them
 function restconf_config()
 {
     AUTH=$1
@@ -216,10 +235,20 @@ function restconf_config()
     if [ $RCPROTO = http ]; then
 	echo "<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
     else
-	echo "<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>/etc/ssl/certs/clixon-server-crt.pem</server-cert-path><server-key-path>/etc/ssl/private/clixon-server-key.pem</server-key-path><server-ca-cert-path>/etc/ssl/certs/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
+	certdir=$dir/certs
+	if [ ! -f ${dir}/clixon-server-crt.pem ]; then
+	    certdir=$dir/certs
+	    test -d $certdir || mkdir $certdir
+	    srvcert=${certdir}/clixon-server-crt.pem
+	    srvkey=${certdir}/clixon-server-key.pem
+	    cacert=${certdir}/clixon-ca-crt.pem
+	    cakey=${certdir}/clixon-ca-key.pem
+	    cacerts $cakey $cacert
+	    servercerts $cakey $cacert $srvkey $srvcert
+	fi
+	echo "<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>${certdir}/clixon-server-crt.pem</server-cert-path><server-key-path>${certdir}/clixon-server-key.pem</server-key-path><server-ca-cert-path>${certdir}/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
     fi
 }
-
 
 # Some tests may set owner of testdir to something strange and quit, need
 # to reset to me
@@ -353,9 +382,10 @@ function stop_restconf_pre(){
 }
 
 # Stop restconf daemon after test
-# Two caveats in pkill:
+# Some problems with pkill:
 # 1) Dont use $clixon_restconf (dont work in valgrind)
 # 2) Dont use -u $WWWUSER since clixon_restconf may drop privileges.
+# 3) After fork, it seems to take some time before name is right
 function stop_restconf(){
     sudo pkill -f clixon_restconf
     if [ $valgrindtest -eq 3 ]; then 
@@ -368,18 +398,25 @@ function stop_restconf(){
 # @see start_restconf
 # Reasons for not working: if you run native is nginx running?
 # @note assumes port=80 if RCPROTO=http and port=443 if RCPROTO=https
+# Args:
+# 1: (optional) override RCPROTO with http or https
 function wait_restconf(){
-#    echo "curl $CURLOPTS $* $RCPROTO://localhost/restconf"
-    hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
+    if [ $# = 1 ]; then
+	myproto=$1
+    else
+	myproto=${RCPROTO}
+    fi
+#    echo "curl $CURLOPTS $* $myproto://localhost/restconf"
+    hdr=$(curl $CURLOPTS $* $myproto://localhost/restconf 2> /dev/null)
 #    echo "hdr:\"$hdr\""
     let i=0;
-    while [[ $hdr != *"200 OK"* ]]; do
+    while [[ $hdr != *"200"* ]]; do
 #	echo "wait_restconf $i"
 	if [ $i -ge $DEMLOOP ]; then
 	    err1 "restconf timeout $DEMWAIT seconds"
 	fi
 	sleep $DEMSLEEP
-	hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
+	hdr=$(curl $CURLOPTS $* $myproto://localhost/restconf 2> /dev/null)
 #	echo "hdr:\"$hdr\""
 	let i++;
     done
@@ -412,6 +449,7 @@ function wait_restconf_stopped(){
 }
 
 # End of test, final tests before normal exit of test
+# Note this is a single test started by new, not a total test suite
 function endtest()
 {
     if [ $valgrindtest -eq 1 ]; then 
@@ -426,6 +464,12 @@ function new(){
     testi=`expr $testi + 1`
     testname=$1
     >&2 echo "Test $testi($testnr) [$1]"
+}
+
+# End of complete test-suite, eg a test file
+function endsuite()
+{
+    unset CURLOPTS
 }
 
 # Evaluate and return
@@ -480,7 +524,7 @@ function expectpart(){
 	  positive=false;
       elif [ $i -gt 1 ]; then
 #	   echo "echo \"$ret\" | grep --null -o \"$exp"\"
-	   match=$(echo "$ret" | grep --null -o "$exp") # XXX -EZo: -E cant handle {}
+	   match=$(echo "$ret" | grep --null -i -o "$exp") #-i ignore case XXX -EZo: -E cant handle {}
 	   r=$? 
 	   if $positive; then
 	       if [ $r != 0 ]; then

@@ -91,7 +91,7 @@ main(int    argc,
     /* Provide a clixon config-file, get a clixon handle */
     if ((h = clixon_client_init("$cfg")) == NULL)
        return -1;
-    /* Make a conenction over netconf or ssh/netconf */
+    /* Make a connection over netconf or ssh/netconf */
     if ((ch = clixon_client_connect(h, CLIXON_CLIENT_NETCONF)) == NULL)
        return -1;
 
@@ -137,19 +137,19 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 XML='<table xmlns="urn:example:clixon-client"><parameter><name>a</name><value>42</value></parameter></table>'
 
 # Add a set of entries using restconf
 new "POST the XML"
-expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data -d "$XML")" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data -d "$XML")" 0 "HTTP/$HVER 201"
 
 new "Check entries"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-client:table -H 'Accept: application/yang-data+xml')" 0 'HTTP/1.1 200 OK' "$XML"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-client:table -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" "$XML"
 
 new "Run $app"
 expectpart "$($app)" 0 '^42$'

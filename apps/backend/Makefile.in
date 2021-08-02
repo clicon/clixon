@@ -85,14 +85,15 @@ APPL	= clixon_backend
 APPSRC  = backend_main.c
 APPSRC += backend_socket.c
 APPSRC += backend_client.c
-APPSRC += backend_commit.c
-APPSRC += backend_plugin.c
 APPSRC += backend_plugin_restconf.c # Pseudo plugin for restconf daemon
 APPSRC += backend_startup.c
 APPOBJ  = $(APPSRC:.c=.o)
 
 # Accessible from plugin
-LIBSRC	= clixon_backend_transaction.c clixon_backend_handle.c
+LIBSRC	= clixon_backend_transaction.c
+LIBSRC += clixon_backend_handle.c
+LIBSRC += backend_commit.c
+LIBSRC += backend_plugin.c
 LIBOBJ	= $(LIBSRC:.c=.o)
 
 # Name of lib
@@ -143,7 +144,7 @@ uninstall:
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
 	rm -f $(DESTDIR)$(includedir)/clixon/*
 
-install-include: clixon_backend.h clixon_backend_handle.h clixon_backend_transaction.h
+install-include: clixon_backend.h clixon_backend_handle.h clixon_backend_transaction.h clixon_backend_plugin.h clixon_backend_commit.h
 	install -d -m 0755 $(DESTDIR)$(includedir)/clixon
 	install -m 0644 $^ $(DESTDIR)$(includedir)/clixon
 
@@ -151,7 +152,9 @@ install-include: clixon_backend.h clixon_backend_handle.h clixon_backend_transac
 .SUFFIXES: .c .o
 
 .c.o:
-	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$(APPL)\" $(CFLAGS) -c $<
+	# Note: CLIXON_CONFIG_SBINDIR is where clixon_restconf is believed to be installed, unless
+	# overruled by CLICON_RESTCONF_INSTALLDIR option
+	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$(APPL)\" -DCLIXON_CONFIG_SBINDIR=\"$(sbindir)\" $(CFLAGS) -c $<
 
 # Just link test programs
 test.c	:

@@ -189,7 +189,7 @@ xml_nsctx_get_prefix(cvec  *cvv,
 /*! Set or replace namespace in namespace context
  * @param[in] cvv       Namespace context
  * @param[in] prefix    Namespace prefix, or NULL for default
- * @param[in] ns	    Cached namespace to set (assume non-null?)
+ * @param[in] ns	Cached namespace to set (assume non-null?)
  * @retval    0         OK
  * @retval   -1         Error
  */
@@ -604,6 +604,8 @@ xmlns_set(cxobj *x,
  * @retval    -1         Error
  * @retval     0         No namespace found
  * @retval     1         Namespace found, prefix returned in prefixp
+ * @note a namespace can have two or more prefixes, this just returns the first
+ * @see xml2prefixexists to check a specific pair
  */
 int
 xml2prefix(cxobj *xn,
@@ -659,4 +661,5 @@ xml2prefix(cxobj *xn,
     retval = 1;
     goto done;
 }
+
 

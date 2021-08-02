@@ -50,7 +50,8 @@
 #include <sys/param.h>
 #include <unistd.h>
 #include <netinet/in.h>
- 
+#include <stddef.h>
+
 /* cligen */
 #include <cligen/cligen.h>
 
@@ -110,7 +111,9 @@ clicon_file_dirent(const char     *dir,
    struct dirent *dent;
    struct dirent *tmp;
    struct dirent *new = NULL;
-   struct dirent *dvecp = NULL;
+#if 0 /* revert of https://github.com/clicon/clixon/pull/238 */
+   int            direntStructSize;
+#endif
 
    *ent = NULL;
    nent = 0;
@@ -143,12 +146,23 @@ clicon_file_dirent(const char     *dir,
 	   if ((type & st.st_mode) == 0)
 	       continue;
        }
-       if ((tmp = realloc(new, (nent+1)*sizeof(*dvecp))) == NULL) {
+#if 0 /* revert of https://github.com/clicon/clixon/pull/238 */
+       direntStructSize = offsetof(struct dirent, d_name) + strlen(dent->d_name) + 1;
+       clicon_debug(1, "%s %u %u %lu", __FUNCTION__, nent, direntStructSize, sizeof(struct dirent));
+       if ((tmp = realloc(new, (nent+1)*direntStructSize)) == NULL) {
+#else
+	   if ((tmp = realloc(new, (nent+1)*sizeof(struct dirent))) == NULL) {
+#endif
 	   clicon_err(OE_UNIX, errno, "realloc");
 	   goto quit;
        }
        new = tmp;
+#if 0 /* revert of https://github.com/clicon/clixon/pull/238 */
+       clicon_debug(1, "%s memcpy(%p %p %u", __FUNCTION__, &new[nent], dent, direntStructSize);
+       memcpy(&new[nent], dent, direntStructSize); /* XXX Invalid write of size 8 */
+#else
        memcpy(&new[nent], dent, sizeof(*dent));
+#endif
        nent++;
 
    } /* while */

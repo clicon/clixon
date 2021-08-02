@@ -136,10 +136,10 @@ if [ $RC -ne 0 ]; then
       
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 new "netconf event stream discovery RFC8040 Sec 6.2"
 expecteof "$clixon_netconf -D $DBG -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"r:restconf-state/r:streams\" xmlns:r=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\"/></get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><restconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\"><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>true</replay-support><access><encoding>xml</encoding><location>https://localhost/streams/EXAMPLE</location></access></stream></streams></restconf-state></data></rpc-reply>]]>]]>"
@@ -152,11 +152,11 @@ expecteof "$clixon_netconf -D $DBG -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><ge
 new "2. Restconf RFC8040 stream testing"
 # 2.1 Stream discovery
 new "restconf event stream discovery RFC8040 Sec 6.2"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams)" 0 "HTTP/1.1 200 OK" '{"ietf-restconf-monitoring:streams":{"stream":\[{"name":"EXAMPLE","description":"Example event stream","replay-support":true,"access":\[{"encoding":"xml","location":"https://localhost/streams/EXAMPLE"}\]}\]}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams)" 0 "HTTP/$HVER 200" '{"ietf-restconf-monitoring:streams":{"stream":\[{"name":"EXAMPLE","description":"Example event stream","replay-support":true,"access":\[{"encoding":"xml","location":"https://localhost/streams/EXAMPLE"}\]}\]}'
 
 sleep $SLEEP2
 new "restconf subscribe RFC8040 Sec 6.3, get location"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=EXAMPLE/access=xml/location)" 0 "HTTP/1.1 200 OK" '{"ietf-restconf-monitoring:location":"https://localhost/streams/EXAMPLE"}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/streams/stream=EXAMPLE/access=xml/location)" 0 "HTTP/$HVER 200" '{"ietf-restconf-monitoring:location":"https://localhost/streams/EXAMPLE"}'
 
 sleep $SLEEP2
 # Restconf stream subscription RFC8040 Sec 6.3

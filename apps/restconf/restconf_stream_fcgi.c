@@ -190,7 +190,7 @@ restconf_stream_cb(int   s,
 	FCGX_FPrintF(r->out, "SHUTDOWN\r\n");
 	FCGX_FPrintF(r->out, "\r\n");
 	FCGX_FFlush(r->out);
-	clicon_exit_set(); 
+	clixon_exit_set(1); 
 	goto done;
     }
     if ((ret = clicon_msg_decode(reply, NULL, NULL, &xtop, NULL)) < 0)  /* XXX pass yang_spec */
@@ -269,8 +269,8 @@ restconf_stream(clicon_handle h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    cprintf(cb, "<rpc xmlns=\"%s\"><create-subscription xmlns=\"%s\"><stream>%s</stream>",
-	    NETCONF_BASE_NAMESPACE, EVENT_RFC5277_NAMESPACE, name);
+    cprintf(cb, "<rpc xmlns=\"%s\" %s><create-subscription xmlns=\"%s\"><stream>%s</stream>",
+	    NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR, EVENT_RFC5277_NAMESPACE, name);
     /* Print all fields */
     for (i=0; i<cvec_len(qvec); i++){
         cv = cvec_i(qvec, i);
@@ -304,7 +304,7 @@ restconf_stream(clicon_handle h,
 	goto done;
     if (restconf_reply_header(req, "X-Accel-Buffering", "no") < 0)
 	goto done;
-    if (restconf_reply_send(req, 201, NULL) < 0)
+    if (restconf_reply_send(req, 201, NULL, 0) < 0)
 	goto done;
     *sp = s;
  ok:
@@ -335,7 +335,7 @@ stream_checkuplink(int   s,
     clicon_debug(1, "%s", __FUNCTION__);
     if (FCGX_GetError(r->out) != 0){ /* break loop */
 	clicon_debug(1, "%s FCGX_GetError upstream", __FUNCTION__);
-	clicon_exit_set();
+	clixon_exit_set(1);
     }
     return 0;
 }
@@ -351,7 +351,7 @@ stream_timeout(int   s,
     clicon_debug(1, "%s", __FUNCTION__);
     if (FCGX_GetError(r->out) != 0){ /* break loop */
 	clicon_debug(1, "%s FCGX_GetError upstream", __FUNCTION__);
-	clicon_exit_set();
+	clixon_exit_set(1);
     }
     else{
 	gettimeofday(&t, NULL);
@@ -378,7 +378,7 @@ api_stream(clicon_handle h,
 {
     int            retval = -1;
     FCGX_Request  *rfcgi = (FCGX_Request *)req; /* XXX */
-    char          *path;
+    char          *path = NULL;
     char          *method;
     char         **pvec = NULL;
     int            pn;
@@ -397,7 +397,8 @@ api_stream(clicon_handle h,
 #endif
 
     clicon_debug(1, "%s", __FUNCTION__);
-    path = restconf_uripath(h);
+    if ((path = restconf_uripath(h)) == NULL)
+	goto done;
     /* XXX see restconf_config_init access directly */
     pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
@@ -484,7 +485,7 @@ api_stream(clicon_handle h,
 	    clixon_event_unreg_fd(rfcgi->listen_sock,
 				  restconf_stream_cb);
 	    clixon_event_unreg_timeout(stream_timeout, (void*)req);
-	    clicon_exit_reset();
+	    clixon_exit_set(0); /* reset */
 #ifdef STREAM_FORK
 	    FCGX_Finish_r(rfcgi);
 	    FCGX_Free(rfcgi, 0);	    
@@ -521,5 +522,7 @@ api_stream(clicon_handle h,
 	cbuf_free(cb);
     if (cbret)
 	cbuf_free(cbret);
+    if (path)
+	free(path);
     return retval;
 }

@@ -23,8 +23,8 @@ NEWXML='<a2 xmlns="urn:example:a">new version</a2>'
 cat <<EOF > $fyangA0
 module A{
   prefix a;
-  revision 0814-01-28;
   namespace "urn:example:a";
+  revision 0814-01-28;
   leaf a0{
     type string;
   }
@@ -38,9 +38,9 @@ EOF
 cat <<EOF > $fyangA1
 module A{
   prefix a;
+  namespace "urn:example:a";
   revision 2019-01-01;
   revision 0814-01-28;
-  namespace "urn:example:a";
   /*  leaf a0 has been removed */
   leaf a1{
     description "exists in both versions";

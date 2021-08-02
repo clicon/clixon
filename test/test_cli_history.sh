@@ -46,10 +46,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "cli read and add entry to existing history"
 expecteof "$clixon_cli -f $cfg" 0 "example 42" "data"

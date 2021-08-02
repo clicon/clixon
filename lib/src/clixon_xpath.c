@@ -239,7 +239,6 @@ xpath_tree_print(FILE       *f,
  * @param[in]  xs    XPATH tree
  * @param[out] xpath XPath string as CLIgen buf
  * @see xpath_tree_print
- * @note XXX Not complete 
  */
 int
 xpath_tree2cbuf(xpath_tree *xs,
@@ -247,6 +246,7 @@ xpath_tree2cbuf(xpath_tree *xs,
 {
     int   retval = -1;
 
+    /* 1. Before first child */
     switch (xs->xs_type){
     case XP_ABSPATH:
 	if (xs->xs_int == A_DESCENDANT_OR_SELF)
@@ -283,15 +283,27 @@ xpath_tree2cbuf(xpath_tree *xs,
     default:
 	break;
     }
+    /* 2. First child */
     if (xs->xs_c0 && xpath_tree2cbuf(xs->xs_c0, xcb) < 0)
 	goto done;
+    /* 3. Between first and second child */
     switch (xs->xs_type){
     case XP_AND: /* and or */
     case XP_ADD: /* div mod + * - */
-    case XP_RELEX: /* !=, >= <= < > = */
-    case XP_UNION:
 	if (xs->xs_c1)
 	    cprintf(xcb, " %s ", clicon_int2str(xpopmap, xs->xs_int));
+	break;
+    case XP_RELEX: /* !=, >= <= < > = */
+    case XP_UNION: /* | */
+	if (xs->xs_c1)
+	    cprintf(xcb, "%s", clicon_int2str(xpopmap, xs->xs_int));
+	break;
+    case XP_PATHEXPR:
+	/* [19]    PathExpr ::=  | FilterExpr '/' RelativeLocationPath	
+		                 | FilterExpr '//' RelativeLocationPath	
+	*/
+	if (xs->xs_s0)
+	    cprintf(xcb, "%s", xs->xs_s0);
 	break;
     case XP_RELLOCPATH:
 	if (xs->xs_c1){
@@ -311,8 +323,10 @@ xpath_tree2cbuf(xpath_tree *xs,
     default:
 	break;
     }
+    /* 4. Second child */
     if (xs->xs_c1 && xpath_tree2cbuf(xs->xs_c1, xcb) < 0)
 	goto done;
+    /* 5. After second child */
     switch (xs->xs_type){
     case XP_PRED:
 	if (xs->xs_c1)
@@ -915,6 +929,8 @@ xpath_vec_bool(cxobj      *xcur,
     return retval;
 }
 
+/*!
+ */
 static int
 traverse_canonical(xpath_tree *xs,
 		   yang_stmt  *yspec,

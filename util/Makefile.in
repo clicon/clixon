@@ -68,14 +68,18 @@ LINKAGE         = @LINKAGE@
 INCLUDES        = -I. @INCLUDES@ -I$(top_srcdir)/lib -I$(top_srcdir)/include
 
 ifeq ($(LINKAGE),static)
-	CLIXON_LIB	= libclixon.a
+   CLIXON_LIB 		= libclixon.a
+   CLIXON_BACKEND_LIB	= libclixon_backend.a # for util_validate
 else
-	CLIXON_LIB      = libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+   CLIXON_LIB           = libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+   CLIXON_BACKEND_LIB	= libclixon_backend$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 endif
 
 # For dependency. A little strange that we rely on it being built in the src dir
 # even though it may exist in $(libdir). But the new version may not have been installed yet.
-LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB)
+LIBDEPS	    = $(top_srcdir)/apps/backend/$(CLIXON_BACKEND_LIB)
+LIBDEPS	   += $(top_srcdir)/lib/src/$(CLIXON_LIB)
+
 
 # Utilities, unit testings. Not installed.
 APPSRC    = clixon_util_xml.c
@@ -86,14 +90,18 @@ APPSRC   += clixon_util_xpath.c
 APPSRC   += clixon_util_path.c
 APPSRC   += clixon_util_datastore.c
 APPSRC   += clixon_util_regexp.c
+APPSRC   += clixon_util_socket.c
+APPSRC   += clixon_util_validate.c 
+APPSRC   += clixon_netconf_ssh_callhome.c
+APPSRC   += clixon_netconf_ssh_callhome_client.c
 ifdef with_restconf
 APPSRC   += clixon_util_stream.c # Needs curl
 endif
-APPSRC   += clixon_util_socket.c
-APPSRC   += clixon_netconf_ssh_callhome.c
-APPSRC   += clixon_netconf_ssh_callhome_client.c
-#APPSRC   += clixon_util_ssl.c
-#APPSRC   += clixon_util_grpc.c
+ifdef with_http2
+APPSRC   += clixon_util_ssl.c # requires http/2
+#APPSRC   += clixon_util_grpc.c # work in progress
+endif
+
 
 APPS	  = $(APPSRC:.c=)
 
@@ -102,6 +110,9 @@ all:	 $(APPS)
 # Dependency of clixon library
 $(top_srcdir)/lib/src/$(CLIXON_LIB):
 	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
+
+$(top_srcdir)/lib/src/$(CLIXON_BACKEND_LIB):
+	(cd $(top_srcdir)/apps/backend && $(MAKE) $(MFLAGS) $(CLIXON_BACKEND_LIB))
 
 clean:
 	rm -f $(APPS) clixon_util_stream *.core
@@ -132,19 +143,26 @@ clixon_util_xml_mod: clixon_util_xml_mod.c $(LIBDEPS)
 clixon_util_regexp: clixon_util_regexp.c $(LIBDEPS)
 	$(CC) $(INCLUDES) -I /usr/include/libxml2 $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 
-ifdef with_restconf
-clixon_util_stream: clixon_util_stream.c $(LIBDEPS)
-	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lcurl -o $@
-endif
-
 clixon_util_socket: clixon_util_socket.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 
-#clixon_util_ssl: clixon_util_ssl.c $(LIBDEPS)
-#	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lnghttp2 -lssl -lcrypto -o $@
+ifeq ($(LINKAGE),static)
+clixon_util_validate: clixon_util_validate.c $(LIBDEPS) 
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) clixon_util_validate.c $(LIBS) $(LIBDEPS) -o $@
+else
+clixon_util_validate: clixon_util_validate.c $(LIBDEPS) 
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -l clixon_backend -o $@
+endif
+ifdef with_restconf
+clixon_util_stream: clixon_util_stream.c $(LIBDEPS)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lcurl -o $@
 
-#clixon_util_grpc: clixon_util_grpc.c $(LIBDEPS)
-#	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lnghttp2 -lssl -lcrypto -o $@
+clixon_util_ssl: clixon_util_ssl.c $(LIBDEPS)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
+
+clixon_util_grpc: clixon_util_grpc.c $(LIBDEPS)
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
+endif
 
 distclean: clean
 	rm -f Makefile *~ .depend

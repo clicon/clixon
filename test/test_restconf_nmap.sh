@@ -116,12 +116,7 @@ fi
 new "wait backend"
 wait_backend
 
-#new "netconf edit config"
-#expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RESTCONFIG</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
-
-#new "netconf commit"
-#expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
-
+# Explicit start of restconf for easier debugging
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
     stop_restconf_pre
@@ -185,7 +180,7 @@ new "nmap sslv2"
 expectpart "$(nmap --script sslv2 -p 443 127.0.0.1)" 0 "443/tcp open  https"
 
 new "restconf get. Just ensure restconf is alive"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://127.0.0.1/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://127.0.0.1/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

@@ -499,6 +499,14 @@ restconf_insert_attributes(cxobj *xdata,
  * @param[in] ys   Yang node of (unknown) statement belonging to extension
  * @retval     0   OK, all callbacks executed OK
  * @retval    -1   Error in one callback
+ * @note This extension adds semantics to YANG according to RFC8040 as follows:
+ *          - The list-stmt is not required to have a key-stmt defined.(NB!!)
+ *          - The if-feature-stmt is ignored if present.
+ *          - The config-stmt is ignored if present.
+ *          - The available identity values for any 'identityref'
+ *              leaf or leaf-list nodes are limited to the module
+ *              containing this extension statement and the modules
+ *              imported into that module.
  */
 int
 restconf_main_extension_cb(clicon_handle h,
@@ -522,6 +530,9 @@ restconf_main_extension_cb(clicon_handle h,
 	goto ok;
     if ((yn = ys_dup(yc)) == NULL)
 	goto done;
+    /* yang-data extension: The list-stmt is not required to have a key-stmt defined.
+     */
+    yang_flag_set(yn, YANG_FLAG_NOKEY);
     if (yn_insert(yang_parent_get(ys), yn) < 0)
 	goto done;
  ok:
@@ -530,24 +541,30 @@ restconf_main_extension_cb(clicon_handle h,
     return retval;
 }
 
-/*! Extract uri-encoded uri-path from fastcgi parameters
+/*! Extract uri-encoded uri-path without arguments
+ *
  * Use REQUEST_URI parameter and strip ?args
- * REQUEST_URI have args and is encoded
- *   eg /interface=eth%2f0%2f0?insert=first
- * DOCUMENT_URI dont have args and is not encoded
- *   eg /interface=eth/0/0
- *  causes problems with eg /interface=eth%2f0%2f0
+ *   eg /interface=eth%2f0%2f0?insert=first -> /interface=eth%2f0%2f0
+ * @retval path malloced, need free
  */
 char *
 restconf_uripath(clicon_handle h)
 {
-    char *path;
+    char *path = NULL;
+    char *path2 = NULL;
     char *q;
 
-    path = restconf_param_get(h, "REQUEST_URI"); 
-    if ((q = index(path, '?')) != NULL)
+    if ((path = restconf_param_get(h, "REQUEST_URI")) == NULL){
+	clicon_err(OE_RESTCONF, 0, "No REQUEST_URI");
+	return NULL;
+    }
+    if ((path2 = strdup(path)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	return NULL;
+    }
+    if ((q = index(path2, '?')) != NULL)
 	*q = '\0';
-    return path;
+    return path2;
 }
 
 /*! Drop privileges from root to user (or already at user)
@@ -936,3 +953,4 @@ restconf_socket_extract(clicon_handle h,
 	free(reason);
     return retval;
 }
+

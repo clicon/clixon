@@ -119,10 +119,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend  -s init -f $cfg -l f$flog -- -t -v /x/y[a=$errnr]"
     start_backend -s init -f $cfg -l f$flog -- -t -v /x/y[a=$errnr] # -t means transaction logging
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 let nr=0
 

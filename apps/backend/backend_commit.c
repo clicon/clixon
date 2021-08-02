@@ -66,9 +66,9 @@
 #include <clixon/clixon.h>
 
 #include "clixon_backend_transaction.h"
-#include "backend_plugin.h"
+#include "clixon_backend_plugin.h"
 #include "backend_handle.h"
-#include "backend_commit.h"
+#include "clixon_backend_commit.h"
 #include "backend_client.h"
 
 /*! Key values are checked for validity independent of user-defined callbacks
@@ -132,7 +132,7 @@ generic_validate(clicon_handle       h,
 		cprintf(cb, "Mandatory variable of %s in module %s",
 			xml_parent(x1)?xml_name(xml_parent(x1)):"",
 			yang_argument_get(ys_module(ys)));
-		if (netconf_missing_element_xml(xret, "protocol", xml_name(x1), cbuf_get(cb)) < 0)
+		if (xret && netconf_missing_element_xml(xret, "protocol", xml_name(x1), cbuf_get(cb)) < 0)
 		    goto done;
 		goto fail;
 	    }
@@ -177,7 +177,7 @@ generic_validate(clicon_handle       h,
  * 4. Validate startup db. (valid)
  * 5. If valid fails, call startup-cb(Invalid, msdiff), keep startup in candidate and commit failsafe db. Done.
  * 6. Call startup-cb(OK, msdiff) and commit.
- * @see from_validate_common   for incoming validate/commit
+ * @see validate_common   for incoming validate/commit
  */
 static int
 startup_common(clicon_handle       h, 
@@ -478,21 +478,21 @@ startup_commit(clicon_handle  h,
 /*! Validate a candidate db and comnpare to running
  * Get both source and dest datastore, validate target, compute diffs
  * and call application callback validations.
- * @param[in] h         Clicon handle
- * @param[in] candidate The candidate database. The wanted backend state
- * @param[out] xret    Error XML tree. Free with xml_free after use
- * @retval   -1       Error - or validation failed (but cbret not set)
- * @retval    0       Validation failed (with cbret set)
- * @retval    1       Validation OK       
+ * @param[in]  h         Clicon handle
+ * @param[in]  candidate The candidate database. The wanted backend state
+ * @param[out] xret      Error XML tree, if retval is 0. Free with xml_free after use
+ * @retval    -1         Error - or validation failed (but cbret not set)
+ * @retval     0         Validation failed (with xret set)
+ * @retval     1         Validation OK       
  * @note Need to differentiate between error and validation fail 
  *       (only done for generic_validate)
  * @see startup_common  for startup scenario
  */
 static int
-from_validate_common(clicon_handle       h, 
-		     char               *candidate,
-		     transaction_data_t *td,
-		     cxobj             **xret)
+validate_common(clicon_handle       h, 
+		char               *db,
+		transaction_data_t *td,
+		cxobj             **xret)
 {
     int         retval = -1;
     yang_stmt  *yspec;
@@ -505,16 +505,19 @@ from_validate_common(clicon_handle       h,
 	goto done;
     }	
     /* This is the state we are going to */
-    if (xmldb_get0(h, candidate, YB_MODULE, NULL, "/", 0, &td->td_target, NULL, NULL) < 0)
+    if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, &td->td_target, NULL, xret)) < 0)
 	goto done;
-
+    if (ret == 0)
+	goto fail;
     /* Clear flags xpath for get */
     xml_apply0(td->td_target, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
 	       (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
     /* 2. Parse xml trees 
      * This is the state we are going from */
-    if (xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, &td->td_src, NULL, NULL) < 0)
+    if ((ret = xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, &td->td_src, NULL, xret)) < 0)
 	goto done;
+    if (ret == 0)
+	goto fail;
     /* Clear flags xpath for get */
     xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
 	       (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
@@ -579,20 +582,92 @@ from_validate_common(clicon_handle       h,
     goto done;
 }
 
+/*! Start a validate transaction
+ *
+ * @param[in]  h    Clicon handle
+ * @param[in]  db   A candidate database, typically "candidate" but not necessarily so
+ * @retval    -1    Error - or validation failed 
+ * @retval     0    Validation failed (with cbret set)
+ * @retval     1    Validation OK       
+ */
+int
+candidate_validate(clicon_handle h, 
+		   char         *db,
+		   cbuf         *cbret)
+{
+    int                 retval = -1;
+    transaction_data_t *td = NULL;
+    cxobj              *xret = NULL;
+    int                 ret;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (db == NULL || cbret == NULL){
+	clicon_err(OE_CFG, EINVAL, "db or cbret is NULL");
+	goto done;
+    }
+    /* 1. Start transaction */
+    if ((td = transaction_new()) == NULL)
+	goto done;
+        /* Common steps (with commit) */
+    if ((ret = validate_common(h, db, td, &xret)) < 0){
+	/* A little complex due to several sources of validation fails or errors.
+	 * (1) xerr is set -> translate to cbret; (2) cbret set use that; otherwise
+	 * use clicon_err. 
+	 * TODO: -1 return should be fatal error, not failed validation
+	 */
+	if (!cbuf_len(cbret) &&
+	    netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+	    goto done;
+	goto fail;
+    }
+    if (ret == 0){
+	if (xret == NULL){
+	    clicon_err(OE_CFG, EINVAL, "xret is NULL");
+	    goto done;
+	}
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+	    goto done;
+	if (!cbuf_len(cbret) &&
+	    netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+	    goto done;
+	goto fail;
+    }
+    if (xmldb_get0_clear(h, td->td_src) < 0 ||
+	xmldb_get0_clear(h, td->td_target) < 0)
+	goto done;
+
+    plugin_transaction_end_all(h, td);
+    retval = 1;
+ done:
+    if (xret)
+	xml_free(xret);
+     if (td){
+	 if (retval < 1)
+	     plugin_transaction_abort_all(h, td);
+	 xmldb_get0_free(h, &td->td_target);
+	 xmldb_get0_free(h, &td->td_src);
+	 transaction_free(td);
+     }
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Do a diff between candidate and running, then start a commit transaction
  *
  * The code reverts changes if the commit fails. But if the revert
  * fails, we just ignore the errors and proceed. Maybe we should
  * do something more drastic?
- * @param[in]  h         Clicon handle
- * @param[in]  candidate A candidate database, not necessarily "candidate"
- * @retval    -1         Error - or validation failed 
- * @retval     0         Validation failed (with cbret set)
- * @retval     1         Validation OK       
+ * @param[in]  h    Clicon handle
+ * @param[in]  db   A candidate database, not necessarily "candidate"
+ * @retval    -1    Error - or validation failed 
+ * @retval     0    Validation failed (with cbret set)
+ * @retval     1    Validation OK       
  */
 int
 candidate_commit(clicon_handle h, 
-		 char         *candidate,
+		 char         *db,
 		 cbuf         *cbret)
 {
     int                 retval = -1;
@@ -607,7 +682,7 @@ candidate_commit(clicon_handle h,
     /* Common steps (with validate). Load candidate and running and compute diffs
      * Note this is only call that uses 3-values
      */
-    if ((ret = from_validate_common(h, candidate, td, &xret)) < 0)
+    if ((ret = validate_common(h, db, td, &xret)) < 0)
 	goto done;
     if (ret == 0){
 	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
@@ -630,9 +705,9 @@ candidate_commit(clicon_handle h,
 
      /* 8. Success: Copy candidate to running 
       */
-     if (xmldb_copy(h, candidate, "running") < 0)
+     if (xmldb_copy(h, db, "running") < 0)
 	 goto done;
-     xmldb_modified_set(h, candidate, 0); /* reset dirty bit */
+     xmldb_modified_set(h, db, 0); /* reset dirty bit */
      /* Here pointers to old (source) tree are obsolete */
      if (td->td_dvec){
 	 td->td_dlen = 0;
@@ -664,7 +739,7 @@ candidate_commit(clicon_handle h,
     retval = 0;
     goto done;
 }
-
+    
 /*! Commit the candidate configuration as the device's new current configuration
  *
  * @param[in]  h       Clicon handle 
@@ -818,57 +893,23 @@ from_client_validate(clicon_handle h,
 		     void         *arg,
 		     void         *regarg)
 {
-    int                 retval = -1;
-    transaction_data_t *td = NULL;
-    int                 ret;
-    char               *db;
-    cxobj             *xret = NULL;
+    int   retval = -1;
+    int   ret;
+    char *db;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     if ((db = netconf_db_find(xe, "source")) == NULL){
 	if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
 	    goto done;
 	goto ok;
     }
-    clicon_debug(1, "Validate %s",  db);
-
-    /* 1. Start transaction */
-    if ((td = transaction_new()) == NULL)
+    if ((ret = candidate_validate(h, db, cbret)) < 0)
 	goto done;
-    /* Common steps (with commit) */
-    if ((ret = from_validate_common(h, db, td, &xret)) < 1){
-	/* A little complex due to several sources of validation fails or errors.
-	 * (1) xerr is set -> translate to cbret; (2) cbret set use that; otherwise
-	 * use clicon_err. */
-	if (xret && clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
-	    goto done;
-	plugin_transaction_abort_all(h, td);
-	if (!cbuf_len(cbret) &&
-	    netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
-	    goto done;
-	goto ok;
-    }
-
-    if (xmldb_get0_clear(h, td->td_src) < 0 ||
-	xmldb_get0_clear(h, td->td_target) < 0){
-	plugin_transaction_abort_all(h, td);
-	goto done;
-    }
-
-    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
-    /* Call plugin transaction end callbacks */
-    plugin_transaction_end_all(h, td);
+    if (ret == 1)
+	cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
  done:
-    if (td){
-	if (retval < 0)
-	    plugin_transaction_abort_all(h, td);
-	 xmldb_get0_free(h, &td->td_target);
-	 xmldb_get0_free(h, &td->td_src);
-	 transaction_free(td);
-    }
-    if (xret)
-	xml_free(xret);
     return retval;
 } /* from_client_validate */
 

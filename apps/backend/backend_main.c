@@ -72,8 +72,8 @@
 #include "clixon_backend_transaction.h"
 #include "backend_socket.h"
 #include "backend_client.h"
-#include "backend_plugin.h"
-#include "backend_commit.h"
+#include "clixon_backend_plugin.h"
+#include "clixon_backend_commit.h"
 #include "backend_handle.h"
 #include "backend_startup.h"
 #include "backend_plugin_restconf.h"
@@ -154,7 +154,7 @@ backend_sig_term(int arg)
     if (i++ == 0)
 	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
 		   __PROGRAM__, __FUNCTION__, getpid(), arg);
-    clicon_exit_set(); /* checked in clixon_event_loop() */
+    clixon_exit_set(1); /* checked in clixon_event_loop() */
 }
 
 /*! wait for killed child
@@ -747,11 +747,6 @@ main(int    argc,
 		   clicon_configfile(h));
 	goto done;
     }
-
-    /* Treat unknown XML as anydata */
-    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1)
-	xml_bind_yang_unknown_anydata(1);
-
     /* Publish stream on pubsub channels.
      * CLICON_STREAM_PUB should be set to URL to where streams are published
      * and configure should be run with --enable-publish

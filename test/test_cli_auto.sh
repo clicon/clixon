@@ -93,10 +93,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s startup -f $cfg -- -sS $fstate"
     start_backend -s startup -f $cfg -- -sS $fstate
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 # First go down in structure and show config
 new "show top tree"

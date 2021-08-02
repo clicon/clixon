@@ -94,28 +94,28 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
 fi
 
+new "wait restconf"
+wait_restconf
+
 new "restconf POST tree without key"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"name"},"error-severity":"error","error-message":"Mandatory key"}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"name"},"error-severity":"error","error-message":"Mandatory key"}}}'
 
 new "restconf POST initial tree"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
 
 new "restconf POST top without namespace"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"cont1":{"interface":{"name":"local0","type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Top-level JSON object cont1 is not qualified with namespace which is a MUST according to RFC 7951"}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"cont1":{"interface":{"name":"local0","type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Top-level JSON object cont1 is not qualified with namespace which is a MUST according to RFC 7951"}}}'
 
 new "restconf GET datastore initial"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/1.1 200 OK" '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 200" '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'
 
 new "restconf GET interface subtree"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1/interface=local0)" 0 "HTTP/1.1 200 OK" '{"example:interface":\[{"name":"local0","type":"regular"}\]}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1/interface=local0)" 0 "HTTP/$HVER 200" '{"example:interface":\[{"name":"local0","type":"regular"}\]}'
 
 new "restconf PUT interface without media"
-expectpart "$(curl $CURLOPTS -X PUT $RCPROTO://localhost/restconf/data/example:cont1/interface=local0 -d '{"example:interface":{"name":"local0","type":"foo"}}')" 0 "HTTP/1.1 415 Unsupported Media Type" 
+expectpart "$(curl $CURLOPTS -X PUT $RCPROTO://localhost/restconf/data/example:cont1/interface=local0 -d '{"example:interface":{"name":"local0","type":"foo"}}')" 0 "HTTP/$HVER 415" 
 
 new "restconf GET interface subtree xml"
 ret=$(curl $CURLOPTS -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data/example:cont1/interface=local0)
@@ -126,93 +126,92 @@ if [ -z "$match" ]; then
 fi
 
 new "restconf GET if-type"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1/interface=local0/type)" 0 "HTTP/1.1 200 OK" '{"example:type":"regular"}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1/interface=local0/type)" 0 "HTTP/$HVER 200" '{"example:type":"regular"}'
 
 new "restconf POST interface without mandatory type"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"name":"TEST"}}')" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"type"},"error-severity":"error","error-message":"Mandatory variable of interface in module example"}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"name":"TEST"}}')" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"type"},"error-severity":"error","error-message":"Mandatory variable of interface in module example"}}}'
 
 new "restconf POST interface without mandatory key"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"type":"regular"}}')" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"name"},"error-severity":"error","error-message":"Mandatory key"}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"type":"regular"}}')" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"name"},"error-severity":"error","error-message":"Mandatory key"}}}'
 
 new "restconf POST interface"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"TEST","type":"eth0"}}' $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"TEST","type":"eth0"}}' $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 201"
 
 new "restconf POST interface without namespace"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"interface":{"name":"TEST2","type":"eth0"}}' $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/1.1 400 Bad Request" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Top-level JSON object interface is not qualified with namespace which is a MUST according to RFC 7951"}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"interface":{"name":"TEST2","type":"eth0"}}' $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Top-level JSON object interface is not qualified with namespace which is a MUST according to RFC 7951"}}}'
 
 new "restconf POST again"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"name":"TEST","type":"eth0"}}')" 0 "HTTP/1.1 409 Conflict" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"name":"TEST","type":"eth0"}}')" 0 "HTTP/$HVER 409" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
 
 new "restconf POST from top"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"example:cont1":{"interface":{"name":"TEST","type":"eth0"}}}')" 0 "HTTP/1.1 409 Conflict" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"example:cont1":{"interface":{"name":"TEST","type":"eth0"}}}')" 0 "HTTP/$HVER 409" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"data-exists","error-severity":"error","error-message":"Data already exists; cannot create new resource"}}}'
 
 new "restconf DELETE"
-expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 204"
 
 new "restconf POST from top containing duplicate keys expect error"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"example:cont1":{"interface":[{"name":"TEST","type":"eth0"},{"name":"TEST","type":"eth0"}]}}')" 0 "HTTP/1.1 412 Precondition Failed" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"operation-failed","error-app-tag":"data-not-unique","error-severity":"error","error-info":{"non-unique":{"name":"TEST"}}}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"example:cont1":{"interface":[{"name":"TEST","type":"eth0"},{"name":"TEST","type":"eth0"}]}}')" 0 "HTTP/$HVER 412" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"operation-failed","error-app-tag":"data-not-unique","error-severity":"error","error-info":{"non-unique":{"name":"TEST"}}}}}'
 
 new "restconf GET null datastore"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/1.1 404 Not Found" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 404" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 new "restconf POST initial tree"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
 
 new "restconf GET initial tree"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/1.1 200 OK" '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 200" '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'
 
 new "restconf DELETE whole datastore"
-expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 204"
 
 new "restconf GET null datastore"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/1.1 404 Not Found" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 404" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 new "restconf PUT initial datastore" 
-expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-restconf:data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-restconf:data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
 
 new "restconf GET datastore"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/1.1 200 OK" '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 200" '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'
 
 new "restconf PUT replace datastore" 
-expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-restconf:data":{"example:cont2":{"name":"foo"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-restconf:data":{"example:cont2":{"name":"foo"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 204"
 
 new "restconf GET replaced datastore"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont2)" 0 "HTTP/1.1 200 OK" '{"example:cont2":{"name":"foo"}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont2)" 0 "HTTP/$HVER 200" '{"example:cont2":{"name":"foo"}}'
 
 new "restconf PUT initial datastore again" 
-expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-restconf:data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-restconf:data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 204"
 
 new "restconf PUT change interface"
-expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"local0","type":"atm0"}}' $RCPROTO://localhost/restconf/data/example:cont1/interface=local0)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"local0","type":"atm0"}}' $RCPROTO://localhost/restconf/data/example:cont1/interface=local0)" 0 "HTTP/$HVER 204"
 
 new "restconf GET datastore atm"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/1.1 200 OK" '{"example:cont1":{"interface":\[{"name":"local0","type":"atm0"}\]}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 200" '{"example:cont1":{"interface":\[{"name":"local0","type":"atm0"}\]}}'
 
 new "restconf PUT add interface"
-expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"TEST","type":"eth0"}}' $RCPROTO://localhost/restconf/data/example:cont1/interface=TEST)" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"TEST","type":"eth0"}}' $RCPROTO://localhost/restconf/data/example:cont1/interface=TEST)" 0 "HTTP/$HVER 201"
 
 new "restconf PUT change key error"
-expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"ALPHA","type":"eth0"}}' $RCPROTO://localhost/restconf/data/example:cont1/interface=TEST)" 0 'HTTP/1.1 412 Precondition Failed' '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"ALPHA","type":"eth0"}}' $RCPROTO://localhost/restconf/data/example:cont1/interface=TEST)" 0 "HTTP/$HVER 412" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
 
 new "restconf PUT change type to eth0 (non-key sub-element to list)"
-expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:type":"eth0"}' $RCPROTO://localhost/restconf/data/example:cont1/interface=local0/type)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:type":"eth0"}' $RCPROTO://localhost/restconf/data/example:cont1/interface=local0/type)" 0 "HTTP/$HVER 204"
 
 new "restconf GET datastore eth"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1/interface=local0)" 0 "HTTP/1.1 200 OK" '{"example:interface":\[{"name":"local0","type":"eth0"}\]}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1/interface=local0)" 0 "HTTP/$HVER 200" '{"example:interface":\[{"name":"local0","type":"eth0"}\]}'
 
 new "restconf DELETE whole datastore"
-expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 204"
 
 #--------------- Multiple request in single TCP tests
-
-expectpart "$(curl $CURLOPTS -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data?content=config --next $CURLOPTS -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data -d '{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}')" 0 "HTTP/1.1 200 OK" '<data/>' 'HTTP/1.1 201 Created'
+expectpart "$(curl $CURLOPTS -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data?content=config --next $CURLOPTS -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data -d '{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}')" 0 "HTTP/$HVER 200" '<data/>' "HTTP/$HVER 201"
 
 #--------------- json type tests
 new "restconf POST type x3 POST"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/1.1 201 Created" "Location: $RCPROTO://localhost/restconf/data/example:types"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201" "Location: $RCPROTO://localhost/restconf/data/example:types"
 
 new "restconf POST type x3 GET"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:types)" 0 "HTTP/1.1 200 OK" '{"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:types)" 0 "HTTP/$HVER 200" '{"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}}'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

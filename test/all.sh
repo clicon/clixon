@@ -32,6 +32,7 @@ for test in $pattern; do
     testfile=$test
     . ./$test 
     errcode=$?
+    endsuite
     if [ $errcode -ne 0 ]; then
 	allerr=1
 	echo -e "\e[31mError in $test errcode=$errcode"

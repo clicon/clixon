@@ -59,7 +59,6 @@ echo "$STORE" > /usr/local/var/example/running_db
 cat <<EOF > /usr/local/bin/test/site.sh
 # Add your local site specific env variables (or tests) here.
 SKIPLIST="test_api.sh test_client.sh test_c++.sh test_install.sh test_privileges.sh"
-RCPROTO=https
 #IETFRFC=
 EOF
 

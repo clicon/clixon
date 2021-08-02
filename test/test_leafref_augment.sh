@@ -139,10 +139,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend  -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 # Test top-level, default prefix, correct leafref and typedef path
 XML=$(cat <<EOF

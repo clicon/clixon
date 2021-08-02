@@ -153,10 +153,10 @@ if [ $BE -ne 0 ]; then
 
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "cli enabled feature"
 expectpart "$($clixon_cli -1f $cfg set x foo)" 0 ""

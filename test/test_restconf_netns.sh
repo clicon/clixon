@@ -8,7 +8,6 @@
 #   1. Configure one valid and one invalid address in other dataplane
 #   2. Two restconf processes, one may be zombie
 
-
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
@@ -55,7 +54,6 @@ test -d $certdir || mkdir $certdir
 cacerts $cakey $cacert
 servercerts $cakey $cacert $srvkey $srvcert
 
-# XXX Note default port need to be 80 for wait_restconf to work
 RESTCONFIG=$(cat <<EOF
 <restconf>
    <enable>true</enable>
@@ -67,7 +65,7 @@ RESTCONFIG=$(cat <<EOF
    <debug>$RESTCONFDBG</debug>
    <socket>     <!-- reference and to get wait-restconf to work -->
       <namespace>default</namespace>
-      <address>0.0.0.0</address>
+      <address>127.0.0.1</address>
       <port>80</port>
       <ssl>false</ssl>
    </socket>
@@ -166,7 +164,7 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "wait restconf"
-wait_restconf 
+wait_restconf http # force to http on host ns
     
 new "add sample config w netconf"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>a</name><value>42</value></parameter></table></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
@@ -175,19 +173,19 @@ new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "restconf http get config on default netns"
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' http://127.0.0.1/restconf/data/clixon-example:table)" 0 "HTTP/1.1 200 OK" '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' http://127.0.0.1/restconf/data/clixon-example:table)" 0 "HTTP/$HVER 200" '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
 
 new "restconf http get config on addr:$vaddr in netns:$netns"
-expectpart "$(sudo ip netns exec $netns curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' https://$vaddr/restconf/data/clixon-example:table)" 0 "HTTP/1.1 200 OK" '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
+expectpart "$(sudo ip netns exec $netns curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' https://$vaddr/restconf/data/clixon-example:table)" 0 "HTTP/$HVER 200" '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
 
 new "restconf https/SSL get config on addr:$vaddr in netns:$netns"
-expectpart "$(sudo ip netns exec $netns curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' https://$vaddr/restconf/data/clixon-example:table)" 0 "HTTP/1.1 200 OK" '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
+expectpart "$(sudo ip netns exec $netns curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' https://$vaddr/restconf/data/clixon-example:table)" 0 "HTTP/$HVER 200" '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
 
 new "restconf https/SSL put table b"
-expectpart "$(sudo ip netns exec $netns curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -d '<parameter xmlns="urn:example:clixon"><name>b</name><value>99</value></parameter>' https://$vaddr/restconf/data/clixon-example:table)" 0 "HTTP/1.1 201 Created" 
+expectpart "$(sudo ip netns exec $netns curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -d '<parameter xmlns="urn:example:clixon"><name>b</name><value>99</value></parameter>' https://$vaddr/restconf/data/clixon-example:table)" 0 "HTTP/$HVER 201" 
 
 new "restconf http get table b on default ns"
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' http://127.0.0.1/restconf/data/clixon-example:table/parameter=b)" 0 "HTTP/1.1 200 OK" '<parameter xmlns="urn:example:clixon"><name>b</name><value>99</value></parameter>'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' http://127.0.0.1/restconf/data/clixon-example:table/parameter=b)" 0 "HTTP/$HVER 200" '<parameter xmlns="urn:example:clixon"><name>b</name><value>99</value></parameter>'
 
 # Negative
 new "restconf get config on wrong port in netns:$netns"
@@ -217,7 +215,7 @@ RESTCONFIG=$(cat <<EOF
    <debug>$RESTCONFDBG</debug>
    <auth-type>none</auth-type>
    <pretty>false</pretty>
-   <socket>
+   <socket>     <!-- reference and to get wait-restconf to work -->
       <namespace>default</namespace>
       <address>127.0.0.1</address>
       <port>80</port>
@@ -290,8 +288,7 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "wait restconf"
-wait_restconf 
-
+wait_restconf http # force to http on host ns
 
 sleep $DEMSLEEP
 new "Check zombies"

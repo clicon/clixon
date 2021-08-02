@@ -633,13 +633,16 @@ yang_expand_uses_node(yang_stmt *yn,
 		       yang_argument_get(yg),
 		       yang_argument_get(ygrouping)
 		       );
-	    goto done;
+		goto done;
 	    }
 	    if (yang_when_xpath_set(yg, wxpath) < 0) 
 		goto done;
 	    if (yang_when_nsc_set(yg, wnsc) < 0) 
 		goto done;
 	}
+	/* This is for extensions that allow list keys to be optional, see restconf_main_extension_cb */
+	if (yang_flag_get(ys, YANG_FLAG_NOKEY))
+	    yang_flag_set(yg, YANG_FLAG_NOKEY);
 	yn->ys_stmt[i+k] = yg;
 	yg->ys_parent = yn;
 	k++;
@@ -1032,6 +1035,10 @@ yang_parse_module(clicon_handle h,
 	ymod = NULL;
 	goto done;
     }
+    /* Sanity check that requested module name matches loaded module
+     * If this does not match, the filename and containing module do not match
+     * RFC 7950 Sec 5.2 
+     */
     if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL)
 	revm = cv_uint32_get(yang_cv_get(yrev));
     if (filename2revision(filename, NULL, &revf) < 0)
@@ -1064,14 +1071,18 @@ yang_parse_recurse(clicon_handle h,
 		   yang_stmt    *ymod,
 		   yang_stmt    *ysp)
 {
-    int         retval = -1;
-    yang_stmt  *yi = NULL; /* import */
-    yang_stmt  *yrev;
-    char       *submodule;
-    char       *subrevision;
-    yang_stmt  *subymod;
+    int           retval = -1;
+    yang_stmt    *yi = NULL; /* import */
+    yang_stmt    *yrev;
+    yang_stmt    *ybelongto;
+    yang_stmt    *yrealmod;
+    char         *submodule;
+    char         *subrevision;
+    yang_stmt    *subymod;
     enum rfc_6020 keyw;
 
+    if (ys_real_module(ymod, &yrealmod) < 0)
+	goto done;
     /* go through all import (modules) and include(submodules) of ysp */
     while ((yi = yn_each(ymod, yi)) != NULL){
 	keyw = yang_keyword_get(yi);
@@ -1091,6 +1102,21 @@ yang_parse_recurse(clicon_handle h,
 	    /* recursive call */
 	    if ((subymod = yang_parse_module(h, submodule, subrevision, ysp)) == NULL)
 		goto done;
+	    /* Sanity check: if submodule, its belongs-to statement shall point to the module */
+	    if (keyw == Y_INCLUDE){
+		ybelongto = yang_find(subymod, Y_BELONGS_TO, NULL);
+		if (ybelongto == NULL){
+		    clicon_err(OE_YANG, ENOENT, "Sub-module \"%s\" does not have a belongs-to statement", submodule); /* shouldnt happen */
+		    goto done;
+		}
+		if (strcmp(yang_argument_get(ybelongto), yang_argument_get(yrealmod)) != 0){
+		    clicon_err(OE_YANG, ENOENT, "Sub-module \"%s\" references module \"%s\" in its belongs-to statement but should reference \"%s\"",
+			       submodule,
+			       yang_argument_get(ybelongto),
+			       yang_argument_get(yrealmod));
+		    goto done;
+		}
+	    }
 	    /* Go through its sub-modules recursively */
 	    if (yang_parse_recurse(h, subymod, ysp) < 0){
 		ymod = NULL;
@@ -1173,7 +1199,7 @@ ys_schemanode_check(yang_stmt *ys,
  * Verify the following rule:
  * RFC 7950 7.8.2: The "key" statement, which MUST be present if the list represents
  *                 configuration and MAY be present otherwise
- * Unless CLICON_YANG_LIST_CHECK is false
+ * Unless CLICON_YANG_LIST_CHECK is false (obsolete)
  * OR it is the "errors" rule of the ietf-restconf spec which seems to be a special case.
  */
 static int 
@@ -1199,28 +1225,22 @@ ys_list_check(clicon_handle h,
     if (keyw == Y_LIST &&
 	yang_find(ys, Y_KEY, NULL) == 0){
 	ymod = ys_module(ys);
-#if 1
-	/* Except restconf error extension from sanity check, dont know why it has no keys */
-	if (strcmp(yang_find_mynamespace(ys),"urn:ietf:params:xml:ns:yang:ietf-restconf")==0 &&
-	    strcmp(yang_argument_get(ys),"error") == 0)
-	    ;
-	else
-#endif
-	    {
-		if (clicon_option_bool(h, "CLICON_YANG_LIST_CHECK")){
-		    clicon_log(LOG_ERR, "Error: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
+	/* Except nokey exceptions such as rrc 8040 yang-data */
+	if (!yang_flag_get(yroot, YANG_FLAG_NOKEY)){
+	    /* Note obsolete */
+	    if (clicon_option_bool(h, "CLICON_YANG_LIST_CHECK")){
+		clicon_log(LOG_ERR, "Error: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
 			   yang_argument_get(ys),
 			   yang_argument_get(ymod)
 			   );
-
-		    goto done;
-		}
-		else
-		    clicon_log(LOG_WARNING, "Warning: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
-			   yang_argument_get(ys),
-			   yang_argument_get(ymod)
-			   );
+		goto done;
 	    }
+	    else
+		clicon_log(LOG_WARNING, "Warning: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
+			   yang_argument_get(ys),
+			   yang_argument_get(ymod)
+			   );
+	}
     }
     /* Traverse subs */
     if (yang_schemanode(ys) || keyw == Y_MODULE || keyw == Y_SUBMODULE){
@@ -1744,29 +1764,33 @@ cg_var *
 ys_parse(yang_stmt   *ys, 
 	 enum cv_type cvtype)
 {
-    int             cvret;
-    char           *reason = NULL;
+    int     cvret;
+    char   *reason = NULL;
+    cg_var *cv = NULL;
 
-    assert(yang_cv_get(ys) == NULL); /* Cv:s are parsed in different places, difficult to separate */
-    if ((ys->ys_cv = cv_new(cvtype)) == NULL){
+    if ((cv = yang_cv_get(ys)) != NULL){
+	/* eg mandatory in uses is already set and then copied */
+	cv_free(cv);
+	yang_cv_set(ys, NULL);
+    }
+    if ((cv = cv_new(cvtype)) == NULL){
 	clicon_err(OE_YANG, errno, "cv_new"); 
 	goto done;
     }
-    if ((cvret = cv_parse1(yang_argument_get(ys), ys->ys_cv, &reason)) < 0){ /* error */
+    if ((cvret = cv_parse1(yang_argument_get(ys), cv, &reason)) < 0){ /* error */
 	clicon_err(OE_YANG, errno, "parsing cv");
-	ys->ys_cv = NULL;
 	goto done;
     }
     if (cvret == 0){ /* parsing failed */
 	clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
-	ys->ys_cv = NULL;
 	goto done;
     }
+    yang_cv_set(ys, cv);
     /* cvret == 1 means parsing is OK */
   done:
     if (reason)
 	free(reason);
-    return ys->ys_cv;
+    return yang_cv_get(ys);
 }
 
 /*! First round yang syntactic statement specific checks. No context checks.
@@ -1796,6 +1820,7 @@ ys_parse_sub(yang_stmt *ys,
     char      *reason = NULL;
     int        ret;
     uint32_t   minmax;
+    cg_var    *cv = NULL;
     
     arg = yang_argument_get(ys);
     keyword = yang_keyword_get(ys);
@@ -1803,7 +1828,11 @@ ys_parse_sub(yang_stmt *ys,
     case Y_FRACTION_DIGITS:
 	if (ys_parse(ys, CGV_UINT8) == NULL) 
 	    goto done;
-	fd = cv_uint8_get(ys->ys_cv);
+	if ((cv = yang_cv_get(ys)) == NULL){
+	    clicon_err(OE_YANG, ENOENT, "Unexpected NULL cv");
+	    goto done;
+	}
+	fd = cv_uint8_get(cv);
 	if (fd < 1 || fd > 18){
 	    clicon_err(OE_YANG, errno, "%u: Out of range, should be [1:18]", fd);
 	    goto done;
@@ -1818,11 +1847,12 @@ ys_parse_sub(yang_stmt *ys,
     case Y_REVISION_DATE:  /* YYYY-MM-DD encoded as uint32 YYYYMMDD */
 	if (ys_parse_date_arg(arg, &date) < 0)
 	    goto done;
-	if ((ys->ys_cv = cv_new(CGV_UINT32)) == NULL){
+	if ((cv = cv_new(CGV_UINT32)) == NULL){
 	    clicon_err(OE_YANG, errno, "cv_new"); 
 	    goto done;
 	}
-	cv_uint32_set(ys->ys_cv, date);
+	yang_cv_set(ys, cv);
+	cv_uint32_set(cv, date);
 	break;
     case Y_STATUS: /* RFC7950 7.21.2: "current", "deprecated", or "obsolete". */
 	if (strcmp(arg, "current") &&
@@ -1835,13 +1865,14 @@ ys_parse_sub(yang_stmt *ys,
 	break;
     case Y_MAX_ELEMENTS:
     case Y_MIN_ELEMENTS:
-	if ((ys->ys_cv = cv_new(CGV_UINT32)) == NULL){
+	if ((cv = cv_new(CGV_UINT32)) == NULL){
 	    clicon_err(OE_YANG, errno, "cv_new"); 
 	    goto done;
 	}
+	yang_cv_set(ys, cv);
 	if (keyword == Y_MAX_ELEMENTS &&
 	    strcmp(arg, "unbounded") == 0)
-	    cv_uint32_set(ys->ys_cv, 0); /* 0 means unbounded for max */
+	    cv_uint32_set(cv, 0); /* 0 means unbounded for max */
 	else{
 	    if ((ret = parse_uint32(arg, &minmax, &reason)) < 0){
 		clicon_err(OE_YANG, errno, "parse_uint32"); 
@@ -1853,7 +1884,7 @@ ys_parse_sub(yang_stmt *ys,
 		    free(reason);
 		goto done;
 	    }
-	    cv_uint32_set(ys->ys_cv, minmax);
+	    cv_uint32_set(cv, minmax);
 	}
 	break;
     case Y_MODIFIER:
@@ -1865,11 +1896,12 @@ ys_parse_sub(yang_stmt *ys,
     case Y_UNKNOWN:{ /* save (optional) argument in ys_cv */
 	if (extra == NULL)
 	    break;
-	if ((ys->ys_cv = cv_new(CGV_STRING)) == NULL){
+	if ((cv = cv_new(CGV_STRING)) == NULL){
 	    clicon_err(OE_YANG, errno, "cv_new"); 
 	    goto done;
 	}
-	if ((ret = cv_parse1(extra, ys->ys_cv, &reason)) < 0){ /* error */
+	yang_cv_set(ys, cv);
+	if ((ret = cv_parse1(extra, cv, &reason)) < 0){ /* error */
 	    clicon_err(OE_YANG, errno, "parsing cv");
 	    goto done;
 	}

@@ -215,7 +215,7 @@ new "wait restconf"
 wait_restconf
 
 new "try restconf rpc status"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}')" 0 "HTTP/1.1 200 OK" '{"clixon-lib:output":' '"active":' '"pid":'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}')" 0 "HTTP/$HVER 200" '{"clixon-lib:output":' '"active":' '"pid":'
 
 new "2. Get status"
 rpcstatus true running
@@ -228,7 +228,7 @@ if [ "$pid0" -ne "$pid1" ]; then
 fi
 
 new "try restconf rpc restart"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"restart"}}')" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"restart"}}')" 0 "HTTP/$HVER 204"
 
 new "3. Get status"
 rpcstatus true running
@@ -275,8 +275,8 @@ if [ $pid0 -eq $pid3 ]; then
     err1 "A different pid" "same pid: $pid3"
 fi
 
-new "kill restconf using kill"
-stop_restconf_pre
+new "kill restconf"
+sudo kill $pid3
 
 new "Wait for restconf to stop"
 wait_restconf_stopped
@@ -327,11 +327,11 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s none -f $cfg"
     start_backend -s none -f $cfg
-
-    new "wait backend"
-    wait_backend
 fi
 
+new "wait backend"
+wait_backend
+    
 new "wait restconf"
 wait_restconf
 
@@ -376,6 +376,7 @@ cat<<EOF > $startupdb
 EOF
 
 new "kill old restconf"
+sleep $DEMSLEEP
 stop_restconf_pre
 
 new "test params: -f $cfg"
@@ -420,7 +421,7 @@ wait_restconf
 
 # Edit a field, eg pretty to trigger a restart
 new "Edit a restconf field via restconf" # XXX fcgi fails here
-expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/clixon-restconf:restconf/pretty -d '{"clixon-restconf:pretty":true}' )" 0 "HTTP/1.1 204 No Content"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/clixon-restconf:restconf/pretty -d '{"clixon-restconf:pretty":true}' )" 0 "HTTP/$HVER 204"
 
 sleep $DEMSLEEP
 
@@ -437,7 +438,7 @@ new "wait restconf"
 wait_restconf
 
 new "Edit a non-restconf field via restconf"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"example:val":"xyz"}' )" 0 "HTTP/1.1 201 Created"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"example:val":"xyz"}' )" 0 "HTTP/$HVER 201"
 
 new "17. check status RPC same pid"
 rpcstatus true running
@@ -453,6 +454,8 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-confi
 
 new "commit disable"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+sleep $DEMSLEEP
 
 new "18. check status RPC off"
 rpcstatus false stopped
@@ -481,9 +484,8 @@ fi
 #Start backend -s none should start 
 
 new "kill restconf"
+sleep $DEMSLEEP
 stop_restconf
-
-sleep $DEMSLEEP # Lots of processes need to die before next test
 
 new "endtest"
 endtest

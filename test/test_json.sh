@@ -64,8 +64,7 @@ expecteofx "$clixon_util_json" 0 '{"a":[0,1,2,3]}' "<a>0</a><a>1</a><a>2</a><a>3
 
 # See test_restconf.sh
 new "json parse empty list to xml"
-expecteofx "$clixon_util_json" 0 '{"a":[]}' "
-" # XXX empty
+expecteofx "$clixon_util_json" 0 '{"a":[]}' "<a/>"
 
 new "json parse list json" # should be {"a":[0,1,2,3]}
 expecteofx "$clixon_util_json -j" 0 '{"a":[0,1,2,3]}' '{"a":"0"}{"a":"1"}{"a":"2"}{"a":"3"}'
@@ -126,7 +125,16 @@ expecteofx "$clixon_util_json -jy $fyang" 0 "$JSON" '{"json:g2":"blues"}'
 new "xml indirect identity with explicit ns to json"
 expecteofx "$clixon_util_xml -ojvy $fyang" 0 '<g2 xmlns="urn:example:clixon" xmlns:ex="urn:example:clixon">ex:blues</g2>' '{"json:g2":"blues"}'
 
-# XXX CDATA translation, should work bit does not
+# See https://github.com/clicon/clixon/issues/236
+JSON='{"data": {"a": [],"b": [{"name": 17},{"name": 42},{"name": 99}]}}'
+new "empty list followed by list"
+expecteofx "$clixon_util_json" 0 "$JSON" "<data><a/><b><name>17</name></b><b><name>42</name></b><b><name>99</name></b></data>"
+
+JSON='{"data": {"a": [],"b": [{"name": 17},{"name": []},{"name": 99}]}}'
+new "empty list followed by list again empty"
+expecteofx "$clixon_util_json" 0 "$JSON" "<data><a/><b><name>17</name></b><b><name/></b><b><name>99</name></b></data>"
+
+# XXX CDATA translation, should work but does not
 if false; then
 JSON='{"json:c": {"s": "<![CDATA[  z > x  & x < y ]]>"}}'
 new "json parse cdata xml"

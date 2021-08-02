@@ -247,7 +247,8 @@ EOF
     if [ $RC -ne 0 ]; then
 	new "kill old restconf daemon"
 	stop_restconf_pre
-	new "start restconf daemon -s -c"
+
+	new "start restconf daemon"
 	start_restconf -f $cfg
     fi
 
@@ -255,22 +256,22 @@ EOF
     wait_restconf --key $certdir/andy.key --cert $certdir/andy.crt
 
     new "enable nacm"
-    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/$HVER 204"
 
     new "admin get x"
-    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 200 OK" '{"example:x":0}'
+    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/$HVER 200" '{"example:x":0}'
 
     new "guest get x"
-    expectpart "$(curl $CURLOPTS --key $certdir/guest.key --cert $certdir/guest.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 403 Forbidden" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
+    expectpart "$(curl $CURLOPTS --key $certdir/guest.key --cert $certdir/guest.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/$HVER 403" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
 
     new "admin set x 42"
-    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:x":42}' $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 204 No Content"
+    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"example:x":42}' $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/$HVER 204"
 
     new "admin set x 42 without media"
-    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -d '{"example:x":42}' $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 415 Unsupported Media Type" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-not-supported","error-severity":"error","error-message":"Unsupported Media Type"}}}'
+    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -d '{"example:x":42}' $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/$HVER 415" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-not-supported","error-severity":"error","error-message":"Unsupported Media Type"}}}'
 
     new "admin get x 42"
-    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 200 OK" '{"example:x":42}'
+    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/$HVER 200" '{"example:x":42}'
 
     # Negative tests
     new "Unknown yyy no cert get x 42"
@@ -280,13 +281,17 @@ EOF
 
     # See (3) client-cert is NULL in restconf_main_openssl.c
     new "No cert: certificate required"
-    expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0 "HTTP/1.1 400 Bad Request"
+    expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0 "HTTP/$HVER 401"
+    # Unsure if clixon should fail early with SSL_VERIFY_FAIL_IF_NO_PEER_CERT, instead now fail later in
+    # code
+#	expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0 "HTTP/$HVER 400"
+
 
     new "limited invalid cert"
-    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "35 55 56" # 55 "certificate expired"
+    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "16 35 55 56" # 55 "certificate expired"
 
     new "too weak cert (sign w md5)"
-    expectpart "$(curl $CURLOPTS --key $certdir/mymd5.key --cert $certdir/mymd5.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 58 "md too weak"
+    expectpart "$(curl $CURLOPTS --key $certdir/mymd5.key --cert $certdir/mymd5.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "35 58" # "md too weak"
 
 # Havent been able to generate "wrong CA"
 #    new "invalid cert from wrong CA"
@@ -294,7 +299,7 @@ EOF
 
     # Just ensure all is OK
     new "admin get x 42"
-    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/1.1 200 OK" '{"example:x":42}'
+    expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/$HVER 200" '{"example:x":42}'
 
     if [ $RC -ne 0 ]; then
 	new "Kill restconf daemon"

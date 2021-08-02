@@ -32,6 +32,7 @@ ftest=$dir/test.xml
 fconfig=$dir/large.xml
 fconfig2=$dir/large2.xml # leaf-list
 foutput=$dir/output.xml
+foutput2=$dir/output2.xml
 
 cat <<EOF > $fyang
 module scaling{
@@ -100,10 +101,10 @@ if [ $RC -ne 0 ]; then
 
     new "start restconf daemon"
     start_restconf -f $cfg
-
-    new "waiting"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 # Check this later with committed data
 new "generate config with $perfnr list entries"
@@ -131,18 +132,36 @@ new "netconf commit large config"
 expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
 
 new "Check running-db contents"
-curl $CURLOPTS -X GET  -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=config > $foutput
+curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=config > $foutput
+r=$?
+if [ $r -ne 0 ]; then
+    err1 "retval 0" $r
+fi
 
 # Remove Content-Length line (depends on size)
-sed -i '/Content-Length:/d' $foutput
+# Note: do not use sed -i since it is not portable between gnu and bsd
+sed '/Content-Length:/d' $foutput > $foutput2 && mv $foutput2 $foutput
+sed '/content-length:/d' $foutput > $foutput2 && mv $foutput2 $foutput
 # Remove (nginx) web-server specific lines
-sed -i '/Server:/d' $foutput
-sed -i '/Date:/d' $foutput
-sed -i '/Transfer-Encoding:/d' $foutput
-sed -i '/Connection:/d' $foutput
+sed '/Server:/d' $foutput > $foutput2 && mv $foutput2 $foutput
+sed '/Date:/d' $foutput > $foutput2 && mv $foutput2 $foutput
+sed '/Transfer-Encoding:/d' $foutput > $foutput2 && mv $foutput2 $foutput
+sed '/Connection:/d' $foutput > $foutput2 && mv $foutput2 $foutput
 
 # Create a file to compare with
-echo "HTTP/1.1 200 OK" > $ftest
+if ${HAVE_LIBNGHTTP2}; then
+    if [ ${HAVE_LIBEVHTP} -a ${RCPROTO} = http ]; then
+	# Add 101 switch protocols for http 1->2 upgrade
+	echo "HTTP/1.1 101 Switching Protocols" > $ftest
+        echo "Upgrade: h2c" >> $ftest
+	echo "" >> $ftest
+	echo "HTTP/$HVER 200 " >> $ftest
+    else
+	echo "HTTP/$HVER 200 " > $ftest
+    fi
+else
+    echo "HTTP/$HVER 200 OK" > $ftest
+fi
 echo "Content-Type: application/yang-data+xml" >> $ftest
 echo "Cache-Control: no-cache" >> $ftest
 echo "">> $ftest
@@ -150,8 +169,9 @@ echo -n "<data>">> $ftest
 cat $fconfigonly >> $ftest
 echo "</data>" >> $ftest
 
-ret=$(diff $ftest $foutput)
+ret=$(diff -i $ftest $foutput)
 if [ $? -ne 0 ]; then
+    echo "diff -i $ftest $foutput"
     err1 "Matching running-db with $fconfigonly"
 fi	
 
@@ -190,7 +210,6 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-ch
 # XXX This takes time
 # 18.69 without startup feature
 # 21.98 with startup
-new "restconf delete $perfreq small config"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
     curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/scaling:x/y=$rnd

@@ -89,10 +89,10 @@ if [ $BE -ne 0 ]; then
     new "start backend -s init -f $cfg"
     # start new backend
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 # RFC test two-field caes
 new "Add not valid example"

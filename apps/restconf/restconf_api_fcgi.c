@@ -186,14 +186,15 @@ restconf_reply_body_add(void     *req0,
 /*! Send HTTP reply with potential message body
  * @param[in]     req   Fastcgi request handle
  * @param[in]     code  Status code
- * @param[in]     cb    Body as a cbuf if non-NULL
+ * @param[in]     cb    Body as a cbuf if non-NULL. Note is consumed
  * 
  * Prerequisites: status code set, headers given, body if wanted set
  */
 int
 restconf_reply_send(void  *req0,
 		    int    code,
-		    cbuf  *cb)
+		    cbuf  *cb,
+		    int    head)
 {
     FCGX_Request *req = (FCGX_Request *)req0;
     int           retval = -1;
@@ -206,9 +207,12 @@ restconf_reply_send(void  *req0,
 	goto done;
     FCGX_FPrintF(req->out, "\r\n");
     /* Write a body if cbuf is nonzero */
-    if (cb != NULL && cbuf_len(cb)){
-	FCGX_FPrintF(req->out, "%s", cbuf_get(cb));
-	FCGX_FPrintF(req->out, "\r\n");
+    if (cb != NULL){
+	if (!head && cbuf_len(cb)){
+	    FCGX_FPrintF(req->out, "%s", cbuf_get(cb));
+	    FCGX_FPrintF(req->out, "\r\n");
+	}
+	cbuf_free(cb);
     }
     FCGX_FFlush(req->out); /* Is this only for notification ? */
     retval = 0;
@@ -216,8 +220,11 @@ restconf_reply_send(void  *req0,
     return retval;
 }
 
-/*!
+/*! Get input data from http request, eg such as curl -X PUT http://... <indata>
  * @param[in]  req        Fastcgi request handle
+ * @retval     indata     
+ * @retval     NULL       Error
+ * @note: creates a new cbuf which differs from native api where a pointer is returned
  */
 cbuf *
 restconf_get_indata(void *req0)

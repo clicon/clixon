@@ -54,6 +54,8 @@
 #include <arpa/inet.h>
 #include <sys/resource.h>
 
+#include <openssl/ssl.h>
+
 /* cligen */
 #include <cligen/cligen.h>
 
@@ -61,13 +63,12 @@
 #include <clixon/clixon.h>
 
 #ifdef HAVE_LIBEVHTP
-/* evhtp */
 #include <event2/buffer.h> /* evbuffer */
 #define EVHTP_DISABLE_REGEX
 #define EVHTP_DISABLE_EVTHR
 
 #include <evhtp/evhtp.h>
-#include <evhtp/sslutils.h> /* XXX inline this / use SSL directly */
+
 #endif /* HAVE_LIBEVHTP */
 
 #ifdef HAVE_LIBNGHTTP2 /* To get restconf_native.h include files right */
@@ -81,7 +82,9 @@
 #include "restconf_err.h"
 #include "restconf_root.h"
 #include "restconf_native.h"   /* Restconf-openssl mode specific headers*/
+#ifdef HAVE_LIBEVHTP
 #include "restconf_evhtp.h"    /* evhtp http/1 */
+#endif
 
 #ifdef HAVE_LIBEVHTP
 static char*
@@ -192,7 +195,7 @@ evhtp_convert_fcgi(evhtp_header_t *hdr,
     return restconf_convert_hdr(h, hdr->key, hdr->val);
 }
 
-/*! Map from evhtp information to "fcgi" type parameters used in clixon code
+/*! convert parameters from evhtp to  fcgi-like parameters used by clixon
  *
  * While all these params come via one call in fcgi, the information must be taken from
  * several different places in evhtp 
@@ -213,9 +216,9 @@ evhtp_convert_fcgi(evhtp_header_t *hdr,
  * @note there may be more used by an application plugin
  */
 static int
-evhtp_params_set(clicon_handle    h,
-		 evhtp_request_t *req,
-    		 cvec            *qvec)
+convert_evhtp_params2clixon(clicon_handle    h,
+			    evhtp_request_t *req,
+			    cvec            *qvec)
 {
     int           retval = -1;
     htp_method    meth;
@@ -264,15 +267,19 @@ evhtp_params_set(clicon_handle    h,
 	goto fail;
     }
     clicon_debug(1, "%s conn->ssl:%d", __FUNCTION__, req->conn->ssl?1:0);
+    /* Slightly awkward way of taking cert subject and CN and add it to restconf parameters
+     * instead of accessing it directly */
     if ((ssl = req->conn->ssl) != NULL){
 	if (restconf_param_set(h, "HTTPS", "https") < 0) /* some string or NULL */
 	    goto done;
 	/* SSL subject fields, eg CN (Common Name) , can add more here? */
-	if ((subject = (char*)htp_sslutil_subject_tostr(req->conn->ssl)) != NULL){
+	if (ssl_x509_name_oneline(req->conn->ssl, &subject) < 0)
+	    goto done;
+	if (subject != NULL) {
 	    if (uri_str2cvec(subject, '/', '=', 1, &cvv) < 0)
 		goto done;
 	    if ((cn = cvec_find_str(cvv, "CN")) != NULL){
-		if (restconf_param_set(h, "SSL_CN", cn) < 0)
+		if (restconf_param_set(h, "SSL_CN", cn) < 0) /* Can be used by callback */
 		    goto done;
 	    }
 	}
@@ -298,6 +305,165 @@ evhtp_params_set(clicon_handle    h,
     goto done;
 }
 
+/*! We got -1 back from lower layers, create a 500 Internal Server error 
+ * Catch all on fatal error. This does not terminate the process but closes request 
+ * stream 
+ */
+static int
+evhtp_internal_error(evhtp_request_t *req)
+{
+    if (strlen(clicon_err_reason) &&
+	req->buffer_out){
+	evbuffer_add_printf(req->buffer_out, "%s", clicon_err_reason);
+	evhtp_send_reply(req, EVHTP_RES_500);
+    }
+    clicon_err_reset();
+    return 0;
+}
+
+/*! Send reply
+ * @see htp__create_reply_
+ */
+static int
+native_send_reply(restconf_conn        *rc,
+		  restconf_stream_data *sd,
+		  evhtp_request_t      *req)
+{
+    int                   retval = -1;
+
+    cg_var               *cv;
+    int                   minor;
+    int                   major;
+
+    switch (req->proto) {
+    case EVHTP_PROTO_10:
+	if (req->flags & EVHTP_REQ_FLAG_KEEPALIVE) {
+	    /* protocol is HTTP/1.0 and clients wants to keep established */
+	    if (restconf_reply_header(sd, "Connection", "keep-alive") < 0)
+		goto done;
+	}
+	major = htparser_get_major(req->conn->parser); /* XXX Look origin */
+	minor = htparser_get_minor(req->conn->parser);
+	break;
+    case EVHTP_PROTO_11:
+	if (!(req->flags & EVHTP_REQ_FLAG_KEEPALIVE)) {
+	    /* protocol is HTTP/1.1 but client wanted to close */
+	    if (restconf_reply_header(sd, "Connection", "keep-alive") < 0)
+		goto done;
+	}
+	major = htparser_get_major(req->conn->parser);
+	minor = htparser_get_minor(req->conn->parser);
+	break;
+    default:
+	/* this sometimes happens when a response is made but paused before
+	 * the method has been parsed */
+	major = 1;
+	minor = 0;
+	break;
+    }
+    cprintf(sd->sd_outp_buf, "HTTP/%u.%u %u %s\r\n",
+	    major,
+	    minor,
+	    sd->sd_code,
+	    restconf_code2reason(sd->sd_code));
+    /* Loop over headers */
+    cv = NULL;
+    while ((cv = cvec_each(sd->sd_outp_hdrs, cv)) != NULL)
+	cprintf(sd->sd_outp_buf, "%s: %s\r\n", cv_name_get(cv), cv_string_get(cv));
+    cprintf(sd->sd_outp_buf, "\r\n");
+    // cvec_reset(rc->rc_outp_hdrs); /* Is now done in restconf_connection but can be done here */
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*!
+ */
+static int
+restconf_evhtp_reply(restconf_conn        *rc,
+		     restconf_stream_data *sd,
+		     evhtp_request_t      *req)
+{
+    int                   retval = -1;
+
+    req->status = sd->sd_code;
+    req->flags |= EVHTP_REQ_FLAG_FINISHED; /* Signal to evhtp to read next request */
+    /* If body, add a content-length header 
+     *    A server MUST NOT send a Content-Length header field in any response
+     * with a status code of 1xx (Informational) or 204 (No Content).  A
+     * server MUST NOT send a Content-Length header field in any 2xx
+     * (Successful) response to a CONNECT request (Section 4.3.6 of
+     * [RFC7231]).
+     */
+    if (sd->sd_code != 204 && sd->sd_code > 199)
+	if (restconf_reply_header(sd, "Content-Length", "%zu", sd->sd_body_len) < 0)
+	    goto done;	
+    /* Create reply and write headers */
+    if (native_send_reply(rc, sd, req) < 0)
+	goto done;
+    /* Write a body */
+    if (sd->sd_body){
+	cbuf_append_str(sd->sd_outp_buf, cbuf_get(sd->sd_body));
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+#ifdef HAVE_LIBNGHTTP2
+/*! Check http/1 UPGRADE to http/2
+ * If upgrade headers are encountered AND http/2 is configured, then 
+ * - add upgrade headers or signal error
+ * - set http2 flag get settings to and signal to upper layer to do the actual transition.
+ * @retval   -1   Error
+ * @retval    0   Yes, upgrade dont proceed with request
+ * @retval    1   No upgrade, proceed with request
+ * @note currently upgrade header is checked always if nghttp2 is configured but may be a 
+ *       runtime config option
+ */
+static int
+evhtp_upgrade_http2(clicon_handle         h,
+		    restconf_stream_data *sd)
+{
+    int    retval = -1;
+    char  *str;
+    char  *settings;
+    cxobj *xerr = NULL;
+	
+    if ((str = restconf_param_get(h, "HTTP_UPGRADE")) != NULL){
+	/* Only accept "h2c" */
+	if (strcmp(str, "h2c") != 0){
+	    if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid upgrade token") < 0)
+		goto done; 
+	    if (api_return_err0(h, sd, xerr, 1, YANG_DATA_JSON, 0) < 0)
+		goto done;
+	    if (xerr)
+		xml_free(xerr);
+	}
+	else {
+	    if (restconf_reply_header(sd, "Connection", "Upgrade") < 0)
+		goto done;
+	    if (restconf_reply_header(sd, "Upgrade", "h2c") < 0)
+		goto done;
+	    if (restconf_reply_send(sd, 101, NULL, 0) < 0) /* Swithcing protocols */
+		goto done;
+	    /* Signal http/2 upgrade to http/2 to upper restconf_connection handling */
+	    sd->sd_upgrade2 = 1;
+	    if ((settings = restconf_param_get(h, "HTTP_HTTP2_Settings")) != NULL &&
+		(sd->sd_settings2 = (uint8_t*)strdup(settings)) == NULL){
+		clicon_err(OE_UNIX, errno, "strdup");
+		goto done;
+	    }
+	}
+	retval = 0; /* Yes, upgrade or error */
+    }
+    else
+	retval = 1; /* No upgrade, proceed with request */
+ done:
+    return retval;
+}
+#endif /* HAVE_LIBNGHTTP2 */
+
 /*! Callback for each incoming http request for path /
  *
  * This are all messages except /.well-known, Registered with evhtp_set_cb
@@ -314,47 +480,99 @@ void
 restconf_path_root(evhtp_request_t *req,
 		   void            *arg)
 {
-    int                 retval = -1;
-    clicon_handle       h;
-    int                 ret;
-    cvec               *qvec = NULL;
+    int                   retval = -1;
+    clicon_handle         h;
+    int                   ret;
+    evhtp_connection_t   *evconn;
+    restconf_conn        *rc;
+    restconf_stream_data *sd;
+    size_t                len;
+    unsigned char        *buf;
+    int                   keep_params = 0; /* set to 1 if dont delete params */
 
     clicon_debug(1, "------------");
     if ((h = (clicon_handle)arg) == NULL){
 	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
+	evhtp_internal_error(req);
 	goto done;
     }
+    /* evhtp connect struct */
+    if ((evconn = evhtp_request_get_connection(req)) == NULL){
+	clicon_err(OE_DAEMON, EFAULT, "evhtp_request_get_connection");
+	evhtp_internal_error(req);
+	goto done;
+    }
+    /* get clixon request connect pointer from generic evhtp application pointer */
+    rc = evconn->arg;
+    if ((sd = restconf_stream_find(rc, 0)) == NULL){
+	clicon_err(OE_RESTCONF, EINVAL, "No stream_data");
+	evhtp_internal_error(req);
+	goto done;
+    }
+    sd->sd_req = req;
+    sd->sd_proto = (req->proto == EVHTP_PROTO_10)?HTTP_10:HTTP_11;
     /* input debug */
     if (clicon_debug_get())
 	evhtp_headers_for_each(req->headers_in, evhtp_print_header, h);
-    
-    /* get accepted connection */
     /* Query vector, ie the ?a=x&b=y stuff */
-    if ((qvec = cvec_new(0)) ==NULL){
+    if (sd->sd_qvec)
+	cvec_free(sd->sd_qvec);
+    if ((sd->sd_qvec = cvec_new(0)) ==NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
+	evhtp_internal_error(req);
 	goto done;
     }
-    /* set fcgi-like paramaters (ignore query vector) */
-    if ((ret = evhtp_params_set(h, req, qvec)) < 0)
+    /* Get indata
+     */
+    if ((len = evbuffer_get_length(req->buffer_in)) > 0){
+	if ((buf = evbuffer_pullup(req->buffer_in, len)) == NULL){
+	    clicon_err(OE_CFG, errno, "evbuffer_pullup");
+	    goto done;
+	}
+	cbuf_reset(sd->sd_indata);
+	/* Note the pullup may not be null-terminated */
+	cbuf_append_buf(sd->sd_indata, buf, len);
+    }
+    /* Convert parameters from evhtp to  fcgi-like parameters used by clixon
+     * ret = 0 means an error has already been sent
+     */
+    if ((ret = convert_evhtp_params2clixon(h, req, sd->sd_qvec)) < 0){
+	evhtp_internal_error(req);
 	goto done;
+    }
+#ifdef HAVE_LIBNGHTTP2
+    if (ret == 1){
+	if ((ret = evhtp_upgrade_http2(h, sd)) < 0){
+	    evhtp_internal_error(req);
+	    goto done;
+	}
+	if (ret == 0)
+	    keep_params = 1;
+    }
+#endif
     if (ret == 1){
 	/* call generic function */
-	if (api_root_restconf(h, req, qvec) < 0)
-	    goto done;   
+	if (api_root_restconf(h, sd, sd->sd_qvec) < 0){
+	    evhtp_internal_error(req);
+	    goto done;
+	}
     }
-
-    /* Clear (fcgi) paramaters from this request */
-    if (restconf_param_del_all(h) < 0)
+    /* Clear input request parameters from this request */
+    if (!keep_params && restconf_param_del_all(h) < 0){
+	evhtp_internal_error(req);
 	goto done;
+    }
+    /* All parameters for sending a reply are here
+     */
+    if (sd->sd_code){
+	if (restconf_evhtp_reply(rc, sd, req) < 0){
+	    evhtp_internal_error(req);
+	    goto done;
+	}
+    }
     retval = 0;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
-    /* Catch all on fatal error. This does not terminate the process but closes request stream */
-    if (retval < 0){
-	evhtp_send_reply(req, EVHTP_RES_ERROR);
-    }
-    if (qvec)
-	cvec_free(qvec);
     return; /* void */
 }
 
@@ -368,37 +586,84 @@ void
 restconf_path_wellknown(evhtp_request_t *req,
 			void            *arg)
 {
-    int                 retval = -1;
-    clicon_handle       h;
-    int                 ret;
+    int                   retval = -1;
+    clicon_handle         h;
+    int                   ret;
+    evhtp_connection_t   *evconn;
+    restconf_conn        *rc;
+    restconf_stream_data *sd;
+    int                   keep_params = 0; /* set to 1 if dont delete params */
 
     clicon_debug(1, "------------");
     if ((h = (clicon_handle)arg) == NULL){
 	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
+	evhtp_internal_error(req);
 	goto done;
     }
+    /* evhtp connect struct */
+    if ((evconn = evhtp_request_get_connection(req)) == NULL){
+	clicon_err(OE_DAEMON, EFAULT, "evhtp_request_get_connection");
+	evhtp_internal_error(req);
+	goto done;
+    }
+    /* get clixon request connect pointer from generic evhtp application pointer */
+    rc = evconn->arg;
+    if ((sd = restconf_stream_find(rc, 0)) == NULL){
+	clicon_err(OE_RESTCONF, EINVAL, "No stream_data");
+	evhtp_internal_error(req);
+	goto done;
+    }
+    sd->sd_req = req;
+    sd->sd_proto = (req->proto == EVHTP_PROTO_10)?HTTP_10:HTTP_11;
     /* input debug */
     if (clicon_debug_get())
 	evhtp_headers_for_each(req->headers_in, evhtp_print_header, h);
-    /* get accepted connection */
-
-    /* set fcgi-like paramaters (ignore query vector) */
-    if ((ret = evhtp_params_set(h, req, NULL)) < 0)
+    /* Query vector, ie the ?a=x&b=y stuff */
+    if ((sd->sd_qvec = cvec_new(0)) ==NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	evhtp_internal_error(req);
 	goto done;
+    }
+    /* Convert parameters from evhtp to  fcgi-like parameters used by clixon
+     * ret = 0 means an error has already been sent
+     */
+    if ((ret = convert_evhtp_params2clixon(h, req, sd->sd_qvec)) < 0){
+	evhtp_internal_error(req);
+	goto done;
+    }
+#ifdef HAVE_LIBNGHTTP2
+    if (ret == 1){
+	if ((ret = evhtp_upgrade_http2(h, sd)) < 0){
+	    evhtp_internal_error(req);
+	    goto done;
+	}
+	if (ret == 0)
+	    keep_params = 1;
+    }
+#endif
     if (ret == 1){
 	/* call generic function */
-	if (api_well_known(h, req) < 0)
+	if (api_well_known(h, sd) < 0){
+	    evhtp_internal_error(req);
 	    goto done;
+	}
     }
-    /* Clear (fcgi) paramaters from this request */
-    if (restconf_param_del_all(h) < 0)
+    /* Clear input request parameters from this request */
+    if (!keep_params && restconf_param_del_all(h) < 0){
+	evhtp_internal_error(req);
 	goto done;
+    }
+    /* All parameters for sending a reply are here
+     */
+    if (sd->sd_code){
+	if (restconf_evhtp_reply(rc, sd, req) < 0){
+	    evhtp_internal_error(req);
+	    goto done;
+	}
+    }
     retval = 0;
  done:
-    /* Catch all on fatal error. This does not terminate the process but closes request stream */
-    if (retval < 0){
-	evhtp_send_reply(req, EVHTP_RES_ERROR);
-    }
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return; /* void */
 }
 #endif /* HAVE_LIBEVHTP */

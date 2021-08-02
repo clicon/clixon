@@ -54,7 +54,8 @@ echo "$STORE" > /usr/local/var/example/running_db
 
 >&2 echo "Write nginx config files"
 # nginx site config file
-cat <<EOF > /etc/nginx/conf.d/default.conf
+# Note alpine has switched between /etc/nginx/conf.d/ and /etc/nginx/http.d/
+cat <<EOF > /etc/nginx/http.d/default.conf
 #
 server {
         listen 80 default_server;
@@ -84,9 +85,11 @@ EOF
 # - all 3rd party model testing (you need to download the repos)
 # - test_install.sh since you dont have the make environment
 # - test_order.sh XXX this is a bug need debugging
+# Note use only http, for https you need to reconfig nginx
 cat <<EOF > /usr/local/bin/test/site.sh
 # Add your local site specific env variables (or tests) here.
 SKIPLIST="test_api.sh test_client.sh test_c++.sh test_install.sh test_privileges.sh"
+RCPROTO=http # Because nginx
 #IETFRFC=
 EOF
 

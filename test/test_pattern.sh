@@ -415,10 +415,10 @@ if [ $BE -ne 0 ]; then
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "Test for RFC7950 Sec 9.4.7 pattern example 2 (length + pattern)"
 testrun rfc2 true 'AB'

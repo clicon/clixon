@@ -37,8 +37,8 @@ EOF
 cat <<EOF > $fyangA
 module A{
   prefix a;
-  revision 2020-02-11;
   namespace "urn:example:a";
+  revision 2020-02-11;
   container x {
     container y {
     }
@@ -56,11 +56,11 @@ EOF
 cat <<EOF > $fyangB
 module B{
   prefix b;
-  revision 2020-02-11;
   namespace "urn:example:b";
   import A {
      prefix "a";
   }
+  revision 2020-02-11;
   augment "/a:x/a:y" {
     container z {
       leaf w {
@@ -93,10 +93,10 @@ function testrun(){
 	fi
 	new "start backend -s startup -f $cfg -- -U"
 	start_backend -s startup -f $cfg -- -U
-
-	new "waiting"
-	wait_backend
     fi
+
+    new "wait backend"
+    wait_backend
     
     new "netconf get config"
     expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$AFTER</data></rpc-reply>]]>]]>$"
