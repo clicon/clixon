@@ -136,8 +136,6 @@ char *netconf_db_find(cxobj *xn, char *name);
 int netconf_err2cb(cxobj *xerr, cbuf *cberr);
 const netconf_content netconf_content_str2int(char *str);
 const char *netconf_content_int2str(netconf_content nr);
-int netconf_hello_server(clicon_handle h, cbuf *cb, uint32_t session_id);
-int netconf_hello_req(clicon_handle h, cbuf *cb);
 int clixon_netconf_error_fn(const char *fn, const int line, cxobj *xerr, const char *fmt, const char *arg);
 int clixon_netconf_internal_error(cxobj *xerr, char *msg, char *arg);
 

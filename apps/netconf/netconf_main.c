@@ -69,6 +69,7 @@
 #include "clixon_netconf.h"
 #include "netconf_lib.h"
 #include "netconf_rpc.h"
+#include "netconf_hello.h"
 #include "netconf_capabilities.h"
 
 /* Command line options to be passed to getopt(3) */
@@ -85,8 +86,7 @@
 /*! Ignore errors on packet errors: continue */
 static int ignore_packet_errors = 1;
 
-/* Hello request received */
-static int _netconf_hello_nr = 0;
+
 
 /*! Copy attributes from incoming request to reply. Skip already present (dont overwrite)
  *
@@ -120,68 +120,6 @@ netconf_add_request_attr(cxobj *xrpc,
     return retval;
 }
 
-/*
- * A server receiving a <hello> message with a <session-id> element MUST
- * terminate the NETCONF session. 
- */
-static int
-netconf_hello_msg(clicon_handle h,
-		  cxobj        *xn)
-{
-    int     retval = -1;
-    cvec   *nsc = NULL; // namespace context
-    cxobj **vec = NULL;
-    size_t  veclen;
-    cxobj  *x;
-    cxobj  *xcap;
-    int     foundbase;
-    char   *body;
-
-    _netconf_hello_nr++;
-    if (xml_find_type(xn, NULL, "session-id", CX_ELMNT) != NULL) {
-	clicon_err(OE_XML, errno, "Server received hello with session-id from client, terminating (see RFC 6241 Sec 8.1)");
-	cc_closed++;
-	goto done;
-    }
-    if (xpath_vec(xn, nsc, "capabilities/capability", &vec, &veclen) < 0)
-	goto done;
-    /* Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1"*/
-    foundbase=0;
-    if ((xcap = xml_find_type(xn, NULL, "capabilities", CX_ELMNT)) != NULL) {
-	x = NULL;
-	while ((x = xml_child_each(xcap, x, CX_ELMNT)) != NULL) {
-	    if (strcmp(xml_name(x), "capability") != 0)
-		continue;
-	    if ((body = xml_body(x)) == NULL)
-		continue;
-
-            netconf_capabilities_put(h, body, CLIENT);
-
-	    /* When comparing protocol version capability URIs, only the base part is used, in the 
-	     * event any parameters are encoded at the end of the URI string. */
-	    if (strncmp(body, NETCONF_BASE_CAPABILITY_1_0, strlen(NETCONF_BASE_CAPABILITY_1_0)) == 0) /* RFC 4741 */
-		foundbase++;
-
-	    else if (strncmp(body, NETCONF_BASE_CAPABILITY_1_1, strlen(NETCONF_BASE_CAPABILITY_1_1)) == 0) /* RFC 6241 */
-		foundbase++;
-	}
-    }
-
-    netconf_capabilities_lock(h, CLIENT);
-
-    if (foundbase == 0){
-	clicon_err(OE_XML, errno, "Server received hello without netconf base capability %s, terminating (see RFC 6241 Sec 8.1",
-		   NETCONF_BASE_CAPABILITY_1_1);
-	cc_closed++;
-	goto done;
-    }
-
-    retval = 0;
- done:
-    if (vec)
-	free(vec);
-    return retval;
-}
 
 /*! Process incoming Netconf RPC netconf message 
  * @param[in]   h     Clicon handle
@@ -201,7 +139,7 @@ netconf_rpc_message(clicon_handle h,
     cbuf  *cbret = NULL;
     cxobj *xc;
 
-    if (_netconf_hello_nr == 0 &&
+    if (netconf_hello_check_received() == 0 &&
 	clicon_option_bool(h, "CLICON_NETCONF_HELLO_OPTIONAL") == 0){
 	if (netconf_operation_failed_xml(&xret, "rpc", "Client must send an hello element before any RPC")< 0)
 	    goto done;
@@ -284,62 +222,64 @@ netconf_rpc_message(clicon_handle h,
  */
 static int
 netconf_input_packet(clicon_handle h,
-		     cxobj        *xreq,
-		     yang_stmt    *yspec)
+                     cxobj *xreq,
+                     yang_stmt *yspec)
 {
-    int     retval = -1;
-    cbuf   *cbret = NULL;
-    char   *rpcname;
-    char   *rpcprefix;
-    char   *namespace = NULL;
-    cxobj  *xret = NULL;
-    
+    int   retval     = -1;
+    cbuf  *cbret     = NULL;
+    char  *rpcname;
+    char  *rpcprefix;
+    char  *namespace = NULL;
+    cxobj *xret      = NULL;
+
     clicon_debug(1, "%s", __FUNCTION__);
-    rpcname = xml_name(xreq);
+    rpcname   = xml_name(xreq);
     rpcprefix = xml_prefix(xreq);
     if (xml2ns(xreq, rpcprefix, &namespace) < 0)
-	goto done;
-    if (strcmp(rpcname, "rpc") == 0){
-	/* Only accept resolved NETCONF base namespace */
-	if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
-	    if (netconf_unknown_namespace_xml(&xret, "protocol", rpcprefix, "No appropriate namespace associated with prefix")< 0)
-		goto done;
-	    if (netconf_add_request_attr(xreq, xret) < 0)
-		goto done;
-	    if ((cbret = cbuf_new()) == NULL){ 
-		clicon_err(OE_XML, errno, "cbuf_new");
-		goto done;
-	    }
-	    clicon_xml2cbuf(cbret, xret, 0, 0, -1);
-	    netconf_output_encap(h, 1, cbret, "rpc-error");
-	    goto ok;
-	}
-	if (netconf_rpc_message(h, xreq, yspec) < 0)
-	    goto done;
+        goto done;
+    if (strcmp(rpcname, "rpc") == 0) {
+        /* Only accept resolved NETCONF base namespace */
+        if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0) {
+            if (netconf_unknown_namespace_xml(&xret, "protocol", rpcprefix,
+                                              "No appropriate namespace associated with prefix") < 0)
+                goto done;
+            if (netconf_add_request_attr(xreq, xret) < 0)
+                goto done;
+            if ((cbret = cbuf_new()) == NULL) {
+                clicon_err(OE_XML, errno, "cbuf_new");
+                goto done;
+            }
+            clicon_xml2cbuf(cbret, xret, 0, 0, -1);
+            netconf_output_encap(h, 1, cbret, "rpc-error");
+            goto ok;
+        }
+        if (netconf_rpc_message(h, xreq, yspec) < 0)
+            goto done;
+    } else if (strcmp(rpcname, "hello") == 0) {
+        /* Only accept resolved NETCONF base namespace */
+        if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0) {
+            clicon_err(OE_XML, EFAULT, "No appropriate namespace associated with prefix:%s", rpcprefix);
+            goto done;
+        }
+        if (netconf_hello_process_client_msg(h, xreq) < 0)
+            goto done;
+    } else {
+        if ((cbret = cbuf_new()) == NULL) {
+            clicon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
+        if (netconf_unknown_element(cbret, "protocol", rpcname, "Unrecognized netconf operation") < 0)
+            goto done;
+        netconf_output_encap(h, 1, cbret, "rpc-error");
     }
-    else if (strcmp(rpcname, "hello") == 0){
-    /* Only accept resolved NETCONF base namespace */
-	if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
-	    clicon_err(OE_XML, EFAULT, "No appropriate namespace associated with prefix:%s", rpcprefix);
-	    goto done;
-	}
-	if (netconf_hello_msg(h, xreq) < 0)
-	    goto done;
-    }
-    else{
-	if ((cbret = cbuf_new()) == NULL){ 
-	    clicon_err(OE_XML, errno, "cbuf_new");
-	    goto done;
-	}
-	if (netconf_unknown_element(cbret, "protocol", rpcname, "Unrecognized netconf operation")< 0)
-	    goto done;
-	netconf_output_encap(h, 1, cbret, "rpc-error");
-    }
- ok:
+
+    ok:
     retval = 0;
- done:
+
+    done:
     if (cbret)
-	cbuf_free(cbret);
+        cbuf_free(cbret);
+
     return retval;
 }
 
@@ -758,25 +698,30 @@ netconf_input_cb(int   s,
  */
 static int
 send_hello(clicon_handle h,
-	   int           s,
-	   uint32_t      id)
+           int s,
+           uint32_t id)
 {
-    int   retval = -1;
-    cbuf *cb;
-    
-    if ((cb = cbuf_new()) == NULL){
-	clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
-	goto done;
+    int  returnValue = -1;
+    cbuf *msgBuffer  = cbuf_new();
+
+    if (msgBuffer == NULL) {
+        clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
+        goto done;
     }
-    if (netconf_hello_server(h, cb, id) < 0)
-	goto done;
-    if (netconf_output(s, cb, "hello") < 0)
-	goto done;
-    retval = 0;
-  done:
-    if (cb)
-	cbuf_free(cb);
-    return retval;
+
+    if (netconf_hello_server(h, msgBuffer, id) < 0)
+        goto done;
+
+    if (netconf_output(s, msgBuffer, "hello") < 0)
+        goto done;
+
+    returnValue = 0;
+
+    done:
+    if (msgBuffer)
+        cbuf_free(msgBuffer);
+
+    return returnValue;
 }
 
 /*! Clean and close all state of netconf process (but dont exit). 
