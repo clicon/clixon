@@ -114,6 +114,7 @@ validate_leafref(cxobj     *xt,
     cvec        *nsc = NULL;
     cbuf        *cberr = NULL;
     char        *path;
+    yang_stmt   *ymod;
     
     if ((leafrefbody = xml_body(xt)) == NULL)
 	goto ok;
@@ -140,7 +141,8 @@ validate_leafref(cxobj     *xt,
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
 	}
-	cprintf(cberr, "Leafref validation failed: No leaf %s matching path %s", leafrefbody, path);
+	ymod = ys_module(ys);
+	cprintf(cberr, "Leafref validation failed: No leaf %s matching path %s in module %s", leafrefbody, path, yang_argument_get(ymod));
 	if (xret && netconf_bad_element_xml(xret, "application", leafrefbody, cbuf_get(cberr)) < 0)
 	    goto done;
 	goto fail;
@@ -1136,6 +1138,7 @@ xml_yang_validate_all(clicon_handle h,
     char      *ns = NULL;
     cbuf      *cb = NULL;
     cvec      *nsc = NULL;
+    int        hit = 0;
 
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
@@ -1227,53 +1230,21 @@ xml_yang_validate_all(clicon_handle h,
 		nsc = NULL;
 	    }
 	}
-	/* First variant of when, actual "when" sub-node RFC 7950 Sec 7.21.5. Can only be one. */
-	if ((yc = yang_find(ys, Y_WHEN, NULL)) != NULL){
-	    xpath = yang_argument_get(yc); /* "when" has xpath argument */
-	    /* WHEN xpath needs namespace context */
-	    if (xml_nsctx_yang(ys, &nsc) < 0)
+	if (yang_when_xpath(xt, xml_parent(xt), ys, &hit, &nr, &xpath) < 0)
+	    goto done;
+	if (hit && nr == 0){
+	    if ((cb = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
 		goto done;
-	    if ((nr = xpath_vec_bool(xt, nsc, "%s", xpath)) < 0)
+	    }
+	    cprintf(cb, "Failed WHEN condition of %s in module %s (WHEN xpath is %s)",
+		    xml_name(xt),
+		    yang_argument_get(ys_module(ys)),
+		    xpath);
+	    if (xret && netconf_operation_failed_xml(xret, "application", 
+						     cbuf_get(cb)) < 0)
 		goto done;
-	    if (nsc){
-		xml_nsctx_free(nsc);
-		nsc = NULL;
-	    }
-	    if (nr == 0){
-		if ((cb = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cb, "Failed WHEN condition of %s in module %s",
-			xml_name(xt),
-			yang_argument_get(ys_module(ys)));
-		if (xret && netconf_operation_failed_xml(xret, "application", 
-						 cbuf_get(cb)) < 0)
-		    goto done;
-		goto fail;
-	    }
-	}
-	/* Second variants of WHEN:
-	 * Augmented and uses when using special info in node
-	 */
-	if ((xpath = yang_when_xpath_get(ys)) != NULL){
-	    if ((nr = xpath_vec_bool(xml_parent(xt), yang_when_nsc_get(ys),
-				     "%s", xpath)) < 0)
-		goto done;
-	    if (nr == 0){
-		if ((cb = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cb, "Failed augmented 'when' condition '%s' of node '%s' in module '%s'",
-			xpath,
-			xml_name(xt),
-			yang_argument_get(ys_module(ys)));
-		if (xret && netconf_operation_failed_xml(xret, "application", 
-						 cbuf_get(cb)) < 0)
-		    goto done;
-		goto fail;
-	    }
+	    goto fail;
 	}
     }
     x = NULL;

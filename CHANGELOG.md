@@ -51,6 +51,8 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [OpenConfig BGP afi-safi and when condition issues #249](https://github.com/clicon/clixon/issues/249)
+  * YANG when was not properly implemented for default values
 * Fixed: SEGV in clixon_netconf_lib functions from internal errors including validation.
   * Check xerr argument both before and after call on netconf lib functions
 * Fixed: RFC 8040 yang-data extension allows non-key lists
