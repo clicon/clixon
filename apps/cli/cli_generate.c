@@ -184,7 +184,7 @@ yang2cli_helptext(cbuf *cb,
 
 /*! Generate identityref statements for CLI variables
  * @param[in]  ys        Yang statement
- * @param[in]  ytype     Yang union type being resolved
+ * @param[in]  ytype     Resolved yang type.
  * @param[in]  helptext  CLI help text
  * @param[out] cb        Buffer where cligen code is written
  * @see yang2cli_var_sub  Its sub-function
@@ -208,42 +208,44 @@ yang2cli_var_identityref(yang_stmt *ys,
     yang_stmt *yprefix;
     yang_stmt *yspec;
     
-    if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) != NULL &&
-	(ybaseid = yang_find_identity(ys, yang_argument_get(ybaseref))) != NULL){
-	idrefvec = yang_cvec_get(ybaseid);
-	if (cvec_len(idrefvec) > 0){
-	    /* Add a wildchar string first -let validate take it for default prefix */
-	    cprintf(cb, ">");
-	    yang2cli_helptext(cb, helptext);
-	    cprintf(cb, "|<%s:%s choice:", yang_argument_get(ys), cvtypestr);
-	    yspec = ys_spec(ys);
-	    i = 0;
-	    while ((cv = cvec_each(idrefvec, cv)) != NULL){
-		if (nodeid_split(cv_name_get(cv), &prefix, &id) < 0)
-		    goto done;
-		/* Translate from module-name(prefix) to global prefix
-		 * This is really a kludge for true identityref prefix handling
-		 * IDENTITYREF_KLUDGE 
-		 * This is actually quite complicated: the cli needs to generate
-		 * a netconf statement with correct xmlns binding
-		 */
-		if ((ymod = yang_find_module_by_name(yspec, prefix)) != NULL &&
-		    (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL){
-		    if (i++)
-			cprintf(cb, "|"); 
-		    cprintf(cb, "%s:%s", yang_argument_get(yprefix), id);
-		}
-		if (prefix){
-		    free(prefix);
-		    prefix = NULL;
-		}
-		if (id){
-		    free(id);
-		    id = NULL;
-		}
+    if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) == NULL)
+	goto ok;
+    if ((ybaseid = yang_find_identity(ytype, yang_argument_get(ybaseref))) == NULL)
+	goto ok;
+    idrefvec = yang_cvec_get(ybaseid);
+    if (cvec_len(idrefvec) > 0){
+	/* Add a wildchar string first -let validate take it for default prefix */
+	cprintf(cb, ">");
+	yang2cli_helptext(cb, helptext);
+	cprintf(cb, "|<%s:%s choice:", yang_argument_get(ys), cvtypestr);
+	yspec = ys_spec(ys);
+	i = 0;
+	while ((cv = cvec_each(idrefvec, cv)) != NULL){
+	    if (nodeid_split(cv_name_get(cv), &prefix, &id) < 0)
+		goto done;
+	    /* Translate from module-name(prefix) to global prefix
+	     * This is really a kludge for true identityref prefix handling
+	     * IDENTITYREF_KLUDGE 
+	     * This is actually quite complicated: the cli needs to generate
+	     * a netconf statement with correct xmlns binding
+	     */
+	    if ((ymod = yang_find_module_by_name(yspec, prefix)) != NULL &&
+		(yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL){
+		if (i++)
+		    cprintf(cb, "|"); 
+		cprintf(cb, "%s:%s", yang_argument_get(yprefix), id);
+	    }
+	    if (prefix){
+		free(prefix);
+		prefix = NULL;
+	    }
+	    if (id){
+		free(id);
+		id = NULL;
 	    }
 	}
     }
+ ok:
     retval = 0;
  done:
     if (prefix)
@@ -371,7 +373,7 @@ static int yang2cli_var_union(clicon_handle h, yang_stmt *ys, char *origtype,
  * patterns, (eg regexp:"[0.9]*").
  * @param[in]  h        Clixon handle
  * @param[in]  ys       Yang statement
- * @param[in]  ytype    Yang union type being resolved
+ * @param[in]  ytype    Resolved yang type.
  * @param[in]  helptext CLI help text
  * @param[in]  cvtype
  * @param[in]  options  Flags field of optional values, see YANG_OPTIONS_*

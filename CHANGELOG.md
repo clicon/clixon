@@ -52,6 +52,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: The auto-cli identityref did not expand identities in grouping/usecases properly.
 * Fixed: [OpenConfig BGP afi-safi and when condition issues #249](https://github.com/clicon/clixon/issues/249)
   * YANG when was not properly implemented for default values
 * Fixed: SEGV in clixon_netconf_lib functions from internal errors including validation.
