@@ -1247,7 +1247,7 @@ xml_yang_validate_all(clicon_handle h,
 		nsc = NULL;
 	    }
 	}
-	if (yang_when_xpath(xt, xml_parent(xt), ys, &hit, &nr, &xpath) < 0)
+	if (yang_check_when_xpath(xt, xml_parent(xt), ys, &hit, &nr, &xpath) < 0)
 	    goto done;
 	if (hit && nr == 0){
 	    if ((cb = cbuf_new()) == NULL){
