@@ -64,7 +64,7 @@ module example-crypto-base {
 EOF
 
 cat <<EOF > $dir/example-des.yang
-     module example-des {
+module example-des {
        yang-version 1.1;
        namespace "urn:example:des";
        prefix "des";
@@ -81,7 +81,7 @@ cat <<EOF > $dir/example-des.yang
          base "crypto:symmetric-key";
          description "Triple DES crypto algorithm.";
        }
-     }
+}
 EOF
 
 cat <<EOF > $fyang
@@ -252,7 +252,7 @@ new "Set crypto to foo:bar"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><crypto xmlns=\"urn:example:my-crypto\">foo:bar</crypto></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate (expect fail)"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Identityref validation failed, foo:bar not derived from crypto-alg</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Identityref validation failed, foo:bar not derived from crypto-alg in example-crypto-base.yang:[0-9]*</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "cli set crypto to mc:aes"
 expectpart "$($clixon_cli -1 -f $cfg -l o set crypto mc:aes)" 0 "^$"
@@ -282,7 +282,7 @@ new "Netconf set undefined acl-type"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><acls xmlns=\"urn:example:my-crypto\"><acl><name>x</name><type>undefined</type></acl></acls></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "netconf validate fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Identityref validation failed, undefined not derived from acl-base</error-message></rpc-error></rpc-reply>]]>]]>"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Identityref validation failed, undefined not derived from acl-base in example-my-crypto.yang:[0-9]*</error-message></rpc-error></rpc-reply>]]>]]>"
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"

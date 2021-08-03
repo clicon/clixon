@@ -93,7 +93,8 @@ struct yang_stmt{
     char              *ys_when_xpath; /* Special conditional for a "when"-associated augment/uses xpath */
     cvec              *ys_when_nsc;   /* Special conditional for a "when"-associated augment/uses namespace ctx */
     int               _ys_vector_i;   /* internal use: yn_each */
-
+    char              *ys_filename;   /* For debug/errors: filename (only (sub)modules) */
+    int                ys_linenum;    /* For debug/errors: line number (in ys_filename) */
 };
 
 

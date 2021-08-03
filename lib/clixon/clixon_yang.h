@@ -212,6 +212,10 @@ char      *yang_when_xpath_get(yang_stmt *ys);
 int        yang_when_xpath_set(yang_stmt *ys, char *xpath);
 cvec      *yang_when_nsc_get(yang_stmt *ys);
 int        yang_when_nsc_set(yang_stmt *ys, cvec *nsc);
+const char *yang_filename_get(yang_stmt *ys);
+int        yang_filename_set(yang_stmt *ys, const char *filename);
+int        yang_linenum_get(yang_stmt *ys);
+int        yang_linenum_set(yang_stmt *ys, int linenum);
 
 /* Other functions */
 yang_stmt *yspec_new(void);
