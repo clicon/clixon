@@ -119,7 +119,14 @@ validate_leafref(cxobj     *xt,
     if ((leafrefbody = xml_body(xt)) == NULL)
 	goto ok;
     if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
-	if (xret && netconf_missing_element_xml(xret, "application", yang_argument_get(ytype), "Leafref requires path statement") < 0)
+	if ((cberr = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cberr, "Leafref requires path statement");
+	if (xret && netconf_missing_element_xml(xret, "application",
+						yang_argument_get(ytype),
+						cbuf_get(cberr)) < 0)
 	    goto done;
 	goto fail;
     }
@@ -142,7 +149,11 @@ validate_leafref(cxobj     *xt,
 	    goto done;
 	}
 	ymod = ys_module(ys);
-	cprintf(cberr, "Leafref validation failed: No leaf %s matching path %s in module %s", leafrefbody, path, yang_argument_get(ymod));
+	cprintf(cberr, "Leafref validation failed: No leaf %s matching path %s in %s.yang:%d",
+		leafrefbody,
+		path,
+		yang_argument_get(ymod),
+		yang_linenum_get(ys));
 	if (xret && netconf_bad_element_xml(xret, "application", leafrefbody, cbuf_get(cberr)) < 0)
 	    goto done;
 	goto fail;
@@ -241,8 +252,11 @@ validate_identityref(cxobj     *xt,
 #endif
     }
     if (ymod == NULL){
-	cprintf(cberr, "Identityref validation failed, %s not derived from %s", 
-		node, yang_argument_get(ybaseid));
+	cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang:%d", 
+		node,
+		yang_argument_get(ybaseid),
+		yang_argument_get(ys_module(ybaseid)),
+		yang_linenum_get(ybaseid));
 	if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
 	    goto done;
 	goto fail;
@@ -254,8 +268,11 @@ validate_identityref(cxobj     *xt,
      */
     idrefvec = yang_cvec_get(ybaseid);
     if (cvec_find(idrefvec, idref) == NULL){
-	cprintf(cberr, "Identityref validation failed, %s not derived from %s", 
-		node, yang_argument_get(ybaseid));
+	cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang:%d", 
+		node,
+		yang_argument_get(ybaseid),
+		yang_argument_get(ys_module(ybaseid)),
+		yang_linenum_get(ybaseid));
 	if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
 	    goto done;
 	goto fail;

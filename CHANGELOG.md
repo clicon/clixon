@@ -49,6 +49,11 @@ Users may have to change how they access the system
    * Removed default of `CLICON_RESTCONF_INSTALLDIR`
      * The default behaviour is changed to use the config $(sbindir) to locate `clixon_restconf` when starting restconf internally
 
+### Minor features
+
+* Added linenumbers to all YANG symbols for better debug and errors
+  * Improved error messages for YANG identityref:s and leafref:s by adding original line numbers
+
 ### Corrected Bugs
 
 * Fixed: The auto-cli identityref did not expand identities in grouping/usecases properly.
