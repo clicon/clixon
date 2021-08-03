@@ -1164,13 +1164,11 @@ xml_default1(yang_stmt *yt,
 	    switch (yang_keyword_get(yc)){
 	    case Y_LEAF:
 		if (!cv_flag(yang_cv_get(yc), V_UNSET)){  /* Default value exists */
-		    /* Check when statement from uses or augment */
-		    if ((xpath = yang_when_xpath_get(yc)) != NULL){
-			if ((nr = xpath_vec_bool(xt, yang_when_nsc_get(yc), "%s", xpath)) < 0)
-			    goto done;
-			if (nr == 0)
-			    break; /* Do not create default if xpath fails */
-		    }
+		    /* Check when condition */
+		    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
+			goto done;
+		    if (hit && nr == 0)
+			break; /* Do not create default if xpath fails */
 		    if (xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
 			/* No such child exist, create this leaf */
 			if (xml_default_create(yc, xt, top) < 0)
@@ -1181,8 +1179,8 @@ xml_default1(yang_stmt *yt,
 		break;
 	    case Y_CONTAINER:
 		if (yang_find(yc, Y_PRESENCE, NULL) == NULL){
-		    /* Check when statement from uses or augment */
-		    if (yang_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
+		    /* Check when condition */
+		    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
 			goto done;
 		    if (hit && nr == 0)
 			break; /* Do not create default if xpath fails */
@@ -2266,12 +2264,12 @@ xml_copy_marked(cxobj *x0,
  * Second variant of when, actual "when" sub-node RFC 7950 Sec 7.21.5. Can only be one.
  */
 int
-yang_when_xpath(cxobj        *xn,
-		cxobj        *xp,
-		yang_stmt    *yn,
-		int          *hit,
-		int          *nrp,
-		char        **xpathp)
+yang_check_when_xpath(cxobj        *xn,
+		      cxobj        *xp,
+		      yang_stmt    *yn,
+		      int          *hit,
+		      int          *nrp,
+		      char        **xpathp)
 {
     int        retval = 1;
     yang_stmt *yc;
