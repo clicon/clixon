@@ -89,6 +89,7 @@
  *   \p{Z} Separators  [slp]?
  *   \p{S} Symbols     [mcko]?
  *   \p{O} Other       [cfon]?
+ * For non-printable, \n, \t, \r see https://www.regular-expressions.info/nonprint.html
  */
 int
 regexp_xsd2posix(char  *xsd,
@@ -123,6 +124,9 @@ regexp_xsd2posix(char  *xsd,
 		break;
 	    case 'i': /* initial */
 		cprintf(cb, "[a-zA-Z_:]");
+		break;
+	    case 'n': /* non-printable \n */
+		cprintf(cb, "\n");
 		break;
 	    case 'p': /* category escape: \p{IsCategory} */
 		j = i+1;
@@ -161,11 +165,17 @@ regexp_xsd2posix(char  *xsd,
 		}
 		/* if syntax error, just leave it */
 		break;
+	    case 'r': /* non-printable */
+		cprintf(cb, "\r");
+		break;
 	    case 's':
 		cprintf(cb, "[ \t\r\n]");
 		break;
 	    case 'S':
 		cprintf(cb, "[^ \t\r\n]");
+		break;
+	    case 't': /* non-printable */
+		cprintf(cb, "\t");
 		break;
 	    case 'w': /* word */
 		//cprintf(cb, "[0-9a-zA-Z_\\\\-]")
