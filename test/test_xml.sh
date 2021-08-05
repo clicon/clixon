@@ -127,6 +127,10 @@ expecteof "$clixon_util_xml -ol o" 255 '<?xml verion="1.0"?><a/>' '' 2> /dev/nul
 new "XMLdecl version + encoding"
 expecteof "$clixon_util_xml -o" 0 '<?xml version="1.0" encoding="UTF-8"?><a/>' '<a/>'
 
+# XML processors SHOULD match character encoding names in a case-insensitive way 
+new "XMLdecl encoding case-insensitive"
+expecteof "$clixon_util_xml -o" 0 '<?xml version="1.0" encoding="utf-8"?><a/>' '<a/>'
+
 new "XMLdecl version + wrong encoding"
 expecteof "$clixon_util_xml -o" 255 '<?xml version="1.0" encoding="UTF-16"?><a/>' '' 2> /dev/null
 

@@ -56,6 +56,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [clixon_netconf errors on client XML Declaration with valid encoding spec](https://github.com/clicon/clixon/issues/250)
 * Fixed: Yang patterns: \n and other non-printable characters were broken
   * Example: Clixon interpereted them two characters: `\\ n` instead of ascii 10
 * Fixed: The auto-cli identityref did not expand identities in grouping/usecases properly.
