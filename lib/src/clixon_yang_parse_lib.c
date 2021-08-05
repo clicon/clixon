@@ -1896,6 +1896,18 @@ ys_parse_sub(yang_stmt *ys,
 	    goto done;
 	}
 	break;
+    case Y_PATTERN:{
+	char *s0;
+	char *s1 = NULL;
+	/* Replace \\n with \n */
+	s0 = yang_argument_get(ys);
+	if (nonprint_encode(s0, &s1) < 0)
+	    goto done;
+	yang_argument_set(ys, s1);
+	if (s0)
+	    free(s0);
+	break;
+    }
     case Y_UNKNOWN:{ /* save (optional) argument in ys_cv */
 	if (extra == NULL)
 	    break;

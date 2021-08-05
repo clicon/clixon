@@ -646,6 +646,83 @@ uri_str2cvec(char  *string,
     goto done;
 }
 
+/*! Translate \n and others from \\n (two chars) to \n (one char)
+ *
+ * This is needed in yang regex it seems.
+ * It was triggered by eg draft-wwlh-netconf-list-pagination-00 module example-social tagline
+ *       leaf tagline {
+ *         type string {
+ *           length "1..80";
+ *           pattern '.*[\n].*' {
+ *             modifier invert-match;
+ * @param[in]  orig  Original string eg with \\n
+ * @param[out] enc   Encoded string with \n, malloced.
+ *
+ * @see https://www.regular-expressions.info/nonprint.html
+ */
+int
+nonprint_encode(char  *orig, 
+		char **encp)
+{
+    int   retval = -1;
+    char *enc = NULL;
+    int   i;
+    int   j;
+    int   esc = 0;
+    char  c;
+    char  c1;
+
+    if (orig == NULL){
+	clicon_err(OE_UNIX, EINVAL, "orig is NULL");
+	goto done;
+    }
+    /* Encoded string is equal or shorter */
+    if ((enc = malloc(strlen(orig)+1)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    j = 0;
+    for (i=0; i<strlen(orig); i++){
+	c = orig[i];
+	switch (c){
+	case '\\':
+	    /* Look ahead */
+	    if (i+1 < strlen(orig)){
+		c1 = orig[i+1]; 
+		switch (c1){
+		case 'n':
+		    enc[j++] = '\n';
+		    esc++;
+		    break;
+		case 't':
+		    enc[j++] = '\t';
+		    esc++;
+		    break;
+		case 'r':
+		    enc[j++] = '\r';
+		    esc++;
+		    break;
+		default:
+		    enc[j++] = c;
+		    break;
+		}
+	    }
+	    break;
+	default:
+	    if (esc)
+		esc = 0;		
+	    else
+		enc[j++] = c;
+	    break;
+	}
+    }
+    enc[j++] = '\0';
+    *encp = enc;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Map from int to string using str2int map
  * @param[in] ms   String, integer map
  * @param[in] i    Input integer
