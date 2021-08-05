@@ -507,6 +507,7 @@ api_data_collection(clicon_handle  h,
 	goto done;
     if (restconf_reply_send(req, 200, cbx, 0 /* XXX head */) < 0)
 	goto done;
+    cbx = NULL; /* is consumed by above */
  ok:
     retval = 0;
  done:

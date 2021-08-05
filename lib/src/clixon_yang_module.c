@@ -682,7 +682,7 @@ yang_find_module_by_name(yang_stmt *yspec,
 
 /*! Callback for handling RFC 7952 annotations
  *
- * a server indicates that it is prepared to handle that annotation according to the
+ * A server indicates that it is prepared to handle that annotation according to the
  * annotation's definition.  That is, an annotation advertised by the
  * server may be attached to an instance of a data node defined in any
  * YANG module that is implemented by the server.

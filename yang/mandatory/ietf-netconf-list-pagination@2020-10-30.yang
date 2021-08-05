@@ -30,6 +30,11 @@ module ietf-netconf-list-pagination {
       "RFC 8342: Network Management Datastore Architecture
        (NMDA)";
   }
+  import ietf-yang-metadata {
+      prefix "md";
+      reference
+	  "RFC 7952: Defining and Using Metadata with YANG";
+  }
 
   organization
     "IETF NETCONF (Network Configuration) Working Group";
@@ -63,7 +68,15 @@ module ietf-netconf-list-pagination {
      (https://trustee.ietf.org/license-info).
 
      This version of this YANG module is part of RFC 8526; see
-     the RFC itself for full legal notices.";
+     the RFC itself for full legal notices.
+      
+     Clixon: 
+     - changed get-pagable ->  get-pageable
+     - renamed count -> limit
+     - renamed skip -> offset
+     - added import ietf-yang-metadata
+     - added md:annotation remaining
+     ";
   revision 2020-10-30 {
     description
       "Initial revision.";
@@ -89,8 +102,21 @@ module ietf-netconf-list-pagination {
        RFC 8526: NETCONF Extensions to Support the Network Management
        Datastore Architecture, Section 3.1.1.2";
   }
+  // Annotations
+  md:annotation remaining {
+      type uint32;
+      description
+	  "This annotation contains the number of elements removed
+          from a result set after a 'limit' or 'sublist-limit'
+          operation. If no elements were removed, this annotation
+          MUST NOT appear.  The minimum value (0), which never
+          occurs in normal operation, is reserved to represent
+          'unknown'.  The maximum value (2^32-1) is reserved to
+          represent any value greater than or equal to 2^32-1
+          elements.";
+  }
 
-  rpc get-pagable-list {
+  rpc get-pageable-list {
     description
       "Use enhanced filtering features to retrieve data from a
        specific NMDA datastore. The content returned by get-data

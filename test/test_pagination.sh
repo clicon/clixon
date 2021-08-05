@@ -286,17 +286,20 @@ wait_restconf
 
 new "A.3.1.1. 'limit=1' NETCONF"
 # XXX: augment GET instead, not RPC
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-pagable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:es=\"http://example.com/ns/example-social\">/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers</list-target><limit>1</limit></get-pagable-list></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><uint8-numbers xmlns=\"http://example.com/ns/example-social\" lpg:remaining=\"5\" xmlns:lpg=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\">17</uint8-numbers></pageable-list></rpc-reply>]]>]]>$"
+#expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:es=\"http://example.com/ns/example-social\">/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers</list-target><limit>1</limit></get-pageable-list></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><uint8-numbers xmlns=\"http://example.com/ns/example-social\" ycoll:remaining=\"5\" xmlns:ycoll=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\">17</uint8-numbers></pageable-list></rpc-reply>]]>]]>$"
 
-#new "A.3.1.1. 'limit' Parameter RESTCONF"
-#expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang.collection+xml" $RCPROTO://localhost/restconf/data/ietf-netconf-list-pagination:get-pagable-list -d "<get-pagable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:es=\"http://example.com/ns/example-social\">/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers</list-target><limit>1</limit></get-pagable-list>")" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+xml" foo
+new "A.3.1.1. 'limit' Parameter RESTCONF xml"
+#expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+xml" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers?limit=1)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+xml" "<pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><uint8-numbers xmlns=\"http://example.com/ns/example-social\" lpg:remaining=\"5\" xmlns:lpg=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\">17</uint8-numbers></pageable-list>"
 
-new "A.3.1.2. 'limit=2' NETCONF"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-pagable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:es=\"http://example.com/ns/example-social\">/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers</list-target><limit>2</limit></get-pagable-list></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><uint8-numbers xmlns=\"http://example.com/ns/example-social\" lpg:remaining=\"4\" xmlns:lpg=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\">17</uint8-numbers><uint8-numbers xmlns=\"http://example.com/ns/example-social\">13</uint8-numbers></pageable-list></rpc-reply>]]>]]>$"
+new "A.3.1.1. 'limit' Parameter RESTCONF json"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+json" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers?limit=1)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+json" {'"pageable-list":{"example-social:uint8-numbers":17}}'
 exit
 
-
-
+#new "A.3.1.1. 'limit' Parameter RESTCONF"
+#expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+xml" $RCPROTO://localhost/restconf/data/ietf-netconf-list-pagination:get-pageable-list -d "<get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:es=\"http://example.com/ns/example-social\">/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers</list-target><limit>1</limit></get-pageable-list>")" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+xml" foo
+exit
+new "A.3.1.2. 'limit=2' NETCONF"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:es=\"http://example.com/ns/example-social\">/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers</list-target><limit>2</limit></get-pageable-list></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><uint8-numbers xmlns=\"http://example.com/ns/example-social\" lpg:remaining=\"4\" xmlns:lpg=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\">17</uint8-numbers><uint8-numbers xmlns=\"http://example.com/ns/example-social\">13</uint8-numbers></pageable-list></rpc-reply>]]>]]>$"
 
 # CLI
 # XXX This relies on a very specific clispec command: need a more generic test
@@ -305,7 +308,7 @@ exit
 
 # draft-wwlh-netconf-list-pagination-rc-00.txt
 #new "A.1. 'count' Parameter RESTCONF"
-#expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang.collection+xml" $RCPROTO://localhost/restconf/data/example-module:get-list-pagination/library/artist=Foo%20Fighters/album/?count=2)" 0  "HTTP/1.1 200 OK" "application/yang.collection+xml" '<collection xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-collection"><album xmlns="http://example.com/ns/example-jukebox"><name>Crime and Punishment</name><year>1995</year></album><album xmlns="http://example.com/ns/example-jukebox"><name>One by One</name><year>2002</year></album></collection>'
+#expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+xml" $RCPROTO://localhost/restconf/data/example-module:get-list-pagination/library/artist=Foo%20Fighters/album/?count=2)" 0  "HTTP/1.1 200 OK" "application/yang-collection+xml" '<collection xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-collection"><album xmlns="http://example.com/ns/example-jukebox"><name>Crime and Punishment</name><year>1995</year></album><album xmlns="http://example.com/ns/example-jukebox"><name>One by One</name><year>2002</year></album></collection>'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

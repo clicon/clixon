@@ -840,9 +840,13 @@ xml2json1_cbuf(cbuf                   *cb,
     commas = xml_child_nr_notype(x, CX_ATTR) - 1;
     for (i=0; i<xml_child_nr(x); i++){
 	xc = xml_child_i(x, i);
-	if (xml_type(xc) == CX_ATTR)
+	if (xml_type(xc) == CX_ATTR){
+#if 1 /* Work in progress, identify md:annotations */
+	    continue;
+#else
 	    continue; /* XXX Only xmlns attributes mapped */
-
+#endif
+	}
 	xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
 				xc, 
 				xml_child_i(x, i+1));

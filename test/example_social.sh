@@ -48,11 +48,9 @@ cat <<EOF > $fexample
          leaf member-id {
            type string {
              length "1..80";
-/*
              pattern '.*[\n].*' {
               modifier invert-match;
              }
-*/
            }
            description
              "The member's identifier.";
@@ -80,11 +78,9 @@ cat <<EOF > $fexample
          leaf tagline {
            type string {
              length "1..80";
-/*
              pattern '.*[\n].*' {
                modifier invert-match;
              }
-*/
            }
            description
              "The member's tagline.";
@@ -140,11 +136,9 @@ cat <<EOF > $fexample
              leaf title {
                type string {
                  length "1..80";
-/*
                  pattern '.*[\n].*' {
                    modifier invert-match;
                  }
-*/
                }
                description
                  "A one-line title.";

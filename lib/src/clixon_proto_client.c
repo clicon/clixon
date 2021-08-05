@@ -941,7 +941,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     cprintf(cb, " xmlns:%s=\"%s\"",
 	    NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
-    cprintf(cb, "><get-pagable-list xmlns=\"%s\"", NETCONF_COLLECTION_NAMESPACE);
+    cprintf(cb, "><get-pageable-list xmlns=\"%s\"", NETCONF_COLLECTION_NAMESPACE);
     /* Clixon extension, content=all,config, or nonconfig */
     if ((int)content != -1)
 	cprintf(cb, " content=\"%s\"", netconf_content_int2str(content));
@@ -965,7 +965,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 	cprintf(cb, "<sort>%s</sort>", sort);
     if (where)
 	cprintf(cb, "<where>%s</where>", where);
-    cprintf(cb, "</get-pagable-list></rpc>");
+    cprintf(cb, "</get-pageable-list></rpc>");
     if ((msg = clicon_msg_encode(session_id, "%s", cbuf_get(cb))) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret) < 0)

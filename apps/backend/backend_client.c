@@ -1664,7 +1664,7 @@ from_client_get_pageable_list(clicon_handle h,
 		    goto done;
 		if (xml_prefix_set(xa, "lpg") < 0)
 		    goto done;
-		if (xmlns_set(x, "lpg", "urn:ietf:params:xml:ns:yang:ietf-list-pagination") < 0)
+		if (xmlns_set(x, "ycoll", "urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination") < 0)
 		    goto done;
 	    }
 	    /* Top level is data, so add 1 to depth if significant */
@@ -2326,7 +2326,7 @@ backend_rpc_init(clicon_handle h)
 #ifdef LIST_PAGINATION
     /* draft-ietf-netconf-restconf-collection-00 */
     if (rpc_callback_register(h, from_client_get_pageable_list, NULL,
-		      NETCONF_COLLECTION_NAMESPACE, "get-pagable-list") < 0)
+		      NETCONF_COLLECTION_NAMESPACE, "get-pageable-list") < 0)
 	goto done;
 #endif
     /* In backend_client.? RPC from RFC 5277 */

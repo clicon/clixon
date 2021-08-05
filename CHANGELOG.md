@@ -52,7 +52,7 @@ Expected: September, 2021
 * List pagination
   * This is prototype work for ietf netconf work
   * See draft-wwlh-netconf-list-pagination-00.txt
-  * New http media: application/yang.collection+xml/json
+  * New http media: application/yang-collection+xml/json
 
 ### API changes on existing protocol/config features
 
@@ -549,7 +549,7 @@ Developers may need to change their code
   * This is prototype work for ietf netconf work
   * See draft-ietf-netconf-restconf-collection-00.txt
   * New yang: ietf-restconf-collection@2020-10-22.yang
-  * New http media: application/yang.collection+xml/json
+  * New http media: application/yang-collection+xml/json
 
 ## 4.8.0
 18 October 2020
