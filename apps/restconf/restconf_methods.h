@@ -39,6 +39,7 @@
 #ifndef _RESTCONF_METHODS_H_
 #define _RESTCONF_METHODS_H_
 
+#define TEMP_STR_MALLOC_SIZE 5000
 /*
  * Prototypes
  */
