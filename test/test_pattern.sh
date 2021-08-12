@@ -368,6 +368,15 @@ module pattern{
               '[0-9]|25[0-5])$';
          }
       }
+      leaf p47 {
+         description "draft-wwlh-netconf-list-pagination-00 module example-social";
+         type string {
+             length "1..80";
+             pattern '.*[\n].*' {
+               modifier invert-match;
+             }
+         }
+      }
    }
 }
 EOF
@@ -740,6 +749,11 @@ testrun "p$pnr" true '4.8.227.252'
 testrun "p$pnr" true '255.149.90.121'
 testrun "p$pnr" true '251.148.80.69'
 testrun "p$pnr" false '248:197.7.89/8'
+
+let pnr=47 # '.*[\n].*
+testrun "p$pnr" true 'Ensure all nights are cold'
+testrun "p$pnr" false 'kallefoo'
+testrun "p$pnr" false '01234567890123456789012345678901234567890123456789012345678901234567890123456789zzz'
 
 # CLI tests
 new "CLI tests for RFC7950 Sec 9.4.7 ex 2 AB"

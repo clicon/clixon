@@ -773,6 +773,9 @@ yang_parse_str(char         *str,
 	    goto done;		
     }
     ymod = yy.yy_module;
+    /* Add filename for debugging and errors, see also ys_linenum on (each symbol?) */
+    if (yang_filename_set(ymod, name) < 0)
+	goto done;
   done:
     ystack_pop(&yy);
     if (yy.yy_stack)

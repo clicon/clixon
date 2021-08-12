@@ -318,6 +318,7 @@ ysp_add(clixon_yang_yacc *yy,
 	goto err; 
     if (ys_parse_sub(ys, extra) < 0)     /* Check statement-specific syntax */
 	goto err2; /* dont free since part of tree */
+    yang_linenum_set(ys, yy->yy_linenum); /* For error/debugging */
 //  done:
     return ys;
   err:
@@ -662,7 +663,7 @@ yin_element_stmt1 : K_YIN_ELEMENT bool_str stmtend {free($2);}
 
 /* Identity */
 identity_stmt  : K_IDENTITY identifier_str ';' 
-	      { if (ysp_add(_yy, Y_IDENTITY, $2, NULL) == NULL) _YYERROR("identity_stmt"); 
+              { if (ysp_add(_yy, Y_IDENTITY, $2, NULL) == NULL) _YYERROR("identity_stmt"); 
 			   _PARSE_DEBUG("identity-stmt -> IDENTITY string ;"); }
 
               | K_IDENTITY identifier_str

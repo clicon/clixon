@@ -100,6 +100,7 @@ int    xml_chardata_encode(char **escp, const char *fmt, ...);
 #endif
 int    xml_chardata_cbuf_append(cbuf *cb, char *str);
 int    uri_percent_decode(char *enc, char **str);
+
 const char *clicon_int2str(const map_str2int *mstab, int i);
 int    clicon_str2int(const map_str2int *mstab, char *str);
 int    clicon_str2int_search(const map_str2int *mstab, char *str, int upper);

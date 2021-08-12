@@ -557,7 +557,7 @@ xmldb_readfile(clicon_handle    h,
 			    }
 			    cprintf(cberr, "Internal error: %s", clicon_err_reason);
 			    clicon_err_reset();
-			    if (netconf_operation_failed_xml(xerr, "application", cbuf_get(cberr))< 0)
+			    if (xerr && netconf_operation_failed_xml(xerr, "application", cbuf_get(cberr))< 0)
 				goto done;
 			    cbuf_free(cberr);
 			    goto fail;
