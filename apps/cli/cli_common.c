@@ -701,7 +701,7 @@ compare_xmls(cxobj *xc1,
 	clicon_err(OE_CFG, errno, "cbuf_new");
 	goto done;
     }
-    cprintf(cb, "/usr/bin/diff -dU 1 %s %s |  grep -v @@ | sed 1,2d",
+    cprintf(cb, "diff -dU 1 %s %s |  grep -v @@ | sed 1,2d",
 	    filename1, filename2);
     if (system(cbuf_get(cb)) < 0)
 	goto done;
