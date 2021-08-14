@@ -68,6 +68,12 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></
 new "wrong filter type"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type='foo'><x xmlns='urn:example:filter'><y><a>1</a></y></x></filter></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-tag>operation-failed</error-tag><error-type>applicatio</error-type><error-severity>error</error-severity><error-message>filter type not supported</error-message><error-info>type</error-info></rpc-error></rpc-reply>]]>]]>$"
 
+new "get-config subtree one (subtree implicit)"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter><x xmlns='urn:example:filter'><y><a>1</a></y></x></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
+
+new "get subtree one (subtree implicit)"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter><x xmlns='urn:example:filter'><y><a>1</a></y></x></filter></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
+
 new "get-config subtree one"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type='subtree'><x xmlns='urn:example:filter'><y><a>1</a></y></x></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:filter\"><y><a>1</a><b>1</b></y></x></data></rpc-reply>]]>]]>$"
 

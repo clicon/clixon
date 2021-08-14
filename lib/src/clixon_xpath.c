@@ -290,10 +290,13 @@ xpath_tree2cbuf(xpath_tree *xs,
     switch (xs->xs_type){
     case XP_AND: /* and or */
     case XP_ADD: /* div mod + * - */
-    case XP_RELEX: /* !=, >= <= < > = */
-    case XP_UNION:
 	if (xs->xs_c1)
 	    cprintf(xcb, " %s ", clicon_int2str(xpopmap, xs->xs_int));
+	break;
+    case XP_RELEX: /* !=, >= <= < > = */
+    case XP_UNION: /* | */
+	if (xs->xs_c1)
+	    cprintf(xcb, "%s", clicon_int2str(xpopmap, xs->xs_int));
 	break;
     case XP_PATHEXPR:
 	/* [19]    PathExpr ::=  | FilterExpr '/' RelativeLocationPath	

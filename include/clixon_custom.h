@@ -108,7 +108,12 @@
  * added to its parent but then it is more difficult to check trhe when condition.
  * This fix add the parent x0p as a "candidate" so that the xpath-eval function can use it as
  * an alernative if it exists.
- * Note although this solves many usecases involving parents and absolute paths, itstill does not
+ * Note although this solves many usecases involving parents and absolute paths, it still does not
  * solve all usecases, such as absolute usecases where the added node is looked for
  */
 #define XML_PARENT_CANDIDATE
+
+/*! Enable yang patch RFC 8072 
+ * Remove this when regression test
+ */
+#undef YANG_PATCH

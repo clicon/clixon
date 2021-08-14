@@ -340,11 +340,13 @@ yang_flag_reset(yang_stmt *ys,
  * @param[in]  ys     Yang statement
  * @retval     xpath  xpath should evaluate to true at validation
  * @retval     NULL   Not set
+ * Note xpath context is PARENT which is different from when actual when child which is 
+ * child itself
  */
 char*
 yang_when_xpath_get(yang_stmt *ys)
 {
-    return  ys->ys_when_xpath;
+    return ys->ys_when_xpath;
 }
 
 /*! Set yang xpath and namespace context for "when"-associated augment
@@ -412,6 +414,61 @@ yang_when_nsc_set(yang_stmt *ys,
     retval = 0;
  done:
     return retval;
+}
+
+/*! Get yang filename for error/debug purpose
+ *
+ * @param[in]  ys       Yang statement
+ * @retval     filename
+ * @note there maye not always be a "filename" in case the yang is read from memory
+ */
+const char *
+yang_filename_get(yang_stmt *ys)
+{
+    return ys->ys_filename;
+}
+
+/*! Set yang filename for error/debug purpose
+ *
+ * @param[in]  ys       Yang statement
+ * @param[in]  filename 
+ * @retval     0        OK
+ * @retval    -1        Error
+ * @note there maye not always be a "filename" in case the yang is read from memory
+ */
+int
+yang_filename_set(yang_stmt  *ys,
+		  const char *filename)
+{
+    if ((ys->ys_filename = strdup(filename)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	return -1;
+    }
+    return 0;
+}
+
+/*! Get line number of yang filename for error/debug purpose
+ *
+ * @param[in]  ys       Yang statement
+ * @retval     linenum
+ */
+int
+yang_linenum_get(yang_stmt *ys)
+{
+    return ys->ys_linenum;
+}
+
+/*! Set line number of yang filename for error/debug purpose
+ *
+ * @param[in]  ys       Yang statement
+ * @param[in]  linenum
+ */
+int
+yang_linenum_set(yang_stmt *ys,
+		 int        linenum)
+{
+    ys->ys_linenum = linenum;
+    return 0;
 }
 
 /* End access functions */
@@ -496,6 +553,8 @@ ys_free1(yang_stmt *ys,
 	cvec_free(ys->ys_when_nsc);
     if (ys->ys_stmt)
 	free(ys->ys_stmt);
+    if (ys->ys_filename)
+	free(ys->ys_filename);
     if (self)
 	free(ys);
     return 0;

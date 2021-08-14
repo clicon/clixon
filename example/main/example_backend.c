@@ -1012,6 +1012,7 @@ example_exit(clicon_handle h)
     return 0;
 }
 
+/* Forward declaration */
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
