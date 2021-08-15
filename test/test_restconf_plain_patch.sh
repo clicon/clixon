@@ -218,8 +218,10 @@ expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/
 new "Check content (xml)"
 expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-jukebox:jukebox -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" '<jukebox xmlns="http://example.com/ns/example-jukebox"><library><artist><name>Clash</name><album><name>London Calling</name><genre>jazz</genre><year>1979</year></album></artist></library></jukebox>'
 
+if false; then # It is being implemented
 new "not implemented media type"
 expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-patch+xml' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '<album xmlns="http://example.com/ns/example-jukebox"><name>London Calling</name><genre>jazz</genre></album>')" 0 "HTTP/$HVER 501"
+fi
 
 new "wrong media type"
 expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: text/html' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Clash/album=London%20Calling -d '<album xmlns="http://example.com/ns/example-jukebox"><name>London Calling</name><genre>jazz</genre></album>')" 0 "HTTP/$HVER 415"

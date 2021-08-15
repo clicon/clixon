@@ -7,8 +7,9 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-#echo "...skipped: YANG_PATCH JSON NYI"
-#if [ "$s" = $0 ]; then exit 0; else return 0; fi
+# Enable if YANG_PATCH
+echo "...skipped: YANG_PATCH JSON NYI"
+if [ "$s" = $0 ]; then exit 0; else return 0; fi
     
 APPNAME=example
     
@@ -16,8 +17,6 @@ cfg=$dir/conf.xml
 startupdb=$dir/startup_db
 fjukebox=$dir/example-jukebox.yang
 fyangpatch=$dir/ietf-yang-patch.yang
-finterfaces=$dir/ietf-interfaces.yang
-fexample=$dir/clixon-example.yang
     
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config user false)
@@ -91,6 +90,13 @@ cat <<EOF > $dir/example-system.yang
    module example-system {
       namespace "http://example.com/ns/example-system";
       prefix "ex";
+      import iana-if-type {
+        prefix ianaift;
+      }
+      import ietf-interfaces { 
+	/* is in yang/optional which means clixon must be installed using --opt-yang-installdir */
+	prefix if;
+      }
       import ietf-netconf-acm {
 	prefix nacm;
       }
@@ -107,12 +113,6 @@ EOF
 
 # Yang Patch spec (fyangpatch must be set)
 . ./yang-patch.sh
-
-# Interfaces spec (finterfaces must be set)
-. ./interfaces.sh
-
-# clixon example spec (fexample must be set)
-. ./example.sh
 
 # Common Jukebox spec (fjukebox must be set)
 . ./jukebox.sh
@@ -157,7 +157,7 @@ REQ='{
           "interface": [
             { 
               "name": "eth1",
-              "type": "clixon-example:eth",
+              "type": "iana-if-type:atm",
               "enabled": "false"
             }
           ]
@@ -171,7 +171,7 @@ REQ='{
           "interface": [
             {
               "name": "eth2",
-              "type": "clixon-example:eth",
+              "type": "iana-if-type:atm",
               "enabled": "false"
             }
           ]
@@ -185,7 +185,7 @@ REQ='{
           "interface": [
             {
               "name": "eth4",
-              "type": "clixon-example:eth",
+              "type": "iana-if-type:atm",
               "enabled": "false"
             }
           ]
@@ -212,22 +212,22 @@ REQ='{
   }
 }'
 new "RFC 8072 YANG Patch JSON: Error."
-expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-patch+json' -H 'Accept: application/yang-patch+json' $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces -d "$REQ")" 0 "HTTP/$HVER 204 No Content"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-patch+json' -H 'Accept: application/yang-patch+json' $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces -d "$REQ")" 0 "HTTP/$HVER 204"
 #
 # Create artist in jukebox example
 REQ='{"example-jukebox:artist":[{"name":"Foo Fighters"}]}'
 new "RFC 8072 YANG Patch JSON jukebox example 1: Error."
-expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library -d "$REQ")" 0 "HTTP/$HVER 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library -d "$REQ")" 0 "HTTP/$HVER 201"
 
 # Create album in jukebox example
 REQ='<album xmlns="http://example.com/ns/example-jukebox"><name>Wasting Light</name><year>2011</year></album>'
 new "RFC 8072 YANG Patch JSON jukebox example 2: Error."
-expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters -d "$REQ")" 0 "HTTP/$HVER 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters -d "$REQ")" 0 "HTTP/$HVER 201"
 
 # Add fields to album in jukebox example
 REQ='{"example-jukebox:album":[{"name":"Wasting Light","genre":"example-jukebox:alternative","year":2011}]}'
 new "RFC 8072 YANG Patch JSON jukebox example 3: Error."
-expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album=Wasting%20Light -d "$REQ")" 0 "HTTP/$HVER 204 No Content"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library/artist=Foo%20Fighters/album=Wasting%20Light -d "$REQ")" 0 "HTTP/$HVER 204"
 
 # Uncomment to get info about album in jukebox example
 #new "RFC 8072 YANG Patch jukebox example get 2: Error."
@@ -236,22 +236,22 @@ expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H 'Content-Type: application/ya
 # Add songs to playlist in jukebox example
 REQ="{\"example-jukebox:song\":[{\"index\":1,\"id\":\"/example-jukebox:jukebox/library/artist[name='Foo Fighters']/album[name='Wasting Light']/song[name='Rope']\"}]}"
 new "RFC 8072 YANG Patch JSON jukebox example 4: Error."
-expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=first -d "$REQ")" 0 "HTTP/$HVER 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=first -d "$REQ")" 0 "HTTP/$HVER 201"
 
 # Add song at end of playlist
 REQ="{\"example-jukebox:song\":[{\"index\":2,\"id\":\"/example-jukebox:jukebox/library/artist[name='Foo Fighters']/album[name='Wasting Light']/song[name='Bridge Burning']\"}]}"
 new "RFC 8072 YANG Patch JSON jukebox example 5: Error."
-expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=last -d "$REQ")" 0 "HTTP/$HVER 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=last -d "$REQ")" 0 "HTTP/$HVER 201"
 
 # Add song at end of playlist
 REQ="{\"example-jukebox:song\":[{\"index\":4,\"id\":\"/example-jukebox:jukebox/library/artist[name='Foo Fighters']/album[name='Wasting Light']/song[name='Still More Rope']\"}]}"
 new "RFC 8072 YANG Patch JSON jukebox example 6: Error."
-expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=last -d "$REQ")" 0 "HTTP/$HVER 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=last -d "$REQ")" 0 "HTTP/$HVER 201"
 
 # Add song at end of playlist
 REQ="{\"example-jukebox:song\":[{\"index\":3,\"id\":\"/example-jukebox:jukebox/library/artist[name='Foo Fighters']/album[name='Wasting Light']/song[name='More Rope']\"}]}"
 new "RFC 8072 YANG Patch JSON jukebox example 7: Error."
-expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=last -d "$REQ")" 0 "HTTP/$HVER 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One?insert=last -d "$REQ")" 0 "HTTP/$HVER 201"
 
 # Run YANG patch on the playlist, testing "insert after" and "insert before"
 REQ='{
@@ -307,7 +307,7 @@ REQ='{
   }
 }'
 new "RFC 8072 YANG Patch JSON jukebox example: Error."
-expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-patch+json' -H 'Accept: application/yang-patch+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One -d "$REQ")" 0 "HTTP/$HVER 201 Created"
+expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH -H 'Content-Type: application/yang-patch+json' -H 'Accept: application/yang-patch+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/playlist=Foo-One -d "$REQ")" 0 "HTTP/$HVER 201"
 
 # Uncomment to get info about playlist in jukebox example
 #new "RFC 8072 YANG Patch jukebox example get : Error."

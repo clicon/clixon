@@ -125,6 +125,8 @@ http_location_header(clicon_handle h,
  * @param[in]  data     Stream input data
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
+ * @retval     0         OK
+ * @retval    -1         Error
  * restconf POST is mapped to edit-config create. 
  * @see RFC8040 Sec 4.4.1
 

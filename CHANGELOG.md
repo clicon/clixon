@@ -35,7 +35,7 @@ Expected: September, 2021
 
 ### New features
 
-* Restconf YANG PATCH according to RFC 8072
+* Restconf YANG PATCH according to RFC 8072 (Work in progress)
   * Experimental: enable by setting YANG_PATCH in include/clixon_custom.h
   * Thanks to Alan Yaniger for providing this patch
 

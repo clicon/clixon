@@ -32,34 +32,19 @@
 
   ***** END LICENSE BLOCK *****
 
- * Restconf method implementation  
+ * Restconf YANG PATCH implementation  
  */
 
 
-#ifndef _RESTCONF_METHODS_H_
-#define _RESTCONF_METHODS_H_
+#ifndef _RESTCONF_METHODS_PATCH_H_
+#define _RESTCONF_METHODS_PATCH_H_
 
 /*
  * Prototypes
  */
-int api_data_options(clicon_handle h, void *req);
-int api_data_write(clicon_handle h, void *req, char *api_path0, 
-		   cvec *pcvec, int pi,
-		   cvec *qvec, char *data,
-		   int pretty, restconf_media media_in, restconf_media media_out,
-		   int plain_patch, ietf_ds_t ds);
+int api_data_yang_patch(clicon_handle h, void *req, char *api_path0,
+			cvec *pcvec, int pi,
+			cvec *qvec, char *data,
+			int pretty, restconf_media media_out, ietf_ds_t ds);
 
-int api_data_put(clicon_handle h, void *req, char *api_path, 
-		 cvec *pcvec, int pi, 
-		 cvec *qvec, char *data,
-		 int pretty, restconf_media media_out, ietf_ds_t ds);
-
-int api_data_patch(clicon_handle h, void *req, char *api_path, 
-		   cvec *pcvec, int pi, 
-		   cvec *qvec, char *data, int pretty,
-		   restconf_media media_out, ietf_ds_t ds);
-
-int api_data_delete(clicon_handle h, void *req, char *api_path, int pi,
-		    int pretty, restconf_media media_out, ietf_ds_t ds);
-
-#endif /* _RESTCONF_METHODS_H_ */
+#endif /* _RESTCONF_METHODS_PATCH_H_ */
