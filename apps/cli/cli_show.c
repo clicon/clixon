@@ -73,6 +73,7 @@
 #include "cli_common.h" /* internal functions */
 
 /*! Given an xpath encoded in a cbuf, append a second xpath into the first
+ *
  * The method reuses prefixes from xpath1 if they exist, otherwise the module prefix
  * from y is used. Unless the element is .., .
  * XXX: Predicates not handled
@@ -87,10 +88,10 @@ and
 traverse_canonical
  */
 static int
-xpath_myappend(cbuf      *xpath0,
-	       char      *xpath1,
-	       yang_stmt *y,
-	       cvec      *nsc)
+xpath_append(cbuf      *cb0,
+	     char      *xpath1,
+	     yang_stmt *y,
+	     cvec      *nsc)
 {
     int    retval = -1;
     char **vec = NULL;
@@ -100,27 +101,50 @@ xpath_myappend(cbuf      *xpath0,
     char  *myprefix;
     char  *id = NULL;
     char  *prefix = NULL;
+    int    initialups = 1; /* If starts with ../../.. */
+    char  *xpath0;
 
-    if (xpath0 == NULL){
-	clicon_err(OE_XML, EINVAL, "xpath0 is NULL");
+    if (cb0 == NULL){
+	clicon_err(OE_XML, EINVAL, "cb0 is NULL");
 	goto done;
     }
+    if (xpath1 == NULL || strlen(xpath1)==0)
+	goto ok;
     if ((myprefix = yang_find_myprefix(y)) == NULL)
 	goto done;
     if ((vec = clicon_strsep(xpath1, "/", &nvec)) == NULL)
 	goto done;
-    if (xpath1 && xpath1[0] == '/')
-	cbuf_reset(xpath0);
+    if (xpath1[0] == '/')
+	cbuf_reset(cb0);
+    xpath0 = cbuf_get(cb0);
     for (i=0; i<nvec; i++){
 	v = vec[i];
 	if (strlen(v) == 0)
 	    continue;
 	if (nodeid_split(v, &prefix, &id) < 0)
 	    goto done;
-	if (strcmp(id, "..") == 0 || strcmp(id, ".") == 0)
-	    cprintf(xpath0, "/%s", id);
-	else
-	    cprintf(xpath0, "/%s:%s", prefix?prefix:myprefix, id);
+	if (strcmp(id, ".") == 0)
+	    initialups = 0;
+	else if (strcmp(id, "..") == 0){
+	    if (initialups){
+		/* Subtract from xpath0 */
+		int j;
+		for (j=cbuf_len(cb0); j >= 0; j--){
+		    if (xpath0[j] != '/')
+			continue;
+		    cbuf_trunc(cb0, j);
+		    break;
+		}
+	    }
+	    else{
+		initialups = 0;
+		cprintf(cb0, "/%s", id);
+	    }
+	}
+	else{
+	    initialups = 0;
+	    cprintf(cb0, "/%s:%s", prefix?prefix:myprefix, id);
+	}
 	if (prefix){
 	    free(prefix);
 	    prefix = NULL;
@@ -130,6 +154,7 @@ xpath_myappend(cbuf      *xpath0,
 	    id = NULL;
 	}
     }
+ ok:
     retval = 0;
  done:
     if (prefix)
@@ -182,13 +207,13 @@ expand_dbvar(void   *h,
     cxobj           *xbot = NULL; /* xpath, NULL if datastore */
     yang_stmt       *y = NULL; /* yang spec of xpath */
     yang_stmt       *yp;
-    yang_stmt       *ytype;
-    yang_stmt       *ypath;
     char            *reason = NULL;
     cvec            *nsc = NULL;
     int              ret;
     int              cvvi = 0;
     cbuf            *cbxpath = NULL;
+    yang_stmt       *ypath;
+    yang_stmt       *ytype;
     
     if (argv == NULL || cvec_len(argv) != 2){
 	clicon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <xmlkeyfmt>");
@@ -238,7 +263,6 @@ expand_dbvar(void   *h,
     }
     if (y==NULL)
 	goto ok;
-
     /* Transform api-path to xpath for netconf */
     if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
 	goto done;
@@ -287,7 +311,7 @@ expand_dbvar(void   *h,
 	/*  */
 	/* Extend xpath with leafref path: Append yang_argument_get(ypath) to xpath
 	 */
-	if (xpath_myappend(cbxpath, yang_argument_get(ypath), y, nsc) < 0)
+	if (xpath_append(cbxpath, yang_argument_get(ypath), y, nsc) < 0)
 	    goto done;
     }
     /* Get configuration based on cbxpath */
@@ -297,7 +321,7 @@ expand_dbvar(void   *h,
 	clixon_netconf_error(xe, "Get configuration", NULL);
 	goto ok; 
     }
-    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, cbuf_get(cbxpath)) < 0) 
 	goto done;
     /* Loop for inserting into commands cvec. 
      * Detect duplicates: for ordered-by system assume list is ordered, so you need

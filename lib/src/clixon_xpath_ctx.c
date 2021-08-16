@@ -90,7 +90,7 @@ ctx_free(xp_ctx *xc)
 xp_ctx *
 ctx_dup(xp_ctx *xc0)
 {
-    static xp_ctx *xc = NULL;
+    xp_ctx *xc = NULL;
     
     if ((xc = malloc(sizeof(*xc))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");

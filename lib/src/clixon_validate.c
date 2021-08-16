@@ -88,7 +88,21 @@
  * @retval     1     Validation OK
  * @retval     0     Validation failed
  * @retval    -1     Error
- * From rfc7950 Sec 9.9.2
+ * From rfc7950 
+ * Sec 9.9:
+ *     The leafref built-in type is restricted to the value space of some
+ *  leaf or leaf-list node in the schema tree and optionally further
+ *  restricted by corresponding instance nodes in the data tree.  The
+ *  "path" substatement (Section 9.9.2) is used to identify the referred
+ *  leaf or leaf-list node in the schema tree.  The value space of the
+ *  referring node is the value space of the referred node.
+ *
+ *  If the "require-instance" property (Section 9.9.3) is "true", there
+ *  MUST exist a node in the data tree, or a node with a default value in
+ *  use (see Sections 7.6.1 and 7.7.2), of the referred schema tree leaf
+ *  or leaf-list node with the same value as the leafref value in a valid
+ *  data tree.
+ * Sec 9.9.2:
  *  The "path" XPath expression is  evaluated in the following context,
  *  in addition to the definition in Section 6.4.1:
  *   o  If the "path" statement is defined within a typedef, the context
@@ -96,6 +110,7 @@
  *      references the typedef. (ie ys)
  *   o  Otherwise, the context node is the node in the data tree for which
  *      the "path" statement is defined. (ie yc)
+ * 
  */
 static int
 validate_leafref(cxobj     *xt,
@@ -105,6 +120,7 @@ validate_leafref(cxobj     *xt,
 {
     int          retval = -1;
     yang_stmt   *ypath;
+    yang_stmt   *yreqi;
     cxobj      **xvec = NULL;
     cxobj       *x;
     int          i;
@@ -113,10 +129,18 @@ validate_leafref(cxobj     *xt,
     char        *leafbody;
     cvec        *nsc = NULL;
     cbuf        *cberr = NULL;
-    char        *path;
+    char        *path_arg;
     yang_stmt   *ymod;
+    cg_var      *cv;
+    int          require_instance = 0;
     
-    if ((leafrefbody = xml_body(xt)) == NULL)
+    /* require instance */
+    if ((yreqi = yang_find(ytype, Y_REQUIRE_INSTANCE, NULL)) != NULL){
+	if ((cv = yang_cv_get(yreqi)) != NULL) /* shouldnt happen */
+	    require_instance = cv_bool_get(cv);	
+    }
+    /* Find referred XML instances */
+    if (require_instance == 0)
 	goto ok;
     if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
 	if ((cberr = cbuf_new()) == NULL){
@@ -130,11 +154,16 @@ validate_leafref(cxobj     *xt,
 	    goto done;
 	goto fail;
     }
+    if ((path_arg = yang_argument_get(ypath)) == NULL){
+	clicon_err(OE_YANG, 0, "No argument for Y_PATH");
+	goto done;
+    }
+    if ((leafrefbody = xml_body(xt)) == NULL)
+	goto ok;
     /* See comment^: If path is defined in typedef or not */
     if (xml_nsctx_node(xt, &nsc) < 0)
 	goto done;
-    path = yang_argument_get(ypath);
-    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, path) < 0) 
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, path_arg) < 0) 
 	goto done;
     for (i = 0; i < xlen; i++) {
 	x = xvec[i];
@@ -151,7 +180,7 @@ validate_leafref(cxobj     *xt,
 	ymod = ys_module(ys);
 	cprintf(cberr, "Leafref validation failed: No leaf %s matching path %s in %s.yang:%d",
 		leafrefbody,
-		path,
+		path_arg,
 		yang_argument_get(ymod),
 		yang_linenum_get(ys));
 	if (xret && netconf_bad_element_xml(xret, "application", leafrefbody, cbuf_get(cberr)) < 0)
@@ -1029,8 +1058,9 @@ xml_yang_validate_add(clicon_handle h,
 		clicon_err(OE_UNIX, errno, "cv_dup");
 		goto done;
 	    }
-	    /* In the union case, value is parsed as generic REST type,
+	    /* In the union and leafref case, value is parsed as generic REST type,
 	     * needs to be reparsed when concrete type is selected
+	     * see ys_cv_validate_union_one and ys_cv_validate_leafref
 	     */
 	    if ((body = xml_body(xt)) == NULL){
 		/* We do not allow ints to be empty. Otherwise NULL strings

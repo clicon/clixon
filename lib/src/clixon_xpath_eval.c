@@ -480,15 +480,15 @@ xp_eval_predicate(xp_ctx     *xc,
     cxobj   *x;
     xp_ctx  *xcc;
     
-    if (xs->xs_c0 == NULL){ /* empty */
-	if ((xr0 = ctx_dup(xc)) == NULL)
-	    goto done;
-    }
-    else{ /* eval previous predicates */
+    if (xs->xs_c0 != NULL){ /* eval previous predicates */
 	if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0) 	
 	    goto done;	
     }
-    if (xs->xs_c1){
+    else{ /* empty */
+	if ((xr0 = ctx_dup(xc)) == NULL)
+	    goto done;
+    }
+    if (xs->xs_c1){ /* Second child */
 	/* Loop over each node in the nodeset */
 	assert (xr0->xc_type == XT_NODESET);
 	if ((xr1 = malloc(sizeof(*xr1))) == NULL){
@@ -537,16 +537,18 @@ xp_eval_predicate(xp_ctx     *xc,
 		ctx_free(xrc);
 	}
     }
-    assert(xr0||xr1);
+    if (xr0 == NULL && xr1 == NULL){
+	clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
+	goto done;
+    }
     if (xr1){
 	*xrp = xr1;
 	xr1 = NULL;
     }
-    else
-	if (xr0){
-	    *xrp = xr0;
-	    xr0 = NULL;
-	}
+    else if (xr0){
+	*xrp = xr0;
+	xr0 = NULL;
+    }
     retval = 0;
  done:
     if (xr0)
@@ -1005,12 +1007,11 @@ xp_eval(xp_ctx     *xc,
 	/* // is short for /descendant-or-self::node()/ */
 	if (xs->xs_int == A_DESCENDANT_OR_SELF)
 	    xc->xc_descendant = 1; /* XXX need to set to 0 in sub */
-
 	break;
     case XP_STEP:    /* XP_NODE is first argument -not called explicitly */
 	if (xp_eval_step(xc, xs, nsc, localonly, xrp) < 0)
 	    goto done;
-	goto ok;
+	goto ok; /* Skip generic child traverse */
 	break;
     case XP_PRED:
 	if (xp_eval_predicate(xc, xs, nsc, localonly, xrp) < 0)
@@ -1167,12 +1168,11 @@ xp_eval(xp_ctx     *xc,
     /* Eval second child c1
      * Note, some operators like locationpath, need transitive context (use_xr0)
      */
-    if (xs->xs_c1)
+    if (xs->xs_c1){
 	if (xp_eval(use_xr0?xr0:xc, xs->xs_c1, nsc, localonly, &xr1) < 0) 
 	    goto done;
-    /* Actions after second child
-     */
-    if (xs->xs_c1)
+	/* Actions after second child
+	 */
 	switch (xs->xs_type){
 	case XP_AND: /* combine and and or ops */
 	    if (xp_logop(xr0, xr1, xs->xs_int, &xr2) < 0)
@@ -1192,15 +1192,12 @@ xp_eval(xp_ctx     *xc,
 	default:
 	    break;
 	}
+    }
     xc->xc_descendant = 0;
-#if 0
-    assert(xr0||xr1||xr2); /* for debugging */
-#else
     if (xr0 == NULL && xr1 == NULL && xr2 == NULL){
 	clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
 	goto done;
     }
-#endif
     if (xr2){
 	*xrp = xr2;
 	xr2 = NULL;

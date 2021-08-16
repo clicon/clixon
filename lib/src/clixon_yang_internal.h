@@ -80,6 +80,7 @@ struct yang_stmt{
 					leaf-list, 
 					config: boolean true or false
 					mandatory: boolean true or false
+					require-instance: true or false
 					fraction-digits for fraction-digits
 					unknown-stmt (optional argument)
 				     */

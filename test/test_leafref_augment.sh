@@ -59,12 +59,14 @@ module leafref{
 	description "For testing leafref across augment and grouping";
 	type leafref {
 	    path "/ex:sender/ex:name";
+ 	    require-instance true;	
 	}
     }
     typedef sender-ref-local {
 	description "For testing leafref local";
 	type leafref {
 	    path "/example:sender/example:name";
+	    require-instance true;
 	}
     }
     list sender{
@@ -83,7 +85,6 @@ module leafref{
            description "top-level ref (right prefix)";
 	   type sender-ref-local;
         }
-
     }
 }
 EOF
@@ -113,6 +114,7 @@ module augment{
             leaf name{
         	type leafref {
 		    path "/ex:sender/ex:name";
+		    require-instance true;
 		 }
             }
           }

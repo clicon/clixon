@@ -2154,6 +2154,10 @@ yang_enum_int_value(cxobj   *node,
     if (yang_type_resolve(ys, ys, ytype, &yrestype, 
 			  NULL, NULL, NULL, NULL, NULL) < 0)
 	goto done;
+    if (yrestype == NULL){
+	clicon_err(OE_YANG, 0, "result-type should not be NULL");
+	goto done;
+    }
     if (yrestype==NULL || strcmp(yang_argument_get(yrestype), "enumeration"))
 	goto done;
     if ((yenum = yang_find(yrestype, Y_ENUM, xml_body(node))) == NULL)
@@ -2327,3 +2331,4 @@ yang_check_when_xpath(cxobj        *xn,
 	xml_nsctx_free(nsc);
     return retval;
 }
+

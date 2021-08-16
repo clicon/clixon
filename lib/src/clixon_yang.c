@@ -2054,6 +2054,10 @@ ys_populate_range(clicon_handle h,
     if (yang_type_resolve(ys, ys, (yang_stmt*)yparent, &yrestype, 
 			  &options, NULL, NULL, NULL, &fraction_digits) < 0)
 	goto done;
+    if (yrestype == NULL){
+	clicon_err(OE_YANG, 0, "result-type should not be NULL");
+	goto done;
+    }
     restype = yrestype?yrestype->ys_argument:NULL;
     if (nodeid_split(yang_argument_get(yparent), NULL, &origtype) < 0)
 	 goto done;
@@ -2540,6 +2544,7 @@ ys_populate2(yang_stmt    *ys,
 	break;
     case Y_MANDATORY: /* call yang_mandatory() to check if set */
     case Y_CONFIG:
+    case Y_REQUIRE_INSTANCE:
 	if (ys_parse(ys, CGV_BOOL) == NULL) 
 	    goto done;
 	break;

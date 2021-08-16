@@ -47,11 +47,13 @@ module example{
              description "Absolute references existing interfaces in if module";
              type leafref {
                  path "/if:interfaces/if:interface/if:name";
+		 require-instance true;
              }
          }
          leaf relname {
              type leafref {
                  path "../../if:interfaces/if:interface/if:name";
+		 require-instance true;		 		 
              }
          }
          leaf address {
@@ -59,12 +61,14 @@ module example{
              type leafref {
                  path "../../if:interfaces/if:interface[if:name = current()/../relname]"
                     + "/ip:ipv4/ip:address/ip:ip";
+		 require-instance true;
             }
          }
          leaf wrong {
              description "References leading nowhere in yang";
              type leafref {
                  path "/ip:interfaces/ip:interface/ip:name";
+		 require-instance true;
              }
          }
     }
@@ -76,6 +80,7 @@ module example{
         leaf template{
             type leafref{
                 path "/sender/name";
+		require-instance true;	
             }
         }
     }

@@ -96,6 +96,9 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
+#include "clixon_xpath_yang.h"
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_options.h"
@@ -122,7 +125,7 @@ static const map_str2int ytmap[] = {
     {"int8",        CGV_INT8},
     {"int16",       CGV_INT16},
     {"int64",       CGV_INT64},
-    {"leafref",     CGV_STRING},  /* XXX */
+    {"leafref",     CGV_REST},  /* Is replaced by actual type */
     {"uint8",       CGV_UINT8},
     {"uint16",      CGV_UINT16},
     {"uint32",      CGV_UINT32},
@@ -148,7 +151,7 @@ static const map_str2int ytmap2[] = {
     {"int32",       CGV_INT32},
     {"int64",       CGV_INT64},
     {"int8",        CGV_INT8},
-    {"leafref",     CGV_STRING},  /* XXX */
+    {"leafref",     CGV_REST},  /* Is replaced by actual type */
     {"string",      CGV_STRING},
     {"uint16",      CGV_UINT16},
     {"uint32",      CGV_UINT32},
@@ -250,7 +253,10 @@ ys_resolve_type(yang_stmt    *ys,
 			  ys, &resolved,
 			  &options, &cvv, patterns, NULL, &fraction) < 0)
 	goto done;
-
+    if (resolved == NULL){
+	clicon_err(OE_YANG, 0, "result-type should not be NULL");
+	goto done;
+    }
     /* Cache the type resolving locally. Only place where this is done. 
      * Why not do it in yang_type_resolve? (compile regexps needs clicon_handle)
      */
@@ -341,20 +347,12 @@ clicon_type2cv(char         *origtype,
 	       yang_stmt    *ys,
 	       enum cv_type *cvtype)
 {
-    int retval = -1;
+    int        retval = -1;
     yang_stmt *ym;
 
     *cvtype = CGV_ERR;
     ym = ys_module(ys);
-    if (restype != NULL){ 
-	yang2cv_type(restype, cvtype);
-	if (*cvtype == CGV_ERR){
-	    clicon_err(OE_YANG, 0, "%s: \"%s\" type not translated",
-		       yang_argument_get(ym), restype);
-	    goto done;
-	}
-    }
-    else{
+    if (restype == NULL){ 
 	/* 
 	 * Not resolved, but we can use special cligen types, eg ipv4addr 
 	 * Note this is a kludge or at least if we intend of using rfc types
@@ -365,6 +363,15 @@ clicon_type2cv(char         *origtype,
 		       yang_argument_get(ym), origtype);
 	    goto done;
 	}
+    }
+    else {
+	yang2cv_type(restype, cvtype);
+	if (*cvtype == CGV_ERR){
+	    clicon_err(OE_YANG, 0, "%s: \"%s\" type not translated",
+		       yang_argument_get(ym), restype);
+	    goto done;
+	}
+
     }
     retval = 0;
   done:
@@ -742,6 +749,57 @@ cv_validate1(clicon_handle h,
 static int ys_cv_validate_union(clicon_handle h,yang_stmt *ys, char **reason,
 				yang_stmt *yrestype, char *type, char *val, yang_stmt **ysubp);
 
+static int
+ys_cv_validate_leafref(clicon_handle h,
+		       char         *body,
+		       yang_stmt    *ys,
+		       yang_stmt    *yrestype,
+		       yang_stmt   **ysub, 
+		       char        **reason)
+{
+    int        retval = -1;
+    yang_stmt *yref = NULL;
+    char      *path_arg;
+    yang_stmt *ypath;
+    cg_var    *cv = NULL;
+    int        ret;
+
+    if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL){
+	clicon_err(OE_YANG, 0, "No Y_PATH for leafref");
+	goto done;
+    }
+    if ((path_arg = yang_argument_get(ypath)) == NULL){
+	clicon_err(OE_YANG, 0, "No argument for Y_PATH");
+	goto done;
+    }
+    if (yang_path_arg(ys, path_arg, &yref) < 0)
+	goto done;
+    if (yref == NULL){ 
+	clicon_err(OE_YANG, 0, "No referred YANG node found for leafref path %s", path_arg);
+	goto done;
+    }
+    /* reparse cv with new type */
+    if ((cv = cv_dup(yang_cv_get(yref))) == NULL){
+	clicon_err(OE_UNIX, errno, "cv_dup");
+	goto done;
+    }
+    if ((ret = cv_parse1(body, cv, reason)) < 0){
+	clicon_err(OE_UNIX, errno, "cv_parse");
+	goto done;
+    }
+    if (ret == 0)
+	goto fail;
+    /* Recursive call to this function, but using refererred YANG node */
+    retval = ys_cv_validate(h, cv, yref, ysub, reason);
+ done:
+    if (cv)
+	cv_free(cv);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*!
  * @param[in]  h      Clixon handle
  * @param[in]  ys     Yang statement (union)
@@ -762,7 +820,7 @@ ys_cv_validate_union_one(clicon_handle h,
 			 char         *val)
 {
     int          retval = -1;
-    yang_stmt   *yrt;      /* union subtype */
+    yang_stmt   *yrestype;      /* union subtype */
     int          options = 0;
     cvec        *cvv = NULL;
     cvec        *regexps = NULL;
@@ -781,12 +839,21 @@ ys_cv_validate_union_one(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	goto done;
     }
-    if (yang_type_resolve(ys, ys, yt, &yrt, &options, &cvv, patterns, regexps,
+    if (yang_type_resolve(ys, ys, yt, &yrestype, &options, &cvv, patterns, regexps,
 			  &fraction) < 0)
 	goto done;
-    restype = yrt?yang_argument_get(yrt):NULL;
+    if (yrestype == NULL){
+	clicon_err(OE_YANG, 0, "result-type should not be NULL");
+	goto done;
+    }
+    restype = yrestype?yang_argument_get(yrestype):NULL;
     if (restype && strcmp(restype, "union") == 0){      /* recursive union */
-	if ((retval = ys_cv_validate_union(h, ys, reason, yrt, type, val, &ysubt)) < 0)
+	if ((retval = ys_cv_validate_union(h, ys, reason, yrestype, type, val, &ysubt)) < 0)
+	    goto done;
+    }
+	/* Leafref needs to resolve referred node for type information */
+    else if (restype && strcmp(restype,"leafref") == 0){
+	if ((retval = ys_cv_validate_leafref(h, val, ys, yrestype, NULL, reason)) < 0)  /* XXX: ysub? */
 	    goto done;
     }
     else {
@@ -821,7 +888,7 @@ ys_cv_validate_union_one(clicon_handle h,
 		goto done;
 	}
 	if ((retval = cv_validate1(h, cvt, cvtype, options, cvv, 
-				   regexps, yrt, restype, reason)) < 0)
+				   regexps, yrestype, restype, reason)) < 0)
 	    goto done;
     }
  done:
@@ -963,7 +1030,10 @@ ys_cv_validate(clicon_handle h,
     }
     /* Note restype can be NULL here for example with unresolved hardcoded uuid */
     if (restype && strcmp(restype, "union") == 0){ 
-	assert(cvtype == CGV_REST);
+	if (cvtype != CGV_REST){
+	    clicon_err(OE_YANG, 0, "union must be rest cv type but is %d", cvtype);
+	    goto done;
+	}
 	/* Instead of NULL, give an empty string to validate, this is to avoid cv_parse
 	 * errors and may actually be the wrong thing to do.
 	 */
@@ -986,6 +1056,28 @@ ys_cv_validate(clicon_handle h,
 					   clicon_yang_regexp(h),
 					   regexps) < 0)
 		goto done;
+	}
+	/* Leafref needs to resolve referred node for type information 
+	 * From rfc7950 Sec 9.9:
+	 * The leafref built-in type is restricted to the value space of some
+	 * leaf or leaf-list node in the schema tree and optionally further
+	 * restricted by corresponding instance nodes in the data tree.  The
+	 * "path" substatement (Section 9.9.2) is used to identify the referred
+	 * leaf or leaf-list node in the schema tree.  The value space of the
+	 * referring node is the value space of the referred node.
+	 */
+	if (restype && strcmp(restype,"leafref") == 0){
+	    if (cvtype != CGV_REST){
+		clicon_err(OE_YANG, 0, "leafref must be rest cv type but is %d", cvtype);
+		goto done;
+	    }
+	    /* Instead of NULL, give an empty string to validate, this is to avoid cv_parse
+	     * errors and may actually be the wrong thing to do.
+	     */
+	    if ((val = cv_string_get(cv)) == NULL)
+		val = "";
+	    retval = ys_cv_validate_leafref(h, val, ys, yrestype, ysub, reason);
+	    goto done;
 	}
 	if ((retval = cv_validate1(h, cv, cvtype, options, cvv,
 				   regexps, yrestype, restype, reason)) < 0)
@@ -1296,6 +1388,10 @@ yang_type_resolve(yang_stmt   *yorig,
 			      patterns, regexps,
 			      fraction) < 0)
 	    goto done;
+	if (yrestype && *yrestype == NULL){
+	    clicon_err(OE_YANG, 0, "result-type should not be NULL");
+	    goto done;
+	}
 	/* appends patterns, overwrites others if any */
 	if (yang_type_resolve_restrictions(ytype, options, cvv, patterns, fraction) < 0)
 	    goto done;
@@ -1303,6 +1399,10 @@ yang_type_resolve(yang_stmt   *yorig,
   ok:
     retval = 0;
   done:
+#if 1
+    if (retval == 0 && yrestype != NULL) /* Assert that on success, yrestype is set */
+	assert(*yrestype);
+#endif
     if (prefix)
 	free(prefix);
     if (type)
@@ -1383,6 +1483,10 @@ yang_type_get(yang_stmt    *ys,
     if (yang_type_resolve(ys, ys, ytype, yrestype, 
 			  options, cvv, patterns, regexps, fraction) < 0)
 	goto done;
+    if (yrestype && *yrestype == NULL){
+	clicon_err(OE_YANG, 0, "result-type should not be NULL");
+	goto done;
+    }
     retval = 0;
   done:
     if (type)
