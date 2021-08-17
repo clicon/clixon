@@ -57,6 +57,14 @@ module trans{
         type int32;
       }
     }
+    choice csame {
+        leaf first {
+          type boolean;
+        }
+        leaf second {
+          type boolean;
+        }
+      }
   }
 }
 EOF
@@ -305,6 +313,38 @@ for op in begin validate complete commit commit_done end; do
     let line++
 done
 
+# Variant check that only b,c
+
+new "8. Set first choice"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><first>true</first></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "netconf commit same"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "Set second choice"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><second>true</second></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+# choice chanmge with same value did not show up in log
+new "netconf commit second"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+let nr++
+let nr++
+
+let line+=12
+# check complete
+for op in begin validate complete commit commit_done; do
+    checklog "$nr main_$op change: <first>true</first><second>true</second>" $line
+    let line++
+    checklog "$nr nacm_$op change: <first>true</first><second>true</second>" $line
+    let line++
+done
+
+# End is special because change does not have old element
+checklog "$nr main_end change: <second>true</second>" $line
+let line++
+# This check does not work if  MOVE_TRANS_END is set
+checklog "$nr nacm_end change: <second>true</second>" $line
+let line++
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill

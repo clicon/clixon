@@ -72,6 +72,9 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: Netconf diff callback did not work with choice and same value replace
+  * Eg if YANG is `choice c { leaf x; leaf y }` and XML changed from `<x>42</x>` to `<y>42</y>` the datastrore changed, but was not detected by diff algorithms and provided to validate callbacks.
+  * Thanks: Alexander Skorichenko, Netgate
 * Fixed: [Autocli does not offer completions for leafref to identityref #254](https://github.com/clicon/clixon/issues/254)
   * This is a part of YANG Leafref feature update
 * Fixed: [clixon_netconf errors on client XML Declaration with valid encoding spec](https://github.com/clicon/clixon/issues/250)

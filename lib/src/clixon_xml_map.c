@@ -608,7 +608,10 @@ xml_diff1(cxobj     *x0,
 		b2 = xml_body(x1c);
 		if (b1 == NULL && b2 == NULL)
 		    ;
-		else if (b1 == NULL || b2 == NULL || strcmp(b1, b2) != 0){
+		else if (b1 == NULL || b2 == NULL
+			 || strcmp(b1, b2) != 0 
+			 || strcmp(xml_name(x0c), xml_name(x1c)) != 0 /* Ex: choice { a:bool; b:bool } */
+			 ){
 		    if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
 			goto done;
 		    (*changedlen)--; /* append two vectors */
