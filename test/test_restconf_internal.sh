@@ -485,6 +485,9 @@ new "kill restconf"
 sleep $DEMSLEEP
 stop_restconf
 
+new "Start backend with wrong restconf bindir"
+expectpart "$(sudo $clixon_backend -Fs init -f $cfg -l o -o CLICON_RESTCONF_INSTALLDIR=/usr/local/xxxx)" 255 "FATAL: /usr/local/xxxx/clixon_restconf" "No such file or directory"
+
 new "endtest"
 endtest
 

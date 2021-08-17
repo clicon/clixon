@@ -45,6 +45,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <assert.h>
+#include <sys/stat.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -240,12 +241,14 @@ restconf_rpc_wrapper(clicon_handle    h,
 static int
 restconf_pseudo_process_control(clicon_handle h)
 {
-    int    retval = -1;
-    char **argv = NULL;
-    int    i;
-    int    nr;
-    cbuf  *cb = NULL;
-    char  *dir = NULL;
+    int         retval = -1;
+    char      **argv = NULL;
+    int         i;
+    int         nr;
+    cbuf       *cb = NULL;
+    char       *dir = NULL;
+    char       *pgm;
+    struct stat fstat;
 
     nr = 10;
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
@@ -269,7 +272,15 @@ restconf_pseudo_process_control(clicon_handle h)
 	}
     }
     cprintf(cb, "%s/clixon_restconf", dir);
-    argv[i++] = cbuf_get(cb);
+    pgm = cbuf_get(cb);
+    /* Sanity check: program exists */
+    if (stat(pgm, &fstat) < 0) {
+	clicon_err(OE_FATAL, errno, "%s, you may have set CLICON_BACKEND_RESTCONF_PROCESS but clixon_restconf is not found in %s. Try overriding with CLICON_RESTCONF_INSTALLDIR",
+		   pgm,
+		   CLIXON_CONFIG_SBINDIR);
+	goto done;
+    }
+    argv[i++] = pgm;
     argv[i++] = "-f";
     argv[i++] = clicon_option_str(h, "CLICON_CONFIGFILE");
     /* Add debug if backend has debug. 

@@ -98,6 +98,7 @@
 #ifdef HAVE_SETNS /* linux network namespaces */
 #include <sched.h> /* setns / unshare */
 #endif
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/param.h>
@@ -271,6 +272,7 @@ clixon_proc_background(char       **argv,
     sigfn_t       oldhandler = NULL;
     sigset_t      oset;
     struct rlimit rlim = {0, };
+    struct stat   fstat;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (argv == NULL){
@@ -283,6 +285,11 @@ clixon_proc_background(char       **argv,
 	    clicon_debug(1, "%s argv[%d]:%s", __FUNCTION__, i, argv[i]);
 	    i++;
 	}
+    }
+    /* Sanity check: program exists */
+    if (stat(argv[0], &fstat) < 0) {
+	clicon_err(OE_FATAL, errno, "%s", argv[0]);
+	goto quit;
     }
     /* Before here call quit on error */
     sigprocmask(0, NULL, &oset);

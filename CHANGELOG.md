@@ -65,6 +65,8 @@ Users may have to change how they access the system
 
 ### Minor features
 
+* Restconf internal start: fail early if clixon_restconf binary is not found
+  * If CLICON_BACKEND_RESTCONF_PROCESS is true
 * Added linenumbers to all YANG symbols for better debug and errors
   * Improved error messages for YANG identityref:s and leafref:s by adding original line numbers
 

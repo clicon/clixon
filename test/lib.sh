@@ -147,7 +147,7 @@ fi
 #: ${OPENCONFIG=$(pwd)/public} # just skip if not set
 
 # Standard IETF RFC yang files. 
-: ${IETFRFC=../yang/standard}
+: ${IETFRFC=../yang/mandatory}
 
 # Some restconf tests can run IPv6, but its complicated because:
 # - docker by default does not run IPv6
