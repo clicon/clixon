@@ -76,6 +76,8 @@ Users may have to change how they access the system
 * Restconf native HTTP/2:
   * Added option `CLICON_RESTCONF_HTTP2_PLAIN` for non-TLS http
     * Default disabled, set to true to enable HTTP/2 direct and switch/upgrade HTTP/1->HTTP/2
+* JSON encoding of YANG metadata according to RFC 7952
+  * XML -> JSON translation
 * Restconf internal start: fail early if clixon_restconf binary is not found
   * If CLICON_BACKEND_RESTCONF_PROCESS is true
 * Added linenumbers to all YANG symbols for better debug and errors
@@ -1416,7 +1418,7 @@ Olof Hagsand
     * Clixon used to play the (already made) commit callbacks in reverse order
 * Many validation functions have changed error parameter from cbuf to xml tree. 
   * XML trees are more flexible for utility tools
-  * If you use these(mostly internal), you need to change the error function: `generic_validate, from_validate_common, xml_yang_validate_all_top, xml_yang_validate_all, xml_yang_validate_add, xml_yang_validate_rpc, xml_yang_validate_list_key_only`
+  * If you use these(mostly internal), you need to change the error function: `generic_validate, from_validate_common, xml_yang_validate_all_top, xml_yang_validate_all, xml_yang_validate_add, xml_yang_validate_pprpc, xml_yang_validate_list_key_only`
 * Datastore cache and xmldb_get() changes:
   * You need to remove `msd` (last) parameter of `xmldb_get()`:
     * `xmldb_get(h, "running", "/", &xt, NULL)` --> `xmldb_get(h, "running", "/", &xt)`

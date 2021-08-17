@@ -688,6 +688,39 @@ nullchild(cbuf      *cb,
     return retval;
 }
 
+/*!
+{
+     "example-social:uint8-numbers": [17],
+     "@example-social:uint8-numbers": [
+        {
+           "ietf-list-pagination:remaining": 5
+        }
+      ]
+   }
+ */
+static int
+json_metadata_encoding(cbuf      *cb,
+		       cxobj     *x,
+		       int        level,
+		       int        pretty,
+		       char      *modname,
+    		       char      *name,
+		       char      *modname2,
+    		       char      *name2,
+		       char      *val)
+{
+    int retval = -1;
+
+    cprintf(cb, ",\"@%s:%s\": [", modname, name);
+    cprintf(cb, "%*s", pretty?((level+1)*JSON_INDENT):0, "{");
+    cprintf(cb, "\"%s:%s\": %s", modname2, name2, val);
+    cprintf(cb, "%*s", pretty?((level+1)*JSON_INDENT):0, "}");
+    cprintf(cb, "%*s", pretty?(level*JSON_INDENT):0, "]");
+    retval = 0;
+    // done:
+    return retval;
+}
+
 /*! Do the actual work of translating XML to JSON 
  * @param[out]   cb        Cligen text buffer containing json on exit
  * @param[in]    x         XML tree structure containing XML to translate
@@ -840,13 +873,8 @@ xml2json1_cbuf(cbuf                   *cb,
     commas = xml_child_nr_notype(x, CX_ATTR) - 1;
     for (i=0; i<xml_child_nr(x); i++){
 	xc = xml_child_i(x, i);
-	if (xml_type(xc) == CX_ATTR){
-#if 1 /* Work in progress, identify md:annotations */
-	    continue;
-#else
+	if (xml_type(xc) == CX_ATTR)
 	    continue; /* XXX Only xmlns attributes mapped */
-#endif
-	}
 	xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
 				xc, 
 				xml_child_i(x, i+1));
@@ -860,6 +888,35 @@ xml2json1_cbuf(cbuf                   *cb,
 	    --commas;
 	}
     }
+#ifdef LIST_PAGINATION /* identify md:annotations as RFC 7952 Sec 5.2.1*/
+    for (i=0; i<xml_child_nr(x); i++){
+	xc = xml_child_i(x, i);
+	if (xml_type(xc) == CX_ATTR){
+	    int        ismeta = 0;
+	    char      *namespace = NULL;
+	    yang_stmt *ymod;
+	    
+	    if (xml2ns(xc, xml_prefix(xc), &namespace) < 0)
+		goto done;
+	    if (namespace == NULL)
+		continue;
+	    if ((ymod = yang_find_module_by_namespace(ys_spec(ys), namespace)) == NULL)
+		continue;
+	    if (xml2ns(xc, xml_prefix(xc), &namespace) < 0)
+		goto done;
+	    if (yang_metadata_annotation_check(xc, ymod, &ismeta) < 0)
+		goto done;
+	    if (!ismeta)
+		continue;
+	    if (json_metadata_encoding(cb, x, level, pretty,
+				       modname, xml_name(x),
+				       yang_argument_get(ymod),
+				       xml_name(xc),
+				       xml_value(xc)) < 0)
+		goto done;
+	}
+    }
+#endif
     switch (arraytype){
     case BODY_ARRAY:
 	break;

@@ -690,6 +690,7 @@ yang_find_module_by_name(yang_stmt *yspec,
  * as described in Section 3.
  * Note this is called by the module using the extension md:annotate, not by 
  * ietf-yang-metadata.yang
+ * @see yang_metadata_annotation_check
  */
 static int
 ietf_yang_metadata_extension_cb(clicon_handle h,
@@ -700,17 +701,61 @@ ietf_yang_metadata_extension_cb(clicon_handle h,
     char      *extname;
     char      *modname;
     yang_stmt *ymod;
+    char      *name;
     
     ymod = ys_module(yext);
     modname = yang_argument_get(ymod);
     extname = yang_argument_get(yext);
     if (strcmp(modname, "ietf-yang-metadata") != 0 || strcmp(extname, "annotation") != 0)
 	goto ok;
-    clicon_debug(1, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
+    name = cv_string_get(yang_cv_get(ys));
+    clicon_debug(1, "%s Enabled extension:%s:%s:%s", __FUNCTION__, modname, extname, name);
     /* XXX Nothing yet - this should signal that xml attribute annotations are allowed 
      * Possibly, add an "annotation" YANG node.
      */
  ok:
+    retval = 0;
+    // done:
+    return retval;
+}
+
+/*! Check annotation extension
+ *
+ * @param[in]   xa     XML attribute      
+ * @param[in]   ys     YANG something
+ * @param[out]  ismeta Set to 1 if this is an annotation
+ * @retval      0      OK
+ * @retval      -1     Error
+ * @see ietf_yang_metadata_extension_cb
+ * XXX maybe a cache would be appropriate?
+ * XXX: return type?
+ */
+int
+yang_metadata_annotation_check(cxobj     *xa,
+			       yang_stmt *ymod,
+			       int       *ismeta)
+{
+    int        retval = -1;
+    yang_stmt *yma = NULL;
+    char      *name;
+    cg_var    *cv;
+	    
+    /* Loop through annotations */
+    while ((yma = yn_each(ymod, yma)) != NULL){ 
+	/* Assume here md:annotation is written using canonical prefix */
+	if (yang_keyword_get(yma) != Y_UNKNOWN)
+	    continue;
+	if (strcmp(yang_argument_get(yma), "md:annotation") != 0)
+	    continue;
+	if ((cv = yang_cv_get(yma)) != NULL &&
+	    (name = cv_string_get(cv)) != NULL){
+	    if (strcmp(name, xml_name(xa)) == 0){
+		/* XXX: yang_find(yma,Y_TYPE,0) */
+		*ismeta = 1;
+		break;
+	    }
+	}
+    }
     retval = 0;
     // done:
     return retval;

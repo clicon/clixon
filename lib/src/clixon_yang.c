@@ -879,7 +879,7 @@ yn_each(yang_stmt *yparent,
 /*! Find first child yang_stmt with matching keyword and argument
  *
  * @param[in]  yn         Yang node, current context node.
- * @param[in]  keyword    if 0 match any keyword
+ * @param[in]  keyword    if 0 match any keyword. Actual type: enum rfc_6020
  * @param[in]  argument   String compare w argument. if NULL, match any.
  * @retval     ys         Yang statement, if any
  * This however means that if you actually want to match only a yang-stmt with 

@@ -935,7 +935,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 	goto done;
     if ((cb = cbuf_new()) == NULL)
 	goto done;
-    cprintf(cb, "<rpc xmlns=\"%s\" ", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     if ((username = clicon_username_get(h)) != NULL)
 	cprintf(cb, " username=\"%s\"", username);
     cprintf(cb, " xmlns:%s=\"%s\"",

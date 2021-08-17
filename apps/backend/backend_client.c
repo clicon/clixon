@@ -1662,10 +1662,10 @@ from_client_get_pageable_list(clicon_handle h,
 		cprintf(cb, "%u", remaining);
 		if (xml_value_set(xa, cbuf_get(cb)) < 0)
 		    goto done;
-		if (xml_prefix_set(xa, "lpg") < 0)
-		    goto done;
-		if (xmlns_set(x, "ycoll", "urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination") < 0)
-		    goto done;
+               if (xml_prefix_set(xa, "ycoll") < 0)
+                   goto done;
+               if (xmlns_set(x, "ycoll", "urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination") < 0)
+		   goto done;
 	    }
 	    /* Top level is data, so add 1 to depth if significant */
 	    if (clicon_xml2cbuf(cbret, x, 0, 0, depth>0?depth+1:depth) < 0)
