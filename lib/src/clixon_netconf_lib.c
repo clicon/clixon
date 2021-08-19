@@ -1543,6 +1543,11 @@ netconf_module_load(clicon_handle h)
     if (yang_spec_parse_module(h, "ietf-list-pagination", NULL, yspec)< 0)
 	goto done;
 #endif
+#ifdef CLIXON_PAGINATION
+    /* Load clixon netconf list pagination */
+    if (yang_spec_parse_module(h, "clixon-netconf-list-pagination", NULL, yspec)< 0)
+	goto done;
+#endif
 #endif
     retval = 0;
  done:

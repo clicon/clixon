@@ -38,7 +38,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
+  <CLICON_VALIDATE_STATE_XML>false</CLICON_VALIDATE_STATE_XML>
   $RESTCONFIG
 </clixon-config>
 EOF
@@ -257,7 +257,7 @@ cat<<EOF > $fstate
 </audit-logs>
 EOF
 
-# Run limitonly test with netconf, restconf+xml and restconf+json
+# Run limit-only test with netconf, restconf+xml and restconf+json
 # Args:
 # 1. limit
 # 2. remaining
@@ -267,7 +267,15 @@ function testlimit()
     limit=$1
     remaining=$2
 
-    new "limit=$limit NETCONF"
+    # "clixon get"
+    new "clixon limit=$limit NETCONF get-config"
+    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">$limit</limit></get-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites><uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\">17</uint8-numbers></favorites></member></members></data></rpc-reply>]]>]]>$"
+
+    new "clixon limit=$limit NETCONF get"
+#    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">$limit</limit></get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites><uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\">17</uint8-numbers></favorites></member></members></data></rpc-reply>]]>]]>$"
+
+    # "old: ietf"
+    new "ietf limit=$limit NETCONF"
     expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:es=\"http://example.com/ns/example-social\">/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers</list-target><limit>$limit</limit></get-pageable-list></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><uint8-numbers xmlns=\"http://example.com/ns/example-social\" ycoll:remaining=\"$remaining\" xmlns:ycoll=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\">17</uint8-numbers></pageable-list></rpc-reply>]]>]]>$"
 
     new "limit=$limit Parameter RESTCONF xml"

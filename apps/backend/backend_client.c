@@ -412,37 +412,89 @@ client_get_config_only(clicon_handle h,
 		       yang_stmt    *yspec,
 		       char         *db,
 		       char         *xpath,
+#ifdef CLIXON_PAGINATION
+		       uint32_t      limit,
+		       uint32_t      offset,
+		       char         *xpathpred,
+#endif /* CLIXON_PAGINATION */
 		       char         *username,
 		       int32_t       depth,
 		       cbuf         *cbret)
 {
-    int     retval = -1;
-    cxobj  *xret = NULL;
-    cxobj  *xnacm = NULL;
-    cxobj **xvec = NULL;
-    cxobj  *xerr = NULL;
-    size_t  xlen;    
-    int     ret;
+    int      retval = -1;
+    cxobj   *xret = NULL;
+    cxobj   *xnacm = NULL;
+    cxobj  **xvec = NULL;
+    cxobj   *xerr = NULL;
+    size_t   xlen;    
+    int      ret;
+#ifdef CLIXON_PAGINATION
+    cxobj   *xcache = NULL;
+    uint32_t total = 0;
+    cbuf    *cb = NULL;
+    uint32_t remaining = 0;
+
+#endif
 
     /* Note xret can be pruned by nacm below (and change name),
      * so zero-copy cant be used
      * Also, must use external namespace context here due to <filter stmt
      */
-    if ((ret = xmldb_get0(h, db, YB_MODULE, nsc, xpath, 1, &xret, NULL, &xerr)) < 0) {
-	if (netconf_operation_failed(cbret, "application", "read registry")< 0)
+    if ((ret = xmldb_get0(h, db, YB_MODULE, nsc,
+#ifdef CLIXON_PAGINATION
+			  xpathpred,
+#else
+			  xpath,
+#endif			   
+			  1, &xret, NULL, &xerr)) < 0){
+  if (netconf_operation_failed(cbret, "application", "read registry")< 0)
 	    goto done;
 	goto ok;
-    }
+		       }
     if (ret == 0){
 	if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
 	    goto done;
 	goto ok;
     }
+#ifdef CLIXON_PAGINATION
+    /* First get number of hits (ALL entries: note not optimized) 
+     */
+    if ((xcache = xmldb_cache_get(h, db)) != NULL){
+	if (xpath_count(xcache, nsc, xpath, &total) < 0)
+	    goto done;
+	if (total >= (offset + limit))
+	    remaining = total - (offset + limit);
+    }
+    /* XXX need only first for remaining, but all for NACM */
+   if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+       goto done;
+   /* Add remain attribute to first returning element */
+   if (xlen){
+       cxobj *x;
+       cxobj *xa;
+       x = xvec[0];
+       if ((xa = xml_new("remaining", x, CX_ATTR)) == NULL)
+	   goto done;
+       if ((cb = cbuf_new()) == NULL){
+	   clicon_err(OE_UNIX, errno, "cbuf_new");
+	   goto done;
+       }
+       cprintf(cb, "%u", remaining);
+       if (xml_value_set(xa, cbuf_get(cb)) < 0)
+	   goto done;
+       if (xml_prefix_set(xa, "cp") < 0)
+	   goto done;
+       if (xmlns_set(x, "cp", "http://clicon.org/clixon-netconf-list-pagination") < 0)
+	   goto done;
+   }
+#endif
     /* Pre-NACM access step */
     xnacm = clicon_nacm_cache(h);
     if (xnacm != NULL){ /* Do NACM validation */
+#ifndef CLIXON_PAGINATION
 	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	    goto done;
+#endif
 	/* NACM datanode/module read validation */
 	if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0) 
 	    goto done;
@@ -460,6 +512,8 @@ client_get_config_only(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     if (xerr)
 	xml_free(xerr);
     if (xvec)
@@ -468,6 +522,59 @@ client_get_config_only(clicon_handle h,
 	xml_free(xret);
     return retval;
 }
+
+#if defined(LIST_PAGINATION) || defined(CLIXON_PAGINATION)
+/*! Help function for parsing restconf query parameter and setting netconf attribute
+ *
+ * If not "unbounded", parse and set a numeric value
+ * @param[in]     h         Clixon handle
+ * @param[in]     name      Name of attribute
+ * @param[in]     defaultstr   Default string which is accepted and sets value to 0
+ * @param[in,out] cbret     Output buffer for internal RPC message
+ * @param[out]    value     Value
+ * @retval       -1         Error
+ * @retval        0         Invalid, cbret set
+ * @retval        1         OK
+ */
+static int
+element2value(clicon_handle  h,
+	      cxobj         *xe,
+	      char          *name,
+	      char          *defaultstr,
+	      cbuf          *cbret,
+	      uint32_t      *value)
+{
+    int    retval = -1;
+    char  *valstr;
+    int    ret;
+    char  *reason = NULL;
+    cxobj *x;
+    
+    *value = 0;
+    if ((x = xml_find_type(xe, NULL, name, CX_ELMNT)) != NULL &&
+	(valstr = xml_body(x)) != NULL &&
+	strcmp(valstr, defaultstr) != 0){
+	if ((ret = parse_uint32(valstr, value, &reason)) < 0){
+	    clicon_err(OE_XML, errno, "parse_uint32");
+	    goto done;
+	}
+	if (ret == 0){
+	    if (netconf_bad_element(cbret, "application",
+				    name, "Unrecognized value") < 0)
+		goto done;
+	    goto fail;
+	}
+    }
+    retval = 1;
+ done:
+    if (reason)
+	free(reason);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+#endif
 
 /*! Retrieve all or part of a specified configuration.
  * 
@@ -500,6 +607,15 @@ from_client_get_config(clicon_handle h,
     char      *attr;
     char      *xpath0;
     cvec      *nsc1 = NULL;
+#ifdef CLIXON_PAGINATION
+    uint32_t   limit = 0;
+    uint32_t   offset = 0;
+    char      *direction = NULL;
+    char      *sort = NULL;
+    char      *where = NULL;
+    cbuf      *cbpath = NULL;
+    cxobj     *x;
+#endif /* CLIXON_PAGINATION */
     
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
@@ -551,7 +667,57 @@ from_client_get_config(clicon_handle h,
 	    goto ok;
 	}
     }
-    if ((ret = client_get_config_only(h, nsc, yspec, db, xpath, username, -1, cbret)) < 0)
+#ifdef CLIXON_PAGINATION
+    /* limit */
+    if ((ret = element2value(h, xe, "limit", "unbounded", cbret, &limit)) < 0)
+	goto done;
+    /* offset */
+    if (ret && (ret = element2value(h, xe, "offset", "none", cbret, &offset)) < 0)
+	goto done;
+        /* direction */
+    if (ret && (x = xml_find_type(xe, NULL, "direction", CX_ELMNT)) != NULL){
+	direction = xml_body(x);
+	if (strcmp(direction, "forward") != 0 && strcmp(direction, "reverse") != 0){
+	    if (netconf_bad_attribute(cbret, "application",
+				      "direction", "Unrecognized value of direction attribute") < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+    /* sort */
+    if (ret && (x = xml_find_type(xe, NULL, "sort", CX_ELMNT)) != NULL)
+	sort = xml_body(x);
+    if (sort) ; /* XXX */
+    /* where */
+    if (ret && (x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL)
+	where = xml_body(x);
+    /* Build a "predicate" cbuf 
+     * This solution uses xpath predicates to translate "limit" and "offset" to
+     * relational operators <>.
+     */
+    if ((cbpath = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    /* This uses xpath. Maybe limit should use parameters */
+    cprintf(cbpath, "%s", xpath);
+    if (where)
+	cprintf(cbpath, "[%s]", where);
+    if (offset){
+	cprintf(cbpath, "[%u <= position()", offset);
+	if (limit)
+	    cprintf(cbpath, " and position() < %u", limit+offset);
+	cprintf(cbpath, "]");
+    }
+    else if (limit)
+	cprintf(cbpath, "[position() < %u]", limit);
+#endif /* CLIXON_PAGINATION */
+    if ((ret = client_get_config_only(h, nsc, yspec, db, xpath,
+#ifdef CLIXON_PAGINATION
+				      limit, offset,
+				      cbuf_get(cbpath),
+#endif
+				      username, -1,  cbret)) < 0)
 	goto done;
  ok:
     retval = 0;
@@ -1078,6 +1244,15 @@ from_client_get(clicon_handle h,
     cxobj          *xerr = NULL;
     int             ret;
     char           *reason = NULL;
+#ifdef CLIXON_PAGINATION
+    uint32_t        limit = 0;
+    uint32_t        offset = 0;
+    char           *direction = NULL;
+    char           *sort = NULL;
+    char           *where = NULL;
+    cbuf           *cbpath = NULL;
+    cxobj          *x;
+#endif /* CLIXON_PAGINATION */
     
     clicon_debug(1, "%s", __FUNCTION__);
     username = clicon_username_get(h);
@@ -1119,8 +1294,58 @@ from_client_get(clicon_handle h,
 	    goto ok;
 	}
     }
+#ifdef CLIXON_PAGINATION
+    /* limit */
+    if ((ret = element2value(h, xe, "limit", "unbounded", cbret, &limit)) < 0)
+	goto done;
+    /* offset */
+    if (ret && (ret = element2value(h, xe, "offset", "none", cbret, &offset)) < 0)
+	goto done;
+        /* direction */
+    if (ret && (x = xml_find_type(xe, NULL, "direction", CX_ELMNT)) != NULL){
+	direction = xml_body(x);
+	if (strcmp(direction, "forward") != 0 && strcmp(direction, "reverse") != 0){
+	    if (netconf_bad_attribute(cbret, "application",
+				      "direction", "Unrecognized value of direction attribute") < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+    /* sort */
+    if (ret && (x = xml_find_type(xe, NULL, "sort", CX_ELMNT)) != NULL)
+	sort = xml_body(x);
+    if (sort) ; /* XXX */
+    /* where */
+    if (ret && (x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL)
+	where = xml_body(x);
+    /* Build a "predicate" cbuf 
+     * This solution uses xpath predicates to translate "limit" and "offset" to
+     * relational operators <>.
+     */
+    if ((cbpath = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    /* This uses xpath. Maybe limit should use parameters */
+    cprintf(cbpath, "%s", xpath);
+    if (where)
+	cprintf(cbpath, "[%s]", where);
+    if (offset){
+	cprintf(cbpath, "[%u <= position()", offset);
+	if (limit)
+	    cprintf(cbpath, " and position() < %u", limit+offset);
+	cprintf(cbpath, "]");
+    }
+    else if (limit)
+	cprintf(cbpath, "[position() < %u]", limit);
+#endif /* CLIXON_PAGINATION */
     if (content == CONTENT_CONFIG){ /* config only, no state */
-	if (client_get_config_only(h, nsc, yspec, "running", xpath, username, depth, cbret) < 0)
+	if (client_get_config_only(h, nsc, yspec, "running", xpath,
+#ifdef CLIXON_PAGINATION
+				   limit, offset,
+				   cbuf_get(cbpath),
+#endif
+				   username, depth, cbret) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1239,6 +1464,9 @@ from_client_get(clicon_handle h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+
+    if (cbpath)
+	cbuf_free(cbpath);
     if (reason)
 	free(reason);
     if (xerr)
@@ -1337,56 +1565,6 @@ from_client_kill_session(clicon_handle h,
 }
 
 #ifdef LIST_PAGINATION
-/*! Help function for parsing restconf query parameter and setting netconf attribute
- *
- * If not "unbounded", parse and set a numeric value
- * @param[in]     h         Clixon handle
- * @param[in]     name      Name of attribute
- * @param[in]     defaultstr   Default string which is accepted and sets value to 0
- * @param[in,out] cbret     Output buffer for internal RPC message
- * @param[out]    value     Value
- * @retval       -1         Error
- * @retval        0         Invalid, cbret set
- * @retval        1         OK
- */
-static int
-element2value(clicon_handle  h,
-	      cxobj         *xe,
-	      char          *name,
-	      char          *defaultstr,
-	      cbuf          *cbret,
-	      uint32_t      *value)
-{
-    int    retval = -1;
-    char  *valstr;
-    int    ret;
-    char  *reason = NULL;
-    cxobj *x;
-    
-    *value = 0;
-    if ((x = xml_find_type(xe, NULL, name, CX_ELMNT)) != NULL &&
-	(valstr = xml_body(x)) != NULL &&
-	strcmp(valstr, defaultstr) != 0){
-	if ((ret = parse_uint32(valstr, value, &reason)) < 0){
-	    clicon_err(OE_XML, errno, "parse_uint32");
-	    goto done;
-	}
-	if (ret == 0){
-	    if (netconf_bad_element(cbret, "application",
-				    name, "Unrecognized value") < 0)
-		goto done;
-	    goto fail;
-	}
-    }
-    retval = 1;
- done:
-    if (reason)
-	free(reason);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
 
 /*! Retrieve collection configuration and device state information
  * 
@@ -1423,16 +1601,17 @@ from_client_get_pageable_list(clicon_handle h,
     int             i;
     cxobj          *xerr = NULL;
     int             ret;
+    cbuf           *cb = NULL;
     uint32_t        limit = 0;
     uint32_t        offset = 0;
-    size_t          total = 0;
+    uint32_t        total = 0;
     uint32_t        remaining = 0;
     char           *direction = NULL;
     char           *sort = NULL;
     char           *where = NULL;
     char           *datastore = NULL;
     char           *reason = NULL;
-    cbuf           *cb = NULL;
+    cbuf           *cbpath = NULL;
     cxobj          *xtop = NULL;
     yang_stmt      *y;
     char           *ns;
@@ -1535,22 +1714,22 @@ from_client_get_pageable_list(clicon_handle h,
      * This solution uses xpath predicates to translate "limit" and "offset" to
      * relational operators <>.
      */
-    if ((cb = cbuf_new()) == NULL){
+    if ((cbpath = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
     /* This uses xpath. Maybe limit should use parameters */
-    cprintf(cb, "%s", xpath);
+    cprintf(cbpath, "%s", xpath);
     if (where)
-	cprintf(cb, "[%s]", where);
+	cprintf(cbpath, "[%s]", where);
     if (offset){
-	cprintf(cb, "[%u <= position()", offset);
+	cprintf(cbpath, "[%u <= position()", offset);
 	if (limit)
-	    cprintf(cb, " and position() < %u", limit+offset);
-	cprintf(cb, "]");
+	    cprintf(cbpath, " and position() < %u", limit+offset);
+	cprintf(cbpath, "]");
     }
     else if (limit)
-	cprintf(cb, "[position() < %u]", limit);
+	cprintf(cbpath, "[position() < %u]", limit);
 
     /* Split into CT or CF */
     if (yang_config_ancestor(y) == 1){ /* CT */
@@ -1565,13 +1744,9 @@ from_client_get_pageable_list(clicon_handle h,
 		    goto done;
 		goto ok;
 	    }
-	    /* First get number of hits */
-	    if (xpath_vec(xret, nsc, "%s", &xvec, &total, xpath) < 0)
+	    /* First get number of hits (ALL entries: note not optimized) */
+	    if (xpath_count(xret, nsc, xpath, &total) < 0)
 		goto done;
-	    if (xvec){
-		free(xvec);
-		xvec = NULL;
-	    }
 	    if (total < (offset + limit))
 		remaining = 0;
 	    else
@@ -1579,14 +1754,14 @@ from_client_get_pageable_list(clicon_handle h,
 	}
 	/* There may be CF data in a CT collection */
 	if (content == CONTENT_ALL){ 
-	    if ((ret = client_statedata(h, cbuf_get(cb), nsc, content, &xret)) < 0)
+	    if ((ret = client_statedata(h, cbuf_get(cbpath), nsc, content, &xret)) < 0)
 		goto done;
 	}
     }
     else { /* CF */
 	/* There can be no CT data in a CF collection */
 	if (content == CONTENT_NONCONFIG || content == CONTENT_ALL){
-	    if ((ret = client_statedata(h, cbuf_get(cb), nsc, content, &xret)) < 0)
+	    if ((ret = client_statedata(h, cbuf_get(cbpath), nsc, content, &xret)) < 0)
 		goto done;
 	    if (ret == 0){ /* Error from callback (error in xret) */
 		if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
@@ -1634,7 +1809,7 @@ from_client_get_pageable_list(clicon_handle h,
      * Actually this is a safety catch, should really be done in plugins
      * and modules_state functions.
      */
-    if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, cbuf_get(cb)) < 0)
+    if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, cbuf_get(cbpath)) < 0)
 	goto done;
 
     /* Pre-NACM access step */
@@ -1646,7 +1821,11 @@ from_client_get_pageable_list(clicon_handle h,
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><pageable-list xmlns=\"%s\">",
 	    NETCONF_BASE_NAMESPACE, NETCONF_COLLECTION_NAMESPACE);     /* OK */
-    if ((ns = yang_find_mynamespace(y)) != NULL)
+    if ((ns = yang_find_mynamespace(y)) != NULL) {
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
 	for (i=0; i<xlen; i++){
 	    x = xvec[i];
 	    /* Add namespace */
@@ -1658,7 +1837,7 @@ from_client_get_pageable_list(clicon_handle h,
 		 */
 		if ((xa = xml_new("remaining", x, CX_ATTR)) == NULL)
 		    goto done;
-		cbuf_reset(cb); /* reuse */
+		cbuf_reset(cb);
 		cprintf(cb, "%u", remaining);
 		if (xml_value_set(xa, cbuf_get(cb)) < 0)
 		    goto done;
@@ -1671,6 +1850,7 @@ from_client_get_pageable_list(clicon_handle h,
 	    if (clicon_xml2cbuf(cbret, x, 0, 0, depth>0?depth+1:depth) < 0)
 		goto done;
 	}
+    }
     cprintf(cbret, "</pageable-list></rpc-reply>");
  ok:
     retval = 0;
@@ -1682,6 +1862,8 @@ from_client_get_pageable_list(clicon_handle h,
 	clixon_path_free(path_tree);
     if (xtop)
 	xml_free(xtop);
+    if (cbpath)
+	cbuf_free(cbpath);
     if (cb)
 	cbuf_free(cb);
     if (reason)

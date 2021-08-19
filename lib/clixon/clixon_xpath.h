@@ -161,5 +161,6 @@ int    xpath_vec(cxobj *xcur, cvec *nsc, const char *xpformat, cxobj  ***vec, si
 #endif
 
 int xpath2canonical(const char *xpath0, cvec *nsc0, yang_stmt *yspec, char **xpath1, cvec **nsc1);
+int xpath_count(cxobj *xcur, cvec *nsc, const char *xpath, uint32_t *count);
 
 #endif /* _CLIXON_XPATH_H */

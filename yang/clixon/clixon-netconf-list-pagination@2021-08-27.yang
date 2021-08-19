@@ -1,0 +1,168 @@
+module clixon-netconf-list-pagination {
+    yang-version 1.1;
+    namespace "http://clicon.org/clixon-netconf-list-pagination";
+    prefix cp;
+
+    import ietf-yang-types {
+	prefix yang;
+	reference
+	    "RFC 6991: Common YANG Data Types";
+    }
+    import ietf-yang-metadata {
+	prefix "md";
+	reference
+	    "RFC 7952: Defining and Using Metadata with YANG";
+    }
+    import ietf-netconf {
+	prefix nc;
+	reference
+	    "RFC 6241: Network Configuration Protocol (NETCONF)";
+    }
+
+    organization
+	"IETF NETCONF (Network Configuration) Working Group";
+    contact
+	"WG Web:   <http://tools.ietf.org/wg/netconf/>
+     WG List:  <mailto:netconf@ietf.org>
+
+     Editor:
+
+     Editor:
+
+     Editor:   ";
+    description
+	"This module define a new operation -- <get-collection>
+     to support YANG based pagination.
+
+     The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL
+     NOT', 'SHOULD', 'SHOULD NOT', 'RECOMMENDED', 'NOT RECOMMENDED',
+     'MAY', and 'OPTIONAL' in this document are to be interpreted as
+     described in BCP 14 (RFC 2119) (RFC 8174) when, and only when,
+     they appear in all capitals, as shown here.
+
+     Copyright (c) 2019 IETF Trust and the persons identified as
+     authors of the code.  All rights reserved.
+
+     Redistribution and use in source and binary forms, with or
+     without modification, is permitted pursuant to, and subject to
+     the license terms contained in, the Simplified BSD License set
+     forth in Section 4.c of the IETF Trust's Legal Provisions
+     Relating to IETF Documents
+     (https://trustee.ietf.org/license-info).
+
+     This version of this YANG module is part of RFC 8526; see
+     the RFC itself for full legal notices.
+      
+     Clixon: 
+     - changed get-pagable ->  get-pageable
+     - renamed count -> limit
+     - renamed skip -> offset
+     - added import ietf-yang-metadata
+     - added md:annotation remaining
+     ";
+    revision 2021-08-27 {
+	description
+	    "Dervied from ietf-netconf-list-pagination@2020-10-30.";
+	reference
+	    "RFC XXXX: YANG Based Pagination.";
+    }
+
+    // Annotations
+    md:annotation remaining {
+	type uint32;
+	description
+	    "This annotation contains the number of elements removed
+          from a result set after a 'limit' or 'sublist-limit'
+          operation. If no elements were removed, this annotation
+          MUST NOT appear.  The minimum value (0), which never
+          occurs in normal operation, is reserved to represent
+          'unknown'.  The maximum value (2^32-1) is reserved to
+          represent any value greater than or equal to 2^32-1
+          elements.";
+    }
+    grouping pageing-parameters {
+	leaf limit {
+	    type union {
+		type uint32;
+		type string {
+		    pattern 'unbounded';
+		}
+	    }
+	    default "unbounded";
+	    description
+		"The maximum number of list entries to return. The
+           value of the 'count' parameter is either an integer
+           greater than or equal to 1, or the string 'unbounded'.
+           The string 'unbounded' is the default value.";
+	}
+	leaf offset {
+	    type union {
+		type uint32;
+		type string {
+		    pattern 'none';
+		}
+	    }
+	    default "none";
+	    description
+		"The first list item to return.
+           the 'skip' parameter is either an integer greater than
+           or equal to 1, or the string 'unbounded'.  The string
+           'unbounded' is the default value.";
+	}
+	leaf direction {
+	    type enumeration {
+		enum forward;
+		enum reverse;
+	    }
+	    default "forward";
+	    description
+		"Direction relative to the 'sort' order through list
+           or leaf-list. It can be forward direction or reverse
+           direction.";
+	}
+	leaf sort {
+	    type union {
+		type string {
+		    length "1..max" {
+			description
+			    "The name of a descendent node to sort on.  For
+                 'Config false' lists and leaf-lists, the node SHOULD
+                  have the 'TBD' extension indicating that it has been
+                  indexed, enabling efficient sorts.";
+		    }
+		}
+		type enumeration {
+		    enum default {
+			description
+			    "Indicates that the 'default' order is assumed.  For
+                 'ordered-by user' lists and leaf-lists, the default order
+                 is the user-configured order.  For 'ordered-by system'
+                 lists and leaf-lists, the default order is specified by the
+                 system.";
+		    }
+		}
+	    }
+	    default "default";
+	    description
+		"Indicates how the entries in a list are to be sorted.";
+	}
+	leaf where {
+	    type yang:xpath1.0;
+	    description
+		"The boolean filter to select data instances to return from
+           the list or leaf-list target.  The Xpath expression MAY be
+           constrained either server-wide, by datastore, by 'config'
+           status, or per list or leaf-list.  Details regarding how
+           constraints are communicated are TBD.  This parameter
+           is optional; no filtering is applied when it is not
+           specified.";
+	}
+    }
+    augment /nc:get-config/nc:input {
+	uses pageing-parameters;
+    }
+    // extending the get operation
+    augment /nc:get/nc:input {
+	uses pageing-parameters;
+    }
+}

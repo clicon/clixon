@@ -124,3 +124,7 @@
  * draft-wwlh-netconf-list-pagination-rc-01
  */
 #define LIST_PAGINATION
+
+/*! Clixon netconf pagination
+ */
+#define CLIXON_PAGINATION

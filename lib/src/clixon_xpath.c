@@ -75,6 +75,7 @@
 #include <stdint.h>
 #include <syslog.h>
 #include <fcntl.h>
+#include <math.h>  /* NaN */
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -1062,5 +1063,43 @@ xpath2canonical(const char *xpath0,
 	xml_nsctx_free(nsc1);
     if (xpt)
 	xpath_tree_free(xpt);
+    return retval;
+}
+
+/*! Return a count(xpath)
+ *
+ * @param[in]  xcur     xml-tree where to search
+ * @param[in]  nsc      External XML namespace context, or NULL
+ * @param[in]  xpath    XPATH syntax
+ * @param[oit] count    Nr of elements of xpath
+ * @note This function is made for making optimizations in certain circumstances, such as a list
+ */
+int
+xpath_count(cxobj      *xcur, 
+	    cvec       *nsc,
+	    const char *xpath,
+	    uint32_t   *count)
+{
+    int     retval = -1;
+    xp_ctx *xc = NULL;
+    cbuf   *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "count(%s)", xpath);
+    if (xpath_vec_ctx(xcur, nsc, cbuf_get(cb), 0, &xc) < 0)
+	goto done;
+    if (xc && xc->xc_type == XT_NUMBER && xc->xc_number != NAN)
+	*count = (uint32_t)xc->xc_number;
+    else
+	*count = 0;
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    if (xc)
+	ctx_free(xc);
     return retval;
 }
