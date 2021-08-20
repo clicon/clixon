@@ -647,7 +647,7 @@ send_badrequest(clicon_handle       h,
     cprintf(cb, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n");
     if (body){
 	cprintf(cb, "Content-Type: %s\r\n", media);
-	cprintf(cb, "Content-Length: %zu\r\n", strlen(body));
+	cprintf(cb, "Content-Length: %zu\r\n", strlen(body)+2); /* for \r\n */
     }
     else
 	cprintf(cb, "Content-Length: 0\r\n");
