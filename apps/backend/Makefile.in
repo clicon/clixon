@@ -85,6 +85,7 @@ APPL	= clixon_backend
 APPSRC  = backend_main.c
 APPSRC += backend_socket.c
 APPSRC += backend_client.c
+APPSRC += backend_get.c
 APPSRC += backend_plugin_restconf.c # Pseudo plugin for restconf daemon
 APPSRC += backend_startup.c
 APPOBJ  = $(APPSRC:.c=.o)

@@ -10,7 +10,10 @@
 # with different paths.
 # Using the -sS <file> state capability of the main example, that is why CLICON_BACKEND_DIR is
 # /usr/local/lib/$APPNAME/backend so that the main backend plugins is included.
-# These tests require VALIDATE_STATE_XML to be set
+# Note: Three runs:
+# 1. with state data validation and with require-instance (Invalid)
+# 2. with state data validation and without require-instance (OK)
+# 3. without state data validation and with require-instance (Wrong state data no detected)
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -20,6 +23,7 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 fstate=$dir/state.xml
 fyang=$dir/leafref.yang
+fyangno=$dir/leafrefno.yang # No require-instance
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -66,6 +70,32 @@ module leafref{
 }
 EOF
 
+# No require-instance in leafref
+cat <<EOF > $fyangno
+module leafref{
+    yang-version 1.1;
+    namespace "urn:example:example";
+    prefix ex;
+    list sender-config{
+        description "Main config of senders";
+        key name;
+        leaf name{
+           type string;
+        }
+    }
+    list sender-state{
+        description "State referencing configured senders";
+        config false;
+        key ref;
+        leaf ref{
+ 	   type leafref {
+	      path "/ex:sender-config/ex:name";
+	   }
+        }
+    }
+}
+EOF
+
 # This is state data written to file that backend reads from (on request)
 cat <<EOF > $fstate
    <sender-state xmlns="urn:example:example">
@@ -73,6 +103,7 @@ cat <<EOF > $fstate
    </sender-state>
 EOF
 
+# First run: With validation of state callbacks
 new "test params: -f $cfg -- -sS $fstate"
 
 if [ $BE -ne 0 ]; then
@@ -167,7 +198,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-confi
 new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-# Leafref wrong
+# Leafref wrong internal: state references x but config contains only y
 new "netconf get / config+state should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"all\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>x</bad-element></error-info><error-severity>error</error-severity><error-message>Leafref validation failed: No leaf x matching path /ex:sender-config/ex:name in leafref.yang:[0-9]*. Internal error, state callback returned invalid XML</error-message></rpc-error></rpc-reply>]]>]]>$"
 
@@ -187,6 +218,117 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
+
+# Second run: Validation and no require-instance
+new "Second run: -f $cfg -o CLICON_YANG_MAIN_FILE=$fyangno -- -sS $fstate"
+
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s init -f $cfg -o CLICON_VALIDATE_STATE_XML=false -- -sS $fstate"
+    start_backend -s init -f $cfg -o CLICON_YANG_MAIN_FILE=$fyangno -- -sS $fstate
+fi
+
+new "wait backend"
+wait_backend
+
+# Add y
+XML=$(cat <<EOF
+   <sender-config xmlns="urn:example:example">
+      <name>y</name>
+   </sender-config>
+EOF
+)
+
+# Reference (non-existing) x
+cat <<EOF > $fstate
+   <sender-state xmlns="urn:example:example">
+      <ref>x</ref>
+   </sender-state>
+EOF
+
+new "leafref config sender x"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "netconf commit"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+# Leafref wrong internal: state references x but config contains only y
+new "netconf get / config+state wrong state xml but no validation"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"all\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>y</name></sender-config><sender-state xmlns=\"urn:example:example\"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$"
+
+new "netconf get / state-only wrong state xml but no validation"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-state xmlns=\"urn:example:example\"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$"
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+fi
+
+# Third run: No validation of state callbacks
+new "Third run: -f $cfg -o CLICON_VALIDATE_STATE_XML=true -- -sS $fstate"
+
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s init -f $cfg -o CLICON_VALIDATE_STATE_XML=false -- -sS $fstate"
+    start_backend -s init -f $cfg -o CLICON_VALIDATE_STATE_XML=false -- -sS $fstate
+fi
+
+new "wait backend"
+wait_backend
+
+# Add y
+XML=$(cat <<EOF
+   <sender-config xmlns="urn:example:example">
+      <name>y</name>
+   </sender-config>
+EOF
+)
+
+# Reference (non-existing) x
+cat <<EOF > $fstate
+   <sender-state xmlns="urn:example:example">
+      <ref>x</ref>
+   </sender-state>
+EOF
+
+new "leafref config sender x"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "netconf commit"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+# Leafref wrong internal: state references x but config contains only y
+new "netconf get / config+state wrong state xml but no validation"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"all\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><sender-config xmlns=\"urn:example:example\"><name>y</name></sender-config><sender-state xmlns=\"urn:example:example\"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$"
+
+new "netconf get / state-only wrong state xml but no validation"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"/\"/></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><sender-state xmlns=\"urn:example:example\"><ref>x</ref></sender-state></data></rpc-reply>]]>]]>$"
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+fi
+
 
 rm -rf $dir
 

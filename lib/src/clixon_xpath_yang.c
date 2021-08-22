@@ -150,6 +150,7 @@ xp_yang_eval_step(xp_yang_ctx  *xy0,
     char        *prefix;
     yang_stmt   *ys;
     xp_yang_ctx *xy = NULL;
+    yang_stmt   *ys1 = NULL;
 
     /* Create new xy */
     if ((xy = xy_dup(xy0)) == NULL)
@@ -164,9 +165,12 @@ xp_yang_eval_step(xp_yang_ctx  *xy0,
 	switch (nodetest->xs_type){
 	case XP_NODE:
 	    if ((prefix = nodetest->xs_s0) != NULL){
-		if (yang_keyword_get(ys) == Y_MODULE){ /* This means top */
-		    yang_stmt *ys1 = NULL;
-		    /* XXX: Kludge with prefixes */
+		/* XXX: Kludge with prefixes */
+		if (yang_keyword_get(ys) == Y_SPEC){ /* This means top */
+		    if ((ys1 = yang_find_module_by_prefix_yspec(ys, prefix)) != NULL)
+			ys = ys1;
+		}
+		else if (yang_keyword_get(ys) == Y_MODULE){ /* This means top */
 		    if ((ys1 = yang_find_module_by_prefix(ys, prefix)) == NULL)
 			ys1 = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
 		    if (ys1 != NULL)
@@ -323,9 +327,15 @@ xp_yang_eval(xp_yang_ctx  *xy,
 	    }
 	}
 	break;
+    case XP_PRIME_STR:
+	if ((*xyr = xy_dup(xy)) == NULL)
+	    goto done;
+	goto ok;
+	break;
     case XP_ABSPATH:
 	/* Set context node to top node, and nodeset to that node only */
-	xy->xy_node = ys_module(xy->xy_node);
+	if (yang_keyword_get(xy->xy_node) != Y_SPEC)
+	    xy->xy_node = ys_module(xy->xy_node);
 	break;
     case XP_PRED:
 	if (xp_yang_eval_predicate(xy, xptree, xyr) < 0)
@@ -419,15 +429,24 @@ xp_yang_eval(xp_yang_ctx  *xy,
  * Leafrefs have a path arguments that are used both for finding referred XML node instances as well
  * as finding a referred YANG node for typechecks.
  * Such a path-arg is defined as:
- *    The syntax for a path argument is a subset of the XPath abbreviated
+ *   The syntax for a path argument is a subset of the XPath abbreviated
  *   syntax.  Predicates are used only for constraining the values for the
  *   key nodes for list entries.  Each predicate consists of exactly one
  *   equality test per key, and multiple adjacent predicates MAY be
  *   present if a list has multiple keys.
- * @param[in]   ys        YANG referring leaf node
- * @param[in]   path_arg  Leafref path-arg
+ * @param[in]   ys        YANG referring node
+ * @param[in]   path_arg  path-arg
  * @param[out]  yref      YANG referred node
  * @note this function uses XPATH parser, which is (much too) general
+ * @code
+ *   yang_stmt    *ys;              // source / referring node
+ *   yang_stmt    *yref = NULL;     // target / referred node
+ *   char         *path_arg="../config/name";
+ *
+ *   if (yang_path_arg(ys, path_arg, &yref) < 0)
+ *     err;
+ * @endcode
+
  * @see rfc7950 Sec 9.9.2 
  * @see rfc7950 Sec 14 (leafref path)
  */

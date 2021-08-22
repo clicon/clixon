@@ -688,6 +688,7 @@ xml_diff(yang_stmt *yspec,
 }
 
 /*! Prune everything that does not pass test or have at least a child* does not
+ *
  * @param[in]   xt      XML tree with some node marked
  * @param[in]   flag    Which flag to test for
  * @param[in]   test    1: test that flag is set, 0: test that flag is not set
@@ -701,7 +702,6 @@ xml_diff(yang_stmt *yspec,
  * @note This function seems a little too complex semantics
  * @see xml_tree_prune_flagged for a simpler variant
  */
-#if 1
 int
 xml_tree_prune_flagged_sub(cxobj *xt, 
 			   int    flag,
@@ -773,97 +773,6 @@ xml_tree_prune_flagged_sub(cxobj *xt,
 	*upmark = mark;
     return retval;
 }
-#else
-/* This is optimized in the sense that xml_purge is replaced with xml_child_rm but it leaks memory,
- * in poarticualr attributes and namespace caches
- */
-int
-xml_tree_prune_flagged_sub(cxobj *xt, 
-			   int    flag,
-			   int    test,
-			   int   *upmark)
-{
-    int        retval = -1;
-    int        submark;
-    int        mark;
-    cxobj     *x;
-    cxobj     *xprev;
-    int        iskey;
-    int        anykey=0;
-    yang_stmt *yt;
-    int        i;
-
-    mark = 0;
-    yt = xml_spec(xt); /* xan be null */
-    x = NULL;
-    xprev = x = NULL;
-    i = 0;
-    while ((x = xml_child_each(xt, x, -1)) != NULL) {
-	i++;
-	if (xml_type(x) != CX_ELMNT){
-	    xprev = x;
-	    continue;
-	}
-	if (xml_flag(x, flag) == test?flag:0){
-	    /* Pass test */
-	    mark++;
-	    xprev = x;
-	    continue; /* mark and stop here */
-	}
-	/* If it is key dont remove it yet (see second round) */
-	if (yt){
-	    if ((iskey = yang_key_match(yt, xml_name(x))) < 0)
-		goto done;
-	    if (iskey){
-		anykey++;
-		xprev = x; /* skip if this is key */
-		continue;
-	    }
-	}
-	if (xml_tree_prune_flagged_sub(x, flag, test, &submark) < 0)
-	    goto done;
-	/* if xt is list and submark anywhere, then key subs are also marked
-	 */
-	if (submark)
-	    mark++;
-	else{ /* Safe with xml_child_each if last */
-	    if (xml_child_rm(xt, i-1) < 0)
-		goto done;
-	    i--;
-	    x = xprev;
-	}
-	xprev = x;
-    }
-    /* Second round: if any keys were found, and no marks detected, purge now */
-    if (anykey && !mark){
-	x = NULL;
-	xprev = x = NULL;
-	i = 0;
-	while ((x = xml_child_each(xt, x, -1)) != NULL) {
-	    i++;
-	    if (xml_type(x) != CX_ELMNT){
-		xprev = x;
-		continue;
-	    }
-	    /* If it is key remove it here */
-	    if (yt){
-		if ((iskey = yang_key_match(yt, xml_name(x))) < 0)
-		    goto done;
-		if (xml_child_rm(xt, i-1) < 0)
-		    goto done;
-		i--;
-		x = xprev;
-	    }
-	    xprev = x; 
-	}
-    }
-    retval = 0;
- done:
-    if (upmark)
-	*upmark = mark;
-    return retval;
-}
-#endif
 
 /*! Prune everything that passes test
  * @param[in]   xt      XML tree with some node marked

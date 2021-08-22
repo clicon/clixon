@@ -20,6 +20,9 @@ fstate=$dir/mystate.xml
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
 
+# Validate internal state xml
+: ${validatexml:=false}
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -38,7 +41,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_VALIDATE_STATE_XML>false</CLICON_VALIDATE_STATE_XML>
+  <CLICON_VALIDATE_STATE_XML>$validatexml</CLICON_VALIDATE_STATE_XML>
   $RESTCONFIG
 </clixon-config>
 EOF
@@ -269,10 +272,10 @@ function testlimit()
 
     # "clixon get"
     new "clixon limit=$limit NETCONF get-config"
-    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">$limit</limit></get-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites><uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\">17</uint8-numbers></favorites></member></members></data></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">$limit</limit></get-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites><uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\">17</uint8-numbers></favorites></member></members></data></rpc-reply>]]>]]>$"
 
     new "clixon limit=$limit NETCONF get"
-#    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">$limit</limit></get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites><uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\">17</uint8-numbers></favorites></member></members></data></rpc-reply>]]>]]>$"
+    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">$limit</limit></get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites><uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\">17</uint8-numbers></favorites></member></members></data></rpc-reply>]]>]]>$"
 
     # "old: ietf"
     new "ietf limit=$limit NETCONF"
@@ -346,6 +349,7 @@ if [ $BE -ne 0 ]; then
 fi
 
 unset RESTCONFIG
+unset validatexml
 
 rm -rf $dir
 

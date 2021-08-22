@@ -81,6 +81,20 @@ module clixon-netconf-list-pagination {
           elements.";
     }
     grouping pageing-parameters {
+	leaf list-pagination {
+	    type boolean;
+	    default false;
+	    description
+		"NETCONF get / get-config needs some way to know that this is a pagination
+                 request, in which case the target is a list/leaf-list and the elements below
+                 (limit/offset/...) are valid.
+                 RESTCONF list pagination has a specific media-type for this purpose.
+                 This is an experimental proposal to make this property explicit.
+                 Possibly there is a better way (annotation?) to signal that this is in fact a 
+                 list pagination request.
+                 It is also possible to determine this using heurestics (ie a 'limit' property exixts),
+                 but it seems not 100% deterministic.";
+	}
 	leaf limit {
 	    type union {
 		type uint32;
