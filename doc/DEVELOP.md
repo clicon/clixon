@@ -74,13 +74,13 @@ Errors are typically declared as follows:
 All function returns that have return values must be checked
 
 Default return values form a function are:
-0:  OK
--1: Fatal Error
+- `0`  OK
+- `-1` Fatal Error
 
 In some cases, Clixon uses three-value returns as follows:
-1:  OK
-0:  Invalid
--1: Fatal error
+- `1`  OK
+- `0`  Invalid
+- `-1` Fatal error
 
 ### Return values
 

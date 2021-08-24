@@ -51,11 +51,9 @@ if [ "${WITH_RESTCONF}" = "native" ]; then
     # Create server certs and CA
     cacerts $cakey $cacert
     servercerts $cakey $cacert $srvkey $srvcert
-    USEBACKEND=false
 else
     # Define default restconfig config: RESTCONFIG
     RESTCONFIG=$(restconf_config none false)
-    USEBACKEND=false
 fi
 
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
@@ -113,7 +111,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
-  <CLICON_BACKEND_RESTCONF_PROCESS>$USEBACKEND</CLICON_BACKEND_RESTCONF_PROCESS>
+  <CLICON_BACKEND_RESTCONF_PROCESS>false</CLICON_BACKEND_RESTCONF_PROCESS>
   $RESTCONFIG <!-- only fcgi -->
 </clixon-config>
 EOF
