@@ -1348,7 +1348,7 @@ cli_pagination(clicon_handle h, cvec *vars, cvec *argv)
     }
     if ((nsc = xml_nsctx_init(prefix, namespace)) == NULL)
 	goto done;
-    if (clicon_rpc_get_pageable_list(h, "running", xpath, NULL, nsc, CONTENT_CONFIG, NULL,
+    if (clicon_rpc_get_pageable_list(h, "running", xpath, NULL, nsc, CONTENT_CONFIG, -1,
 				    "2", "0",
 				    NULL, NULL, NULL,
 				    &xret) < 0){

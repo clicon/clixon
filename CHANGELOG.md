@@ -35,6 +35,18 @@ Expected: September, 2021
 
 ### New features
 
+* List pageing for Netconf and Restconf
+  * Experimental, work-in-progress
+    * Enable with LIST_PAGINATION compile-time option
+  * According to:
+    * draft-wwlh-netconf-list-pagination-00.txt
+    * draft-wwlh-netconf-list-pagination-rc-01
+  * Added yangs:
+    * ietf-restconf-list-pagination@2015-01-30.yang
+    * clixon-netconf-list-pagination@2021-08-27.yang
+    * ietf-origin@2018-02-14.yang
+    * ietf-yang-metadata@2016-08-05.yang
+    * ietf-netconf-with-defaults@2011-06-01.yang
 * YANG Leafref feature update
   * Closer adherence to RFC 7950. Some of this is changed behavior, some is new feature.
   * Essentially instead of looking at the referring leaf, context is referred(target) node

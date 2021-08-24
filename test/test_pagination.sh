@@ -3,7 +3,6 @@
 # Backlog items:
 # 1. "remaining" annotation RFC 7952
 # 2. pattern '.*[\n].*' { modifier invert-match;
-# XXX: augment Netconf GET instead, not RPC
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -277,16 +276,12 @@ function testlimit()
     new "clixon limit=$limit NETCONF get"
     expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">$limit</limit></get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites><uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\">17</uint8-numbers></favorites></member></members></data></rpc-reply>]]>]]>$"
 
-    # "old: ietf"
-    new "ietf limit=$limit NETCONF"
-    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><list-target xmlns:es=\"http://example.com/ns/example-social\">/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers</list-target><limit>$limit</limit></get-pageable-list></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><uint8-numbers xmlns=\"http://example.com/ns/example-social\" ycoll:remaining=\"$remaining\" xmlns:ycoll=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\">17</uint8-numbers></pageable-list></rpc-reply>]]>]]>$"
-
     new "limit=$limit Parameter RESTCONF xml"
-    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+xml" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers?limit=$limit)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+xml" "<pageable-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\"><uint8-numbers xmlns=\"http://example.com/ns/example-social\" ycoll:remaining=\"$remaining\" xmlns:ycoll=\"urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination\">17</uint8-numbers></pageable-list>"
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+xml" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers?limit=$limit)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+xml" "<yang-collection xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-list-pagination\"><uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\" xmlns=\"http://example.com/ns/example-social\">17</uint8-numbers></yang-collection>"
 
     # XXX [17]
     new "limit=$limit Parameter RESTCONF json"
-    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+json" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers?limit=$limit)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+json" "{\"pageable-list\":{\"example-social:uint8-numbers\":17,\"@example-social:uint8-numbers\": \[{\"ietf-netconf-list-pagination:remaining\": $remaining}\]}}"
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+json" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers?limit=$limit)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+json" '{"yang-collection":{"example-social:uint8-numbers":17,"@example-social:uint8-numbers": \[{"clixon-netconf-list-pagination:remaining": 5}\]}}'
 }
 
 new "test params: -f $cfg -s startup -- -sS $fstate"

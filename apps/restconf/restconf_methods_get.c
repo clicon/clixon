@@ -149,7 +149,6 @@ api_data_get2(clicon_handle  h,
 	    goto ok;
 	}
     }
-
     /* Check for content attribute */
     if ((attr = cvec_find_str(qvec, "content")) != NULL){
 	clicon_debug(1, "%s content=%s", __FUNCTION__, attr);
@@ -181,19 +180,9 @@ api_data_get2(clicon_handle  h,
 	    }
 	}
     }
-
     clicon_debug(1, "%s path:%s", __FUNCTION__, xpath);
-    switch (content){
-    case CONTENT_CONFIG:
-    case CONTENT_NONCONFIG:
-    case CONTENT_ALL:
-	ret = clicon_rpc_get(h, xpath, nsc, content, depth, &xret);
-	break;
-    default:
-	clicon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);
-	goto done;
-	break;
-    }
+    ret = clicon_rpc_get(h, xpath, nsc, content, depth, &xret);
+
     if (ret < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;
@@ -356,9 +345,11 @@ api_data_collection(clicon_handle  h,
     netconf_content content = CONTENT_ALL;
     cxobj     *xtop = NULL;
     cxobj     *xbot = NULL;
+    cxobj     *xp;
+    cxobj     *xpr;
     yang_stmt *y = NULL;
     cbuf      *cbrpc = NULL;
-    char      *depth;
+    int32_t    depth = -1;  /* Nr of levels to print, -1 is all, 0 is none */
     char      *limit;
     char      *offset;
     char      *direction;
@@ -434,13 +425,30 @@ api_data_collection(clicon_handle  h,
 	goto done;
     }
     /* Clixon extensions and collection attributes */
-    depth = cvec_find_str(qvec, "depth");
+    /* Check for depth attribute */
+    if ((attr = cvec_find_str(qvec, "depth")) != NULL){
+	clicon_debug(1, "%s depth=%s", __FUNCTION__, attr);
+	if (strcmp(attr, "unbounded") != 0){
+	    char *reason = NULL;
+	    if ((ret = parse_int32(attr, &depth, &reason)) < 0){
+		clicon_err(OE_XML, errno, "parse_int32");
+		goto done;
+	    }
+	    if (ret==0){
+		if (netconf_bad_attribute_xml(&xerr, "application",
+					      "depth", "Unrecognized value of depth attribute") < 0)
+		    goto done;
+		if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+		    goto done;
+		goto ok;
+	    }
+	}
+    }
     limit = cvec_find_str(qvec, "limit");
     offset = cvec_find_str(qvec, "offset");
     direction = cvec_find_str(qvec, "direction");
     sort = cvec_find_str(qvec, "sort");
     where = cvec_find_str(qvec, "where");
-    
     if (clicon_rpc_get_pageable_list(h, "running", xpath, y, nsc, content,
 				     depth, limit, offset, direction, sort, where, 
 				     &xret) < 0){
@@ -454,7 +462,6 @@ api_data_collection(clicon_handle  h,
 	    goto done;
 	goto ok;
     }
-
     /* We get return via netconf which is complete tree from root 
      * We need to cut that tree to only the object.
      */
@@ -468,16 +475,34 @@ api_data_collection(clicon_handle  h,
 	    goto done;
 	goto ok;
     }
+    if ((xpr = xml_new("yang-collection", NULL, CX_ELMNT)) == NULL)
+	goto done;
+    if (xmlns_set(xpr, NULL, RESTCONF_PAGINATON_NAMESPACE) < 0)
+	goto done;
+    if ((xp = xpath_first(xret, nsc, "%s", xpath)) != NULL){
+	char *ns=NULL;
+	if (xml2ns(xp, NULL, &ns) < 0)
+	    goto done;
+	if (ns != NULL){
+	    if (xmlns_set(xp, NULL, ns) < 0)
+		goto done;
+	}
+	if (xml_rm(xp) < 0)
+	    goto done;
+	if (xml_insert(xpr, xp, INS_LAST, NULL, NULL) < 0) 
+	    goto done;
+    }
+    
     /* Normal return, no error */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
     switch (media_out){
     case YANG_COLLECTION_XML:
-	if (clicon_xml2cbuf(cbx, xret, 0, pretty, -1) < 0) /* Dont print top object?  */
+	if (clicon_xml2cbuf(cbx, xpr, 0, pretty, -1) < 0) /* Dont print top object?  */
 	    goto done;
 	break;
     case YANG_COLLECTION_JSON:
-	if (xml2json_cbuf(cbx, xret, pretty) < 0)
+	if (xml2json_cbuf(cbx, xpr, pretty) < 0)
 	    goto done;
 	break;
     default:
@@ -518,6 +543,8 @@ api_data_collection(clicon_handle  h,
 	free(xpath);
     if (nsc)
 	xml_nsctx_free(nsc);
+    if (xpr)
+        xml_free(xpr);
     if (xtop)
         xml_free(xtop);
     if (cbx)

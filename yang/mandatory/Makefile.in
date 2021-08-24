@@ -55,7 +55,9 @@ YANGSPECS += ietf-origin@2018-02-14.yang
 YANGSPECS += ietf-yang-metadata@2016-08-05.yang
 YANGSPECS += ietf-netconf-with-defaults@2011-06-01.yang
 # in draft-wwlh-netconf-list-pagination:
-YANGSPECS += ietf-netconf-list-pagination@2020-10-30.yang 
+YANGSPECS += ietf-netconf-list-pagination@2020-10-30.yang
+# in draft-wwlh-netconf-list-pagination-rc:
+YANGSPECS += ietf-restconf-list-pagination@2015-01-30.yang 
 
 all:	
 

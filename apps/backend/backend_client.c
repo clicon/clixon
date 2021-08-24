@@ -1396,12 +1396,6 @@ backend_rpc_init(clicon_handle h)
     if (rpc_callback_register(h, from_client_validate, NULL,
 		      NETCONF_BASE_NAMESPACE, "validate") < 0)
 	goto done;
-#ifdef LIST_PAGINATION
-    /* draft-ietf-netconf-restconf-collection-00 */
-    if (rpc_callback_register(h, from_client_get_pageable_list, NULL,
-		      NETCONF_COLLECTION_NAMESPACE, "get-pageable-list") < 0)
-	goto done;
-#endif
     /* In backend_client.? RPC from RFC 5277 */
     if (rpc_callback_register(h, from_client_create_subscription, NULL,
 		      EVENT_RFC5277_NAMESPACE, "create-subscription") < 0)

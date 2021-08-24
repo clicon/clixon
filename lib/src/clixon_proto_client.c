@@ -822,7 +822,7 @@ clicon_rpc_get(clicon_handle   h,
     /* Clixon extension, depth=<level> */
     if (depth != -1)
 	cprintf(cb, " depth=\"%d\"", depth);
-    cprintf(cb, ">");
+    cprintf(cb, ">"); /* get */
     /* If xpath, add a filter */
     if (xpath && strlen(xpath)) {
 	cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
@@ -882,7 +882,8 @@ clicon_rpc_get(clicon_handle   h,
 /*! Get database configuration and state data collection
  * @param[in]  h         Clicon handle
  * @param[in]  xpath     To identify a list/leaf-list
- * @param[in]  yli       Yang-stmt of list/leaf-list of collection, if given make sanity check
+ * @param[in]  yli       Yang-stmt of list/leaf-list of collection, if given yang populate return
+ *                       xt and make sanity check
  * @param[in]  namespace Namespace associated w xpath
  * @param[in]  nsc       Namespace context for filter
  * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
@@ -896,7 +897,6 @@ clicon_rpc_get(clicon_handle   h,
  *                       Either <config> or <rpc-error>. 
  * @retval    0          OK
  * @retval   -1          Error, fatal or xml
-
  * @see clicon_rpc_get
  * @see draft-ietf-netconf-restconf-collection-00
  * @note the netconf return message is yang populated, as well as the return data
@@ -908,7 +908,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 			     yang_stmt      *yli,
 			     cvec           *nsc, /* namespace context for xpath */
 			     netconf_content content,
-			     char           *depth,
+			     int32_t         depth,
 			     char           *limit,
 			     char           *offset,
 			     char           *direction,
@@ -921,15 +921,16 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr = NULL;
-    cxobj             *xr; 
+    cxobj             *xr; /* return msg */
+    cxobj             *xd; /* return data */
     char              *username;
     uint32_t           session_id;
     int                ret;
     yang_stmt         *yspec;
-    cxobj             *x;
     
     if (datastore == NULL){
 	clicon_err(OE_XML, EINVAL, "datastore not given");
+	goto done;
     }
     if (session_id_check(h, &session_id) < 0)
 	goto done;
@@ -941,31 +942,39 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     cprintf(cb, " xmlns:%s=\"%s\"",
 	    NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
-    cprintf(cb, "><get-pageable-list xmlns=\"%s\"", NETCONF_COLLECTION_NAMESPACE);
+    cprintf(cb, "><get ");
     /* Clixon extension, content=all,config, or nonconfig */
     if ((int)content != -1)
 	cprintf(cb, " content=\"%s\"", netconf_content_int2str(content));
-    if (depth)
-	cprintf(cb, " depth=\"%s\"", depth);
-    cprintf(cb, ">"); 
-    cprintf(cb, "<datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:%s</datastore>", datastore);
-    if (xpath){
-	cprintf(cb, "<list-target");
+    /* Clixon extension, depth=<level> */
+    if (depth != -1)
+	cprintf(cb, " depth=\"%d\"", depth);
+    /* declare cp prefix in get, so sub-elements dont need to */
+    cprintf(cb, " xmlns:cp=\"%s\"", CLIXON_PAGINATON_NAMESPACE); 
+    cprintf(cb, ">"); /* get */
+    /* If xpath, add a filter */
+    if (xpath && strlen(xpath)) {
+	cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
+		NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
+		xpath);
 	if (xml_nsctx_cbuf(cb, nsc) < 0)
 	    goto done;
-	cprintf(cb, ">%s</list-target>", xpath);
+	cprintf(cb, "/>");
     }
+    /* Explicit use of list-pagination */
+    cprintf(cb, "<cp:list-pagination>true</cp:list-pagination>");
     if (limit)
-	cprintf(cb, "<limit>%s</limit>", limit);
+	cprintf(cb, "<cp:limit>%s</cp:limit>", limit);
     if (offset)
-	cprintf(cb, "<offset>%s</offset>", offset);
+	cprintf(cb, "<cp:offset>%s</cp:offset>", offset);
     if (direction)
-	cprintf(cb, "<direction>%s</direction>", direction);
+	cprintf(cb, "<cp:direction>%s</cp:direction>", direction);
     if (sort)
-	cprintf(cb, "<sort>%s</sort>", sort);
+	cprintf(cb, "<cp:sort>%s</cp:sort>", sort);
     if (where)
-	cprintf(cb, "<where>%s</where>", where);
-    cprintf(cb, "</get-pageable-list></rpc>");
+	cprintf(cb, "<cp:where>%s</cp:where>", where);
+    cprintf(cb, "</get>");
+    cprintf(cb, "</rpc>");
     if ((msg = clicon_msg_encode(session_id, "%s", cbuf_get(cb))) == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret) < 0)
@@ -973,34 +982,29 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     /* Send xml error back: first check error, then ok */
     if ((xr = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
 	xr = xml_parent(xr); /* point to rpc-reply */
-    else if ((xr = xpath_first(xret, NULL, "/rpc-reply/pageable-list")) == NULL){
-	if ((xr = xml_new("pageable_list", NULL, CX_ELMNT)) == NULL)
+    else if ((xd = xpath_first(xret, NULL, "/rpc-reply/data")) == NULL){
+	if ((xd = xml_new(NETCONF_OUTPUT_DATA, NULL, CX_ELMNT)) == NULL)
 	    goto done;
     }
-    else if (yli != NULL) {
+    else{
 	yspec = clicon_dbspec_yang(h);
-	/* Populate all children with y */
-	x = NULL;
-	while ((x = xml_child_each(xr, x, CX_ELMNT)) != NULL){
-	    xml_spec_set(x, yli);
-	    if ((ret = xml_bind_yang(x, YB_PARENT, yspec, &xerr)) < 0)
+	if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if (clixon_netconf_internal_error(xerr,
+					      ". Internal error, backend returned invalid XML.",
+					      NULL) < 0)
 		goto done;
-	    if (ret == 0){
-		if (clixon_netconf_internal_error(xerr,
-						  ". Internal error, backend returned XML tat doid not match given YANG.",
-						  yli?yang_argument_get(yli):NULL) < 0)
-		    goto done;
-		if ((xr = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		    clicon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
-		    goto done;
-		}
+	    if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		clicon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
+		goto done;
 	    }
 	}
     }
-    if (xr){
-	if (xml_rm(xr) < 0)
+    if (xt){
+	if (xml_rm(xd) < 0)
 	    goto done;
-	*xt = xr;
+	*xt = xd;
     }
     retval = 0;
   done:
