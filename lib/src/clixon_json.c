@@ -36,6 +36,8 @@
  * JSON syntax is according to:
  * http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
  * RFC 7951 JSON Encoding of Data Modeled with YANG
+ * XXX: The complexity of xml2json1_cbuf() mapping from internal cxobj structure to JSON output
+ * needs a rewrite due to complexity of lists/leaf-lists/null-values, etc.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -180,14 +182,21 @@ arraytype2str(enum array_element_type lt)
 }
 
 /*! Check typeof x in array
+ * 
+ * Check if element is in an array, and if so, if it is in the start "[x,", in the middle: "[..,x,..]"
+ * in the end: ",x]", or a single element: "[x]"
  * Some complexity when x is in different namespaces
+ * @param[in]  xprev     The previous element (if any)
+ * @param[in]  x         The element itself
+ * @param[in]  xnext     The next element (if any)
+ * @retval     arraytype Type of array 
  */
 static enum array_element_type
 array_eval(cxobj *xprev, 
 	   cxobj *x, 
 	   cxobj *xnext)
 {
-    enum array_element_type array = NO_ARRAY;
+    enum array_element_type arraytype = NO_ARRAY;
     int                     eqprev=0;
     int                     eqnext=0;
     yang_stmt              *ys;
@@ -196,10 +205,9 @@ array_eval(cxobj *xprev,
 
     nsx = xml_find_type_value(x, NULL, "xmlns", CX_ATTR);
     if (xml_type(x) != CX_ELMNT){
-	array=BODY_ARRAY;
+	arraytype = BODY_ARRAY;
 	goto done;
     }
-    ys = xml_spec(x);
     if (xnext && 
 	xml_type(xnext)==CX_ELMNT &&
 	strcmp(xml_name(x), xml_name(xnext))==0){
@@ -217,17 +225,25 @@ array_eval(cxobj *xprev,
 	    eqprev++;
     }
     if (eqprev && eqnext)
-	array = MIDDLE_ARRAY;
+	arraytype = MIDDLE_ARRAY;
     else if (eqprev)
-	array = LAST_ARRAY;
+	arraytype = LAST_ARRAY;
     else if (eqnext)
-	array = FIRST_ARRAY;
-    else  if (ys && yang_keyword_get(ys) == Y_LIST)
-	array = SINGLE_ARRAY;
+	arraytype = FIRST_ARRAY;
+    else if ((ys = xml_spec(x)) != NULL) {
+	if (yang_keyword_get(ys) == Y_LIST
+#if 0	    /* XXX instead see special case in xml2json_encode_leafs */
+	    || yang_keyword_get(ys) == Y_LEAF_LIST
+#endif
+	    )
+	    arraytype = SINGLE_ARRAY;
+	else
+	    arraytype = NO_ARRAY;
+    }
     else
-	array = NO_ARRAY;
+	arraytype = NO_ARRAY;
  done:
-    return array;
+    return arraytype;
 }
 
 /*! Escape a json string as well as decode xml cdata
@@ -414,7 +430,7 @@ json2xml_decode(cxobj     *x,
     enum rfc_6020 keyword;
     cxobj        *xc;
     int           ret;
-    yang_stmt    *ytype;
+    yang_stmt    *ytype = NULL;
 
     if ((y = xml_spec(x)) != NULL){
 	keyword = yang_keyword_get(y);
@@ -514,8 +530,9 @@ xml2json_encode_identityref(cxobj     *xb,
 }
 
 /*! Encode leaf/leaf_list types from XML to JSON
- * @param[in]     x   XML body
- * @param[in]     ys  Yang spec of parent
+ * @param[in]     xb   XML body
+ * @param[in]     xp   XML parent
+ * @param[in]     yp   Yang spec of parent
  * @param[out]    cb0  Encoded string
  */
 static int
@@ -561,8 +578,9 @@ xml2json_encode_leafs(cxobj     *xb,
 		    if (xml2json_encode_identityref(xb, body, yp, cb) < 0)
 			goto done;
 		}
-		else
+		else{
 		    cprintf(cb, "%s", body);
+		}
 	    }
 	    else
 		cprintf(cb, "%s", body);
@@ -577,6 +595,12 @@ xml2json_encode_leafs(cxobj     *xb,
 	case CGV_UINT64:
 	case CGV_DEC64:
 	case CGV_BOOL:
+#if 1 /* Special case */
+	    if (yang_keyword_get(yp) == Y_LEAF_LIST
+		&& xml_child_nr_type(xml_parent(xp), CX_ELMNT) == 1) 
+		cprintf(cb, "[%s]", body);
+	    else
+#endif
 	    cprintf(cb, "%s", body);
 	    quote = 0;
 	    break;
