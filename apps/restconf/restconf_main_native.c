@@ -404,6 +404,12 @@ restconf_verify_certs(int             preverify_ok,
     case X509_V_ERR_HOSTNAME_MISMATCH:
 	clicon_debug(1, "%s X509_V_ERR_HOSTNAME_MISMATCH", __FUNCTION__);
 	break;
+    case X509_V_ERR_CERT_HAS_EXPIRED:
+	clicon_debug(1, "%s X509_V_ERR_CERT_HAS_EXPIRED", __FUNCTION__);
+	break;
+    case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
+	clicon_debug(1, "%s X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT", __FUNCTION__);
+	break;
     }
     /* Catch a too long certificate chain. should be +1 in SSL_CTX_set_verify_depth() */
     if (depth > VERIFY_DEPTH + 1) {
@@ -848,6 +854,7 @@ restconf_connection(int   s,
 #ifdef HAVE_LIBNGHTTP2
 	    if (sd->sd_upgrade2){
 		nghttp2_error ngerr;
+
 		/* Switch to http/2 according to RFC 7540 Sec 3.2 and RFC 7230 Sec 6.7 */
 		rc->rc_proto = HTTP_2;
 		if (http2_session_init(rc) < 0){

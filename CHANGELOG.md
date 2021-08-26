@@ -60,11 +60,15 @@ Users may have to change how they access the system
 * Native Restconf is now default, not fcgi/nginx
   * That is, to configure with fcgi, you need to explicitly configure: `--with-restconf=fcgi`
 * New clixon-config@2021-07-11.yang revision
+   * Added: `CLICON_RESTCONF_HTTP2_PLAIN`
    * Removed default of `CLICON_RESTCONF_INSTALLDIR`
      * The default behaviour is changed to use the config $(sbindir) to locate `clixon_restconf` when starting restconf internally
 
 ### Minor features
 
+* Restconf native HTTP/2:
+  * Added option `CLICON_RESTCONF_HTTP2_PLAIN`
+    * if disabled non-tls HTTP/2 is disabled: both direct and upgrade
 * Restconf internal start: fail early if clixon_restconf binary is not found
   * If CLICON_BACKEND_RESTCONF_PROCESS is true
 * Added linenumbers to all YANG symbols for better debug and errors

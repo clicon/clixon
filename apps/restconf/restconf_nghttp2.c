@@ -305,10 +305,22 @@ restconf_nghttp2_path(restconf_stream_data *sd)
 	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
 	goto done;
     }
-    /* Slightly awkward way of taking SSL cert subject and CN and add it to restconf parameters
-     * instead of accessing it directly */
-    if (rc->rc_ssl != NULL){
-	/* SSL subject fields, eg CN (Common Name) , can add more here? */
+    
+    if (rc->rc_ssl == NULL){
+	if (clicon_option_bool(h, "CLICON_RESTCONF_HTTP2_PLAIN") == 0){
+	    cxobj *xerr = NULL;
+	    
+	    if (netconf_operation_not_supported_xml(&xerr, "protocol", "HTTP/2 plain / non-tls is not allowed") < 0)
+		goto done;
+	    if (api_return_err0(h, sd, xerr, 1, YANG_DATA_JSON, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+    else {
+	/* Slightly awkward way of taking SSL cert subject and CN and add it to restconf parameters
+	 * instead of accessing it directly 
+	 * SSL subject fields, eg CN (Common Name) , can add more here? */
 	if (ssl_x509_name_oneline(rc->rc_ssl, &oneline) < 0)
 	    goto done;
 	if (oneline != NULL) {
@@ -327,6 +339,7 @@ restconf_nghttp2_path(restconf_stream_data *sd)
     }
     else if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
 	goto done;   
+ ok:
     /* Clear (fcgi) paramaters from this request */
     if (restconf_param_del_all(h) < 0)
     	goto done;

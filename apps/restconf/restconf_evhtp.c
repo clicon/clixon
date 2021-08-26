@@ -430,7 +430,8 @@ evhtp_upgrade_http2(clicon_handle         h,
     char  *settings;
     cxobj *xerr = NULL;
 	
-    if ((str = restconf_param_get(h, "HTTP_UPGRADE")) != NULL){
+    if ((str = restconf_param_get(h, "HTTP_UPGRADE")) != NULL &&
+	clicon_option_bool(h, "CLICON_RESTCONF_HTTP2_PLAIN") == 1){
 	/* Only accept "h2c" */
 	if (strcmp(str, "h2c") != 0){
 	    if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid upgrade token") < 0)
