@@ -99,7 +99,7 @@ function testrun()
 	# http/2-only is always an error in http/1 + http/2 mode
 	new "restconf http2 prior-knowledge (h2:$h2enable)"
 	echo "curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta"
-	expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" "16 55"
+	expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" "16 52 55"
 
     elif [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_LIBEVHTP} = false ]; then  # http/2 only
 
@@ -160,7 +160,7 @@ function testrun()
 	# http/2-only is always an error in http/1 + http/2 mode
 	new "restconf http2 prior-knowledge (h2:$h2enable)"
 	echo "curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta"
-	expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" "16 55"
+	expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" "16 52 55"
 
     fi
 
