@@ -69,8 +69,8 @@ Users may have to change how they access the system
 ### Minor features
 
 * Restconf native HTTP/2:
-  * Added option `CLICON_RESTCONF_HTTP2_PLAIN`
-    * if disabled non-tls HTTP/2 is disabled: both direct and upgrade
+  * Added option `CLICON_RESTCONF_HTTP2_PLAIN` for non-TLS http
+    * Default disabled, set to true to enable HTTP/2 direct and switch/upgrade HTTP/1->HTTP/2
 * Restconf internal start: fail early if clixon_restconf binary is not found
   * If CLICON_BACKEND_RESTCONF_PROCESS is true
 * Added linenumbers to all YANG symbols for better debug and errors

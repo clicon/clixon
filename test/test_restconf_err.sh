@@ -31,7 +31,7 @@ fyang2=$dir/augment.yang
 fxml=$dir/initial.xml
 fstate=$dir/state.xml
 RCPROTO=http # Force to http due to netcat
-
+HVER=1.1
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)

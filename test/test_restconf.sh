@@ -223,7 +223,11 @@ function testrun()
 	    # http/1 + http/2
 
 	    new "restconf GET http/2 switch protocol"
-	    expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 "" "HTTP/2 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"	    # Only if http:  HTTP/1.1 101 Switching Protocols
+	    if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
+		expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 "" "HTTP/1.1 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+	    else
+		expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 "" "HTTP/2 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"	    # Only if https:  HTTP/1.1 101 Switching Protocols
+	    fi
 	else
 	    # http/1 only Try http/2 - go back to http/1.1
 	    new "restconf GET http/2 switch protocol"
@@ -487,6 +491,11 @@ if [ "${WITH_RESTCONF}" = "native" ]; then
     protos="$protos https"
 fi
 for proto in $protos; do
+    if [ $proto = https ]; then
+	HVER=2
+    else
+	HVER=1.1
+    fi
     addrs="127.0.0.1"
     if $IPv6 ; then
 	addrs="$addrs \[::1\]"

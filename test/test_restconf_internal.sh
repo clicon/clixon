@@ -22,6 +22,7 @@ startupdb=$dir/startup_db
 # Restconf debug
 RESTCONFDBG=$DBG
 RCPROTO=http # no ssl here
+HVER=1.1
 
 # log-destination in restconf xml: syslog or file
 : ${LOGDST:=syslog}

@@ -28,6 +28,7 @@ fyang=$dir/myexample.yang
 
 # No ssl
 RCPROTO=http 
+HVER=1.1
 
 # Start with common config, then append fcgi/native specific config
 cat <<EOF > $cfg

@@ -33,6 +33,7 @@ startupdb=$dir/startup_db
 # Restconf debug
 RESTCONFDBG=$DBG
 RCPROTO=http # no ssl here
+HVER=1.1
 
 INVALIDADDR=251.1.1.1 # used by fourth usecase as invalid
 
