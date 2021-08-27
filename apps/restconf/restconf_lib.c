@@ -124,8 +124,8 @@ Mapping netconf error-tag -> status code
  */
 static const map_str2int netconf_restconf_map[] = {
     {"in-use",                 409},
-    {"invalid-value",          404},
-    {"invalid-value",          400},
+    {"invalid-value",          400}, /* or 404 special case if msg is: "Invalid HTTP data method" handled in api_return_err */
+    {"invalid-value",          404}, 
     {"invalid-value",          406},
     {"too-big",                413}, /* request */
     {"too-big",                400}, /* response */
@@ -136,7 +136,7 @@ static const map_str2int netconf_restconf_map[] = {
     {"bad-element",            400},
     {"unknown-element",        400},
     {"unknown-namespace",      400},
-    {"access-denied",          403}, /* or 401 special case if tagstr is: "The requested URL was unauthorized" handled in api_return_err */
+    {"access-denied",          403}, /* or 401 special case if msg is: "The requested URL was unauthorized" handled in api_return_err */
     {"access-denied",          401}, 
     {"lock-denied",            409},
     {"resource-denied",        409},

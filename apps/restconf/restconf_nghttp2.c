@@ -277,62 +277,6 @@ recv_callback(nghttp2_session *session,
     return 0;
 }
 
-/*! Check common connection sanity checks and terminate if found before request processing
- *
- * These tests maybe could have done earlier, this is somewhat late since the session is
- * closed and that is always good to do as early as possible.
- * The following are current checks:
- * 1) Check if http/2 non-tls is disabled
- * 2) Check if ssl client certs ae valid
- * @param[in]  h     Clixon handle
- * @param[in]  rc    Restconf connection handle 
- * @param[in]  sd    Http stream
- * @param[out] term  Terminate session
- * @retval    -1     Error
- * @retval     0     OK
- */
-static int
-restconf_nghttp2_sanity(clicon_handle         h,
-			restconf_conn        *rc,
-			restconf_stream_data *sd)
-{
-    int    retval = -1;
-    cxobj *xerr = NULL;
-    long   code;
-    cbuf  *cberr = NULL;
-    
-    /* 1) Check if http/2 non-tls is disabled */
-    if (rc->rc_ssl == NULL &&
-	clicon_option_bool(h, "CLICON_RESTCONF_HTTP2_PLAIN") == 0){
-	if (netconf_operation_not_supported_xml(&xerr, "protocol", "Non-tls HTTP/2 is disabled") < 0)
-	    goto done;
-	if (api_return_err0(h, sd, xerr, 1, YANG_DATA_JSON, 0) < 0)
-	    goto done;
-	rc->rc_exit = 1;
-    }
-    /* 2) Check if ssl client certs ae valid */
-    else if (rc->rc_ssl != NULL &&
-	     (code = SSL_get_verify_result(rc->rc_ssl)) != 0){
-	if ((cberr = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	cprintf(cberr, "HTTP cert verification failed: (code:%ld)", code); 
-	if (netconf_operation_not_supported_xml(&xerr, "protocol", cbuf_get(cberr)) < 0)
-	    goto done;
-	if (api_return_err0(sd->sd_conn->rc_h, sd, xerr, 1, YANG_DATA_JSON, 0) < 0)
-	    goto done;
-	rc->rc_exit = 1;
-    }
-    retval = 0;
- done:
-    if (cberr)
-	cbuf_free(cberr);
-    if (xerr)
-	xml_free(xerr);
-    return retval;
-}
-
 /*! Callback for each incoming http request for path /
  *
  * This are all messages except /.well-known, Registered with evhtp_set_cb
@@ -361,10 +305,6 @@ restconf_nghttp2_path(restconf_stream_data *sd)
 	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
 	goto done;
     }
-    if (restconf_nghttp2_sanity(h, rc, sd) < 0)
-	goto done;
-    if (rc->rc_exit == 1)
-	goto ok;
     if (rc->rc_ssl != NULL){
 	/* Slightly awkward way of taking SSL cert subject and CN and add it to restconf parameters
 	 * instead of accessing it directly 
@@ -380,17 +320,21 @@ restconf_nghttp2_path(restconf_stream_data *sd)
 	    }
 	}
     }
-    /* call generic function */
-    if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0){
-	if (api_well_known(h, sd) < 0)
+    /* Check sanity of session, eg ssl client cert validation, may set rc_exit */
+    if (restconf_connection_sanity(h, rc, sd) < 0)
+	goto done;
+    if (!rc->rc_exit){
+	/* call generic function */
+	if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0){
+	    if (api_well_known(h, sd) < 0)
+		goto done;
+	}
+	else if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
 	    goto done;
     }
-    else if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
-	goto done;   
     /* Clear (fcgi) paramaters from this request */
     if (restconf_param_del_all(h) < 0)
     	goto done;
- ok:
     retval = 0;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);

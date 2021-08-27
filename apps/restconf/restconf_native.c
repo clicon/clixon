@@ -64,6 +64,8 @@
 
 /* restconf */
 #include "restconf_lib.h"       /* generic shared with plugins */
+#include "restconf_handle.h"
+#include "restconf_err.h"
 #ifdef HAVE_LIBEVHTP
 #include <event2/buffer.h> /* evbuffer */
 #define EVHTP_DISABLE_REGEX
@@ -229,5 +231,80 @@ ssl_x509_name_oneline(SSL   *ssl,
 	OPENSSL_free(p);
     if (cert)
 	X509_free(cert);
+    return retval;
+}
+
+/*! Check common connection sanity checks and terminate if found before request processing
+ *
+ * Tests of sanity of connection not really of an individual request, but is triggered by
+ * the (first) request in http/1 and http/2
+ * These tests maybe could have done earlier, this is somewhat late since the session is
+ * closed and that is always good to do as early as possible.
+ * The following are current checks:
+ * 1) Check if http/2 non-tls is disabled
+ * 2) Check if ssl client certs ae valid
+ * @param[in]  h     Clixon handle
+ * @param[in]  rc    Restconf connection handle 
+ * @param[in]  sd    Http stream
+ * @param[out] term  Terminate session
+ * @retval    -1     Error
+ * @retval     0     OK
+ */
+int
+restconf_connection_sanity(clicon_handle         h,
+			   restconf_conn        *rc,
+			   restconf_stream_data *sd)
+{
+    int            retval = -1;
+    cxobj         *xerr = NULL;
+    long           code;
+    cbuf          *cberr = NULL;
+    restconf_media media_out = YANG_DATA_JSON;
+    char          *media_str = NULL;
+    
+    /* 1) Check if http/2 non-tls is disabled */
+    if (rc->rc_ssl == NULL &&
+	rc->rc_proto == HTTP_2 &&
+	clicon_option_bool(h, "CLICON_RESTCONF_HTTP2_PLAIN") == 0){
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Non-tls HTTP/2 is disabled") < 0)
+	    goto done;
+	if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
+	     media_out = YANG_DATA_JSON;
+	}
+	else if ((int)(media_out = restconf_media_str2int(media_str)) == -1){
+	    if (strcmp(media_str, "*/*") == 0) /* catch-all */
+		media_out = YANG_DATA_JSON;
+	}
+	if (api_return_err0(h, sd, xerr, 1, media_out, 0) < 0)
+	    goto done;
+	rc->rc_exit = 1;
+    }
+    /* 2) Check if ssl client cert is valid */
+    else if (rc->rc_ssl != NULL &&
+	     (code = SSL_get_verify_result(rc->rc_ssl)) != 0){
+	if ((cberr = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cberr, "HTTP cert verification failed, unknown ca: (code:%ld)", code); 
+	if (netconf_invalid_value_xml(&xerr, "protocol", cbuf_get(cberr)) < 0)
+	    goto done;
+	if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
+	     media_out = YANG_DATA_JSON;
+	}
+	else if ((int)(media_out = restconf_media_str2int(media_str)) == -1){
+	    if (strcmp(media_str, "*/*") == 0) /* catch-all */
+		media_out = YANG_DATA_JSON;
+	}
+	if (api_return_err0(sd->sd_conn->rc_h, sd, xerr, 1, media_out, 0) < 0)
+	    goto done;
+	rc->rc_exit = 1;
+    }
+    retval = 0;
+ done:
+    if (cberr)
+	cbuf_free(cberr);
+    if (xerr)
+	xml_free(xerr);
     return retval;
 }

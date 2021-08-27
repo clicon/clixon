@@ -138,7 +138,9 @@ restconf_conn    *restconf_conn_new(clicon_handle h, int s);
 int               restconf_conn_free(restconf_conn *rc);
 int               ssl_x509_name_oneline(SSL *ssl, char **oneline);
 
-int restconf_close_ssl_socket(restconf_conn *rc, int shutdown); /* XXX in restconf_main_native.c */
+int               restconf_close_ssl_socket(restconf_conn *rc, int shutdown); /* XXX in restconf_main_native.c */
+int               restconf_connection_sanity(clicon_handle h, restconf_conn *rc, restconf_stream_data *sd);
+
     
 #endif /* _RESTCONF_NATIVE_H_ */
 
