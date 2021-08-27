@@ -57,8 +57,10 @@ Users may have to change how they access the system
 * See changes under new feature "YANG leafref feature update"
   * Validation of referred node type (not referring)
   * Leafref required-instance must be set to make strict data-node check
-* Native Restconf is now default, not fcgi/nginx
-  * That is, to configure with fcgi, you need to explicitly configure: `--with-restconf=fcgi`
+* Native Restconf
+  * Native restocnf is now default, not fcgi/nginx
+    * That is, to configure with fcgi, you need to explicitly configure: `--with-restconf=fcgi`
+  * SSL client certs failures are returned as http 405 errors, not fail during SSL negotiation
 * New clixon-config@2021-07-11.yang revision
    * Added: `CLICON_RESTCONF_HTTP2_PLAIN`
    * Removed default of `CLICON_RESTCONF_INSTALLDIR`

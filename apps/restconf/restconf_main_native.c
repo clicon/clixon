@@ -421,7 +421,13 @@ restconf_verify_certs(int             preverify_ok,
 	/* Verify the CA name */
     }
     //    h = SSL_get_app_data(ssl);
-    return preverify_ok;
+    /* Different schemes for return values if failure detected:
+     * - 0 (preferity_ok) the session terminates here in SSL negotiation, an http client
+     *     will get a low level error (not http reply)
+     * - 1 Check if the cert is valid using SSL_get_verify_result(rc->rc_ssl)
+     * @see restconf_evhtp_sanity and restconf_nghttp2_sanity where this is done for http/1 and http/2
+     */
+    return 1;
 }
 
 /*! Debug print of all incoming alpn alternatives, eg h2 and http/1.1
@@ -851,6 +857,19 @@ restconf_connection(int   s,
 				    "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>No evhtp output</error-message></error></errors>") < 0)
 		    goto done;
 	    }
+	    if (rc->rc_exit){ 	    /* Server-initiated exit for http/2 */
+		SSL_free(rc->rc_ssl);
+		rc->rc_ssl = NULL;
+		evconn->ssl = NULL;
+		if (close(rc->rc_s) < 0){
+		    clicon_err(OE_UNIX, errno, "close");
+		    goto done;
+		}
+		clixon_event_unreg_fd(rc->rc_s, restconf_connection);
+		clicon_debug(1, "%s evconn-free (%p) 2", __FUNCTION__, evconn);
+		restconf_conn_free(rc);
+		goto ok;
+	    }
 #ifdef HAVE_LIBNGHTTP2
 	    if (sd->sd_upgrade2){
 		nghttp2_error ngerr;
@@ -900,16 +919,23 @@ restconf_connection(int   s,
 #endif /* HAVE_LIBEVHTP */
 #ifdef HAVE_LIBNGHTTP2
 	case HTTP_2:
-	    if ((ret = http2_recv(rc, (unsigned char *)buf, n)) < 0)
-		goto done;
-	    if (ret == 0){
-		restconf_close_ssl_socket(rc, 1);
-		if (restconf_conn_free(rc) < 0)
-		    goto done;
-		goto ok;
+	    if (rc->rc_exit){ /* Server-initiated exit for http/2 */
+		nghttp2_error ngerr;
+		if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, 0)) < 0)
+		    clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
 	    }
-	    /* There may be more data frames */
-	    readmore++;
+	    else {
+		if ((ret = http2_recv(rc, (unsigned char *)buf, n)) < 0)
+		    goto done;
+		if (ret == 0){
+		    restconf_close_ssl_socket(rc, 1);
+		    if (restconf_conn_free(rc) < 0)
+			goto done;
+		    goto ok;
+		}
+		/* There may be more data frames */
+		readmore++;
+	    }
 	    break;
 #endif /* HAVE_LIBNGHTTP2 */
 	default:
@@ -1274,9 +1300,7 @@ restconf_accept_client(int   fd,
 	 * Note this _only_ works if SSL_set1_host() was set previously,...
 	 */
 	if (SSL_get_verify_result(rc->rc_ssl) == X509_V_OK) { /* for peer cert */
-
 	    const char *peername = SSL_get0_peername(rc->rc_ssl);
-
  	    if (peername != NULL) {
 		/* Name checks were in scope and matched the peername */
 		clicon_debug(1, "%s peername:%s", __FUNCTION__, peername);

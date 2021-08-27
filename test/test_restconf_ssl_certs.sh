@@ -181,6 +181,9 @@ EOF
     done # invalid ca
     fi # XXX
 
+    # Generate random certificate
+    openssl req -newkey rsa:2048 -nodes -keyout $certdir/random.key -x509 -days 365 -out $certdir/random.crt -subj "/C=XX/ST=TEST/L=TEST/O=TEST/OU=TEST/CN=TEST"
+
 fi # genkeys
 
 # Write local config
@@ -286,12 +289,14 @@ EOF
     # code
 #	expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0 "HTTP/$HVER 400"
 
-
     new "limited invalid cert"
-    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "16 35 55 56" # 55 "certificate expired"
+    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0  "HTTP/$HVER 405" "HTTP cert verification failed"
 
     new "too weak cert (sign w md5)"
     expectpart "$(curl $CURLOPTS --key $certdir/mymd5.key --cert $certdir/mymd5.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "35 58" # "md too weak"
+
+    new "Random cert"
+    expectpart "$(curl $CURLOPTS --key $certdir/random.key --cert $certdir/random.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0 "HTTP/$HVER 405" "HTTP cert verification failed"
 
 # Havent been able to generate "wrong CA"
 #    new "invalid cert from wrong CA"

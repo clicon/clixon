@@ -465,6 +465,53 @@ evhtp_upgrade_http2(clicon_handle         h,
 }
 #endif /* HAVE_LIBNGHTTP2 */
 
+/*! Check common connection sanity checks and terminate if found before request processing
+ *
+ * These tests maybe could have done earlier, this is somewhat late since the session is
+ * closed and that is always good to do as early as possible.
+ * The following are current checks:
+ * 1) Check if http/2 non-tls is disabled
+ * 2) Check if ssl client certs ae valid
+ * @param[in]  h     Clixon handle
+ * @param[in]  rc    Restconf connection handle 
+ * @param[in]  sd    Http stream
+ * @param[out] term  Terminate session
+ * @retval    -1     Error
+ * @retval     0     OK
+ */
+static int
+restconf_evhtp_sanity(clicon_handle         h,
+		      restconf_conn        *rc,
+		      restconf_stream_data *sd)
+{
+    int    retval = -1;
+    cxobj *xerr = NULL;
+    long   code;
+    cbuf  *cberr = NULL;
+    
+    /* 1) Check if ssl client certs are valid */
+    if (rc->rc_ssl != NULL &&
+	     (code = SSL_get_verify_result(rc->rc_ssl)) != 0){
+	if ((cberr = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cberr, "HTTP cert verification failed: (code:%ld)", code); 
+	if (netconf_operation_not_supported_xml(&xerr, "protocol", cbuf_get(cberr)) < 0)
+	    goto done;
+	if (api_return_err0(sd->sd_conn->rc_h, sd, xerr, 1, YANG_DATA_JSON, 0) < 0)
+	    goto done;
+	rc->rc_exit = 1;
+    }
+    retval = 0;
+ done:
+    if (cberr)
+	cbuf_free(cberr);
+    if (xerr)
+	xml_free(xerr);
+    return retval;
+}
+
 /*! Callback for each incoming http request for path /
  *
  * This are all messages except /.well-known, Registered with evhtp_set_cb
@@ -518,7 +565,7 @@ restconf_path_root(evhtp_request_t *req,
     /* Query vector, ie the ?a=x&b=y stuff */
     if (sd->sd_qvec)
 	cvec_free(sd->sd_qvec);
-    if ((sd->sd_qvec = cvec_new(0)) ==NULL){
+    if ((sd->sd_qvec = cvec_new(0)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	evhtp_internal_error(req);
 	goto done;
@@ -541,21 +588,26 @@ restconf_path_root(evhtp_request_t *req,
 	evhtp_internal_error(req);
 	goto done;
     }
+    /* Check sanity of session, eg ssl client cert validation, may set rc_exit */
+    if (restconf_evhtp_sanity(h, rc, sd) < 0)
+	goto done;
+    if (rc->rc_exit == 0){
 #ifdef HAVE_LIBNGHTTP2
-    if (ret == 1){
-	if ((ret = evhtp_upgrade_http2(h, sd)) < 0){
-	    evhtp_internal_error(req);
-	    goto done;
+	if (ret == 1){
+	    if ((ret = evhtp_upgrade_http2(h, sd)) < 0){
+		evhtp_internal_error(req);
+		goto done;
+	    }
+	    if (ret == 0)
+		keep_params = 1;
 	}
-	if (ret == 0)
-	    keep_params = 1;
-    }
 #endif
-    if (ret == 1){
-	/* call generic function */
-	if (api_root_restconf(h, sd, sd->sd_qvec) < 0){
-	    evhtp_internal_error(req);
-	    goto done;
+	if (ret == 1){
+	    /* call generic function */
+	    if (api_root_restconf(h, sd, sd->sd_qvec) < 0){
+		evhtp_internal_error(req);
+		goto done;
+	    }
 	}
     }
     /* Clear input request parameters from this request */
@@ -632,21 +684,26 @@ restconf_path_wellknown(evhtp_request_t *req,
 	evhtp_internal_error(req);
 	goto done;
     }
+    /* Check sanity of session, eg ssl client cert validation, may set rc_exit */
+    if (restconf_evhtp_sanity(h, rc, sd) < 0)
+	goto done;
+    if (rc->rc_exit == 0){
 #ifdef HAVE_LIBNGHTTP2
-    if (ret == 1){
-	if ((ret = evhtp_upgrade_http2(h, sd)) < 0){
-	    evhtp_internal_error(req);
-	    goto done;
+	if (ret == 1){
+	    if ((ret = evhtp_upgrade_http2(h, sd)) < 0){
+		evhtp_internal_error(req);
+		goto done;
+	    }
+	    if (ret == 0)
+		keep_params = 1;
 	}
-	if (ret == 0)
-	    keep_params = 1;
-    }
 #endif
-    if (ret == 1){
-	/* call generic function */
-	if (api_well_known(h, sd) < 0){
-	    evhtp_internal_error(req);
-	    goto done;
+	if (ret == 1){
+	    /* call generic function */
+	    if (api_well_known(h, sd) < 0){
+		evhtp_internal_error(req);
+		goto done;
+	    }
 	}
     }
     /* Clear input request parameters from this request */
