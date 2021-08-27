@@ -336,6 +336,8 @@ element2value(clicon_handle  h,
  * @retval    -1       Error
  * @see from_client_get
  * @see from_client_get_config 
+ * @note pagination uses appending xpath with predicate, eg [position()<limit], this may not work 
+ *       if there is an existing predicate
  */
 static int
 get_common(clicon_handle   h,
@@ -348,6 +350,7 @@ get_common(clicon_handle   h,
     int             retval = -1;
     cxobj          *xfilter;
     char           *xpath = NULL;
+    char           *xpath2; /* With optional pageing predicate */
     cxobj          *xret = NULL;
     cxobj         **xvec = NULL;
     size_t          xlen;
@@ -517,14 +520,10 @@ get_common(clicon_handle   h,
 	    /* XXX remaining of state list??*/
 	}
 	/* Append predicate to original xpath and replace it */
-	if (xpath)
-	    free(xpath);
-	if ((xpath = strdup(cbuf_get(cbpath))) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
-	}
-
+	xpath2 = cbuf_get(cbpath);
     } /* list_pagination */
+    else
+	xpath2 = xpath;
 #endif /* LIST_PAGINATION */
     /* Read config 
      * XXX This seems unnecessary complex
@@ -532,7 +531,7 @@ get_common(clicon_handle   h,
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
 	/* specific xpath */
-	if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, &xret, NULL, NULL) < 0) {
+	if (xmldb_get0(h, db, YB_MODULE, nsc, xpath2?xpath2:"/", 1, &xret, NULL, NULL) < 0) {
 	    if ((cbmsg = cbuf_new()) == NULL){
 		clicon_err(OE_UNIX, errno, "cbuf_new");
 		goto done;
@@ -560,7 +559,7 @@ get_common(clicon_handle   h,
 	}
 	else if (content == CONTENT_ALL){
 	    /* specific xpath */
-	    if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, &xret, NULL, NULL) < 0) {
+	    if (xmldb_get0(h, db, YB_MODULE, nsc, xpath2?xpath2:"/", 1, &xret, NULL, NULL) < 0) {
 		if ((cbmsg = cbuf_new()) == NULL){
 		    clicon_err(OE_UNIX, errno, "cbuf_new");
 		    goto done;
@@ -585,7 +584,7 @@ get_common(clicon_handle   h,
 	break;
     case CONTENT_ALL:       /* both config and state */
     case CONTENT_NONCONFIG: /* state data only */
-	if ((ret = client_statedata(h, xpath?xpath:"/", nsc, &xret)) < 0)
+	if ((ret = client_statedata(h, xpath2?xpath2:"/", nsc, &xret)) < 0)
 	    goto done;
 	if (ret == 0){ /* Error from callback (error in xret) */
 	    if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
@@ -635,6 +634,7 @@ get_common(clicon_handle   h,
      * and modules_state functions.
      * But it is problematic, because defaults, at least of config data, is in place
      * and we need to re-add it.
+     * Note original xpath
      */
     if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
@@ -662,8 +662,10 @@ get_common(clicon_handle   h,
 	goto done;
 
 #ifdef LIST_PAGINATION
-    /* Add remaining attribute */
-    if (list_pagination && remaining && xlen){ 
+    /* Add remaining attribute Sec 3.1.5: 
+       Any list or leaf-list that is limited includes, on the first element in the result set, 
+       a metadata value [RFC7952] called "remaining"*/
+    if (list_pagination && limit && xlen){ 
 	cxobj *xa;
 	cbuf  *cba = NULL;
 

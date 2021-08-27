@@ -711,9 +711,9 @@ json_metadata_encoding(cbuf      *cb,
 {
     int retval = -1;
 
-    cprintf(cb, ",\"@%s:%s\": [", modname, name);
+    cprintf(cb, ",\"@%s:%s\":[", modname, name);
     cprintf(cb, "%*s", pretty?((level+1)*JSON_INDENT):0, "{");
-    cprintf(cb, "\"%s:%s\": %s", modname2, name2, val);
+    cprintf(cb, "\"%s:%s\":%s", modname2, name2, val);
     cprintf(cb, "%*s", pretty?((level+1)*JSON_INDENT):0, "}");
     cprintf(cb, "%*s", pretty?(level*JSON_INDENT):0, "]");
     retval = 0;
@@ -766,7 +766,8 @@ xml2json1_cbuf(cbuf                   *cb,
 	       int                     level,
 	       int                     pretty,
 	       int                     flat,
-	       char                   *modname0)
+	       char                   *modname0,
+	       cbuf                  **metacbp)
 {
     int              retval = -1;
     int              i;
@@ -778,6 +779,7 @@ xml2json1_cbuf(cbuf                   *cb,
     yang_stmt       *ymod = NULL; /* yang module */
     int              commas;
     char            *modname = NULL;
+    cbuf            *metacbc = NULL;
 
     if ((ys = xml_spec(x)) != NULL){
 	if (ys_real_module(ys, &ymod) < 0)
@@ -873,22 +875,62 @@ xml2json1_cbuf(cbuf                   *cb,
     commas = xml_child_nr_notype(x, CX_ATTR) - 1;
     for (i=0; i<xml_child_nr(x); i++){
 	xc = xml_child_i(x, i);
-	if (xml_type(xc) == CX_ATTR)
+	if (xml_type(xc) == CX_ATTR){
+	    int        ismeta = 0;
+	    char      *namespace = NULL;
+	    yang_stmt *ymod;
+	    cbuf      *metacb = NULL;
+	    
+	    if (xml2ns(xc, xml_prefix(xc), &namespace) < 0)
+		goto done;
+	    if (namespace == NULL)
+		continue;
+	    if ((ymod = yang_find_module_by_namespace(ys_spec(ys), namespace)) == NULL)
+		continue;
+	    if (xml2ns(xc, xml_prefix(xc), &namespace) < 0)
+		goto done;
+	    if (yang_metadata_annotation_check(xc, ymod, &ismeta) < 0)
+		goto done;
+	    if (!ismeta)
+		continue;
+	    if ((metacb = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    if (json_metadata_encoding(metacb, x, level, pretty,
+				       modname, xml_name(x),
+				       yang_argument_get(ymod),
+				       xml_name(xc),
+				       xml_value(xc)) < 0)
+		goto done;
+	    if (metacbp)
+		*metacbp = metacb;
+	    else
+		cbuf_free(metacb);
 	    continue; /* XXX Only xmlns attributes mapped */
+	}
 	xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
 				xc, 
 				xml_child_i(x, i+1));
 	if (xml2json1_cbuf(cb, 
 			   xc, 
 			   xc_arraytype,
-			   level+1, pretty, 0, modname0) < 0)
+			   level+1, pretty, 0, modname0,
+			   &metacbc) < 0)
 	    goto done;
 	if (commas > 0) {
 	    cprintf(cb, ",%s", pretty?"\n":"");
 	    --commas;
 	}
     }
+
 #ifdef LIST_PAGINATION /* identify md:annotations as RFC 7952 Sec 5.2.1*/
+    if (metacbc){
+	cprintf(cb, "%s", cbuf_get(metacbc));
+    }
+#endif
+
+#if 0 /* identify md:annotations as RFC 7952 Sec 5.2.1*/
     for (i=0; i<xml_child_nr(x); i++){
 	xc = xml_child_i(x, i);
 	if (xml_type(xc) == CX_ATTR){
@@ -976,6 +1018,8 @@ xml2json1_cbuf(cbuf                   *cb,
     }
     retval = 0;
  done:
+    if (metacbc)
+	cbuf_free(metacbc);
     return retval;
 }
 
@@ -1017,8 +1061,8 @@ xml2json_cbuf(cbuf      *cb,
 		       level+1,
 		       pretty,
 		       0,
-		       NULL /* ancestor modname / namespace */
-		       ) < 0)
+		       NULL, /* ancestor modname / namespace */
+		       NULL) < 0)
 	goto done;
     cprintf(cb, "%s%*s}%s", 
 	    pretty?"\n":"",
@@ -1077,7 +1121,7 @@ xml2json_cbuf_vec(cbuf      *cb,
 		       xp, 
 		       NO_ARRAY,
 		       level+1, pretty,
-		       1, NULL) < 0)
+		       1, NULL, NULL) < 0)
 	goto done;
 
     if (0){

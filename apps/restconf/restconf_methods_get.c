@@ -338,6 +338,7 @@ api_data_collection(clicon_handle  h,
     cxobj     *xerr = NULL; /* malloced */
     cxobj     *xe = NULL;   /* not malloced */
     cxobj    **xvec = NULL;
+    size_t     xlen = 0;
     int        i;
     int        ret;
     cvec      *nsc = NULL;
@@ -355,6 +356,7 @@ api_data_collection(clicon_handle  h,
     char      *direction;
     char      *sort;
     char      *where;
+    char      *ns;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -479,35 +481,8 @@ api_data_collection(clicon_handle  h,
 	goto done;
     if (xmlns_set(xpr, NULL, RESTCONF_PAGINATON_NAMESPACE) < 0)
 	goto done;
-    if ((xp = xpath_first(xret, nsc, "%s", xpath)) != NULL){
-	char *ns=NULL;
-	if (xml2ns(xp, NULL, &ns) < 0)
-	    goto done;
-	if (ns != NULL){
-	    if (xmlns_set(xp, NULL, ns) < 0)
-		goto done;
-	}
-	if (xml_rm(xp) < 0)
-	    goto done;
-	if (xml_insert(xpr, xp, INS_LAST, NULL, NULL) < 0) 
-	    goto done;
-    }
-    
-    /* Normal return, no error */
-    if ((cbx = cbuf_new()) == NULL)
+    if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0)
 	goto done;
-    switch (media_out){
-    case YANG_COLLECTION_XML:
-	if (clicon_xml2cbuf(cbx, xpr, 0, pretty, -1) < 0) /* Dont print top object?  */
-	    goto done;
-	break;
-    case YANG_COLLECTION_JSON:
-	if (xml2json_cbuf(cbx, xpr, pretty) < 0)
-	    goto done;
-	break;
-    default:
-	break;
-    }
 #if 0
     /* Check if not exists */
     if (xlen == 0){
@@ -525,6 +500,35 @@ api_data_collection(clicon_handle  h,
 	goto ok;
     }
 #endif
+    for (i=0; i<xlen; i++){
+	xp = xvec[i];
+	ns = NULL;
+	if (xml2ns(xp, NULL, &ns) < 0)
+	    goto done;
+	if (ns != NULL){
+	    if (xmlns_set(xp, NULL, ns) < 0)
+		goto done;
+	}
+	if (xml_rm(xp) < 0)
+	    goto done;
+	if (xml_insert(xpr, xp, INS_LAST, NULL, NULL) < 0) 
+	    goto done;
+    }
+    /* Normal return, no error */
+    if ((cbx = cbuf_new()) == NULL)
+	goto done;
+    switch (media_out){
+    case YANG_COLLECTION_XML:
+	if (clicon_xml2cbuf(cbx, xpr, 0, pretty, -1) < 0) /* Dont print top object?  */
+	    goto done;
+	break;
+    case YANG_COLLECTION_JSON:
+	if (xml2json_cbuf(cbx, xpr, pretty) < 0)
+	    goto done;
+	break;
+    default:
+	break;
+    }
     clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
 	goto done;

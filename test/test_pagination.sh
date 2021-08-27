@@ -261,28 +261,73 @@ EOF
 
 # Run limit-only test with netconf, restconf+xml and restconf+json
 # Args:
-# 1. limit
-# 2. remaining
-# 3. list XXX remaining
+# 1. offset
+# 2. limit
+# 3. remaining
+# 4. list
 function testlimit()
 {
-    limit=$1
-    remaining=$2
+    offset=$1
+    limit=$2
+    remaining=$3
+    list=$4
 
     # "clixon get"
-    new "clixon limit=$limit NETCONF get-config"
-    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">$limit</limit></get-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites><uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\">17</uint8-numbers></favorites></member></members></data></rpc-reply>]]>]]>$"
+    xmllist=""  # for netconf
+    xmllist2="" # for restconf xml
+    jsonlist="" # for restconf json
+    jsonmeta=""
+    let i=0
+    for li in $list; do
+	if [ $i = 0 ]; then
+	    if [ $limit == 0 ]; then
+		el="<uint8-numbers>$li</uint8-numbers>"
+		el2="<uint8-numbers xmlns=\"http://example.com/ns/example-social\">$li</uint8-numbers>"
+	    else
+		el="<uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\">$li</uint8-numbers>"
+		el2="<uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\" xmlns=\"http://example.com/ns/example-social\">$li</uint8-numbers>"
+		jsonmeta=",\"@example-social:uint8-numbers\":\[{\"clixon-netconf-list-pagination:remaining\":$remaining}\]"
+	    fi
+	    jsonlist="$li"
+	else
+	    el="<uint8-numbers>$li</uint8-numbers>"
+	    el2="<uint8-numbers xmlns=\"http://example.com/ns/example-social\">$li</uint8-numbers>"	       jsonlist="$jsonlist,$li"
+	fi
+	xmllist="$xmllist$el"
+	xmllist2="$xmllist2$el2"
+	let i++
+    done
 
-    new "clixon limit=$limit NETCONF get"
-    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">$limit</limit></get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites><uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\">17</uint8-numbers></favorites></member></members></data></rpc-reply>]]>]]>$"
+    jsonstr=""
+    if [ $limit -eq 0 ]; then
+	limitxmlstr=""
+    else
+	limitxmlstr="<limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">$limit</limit>"
+	jsonstr="?limit=$limit"
+    fi
+    if [ $offset -eq 0 ]; then
+	offsetxmlstr=""
+    else
+	offsetxmlstr="<offset xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">$offset</offset>"
+	if [ -z "$jsonstr" ]; then
+	    jsonstr="?offset=$offset"
+	else
+	    jsonstr="${jsonstr}&offset=$offset"
+	fi
+    fi
+    new "limit=$limit NETCONF get-config"
+#    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination>$limitxmlstr$offsetxmlstr</get-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites>$xmllist</favorites></member></members></data></rpc-reply>]]>]]>$"
+
+    new "limit=$limit NETCONF get"
+#    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination>$limitxmlstr$offsetxmlstr</get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites>$xmllist</favorites></member></members></data></rpc-reply>]]>]]>$"
 
     new "limit=$limit Parameter RESTCONF xml"
-    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+xml" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers?limit=$limit)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+xml" "<yang-collection xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-list-pagination\"><uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\" xmlns=\"http://example.com/ns/example-social\">17</uint8-numbers></yang-collection>"
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+xml" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers${jsonstr})" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+xml" "<yang-collection xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-list-pagination\">$xmllist2</yang-collection>"
 
-    # XXX [17]
     new "limit=$limit Parameter RESTCONF json"
-    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+json" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers?limit=$limit)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+json" '{"yang-collection":{"example-social:uint8-numbers":17,"@example-social:uint8-numbers": \[{"clixon-netconf-list-pagination:remaining": 5}\]}}'
-}
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+json" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers${jsonstr})" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+json" "{\"yang-collection\":{\"example-social:uint8-numbers\":\[$jsonlist\]$jsonmeta}"
+
+} # testrunf
 
 new "test params: -f $cfg -s startup -- -sS $fstate"
 
@@ -313,10 +358,35 @@ new "wait restconf"
 wait_restconf
 
 new "A.3.1.1. limit=1"
-testlimit 1 5 "[17]"
+testlimit 0 1 5 "17"
 
-#new "A.3.1.2. limit=2"
-#testlimit 2 4 "[17 13]"
+new "A.3.1.2. limit=2"
+testlimit 0 2 4 "17 13"
+
+new "A.3.1.3. limit=5"
+testlimit 0 5 1 "17 13 11 7 5"
+
+new "A.3.1.4. limit=6"
+testlimit 0 6 0 "17 13 11 7 5 3"
+
+new "A.3.1.5. limit=7"
+testlimit 0 7 0 "17 13 11 7 5 3"
+
+new "A.3.2.1. offset=1"
+testlimit 1 0 0 "13 11 7 5 3"
+
+new "A.3.2.2. offset=2"
+testlimit 2 0 0 "11 7 5 3"
+
+new "A.3.2.3. offset=5"
+testlimit 5 0 0 "3"
+
+#new "A.3.2.4. offset=6"
+#testlimit 6 0 0 ""
+
+# This is incomplete wrt the draft
+new "A.3.7. limit=2 offset=2"
+testlimit 2 2 2 "11 7"
 
 # CLI
 # XXX This relies on a very specific clispec command: need a more generic test
