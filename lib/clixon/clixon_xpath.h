@@ -160,7 +160,7 @@ cxobj *xpath_first_localonly(cxobj *xcur, const char *xpformat, ...);
 int    xpath_vec(cxobj *xcur, cvec *nsc, const char *xpformat, cxobj  ***vec, size_t *veclen, ...);
 #endif
 
-int xpath2canonical(const char *xpath0, cvec *nsc0, yang_stmt *yspec, char **xpath1, cvec **nsc1);
+int xpath2canonical(const char *xpath0, cvec *nsc0, yang_stmt *yspec, char **xpath1, cvec **nsc1, cbuf **cbreason);
 int xpath_count(cxobj *xcur, cvec *nsc, const char *xpath, uint32_t *count);
 
 #endif /* _CLIXON_XPATH_H */

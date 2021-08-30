@@ -105,9 +105,9 @@ module clixon-netconf-list-pagination {
 	    default "unbounded";
 	    description
 		"The maximum number of list entries to return. The
-           value of the 'limit' parameter is either an integer
-           greater than or equal to 1, or the string 'unbounded'.
-           The string 'unbounded' is the default value.";
+                 value of the 'limit' parameter is either an integer
+                 greater than or equal to 1, or the string 'unbounded'.
+                 The string 'unbounded' is the default value.";
 	}
 	leaf offset {
 	    type union {
@@ -119,9 +119,9 @@ module clixon-netconf-list-pagination {
 	    default "none";
 	    description
 		"The first list item to return.
-           the 'offset' parameter is either an integer greater than
-           or equal to 1, or the string 'unbounded'.  The string
-           'unbounded' is the default value.";
+                 the 'offset' parameter is either an integer greater than
+                 or equal to 1, or the string 'unbounded'.  The string
+                 'none' is the default value.";
 	}
 	leaf direction {
 	    type enumeration {

@@ -207,7 +207,6 @@ expand_dbvar(void   *h,
     cxobj           *xbot = NULL; /* xpath, NULL if datastore */
     yang_stmt       *y = NULL; /* yang spec of xpath */
     yang_stmt       *yp;
-    char            *reason = NULL;
     cvec            *nsc = NULL;
     int              ret;
     int              cvvi = 0;
@@ -368,8 +367,6 @@ expand_dbvar(void   *h,
 	xml_free(xerr);
     if (nsc)
 	xml_nsctx_free(nsc);
-    if (reason)
-	free(reason);
     if (api_path)
 	free(api_path);
     if (xvec)

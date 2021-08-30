@@ -55,9 +55,10 @@ int clicon_rpc_delete_config(clicon_handle h, char *db);
 int clicon_rpc_lock(clicon_handle h, char *db);
 int clicon_rpc_unlock(clicon_handle h, char *db);
 int clicon_rpc_get(clicon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, cxobj **xret);
-int clicon_rpc_get_pageable_list(clicon_handle h, char *datastore, char *xpath, yang_stmt *yli,
+int clicon_rpc_get_pageable_list(clicon_handle h, char *datastore, char *xpath, 
 				 cvec *nsc, netconf_content content, int32_t depth,
-				 char *limit, char *offset, char *direction, char *sort, char *where,
+				 uint32_t offset, uint32_t limit,
+				 char *direction, char *sort, char *where,
 				 cxobj **xt);
 int clicon_rpc_close_session(clicon_handle h);
 int clicon_rpc_kill_session(clicon_handle h, uint32_t session_id);

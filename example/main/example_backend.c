@@ -408,6 +408,7 @@ example_statedata(clicon_handle h,
 	    }
 	    if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
 		goto done;
+	    /* Note, does not care about xpath / list-pagination */
 	    if (clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL) < 0)
 		goto done;
 	    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 

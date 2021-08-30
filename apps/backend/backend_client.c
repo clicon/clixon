@@ -732,7 +732,7 @@ from_client_kill_session(clicon_handle h,
 {
     int                  retval = -1;
     uint32_t             id; /* session id */
-    char                *str;
+    char                *str = NULL;
     struct client_entry *ce;
     char                *db = "running"; /* XXX */
     cxobj               *x;
@@ -745,15 +745,10 @@ from_client_kill_session(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    if ((ret = parse_uint32(str, &id, &reason)) < 0){
-	clicon_err(OE_XML, errno, "parse_uint32"); 
-	goto done;
-    }
-    if (ret == 0){
-	if (netconf_bad_element(cbret, "protocol", "session-id", reason) < 0)
-	    goto done;
-	goto done;
-    }
+    if ((ret = netconf_parse_uint32("session-id", str, NULL, 0, cbret, &id)) < 0)
+	 goto done;
+    if (ret == 0)
+	goto ok;
     /* may or may not be in active client list, probably not */
     if ((ce = ce_find_byid(backend_client_list(h), id)) != NULL){
 	xmldb_unlock_all(h, id);  /* Removes locks on all databases */

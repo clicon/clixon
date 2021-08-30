@@ -273,17 +273,18 @@ client_statedata(clicon_handle h,
 }
 
 #ifdef LIST_PAGINATION
+
 /*! Help function for parsing restconf query parameter and setting netconf attribute
  *
  * If not "unbounded", parse and set a numeric value
- * @param[in]     h         Clixon handle
- * @param[in]     name      Name of attribute
- * @param[in]     defaultstr   Default string which is accepted and sets value to 0
- * @param[in,out] cbret     Output buffer for internal RPC message
- * @param[out]    value     Value
- * @retval       -1         Error
- * @retval        0         Invalid, cbret set
- * @retval        1         OK
+ * @param[in]     h          Clixon handle
+ * @param[in]     name       Name of attribute
+ * @param[in]     defaultstr Default string which is accepted and sets value to 0
+ * @param[in,out] cbret      Output buffer for internal RPC message if invalid
+ * @param[out]    value      Value
+ * @retval       -1          Error
+ * @retval        0          Invalid, cbret set
+ * @retval        1          OK
  */
 static int
 element2value(clicon_handle  h,
@@ -293,35 +294,15 @@ element2value(clicon_handle  h,
 	      cbuf          *cbret,
 	      uint32_t      *value)
 {
-    int    retval = -1;
     char  *valstr;
-    int    ret;
-    char  *reason = NULL;
     cxobj *x;
     
     *value = 0;
     if ((x = xml_find_type(xe, NULL, name, CX_ELMNT)) != NULL &&
-	(valstr = xml_body(x)) != NULL &&
-	strcmp(valstr, defaultstr) != 0){
-	if ((ret = parse_uint32(valstr, value, &reason)) < 0){
-	    clicon_err(OE_XML, errno, "parse_uint32");
-	    goto done;
-	}
-	if (ret == 0){
-	    if (netconf_bad_element(cbret, "application",
-				    name, "Unrecognized value") < 0)
-		goto done;
-	    goto fail;
-	}
+	(valstr = xml_body(x)) != NULL){
+	return netconf_parse_uint32(name, valstr, defaultstr, 0, cbret, value);
     }
-    retval = 1;
- done:
-    if (reason)
-	free(reason);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
+    return 1;
 }
 #endif
 
@@ -368,8 +349,8 @@ get_common(clicon_handle   h,
     char           *reason = NULL;
     cbuf           *cbmsg = NULL; /* For error msg */
 #ifdef LIST_PAGINATION
-    uint32_t        limit = 0;
     uint32_t        offset = 0;
+    uint32_t        limit = 0;
     uint32_t        total = 0;
     uint32_t        remaining = 0;
     char           *direction = NULL;
@@ -393,6 +374,8 @@ get_common(clicon_handle   h,
     if ((xfilter = xml_find(xe, "filter")) != NULL){
 	char *xpath0;
 	cvec *nsc1 = NULL;
+	cbuf *cbreason = NULL;
+
 	if ((xpath0 = xml_find_value(xfilter, "select"))==NULL)
 	    xpath0 = "/";
 	/* Create namespace context for xpath from <filter>
@@ -402,8 +385,16 @@ get_common(clicon_handle   h,
 	else
 	    if (xml_nsctx_node(xfilter, &nsc) < 0)
 		goto done;
-	if (xpath2canonical(xpath0, nsc, yspec, &xpath, &nsc1) < 0)
+	if ((ret = xpath2canonical(xpath0, nsc, yspec, &xpath, &nsc1, &cbreason)) < 0)
 	    goto done;
+	if (ret == 0){
+	    if (netconf_bad_attribute(cbret, "application",
+				      "select", cbuf_get(cbreason)) < 0)
+		goto done;
+	    goto ok;
+	}
+	if (cbreason)
+	    cbuf_free(cbreason);
 	if (nsc)
 	    xml_nsctx_free(nsc);
 	nsc = nsc1;
@@ -435,35 +426,41 @@ get_common(clicon_handle   h,
         if (yang_path_arg(yspec, xpath, &ylist) < 0)
 	    goto done;
 	if (ylist == NULL){
-	    if (netconf_invalid_value_xml(&xerr, "application", "list-pagination is enabled but target is not found") < 0)
+	    if ((cbmsg = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    /* error reason should be in clicon_err_reason */
+	    cprintf(cbmsg, "Netconf get list-pagination: \"%s\" not found", xpath);
+	    if (netconf_invalid_value(cbret, "application", cbuf_get(cbmsg)) < 0)
 		goto done;
 	    goto ok;
 	}
 	if (yang_keyword_get(ylist) != Y_LIST &&
 	    yang_keyword_get(ylist) != Y_LEAF_LIST){
-	    if (netconf_invalid_value_xml(&xerr, "application", "list-pagination is enabled but target is not leaf or leaf-list") < 0)
+	    if (netconf_invalid_value(cbret, "application", "list-pagination is enabled but target is not leaf or leaf-list") < 0)
 		goto done;
 	    goto ok;
 	}
 	if ((list_config = yang_config_ancestor(ylist)) != 0){ /* config list */
 	    if (content == CONTENT_NONCONFIG){
-		if (netconf_invalid_value_xml(&xerr, "application", "list-pagination targets a config list but content request is nonconfig") < 0)
+		if (netconf_invalid_value(cbret, "application", "list-pagination targets a config list but content request is nonconfig") < 0)
 		    goto done;
 		goto ok;
 	    }
 	}
 	else { /* state list */
 	    if (content == CONTENT_CONFIG){
-		if (netconf_invalid_value_xml(&xerr, "application", "list-pagination targets a state list but content request is config") < 0)
+		if (netconf_invalid_value(cbret, "application", "list-pagination targets a state list but content request is config") < 0)
 		    goto done;
 		goto ok;
 	    }
 	}
-	/* limit */
-	if ((ret = element2value(h, xe, "limit", "unbounded", cbret, &limit)) < 0)
-	    goto done;
 	/* offset */
 	if (ret && (ret = element2value(h, xe, "offset", "none", cbret, &offset)) < 0)
+	    goto done;
+	/* limit */
+	if ((ret = element2value(h, xe, "limit", "unbounded", cbret, &limit)) < 0)
 	    goto done;
         /* direction */
 	if (ret && (x = xml_find_type(xe, NULL, "direction", CX_ELMNT)) != NULL){
@@ -517,7 +514,11 @@ get_common(clicon_handle   h,
 	    }
 	}
 	else{
-	    /* XXX remaining of state list??*/
+	    /* Remaining of state list. Two strategies:
+	     * 1. New api where state callback is registered, lock, iterative, unlock
+	     * 2. Read all here and count (fallback)
+	     */
+	    
 	}
 	/* Append predicate to original xpath and replace it */
 	xpath2 = cbuf_get(cbpath);
@@ -525,9 +526,7 @@ get_common(clicon_handle   h,
     else
 	xpath2 = xpath;
 #endif /* LIST_PAGINATION */
-    /* Read config 
-     * XXX This seems unnecessary complex
-     */
+    /* Read configuration */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
 	/* specific xpath */

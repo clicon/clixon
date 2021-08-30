@@ -435,7 +435,7 @@ clicon_rpc_get_config(clicon_handle h,
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr = NULL;    
-    cxobj             *xd;
+    cxobj             *xd = NULL;
     uint32_t           session_id;
     int                ret;
     yang_stmt         *yspec;
@@ -488,7 +488,7 @@ clicon_rpc_get_config(clicon_handle h,
 	    }
 	}
     }
-    if (xt){
+    if (xt && xd){
 	if (xml_rm(xd) < 0)
 	    goto done;
 	*xt = xd;
@@ -799,7 +799,7 @@ clicon_rpc_get(clicon_handle   h,
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr = NULL;
-    cxobj             *xd;
+    cxobj             *xd = NULL;
     char              *username;
     uint32_t           session_id;
     int                ret;
@@ -860,7 +860,7 @@ clicon_rpc_get(clicon_handle   h,
 	    }
 	}
     }
-    if (xt){
+    if (xt && xd){
 	if (xml_rm(xd) < 0)
 	    goto done;
 	*xt = xd;
@@ -882,14 +882,12 @@ clicon_rpc_get(clicon_handle   h,
 /*! Get database configuration and state data collection
  * @param[in]  h         Clicon handle
  * @param[in]  xpath     To identify a list/leaf-list
- * @param[in]  yli       Yang-stmt of list/leaf-list of collection, if given yang populate return
- *                       xt and make sanity check
  * @param[in]  namespace Namespace associated w xpath
  * @param[in]  nsc       Namespace context for filter
  * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
  * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
- * @param[in]  limit     Collection/clixon extension
- * @param[in]  offset      Collection/clixon extension
+ * @param[in]  offset     uint32, 0 means none
+ * @param[in]  limit     uint32, 0 means unbounded
  * @param[in]  direction Collection/clixon extension
  * @param[in]  sort      Collection/clixon extension
  * @param[in]  where     Collection/clixon extension
@@ -905,12 +903,11 @@ int
 clicon_rpc_get_pageable_list(clicon_handle   h, 
 			     char           *datastore,
 			     char           *xpath,
-			     yang_stmt      *yli,
 			     cvec           *nsc, /* namespace context for xpath */
 			     netconf_content content,
 			     int32_t         depth,
-			     char           *limit,
-			     char           *offset,
+			     uint32_t        offset,
+			     uint32_t        limit,
 			     char           *direction,
 			     char           *sort,
 			     char           *where,
@@ -921,8 +918,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr = NULL;
-    cxobj             *xr; /* return msg */
-    cxobj             *xd; /* return data */
+    cxobj             *xd = NULL; /* return data */
     char              *username;
     uint32_t           session_id;
     int                ret;
@@ -963,10 +959,10 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     }
     /* Explicit use of list-pagination */
     cprintf(cb, "<cp:list-pagination>true</cp:list-pagination>");
-    if (limit)
-	cprintf(cb, "<cp:limit>%s</cp:limit>", limit);
-    if (offset)
-	cprintf(cb, "<cp:offset>%s</cp:offset>", offset);
+    if (offset != 0)
+	cprintf(cb, "<cp:offset>%u</cp:offset>", offset);
+    if (limit != 0)
+	cprintf(cb, "<cp:limit>%u</cp:limit>", limit);
     if (direction)
 	cprintf(cb, "<cp:direction>%s</cp:direction>", direction);
     if (sort)
@@ -980,8 +976,8 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
     /* Send xml error back: first check error, then ok */
-    if ((xr = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
-	xr = xml_parent(xr); /* point to rpc-reply */
+    if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
+	xd = xml_parent(xd); /* point to rpc-reply */
     else if ((xd = xpath_first(xret, NULL, "/rpc-reply/data")) == NULL){
 	if ((xd = xml_new(NETCONF_OUTPUT_DATA, NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -1001,7 +997,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 	    }
 	}
     }
-    if (xt){
+    if (xt && xd){
 	if (xml_rm(xd) < 0)
 	    goto done;
 	*xt = xd;

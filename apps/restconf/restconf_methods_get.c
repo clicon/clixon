@@ -351,8 +351,8 @@ api_data_collection(clicon_handle  h,
     yang_stmt *y = NULL;
     cbuf      *cbrpc = NULL;
     int32_t    depth = -1;  /* Nr of levels to print, -1 is all, 0 is none */
-    char      *limit;
-    char      *offset;
+    uint32_t   limit = 0;
+    uint32_t   offset = 0;
     char      *direction;
     char      *sort;
     char      *where;
@@ -446,13 +446,29 @@ api_data_collection(clicon_handle  h,
 	    }
 	}
     }
-    limit = cvec_find_str(qvec, "limit");
-    offset = cvec_find_str(qvec, "offset");
+    if ((attr = cvec_find_str(qvec, "limit")) != NULL){   /* 1-uint32 or "unbounded" */
+	if ((ret = netconf_parse_uint32_xml("limit", attr, "unbounded", 0, &xerr, &limit)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+    }
+    if ((attr = cvec_find_str(qvec, "offset")) != NULL){   /* 1-uint32 or "none" */
+	if ((ret = netconf_parse_uint32_xml("offset", attr, "none", 0, &xerr, &offset)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+    }
     direction = cvec_find_str(qvec, "direction");
     sort = cvec_find_str(qvec, "sort");
     where = cvec_find_str(qvec, "where");
-    if (clicon_rpc_get_pageable_list(h, "running", xpath, y, nsc, content,
-				     depth, limit, offset, direction, sort, where, 
+    if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc, content,
+				     depth, offset, limit, direction, sort, where, 
 				     &xret) < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;
@@ -483,23 +499,12 @@ api_data_collection(clicon_handle  h,
 	goto done;
     if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0)
 	goto done;
-#if 0
-    /* Check if not exists */
-    if (xlen == 0){
-	/* 4.3: If a retrieval request for a data resource represents an 
-	   instance that does not exist, then an error response containing 
-	   a "404 Not Found" status-line MUST be returned by the server.  
-	   The error-tag value "invalid-value" is used in this case. */
-	if (netconf_invalid_value_xml(&xerr, "application", "Instance does not exist") < 0)
-	    goto done;
-	/* override invalid-value default 400 with 404 */
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) != NULL){
-	    if (api_return_err(h, req, xe, pretty, media_out, 404) < 0)
-		goto done;
-	}
-	goto ok;
-    }
-#endif
+    /* Note, the netconf GET pageable list can not distinguish between:
+     * - not-exists, ie there are no entries
+     * - no matching entries, eg there are entries, just not that match
+     * Here we take the latter approach to return an empty list and do not
+     * handle the non-exist case differently.
+    */
     for (i=0; i<xlen; i++){
 	xp = xvec[i];
 	ns = NULL;

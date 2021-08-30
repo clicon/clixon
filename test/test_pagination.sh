@@ -3,6 +3,7 @@
 # Backlog items:
 # 1. "remaining" annotation RFC 7952
 # 2. pattern '.*[\n].*' { modifier invert-match;
+# XXX: handling of empty return ?
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -21,6 +22,10 @@ RESTCONFIG=$(restconf_config none false)
 
 # Validate internal state xml
 : ${validatexml:=false}
+
+# Number of list/leaf-list entries in file
+#: ${perfnr:=20000}
+: ${perfnr:=200}
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -206,58 +211,26 @@ cat<<EOF > $fstate
       </stats>
    </member>
 </members>
-<audit-logs xmlns="http://example.com/ns/example-social">
-   <audit-log>
-      <timestamp>": "2020-10-11T06:47:59Z",</timestamp>
-           <member-id>alice</member-id>
-           <source-ip>192.168.0.92</source-ip>
-           <request>POST /groups/group/2043</request>
-           <outcome>true</outcome>
-   </audit-log>
-   <audit-log>
-           <timestamp>2020-11-01T15:22:01Z</timestamp>
-           <member-id>bob</member-id>
-           <source-ip>192.168.2.16</source-ip>
-           <request>POST /groups/group/123</request>
-           <outcome>false</outcome>
-   </audit-log>
-   <audit-log>
-           <timestamp>2020-12-12T21:00:28Z</timestamp>
-           <member-id>eric</member-id>
-           <source-ip>192.168.254.1</source-ip>
-           <request>POST /groups/group/10</request>
-           <outcome>true</outcome>
-   </audit-log>
-   <audit-log>
-           <timestamp>2021-01-03T06:47:59Z</timestamp>
-           <member-id>alice</member-id>
-           <source-ip>192.168.0.92</source-ip>
-           <request>POST /groups/group/333</request>
-           <outcome>true</outcome>
-   </audit-log>
-   <audit-log>
-           <timestamp>2021-01-21T10:00:00Z</timestamp>
-           <member-id>bob</member-id>
-           <source-ip>192.168.2.16</source-ip>
-           <request>POST /groups/group/42</request>
-           <outcome>true</outcome>
-   </audit-log>
-   <audit-log>
-           <timestamp>2020-02-07T09:06:21Z</timestamp>
-           <member-id>alice</member-id>
-           <source-ip>192.168.0.92</source-ip>
-           <request>POST /groups/group/1202</request>
-           <outcome>true</outcome>
-   </audit-log>
-   <audit-log>
-           <timestamp>2020-02-28T02:48:11Z</timestamp>
-           <member-id>bob</member-id>
-           <source-ip>192.168.2.16</source-ip>
-           <request>POST /groups/group/345</request>
-           <outcome>true</outcome>
-   </audit-log>
-</audit-logs>
 EOF
+
+# Check this later with committed data
+new "generate state with $perfnr list entries"
+echo "<audit-logs xmlns=\"http://example.com/ns/example-social\">" >> $fstate
+for (( i=0; i<$perfnr; i++ )); do  
+    echo "  <audit-log>" >> $fstate
+    mon=$(( ( RANDOM % 10 ) ))
+    day=$(( ( RANDOM % 10 ) ))
+    hour=$(( ( RANDOM % 10 ) ))
+    echo "    <timestamp>2020-0$mon-0$dayT0$hour:48:11Z</timestamp>" >> $fstate
+    echo "    <member-id>bob</member-id>" >> $fstate
+    ip1=$(( ( RANDOM % 255 ) ))
+    ip2=$(( ( RANDOM % 255 ) ))
+    echo "    <source-ip>192.168.$ip1.$ip2</source-ip>" >> $fstate
+    echo "    <request>POST</request>" >> $fstate
+    echo "    <outcome>true</outcome>" >> $fstate
+    echo "  </audit-log>" >> $fstate
+done
+echo -n "</audit-logs>" >> $fstate # No CR
 
 # Run limit-only test with netconf, restconf+xml and restconf+json
 # Args:
@@ -278,6 +251,7 @@ function testlimit()
     jsonlist="" # for restconf json
     jsonmeta=""
     let i=0
+
     for li in $list; do
 	if [ $i = 0 ]; then
 	    if [ $limit == 0 ]; then
@@ -315,19 +289,40 @@ function testlimit()
 	    jsonstr="${jsonstr}&offset=$offset"
 	fi
     fi
-    new "limit=$limit NETCONF get-config"
-#    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination>$limitxmlstr$offsetxmlstr</get-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites>$xmllist</favorites></member></members></data></rpc-reply>]]>]]>$"
 
-    new "limit=$limit NETCONF get"
-#    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination>$limitxmlstr$offsetxmlstr</get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites>$xmllist</favorites></member></members></data></rpc-reply>]]>]]>$"
+    if [ -z "$list" ]; then
+	reply="<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
+    else
+	reply="<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites>$xmllist</favorites></member></members></data></rpc-reply>]]>]]>$"
+    fi
+    new "limit=$limit offset=$offset NETCONF get-config"
+    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination>$limitxmlstr$offsetxmlstr</get-config></rpc>]]>]]>" "$reply"
 
-    new "limit=$limit Parameter RESTCONF xml"
-    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+xml" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers${jsonstr})" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+xml" "<yang-collection xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-list-pagination\">$xmllist2</yang-collection>"
+    if [ -z "$list" ]; then
+	reply="<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
+    else
+	reply="<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites>$xmllist</favorites></member></members></data></rpc-reply>]]>]]>$"
+    fi
+    new "limit=$limit offset=$offset NETCONF get"
+    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination>$limitxmlstr$offsetxmlstr</get></rpc>]]>]]>" "$reply"
 
-    new "limit=$limit Parameter RESTCONF json"
-    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+json" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers${jsonstr})" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+json" "{\"yang-collection\":{\"example-social:uint8-numbers\":\[$jsonlist\]$jsonmeta}"
+    if [ -z "$list" ]; then
+	reply="<yang-collection xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-list-pagination\"/>"
+    else
+	reply="<yang-collection xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-list-pagination\">$xmllist2</yang-collection>"
+    fi
+    new "limit=$limit offset=$offset Parameter RESTCONF xml"
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+xml" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers${jsonstr})" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+xml" "$reply"
 
-} # testrunf
+    if [ -z "$list" ]; then
+	reply="{\"yang-collection\":{}}"
+    else
+	reply="{\"yang-collection\":{\"example-social:uint8-numbers\":\[$jsonlist\]$jsonmeta}"
+    fi
+    new "limit=$limit offset=$offset Parameter RESTCONF json"
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+json" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers${jsonstr})" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+json" "$reply"
+
+} # testlimit
 
 new "test params: -f $cfg -s startup -- -sS $fstate"
 
@@ -357,6 +352,7 @@ fi
 new "wait restconf"
 wait_restconf
 
+
 new "A.3.1.1. limit=1"
 testlimit 0 1 5 "17"
 
@@ -381,12 +377,12 @@ testlimit 2 0 0 "11 7 5 3"
 new "A.3.2.3. offset=5"
 testlimit 5 0 0 "3"
 
-#new "A.3.2.4. offset=6"
-#testlimit 6 0 0 ""
+new "A.3.2.4. offset=6"
+testlimit 6 0 0 ""
 
 # This is incomplete wrt the draft
 new "A.3.7. limit=2 offset=2"
-testlimit 2 2 2 "11 7"
+testlimitn 2 2 2 "11 7"
 
 # CLI
 # XXX This relies on a very specific clispec command: need a more generic test
@@ -415,6 +411,7 @@ fi
 
 unset RESTCONFIG
 unset validatexml
+unset perfnr
 
 rm -rf $dir
 

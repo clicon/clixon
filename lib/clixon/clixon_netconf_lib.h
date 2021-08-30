@@ -140,5 +140,8 @@ int netconf_hello_server(clicon_handle h, cbuf *cb, uint32_t session_id);
 int netconf_hello_req(clicon_handle h, cbuf *cb);
 int clixon_netconf_error_fn(const char *fn, const int line, cxobj *xerr, const char *fmt, const char *arg);
 int clixon_netconf_internal_error(cxobj *xerr, char *msg, char *arg);
+int netconf_parse_uint32(char *name, char *valstr, char *defaultstr, uint32_t defaultval, cbuf *cbret, uint32_t *value);
+int netconf_parse_uint32_xml(char *name, char *valstr, char *defaultstr, uint32_t defaultval, cxobj **xerr, uint32_t *value);
+
 
 #endif /* _CLIXON_NETCONF_LIB_H */

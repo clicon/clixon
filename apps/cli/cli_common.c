@@ -1317,28 +1317,38 @@ cli_help(clicon_handle h, cvec *vars, cvec *argv)
  * XXX: This is hardcoded only for test_pagination.sh
  * @param[in]  h    Clicon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
- * @param[in]  argv Vector. Format: <xpath> <prefix> <namespace>
+ * @param[in]  argv Vector. Format: <xpath> <prefix> <namespace> <format>
+ * Also, if there is a cligen variable called "xpath" it will override argv xpath arg
  */
 int
-cli_pagination(clicon_handle h, cvec *vars, cvec *argv)
+cli_pagination(clicon_handle h,
+	       cvec         *cvv,
+	       cvec         *argv)
 {
-    int           retval = -1;
-    cbuf         *cb = NULL;    
-    char         *xpath = NULL;
-    char         *prefix = NULL;
-    char         *namespace = NULL;
-    cxobj        *xret = NULL;
-    cxobj        *xerr;
-    cvec         *nsc = NULL;
-    char         *formatstr;
+    int             retval = -1;
+    cbuf           *cb = NULL;    
+    char            *xpath = NULL;
+    char            *prefix = NULL;
+    char            *namespace = NULL;
+    cxobj           *xret = NULL;
+    cxobj           *xerr;
+    cvec            *nsc = NULL;
+    char            *formatstr;
     enum format_enum format;
-    cxobj        *xc;
+    cxobj           *xc;
+    cg_var          *cv;
+    int              i;
+    const int        win = 20;
     
     if (cvec_len(argv) != 4){
 	clicon_err(OE_PLUGIN, 0, "Expected usage: <xpath> <prefix> <namespace> <format>");
 	goto done;
     }
-    xpath = cvec_i_str(argv, 0);
+    /* prefix:variable overrides argv */
+    if ((cv = cvec_find(cvv, "xpath")) != NULL)
+	xpath = cv_string_get(cv);
+    else
+	xpath = cvec_i_str(argv, 0);
     prefix = cvec_i_str(argv, 1);
     namespace = cvec_i_str(argv, 2);
     formatstr = cv_string_get(cvec_i(argv, 3));     /* Fourthformat: output format */
@@ -1348,34 +1358,39 @@ cli_pagination(clicon_handle h, cvec *vars, cvec *argv)
     }
     if ((nsc = xml_nsctx_init(prefix, namespace)) == NULL)
 	goto done;
-    if (clicon_rpc_get_pageable_list(h, "running", xpath, NULL, nsc, CONTENT_CONFIG, -1,
-				    "2", "0",
-				    NULL, NULL, NULL,
-				    &xret) < 0){
-       goto done;
-   }
-    if ((xerr = xpath_first(xret, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(xerr, "Get configuration", NULL);
-	goto done;
-    }
-    xc = NULL;
-    while ((xc = xml_child_each(xret, xc, CX_ELMNT)) != NULL)
-	switch (format){
-	case FORMAT_XML:
-	    clicon_xml2file_cb(stdout, xc, 0, 1, cligen_output);
-	    break;
-	case FORMAT_JSON:
-	    xml2json_cb(stdout, xc, 1, cligen_output);
-	    break;
-	case FORMAT_TEXT:
-	    xml2txt_cb(stdout, xc, cligen_output); /* tree-formed text */
-	    break;
-	case FORMAT_CLI:
-	    xml2cli_cb(stdout, xc, NULL, GT_HIDE, cligen_output); /* cli syntax */
-	    break;
-	case FORMAT_NETCONF:
-	    break;
+    for (i = 0; i < 10; i++){
+	if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc,
+					 CONTENT_NONCONFIG,
+					 -1,        /* depth */
+					 win*i,     /* offset */
+					 win*(i+1), /* limit */
+					 NULL, NULL, NULL, /* nyi */
+					 &xret) < 0){
+	    goto done;
 	}
+	if ((xerr = xpath_first(xret, NULL, "/rpc-error")) != NULL){
+	    clixon_netconf_error(xerr, "Get configuration", NULL);
+	    goto done;
+	}
+	xc = NULL;
+	while ((xc = xml_child_each(xret, xc, CX_ELMNT)) != NULL)
+	    switch (format){
+	    case FORMAT_XML:
+		clicon_xml2file_cb(stdout, xc, 0, 1, cligen_output);
+		break;
+	    case FORMAT_JSON:
+		xml2json_cb(stdout, xc, 1, cligen_output);
+		break;
+	    case FORMAT_TEXT:
+		xml2txt_cb(stdout, xc, cligen_output); /* tree-formed text */
+		break;
+	    case FORMAT_CLI:
+		xml2cli_cb(stdout, xc, NULL, GT_HIDE, cligen_output); /* cli syntax */
+		break;
+	    case FORMAT_NETCONF:
+		break;
+	    }
+    }
     retval = 0;
  done:
     if (xret)
@@ -1386,7 +1401,7 @@ cli_pagination(clicon_handle h, cvec *vars, cvec *argv)
 }
 #else
 int
-cli_pagination(clicon_handle h, cvec *vars, cvec *argv)
+cli_pagination(clicon_handle h, cvec *cvv, cvec *argv)
 {
     fprintf(stderr, "Not yet implemented\n");
     return 0;
