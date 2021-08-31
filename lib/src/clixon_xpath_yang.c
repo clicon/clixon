@@ -109,7 +109,7 @@ xy_dup(xp_yang_ctx *xy0)
  * Always evaluates to true since there are no instances 
  */
 static int
-xp_yang_op_eq(xp_yang_ctx  *xy1,
+xp_yang_op_eq(xp_yang_ctx *xy1,
 	     xp_yang_ctx  *xy2,
     	     xp_yang_ctx **xyr)
 {
@@ -118,8 +118,8 @@ xp_yang_op_eq(xp_yang_ctx  *xy1,
     
     if ((xy = xy_dup(xy1)) == NULL)
 	goto done;
-    if(xy1 == NULL || xy2 == NULL || xy1->xy_node == NULL || xy2->xy_node == NULL){
-	clicon_err(OE_YANG, EINVAL, "Error in xy1 or xy2 ");
+    if (xy1 == NULL || xy2 == NULL || xy1->xy_node == NULL || xy2->xy_node == NULL){
+	clicon_err(OE_YANG, EINVAL, "Invalid path-arg (Error in xy1 or xy2) ");
 	goto done;
     }
     xy->xy_type = XT_BOOL;

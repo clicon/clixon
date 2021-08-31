@@ -77,7 +77,12 @@ show("Show a particular state of the system"){
     		     xml("Show comparison in xml"), compare_dbs((int32)0);
 		     text("Show comparison in text"), compare_dbs((int32)1);
     }
-    pagination("Show list pagination"), cli_pagination("/exm:admins/exm:admin[exm:name='Bob']/exm:skill", "exm", "http://example.com/ns/example-module", "xml");
+    pagination("Show list pagination") xpath("Show configuration") <xpath:string>("XPATH expression"){
+    	xml, cli_pagination("use xpath var", "es", "http://example.com/ns/example-social", "xml", "10");
+	cli, cli_pagination("use xpath var", "es", "http://example.com/ns/example-social", "cli", "10");
+	text, cli_pagination("use xpath var", "es", "http://example.com/ns/example-social", "text", "10");
+	json, cli_pagination("use xpath var", "es", "http://example.com/ns/example-social", "json", "10");
+   }
     configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
 	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", true, false);
 	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", true, false, "set ");

@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # List pagination tests according to draft-wwlh-netconf-list-pagination-00
-# Backlog items:
-# 1. "remaining" annotation RFC 7952
-# 2. pattern '.*[\n].*' { modifier invert-match;
-# XXX: handling of empty return ?
+# Follow the example-social example in the draft and the tests in Appendix A.2 + A.3.1/A.3.2
+# Basically only offset and limit supported
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -22,10 +20,6 @@ RESTCONFIG=$(restconf_config none false)
 
 # Validate internal state xml
 : ${validatexml:=false}
-
-# Number of list/leaf-list entries in file
-#: ${perfnr:=20000}
-: ${perfnr:=200}
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -211,26 +205,58 @@ cat<<EOF > $fstate
       </stats>
    </member>
 </members>
+<audit-logs xmlns="http://example.com/ns/example-social">
+   <audit-log>
+      <timestamp>": "2020-10-11T06:47:59Z",</timestamp>
+           <member-id>alice</member-id>
+           <source-ip>192.168.0.92</source-ip>
+           <request>POST /groups/group/2043</request>
+           <outcome>true</outcome>
+   </audit-log>
+   <audit-log>
+           <timestamp>2020-11-01T15:22:01Z</timestamp>
+           <member-id>bob</member-id>
+           <source-ip>192.168.2.16</source-ip>
+           <request>POST /groups/group/123</request>
+           <outcome>false</outcome>
+   </audit-log>
+   <audit-log>
+           <timestamp>2020-12-12T21:00:28Z</timestamp>
+           <member-id>eric</member-id>
+           <source-ip>192.168.254.1</source-ip>
+           <request>POST /groups/group/10</request>
+           <outcome>true</outcome>
+   </audit-log>
+   <audit-log>
+           <timestamp>2021-01-03T06:47:59Z</timestamp>
+           <member-id>alice</member-id>
+           <source-ip>192.168.0.92</source-ip>
+           <request>POST /groups/group/333</request>
+           <outcome>true</outcome>
+   </audit-log>
+   <audit-log>
+           <timestamp>2021-01-21T10:00:00Z</timestamp>
+           <member-id>bob</member-id>
+           <source-ip>192.168.2.16</source-ip>
+           <request>POST /groups/group/42</request>
+           <outcome>true</outcome>
+   </audit-log>
+   <audit-log>
+           <timestamp>2020-02-07T09:06:21Z</timestamp>
+           <member-id>alice</member-id>
+           <source-ip>192.168.0.92</source-ip>
+           <request>POST /groups/group/1202</request>
+           <outcome>true</outcome>
+   </audit-log>
+   <audit-log>
+           <timestamp>2020-02-28T02:48:11Z</timestamp>
+           <member-id>bob</member-id>
+           <source-ip>192.168.2.16</source-ip>
+           <request>POST /groups/group/345</request>
+           <outcome>true</outcome>
+   </audit-log>
+</audit-logs>
 EOF
-
-# Check this later with committed data
-new "generate state with $perfnr list entries"
-echo "<audit-logs xmlns=\"http://example.com/ns/example-social\">" >> $fstate
-for (( i=0; i<$perfnr; i++ )); do  
-    echo "  <audit-log>" >> $fstate
-    mon=$(( ( RANDOM % 10 ) ))
-    day=$(( ( RANDOM % 10 ) ))
-    hour=$(( ( RANDOM % 10 ) ))
-    echo "    <timestamp>2020-0$mon-0$dayT0$hour:48:11Z</timestamp>" >> $fstate
-    echo "    <member-id>bob</member-id>" >> $fstate
-    ip1=$(( ( RANDOM % 255 ) ))
-    ip2=$(( ( RANDOM % 255 ) ))
-    echo "    <source-ip>192.168.$ip1.$ip2</source-ip>" >> $fstate
-    echo "    <request>POST</request>" >> $fstate
-    echo "    <outcome>true</outcome>" >> $fstate
-    echo "  </audit-log>" >> $fstate
-done
-echo -n "</audit-logs>" >> $fstate # No CR
 
 # Run limit-only test with netconf, restconf+xml and restconf+json
 # Args:
@@ -382,16 +408,7 @@ testlimit 6 0 0 ""
 
 # This is incomplete wrt the draft
 new "A.3.7. limit=2 offset=2"
-testlimitn 2 2 2 "11 7"
-
-# CLI
-# XXX This relies on a very specific clispec command: need a more generic test
-#new "cli show"
-#expectpart "$($clixon_cli -1 -f $cfg -l o show pagination)" 0 "<skill xmlns=\"http://example.com/ns/example-module\">" "<name>Conflict Resolution</name>" "<rank>93</rank>" "<name>Management</name>" "<rank>23</rank>" --not-- "<name>Organization</name>" "<rank>44</rank></skill>"
-
-# draft-wwlh-netconf-list-pagination-rc-00.txt
-#new "A.1. 'count' Parameter RESTCONF"
-#expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+xml" $RCPROTO://localhost/restconf/data/example-module:get-list-pagination/library/artist=Foo%20Fighters/album/?count=2)" 0  "HTTP/1.1 200 OK" "application/yang-collection+xml" '<collection xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-collection"><album xmlns="http://example.com/ns/example-jukebox"><name>Crime and Punishment</name><year>1995</year></album><album xmlns="http://example.com/ns/example-jukebox"><name>One by One</name><year>2002</year></album></collection>'
+testlimit 2 2 2 "11 7"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
@@ -411,7 +428,6 @@ fi
 
 unset RESTCONFIG
 unset validatexml
-unset perfnr
 
 rm -rf $dir
 

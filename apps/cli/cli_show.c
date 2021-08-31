@@ -891,3 +891,118 @@ cli_show_options(clicon_handle h,
     return retval;
 }
 
+#ifdef LIST_PAGINATION
+
+/*! Show pagination
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. Format: <xpath> <prefix> <namespace> <format> <win>
+ * Also, if there is a cligen variable called "xpath" it will override argv xpath arg
+ */
+int
+cli_pagination(clicon_handle h,
+	       cvec         *cvv,
+	       cvec         *argv)
+{
+    int              retval = -1;
+    cbuf            *cb = NULL;    
+    char            *xpath = NULL;
+    char            *prefix = NULL;
+    char            *namespace = NULL;
+    cxobj           *xret = NULL;
+    cxobj           *xerr;
+    cvec            *nsc = NULL;
+    char            *str;
+    enum format_enum format;
+    cxobj           *xc;
+    cg_var          *cv;
+    int              i;
+    int              j;
+    int              window = 0;
+    cxobj          **xvec = NULL;
+    size_t           xlen;
+    
+    if (cvec_len(argv) != 5){
+	clicon_err(OE_PLUGIN, 0, "Expected usage: <xpath> <prefix> <namespace> <format> <window>");
+	goto done;
+    }
+    /* prefix:variable overrides argv */
+    if ((cv = cvec_find(cvv, "xpath")) != NULL)
+	xpath = cv_string_get(cv);
+    else
+	xpath = cvec_i_str(argv, 0);
+    prefix = cvec_i_str(argv, 1);
+    namespace = cvec_i_str(argv, 2);
+    str = cv_string_get(cvec_i(argv, 3));     /* Fourthformat: output format */
+    if ((int)(format = format_str2int(str)) < 0){
+	clicon_err(OE_PLUGIN, 0, "Not valid format: %s", str);
+	goto done;
+    }
+    if ((str = cv_string_get(cvec_i(argv, 4))) != NULL){
+	if (parse_int32(str, &window, NULL) < 1){
+	    clicon_err(OE_UNIX, errno, "error parsing window integer:%s", str);
+	    goto done;
+	}
+    }
+    if (window == 0){
+	clicon_err(OE_UNIX, EINVAL, "window is 0");
+	goto done;
+    }
+    if ((nsc = xml_nsctx_init(prefix, namespace)) == NULL)
+	goto done;
+    for (i = 0;; i++){
+	if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc,
+					 CONTENT_ALL,
+					 -1,        /* depth */
+					 window*i,  /* offset */
+					 window,    /* limit */
+					 NULL, NULL, NULL, /* nyi */
+					 &xret) < 0){
+	    goto done;
+	}
+	if ((xerr = xpath_first(xret, NULL, "/rpc-error")) != NULL){
+	    clixon_netconf_error(xerr, "Get configuration", NULL);
+	    goto done;
+	}
+	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0)
+	    goto done;
+	for (j = 0; j<xlen; j++){
+	    xc = xvec[j];
+	    switch (format){
+	    case FORMAT_XML:
+		clicon_xml2file_cb(stdout, xc, 0, 1, cligen_output);
+		break;
+	    case FORMAT_JSON:
+		xml2json_cb(stdout, xc, 1, cligen_output);
+		break;
+	    case FORMAT_TEXT:
+		xml2txt_cb(stdout, xc, cligen_output); /* tree-formed text */
+		break;
+	    case FORMAT_CLI:
+		xml2cli_cb(stdout, xc, NULL, GT_HIDE, cligen_output); /* cli syntax */
+		break;
+	    default:
+		break;
+	    }
+	}
+	if (xlen != window) /* Break if fewer elements than requested */
+	    break;
+    }
+    retval = 0;
+ done:
+    if (xvec)
+	free(xvec);
+    if (xret)
+	xml_free(xret);
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+#else
+int
+cli_pagination(clicon_handle h, cvec *cvv, cvec *argv)
+{
+    fprintf(stderr, "Not yet implemented\n");
+    return 0;
+}
+#endif /* LIST_PAGINATION */
