@@ -365,19 +365,23 @@ int
 example_statedata(clicon_handle h, 
 		  cvec         *nsc,
 		  char         *xpath,
+		  uint32_t      offset,
+		  uint32_t      limit,
 		  cxobj        *xstate)
 {
-    int     retval = -1;
-    cxobj **xvec = NULL;
-    size_t  xlen = 0;
-    cbuf   *cb = cbuf_new();
-    int     i;
-    cxobj  *xt = NULL;
-    char   *name;
-    cvec   *nsc1 = NULL;
-    cvec   *nsc2 = NULL;
+    int        retval = -1;
+    cxobj    **xvec = NULL;
+    size_t     xlen = 0;
+    cbuf      *cb = cbuf_new();
+    int        i;
+    cxobj     *xt = NULL;
+    char      *name;
+    cvec      *nsc1 = NULL;
+    cvec      *nsc2 = NULL;
     yang_stmt *yspec = NULL;
     FILE      *fp = NULL;
+    cxobj     *x1;
+    uint32_t   upper;
 
     if (!_state)
 	goto ok;
@@ -401,7 +405,6 @@ example_statedata(clicon_handle h,
 #endif
 	}
 	else{
-	    cxobj *x1;
 	    if ((fp = fopen(_state_file, "r")) == NULL){
 		clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
 		goto done;
@@ -413,17 +416,22 @@ example_statedata(clicon_handle h,
 		goto done;
 	    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
 		goto done;
-	    for (i=0; i<xlen; i++){
-		x1 = xvec[i];
+	    if (limit == 0)
+		upper = xlen;
+	    else{
+		if ((upper = offset+limit)>xlen)
+		    upper = xlen;
+	    }
+	    for (i=offset; i<upper; i++){
+		if ((x1 = xvec[i]) == NULL)
+		    break;
 		xml_flag_set(x1, XML_FLAG_MARK);
 	    }
 	    /* Remove everything that is not marked */
 	    if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
 		goto done;
-	    for (i=0; i<xlen; i++){
-		x1 = xvec[i];
-		xml_flag_reset(x1, XML_FLAG_MARK);
-	    }
+	    if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+		goto done;
 	    if (xml_copy(xt, xstate) < 0)
 		goto done;
 	    if (xvec){
@@ -1024,7 +1032,7 @@ static clixon_plugin_api api = {
     .ca_extension=example_extension,        /* yang extensions */
     .ca_daemon=example_daemon,              /* daemon */
     .ca_reset=example_reset,                /* reset */
-    .ca_statedata=example_statedata,        /* statedata */
+    .ca_statedata2=example_statedata,      /* statedata2 */
     .ca_trans_begin=main_begin,             /* trans begin */
     .ca_trans_validate=main_validate,       /* trans validate */
     .ca_trans_complete=main_complete,       /* trans complete */

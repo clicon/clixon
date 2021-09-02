@@ -75,8 +75,8 @@ int clixon_plugin_reset_all(clicon_handle h, char *db);
 int clixon_plugin_pre_daemon_all(clicon_handle h);
 int clixon_plugin_daemon_all(clicon_handle h);
 
-int clixon_plugin_statedata_all(clicon_handle h, yang_stmt *yspec, cvec *nsc, char *xpath, cxobj **xtop);
-
+int clixon_plugin_statedata_all(clicon_handle h, yang_stmt *yspec, cvec *nsc, char *xpath,
+				uint32_t offset, uint32_t limit, cxobj **xtop);
 transaction_data_t * transaction_new(void);
 int transaction_free(transaction_data_t *);
 

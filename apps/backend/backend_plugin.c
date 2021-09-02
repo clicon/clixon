@@ -239,6 +239,8 @@ clixon_plugin_daemon_all(clicon_handle h)
  * @param[in]  h       clicon handle
  * @param[in]  nsc     namespace context for xpath
  * @param[in]  xpath   String with XPATH syntax. or NULL for all
+ * @param[in]  offset  Offset, for list pagination
+ * @param[in]  limit   Limit, for list pagination
  * @param[out] xp      If retval=1, state tree created and returned: <config>...
  * @retval    -1       Fatal error
  * @retval     0       Statedata callback failed. no XML tree returned
@@ -249,14 +251,27 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
 			    clicon_handle    h,
 			    cvec            *nsc,
 			    char            *xpath,
+			    uint32_t         offset,
+			    uint32_t         limit,  
 			    cxobj          **xp)
 {
-    int             retval = -1;
-    plgstatedata_t *fn;          /* Plugin statedata fn */
-    cxobj          *x = NULL;
+    int              retval = -1;
+    plgstatedata_t  *fn;          /* Plugin statedata fn */
+    plgstatedata2_t *fn2;         /* Plugin statedata fn2, try this first */
+    cxobj           *x = NULL;
     
     clicon_debug(1, "%s %s", __FUNCTION__, clixon_plugin_name_get(cp));
-    if ((fn = clixon_plugin_api_get(cp)->ca_statedata) != NULL){
+    if ((fn2 = clixon_plugin_api_get(cp)->ca_statedata2) != NULL){
+	if ((x = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+	    goto done;
+	if (fn2(h, nsc, xpath, offset, limit, x) < 0){
+	    if (clicon_errno < 0) 
+		clicon_log(LOG_WARNING, "%s: Internal error: State callback in plugin: %s returned -1 but did not make a clicon_err call",
+			   __FUNCTION__, clixon_plugin_name_get(cp));
+	    goto fail;  /* Dont quit here on user callbacks */
+	}
+    }
+    else if ((fn = clixon_plugin_api_get(cp)->ca_statedata) != NULL){
 	if ((x = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
 	if (fn(h, nsc, xpath, x) < 0){
@@ -283,6 +298,8 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
  * @param[in]     yspec   Yang spec
  * @param[in]     nsc     Namespace context
  * @param[in]     xpath   String with XPATH syntax. or NULL for all
+ * @param[in]     offset  Offset, for list pagination
+ * @param[in]     limit   Limit, for list pagination
  * @param[in,out] xret    State XML tree is merged with existing tree.
  * @retval       -1       Error
  * @retval        0       Statedata callback failed (xret set with netconf-error)
@@ -290,11 +307,13 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
  * @note xret can be replaced in this function
  */
 int
-clixon_plugin_statedata_all(clicon_handle    h,
-			    yang_stmt       *yspec,
-			    cvec            *nsc,
-			    char            *xpath,
-			    cxobj          **xret)
+clixon_plugin_statedata_all(clicon_handle h,
+			    yang_stmt    *yspec,
+			    cvec         *nsc,
+			    char         *xpath,
+			    uint32_t      offset,
+			    uint32_t      limit,  
+			    cxobj        **xret)
 {
     int              retval = -1;
     int              ret;
@@ -305,7 +324,7 @@ clixon_plugin_statedata_all(clicon_handle    h,
     
     clicon_debug(1, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
-	if ((ret = clixon_plugin_statedata_one(cp, h, nsc, xpath, &x)) < 0)
+	if ((ret = clixon_plugin_statedata_one(cp, h, nsc, xpath, offset, limit, &x)) < 0)
 	    goto done;
 	if (ret == 0){
 	    if ((cberr = cbuf_new()) == NULL){

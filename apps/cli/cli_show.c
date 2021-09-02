@@ -987,6 +987,14 @@ cli_pagination(clicon_handle h,
 	}
 	if (xlen != window) /* Break if fewer elements than requested */
 	    break;
+	if (xret){
+	    xml_free(xret);
+	    xret = NULL;
+	}
+	if (xvec){
+	    free(xvec);
+	    xvec = NULL;
+	}
     }
     retval = 0;
  done:
@@ -994,6 +1002,8 @@ cli_pagination(clicon_handle h,
 	free(xvec);
     if (xret)
 	xml_free(xret);
+    if (nsc)
+	cvec_free(nsc);
     if (cb)
 	cbuf_free(cb);
     return retval;

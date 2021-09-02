@@ -21,6 +21,7 @@ fexample=$dir/example-social.yang
 : ${validatexml:=false}
 
 # Number of audit-log entries 
+# Note mem.sh sets it
 #: ${perfnr:=20000}
 : ${perfnr:=200}
 
@@ -151,8 +152,6 @@ wait_backend
 # XXX How to run without using a terminal?
 new "cli show"
 $clixon_cli -f $cfg -l o -1 show pagination xpath /es:members/es:member[es:member-id=\'bob\']/es:favorites/es:uint64-numbers cli
-#expectpart "$(echo "show pagination xpath /es:members/es:member[es:member-id=\'bob\']/es:favorites/es:uint64-numbers cli" | $clixon_cli -f $cfg -l o)" 0 foo
-#expectpart "$($clixon_cli -1 -f $cfg -l o show pagination xpath /es:members/es:member[es:member-id=\'bob\']/es:favorites/es:uint64-numbers cli)" 0 foo
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

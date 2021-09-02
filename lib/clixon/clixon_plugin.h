@@ -200,11 +200,16 @@ typedef int (plgreset_t)(clicon_handle h, const char *db);
  * @param[in]  Clicon handle
  * @param[in]  xpath  Part of state requested
  * @param[in]  nsc    XPATH namespace context.
- * @param[in]  xtop   XML tree where statedata is added
+ * @param[out] xtop   XML tree where statedata is added
  * @retval    -1      Fatal error
  * @retval     0      OK
  */
 typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
+
+/*! Temporary new statedata callback */
+typedef int (plgstatedata2_t)(clicon_handle h, cvec *nsc, char *xpath,
+			      uint32_t offset, uint32_t limit, 
+			      cxobj *xtop);
 
 /* Transaction-data type
  * @see clixon_backend_transaction.h for full transaction API 
@@ -277,6 +282,7 @@ struct clixon_plugin_api{
             plgdaemon_t      *cb_daemon;         /* Plugin daemonized (always called) */
 	    plgreset_t       *cb_reset;          /* Reset system status */
 	    plgstatedata_t   *cb_statedata;      /* Get state data from plugin (backend only) */
+	    plgstatedata2_t  *cb_statedata2;     /* Get state data from plugin (backend only) */
 	    trans_cb_t       *cb_trans_begin;	 /* Transaction start */
 	    trans_cb_t       *cb_trans_validate; /* Transaction validation */
 	    trans_cb_t       *cb_trans_complete; /* Transaction validation complete */
@@ -298,6 +304,7 @@ struct clixon_plugin_api{
 #define ca_daemon         u.cau_backend.cb_daemon
 #define ca_reset          u.cau_backend.cb_reset
 #define ca_statedata      u.cau_backend.cb_statedata
+#define ca_statedata2     u.cau_backend.cb_statedata2
 #define ca_trans_begin    u.cau_backend.cb_trans_begin
 #define ca_trans_validate u.cau_backend.cb_trans_validate
 #define ca_trans_complete u.cau_backend.cb_trans_complete

@@ -72,6 +72,9 @@
 #include "backend_handle.h"
 #include "backend_get.h"
 
+/* List pagination remaining attribute using meta */
+#undef REMAINING
+
 /*!
  * Maybe should be in the restconf client instead of backend?
  * @param[in]     h       Clicon handle
@@ -184,10 +187,10 @@ client_get_streams(clicon_handle   h,
  * @retval        1       OK
  */
 static int
-client_statedata(clicon_handle h,
-		 char         *xpath,
-		 cvec         *nsc,
-		 cxobj       **xret)
+get_client_statedata(clicon_handle h,
+		     char         *xpath,
+		     cvec         *nsc,
+		     cxobj       **xret)
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -257,7 +260,7 @@ client_statedata(clicon_handle h,
 	    goto fail;
     }
     /* Use plugin state callbacks */
-    if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, xret)) < 0)
+    if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, 0, 0, xret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -338,8 +341,6 @@ get_list_pagination(clicon_handle   h,
     int             retval = -1;
     uint32_t        offset = 0;
     uint32_t        limit = 0;
-    uint32_t        total = 0;
-    uint32_t        remaining = 0;
     char           *direction = NULL;
     char           *sort = NULL;
     char           *where = NULL;
@@ -347,7 +348,6 @@ get_list_pagination(clicon_handle   h,
     cxobj          *x;
     int             list_config;
     yang_stmt      *ylist;
-    cxobj          *xcache = NULL;
     cxobj         **xvec = NULL;
     size_t          xlen;
     cxobj         **xvecnacm = NULL;
@@ -359,6 +359,11 @@ get_list_pagination(clicon_handle   h,
     int             ret;
     int             i;
     cxobj          *xnacm = NULL;
+#ifdef REMAINING
+    cxobj          *xcache = NULL;
+    uint32_t        total = 0;
+    uint32_t        remaining = 0;
+#endif
 
     /* Check if list/leaf-list */
     if (yang_path_arg(yspec, xpath, &ylist) < 0)
@@ -380,6 +385,7 @@ get_list_pagination(clicon_handle   h,
 	    goto done;
 	goto ok;
     }
+    /* Sanity checks on state/config */
     if ((list_config = yang_config_ancestor(ylist)) != 0){ /* config list */
 	if (content == CONTENT_NONCONFIG){
 	    if (netconf_invalid_value(cbret, "application", "list-pagination targets a config list but content request is nonconfig") < 0)
@@ -393,7 +399,7 @@ get_list_pagination(clicon_handle   h,
 		goto done;
 	    goto ok;
 	}
-#if 1 /* XXX For now state lists are not implemenetd */
+#if 0 /* XXX For now state lists are not implemenetd */
 	if (netconf_operation_not_supported(cbret, "protocol", "List pagination for state lists is not yet implemented") < 0)
 	    goto done;
 	goto ok;
@@ -445,7 +451,11 @@ get_list_pagination(clicon_handle   h,
     }
     else if (limit)
 	cprintf(cbpath, "[position() < %u]", limit);
+    /* Append predicate to original xpath and replace it */
+    xpath2 = cbuf_get(cbpath);
+#ifdef REMAINING
     /* Get total/remaining
+     * XXX: Works only for cache, and only if already populated
      * XXX: Maybe together with get config / state data
      */
     if (list_config){
@@ -462,11 +472,11 @@ get_list_pagination(clicon_handle   h,
 	 * 2. Read all here and count (fallback)
 	 */
     }
-    /* Append predicate to original xpath and replace it */
-    xpath2 = cbuf_get(cbpath);
-
+#endif /* REMAINING */
+    /* Read config */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
+    case CONTENT_ALL:       /* both config and state */
 	/* specific xpath */
 	if (xmldb_get0(h, db, YB_MODULE, nsc, xpath2?xpath2:"/", 1, &xret, NULL, NULL) < 0) {
 	    if ((cbmsg = cbuf_new()) == NULL){
@@ -479,72 +489,17 @@ get_list_pagination(clicon_handle   h,
 	    goto ok;
 	}
 	break;
-    case CONTENT_ALL:       /* both config and state */
     case CONTENT_NONCONFIG: /* state data only */
-	if (clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
-	    /* Whole config tree, for validate debug */
-	    if (xmldb_get0(h, "running", YB_MODULE, nsc, NULL, 1, &xret, NULL, NULL) < 0) {
-		if ((cbmsg = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
-		if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
-		    goto done;
-		goto ok;
-	    }
-	}
-	else if (content == CONTENT_ALL){
-	    /* specific xpath */
-	    if (xmldb_get0(h, db, YB_MODULE, nsc, xpath2?xpath2:"/", 1, &xret, NULL, NULL) < 0) {
-		if ((cbmsg = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
-		if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
-		    goto done;
-		goto ok;
-	    }
-	}
-	/* CONTENT_NONCONFIG */
-	else if ((xret = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)/* Only top tree */
+	if ((xret = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)/* Only top tree */
 	    goto done;
 	break;
     }/* switch content */
-    if (content != CONTENT_CONFIG &&
-	clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
-	/* Check XML  by validating it. return internal error with error cause 
-	 * Primarily intended for user-supplied state-data.
-	 * The whole config tree must be present in case the state data references config data
+    if (!list_config){
+	/* Look if registered, 
+	 * get all state list and filter using cbpath
 	 */
-	if ((ret = xml_yang_validate_all_top(h, xret, &xerr)) < 0) 
-	    goto done;
-	if (ret > 0 &&
-	    (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if (clicon_debug_get())
-		clicon_log_xml(LOG_DEBUG, xret, "VALIDATE_STATE");
-	    if (clixon_netconf_internal_error(xerr,
-					      ". Internal error, state callback returned invalid XML",
-					      NULL) < 0)
-		goto done;
-	    if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
-		goto done;
-	    goto ok;
-	}
-    } /* CLICON_VALIDATE_STATE_XML */
-
-    if (content == CONTENT_NONCONFIG){ /* state only, all config should be removed now */
-	/* Keep state data only, remove everything that is config. Note that state data
-	 * may be a sub-part in a config tree, we need to traverse to find all
-	 */
-	if (xml_non_config_data(xret, NULL) < 0)
-	    goto done;
-	if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
-	    goto done;
-	if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	/* Use plugin state callbacks */
+	if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, offset, limit, &xret)) < 0)
 	    goto done;
     }
     /* Code complex to filter out anything that is outside of xpath 
@@ -579,6 +534,7 @@ get_list_pagination(clicon_handle   h,
     if (xml_default_recurse(xret, 0) < 0)
 	goto done;
 
+#ifdef REMAINING
     /* Add remaining attribute Sec 3.1.5: 
        Any list or leaf-list that is limited includes, on the first element in the result set, 
        a metadata value [RFC7952] called "remaining"*/
@@ -604,6 +560,7 @@ get_list_pagination(clicon_handle   h,
 	if (cba)
 	    cbuf_free(cba);
     }
+#endif /* REMAINING */
     /* Pre-NACM access step */
     xnacm = clicon_nacm_cache(h);
     if (xnacm != NULL){ /* Do NACM validation */
@@ -673,7 +630,8 @@ get_common(clicon_handle   h,
     size_t          xlennacm;    
     cxobj          *xnacm = NULL;
     char           *username;
-    cvec           *nsc = NULL; /* Create a netconf namespace context from filter */
+    cvec           *nsc0 = NULL; /* Create a netconf namespace context from filter */
+    cvec           *nsc = NULL;
     char           *attr;
     int32_t         depth = -1; /* Nr of levels to print, -1 is all, 0 is none */
     yang_stmt      *yspec;
@@ -683,7 +641,6 @@ get_common(clicon_handle   h,
     char           *reason = NULL;
     cbuf           *cbmsg = NULL; /* For error msg */
     char           *xpath0;
-    cvec           *nsc1 = NULL;
     cbuf           *cbreason = NULL;
 #ifdef LIST_PAGINATION
     int             list_pagination = 0;
@@ -705,9 +662,9 @@ get_common(clicon_handle   h,
 	 * <filter> element.
 	 */
 	else
-	    if (xml_nsctx_node(xfilter, &nsc) < 0)
+	    if (xml_nsctx_node(xfilter, &nsc0) < 0)
 		goto done;
-	if ((ret = xpath2canonical(xpath0, nsc, yspec, &xpath, &nsc1, &cbreason)) < 0)
+	if ((ret = xpath2canonical(xpath0, nsc0, yspec, &xpath, &nsc, &cbreason)) < 0)
 	    goto done;
 	if (ret == 0){
 	    if (netconf_bad_attribute(cbret, "application",
@@ -715,7 +672,6 @@ get_common(clicon_handle   h,
 		goto done;
 	    goto ok;
 	}
-	nsc = nsc1;
     }
     /* Clixon extensions: depth */
     if ((attr = xml_find_value(xe, "depth")) != NULL){
@@ -798,13 +754,13 @@ get_common(clicon_handle   h,
     /* If not only config,
      * get state data from plugins as defined by plugin_statedata(), if any 
      */
-    /* Read state XXX can we do this first and create an operational db? */
+    /* Read state */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
 	break;
     case CONTENT_ALL:       /* both config and state */
     case CONTENT_NONCONFIG: /* state data only */
-	if ((ret = client_statedata(h, xpath?xpath:"/", nsc, &xret)) < 0)
+	if ((ret = get_client_statedata(h, xpath?xpath:"/", nsc, &xret)) < 0)
 	    goto done;
 	if (ret == 0){ /* Error from callback (error in xret) */
 	    if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
@@ -906,6 +862,8 @@ get_common(clicon_handle   h,
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cbreason)
 	cbuf_free(cbreason);
+    if (nsc0)
+	xml_nsctx_free(nsc0);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (cbmsg)

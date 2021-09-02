@@ -280,7 +280,9 @@ function testlimit()
 
     for li in $list; do
 	if [ $i = 0 ]; then
-	    if [ $limit == 0 ]; then
+	    # Note: if REMAINING is enabled:
+	    #	    if [ $limit == 0 ]; then
+	    if true; then
 		el="<uint8-numbers>$li</uint8-numbers>"
 		el2="<uint8-numbers xmlns=\"http://example.com/ns/example-social\">$li</uint8-numbers>"
 	    else
