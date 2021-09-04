@@ -122,6 +122,37 @@ ce_event_cb(clicon_handle h,
     return 0;
 }
 
+/*! Unlock all db:s of a client and call user unlock calback 
+ * @see xmldb_unlock_all  unlocks, but does not call user callbacks which is a backend thing
+ */
+static int
+release_all_dbs(clicon_handle h,
+		uint32_t      id)
+{
+    int       retval = -1;
+    char    **keys = NULL;
+    size_t    klen;
+    int       i;
+    db_elmnt *de;
+
+    /* get all db:s */
+    if (clicon_hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
+	goto done;
+    /* Identify the ones locked by client id */
+    for (i = 0; i < klen; i++) {
+	if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL &&
+	    de->de_id == id){
+	    de->de_id = 0; /* unlock */
+	    clicon_db_elmnt_set(h, keys[i], de);
+	    if (clixon_plugin_lockdb_all(h, keys[i], 0, id) < 0)
+		goto done;
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Remove client entry state
  * Close down everything wrt clients (eg sockets, subscriptions)
  * Finally actually remove client struct in handle
@@ -148,7 +179,8 @@ backend_client_rm(clicon_handle        h,
 		clixon_event_unreg_fd(ce->ce_s, from_client);
 		close(ce->ce_s);
 		ce->ce_s = 0;
-		xmldb_unlock_all(h, ce->ce_id);
+		if (release_all_dbs(h, ce->ce_id) < 0)
+		    return -1;
 	    }
 	    break;
 	}
@@ -606,6 +638,9 @@ from_client_lock(clicon_handle h,
     }
     if (xmldb_lock(h, db, id) < 0)
 	goto done;
+     /* user callback */
+    if (clixon_plugin_lockdb_all(h, db, 1, id) < 0)
+	goto done;
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
@@ -677,6 +712,9 @@ from_client_unlock(clicon_handle h,
     }
     else{
 	xmldb_unlock(h, db);
+	/* user callback */
+	if (clixon_plugin_lockdb_all(h, db, 0, id) < 0)     
+	    goto done;
 	if (cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE) < 0)
 	    goto done;
     }
@@ -699,15 +737,16 @@ from_client_unlock(clicon_handle h,
  */
 static int
 from_client_close_session(clicon_handle h,
-			 cxobj        *xe,
-			 cbuf         *cbret,
-			 void         *arg, 
-			 void         *regarg)
+			  cxobj        *xe,
+			  cbuf         *cbret,
+			  void         *arg, 
+			  void         *regarg)
 {
     struct client_entry *ce = (struct client_entry *)arg;
     uint32_t             id = ce->ce_id;
 
-    xmldb_unlock_all(h, id);
+    if (release_all_dbs(h, id) < 0)
+	return -1;
     stream_ss_delete_all(h, ce_event_cb, (void*)ce);
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
     return 0;
@@ -751,11 +790,16 @@ from_client_kill_session(clicon_handle h,
 	goto ok;
     /* may or may not be in active client list, probably not */
     if ((ce = ce_find_byid(backend_client_list(h), id)) != NULL){
-	xmldb_unlock_all(h, id);  /* Removes locks on all databases */
+	if (release_all_dbs(h, id) < 0)
+	    goto done;
 	backend_client_rm(h, ce); /* Removes client struct */
     }
-    if (xmldb_islocked(h, db) == id)
+    if (xmldb_islocked(h, db) == id){
 	xmldb_unlock(h, db);
+	/* user callback */
+	if (clixon_plugin_lockdb_all(h, db, 0, id) < 0)     
+	    goto done;
+    }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;

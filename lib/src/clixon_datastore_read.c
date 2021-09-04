@@ -794,6 +794,8 @@ xmldb_get_cache(clicon_handle    h,
 	 * No, argument against: we may want to have a semantically wrong file and wish to edit?
 	 */
 	de0.de_xml = x0t;
+	if (de)
+	    de0.de_id = de->de_id;
 	clicon_db_elmnt_set(h, db, &de0); /* Content is copied */
     } /* x0t == NULL */
     else
@@ -955,6 +957,8 @@ xmldb_get_zerocopy(clicon_handle    h,
 	 * No, argument against: we may want to have a semantically wrong file and wish to edit?
 	 */
 	de0.de_xml = x0t;
+	if (de)
+	    de0.de_id = de->de_id;
 	clicon_db_elmnt_set(h, db, &de0);
     } /* x0t == NULL */
     else

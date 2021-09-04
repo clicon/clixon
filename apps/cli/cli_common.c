@@ -1043,6 +1043,8 @@ cli_notification_cb(int   s,
 	    default:
 		break;
 	    }
+	    if (cli_output_status() < 0)
+		break;
 	}
     }
     retval = 0;

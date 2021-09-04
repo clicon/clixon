@@ -7,8 +7,8 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-echo "...skipped: Must run interactvely"
-if [ "$s" = $0 ]; then exit 0; else return 0; fi
+#echo "...skipped: Must run interactvely"
+#if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
@@ -50,51 +50,11 @@ EOF
 # See draft-wwlh-netconf-list-pagination-00 A.2 (only stats and audit-log)
 # XXX members not currently used, only audit-logs as generated below
 cat<<EOF > $fstate
-<members xmlns="http://example.com/ns/example-social">
-   <member>
-      <member-id>alice</member-id>
-      <stats>
-          <joined>2020-07-08T12:38:32Z</joined>
-	  <membership-level>admin</membership-level>
-          <last-activity>2021-04-01T02:51:11Z</last-activity>
-      </stats>
-   </member>
-   <member>
-      <member-id>bob</member-id>
-      <stats>
-          <joined>2020-08-14T03:30:00Z</joined>
-	  <membership-level>standard</membership-level>
-          <last-activity>2020-08-14T03:34:30Z</last-activity>
-      </stats>
-   </member>
-   <member>
-      <member-id>eric</member-id>
-      <stats>
-          <joined>2020-09-17T19:38:32Z</joined>
-	  <membership-level>pro</membership-level>
-          <last-activity>2020-09-17T18:02:04Z</last-activity>
-      </stats>
-   </member>
-   <member>
-      <member-id>lin</member-id>
-      <stats>
-          <joined>2020-07-09T12:38:32Z</joined>
-	  <membership-level>standard</membership-level>
-          <last-activity>2021-04-01T02:51:11Z</last-activity>
-      </stats>
-   </member>
-   <member>
-      <member-id>joe</member-id>
-      <stats>
-          <joined>2020-10-08T12:38:32Z</joined>
-	  <membership-level>pro</membership-level>
-          <last-activity>2021-04-01T02:51:11Z</last-activity>
-      </stats>
-   </member>
-</members>
 EOF
 
 # Append generated state data to $fstate file
+# Generation of random timestamps (not used)
+# and succesive bob$i member-ids
 new "generate state with $perfnr list entries"
 echo "<audit-logs xmlns=\"http://example.com/ns/example-social\">" >> $fstate
 for (( i=0; i<$perfnr; i++ )); do  
@@ -103,17 +63,15 @@ for (( i=0; i<$perfnr; i++ )); do
     day=$(( ( RANDOM % 10 ) ))
     hour=$(( ( RANDOM % 10 ) ))
     echo "    <timestamp>2020-0$mon-0$dayT0$hour:48:11Z</timestamp>" >> $fstate
-    echo "    <member-id>bob</member-id>" >> $fstate
-    ip1=$(( ( RANDOM % 255 ) ))
-    ip2=$(( ( RANDOM % 255 ) ))
-    echo "    <source-ip>192.168.$ip1.$ip2</source-ip>" >> $fstate
+    echo "    <member-id>bob$i</member-id>" >> $fstate
+    echo "    <source-ip>192.168.1.32</source-ip>" >> $fstate
     echo "    <request>POST</request>" >> $fstate
     echo "    <outcome>true</outcome>" >> $fstate
     echo "  </audit-log>" >> $fstate
 done
 echo -n "</audit-logs>" >> $fstate # No CR
 
-new "test params: -f $cfg -s init -- -sS $fstate"
+new "test params: -f $cfg -s init -- -siS $fstate"
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -123,8 +81,8 @@ if [ $BE -ne 0 ]; then
     fi
     sudo pkill -f clixon_backend # to be sure
 
-    new "start backend -s init -f $cfg -- -sS $fstate"
-    start_backend -s init -f $cfg -- -sS $fstate
+    new "start backend -s init -f $cfg -- -siS $fstate"
+    start_backend -s init -f $cfg -- -siS $fstate
 fi
 
 new "wait backend"

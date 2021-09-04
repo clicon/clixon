@@ -69,6 +69,7 @@
 #include "clixon_backend_handle.h"
 #include "clixon_backend_plugin.h"
 #include "clixon_backend_commit.h"
+#include "backend_client.h"
 #include "backend_handle.h"
 #include "backend_get.h"
 
@@ -260,7 +261,7 @@ get_client_statedata(clicon_handle h,
 	    goto fail;
     }
     /* Use plugin state callbacks */
-    if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, 0, 0, xret)) < 0)
+    if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, PAGING_NONE, 0, 0, xret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -313,6 +314,7 @@ element2value(clicon_handle  h,
  * It is specialized enough to have its own function. Specifically, extra attributes as well
  * as the list-paginaiton API
  * @param[in]  h       Clicon handle 
+ * @param[in]  ce      Client entry, for locking
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[in]  content Get config/state/both
  * @param[in]  db      Database name
@@ -326,16 +328,17 @@ element2value(clicon_handle  h,
  * XXX Lots of this code (in particular at the end) is copy of get_common
  */
 static int
-get_list_pagination(clicon_handle   h,
-		    cxobj          *xe,
-		    netconf_content content,
-		    char           *db,
-		    int32_t         depth,
-		    yang_stmt      *yspec,
-		    char           *xpath,
-		    cvec           *nsc,
-		    char           *username,
-		    cbuf           *cbret
+get_list_pagination(clicon_handle        h,
+		    struct client_entry *ce,
+		    cxobj               *xe,
+		    netconf_content      content,
+		    char                *db,
+		    int32_t              depth,
+		    yang_stmt           *yspec,
+		    char                *xpath,
+		    cvec                *nsc,
+		    char                *username,
+		    cbuf                *cbret
 		    )
 {
     int             retval = -1;
@@ -359,6 +362,8 @@ get_list_pagination(clicon_handle   h,
     int             ret;
     int             i;
     cxobj          *xnacm = NULL;
+    uint32_t        iddb; /* DBs lock, if any */
+    enum paging_status pagingstatus;
 #ifdef REMAINING
     cxobj          *xcache = NULL;
     uint32_t        total = 0;
@@ -495,11 +500,16 @@ get_list_pagination(clicon_handle   h,
 	break;
     }/* switch content */
     if (!list_config){
-	/* Look if registered, 
-	 * get all state list and filter using cbpath
-	 */
+	/* Check if running locked (by this session) */
+	if ((iddb = xmldb_islocked(h, "running")) != 0 &&
+	    iddb == ce->ce_id)
+	    pagingstatus = PAGING_LOCK;
+	else
+	    pagingstatus = PAGING_STATELESS;
 	/* Use plugin state callbacks */
-	if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, offset, limit, &xret)) < 0)
+	if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath,
+					       pagingstatus,
+					       offset, limit, &xret)) < 0)
 	    goto done;
     }
     /* Code complex to filter out anything that is outside of xpath 
@@ -603,6 +613,7 @@ get_list_pagination(clicon_handle   h,
 /*! Common get/get-config code for retrieving  configuration and state information.
  *
  * @param[in]  h       Clicon handle 
+ * @param[in]  ce      Client entry, for locking
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[in]  content Get config/state/both
  * @param[in]  db      Database name
@@ -613,11 +624,12 @@ get_list_pagination(clicon_handle   h,
  * @see from_client_get_config 
  */
 static int
-get_common(clicon_handle   h,
-	   cxobj          *xe,
-	   netconf_content content,
-	   char           *db,
-	   cbuf           *cbret
+get_common(clicon_handle        h,
+	   struct client_entry *ce,
+	   cxobj               *xe,
+	   netconf_content      content,
+	   char                *db,
+	   cbuf                *cbret
 	   )
 {
     int             retval = -1;
@@ -696,7 +708,7 @@ get_common(clicon_handle   h,
      * check config/state
      */
     if (list_pagination){
-	if (get_list_pagination(h, xe, content, db,
+	if (get_list_pagination(h, ce, xe, content, db,
 				depth, yspec, xpath, nsc, username,
 				cbret) < 0)
 	    goto done;
@@ -901,14 +913,15 @@ from_client_get_config(clicon_handle h,
 		       void         *arg,
 		       void         *regarg)
 {
-    int   retval = -1;
-    char *db;
+    int                  retval = -1;
+    char                *db;
+    struct client_entry *ce = (struct client_entry *)arg;
 
     if ((db = netconf_db_find(xe, "source")) == NULL){
 	clicon_err(OE_XML, 0, "db not found");
 	goto done;
     }
-    retval = get_common(h, xe, CONTENT_CONFIG, db, cbret);
+    retval = get_common(h, ce, xe, CONTENT_CONFIG, db, cbret);
  done:
     return retval;
 }
@@ -932,11 +945,12 @@ from_client_get(clicon_handle h,
 		void         *arg, 
 		void         *regarg)
 {
-    netconf_content content = CONTENT_ALL;
-    char           *attr;
+    netconf_content      content = CONTENT_ALL;
+    char                *attr;
+    struct client_entry *ce = (struct client_entry *)arg;
     
     /* Clixon extensions: content */
     if ((attr = xml_find_value(xe, "content")) != NULL)
 	content = netconf_content_str2int(attr);
-    return get_common(h, xe, content, "running", cbret);
+    return get_common(h, ce, xe, content, "running", cbret);
 }

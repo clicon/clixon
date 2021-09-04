@@ -206,10 +206,50 @@ typedef int (plgreset_t)(clicon_handle h, const char *db);
  */
 typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
 
-/*! Temporary new statedata callback */
+/*! List paging status in the plugin state data callback
+ *
+ * List paging is either enabled or not.
+ * If paging is enabled, the xpath addresses a list/ leaf-list and the plugin should return 
+ * entries according to the values of offset and limit.
+ * Paging can use a lock/transaction mechanism 
+ * If locking is not used, the plugin cannot expect more paging calls, and no state or caching
+ * should be used
+ * If locking is used, the paging is part of a session transaction and the plugin may cache
+ * state (such as a cache) and can expect more paging calls until the running db-lock is released, 
+ * (see ca_lockdb)
+ * The transaction is the regular lock/unlock db of running-db of a specific session.
+ */
+enum paging_status{
+    PAGING_NONE,       /* No list paging: limit/offset are no-ops */
+    PAGING_STATELESS,  /* Stateless list paging, dont expect more paging calls */
+    PAGING_LOCK        /* Transactional list paging, can expect more paging until lock release */
+};
+
+/* Plugin statedata
+ * @param[in]  Clicon handle
+ * @param[in]  xpath      Part of state requested
+ * @param[in]  nsc        XPATH namespace context.
+ * @param[in]  pagination List pagination: 0: No, 1: begin/next, 2: end
+ * @param[in]  offset     Offset, for list pagination
+ * @param[in]  limit      Limit, for list pagination
+ * @param[out] xtop       XML tree where statedata is added
+ * @retval    -1          Fatal error
+ * @retval     0          OK
+ */
 typedef int (plgstatedata2_t)(clicon_handle h, cvec *nsc, char *xpath,
+			      enum paging_status pagination,
 			      uint32_t offset, uint32_t limit, 
 			      cxobj *xtop);
+
+/*! Lock databse status has changed status
+ * @param[in]  h    Clixon handle
+ * @param[in]  db   Database name (eg "running")
+ * @param[in]  lock Lock status: 0: unlocked, 1: locked
+ * @param[in]  id   Session id (of locker/unlocker)
+ * @retval    -1   Fatal error
+ * @retval     0   OK
+*/
+typedef int (plglockdb_t)(clicon_handle h, char *db, int lock, int id);
 
 /* Transaction-data type
  * @see clixon_backend_transaction.h for full transaction API 
@@ -283,6 +323,7 @@ struct clixon_plugin_api{
 	    plgreset_t       *cb_reset;          /* Reset system status */
 	    plgstatedata_t   *cb_statedata;      /* Get state data from plugin (backend only) */
 	    plgstatedata2_t  *cb_statedata2;     /* Get state data from plugin (backend only) */
+	    plglockdb_t      *cb_lockdb;         /* Database lock changed state */
 	    trans_cb_t       *cb_trans_begin;	 /* Transaction start */
 	    trans_cb_t       *cb_trans_validate; /* Transaction validation */
 	    trans_cb_t       *cb_trans_complete; /* Transaction validation complete */
@@ -305,6 +346,7 @@ struct clixon_plugin_api{
 #define ca_reset          u.cau_backend.cb_reset
 #define ca_statedata      u.cau_backend.cb_statedata
 #define ca_statedata2     u.cau_backend.cb_statedata2
+#define ca_lockdb         u.cau_backend.cb_lockdb
 #define ca_trans_begin    u.cau_backend.cb_trans_begin
 #define ca_trans_validate u.cau_backend.cb_trans_validate
 #define ca_trans_complete u.cau_backend.cb_trans_complete

@@ -52,7 +52,7 @@
  *       modified, and these changes have not been committed or rolled back.
  */
 typedef struct {
-    uint32_t  de_id;       /* session id */
+    uint32_t  de_id;       /* session id keeps lock */
     cxobj    *de_xml;      /* cache */
     int       de_modified; /* Dirty since loaded/copied/committed/etc XXX:nocache? */
     int       de_empty;    /* Empty on read from file, xmldb_readfile and xmldb_put sets it */

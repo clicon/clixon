@@ -950,6 +950,8 @@ cli_pagination(clicon_handle h,
     }
     if ((nsc = xml_nsctx_init(prefix, namespace)) == NULL)
 	goto done;
+    if (clicon_rpc_lock(h, "running") < 0)
+	goto done;
     for (i = 0;; i++){
 	if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc,
 					 CONTENT_ALL,
@@ -984,7 +986,11 @@ cli_pagination(clicon_handle h,
 	    default:
 		break;
 	    }
+	    if (cli_output_status() < 0)
+		break;
 	}
+	if (cli_output_status() < 0)
+	    break;
 	if (xlen != window) /* Break if fewer elements than requested */
 	    break;
 	if (xret){
@@ -995,7 +1001,9 @@ cli_pagination(clicon_handle h,
 	    free(xvec);
 	    xvec = NULL;
 	}
-    }
+    } /* for */
+    if (clicon_rpc_unlock(h, "running") < 0)
+	goto done;
     retval = 0;
  done:
     if (xvec)

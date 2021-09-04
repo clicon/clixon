@@ -91,8 +91,13 @@ static char *_state_file = NULL;
  * Primarily for testing
  * Start backend with -- -siS <file>
  */
-static int _state_file_init = 0;
-static cxobj *_state_xstate = NULL;
+static int _state_file_cached = 0;
+
+/*! Cache control of read state file paging example,
+ * keep xml tree cache as long as db is locked
+ */
+static cxobj *_state_xml_cache = NULL; /* XML cache */
+static int _state_file_transaction = 0;
 
 /*! Variable to control module-specific upgrade callbacks.
  * If set, call test-case for upgrading ietf-interfaces, otherwise call 
@@ -343,13 +348,17 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
     return retval;
 }
 
-/*! Called to get state data from plugin
- * @param[in]    h      Clicon handle
- * @param[in]    nsc    External XML namespace context, or NULL
- * @param[in]    xpath  String with XPATH syntax. or NULL for all
- * @param[in]    xstate XML tree, <config/> on entry. 
- * @retval       0      OK
- * @retval      -1      Error
+/*! Called to get state data from plugin by programmatically adding state
+ *
+ * @param[in]    h        Clicon handle
+ * @param[in]    nsc      External XML namespace context, or NULL
+ * @param[in]    xpath    String with XPATH syntax. or NULL for all
+ * @param[in]    paging   List pagination (not uses here)
+ * @param[in]    offset   Offset, for list pagination
+ * @param[in]    limit    Limit, for list pagination
+ * @param[in]    xstate   XML tree, <config/> on entry. 
+ * @retval       0        OK
+ * @retval      -1        Error
  * @see xmldb_get
  * @note this example code returns requires this yang snippet:
        container state {
@@ -360,11 +369,14 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
          }
        }
  * This yang snippet is present in clixon-example.yang for example.
+ * XXX paging for lock
+ * @see example_statefile  where state is read from file and also paging
  */
 int 
 example_statedata(clicon_handle h, 
 		  cvec         *nsc,
 		  char         *xpath,
+		  enum paging_status paging,
 		  uint32_t      offset,
 		  uint32_t      limit,
 		  cxobj        *xstate)
@@ -377,133 +389,219 @@ example_statedata(clicon_handle h,
     cxobj     *xt = NULL;
     char      *name;
     cvec      *nsc1 = NULL;
-    cvec      *nsc2 = NULL;
     yang_stmt *yspec = NULL;
-    FILE      *fp = NULL;
-    cxobj     *x1;
-    uint32_t   upper;
 
     if (!_state)
 	goto ok;
     yspec = clicon_dbspec_yang(h);
-    
-    /* If -S is set, then read state data from file, otherwise construct it programmatically */
-    if (_state_file){
-	if (_state_file_init){
-#if 0 /* This is just for a zero-copy version (only works once) */
-	    {
-		cxobj *xx = NULL;
-		while (xml_child_nr(_state_xstate)){
-		    xx = xml_child_i(_state_xstate,0);
-		    if (xml_addsub(xstate, xx) < 0)
-			goto done;
-		}
-	    }
-#else
-	    if (xml_copy(_state_xstate, xstate) < 0)
-		goto done;
-#endif
+    /* Example of statedata, in this case merging state data with 
+     * state information. In this case adding dummy interface operation state
+     * to configured interfaces.
+     * Get config according to xpath */
+    if ((nsc1 = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
+	goto done;
+    if (xmldb_get0(h, "running", YB_MODULE, nsc1, "/interfaces/interface/name", 1, &xt, NULL, NULL) < 0)
+	goto done;
+    if (xpath_vec(xt, nsc1, "/interfaces/interface/name", &xvec, &xlen) < 0)
+	goto done;
+    if (xlen){
+	cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
+	for (i=0; i<xlen; i++){
+	    name = xml_body(xvec[i]);
+	    cprintf(cb, "<interface xmlns:ex=\"urn:example:clixon\"><name>%s</name><type>ex:eth</type><oper-status>up</oper-status>", name);
+	    cprintf(cb, "<ex:my-status><ex:int>42</ex:int><ex:str>foo</ex:str></ex:my-status>");
+	    cprintf(cb, "</interface>");
 	}
-	else{
-	    if ((fp = fopen(_state_file, "r")) == NULL){
-		clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
-		goto done;
-	    }
-	    if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
-		goto done;
-	    /* Note, does not care about xpath / list-pagination */
-	    if (clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL) < 0)
-		goto done;
-	    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
-		goto done;
-	    if (limit == 0)
-		upper = xlen;
-	    else{
-		if ((upper = offset+limit)>xlen)
-		    upper = xlen;
-	    }
-	    for (i=offset; i<upper; i++){
-		if ((x1 = xvec[i]) == NULL)
-		    break;
-		xml_flag_set(x1, XML_FLAG_MARK);
-	    }
-	    /* Remove everything that is not marked */
-	    if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
-		goto done;
-	    if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-		goto done;
-	    if (xml_copy(xt, xstate) < 0)
-		goto done;
-	    if (xvec){
-		free(xvec);
-		xvec = 0;
-		xlen = 0;
-	    }
-	}
+	cprintf(cb, "</interfaces>");
+	if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, &xstate, NULL) < 0)
+	    goto done;
     }
-    else {
-	/* Example of statedata, in this case merging state data with 
-	 * state information. In this case adding dummy interface operation state
-	 * to configured interfaces.
-	 * Get config according to xpath */
-	if ((nsc1 = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
+    /* State in test_yang.sh , test_restconf.sh and test_order.sh */
+    if (yang_find_module_by_namespace(yspec, "urn:example:clixon") != NULL){
+	if (clixon_xml_parse_string("<state xmlns=\"urn:example:clixon\">"
+				    "<op>42</op>"
+				    "<op>41</op>"
+				    "<op>43</op>" /* should not be ordered */
+				    "</state>",
+				    YB_NONE,
+				    NULL, &xstate, NULL) < 0)
+	    goto done; /* For the case when urn:example:clixon is not loaded */
+    }
+    /* Event state from RFC8040 Appendix B.3.1 
+     * Note: (1) order is by-system so is different, 
+     *       (2) event-count is XOR on name, so is not 42 and 4
+     */
+    if (yang_find_module_by_namespace(yspec, "urn:example:events") != NULL){
+	cbuf_reset(cb);
+	cprintf(cb, "<events xmlns=\"urn:example:events\">");
+	cprintf(cb, "<event><name>interface-down</name><event-count>90</event-count></event>");
+	cprintf(cb, "<event><name>interface-up</name><event-count>77</event-count></event>");
+	cprintf(cb, "</events>");
+	if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, &xstate, NULL) < 0)
 	    goto done;
-	if (xmldb_get0(h, "running", YB_MODULE, nsc1, "/interfaces/interface/name", 1, &xt, NULL, NULL) < 0)
-	    goto done;
-	if (xpath_vec(xt, nsc1, "/interfaces/interface/name", &xvec, &xlen) < 0)
-	    goto done;
-	if (xlen){
-	    cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
-	    for (i=0; i<xlen; i++){
-		name = xml_body(xvec[i]);
-		cprintf(cb, "<interface xmlns:ex=\"urn:example:clixon\"><name>%s</name><type>ex:eth</type><oper-status>up</oper-status>", name);
-		cprintf(cb, "<ex:my-status><ex:int>42</ex:int><ex:str>foo</ex:str></ex:my-status>");
-		cprintf(cb, "</interface>");
-	    }
-	    cprintf(cb, "</interfaces>");
-	    if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, &xstate, NULL) < 0)
-		goto done;
-	}
-	/* State in test_yang.sh , test_restconf.sh and test_order.sh */
-	if (yang_find_module_by_namespace(yspec, "urn:example:clixon") != NULL){
-	    if (clixon_xml_parse_string("<state xmlns=\"urn:example:clixon\">"
-					"<op>42</op>"
-					"<op>41</op>"
-					"<op>43</op>" /* should not be ordered */
-					"</state>",
-					YB_NONE,
-					NULL, &xstate, NULL) < 0)
-		goto done; /* For the case when urn:example:clixon is not loaded */
-	}
-	/* Event state from RFC8040 Appendix B.3.1 
-	 * Note: (1) order is by-system so is different, 
-	 *       (2) event-count is XOR on name, so is not 42 and 4
-	 */
-	if (yang_find_module_by_namespace(yspec, "urn:example:events") != NULL){
-	    cbuf_reset(cb);
-	    cprintf(cb, "<events xmlns=\"urn:example:events\">");
-	    cprintf(cb, "<event><name>interface-down</name><event-count>90</event-count></event>");
-	    cprintf(cb, "<event><name>interface-up</name><event-count>77</event-count></event>");
-	    cprintf(cb, "</events>");
-	    if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, &xstate, NULL) < 0)
-		goto done;
-	}
     }
  ok:
     retval = 0;
  done:
-    if (fp)
-	fclose(fp);
     if (nsc1)
 	xml_nsctx_free(nsc1);
-    if (nsc2)
-	xml_nsctx_free(nsc2);
     if (xt)
 	xml_free(xt);
     if (cb)
 	cbuf_free(cb);
     if (xvec)
 	free(xvec);
+    return retval;
+}
+
+/*! Called to get state data from plugin by reading a file, also paging
+ *
+ * The example shows how to read and parse a state XML file, (which is cached in the -i case).
+ * Return the requested xpath / paging xstate by copying from the parsed state XML file
+ * @param[in]    h        Clicon handle
+ * @param[in]    nsc      External XML namespace context, or NULL
+ * @param[in]    xpath    String with XPATH syntax. or NULL for all
+ * @param[in]    paging   List pagination
+ * @param[in]    offset   Offset, for list pagination
+ * @param[in]    limit    Limit, for list pagination
+ * @param[in]    xstate   XML tree, <config/> on entry. Copy to this
+ * @retval       0        OK
+ * @retval      -1        Error
+ * @see xmldb_get
+ * @see example_statefile  where state is programmatically added
+ */
+int 
+example_statefile(clicon_handle      h, 
+		  cvec              *nsc,
+		  char              *xpath,
+		  enum paging_status paging,
+		  uint32_t           offset,
+		  uint32_t           limit,
+		  cxobj             *xstate)
+{
+    int        retval = -1;
+    cxobj    **xvec = NULL;
+    size_t     xlen = 0;
+    int        i;
+    cxobj     *xt = NULL;
+    yang_stmt *yspec = NULL;
+    FILE      *fp = NULL;
+    cxobj     *x1;
+    uint32_t   lower;
+    uint32_t   upper;
+    int        ret;
+
+    /* If -S is set, then read state data from file */
+    if (!_state || !_state_file)
+	goto ok;
+    yspec = clicon_dbspec_yang(h);
+    /* Read state file if either not cached, or the cache is NULL */
+    if (_state_file_cached == 0 ||
+	_state_xml_cache == NULL){
+	if ((fp = fopen(_state_file, "r")) == NULL){
+	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
+	    goto done;
+	}
+	if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
+	    goto done;
+	if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL)) < 0)
+	    goto done;
+#if 0
+	if (ret == 0){
+	    if (clixon_netconf_internal_error(xstate,
+					      ". Internal error, state callback returned invalid XML",
+					      NULL) < 0)
+		goto done;
+	    goto ok;	    
+	}
+#endif
+	if (_state_file_cached)
+	    _state_xml_cache = xt;
+    }
+    if (_state_file_cached)
+	xt = _state_xml_cache;
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
+	goto done;	
+    switch (paging){
+    case PAGING_NONE:
+	lower = 0;
+	upper = xlen;
+	break;
+    case PAGING_STATELESS:
+    case PAGING_LOCK:
+	lower = offset;
+	if (limit == 0)
+	    upper = xlen;
+	else{
+	    if ((upper = offset+limit)>xlen)
+		upper = xlen;
+	}
+	break;
+    }
+    /* Mark elements to copy:
+     * For every node found in x0, mark the tree as changed 
+     */
+    for (i=lower; i<upper; i++){
+	if ((x1 = xvec[i]) == NULL)
+	    break;
+	xml_flag_set(x1, XML_FLAG_MARK);
+	xml_apply_ancestor(x1, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+    }
+    if (xml_copy_marked(xt, xstate) < 0) /* Copy the marked elements */
+	goto done;
+    /* Unmark original tree */
+    if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+	goto done;
+    /* Unmark returned state tree */
+    if (xml_apply(xstate, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+	goto done;
+    if (_state_file_cached)
+	xt = NULL; /* ensure cache is not cleared */
+    if (paging ==  PAGING_LOCK)
+	_state_file_transaction++;
+ ok:
+    retval = 0;
+ done:
+    if (fp)
+	fclose(fp);
+    if (xt)
+	xml_free(xt);
+    if (xvec)
+	free(xvec);
+    return retval;
+}
+
+/*! Lock databse status has changed status
+ * @param[in]  h    Clixon handle
+ * @param[in]  db   Database name (eg "running")
+ * @param[in]  lock Lock status: 0: unlocked, 1: locked
+ * @param[in]  id   Session id (of locker/unlocker)
+ * @retval    -1    Fatal error
+ * @retval     0    OK
+*/
+int
+example_lockdb(clicon_handle h,
+	       char         *db,
+	       int           lock,
+	       int           id)
+{
+    int retval = -1;
+
+    clicon_debug(1, "%s Lock callback: db%s: locked:%d", __FUNCTION__, db, lock);
+
+    /* Part of cached paging example
+     */
+    if (strcmp(db, "running") == 0 && lock == 0 &&
+	_state && _state_file && _state_file_cached && _state_file_transaction){
+	if (_state_xml_cache){
+	    xml_free(_state_xml_cache);
+	    _state_xml_cache = NULL;
+	}
+	_state_file_transaction = 0;
+    }
+
+    retval = 0;
+    // done:
     return retval;
 }
 
@@ -982,7 +1080,7 @@ example_start(clicon_handle h)
 /*! Plugin daemon.
  * @param[in]  h     Clicon handle
  *
- * plugin_daemon is called once after damonization has been made but before lowering of privileges
+ * plugin_daemon is called once after daemonization has been made but before lowering of privileges
  * the main event loop is entered. 
  */
 int
@@ -994,19 +1092,14 @@ example_daemon(clicon_handle h)
     yang_stmt *yspec;
 
     /* Read state file (or should this be in init/start?) */
-    if (_state && _state_file && _state_file_init){
+    if (_state && _state_file && _state_file_cached){
 	yspec = clicon_dbspec_yang(h);
 	if ((fp = fopen(_state_file, "r")) == NULL){
 	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
 	    goto done;
 	}
-	if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &_state_xstate, NULL)) < 0)
+	if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &_state_xml_cache, NULL)) < 1)
 	    goto done;
-	if (ret == 0){
-	    fprintf(stderr, "%s error\n", __FUNCTION__);
-	    goto done;
-	}
-	fprintf(stderr, "%s done\n", __FUNCTION__);
     }
     retval = 0;
  done:
@@ -1032,7 +1125,8 @@ static clixon_plugin_api api = {
     .ca_extension=example_extension,        /* yang extensions */
     .ca_daemon=example_daemon,              /* daemon */
     .ca_reset=example_reset,                /* reset */
-    .ca_statedata2=example_statedata,      /* statedata2 */
+    .ca_statedata2=example_statedata,       /* statedata2 : Note fn is switched if -sS <file> */
+    .ca_lockdb=example_lockdb,              /* Database lock changed state */
     .ca_trans_begin=main_begin,             /* trans begin */
     .ca_trans_validate=main_validate,       /* trans validate */
     .ca_trans_complete=main_complete,       /* trans complete */
@@ -1076,9 +1170,10 @@ clixon_plugin_init(clicon_handle h)
 	    break;
 	case 'S': /* state file (requires -s) */
 	    _state_file = optarg;
+	    api.ca_statedata2 = example_statefile; /* Switch state data callback */
 	    break;
 	case 'i': /* read state file on init not by request (requires -sS <file> */
-	    _state_file_init = 1;
+	    _state_file_cached = 1;
 	    break;
        case 'u': /* module-specific upgrade */
            _module_upgrade = 1;

@@ -47,6 +47,10 @@ Expected: September, 2021
     * ietf-origin@2018-02-14.yang
     * ietf-yang-metadata@2016-08-05.yang
     * ietf-netconf-with-defaults@2011-06-01.yang
+  * New state callback signature (ca_statedata2)
+    * The new callback contains parameters for paging
+    * Goal is to replace ca_statedata callback
+
 * YANG Leafref feature update
   * Closer adherence to RFC 7950. Some of this is changed behavior, some is new feature.
   * Essentially instead of looking at the referring leaf, context is referred(target) node
@@ -66,6 +70,11 @@ Expected: September, 2021
   * See draft-wwlh-netconf-list-pagination-00.txt
   * New http media: application/yang-collection+xml/json
 
+* New state callback signature (ca_statedata2)
+   * The new callback contains parameters for paging
+   * Goal is to replace ca_statedata callback
+
+
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
@@ -81,6 +90,11 @@ Users may have to change how they access the system
    * Added: `CLICON_RESTCONF_HTTP2_PLAIN`
    * Removed default of `CLICON_RESTCONF_INSTALLDIR`
      * The default behaviour is changed to use the config $(sbindir) to locate `clixon_restconf` when starting restconf internally
+
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
 
 ### Minor features
 
@@ -106,6 +120,10 @@ Users may have to change how they access the system
   * In this case, eg "uses", single quotes can now be used, but not `qstring + qstring` in this case
 * Fixed: [Performance issue when parsing large JSON param](https://github.com/clicon/clixon/issues/266)
 * Fixed: [Duplicate lines emitted by cli_show_config (cli output style) when yang list element has composite key](https://github.com/clicon/clixon/issues/258)
+* Fixed: Typing 'q' in CLI more paging did not properly quit output
+  * Output continued but was not shown, for a very large file this could cause considerable delay
+* Fixed: Lock was broken in first get get access
+  * if the first netconf operation to a backend was lock;get;unlock, the lock was broken in the first get access.
 * Fixed: [JSON leaf-list output single element leaf-list does not use array](https://github.com/clicon/clixon/issues/261)
 * Fixed: Netconf diff callback did not work with choice and same value replace
   * Eg if YANG is `choice c { leaf x; leaf y }` and XML changed from `<x>42</x>` to `<y>42</y>` the datastrore changed, but was not detected by diff algorithms and provided to validate callbacks.
