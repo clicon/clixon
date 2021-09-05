@@ -73,9 +73,6 @@
 #include "backend_handle.h"
 #include "backend_get.h"
 
-/* List pagination remaining attribute using meta */
-#undef REMAINING
-
 /*!
  * Maybe should be in the restconf client instead of backend?
  * @param[in]     h       Clicon handle
@@ -276,6 +273,122 @@ get_client_statedata(clicon_handle h,
     goto done;
 }
 
+/*! Help function to filter out anything that is outside of xpath 
+ *
+ * Code complex to filter out anything that is outside of xpath 
+ * Actually this is a safety catch, should really be done in plugins
+ * and modules_state functions.
+ * But it is problematic, because defaults, at least of config data, is in place
+ * and we need to re-add it.
+ * Note original xpath
+ *
+ * @param[in]  h       Clicon handle 
+ * @param[in]  yspec   Yang spec
+ * @param[in]  xret    Result XML tree
+ * @param[in]  xpath   XPath point to object to get
+ * @param[in]  nsc     Namespace context of xpath
+ * @param[out] x1p     Pointer to first matching object if any
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+filter_xpath_again(clicon_handle h,
+		   yang_stmt    *yspec,
+		   cxobj        *xret,
+		   char         *xpath,
+		   cvec         *nsc,
+		   cxobj       **x1p)
+{
+    int     retval = -1;
+    cxobj **xvec = NULL;
+    size_t  xlen;
+    int     i;
+
+    if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	goto done;
+    /* If vectors are specified then mark the nodes found and
+     * then filter out everything else,
+     * otherwise return complete tree.
+     */
+    if (xvec != NULL){
+	for (i=0; i<xlen; i++)
+	    xml_flag_set(xvec[i], XML_FLAG_MARK);
+    }
+    /* Remove everything that is not marked */
+    if (!xml_flag(xret, XML_FLAG_MARK))
+	if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
+	    goto done;
+    /* reset flag */
+    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+	goto done;
+    /* Add default global values */
+    if (xml_global_defaults(h, xret, nsc, xpath, yspec, 0) < 0)
+	goto done;
+    /* Add default recursive values */
+    if (xml_default_recurse(xret, 0) < 0)
+	goto done;
+    if (xlen && x1p)
+	*x1p = xvec[0];
+    retval = 0;
+ done:
+    if (xvec)
+	free(xvec);
+    return retval;
+}
+
+/*! Help function for NACM access and returnmessage
+ *
+ * @param[in]  h        Clicon handle 
+ * @param[in]  xret     Result XML tree
+ * @param[in]  xpath    XPath point to object to get
+ * @param[in]  nsc      Namespace context of xpath
+ * @param[in]  username User name for NACM access
+ * @param[in]  depth    Nr of levels to print, -1 is all, 0 is none
+ * @param[out] cbret    Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+static int
+get_nacm_and_reply(clicon_handle h,
+		   cxobj        *xret,
+		   char         *xpath,
+		   cvec         *nsc,
+		   char         *username,
+		   int32_t       depth,
+		   cbuf         *cbret)
+{
+    int     retval = -1;
+    cxobj **xvec = NULL;
+    size_t  xlen;
+    cxobj  *xnacm = NULL;
+
+    /* Pre-NACM access step */
+    xnacm = clicon_nacm_cache(h);
+    if (xnacm != NULL){ /* Do NACM validation */
+	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	    goto done;
+	/* NACM datanode/module read validation */
+	if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0) 
+	    goto done;
+    }
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);     /* OK */
+    if (xret==NULL)
+	cprintf(cbret, "<data/>");
+    else{
+	if (xml_name_set(xret, NETCONF_OUTPUT_DATA) < 0)
+	    goto done;
+	/* Top level is data, so add 1 to depth if significant */
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, depth>0?depth+1:depth) < 0)
+	    goto done;
+    }
+    cprintf(cbret, "</rpc-reply>");
+    retval = 0;
+ done:
+    if (xvec)
+	free(xvec);
+    return retval;
+}
+
 #ifdef LIST_PAGINATION
 
 /*! Help function for parsing restconf query parameter and setting netconf attribute
@@ -318,8 +431,8 @@ element2value(clicon_handle  h,
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[in]  content Get config/state/both
  * @param[in]  db      Database name
- * @param[in]  xpath
- * @param[in]  nsc
+ * @param[in]  xpath   XPath point to object to get
+ * @param[in]  nsc     Namespace context of xpath
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
  * @retval     0       OK
  * @retval    -1       Error
@@ -351,20 +464,15 @@ get_list_pagination(clicon_handle        h,
     cxobj          *x;
     int             list_config;
     yang_stmt      *ylist;
-    cxobj         **xvec = NULL;
-    size_t          xlen;
-    cxobj         **xvecnacm = NULL;
-    size_t          xlennacm;    
     cxobj          *xerr = NULL;
     cbuf           *cbmsg = NULL; /* For error msg */
     cxobj          *xret = NULL;
-    char           *xpath2; /* With optional pageing predicate */
+    char           *xpath2; /* With optional paging predicate */
     int             ret;
-    int             i;
-    cxobj          *xnacm = NULL;
     uint32_t        iddb; /* DBs lock, if any */
     enum paging_status pagingstatus;
-#ifdef REMAINING
+    cxobj          *x1 = NULL;
+#ifdef LIST_PAGINATION_REMAINING
     cxobj          *xcache = NULL;
     uint32_t        total = 0;
     uint32_t        remaining = 0;
@@ -458,7 +566,7 @@ get_list_pagination(clicon_handle        h,
 	cprintf(cbpath, "[position() < %u]", limit);
     /* Append predicate to original xpath and replace it */
     xpath2 = cbuf_get(cbpath);
-#ifdef REMAINING
+#ifdef LIST_PAGINATION_REMAINING
     /* Get total/remaining
      * XXX: Works only for cache, and only if already populated
      * XXX: Maybe together with get config / state data
@@ -477,7 +585,7 @@ get_list_pagination(clicon_handle        h,
 	 * 2. Read all here and count (fallback)
 	 */
     }
-#endif /* REMAINING */
+#endif /* LIST_PAGINATION_REMAINING */
     /* Read config */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
@@ -512,49 +620,18 @@ get_list_pagination(clicon_handle        h,
 					       offset, limit, &xret)) < 0)
 	    goto done;
     }
-    /* Code complex to filter out anything that is outside of xpath 
-     * Actually this is a safety catch, should really be done in plugins
-     * and modules_state functions.
-     * But it is problematic, because defaults, at least of config data, is in place
-     * and we need to re-add it.
-     * Note original xpath
-     */
-    if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+    if (filter_xpath_again(h, yspec, xret, xpath, nsc, &x1) < 0)
 	goto done;
-
-    /* If vectors are specified then mark the nodes found and
-     * then filter out everything else,
-     * otherwise return complete tree.
-     */
-    if (xvec != NULL){
-	for (i=0; i<xlen; i++)
-	    xml_flag_set(xvec[i], XML_FLAG_MARK);
-    }
-    /* Remove everything that is not marked */
-    if (!xml_flag(xret, XML_FLAG_MARK))
-	if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
-	    goto done;
-    /* reset flag */
-    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-	goto done;
-    /* Add default global values */
-    if (xml_global_defaults(h, xret, nsc, xpath, yspec, 0) < 0)
-	goto done;
-    /* Add default recursive values */
-    if (xml_default_recurse(xret, 0) < 0)
-	goto done;
-
-#ifdef REMAINING
+#ifdef LIST_PAGINATION_REMAINING
     /* Add remaining attribute Sec 3.1.5: 
        Any list or leaf-list that is limited includes, on the first element in the result set, 
        a metadata value [RFC7952] called "remaining"*/
-    if (limit && xlen){ 
+    if (limit && x1){ 
 	cxobj *xa;
 	cbuf  *cba = NULL;
 
 	/* Add remaining attribute */
-	x = xvec[0];
-	if ((xa = xml_new("remaining", x, CX_ATTR)) == NULL)
+	if ((xa = xml_new("remaining", x1, CX_ATTR)) == NULL)
 	    goto done;
 	if ((cba = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -565,32 +642,14 @@ get_list_pagination(clicon_handle        h,
 	    goto done;
 	if (xml_prefix_set(xa, "cp") < 0)
 	    goto done;
-	if (xmlns_set(x, "cp", "http://clicon.org/clixon-netconf-list-pagination") < 0)
+	if (xmlns_set(x1, "cp", "http://clicon.org/clixon-netconf-list-pagination") < 0)
 	    goto done;
 	if (cba)
 	    cbuf_free(cba);
     }
-#endif /* REMAINING */
-    /* Pre-NACM access step */
-    xnacm = clicon_nacm_cache(h);
-    if (xnacm != NULL){ /* Do NACM validation */
-	if (xpath_vec(xret, nsc, "%s", &xvecnacm, &xlennacm, xpath?xpath:"/") < 0)
-	    goto done;
-	/* NACM datanode/module read validation */
-	if (nacm_datanode_read(h, xret, xvecnacm, xlennacm, username, xnacm) < 0) 
-	    goto done;
-    }
-    cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);     /* OK */
-    if (xret==NULL)
-	cprintf(cbret, "<data/>");
-    else{
-	if (xml_name_set(xret, NETCONF_OUTPUT_DATA) < 0)
-	    goto done;
-	/* Top level is data, so add 1 to depth if significant */
-	if (clicon_xml2cbuf(cbret, xret, 0, 0, depth>0?depth+1:depth) < 0)
-	    goto done;
-    }
-    cprintf(cbret, "</rpc-reply>");
+#endif /* LIST_PAGINATION_REMAINING */
+    if (get_nacm_and_reply(h, xret, xpath, nsc, username, depth, cbret) < 0)
+	goto done;
  ok:
     retval = 0;
  done:
@@ -600,10 +659,6 @@ get_list_pagination(clicon_handle        h,
 	cbuf_free(cbpath);
     if (xerr)
 	xml_free(xerr);
-    if (xvec)
-	free(xvec);
-    if (xvecnacm)
-	free(xvecnacm);
     if (xret)
 	xml_free(xret);
     return retval;
@@ -636,18 +691,12 @@ get_common(clicon_handle        h,
     cxobj          *xfilter;
     char           *xpath = NULL;
     cxobj          *xret = NULL;
-    cxobj         **xvec = NULL;
-    size_t          xlen;
-    cxobj         **xvecnacm = NULL;
-    size_t          xlennacm;    
-    cxobj          *xnacm = NULL;
     char           *username;
     cvec           *nsc0 = NULL; /* Create a netconf namespace context from filter */
     cvec           *nsc = NULL;
     char           *attr;
     int32_t         depth = -1; /* Nr of levels to print, -1 is all, 0 is none */
     yang_stmt      *yspec;
-    int             i;
     cxobj          *xerr = NULL;
     int             ret;
     char           *reason = NULL;
@@ -817,57 +866,10 @@ get_common(clicon_handle        h,
 	if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	    goto done;
     }
-    /* Code complex to filter out anything that is outside of xpath 
-     * Actually this is a safety catch, should really be done in plugins
-     * and modules_state functions.
-     * But it is problematic, because defaults, at least of config data, is in place
-     * and we need to re-add it.
-     * Note original xpath
-     */
-    if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+    if (filter_xpath_again(h, yspec, xret, xpath, nsc, NULL) < 0)
 	goto done;
-
-    /* If vectors are specified then mark the nodes found and
-     * then filter out everything else,
-     * otherwise return complete tree.
-     */
-    if (xvec != NULL){
-	for (i=0; i<xlen; i++)
-	    xml_flag_set(xvec[i], XML_FLAG_MARK);
-    }
-    /* Remove everything that is not marked */
-    if (!xml_flag(xret, XML_FLAG_MARK))
-	if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
-	    goto done;
-    /* reset flag */
-    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+    if (get_nacm_and_reply(h, xret, xpath, nsc, username, depth, cbret) < 0)
 	goto done;
-    /* Add default global values */
-    if (xml_global_defaults(h, xret, nsc, xpath, yspec, 0) < 0)
-	goto done;
-    /* Add default recursive values */
-    if (xml_default_recurse(xret, 0) < 0)
-	goto done;
-    /* Pre-NACM access step */
-    xnacm = clicon_nacm_cache(h);
-    if (xnacm != NULL){ /* Do NACM validation */
-	if (xpath_vec(xret, nsc, "%s", &xvecnacm, &xlennacm, xpath?xpath:"/") < 0)
-	    goto done;
-	/* NACM datanode/module read validation */
-	if (nacm_datanode_read(h, xret, xvecnacm, xlennacm, username, xnacm) < 0) 
-	    goto done;
-    }
-    cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);     /* OK */
-    if (xret==NULL)
-	cprintf(cbret, "<data/>");
-    else{
-	if (xml_name_set(xret, NETCONF_OUTPUT_DATA) < 0)
-	    goto done;
-	/* Top level is data, so add 1 to depth if significant */
-	if (clicon_xml2cbuf(cbret, xret, 0, 0, depth>0?depth+1:depth) < 0)
-	    goto done;
-    }
-    cprintf(cbret, "</rpc-reply>");
  ok:
     retval = 0;
  done:
@@ -886,12 +888,6 @@ get_common(clicon_handle        h,
 	xml_free(xerr);
     if (xpath)
 	free(xpath);
-    if (xvec)
-	free(xvec);
-    if (xvecnacm)
-	free(xvecnacm);
-    if (xret)
-	xml_free(xret);
     return retval;
 }
 

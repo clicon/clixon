@@ -692,7 +692,7 @@ module clixon-config {
 	    type int32;
 	    default 24;
 	    description
-		"Set to number of CLI terminal rows for pageing/scrolling. 0 means unlimited.
+		"Set to number of CLI terminal rows for paging/scrolling. 0 means unlimited.
                  The number is set statically UNLESS:
                  - there is no terminal, such as file input, in which case nr lines is 0
                  - there is a terminal sufficiently powerful to read the number of lines from

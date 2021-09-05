@@ -35,7 +35,7 @@ Expected: September, 2021
 
 ### New features
 
-* List pageing for Netconf and Restconf
+* List paging for Netconf and Restconf
   * Experimental, work-in-progress
     * Enable with LIST_PAGINATION compile-time option
   * According to:
@@ -773,7 +773,7 @@ Developers may need to change their code
   * The register function has removed `from` and `rev` parameters: `upgrade_callback_register(h, cb, namespace, arg)`
   * The callback function has a new `op` parameter with possible values: `XML_FLAG_ADD`, `XML_FLAG_CHANGE` or `XML_FLAG_CHANGE`: `clicon_upgrade_cb(h, xn, ns, op, from, to, arg, cbret)`
 
-* Added new cli show functions to work with cligen_output for cligen pageing to work. To achieve this, replace function calls as follows:
+* Added new cli show functions to work with cligen_output for cligen paging to work. To achieve this, replace function calls as follows:
   * `xml2txt(...)` --> `xml2txt_cb(..., cligen_output)`
   * `xml2cli(...)` --> `xml2cli_cb(..., cligen_output)`
   * `clicon_xml2file(...)` --> `clicon_xml2file_cb(..., cligen_output)`

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Example-social from draft-netconf-list-pagination-00.txt appendix A.1
 # Assumes variable fexample is set to name of yang file
-# Note inverted pattern is commented
+# Note audit-logs/audit-log/outcome is changed from mandatory to default
 
 cat <<EOF > $fexample
    module example-social {
@@ -281,7 +281,7 @@ cat <<EOF > $fexample
          }
          leaf outcome {
            type boolean;
-           mandatory true;
+           default true; /* Note changed from mandatory in original */
            description
              "Indicate if request was permitted.";
          }

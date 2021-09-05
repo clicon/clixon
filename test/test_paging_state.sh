@@ -7,14 +7,17 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-#echo "...skipped: Must run interactvely"
-#if [ "$s" = $0 ]; then exit 0; else return 0; fi
+echo "...skipped: Must run interactvely"
+if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
 cfg=$dir/conf.xml
 fexample=$dir/example-social.yang
 fstate=$dir/mystate.xml
+
+# For 1M test,m use an external file since the generation takes considerable time
+#fstate=~/tmp/mystate.xml
 
 # Common example-module spec (fexample must be set)
 . ./example_social.sh
@@ -59,14 +62,10 @@ new "generate state with $perfnr list entries"
 echo "<audit-logs xmlns=\"http://example.com/ns/example-social\">" >> $fstate
 for (( i=0; i<$perfnr; i++ )); do  
     echo "  <audit-log>" >> $fstate
-    mon=$(( ( RANDOM % 10 ) ))
-    day=$(( ( RANDOM % 10 ) ))
-    hour=$(( ( RANDOM % 10 ) ))
-    echo "    <timestamp>2020-0$mon-0$dayT0$hour:48:11Z</timestamp>" >> $fstate
+    echo "    <timestamp>2021-09-05T018:48:11Z</timestamp>" >> $fstate
     echo "    <member-id>bob$i</member-id>" >> $fstate
     echo "    <source-ip>192.168.1.32</source-ip>" >> $fstate
     echo "    <request>POST</request>" >> $fstate
-    echo "    <outcome>true</outcome>" >> $fstate
     echo "  </audit-log>" >> $fstate
 done
 echo -n "</audit-logs>" >> $fstate # No CR
@@ -90,6 +89,7 @@ wait_backend
 
 # XXX How to run without using a terminal?
 new "cli show"
+echo "$clixon_cli -1 -f $cfg -l o show pagination xpath /es:audit-logs/es:audit-log cli"
 $clixon_cli -1 -f $cfg -l o show pagination xpath /es:audit-logs/es:audit-log cli
 
 if [ $BE -ne 0 ]; then

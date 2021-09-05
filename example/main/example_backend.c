@@ -1092,7 +1092,7 @@ example_daemon(clicon_handle h)
     yang_stmt *yspec;
 
     /* Read state file (or should this be in init/start?) */
-    if (_state && _state_file && _state_file_cached){
+    if (_state && _state_file && _state_file_cached && 0){
 	yspec = clicon_dbspec_yang(h);
 	if ((fp = fopen(_state_file, "r")) == NULL){
 	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);

@@ -150,6 +150,8 @@ release_all_dbs(clicon_handle h,
     }
     retval = 0;
  done:
+    if (keys)
+	free(keys);
     return retval;
 }
 
