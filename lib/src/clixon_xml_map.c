@@ -313,7 +313,7 @@ xml2cli_recurse(FILE              *f,
     }
  ok:
     retval = 0;
-  done:
+ done:
     if (cbpre)
 	cbuf_free(cbpre);
     return retval;

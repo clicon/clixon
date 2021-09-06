@@ -258,7 +258,7 @@ get_client_statedata(clicon_handle h,
 	    goto fail;
     }
     /* Use plugin state callbacks */
-    if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, PAGING_NONE, 0, 0, xret)) < 0)
+    if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, PAGING_NONE, 0, 0, NULL, xret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -470,13 +470,11 @@ get_list_pagination(clicon_handle        h,
     char           *xpath2; /* With optional paging predicate */
     int             ret;
     uint32_t        iddb; /* DBs lock, if any */
-    enum paging_status pagingstatus;
+    paging_status_t pagingstatus;
     cxobj          *x1 = NULL;
-#ifdef LIST_PAGINATION_REMAINING
     cxobj          *xcache = NULL;
     uint32_t        total = 0;
     uint32_t        remaining = 0;
-#endif
 
     /* Check if list/leaf-list */
     if (yang_path_arg(yspec, xpath, &ylist) < 0)
@@ -566,26 +564,6 @@ get_list_pagination(clicon_handle        h,
 	cprintf(cbpath, "[position() < %u]", limit);
     /* Append predicate to original xpath and replace it */
     xpath2 = cbuf_get(cbpath);
-#ifdef LIST_PAGINATION_REMAINING
-    /* Get total/remaining
-     * XXX: Works only for cache, and only if already populated
-     * XXX: Maybe together with get config / state data
-     */
-    if (list_config){
-	if ((xcache = xmldb_cache_get(h, db)) != NULL){
-	    if (xpath_count(xcache, nsc, xpath, &total) < 0)
-		goto done;
-	    if (total >= (offset + limit))
-		remaining = total - (offset + limit);
-	}
-    }
-    else{
-	/* Remaining of state list. Two strategies:
-	 * 1. New api where state callback is registered, lock, iterative, unlock
-	 * 2. Read all here and count (fallback)
-	 */
-    }
-#endif /* LIST_PAGINATION_REMAINING */
     /* Read config */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
@@ -607,8 +585,19 @@ get_list_pagination(clicon_handle        h,
 	    goto done;
 	break;
     }/* switch content */
-    if (!list_config){
-	/* Check if running locked (by this session) */
+
+    if (list_config){
+	/* Get total/remaining
+	 * XXX: Works only for cache
+	 */
+	if ((xcache = xmldb_cache_get(h, db)) != NULL){
+	    if (xpath_count(xcache, nsc, xpath, &total) < 0)
+		goto done;
+	    if (total >= (offset + limit))
+		remaining = total - (offset + limit);
+	}
+    }
+    else {/* Check if running locked (by this session) */
 	if ((iddb = xmldb_islocked(h, "running")) != 0 &&
 	    iddb == ce->ce_id)
 	    pagingstatus = PAGING_LOCK;
@@ -617,7 +606,7 @@ get_list_pagination(clicon_handle        h,
 	/* Use plugin state callbacks */
 	if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath,
 					       pagingstatus,
-					       offset, limit, &xret)) < 0)
+					       offset, limit, &remaining, &xret)) < 0)
 	    goto done;
     }
     if (filter_xpath_again(h, yspec, xret, xpath, nsc, &x1) < 0)

@@ -356,7 +356,8 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
  * @param[in]    paging   List pagination (not uses here)
  * @param[in]    offset   Offset, for list pagination
  * @param[in]    limit    Limit, for list pagination
- * @param[in]    xstate   XML tree, <config/> on entry. 
+ * @param[out]   remaining Remaining elements (if limit is non-zero)
+ * @param[out]   xstate   XML tree, <config/> on entry. 
  * @retval       0        OK
  * @retval      -1        Error
  * @see xmldb_get
@@ -373,13 +374,14 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
  * @see example_statefile  where state is read from file and also paging
  */
 int 
-example_statedata(clicon_handle h, 
-		  cvec         *nsc,
-		  char         *xpath,
-		  enum paging_status paging,
-		  uint32_t      offset,
-		  uint32_t      limit,
-		  cxobj        *xstate)
+example_statedata(clicon_handle   h, 
+		  cvec           *nsc,
+		  char           *xpath,
+		  paging_status_t paging,
+		  uint32_t        offset,
+		  uint32_t        limit,
+		  uint32_t       *remaining, 
+		  cxobj          *xstate)
 {
     int        retval = -1;
     cxobj    **xvec = NULL;
@@ -464,20 +466,21 @@ example_statedata(clicon_handle h,
  * @param[in]    paging   List pagination
  * @param[in]    offset   Offset, for list pagination
  * @param[in]    limit    Limit, for list pagination
- * @param[in]    xstate   XML tree, <config/> on entry. Copy to this
+ * @param[out]   xstate   XML tree, <config/> on entry. Copy to this
  * @retval       0        OK
  * @retval      -1        Error
  * @see xmldb_get
  * @see example_statefile  where state is programmatically added
  */
 int 
-example_statefile(clicon_handle      h, 
-		  cvec              *nsc,
-		  char              *xpath,
-		  enum paging_status paging,
-		  uint32_t           offset,
-		  uint32_t           limit,
-		  cxobj             *xstate)
+example_statefile(clicon_handle   h, 
+		  cvec           *nsc,
+		  char           *xpath,
+		  paging_status_t paging,
+		  uint32_t        offset,
+		  uint32_t        limit,
+		  uint32_t       *remaining, 
+		  cxobj          *xstate)
 {
     int        retval = -1;
     cxobj    **xvec = NULL;
@@ -506,15 +509,6 @@ example_statefile(clicon_handle      h,
 	    goto done;
 	if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL)) < 0)
 	    goto done;
-#if 0
-	if (ret == 0){
-	    if (clixon_netconf_internal_error(xstate,
-					      ". Internal error, state callback returned invalid XML",
-					      NULL) < 0)
-		goto done;
-	    goto ok;	    
-	}
-#endif
 	if (_state_file_cached)
 	    _state_xml_cache = xt;
     }
@@ -535,6 +529,7 @@ example_statefile(clicon_handle      h,
 	else{
 	    if ((upper = offset+limit)>xlen)
 		upper = xlen;
+	    *remaining = xlen - upper;
 	}
 	break;
     }

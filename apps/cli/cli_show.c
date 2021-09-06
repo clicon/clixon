@@ -896,7 +896,7 @@ cli_show_options(clicon_handle h,
 /*! Show pagination
  * @param[in]  h    Clicon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
- * @param[in]  argv Vector. Format: <xpath> <prefix> <namespace> <format> <win>
+ * @param[in]  argv Vector. Format: <xpath> <prefix> <namespace> <format> <limit>
  * Also, if there is a cligen variable called "xpath" it will override argv xpath arg
  */
 int
@@ -918,12 +918,12 @@ cli_pagination(clicon_handle h,
     cg_var          *cv;
     int              i;
     int              j;
-    int              window = 0;
+    uint32_t         limit = 0;
     cxobj          **xvec = NULL;
     size_t           xlen;
     
     if (cvec_len(argv) != 5){
-	clicon_err(OE_PLUGIN, 0, "Expected usage: <xpath> <prefix> <namespace> <format> <window>");
+	clicon_err(OE_PLUGIN, 0, "Expected usage: <xpath> <prefix> <namespace> <format> <limit>");
 	goto done;
     }
     /* prefix:variable overrides argv */
@@ -939,13 +939,13 @@ cli_pagination(clicon_handle h,
 	goto done;
     }
     if ((str = cv_string_get(cvec_i(argv, 4))) != NULL){
-	if (parse_int32(str, &window, NULL) < 1){
-	    clicon_err(OE_UNIX, errno, "error parsing window integer:%s", str);
+	if (parse_uint32(str, &limit, NULL) < 1){
+	    clicon_err(OE_UNIX, errno, "error parsing limit:%s", str);
 	    goto done;
 	}
     }
-    if (window == 0){
-	clicon_err(OE_UNIX, EINVAL, "window is 0");
+    if (limit == 0){
+	clicon_err(OE_UNIX, EINVAL, "limit is 0");
 	goto done;
     }
     if ((nsc = xml_nsctx_init(prefix, namespace)) == NULL)
@@ -956,8 +956,8 @@ cli_pagination(clicon_handle h,
 	if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc,
 					 CONTENT_ALL,
 					 -1,        /* depth */
-					 window*i,  /* offset */
-					 window,    /* limit */
+					 limit*i,  /* offset */
+					 limit,    /* limit */
 					 NULL, NULL, NULL, /* nyi */
 					 &xret) < 0){
 	    goto done;
@@ -988,10 +988,10 @@ cli_pagination(clicon_handle h,
 	    }
 	    if (cli_output_status() < 0)
 		break;
-	}
+	} /* for j */
 	if (cli_output_status() < 0)
 	    break;
-	if (xlen != window) /* Break if fewer elements than requested */
+	if (xlen != limit) /* Break if fewer elements than requested */
 	    break;
 	if (xret){
 	    xml_free(xret);
@@ -1001,7 +1001,7 @@ cli_pagination(clicon_handle h,
 	    free(xvec);
 	    xvec = NULL;
 	}
-    } /* for */
+    } /* for i */
     if (clicon_rpc_unlock(h, "running") < 0)
 	goto done;
     retval = 0;

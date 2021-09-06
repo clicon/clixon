@@ -242,6 +242,7 @@ clixon_plugin_daemon_all(clicon_handle h)
  * @param[in]  pagingstatus List pagination status
  * @param[in]  offset  Offset, for list pagination
  * @param[in]  limit   Limit, for list pagination
+ * @param[out] remaining  Remaining elements (if limit is non-zero)
  * @param[out] xp      If retval=1, state tree created and returned: <config>...
  * @retval    -1       Fatal error
  * @retval     0       Statedata callback failed. no XML tree returned
@@ -252,9 +253,10 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
 			    clicon_handle    h,
 			    cvec            *nsc,
 			    char            *xpath,
-			    enum paging_status pagingstatus,
+			    paging_status_t  pagingstatus,
 			    uint32_t         offset,
 			    uint32_t         limit,  
+			    uint32_t        *remaining, 
 			    cxobj          **xp)
 {
     int              retval = -1;
@@ -266,7 +268,7 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
     if ((fn2 = clixon_plugin_api_get(cp)->ca_statedata2) != NULL){
 	if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
-	if (fn2(h, nsc, xpath, pagingstatus, offset, limit, x) < 0){
+	if (fn2(h, nsc, xpath, pagingstatus, offset, limit, remaining, x) < 0){
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: State callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, clixon_plugin_name_get(cp));
@@ -303,6 +305,7 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
  * @param[in]     pagination List pagination
  * @param[in]     offset  Offset, for list pagination
  * @param[in]     limit   Limit, for list pagination
+ * @param[out]    remaining Remaining elements (if limit is non-zero)
  * @param[in,out] xret    State XML tree is merged with existing tree.
  * @retval       -1       Error
  * @retval        0       Statedata callback failed (xret set with netconf-error)
@@ -310,14 +313,15 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
  * @note xret can be replaced in this function
  */
 int
-clixon_plugin_statedata_all(clicon_handle      h,
-			    yang_stmt         *yspec,
-			    cvec              *nsc,
-			    char              *xpath,
-			    enum paging_status pagingstatus,
-			    uint32_t           offset,
-			    uint32_t           limit,  
-			    cxobj            **xret)
+clixon_plugin_statedata_all(clicon_handle   h,
+			    yang_stmt      *yspec,
+			    cvec           *nsc,
+			    char           *xpath,
+			    paging_status_t pagingstatus,
+			    uint32_t        offset,
+			    uint32_t        limit,  
+			    uint32_t       *remaining, 
+			    cxobj         **xret)
 {
     int              retval = -1;
     int              ret;
@@ -329,7 +333,7 @@ clixon_plugin_statedata_all(clicon_handle      h,
     clicon_debug(1, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if ((ret = clixon_plugin_statedata_one(cp, h, nsc, xpath, pagingstatus,
-					       offset, limit, &x)) < 0)
+					       offset, limit, remaining, &x)) < 0)
 	    goto done;
 	if (ret == 0){
 	    if ((cberr = cbuf_new()) == NULL){

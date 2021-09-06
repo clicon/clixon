@@ -224,21 +224,24 @@ enum paging_status{
     PAGING_STATELESS,  /* Stateless list paging, dont expect more paging calls */
     PAGING_LOCK        /* Transactional list paging, can expect more paging until lock release */
 };
+typedef enum paging_status paging_status_t;
 
 /* Plugin statedata
  * @param[in]  Clicon handle
  * @param[in]  xpath      Part of state requested
  * @param[in]  nsc        XPATH namespace context.
- * @param[in]  pagination List pagination: 0: No, 1: begin/next, 2: end
+ * @param[in]  paging     List pagination mode
  * @param[in]  offset     Offset, for list pagination
  * @param[in]  limit      Limit, for list pagination
+ * @param[out] remaining  Remaining elements (if limit is non-zero)
  * @param[out] xtop       XML tree where statedata is added
  * @retval    -1          Fatal error
  * @retval     0          OK
  */
 typedef int (plgstatedata2_t)(clicon_handle h, cvec *nsc, char *xpath,
-			      enum paging_status pagination,
-			      uint32_t offset, uint32_t limit, 
+			      paging_status_t paging,
+			      uint32_t offset, uint32_t limit,
+			      uint32_t *remaining, 
 			      cxobj *xtop);
 
 /*! Lock databse status has changed status

@@ -87,10 +87,11 @@ fi
 new "wait backend"
 wait_backend
 
-# XXX How to run without using a terminal?
+# XXX How to run without using a terminal? Maybe use expect/unbuffer
 new "cli show"
 echo "$clixon_cli -1 -f $cfg -l o show pagination xpath /es:audit-logs/es:audit-log cli"
 $clixon_cli -1 -f $cfg -l o show pagination xpath /es:audit-logs/es:audit-log cli
+#expectpart "$(echo -n | unbuffer -p $clixon_cli -1 -f $cfg -l o show pagination xpath /es:audit-logs/es:audit-log cli)" 0 foo
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
