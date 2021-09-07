@@ -83,7 +83,8 @@ SRC     = clixon_sig.c clixon_uid.c clixon_log.c clixon_err.c clixon_event.c \
 	  clixon_xpath.c clixon_xpath_ctx.c clixon_xpath_eval.c clixon_xpath_function.c \
           clixon_xpath_optimize.c clixon_xpath_yang.c \
 	  clixon_datastore.c clixon_datastore_write.c clixon_datastore_read.c \
-	  clixon_netconf_lib.c clixon_stream.c clixon_nacm.c clixon_client.c clixon_netns.c
+	  clixon_netconf_lib.c clixon_stream.c clixon_nacm.c clixon_client.c clixon_netns.c \
+      clixon_dispatcher.c
 
 YACCOBJS = lex.clixon_xml_parse.o clixon_xml_parse.tab.o \
 	    lex.clixon_yang_parse.o  clixon_yang_parse.tab.o \
