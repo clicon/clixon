@@ -80,7 +80,7 @@ module clixon-netconf-list-pagination {
           represent any value greater than or equal to 2^32-1
           elements.";
     }
-    grouping paging-parameters {
+    grouping pagination-parameters {
 	leaf list-pagination {
 	    type boolean;
 	    default false;
@@ -173,10 +173,10 @@ module clixon-netconf-list-pagination {
 	}
     }
     augment /nc:get-config/nc:input {
-	uses paging-parameters;
+	uses pagination-parameters;
     }
     // extending the get operation
     augment /nc:get/nc:input {
-	uses paging-parameters;
+	uses pagination-parameters;
     }
 }

@@ -93,7 +93,7 @@ static char *_state_file = NULL;
  */
 static int _state_file_cached = 0;
 
-/*! Cache control of read state file paging example,
+/*! Cache control of read state file pagination example,
  * keep xml tree cache as long as db is locked
  */
 static cxobj *_state_xml_cache = NULL; /* XML cache */
@@ -353,7 +353,7 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
  * @param[in]    h        Clicon handle
  * @param[in]    nsc      External XML namespace context, or NULL
  * @param[in]    xpath    String with XPATH syntax. or NULL for all
- * @param[in]    paging   List pagination (not uses here)
+ * @param[in]    pagmode   List pagination (not used here)
  * @param[in]    offset   Offset, for list pagination
  * @param[in]    limit    Limit, for list pagination
  * @param[out]   remaining Remaining elements (if limit is non-zero)
@@ -370,14 +370,13 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
          }
        }
  * This yang snippet is present in clixon-example.yang for example.
- * XXX paging for lock
- * @see example_statefile  where state is read from file and also paging
+ * @see example_statefile  where state is read from file and also pagination
  */
 int 
 example_statedata(clicon_handle   h, 
 		  cvec           *nsc,
 		  char           *xpath,
-		  paging_status_t paging,
+		  pagination_mode_t pagmode,
 		  uint32_t        offset,
 		  uint32_t        limit,
 		  uint32_t       *remaining, 
@@ -456,14 +455,14 @@ example_statedata(clicon_handle   h,
     return retval;
 }
 
-/*! Called to get state data from plugin by reading a file, also paging
+/*! Called to get state data from plugin by reading a file, also pagination
  *
  * The example shows how to read and parse a state XML file, (which is cached in the -i case).
- * Return the requested xpath / paging xstate by copying from the parsed state XML file
+ * Return the requested xpath / pagination xstate by copying from the parsed state XML file
  * @param[in]    h        Clicon handle
  * @param[in]    nsc      External XML namespace context, or NULL
  * @param[in]    xpath    String with XPATH syntax. or NULL for all
- * @param[in]    paging   List pagination
+ * @param[in]    pagmode  List pagination mode
  * @param[in]    offset   Offset, for list pagination
  * @param[in]    limit    Limit, for list pagination
  * @param[out]   xstate   XML tree, <config/> on entry. Copy to this
@@ -476,7 +475,7 @@ int
 example_statefile(clicon_handle   h, 
 		  cvec           *nsc,
 		  char           *xpath,
-		  paging_status_t paging,
+		  pagination_mode_t pagmode,
 		  uint32_t        offset,
 		  uint32_t        limit,
 		  uint32_t       *remaining, 
@@ -516,13 +515,13 @@ example_statefile(clicon_handle   h,
 	xt = _state_xml_cache;
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
 	goto done;	
-    switch (paging){
-    case PAGING_NONE:
+    switch (pagmode){
+    case PAGINATION_NONE:
 	lower = 0;
 	upper = xlen;
 	break;
-    case PAGING_STATELESS:
-    case PAGING_LOCK:
+    case PAGINATION_STATELESS:
+    case PAGINATION_LOCK:
 	lower = offset;
 	if (limit == 0)
 	    upper = xlen;
@@ -552,7 +551,7 @@ example_statefile(clicon_handle   h,
 	goto done;
     if (_state_file_cached)
 	xt = NULL; /* ensure cache is not cleared */
-    if (paging ==  PAGING_LOCK)
+    if (pagmode ==  PAGINATION_LOCK)
 	_state_file_transaction++;
  ok:
     retval = 0;
@@ -584,7 +583,7 @@ example_lockdb(clicon_handle h,
 
     clicon_debug(1, "%s Lock callback: db%s: locked:%d", __FUNCTION__, db, lock);
 
-    /* Part of cached paging example
+    /* Part of cached pagination example
      */
     if (strcmp(db, "running") == 0 && lock == 0 &&
 	_state && _state_file && _state_file_cached && _state_file_transaction){

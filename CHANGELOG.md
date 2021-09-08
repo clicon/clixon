@@ -35,7 +35,7 @@ Expected: September, 2021
 
 ### New features
 
-* List paging for Netconf and Restconf
+* List pagination for Netconf and Restconf
   * Experimental, work-in-progress
     * Enable with LIST_PAGINATION compile-time option
   * According to:
@@ -48,7 +48,7 @@ Expected: September, 2021
     * ietf-yang-metadata@2016-08-05.yang
     * ietf-netconf-with-defaults@2011-06-01.yang
   * New state callback signature (ca_statedata2)
-    * The new callback contains parameters for paging
+    * The new callback contains parameters for pagination
     * Goal is to replace ca_statedata callback
 
 * YANG Leafref feature update
@@ -71,7 +71,7 @@ Expected: September, 2021
   * New http media: application/yang-collection+xml/json
 
 * New state callback signature (ca_statedata2)
-   * The new callback contains parameters for paging
+   * The new callback contains parameters for pagination
    * Goal is to replace ca_statedata callback
 
 
@@ -120,7 +120,7 @@ Developers may need to change their code
   * In this case, eg "uses", single quotes can now be used, but not `qstring + qstring` in this case
 * Fixed: [Performance issue when parsing large JSON param](https://github.com/clicon/clixon/issues/266)
 * Fixed: [Duplicate lines emitted by cli_show_config (cli output style) when yang list element has composite key](https://github.com/clicon/clixon/issues/258)
-* Fixed: Typing 'q' in CLI more paging did not properly quit output
+* Fixed: Typing 'q' in CLI more scrolling did not properly quit output
   * Output continued but was not shown, for a very large file this could cause considerable delay
 * Fixed: Lock was broken in first get get access
   * if the first netconf operation to a backend was lock;get;unlock, the lock was broken in the first get access.
@@ -773,7 +773,7 @@ Developers may need to change their code
   * The register function has removed `from` and `rev` parameters: `upgrade_callback_register(h, cb, namespace, arg)`
   * The callback function has a new `op` parameter with possible values: `XML_FLAG_ADD`, `XML_FLAG_CHANGE` or `XML_FLAG_CHANGE`: `clicon_upgrade_cb(h, xn, ns, op, from, to, arg, cbret)`
 
-* Added new cli show functions to work with cligen_output for cligen paging to work. To achieve this, replace function calls as follows:
+* Added new cli show functions to work with cligen_output for cligen scrolling to work. To achieve this, replace function calls as follows:
   * `xml2txt(...)` --> `xml2txt_cb(..., cligen_output)`
   * `xml2cli(...)` --> `xml2cli_cb(..., cligen_output)`
   * `clicon_xml2file(...)` --> `clicon_xml2file_cb(..., cligen_output)`

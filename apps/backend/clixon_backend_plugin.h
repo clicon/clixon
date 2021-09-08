@@ -76,7 +76,7 @@ int clixon_plugin_pre_daemon_all(clicon_handle h);
 int clixon_plugin_daemon_all(clicon_handle h);
 
 int clixon_plugin_statedata_all(clicon_handle h, yang_stmt *yspec, cvec *nsc, char *xpath,
-				paging_status_t pagingstatus,
+				pagination_mode_t pagmode,
 				uint32_t offset, uint32_t limit, uint32_t *remaining,
 				cxobj **xtop);
 int clixon_plugin_lockdb_all(clicon_handle h, char *db, int lock, int id);

@@ -239,7 +239,7 @@ clixon_plugin_daemon_all(clicon_handle h)
  * @param[in]  h       clicon handle
  * @param[in]  nsc     namespace context for xpath
  * @param[in]  xpath   String with XPATH syntax. or NULL for all
- * @param[in]  pagingstatus List pagination status
+ * @param[in]  pagmode List pagination mode
  * @param[in]  offset  Offset, for list pagination
  * @param[in]  limit   Limit, for list pagination
  * @param[out] remaining  Remaining elements (if limit is non-zero)
@@ -253,7 +253,7 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
 			    clicon_handle    h,
 			    cvec            *nsc,
 			    char            *xpath,
-			    paging_status_t  pagingstatus,
+			    pagination_mode_t pagmode,
 			    uint32_t         offset,
 			    uint32_t         limit,  
 			    uint32_t        *remaining, 
@@ -268,7 +268,7 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
     if ((fn2 = clixon_plugin_api_get(cp)->ca_statedata2) != NULL){
 	if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
-	if (fn2(h, nsc, xpath, pagingstatus, offset, limit, remaining, x) < 0){
+	if (fn2(h, nsc, xpath, pagmode, offset, limit, remaining, x) < 0){
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: State callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, clixon_plugin_name_get(cp));
@@ -302,7 +302,7 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
  * @param[in]     yspec   Yang spec
  * @param[in]     nsc     Namespace context
  * @param[in]     xpath   String with XPATH syntax. or NULL for all
- * @param[in]     pagination List pagination
+ * @param[in]     pagmode List pagination mode
  * @param[in]     offset  Offset, for list pagination
  * @param[in]     limit   Limit, for list pagination
  * @param[out]    remaining Remaining elements (if limit is non-zero)
@@ -317,7 +317,7 @@ clixon_plugin_statedata_all(clicon_handle   h,
 			    yang_stmt      *yspec,
 			    cvec           *nsc,
 			    char           *xpath,
-			    paging_status_t pagingstatus,
+			    pagination_mode_t pagmode,
 			    uint32_t        offset,
 			    uint32_t        limit,  
 			    uint32_t       *remaining, 
@@ -332,7 +332,7 @@ clixon_plugin_statedata_all(clicon_handle   h,
     
     clicon_debug(1, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
-	if ((ret = clixon_plugin_statedata_one(cp, h, nsc, xpath, pagingstatus,
+	if ((ret = clixon_plugin_statedata_one(cp, h, nsc, xpath, pagmode,
 					       offset, limit, remaining, &x)) < 0)
 	    goto done;
 	if (ret == 0){

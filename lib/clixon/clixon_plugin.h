@@ -206,31 +206,31 @@ typedef int (plgreset_t)(clicon_handle h, const char *db);
  */
 typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
 
-/*! List paging status in the plugin state data callback
+/*! List pagination status in the plugin state data callback
  *
- * List paging is either enabled or not.
- * If paging is enabled, the xpath addresses a list/ leaf-list and the plugin should return 
+ * List pagination is either enabled or not.
+ * If pagination is enabled, the xpath addresses a list/ leaf-list and the plugin should return 
  * entries according to the values of offset and limit.
- * Paging can use a lock/transaction mechanism 
- * If locking is not used, the plugin cannot expect more paging calls, and no state or caching
+ * Pagination can use a lock/transaction mechanism 
+ * If locking is not used, the plugin cannot expect more pagination calls, and no state or caching
  * should be used
- * If locking is used, the paging is part of a session transaction and the plugin may cache
- * state (such as a cache) and can expect more paging calls until the running db-lock is released, 
+ * If locking is used, the pagination is part of a session transaction and the plugin may cache
+ * state (such as a cache) and can expect more pagination calls until the running db-lock is released, 
  * (see ca_lockdb)
  * The transaction is the regular lock/unlock db of running-db of a specific session.
  */
-enum paging_status{
-    PAGING_NONE,       /* No list paging: limit/offset are no-ops */
-    PAGING_STATELESS,  /* Stateless list paging, dont expect more paging calls */
-    PAGING_LOCK        /* Transactional list paging, can expect more paging until lock release */
+enum pagination_mode{
+    PAGINATION_NONE,       /* No list pagination: limit/offset are no-ops */
+    PAGINATION_STATELESS,  /* Stateless list pagination, dont expect more pagination calls */
+    PAGINATION_LOCK        /* Transactional list pagination, can expect more pagination until lock release */
 };
-typedef enum paging_status paging_status_t;
+typedef enum pagination_mode pagination_mode_t;
 
 /* Plugin statedata
  * @param[in]  Clicon handle
  * @param[in]  xpath      Part of state requested
  * @param[in]  nsc        XPATH namespace context.
- * @param[in]  paging     List pagination mode
+ * @param[in]  pagmode    List pagination mode
  * @param[in]  offset     Offset, for list pagination
  * @param[in]  limit      Limit, for list pagination
  * @param[out] remaining  Remaining elements (if limit is non-zero)
@@ -239,7 +239,7 @@ typedef enum paging_status paging_status_t;
  * @retval     0          OK
  */
 typedef int (plgstatedata2_t)(clicon_handle h, cvec *nsc, char *xpath,
-			      paging_status_t paging,
+			      pagination_mode_t pagmode,
 			      uint32_t offset, uint32_t limit,
 			      uint32_t *remaining, 
 			      cxobj *xtop);

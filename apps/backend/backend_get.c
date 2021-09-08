@@ -258,7 +258,7 @@ get_client_statedata(clicon_handle h,
 	    goto fail;
     }
     /* Use plugin state callbacks */
-    if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, PAGING_NONE, 0, 0, NULL, xret)) < 0)
+    if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, PAGINATION_NONE, 0, 0, NULL, xret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -467,10 +467,10 @@ get_list_pagination(clicon_handle        h,
     cxobj          *xerr = NULL;
     cbuf           *cbmsg = NULL; /* For error msg */
     cxobj          *xret = NULL;
-    char           *xpath2; /* With optional paging predicate */
+    char           *xpath2; /* With optional pagination predicate */
     int             ret;
     uint32_t        iddb; /* DBs lock, if any */
-    paging_status_t pagingstatus;
+    pagination_mode_t pagmode;
     cxobj          *x1 = NULL;
     cxobj          *xcache = NULL;
     uint32_t        total = 0;
@@ -600,12 +600,12 @@ get_list_pagination(clicon_handle        h,
     else {/* Check if running locked (by this session) */
 	if ((iddb = xmldb_islocked(h, "running")) != 0 &&
 	    iddb == ce->ce_id)
-	    pagingstatus = PAGING_LOCK;
+	    pagmode = PAGINATION_LOCK;
 	else
-	    pagingstatus = PAGING_STATELESS;
+	    pagmode = PAGINATION_STATELESS;
 	/* Use plugin state callbacks */
 	if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath,
-					       pagingstatus,
+					       pagmode,
 					       offset, limit, &remaining, &xret)) < 0)
 	    goto done;
     }
