@@ -44,9 +44,7 @@ Expected: September, 2021
   * Added yangs:
     * ietf-restconf-list-pagination@2015-01-30.yang
     * clixon-netconf-list-pagination@2021-08-27.yang
-    * ietf-origin@2018-02-14.yang
     * ietf-yang-metadata@2016-08-05.yang
-    * ietf-netconf-with-defaults@2011-06-01.yang
   * New state callback signature (ca_statedata2)
     * The new callback contains parameters for pagination
     * Goal is to replace ca_statedata callback
