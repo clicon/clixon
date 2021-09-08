@@ -16,7 +16,6 @@ APPNAME=example
 cfg=$dir/conf.xml
 startupdb=$dir/startup_db
 fjukebox=$dir/example-jukebox.yang
-fyangpatch=$dir/ietf-yang-patch.yang
     
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config user false)
@@ -110,9 +109,6 @@ cat <<EOF > $dir/example-system.yang
       }
    }
 EOF
-
-# Yang Patch spec (fyangpatch must be set)
-. ./yang-patch.sh
 
 # Common Jukebox spec (fjukebox must be set)
 . ./jukebox.sh

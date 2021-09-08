@@ -15,7 +15,6 @@ APPNAME=example
 cfg=$dir/conf.xml
 startupdb=$dir/startup_db
 fjukebox=$dir/example-jukebox.yang
-fyangpatch=$dir/ietf-yang-patch.yang
 finterfaces=$dir/ietf-interfaces.yang
 fexample=$dir/clixon-example.yang
     
@@ -104,9 +103,6 @@ cat <<EOF > $dir/example-system.yang
       }
    }
 EOF
-
-# Yang Patch spec (fyangpatch must be set)
-. ./yang-patch.sh
 
 # Interfaces spec (finterfaces must be set)
 . ./interfaces.sh

@@ -591,7 +591,7 @@ api_data_write(clicon_handle h,
  * @param[in]  data     Stream input data
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
-
+ * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
  * @note restconf PUT is mapped to edit-config replace. 
  * @see RFC8040 Sec 4.5  PUT
  * @see api_data_post
@@ -645,6 +645,7 @@ api_data_put(clicon_handle h,
  * @param[in]  data     Stream input data
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
+ * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
  * Netconf:  <edit-config> (nc:operation="merge")      
  * See RFC8040 Sec 4.6.1
  * Plain patch can be used to create or update, but not delete, a child
@@ -678,7 +679,7 @@ api_data_patch(clicon_handle h,
     case YANG_PATCH_XML:
 #ifdef YANG_PATCH
 	ret = api_data_yang_patch(h, req, api_path0, pcvec, pi, qvec, data, pretty,
-			     media_out, ds);
+				  media_in, media_out, ds);
 #else
 	ret = restconf_notimplemented(h, req, pretty, media_out);
 #endif

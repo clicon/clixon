@@ -4,6 +4,7 @@
  
   Copyright (C) 2009-2019 Olof Hagsand
   Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+  Copyright (C) 2021 Siklu Ltd (YANG patch code)
 
   This file is part of CLIXON.
 
@@ -32,7 +33,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * Restconf YANG PATCH implementation  
+ * Restconf YANG PATCH implementation (RFC8072)
  */
 
 
@@ -45,6 +46,7 @@
 int api_data_yang_patch(clicon_handle h, void *req, char *api_path0,
 			cvec *pcvec, int pi,
 			cvec *qvec, char *data,
-			int pretty, restconf_media media_out, ietf_ds_t ds);
+			int pretty, restconf_media media_in, restconf_media media_out,
+			ietf_ds_t ds);
 
 #endif /* _RESTCONF_METHODS_PATCH_H_ */

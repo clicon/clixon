@@ -318,6 +318,7 @@ api_data_get2(clicon_handle  h,
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
+ * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
  *
  * The HEAD method is sent by the client to retrieve just the header fields 
  * that would be returned for the comparable GET method, without the 
@@ -348,11 +349,10 @@ api_data_head(clicon_handle h,
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
+ * @param[in]  ds        RFC8527 datastore
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
  * @endcode                                     
- * XXX: cant find a way to use Accept request field to choose Content-Type  
- *      I would like to support both xml and json.           
  * Request may contain                                        
  *     Accept: application/yang.data+json,application/yang.data+xml   
  * Response contains one of:                           
