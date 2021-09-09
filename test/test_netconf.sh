@@ -295,6 +295,13 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><client-rpc
 new "netconf extra leaf in leaf should fail"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>e0<name>e1</name></name></interface></interfaces></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>name</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: name with parent: name in namespace: urn:ietf:params:xml:ns:yang:ietf-interfaces</error-message></rpc-error></rpc-reply>]]>]]>$"
 
+# Negative tests
+new "netconf xpath syntax error (api-path not xpath) should fail"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/if:interfaces/interface=eth2f0,foo/fii\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>xpath parser on line 1: syntax error at or before: ','</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+new "netconf wrong xpath should fail"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/if:interfaces/interface=eth2f0/fii\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill

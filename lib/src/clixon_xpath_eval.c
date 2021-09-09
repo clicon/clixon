@@ -708,6 +708,10 @@ xp_relop(xp_ctx    *xc1,
     int     reverse = 0;
     double  n1, n2;
     
+    if (xc1 == NULL || xc2 == NULL){
+	clicon_err(OE_UNIX, EINVAL, "xc1 or xc2 NULL");
+	goto done;
+    }
     if ((xr = malloc(sizeof(*xr))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
