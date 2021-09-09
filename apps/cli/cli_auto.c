@@ -407,16 +407,17 @@ cli_xml2cli(cxobj             *xn,
 	(*fn)(stdout, "\n");
     }
 
+    /* For lists, print cbpre before its elements */
+    if (yang_keyword_get(ys) == Y_LIST)
+	(*fn)(stdout, "%s\n", cbuf_get(cbpre));	
     /* Then loop through all other (non-keys) */
     xe = NULL;
     while ((xe = xml_child_each(xn, xe, -1)) != NULL){
 	if (yang_keyword_get(ys) == Y_LIST){
 	    if ((match = yang_key_match(ys, xml_name(xe))) < 0)
 		goto done;
-	    if (match){
-		(*fn)(stdout, "%s\n", cbuf_get(cbpre));	
+	    if (match)
 		continue; /* Not key itself */
-	    }
 	}
 	if (cli_xml2cli(xe, cbuf_get(cbpre), gt, fn) < 0)
 	    goto done;

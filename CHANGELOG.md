@@ -78,6 +78,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [Duplicate lines emitted by cli_show_config (cli output style) when yang list element has composite key](https://github.com/clicon/clixon/issues/258)
 * Fixed: [JSON leaf-list output single element leaf-list does not use array](https://github.com/clicon/clixon/issues/261)
 * Fixed: Netconf diff callback did not work with choice and same value replace
   * Eg if YANG is `choice c { leaf x; leaf y }` and XML changed from `<x>42</x>` to `<y>42</y>` the datastrore changed, but was not detected by diff algorithms and provided to validate callbacks.
