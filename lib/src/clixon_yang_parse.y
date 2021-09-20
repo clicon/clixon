@@ -56,7 +56,6 @@
 }
 
 %token MY_EOF 
-%token SQ           /* Single quote: ' */
 %token WS           /* white space (at least one) */
 %token <string>   CHARS
 %token <string>   ERRCHARS /* Error chars */
@@ -1532,7 +1531,7 @@ deviation_substmt : description_stmt  { _PARSE_DEBUG("deviation-substmt -> descr
 
 not_supported_keyword_str : D_NOT_SUPPORTED
                           | '"' D_NOT_SUPPORTED '"'
-                          | SQ D_NOT_SUPPORTED SQ
+                          | '\'' D_NOT_SUPPORTED '\''
                           ;
 
 deviate_not_supported_stmt
@@ -1543,7 +1542,7 @@ deviate_not_supported_stmt
 
 add_keyword_str    : D_ADD 
                    | '"' D_ADD '"'
-                   | SQ D_ADD SQ
+                   | '\'' D_ADD '\''
                    ;
 
 deviate_add_stmt   : K_DEVIATE add_keyword_str ';'
@@ -1575,7 +1574,7 @@ deviate_add_substmt : units_stmt    { _PARSE_DEBUG("deviate-add-substmt -> units
 
 delete_keyword_str : D_DELETE 
                    | '"' D_DELETE '"'
-                   | SQ D_DELETE SQ
+                   | '\'' D_DELETE '\''
                    ;
 
 deviate_delete_stmt   : K_DEVIATE delete_keyword_str ';'
@@ -1602,7 +1601,7 @@ deviate_delete_substmt : units_stmt { _PARSE_DEBUG("deviate-delete-substmt -> un
 
 replace_keyword_str : D_REPLACE 
                    | '"' D_REPLACE '"'
-                   | SQ D_REPLACE SQ
+                   | '\'' D_REPLACE '\''
                    ;
 
 deviate_replace_stmt   : K_DEVIATE replace_keyword_str ';'
@@ -1827,9 +1826,9 @@ qstring        : '"' ustring '"'  { $$=$2;
 		   _PARSE_DEBUG("qstring-> \" ustring \"");}
                | '"' '"'  { $$=strdup("");
 		   _PARSE_DEBUG("qstring-> \"  \"");} 
-               | SQ ustring SQ  { $$=$2;
+               | '\'' ustring '\''  { $$=$2;
 		   _PARSE_DEBUG("qstring-> ' ustring '"); }
-               | SQ SQ  { $$=strdup("");
+               | '\'' '\''  { $$=strdup("");
 		   _PARSE_DEBUG("qstring-> '  '");} 
                ;
 
@@ -1874,8 +1873,12 @@ desc_schema_nodeid_str : desc_schema_nodeid
 			     _PARSE_DEBUG("descendant-schema-nodeid-str -> descendant-schema-nodeid"); }
                      | '"' desc_schema_nodeid '"'
                          { $$=$2;
-			     _PARSE_DEBUG("descendant-schema-nodeid-str -> descendant-schema-nodeid"); }
-                     ;
+			     _PARSE_DEBUG("descendant-schema-nodeid-str -> \" descendant-schema-nodeid \" "); }
+                     | '\'' desc_schema_nodeid '\''
+                         { $$=$2;
+			     _PARSE_DEBUG("descendant-schema-nodeid-str -> ' descendant-schema-nodeid '"); }
+
+;
 
 /* descendant-schema-nodeid */
 desc_schema_nodeid : node_identifier
@@ -1888,22 +1891,29 @@ desc_schema_nodeid : node_identifier
 
 identifier_str : '"' IDENTIFIER '"' { $$ = $2;
  		         _PARSE_DEBUG("identifier_str -> \" IDENTIFIER \" ");}
+               | '\'' IDENTIFIER '\'' { $$ = $2;
+ 		         _PARSE_DEBUG("identifier_str -> ' IDENTIFIER ' ");}
                | IDENTIFIER           { $$ = $1;
 		         _PARSE_DEBUG("identifier_str -> IDENTIFIER ");}
                ;
 
 identifier_ref_str : '"' identifier_ref '"' { $$ = $2;
 		   _PARSE_DEBUG("identifier_ref_str -> \" identifier_ref \" ");}
+               | '\'' identifier_ref '\'' { $$ = $2;
+		   _PARSE_DEBUG("identifier_ref_str -> ' identifier_ref ' ");}
                | identifier_ref           { $$ = $1;
 		   _PARSE_DEBUG("identifier_ref_str -> identifier_ref ");}
                ;
 
 integer_value_str : '"' INT '"' { $$=$2; }
+                  | '\'' INT '\'' { $$=$2; }
                   |     INT     { $$=$1; }
                   ;
 
 bool_str       : '"' BOOL '"' { $$ = $2;
 		   _PARSE_DEBUG("bool_str -> \" BOOL \" ");}
+               | '\'' BOOL '\'' { $$ = $2;
+		   _PARSE_DEBUG("bool_str -> ' BOOL ' ");}
                |     BOOL     { $$ = $1;
 		   _PARSE_DEBUG("bool_str -> BOOL ");}
                ;

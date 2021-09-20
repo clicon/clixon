@@ -174,7 +174,7 @@ module example{
    }
   container c{
     description "transitive type- exists in ex3";
-    uses ex2:gr2;
+    uses 'ex2:gr2';
   }
   leaf digit4{
      type string {

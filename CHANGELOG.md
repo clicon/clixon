@@ -79,6 +79,8 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Partly Fixed: [String concatenation in YANG model leads to syntax error](https://github.com/clicon/clixon/issues/265)
+  * In this case, eg "uses", single quotes can now be used, but not `qstring + qstring` in this case
 * Fixed: [Performance issue when parsing large JSON param](https://github.com/clicon/clixon/issues/266)
 * Fixed: [Duplicate lines emitted by cli_show_config (cli output style) when yang list element has composite key](https://github.com/clicon/clixon/issues/258)
 * Fixed: [JSON leaf-list output single element leaf-list does not use array](https://github.com/clicon/clixon/issues/261)

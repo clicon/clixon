@@ -8,7 +8,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 : ${clixon_util_json:="clixon_util_json"}
 
 # Number of list/leaf-list entries in file
-: ${perfnr:=20000}
+: ${perfnr:=100000}
 
 fjson=$dir/long.json
 
