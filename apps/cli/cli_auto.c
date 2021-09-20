@@ -521,6 +521,7 @@ cli_auto_up(clicon_handle h,
     char    *api_path = NULL;
     int      i;
     int      j;
+    size_t   len;
     
     if (cvec_len(argv) != 1){
 	clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(<treename>)", __FUNCTION__);
@@ -551,7 +552,8 @@ cli_auto_up(clicon_handle h,
     /* Find diff of 0 and 1 (how many variables differ?) and trunc cvv0 by that amount */
     cvv0 = clicon_data_cvec_get(h, "cli-edit-cvv");
     j=0; /* count diffs */
-    for (i=strlen(api_path_fmt1); i<strlen(api_path_fmt0); i++)
+    len = strlen(api_path_fmt0);
+    for (i=strlen(api_path_fmt1); i<len; i++)
 	if (api_path_fmt0[i] == '%')
 	    j++;
     cvv1 = cvec_new(0);

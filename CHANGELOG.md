@@ -68,6 +68,7 @@ Users may have to change how they access the system
 
 ### Minor features
 
+* JSON errors are now labelled with JSON and not XML
 * Restconf native HTTP/2:
   * Added option `CLICON_RESTCONF_HTTP2_PLAIN` for non-TLS http
     * Default disabled, set to true to enable HTTP/2 direct and switch/upgrade HTTP/1->HTTP/2
@@ -78,6 +79,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [Performance issue when parsing large JSON param](https://github.com/clicon/clixon/issues/266)
 * Fixed: [Duplicate lines emitted by cli_show_config (cli output style) when yang list element has composite key](https://github.com/clicon/clixon/issues/258)
 * Fixed: [JSON leaf-list output single element leaf-list does not use array](https://github.com/clicon/clixon/issues/261)
 * Fixed: Netconf diff callback did not work with choice and same value replace

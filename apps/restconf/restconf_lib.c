@@ -287,6 +287,7 @@ restconf_convert_hdr(clicon_handle h,
     cbuf         *cb = NULL;
     int           i;
     char          c;
+    size_t       len;
     
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -294,7 +295,8 @@ restconf_convert_hdr(clicon_handle h,
     }
     /* convert key name */
     cprintf(cb, "HTTP_");
-    for (i=0; i<strlen(name); i++){
+    len = strlen(name);
+    for (i=0; i<len; i++){
 	c = name[i] & 0xff;
 	if (islower(c))
 	    cprintf(cb, "%c", toupper(c));

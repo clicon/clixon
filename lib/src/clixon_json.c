@@ -257,8 +257,10 @@ json_str_escape_cdata(cbuf *cb,
     int   retval = -1;
     int   i;
     int   esc = 0; /* cdata escape */
+    size_t len;
 
-    for (i=0;i<strlen(str);i++)
+    len = strlen(str);
+    for (i=0; i<len; i++)
 	switch (str[i]){
 	case '\n':
 	    cprintf(cb, "\\n");
@@ -372,7 +374,7 @@ json2xml_decode_identityref(cxobj     *x,
 	    /* Here prefix2 is valid and can be NULL
 	       Change body prefix to prefix2:id */
 	    if ((cbv = cbuf_new()) == NULL){
-		clicon_err(OE_XML, errno, "cbuf_new");
+		clicon_err(OE_JSON, errno, "cbuf_new");
 		goto done;
 	    }
 	    if (prefix2)
@@ -1245,7 +1247,7 @@ _json_parse(char      *str,
     if (clixon_json_parseparse(&jy) != 0) { /* yacc returns 1 on error */
 	clicon_log(LOG_NOTICE, "JSON error: line %d", jy.jy_linenum);
 	if (clicon_errno == 0)
-	    clicon_err(OE_XML, 0, "JSON parser error with no error code (should not happen)");
+	    clicon_err(OE_JSON, 0, "JSON parser error with no error code (should not happen)");
 	goto done;
     }
     /* Traverse new objects */
@@ -1361,7 +1363,7 @@ clixon_json_parse_string(char      *str,
 {
     clicon_debug(1, "%s", __FUNCTION__);
     if (xt==NULL){
-	clicon_err(OE_XML, EINVAL, "xt is NULL");
+	clicon_err(OE_JSON, EINVAL, "xt is NULL");
 	return -1;
     }
     if (*xt == NULL){
@@ -1422,18 +1424,18 @@ clixon_json_parse_file(FILE      *fp,
     int       len = 0;
 
     if (xt==NULL){
-	clicon_err(OE_XML, EINVAL, "xt is NULL");
+	clicon_err(OE_JSON, EINVAL, "xt is NULL");
 	return -1;
     }
     if ((jsonbuf = malloc(jsonbuflen)) == NULL){
-	clicon_err(OE_XML, errno, "malloc");
+	clicon_err(OE_JSON, errno, "malloc");
 	goto done;
     }
     memset(jsonbuf, 0, jsonbuflen);
     ptr = jsonbuf;
     while (1){
 	if ((ret = fread(&ch, 1, 1, fp)) < 0){
-	    clicon_err(OE_XML, errno, "read");
+	    clicon_err(OE_JSON, errno, "read");
 	    break;
 	}
 	if (ret != 0)
@@ -1454,7 +1456,7 @@ clixon_json_parse_file(FILE      *fp,
 	    oldjsonbuflen = jsonbuflen;
 	    jsonbuflen *= 2;
 	    if ((jsonbuf = realloc(jsonbuf, jsonbuflen)) == NULL){
-		clicon_err(OE_XML, errno, "realloc");
+		clicon_err(OE_JSON, errno, "realloc");
 		goto done;
 	    }
 	    memset(jsonbuf+oldjsonbuflen, 0, jsonbuflen-oldjsonbuflen);

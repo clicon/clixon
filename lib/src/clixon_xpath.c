@@ -75,7 +75,6 @@
 #include <stdint.h>
 #include <syslog.h>
 #include <fcntl.h>
-#include <assert.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -538,6 +537,7 @@ xpath_parse(const char  *xpath,
 	clicon_log(LOG_NOTICE, "XPATH error: on line %d", xpy.xpy_linenum);
 	if (clicon_errno == 0)
 	    clicon_err(OE_XML, 0, "XPATH parser error with no error code (should not happen)");
+	xpath_scan_exit(&xpy);
 	goto done;
     }
     if (clicon_debug_get() > 1){

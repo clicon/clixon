@@ -102,13 +102,15 @@ regexp_xsd2posix(char  *xsd,
     int   j; /* lookahead */
     int   esc;
     int   minus = 0;
-
+    size_t len;
+    
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
     esc=0;
-    for (i=0; i<strlen(xsd); i++){
+    len = strlen(xsd);
+    for (i=0; i<len; i++){
 	x = xsd[i];
 	if (esc){
 	    esc = 0;

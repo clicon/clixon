@@ -206,6 +206,9 @@ typedef int (plgreset_t)(clicon_handle h, const char *db);
  */
 typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
 
+/* Transaction-data type
+ * @see clixon_backend_transaction.h for full transaction API 
+ */
 typedef void *transaction_data;
 
 /* Transaction callback */

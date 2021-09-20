@@ -460,13 +460,15 @@ api_path_fmt2api_path(const char *api_path_fmt,
     char   *str;
     char   *strenc=NULL;
     cg_var *cv;
+    size_t  len;
     
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
     j = 1; /* j==0 is cli string */
-    for (i=0; i<strlen(api_path_fmt); i++){
+    len = strlen(api_path_fmt);
+    for (i=0; i<len; i++){
 	c = api_path_fmt[i];
 	if (esc){
 	    esc = 0;
@@ -546,13 +548,15 @@ api_path_fmt2xpath(char  *api_path_fmt,
     int     j;
     char   *str;
     cg_var *cv;
+    size_t  len;
 
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
     j = 1; /* j==0 is cli string */
-    for (i=0; i<strlen(api_path_fmt); i++){
+    len = strlen(api_path_fmt);
+    for (i=0; i<len; i++){
 	c = api_path_fmt[i];
 	if (esc){
 	    esc = 0;

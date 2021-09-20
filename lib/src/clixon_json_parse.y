@@ -79,6 +79,7 @@ object.
 %union {
     int intval;
     char *string;
+    void *cbuf;
 }
 
 %token <string> J_FALSE
@@ -89,8 +90,8 @@ object.
 %token <string> J_CHAR
 %token <string> J_NUMBER
 
-%type <string>    string
-%type <string>    ustring
+%type <cbuf>      string
+%type <cbuf>      ustring
 %type <string>    number
 
 %lex-param     {void *_jy} /* Add this argument to parse() and lex() function */
@@ -102,7 +103,7 @@ object.
 /* typecast macro */
 #define _JY ((clixon_json_yacc *)_jy)
 
-#define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_json_parsetext, _JY->jy_linenum); YYERROR;}
+#define _YYERROR(msg) {clicon_err(OE_JSON, 0, "YYERROR %s '%s' %d", (msg), clixon_json_parsetext, _JY->jy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
 #define YY_(msgid) msgid 
@@ -150,7 +151,7 @@ void
 clixon_json_parseerror(void *_jy,
 		       char *s) 
 { 
-    clicon_err(OE_XML, XMLPARSE_ERRNO, "json_parse: line %d: %s at or before: '%s'", 
+    clicon_err(OE_JSON, XMLPARSE_ERRNO, "json_parse: line %d: %s at or before: '%s'", 
 	       _JY->jy_linenum ,
 	       s, 
 	       clixon_json_parsetext); 
@@ -265,7 +266,7 @@ value         : J_TRUE  { json_current_body(_JY, "true");       _PARSE_DEBUG("va
               | object                                        { _PARSE_DEBUG("value->object"); }
 	      | array                                         { _PARSE_DEBUG("value->array"); }
               | number  { json_current_body(_JY, $1); free($1); _PARSE_DEBUG("value->number");}
-              | string  { json_current_body(_JY, $1); free($1); _PARSE_DEBUG("value->string");}
+              | string  { json_current_body(_JY, cbuf_get($1)); cbuf_free($1); _PARSE_DEBUG("value->string");}
 
               ;
 
@@ -277,7 +278,7 @@ objlist       : pair             { _PARSE_DEBUG("objlist->pair");}
               | objlist ',' pair { _PARSE_DEBUG("objlist->objlist , pair");}
               ;
 
-pair          : string { json_current_new(_JY, $1);free($1);} ':' 
+pair          : string { json_current_new(_JY, cbuf_get($1));cbuf_free($1);} ':' 
                 value  { json_current_pop(_JY);}{ _PARSE_DEBUG("pair->string : value");}
               ;
 
@@ -292,19 +293,16 @@ valuelist     : value             { _PARSE_DEBUG("valuelist->value"); }
 
 /* quoted string */
 string        : J_DQ ustring J_DQ { _PARSE_DEBUG("string->\" ustring \"");$$=$2; }
-              | J_DQ J_DQ         { _PARSE_DEBUG("string->\" \"");$$=strdup(""); }
+              | J_DQ J_DQ         { _PARSE_DEBUG("string->\" \"");$$=cbuf_new(); }
               ;
 
 /* unquoted string: can be optimized by reading whole string in lex */
 ustring       : ustring J_CHAR 
                      {
-			 int len = strlen($1);
-			 $$ = realloc($1, len+strlen($2) + 1); 
-			 sprintf($$+len, "%s", $2); 
-			 free($2);
+			 cbuf_append_str($1,$2); $$=$1; free($2);
 		     }
               | J_CHAR 
-	             {$$=$1;} 
+	      { cbuf *cb = cbuf_new(); cbuf_append_str(cb,$1); $$=cb; free($1);} 
               ;
 
 number        : J_NUMBER { $$ = $1; }

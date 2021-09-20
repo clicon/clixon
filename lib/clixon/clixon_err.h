@@ -69,8 +69,8 @@ enum clicon_err{
     OE_UNIX,     /* unix/linux syscall error */
     OE_SYSLOG,   /* syslog error */
     OE_ROUTING,  /* routing daemon error (eg quagga) */
-    OE_XML,      /* xml parsing etc */
-
+    OE_XML,      /* xml parsing */
+    OE_JSON,     /* json parsing */
     OE_RESTCONF, /* RESTCONF errors */
     OE_PLUGIN,   /* plugin loading, etc */
     OE_YANG ,    /* Yang error */

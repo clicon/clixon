@@ -113,6 +113,7 @@ yang_patch_xml2json_modified_cbuf(cxobj *x_simple_patch)
     cbuf *cb = NULL;
     char *json_simple_patch_tmp;
     int   brace_count = 0;
+    size_t len;
 	
     json_simple_patch = cbuf_new();
     if (json_simple_patch == NULL)
@@ -122,7 +123,8 @@ yang_patch_xml2json_modified_cbuf(cxobj *x_simple_patch)
 
     // Insert a '[' after the first '{' to get the JSON to match what api_data_post/write() expect
     json_simple_patch_tmp = cbuf_get(cb);
-    for (int l = 0; l < strlen(json_simple_patch_tmp); l++) {
+    len = strlen(json_simple_patch_tmp);
+    for (int l = 0; l < strlen(len); l++) {
         char c = json_simple_patch_tmp[l];
         if (c == '{') {
             brace_count++;

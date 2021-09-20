@@ -1210,6 +1210,7 @@ cli_copy_config(clicon_handle h,
     char        *toname;
     cxobj       *xerr;
     cvec        *nsc = NULL;
+    size_t       len;
 
     if (cvec_len(argv) != 6){
 	clicon_err(OE_PLUGIN, EINVAL, "Requires 6 elements: <db> <xpath> <namespace> <keyname> <from> <to>");
@@ -1241,8 +1242,9 @@ cli_copy_config(clicon_handle h,
 	goto done;
     }
     /* Sanity check that xpath contains exactly two %s, ie [%s='%s'] */
+    len = strlen(xpath);
     j = 0;
-    for (i=0; i<strlen(xpath); i++){
+    for (i=0; i<len; i++){
 	if (xpath[i] == '%')
 	    j++;
     }
