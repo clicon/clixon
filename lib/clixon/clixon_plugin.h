@@ -196,16 +196,6 @@ typedef int (plgauth_t)(clicon_handle h, void *req, clixon_auth_type_t auth_type
 */
 typedef int (plgreset_t)(clicon_handle h, const char *db); 
 
-/* Plugin statedata
- * @param[in]  Clicon handle
- * @param[in]  xpath  Part of state requested
- * @param[in]  nsc    XPATH namespace context.
- * @param[out] xtop   XML tree where statedata is added
- * @retval    -1      Fatal error
- * @retval     0      OK
- */
-typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
-
 /*! List pagination status in the plugin state data callback
  *
  * List pagination is either enabled or not.
@@ -238,7 +228,7 @@ typedef enum pagination_mode pagination_mode_t;
  * @retval    -1          Fatal error
  * @retval     0          OK
  */
-typedef int (plgstatedata2_t)(clicon_handle h, cvec *nsc, char *xpath,
+typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath,
 			      pagination_mode_t pagmode,
 			      uint32_t offset, uint32_t limit,
 			      uint32_t *remaining, 
@@ -324,8 +314,8 @@ struct clixon_plugin_api{
             plgdaemon_t      *cb_pre_daemon;     /* Plugin just before daemonization (only daemon) */
             plgdaemon_t      *cb_daemon;         /* Plugin daemonized (always called) */
 	    plgreset_t       *cb_reset;          /* Reset system status */
+
 	    plgstatedata_t   *cb_statedata;      /* Get state data from plugin (backend only) */
-	    plgstatedata2_t  *cb_statedata2;     /* Get state data from plugin (backend only) */
 	    plglockdb_t      *cb_lockdb;         /* Database lock changed state */
 	    trans_cb_t       *cb_trans_begin;	 /* Transaction start */
 	    trans_cb_t       *cb_trans_validate; /* Transaction validation */
@@ -348,7 +338,6 @@ struct clixon_plugin_api{
 #define ca_daemon         u.cau_backend.cb_daemon
 #define ca_reset          u.cau_backend.cb_reset
 #define ca_statedata      u.cau_backend.cb_statedata
-#define ca_statedata2     u.cau_backend.cb_statedata2
 #define ca_lockdb         u.cau_backend.cb_lockdb
 #define ca_trans_begin    u.cau_backend.cb_trans_begin
 #define ca_trans_validate u.cau_backend.cb_trans_validate

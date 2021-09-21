@@ -22,8 +22,7 @@ fexample=$dir/example-social.yang
 
 # Number of audit-log entries 
 # Note mem.sh sets it
-#: ${perfnr:=20000}
-: ${perfnr:=200}
+: ${perfnr:=20000}
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

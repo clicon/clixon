@@ -1119,7 +1119,7 @@ static clixon_plugin_api api = {
     .ca_extension=example_extension,        /* yang extensions */
     .ca_daemon=example_daemon,              /* daemon */
     .ca_reset=example_reset,                /* reset */
-    .ca_statedata2=example_statedata,       /* statedata2 : Note fn is switched if -sS <file> */
+    .ca_statedata=example_statedata,        /* statedata : Note fn is switched if -sS <file> */
     .ca_lockdb=example_lockdb,              /* Database lock changed state */
     .ca_trans_begin=main_begin,             /* trans begin */
     .ca_trans_validate=main_validate,       /* trans validate */
@@ -1164,7 +1164,7 @@ clixon_plugin_init(clicon_handle h)
 	    break;
 	case 'S': /* state file (requires -s) */
 	    _state_file = optarg;
-	    api.ca_statedata2 = example_statefile; /* Switch state data callback */
+	    api.ca_statedata = example_statefile; /* Switch state data callback */
 	    break;
 	case 'i': /* read state file on init not by request (requires -sS <file> */
 	    _state_file_cached = 1;

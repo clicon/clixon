@@ -180,6 +180,10 @@ int
 nacm_statedata(clicon_handle h, 
 	       cvec         *nsc,
 	       char         *xpath,
+	       pagination_mode_t pagmode,
+	       uint32_t        offset,
+	       uint32_t        limit,
+	       uint32_t       *remaining, 
 	       cxobj        *xstate)
 {
     int     retval = -1;

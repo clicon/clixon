@@ -261,24 +261,13 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
 {
     int              retval = -1;
     plgstatedata_t  *fn;          /* Plugin statedata fn */
-    plgstatedata2_t *fn2;         /* Plugin statedata fn2, try this first */
     cxobj           *x = NULL;
     
     clicon_debug(1, "%s %s", __FUNCTION__, clixon_plugin_name_get(cp));
-    if ((fn2 = clixon_plugin_api_get(cp)->ca_statedata2) != NULL){
+    if ((fn = clixon_plugin_api_get(cp)->ca_statedata) != NULL){
 	if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
-	if (fn2(h, nsc, xpath, pagmode, offset, limit, remaining, x) < 0){
-	    if (clicon_errno < 0) 
-		clicon_log(LOG_WARNING, "%s: Internal error: State callback in plugin: %s returned -1 but did not make a clicon_err call",
-			   __FUNCTION__, clixon_plugin_name_get(cp));
-	    goto fail;  /* Dont quit here on user callbacks */
-	}
-    }
-    else if ((fn = clixon_plugin_api_get(cp)->ca_statedata) != NULL){
-	if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
-	    goto done;
-	if (fn(h, nsc, xpath, x) < 0){
+	if (fn(h, nsc, xpath, pagmode, offset, limit, remaining, x) < 0){
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: State callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, clixon_plugin_name_get(cp));

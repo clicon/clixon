@@ -45,10 +45,8 @@ Expected: September, 2021
     * ietf-restconf-list-pagination@2015-01-30.yang
     * clixon-netconf-list-pagination@2021-08-27.yang
     * ietf-yang-metadata@2016-08-05.yang
-  * New state callback signature (ca_statedata2)
-    * The new callback contains parameters for pagination
-    * Goal is to replace ca_statedata callback
-
+  * Updated state callback signature containing parameters for pagination
+    * See API changes below
 * YANG Leafref feature update
   * Closer adherence to RFC 7950. Some of this is changed behavior, some is new feature.
   * Essentially instead of looking at the referring leaf, context is referred(target) node
@@ -77,9 +75,9 @@ Expected: September, 2021
 
 Users may have to change how they access the system
 
-* See changes under new feature "YANG leafref feature update"
-  * Validation of referred node type (not referring)
+* Looser leafref validation checks
   * Leafref required-instance must be set to make strict data-node check
+  * See changes under new feature "YANG leafref feature update"
 * Native Restconf
   * Native restocnf is now default, not fcgi/nginx
     * That is, to configure with fcgi, you need to explicitly configure: `--with-restconf=fcgi`
@@ -93,7 +91,21 @@ Users may have to change how they access the system
 
 Developers may need to change their code
 
-
+* You need to change all statedata plugin callback for the new pagination feature
+  * If you dont use pagination you can ignore the values of the new parameters
+  * See [User manual pagination](https://clixon-docs.readthedocs.io/en/latest/misc.html#pagination)
+  * The updated callback signature is as follows:
+  ```
+  int statedata(clicon_handle     h,
+                cvec             *nsc,
+	        char             *xpath,
+	        pagination_mode_t pagmode,   // NEW
+	        uint32_t          offset,    // NEW
+	        uint32_t          limit,     // NEW
+	        uint32_t         *remaining, // NEW
+	        cxobj            *xstate)
+  ```
+  
 ### Minor features
 
 * JSON errors are now labelled with JSON and not XML
