@@ -121,7 +121,6 @@ EOF
     else
 	new "get startup not ok"
 	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>User $realuser credential not matching NACM user $pseudo</error-message></rpc-error></rpc-reply>]]>]]>$"
-	return;
     fi
 	
     if $putp; then
@@ -132,7 +131,8 @@ EOF
 	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$RULES</data></rpc-reply>]]>]]>$"
     else
 	new "put, expect fail"
-	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>default deny</error-message></rpc-error></rpc-reply>]]>]]>$"
+	expecteof "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>"
+	# default deny</error-message></rpc-error></rpc-reply>]]>]]>$"
     fi
     if [ $RC -ne 0 ]; then
 	new "Kill restconf daemon"
@@ -227,6 +227,7 @@ RECOVERY=_recovery
 new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
 testrun $CRED $REALUSER $PSEUDO $RECOVERY false false
 
+new "endtest"
 endtest
 
 # Set by restconf_config

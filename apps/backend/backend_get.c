@@ -863,6 +863,8 @@ get_common(clicon_handle        h,
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xret)
+	xml_free(xret);
     if (cbreason)
 	cbuf_free(cbreason);
     if (nsc0)
