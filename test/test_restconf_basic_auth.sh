@@ -27,10 +27,17 @@ anonymous=myanonymous
 fyang=$dir/myexample.yang
 
 # No ssl
+
+
+if ! ${HAVE_LIBEVHTP}; then
+    echo "...skipped: LIBEVHTP is false, must run with http/1 (evhtp)"
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
 RCPROTO=http 
 HVER=1.1
 
 # Start with common config, then append fcgi/native specific config
+# NOTE this is replaced in testrun()
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -285,6 +292,7 @@ fi
 
 # unset conditional parameters
 unset RCPROTO
+unset HVER
 unset RESTCONFIG1
 unset MSGANON
 unset MSGWILMA

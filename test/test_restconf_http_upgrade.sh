@@ -15,6 +15,12 @@ if [ "${WITH_RESTCONF}" != "native" ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
+# Cant make it work in sum.sh...
+if ! ${HAVE_LIBEVHTP}; then
+    echo "...skipped: LIBEVHTP is false, must run with http/1 (evhtp)"
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
+
 APPNAME=example
 
 cfg=$dir/conf.xml

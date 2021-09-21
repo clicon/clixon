@@ -34,6 +34,10 @@ startupdb=$dir/startup_db
 RESTCONFDBG=$DBG
 RCPROTO=http # no ssl here
 HVER=1.1
+if ! ${HAVE_LIBEVHTP}; then
+    echo "...skipped: LIBEVHTP is false, must run with http/1 (evhtp)"
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
 
 INVALIDADDR=251.1.1.1 # used by fourth usecase as invalid
 
