@@ -1381,7 +1381,6 @@ Optional Packages:
   --with-restconf=native  Integration with embedded web server (DEFAULT)
   --with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg
                           nginx (default)
-  --with-restconf=native  Integrate restconf with embedded http server
   --without-restconf      Disable restconf altogether
   --with-configfile=FILE  Set default path to config file
   --with-libxml2          Use gnome/libxml2 regex engine
@@ -5392,12 +5391,6 @@ _ACEOF
 
 fi
 # These are dummies just to get the help strings right
-
-# Check whether --with-restconf was given.
-if test "${with_restconf+set}" = set; then :
-  withval=$with_restconf;
-fi
-
 
 # Check whether --with-restconf was given.
 if test "${with_restconf+set}" = set; then :

@@ -763,6 +763,7 @@ yang_metadata_annotation_check(cxobj     *xa,
 
 /*! In case ietf-yang-metadata is loaded by application, handle annotation extension 
  * Consider moving fn
+ * Must be called after clixon_plugin_module_init
  */
 int
 yang_metadata_init(clicon_handle h)
