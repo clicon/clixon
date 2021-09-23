@@ -89,6 +89,7 @@ config_socket_init_ipv4(clicon_handle h,
     int                s;
     struct sockaddr_in addr;
     uint16_t           port;
+    int                one = 1;
 
     port = clicon_sock_port(h);
 
@@ -97,7 +98,7 @@ config_socket_init_ipv4(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "socket");
 	return -1;
     }
-//    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&one, sizeof(one));
+    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&one, sizeof(one));
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);

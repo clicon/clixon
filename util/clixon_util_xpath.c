@@ -281,8 +281,14 @@ main(int    argc,
     if (canonical){
 	char *xpath1 = NULL;
 	cvec *nsc1 = NULL;
-	if (xpath2canonical(xpath, nsc, yspec, &xpath1, &nsc1) < 0)
+	cbuf *cbreason = NULL;
+	
+	if ((ret = xpath2canonical(xpath, nsc, yspec, &xpath1, &nsc1, &cbreason)) < 0)
 	    goto done;
+	if (ret == 0){
+	    fprintf(stderr, "Error with %s: %s", xpath, cbuf_get(cbreason));
+	    goto ok;
+	}
 	xpath = xpath1;
 	if (xpath)
 	    fprintf(stdout, "%s\n", xpath);

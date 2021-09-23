@@ -85,7 +85,7 @@ restconf_reply_header(void       *req0,
     int                   retval = -1;
     restconf_stream_data *sd = (restconf_stream_data *)req0;
     restconf_conn        *rc;
-     size_t                vlen;
+    size_t                vlen;
     char                 *value = NULL;
     va_list               ap;
 
@@ -128,7 +128,7 @@ restconf_reply_header(void       *req0,
 
 /*! Send HTTP reply with potential message body
  * @param[in]     req   http request handle
- * @param[in]     cb    Body as a cbuf if non-NULL. Note is consumed
+ * @param[in]     cb    Body as a cbuf if non-NULL. Note: is consumed, dont free or reset after call
  * @param[in]     head  Only send headers, dont send body. 
  * 
  * Prerequisites: status code set, headers given, body if wanted set

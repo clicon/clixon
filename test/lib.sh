@@ -147,7 +147,7 @@ fi
 #: ${OPENCONFIG=$(pwd)/public} # just skip if not set
 
 # Standard IETF RFC yang files. 
-: ${IETFRFC=../yang/standard}
+: ${IETFRFC=../yang/mandatory}
 
 # Some restconf tests can run IPv6, but its complicated because:
 # - docker by default does not run IPv6
@@ -406,8 +406,8 @@ function wait_restconf(){
     else
 	myproto=${RCPROTO}
     fi
-#    echo "curl $CURLOPTS $* $myproto://localhost/restconf"
-    hdr=$(curl $CURLOPTS $* $myproto://localhost/restconf 2> /dev/null)
+#    echo "curl $CURLOPTS $myproto://localhost/restconf"
+    hdr=$(curl $CURLOPTS $myproto://localhost/restconf 2> /dev/null)
 #    echo "hdr:\"$hdr\""
     let i=0;
     while [[ $hdr != *"200"* ]]; do

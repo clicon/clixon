@@ -75,7 +75,7 @@
 #include <stdint.h>
 #include <syslog.h>
 #include <fcntl.h>
-#include <assert.h>
+#include <math.h>  /* NaN */
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -538,6 +538,7 @@ xpath_parse(const char  *xpath,
 	clicon_log(LOG_NOTICE, "XPATH error: on line %d", xpy.xpy_linenum);
 	if (clicon_errno == 0)
 	    clicon_err(OE_XML, 0, "XPATH parser error with no error code (should not happen)");
+	xpath_scan_exit(&xpy);
 	goto done;
     }
     if (clicon_debug_get() > 1){
@@ -736,7 +737,7 @@ xpath_first_localonly(cxobj      *xcur,
  * If result is not nodeset, return empty nodeset
  * @param[in]  xcur     xml-tree where to search
  * @param[in]  nsc      External XML namespace context, or NULL
- * @param[in]  xpformat  Format string for XPATH syntax
+ * @param[in]  xpformat Format string for XPATH syntax
  * @param[out] vec      vector of xml-trees. Vector must be free():d after use
  * @param[out] veclen   returns length of vector in return value
  * @retval     0        OK
@@ -929,37 +930,64 @@ xpath_vec_bool(cxobj      *xcur,
     return retval;
 }
 
-/*!
+/*! Translate an xpath/nsc pair to a "canonical" form using yang prefixes
+ *
+ * @param[in]  xs      Parsed xpath - xpath_tree
+ * @param[in]  yspec   Yang spec containing all modules, associated with namespaces
+ * @param[in]  nsc0    Input namespace context
+ * @param[out] nsc1    Output namespace context. Free after use with xml_nsctx_free
+ * @param[out] reason  Error reason if result is 0 - failed
+ * @retval     1       OK with nsc1 containing the transformed nsc
+ * @retval     0       XPath failure with reason set to why
+ * @retval    -1       Fatal Error
  */
 static int
 traverse_canonical(xpath_tree *xs,
 		   yang_stmt  *yspec,
 		   cvec       *nsc0,
-		   cvec       *nsc1)
+		   cvec       *nsc1,
+		   cbuf      **reason)
 {
     int        retval = -1;
     char      *prefix0;
     char      *prefix1;
     char      *namespace;
     yang_stmt *ymod;
+    cbuf      *cb = NULL;
+    int        ret;
 
     switch (xs->xs_type){
     case XP_NODE: /* s0 is namespace prefix, s1 is name */
 	prefix0 = xs->xs_s0;
 	if ((namespace = xml_nsctx_get(nsc0, prefix0)) == NULL){
-	    clicon_err(OE_XML, ENOENT, "No namespace found for prefix: %s",
-		       prefix0);
-	    goto done;
+	    if ((cb = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    cprintf(cb, "No namespace found for prefix: %s", prefix0);
+	    if (reason)
+		*reason = cb;
+	    goto failed;
 	}
 	if ((ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL){
-	    clicon_err(OE_XML, ENOENT, "No modules found for namespace: %s",
-		       namespace);	    
-	    goto done;
+	    if ((cb = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    cprintf(cb, "No modules found for namespace: %s", namespace);	    
+	    if (reason)
+		*reason = cb;
+	    goto failed;
 	}
 	if ((prefix1 = yang_find_myprefix(ymod)) == NULL){
-	    clicon_err(OE_XML, ENOENT, "No prefix found in module: %s",
-		       yang_argument_get(ymod));	    
-	    goto done;
+	    if ((cb = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    cprintf(cb, "No prefix found in module: %s", yang_argument_get(ymod));	    
+	    if (reason)
+		*reason = cb;
+	    goto failed;
 	}
 	if (xml_nsctx_get(nsc1, prefix1) == NULL)
 	    if (xml_nsctx_add(nsc1, prefix1, namespace) < 0)
@@ -976,25 +1004,36 @@ traverse_canonical(xpath_tree *xs,
     default:
 	break;
     }	
-    if (xs->xs_c0)
-	if (traverse_canonical(xs->xs_c0, yspec, nsc0, nsc1) < 0)
+    if (xs->xs_c0){
+	if ((ret = traverse_canonical(xs->xs_c0, yspec, nsc0, nsc1, reason)) < 0)
 	    goto done;
-    if (xs->xs_c1)
-	if (traverse_canonical(xs->xs_c1, yspec, nsc0, nsc1) < 0)
+	if (ret == 0)
+	    goto failed;
+    }
+    if (xs->xs_c1){
+	if ((ret = traverse_canonical(xs->xs_c1, yspec, nsc0, nsc1, reason)) < 0)
 	    goto done;
-    retval = 0;
+	if (ret == 0)
+	    goto failed;
+    }	
+    retval = 1;
  done:
     return retval;
+ failed:
+    retval = 0;
+    goto done;
 }
 
 /*! Translate an xpath/nsc pair to a "canonical" form using yang prefixes
+ *
  * @param[in]  xpath0  Input xpath
  * @param[in]  nsc0    Input namespace context
  * @param[in]  yspec   Yang spec containing all modules, associated with namespaces
  * @param[out] xpath1  Output xpath. Free after use with free
  * @param[out] nsc1    Output namespace context. Free after use with xml_nsctx_free
- * @retval     0       OK, xpath1 and nsc1 allocated
- * @retval    -1       Error
+ * @retval     1       OK, xpath1 and nsc1 allocated
+ * @retval     0       XPath failure with reason set to why
+ * @retval    -1       Fatal Error
  * Example: 
  *  Module A has prefix a and namespace urn:example:a and symbols x 
  *  Module B with prefix b and namespace urn:example:b and symbols y
@@ -1007,7 +1046,8 @@ traverse_canonical(xpath_tree *xs,
  * @code
  *   char *xpath1 = NULL;
  *   cvec *nsc1 = NULL;
- *   if (xpath2canonical(xpath0, nsc0, yspec, &xpath1, &nsc1) < 0)
+ *   cbuf *reason = NULL;
+ *   if ((ret = xpath2canonical(xpath0, nsc0, yspec, &xpath1, &nsc1, &reason)) < 0)
  *     err;
  *   ...
  *   if (xpath1) free(xpath1);
@@ -1016,15 +1056,17 @@ traverse_canonical(xpath_tree *xs,
  */
 int
 xpath2canonical(const char *xpath0,
-		cvec      *nsc0,
-		yang_stmt *yspec,
-		char     **xpath1,
-		cvec     **nsc1p)
+		cvec       *nsc0,
+		yang_stmt  *yspec,
+		char      **xpath1,
+		cvec      **nsc1p,
+		cbuf      **cbreason)
 {
     int         retval = -1;
     xpath_tree *xpt = NULL;
     cvec       *nsc1 = NULL;
     cbuf       *xcb = NULL;
+    int         ret;
 
     /* Parse input xpath into an xpath-tree */
     if (xpath_parse(xpath0, &xpt) < 0)
@@ -1035,8 +1077,10 @@ xpath2canonical(const char *xpath0,
     /* Traverse tree to find prefixes, transform them to canonical form and
      * create a canonical network namespace
      */
-     if (traverse_canonical(xpt, yspec, nsc0, nsc1) < 0)
+     if ((ret = traverse_canonical(xpt, yspec, nsc0, nsc1, cbreason)) < 0)
 	goto done;
+     if (ret == 0)
+	 goto failed;
      /* Print tree with new prefixes */
      if ((xcb = cbuf_new()) == NULL){
 	 clicon_err(OE_XML, errno, "cbuf_new");
@@ -1054,7 +1098,7 @@ xpath2canonical(const char *xpath0,
 	*nsc1p = nsc1;
 	nsc1 = NULL;
     }
-    retval = 0;
+    retval = 1;
  done:
     if (xcb)
 	cbuf_free(xcb);
@@ -1062,5 +1106,46 @@ xpath2canonical(const char *xpath0,
 	xml_nsctx_free(nsc1);
     if (xpt)
 	xpath_tree_free(xpt);
+    return retval;
+ failed:
+    retval = 0;
+    goto done;
+}
+
+/*! Return a count(xpath)
+ *
+ * @param[in]  xcur     xml-tree where to search
+ * @param[in]  nsc      External XML namespace context, or NULL
+ * @param[in]  xpath    XPATH syntax
+ * @param[oit] count    Nr of elements of xpath
+ * @note This function is made for making optimizations in certain circumstances, such as a list
+ */
+int
+xpath_count(cxobj      *xcur, 
+	    cvec       *nsc,
+	    const char *xpath,
+	    uint32_t   *count)
+{
+    int     retval = -1;
+    xp_ctx *xc = NULL;
+    cbuf   *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "count(%s)", xpath);
+    if (xpath_vec_ctx(xcur, nsc, cbuf_get(cb), 0, &xc) < 0)
+	goto done;
+    if (xc && xc->xc_type == XT_NUMBER && xc->xc_number != NAN)
+	*count = (uint32_t)xc->xc_number;
+    else
+	*count = 0;
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    if (xc)
+	ctx_free(xc);
     return retval;
 }

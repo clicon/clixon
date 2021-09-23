@@ -22,8 +22,12 @@ startupdb=$dir/startup_db
 # Restconf debug
 RESTCONFDBG=$DBG
 RCPROTO=http # no ssl here
+HVER=1.1
 
-RESTCONFDIR=$(dirname $(which clixon_restconf))
+if ! ${HAVE_LIBEVHTP}; then
+    echo "...skipped: LIBEVHTP is false, must run with http/1 (evhtp)"
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
 
 # log-destination in restconf xml: syslog or file
 : ${LOGDST:=syslog}
@@ -54,13 +58,13 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
-  <CLICON_RESTCONF_INSTALLDIR>$RESTCONFDIR</CLICON_RESTCONF_INSTALLDIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
+  <CLICON_RESTCONF_INSTALLDIR>/usr/local/sbin</CLICON_RESTCONF_INSTALLDIR>
   <!-- start restconf from backend -->
   <CLICON_BACKEND_RESTCONF_PROCESS>true</CLICON_BACKEND_RESTCONF_PROCESS>
 </clixon-config>

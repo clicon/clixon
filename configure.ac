@@ -276,8 +276,6 @@ fi
 AC_ARG_WITH([restconf],
 	AS_HELP_STRING([--with-restconf=fcgi],[FCGI interface for stand-alone web rev-proxy eg nginx (default)]))
 AC_ARG_WITH([restconf],
-            AS_HELP_STRING([--with-restconf=native],[Integrate restconf with embedded http server]))
-AC_ARG_WITH([restconf],
 	    AS_HELP_STRING([--without-restconf],[Disable restconf altogether]))
 
 # Set default config file location

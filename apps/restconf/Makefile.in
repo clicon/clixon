@@ -97,6 +97,7 @@ APPSRC   += restconf_err.c
 APPSRC   += restconf_methods.c
 APPSRC   += restconf_methods_post.c
 APPSRC   += restconf_methods_get.c
+APPSRC   += restconf_methods_patch.c
 APPSRC   += restconf_root.c
 APPSRC   += restconf_main_$(with_restconf).c
 ifeq ($(with_restconf),native)

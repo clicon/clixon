@@ -189,6 +189,7 @@ cat <<EOF > $fstate
 </global-state>
 EOF
 
+# Note Expect gbds(default) + gbos(optional), the latter given by file above
 EXPSTATE=$(cat <<EOF
 <global-state xmlns="urn:example:lib"><gbds>gbds</gbds><gbos>gbos</gbos><aug:gads xmlns:aug="urn:example:augment">gads</aug:gads><aug:gaos xmlns:aug="urn:example:augment">gaos</aug:gaos></global-state>
 EOF

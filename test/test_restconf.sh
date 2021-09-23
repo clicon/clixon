@@ -51,11 +51,9 @@ if [ "${WITH_RESTCONF}" = "native" ]; then
     # Create server certs and CA
     cacerts $cakey $cacert
     servercerts $cakey $cacert $srvkey $srvcert
-    USEBACKEND=false
 else
     # Define default restconfig config: RESTCONFIG
     RESTCONFIG=$(restconf_config none false)
-    USEBACKEND=false
 fi
 
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there
@@ -113,7 +111,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
-  <CLICON_BACKEND_RESTCONF_PROCESS>$USEBACKEND</CLICON_BACKEND_RESTCONF_PROCESS>
+  <CLICON_BACKEND_RESTCONF_PROCESS>false</CLICON_BACKEND_RESTCONF_PROCESS>
   $RESTCONFIG <!-- only fcgi -->
 </clixon-config>
 EOF
@@ -158,21 +156,73 @@ function testrun()
 
 	new "start restconf daemon"
 	# inline of start_restconf, cant make quotes to work
-	echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R <xml>"
+	echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R $RESTCONFIG1"
 	sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R "$RESTCONFIG1" &
 	if [ $? -ne 0 ]; then
 	    err1 "expected 0" "$?"
 	fi
     fi
 
-    new "wait restconf"
-    wait_restconf
+    #------------------------------------------------------- HTTP/1 + HTTP/2 
+    if [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_LIBEVHTP} = true ]; then
 
-    new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
-    echo "curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+	if [ $proto = http ]; then # No plain http/2
+	    HVER=1.1
+	else
+	    HVER=2
+	fi
+	new "wait restconf"
+	wait_restconf
+    
+	new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
+	echo "curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta"
+	expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
-    if [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_LIBEVHTP} = false ]; then
+	echo "fcgi or native+http/1 or native+http/1+http/2"
+	if [ "${WITH_RESTCONF}" = "native" ]; then # XXX does not work with nginx
+	    new "restconf GET http/1.0  - returns 1.0"
+	    expectpart "$(curl $CURLOPTS --http1.0 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.0 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+	fi 
+	new "restconf GET http/1.1"
+	expectpart "$(curl $CURLOPTS --http1.1 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+
+	new "restconf GET http/2 switch protocol"
+	if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
+	    expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 "" "HTTP/1.1 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+	else
+	    expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 "" "HTTP/2 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"	    # Only if https:  HTTP/1.1 101 Switching Protocols
+	fi
+
+	# http2-prior knowledge
+	if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
+	    new "restconf GET http/2 prior-knowledge (http)"
+	    expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta 2>&1)" "16 52 55" # "Error in the HTTP2 framing layer" "Connection reset by peer"
+	else
+    	    new "restconf GET https/2 prior-knowledge"
+	    expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+	fi
+	
+	# Wrong protocol http when https or vice versa
+	if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
+	    new "Wrong proto=https on http port, expect err 35 wrong version number"
+	    expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
+	else # see (1) http to https port in restconf_main_native.c
+	    new "Wrong proto=http on https port, expect bad request"
+	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/" "400"
+	    # expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
+	fi
+	
+    #------------------------------------------------------- HTTP/2 ONLY
+    elif [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_LIBEVHTP} = false ]; then
+	HVER=2
+	
+	new "wait restconf"
+	wait_restconf https
+    
+	new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
+	echo "curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta"
+	expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+
 	echo "native + http/2 only"
 	# Important here is robustness of restconf daemon, not a meaningful reply
 	if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
@@ -212,7 +262,18 @@ function testrun()
 	    new "Wrong proto=http on https port, expect bad request"
 	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" "16 52 55" --not-- 'HTTP'
 	fi
-    else
+
+    else #------------------------------------------------------- HTTP/1 only
+
+	HVER=1.1
+
+	new "wait restconf"
+	wait_restconf
+    
+	new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
+	echo "curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta"
+	expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
+
 	echo "fcgi or native+http/1 or native+http/1+http/2"
 	if [ "${WITH_RESTCONF}" = "native" ]; then # XXX does not work with nginx
 	    new "restconf GET http/1.0  - returns 1.0"
@@ -221,16 +282,9 @@ function testrun()
 	new "restconf GET http/1.1"
 	expectpart "$(curl $CURLOPTS --http1.1 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
-	if ${HAVE_LIBNGHTTP2}; then
-	    # http/1 + http/2
-
-	    new "restconf GET http/2 switch protocol"
-	    expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 "" "HTTP/2 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"	    # Only if http:  HTTP/1.1 101 Switching Protocols
-	else
-	    # http/1 only Try http/2 - go back to http/1.1
-	    new "restconf GET http/2 switch protocol"
-	    expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/1.1 200 OK" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"	    
-	fi
+	# http/1 only Try http/2 - go back to http/1.1
+	new "restconf GET http/2 switch protocol"
+	expectpart "$(curl $CURLOPTS --http2 -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/1.1 200 OK" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"	    
 	
 	# http2-prior knowledge
 	if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
@@ -483,7 +537,9 @@ function testrun()
 }
 
 # Go thru all combinations of IPv4/IPv6, http/https, local/backend config
-protos="http"
+if ${HAVE_LIBEVHTP}; then
+    protos="http"    # No plain http for http/2 only
+fi
 if [ "${WITH_RESTCONF}" = "native" ]; then
     # http only relevant for internal (for fcgi: need nginx config)
     protos="$protos https"
@@ -494,7 +550,7 @@ for proto in $protos; do
 	addrs="$addrs \[::1\]"
     fi
     for addr in $addrs; do
-	new "restconf test: proto:$proto addr:$addr"
+	new "restconf test: proto:$proto addr:$addr HVER:$HVER"
 	testrun $proto $addr
     done
 done

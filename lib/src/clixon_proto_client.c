@@ -435,7 +435,7 @@ clicon_rpc_get_config(clicon_handle h,
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr = NULL;    
-    cxobj             *xd;
+    cxobj             *xd = NULL;
     uint32_t           session_id;
     int                ret;
     yang_stmt         *yspec;
@@ -488,7 +488,7 @@ clicon_rpc_get_config(clicon_handle h,
 	    }
 	}
     }
-    if (xt){
+    if (xt && xd){
 	if (xml_rm(xd) < 0)
 	    goto done;
 	*xt = xd;
@@ -799,7 +799,7 @@ clicon_rpc_get(clicon_handle   h,
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
     cxobj             *xerr = NULL;
-    cxobj             *xd;
+    cxobj             *xd = NULL;
     char              *username;
     uint32_t           session_id;
     int                ret;
@@ -822,7 +822,8 @@ clicon_rpc_get(clicon_handle   h,
     /* Clixon extension, depth=<level> */
     if (depth != -1)
 	cprintf(cb, " depth=\"%d\"", depth);
-    cprintf(cb, ">");
+    cprintf(cb, ">"); /* get */
+    /* If xpath, add a filter */
     if (xpath && strlen(xpath)) {
 	cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
 		NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
@@ -859,7 +860,7 @@ clicon_rpc_get(clicon_handle   h,
 	    }
 	}
     }
-    if (xt){
+    if (xt && xd){
 	if (xml_rm(xd) < 0)
 	    goto done;
 	*xt = xd;
@@ -877,7 +878,146 @@ clicon_rpc_get(clicon_handle   h,
     return retval;
 }
 
+#ifdef LIST_PAGINATION
+/*! Get database configuration and state data collection
+ * @param[in]  h         Clicon handle
+ * @param[in]  xpath     To identify a list/leaf-list
+ * @param[in]  namespace Namespace associated w xpath
+ * @param[in]  nsc       Namespace context for filter
+ * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
+ * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
+ * @param[in]  offset     uint32, 0 means none
+ * @param[in]  limit     uint32, 0 means unbounded
+ * @param[in]  direction Collection/clixon extension
+ * @param[in]  sort      Collection/clixon extension
+ * @param[in]  where     Collection/clixon extension
+ * @param[out] xt        XML tree. Free with xml_free. 
+ *                       Either <config> or <rpc-error>. 
+ * @retval    0          OK
+ * @retval   -1          Error, fatal or xml
+ * @see clicon_rpc_get
+ * @see draft-ietf-netconf-restconf-collection-00
+ * @note the netconf return message is yang populated, as well as the return data
+ */
+int
+clicon_rpc_get_pageable_list(clicon_handle   h, 
+			     char           *datastore,
+			     char           *xpath,
+			     cvec           *nsc, /* namespace context for xpath */
+			     netconf_content content,
+			     int32_t         depth,
+			     uint32_t        offset,
+			     uint32_t        limit,
+			     char           *direction,
+			     char           *sort,
+			     char           *where,
+			     cxobj         **xt)
+{
+    int                retval = -1;
+    struct clicon_msg *msg = NULL;
+    cbuf              *cb = NULL;
+    cxobj             *xret = NULL;
+    cxobj             *xerr = NULL;
+    cxobj             *xd = NULL; /* return data */
+    char              *username;
+    uint32_t           session_id;
+    int                ret;
+    yang_stmt         *yspec;
+    
+    if (datastore == NULL){
+	clicon_err(OE_XML, EINVAL, "datastore not given");
+	goto done;
+    }
+    if (session_id_check(h, &session_id) < 0)
+	goto done;
+    if ((cb = cbuf_new()) == NULL)
+	goto done;
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL)
+	cprintf(cb, " username=\"%s\"", username);
+    cprintf(cb, " xmlns:%s=\"%s\"",
+	    NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
+    cprintf(cb, "><get ");
+    /* Clixon extension, content=all,config, or nonconfig */
+    if ((int)content != -1)
+	cprintf(cb, " content=\"%s\"", netconf_content_int2str(content));
+    /* Clixon extension, depth=<level> */
+    if (depth != -1)
+	cprintf(cb, " depth=\"%d\"", depth);
+    /* declare cp prefix in get, so sub-elements dont need to */
+    cprintf(cb, " xmlns:cp=\"%s\"", CLIXON_PAGINATON_NAMESPACE); 
+    cprintf(cb, ">"); /* get */
+    /* If xpath, add a filter */
+    if (xpath && strlen(xpath)) {
+	cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
+		NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
+		xpath);
+	if (xml_nsctx_cbuf(cb, nsc) < 0)
+	    goto done;
+	cprintf(cb, "/>");
+    }
+    /* Explicit use of list-pagination */
+    cprintf(cb, "<cp:list-pagination>true</cp:list-pagination>");
+    if (offset != 0)
+	cprintf(cb, "<cp:offset>%u</cp:offset>", offset);
+    if (limit != 0)
+	cprintf(cb, "<cp:limit>%u</cp:limit>", limit);
+    if (direction)
+	cprintf(cb, "<cp:direction>%s</cp:direction>", direction);
+    if (sort)
+	cprintf(cb, "<cp:sort>%s</cp:sort>", sort);
+    if (where)
+	cprintf(cb, "<cp:where>%s</cp:where>", where);
+    cprintf(cb, "</get>");
+    cprintf(cb, "</rpc>");
+    if ((msg = clicon_msg_encode(session_id, "%s", cbuf_get(cb))) == NULL)
+	goto done;
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
+	goto done;
+    /* Send xml error back: first check error, then ok */
+    if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
+	xd = xml_parent(xd); /* point to rpc-reply */
+    else if ((xd = xpath_first(xret, NULL, "/rpc-reply/data")) == NULL){
+	if ((xd = xml_new(NETCONF_OUTPUT_DATA, NULL, CX_ELMNT)) == NULL)
+	    goto done;
+    }
+    else{
+	yspec = clicon_dbspec_yang(h);
+	if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if (clixon_netconf_internal_error(xerr,
+					      ". Internal error, backend returned invalid XML.",
+					      NULL) < 0)
+		goto done;
+	    if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+		clicon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
+		goto done;
+	    }
+	}
+    }
+    if (xt && xd){
+	if (xml_rm(xd) < 0)
+	    goto done;
+	*xt = xd;
+    }
+    retval = 0;
+  done:
+    if (cb)
+	cbuf_free(cb);
+    if (xerr)
+	xml_free(xerr);
+    if (xret)
+	xml_free(xret);
+    if (msg)
+	free(msg);
+    return retval;
+}
+#endif /* LIST_PAGINATION */
+
 /*! Send a close a netconf user session. Socket is also closed if still open
+ *
  * @param[in] h        CLICON handle
  * @retval    0        OK
  * @retval   -1        Error and logged to syslog

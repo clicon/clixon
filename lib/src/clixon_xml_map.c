@@ -313,7 +313,7 @@ xml2cli_recurse(FILE              *f,
     }
  ok:
     retval = 0;
-  done:
+ done:
     if (cbpre)
 	cbuf_free(cbpre);
     return retval;
@@ -608,7 +608,10 @@ xml_diff1(cxobj     *x0,
 		b2 = xml_body(x1c);
 		if (b1 == NULL && b2 == NULL)
 		    ;
-		else if (b1 == NULL || b2 == NULL || strcmp(b1, b2) != 0){
+		else if (b1 == NULL || b2 == NULL
+			 || strcmp(b1, b2) != 0 
+			 || strcmp(xml_name(x0c), xml_name(x1c)) != 0 /* Ex: choice { a:bool; b:bool } */
+			 ){
 		    if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
 			goto done;
 		    (*changedlen)--; /* append two vectors */
@@ -685,6 +688,7 @@ xml_diff(yang_stmt *yspec,
 }
 
 /*! Prune everything that does not pass test or have at least a child* does not
+ *
  * @param[in]   xt      XML tree with some node marked
  * @param[in]   flag    Which flag to test for
  * @param[in]   test    1: test that flag is set, 0: test that flag is not set
@@ -698,7 +702,6 @@ xml_diff(yang_stmt *yspec,
  * @note This function seems a little too complex semantics
  * @see xml_tree_prune_flagged for a simpler variant
  */
-#if 1
 int
 xml_tree_prune_flagged_sub(cxobj *xt, 
 			   int    flag,
@@ -770,97 +773,6 @@ xml_tree_prune_flagged_sub(cxobj *xt,
 	*upmark = mark;
     return retval;
 }
-#else
-/* This is optimized in the sense that xml_purge is replaced with xml_child_rm but it leaks memory,
- * in poarticualr attributes and namespace caches
- */
-int
-xml_tree_prune_flagged_sub(cxobj *xt, 
-			   int    flag,
-			   int    test,
-			   int   *upmark)
-{
-    int        retval = -1;
-    int        submark;
-    int        mark;
-    cxobj     *x;
-    cxobj     *xprev;
-    int        iskey;
-    int        anykey=0;
-    yang_stmt *yt;
-    int        i;
-
-    mark = 0;
-    yt = xml_spec(xt); /* xan be null */
-    x = NULL;
-    xprev = x = NULL;
-    i = 0;
-    while ((x = xml_child_each(xt, x, -1)) != NULL) {
-	i++;
-	if (xml_type(x) != CX_ELMNT){
-	    xprev = x;
-	    continue;
-	}
-	if (xml_flag(x, flag) == test?flag:0){
-	    /* Pass test */
-	    mark++;
-	    xprev = x;
-	    continue; /* mark and stop here */
-	}
-	/* If it is key dont remove it yet (see second round) */
-	if (yt){
-	    if ((iskey = yang_key_match(yt, xml_name(x))) < 0)
-		goto done;
-	    if (iskey){
-		anykey++;
-		xprev = x; /* skip if this is key */
-		continue;
-	    }
-	}
-	if (xml_tree_prune_flagged_sub(x, flag, test, &submark) < 0)
-	    goto done;
-	/* if xt is list and submark anywhere, then key subs are also marked
-	 */
-	if (submark)
-	    mark++;
-	else{ /* Safe with xml_child_each if last */
-	    if (xml_child_rm(xt, i-1) < 0)
-		goto done;
-	    i--;
-	    x = xprev;
-	}
-	xprev = x;
-    }
-    /* Second round: if any keys were found, and no marks detected, purge now */
-    if (anykey && !mark){
-	x = NULL;
-	xprev = x = NULL;
-	i = 0;
-	while ((x = xml_child_each(xt, x, -1)) != NULL) {
-	    i++;
-	    if (xml_type(x) != CX_ELMNT){
-		xprev = x;
-		continue;
-	    }
-	    /* If it is key remove it here */
-	    if (yt){
-		if ((iskey = yang_key_match(yt, xml_name(x))) < 0)
-		    goto done;
-		if (xml_child_rm(xt, i-1) < 0)
-		    goto done;
-		i--;
-		x = xprev;
-	    }
-	    xprev = x; 
-	}
-    }
-    retval = 0;
- done:
-    if (upmark)
-	*upmark = mark;
-    return retval;
-}
-#endif
 
 /*! Prune everything that passes test
  * @param[in]   xt      XML tree with some node marked
@@ -1038,7 +950,7 @@ xml_default_create1(yang_stmt *y,
 
 /*! Create leaf from default value
  *
- * @param[in]   yt      Yang spec
+ * @param[in]   y       Yang spec
  * @param[in]   xt      XML tree
  * @param[in]   top     Use default namespace (if you create xmlns statement)
  * @retval      0       OK
@@ -1053,13 +965,18 @@ xml_default_create(yang_stmt *y,
     cxobj     *xc = NULL;
     cxobj     *xb;
     char      *str;
+    cg_var    *cv;
 	
     if (xml_default_create1(y, xt, top, &xc) < 0)
 	goto done;
     xml_flag_set(xc, XML_FLAG_DEFAULT);
     if ((xb = xml_new("body", xc, CX_BODY)) == NULL)
 	goto done;
-    if ((str = cv2str_dup(yang_cv_get(y))) == NULL){
+    if ((cv = yang_cv_get(y)) == NULL){
+	clicon_err(OE_UNIX, ENOENT, "No yang cv of %s", yang_argument_get(y));
+	goto done;
+    }
+    if ((str = cv2str_dup(cv)) == NULL){
 	clicon_err(OE_UNIX, errno, "cv2str_dup");
 	goto done;
     }
@@ -1139,10 +1056,12 @@ xml_default1(yang_stmt *yt,
     int        retval = -1;
     yang_stmt *yc;
     cxobj     *xc;
-    int        top=0; /* Top symbol (set default namespace) */
+    int        top = 0; /* Top symbol (set default namespace) */
     int        create = 0;
     char      *xpath;
-    int        nr;
+    int        nr = 0;
+    int        hit = 0;
+    cg_var    *cv;
 
     if (xt == NULL){ /* No xml */
 	clicon_err(OE_XML, EINVAL, "No XML argument");
@@ -1162,14 +1081,17 @@ xml_default1(yang_stmt *yt,
 		continue;
 	    switch (yang_keyword_get(yc)){
 	    case Y_LEAF:
-		if (!cv_flag(yang_cv_get(yc), V_UNSET)){  /* Default value exists */
-		    /* Check when statement from uses or augment */
-		    if ((xpath = yang_when_xpath_get(yc)) != NULL){
-			if ((nr = xpath_vec_bool(xt, yang_when_nsc_get(yc), "%s", xpath)) < 0)
-			    goto done;
-			if (nr == 0)
-			    break; /* Do not create default if xpath fails */
-		    }
+		if ((cv = yang_cv_get(yc)) == NULL){
+		    clicon_err(OE_YANG,0, "Internal error: yang leaf %s not populated with cv as it should",
+			       yang_argument_get(yc));
+		    goto done;
+		}
+		if (!cv_flag(cv, V_UNSET)){  /* Default value exists */
+		    /* Check when condition */
+		    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
+			goto done;
+		    if (hit && nr == 0)
+			break; /* Do not create default if xpath fails */
 		    if (xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
 			/* No such child exist, create this leaf */
 			if (xml_default_create(yc, xt, top) < 0)
@@ -1180,13 +1102,11 @@ xml_default1(yang_stmt *yt,
 		break;
 	    case Y_CONTAINER:
 		if (yang_find(yc, Y_PRESENCE, NULL) == NULL){
-		    /* Check when statement from uses or augment */
-		    if ((xpath = yang_when_xpath_get(yc)) != NULL){
-			if ((nr = xpath_vec_bool(xt, yang_when_nsc_get(yc), "%s", xpath)) < 0)
-			    goto done;
-			if (nr == 0)
-			    break; /* Do not create default if xpath fails */
-		    }
+		    /* Check when condition */
+		    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
+			goto done;
+		    if (hit && nr == 0)
+			break; /* Do not create default if xpath fails */
 		    /* If this is non-presence, (and it does not exist in xt) call 
 		     * recursively and create nodes if any default value exist first. 
 		     * Then continue and populate?
@@ -2151,6 +2071,10 @@ yang_enum_int_value(cxobj   *node,
     if (yang_type_resolve(ys, ys, ytype, &yrestype, 
 			  NULL, NULL, NULL, NULL, NULL) < 0)
 	goto done;
+    if (yrestype == NULL){
+	clicon_err(OE_YANG, 0, "result-type should not be NULL");
+	goto done;
+    }
     if (yrestype==NULL || strcmp(yang_argument_get(yrestype), "enumeration"))
 	goto done;
     if ((yenum = yang_find(yrestype, Y_ENUM, xml_body(node))) == NULL)
@@ -2254,6 +2178,74 @@ xml_copy_marked(cxobj *x0,
     }
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Check when condition 
+ * 
+ * @param[in]   h    Clixon handle
+ * @param[in]   xn   XML node, can be NULL, in which case it is added as dummy under xp
+ * @param[in]   xp   XML parent
+ * @param[in]   ys   Yang node
+ * First variants of WHEN: Augmented and uses when using special info in node
+ * Second variant of when, actual "when" sub-node RFC 7950 Sec 7.21.5. Can only be one.
+ */
+int
+yang_check_when_xpath(cxobj        *xn,
+		      cxobj        *xp,
+		      yang_stmt    *yn,
+		      int          *hit,
+		      int          *nrp,
+		      char        **xpathp)
+{
+    int        retval = 1;
+    yang_stmt *yc;
+    char      *xpath = NULL;
+    cxobj     *x = NULL;
+    int        nr = 0;
+    cvec      *nsc = NULL;
+    int        xmalloc = 0;   /* ugly help variable to clean temporary object */
+    int        nscmalloc = 0; /* ugly help variable to remove */
+
+    /* First variant */
+    if ((xpath = yang_when_xpath_get(yn)) != NULL){
+	x = xp;
+	nsc = yang_when_nsc_get(yn);
+	*hit = 1;
+    }
+    /* Second variant */
+    else if ((yc = yang_find(yn, Y_WHEN, NULL)) != NULL){
+	xpath = yang_argument_get(yc); /* "when" has xpath argument */
+	/* Create dummy */
+	if (xn == NULL){
+	    if ((x = xml_new(yang_argument_get(yn), xp, CX_ELMNT)) == NULL)
+		goto done;
+	    xml_spec_set(x, yn);
+	    xmalloc++;
+	}
+	else
+	    x = xn;
+	if (xml_nsctx_yang(yn, &nsc) < 0)
+	    goto done;
+	nscmalloc++;
+	*hit = 1;
+    }
+    else
+	*hit = 0;
+    if (x && xpath){
+	if ((nr = xpath_vec_bool(x, nsc, "%s", xpath)) < 0)
+	    goto done;
+    }
+    if (nrp)
+	*nrp = nr;
+    if (xpathp)
+	*xpathp = xpath;
+    retval = 0;
+ done:
+    if (xmalloc)
+	xml_purge(x);
+    if (nsc && nscmalloc)
+	xml_nsctx_free(nsc);
     return retval;
 }
 

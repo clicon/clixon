@@ -407,16 +407,17 @@ cli_xml2cli(cxobj             *xn,
 	(*fn)(stdout, "\n");
     }
 
+    /* For lists, print cbpre before its elements */
+    if (yang_keyword_get(ys) == Y_LIST)
+	(*fn)(stdout, "%s\n", cbuf_get(cbpre));	
     /* Then loop through all other (non-keys) */
     xe = NULL;
     while ((xe = xml_child_each(xn, xe, -1)) != NULL){
 	if (yang_keyword_get(ys) == Y_LIST){
 	    if ((match = yang_key_match(ys, xml_name(xe))) < 0)
 		goto done;
-	    if (match){
-		(*fn)(stdout, "%s\n", cbuf_get(cbpre));	
+	    if (match)
 		continue; /* Not key itself */
-	    }
 	}
 	if (cli_xml2cli(xe, cbuf_get(cbpre), gt, fn) < 0)
 	    goto done;
@@ -520,6 +521,7 @@ cli_auto_up(clicon_handle h,
     char    *api_path = NULL;
     int      i;
     int      j;
+    size_t   len;
     
     if (cvec_len(argv) != 1){
 	clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(<treename>)", __FUNCTION__);
@@ -550,7 +552,8 @@ cli_auto_up(clicon_handle h,
     /* Find diff of 0 and 1 (how many variables differ?) and trunc cvv0 by that amount */
     cvv0 = clicon_data_cvec_get(h, "cli-edit-cvv");
     j=0; /* count diffs */
-    for (i=strlen(api_path_fmt1); i<strlen(api_path_fmt0); i++)
+    len = strlen(api_path_fmt0);
+    for (i=strlen(api_path_fmt1); i<len; i++)
 	if (api_path_fmt0[i] == '%')
 	    j++;
     cvv1 = cvec_new(0);

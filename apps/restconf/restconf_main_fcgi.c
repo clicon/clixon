@@ -378,7 +378,9 @@ main(int    argc,
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)
 	goto done;
-    
+    /* In case ietf-yang-metadata is loaded by application, handle annotation extension */
+    if (yang_metadata_init(h) < 0)
+	goto done;    
     /* Load restconf plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_restconf_dir(h)) != NULL)
 	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)

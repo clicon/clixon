@@ -178,10 +178,12 @@ api_root_restconf_exact(clicon_handle  h,
 	goto done;
     switch (media_out){
     case YANG_DATA_XML:
+    case YANG_PATCH_XML:
 	if (clicon_xml2cbuf(cb, xt, 0, pretty, -1) < 0)
 	    goto done;
 	break;
     case YANG_DATA_JSON:
+    case YANG_PATCH_JSON:	
 	if (xml2json_cbuf(cb, xt, pretty) < 0)
 	    goto done;
 	break;
@@ -256,10 +258,12 @@ api_yang_library_version(clicon_handle h,
     }
     switch (media_out){
     case YANG_DATA_XML:
+    case YANG_PATCH_XML:
 	if (clicon_xml2cbuf(cb, xt, 0, pretty, -1) < 0)
 	    goto done;
 	break;
     case YANG_DATA_JSON:
+    case YANG_PATCH_JSON:
 	if (xml2json_cbuf(cb, xt, pretty) < 0)
 	    goto done;
 	break;
@@ -464,7 +468,6 @@ api_root_restconf(clicon_handle        h,
 	    goto ok;
 	}
     }
-
     clicon_debug(1, "%s ACCEPT: %s %s", __FUNCTION__, media_str, restconf_media_int2str(media_out));
 
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)

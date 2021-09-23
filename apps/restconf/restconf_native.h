@@ -62,7 +62,7 @@ extern "C" {
 /* Forward */
 struct restconf_conn;
 
-/* session stream struct, mainly for http/2 but htp/1 has a single pseudo-stream with id=0
+/* session stream struct, mainly for http/2 but http/1 has a single pseudo-stream with id=0
  */
 typedef struct  {
     qelem_t               sd_qelem;     /* List header */
@@ -95,6 +95,7 @@ typedef struct restconf_conn {
     clicon_handle       rc_h;         /* Clixon handle */
     SSL                *rc_ssl;       /* Structure for SSL connection */
     restconf_stream_data *rc_streams; /* List of http/2 session streams */
+    int                   rc_exit;    /* Set to close socket server-side (NYI) */
     /* Decision to keep lib-specific data here, otherwise new struct necessary
      * drawback is specific includes need to go everywhere */
 #ifdef HAVE_LIBEVHTP
@@ -137,7 +138,9 @@ restconf_conn    *restconf_conn_new(clicon_handle h, int s);
 int               restconf_conn_free(restconf_conn *rc);
 int               ssl_x509_name_oneline(SSL *ssl, char **oneline);
 
-int restconf_close_ssl_socket(restconf_conn *rc, int shutdown); /* XXX in restconf_main_native.c */
+int               restconf_close_ssl_socket(restconf_conn *rc, int shutdown); /* XXX in restconf_main_native.c */
+int               restconf_connection_sanity(clicon_handle h, restconf_conn *rc, restconf_stream_data *sd);
+
     
 #endif /* _RESTCONF_NATIVE_H_ */
 

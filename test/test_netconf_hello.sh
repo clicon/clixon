@@ -58,6 +58,10 @@ wait_backend
 new "Netconf snd hello with xmldecl"
 expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^$' '^$'
 
+# Hello, lowercase encoding
+new "Netconf snd hello with xmldecl (lowercase encoding)"
+expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"utf-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^$' '^$'
+
 new "Netconf snd hello without xmldecl"
 expecteof "$clixon_netconf -qf $cfg" 0 "<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^$' '^$'
 

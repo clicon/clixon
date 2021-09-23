@@ -42,7 +42,7 @@
 void cli_signal_block(clicon_handle h);
 void cli_signal_unblock(clicon_handle h);
 
-/* If you do not find a function here it may be in clicon_cli_api.h which is 
+/* If you do not find a function here it may be in clixon_cli_api.h which is 
    the external API */
 
 #endif /* _CLI_COMMON_H_ */

@@ -35,24 +35,120 @@ Expected: September, 2021
 
 ### New features
 
-* Restconf YANG PATCH according to RFC 8072
+* List pagination for Netconf and Restconf
+  * Experimental, work-in-progress
+    * Enable with LIST_PAGINATION compile-time option
+  * According to:
+    * draft-wwlh-netconf-list-pagination-00.txt
+    * draft-wwlh-netconf-list-pagination-rc-01
+  * Added yangs:
+    * ietf-restconf-list-pagination@2015-01-30.yang
+    * clixon-netconf-list-pagination@2021-08-27.yang
+    * ietf-yang-metadata@2016-08-05.yang
+  * Updated state callback signature containing parameters for pagination
+    * See API changes below
+* YANG Leafref feature update
+  * Closer adherence to RFC 7950. Some of this is changed behavior, some is new feature.
+  * Essentially instead of looking at the referring leaf, context is referred(target) node
+  * Validation uses referred node
+    * Validation changed to use type of referred node, instead of just "string"
+  * Auto-cli
+    * Changed to use type of referred node for typecheck
+    * Completion uses referred node
+  * Required instance / less strict validation
+    * New: Leafrefs must refer to existing data leaf ONLY IF YANG `required-instance` is true
+    * Previous: All leafrefs must refer to existing data leaf node
+* Restconf YANG PATCH according to RFC 8072 (Work in progress)
   * Experimental: enable by setting YANG_PATCH in include/clixon_custom.h
   * Thanks to Alan Yaniger for providing this patch
+* List pagination
+  * This is prototype work for ietf netconf work
+  * See draft-wwlh-netconf-list-pagination-00.txt
+  * New http media: application/yang-collection+xml/json
+
+* New state callback signature (ca_statedata2)
+   * The new callback contains parameters for pagination
+   * Goal is to replace ca_statedata callback
+
 
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
-* Native Restconf is now default, not fcgi/nginx
-  * That is, to configure with fcgi, you need to explicitly configure: `--with-restconf=fcgi`
+* Looser leafref validation checks
+  * Leafref required-instance must be set to make strict data-node check
+  * See changes under new feature "YANG leafref feature update"
+* Native Restconf
+  * Native restocnf is now default, not fcgi/nginx
+    * That is, to configure with fcgi, you need to explicitly configure: `--with-restconf=fcgi`
+  * SSL client certs failures are returned as http 405 errors, not fail during SSL negotiation
 * New clixon-config@2021-07-11.yang revision
+   * Added: `CLICON_RESTCONF_HTTP2_PLAIN`
    * Removed default of `CLICON_RESTCONF_INSTALLDIR`
      * The default behaviour is changed to use the config $(sbindir) to locate `clixon_restconf` when starting restconf internally
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* You need to change all statedata plugin callback for the new pagination feature
+  * If you dont use pagination you can ignore the values of the new parameters
+  * See [User manual pagination](https://clixon-docs.readthedocs.io/en/latest/misc.html#pagination)
+  * The updated callback signature is as follows:
+  ```
+  int statedata(clicon_handle     h,
+                cvec             *nsc,
+	        char             *xpath,
+	        pagination_mode_t pagmode,   // NEW
+	        uint32_t          offset,    // NEW
+	        uint32_t          limit,     // NEW
+	        uint32_t         *remaining, // NEW
+	        cxobj            *xstate)
+  ```
+  
+### Minor features
+
+* JSON errors are now labelled with JSON and not XML
+* Restconf native HTTP/2:
+  * Added option `CLICON_RESTCONF_HTTP2_PLAIN` for non-TLS http
+    * Default disabled, set to true to enable HTTP/2 direct and switch/upgrade HTTP/1->HTTP/2
+* JSON encoding of YANG metadata according to RFC 7952
+  * XML -> JSON translation
+* Restconf internal start: fail early if clixon_restconf binary is not found
+  * If CLICON_BACKEND_RESTCONF_PROCESS is true
+* Added linenumbers to all YANG symbols for better debug and errors
+  * Improved error messages for YANG identityref:s and leafref:s by adding original line numbers
+
+### Minor features
+
+* ietf-yang-metadata RFC 7952 support, placeholder parsing and extension
+  * No actual json/xml semantics
+
 ### Corrected Bugs
 
+* Partly Fixed: [String concatenation in YANG model leads to syntax error](https://github.com/clicon/clixon/issues/265)
+  * In this case, eg "uses", single quotes can now be used, but not `qstring + qstring` in this case
+* Fixed: [Performance issue when parsing large JSON param](https://github.com/clicon/clixon/issues/266)
+* Fixed: [Duplicate lines emitted by cli_show_config (cli output style) when yang list element has composite key](https://github.com/clicon/clixon/issues/258)
+* Fixed: Typing 'q' in CLI more scrolling did not properly quit output
+  * Output continued but was not shown, for a very large file this could cause considerable delay
+* Fixed: Lock was broken in first get get access
+  * if the first netconf operation to a backend was lock;get;unlock, the lock was broken in the first get access.
+* Fixed: [JSON leaf-list output single element leaf-list does not use array](https://github.com/clicon/clixon/issues/261)
+* Fixed: Netconf diff callback did not work with choice and same value replace
+  * Eg if YANG is `choice c { leaf x; leaf y }` and XML changed from `<x>42</x>` to `<y>42</y>` the datastrore changed, but was not detected by diff algorithms and provided to validate callbacks.
+  * Thanks: Alexander Skorichenko, Netgate
+* Fixed: [Autocli does not offer completions for leafref to identityref #254](https://github.com/clicon/clixon/issues/254)
+  * This is a part of YANG Leafref feature update
+* Fixed: [clixon_netconf errors on client XML Declaration with valid encoding spec](https://github.com/clicon/clixon/issues/250)
+* Fixed: Yang patterns: \n and other non-printable characters were broken
+  * Example: Clixon interpereted them two characters: `\\ n` instead of ascii 10
+* Fixed: The auto-cli identityref did not expand identities in grouping/usecases properly.
+* Fixed: [OpenConfig BGP afi-safi and when condition issues #249](https://github.com/clicon/clixon/issues/249)
+  * YANG when was not properly implemented for default values
 * Fixed: SEGV in clixon_netconf_lib functions from internal errors including validation.
   * Check xerr argument both before and after call on netconf lib functions
+* Fixed: Leafs added as augments on NETCONF RPC input/output lacked cv:s causing error in default handling
 * Fixed: RFC 8040 yang-data extension allows non-key lists
   * Added YANG_FLAG_NOKEY as exception to mandatory key lists
 * Fixed: mandatory leaf in a uses statement caused abort
@@ -432,7 +528,7 @@ Developers may need to change their code
   * This only applies to the evhtp restconf daemon, not fcgi/nginx, where the nginx config is used.
   * The RESTCONF clixon-config options are obsolete
   * Thanks to Dave Cornejo for the idea
-  
+
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
@@ -488,6 +584,14 @@ Developers may need to change their code
 * Added message-id attributes in error and hello replies
   * See [namespace prefix nc is not supported in full #154](https://github.com/clicon/clixon/issues/154)
 * Fixed [Clixon backend generates wrong XML on empty string value #144](https://github.com/clicon/clixon/issues/144)
+
+### New features
+
+* Prototype of collection draft
+  * This is prototype work for ietf netconf work
+  * See draft-ietf-netconf-restconf-collection-00.txt
+  * New yang: ietf-restconf-collection@2020-10-22.yang
+  * New http media: application/yang-collection+xml/json
 
 ## 4.8.0
 18 October 2020
@@ -679,7 +783,7 @@ Developers may need to change their code
   * The register function has removed `from` and `rev` parameters: `upgrade_callback_register(h, cb, namespace, arg)`
   * The callback function has a new `op` parameter with possible values: `XML_FLAG_ADD`, `XML_FLAG_CHANGE` or `XML_FLAG_CHANGE`: `clicon_upgrade_cb(h, xn, ns, op, from, to, arg, cbret)`
 
-* Added new cli show functions to work with cligen_output for cligen pageing to work. To achieve this, replace function calls as follows:
+* Added new cli show functions to work with cligen_output for cligen scrolling to work. To achieve this, replace function calls as follows:
   * `xml2txt(...)` --> `xml2txt_cb(..., cligen_output)`
   * `xml2cli(...)` --> `xml2cli_cb(..., cligen_output)`
   * `clicon_xml2file(...)` --> `clicon_xml2file_cb(..., cligen_output)`
@@ -1354,7 +1458,7 @@ Olof Hagsand
     * Clixon used to play the (already made) commit callbacks in reverse order
 * Many validation functions have changed error parameter from cbuf to xml tree. 
   * XML trees are more flexible for utility tools
-  * If you use these(mostly internal), you need to change the error function: `generic_validate, from_validate_common, xml_yang_validate_all_top, xml_yang_validate_all, xml_yang_validate_add, xml_yang_validate_rpc, xml_yang_validate_list_key_only`
+  * If you use these(mostly internal), you need to change the error function: `generic_validate, from_validate_common, xml_yang_validate_all_top, xml_yang_validate_all, xml_yang_validate_add, xml_yang_validate_pprpc, xml_yang_validate_list_key_only`
 * Datastore cache and xmldb_get() changes:
   * You need to remove `msd` (last) parameter of `xmldb_get()`:
     * `xmldb_get(h, "running", "/", &xt, NULL)` --> `xmldb_get(h, "running", "/", &xt)`

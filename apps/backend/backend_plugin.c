@@ -237,33 +237,42 @@ clixon_plugin_daemon_all(clicon_handle h)
  *
  * @param[in]  cp      Plugin handle
  * @param[in]  h       clicon handle
+ * @param[in]  nsc     namespace context for xpath
  * @param[in]  xpath   String with XPATH syntax. or NULL for all
- * @param[out] xret    If retval=1, state tree created and returned: <config>...
+ * @param[in]  pagmode List pagination mode
+ * @param[in]  offset  Offset, for list pagination
+ * @param[in]  limit   Limit, for list pagination
+ * @param[out] remaining  Remaining elements (if limit is non-zero)
+ * @param[out] xp      If retval=1, state tree created and returned: <config>...
  * @retval    -1       Fatal error
  * @retval     0       Statedata callback failed. no XML tree returned
  * @retval     1       OK if callback found (and called) xret is set
  */
 static int
-clixon_plugin_statedata_one(clixon_plugin_t  *cp,
-			    clicon_handle   h,
-			    cvec           *nsc,
-			    char           *xpath,
-			    cxobj         **xp)
+clixon_plugin_statedata_one(clixon_plugin_t *cp,
+			    clicon_handle    h,
+			    cvec            *nsc,
+			    char            *xpath,
+			    pagination_mode_t pagmode,
+			    uint32_t         offset,
+			    uint32_t         limit,  
+			    uint32_t        *remaining, 
+			    cxobj          **xp)
 {
-    int             retval = -1;
-    plgstatedata_t *fn;          /* Plugin statedata fn */
-    cxobj          *x = NULL;
+    int              retval = -1;
+    plgstatedata_t  *fn;          /* Plugin statedata fn */
+    cxobj           *x = NULL;
     
+    clicon_debug(1, "%s %s", __FUNCTION__, clixon_plugin_name_get(cp));
     if ((fn = clixon_plugin_api_get(cp)->ca_statedata) != NULL){
-	if ((x = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+	if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
-	if (fn(h, nsc, xpath, x) < 0){
+	if (fn(h, nsc, xpath, pagmode, offset, limit, remaining, x) < 0){
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: State callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto fail;  /* Dont quit here on user callbacks */
 	}
-
     }
     if (xp && x)
 	*xp = x;
@@ -282,6 +291,10 @@ clixon_plugin_statedata_one(clixon_plugin_t  *cp,
  * @param[in]     yspec   Yang spec
  * @param[in]     nsc     Namespace context
  * @param[in]     xpath   String with XPATH syntax. or NULL for all
+ * @param[in]     pagmode List pagination mode
+ * @param[in]     offset  Offset, for list pagination
+ * @param[in]     limit   Limit, for list pagination
+ * @param[out]    remaining Remaining elements (if limit is non-zero)
  * @param[in,out] xret    State XML tree is merged with existing tree.
  * @retval       -1       Error
  * @retval        0       Statedata callback failed (xret set with netconf-error)
@@ -289,22 +302,27 @@ clixon_plugin_statedata_one(clixon_plugin_t  *cp,
  * @note xret can be replaced in this function
  */
 int
-clixon_plugin_statedata_all(clicon_handle    h,
-			    yang_stmt       *yspec,
-			    cvec            *nsc,
-			    char            *xpath,
-			    cxobj          **xret)
+clixon_plugin_statedata_all(clicon_handle   h,
+			    yang_stmt      *yspec,
+			    cvec           *nsc,
+			    char           *xpath,
+			    pagination_mode_t pagmode,
+			    uint32_t        offset,
+			    uint32_t        limit,  
+			    uint32_t       *remaining, 
+			    cxobj         **xret)
 {
-    int             retval = -1;
-    int             ret;
-    cxobj          *x = NULL;
-    clixon_plugin_t  *cp = NULL;
-    cbuf           *cberr = NULL; 
-    cxobj          *xerr = NULL;
+    int              retval = -1;
+    int              ret;
+    cxobj           *x = NULL;
+    clixon_plugin_t *cp = NULL;
+    cbuf            *cberr = NULL; 
+    cxobj           *xerr = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
-	if ((ret = clixon_plugin_statedata_one(cp, h, nsc, xpath, &x)) < 0)
+	if ((ret = clixon_plugin_statedata_one(cp, h, nsc, xpath, pagmode,
+					       offset, limit, remaining, &x)) < 0)
 	    goto done;
 	if (ret == 0){
 	    if ((cberr = cbuf_new()) == NULL){
@@ -328,10 +346,8 @@ clixon_plugin_statedata_all(clicon_handle    h,
 	    x = NULL;
 	    continue;
 	}
-#if 1
 	if (clicon_debug_get())
-	    clicon_log_xml(LOG_DEBUG, x, "%s STATE:", __FUNCTION__);
-#endif
+	    clicon_log_xml(LOG_DEBUG, x, "%s %s STATE:", __FUNCTION__, clixon_plugin_name_get(cp));
 	/* XXX: ret == 0 invalid yang binding should be handled as internal error */
 	if ((ret = xml_bind_yang(x, YB_MODULE, yspec, &xerr)) < 0)
 	    goto done;
@@ -379,6 +395,64 @@ clixon_plugin_statedata_all(clicon_handle    h,
  fail:
     retval = 0;
     goto done;
+}
+
+/*! Lock database status has changed status
+ * @param[in]  cp      Plugin handle
+ * @param[in]  h    Clixon handle
+ * @param[in]  db   Database name (eg "running")
+ * @param[in]  lock Lock status: 0: unlocked, 1: locked
+ * @param[in]  id   Session id (of locker/unlocker)
+ * @retval    -1    Fatal error
+ * @retval     0    OK
+ */
+static int
+clixon_plugin_lockdb_one(clixon_plugin_t *cp,
+			 clicon_handle    h,
+			 char            *db,
+			 int              lock,
+			 int              id)
+{
+    int          retval = -1;
+    plglockdb_t *fn;          /* Plugin statedata fn */
+    
+    clicon_debug(1, "%s %s", __FUNCTION__, clixon_plugin_name_get(cp));
+    if ((fn = clixon_plugin_api_get(cp)->ca_lockdb) != NULL){
+	if (fn(h, db, lock, id) < 0)
+	    goto done;  
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Lock database status has changed status
+ * @param[in]  h    Clixon handle
+ * @param[in]  db   Database name (eg "running")
+ * @param[in]  lock Lock status: 0: unlocked, 1: locked
+ * @param[in]  id   Session id (of locker/unlocker)
+ * @retval    -1    Fatal error
+ * @retval     0    OK
+*/
+int
+clixon_plugin_lockdb_all(clicon_handle h,
+			 char         *db,
+			 int           lock,
+			 int           id
+			 )
+
+{
+    int              retval = -1;
+    clixon_plugin_t *cp = NULL;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+	if (clixon_plugin_lockdb_one(cp, h, db, lock, id) < 0)
+	    goto done;
+    } 
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Create and initialize a validate/commit transaction 

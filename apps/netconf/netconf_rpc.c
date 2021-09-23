@@ -176,31 +176,30 @@ netconf_get_config(clicon_handle h,
      }
 
      /* ie <filter>...</filter> */
-     if ((xfilter = xpath_first(xn, nsc, "%s%sfilter", prefix ? prefix : "", prefix ? ":" : "")) != NULL)
-	 ftype = xml_find_value(xfilter, "type");
-     if (xfilter == NULL || ftype == NULL || strcmp(ftype, "xpath")==0){
-	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	     goto done;	
-     }
-     else if (strcmp(ftype, "subtree")==0){
-	 /* Get whole config first, then filter. This is suboptimal
-	  */
-	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	     goto done;	
-	 /* Now filter on whole tree */
-	 if (netconf_get_config_subtree(h, xfilter, xret) < 0)
-	     goto done;
-     }
-     else{
-	 clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
-			     "<error-tag>operation-failed</error-tag>"
-			     "<error-type>applicatio</error-type>"
-			     "<error-severity>error</error-severity>"
-			     "<error-message>filter type not supported</error-message>"
-			     "<error-info>type</error-info>"
-			     "</rpc-error></rpc-reply>",
-			     NETCONF_BASE_NAMESPACE);
-     }
+    if ((xfilter = xpath_first(xn, nsc, "%s%sfilter", prefix ? prefix : "", prefix ? ":" : "")) != NULL)
+        ftype = xml_find_value(xfilter, "type");
+    if (xfilter == NULL || ftype == NULL || strcmp(ftype, "subtree") == 0) {
+        /* Get whole config first, then filter. This is suboptimal
+         */
+        if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
+            goto done;
+        /* Now filter on whole tree */
+        if (netconf_get_config_subtree(h, xfilter, xret) < 0)
+            goto done;
+    } else if (strcmp(ftype, "xpath") == 0) {
+        if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0) {
+            goto done;
+        }
+    } else {
+        clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
+                                                       "<error-tag>operation-failed</error-tag>"
+                                                       "<error-type>applicatio</error-type>"
+                                                       "<error-severity>error</error-severity>"
+                                                       "<error-message>filter type not supported</error-message>"
+                                                       "<error-info>type</error-info>"
+                                                       "</rpc-error></rpc-reply>",
+                            NETCONF_BASE_NAMESPACE);
+    }
     retval = 0;
  done:
     if (nsc)
@@ -388,31 +387,29 @@ netconf_get(clicon_handle h,
      }
 
        /* ie <filter>...</filter> */
-     if ((xfilter = xpath_first(xn, nsc, "%s%sfilter", prefix ? prefix : "", prefix ? ":" : "")) != NULL)
-	 ftype = xml_find_value(xfilter, "type");
-     if (xfilter == NULL || ftype == NULL || strcmp(ftype, "xpath")==0){
-	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	     goto done;	
-     }
-     else if (strcmp(ftype, "subtree")==0){
-	 /* Get whole config + state first, then filter. This is suboptimal
-	  */
-	 if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
-	     goto done;	
-	 /* Now filter on whole tree */
-	 if (netconf_get_config_subtree(h, xfilter, xret) < 0)
-	     goto done;
-     }
-     else{
-	 clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
-			     "<error-tag>operation-failed</error-tag>"
-			     "<error-type>applicatio</error-type>"
-			     "<error-severity>error</error-severity>"
-			     "<error-message>filter type not supported</error-message>"
-			     "<error-info>type</error-info>"
-			     "</rpc-error></rpc-reply>",
-			     NETCONF_BASE_NAMESPACE);
-     }
+    if ((xfilter = xpath_first(xn, nsc, "%s%sfilter", prefix ? prefix : "", prefix ? ":" : "")) != NULL)
+        ftype = xml_find_value(xfilter, "type");
+    if (xfilter == NULL || ftype == NULL || strcmp(ftype, "subtree") == 0) {
+        /* Get whole config + state first, then filter. This is suboptimal
+         */
+        if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
+            goto done;
+        /* Now filter on whole tree */
+        if (netconf_get_config_subtree(h, xfilter, xret) < 0)
+            goto done;
+    } else if (strcmp(ftype, "xpath") == 0) {
+        if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
+            goto done;
+    } else {
+        clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
+                                                       "<error-tag>operation-failed</error-tag>"
+                                                       "<error-type>applicatio</error-type>"
+                                                       "<error-severity>error</error-severity>"
+                                                       "<error-message>filter type not supported</error-message>"
+                                                       "<error-info>type</error-info>"
+                                                       "</rpc-error></rpc-reply>",
+                            NETCONF_BASE_NAMESPACE);
+    }
     retval = 0;
  done:
     if(nsc)

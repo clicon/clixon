@@ -250,7 +250,7 @@ uri_percent_encode(char **encp,
     char   *str = NULL;  /* Expanded format string w stdarg */
     char   *enc = NULL;
     int     fmtlen;
-    int     len;
+    size_t  len;
     int     i, j;
     va_list args;
 
@@ -276,8 +276,9 @@ uri_percent_encode(char **encp,
 	goto done;
     }
     memset(enc, 0, len);
+    len = strlen(str);
     j = 0;
-    for (i=0; i<strlen(str); i++){
+    for (i=0; i<len; i++){
 	if (uri_unreserved(str[i]))
 	    enc[j++] = str[i];
 	else{
@@ -311,7 +312,7 @@ uri_percent_decode(char  *enc,
     char *str = NULL;
     int   i, j;
     char  hstr[3];
-    int   len;
+    size_t len;
     char *ptr;
     
     if (enc == NULL){
@@ -325,8 +326,9 @@ uri_percent_decode(char  *enc,
 	goto done;
     }
     memset(str, 0, len);
+    len = strlen(enc);
     j = 0;
-    for (i=0; i<strlen(enc); i++){
+    for (i=0; i<len; i++){
 	if (enc[i] == '%' && strlen(enc)-i > 2 && 
 	    isxdigit(enc[i+1]) && isxdigit(enc[i+2])){
 	    hstr[0] = enc[i+1];
@@ -386,6 +388,7 @@ xml_chardata_encode(char      **escp,
     int     i, j;
     int     cdata; /* when set, skip encoding */
     va_list args;
+    size_t  slen;
     
     /* Two steps: (1) read in the complete format string */
     va_start(args, fmt); /* dryrun */
@@ -404,7 +407,8 @@ xml_chardata_encode(char      **escp,
     /* Step (2) encode and expand str --> enc */
     /* First compute length (do nothing) */
     len = 0; cdata = 0;
-    for (i=0; i<strlen(str); i++){
+    slen = strlen(str);
+    for (i=0; i<slen; i++){
 	if (cdata){
 	    if (strncmp(&str[i], "]]>", strlen("]]>")) == 0)
 		cdata = 0;
@@ -440,7 +444,8 @@ xml_chardata_encode(char      **escp,
 
     /* Same code again, but now actually encode into output buffer */
     j = 0; cdata = 0;
-    for (i=0; i<strlen(str); i++){
+    slen = strlen(str);
+    for (i=0; i<slen; i++){
 	if (cdata){
 	    if (strncmp(&str[i], "]]>", strlen("]]>")) == 0){
 		cdata = 0;
@@ -503,12 +508,15 @@ xml_chardata_cbuf_append(cbuf *cb,
     int  retval = -1;
     int  i;
     int  cdata; /* when set, skip encoding */
+    size_t len;
 
     /* The orignal of this code is in xml_chardata_encode */
     /* Step: encode and expand str --> enc */
     /* Same code again, but now actually encode into output buffer */
     cdata = 0;
-    for (i=0; i<strlen(str); i++){
+
+    len = strlen(str);
+    for (i=0; i<len; i++){
 	if (cdata){
 	    if (strncmp(&str[i], "]]>", strlen("]]>")) == 0){
 		cdata = 0;

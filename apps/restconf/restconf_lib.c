@@ -124,8 +124,8 @@ Mapping netconf error-tag -> status code
  */
 static const map_str2int netconf_restconf_map[] = {
     {"in-use",                 409},
-    {"invalid-value",          404},
-    {"invalid-value",          400},
+    {"invalid-value",          400}, /* or 404 special case if msg is: "Invalid HTTP data method" handled in api_return_err */
+    {"invalid-value",          404}, 
     {"invalid-value",          406},
     {"too-big",                413}, /* request */
     {"too-big",                400}, /* response */
@@ -136,7 +136,7 @@ static const map_str2int netconf_restconf_map[] = {
     {"bad-element",            400},
     {"unknown-element",        400},
     {"unknown-namespace",      400},
-    {"access-denied",          403}, /* or 401 special case if tagstr is: "The requested URL was unauthorized" handled in api_return_err */
+    {"access-denied",          403}, /* or 401 special case if msg is: "The requested URL was unauthorized" handled in api_return_err */
     {"access-denied",          401}, 
     {"lock-denied",            409},
     {"resource-denied",        409},
@@ -203,10 +203,12 @@ static const map_str2int http_reason_phrase_map[] = {
  * @see restconf_media_str2int
  */
 static const map_str2int http_media_map[] = {
-    {"application/yang-data+xml",     YANG_DATA_XML},
-    {"application/yang-data+json",    YANG_DATA_JSON},
-    {"application/yang-patch+xml",    YANG_PATCH_XML},
-    {"application/yang-patch+json",   YANG_PATCH_JSON},
+    {"application/yang-data+xml",        YANG_DATA_XML},
+    {"application/yang-data+json",       YANG_DATA_JSON},
+    {"application/yang-patch+xml",       YANG_PATCH_XML},
+    {"application/yang-patch+json",      YANG_PATCH_JSON},
+    {"application/yang-collection+xml",  YANG_COLLECTION_XML}, /* XXX -data+xml-list?? */
+    {"application/yang-collection+json", YANG_COLLECTION_JSON},
     {NULL,                            -1}
 };
 
@@ -287,6 +289,7 @@ restconf_convert_hdr(clicon_handle h,
     cbuf         *cb = NULL;
     int           i;
     char          c;
+    size_t       len;
     
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -294,7 +297,8 @@ restconf_convert_hdr(clicon_handle h,
     }
     /* convert key name */
     cprintf(cb, "HTTP_");
-    for (i=0; i<strlen(name); i++){
+    len = strlen(name);
+    for (i=0; i<len; i++){
 	c = name[i] & 0xff;
 	if (islower(c))
 	    cprintf(cb, "%c", toupper(c));

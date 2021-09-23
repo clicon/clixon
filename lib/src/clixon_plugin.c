@@ -159,7 +159,6 @@ plugin_module_struct_set(clicon_handle         h,
     return 0;
 }
 
-
 /* Access functions */
 
 /*! Get plugin api 

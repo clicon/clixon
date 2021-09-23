@@ -196,7 +196,7 @@ instance_id_parse(char         *path,
     return retval;
 }
 
-static int
+int
 clixon_path_free(clixon_path *cplist)
 {
     clixon_path *cp;
@@ -460,13 +460,15 @@ api_path_fmt2api_path(const char *api_path_fmt,
     char   *str;
     char   *strenc=NULL;
     cg_var *cv;
+    size_t  len;
     
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
     j = 1; /* j==0 is cli string */
-    for (i=0; i<strlen(api_path_fmt); i++){
+    len = strlen(api_path_fmt);
+    for (i=0; i<len; i++){
 	c = api_path_fmt[i];
 	if (esc){
 	    esc = 0;
@@ -546,13 +548,15 @@ api_path_fmt2xpath(char  *api_path_fmt,
     int     j;
     char   *str;
     cg_var *cv;
+    size_t  len;
 
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
     j = 1; /* j==0 is cli string */
-    for (i=0; i<strlen(api_path_fmt); i++){
+    len = strlen(api_path_fmt);
+    for (i=0; i<len; i++){
 	c = api_path_fmt[i];
 	if (esc){
 	    esc = 0;
@@ -823,9 +827,10 @@ api_path2xpath_cvv(cvec       *api_path,
  * @retval     0         Invalid api_path or associated XML, netconf called
  * @retval    -1         Fatal error, clicon_err called
  * @code
- *   char *xpath = NULL;
- *   cvec *nsc = NULL;
- *   if ((ret = api_path2xpath("/module:a/b", yspec, &xpath, &nsc)) < 0)
+ *   char  *xpath = NULL;
+ *   cvec  *nsc = NULL;
+ *   cxobj *xerr = NULL;
+ *   if ((ret = api_path2xpath("/module:a/b", yspec, &xpath, &nsc, &xerr)) < 0)
  *      err;
  *   if (ret == 1)
  *      ... access xpath as cbuf_get(xpath) 
@@ -892,6 +897,7 @@ api_path2xpath(char       *api_path,
  * @param[in]   x0        Xpath tree so far
  * @param[in]   y0        Yang spec for x0
  * @param[in]   nodeclass Set to schema nodes, data nodes, etc
+ * @param[in]   strict    Break if api-path is not "complete" otherwise ignore and continue
  * @param[out]  xbotp     Resulting xml tree 
  * @param[out]  ybotp    Yang spec matching xpathp
  * @param[out]  xerr      Netconf error message (if retval=0)
@@ -1015,10 +1021,6 @@ api_path2xml_vec(char      **vec,
 	break;
     case Y_LIST:
 	cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
-	if (valvec){ /* loop, valvec may have been used before */
-	    free(valvec);
-	    valvec = NULL;
-	}
 	if (restval==NULL){
 	    if (strict){
 		cprintf(cberr, "malformed key =%s, expected '=restval'", nodeid);
@@ -1107,7 +1109,7 @@ api_path2xml_vec(char      **vec,
     }
     if ((retval = api_path2xml_vec(vec+1, nvec-1, 
 				   x, y, 
-				   nodeclass, strict,
+				   nodeclass, strict, 
 				   xbotp, ybotp, xerr)) < 1)
 	goto done;
  ok:
@@ -1138,6 +1140,7 @@ api_path2xml_vec(char      **vec,
  * @param[in]     yspec      Yang spec
  * @param[in,out] xtop       Incoming XML tree
  * @param[in]     nodeclass  Set to schema nodes, data nodes, etc
+ * @param[in]     strict     Break if api-path is not "complete" otherwise ignore and continue
  * @param[out]    xbotp      Resulting xml tree (end of xpath)
  * @param[out]    ybotp      Yang spec matching xbotp
  * @param[out]    xerr       Netconf error message (if retval=0)
@@ -1159,6 +1162,7 @@ api_path2xml_vec(char      **vec,
  * @endcode
  * @note "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
  * @see api_path2xpath   For api-path to xpath translation (maybe could be combined?)
+ * @note "Collections" should use strict = 0
  */
 int
 api_path2xml(char       *api_path,
@@ -1399,9 +1403,8 @@ api_path_resolve(clixon_path *cplist,
 /*! Resolve instance-id prefix:names to yang statements
  * @param[in]  cplist   Lisp of clixon-path
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
- * @param[in]  xt       XML statement  for prefix context
  * @retval    -1        Error
- * @retval     0        Fail
+ * @retval     0        Fail error in xerr
  * @retval     1        OK
  * @note: The spec says: prefixes depend on the XML context in which the value occurs. 
  *  However, canonical prefixes/namespaces are used based on loaded yang modules.
@@ -1436,7 +1439,7 @@ instance_id_resolve(clixon_path *cplist,
 	    }
 	    if (yang_keyword_get(yt) == Y_SPEC){
 		if ((yt = yang_find_module_by_prefix_yspec(yspec, cp->cp_prefix)) == NULL){
-		    clicon_err(OE_YANG, ENOENT, "Prefix does not correspond to existing module.");
+		    clicon_err(OE_YANG, ENOENT, "Prefix \"%s\" does not correspond to any existing module", cp->cp_prefix);
 		    goto fail;
 		}
 	    }
@@ -1761,7 +1764,7 @@ clixon_xml_find_instance_id(cxobj     *xt,
  * example.
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
  * @param[out] nsctx    Namespace context (should be created on entry)
- * @param[in]  format   Format string for api-path syntax
+ * @param[in]  format   Format string for xpath syntax
  * @retval    -1        Error
  * @retval     0        Non-fatal failure, yang bind failures, etc, 
  * @retval     1        OK with found xml nodes in xvec (if any)
@@ -1834,6 +1837,76 @@ clixon_instance_id_bind(yang_stmt  *yt,
 	    }
 	    cp = NEXTQ(clixon_path *, cp);
 	} while (cp && cp != cplist);
+    }
+    retval = 1;
+ done:
+    if (cplist)
+	clixon_path_free(cplist);
+    if (path)
+	free(path);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Given (instance-id) path and YANG, parse path, resolve YANG and return parse-tree
+ *
+ * Instance-identifier is a subset of XML XPaths and defined in Yang, used in NACM for 
+ * example.
+ * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
+ * @param[out] cplistp  Path parse-tree
+ * @param[out] xerr     Contains error if retval=0
+ * @param[in]  format   Format string for xpath syntax
+ * @retval    -1        Error
+ * @retval     0        Non-fatal failure, yang bind failures, etc, 
+ * @retval     1        OK with found xml nodes in xvec (if any)
+ */
+int
+clixon_instance_id_parse(yang_stmt    *yt,
+			 clixon_path **cplistp,
+			 cxobj       **xerr,
+			 const char   *format,
+			 ...)
+{
+    int          retval = -1;
+    va_list      ap;
+    size_t       len;
+    char        *path = NULL;
+    clixon_path *cplist = NULL;
+    int          ret;
+    
+    va_start(ap, format);
+    len = vsnprintf(NULL, 0, format, ap);
+    va_end(ap);
+    /* allocate a path string exactly fitting the length */
+    if ((path = malloc(len+1)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    /* second round: actually compute api-path string content */
+    va_start(ap, format);
+    if (vsnprintf(path, len+1, format, ap) < 0){
+	clicon_err(OE_UNIX, errno, "vsnprintf");
+	va_end(ap);
+	goto done;
+    }
+    va_end(ap);
+    if (instance_id_parse(path, &cplist) < 0)
+	goto done;
+    if (clicon_debug_get())
+	clixon_path_print(stderr, cplist);
+    /* Resolve module:name to pointer to yang-stmt, fail if not successful */
+    if ((ret = instance_id_resolve(cplist, yt)) < 0)
+	goto done;
+    if (ret == 0){
+	if (xerr && netconf_invalid_value_xml(xerr, "application", clicon_err_reason) < 0)
+	    goto done;
+	goto fail;
+    }
+    if (cplistp){
+	*cplistp = cplist;
+	cplist = NULL;
     }
     retval = 1;
  done:

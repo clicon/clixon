@@ -633,6 +633,9 @@ main(int    argc,
      */
     if (netconf_module_features(h) < 0)
 	goto done;
+    /* In case ietf-yang-metadata is loaded by application, handle annotation extension */
+    if (yang_metadata_init(h) < 0)
+	goto done;
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
     /* Create top-level and store as option */

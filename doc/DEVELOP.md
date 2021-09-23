@@ -1,6 +1,7 @@
 # README for Clixon developers
 
   * [Code documentation](#documentation)
+  * [C style](#c-style)	
   * [How to work in git (how-to-work-in-git)](#how-to-work-in-git)
   * [How the meta-configure stuff works](#meta-configure)
   * [How to debug](#debug)
@@ -27,6 +28,81 @@ How to document the code
  * @see                   See also this function
  */
 ```
+
+## C style
+
+Clixon uses 4-char indentation, a la emacs "cc-mode".
+
+### Function declarations
+
+Functions in C code are written as follows:
+```
+static int
+myfn(int           par1,
+     my_structure *par2)
+{
+    int           retval = -1;
+    my_structure *ms;
+
+    ms = NULL;
+```
+Notes:
+1. the return type of the function and all qualifers on first line (`static int`)
+2. function name and first parameter on second line, thereafter each parameter on own line
+3. Each parameter indented to match the "longest" (`my_structure`)
+4. Pointer declarations written: `type *p`, not: `type* p`.
+5. All local variables in a function declared at top of function, not inline with C-statements.
+6. Local variables can be initialized with scalars or constants, not eg malloc or functions with return values that need to be  checked for errors
+7. There is a single empty line between local variable declarations and the first function statement.
+
+
+Function signatures are declared in include files or in forward declaration using "one-line" syntax, unless very long:
+```
+static int myfn(int par1, my_structure *par2);
+```
+
+### Errors
+
+Errors are typically declared as follows:
+```
+    if (myfn(0) < 0){
+       clicon_err(OE_UNIX, EINVAL, "myfn");
+       goto done;
+    }
+```
+
+All function returns that have return values must be checked
+
+Default return values form a function are:
+- `0`  OK
+- `-1` Fatal Error
+
+In some cases, Clixon uses three-value returns as follows:
+- `1`  OK
+- `0`  Invalid
+- `-1` Fatal error
+
+### Return values
+
+Clixon uses goto:s only to get a single point of exit functions as follows:
+```
+{
+    int retval = -1;
+
+    ...
+    retval = 0;
+  done:
+    return retval
+}
+```
+
+Notes:
+1. Use only a single return statement in a function
+2. Do not use of goto:s in other ways
+
+### Comments
+
+Use `/* */`. Use `//` only for temporal comments.
 
 ## How to work in git
 
@@ -66,8 +142,14 @@ $ wget -O config.sub 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_p
 How to debug
 
 ### Configure in debug mode
+
 ```
-   CFLAGS="-g -Wall" INSTALLFLAGS="" ./configure
+   ./configure --enable-debug
+```
+
+Send debug level in run-time to backend:
+```
+  echo "<rpc username=\"root\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><debug xmlns=\"http://clicon.org/lib\"><level>1</level></debug></rpc>]]>]]>" | clixon_netconf -q -o CLICON_NETCONF_HELLO_OPTIONAL=true
 ```
 
 ### Set backend debug

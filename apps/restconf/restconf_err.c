@@ -187,14 +187,15 @@ restconf_notimplemented(clicon_handle  h,
  * @param[in]  code   If 0 use rfc8040 sec 7 netconf2restconf error-tag mapping
  *                    otherwise use this code
  * xerr should be on the form: <rpc-error>... otherwise an internal error is generated
+ * @note there are special cases see code
  */
 int
-api_return_err(clicon_handle h,
-	       void         *req,
-	       cxobj        *xerr,
-	       int           pretty,
+api_return_err(clicon_handle  h,
+	       void          *req,
+	       cxobj         *xerr,
+	       int            pretty,
 	       restconf_media media,
-	       int           code0)
+	       int            code0)
 {
     int        retval = -1;
     cbuf      *cb = NULL;
@@ -203,6 +204,8 @@ api_return_err(clicon_handle h,
     char      *tagstr;
     int        code;	
     cxobj     *xerr2 = NULL;
+    cxobj     *xmsg;
+    char      *mb;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((cb = cbuf_new()) == NULL){
@@ -253,18 +256,26 @@ api_return_err(clicon_handle h,
 	     *   403 Forbidden    If the user is not authorized to access a target resource or invoke 
 	     *                    an operation
 	     */
-	    cxobj *xmsg;
-	    char  *mb;
 	    if ((xmsg = xpath_first(xerr, NULL, "error-message")) != NULL &&
 		(mb = xml_body(xmsg)) != NULL &&
 		strcmp(mb, "The requested URL was unauthorized") == 0)
-		code = 401;
+		code = 401; /* Unauthorized */
+	}
+	/* Special case #2 */
+	if (code == 400){
+	    if (strcmp(tagstr, "invalid-value") == 0 &&
+		(xmsg = xpath_first(xerr, NULL, "error-message")) != NULL &&
+		(mb = xml_body(xmsg)) != NULL &&
+		strcmp(mb, "Invalid HTTP data method") == 0) 
+		code = 404; /* Not found */
 	}
     }  
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media)) < 0) // XXX
 	goto done;
     switch (media){
     case YANG_DATA_XML:
+    case YANG_PATCH_XML:
+    case YANG_COLLECTION_XML:
 	clicon_debug(1, "%s code:%d", __FUNCTION__, code);
 	if (pretty){
 	    cprintf(cb, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n");
@@ -280,6 +291,8 @@ api_return_err(clicon_handle h,
 	}
 	break;
     case YANG_DATA_JSON:
+    case YANG_PATCH_JSON:
+    case YANG_COLLECTION_JSON:
 	clicon_debug(1, "%s code:%d", __FUNCTION__, code);
 	if (pretty){
 	    cprintf(cb, "{\n\"ietf-restconf:errors\" : ");
@@ -295,7 +308,7 @@ api_return_err(clicon_handle h,
 	    cprintf(cb, "}\r\n");
 	}
 	break;
-    default:
+    default: /* Just ignore the body so that there is a reply */
 	clicon_err(OE_YANG, EINVAL, "Invalid media type %d", media);
 	goto done;
 	break;

@@ -30,8 +30,14 @@ fyang=$dir/example.yang
 fyang2=$dir/augment.yang
 fxml=$dir/initial.xml
 fstate=$dir/state.xml
-RCPROTO=http # Force to http due to netcat
 
+if ! ${HAVE_LIBEVHTP}; then
+    echo "...skipped: LIBEVHTP is false, must run with http/1 (evhtp)"
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
+
+RCPROTO=http # Force to http due to netcat
+HVER=1.1
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
@@ -327,6 +333,8 @@ fi
 
 # Set by restconf_config
 unset RESTCONFIG
+unset HVER
+unset RCPROTO
 
 rm -rf $dir
 

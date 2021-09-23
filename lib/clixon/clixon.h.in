@@ -101,6 +101,7 @@ extern "C" {
 #include <clixon/clixon_xpath_ctx.h>
 #include <clixon/clixon_xpath.h>
 #include <clixon/clixon_xpath_optimize.h>
+#include <clixon/clixon_xpath_yang.h>
 #include <clixon/clixon_json.h>
 #include <clixon/clixon_nacm.h>
 #include <clixon/clixon_xml_changelog.h>

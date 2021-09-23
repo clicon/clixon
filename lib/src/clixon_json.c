@@ -36,6 +36,8 @@
  * JSON syntax is according to:
  * http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
  * RFC 7951 JSON Encoding of Data Modeled with YANG
+ * XXX: The complexity of xml2json1_cbuf() mapping from internal cxobj structure to JSON output
+ * needs a rewrite due to complexity of lists/leaf-lists/null-values, etc.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -180,14 +182,21 @@ arraytype2str(enum array_element_type lt)
 }
 
 /*! Check typeof x in array
+ * 
+ * Check if element is in an array, and if so, if it is in the start "[x,", in the middle: "[..,x,..]"
+ * in the end: ",x]", or a single element: "[x]"
  * Some complexity when x is in different namespaces
+ * @param[in]  xprev     The previous element (if any)
+ * @param[in]  x         The element itself
+ * @param[in]  xnext     The next element (if any)
+ * @retval     arraytype Type of array 
  */
 static enum array_element_type
 array_eval(cxobj *xprev, 
 	   cxobj *x, 
 	   cxobj *xnext)
 {
-    enum array_element_type array = NO_ARRAY;
+    enum array_element_type arraytype = NO_ARRAY;
     int                     eqprev=0;
     int                     eqnext=0;
     yang_stmt              *ys;
@@ -196,10 +205,9 @@ array_eval(cxobj *xprev,
 
     nsx = xml_find_type_value(x, NULL, "xmlns", CX_ATTR);
     if (xml_type(x) != CX_ELMNT){
-	array=BODY_ARRAY;
+	arraytype = BODY_ARRAY;
 	goto done;
     }
-    ys = xml_spec(x);
     if (xnext && 
 	xml_type(xnext)==CX_ELMNT &&
 	strcmp(xml_name(x), xml_name(xnext))==0){
@@ -217,17 +225,25 @@ array_eval(cxobj *xprev,
 	    eqprev++;
     }
     if (eqprev && eqnext)
-	array = MIDDLE_ARRAY;
+	arraytype = MIDDLE_ARRAY;
     else if (eqprev)
-	array = LAST_ARRAY;
+	arraytype = LAST_ARRAY;
     else if (eqnext)
-	array = FIRST_ARRAY;
-    else  if (ys && yang_keyword_get(ys) == Y_LIST)
-	array = SINGLE_ARRAY;
+	arraytype = FIRST_ARRAY;
+    else if ((ys = xml_spec(x)) != NULL) {
+	if (yang_keyword_get(ys) == Y_LIST
+#if 0	    /* XXX instead see special case in xml2json_encode_leafs */
+	    || yang_keyword_get(ys) == Y_LEAF_LIST
+#endif
+	    )
+	    arraytype = SINGLE_ARRAY;
+	else
+	    arraytype = NO_ARRAY;
+    }
     else
-	array = NO_ARRAY;
+	arraytype = NO_ARRAY;
  done:
-    return array;
+    return arraytype;
 }
 
 /*! Escape a json string as well as decode xml cdata
@@ -241,8 +257,10 @@ json_str_escape_cdata(cbuf *cb,
     int   retval = -1;
     int   i;
     int   esc = 0; /* cdata escape */
+    size_t len;
 
-    for (i=0;i<strlen(str);i++)
+    len = strlen(str);
+    for (i=0; i<len; i++)
 	switch (str[i]){
 	case '\n':
 	    cprintf(cb, "\\n");
@@ -356,7 +374,7 @@ json2xml_decode_identityref(cxobj     *x,
 	    /* Here prefix2 is valid and can be NULL
 	       Change body prefix to prefix2:id */
 	    if ((cbv = cbuf_new()) == NULL){
-		clicon_err(OE_XML, errno, "cbuf_new");
+		clicon_err(OE_JSON, errno, "cbuf_new");
 		goto done;
 	    }
 	    if (prefix2)
@@ -414,7 +432,7 @@ json2xml_decode(cxobj     *x,
     enum rfc_6020 keyword;
     cxobj        *xc;
     int           ret;
-    yang_stmt    *ytype;
+    yang_stmt    *ytype = NULL;
 
     if ((y = xml_spec(x)) != NULL){
 	keyword = yang_keyword_get(y);
@@ -514,8 +532,9 @@ xml2json_encode_identityref(cxobj     *xb,
 }
 
 /*! Encode leaf/leaf_list types from XML to JSON
- * @param[in]     x   XML body
- * @param[in]     ys  Yang spec of parent
+ * @param[in]     xb   XML body
+ * @param[in]     xp   XML parent
+ * @param[in]     yp   Yang spec of parent
  * @param[out]    cb0  Encoded string
  */
 static int
@@ -561,8 +580,9 @@ xml2json_encode_leafs(cxobj     *xb,
 		    if (xml2json_encode_identityref(xb, body, yp, cb) < 0)
 			goto done;
 		}
-		else
+		else{
 		    cprintf(cb, "%s", body);
+		}
 	    }
 	    else
 		cprintf(cb, "%s", body);
@@ -577,6 +597,12 @@ xml2json_encode_leafs(cxobj     *xb,
 	case CGV_UINT64:
 	case CGV_DEC64:
 	case CGV_BOOL:
+#if 1 /* Special case */
+	    if (yang_keyword_get(yp) == Y_LEAF_LIST
+		&& xml_child_nr_type(xml_parent(xp), CX_ELMNT) == 1) 
+		cprintf(cb, "[%s]", body);
+	    else
+#endif
 	    cprintf(cb, "%s", body);
 	    quote = 0;
 	    break;
@@ -662,6 +688,39 @@ nullchild(cbuf      *cb,
     return retval;
 }
 
+/*!
+{
+     "example-social:uint8-numbers": [17],
+     "@example-social:uint8-numbers": [
+        {
+           "ietf-list-pagination:remaining": 5
+        }
+      ]
+   }
+ */
+static int
+json_metadata_encoding(cbuf      *cb,
+		       cxobj     *x,
+		       int        level,
+		       int        pretty,
+		       char      *modname,
+    		       char      *name,
+		       char      *modname2,
+    		       char      *name2,
+		       char      *val)
+{
+    int retval = -1;
+
+    cprintf(cb, ",\"@%s:%s\":[", modname, name);
+    cprintf(cb, "%*s", pretty?((level+1)*JSON_INDENT):0, "{");
+    cprintf(cb, "\"%s:%s\":%s", modname2, name2, val);
+    cprintf(cb, "%*s", pretty?((level+1)*JSON_INDENT):0, "}");
+    cprintf(cb, "%*s", pretty?(level*JSON_INDENT):0, "]");
+    retval = 0;
+    // done:
+    return retval;
+}
+
 /*! Do the actual work of translating XML to JSON 
  * @param[out]   cb        Cligen text buffer containing json on exit
  * @param[in]    x         XML tree structure containing XML to translate
@@ -707,7 +766,8 @@ xml2json1_cbuf(cbuf                   *cb,
 	       int                     level,
 	       int                     pretty,
 	       int                     flat,
-	       char                   *modname0)
+	       char                   *modname0,
+	       cbuf                  **metacbp)
 {
     int              retval = -1;
     int              i;
@@ -719,6 +779,7 @@ xml2json1_cbuf(cbuf                   *cb,
     yang_stmt       *ymod = NULL; /* yang module */
     int              commas;
     char            *modname = NULL;
+    cbuf            *metacbc = NULL;
 
     if ((ys = xml_spec(x)) != NULL){
 	if (ys_real_module(ys, &ymod) < 0)
@@ -814,22 +875,90 @@ xml2json1_cbuf(cbuf                   *cb,
     commas = xml_child_nr_notype(x, CX_ATTR) - 1;
     for (i=0; i<xml_child_nr(x); i++){
 	xc = xml_child_i(x, i);
-	if (xml_type(xc) == CX_ATTR)
+	if (xml_type(xc) == CX_ATTR){
+	    int        ismeta = 0;
+	    char      *namespace = NULL;
+	    yang_stmt *ymod;
+	    cbuf      *metacb = NULL;
+	    
+	    if (xml2ns(xc, xml_prefix(xc), &namespace) < 0)
+		goto done;
+	    if (namespace == NULL)
+		continue;
+	    if ((ymod = yang_find_module_by_namespace(ys_spec(ys), namespace)) == NULL)
+		continue;
+	    if (xml2ns(xc, xml_prefix(xc), &namespace) < 0)
+		goto done;
+	    if (yang_metadata_annotation_check(xc, ymod, &ismeta) < 0)
+		goto done;
+	    if (!ismeta)
+		continue;
+	    if ((metacb = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    if (json_metadata_encoding(metacb, x, level, pretty,
+				       modname, xml_name(x),
+				       yang_argument_get(ymod),
+				       xml_name(xc),
+				       xml_value(xc)) < 0)
+		goto done;
+	    if (metacbp)
+		*metacbp = metacb;
+	    else
+		cbuf_free(metacb);
 	    continue; /* XXX Only xmlns attributes mapped */
-
+	}
 	xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
 				xc, 
 				xml_child_i(x, i+1));
 	if (xml2json1_cbuf(cb, 
 			   xc, 
 			   xc_arraytype,
-			   level+1, pretty, 0, modname0) < 0)
+			   level+1, pretty, 0, modname0,
+			   &metacbc) < 0)
 	    goto done;
 	if (commas > 0) {
 	    cprintf(cb, ",%s", pretty?"\n":"");
 	    --commas;
 	}
     }
+
+#ifdef LIST_PAGINATION /* identify md:annotations as RFC 7952 Sec 5.2.1*/
+    if (metacbc){
+	cprintf(cb, "%s", cbuf_get(metacbc));
+    }
+#endif
+
+#if 0 /* identify md:annotations as RFC 7952 Sec 5.2.1*/
+    for (i=0; i<xml_child_nr(x); i++){
+	xc = xml_child_i(x, i);
+	if (xml_type(xc) == CX_ATTR){
+	    int        ismeta = 0;
+	    char      *namespace = NULL;
+	    yang_stmt *ymod;
+	    
+	    if (xml2ns(xc, xml_prefix(xc), &namespace) < 0)
+		goto done;
+	    if (namespace == NULL)
+		continue;
+	    if ((ymod = yang_find_module_by_namespace(ys_spec(ys), namespace)) == NULL)
+		continue;
+	    if (xml2ns(xc, xml_prefix(xc), &namespace) < 0)
+		goto done;
+	    if (yang_metadata_annotation_check(xc, ymod, &ismeta) < 0)
+		goto done;
+	    if (!ismeta)
+		continue;
+	    if (json_metadata_encoding(cb, x, level, pretty,
+				       modname, xml_name(x),
+				       yang_argument_get(ymod),
+				       xml_name(xc),
+				       xml_value(xc)) < 0)
+		goto done;
+	}
+    }
+#endif
     switch (arraytype){
     case BODY_ARRAY:
 	break;
@@ -889,6 +1018,8 @@ xml2json1_cbuf(cbuf                   *cb,
     }
     retval = 0;
  done:
+    if (metacbc)
+	cbuf_free(metacbc);
     return retval;
 }
 
@@ -930,8 +1061,8 @@ xml2json_cbuf(cbuf      *cb,
 		       level+1,
 		       pretty,
 		       0,
-		       NULL /* ancestor modname / namespace */
-		       ) < 0)
+		       NULL, /* ancestor modname / namespace */
+		       NULL) < 0)
 	goto done;
     cprintf(cb, "%s%*s}%s", 
 	    pretty?"\n":"",
@@ -990,7 +1121,7 @@ xml2json_cbuf_vec(cbuf      *cb,
 		       xp, 
 		       NO_ARRAY,
 		       level+1, pretty,
-		       1, NULL) < 0)
+		       1, NULL, NULL) < 0)
 	goto done;
 
     if (0){
@@ -1221,7 +1352,7 @@ _json_parse(char      *str,
     if (clixon_json_parseparse(&jy) != 0) { /* yacc returns 1 on error */
 	clicon_log(LOG_NOTICE, "JSON error: line %d", jy.jy_linenum);
 	if (clicon_errno == 0)
-	    clicon_err(OE_XML, 0, "JSON parser error with no error code (should not happen)");
+	    clicon_err(OE_JSON, 0, "JSON parser error with no error code (should not happen)");
 	goto done;
     }
     /* Traverse new objects */
@@ -1230,9 +1361,9 @@ _json_parse(char      *str,
 	/* RFC 7951 Section 4: A namespace-qualified member name MUST be used for all 
 	 * members of a top-level JSON object 
 	 */
-	if (yspec && xml_prefix(x) == NULL
-	    /* && yb != YB_MODULE_NEXT   XXX Dont know what this is for */
-	    ){
+	if (yspec && xml_prefix(x) == NULL &&
+	    /* XXX: For top-level config file: */
+	    (yb != YB_NONE || strcmp(xml_name(x),DATASTORE_TOP_SYMBOL)!=0)){
 	    if ((cberr = cbuf_new()) == NULL){
 		clicon_err(OE_UNIX, errno, "cbuf_new");
 		goto done;
@@ -1337,7 +1468,7 @@ clixon_json_parse_string(char      *str,
 {
     clicon_debug(1, "%s", __FUNCTION__);
     if (xt==NULL){
-	clicon_err(OE_XML, EINVAL, "xt is NULL");
+	clicon_err(OE_JSON, EINVAL, "xt is NULL");
 	return -1;
     }
     if (*xt == NULL){
@@ -1398,18 +1529,18 @@ clixon_json_parse_file(FILE      *fp,
     int       len = 0;
 
     if (xt==NULL){
-	clicon_err(OE_XML, EINVAL, "xt is NULL");
+	clicon_err(OE_JSON, EINVAL, "xt is NULL");
 	return -1;
     }
     if ((jsonbuf = malloc(jsonbuflen)) == NULL){
-	clicon_err(OE_XML, errno, "malloc");
+	clicon_err(OE_JSON, errno, "malloc");
 	goto done;
     }
     memset(jsonbuf, 0, jsonbuflen);
     ptr = jsonbuf;
     while (1){
 	if ((ret = fread(&ch, 1, 1, fp)) < 0){
-	    clicon_err(OE_XML, errno, "read");
+	    clicon_err(OE_JSON, errno, "read");
 	    break;
 	}
 	if (ret != 0)
@@ -1430,7 +1561,7 @@ clixon_json_parse_file(FILE      *fp,
 	    oldjsonbuflen = jsonbuflen;
 	    jsonbuflen *= 2;
 	    if ((jsonbuf = realloc(jsonbuf, jsonbuflen)) == NULL){
-		clicon_err(OE_XML, errno, "realloc");
+		clicon_err(OE_JSON, errno, "realloc");
 		goto done;
 	    }
 	    memset(jsonbuf+oldjsonbuflen, 0, jsonbuflen-oldjsonbuflen);

@@ -47,6 +47,7 @@ module clixon-config {
 	description
 	    "Added option:
                     CLICON_SYSTEM_CAPABILITIES
+                    CLICON_RESTCONF_HTTP2_PLAIN
              Removed default value:
 	            CLICON_RESTCONF_INSTALLDIR
              Marked as obsolete:
@@ -203,7 +204,10 @@ module clixon-config {
 	    "Datastore format.";
 	type enumeration{
 	    enum xml{
-		description "Save and load xmldb as XML";
+		description
+		"Save and load xmldb as XML
+                 More specifically, such a file looks like: <config>...</config> provided
+                 DATASTORE_TOP_SYMBOL is 'config'";
 	    }
 	    enum json{
 		description "Save and load xmldb as JSON";
@@ -583,6 +587,18 @@ module clixon-config {
                  must be set to 'none'.
                  ";
 	}
+	leaf CLICON_RESTCONF_HTTP2_PLAIN {
+	    type boolean;
+	    default false;
+	    description
+		"Applies to plan (non-tls) http/2 ie when clixon is configured with --enable-nghttp2
+                 If false, disable direct and upgrade for plain(non-tls) HTTP/2.
+                 If true, allows direct and upgrade for plain(non-tls) HTTP/2.
+                 It may especially useful to disable in http/1 + http/2 mode to avoid the complex
+                 upgrade/switch from http/1 to http/2. 
+                 Note this also disables plain http/2 in prior-knowledge, that is, in http/2-only mode.
+                 HTTP/2 in https(TLS) is unaffected";
+	}
 	leaf CLICON_CLI_DIR {
 	    type string;
 	    description
@@ -654,6 +670,7 @@ module clixon-config {
                     <CLICON_CLI_AUTOCLI_EXCLUDE>clixon-restconf</CLICON_CLI_AUTOCLI_EXCLUDE> 
                  means generate autocli for all models except clixon-restconf.yang
                  The value can be a list of space separated module names";
+	    default "clixon-restconf";
 	}
 	leaf CLICON_CLI_VARONLY {
 	    type int32;
@@ -675,7 +692,7 @@ module clixon-config {
 	    type int32;
 	    default 24;
 	    description
-		"Set to number of CLI terminal rows for pageing/scrolling. 0 means unlimited.
+		"Set to number of CLI terminal rows for scrolling. 0 means unlimited.
                  The number is set statically UNLESS:
                  - there is no terminal, such as file input, in which case nr lines is 0
                  - there is a terminal sufficiently powerful to read the number of lines from

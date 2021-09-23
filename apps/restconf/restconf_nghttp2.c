@@ -298,17 +298,17 @@ restconf_nghttp2_path(restconf_stream_data *sd)
     char          *oneline = NULL;
     cvec          *cvv = NULL;
     char          *cn;
-
+    
     clicon_debug(1, "------------");
     rc = sd->sd_conn;
     if ((h = rc->rc_h) == NULL){
 	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
 	goto done;
     }
-    /* Slightly awkward way of taking SSL cert subject and CN and add it to restconf parameters
-     * instead of accessing it directly */
     if (rc->rc_ssl != NULL){
-	/* SSL subject fields, eg CN (Common Name) , can add more here? */
+	/* Slightly awkward way of taking SSL cert subject and CN and add it to restconf parameters
+	 * instead of accessing it directly 
+	 * SSL subject fields, eg CN (Common Name) , can add more here? */
 	if (ssl_x509_name_oneline(rc->rc_ssl, &oneline) < 0)
 	    goto done;
 	if (oneline != NULL) {
@@ -320,13 +320,18 @@ restconf_nghttp2_path(restconf_stream_data *sd)
 	    }
 	}
     }
-    /* call generic function */
-    if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0){
-	if (api_well_known(h, sd) < 0)
+    /* Check sanity of session, eg ssl client cert validation, may set rc_exit */
+    if (restconf_connection_sanity(h, rc, sd) < 0)
+	goto done;
+    if (!rc->rc_exit){
+	/* call generic function */
+	if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0){
+	    if (api_well_known(h, sd) < 0)
+		goto done;
+	}
+	else if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
 	    goto done;
     }
-    else if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
-	goto done;   
     /* Clear (fcgi) paramaters from this request */
     if (restconf_param_del_all(h) < 0)
     	goto done;
@@ -881,7 +886,7 @@ http2_recv(restconf_conn       *rc,
 {
     int           retval = -1;
     nghttp2_error ngerr;
-
+    
     clicon_debug(1, "%s", __FUNCTION__);
     if (rc->rc_ngsession == NULL){
 	/* http2_session_init not called */

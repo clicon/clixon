@@ -701,7 +701,7 @@ compare_xmls(cxobj *xc1,
 	clicon_err(OE_CFG, errno, "cbuf_new");
 	goto done;
     }
-    cprintf(cb, "/usr/bin/diff -dU 1 %s %s |  grep -v @@ | sed 1,2d",
+    cprintf(cb, "diff -dU 1 %s %s |  grep -v @@ | sed 1,2d",
 	    filename1, filename2);
     if (system(cbuf_get(cb)) < 0)
 	goto done;
@@ -1043,6 +1043,8 @@ cli_notification_cb(int   s,
 	    default:
 		break;
 	    }
+	    if (cli_output_status() < 0)
+		break;
 	}
     }
     retval = 0;
@@ -1210,6 +1212,7 @@ cli_copy_config(clicon_handle h,
     char        *toname;
     cxobj       *xerr;
     cvec        *nsc = NULL;
+    size_t       len;
 
     if (cvec_len(argv) != 6){
 	clicon_err(OE_PLUGIN, EINVAL, "Requires 6 elements: <db> <xpath> <namespace> <keyname> <from> <to>");
@@ -1241,8 +1244,9 @@ cli_copy_config(clicon_handle h,
 	goto done;
     }
     /* Sanity check that xpath contains exactly two %s, ie [%s='%s'] */
+    len = strlen(xpath);
     j = 0;
-    for (i=0; i<strlen(xpath); i++){
+    for (i=0; i<len; i++){
 	if (xpath[i] == '%')
 	    j++;
     }

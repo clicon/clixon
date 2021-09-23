@@ -73,6 +73,7 @@
 #include "cli_common.h" /* internal functions */
 
 /*! Given an xpath encoded in a cbuf, append a second xpath into the first
+ *
  * The method reuses prefixes from xpath1 if they exist, otherwise the module prefix
  * from y is used. Unless the element is .., .
  * XXX: Predicates not handled
@@ -87,10 +88,10 @@ and
 traverse_canonical
  */
 static int
-xpath_myappend(cbuf      *xpath0,
-	       char      *xpath1,
-	       yang_stmt *y,
-	       cvec      *nsc)
+xpath_append(cbuf      *cb0,
+	     char      *xpath1,
+	     yang_stmt *y,
+	     cvec      *nsc)
 {
     int    retval = -1;
     char **vec = NULL;
@@ -100,27 +101,50 @@ xpath_myappend(cbuf      *xpath0,
     char  *myprefix;
     char  *id = NULL;
     char  *prefix = NULL;
+    int    initialups = 1; /* If starts with ../../.. */
+    char  *xpath0;
 
-    if (xpath0 == NULL){
-	clicon_err(OE_XML, EINVAL, "xpath0 is NULL");
+    if (cb0 == NULL){
+	clicon_err(OE_XML, EINVAL, "cb0 is NULL");
 	goto done;
     }
+    if (xpath1 == NULL || strlen(xpath1)==0)
+	goto ok;
     if ((myprefix = yang_find_myprefix(y)) == NULL)
 	goto done;
     if ((vec = clicon_strsep(xpath1, "/", &nvec)) == NULL)
 	goto done;
-    if (xpath1 && xpath1[0] == '/')
-	cbuf_reset(xpath0);
+    if (xpath1[0] == '/')
+	cbuf_reset(cb0);
+    xpath0 = cbuf_get(cb0);
     for (i=0; i<nvec; i++){
 	v = vec[i];
 	if (strlen(v) == 0)
 	    continue;
 	if (nodeid_split(v, &prefix, &id) < 0)
 	    goto done;
-	if (strcmp(id, "..") == 0 || strcmp(id, ".") == 0)
-	    cprintf(xpath0, "/%s", id);
-	else
-	    cprintf(xpath0, "/%s:%s", prefix?prefix:myprefix, id);
+	if (strcmp(id, ".") == 0)
+	    initialups = 0;
+	else if (strcmp(id, "..") == 0){
+	    if (initialups){
+		/* Subtract from xpath0 */
+		int j;
+		for (j=cbuf_len(cb0); j >= 0; j--){
+		    if (xpath0[j] != '/')
+			continue;
+		    cbuf_trunc(cb0, j);
+		    break;
+		}
+	    }
+	    else{
+		initialups = 0;
+		cprintf(cb0, "/%s", id);
+	    }
+	}
+	else{
+	    initialups = 0;
+	    cprintf(cb0, "/%s:%s", prefix?prefix:myprefix, id);
+	}
 	if (prefix){
 	    free(prefix);
 	    prefix = NULL;
@@ -130,6 +154,7 @@ xpath_myappend(cbuf      *xpath0,
 	    id = NULL;
 	}
     }
+ ok:
     retval = 0;
  done:
     if (prefix)
@@ -182,13 +207,12 @@ expand_dbvar(void   *h,
     cxobj           *xbot = NULL; /* xpath, NULL if datastore */
     yang_stmt       *y = NULL; /* yang spec of xpath */
     yang_stmt       *yp;
-    yang_stmt       *ytype;
-    yang_stmt       *ypath;
-    char            *reason = NULL;
     cvec            *nsc = NULL;
     int              ret;
     int              cvvi = 0;
     cbuf            *cbxpath = NULL;
+    yang_stmt       *ypath;
+    yang_stmt       *ytype;
     
     if (argv == NULL || cvec_len(argv) != 2){
 	clicon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <xmlkeyfmt>");
@@ -238,7 +262,6 @@ expand_dbvar(void   *h,
     }
     if (y==NULL)
 	goto ok;
-
     /* Transform api-path to xpath for netconf */
     if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
 	goto done;
@@ -287,7 +310,7 @@ expand_dbvar(void   *h,
 	/*  */
 	/* Extend xpath with leafref path: Append yang_argument_get(ypath) to xpath
 	 */
-	if (xpath_myappend(cbxpath, yang_argument_get(ypath), y, nsc) < 0)
+	if (xpath_append(cbxpath, yang_argument_get(ypath), y, nsc) < 0)
 	    goto done;
     }
     /* Get configuration based on cbxpath */
@@ -297,7 +320,7 @@ expand_dbvar(void   *h,
 	clixon_netconf_error(xe, "Get configuration", NULL);
 	goto ok; 
     }
-    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, cbuf_get(cbxpath)) < 0) 
 	goto done;
     /* Loop for inserting into commands cvec. 
      * Detect duplicates: for ordered-by system assume list is ordered, so you need
@@ -344,8 +367,6 @@ expand_dbvar(void   *h,
 	xml_free(xerr);
     if (nsc)
 	xml_nsctx_free(nsc);
-    if (reason)
-	free(reason);
     if (api_path)
 	free(api_path);
     if (xvec)
@@ -870,3 +891,136 @@ cli_show_options(clicon_handle h,
     return retval;
 }
 
+#ifdef LIST_PAGINATION
+
+/*! Show pagination
+ * @param[in]  h    Clicon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  argv Vector. Format: <xpath> <prefix> <namespace> <format> <limit>
+ * Also, if there is a cligen variable called "xpath" it will override argv xpath arg
+ */
+int
+cli_pagination(clicon_handle h,
+	       cvec         *cvv,
+	       cvec         *argv)
+{
+    int              retval = -1;
+    cbuf            *cb = NULL;    
+    char            *xpath = NULL;
+    char            *prefix = NULL;
+    char            *namespace = NULL;
+    cxobj           *xret = NULL;
+    cxobj           *xerr;
+    cvec            *nsc = NULL;
+    char            *str;
+    enum format_enum format;
+    cxobj           *xc;
+    cg_var          *cv;
+    int              i;
+    int              j;
+    uint32_t         limit = 0;
+    cxobj          **xvec = NULL;
+    size_t           xlen;
+    
+    if (cvec_len(argv) != 5){
+	clicon_err(OE_PLUGIN, 0, "Expected usage: <xpath> <prefix> <namespace> <format> <limit>");
+	goto done;
+    }
+    /* prefix:variable overrides argv */
+    if ((cv = cvec_find(cvv, "xpath")) != NULL)
+	xpath = cv_string_get(cv);
+    else
+	xpath = cvec_i_str(argv, 0);
+    prefix = cvec_i_str(argv, 1);
+    namespace = cvec_i_str(argv, 2);
+    str = cv_string_get(cvec_i(argv, 3));     /* Fourthformat: output format */
+    if ((int)(format = format_str2int(str)) < 0){
+	clicon_err(OE_PLUGIN, 0, "Not valid format: %s", str);
+	goto done;
+    }
+    if ((str = cv_string_get(cvec_i(argv, 4))) != NULL){
+	if (parse_uint32(str, &limit, NULL) < 1){
+	    clicon_err(OE_UNIX, errno, "error parsing limit:%s", str);
+	    goto done;
+	}
+    }
+    if (limit == 0){
+	clicon_err(OE_UNIX, EINVAL, "limit is 0");
+	goto done;
+    }
+    if ((nsc = xml_nsctx_init(prefix, namespace)) == NULL)
+	goto done;
+    if (clicon_rpc_lock(h, "running") < 0)
+	goto done;
+    for (i = 0;; i++){
+	if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc,
+					 CONTENT_ALL,
+					 -1,        /* depth */
+					 limit*i,  /* offset */
+					 limit,    /* limit */
+					 NULL, NULL, NULL, /* nyi */
+					 &xret) < 0){
+	    goto done;
+	}
+	if ((xerr = xpath_first(xret, NULL, "/rpc-error")) != NULL){
+	    clixon_netconf_error(xerr, "Get configuration", NULL);
+	    goto done;
+	}
+	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0)
+	    goto done;
+	for (j = 0; j<xlen; j++){
+	    xc = xvec[j];
+	    switch (format){
+	    case FORMAT_XML:
+		clicon_xml2file_cb(stdout, xc, 0, 1, cligen_output);
+		break;
+	    case FORMAT_JSON:
+		xml2json_cb(stdout, xc, 1, cligen_output);
+		break;
+	    case FORMAT_TEXT:
+		xml2txt_cb(stdout, xc, cligen_output); /* tree-formed text */
+		break;
+	    case FORMAT_CLI:
+		xml2cli_cb(stdout, xc, NULL, GT_HIDE, cligen_output); /* cli syntax */
+		break;
+	    default:
+		break;
+	    }
+	    if (cli_output_status() < 0)
+		break;
+	} /* for j */
+	if (cli_output_status() < 0)
+	    break;
+	if (xlen != limit) /* Break if fewer elements than requested */
+	    break;
+	if (xret){
+	    xml_free(xret);
+	    xret = NULL;
+	}
+	if (xvec){
+	    free(xvec);
+	    xvec = NULL;
+	}
+    } /* for i */
+    if (clicon_rpc_unlock(h, "running") < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (xvec)
+	free(xvec);
+    if (xret)
+	xml_free(xret);
+    if (nsc)
+	cvec_free(nsc);
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+#else
+int
+cli_pagination(clicon_handle h, cvec *cvv, cvec *argv)
+{
+    fprintf(stderr, "Not yet implemented\n");
+    return 0;
+}
+#endif /* LIST_PAGINATION */

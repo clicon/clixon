@@ -302,26 +302,29 @@ xmldb_unlock(clicon_handle h,
  * @param[in]    h   Clicon handle
  * @param[in]    id  Session id
  * @retval -1    Error
- * @retval  0   OK
+ * @retval  0    OK
  */
 int
 xmldb_unlock_all(clicon_handle h, 
 		 uint32_t      id)
 {
-    int                 retval = -1;
-    char              **keys = NULL;
-    size_t              klen;
-    int                 i;
-    db_elmnt           *de;
+    int       retval = -1;
+    char    **keys = NULL;
+    size_t    klen;
+    int       i;
+    db_elmnt *de;
 
+    /* get all db:s */
     if (clicon_hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
 	goto done;
-    for (i = 0; i < klen; i++) 
+    /* Identify the ones locked by client id */
+    for (i = 0; i < klen; i++) {
 	if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL &&
 	    de->de_id == id){
 	    de->de_id = 0;
 	    clicon_db_elmnt_set(h, keys[i], de);
 	}
+    }
     retval = 0;
  done:
     if (keys)

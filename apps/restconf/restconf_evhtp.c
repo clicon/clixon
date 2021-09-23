@@ -430,7 +430,8 @@ evhtp_upgrade_http2(clicon_handle         h,
     char  *settings;
     cxobj *xerr = NULL;
 	
-    if ((str = restconf_param_get(h, "HTTP_UPGRADE")) != NULL){
+    if ((str = restconf_param_get(h, "HTTP_UPGRADE")) != NULL &&
+	clicon_option_bool(h, "CLICON_RESTCONF_HTTP2_PLAIN") == 1){
 	/* Only accept "h2c" */
 	if (strcmp(str, "h2c") != 0){
 	    if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid upgrade token") < 0)
@@ -517,7 +518,7 @@ restconf_path_root(evhtp_request_t *req,
     /* Query vector, ie the ?a=x&b=y stuff */
     if (sd->sd_qvec)
 	cvec_free(sd->sd_qvec);
-    if ((sd->sd_qvec = cvec_new(0)) ==NULL){
+    if ((sd->sd_qvec = cvec_new(0)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_new");
 	evhtp_internal_error(req);
 	goto done;
@@ -540,21 +541,26 @@ restconf_path_root(evhtp_request_t *req,
 	evhtp_internal_error(req);
 	goto done;
     }
+    /* Check sanity of session, eg ssl client cert validation, may set rc_exit */
+    if (restconf_connection_sanity(h, rc, sd) < 0)
+	goto done;
+    if (rc->rc_exit == 0){
 #ifdef HAVE_LIBNGHTTP2
-    if (ret == 1){
-	if ((ret = evhtp_upgrade_http2(h, sd)) < 0){
-	    evhtp_internal_error(req);
-	    goto done;
+	if (ret == 1){
+	    if ((ret = evhtp_upgrade_http2(h, sd)) < 0){
+		evhtp_internal_error(req);
+		goto done;
+	    }
+	    if (ret == 0)
+		keep_params = 1;
 	}
-	if (ret == 0)
-	    keep_params = 1;
-    }
 #endif
-    if (ret == 1){
-	/* call generic function */
-	if (api_root_restconf(h, sd, sd->sd_qvec) < 0){
-	    evhtp_internal_error(req);
-	    goto done;
+	if (ret == 1){
+	    /* call generic function */
+	    if (api_root_restconf(h, sd, sd->sd_qvec) < 0){
+		evhtp_internal_error(req);
+		goto done;
+	    }
 	}
     }
     /* Clear input request parameters from this request */
@@ -631,21 +637,26 @@ restconf_path_wellknown(evhtp_request_t *req,
 	evhtp_internal_error(req);
 	goto done;
     }
+    /* Check sanity of session, eg ssl client cert validation, may set rc_exit */
+    if (restconf_connection_sanity(h, rc, sd) < 0)
+	goto done;
+    if (rc->rc_exit == 0){
 #ifdef HAVE_LIBNGHTTP2
-    if (ret == 1){
-	if ((ret = evhtp_upgrade_http2(h, sd)) < 0){
-	    evhtp_internal_error(req);
-	    goto done;
+	if (ret == 1){
+	    if ((ret = evhtp_upgrade_http2(h, sd)) < 0){
+		evhtp_internal_error(req);
+		goto done;
+	    }
+	    if (ret == 0)
+		keep_params = 1;
 	}
-	if (ret == 0)
-	    keep_params = 1;
-    }
 #endif
-    if (ret == 1){
-	/* call generic function */
-	if (api_well_known(h, sd) < 0){
-	    evhtp_internal_error(req);
-	    goto done;
+	if (ret == 1){
+	    /* call generic function */
+	    if (api_well_known(h, sd) < 0){
+		evhtp_internal_error(req);
+		goto done;
+	    }
 	}
     }
     /* Clear input request parameters from this request */

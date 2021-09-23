@@ -50,6 +50,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <syslog.h>
+#include <sys/param.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -72,6 +73,8 @@
 #include "clixon_xpath.h"
 #include "clixon_yang_module.h"
 #include "clixon_yang_parse_lib.h"
+#include "clixon_plugin.h"
+
 #include "clixon_netconf_lib.h"
 
 /*! Create Netconf in-use error XML tree according to RFC 6241 Appendix A
@@ -1485,6 +1488,7 @@ netconf_module_features(clicon_handle h)
     return retval;
 }
 
+
 /*! Load generic yang specs, ie ietf netconf yang module and set enabled features
  * @param[in] h  Clixon handle
  * @retval    0  OK
@@ -1494,8 +1498,8 @@ netconf_module_features(clicon_handle h)
 int
 netconf_module_load(clicon_handle h)
 {
-    int        retval = -1;
-    yang_stmt *yspec;
+    int              retval = -1;
+    yang_stmt       *yspec;
     
     yspec = clicon_dbspec_yang(h);
     /* Load yang spec */
@@ -1525,6 +1529,27 @@ netconf_module_load(clicon_handle h)
     /* Make message-id attribute optional */
     if (clicon_option_bool(h, "CLICON_NETCONF_MESSAGE_ID_OPTIONAL") == 1)
 	xml_bind_netconf_message_id_optional(1);
+#endif
+#ifdef LIST_PAGINATION
+    /* Load clixon netconf list pagination */
+    if (yang_spec_parse_module(h, "clixon-netconf-list-pagination", NULL, yspec)< 0)
+	goto done;
+    /* Load restconf list pagination */
+    if (yang_spec_parse_module(h, "ietf-restconf-list-pagination", NULL, yspec)< 0)
+	goto done;
+
+#if 0
+    /* XXX Clixon test harness problem: when loading ietf-list-pagination, it loads
+     * ietf-system-capabilities which in turn loads  ietf-netconf-acm. As this is a 
+     * system module (always loaded) it means all test-cases 
+     */
+    /* Load list pagination */
+    if (yang_spec_parse_module(h, "ietf-list-pagination", NULL, yspec)< 0)
+	goto done;
+#endif
+#ifdef LIST_PAGINATION
+
+#endif
 #endif
     retval = 0;
  done:
@@ -1711,4 +1736,112 @@ clixon_netconf_internal_error(cxobj *xerr,
     retval = 0;
  done:
     return retval;
+}
+
+/*! Parse string into uint32 and return netconf bad-element msg on error
+ *
+ * @param[in]     name       Name of attribute (for error msg)
+ * @param[in]     valstr     Value string to be parsed
+ * @param[in]     defaultstr If given, default string which is accepted and sets value to 0
+ * @param[in,out] cbret      Output buffer for internal RPC message if invalid
+ * @param[out]    value      Value if valid
+ * @retval       -1          Error
+ * @retval        0          Invalid, cbret set
+ * @retval        1          OK
+ * @code
+ *   char    *name = "a";
+ *   char    *valstr = "322";
+ *   char    *defaultstr = "unbounded";
+ *   cbuf    *cbret = cbuf_new();
+ *   uint32_t value = 0;
+ *
+ *   if ((ret = netconf_parse_uint32(name, valstr, defaultstr, cbret, &value) < 0)
+ *     goto err;
+ *   if (ret == 0)
+ *      // cbret contains netconf errmsg
+ *   else
+ *      // value contains uin32
+ * @endcode
+ */
+int
+netconf_parse_uint32(char     *name,
+		     char     *valstr,
+		     char     *defaultstr,
+		     uint32_t  defaultvalue,
+		     cbuf     *cbret,
+		     uint32_t *value)
+{
+    int    retval = -1;
+    int    ret;
+    char  *reason = NULL;
+
+    if (valstr == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "valstr is NULL");
+	goto done;
+    }
+    if (defaultstr && strcmp(valstr, defaultstr) == 0)
+	*value = defaultvalue;
+    else {
+	if ((ret = parse_uint32(valstr, value, &reason)) < 0){
+	    clicon_err(OE_XML, errno, "parse_uint32");
+	    goto done;
+	}
+	if (ret == 0){
+	    if (netconf_bad_element(cbret, "application",
+				    name, "Unrecognized value") < 0)
+		goto done;
+	    goto fail;
+	}
+    }
+    retval = 1;
+ done:
+    if (reason)
+	free(reason);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Parse string into uint32 and return netconf bad-element msg on error xml variant
+ * @see netconf_parse_uint32_xml
+ */
+int
+netconf_parse_uint32_xml(char     *name,
+			 char     *valstr,
+			 char     *defaultstr,
+			 uint32_t  defaultvalue,
+			 cxobj   **xerr,
+			 uint32_t *value)
+{
+    int    retval = -1;
+    int    ret;
+    char  *reason = NULL;
+
+    if (valstr == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "valstr is NULL");
+	goto done;
+    }
+    if (defaultstr && strcmp(valstr, defaultstr) == 0)
+	*value = defaultvalue;
+    else {
+	if ((ret = parse_uint32(valstr, value, &reason)) < 0){
+	    clicon_err(OE_XML, errno, "parse_uint32");
+	    goto done;
+	}
+	if (ret == 0){
+	    if (netconf_bad_element_xml(xerr, "application",
+					name, "Unrecognized value") < 0)
+		goto done;
+	    goto fail;
+	}
+    }
+    retval = 1;
+ done:
+    if (reason)
+	free(reason);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }

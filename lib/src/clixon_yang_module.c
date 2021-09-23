@@ -679,3 +679,106 @@ yang_find_module_by_name(yang_stmt *yspec,
 	    return ymod;
     return NULL;
 }
+
+/*! Callback for handling RFC 7952 annotations
+ *
+ * A server indicates that it is prepared to handle that annotation according to the
+ * annotation's definition.  That is, an annotation advertised by the
+ * server may be attached to an instance of a data node defined in any
+ * YANG module that is implemented by the server.
+ * Possibly add them to yang parsing, cardinality, etc?
+ * as described in Section 3.
+ * Note this is called by the module using the extension md:annotate, not by 
+ * ietf-yang-metadata.yang
+ * @see yang_metadata_annotation_check
+ */
+static int
+ietf_yang_metadata_extension_cb(clicon_handle h,
+				yang_stmt    *yext,
+				yang_stmt    *ys)
+{
+    int        retval = -1;
+    char      *extname;
+    char      *modname;
+    yang_stmt *ymod;
+    char      *name;
+    
+    ymod = ys_module(yext);
+    modname = yang_argument_get(ymod);
+    extname = yang_argument_get(yext);
+    if (strcmp(modname, "ietf-yang-metadata") != 0 || strcmp(extname, "annotation") != 0)
+	goto ok;
+    name = cv_string_get(yang_cv_get(ys));
+    clicon_debug(1, "%s Enabled extension:%s:%s:%s", __FUNCTION__, modname, extname, name);
+    /* XXX Nothing yet - this should signal that xml attribute annotations are allowed 
+     * Possibly, add an "annotation" YANG node.
+     */
+ ok:
+    retval = 0;
+    // done:
+    return retval;
+}
+
+/*! Check annotation extension
+ *
+ * @param[in]   xa     XML attribute      
+ * @param[in]   ys     YANG something
+ * @param[out]  ismeta Set to 1 if this is an annotation
+ * @retval      0      OK
+ * @retval      -1     Error
+ * @see ietf_yang_metadata_extension_cb
+ * XXX maybe a cache would be appropriate?
+ * XXX: return type?
+ */
+int
+yang_metadata_annotation_check(cxobj     *xa,
+			       yang_stmt *ymod,
+			       int       *ismeta)
+{
+    int        retval = -1;
+    yang_stmt *yma = NULL;
+    char      *name;
+    cg_var    *cv;
+	    
+    /* Loop through annotations */
+    while ((yma = yn_each(ymod, yma)) != NULL){ 
+	/* Assume here md:annotation is written using canonical prefix */
+	if (yang_keyword_get(yma) != Y_UNKNOWN)
+	    continue;
+	if (strcmp(yang_argument_get(yma), "md:annotation") != 0)
+	    continue;
+	if ((cv = yang_cv_get(yma)) != NULL &&
+	    (name = cv_string_get(cv)) != NULL){
+	    if (strcmp(name, xml_name(xa)) == 0){
+		/* XXX: yang_find(yma,Y_TYPE,0) */
+		*ismeta = 1;
+		break;
+	    }
+	}
+    }
+    retval = 0;
+    // done:
+    return retval;
+}
+
+/*! In case ietf-yang-metadata is loaded by application, handle annotation extension 
+ * Consider moving fn
+ * Must be called after clixon_plugin_module_init
+ */
+int
+yang_metadata_init(clicon_handle h)
+{
+    int              retval = -1;
+    clixon_plugin_t *cp = NULL;
+
+
+    /* Create a pseudo-plugin to create extension callback to set the ietf-yang-meta
+     * yang-data extension for api-root top-level restconf function.
+     */
+    if (clixon_pseudo_plugin(h, "pseudo yang metadata", &cp) < 0)
+	goto done;
+    clixon_plugin_api_get(cp)->ca_extension = ietf_yang_metadata_extension_cb;
+    retval = 0;
+ done:
+    return retval;
+}

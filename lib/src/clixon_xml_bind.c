@@ -743,4 +743,3 @@ xml_bind_yang_rpc_reply(cxobj     *xrpc,
     retval = 0;
     goto done;
 }
-

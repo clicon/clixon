@@ -54,6 +54,19 @@
  */
 #define NETCONF_INPUT_CONFIG "config"
 
+/* Collections namespace from draft-ietf-netconf-restconf-collection-00.txt
+ * XXX: Obsolete but may come back in style
+ */
+#define NETCONF_COLLECTION_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination"
+
+/* Collections namespace for Clixon
+ */
+#define CLIXON_PAGINATON_NAMESPACE "http://clicon.org/clixon-netconf-list-pagination"
+
+/* Collections namespace for restconf
+ */
+#define RESTCONF_PAGINATON_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-restconf-list-pagination"
+
 /* Output symbol for netconf get/get-config
  *    ietf-netconf.yang defines it as output:
  *       output {    anyxml data; 

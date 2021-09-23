@@ -361,7 +361,7 @@ if [ $valgrindtest -ne 2 ]; then
 new "8. Load non-compat startup. Syntax fail, enter failsafe, startup invalid"
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp compat-err.xml startup_db)
-runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>read registry</error-message></rpc-error>'
+runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Get startup datastore: xml_parse: line 14: syntax error: at or before: &lt;</error-message></rpc-error>'
 fi # valgrindtest
 
 rm -rf $dir
