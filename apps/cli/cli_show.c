@@ -891,8 +891,6 @@ cli_show_options(clicon_handle h,
     return retval;
 }
 
-#ifdef LIST_PAGINATION
-
 /*! Show pagination
  * @param[in]  h    Clicon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
@@ -1016,11 +1014,3 @@ cli_pagination(clicon_handle h,
 	cbuf_free(cb);
     return retval;
 }
-#else
-int
-cli_pagination(clicon_handle h, cvec *cvv, cvec *argv)
-{
-    fprintf(stderr, "Not yet implemented\n");
-    return 0;
-}
-#endif /* LIST_PAGINATION */

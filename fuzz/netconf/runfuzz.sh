@@ -48,5 +48,5 @@ test ! -d output || rm -rf output
 #test -d input || mkdir input
 test -d output || mkdir output
 
-# Run script 
-afl-fuzz -i input -o output -m $MEGS -- clixon_netconf -f $cfg
+# Run script
+afl-fuzz -i input -o output -m $MEGS -x xml.dict -- clixon_netconf -qf $cfg -o CLICON_NETCONF_HELLO_OPTIONAL=true

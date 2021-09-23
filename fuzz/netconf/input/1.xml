@@ -1,1 +1,1 @@
-<rpc><edit-config><target><candidate/></target><config><hello xmlns="urn:example:hello"><world/></hello></config></edit-config></rpc>]]>]]>
+<rpc message-id="42" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config><target><candidate/></target><config><table xmlns="urn:example:clixon"><parameter><name>a</name></parameter></table></config></edit-config></rpc>]]>]]>

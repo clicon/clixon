@@ -389,8 +389,6 @@ get_nacm_and_reply(clicon_handle h,
     return retval;
 }
 
-#ifdef LIST_PAGINATION
-
 /*! Help function for parsing restconf query parameter and setting netconf attribute
  *
  * If not "unbounded", parse and set a numeric value
@@ -652,7 +650,6 @@ get_list_pagination(clicon_handle        h,
 	xml_free(xret);
     return retval;
 }
-#endif /* LIST_PAGINATION */
 
 /*! Common get/get-config code for retrieving  configuration and state information.
  *
@@ -692,11 +689,9 @@ get_common(clicon_handle        h,
     cbuf           *cbmsg = NULL; /* For error msg */
     char           *xpath0;
     cbuf           *cbreason = NULL;
-#ifdef LIST_PAGINATION
     int             list_pagination = 0;
     char           *valstr;
     cxobj          *x;
-#endif /* LIST_PAGINATION */
     
     clicon_debug(1, "%s", __FUNCTION__);
     username = clicon_username_get(h);
@@ -736,7 +731,6 @@ get_common(clicon_handle        h,
 	    goto ok;
 	}
     }
-#ifdef LIST_PAGINATION
     /* Check if list pagination */
     if ((x = xml_find_type(xe, NULL, "list-pagination", CX_ELMNT)) != NULL &&
 	(valstr = xml_body(x)) != NULL &&
@@ -752,7 +746,6 @@ get_common(clicon_handle        h,
 	    goto done;
 	goto ok;
     }
-#endif /* LIST_PAGINATION */
     /* Read configuration */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */

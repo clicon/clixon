@@ -33,7 +33,6 @@
   ***** END LICENSE BLOCK *****
 
  * CALLING ORDER OF YANG PARSE FILES
- * =================================
  *                                      yang_spec_parse_module
  *                                     |                       | 
  *                                     v                       v   v

@@ -923,12 +923,9 @@ xml2json1_cbuf(cbuf                   *cb,
 	    --commas;
 	}
     }
-
-#ifdef LIST_PAGINATION /* identify md:annotations as RFC 7952 Sec 5.2.1*/
     if (metacbc){
 	cprintf(cb, "%s", cbuf_get(metacbc));
     }
-#endif
 
 #if 0 /* identify md:annotations as RFC 7952 Sec 5.2.1*/
     for (i=0; i<xml_child_nr(x); i++){

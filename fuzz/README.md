@@ -2,8 +2,6 @@
 
 Clixon can be fuzzed with [american fuzzy lop](https://github.com/google/AFL/releases) but not without pain.
 
-So far the backend and cli can be fuzzed.
-
 Some issues are as follows:
 - Static linking. Fuzzing requires static linking. You can statically link clixon using: `LINKAGE=static ./configure` but that does not work with Clixon plugins (at least yet). Therefore fuzzing has been made with no plugins using the hello example only.
 - Multiple processes. Only the backend can run stand-alone, cli/netconf/restconf requires a backend. When you fuzz eg clixon_cli, the backend must be running and it will be slow due to IPC. Possibly one could link them together and run as a monolith by making a threaded image.

@@ -118,13 +118,6 @@
  */
 #undef YANG_PATCH
 
-/*! Enable list pagination drafts
- * draft-wwlh-netconf-list-pagination-00, 
- * draft-wwlh-netconf-list-pagination-nc-01
- * draft-wwlh-netconf-list-pagination-rc-01
- */
-#define LIST_PAGINATION
-
 /*! Enable "remaining" attribute (sub-feature of list pagination)
  * As defined in draft-wwlh-netconf-list-pagination-00 using Yang metadata value [RFC7952] 
  */

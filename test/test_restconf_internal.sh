@@ -14,6 +14,11 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
+if ! ${HAVE_LIBEVHTP}; then
+    echo "...skipped: LIBEVHTP is false, must run with http/1 (evhtp)"
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
+
 APPNAME=example
 
 cfg=$dir/conf.xml
@@ -23,11 +28,6 @@ startupdb=$dir/startup_db
 RESTCONFDBG=$DBG
 RCPROTO=http # no ssl here
 HVER=1.1
-
-if ! ${HAVE_LIBEVHTP}; then
-    echo "...skipped: LIBEVHTP is false, must run with http/1 (evhtp)"
-    if [ "$s" = $0 ]; then exit 0; else return 0; fi
-fi
 
 # log-destination in restconf xml: syslog or file
 : ${LOGDST:=syslog}
@@ -495,6 +495,7 @@ new "endtest"
 endtest
 
 # Set by restconf_config
+unset HVER
 unset LOGDST
 unset LOGDST_CMD
 unset pid
