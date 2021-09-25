@@ -412,7 +412,6 @@ main(int    argc,
     struct passwd *pw;
     char          *str;
     int            tabmode;
-    char          *dir;
     cvec          *nsctx_global = NULL; /* Global namespace context */
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
@@ -623,11 +622,17 @@ main(int    argc,
     if (clixon_plugin_module_init(h) < 0)
 	goto done;
 
-    /* Load cli plugins before yangs are loaded (eg extension callbacks) */
-    if ((dir = clicon_cli_dir(h)) != NULL &&
-	clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
-	goto done;
-
+#ifndef CLIXON_STATIC_PLUGINS
+    {
+	char *dir;
+	/* Load cli .so plugins before yangs are loaded (eg extension callbacks) and 
+	 * before CLI is loaded by cli_syntax_load below */
+	if ((dir = clicon_cli_dir(h)) != NULL &&
+	    clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
+	    goto done;
+    }
+#endif
+    
     /* Add (hardcoded) netconf features in case ietf-netconf loaded here
      * Otherwise it is loaded in netconf_module_load below
      */
@@ -685,7 +690,8 @@ main(int    argc,
     if (autocli_start(h, printgen) < 0)
 	goto done;
 
-    /* Initialize cli syntax */
+    /* Initialize cli syntax. 
+     * Plugins have already been loaded by clixon_plugins_load above */
     if (cli_syntax_load(h) < 0)
 	goto done;
 

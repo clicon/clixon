@@ -615,7 +615,7 @@ module clixon-config {
 	leaf CLICON_CLISPEC_FILE {
 	    type string;
 	    description
-		"Specific frontend cligen spec file as aletrnative or complement
+		"Specific frontend cligen spec file as alternative or complement
                  to CLICON_CLISPEC_DIR. Also available as -c in clixon_cli.";
 	}
 	leaf CLICON_CLI_MODE {

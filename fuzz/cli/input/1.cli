@@ -1,1 +1,3 @@
 set table parameter a value 42
+table
+example 42

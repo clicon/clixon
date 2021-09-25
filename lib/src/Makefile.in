@@ -107,10 +107,10 @@ MYLIBSO      = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR)
 MYLIBLINK    = lib$(MYNAME)$(SH_SUFFIX)
 MYLIBSTATIC  = lib$(MYNAME).a
 
-ifeq ($(LINKAGE),static)
-	MYLIB        = $(MYLIBSTATIC)
-else
+ifeq ($(LINKAGE),dynamic)
 	MYLIB        = $(MYLIBDYNAMIC)
+else
+	MYLIB        = $(MYLIBSTATIC)
 endif
 
 all:	 $(MYLIB) $(MYLIBLINK)

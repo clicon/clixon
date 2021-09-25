@@ -607,6 +607,7 @@ get_list_pagination(clicon_handle        h,
 					       offset, limit, &remaining, &xret)) < 0)
 	    goto done;
     }
+    /* Help function to filter out anything that is outside of xpath */
     if (filter_xpath_again(h, yspec, xret, xpath, nsc, &x1) < 0)
 	goto done;
 #ifdef LIST_PAGINATION_REMAINING

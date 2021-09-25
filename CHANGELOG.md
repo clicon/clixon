@@ -45,6 +45,7 @@ Expected: September, 2021
     * ietf-restconf-list-pagination@2015-01-30.yang
     * clixon-netconf-list-pagination@2021-08-27.yang
     * ietf-yang-metadata@2016-08-05.yang
+  * New http media: application/yang-collection+xml/json
   * Updated state callback signature containing parameters for pagination
     * See API changes below
 * YANG Leafref feature update
@@ -63,8 +64,7 @@ Expected: September, 2021
   * Thanks to Alan Yaniger for providing this patch
 * List pagination
   * This is prototype work for ietf netconf work
-  * See draft-wwlh-netconf-list-pagination-00.txt
-  * New http media: application/yang-collection+xml/json
+
 
 * New state callback signature (ca_statedata2)
    * The new callback contains parameters for pagination

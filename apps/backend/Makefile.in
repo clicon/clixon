@@ -47,7 +47,7 @@ endif
 SH_SUFFIX	= @SH_SUFFIX@
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@
-ifeq ($(LINKAGE),static)
+ifneq ($(LINKAGE),dynamic)
 LDFLAGS 	+=  -rdynamic -L.
 endif
 prefix 		= @prefix@
@@ -65,10 +65,10 @@ CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 # Use this clixon lib for linking
-ifeq ($(LINKAGE),static)
-	CLIXON_LIB	= libclixon.a
-else
+ifeq ($(LINKAGE),dynamic)
 	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+else
+	CLIXON_LIB	= libclixon.a
 endif
 
 # For dependency. A little strange that we rely on it being built in the src dir
@@ -104,10 +104,10 @@ MYLIBSO         = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR)
 MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
 MYLIBSTATIC     = lib$(MYNAME).a
 
-ifeq ($(LINKAGE),static)
-	MYLIB        = $(MYLIBSTATIC)
-else
+ifeq ($(LINKAGE),dynamic)
 	MYLIB        = $(MYLIBDYNAMIC)
+else
+	MYLIB        = $(MYLIBSTATIC)
 endif
 
 all:	  $(MYLIB) $(APPL) test

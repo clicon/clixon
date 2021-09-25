@@ -46,7 +46,7 @@ endif
 SH_SUFFIX	= @SH_SUFFIX@
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@	
-ifeq ($(LINKAGE),static)
+ifneq ($(LINKAGE),dynamic)
 LDFLAGS 	+=  -rdynamic -L.
 endif
 
@@ -66,10 +66,10 @@ CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
 # Use this clixon lib for linking
-ifeq ($(LINKAGE),static)
-	CLIXON_LIB	= libclixon.a
-else
+ifeq ($(LINKAGE),dynamic)
 	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+else
+	CLIXON_LIB	= libclixon.a
 endif
 
 # For dependency. A little strange that we rely on it being built in the src dir
@@ -86,6 +86,10 @@ APPL		= clixon_cli
 # Not accessible from plugin
 APPSRC		= cli_main.c
 APPOBJ		= $(APPSRC:.c=.o)
+
+# HACK
+#EXTRAS         += $(top_srcdir)/example/main/example_cli.o
+#EXTRAS         += $(top_srcdir)/example/main/test_cli.o
 
 # Accessible from plugin
 LIBSRC	        = cli_common.c
@@ -165,7 +169,7 @@ $(APPL): $(APPOBJ) $(MYLIB) $(LIBDEPS)
 ifeq ($(LINKAGE),dynamic)
 	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 else
-	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(LIBOBJ) $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $(APPOBJ) $(EXTRAS) -L. $(LIBOBJ) $(LIBS) -o $@
 endif
 
 $(MYLIBDYNAMIC) : $(LIBOBJ) $(LIBDEPS)
