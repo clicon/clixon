@@ -346,7 +346,7 @@ api_data_collection(clicon_handle  h,
     cxobj     *xtop = NULL;
     cxobj     *xbot = NULL;
     cxobj     *xp;
-    cxobj     *xpr;
+    cxobj     *xpr = NULL;
     yang_stmt *y = NULL;
     cbuf      *cbrpc = NULL;
     int32_t    depth = -1;  /* Nr of levels to print, -1 is all, 0 is none */

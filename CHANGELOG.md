@@ -108,6 +108,8 @@ Developers may need to change their code
   
 ### Minor features
 
+* Added -H option to clixon_netconf: Do not require hello before request
+* CLIXON_STATIC_PLUGIN to support statically linked plugins
 * JSON errors are now labelled with JSON and not XML
 * Restconf native HTTP/2:
   * Added option `CLICON_RESTCONF_HTTP2_PLAIN` for non-TLS http

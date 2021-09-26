@@ -53,7 +53,7 @@ sysconfdir	= @sysconfdir@
 includedir	= @includedir@
 HOST_VENDOR     = @host_vendor@
 
-SH_SUFFIX	= @SH_SUFFIX@
+SH_SUFFIX	= .so
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
@@ -147,6 +147,7 @@ uninstall:
 .c.o:
 	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$(APPL)\" $(CFLAGS) -c $<
 
+# Note LIBDEPS is in lib/src and will always be remade du to a date dependency
 $(APPL) : $(APPOBJ) $(MYLIB) $(LIBDEPS)
 	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 

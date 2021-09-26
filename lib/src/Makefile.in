@@ -57,7 +57,7 @@ CFLAGS		= @CFLAGS@
 ifeq ($(LINKAGE),dynamic)
 CFLAGS  	+= -fPIC
 endif
-SH_SUFFIX	= @SH_SUFFIX@
+SH_SUFFIX	= .so
 INSTALL		= @INSTALL@
 INSTALL_LIB	= @INSTALL@
 INSTALLFLAGS  	= @INSTALLFLAGS@
@@ -239,6 +239,7 @@ build.c:
 	date +"const char CLIXON_BUILDSTR[$(DATELEN)]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; >> build.c;
 	echo "const char CLIXON_VERSION[64]=\"$(CLIXON_VERSION)\""\; >> build.c;
 
+# Note: will always be remade since GENOBS is date dependent
 $(MYLIBDYNAMIC) : $(GENOBJS) $(OBJS) 
 ifeq ($(HOST_VENDOR),apple)
 	$(CC) $(LDFLAGS) -shared -o $@ $(GENOBJS) $(OBJS) $(LIBS) -undefined dynamic_lookup -o $@

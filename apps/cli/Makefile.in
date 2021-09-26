@@ -43,11 +43,11 @@ CPPFLAGS  	= @CPPFLAGS@
 ifeq ($(LINKAGE),dynamic)
 CPPFLAGS  	+= -fPIC
 endif
-SH_SUFFIX	= @SH_SUFFIX@
+SH_SUFFIX	= .so
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@	
 ifneq ($(LINKAGE),dynamic)
-LDFLAGS 	+=  -rdynamic -L.
+LDFLAGS 	+=  -rdynamic -L. # -rdynamic for using -ldl
 endif
 
 prefix 		= @prefix@
@@ -165,11 +165,13 @@ test.c	:
 test: 	test.c $(LIBOBJ) $(MYLIB)
 	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
+# Note LIBDEPS is in lib/src and will always be remade du to a date dependency
 $(APPL): $(APPOBJ) $(MYLIB) $(LIBDEPS)	
 ifeq ($(LINKAGE),dynamic)
 	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 else
-	$(CC) $(LDFLAGS) $(APPOBJ) $(EXTRAS) -L. $(LIBOBJ) $(LIBS) -o $@
+	# Force static libcligen.a linking
+	$(CC) $(LDFLAGS) $(APPOBJ) $(EXTRAS) -L. $(LIBOBJ) $(DESTDIR)$(libdir)/libcligen.a $(LIBS) -o $@
 endif
 
 $(MYLIBDYNAMIC) : $(LIBOBJ) $(LIBDEPS)

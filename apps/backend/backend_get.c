@@ -533,7 +533,9 @@ get_list_pagination(clicon_handle        h,
     /* sort */
     if (ret && (x = xml_find_type(xe, NULL, "sort", CX_ELMNT)) != NULL)
 	sort = xml_body(x);
-    if (sort) ; /* XXX */
+    if (sort) {
+	/* XXX: nothing yet */
+    }
     /* where */
     if (ret && (x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL)
 	where = xml_body(x);

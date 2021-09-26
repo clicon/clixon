@@ -35,10 +35,6 @@
 VPATH       	= @srcdir@
 srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
-CC		= @CC@
-CFLAGS  	= @CFLAGS@ 
-LDFLAGS 	= @LDFLAGS@
-LIBS    	= @LIBS@
 with_restconf	= @with_restconf@
 
 SHELL	= /bin/sh

@@ -32,16 +32,18 @@ Below is an example of how to do this for the main example. You can replace the 
 ```
   CC=/usr/bin/afl-clang-fast  CFLAGS="-O2 -Wall -DCLIXON_STATIC_PLUGINS" LINKAGE=static ./configure
   make clean
-  cd example/main # Compile and install application plugins (here main example)
+
+  make
+  sudo make install
+  
+  cd example # Compile and install application plugins (here main example)
   make clean
   make
   sudo make install 
-  cd ../..
-  cd lib # Compile and install clixon lib
-  make
-  sudo make install
   cd ..
+
   cd apps/cli # Compile and install clixon_cli with pre-compiled plugins
+  rm clixon_cli
   EXTRAS="../../example/main/example_cli.o ../../example/main/test_cli.o" make clixon_cli
   sudo make install
 ```

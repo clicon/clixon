@@ -104,7 +104,7 @@ ifeq ($(LINKAGE),dynamic)
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
 else
 	# can include -L in LDFLAGS?
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -L ../../apps/backend/ -lclixon_backend 
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
 endif
 
 # Secondary NACM backend plugin
@@ -114,19 +114,13 @@ $(BE2_PLUGIN): $(BE2_OBJ)
 ifeq ($(LINKAGE),dynamic)
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
 else
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -L ../../apps/backend/ -lclixon_backend 
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
 endif
 
 # CLI frontend plugin
 CLI_SRC  = $(APPNAME)_cli.c
 CLI_OBJ  = $(CLI_SRC:%.c=%.o)
 $(CLI_PLUGIN): $(CLI_OBJ)
-ifeq ($(LINKAGE),dynamic)
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_cli
-else
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -L ../../apps/cli/ -lclixon_cli
-endif
-
 ifeq ($(LINKAGE),dynamic)
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_cli
 else
@@ -140,7 +134,7 @@ $(NETCONF_PLUGIN): $(NETCONF_OBJ)
 ifeq ($(LINKAGE),dynamic)
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_netconf
 else
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -L ../../apps/netconf/ -lclixon_netconf
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_netconf
 endif
 
 # See configure.ac
@@ -151,7 +145,7 @@ $(RESTCONF_PLUGIN): $(RESTCONF_OBJ)
 ifeq ($(LINKAGE),dynamic)
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_restconf
 else
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -L ../../apps/restconf/ -lclixon_restconf 
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_restconf
 endif
 
 SRC     = $(BE_SRC) $(BE2_SRC) $(CLI_SRC) $(NETCONF_SRC)
