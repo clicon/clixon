@@ -7,7 +7,6 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 # Eg on FreeBSD use gmake
 : ${make:=make}
 
-
 # Check for soft links for .so files in case of dynamic linkage, but .a files f static linking
 if [ ${LINKAGE} = static ]; then
     LIBOPT=-f
@@ -18,10 +17,13 @@ fi
 new "Set up installdir $dir"
 
 new "Make DESTDIR install ($dir)"
+
+# Not for static linkage, libcligen.a may be taken from elsewhere
 (cd ..; $make DESTDIR=$dir install)
 if [ $? -ne 0 ]; then
     err
 fi
+
 new "Check installed files /usr"
 if [ ! -d $dir/usr ]; then
     err $dir/usr

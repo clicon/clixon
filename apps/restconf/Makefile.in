@@ -178,6 +178,7 @@ install-include:	clixon_restconf.h
 uninstall:
 	rm -f $(DESTDIR)$(sbindir)/$(APPL)
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
+	rm -f $(DESTDIR)$(libdir)/$(MYLIB)
 
 .SUFFIXES:
 .SUFFIXES: .c .o

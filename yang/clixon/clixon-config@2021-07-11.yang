@@ -46,13 +46,12 @@ module clixon-config {
     revision 2021-07-11 {
 	description
 	    "Added option:
-                    CLICON_SYSTEM_CAPABILITIES
                     CLICON_RESTCONF_HTTP2_PLAIN
              Removed default value:
 	            CLICON_RESTCONF_INSTALLDIR
              Marked as obsolete:
                      CLICON_YANG_LIST_CHECK
-             (Will be) Released in Clixon 5.3";
+             Released in Clixon 5.3";
     }
     revision 2021-05-20 {
 	description
@@ -453,18 +452,6 @@ module clixon-config {
                  The primary issue is that the unknown->anydata handling is not restricted to
                  only loading from startup but may occur in other circumstances as well. This
                  means that sanity checks of erroneous XML/JSON may not be properly signalled.";
-	}
-	leaf CLICON_SYSTEM_CAPABILITIES {
-	    type boolean;
-	    default false;
-	    description
-		"Enable module ietf-system-capabilities and ietf-notification-capabilities
-                 Note: There are several dependencies:
-                 - ietf-yang-library revision 2019-01-04 is REQUIRED 
-                 - nacm
-                 - ietf-yang-structure-ext.yang, 
-                 - ietf-yang-instance-data
-                 see draft-ietf-netconf-notification-capabilities-17";
 	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;

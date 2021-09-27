@@ -267,6 +267,7 @@ endif
 
 uninstall: 
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
+	rm -f $(DESTDIR)$(libdir)/$(MYLIB)
 
 TAGS:
 	find . -name '*.[chyl]' -print | etags -

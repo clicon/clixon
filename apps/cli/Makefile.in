@@ -70,7 +70,16 @@ ifeq ($(LINKAGE),dynamic)
 	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 else
 	CLIXON_LIB	= libclixon.a
+
+# Somewhat ad-hoc mechanism to find libcligen:
+# First find in DESTDIR, if not, try root
+ifneq ("$(wildcard $(DESTDIR)$(libdir)/libcligen.a)","")
+CLIGEN_LIB = $(DESTDIR)$(libdir)/libcligen.a
+else
+CLIGEN_LIB = $(libdir)/libcligen.a
 endif
+
+endif # LINKAGE
 
 # For dependency. A little strange that we rely on it being built in the src dir
 # even though it may exist in $(libdir). But the new version may not have been installed yet.
@@ -150,6 +159,7 @@ install-include:	clixon_cli.h clixon_cli_api.h cli_generate.h
 uninstall:
 	rm -f $(DESTDIR)$(bindir)/$(APPL)
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
+	rm -f $(DESTDIR)$(libdir)/$(MYLIB)
 	rm -f $(DESTDIR)$(includedir)/clixon/*
 
 .SUFFIXES:
@@ -165,13 +175,14 @@ test.c	:
 test: 	test.c $(LIBOBJ) $(MYLIB)
 	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
+
 # Note LIBDEPS is in lib/src and will always be remade du to a date dependency
 $(APPL): $(APPOBJ) $(MYLIB) $(LIBDEPS)	
 ifeq ($(LINKAGE),dynamic)
 	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 else
 	# Force static libcligen.a linking
-	$(CC) $(LDFLAGS) $(APPOBJ) $(EXTRAS) -L. $(LIBOBJ) $(DESTDIR)$(libdir)/libcligen.a $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $(APPOBJ) $(EXTRAS) -L. $(LIBOBJ) $(CLIGEN_LIB) $(LIBS) -o $@
 endif
 
 $(MYLIBDYNAMIC) : $(LIBOBJ) $(LIBDEPS)

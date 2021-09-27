@@ -30,9 +30,9 @@ To link an example plugin properly it gets a little more complex::
 
 Below is an example of how to do this for the main example. You can replace the main example plugins with another application:
 ```
-  CC=/usr/bin/afl-clang-fast  CFLAGS="-O2 -Wall -DCLIXON_STATIC_PLUGINS" LINKAGE=static ./configure
-  make clean
+  CC=/usr/bin/afl-clang-fast CFLAGS="-O2 -Wall -DCLIXON_STATIC_PLUGINS" LINKAGE=static INSTALLFLAGS="" ./configure
 
+  make clean
   make
   sudo make install
   

@@ -145,7 +145,10 @@ $(RESTCONF_PLUGIN): $(RESTCONF_OBJ)
 ifeq ($(LINKAGE),dynamic)
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_restconf
 else
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_restconf
+# XXX need to add -L ../../apps/restconf otherwise get undefined:
+# plugin_load_one file:/usr/local/lib/example/restconf/example_restconf.so function:clixon_plugin_init
+# plugin_load_one: 338: Plugins: dlopen(/usr/local/lib/example/restconf/example_restconf.so): /usr/local/lib/libclixon_restconf.so.5: undefined symbol: api_return_err
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon  -L ../../apps/restconf/ -lclixon_restconf
 endif
 
 SRC     = $(BE_SRC) $(BE2_SRC) $(CLI_SRC) $(NETCONF_SRC)

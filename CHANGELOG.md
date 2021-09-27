@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [5.3.0](#530) Expected: September 2021
+* [5.3.0](#530) 27 September 2021
 * [5.2.0](#520) 1 July 2021
 * [5.1.0](#510) 15 April 2021
 * [5.0.0](#500) 27 February 2021
@@ -31,28 +31,34 @@
 * [3.3.1](#331) June 7 2017
 
 ## 5.3.0
-Expected: September, 2021
+27 September, 2021
+
+The 5.3 release has pagination support, YANG/auto-clilinkref changes and lots of bug fixes.
 
 ### New features
 
 * List pagination for Netconf and Restconf
-  * Experimental, work-in-progress
-    * Enable with LIST_PAGINATION compile-time option
-  * According to:
+  * Loosely based on:
     * draft-wwlh-netconf-list-pagination-00.txt
     * draft-wwlh-netconf-list-pagination-rc-01
+    * Note: not a standardized feature
   * Added yangs:
     * ietf-restconf-list-pagination@2015-01-30.yang
     * clixon-netconf-list-pagination@2021-08-27.yang
     * ietf-yang-metadata@2016-08-05.yang
-  * New http media: application/yang-collection+xml/json
+  * Restconf change:
+    * New http media: application/yang-collection+xml/json
   * Updated state callback signature containing parameters for pagination
     * See API changes below
+  * See [User manual pagination](https://clixon-docs.readthedocs.io/en/latest/misc.html#pagination)
+  * Work-in-progress
+    * Enable remaining attriute with LIST_PAGINATION_REMAINING compile-time option
+    * sort/direction/where etc not supported
 * YANG Leafref feature update
   * Closer adherence to RFC 7950. Some of this is changed behavior, some is new feature.
-  * Essentially instead of looking at the referring leaf, context is referred(target) node
   * Validation uses referred node
     * Validation changed to use type of referred node, instead of just "string"
+    * Essentially instead of looking at the referring leaf, context is referred(target) node
   * Auto-cli
     * Changed to use type of referred node for typecheck
     * Completion uses referred node
@@ -62,14 +68,6 @@ Expected: September, 2021
 * Restconf YANG PATCH according to RFC 8072 (Work in progress)
   * Experimental: enable by setting YANG_PATCH in include/clixon_custom.h
   * Thanks to Alan Yaniger for providing this patch
-* List pagination
-  * This is prototype work for ietf netconf work
-
-
-* New state callback signature (ca_statedata2)
-   * The new callback contains parameters for pagination
-   * Goal is to replace ca_statedata callback
-
 
 ### API changes on existing protocol/config features
 
@@ -79,13 +77,13 @@ Users may have to change how they access the system
   * Leafref required-instance must be set to make strict data-node check
   * See changes under new feature "YANG leafref feature update"
 * Native Restconf
-  * Native restocnf is now default, not fcgi/nginx
-    * That is, to configure with fcgi, you need to explicitly configure: `--with-restconf=fcgi`
+  * Native restconf is now default, not fcgi/nginx
+    * To configure with fcgi, you need to explicitly configure: `--with-restconf=fcgi`
   * SSL client certs failures are returned as http 405 errors, not fail during SSL negotiation
 * New clixon-config@2021-07-11.yang revision
    * Added: `CLICON_RESTCONF_HTTP2_PLAIN`
    * Removed default of `CLICON_RESTCONF_INSTALLDIR`
-     * The default behaviour is changed to use the config $(sbindir) to locate `clixon_restconf` when starting restconf internally
+     * The default behaviour is changed to use the config `$(sbindir)` to locate `clixon_restconf` when starting restconf internally
 
 ### C/CLI-API changes on existing features
 
@@ -93,7 +91,6 @@ Developers may need to change their code
 
 * You need to change all statedata plugin callback for the new pagination feature
   * If you dont use pagination you can ignore the values of the new parameters
-  * See [User manual pagination](https://clixon-docs.readthedocs.io/en/latest/misc.html#pagination)
   * The updated callback signature is as follows:
   ```
   int statedata(clicon_handle     h,
@@ -108,23 +105,23 @@ Developers may need to change their code
   
 ### Minor features
 
-* Added -H option to clixon_netconf: Do not require hello before request
-* CLIXON_STATIC_PLUGIN to support statically linked plugins
+* Fuzzing:
+  * Added netconf fuzzing
+  * Added `CLIXON_STATIC_PLUGINS` and description how to link CLI plugins statically
+  * See `fuzz/cli`, `fuzz/netconf`
+* Added `-H` option to clixon_netconf: Do not require hello before request
 * JSON errors are now labelled with JSON and not XML
 * Restconf native HTTP/2:
   * Added option `CLICON_RESTCONF_HTTP2_PLAIN` for non-TLS http
     * Default disabled, set to true to enable HTTP/2 direct and switch/upgrade HTTP/1->HTTP/2
+    * Recommendation is to used only TLS HTTP/2
 * JSON encoding of YANG metadata according to RFC 7952
   * XML -> JSON translation
+  * Note: JSON -> XML metadata is not implemented
 * Restconf internal start: fail early if clixon_restconf binary is not found
-  * If CLICON_BACKEND_RESTCONF_PROCESS is true
+  * If `CLICON_BACKEND_RESTCONF_PROCESS` is true
 * Added linenumbers to all YANG symbols for better debug and errors
   * Improved error messages for YANG identityref:s and leafref:s by adding original line numbers
-
-### Minor features
-
-* ietf-yang-metadata RFC 7952 support, placeholder parsing and extension
-  * No actual json/xml semantics
 
 ### Corrected Bugs
 
@@ -134,8 +131,8 @@ Developers may need to change their code
 * Fixed: [Duplicate lines emitted by cli_show_config (cli output style) when yang list element has composite key](https://github.com/clicon/clixon/issues/258)
 * Fixed: Typing 'q' in CLI more scrolling did not properly quit output
   * Output continued but was not shown, for a very large file this could cause considerable delay
-* Fixed: Lock was broken in first get get access
-  * if the first netconf operation to a backend was lock;get;unlock, the lock was broken in the first get access.
+* Fixed: Lock was broken in first get access
+  * If the first netconf operation to a backend was lock;get;unlock, the lock was broken in the first get access.
 * Fixed: [JSON leaf-list output single element leaf-list does not use array](https://github.com/clicon/clixon/issues/261)
 * Fixed: Netconf diff callback did not work with choice and same value replace
   * Eg if YANG is `choice c { leaf x; leaf y }` and XML changed from `<x>42</x>` to `<y>42</y>` the datastrore changed, but was not detected by diff algorithms and provided to validate callbacks.
@@ -143,22 +140,22 @@ Developers may need to change their code
 * Fixed: [Autocli does not offer completions for leafref to identityref #254](https://github.com/clicon/clixon/issues/254)
   * This is a part of YANG Leafref feature update
 * Fixed: [clixon_netconf errors on client XML Declaration with valid encoding spec](https://github.com/clicon/clixon/issues/250)
-* Fixed: Yang patterns: \n and other non-printable characters were broken
-  * Example: Clixon interpereted them two characters: `\\ n` instead of ascii 10
+* Fixed: Yang patterns: `\n` and other non-printable characters were broken
+  * Example: Clixon interpereted them as the two characters: `\\` and `n` instead of ascii 10
 * Fixed: The auto-cli identityref did not expand identities in grouping/usecases properly.
 * Fixed: [OpenConfig BGP afi-safi and when condition issues #249](https://github.com/clicon/clixon/issues/249)
-  * YANG when was not properly implemented for default values
+  * YANG "when" was not properly implemented for default values
 * Fixed: SEGV in clixon_netconf_lib functions from internal errors including validation.
-  * Check xerr argument both before and after call on netconf lib functions
+  * Check `xerr` argument both before and after call on netconf lib functions
 * Fixed: Leafs added as augments on NETCONF RPC input/output lacked cv:s causing error in default handling
 * Fixed: RFC 8040 yang-data extension allows non-key lists
-  * Added YANG_FLAG_NOKEY as exception to mandatory key lists
+  * Added `YANG_FLAG_NOKEY` as exception to mandatory key lists
 * Fixed: mandatory leaf in a uses statement caused abort
-  * Occurence was in ietf-yang-patch.yang
+  * Occurence was in `ietf-yang-patch.yang`
 * Native RESTCONF fixes for http/1 or http/2 only modes
   * Memleak in http/1-only
   * Exit if http/1 request sent to http/2-only (bad client magic)
-  * Hang if http/1 TLS request sent to http/2 only (alpn accepted http/1.1)
+  * Hang if http/1 TLS request sent to http/2 only (ALPN accepted http/1.1)
 * Fixed: [RESTConf GET for a specific list instance retrieves data from other submodules that have same list name and key value #244](https://github.com/clicon/clixon/issues/244)
 
 ## 5.2.0
