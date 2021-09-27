@@ -506,7 +506,7 @@ transaction_free(transaction_data_t *td)
  * @retval    -1       Error
  */
 int
-plugin_transaction_begin_one(clixon_plugin_t      *cp,
+plugin_transaction_begin_one(clixon_plugin_t    *cp,
 			     clicon_handle       h, 
 			     transaction_data_t *td)
 {

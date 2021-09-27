@@ -13,8 +13,8 @@ TOKEN=$1
 
 # LINKAGE=static
 # Configure (clixon)
-CFLAGS="-g -Wall" INSTALLFLAGS="" ./configure
-sudo ldconfig
+#CFLAGS="-g -Wall" INSTALLFLAGS="" ./configure
+#sudo ldconfig
 LDFLAGS=-coverage LINKAGE=static CFLAGS="-g -Wall -coverage" INSTALLFLAGS="" ./configure
 
 # Build
@@ -27,17 +27,19 @@ sudo make install-include
 (cd example; sudo make install)
 (cd util; sudo make install)
 
-# Kludge for netconf to add as non-root
-(cd test; ./test_netconf_hello.sh)
+# Kludge for netconf to touch all gcda files as root
+(cd test; sudo ./test_netconf_hello.sh) || true
 find . -name "*.gcda" | xargs sudo chmod 777
 
+# Run restconf as root
 (cd test; clixon_restconf="clixon_restconf -r" ./sum.sh)
 
 # Push coverage
-# PUSH $TOKEN
+bash <(curl -s https://codecov.io/bash) -t ${TOKEN}
 
-# remove all coverage files (after gcov push)
+# Remove all coverage files (after gcov push)
 find . -name "*.gcda" | xargs rm
+find . -name "*.gcno" | xargs rm
 
-sleep 1 # ensure OK is last                                                     
+sleep 1 # ensure OK is last
 echo OK

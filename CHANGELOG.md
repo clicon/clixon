@@ -33,7 +33,7 @@
 ## 5.3.0
 27 September, 2021
 
-The 5.3 release has pagination support, YANG/auto-clilinkref changes and lots of bug fixes.
+The 5.3 release has pagination support, Linkref changes in validation and auto-cli, and lots of bug fixes.
 
 ### New features
 
@@ -50,10 +50,10 @@ The 5.3 release has pagination support, YANG/auto-clilinkref changes and lots of
     * New http media: application/yang-collection+xml/json
   * Updated state callback signature containing parameters for pagination
     * See API changes below
-  * See [User manual pagination](https://clixon-docs.readthedocs.io/en/latest/misc.html#pagination)
   * Work-in-progress
     * Enable remaining attriute with LIST_PAGINATION_REMAINING compile-time option
     * sort/direction/where etc not supported
+  * For documentation: [User manual pagination](https://clixon-docs.readthedocs.io/en/latest/misc.html#pagination)
 * YANG Leafref feature update
   * Closer adherence to RFC 7950. Some of this is changed behavior, some is new feature.
   * Validation uses referred node
@@ -75,12 +75,12 @@ Users may have to change how they access the system
 
 * Looser leafref validation checks
   * Leafref required-instance must be set to make strict data-node check
-  * See changes under new feature "YANG leafref feature update"
+  * See changes under new feature "YANG leafref feature update" above
 * Native Restconf
   * Native restconf is now default, not fcgi/nginx
     * To configure with fcgi, you need to explicitly configure: `--with-restconf=fcgi`
-  * SSL client certs failures are returned as http 405 errors, not fail during SSL negotiation
-* New clixon-config@2021-07-11.yang revision
+  * SSL client certs failures are returned as http `405` errors, not fail during SSL negotiation
+* New `clixon-config@2021-07-11.yang` revision
    * Added: `CLICON_RESTCONF_HTTP2_PLAIN`
    * Removed default of `CLICON_RESTCONF_INSTALLDIR`
      * The default behaviour is changed to use the config `$(sbindir)` to locate `clixon_restconf` when starting restconf internally

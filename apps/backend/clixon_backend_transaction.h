@@ -51,6 +51,7 @@
  */
 uint64_t transaction_id(transaction_data td);
 void   *transaction_arg(transaction_data td);
+int     transaction_arg_set(transaction_data td, void *arg);
 cxobj  *transaction_src(transaction_data td);
 cxobj  *transaction_target(transaction_data td);
 cxobj **transaction_dvec(transaction_data td);
