@@ -4325,7 +4325,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: debug is $ac_enable_debug" >&5
 $as_echo "debug is $ac_enable_debug" >&6; }
 if test "$ac_enable_debug" = "yes"; then
-   CFLAGS="-g -Wall"
+   CFLAGS="$CFLAGS -g -Wall"
    INSTALLFLAGS=""
 fi
 
@@ -4333,6 +4333,8 @@ fi
 $as_echo "CPPFLAGS is $CPPFLAGS" >&6; }
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: CFLAGS is $CFLAGS" >&5
 $as_echo "CFLAGS is $CFLAGS" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: LDFLAGS is $LDFLAGS" >&5
+$as_echo "LDFLAGS is $LDFLAGS" >&6; }
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: INSTALLFLAGS is $INSTALLFLAGS" >&5
 $as_echo "INSTALLFLAGS is $INSTALLFLAGS" >&6; }
 
