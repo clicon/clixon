@@ -123,12 +123,13 @@ AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, 
 
 AC_MSG_RESULT(debug is $ac_enable_debug)	
 if test "$ac_enable_debug" = "yes"; then
-   CFLAGS="-g -Wall"
+   CFLAGS="$CFLAGS -g -Wall"
    INSTALLFLAGS=""	
 fi
 
 AC_MSG_RESULT(CPPFLAGS is $CPPFLAGS)	
 AC_MSG_RESULT(CFLAGS is $CFLAGS)
+AC_MSG_RESULT(LDFLAGS is $LDFLAGS)
 AC_MSG_RESULT(INSTALLFLAGS is $INSTALLFLAGS)	
 
 AC_PROG_YACC
