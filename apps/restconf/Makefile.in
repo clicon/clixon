@@ -62,7 +62,7 @@ wwwdir          = @wwwdir@
 # one of fcgi or native:
 with_restconf	= @with_restconf@
 
-SH_SUFFIX	= @SH_SUFFIX@
+SH_SUFFIX	= .so
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
@@ -178,6 +178,7 @@ install-include:	clixon_restconf.h
 uninstall:
 	rm -f $(DESTDIR)$(sbindir)/$(APPL)
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
+	rm -f $(DESTDIR)$(libdir)/$(MYLIB)
 
 .SUFFIXES:
 .SUFFIXES: .c .o
@@ -185,13 +186,15 @@ uninstall:
 .c.o:
 	$(CC) $(INCLUDES) -D__PROGRAM__=\"clixon_restconf\" $(CPPFLAGS) $(CFLAGS) -c $<
 
-$(APPL) : $(APPOBJ) $(MYLIBLINK) $(LIBDEPS)
+# Note LIBDEPS is in lib/src and will always be remade du to a date dependency
+$(APPL) : $(APPOBJ) $(MYLIB) $(LIBDEPS)
 	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
-$(MYLIBDYNAMIC) : $(LIBOBJ) $(LIBDEPS)
 ifeq ($(HOST_VENDOR),apple)
+$(MYLIBDYNAMIC) : $(LIBOBJ) $(LIBDEPS)
 	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJ) $(LIBS)
 else
+$(MYLIBDYNAMIC) : $(LIBOBJ) $(LIBDEPS)
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJ) $(LIBS) -Wl,-soname=$(MYLIBSO)
 endif
 

@@ -73,7 +73,7 @@
 #include "netconf_capabilities.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hD:f:E:l:qa:u:d:p:y:U:t:eo:"
+#define NETCONF_OPTS "hD:f:E:l:qa:u:d:p:y:U:t:eHo:"
 
 #define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
 
@@ -790,6 +790,7 @@ usage(clicon_handle h,
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
 	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n"
 	    "\t-e \t\tDont ignore errors on packet input.\n"
+	    "\t-H \t\tHello messages are optional.\n"
 	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_netconf_dir(h)
@@ -917,6 +918,9 @@ main(int    argc,
 	    break;
 	case 'e': /* dont ignore packet errors */
 	    ignore_packet_errors = 0;
+	    break;
+	case 'H': /* Hello messages are optional */
+	    clicon_option_bool_set(h, "CLICON_NETCONF_HELLO_OPTIONAL", 1);
 	    break;
 	case 'o':{ /* Configuration option */
 	    char          *val;

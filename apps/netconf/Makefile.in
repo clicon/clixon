@@ -32,48 +32,66 @@
 #
 # ***** END LICENSE BLOCK *****
 #
-VPATH		= @srcdir@
-srcdir		= @srcdir@
-top_srcdir	= @top_srcdir@
+VPATH       	= @srcdir@
+srcdir  	= @srcdir@
+top_srcdir  	= @top_srcdir@
 CC		= @CC@
-CFLAGS		= @CFLAGS@
-LINKAGE		= @LINKAGE@
-INSTALLFLAGS	= @INSTALLFLAGS@
-LDFLAGS		= @LDFLAGS@
+CFLAGS  	= @CFLAGS@ 
+LINKAGE         = @LINKAGE@
+INSTALLFLAGS  	= @INSTALLFLAGS@ 
+LDFLAGS 	= @LDFLAGS@
 
-prefix		= @prefix@
+prefix 		= @prefix@
 datarootdir	= @datarootdir@
-exec_prefix	= @exec_prefix@
-bindir		= @bindir@
+exec_prefix 	= @exec_prefix@
+bindir 		= @bindir@
 libdir		= @libdir@
 mandir		= @mandir@
 libexecdir	= @libexecdir@
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 includedir	= @includedir@
-HOST_VENDOR	= @host_vendor@
+HOST_VENDOR     = @host_vendor@
 
 SH_SUFFIX	= @SH_SUFFIX@
-CLIXON_MAJOR	= @CLIXON_VERSION_MAJOR@
-CLIXON_MINOR	= @CLIXON_VERSION_MINOR@
+CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
+CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
+# Use this clixon lib for linking
+ifeq ($(LINKAGE),dynamic)
+	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+else
+	CLIXON_LIB	= libclixon.a
+endif
 
 # For dependency
-LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB)
-LIBS		= -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@
+LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
+
+LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@ 
+
+ifeq ($(LINKAGE),dynamic)
+	CPPFLAGS  	= @CPPFLAGS@ -fPIC
+else
+	CPPFLAGS  	= @CPPFLAGS@
+endif
 INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
-
 # Name of application
-APPL	= clixon_netconf
+APPL	 = clixon_netconf
 
 # Not accessible from plugin
-APPSRC	= netconf_main.c netconf_rpc.c netconf_filter.c netconf_capabilities.c
-APPOBJ	= $(APPSRC:.c=.o)
+APPSRC   = netconf_main.c
+APPSRC  += netconf_rpc.c 
+APPSRC  += netconf_filter.c
+APPSRC  += netconf_hello.c
+APPOBJ   = $(APPSRC:.c=.o)
 
 # Accessible from plugin
-LIBSRC	= netconf_lib.c
-LIBOBJ	= $(LIBSRC:.c=.o)
+LIBSRC   = netconf_lib.c 
+LIBSRC  += netconf_capabilities.c
+
+
+LIBOBJ   = $(LIBSRC:.c=.o)
 
 # Name of lib
 MYNAME		= clixon_netconf
@@ -81,48 +99,58 @@ MYLIBDYNAMIC    = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 MYLIBSO         = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR)
 MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
 MYLIBSTATIC     = lib$(MYNAME).a
-
-
-# Set values according to linkage type
 ifeq ($(LINKAGE),dynamic)
-	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
-	CPPFLAGS	= @CPPFLAGS@ -fPIC
-	MYLIB		= $(MYLIBDYNAMIC)
+	MYLIB        = $(MYLIBDYNAMIC)
 else
-	CLIXON_LIB	= libclixon.a
-	CPPFLAGS	= @CPPFLAGS@
-	MYLIB		= $(MYLIBSTATIC)
+	MYLIB        = $(MYLIBSTATIC)
 endif
 
-##################
-# Basic Targets
-##################
-.PHONY: all TAGS depend
-
-all:	$(MYLIB) $(APPL)
-
-TAGS:
-	find . -name '*.[chyl]' -print | etags -
-
-depend:
-	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(LIBSRC) $(APPSRC) > .depend
+all:	 $(MYLIB) $(APPL)
 
 # Dependency of clixon library (LIBDEPS)
 $(top_srcdir)/lib/src/$(CLIXON_LIB):
 	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
 
-# Implicit Rules
+clean: 
+	rm -f $(APPL) $(APPOBJ) $(LIBOBJ) *.core  $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
+	rm -f *.gcda *.gcno *.gcov # coverage
+
+distclean: clean
+	rm -f Makefile *~ .depend
+
+# Put demon in bin 
+# Put other executables in libexec/
+# Also create a libexec/ directory for writeable/temporary files.
+# Put config file in etc/
+install:	install-lib $(APPL)
+	install -d -m 0755 $(DESTDIR)$(bindir)
+	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(bindir)
+
+install-lib: $(MYLIB)
+	install -d -m 0755 $(DESTDIR)$(libdir)
+	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
+ifeq ($(LINKAGE),dynamic)
+	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon_netconf.so.2
+	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_netconf.so
+endif
+
+install-include:	clixon_netconf.h
+	install -d -m 0755 $(DESTDIR)$(includedir)/clixon
+	install -m 0644 $^ $(DESTDIR)$(includedir)/clixon
+
+uninstall:
+	rm -f $(DESTDIR)$(bindir)/$(APPL)
+	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
+	rm -f $(DESTDIR)$(libdir)/$(MYLIB)
+	rm -f $(DESTDIR)$(includedir)/clixon/*
+
 .SUFFIXES:
 .SUFFIXES: .c .o
 
 .c.o:
 	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$(APPL)\" $(CFLAGS) -c $<
 
-
-######################
-# Application Targets
-######################
-
+# Note LIBDEPS is in lib/src and will always be remade du to a date dependency
 $(APPL) : $(APPOBJ) $(MYLIB) $(LIBDEPS)
 	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
 
@@ -133,56 +161,19 @@ else
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJ) $(LIBS) -Wl,-soname=$(MYLIBSO)
 endif
 
-$(MYLIBSTATIC) : $(LIBOBJ) $(LIBDEPS)
-	ar -crs $@ $(LIBOBJ) $(LIBDEPS)
-
 # link-name is needed for application linking, eg for clixon_cli and clixon_config
 $(MYLIBLINK) : $(MYLIB)
 #	ln -sf $(MYLIB) $(MYLIBSO)
 #	ln -sf $(MYLIB) $@
 
+$(MYLIBSTATIC) : $(LIBOBJ) $(LIBDEPS)
+	ar -crs $@ $(LIBOBJ) $(LIBDEPS)
+
+TAGS:
+	find . -name '*.[chyl]' -print | etags -
+
+depend:
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(LIBSRC) $(APPSRC) > .depend
+
 #include .depend
-
-################
-# Clean Targets
-################
-.PHONY: clean distclean
-
-clean: 
-	rm -f $(APPL) $(APPOBJ) $(LIBOBJ) *.core  $(MYLIB) $(MYLIBSO) $(MYLIBLINK)
-	rm -f *.gcda *.gcno *.gcov # coverage
-
-distclean: clean
-	rm -f Makefile *~ .depend
-
-##################
-# Install Targets
-##################
-# Put demon in bin
-# Put other executables in libexec/
-# Also create a libexec/ directory for writeable/temporary files.
-# Put config file in etc/
-.PHONY: install install-lib install-include uninstall
-
-install:	install-lib $(APPL)
-	install -d -m 0755 $(DESTDIR)$(bindir)
-	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(bindir)
-
-install-lib:	$(MYLIB)
-	install -d -m 0755 $(DESTDIR)$(libdir)
-	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
-ifeq ($(LINKAGE),dynamic)
-	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)		# -l:libclixon_netconf.so.2
-	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK)	# -l:libclixon_netconf.so
-endif
-
-install-include:	clixon_netconf.h
-	install -d -m 0755 $(DESTDIR)$(includedir)/clixon
-	install -m 0644 $^ $(DESTDIR)$(includedir)/clixon
-
-uninstall:
-	rm -f $(DESTDIR)$(bindir)/$(APPL)
-	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
-	rm -f $(DESTDIR)$(includedir)/clixon/*
-
 

@@ -57,7 +57,6 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <assert.h>
 #include <netinet/in.h>
 
 /* cligen */
@@ -394,7 +393,10 @@ from_client_edit_config(clicon_handle h,
 	    goto ok;
 	}
     }
-    assert(cbuf_len(cbret) == 0);
+    if (cbuf_len(cbret) != 0){
+	clicon_err(OE_NETCONF, EINVAL, "Internal error: cbret is not empty");
+	goto done;
+    }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok", NETCONF_BASE_NAMESPACE);
     if (clicon_data_get(h, "objectexisted", &val) == 0)
 	cprintf(cbret, " objectexisted=\"%s\"", val);
@@ -1367,7 +1369,10 @@ from_client(int   s,
     int                  eof = 0;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    // assert(s == ce->ce_s);
+    if (s != ce->ce_s){
+	clicon_err(OE_NETCONF, EINVAL, "Internal error: s != ce->ce_s");
+	goto done;
+    }
     if (clicon_msg_rcv(ce->ce_s, &msg, &eof) < 0)
 	goto done;
     if (eof)

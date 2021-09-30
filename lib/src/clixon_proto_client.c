@@ -878,7 +878,6 @@ clicon_rpc_get(clicon_handle   h,
     return retval;
 }
 
-#ifdef LIST_PAGINATION
 /*! Get database configuration and state data collection
  * @param[in]  h         Clicon handle
  * @param[in]  xpath     To identify a list/leaf-list
@@ -1014,7 +1013,6 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 	free(msg);
     return retval;
 }
-#endif /* LIST_PAGINATION */
 
 /*! Send a close a netconf user session. Socket is also closed if still open
  *

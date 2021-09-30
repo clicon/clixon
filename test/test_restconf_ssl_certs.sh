@@ -294,9 +294,25 @@ EOF
 
     new "limited invalid cert, xml"
     expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0  "HTTP/$HVER 400" "<error-message>HTTP cert verification failed, unknown ca"
-    
+
     new "too weak cert (sign w md5)"
-    expectpart "$(curl $CURLOPTS --key $certdir/mymd5.key --cert $certdir/mymd5.crt  -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" "35 58" # "md too weak"
+    # Either curl error or error return                                                                ret=$(curl $CURLOPTS --key $certdir/mymd5.key --cert $certdir/mymd5.crt  -X GET $RCPROTO://localhost/restconf/data/example:x 2> /dev/null)
+    r=$?
+    if [ $r = 0 ]; then
+        # Check return value  
+        match=$(echo "$ret" | grep --null -o "HTTP/$HVER 400")
+        r1=$?
+        if [ $r1 != 0 ]; then
+            err "HTTP/$HVER 400" "$match"
+        fi
+        match=$(echo "$ret" | grep --null -o "HTTP cert verification failed")
+        r1=$?
+        if [ $r1 != 0 ]; then
+            err "HTTP cert verification failed" "$match"
+        fi
+    elif [ $r != 35 -a $r != 58 ]; then
+        err "35 58" "$r"
+    fi
 
     new "Random cert"
     expectpart "$(curl $CURLOPTS --key $certdir/random.key --cert $certdir/random.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0 "HTTP/$HVER 400" "HTTP cert verification failed"

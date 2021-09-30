@@ -249,10 +249,16 @@ clixon_str2fn(char  *name,
 }
 
 /*! Load a file containing syntax and append to specified modes, also load C plugin
+ *
+ * First load CLIgen file, 
+ * Then find which .so to load by looking in the "CLICON_PLUGIN" variable in that file.
+ * Make a lookup of plugins already loaded and resolve callbacks from cligen trees to
+ * dl symbols in the plugin.
  * @param[in]  h        Clixon handle
  * @param[in]  filename	Name of file where syntax is specified (in syntax-group dir)
  * @param[in]  dir	Name of dir, or NULL
  * @param[out] ptall    Universal CLIgen parse tree: apply to all modes
+ * @see clixon_plugins_load  Where .so plugin code has been loaded prior to this
  */
 static int
 cli_load_syntax_file(clicon_handle h,
@@ -271,7 +277,9 @@ cli_load_syntax_file(clicon_handle h,
     char         **vec = NULL;
     int            i, nvec;
     char          *plgnam;
+#ifndef CLIXON_STATIC_PLUGINS
     clixon_plugin_t *cp;
+#endif
 
     if ((pt = pt_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "pt_new");
@@ -311,6 +319,7 @@ cli_load_syntax_file(clicon_handle h,
     prompt = cvec_find_str(cvv, "CLICON_PROMPT");
     plgnam = cvec_find_str(cvv, "CLICON_PLUGIN");
 
+#ifndef CLIXON_STATIC_PLUGINS
     if (plgnam != NULL) { /* Find plugin for callback resolving */
 	if ((cp = clixon_plugin_find(h, plgnam)) != NULL)
 	    handle = clixon_plugin_handle_get(cp);
@@ -321,6 +330,7 @@ cli_load_syntax_file(clicon_handle h,
 	    goto done;
 	}
     }
+#endif
     /* Resolve callback names to function pointers. */
     if (cligen_callbackv_str2fn(pt, (cgv_str2fn_t*)clixon_str2fn, handle) < 0){     
 	clicon_err(OE_PLUGIN, 0, "Mismatch between CLIgen file '%s' and CLI plugin file '%s'. Some possible errors:\n\t1. A function given in the CLIgen file does not exist in the plugin (ie link error)\n\t2. The CLIgen spec does not point to the correct plugin .so file (CLICON_PLUGIN=\"%s\" is wrong)", 
@@ -346,7 +356,7 @@ cli_load_syntax_file(clicon_handle h,
 	goto done;
 
     if (nvec == 1 && strcmp(vec[0], "*") == 0){
-	/* Special case: Add this to all modes. Add to special "universal" syntax
+ 	/* Special case: Add this to all modes. Add to special "universal" syntax
 	 * and add to all syntaxes after all files have been loaded. At this point
 	 * all modes may not be known (not yet loaded)
 	 */
@@ -377,7 +387,10 @@ done:
     return retval;
 }
 
-/*! Load a syntax group. Includes both CLI plugin and CLIgen spec syntax files.
+/*! CLIgen spec syntax files and create CLIgen trees to drive the CLI syntax generator
+ *
+ * CLI .so plugins have been loaded: syntax table in place.
+ * Now load cligen syntax files and create cligen pt trees.
  * @param[in]     h       Clicon handle
  */
 int

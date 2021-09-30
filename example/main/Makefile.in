@@ -100,10 +100,10 @@ YANGSPECS	= clixon-example@2020-12-01.yang
 BE_SRC   = $(APPNAME)_backend.c
 BE_OBJ   = $(BE_SRC:%.c=%.o)
 $(BE_PLUGIN): $(BE_OBJ)
-ifeq ($(LINKAGE),static)
-# can include -L in LDFLAGS?
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -L ../../apps/backend/ -lclixon_backend 
+ifeq ($(LINKAGE),dynamic)
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
 else
+	# can include -L in LDFLAGS?
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
 endif
 
@@ -111,8 +111,8 @@ endif
 BE2_SRC  = $(APPNAME)_backend_nacm.c
 BE2_OBJ  = $(BE2_SRC:%.c=%.o)
 $(BE2_PLUGIN): $(BE2_OBJ)
-ifeq ($(LINKAGE),static)
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -L ../../apps/backend/ -lclixon_backend 
+ifeq ($(LINKAGE),dynamic)
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
 else
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
 endif
@@ -121,18 +121,18 @@ endif
 CLI_SRC  = $(APPNAME)_cli.c
 CLI_OBJ  = $(CLI_SRC:%.c=%.o)
 $(CLI_PLUGIN): $(CLI_OBJ)
-ifeq ($(LINKAGE),static)
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -L ../../apps/cli/ -lclixon_cli
-else
+ifeq ($(LINKAGE),dynamic)
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_cli
+else
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -L ../../apps/cli/ -lclixon_cli
 endif
 
 # NETCONF frontend plugin
 NETCONF_SRC  = $(APPNAME)_netconf.c
 NETCONF_OBJ  = $(NETCONF_SRC:%.c=%.o)
 $(NETCONF_PLUGIN): $(NETCONF_OBJ)
-ifeq ($(LINKAGE),static)
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -L ../../apps/netconf/ -lclixon_netconf
+ifeq ($(LINKAGE),dynamic)
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_netconf
 else
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_netconf
 endif
@@ -142,10 +142,13 @@ endif
 RESTCONF_SRC  = $(APPNAME)_restconf.c
 RESTCONF_OBJ  = $(RESTCONF_SRC:%.c=%.o)
 $(RESTCONF_PLUGIN): $(RESTCONF_OBJ)
-ifeq ($(LINKAGE),static)
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -L ../../apps/restconf/ -lclixon_restconf 
-else
+ifeq ($(LINKAGE),dynamic)
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_restconf
+else
+# XXX need to add -L ../../apps/restconf otherwise get undefined:
+# plugin_load_one file:/usr/local/lib/example/restconf/example_restconf.so function:clixon_plugin_init
+# plugin_load_one: 338: Plugins: dlopen(/usr/local/lib/example/restconf/example_restconf.so): /usr/local/lib/libclixon_restconf.so.5: undefined symbol: api_return_err
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon  -L ../../apps/restconf/ -lclixon_restconf
 endif
 
 SRC     = $(BE_SRC) $(BE2_SRC) $(CLI_SRC) $(NETCONF_SRC)

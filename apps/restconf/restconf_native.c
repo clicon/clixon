@@ -266,7 +266,7 @@ restconf_connection_sanity(clicon_handle         h,
     if (rc->rc_ssl == NULL &&
 	rc->rc_proto == HTTP_2 &&
 	clicon_option_bool(h, "CLICON_RESTCONF_HTTP2_PLAIN") == 0){
-	if (netconf_invalid_value_xml(&xerr, "protocol", "Plain HTTP/2 is disabled") < 0)
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Only HTTP/2 with TLS is enabled, plain http/2 is disabled") < 0)
 	    goto done;
 	if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
 	     media_out = YANG_DATA_JSON;

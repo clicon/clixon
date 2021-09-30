@@ -229,8 +229,9 @@ expectpart "$($clixon_cli -1 -f $cfg -l o discard)" 0 ""
 new "expand identityref 2nd level"
 expectpart "$(echo "set identityrefs2 identityref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "ex:des" "ex:des2" "ex:des3" 
 
+# Note CI may have random number as host which may match "92"
 new "expand leafref 2nd level"
-expectpart "$(echo "set leafrefs2 leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "91" "93" --not-- "92"
+expectpart "$(echo "set leafrefs2 leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 " 91" " 93" --not-- " 92"
 
 new "set identityref2 des"
 expectpart "$($clixon_cli -1 -f $cfg set identityrefs2 identityref ex:des)" 0 "^$"

@@ -132,6 +132,7 @@ example_client_rpc(clicon_handle h,
     return retval;
 }
 
+#ifndef CLIXON_STATIC_PLUGINS
 static clixon_plugin_api api = {
     "example",          /* name */
     clixon_plugin_init, /* init */
@@ -157,6 +158,7 @@ clixon_plugin_init(clicon_handle h)
 
     return &api;
 }
+#endif /* CLIXON_STATIC_PLUGINS */
 
 /*! Translate function from an original value to a new.
  * In this case, assume string and increment characters, eg HAL->IBM

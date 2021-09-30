@@ -246,9 +246,11 @@ restconf_pseudo_process_control(clicon_handle h)
     int         i;
     int         nr;
     cbuf       *cb = NULL;
-    char       *dir = NULL;
+    char       *dir0 = NULL;
+    char       *dir1 = NULL;
     char       *pgm;
     struct stat fstat;
+    int         found = 0;
 
     nr = 10;
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
@@ -265,19 +267,32 @@ restconf_pseudo_process_control(clicon_handle h)
      * If not, use the Makefile 
      * Use PATH?
      */
-    if ((dir = clicon_option_str(h, "CLICON_RESTCONF_INSTALLDIR")) == NULL){
-	if ((dir = CLIXON_CONFIG_SBINDIR) == NULL){
-	    clicon_err(OE_RESTCONF, EINVAL, "Both option CLICON_RESTCONF_INSTALLDIR and makefile constant CLIXON_CONFIG_SBINDIR are NULL which make sit not possible to know where clixon_restconf is installed(shouldnt happen)");
-	    goto done;
+    if ((dir0 = clicon_option_str(h, "CLICON_RESTCONF_INSTALLDIR")) != NULL){
+	cprintf(cb, "%s/clixon_restconf", dir0);
+	pgm = cbuf_get(cb);
+	if (stat(pgm, &fstat) == 0){	/* Sanity check: program exists */
+	    clicon_debug(1, "Found %s", pgm);
+	    found++;
 	}
+	else
+	    clicon_debug(1, "Not found: %s", pgm);
     }
-    cprintf(cb, "%s/clixon_restconf", dir);
-    pgm = cbuf_get(cb);
-    /* Sanity check: program exists */
-    if (stat(pgm, &fstat) < 0) {
-	clicon_err(OE_FATAL, errno, "%s, you may have set CLICON_BACKEND_RESTCONF_PROCESS but clixon_restconf is not found in %s. Try overriding with CLICON_RESTCONF_INSTALLDIR",
-		   pgm,
-		   CLIXON_CONFIG_SBINDIR);
+    if (!found &&
+	(dir1 = CLIXON_CONFIG_SBINDIR) != NULL){
+	cbuf_reset(cb);
+	cprintf(cb, "%s/clixon_restconf", dir1);
+	pgm = cbuf_get(cb);
+	clicon_debug(1, "Looking for %s", pgm);
+	if (stat(pgm, &fstat) == 0){ 	/* Sanity check: program exists */
+	    clicon_debug(1, "Found %s", pgm);
+	    found++;
+	}
+	else
+	    clicon_debug(1, "Not found: %s", pgm);
+    }
+    if (!found){
+	clicon_err(OE_RESTCONF, 0, "clixon_restconf not found in neither CLICON_RESTCONF_INSTALLDIR(%s) nor CLIXON_CONFIG_SBINDIR(%s). Try overriding with CLICON_RESTCONF_INSTALLDIR",
+		   dir0, dir1);
 	goto done;
     }
     argv[i++] = pgm;

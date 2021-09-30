@@ -37,7 +37,6 @@
  * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
  *
  * CALLING ORDER OF YANG PARSE FILES
- * =================================
  *                                      yang_spec_parse_module
  *                                     |                       | 
  *                                     v                       v   v

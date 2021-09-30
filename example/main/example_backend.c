@@ -515,6 +515,8 @@ example_statefile(clicon_handle   h,
 	xt = _state_xml_cache;
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
 	goto done;	
+    lower = 0;
+    upper = xlen;
     switch (pagmode){
     case PAGINATION_NONE:
 	lower = 0;

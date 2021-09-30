@@ -1530,27 +1530,12 @@ netconf_module_load(clicon_handle h)
     if (clicon_option_bool(h, "CLICON_NETCONF_MESSAGE_ID_OPTIONAL") == 1)
 	xml_bind_netconf_message_id_optional(1);
 #endif
-#ifdef LIST_PAGINATION
     /* Load clixon netconf list pagination */
     if (yang_spec_parse_module(h, "clixon-netconf-list-pagination", NULL, yspec)< 0)
 	goto done;
     /* Load restconf list pagination */
     if (yang_spec_parse_module(h, "ietf-restconf-list-pagination", NULL, yspec)< 0)
 	goto done;
-
-#if 0
-    /* XXX Clixon test harness problem: when loading ietf-list-pagination, it loads
-     * ietf-system-capabilities which in turn loads  ietf-netconf-acm. As this is a 
-     * system module (always loaded) it means all test-cases 
-     */
-    /* Load list pagination */
-    if (yang_spec_parse_module(h, "ietf-list-pagination", NULL, yspec)< 0)
-	goto done;
-#endif
-#ifdef LIST_PAGINATION
-
-#endif
-#endif
     retval = 0;
  done:
     return retval;

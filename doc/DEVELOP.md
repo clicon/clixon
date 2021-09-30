@@ -104,6 +104,8 @@ Notes:
 
 Use `/* */`. Use `//` only for temporal comments.
 
+Do not use "======", ">>>>>" or "<<<<<<" in comments since git merge conflict uses that.
+
 ## How to work in git
 
 Clixon uses semantic versioning (https://semver.org).

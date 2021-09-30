@@ -81,12 +81,23 @@ transaction_id(transaction_data td)
 /*! Get plugin/application specific callback argument
  * @param[in]  td   transaction_data
  * @retval     arg  callback argument
- * @note NYI
  */
 void *
 transaction_arg(transaction_data td)
 {
-  return ((transaction_data_t *)td)->td_arg;
+    return ((transaction_data_t *)td)->td_arg;
+}
+
+/*! Set plugin/application specific callback argument
+ * @param[in]  td   transaction_data
+ * @param[in]  arg  callback argument
+ */
+int
+transaction_arg_set(transaction_data td,
+		    void             *arg)
+{
+    ((transaction_data_t *)td)->td_arg = arg;
+    return 0;
 }
 
 /*! Get source database xml tree
@@ -96,7 +107,7 @@ transaction_arg(transaction_data td)
 cxobj *
 transaction_src(transaction_data td)
 {
-  return ((transaction_data_t *)td)->td_src;
+    return ((transaction_data_t *)td)->td_src;
 }
 
 /*! Get target database xml tree
@@ -106,7 +117,7 @@ transaction_src(transaction_data td)
 cxobj *
 transaction_target(transaction_data td)
 {
-  return ((transaction_data_t *)td)->td_target;
+    return ((transaction_data_t *)td)->td_target;
 }
 
 /*! Get delete xml vector, ie vector of xml nodes that are deleted src->target
@@ -116,7 +127,7 @@ transaction_target(transaction_data td)
 cxobj **
 transaction_dvec(transaction_data td)
 {
-  return ((transaction_data_t *)td)->td_dvec;
+    return ((transaction_data_t *)td)->td_dvec;
 }
 
 /*! Get length of delete xml vector
@@ -127,7 +138,7 @@ transaction_dvec(transaction_data td)
 size_t
 transaction_dlen(transaction_data td)
 {
-  return ((transaction_data_t *)td)->td_dlen;
+    return ((transaction_data_t *)td)->td_dlen;
 }
 
 /*! Get add xml vector, ie vector of xml nodes that are added src->target
@@ -137,7 +148,7 @@ transaction_dlen(transaction_data td)
 cxobj **
 transaction_avec(transaction_data td)
 {
-  return ((transaction_data_t *)td)->td_avec;
+    return ((transaction_data_t *)td)->td_avec;
 }
 
 /*! Get length of add xml vector
@@ -148,7 +159,7 @@ transaction_avec(transaction_data td)
 size_t
 transaction_alen(transaction_data td)
 {
-  return ((transaction_data_t *)td)->td_alen;
+    return ((transaction_data_t *)td)->td_alen;
 }
 
 /*! Get source changed xml vector, ie vector of xml nodes that changed
@@ -162,7 +173,7 @@ transaction_alen(transaction_data td)
 cxobj **
 transaction_scvec(transaction_data td)
 {
-  return ((transaction_data_t *)td)->td_scvec;
+    return ((transaction_data_t *)td)->td_scvec;
 }
 
 /*! Get target changed xml vector, ie vector of xml nodes that changed
@@ -176,7 +187,7 @@ transaction_scvec(transaction_data td)
 cxobj **
 transaction_tcvec(transaction_data td)
 {
-  return ((transaction_data_t *)td)->td_tcvec;
+    return ((transaction_data_t *)td)->td_tcvec;
 }
 
 /*! Get length of changed xml vector
@@ -187,7 +198,7 @@ transaction_tcvec(transaction_data td)
 size_t
 transaction_clen(transaction_data td)
 {
-  return ((transaction_data_t *)td)->td_clen;
+    return ((transaction_data_t *)td)->td_clen;
 }
 
 /*! Print transaction on FILE for debug

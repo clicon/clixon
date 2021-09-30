@@ -57,7 +57,7 @@ CFLAGS		= @CFLAGS@
 ifeq ($(LINKAGE),dynamic)
 CFLAGS  	+= -fPIC
 endif
-SH_SUFFIX	= @SH_SUFFIX@
+SH_SUFFIX	= .so
 INSTALL		= @INSTALL@
 INSTALL_LIB	= @INSTALL@
 INSTALLFLAGS  	= @INSTALLFLAGS@
@@ -107,10 +107,10 @@ MYLIBSO      = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR)
 MYLIBLINK    = lib$(MYNAME)$(SH_SUFFIX)
 MYLIBSTATIC  = lib$(MYNAME).a
 
-ifeq ($(LINKAGE),static)
-	MYLIB        = $(MYLIBSTATIC)
-else
+ifeq ($(LINKAGE),dynamic)
 	MYLIB        = $(MYLIBDYNAMIC)
+else
+	MYLIB        = $(MYLIBSTATIC)
 endif
 
 all:	 $(MYLIB) $(MYLIBLINK)
@@ -239,6 +239,7 @@ build.c:
 	date +"const char CLIXON_BUILDSTR[$(DATELEN)]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; >> build.c;
 	echo "const char CLIXON_VERSION[64]=\"$(CLIXON_VERSION)\""\; >> build.c;
 
+# Note: will always be remade since GENOBS is date dependent
 $(MYLIBDYNAMIC) : $(GENOBJS) $(OBJS) 
 ifeq ($(HOST_VENDOR),apple)
 	$(CC) $(LDFLAGS) -shared -o $@ $(GENOBJS) $(OBJS) $(LIBS) -undefined dynamic_lookup -o $@
@@ -266,6 +267,7 @@ endif
 
 uninstall: 
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
+	rm -f $(DESTDIR)$(libdir)/$(MYLIB)
 
 TAGS:
 	find . -name '*.[chyl]' -print | etags -
