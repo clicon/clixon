@@ -58,6 +58,10 @@
  */
 #define EVENT_RFC5277_NAMESPACE "urn:ietf:params:xml:ns:netmod:notification"
 
+#if defined(__QNX__)
+    #include <sys/time.h>
+#endif
+
 /*
  * Types
  */

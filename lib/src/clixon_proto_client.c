@@ -52,7 +52,12 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
-#include <sys/syslog.h>
+#if defined(__QNX__)
+    #include <syslog.h>
+#else
+    #include <sys/syslog.h>
+#endif
+
 
 /* cligen */
 #include <cligen/cligen.h>

@@ -50,7 +50,11 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/syslog.h>
+#if defined(__QNX__)
+    #include <syslog.h>
+#else
+    #include <sys/syslog.h>
+#endif
 #include <fcntl.h>
 
 /* cligen */

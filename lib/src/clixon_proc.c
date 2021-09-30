@@ -102,7 +102,12 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/param.h>
-#include <sys/user.h>
+#if defined (__QNX__)
+	#include <sys/types.h>
+	#include <sys/socket.h>
+#else
+	#include <sys/user.h>
+#endif
 #include <sys/time.h>
 #include <sys/resource.h>
 
