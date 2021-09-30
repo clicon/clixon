@@ -3,7 +3,11 @@
 #include <malloc.h>
 #include <string.h>
 #include <errno.h>
-#include <sys/syslog.h>
+#if defined(__QNX__)
+	#include <syslog.h>
+#else
+	#include <sys/syslog.h>
+#endif
 
 #include "netconf_capabilities.h"
 
