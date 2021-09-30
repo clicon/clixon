@@ -66,12 +66,18 @@ all:	$(SUBDIRS2) warnroot
 	@echo "\e[32mAfter 'make install' as euid root, build example app and test utils: 'make example'\e[0m"
 
 checkroot:
-	@if [ "$${DESTDIR}" = "" -a $$(id -u) != "0" ]; \
-	then echo "\e[31mThis target must be made as euid root\e[0m"; exit 1; fi;
+	@if command -v id &> /dev/null; then \
+		if [ "$${DESTDIR}" = "" -a $$(id -u) != "0" ]; then \
+			echo "\e[31mThis target must be made as euid root\e[0m"; exit 1; \
+		fi; \
+	fi;
 
 warnroot:
-	@if [ $$(id -u) = 0 ]; \
-		then echo "\e[36mWarning: You built this target as uid root\e[0m"; exit 0; fi;
+	@if command -v id &> /dev/null; then \
+		if [ $$(id -u) = 0 ]; then \
+			echo "\e[36mWarning: You built this target as uid root\e[0m"; exit 0; \
+		fi; \
+	fi;
 
 checkinstall:
 	@if [ ! -f $(prefix)/include/clixon/clixon.h ]; then \
