@@ -298,7 +298,19 @@ if test "${with_libxml2}"; then
 fi 
 
 #
-AC_CHECK_FUNCS(inet_aton sigaction sigvec strlcpy strsep strndup alphasort versionsort getpeereid setns getresuid)
+AC_CHECK_FUNCS(inet_aton sigvec strlcpy strsep strndup alphasort versionsort getpeereid setns getresuid)
+
+# Check for --without-sigaction parameter
+AC_ARG_WITH(
+	[sigaction],
+	[AS_HELP_STRING([--without-sigaction], [Don't use sigaction])],
+	[],
+	[with_sigaction=yes]
+)
+
+if test "x${with_sigaction}" == "xyes"; then
+   AC_CHECK_FUNCS(sigaction)
+fi 
 
 # Checks for getsockopt options for getting unix socket peer credentials on
 # Linux
