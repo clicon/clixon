@@ -53,7 +53,7 @@ sysconfdir	= @sysconfdir@
 includedir	= @includedir@
 HOST_VENDOR     = @host_vendor@
 
-SH_SUFFIX	= .so
+SH_SUFFIX	= @SH_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
