@@ -10,12 +10,17 @@ Install AFL, see [..](..)
 
 Build and install a clixon system (in particular the backend, the CLI will be replaced)
 
+Build and install CLIgen statically:
+```
+  CC=/usr/bin/afl-clang-fast LINKAGE=static INSTALLFLAGS="" ./configure
+```
+
 ## Build
 
 Build clixon cli statically with the afl-clang compiler:
 
 ```
-  CC=/usr/bin/afl-clang-fast LINKAGE=static ./configure # Dont care about restconf
+  CC=/usr/bin/afl-clang-fast LINKAGE=static INSTALLFLAGS="" ./configure # Dont care about restconf
   make clean
   cd apps/cli
   make clixon_cli
@@ -44,7 +49,7 @@ Below is an example of how to do this for the main example. You can replace the 
 
   cd apps/cli # Compile and install clixon_cli with pre-compiled plugins
   rm clixon_cli
-  EXTRAS="../../example/main/example_cli.o ../../example/main/test_cli.o" make clixon_cli
+  EXTRAS="../../example/main/example_cli.o" make clixon_cli
   sudo make install
 ```
 

@@ -96,10 +96,6 @@ APPL		= clixon_cli
 APPSRC		= cli_main.c
 APPOBJ		= $(APPSRC:.c=.o)
 
-# HACK
-#EXTRAS         += $(top_srcdir)/example/main/example_cli.o
-#EXTRAS         += $(top_srcdir)/example/main/test_cli.o
-
 # Accessible from plugin
 LIBSRC	        = cli_common.c
 LIBSRC	       += cli_show.c
