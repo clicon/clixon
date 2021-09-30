@@ -32,6 +32,10 @@
 #
 # ***** END LICENSE BLOCK *****
 #
+# Define CLIGEN_LIB for static CLIgen linking
+#
+# For remote case of loading cli plugins statically:
+# Define EXTRAS for statically load plugins, together with enabling CLIXON_STATIC_PLUGINS
 
 VPATH       	= @srcdir@
 srcdir  	= @srcdir@
@@ -43,10 +47,11 @@ CPPFLAGS  	= @CPPFLAGS@
 ifeq ($(LINKAGE),dynamic)
 CPPFLAGS  	+= -fPIC
 endif
-SH_SUFFIX	= .so
+SH_SUFFIX	= @SH_SUFFIX@
+LIBSTATIC_SUFFIX = @LIBSTATIC_SUFFIX@
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@	
-ifneq ($(LINKAGE),dynamic)
+ifeq ($(LINKAGE),dynamic)
 LDFLAGS 	+=  -rdynamic -L. # -rdynamic for using -ldl
 endif
 
@@ -69,16 +74,7 @@ CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 ifeq ($(LINKAGE),dynamic)
 	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 else
-	CLIXON_LIB	= libclixon.a
-
-# Somewhat ad-hoc mechanism to find libcligen:
-# First find in DESTDIR, if not, try root
-ifneq ("$(wildcard $(DESTDIR)$(libdir)/libcligen.a)","")
-CLIGEN_LIB = $(DESTDIR)$(libdir)/libcligen.a
-else
-CLIGEN_LIB = $(libdir)/libcligen.a
-endif
-
+	CLIXON_LIB	= libclixon$(LIBSTATIC_SUFFIX)
 endif # LINKAGE
 
 # For dependency. A little strange that we rely on it being built in the src dir
@@ -110,22 +106,22 @@ MYNAME		= clixon_cli
 MYLIBDYNAMIC    = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 MYLIBSO         = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR)
 MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
-MYLIBSTATIC     = lib$(MYNAME).a
+MYLIBSTATIC     = lib$(MYNAME)$(LIBSTATIC_SUFFIX)
+
+all:	 $(APPL) test
 
 ifeq ($(LINKAGE),dynamic)
-	MYLIB        = $(MYLIBDYNAMIC)
+all:	 $(MYLIBDYNAMIC)
 else
-	MYLIB        = $(MYLIBSTATIC)
+all:	 $(MYSTATIC)
 endif
-
-all:	 $(MYLIB) $(APPL) test
 
 # Dependency of clixon library
 $(top_srcdir)/lib/src/$(CLIXON_LIB):
 	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
 
 clean:
-	rm -f $(LIBOBJ) $(APPOBJ) *.core $(APPL) $(MYLIB) $(MYLIBSO) $(MYLIBLINK) test test.c
+	rm -f $(LIBOBJ) $(APPOBJ) *.core $(APPL) $(MYLIBDYNAMIC) $(MYLIBSTATIC) $(MYLIBSO) $(MYLIBLINK) test test.c
 	rm -f *.gcda *.gcno *.gcov # coverage
 
 distclean: clean
@@ -139,13 +135,18 @@ install: install-lib $(APPL)
 	install -d -m 0755 $(DESTDIR)$(bindir)
 	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(bindir)
 
-install-lib: $(MYLIB)
-	install -d -m 0755 $(DESTDIR)$(libdir)
-	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
-	install -d -m 0755 $(DESTDIR)$(libdir)/clixon/plugins/cli
 ifeq ($(LINKAGE),dynamic)
-	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon_cli.so.2
+install-lib: $(MYLIBDYNAMIC)
+	install -d -m 0755 $(DESTDIR)$(libdir)
+	install -m 0644 $(INSTALLFLAGS) $< $(DESTDIR)$(libdir)
+	install -d -m 0755 $(DESTDIR)$(libdir)/clixon/plugins/cli
+	ln -sf $< $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon_cli.so.2
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_cli.so
+else
+install-lib: $(MYLIBSTATIC)
+	install -d -m 0755 $(DESTDIR)$(libdir)
+	install -m 0644 $(INSTALLFLAGS) $< $(DESTDIR)$(libdir)
+	install -d -m 0755 $(DESTDIR)$(libdir)/clixon/plugins/cli
 endif
 
 install-include:	clixon_cli.h clixon_cli_api.h cli_generate.h
@@ -155,7 +156,8 @@ install-include:	clixon_cli.h clixon_cli_api.h cli_generate.h
 uninstall:
 	rm -f $(DESTDIR)$(bindir)/$(APPL)
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
-	rm -f $(DESTDIR)$(libdir)/$(MYLIB)
+	rm -f $(DESTDIR)$(libdir)/$(MYLIBSTATIC)
+	rm -f $(DESTDIR)$(libdir)/$(MYLIBDYNAMIC)
 	rm -f $(DESTDIR)$(includedir)/clixon/*
 
 .SUFFIXES:
@@ -168,18 +170,22 @@ uninstall:
 test.c	:
 	echo "int main(){}" > $@
 
-test: 	test.c $(LIBOBJ) $(MYLIB)
-	$(CC) $(INCLUDES) $(LDFLAGS) $< $(LIBOBJ) -L. $(MYLIB) $(LIBS) -o $@
+test: 	test.c $(LIBOBJ)
 
-
-# Note LIBDEPS is in lib/src and will always be remade du to a date dependency
-$(APPL): $(APPOBJ) $(MYLIB) $(LIBDEPS)	
 ifeq ($(LINKAGE),dynamic)
-	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
+test:   $(MYLIBDYNAMIC)
 else
-	# Force static libcligen.a linking
-	$(CC) $(LDFLAGS) $(APPOBJ) $(EXTRAS) -L. $(LIBOBJ) $(CLIGEN_LIB) $(LIBS) -o $@
+test:   $(MYLIBSTATIC)
 endif
+	$(CC) $(INCLUDES) $(LDFLAGS) -L . $^ $(LIBS) -o $@
+
+ifeq ($(LINKAGE),dynamic)
+$(APPL): $(MYLIBDYNAMIC)
+else
+$(APPL): $(MYLIBSTATIC)
+endif
+$(APPL): $(APPOBJ) $(LIBDEPS)	
+	$(CC) $(LDFLAGS) $(EXTRAS) -L. $^ $(CLIGEN_LIB) $(LIBS) -o $@
 
 $(MYLIBDYNAMIC) : $(LIBOBJ) $(LIBDEPS)
 ifeq ($(HOST_VENDOR),apple)
@@ -189,9 +195,7 @@ else
 endif
 
 # link-name is needed for application linking, eg for clixon_cli and clixon_config
-$(MYLIBLINK) : $(MYLIB)
-#	ln -sf $(MYLIB) $(MYLIBSO)
-#	ln -sf $(MYLIB) $@
+$(MYLIBLINK) : $(MYLIBDYNAMIC)
 
 $(MYLIBSTATIC) : $(LIBOBJ) $(LIBDEPS)
 	ar -crs $@ $(LIBOBJ) $(LIBDEPS)

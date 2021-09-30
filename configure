@@ -641,6 +641,7 @@ HAVE_LIBNGHTTP2
 HAVE_LIBEVHTP
 with_restconf
 LINKAGE
+LIBSTATIC_SUFFIX
 SH_SUFFIX
 CLIXON_DEFAULT_CONFIG
 INSTALLFLAGS
@@ -3359,6 +3360,7 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
 
+
  # Set to native or fcgi -> compile apps/restconf
 HAVE_LIBEVHTP=false
    # consider using neutral constant such as with-http1
@@ -4557,13 +4559,10 @@ if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}
 fi
 
-if test "$LINKAGE" = "dynamic" ; then
-   SH_SUFFIX=".so"
-elif test "$LINKAGE" = "static" ; then
-   SH_SUFFIX=".a"
-else
-   as_fn_error $? "No such linkage: ${LINKAGE}" "$LINENO" 5
-fi
+# Postfix for shared libs
+SH_SUFFIX=".so"
+# Postfix for static libs
+LIBSTATIC_SUFFIX=".a"
 
 # This is for cligen
 

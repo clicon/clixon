@@ -94,6 +94,7 @@ AC_SUBST(INSTALLFLAGS)
 AC_SUBST(CLIXON_DEFAULT_CONFIG)
 AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
+AC_SUBST(LIBSTATIC_SUFFIX)
 AC_SUBST(LINKAGE)
 AC_SUBST(with_restconf) # Set to native or fcgi -> compile apps/restconf
 AC_SUBST(HAVE_LIBEVHTP,false)   # consider using neutral constant such as with-http1
@@ -149,13 +150,10 @@ if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}
 fi
 
-if test "$LINKAGE" = "dynamic" ; then
-   SH_SUFFIX=".so"
-elif test "$LINKAGE" = "static" ; then
-   SH_SUFFIX=".a"
-else
-   AC_MSG_ERROR([No such linkage: ${LINKAGE}])
-fi	
+# Postfix for shared libs 
+SH_SUFFIX=".so"
+# Postfix for static libs 
+LIBSTATIC_SUFFIX=".a"
 
 # This is for cligen
 AC_ARG_WITH([cligen], AS_HELP_STRING([--with-cligen=dir],[Use CLIGEN installation in this dir]))

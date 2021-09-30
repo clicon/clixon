@@ -62,7 +62,8 @@ wwwdir          = @wwwdir@
 # one of fcgi or native:
 with_restconf	= @with_restconf@
 
-SH_SUFFIX	= .so
+SH_SUFFIX	= @SH_SUFFIX@
+LIBSTATIC_SUFFIX = @LIBSTATIC_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 
@@ -70,7 +71,7 @@ CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
 ifeq ($(LINKAGE),dynamic)
 	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 else
-	CLIXON_LIB	= libclixon.a
+	CLIXON_LIB	= libclixon$(LIBSTATIC_SUFFIX)
 endif
 
 # For dependency
@@ -130,22 +131,21 @@ MYNAME	        = clixon_restconf
 MYLIBDYNAMIC    = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 MYLIBSO         = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR)
 MYLIBLINK       = lib$(MYNAME)$(SH_SUFFIX)
-MYLIBSTATIC     = lib$(MYNAME).a
+MYLIBSTATIC     = lib$(MYNAME)$(LIBSTATIC_SUFFIX)
 
+all:	 $(APPL)
 ifeq ($(LINKAGE),dynamic)
-	MYLIB        = $(MYLIBDYNAMIC)
+all:	 $(MYLIBDYNAMIC)
 else
-	MYLIB        = $(MYLIBSTATIC)
+all:	 $(MYSTATIC)
 endif
-
-all:	 $(MYLIB) $(APPL)
 
 # Dependency of clixon library
 $(top_srcdir)/lib/src/$(CLIXON_LIB):
 	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
 
 clean:
-	rm -f $(LIBOBJ) *.core $(APPL) $(APPOBJ) *.o $(MYLIB) $(MYLIBSO) $(MYLIBLINK) # extra .o to clean residue if with_restconf changes
+	rm -f $(LIBOBJ) *.core $(APPL) $(APPOBJ) *.o $(MYLIBDYNAMIC) $(MYLIBSTATIC) $(MYLIBSO) $(MYLIBLINK) # extra .o to clean residue if with_restconf changes
 	rm -f *.gcda *.gcno *.gcov # coverage
 
 distclean: clean
@@ -163,12 +163,16 @@ ifeq ($(with_restconf),fcgi)
 	install -d -m 0755 $(DESTDIR)$(wwwdir)
 endif
 
-install-lib: $(MYLIB)
-	install -d -m 0755 $(DESTDIR)$(libdir)
-	install -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
 ifeq ($(LINKAGE),dynamic)
-	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon_restconf.so.2
+install-lib: $(MYLIBDYNAMIC)
+	install -d -m 0755 $(DESTDIR)$(libdir)
+	install -m 0644 $(INSTALLFLAGS) $< $(DESTDIR)$(libdir)
+	ln -sf $< $(DESTDIR)$(libdir)/$(MYLIBSO)	   # -l:libclixon_restconf.so.2
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon_restconf.so
+else
+install-lib: $(MYLIBSTATIC)
+	install -d -m 0755 $(DESTDIR)$(libdir)
+	install -m 0644 $(INSTALLFLAGS) $< $(DESTDIR)$(libdir)
 endif
 
 install-include:	clixon_restconf.h
@@ -178,7 +182,8 @@ install-include:	clixon_restconf.h
 uninstall:
 	rm -f $(DESTDIR)$(sbindir)/$(APPL)
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
-	rm -f $(DESTDIR)$(libdir)/$(MYLIB)
+	rm -f $(DESTDIR)$(libdir)/$(MYLIBSTATIC)
+	rm -f $(DESTDIR)$(libdir)/$(MYLIBDYNAMIC)
 
 .SUFFIXES:
 .SUFFIXES: .c .o
@@ -186,9 +191,13 @@ uninstall:
 .c.o:
 	$(CC) $(INCLUDES) -D__PROGRAM__=\"clixon_restconf\" $(CPPFLAGS) $(CFLAGS) -c $<
 
-# Note LIBDEPS is in lib/src and will always be remade du to a date dependency
-$(APPL) : $(APPOBJ) $(MYLIB) $(LIBDEPS)
-	$(CC) $(LDFLAGS) $(APPOBJ) -L. $(MYLIB) $(LIBS) -o $@
+ifeq ($(LINKAGE),dynamic)
+$(APPL): $(MYLIBDYNAMIC)
+else
+$(APPL): $(MYLIBSTATIC)
+endif
+$(APPL) : $(APPOBJ) $(LIBDEPS)
+	$(CC) $(LDFLAGS) -L. $^ $(LIBS) -o $@
 
 ifeq ($(HOST_VENDOR),apple)
 $(MYLIBDYNAMIC) : $(LIBOBJ) $(LIBDEPS)
@@ -199,7 +208,7 @@ $(MYLIBDYNAMIC) : $(LIBOBJ) $(LIBDEPS)
 endif
 
 # link-name is needed for application linking, eg for clixon_cli and clixon_config
-$(MYLIBLINK) : $(MYLIB)
+$(MYLIBLINK) : $(MYLIBDYNAMIC)
 
 $(MYLIBSTATIC) : $(LIBOBJ) $(LIBDEPS)
 	ar -crs $@ $(LIBOBJ) $(LIBDEPS)

@@ -57,7 +57,8 @@ CFLAGS		= @CFLAGS@
 ifeq ($(LINKAGE),dynamic)
 CFLAGS  	+= -fPIC
 endif
-SH_SUFFIX	= .so
+SH_SUFFIX	= @SH_SUFFIX@
+LIBSTATIC_SUFFIX = @LIBSTATIC_SUFFIX@
 INSTALL		= @INSTALL@
 INSTALL_LIB	= @INSTALL@
 INSTALLFLAGS  	= @INSTALLFLAGS@
@@ -105,18 +106,16 @@ MYNAME	     = clixon
 MYLIBDYNAMIC = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
 MYLIBSO      = lib$(MYNAME)$(SH_SUFFIX).$(CLIXON_MAJOR)
 MYLIBLINK    = lib$(MYNAME)$(SH_SUFFIX)
-MYLIBSTATIC  = lib$(MYNAME).a
+MYLIBSTATIC  = lib$(MYNAME)$(LIBSTATIC_SUFFIX)
 
 ifeq ($(LINKAGE),dynamic)
-	MYLIB        = $(MYLIBDYNAMIC)
+all:	 $(MYLIBLINK) $(MYLIBDYNAMIC)
 else
-	MYLIB        = $(MYLIBSTATIC)
+all:	 $(MYLIBSTATIC)
 endif
 
-all:	 $(MYLIB) $(MYLIBLINK)
-
 clean:
-	rm -f $(OBJS) $(MYLIB) $(MYLIBLINK) $(GENOBJS) $(GENSRC) *.core
+	rm -f $(OBJS) $(MYLIBLINK) $(MYLIBSTATIC) $(MYLIBDYNAMIC) $(GENOBJS) $(GENSRC) *.core
 	rm -f clixon_xml_parse.tab.[ch] clixon_xml_parse.yy.[co]
 	rm -f clixon_yang_parse.tab.[ch] clixon_yang_parse.[co]
 	rm -f clixon_json_parse.tab.[ch] clixon_json_parse.[co]
@@ -224,20 +223,26 @@ lex.clixon_instance_id_parse.o : lex.clixon_instance_id_parse.c clixon_instance_
 distclean: clean
 	rm -f Makefile *~ .depend
 
+# This is a way to not declare GENSRC as .PHONY. Instead rebuild
+# as a side-effect of building library, but not when doing make install
+
+prelib:
+	rm -f $(GENSRC)
+
 .SUFFIXES:
 .SUFFIXES: .c .o
 
 .c.o:
-	rm -f $@ && $(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
+# Prefix befor $(CC): rm -f $@ && , but unsure of why
 
 # Compute the length of the date command (and add some extra with XXX)
 DATELEN = $(shell date +"%Y.%m.%d %H:%M by `whoami` on `hostname`XXXX"|wc -c)
 
-.PHONY: build.c
 build.c:	
-	echo "/* This file is generated from the Clixon Makefile */" > build.c;
-	date +"const char CLIXON_BUILDSTR[$(DATELEN)]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; >> build.c;
-	echo "const char CLIXON_VERSION[64]=\"$(CLIXON_VERSION)\""\; >> build.c;
+	echo "/* This file is generated from the Clixon Makefile */" > $@;
+	date +"const char CLIXON_BUILDSTR[$(DATELEN)]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; >> $@;
+	echo "const char CLIXON_VERSION[64]=\"$(CLIXON_VERSION)\""\; >> $@;
 
 # Note: will always be remade since GENOBS is date dependent
 $(MYLIBDYNAMIC) : $(GENOBJS) $(OBJS) 
@@ -248,7 +253,7 @@ else
 endif
 
 # link-name is needed for application linking, eg for clixon_backend/clixon_cli
-$(MYLIBLINK) : $(MYLIB)
+$(MYLIBLINK) : $(MYLIBDYNAMIC)
 
 $(MYLIBSTATIC) :  $(GENOBJS) $(OBJS) 
 	ar -crs $@  $(GENOBJS) $(OBJS)
@@ -257,17 +262,22 @@ install: install-lib
 
 install-include:
 
-install-lib: $(MYLIB)
-	$(INSTALL) -m 0755 -d $(DESTDIR)$(libdir)
-	$(INSTALL_LIB) -m 0644 $(INSTALLFLAGS) $(MYLIB) $(DESTDIR)$(libdir)
 ifeq ($(LINKAGE),dynamic)
-	ln -sf $(MYLIB) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon.so.3
+install-lib: $(MYLIBDYNAMIC)
+	$(INSTALL) -m 0755 -d $(DESTDIR)$(libdir)
+	$(INSTALL_LIB) -m 0644 $(INSTALLFLAGS) $(MYLIBDYNAMIC) $(DESTDIR)$(libdir)
+	ln -sf $(MYLIBDYNAMIC) $(DESTDIR)$(libdir)/$(MYLIBSO)     # -l:libclixon.so.3
 	ln -sf $(MYLIBSO) $(DESTDIR)$(libdir)/$(MYLIBLINK) # -l:libclixon.so
+else
+install-lib: $(MYLIBSTATIC)
+	$(INSTALL) -m 0755 -d $(DESTDIR)$(libdir)
+	$(INSTALL_LIB) -m 0644 $(INSTALLFLAGS) $(MYLIBSTATIC) $(DESTDIR)$(libdir)
 endif
 
 uninstall: 
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
-	rm -f $(DESTDIR)$(libdir)/$(MYLIB)
+	rm -f $(DESTDIR)$(libdir)/$(MYLIBDYNAMIC)
+	rm -f $(DESTDIR)$(libdir)/$(MYLIBSTATIC)
 
 TAGS:
 	find . -name '*.[chyl]' -print | etags -
