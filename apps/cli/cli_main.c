@@ -575,6 +575,10 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
+#ifdef __AFL_HAVE_MANUAL_CONTROL
+	__AFL_INIT();
+#endif
+
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
 
@@ -754,8 +758,9 @@ main(int    argc,
     }
 
     /* Go into event-loop unless -1 command-line */
-    if (!once)
+    if (!once){
 	retval = cli_interactive(h);
+    }
     else
 	retval = 0;
   done:

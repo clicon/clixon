@@ -876,6 +876,10 @@ main(int    argc,
 	if (send_hello(h, 1, id) < 0)
 	    goto done;
     }
+#ifdef __AFL_HAVE_MANUAL_CONTROL
+    /* American fuzzy loop deferred init, see CLICON_NETCONF_HELLO_OPTIONAL=true, see a speedup of x10 */
+	__AFL_INIT();
+#endif
     if (clixon_event_reg_fd(0, netconf_input_cb, h, "netconf socket") < 0)
 	goto done;
     if (dbg)
@@ -887,6 +891,7 @@ main(int    argc,
 	if (clixon_event_reg_timeout(t, timeout_fn, NULL, "timeout") < 0)
 	    goto done;
     }
+
     if (clixon_event_loop(h) < 0)
 	goto done;
     retval = 0;

@@ -2,8 +2,6 @@
 
 This dir contains code for fuzzing clixon cli. 
 
-Note: cli plugins do not work.
-
 ## Prereqs
 
 Install AFL, see [..](..)
@@ -12,7 +10,7 @@ Build and install a clixon system (in particular the backend, the CLI will be re
 
 Build and install CLIgen statically:
 ```
-  CC=/usr/bin/afl-clang-fast LINKAGE=static INSTALLFLAGS="" ./configure
+  ./configure LINKAGE=static INSTALLFLAGS="" CC=/usr/bin/afl-clang-fast
 ```
 
 ## Build

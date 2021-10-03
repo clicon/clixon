@@ -384,31 +384,31 @@ start       : expr X_EOF         { _XPY->xpy_top=$1;_PARSE_DEBUG("start->expr");
             | locationpath X_EOF { _XPY->xpy_top=$1;_PARSE_DEBUG("start->locationpath"); YYACCEPT; } 
             ;
 
-expr        : expr LOGOP andexpr { $$=xp_new(XP_EXP,$2,NULL,NULL,NULL,$1, $3);_PARSE_DEBUG("expr->expr or andexpr");  } 
+expr        : expr LOGOP andexpr { $$=xp_new(XP_EXP,$2,NULL,NULL,NULL,$1, $3);_XPY->xpy_top=$$; _PARSE_DEBUG("expr->expr or andexpr");  } 
             | andexpr { $$=xp_new(XP_EXP,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("expr-> andexpr"); } 
             ;
 
-andexpr     : andexpr LOGOP relexpr { $$=xp_new(XP_AND,$2,NULL,NULL,NULL,$1, $3);_PARSE_DEBUG("andexpr-> andexpr and relexpr"); } 
-            | relexpr { $$=xp_new(XP_AND,A_NAN,NULL,NULL,NULL,$1, NULL);_PARSE_DEBUG("andexpr-> relexpr"); } 
+andexpr     : andexpr LOGOP relexpr { $$=xp_new(XP_AND,$2,NULL,NULL,NULL,$1, $3);_XPY->xpy_top=$$;_PARSE_DEBUG("andexpr-> andexpr and relexpr"); } 
+            | relexpr { $$=xp_new(XP_AND,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("andexpr-> relexpr"); } 
             ;
 
-relexpr     : relexpr RELOP addexpr { $$=xp_new(XP_RELEX,$2,NULL,NULL,NULL,$1, $3);_PARSE_DEBUG("relexpr-> relexpr relop addexpr"); } 
-            | addexpr { $$=xp_new(XP_RELEX,A_NAN,NULL,NULL,NULL,$1, NULL);_PARSE_DEBUG("relexpr-> addexpr"); } 
+relexpr     : relexpr RELOP addexpr { $$=xp_new(XP_RELEX,$2,NULL,NULL,NULL,$1, $3);_XPY->xpy_top=$$;_PARSE_DEBUG("relexpr-> relexpr relop addexpr"); } 
+            | addexpr { $$=xp_new(XP_RELEX,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("relexpr-> addexpr"); } 
             ;
 
-addexpr     : addexpr ADDOP unionexpr { $$=xp_new(XP_ADD,$2,NULL,NULL,NULL,$1, $3);_PARSE_DEBUG("addexpr-> addexpr ADDOP unionexpr"); } 
-            | unionexpr { $$=xp_new(XP_ADD,A_NAN,NULL,NULL,NULL,$1, NULL);_PARSE_DEBUG("addexpr-> unionexpr"); } 
+addexpr     : addexpr ADDOP unionexpr { $$=xp_new(XP_ADD,$2,NULL,NULL,NULL,$1, $3);_XPY->xpy_top=$$;_PARSE_DEBUG("addexpr-> addexpr ADDOP unionexpr"); } 
+            | unionexpr { $$=xp_new(XP_ADD,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("addexpr-> unionexpr"); } 
             ;
 
 /* node-set */
-unionexpr   : unionexpr '|' pathexpr { $$=xp_new(XP_UNION,XO_UNION,NULL,NULL,NULL,$1, $3);_PARSE_DEBUG("unionexpr-> unionexpr | pathexpr"); } 
-            | pathexpr { $$=xp_new(XP_UNION,A_NAN,NULL,NULL,NULL,$1, NULL);_PARSE_DEBUG("unionexpr-> pathexpr"); } 
+unionexpr   : unionexpr '|' pathexpr { $$=xp_new(XP_UNION,XO_UNION,NULL,NULL,NULL,$1, $3);_XPY->xpy_top=$$;_PARSE_DEBUG("unionexpr-> unionexpr | pathexpr"); } 
+            | pathexpr { $$=xp_new(XP_UNION,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("unionexpr-> pathexpr"); } 
             ;
 
-pathexpr    : locationpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL);_PARSE_DEBUG("pathexpr-> locationpath"); } 
-            | filterexpr { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL);_PARSE_DEBUG("pathexpr-> filterexpr"); }
-            | filterexpr '/' rellocpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,strdup("/"),NULL,$1, $3);_PARSE_DEBUG("pathexpr-> filterexpr / rellocpath"); }
-            | filterexpr DOUBLESLASH rellocpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,strdup("//"),NULL,$1, $3);_PARSE_DEBUG("pathexpr-> filterexpr // rellocpath"); } 
+pathexpr    : locationpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("pathexpr-> locationpath"); } 
+            | filterexpr { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("pathexpr-> filterexpr"); }
+            | filterexpr '/' rellocpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,strdup("/"),NULL,$1, $3);_XPY->xpy_top=$$;_PARSE_DEBUG("pathexpr-> filterexpr / rellocpath"); }
+            | filterexpr DOUBLESLASH rellocpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,strdup("//"),NULL,$1, $3);_XPY->xpy_top=$$;_PARSE_DEBUG("pathexpr-> filterexpr // rellocpath"); } 
             ;
 
 filterexpr  : primaryexpr { $$=xp_new(XP_FILTEREXPR,A_NAN,NULL,NULL,NULL,$1, NULL);_PARSE_DEBUG("filterexpr-> primaryexpr"); } 

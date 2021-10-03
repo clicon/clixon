@@ -15,7 +15,7 @@ TOKEN=$1
 # Configure (clixon)
 #CFLAGS="-g -Wall" INSTALLFLAGS="" ./configure
 #sudo ldconfig
-LDFLAGS=-coverage LINKAGE=static CFLAGS="-g -Wall -coverage" INSTALLFLAGS="" ./configure
+./configure LDFLAGS=-coverage LINKAGE=static CFLAGS="-g -Wall -coverage" INSTALLFLAGS="" 
 
 # Build
 make clean

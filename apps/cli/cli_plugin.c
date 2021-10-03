@@ -523,8 +523,10 @@ cli_handler_err(FILE *f)
 }
 
 /*! Evaluate a matched command
- * @param[in]     h    Clicon handle
- * @param[in]     cmd  The command string
+ * @param[in]     h         Clicon handle
+ * @param[in]     cmd       The command string
+ * @param[in]     match_obj
+ * @param[in]     cvv
  * @retval        int  If there is a callback, the return value of the callback is returned,
  * @retval        0    otherwise
  */
@@ -603,13 +605,13 @@ clicon_parse(clicon_handle  h,
     }
     if (csm != NULL){
 	modename0 = NULL;
-	if ((pt = cligen_ph_active_get(cli_cligen(h))) != NULL)
+	if ((pt = cligen_pt_active_get(cli_cligen(h))) != NULL)
 	    modename0 = pt_name_get(pt);
 	if (cligen_ph_active_set(cli_cligen(h), modename) < 0){
 	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
 	    goto done;
 	}
-	if ((pt = cligen_ph_active_get(cli_cligen(h))) == NULL){
+	if ((pt = cligen_pt_active_get(cli_cligen(h))) == NULL){
 	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
 	    goto done;
 	}

@@ -51,8 +51,9 @@ SH_SUFFIX	= @SH_SUFFIX@
 LIBSTATIC_SUFFIX = @LIBSTATIC_SUFFIX@
 INSTALLFLAGS  	= @INSTALLFLAGS@ 
 LDFLAGS 	= @LDFLAGS@	
-ifeq ($(LINKAGE),dynamic)
-LDFLAGS 	+=  -rdynamic -L. # -rdynamic for using -ldl
+ifneq ($(LINKAGE),dynamic)
+ # -rdynamic for using -ldl
+LDFLAGS 	+=  -rdynamic
 endif
 
 prefix 		= @prefix@
@@ -179,13 +180,19 @@ test:   $(MYLIBSTATIC)
 endif
 	$(CC) $(INCLUDES) $(LDFLAGS) -L . $^ $(LIBS) -o $@
 
+# Note1: static linking of clixon_cli must have:
+# 1) -rdynamic
+# 2) $(APPOBJ)
+# Note2: LIBDEPS is just a mechanism to ensure libclixon.so is built
+$(APPL): $(APPOBJ) $(LIBDEPS)
 ifeq ($(LINKAGE),dynamic)
 $(APPL): $(MYLIBDYNAMIC)
+	echo "LIBS:$(LIBS)"
+	$(CC) $(LDFLAGS) $(APPOBJ) $(EXTRAS) $(CLIGEN_LIB) $(LIBS) -L. $< -o $@
 else
-$(APPL): $(MYLIBSTATIC)
+$(APPL): $(LIBOBJ)
+	$(CC) $(LDFLAGS) $(APPOBJ) $(EXTRAS) $(LIBOBJ) $(CLIGEN_LIB) $(LIBS) -o $@
 endif
-$(APPL): $(APPOBJ) $(LIBDEPS)	
-	$(CC) $(LDFLAGS) $(EXTRAS) -L. $^ $(CLIGEN_LIB) $(LIBS) -o $@
 
 $(MYLIBDYNAMIC) : $(LIBOBJ) $(LIBDEPS)
 ifeq ($(HOST_VENDOR),apple)

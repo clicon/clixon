@@ -10,8 +10,10 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 # Check for soft links for .so files in case of dynamic linkage, but .a files f static linking
 if [ ${LINKAGE} = static ]; then
     LIBOPT=-f
+    SUFFIX=${LIBSTATIC_SUFFIX}
 else
     LIBOPT=-h
+    SUFFIX=${SH_SUFFIX}
 fi
 
 new "Set up installdir $dir"
@@ -32,18 +34,18 @@ new "Check installed files clixon-config"
 if [ ! -f $dir/usr/local/share/clixon/clixon-config* ]; then
     err $dir/usr/local/share/clixon/clixon-config*
 fi
-new "Check installed files libclixon${SH_SUFFIX}"
+new "Check installed files libclixon${SUFFIX}"
 # Check both /usr/local/lib and /usr/lib 
 # This is a problem on some platforms that dont have /usr/local/ in LD_LIBRARY_PATH
-if [ ! ${LIBOPT} $dir/usr/local/lib/libclixon${SH_SUFFIX} ]; then
-    if [ ! ${LIBOPT} $dir/usr/lib/libclixon${SH_SUFFIX} ]; then
-	err $dir/usr/local/lib/libclixon${SH_SUFFIX}
+if [ ! ${LIBOPT} $dir/usr/local/lib/libclixon${SUFFIX} ]; then
+    if [ ! ${LIBOPT} $dir/usr/lib/libclixon${SUFFIX} ]; then
+	err $dir/usr/local/lib/libclixon${SUFFIX}
     fi
 fi
-new "Check installed files libclixon_backend${SH_SUFFIX}"
-if [ ! ${LIBOPT} $dir/usr/local/lib/libclixon_backend${SH_SUFFIX} ]; then
-    if [ ! ${LIBOPT} $dir/usr/lib/libclixon_backend${SH_SUFFIX} ]; then
-	err $dir/usr/local/lib/libclixon_backend${SH_SUFFIX}
+new "Check installed files libclixon_backend${SUFFIX}"
+if [ ! ${LIBOPT} $dir/usr/local/lib/libclixon_backend${SUFFIX} ]; then
+    if [ ! ${LIBOPT} $dir/usr/lib/libclixon_backend${SUFFIX} ]; then
+	err $dir/usr/local/lib/libclixon_backend${SUFFIX}
     fi
 fi
 
