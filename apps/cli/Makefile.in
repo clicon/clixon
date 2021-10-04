@@ -122,8 +122,9 @@ $(top_srcdir)/lib/src/$(CLIXON_LIB):
 	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
 
 clean:
-	rm -f $(LIBOBJ) $(APPOBJ) *.core $(APPL) $(MYLIBDYNAMIC) $(MYLIBSTATIC) $(MYLIBSO) $(MYLIBLINK) test test.c
-	rm -f *.gcda *.gcno *.gcov # coverage
+	rm -f $(LIBOBJ) $(APPOBJ) $(APPL)
+	rm -f $(MYLIBDYNAMIC) $(MYLIBSTATIC) $(MYLIBSO) $(MYLIBLINK) test test.c
+	rm -f *.core *.gcda *.gcno *.gcov # coverage
 
 distclean: clean
 	rm -f Makefile *~ .depend 
@@ -187,7 +188,6 @@ endif
 $(APPL): $(APPOBJ) $(LIBDEPS)
 ifeq ($(LINKAGE),dynamic)
 $(APPL): $(MYLIBDYNAMIC)
-	echo "LIBS:$(LIBS)"
 	$(CC) $(LDFLAGS) $(APPOBJ) $(EXTRAS) $(CLIGEN_LIB) $(LIBS) -L. $< -o $@
 else
 $(APPL): $(LIBOBJ)

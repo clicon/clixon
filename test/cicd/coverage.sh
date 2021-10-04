@@ -19,7 +19,8 @@ TOKEN=$1
 
 # Build
 make clean
-make -j10
+# Special rule to include static linked cligen
+make CLIGEN_LIB=/usr/local/lib/libcligen.a
 sudo make install
 sudo make install-include
 (cd example; make)

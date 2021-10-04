@@ -78,11 +78,6 @@ int cc_closed = 0; /* XXX Please remove (or at least hide in handle) this global
 int
 add_preamble(cbuf *cb)
 {
-#ifdef NOTUSED
-    if (transport == NETCONF_SOAP)
-	cprintf(cb, "\n<soapenv:Envelope\n xmlns:soapenv=\"http://www.w3.org/2003/05/soap-envelope\">\n"
-	"<soapenv:Body>");
-#endif
     return 0;
 }
 
@@ -97,43 +92,6 @@ add_postamble(cbuf *cb)
     case NETCONF_SSH:
 	cprintf(cb, "]]>]]>");     /* Add RFC4742 end-of-message marker */
 	break;
-#ifdef NOTUSED
-    case NETCONF_SOAP:
-	cprintf(cb, "\n</soapenv:Body>" "</soapenv:Envelope>");
-	break;
-#endif
-    }
-    return 0;
-}
-
-/*! Add error_preamble
- * compared to regular messages (see add_preamble), error message differ in some
- * protocols (eg soap) by adding a longer and deeper header.
- * @param[in]  cb  Netconf packet (cligen buffer)
- */
-int
-add_error_preamble(cbuf *cb,
-		   char *reason)
-{
-    switch (transport){
-#ifdef NOTUSED
-    case NETCONF_SOAP:
-	cprintf(cb, "<soapenv:Envelope xmlns:soapenv=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:xml=\"http://www.w3.org/XML/1998/namespace\">"
-		"<soapenv:Body>"
-		"<soapenv:Fault>"
-		"<soapenv:Code>"
-		"<soapenv:Value>env:Receiver</soapenv:Value>"
-		"</soapenv:Code>"
-		"<soapenv:Reason>"
-		"<soapenv:Text xml:lang=\"en\">%s</soapenv:Text>"
-		"</soapenv:Reason>"
-		"<detail>", reason);
-	break;
-#endif
-    default:
-	if (add_preamble(cb) < 0)
-	    return -1;
-	break;
     }
     return 0;
 }
@@ -147,10 +105,6 @@ int
 add_error_postamble(cbuf *cb)
 {
     switch (transport){
-#ifdef NOTUSED
-    case NETCONF_SOAP:
-	cprintf(cb, "</detail>" "</soapenv:Fault>");
-#endif
     default: /* fall through */
 	if (add_postamble(cb) < 0)
 	    return -1;
