@@ -635,6 +635,7 @@ CXXFLAGS
 CXX
 CPP
 wwwdir
+CLIXON_YANG_PATCH
 enable_optyangs
 with_libxml2
 HAVE_LIBNGHTTP2
@@ -650,6 +651,11 @@ INSTALL_DATA
 INSTALL_SCRIPT
 INSTALL_PROGRAM
 INCLUDES
+CLIGEN_PREFIX
+CLIXON_VERSION_MINOR
+CLIXON_VERSION_MAJOR
+CLIXON_VERSION_STRING
+CLIXON_VERSION
 target_os
 target_vendor
 target_cpu
@@ -662,11 +668,6 @@ build_os
 build_vendor
 build_cpu
 build
-CLIGEN_PREFIX
-CLIXON_VERSION_MINOR
-CLIXON_VERSION_MAJOR
-CLIXON_VERSION_STRING
-CLIXON_VERSION
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -719,6 +720,7 @@ enable_option_checking
 enable_debug
 with_cligen
 enable_optyangs
+enable_yang_patch
 enable_publish
 with_restconf
 enable_evhtp
@@ -1369,6 +1371,7 @@ Optional Features:
   --enable-debug          Build with debug symbols, default: no
   --enable-optyangs       Include optional yang files for examples and testing
                           in clixon install, default: no
+  --enable-yang-patch     Enable YANG patch, RFC 8072, default: no
   --enable-publish        Enable publish of notification streams using SSE and
                           curl
   --disable-evhtp         Disable evhtp for native restconf http/1, default:
@@ -2231,9 +2234,9 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 # Default CFLAGS and INSTALLFLAGS unless set by environment
-: ${CFLAGS="-O2 -Wall"}
 : ${INSTALLFLAGS="-s"}
 : ${LINKAGE=dynamic}
+
 
 # where autotool scripts are: install-sh, config.sub, config.guess
 ac_aux_dir=
@@ -2270,6 +2273,31 @@ CLIXON_VERSION_MAJOR="5"
 CLIXON_VERSION_MINOR="4"
 CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
+
+# Debug flag
+# Check whether --enable-debug was given.
+if test "${enable_debug+set}" = set; then :
+  enableval=$enable_debug;
+	  if test "$enableval" = no; then
+	      ac_enable_debug=no
+	  else
+	      ac_enable_debug=yes
+          fi
+
+else
+   ac_enable_debug=no
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: debug is $ac_enable_debug" >&5
+$as_echo "debug is $ac_enable_debug" >&6; }
+if test "$ac_enable_debug" = "yes"; then
+   : ${CFLAGS="-g -Wall"}
+   INSTALLFLAGS=""
+else
+   : ${CFLAGS="-O2 -Wall"}
+fi
+
 
 # Check CLIgen
 if test "$prefix" = "NONE"; then
@@ -3132,17 +3160,6 @@ _ACEOF
 fi
 
 
-# AC_SUBST(var) makes @var@ appear in makefiles.
-# clixon versions spread to Makefile's (.so files) and variable in build.c
-
-
-
-
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: CLIXON version is ${CLIXON_VERSION}" >&5
-$as_echo "CLIXON version is ${CLIXON_VERSION}" >&6; }
-
 # Make sure we can run config.sub.
 $SHELL "$ac_aux_dir/config.sub" sun4 >/dev/null 2>&1 ||
   as_fn_error $? "cannot run $SHELL $ac_aux_dir/config.sub" "$LINENO" 5
@@ -3253,6 +3270,17 @@ test -n "$target_alias" &&
   test "$program_prefix$program_suffix$program_transform_name" = \
     NONENONEs,x,x, &&
   program_prefix=${target_alias}-
+
+# AC_SUBST(var) makes @var@ appear in makefiles.
+# clixon versions spread to Makefile's (.so files) and variable in build.c
+
+
+
+
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: CLIXON version is ${CLIXON_VERSION}" >&5
+$as_echo "CLIXON version is ${CLIXON_VERSION}" >&6; }
 
 
 
@@ -3366,6 +3394,9 @@ HAVE_LIBEVHTP=false
    # consider using neutral constant such as with-http1
 HAVE_LIBNGHTTP2=false
  # consider using neutral constant such as with-http2
+
+
+
 
 
 # Home dir for web user, such as nginx fcgi sockets
@@ -4311,27 +4342,6 @@ CPPFLAGS="-DHAVE_CONFIG_H ${CPPFLAGS}"
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: compiler is $CC" >&5
 $as_echo "compiler is $CC" >&6; }
-# Debug flag
-# Check whether --enable-debug was given.
-if test "${enable_debug+set}" = set; then :
-  enableval=$enable_debug;
-	  if test "$enableval" = no; then
-	      ac_enable_debug=no
-	  else
-	      ac_enable_debug=yes
-          fi
-
-else
-   ac_enable_debug=no
-fi
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: debug is $ac_enable_debug" >&5
-$as_echo "debug is $ac_enable_debug" >&6; }
-if test "$ac_enable_debug" = "yes"; then
-   CFLAGS="$CFLAGS -g -Wall"
-   INSTALLFLAGS=""
-fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: CPPFLAGS is $CPPFLAGS" >&5
 $as_echo "CPPFLAGS is $CPPFLAGS" >&6; }
@@ -4600,6 +4610,30 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: optyangs is $enable_optyangs" >&5
 $as_echo "optyangs is $enable_optyangs" >&6; }
+
+# Disable/enable yang patch
+# Check whether --enable-yang-patch was given.
+if test "${enable_yang_patch+set}" = set; then :
+  enableval=$enable_yang_patch;
+	  if test "$enableval" = no; then
+	      enable_yang_patch=no
+	  else
+	      enable_yang_patch=yes
+          fi
+
+else
+   enable_yang_patch=no
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: enable-yang-patch is ${enable_yang_patch}" >&5
+$as_echo "enable-yang-patch is ${enable_yang_patch}" >&6; }
+if test "${enable_yang_patch}" = "yes"; then
+   CLIXON_YANG_PATCH=1
+
+$as_echo "#define CLIXON_YANG_PATCH 1" >>confdefs.h
+
+fi
 
 # Experimental: Curl publish notification stream to eg Nginx nchan.
 # Check whether --enable-publish was given.

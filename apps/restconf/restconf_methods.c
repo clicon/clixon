@@ -677,7 +677,7 @@ api_data_patch(clicon_handle h,
 	break;
     case YANG_PATCH_JSON: 	/* RFC 8072 patch */
     case YANG_PATCH_XML:
-#ifdef YANG_PATCH
+#ifdef CLIXON_YANG_PATCH
 	ret = api_data_yang_patch(h, req, api_path0, pcvec, pi, qvec, data, pretty,
 				  media_in, media_out, ds);
 #else

@@ -41,9 +41,9 @@
 AC_INIT(lib/clixon/clixon.h.in)
 
 # Default CFLAGS and INSTALLFLAGS unless set by environment
-: ${CFLAGS="-O2 -Wall"}
 : ${INSTALLFLAGS="-s"}
 : ${LINKAGE=dynamic}
+
 
 # where autotool scripts are: install-sh, config.sub, config.guess
 AC_CONFIG_AUX_DIR(config-aux)
@@ -52,6 +52,24 @@ CLIXON_VERSION_MAJOR="5"
 CLIXON_VERSION_MINOR="4"
 CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
+
+# Debug flag
+AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, default: no]),[
+	  if test "$enableval" = no; then
+	      ac_enable_debug=no
+	  else	      
+	      ac_enable_debug=yes
+          fi
+        ],
+	[ ac_enable_debug=no])
+
+AC_MSG_RESULT(debug is $ac_enable_debug)	
+if test "$ac_enable_debug" = "yes"; then
+   : ${CFLAGS="-g -Wall"}
+   INSTALLFLAGS=""	
+else
+   : ${CFLAGS="-O2 -Wall"}
+fi
 
 # Check CLIgen
 if test "$prefix" = "NONE"; then
@@ -69,6 +87,8 @@ AC_DEFINE_UNQUOTED(CLIXON_VERSION_PATCH, $CLIXON_VERSION_PATCH, [Clixon path ver
 
 AC_CHECK_LIB(m, main)
 
+AC_CANONICAL_TARGET
+
 # AC_SUBST(var) makes @var@ appear in makefiles.
 # clixon versions spread to Makefile's (.so files) and variable in build.c
 AC_SUBST(CLIXON_VERSION)
@@ -78,8 +98,6 @@ AC_SUBST(CLIXON_VERSION_MINOR)
 AC_SUBST(CLIGEN_PREFIX)
 
 AC_MSG_RESULT(CLIXON version is ${CLIXON_VERSION})
-
-AC_CANONICAL_TARGET
 
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)
@@ -100,7 +118,10 @@ AC_SUBST(with_restconf) # Set to native or fcgi -> compile apps/restconf
 AC_SUBST(HAVE_LIBEVHTP,false)   # consider using neutral constant such as with-http1
 AC_SUBST(HAVE_LIBNGHTTP2,false) # consider using neutral constant such as with-http2
 AC_SUBST(with_libxml2)  
-AC_SUBST(enable_optyangs) 
+AC_SUBST(enable_optyangs)
+AC_SUBST(CLIXON_YANG_PATCH)
+
+
 # Home dir for web user, such as nginx fcgi sockets
 AC_SUBST(wwwdir,/www-data)
 
@@ -112,21 +133,6 @@ AC_PROG_CXX
 CPPFLAGS="-DHAVE_CONFIG_H ${CPPFLAGS}"
 
 AC_MSG_RESULT(compiler is $CC)	
-# Debug flag
-AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, default: no]),[
-	  if test "$enableval" = no; then
-	      ac_enable_debug=no
-	  else	      
-	      ac_enable_debug=yes
-          fi
-        ],
-	[ ac_enable_debug=no])
-
-AC_MSG_RESULT(debug is $ac_enable_debug)	
-if test "$ac_enable_debug" = "yes"; then
-   CFLAGS="$CFLAGS -g -Wall"
-   INSTALLFLAGS=""	
-fi
 
 AC_MSG_RESULT(CPPFLAGS is $CPPFLAGS)	
 AC_MSG_RESULT(CFLAGS is $CFLAGS)
@@ -179,7 +185,23 @@ AC_ARG_ENABLE(optyangs, AS_HELP_STRING([--enable-optyangs],[Include optional yan
         ],
 	[ enable_optyangs=no])
 
-AC_MSG_RESULT(optyangs is $enable_optyangs)	
+AC_MSG_RESULT(optyangs is $enable_optyangs)
+
+# Disable/enable yang patch
+AC_ARG_ENABLE(yang-patch, AS_HELP_STRING([--enable-yang-patch],[Enable YANG patch, RFC 8072, default: no]),[
+	  if test "$enableval" = no; then
+	      enable_yang_patch=no
+	  else	      
+	      enable_yang_patch=yes
+          fi
+        ],
+	[ enable_yang_patch=no])
+
+AC_MSG_RESULT(enable-yang-patch is ${enable_yang_patch})
+if test "${enable_yang_patch}" = "yes"; then
+   CLIXON_YANG_PATCH=1
+   AC_DEFINE(CLIXON_YANG_PATCH, 1, [Enable YANG patch, RFC 8072])
+fi
 
 # Experimental: Curl publish notification stream to eg Nginx nchan. 
 AC_ARG_ENABLE(publish, AS_HELP_STRING([--enable-publish],[Enable publish of notification streams using SSE and curl]),[

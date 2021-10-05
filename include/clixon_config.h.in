@@ -18,6 +18,9 @@
 /* Clixon version string */
 #undef CLIXON_VERSION_STRING
 
+/* Enable YANG patch, RFC 8072 */
+#undef CLIXON_YANG_PATCH
+
 /* Define to 1 if you have the `alphasort' function. */
 #undef HAVE_ALPHASORT
 

@@ -32,6 +32,7 @@
 #
 # Generated from autotools, ie from the ./configure run,
 # See configure.ac for source
+# See also site.sh
 
 # This is for RESTCONF.  There are three options:
 # --without-restconf     No restconf support
@@ -78,3 +79,5 @@ CERTKEYLEN=2048
 LINKAGE=@LINKAGE@
 SH_SUFFIX=@SH_SUFFIX@
 LIBSTATIC_SUFFIX=@LIBSTATIC_SUFFIX@
+CLIXON_YANG_PATCH=@CLIXON_YANG_PATCH@
+

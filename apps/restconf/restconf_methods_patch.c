@@ -67,7 +67,7 @@
 #include "restconf_methods_post.h"
 #include "restconf_methods_patch.h"
 
-#ifdef YANG_PATCH
+#ifdef CLIXON_YANG_PATCH
 
 enum yang_patch_op{
     YANG_PATCH_OP_CREATE,
@@ -124,7 +124,7 @@ yang_patch_xml2json_modified_cbuf(cxobj *x_simple_patch)
     // Insert a '[' after the first '{' to get the JSON to match what api_data_post/write() expect
     json_simple_patch_tmp = cbuf_get(cb);
     len = strlen(json_simple_patch_tmp);
-    for (int l = 0; l < strlen(len); l++) {
+    for (int l = 0; l < len; l++) {
         char c = json_simple_patch_tmp[l];
         if (c == '{') {
             brace_count++;
@@ -848,7 +848,7 @@ api_data_yang_patch(clicon_handle  h,
     return retval;
 }
 
-#else // YANG_PATCH
+#else // CLIXON_YANG_PATCH
 
 int
 api_data_yang_patch(clicon_handle h,
@@ -866,4 +866,4 @@ api_data_yang_patch(clicon_handle h,
     clicon_err(OE_RESTCONF, 0, "Not implemented");
     return -1;
 }
-#endif // YANG_PATCH
+#endif // CLIXON_YANG_PATCH

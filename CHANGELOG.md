@@ -34,8 +34,19 @@
 ## 5.4.0
 Expected: November, 2021
 
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* NETCONF hello errors, such as wrong session-id, prefix, namespace terminates session
+  * Instead of returning an rpc-error reply
+
 ### Minor features
 
+* Restconf YANG PATCH according to RFC 8072
+  * Changed YANG PATCH enabling:
+    * Now: `./configure --enable-yang-patch`
+    * Before: set YANG_PATCH constant in `include/clixon_custom.h`
 * Refactored Makefile for static linking
 
 ## 5.3.0

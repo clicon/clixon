@@ -48,6 +48,8 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <time.h>
+#include <pwd.h>
+#include <libgen.h>
 #include <syslog.h>
 #include <sys/time.h>
 #include <sys/socket.h>
@@ -56,9 +58,7 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <pwd.h>
 #include <netinet/in.h>
-#include <libgen.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -119,7 +119,7 @@ netconf_add_request_attr(cxobj *xrpc,
     return retval;
 }
 
-/*
+/*! Process netconf hello message
  * A server receiving a <hello> message with a <session-id> element MUST
  * terminate the NETCONF session. 
  */
@@ -309,22 +309,20 @@ netconf_input_packet(clicon_handle h,
 	    goto done;
     }
     else if (strcmp(rpcname, "hello") == 0){
-    /* Only accept resolved NETCONF base namespace */
+	/* Only accept resolved NETCONF base namespace -> terminate*/
 	if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
-	    clicon_err(OE_XML, EFAULT, "No appropriate namespace associated with prefix:%s", rpcprefix);
+	    cc_closed++;
+	    clicon_err(OE_XML, EFAULT, "No appropriate namespace associated with namespace:%s",
+		       namespace);
 	    goto done;
 	}
 	if (netconf_hello_msg(h, xreq) < 0)
 	    goto done;
     }
-    else{
-	if ((cbret = cbuf_new()) == NULL){ 
-	    clicon_err(OE_XML, errno, "cbuf_new");
-	    goto done;
-	}
-	if (netconf_unknown_element(cbret, "protocol", rpcname, "Unrecognized netconf operation")< 0)
-	    goto done;
-	netconf_output_encap(1, cbret, "rpc-error");
+    else{ /* Shouldnt happen should be caught by yang bind check in netconf_input_frame */
+	cc_closed++;
+	clicon_err(OE_NETCONF, 0, "Unrecognized netconf operation %s", rpcname);
+	goto done;
     }
  ok:
     retval = 0;

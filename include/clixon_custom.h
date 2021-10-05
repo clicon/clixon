@@ -113,11 +113,6 @@
  */
 #define XML_PARENT_CANDIDATE
 
-/*! Enable yang patch RFC 8072 
- * Remove this when regression test
- */
-#undef YANG_PATCH
-
 /*! Enable "remaining" attribute (sub-feature of list pagination)
  * As defined in draft-wwlh-netconf-list-pagination-00 using Yang metadata value [RFC7952] 
  */
