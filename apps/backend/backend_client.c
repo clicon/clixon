@@ -206,10 +206,17 @@ clixon_stats_get_db(clicon_handle h,
     cxobj    *xt = NULL;
     uint64_t  nr = 0;
     size_t    sz = 0;
+    cxobj    *xn = NULL;
     
     /* This is the db cache */
-    if ((xt = xmldb_cache_get(h, dbname)) == NULL){
 
+    if ((xt = xmldb_cache_get(h, dbname)) == NULL){
+	/* Trigger cache if no exist */
+	if (xmldb_get(h, dbname, NULL, "/", &xn) < 0)
+	    goto done;
+	xt = xmldb_cache_get(h, dbname);
+    }
+    if (xt == NULL){
 	cprintf(cb, "<datastore><name>%s</name><nr>0</nr><size>0</size></datastore>", dbname);
     }
     else{
@@ -221,6 +228,8 @@ clixon_stats_get_db(clicon_handle h,
     }
     retval = 0;
  done:
+    if (xn)
+	xml_free(xn);
     return retval;
 }
 

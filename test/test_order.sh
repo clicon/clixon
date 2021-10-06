@@ -96,8 +96,37 @@ module order-example{
         type string;
         ordered-by system;
       }
-      leaf-list ints{
+      /* Follow list of all int types mostly to get coverage */
+      leaf-list myint8{
+        type int8;
+        ordered-by system;
+      }
+      leaf-list myint16{
+        type int16;
+        ordered-by system;
+      }
+      leaf-list myint32{
         type int32;
+        ordered-by system;
+      }
+      leaf-list myint64{
+        type int64;
+        ordered-by system;
+      }
+      leaf-list myuint8{
+        type uint8;
+        ordered-by system;
+      }
+      leaf-list myuint16{
+        type uint16;
+        ordered-by system;
+      }
+      leaf-list myuint32{
+        type uint32;
+        ordered-by system;
+      }
+      leaf-list myuint64{
+        type uint64;
         ordered-by system;
       }
       list listints{
@@ -257,13 +286,21 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-confi
 new "check string order (1,10,2)"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/exo:types/exo:strings\" xmlns:exo=\"urn:example:order\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><types xmlns=\"urn:example:order\"><strings>1</strings><strings>10</strings><strings>2</strings></types></data></rpc-reply>]]>]]>$"
 
-new "put leaf-list int (10,2,1)"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><types xmlns=\"urn:example:order\">
-<ints>10</ints><ints>2</ints><ints>1</ints>
+for s in int uint; do
+    for t in 8 16 32 64; do
+	type=$s$t
+	new "put leaf-list $type (10,2,1)"
+	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><types xmlns=\"urn:example:order\">
+<my$type>10</my$type><my$type>2</my$type><my$type>1</my$type>
 </types></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
-new "check leaf-list int order (1,2,10)"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/exo:types/exo:ints\" xmlns:exo=\"urn:example:order\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><types xmlns=\"urn:example:order\"><ints>1</ints><ints>2</ints><ints>10</ints></types></data></rpc-reply>]]>]]>$"
+	new "check leaf-list $type order (1,2,10)"
+	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/exo:types/exo:my$type\" xmlns:exo=\"urn:example:order\"/></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><types xmlns=\"urn:example:order\"><my$type>1</my$type><my$type>2</my$type><my$type>10</my$type></types></data></rpc-reply>]]>]]>$"
+    done
+done
+
+new "netconf validate ints"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 new "put list int (10,2,1)"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><types xmlns=\"urn:example:order\">
