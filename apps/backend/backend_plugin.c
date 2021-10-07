@@ -253,10 +253,6 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
 			    clicon_handle    h,
 			    cvec            *nsc,
 			    char            *xpath,
-			    pagination_mode_t pagmode,
-			    uint32_t         offset,
-			    uint32_t         limit,  
-			    uint32_t        *remaining, 
 			    cxobj          **xp)
 {
     int              retval = -1;
@@ -267,7 +263,7 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
     if ((fn = clixon_plugin_api_get(cp)->ca_statedata) != NULL){
 	if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
-	if (fn(h, nsc, xpath, pagmode, offset, limit, remaining, x) < 0){
+	if (fn(h, nsc, xpath, x) < 0){
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: State callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, clixon_plugin_name_get(cp));
@@ -306,10 +302,6 @@ clixon_plugin_statedata_all(clicon_handle   h,
 			    yang_stmt      *yspec,
 			    cvec           *nsc,
 			    char           *xpath,
-			    pagination_mode_t pagmode,
-			    uint32_t        offset,
-			    uint32_t        limit,  
-			    uint32_t       *remaining, 
 			    cxobj         **xret)
 {
     int              retval = -1;
@@ -321,8 +313,7 @@ clixon_plugin_statedata_all(clicon_handle   h,
     
     clicon_debug(1, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
-	if ((ret = clixon_plugin_statedata_one(cp, h, nsc, xpath, pagmode,
-					       offset, limit, remaining, &x)) < 0)
+	if ((ret = clixon_plugin_statedata_one(cp, h, nsc, xpath, &x)) < 0)
 	    goto done;
 	if (ret == 0){
 	    if ((cberr = cbuf_new()) == NULL){
@@ -450,6 +441,63 @@ clixon_plugin_lockdb_all(clicon_handle h,
 	if (clixon_plugin_lockdb_one(cp, h, db, lock, id) < 0)
 	    goto done;
     } 
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Traverse state data callbacks
+ * 
+ * @param[in]  h      Clixon handle
+ * @param[in]  xpath  Registered XPath using canonical prefixes
+ */
+int
+clixon_pagination_cb_call(clicon_handle     h,
+			   char             *xpath,
+			   pagination_mode_t pagmode,
+			   uint32_t          offset,
+			   uint32_t          limit,
+			   uint32_t         *remaining,
+			   cxobj            *xstate)
+{
+    int                 retval = -1;
+    pagination_data_t   pd = {pagmode, offset, limit, 0, xstate};
+    dispatcher_entry_t *htable = NULL;
+
+    clicon_ptr_get(h, "pagination-entries", (void**)&htable);
+    if (htable && dispatcher_call_handlers(htable, h, xpath, &pd) < 0)
+	goto done;
+    if (remaining)
+	*remaining = pd.pd_remaining;
+    retval = 1;
+ done:
+    return retval;
+}
+
+/*! Register a state data callback 
+ * 
+ * @param[in]  h      Clixon handle
+ * @param[in]  fn     Callback 
+ * @param[in]  xpath  Registered XPath using canonical prefixes
+ * @param[in]  arg    Domain-specific argument to send to callback
+ */
+int
+clixon_pagination_cb_register(clicon_handle    h,
+			      handler_function fn,
+			      char            *xpath,
+			      void            *arg)
+{
+    int                       retval = -1;
+    dispatcher_definition     x = {xpath, fn};
+    dispatcher_entry_t       *htable = NULL;
+    
+    clicon_ptr_get(h, "pagination-entries", (void**)&htable);
+    if (dispatcher_register_handler(&htable, &x) < 0){
+	clicon_err(OE_PLUGIN, errno, "dispatcher");
+	goto done;
+    }
+    if (clicon_ptr_set(h, "pagination-entries", htable) < 0)
+	goto done;
     retval = 0;
  done:
     return retval;
@@ -885,4 +933,3 @@ plugin_transaction_abort_all(clicon_handle       h,
     retval = 0;
     return retval;
 }
-	

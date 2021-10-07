@@ -284,3 +284,59 @@ transaction_log(clicon_handle      h,
 	cbuf_free(cb);
     return 0;
 }
+
+/*! Get pagination data: mode parameter
+ *
+ * @param[in]  pd    Pagination userdata
+ * @retval     mode  Pagination mode, stateless or locked
+ */
+pagination_mode_t
+pagination_pagmode(pagination_data pd)
+{
+    return ((pagination_data_t *)pd)->pd_pagmode;
+}
+
+/*! Get pagination data: offset parameter
+ *
+ * @param[in]  pd     Pagination userdata
+ * @retval     offset Start of pagination interval
+ */
+uint32_t
+pagination_offset(pagination_data pd)
+{
+    return ((pagination_data_t *)pd)->pd_offset;
+}
+
+/*! Get pagination data: limit parameter
+ *
+ * @param[in]  pd    Pagination userdata
+ * @retval     limit Number of elemenents (limit) 
+ */
+uint32_t
+pagination_limit(pagination_data pd)
+{
+    return ((pagination_data_t *)pd)->pd_limit;
+}
+
+/*! Set pagination data: remaining nr of elements
+ *
+ * @param[in]  pd        Pagination userdata
+ * @param[in]  remaining If limit, then remaining nr of elements
+ */
+int
+pagination_remaining_set(pagination_data pd,
+			 uint32_t        remaining)
+{
+    return ((pagination_data_t *)pd)->pd_remaining = remaining;
+}
+
+/*! Get pagination data: Returned xml state tree
+ *
+ * @param[in]  pd     Pagination userdata
+ * @retval     xstate Returned xml state tree
+ */
+cxobj*
+pagination_xstate(pagination_data pd)
+{
+    return ((pagination_data_t *)pd)->pd_xstate;
+}

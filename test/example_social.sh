@@ -2,6 +2,7 @@
 # Example-social from draft-netconf-list-pagination-00.txt appendix A.1
 # Assumes variable fexample is set to name of yang file
 # Note audit-logs/audit-log/outcome is changed from mandatory to default
+# Also: leaf-list member/state/numbers is added
 
 cat <<EOF > $fexample
    module example-social {
@@ -214,6 +215,10 @@ cat <<EOF > $fexample
            config false;
            description
              "Operational state members values.";
+           leaf-list numbers {
+	     description "config false extension";
+	     type int32;
+           }
            leaf joined {
              type yang:date-and-time;
              mandatory true;

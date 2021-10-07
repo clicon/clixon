@@ -217,24 +217,21 @@ enum pagination_mode{
 typedef enum pagination_mode pagination_mode_t;
 
 /* Plugin statedata
- * @param[in]  Clicon handle
+ * @param[in]  h          Clicon handle
  * @param[in]  xpath      Part of state requested
  * @param[in]  nsc        XPATH namespace context.
- * @param[in]  pagmode    List pagination mode
- * @param[in]  offset     Offset, for list pagination
- * @param[in]  limit      Limit, for list pagination
- * @param[out] remaining  Remaining elements (if limit is non-zero)
  * @param[out] xtop       XML tree where statedata is added
  * @retval    -1          Fatal error
  * @retval     0          OK
  */
-typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath,
-			      pagination_mode_t pagmode,
-			      uint32_t offset, uint32_t limit,
-			      uint32_t *remaining, 
-			      cxobj *xtop);
+typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
 
-/*! Lock databse status has changed status
+/* Pagination-data type
+ * @see pagination_data_t in clixon_backend_transaction.h for full pagination API 
+ */
+typedef void *pagination_data;
+
+/*! Lock database status has changed status
  * @param[in]  h    Clixon handle
  * @param[in]  db   Database name (eg "running")
  * @param[in]  lock Lock status: 0: unlocked, 1: locked

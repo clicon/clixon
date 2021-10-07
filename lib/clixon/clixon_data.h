@@ -61,9 +61,14 @@ typedef struct {
 /*
  * Prototypes
  */
+/* Generic clixon data API the form <name>=<val> where <val> is string */
 int clicon_data_get(clicon_handle h, const char *name, char **val);
 int clicon_data_set(clicon_handle h, const char *name, char *val);
 int clicon_data_del(clicon_handle h, const char *name);
+
+int clicon_ptr_get(clicon_handle h, const char *name, void **ptr);
+int clicon_ptr_set(clicon_handle h, const char *name, void *ptr);
+int clicon_ptr_del(clicon_handle h, const char *name);
 
 cvec *clicon_data_cvec_get(clicon_handle h, const char *name);
 int   clicon_data_cvec_set(clicon_handle h, const char *name, cvec *cvv);

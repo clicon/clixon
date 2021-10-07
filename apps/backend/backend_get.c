@@ -212,7 +212,6 @@ get_client_statedata(clicon_handle h,
     /* Add default global state */
     if (xml_global_defaults(h, *xret, nsc, xpath, yspec, 1) < 0)
 	goto done;
-
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277")){
 	if ((ymod = yang_find_module_by_name(yspec, "clixon-rfc5277")) == NULL){
 	    clicon_err(OE_YANG, ENOENT, "yang module clixon-rfc5277 not found");
@@ -258,7 +257,7 @@ get_client_statedata(clicon_handle h,
 	    goto fail;
     }
     /* Use plugin state callbacks */
-    if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, PAGINATION_NONE, 0, 0, NULL, xret)) < 0)
+    if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, xret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;
@@ -490,7 +489,7 @@ get_list_pagination(clicon_handle        h,
     }
     if (yang_keyword_get(ylist) != Y_LIST &&
 	yang_keyword_get(ylist) != Y_LEAF_LIST){
-	if (netconf_invalid_value(cbret, "application", "list-pagination is enabled but target is not leaf or leaf-list") < 0)
+	if (netconf_invalid_value(cbret, "application", "list-pagination is enabled but target is not list or leaf-list") < 0)
 	    goto done;
 	goto ok;
     }
@@ -539,35 +538,37 @@ get_list_pagination(clicon_handle        h,
     /* where */
     if (ret && (x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL)
 	where = xml_body(x);
-    /* Build a "predicate" cbuf 
-     * This solution uses xpath predicates to translate "limit" and "offset" to
-     * relational operators <>.
-     */
-    if ((cbpath = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    /* This uses xpath. Maybe limit should use parameters */
-    if (xpath)
-	cprintf(cbpath, "%s", xpath);
-    else
-	cprintf(cbpath, "/");
-    if (where)
-	cprintf(cbpath, "[%s]", where);
-    if (offset){
-	cprintf(cbpath, "[%u <= position()", offset);
-	if (limit)
-	    cprintf(cbpath, " and position() < %u", limit+offset);
-	cprintf(cbpath, "]");
-    }
-    else if (limit)
-	cprintf(cbpath, "[position() < %u]", limit);
-    /* Append predicate to original xpath and replace it */
-    xpath2 = cbuf_get(cbpath);
+
     /* Read config */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
     case CONTENT_ALL:       /* both config and state */
+	/* Build a "predicate" cbuf 
+	 * This solution uses xpath predicates to translate "limit" and "offset" to
+	 * relational operators <>.
+	 */
+	if ((cbpath = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	/* This uses xpath. Maybe limit should use parameters */
+	if (xpath)
+	    cprintf(cbpath, "%s", xpath);
+	else
+	    cprintf(cbpath, "/");
+	if (where)
+	    cprintf(cbpath, "[%s]", where);
+	if (offset){
+	    cprintf(cbpath, "[%u <= position()", offset);
+	    if (limit)
+		cprintf(cbpath, " and position() < %u", limit+offset);
+	    cprintf(cbpath, "]");
+	}
+	else if (limit)
+	    cprintf(cbpath, "[position() < %u]", limit);
+
+	/* Append predicate to original xpath and replace it */
+	xpath2 = cbuf_get(cbpath);
 	/* specific xpath */
 	if (xmldb_get0(h, db, YB_MODULE, nsc, xpath2?xpath2:"/", 1, &xret, NULL, NULL) < 0) {
 	    if ((cbmsg = cbuf_new()) == NULL){
@@ -603,11 +604,12 @@ get_list_pagination(clicon_handle        h,
 	    pagmode = PAGINATION_LOCK;
 	else
 	    pagmode = PAGINATION_STATELESS;
-	/* Use plugin state callbacks */
-	if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath,
-					       pagmode,
-					       offset, limit, &remaining, &xret)) < 0)
+	if ((ret = clixon_pagination_cb_call(h, xpath, pagmode,
+					     offset, limit, &remaining,
+					     xret)) < 0)
 	    goto done;
+	if (ret == 0)
+	    goto ok;
     }
     /* Help function to filter out anything that is outside of xpath */
     if (filter_xpath_again(h, yspec, xret, xpath, nsc, &x1) < 0)

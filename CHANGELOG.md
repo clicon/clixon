@@ -34,6 +34,16 @@
 ## 5.4.0
 Expected: November, 2021
 
+Thanks netgate for providing the dispatcher code!
+
+### New features
+
+* Broke out pagination callback API from state data callbacks
+  * New pagination callback API uses new dispatcher from netgate, thanks @dcornejo
+    * Register callback with: `clixon_pagination_cb_register()`
+    * Use accessor functions `pagination_offset()`, `pagination_limit()`, etc
+  * Reverted state data callback API to pre-5.3 (see C/CLI API changes below)
+
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
@@ -41,8 +51,24 @@ Users may have to change how they access the system
 * NETCONF hello errors, such as wrong session-id, prefix, namespace terminates session
   * Instead of returning an rpc-error reply
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Statedata plugin callbacks are reverted to pre-5.3:
+  * This has been done as a consequence of breaking out the pagination state API as a separate API.
+  * The reverted state data callback signature is as follows:
+  ```
+  int statedata(clicon_handle     h,
+                cvec             *nsc,
+	        char             *xpath,
+	        cxobj            *xstate)
+  ```
+
 ### Minor features
 
+* Added set/get pointer API to clixon_data:
+   * clicon_ptr_get(), clicon_ptr_set(), 
 * Restconf YANG PATCH according to RFC 8072
   * Changed YANG PATCH enabling:
     * Now: `./configure --enable-yang-patch`
@@ -109,6 +135,7 @@ Users may have to change how they access the system
 Developers may need to change their code
 
 * You need to change all statedata plugin callback for the new pagination feature
+  * NOTE THIS CHANGE IS REVERTED IN 5.4
   * If you dont use pagination you can ignore the values of the new parameters
   * The updated callback signature is as follows:
   ```

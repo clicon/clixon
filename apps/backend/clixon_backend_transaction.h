@@ -46,7 +46,6 @@
  * Prototypes
  */
 /* Transaction callback data accessors for client plugins
- * (defined in config_dbdep.c)
  * @see transaction_data_t  internal structure
  */
 uint64_t transaction_id(transaction_data td);
@@ -64,5 +63,14 @@ size_t  transaction_clen(transaction_data td);
 
 int transaction_print(FILE *f, transaction_data th);
 int transaction_log(clicon_handle h, transaction_data th, int level, const char *id);
+
+/* Pagination callbacks
+ * @see pagination_data_t  internal structure
+ */
+pagination_mode_t pagination_pagmode(pagination_data pd); 
+uint32_t pagination_offset(pagination_data pd); 
+uint32_t pagination_limit(pagination_data pd); 
+int      pagination_remaining_set(pagination_data pd, uint32_t remaining); 
+cxobj   *pagination_xstate(pagination_data pd); 
 
 #endif /* _CLIXON_BACKEND_TRANSACTION_H_ */

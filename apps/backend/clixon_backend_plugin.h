@@ -51,6 +51,7 @@
  * It is up to the validate callbacks to ensure that these changes are OK
  * It is up to the commit callbacks to enforce these changes in the "state" of 
  * the system.
+ * see also transaction_data in clixon_plugin.h
  */
 typedef struct {
     uint64_t   td_id;       /* Transaction id */
@@ -66,6 +67,21 @@ typedef struct {
     int        td_clen;     /* Changed xml vector length */
 } transaction_data_t;
 
+/*! Pagination userdata 
+ * @param[in]  pagmode    List pagination mode
+ * @param[in]  offset     Offset, for list pagination
+ * @param[in]  limit      Limit, for list pagination
+ * @param[out] remaining  Remaining elements (if limit is non-zero)
+ * see also pagination_data in clixon_plugin.h
+*/
+typedef struct {
+    pagination_mode_t pd_pagmode;   /* Pagination mode, stateless or locked */
+    uint32_t          pd_offset;    /* Start of pagination interval */
+    uint32_t          pd_limit;     /* Number of elemenents (limit) */
+    uint32_t          pd_remaining; /* If limit, then remaining nr of elements */
+    cxobj            *pd_xstate;    /* Returned xml state tree */
+} pagination_data_t;
+
 /*
  * Prototypes
  */
@@ -76,10 +92,13 @@ int clixon_plugin_pre_daemon_all(clicon_handle h);
 int clixon_plugin_daemon_all(clicon_handle h);
 
 int clixon_plugin_statedata_all(clicon_handle h, yang_stmt *yspec, cvec *nsc, char *xpath,
-				pagination_mode_t pagmode,
-				uint32_t offset, uint32_t limit, uint32_t *remaining,
 				cxobj **xtop);
 int clixon_plugin_lockdb_all(clicon_handle h, char *db, int lock, int id);
+
+int clixon_pagination_cb_register(clicon_handle h, handler_function fn, char *path, void *arg);
+int clixon_pagination_cb_call(clicon_handle h, char *xpath, pagination_mode_t pagmode,
+			      uint32_t offset, uint32_t limit, uint32_t *remaining,
+			      cxobj *xstate);
 
 transaction_data_t * transaction_new(void);
 int transaction_free(transaction_data_t *);

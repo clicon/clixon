@@ -134,6 +134,66 @@ clicon_data_del(clicon_handle h,
     return clicon_hash_del(cdat, (char*)name);
 }
 
+/*! Get generic clixon data on the form <name>=<ptr> where <ptr> is void*
+ * @param[in]  h    Clicon handle
+ * @param[in]  name Data name
+ * @param[out] val  Data value as string
+ * @retval     0    OK
+ * @retval    -1    Not found (or error)
+ * @see clicon_option_str
+ */
+int
+clicon_ptr_get(clicon_handle h,
+		const char  *name,
+		void       **ptr)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    void          *p;
+    size_t         vlen;
+
+    if (clicon_hash_lookup(cdat, (char*)name) == NULL)
+	return -1;
+    if (ptr){
+	p = clicon_hash_value(cdat, (char*)name, &vlen);
+	memcpy(ptr, p, vlen);
+    }
+    return 0;
+}
+
+/*! Set generic clixon data on the form <name>=<ptr> where <ptr> is void*
+ * @param[in]  h    Clicon handle
+ * @param[in]  name Data name
+ * @param[in]  val  Data value as null-terminated string
+ * @retval     0    OK
+ * @retval    -1    Error
+ * @see clicon_option_str_set
+ */
+int
+clicon_ptr_set(clicon_handle h, 
+	       const char   *name,
+	       void         *ptr)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    return clicon_hash_add(cdat, (char*)name, &ptr, sizeof(ptr))==NULL?-1:0;
+}
+
+/*! Delete generic clixon data
+ * @param[in]  h    Clicon handle
+ * @param[in]  name Data name
+ * @retval     0    OK
+ * @retval    -1    Error
+ * @see clicon_option_del
+ */
+int
+clicon_ptr_del(clicon_handle h, 
+	       const char   *name)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    return clicon_hash_del(cdat, (char*)name);
+}
+
 /*! Get generic cligen variable vector (cvv) on the form <name>=<val> where <val> is cvv
  *
  * @param[in]  h     Clicon handle
@@ -201,7 +261,7 @@ clicon_data_cvec_del(clicon_handle h,
     return clicon_hash_del(cdat, (char*)name);
 }
 
-/*!
+/*! Get data yangspec, yspec 
  * @param[in]  h     Clicon handle
  * @retval     yspec Yang spec
  * @see clicon_config_yang  for the configuration yang

@@ -66,7 +66,7 @@
 #include <clixon/clixon_backend.h> 
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_EXAMPLE_OPTS "rsS:iuUt:v:"
+#define BACKEND_EXAMPLE_OPTS "rsS:x:iuUt:v:"
 
 /*! Variable to control if reset code is run.
  * The reset code inserts "extra XML" which assumes ietf-interfaces is
@@ -86,6 +86,13 @@ static int _state = 0;
  * Start backend with -- -sS <file>
  */
 static char *_state_file = NULL;
+
+/*! XPath to register for pagination state XML from file, 
+ * if _state is true -- -sS <file> -x <xpath>
+ * Primarily for testing
+ * Start backend with -- -sS <file> -x <xpath>
+ */
+static char *_state_xpath = NULL;
 
 /*! Read state file init on startup instead of on request
  * Primarily for testing
@@ -353,10 +360,6 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
  * @param[in]    h        Clicon handle
  * @param[in]    nsc      External XML namespace context, or NULL
  * @param[in]    xpath    String with XPATH syntax. or NULL for all
- * @param[in]    pagmode   List pagination (not used here)
- * @param[in]    offset   Offset, for list pagination
- * @param[in]    limit    Limit, for list pagination
- * @param[out]   remaining Remaining elements (if limit is non-zero)
  * @param[out]   xstate   XML tree, <config/> on entry. 
  * @retval       0        OK
  * @retval      -1        Error
@@ -376,10 +379,6 @@ int
 example_statedata(clicon_handle   h, 
 		  cvec           *nsc,
 		  char           *xpath,
-		  pagination_mode_t pagmode,
-		  uint32_t        offset,
-		  uint32_t        limit,
-		  uint32_t       *remaining, 
 		  cxobj          *xstate)
 {
     int        retval = -1;
@@ -462,9 +461,6 @@ example_statedata(clicon_handle   h,
  * @param[in]    h        Clicon handle
  * @param[in]    nsc      External XML namespace context, or NULL
  * @param[in]    xpath    String with XPATH syntax. or NULL for all
- * @param[in]    pagmode  List pagination mode
- * @param[in]    offset   Offset, for list pagination
- * @param[in]    limit    Limit, for list pagination
  * @param[out]   xstate   XML tree, <config/> on entry. Copy to this
  * @retval       0        OK
  * @retval      -1        Error
@@ -472,14 +468,10 @@ example_statedata(clicon_handle   h,
  * @see example_statefile  where state is programmatically added
  */
 int 
-example_statefile(clicon_handle   h, 
-		  cvec           *nsc,
-		  char           *xpath,
-		  pagination_mode_t pagmode,
-		  uint32_t        offset,
-		  uint32_t        limit,
-		  uint32_t       *remaining, 
-		  cxobj          *xstate)
+example_statefile(clicon_handle     h, 
+		  cvec             *nsc,
+		  char             *xpath,
+		  cxobj            *xstate)
 {
     int        retval = -1;
     cxobj    **xvec = NULL;
@@ -489,13 +481,105 @@ example_statefile(clicon_handle   h,
     yang_stmt *yspec = NULL;
     FILE      *fp = NULL;
     cxobj     *x1;
-    uint32_t   lower;
-    uint32_t   upper;
     int        ret;
 
     /* If -S is set, then read state data from file */
     if (!_state || !_state_file)
 	goto ok;
+    yspec = clicon_dbspec_yang(h);
+    /* Read state file if either not cached, or the cache is NULL */
+    if (_state_file_cached == 0 ||
+	_state_xml_cache == NULL){
+	if ((fp = fopen(_state_file, "r")) == NULL){
+	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
+	    goto done;
+	}
+	if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
+	    goto done;
+	if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL)) < 0)
+	    goto done;
+	if (_state_file_cached)
+	    _state_xml_cache = xt;
+    }
+    if (_state_file_cached)
+	xt = _state_xml_cache;
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
+	goto done;	
+    /* Mark elements to copy:
+     * For every node found in x0, mark the tree as changed 
+     */
+    for (i=0; i<xlen; i++){
+	if ((x1 = xvec[i]) == NULL)
+	    break;
+	xml_flag_set(x1, XML_FLAG_MARK);
+	xml_apply_ancestor(x1, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+    }
+    if (xml_copy_marked(xt, xstate) < 0) /* Copy the marked elements */
+	goto done;
+    /* Unmark original tree */
+    if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+	goto done;
+    /* Unmark returned state tree */
+    if (xml_apply(xstate, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+	goto done;
+    if (_state_file_cached)
+	xt = NULL; /* ensure cache is not cleared */
+ ok:
+    retval = 0;
+ done:
+    if (fp)
+	fclose(fp);
+    if (xt)
+	xml_free(xt);
+    if (xvec)
+	free(xvec);
+    return retval;
+}
+
+/*! Example of state pagination callback and how to use pagination_data
+ *
+ * @param[in]  h        Generic handler
+ * @param[in]  xpath    Registered XPath using canonical prefixes
+ * @param[in]  userargs Per-call user arguments
+ * @param[in]  arg      Per-path user argument
+ */
+int 
+example_pagination(void            *h0,
+		   char            *xpath,
+		   pagination_data  pd,
+		   void            *arg)
+{
+    int               retval = -1;
+    clicon_handle     h = (clicon_handle)h0;
+    pagination_mode_t pagmode;
+    uint32_t          offset;
+    uint32_t          limit;
+    uint32_t          remaining;
+    cxobj            *xstate;
+    cxobj           **xvec = NULL;
+    size_t            xlen = 0;
+    int               i;
+    cxobj            *xt = NULL;
+    yang_stmt        *yspec = NULL;
+    FILE             *fp = NULL;
+    cxobj            *x1;
+    uint32_t          lower;
+    uint32_t          upper;
+    int               ret;
+    cvec             *nsc;
+    
+    /* If -S is set, then read state data from file */
+    if (!_state || !_state_file)
+	goto ok;
+
+    pagmode = pagination_pagmode(pd); 
+    offset = pagination_offset(pd); 
+    limit = pagination_limit(pd); 
+    xstate = pagination_xstate(pd); 
+    
+    /* Get canonical namespace context */
+    if (xml_nsctx_yangspec(yspec, &nsc) < 0)
+	goto done;
     yspec = clicon_dbspec_yang(h);
     /* Read state file if either not cached, or the cache is NULL */
     if (_state_file_cached == 0 ||
@@ -530,7 +614,8 @@ example_statefile(clicon_handle   h,
 	else{
 	    if ((upper = offset+limit)>xlen)
 		upper = xlen;
-	    *remaining = xlen - upper;
+	    remaining = xlen - upper;
+	    pagination_remaining_set(pd, remaining);
 	}
 	break;
     }
@@ -564,7 +649,7 @@ example_statefile(clicon_handle   h,
 	xml_free(xt);
     if (xvec)
 	free(xvec);
-    return retval;
+    return retval;    
 }
 
 /*! Lock databse status has changed status
@@ -1166,7 +1251,9 @@ clixon_plugin_init(clicon_handle h)
 	    break;
 	case 'S': /* state file (requires -s) */
 	    _state_file = optarg;
-	    api.ca_statedata = example_statefile; /* Switch state data callback */
+	    break;
+	case 'x': /* state xpath (requires -sS) */
+	    _state_xpath = optarg;
 	    break;
 	case 'i': /* read state file on init not by request (requires -sS <file> */
 	    _state_file_cached = 1;
@@ -1185,6 +1272,18 @@ clixon_plugin_init(clicon_handle h)
 	    break;
 	}
 
+    if (_state_file){
+	api.ca_statedata = example_statefile; /* Switch state data callback */
+	if (_state_xpath){
+	    /* State pagination callbacks */
+	    if (clixon_pagination_cb_register(h,
+					      example_pagination,
+					      _state_xpath,
+					      NULL) < 0)
+		goto done;
+	}
+    }
+	
     /* Example stream initialization:
      * 1) Register EXAMPLE stream 
      * 2) setup timer for notifications, so something happens on stream

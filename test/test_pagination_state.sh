@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
 # List pagination tests loosely based on draft-wwlh-netconf-list-pagination-00
 # The example-social yang file is used
+# Three tests to get state pagination data:
+# 1. NETCONF get a specific list (alice->numbers)
+# 2. NETCONF get two listsspecific list (alice+bob->numbers)
+# 3. CLI get audit logs (only interactive)
 # This tests contains a large state list: audit-logs from the example
 # Only CLI is used
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-echo "...skipped: Must run interactvely"
-if [ "$s" = $0 ]; then exit 0; else return 0; fi
-
 APPNAME=example
 
 cfg=$dir/conf.xml
 fexample=$dir/example-social.yang
 fstate=$dir/mystate.xml
+
+xpath=/es:audit-logs/es:audit-log
 
 # For 1M test,m use an external file since the generation takes considerable time
 #fstate=~/tmp/mystate.xml
@@ -26,8 +29,7 @@ fstate=$dir/mystate.xml
 : ${validatexml:=false}
 
 # Number of audit-log entries 
-: ${perfnr:=20000}
-
+: ${perfnr:=1000}
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -51,8 +53,31 @@ cat <<EOF > $cfg
 EOF
 
 # See draft-wwlh-netconf-list-pagination-00 A.2 (only stats and audit-log)
-# XXX members not currently used, only audit-logs as generated below
 cat<<EOF > $fstate
+<members xmlns="http://example.com/ns/example-social">
+   <member>
+      <member-id>alice</member-id>
+      <stats>
+          <numbers>3</numbers>
+          <numbers>4</numbers>
+          <numbers>5</numbers>
+          <numbers>6</numbers>
+          <numbers>7</numbers>
+          <numbers>8</numbers>
+      </stats>
+   </member>
+   <member>
+      <member-id>bob</member-id>
+      <stats>
+          <numbers>13</numbers>
+          <numbers>14</numbers>
+          <numbers>15</numbers>
+          <numbers>16</numbers>
+          <numbers>17</numbers>
+          <numbers>18</numbers>
+      </stats>
+   </member>
+</members>
 EOF
 
 # Append generated state data to $fstate file
@@ -68,44 +93,82 @@ for (( i=0; i<$perfnr; i++ )); do
     echo "    <request>POST</request>" >> $fstate
     echo "  </audit-log>" >> $fstate
 done
+
 echo -n "</audit-logs>" >> $fstate # No CR
 
-new "test params: -f $cfg -s init -- -siS $fstate"
+# start backend with specific xpath
+function testrun_start()
+{
+    xpath=$1
 
-if [ $BE -ne 0 ]; then
-    new "kill old backend"
-    sudo clixon_backend -zf $cfg
-    if [ $? -ne 0 ]; then
-	err
+    new "test params: -f $cfg -s init -- -siS $fstate -x $xpath"
+    if [ $BE -ne 0 ]; then
+	new "kill old backend"
+	sudo clixon_backend -zf $cfg
+	if [ $? -ne 0 ]; then
+	    err
+	fi
+	sudo pkill -f clixon_backend # to be sure
+	
+	new "start backend -s init -f $cfg -- -siS $fstate -X $xpath"
+	start_backend -s init -f $cfg -- -siS $fstate -x $xpath
     fi
-    sudo pkill -f clixon_backend # to be sure
+    
+    new "wait backend"
+    wait_backend
+}
 
-    new "start backend -s init -f $cfg -- -siS $fstate"
-    start_backend -s init -f $cfg -- -siS $fstate
-fi
+function testrun_stop()
+{
+    if [ $BE -ne 0 ]; then
+	new "Kill backend"
+	# Check if premature kill
+	pid=$(pgrep -u root -f clixon_backend)
+	if [ -z "$pid" ]; then
+	    err "backend already dead"
+	fi
+	# kill backend
+	stop_backend -f $cfg
+    fi
+}
 
-new "wait backend"
-wait_backend
+testrun_start "/es:members/es:member[es:member-id='alice']/es:stats/es:numbers"
+
+new "NETCONF get leaf-list member/numbers 0-10 alice"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"$xpath\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination><offset xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">0</offset><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">10</limit></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><stats><numbers>3</numbers><numbers>4</numbers><numbers>5</numbers><numbers>6</numbers><numbers>7</numbers><numbers>8</numbers></stats></member></members></data></rpc-reply>]]>]]>$"
+
+# negative
+new "NETCONF get container, expect fail"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:stats\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination><offset xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">0</offset><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">10</limit></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>list-pagination is enabled but target is not list or leaf-list</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+testrun_stop
+
+#----------------------------
+testrun_start "/es:members/es:member/es:stats/es:numbers"
+
+new "NETCONF get leaf-list member/numbers 0-10 alice"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"$xpath\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination><offset xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">0</offset><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">10</limit></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><stats><numbers>3</numbers><numbers>4</numbers><numbers>5</numbers><numbers>6</numbers><numbers>7</numbers><numbers>8</numbers></stats></member><member><member-id>bob</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><stats><numbers>13</numbers><numbers>14</numbers><numbers>15</numbers><numbers>16</numbers></stats></member></members></data></rpc-reply>]]>]]>$"
+
+testrun_stop
+
+#----------------------------
+
+echo "...skipped: Must run interactvely"
+if false; then
+testrun_start "/es:audit-logs/es:audit-log"
 
 # XXX How to run without using a terminal? Maybe use expect/unbuffer
 new "cli show"
-echo "$clixon_cli -1 -f $cfg -l o show pagination xpath /es:audit-logs/es:audit-log cli"
-$clixon_cli -1 -f $cfg -l o show pagination xpath /es:audit-logs/es:audit-log cli
-#expectpart "$(echo -n | unbuffer -p $clixon_cli -1 -f $cfg -l o show pagination xpath /es:audit-logs/es:audit-log cli)" 0 foo
+$clixon_cli -1 -f $cfg -l o show pagination xpath $xpath cli
+#expectpart "$(echo -n | unbuffer -p $clixon_cli -1 -f $cfg -l o show pagination xpath $xpath cli)" 0 foo
 
-if [ $BE -ne 0 ]; then
-    new "Kill backend"
-    # Check if premature kill
-    pid=$(pgrep -u root -f clixon_backend)
-    if [ -z "$pid" ]; then
-	err "backend already dead"
-    fi
-    # kill backend
-    stop_backend -f $cfg
-fi
+testrun_stop
+
+fi # interactive
 
 unset validatexml
 unset perfnr
+unset xpath
 
 rm -rf $dir
 

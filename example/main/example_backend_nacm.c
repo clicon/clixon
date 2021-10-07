@@ -180,10 +180,6 @@ int
 nacm_statedata(clicon_handle h, 
 	       cvec         *nsc,
 	       char         *xpath,
-	       pagination_mode_t pagmode,
-	       uint32_t        offset,
-	       uint32_t        limit,
-	       uint32_t       *remaining, 
 	       cxobj        *xstate)
 {
     int     retval = -1;
@@ -210,7 +206,7 @@ static clixon_plugin_api api = {
     clixon_plugin_init, /* init */
     NULL,               /* start */
     NULL,               /* exit */
-    .ca_statedata=nacm_statedata, /* statedata */
+    .ca_statedata=nacm_statedata,           /* statedata */
     .ca_trans_begin=nacm_begin,             /* trans begin */
     .ca_trans_validate=nacm_validate,       /* trans validate */
     .ca_trans_complete=nacm_complete,       /* trans complete */
