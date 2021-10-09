@@ -467,11 +467,8 @@ get_list_pagination(clicon_handle        h,
     char           *xpath2; /* With optional pagination predicate */
     int             ret;
     uint32_t        iddb; /* DBs lock, if any */
-    pagination_mode_t pagmode;
+    int             locked;
     cxobj          *x1 = NULL;
-    cxobj          *xcache = NULL;
-    uint32_t        total = 0;
-    uint32_t        remaining = 0;
 
     /* Check if list/leaf-list */
     if (yang_path_arg(yspec, xpath, &ylist) < 0)
@@ -588,6 +585,7 @@ get_list_pagination(clicon_handle        h,
     }/* switch content */
 
     if (list_config){
+#ifdef LIST_PAGINATION_REMAINING
 	/* Get total/remaining
 	 * XXX: Works only for cache
 	 */
@@ -597,15 +595,16 @@ get_list_pagination(clicon_handle        h,
 	    if (total >= (offset + limit))
 		remaining = total - (offset + limit);
 	}
+#endif
     }
     else {/* Check if running locked (by this session) */
 	if ((iddb = xmldb_islocked(h, "running")) != 0 &&
 	    iddb == ce->ce_id)
-	    pagmode = PAGINATION_LOCK;
+	    locked = 1;
 	else
-	    pagmode = PAGINATION_STATELESS;
-	if ((ret = clixon_pagination_cb_call(h, xpath, pagmode,
-					     offset, limit, &remaining,
+	    locked = 0;
+	if ((ret = clixon_pagination_cb_call(h, xpath, locked,
+					     offset, limit,
 					     xret)) < 0)
 	    goto done;
 	if (ret == 0)

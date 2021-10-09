@@ -196,26 +196,6 @@ typedef int (plgauth_t)(clicon_handle h, void *req, clixon_auth_type_t auth_type
 */
 typedef int (plgreset_t)(clicon_handle h, const char *db); 
 
-/*! List pagination status in the plugin state data callback
- *
- * List pagination is either enabled or not.
- * If pagination is enabled, the xpath addresses a list/ leaf-list and the plugin should return 
- * entries according to the values of offset and limit.
- * Pagination can use a lock/transaction mechanism 
- * If locking is not used, the plugin cannot expect more pagination calls, and no state or caching
- * should be used
- * If locking is used, the pagination is part of a session transaction and the plugin may cache
- * state (such as a cache) and can expect more pagination calls until the running db-lock is released, 
- * (see ca_lockdb)
- * The transaction is the regular lock/unlock db of running-db of a specific session.
- */
-enum pagination_mode{
-    PAGINATION_NONE,       /* No list pagination: limit/offset are no-ops */
-    PAGINATION_STATELESS,  /* Stateless list pagination, dont expect more pagination calls */
-    PAGINATION_LOCK        /* Transactional list pagination, can expect more pagination until lock release */
-};
-typedef enum pagination_mode pagination_mode_t;
-
 /* Plugin statedata
  * @param[in]  h          Clicon handle
  * @param[in]  xpath      Part of state requested

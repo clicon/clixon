@@ -68,17 +68,22 @@ typedef struct {
 } transaction_data_t;
 
 /*! Pagination userdata 
- * @param[in]  pagmode    List pagination mode
+ * Pagination can use a lock/transaction mechanism 
+ * If locking is not used, the plugin cannot expect more pagination calls, and no state or 
+ * caching should be used
+ * If locking is used, the pagination is part of a session transaction and the plugin may cache
+ * state (such as a cache) and can expect more pagination calls until the running db-lock is 
+ * released, (see ca_lockdb)
+ * The transaction is the regular lock/unlock db of running-db of a specific session.
+ * @param[in]  locked     "running" datastore is locked by this caller
  * @param[in]  offset     Offset, for list pagination
  * @param[in]  limit      Limit, for list pagination
- * @param[out] remaining  Remaining elements (if limit is non-zero)
  * see also pagination_data in clixon_plugin.h
 */
 typedef struct {
-    pagination_mode_t pd_pagmode;   /* Pagination mode, stateless or locked */
     uint32_t          pd_offset;    /* Start of pagination interval */
     uint32_t          pd_limit;     /* Number of elemenents (limit) */
-    uint32_t          pd_remaining; /* If limit, then remaining nr of elements */
+    int               pd_locked;    /* Running datastore is locked by this caller */
     cxobj            *pd_xstate;    /* Returned xml state tree */
 } pagination_data_t;
 
@@ -96,9 +101,10 @@ int clixon_plugin_statedata_all(clicon_handle h, yang_stmt *yspec, cvec *nsc, ch
 int clixon_plugin_lockdb_all(clicon_handle h, char *db, int lock, int id);
 
 int clixon_pagination_cb_register(clicon_handle h, handler_function fn, char *path, void *arg);
-int clixon_pagination_cb_call(clicon_handle h, char *xpath, pagination_mode_t pagmode,
-			      uint32_t offset, uint32_t limit, uint32_t *remaining,
+int clixon_pagination_cb_call(clicon_handle h, char *xpath, int locked,
+			      uint32_t offset, uint32_t limit, 
 			      cxobj *xstate);
+int clixon_pagination_free(clicon_handle h);
 
 transaction_data_t * transaction_new(void);
 int transaction_free(transaction_data_t *);

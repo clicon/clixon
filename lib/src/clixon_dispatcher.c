@@ -71,33 +71,41 @@
 
 #define PATH_CHUNKS 32
 
-/**
- * spilt a path into elements
+/*! Spilt a path into elements
  *
  * given an api-path, break it up into chunks separated by '/'
  * characters. it is expected that api-paths are URI encoded, so no need
  * to deal with unescaped special characters like ', ", and /
  *
- * @param path [input] path string
- * @param plist [output] pointer to split path array
- * @param plist_len [output] pointer to storage space for path array length
+ * @param[in]  path      Path string
+ * @param[in]  plist     Pointer to split path array
+ * @param[out] plist_len Pointer to storage space for path array length
+ * @retval     0         OK
+ * @retval    -1         Error
+ * XXX consider using clixon_strsep
  */
-
-static void split_path(char *path, char ***plist, size_t *plist_len)
+static int
+split_path(char   *path,
+	   char ***plist,
+	   size_t *plist_len)
 {
+    int    retval = -1;
     size_t allocated = PATH_CHUNKS;
-
-    /* don't modify the original copy */
-    char *work = strdup(path);
-
-    char **list = malloc(allocated * sizeof(char *));
-    memset(list, 0, allocated * sizeof(char *));
-
+    char  *work;     /* don't modify the original copy */
+    char **list;
     size_t len = 0;
+    char  *ptr;
+    char  *new_element;
 
-    char *ptr = work;
+    if ((work = strdup(path)) == NULL)
+	goto done;
+    if ((list = malloc(allocated * sizeof(char *))) == NULL)
+	goto done;
+    memset(list, 0, allocated * sizeof(char *));
+    ptr = work;
     if (*ptr == '/') {
-        char *new_element = strdup("/");
+	if ((new_element = strdup("/")) == NULL)
+	    goto done;
         list[len++] = new_element;
         ptr++;
     }
@@ -108,10 +116,12 @@ static void split_path(char *path, char ***plist, size_t *plist_len)
         if (len > allocated) {
             /* we've run out of space, allocate a bigger list */
             allocated += PATH_CHUNKS;
-            list = realloc(list, allocated * sizeof(char *));
+            if ((list = realloc(list, allocated * sizeof(char *))) == NULL)
+		goto done;
         }
 
-        char *new_element = strdup(ptr);
+        if ((new_element = strdup(ptr)) == NULL)
+	    goto done;
         list[len++] = new_element;
 
         ptr = strtok(NULL, "/");
@@ -121,16 +131,19 @@ static void split_path(char *path, char ***plist, size_t *plist_len)
     *plist_len = len;
 
     free(work);
+    retval = 0;
+ done:
+    return retval;
 }
 
-/**
- * free a split path structure
+/*! Free a split path structure
  *
- * @param list [input] pointer to split path array
- * @param len [input] length of split path array
+ * @param[in] list pointer to split path array
+ * @param[in] len length of split path array
  */
-
-static void split_path_free(char **list, size_t len)
+static void
+split_path_free(char **list,
+		size_t len)
 {
     size_t i;
 
@@ -140,23 +153,25 @@ static void split_path_free(char **list, size_t len)
     free(list);
 }
 
-/**
- * find a peer of this node by name
+/*! Find a peer of this node by name
  * search through the list pointed at by peer
  *
- * @param node [input] pointer to a node in the peer list
- * @param node_name [input] name of node we're looking for
- * @return pointer to found node or NULL
+ * @param[in] node       Pointer to a node in the peer list
+ * @param[in] node_name  Name of node we're looking for
+ * @retval    pointer    Pointer to found node or NULL
+ * @retval    NULL
  */
-
-static dispatcher_entry_t *find_peer(dispatcher_entry_t *node, char *node_name)
+static dispatcher_entry_t *
+find_peer(dispatcher_entry_t *node, char *node_name)
 {
+    dispatcher_entry_t *i;
+    
     if ((node == NULL) || (node_name == NULL)) {
         /*  protect against idiot users */
         return NULL;
     }
 
-    dispatcher_entry_t *i = node->peer_head;
+    i = node->peer_head;
 
     while (i != NULL) {
         if (strcmp(node_name, i->node_name) == 0) {
@@ -168,19 +183,24 @@ static dispatcher_entry_t *find_peer(dispatcher_entry_t *node, char *node_name)
     return i;
 }
 
-/**
- * add a node as the last node in peer list
+/*! Add a node as the last node in peer list
  *
- * @param node [input] pointer to an element of the peer list
- * @param name [input] name of new node
- * @return pointer to added/existing node
+ * @param[in]  node    Pointer to an element of the peer list
+ * @param[in]  name    Name of new node
+ * @retval     pointer Pointer to added/existing node
+ * @retval     NULL    Error
  */
-
-static dispatcher_entry_t *add_peer_node(dispatcher_entry_t *node, char *name)
+static dispatcher_entry_t *
+add_peer_node(dispatcher_entry_t *node,
+	      char               *name)
 {
-    dispatcher_entry_t *new_node = malloc(sizeof(dispatcher_entry_t));
-    memset(new_node, 0, sizeof(dispatcher_entry_t));
+    dispatcher_entry_t *new_node = NULL;
+    dispatcher_entry_t *eptr;
 
+    if ((new_node = malloc(sizeof(dispatcher_entry_t))) == NULL)
+	return NULL;
+	
+    memset(new_node, 0, sizeof(dispatcher_entry_t));
     if (node == NULL) {
         /* this is a new node */
 
@@ -194,7 +214,7 @@ static dispatcher_entry_t *add_peer_node(dispatcher_entry_t *node, char *name)
         /* possibly adding to the list */
 
         /* search for existing, or get tail end of list */
-        dispatcher_entry_t *eptr = node->peer_head;
+        eptr = node->peer_head;
         while (eptr->peer != NULL) {
             if (strcmp(eptr->node_name, name) == 0) {
                 return eptr;
@@ -218,21 +238,26 @@ static dispatcher_entry_t *add_peer_node(dispatcher_entry_t *node, char *name)
     }
 }
 
-/**
- * add a node as a child of this node
+/*! Add a node as a child of this node
  *
  * this is different from add_peer_node() in that it returns a
  * pointer to the head_peer of the children list where the node was
  * added.
  *
- * @param node [input] pointer to parent node of children list
- * @param name [input] name of child node
- * @return pointer to head of children list
+ * @param[in] node    Pointer to parent node of children list
+ * @param[in] name    Name of child node
+ * @retval    pointer Pointer to head of children list
+ * @retval    NULL    Error
  */
 
-static dispatcher_entry_t *add_child_node(dispatcher_entry_t *node, char *name)
+static dispatcher_entry_t *
+add_child_node(dispatcher_entry_t *node,
+	       char               *name)
 {
-    dispatcher_entry_t *child_ptr = add_peer_node(node->children, name);
+    dispatcher_entry_t *child_ptr;
+
+    if ((child_ptr = add_peer_node(node->children, name)) == NULL)
+	return NULL;
     node->children = child_ptr->peer_head;
 
     return child_ptr;
@@ -242,18 +267,21 @@ static dispatcher_entry_t *add_child_node(dispatcher_entry_t *node, char *name)
  *
  * @param root
  * @param path
- * @return
+ * @retval
+ * @retval NULL Error
  */
-
-static dispatcher_entry_t *get_entry(dispatcher_entry_t *root, char *path)
+static dispatcher_entry_t *
+get_entry(dispatcher_entry_t *root,
+	  char               *path)
 {
-    char **split_path_list = NULL;
-    size_t split_path_len = 0;
+    char              **split_path_list = NULL;
+    size_t              split_path_len = 0;
     dispatcher_entry_t *ptr = root;
     dispatcher_entry_t *best = root;
 
     /* cut the path up into individual elements */
-    split_path(path, &split_path_list, &split_path_len);
+    if (split_path(path, &split_path_list, &split_path_len) < 0)
+	return NULL;
 
     /* some elements may have keys defined, strip them off */
     for (int i = 0; i < split_path_len; i++) {
@@ -268,9 +296,8 @@ static dispatcher_entry_t *get_entry(dispatcher_entry_t *root, char *path)
     for (int i = 0; i < split_path_len; i++) {
 
         char *query = split_path_list[i];
-        ptr = find_peer(ptr, query);
-
-        if (ptr == NULL) {
+        if ((ptr = find_peer(ptr, query)) == NULL) {
+	    split_path_free(split_path_list, split_path_len);
             /* we ran out of matches, use last found handler */
             return best;
         }
@@ -283,6 +310,9 @@ static dispatcher_entry_t *get_entry(dispatcher_entry_t *root, char *path)
         ptr = ptr->children;
     }
 
+    /* clean up */
+    split_path_free(split_path_list, split_path_len);
+    
     return best;
 }
 
@@ -292,7 +322,7 @@ static dispatcher_entry_t *get_entry(dispatcher_entry_t *root, char *path)
  *
  * @param entry
  * @param path
- * @return
+ * @retval
  */
 static int
 call_handler_helper(dispatcher_entry_t *entry,
@@ -330,12 +360,13 @@ int
 dispatcher_register_handler(dispatcher_entry_t   **root,
 			    dispatcher_definition *x)
 {
-    char **split_path_list = NULL;
-    size_t split_path_len = 0;
+    char              **split_path_list = NULL;
+    size_t              split_path_len = 0;
+    dispatcher_entry_t *ptr;
 
     if (*x->dd_path != '/') {
 	errno = EINVAL;
-        fprintf(stderr, "%s: part '%s' must start at root\n", __func__, x->dd_path);
+	//        fprintf(stderr, "%s: part '%s' must start at root\n", __func__, x->dd_path);
         return -1;
     }
 
@@ -343,20 +374,23 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
      * get the path from the dispatcher_definition, break it
      * up to create the elements of the dispatcher table
      */
-    split_path(x->dd_path, &split_path_list, &split_path_len);
+    if (split_path(x->dd_path, &split_path_list, &split_path_len) < 0)
+	return -1;
 
     /*
      * the first element is always a peer to the top level
      */
-    dispatcher_entry_t *ptr = *root;
+    ptr = *root;
 
-    ptr = add_peer_node(ptr, split_path_list[0]);
+    if ((ptr = add_peer_node(ptr, split_path_list[0])) == NULL)
+	return -1;
     if (*root == NULL) {
         *root = ptr;
     }
 
     for (size_t i = 1; i < split_path_len; i++) {
-        ptr = add_child_node(ptr, split_path_list[i]);
+        if ((ptr = add_child_node(ptr, split_path_list[i])) == NULL)
+	    return -1;
     }
 
     /* when we get here, ptr points at last entry added */
@@ -366,8 +400,8 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
          * you could make this an error optionally
          */
         if (ptr->handler != NULL) {
-            printf("%s: warning: replacing existing handler: (%s) %p -> %p\n", __func__,
-                   ptr->node_name, ptr->handler, x->dd_handler);
+	    //            fprintf(stderr, "%s: warning: replacing existing handler: (%s) %p -> %p\n", __func__,
+	    //     ptr->node_name, ptr->handler, x->dd_handler);
         }
         ptr->handler = x->dd_handler;
     }
@@ -408,4 +442,21 @@ dispatcher_call_handlers(dispatcher_entry_t *root,
         ret = (*best->handler)(handle, path, user_args, best->arg);
     }
     return ret;
+}
+
+/*! Free a dispatcher tree
+ */
+int
+dispatcher_free(dispatcher_entry_t *root)
+{
+    if (root == NULL)
+	return 0;
+    if (root->children)
+	dispatcher_free(root->children);
+    if (root->peer)
+	dispatcher_free(root->peer);
+    if (root->node_name)
+	free(root->node_name);
+    free(root);
+    return 0;
 }

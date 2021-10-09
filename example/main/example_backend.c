@@ -95,7 +95,7 @@ static char *_state_file = NULL;
 static char *_state_xpath = NULL;
 
 /*! Read state file init on startup instead of on request
- * Primarily for testing
+ * Primarily for testing: -i
  * Start backend with -- -siS <file>
  */
 static int _state_file_cached = 0;
@@ -551,10 +551,9 @@ example_pagination(void            *h0,
 {
     int               retval = -1;
     clicon_handle     h = (clicon_handle)h0;
-    pagination_mode_t pagmode;
+    int               locked;
     uint32_t          offset;
     uint32_t          limit;
-    uint32_t          remaining;
     cxobj            *xstate;
     cxobj           **xvec = NULL;
     size_t            xlen = 0;
@@ -566,13 +565,13 @@ example_pagination(void            *h0,
     uint32_t          lower;
     uint32_t          upper;
     int               ret;
-    cvec             *nsc;
+    cvec             *nsc = NULL;
     
     /* If -S is set, then read state data from file */
     if (!_state || !_state_file)
 	goto ok;
 
-    pagmode = pagination_pagmode(pd); 
+    locked = pagination_locked(pd); 
     offset = pagination_offset(pd); 
     limit = pagination_limit(pd); 
     xstate = pagination_xstate(pd); 
@@ -599,25 +598,12 @@ example_pagination(void            *h0,
 	xt = _state_xml_cache;
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
 	goto done;	
-    lower = 0;
-    upper = xlen;
-    switch (pagmode){
-    case PAGINATION_NONE:
-	lower = 0;
+    lower = offset;
+    if (limit == 0)
 	upper = xlen;
-	break;
-    case PAGINATION_STATELESS:
-    case PAGINATION_LOCK:
-	lower = offset;
-	if (limit == 0)
+    else{
+	if ((upper = offset+limit) > xlen)
 	    upper = xlen;
-	else{
-	    if ((upper = offset+limit)>xlen)
-		upper = xlen;
-	    remaining = xlen - upper;
-	    pagination_remaining_set(pd, remaining);
-	}
-	break;
     }
     /* Mark elements to copy:
      * For every node found in x0, mark the tree as changed 
@@ -636,9 +622,10 @@ example_pagination(void            *h0,
     /* Unmark returned state tree */
     if (xml_apply(xstate, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
 	goto done;
-    if (_state_file_cached)
+    if (_state_file_cached){
 	xt = NULL; /* ensure cache is not cleared */
-    if (pagmode ==  PAGINATION_LOCK)
+    }
+    if (locked)
 	_state_file_transaction++;
  ok:
     retval = 0;
@@ -649,6 +636,8 @@ example_pagination(void            *h0,
 	xml_free(xt);
     if (xvec)
 	free(xvec);
+    if (nsc)
+	cvec_free(nsc);
     return retval;    
 }
 
@@ -1173,7 +1162,7 @@ example_daemon(clicon_handle h)
     yang_stmt *yspec;
 
     /* Read state file (or should this be in init/start?) */
-    if (_state && _state_file && _state_file_cached && 0){
+    if (_state && _state_file && _state_file_cached){
 	yspec = clicon_dbspec_yang(h);
 	if ((fp = fopen(_state_file, "r")) == NULL){
 	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
@@ -1192,6 +1181,10 @@ example_daemon(clicon_handle h)
 int 
 example_exit(clicon_handle h)
 {
+    if (_state_xml_cache){
+	xml_free(_state_xml_cache);
+	_state_xml_cache = NULL;
+    }
     return 0;
 }
 

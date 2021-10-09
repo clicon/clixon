@@ -452,23 +452,24 @@ clixon_plugin_lockdb_all(clicon_handle h,
  * @param[in]  xpath  Registered XPath using canonical prefixes
  */
 int
-clixon_pagination_cb_call(clicon_handle     h,
-			   char             *xpath,
-			   pagination_mode_t pagmode,
-			   uint32_t          offset,
-			   uint32_t          limit,
-			   uint32_t         *remaining,
-			   cxobj            *xstate)
+clixon_pagination_cb_call(clicon_handle h,
+			   char        *xpath,
+			   int          locked,
+			   uint32_t     offset,
+			   uint32_t     limit,
+			   cxobj       *xstate)
 {
     int                 retval = -1;
-    pagination_data_t   pd = {pagmode, offset, limit, 0, xstate};
+    pagination_data_t   pd;
     dispatcher_entry_t *htable = NULL;
 
+    pd.pd_offset = offset;
+    pd.pd_limit = limit;
+    pd.pd_locked = locked;
+    pd.pd_xstate = xstate;
     clicon_ptr_get(h, "pagination-entries", (void**)&htable);
     if (htable && dispatcher_call_handlers(htable, h, xpath, &pd) < 0)
 	goto done;
-    if (remaining)
-	*remaining = pd.pd_remaining;
     retval = 1;
  done:
     return retval;
@@ -501,6 +502,21 @@ clixon_pagination_cb_register(clicon_handle    h,
     retval = 0;
  done:
     return retval;
+}
+
+/*! Free pagination callback structure
+ *
+ * @param[in]  h      Clixon handle
+ */
+int
+clixon_pagination_free(clicon_handle h)
+{
+    dispatcher_entry_t       *htable = NULL;
+    
+    clicon_ptr_get(h, "pagination-entries", (void**)&htable);
+    if (htable)
+	dispatcher_free(htable);
+    return 0;
 }
 
 /*! Create and initialize a validate/commit transaction 

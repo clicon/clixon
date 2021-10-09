@@ -140,12 +140,11 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
-    new "start backend -s init -f $cfg -- -sS $fstate -x /lib:global-state"
-    start_backend -s init -f $cfg -- -sS $fstate -x /lib:global-state
+    new "start backend -s init -f $cfg -- -sS $fstate"
+    start_backend -s init -f $cfg -- -sS $fstate
 fi
 new "waiting"
 wait_backend
-
 
 #-----------------------------
 new "1. Empty config/state, expect global default state"

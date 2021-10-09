@@ -43,7 +43,8 @@ Thanks netgate for providing the dispatcher code!
     * Register callback with: `clixon_pagination_cb_register()`
     * Use accessor functions `pagination_offset()`, `pagination_limit()`, etc
   * Reverted state data callback API to pre-5.3 (see C/CLI API changes below)
-
+  * See https://clixon-docs.readthedocs.io/en/latest/pagination.html
+  
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system

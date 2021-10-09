@@ -131,7 +131,7 @@ backend_terminate(clicon_handle h)
     clixon_process_delete_all(h); 
 
     xpath_optimize_exit();
-
+    clixon_pagination_free(h);
     if (pidfile)
 	unlink(pidfile);   
     if (sockfamily==AF_UNIX && lstat(sockpath, &st) == 0)

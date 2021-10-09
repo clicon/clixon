@@ -285,16 +285,6 @@ transaction_log(clicon_handle      h,
     return 0;
 }
 
-/*! Get pagination data: mode parameter
- *
- * @param[in]  pd    Pagination userdata
- * @retval     mode  Pagination mode, stateless or locked
- */
-pagination_mode_t
-pagination_pagmode(pagination_data pd)
-{
-    return ((pagination_data_t *)pd)->pd_pagmode;
-}
 
 /*! Get pagination data: offset parameter
  *
@@ -318,16 +308,22 @@ pagination_limit(pagination_data pd)
     return ((pagination_data_t *)pd)->pd_limit;
 }
 
-/*! Set pagination data: remaining nr of elements
+/*! Get pagination data: locked parameter
  *
- * @param[in]  pd        Pagination userdata
- * @param[in]  remaining If limit, then remaining nr of elements
+ * Pagination can use a lock/transaction mechanism 
+ * If locking is not used, the plugin cannot expect more pagination calls, and no state or 
+ * caching should be used
+ * If locking is used, the pagination is part of a session transaction and the plugin may cache
+ * state (such as a cache) and can expect more pagination calls until the running db-lock is 
+ * released, (see ca_lockdb)
+ * The transaction is the regular lock/unlock db of running-db of a specific session.
+ * @param[in]  pd     Pagination userdata
+ * @retval     locked 0: unlocked/stateless 1: locked by this caller
  */
 int
-pagination_remaining_set(pagination_data pd,
-			 uint32_t        remaining)
+pagination_locked(pagination_data pd)
 {
-    return ((pagination_data_t *)pd)->pd_remaining = remaining;
+    return ((pagination_data_t *)pd)->pd_locked;
 }
 
 /*! Get pagination data: Returned xml state tree
