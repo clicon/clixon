@@ -207,7 +207,8 @@ typedef int (plgreset_t)(clicon_handle h, const char *db);
 typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
 
 /* Pagination-data type
- * @see pagination_data_t in clixon_backend_transaction.h for full pagination API 
+ * @see pagination_data_t in for full pagination data structure
+ * @see pagination_offset() and other accessor functions
  */
 typedef void *pagination_data;
 

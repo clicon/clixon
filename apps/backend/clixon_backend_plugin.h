@@ -75,10 +75,12 @@ typedef struct {
  * state (such as a cache) and can expect more pagination calls until the running db-lock is 
  * released, (see ca_lockdb)
  * The transaction is the regular lock/unlock db of running-db of a specific session.
- * @param[in]  locked     "running" datastore is locked by this caller
  * @param[in]  offset     Offset, for list pagination
  * @param[in]  limit      Limit, for list pagination
- * see also pagination_data in clixon_plugin.h
+ * @param[in]  locked     "running" datastore is locked by this caller
+ * @param[out] xstate     Returned xml data state tree
+ * @see pagination_data in clixon_plugin.h
+ * @see pagination_offset() and other accessor functions
 */
 typedef struct {
     uint32_t          pd_offset;    /* Start of pagination interval */
