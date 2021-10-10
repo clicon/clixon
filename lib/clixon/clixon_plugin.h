@@ -196,13 +196,24 @@ typedef int (plgauth_t)(clicon_handle h, void *req, clixon_auth_type_t auth_type
 */
 typedef int (plgreset_t)(clicon_handle h, const char *db); 
 
-/* Plugin statedata
+/* Provide state data from plugin
+ *
+ * A complete valid XML tree is created by the plugin and sent back via xtop, which is merged
+ * into a complete state tree by the system.
+ * The plugin should ensure that xpath is matched (using namspace context nsc)
+ * This callback may be replaced with a "dispatcher" type API in the future where the
+ * XPath binding is stricter, similar to the pagination API.
+ *
  * @param[in]  h          Clicon handle
  * @param[in]  xpath      Part of state requested
  * @param[in]  nsc        XPATH namespace context.
  * @param[out] xtop       XML tree where statedata is added
  * @retval    -1          Fatal error
  * @retval     0          OK
+ *
+ * @note The system will make an xpath check and filter out non-matching trees
+ * @note The system does not validate the xml, unless CLICON_VALIDATE_STATE_XML is set
+ * @see clixon_pagination_cb_register for special paginated state data callback
  */
 typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
 
@@ -293,7 +304,7 @@ struct clixon_plugin_api{
             plgdaemon_t      *cb_daemon;         /* Plugin daemonized (always called) */
 	    plgreset_t       *cb_reset;          /* Reset system status */
 
-	    plgstatedata_t   *cb_statedata;      /* Get state data from plugin (backend only) */
+	    plgstatedata_t   *cb_statedata;      /* Provide state data XML from plugin */
 	    plglockdb_t      *cb_lockdb;         /* Database lock changed state */
 	    trans_cb_t       *cb_trans_begin;	 /* Transaction start */
 	    trans_cb_t       *cb_trans_validate; /* Transaction validation */

@@ -68,7 +68,7 @@ In some cases, Clixon uses three-value returns as follows:
 ### Return values
 
 Clixon uses goto:s only to get a single point of exit functions as follows::
-
+```
   {
       int retval = -1;
   
@@ -77,6 +77,7 @@ Clixon uses goto:s only to get a single point of exit functions as follows::
     done:
       return retval
   }
+```
 
 Notes:
 
@@ -98,24 +99,28 @@ How to document the code:
    * This is a detailed description
    * spanning several lines.
    *
+   * @param[in]     src     This is a description of the first parameter
+   * @param[in,out] dest    This is a description of the second parameter
+   * @retval        0       This is a description of the return value
+   * @retval       -1       This is a description of another return value
+   *
    * Example usage:
    * @code
    *   fn(a, &b);
    * @endcode
    *
-   * @param[in]     src     This is a description of the first parameter
-   * @param[in,out] dest    This is a description of the second parameter
-   * @retval        0       This is a description of the return value
-   * @retval       -1       This is a description of another return value
    * @see                   See also this function
    */
 ```
 
 ## Testing
 
-For a new feature, you need to write [a CI test](https://github.com/clicon/clixon/blob/master/test/README.md), including some functionality tests and preferably some negative tests. Tests are then run automatically as regression on commit [by github actions](https://github.com/clicon/clixon/actions/).
+For a new feature, it is important to write (or extend) [a clixon test](https://github.com/clicon/clixon/blob/master/test/README.md), including some functionality tests and preferably some negative tests. Tests are then run automatically as regression on commit [by github actions](https://github.com/clicon/clixon/actions/).
 
 These tests are also the basis for more extensive CI tests run by the project which
-include [memory tests](https://github.com/clicon/clixon/tree/master/test#memory-leak-test), [vagrant tests on other platforms](https://github.com/clicon/clixon/tree/master/test/vagrantvalgrind), [coverage tests](https://app.codecov.io/gh/clicon/clixon) and occasional [fuzzing with AFL](https://github.com/clicon/clixon/tree/master/fuzz).
-
-In particular, a new feature must pass the [memory tests](https://github.com/clicon/clixon/tree/master/test#memory-leak-test).
+include:
+- [memory tests](https://github.com/clicon/clixon/tree/master/test#memory-leak-test). Running the .mem.sh for cli, backend,netconf and restconf is mandatory.
+- [Vagrant tests on other operating systems](https://github.com/clicon/clixon/tree/master/test/vagrant]. Other OS:s include ubuntu, centos and freebsd
+- [CI on other platforms](https://github.com/clicon/clixon/tree/master/test/cicd]. Other platforms include x86-64, 32-bit i686, and armv71
+- [coverage tests](https://app.codecov.io/gh/clicon/clixon)
+- [fuzzing with AFL](https://github.com/clicon/clixon/tree/master/test/fuzz) (occasionally)

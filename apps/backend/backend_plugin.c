@@ -453,11 +453,11 @@ clixon_plugin_lockdb_all(clicon_handle h,
  */
 int
 clixon_pagination_cb_call(clicon_handle h,
-			   char        *xpath,
-			   int          locked,
-			   uint32_t     offset,
-			   uint32_t     limit,
-			   cxobj       *xstate)
+			  char        *xpath,
+			  int          locked,
+			  uint32_t     offset,
+			  uint32_t     limit,
+			  cxobj       *xstate)
 {
     int                 retval = -1;
     pagination_data_t   pd;
