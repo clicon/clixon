@@ -210,13 +210,11 @@ cvec *
 clicon_data_cvec_get(clicon_handle h,
 		     const char   *name)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
-    size_t          len = 0;
-    void           *p;
+    cvec *cvv = NULL;
     
-    if ((p = clicon_hash_value(cdat, (char*)name, &len)) != NULL)
-	return *(cvec **)p;
-    return NULL;
+    if (clicon_ptr_get(h, name, (void**)&cvv) < 0)
+	return NULL;
+    return cvv;
 }
 
 /*! Set generic cligen variable vector (cvv) on the form <name>=<val> where <val> is cvv
@@ -229,17 +227,7 @@ clicon_data_cvec_set(clicon_handle h,
 		     const char   *name,
 		     cvec         *cvv)
 {
-    clicon_hash_t *cdat = clicon_data(h);
-    cvec          *cvv0;
-
-    /* It is the pointer to cvec that should be copied by hash,
-       so we send a ptr to the ptr to indicate what to copy.
-     */
-    if ((cvv0 = clicon_data_cvec_get(h, name)) != NULL)
-	cvec_free(cvv0);
-    if (clicon_hash_add(cdat, (char*)name, &cvv, sizeof(cvv)) == NULL)
-	return -1;
-    return 0;
+    return clicon_ptr_set(h, name, cvv);
 }
 
 /*! Delete generic cligen variable vector (cvv)
@@ -250,15 +238,7 @@ int
 clicon_data_cvec_del(clicon_handle h,
 		     const char   *name)
 {
-    clicon_hash_t *cdat = clicon_data(h);
-    cvec          *cvv0;
-
-    /* It is the pointer to cvec that should be copied by hash,
-       so we send a ptr to the ptr to indicate what to copy.
-     */
-    if ((cvv0 = clicon_data_cvec_get(h, name)) != NULL)
-	cvec_free(cvv0);
-    return clicon_hash_del(cdat, (char*)name);
+    return clicon_ptr_del(h, name);
 }
 
 /*! Get data yangspec, yspec 
@@ -269,13 +249,11 @@ clicon_data_cvec_del(clicon_handle h,
 yang_stmt *
 clicon_dbspec_yang(clicon_handle h)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
-    size_t          len;
-    void           *p;
-
-    if ((p = clicon_hash_value(cdat, "dbspec_yang", &len)) != NULL)
-	return *(yang_stmt **)p;
-    return NULL;
+    yang_stmt *ys = NULL;
+    
+    if (clicon_ptr_get(h, "dbspec_yang", (void**)&ys) < 0)
+	return NULL;
+    return ys;
 }
 
 /*! Set yang specification for application specifications
@@ -287,14 +265,7 @@ int
 clicon_dbspec_yang_set(clicon_handle h, 
 		       yang_stmt    *ys)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
-
-    /* It is the pointer to ys that should be copied by hash,
-       so we send a ptr to the ptr to indicate what to copy.
-     */
-    if (clicon_hash_add(cdat, "dbspec_yang", &ys, sizeof(ys)) == NULL)
-	return -1;
-    return 0;
+    return clicon_ptr_set(h, "dbspec_yang", ys);
 }
 
 /*! Get YANG specification for clixon config (separate from application yangs)
@@ -305,13 +276,11 @@ clicon_dbspec_yang_set(clicon_handle h,
 yang_stmt *
 clicon_config_yang(clicon_handle h)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
-    size_t          len;
-    void           *p;
-
-    if ((p = clicon_hash_value(cdat, "control_yang", &len)) != NULL)
-	return *(yang_stmt **)p;
-    return NULL;
+    yang_stmt *ys = NULL;
+    
+    if (clicon_ptr_get(h, "control_yang", (void**)&ys) < 0)
+	return NULL;
+    return ys;
 }
 
 /*! Set yang specification for configuration
@@ -323,14 +292,7 @@ int
 clicon_config_yang_set(clicon_handle   h, 
 		       yang_stmt      *ys)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
-
-    /* It is the pointer to ys that should be copied by hash,
-       so we send a ptr to the ptr to indicate what to copy.
-     */
-    if (clicon_hash_add(cdat, "control_yang", &ys, sizeof(ys)) == NULL)
-	return -1;
-    return 0;
+    return clicon_ptr_set(h, "control_yang", ys);
 }
 
 /*! Get YANG specification for external NACM (separate from application yangs)
@@ -341,13 +303,11 @@ clicon_config_yang_set(clicon_handle   h,
 yang_stmt *
 clicon_nacm_ext_yang(clicon_handle h)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
-    size_t          len;
-    void           *p;
-
-    if ((p = clicon_hash_value(cdat, "nacm_ext_yang", &len)) != NULL)
-	return *(yang_stmt **)p;
-    return NULL;
+    yang_stmt *ys = NULL;
+    
+    if (clicon_ptr_get(h, "nacm_ext_yang", (void**)&ys) < 0)
+	return NULL;
+    return ys;
 }
 
 /*! Set yang specification for external NACM
@@ -359,14 +319,7 @@ int
 clicon_nacm_ext_yang_set(clicon_handle   h, 
 			 yang_stmt      *ys)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
-
-    /* It is the pointer to ys that should be copied by hash,
-       so we send a ptr to the ptr to indicate what to copy.
-     */
-    if (clicon_hash_add(cdat, "nacm_ext_yang", &ys, sizeof(ys)) == NULL)
-	return -1;
-    return 0;
+    return clicon_ptr_set(h, "nacm_ext_yang", ys);
 }
 
 /*! Get Global "canonical" namespace context
@@ -381,13 +334,11 @@ clicon_nacm_ext_yang_set(clicon_handle   h,
 cvec *
 clicon_nsctx_global_get(clicon_handle h)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
-    size_t          len;
-    void           *p;
-
-    if ((p = clicon_hash_value(cdat, "nsctx_global", &len)) != NULL)
-	return *(cvec **)p;
-    return NULL;
+    cvec *cvv = NULL;
+    
+    if (clicon_ptr_get(h, "nsctx_global", (void**)&cvv) < 0)
+	return NULL;
+    return cvv;
 }
 
 /*! Set global "canonical" namespace context
@@ -399,14 +350,7 @@ int
 clicon_nsctx_global_set(clicon_handle h,
 			cvec         *nsctx)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
-
-    /* It is the pointer to cvec that should be copied by hash,
-       so we send a ptr to the ptr to indicate what to copy.
-     */
-    if (clicon_hash_add(cdat, "nsctx_global", &nsctx, sizeof(nsctx)) == NULL)
-	return -1;
-    return 0;
+    return clicon_ptr_set(h, "nsctx_global", nsctx);
 }
 
 /*! Get NACM (rfc 8341) XML parse tree if external not in std xml config
@@ -418,13 +362,11 @@ clicon_nsctx_global_set(clicon_handle h,
 cxobj *
 clicon_nacm_ext(clicon_handle h)
 {
-    clicon_hash_t *cdat = clicon_data(h);
-    size_t         len;
-    void          *p;
-
-    if ((p = clicon_hash_value(cdat, "nacm_xml", &len)) != NULL)
-	return *(cxobj **)p;
-    return NULL;
+    cxobj *x = NULL;
+    
+    if (clicon_ptr_get(h, "nacm_xml", (void**)&x) < 0)
+	return NULL;
+    return x;
 }
 
 /*! Set NACM (rfc 8341) external XML parse tree, free old if any
@@ -437,17 +379,7 @@ int
 clicon_nacm_ext_set(clicon_handle h,
 		     cxobj        *xn)
 {
-    clicon_hash_t *cdat = clicon_data(h);
-    cxobj         *xo;
-
-    if ((xo = clicon_nacm_ext(h)) != NULL)
-	xml_free(xo);
-    /* It is the pointer to xn that should be copied by hash,
-       so we send a ptr to the ptr to indicate what to copy.
-     */
-    if (clicon_hash_add(cdat, "nacm_xml", &xn, sizeof(xn)) == NULL)
-	return -1;
-    return 0;
+    return clicon_ptr_set(h, "nacm_xml", xn);
 }
 
 /*! Get NACM (rfc 8341) XML parse tree cache
@@ -459,13 +391,11 @@ clicon_nacm_ext_set(clicon_handle h,
 cxobj *
 clicon_nacm_cache(clicon_handle h)
 {
-    clicon_hash_t *cdat = clicon_data(h);
-    size_t         len;
-    void          *p;
-
-    if ((p = clicon_hash_value(cdat, "nacm_cache", &len)) != NULL)
-	return *(cxobj **)p;
-    return NULL;
+    cxobj *x = NULL;
+    
+    if (clicon_ptr_get(h, "nacm_cache", (void**)&x) < 0)
+	return NULL;
+    return x;
 }
 
 /*! Set NACM (rfc 8341) external XML parse tree cache
@@ -478,14 +408,7 @@ int
 clicon_nacm_cache_set(clicon_handle h,
 		      cxobj        *xn)
 {
-    clicon_hash_t *cdat = clicon_data(h);
-
-    /* It is the pointer to xn that should be copied by hash,
-       so we send a ptr to the ptr to indicate what to copy.
-     */
-    if (clicon_hash_add(cdat, "nacm_cache", &xn, sizeof(xn)) == NULL)
-	return -1;
-    return 0;
+    return clicon_ptr_set(h, "nacm_cache", xn);
 }
 
 /*! Get YANG specification for Clixon system options and features
@@ -495,13 +418,11 @@ clicon_nacm_cache_set(clicon_handle h,
 cxobj *
 clicon_conf_xml(clicon_handle h)
 {
-    clicon_hash_t *cdat = clicon_data(h);
-    size_t         len;
-    void          *p;
-
-    if ((p = clicon_hash_value(cdat, "clixon_conf", &len)) != NULL)
-	return *(cxobj **)p;
-    return NULL;
+    cxobj *x = NULL;
+    
+    if (clicon_ptr_get(h, "clixon_conf", (void**)&x) < 0)
+	return NULL;
+    return x;
 }
 
 /*! Set YANG specification for Clixon system options and features
@@ -511,14 +432,7 @@ int
 clicon_conf_xml_set(clicon_handle h, 
 		    cxobj        *x)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
-
-    /* It is the pointer to x that should be copied by hash,
-     * so we send a ptr to the ptr to indicate what to copy.
-     */
-    if (clicon_hash_add(cdat, "clixon_conf", &x, sizeof(x)) == NULL)
-	return -1;
-    return 0;
+    return clicon_ptr_set(h, "clixon_conf", x);
 }
 
 /*! Get local YANG specification for Clixon-restconf.yang tree
