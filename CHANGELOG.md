@@ -76,6 +76,10 @@ Developers may need to change their code
     * Before: set YANG_PATCH constant in `include/clixon_custom.h`
 * Refactored Makefile for static linking
 
+### Corrected Bugs
+
+* [Doxygen - Typo in Input #275](https://github.com/clicon/clixon/issues/275)
+
 ## 5.3.0
 27 September, 2021
 
