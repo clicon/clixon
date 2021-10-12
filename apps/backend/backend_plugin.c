@@ -489,7 +489,7 @@ clixon_pagination_cb_register(clicon_handle    h,
 			      void            *arg)
 {
     int                       retval = -1;
-    dispatcher_definition     x = {xpath, fn};
+    dispatcher_definition     x = {xpath, fn, arg};
     dispatcher_entry_t       *htable = NULL;
     
     clicon_ptr_get(h, "pagination-entries", (void**)&htable);

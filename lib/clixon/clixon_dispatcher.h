@@ -22,6 +22,7 @@ typedef int (*handler_function)(void *handle, char *path, void *userargs, void *
 typedef struct {
     char            *dd_path;
     handler_function dd_handler;
+    void            *dd_arg;
 } dispatcher_definition;
 
 /*

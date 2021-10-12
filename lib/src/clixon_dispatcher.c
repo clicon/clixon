@@ -366,7 +366,6 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
 
     if (*x->dd_path != '/') {
 	errno = EINVAL;
-	//        fprintf(stderr, "%s: part '%s' must start at root\n", __func__, x->dd_path);
         return -1;
     }
 
@@ -394,17 +393,8 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
     }
 
     /* when we get here, ptr points at last entry added */
-    if (x->dd_handler != NULL) {
-        /*
-         * we're adding/changing a handler
-         * you could make this an error optionally
-         */
-        if (ptr->handler != NULL) {
-	    //            fprintf(stderr, "%s: warning: replacing existing handler: (%s) %p -> %p\n", __func__,
-	    //     ptr->node_name, ptr->handler, x->dd_handler);
-        }
-        ptr->handler = x->dd_handler;
-    }
+    ptr->handler = x->dd_handler;
+    ptr->arg = x->dd_arg;
 
     /* clean up */
     split_path_free(split_path_list, split_path_len);

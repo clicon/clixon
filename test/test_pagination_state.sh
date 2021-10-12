@@ -153,7 +153,7 @@ testrun_stop
 
 #----------------------------
 
-echo "...skipped: Must run interactvely"
+echo "...skipped: Must run interactively"
 if false; then
 testrun_start "/es:audit-logs/es:audit-log"
 
