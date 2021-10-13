@@ -295,7 +295,7 @@ if test "x${with_restconf}" != "x"; then
 fi
 # These are dummies just to get the help strings right
 AC_ARG_WITH([restconf],
-	AS_HELP_STRING([--with-restconf=fcgi],[FCGI interface for stand-alone web rev-proxy eg nginx (default)]))
+	AS_HELP_STRING([--with-restconf=fcgi],[FCGI interface for stand-alone web rev-proxy eg nginx]))
 AC_ARG_WITH([restconf],
 	    AS_HELP_STRING([--without-restconf],[Disable restconf altogether]))
 

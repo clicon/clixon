@@ -1385,7 +1385,7 @@ Optional Packages:
   --with-cligen=dir       Use CLIGEN installation in this dir
   --with-restconf=native  Integration with embedded web server (DEFAULT)
   --with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg
-                          nginx (default)
+                          nginx
   --without-restconf      Disable restconf altogether
   --with-configfile=FILE  Set default path to config file
   --with-libxml2          Use gnome/libxml2 regex engine
@@ -2297,7 +2297,6 @@ if test "$ac_enable_debug" = "yes"; then
 else
    : ${CFLAGS="-O2 -Wall"}
 fi
-
 
 # Check CLIgen
 if test "$prefix" = "NONE"; then
