@@ -50,7 +50,6 @@
 /*
  * Types
  */
-
     
 /*! Registered RPC callback function 
  * @param[in]  h       Clicon handle 
@@ -201,8 +200,8 @@ typedef int (plgreset_t)(clicon_handle h, const char *db);
  * A complete valid XML tree is created by the plugin and sent back via xtop, which is merged
  * into a complete state tree by the system.
  * The plugin should ensure that xpath is matched (using namspace context nsc)
- * This callback may be replaced with a "dispatcher" type API in the future where the
- * XPath binding is stricter, similar to the pagination API.
+ * XXX: This callback may be replaced with a "dispatcher" type API in the future where the
+ *      XPath binding is stricter, similar to the pagination API.
  *
  * @param[in]  h          Clicon handle
  * @param[in]  xpath      Part of state requested

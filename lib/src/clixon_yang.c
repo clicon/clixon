@@ -3585,7 +3585,7 @@ yang_extension_value(yang_stmt *ys,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    yext = NULL; /* This loop gets complicated in trhe case the extension is augmented */
+    yext = NULL; /* This loop gets complicated in the case the extension is augmented */
     while ((yext = yn_each(ys, yext)) != NULL) {
 	if (yang_keyword_get(yext) != Y_UNKNOWN)
 	    continue;

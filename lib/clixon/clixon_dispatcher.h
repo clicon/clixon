@@ -105,6 +105,6 @@ struct _dispatcher_entry {
 int dispatcher_register_handler(dispatcher_entry_t **root, dispatcher_definition *x);
 int dispatcher_call_handlers(dispatcher_entry_t *root, void *handle, char *path, void *user_args);
 int dispatcher_free(dispatcher_entry_t *root);
-int dispatcher_print(FILE *f, dispatcher_entry_t *root);
+int dispatcher_print(FILE *f, int level, dispatcher_entry_t *root);
 
 #endif /* _CLIXON_DISPATCH_DISPATCHER_H */
