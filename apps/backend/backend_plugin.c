@@ -108,6 +108,7 @@ clixon_plugin_reset_all(clicon_handle h,
     int             retval = -1;
     clixon_plugin_t  *cp = NULL;
     
+    clicon_debug(1, "%s", __FUNCTION__);
     /* Loop through all plugins, call callbacks in each */
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (clixon_plugin_reset_one(cp, h, db) < 0)
@@ -160,6 +161,7 @@ clixon_plugin_pre_daemon_all(clicon_handle h)
     int            retval = -1;
     clixon_plugin_t *cp = NULL;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     /* Loop through all plugins, call callbacks in each */
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
         if (clixon_plugin_pre_daemon_one(cp, h) < 0)
@@ -213,6 +215,7 @@ clixon_plugin_daemon_all(clicon_handle h)
     int            retval = -1;
     clixon_plugin_t *cp = NULL;
     
+    clicon_debug(1, "%s", __FUNCTION__);
     /* Loop through all plugins, call callbacks in each */
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (clixon_plugin_daemon_one(cp, h) < 0)
@@ -259,7 +262,6 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
     plgstatedata_t  *fn;          /* Plugin statedata fn */
     cxobj           *x = NULL;
     
-    clicon_debug(1, "%s %s", __FUNCTION__, clixon_plugin_name_get(cp));
     if ((fn = clixon_plugin_api_get(cp)->ca_statedata) != NULL){
 	if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
@@ -407,7 +409,6 @@ clixon_plugin_lockdb_one(clixon_plugin_t *cp,
     int          retval = -1;
     plglockdb_t *fn;          /* Plugin statedata fn */
     
-    clicon_debug(1, "%s %s", __FUNCTION__, clixon_plugin_name_get(cp));
     if ((fn = clixon_plugin_api_get(cp)->ca_lockdb) != NULL){
 	if (fn(h, db, lock, id) < 0)
 	    goto done;  
@@ -605,6 +606,7 @@ plugin_transaction_begin_all(clicon_handle       h,
     int            retval = -1;
     clixon_plugin_t *cp = NULL;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (plugin_transaction_begin_one(cp, h, td) < 0)
 	    goto done;
@@ -899,6 +901,7 @@ plugin_transaction_end_all(clicon_handle h,
     int            retval = -1;
     clixon_plugin_t *cp = NULL;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (plugin_transaction_end_one(cp, h, td) < 0)
 	    goto done;
@@ -942,6 +945,7 @@ plugin_transaction_abort_all(clicon_handle       h,
     int            retval = -1;
     clixon_plugin_t *cp = NULL;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
 	if (plugin_transaction_abort_one(cp, h, td) < 0)
 	    ; /* dont abort on error */

@@ -284,9 +284,10 @@ get_client_statedata(clicon_handle h,
  * @param[in]  h       Clicon handle 
  * @param[in]  yspec   Yang spec
  * @param[in]  xret    Result XML tree
+ * @param[in]  xvec    xpath lookup result on xret
+ * @param[in]  xlen    length of xvec
  * @param[in]  xpath   XPath point to object to get
  * @param[in]  nsc     Namespace context of xpath
- * @param[out] x1p     Pointer to first matching object if any
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -294,17 +295,14 @@ static int
 filter_xpath_again(clicon_handle h,
 		   yang_stmt    *yspec,
 		   cxobj        *xret,
+		   cxobj       **xvec,
+		   size_t        xlen,
 		   char         *xpath,
-		   cvec         *nsc,
-		   cxobj       **x1p)
+		   cvec         *nsc)
 {
     int     retval = -1;
-    cxobj **xvec = NULL;
-    size_t  xlen;
     int     i;
 
-    if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-	goto done;
     /* If vectors are specified then mark the nodes found and
      * then filter out everything else,
      * otherwise return complete tree.
@@ -326,12 +324,8 @@ filter_xpath_again(clicon_handle h,
     /* Add default recursive values */
     if (xml_default_recurse(xret, 0) < 0)
 	goto done;
-    if (xlen && x1p)
-	*x1p = xvec[0];
     retval = 0;
  done:
-    if (xvec)
-	free(xvec);
     return retval;
 }
 
@@ -339,6 +333,8 @@ filter_xpath_again(clicon_handle h,
  *
  * @param[in]  h        Clicon handle 
  * @param[in]  xret     Result XML tree
+ * @param[in]  xvec    xpath lookup result on xret
+ * @param[in]  xlen    length of xvec
  * @param[in]  xpath    XPath point to object to get
  * @param[in]  nsc      Namespace context of xpath
  * @param[in]  username User name for NACM access
@@ -350,6 +346,8 @@ filter_xpath_again(clicon_handle h,
 static int
 get_nacm_and_reply(clicon_handle h,
 		   cxobj        *xret,
+		   cxobj       **xvec,
+		   size_t        xlen,
 		   char         *xpath,
 		   cvec         *nsc,
 		   char         *username,
@@ -357,15 +355,11 @@ get_nacm_and_reply(clicon_handle h,
 		   cbuf         *cbret)
 {
     int     retval = -1;
-    cxobj **xvec = NULL;
-    size_t  xlen;
     cxobj  *xnacm = NULL;
 
     /* Pre-NACM access step */
     xnacm = clicon_nacm_cache(h);
     if (xnacm != NULL){ /* Do NACM validation */
-	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-	    goto done;
 	/* NACM datanode/module read validation */
 	if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0) 
 	    goto done;
@@ -383,8 +377,6 @@ get_nacm_and_reply(clicon_handle h,
     cprintf(cbret, "</rpc-reply>");
     retval = 0;
  done:
-    if (xvec)
-	free(xvec);
     return retval;
 }
 
@@ -454,11 +446,7 @@ get_list_pagination(clicon_handle        h,
     int             retval = -1;
     uint32_t        offset = 0;
     uint32_t        limit = 0;
-    char           *direction = NULL;
-    char           *sort = NULL;
-    char           *where = NULL;
     cbuf           *cbpath = NULL;
-    cxobj          *x;
     int             list_config;
     yang_stmt      *ylist;
     cxobj          *xerr = NULL;
@@ -468,7 +456,15 @@ get_list_pagination(clicon_handle        h,
     int             ret;
     uint32_t        iddb; /* DBs lock, if any */
     int             locked;
-    cxobj          *x1 = NULL;
+    cbuf           *cberr = NULL; 
+    cxobj         **xvec = NULL;
+    size_t          xlen;
+#ifdef NOTYET
+    cxobj          *x;
+    char           *direction = NULL;
+    char           *sort = NULL;
+    char           *where = NULL;
+#endif
 
     /* Check if list/leaf-list */
     if (yang_path_arg(yspec, xpath, &ylist) < 0)
@@ -504,11 +500,6 @@ get_list_pagination(clicon_handle        h,
 		goto done;
 	    goto ok;
 	}
-#if 0 /* XXX For now state lists are not implemenetd */
-	if (netconf_operation_not_supported(cbret, "protocol", "List pagination for state lists is not yet implemented") < 0)
-	    goto done;
-	goto ok;
-#endif
     }
     /* offset */
     if ((ret = element2value(h, xe, "offset", "none", cbret, &offset)) < 0)
@@ -516,6 +507,7 @@ get_list_pagination(clicon_handle        h,
     /* limit */
     if (ret && (ret = element2value(h, xe, "limit", "unbounded", cbret, &limit)) < 0)
 	goto done;
+#ifdef NOTYET
     /* direction */
     if (ret && (x = xml_find_type(xe, NULL, "direction", CX_ELMNT)) != NULL){
 	direction = xml_body(x);
@@ -535,7 +527,7 @@ get_list_pagination(clicon_handle        h,
     /* where */
     if (ret && (x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL)
 	where = xml_body(x);
-
+#endif
     /* Read config */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
@@ -553,8 +545,10 @@ get_list_pagination(clicon_handle        h,
 	    cprintf(cbpath, "%s", xpath);
 	else
 	    cprintf(cbpath, "/");
+#ifdef NOTYET
 	if (where)
 	    cprintf(cbpath, "[%s]", where);
+#endif
 	if (offset){
 	    cprintf(cbpath, "[%u <= position()", offset);
 	    if (limit)
@@ -607,11 +601,40 @@ get_list_pagination(clicon_handle        h,
 					     offset, limit,
 					     xret)) < 0)
 	    goto done;
-	if (ret == 0)
+	if (ret == 0){
+	    if ((cberr = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    /* error reason should be in clicon_err_reason */
+	    cprintf(cberr, "Internal error, pagination state callback invalid return : %s",
+		    clicon_err_reason);
+	    if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
+		goto done;
+	    if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+		goto done;
 	    goto ok;
+	}
+
+	/* System makes the binding */
+	if ((ret = xml_bind_yang(xret, YB_MODULE, yspec, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if (clicon_debug_get() && xret)
+		clicon_log_xml(LOG_DEBUG, xret, "Yang bind pagination state");
+	    if (clixon_netconf_internal_error(xerr,
+					      ". Internal error, state callback returned invalid XML",
+					      NULL) < 0)
+		goto done;
+	    if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1) < 0)
+		goto done;
+	    goto ok;
+	}
     }
+    if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+	goto done;
     /* Help function to filter out anything that is outside of xpath */
-    if (filter_xpath_again(h, yspec, xret, xpath, nsc, &x1) < 0)
+    if (filter_xpath_again(h, yspec, xret, xvec, xlen, xpath, nsc) < 0)
 	goto done;
 #ifdef LIST_PAGINATION_REMAINING
     /* Add remaining attribute Sec 3.1.5: 
@@ -639,17 +662,21 @@ get_list_pagination(clicon_handle        h,
 	    cbuf_free(cba);
     }
 #endif /* LIST_PAGINATION_REMAINING */
-    if (get_nacm_and_reply(h, xret, xpath, nsc, username, depth, cbret) < 0)
+    if (get_nacm_and_reply(h, xret, xvec, xlen, xpath, nsc, username, depth, cbret) < 0)
 	goto done;
  ok:
     retval = 0;
  done:
+    if (xvec)
+	free(xvec);
     if (cbmsg)
 	cbuf_free(cbmsg);
     if (cbpath)
 	cbuf_free(cbpath);
     if (xerr)
 	xml_free(xerr);
+    if (cberr)
+	cbuf_free(cberr);
     if (xret)
 	xml_free(xret);
     return retval;
@@ -696,6 +723,10 @@ get_common(clicon_handle        h,
     int             list_pagination = 0;
     char           *valstr;
     cxobj          *x;
+#if 1
+    cxobj **xvec = NULL;
+    size_t  xlen;
+#endif
     
     clicon_debug(1, "%s", __FUNCTION__);
     username = clicon_username_get(h);
@@ -852,14 +883,18 @@ get_common(clicon_handle        h,
 	if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	    goto done;
     }
-    if (filter_xpath_again(h, yspec, xret, xpath, nsc, NULL) < 0)
+    if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
-    if (get_nacm_and_reply(h, xret, xpath, nsc, username, depth, cbret) < 0)
+    if (filter_xpath_again(h, yspec, xret, xvec, xlen, xpath, nsc) < 0)
+	goto done;
+    if (get_nacm_and_reply(h, xret, xvec, xlen, xpath, nsc, username, depth, cbret) < 0)
 	goto done;
  ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (xvec)
+	free(xvec);
     if (xret)
 	xml_free(xret);
     if (cbreason)

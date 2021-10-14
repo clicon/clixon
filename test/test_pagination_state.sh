@@ -17,8 +17,6 @@ cfg=$dir/conf.xml
 fexample=$dir/example-social.yang
 fstate=$dir/mystate.xml
 
-xpath=/es:audit-logs/es:audit-log
-
 # For 1M test,m use an external file since the generation takes considerable time
 #fstate=~/tmp/mystate.xml
 
@@ -110,7 +108,7 @@ function testrun_start()
 	fi
 	sudo pkill -f clixon_backend # to be sure
 	
-	new "start backend -s init -f $cfg -- -siS $fstate -X $xpath"
+	new "start backend -s init -f $cfg -- -siS $fstate -x $xpath"
 	start_backend -s init -f $cfg -- -siS $fstate -x $xpath
     fi
     
@@ -132,19 +130,26 @@ function testrun_stop()
     fi
 }
 
-testrun_start "/es:members/es:member[es:member-id='alice']/es:stats/es:numbers"
+xpath0="/es:members/es:member[es:member-id='alice']/es:stats"
+xpath="$xpath0/es:numbers"
+testrun_start $xpath
 
 new "NETCONF get leaf-list member/numbers 0-10 alice"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"$xpath\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination><offset xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">0</offset><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">10</limit></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><stats><numbers>3</numbers><numbers>4</numbers><numbers>5</numbers><numbers>6</numbers><numbers>7</numbers><numbers>8</numbers></stats></member></members></data></rpc-reply>]]>]]>$"
 
 # negative
 new "NETCONF get container, expect fail"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:stats\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination><offset xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">0</offset><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">10</limit></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>list-pagination is enabled but target is not list or leaf-list</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"$xpath0\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination><offset xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">0</offset><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">10</limit></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>list-pagination is enabled but target is not list or leaf-list</error-message></rpc-error></rpc-reply>]]>]]>$"
+
+xpath="/es:members/es:member[es:member-id='bob']/es:stats/es:numbers"
+new "NETCONF get leaf-list member/numbers 0-10 bob"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"$xpath\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination><offset xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">0</offset><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">10</limit></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>bob</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><stats><numbers>13</numbers><numbers>14</numbers><numbers>15</numbers><numbers>16</numbers><numbers>17</numbers><numbers>18</numbers></stats></member></members></data></rpc-reply>]]>]]>$"
 
 testrun_stop
 
 #----------------------------
-testrun_start "/es:members/es:member/es:stats/es:numbers"
+xpath="/es:members/es:member/es:stats/es:numbers"
+testrun_start $xpath
 
 new "NETCONF get leaf-list member/numbers all"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"$xpath\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination><offset xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">0</offset><limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">10</limit></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><stats><numbers>3</numbers><numbers>4</numbers><numbers>5</numbers><numbers>6</numbers><numbers>7</numbers><numbers>8</numbers></stats></member><member><member-id>bob</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><stats><numbers>13</numbers><numbers>14</numbers><numbers>15</numbers><numbers>16</numbers></stats></member></members></data></rpc-reply>]]>]]>$"
@@ -169,6 +174,7 @@ fi # interactive
 unset validatexml
 unset perfnr
 unset xpath
+unset xpath0
 
 rm -rf $dir
 

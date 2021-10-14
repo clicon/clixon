@@ -227,6 +227,11 @@ clicon_data_cvec_set(clicon_handle h,
 		     const char   *name,
 		     cvec         *cvv)
 {
+    cvec *cvv0 = NULL;
+
+    clicon_ptr_get(h, name, (void**)&cvv0);
+    if (cvv0)
+	cvec_free(cvv0);
     return clicon_ptr_set(h, name, cvv);
 }
 
@@ -238,6 +243,11 @@ int
 clicon_data_cvec_del(clicon_handle h,
 		     const char   *name)
 {
+    cvec *cvv = NULL;
+
+    clicon_ptr_get(h, name, (void**)&cvv);
+    if (cvv)
+	cvec_free(cvv);
     return clicon_ptr_del(h, name);
 }
 
@@ -377,9 +387,13 @@ clicon_nacm_ext(clicon_handle h)
  */
 int
 clicon_nacm_ext_set(clicon_handle h,
-		     cxobj        *xn)
+		     cxobj        *x)
 {
-    return clicon_ptr_set(h, "nacm_xml", xn);
+    cxobj *x0 = NULL;
+
+    if ((x0 = clicon_nacm_ext(h)) != NULL)
+	xml_free(x0);
+    return clicon_ptr_set(h, "nacm_xml", x);
 }
 
 /*! Get NACM (rfc 8341) XML parse tree cache

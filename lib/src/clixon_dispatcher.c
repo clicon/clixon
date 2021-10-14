@@ -68,10 +68,6 @@
  *          [b=]
  *          [b]
  *
- * NOTE 1: there is not a mechanism to free the created structures since
- * it is intended that this tree is created only at startup. if use case
- * changes, this function is trivial.
- *
  * NOTE 2: there is no attempt to optimize list searching here, sorry. I
  * do not think that the known use cases will get big enough to make the
  * tree get too large. I do not recommend that you encode every possible
@@ -439,10 +435,10 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
  *
  * @param[in]  handle
  * @param[in]  root
- * @param[in]  path
- * @retval     1    OK
- * @retval     0    Invalid
- * @retval    -1    Error
+ * @param[in]  path   Note must be on the form: /a/b (no keys)
+ * @retval     1      OK
+ * @retval     0      Invalid
+ * @retval    -1      Error
  */
 int
 dispatcher_call_handlers(dispatcher_entry_t *root,
