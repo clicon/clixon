@@ -286,7 +286,7 @@ xml2cli_recurse(FILE              *f,
 	/* If presence container, then print as leaf (but continue to children) */
 	if (prepend)
 	    (*fn)(f, "%s", prepend);
-	if (gt == GT_ALL || gt == GT_VARS || gt == GT_HIDE)
+	if (gt == GT_ALL || gt == GT_VARS || gt == GT_HIDE || gt == GT_OC_COMPRESS)
 	    (*fn)(f, "%s ", xml_name(x));
 	if ((body = xml_body(x)) != NULL){
 	    if (index(body, ' '))

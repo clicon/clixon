@@ -89,6 +89,7 @@ static const map_str2int cli_genmodel_map[] = {
     {"VARS",                 GT_VARS},
     {"ALL",                  GT_ALL},
     {"HIDE",                 GT_HIDE},
+    {"OC_COMPRESS",          GT_OC_COMPRESS},
     {NULL,                   -1}
 };
 

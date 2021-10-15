@@ -77,6 +77,7 @@ enum genmodel_type{
     GT_VARS,    /* Keywords on non-key variables */
     GT_ALL,     /* Keywords on all variables */
     GT_HIDE,    /* Keywords on all variables and hide container around lists */
+    GT_OC_COMPRESS, /* OpenConfig */
 };
 typedef enum genmodel_type genmodel_type;
 

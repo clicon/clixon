@@ -353,7 +353,7 @@ cli_xml2cli(cxobj             *xn,
 	yang_keyword_get(ys) == Y_LEAF_LIST){
 	if (prepend)
 	    (*fn)(stdout, "%s", prepend);
-	if (gt == GT_ALL || gt == GT_VARS || gt == GT_HIDE)
+	if (gt == GT_ALL || gt == GT_VARS || gt == GT_HIDE || gt == GT_OC_COMPRESS)
 	    (*fn)(stdout, "%s ", xml_name(xn));
 	if ((body = xml_body(xn)) != NULL){
 	    if (index(body, ' '))

@@ -3255,7 +3255,7 @@ yang_container_cli_hide(yang_stmt         *ys,
 
     keyw = yang_keyword_get(ys);
     /* HIDE mode */
-    if (gt != GT_HIDE)
+    if (gt != GT_HIDE && gt != GT_OC_COMPRESS)
 	return 0;
     /* A container */
     if (yang_keyword_get(ys) != Y_CONTAINER)
