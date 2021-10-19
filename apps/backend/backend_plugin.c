@@ -78,13 +78,12 @@ clixon_plugin_reset_one(clixon_plugin_t *cp,
 			clicon_handle  h,
 			char         *db)
 {
-    int          retval = -1;
-    plgreset_t  *fn;       /* callback */
+    int               retval = -1;
+    plgreset_t       *fn;       /* callback */
+    plugin_context_t *pc = NULL;
 
     if ((fn = clixon_plugin_api_get(cp)->ca_reset) != NULL){
-	plugin_context_t  pc = {0,};
-
-	if (plugin_context_get(&pc) < 0)
+	if ((pc = plugin_context_get()) == NULL)
 	    goto done;
 	if (fn(h, db) < 0) {
 	    if (clicon_errno < 0) 
@@ -92,11 +91,13 @@ clixon_plugin_reset_one(clixon_plugin_t *cp,
 			   __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
-	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	if (plugin_context_check(pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
     
@@ -137,12 +138,12 @@ clixon_plugin_pre_daemon_one(clixon_plugin_t *cp,
 {
     int          retval = -1;
     plgdaemon_t *fn;          /* Daemonize plugin callback function */
+    plugin_context_t   *pc = NULL;
 
     if ((fn = clixon_plugin_api_get(cp)->ca_pre_daemon) != NULL){
-	plugin_context_t  pc = {0,};
-
-	if (plugin_context_get(&pc) < 0)
+	if ((pc = plugin_context_get()) == NULL)
 	    goto done;
+
         if (fn(h) < 0) {
             if (clicon_errno < 0)
                 clicon_log(LOG_WARNING, "%s: Internal error: Pre-daemon callback in plugin:\
@@ -150,11 +151,13 @@ clixon_plugin_pre_daemon_one(clixon_plugin_t *cp,
                            __FUNCTION__, clixon_plugin_name_get(cp));
             goto done;
         }
-	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	if (plugin_context_check(pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
 
@@ -196,11 +199,10 @@ clixon_plugin_daemon_one(clixon_plugin_t *cp,
 {
     int          retval = -1;
     plgdaemon_t *fn;          /* Daemonize plugin callback function */    
+    plugin_context_t   *pc = NULL;
 
     if ((fn = clixon_plugin_api_get(cp)->ca_daemon) != NULL){
-	plugin_context_t  pc = {0,};
-
-	if (plugin_context_get(&pc) < 0)
+	if ((pc = plugin_context_get()) == NULL)
 	    goto done;
 	if (fn(h) < 0) {
 	    if (clicon_errno < 0) 
@@ -208,11 +210,13 @@ clixon_plugin_daemon_one(clixon_plugin_t *cp,
 			   __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
-	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	if (plugin_context_check(pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
     
@@ -279,13 +283,12 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
     int              retval = -1;
     plgstatedata_t  *fn;          /* Plugin statedata fn */
     cxobj           *x = NULL;
+    plugin_context_t *pc = NULL;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_statedata) != NULL){
 	if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
-	plugin_context_t  pc = {0,};
-
-	if (plugin_context_get(&pc) < 0)
+	if ((pc = plugin_context_get()) == NULL)
 	    goto done;
 	if (fn(h, nsc, xpath, x) < 0){
 	    if (clicon_errno < 0) 
@@ -293,13 +296,15 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
 			   __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto fail;  /* Dont quit here on user callbacks */
 	}
-	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	if (plugin_context_check(pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
 	    goto done;
     }
     if (xp && x)
 	*xp = x;
     retval = 1;
  done:
+    if (pc)
+	free(pc);
     return retval;
  fail:
     retval = 0;
@@ -432,19 +437,20 @@ clixon_plugin_lockdb_one(clixon_plugin_t *cp,
 {
     int          retval = -1;
     plglockdb_t *fn;          /* Plugin statedata fn */
+    plugin_context_t *pc = NULL;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_lockdb) != NULL){
-	plugin_context_t  pc = {0,};
-
-	if (plugin_context_get(&pc) < 0)
+	if ((pc = plugin_context_get()) == NULL)
 	    goto done;
 	if (fn(h, db, lock, id) < 0)
 	    goto done;  
-	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	if (plugin_context_check(pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
 
@@ -607,11 +613,10 @@ plugin_transaction_begin_one(clixon_plugin_t    *cp,
 {
     int         retval = -1;
     trans_cb_t *fn;
+    plugin_context_t *pc = NULL;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_begin) != NULL){
-	plugin_context_t  pc = {0,};
-
-	if (plugin_context_get(&pc) < 0)
+	if ((pc = plugin_context_get()) == NULL)
 	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
@@ -619,11 +624,13 @@ plugin_transaction_begin_one(clixon_plugin_t    *cp,
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
-	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	if (plugin_context_check(pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
 
@@ -666,11 +673,10 @@ plugin_transaction_validate_one(clixon_plugin_t      *cp,
 {
     int         retval = -1;
     trans_cb_t *fn;
-    
-    if ((fn = clixon_plugin_api_get(cp)->ca_trans_validate) != NULL){
-	plugin_context_t  pc = {0,};
+    plugin_context_t *pc = NULL;
 
-	if (plugin_context_get(&pc) < 0)
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_validate) != NULL){
+	if ((pc = plugin_context_get()) == NULL)
 	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
@@ -678,11 +684,13 @@ plugin_transaction_validate_one(clixon_plugin_t      *cp,
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
-	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	if (plugin_context_check(pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
 
@@ -723,11 +731,10 @@ plugin_transaction_complete_one(clixon_plugin_t      *cp,
 {
     int         retval = -1;
     trans_cb_t *fn;
+    plugin_context_t *pc = NULL;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_complete) != NULL){
-	plugin_context_t  pc = {0,};
-
-	if (plugin_context_get(&pc) < 0)
+	if ((pc = plugin_context_get()) == NULL)
 	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
@@ -735,11 +742,13 @@ plugin_transaction_complete_one(clixon_plugin_t      *cp,
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
-	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	if (plugin_context_check(pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
 
@@ -812,11 +821,10 @@ plugin_transaction_commit_one(clixon_plugin_t      *cp,
 {
     int         retval = -1;
     trans_cb_t *fn;
+    plugin_context_t *pc = NULL;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit) != NULL){
-	plugin_context_t  pc = {0,};
-
-	if (plugin_context_get(&pc) < 0)
+	if ((pc = plugin_context_get()) == NULL)
 	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
@@ -824,11 +832,13 @@ plugin_transaction_commit_one(clixon_plugin_t      *cp,
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
-	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	if (plugin_context_check(pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
 
@@ -877,11 +887,10 @@ plugin_transaction_commit_done_one(clixon_plugin_t      *cp,
 {
     int         retval = -1;
     trans_cb_t *fn;
+    plugin_context_t *pc = NULL;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit_done) != NULL){
-	plugin_context_t  pc = {0,};
-
-	if (plugin_context_get(&pc) < 0)
+	if ((pc = plugin_context_get()) == NULL)
 	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
@@ -889,11 +898,13 @@ plugin_transaction_commit_done_one(clixon_plugin_t      *cp,
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
-	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	if (plugin_context_check(pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
 
@@ -934,11 +945,10 @@ plugin_transaction_end_one(clixon_plugin_t      *cp,
 {
     int         retval = -1;
     trans_cb_t *fn;
+    plugin_context_t *pc = NULL;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_end) != NULL){
-	plugin_context_t  pc = {0,};
-
-	if (plugin_context_get(&pc) < 0)
+	if ((pc = plugin_context_get()) == NULL)
 	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
@@ -946,11 +956,13 @@ plugin_transaction_end_one(clixon_plugin_t      *cp,
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
-	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	if (plugin_context_check(pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
 
@@ -984,11 +996,10 @@ plugin_transaction_abort_one(clixon_plugin_t      *cp,
 {
     int         retval = -1;
     trans_cb_t *fn;
+    plugin_context_t *pc = NULL;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_abort) != NULL){
-	plugin_context_t  pc = {0,};
-
-	if (plugin_context_get(&pc) < 0)
+	if ((pc = plugin_context_get()) == NULL)
 	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
@@ -996,11 +1007,13 @@ plugin_transaction_abort_one(clixon_plugin_t      *cp,
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
-	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	if (plugin_context_check(pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
 

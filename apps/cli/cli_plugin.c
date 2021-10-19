@@ -533,16 +533,16 @@ cligen_clixon_eval(cligen_handle h,
     struct cg_callback *cc;
     int                 retval = 0;
     cvec               *argv;
+    plugin_context_t   *pc = NULL;
 
     if (h)
 	cligen_co_match_set(h, co);
     for (cc = co->co_callbacks; cc; cc=cc->cc_next){
 	/* Vector cvec argument to callback */
     	if (cc->cc_fn_vec){
-	    plugin_context_t  pc = {0,};
 	    argv = cc->cc_cvec ? cvec_dup(cc->cc_cvec) : NULL;
 	    cligen_fn_str_set(h, cc->cc_fn_str);
-	    if (plugin_context_get(&pc) < 0)
+	    if ((pc = plugin_context_get()) == NULL)
 		break;
 	    if ((retval = (*cc->cc_fn_vec)(
 					cligen_userhandle(h)?cligen_userhandle(h):h, 
@@ -553,13 +553,19 @@ cligen_clixon_eval(cligen_handle h,
 		cligen_fn_str_set(h, NULL);
 		break;
 	    }
-	    if (plugin_context_check(&pc, "CLIgen", cc->cc_fn_str) < 0)
+	    if (plugin_context_check(pc, "CLIgen", cc->cc_fn_str) < 0)
 		break;
+	    if (pc){
+		free(pc);
+		pc = NULL;
+	    }
 	    if (argv != NULL)
 		cvec_free(argv);
 	    cligen_fn_str_set(h, NULL);
 	}
     }
+    if (pc)
+	free(pc);
     return retval;
 }
 

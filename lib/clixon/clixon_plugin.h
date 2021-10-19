@@ -337,16 +337,6 @@ struct clixon_plugin_api{
 #define ca_trans_abort    u.cau_backend.cb_trans_abort
 #define ca_datastore_upgrade  u.cau_backend.cb_datastore_upgrade
 
-/*! Structure for checking status before and after a plugin call
- * Currently signal settings: blocked and handlers, could be extended to more
- * @see plugin_context_check
- */
-struct plugin_context {
-    sigset_t         pc_sigset;            /* See sigprocmask(2) */
-    struct sigaction pc_sigaction_vec[32]; /* See sigaction(2) */
-    int              pc_status;            /* 0: OK, -1: fail */
-};
-typedef struct plugin_context plugin_context_t;
 
 /*
  * Macros
@@ -359,6 +349,10 @@ typedef struct clixon_plugin_api clixon_plugin_api;
  * The internal struct is defined in clixon_plugin.c */
 typedef struct clixon_plugin clixon_plugin_t;
 
+/*! Structure for checking status before and after a plugin call
+ * The internal struct is defined in clixon_plugin.c */
+typedef struct plugin_context plugin_context_t;
+
 /*
  * Prototypes
  */
@@ -370,7 +364,6 @@ typedef struct clixon_plugin clixon_plugin_t;
  * @see CLIXON_PLUGIN_INIT  default symbol 
  */
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
-
 
 clixon_plugin_api *clixon_plugin_api_get(clixon_plugin_t *cp);
 char            *clixon_plugin_name_get(clixon_plugin_t *cp);
@@ -386,7 +379,7 @@ int clixon_plugins_load(clicon_handle h, const char *function, const char *dir, 
 
 int clixon_pseudo_plugin(clicon_handle h, const char *name, clixon_plugin_t **cpp);
 
-int plugin_context_get(plugin_context_t *pc);
+plugin_context_t * plugin_context_get(void);
 int plugin_context_check(plugin_context_t *pc, const char *name, const char *fn);
 
 int clixon_plugin_start_one(clixon_plugin_t *cp, clicon_handle h);

@@ -931,21 +931,20 @@ from_client_restart_one(clicon_handle h,
     yang_stmt          *yspec;
     int                 i;
     cxobj              *xn;
+    plugin_context_t   *pc = NULL;
     
     yspec =  clicon_dbspec_yang(h);
     if (xmldb_db_reset(h, db) < 0)
 	goto done;
     /* Application may define extra xml in its reset function*/
     if ((resetfn = clixon_plugin_api_get(cp)->ca_reset) != NULL){
-	plugin_context_t  pc = {0,};
-
-	if (plugin_context_get(&pc) < 0)
+	if ((pc = plugin_context_get()) == NULL)
 	    goto done;
 	if ((retval = resetfn(h, db)) < 0) {
 	    clicon_debug(1, "plugin_start() failed");
 	    goto done;
 	}
-	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	if (plugin_context_check(pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
 	    goto done;
     }
     /* 1. Start transaction */
@@ -1027,6 +1026,8 @@ from_client_restart_one(clicon_handle h,
 	goto fail;
     retval = 1;
  done:
+    if (pc)
+	free(pc);
     if (td){
 	 xmldb_get0_free(h, &td->td_target);
 	 transaction_free(td);
