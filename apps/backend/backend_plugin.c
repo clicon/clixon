@@ -82,12 +82,18 @@ clixon_plugin_reset_one(clixon_plugin_t *cp,
     plgreset_t  *fn;       /* callback */
 
     if ((fn = clixon_plugin_api_get(cp)->ca_reset) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h, db) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Reset callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
+	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -133,6 +139,10 @@ clixon_plugin_pre_daemon_one(clixon_plugin_t *cp,
     plgdaemon_t *fn;          /* Daemonize plugin callback function */
 
     if ((fn = clixon_plugin_api_get(cp)->ca_pre_daemon) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
         if (fn(h) < 0) {
             if (clicon_errno < 0)
                 clicon_log(LOG_WARNING, "%s: Internal error: Pre-daemon callback in plugin:\
@@ -140,6 +150,8 @@ clixon_plugin_pre_daemon_one(clixon_plugin_t *cp,
                            __FUNCTION__, clixon_plugin_name_get(cp));
             goto done;
         }
+	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -186,12 +198,18 @@ clixon_plugin_daemon_one(clixon_plugin_t *cp,
     plgdaemon_t *fn;          /* Daemonize plugin callback function */    
 
     if ((fn = clixon_plugin_api_get(cp)->ca_daemon) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Daemon callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
+	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -265,12 +283,18 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
     if ((fn = clixon_plugin_api_get(cp)->ca_statedata) != NULL){
 	if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 	    goto done;
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h, nsc, xpath, x) < 0){
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: State callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto fail;  /* Dont quit here on user callbacks */
 	}
+	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	    goto done;
     }
     if (xp && x)
 	*xp = x;
@@ -410,8 +434,14 @@ clixon_plugin_lockdb_one(clixon_plugin_t *cp,
     plglockdb_t *fn;          /* Plugin statedata fn */
     
     if ((fn = clixon_plugin_api_get(cp)->ca_lockdb) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h, db, lock, id) < 0)
 	    goto done;  
+	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -579,12 +609,18 @@ plugin_transaction_begin_one(clixon_plugin_t    *cp,
     trans_cb_t *fn;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_begin) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
+	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -632,12 +668,18 @@ plugin_transaction_validate_one(clixon_plugin_t      *cp,
     trans_cb_t *fn;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_validate) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
+	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -683,12 +725,18 @@ plugin_transaction_complete_one(clixon_plugin_t      *cp,
     trans_cb_t *fn;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_complete) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
+	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -766,12 +814,18 @@ plugin_transaction_commit_one(clixon_plugin_t      *cp,
     trans_cb_t *fn;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
+	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -825,12 +879,18 @@ plugin_transaction_commit_done_one(clixon_plugin_t      *cp,
     trans_cb_t *fn;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit_done) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
+	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -876,12 +936,18 @@ plugin_transaction_end_one(clixon_plugin_t      *cp,
     trans_cb_t *fn;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_end) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
+	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -920,12 +986,18 @@ plugin_transaction_abort_one(clixon_plugin_t      *cp,
     trans_cb_t *fn;
     
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_abort) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h, (transaction_data)td) < 0){
 	    if (!clicon_errno) /* sanity: log if clicon_err() is not called ! */
 		clicon_log(LOG_NOTICE, "%s: Plugin '%s' callback does not make clicon_err call on error", 
 		       __FUNCTION__, clixon_plugin_name_get(cp));
 	    goto done;
 	}
+	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:

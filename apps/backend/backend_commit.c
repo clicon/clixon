@@ -937,10 +937,16 @@ from_client_restart_one(clicon_handle h,
 	goto done;
     /* Application may define extra xml in its reset function*/
     if ((resetfn = clixon_plugin_api_get(cp)->ca_reset) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if ((retval = resetfn(h, db)) < 0) {
 	    clicon_debug(1, "plugin_start() failed");
 	    goto done;
 	}
+	if (plugin_context_check(&pc, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+	    goto done;
     }
     /* 1. Start transaction */
     if ((td = transaction_new()) == NULL)

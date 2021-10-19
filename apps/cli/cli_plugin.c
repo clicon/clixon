@@ -522,6 +522,47 @@ cli_handler_err(FILE *f)
     return 0;
 }
 
+/*! Variant of eval for context checking 
+ * @see cligen_eval
+ */
+int
+cligen_clixon_eval(cligen_handle h, 
+		   cg_obj       *co, 
+		   cvec         *cvv)
+{
+    struct cg_callback *cc;
+    int                 retval = 0;
+    cvec               *argv;
+
+    if (h)
+	cligen_co_match_set(h, co);
+    for (cc = co->co_callbacks; cc; cc=cc->cc_next){
+	/* Vector cvec argument to callback */
+    	if (cc->cc_fn_vec){
+	    plugin_context_t  pc = {0,};
+	    argv = cc->cc_cvec ? cvec_dup(cc->cc_cvec) : NULL;
+	    cligen_fn_str_set(h, cc->cc_fn_str);
+	    if (plugin_context_get(&pc) < 0)
+		break;
+	    if ((retval = (*cc->cc_fn_vec)(
+					cligen_userhandle(h)?cligen_userhandle(h):h, 
+					cvv, 
+					argv)) < 0){
+		if (argv != NULL)
+		    cvec_free(argv);
+		cligen_fn_str_set(h, NULL);
+		break;
+	    }
+	    if (plugin_context_check(&pc, "CLIgen", cc->cc_fn_str) < 0)
+		break;
+	    if (argv != NULL)
+		cvec_free(argv);
+	    cligen_fn_str_set(h, NULL);
+	}
+    }
+    return retval;
+}
+
 /*! Evaluate a matched command
  * @param[in]     h         Clicon handle
  * @param[in]     cmd       The command string
@@ -541,7 +582,8 @@ clicon_eval(clicon_handle h,
     cli_output_reset();
     if (!cligen_exiting(cli_cligen(h))) {	
 	clicon_err_reset();
-	if ((retval = cligen_eval(cli_cligen(h), match_obj, cvv)) < 0) {
+
+	if ((retval = cligen_clixon_eval(cli_cligen(h), match_obj, cvv)) < 0) {
 #if 0 /* This is removed since we get two error messages on failure.
 	 But maybe only sometime?
 	 Both a real log when clicon_err is called, and the  here again.

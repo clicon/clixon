@@ -43,6 +43,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <signal.h>
 #include <dlfcn.h>
 #include <dirent.h>
 #include <syslog.h>
@@ -330,6 +331,7 @@ plugin_load_one(clicon_handle   h,
     clixon_plugin_t     *cp = NULL;
     char              *name;
     char              *p;
+    plugin_context_t   pc = {0,};
 
     clicon_debug(1, "%s file:%s function:%s", __FUNCTION__, file, function);
     dlerror();    /* Clear any existing error */
@@ -348,6 +350,11 @@ plugin_load_one(clicon_handle   h,
 	goto done;
     }
     clicon_err_reset();
+
+
+    if (plugin_context_get(&pc) < 0)
+	goto done;
+
     if ((api = initfn(h)) == NULL) {
 	if (!clicon_errno){ 	/* if clicon_err() is not called then log and continue */
 	    clicon_log(LOG_DEBUG, "Warning: failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
@@ -359,6 +366,9 @@ plugin_load_one(clicon_handle   h,
 	    goto done;
 	}
     }
+    if (plugin_context_check(&pc, file, __FUNCTION__) < 0)
+	goto done;
+
     /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
     if ((cp = (clixon_plugin_t *)malloc(sizeof(struct clixon_plugin))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
@@ -483,6 +493,93 @@ done:
     return retval;
 }
 
+/*! Get system context, eg signal procmask (for blocking) and sigactions
+ * Call this before a plugin
+ * @see plugin_context_check
+ */
+int
+plugin_context_get(plugin_context_t *pc)
+{
+    int retval = -1;
+    int i;
+
+    if (sigprocmask(0, NULL, &pc->pc_sigset) < 0){
+	clicon_err(OE_UNIX, errno, "sigprocmask");
+	goto done;
+    }
+    for (i=1; i<32; i++){
+	if (sigaction(i, NULL, &pc->pc_sigaction_vec[i]) < 0){
+	    clicon_err(OE_UNIX, errno, "sigaction");
+	    goto done;
+	}
+	/* Mask SA_RESTORER: Not intended for application use.
+	 * Note that it may not be included in user space so may be hardcoded below
+	 */
+#ifdef SA_RESTORER
+	pc->pc_sigaction_vec[i].sa_flags &= ~SA_RESTORER;
+#else
+	pc->pc_sigaction_vec[i].sa_flags &= ~0x04000000;
+#endif
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Given an existing, old plugin context, check if anytjing has changed
+ * @param[in,out] oldpc  Old plugin context, status will be returned inside oldpc
+ * @param[in]     name   Name of plugin for logging
+ * @param[in]     fn     Name of callback
+ * @retval       -1      Error
+ * @retval        0      OK
+ * @see plugin_context_get
+ */
+int
+plugin_context_check(plugin_context_t *oldpc,
+		     const char       *name,
+    		     const char       *fn)
+{
+    int              retval = -1;
+    int              failed;
+    int              i;
+    plugin_context_t newpc = {0, };
+
+    if (plugin_context_get(&newpc) < 0)
+	goto done;
+    for (i=1; i<32; i++){
+	failed = 0;
+	if (sigismember(&oldpc->pc_sigset, i) != sigismember(&newpc.pc_sigset, i)){
+	    clicon_log(LOG_WARNING, "%s Plugin %s %s: Changed blocking of signal %s(%d) from %d to %d", __FUNCTION__,
+		       name, fn, strsignal(i), i,
+		       sigismember(&oldpc->pc_sigset, i),
+		       sigismember(&newpc.pc_sigset, i)
+		       );
+	    failed++;
+	}
+	if (oldpc->pc_sigaction_vec[i].sa_flags != newpc.pc_sigaction_vec[i].sa_flags){
+	    clicon_log(LOG_WARNING, "%s Plugin %s %s: Changed flags of signal %s(%d) from 0x%x to 0x%x", __FUNCTION__,
+		       name, fn, strsignal(i), i,
+		       oldpc->pc_sigaction_vec[i].sa_flags,
+		       newpc.pc_sigaction_vec[i].sa_flags);;
+	    failed++;
+	}
+	if (oldpc->pc_sigaction_vec[i].sa_sigaction != newpc.pc_sigaction_vec[i].sa_sigaction){
+	    clicon_log(LOG_WARNING, "%s Plugin %s %s: Changed action of signal %s(%d) from %p to %p", __FUNCTION__,
+		       name, fn, strsignal(i), i,
+		       oldpc->pc_sigaction_vec[i].sa_sigaction,
+		       newpc.pc_sigaction_vec[i].sa_sigaction);
+	    failed++;
+	}
+	if (failed){
+	    oldpc->pc_status = -1;
+	}
+	/* assert(oldpc->pc_status == 0); */
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Call single plugin start callback
  * @param[in]  cp      Plugin handle
  * @param[in]  h       Clixon handle
@@ -497,12 +594,18 @@ clixon_plugin_start_one(clixon_plugin_t *cp,
     plgstart_t  *fn;          /* Plugin start */
 
     if ((fn = cp->cp_api.ca_start) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Start callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
+	if (plugin_context_check(&pc, cp->cp_name, __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -545,12 +648,18 @@ clixon_plugin_exit_one(clixon_plugin_t *cp,
     plgexit_t   *fn;
 
     if ((fn = cp->cp_api.ca_exit) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Exit callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
+	if (plugin_context_check(&pc, cp->cp_name, __FUNCTION__) < 0)
+	    goto done;
 	if (dlclose(cp->cp_handle) != 0) {
 	    error = (char*)dlerror();
 	    clicon_err(OE_PLUGIN, errno, "dlclose: %s", error ? error : "Unknown error");
@@ -611,12 +720,18 @@ clixon_plugin_auth_one(clixon_plugin_t     *cp,
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((fn = cp->cp_api.ca_auth) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if ((retval = fn(h, req, auth_type, authp)) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Auth callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
+	if (plugin_context_check(&pc, cp->cp_name, __FUNCTION__) < 0)
+	    goto done;
     }
     else
 	retval = 0; /* Ignored / no callback */
@@ -688,12 +803,18 @@ clixon_plugin_extension_one(clixon_plugin_t *cp,
     plgextension_t *fn;          /* Plugin extension fn */
     
     if ((fn = cp->cp_api.ca_extension) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h, yext, ys) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Extension callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
+	if (plugin_context_check(&pc, cp->cp_name, __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
@@ -752,12 +873,18 @@ clixon_plugin_datastore_upgrade_one(clixon_plugin_t   *cp,
     datastore_upgrade_t *fn;
     
     if ((fn = cp->cp_api.ca_datastore_upgrade) != NULL){
+	plugin_context_t  pc = {0,};
+
+	if (plugin_context_get(&pc) < 0)
+	    goto done;
 	if (fn(h, db, xt, msd) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Datastore upgrade callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
+	if (plugin_context_check(&pc, cp->cp_name, __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:

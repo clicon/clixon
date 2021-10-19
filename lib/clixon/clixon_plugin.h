@@ -337,6 +337,17 @@ struct clixon_plugin_api{
 #define ca_trans_abort    u.cau_backend.cb_trans_abort
 #define ca_datastore_upgrade  u.cau_backend.cb_datastore_upgrade
 
+/*! Structure for checking status before and after a plugin call
+ * Currently signal settings: blocked and handlers, could be extended to more
+ * @see plugin_context_check
+ */
+struct plugin_context {
+    sigset_t         pc_sigset;            /* See sigprocmask(2) */
+    struct sigaction pc_sigaction_vec[32]; /* See sigaction(2) */
+    int              pc_status;            /* 0: OK, -1: fail */
+};
+typedef struct plugin_context plugin_context_t;
+
 /*
  * Macros
  */
@@ -374,6 +385,9 @@ clixon_plugin_t *clixon_plugin_find(clicon_handle h, const char *name);
 int clixon_plugins_load(clicon_handle h, const char *function, const char *dir, const char *regexp);
 
 int clixon_pseudo_plugin(clicon_handle h, const char *name, clixon_plugin_t **cpp);
+
+int plugin_context_get(plugin_context_t *pc);
+int plugin_context_check(plugin_context_t *pc, const char *name, const char *fn);
 
 int clixon_plugin_start_one(clixon_plugin_t *cp, clicon_handle h);
 int clixon_plugin_start_all(clicon_handle h);
