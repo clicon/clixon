@@ -77,7 +77,6 @@
 struct plugin_context {
     sigset_t         pc_sigset;            /* See sigprocmask(2) */
     struct sigaction pc_sigaction_vec[32]; /* See sigaction(2) */
-    int              pc_status;            /* 0: OK, -1: fail */
 };
 
 /* Internal plugin structure with dlopen() handle and plugin_api
@@ -514,10 +513,11 @@ plugin_context_get(void)
     int                    i;
     struct plugin_context *pc = NULL;
 
-    if ((pc = malloc(sizeof *pc)) == NULL){
+    if ((pc = malloc(sizeof(*pc))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
+    memset(pc, 0, sizeof(*pc));
     if (sigprocmask(0, NULL, &pc->pc_sigset) < 0){
 	clicon_err(OE_UNIX, errno, "sigprocmask");
 	goto done;
@@ -543,12 +543,19 @@ plugin_context_get(void)
     return NULL;
 }
 
-/*! Given an existing, old plugin context, check if anytjing has changed
- * @param[in,out] oldpc  Old plugin context, status will be returned inside oldpc
- * @param[in]     name   Name of plugin for logging
- * @param[in]     fn     Name of callback
+/*! Given an existing, old plugin context, check if anything has changed
+ *
+ * Make a new check and compare with the old (procided as in-parameter).
+ * Log if there is a difference at loglevel WARNING.
+ * You can modify the code to also fail with assert if you want early fail.
+ *
+ * @param[in,out] oldpc  Old plugin context
+ * @param[in]     name   Name of plugin for logging. Can be other name, context dependent
+ * @param[in]     fn     Typically name of callback, or caller function
  * @retval       -1      Error
- * @retval        0      OK
+ * @retval        0      Fail, log on syslog using LOG_WARNING
+ * @retval        1      OK
+ * @note name and fn are context dependent, since the env of callback calls are very different
  * @see plugin_context_get
  */
 int
@@ -567,7 +574,7 @@ plugin_context_check(plugin_context_t *oldpc0,
     for (i=1; i<32; i++){
 	failed = 0;
 	if (sigismember(&oldpc->pc_sigset, i) != sigismember(&newpc->pc_sigset, i)){
-	    clicon_log(LOG_WARNING, "%s Plugin %s %s: Changed blocking of signal %s(%d) from %d to %d", __FUNCTION__,
+	    clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed blocking of signal %s(%d) from %d to %d", __FUNCTION__,
 		       name, fn, strsignal(i), i,
 		       sigismember(&oldpc->pc_sigset, i),
 		       sigismember(&newpc->pc_sigset, i)
@@ -575,29 +582,36 @@ plugin_context_check(plugin_context_t *oldpc0,
 	    failed++;
 	}
 	if (oldpc->pc_sigaction_vec[i].sa_flags != newpc->pc_sigaction_vec[i].sa_flags){
-	    clicon_log(LOG_WARNING, "%s Plugin %s %s: Changed flags of signal %s(%d) from 0x%x to 0x%x", __FUNCTION__,
+	    clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed flags of signal %s(%d) from 0x%x to 0x%x", __FUNCTION__,
 		       name, fn, strsignal(i), i,
 		       oldpc->pc_sigaction_vec[i].sa_flags,
 		       newpc->pc_sigaction_vec[i].sa_flags);;
 	    failed++;
 	}
 	if (oldpc->pc_sigaction_vec[i].sa_sigaction != newpc->pc_sigaction_vec[i].sa_sigaction){
-	    clicon_log(LOG_WARNING, "%s Plugin %s %s: Changed action of signal %s(%d) from %p to %p", __FUNCTION__,
+	    clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed action of signal %s(%d) from %p to %p", __FUNCTION__,
 		       name, fn, strsignal(i), i,
 		       oldpc->pc_sigaction_vec[i].sa_sigaction,
 		       newpc->pc_sigaction_vec[i].sa_sigaction);
 	    failed++;
 	}
-	if (failed){
-	    oldpc->pc_status = -1;
-	}
-	/* assert(oldpc->pc_status == 0); */
+#if 0
+	/* In case you want early detection and crash. But otherwise it is recommended that
+	 * the caller looks for retval == 0 */
+	assert(failed == 0);
+#endif
+	if (failed)
+	    goto fail;
+
     }
-    retval = 0;
+    retval = 1; /* OK */
  done:
     if (newpc)
 	free(newpc);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Call single plugin start callback
@@ -1058,12 +1072,13 @@ rpc_callback_call(clicon_handle h,
 		  void         *arg)
 {
     int            retval = -1;
-    rpc_callback_t *rc;
-    char           *name;
-    char           *prefix;
-    char           *ns;
-    int             nr = 0; /* How many callbacks */
+    rpc_callback_t       *rc;
+    char                 *name;
+    char                 *prefix;
+    char                 *ns;
+    int                   nr = 0; /* How many callbacks */
     plugin_module_struct *ms = plugin_module_struct_get(h);
+    plugin_context_t     *pc = NULL;
 
     if (ms == NULL){
 	clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
@@ -1077,17 +1092,27 @@ rpc_callback_call(clicon_handle h,
 	    if (strcmp(rc->rc_name, name) == 0 &&
 		ns && rc->rc_namespace &&
 		strcmp(rc->rc_namespace, ns) == 0){
+		if ((pc = plugin_context_get()) == NULL)
+		    goto done;
 		if (rc->rc_callback(h, xe, cbret, arg, rc->rc_arg) < 0){
 		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_name);
 		    goto done;
 		}
 		nr++;
+		if (plugin_context_check(pc, rc->rc_name, __FUNCTION__) < 0)
+		    goto done;
+		if (pc){
+		    free(pc);
+		    pc = NULL;
+		}
 	    }
 	    rc = NEXTQ(rpc_callback_t *, rc);
 	} while (rc != ms->ms_rpc_callbacks);
     retval = nr; /* 0: none found, >0 nr of handlers called */
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (pc)
+	free(pc);
     return retval;
 }
 
