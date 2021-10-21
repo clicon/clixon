@@ -165,17 +165,17 @@ cli_signal_flush(clicon_handle h)
 
     sigfn_t   h1, h2, h3, h4;
 
-    set_signal (SIGTSTP, SIG_IGN, &h1);
-    set_signal (SIGQUIT, SIG_IGN, &h2);
-    set_signal (SIGCHLD, SIG_IGN, &h3);
-    set_signal (SIGINT, SIG_IGN, &h4);
+    set_signal(SIGTSTP, SIG_IGN, &h1);
+    set_signal(SIGQUIT, SIG_IGN, &h2);
+    set_signal(SIGCHLD, SIG_IGN, &h3);
+    set_signal(SIGINT, SIG_IGN, &h4);
 
     cli_signal_unblock (h);
 
-    set_signal (SIGTSTP, h1, NULL);
-    set_signal (SIGQUIT, h2, NULL);
-    set_signal (SIGCHLD, h3, NULL);
-    set_signal (SIGINT, h4, NULL);
+    set_signal(SIGTSTP, h1, NULL);
+    set_signal(SIGQUIT, h2, NULL);
+    set_signal(SIGCHLD, h3, NULL);
+    set_signal(SIGINT, h4, NULL);
 
     cli_signal_block (h);
 }
@@ -562,9 +562,10 @@ cli_start_shell(clicon_handle h,
     int            retval = -1;
     char           bcmd[128];
     cg_var        *cv1 = cvec_i(vars, 1);
-
+    sigset_t       oldsigset;
+    struct sigaction oldsigaction[32] = {0,};
+    
     cmd = (cvec_len(vars)>1 ? cv_string_get(cv1) : NULL);
-
     if ((pw = getpwuid(getuid())) == NULL){
 	clicon_err(OE_UNIX, errno, "getpwuid");
 	goto done;
@@ -575,6 +576,9 @@ cli_start_shell(clicon_handle h,
 	goto done;
     }
     endpwent();
+
+    if (clixon_signal_save(&oldsigset, oldsigaction) < 0)
+	goto done;
     cli_signal_flush(h);
     cli_signal_unblock(h);
     if (cmd){
@@ -598,6 +602,8 @@ cli_start_shell(clicon_handle h,
 	goto done;
     }
 #endif
+    if (clixon_signal_restore(&oldsigset, oldsigaction) < 0)
+	goto done;
     retval = 0;
  done:
     return retval;

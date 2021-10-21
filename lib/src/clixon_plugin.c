@@ -47,7 +47,8 @@
 #include <dlfcn.h>
 #include <dirent.h>
 #include <syslog.h>
-
+#include <unistd.h>
+#include <termios.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 
@@ -71,12 +72,13 @@
  * Private types
  */
 /*! Structure for checking status before and after a plugin call
- * Currently signal settings: blocked and handlers, could be extended to more
+ * Currently signal settings: blocked and handlers, and termios
  * @see plugin_context_check
  */
 struct plugin_context {
     sigset_t         pc_sigset;            /* See sigprocmask(2) */
     struct sigaction pc_sigaction_vec[32]; /* See sigaction(2) */
+    struct termios   pc_termios;           /* See termios(3) */
 };
 
 /* Internal plugin structure with dlopen() handle and plugin_api
@@ -518,6 +520,7 @@ plugin_context_get(void)
 	goto done;
     }
     memset(pc, 0, sizeof(*pc));
+
     if (sigprocmask(0, NULL, &pc->pc_sigset) < 0){
 	clicon_err(OE_UNIX, errno, "sigprocmask");
 	goto done;
@@ -535,6 +538,10 @@ plugin_context_get(void)
 #else
 	pc->pc_sigaction_vec[i].sa_flags &= ~0x04000000;
 #endif
+    }
+    if (isatty(0) && tcgetattr(0, &pc->pc_termios) < 0){
+	clicon_err(OE_UNIX, errno, "tcgetattr %d", errno);
+	goto done;
     }
     return pc;
  done:
@@ -564,15 +571,48 @@ plugin_context_check(plugin_context_t *oldpc0,
     		     const char       *fn)
 {
     int                    retval = -1;
-    int                    failed;
+    int                    failed = 0;
     int                    i;
     struct plugin_context *oldpc = oldpc0;
     struct plugin_context *newpc = NULL;
 
     if ((newpc = plugin_context_get()) == NULL)
 	goto done;
+    if (oldpc->pc_termios.c_iflag != newpc->pc_termios.c_iflag){
+	clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed termios input modes from 0x%x to 0x%x", __FUNCTION__,
+		   name, fn,
+		   oldpc->pc_termios.c_iflag,
+		   newpc->pc_termios.c_iflag);
+	failed++;
+    }
+    if (oldpc->pc_termios.c_oflag != newpc->pc_termios.c_oflag){
+	clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed termios output modes from 0x%x to 0x%x", __FUNCTION__,
+		   name, fn,
+		   oldpc->pc_termios.c_oflag,
+		   newpc->pc_termios.c_oflag);
+	failed++;
+    }
+    if (oldpc->pc_termios.c_cflag != newpc->pc_termios.c_cflag){
+	clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed termios control modes from 0x%x to 0x%x", __FUNCTION__,
+		   name, fn,
+		   oldpc->pc_termios.c_cflag,
+		   newpc->pc_termios.c_cflag);
+	failed++;
+    }
+    if (oldpc->pc_termios.c_lflag != newpc->pc_termios.c_lflag){
+	clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed termios local modes from 0x%x to 0x%x", __FUNCTION__,
+		   name, fn,
+		   oldpc->pc_termios.c_lflag,
+		   newpc->pc_termios.c_lflag);
+	failed++;
+    }
+    /* XXX pc_termios.cc_t  c_cc[NCCS] not checked */
+#if 0
+	/* In case you want early detection and crash. But otherwise it is recommended that
+	 * the caller looks for retval == 0 */
+	assert(failed == 0);
+#endif
     for (i=1; i<32; i++){
-	failed = 0;
 	if (sigismember(&oldpc->pc_sigset, i) != sigismember(&newpc->pc_sigset, i)){
 	    clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed blocking of signal %s(%d) from %d to %d", __FUNCTION__,
 		       name, fn, strsignal(i), i,
@@ -600,10 +640,10 @@ plugin_context_check(plugin_context_t *oldpc0,
 	 * the caller looks for retval == 0 */
 	assert(failed == 0);
 #endif
-	if (failed)
-	    goto fail;
-
     }
+    if (failed)
+	goto fail;
+
     retval = 1; /* OK */
  done:
     if (newpc)

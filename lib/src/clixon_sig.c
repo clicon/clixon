@@ -121,6 +121,58 @@ clicon_signal_unblock(int sig)
 	sigprocmask(SIG_UNBLOCK, &set, NULL);
 }
 
+/*! Save complete signal context
+ */
+int
+clixon_signal_save(sigset_t        *sigset,
+		   struct sigaction sigaction_vec[32])
+{
+    int retval = -1;
+    int i;
+    
+    if (sigprocmask(0, NULL, sigset) < 0){
+	clicon_err(OE_UNIX, errno, "sigprocmask");
+	goto done;
+    }
+    for (i=1; i<32; i++){
+	if (sigaction(i, NULL, &sigaction_vec[i]) < 0){
+	    clicon_err(OE_UNIX, errno, "sigaction");
+	    goto done;
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Restore complete signal context
+ *
+ * Note: sigaction may not restore SIGKILL or SIGSTOP, which cannot be caught or ignored.
+ */
+int
+clixon_signal_restore(sigset_t        *sigset,
+		      struct sigaction sigaction_vec[32])
+{
+    int retval = -1;
+    int i;
+    
+    if (sigprocmask(0, sigset, NULL) < 0){
+	clicon_err(OE_UNIX, errno, "sigprocmask");
+	goto done;
+    }
+    for (i=1; i<32; i++){
+	if (i == SIGKILL || i == SIGSTOP)
+	    continue;
+	if (sigaction(i, &sigaction_vec[i], NULL) < 0){
+	    clicon_err(OE_UNIX, errno, "sigaction");
+	    goto done;
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Read pidfile and return pid using file descriptor
  *
  * @param[in]  pidfile  Name of pidfile
