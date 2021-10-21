@@ -121,7 +121,7 @@ cli_expand_var_generate(clicon_handle h,
     int   retval = -1;
     char *api_path_fmt = NULL, *opext = NULL;
 
-    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
+    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0)
 	goto done;
     if (opext && strcmp(opext, "hide-database") == 0) {
 	retval = 1;
@@ -762,7 +762,7 @@ yang2cli_leaf(clicon_handle h,
     }
     cprintf(cb, "%*s", level*3, "");
     /* Look for autocli-op defined in clixon-lib.yang */
-    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
+    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0)
 	goto done;
     if (gt == GT_VARS|| gt == GT_ALL || gt == GT_HIDE){
 	cprintf(cb, "%s", yang_argument_get(ys));
@@ -839,7 +839,7 @@ yang2cli_container(clicon_handle h,
      * a list, then skip container keyword
      * See also xml2cli
      */
-     if ((hide = yang_container_cli_hide(ys, gt)) == 0){
+    if ((hide = yang_container_cli_hide(ys, gt)) == 0){
 	cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
 	if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
 	    if ((helptext = strdup(yang_argument_get(yd))) == NULL){
@@ -853,14 +853,14 @@ yang2cli_container(clicon_handle h,
 	if (cli_callback_generate(h, ys, cb) < 0)
 	    goto done;
 
-    /* Look for autocli-op defined in clixon-lib.yang */
-    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
-	goto done;
-    if (opext != NULL && strcmp(opext, "hide") == 0){
-	cprintf(cb, ",hide");
-    }
+	/* Look for autocli-op defined in clixon-lib.yang */
+	if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0)
+	    goto done;
+	if (opext != NULL && strcmp(opext, "hide") == 0){
+	    cprintf(cb, ",hide");
+	}
 	if (opext != NULL && strcmp(opext, "hide-database-auto-completion") == 0){
-		cprintf(cb, ",hide-database-auto-completion");
+	    cprintf(cb, ",hide-database-auto-completion");
 	}
 	cprintf(cb, ";{\n");
     }
@@ -868,11 +868,11 @@ yang2cli_container(clicon_handle h,
     yc = NULL;
     while ((yc = yn_each(ys, yc)) != NULL) 
 	if (yang2cli_stmt(h, yc, gt, level+1, state, show_tree, cb) < 0)
-	   goto done;
+	    goto done;
     if (hide == 0)
 	cprintf(cb, "%*s}\n", level*3, "");
     retval = 0;
-  done:
+ done:
     if (helptext)
 	free(helptext);
     return retval;
@@ -920,7 +920,7 @@ yang2cli_list(clicon_handle h,
 	yang2cli_helptext(cb, helptext);
     }
 	/* Look for autocli-op defined in clixon-lib.yang */
-    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
+    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0)
 	goto done;
     if (opext != NULL && strcmp(opext, "hide") == 0){
 	cprintf(cb, ",hide");

@@ -3553,15 +3553,20 @@ yang_anydata_add(yang_stmt *yp,
     return ys;
 }
 
-/*! Find extension argument and return extension argument value
+/*! Find extension argument and return if extension exists and its argument value
+ *
  * @param[in]  ys     Yang statement
  * @param[in]  name   Name of the extension 
  * @param[in]  ns     The namespace
+ * @param[out] exist  The extension exists.
  * @param[out] value  clispec operator (hide/none) - direct pointer into yang, dont free
+ * @retval     0      OK: Look in exist and value for return value
+ * @retval     -1     Error
  * This is for extensions with an argument
  * @code
  *     char *value = NULL;
- *     if (yang_extension_value(ys, "mymode", "urn:example:lib", &value) < 0)
+ *     int  exist = 0;
+ *     if (yang_extension_value(ys, "mymode", "urn:example:lib", &exist, &value) < 0)
  *        err;
  *     if (value != NULL){
  *        // use extension value
@@ -3572,6 +3577,7 @@ int
 yang_extension_value(yang_stmt *ys,
 		     char      *name,
 		     char      *ns,
+		     int       *exist,
 		     char     **value)
 {
     int        retval = -1;
@@ -3593,15 +3599,17 @@ yang_extension_value(yang_stmt *ys,
 	    continue;
 	if (yang_find_prefix_by_namespace(ymod, ns, &prefix) < 0)
 	    goto ok;
+	cbuf_reset(cb);
 	cprintf(cb, "%s:%s", prefix, name);
 	if (strcmp(yang_argument_get(yext), cbuf_get(cb)) != 0)
 	    continue;
 	break;
     }
     if (yext != NULL){ /* Found */
-	if ((cv = yang_cv_get(yext)) == NULL)
-	    goto ok;
-	if (value)
+	if (exist)
+	    *exist = 1;
+	if (value &&
+	    (cv = yang_cv_get(yext)) != NULL)
 	    *value = cv_string_get(cv);
     }
  ok:
