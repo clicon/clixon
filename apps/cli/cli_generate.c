@@ -833,13 +833,16 @@ yang2cli_container(clicon_handle h,
     char         *s;
     int           hide = 0;
     int           hide_oc = 0;
+    int           exist = 0;
     char         *opext = NULL;
     yang_stmt    *ymod = NULL;
-    char **name;
+
 
     if (ys_real_module(ys, &ymod) < 0)
       goto done;
-    if (yang_extension_value(ymod, "openconfig-extensions", "http://openconfig.net/yang/openconfig-ext", &opext) == 0) {
+    if (yang_extension_value(ymod, "openconfig-version", "http://openconfig.net/yang/openconfig-ext", &exist, NULL) < 0)
+      goto done;
+    if (exist) {
       if (strcmp(yang_argument_get(ys), "config") == 0){
 	hide_oc = 1;
       }

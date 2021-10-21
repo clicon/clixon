@@ -81,7 +81,7 @@ module $APPNAME {
     }
   }
   container interfaces {
-    oc-ext:operational;
+    oc-ext:openconfig-version;
     list interface {
       key name;
       leaf name {
