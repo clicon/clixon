@@ -47,6 +47,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <unistd.h>
+#include <signal.h>
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/time.h>

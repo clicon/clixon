@@ -52,6 +52,7 @@
 #include <dirent.h>
 #include <libgen.h>
 #include <grp.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -68,7 +69,6 @@
 #include "cli_plugin.h"
 #include "cli_handle.h"
 #include "cli_generate.h"
-
 
 /*
  * Constants

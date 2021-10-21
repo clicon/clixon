@@ -51,10 +51,10 @@
 #include <regex.h>
 #include <dirent.h>
 #include <syslog.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <libgen.h>
 #include <netinet/in.h>
-
 
 /* cligen */
 #include <cligen/cligen.h>

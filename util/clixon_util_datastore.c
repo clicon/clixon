@@ -48,6 +48,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <time.h>
+#include <signal.h>
 #include <syslog.h>
 #include <sys/time.h>
 #include <sys/socket.h>

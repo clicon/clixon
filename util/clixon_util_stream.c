@@ -50,6 +50,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <syslog.h>
+#include <signal.h>
 #include <curl/curl.h>
 
 /* cligen */

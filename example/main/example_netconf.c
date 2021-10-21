@@ -40,6 +40,7 @@
 #include <errno.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 

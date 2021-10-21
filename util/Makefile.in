@@ -103,7 +103,6 @@ APPSRC   += clixon_util_ssl.c # requires http/2
 #APPSRC   += clixon_util_grpc.c # work in progress
 endif
 
-
 APPS	  = $(APPSRC:.c=)
 
 all:	 $(APPS)
