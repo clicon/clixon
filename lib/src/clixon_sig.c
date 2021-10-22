@@ -156,7 +156,7 @@ clixon_signal_restore(sigset_t        *sigset,
     int retval = -1;
     int i;
     
-    if (sigprocmask(0, sigset, NULL) < 0){
+    if (sigprocmask(SIG_SETMASK, sigset, NULL) < 0){
 	clicon_err(OE_UNIX, errno, "sigprocmask");
 	goto done;
     }
