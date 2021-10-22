@@ -49,6 +49,7 @@
 #include <stdint.h>
 #include <syslog.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/stat.h>
 
 /* cligen */

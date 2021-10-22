@@ -52,6 +52,7 @@
 #include <sys/time.h>
 #include <regex.h>
 #include <syslog.h>
+#include <signal.h>
 #include <netinet/in.h>
 #include <limits.h>
 

@@ -514,7 +514,10 @@ example_statefile(clicon_handle     h,
 	xml_flag_set(x1, XML_FLAG_MARK);
 	xml_apply_ancestor(x1, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
-    if (xml_copy_marked(xt, xstate) < 0) /* Copy the marked elements */
+    /* Copy the marked elements: 
+     * note is yang-aware for copying of keys which means XML must be bound 
+     */
+    if (xml_copy_marked(xt, xstate) < 0) 
 	goto done;
     /* Unmark original tree */
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
@@ -614,6 +617,9 @@ example_pagination(void            *h0,
 	xml_flag_set(x1, XML_FLAG_MARK);
 	xml_apply_ancestor(x1, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
+    /* Copy the marked elements: 
+     * note is yang-aware for copying of keys which means XML must be bound 
+     */
     if (xml_copy_marked(xt, xstate) < 0) /* Copy the marked elements */
 	goto done;
     /* Unmark original tree */
@@ -1160,6 +1166,7 @@ example_daemon(clicon_handle h)
     int        ret;
     FILE      *fp = NULL;
     yang_stmt *yspec;
+    cxobj     *xerr = NULL;
 
     /* Read state file (or should this be in init/start?) */
     if (_state && _state_file && _state_file_cached){
@@ -1168,8 +1175,14 @@ example_daemon(clicon_handle h)
 	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
 	    goto done;
 	}
-	if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &_state_xml_cache, NULL)) < 1)
+	/* Need to be yang bound for eg xml_copy_marked() in example_pagination
+	 */
+	if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &_state_xml_cache, &xerr)) < 0)
 	    goto done;
+	if (ret == 0){
+	    xml_print(stderr, xerr);
+	    goto done;
+	}
     }
     retval = 0;
  done:

@@ -1,5 +1,36 @@
 /*
- * Copyright 2021 Rubicon Communications LLC (Netgate)
+ *
+  ***** BEGIN LICENSE BLOCK *****
+ 
+  Copyright (C) 2021 Rubicon Communications, LLC(Netgate)
+
+  This file is part of CLIXON.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+  Alternatively, the contents of this file may be used under the terms of
+  the GNU General Public License Version 3 or later (the "GPL"),
+  in which case the provisions of the GPL are applicable instead
+  of those above. If you wish to allow use of your version of this file only
+  under the terms of the GPL, and not to allow others to
+  use your version of this file under the terms of Apache License version 2, 
+  indicate your decision by deleting the provisions above and replace them with
+  the  notice and other provisions required by the GPL. If you do not delete
+  the provisions above, a recipient may use your version of this file under
+  the terms of any one of the Apache License version 2 or the GPL.
+
+  ***** END LICENSE BLOCK *****
+
  * @see https://github.com/dcornejo/dispatcher
  */
 
@@ -36,10 +67,6 @@
  *      [a]
  *          [b=]
  *          [b]
- *
- * NOTE 1: there is not a mechanism to free the created structures since
- * it is intended that this tree is created only at startup. if use case
- * changes, this function is trivial.
  *
  * NOTE 2: there is no attempt to optimize list searching here, sorry. I
  * do not think that the known use cases will get big enough to make the
@@ -285,11 +312,8 @@ get_entry(dispatcher_entry_t *root,
 
     /* some elements may have keys defined, strip them off */
     for (int i = 0; i < split_path_len; i++) {
-        char *kptr = strchr(split_path_list[i], '=');
-
-        if ((kptr != NULL) && (*kptr == '=')) {
-            *(kptr + 1) = 0;
-        }
+	char *kptr = split_path_list[i];
+	strsep(&kptr, "=[]");
     }
 
     /* search down the tree */
@@ -411,10 +435,10 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
  *
  * @param[in]  handle
  * @param[in]  root
- * @param[in]  path
- * @retval     1    OK
- * @retval     0    Invalid
- * @retval    -1    Error
+ * @param[in]  path   Note must be on the form: /a/b (no keys)
+ * @retval     1      OK
+ * @retval     0      Invalid
+ * @retval    -1      Error
  */
 int
 dispatcher_call_handlers(dispatcher_entry_t *root,
@@ -423,8 +447,12 @@ dispatcher_call_handlers(dispatcher_entry_t *root,
 			 void               *user_args)
 {
     int                 ret = 0;
-    dispatcher_entry_t *best = get_entry(root, path);
+    dispatcher_entry_t *best;
 
+    if ((best = get_entry(root, path)) == NULL){
+	errno = ENOENT;
+	return -1;
+    }
     if (best->children != NULL) {
         call_handler_helper(best->children, handle, path, user_args);
     }
@@ -448,5 +476,26 @@ dispatcher_free(dispatcher_entry_t *root)
     if (root->node_name)
 	free(root->node_name);
     free(root);
+    return 0;
+}
+
+/*! Pretty-print dispatcher tree
+ */
+#define INDENT 3
+int
+dispatcher_print(FILE               *f,
+		 int                 level,
+		 dispatcher_entry_t *de)
+{
+    fprintf(f, "%*s%s", level*INDENT, "", de->node_name);
+    if (de->handler)
+	fprintf(f, " %p", de->handler);
+    if (de->arg)
+	fprintf(f, " (%p)", de->arg);
+    fprintf(f, "\n");
+    if (de->children)
+	dispatcher_print(f, level+1, de->children);
+    if (de->peer)
+	dispatcher_print(f, level, de->peer);
     return 0;
 }

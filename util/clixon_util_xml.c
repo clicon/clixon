@@ -56,6 +56,7 @@
 #include <stdint.h>
 #include <syslog.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 

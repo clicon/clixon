@@ -48,6 +48,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
 #include <syslog.h>
 #include <sys/types.h>
 #include <sys/time.h>

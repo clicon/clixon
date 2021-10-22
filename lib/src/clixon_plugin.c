@@ -43,10 +43,12 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <signal.h>
 #include <dlfcn.h>
 #include <dirent.h>
 #include <syslog.h>
-
+#include <unistd.h>
+#include <termios.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 
@@ -69,6 +71,15 @@
 /*
  * Private types
  */
+/*! Structure for checking status before and after a plugin call
+ * Currently signal settings: blocked and handlers, and termios
+ * @see plugin_context_check
+ */
+struct plugin_context {
+    sigset_t         pc_sigset;            /* See sigprocmask(2) */
+    struct sigaction pc_sigaction_vec[32]; /* See sigaction(2) */
+    struct termios   pc_termios;           /* See termios(3) */
+};
 
 /* Internal plugin structure with dlopen() handle and plugin_api
  * This is an internal type, not exposed in the API
@@ -327,9 +338,10 @@ plugin_load_one(clicon_handle   h,
     void              *handle = NULL;
     plginit2_t        *initfn;
     clixon_plugin_api *api = NULL;
-    clixon_plugin_t     *cp = NULL;
+    clixon_plugin_t   *cp = NULL;
     char              *name;
     char              *p;
+    plugin_context_t  *pc = NULL;
 
     clicon_debug(1, "%s file:%s function:%s", __FUNCTION__, file, function);
     dlerror();    /* Clear any existing error */
@@ -348,6 +360,9 @@ plugin_load_one(clicon_handle   h,
 	goto done;
     }
     clicon_err_reset();
+    if ((pc = plugin_context_get()) < 0)
+	goto done;
+
     if ((api = initfn(h)) == NULL) {
 	if (!clicon_errno){ 	/* if clicon_err() is not called then log and continue */
 	    clicon_log(LOG_DEBUG, "Warning: failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
@@ -359,6 +374,9 @@ plugin_load_one(clicon_handle   h,
 	    goto done;
 	}
     }
+    if (plugin_context_check(pc, file, __FUNCTION__) < 0)
+	goto done;
+
     /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
     if ((cp = (clixon_plugin_t *)malloc(sizeof(struct clixon_plugin))) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
@@ -382,6 +400,8 @@ plugin_load_one(clicon_handle   h,
     retval = 1;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (pc)
+	free(pc);
     if (retval != 1 && handle)
 	dlclose(handle);
     if (cp)
@@ -483,6 +503,157 @@ done:
     return retval;
 }
 
+/*! Get system context, eg signal procmask (for blocking) and sigactions
+ * Call this before a plugin
+ * @retval     pc      Plugin context structure, use free() to deallocate
+ * @retval     NULL    Error
+ * @see plugin_context_check
+ * */
+plugin_context_t *
+plugin_context_get(void)
+{
+    int                    i;
+    struct plugin_context *pc = NULL;
+
+    if ((pc = malloc(sizeof(*pc))) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(pc, 0, sizeof(*pc));
+
+    if (sigprocmask(0, NULL, &pc->pc_sigset) < 0){
+	clicon_err(OE_UNIX, errno, "sigprocmask");
+	goto done;
+    }
+    for (i=1; i<32; i++){
+	if (sigaction(i, NULL, &pc->pc_sigaction_vec[i]) < 0){
+	    clicon_err(OE_UNIX, errno, "sigaction");
+	    goto done;
+	}
+	/* Mask SA_RESTORER: Not intended for application use.
+	 * Note that it may not be included in user space so may be hardcoded below
+	 */
+#ifdef SA_RESTORER
+	pc->pc_sigaction_vec[i].sa_flags &= ~SA_RESTORER;
+#else
+	pc->pc_sigaction_vec[i].sa_flags &= ~0x04000000;
+#endif
+    }
+    if (isatty(0) && tcgetattr(0, &pc->pc_termios) < 0){
+	clicon_err(OE_UNIX, errno, "tcgetattr %d", errno);
+	goto done;
+    }
+    return pc;
+ done:
+    if (pc)
+	free(pc);
+    return NULL;
+}
+
+/*! Given an existing, old plugin context, check if anything has changed
+ *
+ * Make a new check and compare with the old (procided as in-parameter).
+ * Log if there is a difference at loglevel WARNING.
+ * You can modify the code to also fail with assert if you want early fail.
+ *
+ * @param[in,out] oldpc  Old plugin context
+ * @param[in]     name   Name of plugin for logging. Can be other name, context dependent
+ * @param[in]     fn     Typically name of callback, or caller function
+ * @retval       -1      Error
+ * @retval        0      Fail, log on syslog using LOG_WARNING
+ * @retval        1      OK
+ * @note name and fn are context dependent, since the env of callback calls are very different
+ * @see plugin_context_get
+ */
+int
+plugin_context_check(plugin_context_t *oldpc0,
+		     const char       *name,
+    		     const char       *fn)
+{
+    int                    retval = -1;
+    int                    failed = 0;
+    int                    i;
+    struct plugin_context *oldpc = oldpc0;
+    struct plugin_context *newpc = NULL;
+
+    if ((newpc = plugin_context_get()) == NULL)
+	goto done;
+    if (oldpc->pc_termios.c_iflag != newpc->pc_termios.c_iflag){
+	clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed termios input modes from 0x%x to 0x%x", __FUNCTION__,
+		   name, fn,
+		   oldpc->pc_termios.c_iflag,
+		   newpc->pc_termios.c_iflag);
+	failed++;
+    }
+    if (oldpc->pc_termios.c_oflag != newpc->pc_termios.c_oflag){
+	clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed termios output modes from 0x%x to 0x%x", __FUNCTION__,
+		   name, fn,
+		   oldpc->pc_termios.c_oflag,
+		   newpc->pc_termios.c_oflag);
+	failed++;
+    }
+    if (oldpc->pc_termios.c_cflag != newpc->pc_termios.c_cflag){
+	clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed termios control modes from 0x%x to 0x%x", __FUNCTION__,
+		   name, fn,
+		   oldpc->pc_termios.c_cflag,
+		   newpc->pc_termios.c_cflag);
+	failed++;
+    }
+    if (oldpc->pc_termios.c_lflag != newpc->pc_termios.c_lflag){
+	clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed termios local modes from 0x%x to 0x%x", __FUNCTION__,
+		   name, fn,
+		   oldpc->pc_termios.c_lflag,
+		   newpc->pc_termios.c_lflag);
+	failed++;
+    }
+    /* XXX pc_termios.cc_t  c_cc[NCCS] not checked */
+#if 0
+	/* In case you want early detection and crash. But otherwise it is recommended that
+	 * the caller looks for retval == 0 */
+	assert(failed == 0);
+#endif
+    for (i=1; i<32; i++){
+	if (sigismember(&oldpc->pc_sigset, i) != sigismember(&newpc->pc_sigset, i)){
+	    clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed blocking of signal %s(%d) from %d to %d", __FUNCTION__,
+		       name, fn, strsignal(i), i,
+		       sigismember(&oldpc->pc_sigset, i),
+		       sigismember(&newpc->pc_sigset, i)
+		       );
+	    failed++;
+	}
+	if (oldpc->pc_sigaction_vec[i].sa_flags != newpc->pc_sigaction_vec[i].sa_flags){
+	    clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed flags of signal %s(%d) from 0x%x to 0x%x", __FUNCTION__,
+		       name, fn, strsignal(i), i,
+		       oldpc->pc_sigaction_vec[i].sa_flags,
+		       newpc->pc_sigaction_vec[i].sa_flags);;
+	    failed++;
+	}
+	if (oldpc->pc_sigaction_vec[i].sa_sigaction != newpc->pc_sigaction_vec[i].sa_sigaction){
+	    clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed action of signal %s(%d) from %p to %p", __FUNCTION__,
+		       name, fn, strsignal(i), i,
+		       oldpc->pc_sigaction_vec[i].sa_sigaction,
+		       newpc->pc_sigaction_vec[i].sa_sigaction);
+	    failed++;
+	}
+#if 0
+	/* In case you want early detection and crash. But otherwise it is recommended that
+	 * the caller looks for retval == 0 */
+	assert(failed == 0);
+#endif
+    }
+    if (failed)
+	goto fail;
+
+    retval = 1; /* OK */
+ done:
+    if (newpc)
+	free(newpc);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Call single plugin start callback
  * @param[in]  cp      Plugin handle
  * @param[in]  h       Clixon handle
@@ -493,19 +664,26 @@ int
 clixon_plugin_start_one(clixon_plugin_t *cp,
 			clicon_handle  h)
 {
-    int          retval = -1;
-    plgstart_t  *fn;          /* Plugin start */
+    int               retval = -1;
+    plgstart_t       *fn;          /* Plugin start */
+    plugin_context_t *pc = NULL;
 
     if ((fn = cp->cp_api.ca_start) != NULL){
+	if ((pc = plugin_context_get()) == NULL)
+	    goto done;
 	if (fn(h) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Start callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
+	if (plugin_context_check(pc, cp->cp_name, __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
 
@@ -540,17 +718,22 @@ static int
 clixon_plugin_exit_one(clixon_plugin_t *cp,
 		       clicon_handle  h)
 {
-    int          retval = -1;
-    char        *error;
-    plgexit_t   *fn;
-
+    int               retval = -1;
+    char             *error;
+    plgexit_t        *fn;
+    plugin_context_t *pc = NULL;
+	
     if ((fn = cp->cp_api.ca_exit) != NULL){
+	if ((pc = plugin_context_get()) == NULL)
+	    goto done;
 	if (fn(h) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Exit callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
+	if (plugin_context_check(pc, cp->cp_name, __FUNCTION__) < 0)
+	    goto done;
 	if (dlclose(cp->cp_handle) != 0) {
 	    error = (char*)dlerror();
 	    clicon_err(OE_PLUGIN, errno, "dlclose: %s", error ? error : "Unknown error");
@@ -558,6 +741,8 @@ clixon_plugin_exit_one(clixon_plugin_t *cp,
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
 
@@ -606,21 +791,28 @@ clixon_plugin_auth_one(clixon_plugin_t     *cp,
 		       clixon_auth_type_t auth_type,
 		       char             **authp)
 {
-    int        retval = -1; 
-    plgauth_t *fn;          /* Plugin auth */
+    int               retval = -1; 
+    plgauth_t        *fn;          /* Plugin auth */
+    plugin_context_t *pc = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((fn = cp->cp_api.ca_auth) != NULL){
+	if ((pc = plugin_context_get()) == NULL)
+	    goto done;
 	if ((retval = fn(h, req, auth_type, authp)) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Auth callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
+	if (plugin_context_check(pc, cp->cp_name, __FUNCTION__) < 0)
+	    goto done;
     }
     else
 	retval = 0; /* Ignored / no callback */
  done:
+    if (pc)
+	free(pc);
     clicon_debug(1, "%s retval:%d auth:%s", __FUNCTION__, retval, *authp);
     return retval;
 }
@@ -684,19 +876,26 @@ clixon_plugin_extension_one(clixon_plugin_t *cp,
 			    yang_stmt     *yext,
 			    yang_stmt     *ys)
 {
-    int             retval = 1;
-    plgextension_t *fn;          /* Plugin extension fn */
+    int               retval = 1;
+    plgextension_t   *fn;          /* Plugin extension fn */
+    plugin_context_t *pc = NULL;
     
     if ((fn = cp->cp_api.ca_extension) != NULL){
+	if ((pc = plugin_context_get()) == NULL)
+	    goto done;
 	if (fn(h, yext, ys) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Extension callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
+	if (plugin_context_check(pc, cp->cp_name, __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
 
@@ -750,17 +949,24 @@ clixon_plugin_datastore_upgrade_one(clixon_plugin_t   *cp,
 {
     int                  retval = -1;
     datastore_upgrade_t *fn;
+    plugin_context_t    *pc = NULL;
     
     if ((fn = cp->cp_api.ca_datastore_upgrade) != NULL){
+	if ((pc = plugin_context_get()) == NULL)
+	    goto done;
 	if (fn(h, db, xt, msd) < 0) {
 	    if (clicon_errno < 0) 
 		clicon_log(LOG_WARNING, "%s: Internal error: Datastore upgrade callback in plugin: %s returned -1 but did not make a clicon_err call",
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
+	if (plugin_context_check(pc, cp->cp_name, __FUNCTION__) < 0)
+	    goto done;
     }
     retval = 0;
  done:
+    if (pc)
+	free(pc);
     return retval;
 }
 
@@ -906,12 +1112,13 @@ rpc_callback_call(clicon_handle h,
 		  void         *arg)
 {
     int            retval = -1;
-    rpc_callback_t *rc;
-    char           *name;
-    char           *prefix;
-    char           *ns;
-    int             nr = 0; /* How many callbacks */
+    rpc_callback_t       *rc;
+    char                 *name;
+    char                 *prefix;
+    char                 *ns;
+    int                   nr = 0; /* How many callbacks */
     plugin_module_struct *ms = plugin_module_struct_get(h);
+    plugin_context_t     *pc = NULL;
 
     if (ms == NULL){
 	clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
@@ -925,17 +1132,27 @@ rpc_callback_call(clicon_handle h,
 	    if (strcmp(rc->rc_name, name) == 0 &&
 		ns && rc->rc_namespace &&
 		strcmp(rc->rc_namespace, ns) == 0){
+		if ((pc = plugin_context_get()) == NULL)
+		    goto done;
 		if (rc->rc_callback(h, xe, cbret, arg, rc->rc_arg) < 0){
 		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_name);
 		    goto done;
 		}
 		nr++;
+		if (plugin_context_check(pc, rc->rc_name, __FUNCTION__) < 0)
+		    goto done;
+		if (pc){
+		    free(pc);
+		    pc = NULL;
+		}
 	    }
 	    rc = NEXTQ(rpc_callback_t *, rc);
 	} while (rc != ms->ms_rpc_callbacks);
     retval = nr; /* 0: none found, >0 nr of handlers called */
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    if (pc)
+	free(pc);
     return retval;
 }
 

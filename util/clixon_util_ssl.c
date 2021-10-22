@@ -49,6 +49,7 @@
 #include <string.h>
 #include <errno.h>
 #include <syslog.h>
+#include <signal.h>
 #include <netdb.h>      /* gethostbyname */
 #include <arpa/inet.h>  /* inet_pton */
 #include <netinet/tcp.h> /* TCP_NODELAY */

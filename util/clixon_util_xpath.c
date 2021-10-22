@@ -50,6 +50,7 @@ See https://www.w3.org/TR/xpath/
 #include <stdint.h>
 #include <syslog.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/stat.h>
 
 /* cligen */
@@ -126,7 +127,7 @@ main(int    argc,
     int         len;
     char       *buf = NULL;
     int         ret;
-    FILE       *fp = stdin; /* unless overriden by argv[1] */
+    FILE       *fp = stdin; /* unless overriden by -f */
     char       *yang_file_dir = NULL;
     yang_stmt  *yspec = NULL;
     char       *xpath = NULL;
@@ -169,7 +170,7 @@ main(int    argc,
 	case 'f': /* XML file */
 	    filename = optarg;
 	    if ((fp = fopen(filename, "r")) == NULL){
-		clicon_err(OE_UNIX, errno, "open(%s)", argv[1]);
+		clicon_err(OE_UNIX, errno, "fopen(%s)", optarg);
 		goto done;
 	    }
 	    break;

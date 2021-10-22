@@ -78,6 +78,7 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 #include <errno.h>
 #include <fcntl.h>
 #include <syslog.h>
+#include <signal.h>
 #include <sys/param.h>
 
 /* cligen */
@@ -120,7 +121,7 @@ cli_expand_var_generate(clicon_handle h,
     int   retval = -1;
     char *api_path_fmt = NULL, *opext = NULL;
 
-    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
+    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0)
 	goto done;
     if (opext && strcmp(opext, "hide-database") == 0) {
 	retval = 1;
@@ -761,7 +762,7 @@ yang2cli_leaf(clicon_handle h,
     }
     cprintf(cb, "%*s", level*3, "");
     /* Look for autocli-op defined in clixon-lib.yang */
-    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
+    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0)
 	goto done;
     if (gt == GT_VARS || gt == GT_ALL || gt == GT_HIDE || gt == GT_OC_COMPRESS){
 	cprintf(cb, "%s", yang_argument_get(ys));
@@ -866,14 +867,14 @@ yang2cli_container(clicon_handle h,
 	if (cli_callback_generate(h, ys, cb) < 0)
 	    goto done;
 
-    /* Look for autocli-op defined in clixon-lib.yang */
-    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
-	goto done;
-    if (opext != NULL && strcmp(opext, "hide") == 0){
-	cprintf(cb, ",hide");
-    }
+	/* Look for autocli-op defined in clixon-lib.yang */
+	if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0)
+	    goto done;
+	if (opext != NULL && strcmp(opext, "hide") == 0){
+	    cprintf(cb, ",hide");
+	}
 	if (opext != NULL && strcmp(opext, "hide-database-auto-completion") == 0){
-		cprintf(cb, ",hide-database-auto-completion");
+	    cprintf(cb, ",hide-database-auto-completion");
 	}
 	cprintf(cb, ";{\n");
     }
@@ -882,10 +883,10 @@ yang2cli_container(clicon_handle h,
     while ((yc = yn_each(ys, yc)) != NULL) 
 	if (yang2cli_stmt(h, yc, gt, level+1, state, show_tree, cb) < 0)
 	   goto done;
-    if (hide == 0 && hide_oc == 0)
-	cprintf(cb, "%*s}\n", level*3, "");
-    retval = 0;
-  done:
+  if (hide == 0 && hide_oc == 0)
+	   cprintf(cb, "%*s}\n", level*3, "");
+  retval = 0;
+ done:
     if (helptext)
 	free(helptext);
     return retval;
@@ -933,7 +934,7 @@ yang2cli_list(clicon_handle h,
 	yang2cli_helptext(cb, helptext);
     }
 	/* Look for autocli-op defined in clixon-lib.yang */
-    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, &opext) < 0)
+    if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0)
 	goto done;
     if (opext != NULL && strcmp(opext, "hide") == 0){
 	cprintf(cb, ",hide");

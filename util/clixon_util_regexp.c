@@ -47,6 +47,7 @@
 #include <syslog.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <signal.h>
 
 #ifdef HAVE_LIBXML2 /* Actually it should check for  a header file */
 #include <libxml/xmlregexp.h>

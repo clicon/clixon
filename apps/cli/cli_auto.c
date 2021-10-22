@@ -171,7 +171,7 @@ cli_xml2file(cxobj            *xn,
     if (xn == NULL)
 	goto ok;
     /* Look for autocli-op defined in clixon-lib.yang */
-    if (yang_extension_value(xml_spec(xn), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
+    if (yang_extension_value(xml_spec(xn), "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0) {
 	goto ok;
     }
     if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
@@ -273,13 +273,13 @@ cli_xml2txt(cxobj            *xn,
 	clicon_err(OE_XML, EINVAL, "xn or fn is NULL");
 	goto done;
     }
-	/* Look for autocli-op defined in clixon-lib.yang */
-	if (yang_extension_value(xml_spec(xn), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
-		goto ok;
-	}
-	if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
-		goto ok;
-	}
+    /* Look for autocli-op defined in clixon-lib.yang */
+    if (yang_extension_value(xml_spec(xn), "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0) {
+	goto ok;
+    }
+    if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
+	goto ok;
+    }
     xc = NULL;     /* count children (elements and bodies, not attributes) */
     while ((xc = xml_child_each(xn, xc, -1)) != NULL)
 	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
@@ -342,7 +342,7 @@ cli_xml2cli(cxobj             *xn,
     if ((ys = xml_spec(xn)) == NULL)
 	goto ok;
     /* Look for autocli-op defined in clixon-lib.yang */
-    if (yang_extension_value(xml_spec(xn), "autocli-op", CLIXON_LIB_NS, &opext) < 0) {
+    if (yang_extension_value(xml_spec(xn), "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0) {
 	goto ok;
     }
     if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){

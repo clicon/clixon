@@ -68,6 +68,10 @@ Developers may need to change their code
 
 ### Minor features
 
+* Plugin context check before and after all callbacks.
+  * Check blocked signals and signal handlers
+  * Check termios settings
+  * Any changes to context are logged at loglevel WARNING
 * Added set/get pointer API to clixon_data:
    * clicon_ptr_get(), clicon_ptr_set(), 
 * Restconf YANG PATCH according to RFC 8072

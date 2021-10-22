@@ -50,7 +50,6 @@
 /*
  * Types
  */
-
     
 /*! Registered RPC callback function 
  * @param[in]  h       Clicon handle 
@@ -201,8 +200,8 @@ typedef int (plgreset_t)(clicon_handle h, const char *db);
  * A complete valid XML tree is created by the plugin and sent back via xtop, which is merged
  * into a complete state tree by the system.
  * The plugin should ensure that xpath is matched (using namspace context nsc)
- * This callback may be replaced with a "dispatcher" type API in the future where the
- * XPath binding is stricter, similar to the pagination API.
+ * XXX: This callback may be replaced with a "dispatcher" type API in the future where the
+ *      XPath binding is stricter, similar to the pagination API.
  *
  * @param[in]  h          Clicon handle
  * @param[in]  xpath      Part of state requested
@@ -338,6 +337,7 @@ struct clixon_plugin_api{
 #define ca_trans_abort    u.cau_backend.cb_trans_abort
 #define ca_datastore_upgrade  u.cau_backend.cb_datastore_upgrade
 
+
 /*
  * Macros
  */
@@ -348,6 +348,10 @@ typedef struct clixon_plugin_api clixon_plugin_api;
 /* This is the external handle type exposed in the API.
  * The internal struct is defined in clixon_plugin.c */
 typedef struct clixon_plugin clixon_plugin_t;
+
+/*! Structure for checking status before and after a plugin call
+ * The internal struct is defined in clixon_plugin.c */
+typedef struct plugin_context plugin_context_t;
 
 /*
  * Prototypes
@@ -360,7 +364,6 @@ typedef struct clixon_plugin clixon_plugin_t;
  * @see CLIXON_PLUGIN_INIT  default symbol 
  */
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
-
 
 clixon_plugin_api *clixon_plugin_api_get(clixon_plugin_t *cp);
 char            *clixon_plugin_name_get(clixon_plugin_t *cp);
@@ -375,6 +378,9 @@ clixon_plugin_t *clixon_plugin_find(clicon_handle h, const char *name);
 int clixon_plugins_load(clicon_handle h, const char *function, const char *dir, const char *regexp);
 
 int clixon_pseudo_plugin(clicon_handle h, const char *name, clixon_plugin_t **cpp);
+
+plugin_context_t * plugin_context_get(void);
+int plugin_context_check(plugin_context_t *pc, const char *name, const char *fn);
 
 int clixon_plugin_start_one(clixon_plugin_t *cp, clicon_handle h);
 int clixon_plugin_start_all(clicon_handle h);

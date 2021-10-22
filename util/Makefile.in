@@ -91,7 +91,8 @@ APPSRC   += clixon_util_path.c
 APPSRC   += clixon_util_datastore.c
 APPSRC   += clixon_util_regexp.c
 APPSRC   += clixon_util_socket.c
-APPSRC   += clixon_util_validate.c 
+APPSRC   += clixon_util_validate.c
+APPSRC   += clixon_util_dispatcher.c 
 APPSRC   += clixon_netconf_ssh_callhome.c
 APPSRC   += clixon_netconf_ssh_callhome_client.c
 ifdef with_restconf
@@ -101,7 +102,6 @@ ifdef with_http2
 APPSRC   += clixon_util_ssl.c # requires http/2
 #APPSRC   += clixon_util_grpc.c # work in progress
 endif
-
 
 APPS	  = $(APPSRC:.c=)
 
@@ -149,6 +149,9 @@ clixon_util_socket: clixon_util_socket.c $(LIBDEPS)
 clixon_util_validate: clixon_util_validate.c $(LIBDEPS) 
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ -l clixon_backend -o $@ $(LIBS)
 
+clixon_util_dispatcher: clixon_util_dispatcher.c $(LIBDEPS) 
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ -l clixon_backend -o $@ $(LIBS)
+
 ifdef with_restconf
 clixon_util_stream: clixon_util_stream.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lcurl -o $@
@@ -163,7 +166,7 @@ endif
 distclean: clean
 	rm -f Makefile *~ .depend
 
-install: 
+install: $(APPS)
 	install -d -m 0755 $(DESTDIR)$(bindir)
 	install -m 0755 $(INSTALLFLAGS) $(APPS) $(DESTDIR)$(bindir)
 
