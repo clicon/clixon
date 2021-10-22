@@ -764,7 +764,7 @@ yang2cli_leaf(clicon_handle h,
     /* Look for autocli-op defined in clixon-lib.yang */
     if (yang_extension_value(ys, "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0)
 	goto done;
-    if (gt == GT_VARS|| gt == GT_ALL || gt == GT_HIDE){
+    if (gt == GT_VARS || gt == GT_ALL || gt == GT_HIDE || gt == GT_OC_COMPRESS){
 	cprintf(cb, "%s", yang_argument_get(ys));
 	yang2cli_helptext(cb, helptext);
 	cprintf(cb, " ");
@@ -833,13 +833,27 @@ yang2cli_container(clicon_handle h,
     char         *helptext = NULL;
     char         *s;
     int           hide = 0;
+    int           hide_oc = 0;
+    int           exist = 0;
     char         *opext = NULL;
+    yang_stmt    *ymod = NULL;
+
+
+    if (ys_real_module(ys, &ymod) < 0)
+      goto done;
+    if (yang_extension_value(ymod, "openconfig-version", "http://openconfig.net/yang/openconfig-ext", &exist, NULL) < 0)
+      goto done;
+    if (exist) {
+      if (strcmp(yang_argument_get(ys), "config") == 0){
+	hide_oc = 1;
+      }
+    }
 
     /* If non-presence container && HIDE mode && only child is 
      * a list, then skip container keyword
      * See also xml2cli
      */
-    if ((hide = yang_container_cli_hide(ys, gt)) == 0){
+     if ((hide = yang_container_cli_hide(ys, gt)) == 0 && hide_oc == 0){
 	cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
 	if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
 	    if ((helptext = strdup(yang_argument_get(yd))) == NULL){
@@ -868,10 +882,10 @@ yang2cli_container(clicon_handle h,
     yc = NULL;
     while ((yc = yn_each(ys, yc)) != NULL) 
 	if (yang2cli_stmt(h, yc, gt, level+1, state, show_tree, cb) < 0)
-	    goto done;
-    if (hide == 0)
-	cprintf(cb, "%*s}\n", level*3, "");
-    retval = 0;
+	   goto done;
+  if (hide == 0 && hide_oc == 0)
+	   cprintf(cb, "%*s}\n", level*3, "");
+  retval = 0;
  done:
     if (helptext)
 	free(helptext);
@@ -956,7 +970,7 @@ yang2cli_list(clicon_handle h,
 		cprintf(cb, "{\n");
 	}
 	if (yang2cli_leaf(h, yleaf,
-			  (gt==GT_VARS||gt==GT_HIDE)?GT_NONE:gt, level+1, 
+			  (gt==GT_VARS||gt==GT_HIDE||gt==GT_OC_COMPRESS)?GT_NONE:gt, level+1,
 			  last_key, show_tree, 1,
 			  cb) < 0)
 	    goto done;

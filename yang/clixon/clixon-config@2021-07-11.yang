@@ -1,3 +1,4 @@
+
 module clixon-config {
     yang-version 1.1;
     namespace "http://clicon.org/config";
@@ -246,6 +247,9 @@ module clixon-config {
 	    }
 	    enum HIDE{
 		description "Keywords on non-key variables and hide container around lists: a <x> y <y>";
+	    }
+	    enum OC_COMPRESS{
+		description "See: https://github.com/openconfig/ygot/blob/master/docs/design.md#openconfig-path-compression";
 	    }
 	}
     }
