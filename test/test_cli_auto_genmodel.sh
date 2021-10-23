@@ -16,6 +16,7 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/$APPNAME.yang
+fyang2=$dir/${APPNAME}2.yang
 fstate=$dir/state.xml
 clidir=$dir/cli
 if [ -d $clidir ]; then
@@ -40,7 +41,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$OCDIR/</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
+  <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -60,6 +61,8 @@ module $APPNAME {
   namespace "urn:example:clixon";
   prefix ex;
   import openconfig-extensions { prefix oc-ext; }
+  /* Set openconfig version to "fake" an openconfig YANG */
+  oc-ext:openconfig-version;
   container table{
     list parameter{
       key name;
@@ -81,7 +84,50 @@ module $APPNAME {
     }
   }
   container interfaces {
-    oc-ext:openconfig-version;
+    list interface {
+      key name;
+      leaf name {
+       type string;
+      }
+      container config {
+	leaf enabled {
+	  type boolean;
+	  default false;
+	  description "Whether the interface is enabled or not.";
+	}
+      }
+      container state {
+	config false;
+	leaf oper-status {
+	  type enumeration {
+	    enum UP {
+	      value 1;
+	      description "Ready to pass packets.";
+	    }
+	    enum DOWN {
+	      value 2;
+	      description "The interface does not pass any packets.";
+	    }
+	  }
+	}
+      }
+      leaf enabled {
+	type boolean;
+	default false;
+	description "Whether the interface is enabled or not.";
+      }
+    }
+  }
+}
+EOF
+
+# For openconfig but NO openconfig extension
+cat <<EOF > $fyang2
+module ${APPNAME}2 {
+  namespace "urn:example:clixon2";
+  prefix ex2;
+  import openconfig-extensions { prefix oc-ext; }
+  container interfaces2 {
     list interface {
       key name;
       leaf name {
@@ -258,6 +304,15 @@ expectpart "$($clixon_cli -1 -f $cfg show state)" 0 "exstate sender x" "table pa
 
 new "show state exstate"
 expectpart "$($clixon_cli -1 -f $cfg show state exstate)" 0 "state sender x" --not--  "table parameter a" "table parameter a value x"
+
+#---- openconfig path compression
+
+new "Openconfig: check no config path"
+expectpart "$($clixon_cli -1 -f $cfg set interfaces interface e config enabled true 2>&1)" 255 "Unknown command"
+
+# negative test
+new "Openconfig: check exist config path"
+expectpart "$($clixon_cli -1 -f $cfg set interfaces2 interface e config enabled true 2>&1)" 0 "^$"
 
 new "Kill backend"
 # Check if premature kill
