@@ -223,12 +223,27 @@ json_current_clone(clixon_json_yacc *jy)
 
     clicon_debug(2, "%s", __FUNCTION__);
     if (jy->jy_current == NULL){
-	return -1;
+        return -1;
     }
     xn = jy->jy_current;
     json_current_pop(jy);
-    if (jy->jy_current) 
-	json_current_new(jy, xml_name(xn));
+
+    if (jy->jy_current) {
+        char* name = xml_name(xn);
+        char* prefix = xml_prefix(xn);
+        char* maybe_prefixed_name = NULL;
+
+        if (prefix) {
+            char* name_parts[] = {prefix, name};
+            maybe_prefixed_name = clicon_strjoin(2, name_parts, ":");
+        } else {
+            maybe_prefixed_name = strdup(name);
+        }
+        json_current_new(jy, maybe_prefixed_name);
+        
+        if (maybe_prefixed_name)
+            free(maybe_prefixed_name);
+    }
     return 0;
 }
 
