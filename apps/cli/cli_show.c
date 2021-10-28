@@ -919,7 +919,6 @@ cli_pagination(clicon_handle h,
     uint32_t         limit = 0;
     cxobj          **xvec = NULL;
     size_t           xlen;
-    int              locked = 0;
     
     if (cvec_len(argv) != 5){
 	clicon_err(OE_PLUGIN, 0, "Expected usage: <xpath> <prefix> <namespace> <format> <limit>");
@@ -949,9 +948,6 @@ cli_pagination(clicon_handle h,
     }
     if ((nsc = xml_nsctx_init(prefix, namespace)) == NULL)
 	goto done;
-    if (clicon_rpc_lock(h, "running") < 0)
-	goto done;
-    locked++;
     for (i = 0;; i++){
 	if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc,
 					 CONTENT_ALL,
@@ -1004,8 +1000,6 @@ cli_pagination(clicon_handle h,
     } /* for i */
     retval = 0;
  done:
-    if (locked)
-	clicon_rpc_unlock(h, "running");
     if (xvec)
 	free(xvec);
     if (xret)

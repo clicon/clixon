@@ -545,6 +545,7 @@ example_statefile(clicon_handle     h,
  * @param[in]  xpath    Registered XPath using canonical prefixes
  * @param[in]  userargs Per-call user arguments
  * @param[in]  arg      Per-path user argument
+ * @see example_lockdb
  */
 int 
 example_pagination(void            *h0,
@@ -667,7 +668,7 @@ example_lockdb(clicon_handle h,
 
     /* Part of cached pagination example
      */
-    if (strcmp(db, "running") == 0 && lock == 0 &&
+    if (strcmp(db, PAGINATE_STATE_LOCK) == 0 && lock == 0 &&
 	_state && _state_file && _state_file_cached && _state_file_transaction){
 	if (_state_xml_cache){
 	    xml_free(_state_xml_cache);

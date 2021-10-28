@@ -39,6 +39,11 @@
 #define _CLIXON_BACKEND_PLUGIN_H_
 
 /*
+ * Constants
+ */
+#define PAGINATE_STATE_LOCK "paginate-state-lock"
+
+/*
  * Types
  */
 
