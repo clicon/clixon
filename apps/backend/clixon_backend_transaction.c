@@ -309,16 +309,15 @@ pagination_limit(pagination_data pd)
     return ((pagination_data_t *)pd)->pd_limit;
 }
 
-/*! Get pagination data: locked parameter for state data
+/*! Get pagination data: locked parameter
  *
- * A "paginate" lock is set for a specific session when list-pagination is in progress.
- * If locking is set, the pagination is part of a session transaction and the plugin may 
- * cache state (such as a cache) and can expect more pagination calls until the "paginate"
- * db-lock is released.
- *
- * If you want to do the same for config data, it is recommended to use lock-db on
- * the appropriate database, but this risks of indefinite blocking, as long as the
- * session endures.
+ * Pagination can use a lock/transaction mechanism 
+ * If locking is not used, the plugin cannot expect more pagination calls, and no state or 
+ * caching should be used
+ * If locking is used, the pagination is part of a session transaction and the plugin may cache
+ * state (such as a cache) and can expect more pagination calls until the running db-lock is 
+ * released, (see ca_lockdb)
+ * The transaction is the regular lock/unlock db of running-db of a specific session.
  * @param[in]  pd     Pagination userdata
  * @retval     locked 0: unlocked/stateless 1: locked by this caller
  */

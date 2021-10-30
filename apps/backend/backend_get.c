@@ -592,16 +592,11 @@ get_list_pagination(clicon_handle        h,
 #endif
     }
     else {/* Check if running locked (by this session) */
-	if ((iddb = xmldb_islocked(h, PAGINATE_STATE_LOCK)) != 0){
-	    if (iddb == ce->ce_id)
-		locked = 1;
-	    else
-		locked = 0;
-	}
-	else {
-	    xmldb_lock(h, PAGINATE_STATE_LOCK, ce->ce_id);
+	if ((iddb = xmldb_islocked(h, "running")) != 0 &&
+	    iddb == ce->ce_id)
 	    locked = 1;
-	}
+	else
+	    locked = 0;
 	if ((ret = clixon_pagination_cb_call(h, xpath, locked,
 					     offset, limit,
 					     xret)) < 0)
