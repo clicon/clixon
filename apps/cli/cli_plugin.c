@@ -525,34 +525,50 @@ cli_handler_err(FILE *f)
 /*! Variant of eval for context checking 
  * @see cligen_eval
  */
-int
-cligen_clixon_eval(cligen_handle h, 
+static int
+clixon_cligen_eval(cligen_handle h, 
 		   cg_obj       *co, 
 		   cvec         *cvv)
 {
     struct cg_callback *cc;
-    int                 retval = 0;
+    int                 retval = -1;
     cvec               *argv;
-    plugin_context_t   *pc = NULL;
+    cvec               *cvv1 = NULL; /* Modified */
+    plugin_context_t   *pc = NULL; /* Clixon-specific */
+    
 
+    /* Save matched object for plugin use */
     if (h)
 	cligen_co_match_set(h, co);
+    /* Make a copy of var argument for modifications */
+    if ((cvv1 = cvec_dup(cvv)) == NULL)
+	goto done;
+    /* Make modifications to cvv */
+    if (cligen_expand_first_get(h) &&
+	cvec_expand_first(cvv1) < 0)
+	goto done;
+    if (cligen_exclude_keys_get(h) &&
+	cvec_exclude_keys(cvv1) < 0)
+	goto done;
+    /* Traverse callbacks */
     for (cc = co->co_callbacks; cc; cc=cc->cc_next){
 	/* Vector cvec argument to callback */
     	if (cc->cc_fn_vec){
 	    argv = cc->cc_cvec ? cvec_dup(cc->cc_cvec) : NULL;
 	    cligen_fn_str_set(h, cc->cc_fn_str);
-	    if ((pc = plugin_context_get()) == NULL)
+	    /* Clixon-specific */
+	    if ((pc = plugin_context_get()) == NULL) 
 		break;
 	    if ((retval = (*cc->cc_fn_vec)(
 					cligen_userhandle(h)?cligen_userhandle(h):h, 
-					cvv, 
+					cvv1,
 					argv)) < 0){
 		if (argv != NULL)
 		    cvec_free(argv);
 		cligen_fn_str_set(h, NULL);
-		break;
+		goto done;
 	    }
+	    /* Clixon-specific */
 	    if (plugin_context_check(pc, "CLIgen", cc->cc_fn_str) < 0)
 		break;
 	    if (pc){
@@ -564,8 +580,12 @@ cligen_clixon_eval(cligen_handle h,
 	    cligen_fn_str_set(h, NULL);
 	}
     }
-    if (pc)
+    retval = 0;
+ done:
+    if (pc) /* Clixon-specific */
 	free(pc);
+    if (cvv1)
+	cvec_free(cvv1);
     return retval;
 }
 
@@ -589,7 +609,7 @@ clicon_eval(clicon_handle h,
     if (!cligen_exiting(cli_cligen(h))) {	
 	clicon_err_reset();
 
-	if ((retval = cligen_clixon_eval(cli_cligen(h), match_obj, cvv)) < 0) {
+	if ((retval = clixon_cligen_eval(cli_cligen(h), match_obj, cvv)) < 0) {
 #if 0 /* This is removed since we get two error messages on failure.
 	 But maybe only sometime?
 	 Both a real log when clicon_err is called, and the  here again.
@@ -663,11 +683,7 @@ clicon_parse(clicon_handle  h,
 	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
 	    goto done;
 	}
-	if ((cvv = cvec_new(0)) == NULL){
-	    clicon_err(OE_UNIX, errno, "cvec_new");
-	    goto done;;
-	}
-	if (cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv, result, &reason) < 0)
+	if (cliread_parse(cli_cligen(h), cmd, pt, &match_obj, &cvv, result, &reason) < 0)
 	    goto done;
 	/* Debug command and result code */
 	clicon_debug(1, "%s result:%d command: \"%s\"", __FUNCTION__, *result, cmd);

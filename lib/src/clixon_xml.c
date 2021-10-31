@@ -581,10 +581,11 @@ xml_parent(cxobj *xn)
     return xn->x_up;
 }
 
-/*! Set parent of xnode, parent is copied.
+/*! Set parent of xml node.
  * @param[in]  xn      xml node
  * @param[in]  parent  pointer to new parent xml node
  * @retval     0       OK
+ * @see xml_child_rm  remove child from parent
  */
 int
 xml_parent_set(cxobj *xn, 
@@ -1985,8 +1986,6 @@ xml_copy(cxobj *x0,
   done:
     return retval;
 }
-
-
 
 /*! Create and return a copy of xml tree.
  *

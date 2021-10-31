@@ -105,7 +105,7 @@ The 5.3 release has pagination support, Linkref changes in validation and auto-c
   * Updated state callback signature containing parameters for pagination
     * See API changes below
   * Work-in-progress
-    * Enable remaining attriute with LIST_PAGINATION_REMAINING compile-time option
+    * Enable remaining attribute with LIST_PAGINATION_REMAINING compile-time option
     * sort/direction/where etc not supported
   * For documentation: [User manual pagination](https://clixon-docs.readthedocs.io/en/latest/misc.html#pagination)
 * YANG Leafref feature update
