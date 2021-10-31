@@ -683,8 +683,15 @@ clicon_parse(clicon_handle  h,
 	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
 	    goto done;
 	}
-	if (cliread_parse(cli_cligen(h), cmd, pt, &match_obj, &cvv, result, &reason) < 0)
+#if 0 // switch after 5.4
+	if (cliread_parse2(cli_cligen(h), cmd, pt, &match_obj, &cvv, result, &reason) < 0)
 	    goto done;
+#else
+	if ((cvv = cvec_new(0)) == NULL)
+	    goto done;;
+	if (cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv, result, &reason) < 0)
+	    goto done;
+#endif
 	/* Debug command and result code */
 	clicon_debug(1, "%s result:%d command: \"%s\"", __FUNCTION__, *result, cmd);
 	if (*result != CG_MATCH)
