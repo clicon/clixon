@@ -136,7 +136,6 @@ wait_backend
 
 function testparam()
 {
-
     # Try hidden parameter list
     new "query table parameter hidden"
     expectpart "$(echo "set table ?" | $clixon_cli -f $cfg 2>&1)" 0 "set table" "<cr>" --not-- "parameter"
@@ -281,6 +280,60 @@ EOF
 
 new "Test hidden parameter in table/param/value augment"
 testvalue
+
+# Example using imported module where clixon-lib is NOT declared in main module
+# see discussion in ys_populate_unknown (y1 vs y2) and
+# https://github.com/clicon/clixon/issues/282
+cat <<EOF > $fyang
+module example {
+  yang-version 1.1;
+  namespace "urn:example:clixon";
+  prefix ex;
+  import example-augment{
+    prefix aug;
+  }
+
+  container table{
+    list parameter{
+      key name;
+      leaf name{
+        type string;
+      }
+      uses aug:pg;
+    }
+  }
+}
+EOF
+
+# Use this as grouping (not annotate)
+cat <<EOF > $fyang2
+module example-augment {
+   namespace "urn:example:augment";
+   prefix aug;
+   import clixon-lib{
+      prefix cl;
+   }
+  grouping pg {
+      cl:autocli-op hide; /* This is the extension */
+      leaf value{
+        description "a value";
+        type string;
+      }
+      list index{
+        key i;
+	leaf i{
+	  type string;
+	}
+	leaf iv{
+          type string;
+        }
+     }
+   }
+}
+EOF
+
+new "Test hidden parameter in imported module"
+testparam
 
 new "Kill backend"
 # Check if premature kill

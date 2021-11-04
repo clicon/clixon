@@ -82,6 +82,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* [cl:autocli-op hide has no effect in yang submodule](https://github.com/clicon/clixon/issues/282)
 * [Doxygen - Typo in Input #275](https://github.com/clicon/clixon/issues/275)
 
 ## 5.3.0
