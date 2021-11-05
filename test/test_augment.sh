@@ -185,6 +185,18 @@ module example-augment {
              type string;
           }
        }
+       /* augment a list */
+       augment "/if:interfaces" {
+          list ports{
+	     key id;
+	     leaf id {
+                type int32;
+	     }
+	     leaf str {
+                type string;
+	     }
+          }
+       }
 }
 
 EOF
@@ -290,6 +302,30 @@ expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-inte
 
 new "restconf GET augment multi-namespace cross level 2"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1/example-augment:ospf/reference-bandwidth)" 0 "HTTP/$HVER 200" '{"example-augment:reference-bandwidth":23}'
+
+new "delete interfaces"
+expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 204"
+
+# augmented lists
+XML="<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><mymod:ports xmlns:mymod=\"urn:example:augment\"><mymod:id>22</mymod:id><mymod:str>nisse</mymod:str></mymod:ports><mymod:ports xmlns:mymod=\"urn:example:augment\"><mymod:id>44</mymod:id><mymod:str>kalle</mymod:str></mymod:ports></interfaces>"
+new "netconf PUT augmented list"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config>$XML</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 
+
+new "netconf commit"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "netconf get config"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>]]>]]>"
+
+JSON='{"ietf-interfaces:interfaces":{"example-augment:ports":[{"id":22,"str":"foo"},{"id":44,"str":"bar"}]}}'
+
+new "restconf PUT augmented list"
+expectpart "$(curl $CURLOPTS -X PUT -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces -d "$JSON")" 0 "HTTP/$HVER 204" 
+
+# Escaped [] why?
+JSON1='{"ietf-interfaces:interfaces":{"example-augment:ports":\[{"id":22,"str":"foo"},{"id":44,"str":"bar"}\]}}'
+new "restconf GET augmented list"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 200" "$JSON1"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

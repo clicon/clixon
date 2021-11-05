@@ -651,7 +651,7 @@ clicon_parse(clicon_handle  h,
     cli_syntax_t *stx = NULL;
     cli_syntaxmode_t *csm;
     parse_tree   *pt;     /* Orig */
-    cg_obj       *match_obj;
+    cg_obj       *match_obj = NULL;
     cvec         *cvv = NULL;
     FILE         *f;
     char         *reason = NULL;
@@ -731,6 +731,8 @@ done:
 	free(reason);
     if (cvv)
 	cvec_free(cvv);
+    if (match_obj)
+	co_free(match_obj, 0);
     return retval;
 }
 
