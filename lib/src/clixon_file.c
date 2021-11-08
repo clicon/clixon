@@ -62,6 +62,86 @@
 #include "clixon_log.h"
 #include "clixon_file.h"
 
+static int
+clicon_file_string_sort(const void *arg1,
+                        const void *arg2)
+{
+    char *str1 = *(char **)arg1;
+    char *str2 = *(char **)arg2;
+
+    return strcmp(str1, str2);
+}
+
+int
+clicon_files_recursive(const char *dir,
+                       const char *regexp,
+                       char       **dp,
+                       int        *nent)
+{
+    struct  dirent *dent = NULL;
+    char    path[MAXPATHLEN];
+    DIR     *dirp = NULL;
+    regex_t re;
+    int     res;
+    char    errbuf[128];
+
+    if (regexp && (res = regcomp(&re, regexp, REG_EXTENDED)) != 0) {
+        regerror(res, &re, errbuf, sizeof(errbuf));
+        clicon_err(OE_DB, 0, "regcomp: %s", errbuf);
+        return -1;
+    }
+
+    if (!(dirp = opendir(dir))) {
+        return *nent;
+    }
+
+    while ((dent = readdir(dirp)) != NULL) {
+        if (dent->d_type == DT_DIR) {
+            /* If we find a directory we might want to enter it, unless it
+               is the current directory (.) or parent (..) */
+            if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) {
+                continue;
+            }
+
+            /* Build the new directory and enter it. */
+            sprintf(path, "%s/%s", dir, dent->d_name);
+            *nent = clicon_files_recursive(path, regexp, dp, nent);
+        } else if (dent->d_type == DT_REG) {
+            /* If we encounter a file, match it against the regexp and
+               add it to the list of found files.*/
+            if (regexp) {
+                if (regexec(&re, dent->d_name, (size_t)0, NULL, *nent) != 0)
+                    continue;
+            }
+
+            /* Add room for the new file. */
+            if ((dp = (char **)realloc(dp, sizeof(char *) * (*nent + 1))) == NULL) {
+                clicon_err(OE_UNIX, errno, "realloc");
+                *nent = -1;
+                goto quit;
+            }
+
+            if ((dp[*nent] = (char *)malloc(1 + sizeof(char) * strlen(dir) +
+                                            strlen(dent->d_name))) == NULL) {
+                clicon_err(OE_UNIX, errno, "malloc");
+                *nent = -1;
+                goto quit;
+            }
+
+            sprintf(dp[*nent], "%s/%s", dir, dent->d_name);
+            (*nent)++;
+        }
+    }
+
+    qsort(dp, *nent, sizeof(char *), clicon_file_string_sort);
+
+ quit:
+    if (dirp)
+        closedir(dirp);
+
+    return *nent;
+}
+
 /*! qsort "compar" for directory alphabetically sorting, see qsort(3)
  */
 static int

@@ -43,6 +43,9 @@
 int clicon_file_dirent(const char *dir, struct dirent **ent, 
 		       const char *regexp, mode_t type);
 
+int clicon_files_recursive(const char *dir, const char *regexp,
+                           char **dp, int *nent);
+
 int clicon_file_copy(char *src, char *target);
 
 #endif /* _CLIXON_FILE_H_ */

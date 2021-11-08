@@ -219,6 +219,8 @@ if [ ! -d $dir ]; then
     mkdir $dir
 fi
 
+dir_tmp=/var/tmp
+
 # Default restconf configuration: http IPv4 
 # Can be placed in clixon-config
 # Note that https clause assumes there exists certs and keys in /etc/ssl,...

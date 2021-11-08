@@ -76,7 +76,7 @@ EOF
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$dir_tmp</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>scaling</CLICON_YANG_MODULE_MAIN>
   <CLICON_SOCK>/usr/local/var/example/example.sock</CLICON_SOCK>
