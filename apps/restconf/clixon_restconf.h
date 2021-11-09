@@ -46,15 +46,17 @@ extern "C" {
  */
 /*! RESTCONF media types 
  * @see http_media_map
- * @note DUPLICATED in clixon_lib.h
+ * @note DUPLICATED in restconf_lib.h
  */
 enum restconf_media{
     YANG_DATA_JSON,      /* "application/yang-data+json" */
     YANG_DATA_XML,       /* "application/yang-data+xml" */
     YANG_PATCH_JSON,     /* "application/yang-patch+json" */
     YANG_PATCH_XML,      /* "application/yang-patch+xml" */
-    YANG_COLLECTION_XML, /* draft-wwlh-netconf-list-pagination-rc-01.txt */
-    YANG_COLLECTION_JSON /* draft-wwlh-netconf-list-pagination-rc-01.txt */
+    YANG_PAGINATION_XML, /* draft-wwlh-netconf-list-pagination-rc-02.txt */
+    /*   For JSON, the existing "application/yang-data+json" media type is
+	 sufficient, as the JSON format has built-in support for encoding
+	 arrays. */
 };
 typedef enum restconf_media restconf_media;
 

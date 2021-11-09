@@ -329,10 +329,10 @@ api_data(clicon_handle h,
 	if (dynamic) 
             retval = restconf_method_notallowed(h, req, "GET,POST", pretty, media_out);
 	else
-	    retval = api_data_head(h, req, api_path, pcvec, pi, qvec, pretty, media_out, ds);
+	    retval = api_data_head(h, req, api_path, pi, qvec, pretty, media_out, ds);
     }
     else if (strcmp(request_method, "GET")==0) {
-	retval = api_data_get(h, req, api_path, pcvec, pi, qvec, pretty, media_out, ds);
+	retval = api_data_get(h, req, api_path, pi, qvec, pretty, media_out, ds);
     }
     else if (strcmp(request_method, "POST")==0) {
 	retval = api_data_post(h, req, api_path, pi, qvec, data, pretty, restconf_content_type(h), media_out, ds);
@@ -341,13 +341,13 @@ api_data(clicon_handle h,
 	if (read_only) 
             retval = restconf_method_notallowed(h, req, "GET,POST", pretty, media_out);
 	else
-	    retval = api_data_put(h, req, api_path, pcvec, pi, qvec, data, pretty, media_out, ds);
+	    retval = api_data_put(h, req, api_path, pi, qvec, data, pretty, media_out, ds);
     }
     else if (strcmp(request_method, "PATCH")==0) {
 	if (read_only) {
             retval = restconf_method_notallowed(h, req, "GET,POST", pretty, media_out);
 	}
-	retval = api_data_patch(h, req, api_path, pcvec, pi, qvec, data, pretty, media_out, ds);
+	retval = api_data_patch(h, req, api_path, pi, qvec, data, pretty, media_out, ds);
     }
     else if (strcmp(request_method, "DELETE")==0) {
 	if (read_only) 

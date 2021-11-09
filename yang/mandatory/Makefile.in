@@ -53,10 +53,18 @@ YANGSPECS += ietf-datastores@2018-02-14.yang
 YANGSPECS += ietf-yang-patch@2017-02-22.yang
 # For remaining attribute in list-pagination:
 YANGSPECS += ietf-yang-metadata@2016-08-05.yang
-# in draft-wwlh-netconf-list-pagination:
-YANGSPECS += ietf-netconf-list-pagination@2020-10-30.yang
-# in draft-wwlh-netconf-list-pagination-rc:
-YANGSPECS += ietf-restconf-list-pagination@2015-01-30.yang 
+# XXX brings in NACM which breaks tests
+# YANGSPECS += ietf-system-capabilities@2021-04-02.yang
+# For remaining attribute in list-pagination-nc:
+YANGSPECS += ietf-netconf-nmda@2019-01-07.yang
+# For remaining attribute in ietf-netconf-nmda
+YANGSPECS += ietf-origin@2018-02-14.yang
+YANGSPECS += ietf-netconf-with-defaults@2011-06-01.yang
+
+# in draft-wwlh-netconf-list-pagination-00.txt
+YANGSPECS += ietf-list-pagination@2021-10-25.yang
+# in draft-wwlh-netconf-list-pagination-nc-02.txt
+YANGSPECS += ietf-list-pagination-nc@2021-10-25.yang 
 
 all:	
 

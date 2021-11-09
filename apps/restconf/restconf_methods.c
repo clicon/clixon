@@ -191,7 +191,6 @@ int
 api_data_write(clicon_handle h,
 	       void         *req, 
 	       char         *api_path0, 
-	       cvec         *pcvec, 
 	       int           pi,
 	       cvec         *qvec, 
 	       char         *data,
@@ -585,7 +584,6 @@ api_data_write(clicon_handle h,
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element
  * @param[in]  pi       Offset, where to start pcvec
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  data     Stream input data
@@ -620,7 +618,6 @@ int
 api_data_put(clicon_handle h,
 	     void         *req, 
 	     char         *api_path0, 
-	     cvec         *pcvec, 
 	     int           pi,
 	     cvec         *qvec, 
 	     char         *data,
@@ -631,7 +628,7 @@ api_data_put(clicon_handle h,
     restconf_media media_in;
 
     media_in = restconf_content_type(h);
-    return api_data_write(h, req, api_path0, pcvec, pi, qvec, data, pretty,
+    return api_data_write(h, req, api_path0, pi, qvec, data, pretty,
 			  media_in, media_out, 0, ds);
 } 
 
@@ -639,8 +636,7 @@ api_data_put(clicon_handle h,
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element
- * @param[in]  pi       Offset, where to start pcvec
+ * @param[in]  pi       Offset, where to start qvec
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  data     Stream input data
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
@@ -657,7 +653,6 @@ int
 api_data_patch(clicon_handle h,
 	       void         *req, 
 	       char         *api_path0, 
-	       cvec         *pcvec, 
 	       int           pi,
 	       cvec         *qvec, 
 	       char         *data,
@@ -672,7 +667,7 @@ api_data_patch(clicon_handle h,
     switch (media_in){
     case YANG_DATA_XML:
     case YANG_DATA_JSON: 	/* plain patch */
-	ret = api_data_write(h, req, api_path0, pcvec, pi, qvec, data, pretty,
+	ret = api_data_write(h, req, api_path0, pi, qvec, data, pretty,
 			     media_in, media_out, 1, ds);
 	break;
     case YANG_PATCH_JSON: 	/* RFC 8072 patch */

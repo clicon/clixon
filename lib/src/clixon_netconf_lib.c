@@ -1530,11 +1530,11 @@ netconf_module_load(clicon_handle h)
     if (clicon_option_bool(h, "CLICON_NETCONF_MESSAGE_ID_OPTIONAL") == 1)
 	xml_bind_netconf_message_id_optional(1);
 #endif
-    /* Load clixon netconf list pagination */
-    if (yang_spec_parse_module(h, "clixon-netconf-list-pagination", NULL, yspec)< 0)
+    /* Load ietf list pagination */
+    if (yang_spec_parse_module(h, "ietf-list-pagination", NULL, yspec)< 0)
 	goto done;
-    /* Load restconf list pagination */
-    if (yang_spec_parse_module(h, "ietf-restconf-list-pagination", NULL, yspec)< 0)
+    /* Load ietf list pagination netconf */
+    if (yang_spec_parse_module(h, "ietf-list-pagination-nc", NULL, yspec)< 0)
 	goto done;
     retval = 0;
  done:

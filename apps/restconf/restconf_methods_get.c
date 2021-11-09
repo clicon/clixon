@@ -63,12 +63,14 @@
 #include "restconf_err.h"
 #include "restconf_methods_get.h"
 
+/* Forward */
+static int api_data_pagination(clicon_handle h, void *req, char *api_path, int pi, cvec *qvec, int pretty, restconf_media media_out);
+
 /*! Generic GET (both HEAD and GET)
  * According to restconf 
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi       Offset, where path starts  
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
@@ -90,12 +92,12 @@
  * encoding is used in the response, then an error response containing a
  * "400 Bad Request" status-line MUST be returned by the server.
  * Netconf: <get-config>, <get>                        
+ * @note there is an ad-hoc method to determine json pagination request instead of regular GET
  */
 static int
 api_data_get2(clicon_handle  h,
 	      void          *req,
 	      char          *api_path, 
-	      cvec          *pcvec, /* XXX remove? */
 	      int            pi,
 	      cvec          *qvec,
 	      int            pretty,
@@ -145,6 +147,18 @@ api_data_get2(clicon_handle  h,
 	    goto done;
 	if (ret == 0){ /* validation failed */
 	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+		goto done;
+	    goto ok;
+	}
+	/* Ad-hoc method to determine json pagination request:
+	 * address list and one of "item/offset/.." is defined
+	 */
+	if (!head &&
+	    (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST) &&
+	    (cvec_find(qvec, "where")     || cvec_find(qvec, "sort-by") ||
+	     cvec_find(qvec, "direction") || cvec_find(qvec, "offset") ||
+	     cvec_find(qvec, "limit")     || cvec_find(qvec, "sublist-limit"))){
+	    if (api_data_pagination(h, req, api_path, 0, qvec, pretty, media_out) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -305,7 +319,6 @@ api_data_get2(clicon_handle  h,
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi       Offset, where path starts  
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
@@ -320,10 +333,9 @@ api_data_get2(clicon_handle  h,
  * @see draft-ietf-netconf-restconf-collection-00.txt
  */
 static int
-api_data_collection(clicon_handle  h,
+api_data_pagination(clicon_handle  h,
 		    void          *req,
 		    char          *api_path, 
-		    cvec          *pcvec, /* XXX remove? */
 		    int            pi,
 		    cvec          *qvec,
 		    int            pretty,
@@ -392,7 +404,7 @@ api_data_collection(clicon_handle  h,
 	if (yang_keyword_get(y) != Y_LIST && yang_keyword_get(y) != Y_LEAF_LIST){
     	    if (netconf_bad_element_xml(&xerr, "application",
 					yang_argument_get(y),
-					"Element is not list or leaf-list which is required for GET collection") < 0)
+					"Element is not list or leaf-list which is required for GET paginate") < 0)
 		goto done;
 	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
 		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
@@ -464,7 +476,7 @@ api_data_collection(clicon_handle  h,
 	}
     }
     direction = cvec_find_str(qvec, "direction");
-    sort = cvec_find_str(qvec, "sort");
+    sort = cvec_find_str(qvec, "sort-by");
     where = cvec_find_str(qvec, "where");
     if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc, content,
 				     depth, offset, limit, direction, sort, where, 
@@ -492,9 +504,9 @@ api_data_collection(clicon_handle  h,
 	    goto done;
 	goto ok;
     }
-    if ((xpr = xml_new("yang-collection", NULL, CX_ELMNT)) == NULL)
+    if ((xpr = xml_new("xml-list", NULL, CX_ELMNT)) == NULL)
 	goto done;
-    if (xmlns_set(xpr, NULL, RESTCONF_PAGINATON_NAMESPACE) < 0)
+    if (xmlns_set(xpr, NULL, IETF_PAGINATON_NAMESPACE) < 0)
 	goto done;
     if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0)
 	goto done;
@@ -504,30 +516,30 @@ api_data_collection(clicon_handle  h,
      * Here we take the latter approach to return an empty list and do not
      * handle the non-exist case differently.
     */
-    for (i=0; i<xlen; i++){
-	xp = xvec[i];
-	ns = NULL;
-	if (xml2ns(xp, NULL, &ns) < 0)
-	    goto done;
-	if (ns != NULL){
-	    if (xmlns_set(xp, NULL, ns) < 0)
-		goto done;
-	}
-	if (xml_rm(xp) < 0)
-	    goto done;
-	if (xml_insert(xpr, xp, INS_LAST, NULL, NULL) < 0) 
-	    goto done;
-    }
     /* Normal return, no error */
     if ((cbx = cbuf_new()) == NULL)
 	goto done;
     switch (media_out){
-    case YANG_COLLECTION_XML:
+    case YANG_PAGINATION_XML:
+	for (i=0; i<xlen; i++){
+	    xp = xvec[i];
+	    ns = NULL;
+	    if (xml2ns(xp, NULL, &ns) < 0)
+		goto done;
+	    if (ns != NULL){
+		if (xmlns_set(xp, NULL, ns) < 0)
+		    goto done;
+	    }
+	    if (xml_rm(xp) < 0)
+		goto done;
+	    if (xml_insert(xpr, xp, INS_LAST, NULL, NULL) < 0) 
+		goto done;
+	}
 	if (clicon_xml2cbuf(cbx, xpr, 0, pretty, -1) < 0) /* Dont print top object?  */
 	    goto done;
 	break;
-    case YANG_COLLECTION_JSON:
-	if (xml2json_cbuf(cbx, xpr, pretty) < 0)
+    case YANG_DATA_JSON:
+	if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
 	    goto done;
 	break;
     default:
@@ -570,7 +582,6 @@ api_data_collection(clicon_handle  h,
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi       Offset, where path starts  
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
@@ -586,14 +597,13 @@ int
 api_data_head(clicon_handle h,
 	      void         *req,
 	      char         *api_path,
-	      cvec         *pcvec,
 	      int           pi,
 	      cvec         *qvec,
 	      int           pretty,
 	      restconf_media media_out,
 	      ietf_ds_t     ds)
 {
-    return api_data_get2(h, req, api_path, pcvec, pi, qvec, pretty, media_out, 1);
+    return api_data_get2(h, req, api_path, pi, qvec, pretty, media_out, 1);
 }
 
 /*! REST GET method
@@ -625,7 +635,6 @@ int
 api_data_get(clicon_handle h,
 	     void         *req,
 	     char         *api_path, 
-             cvec         *pcvec,
              int           pi,
              cvec         *qvec,
 	     int           pretty,
@@ -636,15 +645,13 @@ api_data_get(clicon_handle h,
     
     switch (media_out){
     case YANG_DATA_XML:
-    case YANG_DATA_JSON:
-	if (api_data_get2(h, req, api_path, pcvec, pi, qvec, pretty, media_out, 0) < 0)
+    case YANG_DATA_JSON: /* ad-hoc algorithm in get to determine if a paginated request */
+	if (api_data_get2(h, req, api_path, pi, qvec, pretty, media_out, 0) < 0)
 	    goto done;
 	break;
-    case YANG_COLLECTION_XML:
-    case YANG_COLLECTION_JSON:
-	if (api_data_collection(h, req, api_path, pcvec, pi, qvec, pretty, media_out) < 0)
+    case YANG_PAGINATION_XML:
+	if (api_data_pagination(h, req, api_path, pi, qvec, pretty, media_out) < 0)
 	    goto done;
-	break;
     default:
 	break;
     }
@@ -657,7 +664,6 @@ api_data_get(clicon_handle h,
  * @param[in]  h      Clixon handle
  * @param[in]  req    Generic Www handle
  * @param[in]  path   According to restconf (Sec 3.5.1.1 in [draft])
- * @param[in]  pcvec  Vector of path ie DOCUMENT_URI element 
  * @param[in]  pi     Offset, where path starts  
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data

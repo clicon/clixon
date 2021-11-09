@@ -275,7 +275,7 @@ api_return_err(clicon_handle  h,
     switch (media){
     case YANG_DATA_XML:
     case YANG_PATCH_XML:
-    case YANG_COLLECTION_XML:
+    case YANG_PAGINATION_XML:
 	clicon_debug(1, "%s code:%d", __FUNCTION__, code);
 	if (pretty){
 	    cprintf(cb, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n");
@@ -292,7 +292,6 @@ api_return_err(clicon_handle  h,
 	break;
     case YANG_DATA_JSON:
     case YANG_PATCH_JSON:
-    case YANG_COLLECTION_JSON:
 	clicon_debug(1, "%s code:%d", __FUNCTION__, code);
 	if (pretty){
 	    cprintf(cb, "{\n\"ietf-restconf:errors\" : ");

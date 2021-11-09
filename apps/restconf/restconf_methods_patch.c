@@ -188,7 +188,7 @@ yang_patch_strip_after_last_slash(char* val)
 /*! YANG PATCH replace method
  * @param[in]  h         Clixon handle
  * @param[in]  req       Generic Www handle
- * @param[in]  pi        Offset, where to start pcvec
+ * @param[in]  pi        Offset, where to start api-path
  * @param[in]  qvec      Vector of query string (QUERY_STRING)
  * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
@@ -287,7 +287,7 @@ yang_patch_do_replace(clicon_handle  h,
 /*! YANG PATCH create method
  * @param[in]  h         Clixon handle
  * @param[in]  req       Generic Www handle
- * @param[in]  pi        Offset, where to start pcvec
+ * @param[in]  pi        Offset, where to start api-path
  * @param[in]  qvec      Vector of query string (QUERY_STRING)
  * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
@@ -343,7 +343,7 @@ yang_patch_do_create(clicon_handle  h,
 /*! YANG PATCH insert method
  * @param[in]  h         Clixon handle
  * @param[in]  req       Generic Www handle
- * @param[in]  pi        Offset, where to start pcvec
+ * @param[in]  pi        Offset, where to start api-path
  * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
@@ -431,8 +431,7 @@ yang_patch_do_insert(clicon_handle  h,
 /*! YANG PATCH merge method
  * @param[in]  h         Clixon handle
  * @param[in]  req       Generic Www handle
- * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element
- * @param[in]  pi        Offset, where to start pcvec
+ * @param[in]  pi        Offset, where to start api-path
  * @param[in]  qvec      Vector of query string (QUERY_STRING)
  * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
@@ -447,7 +446,6 @@ yang_patch_do_insert(clicon_handle  h,
 static int
 yang_patch_do_merge(clicon_handle  h,
 		    void          *req,
-		    cvec          *pcvec,
 		    int            pi,
 		    cvec          *qvec,
 		    int            pretty,
@@ -484,7 +482,7 @@ yang_patch_do_merge(clicon_handle  h,
         if ((json_simple_patch = yang_patch_xml2json_modified_cbuf(x_simple_patch)) == NULL)
 	    goto done;
 	// Send the simple patch request
-	if (api_data_write(h, req, cbuf_get(simple_patch_request_uri), pcvec, pi, qvec, cbuf_get(json_simple_patch), pretty, YANG_DATA_JSON, media_out, 1, ds ) < 0)
+	if (api_data_write(h, req, cbuf_get(simple_patch_request_uri), pi, qvec, cbuf_get(json_simple_patch), pretty, YANG_DATA_JSON, media_out, 1, ds ) < 0)
 	    goto done;
 	if (json_simple_patch){
 	    cbuf_free(json_simple_patch);
@@ -509,7 +507,6 @@ yang_patch_do_merge(clicon_handle  h,
 static int
 yang_patch_do_value(clicon_handle  h,
 		    void          *req,
-		    cvec          *pcvec,
 		    int            pi,
 		    cvec          *qvec,
 		    int            pretty,
@@ -560,7 +557,7 @@ yang_patch_do_value(clicon_handle  h,
 	    goto done;
 	break;
     case YANG_PATCH_OP_MERGE:
-	if (yang_patch_do_merge(h, req, pcvec, pi, qvec, pretty, media_out, ds, simple_patch_request_uri, value_vec_len, value_vec, x_simple_patch, key_xn) < 0)
+	if (yang_patch_do_merge(h, req, pi, qvec, pretty, media_out, ds, simple_patch_request_uri, value_vec_len, value_vec, x_simple_patch, key_xn) < 0)
 	    goto done;
 	break;
     default:
@@ -579,8 +576,7 @@ yang_patch_do_value(clicon_handle  h,
  *
  * @param[in]  h         Clixon handle
  * @param[in]  req       Generic Www handle
- * @param[in]  pcvec     Vector of path ie DOCUMENT_URI element
- * @param[in]  pi        Offset, where to start pcvec
+ * @param[in]  pi        Offset, where to start api-path
  * @param[in]  qvec      Vector of query string (QUERY_STRING)
  * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
@@ -591,7 +587,6 @@ yang_patch_do_value(clicon_handle  h,
 static int
 yang_patch_do_edit(clicon_handle  h,
 		   void          *req,
-		   cvec          *pcvec,
 		   int            pi,
 		   cvec          *qvec,
 		   int            pretty,
@@ -693,7 +688,7 @@ yang_patch_do_edit(clicon_handle  h,
 
     // Loop through the values
     for (i = 0; i < veclen; i++) {
-	if (yang_patch_do_value(h, req, pcvec, pi, qvec, pretty, media_out, ds,
+	if (yang_patch_do_value(h, req, pi, qvec, pretty, media_out, ds,
 				vec[i], modname,
 				operation, where_val, point_val, simple_patch_request_uri, target_val,
 				api_path, key_xn) < 0)
@@ -729,8 +724,7 @@ yang_patch_do_edit(clicon_handle  h,
  * @param[in]  h         Clixon handle
  * @param[in]  req       Generic Www handle
  * @param[in]  api_path0 According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec     Vector of path ie DOCUMENT_URI element
- * @param[in]  pi        Offset, where to start pcvec
+ * @param[in]  pi        Offset, where to start api-path
  * @param[in]  qvec      Vector of query string (QUERY_STRING)
  * @param[in]  data      Stream input data
  * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
@@ -749,7 +743,6 @@ int
 api_data_yang_patch(clicon_handle  h,
 		    void          *req,
 		    char          *api_path0,
-		    cvec          *pcvec,
 		    int            pi,
 		    cvec          *qvec,
 		    char          *data,
@@ -828,7 +821,7 @@ api_data_yang_patch(clicon_handle  h,
     if (xpath_vec(xpatch, NULL, "yang-patch/edit", &vec, &veclen) < 0)
 	goto done;
     for (i = 0; i < veclen; i++) {
-	if (yang_patch_do_edit(h, req, pcvec, pi, qvec, pretty, media_out, ds,
+	if (yang_patch_do_edit(h, req, pi, qvec, pretty, media_out, ds,
 			       yspec,
 			       vec[i],
 			       uripath0, api_path) < 0)
@@ -854,7 +847,6 @@ int
 api_data_yang_patch(clicon_handle h,
 		    void         *req,
 		    char         *api_path0,
-		    cvec         *pcvec,
 		    int           pi,
 		    cvec         *qvec,
 		    char         *data,

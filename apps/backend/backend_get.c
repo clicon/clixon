@@ -519,7 +519,7 @@ get_list_pagination(clicon_handle        h,
 	}
     }
     /* sort */
-    if (ret && (x = xml_find_type(xe, NULL, "sort", CX_ELMNT)) != NULL)
+    if (ret && (x = xml_find_type(xe, NULL, "sort-by", CX_ELMNT)) != NULL)
 	sort = xml_body(x);
     if (sort) {
 	/* XXX: nothing yet */
@@ -721,12 +721,9 @@ get_common(clicon_handle        h,
     char           *xpath0;
     cbuf           *cbreason = NULL;
     int             list_pagination = 0;
-    char           *valstr;
-    cxobj          *x;
-#if 1
-    cxobj **xvec = NULL;
-    size_t  xlen;
-#endif
+    cxobj         **xvec = NULL;
+    size_t          xlen;
+    cxobj          *xlistpag;
     
     clicon_debug(1, "%s", __FUNCTION__);
     username = clicon_username_get(h);
@@ -767,15 +764,15 @@ get_common(clicon_handle        h,
 	}
     }
     /* Check if list pagination */
-    if ((x = xml_find_type(xe, NULL, "list-pagination", CX_ELMNT)) != NULL &&
-	(valstr = xml_body(x)) != NULL &&
-	strcmp(valstr,"true")==0)
+    if ((xlistpag = xml_find_type(xe, NULL, "list-pagination", CX_ELMNT)) != NULL)
 	list_pagination = 1;
     /* Sanity check for list pagination: path must be a list/leaf-list, if it is,
      * check config/state
      */
     if (list_pagination){
-	if (get_list_pagination(h, ce, xe, content, db,
+	if (get_list_pagination(h, ce,
+				xlistpag,
+				content, db,
 				depth, yspec, xpath, nsc, username,
 				cbret) < 0)
 	    goto done;

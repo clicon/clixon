@@ -1,8 +1,30 @@
-module ietf-netconf-list-pagination {
+module ietf-netconf-nmda {
   yang-version 1.1;
-  namespace "urn:ietf:params:xml:ns:yang:ietf-netconf-list-pagination";
-  prefix ycoll;
+  namespace "urn:ietf:params:xml:ns:yang:ietf-netconf-nmda";
+  prefix ncds;
 
+  import ietf-yang-types {
+    prefix yang;
+    reference
+      "RFC 6991: Common YANG Data Types";
+  }
+  import ietf-inet-types {
+    prefix inet;
+    reference
+      "RFC 6991: Common YANG Data Types";
+  }
+  import ietf-datastores {
+    prefix ds;
+    reference
+      "RFC 8342: Network Management Datastore Architecture
+                 (NMDA)";
+  }
+  import ietf-origin {
+    prefix or;
+    reference
+      "RFC 8342: Network Management Datastore Architecture
+                 (NMDA)";
+  }
   import ietf-netconf {
     prefix nc;
     reference
@@ -13,43 +35,32 @@ module ietf-netconf-list-pagination {
     reference
       "RFC 6243: With-defaults Capability for NETCONF";
   }
-  import ietf-yang-types {
-    prefix yang;
-    reference
-      "RFC 6991: Common YANG Data Types";
-  }
-  import ietf-datastores {
-    prefix ds;
-    reference
-      "RFC 8342: Network Management Datastore Architecture
-       (NMDA)";
-  }
-  import ietf-origin {
-    prefix or;
-    reference
-      "RFC 8342: Network Management Datastore Architecture
-       (NMDA)";
-  }
-  import ietf-yang-metadata {
-      prefix "md";
-      reference
-	  "RFC 7952: Defining and Using Metadata with YANG";
-  }
 
   organization
-    "IETF NETCONF (Network Configuration) Working Group";
+    "IETF NETCONF Working Group";
+
   contact
-    "WG Web:   <http://tools.ietf.org/wg/netconf/>
+    "WG Web:   <https://datatracker.ietf.org/wg/netconf/>
+
      WG List:  <mailto:netconf@ietf.org>
 
-     Editor:
+     Author:   Martin Bjorklund
+               <mailto:mbj@tail-f.com>
 
-     Editor:
+     Author:   Juergen Schoenwaelder
+               <mailto:j.schoenwaelder@jacobs-university.de>
 
-     Editor:   ";
+     Author:   Phil Shafer
+               <mailto:phil@juniper.net>
+
+     Author:   Kent Watsen
+               <mailto:kent+ietf@watsen.net>
+
+     Author:   Robert Wilton
+               <mailto:rwilton@cisco.com>";
   description
-    "This module define a new operation -- <get-collection>
-     to support YANG based pagination.
+    "This YANG module defines a set of NETCONF operations to support
+     the Network Management Datastore Architecture (NMDA).
 
      The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL
      NOT', 'SHOULD', 'SHOULD NOT', 'RECOMMENDED', 'NOT RECOMMENDED',
@@ -68,20 +79,14 @@ module ietf-netconf-list-pagination {
      (https://trustee.ietf.org/license-info).
 
      This version of this YANG module is part of RFC 8526; see
-     the RFC itself for full legal notices.
-      
-     Clixon: 
-     - changed get-pagable ->  get-pageable
-     - renamed count -> limit
-     - renamed skip -> offset
-     - added import ietf-yang-metadata
-     - added md:annotation remaining
-     ";
-  revision 2020-10-30 {
+     the RFC itself for full legal notices.";
+
+  revision 2019-01-07 {
     description
       "Initial revision.";
     reference
-      "RFC XXXX: YANG Based Pagination.";
+      "RFC 8526: NETCONF Extensions to Support the Network Management
+                 Datastore Architecture";
   }
 
   feature origin {
@@ -100,28 +105,14 @@ module ietf-netconf-list-pagination {
     reference
       "RFC 6243: With-defaults Capability for NETCONF, Section 4; and
        RFC 8526: NETCONF Extensions to Support the Network Management
-       Datastore Architecture, Section 3.1.1.2";
-  }
-  // Annotations
-  md:annotation remaining {
-      type uint32;
-      description
-	  "This annotation contains the number of elements removed
-          from a result set after a 'limit' or 'sublist-limit'
-          operation. If no elements were removed, this annotation
-          MUST NOT appear.  The minimum value (0), which never
-          occurs in normal operation, is reserved to represent
-          'unknown'.  The maximum value (2^32-1) is reserved to
-          represent any value greater than or equal to 2^32-1
-          elements.";
+                 Datastore Architecture, Section 3.1.1.2";
   }
 
-  rpc get-pageable-list {
+  rpc get-data {
     description
-      "Use enhanced filtering features to retrieve data from a
-       specific NMDA datastore. The content returned by get-data
-       must satisfy all filters, i.e., the filter criteria are
-       logically ANDed.
+      "Retrieve data from an NMDA datastore.  The content returned
+       by get-data must satisfy all filters, i.e., the filter
+       criteria are logically ANDed.
 
        Any ancestor nodes (including list keys) of nodes selected by
        the filters are included in the response.
@@ -142,11 +133,12 @@ module ietf-netconf-list-pagination {
       leaf datastore {
         type ds:datastore-ref;
         mandatory true;
+
         description
           "Datastore from which to retrieve data.
 
-           If the datastore is not supported by the server, then
-           the server MUST return an <rpc-error> element with an
+           If the datastore is not supported by the server, then the
+           server MUST return an <rpc-error> element with an
            <error-tag> value of 'invalid-value'.";
       }
       choice filter-spec {
@@ -209,6 +201,7 @@ module ietf-netconf-list-pagination {
            System state nodes are not affected by origin-filters and
            thus not filtered.  Note that system state nodes can be
            filtered with the 'config-filter' leaf.";
+
         leaf-list origin-filter {
           type or:origin-ref;
           description
@@ -257,98 +250,138 @@ module ietf-netconf-list-pagination {
       uses ncwd:with-defaults-parameters {
         if-feature "with-defaults";
       }
-      leaf list-target {
-        description
-          "Identifies the list object that is being retrieved.
-           This must be a path expression used to represent
-           a list data node or leaf-list data node. ";
-        mandatory true;
-        type string;
-      }
-      leaf limit {
-        type union {
-          type uint32;
-          type string {
-            pattern 'unbounded';
-          }
-        }
-        default "unbounded";
-        description
-          "The maximum number of list entries to return. The
-           value of the 'count' parameter is either an integer
-           greater than or equal to 1, or the string 'unbounded'.
-           The string 'unbounded' is the default value.";
-      }
-      leaf offset {
-        type union {
-          type uint32;
-          type string {
-            pattern 'none';
-          }
-        }
-        default "none";
-        description
-          "The first list item to return.
-           the 'skip' parameter is either an integer greater than
-           or equal to 1, or the string 'unbounded'.  The string
-           'unbounded' is the default value.";
-      }
-      leaf direction {
-        type enumeration {
-          enum forward;
-          enum reverse;
-        }
-        default "forward";
-        description
-          "Direction relative to the 'sort' order through list
-           or leaf-list. It can be forward direction or reverse
-           direction.";
-      }
-      leaf sort {
-        type union {
-          type string {
-            length "1..max" {
-              description
-                "The name of a descendent node to sort on.  For
-                 'Config false' lists and leaf-lists, the node SHOULD
-                  have the 'TBD' extension indicating that it has been
-                  indexed, enabling efficient sorts.";
-            }
-          }
-          type enumeration {
-            enum default {
-              description
-                "Indicates that the 'default' order is assumed.  For
-                 'ordered-by user' lists and leaf-lists, the default order
-                 is the user-configured order.  For 'ordered-by system'
-                 lists and leaf-lists, the default order is specified by the
-                 system.";
-            }
-          }
-        }
-        default "default";
-        description
-          "Indicates how the entries in a list are to be sorted.";
-      }
-      leaf where {
-        type yang:xpath1.0;
-        description
-          "The boolean filter to select data instances to return from
-           the list or leaf-list target.  The Xpath expression MAY be
-           constrained either server-wide, by datastore, by 'config'
-           status, or per list or leaf-list.  Details regarding how
-           constraints are communicated are TBD.  This parameter
-           is optional; no filtering is applied when it is not
-           specified.";
-      }
     }
     output {
-      anyxml pageable-list {
+      anydata data {
         description
-          "Return the list entries that were requested and matched
-           the filter criteria (if any). An empty data container
-           indicates that the request did not produce any results.";
+          "Copy of the source datastore subset that matched
+           the filter criteria (if any).  An empty data
+           container indicates that the request did not
+           produce any results.";
       }
+    }
+  }
+
+  rpc edit-data {
+    description
+      "Edit data in an NMDA datastore.
+
+       If an error condition occurs such that an error severity
+       <rpc-error> element is generated, the server will stop
+       processing the <edit-data> operation and restore the
+       specified configuration to its complete state at
+       the start of this <edit-data> operation.";
+    input {
+      leaf datastore {
+        type ds:datastore-ref;
+        mandatory true;
+
+        description
+          "Datastore that is the target of the <edit-data> operation.
+
+           If the target datastore is not writable, or is not
+           supported by the server, then the server MUST return an
+           <rpc-error> element with an <error-tag> value of
+           'invalid-value'.";
+      }
+      leaf default-operation {
+        type enumeration {
+          enum merge {
+            description
+              "The default operation is merge.";
+          }
+          enum replace {
+            description
+              "The default operation is replace.";
+          }
+          enum none {
+            description
+              "There is no default operation.";
+          }
+        }
+        default "merge";
+        description
+          "The default operation to use.";
+      }
+      choice edit-content {
+        mandatory true;
+        description
+          "The content for the edit operation.";
+        anydata config {
+          description
+            "Inline config content.";
+        }
+        leaf url {
+          if-feature "nc:url";
+          type inet:uri;
+          description
+            "URL-based config content.";
+        }
+      }
+    }
+  }
+
+  /*
+   * Augment the <lock> and <unlock> operations with a
+   * "datastore" parameter.
+   */
+
+  augment "/nc:lock/nc:input/nc:target/nc:config-target" {
+    description
+      "Add NMDA datastore as target.";
+    leaf datastore {
+      type ds:datastore-ref;
+      description
+        "Datastore to lock.
+
+         The <lock> operation is only supported on writable
+         datastores.
+
+         If the <lock> operation is not supported by the server on
+         the specified target datastore, then the server MUST return
+         an <rpc-error> element with an <error-tag> value of
+         'invalid-value'.";
+    }
+  }
+
+  augment "/nc:unlock/nc:input/nc:target/nc:config-target" {
+    description
+      "Add NMDA datastore as target.";
+    leaf datastore {
+      type ds:datastore-ref;
+      description
+        "Datastore to unlock.
+
+         The <unlock> operation is only supported on writable
+         datastores.
+
+         If the <unlock> operation is not supported by the server on
+         the specified target datastore, then the server MUST return
+         an <rpc-error> element with an <error-tag> value of
+         'invalid-value'.";
+    }
+  }
+
+  /*
+   * Augment the <validate> operation with a
+   * "datastore" parameter.
+   */
+
+  augment "/nc:validate/nc:input/nc:source/nc:config-source" {
+    description
+      "Add NMDA datastore as source.";
+    leaf datastore {
+      type ds:datastore-ref;
+      description
+        "Datastore to validate.
+
+         The <validate> operation is supported only on configuration
+         datastores.
+
+         If the <validate> operation is not supported by the server
+         on the specified target datastore, then the server MUST
+         return an <rpc-error> element with an <error-tag> value of
+         'invalid-value'.";
     }
   }
 }

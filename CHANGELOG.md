@@ -49,6 +49,13 @@ Thanks netgate for providing the dispatcher code!
 
 Users may have to change how they access the system
 
+* Pagination is updated to new drafts:
+  * [https://datatracker.ietf.org/doc/html/draft-wwlh-netconf-list-pagination-00>]
+   * Note removed import of system-capabilities.yang
+  * [https://datatracker.ietf.org/doc/html/draft-wwlh-netconf-list-pagination-nc-02]
+    * Note added presence to list-pagination container
+  * [https://datatracker.ietf.org/doc/html/draft-wwlh-netconf-list-pagination-rc-02]
+  * See also updated [https://clixon-docs.readthedocs.io/en/latest/pagination.html]
 * NETCONF hello errors, such as wrong session-id, prefix, namespace terminates session
   * Instead of returning an rpc-error reply
 

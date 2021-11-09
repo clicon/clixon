@@ -41,9 +41,9 @@
 /*
  * Prototypes
  */
-int api_data_head(clicon_handle h, void *req, char *api_path, cvec *pcvec, int pi, 
+int api_data_head(clicon_handle h, void *req, char *api_path, int pi, 
 		  cvec *qvec, int pretty, restconf_media media_out, ietf_ds_t ds);
-int api_data_get(clicon_handle h, void *req, char *api_path, cvec *pcvec, int pi, 
+int api_data_get(clicon_handle h, void *req, char *api_path, int pi, 
 		 cvec *qvec, int pretty, restconf_media media_out, ietf_ds_t ds);
 int api_operations_get(clicon_handle h, void *req, 
 		       char *api_path, int pi, cvec *qvec, char *data,

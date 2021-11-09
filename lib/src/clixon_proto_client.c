@@ -944,8 +944,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     /* Clixon extension, depth=<level> */
     if (depth != -1)
 	cprintf(cb, " depth=\"%d\"", depth);
-    /* declare cp prefix in get, so sub-elements dont need to */
-    cprintf(cb, " xmlns:cp=\"%s\"", CLIXON_PAGINATON_NAMESPACE); 
+    /* declare lp prefix in get, so sub-elements dont need to */
     cprintf(cb, ">"); /* get */
     /* If xpath, add a filter */
     if (xpath && strlen(xpath)) {
@@ -957,17 +956,18 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 	cprintf(cb, "/>");
     }
     /* Explicit use of list-pagination */
-    cprintf(cb, "<cp:list-pagination>true</cp:list-pagination>");
+    cprintf(cb, "<list-pagination xmlns=\"%s\">", IETF_PAGINATON_NC_NAMESPACE);
     if (offset != 0)
-	cprintf(cb, "<cp:offset>%u</cp:offset>", offset);
+	cprintf(cb, "<offset>%u</offset>", offset);
     if (limit != 0)
-	cprintf(cb, "<cp:limit>%u</cp:limit>", limit);
+	cprintf(cb, "<limit>%u</limit>", limit);
     if (direction)
-	cprintf(cb, "<cp:direction>%s</cp:direction>", direction);
+	cprintf(cb, "<direction>%s</direction>", direction);
     if (sort)
-	cprintf(cb, "<cp:sort>%s</cp:sort>", sort);
+	cprintf(cb, "<sort>%s</sort>", sort);
     if (where)
-	cprintf(cb, "<cp:where>%s</cp:where>", where);
+	cprintf(cb, "<where>%s</where>", where);
+    cprintf(cb, "</list-pagination>");
     cprintf(cb, "</get>");
     cprintf(cb, "</rpc>");
     if ((msg = clicon_msg_encode(session_id, "%s", cbuf_get(cb))) == NULL)

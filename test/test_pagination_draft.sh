@@ -286,9 +286,9 @@ function testlimit()
 		el="<uint8-numbers>$li</uint8-numbers>"
 		el2="<uint8-numbers xmlns=\"http://example.com/ns/example-social\">$li</uint8-numbers>"
 	    else
-		el="<uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\">$li</uint8-numbers>"
-		el2="<uint8-numbers cp:remaining=\"$remaining\" xmlns:cp=\"http://clicon.org/clixon-netconf-list-pagination\" xmlns=\"http://example.com/ns/example-social\">$li</uint8-numbers>"
-		jsonmeta=",\"@example-social:uint8-numbers\":\[{\"clixon-netconf-list-pagination:remaining\":$remaining}\]"
+		el="<uint8-numbers lp:remaining=\"$remaining\" xmlns:lp=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\">$li</uint8-numbers>"
+		el2="<uint8-numbers lp:remaining=\"$remaining\" xmlns:lp=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\" xmlns=\"http://example.com/ns/example-social\">$li</uint8-numbers>"
+		jsonmeta=",\"@example-social:uint8-numbers\":\[{\"ietf-list-pagination:remaining\":$remaining}\]"
 	    fi
 	    jsonlist="$li"
 	else
@@ -304,13 +304,13 @@ function testlimit()
     if [ $limit -eq 0 ]; then
 	limitxmlstr=""
     else
-	limitxmlstr="<limit xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">$limit</limit>"
+	limitxmlstr="<limit>$limit</limit>"
 	jsonstr="?limit=$limit"
     fi
     if [ $offset -eq 0 ]; then
 	offsetxmlstr=""
     else
-	offsetxmlstr="<offset xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">$offset</offset>"
+	offsetxmlstr="<offset>$offset</offset>"
 	if [ -z "$jsonstr" ]; then
 	    jsonstr="?offset=$offset"
 	else
@@ -324,7 +324,7 @@ function testlimit()
 	reply="<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites>$xmllist</favorites></member></members></data></rpc-reply>]]>]]>$"
     fi
     new "limit=$limit offset=$offset NETCONF get-config"
-    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination>$limitxmlstr$offsetxmlstr</get-config></rpc>]]>]]>" "$reply"
+    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\">$limitxmlstr$offsetxmlstr</list-pagination></get-config></rpc>]]>]]>" "$reply"
 
     if [ -z "$list" ]; then
 	reply="<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
@@ -332,24 +332,23 @@ function testlimit()
 	reply="<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><favorites>$xmllist</favorites></member></members></data></rpc-reply>]]>]]>$"
     fi
     new "limit=$limit offset=$offset NETCONF get"
-    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"http://clicon.org/clixon-netconf-list-pagination\">true</list-pagination>$limitxmlstr$offsetxmlstr</get></rpc>]]>]]>" "$reply"
+    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\">$limitxmlstr$offsetxmlstr</list-pagination></get></rpc>]]>]]>" "$reply"
 
     if [ -z "$list" ]; then
-	reply="<yang-collection xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-list-pagination\"/>"
+	reply="<xml-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\"/>"
     else
-	reply="<yang-collection xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-list-pagination\">$xmllist2</yang-collection>"
+	reply="<xml-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\">$xmllist2</xml-list>"
     fi
     new "limit=$limit offset=$offset Parameter RESTCONF xml"
-    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+xml" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers${jsonstr})" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+xml" "$reply"
-
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml-list" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers${jsonstr})" 0 "HTTP/$HVER 200" "Content-Type: application/yang-data+xml-list" "$reply"
     if [ -z "$list" ]; then
-	reply="{\"yang-collection\":{}}"
+	#	reply="{\"xml-list\":{}}"
+	reply="{}"
     else
-	reply="{\"yang-collection\":{\"example-social:uint8-numbers\":\[$jsonlist\]$jsonmeta}"
+	reply="{\"example-social:uint8-numbers\":\[$jsonlist\]}"
     fi
     new "limit=$limit offset=$offset Parameter RESTCONF json"
-    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-collection+json" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers${jsonstr})" 0 "HTTP/$HVER 200" "Content-Type: application/yang-collection+json" "$reply"
-
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers${jsonstr})" 0 "HTTP/$HVER 200" "Content-Type: application/yang-data+json" "$reply" --not-- "xml-list"
 } # testlimit
 
 new "test params: -f $cfg -s startup -- -sS $fstate"
@@ -379,7 +378,6 @@ fi
 
 new "wait restconf"
 wait_restconf
-
 
 new "A.3.1.1. limit=1"
 testlimit 0 1 5 "17"

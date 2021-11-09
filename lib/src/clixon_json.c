@@ -1039,7 +1039,8 @@ xml2json1_cbuf(cbuf                   *cb,
  *   goto err;
  * cbuf_free(cb);
  * @endcode
- * @see clicon_xml2cbuf
+ * @see clicon_xml2cbuf     XML corresponding function
+ * @see xml2json_cbuf_vec   Top symbol is list
  */
 int 
 xml2json_cbuf(cbuf      *cb, 
@@ -1082,7 +1083,7 @@ xml2json_cbuf(cbuf      *cb,
  * @retval    -1      Error
  * @note This only works if the vector is uniform, ie same object name.
  * Example: <b/><c/> --> <a><b/><c/></a> --> {"b" : null,"c" : null}
- * @see xml2json1_cbuf
+ * @see xml2json_cbuf
  */
 int 
 xml2json_cbuf_vec(cbuf      *cb, 

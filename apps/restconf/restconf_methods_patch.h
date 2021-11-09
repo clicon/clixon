@@ -44,7 +44,7 @@
  * Prototypes
  */
 int api_data_yang_patch(clicon_handle h, void *req, char *api_path0,
-			cvec *pcvec, int pi,
+			int pi,
 			cvec *qvec, char *data,
 			int pretty, restconf_media media_in, restconf_media media_out,
 			ietf_ds_t ds);
