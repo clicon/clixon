@@ -1,6 +1,7 @@
+
 #!/usr/bin/env bash
 # Tests for using the auto cli.
-# In particular setting a config, displaying as cli commands and reconfigure it 
+# In particular setting a config, displaying as cli commands and reconfigure it
 # Tests:
 # Make a config in CLI. Show output as CLI, save it and ensure it is the same
 # Try the different GENMODEL settings
@@ -15,6 +16,7 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/$APPNAME.yang
+fyang2=$dir/${APPNAME}2.yang
 fstate=$dir/state.xml
 clidir=$dir/cli
 if [ -d $clidir ]; then
@@ -25,12 +27,19 @@ fi
 
 # Use yang in example
 
+if [ ! -d "$OPENCONFIG" ]; then
+#    err "Hmm Openconfig dir does not seem to exist, try git clone https://github.com/openconfig/public?"
+    echo "...skipped: OPENCONFIG not set"
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$dir_tmp</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
+  <CLICON_YANG_DIR>$OPENCONFIG/</CLICON_YANG_DIR>
+  <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -49,6 +58,9 @@ cat <<EOF > $fyang
 module $APPNAME {
   namespace "urn:example:clixon";
   prefix ex;
+  import openconfig-extensions { prefix oc-ext; }
+  /* Set openconfig version to "fake" an openconfig YANG */
+  oc-ext:openconfig-version;
   container table{
     list parameter{
       key name;
@@ -66,6 +78,85 @@ module $APPNAME {
       key ref;
       leaf ref{
         type string;
+      }
+    }
+  }
+  container interfaces {
+    list interface {
+      key name;
+      leaf name {
+       type string;
+      }
+      container config {
+	leaf enabled {
+	  type boolean;
+	  default false;
+	  description "Whether the interface is enabled or not.";
+	}
+      }
+      container state {
+	config false;
+	leaf oper-status {
+	  type enumeration {
+	    enum UP {
+	      value 1;
+	      description "Ready to pass packets.";
+	    }
+	    enum DOWN {
+	      value 2;
+	      description "The interface does not pass any packets.";
+	    }
+	  }
+	}
+      }
+      leaf enabled {
+	type boolean;
+	default false;
+	description "Whether the interface is enabled or not.";
+      }
+    }
+  }
+}
+EOF
+
+# For openconfig but NO openconfig extension
+cat <<EOF > $fyang2
+module ${APPNAME}2 {
+  namespace "urn:example:clixon2";
+  prefix ex2;
+  import openconfig-extensions { prefix oc-ext; }
+  container interfaces2 {
+    list interface {
+      key name;
+      leaf name {
+       type string;
+      }
+      container config {
+	leaf enabled {
+	  type boolean;
+	  default false;
+	  description "Whether the interface is enabled or not.";
+	}
+      }
+      container state {
+	config false;
+	leaf oper-status {
+	  type enumeration {
+	    enum UP {
+	      value 1;
+	      description "Ready to pass packets.";
+	    }
+	    enum DOWN {
+	      value 2;
+	      description "The interface does not pass any packets.";
+	    }
+	  }
+	}
+      }
+      leaf enabled {
+	type boolean;
+	default false;
+	description "Whether the interface is enabled or not.";
       }
     }
   }
@@ -127,6 +218,9 @@ function testrun()
     elif [ $mode = HIDE ]; then
 	table=
 	name=
+    elif [ $mode = OC_COMPRESS ]; then
+	table=
+	name=
     else
 	table=" table"
 	name=
@@ -159,7 +253,7 @@ SAVED=$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show config)
     new "delete a x"
     expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg delete$table parameter$name a value x)" 0 ""
 
-    new "show match a & b xml" 
+    new "show match a & b xml"
     expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show xml)" 0 "<table xmlns=\"urn:example:clixon\">" "<parameter>" "<name>a</name>"  "</parameter>" "<parameter>" "<name>b</name>" "<value>z</value>" "</parameter>" "</table>" --not-- "<value>x</value>"
 
     new "delete a"
@@ -190,6 +284,9 @@ testrun HIDE
 new "keywords=ALL"
 testrun ALL
 
+new "keywords=OC_COMPRESS"
+testrun OC_COMPRESS
+
 new "keywords=VARS"
 testrun VARS
 
@@ -201,10 +298,19 @@ new "commit"
 expectpart "$($clixon_cli -1 -f $cfg commit)" 0 ""
 
 new "show state"
-expectpart "$($clixon_cli -1 -f $cfg show state)" 0 "exstate sender x" "table parameter a" "table parameter a value x" 
+expectpart "$($clixon_cli -1 -f $cfg show state)" 0 "exstate sender x" "table parameter a" "table parameter a value x"
 
 new "show state exstate"
 expectpart "$($clixon_cli -1 -f $cfg show state exstate)" 0 "state sender x" --not--  "table parameter a" "table parameter a value x"
+
+#---- openconfig path compression
+
+new "Openconfig: check no config path"
+expectpart "$($clixon_cli -1 -f $cfg set interfaces interface e config enabled true 2>&1)" 255 "Unknown command"
+
+# negative test
+new "Openconfig: check exist config path"
+expectpart "$($clixon_cli -1 -f $cfg set interfaces2 interface e config enabled true 2>&1)" 0 "^$"
 
 new "Kill backend"
 # Check if premature kill

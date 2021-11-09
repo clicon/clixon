@@ -71,9 +71,13 @@ struct yang_stmt{
 
     char              *ys_argument;  /* String / argument depending on keyword */   
     uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */
-    yang_stmt         *ys_mymodule;  /* Shortcut to "my" module. Augmented
-					nodes can belong to other 
-					modules than the ancestor module */
+    yang_stmt         *ys_mymodule;  /* Shortcut to "my" module. Used by:
+                                        1) Augmented nodes "belong" to the module where the 
+                                           augment is declared, which may be differnt from
+                                           the direct ancestor module 
+					2) Unknown nodes "belong" to where the extension is
+                                           declared
+                                      */
     cg_var            *ys_cv;        /* cligen variable. See ys_populate()
 					Following stmts have cv:s:
 				        leaf: for default value

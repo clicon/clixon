@@ -2355,6 +2355,14 @@ ys_populate_unique(clicon_handle h,
  * RFC 7950 Sec 7.19:
  * If no "argument" statement is present, the keyword expects no argument when
  * it is used.
+ * Note there is some complexity in different yang modules with unknown-statements.
+ * y0) The location of the extension definition. E.g. extension autocli-op
+ * y1) The location of the unknown-statement (ys). This is for example: cl:autocli-op hide.
+ *     Lookup of "cl" is lexically scoped in this context (to find (y0)).
+ * y2) The unknown statement may be used by uses/grouping of (y1). But "cl" is declared 
+ *     in y1 context. This is fixed by setting ys_mymodule to y1 which is then used in
+ *     lookups such as in yang_extension_value().
+ * @see yang_extension_value  Called on expanded YANG, eg in context of (y2)
  */
 static int
 ys_populate_unknown(clicon_handle h,
@@ -2376,6 +2384,8 @@ ys_populate_unknown(clicon_handle h,
 	clicon_err(OE_YANG, ENOENT, "Extension \"%s:%s\", module not found", prefix, id);
 	goto done;
     }
+    /* To find right binding eg after grouping/uses */
+    ys->ys_mymodule = ys_module(ys);
     if ((yext = yang_find(ymod, Y_EXTENSION, id)) == NULL){
 	clicon_err(OE_YANG, ENOENT, "Extension \"%s:%s\" not found", prefix, id);
 	goto done;
@@ -3255,7 +3265,7 @@ yang_container_cli_hide(yang_stmt         *ys,
 
     keyw = yang_keyword_get(ys);
     /* HIDE mode */
-    if (gt != GT_HIDE)
+    if (gt != GT_HIDE && gt != GT_OC_COMPRESS)
 	return 0;
     /* A container */
     if (yang_keyword_get(ys) != Y_CONTAINER)
@@ -3572,6 +3582,7 @@ yang_anydata_add(yang_stmt *yp,
  *        // use extension value
  *     }
  * @endcode
+ * @see ys_populate_unknown  Called when parsing YANGo
  */
 int
 yang_extension_value(yang_stmt *ys,

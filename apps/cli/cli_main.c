@@ -620,7 +620,7 @@ main(int    argc,
        Should be 0 but default is 1 since all legacy apps use 1
        Test legacy before shifting default to 0
      */
-    cv_exclude_keys(clicon_cli_varonly(h)); 
+    cligen_exclude_keys_set(cli_cligen(h), clicon_cli_varonly(h)); 
 
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)
