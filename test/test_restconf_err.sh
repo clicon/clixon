@@ -48,7 +48,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$dir_tmp</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>$dir/restconf.pidfile</CLICON_BACKEND_PIDFILE>

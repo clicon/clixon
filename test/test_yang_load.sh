@@ -60,7 +60,7 @@ new "1. Load module as file"
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>$dir_tmp</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang1</CLICON_YANG_MAIN_FILE>
@@ -113,7 +113,7 @@ new "2. Load old module as file"
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>$dir_tmp</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang2</CLICON_YANG_MAIN_FILE>
@@ -161,7 +161,7 @@ new "3. Load module with no revision"
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>$dir_tmp</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
@@ -204,7 +204,7 @@ new "4. Load module with old revision"
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>$dir_tmp</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
@@ -249,7 +249,7 @@ new "5. Load dir"
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>$dir_tmp</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
@@ -294,7 +294,7 @@ new "6. Load dir override with file"
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>$dir_tmp</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
@@ -339,7 +339,7 @@ new "7. Load dir override with module + revision"
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>$dir_tmp</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
@@ -385,7 +385,7 @@ new "8. Load module w new revision overrided by old file"
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>$dir_tmp</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang2</CLICON_YANG_MAIN_FILE>
