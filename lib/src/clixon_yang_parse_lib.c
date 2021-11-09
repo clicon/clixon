@@ -903,57 +903,69 @@ yang_parse_find_match(clicon_handle h,
 		      cbuf         *fbuf)    
 {
     int            retval = -1;
-    struct dirent *dp = NULL;
+    char           **dp = NULL;
     int            ndp;
     cbuf          *regex = NULL;
     cxobj         *x;
     cxobj         *xc;
     char          *dir;
+    int           nent = 0;
+    int           i = 0;
 
     /* get clicon config file in xml form */
     if ((x = clicon_conf_xml(h)) == NULL)
-	goto ok;
+        goto ok;
     if ((regex = cbuf_new()) == NULL){
-	clicon_err(OE_YANG, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_YANG, errno, "cbuf_new");
+        goto done;
     }
     /* RFC 6020: The name of the file SHOULD be of the form:
      * module-or-submodule-name ['@' revision-date] ( '.yang' / '.yin' )
      * revision-date ::= 4DIGIT "-" 2DIGIT "-" 2DIGIT
      */
     if (revision)
-	cprintf(regex, "^%s@%s(.yang)$", module, revision);
+        cprintf(regex, "^%s@%s(.yang)$", module, revision);
     else
-	cprintf(regex, "^%s(@[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])?(.yang)$", 
-		module);
+        cprintf(regex, "^%s(@[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])?(.yang)$",
+                module);
     xc = NULL;
+
     while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
-	/* Skip if not yang dir */
-	if (strcmp(xml_name(xc), "CLICON_YANG_DIR") != 0 &&
-	    strcmp(xml_name(xc), "CLICON_YANG_MAIN_DIR") != 0)
-	    continue;
-	dir = xml_body(xc);
-	/* get all matching files in this directory */
-	if ((ndp = clicon_file_dirent(dir, 
-				      &dp, 
-				      cbuf_get(regex),
-				      S_IFREG)) < 0)
-	    goto done;
-	/* Entries are sorted, last entry should be most recent date 
-	 */
-	if (ndp != 0){
-	    cprintf(fbuf, "%s/%s", dir, dp[ndp-1].d_name);
-	    retval = 1;
-	    goto done;
-	}
+        /* Skip if not yang dir */
+        if (strcmp(xml_name(xc), "CLICON_YANG_DIR") != 0 &&
+            strcmp(xml_name(xc), "CLICON_YANG_MAIN_DIR") != 0)
+            continue;
+        dir = xml_body(xc);
+
+        /* get all matching files in this directory */
+        dp = (char **)malloc(sizeof(char *));
+        if ((ndp = clicon_files_recursive(dir,
+                                          cbuf_get(regex),
+                                          dp,
+                                          &nent)) < 0) {
+            goto done;
+        }
+
+        /* Entries are sorted, last entry should be most recent date
+         */
+        if (ndp != 0){
+            cprintf(fbuf, "%s", dp[ndp-1]);
+
+            for (i = 0; i < nent; i++)
+                if (dp[i])
+                    free(dp[i]);
+
+            retval = 1;
+            goto done;
+        }
     }
- ok:
+ok:
     retval = 0;
- done:
+done:
     if (regex)
-	cbuf_free(regex);
+        cbuf_free(regex);
     if (dp)
-	free(dp);
+        free(dp);
     return retval;
 }
 
@@ -1656,8 +1668,8 @@ yang_spec_load_dir(clicon_handle h,
     /* Load all yang files in dir */
     for (i = 0; i < ndp; i++) {
 	/* base = module name [+ @rev ] + .yang */
-	if (oldbase)
-	    free(oldbase);
+       if (oldbase)
+           free(oldbase);
 	oldbase = base;
 	base = NULL;
 	revf = 0;
