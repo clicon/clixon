@@ -487,7 +487,7 @@ http2_exec(restconf_conn        *rc,
      * (Successful) response to a CONNECT request (Section 4.3.6 of
      * [RFC7231]).
      */
-    if (sd->sd_code != 204 && sd->sd_code > 199)
+    if (sd->sd_code != 204 && sd->sd_code > 199 && sd->sd_body_len)
 	if (restconf_reply_header(sd, "Content-Length", "%zu", sd->sd_body_len) < 0)
 	    goto done;	
     if (sd->sd_code){

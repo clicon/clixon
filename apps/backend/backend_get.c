@@ -467,7 +467,7 @@ get_list_pagination(clicon_handle        h,
 #endif
 
     /* Check if list/leaf-list */
-    if (yang_path_arg(yspec, xpath, &ylist) < 0)
+    if (yang_path_arg(yspec, xpath?xpath:"/", &ylist) < 0)
 	goto done;
     if (ylist == NULL){
 	if ((cbmsg = cbuf_new()) == NULL){

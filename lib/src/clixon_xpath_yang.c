@@ -397,8 +397,14 @@ xp_yang_eval(xp_yang_ctx  *xy,
 	}
     }
     if (xy0 == NULL && xy1 == NULL && xy2 == NULL){
-	clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
-	goto done;
+	if (xptree->xs_type == XP_ABSPATH){
+	    if ((*xyr = xy_dup(xy)) == NULL)
+		goto done;
+	}
+	else {
+	    clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
+	    goto done;
+	}
     }
     if (xy2){
 	*xyr = xy2;
@@ -460,6 +466,10 @@ yang_path_arg(yang_stmt  *ys,
     xp_yang_ctx *xyr = NULL;
     xp_yang_ctx *xy = NULL;
 
+    if (path_arg == NULL){
+	clicon_err(OE_XML, EINVAL, "path-arg is NULL");
+	goto done;
+    }
     if (xpath_parse(path_arg, &xptree) < 0)
 	goto done;
     if ((xy = xy_dup(NULL)) == NULL)

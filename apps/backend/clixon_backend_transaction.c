@@ -286,7 +286,6 @@ transaction_log(clicon_handle      h,
     return 0;
 }
 
-
 /*! Get pagination data: offset parameter
  *
  * @param[in]  pd     Pagination userdata

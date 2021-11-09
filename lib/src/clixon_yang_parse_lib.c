@@ -1035,6 +1035,7 @@ yang_parse_filename(const char *filename,
  * @param[in] module   Module name
  * @param[in] revision Revision (or NULL)
  * @param[in] yspec    Yang statement
+ * @param[in] origname Name of yang module triggering this parsing, for logging
  * @retval    0        OK
  * @retval   -1        Error
  *
@@ -1044,7 +1045,8 @@ static yang_stmt *
 yang_parse_module(clicon_handle h,
 		  const char   *module, 
 		  const char   *revision, 
-		  yang_stmt    *yspec)
+		  yang_stmt    *yspec,
+		  char         *origname)
 {
     cbuf      *fbuf = NULL;
     char      *filename;
@@ -1053,20 +1055,27 @@ yang_parse_module(clicon_handle h,
     yang_stmt *yrev; /* yang revision */
     uint32_t   revf = 0; /* revision in filename */
     uint32_t   revm = 0; /* revision in parsed new module (should be same as revf) */
+    cbuf      *cb = NULL;
 
     if ((fbuf = cbuf_new()) == NULL){
-	clicon_err(OE_YANG, errno, "cbuf_new");
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
     /* Match a yang file with or without revision in yang-dir list */
     if ((nr = yang_parse_find_match(h, module, revision, &revf, fbuf)) < 0)
 	goto done;
     if (nr == 0){
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cb, "%s", module);
 	if (revision)
-	    clicon_err(OE_YANG, ENOENT, "No yang files found matching \"%s@%s\" in the list of CLICON_YANG_DIRs",
-		       module, revision);
+	    cprintf(cb, "@%s", revision);
+	if (origname)
+	    clicon_err(OE_YANG, ENOENT, "No yang files found matching \"%s\" in the list of CLICON_YANG_DIRs when loading %s.yang", cbuf_get(cb), origname);
 	else
-	    clicon_err(OE_YANG, ENOENT, "No yang files found matching \"%s\" in the list of CLICON_YANG_DIRs", module);
+	    clicon_err(OE_YANG, ENOENT, "No yang files found matching \"%s\" in the list of CLICON_YANG_DIRs", cbuf_get(cb));
 	goto done;
     }
     filename = cbuf_get(fbuf);
@@ -1099,6 +1108,8 @@ yang_parse_module(clicon_handle h,
 	goto done;
     }
   done:
+    if (cb)
+	cbuf_free(cb);
     if (fbuf)
 	cbuf_free(fbuf);
     return ymod; /* top-level (sub)module */
@@ -1149,7 +1160,7 @@ yang_parse_recurse(clicon_handle h,
 		      keyw==Y_IMPORT?Y_MODULE:Y_SUBMODULE,
 		      submodule) == NULL){
 	    /* recursive call */
-	    if ((subymod = yang_parse_module(h, submodule, subrevision, ysp)) == NULL)
+	    if ((subymod = yang_parse_module(h, submodule, subrevision, ysp, yang_argument_get(ymod))) == NULL)
 		goto done;
 	    /* Sanity check: if submodule, its belongs-to statement shall point to the module */
 	    if (keyw == Y_INCLUDE){
@@ -1581,7 +1592,7 @@ yang_spec_parse_module(clicon_handle h,
     if (yang_find_module_by_name_revision(yspec, name, revision) != NULL)
 	goto ok;
     /* Find a yang module and parse it and all its submodules */
-    if (yang_parse_module(h, name, revision, yspec) == NULL)
+    if (yang_parse_module(h, name, revision, yspec, NULL) == NULL)
 	goto done;
     if (yang_parse_post(h, yspec, modmin) < 0)
 	goto done;

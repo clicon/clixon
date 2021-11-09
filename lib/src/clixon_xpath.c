@@ -526,6 +526,10 @@ xpath_parse(const char  *xpath,
     clixon_xpath_yacc xpy = {0,};
     cbuf             *cb = NULL;    
 
+    if (xpath == NULL){
+	clicon_err(OE_XML, EINVAL, "XPath is NULL");
+	goto done;
+    }
     xpy.xpy_parse_string = xpath;
     xpy.xpy_name = "xpath parser";
     xpy.xpy_linenum = 1;

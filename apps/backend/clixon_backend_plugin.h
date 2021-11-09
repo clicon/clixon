@@ -84,7 +84,7 @@ typedef struct {
 */
 typedef struct {
     uint32_t          pd_offset;    /* Start of pagination interval */
-    uint32_t          pd_limit;     /* Number of elemenents (limit) */
+    uint32_t          pd_limit;     /* Number of elements (limit) */
     int               pd_locked;    /* Running datastore is locked by this caller */
     cxobj            *pd_xstate;    /* Returned xml state tree */
 } pagination_data_t;

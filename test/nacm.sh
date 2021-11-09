@@ -46,3 +46,4 @@ NADMIN=$(cat <<EOF
 EOF
 )
 
+DEFAULTNACM='<nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm"><enable-nacm>true</enable-nacm><read-default>permit</read-default><write-default>deny</write-default><exec-default>permit</exec-default><enable-external-groups>true</enable-external-groups></nacm>'
