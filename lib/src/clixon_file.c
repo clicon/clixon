@@ -62,86 +62,6 @@
 #include "clixon_log.h"
 #include "clixon_file.h"
 
-static int
-clicon_file_string_sort(const void *arg1,
-                        const void *arg2)
-{
-    char *str1 = *(char **)arg1;
-    char *str2 = *(char **)arg2;
-
-    return strcmp(str1, str2);
-}
-
-int
-clicon_files_recursive(const char *dir,
-                       const char *regexp,
-                       char       **dp,
-                       int        *nent)
-{
-    struct  dirent *dent = NULL;
-    char    path[MAXPATHLEN];
-    DIR     *dirp = NULL;
-    regex_t re;
-    int     res;
-    char    errbuf[128];
-
-    if (regexp && (res = regcomp(&re, regexp, REG_EXTENDED)) != 0) {
-        regerror(res, &re, errbuf, sizeof(errbuf));
-        clicon_err(OE_DB, 0, "regcomp: %s", errbuf);
-        return -1;
-    }
-
-    if (!(dirp = opendir(dir))) {
-        return *nent;
-    }
-
-    while ((dent = readdir(dirp)) != NULL) {
-        if (dent->d_type == DT_DIR) {
-            /* If we find a directory we might want to enter it, unless it
-               is the current directory (.) or parent (..) */
-            if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) {
-                continue;
-            }
-
-            /* Build the new directory and enter it. */
-            sprintf(path, "%s/%s", dir, dent->d_name);
-            *nent = clicon_files_recursive(path, regexp, dp, nent);
-        } else if (dent->d_type == DT_REG) {
-            /* If we encounter a file, match it against the regexp and
-               add it to the list of found files.*/
-            if (regexp) {
-                if (regexec(&re, dent->d_name, (size_t)0, NULL, *nent) != 0)
-                    continue;
-            }
-
-            /* Add room for the new file. */
-            if ((dp = (char **)realloc(dp, sizeof(char *) * (*nent + 1))) == NULL) {
-                clicon_err(OE_UNIX, errno, "realloc");
-                *nent = -1;
-                goto quit;
-            }
-
-            if ((dp[*nent] = (char *)malloc(1 + sizeof(char) * strlen(dir) +
-                                            strlen(dent->d_name))) == NULL) {
-                clicon_err(OE_UNIX, errno, "malloc");
-                *nent = -1;
-                goto quit;
-            }
-
-            sprintf(dp[*nent], "%s/%s", dir, dent->d_name);
-            (*nent)++;
-        }
-    }
-
-    qsort(dp, *nent, sizeof(char *), clicon_file_string_sort);
-
- quit:
-    if (dirp)
-        closedir(dirp);
-
-    return *nent;
-}
-
 /*! qsort "compar" for directory alphabetically sorting, see qsort(3)
  */
 static int
@@ -152,6 +72,85 @@ clicon_file_dirent_sort(const void* arg1,
     struct dirent *d2 = (struct dirent *)arg2;
 
     return strcoll(d1->d_name, d2->d_name);
+}
+
+/*!
+ * @param[in,out] cvv  On the format: (name, path)*
+ */
+static int
+clicon_files_recursive1(const char *dir,
+			regex_t    *re,
+			cvec       *cvv)
+{
+    int retval = -1;
+    struct  dirent *dent = NULL;
+    char    path[MAXPATHLEN];
+    DIR     *dirp = NULL;
+    int     res = 0;
+    struct stat    st;
+    
+    if ((dirp = opendir(dir)) != NULL)
+	while ((dent = readdir(dirp)) != NULL) {
+	    if (dent->d_type == DT_DIR) {
+		/* If we find a directory we might want to enter it, unless it
+		   is the current directory (.) or parent (..) */
+		if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) 
+		    continue;
+
+		/* Build the new directory and enter it. */
+		sprintf(path, "%s/%s", dir, dent->d_name);
+		if (clicon_files_recursive1(path, re, cvv) < 0)
+		    goto done;
+	    }
+	    else if (dent->d_type == DT_REG) {
+		/* If we encounter a file, match it against the regexp and
+		   add it to the list of found files.*/
+		if (re != NULL &&
+		    regexec(re, dent->d_name, (size_t)0, NULL, 0) != 0)
+		    continue;
+		snprintf(path, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
+		if ((res = lstat(path, &st)) != 0){
+		    clicon_err(OE_UNIX, errno, "lstat");
+		    goto done;
+		}
+		if ((st.st_mode & S_IFREG) == 0)
+		    continue;
+		if (cvec_add_string(cvv, dent->d_name, path) < 0){
+		    clicon_err(OE_UNIX, errno, "cvec_add_string");
+		    goto done;
+		}
+	    }
+	}
+    retval = 0;
+ done:
+    if (dirp)
+        closedir(dirp);
+    return retval;
+}
+
+int
+clicon_files_recursive(const char *dir,
+                       const char *regexp,
+		       cvec       *cvv)
+{
+    int     retval = -1;
+    regex_t re = {0,};
+    int     res = 0;
+    char    errbuf[128];
+ 
+    clicon_debug(1, "%s dir:%s", __FUNCTION__, dir);
+    if (regexp && (res = regcomp(&re, regexp, REG_EXTENDED)) != 0) {
+        regerror(res, &re, errbuf, sizeof(errbuf));
+        clicon_err(OE_DB, 0, "regcomp: %s", errbuf);
+	goto done;
+    }
+    if (clicon_files_recursive1(dir, &re, cvv) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (regexp)
+        regfree(&re);
+    return retval;
 }
 
 /*! Return alphabetically sorted files from a directory matching regexp
@@ -177,7 +176,7 @@ clicon_file_dirent_sort(const void* arg1,
 int
 clicon_file_dirent(const char     *dir,
 		   struct dirent **ent,
-		   const char     *regexp,	
+		   const char     *regexp,
 		   mode_t          type)
 {
    int            retval = -1;

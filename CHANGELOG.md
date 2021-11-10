@@ -68,6 +68,7 @@ Developers may need to change their code
 
 ### Minor features
 
+* Added: [Recursive search CLIXON_YANG_DIR](https://github.com/clicon/clixon/issues/284)
 * Plugin context check before and after all callbacks.
   * Check blocked signals and signal handlers
   * Check termios settings

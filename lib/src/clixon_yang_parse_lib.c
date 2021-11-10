@@ -903,14 +903,13 @@ yang_parse_find_match(clicon_handle h,
 		      cbuf         *fbuf)    
 {
     int            retval = -1;
-    char           **dp = NULL;
-    int            ndp;
     cbuf          *regex = NULL;
     cxobj         *x;
     cxobj         *xc;
     char          *dir;
-    int           nent = 0;
-    int           i = 0;
+    cvec         *cvv = NULL;
+    cg_var       *cv = NULL;
+    cg_var       *bestcv = NULL;
 
     /* get clicon config file in xml form */
     if ((x = clicon_conf_xml(h)) == NULL)
@@ -931,41 +930,65 @@ yang_parse_find_match(clicon_handle h,
     xc = NULL;
 
     while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
-        /* Skip if not yang dir */
-        if (strcmp(xml_name(xc), "CLICON_YANG_DIR") != 0 &&
-            strcmp(xml_name(xc), "CLICON_YANG_MAIN_DIR") != 0)
-            continue;
-        dir = xml_body(xc);
+	if (strcmp(xml_name(xc), "CLICON_YANG_MAIN_DIR") == 0){
+	    struct dirent *dp = NULL;
+	    int ndp;
 
-        /* get all matching files in this directory */
-        dp = (char **)malloc(sizeof(char *));
-        if ((ndp = clicon_files_recursive(dir,
-                                          cbuf_get(regex),
-                                          dp,
-                                          &nent)) < 0) {
-            goto done;
-        }
+	    dir = xml_body(xc);
+	    /* get all matching files in this directory */
+	    if ((ndp = clicon_file_dirent(dir, 
+					  &dp, 
+					  cbuf_get(regex),
+					  S_IFREG)) < 0)
+		goto done;
+	    /* Entries are sorted, last entry should be most recent date 
+	     */
+	    if (ndp != 0){
+		cprintf(fbuf, "%s/%s", dir, dp[ndp-1].d_name);
+		retval = 1;
+		goto done;
+	    }
+	    if (dp)
+		free(dp);
+	}
+        else if (strcmp(xml_name(xc), "CLICON_YANG_DIR") == 0){
+	    dir = xml_body(xc);
+	    /* get all matching files in this directory recursively */
+	    if ((cvv = cvec_new(0)) == NULL){
+		clicon_err(OE_UNIX, errno, "cvec_new");
+		goto done;
+	    }
+	    if (clicon_files_recursive(dir, cbuf_get(regex), cvv) < 0)
+		goto done;
 
-        /* Entries are sorted, last entry should be most recent date
-         */
-        if (ndp != 0){
-            cprintf(fbuf, "%s", dp[ndp-1]);
-
-            for (i = 0; i < nent; i++)
-                if (dp[i])
-                    free(dp[i]);
-
-            retval = 1;
-            goto done;
-        }
+	    /* Entries are not sorted and come in a vector: <name,path>.
+	     * Find latest name and use path as return value
+	     */
+	    bestcv = NULL;
+	    while ((cv = cvec_each(cvv, cv)) != NULL){
+		if (bestcv == NULL)
+		    bestcv = cv;
+		else if (strcoll(cv_name_get(cv), cv_name_get(bestcv)) > 0)
+		    bestcv = cv;
+	    }
+	    if (bestcv){
+		cprintf(fbuf, "%s", cv_string_get(bestcv));	 /* file path */
+		retval = 1; /* found */
+		goto done;
+	    }
+	    if (cvv){
+		cvec_free(cvv);
+		cvv = NULL;
+	    }
+	}
     }
 ok:
     retval = 0;
 done:
+    if (cvv)
+        cvec_free(cvv);
     if (regex)
         cbuf_free(regex);
-    if (dp)
-        free(dp);
     return retval;
 }
 
