@@ -1,4 +1,4 @@
-# Clixon Changelog
+v# Clixon Changelog
 
 * [5.4.0](#540) Expected: November
 * [5.3.0](#530) 27 September 2021
@@ -49,6 +49,13 @@ Thanks netgate for providing the dispatcher code!
 
 Users may have to change how they access the system
 
+* New `clixon-config@2021-11-11.yang` revision
+  * Modified options:
+    * CLICON_CLI_GENMODEL_TYPE: added OC_COMPRESS enum
+    * CLICON_YANG_DIR: recursive search
+* The behavior of option `CLICON_YANG_DIR` to find the most recent yang file has been changed
+  * Instead of searching a flat dir, it now searches recursively in the given dir
+  * See [Recursive search CLIXON_YANG_DIR](https://github.com/clicon/clixon/issues/284)
 * Pagination is updated to new drafts:
   * [https://datatracker.ietf.org/doc/html/draft-wwlh-netconf-list-pagination-00>]
    * Note removed import of system-capabilities.yang
