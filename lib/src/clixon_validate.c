@@ -1151,6 +1151,59 @@ xml_yang_validate_list_key_only(cxobj        *xt,
     goto done;
 }
 
+static int
+xml_yang_validate_leaf_union(clicon_handle h,
+			     cxobj        *xt,
+			     yang_stmt    *yt,
+			     yang_stmt    *yrestype,
+			     cxobj       **xret)
+{
+    int        retval = -1;
+    int        ret;
+    yang_stmt *yc = NULL;
+    cxobj     *xret1 = NULL;
+    
+    /* Enough that one is valid, eg returns 1,otherwise fail */
+    while ((yc = yn_each(yrestype, yc)) != NULL){
+	if (yang_keyword_get(yc) != Y_TYPE)
+	    continue;
+	ret = 1; /* If not leafref/identityref it is valid on this level */
+	if (strcmp(yang_argument_get(yc), "leafref") == 0){
+	    if ((ret = validate_leafref(xt, yt, yc, &xret1)) < 0)
+		goto done;
+	}
+	else if (strcmp(yang_argument_get(yc), "identityref") == 0){
+	    if ((ret = validate_identityref(xt, yt, yc, &xret1)) < 0)
+		goto done;
+	}
+	else if (strcmp("union", yang_argument_get(yc)) == 0){
+	    if ((ret = xml_yang_validate_leaf_union(h, xt, yt, yc, &xret1)) < 0)
+		goto done;
+	}
+	if (ret == 1)
+	    break;
+	if (ret == 0 && xret1 != NULL) {
+	    /* If validation failed, save reason, reset error and continue,
+	     * save latest reason if nothing validates.
+	     */
+	    if (*xret)
+		xml_free(*xret);
+	    *xret = xret1;
+	    xret1 = NULL;
+	}
+    }
+    if (yc == NULL)
+	goto fail;
+    retval = 1;
+ done:
+    if (xret1)
+	xml_free(xret1);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Validate a single XML node with yang specification for all (not only added) entries
  * 1. Check leafrefs. Eg you delete a leaf and a leafref references it.
  * @param[in]  xt  XML node to be validated
@@ -1177,7 +1230,7 @@ xml_yang_validate_all(clicon_handle h,
 		      cxobj       **xret)
 {
     int        retval = -1;
-    yang_stmt *ys;  /* yang node */
+    yang_stmt *yt;  /* yang node associated with xt */
     yang_stmt *yc;  /* yang child */
     yang_stmt *ye;  /* yang must error-message */
     char      *xpath;
@@ -1192,8 +1245,7 @@ xml_yang_validate_all(clicon_handle h,
 
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
-    ys=xml_spec(xt);
-    if (ys==NULL){
+    if ((yt = xml_spec(xt)) == NULL){
 	if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1) {
 	    clicon_log(LOG_WARNING,
 		       "%s: %d: No YANG spec for %s, validation skipped",
@@ -1215,9 +1267,9 @@ xml_yang_validate_all(clicon_handle h,
 	    goto done;
 	goto fail;
     }
-    if (yang_config(ys) != 0){
+    if (yang_config(yt) != 0){
 	/* Node-specific validation */
-	switch (yang_keyword_get(ys)){
+	switch (yang_keyword_get(yt)){
 	case Y_ANYXML:
 	case Y_ANYDATA:
 	    goto ok;
@@ -1229,16 +1281,22 @@ xml_yang_validate_all(clicon_handle h,
 	       current xml tree
  	    */
 	    /* Get base type yc */
-	    if (yang_type_get(ys, NULL, &yc, NULL, NULL, NULL, NULL, NULL) < 0)
+	    if (yang_type_get(yt, NULL, &yc, NULL, NULL, NULL, NULL, NULL) < 0)
 		goto done;
 	    if (strcmp(yang_argument_get(yc), "leafref") == 0){
-		if ((ret = validate_leafref(xt, ys, yc, xret)) < 0)
+		if ((ret = validate_leafref(xt, yt, yc, xret)) < 0)
 		    goto done;
 		if (ret == 0)
 		    goto fail;
 		}
 	    else if (strcmp(yang_argument_get(yc), "identityref") == 0){
-		if ((ret = validate_identityref(xt, ys, yc, xret)) < 0)
+		if ((ret = validate_identityref(xt, yt, yc, xret)) < 0)
+		    goto done;
+		if (ret == 0)
+		    goto fail;
+	    }
+	    else if (strcmp("union", yang_argument_get(yc)) == 0){
+		if ((ret = xml_yang_validate_leaf_union(h, xt, yt, yc, xret)) < 0)
 		    goto done;
 		if (ret == 0)
 		    goto fail;
@@ -1250,7 +1308,7 @@ xml_yang_validate_all(clicon_handle h,
 	/* must sub-node RFC 7950 Sec 7.5.3. Can be several. 
 	 * XXX. use yang path instead? */
 	yc = NULL;
-	while ((yc = yn_each(ys, yc)) != NULL) {
+	while ((yc = yn_each(yt, yc)) != NULL) {
 	    if (yang_keyword_get(yc) != Y_MUST)
 		continue;
 	    xpath = yang_argument_get(yc); /* "must" has xpath argument */
@@ -1269,7 +1327,7 @@ xml_yang_validate_all(clicon_handle h,
 		    goto done;
 		}
 		cprintf(cb, "Failed MUST xpath '%s' of '%s' in module %s",
-			xpath, xml_name(xt),  yang_argument_get(ys_module(ys)));
+			xpath, xml_name(xt),  yang_argument_get(ys_module(yt)));
 		if (xret && netconf_operation_failed_xml(xret, "application", 
 						 ye?yang_argument_get(ye):cbuf_get(cb)) < 0)
 		    goto done;
@@ -1280,7 +1338,7 @@ xml_yang_validate_all(clicon_handle h,
 		nsc = NULL;
 	    }
 	}
-	if (yang_check_when_xpath(xt, xml_parent(xt), ys, &hit, &nr, &xpath) < 0)
+	if (yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath) < 0)
 	    goto done;
 	if (hit && nr == 0){
 	    if ((cb = cbuf_new()) == NULL){
@@ -1289,7 +1347,7 @@ xml_yang_validate_all(clicon_handle h,
 	    }
 	    cprintf(cb, "Failed WHEN condition of %s in module %s (WHEN xpath is %s)",
 		    xml_name(xt),
-		    yang_argument_get(ys_module(ys)),
+		    yang_argument_get(ys_module(yt)),
 		    xpath);
 	    if (xret && netconf_operation_failed_xml(xret, "application", 
 						     cbuf_get(cb)) < 0)
@@ -1305,7 +1363,7 @@ xml_yang_validate_all(clicon_handle h,
 	    goto fail;
     }
     /* Check unique and min-max after choice test for example*/
-    if (yang_config(ys) != 0){
+    if (yang_config(yt) != 0){
 	/* Checks if next level contains any unique list constraints */
 	if ((ret = check_list_unique_minmax(xt, xret)) < 0)
 	    goto done;

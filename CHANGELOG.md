@@ -97,6 +97,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* [type leafref in type union ineffective](https://github.com/clicon/clixon/issues/277)
+  * Leafrefs and identityrefs in unions were not validated correctly
 * [cl:autocli-op hide has no effect in yang submodule](https://github.com/clicon/clixon/issues/282)
 * [Doxygen - Typo in Input #275](https://github.com/clicon/clixon/issues/275)
 
