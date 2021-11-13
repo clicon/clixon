@@ -318,12 +318,6 @@ filter_xpath_again(clicon_handle h,
     /* reset flag */
     if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
 	goto done;
-    /* Add default global values */
-    if (xml_global_defaults(h, xret, nsc, xpath, yspec, 0) < 0)
-	goto done;
-    /* Add default recursive values */
-    if (xml_default_recurse(xret, 0) < 0)
-	goto done;
     retval = 0;
  done:
     return retval;

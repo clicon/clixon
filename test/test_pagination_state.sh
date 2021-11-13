@@ -135,7 +135,7 @@ xpath="$xpath0/es:numbers"
 testrun_start $xpath
 
 new "NETCONF get leaf-list member/numbers 0-10 alice"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"$xpath\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><offset>0</offset><limit>10</limit></list-pagination></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><stats><numbers>3</numbers><numbers>4</numbers><numbers>5</numbers><numbers>6</numbers><numbers>7</numbers><numbers>8</numbers></stats></member></members></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"$xpath\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><offset>0</offset><limit>10</limit></list-pagination></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><stats><numbers>3</numbers><numbers>4</numbers><numbers>5</numbers><numbers>6</numbers><numbers>7</numbers><numbers>8</numbers></stats></member></members></data></rpc-reply>]]>]]>$"
 
 # negative
 new "NETCONF get container, expect fail"
@@ -143,7 +143,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get conten
 
 xpath="/es:members/es:member[es:member-id='bob']/es:stats/es:numbers"
 new "NETCONF get leaf-list member/numbers 0-10 bob"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"$xpath\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><offset>0</offset><limit>10</limit></list-pagination></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>bob</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><stats><numbers>13</numbers><numbers>14</numbers><numbers>15</numbers><numbers>16</numbers><numbers>17</numbers><numbers>18</numbers></stats></member></members></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"$xpath\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><offset>0</offset><limit>10</limit></list-pagination></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>bob</member-id><stats><numbers>13</numbers><numbers>14</numbers><numbers>15</numbers><numbers>16</numbers><numbers>17</numbers><numbers>18</numbers></stats></member></members></data></rpc-reply>]]>]]>$"
 
 testrun_stop
 
@@ -152,7 +152,7 @@ xpath="/es:members/es:member/es:stats/es:numbers"
 testrun_start $xpath
 
 new "NETCONF get leaf-list member/numbers all"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"$xpath\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><offset>0</offset><limit>10</limit></list-pagination></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><stats><numbers>3</numbers><numbers>4</numbers><numbers>5</numbers><numbers>6</numbers><numbers>7</numbers><numbers>8</numbers></stats></member><member><member-id>bob</member-id><privacy-settings><post-visibility>public</post-visibility></privacy-settings><stats><numbers>13</numbers><numbers>14</numbers><numbers>15</numbers><numbers>16</numbers></stats></member></members></data></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get content=\"nonconfig\"><filter type=\"xpath\" select=\"$xpath\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><offset>0</offset><limit>10</limit></list-pagination></get></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><stats><numbers>3</numbers><numbers>4</numbers><numbers>5</numbers><numbers>6</numbers><numbers>7</numbers><numbers>8</numbers></stats></member><member><member-id>bob</member-id><stats><numbers>13</numbers><numbers>14</numbers><numbers>15</numbers><numbers>16</numbers></stats></member></members></data></rpc-reply>]]>]]>$"
 
 testrun_stop
 

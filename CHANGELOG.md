@@ -104,6 +104,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* [RPC get-conf method returned some content not specified by select filter](https://github.com/clicon/clixon/issues/281)
+  * Bug introduced when upgrading of list pagination
 * [type leafref in type union ineffective](https://github.com/clicon/clixon/issues/277)
   * Leafrefs and identityrefs in unions were not validated correctly
 * [cl:autocli-op hide has no effect in yang submodule](https://github.com/clicon/clixon/issues/282)
