@@ -1424,3 +1424,50 @@ clicon_hello_req(clicon_handle h,
 	xml_free(xret);
     return retval;
 }
+
+/*! Send a restart plugin request to backend server
+ * @param[in] h        CLICON handle
+ * @param[in] level    Debug level
+ * @retval    0        OK
+ * @retval   -1        Error and logged to syslog
+ */
+int
+clicon_rpc_restart_plugin(clicon_handle h, 
+			  char         *plugin)
+{
+    int                retval = -1;
+    struct clicon_msg *msg = NULL;
+    cxobj             *xret = NULL;
+    cxobj             *xerr;
+    char              *username;
+    uint32_t           session_id;
+    
+    if (session_id_check(h, &session_id) < 0)
+	goto done;
+    username = clicon_username_get(h);
+    if ((msg = clicon_msg_encode(session_id,
+				 "<rpc xmlns=\"%s\" username=\"%s\" %s><restart-plugin xmlns=\"%s\"><plugin>%s</plugin></restart-plugin></rpc>",
+				 NETCONF_BASE_NAMESPACE,
+				 username?username:"",
+				 NETCONF_MESSAGE_ID_ATTR,
+				 CLIXON_LIB_NS,
+				 plugin)) == NULL)
+	goto done;
+    if (clicon_rpc_msg(h, msg, &xret) < 0)
+	goto done;
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+	clixon_netconf_error(xerr, "Debug", NULL);
+	goto done;
+    }
+    if (xpath_first(xret, NULL, "//rpc-reply/ok") == NULL){
+	clicon_err(OE_XML, 0, "rpc error"); /* XXX extract info from rpc-error */
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (msg)
+	free(msg);
+    if (xret)
+	xml_free(xret);
+    return retval;
+}

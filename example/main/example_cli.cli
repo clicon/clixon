@@ -106,3 +106,4 @@ notify("Get notifications from backend"), cli_notify("EXAMPLE", "1", "text");
 no("Negate") notify("Get notifications from backend"), cli_notify("EXAMPLE", "0", "xml");
 lock,cli_lock("candidate");
 unlock,cli_unlock("candidate");
+restart <plugin:string>, cli_restart_plugin();

@@ -1320,3 +1320,33 @@ cli_help(clicon_handle h, cvec *vars, cvec *argv)
     return cligen_help(ch, stdout, pt);
 }
 
+/*! CLI support function for restarting a plugin
+ *
+ * @param[in] h      Clicon handle
+ * @param[in] cvv    Not used
+ * @param[in] arg    A string with <database>  
+ * @code
+ * restart("comment") , cli_restart_plugin("myplugin", "restart"); 
+ * @endcode
+ */
+int 
+cli_restart_plugin(clicon_handle h,
+		   cvec         *cvv,
+	    cvec         *argv)
+{
+    int     retval = -1;
+    cg_var *cv;
+    char   *plugin;
+
+    if ((cv = cvec_find_var(cvv, "plugin")) == NULL){
+	if (cvec_len(argv) != 1){
+	    clicon_err(OE_PLUGIN, EINVAL, "Requires plugin variable");
+	    goto done;
+	}
+	cv = cvec_i(argv, 0);
+    }
+    plugin = cv_string_get(cv);
+    retval = clicon_rpc_restart_plugin(h, plugin);    
+ done:
+    return retval;
+}
