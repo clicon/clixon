@@ -2,11 +2,16 @@
 # Test: XML parser tests and JSON translation
 #  @see https://www.w3.org/TR/2008/REC-xml-20081126
 #       https://www.w3.org/TR/2009/REC-xml-names-20091208
-#PROG="valgrind --leak-check=full --show-leak-kinds=all ../util/clixon_util_xml"
+# Note CDATA to JSON: in earlier versions, CDATA was stripped when converting to JSON
+# but this has been changed so that the CDATA is a part of the payload, eg shows up also in
+# JSON strings
+
 # Magic line must be first in script (see README.md)
+
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 : ${clixon_util_xml:="clixon_util_xml"}
+: ${clixon_util_json:="clixon_util_json"}
 
 new "xml parse"
 expecteof "$clixon_util_xml -o" 0 "<a><b/></a>" "^<a><b/></a>$"
@@ -42,10 +47,10 @@ new "xml CDATA right square bracket: ]"
 expecteofx "$clixon_util_xml -o" 0 "<a><![CDATA[]]]></a>" "<a><![CDATA[]]]></a>"
 
 new "xml simple CDATA to json"
-expecteofx "$clixon_util_xml -o -j" 0 '<a><![CDATA[a text]]></a>' '{"a":"a text"}' 
-
-new "xml complex CDATA"
-XML=$(cat <<EOF
+expecteofx "$clixon_util_xml -o -j" 0 '<a><![CDATA[a text]]></a>' '{"a":"<![CDATA[a text]]>"}'
+# Example partly from https://www.w3resource.com/xml/attribute.php
+# XML complex CDATA (with comments for debug):;
+DUMMY=$(cat <<EOF
 <a><description>An example of escaped CENDs</description>
 <sometext><![CDATA[ They're saying "x < y" & that "z > y" so I guess that means that z > x ]]></sometext>
 <!-- This text contains a CEND ]]> -->
@@ -57,18 +62,39 @@ XML=$(cat <<EOF
 <alternative><![CDATA[This text contains a CEND ]]]><![CDATA[]>]]></alternative>
 </a>
 EOF
+   )
+# without comments
+XML=$(cat <<EOF
+<a><description>An example of escaped CENDs</description>
+<sometext><![CDATA[ They're saying "x < y" & that "z > y" so I guess that means that z > x ]]></sometext>
+<data><![CDATA[This text contains a CEND ]]]]><![CDATA[>]]></data>
+<alternative><![CDATA[This text contains a CEND ]]]><![CDATA[]>]]></alternative>
+</a>
+EOF
+   )
+XML=$(cat <<'EOF'
+<a><description>An example of escaped CENDs</description><sometext><![CDATA[ They're saying "x < y" & that "z > y" so I guess that means that z > x ]]></sometext><data><![CDATA[This text contains a CEND ]]]]><![CDATA[>]]></data><alternative><![CDATA[This text contains a CEND ]]]><![CDATA[]>]]></alternative></a>
+EOF
 )
 
-expecteof "$clixon_util_xml -o" 0 "$XML" "^<a><description>An example of escaped CENDs</description><sometext>
-<![CDATA[ They're saying \"x < y\" & that \"z > y\" so I guess that means that z > x ]]>
-</sometext><data><![CDATA[This text contains a CEND ]]]]><![CDATA[>]]></data><alternative><![CDATA[This text contains a CEND ]]]><![CDATA[]>]]></alternative></a>$"
+new "complex CDATA xml to xml"
+expecteof "$clixon_util_xml -o" 0 "$XML" "^$XML
+$"
 
 JSON=$(cat <<EOF
-{"a":{"description":"An example of escaped CENDs","sometext":" They're saying \"x < y\" & that \"z > y\" so I guess that means that z > x ","data":"This text contains a CEND ]]>","alternative":"This text contains a CEND ]]>"}}
+{"a":{"description":"An example of escaped CENDs","sometext":"<![CDATA[ They're saying \"x < y\" & that \"z > y\" so I guess that means that z > x ]]>","data":"<![CDATA[This text contains a CEND ]]]]><![CDATA[>]]>","alternative":"<![CDATA[This text contains a CEND ]]]><![CDATA[]>]]>"}}
 EOF
 )       
-new "xml complex CDATA to json"
+new "complex CDATA xml to json"
 expecteofx "$clixon_util_xml -oj" 0 "$XML" "$JSON"
+
+# reverse
+new "complex CDATA json to json"
+expecteofx "$clixon_util_json -j" 0 "$JSON" "$JSON"
+
+# reverse
+new "complex CDATA json to xml"
+expecteofx "$clixon_util_json" 0 "$JSON" "$XML"
 
 XML=$(cat <<EOF
 <message>Less than: &lt; , greater than: &gt; ampersand: &amp; </message>

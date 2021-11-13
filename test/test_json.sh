@@ -134,12 +134,9 @@ JSON='{"data": {"a": [],"b": [{"name": 17},{"name": []},{"name": 99}]}}'
 new "empty list followed by list again empty"
 expecteofx "$clixon_util_json" 0 "$JSON" "<data><a/><b><name>17</name></b><b><name/></b><b><name>99</name></b></data>"
 
-# XXX CDATA translation, should work but does not
-if false; then
-JSON='{"json:c": {"s": "<![CDATA[  z > x  & x < y ]]>"}}'
+JSON='{"json:c":{"s":"<![CDATA[  z > x  & x < y ]]>"}}'
 new "json parse cdata xml"
 expecteofx "$clixon_util_json -j -y $fyang" 0 "$JSON" "$JSON"
-fi
 
 rm -rf $dir
 

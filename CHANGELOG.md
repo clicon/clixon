@@ -49,6 +49,13 @@ Thanks netgate for providing the dispatcher code!
 
 Users may have to change how they access the system
 
+* XML to JSON CDATA translation is NOT stripped
+  * Example, assume XML: `<s><![CDATA[  z > x  & x < y ]]></s>` 
+  * Previous bevavior:
+    * JSON: {"s":"  z > x  & x < y "}
+  * New behavior:
+    * JSON: `{"s":"<![CDATA[  z > x  & x < y ]]>"}`  
+  * To keep old behavior, set `JSON_CDATA_STRIP` in clixon_custom.h
 * New `clixon-config@2021-11-11.yang` revision
   * Modified options:
     * CLICON_CLI_GENMODEL_TYPE: added OC_COMPRESS enum

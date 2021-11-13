@@ -256,9 +256,11 @@ json_str_escape_cdata(cbuf *cb,
 {
     int   retval = -1;
     int   i;
-    int   esc = 0; /* cdata escape */
     size_t len;
-
+#ifdef JSON_CDATA_STRIP
+    int   esc = 0; /* cdata escape */
+#endif
+    
     len = strlen(str);
     for (i=0; i<len; i++)
 	switch (str[i]){
@@ -271,6 +273,7 @@ json_str_escape_cdata(cbuf *cb,
 	case '\\':
 	    cprintf(cb, "\\\\");
 	    break;
+#ifdef JSON_CDATA_STRIP
 	case '<':
 	    if (!esc &&
 		strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
@@ -289,6 +292,7 @@ json_str_escape_cdata(cbuf *cb,
 	    else
 		cprintf(cb, "%c", str[i]);
 	    break;
+#endif /* JSON_CDATA_STRIP */
 	default: /* fall thru */
 	    cprintf(cb, "%c", str[i]);
 	    break;
