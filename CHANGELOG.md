@@ -94,7 +94,8 @@ Developers may need to change their code
   * Check blocked signals and signal handlers
   * Check termios settings
   * Any changes to context are logged at loglevel WARNING
-* Added set/get pointer API to clixon_data:
+* [OpenConfig path compression](https://github.com/clicon/clixon/pull/276)
+* C API: Added set/get pointer API to clixon_data:
    * clicon_ptr_get(), clicon_ptr_set(), 
 * Restconf YANG PATCH according to RFC 8072
   * Changed YANG PATCH enabling:

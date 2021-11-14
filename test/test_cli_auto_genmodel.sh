@@ -109,11 +109,6 @@ module $APPNAME {
 	  }
 	}
       }
-      leaf enabled {
-	type boolean;
-	default false;
-	description "Whether the interface is enabled or not.";
-      }
     }
   }
 }
@@ -126,7 +121,7 @@ module ${APPNAME}2 {
   prefix ex2;
   import openconfig-extensions { prefix oc-ext; }
   container interfaces2 {
-    list interface {
+    list interface2 {
       key name;
       leaf name {
        type string;
@@ -152,11 +147,6 @@ module ${APPNAME}2 {
 	    }
 	  }
 	}
-      }
-      leaf enabled {
-	type boolean;
-	default false;
-	description "Whether the interface is enabled or not.";
       }
     }
   }
@@ -305,12 +295,23 @@ expectpart "$($clixon_cli -1 -f $cfg show state exstate)" 0 "state sender x" --n
 
 #---- openconfig path compression
 
-new "Openconfig: check no config path"
-expectpart "$($clixon_cli -1 -f $cfg set interfaces interface e config enabled true 2>&1)" 255 "Unknown command"
+new "Openconfig: OC_COMPRESS+extension: compressed)"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_GENMODEL_TYPE=OC_COMPRESS set interface e enabled true 2>&1)" 0 "^$"
 
-# negative test
-new "Openconfig: check exist config path"
-expectpart "$($clixon_cli -1 -f $cfg set interfaces2 interface e config enabled true 2>&1)" 0 "^$"
+new "Openconfig: OC_COMPRESS+extension: no config (negative)"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_GENMODEL_TYPE=OC_COMPRESS set interface e config enabled true 2>&1)" 255 "Unknown command"
+
+new "Openconfig: OC_COMPRESS+no-extension: no config"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_GENMODEL_TYPE=OC_COMPRESS set interface2 e config enabled true 2>&1)" 0 "^$"
+
+new "Openconfig: OC_COMPRESS+no-extension: no config (negative)"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_GENMODEL_TYPE=OC_COMPRESS set interface2 e enabled true 2>&1)" 255 "Unknown command"
+
+new "Openconfig: OC_VARS+extension: no compresssion"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_GENMODEL_TYPE=VARS set interfaces interface e config enabled true 2>&1)" 0 "^$"
+
+new "Openconfig: OC_VARS+extension: no compresssion (negative)"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_GENMODEL_TYPE=VARS set interfaces interface e enabled true 2>&1)" 255 "Unknown command"
 
 new "Kill backend"
 # Check if premature kill

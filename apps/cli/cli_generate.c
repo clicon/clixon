@@ -834,26 +834,27 @@ yang2cli_container(clicon_handle h,
     char         *s;
     int           hide = 0;
     int           hide_oc = 0;
-    int           exist = 0;
+    int           isoc = 0;
     char         *opext = NULL;
     yang_stmt    *ymod = NULL;
 
-
     if (ys_real_module(ys, &ymod) < 0)
-      goto done;
-    if (yang_extension_value(ymod, "openconfig-version", "http://openconfig.net/yang/openconfig-ext", &exist, NULL) < 0)
-      goto done;
-    if (exist) {
-      if (strcmp(yang_argument_get(ys), "config") == 0){
-	hide_oc = 1;
-      }
+	goto done;
+    /* Hide container "config" if openconfig and OC_COMPRESS */
+    if (strcmp(yang_argument_get(ys), "config") == 0){
+	if (0) fprintf(stderr, "%s config\n", __FUNCTION__);
+	if (yang_extension_value(ymod, "openconfig-version", "http://openconfig.net/yang/openconfig-ext", &isoc, NULL) < 0)
+	    goto done;
+	if (isoc &&
+	    gt == GT_OC_COMPRESS)
+	    hide_oc = 1;
     }
 
     /* If non-presence container && HIDE mode && only child is 
      * a list, then skip container keyword
      * See also xml2cli
      */
-     if ((hide = yang_container_cli_hide(ys, gt)) == 0 && hide_oc == 0){
+    if ((hide = yang_container_cli_hide(ys, gt)) == 0 && hide_oc == 0){
 	cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
 	if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
 	    if ((helptext = strdup(yang_argument_get(yd))) == NULL){
@@ -882,10 +883,10 @@ yang2cli_container(clicon_handle h,
     yc = NULL;
     while ((yc = yn_each(ys, yc)) != NULL) 
 	if (yang2cli_stmt(h, yc, gt, level+1, state, show_tree, cb) < 0)
-	   goto done;
-  if (hide == 0 && hide_oc == 0)
-	   cprintf(cb, "%*s}\n", level*3, "");
-  retval = 0;
+	    goto done;
+    if (hide == 0 && hide_oc == 0)
+	cprintf(cb, "%*s}\n", level*3, "");
+    retval = 0;
  done:
     if (helptext)
 	free(helptext);
