@@ -245,6 +245,49 @@ xml_print(FILE  *f,
     return xml2file_recurse(f, x, 0, 1, fprintf);
 }
 
+static int
+xml_dump1(FILE  *f, 
+	  cxobj *x,
+	  int    indent)
+{
+    cxobj *xc;
+    
+    if (xml_type(x) != CX_ELMNT)
+	return 0;
+    fprintf(stderr, "%*s %s(%s)",
+	    indent*3, "",
+	    //	    x,
+	    xml_name(x),
+	    xml_type2str(xml_type(x)));
+    if (xml_flag(x, XML_FLAG_ADD))
+	fprintf(stderr, " add");
+    if (xml_flag(x, XML_FLAG_DEL))
+	fprintf(stderr, " delete");
+    if (xml_flag(x, XML_FLAG_CHANGE))
+	fprintf(stderr, " change");
+    if (xml_flag(x, XML_FLAG_MARK))
+	fprintf(stderr, " mark");
+    fprintf(stderr, "\n");
+    xc = NULL;
+    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+	xml_dump1(f, xc, indent+1);
+    }
+    return 0;
+}
+	 
+/*! Dump cxobj structure with pointers and flags for debugging
+ *
+ * @param[in]   f    UNIX output stream
+ * @param[in]   x    Clixon xml tree
+ * @see xml_print
+ */
+int
+xml_dump(FILE  *f, 
+	 cxobj *x)
+{
+    return xml_dump1(f, x, 0);
+}
+
 /*! Print an XML tree structure to a cligen buffer and encode chars "<>&"
  *
  * @param[in,out] cb          Cligen buffer to write to
