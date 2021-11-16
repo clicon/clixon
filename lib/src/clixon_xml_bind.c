@@ -521,11 +521,11 @@ xml_bind_yang0(cxobj     *xt,
  * @retval     -1      Error
  * The 
  * @code
- *   if (xml_bind_yang_rpc(x, NULL) < 0)
+ *   if ((ret = xml_bind_yang_rpc(x, NULL, &xerr)) < 0)
  *      err;
  * @endcode
  * @see xml_bind_yang  For other generic cases
- * @see xml_bind_yang_rpc_reply
+ * @see xml_bind_yang_rpc_reply 
  */
 int
 xml_bind_yang_rpc(cxobj        *xrpc,
@@ -666,7 +666,7 @@ xml_bind_yang_rpc(cxobj        *xrpc,
  * @retval     -1      Error
  *
  * @code
- *   if (xml_bind_yang_rpc_reply(x, "get-config", yspec, name) < 0)
+ *   if ((ret = xml_bind_yang_rpc_reply(x, "get-config", yspec, &xerr)) < 0)
  *      err;
  * @endcode
  * @see xml_bind_yang  For other generic cases
@@ -686,6 +686,7 @@ xml_bind_yang_rpc_reply(cxobj     *xrpc,
     cxobj     *xerr1 = NULL;
     char      *opname;
     cbuf      *cberr = NULL;
+    cxobj     *xc;
     
     opname = xml_name(xrpc);
     if (strcmp(opname, "rpc-reply")){
@@ -716,6 +717,13 @@ xml_bind_yang_rpc_reply(cxobj     *xrpc,
     }
     if (yo != NULL){
 	xml_spec_set(xrpc, yo); 
+	/* Special case for ok and rpc-error */
+	if ((xc = xml_child_i_type(xrpc, 0, CX_ELMNT)) != NULL &&
+	    (strcmp(xml_name(xc),"rpc-error") == 0
+	     || strcmp(xml_name(xc),"ok") == 0
+	     )){
+	    goto ok;
+	}
 	/* Use a temporary xml error tree since it is stringified in the original error on error */
 	if ((ret = xml_bind_yang(xrpc, YB_PARENT, NULL, &xerr1)) < 0)
 	    goto done;
@@ -732,6 +740,7 @@ xml_bind_yang_rpc_reply(cxobj     *xrpc,
 	    goto fail;
 	}
     }
+ ok:
     retval = 1;
  done:
     if (cberr)

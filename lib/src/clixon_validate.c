@@ -69,6 +69,7 @@
 #include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_data.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_options.h"
 #include "clixon_xml_nsctx.h"
@@ -78,6 +79,7 @@
 #include "clixon_yang_module.h"
 #include "clixon_yang_type.h"
 #include "clixon_xml_map.h"
+#include "clixon_xml_bind.h"
 #include "clixon_validate.h"
 
 /*! Validate xml node of type leafref, ensure the value is one of that path's reference
@@ -392,6 +394,67 @@ xml_yang_validate_rpc(clicon_handle h,
     xn = NULL;
     /* xn is name of rpc, ie <rcp><xn/></rpc> */
     while ((xn = xml_child_each(xrpc, xn, CX_ELMNT)) != NULL) {
+	if ((yn = xml_spec(xn)) == NULL){
+	    if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xn), NULL) < 0)
+		goto done;
+	    goto fail;
+	}
+	if ((ret = xml_yang_validate_all(h, xn, xret)) < 0) 
+	    goto done; /* error or validation fail */
+	if (ret == 0)
+	    goto fail;
+	if ((ret = xml_yang_validate_add(h, xn, xret)) < 0)
+	    goto done; /* error or validation fail */
+	if (ret == 0)
+	    goto fail;
+	if (xml_default_recurse(xn, 0) < 0)
+	    goto done;
+    }
+    // ok: /* pass validation */
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    if (xret && *xret && clixon_xml_attr_copy(xrpc, *xret, "message-id") < 0)
+	goto done;
+    retval = 0;
+    goto done;
+}
+
+int
+xml_yang_validate_rpc_reply(clicon_handle h,
+			    cxobj        *xrpc,
+			    cxobj       **xret)
+{
+    int        retval = -1;
+    yang_stmt *yn=NULL;  /* rpc name */
+    cxobj     *xn;       /* rpc name */
+    char      *rpcprefix;
+    char      *namespace = NULL;
+    int        ret;
+    
+    if (strcmp(xml_name(xrpc), "rpc-reply")){
+	clicon_err(OE_XML, EINVAL, "Expected RPC");
+	goto done;
+    }
+    rpcprefix = xml_prefix(xrpc);
+    if (xml2ns(xrpc, rpcprefix, &namespace) < 0)
+	goto done;
+    /* Only accept resolved NETCONF base namespace */
+    if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
+	if (xret && netconf_unknown_namespace_xml(xret, "protocol",
+						  rpcprefix?rpcprefix:"null",
+						  "No appropriate namespace associated with prefix")< 0)
+	    goto done;
+	goto fail;
+    }
+    xn = NULL;
+    /* xn is name of rpc, ie <rcp><xn/></rpc> */
+    while ((xn = xml_child_each(xrpc, xn, CX_ELMNT)) != NULL) {
+	/* OK and rpc-error are not explicit in ietf-netconf.yang.  Why are they hardcoded ? */
+	if (strcmp(xml_name(xn), "ok") == 0 || strcmp(xml_name(xn), "rpc-error") == 0){
+	    continue;
+	}
 	if ((yn = xml_spec(xn)) == NULL){
 	    if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xn), NULL) < 0)
 		goto done;
@@ -1404,4 +1467,65 @@ xml_yang_validate_all_top(clicon_handle h,
     if ((ret = check_list_unique_minmax(xt, xret)) < 1)
 	return ret;
     return 1;
+}
+
+/*! Check validity of outgoing RPC
+ *
+ * Rewrite return message if errors
+ * @param[in,out]  cbret
+ * @note Parses cbret which seems one time too many
+ */
+int
+rpc_reply_check(clicon_handle h,
+		char         *rpcname,
+		cbuf         *cbret)
+{
+    int    retval = -1;
+    cxobj *x = NULL;
+    cxobj *xret = NULL;
+    int    ret;
+    yang_stmt *yspec;
+
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec9");
+	goto done;
+    }
+    /* Validate outgoing RPC */
+    if ((ret = clixon_xml_parse_string(cbuf_get(cbret), YB_NONE, NULL, &x, NULL)) < 0)
+	goto done;
+    if (xml_child_nr(x) == 0){
+	cbuf_reset(cbret);
+	if (netconf_operation_failed(cbret, "application",
+				     "Internal error: Outgoing reply is empty")< 0)
+	    goto done;
+	goto fail;
+    }
+    if (xml_rootchild(x, 0, &x) < 0)
+	goto done;
+    if ((ret = xml_bind_yang_rpc_reply(x, rpcname, yspec, &xret)) < 0)
+	goto done;
+    if (ret == 0){
+	cbuf_reset(cbret);
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+	    goto done;
+	goto fail;
+    }
+    if ((ret = xml_yang_validate_rpc_reply(h, x, &xret)) < 0)
+	goto done;
+    if (ret == 0){
+	cbuf_reset(cbret);
+	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
+	    goto done;
+	goto fail;
+    }
+    retval = 1;
+ done:
+    if (x)
+	xml_free(x);
+    if (xret)
+	xml_free(xret);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }

@@ -588,6 +588,7 @@ netconf_application_rpc(clicon_handle h,
     cbuf          *cb = NULL;
     cbuf          *cbret = NULL;
     int            ret;
+    int            nr = 0;
     
     /* First check system / netconf RPC:s */
     if ((cb = cbuf_new()) == NULL){
@@ -623,9 +624,13 @@ netconf_application_rpc(clicon_handle h,
     if (yrpc != NULL){
 	/* No need to check xn arguments with input statement since already bound and validated. */
 	/* Look for local (client-side) netconf plugins. */
-	if ((ret = rpc_callback_call(h, xn, cbret, NULL)) < 0)
+	if ((ret = rpc_callback_call(h, xn, NULL, &nr, cbret)) < 0)
 	    goto done;
-	if (ret > 0){ /* Handled locally */
+	if (ret == 0){
+	    if (clixon_xml_parse_string(cbuf_get(cbret), YB_NONE, NULL, xret, NULL) < 0)
+		goto done;
+	}
+	else if (nr > 0){ /* Handled locally */
 	    if (clixon_xml_parse_string(cbuf_get(cbret), YB_NONE, NULL, xret, NULL) < 0)
 		goto done;
 	}

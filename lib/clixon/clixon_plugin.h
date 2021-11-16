@@ -395,8 +395,7 @@ int clixon_plugin_datastore_upgrade_all(clicon_handle h, const char *db, cxobj *
 
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, const char *ns, const char *name);
-int rpc_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg);
-
+int rpc_callback_call(clicon_handle h, cxobj *xe, void *arg, int *nrp, cbuf *cbret);
 /* upgrade callback API */
 int upgrade_callback_reg_fn(clicon_handle h, clicon_upgrade_cb cb, const char *strfn, const char *ns, void *arg);
 int upgrade_callback_call(clicon_handle h, cxobj *xt, char *ns, uint16_t op, uint32_t from, uint32_t to, cbuf *cbret);

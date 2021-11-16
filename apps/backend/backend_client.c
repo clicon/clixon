@@ -217,14 +217,15 @@ clixon_stats_get_db(clicon_handle h,
 	xt = xmldb_cache_get(h, dbname);
     }
     if (xt == NULL){
-	cprintf(cb, "<datastore><name>%s</name><nr>0</nr><size>0</size></datastore>", dbname);
+	cprintf(cb, "<datastore xmlns=\"%s\"><name>%s</name><nr>0</nr><size>0</size></datastore>",
+		CLIXON_LIB_NS, dbname);
     }
     else{
 	if (xml_stats(xt, &nr, &sz) < 0)
 	    goto done;
-	cprintf(cb, "<datastore><name>%s</name><nr>%" PRIu64 "</nr>"
+	cprintf(cb, "<datastore xmlns=\"%s\"><name>%s</name><nr>%" PRIu64 "</nr>"
 		"<size>%zu</size></datastore>",
-		dbname, nr, sz);
+		CLIXON_LIB_NS, dbname, nr, sz);
     }
     retval = 0;
  done:
@@ -1001,7 +1002,7 @@ from_client_stats(clicon_handle h,
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     nr=0;
     xml_stats_global(&nr);
-    cprintf(cbret, "<global><xmlnr>%" PRIu64 "</xmlnr></global>", nr);
+    cprintf(cbret, "<global xmlns=\"%s\"><xmlnr>%" PRIu64 "</xmlnr></global>", CLIXON_LIB_NS, nr);
     if (clixon_stats_get_db(h, "running", cbret) < 0)
 	goto done;
     if (clixon_stats_get_db(h, "candidate", cbret) < 0)
@@ -1136,6 +1137,7 @@ from_client_hello(clicon_handle       h,
     return retval;
 }
 
+
 /*! An internal clicon message has arrived from a client. Receive and dispatch.
  * @param[in]   h    Clicon handle
  * @param[in]   s    Socket where message arrived. read from this.
@@ -1168,6 +1170,7 @@ from_client_msg(clicon_handle        h,
     char                *rpcname;
     char                *rpcprefix;
     char                *namespace = NULL;
+    int                  nr = 0;
     
     clicon_debug(1, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h); 
@@ -1295,13 +1298,15 @@ from_client_msg(clicon_handle        h,
 		goto reply;
 	}
 	clicon_err_reset();
-	if ((ret = rpc_callback_call(h, xe, cbret, ce)) < 0){
+	if ((ret = rpc_callback_call(h, xe, ce, &nr, cbret)) < 0){
 	    if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
 		goto done;
 	    clicon_log(LOG_NOTICE, "%s Error in rpc_callback_call:%s", __FUNCTION__, xml_name(xe));
 	    goto reply; /* Dont quit here on user callbacks */
 	}
-	if (ret == 0){ /* not handled by callback */
+	if (ret == 0)
+	    goto reply;
+	if (nr == 0){ /* not handled by callback */
 	    if (netconf_operation_not_supported(cbret, "application", "RPC operation not supported")< 0)
 		goto done;
 	    goto reply;

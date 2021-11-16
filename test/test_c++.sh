@@ -101,7 +101,7 @@ int example_rpc(clicon_handle h,
 	      clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
 	      goto done;
     }
-    cprintf(cbret, "<rpc-reply>");
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     if (!xml_child_nr_type(xe, CX_ELMNT))
 	      cprintf(cbret, "<ok/>");
     else

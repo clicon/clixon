@@ -49,6 +49,9 @@ Thanks netgate for providing the dispatcher code!
 
 Users may have to change how they access the system
 
+* RPC replies now verified with YANG
+  * Stricter checking of outgoing RPC replies from server
+  * See [RPC output not verified by yang](https://github.com/clicon/clixon/issues/283)
 * XML to JSON CDATA translation is NOT stripped
   * Example, assume XML: `<s><![CDATA[  z > x  & x < y ]]></s>` 
   * Previous bevavior:
@@ -100,6 +103,7 @@ Developers may need to change their code
   * Any changes to context are logged at loglevel WARNING
 * [OpenConfig path compression](https://github.com/clicon/clixon/pull/276)
 * C API: Added set/get pointer API to clixon_data:
+   * Changed signature of `rpc_callback_call()`
    * Added json/cli support for cli save/load
    * clicon_ptr_get(), clicon_ptr_set(), 
 * Restconf YANG PATCH according to RFC 8072
@@ -110,6 +114,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* [RPC output not verified by yang](https://github.com/clicon/clixon/issues/283)
 * [Statements given in "load set" are order dependent](https://github.com/clicon/clixon/issues/287)
   * Modify ordering of XML encoding to put sub-elements with YANG WHEN statements last
 * [RPC get-conf method returned some content not specified by select filter](https://github.com/clicon/clixon/issues/281)

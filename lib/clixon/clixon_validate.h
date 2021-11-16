@@ -44,9 +44,11 @@
  * Prototypes
  */
 int xml_yang_validate_rpc(clicon_handle h, cxobj *xrpc, cxobj **xret);
+int xml_yang_validate_rpc_reply(clicon_handle h, cxobj *xrpc, cxobj **xret);
 int xml_yang_validate_add(clicon_handle h, cxobj *xt, cxobj **xret);
 int xml_yang_validate_list_key_only(cxobj *xt, cxobj **xret);
 int xml_yang_validate_all(clicon_handle h, cxobj *xt, cxobj **xret);
 int xml_yang_validate_all_top(clicon_handle h, cxobj *xt, cxobj **xret);
+int rpc_reply_check(clicon_handle h, char *rpcname, cbuf *cbret);
 
 #endif  /* _CLIXON_VALIDATE_H_ */

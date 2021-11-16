@@ -66,6 +66,7 @@
 #include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_yang_module.h"
+#include "clixon_validate.h"
 #include "clixon_plugin.h"
 
 /*
@@ -1093,13 +1094,14 @@ rpc_callback_delete_all(clicon_handle h)
 
 /*! Search RPC callbacks and invoke if XML match with tag
  *
- * @param[in]  h       clicon handle
- * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
- * @param[out] cbret   Return XML (as string in CLIgen buffer), error or OK
- * @param[in]  arg     Domain-speific arg (eg client_entry)
+ * @param[in]   h       clicon handle
+ * @param[in]   xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
+ * @param[in]   arg     Domain-speific arg (eg client_entry)
+ * @param[out]  nr      Number of callbacks handled: 0, 1, n (retval = 1)
+ * @param[out]  cbret   Return XML (as string in CLIgen buffer), error or OK
  * @retval -1   Error
- * @retval  0   OK, not found handler.
- * @retval  n   OK, <n> handler called 
+ * @retval  0   Failed, error return in cbret
+ * @retval  1   OK, see nr
  * @see rpc_callback_register  which register a callback function
  * @note that several callbacks can be registered. They need to cooperate on
  * return values, ie if one writes cbret, the other needs to handle that by
@@ -1108,8 +1110,9 @@ rpc_callback_delete_all(clicon_handle h)
 int
 rpc_callback_call(clicon_handle h,
 		  cxobj        *xe, 
-		  cbuf         *cbret,
-		  void         *arg)
+		  void         *arg,
+		  int          *nrp,
+		  cbuf         *cbret)
 {
     int            retval = -1;
     rpc_callback_t       *rc;
@@ -1119,6 +1122,7 @@ rpc_callback_call(clicon_handle h,
     int                   nr = 0; /* How many callbacks */
     plugin_module_struct *ms = plugin_module_struct_get(h);
     plugin_context_t     *pc = NULL;
+    int                   ret;
 
     if (ms == NULL){
 	clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
@@ -1148,12 +1152,22 @@ rpc_callback_call(clicon_handle h,
 	    }
 	    rc = NEXTQ(rpc_callback_t *, rc);
 	} while (rc != ms->ms_rpc_callbacks);
-    retval = nr; /* 0: none found, >0 nr of handlers called */
+    if (nr){
+	if ((ret = rpc_reply_check(h, name, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
+    *nrp = nr;
+    retval = 1; /* 0: none found, >0 nr of handlers called */
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (pc)
 	free(pc);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*--------------------------------------------------------------------

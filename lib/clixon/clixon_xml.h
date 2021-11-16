@@ -147,7 +147,7 @@ enum yang_bind{
 		  * Ie, xml looks like: <top><config><x>... where "x" is a top-level symbol in a module
 		  */
     YB_PARENT,   /* Assume yang binding of existing parent and match its children by name */
-    YB_RPC,      /* Assume top-level xml is an netconf RPC message (or hello) */
+    YB_RPC,      /* Assume top-level xml is an incoming netconf RPC message (or hello) */
 
 };
 typedef enum yang_bind yang_bind;

@@ -712,6 +712,7 @@ api_operations_post(clicon_handle h,
     char      *id = NULL;
     yang_stmt *ys = NULL;
     char      *namespace = NULL;
+    int        nr = 0;
     
     clicon_debug(1, "%s json:\"%s\" path:\"%s\"", __FUNCTION__, data, api_path);
     /* 1. Initialize */
@@ -826,9 +827,16 @@ api_operations_post(clicon_handle h,
     /* Look for local (client-side) restconf plugins. 
      * -1:Error, 0:OK local, 1:OK backend 
      */
-    if ((ret = rpc_callback_call(h, xbot, cbret, req)) < 0)
+    if ((ret = rpc_callback_call(h, xbot, req, &nr, cbret)) < 0)
 	goto done;
-    if (ret > 0){ /* Handled locally */
+    if (ret == 0){
+	if (clixon_xml_parse_string(cbuf_get(cbret), YB_NONE, NULL, &xe, NULL) < 0)
+	    goto done;
+	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+	    goto done;
+	goto ok;
+    }
+    else if (nr > 0){ /* Handled locally */
 	if (clixon_xml_parse_string(cbuf_get(cbret), YB_NONE, NULL, &xret, NULL) < 0)
 	    goto done;
 	/* Local error: return it and quit */
