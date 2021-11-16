@@ -110,13 +110,13 @@ new "cli commit"
 expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
 
 new "cli save"
-expectpart "$($clixon_cli -1 -f $cfg -l o save /tmp/foo)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o save $dir/foo)" 0 "^$"
 
 new "cli delete all"
 expectpart "$($clixon_cli -1 -f $cfg -l o delete all)" 0 "^$"
 
 new "cli load"
-expectpart "$($clixon_cli -1 -f $cfg -l o load /tmp/foo)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o load $dir/foo)" 0 "^$"
 
 new "cli check load"
 expectpart "$($clixon_cli -1 -f $cfg -l o show conf cli)" 0 "interfaces interface eth/0/0 ipv4 enabled true"

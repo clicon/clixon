@@ -95,10 +95,20 @@ show("Show a particular state of the system"){
     }
 }
 
-save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_file("candidate","filename");
+save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_file("candidate","filename", "xml");{
+    cli("Save configuration as CLI commands"), save_config_file("candidate","filename", "cli");
+    xml("Save configuration as XML"), save_config_file("candidate","filename", "xml");
+    json("Save configuration as JSON"), save_config_file("candidate","filename", "json");
+}
 load("Load configuration from XML file") <filename:string>("Filename (local filename)"),load_config_file("filename", "replace");{
-    replace("Replace candidate with file contents"), load_config_file("filename", "replace");
-    merge("Merge file with existent candidate"), load_config_file("filename", "merge");
+    replace("Replace candidate with file contents"), load_config_file("filename", "replace");{
+	xml("Replace candidate with file containing XML"), load_config_file("","filename", "replace", "xml");
+	json("Replace candidate with file containing JSON"), load_config_file("","filename", "replace", "json");
+    }
+    merge("Merge file with existent candidate"), load_config_file("filename", "merge");{
+	xml("Merge candidate with file containing XML"), load_config_file("","filename", "merge", "xml");
+	json("Merge candidate with file containing JSON"), load_config_file("","filename", "merge", "json");
+    }
 }
 example("This is a comment") <var:int32>("Just a random number"), mycallback("myarg");
 rpc("example rpc") <a:string>("routing instance"), example_client_rpc("");

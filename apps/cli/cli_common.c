@@ -772,8 +772,11 @@ compare_dbs(clicon_handle h,
  * Utility function used by cligen spec file
  * @param[in] h     CLICON handle
  * @param[in] cvv   Vector of variables (where <varname> is found)
- * @param[in] argv  A string: "<varname> (merge|replace)" 
+ * @param[in] argv  A string: "<varname> <operation> [<format>]"
  *   <varname> is name of a variable occuring in "cvv" containing filename
+ *   <operation> : merge or replace
+ *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
+ * 
  * @note that "filename" is local on client filesystem not backend. 
  * @note file is assumed to have a dummy top-tag, eg <clicon></clicon>
  * @code
@@ -798,13 +801,20 @@ load_config_file(clicon_handle h,
     cxobj      *xt = NULL;
     cxobj      *x;
     cbuf       *cbxml;
+    char              *formatstr;
+    enum format_enum   format = FORMAT_XML;
 
-    if (cvec_len(argv) != 2){
-	if (cvec_len(argv)==1)
-	    clicon_err(OE_PLUGIN, EINVAL, "Got single argument:\"%s\". Expected \"<varname>,<op>\"", cv_string_get(cvec_i(argv,0)));
-	else
-	    clicon_err(OE_PLUGIN, EINVAL, "Got %d arguments. Expected: <varname>,<op>", cvec_len(argv));
+    if (cvec_len(argv) < 2 || cvec_len(argv) > 4){
+	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<varname>[,<format>]",
+		   cvec_len(argv));
 	goto done;
+    }
+    if (cvec_len(argv) > 2){
+	formatstr = cv_string_get(cvec_i(argv, 2));
+	if ((int)(format = format_str2int(formatstr)) < 0){
+	    clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
+	    goto done;
+	}
     }
     varstr = cv_string_get(cvec_i(argv, 0));
     opstr  = cv_string_get(cvec_i(argv, 1));
@@ -830,8 +840,20 @@ load_config_file(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "open(%s)", filename);
 	goto done;
     }
-    if (clixon_xml_parse_file(fp, YB_NONE, NULL, &xt, NULL) < 0)
+    switch (format){
+    case FORMAT_XML:
+	if (clixon_xml_parse_file(fp, YB_NONE, NULL, &xt, NULL) < 0)
+	    goto done;
+	break;
+    case FORMAT_JSON:
+	if (clixon_json_parse_file(fp, YB_NONE, NULL, &xt, NULL) < 0)
+	    goto done;
+	break;
+    default:
+	clicon_err(OE_PLUGIN, 0, "format: %s not implemented", formatstr);
 	goto done;
+	break;
+    }
     if (xt == NULL)
 	goto done;
     if ((cbxml = cbuf_new()) == NULL)
@@ -858,13 +880,15 @@ load_config_file(clicon_handle h,
     return ret;
 }
 
-/*! Copy database to local file 
+/*! Copy database to local file as XMLn
+ *
  * Utility function used by cligen spec file
  * @param[in] h     CLICON handle
  * @param[in] cvv  variable vector (containing <varname>)
- * @param[in] argv  a string: "<dbname> <varname>" 
+ * @param[in] argv  a string: "<dbname> <varname> [<format>]" 
  *   <dbname>  is running, candidate, or startup
  *   <varname> is name of cligen variable in the "cvv" vector containing file name
+ *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
  * Note that "filename" is local on client filesystem not backend.
  * The function can run without a local database
  * @note The file is saved with dummy top-tag: clicon: <clicon></clicon>
@@ -878,33 +902,41 @@ save_config_file(clicon_handle h,
 		 cvec         *cvv, 
 		 cvec         *argv)
 {
-    int        retval = -1;
-    char      *filename = NULL;
-    cg_var    *cv;
-    char      *dbstr;
-    char      *varstr;
-    cxobj     *xt = NULL;
-    cxobj     *xerr;
-    FILE      *f = NULL;
+    int                retval = -1;
+    char              *filename = NULL;
+    cg_var            *cv;
+    char              *dbstr;
+    char              *varstr;
+    cxobj             *xt = NULL;
+    cxobj             *xc;
+    cxobj             *xerr;
+    FILE              *f = NULL;
+    enum genmodel_type gt;
+    char              *formatstr;
+    enum format_enum   format = FORMAT_XML;
+    char              *prefix = "set "; /* XXX hardcoded */
+    int                pretty = 1;     /* XXX hardcoded */
 
-    if (cvec_len(argv) != 2){
-	if (cvec_len(argv)==1)
-	    clicon_err(OE_PLUGIN, EINVAL, "Got single argument:\"%s\". Expected \"<dbname>,<varname>\"",
-		       cv_string_get(cvec_i(argv,0)));
-	else
-	    clicon_err(OE_PLUGIN, EINVAL, " Got %d arguments. Expected: <dbname>,<varname>",
-		       cvec_len(argv));
-
+    if (cvec_len(argv) < 2 || cvec_len(argv) > 4){
+	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<varname>[,<format>]",
+		   cvec_len(argv));
 	goto done;
     }
+    if (cvec_len(argv) > 2){
+	formatstr = cv_string_get(cvec_i(argv, 2));
+	if ((int)(format = format_str2int(formatstr)) < 0){
+	    clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
+	    goto done;
+	}
+    }
     dbstr = cv_string_get(cvec_i(argv, 0));
-    varstr  = cv_string_get(cvec_i(argv, 1));
     if (strcmp(dbstr, "running") != 0 && 
 	strcmp(dbstr, "candidate") != 0 &&
 	strcmp(dbstr, "startup") != 0) {
 	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
 	goto done;
     }
+    varstr  = cv_string_get(cvec_i(argv, 1));
     if ((cv = cvec_find(cvv, varstr)) == NULL){
 	clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);	
 	goto done;
@@ -929,8 +961,33 @@ save_config_file(clicon_handle h,
 	clicon_err(OE_CFG, errno, "Creating file %s", filename);
 	goto done;
     } 
-    if (clicon_xml2file(f, xt, 0, 1) < 0)
-	goto done;
+    switch (format){
+    case FORMAT_XML:
+	if (clicon_xml2file(f, xt, 0, pretty) < 0)
+	    goto done;
+	break;
+    case FORMAT_JSON:
+	if (xml2json(f, xt, pretty) < 0)
+	    goto done;
+	break;
+    case FORMAT_TEXT:
+	cli_xml2txt(xt, cligen_output, 0); /* tree-formed text */
+	break;
+    case FORMAT_CLI:
+	if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
+	    goto done;
+	if (xml2cli(f, xt, prefix, gt) < 0)
+	    goto done;
+	break;
+    case FORMAT_NETCONF:
+	fprintf(f, "<rpc xmlns=\"%s\"><edit-config><target><candidate/></target><config>",
+		NETCONF_BASE_NAMESPACE);
+	fprintf(f, "\n");
+	if (clicon_xml2file(f, xt, 0, pretty) < 0)
+	    goto done;
+	fprintf(f, "</config></edit-config></rpc>]]>]]>\n");
+	break;
+    } /* switch */
     retval = 0;
     /* Fall through */
   done:

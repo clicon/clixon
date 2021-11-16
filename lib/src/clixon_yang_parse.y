@@ -249,12 +249,14 @@ yang_parse_exit(clixon_yang_yacc *yy)
 int
 ystack_pop(clixon_yang_yacc *yy)
 {
-    struct ys_stack *ystack; 
+    struct ys_stack *ystack;
 
     if ((ystack = yy->yy_stack) == NULL){
 	clicon_err(OE_YANG, 0, "ystack is NULL");
 	return -1;
     }
+    if (yang_sort_subelements(ystack->ys_node) < 0)
+	return -1;
     yy->yy_stack = ystack->ys_next;
     free(ystack);
     return 0;

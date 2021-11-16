@@ -766,7 +766,6 @@ ys_dup(yang_stmt *old)
  *
  * @param[in] yorig  Existing yang statement
  * @param[in] yfrom   New empty (but created) yang statement
-
  * @retval    0     OK
  * @retval    -1    Error
  * @code
@@ -1346,7 +1345,7 @@ order1(yang_stmt *yp,
 	else {
 	    if (!yang_datanode(ys))
 		continue;
-	    if (ys==y)
+	    if (ys == y)
 		return 1;
 	    (*index)++; 
 	}
@@ -1373,6 +1372,7 @@ yang_order(yang_stmt *y)
 
     if (y == NULL)
 	return -1;
+
     /* Some special handling if yp is choice (or case)
      * if so, the real parent (from an xml point of view) is the parents
      * parent. 
@@ -3628,6 +3628,53 @@ yang_extension_value(yang_stmt *ys,
  done:
     if (cb)
 	cbuf_free(cb);
+    return retval;
+}
+
+#ifdef YANG_ORDERING_WHEN_LAST
+/* Sort substatements with when:s last */
+static int
+yang_sort_subelements_fn(const void* arg1,
+			 const void* arg2)
+{
+    yang_stmt *ys1 = *(yang_stmt **)arg1;
+    yang_stmt *ys2 = *(yang_stmt **)arg2;
+    int        w1; /* ys1 has when substatement */
+    int        w2;
+    
+    w1 = yang_find(ys1, Y_WHEN, NULL) != NULL;
+    w2 = yang_find(ys2, Y_WHEN, NULL) != NULL;
+    if (w1 == w2)
+	return 0;
+    if (w1)
+	return 1;
+    if (w2)
+	return -1;
+    return 0;
+}
+#endif
+
+/*! Experimental code for sorting YANG children
+ *
+ * RFC 7950 7.5.7 and 7.8.5 says that containers and list sub elements are encoded in any order.
+ * with some exceptions, eg rpc/action input/output or list key elements
+ *
+ * Clixon by default encodes them in yang order. But this function can change that.
+ * For example, openconfig-network-instances.yang requires subelements with "when" statements last.
+ */
+int
+yang_sort_subelements(yang_stmt *ys)
+{
+    int retval = -1;
+
+#ifdef YANG_ORDERING_WHEN_LAST
+    if ((yang_keyword_get(ys) == Y_CONTAINER ||
+	 yang_keyword_get(ys) == Y_LIST)){
+	qsort(ys->ys_stmt, ys->ys_len, sizeof(ys), yang_sort_subelements_fn);
+    }
+#endif
+    retval = 0;
+    // done:
     return retval;
 }
 

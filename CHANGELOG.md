@@ -1,4 +1,4 @@
-v# Clixon Changelog
+# Clixon Changelog
 
 * [5.4.0](#540) Expected: November
 * [5.3.0](#530) 27 September 2021
@@ -89,6 +89,10 @@ Developers may need to change their code
 
 ### Minor features
 
+* Added sorting of YANG statements
+  * Some openconfig specs seem to have use/when before a "config" which it depends on. This leads to XML encoding being in the "wrong order.
+  * When parsing, clixon now sorts container/list statements so that sub-statements with WHEN are put last.
+  * See [Statements given in "load set" are order dependent](https://github.com/clicon/clixon/issues/287)
 * Added: [Recursive search CLIXON_YANG_DIR](https://github.com/clicon/clixon/issues/284)
 * Plugin context check before and after all callbacks.
   * Check blocked signals and signal handlers
@@ -96,6 +100,7 @@ Developers may need to change their code
   * Any changes to context are logged at loglevel WARNING
 * [OpenConfig path compression](https://github.com/clicon/clixon/pull/276)
 * C API: Added set/get pointer API to clixon_data:
+   * Added json/cli support for cli save/load
    * clicon_ptr_get(), clicon_ptr_set(), 
 * Restconf YANG PATCH according to RFC 8072
   * Changed YANG PATCH enabling:
@@ -105,6 +110,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* [Statements given in "load set" are order dependent](https://github.com/clicon/clixon/issues/287)
+  * Modify ordering of XML encoding to put sub-elements with YANG WHEN statements last
 * [RPC get-conf method returned some content not specified by select filter](https://github.com/clicon/clixon/issues/281)
   * Bug introduced when upgrading of list pagination
 * [type leafref in type union ineffective](https://github.com/clicon/clixon/issues/277)

@@ -207,6 +207,12 @@ check_body_namespace(cxobj     *x0,
  *
  * Check if there is a when condition. First try it on the new request (x1), then on the
  * existing (x0). 
+ * This is according to RFC 7950 8.3.2 NETCONF <edit-config> Processing
+ *   During this processing [of edit-config] :
+ *   o  Modification requests for nodes tagged with "when", and the "when"
+ *      condition evaluates to "false".  In this case, the server MUST
+ *      reply with an "unknown-element" <error-tag> in the <rpc-error>.
+ * This is somewhat strange since this is different from checking "when" at validation
  * @param[in]  x0p      Parent of x0
  * @param[in]  x1       XML tree which modifies base
  * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL

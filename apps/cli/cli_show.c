@@ -442,7 +442,7 @@ cli_show_config1(clicon_handle h,
     char            *prefix = NULL;
     
     if (cvec_len(argv) < 3 || cvec_len(argv) > 5){
-	clicon_err(OE_PLUGIN, EINVAL, "Got %d arguments. Expected: <dbname>,<format>,<xpath>[,<namespace>, [<prefix>]]", cvec_len(argv));
+	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<format>,<xpath>[,<namespace>, [<prefix>]]", cvec_len(argv));
 
 	goto done;
     }

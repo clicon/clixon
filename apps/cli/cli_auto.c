@@ -142,7 +142,7 @@ tleaf(cxobj *x)
     return (xml_child_nr_notype(xc, CX_ATTR) == 0);
 }
 
-/*! Print an XML tree structure to an output stream and encode chars "<>&"
+/*! Print an XML tree structure from an auto-cli env to stdout and encode chars "<>&"
  *
  * @param[in]   xn          clicon xml tree
  * @param[in]   level       how many spaces to insert before each line
@@ -322,6 +322,7 @@ cli_xml2txt(cxobj            *xn,
  * @param[in] prepend  Print this text in front of all commands.
  * @param[in] gt       option to steer cli syntax
  * @param[in] fn       Callback to make print function
+ * @see xml2cli
  */
 int
 cli_xml2cli(cxobj             *xn,
