@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
+
 # Default handling and datastores.
 # There was a bug with loading startup and writing it back to candidate/running
 # where default mode in startup being "explicit" was transformed to "report-all"
 # according to RFC 6243.
 # Ie, all default values were populated.
-# This test goes through (all) testcases where clixon writes data back to a datastore, and
-# ensures default values are not present in the datastore.
-# XXX two errors:
-# 1. Running is changed
-# XXX 2. type default not set
+# Also: Check default values and xpaths
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -41,7 +38,7 @@ cat <<EOF > $cfg
 EOF
 
 cat <<EOF > $fyang
-   module example-default {
+module example-default {
       namespace "urn:example:default";
       prefix "ex";
       typedef def {
@@ -50,6 +47,11 @@ cat <<EOF > $fyang
           default 42;
       }
       container a{
+        leaf d0 {
+	  description "container default";
+	  type int32;
+          default 88;
+        }
         list b {
           key c;
           leaf c{
@@ -66,63 +68,82 @@ cat <<EOF > $fyang
           }
         }
       }
-   }
+}
 EOF
 
-# No args
-function testrun(){
-    # Initial data (default y not given)
-    XML='<a xmlns="urn:example:default"><b><c>0</c></b></a>'
+# Initial data (default y not given)
+XML='<a xmlns="urn:example:default"><b><c>0</c></b></a>'
 
-    db=startup
-    if [ $db = startup ]; then
-	sudo echo "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>" > $dir/startup_db
-    fi
-    if [ $BE -ne 0 ]; then     # Bring your own backend
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	new "start backend -s $db -f $cfg"
-	start_backend -s $db -f $cfg
-    fi
-    
-    new "waiting"
-    wait_backend
-
-    # permission kludges
-    sudo chmod 666 $dir/running_db
-    sudo chmod 666 $dir/startup_db
-
-    new "Checking startup unchanged"
-    ret=$(diff $dir/startup_db <(echo "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>"))
+db=startup
+if [ $db = startup ]; then
+    sudo echo "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>" > $dir/startup_db
+fi
+if [ $BE -ne 0 ]; then     # Bring your own backend
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>" "$ret"
+	err
     fi
+    new "start backend -s $db -f $cfg"
+    start_backend -s $db -f $cfg
+fi
 
-    new "Checking running unchanged"
-    ret=$(diff $dir/running_db <(echo -n "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>"))
-    if [ $? -ne 0 ]; then
-	err "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>" "$ret"
+# permission kludges
+sudo chmod 666 $dir/running_db
+sudo chmod 666 $dir/startup_db
+
+new "Checking startup unchanged"
+ret=$(diff $dir/startup_db <(echo "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>"))
+if [ $? -ne 0 ]; then
+    err "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>" "$ret"
+fi
+
+new "Checking running unchanged"
+ret=$(diff $dir/running_db <(echo -n "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>"))
+if [ $? -ne 0 ]; then
+    err "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>" "$ret"
+fi
+
+new "check running defaults"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><d0>88</d0><b><c>0</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>]]>]]>$"
+
+new "delete existing list element"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><edit-config><target><candidate/></target><config><a xmlns=\"urn:example:default\"><b nc:operation=\"delete\"><c>0</c></b></a></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><ok/></rpc-reply>]]>]]>$"
+
+new "netconf commit"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS ><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "set new list element"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><a xmlns=\"urn:example:default\"><b><c>17</c></b></a></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "get the list top"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><d0>88</d0><b><c>17</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>]]>]]>$"
+
+new "get the list xpath /a"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'/></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><d0>88</d0><b><c>17</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>]]>]]>$"
+
+new "get the list xpath /a/b"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'><b/></a></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>17</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>]]>]]>$"
+
+new "get the list xpath /a/b/c"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'><b><c/></b></a></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>17</c></b></a></data></rpc-reply>]]>]]>$"
+
+new "get the list xpath /a/b/c=17"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'><b><c>17</c></b></a></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>17</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>]]>]]>$"
+
+new "get the list xpath /a/b/c=17/d1"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'><b><c>17</c><d1/></b></a></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>17</c><d1>foo</d1></b></a></data></rpc-reply>]]>]]>$"
+
+if [ $BE -ne 0 ]; then     # Bring your own backend
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
     fi
-
-    new "check running defaults"
-    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>0</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>]]>]]>$"
-
-    if [ $BE -ne 0 ]; then     # Bring your own backend
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
-    fi
-} # testrun
-
-testrun
+    # kill backend
+    stop_backend -f $cfg
+fi
 
 rm -rf $dir
 

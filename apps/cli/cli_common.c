@@ -908,7 +908,6 @@ save_config_file(clicon_handle h,
     char              *dbstr;
     char              *varstr;
     cxobj             *xt = NULL;
-    cxobj             *xc;
     cxobj             *xerr;
     FILE              *f = NULL;
     enum genmodel_type gt;
