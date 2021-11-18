@@ -10,6 +10,9 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 fyang=$dir/clixon-example.yang
 
+echo "...skipped: wrong"
+if [ "$s" = $0 ]; then exit 0; else return 0; fi
+    
 new "openconfig"
 if [ ! -d "$OPENCONFIG" ]; then
 #    err "Hmm Openconfig dir does not seem to exist, try git clone https://github.com/openconfig/public?"
@@ -46,14 +49,8 @@ module clixon-example{
   namespace "urn:example:example";
   prefix ex;
 
-  import ietf-interfaces { 
-    prefix ietf-if; 
-  }
-  import openconfig-if-ethernet {
-    prefix oc-eth;
-  }
-  identity eth { /* Need to create an interface-type identity for leafrefs */
-    base ietf-if:interface-type;
+  import openconfig-system {
+    prefix oc-sys;
   }
 }
 EOF
@@ -61,23 +58,6 @@ EOF
 # Example system
 cat <<EOF > $dir/startup_db
 <config>
-  <interfaces xmlns="http://openconfig.net/yang/interfaces">
-    <interface>
-      <name>e</name>
-      <config>
-         <name>e</name>
-         <type>ex:eth</type>
-         <loopback-mode>false</loopback-mode>
-         <enabled>true</enabled>
-      </config>
-      <hold-time>
-         <config>
-            <up>0</up>
-            <down>0</down>
-         </config>
-      </hold-time>
-    </interface>
-  </interfaces>
 </config>
 EOF
 

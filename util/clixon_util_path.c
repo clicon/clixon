@@ -162,6 +162,7 @@ main(int    argc,
 	    break;
 	}
     clicon_debug_init(dbg, NULL);
+    yang_init(h);
 
     /* Parse yang */
     if (yang_file_dir){

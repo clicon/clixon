@@ -61,6 +61,10 @@
 #define YANG_FLAG_INDEX 0x08  /* This yang node under list is (extra) index. --> you can access
 			       * list elements using this index with binary search */
 #endif
+#ifdef USE_CONFIG_FLAG_CACHE
+#define YANG_FLAG_CONFIG_CACHE 0x10  /* Ancestor config cache is active */
+#define YANG_FLAG_CONFIG_VALUE 0x20  /* Ancestor config cache value */
+#endif
 
 /*
  * Types
@@ -272,5 +276,6 @@ int        yang_type_cache_set(yang_stmt *ys, yang_stmt *resolved, int options, 
 yang_stmt *yang_anydata_add(yang_stmt *yp, char *name);
 int        yang_extension_value(yang_stmt *ys, char *name, char *ns, int *exist, char **value);
 int        yang_sort_subelements(yang_stmt *ys);
+int        yang_init(clicon_handle h);
 
 #endif  /* _CLIXON_YANG_H_ */

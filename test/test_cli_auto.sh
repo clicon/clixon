@@ -271,9 +271,7 @@ edit table
 show config netconf
 EOF
 new "show config netconf"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><edit-config><target><candidate/></target><config><parameter><name>a</name><value>42</value></parameter></config></edit-config></rpc>]]>]]>'
-
-endtest
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><parameter><name>a</name><value>42</value></parameter></config></edit-config></rpc>]]>]]>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -287,3 +285,6 @@ if [ $BE -ne 0 ]; then
 fi
 
 rm -rf $dir
+
+new "endtest"
+endtest

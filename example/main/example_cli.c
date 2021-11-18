@@ -101,10 +101,11 @@ example_client_rpc(clicon_handle h,
     cva = cvec_find(cvv, "a"); /* get a cligen variable from vector */
     /* Create XML for example netconf RPC */
     if (clixon_xml_parse_va(YB_NONE, NULL, &xtop, NULL,
-			    "<rpc xmlns=\"%s\" username=\"%s\" message-id=\"101\">"
+			    "<rpc xmlns=\"%s\" username=\"%s\" %s>"
 			    "<example xmlns=\"urn:example:clixon\"><x>%s</x></example></rpc>",
 			    NETCONF_BASE_NAMESPACE,
 			    clicon_username_get(h),
+			    NETCONF_MESSAGE_ID_ATTR,
 			    cv_string_get(cva)) < 0)
 	goto done;
     /* Skip top-level */

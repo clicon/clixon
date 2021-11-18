@@ -139,3 +139,8 @@
  * Consider enabling this option permanently after 5.4 
  */
 #define YANG_ORDERING_WHEN_LAST
+
+/*! Use Ancestor config cache 
+ * The cache uses two yang stmt flag bits. One to say it is active, the second its value
+ */
+#define USE_CONFIG_FLAG_CACHE

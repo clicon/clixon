@@ -111,11 +111,11 @@ struct ycard{
  *   1     10
  *   0..1  149
  *   0..n  176 (no restrictions)
- * @note assume array is ordered wrt parent
+ * @note The array MUST be ordered wrt parent and child for ycard_find_binary to use binary search
  * @note yang-version is optional in RFC6020 but mandatory in RFC7950, if not given, it defaults to 1.
  */
 #define NMAX 1000000 /* Just a large number */
-static const struct ycard yclist[] = {
+static const struct ycard _yclist[] = {
     {Y_ACTION,  Y_DESCRIPTION, 0, 1, 0},
     {Y_ACTION,  Y_GROUPING, 0, NMAX, 0},
     {Y_ACTION,  Y_IF_FEATURE, 0, NMAX, 0},
@@ -176,6 +176,7 @@ static const struct ycard yclist[] = {
     {Y_CASE,  Y_STATUS, 0, 1, 0},
     {Y_CASE,  Y_USES, 0, NMAX, 0},
     {Y_CASE,  Y_WHEN, 0, 1, 0},
+    {Y_CHOICE, Y_ANYDATA, 0, NMAX, 0},
     {Y_CHOICE,  Y_ANYXML, 0, NMAX, 0},
     {Y_CHOICE,  Y_CASE, 0, NMAX, 0},
     {Y_CHOICE,  Y_CHOICE, 0, NMAX, 0},
@@ -191,7 +192,6 @@ static const struct ycard yclist[] = {
     {Y_CHOICE,  Y_REFERENCE, 0, 1, 0},
     {Y_CHOICE,  Y_STATUS, 0, 1, 0},
     {Y_CHOICE,  Y_WHEN, 0, 1, 0},
-    {Y_CHOICE, Y_ANYDATA, 0, NMAX, 0},
     {Y_CONTAINER, Y_ACTION,   0, NMAX, 0},
     {Y_CONTAINER, Y_ANYDATA, 0, NMAX, 0},
     {Y_CONTAINER, Y_ANYXML, 0, NMAX, 0},
@@ -451,37 +451,22 @@ static const struct ycard yclist[] = {
     {Y_USES,  Y_REFINE, 0, NMAX, 0},
     {Y_USES,  Y_STATUS, 0, 1, 0},
     {Y_USES,  Y_WHEN, 0, 1, 0},
+    {Y_WHEN,  Y_DESCRIPTION, 0, 1, 0},
+    {Y_WHEN,  Y_REFERENCE, 0, 1, 0},
     {0,}
 };
 
-/*! Find yang parent and child combination in yang cardinality table
- * @param[in] parent Parent Yang spec
- * @param[in] child  Child yang spec if 0 first
- * @param[in] yc     Yang cardinality map
- * @param[in] p      If set, quit as soon as parents dont match
- * @retval    NULL   Not found
- * @retval    yp     Found
- * @note if cardinal list above is sorted, this search could do binary
+/* Search matrix for lookups */
+static const struct ycard *_yc_search[Y_SPEC][Y_SPEC] = {0,};
+
+/* Set to 1 if exists in search 
+ * Some yang statements are not explicitly given cardinalities in RFC7950, although they are
+ * present in Section 14 BNF.
+ * But since the table above is from the explicit cardinalities in the RFC the others are skipped
+ * and = 0 in the following vector.
+ * Example: Y_REFINE
  */
-static const struct ycard *
-ycard_find(enum rfc_6020       parent,
-	   enum rfc_6020       child,
-	   const struct ycard *yclist,
-	   int                 p)
-{
-     const struct ycard *yc;
-    
-     for (yc = &yclist[0]; (int)yc->yc_parent; yc++){
-	 if (yc->yc_parent == parent){
-	     if (!child || yc->yc_child == child)
-		 return yc;
-	 }
-	 else
-	     if (p)
-		 return NULL; /* premature quit */
-     }
-    return NULL;
-}
+static int _yc_exist[Y_SPEC] = {0,};
 
 /*! Check cardinality, ie if each yang node has the expected nr of children 
  * @param[in] h        Clicon handle
@@ -503,16 +488,14 @@ yang_cardinality(clicon_handle h,
     int                 pk;
     int                 ck;
     int                 i;
-    int                 nr;
-    const struct ycard *ycplist; /* ycard parent table*/
     const struct ycard *yc;
     int                 order;
     yang_stmt          *yprev = NULL;
+    int                 nr;
     
     pk = yang_keyword_get(yt);
-    /* 0) Find parent sub-parts of cardinality vector */
-    if ((ycplist = ycard_find(pk, 0, yclist, 0)) == NULL)
-	goto ok; /* skip */
+    if (_yc_exist[pk] == 0)
+	goto ok;
     /* 1) For all children, if neither in 0..n, 0..1, 1 or 1..n   ->ERROR  
      * Also: check monotonically increasing order
      */
@@ -520,10 +503,10 @@ yang_cardinality(clicon_handle h,
     ys = NULL;
     while ((ys = yn_each(yt, ys)) != NULL) {
 	ck = yang_keyword_get(ys);
-	if (ck == Y_UNKNOWN) /* special case */
+	if (pk == Y_UNKNOWN || ck == Y_UNKNOWN) /* special case */
 	    continue;
 	/* Find entry in yang cardinality table from parent/child keyword pair */
-	if ((yc = ycard_find(pk, ck, ycplist, 1)) == NULL){
+	if ((yc = _yc_search[pk][ck]) == NULL){
 	    clicon_err(OE_YANG, 0, "%s: \"%s\"(%s) is child of \"%s\"(%s), but should not be",
 		       modname,
 		       yang_key2str(ck),
@@ -548,16 +531,16 @@ yang_cardinality(clicon_handle h,
 	yprev = ys;
    }
     /* 2) For all in 1 and 1..n list, if 0 such children          ->ERROR */
-    for (yc = &ycplist[0]; (int)yc->yc_parent == pk; yc++){
+    for (i=0; i<Y_SPEC; i++){
+	yc = _yc_search[pk][i];
+	if (yc == NULL)
+	    continue;
 	if (yc->yc_min  &&
 	    yang_find(yt, yc->yc_child, NULL) == NULL){
 	    clicon_err(OE_YANG, 0, "%s: \"%s\" is missing but is mandatory child of \"%s\"",
 		       modname, yang_key2str(yc->yc_child), yang_key2str(pk));
 	    goto done;
 	}
-    }
-    /* 3) For all in 0..1 and 1 list, if >1 such children         ->ERROR */
-    for (yc = &ycplist[0]; (int)yc->yc_parent == pk; yc++){
 	if (yc->yc_max<NMAX &&
 	    (nr = yang_match(yt, yc->yc_child, NULL)) > yc->yc_max){
 	    clicon_err(OE_YANG, 0, "%s: \"%s\" has %d children of type \"%s\", but only %d allowed",
@@ -569,7 +552,6 @@ yang_cardinality(clicon_handle h,
 	    goto done;
 	}
     }
-
     /* 4) Recurse */
     i = 0;
     while (i< yang_len_get(yt)){ /* Note, children may be removed cant use yn_each */
@@ -601,7 +583,7 @@ yang_cardinality_interval(clicon_handle h,
     int                 retval = -1;
     const struct ycard *ycplist; /* ycard parent table*/
     
-    if ((ycplist = ycard_find(parent_key, child_key, yclist, 0)) == NULL){
+    if ((ycplist = _yc_search[parent_key][child_key]) == NULL){
 	clicon_err(OE_YANG, EINVAL, "keys %d %d do not have cardinality",
 		   parent_key, child_key);
 	goto done;
@@ -612,3 +594,17 @@ yang_cardinality_interval(clicon_handle h,
  done:
     return retval;
 }
+
+/*! Init */
+int
+yang_cardinality_init(clicon_handle h)
+{
+     const struct ycard *yc;
+    
+     for (yc = &_yclist[0]; (int)yc->yc_parent; yc++){
+	 _yc_exist[yc->yc_parent] = 1;
+	 _yc_search[yc->yc_parent][yc->yc_child] = yc;
+     }
+     return 0;
+}
+    

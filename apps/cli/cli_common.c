@@ -801,7 +801,7 @@ load_config_file(clicon_handle h,
     cxobj      *xt = NULL;
     cxobj      *x;
     cbuf       *cbxml;
-    char              *formatstr;
+    char              *formatstr = NULL;
     enum format_enum   format = FORMAT_XML;
 
     if (cvec_len(argv) < 2 || cvec_len(argv) > 4){
@@ -908,6 +908,7 @@ save_config_file(clicon_handle h,
     char              *dbstr;
     char              *varstr;
     cxobj             *xt = NULL;
+    cxobj             *x;
     cxobj             *xerr;
     FILE              *f = NULL;
     enum genmodel_type gt;
@@ -970,21 +971,25 @@ save_config_file(clicon_handle h,
 	    goto done;
 	break;
     case FORMAT_TEXT:
-	cli_xml2txt(xt, cligen_output, 0); /* tree-formed text */
+	if (xml2txt(f, xt, 0) < 0)
+	    goto done;
 	break;
     case FORMAT_CLI:
 	if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
 	    goto done;
-	if (xml2cli(f, xt, prefix, gt) < 0)
-	    goto done;
+	x = NULL;
+	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	    if (xml2cli(f, x, prefix, gt) < 0)
+		goto done;
+	}
 	break;
     case FORMAT_NETCONF:
-	fprintf(f, "<rpc xmlns=\"%s\"><edit-config><target><candidate/></target><config>",
-		NETCONF_BASE_NAMESPACE);
+	fprintf(f, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target>",
+		NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
 	fprintf(f, "\n");
 	if (clicon_xml2file(f, xt, 0, pretty) < 0)
 	    goto done;
-	fprintf(f, "</config></edit-config></rpc>]]>]]>\n");
+	fprintf(f, "</edit-config></rpc>]]>]]>\n");
 	break;
     } /* switch */
     retval = 0;

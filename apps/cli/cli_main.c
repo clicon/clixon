@@ -483,8 +483,8 @@ main(int    argc,
      * Logs, error and debug to stderr or syslog, set debug level
      */
     clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
-
     clicon_debug_init(dbg, NULL); 
+    yang_init(h);
 
     /* Find, read and parse configfile */
     if (clicon_options_main(h) < 0){
@@ -651,7 +651,7 @@ main(int    argc,
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);	
-
+    
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
     if ((str = clicon_yang_main_file(h)) != NULL){

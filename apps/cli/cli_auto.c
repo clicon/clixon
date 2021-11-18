@@ -759,8 +759,8 @@ cli_auto_show(clicon_handle h,
 		    cli_xml2cli(xc, prefix, gt, cligen_output); /* cli syntax */
 	    break;
 	case FORMAT_NETCONF:
-	    fprintf(stdout, "<rpc xmlns=\"%s\"><edit-config><target><candidate/></target><config>",
-		    NETCONF_BASE_NAMESPACE);
+	    fprintf(stdout, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target><config>",
+		    NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
 	    if (pretty)
 		fprintf(stdout, "\n");
 	    if (isroot)

@@ -296,6 +296,7 @@ main(int    argc,
 	goto done;
     }
 
+    yang_init(h);
     /* Find and read configfile */
     if (clicon_options_main(h) < 0)
 	goto done;
@@ -375,6 +376,7 @@ main(int    argc,
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);
+
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)
 	goto done;

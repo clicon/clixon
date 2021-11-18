@@ -1731,6 +1731,7 @@ restconf_clixon_init(clicon_handle h,
     if ((yspec = yspec_new()) == NULL)
 	goto done;
     clicon_dbspec_yang_set(h, yspec);
+
     /* Load restconf plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_restconf_dir(h)) != NULL)
 	if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
@@ -1987,6 +1988,7 @@ main(int    argc,
 	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
     }
+    yang_init(h);
     /* Find and read configfile */
     if (clicon_options_main(h) < 0)
 	goto done;

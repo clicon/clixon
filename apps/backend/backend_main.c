@@ -568,6 +568,7 @@ main(int    argc,
      */
     clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(dbg, NULL);
+    yang_init(h);
 
     /* Find and read configfile */
     if (clicon_options_main(h) < 0){
