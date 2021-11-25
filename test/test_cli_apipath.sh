@@ -112,8 +112,6 @@ expectpart "$($clixon_cli -1 -f $cfg err x)" 255 "Config error: api-path syntax 
 new "err x a"
 expectpart "$($clixon_cli -1 -f $cfg err x a 99)" 255 "Config error: api-path syntax error \"/example:x/m1=%s\": rpc malformed-message List key m1 length mismatch : Invalid argument"
 
-endtest
-
 new "Kill backend"
 # Check if premature kill
 pid=$(pgrep -u root -f clixon_backend)
@@ -122,5 +120,7 @@ if [ -z "$pid" ]; then
 fi
 # kill backend
 stop_backend -f $cfg
+
+endtest
 
 rm -rf $dir

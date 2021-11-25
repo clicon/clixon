@@ -92,7 +92,7 @@ function testrun(){
 
     new "netconf get stats"
     res=$(echo "$DEFAULTHELLO<rpc $DEFAULTNS><stats $LIBNS/></rpc>]]>]]>" | $clixon_netconf -qf $cfg)
-    echo "res:$res"
+#    echo "res:$res"
     err0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/rpc-error")
     err=${err0#"nodeset:"}
     if [ -n "$err" ]; then
@@ -104,7 +104,7 @@ function testrun(){
     echo "   objects: $objects"
 
 #
-    if [ -f /proc/$pid/statm ]; then     # This ony works on Linux 
+    if [ -f /proc/$pid/statm ]; then     # This only works on Linux 
 #	cat /proc/$pid/statm
 	echo -n "   /proc/$pid/statm: "
 	cat /proc/$pid/statm|awk '{print $1*4/1000 "M"}'
@@ -121,7 +121,15 @@ function testrun(){
 	echo -n "   mem: "
 	echo $resdb | $clixon_util_xpath -p "datastore/size" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}' | awk '{print $1/1000000 "M"}'
     done
-
+    for mod in clixon-config; do
+	echo "$mod"
+	resmod0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/module[name=\"$mod\"]")
+	resmod=${resmod0#"nodeset:0:"}
+	echo -n "   objects: "
+	echo $resmod | $clixon_util_xpath -p "module/nr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}'
+	echo -n "   mem: "
+	echo $resmod | $clixon_util_xpath -p "module/size" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}' | awk '{print $1/1000000 "M"}'
+    done
     if [ $BE -ne 0 ]; then
 	new "Kill backend"
 	# Check if premature kill

@@ -337,7 +337,6 @@ struct clixon_plugin_api{
 #define ca_trans_abort    u.cau_backend.cb_trans_abort
 #define ca_datastore_upgrade  u.cau_backend.cb_datastore_upgrade
 
-
 /*
  * Macros
  */
@@ -379,8 +378,7 @@ int clixon_plugins_load(clicon_handle h, const char *function, const char *dir, 
 
 int clixon_pseudo_plugin(clicon_handle h, const char *name, clixon_plugin_t **cpp);
 
-plugin_context_t * plugin_context_get(void);
-int plugin_context_check(plugin_context_t *pc, const char *name, const char *fn);
+int plugin_context_check(clicon_handle h, void **wh, const char *name, const char *fn);
 
 int clixon_plugin_start_one(clixon_plugin_t *cp, clicon_handle h);
 int clixon_plugin_start_all(clicon_handle h);

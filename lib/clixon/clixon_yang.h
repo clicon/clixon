@@ -221,6 +221,10 @@ int        yang_filename_set(yang_stmt *ys, const char *filename);
 int        yang_linenum_get(yang_stmt *ys);
 int        yang_linenum_set(yang_stmt *ys, int linenum);
 
+/* Stats */
+int       yang_stats_global(uint64_t *nr);
+int       yang_stats(yang_stmt *y, uint64_t *nrp, size_t *szp);
+
 /* Other functions */
 yang_stmt *yspec_new(void);
 yang_stmt *ys_new(enum rfc_6020 keyw);

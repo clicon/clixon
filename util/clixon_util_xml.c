@@ -176,6 +176,7 @@ main(int    argc,
 	goto done;
     if (clicon_conf_xml_set(h, xcfg) < 0)
 	goto done;
+
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, UTIL_XML_OPTS)) != -1)
@@ -241,6 +242,7 @@ main(int    argc,
     }
     clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, logdst);
     clicon_debug_init(dbg, NULL);
+    yang_init(h);
     
     /* 1. Parse yang */
     if (yang_file_dir){

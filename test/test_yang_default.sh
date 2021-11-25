@@ -88,9 +88,19 @@ if [ $BE -ne 0 ]; then     # Bring your own backend
     start_backend -s $db -f $cfg
 fi
 
+new "wait backend"
+wait_backend
+
 # permission kludges
+new "chmod datastores"
 sudo chmod 666 $dir/running_db
+if [ $? -ne 0 ]; then
+    err1 "chmod $dir/running_db"
+fi
 sudo chmod 666 $dir/startup_db
+if [ $? -ne 0 ]; then
+    err1 "chmod $dir/startup_db"
+fi
 
 new "Checking startup unchanged"
 ret=$(diff $dir/startup_db <(echo "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>"))

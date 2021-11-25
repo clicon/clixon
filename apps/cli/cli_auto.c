@@ -80,9 +80,9 @@
 static char *
 co2apipath(cg_obj *co)
 {
-    struct cg_callback *cb;
-    cvec               *cvv;
-    cg_var             *cv;
+    cg_callback *cb;
+    cvec        *cvv;
+    cg_var      *cv;
     
     if (co == NULL)
 	return NULL;
@@ -467,10 +467,19 @@ cli_auto_edit(clicon_handle h,
 	clicon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
 	goto done;
     }
-    /* Find the matching cligen object */
-    if ((co = cligen_co_match(cli_cligen(h))) != NULL &&
-	(coorig = co->co_treeref_orig) != NULL)
-	cligen_ph_workpoint_set(ph, coorig);
+    /* Find the matching cligen object 
+     * Note, is complictead: either an instantiated tree (co_treeref_orig)
+     * or actual tree (co_ref)
+     */
+    if ((co = cligen_co_match(cli_cligen(h))) != NULL){
+	if ((coorig = co->co_treeref_orig) != NULL ||
+	    (coorig = co->co_ref) != NULL)
+	    cligen_ph_workpoint_set(ph, coorig);
+	else {
+	    clicon_err(OE_YANG, EINVAL, "No workpoint found");
+	    goto done;
+	}
+    }
     else{
 	clicon_err(OE_YANG, EINVAL, "No workpoint found");
 	goto done;
@@ -500,7 +509,7 @@ cli_auto_edit(clicon_handle h,
 /*! CLI callback: Working point tree up to parent
  * @param[in]  h    CLICON handle
  * @param[in]  cvv  Vector of variables from CLIgen command-line
- * @param[in]  argv Vector oif user-supplied keywords
+ * @param[in]  argv Vector of user-supplied keywords
  * Format of argv:
  *   <treename>     Name of generated cligen parse-tree, eg "datamodel"
  */
@@ -991,7 +1000,7 @@ cli_auto_sub_enter(clicon_handle h,
     }
     /* Find the point in the generated clispec tree where workpoint should be set */
     fa.fa_str = api_path_fmt;
-    if (pt_apply(cligen_ph_parsetree_get(ph), cli_auto_findpt, &fa) < 0)
+    if (pt_apply(cligen_ph_parsetree_get(ph), cli_auto_findpt, INT32_MAX, &fa) < 0)
 	goto done;
     if (fa.fa_co == NULL){
 	clicon_err(OE_PLUGIN, ENOENT, "No such cligen object found %s", api_path);

@@ -134,6 +134,7 @@ main(int    argc,
 	    break;
 	}
     clicon_debug_init(dbg, NULL);
+    yang_init(h);
     /* Find and read configfile */
     if (clicon_options_main(h) < 0)
 	goto done;

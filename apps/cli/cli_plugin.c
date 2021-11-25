@@ -522,105 +522,6 @@ cli_handler_err(FILE *f)
     return 0;
 }
 
-/*! Variant of eval for context checking 
- * @see cligen_eval
- */
-static int
-clixon_cligen_eval(cligen_handle h, 
-		   cg_obj       *co, 
-		   cvec         *cvv)
-{
-    struct cg_callback *cc;
-    int                 retval = -1;
-    cvec               *argv;
-    cvec               *cvv1 = NULL; /* Modified */
-    plugin_context_t   *pc = NULL; /* Clixon-specific */
-    
-
-    /* Save matched object for plugin use */
-    if (h)
-	cligen_co_match_set(h, co);
-    /* Make a copy of var argument for modifications */
-    if ((cvv1 = cvec_dup(cvv)) == NULL)
-	goto done;
-    /* Make modifications to cvv */
-    if (cligen_expand_first_get(h) &&
-	cvec_expand_first(cvv1) < 0)
-	goto done;
-    if (cligen_exclude_keys_get(h) &&
-	cvec_exclude_keys(cvv1) < 0)
-	goto done;
-    /* Traverse callbacks */
-    for (cc = co->co_callbacks; cc; cc=cc->cc_next){
-	/* Vector cvec argument to callback */
-    	if (cc->cc_fn_vec){
-	    argv = cc->cc_cvec ? cvec_dup(cc->cc_cvec) : NULL;
-	    cligen_fn_str_set(h, cc->cc_fn_str);
-	    /* Clixon-specific */
-	    if ((pc = plugin_context_get()) == NULL) 
-		break;
-	    if ((retval = (*cc->cc_fn_vec)(
-					cligen_userhandle(h)?cligen_userhandle(h):h, 
-					cvv1,
-					argv)) < 0){
-		if (argv != NULL)
-		    cvec_free(argv);
-		cligen_fn_str_set(h, NULL);
-		goto done;
-	    }
-	    /* Clixon-specific */
-	    if (plugin_context_check(pc, "CLIgen", cc->cc_fn_str) < 0)
-		break;
-	    if (pc){
-		free(pc);
-		pc = NULL;
-	    }
-	    if (argv != NULL)
-		cvec_free(argv);
-	    cligen_fn_str_set(h, NULL);
-	}
-    }
-    retval = 0;
- done:
-    if (pc) /* Clixon-specific */
-	free(pc);
-    if (cvv1)
-	cvec_free(cvv1);
-    return retval;
-}
-
-/*! Evaluate a matched command
- * @param[in]     h         Clicon handle
- * @param[in]     cmd       The command string
- * @param[in]     match_obj
- * @param[in]     cvv
- * @retval        int  If there is a callback, the return value of the callback is returned,
- * @retval        0    otherwise
- */
-int
-clicon_eval(clicon_handle h,
-	    char         *cmd,
-	    cg_obj       *match_obj,
-	    cvec         *cvv)
-{
-    int retval = 0;
-
-    cli_output_reset();
-    if (!cligen_exiting(cli_cligen(h))) {	
-	clicon_err_reset();
-
-	if ((retval = clixon_cligen_eval(cli_cligen(h), match_obj, cvv)) < 0) {
-#if 0 /* This is removed since we get two error messages on failure.
-	 But maybe only sometime?
-	 Both a real log when clicon_err is called, and the  here again.
-	 (Before clicon_err was silent)  */
-	    cli_handler_err(stdout); 
-#endif
-	}
-    }
-    return retval;
-}
-
 /*! Given a command string, parse and if match single command, eval it.
  * Parse and evaluate the string according to
  * the syntax parse tree of the syntax mode specified by *mode.
@@ -644,18 +545,20 @@ clicon_parse(clicon_handle  h,
 	     cligen_result *result,	     
 	     int           *evalres)
 {
-    int           retval = -1;
-    char         *modename;
-    char         *modename0;
-    int           r;
-    cli_syntax_t *stx = NULL;
+    int               retval = -1;
+    char             *modename;
+    int               ret;
+    cli_syntax_t     *stx = NULL;
     cli_syntaxmode_t *csm;
-    parse_tree   *pt;     /* Orig */
-    cg_obj       *match_obj = NULL;
-    cvec         *cvv = NULL;
-    FILE         *f;
-    char         *reason = NULL;
+    parse_tree       *pt;     /* Orig */
+    cg_obj           *match_obj = NULL;
+    cvec             *cvv = NULL;
+    cg_callback      *callbacks = NULL;
+    FILE             *f;
+    char             *reason = NULL;
+    cligen_handle     ch;
     
+    ch = cli_cligen(h);
     if (clicon_get_logflags()&CLICON_LOG_STDOUT)
 	f = stdout;
     else
@@ -672,34 +575,18 @@ clicon_parse(clicon_handle  h,
 	}
     }
     if (csm != NULL){
-	modename0 = NULL;
-	if ((pt = cligen_pt_active_get(cli_cligen(h))) != NULL)
-	    modename0 = pt_name_get(pt);
-	if (cligen_ph_active_set(cli_cligen(h), modename) < 0){
+	if (cligen_ph_active_set_byname(ch, modename) < 0){
 	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
 	    goto done;
 	}
-	if ((pt = cligen_pt_active_get(cli_cligen(h))) == NULL){
+	if ((pt = cligen_pt_active_get(ch)) == NULL){
 	    fprintf(stderr, "No such parse-tree registered: %s\n", modename);
 	    goto done;
 	}
-#if 0 // switch after 5.4
-	if (cliread_parse2(cli_cligen(h), cmd, pt, &match_obj, &cvv, result, &reason) < 0)
+	if (cliread_parse(ch, cmd, pt, &match_obj, &cvv, &callbacks, result, &reason) < 0)
 	    goto done;
-#else
-	if ((cvv = cvec_new(0)) == NULL)
-	    goto done;;
-	if (cliread_parse(cli_cligen(h), cmd, pt, &match_obj, cvv, result, &reason) < 0)
-	    goto done;
-#endif
 	/* Debug command and result code */
 	clicon_debug(1, "%s result:%d command: \"%s\"", __FUNCTION__, *result, cmd);
-	if (*result != CG_MATCH)
-	    pt_expand_cleanup(pt); /* XXX change to pt_expand_treeref_cleanup */
-	if (modename0){
-	    cligen_ph_active_set(cli_cligen(h), modename0);
-	    modename0 = NULL;
-	}
 	switch (*result) {
 	case CG_EOF: /* eof */
 	case CG_ERROR:
@@ -713,12 +600,17 @@ clicon_parse(clicon_handle  h,
 		*modenamep = modename;
 		cli_set_syntax_mode(h, modename);
 	    }
-	    if ((r = clicon_eval(h, cmd, match_obj, cvv)) < 0)
-		cli_handler_err(stdout);
-	    pt_expand_cleanup(pt);
-	    pt_expand_treeref_cleanup(pt);
+	    cli_output_reset();
+	    if (!cligen_exiting(ch)) {	
+		clicon_err_reset();
+		if ((ret = cligen_eval(ch, match_obj, cvv, callbacks)) < 0) 
+		    cli_handler_err(stdout);
+		
+	    }
+	    else
+		ret = 0;
 	    if (evalres)
-		*evalres = r;
+		*evalres = ret;
 	    break;
 	default:
 	    fprintf(f, "CLI syntax error: \"%s\" is ambiguous\n", cmd);
@@ -727,6 +619,8 @@ clicon_parse(clicon_handle  h,
     }
     retval = 0;
 done:
+    if (callbacks)
+	co_callbacks_free(&callbacks);
     if (reason)
 	free(reason);
     if (cvv)
@@ -829,7 +723,7 @@ clicon_cliread(clicon_handle h,
     cli_syntaxmode_t *mode;
     cli_syntax_t     *stx;
     cli_prompthook_t *fn;
-    clixon_plugin_t    *cp;
+    clixon_plugin_t  *cp;
     char             *promptstr;
     
     stx = cli_syntax(h);
@@ -850,7 +744,7 @@ clicon_cliread(clicon_handle h,
 	cli_prompt_set(h, promptstr);
 	free(promptstr);
     }
-    cligen_ph_active_set(cli_cligen(h), mode->csm_name);
+    cligen_ph_active_set_byname(cli_cligen(h), mode->csm_name);
 
     if (cliread(cli_cligen(h), stringp) < 0){
 	clicon_err(OE_FATAL, errno, "CLIgen");

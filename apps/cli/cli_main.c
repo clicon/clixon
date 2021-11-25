@@ -72,7 +72,7 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "hD:f:E:l:F:1a:u:d:m:qp:GLy:c:U:o:"
+#define CLI_OPTS "+hD:f:E:l:F:1a:u:d:m:qp:GLy:c:U:o:"
 
 /*! Check if there is a CLI history file and if so dump the CLI histiry to it
  * Just log if file does not exist or is not readable
@@ -242,57 +242,6 @@ cli_interactive(clicon_handle h)
     return retval;
 }
 
-/*! Generate one autocli clispec tree
- *
- * @param[in]  h        Clixon handle
- * @param[in]  name     Name of tree
- * @param[in]  gt       genmodel-type, ie HOW to generate the CLI
- * @param[in]  printgen Print CLI syntax to stderr
- * @param[in]  show_tree Is tree for show cli command (1 - yes. 0 - no)
- *
- * Generate clispec (datamodel) from YANG dataspec and add to the set of cligen trees 
- * (as a separate mode)
- * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the "tree reference"
- * syntax, ie @datamodel
- * @param[in]  h        Clixon handle
- * @param[in]  state     Set to include state syntax
- * @param[in]  printgen Print CLI syntax generated from dbspec
- * @param[in]  show_tree Is tree for show cli command
- * @retval     0        OK
- * @retval    -1        Error
- *
- * @note that yang2cli generates syntax for ALL modules under the loaded yangspec.
- */
-static int
-autocli_tree(clicon_handle      h,
-	     char              *name,
-	     int                state,
-	     int                printgen,
-	     int                show_tree)
-{
-    int           retval = -1;
-    parse_tree   *pt = NULL;  /* cli parse tree */
-    yang_stmt    *yspec;
-    pt_head      *ph;
-    
-    if ((pt = pt_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "pt_new");
-	goto done;
-    }
-    yspec = clicon_dbspec_yang(h);
-    /* Generate tree (this is where the action is) */
-    if (yang2cli(h, yspec, printgen, state, show_tree, pt) < 0)
-	goto done;
-    /* Append cligen tree and name it */
-    if ((ph = cligen_ph_add(cli_cligen(h), name)) == NULL)
-	goto done;
-    if (cligen_ph_parsetree_set(ph, pt) < 0)
-	goto done;
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Generate autocli, ie if enabled, generate clispec from YANG and add to cligen parse-trees
  *
  * Generate clispec (datamodel) from YANG dataspec and add to the set of cligen trees 
@@ -310,13 +259,16 @@ static int
 autocli_start(clicon_handle h,
 	      int           printgen)
 {
-    int                retval = -1;
-    int                autocli_model = 0;
-    cbuf              *show_treename = NULL, *treename = NULL;
+    int           retval = -1;
+    int           autocli_model = 0;
+    cbuf         *show_treename = NULL;
+    cbuf         *treename = NULL;
+    yang_stmt    *yspec;
 	
     /* If autocli disabled quit */
     if ((autocli_model = clicon_cli_genmodel(h)) == 0)
 	goto ok;
+    yspec = clicon_dbspec_yang(h);
     /* Get the autocli type, ie HOW the cli is generated (could be much more here) */
     /* Create show_treename cbuf */
     if ((show_treename = cbuf_new()) == NULL){
@@ -330,23 +282,22 @@ autocli_start(clicon_handle h,
     }
     /* The tree name is by default @datamodel but can be changed by option (why would one do that?) */
     cprintf(treename, "%s", clicon_cli_model_treename(h));
-    if (autocli_tree(h, cbuf_get(treename), 0, printgen, 0) < 0)
+    if (yang2cli_yspec(h, yspec, cbuf_get(treename), printgen, 0, 0) < 0)
 	goto done;
 
     /* The tree name is by default @datamodelshow but can be changed by option (why would one do that?) */
     cprintf(show_treename, "%s", clicon_cli_model_treename(h));
     cprintf(show_treename, "show");
-    if (autocli_tree(h, cbuf_get(show_treename), 0, printgen, 1) < 0)
+    if (yang2cli_yspec(h, yspec, cbuf_get(show_treename), printgen, 0, 1) < 0)
 	goto done;
 
     /* Create a tree for config+state. This tree's name has appended "state" to @datamodel
      */
     if (autocli_model > 1){
 	cprintf(treename, "state");
-	if (autocli_tree(h, cbuf_get(treename), 1, printgen, 1) < 0)
+	if (yang2cli_yspec(h, yspec, cbuf_get(treename), printgen, 1, 1) < 0)
 	    goto done;
     }
-
  ok:
     retval = 0;
  done:

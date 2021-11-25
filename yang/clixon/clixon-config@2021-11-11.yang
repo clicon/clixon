@@ -45,7 +45,9 @@ module clixon-config {
 
     revision 2021-11-11 {
 	description
-	    "Modified options:
+	    "Added option:
+                    CLICON_PLUGIN_CALLBACK_CHECK
+	     Modified options:
                     CLICON_CLI_GENMODEL_TYPE: added OC_COMPRESS enum
                     CLICON_YANG_DIR: recursive search
              Released in Clixon 5.4";
@@ -929,6 +931,24 @@ module clixon-config {
                  Note that enabling currently causes a large performance overhead for large
                  lists, therefore it is recommended to enable it during development and debugging
                  but disable it in production, until this has been resolved.";
+	}
+	leaf CLICON_PLUGIN_CALLBACK_CHECK {
+	    type boolean;
+	    default false;
+	    description
+		"If enabled, make a check of resources before and after each plugin callback code
+                 to check if the plugin violated resources.
+                 This is primarily intended for development and debugging but may also be enabled 
+                 in a running system.
+                 If enabled, errors will be logged to syslog as WARNINGs.
+                 In case you want early detection and crash, you can uncomment assert statements and
+                 recompile.
+                 The checks are currently made by plugin_context_check() and include:
+                 - termios settings
+                 - signal vectors
+                 The checks will be made for all callbacks as defined in struct clixon_plugin_api
+                 as well as the CLIgen callbacks.
+                 See https://clixon-docs.readthedocs.io/en/latest/backend.html#plugin-callback-guidelines";
 	}
 	leaf CLICON_NAMESPACE_NETCONF_DEFAULT {
 	    type boolean;

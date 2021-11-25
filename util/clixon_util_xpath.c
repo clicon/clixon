@@ -228,7 +228,8 @@ main(int    argc,
     clicon_log_init("xpath", dbg?LOG_DEBUG:LOG_INFO, logdst);
     
     clicon_debug_init(dbg, NULL);
-
+    yang_init(h);
+    
     /* Parse yang */
     if (yang_file_dir){
 	if ((yspec = yspec_new()) == NULL)

@@ -473,6 +473,100 @@ yang_linenum_set(yang_stmt *ys,
 
 /* End access functions */
 
+/* Stats */
+static uint64_t _stats_yang_nr = 0;
+
+/*! Get global statistics about YANG statements: created - freed
+ *
+ * @param[out]  nr  Number of existing YANG objects (created - freed)
+ */
+int
+yang_stats_global(uint64_t *nr)
+{
+    if (nr)
+	*nr = _stats_yang_nr;
+    return 0;
+}
+
+/*! Return the alloced memory of a single YANG obj 
+ * @param[in]   y    YANG object
+ * @param[out]  szp  Size of this YANG obj
+ * @retval      0    OK
+ * (baseline: )
+ */
+static int
+yang_stats_one(yang_stmt *y,
+	       size_t    *szp)
+{
+    size_t           sz = 0;
+    yang_type_cache *yc;
+    
+    sz += sizeof(struct yang_stmt);
+    sz += y->ys_len*sizeof(struct yang_stmt*);
+    if (y->ys_argument)
+	sz += strlen(y->ys_argument) + 1;
+    if (y->ys_cv)
+	sz += cv_size(y->ys_cv);
+    if (y->ys_cvec)
+	sz += cvec_size(y->ys_cvec);
+    if ((yc = y->ys_typecache) != NULL){
+    	sz += sizeof(struct yang_type_cache);
+	if (yc->yc_cvv)
+	    sz += cvec_size(yc->yc_cvv);
+	if (yc->yc_patterns)
+	    sz += cvec_size(yc->yc_patterns);
+	if (yc->yc_regexps)
+	    sz += cvec_size(yc->yc_regexps);
+    }
+    if (y->ys_when_xpath)
+	sz += strlen(y->ys_when_xpath) + 1;
+    if (y->ys_when_nsc)
+	sz += cvec_size(y->ys_when_nsc);
+    if (y->ys_filename)
+	sz += strlen(y->ys_filename) + 1;
+    if (szp)
+	*szp = sz;
+    return 0;
+}
+
+/*! Return statistics of an YANG-stmt tree recursively
+ * @param[in]   yt   YANG object
+ * @param[out]  nrp  Number of YANG objects recursively
+ * @param[out]  szp  Size of this YANG stmt recursively
+ * @retval      0    OK
+ * @retval     -1    Error
+ */
+int
+yang_stats(yang_stmt *yt,
+	   uint64_t  *nrp,
+	   size_t    *szp)
+{
+    int        retval = -1;
+    size_t     sz = 0;
+    yang_stmt *ys;
+
+    if (yt == NULL){
+	clicon_err(OE_XML, EINVAL, "yang spec is NULL");
+	goto done;
+    }
+    *nrp += 1;
+    yang_stats_one(yt, &sz);
+    if (szp)
+	*szp += sz;
+    ys = NULL;
+    while ((ys = yn_each(yt, ys)) != NULL) {
+	sz = 0;
+	yang_stats(ys, nrp, &sz);
+	if (szp)
+	    *szp += sz;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/* stats end */
+
 /*! Create new yang specification
  * @retval  yspec    Free with ys_free() 
  * @retval  NULL     Error
@@ -488,6 +582,7 @@ yspec_new(void)
     }
     memset(yspec, 0, sizeof(*yspec));
     yspec->ys_keyword = Y_SPEC;
+    _stats_yang_nr++;
     return yspec;
 }
 
@@ -514,6 +609,7 @@ ys_new(enum rfc_6020 keyw)
 	return NULL;
     }
     yang_cvec_set(ys, cvv);
+    _stats_yang_nr++;
     return ys;
 }
 
@@ -555,8 +651,10 @@ ys_free1(yang_stmt *ys,
 	free(ys->ys_stmt);
     if (ys->ys_filename)
 	free(ys->ys_filename);
-    if (self)
+    if (self){
 	free(ys);
+	_stats_yang_nr++;
+    }
     return 0;
 }
 

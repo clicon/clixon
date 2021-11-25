@@ -107,6 +107,7 @@ expectpart "$(cat $dir/config.cli)" 0 "set network-instances network-instance de
 
 new "load saved cli config"
 expectpart "$(cat $dir/config.cli | $clixon_cli -D $DBG -f $cfg 2>&1 > /dev/null)" 0 "^$"
+#time cat $dir/config.cli | $clixon_cli -D $DBG -f $cfg
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

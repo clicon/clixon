@@ -1480,10 +1480,10 @@ rpc_reply_check(clicon_handle h,
 		char         *rpcname,
 		cbuf         *cbret)
 {
-    int    retval = -1;
-    cxobj *x = NULL;
-    cxobj *xret = NULL;
-    int    ret;
+    int        retval = -1;
+    cxobj     *x = NULL;
+    cxobj     *xret = NULL;
+    int        ret;
     yang_stmt *yspec;
 
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
@@ -1505,6 +1505,7 @@ rpc_reply_check(clicon_handle h,
     if ((ret = xml_bind_yang_rpc_reply(x, rpcname, yspec, &xret)) < 0)
 	goto done;
     if (ret == 0){
+	clicon_debug(1, "%s failure when validating:%s", __FUNCTION__, cbuf_get(cbret));
 	cbuf_reset(cbret);
 	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
 	    goto done;
@@ -1513,6 +1514,7 @@ rpc_reply_check(clicon_handle h,
     if ((ret = xml_yang_validate_rpc_reply(h, x, &xret)) < 0)
 	goto done;
     if (ret == 0){
+	clicon_debug(1, "%s failure when validating:%s", __FUNCTION__, cbuf_get(cbret));
 	cbuf_reset(cbret);
 	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1) < 0)
 	    goto done;

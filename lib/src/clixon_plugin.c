@@ -63,6 +63,7 @@
 #include "clixon_file.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
+#include "clixon_options.h"
 #include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_yang_module.h"
@@ -342,7 +343,7 @@ plugin_load_one(clicon_handle   h,
     clixon_plugin_t   *cp = NULL;
     char              *name;
     char              *p;
-    plugin_context_t  *pc = NULL;
+    void              *wh = NULL;
 
     clicon_debug(1, "%s file:%s function:%s", __FUNCTION__, file, function);
     dlerror();    /* Clear any existing error */
@@ -361,9 +362,9 @@ plugin_load_one(clicon_handle   h,
 	goto done;
     }
     clicon_err_reset();
-    if ((pc = plugin_context_get()) < 0)
+    wh = NULL;
+    if (plugin_context_check(h, &wh, file, __FUNCTION__) < 0)
 	goto done;
-
     if ((api = initfn(h)) == NULL) {
 	if (!clicon_errno){ 	/* if clicon_err() is not called then log and continue */
 	    clicon_log(LOG_DEBUG, "Warning: failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
@@ -375,7 +376,7 @@ plugin_load_one(clicon_handle   h,
 	    goto done;
 	}
     }
-    if (plugin_context_check(pc, file, __FUNCTION__) < 0)
+    if (plugin_context_check(h, &wh, file, __FUNCTION__) < 0)
 	goto done;
 
     /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
@@ -401,8 +402,8 @@ plugin_load_one(clicon_handle   h,
     retval = 1;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    if (pc)
-	free(pc);
+    if (wh != NULL)
+	free(wh);
     if (retval != 1 && handle)
 	dlclose(handle);
     if (cp)
@@ -510,7 +511,7 @@ done:
  * @retval     NULL    Error
  * @see plugin_context_check
  * */
-plugin_context_t *
+static void *
 plugin_context_get(void)
 {
     int                    i;
@@ -521,7 +522,6 @@ plugin_context_get(void)
 	goto done;
     }
     memset(pc, 0, sizeof(*pc));
-
     if (sigprocmask(0, NULL, &pc->pc_sigset) < 0){
 	clicon_err(OE_UNIX, errno, "sigprocmask");
 	goto done;
@@ -553,30 +553,53 @@ plugin_context_get(void)
 
 /*! Given an existing, old plugin context, check if anything has changed
  *
- * Make a new check and compare with the old (procided as in-parameter).
+ * Called twice:
+ * 1) Make a check of resources
+ * 2) Make a new check and compare with the old check, return 1 on success, 0 on fail
  * Log if there is a difference at loglevel WARNING.
  * You can modify the code to also fail with assert if you want early fail.
+ * Controlled by option 
  *
- * @param[in,out] oldpc  Old plugin context
+ * @param[in]     h      Clixon handle
+ * @param[in,out] wh     Either: NULL for init, will be assigned, OR previous handle (will be freed)
  * @param[in]     name   Name of plugin for logging. Can be other name, context dependent
  * @param[in]     fn     Typically name of callback, or caller function
  * @retval       -1      Error
  * @retval        0      Fail, log on syslog using LOG_WARNING
  * @retval        1      OK
+ * @note Only logs error, does not generate error
  * @note name and fn are context dependent, since the env of callback calls are very different
  * @see plugin_context_get
+ * @see CLICON_PLUGIN_CALLBACK_CHECK  Enable to activate these checks
  */
 int
-plugin_context_check(plugin_context_t *oldpc0,
-		     const char       *name,
-    		     const char       *fn)
+plugin_context_check(clicon_handle h,
+		     void        **wh,
+		     const char   *name,
+		     const char   *fn)
 {
     int                    retval = -1;
     int                    failed = 0;
     int                    i;
-    struct plugin_context *oldpc = oldpc0;
+    struct plugin_context *oldpc;
     struct plugin_context *newpc = NULL;
 
+    if (h == NULL){
+	errno = EINVAL;
+	return -1;
+    }
+    /* Check if plugion checks are enabled */
+    if (!clicon_option_bool(h, "CLICON_PLUGIN_CALLBACK_CHECK"))
+	return 1;
+    if (wh == NULL){
+	errno = EINVAL;
+	return -1;
+    }
+    if (*wh == NULL){
+	*wh = plugin_context_get();
+	return 1;
+    }
+    oldpc = (struct plugin_context *)*wh;
     if ((newpc = plugin_context_get()) == NULL)
 	goto done;
     if (oldpc->pc_termios.c_iflag != newpc->pc_termios.c_iflag){
@@ -644,11 +667,14 @@ plugin_context_check(plugin_context_t *oldpc0,
     }
     if (failed)
 	goto fail;
-
     retval = 1; /* OK */
  done:
     if (newpc)
 	free(newpc);
+    if (oldpc)
+	free(oldpc);
+    if (wh && *wh)
+	*wh = NULL;
     return retval;
  fail:
     retval = 0;
@@ -665,12 +691,13 @@ int
 clixon_plugin_start_one(clixon_plugin_t *cp,
 			clicon_handle  h)
 {
-    int               retval = -1;
-    plgstart_t       *fn;          /* Plugin start */
-    plugin_context_t *pc = NULL;
+    int         retval = -1;
+    plgstart_t *fn;          /* Plugin start */
+    void       *wh = NULL;
 
     if ((fn = cp->cp_api.ca_start) != NULL){
-	if ((pc = plugin_context_get()) == NULL)
+	wh = NULL;
+	if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
 	    goto done;
 	if (fn(h) < 0) {
 	    if (clicon_errno < 0) 
@@ -678,13 +705,11 @@ clixon_plugin_start_one(clixon_plugin_t *cp,
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
-	if (plugin_context_check(pc, cp->cp_name, __FUNCTION__) < 0)
+	if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
-    if (pc)
-	free(pc);
     return retval;
 }
 
@@ -719,13 +744,14 @@ static int
 clixon_plugin_exit_one(clixon_plugin_t *cp,
 		       clicon_handle  h)
 {
-    int               retval = -1;
-    char             *error;
-    plgexit_t        *fn;
-    plugin_context_t *pc = NULL;
+    int         retval = -1;
+    char       *error;
+    plgexit_t  *fn;
+    void       *wh = NULL;
 	
     if ((fn = cp->cp_api.ca_exit) != NULL){
-	if ((pc = plugin_context_get()) == NULL)
+	wh = NULL;
+	if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
 	    goto done;
 	if (fn(h) < 0) {
 	    if (clicon_errno < 0) 
@@ -733,7 +759,7 @@ clixon_plugin_exit_one(clixon_plugin_t *cp,
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
-	if (plugin_context_check(pc, cp->cp_name, __FUNCTION__) < 0)
+	if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
 	    goto done;
 	if (dlclose(cp->cp_handle) != 0) {
 	    error = (char*)dlerror();
@@ -742,8 +768,6 @@ clixon_plugin_exit_one(clixon_plugin_t *cp,
     }
     retval = 0;
  done:
-    if (pc)
-	free(pc);
     return retval;
 }
 
@@ -792,13 +816,14 @@ clixon_plugin_auth_one(clixon_plugin_t     *cp,
 		       clixon_auth_type_t auth_type,
 		       char             **authp)
 {
-    int               retval = -1; 
-    plgauth_t        *fn;          /* Plugin auth */
-    plugin_context_t *pc = NULL;
+    int        retval = -1; 
+    plgauth_t *fn;          /* Plugin auth */
+    void      *wh = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((fn = cp->cp_api.ca_auth) != NULL){
-	if ((pc = plugin_context_get()) == NULL)
+	wh = NULL;
+	if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
 	    goto done;
 	if ((retval = fn(h, req, auth_type, authp)) < 0) {
 	    if (clicon_errno < 0) 
@@ -806,14 +831,12 @@ clixon_plugin_auth_one(clixon_plugin_t     *cp,
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
-	if (plugin_context_check(pc, cp->cp_name, __FUNCTION__) < 0)
+	if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
 	    goto done;
     }
     else
 	retval = 0; /* Ignored / no callback */
  done:
-    if (pc)
-	free(pc);
     clicon_debug(1, "%s retval:%d auth:%s", __FUNCTION__, retval, *authp);
     return retval;
 }
@@ -877,12 +900,13 @@ clixon_plugin_extension_one(clixon_plugin_t *cp,
 			    yang_stmt     *yext,
 			    yang_stmt     *ys)
 {
-    int               retval = 1;
-    plgextension_t   *fn;          /* Plugin extension fn */
-    plugin_context_t *pc = NULL;
+    int             retval = 1;
+    plgextension_t *fn;          /* Plugin extension fn */
+    void           *wh = NULL;
     
     if ((fn = cp->cp_api.ca_extension) != NULL){
-	if ((pc = plugin_context_get()) == NULL)
+	wh = NULL;
+	if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
 	    goto done;
 	if (fn(h, yext, ys) < 0) {
 	    if (clicon_errno < 0) 
@@ -890,13 +914,11 @@ clixon_plugin_extension_one(clixon_plugin_t *cp,
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
-	if (plugin_context_check(pc, cp->cp_name, __FUNCTION__) < 0)
+	if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
-    if (pc)
-	free(pc);
     return retval;
 }
 
@@ -950,10 +972,11 @@ clixon_plugin_datastore_upgrade_one(clixon_plugin_t   *cp,
 {
     int                  retval = -1;
     datastore_upgrade_t *fn;
-    plugin_context_t    *pc = NULL;
+    void                *wh = NULL;
     
     if ((fn = cp->cp_api.ca_datastore_upgrade) != NULL){
-	if ((pc = plugin_context_get()) == NULL)
+	wh = NULL;
+	if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
 	    goto done;
 	if (fn(h, db, xt, msd) < 0) {
 	    if (clicon_errno < 0) 
@@ -961,13 +984,11 @@ clixon_plugin_datastore_upgrade_one(clixon_plugin_t   *cp,
 			   __FUNCTION__, cp->cp_name);
 	    goto done;
 	}
-	if (plugin_context_check(pc, cp->cp_name, __FUNCTION__) < 0)
+	if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
 	    goto done;
     }
     retval = 0;
  done:
-    if (pc)
-	free(pc);
     return retval;
 }
 
@@ -1121,7 +1142,7 @@ rpc_callback_call(clicon_handle h,
     char                 *ns;
     int                   nr = 0; /* How many callbacks */
     plugin_module_struct *ms = plugin_module_struct_get(h);
-    plugin_context_t     *pc = NULL;
+    void                 *wh = NULL;
     int                   ret;
 
     if (ms == NULL){
@@ -1136,19 +1157,18 @@ rpc_callback_call(clicon_handle h,
 	    if (strcmp(rc->rc_name, name) == 0 &&
 		ns && rc->rc_namespace &&
 		strcmp(rc->rc_namespace, ns) == 0){
-		if ((pc = plugin_context_get()) == NULL)
+		wh = NULL;
+		if (plugin_context_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
 		    goto done;
 		if (rc->rc_callback(h, xe, cbret, arg, rc->rc_arg) < 0){
 		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_name);
+		    if (plugin_context_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
+			goto done;
 		    goto done;
 		}
 		nr++;
-		if (plugin_context_check(pc, rc->rc_name, __FUNCTION__) < 0)
+		if (plugin_context_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
 		    goto done;
-		if (pc){
-		    free(pc);
-		    pc = NULL;
-		}
 	    }
 	    rc = NEXTQ(rpc_callback_t *, rc);
 	} while (rc != ms->ms_rpc_callbacks);
@@ -1162,8 +1182,6 @@ rpc_callback_call(clicon_handle h,
     retval = 1; /* 0: none found, >0 nr of handlers called */
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    if (pc)
-	free(pc);
     return retval;
  fail:
     retval = 0;

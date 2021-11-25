@@ -198,9 +198,9 @@ backend_client_rm(clicon_handle        h,
  * @retval       -1       Error
  */
 static int
-clixon_stats_get_db(clicon_handle h,
-		    char         *dbname,
-		    cbuf         *cb)
+clixon_stats_datastore_get(clicon_handle h,
+			   char         *dbname,
+			   cbuf         *cb)
 {
     int       retval = -1;
     cxobj    *xt = NULL;
@@ -227,6 +227,37 @@ clixon_stats_get_db(clicon_handle h,
 		"<size>%zu</size></datastore>",
 		CLIXON_LIB_NS, dbname, nr, sz);
     }
+    retval = 0;
+ done:
+    if (xn)
+	xml_free(xn);
+    return retval;
+}
+
+/*! Get clixon per datastore stats
+ * @param[in]     h       Clicon handle
+ * @param[in]     dbname  Datastore name
+ * @param[in,out] cb      Cligen buf
+ * @retval        0       OK
+ * @retval       -1       Error
+ */
+static int
+clixon_stats_module_get(clicon_handle h,
+			yang_stmt    *ys,
+			cbuf         *cb)
+{
+    int       retval = -1;
+    uint64_t  nr = 0;
+    size_t    sz = 0;
+    cxobj    *xn = NULL;
+    
+    if (ys == NULL)
+	return 0;
+    if (yang_stats(ys, &nr, &sz) < 0)
+	goto done;
+    cprintf(cb, "<module xmlns=\"%s\"><name>%s</name><nr>%" PRIu64 "</nr>"
+	    "<size>%zu</size></module>",
+	    CLIXON_LIB_NS, yang_argument_get(ys), nr, sz);
     retval = 0;
  done:
     if (xn)
@@ -996,19 +1027,41 @@ from_client_stats(clicon_handle h,
 		  void         *arg,
 		  void         *regarg)
 {
-    int      retval = -1;
-    uint64_t nr;
+    int        retval = -1;
+    uint64_t   nr;
+    yang_stmt *ym;
     
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
+    xml_stats_global(&nr);
+    cprintf(cbret, "<global xmlns=\"%s\">", CLIXON_LIB_NS);
     nr=0;
     xml_stats_global(&nr);
-    cprintf(cbret, "<global xmlns=\"%s\"><xmlnr>%" PRIu64 "</xmlnr></global>", CLIXON_LIB_NS, nr);
-    if (clixon_stats_get_db(h, "running", cbret) < 0)
+    cprintf(cbret, "<xmlnr>%" PRIu64 "</xmlnr>", nr);
+    nr=0;
+    yang_stats_global(&nr);
+    cprintf(cbret, "<yangnr>%" PRIu64 "</yangnr>", nr);
+    cprintf(cbret, "</global>");
+    if (clixon_stats_datastore_get(h, "running", cbret) < 0)
 	goto done;
-    if (clixon_stats_get_db(h, "candidate", cbret) < 0)
+    if (clixon_stats_datastore_get(h, "candidate", cbret) < 0)
 	goto done;
-    if (clixon_stats_get_db(h, "startup", cbret) < 0)
+    if (clixon_stats_datastore_get(h, "startup", cbret) < 0)
 	goto done;
+    ym = NULL;
+    while ((ym = yn_each(clicon_config_yang(h), ym)) != NULL) {    
+	if (clixon_stats_module_get(h, ym, cbret) < 0)
+	    goto done;
+    }
+    ym = NULL;
+    while ((ym = yn_each(clicon_dbspec_yang(h), ym)) != NULL) {    
+	if (clixon_stats_module_get(h, ym, cbret) < 0)
+	    goto done;
+    }
+    ym = NULL;
+    while ((ym = yn_each(clicon_nacm_ext_yang(h), ym)) != NULL) {    
+	if (clixon_stats_module_get(h, ym, cbret) < 0)
+	    goto done;
+    }
     cprintf(cbret, "</rpc-reply>");
     retval = 0;
  done:

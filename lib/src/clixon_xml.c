@@ -232,18 +232,19 @@ xml_type2str(enum cxobj_type type)
 }
 
 /* Stats */
-uint64_t _stats_nr = 0;
+static uint64_t _stats_xml_nr = 0;
 
 /*! Get global statistics about XML objects
+ *
+ * @param[out]  nr  Number of existing XML objects (created - freed)
  */
 int
 xml_stats_global(uint64_t *nr)
 {
     if (nr)
-	*nr = _stats_nr;
+	*nr = _stats_xml_nr;
     return 0;
 }
-
 
 /*! Return the alloced memory of a single XML obj 
  * @param[in]   x    XML object
@@ -256,7 +257,6 @@ xml_stats_one(cxobj    *x,
 	      size_t   *szp)
 {
     size_t sz = 0;
-
 
     if (x->x_name)
 	sz += strlen(x->x_name) + 1;
@@ -292,51 +292,12 @@ xml_stats_one(cxobj    *x,
     }
     if (szp)
 	*szp = sz;
-    clicon_debug(1, "%s %zu", __FUNCTION__, sz);
     return 0;
 }
-
-#if 0
-/*! Print memory stats of a single object
- */
-static int
-xml_print_stats_one(FILE   *f,
-		    cxobj  *x)
-{
-    size_t sz = 0;
-
-    xml_stats_one(x, &sz);
-    fprintf(f, "%s:\n", xml_name(x));
-    fprintf(f, "  sum: \t\t%u\n", (unsigned int)sz);
-    if (xml_type(x) == CX_ELMNT)
-	fprintf(f, "  base struct: \t%u\n", (unsigned int)sizeof(struct xml));
-    else
-	fprintf(f, "  base struct: \t%u\n", (unsigned int)sizeof(struct xmlbody));
-    if (x->x_name)
-	fprintf(f, "  name: \t%u\n", (unsigned int)strlen(x->x_name) + 1);
-    if (x->x_prefix)
-	fprintf(f, "  prefix: \t%u\n", (unsigned int)strlen(x->x_prefix) + 1);
-    if (xml_type(x) == CX_ELMNT){
-	if (x->x_childvec_max)
-	    fprintf(f, "  childvec: \t%u\n", (unsigned int)(x->x_childvec_max*sizeof(struct xml*)));
-	if (x->x_ns_cache)
-	    fprintf(f, "  ns-cache: \t%u\n", (unsigned int)cvec_size(x->x_ns_cache));
-	if (x->x_cv)
-	    fprintf(f, "  value-cv: \t%u\n", (unsigned int)cv_size(x->x_cv));
-	if (x->x_search_index)
-	    fprintf(f, "  search-index: \t%u\n",
-		    (unsigned int)(strlen(x->x_search_index->si_name) + 1 + clixon_xvec_len(x->x_search_index->si_xvec)*sizeof(struct cxobj*)));
-    }
-    else{
-	if (x->x_value_cb)
-	    fprintf(f, "  value-cb: \t%u\n", cbuf_buflen(x->x_value_cb));
-    }
-    return 0;
-}
-#endif
 
 /*! Return statistics of an XML tree recursively
  * @param[in]   xt   XML object
+ * @param[out]  nrp  Number of XML obj recursively
  * @param[out]  szp  Size of this XML obj recursively
  * @retval      0    OK
  * @retval     -1    Error
@@ -354,7 +315,6 @@ xml_stats(cxobj    *xt,
 	clicon_err(OE_XML, EINVAL, "xml node is NULL");
 	goto done;
     }
-    //    xml_print_stats_one(stderr, xt);
     *nrp += 1;
     xml_stats_one(xt, &sz);
     if (szp)
@@ -366,7 +326,6 @@ xml_stats(cxobj    *xt,
 	if (szp)
 	    *szp += sz;
     }
-    clicon_debug(1, "%s %zu", __FUNCTION__, *szp);
     retval = 0;
  done:
     return retval;
@@ -1131,7 +1090,7 @@ xml_new(char           *name,
 	    return NULL;
 	x->_x_i = xml_child_nr(xp)-1;
     }
-    _stats_nr++;
+    _stats_xml_nr++;
     return x;
 }
 
@@ -1901,7 +1860,7 @@ xml_free(cxobj *x)
 	break;
     }
     free(x);
-    _stats_nr--;
+    _stats_xml_nr--;
     return 0;
 }
 

@@ -1113,36 +1113,27 @@ yang2cli_stmt(clicon_handle h,
     return retval;
 }
 
-/*! Generate CLI code for Yang specification
- * @param[in]  h         Clixon handle
- * @param[in]  yn        Create parse-tree from this yang node
- * @param[in]  printgen  Log generated CLIgen syntax
- * @param[in]  state     Set to include state syntax
- * @param[in]  show_tree Is tree for show cli command
- * @param[out] pt        CLIgen parse-tree (must be created on input)
- * @retval     0         OK
- * @retval    -1         Error
- */
 int
-yang2cli(clicon_handle      h, 
-	 yang_stmt         *yn, 
-	 int                printgen,
-	 int                state,
-	 int 		    show_tree,
-	 parse_tree        *pt)
+yang2cli_yspec(clicon_handle      h, 
+	       yang_stmt         *yn, 
+	       char              *name0,
+	       int                printgen,
+	       int                state,
+	       int 		  show_tree)
 {
     int           retval = -1;
-    cbuf         *cb = NULL;
-    yang_stmt    *yc;
-    cvec         *globals;       /* global variables from syntax */
+    parse_tree   *pt0 = NULL;
+    cbuf         *cb0 = NULL;
     genmodel_type gt;
     char         *excludelist;
     char        **exvec = NULL;
     int           nexvec = 0;
     int           e;
+    yang_stmt    *ym;
+    pt_head      *ph;
     
-    if (pt == NULL){
-	clicon_err(OE_YANG, EINVAL, "pt is NULL");
+    if ((pt0 = pt_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "pt_new");
 	goto done;
     }
     /* List of modules that should not generate autocli */
@@ -1151,48 +1142,49 @@ yang2cli(clicon_handle      h,
 	    goto done;
     }
     gt = clicon_cli_genmodel_type(h);
-    if ((cb = cbuf_new()) == NULL){
+    if ((cb0 = cbuf_new()) == NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
     /* Traverse YANG, loop through all modules and generate CLI */
-    yc = NULL;
-    while ((yc = yn_each(yn, yc)) != NULL){
+    ym = NULL;
+    while ((ym = yn_each(yn, ym)) != NULL){
 	/* Check if module is in exclude list */
 	for (e = 0; e < nexvec; e++){
-	    if (strcmp(yang_argument_get(yc), exvec[e]) == 0)
+	    if (strcmp(yang_argument_get(ym), exvec[e]) == 0)
 		break;
 	}
 	if (e < nexvec)
 	    continue;
-	if (yang2cli_stmt(h, yc, gt, 0, state, show_tree, cb) < 0)
+	if (yang2cli_stmt(h, ym, gt, 0, state, show_tree, cb0) < 0)
 	    goto done;
     }
     if (printgen)
-	clicon_log(LOG_NOTICE, "%s: Generated CLI spec:\n%s", __FUNCTION__, cbuf_get(cb));
+	clicon_log(LOG_NOTICE, "%s: Top-level api-spec %s:\n%s",
+		   __FUNCTION__, name0, cbuf_get(cb0));
     else
-	clicon_debug(2, "%s: buf\n%s\n", __FUNCTION__, cbuf_get(cb));
-    /* Parse the buffer using cligen parser. XXX why this?*/
-    if ((globals = cvec_new(0)) == NULL)
+	clicon_debug(2, "%s: Top-level api-spec %s:\n%s",
+		   __FUNCTION__, name0, cbuf_get(cb0));
+    /* load top-level yangspec cli syntax (that point to modules) */
+    if (cligen_parse_str(cli_cligen(h), cbuf_get(cb0), "yang2cli", pt0, NULL) < 0)
 	goto done;
-    /* load cli syntax */
-    if (cligen_parse_str(cli_cligen(h), cbuf_get(cb), "yang2cli", pt, globals) < 0)
-	goto done;
-    cvec_free(globals);
     /* Resolve the expand callback functions in the generated syntax.
      * This "should" only be GENERATE_EXPAND_XMLDB
      * handle=NULL for global namespace, this means expand callbacks must be in
      * CLICON namespace, not in a cli frontend plugin.
      */
-    if (cligen_expandv_str2fn(pt, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)     
+    if (cligen_expandv_str2fn(pt0, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)     
 	goto done;
-
+    /* Append cligen tree and name it */
+    if ((ph = cligen_ph_add(cli_cligen(h), name0)) == NULL)
+	goto done;
+    if (cligen_ph_parsetree_set(ph, pt0) < 0)
+	goto done;
     retval = 0;
   done:
     if (exvec)
 	free(exvec);
-    if (cb)
-	cbuf_free(cb);
+    if (cb0)
+	cbuf_free(cb0);
     return retval;
 }
-

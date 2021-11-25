@@ -270,6 +270,7 @@ fi
 # arg1: expected
 # arg2: errmsg[optional]
 # Assumes: $dir and $expect are set
+# see err1
 function err(){
   echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 

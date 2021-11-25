@@ -59,7 +59,11 @@ Users may have to change how they access the system
   * New behavior:
     * JSON: `{"s":"<![CDATA[  z > x  & x < y ]]>"}`  
   * To keep old behavior, set `JSON_CDATA_STRIP` in clixon_custom.h
+* New `clixon-lib@2021-11-11.yang` revision
+  * Modified option: RPC stats extended with YANG stats
 * New `clixon-config@2021-11-11.yang` revision
+  * Added option:
+    * CLICON_PLUGIN_CALLBACK_CHECK
   * Modified options:
     * CLICON_CLI_GENMODEL_TYPE: added OC_COMPRESS enum
     * CLICON_YANG_DIR: recursive search
@@ -92,6 +96,11 @@ Developers may need to change their code
 
 ### Minor features
 
+* Added statistics for YANG: number of objects and memory used
+  * See clixon-lib: stats rpc
+* Performance improvement
+  * Added ancestor config cache indicating wether the node or an ancestor is config false or true
+  * Improved yang cardinality lookup
 * Added sorting of YANG statements
   * Some openconfig specs seem to have use/when before a "config" which it depends on. This leads to XML encoding being in the "wrong order.
   * When parsing, clixon now sorts container/list statements so that sub-statements with WHEN are put last.
@@ -101,6 +110,7 @@ Developers may need to change their code
   * Check blocked signals and signal handlers
   * Check termios settings
   * Any changes to context are logged at loglevel WARNING
+  * New option: CLICON_PLUGIN_CALLBACK_CHECK: enable it to for checks (default false)
 * [OpenConfig path compression](https://github.com/clicon/clixon/pull/276)
 * C API: Added set/get pointer API to clixon_data:
    * Changed signature of `rpc_callback_call()`
@@ -114,6 +124,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* [very slow execution of load_set_file #288](https://github.com/clicon/clixon/issues/288)
 * [RPC output not verified by yang](https://github.com/clicon/clixon/issues/283)
 * [Statements given in "load set" are order dependent](https://github.com/clicon/clixon/issues/287)
   * Modify ordering of XML encoding to put sub-elements with YANG WHEN statements last
