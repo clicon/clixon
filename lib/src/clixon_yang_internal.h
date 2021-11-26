@@ -97,9 +97,10 @@ struct yang_stmt{
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
     char              *ys_when_xpath; /* Special conditional for a "when"-associated augment/uses xpath */
     cvec              *ys_when_nsc;   /* Special conditional for a "when"-associated augment/uses namespace ctx */
-    int               _ys_vector_i;   /* internal use: yn_each */
     char              *ys_filename;   /* For debug/errors: filename (only (sub)modules) */
     int                ys_linenum;    /* For debug/errors: line number (in ys_filename) */
+    /* Internal use */
+    int               _ys_vector_i;   /* internal use: yn_each */
 };
 
 

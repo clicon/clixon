@@ -3761,12 +3761,12 @@ yang_sort_subelements_fn(const void* arg1,
     w1 = yang_find(ys1, Y_WHEN, NULL) != NULL;
     w2 = yang_find(ys2, Y_WHEN, NULL) != NULL;
     if (w1 == w2)
-	return 0;
-    if (w1)
+	return ys1->_ys_vector_i - ys2->_ys_vector_i;
+    else if (w1)
 	return 1;
-    if (w2)
+    else if (w2)
 	return -1;
-    return 0;
+    else return ys1->_ys_vector_i - ys2->_ys_vector_i;
 }
 #endif
 
@@ -3786,9 +3786,14 @@ yang_sort_subelements(yang_stmt *ys)
 #ifdef YANG_ORDERING_WHEN_LAST
     if ((yang_keyword_get(ys) == Y_CONTAINER ||
 	 yang_keyword_get(ys) == Y_LIST)){
+	yang_stmt *yc = NULL;
+
+	/* This enumerates _ys_vector_i in ys->ys_stmt vector */
+	while ((yc = yn_each(ys, yc)) != NULL) ;
 	qsort(ys->ys_stmt, ys->ys_len, sizeof(ys), yang_sort_subelements_fn);
     }
 #endif
+
     retval = 0;
     // done:
     return retval;
