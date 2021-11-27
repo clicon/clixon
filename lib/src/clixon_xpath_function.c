@@ -379,6 +379,80 @@ xp_function_derived_from(xp_ctx            *xc,
     return retval;
 }
 
+/*! Returns true if the first node value has a bit set
+ *
+ * The bit-is-set() function returns "true" if the first node in
+ * document order in the argument "nodes" is a node of type "bits" and
+ * its value has the bit "bit-name" set; otherwise, it returns "false".
+ *
+ * Signature: boolean bit-is-set(node-set nodes, string bit-name)
+
+ * @param[in]  xc   Incoming context
+ * @param[in]  xs   XPATH node tree
+ * @param[in]  nsc  XML Namespace context
+ * @param[in]  localonly Skip prefix and namespace tests (non-standard)
+ * @param[out] xrp  Resulting context
+ * @retval     0    OK
+ * @retval    -1    Error
+ * Example: interface[bit-is-set(flags, 'UP')
+ * @see RFC 7950 Sec 10.6
+ * typecheck is not made but assume this is done by validate
+ * XXX: lacks proper parsing of bits, just  use strstr, see eg cv_validate1
+ */
+int
+xp_function_bit_is_set(xp_ctx            *xc,
+		       struct xpath_tree *xs,
+		       cvec              *nsc,
+		       int                localonly,
+		       xp_ctx           **xrp)
+{
+    int     retval = -1;
+    xp_ctx *xr = NULL;
+    xp_ctx *xr0 = NULL;
+    xp_ctx *xr1 = NULL;
+    char   *s1 = NULL;
+    cxobj  *x;
+    char   *body;
+    
+    if (xs == NULL || xs->xs_c0 == NULL || xs->xs_c1 == NULL){
+	clicon_err(OE_XML, EINVAL, "contains expects but did not get two arguments");
+	goto done;
+    }
+    /* First node-set argument */
+    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0) 	
+	goto done;
+    /* Second string argument */
+    if (xp_eval(xc, xs->xs_c1, nsc, localonly, &xr1) < 0) 	
+	goto done;
+    if (ctx2string(xr1, &s1) < 0)
+	goto done;
+    if ((xr = malloc(sizeof(*xr))) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(xr, 0, sizeof(*xr));
+    xr->xc_type = XT_BOOL;
+    /* The first node in document order in the argument "nodes" 
+     * is a node of type "bits") and # NOT IMPLEMENTED
+     * its value has the bit "bit-name" set
+    */
+    if (xr0->xc_size &&
+	(x = xr0->xc_nodeset[0]) != NULL &&
+	(body = xml_body(x)) != NULL){
+	xr->xc_bool = strstr(body, s1) != NULL;
+    }
+    *xrp = xr;
+    retval = 0;
+ done:
+    if (xr0)
+	ctx_free(xr0);
+    if (xr1)
+	ctx_free(xr1);
+    if (s1)
+	free(s1);
+    return retval;
+}
+
 /*! Return a number equal to the context position from the expression evaluation context.
  *
  * Signature: number position(node-set)

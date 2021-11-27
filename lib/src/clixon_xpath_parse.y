@@ -247,7 +247,6 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     switch (fn){
     case XPATHFN_RE_MATCH:  /* Group of NOT IMPLEMENTED xpath functions */
     case XPATHFN_ENUM_VALUE:
-    case XPATHFN_BIT_IS_SET:
     case XPATHFN_LAST: 
     case XPATHFN_ID:
     case XPATHFN_LOCAL_NAME:
@@ -279,6 +278,7 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     case XPATHFN_CURRENT:  /* Group of implemented xpath functions */
     case XPATHFN_DEREF:
     case XPATHFN_DERIVED_FROM:
+    case XPATHFN_BIT_IS_SET:
     case XPATHFN_DERIVED_FROM_OR_SELF:
     case XPATHFN_POSITION:
     case XPATHFN_COUNT:

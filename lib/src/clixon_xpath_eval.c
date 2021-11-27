@@ -1045,6 +1045,11 @@ xp_eval(xp_ctx     *xc,
 		    goto done;
 		goto ok;
 		break;
+	    case XPATHFN_BIT_IS_SET:
+		if (xp_function_bit_is_set(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+		    goto done;
+		goto ok;
+		break;
 	    case XPATHFN_POSITION:
 		if (xp_function_position(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
 		    goto done;

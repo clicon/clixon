@@ -82,6 +82,14 @@ module $APPNAME{
             base interface-type;
          }
       }
+     leaf flags {
+       description "See RFC 7950 Sec 10.6.1";
+       type bits{
+	    bit UP;
+	    bit PROMISCUOUS;
+	    bit DISABLED;
+       }
+      }
    }
    augment "/ex:interface" {
       when 'derived-from(type, "ex:ethernet")';
@@ -172,6 +180,13 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><
 
 new "netconf discard-changes"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+# bit-is-set
+new "Add interfaces with different flags"
+expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interface xmlns=\"urn:example:clixon\"><name>e0</name><flags>UP</flags></interface><interface xmlns=\"urn:example:clixon\"><name>e1</name><flags>UP PROMISCUOUS</flags></interface><interface xmlns=\"urn:example:clixon\"><name>e2</name><flags>PROMISCUOUS</flags></interface></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
+
+new "netconf bit-is-set"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:interface[bit-is-set(ex:flags, 'PROMISCUOUS')]\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><interface xmlns=\"urn:example:clixon\"><name>e1</name><flags>UP PROMISCUOUS</flags></interface><interface xmlns=\"urn:example:clixon\"><name>e2</name><flags>PROMISCUOUS</flags></interface></data></rpc-reply>]]>]]>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
