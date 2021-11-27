@@ -4,26 +4,7 @@
 # - Only a simple smoketest (CLI check) is made, essentially YANG parsing. A full system may not work
 # - Env variable YANGMODELS should point to checkout place. (define it in site.sh for example)
 # - Some FEATURES are set to make it work
-# - Some DIFFs are necessary in yangmodels
-#     - standard/ietf/RFC/ietf-mud@2019-01-28.yang
-#           -      + "/acl:l4/acl:tcp/acl:tcp" {
-#           +      + "/acl:l4/acl:tcp" {
-#     - standard/ietf/RFC/ietf-acldns@2019-01-28.yang
-#                augment "/acl:acls/acl:acl/acl:aces/acl:ace/acl:matches"
-#            -        + "/acl:l3/acl:ipv4/acl:ipv4" {
-#            +        + "/acl:l3/acl:ipv4" {
-#                 description
-#                   "Adding domain names to matching.";
-#            +    if-feature acl:match-on-ipv4;
-#                 uses dns-matches;
-#               }
-#               augment "/acl:acls/acl:acl/acl:aces/acl:ace/acl:matches"
-#            -        + "/acl:l3/acl:ipv6/acl:ipv6" {
-#            +        + "/acl:l3/acl:ipv6" {
-#                 description
-#                   "Adding domain names to matching.";
-#            +    if-feature acl:match-on-ipv6;
-
+# - Some YANGmodels are broken, therefore CLICON_YANG_AUGMENT_ACCEPT_BROKEN is true
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -46,9 +27,13 @@ cat <<EOF > $cfg
   <CLICON_FEATURE>ietf-subscribed-notifications:configured</CLICON_FEATURE>
   <CLICON_FEATURE>ietf-subscribed-notifications:replay</CLICON_FEATURE>
   <CLICON_FEATURE>ietf-access-control-list:match-on-tcp</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-te-topology:template</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-te-topology:te-topology-hierarchy</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-te-types:path-optimization-metric</CLICON_FEATURE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$YANGMODELS/standard/ieee/published/802.1</CLICON_YANG_DIR> 
   <CLICON_YANG_DIR>$YANGMODELS/standard/ietf/RFC</CLICON_YANG_DIR>	
+  <CLICON_YANG_AUGMENT_ACCEPT_BROKEN>true</CLICON_YANG_AUGMENT_ACCEPT_BROKEN>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>

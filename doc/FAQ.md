@@ -79,11 +79,10 @@ One of the examples is [a hello world example](https://github.com/clicon/clixon-
 ## How do you build and install Clixon?
 Clixon: 
 ```
-	./configure --enable-optyang;
+	./configure
 	make; 
 	sudo make install; 
 ```
-(note: optyang enable only if you need to run the main example, otherwise it is not necessary).
 
 The main example:
 ```

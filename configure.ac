@@ -118,9 +118,11 @@ AC_SUBST(with_restconf) # Set to native or fcgi -> compile apps/restconf
 AC_SUBST(HAVE_LIBEVHTP,false)   # consider using neutral constant such as with-http1
 AC_SUBST(HAVE_LIBNGHTTP2,false) # consider using neutral constant such as with-http2
 AC_SUBST(with_libxml2)  
-AC_SUBST(enable_optyangs)
 AC_SUBST(CLIXON_YANG_PATCH)
-
+# Where Clixon installs its YANG specs
+AC_SUBST(YANG_INSTALLDIR) 
+# Examples require standard IETF YANGs. You need to provide these for example and tests
+AC_SUBST(YANG_STANDARD_DIR)
 
 # Home dir for web user, such as nginx fcgi sockets
 AC_SUBST(wwwdir,/www-data)
@@ -172,20 +174,6 @@ if test -d "${with_cligen}"; then
   LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
   test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
 fi
-
-# Disable/enable standard Yang files.
-# If enable - include yang/standard/*.yang in clixon yang files (default)
-# If disable - get standard yang files from elsewhere
-AC_ARG_ENABLE(optyangs, AS_HELP_STRING([--enable-optyangs],[Include optional yang files for examples and testing in clixon install, default: no]),[
-	  if test "$enableval" = no; then
-	      enable_optyangs=no
-	  else	      
-	      enable_optyangs=yes
-          fi
-        ],
-	[ enable_optyangs=no])
-
-AC_MSG_RESULT(optyangs is $enable_optyangs)
 
 # Disable/enable yang patch
 AC_ARG_ENABLE(yang-patch, AS_HELP_STRING([--enable-yang-patch],[Enable YANG patch, RFC 8072, default: no]),[
@@ -347,20 +335,17 @@ AC_ARG_WITH(yang-installdir,
 	    [YANG_INSTALLDIR="$withval"],
     	    [YANG_INSTALLDIR="${prefix}/share/clixon"]		
 	    )
-AC_SUBST(YANG_INSTALLDIR)
 AC_MSG_RESULT(Clixon yang files are installed in ${YANG_INSTALLDIR})	
 
-# OPT_YANG_INSTALLDIR is where clixon installs standard yang files
-# (  the files in in yang/standard)
-# that Clixon needs to run (or examples rely on). These may be retreived from
-# elsewhere (eg yangmodels repo)
-AC_ARG_WITH(opt-yang-installdir,
-	    [AS_HELP_STRING([--with-opt-yang-installdir=DIR],[Install optional yang files here (default: ${prefix}/share/clixon)])],
-	    [OPT_YANG_INSTALLDIR="$withval"],
-    	    [OPT_YANG_INSTALLDIR="${prefix}/share/clixon"]		
+# YANG_STANDARD_DIR is where clixon assumes standard IETF are
+# This is NOT installed by Clixon and is not needed for core system
+# However, it is required by the main example and some of the tests
+AC_ARG_WITH(yang-standard-installdir,
+            [AS_HELP_STRING([--with-yang-standard-dir=DIR],[Where standard IETF/IEEE YANGs are (default: ${prefix}/share/yang/standard)])],
+	    [YANG_STANDARD_DIR="$withval"],
+    	    [YANG_STANDARD_DIR="${prefix}/share/yang/standard"]		
 	    )
-AC_SUBST(OPT_YANG_INSTALLDIR)
-AC_MSG_RESULT(Optional yang files are installed in ${OPT_YANG_INSTALLDIR} (if enabled))	
+AC_MSG_RESULT(Standard YANG files should be in ${YANG_STANDARD_DIR})	
 
 # Default location for config file
 AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])
@@ -381,6 +366,7 @@ AC_OUTPUT(Makefile
 	  etc/clixonrc
 	  example/Makefile
   	  example/main/Makefile
+    	  example/main/example.xml
 	  extras/rpm/Makefile
 	  docker/Makefile
   	  docker/main/Makefile

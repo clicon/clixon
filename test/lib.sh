@@ -138,17 +138,6 @@ fi
 # Start restconf user, can be root which is dropped to wwwuser
 : ${wwwstartuser:=root} 
 
-# Parse yangmodels from https://github.com/YangModels/yang
-# Recommended: checkout yangmodels elsewhere in the tree and set the env
-# to that
-#: ${YANGMODELS=$(pwd)/yang} # just skip if not set
-
-# Parse yang openconfig models from https://github.com/openconfig/public
-#: ${OPENCONFIG=$(pwd)/public} # just skip if not set
-
-# Standard IETF RFC yang files. 
-: ${IETFRFC=../yang/mandatory}
-
 # Some restconf tests can run IPv6, but its complicated because:
 # - docker by default does not run IPv6
 : ${IPv6:=false}
@@ -185,6 +174,11 @@ if [ -f ./site.sh ]; then
 	    return -1 # skip
 	fi
     done
+fi
+
+# Standard IETF RFC yang files. 
+if [ ! -z ${YANGMODELS} ]; then
+    : ${IETFRFC=$YANGMODELS/standard/ietf/RFC}
 fi
 
 # Check sanity between --with-restconf setting and if nginx is started by systemd or not

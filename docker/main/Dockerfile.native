@@ -38,14 +38,29 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 # For clixon and cligen
 RUN apk add --update git make build-base gcc flex bison curl-dev
 
-# Create a directory to hold source-code, dependencies etc
-RUN mkdir /clixon
-
 # evhtp dependencies
 RUN apk add --update libevent libevent-dev
 
 # nghttp2 dependencies
 RUN apk add --update nghttp2
+
+# Checkut models
+WORKDIR /usr/local/share/
+
+# Checkut standard YANG models for tests (note >1G for full repo)
+RUN mkdir yang; cd yang; git init; git remote add -f origin https://github.com/YangModels/yang; git config core.sparseCheckout true; echo "standard/" >> .git/info/sparse-checkout; echo "experimental/" >> .git/info/sparse-checkout
+
+WORKDIR /usr/local/share/yang
+RUN git pull origin master
+
+RUN mkdir /usr/local/share/openconfig
+WORKDIR /usr/local/share/openconfig
+
+# Checkut Openconfig models for tests
+RUN git clone https://github.com/openconfig/public
+
+# Create a directory to hold source-code, dependencies etc
+RUN mkdir /clixon
 
 # clone libevhtp
 WORKDIR /clixon
@@ -79,7 +94,7 @@ WORKDIR /clixon/clixon
 COPY clixon .
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --enable-optyangs --with-restconf=native --enable-nghttp2 --enable-evhtp
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-restconf=native --enable-nghttp2 --enable-evhtp
 
 RUN make
 RUN make install
@@ -134,6 +149,9 @@ RUN adduser -D -H clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
 COPY --from=0 /usr/local/lib/libevhtp.so* /usr/local/lib/
+COPY --from=0 /usr/local/share/yang/* /usr/local/share/yang/standard/
+COPY --from=0 /usr/local/share/yang/* /usr/local/share/yang/experimental/
+COPY --from=0 /usr/local/share/openconfig/* /usr/local/share/openconfig/
 
 # Manually created
 RUN mkdir /www-data

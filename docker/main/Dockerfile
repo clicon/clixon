@@ -39,6 +39,13 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 # For clixon and cligen
 RUN apk add --update git make build-base gcc flex bison curl-dev
 
+# Checkut standard YANG models for tests (note >1G for full repo)
+WORKDIR /usr/local/share
+RUN mkdir yang; cd yang; git init; git remote add -f origin https://github.com/YangModels/yang; git config core.sparseCheckout true; echo "standard/" >> .git/info/sparse-checkout; echo "experimental/" >> .git/info/sparse-checkout
+
+WORKDIR /usr/local/share/yang
+RUN git pull origin master
+
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
 RUN mkdir /clixon/build
@@ -59,7 +66,7 @@ WORKDIR /clixon/clixon
 COPY clixon .
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --enable-optyangs --without-restconf
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --without-restconf
 RUN make
 RUN make install
 
@@ -100,6 +107,7 @@ RUN apk add --update sudo curl procps grep make bash # iproute2 # contains ip
 RUN adduser -D -H clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
+COPY --from=0 /usr/local/share/yang/* /usr/local/share/yang/standard/
 
 # Log to stderr.
 CMD /usr/local/bin/startsystem.sh

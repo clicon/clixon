@@ -47,6 +47,7 @@ module clixon-config {
 	description
 	    "Added option:
                     CLICON_PLUGIN_CALLBACK_CHECK
+                    CLICON_YANG_AUGMENT_ACCEPT_BROKEN
 	     Modified options:
                     CLICON_CLI_GENMODEL_TYPE: added OC_COMPRESS enum
                     CLICON_YANG_DIR: recursive search
@@ -936,7 +937,8 @@ module clixon-config {
 	    type boolean;
 	    default false;
 	    description
-		"If enabled, make a check of resources before and after each plugin callback code
+		"Debug option.
+                 If enabled, make a check of resources before and after each plugin callback code
                  to check if the plugin violated resources.
                  This is primarily intended for development and debugging but may also be enabled 
                  in a running system.
@@ -949,6 +951,21 @@ module clixon-config {
                  The checks will be made for all callbacks as defined in struct clixon_plugin_api
                  as well as the CLIgen callbacks.
                  See https://clixon-docs.readthedocs.io/en/latest/backend.html#plugin-callback-guidelines";
+	}
+	leaf CLICON_YANG_AUGMENT_ACCEPT_BROKEN {
+	    type boolean;
+	    default false;
+	    description
+		"Debug option. If enabled, accept broken augments on the form:
+                    augment <target> { ... }
+                 where <target> is an XPath which MUST be an existing node but for many
+                 yangmodels do not.
+                 There are several cases why this may be the case:
+                 - syntax errors,
+                 - features that need to be enabled
+                 - wrong XPaths, etc
+                 This option should be enabled only for passing some testcases it should 
+                 normally never be enabled in system YANGs that are used in a system.";
 	}
 	leaf CLICON_NAMESPACE_NETCONF_DEFAULT {
 	    type boolean;

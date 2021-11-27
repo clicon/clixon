@@ -621,8 +621,6 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-OPT_YANG_INSTALLDIR
-YANG_INSTALLDIR
 EGREP
 GREP
 LEXLIB
@@ -635,8 +633,9 @@ CXXFLAGS
 CXX
 CPP
 wwwdir
+YANG_STANDARD_DIR
+YANG_INSTALLDIR
 CLIXON_YANG_PATCH
-enable_optyangs
 with_libxml2
 HAVE_LIBNGHTTP2
 HAVE_LIBEVHTP
@@ -719,7 +718,6 @@ ac_user_opts='
 enable_option_checking
 enable_debug
 with_cligen
-enable_optyangs
 enable_yang_patch
 enable_publish
 with_restconf
@@ -729,7 +727,7 @@ with_configfile
 with_libxml2
 with_sigaction
 with_yang_installdir
-with_opt_yang_installdir
+with_yang_standard_installdir
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1369,8 +1367,6 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-debug          Build with debug symbols, default: no
-  --enable-optyangs       Include optional yang files for examples and testing
-                          in clixon install, default: no
   --enable-yang-patch     Enable YANG patch, RFC 8072, default: no
   --enable-publish        Enable publish of notification streams using SSE and
                           curl
@@ -1393,9 +1389,9 @@ Optional Packages:
   --with-yang-installdir=DIR
                           Install Clixon yang files here (default:
                           ${prefix}/share/clixon)
-  --with-opt-yang-installdir=DIR
-                          Install optional yang files here (default:
-                          ${prefix}/share/clixon)
+  --with-yang-standard-dir=DIR
+                          Where standard IETF/IEEE YANGs are (default:
+                          ${prefix}/share/yang/standard)
 
 Some influential environment variables:
   CC          C compiler command
@@ -3395,7 +3391,9 @@ HAVE_LIBNGHTTP2=false
  # consider using neutral constant such as with-http2
 
 
+# Where Clixon installs its YANG specs
 
+# Examples require standard IETF YANGs. You need to provide these for example and tests
 
 
 # Home dir for web user, such as nginx fcgi sockets
@@ -4590,26 +4588,6 @@ if test -d "${with_cligen}"; then
   test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
 fi
 
-# Disable/enable standard Yang files.
-# If enable - include yang/standard/*.yang in clixon yang files (default)
-# If disable - get standard yang files from elsewhere
-# Check whether --enable-optyangs was given.
-if test "${enable_optyangs+set}" = set; then :
-  enableval=$enable_optyangs;
-	  if test "$enableval" = no; then
-	      enable_optyangs=no
-	  else
-	      enable_optyangs=yes
-          fi
-
-else
-   enable_optyangs=no
-fi
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: optyangs is $enable_optyangs" >&5
-$as_echo "optyangs is $enable_optyangs" >&6; }
-
 # Disable/enable yang patch
 # Check whether --enable-yang-patch was given.
 if test "${enable_yang_patch+set}" = set; then :
@@ -5674,26 +5652,23 @@ else
 
 fi
 
-
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: Clixon yang files are installed in ${YANG_INSTALLDIR}" >&5
 $as_echo "Clixon yang files are installed in ${YANG_INSTALLDIR}" >&6; }
 
-# OPT_YANG_INSTALLDIR is where clixon installs standard yang files
-# (  the files in in yang/standard)
-# that Clixon needs to run (or examples rely on). These may be retreived from
-# elsewhere (eg yangmodels repo)
+# YANG_STANDARD_DIR is where clixon assumes standard IETF are
+# This is NOT installed by Clixon and is not needed for core system
+# However, it is required by the main example and some of the tests
 
-# Check whether --with-opt-yang-installdir was given.
-if test "${with_opt_yang_installdir+set}" = set; then :
-  withval=$with_opt_yang_installdir; OPT_YANG_INSTALLDIR="$withval"
+# Check whether --with-yang-standard-installdir was given.
+if test "${with_yang_standard_installdir+set}" = set; then :
+  withval=$with_yang_standard_installdir; YANG_STANDARD_DIR="$withval"
 else
-  OPT_YANG_INSTALLDIR="${prefix}/share/clixon"
+  YANG_STANDARD_DIR="${prefix}/share/yang/standard"
 
 fi
 
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Optional yang files are installed in ${OPT_YANG_INSTALLDIR} (if enabled)" >&5
-$as_echo "Optional yang files are installed in ${OPT_YANG_INSTALLDIR} (if enabled)" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Standard YANG files should be in ${YANG_STANDARD_DIR}" >&5
+$as_echo "Standard YANG files should be in ${YANG_STANDARD_DIR}" >&6; }
 
 # Default location for config file
 
@@ -5704,7 +5679,7 @@ _ACEOF
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile extras/rpm/Makefile docker/Makefile docker/main/Makefile docker/base/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile yang/optional/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml extras/rpm/Makefile docker/Makefile docker/main/Makefile docker/base/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile yang/optional/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -6412,6 +6387,7 @@ do
     "etc/clixonrc") CONFIG_FILES="$CONFIG_FILES etc/clixonrc" ;;
     "example/Makefile") CONFIG_FILES="$CONFIG_FILES example/Makefile" ;;
     "example/main/Makefile") CONFIG_FILES="$CONFIG_FILES example/main/Makefile" ;;
+    "example/main/example.xml") CONFIG_FILES="$CONFIG_FILES example/main/example.xml" ;;
     "extras/rpm/Makefile") CONFIG_FILES="$CONFIG_FILES extras/rpm/Makefile" ;;
     "docker/Makefile") CONFIG_FILES="$CONFIG_FILES docker/Makefile" ;;
     "docker/main/Makefile") CONFIG_FILES="$CONFIG_FILES docker/main/Makefile" ;;

@@ -90,8 +90,12 @@ cat <<EOF > /usr/local/bin/test/site.sh
 # Add your local site specific env variables (or tests) here.
 SKIPLIST="test_api.sh test_client.sh test_c++.sh test_install.sh test_privileges.sh"
 RCPROTO=http # Because nginx
-#IETFRFC=
+# Parse yangmodels from https://github.com/YangModels/yang
+YANGMODELS=/usr/local/share/yang
 EOF
+
+# Patch yang syntax errors
+sed -i s/=\ olt\'/=\ \'olt\'/g /usr/local/share/yang/standard/ieee/published/802.3/ieee802-ethernet-pon.yang
 
 # Workaround for this error output:
 # sudo: setrlimit(RLIMIT_CORE): Operation not permitted

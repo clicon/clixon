@@ -14,7 +14,6 @@ fin=$dir/in
 fstate=$dir/state.xml
 
 # Use yang in example
-
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>

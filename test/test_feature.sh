@@ -221,7 +221,7 @@ fi
 fi # false
 
 new "netconf module ietf-inet-types"
-expect="<module><name>ietf-inet-types</name><revision>2020-07-06</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace><conformance-type>implement</conformance-type></module>"
+expect="<module><name>ietf-inet-types</name><revision>2021-02-22</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace><conformance-type>implement</conformance-type></module>"
 match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"

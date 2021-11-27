@@ -23,7 +23,7 @@ module ietf-inet-types {
     described in BCP 14 (RFC 2119) (RFC 8174) when, and only when,
     they appear in all capitals, as shown here.
 
-    Copyright (c) 2020 IETF Trust and the persons identified as
+    Copyright (c) 2021 IETF Trust and the persons identified as
     authors of the code.  All rights reserved.
 
     Redistribution and use in source and binary forms, with or
@@ -35,23 +35,26 @@ module ietf-inet-types {
 
     This version of this YANG module is part of RFC XXXX;
     see the RFC itself for full legal notices.";
-  revision 2020-07-06 {
+
+  revision 2021-02-22 {
     description
      "This revision adds the following new data types:
-      - ip-address-and-prefix
-      - ipv4-address-and-prefix
-      - ipv6-address-and-prefix
-      - email-address";
+      - inet:ip-address-and-prefix
+      - inet:ipv4-address-and-prefix
+      - inet:ipv6-address-and-prefix
+      - inet:host-name
+      - inet:email-address
+      The inet:host union was changed to use inet:host-name instead
+      of inet:domain-name.";
     reference
      "RFC XXXX: Common YANG Data Types";
   }
-
   revision 2013-07-15 {
     description
      "This revision adds the following new data types:
-      - ip-address-no-zone
-      - ipv4-address-no-zone
-      - ipv6-address-no-zone";
+      - inet:ip-address-no-zone
+      - inet:ipv4-address-no-zone
+      - inet:ipv6-address-no-zone";
     reference
      "RFC 6991: Common YANG Data Types";
   }
@@ -94,7 +97,6 @@ module ietf-inet-types {
       RFC 2460: Internet Protocol, Version 6 (IPv6) Specification
       RFC 4001: Textual Conventions for Internet Network Addresses";
   }
-
   typedef dscp {
     type uint8 {
       range "0..63";
@@ -143,7 +145,6 @@ module ietf-inet-types {
       Note that the port number value zero is reserved by IANA.  In
       situations where the value zero does not make sense, it can
       be excluded by subtyping the port-number type.
-
       In the value set and its semantics, this type is equivalent
       to the InetPortNumber textual convention of the SMIv2.";
     reference
@@ -323,6 +324,7 @@ module ietf-inet-types {
       A prefix length value of n corresponds to an IP address
       mask that has n contiguous 1-bits from the most
       significant bit (MSB) and all other bits set to 0.
+
       The canonical format of an IPv4 prefix has all bits of
       the IPv4 address set to zero that are not part of the
       IPv4 prefix.
@@ -450,10 +452,9 @@ module ietf-inet-types {
       for current practice in domain name use, and some possible
       future expansion.  Note that Internet host names have a
       stricter syntax (described in RFC 952) than the DNS
-      recommendations in RFCs 1034 and 1123, and that systems
-      that want to store host names in schema node instances
-      using the domain-name type are recommended to adhere to
-      this stricter standard to ensure interoperability.
+      recommendations in RFCs 1034 and 1123. Schema nodes
+      representing host names should use the host-name type
+      instead of the domain-type.
 
       The encoding of DNS names in the DNS protocol is limited
       to 255 characters.  Since the encoding consists of labels
@@ -486,21 +487,39 @@ module ietf-inet-types {
                 (IDNA): Definitions and Document Framework";
   }
 
+  typedef host-name {
+    type domain-name {
+      pattern '[a-zA-Z0-9\-\.]+';
+      length "2..max";
+    }
+    description
+     "The host-name type represents (fully qualified) host names.
+      Host names must be at least two characters long (see RFC 952)
+      and they are restricted to labels consisting of letters, digits
+      and hyphens separated by dots (see RFC1123 and RFC 952).";
+    reference
+     "RFC  952: DoD Internet Host Table Specification
+      RFC 1123: Requirements for Internet Hosts: Application and Support";
+  }
+
   typedef host {
     type union {
       type inet:ip-address;
-      type inet:domain-name;
+      type inet:host-name;
     }
     description
-     "The host type represents either an IP address or a DNS
-      domain name.";
+     "The host type represents either an IP address or a (fully
+      qualified) host name.";
   }
 
   /*
    * DISCUSS:
-   * - Lada suggested to replace the inet:domain-name usage in
-   *   the union with a new host-name definition that follows
-   *   the NR-LDH definition in RFC 5890.
+   * - It was discussed to define int-domain-name and int-host-name
+   *   that use U-labels instead of A-labels and to add int-host-name
+   *   to the inet:host union, perhaps all gated by an inet:idna-aware
+   *   feature.
+   * - It is not clear how inet:idna-aware affects inet:email-address
+   *   and inet:uri - do we also need int-uri and int-email-address?
    */
 
   typedef uri {
@@ -560,15 +579,6 @@ module ietf-inet-types {
 
   /*
    * DISCUSS:
-   * - It was suggested to add email types following RFC 5322
-   *   email-address        (addr-spec, per Section 3.4.1)
-   *   named-email-address  (name-addr, per Section 3.4)
-   * - This sounds useful but the devil is in the details,
-   *   in particular name-addr is a quite complex construct;
-   *   perhaps addr-spec is sufficient, this is also the
-   *   format allowed in mailto: URIs (mailto: seems to use
-   *   only a subset of addr-spec which may be good enough
-   *   here as well).
    * - Need to define a pattern that has a meaningful trade-off
    *   between precision and complexity (there are very tight
    *   pattern that are very long and complex). The current
@@ -576,14 +586,4 @@ module ietf-inet-types {
    *   domain-literal, obs-domain.
    */
 
-  /*
-   * DISCUSS:
-   * - There was a request to add types for URI fields (scheme,
-   *   authority, path, query, fragment) but it is not clear how
-   *   commonly useful these types are, the WG was pretty silent
-   *   about this proposal. On the technical side, it is unclear
-   *   whether data is represented with percent escapes resolved
-   *   or not. (Mahesh's proposal does not spell this out, the
-   *   pattern does not allow the % character, which may be wrong.)
-   */
 }

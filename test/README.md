@@ -7,10 +7,9 @@ automatically run as part of the all.sh, sum.sh tests etc. The scripts
 need to follow some rules to work properly, please look at one or two
 to get the idea.
 
-Note that configure must ensure optional yangs be installed:
-```
-  ./configure --enable-optyangs
-```
+Note that some IETF yangs need to be available, by default these are
+available in https://github.com/YangModels/yang. Just ensure the YANGMODELS in site.sh points
+to a locally checked out dir.
 
 See also the [site.sh](#site-sh) for example for skipping tests or setting some site-specific variables.
 

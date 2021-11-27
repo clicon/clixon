@@ -242,23 +242,24 @@ yang_augment_node(clicon_handle h,
 	goto done;
 
     if (ytarget == NULL){
-#if 1
-	/* Fail with fatal error if augment target not found 
-	 * This is "correct"
-	 */
-	clicon_err(OE_YANG, 0, "Augment failed in module %s: target node %s not found",
-		   yang_argument_get(ys_module(ys)),
-		   schema_nodeid);
-	goto done; 
-#else
-	/* Log a warning and proceed if augment target not found 
-	 * This may be necessary with some broken models
-	 */
-	clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: target node %s not found",
-		   yang_argument_get(ys_module(ys)),
-		   schema_nodeid);
-	goto ok;
-#endif
+	if (clicon_option_bool(h, "CLICON_YANG_AUGMENT_ACCEPT_BROKEN")){
+	    /* Log a warning and proceed if augment target not found 
+	     * This may be necessary with some broken models
+	     */
+	    clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: target node %s not found",
+		       yang_argument_get(ys_module(ys)),
+		       schema_nodeid);
+	    goto ok;
+	}
+	else{
+	    /* Fail with fatal error if augment target not found 
+	     * This is "correct"
+	     */
+	    clicon_err(OE_YANG, 0, "Augment failed in module %s: target node %s not found",
+		       yang_argument_get(ys_module(ys)),
+		       schema_nodeid);
+	    goto done; 
+	}
     }
     /* The target node MUST be either a container, list, choice, case, input, output, or notification node.
      * which means it is slightly different than a schema-nodeid ? */
