@@ -126,7 +126,7 @@ new "Add NACM read path rule XML"
 expectpart "$(curl -u andy:bar $CURLOPTS -X POST $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm -H 'Content-Type: application/yang-data+xml' -d '<rule-list xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm"><name>limited-acl</name><group>limited</group><rule><name>table</name><module-name>*</module-name><access-operations>read</access-operations><path xmlns:ex="urn:example:nacm">/ex:table</path><action>permit</action></rule></rule-list>')" 0 "HTTP/$HVER 201"
 
 new "Read NACM rule"
-expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0  "HTTP/$HVER 200" '{"ietf-netconf-acm:rule-list":\[{"name":"limited-acl","group":"limited","rule":\[{"name":"table","module-name":"\*","path":"/ex:table","access-operations":"read","action":"permit"}\]}\]}'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0  "HTTP/$HVER 200" '{"ietf-netconf-acm:rule-list":\[{"name":"limited-acl","group":\["limited"\],"rule":\[{"name":"table","module-name":"\*","path":"/ex:table","access-operations":"read","action":"permit"}\]}\]}'
 
 new "limit read OK"
 expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 "HTTP/$HVER 200" '{"nacm-example:parameter":\[{"name":"a","value":"72"}\]}'
@@ -141,7 +141,7 @@ new "Add NACM read path rule JSON"
 expectpart "$(curl -u andy:bar $CURLOPTS -X POST  $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm -H 'Content-Type: application/yang-data+json' -d '{"ietf-netconf-acm:rule-list":[{"name":"limited-acl","group":"limited","rule":[{"name":"table","module-name":"*","path":"/ex:table","access-operations":"read","action":"permit"}]}]}')" 0 "HTTP/$HVER 201"
 
 new "Read NACM rule"
-expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0  "HTTP/$HVER 200" '{"ietf-netconf-acm:rule-list":\[{"name":"limited-acl","group":"limited","rule":\[{"name":"table","module-name":"\*","path":"/ex:table","access-operations":"read","action":"permit"}\]}\]}'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/rule-list=limited-acl)" 0  "HTTP/$HVER 200" '{"ietf-netconf-acm:rule-list":\[{"name":"limited-acl","group":\["limited"\],"rule":\[{"name":"table","module-name":"\*","path":"/ex:table","access-operations":"read","action":"permit"}\]}\]}'
 
 new "limit read OK (Set rul w JSON)"
 expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:table/parameters/parameter=a)" 0 "HTTP/$HVER 200" '{"nacm-example:parameter":\[{"name":"a","value":"72"}\]}'

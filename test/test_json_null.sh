@@ -71,7 +71,7 @@ expecteofx "$clixon_util_xml -ovJy $fyang" 0 "$JSON" "$XML"
 
 # Leaf-lists single
 XML='<leaf-lists xmlns="urn:example:clixon"><a></a><b></b></leaf-lists>'
-JSON='{"json:leaf-lists":{"a":[null],"b":""}}'
+JSON='{"json:leaf-lists":{"a":[[null]],"b":[""]}}'
 
 new "leaf-list single xml to json"
 expecteofx "$clixon_util_xml -ovjy $fyang" 0 "$XML" "$JSON"

@@ -13,19 +13,21 @@ module json{
    prefix ex;
    namespace "urn:example:clixon";
    container c{
-     leaf-list l1{
-       type int32;
-     }
-     list l2{
-        key name;
-	leaf name{
-	   type int32;
-	}
-	leaf value{
-	   type string;
-	}
-     }
-
+      leaf-list l1{
+         type int32;
+      }
+      list l2{
+         key name;
+ 	 leaf name{
+	    type int32;
+	 }
+	 leaf value{
+	    type string;
+	 }
+      }
+      leaf extra{
+         type string;
+      }
    }
 }
 EOF
@@ -57,6 +59,9 @@ testrun "one leaf-list" '{"json:c":{"l1":[1]}}' '<c xmlns="urn:example:clixon"><
 testrun "two leaf-list" '{"json:c":{"l1":[1,2]}}' '<c xmlns="urn:example:clixon"><l1>1</l1><l1>2</l1></c>'
 
 testrun "three leaf-list" '{"json:c":{"l1":[1,2,3]}}' '<c xmlns="urn:example:clixon"><l1>1</l1><l1>2</l1><l1>3</l1></c>'
+
+testrun "multiple leaf-list" '{"json:c":{"l1":[1,2],"extra":"abc"}}' '<c xmlns="urn:example:clixon"><l1>1</l1><l1>2</l1><extra>abc</extra></c>'
+
 
 testrun "one list" '{"json:c":{"l2":[{"name":1,"value":"x"}]}}' '<c xmlns="urn:example:clixon"><l2><name>1</name><value>x</value></l2></c>'
 

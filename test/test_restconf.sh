@@ -386,7 +386,7 @@ function testrun()
     fi
 
     new "restconf get data type json"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/clixon-example:state/op=42)" 0 '{"clixon-example:op":"42"}'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/clixon-example:state/op=42)" 0 '{"clixon-example:op":\["42"\]}'
 
     new "restconf get state operation"
     # Cant get shell macros to work, inline matching from lib.sh
@@ -398,7 +398,7 @@ function testrun()
     fi
 
     new "restconf get state operation type json"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/clixon-example:state/op=42)" 0 '{"clixon-example:op":"42"}'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/clixon-example:state/op=42)" 0 '{"clixon-example:op":\["42"\]}'
 
     new "restconf get state operation type xml"
     # Cant get shell macros to work, inline matching from lib.sh

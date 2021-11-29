@@ -231,11 +231,7 @@ array_eval(cxobj *xprev,
     else if (eqnext)
 	arraytype = FIRST_ARRAY;
     else if ((ys = xml_spec(x)) != NULL) {
-	if (yang_keyword_get(ys) == Y_LIST
-#if 0	    /* XXX instead see special case in xml2json_encode_leafs */
-	    || yang_keyword_get(ys) == Y_LEAF_LIST
-#endif
-	    )
+	if (yang_keyword_get(ys) == Y_LIST || yang_keyword_get(ys) == Y_LEAF_LIST)
 	    arraytype = SINGLE_ARRAY;
 	else
 	    arraytype = NO_ARRAY;
@@ -601,12 +597,6 @@ xml2json_encode_leafs(cxobj     *xb,
 	case CGV_UINT64:
 	case CGV_DEC64:
 	case CGV_BOOL:
-#if 1 /* Special case */
-	    if (yang_keyword_get(yp) == Y_LEAF_LIST
-		&& xml_child_nr_type(xml_parent(xp), CX_ELMNT) == 1) 
-		cprintf(cb, "[%s]", body);
-	    else
-#endif
 	    cprintf(cb, "%s", body);
 	    quote = 0;
 	    break;
@@ -614,7 +604,12 @@ xml2json_encode_leafs(cxobj     *xb,
 	    /* special case YANG empty type */
 	    if (body == NULL && strcmp(restype, "empty")==0){
 		quote = 0;
-		cprintf(cb, "[null]");
+		if (keyword == Y_LEAF)
+		    cprintf(cb, "[null]");
+		else if (keyword == Y_LEAF_LIST && strcmp(restype, "empty") == 0)
+		    cprintf(cb, "[null]");
+		else
+		    cprintf(cb, "null");
 	    }
 	    break;
 	default:
