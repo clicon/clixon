@@ -416,7 +416,7 @@ xml_sort(cxobj *x)
     if ((ys = xml_spec(x)) != 0	&& yang_config(ys)==0)
 	return 1;
 #endif
-    xml_enumerate_children(x);
+    xml_enumerate_children(x); /* This is to make sorting "stable", ie not change existing order */
     qsort(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort);
     return 0;
 }

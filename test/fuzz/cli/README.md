@@ -11,6 +11,8 @@ Build and install a clixon system (in particular the backend, the CLI will be re
 Build and install CLIgen statically:
 ```
   ./configure LINKAGE=static INSTALLFLAGS="" CC=/usr/bin/afl-clang-fast
+  make
+  sudo make install
 ```
 
 ## Build
@@ -39,7 +41,7 @@ Below is an example of how to do this for the main example. You can replace the 
   make
   sudo make install
   
-  cd example # Compile and install application plugins (here main example)
+  cd example/main # Compile and install application plugins (here main example)
   make clean
   make
   sudo make install 

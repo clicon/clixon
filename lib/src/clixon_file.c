@@ -138,7 +138,7 @@ clicon_files_recursive(const char *dir,
     int     res = 0;
     char    errbuf[128];
  
-    clicon_debug(1, "%s dir:%s", __FUNCTION__, dir);
+    clicon_debug(2, "%s dir:%s", __FUNCTION__, dir);
     if (regexp && (res = regcomp(&re, regexp, REG_EXTENDED)) != 0) {
         regerror(res, &re, errbuf, sizeof(errbuf));
         clicon_err(OE_DB, 0, "regcomp: %s", errbuf);

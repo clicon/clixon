@@ -2690,6 +2690,7 @@ yang_if_feature(clicon_handle h,
     int         opand = -1; /* -1:not set, 0:or, 1:and */
     int         enabled = 0;
     cg_var     *cv;
+
     if ((vec = clicon_strsep(ys->ys_argument, " \t\r\n", &nvec)) == NULL)
 	goto done;
     /* Two steps: first detect operators
@@ -3026,7 +3027,8 @@ schema_nodeid_iterate(yang_stmt    *yn,
 		goto done;
 	}
 	if (ys == NULL){
-	    clicon_debug(1, "%s: %s not found", __FUNCTION__, id);
+	    clicon_debug(1, "%s: %s not found, last id found:%s",
+			 __FUNCTION__, id, yang_argument_get(yp));
 	    goto ok;
 	}
 	yp = ys; /* ys is matched */

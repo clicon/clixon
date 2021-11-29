@@ -76,7 +76,7 @@ COPY clixon .
 RUN adduser -D -H www-data
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data --enable-optyangs --with-restconf=native
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data --with-restconf=native
 
 RUN make
 RUN make install

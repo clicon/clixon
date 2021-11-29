@@ -170,7 +170,7 @@ struct xml{
     struct xml       *x_up_candidate; /* Candidate parent node for special cases (when+xpath) */
 #endif
     int              _x_vector_i;   /* internal use: xml_child_each */
-    int              _x_i;          /* internal use for sorting: 
+    int              _x_i;          /* internal use for stable sorting: 
 				       see xml_enumerate and xml_cmp */
     /*----- next is body/attribute only */
     cbuf             *x_value_cb;  /* attribute and body nodes have values (XXX: this consumes 

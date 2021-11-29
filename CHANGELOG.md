@@ -34,7 +34,7 @@
 ## 5.4.0
 Expected: November, 2021
 
-Thanks netgate for providing the dispatcher code!
+Thanks Netgate for providing the dispatcher code (used in the pagination)!
 
 ### New features
 
@@ -44,11 +44,22 @@ Thanks netgate for providing the dispatcher code!
     * Use accessor functions `pagination_offset()`, `pagination_limit()`, etc
   * Reverted state data callback API to pre-5.3 (see C/CLI API changes below)
   * See https://clixon-docs.readthedocs.io/en/latest/pagination.html
-  
+* Added support for XPATH function `bit-is-set()`
+* Added: [Recursive search CLIXON_YANG_DIR](https://github.com/clicon/clixon/issues/284)
+* Added statistics for YANG: number of objects and memory used
+  * See clixon-lib: stats rpc
+
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
-
+ 
+* Optional yangs for testing have been removed from the Clixon repo
+  * These were included for testing
+  * If you want to run the Clixon test suite you need to point `YANGMODELS`, see test/README.md
+  * The following configure options have been removed:
+    * `configure --with-opt-yang-installdir=DIR`
+    * `configure   --enable-optyangs`
+  * You may need to specify standard YANGs using configure option `--with-yang-standard-dir=DIR`
 * RPC replies now verified with YANG
   * Stricter checking of outgoing RPC replies from server
   * See [RPC output not verified by yang](https://github.com/clicon/clixon/issues/283)
@@ -63,7 +74,8 @@ Users may have to change how they access the system
   * Modified option: RPC stats extended with YANG stats
 * New `clixon-config@2021-11-11.yang` revision
   * Added option:
-    * CLICON_PLUGIN_CALLBACK_CHECK
+    * `CLICON_PLUGIN_CALLBACK_CHECK`
+    * `CLICON_YANG_AUGMENT_ACCEPT_BROKEN`
   * Modified options:
     * CLICON_CLI_GENMODEL_TYPE: added OC_COMPRESS enum
     * CLICON_YANG_DIR: recursive search
@@ -79,6 +91,7 @@ Users may have to change how they access the system
   * See also updated [https://clixon-docs.readthedocs.io/en/latest/pagination.html]
 * NETCONF hello errors, such as wrong session-id, prefix, namespace terminates session
   * Instead of returning an rpc-error reply
+  * This conforms to RFC 6241
 
 ### C/CLI-API changes on existing features
 
@@ -90,28 +103,30 @@ Developers may need to change their code
   ```
   int statedata(clicon_handle     h,
                 cvec             *nsc,
-	        char             *xpath,
-	        cxobj            *xstate)
+                char             *xpath,
+                cxobj            *xstate)
   ```
 
 ### Minor features
 
-* Added statistics for YANG: number of objects and memory used
-  * See clixon-lib: stats rpc
+* Added configure option `--with-yang-standard-dir=DIR`
+  * Directory of standard IETF/IEEE YANG specs
+* Added option `CLICON_YANG_AUGMENT_ACCEPT_BROKEN` to accept broken yangmodels.
+  * This is a debug option for CI testcases where standard YANG models are broken
 * Performance improvement
   * Added ancestor config cache indicating wether the node or an ancestor is config false or true
-  * Improved yang cardinality lookup
+  * Improved performance of yang cardinality lookup
 * Added sorting of YANG statements
-  * Some openconfig specs seem to have use/when before a "config" which it depends on. This leads to XML encoding being in the "wrong order.
+  * Some openconfig specs seem to have use/when before a "config" which it depends on. This leads to XML encoding being in the "wrong" order.
   * When parsing, clixon now sorts container/list statements so that sub-statements with WHEN are put last.
   * See [Statements given in "load set" are order dependent](https://github.com/clicon/clixon/issues/287)
-* Added: [Recursive search CLIXON_YANG_DIR](https://github.com/clicon/clixon/issues/284)
 * Plugin context check before and after all callbacks.
   * Check blocked signals and signal handlers
   * Check termios settings
   * Any changes to context are logged at loglevel WARNING
-  * New option: CLICON_PLUGIN_CALLBACK_CHECK: enable it to for checks (default false)
-* [OpenConfig path compression](https://github.com/clicon/clixon/pull/276)
+  * New option: `CLICON_PLUGIN_CALLBACK_CHECK`: enable it to for checks (default false)
+* Added: [OpenConfig Path Compression Support](https://github.com/clicon/clixon/issues/274)
+  * PR: [OpenConfig path compression](https://github.com/clicon/clixon/pull/276)
 * C API: Added set/get pointer API to clixon_data:
    * Changed signature of `rpc_callback_call()`
    * Added json/cli support for cli save/load
@@ -124,6 +139,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* [JSON leaf-list output single element leaf-list does not use array](https://github.com/clicon/clixon/issues/289)
 * [very slow execution of load_set_file #288](https://github.com/clicon/clixon/issues/288)
 * [RPC output not verified by yang](https://github.com/clicon/clixon/issues/283)
 * [Statements given in "load set" are order dependent](https://github.com/clicon/clixon/issues/287)

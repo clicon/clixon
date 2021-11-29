@@ -15,7 +15,9 @@ On ubuntu this may be enough:
 ```
   sudo apt install afl
 ```
-Or get source: `https://github.com/google/AFL`
+
+Or get source: `https://github.com/google/AFL`, see
+docs/QuickStartGuide.txt for instructions, essentially type `make`
 
 You may have to change cpu frequency:
 ```
