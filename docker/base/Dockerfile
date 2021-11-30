@@ -38,15 +38,18 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 # For clixon and cligen
 RUN apk add --update git make build-base gcc flex bison curl-dev
 
+# evhtp dependencies
+RUN apk add --update libevent libevent-dev
+
+# nghttp2 dependencies
+RUN apk add --update nghttp2
+
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
 
-# libevht
-# dependencies
-RUN apk add --update libevent cmake libevent-dev
-
 # clone libevhtp
 WORKDIR /clixon
+
 RUN git clone https://github.com/clicon/clixon-libevhtp.git
 WORKDIR /clixon/clixon-libevhtp
 RUN ./configure
@@ -67,19 +70,16 @@ RUN ./configure --prefix=/clixon/build
 RUN make
 RUN make install
 
+# Need to add www user manually
+RUN adduser -D -H -G www-data www-data
+
 # Copy Clixon from local dir
 RUN mkdir /clixon/clixon
 WORKDIR /clixon/clixon
 COPY clixon .
 
-# Need to add www user manually
-RUN adduser -D -H www-data
-
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-wwwuser=www-data --with-restconf=native
-
-RUN make
-RUN make install
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-restconf=native --enable-nghttp2 --enable-evhtp
 
 RUN make
 RUN make install
@@ -94,25 +94,19 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 RUN apk add --update flex bison
 
 # need to add www user manually
-RUN adduser -D -H www-data
+RUN adduser -D -H -G www-data www-data
 # for libevtp
 RUN apk add --update openssl libevent
 
-# Test-specific (for test scripts) XXX Maybe remove those?
-RUN apk add --update sudo curl procps grep make bash
+# nghttp2 dependencies
+RUN apk add --update nghttp2
 
 # Expose https port for restconf
-EXPOSE 80
+EXPOSE 80/tcp
+EXPOSE 443/tcp
 
 # Create clicon user and group
 RUN adduser -D -H clicon
-RUN adduser www-data clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
-COPY --from=0 /www-data /www-data
-
-# Manually created
-RUN chown www-data /www-data
-RUN chgrp www-data /www-data
-
-
+COPY --from=0 /usr/local/lib/libevhtp.so* /usr/local/lib/

@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [5.4.0](#540) Expected: November
+* [5.4.0](#540) 30 November 2021
 * [5.3.0](#530) 27 September 2021
 * [5.2.0](#520) 1 July 2021
 * [5.1.0](#510) 15 April 2021
@@ -32,9 +32,9 @@
 * [3.3.1](#331) June 7 2017
 
 ## 5.4.0
-Expected: November, 2021
+30 November, 2021
 
-Thanks Netgate for providing the dispatcher code (used in the pagination)!
+This release features lots of minor updates and bugfixes, an updated list pagination and optimized auto-cli for large yang-specs. Thanks Netgate for providing the dispatcher code used in the new pagination API!
 
 ### New features
 
@@ -124,7 +124,7 @@ Developers may need to change their code
   * Check blocked signals and signal handlers
   * Check termios settings
   * Any changes to context are logged at loglevel WARNING
-  * New option: `CLICON_PLUGIN_CALLBACK_CHECK`: enable it to for checks (default false)
+  * New option: `CLICON_PLUGIN_CALLBACK_CHECK`: set to 1 to get checks, 2, to abort on failure (default 0)
 * Added: [OpenConfig Path Compression Support](https://github.com/clicon/clixon/issues/274)
   * PR: [OpenConfig path compression](https://github.com/clicon/clixon/pull/276)
 * C API: Added set/get pointer API to clixon_data:

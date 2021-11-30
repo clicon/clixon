@@ -934,17 +934,16 @@ module clixon-config {
                  but disable it in production, until this has been resolved.";
 	}
 	leaf CLICON_PLUGIN_CALLBACK_CHECK {
-	    type boolean;
-	    default false;
+	    type int32;
+	    default 0;
 	    description
 		"Debug option.
-                 If enabled, make a check of resources before and after each plugin callback code
+                 If >0, make a check of resources before and after each plugin callback code
                  to check if the plugin violated resources.
                  This is primarily intended for development and debugging but may also be enabled 
                  in a running system.
-                 If enabled, errors will be logged to syslog as WARNINGs.
-                 In case you want early detection and crash, you can uncomment assert statements and
-                 recompile.
+                 If 1, errors will be logged to syslog as WARNINGs.
+                 If 2, the program will abort using assert() on first error
                  The checks are currently made by plugin_context_check() and include:
                  - termios settings
                  - signal vectors

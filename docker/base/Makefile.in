@@ -44,7 +44,7 @@ IMG   = clixon/clixon # base image
 
 SHELL	= /bin/sh
 
-.PHONY: all clean distclean docker push depend install-include install uninstall test
+.PHONY: all clean distclean docker push depend install-include install uninstall
 
 all:	
 	echo "Run make docker to build docker image"
@@ -58,8 +58,6 @@ clean:
 
 distclean: clean
 	rm -f Makefile *~ .depend
-
-test:
 
 docker: clixon Dockerfile
 	sudo docker build -t $(IMG) .  # --no-cache

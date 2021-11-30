@@ -557,8 +557,10 @@ plugin_context_get(void)
  * 1) Make a check of resources
  * 2) Make a new check and compare with the old check, return 1 on success, 0 on fail
  * Log if there is a difference at loglevel WARNING.
- * You can modify the code to also fail with assert if you want early fail.
- * Controlled by option 
+ * Controlled by CLICON_PLUGIN_CALLBACK_CHECK:
+ * 0 : No checks
+ * 1 : warning logs on failure
+ * 2 : log and abort on failure
  *
  * @param[in]     h      Clixon handle
  * @param[in,out] wh     Either: NULL for init, will be assigned, OR previous handle (will be freed)
@@ -583,13 +585,15 @@ plugin_context_check(clicon_handle h,
     int                    i;
     struct plugin_context *oldpc;
     struct plugin_context *newpc = NULL;
+    int                    option;
 
     if (h == NULL){
 	errno = EINVAL;
 	return -1;
     }
+    option = clicon_option_int(h, "CLICON_PLUGIN_CALLBACK_CHECK");
     /* Check if plugion checks are enabled */
-    if (!clicon_option_bool(h, "CLICON_PLUGIN_CALLBACK_CHECK"))
+    if (option == 0)
 	return 1;
     if (wh == NULL){
 	errno = EINVAL;
@@ -631,11 +635,10 @@ plugin_context_check(clicon_handle h,
 	failed++;
     }
     /* XXX pc_termios.cc_t  c_cc[NCCS] not checked */
-#if 0
-	/* In case you want early detection and crash. But otherwise it is recommended that
-	 * the caller looks for retval == 0 */
-	assert(failed == 0);
-#endif
+    /* Abort if option is 2 or above on failure
+     */
+    if (option > 1 && failed)
+	abort();
     for (i=1; i<32; i++){
 	if (sigismember(&oldpc->pc_sigset, i) != sigismember(&newpc->pc_sigset, i)){
 	    clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed blocking of signal %s(%d) from %d to %d", __FUNCTION__,
@@ -659,11 +662,10 @@ plugin_context_check(clicon_handle h,
 		       newpc->pc_sigaction_vec[i].sa_sigaction);
 	    failed++;
 	}
-#if 0
-	/* In case you want early detection and crash. But otherwise it is recommended that
-	 * the caller looks for retval == 0 */
-	assert(failed == 0);
-#endif
+	/* Abort if option is 2 or above on failure
+	 */
+	if (option > 1 && failed)
+	    abort();
     }
     if (failed)
 	goto fail;

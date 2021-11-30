@@ -153,10 +153,5 @@ COPY --from=0 /usr/local/share/yang/* /usr/local/share/yang/standard/
 COPY --from=0 /usr/local/share/yang/* /usr/local/share/yang/experimental/
 COPY --from=0 /usr/local/share/openconfig/* /usr/local/share/openconfig/
 
-# Manually created
-RUN mkdir /www-data
-RUN chown clicon /www-data
-RUN chgrp clicon /www-data
-
 # Start the backend and restconf deamons
 CMD /usr/local/bin/startsystem.sh

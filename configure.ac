@@ -44,14 +44,13 @@ AC_INIT(lib/clixon/clixon.h.in)
 : ${INSTALLFLAGS="-s"}
 : ${LINKAGE=dynamic}
 
-
 # where autotool scripts are: install-sh, config.sub, config.guess
 AC_CONFIG_AUX_DIR(config-aux)
 
 CLIXON_VERSION_MAJOR="5"
 CLIXON_VERSION_MINOR="4"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 
 # Debug flag
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, default: no]),[
@@ -232,7 +231,7 @@ elif test "x${with_restconf}" == xnative; then
    AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
    AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
    # Check if evhtp is enabled for http/1
-   AC_ARG_ENABLE(evhtp, AS_HELP_STRING([--disable-evhtp],[Disable evhtp for native restconf http/1, default: yes]),[
+   AC_ARG_ENABLE(evhtp, AS_HELP_STRING([--disable-evhtp],[Disable evhtp for native restconf http/1, ie http/2 only]),[
    	  if test "$enableval" = no; then
 	      ac_enable_evhtp=no
 	  else	      
@@ -255,7 +254,7 @@ elif test "x${with_restconf}" == xnative; then
    fi		  
 
    # Check if nghttp2 is enabled for http/2
-   AC_ARG_ENABLE(nghttp2, AS_HELP_STRING([--disable-nghttp2],[Disable nghttp2 for native restconf http/2, default: yes]),[
+   AC_ARG_ENABLE(nghttp2, AS_HELP_STRING([--disable-nghttp2],[Disable nghttp2 for native restconf http/2, ie http/1 only]),[
 	  if test "$enableval" = no; then
 	      ac_enable_nghttp2=no
 	  else	      
@@ -341,7 +340,7 @@ AC_MSG_RESULT(Clixon yang files are installed in ${YANG_INSTALLDIR})
 # This is NOT installed by Clixon and is not needed for core system
 # However, it is required by the main example and some of the tests
 AC_ARG_WITH(yang-standard-installdir,
-            [AS_HELP_STRING([--with-yang-standard-dir=DIR],[Where standard IETF/IEEE YANGs are (default: ${prefix}/share/yang/standard)])],
+            [AS_HELP_STRING([--with-yang-standard-dir=DIR],[Directory of standard IETF/IEEE YANG specs (default: $prefix/share/yang/standard)])],
 	    [YANG_STANDARD_DIR="$withval"],
     	    [YANG_STANDARD_DIR="${prefix}/share/yang/standard"]		
 	    )

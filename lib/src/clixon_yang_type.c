@@ -1400,8 +1400,10 @@ yang_type_resolve(yang_stmt   *yorig,
     retval = 0;
   done:
 #if 1
-    if (retval == 0 && yrestype != NULL) /* Assert that on success, yrestype is set */
-	assert(*yrestype);
+    if (retval == 0 && yrestype != NULL && *yrestype == NULL){
+	clicon_err(OE_YANG, 0, "No such type: \"%s\"", type);
+	retval = -1;
+    }
 #endif
     if (prefix)
 	free(prefix);
