@@ -242,6 +242,15 @@ array_eval(cxobj *xprev,
     return arraytype;
 }
 
+/* Finds module name of cxobj 
+ */
+static char* get_module_name_from_cxobj(cxobj* x) {
+    while (xml_spec(x) == NULL) {
+        x = xml_parent(x);
+    }
+    return yang_argument_get(ys_module(xml_spec(x)));
+}
+
 /*! Escape a json string as well as decode xml cdata
  * @param[out] cb   cbuf   (encoded)
  * @param[in]  str  string (unencoded)
@@ -1168,6 +1177,65 @@ xml2json_cb(FILE             *f,
     (*fn)(f, "%s", cbuf_get(cb));
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
+/*! Translate from xml tree to JSON and print to stdout
+ * @param[in]  exvec      list of yang modules to exclude from showing in cli
+ * @param[in]  nexvec     number of yang modules in exvec
+ * @param[in]  x      	  XML tree to translate from
+ * @retval     0      	  OK
+ * @retval    -1      	  Error
+ *
+ * @note yang is necessary to translate to one-member lists,
+ * eg if a is a yang LIST <a>0</a> -> {"a":["0"]} and not {"a":"0"}
+ * @code
+ * if (xml2json(stderr, xn, 0) < 0)
+ *   goto err;
+ * @endcode
+ */
+int 
+xml2json_cli_show(cxobj* x, char** exvec, int nexvec)
+{
+    int   retval = 1, e = 0;
+    cbuf *cb = NULL;
+	cxobj* x_copy = NULL, *x_node = NULL, *x_node_prev = NULL;
+
+    if ((cb = cbuf_new()) ==NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+
+	x_copy = xml_new("new", NULL, xml_type(x));
+	if (xml_copy(x, x_copy) < 0) {
+		goto done;
+	}
+
+	while ((x_node = xml_child_each(x_copy, x_node, -1)) != NULL) {
+		for (e = 0; e < nexvec; e++) {
+			if (strcmp(get_module_name_from_cxobj(x_node), exvec[e]) == 0) {
+				break;
+			}
+		}
+		if (e < nexvec) {
+			if (xml_purge(x_node) < 0) {
+				goto done;
+			}
+ 	    	x_node = x_node_prev;
+			continue;
+		}
+		x_node_prev = x_node;
+	}
+ 
+    if (xml2json_cbuf(cb, x_copy, 1) < 0)
+	goto done;
+    (*cligen_output)(stdout, "%s", cbuf_get(cb));
+    retval = 0;
+ done:
+ 	if (x_copy)
+	xml_free(x_copy);
     if (cb)
 	cbuf_free(cb);
     return retval;

@@ -675,6 +675,15 @@ module clixon-config {
                  The value can be a list of space separated module names";
 	    default "clixon-restconf";
 	}
+	leaf CLICON_CLI_SHOW_EXCLUDE {
+	    type string;
+	    description
+		"List of module names that should not be showed in cli from
+                 Example: 
+                    <CLICON_CLI_SHOW_EXCLUDE>clixon-restconf</CLICON_CLI_SHOW_EXCLUDE> 
+                 means that cli will be able to show all modules except for clixon-restconf.yang
+                 The value can be a list of space separated module names";
+	}
 	leaf CLICON_CLI_VARONLY {
 	    type int32;
 	    default 1;

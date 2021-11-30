@@ -72,6 +72,15 @@
 #include "clixon_cli_api.h"
 #include "cli_common.h" /* internal functions */
 
+/* Finds module name of cxobj 
+ */
+static char* get_module_name_from_cxobj(cxobj* x) {
+    while (xml_spec(x) == NULL) {
+        x = xml_parent(x);
+    }
+    return yang_argument_get(ys_module(xml_spec(x)));
+}
+
 /*! Given an xpath encoded in a cbuf, append a second xpath into the first
  *
  * The method reuses prefixes from xpath1 if they exist, otherwise the module prefix
@@ -440,7 +449,11 @@ cli_show_config1(clicon_handle h,
     char            *namespace = NULL;
     cvec            *nsc = NULL;
     char            *prefix = NULL;
-    
+	char         	*excludelist;
+    char        	**exvec = NULL;
+    int           	nexvec = 0;
+    int           	e;
+
     if (cvec_len(argv) < 3 || cvec_len(argv) > 5){
 	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<format>,<xpath>[,<namespace>, [<prefix>]]", cvec_len(argv));
 
@@ -492,40 +505,84 @@ cli_show_config1(clicon_handle h,
 	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
     }
-    /* Print configuration according to format */
+	/* List of modules that should not be shown in cli */
+	if ((excludelist = clicon_option_str(h, "CLICON_CLI_SHOW_EXCLUDE")) != NULL){
+		if ((exvec = clicon_strsep(excludelist, " \t", &nexvec)) == NULL) {
+			goto done;
+		}
+	}
+	/* Print configuration according to format */
     switch (format){
     case FORMAT_XML:
 	xc = NULL; /* Dont print xt itself */
-	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL) {
+		for (e = 0; e < nexvec; e++){
+			if (strcmp(get_module_name_from_cxobj(xc), exvec[e]) == 0) {
+				break;
+			}
+		}
+		if (e < nexvec) {
+	    	continue;
+		}
 	    cli_xml2file(xc, 0, 1, cligen_output);
+	}
 	break;
     case FORMAT_JSON:
-	xml2json_cb(stdout, xt, 1, cligen_output);
+	xml2json_cli_show(xt, exvec, nexvec);
 	break;
     case FORMAT_TEXT:
 	xc = NULL; /* Dont print xt itself */
-	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL) {
+		for (e = 0; e < nexvec; e++){
+			if (strcmp(get_module_name_from_cxobj(xc), exvec[e]) == 0) {
+				break;
+			}
+		}
+		if (e < nexvec) {
+	    	continue;
+		}
 	    cli_xml2txt(xc, cligen_output, 0); /* tree-formed text */
+	}
 	break;
     case FORMAT_CLI:
 	/* get CLI generatade mode: VARS|ALL */
 	if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
 	    goto done;
 	xc = NULL; /* Dont print xt itself */
-	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
+	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+		for (e = 0; e < nexvec; e++){
+			if (strcmp(get_module_name_from_cxobj(xc), exvec[e]) == 0) {
+				break;
+			}
+		}
+		if (e < nexvec) {
+	    	continue;
+		}
 	    cli_xml2cli(xc, prefix, gt, cligen_output); /* cli syntax */
+	}
 	break;
     case FORMAT_NETCONF:
 	cligen_output(stdout, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target><config>\n",
 		      NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
 	xc = NULL; /* Dont print xt itself */
-	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL) {
+		for (e = 0; e < nexvec; e++){
+			if (strcmp(get_module_name_from_cxobj(xc), exvec[e]) == 0) {
+				break;
+			}
+		}
+		if (e < nexvec) {
+	    	continue;
+		}
 	    cli_xml2file(xc, 2, 1, cligen_output);
+	}
 	cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	break;
     }
     retval = 0;
 done:
+	if (exvec)
+	free(exvec);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (xt)
@@ -703,6 +760,10 @@ cli_show_auto1(clicon_handle h,
     enum rfc_6020    ys_keyword;
     int		     i = 0;
     int              cvvi = 0;
+	char         	*excludelist;
+    char        	**exvec = NULL;
+    int           	nexvec = 0;
+    int           	e;
 
     if (cvec_len(argv) < 3 || cvec_len(argv) > 4){
 	clicon_err(OE_PLUGIN, EINVAL, "Usage: <api-path-fmt>* <database> <format> <prefix>. (*) generated.");
@@ -760,14 +821,37 @@ cli_show_auto1(clicon_handle h,
 	else
 		xp_helper = xp;
 
+	/* List of modules that should not be shown in cli */
+	if ((excludelist = clicon_option_str(h, "CLICON_CLI_SHOW_EXCLUDE")) != NULL){
+		if ((exvec = clicon_strsep(excludelist, " \t", &nexvec)) == NULL) {
+			goto done;
+		}
+	}
 	switch (format){
 	case FORMAT_CLI:
 	    if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
 		goto done;
+		for (e = 0; e < nexvec; e++){
+			if (strcmp(get_module_name_from_cxobj(xp), exvec[e]) == 0) {
+				break;
+			}
+		}
+		if (e < nexvec) {
+	    	break;
+		}
 	    cli_xml2cli(xp, prefix, gt, cligen_output); /* cli syntax */
 	    break;
 	case FORMAT_NETCONF:
 	    fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
+		for (e = 0; e < nexvec; e++){
+			if (strcmp(get_module_name_from_cxobj(xp), exvec[e]) == 0) {
+				break;
+			}
+		}
+		if (e < nexvec) {
+			fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
+	    	break;
+		}
 	    cli_xml2file(xp, 2, 1, fprintf);
 	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	    break;
@@ -775,12 +859,36 @@ cli_show_auto1(clicon_handle h,
 	    for (; i < xml_child_nr(xml_parent(xp)) ; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
 		switch (format){
 		case FORMAT_XML:
+			for (e = 0; e < nexvec; e++){
+				if (strcmp(get_module_name_from_cxobj(xp_helper), exvec[e]) == 0) {
+					break;
+				}
+			}
+			if (e < nexvec) {
+				break;
+			}
 		    cli_xml2file(xp_helper, 0, 1, fprintf);
 		    break;
 		case FORMAT_JSON:
-		    xml2json_cb(stdout, xp_helper, 1, cligen_output);
+			for (e = 0; e < nexvec; e++){
+				if (strcmp(get_module_name_from_cxobj(xp_helper), exvec[e]) == 0) {
+					break;
+				}
+			}
+			if (e < nexvec) {
+				break;
+			}
+		    xml2json_cli_show(xp_helper, exvec, nexvec);
 		    break;
 		case FORMAT_TEXT:	
+			for (e = 0; e < nexvec; e++){
+				if (strcmp(get_module_name_from_cxobj(xp_helper), exvec[e]) == 0) {
+					break;
+				}
+			}
+			if (e < nexvec) {
+				break;
+			}
 		    cli_xml2txt(xp_helper, cligen_output, 0);  /* tree-formed text */
 		    break;
 		default: /* see cli_show_config() */
