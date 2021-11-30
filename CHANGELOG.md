@@ -106,6 +106,12 @@ Developers may need to change their code
                 char             *xpath,
                 cxobj            *xstate)
   ```
+* Changed signature of `rpc_callback_call()`
+   * from: `clicon_handle h, cxobj *xe, cbuf *cbret, void *arg`
+   * to: `clicon_handle h, cxobj *xe, void *arg, int *nrp, cbuf *cbret)`
+* Changed signature of `yang_extension_value()`
+   * from: `yang_stmt *ys, char *name, char *ns, char **value`
+   * to:   `yang_stmt *ys, char *name, char *ns, int *exist, char **value`
 
 ### Minor features
 
@@ -128,7 +134,6 @@ Developers may need to change their code
 * Added: [OpenConfig Path Compression Support](https://github.com/clicon/clixon/issues/274)
   * PR: [OpenConfig path compression](https://github.com/clicon/clixon/pull/276)
 * C API: Added set/get pointer API to clixon_data:
-   * Changed signature of `rpc_callback_call()`
    * Added json/cli support for cli save/load
    * clicon_ptr_get(), clicon_ptr_set(), 
 * Restconf YANG PATCH according to RFC 8072
