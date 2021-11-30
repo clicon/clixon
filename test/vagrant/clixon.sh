@@ -82,3 +82,5 @@ echo "IPv6=true" >> ./site.sh
 if [ $release = "freebsd" ]; then
   echo "make=gmake" >> ./site.sh
 fi
+echo "OPENCONFIG=/usr/local/share/openconfig/public" >> ./site.sh
+echo "YANGMODELS=/usr/local/share/yang" >> ./site.sh

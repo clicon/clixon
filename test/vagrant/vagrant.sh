@@ -285,6 +285,27 @@ esac
 $scpcmd ./clixon.sh vagrant@127.0.0.1:
 $sshcmd ./clixon.sh $release $wwwuser ${with_restconf}
 
+# Tests require yangmodels and openconfig
+cat<<EOF > $dir/yangmodels.sh
+cd /usr/local/share
+mkdir yang
+cd yang
+git init
+git remote add -f origin https://github.com/YangModels/yang
+git config core.sparseCheckout true
+echo "standard/" >> .git/info/sparse-checkout
+echo "experimental/" >> .git/info/sparse-checkout
+git pull origin master
+mkdir /usr/local/share/openconfig
+cd /usr/local/share/openconfig
+git clone https://github.com/openconfig/public
+# Patch yang syntax errors
+sed -i s/=\ olt\'/=\ \'olt\'/g /usr/local/share/yang/standard/ieee/published/802.3/ieee802-ethernet-pon.yang
+EOF
+chmod 755 $dir/yangmodels.sh
+$scpcmd $dir/yangmodels.sh vagrant@127.0.0.1:
+$sshcmd sudo ./yangmodels.sh
+
 # Run tests
 $sshcmd "(cd src/cligen/test; ./sum.sh)"
 $sshcmd "(cd src/clixon/test; ./sum.sh)"

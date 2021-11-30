@@ -40,7 +40,6 @@ See [yang/clixon-config@<date>.yang](https://github.com/clicon/clixon/blob/maste
 ## Compile and run
 
 Before you start,
-* You must configure with: `--enable-optyangs` to install all yang files required for the example. This is not necessary for the base colixon system
 * Setup clicon [groups](https://github.com/clicon/clixon/blob/master/doc/FAQ.md#do-i-need-to-setup-anything)
 
 ```
