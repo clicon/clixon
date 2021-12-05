@@ -35,11 +35,14 @@
 ## 5.5.0
 Planned: January, 2022
 
-### Corrected Bugs
-
 ### Minor features
 
-* Changed typo `configure --with-yang-standard-installdir` to `configure --with-yang-standard-dir`
+* Changed typo `configure --with-yang-standard-installdir` to `configure --with-yang-standard-dir
+`
+
+### Corrected Bugs
+
+* rpc_callback_call(): Check if nrp parameter is NULL to avoid SEGV
 
 ## 5.4.0
 30 November, 2021

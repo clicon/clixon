@@ -1120,7 +1120,7 @@ rpc_callback_delete_all(clicon_handle h)
  * @param[in]   h       clicon handle
  * @param[in]   xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
  * @param[in]   arg     Domain-speific arg (eg client_entry)
- * @param[out]  nr      Number of callbacks handled: 0, 1, n (retval = 1)
+ * @param[out]  nrp     Number of callbacks handled: 0, 1, n (retval = 1) or NULL
  * @param[out]  cbret   Return XML (as string in CLIgen buffer), error or OK
  * @retval -1   Error
  * @retval  0   Failed, error return in cbret
@@ -1180,7 +1180,8 @@ rpc_callback_call(clicon_handle h,
 	if (ret == 0)
 	    goto fail;
     }
-    *nrp = nr;
+    if (nrp)
+	*nrp = nr;
     retval = 1; /* 0: none found, >0 nr of handlers called */
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
