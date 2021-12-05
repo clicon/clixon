@@ -727,7 +727,7 @@ with_configfile
 with_libxml2
 with_sigaction
 with_yang_installdir
-with_yang_standard_installdir
+with_yang_standard_dir
 '
       ac_precious_vars='build_alias
 host_alias
@@ -5658,9 +5658,9 @@ $as_echo "Clixon yang files are installed in ${YANG_INSTALLDIR}" >&6; }
 # This is NOT installed by Clixon and is not needed for core system
 # However, it is required by the main example and some of the tests
 
-# Check whether --with-yang-standard-installdir was given.
-if test "${with_yang_standard_installdir+set}" = set; then :
-  withval=$with_yang_standard_installdir; YANG_STANDARD_DIR="$withval"
+# Check whether --with-yang-standard-dir was given.
+if test "${with_yang_standard_dir+set}" = set; then :
+  withval=$with_yang_standard_dir; YANG_STANDARD_DIR="$withval"
 else
   YANG_STANDARD_DIR="${prefix}/share/yang/standard"
 

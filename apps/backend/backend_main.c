@@ -446,12 +446,12 @@ usage(clicon_handle h,
 	    "where options are\n"
             "\t-h\t\tHelp\n"
     	    "\t-D <level>\tDebug level\n"
-    	    "\t-f <file>\tCLICON config file\n"
+    	    "\t-f <file>\tClixon config file\n"
 	    "\t-E <dir> \tExtra configuration file directory\n"
-	    "\t-l (s|e|o|f<file>)  Log on (s)yslog, std(e)rr or std(o)ut (stderr is default) Only valid if -F, if background syslog is on syslog.\n"
+	    "\t-l (s|e|o|f<file>) Log on (s)yslog, std(e)rr, std(o)ut or (f)ile. Syslog is default. If foreground, then syslog and stderr is default. Filename is given after -f as follows: -lf<file>\n"
 	    "\t-d <dir>\tSpecify backend plugin directory (default: %s)\n"
-	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
-	    "\t-b <dir>\tSpecify XMLDB database directory\n"
+	    "\t-p <dir>\tAdd Yang directory path (see CLICON_YANG_DIR)\n"
+	    "\t-b <dir>\tSpecify datastore directory\n"
     	    "\t-F\t\tRun in foreground, do not run as daemon\n"
     	    "\t-z\t\tKill other config daemon and exit\n"
     	    "\t-a UNIX|IPv4|IPv6  Internal backend socket family\n"
@@ -459,7 +459,7 @@ usage(clicon_handle h,
     	    "\t-P <file>\tPid filename (default: %s)\n"
     	    "\t-1\t\tRun once and then quit (dont wait for events)\n"
 	    "\t-s <mode>\tSpecify backend startup mode: none|startup|running|init)\n"
-	    "\t-c <file>\tLoad extra xml configuration, but don't commit.\n"
+	    "\t-c <file>\tLoad extra XML configuration file, but do not commit.\n"
 	    "\t-q \t\tQuit startup directly after upgrading and print result on stdout\n"
 	    "\t-U <user>\tRun backend daemon as this user AND drop privileges permanently\n"
 	    "\t-g <group>\tClient membership required to this group (default: %s)\n"
@@ -604,7 +604,7 @@ main(int    argc,
 	    if (clicon_option_add(h, "CLICON_XMLDB_DIR", optarg) < 0)
 		goto done;
 	    break;
-	case 'p' : /* yang dir path */
+	case 'p' : /* Add yang dir path */
 	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
 		goto done;
 	    break;

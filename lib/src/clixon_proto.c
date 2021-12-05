@@ -323,8 +323,10 @@ msg_dump(struct clicon_msg *msg)
 }
 
 /*! Send a CLICON netconf message using internal IPC message
+ *
  * @param[in]   s      socket (unix or inet) to communicate with backend
  * @param[out]  msg    CLICON msg data reply structure. Free with free()
+ * @see clicon_msg_send1  using plain NETCONF
  */
 int
 clicon_msg_send(int                s, 
@@ -364,6 +366,7 @@ clicon_msg_send(int                s,
  * @param[out]  msg    CLICON msg data reply structure. Free with free()
  * @param[out]  eof    Set if eof encountered
  * Note: caller must ensure that s is closed if eof is set after call.
+ * @see clicon_msg_rcv1 using plain NETCONF
  */
 int
 clicon_msg_rcv(int                s,
@@ -419,11 +422,13 @@ clicon_msg_rcv(int                s,
     return retval;
 }
 
-/*! Receive a message using plain ascii 
+/*! Receive a message using plain NETCONF
+ *
  * @param[in]   s      socket (unix or inet) to communicate with backend
  * @param[out]  cb1    cligen buf struct containing the incoming message
  * @param[out]  eof    Set if eof encountered
  * @see netconf_input_cb()
+ * @see clicon_msg_rcv using IPC message struct
  */
 int
 clicon_msg_rcv1(int   s,
@@ -480,9 +485,11 @@ clicon_msg_rcv1(int   s,
     return retval;
 }
 
-/*! Send a CLICON netconf message plain text
+/*! Send a CLICON netconf message plain NETCONF
+ *
  * @param[in]   s      socket (unix or inet) to communicate with backend
  * @param[out]  msg    CLICON msg data reply structure. Free with free()
+ * @see clicon_msg_send  using internal IPC header
  */
 int
 clicon_msg_send1(int   s, 
@@ -604,6 +611,7 @@ clicon_rpc_connect_inet(clicon_handle      h,
  * @param[out] xret    Returned data as netconf xml tree.
  * @retval     0       OK
  * @retval     -1      Error
+ * @see clicon_rpc1 using plain NETCONF XML
  */
 int
 clicon_rpc(int                sock,
@@ -638,19 +646,16 @@ clicon_rpc(int                sock,
     return retval;
 }
 
-/*! Send a netconf message and recieve result.
+/*! Send a netconf message and recieve result using plain NETCONF
  *
- * TBD: timeout, interrupt?
- * retval may be -1 and
- * errno set to ENOTCONN which means that socket is now closed probably
- * due to remote peer disconnecting. The caller may have to do something,...
+ * This is mainly used by the client API. 
  *
  * @param[in]  sock    Socket / file descriptor
  * @param[in]  msgin   CLICON msg data structure. It has fixed header and variable body.
  * @param[out] msgret  Returned data as netconf xml tree.
  * @retval     0       OK
  * @retval     -1      Error
- * see clicon_rpc using clicon_msg
+ * @see clicon_rpc using clicon_msg protocol header
  */
 int
 clicon_rpc1(int   sock,

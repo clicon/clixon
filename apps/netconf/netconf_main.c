@@ -71,7 +71,7 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hD:f:E:l:qa:u:d:p:y:U:t:eHo:"
+#define NETCONF_OPTS "hD:f:E:l:qHa:u:d:p:y:U:t:eo:"
 
 #define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
 
@@ -625,16 +625,16 @@ usage(clicon_handle h,
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-E <dir> \tExtra configuration file directory\n"
 	    "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
-            "\t-q\t\tQuiet: dont send hello prompt\n"
+            "\t-q\t\tQuiet mode, do not send hello message\n"
+	    "\t-H \t\tDo not expect hello message from server.\n"
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
-	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
+	    "\t-p <dir>\tAdd Yang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-y <file>\tLoad yang spec file (override yang main module)\n"
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
 	    "\t-t <sec>\tTimeout in seconds. Quit after this time.\n"
 	    "\t-e \t\tDont ignore errors on packet input.\n"
-	    "\t-H \t\tHello messages are optional.\n"
 	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
 	    argv0,
 	    clicon_netconf_dir(h)

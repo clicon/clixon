@@ -38,6 +38,7 @@ bindir 		= @bindir@
 includedir	= @includedir@
 datarootdir     = @datarootdir@
 
+# Also mandatory standard YANGs (see ../mandatory)
 YANG_INSTALLDIR   = @YANG_INSTALLDIR@
 
 YANGSPECS	 = clixon-config@2021-07-11.yang   # 5.3

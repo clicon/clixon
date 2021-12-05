@@ -39,7 +39,7 @@ bindir 		= @bindir@
 includedir	= @includedir@
 datarootdir     = @datarootdir@
 
-# See also YANG_INSTALLDIR for the clixon-specific yang files
+# Also clixon YANGs (see ../clixon)
 YANG_INSTALLDIR   = @YANG_INSTALLDIR@
 
 YANGSPECS += ietf-inet-types@2021-02-22.yang

@@ -35,6 +35,12 @@
 ## 5.5.0
 Planned: January, 2022
 
+### Corrected Bugs
+
+### Minor features
+
+* Changed typo `configure --with-yang-standard-installdir` to `configure --with-yang-standard-dir`
+
 ## 5.4.0
 30 November, 2021
 

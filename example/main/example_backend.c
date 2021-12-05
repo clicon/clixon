@@ -1209,7 +1209,7 @@ static clixon_plugin_api api = {
     clixon_plugin_init,                     /* init - must be called clixon_plugin_init */
     example_start,                          /* start */
     example_exit,                           /* exit */
-    .ca_extension=example_extension,        /* yang extensions */
+    example_extension,                      /* yang extensions */
     .ca_daemon=example_daemon,              /* daemon */
     .ca_reset=example_reset,                /* reset */
     .ca_statedata=example_statedata,        /* statedata : Note fn is switched if -sS <file> */

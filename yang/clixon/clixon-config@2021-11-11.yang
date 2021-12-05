@@ -481,7 +481,7 @@ module clixon-config {
 		"Regexp of matching backend plugins in CLICON_BACKEND_DIR";
 	    default "(.so)$";
 	}
-	leaf CLICON_NETCONF_DIR {
+	leaf CLICON_NETCONF_DIR{
 	    type string;
 	    description "Location of netconf (frontend) .so plugins";
 	}
@@ -707,8 +707,7 @@ module clixon-config {
 	    type int8;
 	    default 0;
 	    description
-		"Set CLI tab mode. This is actually a bitfield of three 
-                 combinations:
+		"Set CLI tab mode. This is a bitfield of three bits:
                  bit 1: 0: <tab> shows short info of available commands
                         1: <tab> has same output as <?>, ie line per command
                  bit 2: 0: On <tab>, select a command over a <var> if both exist
