@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [5.5.0](#550) Planned January, 2022
 * [5.4.0](#540) 30 November 2021
 * [5.3.0](#530) 27 September 2021
 * [5.2.0](#520) 1 July 2021
@@ -30,6 +31,9 @@
 * [3.3.3](#333) 25 November 2017
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
+
+## 5.5.0
+Planned: January, 2022
 
 ## 5.4.0
 30 November, 2021
