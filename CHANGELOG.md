@@ -37,8 +37,9 @@ Planned: January, 2022
 
 ### Minor features
 
-* Changed typo `configure --with-yang-standard-installdir` to `configure --with-yang-standard-dir
-`
+* New `clixon-dev` development container (Work-in-progress)
+* New `clixon-clispec.yang` for controlling auto-cli (Work-in-progress)
+* Changed typo `configure --with-yang-standard-installdir` to `configure --with-yang-standard-dir`
 
 ### Corrected Bugs
 

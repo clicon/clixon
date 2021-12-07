@@ -268,7 +268,12 @@ autocli_start(clicon_handle h,
     /* If autocli disabled quit */
     if ((autocli_model = clicon_cli_genmodel(h)) == 0)
 	goto ok;
+
     yspec = clicon_dbspec_yang(h);
+    /* Load clispec for autocli */
+    if (yang_spec_parse_module(h, "clixon-clispec", NULL, yspec)< 0)
+	goto done;
+    
     /* Get the autocli type, ie HOW the cli is generated (could be much more here) */
     /* Create show_treename cbuf */
     if ((show_treename = cbuf_new()) == NULL){

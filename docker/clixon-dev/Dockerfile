@@ -3,6 +3,7 @@
 # 
 # Copyright (C) 2017-2019 Olof Hagsand
 # Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+#
 # This file is part of CLIXON
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,44 +31,56 @@
 #
 # ***** END LICENSE BLOCK *****
 #
-VPATH       	= @srcdir@
-srcdir  	= @srcdir@
-top_srcdir  	= @top_srcdir@
-prefix 		= @prefix@
-bindir 		= @bindir@
-includedir	= @includedir@
-datarootdir     = @datarootdir@
 
-# Also mandatory standard YANGs (see ../mandatory)
-YANG_INSTALLDIR   = @YANG_INSTALLDIR@
+FROM alpine
+MAINTAINER Olof Hagsand <olof@hagsand.se>
 
-YANGSPECS	 = clixon-config@2021-07-11.yang   # 5.3
-YANGSPECS	 = clixon-config@2021-11-11.yang   # 5.4
-YANGSPECS	+= clixon-lib@2021-11-11.yang      # 5.4
-YANGSPECS	+= clixon-rfc5277@2008-07-01.yang
-YANGSPECS	+= clixon-xml-changelog@2019-03-21.yang
-YANGSPECS	+= clixon-restconf@2021-05-20.yang # 5.2
-YANGSPECS	+= clixon-clispec@2021-12-05.yang 
+# For clixon and cligen
+RUN apk add --update git make build-base gcc flex bison curl-dev
 
-APPNAME	        = clixon  # subdir ehere these files are installed
+# evhtp dependencies
+RUN apk add --update libevent libevent-dev
 
-all:	
+# nghttp2 dependencies
+RUN apk add --update nghttp2
 
-clean:
+# Create a directory to hold source-code, dependencies etc
+RUN mkdir /clixon
 
-distclean: clean
-	rm -f Makefile *~ .depend
+# clone libevhtp
+WORKDIR /clixon
 
-install: $(YANGSPECS) 
-	install -d -m 0755 $(DESTDIR)$(YANG_INSTALLDIR)
-	install -m 0644 $(YANGSPECS) $(DESTDIR)$(YANG_INSTALLDIR)
+RUN git clone https://github.com/clicon/clixon-libevhtp.git
+WORKDIR /clixon/clixon-libevhtp
+RUN ./configure
 
-uninstall:
-	(cd $(DESTDIR)$(YANG_INSTALLDIR); rm -rf *.yang)
+RUN make
+RUN mkdir /usr/local/include
+RUN make install
 
-install-include:	
+RUN mkdir /clixon/build
+WORKDIR /clixon
 
-depend:
+# Clone cligen
+RUN git clone https://github.com/clicon/cligen.git
 
-#include .depend
+# Build cligen
+WORKDIR /clixon/cligen
+RUN ./configure --prefix=/clixon/build
+RUN make
+RUN make install
+
+# Need to add www user manually
+RUN adduser -D -H -G www-data www-data
+
+# Copy Clixon from local dir
+RUN mkdir /clixon/clixon
+WORKDIR /clixon/clixon
+COPY clixon .
+
+# Configure, build and install clixon
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-restconf=native --enable-nghttp2 --enable-evhtp
+
+RUN make
+RUN make install
 

@@ -3,6 +3,7 @@
 # 
 # Copyright (C) 2017-2019 Olof Hagsand
 # Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+#
 # This file is part of CLIXON
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,41 +34,41 @@
 VPATH       	= @srcdir@
 srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
-prefix 		= @prefix@
-bindir 		= @bindir@
-includedir	= @includedir@
-datarootdir     = @datarootdir@
+CC		= @CC@
+CFLAGS  	= @CFLAGS@ 
+LDFLAGS 	= @LDFLAGS@
+LIBS    	= @LIBS@
 
-# Also mandatory standard YANGs (see ../mandatory)
-YANG_INSTALLDIR   = @YANG_INSTALLDIR@
+# docker.hub image. CHANGE THIS IF YOU PUSH YOUR OWN
+IMG   = clixon/clixon-dev # base image
 
-YANGSPECS	 = clixon-config@2021-07-11.yang   # 5.3
-YANGSPECS	 = clixon-config@2021-11-11.yang   # 5.4
-YANGSPECS	+= clixon-lib@2021-11-11.yang      # 5.4
-YANGSPECS	+= clixon-rfc5277@2008-07-01.yang
-YANGSPECS	+= clixon-xml-changelog@2019-03-21.yang
-YANGSPECS	+= clixon-restconf@2021-05-20.yang # 5.2
-YANGSPECS	+= clixon-clispec@2021-12-05.yang 
+SHELL	= /bin/sh
 
-APPNAME	        = clixon  # subdir ehere these files are installed
+.PHONY: all clean distclean docker push depend install-include install uninstall
 
 all:	
+	echo "Run make docker to build docker image"
+
+# (recursively) clone the repo from top-level - NOTE changes must be committed
+clixon:
+	git clone file://$(realpath ${top_srcdir})
 
 clean:
+	rm -rf clixon # clone of top-srcdir
 
 distclean: clean
 	rm -f Makefile *~ .depend
 
-install: $(YANGSPECS) 
-	install -d -m 0755 $(DESTDIR)$(YANG_INSTALLDIR)
-	install -m 0644 $(YANGSPECS) $(DESTDIR)$(YANG_INSTALLDIR)
+docker: clixon Dockerfile
+	sudo docker build -t $(IMG) .  # --no-cache
 
-uninstall:
-	(cd $(DESTDIR)$(YANG_INSTALLDIR); rm -rf *.yang)
-
-install-include:	
-
+push:
+	sudo docker push $(IMG)
 depend:
 
-#include .depend
+install-include:
+
+install:
+
+uninstall:
 

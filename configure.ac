@@ -368,8 +368,9 @@ AC_OUTPUT(Makefile
     	  example/main/example.xml
 	  extras/rpm/Makefile
 	  docker/Makefile
+    	  docker/base/Makefile	  
+    	  docker/clixon-dev/Makefile
   	  docker/main/Makefile
-    	  docker/base/Makefile
   	  util/Makefile 
 	  yang/Makefile
   	  yang/clixon/Makefile
