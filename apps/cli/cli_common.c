@@ -217,7 +217,7 @@ dbxml_body(cxobj     *xbot,
  * @param[in]  argv  Vector. First element xml key format string, eg "/aaa/%s"
  * @param[in]  op    Operation to perform on database
  * @param[in]  nsctx Namespace context for last value added
- * Cvv will contain first the complete cli string, and then a set of optional
+ * cvv first contains the complete cli string, and then a set of optional
  * instantiated variables.
  * If the last node is a leaf, the last cvv element is added as a value. This value
  * Example:
@@ -263,9 +263,14 @@ cli_dbxml(clicon_handle       h,
     }
     arg = cvec_i(argv, 0);
     api_path_fmt = cv_string_get(arg);
+
+    /* Remove all keywords */
+    if (cvec_exclude_keys(cvv) < 0)
+	goto done;
     /* Transform template format string + cvv to actual api-path 
      * cvv_i indicates if all cvv entries were used
      */
+
     if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvv_i) < 0)
 	goto done;
     /* Create config top-of-tree */

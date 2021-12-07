@@ -43,6 +43,8 @@ Planned: January, 2022
 
 ### Corrected Bugs
 
+* Ensure auto-cli can be run with `CLICON_CLI_VARONLY=1`
+  * Strip constants in cli_dbxml 
 * rpc_callback_call(): Check if nrp parameter is NULL to avoid SEGV
 
 ## 5.4.0
