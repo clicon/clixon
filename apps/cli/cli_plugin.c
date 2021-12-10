@@ -796,8 +796,8 @@ cli_syntax_mode(clicon_handle h)
  * @param[in]  h       Clicon handle
  * @param[in]  name    Name of syntax mode 
  * @param[in]  prompt  Prompt format
- * @retvak     0       OK
- * @retvak    -1       Error
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 cli_set_prompt(clicon_handle h,

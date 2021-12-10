@@ -108,9 +108,6 @@ cli_handle_init(void)
     }
     cligen_userhandle_set(clih, cl);
     cligen_eval_wrap_fn_set(clih, plugin_context_check, cl);
-    /* To minimize memory, dont copy full treerefs on expand */
-    cligen_reftree_copy_set(clih, 0);
-
     cl->cl_cligen = clih;
 
     h = (clicon_handle)cl;
