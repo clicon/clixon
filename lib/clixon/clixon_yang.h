@@ -256,6 +256,7 @@ int        yang_print_cb(FILE *f, yang_stmt *yn, clicon_output_cb *fn);
 int        yang_print(FILE *f, yang_stmt *yn);
 int        yang_print_cbuf(cbuf *cb, yang_stmt *yn, int marginal);
 int        yang_deviation(yang_stmt *ys, void *arg);
+int        yang_spec_print(FILE *f, yang_stmt *yspec);
 int        yang_spec_dump(yang_stmt *yspec, int debuglevel);
 int        if_feature(yang_stmt *yspec, char *module, char *feature);
 int        ys_populate(yang_stmt *ys, void *arg);
@@ -270,8 +271,7 @@ int        yang_config_ancestor(yang_stmt *ys);
 int        yang_features(clicon_handle h, yang_stmt *yt);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_container_cli_hide(yang_stmt *ys, int gt);
-int        yang_key_match(yang_stmt *yn, char *name);
-
+int        yang_key_match(yang_stmt *yn, char *name, int *lastkey);
 int        yang_type_cache_regexp_set(yang_stmt *ytype, int rxmode, cvec *regexps);
 int        yang_type_cache_get(yang_stmt *ytype, yang_stmt **resolved, int *options,
 		   cvec **cvv, cvec *patterns, int *rxmode, cvec *regexps, uint8_t *fraction);

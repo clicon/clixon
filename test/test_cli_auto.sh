@@ -12,6 +12,7 @@ cfg=$dir/conf_yang.xml
 fspec=$dir/automode.cli
 fin=$dir/in
 fstate=$dir/state.xml
+fyang=$dir/clixon-example.yang
 
 # Use yang in example
 cat <<EOF > $cfg
@@ -20,7 +21,7 @@ cat <<EOF > $cfg
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -29,8 +30,32 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
-  <CLICON_CLI_AUTOCLI_EXCLUDE>clixon-restconf</CLICON_CLI_AUTOCLI_EXCLUDE>
 </clixon-config>
+EOF
+
+cat <<EOF > $fyang
+module clixon-example {
+    yang-version 1.1;
+    namespace "urn:example:clixon";
+    prefix ex;
+    /* Generic config data */
+    container table{
+	list parameter{
+	    key name;
+	    leaf name{
+		type string;
+	    }
+	    leaf value{
+		type string;
+	    }
+	    leaf stat{
+		description "Inline state data for example application";
+		config false;
+		type int32;
+	    }
+	}
+    }
+}
 EOF
 
 cat <<EOF > $fspec
@@ -39,14 +64,13 @@ CLICON_PROMPT="%U@%H %W> ";
 CLICON_PLUGIN="example_cli";
 
 # Autocli syntax tree operations
-edit @datamodel, cli_auto_edit("datamodel");
-up, cli_auto_up("datamodel");
-top, cli_auto_top("datamodel");
+edit @datamodelshow, cli_auto_edit("basemodel");
+up, cli_auto_up("basemodel");
+top, cli_auto_top("basemodel");
 set @datamodel, cli_auto_set();
 merge @datamodel, cli_auto_merge();
 create @datamodel, cli_auto_create();
 delete("Delete a configuration item") @datamodel, cli_auto_del();
-
 validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
@@ -271,6 +295,10 @@ show config netconf
 EOF
 new "show config netconf"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><parameter><name>a</name><value>42</value></parameter></config></edit-config></rpc>]]>]]>"
+
+# Negative test
+new "config parameter only expect fail"
+expectpart "$(echo "set table parameter" | $clixon_cli -f $cfg 2>&1)" 0 "CLI syntax error" "Incomplete command"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

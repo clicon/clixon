@@ -260,56 +260,59 @@ autocli_start(clicon_handle h,
 	      int           printgen)
 {
     int           retval = -1;
-    int           autocli_model = 0;
-    cbuf         *show_treename = NULL;
-    cbuf         *treename = NULL;
     yang_stmt    *yspec;
+    pt_head      *ph;
+    parse_tree   *pt = NULL; 
 	
-    /* If autocli disabled quit */
-    if ((autocli_model = clicon_cli_genmodel(h)) == 0)
-	goto ok;
-
+    /* Init yang2cli, mainly labels */
+    if (yang2cli_init(h) < 0)
+	goto done;
     yspec = clicon_dbspec_yang(h);
     /* Load clispec for autocli */
     if (yang_spec_parse_module(h, "clixon-clispec", NULL, yspec)< 0)
 	goto done;
-    
     /* Get the autocli type, ie HOW the cli is generated (could be much more here) */
-    /* Create show_treename cbuf */
-    if ((show_treename = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    /* Create treename cbuf */
-    if ((treename = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    /* The tree name is by default @datamodel but can be changed by option (why would one do that?) */
-    cprintf(treename, "%s", clicon_cli_model_treename(h));
-    if (yang2cli_yspec(h, yspec, cbuf_get(treename), printgen, 0, 0) < 0)
+    /* basemodel is labelled tree */
+    if (yang2cli_yspec(h, yspec, "basemodel", printgen) < 0)
 	goto done;
 
-    /* The tree name is by default @datamodelshow but can be changed by option (why would one do that?) */
-    cprintf(show_treename, "%s", clicon_cli_model_treename(h));
-    cprintf(show_treename, "show");
-    if (yang2cli_yspec(h, yspec, cbuf_get(show_treename), printgen, 0, 1) < 0)
+    /* Create backward compatible tree: @datamodel */
+    if ((ph = cligen_ph_add(cli_cligen(h), "datamodel")) == NULL)
+	goto done;
+    if ((pt = pt_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "pt_new");
+	goto done;
+    }
+    if (cligen_parse_str(cli_cligen(h), "@basemodel, @remove:termfirstkeys, @remove:termlist, @remove:termleaf, @remove:nonconfig;", "datamodel", pt, NULL) < 0)
+	goto done;
+    if (cligen_ph_parsetree_set(ph, pt) < 0)
 	goto done;
 
-    /* Create a tree for config+state. This tree's name has appended "state" to @datamodel
-     */
-    if (autocli_model > 1){
-	cprintf(treename, "state");
-	if (yang2cli_yspec(h, yspec, cbuf_get(treename), printgen, 1, 1) < 0)
-	    goto done;
+    /* Create backward compatible tree: @datamodelshow */
+    if ((ph = cligen_ph_add(cli_cligen(h), "datamodelshow")) == NULL)
+	goto done;
+    if ((pt = pt_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "pt_new");
+	goto done;
     }
- ok:
+    if (cligen_parse_str(cli_cligen(h), "@basemodel, @remove:leafvar, @remove:nonconfig;", "datamodelshow", pt, NULL) < 0)
+	goto done;
+    if (cligen_ph_parsetree_set(ph, pt) < 0)
+	goto done;
+
+    /* Create backward compatible tree: @datamodelstate */
+    if ((ph = cligen_ph_add(cli_cligen(h), "datamodelstate")) == NULL)
+	goto done;
+    if ((pt = pt_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "pt_new");
+	goto done;
+    }
+    if (cligen_parse_str(cli_cligen(h), "@basemodel, @remove:leafvar;", "datamodelstate", pt, NULL) < 0)
+	goto done;
+    if (cligen_ph_parsetree_set(ph, pt) < 0)
+	goto done;
     retval = 0;
  done:
-    if (show_treename)
-	cbuf_free(show_treename);
-    if (treename)
-	cbuf_free(treename);
     return retval;
 }
 

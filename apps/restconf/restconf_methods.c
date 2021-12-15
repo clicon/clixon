@@ -469,7 +469,7 @@ api_data_write(clicon_handle h,
 	     */
 	    if ((yp = yang_parent_get(ybot)) != NULL &&
 		yang_keyword_get(yp) == Y_LIST){
-		if ((ret = yang_key_match(yp, dname)) < 0)
+		if ((ret = yang_key_match(yp, dname, NULL)) < 0)
 		    goto done;
 		if (ret == 1){ /* Match: xdata is a key */
 		    char *parbod = xml_find_body(xparent, dname);

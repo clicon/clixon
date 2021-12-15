@@ -272,7 +272,7 @@ xml2cli_recurse(FILE              *f,
     if (yang_keyword_get(ys) == Y_LIST){
 	xe = NULL;
 	while ((xe = xml_child_each(x, xe, -1)) != NULL){
-	    if ((match = yang_key_match(ys, xml_name(xe))) < 0)
+	    if ((match = yang_key_match(ys, xml_name(xe), NULL)) < 0)
 		goto done;
 	    if (!match)
 		continue;
@@ -301,7 +301,7 @@ xml2cli_recurse(FILE              *f,
     xe = NULL;
     while ((xe = xml_child_each(x, xe, -1)) != NULL){
 	if (yang_keyword_get(ys) == Y_LIST){
-	    if ((match = yang_key_match(ys, xml_name(xe))) < 0)
+	    if ((match = yang_key_match(ys, xml_name(xe), NULL)) < 0)
 		goto done;
 	    if (match){
 		(*fn)(f, "%s\n", cbuf_get(cbpre));	
@@ -730,7 +730,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
 	}
 	/* If it is key dont remove it yet (see second round) */
 	if (yt){
-	    if ((iskey = yang_key_match(yt, xml_name(x))) < 0)
+	    if ((iskey = yang_key_match(yt, xml_name(x), NULL)) < 0)
 		goto done;
 	    if (iskey){
 		anykey++;
@@ -758,7 +758,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
 	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 	    /* If it is key remove it here */
 	    if (yt){
-		if ((iskey = yang_key_match(yt, xml_name(x))) < 0)
+		if ((iskey = yang_key_match(yt, xml_name(x), NULL)) < 0)
 		    goto done;
 		if (iskey && xml_purge(x) < 0)
 		    goto done;
@@ -2166,7 +2166,7 @@ xml_copy_marked(cxobj *x0,
 	 * node in list is marked */
 	if (mark && yt && yang_keyword_get(yt) == Y_LIST){
 	    /* XXX: I think yang_key_match is suboptimal here */
-	    if ((iskey = yang_key_match(yt, name)) < 0)
+	    if ((iskey = yang_key_match(yt, name, NULL)) < 0)
 		goto done;
 	    if (iskey){
 		if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)

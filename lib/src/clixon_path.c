@@ -323,7 +323,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
 	     */
 		if (yang_keyword_get(ys) == Y_LEAF && yp && 
 		    yang_keyword_get(yp) == Y_LIST &&
-		yang_key_match(yp, ys->ys_argument) == 1)
+		    yang_key_match(yp, ys->ys_argument, NULL) == 1)
 		;
 	    else
 #endif
@@ -347,7 +347,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
     else{
 	if (yang_keyword_get(ys) == Y_LEAF && yp && 
 	    yang_keyword_get(yp) == Y_LIST){
-	    if (yang_key_match(yp, yang_argument_get(ys)) == 0)
+	    if (yang_key_match(yp, yang_argument_get(ys), NULL) == 0)
 		cprintf(cb, "%s", yang_argument_get(ys)); /* Not if leaf and key */
 	}
 	else  
@@ -477,7 +477,10 @@ api_path_fmt2api_path(const char *api_path_fmt,
 	    if (j == cvec_len(cvv)) /* last element */
 		;
 	    else{
-		cv = cvec_i(cvv, j++);
+		if ((cv = cvec_i(cvv, j++)) == NULL){
+		    clicon_err(OE_XML, 0, "Number of elements in cvv does not match api_path_fmt string");
+		    goto done;
+		}
 		if ((str = cv2str_dup(cv)) == NULL){
 		    clicon_err(OE_UNIX, errno, "cv2str_dup");
 		    goto done;

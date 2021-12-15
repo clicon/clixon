@@ -673,7 +673,7 @@ module clixon-config {
                     <CLICON_CLI_AUTOCLI_EXCLUDE>clixon-restconf</CLICON_CLI_AUTOCLI_EXCLUDE> 
                  means generate autocli for all models except clixon-restconf.yang
                  The value can be a list of space separated module names";
-	    default "clixon-restconf";
+	    default "clixon-restconf ietf-yang-library";
 	}
 	leaf CLICON_CLI_VARONLY {
 	    type int32;

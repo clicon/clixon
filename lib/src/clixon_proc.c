@@ -421,7 +421,7 @@ clixon_process_argv_get(clicon_handle h,
  * @param[in]  name     Process name
  * @param[in]  description  Description of process
  * @param[in]  netns    Namespace netspace (or NULL)
- * @param[in]  callback
+ * @param[in]  callback Wrapper function
  * @param[in]  argv     NULL-terminated vector of vectors 
  * @param[in]  argc     Length of argv
  * @retval     0        OK
@@ -620,8 +620,8 @@ clixon_process_operation(clicon_handle  h,
     clicon_debug(1, "%s name:%s op:%s", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));
     if (_proc_entry_list == NULL)
 	goto ok;
-    pe = _proc_entry_list;
-    do {
+    if ((pe = _proc_entry_list) != NULL)
+	do {
 	if (strcmp(pe->pe_name, name) == 0){
 	    /* Call wrapper function that eg changes op1 based on config */
 	    op = op0;
@@ -983,7 +983,7 @@ clixon_process_waitpid(clicon_handle h)
 		clicon_debug(1, "%s waitpid(%d) nomatch:%d", __FUNCTION__, pe->pe_pid, wpid);
 	}
     	pe = NEXTQ(process_entry_t *, pe);
-    } while (pe != _proc_entry_list);
+    } while (pe && pe != _proc_entry_list);
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);

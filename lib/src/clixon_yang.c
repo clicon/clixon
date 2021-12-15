@@ -1701,6 +1701,34 @@ yang_print(FILE      *f,
     return yang_print_cb(f, yn, fprintf);
 }
 
+/*! Print yang top-level modules only
+ * @param[in]  f         File to print to.
+ * @param[in]  yn        Yang node to print
+ * @see yang_print_cbuf
+ */
+int
+yang_spec_print(FILE      *f, 
+		yang_stmt *yspec)
+{
+    yang_stmt *ym = NULL;
+    yang_stmt *yrev;
+    
+    if (yspec == NULL || yang_keyword_get(yspec) != Y_SPEC){
+	clicon_err(OE_YANG, EINVAL, "yspec is not of type YSPEC");
+	return -1;
+    }
+    while ((ym = yn_each(yspec, ym)) != NULL) {
+	fprintf(f, "%s", yang_key2str(ym->ys_keyword));
+	fprintf(f, " %s", ym->ys_argument);
+	if ((yrev = yang_find(ym, Y_REVISION, NULL)) != NULL){
+	    fprintf(f, "@%u", cv_uint32_get(yang_cv_get(yrev)));
+	}
+	fprintf(f, ".yang");
+	fprintf(f, "\n");
+    }
+    return 0;
+}
+
 /* Log/debug info about top-level (sub)modules no recursion
  * @param[in]  yspec     Yang spec
  * @param[in]  dbglevel  Debug level
@@ -2005,7 +2033,7 @@ ys_populate_leaf(clicon_handle h,
     }
     /* 4. Check if leaf is part of list, if key exists mark leaf as key/unique */
     if (yparent && yparent->ys_keyword == Y_LIST){
-	if ((ret = yang_key_match(yparent, ys->ys_argument)) < 0)
+	if ((ret = yang_key_match(yparent, ys->ys_argument, NULL)) < 0)
 	    goto done;
     }
     yang_cv_set(ys, cv);
@@ -3417,6 +3445,7 @@ yang_container_cli_hide(yang_stmt         *ys,
  * The function looks at the LIST argument string (not actual children)
  * @param[in]  yn   Yang list node with sub-statements (look for a key child)
  * @param[in]  name Check if this name (eg "b") is a key in the yang key statement
+ * @param[out] lastkey If 1 this is the last key in a multi-key list
  *
  * @retval   -1     Error
  * @retval    0     No match
@@ -3424,11 +3453,13 @@ yang_container_cli_hide(yang_stmt         *ys,
  */
 int
 yang_key_match(yang_stmt *yn, 
-	       char      *name)
+	       char      *name,
+	       int       *lastkey)
 {
     int        retval = -1;
     yang_stmt *ys = NULL;
     int        i;
+    int        j;
     cvec      *cvv = NULL;
     cg_var    *cv;
 
@@ -3437,12 +3468,17 @@ yang_key_match(yang_stmt *yn,
 	if (ys->ys_keyword == Y_KEY){
 	    if ((cvv = yang_arg2cvec(ys, " ")) == NULL)
 		goto done;
+	    j = 0;
 	    cv = NULL;
 	    while ((cv = cvec_each(cvv, cv)) != NULL) {
+		j++;
 		if (strcmp(name, cv_string_get(cv)) == 0){
+		    if (j == cvec_len(cvv) && lastkey)
+			*lastkey = 1;
 		    retval = 1; /* match */
 		    goto done;
 		}
+
 	    }
 	    cvec_free(cvv);
 	    cvv = NULL;

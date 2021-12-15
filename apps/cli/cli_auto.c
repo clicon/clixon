@@ -383,7 +383,7 @@ cli_xml2cli(cxobj             *xn,
     if (yang_keyword_get(ys) == Y_LIST){
 	xe = NULL;
 	while ((xe = xml_child_each(xn, xe, -1)) != NULL){
-	    if ((match = yang_key_match(ys, xml_name(xe))) < 0)
+	    if ((match = yang_key_match(ys, xml_name(xe), NULL)) < 0)
 		goto done;
 	    if (!match)
 		continue;
@@ -415,7 +415,7 @@ cli_xml2cli(cxobj             *xn,
     xe = NULL;
     while ((xe = xml_child_each(xn, xe, -1)) != NULL){
 	if (yang_keyword_get(ys) == Y_LIST){
-	    if ((match = yang_key_match(ys, xml_name(xe))) < 0)
+	    if ((match = yang_key_match(ys, xml_name(xe), NULL)) < 0)
 		goto done;
 	    if (match)
 		continue; /* Not key itself */
@@ -545,10 +545,14 @@ cli_auto_up(clicon_handle h,
     }
     if ((co0 = cligen_ph_workpoint_get(ph)) == NULL)
 	goto ok;
-    co1 = co_up(co0);
     /* Find parent that has a callback */
-    while (co1 && (co1->co_callbacks == NULL))
-	co1 = co_up(co1);
+    for (co1 = co_up(co0); co1; co1 = co_up(co1)){
+	cg_obj *cot = NULL;
+	if (co_terminal(co1, &cot)){
+	    if (cot == NULL || co_isfilter(cot->co_cvec, "termlist") == 0)
+		break; /* found */
+	}
+    }
     cligen_ph_workpoint_set(ph, co1);
     if (co1 == NULL){
 	clicon_data_set(h, "cli-edit-mode", "");

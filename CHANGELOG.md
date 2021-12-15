@@ -35,6 +35,22 @@
 ## 5.5.0
 Planned: January, 2022
 
+### New features
+
+* Changed auto-cli design
+  * Replaced separet autocli trees with a single `@basemodel` tree by using filter labels
+    * Filter labels are added to the fill tree and then filtered out using `@remove:<label>`
+    * Labels include: termfirstkeys, termlist, termleaf, leafvar, nonconfig,
+      * For detailed docs see yang2cli_post()
+    * This method reduces memory usage and is more generic
+    * Backward compatible: can continue use the "old" trees.
+    * Translation to new method as follows:
+      * `@datamodel` translated to `@basemodel, @remove:termfirstkeys, @remove:termlist, @remove:termleaf, @remove:nonconfig`
+      * `@datamodelshow` translated to `@basemodel, @remove:leafvar, @remove:nonconfig`
+      * `@datamodelstate` translated to `@basemodel, @remove:leafvar`
+    * Note: autocli mode support is not backward compatible
+      * see main example
+
 ### Minor features
 
 * New `clixon-dev` development container (Work-in-progress)
@@ -70,12 +86,13 @@ This release features lots of minor updates and bugfixes, an updated list pagina
 Users may have to change how they access the system
  
 * Optional yangs for testing have been removed from the Clixon repo
-  * These were included for testing
-  * If you want to run the Clixon test suite you need to point `YANGMODELS`, see test/README.md
-  * The following configure options have been removed:
+  * As a consequence, the following configure options have been removed:
     * `configure --with-opt-yang-installdir=DIR`
-    * `configure   --enable-optyangs`
-  * You may need to specify standard YANGs using configure option `--with-yang-standard-dir=DIR`
+    * `configure --enable-optyangs`
+* You may need to specify where standard IETFC/IEEE YANGMODELS are
+  * Note, this applies to testing and main example only, not core clixon
+  * The following configure option has been added
+    * `configure --with-yang-standard-dir=DIR`
 * RPC replies now verified with YANG
   * Stricter checking of outgoing RPC replies from server
   * See [RPC output not verified by yang](https://github.com/clicon/clixon/issues/283)
