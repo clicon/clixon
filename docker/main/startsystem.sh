@@ -62,7 +62,6 @@ cat <<EOF > /usr/local/bin/test/site.sh
 # Add your local site specific env variables (or tests) here.
 SKIPLIST="test_api.sh test_c++.sh test_install.sh test_privileges.sh test_augment.sh test_choice.sh test_identity.sh test_nacm_datanode_read.sh test_nacm_datanode.sh test_nacm_datanode_write.sh test_nacm_default.sh test_nacm_ext.sh test_nacm_module_read.sh test_nacm_module_write.sh test_nacm_protocol.sh test_nacm.sh test_nacm_recovery.sh test_perf.sh test_perf_state_only.sh test_perf_state.sh test_restconf2.sh test_restconf_err.sh test_restconf_jukebox.sh test_restconf_listkey.sh test_restconf_patch.sh test_restconf.sh test_restconf_startup.sh test_rpc.sh test_ssl_certs.sh test_stream.sh test_submodule.sh test_upgrade_auto.sh test_upgrade_interfaces.sh test_upgrade_repair.sh test_yang_namespace.sh"
 # Parse yangmodels from https://github.com/YangModels/yang
-YANGMODELS=/usr/local/share/yang
 EOF
 
 # Patch yang syntax errors

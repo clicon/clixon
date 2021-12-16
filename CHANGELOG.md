@@ -38,7 +38,7 @@ Planned: January, 2022
 ### New features
 
 * Changed auto-cli design
-  * Replaced separet autocli trees with a single `@basemodel` tree by using filter labels
+  * Replaced separate autocli trees with a single `@basemodel` tree by using filter labels
     * Filter labels are added to the fill tree and then filtered out using `@remove:<label>`
     * Labels include: termfirstkeys, termlist, termleaf, leafvar, nonconfig,
       * For detailed docs see yang2cli_post()
@@ -53,6 +53,7 @@ Planned: January, 2022
 
 ### Minor features
 
+* Tests: use `YANG_STANDARD_DIR` from `./configure --with-yang-standard-dir=DIR` instead of `YANGMODELS` from site.sh
 * New `clixon-dev` development container (Work-in-progress)
 * New `clixon-clispec.yang` for controlling auto-cli (Work-in-progress)
 * Changed typo `configure --with-yang-standard-installdir` to `configure --with-yang-standard-dir`

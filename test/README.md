@@ -7,9 +7,8 @@ automatically run as part of the all.sh, sum.sh tests etc. The scripts
 need to follow some rules to work properly, please look at one or two
 to get the idea.
 
-Note that some IETF yangs need to be available, by default these are
-available in https://github.com/YangModels/yang. Just ensure the YANGMODELS in site.sh points
-to a locally checked out dir.
+Note that some IETF yangs need to be available, by default these are in `/usr/local//share/yang/standard`. You can change this location with configure option `--with-yang-standard-dir=DIR`
+
 
 See also the [site.sh](#site-sh) for example for skipping tests or setting some site-specific variables.
 
@@ -89,10 +88,6 @@ You may add your site-specific modifications in a `site.sh` file. Example:
   SKIPLIST="test_openconfig.sh test_yangmodels.sh"
   # Parse yang openconfig models from https://github.com/openconfig/public
   OPENCONFIG=/usr/local/share/openconfig/public
-  # Parse yangmodels from https://github.com/YangModels/yang
-  YANGMODELS=/usr/local/share/yangmodels
-  # Standard IETF RFC yang files. 
-  IETFRFC=$YANGMODELS/standard/ietf/RFC
 ```
 
 For example, in FreeBSD, add:

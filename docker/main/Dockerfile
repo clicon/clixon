@@ -66,7 +66,7 @@ WORKDIR /clixon/clixon
 COPY clixon .
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --without-restconf
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --without-restconf --with-yang-standard-dir=/usr/local/share/yang/standard
 RUN make
 RUN make install
 

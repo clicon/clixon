@@ -5,7 +5,7 @@
 # - A simple smoketest (CLI check) is made, essentially YANG parsing. 
 #    - A full system is worked on
 # - Env-var OPENCONFIG should point to checkout place. (define it in site.sh for example)
-# - Env variable YANGMODELS should point to checkout place. (define it in site.sh for example)
+# - Env variable IETFRFC should point to checkout place, derived from YANG_STANDARD_DIR config option
 # - Some DIFFs are necessary in yangmodels
 #         release/models/wifi/openconfig-ap-interfaces.yang
 

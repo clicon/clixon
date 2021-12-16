@@ -177,8 +177,8 @@ if [ -f ./site.sh ]; then
 fi
 
 # Standard IETF RFC yang files. 
-if [ ! -z ${YANGMODELS} ]; then
-    : ${IETFRFC=$YANGMODELS/standard/ietf/RFC}
+if [ ! -z ${YANG_STANDARD_DIR} ]; then
+    : ${IETFRFC=$YANG_STANDARD_DIR/ietf/RFC}
 fi
 
 # Check sanity between --with-restconf setting and if nginx is started by systemd or not

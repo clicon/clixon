@@ -91,7 +91,6 @@ cat <<EOF > /usr/local/bin/test/site.sh
 SKIPLIST="test_api.sh test_client.sh test_c++.sh test_install.sh test_privileges.sh"
 RCPROTO=http # Because nginx
 # Parse yangmodels from https://github.com/YangModels/yang
-YANGMODELS=/usr/local/share/yang
 EOF
 
 # Patch yang syntax errors
