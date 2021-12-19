@@ -50,7 +50,16 @@ Planned: January, 2022
       * `@datamodelstate` translated to `@basemodel, @remove:leafvar`
     * Note: autocli mode support is not backward compatible
       * see main example
+  * Added new YANG clixon-clispec.yang
+    * This yang replaces many autocli options
 
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* New `clixon-config@2021-12-05.yang` revision
+  * Imported (as a sub-spec):  clixon-clispec.yang
+  
 ### Minor features
 
 * Tests: use `YANG_STANDARD_DIR` from `./configure --with-yang-standard-dir=DIR` instead of `YANGMODELS` from site.sh

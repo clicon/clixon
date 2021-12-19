@@ -96,6 +96,7 @@ cxobj *clicon_conf_xml(clicon_handle h);
 int clicon_conf_xml_set(clicon_handle h, cxobj *x);
 
 cxobj *clicon_conf_restconf(clicon_handle h);
+cxobj *clicon_conf_clispec(clicon_handle h);
 
 db_elmnt *clicon_db_elmnt_get(clicon_handle h, const char *db);
 int clicon_db_elmnt_set(clicon_handle h, const char *db, db_elmnt *xc);

@@ -106,8 +106,9 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config
 new "cli show configuration"
 expectpart "$($clixon_cli -1 -f $cfg show conf xml)" 0 "^<interfaces xmlns=\"http://openconfig.net/yang/interfaces\">" --not-- "<oc-eth:ethernet xmlns:oc-eth=\"http://openconfig.net/yang/interfaces/ethernet\">"
 
-new "cli set interfaces interface <tab> complete: e"
-expectpart "$(echo "set interfaces interface 	" | $clixon_cli -f $cfg)" 0 "interface e"
+# XXX THIS REQUIRES PREFIX FOR IETF-INTERFACES
+#new "cli set interfaces interface <tab> complete: e"
+#expectpart "$(echo "set interfaces interface 	" | $clixon_cli -f $cfg)" 0 "interface e"
 
 # XXX See https://github.com/clicon/clixon/issues/218
 #new "cli set interfaces interface e <tab> complete: not ethernet"
@@ -123,6 +124,7 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
+
 
 # Second using openconfig-interfaces instead
 # Example yang

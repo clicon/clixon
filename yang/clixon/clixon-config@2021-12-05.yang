@@ -5,6 +5,9 @@ module clixon-config {
 
     import clixon-restconf {
 	prefix clrc;
+    }
+    import clixon-clispec {
+	prefix ccli;
     }    
     organization
 	"Clicon / Clixon";
@@ -43,6 +46,13 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2021-12-05 {
+	description
+	    "Added option:
+             Imported
+                    clixon-clispec.yang
+             Released in Clixon 5.5";
+    }
     revision 2021-11-11 {
 	description
 	    "Added option:
@@ -363,15 +373,18 @@ module clixon-config {
 	container restconf {
 	    uses clrc:clixon-restconf;
 	}
-       leaf-list CLICON_FEATURE {
-           description
-               "Supported features as used by YANG feature/if-feature
+	container clispec {
+	    uses ccli:clixon-clispec;
+	}
+	leaf-list CLICON_FEATURE {
+	    description
+		"Supported features as used by YANG feature/if-feature
 	        value is: <module>:<feature>, where <module> and <feature>
                 are either names, or the special character '*'.
                 *:* means enable all features
                 <module>:* means enable all features in the specified module
                 *:<feature> means enable the specific feature in all modules";
-	   type string;
+	    type string;
         }
 	leaf-list CLICON_YANG_DIR {
 	    ordered-by user;
@@ -389,7 +402,7 @@ module clixon-config {
 	leaf CLICON_CONFIGFILE{
 	    type string;
 	    description
-               "Location of the main configuration-file.
+		"Location of the main configuration-file.
                 Default is CLIXON_DEFAULT_CONFIG=/usr/local/etc/clicon.xml set in configure. 
                 Note that due to bootstrapping, this value is not actually read from file
                 and therefore a default value would be meaningless.";
@@ -397,7 +410,7 @@ module clixon-config {
 	leaf CLICON_CONFIGDIR{
 	    type string;
 	    description
-               "Location of directory of extra configuration files. 
+		"Location of directory of extra configuration files. 
                 If not given, only main configfile is read.
                 If given, and if the directory exists, all files in this directory will be loaded
                 AFTER the main config file (CLICON_CONFIGFILE) in the following way:
@@ -481,7 +494,7 @@ module clixon-config {
 		"Regexp of matching backend plugins in CLICON_BACKEND_DIR";
 	    default "(.so)$";
 	}
-	leaf CLICON_NETCONF_DIR {
+	leaf CLICON_NETCONF_DIR{
 	    type string;
 	    description "Location of netconf (frontend) .so plugins";
 	}
@@ -673,7 +686,7 @@ module clixon-config {
                     <CLICON_CLI_AUTOCLI_EXCLUDE>clixon-restconf</CLICON_CLI_AUTOCLI_EXCLUDE> 
                  means generate autocli for all models except clixon-restconf.yang
                  The value can be a list of space separated module names";
-	    default "clixon-restconf";
+	    default "clixon-restconf ietf-yang-library";
 	}
 	leaf CLICON_CLI_VARONLY {
 	    type int32;
@@ -707,8 +720,7 @@ module clixon-config {
 	    type int8;
 	    default 0;
 	    description
-		"Set CLI tab mode. This is actually a bitfield of three 
-                 combinations:
+		"Set CLI tab mode. This is a bitfield of three bits:
                  bit 1: 0: <tab> shows short info of available commands
                         1: <tab> has same output as <?>, ie line per command
                  bit 2: 0: On <tab>, select a command over a <var> if both exist

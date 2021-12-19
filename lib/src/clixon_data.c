@@ -453,7 +453,7 @@ clicon_conf_xml_set(clicon_handle h,
  *
  * That is, get the XML of clixon-config/restconf container of clixon-config.yang
  * @param[in]  h  Clicon handle
- * @retval     x  XML tree containing restconf xml node frm clixon-restconf.yang
+ * @retval     x  XML tree containing restconf xml node from clixon-restconf.yang
  * @note The clixon-restconf.yang instance can also be a part of the running datastore if 
  *       CLICON_BACKEND_RESTCONF_PROCESS is true
  */
@@ -464,6 +464,22 @@ clicon_conf_restconf(clicon_handle h)
 
     if ((xconfig = clicon_conf_xml(h)) != NULL)  	 /* Get local config */
 	return xpath_first(xconfig, NULL, "restconf");
+    return NULL;
+}
+
+/*! Get local YANG specification for Clixon-clispec.yang tree
+ *
+ * That is, get the XML of clixon-config/clispec container of clixon-config.yang
+ * @param[in]  h  Clicon handle
+ * @retval     x  XML tree containing clispec xml node from clixon-clispec.yang
+ */
+cxobj *
+clicon_conf_clispec(clicon_handle h)
+{
+    cxobj  *xconfig = NULL;
+
+    if ((xconfig = clicon_conf_xml(h)) != NULL)  	 /* Get local config */
+	return xpath_first(xconfig, NULL, "clispec");
     return NULL;
 }
 

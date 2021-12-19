@@ -47,10 +47,11 @@ module clixon-clispec{
     
     grouping clixon-clispec{
 	list rule {
-	    key id;
-	    ordered-by user;
 	    description
 		"Represents a modification rule of a clixon clispec.";
+	    ordered-by user; /* eg modules: omit * */
+	    key id;
+
 	    leaf id {
 		description
 		    "Arbitrary string index for the rule";
@@ -61,42 +62,53 @@ module clixon-clispec{
 		    "Rule description";
 		type string;
 	    }
+	    leaf-list node-id {
+		description
+		    "path in the form of <id>/<id> or just a single <id> identifying a YANG
+                     schema-node identifier as defined in RFC 7950 Sec 6.5
+                     Example: 'config', '/interfaces/interface'";
+		type string;
+	    }
+	    leaf-list module {
+		description
+		    "Constraints the rule to the module names identified by a glob.
+                     Wildchars '*' and '?' can be used.
+                     Revision and yang suffix are ommitted
+                     Note, this special rule is necessary since node-id cannot be used for
+                     modules.
+                     Example: 'openconfig-*'";
+		type string;
+	    }
+	    leaf-list yang-keyword {
+		description
+		    "If present identifes a YANG keyword which the rule applies to
+                     Example: 'container'";
+		type string;
+	    }
 	    leaf operation {
 		type enumeration {
+		    enum exclude {
+			description
+			    "Exclude a subtree from rendering of autocli. 
+                             Example: exclude: openconfig-* module";
+		    }
+		    enum include {
+			description
+			    "Include a subtree to rendering of autocli. 
+                             Example: include: openconfig-wifi module";
+		    }
+		    enum omit {
+			description
+			    "Remove a single keyword from a command. 
+                             Example: replace 'interfaces interface' with 'interface' ??";
+		    }
 		    enum hide {
 			description
 			"A complete command (not just single keyword) is hidden from CLI query,
                          help and completion, ie a user must type it manually. 
                          Example: 'start shell'";
 		    }
-		    enum omit {
-			description
-			    "Remove a single keyword from a command. 
-                             Example: replace 'interfaces interface' with 'interface'";
-		    }
 		}
-	    }
-	    leaf node-id {
-		description
-		    "path in the form of <id>/<id> or just a single <id> identifying a YANG
-                     schema-node identifier as defined in RFC 7950 Sec 6.5
-                     Example: 'config', '/interfaces/interface'";
-		mandatory true;
-		type string;
-	    }
-	    leaf yang-statement {
-		description
-		    "If present identifes a YANG statement which the rule applies to
-                     Example: 'container'";
-		type string;
-	    }
-	    leaf module {
-		description
-		    "If present constraints the rule to the module names identified by a glob.
-                     Wildchars '*' and '?' can be used.
-                     Revision and yang suffix are ommitted
-                     Example: 'openconfig-*'";
-		type string;
 	    }
 	}
     }
