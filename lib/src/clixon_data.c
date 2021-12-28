@@ -428,6 +428,13 @@ clicon_nacm_cache_set(clicon_handle h,
 /*! Get YANG specification for Clixon system options and features
  * Must use hash functions directly since they are not strings.
  * Example: features are typically accessed directly in the config tree.
+ * @code
+ *   cxobj *x = NULL;
+ *   while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
+ *      if (strcmp(xml_name(x), "CLICON_YANG_DIR") != 0)
+ *         break;
+ *   }
+ * @endcode
  */
 cxobj *
 clicon_conf_xml(clicon_handle h)
@@ -454,6 +461,9 @@ clicon_conf_xml_set(clicon_handle h,
  * That is, get the XML of clixon-config/restconf container of clixon-config.yang
  * @param[in]  h  Clicon handle
  * @retval     x  XML tree containing restconf xml node from clixon-restconf.yang
+ * @code
+ *    cxobj *xrestconf = clicon_conf_restconf(h);
+ * @endcode
  * @note The clixon-restconf.yang instance can also be a part of the running datastore if 
  *       CLICON_BACKEND_RESTCONF_PROCESS is true
  */
@@ -472,6 +482,9 @@ clicon_conf_restconf(clicon_handle h)
  * That is, get the XML of clixon-config/clispec container of clixon-config.yang
  * @param[in]  h  Clicon handle
  * @retval     x  XML tree containing clispec xml node from clixon-clispec.yang
+ * @code
+ *    cxobj *xclispec = clicon_conf_clispec(h);
+ * @endcode
  */
 cxobj *
 clicon_conf_clispec(clicon_handle h)

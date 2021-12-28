@@ -255,7 +255,7 @@ convert_evhtp_params2clixon(clicon_handle    h,
     if (restconf_param_set(h, "REQUEST_URI", path->full) < 0)
 	goto done;
     clicon_debug(1, "%s proto:%d", __FUNCTION__, req->proto);
-    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
+    pretty = restconf_pretty_get(h);
     /* XXX: Any two http numbers seem accepted by evhtp, like 1.99, 99.3 as http/1.1*/
     if (req->proto != EVHTP_PROTO_10 &&
 	req->proto != EVHTP_PROTO_11){

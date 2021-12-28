@@ -49,5 +49,7 @@ int           restconf_param_set(clicon_handle h, const char *param, char *val);
 int           restconf_param_del_all(clicon_handle h);
 clixon_auth_type_t restconf_auth_type_get(clicon_handle h);
 int           restconf_auth_type_set(clicon_handle h, clixon_auth_type_t type);
+int           restconf_pretty_get(clicon_handle h);
+int           restconf_pretty_set(clicon_handle h, int pretty);
 
 #endif  /* _RESTCONF_HANDLE_H_ */

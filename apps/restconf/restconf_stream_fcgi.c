@@ -399,8 +399,7 @@ api_stream(clicon_handle h,
     clicon_debug(1, "%s", __FUNCTION__);
     if ((path = restconf_uripath(h)) == NULL)
 	goto done;
-    /* XXX see restconf_config_init access directly */
-    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
+    pretty = restconf_pretty_get(h);
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
 	goto done;
     /* Sanity check of path. Should be /stream/<name> */

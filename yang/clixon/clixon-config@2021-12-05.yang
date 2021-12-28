@@ -49,8 +49,11 @@ module clixon-config {
     revision 2021-12-05 {
 	description
 	    "Added option:
-             Imported
+             Imported sub-spec:
                     clixon-clispec.yang
+             Removed obsolete options:
+                    CLICON_YANG_LIST_CHECK
+                    CLICON_RESTCONF_PATH
              Released in Clixon 5.5";
     }
     revision 2021-11-11 {
@@ -456,19 +459,6 @@ module clixon-config {
                  There is a 'good-enough' posix translation mode and a complete
                  libxml2 mode";
 	}
-	leaf CLICON_YANG_LIST_CHECK {
-	    type boolean;
-	    default true;
-	    description
-		"If false, skip Yang list check sanity checks from RFC 7950, Sec 7.8.2: 
-                 The 'key' statement, which MUST be present if the list represents configuration.
-                 Some yang specs seem not to fulfil this. However, if you reset this, there may
-                 be follow-up errors due to code that assumes a configuration list has keys
-                 Marked as obsolete since the observation above seemed to be related to the
-                 yang-data extension in RFC8040 allows non-key lists. This has been implemented
-                 by a YANG_FLAG_NOKEY yang flag mechanism";
-	    status obsolete;
-	}
 	leaf CLICON_YANG_UNKNOWN_ANYDATA{
 	    type boolean;
 	    default false;
@@ -530,16 +520,6 @@ module clixon-config {
                  Note: This cannot be moved to clixon-restconf.yang because it is needed
                  early in the bootstrapping phase, before clixon-restconf.yang config may
                  be loaded.";
-	}
-	leaf CLICON_RESTCONF_PATH {
-	    type string;
-	    default "/www-data/fastcgi_restconf.sock";
-	    description
-		"FastCGI unix socket. Should be specified in webserver
-         	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
-                 Only if with-restconf=fcgi, NOT native
-                 Note: Obsolete, use fcgi-socket in clixon-restconf.yang instead";
-	    status obsolete;
 	}
 	leaf CLICON_RESTCONF_INSTALLDIR {
 	    type string;

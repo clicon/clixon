@@ -93,6 +93,7 @@ struct restconf_handle {
     /* ------ end of common handle ------ */
     clicon_hash_t           *rh_params;    /* restconf parameters, including http headers */
     clixon_auth_type_t       rh_auth_type; /* authentication type */
+    int                      rh_pretty;    /* pretty-print for http replies */
 };
 
 /*! Creates and returns a clicon config handle for other CLICON API calls
@@ -100,7 +101,11 @@ struct restconf_handle {
 clicon_handle
 restconf_handle_init(void)
 {
-    return clicon_handle_init0(sizeof(struct restconf_handle));
+    struct restconf_handle *rh;
+
+    rh = clicon_handle_init0(sizeof(struct restconf_handle));
+    rh->rh_pretty = 1; /* clixon-restconf.yang : pretty is default true*/
+    return rh;
 }
 
 /*! Deallocates a backend handle, including all client structs
@@ -203,5 +208,35 @@ restconf_auth_type_set(clicon_handle        h,
     struct restconf_handle *rh = handle(h);
 
     rh->rh_auth_type = type;
+    return 0;
+}
+
+/*! Get restconf pretty-print (for replies)
+ * @param[in]  h         Clicon handle
+ * @retval     pretty
+ */
+int
+restconf_pretty_get(clicon_handle h)
+{
+    struct restconf_handle *rh = handle(h);
+
+    return rh->rh_pretty;
+}
+
+/*! Set restconf pretty-print
+ * @param[in]  h    Clicon handle
+ * @param[in]  name Data name
+ * @param[in]  val  Data value as null-terminated string
+ * @retval     0    OK
+ * @retval    -1    Error
+ * Currently using clixon runtime data but there is risk for colliding names
+ */
+int
+restconf_pretty_set(clicon_handle h,
+		    int           pretty)
+{
+    struct restconf_handle *rh = handle(h);
+
+    rh->rh_pretty = pretty;
     return 0;
 }

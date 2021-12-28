@@ -59,7 +59,13 @@ Users may have to change how they access the system
 
 * New `clixon-config@2021-12-05.yang` revision
   * Imported (as a sub-spec):  clixon-clispec.yang
-  
+  * Removed obsolete options:
+    * `CLICON_YANG_LIST_CHECK`
+    * `CLICON_RESTCONF_PATH` (moved to restconf/fcgi-path)
+  * Fixed: Configure option `CLICON_RESTCONF_PRETTY` was marked as obsolete but was still used.
+    * `CLICON_RESTCONF_PRETTY` is now obsolete for sure
+    * Instead restconf/pretty is used with API function restconf_pretty_get()
+
 ### Minor features
 
 * Tests: use `YANG_STANDARD_DIR` from `./configure --with-yang-standard-dir=DIR` instead of `YANGMODELS` from site.sh

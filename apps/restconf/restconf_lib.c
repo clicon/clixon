@@ -773,13 +773,10 @@ restconf_config_init(clicon_handle h,
     }
     if ((x = xpath_first(xrestconf, nsc, "pretty")) != NULL &&
 	(bstr = xml_body(x)) != NULL){
-	/* XXX redirection to (obsolete) option, fix by replacing its accesses */
-	clicon_option_str_set(h, "CLICON_RESTCONF_PRETTY", bstr);
-    }
-    if ((x = xpath_first(xrestconf, nsc, "fcgi-socket")) != NULL &&
-	(bstr = xml_body(x)) != NULL){
-	/* XXX redirection to (obsolete) option, fix by replacing its accesses */
-	clicon_option_str_set(h, "CLICON_RESTCONF_PATH", bstr);
+	if (strcmp(bstr, "true") == 0)
+	    restconf_pretty_set(h, 1);
+	else if (strcmp(bstr, "false") == 0)
+	    restconf_pretty_set(h, 0);
     }
     retval = 1;
  done:

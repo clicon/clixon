@@ -1260,8 +1260,7 @@ ys_schemanode_check(yang_stmt *ys,
  * Verify the following rule:
  * RFC 7950 7.8.2: The "key" statement, which MUST be present if the list represents
  *                 configuration and MAY be present otherwise
- * Unless CLICON_YANG_LIST_CHECK is false (obsolete)
- * OR it is the "errors" rule of the ietf-restconf spec which seems to be a special case.
+ * Unless it is the "errors" rule of the ietf-restconf spec which seems to be a special case.
  */
 static int 
 ys_list_check(clicon_handle h,
@@ -1289,18 +1288,11 @@ ys_list_check(clicon_handle h,
 	/* Except nokey exceptions such as rrc 8040 yang-data */
 	if (!yang_flag_get(yroot, YANG_FLAG_NOKEY)){
 	    /* Note obsolete */
-	    if (clicon_option_bool(h, "CLICON_YANG_LIST_CHECK")){
-		clicon_log(LOG_ERR, "Error: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
-			   yang_argument_get(ys),
-			   yang_argument_get(ymod)
-			   );
-		goto done;
-	    }
-	    else
-		clicon_log(LOG_WARNING, "Warning: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
-			   yang_argument_get(ys),
-			   yang_argument_get(ymod)
-			   );
+	    clicon_log(LOG_ERR, "Error: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
+		       yang_argument_get(ys),
+		       yang_argument_get(ymod)
+		       );
+	    goto done;
 	}
     }
     /* Traverse subs */

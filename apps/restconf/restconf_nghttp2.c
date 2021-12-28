@@ -384,7 +384,7 @@ restconf_sd_read(nghttp2_session     *session,
 #endif
     assert(cbuf_len(cb) > sd->sd_body_offset);
     remain = cbuf_len(cb) - sd->sd_body_offset;
-    clicon_debug(1, "%s length:%zu totlen:%d, offset:%zu remain:%zu",
+    clicon_debug(1, "%s length:%zu totlen:%zu, offset:%zu remain:%zu",
 		 __FUNCTION__,
 		 length,
 		 cbuf_len(cb),

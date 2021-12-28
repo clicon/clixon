@@ -523,11 +523,6 @@ main(int    argc,
 	clicon_err(OE_DAEMON, EFAULT, "Restconf daemon config not found or disabled");
 	goto done;
     }
-    /* XXX see restconf_config_init access directly */
-    if ((sockpath = clicon_option_str(h, "CLICON_RESTCONF_PATH")) == NULL){
-	clicon_err(OE_CFG, errno, "No CLICON_RESTCONF_PATH in clixon configure file");
-	goto done;
-    }
     if (FCGX_Init() != 0){ /* How to cleanup memory after this? */
 	clicon_err(OE_CFG, errno, "FCGX_Init");
 	goto done;

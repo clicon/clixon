@@ -344,7 +344,7 @@ AC_ARG_WITH(yang-standard-dir,
 	    [YANG_STANDARD_DIR="$withval"],
     	    [YANG_STANDARD_DIR="${prefix}/share/yang/standard"]		
 	    )
-AC_MSG_RESULT(Standard YANG files should be in ${YANG_STANDARD_DIR})	
+AC_MSG_RESULT(Standard YANG files expected to be in ${YANG_STANDARD_DIR})	
 
 # Default location for config file
 AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])

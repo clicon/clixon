@@ -1201,7 +1201,7 @@ yang_find_schemanode(yang_stmt *yn,
     return ysmatch;
 }
 
-/*! Given a yang statement, find the prefix associated to this module
+/*! Given a yang statement, or module itself, find the prefix associated to this module
  *
  * @param[in]  ys        Yang statement in module tree (or module itself)
  * @retval     NULL      No prefix found. This is an error

@@ -84,7 +84,6 @@ api_well_known(clicon_handle h,
     int       retval = -1;
     char     *request_method;
     cbuf     *cb = NULL;
-    int       pretty;
     int       head;
 
     clicon_debug(1, "%s", __FUNCTION__);
@@ -95,8 +94,7 @@ api_well_known(clicon_handle h,
     request_method = restconf_param_get(h, "REQUEST_METHOD");
     head = strcmp(request_method, "HEAD") == 0;
     if (!head && strcmp(request_method, "GET") != 0){
-	pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
-	if (restconf_method_notallowed(h, req, "GET,HEAD", pretty, YANG_DATA_JSON) < 0)
+	if (restconf_method_notallowed(h, req, "GET,HEAD", restconf_pretty_get(h), YANG_DATA_JSON) < 0)
 	    goto done;
 	goto ok;
     }
@@ -445,8 +443,7 @@ api_root_restconf(clicon_handle        h,
     request_method = restconf_param_get(h, "REQUEST_METHOD");
     if ((path = restconf_uripath(h)) == NULL)
 	goto done;
-    /* XXX see restconf_config_init access directly */
-    pretty = clicon_option_bool(h, "CLICON_RESTCONF_PRETTY");
+    pretty = restconf_pretty_get(h);
     /* Get media for output (proactive negotiation) RFC7231 by using
      * Accept:. This is for methods that have output, such as GET, 
      * operation POST, etc
