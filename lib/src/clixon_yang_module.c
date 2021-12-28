@@ -488,6 +488,7 @@ clixon_module_upgrade(clicon_handle    h,
  * @note Prefixes are relative to the module they are defined
  * @see yang_find_module_by_name
  * @see yang_find_module_by_namespace
+ * @see yang_find_namespace_by_prefix
  */
 yang_stmt *
 yang_find_module_by_prefix(yang_stmt *ys, 
@@ -564,6 +565,7 @@ yang_find_module_by_prefix_yspec(yang_stmt *yspec,
  * @retval     NULL       not found
  * @see yang_find_module_by_name
  * @see yang_find_module_by_prefix    module-specific prefix
+ * @see yang_find_prefix_by_namespace
  */
 yang_stmt *
 yang_find_module_by_namespace(yang_stmt *yspec, 

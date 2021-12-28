@@ -68,7 +68,6 @@
 #include <clixon/clixon.h>
 
 #include "clixon_cli_api.h"
-
 #include "cli_common.h"
 
 /*! Register log notification stream
@@ -916,7 +915,6 @@ save_config_file(clicon_handle h,
     cxobj             *x;
     cxobj             *xerr;
     FILE              *f = NULL;
-    enum genmodel_type gt;
     char              *formatstr;
     enum format_enum   format = FORMAT_XML;
     char              *prefix = "set "; /* XXX hardcoded */
@@ -980,11 +978,9 @@ save_config_file(clicon_handle h,
 	    goto done;
 	break;
     case FORMAT_CLI:
-	if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
-	    goto done;
 	x = NULL;
 	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	    if (xml2cli(f, x, prefix, gt) < 0)
+	    if (xml2cli(h, f, x, prefix, fprintf) < 0)
 		goto done;
 	}
 	break;

@@ -158,10 +158,10 @@ syntax_append(clicon_handle h,
 
     if ((csm = syntax_mode_find(stx, name, 1)) == NULL) 
 	return -1;
-
-    if (cligen_parsetree_merge(csm->csm_pt, NULL, pt) < 0)
+    if (cligen_parsetree_merge(csm->csm_pt, NULL, pt) < 0){
+	clicon_err(OE_PLUGIN, errno, "cligen_parsetree_merge");
 	return -1;
-    
+    }
     return 0;
 }
 
@@ -360,8 +360,10 @@ cli_load_syntax_file(clicon_handle h,
 	 * and add to all syntaxes after all files have been loaded. At this point
 	 * all modes may not be known (not yet loaded)
 	 */
-	if (cligen_parsetree_merge(ptall, NULL, pt) < 0)
-	    return -1;
+	if (cligen_parsetree_merge(ptall, NULL, pt) < 0){
+	    clicon_err(OE_PLUGIN, errno, "cligen_parsetree_merge");
+	    goto done;
+	}
     }
     else {
 	for (i = 0; i < nvec; i++) {
@@ -378,7 +380,6 @@ cli_load_syntax_file(clicon_handle h,
 
     cligen_parsetree_free(pt, 1);
     retval = 0;
-    
 done:
     if (cvv)
 	cvec_free(cvv);
@@ -460,8 +461,10 @@ cli_syntax_load(clicon_handle h)
      */
     m = stx->stx_modes;
     do {
-	if (cligen_parsetree_merge(m->csm_pt, NULL, ptall) < 0)
-	    return -1;
+	if (cligen_parsetree_merge(m->csm_pt, NULL, ptall) < 0){
+	    clicon_err(OE_PLUGIN, errno, "cligen_parsetree_merge");
+	    goto done;
+	}
 	if (gen_parse_tree(h, m) != 0)
 	    goto done;
 	m = NEXTQ(cli_syntaxmode_t *, m);
@@ -616,6 +619,10 @@ clicon_parse(clicon_handle  h,
 	    fprintf(f, "CLI syntax error: \"%s\" is ambiguous\n", cmd);
 	    break;
 	} /* switch result */
+	if (cvv){
+	    cvec_free(cvv);
+	    cvv = NULL;
+	}
     }
     retval = 0;
 done:

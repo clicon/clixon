@@ -57,29 +57,6 @@
 /*
  * Types
  */
-/*! Controls how keywords a generated in CLI syntax / prints from object model
- * Example YANG: 
- * container c{
- *  list a {
- *    key x;
- *    leaf x;   
- *    leaf y;   
- *  }
- * }
- * NONE: c a <x> <y>;
- * VARS: c a <x> y <y>;
- * ALL:  c a x <x> y <y>;
- * HIDE: a x <x> y <y>;
- */
-enum genmodel_type{
-    GT_ERR =-1, /* Error  */
-    GT_NONE=0,  /* No extra keywords */
-    GT_VARS,    /* Keywords on non-key variables */
-    GT_ALL,     /* Keywords on all variables */
-    GT_HIDE,    /* Keywords on all variables and hide container around lists */
-    GT_OC_COMPRESS, /* OpenConfig */
-};
-typedef enum genmodel_type genmodel_type;
 
 /*! See clixon-config.yang type startup_mode */
 enum startup_mode_t{
@@ -189,9 +166,6 @@ static inline char *clicon_cli_mode(clicon_handle h){
 static inline int clicon_cli_tab_mode(clicon_handle h){
     return clicon_option_int(h, "CLICON_CLI_TAB_MODE");
 }
-static inline char *clicon_cli_model_treename(clicon_handle h){
-    return clicon_option_str(h, "CLICON_CLI_MODEL_TREENAME");
-}
 static inline char *clicon_sock_str(clicon_handle h){
     return clicon_option_str(h, "CLICON_SOCK");
 }
@@ -212,9 +186,6 @@ static inline char *clicon_nacm_recovery_user(clicon_handle h){
 }
 
 /*-- Specific option access functions for YANG options w type conversion--*/
-int   clicon_cli_genmodel(clicon_handle h);
-int   clicon_cli_genmodel_completion(clicon_handle h);
-enum genmodel_type clicon_cli_genmodel_type(clicon_handle h);
 int   clicon_cli_varonly(clicon_handle h);
 int   clicon_sock_family(clicon_handle h);
 int   clicon_sock_port(clicon_handle h);

@@ -70,6 +70,7 @@
 
 /* Exported functions in this file are in clixon_cli_api.h */
 #include "clixon_cli_api.h"
+#include "cli_autocli.h"
 #include "cli_common.h" /* internal functions */
 
 /*! Given an xpath encoded in a cbuf, append a second xpath into the first
@@ -435,12 +436,11 @@ cli_show_config1(clicon_handle h,
     cxobj           *xt = NULL;
     cxobj           *xc;
     cxobj           *xerr;
-    enum genmodel_type gt;
     yang_stmt       *yspec;
     char            *namespace = NULL;
     cvec            *nsc = NULL;
     char            *prefix = NULL;
-    
+
     if (cvec_len(argv) < 3 || cvec_len(argv) > 5){
 	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<format>,<xpath>[,<namespace>, [<prefix>]]", cvec_len(argv));
 
@@ -508,12 +508,10 @@ cli_show_config1(clicon_handle h,
 	    cli_xml2txt(xc, cligen_output, 0); /* tree-formed text */
 	break;
     case FORMAT_CLI:
-	/* get CLI generatade mode: VARS|ALL */
-	if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
-	    goto done;
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
-	    cli_xml2cli(xc, prefix, gt, cligen_output); /* cli syntax */
+	    if (xml2cli(h, stdout, xc, prefix, cligen_output) < 0)
+		goto done;
 	break;
     case FORMAT_NETCONF:
 	cligen_output(stdout, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target><config>\n",
@@ -697,7 +695,6 @@ cli_show_auto1(clicon_handle h,
     cxobj           *xp;
     cxobj           *xp_helper;
     cxobj           *xerr;
-    enum genmodel_type gt;
     char            *api_path = NULL;
     char            *prefix = NULL;
     enum rfc_6020    ys_keyword;
@@ -762,9 +759,8 @@ cli_show_auto1(clicon_handle h,
 
 	switch (format){
 	case FORMAT_CLI:
-	    if ((gt = clicon_cli_genmodel_type(h)) == GT_ERR)
+	    if (xml2cli(h, stdout, xp, prefix, cligen_output) < 0) /* cli syntax */
 		goto done;
-	    cli_xml2cli(xp, prefix, gt, cligen_output); /* cli syntax */
 	    break;
 	case FORMAT_NETCONF:
 	    fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
@@ -981,7 +977,8 @@ cli_pagination(clicon_handle h,
 		xml2txt_cb(stdout, xc, cligen_output); /* tree-formed text */
 		break;
 	    case FORMAT_CLI:
-		xml2cli_cb(stdout, xc, NULL, GT_HIDE, cligen_output); /* cli syntax */
+		/* hardcoded to compress and list-keyword = nokey */
+		xml2cli(h, stdout, xc, NULL, cligen_output);
 		break;
 	    default:
 		break;
@@ -1014,5 +1011,130 @@ cli_pagination(clicon_handle h,
 	cvec_free(nsc);
     if (cb)
 	cbuf_free(cb);
+    return retval;
+}
+
+/*! Translate from XML to CLI commands
+ *
+ * Howto: join strings and pass them down. 
+ * Identify unique/index keywords for correct set syntax.
+ * @param[in] h        Clicon handle
+ * @param[in] f        Output FILE (eg stdout)
+ * @param[in] xn       XML Parse-tree (to translate)
+ * @param[in] prepend  Print this text in front of all commands.
+ * @param[in] fn       Callback to make print function
+ * @see xml2cli  XXX should probably use the generic function
+ */
+int
+xml2cli(clicon_handle    h,
+	FILE            *f, 
+	cxobj           *xn,
+	char            *prepend,
+	clicon_output_cb *fn)
+{
+    int        retval = -1;
+    cxobj     *xe = NULL;
+    cbuf      *cbpre = NULL;
+    yang_stmt *ys;
+    int        match;
+    char      *body;
+    char      *opext = NULL;
+    int        compress = 0;
+    autocli_listkw_t listkw;
+
+    if (autocli_list_keyword(h, &listkw) < 0)
+	goto done;
+    if (xml_type(xn)==CX_ATTR)
+	goto ok;
+    if ((ys = xml_spec(xn)) == NULL)
+	goto ok;
+    /* Look for autocli-op defined in clixon-lib.yang */
+    if (yang_extension_value(xml_spec(xn), "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0) {
+	goto ok;
+    }
+    if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
+	goto ok;
+    }
+    /* If leaf/leaf-list or presence container, then print line */
+    if (yang_keyword_get(ys) == Y_LEAF ||
+	yang_keyword_get(ys) == Y_LEAF_LIST){
+	if (prepend)
+	    (*fn)(f, "%s", prepend);
+	if (listkw != AUTOCLI_LISTKW_NONE)
+	    (*fn)(f, "%s ", xml_name(xn));
+	if ((body = xml_body(xn)) != NULL){
+	    if (index(body, ' '))
+		(*fn)(f, "\"%s\"", body);
+	    else
+		(*fn)(f, "%s", body);
+	}
+	(*fn)(f, "\n");
+	goto ok;
+    }
+    /* Create prepend variable string */
+    if ((cbpre = cbuf_new()) == NULL){
+	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
+	goto done;
+    }
+    if (prepend)
+	cprintf(cbpre, "%s", prepend);
+
+    /* If non-presence container && HIDE mode && only child is 
+     * a list, then skip container keyword
+     * See also yang2cli_container */
+    if (autocli_compress(h, ys, &compress) < 0)
+	goto done;
+    if (!compress)
+	cprintf(cbpre, "%s ", xml_name(xn));
+
+    /* If list then first loop through keys */
+    if (yang_keyword_get(ys) == Y_LIST){
+	xe = NULL;
+	while ((xe = xml_child_each(xn, xe, -1)) != NULL){
+	    if ((match = yang_key_match(ys, xml_name(xe), NULL)) < 0)
+		goto done;
+	    if (!match)
+		continue;
+	    if (listkw == AUTOCLI_LISTKW_ALL)
+		cprintf(cbpre, "%s ", xml_name(xe));
+	    cprintf(cbpre, "%s ", xml_body(xe));
+	}
+    }
+    else if ((yang_keyword_get(ys) == Y_CONTAINER) &&
+	     yang_find(ys, Y_PRESENCE, NULL) != NULL){
+	/* If presence container, then print as leaf (but continue to children) */
+	if (prepend)
+	    (*fn)(f, "%s", prepend);
+	if (listkw != AUTOCLI_LISTKW_NONE)
+	    (*fn)(f, "%s ", xml_name(xn));
+	if ((body = xml_body(xn)) != NULL){
+	    if (index(body, ' '))
+		(*fn)(f, "\"%s\"", body);
+	    else
+		(*fn)(f, "%s", body);
+	}
+	(*fn)(f, "\n");
+    }
+
+    /* For lists, print cbpre before its elements */
+    if (yang_keyword_get(ys) == Y_LIST)
+	(*fn)(f, "%s\n", cbuf_get(cbpre));	
+    /* Then loop through all other (non-keys) */
+    xe = NULL;
+    while ((xe = xml_child_each(xn, xe, -1)) != NULL){
+	if (yang_keyword_get(ys) == Y_LIST){
+	    if ((match = yang_key_match(ys, xml_name(xe), NULL)) < 0)
+		goto done;
+	    if (match)
+		continue; /* Not key itself */
+	}
+	if (xml2cli(h, f, xe, cbuf_get(cbpre), fn) < 0)
+	    goto done;
+    }
+ ok:
+    retval = 0;
+ done:
+    if (cbpre)
+	cbuf_free(cbpre);
     return retval;
 }

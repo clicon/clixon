@@ -229,7 +229,6 @@ int       yang_stats(yang_stmt *y, uint64_t *nrp, size_t *szp);
 yang_stmt *yspec_new(void);
 yang_stmt *ys_new(enum rfc_6020 keyw);
 yang_stmt *ys_prune(yang_stmt *yp, int i);
-
 int        ys_free1(yang_stmt *ys, int self);
 int        ys_free(yang_stmt *ys);
 int        ys_cp(yang_stmt *nw, yang_stmt *old);
@@ -238,6 +237,7 @@ int        yn_insert(yang_stmt *ys_parent, yang_stmt *ys_child);
 int        yn_insert1(yang_stmt *ys_parent, yang_stmt *ys_child);
 yang_stmt *yn_each(yang_stmt *yn, yang_stmt *ys);
 char      *yang_key2str(int keyword);
+int        yang_str2key(char *str);
 int        ys_module_by_xml(yang_stmt *ysp, struct xml *xt, yang_stmt **ymodp);
 yang_stmt *ys_module(yang_stmt *ys);
 int        ys_real_module(yang_stmt *ys, yang_stmt **ymod);
@@ -249,6 +249,7 @@ yang_stmt *yang_find_schemanode(yang_stmt *yn, char *argument);
 char      *yang_find_myprefix(yang_stmt *ys);
 char      *yang_find_mynamespace(yang_stmt *ys);
 int        yang_find_prefix_by_namespace(yang_stmt *ys, char *ns, char **prefix);
+int        yang_find_namespace_by_prefix(yang_stmt *ys, char *prefix, char **ns);
 yang_stmt *yang_myroot(yang_stmt *ys);
 yang_stmt *yang_choice(yang_stmt *y);
 int        yang_order(yang_stmt *y);
@@ -270,7 +271,6 @@ int        yang_config(yang_stmt *ys);
 int        yang_config_ancestor(yang_stmt *ys);
 int        yang_features(clicon_handle h, yang_stmt *yt);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
-int        yang_container_cli_hide(yang_stmt *ys, int gt);
 int        yang_key_match(yang_stmt *yn, char *name, int *lastkey);
 int        yang_type_cache_regexp_set(yang_stmt *ytype, int rxmode, cvec *regexps);
 int        yang_type_cache_get(yang_stmt *ytype, yang_stmt **resolved, int *options,
@@ -281,5 +281,6 @@ yang_stmt *yang_anydata_add(yang_stmt *yp, char *name);
 int        yang_extension_value(yang_stmt *ys, char *name, char *ns, int *exist, char **value);
 int        yang_sort_subelements(yang_stmt *ys);
 int        yang_init(clicon_handle h);
+int        yang_single_child_type(yang_stmt *ys, enum rfc_6020 subkeyw);
 
 #endif  /* _CLIXON_YANG_H_ */

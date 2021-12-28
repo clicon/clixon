@@ -23,24 +23,11 @@ if [ ! -d "$OPENCONFIG" ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
-cat <<EOF > $cfg
-<clixon-config xmlns="http://clicon.org/config">
-  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
-  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$OPENCONFIG</CLICON_YANG_DIR>
-  <CLICON_YANG_AUGMENT_ACCEPT_BROKEN>true</CLICON_YANG_AUGMENT_ACCEPT_BROKEN>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
-  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
-  <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
-</clixon-config>
-EOF
+# OPENCONFIG dir has a small number of extra yangs apart from OCDIR
+OCDIR=$OPENCONFIG/release/models
 
-files=$(find $OPENCONFIG -name "*.yang")
+files=$(find ${OPENCONFIG} -name "*.yang")
+
 # Count nr of modules (exclude submodule) Assume "module" or "submodule"
 # first word on first line
 let ms=0; # Nr of modules
@@ -67,7 +54,29 @@ done
 new "Openconfig test: $clixon_cli -1f $cfg show version ($m modules)"
 for f in $files; do
     if [ -n "$(head -1 $f|grep '^module')" ]; then
-	new "$clixon_cli -D $DBG  -1f $cfg -y $f show version"
+	modname=$(basename $f | awk -F "." '{print $1}')
+	# Generate autocli for these modules
+	AUTOCLI=$(autocli_config $modname kw-nokey false)
+	
+cat <<EOF > $cfg
+<clixon-config xmlns="http://clicon.org/config">
+  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>${OPENCONFIG}</CLICON_YANG_DIR>
+  <CLICON_YANG_AUGMENT_ACCEPT_BROKEN>true</CLICON_YANG_AUGMENT_ACCEPT_BROKEN>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+  <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
+  ${AUTOCLI}
+</clixon-config>
+EOF
+
+	new "$clixon_cli -D $DBG  -1f $cfg -o CLICON_YANG_MAIN_FILE=$f show version"
 	expectpart "$($clixon_cli -D $DBG -1f $cfg -y $f show version)" 0 "${CLIXON_VERSION}"
     fi
 done

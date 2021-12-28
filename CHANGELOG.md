@@ -38,6 +38,10 @@ Planned: January, 2022
 ### New features
 
 * Changed auto-cli design
+  * See [autocli documentation](https://clixon-docs.readthedocs.io/en/latest/cli.html#autocli)
+  * Added new YANG clixon-autocli.yang, placing autocli options there
+    * Default rules for module exclusion, list-keywords, completion, treeref-state
+    * Specialized rules for module exclusion and compression
   * Replaced separate autocli trees with a single `@basemodel` tree by using filter labels
     * Filter labels are added to the fill tree and then filtered out using `@remove:<label>`
     * Labels include: termfirstkeys, termlist, termleaf, leafvar, nonconfig,
@@ -48,10 +52,8 @@ Planned: January, 2022
       * `@datamodel` translated to `@basemodel, @remove:termfirstkeys, @remove:termlist, @remove:termleaf, @remove:nonconfig`
       * `@datamodelshow` translated to `@basemodel, @remove:leafvar, @remove:nonconfig`
       * `@datamodelstate` translated to `@basemodel, @remove:leafvar`
-    * Note: autocli mode support is not backward compatible
-      * see main example
-  * Added new YANG clixon-clispec.yang
-    * This yang replaces many autocli options
+    * Note: while @datamodel etc are backward compatible, the autocli redesign is NOT backward compatible
+      * see API changes
 
 ### API changes on existing protocol/config features
 
@@ -69,6 +71,9 @@ Users may have to change how they access the system
     * Instead if you use fgci/nginx:
       * Use `restconf/fcgi-socket`
       * Ensure `<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>` is set
+  * Marked as obsolete and moved autocli config options from clixon-config.yang to clixon-autocli.yang
+    * Use: `<config><autocli>...` for configuring the autocli
+    * For details, see [autocli upgrade documentation](https://clixon-docs.readthedocs.io/en/latest/cli.html#upgrade-from-clixon-5-4)
 
 ### Minor features
 

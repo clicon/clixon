@@ -6,8 +6,8 @@ module clixon-config {
     import clixon-restconf {
 	prefix clrc;
     }
-    import clixon-clispec {
-	prefix ccli;
+    import clixon-autocli {
+	prefix autocli;
     }    
     organization
 	"Clicon / Clixon";
@@ -48,11 +48,16 @@ module clixon-config {
 
     revision 2021-12-05 {
 	description
-	    "Added option:
-             Imported sub-spec:
-                    clixon-clispec.yang
-             Removed obsolete options:
+	    "Imported
+                    clixon-autocli.yang
+             Removed (previosly marked) obsolete options:
                     CLICON_YANG_LIST_CHECK
+             Marked as obsolete:
+                    CLICON_CLI_GENMODEL (use autocli/enable-autocli instead)
+                    CLICON_CLI_GENMODEL_TYPE (use autocli/list-keyword-default and compress rules instead)
+                    CLICON_CLI_GENMODEL_COMPLETION (use autocli/completion-default instead)
+                    CLICON_CLI_AUTOCLI_EXCLUDE (use autocli/exclude logic instead)
+                    CLICON_CLI_MODEL_TREENAME (use constant AUTOCLI_TREENAME instead)
              Released in Clixon 5.5";
     }
     revision 2021-11-11 {
@@ -375,8 +380,8 @@ module clixon-config {
 	container restconf {
 	    uses clrc:clixon-restconf;
 	}
-	container clispec {
-	    uses ccli:clixon-clispec;
+	container autocli {
+	    uses autocli:clixon-autocli;
 	}
 	leaf-list CLICON_FEATURE {
 	    description
@@ -639,7 +644,9 @@ module clixon-config {
                     This CLI tree can be accessed in CLI-spec files using the tree reference syntax (eg
                      @datamodel).
                  2: Same including state syntax in a tree called @datamodelstate and @datamodelshow
-                 See also CLICON_CLI_MODEL_TREENAME.";
+                 See also CLICON_CLI_MODEL_TREENAME.
+                 Obsolete, use clixon-autocli.yang enable-autocli instead";
+	    status obsolete;
 	}
 	leaf CLICON_CLI_MODEL_TREENAME {
 	    type string;
@@ -654,18 +661,21 @@ module clixon-config {
                  Example: set @datamodel, cli_set();
                           show @datamodelshow, cli_show_auto();
                           show state @datamodelstate, cli_show_auto_state();
+                 Obsolete, use constant AUTOCLI_TREENAME instead;
                  ";
+	    status obsolete;
 	}
 	leaf CLICON_CLI_GENMODEL_COMPLETION {
 	    type int32;
 	    default 1;
 	    description "Generate code for CLI completion of existing db symbols.
-                         (consider boolean)";
+                         Obsolete, use autocli/completion-default instead";
+	    status obsolete;
 	}
 	leaf CLICON_CLI_GENMODEL_TYPE {
 	    type cli_genmodel_type;
 	    default "VARS";
-	    description "How to generate and show auto CLI syntax: VARS|ALL|HIDE";
+	    description "How to generate and show auto CLI syntax: VARS|ALL|HIDE|OC_COMPRESS";
 	}
 	leaf CLICON_CLI_AUTOCLI_EXCLUDE {
 	    type string;
@@ -674,8 +684,9 @@ module clixon-config {
                  Example: 
                     <CLICON_CLI_AUTOCLI_EXCLUDE>clixon-restconf</CLICON_CLI_AUTOCLI_EXCLUDE> 
                  means generate autocli for all models except clixon-restconf.yang
-                 The value can be a list of space separated module names";
-	    default "clixon-restconf ietf-yang-library";
+                 The value can be a list of space separated module names
+                 Obsolete, use autocli/exclude logic instead";
+	    status obsolete;
 	}
 	leaf CLICON_CLI_VARONLY {
 	    type int32;

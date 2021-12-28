@@ -82,17 +82,6 @@
 #include "clixon_validate.h"
 #include "clixon_xml_map.h"
 
-/* Mapping between Cli generation from Yang string <--> constants, 
-   see clixon-config.yang type cli_genmodel_type */
-static const map_str2int cli_genmodel_map[] = {
-    {"NONE",                 GT_NONE},
-    {"VARS",                 GT_VARS},
-    {"ALL",                  GT_ALL},
-    {"HIDE",                 GT_HIDE},
-    {"OC_COMPRESS",          GT_OC_COMPRESS},
-    {NULL,                   -1}
-};
-
 /* Mapping between Clicon startup modes string <--> constants, 
    see clixon-config.yang type startup_mode */
 static const map_str2int startup_mode_map[] = {
@@ -112,7 +101,6 @@ static const map_str2int priv_mode_map[] = {
     {"drop_temp", PM_DROP_TEMP}, 
     {NULL,        -1}
 };
-
 
 /* Mapping between Clicon nacm user credential string <--> constants, 
  * see clixon-config.yang type nacm_cred_mode */
@@ -742,54 +730,6 @@ clicon_option_del(clicon_handle h,
  * But sometimes there are type conversions, etc which makes it more
  * convenient to make wrapper functions. Or not?
  *-----------------------------------------------------------------*/
-/*! Whether to generate CLIgen syntax from datamodel or not (0, 1 or 2)
- * Must be used with a previous clicon_option_exists().
- * @param[in] h     Clicon handle
- * @retval    flag  If set, generate CLI code from yang model, otherwise not
- * @see clixon-config@<date>.yang CLICON_CLI_GENMODEL
- */
-int
-clicon_cli_genmodel(clicon_handle h)
-{
-    char const *opt = "CLICON_CLI_GENMODEL";
-
-    if (clicon_option_exists(h, opt))
-	return clicon_option_int(h, opt);
-    else
-	return 0;
-}
-
-/*! Generate code for CLI completion of existing db symbols
- * @param[in] h     Clicon handle
- * @retval    flag  If set, generate auto-complete CLI specs
- * @see clixon-config@<date>.yang CLICON_CLI_GENMODEL_COMPLETION
- */
-int
-clicon_cli_genmodel_completion(clicon_handle h)
-{
-    char const *opt = "CLICON_CLI_GENMODEL_COMPLETION";
-
-    if (clicon_option_exists(h, opt))
-	return clicon_option_int(h, opt);
-    else
-	return 0;
-}
-
-/*! How to generate and show CLI syntax: VARS|ALL 
- * @param[in] h     Clicon handle
- * @retval    mode
- * @see clixon-config@<date>.yang CLICON_CLI_GENMODEL_TYPE
- */
-enum genmodel_type
-clicon_cli_genmodel_type(clicon_handle h)
-{
-    char *str;
-
-    if ((str = clicon_option_str(h, "CLICON_CLI_GENMODEL_TYPE")) == NULL)
-	return GT_VARS;
-    else
-	return clicon_str2int(cli_genmodel_map, str);
-}
 
 /*! Get "do not include keys in cvec" in cli vars callbacks
  * @param[in] h     Clicon handle

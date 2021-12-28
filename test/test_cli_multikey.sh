@@ -12,7 +12,8 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 fyang=$dir/$APPNAME.yang
 
-# Use yang in example
+# Generate autocli for these modules
+AUTOCLI=$(autocli_config ${APPNAME} kw-all false)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -23,11 +24,10 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <!-- ALL or VARS -->
-  <CLICON_CLI_GENMODEL_TYPE>ALL</CLICON_CLI_GENMODEL_TYPE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  ${AUTOCLI}
 </clixon-config>
 EOF
 

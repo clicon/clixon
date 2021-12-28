@@ -477,22 +477,22 @@ clicon_conf_restconf(clicon_handle h)
     return NULL;
 }
 
-/*! Get local YANG specification for Clixon-clispec.yang tree
+/*! Get clixon-autocli.yang part of the clixon config tree
  *
- * That is, get the XML of clixon-config/clispec container of clixon-config.yang
+ * That is, get the XML of clixon-config/autocli container of clixon-config.yang
  * @param[in]  h  Clicon handle
- * @retval     x  XML tree containing clispec xml node from clixon-clispec.yang
+ * @retval     x  XML tree containing clispec xml node from clixon-autoclu.yang
  * @code
- *    cxobj *xclispec = clicon_conf_clispec(h);
+ *    cxobj *xautocli = clicon_conf_autocli(h);
  * @endcode
  */
 cxobj *
-clicon_conf_clispec(clicon_handle h)
+clicon_conf_autocli(clicon_handle h)
 {
     cxobj  *xconfig = NULL;
 
     if ((xconfig = clicon_conf_xml(h)) != NULL)  	 /* Get local config */
-	return xpath_first(xconfig, NULL, "clispec");
+	return xpath_first(xconfig, NULL, "autocli");
     return NULL;
 }
 

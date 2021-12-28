@@ -39,6 +39,25 @@
 #ifndef _CLIXON_CLI_API_H_
 #define _CLIXON_CLI_API_H_
 
+/*
+ * Types
+ */
+/*! Autocli list keyword type, see clixon-autocli.yang list-keyword-type
+ * Assume a YANG LIST: 
+ *    list a { 
+ *       key x; 
+ *       leaf x; 
+ *       leaf y;
+ *    }
+ * Maybe this type should be in cli_autocli.h
+ */
+enum autocli_listkw{
+    AUTOCLI_LISTKW_NONE,  /* No extra keywords, only <vars>: a <x> <y> */
+    AUTOCLI_LISTKW_NOKEY, /* Keywords on non-key variables: a <x> y <y> */
+    AUTOCLI_LISTKW_ALL,   /* Keywords on all variables: a x <x> y <y> */
+};
+typedef enum autocli_listkw autocli_listkw_t;
+
 /* 
  * Function Declarations 
  */
@@ -118,7 +137,7 @@ int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv,
 		  cvec *commands, cvec *helptexts);
 int cli_xml2file (cxobj *xn, int level, int prettyprint, clicon_output_cb *fn);
 int cli_xml2txt(cxobj *xn, clicon_output_cb *fn, int level);
-int cli_xml2cli(cxobj *xn, char *prepend, enum genmodel_type gt, clicon_output_cb  *fn);
+int xml2cli(clicon_handle h, FILE *f, cxobj *xn, char *prepend, clicon_output_cb  *fn);
 
 /* cli_show.c: CLIgen new vector arg callbacks */
 int show_yang(clicon_handle h, cvec *vars, cvec *argv);

@@ -24,11 +24,17 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
-  <CLICON_CLI_GENMODEL_TYPE>VARS</CLICON_CLI_GENMODEL_TYPE>
-  <CLICON_CLI_AUTOCLI_EXCLUDE>clixon-restconf</CLICON_CLI_AUTOCLI_EXCLUDE>
   <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
   <CLICON_CLI_TAB_MODE>0</CLICON_CLI_TAB_MODE>
+  <autocli>
+     <enable-autocli>true</enable-autocli>
+     <module-default>false</module-default>
+     <rule>
+       <name>include $APPNAME</name>
+       <operation>enable</operation>
+       <module-name>$APPNAME/module-name>
+     </rule>
+  </autocli>
 </clixon-config>
 EOF
 

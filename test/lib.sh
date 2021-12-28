@@ -249,6 +249,35 @@ function restconf_config()
     fi
 }
 
+# Default autocli configuration
+# Can be placed in clixon-config
+# Exclude all modules instead as defined by arg1
+# Args:
+# 1: modname module name pattern to be included
+# 2: list-keyword
+# 3: treerefstate
+function autocli_config()
+{
+    modname=$1
+    listkw=$2
+    state=$3
+
+    TMP=$(cat <<EOF
+  <autocli>
+     <module-default>false</module-default>
+     <list-keyword-default>$listkw</list-keyword-default>
+     <treeref-state-default>$state</treeref-state-default>
+     <rule>
+       <name>include $modname</name>
+       <operation>enable</operation>
+       <module-name>$modname</module-name>
+     </rule>
+  </autocli>
+EOF
+   )
+   echo "${TMP}"
+}
+
 # Some tests may set owner of testdir to something strange and quit, need
 # to reset to me
 if [ ! -G $dir ]; then 

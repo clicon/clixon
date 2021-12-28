@@ -15,6 +15,9 @@ module clixon-example {
     import ietf-datastores {
       prefix ds;
     }
+   import clixon-lib{
+      prefix cl;
+   }
     description
 	"Clixon example used as a part of the Clixon test suite.
          It can be used as a basis for making new Clixon applications.
@@ -51,6 +54,10 @@ module clixon-example {
 	    }
 	    leaf value{
 		type string;
+	    }
+	    leaf hidden{
+		type string;
+		cl:autocli-op hide;
 	    }
 	    leaf stat{
 		description "Inline state data for example application";

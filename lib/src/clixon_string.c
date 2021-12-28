@@ -357,9 +357,6 @@ uri_percent_decode(char  *enc,
  * @param[in]   ...    stdarg variable parameters
  * @retval      0      OK
  * @retval     -1      Error
- * @see https://www.w3.org/TR/2008/REC-xml-20081126/#syntax chapter 2.6
- * @see uri_percent_encode
- * @see AMPERSAND mode in clixon_xml_parse.l
  * @code
  *   char *encstr = NULL;
  *   if (xml_chardata_encode(&encstr, "fmtstr<>& %s", "substr<>") < 0)
@@ -368,12 +365,14 @@ uri_percent_decode(char  *enc,
  *      free(encstr);
  * @endcode
  * Essentially encode as follows:
- *     & -> "&amp; "   must
- *     < -> "&lt; "    must
- *     > -> "&gt; "    must for backward compatibility
- *     ' -> "&apos; "  may
- *     ' -> "&quot; "  may
- * Optionally >
+ *     & -> "&amp;"   must
+ *     < -> "&lt;"    must
+ *     > -> "&gt;"    must for backward compatibility
+ *     ' -> "&apos;"  may
+ *     " -> "&quot;"  may
+ * @see https://www.w3.org/TR/2008/REC-xml-20081126/#syntax chapter 2.6
+ * @see uri_percent_encode
+ * @see AMPERSAND mode in clixon_xml_parse.l, implicit decoding
  * @see xml_chardata_cbuf_append for a specialized version
  */
 int

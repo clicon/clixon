@@ -14,9 +14,6 @@
   <CLICON_CLISPEC_DIR>/usr/local/lib/example/clispec</CLICON_CLISPEC_DIR>
   <CLICON_SOCK>/usr/local/var/example/example.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/example/example.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_CLI_GENMODEL_COMPLETION>1</CLICON_CLI_GENMODEL_COMPLETION>
-  <CLICON_CLI_GENMODEL_TYPE>VARS</CLICON_CLI_GENMODEL_TYPE>
-  <CLICON_CLI_AUTOCLI_EXCLUDE>clixon-restconf</CLICON_CLI_AUTOCLI_EXCLUDE>
   <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
   <CLICON_CLI_TAB_MODE>0</CLICON_CLI_TAB_MODE>
   <CLICON_XMLDB_DIR>/usr/local/var/example</CLICON_XMLDB_DIR>
@@ -24,5 +21,17 @@
   <CLICON_NACM_MODE>disabled</CLICON_NACM_MODE>
   <CLICON_STREAM_DISCOVERY_RFC5277>true</CLICON_STREAM_DISCOVERY_RFC5277>
   <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
-  <restconf><enable>true</enable><auth-type>none</auth-type><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>
+  <restconf>
+    <enable>true</enable>
+    <auth-type>none</auth-type>
+    <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
+  </restconf>
+  <autocli>
+     <module-default>false</module-default>
+     <rule>
+       <name>include clixon-example</name>
+       <module-name>clixon-example</module-name>
+       <operation>enable</operation>
+     </rule>
+  </autocli>
 </clixon-config>

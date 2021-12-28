@@ -27,16 +27,29 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$OCDIR</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
-  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLISPEC_DIR>$dir</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_CLI_AUTOCLI_EXCLUDE>clixon-restconf ietf-interfaces</CLICON_CLI_AUTOCLI_EXCLUDE>
-  <CLICON_CLI_GENMODEL_TYPE>VARS</CLICON_CLI_GENMODEL_TYPE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
+  <autocli>
+     <module-default>false</module-default>
+     <list-keyword-default>kw-nokey</list-keyword-default>
+     <treeref-state-default>false</treeref-state-default>
+     <rule>
+       <name>openconfig1</name>
+       <operation>enable</operation>
+       <module-name>openconfig-bgp</module-name>
+     </rule>
+     <rule>
+       <name>openconfig2</name>
+       <operation>enable</operation>
+       <module-name>openconfig-network-instance</module-name>
+     </rule>
+  </autocli>
 </clixon-config>
 EOF
 
@@ -82,6 +95,25 @@ cat <<EOF > $dir/startup_db
 </config>
 EOF
 
+cat<<EOF > $dir/example_cli.cli
+# Clixon example specification
+CLICON_MODE="example";
+CLICON_PROMPT="%U@%H %W> ";
+CLICON_PLUGIN="example_cli";
+
+set @datamodel, cli_auto_set();
+save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_file("candidate","filename", "xml");{
+    cli("Save configuration as CLI commands"), save_config_file("candidate","filename", "cli");
+}
+show("Show a particular state of the system"){
+    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "xml", false, false);
+    version("Show version"), cli_show_version("candidate", "text", "/");
+}
+validate("Validate changes"), cli_validate();
+commit("Commit the changes"), cli_commit();
+quit("Quit"), cli_quit();
+EOF
+
 if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
@@ -101,14 +133,13 @@ new "$clixon_cli -D $DBG -1f $cfg show version"
 expectpart "$($clixon_cli -D $DBG -1f $cfg show version)" 0 "${CLIXON_VERSION}"
 
 new "$clixon_cli -D $DBG -1f $cfg save config as cli"
-expectpart "$($clixon_cli -D $DBG -1f $cfg save $dir/config.cli cli)" 0 "^$"
+expectpart "$($clixon_cli -D $DBG -1f $cfg save $dir/config.dump cli)" 0 "^$"
 
 new "Check saved config"
-expectpart "$(cat $dir/config.cli)" 0 "set network-instances network-instance default config type oc-ni-types:DEFAULT_INSTANCE" "set network-instances network-instance default config router-id 1.2.3.4"
+expectpart "$(cat $dir/config.dump)" 0 "set network-instances network-instance default config type oc-ni-types:DEFAULT_INSTANCE" "set network-instances network-instance default config router-id 1.2.3.4"
 
 new "load saved cli config"
-expectpart "$(cat $dir/config.cli | $clixon_cli -D $DBG -f $cfg 2>&1 > /dev/null)" 0 "^$"
-#time cat $dir/config.cli | $clixon_cli -D $DBG -f $cfg
+expectpart "$(cat $dir/config.dump | $clixon_cli -D $DBG -f $cfg 2>&1 > /dev/null)" 0 "^$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

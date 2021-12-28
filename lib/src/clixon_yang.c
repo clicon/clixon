@@ -1267,23 +1267,27 @@ yang_find_mynamespace(yang_stmt *ys)
  * (global) namespace of a module, but you do not know the local prefix
  * used to access it in XML.
  * @param[in]  ys        Yang statement in module tree (or module itself)
- * @param[in]  ns		 Namspace URI as char* pointer into yang tree
+ * @param[in]  ns	 Namespace URI as char* pointer into yang tree
  * @param[out] prefix    Local prefix to access module with (direct pointer)
- * @retval     0         not found
- * @retval    -1         found
+ * @retval    -1         Error
+ * @retval     0         Not found
+ * @retval     1         Found
  * @note  prefix NULL is not returned, if own module, then return its prefix
  * @code
  *    char *prefix = NULL;
- *    if (yang_find_prefix_by_namespace(ys, "urn:example:clixon", &prefix) < 0)
+ *    if ((found = yang_find_prefix_by_namespace(ys, "urn:example:clixon", &prefix)) < 0)
  *      err;
+ *    if (found)
+ *      // use prefix
  * @endcode
+ * @see yang_find_module_by_namespace
  */
 int
 yang_find_prefix_by_namespace(yang_stmt *ys,
 			      char      *ns,
 			      char     **prefix)
 {
-    int        retval = 0; /* not found */
+    int        retval = -1;
     yang_stmt *my_ymod; /* My module */
     char      *myns;   /* My ns */
     yang_stmt *yspec;
@@ -1293,6 +1297,10 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
     yang_stmt *yprefix; 
 
     clicon_debug(2, "%s", __FUNCTION__);
+    if (prefix == NULL){
+	clicon_err(OE_YANG, EINVAL, "prefix is NULL");
+	goto done;
+    }
     /* First check if namespace is my own module */
     myns = yang_find_mynamespace(ys);
     if (strcmp(myns, ns) == 0){
@@ -1316,10 +1324,55 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
 	}
     }
  notfound:
+    retval = 0; /* not found */
+ done:
     return retval;
  found:
     assert(*prefix);
-    return 1;
+    retval = 1;
+    goto done;
+}
+
+/*! Given a yang statement and local prefi valid in module , find namespace
+ *
+ * @param[in]  ys        Yang statement in module tree (or module itself)
+ * @param[in]  prefix    Local prefix to access module with (direct pointer)
+ * @param[out] ns	 Namespace URI as char* pointer into yang tree
+ * @retval    -1         Error
+ * @retval     0         Not found
+ * @retval     1         Found
+ * @note  prefix NULL is not returned, if own module, then return its prefix
+ * @code
+ *    char *ns = NULL;
+ *    if ((found = yang_find_namespace_by_prefix(ys, "ex", &ns)) < 0)
+ *      err;
+ *    if (found)
+ *      // use ns *    
+ * @endcode
+ * @see yang_find_module_by_prefix
+ */
+int
+yang_find_namespace_by_prefix(yang_stmt *ys,
+			      char      *prefix,
+			      char     **ns)
+{
+    int        retval = -1; 
+    yang_stmt *ym;
+
+    if (ns == NULL){
+	clicon_err(OE_YANG, EINVAL, "ns is NULL");
+	goto done;
+    }
+    if ((ym = yang_find_module_by_prefix(ys, prefix)) == NULL)
+	goto notfound;
+    if ((*ns = yang_find_mynamespace(ym)) == NULL)
+	goto notfound;
+    retval = 1; /* found */
+ done:
+    return retval;
+ notfound:
+    retval = 0;
+    goto done;
 }
 
 /*! Return topmost yang root node directly under module/submodule
@@ -1503,6 +1556,12 @@ char *
 yang_key2str(int keyword)
 {
     return (char*)clicon_int2str(ykmap, keyword);
+}
+
+int
+yang_str2key(char *str)
+{
+    return clicon_str2int(ykmap, str);
 }
 
 /*! Find top data node among all modules by namespace in xml tree
@@ -3392,53 +3451,6 @@ yang_arg2cvec(yang_stmt *ys,
     return cvv;
 }
 
-/*! Check if yang is subject to generated cli GT_HIDE boolean
- * The yang should be:
- * 1) a non-presence container
- * 2) parent of a (single) list XXX: or could multiple lists work?
- * 3) no other data node children
- * @retval   0   No, does not satisfy the GT_HIDE condition
- * @retval   1   Yes, satisfies the GT_HIDE condition
- * @see clixon-config.yang HIDE enumeration type
- */
-int
-yang_container_cli_hide(yang_stmt         *ys,
-			enum genmodel_type gt)
-{
-    yang_stmt    *yc = NULL;
-    int           i;
-    enum rfc_6020 keyw;
-
-    keyw = yang_keyword_get(ys);
-    /* HIDE mode */
-    if (gt != GT_HIDE && gt != GT_OC_COMPRESS)
-	return 0;
-    /* A container */
-    if (yang_keyword_get(ys) != Y_CONTAINER)
-	return 0;
-    /* Non-presence */
-    if (yang_find(ys, Y_PRESENCE, NULL) != NULL)
-	return 0;
-    /* Ensure a single list child and no other data nodes */
-    i = 0; /* Number of list nodes */
-    while ((yc = yn_each(ys, yc)) != NULL) {
-	keyw = yang_keyword_get(yc);
-	/* case/choice could hide anything so disqualify those */
-	if (keyw == Y_CASE || keyw == Y_CHOICE)
-	    break;
-	if (!yang_datanode(yc)) /* Allowed, check next */
-	    continue;
-	if (keyw != Y_LIST) /* Another datanode than list */
-	    break;
-	if (i++>0) /* More than one list (or could this work?) */
-	    break;
-    }
-    if (yc != NULL) /* break from loop */
-	return 0;
-    if (i != 1) /* List found */
-	return 0;
-    return 1; /* Passed all tests: yes you can hide this keyword */
-}
 
 /*! Check if yang node yn has key-stmt as child which matches name
  *
@@ -3719,9 +3731,9 @@ yang_anydata_add(yang_stmt *yp,
 
 /*! Find extension argument and return if extension exists and its argument value
  *
- * @param[in]  ys     Yang statement
+ * @param[in]  ys     Yang statement where unknown statement may occur referncing to extension
  * @param[in]  name   Name of the extension 
- * @param[in]  ns     The namespace
+ * @param[in]  ns     The namespace of the module where the extension is defined
  * @param[out] exist  The extension exists.
  * @param[out] value  clispec operator (hide/none) - direct pointer into yang, dont free
  * @retval     0      OK: Look in exist and value for return value
@@ -3751,6 +3763,7 @@ yang_extension_value(yang_stmt *ys,
     cg_var    *cv;
     char      *prefix = NULL;
     cbuf      *cb = NULL;
+    int        ret;
 
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -3762,7 +3775,9 @@ yang_extension_value(yang_stmt *ys,
 	    continue;
 	if ((ymod = ys_module(yext)) == NULL)
 	    continue;
-	if (yang_find_prefix_by_namespace(ymod, ns, &prefix) < 0)
+	if ((ret = yang_find_prefix_by_namespace(ymod, ns, &prefix)) < 0)
+	    goto done;
+	if (ret == 0) /* not found */
 	    goto ok;
 	cbuf_reset(cb);
 	cprintf(cb, "%s:%s", prefix, name);
@@ -3901,3 +3916,53 @@ yang_search_index_extension(clicon_handle h,
 }
 
 #endif /* XML_EXPLICIT_INDEX */
+
+/*! Check if yang node has a single child of specific type
+ *
+ * Mainly used for condition for CLI compression
+ * The yang should be:
+ * 1) If container it should be non-presence
+ * 2) parent of a (single) specified type
+ * 3) no other data node children
+ * @param[in] ys      Yang node
+ * @param[in] subkeyw Expected keyword of single child (typically Y_LIST)
+ * @retval    0       No, node does not have single child of specified type
+ * @retval    1       Yes, node has single child of specified type
+ * @see https://github.com/openconfig/ygot/blob/master/docs/design.md#openconfig-path-compression 2nd clause
+ */
+int
+yang_single_child_type(yang_stmt    *ys,
+		       enum rfc_6020 subkeyw)
+
+{
+    yang_stmt    *yc = NULL;
+    int           i;
+    enum rfc_6020 keyw;
+
+    /* Match parent */
+    /* If container, check it is Non-presence */
+    if (yang_keyword_get(ys) == Y_CONTAINER){
+	if (yang_find(ys, Y_PRESENCE, NULL) != NULL)
+	    return 0;
+    }
+    /* Ensure a single list child and no other data nodes */
+    i = 0; /* Number of list nodes */
+    while ((yc = yn_each(ys, yc)) != NULL) {
+	keyw = yang_keyword_get(yc);
+	/* case/choice could hide anything so disqualify those */
+	if (keyw == Y_CASE || keyw == Y_CHOICE)
+	    break;
+	if (!yang_datanode(yc)) /* Allowed, check next */
+	    continue;
+	if (keyw != subkeyw) /* Another datanode than subkeyw */
+	    break;
+	if (i++>0) /* More than one list (or could this work?) */
+	    break;
+    }
+    if (yc != NULL) /* break from loop */
+	return 0;
+    if (i != 1) /* List found */
+	return 0;
+    return 1; /* Passed all tests: yes you can hide this keyword */
+}
+

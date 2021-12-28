@@ -211,151 +211,6 @@ xml2txt(FILE  *f,
     return xml2txt_recurse(f, x, fprintf, level);
 }
 
-/*! Translate from XML to CLI commands
- * Howto: join strings and pass them down. 
- * Identify unique/index keywords for correct set syntax.
- * @param[in] f        Where to print cli commands
- * @param[in] x        XML Parse-tree (to translate)
- * @param[in] prepend  Print this text in front of all commands.
- * @param[in] gt       option to steer cli syntax
- * @param[in] fn       Callback to make print function
- */
-int 
-xml2cli_recurse(FILE              *f, 
-		cxobj             *x, 
-		char              *prepend, 
-		enum genmodel_type gt,
-		clicon_output_cb  *fn)
-{
-    int              retval = -1;
-    cxobj           *xe = NULL;
-    cbuf            *cbpre = NULL;
-    yang_stmt       *ys;
-    int              match;
-    char            *body;
-
-    if (xml_type(x)==CX_ATTR)
-	goto ok;
-    if ((ys = xml_spec(x)) == NULL)
-	goto ok;
-    /* If leaf/leaf-list or presence container, then print line */
-    if (yang_keyword_get(ys) == Y_LEAF ||
-	yang_keyword_get(ys) == Y_LEAF_LIST){
-	if (prepend)
-	    (*fn)(f, "%s", prepend);
-	if (gt == GT_ALL || gt == GT_VARS || gt == GT_HIDE)
-	    (*fn)(f, "%s ", xml_name(x));
-	if ((body = xml_body(x)) != NULL){
-	    if (index(body, ' '))
-		(*fn)(f, "\"%s\"", body);
-	    else
-		(*fn)(f, "%s", body);
-	}
-	(*fn)(f, "\n");
-	goto ok;
-    }
-    /* Create prepend variable string */
-    if ((cbpre = cbuf_new()) == NULL){
-	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
-	goto done;
-    }
-    if (prepend)
-	cprintf(cbpre, "%s", prepend);
-
-    /* If non-presence container && HIDE mode && only child is 
-     * a list, then skip container keyword
-     * See also yang2cli_container */
-    if (yang_container_cli_hide(ys, gt) == 0)
-	cprintf(cbpre, "%s ", xml_name(x));
-
-    /* If list then first loop through keys */
-    if (yang_keyword_get(ys) == Y_LIST){
-	xe = NULL;
-	while ((xe = xml_child_each(x, xe, -1)) != NULL){
-	    if ((match = yang_key_match(ys, xml_name(xe), NULL)) < 0)
-		goto done;
-	    if (!match)
-		continue;
-	    if (gt == GT_ALL)
-		cprintf(cbpre, "%s ", xml_name(xe));
-	    cprintf(cbpre, "%s ", xml_body(xe));
-	}
-    }
-    else if ((yang_keyword_get(ys) == Y_CONTAINER) &&
-	     yang_find(ys, Y_PRESENCE, NULL) != NULL){
-	/* If presence container, then print as leaf (but continue to children) */
-	if (prepend)
-	    (*fn)(f, "%s", prepend);
-	if (gt == GT_ALL || gt == GT_VARS || gt == GT_HIDE || gt == GT_OC_COMPRESS)
-	    (*fn)(f, "%s ", xml_name(x));
-	if ((body = xml_body(x)) != NULL){
-	    if (index(body, ' '))
-		(*fn)(f, "\"%s\"", body);
-	    else
-		(*fn)(f, "%s", body);
-	}
-	(*fn)(f, "\n");
-    }
-
-    /* Then loop through all other (non-keys) */
-    xe = NULL;
-    while ((xe = xml_child_each(x, xe, -1)) != NULL){
-	if (yang_keyword_get(ys) == Y_LIST){
-	    if ((match = yang_key_match(ys, xml_name(xe), NULL)) < 0)
-		goto done;
-	    if (match){
-		(*fn)(f, "%s\n", cbuf_get(cbpre));	
-		continue; /* Not key itself */
-	    }
-	}
-	if (xml2cli_recurse(f, xe, cbuf_get(cbpre), gt, fn) < 0)
-	    goto done;
-    }
- ok:
-    retval = 0;
- done:
-    if (cbpre)
-	cbuf_free(cbpre);
-    return retval;
-}
-
-/*! Translate from XML to CLI commands
- * Howto: join strings and pass them down. 
- * Identify unique/index keywords for correct set syntax.
- * @param[in] f        Where to print cli commands
- * @param[in] x        XML Parse-tree (to translate)
- * @param[in] prepend  Print this text in front of all commands.
- * @param[in] gt       option to steer cli syntax
- * @param[in] fn       Callback to make print function
- */
-int 
-xml2cli_cb(FILE              *f, 
-	   cxobj             *x, 
-	   char              *prepend, 
-	   enum genmodel_type gt,
-	   clicon_output_cb  *fn)
-{
-    return xml2cli_recurse(f, x, prepend, gt, fn);
-}
-
-/*! Translate from XML to CLI commands
- * Howto: join strings and pass them down. 
- * Identify unique/index keywords for correct set syntax.
- * Args:
- *  @param[in] f        Where to print cli commands
- *  @param[in] x        XML Parse-tree (to translate)
- *  @param[in] prepend  Print this text in front of all commands.
- *  @param[in] gt       option to steer cli syntax
- */
-int 
-xml2cli(FILE              *f, 
-	cxobj             *x, 
-	char              *prepend, 
-	enum genmodel_type gt)
-{
-    return xml2cli_recurse(f, x, prepend, gt, fprintf);
-}
-
 /*! Translate a single xml node to a cligen variable vector. Note not recursive 
  * @param[in]  xt   XML tree containing one top node
  * @param[in]  ys   Yang spec containing type specification of top-node of xt
@@ -1592,6 +1447,7 @@ assign_namespace(cxobj *x0, /* source */
     cvec      *nsc0 = NULL;
     cvec      *nsc = NULL;
     yang_stmt *y;
+    int        ret;
     
     /* 2a. Detect if namespace is declared in x1 target parent */
     if (xml2prefix(x1p, ns, &pexist) == 1){
@@ -1649,9 +1505,9 @@ assign_namespace(cxobj *x0, /* source */
 		    goto done;
 		}
 		/* Find local (imported) prefix for that module namespace */
-		if (yang_find_prefix_by_namespace(y, ns, &ptmp) < 0)
+		if ((ret = yang_find_prefix_by_namespace(y, ns, &ptmp)) < 0)
 		    goto done;
-		if ((prefix1 = strdup(ptmp)) == NULL){
+		if (ret == 1 && (prefix1 = strdup(ptmp)) == NULL){
 		    clicon_err(OE_UNIX, errno, "strdup");
 		    goto done;
 		}   

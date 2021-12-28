@@ -3,7 +3,6 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
-  Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -31,32 +30,30 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
+  *
+  * C-code corresponding to clixon-autocli.yang
  */
 
-#ifndef _CLI_GENERATE_H_
-#define _CLI_GENERATE_H_
+#ifndef _CLI_AUTOCLI_H_
+#define _CLI_AUTOCLI_H_
 
 /*
- * Constants
+ * Types
  */
-/* This is the default "virtual" callback function of the auto-cli. It should be overwritten by
- * a callback specified in a clispec, such as:
- * @code
- * set @datamodel, cli_set();
- * @endcode
- * where the virtual callback (overwrite_me) is overwritten by cli_set.
+/*! Autocli operation, see clixon-autocli.yang autocli-op type
  */
-#define GENERATE_CALLBACK "overwrite_me"
-
-/* Name of autocli CLIgen treename
- */
-#define AUTOCLI_TREENAME "basemodel"
+enum autocli_op{
+    AUTOCLI_OP_ENABLE,
+    AUTOCLI_OP_COMPRESS,
+};
 
 /*
  * Prototypes
  */
-int yang2cli_yspec(clicon_handle h, yang_stmt *yspec, char *treename, int printgen);
-int yang2cli_init(clicon_handle h);
+int autocli_module(clicon_handle h, char *modname, int *enable);
+int autocli_completion(clicon_handle h, int *completion);
+int autocli_list_keyword(clicon_handle h, autocli_listkw_t *listkw);
+int autocli_compress(clicon_handle h, yang_stmt *ys, int *compress);
+int autocli_treeref_state(clicon_handle h, int *treeref_state);
 
-#endif  /* _CLI_GENERATE_H_ */
+#endif  /* _CLI_AUTOCLI_H_ */

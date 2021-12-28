@@ -4,7 +4,7 @@
 # In particular setting a config, displaying as cli commands and reconfigure it
 # Tests:
 # Make a config in CLI. Show output as CLI, save it and ensure it is the same
-# Try the different GENMODEL settings
+# Try different list-keyword and compress settings (see clixon-autocli.yang)
 # NOTE this uses the "Old" autocli (eg cli_set()), see test_cli_auto.sh for "new" autocli using the cli_auto_*() API
 
 # Magic line must be first in script (see README.md)
@@ -32,27 +32,7 @@ if [ ! -d "$OPENCONFIG" ]; then
     echo "...skipped: OPENCONFIG not set"
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
-
-cat <<EOF > $cfg
-<clixon-config xmlns="http://clicon.org/config">
-  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$OPENCONFIG/</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
-  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
-  <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
-  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
-  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_CLI_GENMODEL>2</CLICON_CLI_GENMODEL>
-  <CLICON_CLI_GENMODEL_TYPE>VARS</CLICON_CLI_GENMODEL_TYPE>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
-  <CLICON_CLI_AUTOCLI_EXCLUDE>clixon-restconf</CLICON_CLI_AUTOCLI_EXCLUDE>
-</clixon-config>
-EOF
+OCDIR=$OPENCONFIG/release/models
 
 cat <<EOF > $fyang
 module $APPNAME {
@@ -181,6 +161,79 @@ discard, discard_changes();
 
 EOF
 
+# Set config for CLI
+# 1. listkw   - either none, vars, all
+# 2 compress -   surrounding container entities are removed from list nodes
+# 3. openconfig - config and state containers are "compressed" out of the schema in openconfig modules
+function setconfig()
+{
+    listkw=$1
+    compress=$2
+    openconfig=$3
+
+        if $compress; then
+COMPRESS=$(cat <<EOF
+      <rule>
+         <name>compress</name>
+         <operation>compress</operation>
+	 <yang-keyword>container</yang-keyword>
+	 <yang-keyword-child>list</yang-keyword-child>
+      </rule>
+EOF
+)
+    else
+	COMPRESS=""
+    fi
+    if $openconfig; then
+OCOMPRESS=$(cat <<EOF
+      <rule>
+         <name>openconfig compress</name>
+	 <operation>compress</operation>
+	 <yang-keyword>container</yang-keyword>
+	 <schema-nodeid>config</schema-nodeid>
+	 <!--schema-nodeid>state</schema-nodeid-->
+	 <!--module-name>openconfig*</module-name-->
+	 <extension>oc-ext:openconfig-version</extension>
+      </rule>"
+EOF
+)
+    else
+	OCOMPRESS=""
+    fi
+cat <<EOF > $cfg
+<clixon-config xmlns="http://clicon.org/config">
+  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>$OCDIR/</CLICON_YANG_DIR>
+  <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
+  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
+  <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
+  <autocli>
+     <module-default>false</module-default>
+     <list-keyword-default>${listkw}</list-keyword-default>
+     <treeref-state-default>true</treeref-state-default>
+     <rule>
+       <name>include ${APPNAME}</name>
+       <operation>enable</operation>
+       <module-name>${APPNAME}*</module-name>
+     </rule>
+     ${COMPRESS}
+     ${OCOMPRESS}
+  </autocli>
+</clixon-config>
+EOF
+} # setconfig
+
+new "Set config before backend start"
+setconfig kw-nokey false false
+
 new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -199,90 +252,112 @@ wait_backend
 # then deleting it, and reloading it
 # 1. mode - either VARS Keywords on non-key variables: a <x> y <y> or
 #                  ALL  Keywords on all variables: a x <x> y <y>
+#                  HIDE
+#                  OC_COMPRESS
+# 2. listkw   - either none, vars, all
+# 3. compress -   surrounding container entities are removed from list nodes
+# 4. openconfig - config and state containers are "compressed" out of the schema in openconfig modules
 function testrun()
 {
     mode=$1
-    if [ $mode = ALL ]; then
-	table=" table"
+    listkw=$2
+    compress=$3
+
+    if [ $listkw = kw-all ]; then
 	name=" name"
-    elif [ $mode = HIDE ]; then
-	table=
+    else
 	name=
-    elif [ $mode = OC_COMPRESS ]; then
+    fi
+    if $compress; then
 	table=
-	name=
     else
 	table=" table"
-	name=
     fi
 
     new "set a"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg set$table parameter$name a value x)" 0 ""
-
+    echo "$clixon_cli -1 -f $cfg set$table parameter$name a value x"
+    expectpart "$($clixon_cli -1 -f $cfg set$table parameter$name a value x)" 0 ""
+    
     new "set b"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg set$table parameter$name b value y)" 0 ""
+    expectpart "$($clixon_cli -1 -f $cfg set$table parameter$name b value y)" 0 ""
 
     new "reset b"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg set$table parameter$name b value z)" 0 ""
+    expectpart "$($clixon_cli -1 -f $cfg set$table parameter$name b value z)" 0 ""
 
     new "show match a & b"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show config)" 0 "set$table parameter$name a" "set$table parameter$name a value x" "set$table parameter$name b" "set$table parameter$name b value z" --not-- "set$table parameter$name b value y"
-SAVED=$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show config)
+    expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "set$table parameter$name a" "set$table parameter$name a value x" "set$table parameter$name b" "set$table parameter$name b value z" --not-- "set$table parameter$name b value y"
+
+SAVED=$($clixon_cli -1 -f $cfg show config)
 # awkward having pretty-printed xml in matching strings
 
     new "show match a & b xml"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show xml)" 0 "<table xmlns=\"urn:example:clixon\">" "<parameter>" "<name>a</name>" "<value>x</value>" "</parameter>" "<parameter>" "<name>b</name>" "<value>z</value>" "</parameter>" "</table>"
+    expectpart "$($clixon_cli -1 -f $cfg show xml)" 0 "<table xmlns=\"urn:example:clixon\">" "<parameter>" "<name>a</name>" "<value>x</value>" "</parameter>" "<parameter>" "<name>b</name>" "<value>z</value>" "</parameter>" "</table>"
 
     # https://github.com/clicon/clixon/issues/157
     new "delete a y expect fail"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg delete$table parameter$name a value y 2>&1)" 0 ""
+    expectpart "$($clixon_cli -1 -f $cfg delete$table parameter$name a value y 2>&1)" 0 ""
 
     new "show match a & b xml" # Expect same
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show xml)" 0 "<table xmlns=\"urn:example:clixon\">" "<parameter>" "<name>a</name>" "<value>x</value>" "</parameter>" "<parameter>" "<name>b</name>" "<value>z</value>" "</parameter>" "</table>"
+    expectpart "$($clixon_cli -1 -f $cfg show xml)" 0 "<table xmlns=\"urn:example:clixon\">" "<parameter>" "<name>a</name>" "<value>x</value>" "</parameter>" "<parameter>" "<name>b</name>" "<value>z</value>" "</parameter>" "</table>"
 
     new "delete a x"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg delete$table parameter$name a value x)" 0 ""
+    expectpart "$($clixon_cli -1 -f $cfg delete$table parameter$name a value x)" 0 ""
 
     new "show match a & b xml"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show xml)" 0 "<table xmlns=\"urn:example:clixon\">" "<parameter>" "<name>a</name>"  "</parameter>" "<parameter>" "<name>b</name>" "<value>z</value>" "</parameter>" "</table>" --not-- "<value>x</value>"
+    expectpart "$($clixon_cli -1 -f $cfg show xml)" 0 "<table xmlns=\"urn:example:clixon\">" "<parameter>" "<name>a</name>"  "</parameter>" "<parameter>" "<name>b</name>" "<value>z</value>" "</parameter>" "</table>" --not-- "<value>x</value>"
 
     new "delete a"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg delete$table parameter$name a)" 0 ""
+    expectpart "$($clixon_cli -1 -f $cfg delete$table parameter$name a)" 0 ""
 
     new "show match b"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show config)" 0  "$table parameter$name b" "$table parameter$name b value z" --not-- "$table parameter$name a" "$table parameter$name a value x" "$table parameter$name b value y"
+    expectpart "$($clixon_cli -1 -f $cfg show config)" 0  "$table parameter$name b" "$table parameter$name b value z" --not-- "$table parameter$name a" "$table parameter$name a value x" "$table parameter$name b value y"
 
     new "discard"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg discard)" 0 ""
+    expectpart "$($clixon_cli -1 -f $cfg discard)" 0 ""
 
     new "show match empty"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show config)" 0 --not-- "$table parameter$name b" "$table parameter$name b value z"  "$table parameter$name a" "$table parameter$name a value x" "$table parameter$name b value y"
+    expectpart "$($clixon_cli -1 -f $cfg show config)" 0 --not-- "$table parameter$name b" "$table parameter$name b value z"  "$table parameter$name a" "$table parameter$name a value x" "$table parameter$name b value y"
 
     new "load saved cli config"
-    expectpart "$(echo "$SAVED" | $clixon_cli -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg)" 0 ""
+    expectpart "$(echo "$SAVED" | $clixon_cli -f $cfg)" 0 ""
 
     new "show saved a & b"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg show config)" 0 "set$table parameter$name a" "set$table parameter$name a value x" "set$table parameter$name b" "set$table parameter$name b value z" --not-- "set$table parameter$name b value y"
+    expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "set$table parameter$name a" "set$table parameter$name a value x" "set$table parameter$name b" "set$table parameter$name b value z" --not-- "set$table parameter$name b value y"
 
     new "discard"
-    expectpart "$($clixon_cli -1 -o CLICON_CLI_GENMODEL_TYPE=$mode -f $cfg discard)" 0 ""
+    expectpart "$($clixon_cli -1 -f $cfg discard)" 0 ""
 } # testrun
 
-new "keywords=HIDE"
-testrun HIDE
+new "Config: Keywords on non-keys"
+setconfig kw-nokey false false
 
-new "keywords=ALL"
-testrun ALL
+new "Keywords on non-keys"
+testrun VARS kw-nokey false
 
-new "keywords=OC_COMPRESS"
-testrun OC_COMPRESS
+new "Config: Keywords on all"
+setconfig kw-all false false
 
-new "keywords=VARS"
-testrun VARS
+new "Keywords on all"
+testrun ALL kw-all false
+
+new "Config: Keywords on non-keys, container compress"
+setconfig kw-nokey true false
+
+new "Keywords on non-keys, container compress"
+testrun HIDE kw-nokey true
+
+new "Config:Keywords on non-keys, container and openconfig compress"
+setconfig kw-nokey true true
+
+new "Keywords on non-keys, container and openconfig compress"
+testrun OC_COMPRESS kw-nokey true
+
+new "Config:default"
+setconfig kw-nokey false false
 
 # show state
 new "set a"
-expectpart "$($clixon_cli -1 -f $cfg set$table parameter a value x)" 0 ""
+expectpart "$($clixon_cli -1 -f $cfg set table parameter a value x)" 0 ""
 
 new "commit"
 expectpart "$($clixon_cli -1 -f $cfg commit)" 0 ""
@@ -295,23 +370,29 @@ expectpart "$($clixon_cli -1 -f $cfg show state exstate)" 0 "state sender x" --n
 
 #---- openconfig path compression
 
+new "Config:Openconfig compression"
+setconfig kw-nokey true true
+
 new "Openconfig: OC_COMPRESS+extension: compressed)"
-expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_GENMODEL_TYPE=OC_COMPRESS set interface e enabled true 2>&1)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set interface e enabled true 2>&1)" 0 "^$"
 
 new "Openconfig: OC_COMPRESS+extension: no config (negative)"
-expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_GENMODEL_TYPE=OC_COMPRESS set interface e config enabled true 2>&1)" 255 "Unknown command"
+expectpart "$($clixon_cli -1 -f $cfg set interface e config enabled true 2>&1)" 255 "Unknown command"
 
 new "Openconfig: OC_COMPRESS+no-extension: no config"
-expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_GENMODEL_TYPE=OC_COMPRESS set interface2 e config enabled true 2>&1)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set interface2 e config enabled true 2>&1)" 0 "^$"
 
 new "Openconfig: OC_COMPRESS+no-extension: no config (negative)"
-expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_GENMODEL_TYPE=OC_COMPRESS set interface2 e enabled true 2>&1)" 255 "Unknown command"
+expectpart "$($clixon_cli -1 -f $cfg set interface2 e enabled true 2>&1)" 255 "Unknown command"
+
+new "Config: default"
+setconfig kw-nokey false false
 
 new "Openconfig: OC_VARS+extension: no compresssion"
-expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_GENMODEL_TYPE=VARS set interfaces interface e config enabled true 2>&1)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set interfaces interface e config enabled true 2>&1)" 0 "^$"
 
 new "Openconfig: OC_VARS+extension: no compresssion (negative)"
-expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_GENMODEL_TYPE=VARS set interfaces interface e enabled true 2>&1)" 255 "Unknown command"
+expectpart "$($clixon_cli -1 -f $cfg set interfaces interface e enabled true 2>&1)" 255 "Unknown command"
 
 new "Kill backend"
 # Check if premature kill

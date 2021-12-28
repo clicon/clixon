@@ -67,6 +67,7 @@
 #include "clixon_cli_api.h"
 
 #include "cli_plugin.h"
+#include "cli_autocli.h"
 #include "cli_generate.h"
 #include "cli_common.h"
 #include "cli_handle.h"
@@ -263,17 +264,28 @@ autocli_start(clicon_handle h,
     yang_stmt    *yspec;
     pt_head      *ph;
     parse_tree   *pt = NULL; 
+    int           enable = 0;
 	
-    /* Init yang2cli, mainly labels */
+    clicon_debug(1, "%s", __FUNCTION__);
+    /* There is no single "enable-autocli" flag,
+     * but set 
+     *   <module-default>false</module-default> 
+     * with no rules:
+     *   <rule><operation>enable</operation>
+     * is disable
+     */
+    if (autocli_module(h, NULL, &enable) < 0)
+	goto done;
+    if (!enable){
+	clicon_debug(1, "%s Autocli not enabled (clixon-autocli)", __FUNCTION__);
+	goto ok;
+    }
+    /* Init yang2cli */
     if (yang2cli_init(h) < 0)
 	goto done;
     yspec = clicon_dbspec_yang(h);
-    /* Load clispec for autocli */
-    if (yang_spec_parse_module(h, "clixon-clispec", NULL, yspec)< 0)
-	goto done;
-    /* Get the autocli type, ie HOW the cli is generated (could be much more here) */
-    /* basemodel is labelled tree */
-    if (yang2cli_yspec(h, yspec, "basemodel", printgen) < 0)
+    /* The actual generating call frm yang to clispec for the complete yang spec */
+    if (yang2cli_yspec(h, yspec, AUTOCLI_TREENAME, printgen) < 0)
 	goto done;
 
     /* Create backward compatible tree: @datamodel */
@@ -311,6 +323,7 @@ autocli_start(clicon_handle h,
 	goto done;
     if (cligen_ph_parsetree_set(ph, pt) < 0)
 	goto done;
+ ok:
     retval = 0;
  done:
     return retval;
@@ -337,7 +350,7 @@ usage(clicon_handle h,
             "\t-m <mode>\tSpecify plugin syntax mode\n"
 	    "\t-q \t\tQuiet mode, dont print greetings or prompt, terminate on ctrl-C\n"
 	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
-	    "\t-G \t\tPrint auo-cli CLI syntax generated from YANG (if CLICON_CLI_GENMODEL enabled)\n"
+	    "\t-G \t\tPrint auo-cli CLI syntax generated from YANG\n"
 	    "\t-L \t\tDebug print dynamic CLI syntax including completions and expansions\n"
 	    "\t-l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut or (f)ile (stderr is default)\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
