@@ -106,6 +106,13 @@ Use `/* */`. Use `//` only for temporal comments.
 
 Do not use "======", ">>>>>" or "<<<<<<" in comments since git merge conflict uses that.
 
+### Format ints
+
+Use:
+- %zu for size_t
+- PRIu64 for uint64
+- %p for pointers
+
 ## How to work in git
 
 Clixon uses semantic versioning (https://semver.org).

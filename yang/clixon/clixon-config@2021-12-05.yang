@@ -53,7 +53,6 @@ module clixon-config {
                     clixon-clispec.yang
              Removed obsolete options:
                     CLICON_YANG_LIST_CHECK
-                    CLICON_RESTCONF_PATH
              Released in Clixon 5.5";
     }
     revision 2021-11-11 {
@@ -471,6 +470,16 @@ module clixon-config {
                  The primary issue is that the unknown->anydata handling is not restricted to
                  only loading from startup but may occur in other circumstances as well. This
                  means that sanity checks of erroneous XML/JSON may not be properly signalled.";
+	}
+	leaf CLICON_RESTCONF_PATH {
+	    type string;
+	    default "/www-data/fastcgi_restconf.sock";
+	    description
+		"FastCGI unix socket. Should be specified in webserver
+                Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
+                 Only if with-restconf=fcgi, NOT native
+                 Note: Obsolete, use fcgi-socket in clixon-restconf.yang instead";
+	    status obsolete;
 	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;

@@ -63,10 +63,10 @@ cd src/clixon
 git pull origin master
 
 if [ $release = "freebsd" ]; then
-    LDFLAGS=-L/usr/local/lib ./configure --with-cligen=/usr/local --enable-optyangs --with-restconf=${with_restconf}
+    LDFLAGS=-L/usr/local/lib ./configure --with-cligen=/usr/local --with-restconf=${with_restconf}
 else
    # Problems with su not having "sbin" in path on centos when when we run tests later
-    ./configure --sbindir=/usr/sbin --libdir=/usr/lib --enable-optyangs --with-restconf=${with_restconf}
+    ./configure --sbindir=/usr/sbin --libdir=/usr/lib --with-restconf=${with_restconf}
 fi
 $MAKE clean
 $MAKE -j10

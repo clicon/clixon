@@ -211,7 +211,7 @@ main(int    argc,
     FCGX_Request   request;
     FCGX_Request  *req = &request;
     int            c;
-    char          *sockpath;
+    char          *sockpath = NULL;
     char          *path;
     clicon_handle  h;
     char          *dir;
@@ -522,6 +522,17 @@ main(int    argc,
     if (!configure_done){     /* Query backend of config. */
 	clicon_err(OE_DAEMON, EFAULT, "Restconf daemon config not found or disabled");
 	goto done;
+    }
+    /* XXX see restconf_config_init access directly */
+    if ((sockpath = clicon_option_str(h, "CLICON_RESTCONF_PATH")) == NULL){
+	clicon_err(OE_CFG, errno, "No CLICON_RESTCONF_PATH in clixon configure file");
+	goto done;
+    }
+    /* XXX CLICON_RESTCONF_PATH is marked as obsolete and should use 
+     *  fcgi-socket in clixon-restconf.yang instead */
+    if ((sockpath = clicon_option_str(h, "CLICON_RESTCONF_PATH")) == NULL){
+       clicon_err(OE_CFG, errno, "No CLICON_RESTCONF_PATH in clixon configure file");
+       goto done;
     }
     if (FCGX_Init() != 0){ /* How to cleanup memory after this? */
 	clicon_err(OE_CFG, errno, "FCGX_Init");

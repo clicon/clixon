@@ -53,11 +53,8 @@ typedef void *clicon_handle;
 typedef void *plghndl_t;
 
 /*! Indirect output functions to print with something else than fprintf
- * @param[in]  h       Clicon handle 
- * @param[in]  xn      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
- * @param[in]  arg     Domain specific arg, ec client-entry or FCGX_Request 
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ *
+ * @see man fprintf
  * @retval     0       OK
  * @retval    -1       Error
  */

@@ -61,7 +61,6 @@ Users may have to change how they access the system
   * Imported (as a sub-spec):  clixon-clispec.yang
   * Removed obsolete options:
     * `CLICON_YANG_LIST_CHECK`
-    * `CLICON_RESTCONF_PATH` (moved to restconf/fcgi-path)
   * Fixed: Configure option `CLICON_RESTCONF_PRETTY` was marked as obsolete but was still used.
     * `CLICON_RESTCONF_PRETTY` is now obsolete for sure
     * Instead restconf/pretty is used with API function restconf_pretty_get()

@@ -116,6 +116,7 @@ regex_posix(char *regexp,
 	fprintf(stderr, "pattern too long\n");
 	return -1;
     }
+    /* note following two lines trigger [-Wstringop-truncation] warnings, but see no actual error */
     strncpy(pattern, "^(", 2);
     strncpy(pattern+2, posix, sizeof(pattern)-2);
     strncat(pattern, ")$",  sizeof(pattern)-len0-1);
