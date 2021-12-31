@@ -14,7 +14,8 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-if ! ${HAVE_LIBEVHTP}; then
+# Does not work with evhtpnative http/2-only
+if [ "${WITH_RESTCONF}" = "native" -a ${HAVE_LIBEVHTP} = false ]; then
     echo "...skipped: LIBEVHTP is false, must run with http/1 (evhtp)"
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi

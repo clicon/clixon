@@ -226,8 +226,13 @@ function restconf_config()
     AUTH=$1
     PRETTY=$2
 
+    if [ ${WITH_RESTCONF} = "fcgi" ]; then
+	FEATURES="<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
+    else
+	FEATURES=""
+    fi
     if [ $RCPROTO = http ]; then
-	echo "<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
+	echo "${FEATURES}<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
     else
 	certdir=$dir/certs
 	if [ ! -f ${dir}/clixon-server-crt.pem ]; then
@@ -240,7 +245,7 @@ function restconf_config()
 	    cacerts $cakey $cacert
 	    servercerts $cakey $cacert $srvkey $srvcert
 	fi
-	echo "<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>${certdir}/clixon-server-crt.pem</server-cert-path><server-key-path>${certdir}/clixon-server-key.pem</server-key-path><server-ca-cert-path>${certdir}/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
+	echo "${FEATURES}<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>${certdir}/clixon-server-crt.pem</server-cert-path><server-key-path>${certdir}/clixon-server-key.pem</server-key-path><server-ca-cert-path>${certdir}/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
     fi
 }
 

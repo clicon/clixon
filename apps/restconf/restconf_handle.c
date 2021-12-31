@@ -94,6 +94,7 @@ struct restconf_handle {
     clicon_hash_t           *rh_params;    /* restconf parameters, including http headers */
     clixon_auth_type_t       rh_auth_type; /* authentication type */
     int                      rh_pretty;    /* pretty-print for http replies */
+    char                    *rh_fcgi_socket; /* if-feature fcgi, XXX: use WITH_RESTCONF_FCGI ? */
 };
 
 /*! Creates and returns a clicon config handle for other CLICON API calls
@@ -115,6 +116,10 @@ restconf_handle_init(void)
 int
 restconf_handle_exit(clicon_handle h)
 {
+    struct restconf_handle *rh = handle(h);
+    
+    if (rh->rh_fcgi_socket)
+	free(rh->rh_fcgi_socket);
     clicon_handle_exit(h); /* frees h and options (and streams) */
     return 0;
 }
@@ -238,5 +243,38 @@ restconf_pretty_set(clicon_handle h,
     struct restconf_handle *rh = handle(h);
 
     rh->rh_pretty = pretty;
+    return 0;
+}
+
+/*! Get restconf fcgi socket path
+ * @param[in]  h         Clicon handle
+ * @retval     socketpath
+ */
+char*
+restconf_fcgi_socket_get(clicon_handle h)
+{
+    struct restconf_handle *rh = handle(h);
+
+    return rh->rh_fcgi_socket;
+}
+
+/*! Set restconf fcgi socketpath
+ * @param[in]  h    Clicon handle
+ * @param[in]  name Data name
+ * @param[in]  val  Data value as null-terminated string
+ * @retval     0    OK
+ * @retval    -1    Error
+ * Currently using clixon runtime data but there is risk for colliding names
+ */
+int
+restconf_fcgi_socket_set(clicon_handle h,
+			 char         *socketpath)
+{
+    struct restconf_handle *rh = handle(h);
+
+    if ((rh->rh_fcgi_socket = strdup(socketpath)) == NULL){
+	clicon_err(OE_RESTCONF, errno, "strdup");
+	return -1;
+    }
     return 0;
 }

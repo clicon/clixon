@@ -537,7 +537,9 @@ function testrun()
 }
 
 # Go thru all combinations of IPv4/IPv6, http/https, local/backend config
-if ${HAVE_LIBEVHTP}; then
+if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+    protos="http"
+elif ${HAVE_LIBEVHTP}; then
     protos="http"    # No plain http for http/2 only
 fi
 if [ "${WITH_RESTCONF}" = "native" ]; then

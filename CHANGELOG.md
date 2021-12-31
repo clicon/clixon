@@ -64,6 +64,11 @@ Users may have to change how they access the system
   * Fixed: Configure option `CLICON_RESTCONF_PRETTY` was marked as obsolete but was still used.
     * `CLICON_RESTCONF_PRETTY` is now obsolete for sure
     * Instead restconf/pretty is used with API function restconf_pretty_get()
+  * Fixed: Configure option `CLICON_RESTCONF_PATH` was marked as obsolete but was still used.
+    * `CLICON_RESTCONF_PATH` is now obsolete for sure
+    * Instead if you use fgci/nginx:
+      * Use `restconf/fcgi-socket`
+      * Ensure `<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>` is set
 
 ### Minor features
 

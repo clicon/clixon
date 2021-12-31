@@ -51,5 +51,7 @@ clixon_auth_type_t restconf_auth_type_get(clicon_handle h);
 int           restconf_auth_type_set(clicon_handle h, clixon_auth_type_t type);
 int           restconf_pretty_get(clicon_handle h);
 int           restconf_pretty_set(clicon_handle h, int pretty);
+char         *restconf_fcgi_socket_get(clicon_handle h);
+int           restconf_fcgi_socket_set(clicon_handle h, char *socketpath);
 
 #endif  /* _RESTCONF_HANDLE_H_ */

@@ -754,7 +754,15 @@ restconf_config_init(clicon_handle h,
     char  *bstr;
     cvec  *nsc = NULL;
     int    auth_type;
-	 
+    yang_stmt *yspec;
+    
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
+    /* Apply default values (removed in clear function) */
+    if (xml_default_recurse(xrestconf, 0) < 0)
+	goto done;
     if ((x = xpath_first(xrestconf, nsc, "enable")) != NULL &&
 	(enable = xml_body(x)) != NULL){
 	if (strcmp(enable, "false") == 0){
@@ -777,6 +785,11 @@ restconf_config_init(clicon_handle h,
 	    restconf_pretty_set(h, 1);
 	else if (strcmp(bstr, "false") == 0)
 	    restconf_pretty_set(h, 0);
+    }
+    if ((x = xpath_first(xrestconf, nsc, "fcgi-socket")) != NULL &&
+	(bstr = xml_body(x)) != NULL){
+	if (restconf_fcgi_socket_set(h, bstr) < 0)
+	    goto done;
     }
     retval = 1;
  done:

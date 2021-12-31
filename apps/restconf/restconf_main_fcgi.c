@@ -125,6 +125,90 @@ fcgi_params_set(clicon_handle h,
     return retval;
 }
 
+/*! Try to get config: inline, config-file or query backend
+ */
+static int
+restconf_main_config(clicon_handle h,
+		     yang_stmt    *yspec,
+		     const char   *inline_config)
+{
+    int            retval = -1;
+    struct passwd *pw;
+    cxobj         *xconfig = NULL;   
+    cxobj         *xrestconf = NULL;
+    uint32_t       id = 0;
+    cxobj         *xerr = NULL;
+    int            configure_done = 0; /* First try local then backend */
+    cvec          *nsc = NULL;
+    int            ret;
+
+    /* 1. try inline configure option */
+    if (inline_config != NULL && strlen(inline_config)){
+	clicon_debug(1, "restconf_main_fcgi using restconf inline config");
+	if ((ret = clixon_xml_parse_string(inline_config, YB_MODULE, yspec, &xrestconf, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    clixon_netconf_error(xerr, "Inline restconf config", NULL);
+	    goto done;
+	}
+	/* Replace parent w first child */
+	if (xml_rootchild(xrestconf, 0, &xrestconf) < 0)
+	    goto done;
+    }
+    else if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS") == 0){
+	/* 2. If not read from backend, try to get restconf config from local config-file */
+	xrestconf = clicon_conf_restconf(h);
+    }
+    /* 3. If no local config, or it is disabled, try to query backend of config. */
+    else {
+	/* Loop to wait for backend starting, try again if not done */
+	while (1){
+	    if (clicon_hello_req(h, &id) < 0){
+		if (errno == ENOENT){
+		    fprintf(stderr, "waiting");
+		    sleep(1);
+		    continue;
+		}
+		clicon_err(OE_UNIX, errno, "clicon_session_id_get");
+		goto done;
+	    }
+	    clicon_session_id_set(h, id);
+	    break;
+	}
+	if ((nsc = xml_nsctx_init(NULL, CLIXON_RESTCONF_NS)) == NULL)
+	    goto done;
+	if ((pw = getpwuid(getuid())) == NULL){
+	    clicon_err(OE_UNIX, errno, "getpwuid");
+	    goto done;
+	}
+	if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, &xconfig) < 0)
+	    goto done;
+	if ((xerr = xpath_first(xconfig, NULL, "/rpc-error")) != NULL){
+	    clixon_netconf_error(xerr, "Get backend restconf config", NULL);
+	    goto done;
+	}
+	/* Extract restconf configuration */
+	xrestconf = xpath_first(xconfig, nsc, "restconf");
+    }
+    configure_done = 0;
+    if (xrestconf != NULL &&
+	(configure_done = restconf_config_init(h, xrestconf)) < 0)
+	goto done;
+    if (!configure_done){     /* Query backend of config. */
+	clicon_err(OE_DAEMON, EFAULT, "Restconf daemon config not found or disabled");
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (nsc)
+	cvec_free(nsc);
+    if (inline_config != NULL && strlen(inline_config) && xrestconf)
+	xml_free(xrestconf);
+    if (xconfig)
+	xml_free(xconfig);
+    return retval;
+}
+
 /* XXX Need global variable to for SIGCHLD signal handler
 */
 static clicon_handle _CLICON_HANDLE = NULL;
@@ -221,20 +305,11 @@ main(int    argc,
     int            finish = 0;
     char          *str;
     clixon_plugin_t *cp = NULL;
-    uint32_t       id = 0;
     cvec          *nsctx_global = NULL; /* Global namespace context */
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
     int            dbg = 0;
-    int            ret;
-    cxobj         *xrestconf1 = NULL; /* Inline */
-    cxobj         *xrestconf2 = NULL; /* Local config file */
-    cxobj         *xconfig3 = NULL;   
-    cxobj         *xrestconf3 = NULL; /* Config from backend */
-    int            configure_done = 0; /* First try local then backend */
-    cvec          *nsc = NULL;
     cxobj         *xerr = NULL;
-    struct passwd *pw;
     char          *wwwuser;
     char          *inline_config = NULL;
 
@@ -457,82 +532,12 @@ main(int    argc,
     if (clixon_plugin_start_all(h) < 0)
 	goto done;
 
-    /* 1. try inline configure option */
-    if (inline_config != NULL && strlen(inline_config)){
-	clicon_debug(1, "restconf_main_fcgi using restconf inline config");
-	if ((ret = clixon_xml_parse_string(inline_config, YB_MODULE, yspec, &xrestconf1, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    clixon_netconf_error(xerr, "Inline restconf config", NULL);
-	    goto done;
-	}
-	/* Replace parent w first child */
-	if (xml_rootchild(xrestconf1, 0, &xrestconf1) < 0)
-	    goto done;
-	if ((ret = restconf_config_init(h, xrestconf1)) < 0)
-	    goto done;
-	if (ret == 1)
-	    configure_done = 1;
-    }
-    else if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS") == 0){
-	/* 2. If not read from backend, try to get restconf config from local config-file */
-	if ((xrestconf2 = clicon_conf_restconf(h)) != NULL){
-	    if ((ret = restconf_config_init(h, xrestconf2)) < 0)
-		goto done;
-	    if (ret == 1)
-		configure_done = 1;
-	}
-    }
-    /* 3. If no local config, or it is disabled, try to query backend of config. */
-    else {
-	/* Loop to wait for backend starting, try again if not done */
-	while (1){
-	    if (clicon_hello_req(h, &id) < 0){
-		if (errno == ENOENT){
-		    fprintf(stderr, "waiting");
-		    sleep(1);
-		    continue;
-		}
-		clicon_err(OE_UNIX, errno, "clicon_session_id_get");
-		goto done;
-	    }
-	    clicon_session_id_set(h, id);
-	    break;
-	}
-	if ((nsc = xml_nsctx_init(NULL, CLIXON_RESTCONF_NS)) == NULL)
-	    goto done;
-	if ((pw = getpwuid(getuid())) == NULL){
-	    clicon_err(OE_UNIX, errno, "getpwuid");
-	    goto done;
-	}
-	if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, &xconfig3) < 0)
-	    goto done;
-	if ((xerr = xpath_first(xconfig3, NULL, "/rpc-error")) != NULL){
-	    clixon_netconf_error(xerr, "Get backend restconf config", NULL);
-	    goto done;
-	}
-	/* Extract restconf configuration */
-	if ((xrestconf3 = xpath_first(xconfig3, nsc, "restconf")) != NULL){
-	    if ((ret = restconf_config_init(h, xrestconf3)) < 0)
-		goto done;
-	    if (ret == 1)
-		configure_done = 1;
-	}
-    }
-    if (!configure_done){     /* Query backend of config. */
-	clicon_err(OE_DAEMON, EFAULT, "Restconf daemon config not found or disabled");
+    /* Try to get config: inline, config-file or query backend */
+    if (restconf_main_config(h, yspec, inline_config) < 0)
 	goto done;
-    }
-    /* XXX see restconf_config_init access directly */
-    if ((sockpath = clicon_option_str(h, "CLICON_RESTCONF_PATH")) == NULL){
-	clicon_err(OE_CFG, errno, "No CLICON_RESTCONF_PATH in clixon configure file");
+    if ((sockpath = restconf_fcgi_socket_get(h)) == NULL){
+	clicon_err(OE_CFG, 0, "No restconf fcgi-socket (have you set FEATURE fcgi in config?)");
 	goto done;
-    }
-    /* XXX CLICON_RESTCONF_PATH is marked as obsolete and should use 
-     *  fcgi-socket in clixon-restconf.yang instead */
-    if ((sockpath = clicon_option_str(h, "CLICON_RESTCONF_PATH")) == NULL){
-       clicon_err(OE_CFG, errno, "No CLICON_RESTCONF_PATH in clixon configure file");
-       goto done;
     }
     if (FCGX_Init() != 0){ /* How to cleanup memory after this? */
 	clicon_err(OE_CFG, errno, "FCGX_Init");
@@ -649,12 +654,6 @@ main(int    argc,
     } /* while */
     retval = 0;
  done:
-    if (xrestconf1)
-	xml_free(xrestconf1);
-    if (xconfig3)
-	xml_free(xconfig3);
-    if (nsc)
-	cvec_free(nsc);
     stream_child_freeall(h);
     restconf_terminate(h);
     return retval;
