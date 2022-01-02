@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Advanced Client api test
 # Compile and run a client
+# INSTALLFLSAGS="" 
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -114,7 +115,13 @@ main(int    argc,
 EOF
 
 new "compile $cfile -> $app"
-expectpart "$($CC -g -Wall -I/usr/local/include $cfile -o $app -L /usr/local/lib -lclixon)" 0 ""
+if [ "$LINKAGE" = static ]; then
+    COMPILE="$CC ${CFLAGS} -I/usr/local/include $cfile -o $app /usr/local/lib/libclixon${LIBSTATIC_SUFFIX} ${LIBS}"
+else
+    COMPILE="$CC ${CFLAGS} -I/usr/local/include $cfile -o $app -L /usr/local/lib -lclixon"
+fi
+echo "COMPILE:$COMPILE"
+expectpart "$($COMPILE)" 0 ""
 
 new "test params: -s init -f $cfg"
 
