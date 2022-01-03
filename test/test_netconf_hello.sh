@@ -12,9 +12,8 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 APPNAME=example
 
 cfg=$dir/conf_yang.xml
+fyang=$dir/clixon-example.yang
 tmp=$dir/tmp.x
-
-# Use yang in example
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -22,8 +21,7 @@ cat <<EOF > $cfg
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_MODULE_SET_ID>42</CLICON_MODULE_SET_ID>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
@@ -36,6 +34,14 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
 </clixon-config>
+EOF
+
+cat <<EOF > $fyang
+module clixon-example{
+  yang-version 1.1;
+  namespace "urn:example:clixon";
+  prefix ex;
+}
 EOF
 
 new "test params: -f $cfg -- -s"

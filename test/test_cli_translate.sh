@@ -13,14 +13,13 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 
-# Use yang in example
+fyang=$dir/clixon-example.yang
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_CLISPEC_DIR>$dir</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -29,6 +28,26 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
 </clixon-config>
+EOF
+
+cat <<EOF > $fyang
+module clixon-example{
+  yang-version 1.1;
+  namespace "urn:example:clixon";
+  prefix ex;
+    /* Generic config data */
+    container table{
+	list parameter{
+	    key name;
+	    leaf name{
+		type string;
+	    }
+	    leaf value{
+		type string;
+	    }
+         }
+     }
+}
 EOF
 
 # The diff here is the "translate" command that adds entry table/parameter=translate

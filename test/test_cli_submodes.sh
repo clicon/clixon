@@ -15,20 +15,18 @@ APPNAME=example
 # include err() and new() functions and creates $dir
 
 cfg=$dir/conf_yang.xml
+fyang=$dir/clixon-example.yang
 clidir=$dir/clidir
 
 if [ ! -d $clidir ]; then
     mkdir $clidir
 fi
 
-# Use yang in example
-
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -36,6 +34,14 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
 </clixon-config>
+EOF
+
+cat <<EOF > $fyang
+module clixon-example{
+  yang-version 1.1;
+  namespace "urn:example:clixon";
+  prefix ex;
+}
 EOF
 
 # clispec files 1..6 for submodes AAA and BBB as described in top comment
@@ -92,7 +98,7 @@ for c in 1 2 5; do
 done
 # Tests using mode AAA that should fail
 for c in 3 4 6; do
-    new "cli mode $m 1 cmd$c Not OK"
+    new "cli mode $m 1 cmd$c Expect fail"
     expectpart "$($clixon_cli -1 -m $m -f $cfg cmd$c)" 255 "^$"
 done
 
@@ -104,7 +110,7 @@ for c in 1 3 5 6; do
 done
 # Tests using mode BBB that should fail
 for c in 2 4; do
-    new "cli mode $m 1 cmd$c Not OK"
+    new "cli mode $m 1 cmd$c Expect fail"
     expectpart "$($clixon_cli -1 -m $m -f $cfg cmd$c)" 255 "^$"
 done
 

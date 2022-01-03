@@ -13,6 +13,7 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/nacm-example.yang
+fyang2=$dir/clixon-example.yang
 nacmfile=$dir/nacmfile
 
 # Define default restconfig config: RESTCONFIG
@@ -23,8 +24,7 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
+  <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
@@ -78,6 +78,51 @@ module nacm-example{
   }
 }
 EOF
+
+cat <<EOF > $fyang2
+module clixon-example{
+  yang-version 1.1;
+  namespace "urn:example:clixon";
+  prefix ex;
+  /* State data (not config) for the example application*/
+  container state {
+         config false;
+         description "state data for the example application (must be here for example get operation)";
+         leaf-list op {
+            type string;
+         }
+  }
+    rpc example {
+	description "Some example input/output for testing RFC7950 7.14.
+                     RPC simply echoes the input for debugging.";
+	input {
+	    leaf x {
+		description
+         	    "If a leaf in the input tree has a 'mandatory' statement with
+                   the value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		mandatory true;
+	    }
+	    leaf y {
+		description
+                 "If a leaf in the input tree has a 'mandatory' statement with the
+                  value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		default "42";
+	    }
+      }
+      output {
+	    leaf x {
+		type string;
+	    }
+	    leaf y {
+		type string;
+	    }
+      }
+  }
+}
+EOF
+
 
 cat <<EOF > $nacmfile
    <nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">

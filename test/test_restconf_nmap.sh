@@ -26,28 +26,31 @@ RCPROTO=https
 APPNAME=example
 
 cfg=$dir/conf.xml
+fyang=$dir/clixon-example.yang
 
 # If nmap not installed just quietly quit
 if [ ! -n "$(type nmap 2> /dev/null)" ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
-# clixon-example and clixon-restconf is used in the test, need local copy
+# clixon-restconf is used in the test, need local copy
 # This is a kludge: look in src otherwise assume it is installed in /usr/local/share
 # Note that revisions may change and may need to be updated
-y="clixon-example@${CLIXON_EXAMPLE_REV}.yang"
 
-if [ -d ${TOP_SRCDIR}/example/main/$y ]; then 
-    cp ${TOP_SRCDIR}/example/main/$y $dir/
-else
-    cp /usr/local/share/clixon/$y $dir/
-fi
 y=clixon-restconf@${CLIXON_RESTCONF_REV}.yang
 if [ -d ${TOP_SRCDIR}/yang/clixon ]; then 
     cp ${TOP_SRCDIR}/yang/clixon/$y $dir/
 else
     cp /usr/local/share/clixon/$y $dir/
 fi
+
+cat <<EOF > $fyang
+module clixon-example{
+  yang-version 1.1;
+  namespace "urn:example:clixon";
+  prefix ex;
+}
+EOF
 
 if [ "${WITH_RESTCONF}" = "native" ]; then
     # Create server certs
@@ -83,7 +86,6 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>

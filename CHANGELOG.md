@@ -72,7 +72,10 @@ Users may have to change how they access the system
 
 ### Minor features
 
-* Tests: use `YANG_STANDARD_DIR` from `./configure --with-yang-standard-dir=DIR` instead of `YANGMODELS` from site.sh
+* Test changes
+  * Use `YANG_STANDARD_DIR` from `./configure --with-yang-standard-dir=DIR` instead of `YANGMODELS` from site.sh
+  * Remove dependency of IETF YANGs on most tests
+  * Remove dependnency of example/main in most tests, instead make local copy of example yang
 * New `clixon-dev` development container (Work-in-progress)
 * New `clixon-clispec.yang` for controlling auto-cli (Work-in-progress)
 * Changed typo `configure --with-yang-standard-installdir` to `configure --with-yang-standard-dir`

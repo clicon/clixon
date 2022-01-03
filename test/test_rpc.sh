@@ -2,7 +2,7 @@
 # RPC tests
 # Validate parameters in restconf and netconf, check namespaces, etc
 # See rfc8040 3.6
-# Use the example application that has one mandatory input arg,
+# Use snippet of example application that has one mandatory input arg,
 # At the end is an alternative Yang without mandatory arg for
 # valid empty input and output.
 
@@ -13,17 +13,17 @@ APPNAME=example
 
 cfg=$dir/conf.xml
 
+fyang=$dir/clixon-example.yang
+
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
 
-# Use yang in example
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -33,6 +33,110 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   $RESTCONFIG
 </clixon-config>
+EOF
+
+cat <<EOF > $fyang
+module clixon-example{
+  yang-version 1.1;
+  namespace "urn:example:clixon";
+  prefix ex;
+
+  rpc empty {
+	description "Smallest possible RPC with no input or output sections";
+  }
+  rpc optional {
+	description "Small RPC with optional input and output";
+	input {
+	    leaf x {
+		type string;
+	    }
+	}
+	output {
+	    leaf x {
+		type string;
+	    }
+	}
+  }
+  rpc example {
+	description "Some example input/output for testing RFC7950 7.14.
+                     RPC simply echoes the input for debugging.";
+	input {
+	    leaf x {
+		description
+         	    "If a leaf in the input tree has a 'mandatory' statement with
+                   the value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		mandatory true;
+	    }
+	    leaf y {
+		description
+                 "If a leaf in the input tree has a 'mandatory' statement with the
+                  value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		default "42";
+	    }
+	    leaf-list z {
+		description
+		    "If a leaf-list in the input tree has one or more default 
+                     values, the server MUST use these values (XXX not supported)";
+		type string;
+	    }
+
+	    leaf w {
+		description
+		    "If any node has a 'when' statement that would evaluate to 
+                    'false',then this node MUST NOT be present in the input tree.
+                     (XXX not supported)";
+		type string;
+	    }
+	    list u0 {
+		description "list without key";
+		leaf uk{
+		    type string;
+		}
+	    }
+    	    list u1 {
+		description "list with key";
+		key uk;
+		leaf uk{
+		    type string;
+		}
+		leaf val{
+		    type string;
+		}
+	    }
+	}
+	output {
+	    leaf x {
+		type string;
+	    }
+	    leaf y {
+		type string;
+	    }
+	    leaf z {
+		type string;
+	    }
+	    leaf w {
+		type string;
+	    }
+
+	    list u0 {
+		leaf uk{
+		    type string;
+		}
+	    } 
+    	    list u1 {
+		key uk;
+		leaf uk{
+		    type string;
+		}
+		leaf val{
+		    type string;
+		}
+	    }
+	}
+    }
+}
 EOF
 
 new "test params: -f $cfg"

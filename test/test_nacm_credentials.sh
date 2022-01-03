@@ -26,9 +26,6 @@ module nacm-example{
   yang-version 1.1;
   namespace "urn:example:nacm";
   prefix nex;
-  import clixon-example {
-	prefix ex;
-  }
   import ietf-netconf-acm {
 	prefix nacm;
   }
@@ -115,7 +112,6 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_SOCK_FAMILY>$family</CLICON_SOCK_FAMILY>
   <CLICON_SOCK>$sock</CLICON_SOCK>

@@ -10,6 +10,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 cfile=$dir/c++.cpp
 
 APPNAME=example
+fyang=$dir/clixon-example.yang
 cfg=$dir/conf.xml
 
 test -d $dir/backend || mkdir $dir/backend
@@ -18,8 +19,7 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
   <CLICON_BACKEND_DIR>$dir/backend</CLICON_BACKEND_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -28,6 +28,42 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
 </clixon-config>
+EOF
+
+cat <<EOF > $fyang
+module clixon-example{
+  yang-version 1.1;
+  namespace "urn:example:clixon";
+  prefix ex;
+  rpc example {
+	description "Some example input/output for testing RFC7950 7.14.
+                     RPC simply echoes the input for debugging.";
+	input {
+	    leaf x {
+		description
+         	    "If a leaf in the input tree has a 'mandatory' statement with
+                   the value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		mandatory true;
+	    }
+	    leaf y {
+		description
+                 "If a leaf in the input tree has a 'mandatory' statement with the
+                  value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		default "42";
+	    }
+	}
+	output {
+	    leaf x {
+		type string;
+	    }
+	    leaf y {
+		type string;
+	    }
+	}
+    }
+}
 EOF
 
 cat<<EOF > $cfile

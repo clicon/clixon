@@ -15,7 +15,15 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 APPNAME=example
 
 cfg=$dir/conf.xml
-fyang=$dir/socket.yang
+fyang=$dir/clixon-example.yang
+
+cat <<EOF > $fyang
+module clixon-example{
+  yang-version 1.1;
+  namespace "urn:example:clixon";
+  prefix ex;
+}
+EOF
 
 # Set socket family and start backend and run a single cli command to
 # check socket works
@@ -32,8 +40,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>*:*</CLICON_FEATURE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
   <CLICON_SOCK_FAMILY>$family</CLICON_SOCK_FAMILY>
   <CLICON_SOCK_PORT>4535</CLICON_SOCK_PORT>
   <CLICON_SOCK>$sock</CLICON_SOCK>

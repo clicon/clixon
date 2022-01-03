@@ -17,6 +17,7 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/nacm-example.yang
+fyang2=$dir/clixon-example.yang
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config user false)
@@ -25,8 +26,7 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
+  <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -56,6 +56,61 @@ module nacm-example{
   leaf x{
     type int32;
     description "something to edit";
+  }
+}
+EOF
+
+cat <<EOF > $fyang2
+module clixon-example{
+  yang-version 1.1;
+  namespace "urn:example:clixon";
+  prefix ex;
+    container table{
+	list parameter{
+	    key name;
+	    leaf name{
+		type string;
+	    }
+	    leaf value{
+		type string;
+	    }
+     }
+   }
+    /* State data (not config) for the example application*/
+    container state {
+         config false;
+         description "state data for the example application (must be here for example get operation)";
+         leaf-list op {
+            type string;
+         }
+    }
+    rpc example {
+	description "Some example input/output for testing RFC7950 7.14.
+                     RPC simply echoes the input for debugging.";
+	input {
+	    leaf x {
+		description
+         	    "If a leaf in the input tree has a 'mandatory' statement with
+                   the value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		mandatory true;
+	    }
+	    leaf y {
+		description
+                 "If a leaf in the input tree has a 'mandatory' statement with the
+                  value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		default "42";
+	    }
+      }
+      output {
+	    leaf x {
+		type string;
+	    }
+	    leaf y {
+		type string;
+	    }
+      }
   }
 }
 EOF
@@ -174,7 +229,7 @@ expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/da
 
 new "admin read top ok (all)"
 ret=$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)
-expect='{"data":{"nacm-example:x":42,"clixon-example:table":'
+expect='{"data":{"clixon-example:table":'
 match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
