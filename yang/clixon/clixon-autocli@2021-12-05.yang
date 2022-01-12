@@ -45,6 +45,18 @@ module clixon-autocli{
 	description
 	    "Initial version";
     }
+    extension hide {
+	description 
+	    "Modify the autocli by hiding the command associated with a YANG node and its 
+             sub-commands.
+             The command is active but not shown by ? or TAB. In other words, it hides the
+             auto-completion of commands";
+    }
+    extension hide-show {
+	description 
+	    "Modify the autocli by hiding the command associated with a YANG node and its 
+             sub-commands in CLI show commands.";
+    }
     typedef autocli-op {
 	description
 	    "Autocli rule-type operation, each rule use different fields as 

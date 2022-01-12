@@ -10,14 +10,14 @@ module clixon-example {
 	prefix ip;
     }
     import iana-if-type {
-      prefix ianaift;
+	prefix ianaift;
     }
     import ietf-datastores {
-      prefix ds;
+	prefix ds;
     }
-   import clixon-lib{
-      prefix cl;
-   }
+    import clixon-autocli{
+	prefix autocli;
+    }
     description
 	"Clixon example used as a part of the Clixon test suite.
          It can be used as a basis for making new Clixon applications.
@@ -57,7 +57,7 @@ module clixon-example {
 	    }
 	    leaf hidden{
 		type string;
-		cl:autocli-op hide;
+		autocli:hide;
 	    }
 	    leaf stat{
 		description "Inline state data for example application";
@@ -68,11 +68,11 @@ module clixon-example {
     }
     /* State data (not config) for the example application*/
     container state {
-         config false;
-         description "state data for the example application (must be here for example get operation)";
-         leaf-list op {
+	config false;
+	description "state data for the example application (must be here for example get operation)";
+	leaf-list op {
             type string;
-         }
+	}
     }
     augment "/if:interfaces/if:interface" {
 	container my-status {
@@ -88,38 +88,38 @@ module clixon-example {
     }
     /* yang extension implemented by the example backend code. */
     extension e4 {
-       description
-	   "The first child of the ex:e4 (unknown) statement is inserted into 
+	description
+	    "The first child of the ex:e4 (unknown) statement is inserted into 
 	    the module as a regular data statement. This means that 'uses bar;'
 	    in the ex:e4 statement below is a valid data node";
-       argument arg;
+	argument arg;
     }
     grouping bar {
-      leaf bar{
-        type string;
-      }
+	leaf bar{
+	    type string;
+	}
     }
     ex:e4 arg1{
-      uses bar;
+	uses bar;
     }
     /* Example notification as used in RFC 5277 and RFC 8040 */
     notification event {
-         description "Example notification event.";
-         leaf event-class {
-           type string;
-           description "Event class identifier.";
-         }
-         container reportingEntity {
-           description "Event specific information.";
-           leaf card {
-             type string;
-             description "Line card identifier.";
-           }
-         }
-         leaf severity {
-           type string;
-           description "Event severity description.";
-         }
+	description "Example notification event.";
+	leaf event-class {
+	    type string;
+	    description "Event class identifier.";
+	}
+	container reportingEntity {
+	    description "Event specific information.";
+	    leaf card {
+		type string;
+		description "Line card identifier.";
+	    }
+	}
+	leaf severity {
+	    type string;
+	    description "Event severity description.";
+	}
     }
     rpc client-rpc {
 	description "Example local client-side RPC that is processed by the
@@ -166,7 +166,7 @@ module clixon-example {
 	    }
 	    leaf y {
 		description
-                 "If a leaf in the input tree has a 'mandatory' statement with the
+		    "If a leaf in the input tree has a 'mandatory' statement with the
                   value 'true', the leaf MUST be present in an RPC invocation.";
 		type string;
 		default "42";

@@ -96,6 +96,9 @@ co2apipath(cg_obj *co)
     return cv_string_get(cv);;
 }
 
+/* Append to cvv1 to cvv0
+ * @note if cvv0 is non-null, the first element of cvv1 is skipped
+ */
 static cvec*
 cvec_append(cvec *cvv0,
 	    cvec *cvv1)
@@ -167,17 +170,14 @@ cli_xml2file(cxobj            *xn,
     int    haselement;
     char  *val;
     char  *encstr = NULL; /* xml encoded string */
-    char  *opext = NULL;
+    int    exist = 0;
 
     if (xn == NULL)
 	goto ok;
-    /* Look for autocli-op defined in clixon-lib.yang */
-    if (yang_extension_value(xml_spec(xn), "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0) {
+    if (yang_extension_value(xml_spec(xn), "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+	goto done;
+    if (exist)
 	goto ok;
-    }
-    if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
-	goto ok;
-    }
     name = xml_name(xn);
     namespace = xml_prefix(xn);
     switch(xml_type(xn)){
@@ -268,19 +268,16 @@ cli_xml2txt(cxobj            *xn,
     cxobj *xc = NULL;
     int    children=0;
     int    retval = -1;
-    char  *opext = NULL;
+    int           exist = 0;
 
     if (xn == NULL || fn == NULL){
 	clicon_err(OE_XML, EINVAL, "xn or fn is NULL");
 	goto done;
     }
-    /* Look for autocli-op defined in clixon-lib.yang */
-    if (yang_extension_value(xml_spec(xn), "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0) {
+    if (yang_extension_value(xml_spec(xn), "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+	goto done;
+    if (exist)
 	goto ok;
-    }
-    if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
-	goto ok;
-    }
     xc = NULL;     /* count children (elements and bodies, not attributes) */
     while ((xc = xml_child_each(xn, xc, -1)) != NULL)
 	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
@@ -353,7 +350,7 @@ cli_auto_edit(clicon_handle h,
 	goto done;
     }
     /* Find the matching cligen object 
-     * Note, is complictead: either an instantiated tree (co_treeref_orig)
+     * Note, is complicated: either an instantiated tree (co_treeref_orig)
      * or actual tree (co_ref)
      */
     if ((co = cligen_co_match(cli_cligen(h))) != NULL){

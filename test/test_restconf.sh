@@ -341,7 +341,7 @@ function testrun()
     expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state/module=ietf-interfaces,2018-02-20)" 0 "HTTP/$HVER 200" '{"ietf-yang-library:module":\[{"name":"ietf-interfaces","revision":"2018-02-20","namespace":"urn:ietf:params:xml:ns:yang:ietf-interfaces","conformance-type":"implement"}\]}'
 
     new "restconf schema resource, mod-state top-level"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state)" 0 "HTTP/$HVER 200" "{\"ietf-yang-library:modules-state\":{\"module-set-id\":\"0\",\"module\":\[{\"name\":\"clixon-example\",\"revision\":\"${CLIXON_EXAMPLE_REV}\",\"namespace\":\"urn:example:clixon\",\"conformance-type\":\"implement\"},{\"name\":\"clixon-lib\",\"revision\":\"${CLIXON_LIB_REV}\",\""
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:modules-state)" 0 "HTTP/$HVER 200" "{\"ietf-yang-library:modules-state\":{\"module-set-id\":\"0\",\"module\":\[{\"name\":\"clixon-autocli\",\"revision\":\"${CLIXON_AUTOCLI_REV}\",\"namespace\":\"http://clicon.org/autocli\",\"conformance-type\":\"implement\"},{\"name\":\"clixon-example\",\"revision\":\"${CLIXON_EXAMPLE_REV}\",\"namespace\":\"urn:example:clixon\",\"conformance-type\":\"implement\"},{\"name\":\"clixon-lib\",\"revision\":\"${CLIXON_LIB_REV}\",\""
 
     new "restconf options. RFC 8040 4.1"
     expectpart "$(curl $CURLOPTS -X OPTIONS $proto://$addr/restconf/data)" 0 "HTTP/$HVER 200" "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE"

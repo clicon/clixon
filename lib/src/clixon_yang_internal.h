@@ -67,7 +67,7 @@ struct yang_stmt{
     int                ys_len;       /* Number of children */
     struct yang_stmt **ys_stmt;      /* Vector of children statement pointers */
     struct yang_stmt  *ys_parent;    /* Backpointer to parent: yang-stmt or yang-spec */
-    enum rfc_6020      ys_keyword;   /* See clicon_yang_parse.tab.h */
+    enum rfc_6020      ys_keyword;   /*  */
 
     char              *ys_argument;  /* String / argument depending on keyword */   
     uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */

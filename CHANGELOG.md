@@ -54,11 +54,19 @@ Planned: January, 2022
       * `@datamodelstate` translated to `@basemodel, @remove:leafvar`
     * Note: while @datamodel etc are backward compatible, the autocli redesign is NOT backward compatible
       * see API changes
-
+  * Moved hide extensions from `clixon-lib` to `clixon-autocli`
+    
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
+* New `clixon-lib@2021-12-05.yang` revision
+  * Extension `autocli-op` obsoleted and no longer supported
+  * You need to change to use clixon-autocli `hide`and `hide-show` instead.
+  * Translate as follows:
+    * `cl:autocli-op hide` -> `autocli:hide`
+    * `cl:autocli-op hide-database` -> `autocli:hide-show`
+    * `cl:autocli-op hide-database-auto-completion` -> `autocli:hide; autocli:hide-show`
 * New `clixon-config@2021-12-05.yang` revision
   * Imported (as a sub-spec):  clixon-clispec.yang
   * Removed obsolete options:

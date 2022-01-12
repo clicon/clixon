@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Tests for using autocli extension defined in clixon-lib
+# Tests for using autocli hide extension
 # This is both a test of yang extensions and autocli
-# The extension is autocli-op and can take the value "hide" (maybe more)
 # Try both inline and augmented mode
 # @see https://clixon-docs.readthedocs.io/en/latest/misc.html#extensions
 # Magic line must be first in script (see README.md)
@@ -74,12 +73,12 @@ cat <<EOF > $fyang
 module example {
   namespace "urn:example:clixon";
   prefix ex;
-  import clixon-lib{
-      prefix cl;
+  import clixon-autocli{
+      prefix autocli;
   }
-
   grouping pg {
-      cl:autocli-op hide; /* This is the extension */
+      autocli:hide;
+      autocli:hide-show;
       leaf value{
         description "a value";
         type string;
@@ -111,12 +110,6 @@ cat <<EOF > $fyang2
 module example-augment {
    namespace "urn:example:augment";
    prefix aug;
-   import example{
-      prefix ex;
-   }
-   import clixon-lib{
-      prefix cl;
-   }
 }
 EOF
 
@@ -145,8 +138,7 @@ set table parameter x
 show config xml
 EOF
     new "set table parameter hidden"
-    expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "set table parameter x" "<table xmlns=\"urn:example:clixon\"><parameter><name>x</name></parameter></table>" 
-
+    expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "set table parameter x" "<table xmlns=\"urn:example:clixon\"></table>" 
 }
 
 function testvalue()
@@ -163,9 +155,8 @@ function testvalue()
 set table parameter x value 42
 show config xml
 EOF
-    new "set table parameter hidden leaf"
-    expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value>42</value></parameter></table>"
-
+    new "set table parameter hidden leaf2"
+    expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<table xmlns=\"urn:example:clixon\"><parameter><name>x</name></parameter></table>"
 }
 
 # INLINE MODE
@@ -176,33 +167,34 @@ testparam
 # Second annotate /table/parameter/value
 cat <<EOF > $fyang
 module example {
-  namespace "urn:example:clixon";
-  prefix ex;
-  import clixon-lib{
-      prefix cl;
-  }
-  container table{
-    list parameter{
-      key name;
-      leaf name{
-        type string;
-      }
-      leaf value{
-        cl:autocli-op hide;  /* Here is the example */
-        description "a value";
-        type string;
-      }
-      list index{
-        key i;
-	leaf i{
-	  type string;
-	}
-	leaf iv{
-          type string;
-        }
-      }
-    }
-  }
+   namespace "urn:example:clixon";
+   prefix ex;
+   import clixon-autocli{
+      prefix autocli;
+   }
+   container table{
+     list parameter{
+       key name;
+       leaf name{
+         type string;
+       }
+       leaf value{
+        autocli:hide;
+        autocli:hide-show;
+         description "a value";
+         type string;
+       }
+       list index{
+         key i;
+	 leaf i{
+	   type string;
+	 }
+	 leaf iv{
+           type string;
+         }
+       }
+     }
+   }
 }
 EOF
 
@@ -247,15 +239,15 @@ module example-augment {
    import example{
       prefix ex;
    }
-   import clixon-lib{
-      prefix cl;
+   import clixon-autocli{
+      prefix autocli;
    }
    augment "/ex:table/ex:parameter" {
-      cl:autocli-op hide;
+      autocli:hide;
+      autocli:hide-show;
    }
 }
 EOF
-
 
 new "Test hidden parameter in table/param augment"
 testparam
@@ -269,11 +261,12 @@ module example-augment {
    import example{
       prefix ex;
    }
-   import clixon-lib{
-      prefix cl;
+   import clixon-autocli{
+      prefix autocli;
    }
    augment "/ex:table/ex:parameter/ex:value" {
-      cl:autocli-op hide;
+      autocli:hide;
+      autocli:hide-show;
    }
 }
 EOF
@@ -292,7 +285,6 @@ module example {
   import example-augment{
     prefix aug;
   }
-
   container table{
     list parameter{
       key name;
@@ -310,11 +302,12 @@ cat <<EOF > $fyang2
 module example-augment {
    namespace "urn:example:augment";
    prefix aug;
-   import clixon-lib{
-      prefix cl;
+   import clixon-autocli{
+      prefix autocli;
    }
-  grouping pg {
-      cl:autocli-op hide; /* This is the extension */
+   grouping pg {
+      autocli:hide;
+      autocli:hide-show;
       leaf value{
         description "a value";
         type string;

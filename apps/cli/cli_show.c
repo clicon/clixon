@@ -1038,9 +1038,9 @@ xml2cli(clicon_handle    h,
     yang_stmt *ys;
     int        match;
     char      *body;
-    char      *opext = NULL;
     int        compress = 0;
     autocli_listkw_t listkw;
+    int           exist = 0;
 
     if (autocli_list_keyword(h, &listkw) < 0)
 	goto done;
@@ -1048,13 +1048,10 @@ xml2cli(clicon_handle    h,
 	goto ok;
     if ((ys = xml_spec(xn)) == NULL)
 	goto ok;
-    /* Look for autocli-op defined in clixon-lib.yang */
-    if (yang_extension_value(xml_spec(xn), "autocli-op", CLIXON_LIB_NS, NULL, &opext) < 0) {
+    if (yang_extension_value(ys, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+	goto done;
+    if (exist)
 	goto ok;
-    }
-    if ((opext != NULL) && ((strcmp(opext, "hide-database") == 0) || (strcmp(opext, "hide-database-auto-completion") == 0))){
-	goto ok;
-    }
     /* If leaf/leaf-list or presence container, then print line */
     if (yang_keyword_get(ys) == Y_LEAF ||
 	yang_keyword_get(ys) == Y_LEAF_LIST){

@@ -608,7 +608,6 @@ clicon_parse(clicon_handle  h,
 		clicon_err_reset();
 		if ((ret = cligen_eval(ch, match_obj, cvv, callbacks)) < 0) 
 		    cli_handler_err(stdout);
-		
 	    }
 	    else
 		ret = 0;
