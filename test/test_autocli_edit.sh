@@ -147,6 +147,15 @@ expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table/par
 
 cat <<EOF > $fin
 edit table
+edit parameter
+edit a
+show config xml
+EOF
+new "edit table; edit parameter; edit a; show"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<name>a</name><value>42</value>" --not-- '<table xmlns="urn:example:clixon">' "<parameter>"
+
+cat <<EOF > $fin
+edit table
 edit parameter a
 show config xml
 EOF

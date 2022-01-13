@@ -71,9 +71,6 @@ CLICON_PROMPT="%U@%H %W> ";
 CLICON_PLUGIN="example_cli";
 
 # Autocli syntax tree operations
-edit @datamodelshow, cli_auto_edit("basemodel");
-up, cli_auto_up("basemodel");
-top, cli_auto_top("basemodel");
 set @datamodel, cli_auto_set();
 merge @datamodel, cli_auto_merge();
 create @datamodel, cli_auto_create();

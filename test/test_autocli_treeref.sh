@@ -117,8 +117,6 @@ show {
 }
 
 auto {
-   edit @datamodelshow, cli_auto_edit("basemodel");
-   top, cli_auto_top("basemodel");
    set @datamodel, cli_auto_set();
    show, cli_auto_show("datamodel", "candidate", "text", true, false);
 }
@@ -194,8 +192,7 @@ expectpart "$(echo "show $top config parameter ?" | $clixon_cli -f $cfg 2> /dev/
 new "Show $top config parameter <name>"
 expectpart "$(echo "show $top config parameter a ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 value '<cr>' --not-- '<value>'
 
-# Have not succeeded with this, and I am not sure it is necessary?
-# Ie to do "show leaf", but not "show leaf <value>"
+# Special mode, to do "show leaf", but not "show leaf <value>"
 # <cr> is enabled but no value on leafs
 new "Show $top config parameter <name> value"
 expectpart "$(echo "show $top config parameter a value ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 '<cr>' --not-- '<value>'

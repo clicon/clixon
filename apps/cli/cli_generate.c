@@ -135,11 +135,11 @@ cli_expand_var_generate(clicon_handle h,
 {
     int   retval = -1;
     char *api_path_fmt = NULL;
-    int  exist = 0;
+    int  hideext = 0;
 
-    if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+    if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &hideext, NULL) < 0)
 	goto done;
-    if (exist) {
+    if (hideext) {
 	retval = 1;
 	goto done;
     }
@@ -669,7 +669,6 @@ yang2cli_var(clicon_handle h,
 		      &options, &cvv, patterns, NULL, &fraction_digits) < 0)
 	goto done;
     restype = yang_argument_get(yrestype);
-
     if (strcmp(restype, "empty") == 0)
 	goto ok;
     if (clicon_type2cv(origtype, restype, yreferred, &cvtype) < 0)
@@ -757,14 +756,14 @@ yang2cli_leaf(clicon_handle h,
 	      int 	    key_leaf,
 	      cbuf         *cb)
 {
-    yang_stmt *yd;  /* description */
-    int        retval = -1;
-    char      *helptext = NULL;
-    char      *s;
-
-    int        extralevel = 0;
+    yang_stmt       *yd;  /* description */
+    int              retval = -1;
+    char            *helptext = NULL;
+    char            *s;
     autocli_listkw_t listkw;
-    int        exist = 0;
+    int              hideext = 0;
+    int              extralevel = 0;
+    yang_stmt       *yrestype; /* resolved type */
 
     /* description */
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
@@ -776,6 +775,13 @@ yang2cli_leaf(clicon_handle h,
 	    *s = '\0';
     }
     cprintf(cb, "%*s", level*3, "");
+    extralevel = !key_leaf;
+    /* Called a second time in yang2cli_var, room for optimization */
+    if (yang_type_get(ys, NULL, &yrestype, 
+		      NULL, NULL, NULL, NULL, NULL) < 0)
+	goto done;
+    if (strcmp(yang_argument_get(yrestype), "empty") == 0 && extralevel)
+	extralevel = 0;
     if (autocli_list_keyword(h, &listkw) < 0)
 	goto done;
     if (listkw == AUTOCLI_LISTKW_ALL ||
@@ -783,16 +789,30 @@ yang2cli_leaf(clicon_handle h,
 	cprintf(cb, "%s", yang_argument_get(ys));
 	yang2cli_helptext(cb, helptext);
 	cprintf(cb, " ");
-	if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+	if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &hideext, NULL) < 0)
 	    goto done;
-	if (exist){
-	    cprintf(cb, ", hide{");
-	    extralevel = 1;
+	if (hideext)
+	    cprintf(cb, ", hide"); /* XXX ensure always { */
+	if (extralevel){
+	    if (callback){
+		if (cli_callback_generate(h, ys, cb) < 0)
+		    goto done;
+		cprintf(cb, ";\n");
+	    }
+	    cprintf(cb, "{"); /* termleaf label + extra level around leaf */
 	}
 	if (yang2cli_var(h, ys, ys, helptext, cb) < 0)
 	    goto done;
     }
     else{
+	if (extralevel){
+	    if (callback){
+		if (cli_callback_generate(h, ys, cb) < 0)
+		    goto done;
+		cprintf(cb, ";\n");
+	    }
+	    cprintf(cb, "{"); /* termleaf label */
+	}
 	if (yang2cli_var(h, ys, ys, helptext, cb) < 0)
 	    goto done;
     }
@@ -828,7 +848,6 @@ yang2cli_container(clicon_handle h,
     char         *helptext = NULL;
     char         *s;
     int           compress = 0;
-    int           hide_oc = 0;
     yang_stmt    *ymod = NULL;
     int           exist = 0;
     
@@ -840,7 +859,7 @@ yang2cli_container(clicon_handle h,
      */
     if (autocli_compress(h, ys, &compress) < 0)
 	goto done;
-    if (!compress && hide_oc == 0){
+    if (!compress){
 	cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
 	if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
 	    if ((helptext = strdup(yang_argument_get(yd))) == NULL){
@@ -865,7 +884,7 @@ yang2cli_container(clicon_handle h,
     while ((yc = yn_each(ys, yc)) != NULL) 
 	if (yang2cli_stmt(h, yc, level+1, cb) < 0)
 	    goto done;
-    if (!compress && hide_oc == 0)
+    if (!compress)
 	cprintf(cb, "%*s}\n", level*3, "");
     retval = 0;
  done:
@@ -1097,7 +1116,6 @@ cvec_add_name(cvec *cvv,
 
 /*! Recursive post processing of generated cligen parsetree: populate with co_cvec labels
  *
-
  * This function adds labels to the generated CLIgen tree using YANG as follows:
  * These labels can be filtered when applying them with the @treeref, @add:<label> syntax.
  * (terminal entry means eg "a ;" where ; is an "empty" child of "a" representing a terminal)
@@ -1125,7 +1143,6 @@ cvec_add_name(cvec *cvv,
  *    for y in modules
  *       for co in top-level commands
  *          if yc = find(y,co)=NULL continue; <----
- * Also adds an empty node under LIST which is a kludge, it cannot be expressed in the CLIgen syntax
  */
 static int
 yang2cli_post(clicon_handle h,
@@ -1187,18 +1204,6 @@ yang2cli_post(clicon_handle h,
 	switch (yang_keyword_get(yc)){
 	case Y_LEAF:
 	case Y_LEAF_LIST:
-	    /* add empty show 
-	       regular should have ; on last
-	       other ; should be marked as ;
-	       Only last key */
-	    if (co->co_type == CO_COMMAND && !co_terminal(co, NULL)){
-		cg_obj          *coe; 
-		if ((coe = co_new(NULL, co)) == NULL) { 
-		    goto done;
-		}
-		coe->co_type = CO_EMPTY;
-		coe = co_insert(co_pt_get(co), coe);
-	    }
 	    /* XXX move to next recursion level ? */
 	    if (!yciskey)
 		for (j = 0; j<pt_len_get(co_pt_get(co)); j++){

@@ -316,7 +316,7 @@ cli_xml2txt(cxobj            *xn,
 /*! Enter a CLI edit mode
  * @param[in]  h    CLICON handle
  * @param[in]  cvv  Vector of variables from CLIgen command-line
- * @param[in]  argv Vector oif user-supplied keywords
+ * @param[in]  argv Vector of user-supplied keywords
  * Format of argv:
  *   <api_path_fmt> Generated API PATH (This is where we are in the tree)
  *   <treename>     Name of generated cligen parse-tree, eg "datamodel"

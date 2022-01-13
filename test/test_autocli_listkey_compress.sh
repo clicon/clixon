@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 # Tests for using the auto cli.
 # In particular setting a config, displaying as cli commands and reconfigure it
@@ -24,8 +23,6 @@ if [ -d $clidir ]; then
 else
     mkdir $clidir
 fi
-
-# Use yang in example
 
 if [ ! -d "$OPENCONFIG" ]; then
 #    err "Hmm Openconfig dir does not seem to exist, try git clone https://github.com/openconfig/public?"
