@@ -65,7 +65,7 @@ EOF
 
 cat <<EOF > $fspec
 CLICON_MODE="example";
-CLICON_PROMPT="%U@%H %W> ";
+CLICON_PROMPT="%U@%H %w> ";
 CLICON_PLUGIN="example_cli";
 
 # Autocli syntax tree operations

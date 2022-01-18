@@ -308,7 +308,7 @@ cli_load_syntax_file(clicon_handle h,
     fclose(f);
     /* Get CLICON specific global variables:
      *  CLICON_MODE: which mode(s) this syntax applies to
-     *  CLICON_PROMPT: Cli prompt in this mode
+     *  CLICON_PROMPT: Cli prompt in this mode (see cli_prompt_get)
      *  CLICON_PLUGIN: Name of C API plugin
      * Note: the base case is that it is:
      *   (1) a single mode or 
@@ -677,7 +677,25 @@ cli_prompt_get(clicon_handle h,
 		    strcpy(tty, "notty");
 		cprintf(cb, "%s", tty);
 		break;
-	    case 'W': /* working edit path */
+	    case 'W': /* Last element of working path */
+		if (clicon_data_get(h, "cli-edit-mode", &path) == 0 &&
+		    strlen(path)){
+		    int i;
+
+		    for (i=strlen(path)-1; i>=0; i--)
+			if (path[i] == '/' || path[i] == ':')
+			    /* see yang2api_path_fmt_1() why occasional trailing / */
+			    if (i < strlen(path)-1)
+				break;
+		    if (i >= 0)
+			cprintf(cb, "%s", &path[i+1]);
+		    else
+			cprintf(cb, "%s", path);
+		}
+		else
+		    cprintf(cb, "/");
+		break;
+	    case 'w': /* Full Working edit path */ 
 		if (clicon_data_get(h, "cli-edit-mode", &path) == 0 &&
 		    strlen(path))
 		    cprintf(cb, "%s", path);

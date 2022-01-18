@@ -64,6 +64,9 @@ Planned: January, 2022
 
 Users may have to change how they access the system
 
+* CLI-spec variable `CLICON_PROMPT` `%W` changed semantics due to long prompt
+  * From "Full Working edit path" to "Last element of working path"
+  * New `%w` has "Full working path"
 * Auto-cli edit-modes changed
   * Edit modes only for list and container nodes
   * Change cli spec entry to `edit @datamodelmode, cli_auto_edit("basemodel");`
