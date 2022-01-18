@@ -3,7 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
-  Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+  Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
   Copyright (C) 2021 Siklu Ltd (YANG patch code)
 
   This file is part of CLIXON.

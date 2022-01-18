@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Obtained from VPP - https://wiki.fd.io/view/VPP
 #
