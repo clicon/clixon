@@ -160,7 +160,7 @@ EOF
 
 # Set config for CLI
 # 1. listkw   - either none, vars, all
-# 2 compress -   surrounding container entities are removed from list nodes
+# 2. compress -   surrounding container entities are removed from list nodes
 # 3. openconfig - config and state containers are "compressed" out of the schema in openconfig modules
 function setconfig()
 {
@@ -245,20 +245,14 @@ fi
 new "wait backend"
 wait_backend
 
-# Simple run trying setting a config,
-# then deleting it, and reloading it
-# 1. mode - either VARS Keywords on non-key variables: a <x> y <y> or
-#                  ALL  Keywords on all variables: a x <x> y <y>
-#                  HIDE
-#                  OC_COMPRESS
-# 2. listkw   - either none, vars, all
-# 3. compress -   surrounding container entities are removed from list nodes
-# 4. openconfig - config and state containers are "compressed" out of the schema in openconfig modules
+# Simple run trying setting a config, then deleting it, and reloading it
+# Run setconfig first 
+# 1. listkw   - either none, vars, all
+# 2. compress -   surrounding container entities are removed from list nodes
 function testrun()
 {
-    mode=$1
-    listkw=$2
-    compress=$3
+    listkw=$1
+    compress=$2
 
     if [ $listkw = kw-all ]; then
 	name=" name"
@@ -329,25 +323,25 @@ new "Config: Keywords on non-keys"
 setconfig kw-nokey false false
 
 new "Keywords on non-keys"
-testrun VARS kw-nokey false
+testrun kw-nokey false
 
 new "Config: Keywords on all"
 setconfig kw-all false false
 
 new "Keywords on all"
-testrun ALL kw-all false
+testrun kw-all false
 
 new "Config: Keywords on non-keys, container compress"
 setconfig kw-nokey true false
 
 new "Keywords on non-keys, container compress"
-testrun HIDE kw-nokey true
+testrun kw-nokey true
 
 new "Config:Keywords on non-keys, container and openconfig compress"
 setconfig kw-nokey true true
 
 new "Keywords on non-keys, container and openconfig compress"
-testrun OC_COMPRESS kw-nokey true
+testrun kw-nokey true
 
 new "Config:default"
 setconfig kw-nokey false false

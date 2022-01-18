@@ -40,7 +40,7 @@ Planned: January, 2022
 * Changed auto-cli design
   * See [autocli documentation](https://clixon-docs.readthedocs.io/en/latest/cli.html#autocli)
   * Added new YANG clixon-autocli.yang, placing autocli options there
-    * Default rules for module exclusion, list-keywords, completion, treeref-state
+    * Default rules for module exclusion, list-keywords, completion, edit-modes, treeref-state
     * Specialized rules for module exclusion and compression
   * Replaced separate autocli trees with a single `@basemodel` tree by using filter labels
     * Filter labels are added to the fill tree and then filtered out using `@remove:<label>`
@@ -54,15 +54,23 @@ Planned: January, 2022
       * `@datamodelstate` translated to `@basemodel, @remove:leafvar`
     * Note: while @datamodel etc are backward compatible, the autocli redesign is NOT backward compatible
       * see API changes
+  * New automatic edit-mode design
+     * Control which modes to use with `edit-mode-default`
+       * Default is create edit-mode for all containers and list entries
+     * New edit-mode tree: @datamodelmode
   * Moved hide extensions from `clixon-lib` to `clixon-autocli`
     
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
+* Auto-cli edit-modes changed
+  * Edit modes only for list and container nodes
+  * Change cli spec entry to `edit @datamodelmode, cli_auto_edit("basemodel");`
+  * This is part of new clixon-autocli.yang feature
 * New `clixon-lib@2021-12-05.yang` revision
   * Extension `autocli-op` obsoleted and no longer supported
-  * You need to change to use clixon-autocli `hide`and `hide-show` instead.
+  * You need to change to use clixon-autocli `hide` and `hide-show` instead.
   * Translate as follows:
     * `cl:autocli-op hide` -> `autocli:hide`
     * `cl:autocli-op hide-database` -> `autocli:hide-show`
@@ -90,7 +98,6 @@ Users may have to change how they access the system
   * Remove dependency of IETF YANGs on most tests
   * Remove dependnency of example/main in most tests, instead make local copy of example yang
 * New `clixon-dev` development container (Work-in-progress)
-* New `clixon-clispec.yang` for controlling auto-cli (Work-in-progress)
 * Changed typo `configure --with-yang-standard-installdir` to `configure --with-yang-standard-dir`
 
 ### Corrected Bugs

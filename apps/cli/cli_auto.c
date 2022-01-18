@@ -36,6 +36,7 @@
  * The code uses two variables saved in the clixon handle and accessed via clicon_data_cvec_get,set:
  *   cli-edit-mode - This is the api-path of the current cli mode in the loaded yang context
  *   cli-edit-cvv  - These are the assigned cligen list of variables with values at the edit-mode
+ *   cli-edit-filter - Label filters for this mode
  */
 
 #ifdef HAVE_CONFIG_H
@@ -93,7 +94,7 @@ co2apipath(cg_obj *co)
 	return NULL;
     if ((cv = cvec_i(cvv, 0)) == NULL)
 	return NULL;
-    return cv_string_get(cv);;
+    return cv_string_get(cv);
 }
 
 /* Append to cvv1 to cvv0
@@ -381,6 +382,15 @@ cli_auto_edit(clicon_handle h,
 	goto done;
     if (clicon_data_cvec_set(h, "cli-edit-cvv", cvv2) < 0)
 	goto done;
+    if (co->co_filter){
+	cvec *cvv3;
+	if ((cvv3 = cvec_dup(co->co_filter)) == NULL){
+	    clicon_err(OE_YANG, errno, "cvec_dup");
+	    goto done;
+	}
+	if (clicon_data_cvec_set(h, "cli-edit-filter", cvv3) < 0)
+	    goto done;
+    }
     retval = 0;
  done:
     if (api_path)
@@ -414,6 +424,7 @@ cli_auto_up(clicon_handle h,
     int      i;
     int      j;
     size_t   len;
+    cvec    *cvv_filter = NULL;
     
     if (cvec_len(argv) != 1){
 	clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(<treename>)", __FUNCTION__);
@@ -427,18 +438,29 @@ cli_auto_up(clicon_handle h,
     }
     if ((co0 = cligen_ph_workpoint_get(ph)) == NULL)
 	goto ok;
-    /* Find parent that has a callback */
+    cvv_filter = clicon_data_cvec_get(h, "cli-edit-filter");
+    /* Find parent that has a callback, XXX has edit */
     for (co1 = co_up(co0); co1; co1 = co_up(co1)){
 	cg_obj *cot = NULL;
 	if (co_terminal(co1, &cot)){
-	    if (cot == NULL || co_isfilter(cot->co_cvec, "termlist") == 0)
-		break; /* found */
+	    if (cot == NULL)
+		break; /* found top */
+	    if (cvv_filter){
+		cv = NULL;
+		while ((cv = cvec_each(cot->co_cvec, cv)) != NULL){
+		    if (co_isfilter(cvv_filter, cv_name_get(cv)))
+			break;
+		}
+		if (cv == NULL)
+		    break; /* no filter match */
+	    }
 	}
     }
     cligen_ph_workpoint_set(ph, co1);
     if (co1 == NULL){
 	clicon_data_set(h, "cli-edit-mode", "");
 	clicon_data_cvec_del(h, "cli-edit-cvv");
+	clicon_data_cvec_del(h, "cli-edit-filter");
 	goto ok;
     }
     /* get before and after api-path-fmt (as generated from yang) */
@@ -498,6 +520,7 @@ cli_auto_top(clicon_handle h,
     /* Store this as edit-mode */
     clicon_data_set(h, "cli-edit-mode", "");
     clicon_data_cvec_del(h, "cli-edit-cvv");
+    clicon_data_cvec_del(h, "cli-edit-filter");
     retval = 0;
  done:
     return retval;
@@ -801,7 +824,7 @@ cli_auto_findpt(cg_obj *co,
     return 0;
 }
 
-/*! Delete datastore xml
+/*! Enter edit mode
  * @param[in]  h    Clicon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
  * @param[in]  argv Vector of args to function in command. 

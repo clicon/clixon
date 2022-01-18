@@ -178,6 +178,7 @@ cli_terminate(clicon_handle h)
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
     clicon_data_cvec_del(h, "cli-edit-cvv");;
+    clicon_data_cvec_del(h, "cli-edit-filter");;
     xpath_optimize_exit();
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
@@ -245,11 +246,9 @@ cli_interactive(clicon_handle h)
 
 /*! Generate autocli, ie if enabled, generate clispec from YANG and add to cligen parse-trees
  *
- * Generate clispec (datamodel) from YANG dataspec and add to the set of cligen trees 
- * (as a separate mode)
- * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the "tree reference"
- * syntax, ie @datamodel
- * Also (if enabled) generate a second "state" tree called @datamodelstate
+ * Generate clispec (basemodel) from YANG dataspec and add to the set of cligen trees 
+ * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the 
+ * "tree reference" syntax.
  *
  * @param[in]  h        Clixon handle
  * @param[in]  printgen Print CLI syntax generated from dbspec
@@ -265,7 +264,9 @@ autocli_start(clicon_handle h,
     pt_head      *ph;
     parse_tree   *pt = NULL; 
     int           enable = 0;
-	
+    cbuf         *cb = NULL;
+    int           mode = 0;
+    
     clicon_debug(1, "%s", __FUNCTION__);
     /* There is no single "enable-autocli" flag,
      * but set 
@@ -284,10 +285,9 @@ autocli_start(clicon_handle h,
     if (yang2cli_init(h) < 0)
 	goto done;
     yspec = clicon_dbspec_yang(h);
-    /* The actual generating call frm yang to clispec for the complete yang spec */
+    /* The actual generating call from yang to clispec for the complete yang spec */
     if (yang2cli_yspec(h, yspec, AUTOCLI_TREENAME, printgen) < 0)
 	goto done;
-
     /* Create backward compatible tree: @datamodel */
     if ((ph = cligen_ph_add(cli_cligen(h), "datamodel")) == NULL)
 	goto done;
@@ -295,7 +295,9 @@ autocli_start(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "pt_new");
 	goto done;
     }
-    if (cligen_parse_str(cli_cligen(h), "@basemodel, @remove:termfirstkeys, @remove:termlist, @remove:termleaf, @remove:nonconfig;", "datamodel", pt, NULL) < 0)
+    if (cligen_parse_str(cli_cligen(h),
+			 "@basemodel, @remove:act-prekey, @remove:act-list, @remove:act-leafconst, @remove:ac-state;",
+			 "datamodel", pt, NULL) < 0)
 	goto done;
     if (cligen_ph_parsetree_set(ph, pt) < 0)
 	goto done;
@@ -307,7 +309,9 @@ autocli_start(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "pt_new");
 	goto done;
     }
-    if (cligen_parse_str(cli_cligen(h), "@basemodel, @remove:leafvar, @remove:nonconfig;", "datamodelshow", pt, NULL) < 0)
+    if (cligen_parse_str(cli_cligen(h),
+			 "@basemodel, @remove:act-leafvar, @remove:ac-state;",
+			 "datamodelshow", pt, NULL) < 0)
 	goto done;
     if (cligen_ph_parsetree_set(ph, pt) < 0)
 	goto done;
@@ -319,13 +323,57 @@ autocli_start(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "pt_new");
 	goto done;
     }
-    if (cligen_parse_str(cli_cligen(h), "@basemodel, @remove:leafvar;", "datamodelstate", pt, NULL) < 0)
+    if (cligen_parse_str(cli_cligen(h),
+			 "@basemodel, @remove:act-leafvar;",
+			 "datamodelstate", pt, NULL) < 0)
 	goto done;
     if (cligen_ph_parsetree_set(ph, pt) < 0)
 	goto done;
+
+    /* Create new tree: @datamodelmode */
+    if ((ph = cligen_ph_add(cli_cligen(h), "datamodelmode")) == NULL)
+	goto done;
+    if ((pt = pt_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "pt_new");
+	goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "@basemodel, @remove:act-prekey, @remove:act-leafconst, @remove:ac-state");
+    /* Check if container and list are allowed edit modes */
+    mode = 0;
+    if (autocli_edit_mode(h, "container", &mode) < 0)
+	goto done;
+    if (mode == 0)
+	cprintf(cb, ", @remove:act-container");
+    mode = 0;
+    if (autocli_edit_mode(h, "listall", &mode) < 0)
+	goto done;
+    if (mode == 0)
+	cprintf(cb, ", @remove:act-list");
+    mode = 0;
+    if (autocli_edit_mode(h, "list", &mode) < 0)
+	goto done;
+    if (mode == 0)
+	cprintf(cb, ", @remove:act-lastkey");
+    mode = 0;
+    if (autocli_edit_mode(h, "leaf", &mode) < 0)
+	goto done;
+    if (mode == 0)
+	cprintf(cb, ", @remove:ac-leaf");
+    cprintf(cb, ";");
+    if (cligen_parse_str(cli_cligen(h), cbuf_get(cb), "datamodelmode", pt, NULL) < 0)
+	goto done;
+    if (cligen_ph_parsetree_set(ph, pt) < 0)
+	goto done;
+
  ok:
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
@@ -728,6 +776,7 @@ main(int    argc,
 	if (evalresult < 0)
 	    goto done;
     }
+
 
     /* Go into event-loop unless -1 command-line */
     if (!once){

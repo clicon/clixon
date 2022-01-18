@@ -460,3 +460,53 @@ autocli_treeref_state(clicon_handle h,
     return retval;
 }
 
+/*! Return default autocli edit-mode setting
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  keyw YANG keyword
+ * @param[out] flag If 0 keyw is not a part of default edit-mode, if 1 it is.
+ * @retval    -1    Error
+ * @retval     0    OK, see result in keyw
+ * @note keyw is a sub/superset of RFC 6020,  see clixon-autocli.yang on which are defined
+ */
+int
+autocli_edit_mode(clicon_handle h,
+		  char         *keyw,
+		  int          *flag)
+{
+    int     retval = -1;
+    char   *str;
+    cxobj  *xautocli;
+    char  **vec = NULL;
+    int     nvec;
+    char   *v;
+    int     i;
+    
+    if (flag == NULL){
+	clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+	goto done;
+    }
+    *flag = 0;
+    if ((xautocli = clicon_conf_autocli(h)) == NULL){
+	clicon_err(OE_YANG, 0, "No clixon-autocli");
+	goto done;
+    }
+    if ((str = xml_find_body(xautocli, "edit-mode-default")) == NULL){
+	clicon_err(OE_XML, EINVAL, "No edit-mode-default rule");
+	goto done;
+    }
+    if ((vec = clicon_strsep(str, " ", &nvec)) == NULL)
+	goto done;
+    for (i=0; i<nvec; i++){
+	v = vec[i];
+	if (strcmp(v, keyw) == 0){
+	    *flag = 1;
+	    break;
+	}
+    }
+    retval = 0; 
+ done:
+    if (vec)
+	free(vec);
+    return retval;
+}

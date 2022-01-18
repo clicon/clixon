@@ -51,10 +51,8 @@
  * The @datamodel tree can be used using the CLIgen "tree reference" functionality as described in
  * the cligen tutorial Secion 2.7.
  * The tree can be modified by removing labels.
- * By default "nonconfig" and "show" labels are by default removed.
+ * By default "ac-state" are removed.
  * This means that using @datamodel without modifiers is a "clean" config tree.
- *   "nonconfig" and "show" can be removed by using, eg
- * cmd @basemodel, @remove:show, @remove:nonconfig, callback();
 
  This is an example yang module:
 module m {
@@ -92,7 +90,6 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 #include <fcntl.h>
 #include <syslog.h>
 #include <signal.h>
-#include <assert.h>
 #include <sys/param.h>
 
 /* cligen */
@@ -135,11 +132,11 @@ cli_expand_var_generate(clicon_handle h,
 {
     int   retval = -1;
     char *api_path_fmt = NULL;
-    int  hideext = 0;
+    int  extvalue = 0;
 
-    if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &hideext, NULL) < 0)
+    if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
 	goto done;
-    if (hideext) {
+    if (extvalue) {
 	retval = 1;
 	goto done;
     }
@@ -741,12 +738,15 @@ yang2cli_var(clicon_handle h,
 }
 
 /*! Generate CLI code for Yang leaf statement
- * @param[in]  h     Clixon handle
- * @param[in]  ys    Yang statement
- * @param[in]  level Indentation level
+ * @param[in]  h          Clixon handle
+ * @param[in]  ys         Yang statement
+ * @param[in]  level      Indentation level
  * @param[in]  callback  If set, include a "; cli_set()" callback, otherwise not
- * @param[in]  key_leaf    Is leaf in a key in a list module
- * @param[out] cb  Buffer where cligen code is written
+ * @param[in]  key_leaf   0: ordinary leaf, 1:prekey, 2: lastkey
+ * @param[out] cb         Buffer where cligen code is written
+ * Some complexity in callback, key_leaf and extralevel logic.
+ * If extralevel -> add extra { } level 
+ *      + if callbacks add: cb();{}
  */
 static int
 yang2cli_leaf(clicon_handle h, 
@@ -775,17 +775,16 @@ yang2cli_leaf(clicon_handle h,
 	    *s = '\0';
     }
     cprintf(cb, "%*s", level*3, "");
-    extralevel = !key_leaf;
     /* Called a second time in yang2cli_var, room for optimization */
     if (yang_type_get(ys, NULL, &yrestype, 
 		      NULL, NULL, NULL, NULL, NULL) < 0)
 	goto done;
-    if (strcmp(yang_argument_get(yrestype), "empty") == 0 && extralevel)
-	extralevel = 0;
+    if (key_leaf == 0 && strcmp(yang_argument_get(yrestype), "empty") != 0)
+	extralevel = 1;
     if (autocli_list_keyword(h, &listkw) < 0)
 	goto done;
     if (listkw == AUTOCLI_LISTKW_ALL ||
-	(!key_leaf && listkw == AUTOCLI_LISTKW_NOKEY)){
+	(key_leaf==0 && listkw == AUTOCLI_LISTKW_NOKEY)){
 	cprintf(cb, "%s", yang_argument_get(ys));
 	yang2cli_helptext(cb, helptext);
 	cprintf(cb, " ");
@@ -797,6 +796,8 @@ yang2cli_leaf(clicon_handle h,
 	    if (callback){
 		if (cli_callback_generate(h, ys, cb) < 0)
 		    goto done;
+		cprintf(cb, ", ac-leaf");
+		cprintf(cb, ", act-leafconst");
 		cprintf(cb, ";\n");
 	    }
 	    cprintf(cb, "{"); /* termleaf label + extra level around leaf */
@@ -805,20 +806,26 @@ yang2cli_leaf(clicon_handle h,
 	    goto done;
     }
     else{
-	if (extralevel){
-	    if (callback){
-		if (cli_callback_generate(h, ys, cb) < 0)
-		    goto done;
-		cprintf(cb, ";\n");
-	    }
-	    cprintf(cb, "{"); /* termleaf label */
-	}
 	if (yang2cli_var(h, ys, ys, helptext, cb) < 0)
 	    goto done;
     }
     if (callback){
 	if (cli_callback_generate(h, ys, cb) < 0)
 	    goto done;
+	switch (key_leaf){
+	case 0:
+	    cprintf(cb, ", ac-leaf");
+	    cprintf(cb, ", act-leafvar");
+	    break;
+	case 1:
+	    cprintf(cb, ", ac-leaf");
+	    cprintf(cb, ", act-prekey");
+	    break;
+	case 2:
+	    /* Dont mark as leaf since it represents a (single) list entry */
+	    cprintf(cb, ", act-lastkey");
+	    break;
+	}
 	cprintf(cb, ";\n");
     }
     if (extralevel)
@@ -849,7 +856,7 @@ yang2cli_container(clicon_handle h,
     char         *s;
     int           compress = 0;
     yang_stmt    *ymod = NULL;
-    int           exist = 0;
+    int           extvalue = 0;
     
     if (ys_real_module(ys, &ymod) < 0)
 	goto done;
@@ -872,14 +879,24 @@ yang2cli_container(clicon_handle h,
 	}
 	if (cli_callback_generate(h, ys, cb) < 0)
 	    goto done;
-	if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+	if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
 	    goto done;
-	if (exist){
-	    cprintf(cb, ",hide");
+	if (extvalue)
+	    cprintf(cb, ", hide");
+#ifdef NYI /* This is for the mode extension, not yet supported */
+	{
+	    int           mode = 0;
+	    /* First see if extension mode, if not, check if default mode */
+	    if (yang_extension_value(ys, "mode", CLIXON_AUTOCLI_NS, &mode, NULL) < 0)
+		goto done;
+	    if (mode == 0 && autocli_edit_mode(h, Y_CONTAINER, &mode) < 0)
+		goto done;
+	    if (mode)
+		cprintf(cb, ", mode");
 	}
-	cprintf(cb, ";{\n");
+#endif	
+	cprintf(cb, ", act-container;{\n");
     }
-
     yc = NULL;
     while ((yc = yn_each(ys, yc)) != NULL) 
 	if (yang2cli_stmt(h, yc, level+1, cb) < 0)
@@ -892,6 +909,7 @@ yang2cli_container(clicon_handle h,
 	free(helptext);
     return retval;
 }
+
 
 /*! Generate CLI code for Yang list statement
  * @param[in]  h     Clixon handle
@@ -916,6 +934,7 @@ yang2cli_list(clicon_handle h,
     char         *s;
     int 	  last_key = 0;
     int           exist = 0;
+    int           keynr = 0;
 
     cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
@@ -947,18 +966,21 @@ yang2cli_list(clicon_handle h,
 	 * Note, only print callback on last statement
 	 */
 	last_key = cvec_next(cvk, cvi)?0:1;
-	if (last_key){
-	    if (cli_callback_generate(h, ys, cb) < 0)
-		goto done;
-	    cprintf(cb, ";\n");
-	    cprintf(cb, "{\n");
-	}
+	if (cli_callback_generate(h, ys, cb) < 0)
+	    goto done;
+	if (keynr == 0)
+	    cprintf(cb, ",act-list"); 
+	else
+	    cprintf(cb, ",act-prekey"); 
+	cprintf(cb, ";\n"); 
+	cprintf(cb, "{\n");
 	if (yang2cli_leaf(h, yleaf,
 			  level+1,
-			  last_key,
-			  1,         /* key_leaf */
+			  last_key,     /* callback */
+			  last_key?2:1, /* key_leaf */
 			  cb) < 0)
 	    goto done;
+	keynr++;
     }
     cprintf(cb, "{\n");
     yc = NULL;
@@ -978,7 +1000,8 @@ yang2cli_list(clicon_handle h,
 	    goto done;
     }
     cprintf(cb, "%*s}\n", level*3, "");
-    if (last_key) 
+    /* Close with } for each key */
+    while (keynr--) 
 	cprintf(cb, "%*s}\n", level*3, "");
     retval = 0;
  done:
@@ -1068,7 +1091,10 @@ yang2cli_stmt(clicon_handle h,
 	    break;
 	case Y_LEAF_LIST:
 	case Y_LEAF:
-	    if (yang2cli_leaf(h, ys, level, 1, 0, cb) < 0)
+	    if (yang2cli_leaf(h, ys, level,
+			      1, /* callback */
+			      0, /* keyleaf */
+			      cb) < 0)
 		goto done;
 	    break;
 	case Y_CASE:
@@ -1119,17 +1145,13 @@ cvec_add_name(cvec *cvv,
  * This function adds labels to the generated CLIgen tree using YANG as follows:
  * These labels can be filtered when applying them with the @treeref, @add:<label> syntax.
  * (terminal entry means eg "a ;" where ; is an "empty" child of "a" representing a terminal)
- * 1. Add "termfirstkeys" label on terminal entries of LIST keys, except last
- * 2. Add "termlist" label on terminal entries of LIST
- * 3. Add "termleaf" label on terminal entries of non-empty LEAF/LEAF_LISTs
- * 4. Add "leafvar" label on nodes which are children of non-key LEAFs, eg "a <a>" -> "a <a>,leaf"
- * 5. Add "nonconfig" label on nodes which have YANG "config false" as children
- * NYI 6. Add "config" label on nodes which have no config false children recursively
- *
- * Then, later, labels can be grouped into specific usages:
- * - config:    @remove:termfirstkeys,@remote:termlist,@remove:termleaf,@remove:nonconfig,
- * - show:      @remove:leafvar,@remove:nonconfig
- * - showstate: @remove:leafvar
+ * 1. Add "act-prekey" label on terminal entries of LIST keys, except last
+ * 2. Add "act-lastkey" label on terminal entries of last LIST keys, 
+ * 3. Add "act-list" label on terminal entries of LIST
+ * 4. Add "act-leafconst" label on terminal entries of non-empty LEAF/LEAF_LISTs
+ * 5. Add "act-leafvar" label on nodes which are children of non-key LEAFs, eg "a <a>" -> "a <a>,leaf"
+ * 6. Add "ac-state" label on nodes which has YANG "config false" as child
+ * 7. Add "ac-config" label on nodes which have no config false children recursively
  *
  * @param[in]  h   Clixon handle
  * @param[in]  cop Parent cliegn object (if any)
@@ -1139,10 +1161,12 @@ cvec_add_name(cvec *cvv,
  * @param[in]  ykey Special case, If y is list, yc can be a leaf key
  * @retval     0   OK
  * @retval    -1   Error
- * @note Top-level lookup is O(n^2) since:
- *    for y in modules
- *       for co in top-level commands
- *          if yc = find(y,co)=NULL continue; <----
+ * @note A labels set as : "A, label;" is set on "A" not on ";", there is no way to set the
+ *       label on the empty terminal ";". Therefore this function moves them all from the
+ *       parent to the ";" child.
+ * XXX: the above kludge can be fixed by: 
+ *   (1) change cligen syntax
+ *   (2) rewrite yang2cli code to create pt directly instead of via a cbuf.
  */
 static int
 yang2cli_post(clicon_handle h,
@@ -1150,17 +1174,17 @@ yang2cli_post(clicon_handle h,
 	      parse_tree   *pt,
 	      int           i0,
 	      yang_stmt    *yp,
-	      yang_stmt    *ykey)
+	      yang_stmt    *ykey,
+	      int          *configp)
 {
     int           retval = -1;
     cg_obj       *co;
     int           i;
-    int           j;
     yang_stmt    *yc;
     int           yciskey;
-    int           ycislastkey;
     enum rfc_6020 ypkeyword;
-    cg_obj       *coj;
+    int           config;
+    int           state = 0;
 
     ypkeyword = yang_keyword_get(yp);
     for (i = i0; i<pt_len_get(pt); i++){
@@ -1169,68 +1193,87 @@ yang2cli_post(clicon_handle h,
 	    goto done;
 	}
 	if (co->co_type == CO_EMPTY){
-	    if (ypkeyword == Y_LIST){
-		if (ykey){
-		    /* key, list has a <cr> which is marked as "show" */
-		    ycislastkey = 0;
-		    yang_key_match(yp, yang_argument_get(ykey), &ycislastkey);
-		    if (!ycislastkey ||	(cop && cop->co_type==CO_COMMAND))
-			if ((co->co_cvec = cvec_add_name(co->co_cvec, "termfirstkeys")) == NULL)
-			    goto done;
-		}
-		else{
-		    /* key, list has a <cr> which is marked as "show" */
-		    if ((co->co_cvec = cvec_add_name(co->co_cvec, "termlist")) == NULL)
+	    char   *name;
+	    cg_var *cv = NULL;
+	    int     j=0;
+	    
+	    cv = NULL;
+	    while ((cv = cvec_each(cop->co_cvec, cv)) != NULL){
+		name = cv_name_get(cv);
+		if (strncmp(name, "act-", 4) == 0){
+		    if ((co->co_cvec = cvec_add_name(co->co_cvec, name)) == NULL)
 			goto done;
+		    cv_reset(cv);
+		    cvec_del_i(cop->co_cvec, j);
+		    if (cvec_len(cop->co_cvec) == 0){
+			cvec_free(cop->co_cvec);
+			cop->co_cvec = NULL;
+		    }
+		    cv = NULL; // trigger rerun
+		    j = 0;
 		}
-	    }
-	    else if (ypkeyword == Y_LEAF || ypkeyword == Y_LEAF_LIST){
-		char *origtype = NULL;
-		yang_stmt *yrestype = NULL;
-		if (yang_type_get(yp, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
-		    goto done;
-		if (origtype && strcmp(origtype,"empty") != 0)
-		    if ((co->co_cvec = cvec_add_name(co->co_cvec, "termleaf")) == NULL)
-			goto done;
-		if (origtype)
-		    free(origtype);
+		j++;
 	    }
 	    continue;
-	} /* empty */
-	/* note This is quadratic, ie highly inefficient */
-	if ((yc = yang_find_datanode(yp, co->co_command)) == NULL)
- 	    continue;
-	yciskey = ypkeyword == Y_LIST && yang_key_match(yp, co->co_command, NULL);
-	switch (yang_keyword_get(yc)){
-	case Y_LEAF:
-	case Y_LEAF_LIST:
-	    /* XXX move to next recursion level ? */
-	    if (!yciskey)
-		for (j = 0; j<pt_len_get(co_pt_get(co)); j++){
-		    if ((coj = pt_vec_i_get(co_pt_get(co), j)) == NULL)
-			continue;
-		    if (coj->co_type == CO_EMPTY)
-			continue;
-		    if ((coj->co_cvec = cvec_add_name(coj->co_cvec, "leafvar")) == NULL)
-			goto done;
-		}
-	    break;
-	default:
-	    break;
 	}
+	/* Filters out eg "name <name>" second instance if kw-all / kw-nokey 
+	 * But if only "<name>" it passes
+	 */
+	if ((yc = yang_find_datanode(yp, co->co_command)) == NULL){
+#if 1
+	    /* XXX In case of compress, look at next level */
+	    yang_stmt *y = NULL;
+	    while ((y = yn_each(yp, y)) != NULL){
+		if (yang_datanode(y)){
+		    if ((yc = yang_find_datanode(y, co->co_command)) != NULL)
+			break;
+		}
+	    }
+	    if (y == NULL)
+		continue;
+#endif
+	}
+	yciskey = ypkeyword == Y_LIST && yang_key_match(yp, co->co_command, NULL);
 	/* If state: Add nonconfig label*/
+	config = *configp;
 	if (!yang_config(yc)){
-	    if ((co->co_cvec = cvec_add_name(co->co_cvec, "nonconfig")) == NULL)
+	    if ((co->co_cvec = cvec_add_name(co->co_cvec, "ac-state")) == NULL)
 		goto done;
+	    config = 0;
 	}
 	/* If y is list and yc is key, then call with y */
 	if (yciskey){
-	    if (yang2cli_post(h, co, co_pt_get(co), 0, yp, yc) < 0) // note y not yc
+	    if (yang2cli_post(h, co, co_pt_get(co), 0, yp, yc, &config) < 0) // note y not yc
 		goto done;
 	}
-	else if (yang2cli_post(h, co, co_pt_get(co), 0, yc, NULL) < 0)
+	else if (yang2cli_post(h, co, co_pt_get(co), 0, yc, NULL, &config) < 0)
 	    goto done;
+	if (config){
+	    if ((co->co_cvec = cvec_add_name(co->co_cvec, "ac-config")) == NULL)
+		goto done;
+	}
+	else
+	    state++;
     } /* for */
+    if (state)
+	*configp = 0;
+    else { /* Clear all ac-config labels */
+	for (i = i0; i<pt_len_get(pt); i++){
+	    cg_var *cv;
+	    int j=0;
+
+	    co = pt_vec_i_get(pt, i);
+	    cv = NULL;
+	    while ((cv = cvec_each(co->co_cvec, cv)) != NULL){
+		if (strcmp(cv_name_get(cv), "ac-config") == 0){
+		    cv_reset(cv);
+		    cvec_del_i(co->co_cvec, j);
+		    break;
+		}
+		j++;
+	    }
+	}
+    }
     retval = 0;
  done:
     return retval;
@@ -1253,15 +1296,16 @@ yang2cli_yspec(clicon_handle      h,
 {
     int             retval = -1;
     parse_tree     *pt0 = NULL;
+    parse_tree     *pt = NULL;
     yang_stmt      *ymod;
     pt_head        *ph;
     int             enable;
     cbuf           *cb = NULL;
     char           *prefix;
     cg_obj         *co;
-    int             previ=0;
     int             i;
-
+    int             config;
+    
     if ((pt0 = pt_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "pt_new");
 	goto done;
@@ -1292,12 +1336,19 @@ yang2cli_yspec(clicon_handle      h,
 	    clicon_err(OE_YANG, 0, "Module %s lacks prefix", yang_argument_get(ymod)); /* shouldnt happen */
 	    goto done;
 	}
-	/* Parse the buffer using cligen parser. load cli syntax */
-	if (cligen_parse_str(cli_cligen(h), cbuf_get(cb), "yang2cli", pt0, NULL) < 0)
+	if ((pt = pt_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "pt_new");
 	    goto done;
+	}
+
+	/* Parse the buffer using cligen parser. load cli syntax */
+	if (cligen_parse_str(cli_cligen(h), cbuf_get(cb), "yang2cli", pt, NULL) < 0){
+	    fprintf(stderr, "%s\n", cbuf_get(cb));
+	    goto done;
+	}
 	/* Add prefix: assume new are appended */
-	for (i=previ; i<pt_len_get(pt0); i++){
-	    if ((co = pt_vec_i_get(pt0, i)) != NULL)
+	for (i=0; i<pt_len_get(pt); i++){
+	    if ((co = pt_vec_i_get(pt, i)) != NULL)
 		co_prefix_set(co, prefix);
 	}
 	/* Post-processing, iterate over the generated cligen parse-tree with corresponding yang
@@ -1305,9 +1356,11 @@ yang2cli_yspec(clicon_handle      h,
 	 * 1. labels cannot be set on "empty"
 	 * 2. a; <a>, fn() cannot be set properly
 	 */
-	if (yang2cli_post(h, NULL, pt0, previ, ymod, NULL) < 0)
+	config = 1;
+	if (yang2cli_post(h, NULL, pt, 0, ymod, NULL, &config) < 0){
 	    goto done;
-	previ = pt_len_get(pt0);
+	}
+	//	pt_print(stderr,pt);
 	clicon_debug(1, "%s Generated auto-cli for %s", __FUNCTION__, yang_argument_get(ymod));
 	if (printgen)
 	    clicon_log(LOG_NOTICE, "%s: Top-level cli-spec %s:\n%s",
@@ -1315,6 +1368,12 @@ yang2cli_yspec(clicon_handle      h,
 	else
 	    clicon_debug(2, "%s: Top-level cli-spec %s:\n%s",
 			 __FUNCTION__, treename, cbuf_get(cb));
+	if (cligen_parsetree_merge(pt0, NULL, pt) < 0){
+	    clicon_err(OE_YANG, errno, "cligen_parsetree_merge");
+	    goto done;
+	}
+	pt_free(pt, 1);
+	pt = NULL;
     } /* ymod */
     /* Resolve the expand callback functions in the generated syntax.
      * This "should" only be GENERATE_EXPAND_XMLDB
@@ -1328,6 +1387,7 @@ yang2cli_yspec(clicon_handle      h,
 	goto done;
     if (cligen_ph_parsetree_set(ph, pt0) < 0)
 	goto done;
+    pt0 = NULL;
 #if 0
     if (printgen){
 	clicon_log(LOG_NOTICE, "%s: Top-level cli-spec %s", __FUNCTION__, treename);
@@ -1336,6 +1396,10 @@ yang2cli_yspec(clicon_handle      h,
 #endif
     retval = 0;
  done:
+    if (pt)
+	pt_free(pt, 1);
+    if (pt0)
+	pt_free(pt0, 1);
     if (cb)
 	cbuf_free(cb);
     return retval;

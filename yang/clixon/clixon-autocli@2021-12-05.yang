@@ -89,14 +89,13 @@ module clixon-autocli{
                  Rule fields used: 
                     module-name, yang-keyword, schema-nodeid, yang-keyword-child, extension";
 	    }
-	    /*--- NYI ----
-	    enum hide {
+	    enum edit-mode {
 		description
-		"A complete command (not just single keyword) is hidden from CLI query,
-                 help and completion, ie a user must type it manually. 
-                 Example: 'start shell'";
+		    "Autocli CLI edit modes for YANG symbols.
+                     For example, 
+                         edit interface eth0<CR> 
+                     enters a new mode with local context.";
 	    }
-	    */
 	}
     }
     typedef list-keyword-type {
@@ -116,6 +115,17 @@ module clixon-autocli{
 		description "Keywords on all variables: a x <x> y <y>";
 	    }
 	}
+    }
+    typedef yang-keywords {
+       type bits {
+	   bit list; 
+	   bit listall{ /* NYI */
+	       description
+		   "Variant of list encompassing all list entries, not just an instance";
+	   }
+	   bit container;
+	   bit leaf; /* Also leaf-list (NYI) */
+       }
     }
     grouping clixon-autocli{
 	/* options */
@@ -142,6 +152,18 @@ module clixon-autocli{
                  larger state than config parts, see for example openconfig-isis.yang.";
 	    type boolean;
 	    default false;
+	}
+	leaf edit-mode-default {
+	    description
+		"Open automatic edit-modes for some YANG keywords and do not allow others.
+                 A CLI edit mode opens a carriage-return option and changes the context to be 
+                 in that local context.
+                 For example:  
+                    cli> interfaces interface e0<cr>
+                    eth0> 
+                 Default is to generate edit-modes for all containers and lists.";
+	    type yang-keywords;
+	    default "list container";
 	}
 	leaf completion-default {
 	    description

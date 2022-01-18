@@ -55,5 +55,6 @@ int autocli_completion(clicon_handle h, int *completion);
 int autocli_list_keyword(clicon_handle h, autocli_listkw_t *listkw);
 int autocli_compress(clicon_handle h, yang_stmt *ys, int *compress);
 int autocli_treeref_state(clicon_handle h, int *treeref_state);
+int autocli_edit_mode(clicon_handle h, char *keyw, int *flag);
 
 #endif  /* _CLI_AUTOCLI_H_ */

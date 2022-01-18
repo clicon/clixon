@@ -6,6 +6,8 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
+LEAFMODE=false # XXX NYI
+
 # include err() and new() functions and creates $dir
 
 cfg=$dir/conf_yang.xml
@@ -13,6 +15,9 @@ fspec=$dir/automode.cli
 fin=$dir/in
 fstate=$dir/state.xml
 fyang=$dir/clixon-example.yang
+
+# Generate autocli for these modules
+AUTOCLI=$(autocli_config clixon-example kw-nokey false)
 
 # Use yang in example
 cat <<EOF > $cfg
@@ -29,6 +34,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
+  ${AUTOCLI}
 </clixon-config>
 EOF
 
@@ -63,7 +69,7 @@ CLICON_PROMPT="%U@%H %W> ";
 CLICON_PLUGIN="example_cli";
 
 # Autocli syntax tree operations
-edit @datamodelshow, cli_auto_edit("basemodel");
+edit @datamodelmode, cli_auto_edit("basemodel");
 up, cli_auto_up("basemodel");
 top, cli_auto_top("basemodel");
 set @datamodel, cli_auto_set();
@@ -145,6 +151,7 @@ EOF
 new "edit table parameter a; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table/parameter=a/>" "<name>a</name><value>42</value>" --not-- '<table xmlns="urn:example:clixon">' "<parameter>"
 
+if $LEAFMODE; then
 cat <<EOF > $fin
 edit table
 edit parameter
@@ -153,6 +160,7 @@ show config xml
 EOF
 new "edit table; edit parameter; edit a; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<name>a</name><value>42</value>" --not-- '<table xmlns="urn:example:clixon">' "<parameter>"
+fi
 
 cat <<EOF > $fin
 edit table
@@ -162,12 +170,14 @@ EOF
 new "edit table; edit parameter a; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<name>a</name><value>42</value>" --not-- '<table xmlns="urn:example:clixon">' "<parameter>"
 
+if $LEAFMODE; then
 cat <<EOF > $fin
 edit table parameter a value 42
 show config xml
 EOF
 new "edit table parameter a value 42; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 --not-- '<table xmlns="urn:example:clixon">' "<parameter>" "<name>a</name>" "<value>42</value>"
+fi
 
 # edit -> top
 cat <<EOF > $fin
@@ -196,6 +206,7 @@ EOF
 new "edit table; up; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
 
+if $LEAFMODE; then
 cat <<EOF > $fin
 edit table parameter a
 up
@@ -203,6 +214,7 @@ show config xml
 EOF
 new "edit table parameter a; up; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table>" "<parameter><name>a</name><value>42</value></parameter>$" --not-- '<table xmlns="urn:example:clixon">'
+fi
 
 cat <<EOF > $fin
 edit table parameter a
