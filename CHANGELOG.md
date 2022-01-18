@@ -96,6 +96,7 @@ Users may have to change how they access the system
 
 ### Minor features
 
+* Removed ifdef __GNUC__ around printf-like prototypes since both clang and gcc have format/printf macros defined
 * Test changes
   * Use `YANG_STANDARD_DIR` from `./configure --with-yang-standard-dir=DIR` instead of `YANGMODELS` from site.sh
   * Remove dependency of IETF YANGs on most tests

@@ -134,31 +134,18 @@ int   xpath_tree_free(xpath_tree *xs);
 int   xpath_parse(const char *xpath, xpath_tree **xptree);
 int   xpath_vec_ctx(cxobj *xcur, cvec *nsc, const char *xpath, int localonly, xp_ctx  **xrp);
 
-#if defined(__GNUC__) && __GNUC__ >= 3
 int    xpath_vec_bool(cxobj *xcur, cvec *nsc, const char *xpformat, ...) __attribute__ ((format (printf, 3, 4)));
 int    xpath_vec_flag(cxobj *xcur, cvec *nsc, const char *xpformat, uint16_t flags, 
 		   cxobj ***vec, int *veclen, ...) __attribute__ ((format (printf, 3, 7)));
-
-#else
-int    xpath_vec_bool(cxobj *xcur, cvec *nsc, const char *xpformat, ...);
-int    xpath_vec_flag(cxobj *xcur, cvec *nsc, const char *xpformat, uint16_t flags, 
-		      cxobj ***vec, int *veclen, ...);
-#endif
 
 /* Functions with explicit namespace context (nsc) set. If you do not need 
  * explicit namespace contexts (most do not) consider using the API functions
  * below without nsc set.
  * If you do not know what a namespace context is, see README.md#xml-and-xpath
  */
-#if defined(__GNUC__) && __GNUC__ >= 3
 cxobj *xpath_first(cxobj *xcur, cvec *nsc, const char *xpformat,  ...) __attribute__ ((format (printf, 3, 4)));
 cxobj *xpath_first_localonly(cxobj *xcur, const char *xpformat,  ...) __attribute__ ((format (printf, 2, 3)));
 int    xpath_vec(cxobj *xcur, cvec *nsc, const char *xpformat, cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 6)));
-#else
-cxobj *xpath_first(cxobj *xcur, cvec *nsc, const char *xpformat, ...);
-cxobj *xpath_first_localonly(cxobj *xcur, const char *xpformat, ...);
-int    xpath_vec(cxobj *xcur, cvec *nsc, const char *xpformat, cxobj  ***vec, size_t *veclen, ...);
-#endif
 
 int xpath2canonical(const char *xpath0, cvec *nsc0, yang_stmt *yspec, char **xpath1, cvec **nsc1, cbuf **cbreason);
 int xpath_count(cxobj *xcur, cvec *nsc, const char *xpath, uint32_t *count);

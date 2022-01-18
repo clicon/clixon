@@ -64,11 +64,7 @@ struct clicon_msg {
 char *format_int2str(enum format_enum showas);
 enum format_enum format_str2int(char *str);
 
-#if defined(__GNUC__) && __GNUC__ >= 3
 struct clicon_msg *clicon_msg_encode(uint32_t id, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
-#else
-struct clicon_msg *clicon_msg_encode(uint32_t id, const char *format, ...);
-#endif
 int clicon_msg_decode(struct clicon_msg *msg, yang_stmt *yspec, uint32_t *id, cxobj **xml, cxobj **xerr);
 
 int clicon_connect_unix(clicon_handle h, char *sockpath);

@@ -56,13 +56,8 @@ int clicon_log_exit(void);
 int clicon_log_opt(char c);
 int clicon_log_file(char *filename);
 int clicon_get_logflags(void);
-#if defined(__GNUC__) && __GNUC__ >= 3
 int clicon_log(int level, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
 int clicon_debug(int dbglevel, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
-#else
-int clicon_log(int level, const char *format, ...);
-int clicon_debug(int dbglevel, const char *format, ...);
-#endif
 int clicon_debug_init(int dbglevel, FILE *f);
 int clicon_debug_get(void);
 

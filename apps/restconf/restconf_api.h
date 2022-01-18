@@ -41,11 +41,7 @@
 /*
  * Prototypes
  */
-#if defined(__GNUC__) && __GNUC__ >= 3
 int restconf_reply_header(void *req, const char *name, const char *vfmt, ...)  __attribute__ ((format (printf, 3, 4)));
-#else
-int restconf_reply_header(void *req, const char *name, const char *vfmt, ...);
-#endif
 
 /* note cb is consumed dont free */
 int restconf_reply_send(void *req, int code, cbuf *cb, int head);

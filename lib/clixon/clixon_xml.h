@@ -272,11 +272,7 @@ cxobj    *xml_root(cxobj *xn);
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
 int       xml_attr_insert2val(char *instr, enum insert_type *ins);
-#if defined(__GNUC__) && __GNUC__ >= 3
 int       clicon_log_xml(int level, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
-#else
-int       clicon_log_xml(int level, cxobj *x, const char *format, ...);
-#endif
 #ifdef XML_EXPLICIT_INDEX
 int       xml_search_index_p(cxobj *x);
 

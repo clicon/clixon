@@ -105,11 +105,7 @@ extern char clicon_err_reason[ERR_STRLEN];
  * Prototypes
  */
 int   clicon_err_reset(void);
-#if defined(__GNUC__) && __GNUC__ >= 3
 int   clicon_err_fn(const char *fn, const int line, int category, int err, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
-#else
-int   clicon_err_fn(const char *fn, const int line, int category, int err, const char *format, ...);
-#endif
 char *clicon_strerror(int err);
 void *clicon_err_save(void);
 int   clicon_err_restore(void *handle);
