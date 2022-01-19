@@ -332,6 +332,7 @@ yang2cli_var_range(yang_stmt *ys,
  * @param[in]  patterns Cvec of regexp patterns
  * @param[out] cb       Buffer where cligen code is written
  * @see cv_validate_pattern  for netconf validate code
+ * @note for cligen, need to escape " -> \"
  */
 static int
 yang2cli_var_pattern(clicon_handle h,
@@ -343,32 +344,43 @@ yang2cli_var_pattern(clicon_handle h,
     cg_var *cvp;
     char   *pattern;
     int     invert;
-    char   *posix;
+    char   *posix = NULL;
+    int     i;
     
     mode = clicon_yang_regexp(h);
     cvp = NULL; /* Loop over compiled regexps */
     while ((cvp = cvec_each(patterns, cvp)) != NULL){
 	pattern = cv_string_get(cvp);
 	invert = cv_flag(cvp, V_INVERT);
+	cprintf(cb, " regexp:%s\"", invert?"!":"");
 	if (mode == REGEXP_POSIX){
 	    posix = NULL;
 	    if (regexp_xsd2posix(pattern, &posix) < 0)
 		goto done;
-	    cprintf(cb, " regexp:%s\"%s\"",
-		    invert?"!":"",
-		    posix);
+	    for (i=0; i<strlen(posix); i++){
+		if (posix[i] == '\"')
+		    cbuf_append(cb, '\\');
+		cbuf_append(cb, posix[i]);
+	    }
 	    if (posix){
 		free(posix);
 		posix = NULL;
 	    }
+
 	}
-	else
-	    cprintf(cb, " regexp:%s\"%s\"",
-		    invert?"!":"",
-		    pattern);
+	else{
+	    for (i=0; i<strlen(pattern); i++){
+		if (pattern[i] == '\"')
+		    cbuf_append(cb, '\\');
+		cbuf_append(cb, pattern[i]);
+	    }
+	}
+	cprintf(cb, "\"");
     }
     retval = 0;
  done:
+    if (posix)
+	free(posix);
     return retval;
 }
 

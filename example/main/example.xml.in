@@ -28,7 +28,7 @@
   </restconf>
   <autocli>
      <module-default>false</module-default>
-     <list-keyword-default>kw-key</list-keyword-default>
+     <list-keyword-default>kw-nokey</list-keyword-default>
      <treeref-state-default>false</treeref-state-default>
      <edit-mode-default>list container</edit-mode-default>
      <completion-default>true</completion-default>

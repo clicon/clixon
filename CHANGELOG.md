@@ -106,6 +106,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: Autocli YANG patterns including `"` were not properly escaped: `\"`
 * Ensure auto-cli can be run with `CLICON_CLI_VARONLY=1`
   * Strip constants in cli_dbxml 
 * rpc_callback_call(): Check if nrp parameter is NULL to avoid SEGV

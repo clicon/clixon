@@ -42,7 +42,7 @@ cat <<EOF > $cfg
      <rule>
        <name>openconfig1</name>
        <operation>enable</operation>
-       <module-name>openconfig-bgp</module-name>
+       <module-name>clixon-example</module-name>
      </rule>
      <rule>
        <name>openconfig2</name>
@@ -70,13 +70,6 @@ EOF
 # Example system
 cat <<EOF > $dir/startup_db
 <config>
-  <bgp xmlns="http://openconfig.net/yang/bgp">
-    <global>
-      <config>
-        <as>0</as> /* XXX */
-      </config>
-    </global>
-  </bgp>
   <network-instances xmlns="http://openconfig.net/yang/network-instance">
     <network-instance>
       <name>default</name>
