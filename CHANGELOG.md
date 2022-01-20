@@ -35,7 +35,7 @@
 ## 5.5.0
 20 January 2022
 
-This release introduces a new autocli design with a new clixon-autocli YANG file
+This release introduces a new autocli design with a clixon-autocli YANG file
 
 ### New features
 
@@ -101,9 +101,9 @@ Developers may need to change their code
 ### Corrected Bugs
 
 * Fixed: Autocli YANG patterns including `"` were not properly escaped: `\"`
-* Ensure auto-cli can be run with `CLICON_CLI_VARONLY=1`
-  * Strip constants in cli_dbxml 
-* rpc_callback_call(): Check if nrp parameter is NULL to avoid SEGV
+* Ensure auto-cli can be run with config option `CLICON_CLI_VARONLY=1`
+* Fixed: SEGV in backend callback for user-defined RFC:
+  * rpc_callback_call(): Check if nrp parameter is NULL
 
 ## 5.4.0
 30 November, 2021
