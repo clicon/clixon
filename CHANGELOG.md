@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [5.5.0](#550) Planned January, 2022
+* [5.5.0](#550) 20 January 2022
 * [5.4.0](#540) 30 November 2021
 * [5.3.0](#530) 27 September 2021
 * [5.2.0](#520) 1 July 2021
@@ -33,58 +33,50 @@
 * [3.3.1](#331) June 7 2017
 
 ## 5.5.0
-Planned: January, 2022
+20 January 2022
+
+This release introduces a new autocli design with a new clixon-autocli YANG file
 
 ### New features
 
 * Changed auto-cli design
-  * See [autocli documentation](https://clixon-docs.readthedocs.io/en/latest/cli.html#autocli)
-  * Added new YANG clixon-autocli.yang, placing autocli options there
-    * Default rules for module exclusion, list-keywords, completion, edit-modes, treeref-state
+  * See [autocli documentation](https://clixon-docs.readthedocs.io/en/latest/cli.html#autocli) for overview
+  * Added new YANG `clixon-autocli.yang` moving all autocli options there
+    * Default rules for module exclusion, list-keywords, edit-modes, treeref-state and completion
     * Specialized rules for module exclusion and compression
   * Replaced separate autocli trees with a single `@basemodel` tree by using filter labels
-    * Filter labels are added to the fill tree and then filtered out using `@remove:<label>`
-    * Labels include: termfirstkeys, termlist, termleaf, leafvar, nonconfig,
-      * For detailed docs see yang2cli_post()
+    * Filter labels are added to the basemodel tree and then filtered out using `@remove:<label>`
     * This method reduces memory usage and is more generic
     * Backward compatible: can continue use the "old" trees.
-    * Translation to new method as follows:
-      * `@datamodel` translated to `@basemodel, @remove:termfirstkeys, @remove:termlist, @remove:termleaf, @remove:nonconfig`
-      * `@datamodelshow` translated to `@basemodel, @remove:leafvar, @remove:nonconfig`
-      * `@datamodelstate` translated to `@basemodel, @remove:leafvar`
     * Note: while @datamodel etc are backward compatible, the autocli redesign is NOT backward compatible
       * see API changes
-  * New automatic edit-mode design
+  * New autocli edit-mode design
      * Control which modes to use with `edit-mode-default`
        * Default is create edit-mode for all containers and list entries
-     * New edit-mode tree: @datamodelmode
+     * New edit-mode tree: `@datamodelmode`
   * Moved hide extensions from `clixon-lib` to `clixon-autocli`
     
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
-* CLI-spec variable `CLICON_PROMPT` `%W` changed semantics due to long prompt
-  * From "Full Working edit path" to "Last element of working path"
-  * New `%w` has "Full working path"
 * Auto-cli edit-modes changed
+  * CLI-spec variable `CLICON_PROMPT` `%W` changed semantics due to long prompt
+    * From "Full Working edit path" to "Last element of working path"
+    * Use `%w` if you want to keep "Full working path"
   * Edit modes only for list and container nodes
   * Change cli spec entry to `edit @datamodelmode, cli_auto_edit("basemodel");`
-  * This is part of new clixon-autocli.yang feature
 * New `clixon-lib@2021-12-05.yang` revision
-  * Extension `autocli-op` obsoleted and no longer supported
-  * You need to change to use clixon-autocli `hide` and `hide-show` instead.
-  * Translate as follows:
+  * Extension `autocli-op` obsoleted and no longer supported, use clixon-autocli `hide` and `hide-show` instead as follows:
     * `cl:autocli-op hide` -> `autocli:hide`
     * `cl:autocli-op hide-database` -> `autocli:hide-show`
     * `cl:autocli-op hide-database-auto-completion` -> `autocli:hide; autocli:hide-show`
 * New `clixon-config@2021-12-05.yang` revision
-  * Imported (as a sub-spec):  clixon-clispec.yang
   * Removed obsolete options:
     * `CLICON_YANG_LIST_CHECK`
   * Fixed: Configure option `CLICON_RESTCONF_PRETTY` was marked as obsolete but was still used.
     * `CLICON_RESTCONF_PRETTY` is now obsolete for sure
-    * Instead restconf/pretty is used with API function restconf_pretty_get()
+    * Use: `restconf/pretty`
   * Fixed: Configure option `CLICON_RESTCONF_PATH` was marked as obsolete but was still used.
     * `CLICON_RESTCONF_PATH` is now obsolete for sure
     * Instead if you use fgci/nginx:
@@ -92,18 +84,20 @@ Users may have to change how they access the system
       * Ensure `<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>` is set
   * Marked as obsolete and moved autocli config options from clixon-config.yang to clixon-autocli.yang
     * Use: `<config><autocli>...` for configuring the autocli
-    * For details, see [autocli upgrade documentation](https://clixon-docs.readthedocs.io/en/latest/cli.html#upgrade-from-clixon-5-4)
+    * For details, see [autocli upgrade documentation](https://clixon-docs.readthedocs.io/en/latest/cli.html#upgrade-from-pre-clixon-5-5)
 
-### Minor features
+### C/CLI-API changes on existing features
 
-* Removed ifdef __GNUC__ around printf-like prototypes since both clang and gcc have format/printf macros defined
+Developers may need to change their code
+
+* Removed `#ifdef __GNUC__` around printf-like prototypes since both clang and gcc have format/printf macros defined
+
 * Test changes
   * Use `YANG_STANDARD_DIR` from `./configure --with-yang-standard-dir=DIR` instead of `YANGMODELS` from site.sh
   * Remove dependency of IETF YANGs on most tests
-  * Remove dependnency of example/main in most tests, instead make local copy of example yang
-* New `clixon-dev` development container (Work-in-progress)
-* Changed typo `configure --with-yang-standard-installdir` to `configure --with-yang-standard-dir`
-
+  * Remove dependency of example/main in most tests, instead make local copy of example yang
+  * Changed `configure --with-yang-standard-installdir` to `configure --with-yang-standard-dir`
+  
 ### Corrected Bugs
 
 * Fixed: Autocli YANG patterns including `"` were not properly escaped: `\"`

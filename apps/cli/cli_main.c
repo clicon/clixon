@@ -244,50 +244,18 @@ cli_interactive(clicon_handle h)
     return retval;
 }
 
-/*! Generate autocli, ie if enabled, generate clispec from YANG and add to cligen parse-trees
- *
- * Generate clispec (basemodel) from YANG dataspec and add to the set of cligen trees 
- * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the 
- * "tree reference" syntax.
- *
- * @param[in]  h        Clixon handle
- * @param[in]  printgen Print CLI syntax generated from dbspec
- * @retval     0        OK
- * @retval    -1        Error
+/*! Create pre-5.5 tree-refs for backward compatibility
+ * should probably be moved to clispec default 
  */
 static int
-autocli_start(clicon_handle h,
-	      int           printgen)
+autocli_trees_default(clicon_handle h)
 {
-    int           retval = -1;
-    yang_stmt    *yspec;
-    pt_head      *ph;
-    parse_tree   *pt = NULL; 
-    int           enable = 0;
-    cbuf         *cb = NULL;
-    int           mode = 0;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
-    /* There is no single "enable-autocli" flag,
-     * but set 
-     *   <module-default>false</module-default> 
-     * with no rules:
-     *   <rule><operation>enable</operation>
-     * is disable
-     */
-    if (autocli_module(h, NULL, &enable) < 0)
-	goto done;
-    if (!enable){
-	clicon_debug(1, "%s Autocli not enabled (clixon-autocli)", __FUNCTION__);
-	goto ok;
-    }
-    /* Init yang2cli */
-    if (yang2cli_init(h) < 0)
-	goto done;
-    yspec = clicon_dbspec_yang(h);
-    /* The actual generating call from yang to clispec for the complete yang spec */
-    if (yang2cli_yspec(h, yspec, AUTOCLI_TREENAME, printgen) < 0)
-	goto done;
+    int         retval = -1;
+    cbuf       *cb = NULL;
+    int         mode = 0;
+    parse_tree *pt = NULL; 
+    pt_head    *ph;
+
     /* Create backward compatible tree: @datamodel */
     if ((ph = cligen_ph_add(cli_cligen(h), "datamodel")) == NULL)
 	goto done;
@@ -301,6 +269,7 @@ autocli_start(clicon_handle h,
 	goto done;
     if (cligen_ph_parsetree_set(ph, pt) < 0)
 	goto done;
+
 
     /* Create backward compatible tree: @datamodelshow */
     if ((ph = cligen_ph_add(cli_cligen(h), "datamodelshow")) == NULL)
@@ -368,12 +337,59 @@ autocli_start(clicon_handle h,
 	goto done;
     if (cligen_ph_parsetree_set(ph, pt) < 0)
 	goto done;
-
- ok:
     retval = 0;
  done:
     if (cb)
 	cbuf_free(cb);
+    return retval;
+}
+
+/*! Generate autocli, ie if enabled, generate clispec from YANG and add to cligen parse-trees
+ *
+ * Generate clispec (basemodel) from YANG dataspec and add to the set of cligen trees 
+ * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the 
+ * "tree reference" syntax.
+ *
+ * @param[in]  h        Clixon handle
+ * @param[in]  printgen Print CLI syntax generated from dbspec
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+static int
+autocli_start(clicon_handle h,
+	      int           printgen)
+{
+    int           retval = -1;
+    yang_stmt    *yspec;
+    int           enable = 0;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    /* There is no single "enable-autocli" flag,
+     * but set 
+     *   <module-default>false</module-default> 
+     * with no rules:
+     *   <rule><operation>enable</operation>
+     * is disable
+     */
+    if (autocli_module(h, NULL, &enable) < 0)
+	goto done;
+    if (!enable){
+	clicon_debug(1, "%s Autocli not enabled (clixon-autocli)", __FUNCTION__);
+	goto ok;
+    }
+    /* Init yang2cli */
+    if (yang2cli_init(h) < 0)
+	goto done;
+    yspec = clicon_dbspec_yang(h);
+    /* The actual generating call from yang to clispec for the complete yang spec */
+    if (yang2cli_yspec(h, yspec, AUTOCLI_TREENAME, printgen) < 0)
+	goto done;
+    /* XXX Create pre-5.5 tree-refs for backward compatibility */    
+    if (autocli_trees_default(h) < 0)
+	goto done;
+ ok:
+    retval = 0;
+ done:
     return retval;
 }
 

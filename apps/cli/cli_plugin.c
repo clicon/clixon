@@ -393,6 +393,7 @@ done:
  * CLI .so plugins have been loaded: syntax table in place.
  * Now load cligen syntax files and create cligen pt trees.
  * @param[in]     h       Clicon handle
+ * XXX The parsetree loading needs a rewrite for multiple parse-trees
  */
 int
 cli_syntax_load(clicon_handle h)
