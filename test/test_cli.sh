@@ -101,7 +101,7 @@ new "cli success validate"
 expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 0 "^$"
 
 new "cli compare diff"
-expectpart "$($clixon_cli -1 -f $cfg -l o compare)" 0 "+                ip 1.2.3.4;"
+expectpart "$($clixon_cli -1 -f $cfg -l o show compare text)" 0 "+                ip 1.2.3.4;"
 
 new "cli start shell"
 expectpart "$($clixon_cli -1 -f $cfg -l o shell echo foo)" 0 "foo" 

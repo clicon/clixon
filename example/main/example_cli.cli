@@ -65,7 +65,6 @@ copy("Copy and create a new object") {
     }
 }
 discard("Discard edits (rollback 0)"), discard_changes();
-compare("Compare running and candidate"), compare_dbs((int32)1);
 
 show("Show a particular state of the system"){
     auto("Show expand") @datamodel, cli_show_auto("candidate", "xml");  
