@@ -36,6 +36,9 @@
 ## 5.6.0
 Expected: March 2022
 
+### Corrected Bugs
+* Fixed: More than one unknown/extension in combination with augment of extension resulted in extension being skipped.
+
 ## 5.5.0
 20 January 2022
 

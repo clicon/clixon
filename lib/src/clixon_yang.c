@@ -1852,6 +1852,9 @@ yang_print_cbuf(cbuf      *cb,
 	    else
 		cprintf(cb, " %s", ys->ys_argument);
 	}
+	if (ys->ys_cv){
+	    cprintf(cb, " %s", cv_string_get(ys->ys_cv));
+	}
 	if (ys->ys_len){
 	    cprintf(cb, " {\n");
 	    yang_print_cbuf(cb, ys, marginal+3);
@@ -3777,8 +3780,8 @@ yang_extension_value(yang_stmt *ys,
 	    continue;
 	if ((ret = yang_find_prefix_by_namespace(ymod, ns, &prefix)) < 0)
 	    goto done;
-	if (ret == 0) /* not found */
-	    goto ok;
+	if (ret == 0) /* not found (this may happen in augment and maybe should be treated otherwise) */
+	    continue;
 	cbuf_reset(cb);
 	cprintf(cb, "%s:%s", prefix, name);
 	if (strcmp(yang_argument_get(yext), cbuf_get(cb)) != 0)
@@ -3792,7 +3795,6 @@ yang_extension_value(yang_stmt *ys,
 	    (cv = yang_cv_get(yext)) != NULL)
 	    *value = cv_string_get(cv);
     }
- ok:
     retval = 0;
  done:
     if (cb)
