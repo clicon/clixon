@@ -228,11 +228,13 @@ if [ $? -ne 0 ]; then
     err "<${DATASTORE_TOP}>$SXML<r2 xmlns=\"urn:example:clixon\">88</r2></${DATASTORE_TOP}>" "$moreret"
 fi	
 
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
 fi
 
 # From startup 2, only presence p4, s4/np5 should be filled in
@@ -258,11 +260,13 @@ wait_backend
 new "get startup config with presence"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>]]>]]>$"
 
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
 fi
 
 # Only single x list element
@@ -288,11 +292,13 @@ wait_backend
 new "get startup config with list default"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML<xs-config xmlns=\"urn:example:clixon\"><x><name>a</name><y><inside>false</inside></y><outside>false</outside></x></xs-config></data></rpc-reply>]]>]]>$"
 
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
 fi
 
 rm -rf $dir

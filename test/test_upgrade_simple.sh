@@ -73,14 +73,16 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></
 # race condition where backend is killed before flushed to disk
 sleep $DEMSLEEP
 
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-# kill backend
-stop_backend -f $cfg
 
 # Now add a new yang for hello
 cat <<EOF > $dir/$APPNAME.yang
@@ -107,7 +109,6 @@ EOF
 # Now start again from running with modstate enabled and new revision
 
 if [ $BE -ne 0 ]; then
-
     new "start backend -s running -f $cfg"
     start_backend -s running -f $cfg
 
@@ -118,14 +119,16 @@ fi
 new "netconf get config"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><hello xmlns=\"urn:example:simple\"><world/></hello></data></rpc-reply>]]>]]>$"
 
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-# kill backend
-stop_backend -f $cfg
 
 rm -rf $dir
 

@@ -328,14 +328,16 @@ EOF
 new "Test hidden parameter in imported module"
 testparam
 
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-# kill backend
-stop_backend -f $cfg
 
 rm -rf $dir
 

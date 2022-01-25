@@ -385,14 +385,16 @@ expectpart "$($clixon_cli -1 -f $cfg set interfaces interface e config enabled t
 new "Openconfig: OC_VARS+extension: no compresssion (negative)"
 expectpart "$($clixon_cli -1 -f $cfg set interfaces interface e enabled true 2>&1)" 255 "Unknown command"
 
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-# kill backend
-stop_backend -f $cfg
 
 rm -rf $dir
 

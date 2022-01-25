@@ -152,14 +152,16 @@ EOF
 new "set p1 i2"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>p1</name><value>42</value><index><i>i1</i><iv>abc</iv></index></parameter></table>'
 
-new "Kill backend"
-# Check if premature kill
-pid=$(pgrep -u root -f clixon_backend)
-if [ -z "$pid" ]; then
-    err "backend already dead"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
-# kill backend
-stop_backend -f $cfg
 
 rm -rf $dir
 
