@@ -66,14 +66,7 @@
 #include "restconf_lib.h"       /* generic shared with plugins */
 #include "restconf_handle.h"
 #include "restconf_err.h"
-#ifdef HAVE_LIBEVHTP
-#include <event2/buffer.h> /* evbuffer */
-#define EVHTP_DISABLE_REGEX
-#define EVHTP_DISABLE_EVTHR
 
-#include <evhtp/evhtp.h>
-
-#endif
 #ifdef HAVE_LIBNGHTTP2
 #include <nghttp2/nghttp2.h>
 #endif
@@ -167,7 +160,7 @@ restconf_conn_new(clicon_handle h,
     return rc;
 }
 
-/*! Free clixon/cbuf resources related to an evhtp connection
+/*! Free clixon/cbuf resources related to a connection
  * @param[in]  rc   restconf connection
  */
 int
@@ -182,10 +175,6 @@ restconf_conn_free(restconf_conn *rc)
 #ifdef HAVE_LIBNGHTTP2
     if (rc->rc_ngsession)
 	nghttp2_session_del(rc->rc_ngsession);
-#endif
-#ifdef HAVE_LIBEVHTP
-    if (rc->rc_evconn)
-	evhtp_connection_free(rc->rc_evconn); /* evhtp */
 #endif
     /* Free all streams */
     while ((sd = rc->rc_streams) != NULL) {

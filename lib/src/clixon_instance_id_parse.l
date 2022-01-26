@@ -79,8 +79,6 @@
 /* typecast macro */
 #define _IY ((clixon_instance_id_yacc *)_iy)
 
-#define     MAXBUF  4*4*64*1024
-
 #undef clixon_instance_id_parsewrap
 int 
 clixon_instance_id_parsewrap(void)

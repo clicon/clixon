@@ -50,13 +50,6 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#ifdef HAVE_LIBEVHTP
-/* evhtp */ 
-#define EVHTP_DISABLE_REGEX
-#define EVHTP_DISABLE_EVTHR
-#include <evhtp/evhtp.h>
-#endif /* HAVE_LIBEVHTP */
-
 #ifdef HAVE_LIBNGHTTP2
 #include <nghttp2/nghttp2.h>
 #endif
@@ -71,8 +64,8 @@
 #include "restconf_api.h"  /* Virtual api */
 #include "restconf_native.h"
 
-/*! Add HTTP header field name and value to reply, evhtp specific
- * @param[in]  req   Evhtp http request handle
+/*! Add HTTP header field name and value to reply
+ * @param[in]  req   request handle
  * @param[in]  name  HTTP header field name
  * @param[in]  vfmt  HTTP header field value format string w variable parameter
  * @see eg RFC 7230

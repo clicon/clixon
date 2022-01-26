@@ -242,6 +242,16 @@ To turn callgrind off/on:
   callgrind_control -i on
  ```
 
+### valgrind and gdb
+
+```
+valgrind --vgdb=yes --vgdb-error=0 clixon_cli
+
+gdb clixon_cli
+(gdb) target remote | /usr/lib/valgrind/../../bin/vgdb --pid=1311 # see output from valgrind
+(gdb) cont
+```
+
 ## New release
 What to think about when doing a new release.
 * Ensure all tests run OK
@@ -257,6 +267,7 @@ What to think about when doing a new release.
   git tag -a <version>
   git push origin <version>
 ```
+* Add a github "release" and copy release info from CHANGELOG
 
 After release:
 * Bump minor version and add a "PRE":

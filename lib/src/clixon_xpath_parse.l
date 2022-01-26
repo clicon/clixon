@@ -69,8 +69,6 @@
 /* typecast macro */
 #define _XPY ((clixon_xpath_yacc *)_yy)
 
-#define     MAXBUF  4*4*64*1024
-
 #undef clixon_xpath_parsewrap
 int 
 clixon_xpath_parsewrap(void)

@@ -42,12 +42,6 @@ ssh -t $h "test -d src/cligen || (cd src;git clone https://github.com/clicon/cli
 ssh -t $h "(cd src/cligen;git pull origin master)"
 ssh -t $h "(cd src/cligen;./configure)"
 ssh -t $h "(cd src/cligen; /tmp/cligen-mk.sh)"
-# pull git changes and build clixon-libevhtp
-ssh -t $h "test -d src || mkdir src"
-ssh -t $h "test -d src/clixon-libevhtp || (cd src;git clone https://github.com/clicon/clixon-libevhtp.git)"
-ssh -t $h "(cd src/clixon-libevhtp;git pull origin master)"
-ssh -t $h "(cd src/clixon-libevhtp;./configure)"
-ssh -t $h "(cd src/clixon-libevhtp; /tmp/cligen-mk.sh)" # re-use cligen
 # pull git changes and build clixon
 ssh -t $h "test -d src/clixon || (cd src;git clone https://github.com/clicon/clixon.git)"
 ssh -t $h "(cd src/clixon;git pull origin master)"

@@ -65,8 +65,6 @@
 /* typecast macro */
 #define _JY ((clixon_json_yacc *)_yy)
 
-#define     MAXBUF  4*4*64*1024
-
 #undef clixon_json_parsewrap
 int 
 clixon_json_parsewrap(void)

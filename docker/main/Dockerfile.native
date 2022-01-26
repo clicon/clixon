@@ -38,9 +38,6 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 # For clixon and cligen
 RUN apk add --update git make build-base gcc flex bison curl-dev
 
-# evhtp dependencies
-RUN apk add --update libevent libevent-dev
-
 # nghttp2 dependencies
 RUN apk add --update nghttp2
 
@@ -61,17 +58,6 @@ RUN git clone https://github.com/openconfig/public
 
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
-
-# clone libevhtp
-WORKDIR /clixon
-
-RUN git clone https://github.com/clicon/clixon-libevhtp.git
-WORKDIR /clixon/clixon-libevhtp
-RUN ./configure
-
-RUN make
-RUN mkdir /usr/local/include
-RUN make install
 
 RUN mkdir /clixon/build
 WORKDIR /clixon
@@ -94,7 +80,7 @@ WORKDIR /clixon/clixon
 COPY clixon .
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-restconf=native --enable-nghttp2 --enable-evhtp --with-yang-standard-dir=/usr/local/share/yang/standard
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-restconf=native --enable-nghttp2 --enable-http1 --with-yang-standard-dir=/usr/local/share/yang/standard
 
 RUN make
 RUN make install
@@ -148,7 +134,6 @@ EXPOSE 443/tcp
 RUN adduser -D -H clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
-COPY --from=0 /usr/local/lib/libevhtp.so* /usr/local/lib/
 COPY --from=0 /usr/local/share/yang/* /usr/local/share/yang/standard/
 COPY --from=0 /usr/local/share/yang/* /usr/local/share/yang/experimental/
 COPY --from=0 /usr/local/share/openconfig/* /usr/local/share/openconfig/

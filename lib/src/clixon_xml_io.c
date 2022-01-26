@@ -640,8 +640,8 @@ clixon_xml_parse_file(FILE      *fp,
     int   oldxmlbuflen;
     int   failed = 0;
 
-    if (xt==NULL){
-	clicon_err(OE_XML, EINVAL, "xt is NULL");
+    if (xt==NULL || fp == NULL){
+	clicon_err(OE_XML, EINVAL, "arg is NULL");
 	return -1;
     }
     if (yb == YB_MODULE && yspec == NULL){

@@ -215,7 +215,6 @@ case $release in
 		;;
 	    native)
 		$sshcmd sudo apt install -y libssl-dev
-		$sshcmd sudo apt install -y libevent-dev # evhtp
 		$sshcmd sudo apt install -y libnghttp2-dev # nghttp2
 		;;
 	esac
@@ -269,15 +268,6 @@ case ${with_restconf} in
 	. ./nginx.sh $dir $idfile $port $wwwuser
 	;;
     native)
-	$sshcmd << EOF
-        test -d src || mkdir src
-        cd src
-	test -d clixon-libevhtp || git clone https://github.com/clicon/clixon-libevhtp.git
-	cd clixon-libevhtp; 
-	./configure --libdir=/usr/lib # otherwise in /usr/local/lib where RH dont look
-        make
-	sudo make install
-EOF
 	;;
 esac
 

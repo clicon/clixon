@@ -79,7 +79,7 @@ typedef struct  {
     struct restconf_conn *sd_conn;      /* Backpointer to connection this stream is part of */
     restconf_http_proto   sd_proto;     /* http protocol XXX not sure this is needed */
     cvec                 *sd_qvec;      /* Query parameters, ie ?a=b&c=d */
-    void                 *sd_req;       /* Lib-specific request, eg evhtp_request_t * */
+    void                 *sd_req;       /* Lib-specific request */
     int                   sd_upgrade2;  /* Upgrade to http/2 */
     uint8_t              *sd_settings2; /* Settings for upgrade to http/2 request */
 } restconf_stream_data;
@@ -98,9 +98,6 @@ typedef struct restconf_conn {
     int                   rc_exit;    /* Set to close socket server-side (NYI) */
     /* Decision to keep lib-specific data here, otherwise new struct necessary
      * drawback is specific includes need to go everywhere */
-#ifdef HAVE_LIBEVHTP
-    evhtp_connection_t *rc_evconn;
-#endif
 #ifdef HAVE_LIBNGHTTP2
     nghttp2_session    *rc_ngsession; /* XXX Not sure it is needed */
 #endif
@@ -125,7 +122,7 @@ typedef struct {
 typedef struct {
     SSL_CTX         *rh_ctx;       /* SSL context */
     restconf_socket *rh_sockets;   /* List of restconf server (ready for accept) sockets */
-    void            *rh_arg;       /* Packet specific handle (eg evhtp) */
+    void            *rh_arg;       /* Packet specific handle */
 } restconf_native_handle;
 
 /*

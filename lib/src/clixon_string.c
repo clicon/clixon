@@ -149,6 +149,39 @@ clicon_strjoin(int         argc,
     return str;
 }
 
+/*! Join two string with delimiter.
+ * @param[in] str1   string 1 (will be freed) (optional)
+ * @param[in] del    delimiter string (not freed) cannot be NULL (but "")
+ * @param[in] str2   string 2 (will be freed)
+ * @see clicon_strjoin
+ */
+char*
+clixon_string_del_join(char *str1,
+		       char *del,
+		       char *str2)
+{
+    char *str;
+    int   len;
+    
+    len = strlen(str2) + 1;
+
+    if (str1)
+	len += strlen(str1);
+    len += strlen(del);
+    if ((str = malloc(len)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	return NULL;
+    }
+    if (str1){
+	snprintf(str, len, "%s%s%s", str1, del, str2);
+	free(str1);
+    }
+    else
+	snprintf(str, len, "%s%s", del, str2);
+    free(str2);
+    return str;
+}
+
 /*! Split a string once into two parts: prefix and suffix
  * @param[in]  string
  * @param[in]  delim
@@ -564,7 +597,7 @@ xml_chardata_cbuf_append(cbuf *cb,
  * @retval    -1      error
  * @code
  * cvec  *cvv = NULL;
- * if (uri_str2cvec("a=b&c=d", ';', '=', 1, &cvv) < 0)
+ * if (uri_str2cvec("a=b&c=d", '&', '=', 1, &cvv) < 0)
  *   err;
  * @endcode
  *
@@ -840,6 +873,7 @@ clicon_strcmp(char *s1,
     return strcmp(s1, s2);
 }
 
+
 /*! strndup() for systems without it, such as xBSD
  */
 #ifndef HAVE_STRNDUP
@@ -908,4 +942,3 @@ main(int argc, char **argv)
 }
 
 #endif /* Test program */
-

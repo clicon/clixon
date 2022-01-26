@@ -23,9 +23,9 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-# Does not work with evhtpnative http/2-only
-if [ "${WITH_RESTCONF}" = "native" -a ${HAVE_LIBEVHTP} = false ]; then
-    echo "...skipped: LIBEVHTP is false, must run with http/1 (evhtp)"
+# Does not work with native http/2-only
+if [ "${WITH_RESTCONF}" = "native" -a ${HAVE_HTTP1} = false ]; then
+    echo "...skipped: must run with http/1"
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
@@ -206,7 +206,7 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 if [ false -a ! ${HAVE_LIBNGHTTP2} ] ; then
     # Look for netcat or nc for direct socket http calls
     if [ -n "$(type netcat 2> /dev/null)" ]; then
-	netcat="netcat -w 1" # -N works on evhtp but not fcgi
+	netcat="netcat -w 1" # -N does not work on fcgi
     elif [ -n "$(type nc 2> /dev/null)" ]; then
 	netcat=nc
     else
@@ -241,9 +241,8 @@ Host: localhost
 Accept: application/yang-data+xml
 
 EOF
-)" 0 "HTTP/$HVER 405" kalle # nginx uses "method not allowed" evhtp "not allowed"
+)" 0 "HTTP/$HVER 405" kalle # nginx uses "method not allowed" 
 
-    # XXX error from evhtp parsing, should pick up error code
     new "restconf GET wrong http version raw"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
 GET /restconf/data/example:a=0 HTTP/a.1

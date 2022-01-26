@@ -114,7 +114,7 @@ For example, in FreeBSD, add:
 
 For fcgi/nginx you need to setup https in the nginx config file, independently of clixon.
 
-If you use evhtp with `configure --with-restconf=evhtp`, you can prepend the tests with RCPROTO=https which will run all restconf tests with SSL https and server certs.
+If you use native with `configure --with-restconf=http1`, you can prepend the tests with RCPROTO=https which will run all restconf tests with SSL https and server certs.
 
 Ensure the server keys are in order, as follows.
 

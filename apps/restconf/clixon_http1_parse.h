@@ -2,7 +2,6 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
@@ -31,17 +30,42 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-  *
-  * Virtual clixon restconf API functions.
- */
 
-#ifndef _RESTCONF_EVHTP_H_
-#define _RESTCONF_EVHTP_H_
+ * HTTP/1.1 parser according to RFC 7230
+ */
+#ifndef _CLIXON_HTTP1_PARSE_H_
+#define _CLIXON_HTTP1_PARSE_H_
+
+/*
+ * Types
+ */
+struct clixon_http1_yacc { 
+    const char   *hy_name;         /* Name of syntax (for error string) */
+    clicon_handle hy_h;            /* Clixon handle */
+    restconf_conn *hy_rc;          /* Connection handle */
+    int           hy_linenum;      /* Number of \n in parsed buffer */
+    char         *hy_parse_string; /* original (copy of) parse string */
+    void         *hy_lexbuf;       /* internal parse buffer from lex */
+    void         *hy_top;
+};
+typedef struct clixon_http1_yacc clixon_http1_yacc;
+
+/*
+ * Variables
+ */
+extern char *clixon_http1_parsetext;
 
 /*
  * Prototypes
  */
-void restconf_path_root(evhtp_request_t *req, void *arg);
-void restconf_path_wellknown(evhtp_request_t *req, void *arg);
+int http1_scan_init(clixon_http1_yacc *);
+int http1_scan_exit(clixon_http1_yacc *);
 
-#endif /* _RESTCONF_EVHTP_H_ */
+int http1_parse_init(clixon_http1_yacc *);
+int http1_parse_exit(clixon_http1_yacc *);
+
+int clixon_http1_parselex(void *);
+int clixon_http1_parseparse(void *);
+void clixon_http1_parseerror(void *, char*);
+
+#endif	/* _CLIXON_HTTP1_PARSE_H_ */

@@ -636,8 +636,8 @@ YANG_STANDARD_DIR
 YANG_INSTALLDIR
 CLIXON_YANG_PATCH
 with_libxml2
+HAVE_HTTP1
 HAVE_LIBNGHTTP2
-HAVE_LIBEVHTP
 with_restconf
 LINKAGE
 LIBSTATIC_SUFFIX
@@ -720,7 +720,7 @@ with_cligen
 enable_yang_patch
 enable_publish
 with_restconf
-enable_evhtp
+enable_http1
 enable_nghttp2
 with_configfile
 with_libxml2
@@ -1370,7 +1370,7 @@ Optional Features:
   --enable-yang-patch     Enable YANG patch, RFC 8072, default: no
   --enable-publish        Enable publish of notification streams using SSE and
                           curl
-  --disable-evhtp         Disable evhtp for native restconf http/1, ie http/2
+  --disable-http1         Disable http1 for native restconf http/1, ie http/2
                           only
   --disable-nghttp2       Disable nghttp2 for native restconf http/2, ie
                           http/1 only
@@ -3385,10 +3385,10 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
  # Set to native or fcgi -> compile apps/restconf
-HAVE_LIBEVHTP=false
-   # consider using neutral constant such as with-http1
 HAVE_LIBNGHTTP2=false
  # consider using neutral constant such as with-http2
+HAVE_HTTP1=false
+
 
 
 # Where Clixon installs its YANG specs
@@ -5070,7 +5070,6 @@ fi
 $as_echo "#define WITH_RESTCONF_FCGI 1" >>confdefs.h
  # For c-code that cant use strings
 elif test "x${with_restconf}" == xnative; then
-
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
 $as_echo_n "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
 if ${ac_cv_lib_ssl_OPENSSL_init_ssl_+:} false; then :
@@ -5165,136 +5164,26 @@ else
   as_fn_error $? "libcrypto missing" "$LINENO" 5
 fi
 
-   # Check if evhtp is enabled for http/1
-   # Check whether --enable-evhtp was given.
-if test "${enable_evhtp+set}" = set; then :
-  enableval=$enable_evhtp;
+   # Check if http/1 enabled
+   # Check whether --enable-http1 was given.
+if test "${enable_http1+set}" = set; then :
+  enableval=$enable_http1;
    	  if test "$enableval" = no; then
-	      ac_enable_evhtp=no
+	      ac_enable_http1=no
 	  else
-	      ac_enable_evhtp=yes
+	      ac_enable_http1=yes
           fi
 
 else
-   ac_enable_evhtp=yes
+   ac_enable_http1=yes
 fi
 
-   { $as_echo "$as_me:${as_lineno-$LINENO}: result: checking evhtp is enabled: $ac_enable_evhtp" >&5
-$as_echo "checking evhtp is enabled: $ac_enable_evhtp" >&6; }
-   if test "$ac_enable_evhtp" = "yes"; then
-      for ac_header in evhtp/evhtp.h
-do :
-  ac_fn_c_check_header_compile "$LINENO" "evhtp/evhtp.h" "ac_cv_header_evhtp_evhtp_h" "$ac_includes_default
-	  #define EVHTP_DISABLE_REGEX
-	  #define EVHTP_DISABLE_EVTHR
 
-"
-if test "x$ac_cv_header_evhtp_evhtp_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_EVHTP_EVHTP_H 1
-_ACEOF
-
-else
-  as_fn_error $? "evhtp header missing. See https://github.com/clicon/libevhtp" "$LINENO" 5
-fi
-
-done
-
-      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for event_init in -levent" >&5
-$as_echo_n "checking for event_init in -levent... " >&6; }
-if ${ac_cv_lib_event_event_init+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-levent  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char event_init ();
-int
-main ()
-{
-return event_init ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_event_event_init=yes
-else
-  ac_cv_lib_event_event_init=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_event_event_init" >&5
-$as_echo "$ac_cv_lib_event_event_init" >&6; }
-if test "x$ac_cv_lib_event_event_init" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBEVENT 1
-_ACEOF
-
-  LIBS="-levent $LIBS"
-
-else
-  as_fn_error $? "libevent missing" "$LINENO" 5
-fi
-
-      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for evhtp_new in -levhtp" >&5
-$as_echo_n "checking for evhtp_new in -levhtp... " >&6; }
-if ${ac_cv_lib_evhtp_evhtp_new+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-levhtp -levent -lssl -lcrypto $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char evhtp_new ();
-int
-main ()
-{
-return evhtp_new ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_evhtp_evhtp_new=yes
-else
-  ac_cv_lib_evhtp_evhtp_new=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_evhtp_evhtp_new" >&5
-$as_echo "$ac_cv_lib_evhtp_evhtp_new" >&6; }
-if test "x$ac_cv_lib_evhtp_evhtp_new" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBEVHTP 1
-_ACEOF
-
-  LIBS="-levhtp $LIBS"
-
-else
-  as_fn_error $? "libevhtp missing" "$LINENO" 5
-fi
-
-      HAVE_LIBEVHTP=true
+   { $as_echo "$as_me:${as_lineno-$LINENO}: result: checking http1 is enabled: $ac_enable_http1" >&5
+$as_echo "checking http1 is enabled: $ac_enable_http1" >&6; }
+   if test "$ac_enable_http1" = "yes"; then
+      $as_echo "#define HAVE_HTTP1 true" >>confdefs.h
+ # Must be tree/false (not 0/1) used in shells
    fi
 
    # Check if nghttp2 is enabled for http/2

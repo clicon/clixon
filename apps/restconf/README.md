@@ -6,18 +6,9 @@
   * [Nchan Streams](#nchan)
   * [Debugging](#debugging)	
 
-There are two installation instructions: for libevhtp and nginx.
+There are two installation instructions: for native and nginx.
 
 ## Native
-
-Download, build and install libevhtp from source. Prereqs: libevent and ssl
-```
-   sudo git clone https://github.com/clicon/clixon-libevhtp.git
-   cd clixon-libevhtp
-   ./configure --libdir=/usr/lib
-   make
-   sudo make install
-```
 
 Configure clixon with native restconf:
 ```

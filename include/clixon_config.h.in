@@ -27,9 +27,6 @@
 /* Define to 1 if you have the <cligen/cligen.h> header file. */
 #undef HAVE_CLIGEN_CLIGEN_H
 
-/* Define to 1 if you have the <evhtp/evhtp.h> header file. */
-#undef HAVE_EVHTP_EVHTP_H
-
 /* Define to 1 if you have the `getpeereid' function. */
 #undef HAVE_GETPEEREID
 
@@ -54,12 +51,6 @@
 /* Define to 1 if you have the `dl' library (-ldl). */
 #undef HAVE_LIBDL
 
-/* Define to 1 if you have the `event' library (-levent). */
-#undef HAVE_LIBEVENT
-
-/* Define to 1 if you have the `evhtp' library (-levhtp). */
-#undef HAVE_LIBEVHTP
-
 /* Define to 1 if you have the `fcgi' library (-lfcgi). */
 #undef HAVE_LIBFCGI
 
@@ -68,6 +59,8 @@
 
 /* Define to 1 if you have the `nghttp2' library (-lnghttp2). */
 #undef HAVE_LIBNGHTTP2
+
+#undef HAVE_HTTP1
 
 /* Define to 1 if you have the `socket' library (-lsocket). */
 #undef HAVE_LIBSOCKET

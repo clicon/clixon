@@ -49,7 +49,6 @@
 #include <errno.h>
 #define __USE_GNU /* For RTLD_DEFAULT */
 #include <dlfcn.h>
-#include <dirent.h>
 #include <libgen.h>
 #include <grp.h>
 #include <signal.h>

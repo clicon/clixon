@@ -82,8 +82,6 @@
 /* typecast macro */
 #define _AY ((clixon_api_path_yacc *)_ay)
 
-#define     MAXBUF  4*4*64*1024
-
 #undef clixon_api_path_parsewrap
 int 
 clixon_api_path_parsewrap(void)

@@ -31,7 +31,7 @@
 #
 # ***** END LICENSE BLOCK *****
 
-# Clixon startscript for evhtp and https
+# Clixon startscript for native restconf and https
 # This script is copied into the container on build time and runs
 # _inside_ the container at start in runtime. It gets environment variables
 # from the start.sh script.

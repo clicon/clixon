@@ -100,10 +100,10 @@ APPSRC   += restconf_methods_post.c
 APPSRC   += restconf_methods_get.c
 APPSRC   += restconf_methods_patch.c
 APPSRC   += restconf_root.c
+APPSRC   += clixon_http1.c
 APPSRC   += restconf_main_$(with_restconf).c
 ifeq ($(with_restconf),native)
 APPSRC   += restconf_native.c
-APPSRC   += restconf_evhtp.c   # HTTP/1
 APPSRC   += restconf_nghttp2.c # HTTP/2
 endif
 
@@ -113,7 +113,10 @@ ifeq ($(with_restconf),fcgi)
 APPSRC   += restconf_stream_$(with_restconf).c
 endif
 
-APPOBJ    = $(APPSRC:.c=.o)
+# internal http/1 parser
+YACCOBJS = lex.clixon_http1_parse.o clixon_http1_parse.tab.o 
+
+APPOBJ    = $(APPSRC:.c=.o) $(YACCOBJS)
 
 # Accessible from plugin
 # XXX actually this does not work properly, there are functions in lib
@@ -124,6 +127,8 @@ LIBSRC   += restconf_handle.c
 LIBSRC   += restconf_api_$(with_restconf).c 
 
 LIBOBJ    = $(LIBSRC:.c=.o)
+
+
 
 # This lib is very small but used for clixon restconf applications to access clixon restconf lib
 # functions. Mostly for future use
@@ -147,6 +152,7 @@ $(top_srcdir)/lib/src/$(CLIXON_LIB):
 clean:
 	rm -f $(LIBOBJ) *.core $(APPL) $(APPOBJ) *.o $(MYLIBDYNAMIC) $(MYLIBSTATIC) $(MYLIBSO) $(MYLIBLINK) # extra .o to clean residue if with_restconf changes
 	rm -f *.gcda *.gcno *.gcov # coverage
+	rm -f clixon_http1_parse.tab.[ch] clixon_http1_parse.[co] lex.clixon_http1_parse.c
 
 distclean: clean
 	rm -f Makefile *~ .depend
@@ -190,6 +196,19 @@ uninstall:
 
 .c.o:
 	$(CC) $(INCLUDES) -D__PROGRAM__=\"clixon_restconf\" $(CPPFLAGS) $(CFLAGS) -c $<
+
+# http1 parser
+lex.clixon_http1_parse.c : clixon_http1_parse.l clixon_http1_parse.tab.h
+	$(LEX) -Pclixon_http1_parse clixon_http1_parse.l # -d is debug
+
+clixon_http1_parse.tab.h: clixon_http1_parse.y
+	$(YACC) -l -d -b clixon_http1_parse -p clixon_http1_parse clixon_http1_parse.y # -t is debug
+
+# extra rule to avoid parallell yaccs
+clixon_http1_parse.tab.c:	clixon_http1_parse.tab.h
+
+lex.clixon_http1_parse.o : lex.clixon_http1_parse.c clixon_http1_parse.tab.h
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
 
 ifeq ($(LINKAGE),dynamic)
 $(APPL): $(MYLIBDYNAMIC)

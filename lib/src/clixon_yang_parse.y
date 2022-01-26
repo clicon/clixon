@@ -78,7 +78,6 @@
 %type <string>    identifier_ref_str
 %type <string>    bool_str
 
-
 /* rfc 6020 keywords 
    See also enum rfc_6020 in clicon_yang.h. There, the constants have Y_ prefix instead of K_
  * Wanted to unify these (K_ and Y_) but gave up for several reasons:
@@ -154,7 +153,6 @@
 %token K_YANG_VERSION
 %token K_YIN_ELEMENT
 
-
 /* Deviate keywords
  */
 %token D_NOT_SUPPORTED
@@ -192,6 +190,7 @@
 #include <cligen/cligen.h>
 
 #include "clixon_queue.h"
+#include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_err.h"
@@ -351,37 +350,6 @@ ysp_add_push(clixon_yang_yacc *yy,
     return ys;
 }
 
-/*! Join two string with delimiter.
- * @param[in] str1   string 1 (will be freed) (optional)
- * @param[in] del    delimiter string (not freed) cannot be NULL (but "")
- * @param[in] str2   string 2 (will be freed)
- */
-static char*
-string_del_join(char *str1,
-		char *del,
-		char *str2)
-{
-    char *str;
-    int   len;
-    
-    len = strlen(str2) + 1;
-
-    if (str1)
-	len += strlen(str1);
-    len += strlen(del);
-    if ((str = malloc(len)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	return NULL;
-    }
-    if (str1){
-	snprintf(str, len, "%s%s%s", str1, del, str2);
-	free(str1);
-    }
-    else
-	snprintf(str, len, "%s%s", del, str2);
-    free(str2);
-    return str;
-}
 
 %} 
  
@@ -1640,23 +1608,23 @@ deviate_replace_substmt : type_stmt         { _PARSE_DEBUG("deviate-replace-subs
  *
  */
 unknown_stmt  : ustring ':' ustring optsep ';'
-                 { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
+                 { char *id; if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
 		   if (ysp_add(_yy, Y_UNKNOWN, id, NULL) == NULL) _YYERROR("unknown_stmt"); 
 		   _PARSE_DEBUG("unknown-stmt -> ustring : ustring ;");
 	       }
               | ustring ':' ustring sep string optsep ';'
-	        { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
+	        { char *id; if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
 		   if (ysp_add(_yy, Y_UNKNOWN, id, $5) == NULL){ _YYERROR("unknown_stmt"); }
 		   _PARSE_DEBUG("unknown-stmt -> ustring : ustring sep string ;");
 	       }
               | ustring ':' ustring optsep
-                 { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
+                 { char *id; if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
 		     if (ysp_add_push(_yy, Y_UNKNOWN, id, NULL) == NULL) _YYERROR("unknown_stmt"); }
 	         '{' yang_stmts '}'
 	               { if (ystack_pop(_yy) < 0) _YYERROR("unknown_stmt");
 			 _PARSE_DEBUG("unknown-stmt -> ustring : ustring { yang-stmts }"); }
               | ustring ':' ustring sep string optsep
- 	         { char *id; if ((id=string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
+ 	         { char *id; if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
 		     if (ysp_add_push(_yy, Y_UNKNOWN, id, $5) == NULL) _YYERROR("unknown_stmt"); }
 	         '{' yang_stmts '}'
 	               { if (ystack_pop(_yy) < 0) _YYERROR("unknown_stmt");
@@ -1850,10 +1818,10 @@ ustring       : ustring CHARS
               ;
 
 abs_schema_nodeid : abs_schema_nodeid '/' node_identifier
-                 { if (($$=string_del_join($1, "/", $3)) == NULL) _YYERROR("abs_schema_nodeid");
+                 { if (($$=clixon_string_del_join($1, "/", $3)) == NULL) _YYERROR("abs_schema_nodeid");
 		     _PARSE_DEBUG("absolute-schema-nodeid -> absolute-schema-nodeid / node-identifier"); }
               | '/' node_identifier
-                 {  if (($$=string_del_join(NULL, "/", $2)) == NULL) _YYERROR("abs_schema_nodeid");
+                 {  if (($$=clixon_string_del_join(NULL, "/", $2)) == NULL) _YYERROR("abs_schema_nodeid");
 		     _PARSE_DEBUG("absolute-schema-nodeid -> / node-identifier"); }
               ;
 
@@ -1887,7 +1855,7 @@ desc_schema_nodeid : node_identifier
                      { $$= $1;
 			 _PARSE_DEBUG("descendant-schema-nodeid -> node_identifier"); }
                    | node_identifier abs_schema_nodeid
-		   { if (($$=string_del_join($1, "", $2)) == NULL) _YYERROR("desc_schema_nodeid");
+		   { if (($$=clixon_string_del_join($1, "", $2)) == NULL) _YYERROR("desc_schema_nodeid");
 		       _PARSE_DEBUG("descendant-schema-nodeid -> node_identifier abs_schema_nodeid"); }
                    ;
 
@@ -1926,7 +1894,7 @@ node_identifier : IDENTIFIER
 		   { $$=$1;
 		       _PARSE_DEBUG("identifier-ref-arg-str -> string"); }
                 | IDENTIFIER ':' IDENTIFIER
-		{ if (($$=string_del_join($1, ":", $3)) == NULL) _YYERROR("node_identifier");
+		{ if (($$=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("node_identifier");
 		    _PARSE_DEBUG("identifier-ref-arg-str -> prefix : string"); }
                 ;
 

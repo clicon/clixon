@@ -35,7 +35,7 @@
  * @see https://tools.ietf.org/html/rfc6020 YANG 1.0
  * @see https://tools.ietf.org/html/rfc7950 YANG 1.1
  * @note differences in double quoted strings: 1.1 does not allow \x, but 1.0
- * does (where x is not n|t|"|\). See mode DQESC
+ * does (where x is not n|t|<double quote)|\). See mode DQESC
  */
 
 %{
@@ -66,11 +66,6 @@
 
 /* typecast macro */
 #define _YY ((clixon_yang_yacc *)_yy)
-
-#define     MAXBUF  4*4*64*1024
-
-#define MAX(x,y) ((x)>(y)?(x):(y))
-#define MIN(x,y) ((x)<(y)?(x):(y))
 
 #undef clixon_yang_parsewrap
 int 

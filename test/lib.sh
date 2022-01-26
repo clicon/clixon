@@ -102,11 +102,11 @@ DEFAULTHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capab
 # Set HTTP version 1.1 or 2
 if ${HAVE_LIBNGHTTP2}; then
     HVER=2
-    if ${HAVE_LIBEVHTP}; then
-	# This is if evhtp is enabled (unset proto=HTTP_2 in restconf_accept_client)
+    if ${HAVE_HTTP1}; then
+	# This is if http/1 is enabled (unset proto=HTTP_2 in restconf_accept_client)
 	CURLOPTS="${CURLOPTS} --http2"
     else
-	# This is if evhtp is disabled (set proto=HTTP_2 in restconf_accept_client)
+	# This is if http/1 is disabled (set proto=HTTP_2 in restconf_accept_client)
 	CURLOPTS="${CURLOPTS} --http2-prior-knowledge"
     fi
 else

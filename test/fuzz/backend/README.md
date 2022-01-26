@@ -20,7 +20,7 @@ Make a modification to how Clixon sends internal messages in `include/clixon_cus
 
 Build clixon statically with the afl-clang compiler:
 ```
-  CC=/usr/bin/afl-clang-fast LINKAGE=static ./configure --with-restconf=evhtp
+  CC=/usr/bin/afl-clang-fast LINKAGE=static ./configure --with-restconf=native
   make clean
   make
   sudo make install

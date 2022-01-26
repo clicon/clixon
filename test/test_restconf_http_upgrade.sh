@@ -16,8 +16,8 @@ if [ "${WITH_RESTCONF}" != "native" ]; then
 fi
 
 # Cant make it work in sum.sh...
-if ! ${HAVE_LIBEVHTP}; then
-    echo "...skipped: LIBEVHTP is false, must run with http/1 (evhtp)"
+if ! ${HAVE_HTTP1}; then
+    echo "...skipped: must run with http/1"
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
@@ -85,7 +85,7 @@ function testrun()
 
 
 
-    if [ ${HAVE_LIBNGHTTP2} = false -a ${HAVE_LIBEVHTP} = true ]; then    # http/1 only
+    if [ ${HAVE_LIBNGHTTP2} = false -a ${HAVE_HTTP1} = true ]; then    # http/1 only
 
 	new "wait restconf"
 	wait_restconf
@@ -106,7 +106,7 @@ function testrun()
 	echo "curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta"
 	expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" "16 52 55"
 
-    elif [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_LIBEVHTP} = false ]; then  # http/2 only
+    elif [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_HTTP1} = false ]; then  # http/2 only
 
 	sleep 2 # Cannot do wait restconf
 	
@@ -141,7 +141,7 @@ function testrun()
 	    expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" 0 "HTTP/2 405"
 	fi
 
-    elif [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_LIBEVHTP} = true ]; then  # http/1 + http/2
+    elif [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_HTTP1} = true ]; then  # http/1 + http/2
 
 	new "wait restconf"
 	wait_restconf

@@ -71,7 +71,7 @@ module clixon-restconf {
              proxy solution.
              That is, a reverse proxy is the HTTP front-end and the restconf daemon listens
              to a fcgi socket.
-             The alternative is the internal HTTP solution using evhtp.";
+             The alternative is the internal native HTTP solution.";
     }
 
     feature allow-auth-none {
@@ -183,10 +183,10 @@ module clixon-restconf {
 	    description
 		"Path to FastCGI unix socket. Should be specified in webserver
          	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
-                 Only if with-restconf=fcgi, NOT evhtp
+                 Only if with-restconf=fcgi, NOT native
                  This replaces CLICON_RESTCONF_PATH option in clixon-config.yang";
 	}
-	/* Second, evhtp-specific options */
+	/* Second, local native options */
 	leaf server-cert-path {
 	    type string;
 	    description

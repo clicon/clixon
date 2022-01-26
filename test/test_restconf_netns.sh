@@ -16,8 +16,8 @@ if [ "${WITH_RESTCONF}" != "native" ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
-if ! ${HAVE_LIBEVHTP}; then
-    echo "...skipped: LIBEVHTP is false, must run with http/1 (evhtp)"
+if ! ${HAVE_HTTP1}; then
+    echo "...skipped: HAVE_HTTP1 is false, must run with http/1"
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
@@ -197,7 +197,7 @@ new "netconf commit"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
 
 # NOTE http/1.1
-if ${HAVE_LIBEVHTP}; then
+if ${HAVE_HTTP1}; then
 new "restconf http get config on default netns"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' http://127.0.0.1/restconf/data/clixon-example:table)" 0 "HTTP/1.1 200" '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
 fi
@@ -211,7 +211,7 @@ expectpart "$(sudo ip netns exec $netns curl $CURLOPTS -X GET -H 'Accept: applic
 new "restconf https/SSL put table b"
 expectpart "$(sudo ip netns exec $netns curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' -d '<parameter xmlns="urn:example:clixon"><name>b</name><value>99</value></parameter>' https://$vaddr/restconf/data/clixon-example:table)" 0 "HTTP/$HVER 201" 
 
-if ${HAVE_LIBEVHTP}; then
+if ${HAVE_HTTP1}; then
 # NOTE http/1.1
 new "restconf http get table b on default ns"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' http://127.0.0.1/restconf/data/clixon-example:table/parameter=b)" 0 "HTTP/1.1 200" '<parameter xmlns="urn:example:clixon"><name>b</name><value>99</value></parameter>'

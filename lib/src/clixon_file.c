@@ -172,6 +172,11 @@ clicon_files_recursive(const char *dir,
  *       do something with dp[i].d_name;
  *   free(dp);
  * @endcode
+ * @note "ent" is an array with n fixed entries
+ *       But this is not what is returned from the syscall, see man readdir:
+ *       ... the  use sizeof(struct dirent) to capture the size of the record including 
+ *       the size of d_name is also incorrect.
+ * @note May block on file I/O
 */
 int
 clicon_file_dirent(const char     *dir,
@@ -180,7 +185,7 @@ clicon_file_dirent(const char     *dir,
 		   mode_t          type)
 {
    int            retval = -1;
-   DIR           *dirp;
+   DIR           *dirp = NULL;
    int            res;
    int            nent;
    regex_t        re;
@@ -188,11 +193,8 @@ clicon_file_dirent(const char     *dir,
    char           filename[MAXPATHLEN];
    struct stat    st;
    struct dirent *dent;
-   struct dirent *tmp;
    struct dirent *new = NULL;
-#if 0 /* revert of https://github.com/clicon/clixon/pull/238 */
    int            direntStructSize;
-#endif
 
    *ent = NULL;
    nent = 0;
@@ -225,25 +227,18 @@ clicon_file_dirent(const char     *dir,
 	   if ((type & st.st_mode) == 0)
 	       continue;
        }
-#if 0 /* revert of https://github.com/clicon/clixon/pull/238 */
        direntStructSize = offsetof(struct dirent, d_name) + strlen(dent->d_name) + 1;
-       clicon_debug(1, "%s %u %u %lu", __FUNCTION__, nent, direntStructSize, sizeof(struct dirent));
-       if ((tmp = realloc(new, (nent+1)*direntStructSize)) == NULL) {
-#else
-	   if ((tmp = realloc(new, (nent+1)*sizeof(struct dirent))) == NULL) {
-#endif
+       if ((new = realloc(new, (nent+1)*sizeof(struct dirent))) == NULL) {
 	   clicon_err(OE_UNIX, errno, "realloc");
 	   goto quit;
-       }
-       new = tmp;
-#if 0 /* revert of https://github.com/clicon/clixon/pull/238 */
+       } /* realloc */
        clicon_debug(1, "%s memcpy(%p %p %u", __FUNCTION__, &new[nent], dent, direntStructSize);
-       memcpy(&new[nent], dent, direntStructSize); /* XXX Invalid write of size 8 */
-#else
-       memcpy(&new[nent], dent, sizeof(*dent));
-#endif
+       /* man (3) readdir: 
+	* By implication, the  use sizeof(struct dirent) to capture the size of the record including 
+	* the size of d_name is also incorrect. */
+       memset(&new[nent], 0, sizeof(struct dirent));
+       memcpy(&new[nent], dent, direntStructSize);
        nent++;
-
    } /* while */
 
    qsort((void *)new, nent, sizeof(*new), clicon_file_dirent_sort);

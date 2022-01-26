@@ -114,8 +114,8 @@ AC_SUBST(SH_SUFFIX)
 AC_SUBST(LIBSTATIC_SUFFIX)
 AC_SUBST(LINKAGE)
 AC_SUBST(with_restconf) # Set to native or fcgi -> compile apps/restconf
-AC_SUBST(HAVE_LIBEVHTP,false)   # consider using neutral constant such as with-http1
 AC_SUBST(HAVE_LIBNGHTTP2,false) # consider using neutral constant such as with-http2
+AC_SUBST(HAVE_HTTP1,false) 
 AC_SUBST(with_libxml2)  
 AC_SUBST(CLIXON_YANG_PATCH)
 # Where Clixon installs its YANG specs
@@ -223,31 +223,22 @@ if test "x${with_restconf}" == xfcgi; then
    AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
    AC_DEFINE(WITH_RESTCONF_FCGI, 1, [Use fcgi restconf mode]) # For c-code that cant use strings
 elif test "x${with_restconf}" == xnative; then
-
    AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
    AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
-   # Check if evhtp is enabled for http/1
-   AC_ARG_ENABLE(evhtp, AS_HELP_STRING([--disable-evhtp],[Disable evhtp for native restconf http/1, ie http/2 only]),[
+   # Check if http/1 enabled
+   AC_ARG_ENABLE(http1, AS_HELP_STRING([--disable-http1],[Disable http1 for native restconf http/1, ie http/2 only]),[
    	  if test "$enableval" = no; then
-	      ac_enable_evhtp=no
+	      ac_enable_http1=no
 	  else	      
-	      ac_enable_evhtp=yes
+	      ac_enable_http1=yes
           fi
         ],
-	[ ac_enable_evhtp=yes])
-   AC_MSG_RESULT(checking evhtp is enabled: $ac_enable_evhtp)
-   if test "$ac_enable_evhtp" = "yes"; then
-      AC_CHECK_HEADERS(evhtp/evhtp.h,
-          [],
-      	  AC_MSG_ERROR([evhtp header missing. See https://github.com/clicon/libevhtp]),
-	  [AC_INCLUDES_DEFAULT[
-	  #define EVHTP_DISABLE_REGEX
-	  #define EVHTP_DISABLE_EVTHR
-      ]])
-      AC_CHECK_LIB(event, event_init,, AC_MSG_ERROR([libevent missing]))
-      AC_CHECK_LIB(evhtp, evhtp_new,, AC_MSG_ERROR([libevhtp missing]),[-levent -lssl -lcrypto]) 
-      HAVE_LIBEVHTP=true 
-   fi		  
+	[ ac_enable_http1=yes])
+
+   AC_MSG_RESULT(checking http1 is enabled: $ac_enable_http1)
+   if test "$ac_enable_http1" = "yes"; then
+      AC_DEFINE(HAVE_HTTP1,true) # Must be tree/false (not 0/1) used in shells
+   fi	
 
    # Check if nghttp2 is enabled for http/2
    AC_ARG_ENABLE(nghttp2, AS_HELP_STRING([--disable-nghttp2],[Disable nghttp2 for native restconf http/2, ie http/1 only]),[

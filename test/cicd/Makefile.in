@@ -46,7 +46,7 @@ SHELL	= /bin/sh
 # eg :
 # HOSTS += vandal.hagsand.com # i86_32 ubuntu
 # ...
-# You can also set RESTCONF to fcgi or evhtp
+# You can also set RESTCONF to fcgi or native
 RESTCONF=fcgi
 HOSTS=
 -include site.mk

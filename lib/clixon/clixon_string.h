@@ -89,6 +89,7 @@ static inline char * strdup4(char *str)
  */ 
 char **clicon_strsep(char *string, char *delim, int  *nvec0);
 char  *clicon_strjoin (int argc, char **argv, char *delim);
+char  *clixon_string_del_join(char *str1, char *del, char *str2);
 int    clixon_strsplit(char *nodeid, const int delim, char **prefix, char **id);
 int    uri_str2cvec(char *string, char delim1, char delim2, int decode, cvec **cvp);
 int    uri_percent_encode(char **encp, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
@@ -102,7 +103,8 @@ int    clicon_str2int_search(const map_str2int *mstab, char *str, int upper);
 int    nodeid_split(char *nodeid,	char **prefix, char **id);
 char  *clixon_trim(char *str);
 char  *clixon_trim2(char *str, char *trims);
-int   clicon_strcmp(char *s1, char *s2);
+int    clicon_strcmp(char *s1, char *s2);
+
 
 #ifndef HAVE_STRNDUP
 char *clicon_strndup (const char *, size_t);

@@ -36,6 +36,12 @@
 ## 5.6.0
 Expected: March 2022
 
+### New features
+
+* HTTP/1 native parser as part of the RESTCONF client
+  * Replaced libevhtp/libevent2 with internal http1 parser
+  * Replace configure option `--disable-evhtp` with `--disable-http1` for disabling HTTP/1 whihc is on by default
+
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system

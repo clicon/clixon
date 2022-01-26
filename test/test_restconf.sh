@@ -164,7 +164,7 @@ function testrun()
     fi
 
     #------------------------------------------------------- HTTP/1 + HTTP/2 
-    if [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_LIBEVHTP} = true ]; then
+    if [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_HTTP1} = true ]; then
 
 	if [ $proto = http ]; then # No plain http/2
 	    HVER=1.1
@@ -213,7 +213,7 @@ function testrun()
 	fi
 	
     #------------------------------------------------------- HTTP/2 ONLY
-    elif [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_LIBEVHTP} = false ]; then
+    elif [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_HTTP1} = false ]; then
 	HVER=2
 	
 	new "wait restconf"
@@ -539,7 +539,7 @@ function testrun()
 # Go thru all combinations of IPv4/IPv6, http/https, local/backend config
 if [ "${WITH_RESTCONF}" = "fcgi" ]; then
     protos="http"
-elif ${HAVE_LIBEVHTP}; then
+elif ${HAVE_HTTP1}; then
     protos="http"    # No plain http for http/2 only
 fi
 if [ "${WITH_RESTCONF}" = "native" ]; then
