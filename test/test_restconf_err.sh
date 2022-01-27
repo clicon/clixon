@@ -20,6 +20,11 @@
 # plugin should be visible in the error message.
 # XXX does not test rpc-error from backend in api_return_err?
 
+# Override default to use http/1.1
+# Force to HTTP 1.1 no SSL due to netcat
+RCPROTO=http
+HAVE_LIBNGHTTP2=false
+
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
@@ -36,9 +41,6 @@ fyang=$dir/example.yang
 fyang2=$dir/augment.yang
 fxml=$dir/initial.xml
 fstate=$dir/state.xml
-
-RCPROTO=http # Force to http due to netcat
-HVER=1.1
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
@@ -203,15 +205,15 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 # But leave it here for debugging where netcat works properly
 # Alt try something like:
 # printf "Hello World!" | (exec 3<>/dev/tcp/127.0.0.1/80; cat >&3; cat <&3; exec 3<&-)
-if [ false -a ! ${HAVE_LIBNGHTTP2} ] ; then
-    # Look for netcat or nc for direct socket http calls
-    if [ -n "$(type netcat 2> /dev/null)" ]; then
-	netcat="netcat -w 1" # -N does not work on fcgi
-    elif [ -n "$(type nc 2> /dev/null)" ]; then
-	netcat=nc
-    else
-	err1 "netcat/nc not found"
-    fi
+# Look for netcat or nc for direct socket http calls
+if [ -n "$(type netcat 2> /dev/null)" ]; then
+    netcat="netcat -w 1" # -N does not work on fcgi
+elif [ -n "$(type nc 2> /dev/null)" ]; then
+    netcat=nc
+else
+    netcat=
+fi
+if [ -n "$netcat" ]; then
 
 #    new "restconf try fuzz crash"
 #    expectpart "$(${netcat} 127.0.0.1 80 < ~/tmp/crashes/id:000000,sig:06,src:000493+000365,op:splice,rep:8)" 0 "HTTP/$HVER 400"
@@ -236,12 +238,12 @@ EOF
     
     new "restconf PUT not allowed"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
-PUT /restconf/.well-known/host-meta HTTP/$HVER
+PUT /.well-known/host-meta HTTP/$HVER
 Host: localhost
 Accept: application/yang-data+xml
 
 EOF
-)" 0 "HTTP/$HVER 405" kalle # nginx uses "method not allowed" 
+)" 0 "HTTP/$HVER 405" # nginx uses "method not allowed" 
 
     new "restconf GET wrong http version raw"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
@@ -252,7 +254,7 @@ Accept: application/yang-data+xml
 EOF
 )" 0 "HTTP/$HVER 400" # native: '<error-tag>malformed-message</error-tag><error-message>The requested URL or a header is in some way badly formed</error-message>'
 
-fi # Http/1.1 and netcat Cannot get to work on all platforms
+fi # netcat Cannot get to work on all platforms
 
 new "restconf XYZ not found"
 expectpart "$(curl $CURLOPTS -X XYS -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:a=0)" 0 "HTTP/$HVER 404"
@@ -335,6 +337,7 @@ fi
 unset RESTCONFIG
 unset HVER
 unset RCPROTO
+unset HAVE_LIBNGHTTP2
 
 rm -rf $dir
 

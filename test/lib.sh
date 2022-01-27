@@ -110,6 +110,7 @@ if ${HAVE_LIBNGHTTP2}; then
 	CURLOPTS="${CURLOPTS} --http2-prior-knowledge"
     fi
 else
+    CURLOPTS="${CURLOPTS} --http1.1"
     HVER=1.1
 fi
 

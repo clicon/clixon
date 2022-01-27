@@ -33,8 +33,8 @@
 
  * HTTP/1.1 parser according to RFC 7230
  */
-#ifndef _CLIXON_HTTP1_H_
-#define _CLIXON_HTTP1_H_
+#ifndef _RESTCONF_HTTP1_H_
+#define _RESTCONF_HTTP1_H_
 
 /*
  * Prototypes
@@ -43,5 +43,7 @@ int clixon_http1_parse_file(clicon_handle h, restconf_conn *rc, FILE *f, const c
 int clixon_http1_parse_string(clicon_handle h, restconf_conn *rc, char *str);
 int clixon_http1_parse_buf(clicon_handle h, restconf_conn *rc, char *buf, size_t n);
 int restconf_http1_path_root(clicon_handle h, restconf_conn *rc);
+int http1_check_expect(clicon_handle h, restconf_conn *rc, restconf_stream_data *sd);
+int http1_check_readmore(clicon_handle h, restconf_stream_data *sd);
 
-#endif	/* _CLIXON_HTTP1_H_ */
+#endif	/* _RESTCONF_HTTP1_H_ */

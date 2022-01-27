@@ -451,6 +451,10 @@ http2_exec(restconf_conn        *rc,
     int retval = -1;
 
     clicon_debug(1, "%s", __FUNCTION__);
+    if (sd->sd_path){
+	free(sd->sd_path);
+	sd->sd_path = NULL;
+    }
     if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
 	goto done;
     sd->sd_proto = HTTP_2; /* XXX is this necessary? */

@@ -88,9 +88,12 @@ typedef struct  {
  * Per connection request
  */
 typedef struct restconf_conn {
-    //    qelem_t       rs_qelem; /* List header */
-    size_t              rc_bufferevent_output_offset; /* Kludge to drain libevent output buffer */
+    /* XXX rc_proto and rc_proto_d1/d2 may not both be necessary. 
+     * remove rc_proto?
+     */
     restconf_http_proto rc_proto; /* HTTP protocol: http/1 or http/2 */
+    int                 rc_proto_d1; /* parsed version digit 1 */
+    int                 rc_proto_d2; /* parsed version digit 2 */
     int                 rc_s;         /* Connection socket */
     clicon_handle       rc_h;         /* Clixon handle */
     SSL                *rc_ssl;       /* Structure for SSL connection */
@@ -137,7 +140,8 @@ int               ssl_x509_name_oneline(SSL *ssl, char **oneline);
 
 int               restconf_close_ssl_socket(restconf_conn *rc, int shutdown); /* XXX in restconf_main_native.c */
 int               restconf_connection_sanity(clicon_handle h, restconf_conn *rc, restconf_stream_data *sd);
-
+int               native_send_badrequest(clicon_handle h, int s, SSL *ssl, char *media, char *body);
+int               restconf_connection(int s, void *arg);
     
 #endif /* _RESTCONF_NATIVE_H_ */
 

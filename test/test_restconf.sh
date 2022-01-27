@@ -454,7 +454,7 @@ function testrun()
     expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:description":"The-first-interface"}' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0 "HTTP/$HVER 201"
 
     new "Add nothing using POST (expect fail)"
-    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0  "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"The message-body MUST contain exactly one instance of the expected data resource"}}}'
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=eth%2f0%2f0)" 0  "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"The message-body of POST MUST contain exactly one instance of the expected data resource"}}}'
 
     new "restconf Check description added"
     expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"eth/0/0","description":"The-first-interface","type":"clixon-example:eth","enabled":true,"oper-status":"up","clixon-example:my-status":{"int":42,"str":"foo"}}\]}}'

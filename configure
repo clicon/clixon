@@ -5184,6 +5184,7 @@ $as_echo "checking http1 is enabled: $ac_enable_http1" >&6; }
    if test "$ac_enable_http1" = "yes"; then
       $as_echo "#define HAVE_HTTP1 true" >>confdefs.h
  # Must be tree/false (not 0/1) used in shells
+      HAVE_HTTP1=true
    fi
 
    # Check if nghttp2 is enabled for http/2

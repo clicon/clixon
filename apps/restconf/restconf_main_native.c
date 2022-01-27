@@ -127,16 +127,15 @@
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 
+#ifdef HAVE_LIBNGHTTP2
+#include <nghttp2/nghttp2.h>
+#endif
+
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* libclixon */
 #include <clixon/clixon.h>
-
-#ifdef HAVE_LIBNGHTTP2
-/* nghttp2 */
-#include <nghttp2/nghttp2.h>
-#endif
 
 /* restconf */
 #include "restconf_lib.h"       /* generic shared with plugins */
@@ -149,7 +148,7 @@
 #include "restconf_nghttp2.h"  /* http/2 */
 #endif
 #ifdef HAVE_HTTP1
-#include "clixon_http1.h"
+#include "restconf_http1.h"
 #endif
 
 /* Command line options to be passed to getopt(3) */
@@ -169,9 +168,6 @@
 
 /* Cert verify depth: dont know what to set here? */
 #define VERIFY_DEPTH 5
-
-/* Forward */
-static int restconf_connection(int s, void* arg);
 
 static int             session_id_context = 1;
 
@@ -207,98 +203,6 @@ restconf_native_handle_set(clicon_handle   h,
     if (clicon_hash_add(cdat, "restconf-native-handle", &rh, sizeof(rh)) == NULL)
 	return -1;
     return 0;
-}
-
-/* Write evbuf to socket
- * see also this function in restcont_api_openssl.c
- */
-static int
-buf_write(char   *buf,
-	  size_t  buflen,
-	  int     s,
-	  SSL    *ssl)
-{
-    int     retval = -1;
-    ssize_t len;
-    ssize_t totlen = 0;
-    int     er;
-
-    /* Two problems with debugging buffers from libevent that this fixes:
-     * 1. they are not "strings" in the sense they are not NULL-terminated
-     * 2. they are often very long
-     */
-    if (clicon_debug_get()) { 
-	char *dbgstr = NULL;
-	size_t sz;
-	sz = buflen>256?256:buflen; /* Truncate to 256 */
-	if ((dbgstr = malloc(sz+1)) == NULL){
-	    clicon_err(OE_UNIX, errno, "malloc");
-	    goto done;
-	}
-	memcpy(dbgstr, buf, sz);
-	dbgstr[sz] = '\0';
-	clicon_debug(1, "%s buflen:%zu buf:%s", __FUNCTION__, buflen, dbgstr);
-	free(dbgstr);
-    }
-    while (totlen < buflen){
-	if (ssl){
-	    if ((len = SSL_write(ssl, buf+totlen, buflen-totlen)) <= 0){
-		er = errno;
-		switch (SSL_get_error(ssl, len)){
-		case SSL_ERROR_SYSCALL:              /* 5 */
-		    if (er == ECONNRESET) {/* Connection reset by peer */
-			if (ssl)
-			    SSL_free(ssl);
-			close(s);
-			clixon_event_unreg_fd(s, restconf_connection);
-			goto ok; /* Close socket and ssl */
-		    }
-		    else if (er == EAGAIN){
-			clicon_debug(1, "%s write EAGAIN", __FUNCTION__);
-			usleep(10000);
-			continue;
-		    }
-		    else{
-			clicon_err(OE_RESTCONF, er, "SSL_write %d", er);
-			goto done;
-		    }
-		    break;
-		default:
-		    clicon_err(OE_SSL, 0, "SSL_write");
-		    goto done;
-		    break;
-		}
-		goto done;
-	    }
-	}
-	else{
-	    if ((len = write(s, buf+totlen, buflen-totlen)) < 0){
-		if (errno == EAGAIN){
-		    clicon_debug(1, "%s write EAGAIN", __FUNCTION__);
-		    usleep(10000);
-		    continue;
-		}
-#if 1
-		else if (errno == ECONNRESET) {/* Connection reset by peer */
-		    close(s);
-		    clixon_event_unreg_fd(s, restconf_connection);
-		    goto ok; /* Close socket and ssl */
-		}
-#endif
-		else{
-		    clicon_err(OE_UNIX, errno, "write");
-		    goto done;
-		}
-	    }
-	    assert(len != 0);
-	}
-	totlen += len;
-    } /* while */
- ok:
-    retval = 0;
- done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    return retval;
 }
 
 /* util function to append log string
@@ -596,324 +500,6 @@ Note that in this case SSL_ERROR_ZERO_RETURN does not necessarily indicate that 
     return retval;
 }
 
-/*! Send early handcoded bad request reply before actual packet received, just after accept
- * @param[in]  h    Clixon handle
- * @param[in]  s    Socket
- * @param[in]  ssl  If set, it will be freed
- * @param[in]  body If given add message body using media 
- * @see restconf_badrequest which can only be called in a request context
- */
-static int
-send_badrequest(clicon_handle       h,
-		int                 s,
-		SSL                *ssl,
-		char               *media,
-    		char               *body)
-{
-    int retval = -1;
-    cbuf *cb = NULL;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    cprintf(cb, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n");
-    if (body){
-	cprintf(cb, "Content-Type: %s\r\n", media);
-	cprintf(cb, "Content-Length: %zu\r\n", strlen(body)+2); /* for \r\n */
-    }
-    else
-	cprintf(cb, "Content-Length: 0\r\n");
-    cprintf(cb, "\r\n");
-    if (body)
-	cprintf(cb, "%s\r\n", body);
-    if (buf_write(cbuf_get(cb), cbuf_len(cb), s, ssl) < 0)
-	goto done;
-    retval = 0;
- done:
-    if (cb)
-	cbuf_free(cb);
-    return retval;
-}
-
-#if 0
-#define IFILE "/var/tmp/clixon-mirror/ifile"
-#define FMTDIR "/var/tmp/clixon-mirror/"
-
-static FILE *myf = NULL;
-
-static int
-mirror_pkt(const char   *buf,
-	   ssize_t       n)
-{
-    int          retval = -1;
-
-    if (fwrite(buf, 1, n, myf) != n){
-	perror("fopen");
-	goto done;
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
-static int
-mirror_new(void)
-{
-    int             retval = -1;
-    static uint64_t u64 = 0;
-    cbuf           *cb = cbuf_new();
-    FILE           *ifile;
-
-    if ((ifile = fopen(IFILE, "r+")) == NULL){
-	perror("fopen r+ ifile");
-    }
-    else {
-	if (fscanf(ifile, "%" PRIu64, &u64) < 0){
-	    perror("fscanf ifile");
-	    goto done;
-	}
-	fclose(ifile);
-    }
-    if (myf != NULL)
-	fclose(myf);
-    cprintf(cb, FMTDIR "%" PRIu64 ".dump", u64);
-    if ((myf = fopen(cbuf_get(cb), "w")) == NULL){
-	perror("fopen"); 
-	goto done;
-    }
-    cbuf_free(cb);
-    u64++;
-    if ((ifile = fopen(IFILE, "w")) == NULL){
-	perror("fopen w+ ifile");
-	goto done;
-    }
-    fprintf(ifile, "%" PRIu64, u64);
-    fclose(ifile);
-    retval = 0;
- done:
-    return retval;
-}
-#endif
-
-/*! New data connection after accept, receive and reply on data socket
- *
- * @param[in]   s    Socket where message arrived. read from this.
- * @param[in]   arg  Client entry (from).
- * @retval      0    OK
- * @retval      -1   Error Terminates backend and is never called). Instead errors are
- *                   propagated back to client.
- * @see restconf_accept_client where this callback is registered
- * @note read buffer is limited. More data can be read in two ways:  returns a buffer
- * with 100 Continue, in which case that is replied and the function returns and the client sends 
- * more data.
- * OR  returns 0 with no reply, then this is assumed to mean read more data from the socket.
- */
-static int
-restconf_connection(int   s,
-		    void *arg)
-{
-    int                   retval = -1;
-    restconf_conn        *rc = NULL;
-    ssize_t               n;
-    char                  buf[BUFSIZ]; /* from stdio.h, typically 8K XXX: reduce for test */
-    int                   readmore = 1;
-    int                   sslerr;
-#ifdef HAVE_LIBNGHTTP2
-    int                   ret;
-#endif
-#ifdef HAVE_HTTP1
-    clicon_handle         h;
-    restconf_stream_data *sd;
-#endif
-
-    clicon_debug(1, "%s %d", __FUNCTION__, s);
-    if ((rc = (restconf_conn*)arg) == NULL){
-	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
-	goto done;
-    }
-    assert(s == rc->rc_s);
-    while (readmore) {
-	clicon_debug(1, "%s readmore", __FUNCTION__);
-	readmore = 0;
-	/* Example: curl -Ssik -u wilma:bar -X GET https://localhost/restconf/data/example:x */
-	if (rc->rc_ssl){
-	    /* Non-ssl gets n == 0 here!
-	       curl -Ssik --key /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.key --cert /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.crt -X GET https://localhost/restconf/data/example:x
-	    */
-	    if ((n = SSL_read(rc->rc_ssl, buf, sizeof(buf))) < 0){
-		sslerr = SSL_get_error(rc->rc_ssl, n);
-		clicon_debug(1, "%s SSL_read() n:%zd errno:%d sslerr:%d", __FUNCTION__, n, errno, sslerr);
-		switch (sslerr){
-		case SSL_ERROR_WANT_READ:            /* 2 */
-		    /* SSL_ERROR_WANT_READ is returned when the last operation was a read operation 
-		     * from a nonblocking BIO. 
-		     * That is, it can happen if restconf_socket_init() below is called 
-		     * with SOCK_NONBLOCK
-		     */
-		    clicon_debug(1, "%s SSL_read SSL_ERROR_WANT_READ", __FUNCTION__);
-		    usleep(1000);
-		    readmore = 1;
-		    break;
-		default:
-		    clicon_err(OE_XML, errno, "SSL_read");
-		    goto done;              
-		} /* switch */
-		continue; /* readmore */
-	    }
-	}
-	else{
-	    if ((n = read(rc->rc_s, buf, sizeof(buf))) < 0){ /* XXX atomicio ? */
-		switch(errno){
-		case ECONNRESET:/* Connection reset by peer */
-		    clicon_debug(1, "%s %d Connection reset by peer", __FUNCTION__, rc->rc_s);
-		    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
-		    close(rc->rc_s);
-		    restconf_conn_free(rc);
-		    goto ok; /* Close socket and ssl */
-		    break;
-		case EAGAIN:
-		    clicon_debug(1, "%s read EAGAIN", __FUNCTION__);
-		    usleep(1000);
-		    readmore = 1;
-		    break;
-		default:;
-		    clicon_err(OE_XML, errno, "read");
-		    goto done;
-		    break;
-		}
-		continue;
-	    }
-	}
-	clicon_debug(1, "%s read:%zd", __FUNCTION__, n);
-	if (n == 0){
-	    clicon_debug(1, "%s n=0 closing socket", __FUNCTION__);
-	    if (restconf_close_ssl_socket(rc, 0) < 0)
-		goto done;
-	    restconf_conn_free(rc);    
-	    rc = NULL;
-	    goto ok;
-	}
-#if 0
-	if (mirror_pkt(buf, n) < 0)
-	    goto done;
-#endif
-	switch (rc->rc_proto){
-#ifdef HAVE_HTTP1
-	case HTTP_10:
-	case HTTP_11:
-	    h = rc->rc_h;
-	    if (clixon_http1_parse_buf(h, rc, buf, n) < 0){
-		if (send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
-				    "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The requested URL or a header is in some way badly formed</error-message></error></errors>") < 0)
-		    goto done;
-	    }
-	    else{
-		if (restconf_http1_path_root(h, rc) < 0)
-		    goto done;
-	    }
-	    clicon_debug(1, "%s connection_parse OK", __FUNCTION__);
-	    /* default stream */
-	    if ((sd = restconf_stream_find(rc, 0)) == NULL){
-		clicon_err(OE_RESTCONF, EINVAL, "restconf stream not found");
-		goto done;
-	    }
-	    if (buf_write(cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
-			  rc->rc_s, rc->rc_ssl) < 0)
-		goto done;
-	    cvec_reset(sd->sd_outp_hdrs); /* Can be done in native_send_reply */
-	    cbuf_reset(sd->sd_outp_buf);
-	    if (rc->rc_exit){ 	    /* Server-initiated exit for http/2 */
-		SSL_free(rc->rc_ssl);
-		rc->rc_ssl = NULL;
-		if (close(rc->rc_s) < 0){
-		    clicon_err(OE_UNIX, errno, "close");
-		    goto done;
-		}
-		clixon_event_unreg_fd(rc->rc_s, restconf_connection);
-		restconf_conn_free(rc);
-		goto ok;
-	    }
-#ifdef HAVE_LIBNGHTTP2
-	    if (sd->sd_upgrade2){
-		nghttp2_error ngerr;
-
-		/* Switch to http/2 according to RFC 7540 Sec 3.2 and RFC 7230 Sec 6.7 */
-		rc->rc_proto = HTTP_2;
-		if (http2_session_init(rc) < 0){
-		    restconf_close_ssl_socket(rc, 1);
-		    goto done;
-		}
-		/* The HTTP/1.1 request that is sent prior to upgrade is assigned a
-		 * stream identifier of 1 (see Section 5.1.1) with default priority
-		 */
-		sd->sd_stream_id = 1;
-		/* The first HTTP/2 frame sent by the server MUST be a server connection
-		 * preface (Section 3.5) consisting of a SETTINGS frame (Section 6.5).
-		 */
-		if ((ngerr = nghttp2_session_upgrade2(rc->rc_ngsession,
-						      sd->sd_settings2,
-						      sd->sd_settings2?strlen((const char*)sd->sd_settings2):0,
-						      0, /* XXX: 1 if HEAD */
-						      NULL)) < 0){
-		    clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_upgrade2");
-		    goto done;
-		}
-		if (http2_send_server_connection(rc) < 0){
-		    restconf_close_ssl_socket(rc, 1);
-		    goto done;
-		}
-		/* Use params from original http/1 session to http/2 stream */
-		if (http2_exec(rc, sd, rc->rc_ngsession, 1) < 0)
-		    goto done;
-		/*
-		 * Very special case for http/1->http/2 upgrade and restconf "restart"
-		 * That is, the restconf daemon is restarted under the hood, and the session
-		 * is closed in mid-step: it needs a couple of extra rounds to complete the http/2
-		 * settings before it completes.
-		 * Maybe a more precise way would be to encode that semantics using recieved http/2
-		 * frames instead of just postponing nrof events?
-		 */
-		if (clixon_exit_get() == 1){
-		    clixon_exit_set(3);
-		}
-	    }
-#endif
-	    break;
-#endif /* HAVE_HTTP1 */
-#ifdef HAVE_LIBNGHTTP2
-	case HTTP_2:
-	    if (rc->rc_exit){ /* Server-initiated exit for http/2 */
-		nghttp2_error ngerr;
-		if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, 0)) < 0)
-		    clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
-	    }
-	    else {
-		if ((ret = http2_recv(rc, (unsigned char *)buf, n)) < 0)
-		    goto done;
-		if (ret == 0){
-		    restconf_close_ssl_socket(rc, 1);
-		    if (restconf_conn_free(rc) < 0)
-			goto done;
-		    goto ok;
-		}
-		/* There may be more data frames */
-		readmore++;
-	    }
-	    break;
-#endif /* HAVE_LIBNGHTTP2 */
-	default:
-	    break;
-	} /* switch rc_proto */
-    } /* while readmore */
- ok:
-    retval = 0;
- done:
-    clicon_debug(1, "%s retval %d", __FUNCTION__, retval);
-    return retval;
-} /* restconf_connection */
-
 #if 0 /* debug */
 /*! Debug print all loaded certs
  */
@@ -1019,7 +605,7 @@ ssl_alpn_check(clicon_handle        h,
 	if (alpn != NULL){
 	    cprintf(cberr, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>ALPN: protocol not recognized: %s</error-message></error></errors>", alpn);
 	    clicon_log(LOG_INFO, "%s Warning: %s", __FUNCTION__, cbuf_get(cberr));
-	    if (send_badrequest(h, rc->rc_s, rc->rc_ssl,
+	    if (native_send_badrequest(h, rc->rc_s, rc->rc_ssl,
 				"application/yang-data+xml",
 				cbuf_get(cberr)) < 0)
 		goto done;
@@ -1160,7 +746,7 @@ restconf_accept_client(int   fd,
 		case SSL_ERROR_SSL:                  /* 1 */
 		    clicon_debug(1, "%s SSL_ERROR_SSL (non-ssl message on ssl socket)", __FUNCTION__);
 #if 1
-		    if (send_badrequest(h, rc->rc_s, NULL, "application/yang-data+xml",
+		    if (native_send_badrequest(h, rc->rc_s, NULL, "application/yang-data+xml",
 					"<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The plain HTTP request was sent to HTTPS port</error-message></error></errors>") < 0)
 			goto done;
 #endif
@@ -1243,7 +829,7 @@ restconf_accept_client(int   fd,
 	    }
 	    else { /* Get certificates (if available) */
 		if (proto != HTTP_2 &&
-		    send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
+		    native_send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
 				    "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>Peer certificate required</error-message></error></errors>") < 0)
 		    goto done;
 		restconf_conn_free(rc);
@@ -1315,10 +901,6 @@ restconf_accept_client(int   fd,
     default:
 	break;
     } /* switch proto */
-#if 0
-    if (mirror_new() < 0)
-	goto done;
-#endif
     if (clixon_event_reg_fd(rc->rc_s, restconf_connection, (void*)rc, "restconf client socket") < 0)
 	goto done;
  ok:

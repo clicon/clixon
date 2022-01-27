@@ -212,7 +212,7 @@ api_data_post(clicon_handle h,
      * expected data resource.  (tested again below)
      */
     if (data == NULL || strlen(data) == 0){
-	if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
+	if (netconf_malformed_message_xml(&xerr, "The message-body of POST MUST contain exactly one instance of the expected data resource") < 0)
 	    goto done;
 	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 	    goto done;

@@ -40,7 +40,11 @@
 # --with-restconf=native Integration with embedded web server 
 WITH_RESTCONF=@with_restconf@ # native, fcgi or ""
 
-HAVE_LIBNGHTTP2=@HAVE_LIBNGHTTP2@
+# HTTP/2?
+# If set, curl options are set to use --http2 which may not be what you want, ie
+# you may want to force it to http/1 for example
+# If so, override before test
+: ${HAVE_LIBNGHTTP2:=@HAVE_LIBNGHTTP2@}o
 HAVE_HTTP1=@HAVE_HTTP1@
 
 # This is for libxml2 XSD regex engine
@@ -85,4 +89,6 @@ LIBSTATIC_SUFFIX=@LIBSTATIC_SUFFIX@
 LIBS="@LIBS@"
 CLIXON_YANG_PATCH=@CLIXON_YANG_PATCH@
 YANG_STANDARD_DIR=@YANG_STANDARD_DIR@
+
 YANG_INSTALLDIR=@YANG_INSTALLDIR@
+

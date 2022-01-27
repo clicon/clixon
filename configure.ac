@@ -238,6 +238,7 @@ elif test "x${with_restconf}" == xnative; then
    AC_MSG_RESULT(checking http1 is enabled: $ac_enable_http1)
    if test "$ac_enable_http1" = "yes"; then
       AC_DEFINE(HAVE_HTTP1,true) # Must be tree/false (not 0/1) used in shells
+      HAVE_HTTP1=true
    fi	
 
    # Check if nghttp2 is enabled for http/2

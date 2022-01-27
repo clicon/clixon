@@ -155,7 +155,7 @@ restconf_param_set(clicon_handle h,
 {
     struct restconf_handle *rh = handle(h);
 
-    clicon_debug(1, "%s=%s", param, val);
+    clicon_debug(1, "%s: %s=%s", __FUNCTION__, param, val);
     if (rh->rh_params == NULL)
 	if ((rh->rh_params = clicon_hash_init()) == NULL)
 	    return -1;

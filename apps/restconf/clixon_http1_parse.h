@@ -46,7 +46,6 @@ struct clixon_http1_yacc {
     int           hy_linenum;      /* Number of \n in parsed buffer */
     char         *hy_parse_string; /* original (copy of) parse string */
     void         *hy_lexbuf;       /* internal parse buffer from lex */
-    void         *hy_top;
 };
 typedef struct clixon_http1_yacc clixon_http1_yacc;
 

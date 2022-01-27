@@ -49,6 +49,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
+#include <signal.h>
 #include <openssl/ssl.h>
 
 #ifdef HAVE_LIBNGHTTP2
@@ -93,46 +94,57 @@ query   [A-Za-z0-9\-\._~!$&'()*+,;=:@?/]|%[0-9a-fA-F][0-9a-fA-F]
 %x REQHTTP
 %x FLDNAME
 %x FLDVALUE
+%x BODYM
 
 %%
 <REQLINE,REQTARG,REQUERY,REQHTTP,FLDNAME,FLDVALUE><<EOF>> { return X_EOF; }
 <REQLINE>[ ]       { BEGIN(REQTARG); return SP; }
-<REQLINE>{token}   { clixon_http1_parselval.string = yytext; 
+<REQLINE>{token}   { clixon_http1_parselval.string = strdup(yytext);
                      return TOKEN; } 
 <REQLINE>.         { clixon_http1_parseerror(_HY, "LEXICAL ERROR\n"); return -1; }
 
 <REQTARG>\?        { BEGIN(REQUERY); return QMARK; }
 <REQTARG>\/        { return SLASH; }
-<REQTARG>[ ]       { return SP; }
-<REQTARG>HTTP      { BEGIN(REQHTTP); return HTTP; } 
-<REQUERY>{pchar}+  { clixon_http1_parselval.string = yytext; 
+<REQTARG>[ ]       { BEGIN(REQHTTP); return SP; }
+<REQTARG>{pchar}+  { clixon_http1_parselval.string = yytext;
                      return PCHARS; } 
 <REQTARG>.         { clixon_http1_parseerror(_HY, "LEXICAL ERROR\n"); return -1; }
 
 <REQUERY>\/        { return SLASH; }
-<REQUERY>[ ]       { return SP; }
-<REQUERY>HTTP      { BEGIN(REQHTTP); return HTTP; } 
-<REQUERY>{query}+  { clixon_http1_parselval.string = yytext; 
+<REQUERY>[ ]       { BEGIN(REQHTTP); return SP; }
+<REQUERY>{query}+  { clixon_http1_parselval.string = strdup(yytext);
                      return QUERY; } 
 <REQUERY>.         { clixon_http1_parseerror(_HY, "LEXICAL ERROR\n"); return -1; }
 
 <REQHTTP>\r\n      { BEGIN(FLDNAME); return CRLF; _HY->hy_linenum++; }
 <REQHTTP>\/        { return SLASH; }
 <REQHTTP>\.        { return DOT; }
+<REQHTTP>HTTP      { BEGIN(REQHTTP); return HTTP; } 
 <REQHTTP>[0-9]     { clixon_http1_parselval.intval = atoi(yytext); 
                      return DIGIT; }
 <REQHTTP>.         { clixon_http1_parseerror(_HY, "LEXICAL ERROR\n"); return -1; }
 
 <FLDNAME>:         { BEGIN(FLDVALUE); return COLON; }
-<FLDNAME>\r\n      { return CRLF; _HY->hy_linenum++; }
-<FLDNAME>[ \t\n]+  { return RWS; }
-<FLDNAME>{token}   { clixon_http1_parselval.string = yytext; 
+<FLDNAME>\r\n      { BEGIN(BODYM); return CRLF; _HY->hy_linenum++; }
+<FLDNAME>[ \t]+    { return RWS; }
+<FLDNAME>{token}   { clixon_http1_parselval.string = strdup(yytext); 
                      return TOKEN; } 
 <FLDNAME>.         { clixon_http1_parseerror(_HY, "LEXICAL ERROR\n"); return -1; }
+
 <FLDVALUE>\r\n     { BEGIN(FLDNAME); return CRLF; _HY->hy_linenum++; }
-<FLDVALUE>[ \t\n]+ { return RWS; }
-<FLDVALUE>.        { clixon_http1_parselval.string = yytext; 
-                     return VCHAR; }
+<FLDVALUE>[ \t]+   { return RWS; }
+<FLDVALUE>[^ \t\n\r]+ { clixon_http1_parselval.string = strdup(yytext);
+                      return VCHARS; }
+<FLDVALUE>.        { clixon_http1_parseerror(_HY, "LEXICAL ERROR\n"); return -1; }
+
+<BODYM>.+          { clixon_http1_parselval.string = strdup(yytext); /* note \n not . */
+                     return BODY; }
+<BODYM>\n          { clixon_http1_parselval.string = strdup(yytext);
+                     _HY->hy_linenum++;
+                     return BODY; } 
+<BODYM><<EOF>>     { return X_EOF; }
+<BODYM>.           { clixon_http1_parseerror(_HY, "LEXICAL ERROR\n"); return ERROR; }
+
 %%
 
 /*! Initialize scanner.

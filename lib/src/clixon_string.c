@@ -152,8 +152,9 @@ clicon_strjoin(int         argc,
 /*! Join two string with delimiter.
  * @param[in] str1   string 1 (will be freed) (optional)
  * @param[in] del    delimiter string (not freed) cannot be NULL (but "")
- * @param[in] str2   string 2 (will be freed)
+ * @param[in] str2   string 2 (not freed) mandatory
  * @see clicon_strjoin
+ * This is somewhat of a special case.
  */
 char*
 clixon_string_del_join(char *str1,
@@ -163,8 +164,11 @@ clixon_string_del_join(char *str1,
     char *str;
     int   len;
     
+    if (str2 == NULL){
+	clicon_err(OE_UNIX, EINVAL, "str2 is NULL");
+	return NULL;
+    }
     len = strlen(str2) + 1;
-
     if (str1)
 	len += strlen(str1);
     len += strlen(del);
@@ -178,7 +182,6 @@ clixon_string_del_join(char *str1,
     }
     else
 	snprintf(str, len, "%s%s", del, str2);
-    free(str2);
     return str;
 }
 

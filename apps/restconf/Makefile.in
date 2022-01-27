@@ -100,9 +100,9 @@ APPSRC   += restconf_methods_post.c
 APPSRC   += restconf_methods_get.c
 APPSRC   += restconf_methods_patch.c
 APPSRC   += restconf_root.c
-APPSRC   += clixon_http1.c
 APPSRC   += restconf_main_$(with_restconf).c
 ifeq ($(with_restconf),native)
+APPSRC   += restconf_http1.c
 APPSRC   += restconf_native.c
 APPSRC   += restconf_nghttp2.c # HTTP/2
 endif
@@ -127,8 +127,6 @@ LIBSRC   += restconf_handle.c
 LIBSRC   += restconf_api_$(with_restconf).c 
 
 LIBOBJ    = $(LIBSRC:.c=.o)
-
-
 
 # This lib is very small but used for clixon restconf applications to access clixon restconf lib
 # functions. Mostly for future use

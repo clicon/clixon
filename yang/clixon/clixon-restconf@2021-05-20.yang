@@ -207,7 +207,8 @@ module clixon-restconf {
 	}
 	list socket {
 	    description
-		"List of server sockets that the restconf daemon listens to";
+		"List of server sockets that the restconf daemon listens to.
+                 Not fcgi";
 	    key "namespace address port";
 	    leaf namespace {
 		type string;

@@ -81,8 +81,8 @@ RUN apk add --update flex bison
 
 # need to add www user manually
 RUN adduser -D -H -G www-data www-data
-# for libevtp
-RUN apk add --update openssl libevent
+
+RUN apk add --update openssl
 
 # nghttp2 dependencies
 RUN apk add --update nghttp2

@@ -601,9 +601,9 @@ module clixon-config {
 	    type boolean;
 	    default false;
 	    description
-		"Applies to plan (non-tls) http/2 ie when clixon is configured with --enable-nghttp2
+		"Applies to plain (non-tls) http/2 ie when clixon is configured with --enable-nghttp2
                  If false, disable direct and upgrade for plain(non-tls) HTTP/2.
-                 If true, allows direct and upgrade for plain(non-tls) HTTP/2.
+                 If true, allow direct and upgrade for plain(non-tls) HTTP/2.
                  It may especially useful to disable in http/1 + http/2 mode to avoid the complex
                  upgrade/switch from http/1 to http/2. 
                  Note this also disables plain http/2 in prior-knowledge, that is, in http/2-only mode.

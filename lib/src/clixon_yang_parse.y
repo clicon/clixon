@@ -1608,23 +1608,35 @@ deviate_replace_substmt : type_stmt         { _PARSE_DEBUG("deviate-replace-subs
  *
  */
 unknown_stmt  : ustring ':' ustring optsep ';'
-                 { char *id; if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
-		   if (ysp_add(_yy, Y_UNKNOWN, id, NULL) == NULL) _YYERROR("unknown_stmt"); 
-		   _PARSE_DEBUG("unknown-stmt -> ustring : ustring ;");
+              {
+		  char *id;
+		  if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
+		  free($3);
+		  if (ysp_add(_yy, Y_UNKNOWN, id, NULL) == NULL) _YYERROR("unknown_stmt"); 
+		  _PARSE_DEBUG("unknown-stmt -> ustring : ustring ;");
 	       }
               | ustring ':' ustring sep string optsep ';'
-	        { char *id; if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
-		   if (ysp_add(_yy, Y_UNKNOWN, id, $5) == NULL){ _YYERROR("unknown_stmt"); }
-		   _PARSE_DEBUG("unknown-stmt -> ustring : ustring sep string ;");
+	        {
+		    char *id;
+		    if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
+		    free($3);
+		    if (ysp_add(_yy, Y_UNKNOWN, id, $5) == NULL){ _YYERROR("unknown_stmt"); }
+		    _PARSE_DEBUG("unknown-stmt -> ustring : ustring sep string ;");
 	       }
               | ustring ':' ustring optsep
-                 { char *id; if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
+                 {
+		     char *id;
+		     if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
+		     free($3);
 		     if (ysp_add_push(_yy, Y_UNKNOWN, id, NULL) == NULL) _YYERROR("unknown_stmt"); }
 	         '{' yang_stmts '}'
 	               { if (ystack_pop(_yy) < 0) _YYERROR("unknown_stmt");
 			 _PARSE_DEBUG("unknown-stmt -> ustring : ustring { yang-stmts }"); }
               | ustring ':' ustring sep string optsep
- 	         { char *id; if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
+ 	         {
+		     char *id;
+		     if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
+		     free($3);
 		     if (ysp_add_push(_yy, Y_UNKNOWN, id, $5) == NULL) _YYERROR("unknown_stmt"); }
 	         '{' yang_stmts '}'
 	               { if (ystack_pop(_yy) < 0) _YYERROR("unknown_stmt");
@@ -1818,10 +1830,14 @@ ustring       : ustring CHARS
               ;
 
 abs_schema_nodeid : abs_schema_nodeid '/' node_identifier
-                 { if (($$=clixon_string_del_join($1, "/", $3)) == NULL) _YYERROR("abs_schema_nodeid");
+                 {
+		     if (($$=clixon_string_del_join($1, "/", $3)) == NULL) _YYERROR("abs_schema_nodeid");
+		     free($3);
 		     _PARSE_DEBUG("absolute-schema-nodeid -> absolute-schema-nodeid / node-identifier"); }
               | '/' node_identifier
-                 {  if (($$=clixon_string_del_join(NULL, "/", $2)) == NULL) _YYERROR("abs_schema_nodeid");
+                 {
+		     if (($$=clixon_string_del_join(NULL, "/", $2)) == NULL) _YYERROR("abs_schema_nodeid");
+		     free($2);
 		     _PARSE_DEBUG("absolute-schema-nodeid -> / node-identifier"); }
               ;
 
@@ -1855,7 +1871,9 @@ desc_schema_nodeid : node_identifier
                      { $$= $1;
 			 _PARSE_DEBUG("descendant-schema-nodeid -> node_identifier"); }
                    | node_identifier abs_schema_nodeid
-		   { if (($$=clixon_string_del_join($1, "", $2)) == NULL) _YYERROR("desc_schema_nodeid");
+		   {
+		       if (($$=clixon_string_del_join($1, "", $2)) == NULL) _YYERROR("desc_schema_nodeid");
+		       free($2);
 		       _PARSE_DEBUG("descendant-schema-nodeid -> node_identifier abs_schema_nodeid"); }
                    ;
 
@@ -1894,7 +1912,9 @@ node_identifier : IDENTIFIER
 		   { $$=$1;
 		       _PARSE_DEBUG("identifier-ref-arg-str -> string"); }
                 | IDENTIFIER ':' IDENTIFIER
-		{ if (($$=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("node_identifier");
+		{
+		    if (($$=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("node_identifier");
+		    free($3);
 		    _PARSE_DEBUG("identifier-ref-arg-str -> prefix : string"); }
                 ;
 

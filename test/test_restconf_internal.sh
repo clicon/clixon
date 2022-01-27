@@ -145,7 +145,7 @@ function rpcoperation()
 }
 
 # This test is confusing:
-# The whole restconf config is in clixon-config wich binds 0.0.0.0:80 which will be the only
+# The whole restconf config is in clixon-config which binds 0.0.0.0:80 which will be the only
 # config the restconf daemon ever reads.
 # However, enable (and debug) flag is stored in running db but only backend will ever read that.
 # It just controls how restconf is started, but thereafter the restconf daemon reads the static db in clixon-config file
