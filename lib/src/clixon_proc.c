@@ -705,15 +705,15 @@ clixon_process_status(clicon_handle  h,
 		if (pe->pe_description)
 		    cprintf(cbret, "<description xmlns=\"%s\">%s</description>", CLIXON_LIB_NS, pe->pe_description);
 		cprintf(cbret, "<command xmlns=\"%s\">", CLIXON_LIB_NS);
-		/* the command may include any data, including XML (such as restconf -R command) and 
-		   therefore needs CDATA encoding */
-		cprintf(cbret, "<![CDATA[");
+		/* The command may include any data, including XML (such as restconf -R 
+		 * command) and therefore needs explicit encoding */
 		for (i=0; i<pe->pe_argc-1; i++){
 		    if (i)
-			cprintf(cbret, " ");
-		    cprintf(cbret, "%s", pe->pe_argv[i]);
+			if (xml_chardata_cbuf_append(cbret, " ") < 0)
+			    goto done;
+		    if (xml_chardata_cbuf_append(cbret, pe->pe_argv[i]) < 0)
+			goto done;
 		}
-		cprintf(cbret, "]]>");
 		cprintf(cbret, "</command>");
 		cprintf(cbret, "<status xmlns=\"%s\">%s</status>", CLIXON_LIB_NS,
 			clicon_int2str(proc_state_map, pe->pe_state));

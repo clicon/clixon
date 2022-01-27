@@ -36,6 +36,12 @@
 ## 5.6.0
 Expected: March 2022
 
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* Command field of clixon-lib:process-control RPC reply used CDATA encoding but now uses regular XML encoding
+
 ### Corrected Bugs
 * Fixed: More than one unknown/extension in combination with augment of extension resulted in extension being skipped.
 
