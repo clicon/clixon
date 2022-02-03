@@ -538,7 +538,7 @@ check_choice(cxobj     *xt,
 		continue;
 	    break;
 	case Y_CHOICE:
-	    if (yp != ytcase) /* Not same choice (not relevant) */
+	    if (yp != ytchoice) /* Not same choice (not relevant) */
 		continue;
 	    break;
 	default:
@@ -549,7 +549,6 @@ check_choice(cxobj     *xt,
 	    goto done;
 	goto fail;
     } /* while */
-
  ok:
     retval = 1;
  done:
