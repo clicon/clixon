@@ -931,8 +931,10 @@ clixon_process_waitpid(clicon_handle h)
     pid_t            wpid;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    pe = _proc_entry_list;
-    do {
+	if (_proc_entry_list == NULL)
+	goto ok;
+    if ((pe = _proc_entry_list) != NULL)
+	do {
 	clicon_debug(1, "%s %s(%d) %s op:%s", __FUNCTION__,
 		     pe->pe_name, pe->pe_pid,
 		     clicon_int2str(proc_state_map, pe->pe_state),
@@ -984,6 +986,7 @@ clixon_process_waitpid(clicon_handle h)
 	}
     	pe = NEXTQ(process_entry_t *, pe);
     } while (pe && pe != _proc_entry_list);
+ ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
