@@ -931,7 +931,7 @@ clixon_process_waitpid(clicon_handle h)
     pid_t            wpid;
 
     clicon_debug(1, "%s", __FUNCTION__);
-	if (_proc_entry_list == NULL)
+    if (_proc_entry_list == NULL)
 	goto ok;
     if ((pe = _proc_entry_list) != NULL)
 	do {
