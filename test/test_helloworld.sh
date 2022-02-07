@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Hello world smoketest test
 # A minimal test for backend/cli/netconf/restconf
 # See clixon-example/hello
@@ -25,7 +25,7 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>$clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_MODE>hello</CLICON_CLI_MODE>
   <CLICON_SOCK>$dir/hello.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>$dir/hello.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/var/run/helloworld.pid</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE>
   <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>

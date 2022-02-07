@@ -123,6 +123,9 @@ fi
 # Multiplication factor to sleep less than whole seconds
 DEMSLEEP=.2
 
+# Some sleep implementations cannot handle sub-seconds, change to 1s
+sleep $DEMPSLEEP || DEMSLEEP=1
+
 # DEMWAIT is expressed in seconds, but really * DEMSLEEP
 let DEMLOOP=5*DEMWAIT
 
