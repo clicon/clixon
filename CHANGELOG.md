@@ -40,6 +40,7 @@ Expected: March 2022
 
 Users may have to change how they access the system
 
+* `configure --with-wwwdir=<dir>` is removed
 * Command field of clixon-lib:process-control RPC reply used CDATA encoding but now uses regular XML encoding
 
 ### Corrected Bugs

@@ -632,7 +632,6 @@ ac_ct_CXX
 CXXFLAGS
 CXX
 CPP
-wwwdir
 YANG_STANDARD_DIR
 YANG_INSTALLDIR
 CLIXON_YANG_PATCH
@@ -728,6 +727,7 @@ with_libxml2
 with_sigaction
 with_yang_installdir
 with_yang_standard_dir
+enable_nls
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1374,6 +1374,7 @@ Optional Features:
                           only
   --disable-nghttp2       Disable nghttp2 for native restconf http/2, ie
                           http/1 only
+
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -3395,10 +3396,6 @@ HAVE_LIBNGHTTP2=false
 # Examples require standard IETF YANGs. You need to provide these for example and tests
 
 
-# Home dir for web user, such as nginx fcgi sockets
-wwwdir=/www-data
-
-
 #
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -5072,11 +5069,6 @@ fi
 
 $as_echo "#define WITH_RESTCONF_FCGI 1" >>confdefs.h
  # For c-code that cant use strings
-
-cat >>confdefs.h <<_ACEOF
-#define WWWDIR "$wwwdir"
-_ACEOF
-
 elif test "x${with_restconf}" == xnative; then
 
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
@@ -5674,6 +5666,13 @@ $as_echo "Standard YANG files expected to be in ${YANG_STANDARD_DIR}" >&6; }
 cat >>confdefs.h <<_ACEOF
 #define CLIXON_DEFAULT_CONFIG "${CLIXON_DEFAULT_CONFIG}"
 _ACEOF
+
+
+# Dummy to disable native language support (nls) to remove warnings in buildroot
+# Check whether --enable-nls was given.
+if test "${enable_nls+set}" = set; then :
+  enableval=$enable_nls;
+fi
 
 
 

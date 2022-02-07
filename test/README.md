@@ -9,8 +9,22 @@ to get the idea.
 
 Note that some IETF yangs need to be available, by default these are in `/usr/local//share/yang/standard`. You can change this location with configure option `--with-yang-standard-dir=DIR`
 
-
 See also the [site.sh](#site-sh) for example for skipping tests or setting some site-specific variables.
+
+## Openconfig and Yang
+
+To download the openconfig and yang models required for the tests:
+```
+   cd /usr/local/share/openconfig
+   git clone https://github.com/openconfig/public
+   cd /usr/local/share/yang
+   git init
+   git remote add -f origin https://github.com/YangModels/yang
+   git config core.sparseCheckout true
+   echo "standard/" >> .git/info/sparse-checkout
+   echo "experimental/" >> .git/info/sparse-checkout
+   git pull origin master
+```
 
 ## Continuous Integration
 

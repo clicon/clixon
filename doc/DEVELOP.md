@@ -292,3 +292,12 @@ screen /tmp/clixon-tty
 LDFLAGS=-coverage LINKAGE=static CFLAGS="-O2 -Wall -coverage" ./configure
 bash <(curl -s https://codecov.io/bash) -t <token>
 ```
+
+## Static analysis
+
+```
+sudo apt install clang-tools # on ubuntu
+scan-build ./configure --enable-debug
+scan-build make
+scan-view /tmp/scan-build-2022-02-03-100113-27646-1 # example
+```

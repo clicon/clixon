@@ -123,9 +123,6 @@ AC_SUBST(YANG_INSTALLDIR)
 # Examples require standard IETF YANGs. You need to provide these for example and tests
 AC_SUBST(YANG_STANDARD_DIR)
 
-# Home dir for web user, such as nginx fcgi sockets
-AC_SUBST(wwwdir,/www-data)
-
 #
 AC_PROG_CC()
 AC_PROG_CPP
@@ -225,7 +222,6 @@ if test "x${with_restconf}" == xfcgi; then
    # Lives in libfcgi-dev
    AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
    AC_DEFINE(WITH_RESTCONF_FCGI, 1, [Use fcgi restconf mode]) # For c-code that cant use strings
-   AC_DEFINE_UNQUOTED(WWWDIR, "$wwwdir", [WWW dir for fcgi stuff / nginx])
 elif test "x${with_restconf}" == xnative; then
 
    AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
@@ -348,6 +344,9 @@ AC_MSG_RESULT(Standard YANG files expected to be in ${YANG_STANDARD_DIR})
 
 # Default location for config file
 AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])
+
+# Dummy to disable native language support (nls) to remove warnings in buildroot
+AC_ARG_ENABLE(nls)
 
 AH_BOTTOM([#include <clixon_custom.h>])
 

@@ -226,26 +226,26 @@ function restconf_config()
     AUTH=$1
     PRETTY=$2
 
-    if [ ${WITH_RESTCONF} = "fcgi" ]; then
+    if [ false -a ${WITH_RESTCONF} = "fcgi" ]; then
+	echo "<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE><restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug></restconf>"
+    else
 	FEATURES="<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
-    else
-	FEATURES=""
-    fi
-    if [ $RCPROTO = http ]; then
-	echo "${FEATURES}<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
-    else
-	certdir=$dir/certs
-	if [ ! -f ${dir}/clixon-server-crt.pem ]; then
+	if [ $RCPROTO = http ]; then
+	    echo "${FEATURES}<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
+	else
 	    certdir=$dir/certs
-	    test -d $certdir || mkdir $certdir
-	    srvcert=${certdir}/clixon-server-crt.pem
-	    srvkey=${certdir}/clixon-server-key.pem
-	    cacert=${certdir}/clixon-ca-crt.pem
-	    cakey=${certdir}/clixon-ca-key.pem
-	    cacerts $cakey $cacert
-	    servercerts $cakey $cacert $srvkey $srvcert
+	    if [ ! -f ${dir}/clixon-server-crt.pem ]; then
+		certdir=$dir/certs
+		test -d $certdir || mkdir $certdir
+		srvcert=${certdir}/clixon-server-crt.pem
+		srvkey=${certdir}/clixon-server-key.pem
+		cacert=${certdir}/clixon-ca-crt.pem
+		cakey=${certdir}/clixon-ca-key.pem
+		cacerts $cakey $cacert
+		servercerts $cakey $cacert $srvkey $srvcert
+	    fi
+	    echo "${FEATURES}<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>${certdir}/clixon-server-crt.pem</server-cert-path><server-key-path>${certdir}/clixon-server-key.pem</server-key-path><server-ca-cert-path>${certdir}/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
 	fi
-	echo "${FEATURES}<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>${certdir}/clixon-server-crt.pem</server-cert-path><server-key-path>${certdir}/clixon-server-key.pem</server-key-path><server-ca-cert-path>${certdir}/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
     fi
 }
 
