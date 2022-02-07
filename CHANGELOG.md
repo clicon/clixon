@@ -64,7 +64,7 @@ This release introduces a new autocli design with a clixon-autocli YANG file
     * Filter labels are added to the basemodel tree and then filtered out using `@remove:<label>`
     * This method reduces memory usage and is more generic
     * Backward compatible: can continue use the "old" trees.
-    * Note: while @datamodel etc are backward compatible, the autocli redesign is NOT backward compatible
+    * Note: while `@datamodel` etc are backward compatible, the autocli redesign is NOT backward compatible
       * see API changes
   * New autocli edit-mode design
      * Control which modes to use with `edit-mode-default`

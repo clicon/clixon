@@ -152,5 +152,7 @@ fi
 
 rm -rf $dir
 
+RCPROTO=  # This is sh not bash undef
+
 new "endtest"
 endtest

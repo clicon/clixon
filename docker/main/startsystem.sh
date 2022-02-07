@@ -64,6 +64,11 @@ SKIPLIST="test_api.sh test_c++.sh test_install.sh test_privileges.sh test_augmen
 # Parse yangmodels from https://github.com/YangModels/yang
 EOF
 
+# Patch to override YANG_INSTALLDIRS
+cat <<EOF >> /usr/local/bin/test/config.sh
+YANG_INSTALLDIR=/usr/local/share/clixon
+EOF
+
 # Patch yang syntax errors
 sed -i s/=\ olt\'/=\ \'olt\'/g /usr/local/share/yang/standard/ieee/published/802.3/ieee802-ethernet-pon.yang
 
