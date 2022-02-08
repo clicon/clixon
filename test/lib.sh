@@ -442,7 +442,7 @@ function wait_restconf(){
     hdr=$(curl $CURLOPTS $myproto://localhost/restconf 2> /dev/null)
 #    echo "hdr:\"$hdr\""
     let i=0;
-    while [[ $hdr != *"200"* ]]; do
+    while [[ "$hdr" != *"200"* ]]; do
 #	echo "wait_restconf $i"
 	if [ $i -ge $DEMLOOP ]; then
 	    err1 "restconf timeout $DEMWAIT seconds"

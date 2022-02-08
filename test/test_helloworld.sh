@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Hello world smoketest test
 # A minimal test for backend/cli/netconf/restconf
 # See clixon-example/hello
