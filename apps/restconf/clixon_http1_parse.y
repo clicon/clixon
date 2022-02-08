@@ -279,13 +279,13 @@ absolute_paths : absolute_paths absolute_path
                  {
 		     if (($$ = clixon_string_del_join($1, "/", $2)) == NULL) { free($2); YYABORT;}
 		     free($2);
-		     _PARSE_DEBUG("absolute-paths -> absolute-paths absolute -path");
+		     _PARSE_DEBUG("absolute-paths -> absolute-paths absolute-path");
 		  }
                | absolute_path
 	         {
 		     if (($$ = clixon_string_del_join(NULL, "/", $1)) == NULL) { free($1); YYABORT;}
 		     free($1);
-		     _PARSE_DEBUG("absolute-paths -> absolute -path");
+		     _PARSE_DEBUG("absolute-paths -> absolute-path");
 	         }
 ;
 
@@ -326,10 +326,12 @@ header_fields : header_fields header_field CRLF
    field-name = token */
 header_field  : TOKEN COLON ows field_values ows
                  {
-		     if (http1_parse_header_field(_HY, $1, $4) < 0)
-			 YYABORT;
+		     if ($4){
+			 if (http1_parse_header_field(_HY, $1, $4) < 0)
+			     YYABORT;
+			 free($4);
+		     }
 		     free($1);
-		     free($4);
 		     _PARSE_DEBUG("header-field -> field-name : field-values");
 	         }
 ;
@@ -342,7 +344,7 @@ field_values   : field_vchars
 			       $$ = $1; // XXX is there more than one??
 			       _PARSE_DEBUG("field-values -> field-values field-vchars");
 			   }
-               |           { _PARSE_DEBUG("field-values -> "); }
+               |           { $$ = NULL; _PARSE_DEBUG("field-values -> "); }
 ;
 
 

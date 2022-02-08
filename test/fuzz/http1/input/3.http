@@ -1,0 +1,8 @@
+POST /restconf/data/ietf-interfaces:interfaces HTTP/1.1
+Host: 127.0.0.1
+Accept: application/yang-data+xml
+Content-Type: application/yang-data+xml
+Content-Length: 138
+
+<interface xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><name>eth/0/42</name><type>ex:eth</type><enabled>true</enabled></interface>
+

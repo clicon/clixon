@@ -1400,6 +1400,11 @@ usage(clicon_handle h,
     exit(0);
 }
 
+/* Enable for normal use
+ * Disable for unit testing, fuzzing, etc
+ */
+#if 1
+
 int
 main(int    argc,
      char **argv)
@@ -1602,3 +1607,42 @@ main(int    argc,
     restconf_terminate(h);
     return retval;
 }
+
+#else /* Unit test */
+
+int
+main(int    argc,
+     char **argv)
+{
+    int            retval = -1;
+    clicon_handle  h = NULL;
+    restconf_conn *rc;
+    int            dbg = 0;
+    int            c;
+
+    while ((c = getopt(argc, argv, "hD:")) != -1)
+	switch (c) {
+	case 'h':
+	    fprintf(stderr, "%s [-h] [-D <dbg>]\n", argv[0]);
+	    break;
+	case 'D' : /* debug. Note this overrides any setting in the config */
+	    if (sscanf(optarg, "%d", &dbg) != 1)
+	    fprintf(stderr, "%s [-h] [-D <dbg>]\n", argv[0]);
+	    break;
+	}
+    if ((h = restconf_handle_init()) == NULL)
+	goto done;
+    clicon_log_init(__FILE__, LOG_DEBUG, CLICON_LOG_STDERR);
+    clicon_debug_init(dbg, NULL);
+    if ((rc = restconf_conn_new(h, 0)) == NULL)
+	goto done;
+    if (restconf_stream_data_new(rc, 0) == NULL)
+	goto done;
+    if (clixon_http1_parse_file(h, rc, stdin, "stdin") < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+#endif
