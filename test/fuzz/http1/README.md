@@ -21,6 +21,7 @@ main function and replacing it with the unit testing `main`:
 Build and install clixon libraries and restconf statically
 ```
   ./configure LINKAGE=static INSTALLFLAGS="" CC=/usr/bin/afl-clang-fast
+  make clean
   make
   sudo make install
   ./runfuzz.sh

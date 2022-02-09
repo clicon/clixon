@@ -441,6 +441,32 @@ native_send_badrequest(clicon_handle       h,
     return retval;
 }
 
+#ifdef HAVE_HTTP1
+/*! Clear all input stream data if input is interrupted for some reason
+ *
+ * Only used by HTTP/1.
+ * @param[in]  h    Clixon handle
+ * @param[in]  sd   Http stream
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+static int
+native_clear_input(clicon_handle         h,
+		   restconf_stream_data *sd)
+{
+    int retval = -1;
+
+    cbuf_reset(sd->sd_indata);
+    if (sd->sd_qvec)
+	cvec_free(sd->sd_qvec);
+    if (restconf_param_del_all(h) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+#endif
+
 /*! New data connection after accept, receive and reply on data socket
  *
  * @param[in]   s    Socket where message arrived. read from this.
@@ -461,7 +487,7 @@ restconf_connection(int   s,
     int                   retval = -1;
     restconf_conn        *rc = NULL;
     ssize_t               n;
-    char                  buf[BUFSIZ]; /* from stdio.h, typically 8K. 256 fails some tests*/
+    char                  buf[1024]; /* Alter BUFSIZ (8K) from stdio.h 8K. 256 fails some tests */
     char                 *totbuf = NULL;
     size_t                totlen = 0;
     int                   readmore = 1;
@@ -561,6 +587,15 @@ restconf_connection(int   s,
 	    memcpy(&totbuf[totlen-n], buf, n);
 	    totbuf[totlen] = '\0';
 	    if (clixon_http1_parse_string(h, rc, totbuf) < 0){
+		/* Maybe only for non-ssl ? */
+		if ((ret = clixon_event_poll(rc->rc_s)) < 0)
+		    goto done;
+		if (ret == 1){
+		    if (native_clear_input(h, sd) < 0)
+			goto done;
+		    readmore++;
+		    continue;
+		}
 		if (native_send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
 				    "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The requested URL or a header is in some way badly formed</error-message></error></errors>") < 0)
 		    goto done;
@@ -587,21 +622,9 @@ restconf_connection(int   s,
 		if ((ret = http1_check_readmore(h, sd)) < 0)
 		    goto done;
 		if (ret == 0){
-		    readmore++;
-#if 1
-		    /* Clear all stream data if reading more 
-		     * Alternative would be to not adding new data to totbuf ^
-		     * and just append to sd->sd_indata but that would assume 
-		     * all headers read on first round. But that cant be done withut
-		     * some probing on the socket if there is more data since it
-		     * would hang on read otherwise
-		     */
-		    cbuf_reset(sd->sd_indata);
-		    if (sd->sd_qvec)
-			cvec_free(sd->sd_qvec);
-		    if (restconf_param_del_all(h) < 0)
+		    if (native_clear_input(h, sd) < 0)
 			goto done;
-#endif
+		    readmore++;
 		    continue;
 		}
 		if (restconf_http1_path_root(h, rc) < 0)

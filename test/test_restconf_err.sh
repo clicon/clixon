@@ -218,7 +218,7 @@ if [ -n "$netcat" ]; then
 #    new "restconf try fuzz crash"
 #    expectpart "$(${netcat} 127.0.0.1 80 < ~/tmp/crashes/id:000000,sig:06,src:000493+000365,op:splice,rep:8)" 0 "HTTP/$HVER 400"
     
-    new "restconf GET initial datastore netcat"
+    new "netcat restconf GET initial datastore netcat"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
 GET /restconf/data/example:a=0 HTTP/$HVER
 Host: localhost
@@ -227,7 +227,7 @@ Accept: application/yang-data+xml
 EOF
 )" 0 "HTTP/$HVER 200" "$XML"
 
-    new "restconf XYZ not found"
+    new "netcat restconf XYZ not found"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
 XYZ /restconf/data/example:a=0 HTTP/$HVER
 Host: localhost
@@ -236,7 +236,7 @@ Accept: application/yang-data+xml
 EOF
 )" 0 "HTTP/$HVER 404"
     
-    new "restconf PUT not allowed"
+    new "netcat restconf PUT not allowed"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
 PUT /.well-known/host-meta HTTP/$HVER
 Host: localhost
@@ -245,15 +245,18 @@ Accept: application/yang-data+xml
 EOF
 )" 0 "HTTP/$HVER 405" # nginx uses "method not allowed" 
 
-    new "restconf GET wrong http version raw"
+if false; then # XXX >50% does not work on docker alpine
+    new "netcat restconf GET wrong http version raw"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
 GET /restconf/data/example:a=0 HTTP/a.1
 Host: localhost
 Accept: application/yang-data+xml
 
+
 EOF
 )" 0 "HTTP/$HVER 400" # native: '<error-tag>malformed-message</error-tag><error-message>The requested URL or a header is in some way badly formed</error-message>'
 
+    fi
 fi # netcat Cannot get to work on all platforms
 
 new "restconf XYZ not found"

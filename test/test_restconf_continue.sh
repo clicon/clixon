@@ -79,13 +79,12 @@ fi
 new "wait restconf"
 wait_restconf
 
-
 new "generate large request"
 # Add large put, curl seems to create a Expect:100-continue after 1024 bytes
 # Alt: add in file if nr=5000 reacts with "Argument list too long"
 echo -n '{"example:table":{"parameter":[' > $fjson
 
-nr=10000
+nr=1000
 for (( i=0; i<$nr; i++ )); do  
     if [ $i -ne 0 ]; then
 	echo -n ",
