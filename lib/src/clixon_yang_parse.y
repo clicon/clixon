@@ -1629,7 +1629,7 @@ unknown_stmt  : ustring ':' ustring optsep ';'
 		     if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
 		     free($3);
 		     if (ysp_add_push(_yy, Y_UNKNOWN, id, NULL) == NULL) _YYERROR("unknown_stmt"); }
-	         '{' yang_stmts '}'
+	         '{' unknown_substmts '}'
 	               { if (ystack_pop(_yy) < 0) _YYERROR("unknown_stmt");
 			 _PARSE_DEBUG("unknown-stmt -> ustring : ustring { yang-stmts }"); }
               | ustring ':' ustring sep string optsep
@@ -1638,14 +1638,20 @@ unknown_stmt  : ustring ':' ustring optsep ';'
 		     if ((id=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("unknown_stmt");
 		     free($3);
 		     if (ysp_add_push(_yy, Y_UNKNOWN, id, $5) == NULL) _YYERROR("unknown_stmt"); }
-	         '{' yang_stmts '}'
+	         '{' unknown_substmts '}'
 	               { if (ystack_pop(_yy) < 0) _YYERROR("unknown_stmt");
 			 _PARSE_DEBUG("unknown-stmt -> ustring : ustring string { yang-stmts }"); }
 	      ;
 
-yang_stmts    : yang_stmts yang_stmt { _PARSE_DEBUG("yang-stmts -> yang-stmts yang-stmt"); } 
-              | yang_stmt            { _PARSE_DEBUG("yang-stmts -> yang-stmt");}
-              ;
+unknown_substmts : unknown_substmts unknown_substmt 
+                         { _PARSE_DEBUG("unknown-substmts -> unknown-substmts unknown-substmt"); }
+                 | unknown_substmt 
+                         { _PARSE_DEBUG("unknown-substmts -> unknown-substmt"); }
+                 ;
+
+unknown_substmt : yang_stmt          { _PARSE_DEBUG("unknown-substmt -> yang-stmt");}
+                | unknown_stmt       { _PARSE_DEBUG("unknown-substmt -> unknown-stmt");}
+;
 
 yang_stmt     : action_stmt          { _PARSE_DEBUG("yang-stmt -> action-stmt");}
               | anydata_stmt         { _PARSE_DEBUG("yang-stmt -> anydata-stmt");}

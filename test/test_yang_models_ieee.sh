@@ -38,9 +38,9 @@ EOF
 
 new "yangmodels parse: -f $cfg"
 
-# Publishged IEEE YANGs
+# Published IEEE YANGs
 # 1906.1 something w spaces
-for d in 802 802.1 802.3; do
+for d in 1906.1 802 802.1 802.3; do
     new "Published IEEE Yangs: ${YANG_STANDARD_DIR}/ieee/published/$d"
     expectpart "$($clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_DIR=${YANG_STANDARD_DIR}/ieee/published/$d show version)" 0 "${CLIXON_VERSION}"
 done
