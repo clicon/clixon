@@ -16,10 +16,8 @@ jobs:
 # 1) checkout and compile natively
     - name: install cligen
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
-    - name: install libevent, ssl and nghttp2
-      run: sudo apt install -y libevent-dev libssl-dev libnghttp2-dev
-    - name: install libevhtp
-      run: (git clone https://github.com/clicon/clixon-libevhtp.git && cd clixon-libevhtp && ./configure && make && sudo make install)
+    - name: install ssl and nghttp2
+      run: sudo apt install -y libssl-dev libnghttp2-dev
     - name: configure
       run: ./configure
 # 2) Use docker for tests

@@ -5,6 +5,8 @@
 # but this test is (more or less) self-contained for as little external dependencies as possible
 # The test is free of plugins because that would require compilation, or pre-built plugins
 # Restconf is internal native http port 80
+# The minimality extends to the test macros that use advanced grep, and therefore more
+# primitive pattern macthing is made
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -120,19 +122,54 @@ new "wait restconf"
 wait_restconf
 
 new "cli configure"
-expectpart "$($clixon_cli -1 -f $cfg set hello world)" 0 "^$"
+#expectpart "$($clixon_cli -1 -f $cfg set hello world)" 0 "^$"
+ret=$($clixon_cli -1 -f $cfg set hello world)
+if [ $? -ne 0 ]; then
+    err 0 $r
+fi
 
 new "cli show config"
-expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "hello" "world"
+ret=$($clixon_cli -1 -f $cfg show config)
+if [ $? -ne 0 ]; then
+    err 0 $r
+fi  
+if [ "$ret" != "hello     world;" ]; then
+    err "$ret" "hello     world;"
+fi
 
 new "netconf edit-config"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><hello xmlns=\"urn:example:hello\"><world/></hello></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+ret=$(echo "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><hello xmlns=\"urn:example:hello\"><world/></hello></config></edit-config></rpc>]]>]]>" | $clixon_netconf -qf $cfg)
+if [ $? -ne 0 ]; then
+    err 0 $r
+fi
+if [ "$ret" != "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>" ]; then
+    err "$ret" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
+fi
 
 new "netconf commit"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+ret=$(echo "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" | $clixon_netconf -qf $cfg)
+if [ $? -ne 0 ]; then
+    err 0 $r
+fi
+if [ "$ret" != "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>" ]; then
+    err "$ret" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
+fi
 
 new "restconf GET"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-hello:hello)" 0 "HTTP/$HVER 200" "{\"clixon-hello:hello\":{\"world\":{}}}"
+ret=$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-hello:hello)
+if [ $? -ne 0 ]; then
+    err 0 $r
+fi
+
+res=$(echo "$ret"|grep "HTTP/$HVER 200")
+if [ -z "$res" ]; then
+    err "$ret" "HTTP/$HVER 200"
+fi
+
+res=$(echo "$ret"|grep '{"clixon-hello:hello":{"world":{}}}')
+if [ -z "$res" ]; then
+    err "$ret" "{"clixon-hello:hello":{"world":{}}}"
+fi
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
@@ -142,7 +179,7 @@ fi
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
-    pid=$(pgrep -u root -f clixon_backend)
+    pid=$(pgrep -f clixon_backend)
     if [ -z "$pid" ]; then
 	err "backend already dead"
     fi
