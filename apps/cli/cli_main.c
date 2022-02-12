@@ -648,6 +648,9 @@ main(int    argc,
     cligen_helpstring_truncate_set(cli_cligen(h), nr);
     nr = clicon_option_int(h, "CLICON_CLI_HELPSTRING_LINES");
     cligen_helpstring_lines_set(cli_cligen(h), nr);
+
+    if ((nr = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
+	clicon_log_string_limit_set(nr);
     
     /* Setup signal handlers */
     cli_signal_init(h);

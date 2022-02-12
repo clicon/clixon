@@ -509,6 +509,7 @@ main(int    argc,
     size_t        cligen_buflen;
     size_t        cligen_bufthreshold;
     int           dbg;
+    size_t        sz;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -690,6 +691,9 @@ main(int    argc,
     cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
     cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
     cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
+
+    if ((sz = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
+	clicon_log_string_limit_set(sz);
     
 #ifndef HAVE_LIBXML2
     if (clicon_yang_regexp(h) ==  REGEXP_LIBXML2){

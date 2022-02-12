@@ -2339,10 +2339,11 @@ clicon_log_xml(int         level,
 	       const char *format, ...)
 {
     va_list args;
-    int     len;
+    size_t  len;
     char   *msg = NULL;
     cbuf   *cb = NULL;
     int     retval = -1;
+    size_t  trunc;
 
     /* Print xml as cbuf */
     if ((cb = cbuf_new()) == NULL){
@@ -2357,6 +2358,10 @@ clicon_log_xml(int         level,
     len = vsnprintf(NULL, 0, format, args);
     va_end(args);
     
+    /* Truncate long debug strings */
+    if ((trunc = clicon_log_string_limit_get()) && trunc < len)
+	len = trunc;
+
     /* allocate a message string exactly fitting the message length */
     if ((msg = malloc(len+1)) == NULL){
 	fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */

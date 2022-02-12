@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [5.6.0](#560) Expected: Matrch 2022
+* [5.6.0](#560) Expected: March 2022
 * [5.5.0](#550) 20 January 2022
 * [5.4.0](#540) 30 November 2021
 * [5.3.0](#530) 27 September 2021
@@ -48,6 +48,13 @@ Users may have to change how they access the system
 
 * `configure --with-wwwdir=<dir>` is removed
 * Command field of clixon-lib:process-control RPC reply used CDATA encoding but now uses regular XML encoding
+
+### Minor features
+
+* New `clixon-config@2022-02-11.yang` revision
+  * Added option: `CLICON_LOG_STRING_LIMIT`
+    * Limit the length of log and debug messages. Some log messages are dependendent on sizes that can be very large, such as packet lengths. This new option constrains the length of all messgaes. By default no limits.
+
 
 ### Corrected Bugs
 

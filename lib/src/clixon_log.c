@@ -73,6 +73,9 @@ static int _logflags = 0x0;
 /* Set to open file to write debug messages directly to file */
 static FILE *_logfile = NULL;
 
+/* Truncate debug strings to this length. 0 means unlimited */
+static int _clixon_log_trunc = 0;
+
 /*! Initialize system logger.
  *
  * Make syslog(3) calls with specified ident and gates calls of level upto specified level (upto).
@@ -165,6 +168,23 @@ clicon_get_logflags(void)
     return _logflags;
 }
 
+/*! Truncate log/debug string length
+ */
+int
+clicon_log_string_limit_set(size_t sz)
+{
+    _clixon_log_trunc = sz;
+    return 0;
+}
+
+/*! Get truncate log/debug string length
+ */
+size_t
+clicon_log_string_limit_get(void)
+{
+    return _clixon_log_trunc;
+}
+
 /*! Mimic syslog and print a time on file f
  */
 static int
@@ -254,21 +274,27 @@ clicon_log_str(int           level,
  * @code
 	clicon_log(LOG_NOTICE, "%s: dump to dtd not supported", __PROGRAM__);
  * @endcode
- * @see clicon_log_init and clicon_log_str
+ * @see clicon_log_init clicon_log_str 
+ * @see clicon_log_xml
  */
 int
 clicon_log(int         level, 
 	   const char *format, ...)
 {
     va_list args;
-    int     len;
+    size_t  len;
     char   *msg    = NULL;
     int     retval = -1;
+    size_t  trunc;
 
     /* first round: compute length of debug message */
     va_start(args, format);
     len = vsnprintf(NULL, 0, format, args);
     va_end(args);
+
+    /* Truncate long debug strings */
+    if ((trunc = clicon_log_string_limit_get()) && trunc < len)
+	len = trunc;
 
     /* allocate a message string exactly fitting the message length */
     if ((msg = malloc(len+1)) == NULL){
@@ -349,10 +375,11 @@ clicon_debug(int         dbglevel,
 	     const char *format, ...)
 {
     va_list args;
-    int     len;
+    size_t  len;
     char   *msg    = NULL;
     int     retval = -1;
-
+    size_t  trunc;
+    
     if (dbglevel > _clixon_debug) /* compare debug mask with global variable */
 	return 0;
     /* first round: compute length of debug message */
@@ -360,7 +387,11 @@ clicon_debug(int         dbglevel,
     len = vsnprintf(NULL, 0, format, args);
     va_end(args);
 
-    /* allocate a message string exactly fitting the messgae length */
+    /* Truncate long debug strings */
+    if ((trunc = clicon_log_string_limit_get()) && trunc < len)
+	len = trunc;
+	
+    /* allocate a message string exactly fitting the message length */
     if ((msg = malloc(len+1)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;

@@ -1210,6 +1210,7 @@ restconf_clixon_init(clicon_handle h,
     cxobj         *xrestconf = NULL;
     cxobj         *xerr = NULL;
     int            ret;
+    size_t         sz;
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
@@ -1218,6 +1219,9 @@ restconf_clixon_init(clicon_handle h,
     cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
     cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
     cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
+
+    if ((sz = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
+	clicon_log_string_limit_set(sz);
 
     /* Add (hardcoded) netconf features in case ietf-netconf loaded here
      * Otherwise it is loaded in netconf_module_load below

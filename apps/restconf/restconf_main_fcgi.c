@@ -312,6 +312,7 @@ main(int    argc,
     cxobj         *xerr = NULL;
     char          *wwwuser;
     char          *inline_config = NULL;
+    size_t         sz;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -438,6 +439,9 @@ main(int    argc,
     cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
     cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
 
+    if ((sz = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
+	clicon_log_string_limit_set(sz);
+    
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
     
