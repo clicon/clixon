@@ -44,6 +44,6 @@ int clixon_http1_parse_string(clicon_handle h, restconf_conn *rc, char *str);
 int clixon_http1_parse_buf(clicon_handle h, restconf_conn *rc, char *buf, size_t n);
 int restconf_http1_path_root(clicon_handle h, restconf_conn *rc);
 int http1_check_expect(clicon_handle h, restconf_conn *rc, restconf_stream_data *sd);
-int http1_check_readmore(clicon_handle h, restconf_stream_data *sd);
+int http1_check_content_length(clicon_handle h, restconf_stream_data *sd, int *status);
 
 #endif	/* _RESTCONF_HTTP1_H_ */

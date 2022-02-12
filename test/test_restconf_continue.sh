@@ -3,6 +3,7 @@
 # Trigger Expect by curl -H. Some curls seem to trigger one on large PUTs but not all
 
 # Override default to use http/1.1
+# In http/2 there is no explicit continue
 HAVE_LIBNGHTTP2=false
 
 # Magic line must be first in script (see README.md)

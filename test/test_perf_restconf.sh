@@ -4,6 +4,9 @@
 # Lists (and leaf-lists)
 # Add, get and delete entries
 
+# Override default to use http/1.1
+HAVE_LIBNGHTTP2=false
+
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
@@ -27,7 +30,7 @@ APPNAME=example
 
 cfg=$dir/scaling-conf.xml
 fyang=$dir/scaling.yang
-fconfigonly=$dir/config.xml # only config for test
+fdataxml=$dir/config.xml # dataxml 
 ftest=$dir/test.xml
 fconfig=$dir/large.xml
 fconfig2=$dir/large2.xml # leaf-list
@@ -108,28 +111,23 @@ wait_restconf
 
 # Check this later with committed data
 new "generate config with $perfnr list entries"
-echo -n "<x xmlns=\"urn:example:clixon\">" > $fconfigonly
+echo -n "<x xmlns=\"urn:example:clixon\">" > $fdataxml
 for (( i=0; i<$perfnr; i++ )); do  
-    echo -n "<y><a>$i</a><b>$i</b></y>" >> $fconfigonly
+    echo -n "<y><a>$i</a><b>$i</b></y>" >> $fdataxml
 done
-echo -n "</x>" >> $fconfigonly # No CR
+echo -n "</x>" >> $fdataxml # No CR
 
 echo -n "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>" > $fconfig
-cat $fconfigonly >> $fconfig
+cat $fdataxml >> $fconfig
 echo "</config></edit-config></rpc>]]>]]>" >> $fconfig
 
 # Now take large config file and write it via netconf to candidate
 new "test time exists"
 expectpart "$(time -p ls)" 0 
 
-new "netconf write large config"
-expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
-
-# Here, there are $perfnr entries in candidate
-
-# Now commit it from candidate to running 
-new "netconf commit large config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+new "restconf write large config"
+expectpart "$(time -p curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data -d @$fdataxml )" 0 "HTTP/$HVER 201"
+exit
 
 new "Check running-db contents"
 curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=config > $foutput
@@ -166,13 +164,13 @@ echo "Content-Type: application/yang-data+xml" >> $ftest
 echo "Cache-Control: no-cache" >> $ftest
 echo "">> $ftest
 echo -n "<data>">> $ftest
-cat $fconfigonly >> $ftest
+cat $fdataxml >> $ftest
 echo "</data>" >> $ftest
 
 ret=$(diff -i $ftest $foutput)
 if [ $? -ne 0 ]; then
     echo "diff -i $ftest $foutput"
-    err1 "Matching running-db with $fconfigonly"
+    err1 "Matching running-db with $fdataxml"
 fi	
 
 # RESTCONF get

@@ -464,29 +464,35 @@ http1_check_expect(clicon_handle         h,
 
 /*! Is there more data to be read?
  *
- * @param[in] h   Clixon handle
- * @param[in] sd  Restconf stream data (for http1 only stream 0)
- * @retval    1   OK, message is fully read, proceed to processing
- * @retval    0   OK, but message is partially read, need more data before processing
- * @retval   -1   Error
+ * Use Content-Length header as an indicator on the status of reading an input message:
+ * 0: No Content-Length or 0
+ *    Either message header not fully read OR header does not contain Content-Length
+ * 1: Content-Length found but body has fewer bytes, ie remaining bytes to read
+ * 2: Content-Length found and matches body length. No more bytes to read
+ * @param[in]  h       Clixon handle
+ * @param[in]  sd      Restconf stream data (for http1 only stream 0)
+ * @param[out] status  0-2, see description above
+ * @retval     0       OK, see status param
+ * @retval    -1       Error
  */
 int
-http1_check_readmore(clicon_handle         h,
-		     restconf_stream_data *sd)
+http1_check_content_length(clicon_handle         h,
+			   restconf_stream_data *sd,
+			   int                  *status)
 {
     int   retval = -1;
     char *val;
     int   len;
     
-    if ((val = restconf_param_get(h, "HTTP_CONTENT_LENGTH")) != NULL &&
-	(len = atoi(val)) != 0){
+    if ((val = restconf_param_get(h, "HTTP_CONTENT_LENGTH")) == NULL ||
+	(len = atoi(val)) == 0)
+	*status = 0;
+    else{
 	if (cbuf_len(sd->sd_indata) < len)
-	    goto readmore;
+	    *status = 1;
+	else
+	    *status = 2;
     }
-    retval = 1;
- done:
-    return retval;
- readmore:
     retval = 0;
-    goto done;
+    return retval;
 }

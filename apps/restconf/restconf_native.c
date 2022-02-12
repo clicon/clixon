@@ -499,6 +499,8 @@ restconf_connection(int   s,
 #ifdef HAVE_HTTP1
     clicon_handle         h;
     restconf_stream_data *sd;
+    int                   status;
+    int                   http1_headers_read = 0; /* Dont re-parse headers, just append body */
 #endif
 
     clicon_debug(1, "%s %d", __FUNCTION__, s);
@@ -578,15 +580,34 @@ restconf_connection(int   s,
 		clicon_err(OE_RESTCONF, EINVAL, "restconf stream not found");
 		goto done;
 	    }
-	    /* multi-buffer for multiple reads */
-	    totlen += n;
-	    if ((totbuf = realloc(totbuf, totlen+1)) == NULL){
-		clicon_err(OE_UNIX, errno, "realloc");
-		goto done;
+	    if (http1_headers_read){
+		if (cbuf_append_buf(sd->sd_indata, buf, n) < 0){
+		    clicon_err(OE_UNIX, errno, "cbuf_append");
+		    goto done;
+		}
 	    }
-	    memcpy(&totbuf[totlen-n], buf, n);
-	    totbuf[totlen] = '\0';
-	    if (clixon_http1_parse_string(h, rc, totbuf) < 0){
+	    else {
+		/* multi-buffer for multiple reads */
+		totlen += n;
+		if ((totbuf = realloc(totbuf, totlen+1)) == NULL){
+		    clicon_err(OE_UNIX, errno, "realloc");
+		    goto done;
+		}
+		memcpy(&totbuf[totlen-n], buf, n);
+		totbuf[totlen] = '\0';
+	    }
+	    /*
+	     * The following cases are handled after parsing
+	     * - Parse error
+	     *   - More data to read?
+	     *     - clear and read more
+	     *   - No more data
+	     *     - send error
+	     * - Parse OK
+	     *   -  
+	     */
+	    if (!http1_headers_read &&
+		clixon_http1_parse_string(h, rc, totbuf) < 0){
 		/* Maybe only for non-ssl ? */
 		if ((ret = clixon_event_poll(rc->rc_s)) < 0)
 		    goto done;
@@ -617,15 +638,31 @@ restconf_connection(int   s,
 		    }
 		}
 		/* Check whole message is read. 
-		 * ret == 0: need more bytes
+		 * Only way this could happen is that body is read
+		 * 0: No Content-Length or 0
+                 *    header does not contain Content-Length or is 0
+		 *    (OR: message header not fully read SHOULDNT HAPPEN IF BODY READ)
+		 * 1: Content-Length found but body has fewer bytes, ie remaining bytes to read
+		 * 2: Content-Length found and matches body length. No more bytes to read
 		 */
-		if ((ret = http1_check_readmore(h, sd)) < 0)
+		if ((ret = http1_check_content_length(h, sd, &status)) < 0)
 		    goto done;
-		if (ret == 0){
-		    if (native_clear_input(h, sd) < 0)
-			goto done;
+		switch (status){
+		case 1:
+		    /* Next read: keep header state and only append inbody */
+		    http1_headers_read++;
 		    readmore++;
 		    continue;
+		    break;
+
+		    break;
+		case 0:
+		case 2:
+		default:
+		    break;
+		}
+		if (status == 0){
+
 		}
 		if (restconf_http1_path_root(h, rc) < 0)
 		    goto done;

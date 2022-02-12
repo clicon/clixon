@@ -114,7 +114,10 @@ APPSRC   += restconf_stream_$(with_restconf).c
 endif
 
 # internal http/1 parser
+YACCOBJS =
+ifeq ($(with_restconf),native)
 YACCOBJS = lex.clixon_http1_parse.o clixon_http1_parse.tab.o 
+endif
 
 APPOBJ    = $(APPSRC:.c=.o) $(YACCOBJS)
 
