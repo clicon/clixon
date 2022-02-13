@@ -213,7 +213,7 @@ elif [ -n "$(type nc 2> /dev/null)" ]; then
 else
     netcat=
 fi
-if [ -n "$netcat" ]; then
+if [ -n "$netcat" -a "${WITH_RESTCONF}" != "fcgi" ]; then
 
 #    new "restconf try fuzz crash"
 #    expectpart "$(${netcat} 127.0.0.1 80 < ~/tmp/crashes/id:000000,sig:06,src:000493+000365,op:splice,rep:8)" 0 "HTTP/$HVER 400"

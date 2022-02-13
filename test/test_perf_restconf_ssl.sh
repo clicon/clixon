@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
-# Scaling/ performance tests for non-ssl RESTCONF
+# Scaling/ performance tests for ssl RESTCONF
 # Lists (and leaf-lists)
 # Add, get and delete entries
 
 # Override default to use http/1.1, comment to use https/2
-HAVE_LIBNGHTTP2=false
-RCPROTO=http
+#HAVE_LIBNGHTTP2=false
+#RCPROTO=http
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
+# Skip if other than native
+if [ "${WITH_RESTCONF}" != "native" ]; then
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
+fi
 
 # Which format to use as datastore format internally
 : ${format:=xml}
@@ -59,8 +64,30 @@ module scaling{
 }
 EOF
 
-# Define default restconfig config: RESTCONFIG
-RESTCONFIG=$(restconf_config none false)
+# Create server certs
+certdir=$dir/certs
+srvkey=$certdir/srv_key.pem
+srvcert=$certdir/srv_cert.pem
+cakey=$certdir/ca_key.pem # needed?
+cacert=$certdir/ca_cert.pem
+test -d $certdir || mkdir $certdir
+# Create server certs and CA
+cacerts $cakey $cacert
+servercerts $cakey $cacert $srvkey $srvcert
+
+RESTCONFIG=$(cat <<EOF
+<restconf>
+   <enable>true</enable>
+   <auth-type>none</auth-type>
+   <server-cert-path>$srvcert</server-cert-path>
+   <server-key-path>$srvkey</server-key-path>
+   <server-ca-cert-path>$cakey</server-ca-cert-path>
+   <pretty>false</pretty>
+   <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
+   <socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket>
+</restconf>
+EOF
+)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
