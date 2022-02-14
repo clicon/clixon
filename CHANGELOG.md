@@ -51,12 +51,16 @@ Users may have to change how they access the system
 
 ### Minor features
 
+* Backend ignore of SIGPIPE. This occurs if client quits unexpectedly over the UNIX socket.
+   * This is a timing issue but occurs more frequently in large RESTCONF messgaes.
 * New `clixon-config@2022-02-11.yang` revision
   * Added option: `CLICON_LOG_STRING_LIMIT`
     * Limit the length of log and debug messages. Some log messages are dependendent on sizes that can be very large, such as packet lengths. This new option constrains the length of all messgaes. By default no limits.
 
-
 ### Corrected Bugs
+
+
+
 
 * Fixed: input RPC validation of choice (non-case)
 * Fixed: More than one unknown/extension in combination with augment of extension resulted in extension being skipped.

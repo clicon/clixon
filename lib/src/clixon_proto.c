@@ -278,6 +278,8 @@ atomicio(ssize_t (*fn) (int, void *, size_t),
 		continue;
 	    else if (errno == ECONNRESET)/* Connection reset by peer */
 		res = 0;
+	    else if (errno == EPIPE)     /* Client shutdown */
+		res = 0;
 	    /* SIGPIPE if client is killed */
 	case 0: /* fall thru */
 	    return (res);
