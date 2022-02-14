@@ -79,6 +79,7 @@
 #endif
 
 /*!
+ * @param[in]  rc       Restconf connection handle 
  * @see restconf_stream_free
  */
 restconf_stream_data *
@@ -94,6 +95,10 @@ restconf_stream_data_new(restconf_conn *rc,
     memset(sd, 0, sizeof(restconf_stream_data));
     sd->sd_stream_id = stream_id;
     sd->sd_fd = -1;
+    if ((sd->sd_inbuf = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	return NULL;
+    }
     if ((sd->sd_indata = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	return NULL;
@@ -111,6 +116,9 @@ restconf_stream_data_new(restconf_conn *rc,
     return sd;
 }
 
+/*!
+ * @param[in]  rc       Restconf connection handle 
+ */
 restconf_stream_data *
 restconf_stream_find(restconf_conn *rc,
 		     int32_t        id)
@@ -127,12 +135,18 @@ restconf_stream_find(restconf_conn *rc,
     return NULL;
 }
 
+
+/*
+ * @param[in]  sd       Restconf data stream
+ */
 int
 restconf_stream_free(restconf_stream_data *sd)
 {
     if (sd->sd_fd != -1) {
 	close(sd->sd_fd);
     }
+    if (sd->sd_inbuf)
+	cbuf_free(sd->sd_inbuf);
     if (sd->sd_indata)
 	cbuf_free(sd->sd_indata);
     if (sd->sd_outp_hdrs)
@@ -467,6 +481,329 @@ native_clear_input(clicon_handle         h,
 }
 #endif
 
+/*! Read HTTP from SSL socket
+ *
+ * @param[in]  rc    Restconf connection handle 
+ * @param[in]  buf   Input buffer
+ * @param[in]  sz    Size of input buffer
+ * @param[out] np    Bytes read
+ * @param[out] again    If set, read data again, do not continue processing
+ * @retval     -1    Error
+ * @retval     0     OK
+ */
+static int
+read_ssl(restconf_conn *rc,
+	 char          *buf,
+	 size_t         sz,
+	 ssize_t       *np,
+	 int           *again)
+{
+    int  retval = -1;
+    int  sslerr;
+    
+    if ((*np = SSL_read(rc->rc_ssl, buf, sz)) < 0){
+	sslerr = SSL_get_error(rc->rc_ssl, *np);
+	clicon_debug(1, "%s SSL_read() n:%zd errno:%d sslerr:%d", __FUNCTION__, *np, errno, sslerr);
+	switch (sslerr){
+	case SSL_ERROR_WANT_READ:            /* 2 */
+	    /* SSL_ERROR_WANT_READ is returned when the last operation was a read operation 
+	     * from a nonblocking BIO. 
+	     * That is, it can happen if restconf_socket_init() below is called 
+	     * with SOCK_NONBLOCK
+	     */
+	    clicon_debug(1, "%s SSL_read SSL_ERROR_WANT_READ", __FUNCTION__);
+	    usleep(1000);
+	    *again = 1;
+	    break;
+	default:
+	    clicon_err(OE_XML, errno, "SSL_read");
+	    goto done;              
+	} /* switch */
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Read HTTP from regular socket
+ *
+ * @param[in]  rc       Restconf connection handle 
+ * @param[in]  buf      Input buffer
+ * @param[in]  sz       Size of input buffer
+ * @param[out] np       Bytes read
+ * @param[out] again    If set, read data again, do not continue processing
+ * @retval     -1       Error
+ * @retval     0        Socket closed, quit
+ * @retval     1        OK
+ * XXX:
+ *   readmore/continue
+ *   goto ok
+ */
+static int
+read_regular(restconf_conn *rc,
+	     char          *buf,
+	     size_t         sz,
+	     ssize_t       *np,
+	     int           *again)
+{
+    int retval = -1;
+    
+    if ((*np = read(rc->rc_s, buf, sz)) < 0){ /* XXX atomicio ? */
+	switch(errno){
+	case ECONNRESET:/* Connection reset by peer */
+	    clicon_debug(1, "%s %d Connection reset by peer", __FUNCTION__, rc->rc_s);
+	    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
+	    close(rc->rc_s);
+	    restconf_conn_free(rc);
+	    retval = 0; /* Close socket and ssl */
+	    goto done;
+	    break;
+	case EAGAIN:
+	    clicon_debug(1, "%s read EAGAIN", __FUNCTION__);
+	    usleep(1000);
+	    *again = 1;
+	    break;
+	default:;
+	    clicon_err(OE_XML, errno, "read");
+	    goto done;
+	    break;
+	}
+    }
+    retval = 1;
+ done:
+    return retval;
+}
+
+#ifdef HAVE_HTTP1
+/*! RESTCONF HTTP/1 processing after chunk of bytes read
+ *
+ * @param[in]  rc           Restconf connection handle 
+ * @param[in]  buf          Input buffer
+ * @param[in]  n            Length of data in input buffer
+ * @param[out] readmore     If set, read data again, do not continue processing
+ * @retval     -1           Error
+ * @retval     0            Socket closed, quit
+ * @retval     1            OK
+ */
+static int
+restconf_http1(restconf_conn        *rc,
+	       char                 *buf,
+	       size_t                n,
+	       int                  *readmore)
+{
+    int                   retval = -1;
+    restconf_stream_data *sd;
+    clicon_handle         h;
+    int                   ret;
+    int                   status;
+    
+    h = rc->rc_h;
+    if ((sd = restconf_stream_find(rc, 0)) == NULL){
+	clicon_err(OE_RESTCONF, EINVAL, "restconf stream not found");
+	goto done;
+    }
+    /* Two states for reading:
+     * 1) Initial reading of headers, parse from start
+     * 2) Headers are read / body started, dont parse, just append body
+     */
+    /* Check whole message is read. 
+     * Only way this could happen is that body is read
+     * 0: No Content-Length or 0
+     *    header does not contain Content-Length or is 0
+     *    (OR: message header not fully read SHOULDNT HAPPEN IF BODY READ)
+     * 1: Content-Length found but body has fewer bytes, ie remaining bytes to read
+     * 2: Content-Length found and matches body length. No more bytes to read
+     */
+    if ((ret = http1_check_content_length(h, sd, &status)) < 0)
+	goto done;
+    if (status == 1){ 	/* Next read: keep header state and only append inbody */
+	if (cbuf_append_buf(sd->sd_indata, buf, n) < 0){
+	    clicon_err(OE_UNIX, errno, "cbuf_append");
+	    goto done;
+	}
+    }
+    else {
+	/* multi-buffer for multiple reads 
+	 * This is different from sd_indata that it is before and includes headers
+	 */
+	if (cbuf_append_buf(sd->sd_inbuf, buf, n) < 0){
+	    clicon_err(OE_UNIX, errno, "cbuf_append");
+	    goto done;
+	}
+	if (clixon_http1_parse_string(h, rc, cbuf_get(sd->sd_inbuf)) < 0){
+	    /* XXX This does not work for SSL */
+	    if (rc->rc_ssl){
+		ret = SSL_pending(rc->rc_ssl);
+	    }
+	    else if ((ret = clixon_event_poll(rc->rc_s)) < 0)
+		goto done;
+	    if (ret > 0){
+		if (native_clear_input(h, sd) < 0)
+		    goto done;
+		(*readmore)++;
+		goto ok;
+	    }
+	    /* Return error. Honsetly, the sender could just e slow, it should really be a 
+	     * timeout here.
+	     */
+	    if (native_send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
+				       "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The requested URL or a header is in some way badly formed</error-message></error></errors>") < 0)
+		goto done;
+	}
+	/* Check for Continue and if so reply with 100 Continue 
+	 * ret == 1: send reply
+	 */
+	if ((ret = http1_check_expect(h, rc, sd)) < 0)
+	    goto done;
+	if (ret == 1){
+	    if (native_buf_write(cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
+				 rc->rc_s, rc->rc_ssl) < 0)
+		goto done;
+	    cvec_reset(sd->sd_outp_hdrs);
+	    cbuf_reset(sd->sd_outp_buf);
+	}
+    }
+    /* Check whole message is read. 
+     * Only way this could happen is that body is read
+     * 0: No Content-Length or 0
+     *    header does not contain Content-Length or is 0
+     *    (OR: message header not fully read SHOULDNT HAPPEN IF BODY READ OK in parse above)
+     * 1: Content-Length found but body has fewer bytes, ie remaining bytes to read
+     * 2: Content-Length found and matches body length. No more bytes to read
+     */
+    if ((ret = http1_check_content_length(h, sd, &status)) < 0)
+	goto done;
+    if (status == 1){
+	(*readmore)++;
+	goto ok;
+    }
+    /* main restconf processing */
+    if (restconf_http1_path_root(h, rc) < 0)
+	goto done;
+    if (native_buf_write(cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
+			 rc->rc_s, rc->rc_ssl) < 0)
+	goto done;
+    cvec_reset(sd->sd_outp_hdrs); /* Can be done in native_send_reply */
+    cbuf_reset(sd->sd_outp_buf);
+    if (rc->rc_exit){  /* Server-initiated exit */
+	SSL_free(rc->rc_ssl);
+	rc->rc_ssl = NULL;
+	if (close(rc->rc_s) < 0){
+	    clicon_err(OE_UNIX, errno, "close");
+	    goto done;
+	}
+	clixon_event_unreg_fd(rc->rc_s, restconf_connection);
+	restconf_conn_free(rc);
+	retval = 0;
+	goto done;
+    }
+ ok:
+    retval = 1;
+ done:
+    return retval;
+}
+#endif
+
+static int
+restconf_http2_upgrade(restconf_conn *rc)
+{
+    int           retval = -1;
+    restconf_stream_data *sd;
+    
+    if ((sd = restconf_stream_find(rc, 0)) == NULL){
+	clicon_err(OE_RESTCONF, EINVAL, "restconf stream not found");
+	goto done;
+    }
+    if (sd->sd_upgrade2){
+	nghttp2_error ngerr;
+
+	/* Switch to http/2 according to RFC 7540 Sec 3.2 and RFC 7230 Sec 6.7 */
+	rc->rc_proto = HTTP_2;
+	if (http2_session_init(rc) < 0){
+	    restconf_close_ssl_socket(rc, 1);
+	    goto done;
+	}
+	/* The HTTP/1.1 request that is sent prior to upgrade is assigned a
+	 * stream identifier of 1 (see Section 5.1.1) with default priority
+	 */
+	sd->sd_stream_id = 1;
+	/* The first HTTP/2 frame sent by the server MUST be a server connection
+	 * preface (Section 3.5) consisting of a SETTINGS frame (Section 6.5).
+	 */
+	if ((ngerr = nghttp2_session_upgrade2(rc->rc_ngsession,
+					      sd->sd_settings2,
+					      sd->sd_settings2?strlen((const char*)sd->sd_settings2):0,
+					      0, /* XXX: 1 if HEAD */
+					      NULL)) < 0){
+	    clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_upgrade2");
+	    goto done;
+	}
+	if (http2_send_server_connection(rc) < 0){
+	    restconf_close_ssl_socket(rc, 1);
+	    goto done;
+	}
+	/* Use params from original http/1 session to http/2 stream */
+	if (http2_exec(rc, sd, rc->rc_ngsession, 1) < 0)
+	    goto done;
+	/*
+	 * Very special case for http/1->http/2 upgrade and restconf "restart"
+	 * That is, the restconf daemon is restarted under the hood, and the session
+	 * is closed in mid-step: it needs a couple of extra rounds to complete the http/2
+	 * settings before it completes.
+	 * Maybe a more precise way would be to encode that semantics using recieved http/2
+	 * frames instead of just postponing nrof events?
+	 */
+	if (clixon_exit_get() == 1){
+	    clixon_exit_set(3);
+	}
+    }
+
+    retval = 0;
+ done:
+    return retval;    
+}
+
+/*!
+ * @param[in]  buf      Input buffer
+ * @param[in]  n        Size of input buffer
+ * @retval     -1       Error
+ * @retval     0        Socket closed, quit
+ * @retval     1        OK
+ */
+static int
+restconf_http2(restconf_conn *rc,
+	       char          *buf,
+	       size_t         n,
+	       int           *readmore)
+{
+    int           retval = -1;
+    int           ret;
+    nghttp2_error ngerr;
+
+    if (rc->rc_exit){ /* Server-initiated exit for http/2 */
+	if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, 0)) < 0){
+	    clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
+	    goto done; // XXX not here in original?
+	}
+    }
+    else {
+	if ((ret = http2_recv(rc, (unsigned char *)buf, n)) < 0)
+	    goto done;
+	if (ret == 0){
+	    restconf_close_ssl_socket(rc, 1);
+	    if (restconf_conn_free(rc) < 0)
+		goto done;
+	    retval = 0;
+	    goto done;
+	}
+	/* There may be more data frames */
+	(*readmore)++;
+    }
+    retval = 1;
+ done:
+    return retval;
+}
+
 /*! New data connection after accept, receive and reply on data socket
  *
  * @param[in]   s    Socket where message arrived. read from this.
@@ -487,21 +824,10 @@ restconf_connection(int   s,
     int                   retval = -1;
     restconf_conn        *rc = NULL;
     ssize_t               n;
-    char                  buf[1024]; /* Alter BUFSIZ (8K) from stdio.h 8K. 256 fails some tests */
-    char                 *totbuf = NULL;
-    size_t                totlen = 0;
+    //    char                  buf[1024]; /* Alter BUFSIZ (8K) from stdio.h 8K. 256 fails some tests */
+    char                  buf[32]; /* Alter BUFSIZ (8K) from stdio.h 8K. 256 fails some tests */
     int                   readmore = 1;
-    int                   sslerr;
-    int                   contnr = 0; /* Continue sent */
-#ifdef HAVE_LIBNGHTTP2
     int                   ret;
-#endif
-#ifdef HAVE_HTTP1
-    clicon_handle         h;
-    restconf_stream_data *sd;
-    int                   status;
-    int                   http1_headers_read = 0; /* Dont re-parse headers, just append body */
-#endif
 
     clicon_debug(1, "%s %d", __FUNCTION__, s);
     if ((rc = (restconf_conn*)arg) == NULL){
@@ -514,54 +840,18 @@ restconf_connection(int   s,
 	readmore = 0;
 	/* Example: curl -Ssik -u wilma:bar -X GET https://localhost/restconf/data/example:x */
 	if (rc->rc_ssl){
-	    /* Non-ssl gets n == 0 here!
-	       curl -Ssik --key /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.key --cert /var/tmp/./test_restconf_ssl_certs.sh/certs/limited.crt -X GET https://localhost/restconf/data/example:x
-	    */
-	    if ((n = SSL_read(rc->rc_ssl, buf, sizeof(buf))) < 0){
-		sslerr = SSL_get_error(rc->rc_ssl, n);
-		clicon_debug(1, "%s SSL_read() n:%zd errno:%d sslerr:%d", __FUNCTION__, n, errno, sslerr);
-		switch (sslerr){
-		case SSL_ERROR_WANT_READ:            /* 2 */
-		    /* SSL_ERROR_WANT_READ is returned when the last operation was a read operation 
-		     * from a nonblocking BIO. 
-		     * That is, it can happen if restconf_socket_init() below is called 
-		     * with SOCK_NONBLOCK
-		     */
-		    clicon_debug(1, "%s SSL_read SSL_ERROR_WANT_READ", __FUNCTION__);
-		    usleep(1000);
-		    readmore = 1;
-		    break;
-		default:
-		    clicon_err(OE_XML, errno, "SSL_read");
-		    goto done;              
-		} /* switch */
-		continue; /* readmore */
-	    }
+	    if (read_ssl(rc, buf, sizeof(buf), &n, &readmore) < 0)
+		goto done;
 	}
-	else{
-	    if ((n = read(rc->rc_s, buf, sizeof(buf))) < 0){ /* XXX atomicio ? */
-		switch(errno){
-		case ECONNRESET:/* Connection reset by peer */
-		    clicon_debug(1, "%s %d Connection reset by peer", __FUNCTION__, rc->rc_s);
-		    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
-		    close(rc->rc_s);
-		    restconf_conn_free(rc);
-		    goto ok; /* Close socket and ssl */
-		    break;
-		case EAGAIN:
-		    clicon_debug(1, "%s read EAGAIN", __FUNCTION__);
-		    usleep(1000);
-		    readmore = 1;
-		    break;
-		default:;
-		    clicon_err(OE_XML, errno, "read");
-		    goto done;
-		    break;
-		}
-		continue;
-	    }
+	else{ /* Not SSL */
+	    if ((ret = read_regular(rc, buf, sizeof(buf), &n, &readmore)) < 0)
+		goto done;
+	    if (ret == 0)
+		goto ok; /* abort here */
 	}
 	clicon_debug(1, "%s read:%zd", __FUNCTION__, n);
+	if (readmore)
+	    continue;
 	if (n == 0){
 	    clicon_debug(1, "%s n=0 closing socket", __FUNCTION__);
 	    if (restconf_close_ssl_socket(rc, 0) < 0)
@@ -574,181 +864,26 @@ restconf_connection(int   s,
 #ifdef HAVE_HTTP1
 	case HTTP_10:
 	case HTTP_11:
-	    h = rc->rc_h;
-	    /* default stream */
-	    if ((sd = restconf_stream_find(rc, 0)) == NULL){
-		clicon_err(OE_RESTCONF, EINVAL, "restconf stream not found");
+	    if ((ret = restconf_http1(rc, buf, n, &readmore)) < 0)
 		goto done;
-	    }
-	    if (http1_headers_read){
-		if (cbuf_append_buf(sd->sd_indata, buf, n) < 0){
-		    clicon_err(OE_UNIX, errno, "cbuf_append");
-		    goto done;
-		}
-	    }
-	    else {
-		/* multi-buffer for multiple reads */
-		totlen += n;
-		if ((totbuf = realloc(totbuf, totlen+1)) == NULL){
-		    clicon_err(OE_UNIX, errno, "realloc");
-		    goto done;
-		}
-		memcpy(&totbuf[totlen-n], buf, n);
-		totbuf[totlen] = '\0';
-	    }
-	    /*
-	     * The following cases are handled after parsing
-	     * - Parse error
-	     *   - More data to read?
-	     *     - clear and read more
-	     *   - No more data
-	     *     - send error
-	     * - Parse OK
-	     *   -  
-	     */
-	    if (!http1_headers_read &&
-		clixon_http1_parse_string(h, rc, totbuf) < 0){
-		/* Maybe only for non-ssl ? */
-		if ((ret = clixon_event_poll(rc->rc_s)) < 0)
-		    goto done;
-		if (ret == 1){
-		    if (native_clear_input(h, sd) < 0)
-			goto done;
-		    readmore++;
-		    continue;
-		}
-		if (native_send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
-				    "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The requested URL or a header is in some way badly formed</error-message></error></errors>") < 0)
-		    goto done;
-	    }
-	    else{
-		/* Check for Continue and if so reply with 100 Continue 
-		 * ret == 1: send reply
-		 */
-		if (!contnr){
-		    if ((ret = http1_check_expect(h, rc, sd)) < 0)
-			goto done;
-		    if (ret == 1){
-			if (native_buf_write(cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
-					     rc->rc_s, rc->rc_ssl) < 0)
-			    goto done;
-			cvec_reset(sd->sd_outp_hdrs);
-			cbuf_reset(sd->sd_outp_buf);
-			contnr++;
-		    }
-		}
-		/* Check whole message is read. 
-		 * Only way this could happen is that body is read
-		 * 0: No Content-Length or 0
-                 *    header does not contain Content-Length or is 0
-		 *    (OR: message header not fully read SHOULDNT HAPPEN IF BODY READ)
-		 * 1: Content-Length found but body has fewer bytes, ie remaining bytes to read
-		 * 2: Content-Length found and matches body length. No more bytes to read
-		 */
-		if ((ret = http1_check_content_length(h, sd, &status)) < 0)
-		    goto done;
-		switch (status){
-		case 1:
-		    /* Next read: keep header state and only append inbody */
-		    http1_headers_read++;
-		    readmore++;
-		    continue;
-		    break;
-
-		    break;
-		case 0:
-		case 2:
-		default:
-		    break;
-		}
-		if (status == 0){
-
-		}
-		if (restconf_http1_path_root(h, rc) < 0)
-		    goto done;
-		if (native_buf_write(cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
-			      rc->rc_s, rc->rc_ssl) < 0)
-		    goto done;
-		cvec_reset(sd->sd_outp_hdrs); /* Can be done in native_send_reply */
-		cbuf_reset(sd->sd_outp_buf);
-	    }
-	    if (rc->rc_exit){  /* Server-initiated exit for http/2 */
-		SSL_free(rc->rc_ssl);
-		rc->rc_ssl = NULL;
-		if (close(rc->rc_s) < 0){
-		    clicon_err(OE_UNIX, errno, "close");
-		    goto done;
-		}
-		clixon_event_unreg_fd(rc->rc_s, restconf_connection);
-		restconf_conn_free(rc);
+	    if (ret == 0)
 		goto ok;
-	    }
+	    if (readmore)
+		continue;
 #ifdef HAVE_LIBNGHTTP2
-	    if (sd->sd_upgrade2){
-		nghttp2_error ngerr;
-
-		/* Switch to http/2 according to RFC 7540 Sec 3.2 and RFC 7230 Sec 6.7 */
-		rc->rc_proto = HTTP_2;
-		if (http2_session_init(rc) < 0){
-		    restconf_close_ssl_socket(rc, 1);
-		    goto done;
-		}
-		/* The HTTP/1.1 request that is sent prior to upgrade is assigned a
-		 * stream identifier of 1 (see Section 5.1.1) with default priority
-		 */
-		sd->sd_stream_id = 1;
-		/* The first HTTP/2 frame sent by the server MUST be a server connection
-		 * preface (Section 3.5) consisting of a SETTINGS frame (Section 6.5).
-		 */
-		if ((ngerr = nghttp2_session_upgrade2(rc->rc_ngsession,
-						      sd->sd_settings2,
-						      sd->sd_settings2?strlen((const char*)sd->sd_settings2):0,
-						      0, /* XXX: 1 if HEAD */
-						      NULL)) < 0){
-		    clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_upgrade2");
-		    goto done;
-		}
-		if (http2_send_server_connection(rc) < 0){
-		    restconf_close_ssl_socket(rc, 1);
-		    goto done;
-		}
-		/* Use params from original http/1 session to http/2 stream */
-		if (http2_exec(rc, sd, rc->rc_ngsession, 1) < 0)
-		    goto done;
-		/*
-		 * Very special case for http/1->http/2 upgrade and restconf "restart"
-		 * That is, the restconf daemon is restarted under the hood, and the session
-		 * is closed in mid-step: it needs a couple of extra rounds to complete the http/2
-		 * settings before it completes.
-		 * Maybe a more precise way would be to encode that semantics using recieved http/2
-		 * frames instead of just postponing nrof events?
-		 */
-		if (clixon_exit_get() == 1){
-		    clixon_exit_set(3);
-		}
-	    }
-#endif
+	    if (restconf_http2_upgrade(rc) < 0)
+		goto done;
+#endif /* HAVE_LIBNGHTTP2 */
 	    break;
 #endif /* HAVE_HTTP1 */
 #ifdef HAVE_LIBNGHTTP2
 	case HTTP_2:
-	    if (rc->rc_exit){ /* Server-initiated exit for http/2 */
-		nghttp2_error ngerr;
-		if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, 0)) < 0)
-		    clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
-	    }
-	    else {
-		if ((ret = http2_recv(rc, (unsigned char *)buf, n)) < 0)
-		    goto done;
-		if (ret == 0){
-		    restconf_close_ssl_socket(rc, 1);
-		    if (restconf_conn_free(rc) < 0)
-			goto done;
-		    goto ok;
-		}
-		/* There may be more data frames */
-		readmore++;
-	    }
+	    if ((ret = restconf_http2(rc, buf, n, &readmore)) < 0)
+		goto done;
+	    if (ret == 0)
+		goto ok;
+	    if (readmore)
+		continue;
 	    break;
 #endif /* HAVE_LIBNGHTTP2 */
 	default:
@@ -758,8 +893,6 @@ restconf_connection(int   s,
  ok:
     retval = 0;
  done:
-    if (totbuf)
-	free(totbuf);
     clicon_debug(1, "%s retval %d", __FUNCTION__, retval);
     return retval;
 } /* restconf_connection */

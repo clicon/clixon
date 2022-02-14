@@ -30,10 +30,9 @@ APPNAME=example
 
 cfg=$dir/scaling-conf.xml
 fyang=$dir/scaling.yang
-fdataxml=$dir/config.xml # dataxml 
+fdataxml=$dir/large.xml # dataxml 
 ftest=$dir/test.xml
-fconfig=$dir/large.xml
-fconfig2=$dir/large2.xml # leaf-list
+fdataxml2=$dir/large2.xml # leaf-list XXX use restconf
 foutput=$dir/output.xml
 foutput2=$dir/output2.xml
 
@@ -66,6 +65,7 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
@@ -78,7 +78,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_DIR>/usr/local/lib/example/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/example/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
-  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_LOG_STRING_LIMIT>128</CLICON_LOG_STRING_LIMIT>
   $RESTCONFIG
 </clixon-config>
 EOF
@@ -90,6 +90,9 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
+
+#    sudo pkill clixon_backend # extra
+#    sleep 1    
 
     new "start backend -s init -f $cfg -- -s"
     start_backend -s init -f $cfg -- -s
@@ -110,23 +113,21 @@ new "wait restconf"
 wait_restconf
 
 # Check this later with committed data
-new "generate config with $perfnr list entries"
+new "generate config with $perfnr list entries to $fdataxml"
 echo -n "<x xmlns=\"urn:example:clixon\">" > $fdataxml
 for (( i=0; i<$perfnr; i++ )); do  
     echo -n "<y><a>$i</a><b>$i</b></y>" >> $fdataxml
 done
 echo -n "</x>" >> $fdataxml # No CR
 
-echo -n "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>" > $fconfig
-cat $fdataxml >> $fconfig
-echo "</config></edit-config></rpc>]]>]]>" >> $fconfig
-
 # Now take large config file and write it via netconf to candidate
 new "test time exists"
 expectpart "$(time -p ls)" 0 
 
-new "restconf write large config"
-expectpart "$(time -p curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data -d @$fdataxml )" 0 "HTTP/$HVER 201"
+# Use PUT so it can be repeated
+new "restconf PUT large initial config"
+echo "curl $CURLOPTS -X PUT -H \"Content-Type: application/yang-data+xml\" $RCPROTO://localhost/restconf/data/scaling:x -d @$fdataxml"
+expectpart "$(time -p curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data/scaling:x -d @$fdataxml)" 0 "HTTP/$HVER 20"
 
 new "Check running-db contents"
 curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=config > $foutput
@@ -213,19 +214,15 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-ch
 done > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # Now do leaf-lists istead of leafs
-
-#new "generate leaf-list config"
-echo -n "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">" > $fconfig2
+new "generate config with $perfnr leaf-lists to $fdataxml2"
+echo -n "<x xmlns=\"urn:example:clixon\">" > $fdataxml2
 for (( i=0; i<$perfnr; i++ )); do  
-    echo -n "<c>$i</c>" >> $fconfig2
+    echo -n "<c>$i</c>" >> $fdataxml2
 done
-echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig2
+echo -n "</x>" >> $fdataxml2 # No CR
 
-new "netconf replace large list-leaf config"
-expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig2" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
-
-new "netconf commit large leaf-list config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+new "restconf replace large list-leaf config"
+expectpart "$(time -p curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data/scaling:x -d @$fdataxml2)" 0 "HTTP/$HVER 20"
 
 new "netconf add $perfreq small leaf-list config"
 { time -p for (( i=0; i<$perfreq; i++ )); do

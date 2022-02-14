@@ -350,7 +350,9 @@ restconf_http1_path_root(clicon_handle  h,
     char                 *subject = NULL;
     cxobj                *xerr = NULL;
     int                   pretty;
+#ifdef HAVE_LIBNGHTTP2
     int                   ret;
+#endif
     
     clicon_debug(1, "------------");
     pretty = restconf_pretty_get(h);
@@ -417,7 +419,9 @@ restconf_http1_path_root(clicon_handle  h,
  fail:
    if (restconf_param_del_all(h) < 0)
 	goto done;
+#ifdef HAVE_LIBNGHTTP2
  upgrade:
+#endif
     if (sd->sd_code)
 	if (restconf_http1_reply(rc, sd) < 0)
 	    goto done;

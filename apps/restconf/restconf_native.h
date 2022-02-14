@@ -73,7 +73,8 @@ typedef struct  {
     cbuf                 *sd_body;      /* http output body as cbuf terminated with \r\n */
     size_t                sd_body_len;  /* Content-Length, note for HEAD body body can be NULL and this non-zero */
     size_t                sd_body_offset; /* Offset into body */
-    cbuf                 *sd_indata;    /* Receive/input data */
+    cbuf                 *sd_inbuf;     /* Receive/input buf (whole message) */
+    cbuf                 *sd_indata;    /* Receive/input data body */
     char                 *sd_path;      /* Uri path, uri-encoded, without args (eg ?) */
     uint16_t              sd_code;      /* If != 0 send a reply XXX: need reply flag? */
     struct restconf_conn *sd_conn;      /* Backpointer to connection this stream is part of */
