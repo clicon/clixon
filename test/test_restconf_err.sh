@@ -21,18 +21,26 @@
 # XXX does not test rpc-error from backend in api_return_err?
 
 # Override default to use http/1.1
-# Force to HTTP 1.1 no SSL due to netcat
-RCPROTO=http
-HAVE_LIBNGHTTP2=false
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Does not work with native http/2-only
 if [ "${WITH_RESTCONF}" = "native" -a ${HAVE_HTTP1} = false ]; then
+#if ! ${HAVE_HTTP1}; then
     echo "...skipped: must run with http/1"
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
+
+# Pin to http/1
+if [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_HTTP1} = true ]; then
+    HAVE_LIBNGHTTP2=false
+    CURLOPTS="${CURLOPTS} --http1.1"
+    HVER=1.1
+fi
+
+# Force to HTTP 1.1 no SSL due to netcat
+RCPROTO=http
 
 APPNAME=example
 

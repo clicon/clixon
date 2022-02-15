@@ -449,6 +449,7 @@ function wait_restconf(){
 	    err1 "restconf timeout $DEMWAIT seconds"
 	fi
 	sleep $DEMSLEEP
+#	echo "curl $CURLOPTS -X GET $myproto://localhost/restconf"
 	hdr=$(curl $CURLOPTS -X GET $myproto://localhost/restconf 2> /dev/null)
 #	echo "hdr:\"$hdr\""
 	let i++;

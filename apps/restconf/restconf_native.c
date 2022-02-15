@@ -596,6 +596,7 @@ restconf_http1(restconf_conn        *rc,
     clicon_handle         h;
     int                   ret;
     int                   status;
+    cbuf                 *cberr = NULL;
     
     h = rc->rc_h;
     if ((sd = restconf_stream_find(rc, 0)) == NULL){
@@ -643,12 +644,17 @@ restconf_http1(restconf_conn        *rc,
 		(*readmore)++;
 		goto ok;
 	    }
-	    /* Return error. Honsetly, the sender could just e slow, it should really be a 
+	    /* Return error. Honestly, the sender could just e slow, it should really be a 
 	     * timeout here.
 	     */
-	    if (native_send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
-				       "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The requested URL or a header is in some way badly formed</error-message></error></errors>") < 0)
+	    if ((cberr = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
 		goto done;
+	    }
+	    cprintf(cberr, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>%s</error-message></error></errors>", clicon_err_reason);
+	    if (native_send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml", cbuf_get(cberr)) < 0)
+		goto done;
+	    goto ok;
 	}
 	/* Check for Continue and if so reply with 100 Continue 
 	 * ret == 1: send reply
@@ -677,6 +683,10 @@ restconf_http1(restconf_conn        *rc,
 	(*readmore)++;
 	goto ok;
     }
+    /* nginx compatible, set HTTPS parameter if SSL */
+    if (rc->rc_ssl)
+	if (restconf_param_set(h, "HTTPS", "https") < 0)
+	    goto done;
     /* main restconf processing */
     if (restconf_http1_path_root(h, rc) < 0)
 	goto done;
@@ -685,6 +695,7 @@ restconf_http1(restconf_conn        *rc,
 	goto done;
     cvec_reset(sd->sd_outp_hdrs); /* Can be done in native_send_reply */
     cbuf_reset(sd->sd_outp_buf);
+    cbuf_reset(sd->sd_inbuf);
     if (rc->rc_exit){  /* Server-initiated exit */
 	SSL_free(rc->rc_ssl);
 	rc->rc_ssl = NULL;
@@ -700,11 +711,14 @@ restconf_http1(restconf_conn        *rc,
  ok:
     retval = 1;
  done:
+    if (cberr)
+	cbuf_free(cberr);
     return retval;
 }
 #endif
 
 #ifdef HAVE_LIBNGHTTP2
+#ifdef HAVE_HTTP1
 static int
 restconf_http2_upgrade(restconf_conn *rc)
 {
@@ -763,6 +777,7 @@ restconf_http2_upgrade(restconf_conn *rc)
  done:
     return retval;    
 }
+#endif /* HAVE_LIBHTTP1 */
 
 /*!
  * @param[in]  buf      Input buffer

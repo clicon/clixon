@@ -403,6 +403,8 @@ restconf_http1_path_root(clicon_handle  h,
     /* Check sanity of session, eg ssl client cert validation, may set rc_exit */
     if (restconf_connection_sanity(h, rc, sd) < 0)
 	goto done;
+    if (rc->rc_exit)
+	goto fail;
 #ifdef HAVE_LIBNGHTTP2
     if ((ret = http1_upgrade_http2(h, sd)) < 0)
 	goto done;

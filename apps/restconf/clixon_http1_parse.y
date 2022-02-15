@@ -63,6 +63,7 @@
 
 %type <string> body
 %type <string> absolute_paths
+%type <string> absolute_paths1
 %type <string> absolute_path
 %type <string> field_vchars
 %type <string> field_values
@@ -230,7 +231,8 @@ body          : body BODY
               |	    	{ _PARSE_DEBUG("body -> "); $$ = NULL; } 
 ;
 
-/* request-line = method SP request-target SP HTTP-version CRLF */request_line  : method SP request_target SP HTTP_version CRLF
+/* request-line = method SP request-target SP HTTP-version CRLF */
+request_line  : method SP request_target SP HTTP_version CRLF
                { 
    		   _PARSE_DEBUG("request-line -> method request-target HTTP_version CRLF");
 	       }
@@ -255,14 +257,14 @@ method        : TOKEN
  * query = <query, see [RFC3986], Section 3.4>
  * query       = *( pchar / "/" / "?" )
  */
-request_target : absolute_paths
+request_target : absolute_paths1
                  {
 		      if (restconf_param_set(_HY->hy_h, "REQUEST_URI", $1) < 0)
 			  YYABORT;
 		      free($1);
-		     _PARSE_DEBUG("request-target -> absolute-paths");
+		     _PARSE_DEBUG("request-target -> absolute-paths1");
 		 }
-	        | absolute_paths QMARK QUERY
+	        | absolute_paths1 QMARK QUERY
 		  {
 		      if (restconf_param_set(_HY->hy_h, "REQUEST_URI", $1) < 0)
 			  YYABORT;
@@ -270,8 +272,17 @@ request_target : absolute_paths
 		      if (http1_parse_query(_HY, $3) < 0)
 			  YYABORT;
 		      free($3);
-		      _PARSE_DEBUG("request-target -> absolute-paths ? query");
+		      _PARSE_DEBUG("request-target -> absolute-paths1 ? query");
 		  }
+;
+
+/* absolute-paths1 = absolute-paths ["/"] 
+ * Not according to standards: trailing /
+ */
+absolute_paths1 : absolute_paths
+                      { $$ = $1;_PARSE_DEBUG("absolute-paths1 -> absolute-paths "); }
+                | absolute_paths SLASH
+		      { $$ = $1;_PARSE_DEBUG("absolute-paths1 -> absolute-paths / "); }
 ;
 
 /* absolute-path = 1*( "/" segment ) */

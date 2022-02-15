@@ -1,15 +1,24 @@
 #!/usr/bin/env bash
 # Restconf HTTP/1.1 Expect/Continue functionality
 # Trigger Expect by curl -H. Some curls seem to trigger one on large PUTs but not all
-
-# Override default to use http/1.1
-# In http/2 there is no explicit continue
-HAVE_LIBNGHTTP2=false
+# If both HTTP/1 and /2, force to /1 to test native http/1 implementation
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
+if ! ${HAVE_HTTP1}; then
+    echo "...skipped: Must run with http/1"
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
+
 APPNAME=example
+
+if [ ${HAVE_LIBNGHTTP2} = true ]; then
+    # Pin to http/1
+    HAVE_LIBNGHTTP2=false
+    CURLOPTS="${CURLOPTS} --http1.1"
+    HVER=1.1
+fi
 
 cfg=$dir/conf.xml
 fyang=$dir/restconf.yang

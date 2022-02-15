@@ -3,10 +3,6 @@
 # Lists (and leaf-lists)
 # Add, get and delete entries
 
-# Override default to use http/1.1, comment to use https/2
-HAVE_LIBNGHTTP2=false
-RCPROTO=http
-
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
@@ -106,6 +102,7 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/example/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
   <CLICON_LOG_STRING_LIMIT>128</CLICON_LOG_STRING_LIMIT>
+  <CLICON_RESTCONF_HTTP2_PLAIN>true</CLICON_RESTCONF_HTTP2_PLAIN>
   $RESTCONFIG
 </clixon-config>
 EOF
@@ -163,36 +160,11 @@ if [ $r -ne 0 ]; then
     err1 "retval 0" $r
 fi
 
-# Remove Content-Length line (depends on size)
-# Note: do not use sed -i since it is not portable between gnu and bsd
-sed '/Content-Length:/d' $foutput > $foutput2 && mv $foutput2 $foutput
-sed '/content-length:/d' $foutput > $foutput2 && mv $foutput2 $foutput
-# Remove (nginx) web-server specific lines
-sed '/Server:/d' $foutput > $foutput2 && mv $foutput2 $foutput
-sed '/Date:/d' $foutput > $foutput2 && mv $foutput2 $foutput
-sed '/Transfer-Encoding:/d' $foutput > $foutput2 && mv $foutput2 $foutput
-sed '/Connection:/d' $foutput > $foutput2 && mv $foutput2 $foutput
-
-# Create a file to compare with
-if ${HAVE_LIBNGHTTP2}; then
-    if [ ${HAVE_HTTP1} -a ${RCPROTO} = http ]; then
-	# Add 101 switch protocols for http 1->2 upgrade
-	echo "HTTP/1.1 101 Switching Protocols" > $ftest
-        echo "Upgrade: h2c" >> $ftest
-	echo "" >> $ftest
-	echo "HTTP/$HVER 200 " >> $ftest
-    else
-	echo "HTTP/$HVER 200 " > $ftest
-    fi
-else
-    echo "HTTP/$HVER 200 OK" > $ftest
-fi
-echo "Content-Type: application/yang-data+xml" >> $ftest
-echo "Cache-Control: no-cache" >> $ftest
-echo "">> $ftest
+# Only compare relevant data line
 echo -n "<data>">> $ftest
 cat $fdataxml >> $ftest
 echo "</data>" >> $ftest
+sed -i '/<data>/!d' $foutput
 
 ret=$(diff -i $ftest $foutput)
 if [ $? -ne 0 ]; then

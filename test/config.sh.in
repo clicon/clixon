@@ -44,7 +44,7 @@ WITH_RESTCONF=@with_restconf@ # native, fcgi or ""
 # If set, curl options are set to use --http2 which may not be what you want, ie
 # you may want to force it to http/1 for example
 # If so, override before test
-: ${HAVE_LIBNGHTTP2:=@HAVE_LIBNGHTTP2@}o
+: ${HAVE_LIBNGHTTP2:=@HAVE_LIBNGHTTP2@}
 HAVE_HTTP1=@HAVE_HTTP1@
 
 # This is for libxml2 XSD regex engine
