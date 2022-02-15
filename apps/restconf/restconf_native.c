@@ -824,8 +824,7 @@ restconf_connection(int   s,
     int                   retval = -1;
     restconf_conn        *rc = NULL;
     ssize_t               n;
-    //    char                  buf[1024]; /* Alter BUFSIZ (8K) from stdio.h 8K. 256 fails some tests */
-    char                  buf[32]; /* Alter BUFSIZ (8K) from stdio.h 8K. 256 fails some tests */
+    char                  buf[1024]; /* Alter BUFSIZ (8K) from stdio.h 8K. 256 fails some tests */
     int                   readmore = 1;
     int                   ret;
 
