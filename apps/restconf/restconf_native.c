@@ -704,6 +704,7 @@ restconf_http1(restconf_conn        *rc,
 }
 #endif
 
+#ifdef HAVE_LIBNGHTTP2
 static int
 restconf_http2_upgrade(restconf_conn *rc)
 {
@@ -803,6 +804,7 @@ restconf_http2(restconf_conn *rc,
  done:
     return retval;
 }
+#endif /* HAVE_LIBNGHTTP2 */
 
 /*! New data connection after accept, receive and reply on data socket
  *
