@@ -164,7 +164,8 @@ fi
 echo -n "<data>">> $ftest
 cat $fdataxml >> $ftest
 echo "</data>" >> $ftest
-sed -i '/<data>/!d' $foutput
+sed '/<data>/!d' $foutput > $foutput2
+mv $foutput2 $foutput
 
 ret=$(diff -i $ftest $foutput)
 if [ $? -ne 0 ]; then

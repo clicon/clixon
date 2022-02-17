@@ -216,8 +216,9 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 # Look for netcat or nc for direct socket http calls
 if [ -n "$(type netcat 2> /dev/null)" ]; then
     netcat="netcat -w 1" # -N does not work on fcgi
-elif [ -n "$(type nc 2> /dev/null)" ]; then
-    netcat=nc
+# nc on freebsd does not work either
+#elif [ -n "$(type nc 2> /dev/null)" ]; then
+#    netcat=nc
 else
     netcat=
 fi

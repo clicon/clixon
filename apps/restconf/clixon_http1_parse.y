@@ -206,7 +206,7 @@ http1_parse_header_field(clixon_http1_yacc *hy,
 /* start-line *( header-field CRLF ) CRLF [ message-body ] 
  * start-line     = request-line / status-line  (only request-line here, ignore status-line)
  */
-http_message  :  request_line header_fields CRLF body
+http_message  :  request_line header_fields CRLF body X_EOF
                    {
 		       if ($4) {
 			   if (http1_body(_HY, $4) < 0) YYABORT;
