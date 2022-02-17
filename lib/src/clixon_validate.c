@@ -134,7 +134,7 @@ validate_leafref(cxobj     *xt,
     char        *path_arg;
     yang_stmt   *ymod;
     cg_var      *cv;
-    int          require_instance = 0;
+    int          require_instance = 1;
     
     /* require instance */
     if ((yreqi = yang_find(ytype, Y_REQUIRE_INSTANCE, NULL)) != NULL){

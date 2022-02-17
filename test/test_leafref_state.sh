@@ -63,7 +63,6 @@ module leafref{
         leaf ref{
  	   type leafref {
 	      path "/ex:sender-config/ex:name";
-	      require-instance true;
 	   }
         }
     }
@@ -90,6 +89,7 @@ module leafref{
         leaf ref{
  	   type leafref {
 	      path "/ex:sender-config/ex:name";
+	      require-instance false;
 	   }
         }
     }

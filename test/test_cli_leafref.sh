@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # transitive leafref->leafref leafref->identityref completion
+# 
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -67,31 +68,33 @@ module example-leafref{
     }
     /* first level leafref */
     container leafrefs {
-        description "Relative path";
+        description "Leafref relative path, no require-instance";
 	list leafref{
 	   key name;
 	   leaf name {
    	      type leafref{
                  path "../../../table/parameter/name";
+		 require-instance false;
               }
            }
         }
     }
     /* first level leafref absolute */	
-    container leafrefstop {
-        description "Same but absolute path";
+    container leafrefsabs {
+        description "Leafref absolute path, no require-instance";
 	list leafref{
 	   key name;
 	   leaf name {
    	      type leafref{
                  path "/table/parameter/name";
+		 require-instance false;
               }
            }
         }
     }
     /* first level leafref require-instance */	
-    container leafrefsreqi {
-        description "Same but absolute path";
+    container leafrefsreqinst {
+        description "Leafref absolute path, require-instance true";
 	list leafref{
 	   key name;
 	   leaf name {
@@ -105,6 +108,7 @@ module example-leafref{
     /* first level identityrefs */
     container identityrefs {
 	list identityref{
+	   description "Identityref base";
 	   key name;
 	   leaf name {
    	      type identityref{
@@ -120,6 +124,7 @@ module example-leafref{
 	   leaf name {
    	      type leafref{
                  path "../../../leafrefs/leafref/name";
+		 require-instance false;
               }
            }
         }
@@ -131,6 +136,7 @@ module example-leafref{
 	   leaf name {
    	      type leafref{
                  path "../../../identityrefs/identityref/name";
+		 require-instance false;
               }
            }
         }
@@ -175,10 +181,10 @@ new "expand leafref 1st level"
 expectpart "$(echo "set leafrefs leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "91" "92" "93"
 
 new "expand leafref top"
-expectpart "$(echo "set leafrefstop leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "91" "92" "93"
+expectpart "$(echo "set leafrefsabs leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "91" "92" "93"
 
 new "expand leafref require-instance"
-expectpart "$(echo "set leafrefsreqi leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "91" "92" "93"
+expectpart "$(echo "set leafrefsreqinst leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "91" "92" "93"
 
 # First level id/leaf refs
 new "set identityref des"
@@ -217,7 +223,7 @@ expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
 
 # require-instance
 new "set leafref require-instance 99 (non-existent)"
-expectpart "$($clixon_cli -1 -f $cfg set leafrefsreqi leafref 99)" 0 "^"$
+expectpart "$($clixon_cli -1 -f $cfg set leafrefsreqinst leafref 99)" 0 "^"$
 
 new "cli validate expect failure"
 expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 255 "Leafref validation failed: No leaf 99 matching path"

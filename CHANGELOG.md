@@ -46,6 +46,9 @@ Expected: March 2022
 
 Users may have to change how they access the system
 
+* YANG leafref `require-instance` default changed to `true`
+  * This makes leafref validation stricter
+  * See [statement: require-instance should be true if not present according to rfc7950 Sec 9.9.3](https://github.com/clicon/clixon/issues/302)
 * `configure --with-wwwdir=<dir>` is removed
 * Command field of clixon-lib:process-control RPC reply used CDATA encoding but now uses regular XML encoding
 
@@ -59,9 +62,8 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
-
-
-
+* Fixed: [statement: require-instance should be true if not present according to rfc7950 Sec 9.9.3](https://github.com/clicon/clixon/issues/302)
+  * See also API changes
 * Fixed: input RPC validation of choice (non-case)
 * Fixed: More than one unknown/extension in combination with augment of extension resulted in extension being skipped.
 

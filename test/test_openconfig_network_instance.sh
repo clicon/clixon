@@ -79,6 +79,7 @@ cat <<EOF > $dir/startup_db
          </config>
       </fdb>
       <config>
+         <name>default</name>
          <type>oc-ni-types:DEFAULT_INSTANCE</type>
          <enabled>true</enabled>
          <router-id>1.2.3.4</router-id>
