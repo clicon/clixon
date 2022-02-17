@@ -46,6 +46,8 @@ Expected: March 2022
 
 Users may have to change how they access the system
 
+* RESTCONF replies on the form: `{"data":...}` changed to: `{"ietf-restconf:data":...}`
+  * See [restconf GET json response does not encode top level node with namespace as per rfc #303](https://github.com/clicon/clixon/issues/303)
 * YANG leafref `require-instance` default changed to `true`
   * This makes leafref validation stricter
   * See [statement: require-instance should be true if not present according to rfc7950 Sec 9.9.3](https://github.com/clicon/clixon/issues/302)
@@ -62,6 +64,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [restconf GET json response does not encode top level node with namespace as per rfc #303](https://github.com/clicon/clixon/issues/303)
 * Fixed: [statement: require-instance should be true if not present according to rfc7950 Sec 9.9.3](https://github.com/clicon/clixon/issues/302)
   * See also API changes
 * Fixed: input RPC validation of choice (non-case)

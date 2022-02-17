@@ -327,7 +327,7 @@ function testrun()
     fi
 
     new "restconf get restconf/yang-library-version. RFC8040 3.3.3"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/yang-library-version)" 0 "HTTP/$HVER 200" '{"yang-library-version":"2019-01-04"}'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/yang-library-version)" 0 "HTTP/$HVER 200" '{"ietf-restconf:yang-library-version":"2019-01-04"}'
 
     new "restconf get restconf/yang-library-version. RFC8040 3.3.3 (xml)"
     ret=$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $proto://$addr/restconf/yang-library-version)

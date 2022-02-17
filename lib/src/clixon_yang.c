@@ -1170,7 +1170,9 @@ yang_find_schemanode(yang_stmt *yn,
 	} /* Y_CHOICE */
 	else
 	    if (yang_schemanode(ys)){
-		if (yang_keyword_get(ys) == Y_INPUT || yang_keyword_get(ys) == Y_OUTPUT)
+		if (strcmp(argument, "input") == 0 && yang_keyword_get(ys) == Y_INPUT)
+		    ysmatch = ys;
+		else if (strcmp(argument, "output") == 0 && yang_keyword_get(ys) == Y_OUTPUT)
 		    ysmatch = ys;
 		else if (argument == NULL)
 		    ysmatch = ys;
@@ -3122,7 +3124,7 @@ schema_nodeid_iterate(yang_stmt    *yn,
 	    goto ok;
 	}
 	yp = ys; /* ys is matched */
-
+	ys = NULL;
     } /* while cv */
     assert(yp && yang_schemanode((yang_stmt*)yp));
     *yres = (yang_stmt*)yp;

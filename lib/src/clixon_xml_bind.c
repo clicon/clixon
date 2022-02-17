@@ -752,3 +752,22 @@ xml_bind_yang_rpc_reply(cxobj     *xrpc,
     retval = 0;
     goto done;
 }
+
+/*! Special case explicit binding 
+ */
+int
+xml_bind_special(cxobj     *xd,
+		 yang_stmt *yspec,
+		 char      *schema_nodeid)
+{
+    int        retval = -1;
+    yang_stmt *yd;
+    
+    if (yang_abs_schema_nodeid(yspec, schema_nodeid, &yd) < 0)
+	goto done;
+    if (yd)
+	xml_spec_set(xd, yd);
+    retval = 0;
+ done:
+    return retval;
+}

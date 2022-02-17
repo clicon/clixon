@@ -206,7 +206,7 @@ new "wait restconf"
 wait_restconf
 
 new "auth get"
-expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 200" '{"data":{"clixon-example:state":{"op":\["41","42","43"\]}'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 200" '{"ietf-restconf:data":{"clixon-example:state":{"op":\["41","42","43"\]}'
 
 new "Set x to 0"
 expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 0}' $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "HTTP/$HVER 201"

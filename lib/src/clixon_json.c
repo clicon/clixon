@@ -784,6 +784,11 @@ xml2json1_cbuf(cbuf                   *cb,
 	if (ys_real_module(ys, &ymod) < 0)
 	    goto done;
 	modname = yang_argument_get(ymod);
+	/* Special case for ietf-netconf -> ietf-restconf translation 
+	 * A special case is for return data on the form {"data":...}
+	 */
+	if (strcmp(modname, "ietf-netconf")==0)
+	    modname = "ietf-restconf";
 	if (modname0 && strcmp(modname, modname0) == 0)
 	    modname=NULL;
 	else
@@ -1065,7 +1070,6 @@ xml2json_cbuf(cbuf      *cb,
 	    pretty?"\n":"",
 	    pretty?level*JSON_INDENT:0,"",
 	    pretty?"\n":"");
-
     retval = 0;
  done:
     return retval;

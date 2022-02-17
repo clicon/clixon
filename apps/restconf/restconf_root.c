@@ -238,6 +238,7 @@ api_yang_library_version(clicon_handle h,
     int    retval = -1;
     cxobj *xt = NULL;
     cbuf  *cb = NULL;
+    yang_stmt *yspec;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
@@ -249,6 +250,9 @@ api_yang_library_version(clicon_handle h,
 			    IETF_YANG_LIBRARY_REVISION) < 0)
 	goto done;
     if (xml_rootchild(xt, 0, &xt) < 0)
+	goto done;
+    yspec = clicon_dbspec_yang(h);
+    if (xml_bind_special(xt, yspec, "/rc:restconf/yang-library-version") < 0)
 	goto done;
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");

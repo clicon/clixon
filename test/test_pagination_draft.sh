@@ -44,6 +44,7 @@ cat <<EOF > $cfg
 EOF
 
 # See draft-wwlh-netconf-list-pagination-00 A.2 (except stats and audit-log)
+# XXX: "config" without 
 cat <<'EOF' > $dir/startup_db
 {"config":
    {

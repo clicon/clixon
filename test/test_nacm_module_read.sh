@@ -229,7 +229,7 @@ expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/da
 
 new "admin read top ok (all)"
 ret=$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)
-expect='{"data":{"clixon-example:table":'
+expect='{"ietf-restconf:data":{"clixon-example:table":'
 match=`echo $ret | grep --null -Eo "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
@@ -253,7 +253,7 @@ new "limit read state OK"
 expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-example:state)" 0 "HTTP/$HVER 200" '{"clixon-example:state":{"op":\["41","42","43"\]}}'
 
 new "limit read top ok (part)"
-expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 200" '{"data":{"clixon-example:table":{"parameter":\[{"name":"key42","value":"val42"},{"name":"key43","value":"val43"}\]},"clixon-example:state":{"op":\["41","42","43"\]}}}'
+expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 200" '{"ietf-restconf:data":{"clixon-example:table":{"parameter":\[{"name":"key42","value":"val42"},{"name":"key43","value":"val43"}\]},"clixon-example:state":{"op":\["41","42","43"\]}}}'
 
 #user:guest
 

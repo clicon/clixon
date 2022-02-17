@@ -466,15 +466,19 @@ clicon_rpc_get_config(clicon_handle h,
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
+    yspec = clicon_dbspec_yang(h);
     /* Send xml error back: first check error, then ok */
     if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
 	xd = xml_parent(xd); /* point to rpc-reply */
     else if ((xd = xpath_first(xret, NULL, "/rpc-reply/data")) == NULL){
 	if ((xd = xml_new(NETCONF_OUTPUT_DATA, NULL, CX_ELMNT)) == NULL)
 	    goto done;
+	if (xml_bind_special(xd, yspec, "/nc:get-config/output/data") < 0)
+	    goto done;
     }
     else{
-	yspec = clicon_dbspec_yang(h);
+	if (xml_bind_special(xd, yspec, "/nc:get-config/output/data") < 0)
+	    goto done;
 	if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
@@ -838,15 +842,19 @@ clicon_rpc_get(clicon_handle   h,
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
+    yspec = clicon_dbspec_yang(h);
     /* Send xml error back: first check error, then ok */
     if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
 	xd = xml_parent(xd); /* point to rpc-reply */
     else if ((xd = xpath_first(xret, NULL, "/rpc-reply/data")) == NULL){
 	if ((xd = xml_new(NETCONF_OUTPUT_DATA, NULL, CX_ELMNT)) == NULL)
 	    goto done;
+	if (xml_bind_special(xd, yspec, "/nc:get/output/data") < 0)
+	    goto done;
     }
     else{
-	yspec = clicon_dbspec_yang(h);
+	if (xml_bind_special(xd, yspec, "/nc:get/output/data") < 0)
+	    goto done;
 	if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
@@ -974,15 +982,19 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
+    yspec = clicon_dbspec_yang(h);
     /* Send xml error back: first check error, then ok */
     if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
 	xd = xml_parent(xd); /* point to rpc-reply */
     else if ((xd = xpath_first(xret, NULL, "/rpc-reply/data")) == NULL){
 	if ((xd = xml_new(NETCONF_OUTPUT_DATA, NULL, CX_ELMNT)) == NULL)
 	    goto done;
+	if (xml_bind_special(xd, yspec, "/nc:get/output/data") < 0)
+	    goto done;
     }
     else{
-	yspec = clicon_dbspec_yang(h);
+	if (xml_bind_special(xd, yspec, "/nc:get/output/data") < 0)
+	    goto done;
 	if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
