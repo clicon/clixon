@@ -471,8 +471,10 @@ native_clear_input(clicon_handle         h,
     int retval = -1;
 
     cbuf_reset(sd->sd_indata);
-    if (sd->sd_qvec)
+    if (sd->sd_qvec){
 	cvec_free(sd->sd_qvec);
+	sd->sd_qvec = NULL;
+    }
     if (restconf_param_del_all(h) < 0)
 	goto done;
     retval = 0;
@@ -679,10 +681,12 @@ restconf_http1(restconf_conn        *rc,
      */
     if ((ret = http1_check_content_length(h, sd, &status)) < 0)
 	goto done;
+#ifndef RESTCONF_HTTP1_UNITTEST /* Ignore content-length */
     if (status == 1){
 	(*readmore)++;
 	goto ok;
     }
+#endif
     /* nginx compatible, set HTTPS parameter if SSL */
     if (rc->rc_ssl)
 	if (restconf_param_set(h, "HTTPS", "https") < 0)
@@ -690,9 +694,15 @@ restconf_http1(restconf_conn        *rc,
     /* main restconf processing */
     if (restconf_http1_path_root(h, rc) < 0)
 	goto done;
+#ifdef RESTCONF_HTTP1_UNITTEST
+    if (native_buf_write(cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
+			 1, rc->rc_ssl) < 0)
+	goto done;
+#else
     if (native_buf_write(cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
 			 rc->rc_s, rc->rc_ssl) < 0)
 	goto done;
+#endif
     cvec_reset(sd->sd_outp_hdrs); /* Can be done in native_send_reply */
     cbuf_reset(sd->sd_outp_buf);
     cbuf_reset(sd->sd_inbuf);
@@ -910,5 +920,16 @@ restconf_connection(int   s,
     retval = 0;
  done:
     clicon_debug(1, "%s retval %d", __FUNCTION__, retval);
+#ifdef RESTCONF_HTTP1_UNITTEST /* unit test */
+    if (rc){
+	if (close(rc->rc_s) < 0){
+	    clicon_err(OE_UNIX, errno, "close");
+	    goto done;
+	}
+	clixon_event_unreg_fd(rc->rc_s, restconf_connection);
+	restconf_conn_free(rc);
+    }
+    exit(0);
+#endif
     return retval;
 } /* restconf_connection */

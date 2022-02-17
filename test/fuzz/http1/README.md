@@ -5,25 +5,21 @@ native restconf app and need some special compiling to run stand-alone.
 
 Install AFL, see [..](..)
 
-Edit `apps/restconf/restconf_main_native.c` by disabling the regular
-main function and replacing it with the unit testing `main`:
-```
---- a/apps/restconf/restconf_main_native.c
-+++ b/apps/restconf/restconf_main_native.c
-@@ -1403,7 +1403,7 @@ usage(clicon_handle h,
- /* Enable for normal use
-  * Disable for unit testing, fuzzing, etc
-  */
--#if 1
-+#if 0
-```
+Enable `RESTCONF_HTTP1_UNITTEST` in `include/clixon_custom.h`.
+
 
 Build and install clixon libraries and restconf statically
 ```
-  ./configure LINKAGE=static INSTALLFLAGS="" CC=/usr/bin/afl-clang-fast
+  ./configure --disable-nghttp2 LINKAGE=static INSTALLFLAGS="" CC=/usr/bin/afl-clang-fast CFLAGS="-g"
   make clean
   make
   sudo make install
   ./runfuzz.sh
 ```
 
+
+To view crashes
+```
+sudo chmod o+x output/crashes
+sudo chmod -R o+r output/crashes
+```

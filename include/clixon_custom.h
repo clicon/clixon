@@ -144,3 +144,8 @@
  * The cache uses two yang stmt flag bits. One to say it is active, the second its value
  */
 #define USE_CONFIG_FLAG_CACHE
+
+/*! Restconf native unit test for fuzzing of http/1 parser
+ * See test/fuzz/http1
+ */
+#undef RESTCONF_HTTP1_UNITTEST

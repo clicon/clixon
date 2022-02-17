@@ -112,9 +112,6 @@ wait_backend
 new "cli set leaf union"
 expectpart "$($clixon_cli -1 -f $cfg set tableleaf parleaf a value u1)" 0 "^$"
 
-new "cli set leaf union"
-expectpart "$($clixon_cli -1 -f $cfg set tableleaf parleaf a value u1)" 0 "^$"
-exit
 new "cli query leaf union - basic"
 expectpart "$(echo "set tableleaf parleaf a value ?" | $clixon_cli -f $cfg 2>/dev/null)" 0 u1 u2
 
@@ -126,6 +123,9 @@ if [ $count -gt 1 ]; then
 fi
 
 new "cli set key union"
+expectpart "$($clixon_cli -1 -f $cfg set tablekey parkey u1 value 42)" 0 "^$"
+
+new "cli set key union again"
 expectpart "$($clixon_cli -1 -f $cfg set tablekey parkey u1 value 42)" 0 "^$"
 
 new "cli query key union - basic"
