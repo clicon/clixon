@@ -91,8 +91,11 @@ delete("Delete a configuration item") @datamodel, cli_auto_del();
 validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
-show("Show a particular state of the system")
-    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);
+show("Show a particular state of the system"){
+    auto("Show expand") @datamodel, cli_show_auto("running", "xml", "set");  
+    candidate("Show configuration"), cli_auto_show("datamodel", "candidate", "xml", false, false);
+    running("Show configuration"), cli_auto_show("datamodel", "running", "xml", false, false);
+}
 EOF
 
 new "test params: -f $cfg"
@@ -137,6 +140,15 @@ count=$(echo "$ret" | grep -c u1)
 if [ $count -gt 1 ]; then
     err "number of u1: 1" $count
 fi
+
+new "cli commit"
+expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
+
+new "show candidate"
+expectpart "$($clixon_cli -1 -f $cfg show candidate)" 0 '<tableleaf xmlns="urn:example:clixon"><parleaf><name>a</name><value>u1</value></parleaf></tableleaf>' '<tablekey xmlns="urn:example:clixon"><parkey><name>u1</name><value>42</value></parkey></tablekey>'
+
+new "show running"
+expectpart "$($clixon_cli -1 -f $cfg show running)" 0 '<tableleaf xmlns="urn:example:clixon"><parleaf><name>a</name><value>u1</value></parleaf></tableleaf>' '<tablekey xmlns="urn:example:clixon"><parkey><name>u1</name><value>42</value></parkey></tablekey>'
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

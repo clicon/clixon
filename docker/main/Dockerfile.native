@@ -45,9 +45,17 @@ RUN apk add --update nghttp2
 WORKDIR /usr/local/share/
 
 # Checkout standard YANG models for tests (note >1G for full repo)
-RUN mkdir yang; cd yang; git init; git remote add -f origin https://github.com/YangModels/yang; git config core.sparseCheckout true; echo "standard/" >> .git/info/sparse-checkout; echo "experimental/" >> .git/info/sparse-checkout
+RUN mkdir yang
 
 WORKDIR /usr/local/share/yang
+
+RUN git config --global init.defaultBranch master
+RUN git init;
+RUN git remote add -f origin https://github.com/YangModels/yang;
+RUN git config core.sparseCheckout true
+RUN echo "standard/" >> .git/info/sparse-checkout
+RUN echo "experimental/" >> .git/info/sparse-checkout
+
 RUN git pull origin master
 
 RUN mkdir /usr/local/share/openconfig
