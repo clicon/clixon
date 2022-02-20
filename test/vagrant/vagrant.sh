@@ -280,6 +280,7 @@ cat<<EOF > $dir/yangmodels.sh
 cd /usr/local/share
 test -d yang || mkdir yang
 cd yang
+git config --global init.defaultBranch master
 git init
 git remote add -f origin https://github.com/YangModels/yang
 git config core.sparseCheckout true

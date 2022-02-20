@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Parse "all" IETF yangmodels from https://github.com/YangModels/yang/standard/ieee and experimental/ieee
+# Parse "all" IETF yangmodels from https://github.com/YangModels/yang/standard/ietf
 # Notes:
 # - Only a simple smoketest (CLI check) is made, essentially YANG parsing. A full system may not work
 # - Env variable YANG_STANDARD_DIR should point to yangmodels/standard
@@ -17,16 +17,19 @@ cfg=$dir/conf_yang.xml
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_FEATURE>ietf-alarms:alarm-shelving</CLICON_FEATURE>
-  <CLICON_FEATURE>ietf-subscribed-notifications:configured</CLICON_FEATURE>
-  <CLICON_FEATURE>ietf-subscribed-notifications:replay</CLICON_FEATURE>
-  <CLICON_FEATURE>ietf-access-control-list:match-on-tcp</CLICON_FEATURE>
-  <CLICON_FEATURE>ietf-te-topology:template</CLICON_FEATURE>
-  <CLICON_FEATURE>ietf-te-topology:te-topology-hierarchy</CLICON_FEATURE>
-  <CLICON_FEATURE>ietf-te-types:path-optimization-metric</CLICON_FEATURE>
+  <!-- The following are errors in ietf-l3vpn-ntw@2022-02-14.yang -->
+  <CLICON_FEATURE>ietf-vpn-common:vxlan</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-vpn-common:rtg-isis</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-vpn-common:bfd</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-vpn-common:qos</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-vpn-common:multicast</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-vpn-common:igmp</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-vpn-common:mld</CLICON_FEATURE>
+
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>${YANG_STANDARD_DIR}/ietf/RFC</CLICON_YANG_DIR>
+  <!-- order is significant, ieee has duplicate of ietf-interfaces.yang -->
   <CLICON_YANG_DIR>${YANG_STANDARD_DIR}/ieee/published</CLICON_YANG_DIR> 
-  <CLICON_YANG_DIR>${YANG_STANDARD_DIR}/ietf/RFC</CLICON_YANG_DIR>	
   <CLICON_YANG_AUGMENT_ACCEPT_BROKEN>true</CLICON_YANG_AUGMENT_ACCEPT_BROKEN>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
