@@ -786,8 +786,9 @@ xml2json1_cbuf(cbuf                   *cb,
 	modname = yang_argument_get(ymod);
 	/* Special case for ietf-netconf -> ietf-restconf translation 
 	 * A special case is for return data on the form {"data":...}
+	 * See also json_xmlns_translate()
 	 */
-	if (strcmp(modname, "ietf-netconf")==0)
+	if (strcmp(modname, "ietf-netconf") == 0)
 	    modname = "ietf-restconf";
 	if (modname0 && strcmp(modname, modname0) == 0)
 	    modname=NULL;
@@ -1275,6 +1276,12 @@ json_xmlns_translate(yang_stmt *yspec,
     int        ret;
     
     if ((modname = xml_prefix(x)) != NULL){ /* prefix is here module name */
+	/* Special case for ietf-netconf -> ietf-restconf translation 
+	 * A special case is for return data on the form {"data":...}
+	 * See also xml2json1_cbuf
+	 */
+	if (strcmp(modname, "ietf-restconf") == 0)
+	    modname = "ietf-netconf";
 	if ((ymod = yang_find_module_by_name(yspec, modname)) == NULL){
 	    if (xerr &&
 		netconf_unknown_namespace_xml(xerr, "application",
@@ -1314,8 +1321,9 @@ json_xmlns_translate(yang_stmt *yspec,
  * are split and interpreted as in RFC7951
  *
  * @param[in]  str    Input string containing JSON
- * @param[in]  yb     How to bind yang to XML top-level when parsing
- * @param[in]  yspec  If set, also do yang validation
+ * @param[in]  rfc7951 Do sanity checks according to RFC 7951 JSON Encoding of Data Modeled with YANG
+ * @param[in]  yb     How to bind yang to XML top-level when parsing (if rfc7951)
+ * @param[in]  yspec  Yang specification (if rfc 7951)
  * @param[out] xt     XML top of tree typically w/o children on entry (but created)
  * @param[out] xerr   Reason for invalid returned as netconf err msg 
  * 
@@ -1328,6 +1336,7 @@ json_xmlns_translate(yang_stmt *yspec,
  */
 static int 
 _json_parse(char      *str, 
+	    int        rfc7951,
 	    yang_bind  yb,
 	    yang_stmt *yspec,
 	    cxobj     *xt,
@@ -1362,17 +1371,18 @@ _json_parse(char      *str,
 	/* RFC 7951 Section 4: A namespace-qualified member name MUST be used for all 
 	 * members of a top-level JSON object 
 	 */
-	if (yspec && xml_prefix(x) == NULL &&
+	if (rfc7951 && xml_prefix(x) == NULL){
 	    /* XXX: For top-level config file: */
-	    (yb != YB_NONE || strcmp(xml_name(x),DATASTORE_TOP_SYMBOL)!=0)){
-	    if ((cberr = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
+	    if (yb != YB_NONE || strcmp(xml_name(x),DATASTORE_TOP_SYMBOL)!=0){
+		if ((cberr = cbuf_new()) == NULL){
+		    clicon_err(OE_UNIX, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cberr, "Top-level JSON object %s is not qualified with namespace which is a MUST according to RFC 7951", xml_name(x));
+		if (xerr && netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
+		    goto done;
+		goto fail;
 	    }
-	    cprintf(cberr, "Top-level JSON object %s is not qualified with namespace which is a MUST according to RFC 7951", xml_name(x));
-	    if (xerr && netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
-		goto done;
-	    goto fail;
 	}
 	/* Names are split into name/prefix, but now add namespace info */
 	if ((ret = json_xmlns_translate(yspec, x, xerr)) < 0)
@@ -1442,6 +1452,7 @@ _json_parse(char      *str,
 /*! Parse string containing JSON and return an XML tree
  *
  * @param[in]     str   String containing JSON
+ * @param[in]  rfc7951 Do sanity checks according to RFC 7951 JSON Encoding of Data Modeled with YANG
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification, mandatory to make module->xmlns translation
  * @param[in,out] xt    Top object, if not exists, on success it is created with name 'top'
@@ -1452,7 +1463,7 @@ _json_parse(char      *str,
  *
  * @code
  *  cxobj *x = NULL;
- *  if (clixon_json_parse_string(str, YB_MODULE, yspec, &x, &xerr) < 0)
+ *  if (clixon_json_parse_string(str, 1, YB_MODULE, yspec, &x, &xerr) < 0)
  *    err;
  *  xml_free(x);
  * @endcode
@@ -1462,6 +1473,7 @@ _json_parse(char      *str,
  */
 int 
 clixon_json_parse_string(char      *str, 
+			 int        rfc7951,
 			 yang_bind  yb,
 			 yang_stmt *yspec,
 			 cxobj    **xt,
@@ -1476,7 +1488,7 @@ clixon_json_parse_string(char      *str,
 	if ((*xt = xml_new("top", NULL, CX_ELMNT)) == NULL)
 	    return -1;
     }
-    return _json_parse(str, yb, yspec, *xt, xerr);
+    return _json_parse(str, rfc7951, yb, yspec, *xt, xerr);
 }
 
 /*! Read a JSON definition from file and parse it into a parse-tree. 
@@ -1492,13 +1504,14 @@ clixon_json_parse_string(char      *str,
  * But this is not done if yspec=NULL, and is not part of the JSON spec
  * 
  * @param[in]     fp    File descriptor to the JSON file (ASCII string)
+ * @param[in]  rfc7951 Do sanity checks according to RFC 7951 JSON Encoding of Data Modeled with YANG
  * @param[in]     yspec Yang specification, or NULL
  * @param[in,out] xt    Pointer to (XML) parse tree. If empty, create.
  * @param[out]    xerr  Reason for invalid returned as netconf err msg 
  *
  * @code
  *  cxobj *xt = NULL;
- *  if (clixon_json_parse_file(stdin, YB_MODULE, yspec, &xt) < 0)
+ *  if (clixon_json_parse_file(stdin, 1, YB_MODULE, yspec, &xt) < 0)
  *    err;
  *  xml_free(xt);
  * @endcode
@@ -1515,6 +1528,7 @@ clixon_json_parse_string(char      *str,
  */
 int
 clixon_json_parse_file(FILE      *fp,
+		       int        rfc7951,
 		       yang_bind  yb,
 		       yang_stmt *yspec,
 		       cxobj    **xt,
@@ -1551,7 +1565,7 @@ clixon_json_parse_file(FILE      *fp,
 		if ((*xt = xml_new(JSON_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
 		    goto done;
 	    if (len){
-		if ((ret = _json_parse(ptr, yb, yspec, *xt, xerr)) < 0)
+		if ((ret = _json_parse(ptr, rfc7951, yb, yspec, *xt, xerr)) < 0)
 		    goto done;
 		if (ret == 0)
 		    goto fail;

@@ -544,7 +544,7 @@ example_statefile(clicon_handle     h,
  * @param[in]  h        Generic handler
  * @param[in]  xpath    Registered XPath using canonical prefixes
  * @param[in]  userargs Per-call user arguments
- * @param[in]  arg      Per-path user argument
+ * @param[in]  arg      Per-path user argument (at register time)
  */
 int 
 example_pagination(void            *h0,

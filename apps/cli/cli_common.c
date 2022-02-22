@@ -794,23 +794,29 @@ load_config_file(clicon_handle h,
 		 cvec         *cvv, 
 		 cvec         *argv)
 {
-    int         ret = -1;
-    struct stat st;
-    char       *filename = NULL;
-    int         replace;
-    cg_var     *cv;
-    char       *opstr;
-    char       *varstr;
-    FILE       *fp = NULL;
-    cxobj      *xt = NULL;
-    cxobj      *x;
-    cbuf       *cbxml;
-    char              *formatstr = NULL;
-    enum format_enum   format = FORMAT_XML;
+    int              ret = -1;
+    struct stat      st;
+    char            *filename = NULL;
+    int              replace;
+    cg_var          *cv;
+    char            *opstr;
+    char            *varstr;
+    FILE            *fp = NULL;
+    cxobj           *xt = NULL;
+    cxobj           *x;
+    cbuf            *cbxml;
+    char            *formatstr = NULL;
+    enum format_enum format = FORMAT_XML;
+    yang_stmt       *yspec;
+    cxobj           *xerr = NULL; 
 
     if (cvec_len(argv) < 2 || cvec_len(argv) > 4){
 	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<varname>[,<format>]",
 		   cvec_len(argv));
+	goto done;
+    }
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }
     if (cvec_len(argv) > 2){
@@ -846,12 +852,20 @@ load_config_file(clicon_handle h,
     }
     switch (format){
     case FORMAT_XML:
-	if (clixon_xml_parse_file(fp, YB_NONE, NULL, &xt, NULL) < 0)
+	if ((ret = clixon_xml_parse_file(fp, YB_NONE, yspec, &xt, &xerr)) < 0)
 	    goto done;
+	if (ret == 0){
+	    clixon_netconf_error(xerr, "Loading", filename);
+	    goto done;
+	}
 	break;
     case FORMAT_JSON:
-	if (clixon_json_parse_file(fp, YB_NONE, NULL, &xt, NULL) < 0)
+	if ((ret = clixon_json_parse_file(fp, 1, YB_NONE, yspec, &xt, &xerr)) < 0)
 	    goto done;
+	if (ret == 0){
+	    clixon_netconf_error(xerr, "Loading", filename);
+	    goto done;
+	}
 	break;
     default:
 	clicon_err(OE_PLUGIN, 0, "format: %s not implemented", formatstr);
@@ -874,9 +888,10 @@ load_config_file(clicon_handle h,
 			       cbuf_get(cbxml)) < 0)
 	goto done;
     cbuf_free(cbxml);
-    //    }
     ret = 0;
  done:
+    if (xerr)
+	xml_free(xerr);
     if (xt)
 	xml_free(xt);
     if (fp)

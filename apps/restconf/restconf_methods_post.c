@@ -250,7 +250,7 @@ api_data_post(clicon_handle h,
 	}
 	break;
     case YANG_DATA_JSON:	
-	if ((ret = clixon_json_parse_string(data, yb, yspec, &xbot, &xerr)) < 0){
+	if ((ret = clixon_json_parse_string(data, 1, yb, yspec, &xbot, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -461,7 +461,7 @@ api_operations_post_input(clicon_handle h,
     case YANG_DATA_JSON:
 	/* XXX: Here data is on the form: {"clixon-example:input":null} and has no proper yang binding 
 	 * support */
-	if ((ret = clixon_json_parse_string(data, YB_NONE, yspec, &xdata, &xerr)) < 0){
+	if ((ret = clixon_json_parse_string(data, 1, YB_NONE, yspec, &xdata, &xerr)) < 0){
 	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
 		goto done;
 	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)

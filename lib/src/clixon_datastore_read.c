@@ -482,7 +482,7 @@ xmldb_readfile(clicon_handle    h,
      * </config>
      * ret == 0 should not happen with YB_NONE. Binding is done later */
     if (strcmp(format, "json")==0){
-	if (clixon_json_parse_file(fp, YB_NONE, yspec, &x0, xerr) < 0) 
+	if (clixon_json_parse_file(fp, 1, YB_NONE, yspec, &x0, xerr) < 0) 
 	    goto done;
     }
     else {

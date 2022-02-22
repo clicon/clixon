@@ -139,7 +139,7 @@ main(int    argc,
 	    return -1;
 	}
     }
-    if ((ret = clixon_json_parse_file(stdin, yspec?YB_MODULE:YB_NONE, yspec, &xt, &xerr)) < 0)
+    if ((ret = clixon_json_parse_file(stdin, yspec?1:0, yspec?YB_MODULE:YB_NONE, yspec, &xt, &xerr)) < 0)
 	goto done;
     if (ret == 0){
 	xml_print(stderr, xerr);

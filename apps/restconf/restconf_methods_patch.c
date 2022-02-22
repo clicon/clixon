@@ -783,7 +783,7 @@ api_data_yang_patch(clicon_handle  h,
 	ret = clixon_xml_parse_string(data, YB_MODULE, yspec, &xpatch, &xerr);
 	break;
     case YANG_PATCH_JSON: 	/* RFC 8072 patch */
-	ret = clixon_json_parse_string(data, YB_MODULE, yspec, &xpatch, &xerr);
+	ret = clixon_json_parse_string(data, 1, YB_MODULE, yspec, &xpatch, &xerr);
 	break;
     default:
 	restconf_unsupported_media(h, req, pretty, media_out);

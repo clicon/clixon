@@ -54,6 +54,12 @@ Users may have to change how they access the system
 * `configure --with-wwwdir=<dir>` is removed
 * Command field of clixon-lib:process-control RPC reply used CDATA encoding but now uses regular XML encoding
 
+### C/CLI-API changes on existing features
+
+* Added rfc7951 parameter to `clixon_json_parse_string()` and `clixon_json_parse_file()`
+  * If set, honor RFC 7951: JSON Encoding of Data Modeled with YANG, eg it requires module name prefixes
+  * If not set, parse as regular JSON
+  
 ### Minor features
 
 * Backend ignore of SIGPIPE. This occurs if client quits unexpectedly over the UNIX socket.

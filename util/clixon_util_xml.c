@@ -298,7 +298,7 @@ main(int    argc,
     }
     /* 2. Parse data (xml/json) */
     if (jsonin){
-	if ((ret = clixon_json_parse_file(fp, top_input_filename?YB_PARENT:YB_MODULE, yspec, &xt, &xerr)) < 0)
+	if ((ret = clixon_json_parse_file(fp, 1, top_input_filename?YB_PARENT:YB_MODULE, yspec, &xt, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    clixon_netconf_error(xerr, "util_xml", NULL);
