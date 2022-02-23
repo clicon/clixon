@@ -111,7 +111,7 @@
  *      node is the leaf or leaf-list node in the data tree that
  *      references the typedef. (ie ys)
  *   o  Otherwise, the context node is the node in the data tree for which
- *      the "path" statement is defined. (ie yc)
+ *      the "path" statement is defined. (ie ys)
  * 
  */
 static int
@@ -162,8 +162,7 @@ validate_leafref(cxobj     *xt,
     }
     if ((leafrefbody = xml_body(xt)) == NULL)
 	goto ok;
-    /* See comment^: If path is defined in typedef or not */
-    if (xml_nsctx_node(xt, &nsc) < 0)
+    if (xml_nsctx_yang(ys, &nsc) < 0)
 	goto done;
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, path_arg) < 0) 
 	goto done;
