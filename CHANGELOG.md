@@ -70,6 +70,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [ Restconf PATCH method request failed on item defined by submodule #306](https://github.com/clicon/clixon/issues/306)
 * Fixed: [restconf GET json response does not encode top level node with namespace as per rfc #303](https://github.com/clicon/clixon/issues/303)
 * Fixed: [statement: require-instance should be true if not present according to rfc7950 Sec 9.9.3](https://github.com/clicon/clixon/issues/302)
   * See also API changes

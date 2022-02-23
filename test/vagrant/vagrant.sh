@@ -141,7 +141,6 @@ case $release in
 		$sshcmd sudo pkg install -y fcgi-devkit nginx
 		;;
 	    native)
-		$sshcmd sudo pkg install -y libevent
 		;;
 	esac
 	;;
@@ -167,8 +166,8 @@ case $release in
 		$sshcmd sudo yum install -y nginx
 		;;
 	    native)
-		$sshcmd sudo yum install -y libevent openssl
-		$sshcmd sudo yum install -y libevent-devel openssl-devel
+		$sshcmd sudo yum install -y openssl
+		$sshcmd sudo yum install -y openssl-devel
 		$sshcmd sudo yum-config-manager --enable powertools
 		$sshcmd sudo yum install -y libnghttp2-devel
 		;;
@@ -245,7 +244,6 @@ case $release in
 		$sshcmd	sudo pacman -Syu --noconfirm nginx fcgi
 		;;
 	    native)
-		$sshcmd	sudo pacman -Syu --noconfirm libevent
 		;;
 	esac
 	;;

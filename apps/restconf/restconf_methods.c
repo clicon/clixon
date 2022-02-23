@@ -267,8 +267,10 @@ api_data_write(clicon_handle h,
 		goto done;
 	    goto ok;
 	}
-	if (ybot)
-	    ymodapi = ys_module(ybot);
+	if (ybot){
+	    if (ys_real_module(ybot, &ymodapi) < 0)
+		goto done;
+	}
     }
     /* 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource.  (tested again below)

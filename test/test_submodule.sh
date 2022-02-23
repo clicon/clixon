@@ -252,8 +252,12 @@ expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data?content=c
 new "restconf edit augment 0"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:sub2 -d '{"main:aug0":"foo"}')" 0 "HTTP/$HVER 201"
 
-new "restconf edit augment 1"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:main -d '{"main:aug1":"foo"}')" 0 "HTTP/$HVER 201"
+# Alternative use PUT
+new "restconf PUT augment 1 "
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:main/aug1 -d '{"main:aug1":"foo"}')" 0 "HTTP/$HVER 201"
+
+new "restconf PATCH augment 1 "
+expectpart "$(curl $CURLOPTS -X PATCH -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:main/aug1 -d '{"main:aug1":"foo"}')" 0 "HTTP/$HVER 204"
 
 new "restconf edit augment 2"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:sub2 -d '{"main:aug2":"foo"}')" 0 "HTTP/$HVER 201"
