@@ -40,6 +40,7 @@ module test1 {
     yang-version 1.1;
     namespace "http://www.test1.com/test1";
     prefix t1;
+    import test2 { prefix t2; }
     import test3 { prefix t3; }
 
     grouping t1-group {
@@ -61,6 +62,31 @@ module test1 {
     }
     augment "/t3:t3-con" {
         uses t1:t1-group;
+    }
+    augment "/t3:t3-con" {
+        uses t2:t2-group;
+    }
+}
+EOF
+
+cat <<EOF > $fyang2
+module test2 {
+    yang-version 1.1;
+    namespace "http://www.test2.com/test2";
+    prefix t2;
+
+    grouping t2-group {
+        container t2-con {
+            leaf t2-a {
+                type string;
+            }        
+
+            leaf t2-ref-a {
+                type leafref {
+                    path "../t2-a"; 
+                }
+            }
+        }
     }
 }
 EOF
@@ -87,10 +113,10 @@ if [ $BE -ne 0 ]; then
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
 fi
+
 new "waiting"
 wait_backend
 
-if true; then
 new "cli set t1-con t1-con t1-a 123"
 expectpart "$($clixon_cli -1 -f $cfg set t1-con t1-con t1-a 123)" 0 ""
 
@@ -102,13 +128,24 @@ expectpart "$($clixon_cli -1 -f $cfg validate)" 0 ""
 
 new "cli discard"
 expectpart "$($clixon_cli -1 -f $cfg discard)" 0 ""
-fi
 
 new "cli set t3-con t1-con t1-a 123"
 expectpart "$($clixon_cli -1 -f $cfg set t3-con t1-con t1-a 123)" 0 ""
 
 new "cli set t3-con t1-con t1-ref-a 123"
 expectpart "$($clixon_cli -1 -f $cfg set t3-con t1-con t1-ref-a 123)" 0 ""
+
+new "cli validate"
+expectpart "$($clixon_cli -1 -f $cfg validate)" 0 ""
+
+new "cli discard"
+expectpart "$($clixon_cli -1 -f $cfg discard)" 0 ""
+
+new "cli set t3-con t2-con t2-a 123"
+expectpart "$($clixon_cli -1 -f $cfg set t3-con t2-con t2-a 123)" 0 ""
+
+new "cli set t3-con t2-con t2-ref-a 123"
+expectpart "$($clixon_cli -1 -f $cfg set t3-con t2-con t2-ref-a 123)" 0 ""
 
 new "cli validate"
 expectpart "$($clixon_cli -1 -f $cfg validate)" 0 ""

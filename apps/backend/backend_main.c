@@ -1007,7 +1007,6 @@ main(int    argc,
     if ((pid = pidfile_write(pidfile)) <  0)
 	goto done;
 
-    clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     if (set_signal(SIGTERM, backend_sig_term, NULL) < 0){
 	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
@@ -1048,6 +1047,8 @@ main(int    argc,
 #endif
     if (stream_timer_setup(0, h) < 0)
 	goto done;
+    /* Just before event-loop, after socket bind/listen */
+    clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     if (clixon_event_loop(h) < 0)
 	goto done;
  ok:

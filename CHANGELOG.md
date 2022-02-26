@@ -62,6 +62,7 @@ Users may have to change how they access the system
   
 ### Minor features
 
+* [Convert int64, uint64 and decimal64 to string in xml to json #310](https://github.com/clicon/clixon/pull/310)
 * Backend ignore of SIGPIPE. This occurs if client quits unexpectedly over the UNIX socket.
    * This is a timing issue but occurs more frequently in large RESTCONF messgaes.
 * New `clixon-config@2022-02-11.yang` revision
