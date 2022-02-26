@@ -107,7 +107,7 @@ new "restconf POST initial tree"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
 
 new "restconf POST top without namespace"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"cont1":{"interface":{"name":"local0","type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Top-level JSON object cont1 is not qualified with namespace which is a MUST according to RFC 7951"}}}'
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"cont1":{"interface":{"name":"local0","type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Top-level JSON object cont1 is not qualified with namespace which is a MUST according to RFC 7951"}}}'
 
 new "restconf GET datastore initial"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 200" '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'
@@ -210,10 +210,10 @@ expectpart "$(curl $CURLOPTS -H "Accept: application/yang-data+xml" -X GET $RCPR
 
 #--------------- json type tests
 new "restconf POST type x3 POST"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201" "Location: $RCPROTO://localhost/restconf/data/example:types"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:types":{"tint":42,"tdec64":"42.123","tbool":false,"tstr":"str"}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201" "Location: $RCPROTO://localhost/restconf/data/example:types"
 
 new "restconf POST type x3 GET"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:types)" 0 "HTTP/$HVER 200" '{"example:types":{"tint":42,"tdec64":42.123,"tbool":false,"tstr":"str"}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:types)" 0 "HTTP/$HVER 200" '{"example:types":{"tint":42,"tdec64":"42.123","tbool":false,"tstr":"str"}}'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

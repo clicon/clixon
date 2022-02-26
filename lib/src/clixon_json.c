@@ -587,15 +587,25 @@ xml2json_encode_leafs(cxobj     *xb,
 	    else
 		cprintf(cb, "%s", body);
 	    break;
+	case CGV_INT64:
+	case CGV_UINT64:
+	case CGV_DEC64:
+		// [RFC7951] JSON Encoding of YANG Data
+		// 6.1 Numeric Types - A value of the "int64", "uint64", or "decimal64" type is represented as a JSON string
+		if (yang_keyword_get(yp) == Y_LEAF_LIST && xml_child_nr_type(xml_parent(xp), CX_ELMNT) == 1) {
+			cprintf(cb, "[%s]", body);
+		}
+		else {
+			cprintf(cb, "%s", body);
+		}
+		quote = 1;
+		break;
 	case CGV_INT8:
 	case CGV_INT16:
 	case CGV_INT32:
-	case CGV_INT64:
 	case CGV_UINT8:
 	case CGV_UINT16:
 	case CGV_UINT32:
-	case CGV_UINT64:
-	case CGV_DEC64:
 	case CGV_BOOL:
 	    cprintf(cb, "%s", body);
 	    quote = 0;
