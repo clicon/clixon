@@ -17,6 +17,9 @@ fyang=$dir/type.yang
 fyang2=$dir/example2.yang
 fyang3=$dir/example3.yang
 
+# Generate autocli for these modules
+AUTOCLI=$(autocli_config ${APPNAME}\* kw-nokey false)
+
 # transitive type, exists in fyang3, referenced from fyang2, but not declared in fyang
 cat <<EOF > $fyang3
 module example3{
@@ -228,6 +231,7 @@ function testrun(){
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_DATASTORE_CACHE>$dbcache</CLICON_DATASTORE_CACHE>
   <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
+  ${AUTOCLI}
 </clixon-config>
 EOF
 

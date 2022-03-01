@@ -128,6 +128,7 @@ cli_expand_var_generate(clicon_handle h,
 			char         *cvtypestr,
 			int           options,
 			uint8_t       fraction_digits,
+			int           pre,
 			cbuf         *cb)
 {
     int   retval = -1;
@@ -142,7 +143,9 @@ cli_expand_var_generate(clicon_handle h,
     }
     if (yang2api_path_fmt(ys, 1, &api_path_fmt) < 0)
 	goto done;
-    cprintf(cb, "|<%s:%s",  yang_argument_get(ys), cvtypestr);
+    if (pre)
+	cprintf(cb, "|");
+    cprintf(cb, "<%s:%s",  yang_argument_get(ys), cvtypestr);
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
 	cprintf(cb, " fraction-digits:%u", fraction_digits);
     cprintf(cb, " %s(\"candidate\",\"%s\")>",
@@ -600,6 +603,8 @@ yang2cli_var_leafref(clicon_handle h,
     int   completionp;
     char *cvtypestr;
     int   ret;
+    int   flag;
+    int   regular_value = 1; /* if strict-expand==0 then regular-value is false */
 
     /* Give up: use yreferred 
      * XXX: inline of else clause below
@@ -613,21 +618,25 @@ yang2cli_var_leafref(clicon_handle h,
 	    strcmp(type, "identityref") != 0 &&
 	    strcmp(type, "bits") != 0;
     }
-
-    if (completionp)
-	cprintf(cb, "(");
-    if (yang2cli_var_sub(h, ys, yrestype, helptext, cvtype, 
-			 options, cvv, patterns, fraction_digits, cb) < 0)
+    if (yang_extension_value(ys, "strict-expand", CLIXON_AUTOCLI_NS, &flag, NULL) < 0)
 	goto done;
+    regular_value = !flag;
+    if (completionp && regular_value)
+	cprintf(cb, "(");
+    if (regular_value)
+	if (yang2cli_var_sub(h, ys, yrestype, helptext, cvtype, 
+			     options, cvv, patterns, fraction_digits, cb) < 0)
+	    goto done;
     if (completionp){
 	if ((ret = cli_expand_var_generate(h, ys, cvtypestr, 
-					   options, fraction_digits,
+					   options, fraction_digits, regular_value,
 					   cb)) < 0)
 	    goto done;
 	if (ret == 0)
 	    yang2cli_helptext(cb, helptext);
-	cprintf(cb, ")");
     }
+    if (completionp && regular_value)
+	cprintf(cb, ")");
     retval = 0;
  done:
     return retval;
@@ -694,7 +703,7 @@ yang2cli_var(clicon_handle h,
 	    goto done;
 	if (completionp){
 	    if ((result = cli_expand_var_generate(h, ys, cvtypestr, 
-						  options, fraction_digits,cb)) < 0)
+						  options, fraction_digits, 1, cb)) < 0)
 		goto done;
 	    if (result == 0)
 		yang2cli_helptext(cb, helptext);
@@ -738,7 +747,6 @@ yang2cli_var(clicon_handle h,
 				 cvv, patterns, fraction_digits, cb) < 0)
 	    goto done;
     }
-
  ok:
     retval = 0;
  done:
@@ -921,7 +929,6 @@ yang2cli_container(clicon_handle h,
 	free(helptext);
     return retval;
 }
-
 
 /*! Generate CLI code for Yang list statement
  * @param[in]  h     Clixon handle

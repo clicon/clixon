@@ -3770,6 +3770,8 @@ yang_extension_value(yang_stmt *ys,
     cbuf      *cb = NULL;
     int        ret;
 
+    if (exist)
+	*exist = 0;
     if ((cb = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
