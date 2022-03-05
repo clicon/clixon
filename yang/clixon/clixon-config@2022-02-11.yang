@@ -50,6 +50,14 @@ module clixon-config {
 	description
 	    "Added option:
                     CLICON_LOG_STRING_LIMIT
+             Removed (previosly marked) obsolete options:
+	            CLICON_RESTCONF_PATH
+	            CLICON_RESTCONF_PRETTY
+                    CLICON_CLI_GENMODEL
+                    CLICON_CLI_GENMODEL_TYPE
+                    CLICON_CLI_GENMODEL_COMPLETION
+                    CLICON_CLI_AUTOCLI_EXCLUDE
+                    CLICON_CLI_MODEL_TREENAME
              Released in Clixon 5.6";
     }
     revision 2021-12-05 {
@@ -482,16 +490,6 @@ module clixon-config {
                  only loading from startup but may occur in other circumstances as well. This
                  means that sanity checks of erroneous XML/JSON may not be properly signalled.";
 	}
-	leaf CLICON_RESTCONF_PATH {
-	    type string;
-	    default "/www-data/fastcgi_restconf.sock";
-	    description
-		"FastCGI unix socket. Should be specified in webserver
-                Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
-                 Only if with-restconf=fcgi, NOT native
-                 Note: Obsolete, use fcgi-socket in clixon-restconf.yang instead";
-	    status obsolete;
-	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;
 	    description
@@ -568,21 +566,6 @@ module clixon-config {
                  automatically updated.
                  If this option is false, the startup is autoamtically updated following the RFC";
 	}
-	leaf CLICON_RESTCONF_PRETTY {
-	    type boolean;
-	    default true;
-	    description
-		"Restconf return value pretty print. 
-                 Restconf clients may add HTTP header:
-                      Accept: application/yang-data+json, or
-                      Accept: application/yang-data+xml
-                 to get return value in XML or JSON. 
-                 RFC 8040 examples print XML and JSON in pretty-printed form.
-                 Setting this value to false makes restconf return not pretty-printed
-                 which may be desirable for performance or tests
-                 Note: Obsolete, use pretty in clixon-restconf.yang instead";
-	    status obsolete;
-	}
 	leaf CLICON_RESTCONF_USER {
 	    type string;
 	    description 
@@ -640,59 +623,6 @@ module clixon-config {
 	    description
 		"Startup CLI mode. This should match a CLICON_MODE variable set in
                  one of the clispec files";
-	}
-	leaf CLICON_CLI_GENMODEL {
-	    type int32;
-	    default 1;
-	    description
-		"0: Do not generate CLISPEC syntax for the auto-cli.
-                 1: Generate a CLI specification for CLI completion of all loaded Yang modules. 
-                    This CLI tree can be accessed in CLI-spec files using the tree reference syntax (eg
-                     @datamodel).
-                 2: Same including state syntax in a tree called @datamodelstate and @datamodelshow
-                 See also CLICON_CLI_MODEL_TREENAME.
-                 Obsolete, use clixon-autocli.yang enable-autocli instead";
-	    status obsolete;
-	}
-	leaf CLICON_CLI_MODEL_TREENAME {
-	    type string;
-	    default "datamodel";
-	    description
-		"If CLICON_CLI_GENMODEL is set, CLI specs can reference the
-                 model syntax using a model tree set by this option.
-                 Three trees are generated with this name as a base, (assuming base is datamodel):
-                 - @datamodel - a clispec for navigating in editing a configuration (set/merge/delete)
-                 - @datamodelshow - a clispec for navigating in showing a configuration
-                 - @datamodelstate - a clispec for navigating in showing a configuration WITH state
-                 Example: set @datamodel, cli_set();
-                          show @datamodelshow, cli_show_auto();
-                          show state @datamodelstate, cli_show_auto_state();
-                 Obsolete, use constant AUTOCLI_TREENAME instead;
-                 ";
-	    status obsolete;
-	}
-	leaf CLICON_CLI_GENMODEL_COMPLETION {
-	    type int32;
-	    default 1;
-	    description "Generate code for CLI completion of existing db symbols.
-                         Obsolete, use autocli/completion-default instead";
-	    status obsolete;
-	}
-	leaf CLICON_CLI_GENMODEL_TYPE {
-	    type cli_genmodel_type;
-	    default "VARS";
-	    description "How to generate and show auto CLI syntax: VARS|ALL|HIDE|OC_COMPRESS";
-	}
-	leaf CLICON_CLI_AUTOCLI_EXCLUDE {
-	    type string;
-	    description
-		"List of module names that should not be generated autocli from
-                 Example: 
-                    <CLICON_CLI_AUTOCLI_EXCLUDE>clixon-restconf</CLICON_CLI_AUTOCLI_EXCLUDE> 
-                 means generate autocli for all models except clixon-restconf.yang
-                 The value can be a list of space separated module names
-                 Obsolete, use autocli/exclude logic instead";
-	    status obsolete;
 	}
 	leaf CLICON_CLI_VARONLY {
 	    type int32;

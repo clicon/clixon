@@ -664,6 +664,10 @@ int cli_show_version(clicon_handle h,
 }
 
 /*! Generic show configuration CLIgen callback using generated CLI syntax
+ *
+ * This callback can be used only in context of an autocli generated syntax tree, such as:
+ *   show @datamodel, cli_show_auto();
+ *
  * @param[in]  h     CLICON handle
  * @param[in]  state If set, show both config and state, otherwise only config
  * @param[in]  cvv   Vector of variables from CLIgen command-line
@@ -678,10 +682,10 @@ int cli_show_version(clicon_handle h,
  * @see cli_show_config1
  */
 static int 
-cli_show_auto1(clicon_handle h,
-	       int           state,
-	       cvec         *cvv,
-	       cvec         *argv)
+cli_show_generated(clicon_handle h,
+		   int           state,
+		   cvec         *cvv,
+		   cvec         *argv)
 {
     int              retval = 1;
     yang_stmt       *yspec;
@@ -816,7 +820,7 @@ cli_show_auto(clicon_handle h,
 	      cvec         *cvv,
 	      cvec         *argv)
 {
-    return cli_show_auto1(h, 0, cvv, argv);
+    return cli_show_generated(h, 0, cvv, argv);
 }
 
 /*! Generic show config and state CLIgen callback using generated CLI syntax
@@ -833,7 +837,7 @@ cli_show_auto_state(clicon_handle h,
 		    cvec         *cvv,
 		    cvec         *argv)
 {
-    return cli_show_auto1(h, 1, cvv, argv);
+    return cli_show_generated(h, 1, cvv, argv);
 }
 
 /*! Show clixon configuration options as loaded

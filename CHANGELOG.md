@@ -46,6 +46,17 @@ Expected: March 2022
 
 Users may have to change how they access the system
 
+* New `clixon-config@2022-02-11.yang` revision
+  * Added option:
+    * `CLICON_LOG_STRING_LIMIT`
+    * Removed (previosly marked) obsolete options:
+      * `CLICON_RESTCONF_PATH`
+      * `CLICON_RESTCONF_PRETTY`
+      * `CLICON_CLI_GENMODEL`
+      * `CLICON_CLI_GENMODEL_TYPE`
+      * `CLICON_CLI_GENMODEL_COMPLETION`
+      * `CLICON_CLI_AUTOCLI_EXCLUDE`
+      * `CLICON_CLI_MODEL_TREENAME`
 * RESTCONF replies on the form: `{"data":...}` changed to: `{"ietf-restconf:data":...}`
   * See [restconf GET json response does not encode top level node with namespace as per rfc #303](https://github.com/clicon/clixon/issues/303)
 * YANG leafref `require-instance` default changed to `true`
