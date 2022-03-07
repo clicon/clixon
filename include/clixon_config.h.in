@@ -60,6 +60,7 @@
 /* Define to 1 if you have the `nghttp2' library (-lnghttp2). */
 #undef HAVE_LIBNGHTTP2
 
+/* Set to true if HTTP/1 parser */
 #undef HAVE_HTTP1
 
 /* Define to 1 if you have the `socket' library (-lsocket). */
@@ -151,9 +152,6 @@
 
 /* Use native restconf mode */
 #undef WITH_RESTCONF_NATIVE
-
-/* WWW dir for fcgi stuff / nginx */
-#undef WWWDIR
 
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */

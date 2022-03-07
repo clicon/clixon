@@ -36,36 +36,36 @@
 ## 5.6.0
 Expected: March 2022
 
-In Clixon 5.6 the dependency of libevhtp for native RESTCONF is
-removed. Also module-state has been upgraded to RFC8525. A lot of bugs
+Clixon 5.6 removed the dependency of libevhtp and libevent2 for native
+RESTCONF, module-state has been upgraded to RFC8525 and a lot of bugs
 have been fixed, thanks to the community for all feedback.
 
 ### New features
 
-* Yang library upgraded from RFC78795 to RFC 8525
-  * See API changes for more info
-* HTTP/1 native parser as part of the RESTCONF client
-  * Replaced libevhtp/libevent2 with internal http1 parser
-  * Replace configure option `--disable-evhtp` with `--disable-http1` for disabling HTTP/1 whihc is on by default
+* Yang library upgraded from RFC78795 to [RFC 8525](https://datatracker.ietf.org/doc/html/rfc8525)
+  * See [API changes](API changes on existing protocol/config features) for more info
+* RESTCONF Internal HTTP/1 native parser
+  * Removed dependency of libevhtp/libevent2
+  * Replace configure option `--disable-evhtp` with `--disable-http1` for disabling HTTP/1 (default enabled)
 
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
-* Module state upgrade: RFC7895 to RFC 8525:
+* Module state upgrade: RFC7895 to RFC8525:
   * To upgrade to RFC8525:
-    * You need to change `CLICON_YANG_LIBRARY` to `true` and `CLICON_MODULE_LIBRARY_RFC7895` to `false`
+    * Set `CLICON_YANG_LIBRARY` to `true` and `CLICON_MODULE_LIBRARY_RFC7895` to `false`
   * To keep RFC7895:
     * Set both `CLICON_YANG_LIBRARY` and `CLICON_MODULE_LIBRARY_RFC7895` to `true`
-  * This upgrade means that the state-data returned using GET is changed:
-    * preamble changed from: `<modules-state>...` to: `<yang-library><module-set>...`
+  * Following RFC8525, the upgrade means that the state-data returned using GET is changed:
+    * Preamble changed from: `<modules-state>...` to: `<yang-library><module-set>...`
     * `module-state-id` changed to `content-id`
     * `conformance-type` removed
   * Note that the datastore feature `CLICON_XMLDB_MODSTATE` is backward compatible with RFC8525.
 * New `clixon-config@2022-02-11.yang` revision
   * Added option:
     * `CLICON_LOG_STRING_LIMIT`
-    * 'CLICON_YANG_LIBRARY`
+    * `CLICON_YANG_LIBRARY`
   * Changed default value:
     * `CLICON_MODULE_LIBRARY_RFC7895` to false  
   * Removed (previosly marked) obsolete options:
@@ -81,24 +81,25 @@ Users may have to change how they access the system
 * YANG leafref `require-instance` default changed to `true`
   * This makes leafref validation stricter
   * See [statement: require-instance should be true if not present according to rfc7950 Sec 9.9.3](https://github.com/clicon/clixon/issues/302)
-* `configure --with-wwwdir=<dir>` is removed
-* Command field of clixon-lib:process-control RPC reply used CDATA encoding but now uses regular XML encoding
+* Autotools/configure changes
+  * `configure --with-wwwdir=<dir>` is removed
+  *  Configure option `--disable-evhtp` with `--disable-http1` for disabling HTTP/1 (default enabled)
+* Command field of `clixon-lib:process-control` RPC reply used CDATA encoding but now uses regular XML encoding
 
 ### C/CLI-API changes on existing features
 
-* Added rfc7951 parameter to `clixon_json_parse_string()` and `clixon_json_parse_file()`
+* Added RFC7951 parameter to `clixon_json_parse_string()` and `clixon_json_parse_file()`
   * If set, honor RFC 7951: JSON Encoding of Data Modeled with YANG, eg it requires module name prefixes
   * If not set, parse as regular JSON
   
 ### Minor features
 
-* [Strict auto completion for CLI argument expansion #163](https://github.com/clicon/clixon/issues/163)
-* [Convert int64, uint64 and decimal64 to string in xml to json #310](https://github.com/clicon/clixon/pull/310)
-* Backend ignore of SIGPIPE. This occurs if client quits unexpectedly over the UNIX socket.
-   * This is a timing issue but occurs more frequently in large RESTCONF messgaes.
-* New `clixon-config@2022-02-11.yang` revision
-  * Added option: `CLICON_LOG_STRING_LIMIT`
-    * Limit the length of log and debug messages. Some log messages are dependendent on sizes that can be very large, such as packet lengths. This new option constrains the length of all messgaes. By default no limits.
+* Added: [Strict auto completion for CLI argument expansion #163](https://github.com/clicon/clixon/issues/163)
+* Added: [Convert int64, uint64 and decimal64 to string in xml to json #310](https://github.com/clicon/clixon/pull/310)
+* Backend ignore of `SIGPIPE'. This occurs if client quits unexpectedly over the UNIX socket.
+   * This is a timing issue but occurs more frequently in large RESTCONF messages.
+* Added option: `CLICON_LOG_STRING_LIMIT` configure option
+  * Limit the length of log and debug messages. Some log messages are dependendent on sizes that can be very large, such as packet lengths. This new option constrains the length of all messgaes. By default no limits.
 
 ### Corrected Bugs
 
@@ -107,7 +108,7 @@ Users may have to change how they access the system
 * Fixed: [restconf GET json response does not encode top level node with namespace as per rfc #303](https://github.com/clicon/clixon/issues/303)
 * Fixed: [statement: require-instance should be true if not present according to rfc7950 Sec 9.9.3](https://github.com/clicon/clixon/issues/302)
   * See also API changes
-* Fixed: input RPC validation of choice (non-case)
+* Fixed: input RPC validation of YANG `choice`, more specifically, without `case` keyword
 * Fixed: More than one unknown/extension in combination with augment of extension resulted in extension being skipped.
 
 ## 5.5.0
