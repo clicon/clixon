@@ -114,7 +114,7 @@ static struct errvec EV[] = {
     {"Regexp error",           OE_REGEX},
     {"UNIX error",             OE_UNIX},
     {"Syslog error",           OE_SYSLOG},
-    {"Routing demon error",    OE_ROUTING},
+    {"Routing daemon error",   OE_ROUTING},
     {"XML error",              OE_XML},
     {"JSON error",             OE_JSON},
     {"RESTCONF error",         OE_RESTCONF},

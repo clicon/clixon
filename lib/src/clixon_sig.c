@@ -243,7 +243,7 @@ pidfile_zapold(pid_t pid)
     }
     if ((kill(pid, 0)) < 0){
         if (errno != ESRCH){
-            clicon_err(OE_DAEMON, errno, "Killing old demon");
+            clicon_err(OE_DAEMON, errno, "Killing old daemon");
             goto done;
         }
     }

@@ -186,7 +186,7 @@ clixon_event_reg_fd(int   fd,
 	return -1;
     }
     memset(e, 0, sizeof(struct event_data));
-    strncpy(e->e_string, str, EVENT_STRLEN);
+    strncpy(e->e_string, str, EVENT_STRLEN-1);
     e->e_fd = fd;
     e->e_fn = fn;
     e->e_arg = arg;
@@ -261,7 +261,7 @@ clixon_event_reg_timeout(struct timeval t,
 	return -1;
     }
     memset(e, 0, sizeof(struct event_data));
-    strncpy(e->e_string, str, EVENT_STRLEN);
+    strncpy(e->e_string, str, EVENT_STRLEN-1);
     e->e_fn = fn;
     e->e_arg = arg;
     e->e_type = EVENT_TIME;

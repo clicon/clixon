@@ -745,7 +745,7 @@ main(int    argc,
     }
     if (group_name2gid(backend_group, &gid) < 0){
 	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.\n" /* \n required here due to multi-line log */
-		   "The config demon requires a valid group to create a server UNIX socket\n"
+		   "The config daemon requires a valid group to create a server UNIX socket\n"
 		   "Define a valid CLICON_SOCK_GROUP in %s or via the -g option\n"
 		   "or create the group and add the user to it. Check documentation for how to do this on your platform",
 		   backend_group,
@@ -984,7 +984,7 @@ main(int    argc,
 	goto ok;
 
     /* Daemonize and initiate logging. Note error is initiated here to make
-       demonized errors OK. Before this stage, errors are logged on stderr 
+       daemonized errors OK. Before this stage, errors are logged on stderr 
        also */
     if (foreground==0){
 	/* Call plugin callbacks just before fork/daemonization */

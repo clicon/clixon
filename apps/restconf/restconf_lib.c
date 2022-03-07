@@ -593,7 +593,7 @@ restconf_drop_privileges(clicon_handle h)
     }
     if (group_name2gid(group, &gid) < 0){
 	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group." /* \n required here due to multi-line log */
-		   "The config demon requires a valid group to create a server UNIX socket\n"
+		   "The config daemon requires a valid group to create a server UNIX socket\n"
 		   "Define a valid CLICON_SOCK_GROUP in %s or via the -g option\n"
 		   "or create the group and add the user to it. Check documentation for how to do this on your platform",
 		   group,

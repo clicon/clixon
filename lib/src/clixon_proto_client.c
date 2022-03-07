@@ -862,10 +862,8 @@ clicon_rpc_get(clicon_handle   h,
 					      ". Internal error, backend returned invalid XML.",
 					      NULL) < 0)
 		goto done;
-	    if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
-		goto done;
-	    }
+	    xd = xerr;
+	    xerr = NULL;
 	}
     }
     if (xt && xd){
