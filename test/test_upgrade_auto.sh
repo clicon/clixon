@@ -137,19 +137,22 @@ EOF
 # this should be automatically upgraded to 2017-12-20
 cat <<EOF > $dir/startup_db
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
-      <module>
-         <name>example-a</name>
-         <revision>2017-12-01</revision>
-         <namespace>urn:example:a</namespace>
-      </module>
-      <module>
-         <name>example-b</name>
-         <revision>2017-12-01</revision>
-         <namespace>urn:example:b</namespace>
-      </module>
-  </modules-state>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>
+         <module>
+            <name>example-a</name>
+            <revision>2017-12-01</revision>
+            <namespace>urn:example:a</namespace>
+         </module>
+         <module>
+            <name>example-b</name>
+            <revision>2017-12-01</revision>
+            <namespace>urn:example:b</namespace>
+         </module>
+      </module-set>
+  </yang-library>
   <system xmlns="urn:example:a">
     <a>dont change me</a>
     <b>rename me</b>
@@ -167,7 +170,6 @@ EOF
 
 # Wanted new XML
 XML='<system xmlns="urn:example:a"><a>dont change me</a><c>rename me</c><host-name>i am modified</host-name><y>created</y></system><alt xmlns="urn:example:a"><z>move me</z></alt>'
-
 
 # Create configuration
 cat <<EOF > $cfg

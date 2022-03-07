@@ -23,7 +23,6 @@ cat <<EOF > $cfg
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
 </clixon-config>
 EOF
 
@@ -176,8 +175,8 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-ch
 # This text yields an error, but the test cannot detect the error message yet
 #expectpart "$($clixon_cli -1f $cfg -y $fyangerr show version)" 0 "Yang error: Extension ex:not-defined not found"
 
-new "netconf schema resource, RFC 7895"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"yanglib:modules-state/yanglib:module\" xmlns:yanglib=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>]]>]]>" "<module><name>ietf-yang-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace><conformance-type>implement</conformance-type></module>"
+new "netconf schema resource, RFC 8525"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"yanglib:yang-library/yanglib:module-set[yanglib:name='default']/yanglib:module\" xmlns:yanglib=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>]]>]]>" "<module><name>ietf-yang-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace></module>"
 
 new "netconf edit config"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>1</a><b>2</b><c>5</c><val>one</val></y><d/></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"

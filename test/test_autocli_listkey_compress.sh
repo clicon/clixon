@@ -211,7 +211,7 @@ cat <<EOF > $cfg
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  <CLICON_MODULE_LIBRARY_RFC7895>false</CLICON_MODULE_LIBRARY_RFC7895>
+  <CLICON_YANG_LIBRARY>false</CLICON_YANG_LIBRARY>
   <autocli>
      <module-default>false</module-default>
      <list-keyword-default>${listkw}</list-keyword-default>

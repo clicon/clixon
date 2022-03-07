@@ -276,6 +276,8 @@ text_read_modstate(clicon_handle       h,
 {
     int    retval = -1;
     cxobj *xmodfile = NULL;   /* modstate of system (loaded yang modules in runtime) */
+    cxobj *xyanglib = NULL;
+    cxobj *xmodcache;
     cxobj *xmodsystem = NULL; /* modstate of file, eg startup */
     cxobj *xf = NULL;         /* xml modstate in file */
     cxobj *xf2;               /* copy */
@@ -284,30 +286,45 @@ text_read_modstate(clicon_handle       h,
     char  *name;              /* module name */
     char  *frev;              /* file revision */
     char  *srev;              /* system revision */
+    int    rfc7895=0;         /* backward-compatible: old version */
 
     /* Read module-state as computed at startup, see startup_module_state() */
-    xmodsystem = clicon_modst_cache_get(h, 1);
-    if ((xmodfile = xml_find_type(xt, NULL, "modules-state", CX_ELMNT)) == NULL){
-	/* 1) There is no modules-state info in the file */
-    }
-    else if (xmodsystem && msdiff){
+    if ((xmodcache = clicon_modst_cache_get(h, 1)) != NULL)
+	xmodsystem = xml_find_type(xmodcache, NULL, "module-set", CX_ELMNT);
+
+    xyanglib = xml_find_type(xt, NULL, "yang-library", CX_ELMNT);
+    if ((xmodfile = xpath_first(xt, NULL, "yang-library/module-set")) != NULL)
+	;
+    else if ((xmodfile = xml_find_type(xt, NULL, "modules-state", CX_ELMNT)) != NULL)
+	rfc7895++;
+    if (xmodfile && xmodsystem && msdiff){
 	msdiff->md_status = 1;  /* There is module state in the file */
 	/* Create modstate tree for this file */
-	if (clixon_xml_parse_string("<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>",
+	if (clixon_xml_parse_string("<module-set xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>",
 				    YB_MODULE, yspec, &msdiff->md_diff, NULL) < 0)
 	    goto done;
 	if (xml_rootchild(msdiff->md_diff, 0, &msdiff->md_diff) < 0) 
 	    goto done;
 
-	/* 3) For each module state m in the file */
-	xf = NULL;
-	while ((xf = xml_child_each(xmodfile, xf, CX_ELMNT)) != NULL) {
-	    if (strcmp(xml_name(xf), "module-set-id") == 0){
-		if (xml_body(xf) && (msdiff->md_set_id = strdup(xml_body(xf))) == NULL){
+	if (!rfc7895){
+	    if ((xf = xpath_first(xt, NULL, "yang-library/content-id")) != NULL){
+		if (xml_body(xf) && (msdiff->md_content_id = strdup(xml_body(xf))) == NULL){
 		    clicon_err(OE_UNIX, errno, "strdup");
 		    goto done;
 		}
-		continue;
+	    }
+	}
+	/* 3) For each module state m in the file */
+	xf = NULL;
+	while ((xf = xml_child_each(xmodfile, xf, CX_ELMNT)) != NULL) {
+	    if (rfc7895){
+		if (strcmp(xml_name(xf), "module-set-id") == 0){
+		    if (xml_body(xf) && (msdiff->md_content_id = strdup(xml_body(xf))) == NULL){
+			clicon_err(OE_UNIX, errno, "strdup");
+			goto done;
+		    }
+		    continue;
+		}
 	    }
 	    if (strcmp(xml_name(xf), "module"))
 		continue; /* ignore other tags, such as module-set-id */
@@ -358,10 +375,15 @@ text_read_modstate(clicon_handle       h,
      * in all cases, whether CLICON_XMLDB_MODSTATE is on or not.
      * Clixon systems with CLICON_XMLDB_MODSTATE disabled ignores it
      */
-    if (xmodfile){ 	
-	if (xml_purge(xmodfile) < 0)
-	    goto done;
+    if (rfc7895){
+	if (xmodfile){
+	    if (xml_purge(xmodfile) < 0)
+		goto done;
+	}
     }
+    else if (xyanglib)
+	if (xml_purge(xyanglib) < 0)
+		goto done;
     retval = 0;
  done:
     return retval;
@@ -516,9 +538,12 @@ xmldb_readfile(clicon_handle    h,
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
 	if ((msdiff = modstate_diff_new()) == NULL)
 	    goto done;
-    if ((x = xml_find_type(x0, NULL, "modules-state", CX_ELMNT)) != NULL)
+    /* First try RFC8525, but also backward compatible RFC7895 */
+    if ((x = xpath_first(x0, NULL, "yang-library/module-set")) != NULL ||
+	(x = xml_find_type(x0, NULL, "modules-state", CX_ELMNT)) != NULL){
 	if ((xmodfile = xml_dup(x)) == NULL)
 	    goto done;
+    }
     /* Datastore files may contain module-state defining
      * which modules are used in the file. 
      * Strip module-state, analyze it with CHANGE/ADD/RM and return msdiff

@@ -53,9 +53,9 @@
  * is the one loaded by the server by its YANG files.
  */
 typedef struct {
-    int    md_status; /* 0 if no module-state in a datastore, 1 if there is */
-    char  *md_set_id; /* server-specific identifier */
-    cxobj *md_diff;   /* yang module state containing revisions and XML_FLAG_ADD|DEL|CHANGE */
+    int    md_status;     /* 0 if no module-state in a datastore, 1 if there is */
+    char  *md_content_id; /* server-specific identifier (previously md_set_id) */
+    cxobj *md_diff;       /* yang module state containing revisions and XML_FLAG_ADD|DEL|CHANGE */
 } modstate_diff_t;
 
 /*

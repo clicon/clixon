@@ -18,7 +18,7 @@
 # Rename /interfaces/interface/description to /interfaces/interface/descr (2016)
 # Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr (2018)
 # Change type /interfaces/interface/statistics/in-octets to decimal64 and divide all values with 1000 (2018)
-# 
+# See also test_upgrade_interfaces_rfc7895.sh for RFC7895 backward compatible
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -210,14 +210,17 @@ EOF
 # This is 2014 syntax
 cat <<EOF > $dir/startup_db
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>
       <module>
          <name>interfaces</name>
          <revision>2014-05-08</revision>
          <namespace>urn:example:interfaces</namespace>
       </module>
-  </modules-state>
+      </module-set>
+   </yang-library>
   <interfaces xmlns="urn:example:interfaces">
     <interface>
       <name>e0</name>
@@ -294,14 +297,17 @@ testrun "$XML"
 # This is "2016" syntax
 cat <<EOF > $dir/startup_db
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>
       <module>
          <name>interfaces</name>
          <revision>2016-01-01</revision>
          <namespace>urn:example:interfaces</namespace>
       </module>
-  </modules-state>
+      </module-set>
+   </yang-library>
   <interfaces xmlns="urn:example:interfaces">
     <interface>
       <name>e0</name>
@@ -347,14 +353,17 @@ testrun "$XML"
 # Again 2014 syntax
 cat <<EOF > $dir/startup_db
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>
       <module>
          <name>interfaces</name>
          <revision>2014-05-08</revision>
          <namespace>urn:example:interfaces</namespace>
       </module>
-  </modules-state>
+      </module-set>
+  </yang-library>
   <interfaces xmlns="urn:example:interfaces">
     <interface>
       <name>e0</name>

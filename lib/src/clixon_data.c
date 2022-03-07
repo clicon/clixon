@@ -51,7 +51,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <syslog.h>
-#include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -658,7 +657,6 @@ clicon_modst_cache_set(clicon_handle h,
 	xml_free(x);
     if (xms == NULL)
 	goto ok;
-    assert(strcmp(xml_name(xms),"modules-state")==0);
     if ((x = xml_dup(xms)) == NULL)
 	return -1;
     if (clicon_hash_add(cdat, brief?"modst_brief":"modst_full", &x, sizeof(x))==NULL)

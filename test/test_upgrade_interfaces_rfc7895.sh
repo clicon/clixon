@@ -1,11 +1,24 @@
 #!/usr/bin/env bash
-# Test quit startup after upgrade (-q) functionality
-# The yang is from test_upgrade_interfaces and the upgrade code
-# is implemented in the main example
-# The test is just having 2014 xml syntax in file and the backend printing the upgraded
-# syntax to stdout
-# The output syntax is datastore syntax, as a running db would have looked like
-# Note that the admin and stats field are non-config in the original, not here
+# Upgrade a module by registering a manually programmed callback
+# The usecase is inspired by the ietf-interfaces upgrade from
+# 2014-05-08 to 2016-01-01 to 2018-02-20.
+# That includes moving parts from interfaces-state to interfaces and then
+# deprecating the whole /interfaces-state tree.
+# A preliminary change list is in Appendix A of
+# draft-wang-netmod-module-revision-management-01
+# The example here is simplified and also extended.
+# For exampe  admin and stats field are non-config in the original, not here
+# It has also been broken up into two parts to test a series of upgrades.
+# These are the operations (authentic move/delete are from ietf-interfaces):
+# Move /if:interfaces-state/if:interface/if:admin-status to (2016)
+#   /if:interfaces/if:interface/
+# Move /if:interfaces-state/if:interface/if:statistics to (2016)
+#   if:interfaces/if:interface/
+# Delete /if:interfaces-state (2018)
+# Rename /interfaces/interface/description to /interfaces/interface/descr (2016)
+# Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr (2018)
+# Change type /interfaces/interface/statistics/in-octets to decimal64 and divide all values with 1000 (2018)
+# This is backwrd compatible RFC7895, see also test_upgrade_interfaces.sh for RFC8525
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -23,15 +36,15 @@ cat <<EOF > $cfg
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_FEATURE>interfaces:if-mib</CLICON_FEATURE>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_DIR>/usr/local/lib/example/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_MODSTATE>true</CLICON_XMLDB_MODSTATE>
-  <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
   <CLICON_XML_CHANGELOG>false</CLICON_XML_CHANGELOG>
-  <CLICON_XMLDB_UPGRADE_CHECKOLD>true</CLICON_XMLDB_UPGRADE_CHECKOLD>
+  <CLICON_XMLDB_UPGRADE_CHECKOLD>false</CLICON_XMLDB_UPGRADE_CHECKOLD>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -62,11 +75,6 @@ module interfaces{
 	reference
 	    "RFC 2863: The Interfaces Group MIB";
     }
-    leaf foo{
-         description "Should not appear";
-    	 type string;
-	 default "bar";
-    }
     container interfaces {
 	description
 	    "Interface configuration parameters.";
@@ -79,11 +87,6 @@ module interfaces{
 	    leaf description {
 		type string;
 	    }
-            leaf foo{
-              description "Should not appear";
-              type string;
-	      default "bar";
-            }
 	    leaf type {
 		type string;
 		mandatory true;
@@ -123,7 +126,6 @@ module interfaces{
 	}
     }
 }
-
 EOF
 
 cat <<EOF > $if2018
@@ -154,11 +156,6 @@ module interfaces{
 	reference
 	    "RFC 2863: The Interfaces Group MIB";
     }
-    leaf foo{
-         description "Should not appear";
-    	 type string;
-	 default "fie";
-    }
     container interfaces {
 	description
 	    "Interface configuration parameters.";
@@ -168,16 +165,11 @@ module interfaces{
 	    leaf name {
 		type string;
 	    }
-            leaf foo{
-              description "Should not appear";
-              type string;
-	      default "bar";
-            }
 	    container docs{
                description "Original description is wrapped and renamed";
   	       leaf descr {
 	 	 type string;
-	       }
+	      }
             }
 	    leaf type {
 		type string;
@@ -218,17 +210,14 @@ EOF
 # This is 2014 syntax
 cat <<EOF > $dir/startup_db
 <${DATASTORE_TOP}>
-   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <content-id>42</content-id>
-      <module-set>
-         <name>default</name>
+   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <module-set-id>42</module-set-id>
       <module>
          <name>interfaces</name>
          <revision>2014-05-08</revision>
          <namespace>urn:example:interfaces</namespace>
       </module>
-      </module-set>
-   </yang-library>
+  </modules-state>
   <interfaces xmlns="urn:example:interfaces">
     <interface>
       <name>e0</name>
@@ -261,93 +250,157 @@ cat <<EOF > $dir/startup_db
 </${DATASTORE_TOP}>
 EOF
 
+# Start from startup and upgrade, check running 
+function testrun(){
+    runxml=$1 
 
+    # -u means trigger example upgrade
+    new "test params: -s startup -f $cfg -- -u"
+    # Bring your own backend
+    if [ $BE -ne 0 ]; then
+	# kill old backend (if any)
+	new "kill old backend"
+	sudo clixon_backend -zf $cfg
+	if [ $? -ne 0 ]; then
+	    err
+	fi
+	new "start backend -s startup -f $cfg -- -u"
+	start_backend -s startup -f $cfg -- -u
+    fi
 
-# This is 2014 syntax
-cat <<EOF > $dir/startup_db
-<${DATASTORE_TOP}>
-   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <content-id>42</content-id>
-      <module-set>
-         <name>default</name>
-      <module>
-         <name>interfaces</name>
-         <revision>2014-05-08</revision>
-         <namespace>urn:example:interfaces</namespace>
-      </module>
-      </module-set>
-  </yang-library>
-  <interfaces xmlns="urn:example:interfaces">
-    <interface>
-      <name>e0</name>
-      <type>eth</type>
-      <description>First interface</description>
-    </interface>
-    <interface>
-      <name>e1</name>
-      <type>eth</type>
-    </interface>
-  </interfaces>
-  <interfaces-state xmlns="urn:example:interfaces">
-    <interface>
-      <name>e0</name>
-      <admin-status>up</admin-status>
-      <statistics>
-        <in-octets>54326432</in-octets>
-        <in-unicast-pkts>8458765</in-unicast-pkts>
-      </statistics>
-    </interface>
-    <interface>
-      <name>e1</name>
-      <admin-status>down</admin-status>
-    </interface>
-    <interface>
-      <name>e2</name>
-      <admin-status>testing</admin-status>
-    </interface>
-  </interfaces-state>
-</${DATASTORE_TOP}>
-EOF
+    new "waiting"
+    wait_backend
+    
+    new "Check running db content"
+    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$runxml</data></rpc-reply>]]>]]>$"
 
-MODSTATE1="<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set><name>default</name><module><name>clixon-lib</name><revision>${CLIXON_LIB_REV}</revision><namespace>http://clicon.org/lib</namespace></module>"
-
-MODSTATE2='<module><name>interfaces</name><revision>2018-02-20</revision><namespace>urn:example:interfaces</namespace></module>'
+    if [ $BE -ne 0 ]; then
+	new "Kill backend"
+	# Check if premature kill
+	pid=$(pgrep -u root -f clixon_backend)
+	if [ -z "$pid" ]; then
+	    err "backend already dead"
+	fi
+	# kill backend
+	stop_backend -f $cfg
+    fi
+}
 
 XML='<interfaces xmlns="urn:example:interfaces"><interface><name>e0</name><docs><descr>First interface</descr></docs><type>eth</type><admin-status>up</admin-status><statistics><in-octets>54326.432</in-octets><in-unicast-pkts>8458765</in-unicast-pkts></statistics></interface><interface><name>e1</name><type>eth</type><admin-status>down</admin-status></interface></interfaces>'
 
-ALL="<${DATASTORE_TOP}>$MODSTATE$XML</${DATASTORE_TOP}>"
+new "1. Upgrade from 2014 to 2018-02-20"
+testrun "$XML"
 
-# -u means trigger example upgrade
+# This is "2016" syntax
+cat <<EOF > $dir/startup_db
+<${DATASTORE_TOP}>
+   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <module-set-id>42</module-set-id>
+      <module>
+         <name>interfaces</name>
+         <revision>2016-01-01</revision>
+         <namespace>urn:example:interfaces</namespace>
+      </module>
+  </modules-state>
+  <interfaces xmlns="urn:example:interfaces">
+    <interface>
+      <name>e0</name>
+      <admin-status>up</admin-status>
+      <type>eth</type>
+      <descr>First interface</descr>
+      <statistics>
+        <in-octets>54326432</in-octets>
+        <in-unicast-pkts>8458765</in-unicast-pkts>
+      </statistics>
+    </interface>
+    <interface>
+      <name>e1</name>
+      <type>eth</type>
+      <admin-status>down</admin-status>
+    </interface>
+  </interfaces>
+  <interfaces-state xmlns="urn:example:interfaces">
+    <interface>
+      <name>e0</name>
+      <admin-status>down</admin-status>
+      <statistics>
+        <in-octets>946743234</in-octets>
+        <in-unicast-pkts>218347</in-unicast-pkts>
+      </statistics>
+    </interface>
+    <interface>
+      <name>e1</name>
+      <admin-status>up</admin-status>
+    </interface>
+    <interface>
+      <name>e2</name>
+      <admin-status>testing</admin-status>
+    </interface>
+  </interfaces-state>
+</${DATASTORE_TOP}>
+EOF
 
-# kill old backend (if any)
-new "kill old backend"
-sudo clixon_backend -zf $cfg
-if [ $? -ne 0 ]; then
-    err
-fi
+# 2. Upgrade from intermediate 2016-01-01 to 2018-02-20
+new "2. Upgrade from intermediate 2016-01-01 to 2018-02-20"
+testrun "$XML"
 
-new "start backend -s startup -f $cfg -q -- -u"
-output=$(sudo $clixon_backend -F -D $DBG -s startup -f $cfg -q -- -u)
+# Again 2014 syntax
+cat <<EOF > $dir/startup_db
+<${DATASTORE_TOP}>
+   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <module-set-id>42</module-set-id>
+      <module>
+         <name>interfaces</name>
+         <revision>2014-05-08</revision>
+         <namespace>urn:example:interfaces</namespace>
+      </module>
+  </modules-state>
+  <interfaces xmlns="urn:example:interfaces">
+    <interface>
+      <name>e0</name>
+      <type>eth</type>
+      <description>First interface</description>
+    </interface>
+    <interface>
+      <name>e1</name>
+      <type>eth</type>
+    </interface>
+  </interfaces>
+  <interfaces-state xmlns="urn:example:interfaces">
+    <interface>
+      <name>e0</name>
+      <admin-status>up</admin-status>
+      <statistics>
+        <in-octets>54326432</in-octets>
+        <in-unicast-pkts>8458765</in-unicast-pkts>
+      </statistics>
+    </interface>
+    <interface>
+      <name>e1</name>
+      <admin-status>down</admin-status>
+    </interface>
+    <interface>
+      <name>e2</name>
+      <admin-status>testing</admin-status>
+    </interface>
+  </interfaces-state>
+</${DATASTORE_TOP}>
 
-new "check modstate1"
-match=$(echo "$output" | grep --null -o "$MODSTATE1")
-if [ -z "$match" ]; then
-    err "$MODSTATE1" "$output"
-fi
+EOF
+rm $if2018
+# Original XML
+XML='<interfaces xmlns="urn:example:interfaces"><interface><name>e0</name><description>First interface</description><type>eth</type></interface><interface><name>e1</name><type>eth</type></interface></interfaces><interfaces-state xmlns="urn:example:interfaces"><interface><name>e0</name><admin-status>up</admin-status><statistics><in-octets>54326432</in-octets><in-unicast-pkts>8458765</in-unicast-pkts></statistics></interface><interface><name>e1</name><admin-status>down</admin-status></interface><interface><name>e2</name><admin-status>testing</admin-status></interface></interfaces-state>'
 
-new "check modstate"
-match=$(echo "$output" | grep --null -o "$MODSTATE2")
-if [ -z "$match" ]; then
-    err "$MODSTATE2" "$output"
-fi
+new "3. No 2018 (upgrade) model -> dont trigger upgrade"
+testrun "$XML"
 
-new "check xml"
-match=$(echo "$output" | grep --null -o "$XML")
-if [ -z "$match" ]; then
-    err "$XML" "$output"
-fi
+#rm $if2014
+#new "4. No model at all"
+#testrun "$XML"
 
 rm -rf $dir
+
 new "endtest"
 endtest
+
 

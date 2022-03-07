@@ -33,7 +33,6 @@ cat <<EOF > $cfg
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
 </clixon-config>
 EOF
 
@@ -72,7 +71,7 @@ new "Frame without message-id attribute"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTONLY><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTONLY><rpc-error><error-type>rpc</error-type><error-tag>missing-attribute</error-tag><error-info><bad-attribute>message-id</bad-attribute></error-info><error-severity>error</error-severity><error-message>Incoming rpc</error-message></rpc-error></rpc-reply>]]>]]>$"
 
 new "netconf rcv hello, disable RFC7895/ietf-yang-library"
-expecteof "$clixon_netconf -f $cfg -o CLICON_MODULE_LIBRARY_RFC7895=0" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]><rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -f $cfg -o CLICON_YANG_LIBRARY=0" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]><rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>$"
 
 new "netconf get-config nc prefix"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<nc:rpc xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:message-id=\"42\"><nc:get-config><nc:source><nc:candidate/></nc:source></nc:get-config></nc:rpc>]]>]]>" "^<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:message-id=\"42\"><data/></rpc-reply>]]>]]>$"

@@ -100,8 +100,8 @@ modstate_diff_free(modstate_diff_t *md)
 {
     if (md == NULL)
 	return 0;
-    if (md->md_set_id)
-       free(md->md_set_id);
+    if (md->md_content_id)
+       free(md->md_content_id);
     if (md->md_diff)
 	xml_free(md->md_diff);
     free(md);
@@ -121,11 +121,11 @@ yang_modules_init(clicon_handle h)
     yang_stmt *yspec;
 
     yspec = clicon_dbspec_yang(h);	
-    if (!clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895"))
+    if (!clicon_option_bool(h, "CLICON_YANG_LIBRARY"))
 	goto ok;
     /* Ensure module-set-id is set */
     if (!clicon_option_exists(h, "CLICON_MODULE_SET_ID")){
-	clicon_err(OE_CFG, ENOENT, "CLICON_MODULE_SET_ID must be defined when CLICON_MODULE_LIBRARY_RFC7895 is enabled");
+	clicon_err(OE_CFG, ENOENT, "CLICON_MODULE_SET_ID must be defined when CLICON_YANG_LIBRARY is enabled");
 	goto done;
     }
     /* Ensure revision exists is set */
@@ -165,8 +165,11 @@ yang_modules_revision(clicon_handle h)
     return revision;
 }
 
-/*! Actually build the yang modules state XML tree
- * @see RFC7895
+/*! Actually build the yang modules state XML tree according to RFC8525
+ *
+ * This assumes CLICON_YANG_LIBRARY is enabled
+ * If also CLICON_MODULE_LIBRARY_RFC7895 is set, module-state is built according to RFC7895 instead
+ * @see RFC8525 
  */
 static int
 yms_build(clicon_handle    h,
@@ -196,9 +199,15 @@ yms_build(clicon_handle    h,
 	goto done;
     }
 
-    cprintf(cb,"<modules-state xmlns=\"%s\">", yang_argument_get(yns));
-    cprintf(cb,"<module-set-id>%s</module-set-id>", msid);
-
+    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895")){
+	cprintf(cb,"<modules-state xmlns=\"%s\">", yang_argument_get(yns));
+	cprintf(cb,"<module-set-id>%s</module-set-id>", msid);
+    }
+    else { /* RFC 8525 */
+	cprintf(cb,"<yang-library xmlns=\"%s\">", yang_argument_get(yns));
+	cprintf(cb,"<content-id>%s</content-id>", msid);
+	cprintf(cb,"<module-set><name>default</name>");
+    }
     ymod = NULL;
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
 	if (yang_keyword_get(ymod) != Y_MODULE)
@@ -230,7 +239,8 @@ yms_build(clicon_handle    h,
 		    break;
 		}
 	    }
-	    cprintf(cb, "<conformance-type>implement</conformance-type>");
+	    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895"))
+		cprintf(cb, "<conformance-type>implement</conformance-type>");
 	}
 	yinc = NULL;
 	while ((yinc = yn_each(ymod, yinc)) != NULL) {
@@ -249,7 +259,12 @@ yms_build(clicon_handle    h,
 	}
 	cprintf(cb,"</module>");
     }
-    cprintf(cb,"</modules-state>");
+    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895")){
+	cprintf(cb,"</modules-state>");
+    }
+    else{
+	cprintf(cb,"</module-set></yang-library>");
+    }
     retval = 0;
  done:
     return retval;
@@ -302,7 +317,7 @@ yang_modules_state_get(clicon_handle    h,
     size_t      xlen;
     int         i;
 
-    msid = clicon_option_str(h, "CLICON_MODULE_SET_ID");
+    msid = clicon_option_str(h, "CLICON_MODULE_SET_ID"); /* In RFC 8525 changed to "content-id" */
     if ((xc = clicon_modst_cache_get(h, brief)) != NULL){
 	cxobj *xw; /* tmp top wrap object */
 	/* xc is here: <modules-state>... 

@@ -91,9 +91,12 @@ EOF
     # -  : there is modstate but module is not present   (2)
     cat <<EOF > $dir/startup2.xml
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
-   </modules-state>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>
+      </module-set>
+   </yang-library>
    $payload
 </${DATASTORE_TOP}>
 EOF
@@ -102,14 +105,17 @@ EOF
     # <Y : there is modstate and revision is less than Y (3)
     cat <<EOF > $dir/startup3.xml
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>
       <module>
          <name>A</name>
          <revision>0814-01-28</revision>
          <namespace>urn:example:interfaces</namespace>
       </module>
-   </modules-state>
+      </module-set>
+   </yang-library>
    $payload
 </${DATASTORE_TOP}>
 EOF
@@ -118,14 +124,17 @@ EOF
     # =Y : there is modstate and revision is exactly Y   (4)
     cat <<EOF > $dir/startup4.xml
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>
       <module>
          <name>A</name>
          <revision>2016-01-01</revision>
          <namespace>urn:example:interfaces</namespace>
       </module>
-   </modules-state>
+      </module-set>
+   </yang-library>
    $payload
 </${DATASTORE_TOP}>
 EOF
@@ -134,14 +143,17 @@ EOF
     # >Y : there is modstate and revision is exactly Y   (5)
     cat <<EOF > $dir/startup5.xml
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>
       <module>
          <name>A</name>
          <revision>2018-01-01</revision>
          <namespace>urn:example:interfaces</namespace>
       </module>
-   </modules-state>
+      </module-set>
+   </yang-library>
    $payload
 </${DATASTORE_TOP}>
 EOF

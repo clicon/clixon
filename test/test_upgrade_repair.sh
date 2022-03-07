@@ -83,14 +83,17 @@ EOF
 # startup config XML with following (A obsolete, B OK, C lacking)
 cat <<EOF > $dir/non-compat-invalid.xml
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>
       <module>
          <name>A</name>
          <revision>0814-01-28</revision>
          <namespace>urn:example:a</namespace>
       </module>
-   </modules-state>
+      </module-set>
+   </yang-library>
    $OLDXML
    $SAMEXML
 </${DATASTORE_TOP}>

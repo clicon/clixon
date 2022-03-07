@@ -3,7 +3,7 @@
 # It is a test of handling modstate, identifying invalid startups
 # and entering failsafe
 # No active upgrading of an outdated db is made
-# This relies on storing RFC7895 YANG Module Library modules-state info
+# This relies on storing RFC8525 YANG Module Library yang-library/module-set info
 # in the datastore (or XML files?)
 # The test is made with three Yang models A, B and C as follows:
 # Yang module A has revisions "0814-01-28" and "2019-01-01"
@@ -106,6 +106,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_MODSTATE>true</CLICON_XMLDB_MODSTATE>
   <CLICON_XMLDB_UPGRADE_CHECKOLD>false</CLICON_XMLDB_UPGRADE_CHECKOLD>
+  <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -123,19 +124,22 @@ EOF
 # startup config XML with following 
 cat <<EOF > $dir/compat-valid.xml
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
-      <module>
-         <name>A</name>
-         <revision>2019-01-01</revision>
-         <namespace>urn:example:a</namespace>
-      </module>
-      <module>
-         <name>B</name>
-         <revision>2019-01-01</revision>
-         <namespace>urn:example:b</namespace>
-      </module>
-   </modules-state>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>   
+         <module>
+            <name>A</name>
+            <revision>2019-01-01</revision>
+            <namespace>urn:example:a</namespace>
+         </module>
+         <module>
+            <name>B</name>
+            <revision>2019-01-01</revision>
+            <namespace>urn:example:b</namespace>
+         </module>
+      </module-set>
+   </yang-library>
    <a1 xmlns="urn:example:a">always work</a1>
    <b xmlns="urn:example:b">other text</b>
 </${DATASTORE_TOP}>
@@ -145,19 +149,22 @@ EOF
 # startup config XML with following 
 cat <<EOF > $dir/compat-invalid.xml
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
-      <module>
-         <name>A</name>
-         <revision>2019-01-01</revision>
-         <namespace>urn:example:a</namespace>
-      </module>
-      <module>
-         <name>B</name>
-         <revision>2019-01-01</revision>
-         <namespace>urn:example:b</namespace>
-      </module>
-   </modules-state>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>
+         <module>
+            <name>A</name>
+            <revision>2019-01-01</revision>
+            <namespace>urn:example:a</namespace>
+         </module>
+         <module>
+            <name>B</name>
+            <revision>2019-01-01</revision>
+            <namespace>urn:example:b</namespace>
+         </module>
+      </module-set>
+   </yang-library>
    <a0 xmlns="urn:example:a">old version</a0>
    <a1 xmlns="urn:example:a">always work</a1>
    <b xmlns="urn:example:b">other text</b>
@@ -171,8 +178,10 @@ EOF
 # But XML is OK
 cat <<EOF > $dir/non-compat-valid.xml
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>
       <module>
          <name>A</name>
          <revision>0814-01-28</revision>
@@ -188,7 +197,8 @@ cat <<EOF > $dir/non-compat-valid.xml
          <revision>2019-01-01</revision>
          <namespace>urn:example:c</namespace>
       </module>
-   </modules-state>
+      </module-set>
+   </yang-library>
    <a1 xmlns="urn:example:a">always work</a1>
    <b xmlns="urn:example:b">other text</b>
 </${DATASTORE_TOP}>
@@ -198,8 +208,10 @@ EOF
 # startup config XML with following (A obsolete, B OK, C lacking)
 cat <<EOF > $dir/non-compat-invalid.xml
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>
       <module>
          <name>A</name>
          <revision>0814-01-28</revision>
@@ -215,7 +227,8 @@ cat <<EOF > $dir/non-compat-invalid.xml
          <revision>2019-01-01</revision>
          <namespace>urn:example:c</namespace>
       </module>
-   </modules-state>
+      </module-set>
+   </yang-library>
    <a0 xmlns="urn:example:a">old version</a0>
    <a1 xmlns="urn:example:a">always work</a1>
    <b xmlns="urn:example:b">other text</b>
@@ -226,8 +239,10 @@ EOF
 # Compatible startup with syntax errors
 cat <<EOF > $dir/compat-err.xml
 <${DATASTORE_TOP}>
-   <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
-      <module-set-id>42</module-set-id>
+   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+      <content-id>42</content-id>
+      <module-set>
+         <name>default</name>
       <module>
          <name>A</name>
          <revision>2019-01-01</revision>
@@ -238,7 +253,8 @@ cat <<EOF > $dir/compat-err.xml
          <revision>2019-01-01</revision>
          <namespace>urn:example:b</namespace>
       </module>
-   </modules-state>
+      </module-set>
+   </yang-library>
    <<a3 xmlns="urn:example:a">always work</a2>
    <b xmlns="urn:example:b">other text
 </${DATASTORE_TOP}>
@@ -304,7 +320,7 @@ new "1. Run without CLICON_XMLDB_MODSTATE ensure no modstate in datastore"
 runtest false startup '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>'
 
 new "Verify no modstate in running"
-expect="modules-state"
+expect="<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set>"
 ret=$(sudo grep $expect $dir/running_db)
 if [ -n "$ret" ]; then
     err "did not expect $expect" "$ret"
@@ -317,7 +333,7 @@ new "2. Load compatible valid startup (all OK)"
 runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>' '<data><a1 xmlns="urn:example:a">always work</a1><b xmlns="urn:example:b">other text</b></data>'
 
 new "Verify modstate in running"
-expect="modules-state"
+expect="<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set>"
 ret=$(sudo grep $expect $dir/running_db)
 if [ -z "$ret" ]; then
     err "Expected $expect" "$ret"
@@ -361,7 +377,7 @@ if [ $valgrindtest -ne 2 ]; then
 new "8. Load non-compat startup. Syntax fail, enter failsafe, startup invalid"
 (cd $dir; rm -f tmp_db candidate_db running_db startup_db) # remove databases
 (cd $dir; cp compat-err.xml startup_db)
-runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Get startup datastore: xml_parse: line 14: syntax error: at or before: &lt;</error-message></rpc-error>'
+runtest true startup '<data><a1 xmlns="urn:example:a">always work</a1></data>' '<rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Get startup datastore: xml_parse: line 17: syntax error: at or before: &lt;</error-message></rpc-error>'
 fi # valgrindtest
 
 rm -rf $dir

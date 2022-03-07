@@ -250,7 +250,7 @@ get_client_statedata(clicon_handle h,
 	if ((ret = client_get_capabilities(h, yspec, xpath, xret)) < 0)
 	    goto done;
     }
-    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895")){
+    if (clicon_option_bool(h, "CLICON_YANG_LIBRARY")){
 	if ((ret = yang_modules_state_get(h, yspec, xpath, nsc, 0, xret)) < 0)
 	    goto done;
 	if (ret == 0)

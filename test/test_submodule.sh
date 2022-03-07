@@ -46,7 +46,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  <CLICON_MODULE_LIBRARY_RFC7895>true</CLICON_MODULE_LIBRARY_RFC7895>
+  <CLICON_YANG_LIBRARY>true</CLICON_YANG_LIBRARY>
   $RESTCONFIG
 </clixon-config>
 EOF
@@ -263,10 +263,10 @@ new "restconf edit augment 2"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/main:sub2 -d '{"main:aug2":"foo"}')" 0 "HTTP/$HVER 201"
 
 new "NETCONF get module state"
-expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/yl:modules-state/yl:module[yl:name='main']\" xmlns:yl=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>]]>]]>" "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module><name>main</name><revision>2021-03-08</revision><namespace>urn:example:clixon</namespace><feature>A</feature><conformance-type>implement</conformance-type><submodule><name>sub1</name><revision/></submodule></module>"
+expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/yl:yang-library/yl:module-set[yl:name='default']/yl:module[yl:name='main']\" xmlns:yl=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set><name>default</name><module><name>main</name><revision>2021-03-08</revision><namespace>urn:example:clixon</namespace><submodule><name>sub1</name><revision/></submodule><feature>A</feature></module>"
 
 new "RESTCONF get module state"
-expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data/ietf-yang-library:modules-state/module=main,2021-03-08?config=nonconfig)" 0 "HTTP/$HVER 200" "<module xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><name>main</name><revision>2021-03-08</revision><namespace>urn:example:clixon</namespace><feature>A</feature><conformance-type>implement</conformance-type><submodule><name>sub1</name><revision/></submodule></module>"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data/ietf-yang-library:yang-library/module-set=default/module=main?config=nonconfig)" 0 "HTTP/$HVER 200" "<module xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><name>main</name><revision>2021-03-08</revision><namespace>urn:example:clixon</namespace><submodule><name>sub1</name><revision/></submodule><feature>A</feature></module>"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
