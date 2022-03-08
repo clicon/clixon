@@ -349,7 +349,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><example xm
 
 LIST='<u1 xmlns="urn:example:clixon"><uk>bar</uk><val>1</val></u1><u1 xmlns="urn:example:clixon"><uk>bar</uk><val>2</val></u1>'
 new "netconf example rpc input list with non-unique keys (should fail)"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><example xmlns=\"urn:example:clixon\"><x>mandatory</x>$LIST</example></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique><uk>bar</uk></non-unique></error-info></rpc-error></rpc-reply>]]>]]>$"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><example xmlns=\"urn:example:clixon\"><x>mandatory</x>$LIST</example></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique>uk</non-unique></error-info></rpc-error></rpc-reply>]]>]]>$"
 
 new "netconf choice ok"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><example xmlns=\"urn:example:clixon\"><x>42</x><a1>x</a1><a21>x</a21><a22>x</a22></example></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><x xmlns=\"urn:example:clixon\">42</x><y xmlns=\"urn:example:clixon\">42</y><a1 xmlns=\"urn:example:clixon\">x</a1><a21 xmlns=\"urn:example:clixon\">x</a21><a22 xmlns=\"urn:example:clixon\">x</a22></rpc-reply>]]>]]>$"

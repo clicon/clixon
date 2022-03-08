@@ -1275,7 +1275,7 @@ netconf_malformed_message_xml(cxobj **xret,
  *   "unique" constraint is invalidated.
  * @param[out]  xret   Error XML tree. Free with xml_free after use
  * @param[in]   x      List element containing duplicate
- * @param[in]   cvk    List of comonents in x that are non-unique
+ * @param[in]   cvk    List of components in x that are non-unique
  * @see RFC7950 Sec 15.1
  */
 int
@@ -1321,13 +1321,9 @@ netconf_data_not_unique_xml(cxobj **xret,
 	    goto done;
 	}
 	while ((cvi = cvec_each(cvk, cvi)) != NULL){
-	    if ((xi = xml_find(x, cv_string_get(cvi))) == NULL)
-		continue; /* ignore, shouldnt happen */
-	    clicon_xml2cbuf(cb, xi, 0, 0, -1);	
 	    if (clixon_xml_parse_va(YB_NONE, NULL, &xinfo, NULL,
-				    "<non-unique>%s</non-unique>", cbuf_get(cb)) < 0)
+				    "<non-unique>%s</non-unique>", cv_string_get(cvi)) < 0)
 		goto done;
-	    cbuf_reset(cb);
 	}
     }
     retval = 0;

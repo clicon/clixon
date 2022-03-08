@@ -41,10 +41,20 @@ Expected: May 2022
 
 Users may have to change how they access the system
 
+* Netconf data-not-unique info changed to return schema nodes instead of XML for RFC7950 compliance
 * CLI reconnects to backend if backend restarts with a warning
   * Note that edits to the candidate database or locks will be lost
   * To force the CLI to exit if backend restarts, undef `PROTO_RESTART_RECONNECT`
   * This is an effect of the fix of [Broken pipe error seen in client (cli) when backend restarts and CLICON_SOCK is recreated](https://github.com/clicon/clixon/issues/312), the CLI behavior on backend restart is changed.
+
+### Minor features
+
+* YANG unique: added single descendant node ids as special case
+  * This means that two variants are supported:
+    * unique "a b c", ie multiple direct chidlren
+    * unique "a/b/c", ie single descendants
+  * RFC 7950 Sec 7.8.3 is somewhat unclear
+  * The combination is not supported
 
 ### Corrected Bugs
 

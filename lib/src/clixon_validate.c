@@ -710,6 +710,67 @@ check_mandatory(cxobj     *xt,
  * @retval     0     OK, entry is unique
  * @retval    -1     Duplicate detected
  * @note This is currently quadratic complexity. It could be improved by inserting new element sorted and binary search.
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (cbret set)
+ * @retval    -1     Error
+ */
+static int
+unique_search_one(cxobj  *x,
+		  char   *xpath,
+		  char ***svec,
+		  size_t *slen)
+{
+    int     retval = -1;
+    cxobj **xvec = NULL;
+    size_t  xveclen;
+    int     i;
+    int     s;
+    cxobj  *xi;
+    char   *bi;
+
+    /* Collect tuples */
+    if (xpath_vec(x, NULL, "%s", &xvec, &xveclen, xpath) < 0) 
+	goto done;	
+    for (i=0; i<xveclen; i++){
+	xi = xvec[i];
+	if ((bi = xml_body(xi)) == NULL)
+	    break;
+	/* Check if bi is duplicate? 
+	 * XXX: sort svec?
+	 */
+	for (s=0; s<(*slen); s++){
+	    if (strcmp(bi, (*svec)[s]) == 0){
+		goto fail;
+	    }
+	}
+	(*slen) ++;
+	if (((*svec) = realloc((*svec), (*slen)*sizeof(char*))) == NULL){
+	    clicon_err(OE_UNIX, errno, "realloc");
+	    goto done;
+	}
+	(*svec)[(*slen)-1] = bi;
+    } /* i search results */
+    retval = 1;
+ done:
+    if (xvec)
+	free(xvec);    
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! New element last in list, check if already exists if sp return -1
+ * @param[in]  vec   Vector of existing entries (new is last)
+ * @param[in]  i1    The new entry is placed at vec[i1]
+ * @param[in]  vlen  Lenght of entry
+ * @param[in]  sorted Sorted by system, ie sorted by key, otherwise no assumption
+ * @retval     0     OK, entry is unique
+ * @retval    -1     Duplicate detected
+ * @note This is currently quadratic complexity. It could be improved by inserting new element sorted and binary search.
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (cbret set)
+ * @retval    -1     Error
  */
 static int
 check_insert_duplicate(char **vec,
@@ -750,32 +811,40 @@ check_insert_duplicate(char **vec,
 
 /*! Given a list with unique constraint, detect duplicates
  * @param[in]  x     The first element in the list (on return the last)
- * @param[in]  xt    The parent of x
+ * @param[in]  xt    The parent of x (a list)
  * @param[in]  y     Its yang spec (Y_LIST)
- * @param[in]  yu    A yang unique spec (Y_UNIQUE) for unique keyword or (Y_LIST) for list keys
+ * @param[in]  yu    A yang unique (Y_UNIQUE) for unique schema node ids or (Y_LIST) for list keys
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error
- * @note It would be possible to cache the vector built below
+ * Discussion: the RFC 7950 Sec 7.8.3: "constraints on valid list entries"
+ * The arguments are "descendant schema node identifiers". A direct interpretation is that
+ * this is for "direct" descendants, but it does not rule out transient descendants.
+ * The implementation supports two variants:
+ * 1) list of direct descendants, eg "a b"
+ * 2) single transient schema node identifier, eg "a/b"
+ * The problem with combining (1) and (2) is that (2) results in a potential set of results, what
+ * would unique "a/b c/d" mean if both a/b and c/d returns a set?
+ * For (1):
  * All key leafs MUST be present for all list entries.
  * The combined values of all the leafs specified in the key are used to
  * uniquely identify a list entry.  All key leafs MUST be given values
  * when a list entry is created.
  */
 static int
-check_unique_list(cxobj     *x, 
-		  cxobj     *xt, 
-		  yang_stmt *y,
-		  yang_stmt *yu,
-		  cxobj    **xret)
+check_unique_list_mult(cxobj     *x, 
+		       cxobj     *xt, 
+		       yang_stmt *y,
+		       yang_stmt *yu,
+		       cvec      *cvk,
+		       cxobj    **xret)
 {
     int       retval = -1;
-    cvec      *cvk; /* unique vector */
     cg_var    *cvi; /* unique node name */
     cxobj     *xi;
     char     **vec = NULL; /* 2xmatrix */
-    int        vlen;
+    int        clen;
     int        i;
     int        v;
     char      *bi;
@@ -789,11 +858,11 @@ check_unique_list(cxobj     *x,
 	      yang_find(y, Y_ORDERED_BY, "user") == NULL);
     cvk = yang_cvec_get(yu);
     /* nr of unique elements to check */
-    if ((vlen = cvec_len(cvk)) == 0){ 
+    if ((clen = cvec_len(cvk)) == 0){ 
 	/* No keys: no checks necessary */
 	goto ok;
     }
-    if ((vec = calloc(vlen*xml_child_nr(xt), sizeof(char*))) == NULL){
+    if ((vec = calloc(clen*xml_child_nr(xt), sizeof(char*))) == NULL){
 	clicon_err(OE_UNIX, errno, "calloc");
 	goto done;
     }
@@ -807,15 +876,15 @@ check_unique_list(cxobj     *x,
 	while ((cvi = cvec_each(cvk, cvi)) != NULL){
 	    /* RFC7950: Sec 7.8.3.1: entries that do not have value for all
 	     * referenced leafs are not taken into account */
-	    if ((xi = xml_find(x, cv_string_get(cvi))) ==NULL)
+	    if ((xi = xml_find(x, cv_string_get(cvi))) == NULL)
 		break;
 	    if ((bi = xml_body(xi)) == NULL)
 		break;
-	    vec[i*vlen + v++] = bi;
+	    vec[i*clen + v++] = bi;
 	}
 	if (cvi==NULL){
 	    /* Last element (i) is newly inserted, see if it is already there */
-	    if (check_insert_duplicate(vec, i, vlen, sorted) < 0){
+	    if (check_insert_duplicate(vec, i, clen, sorted) < 0){
 		if (xret && netconf_data_not_unique_xml(xret, x, cvk) < 0)
 		    goto done;
 		goto fail;
@@ -834,6 +903,84 @@ check_unique_list(cxobj     *x,
  fail:
     retval = 0;
     goto done;
+}
+
+static int
+check_unique_list_deep(cxobj     *x, 
+		       cxobj     *xt, 
+		       yang_stmt *y,
+		       cvec      *cvk,
+		       cxobj    **xret)
+{
+    int       retval = -1;
+    cg_var    *cvi; /* unique node name */
+    char     **svec = NULL; /* vector of search results */
+    size_t     slen = 0; 
+    int        ret;
+
+    do {
+	cvi = NULL;
+	while ((cvi = cvec_each(cvk, cvi)) != NULL){
+	    /* Collect search results from one */
+	    if ((ret = unique_search_one(x, cv_string_get(cvi), &svec, &slen)) < 0)
+		goto done;
+	    if (ret == 0){
+		if (xret && netconf_data_not_unique_xml(xret, x, cvk) < 0)
+		    goto done;
+		goto fail;
+	    }
+	} /* cvi: unique arguments */
+    	x = xml_child_each(xt, x, CX_ELMNT);
+    } while (x && y == xml_spec(x));  /* stop if list ends, others may follow */
+    // ok:
+    /* It would be possible to cache vec here as an optimization */
+    retval = 1;
+ done:
+    if (svec)
+	free(svec);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Given a list with unique constraint, detect duplicates
+ * @param[in]  x     The first element in the list (on return the last)
+ * @param[in]  xt    The parent of x (a list)
+ * @param[in]  y     Its yang spec (Y_LIST)
+ * @param[in]  yu    A yang unique (Y_UNIQUE) for unique schema node ids or (Y_LIST) for list keys
+ * @param[out] xret  Error XML tree. Free with xml_free after use
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (cbret set)
+ * @retval    -1     Error
+ * Discussion: the RFC 7950 Sec 7.8.3: "constraints on valid list entries"
+ * The arguments are "descendant schema node identifiers". A direct interpretation is that
+ * this is for "direct" descendants, but it does not rule out transient descendants.
+ * The implementation supports two variants:
+ * 1) list of direct descendants, eg "a b"
+ * 2) single transient schema node identifier, eg "a/b"
+ * The problem with combining (1) and (2) is that (2) results in a potential set of results, what
+ * would unique "a/b c/d" mean if both a/b and c/d returns a set?
+ * For (1):
+ * All key leafs MUST be present for all list entries.
+ * The combined values of all the leafs specified in the key are used to
+ * uniquely identify a list entry.  All key leafs MUST be given values
+ * when a list entry is created.
+ */
+static int
+check_unique_list(cxobj     *x, 
+		  cxobj     *xt, 
+		  yang_stmt *y,
+		  yang_stmt *yu,
+		  cxobj    **xret)
+{
+    cvec *cvk;
+
+    cvk = yang_cvec_get(yu);
+    if (cvec_len(cvk) != 1) /* case 1: set of direct descendants */
+	return check_unique_list_mult(x, xt, y, yu, cvk, xret);
+    else /* case 2: single deep schema node */
+	return check_unique_list_deep(x, xt, y, cvk, xret);
 }
 
 /*! Given a list, check if any min/max-elemants constraints apply
