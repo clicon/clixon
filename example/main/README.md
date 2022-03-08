@@ -47,6 +47,12 @@ Before you start,
     make && sudo make install
 ```
 
+Ensure standard IETF YANG files needed for the example are in `/usr/local/share/yang`. If elsewhere, use `./configure --with-yang-standard-dir=DIR`. Example to checkout yang models:
+```
+# cd /usr/local/share
+# git clone https://github.com/YangModels/yang
+```
+
 Start backend:
 ```
     sudo clixon_backend -f /usr/local/etc/example.xml -s init

@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [5.6.0](#560) Expected: March 2022
+* [5.6.0](#560) 8 March 2022
 * [5.5.0](#550) 20 January 2022
 * [5.4.0](#540) 30 November 2021
 * [5.3.0](#530) 27 September 2021
@@ -34,16 +34,16 @@
 * [3.3.1](#331) June 7 2017
 
 ## 5.6.0
-Expected: March 2022
+8 March 2022
 
-Clixon 5.6 removed the dependency of libevhtp and libevent2 for native
+Clixon 5.6 removes the dependency of libevhtp and libevent2 for native HTTP/1
 RESTCONF, module-state has been upgraded to RFC8525 and a lot of bugs
 have been fixed, thanks to the community for all feedback.
 
 ### New features
 
-* Yang library upgraded from RFC78795 to [RFC 8525](https://datatracker.ietf.org/doc/html/rfc8525)
-  * See [API changes](API changes on existing protocol/config features) for more info
+* Yang library upgraded from RFC7895 to [RFC 8525](https://datatracker.ietf.org/doc/html/rfc8525)
+  * See [API changes](#API-changes-on-existing-protocol/config-features) for more info
 * RESTCONF Internal HTTP/1 native parser
   * Removed dependency of libevhtp/libevent2
   * Replace configure option `--disable-evhtp` with `--disable-http1` for disabling HTTP/1 (default enabled)
@@ -96,7 +96,7 @@ Users may have to change how they access the system
 
 * Added: [Strict auto completion for CLI argument expansion #163](https://github.com/clicon/clixon/issues/163)
 * Added: [Convert int64, uint64 and decimal64 to string in xml to json #310](https://github.com/clicon/clixon/pull/310)
-* Backend ignore of `SIGPIPE'. This occurs if client quits unexpectedly over the UNIX socket.
+* Backend ignore of `SIGPIPE`. This occurs if client quits unexpectedly over the UNIX socket.
    * This is a timing issue but occurs more frequently in large RESTCONF messages.
 * Added option: `CLICON_LOG_STRING_LIMIT` configure option
   * Limit the length of log and debug messages. Some log messages are dependendent on sizes that can be very large, such as packet lengths. This new option constrains the length of all messgaes. By default no limits.

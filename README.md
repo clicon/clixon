@@ -13,7 +13,7 @@ See [documentation](https://clixon-docs.readthedocs.io), [project page](https://
 Clixon is open-source and dual licensed. Either Apache License, Version 2.0 or GNU
 General Public License Version 2; you choose, see [LICENSE.md](LICENSE.md).
 
-Clixon has a master branch continuously tested with CI, but releases are made ca every second month. Latest 5.5.0 release is from January 2022. Next is planned for March 2022. See [CHANGELOG.md](CHANGELOG.md) release history.
+Clixon has a master branch continuously tested with CI, but releases are made ca every second month. Latest 5.6.0 release is from March 2022. Next is planned for May 2022. See [CHANGELOG.md](CHANGELOG.md) release history.
 
 Clixon interaction is best done posting issues, pull requests, or joining the
 [slack channel](https://clixondev.slack.com).
