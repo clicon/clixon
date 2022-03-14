@@ -1854,9 +1854,6 @@ yang_print_cbuf(cbuf      *cb,
 	    else
 		cprintf(cb, " %s", ys->ys_argument);
 	}
-	if (ys->ys_cv){
-	    cprintf(cb, " %s", cv_string_get(ys->ys_cv));
-	}
 	if (ys->ys_len){
 	    cprintf(cb, " {\n");
 	    yang_print_cbuf(cb, ys, marginal+3);

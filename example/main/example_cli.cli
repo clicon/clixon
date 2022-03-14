@@ -91,6 +91,9 @@ show("Show a particular state of the system"){
     state("Show configuration and state"), cli_auto_show("datamodel", "running", "text", true, true); {
     	    xml("Show configuration and state as XML"), cli_auto_show("datamodel", "running", "xml", true, true);
     }
+    yang("Show yang specs"), show_yang(); {
+        clixon-example("Show clixon-example yang spec"), show_yang("clixon-example");
+    }		   
 }
 
 save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_file("candidate","filename", "xml");{

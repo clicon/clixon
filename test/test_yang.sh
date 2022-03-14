@@ -10,6 +10,8 @@ cfg=$dir/conf_yang.xml
 fyang=$dir/$APPNAME.yang
 fsubmod=$dir/example-types.yang
 fyangerr=$dir/err.yang
+clispec=$dir/clispec
+test -d $clispec || mkdir $clispec
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -17,9 +19,9 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLISPEC_DIR>$clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
-  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_CLI_MODE>example</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
@@ -32,6 +34,9 @@ module $APPNAME{
    prefix ex;
    namespace "urn:example:clixon";
    include example-types;
+    revision 2020-12-01 {
+	description "Added table/parameter/value as the primary data example";
+    }
    extension c-define {
       description "Example from RFC 6020";
       argument "name";
@@ -139,6 +144,24 @@ module $APPNAME{
 }
 EOF
 
+cat <<EOF > $clispec/example.cli
+CLICON_MODE="example";
+CLICON_PROMPT="cli> ";
+
+# Reference generated data model
+set @datamodel, cli_set();
+commit("Commit the changes"), cli_commit();
+quit("Quit"), cli_quit();
+show("Show a particular state of the system"){
+    configuration("Show configuration"), cli_show_config("candidate", "text", "/");
+    version("Show version"), cli_show_version("candidate", "text", "/");
+    xpath("Show configuration") <xpath:string>("XPATH expression") <ns:string>("Namespace"), show_conf_xpath("candidate");
+    yang("Show yang specs"), show_yang(); {
+        example("Show example yang spec"), show_yang("example");
+    }		   
+}
+EOF
+
 new "test params: -f $cfg"
 
 if [ "$BE" -ne 0 ]; then
@@ -154,8 +177,11 @@ fi
 new "wait backend"
 wait_backend
 
-new "cli defined extension"
+new "cli show version"
 expectpart "$($clixon_cli -1f $cfg show version)" 0 "${CLIXON_VERSION}"
+
+new "cli show yang example"
+expectpart "$($clixon_cli -1f $cfg show yang example)" 0 "revision 2020-12-01" "Added table/parameter/value as the primary data example"
 
 new "empty values in leaf-list"
 expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><f><e>a</e></f></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"

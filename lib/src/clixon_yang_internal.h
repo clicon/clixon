@@ -86,6 +86,7 @@ struct yang_stmt{
 					mandatory: boolean true or false
 					require-instance: true or false
 					fraction-digits for fraction-digits
+					revision (uint32)
 					unknown-stmt (optional argument)
 				     */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
