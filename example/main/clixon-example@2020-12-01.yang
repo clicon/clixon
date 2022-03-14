@@ -24,7 +24,7 @@ module clixon-example {
          Note, may change without updating revision, just for testing current master.
          ";
     revision 2020-12-01 {
-	description "Added table/paramater/value as the primary data example";
+	description "Added table/parameter/value as the primary data example";
     }
     revision 2020-03-11 {
 	description "Added container around translation list. Released in Clixon 4.4.0";

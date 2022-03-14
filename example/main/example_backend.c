@@ -1087,12 +1087,14 @@ upgrade_interfaces(clicon_handle h,
 }
 
 /*! Plugin state reset. Add xml or set state in backend machine.
- * Called in each backend plugin. plugin_reset is called after all plugins
- * have been initialized. This give the application a chance to reset
- * system state back to a base state. 
- * This is generally done when a system boots up to
- * make sure the initial system state is well defined. This can be creating
- * default configuration files for various daemons, set interface flags etc.
+ *
+ * Add xml or set state in backend system.
+ * plugin_reset in each backend plugin after all plugins have been initialized. 
+ * This gives the application a chance to reset system state back to a base state. 
+ * This is generally done when a system boots up to make sure the initial system state
+ * is well defined. 
+ * This involves creating default configuration files for various daemons, set interface
+ * flags etc.
  * @param[in] h   Clicon handle
  * @param[in] db  Name of database. Not may be other than "running"
  * In this example, a loopback interface is added
@@ -1142,10 +1144,11 @@ example_reset(clicon_handle h,
 }
 
 /*! Plugin start.
- * @param[in]  h     Clicon handle
  *
- * plugin_start is called once everything has been initialized, right before 
- * the main event loop is entered. 
+ * Called when application is "started", (almost) all initialization is complete 
+ * Backend: daemon is in the background. If daemon privileges are dropped 
+ * this callback is called *before* privileges are dropped.
+ * @param[in]  h     Clicon handle
  */
 int
 example_start(clicon_handle h)

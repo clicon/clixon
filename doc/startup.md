@@ -449,8 +449,11 @@ candidate     +---------------------> CANDIDATE
 ```
 
 ### Invalid XML
+
+```
                    repair     restart
 tmp/startup --------+---------+-----------------------> 
+```
 
 ## Thanks
 Thanks matt smith and dave cornejo for input
