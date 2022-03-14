@@ -1,0 +1,62 @@
+#!/usr/bin/env expect -f
+# Tests of paginated state scrolling using expect. Simply that --More-- is shown and
+# that first two pages scroll OK. More tests could be done.
+# Arguments:
+# 0: clixon configuration file
+# 1: xpath
+# 2: line1 should appear on first page
+# 3: line2 should appear on second page (and not on first)
+
+set timeout 1
+#log_user 0
+
+set stty_init "rows 20 cols 128"
+
+send_user "\nTest State paginate cli scrolling\n"
+
+set cfg [lindex $argv 0]
+set xpath [lindex $argv 1]
+set line1 [lindex $argv 2]
+set line2 [lindex $argv 3]
+
+spawn clixon_cli -f $cfg
+
+send "show pagination xpath $xpath cli\n"
+
+expect {
+  timeout { send_user "\n$line1 not received.\n"; exit 1}
+  "$line1" { send_user "\n$line1 OK.\n";}
+}
+
+expect {
+  timeout { send_user "\nmember-id $line2.\n";}
+  "member-id $line2" { send_user "\n$line2 not expected.\n"; exit 1}
+}
+
+expect {
+  timeout { send_user "\nMore 1 not received.\n"; exit 1}
+    -ex  "--More--" {send_user "\nMore 1 OK.\n"}
+}
+
+send " "
+
+expect {
+  timeout { send_user "\n$line2 not received.\n"; exit 1}
+  "$line2" { send_user "\n$line2 OK.\n"}
+}
+
+expect {
+  timeout { send_user "\nMore 2 not received.\n"; exit 1}
+    -ex  "--More--" { send_user "\nMore 2 OK.\n"}
+}
+
+send "q"
+
+expect {
+  -ex  "--More--" { send_user "\nMore not expected.\n"; exit 1}
+}
+
+send "\d"
+close
+
+send_user "\nTest OK\n"

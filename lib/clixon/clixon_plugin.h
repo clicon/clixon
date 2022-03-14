@@ -188,6 +188,14 @@ typedef int (plgextension_t)(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 typedef int (plgauth_t)(clicon_handle h, void *req, clixon_auth_type_t auth_type, char **authp);
 
 /*! Reset system status 
+ *
+ * Add xml or set state in backend system.
+ * plugin_reset in each backend plugin after all plugins have been initialized. 
+ * This gives the application a chance to reset system state back to a base state. 
+ * This is generally done when a system boots up to make sure the initial system state
+ * is well defined. 
+ * This involves creating default configuration files for various daemons, set interface
+ * flags etc.
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database name (eg "running")
  * @retval    -1   Fatal error

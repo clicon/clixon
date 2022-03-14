@@ -58,7 +58,7 @@ cat <<EOF > $fexample
          }
 
          leaf email-address {
-           type inet:email-address;
+           type string;
            mandatory true;
            description
              "The member's email address.";
@@ -119,6 +119,7 @@ cat <<EOF > $fexample
          leaf-list following {
            type leafref {
              path "/members/member/member-id";
+	     require-instance false;
            }
            description
              "Other members this members is following.";

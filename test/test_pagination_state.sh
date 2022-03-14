@@ -158,18 +158,17 @@ testrun_stop
 
 #----------------------------
 
-echo "...skipped: Must run interactively"
-if false; then
-testrun_start "/es:audit-logs/es:audit-log"
+# Only if expect installed
+if [ -n "$(type expect 2> /dev/null)" ]; then
 
-# XXX How to run without using a terminal? Maybe use expect/unbuffer
-new "cli show"
-$clixon_cli -1 -f $cfg -l o show pagination xpath $xpath cli
-#expectpart "$(echo -n | unbuffer -p $clixon_cli -1 -f $cfg -l o show pagination xpath $xpath cli)" 0 foo
+    testrun_start "/es:audit-logs/es:audit-log"
+    
+    newtest "CLI scroll test using expect"
+    expect ./test_pagination_expect.exp "$cfg" "$xpath" bob3 bob4
 
-testrun_stop
+    testrun_stop
 
-fi # interactive
+fi # expect
 
 unset validatexml
 unset perfnr

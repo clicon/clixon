@@ -6,10 +6,12 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-echo "...skipped: Must run interactvely"
-if [ "$s" = $0 ]; then exit 0; else return 0; fi
-    
 APPNAME=example
+
+if [ -z "$(type expect 2> /dev/null)" ]; then
+    echo "...skipped: Expect not installed"
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
 
 cfg=$dir/conf.xml
 fexample=$dir/example-social.yang
@@ -29,6 +31,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
+  <CLICON_YANG_DIR>${YANG_STANDARD_DIR}/ietf/RFC</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
@@ -147,9 +150,11 @@ fi
 new "wait backend"
 wait_backend
 
-# XXX How to run without using a terminal?
-new "cli show"
-$clixon_cli -f $cfg -l o -1 show pagination xpath /es:members/es:member[es:member-id=\'bob\']/es:favorites/es:uint64-numbers cli
+xpath="/es:members/es:member[es:member-id=\'bob\']/es:favorites/es:uint64-numbers"
+new "cli show pagination config using expect"
+expect ./test_pagination_expect.exp "$cfg" "$xpath" "uint64-numbers 18" "uint64-numbers 19" 
+
+#$clixon_cli -f $cfg -l o -1 show pagination xpath /es:members/es:member[es:member-id=\'bob\']/es:favorites/es:uint64-numbers cli
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -164,6 +169,7 @@ fi
 
 unset validatexml
 unset perfnr
+unset xpath
 
 rm -rf $dir
 
