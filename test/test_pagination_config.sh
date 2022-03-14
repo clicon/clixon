@@ -152,9 +152,10 @@ wait_backend
 
 xpath="/es:members/es:member[es:member-id=\'bob\']/es:favorites/es:uint64-numbers"
 new "cli show pagination config using expect"
-expect ./test_pagination_expect.exp "$cfg" "$xpath" "uint64-numbers 18" "uint64-numbers 19" 
-
-#$clixon_cli -f $cfg -l o -1 show pagination xpath /es:members/es:member[es:member-id=\'bob\']/es:favorites/es:uint64-numbers cli
+expect ./test_pagination_expect.exp "$cfg" "$xpath" "uint64-numbers 18" "uint64-numbers 19"
+if [ $? -ne 0 ]; then
+    err1 "Failed: CLI show paginate config scroll using expect"
+fi
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

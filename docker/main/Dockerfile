@@ -85,6 +85,7 @@ RUN install example.xml /clixon/build/etc/clixon.xml
 WORKDIR /clixon/clixon/test
 RUN install -d /clixon/build/bin/test
 RUN install *.sh /clixon/build/bin/test
+RUN install *.exp /clixon/build/bin/test
 
 # Copy startscript
 WORKDIR /clixon
@@ -101,7 +102,7 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 RUN apk add --update flex bison fcgi-dev
 
 # Test-specific (for test scripts)
-RUN apk add --update sudo curl procps grep make bash # iproute2 # contains ip
+RUN apk add --update sudo curl procps grep make bash expect
 
 # Create clicon user and group
 RUN adduser -D -H clicon

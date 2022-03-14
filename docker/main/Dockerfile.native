@@ -108,6 +108,7 @@ RUN install example.xml /clixon/build/etc/clixon.xml
 WORKDIR /clixon/clixon/test
 RUN install -d /clixon/build/bin/test
 RUN install *.sh /clixon/build/bin/test
+RUN install *.exp /clixon/build/bin/test
 
 # Copy startscript
 WORKDIR /clixon
@@ -132,7 +133,7 @@ RUN apk add --update openssl
 RUN apk add --update nghttp2
 
 # Test-specific (for test scripts)
-RUN apk add --update sudo curl procps grep make bash # iproute2 # contains ip - but CAP_SYS_ADMIN isssue
+RUN apk add --update sudo curl procps grep make bash expect 
 
 # Expose https port for restconf
 EXPOSE 80/tcp

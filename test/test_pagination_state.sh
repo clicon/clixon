@@ -163,8 +163,11 @@ if [ -n "$(type expect 2> /dev/null)" ]; then
 
     testrun_start "/es:audit-logs/es:audit-log"
     
-    newtest "CLI scroll test using expect"
+    new "CLI scroll test using expect"
     expect ./test_pagination_expect.exp "$cfg" "$xpath" bob3 bob4
+    if [ $? -ne 0 ]; then
+	err1 "Failed: CLI show paginate state scroll using expect"
+    fi
 
     testrun_stop
 

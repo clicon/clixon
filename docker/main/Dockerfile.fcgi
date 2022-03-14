@@ -96,6 +96,7 @@ RUN install example.xml /clixon/build/etc/clixon.xml
 WORKDIR /clixon/clixon/test
 RUN install -d /clixon/build/bin/test
 RUN install *.sh /clixon/build/bin/test
+RUN install *.exp /clixon/build/bin/test
 
 # Copy startscript
 WORKDIR /clixon
@@ -117,7 +118,7 @@ RUN adduser -D -H -G www-data www-data
 RUN apk add --update nginx
 
 # Test-specific (for test scripts)
-RUN apk add --update sudo curl procps grep make bash # iproute2 # contains ip
+RUN apk add --update sudo curl procps grep make bash expect
 
 # Expose nginx port for restconf
 EXPOSE 80
