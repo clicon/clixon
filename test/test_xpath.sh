@@ -10,6 +10,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 xml=$dir/xml.xml
 xml2=$dir/xml2.xml
 xml3=$dir/xml3.xml
+xml4=$dir/xml4.xml
 
 cat <<EOF > $xml
 <aaa>
@@ -74,6 +75,26 @@ cat <<EOF > $xml3
       <ccc>foo</ccc>
 </bbb>
 EOF
+
+# Asterisk
+cat <<EOF > $xml4
+<root>
+  <x>
+    <a>111</a>
+  </x>
+  <y>
+    <a>222</a>
+  </y>
+  <z>
+    <b>111</b>
+  </z>
+  <w>
+    <a>111</a>
+  </w>
+</root>
+EOF
+
+
 
 new "xpath /"
 expecteof "$clixon_util_xpath -f $xml -p /" 0 "" "^nodeset:0:<aaa><bbb x=\"hello\"><ccc>42</ccc></bbb><bbb x=\"bye\"><ccc>99</ccc></bbb><ddd><ccc>22</ccc></ddd></aaa>$"
@@ -233,6 +254,15 @@ expectpart "$($clixon_util_xpath -f $xml3 -l o -p "dontexist()")" 255 "Unknown x
 
 new "xpath enum-value nyi"
 expectpart "$($clixon_util_xpath -f $xml3 -l o -p "enum-value()")" 255 "XPATH function \"enum-value\" is not implemented"
+
+new "xpath /root/*/a"
+expecteof "$clixon_util_xpath -f $xml4 -p /root/*/a" 0 "" "nodeset:0:<a>111</a>1:<a>222</a>2:<a>111</a>"
+
+new "xpath /root/*/b"
+expecteof "$clixon_util_xpath -f $xml4 -p /root/*/b" 0 "" "nodeset:0:<b>111</b>"
+
+new "xpath /root/*/*[.='111']"
+expecteof "$clixon_util_xpath -f $xml4 -p /root/*/*[.='111']" 0 "" "nodeset:0:<a>111</a>1:<b>111</b>2:<a>111</a>"
 
 rm -rf $dir
 

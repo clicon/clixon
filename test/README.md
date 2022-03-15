@@ -134,3 +134,7 @@ If you do not have them, generate self-signed certs, eg as follows:
 ```
 
 There are also client-cert tests, eg `test_ssl_certs.sh`
+
+## Known issues
+
+[Workaround: Unicode double-quote in iana-if-type@2022-03-07.yang](https://github.com/clicon/clixon/issues/315)

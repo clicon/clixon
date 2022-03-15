@@ -39,6 +39,7 @@ Expected: May 2022
 
 ### Corrected Bugs
 
+* Fixed: [Xpath API do not support filter data by wildcard](https://github.com/clicon/clixon/issues/313)
 * Fixed: SEGV in cli show yang
 
 ## 5.6.0

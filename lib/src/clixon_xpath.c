@@ -962,6 +962,9 @@ traverse_canonical(xpath_tree *xs,
 
     switch (xs->xs_type){
     case XP_NODE: /* s0 is namespace prefix, s1 is name */
+	/* Nodetest = * needs no prefix */
+	if (xs->xs_s1 && strcmp(xs->xs_s1, "*") == 0)
+	    break;
 	prefix0 = xs->xs_s0;
 	if ((namespace = xml_nsctx_get(nsc0, prefix0)) == NULL){
 	    if ((cb = cbuf_new()) == NULL){
