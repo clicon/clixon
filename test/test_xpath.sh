@@ -94,8 +94,6 @@ cat <<EOF > $xml4
 </root>
 EOF
 
-
-
 new "xpath /"
 expecteof "$clixon_util_xpath -f $xml -p /" 0 "" "^nodeset:0:<aaa><bbb x=\"hello\"><ccc>42</ccc></bbb><bbb x=\"bye\"><ccc>99</ccc></bbb><ddd><ccc>22</ccc></ddd></aaa>$"
 

@@ -123,7 +123,7 @@
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_xpath_function.h"
-
+#include "clixon_xpath_eval.h"
 #include "clixon_xpath_parse.h"
 
 /* Best debugging is to enable PARSE_DEBUG below and add -d to the LEX compile statement in the Makefile
@@ -178,7 +178,7 @@ xpath_parse_exit(clixon_xpath_yacc *xpy)
  * @param[in]  i0     step-> axis_type 
  * @param[in]  numstr original string xs_double: numeric value 
  * @param[in]  s0     String 0 set if XP_PRIME_STR, XP_PRIME_FN, XP_NODE[_FN] PATHEXPRE prefix
- * @param[in]  s1     String 1 set if XP_NODE NAME
+ * @param[in]  s1     String 1 set if XP_NODE NAME (or "*")
  * @param[in]  c0     Child 0
  * @param[in]  c1     Child 1
  */
@@ -441,7 +441,7 @@ axisspec    : AXISNAME { _PARSE_DEBUG1("axisspec-> AXISNAME(%d) ::", $1); $$=$1;
             |          { _PARSE_DEBUG("axisspec-> "); $$=A_CHILD;} 
            ;
 
-nodetest    : '*'              { $$=xp_new(XP_NODE,A_NAN,NULL, NULL, NULL, NULL, NULL); _PARSE_DEBUG("nodetest-> *"); } 
+nodetest    : ADDOP              { $$=xp_new(XP_NODE,A_NAN,NULL, NULL, strdup(clicon_int2str(xpopmap,$1)), NULL, NULL); _PARSE_DEBUG("nodetest-> *"); } 
             | NAME             { $$=xp_new(XP_NODE,A_NAN,NULL, NULL, $1, NULL, NULL); _PARSE_DEBUG1("nodetest-> name(%s)",$1); } 
             | NAME ':' NAME    { $$=xp_new(XP_NODE,A_NAN,NULL, $1, $3, NULL, NULL);_PARSE_DEBUG2("nodetest-> name(%s) : name(%s)", $1, $3); } 
             | NAME ':' '*'     { $$=xp_new(XP_NODE,A_NAN,NULL, $1, NULL, NULL, NULL);_PARSE_DEBUG1("nodetest-> name(%s) : *", $1); } 

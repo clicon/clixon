@@ -385,5 +385,7 @@ main(int    argc,
 	xml_free(x0);
     if (fp)
 	fclose(fp);
+    if (h)
+	clicon_handle_exit(h);
     return retval;
 }
