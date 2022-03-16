@@ -151,11 +151,12 @@ clixon_client_lock(int         sock,
 		   const int   lock,
 		   const char *db)
 {
-    int                retval = -1;
-    cxobj             *xret = NULL;
-    cxobj             *xd;
-    cbuf              *msg = NULL;
-    cbuf              *msgret = NULL;
+    int    retval = -1;
+    cxobj *xret = NULL;
+    cxobj *xd;
+    cbuf  *msg = NULL;
+    cbuf  *msgret = NULL;
+    int    eof = 0;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if (db == NULL){
@@ -175,8 +176,13 @@ clixon_client_lock(int         sock,
 	    NETCONF_BASE_NAMESPACE,
 	    NETCONF_MESSAGE_ID_ATTR,
 	    lock?"":"un", db, lock?"":"un");
-    if (clicon_rpc1(sock, msg, msgret) < 0)
+    if (clicon_rpc1(sock, msg, msgret, &eof) < 0)
 	goto done;
+    if (eof){
+	close(sock);
+	clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
+	goto done;
+    }
     if (clixon_xml_parse_string(cbuf_get(msgret), YB_NONE, NULL, &xret, NULL) < 0)
 	goto done;
     if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL){
@@ -403,13 +409,14 @@ clixon_client_get_xdata(int         sock,
 			const char *xpath,
 			cxobj     **xdata)
 {
-    int                retval = -1;
-    cxobj             *xret = NULL;
-    cxobj             *xd;
-    cbuf              *msg = NULL;
-    cbuf              *msgret = NULL;
-    const char        *db = "running";
-    cvec              *nsc = NULL; 
+    int          retval = -1;
+    cxobj       *xret = NULL;
+    cxobj       *xd;
+    cbuf        *msg = NULL;
+    cbuf        *msgret = NULL;
+    const char  *db = "running";
+    cvec        *nsc = NULL; 
+    int          eof = 0;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((msg = cbuf_new()) == NULL){
@@ -437,8 +444,13 @@ clixon_client_get_xdata(int         sock,
 	cprintf(msg, "/>");
     }
     cprintf(msg, "</get-config></rpc>");
-    if (clicon_rpc1(sock, msg, msgret) < 0)
+    if (clicon_rpc1(sock, msg, msgret, &eof) < 0)
 	goto done;
+    if (eof){
+	close(sock);
+	clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
+	goto done;
+    }
     if (clixon_xml_parse_string(cbuf_get(msgret), YB_NONE, NULL, &xret, NULL) < 0)
 	goto done;
     if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL){

@@ -602,6 +602,23 @@ netconf_terminate(clicon_handle h)
     return 0;
 }
 
+
+/*! Setup signal handlers
+ */
+static int
+netconf_signal_init (clicon_handle h)
+{
+    int retval = -1;
+    
+    if (set_signal(SIGPIPE, SIG_IGN, NULL) < 0){
+	clicon_err(OE_UNIX, errno, "Setting DIGPIPE signal");
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 static int
 timeout_fn(int s,
 	   void *arg)
@@ -804,6 +821,10 @@ main(int    argc,
     if (netconf_module_features(h) < 0)
 	goto done;
 
+    /* Setup signal handlers, int particular PIPE that occurs if backend closes / restarts */
+    if (netconf_signal_init(h) < 0)
+	goto done;
+    
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)
 	goto done;

@@ -606,8 +606,11 @@ clicon_parse(clicon_handle  h,
 	    cli_output_reset();
 	    if (!cligen_exiting(ch)) {	
 		clicon_err_reset();
-		if ((ret = cligen_eval(ch, match_obj, cvv, callbacks)) < 0) 
+		if ((ret = cligen_eval(ch, match_obj, cvv, callbacks)) < 0) {
 		    cli_handler_err(stdout);
+		    if (clicon_suberrno == ESHUTDOWN)
+			goto done;
+		}
 	    }
 	    else
 		ret = 0;

@@ -127,6 +127,41 @@ clicon_rpc_connect(clicon_handle h,
     return retval;
 }
     
+/*! Connect to backend or use cached socket and send RPC
+ * @param[in]  h     Clixonhandle
+ * @param[in]  msg   Encoded message
+ * @param[out] xret  Returned data as netconf xml tree.
+ * @param[out] eof   Set if eof encountered
+ */
+static int
+clicon_rpc_msg_once(clicon_handle      h,
+		    struct clicon_msg *msg, 
+		    char             **retdata,
+		    int               *eof,
+		    int               *sp)
+{
+    int retval = -1;
+    int s;
+    
+    if ((s = clicon_client_socket_get(h)) < 0){
+	if (clicon_rpc_connect(h, &s) < 0)
+	    goto done;
+	clicon_client_socket_set(h, s);
+    }
+    if (clicon_rpc(s, msg, retdata, eof) < 0){
+	/* 2. check socket shutdown AFTER rpc */
+	close(s);
+	s = -1;
+	clicon_client_socket_set(h, -1);
+	goto done;
+    }
+    if (sp)
+	*sp = s;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Send internal netconf rpc from client to backend
  * @param[in]    h      CLICON handle
  * @param[in]    msg    Encoded message. Deallocate with free
@@ -145,20 +180,37 @@ clicon_rpc_msg(clicon_handle      h,
     char   *retdata = NULL;
     cxobj  *xret = NULL;
     int     s = -1;
+    int     eof = 0;
 
 #ifdef RPC_USERNAME_ASSERT
     assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
 #endif
     clicon_debug(1, "%s request:%s", __FUNCTION__, msg->op_body);
     /* Create a socket and connect to it, either UNIX, IPv4 or IPv6 per config options */
-    if ((s = clicon_client_socket_get(h)) < 0){
-	if (clicon_rpc_connect(h, &s) < 0)
-	    goto done;
-	clicon_client_socket_set(h, s);
-    }
-    if (clicon_rpc(s, msg, &retdata) < 0)
+    if (clicon_rpc_msg_once(h, msg, &retdata, &eof, NULL) < 0)
 	goto done;
-
+    if (eof){
+	/* 2. check socket shutdown AFTER rpc */
+	close(s);
+	s = -1;
+	clicon_client_socket_set(h, -1);
+#ifdef PROTO_RESTART_RECONNECT
+	if (clicon_rpc_msg_once(h, msg, &retdata, &eof, NULL) < 0)
+	    goto done;
+	if (eof){
+	    close(s);
+	    s = -1;
+	    clicon_client_socket_set(h, -1);
+	    clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
+	    goto done;
+	}
+	/* To disable this restart, unset PROTO_RESTART_RECONNECT */
+	clicon_log(LOG_WARNING, "The backend was probably restarted and the client has reconnected to the backend. Any locks or candidate edits are lost.");
+#else
+	clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
+	goto done;
+#endif
+    }
     clicon_debug(1, "%s retdata:%s", __FUNCTION__, retdata);
 
     if (retdata){
@@ -174,10 +226,6 @@ clicon_rpc_msg(clicon_handle      h,
     }
     retval = 0;
  done:
-    if (retval < 0 && s >= 0){
-	close(s);
-	clicon_client_socket_set(h, -1);
-    }
     if (retdata)
 	free(retdata);
     if (xret)
@@ -203,6 +251,7 @@ clicon_rpc_msg_persistent(clicon_handle      h,
     char   *retdata = NULL;
     cxobj  *xret = NULL;
     int     s = -1;
+    int     eof = 0;
 
     if (sock0 == NULL){
 	clicon_err(OE_NETCONF, EINVAL, "Missing socket pointer");
@@ -213,11 +262,16 @@ clicon_rpc_msg_persistent(clicon_handle      h,
 #endif
     clicon_debug(1, "%s request:%s", __FUNCTION__, msg->op_body);
     /* Create a socket and connect to it, either UNIX, IPv4 or IPv6 per config options */
-    if (clicon_rpc_connect(h, &s) < 0)
+    if (clicon_rpc_msg_once(h, msg, &retdata, &eof, &s) < 0)
 	goto done;
-    if (clicon_rpc(s, msg, &retdata) < 0)
+    if (eof){
+	/* 2. check socket shutdown AFTER rpc */
+	close(s);
+	s = -1;
+	clicon_client_socket_set(h, -1);
+	clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
 	goto done;
-
+    }
     clicon_debug(1, "%s retdata:%s", __FUNCTION__, retdata);
 
     if (retdata){

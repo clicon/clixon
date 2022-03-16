@@ -37,10 +37,26 @@
 ## 5.7.0
 Expected: May 2022
 
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* CLI reconnects to backend if backend restarts with a warning
+  * Note that edits to the candidate database or locks will be lost
+  * To force the CLI to exit if backend restarts, undef `PROTO_RESTART_RECONNECT`
+  * This is an effect of the fix of [Broken pipe error seen in client (cli) when backend restarts and CLICON_SOCK is recreated](https://github.com/clicon/clixon/issues/312), the CLI behavior on backend restart is changed.
+
 ### Corrected Bugs
 
+* Fixed: [Broken pipe error seen in client (cli) when backend restarts and CLICON_SOCK is recreated](https://github.com/clicon/clixon/issues/312)
 * Fixed: [Xpath API do not support filter data by wildcard](https://github.com/clicon/clixon/issues/313)
 * Fixed: SEGV in cli show yang
+
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Added `eof` parameter to `clicon_rpc()` and `clicon_rpc1()` and error handling modified
 
 ## 5.6.0
 8 March 2022

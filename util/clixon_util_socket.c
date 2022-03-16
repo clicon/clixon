@@ -100,6 +100,7 @@ main(int    argc,
     clicon_handle      h;
     int                dbg = 0;
     int                s;
+    int                eof = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -177,7 +178,7 @@ main(int    argc,
     else
 	if (clicon_rpc_connect_inet(h, sockpath, 4535, &s) < 0)
 	    goto done;
-    if (clicon_rpc(s, msg, &retdata) < 0)
+    if (clicon_rpc(s, msg, &retdata, &eof) < 0)
 	goto done;
     close(s);
     fprintf(stdout, "%s\n", retdata);

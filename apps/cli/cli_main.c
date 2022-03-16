@@ -204,11 +204,23 @@ cli_sig_term(int arg)
 
 /*! Setup signal handlers
  */
-static void
+static int
 cli_signal_init (clicon_handle h)
 {
-	cli_signal_block(h);
-	set_signal(SIGTERM, cli_sig_term, NULL);
+    int retval = -1;
+    
+    cli_signal_block(h);
+    if (set_signal(SIGTERM, cli_sig_term, NULL) < 0){
+	clicon_err(OE_UNIX, errno, "Setting SIGTERM signal");
+	goto done;
+    }
+    if (set_signal(SIGPIPE, SIG_IGN, NULL) < 0){
+	clicon_err(OE_UNIX, errno, "Setting DIGPIPE signal");
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Interactive CLI command loop
@@ -653,7 +665,8 @@ main(int    argc,
 	clicon_log_string_limit_set(nr);
     
     /* Setup signal handlers */
-    cli_signal_init(h);
+    if (cli_signal_init(h) < 0)
+	goto done;
 
     /* Backward compatible mode, do not include keys in cgv-arrays in callbacks.
        Should be 0 but default is 1 since all legacy apps use 1

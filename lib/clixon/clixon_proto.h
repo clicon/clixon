@@ -79,9 +79,9 @@ int clicon_rpc_connect_inet(clicon_handle         h,
 			    uint16_t              port,
 			    int                  *sock0);
 
-int clicon_rpc(int sock, struct clicon_msg *msg, char **xret);
+int clicon_rpc(int sock, struct clicon_msg *msg, char **xret, int *eof);
 
-int clicon_rpc1(int sock, cbuf *msgin, cbuf *msgret);
+int clicon_rpc1(int sock, cbuf *msgin, cbuf *msgret, int *eof);
 
 int clicon_msg_send(int s, struct clicon_msg *msg);
 

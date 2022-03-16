@@ -605,42 +605,40 @@ clicon_rpc_connect_inet(clicon_handle      h,
  *
  * TBD: timeout, interrupt?
  * retval may be -1 and
- * errno set to ENOTCONN which means that socket is now closed probably
+ * errno set to ENOTCONN/ESHUTDOWN which means that socket is now closed probably
  * due to remote peer disconnecting. The caller may have to do something,...
  *
  * @param[in]  sock    Socket / file descriptor
  * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
  * @param[out] xret    Returned data as netconf xml tree.
- * @retval     0       OK
+ * @param[out] eof     Set if eof encountered
+ * @retval     0       OK (check eof)
  * @retval     -1      Error
  * @see clicon_rpc1 using plain NETCONF XML
  */
 int
 clicon_rpc(int                sock,
 	   struct clicon_msg *msg, 
-	   char             **ret)
+	   char             **ret,
+	   int               *eof)
 {
     int                retval = -1;
     struct clicon_msg *reply = NULL;
-    int                eof;
     char              *data = NULL;
 
     if (clicon_msg_send(sock, msg) < 0)
 	goto done;
-    if (clicon_msg_rcv(sock, &reply, &eof) < 0)
+    if (clicon_msg_rcv(sock, &reply, eof) < 0)
 	goto done;
-    if (eof){
-	clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
-	close(sock); /* assume socket */
-	errno = ESHUTDOWN;
-	goto done;
-    }
+    if (*eof)
+	goto ok;
     data = reply->op_body; /* assume string */
     if (ret && data)
 	if ((*ret = strdup(data)) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
 	    goto done;
 	}
+ ok:
     retval = 0;
   done:
     if (reply)
@@ -655,6 +653,7 @@ clicon_rpc(int                sock,
  * @param[in]  sock    Socket / file descriptor
  * @param[in]  msgin   CLICON msg data structure. It has fixed header and variable body.
  * @param[out] msgret  Returned data as netconf xml tree.
+ * @param[out] eof     Set if eof encountered
  * @retval     0       OK
  * @retval     -1      Error
  * @see clicon_rpc using clicon_msg protocol header
@@ -662,22 +661,16 @@ clicon_rpc(int                sock,
 int
 clicon_rpc1(int   sock,
 	    cbuf *msg,
-	    cbuf *msgret) 
+	    cbuf *msgret,
+	    int  *eof)
 {
     int    retval = -1;
-    int    eof;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (clicon_msg_send1(sock, msg) < 0)
 	goto done;
-    if (clicon_msg_rcv1(sock, msgret, &eof) < 0)
+    if (clicon_msg_rcv1(sock, msgret, eof) < 0)
 	goto done;
-    if (eof){
-	clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
-	close(sock);
-	errno = ESHUTDOWN;
-	goto done;
-    }
     retval = 0;
   done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
