@@ -41,6 +41,9 @@ Expected: May 2022
 
 Users may have to change how they access the system
 
+* Netconf: Disabled default announcing of Netconf 1.1, instead only announce 1.0
+  * See [Clixon does not switch to chunked framing after NETCONF 1.1 is negotiated](https://github.com/clicon/clixon/issues/314)
+  * To enable Netconf 1.1, set `NETCONF_1_1_ANNOUNCE`
 * Netconf data-not-unique info changed to return schema nodes instead of XML for RFC7950 compliance
 * CLI reconnects to backend if backend restarts with a warning
   * Note that edits to the candidate database or locks will be lost
