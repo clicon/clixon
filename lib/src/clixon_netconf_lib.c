@@ -1285,7 +1285,6 @@ netconf_data_not_unique_xml(cxobj **xret,
 {
     int     retval = -1;
     cg_var *cvi = NULL; 
-    cxobj  *xi;
     cxobj  *xerr;
     cxobj  *xinfo;
     cbuf   *cb = NULL;
