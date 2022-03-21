@@ -19,7 +19,7 @@ module clixon-config {
       "Clixon configuration file
        ***** BEGIN LICENSE BLOCK *****
        Copyright (C) 2009-2019 Olof Hagsand
-       Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+       Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
        
        This file is part of CLIXON
 
@@ -46,6 +46,29 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2022-03-21 {
+	description
+	    "Added option:
+                    CLICON_NETCONF_BASE_CAPABILITY
+	     Released in Clixon 5.7";
+    }
+    revision 2022-02-11 {
+	description
+	    "Added option:
+                    CLICON_LOG_STRING_LIMIT
+                    CLICON_YANG_LIBRARY
+             Changed default value:
+	            CLICON_MODULE_LIBRARY_RFC7895 to false
+             Removed (previosly marked) obsolete options:
+	            CLICON_RESTCONF_PATH
+	            CLICON_RESTCONF_PRETTY
+                    CLICON_CLI_GENMODEL
+                    CLICON_CLI_GENMODEL_TYPE
+                    CLICON_CLI_GENMODEL_COMPLETION
+                    CLICON_CLI_AUTOCLI_EXCLUDE
+                    CLICON_CLI_MODEL_TREENAME
+             Released in Clixon 5.6";
+    }
     revision 2021-12-05 {
 	description
 	    "Imported
@@ -56,7 +79,7 @@ module clixon-config {
                     CLICON_CLI_GENMODEL (use autocli/enable-autocli instead)
                     CLICON_CLI_GENMODEL_TYPE (use autocli/list-keyword-default and compress rules instead)
                     CLICON_CLI_GENMODEL_COMPLETION (use autocli/completion-default instead)
-                    CLICON_CLI_AUTOCLI_EXCLUDE (use autocli/exclude logic instead)
+                    CLICON_CLI_AUTOCLI_EXCLUDE (use autocli/module-default, rule/enable logic instead)
                     CLICON_CLI_MODEL_TREENAME (use constant AUTOCLI_TREENAME instead)
              Released in Clixon 5.5";
     }
@@ -257,28 +280,6 @@ module clixon-config {
 	    }
 	}
     }
-    typedef cli_genmodel_type{
-	description
-	    "How to generate auto CLI from YANG model, 
-             eg {container c {list a{ key x; leaf x; leaf y;}}";
-	type enumeration{
-	    enum NONE{
-		description "No extra keywords: c a <x> <y>";
-	    }
-	    enum VARS{
-		description "Keywords on non-key variables: c a <x> y <y>";
-	    }
-	    enum ALL{
-		description "Keywords on all variables: c a x <x> y <y>";
-	    }
-	    enum HIDE{
-		description "Keywords on non-key variables and hide container around lists: a <x> y <y>";
-	    }
-	    enum OC_COMPRESS{
-		description "See: https://github.com/openconfig/ygot/blob/master/docs/design.md#openconfig-path-compression";
-	    }
-	}
-    }
     typedef nacm_mode{
 	description
 	    "Mode of RFC8341 Network Configuration Access Control Model.
@@ -476,16 +477,6 @@ module clixon-config {
                  only loading from startup but may occur in other circumstances as well. This
                  means that sanity checks of erroneous XML/JSON may not be properly signalled.";
 	}
-	leaf CLICON_RESTCONF_PATH {
-	    type string;
-	    default "/www-data/fastcgi_restconf.sock";
-	    description
-		"FastCGI unix socket. Should be specified in webserver
-                Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
-                 Only if with-restconf=fcgi, NOT native
-                 Note: Obsolete, use fcgi-socket in clixon-restconf.yang instead";
-	    status obsolete;
-	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;
 	    description
@@ -526,6 +517,20 @@ module clixon-config {
                  If true, an RPC can be sent without a message-id.
                  This applies to both  external NETCONF and internal (IPC) netconf";
 	}
+	leaf CLICON_NETCONF_BASE_CAPABILITY {
+	    type int32;
+	    default 1;
+	    description
+		"This option relates to RFC6241 Sec 8.1 capabilities exchange. 
+                 This number is the highest netconf  base capability announced during
+                 the hello protocol. 
+                 Specifically, If the option number is 0, only 'urn:ietf:params:netconf:base:1.0'
+                 is announced, if it is 1, both 'urn:ietf:params:netconf:base:1.0' and
+                 'urn:ietf:params:netconf:base:1.1' are announced.
+                 Base capability '1' includes switching over to chunked framing as defined in
+                 RFC6242 for example.
+                 This only applies to the external NETCONF";
+	}
 	leaf CLICON_RESTCONF_DIR {
 	    type string;
 	    description
@@ -561,21 +566,6 @@ module clixon-config {
                  Setting this option disables this behaviour, ie the startup configuration is NOT
                  automatically updated.
                  If this option is false, the startup is autoamtically updated following the RFC";
-	}
-	leaf CLICON_RESTCONF_PRETTY {
-	    type boolean;
-	    default true;
-	    description
-		"Restconf return value pretty print. 
-                 Restconf clients may add HTTP header:
-                      Accept: application/yang-data+json, or
-                      Accept: application/yang-data+xml
-                 to get return value in XML or JSON. 
-                 RFC 8040 examples print XML and JSON in pretty-printed form.
-                 Setting this value to false makes restconf return not pretty-printed
-                 which may be desirable for performance or tests
-                 Note: Obsolete, use pretty in clixon-restconf.yang instead";
-	    status obsolete;
 	}
 	leaf CLICON_RESTCONF_USER {
 	    type string;
@@ -634,59 +624,6 @@ module clixon-config {
 	    description
 		"Startup CLI mode. This should match a CLICON_MODE variable set in
                  one of the clispec files";
-	}
-	leaf CLICON_CLI_GENMODEL {
-	    type int32;
-	    default 1;
-	    description
-		"0: Do not generate CLISPEC syntax for the auto-cli.
-                 1: Generate a CLI specification for CLI completion of all loaded Yang modules. 
-                    This CLI tree can be accessed in CLI-spec files using the tree reference syntax (eg
-                     @datamodel).
-                 2: Same including state syntax in a tree called @datamodelstate and @datamodelshow
-                 See also CLICON_CLI_MODEL_TREENAME.
-                 Obsolete, use clixon-autocli.yang enable-autocli instead";
-	    status obsolete;
-	}
-	leaf CLICON_CLI_MODEL_TREENAME {
-	    type string;
-	    default "datamodel";
-	    description
-		"If CLICON_CLI_GENMODEL is set, CLI specs can reference the
-                 model syntax using a model tree set by this option.
-                 Three trees are generated with this name as a base, (assuming base is datamodel):
-                 - @datamodel - a clispec for navigating in editing a configuration (set/merge/delete)
-                 - @datamodelshow - a clispec for navigating in showing a configuration
-                 - @datamodelstate - a clispec for navigating in showing a configuration WITH state
-                 Example: set @datamodel, cli_set();
-                          show @datamodelshow, cli_show_auto();
-                          show state @datamodelstate, cli_show_auto_state();
-                 Obsolete, use constant AUTOCLI_TREENAME instead;
-                 ";
-	    status obsolete;
-	}
-	leaf CLICON_CLI_GENMODEL_COMPLETION {
-	    type int32;
-	    default 1;
-	    description "Generate code for CLI completion of existing db symbols.
-                         Obsolete, use autocli/completion-default instead";
-	    status obsolete;
-	}
-	leaf CLICON_CLI_GENMODEL_TYPE {
-	    type cli_genmodel_type;
-	    default "VARS";
-	    description "How to generate and show auto CLI syntax: VARS|ALL|HIDE|OC_COMPRESS";
-	}
-	leaf CLICON_CLI_AUTOCLI_EXCLUDE {
-	    type string;
-	    description
-		"List of module names that should not be generated autocli from
-                 Example: 
-                    <CLICON_CLI_AUTOCLI_EXCLUDE>clixon-restconf</CLICON_CLI_AUTOCLI_EXCLUDE> 
-                 means generate autocli for all models except clixon-restconf.yang
-                 The value can be a list of space separated module names
-                 Obsolete, use autocli/exclude logic instead";
-	    status obsolete;
 	}
 	leaf CLICON_CLI_VARONLY {
 	    type int32;
@@ -885,7 +822,9 @@ module clixon-config {
 	    default cache;
 	    description
 		"Clixon datastore cache behaviour. There are three values: no cache, 
-                 cache with copy, or cache without copy.";
+                 cache with copy, or cache without copy.
+                 Note: 'cache' is default value and supported with regressions etc.
+                 Others are experimental (in Clixon 5.5)";
 	}
 	leaf CLICON_XMLDB_FORMAT {
 	    type datastore_format;
@@ -1043,24 +982,41 @@ module clixon-config {
                  If this option is set, Clixon disables NACM if a datastore does NOT contain a
                  NACM config on load.";
 	}
-	leaf CLICON_MODULE_LIBRARY_RFC7895 {
+	leaf CLICON_YANG_LIBRARY {
 	    type boolean;
 	    default true;
 	    description
-		"Enable RFC 7895 YANG Module library support as state data. If 
-                 enabled, module info will appear when doing netconf get or 
+		"Enable YANG library support as state data according to RFC8525. 
+                 If enabled, module info will appear when doing netconf get or 
                  restconf GET.
-                 See also CLICON_XMLDB_MODSTATE";
+                 The module state data is on the form:
+                       <yang-library><module-set>...
+                 If CLICON_MODULE_LIBRARY_RFC7895 is set (as well), the module state uses RFC7895
+                 instead where the modile state is on the form:
+                       <modules-state>...
+                 See also CLICON_XMLDB_MODSTATE where the module state info is used to tag datastores
+                 with module information.";
+	}
+	leaf CLICON_MODULE_LIBRARY_RFC7895 {
+	    type boolean;
+	    default false;
+	    description
+		"Enable RFC 7895 YANG Module library support as state data, instead of RFC8525.
+                 Note CLICON_YANG_LIBRARY must be enabled for this to have effect.
+                 See also CLICON_YANG_LIBRARY and CLICON_MODULE_SET_ID";
+	    status obsolete;
 	}
 	leaf CLICON_MODULE_SET_ID {
 	    type string;
 	    default "0";
-	    description "If RFC 7895 YANG Module library enabled:
-                         Contains a server-specific identifier representing
-                         the current set of modules and submodules.  The
-                         server MUST change the value of this leaf if the
-                         information represented by the 'module' list instances
-                         has changed.";
+	    description
+		"Only if CLICON_YANG_LIBRARY enabled.
+                 Contains a server-specific identifier representing the current set of modules 
+                 and submodules.  The server MUST change the value of this leaf if the
+                 information represented by the 'module' list instances has changed.
+                 The /yang-library/content-id state-data leaf is set with this value
+                 If CLICON_MODULE_LIBRARY_RFC7895 is enabled, it sets the modules-state/module-set-id 
+                 instead";
 	}
 	leaf CLICON_STREAM_DISCOVERY_RFC5277 {
 	    type boolean;
@@ -1109,6 +1065,15 @@ module clixon-config {
 	    units s;
 	    description "Retention for stream replay buffers in seconds, ie how much
                          data to store before dropping. 0 means no retention";
+
+	}
+	leaf CLICON_LOG_STRING_LIMIT {
+	    type uint32;
+	    default 0;
+	    description
+		"Length limitation of debug and log strings. 
+                 Especially useful for dynamic debug strings, such as packet dumps.
+                 0 means no limit";
 
 	}
     }

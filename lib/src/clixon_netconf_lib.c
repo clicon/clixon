@@ -1690,12 +1690,12 @@ netconf_hello_server(clicon_handle h,
 
     cprintf(cb, "<hello xmlns=\"%s\" message-id=\"%u\">", NETCONF_BASE_NAMESPACE, 42);
     cprintf(cb, "<capabilities>");
-#ifdef NETCONF_1_1_ANNOUNCE
-    /* Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" 
-     * RFC 6241 Sec 8.1
-     */
-    cprintf(cb, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_1);
-#endif
+    if (clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0){
+	/* Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" 
+	 * RFC 6241 Sec 8.1
+	 */
+	cprintf(cb, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_1);
+    }
     /* A peer MAY include capabilities for previous NETCONF versions, to indicate
        that it supports multiple protocol versions. */
     cprintf(cb, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_0);

@@ -73,7 +73,7 @@ module clixon-config {
                     CLICON_CLI_GENMODEL (use autocli/enable-autocli instead)
                     CLICON_CLI_GENMODEL_TYPE (use autocli/list-keyword-default and compress rules instead)
                     CLICON_CLI_GENMODEL_COMPLETION (use autocli/completion-default instead)
-                    CLICON_CLI_AUTOCLI_EXCLUDE (use autocli/exclude logic instead)
+                    CLICON_CLI_AUTOCLI_EXCLUDE (use autocli/module-default, rule/enable logic instead)
                     CLICON_CLI_MODEL_TREENAME (use constant AUTOCLI_TREENAME instead)
              Released in Clixon 5.5";
     }

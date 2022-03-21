@@ -157,9 +157,3 @@
  */
 #define PROTO_RESTART_RECONNECT
 
-/*! Announce Netconf 1.1 capability as defined by RFC 6242
- * Problem wih 1.1 is it requires "chunked framing" which Clixon at this point does not
- * support.
- * See https://github.com/clicon/clixon/issues/50 and https://github.com/clicon/clixon/issues/314
- */
-#undef NETCONF_1_1_ANNOUNCE
