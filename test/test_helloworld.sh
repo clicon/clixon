@@ -138,21 +138,24 @@ if [ "$ret" != "hello     world;" ]; then
 fi
 
 new "netconf edit-config"
-ret=$(echo "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><hello xmlns=\"urn:example:hello\"><world/></hello></config></edit-config></rpc>]]>]]>" | $clixon_netconf -qf $cfg)
+rpc=$(chunked_framing "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><hello xmlns=\"urn:example:hello\"><world/></hello></config></edit-config></rpc>")
+ret=$(echo "$DEFAULTHELLO$rpc" | $clixon_netconf -qf $cfg)
 if [ $? -ne 0 ]; then
     err 0 $r
 fi
-if [ "$ret" != "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>" ]; then
-    err "$ret" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
+reply=$(chunked_framing "<rpc-reply $DEFAULTNS><ok/></rpc-reply>")
+if [ "$ret" != "$reply" ]; then
+    err "$ret" "$reply"
 fi
 
 new "netconf commit"
-ret=$(echo "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" | $clixon_netconf -qf $cfg)
+rpc=$(chunked_framing "<rpc $DEFAULTNS><commit/></rpc>")
+ret=$(echo "$DEFAULTHELLO$rpc" | $clixon_netconf -qf $cfg)
 if [ $? -ne 0 ]; then
     err 0 $r
 fi
-if [ "$ret" != "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>" ]; then
-    err "$ret" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
+if [ "$ret" != "$reply" ]; then
+    err "$ret" "$reply"
 fi
 
 new "restconf GET"

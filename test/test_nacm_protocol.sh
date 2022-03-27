@@ -161,10 +161,10 @@ new "wait restconf"
 wait_restconf
 
 new "auth set authentication config"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "commit it"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "enable nacm"
 expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/$HVER 204"
@@ -176,17 +176,17 @@ expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/da
 
 # Rule 1: deny-kill-session
 new "deny-kill-session: limited fail (netconf)"
-expecteof "$clixon_netconf -qf $cfg -U wilma" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg -U wilma" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><kill-session><session-id>44</session-id></kill-session></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>"
 
 new "deny-kill-session: guest fail (netconf)"
-expecteof "$clixon_netconf -qf $cfg -U guest" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg -U guest" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><kill-session><session-id>44</session-id></kill-session></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>"
 
 new "deny-kill-session: admin ok (netconf)"
-expecteof "$clixon_netconf -qf $cfg -U andy" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><kill-session><session-id>44</session-id></kill-session></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg -U andy" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><kill-session><session-id>44</session-id></kill-session></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 # Rule 2: deny-delete-config
 new "deny-delete-config: limited fail (netconf)"
-expecteof "$clixon_netconf -qf $cfg -U wilma" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><delete-config><target><startup/></target></delete-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg -U wilma" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><delete-config><target><startup/></target></delete-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>access denied</error-message></rpc-error></rpc-reply>"
 
 new "deny-delete-config: guest fail (restconf)"
 expectpart "$(curl -u guest:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 403" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
@@ -203,10 +203,10 @@ expectpart "$(curl -u andy:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf
 
 # Here the whole config is gone so we need to start again
 new "auth set authentication config (restart)"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "commit it"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "enable nacm"
 expectpart "$(curl -u andy:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/$HVER 204"

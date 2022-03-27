@@ -66,8 +66,7 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include "clixon_netconf.h"
-#include "netconf_lib.h"
+//#include "clixon_netconf.h"
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
@@ -122,10 +121,12 @@ netconf_add_request_attr(cxobj *xrpc,
 /*! Process netconf hello message
  * A server receiving a <hello> message with a <session-id> element MUST
  * terminate the NETCONF session. 
+ * @param[out]   eof   Request termination
  */
 static int
 netconf_hello_msg(clicon_handle h,
-		  cxobj        *xn)
+		  cxobj        *xn,
+		  int          *eof)
 {
     int     retval = -1;
     cvec   *nsc = NULL; // namespace context
@@ -133,19 +134,18 @@ netconf_hello_msg(clicon_handle h,
     size_t  veclen;
     cxobj  *x;
     cxobj  *xcap;
-    int     foundbase;
+    int     foundbase_10 = 0;
+    int     foundbase_11 = 0;
     char   *body;
 
     _netconf_hello_nr++;
     if (xml_find_type(xn, NULL, "session-id", CX_ELMNT) != NULL) {
 	clicon_err(OE_XML, errno, "Server received hello with session-id from client, terminating (see RFC 6241 Sec 8.1");
-	cc_closed++;
 	goto done;
     }
     if (xpath_vec(xn, nsc, "capabilities/capability", &vec, &veclen) < 0)
 	goto done;
     /* Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1"*/
-    foundbase=0;
     if ((xcap = xml_find_type(xn, NULL, "capabilities", CX_ELMNT)) != NULL) {
 	x = NULL;
 	while ((x = xml_child_each(xcap, x, CX_ELMNT)) != NULL) {
@@ -156,15 +156,17 @@ netconf_hello_msg(clicon_handle h,
 	    /* When comparing protocol version capability URIs, only the base part is used, in the 
 	     * event any parameters are encoded at the end of the URI string. */
 	    if (strncmp(body, NETCONF_BASE_CAPABILITY_1_0, strlen(NETCONF_BASE_CAPABILITY_1_0)) == 0) /* RFC 4741 */
-		foundbase++;
-	    else if (strncmp(body, NETCONF_BASE_CAPABILITY_1_1, strlen(NETCONF_BASE_CAPABILITY_1_1)) == 0) /* RFC 6241 */
-		foundbase++;
+		foundbase_10++;
+	    else if (strncmp(body, NETCONF_BASE_CAPABILITY_1_1, strlen(NETCONF_BASE_CAPABILITY_1_1)) == 0 &&
+		     clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0){ /* RFC 6241 */
+		foundbase_11++;
+		clicon_option_int_set(h, "netconf-framing", NETCONF_SSH_CHUNKED); /* enable chunked enc */
+	    }
 	}
     }
-    if (foundbase == 0){
-	clicon_err(OE_XML, errno, "Server received hello without netconf base capability %s, terminating (see RFC 6241 Sec 8.1",
-		   NETCONF_BASE_CAPABILITY_1_1);
-	cc_closed++;
+    if (foundbase_10 == 0 && foundbase_11 == 0){
+	clicon_err(OE_XML, errno, "Server received hello without matching netconf base capability, terminating (see RFC 6241 Sec 8.1");
+	*eof = 1;
 	goto done;
     }
     retval = 0;
@@ -175,23 +177,27 @@ netconf_hello_msg(clicon_handle h,
 }
 
 /*! Process incoming Netconf RPC netconf message 
- * @param[in]   h     Clicon handle
+ * @param[in]   h     Clixon handle
  * @param[in]   xreq  XML tree containing netconf RPC message
  * @param[in]   yspec YANG spec
+ * @param[out]  eof   Set to 1 if pending close socket
  * @retval      0     OK
  * @retval     -1     Error
  */
-int
+static int
 netconf_rpc_message(clicon_handle h,
 		    cxobj        *xrpc,
-		    yang_stmt    *yspec)
+		    yang_stmt    *yspec,
+		    int          *eof)
 {
     int    retval = -1;
     cxobj *xret = NULL; /* Return (out) */
     int    ret;
     cbuf  *cbret = NULL;
     cxobj *xc;
+    netconf_framing_type framing;
 
+    framing = clicon_option_int(h, "netconf-framing");
     if (_netconf_hello_nr == 0 &&
 	clicon_option_bool(h, "CLICON_NETCONF_HELLO_OPTIONAL") == 0){
 	if (netconf_operation_failed_xml(&xret, "rpc", "Client must send an hello element before any RPC")< 0)
@@ -204,8 +210,11 @@ netconf_rpc_message(clicon_handle h,
 	    goto done;
 	}
 	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
-	netconf_output_encap(1, cbret, "rpc-error");
-	cc_closed++;
+	if (netconf_output_encap(framing, cbret) < 0)
+	    goto done;
+	if (netconf_output(1, cbret, "rpc-error") < 0)
+	    goto done;
+	*eof = 1;
 	goto ok;
     }
     if ((ret = xml_bind_yang_rpc(xrpc, yspec, &xret)) < 0)
@@ -221,11 +230,13 @@ netconf_rpc_message(clicon_handle h,
 	    goto done;
 	}
 	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
-	if (netconf_output_encap(1, cbret, "rpc-error") < 0)
+	if (netconf_output_encap(framing, cbret) < 0)
+	    goto done;
+	if (netconf_output(1, cbret, "rpc-error") < 0)
 	    goto done;
 	goto ok;
     }
-    if (netconf_rpc_dispatch(h, xrpc, &xret) < 0){
+    if (netconf_rpc_dispatch(h, xrpc, &xret, eof) < 0){
 	goto done;
     }
     /* Is there a return message in xret? */
@@ -239,7 +250,9 @@ netconf_rpc_message(clicon_handle h,
 	    goto done;
 	}
 	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
-	if (netconf_output_encap(1, cbret, "rpc-error") < 0)
+	if (netconf_output_encap(framing, cbret) < 0)
+	    goto done;
+	if (netconf_output(1, cbret, "rpc-error") < 0)
 	    goto done;
 	goto ok;
     }
@@ -252,7 +265,9 @@ netconf_rpc_message(clicon_handle h,
 	    goto done;
 	}
 	clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0, -1);
-	if (netconf_output_encap(1, cbret, "rpc-reply") < 0)
+	if (netconf_output_encap(framing, cbret) < 0)
+	    goto done;
+	if (netconf_output(1, cbret, "rpc-reply") < 0)
 	    goto done;
     }
  ok:
@@ -267,16 +282,18 @@ netconf_rpc_message(clicon_handle h,
 
 /*! Process incoming a single netconf message parsed as XML
  * Identify what netconf message it is
- * @param[in]   h     Clicon handle
+ * @param[in]   h     Clixon handle
  * @param[in]   xreq  XML tree containing netconf
  * @param[in]   yspec YANG spec
+ * @param[out]  eof   Set to 1 if pending close socket
  * @retval      0     OK
  * @retval     -1     Error
  */
 static int
 netconf_input_packet(clicon_handle h,
 		     cxobj        *xreq,
-		     yang_stmt    *yspec)
+		     yang_stmt    *yspec,
+		     int          *eof)
 {
     int     retval = -1;
     cbuf   *cbret = NULL;
@@ -284,10 +301,12 @@ netconf_input_packet(clicon_handle h,
     char   *rpcprefix;
     char   *namespace = NULL;
     cxobj  *xret = NULL;
-    
+    netconf_framing_type framing;
+
     clicon_debug(1, "%s", __FUNCTION__);
     rpcname = xml_name(xreq);
     rpcprefix = xml_prefix(xreq);
+    framing = clicon_option_int(h, "netconf-framing");
     if (xml2ns(xreq, rpcprefix, &namespace) < 0)
 	goto done;
     if (strcmp(rpcname, "rpc") == 0){
@@ -302,25 +321,28 @@ netconf_input_packet(clicon_handle h,
 		goto done;
 	    }
 	    clicon_xml2cbuf(cbret, xret, 0, 0, -1);
-	    netconf_output_encap(1, cbret, "rpc-error");
+	    if (netconf_output_encap(framing, cbret) < 0)
+		goto done;
+	    if (netconf_output(1, cbret, "rpc-error") < 0)
+		goto done;
 	    goto ok;
 	}
-	if (netconf_rpc_message(h, xreq, yspec) < 0)
+	if (netconf_rpc_message(h, xreq, yspec, eof) < 0)
 	    goto done;
     }
     else if (strcmp(rpcname, "hello") == 0){
 	/* Only accept resolved NETCONF base namespace -> terminate*/
 	if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
-	    cc_closed++;
+	    *eof = 1;
 	    clicon_err(OE_XML, EFAULT, "No appropriate namespace associated with namespace:%s",
 		       namespace);
 	    goto done;
 	}
-	if (netconf_hello_msg(h, xreq) < 0)
+	if (netconf_hello_msg(h, xreq, eof) < 0)
 	    goto done;
     }
     else{ /* Shouldnt happen should be caught by yang bind check in netconf_input_frame */
-	cc_closed++;
+	*eof = 1;
 	clicon_err(OE_NETCONF, 0, "Unrecognized netconf operation %s", rpcname);
 	goto done;
     }
@@ -334,8 +356,9 @@ netconf_input_packet(clicon_handle h,
 
 /*! Process incoming frame, ie a char message framed by ]]>]]>
  * Parse string to xml, check only one netconf message within a frame
- * @param[in]   h    Clicon handle
+ * @param[in]   h    Clixon handle
  * @param[in]   cb   Packet buffer
+ * @param[out]  eof  Set to 1 if pending close socket
  * @retval      0    OK
  * @retval     -1    Fatal error
  * @note there are errors detected here prior to whether you know what kind if message it is, and
@@ -352,7 +375,8 @@ netconf_input_packet(clicon_handle h,
  */
 static int
 netconf_input_frame(clicon_handle h, 
-		    cbuf         *cb)
+		    cbuf         *cb,
+		    int          *eof)
 {
     int        retval = -1;
     char      *str = NULL;
@@ -362,9 +386,11 @@ netconf_input_frame(clicon_handle h,
     cbuf      *cbret = NULL;
     yang_stmt *yspec;
     int        ret;
-
+    netconf_framing_type framing;
+    
     clicon_debug(1, "%s", __FUNCTION__);
     clicon_debug(2, "%s: \"%s\"", __FUNCTION__, cbuf_get(cb));
+    framing = clicon_option_int(h, "netconf-framing");
     yspec = clicon_dbspec_yang(h);
     if ((str = strdup(cbuf_get(cb))) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
@@ -378,7 +404,10 @@ netconf_input_frame(clicon_handle h,
 	}
 	if (netconf_operation_failed(cbret, "rpc", "Empty XML")< 0)
 	    goto done;
-	netconf_output_encap(1, cbret, "rpc-error"); 
+	if (netconf_output_encap(framing, cbret) < 0)
+	    goto done;
+	if (netconf_output(1, cbret, "rpc-error") < 0)
+	    goto done;
 	goto ok;
     }
     /* Parse incoming XML message */
@@ -389,7 +418,10 @@ netconf_input_frame(clicon_handle h,
 	}
 	if (netconf_operation_failed(cbret, "rpc", clicon_err_reason)< 0)
 	    goto done;
-	netconf_output_encap(1, cbret, "rpc-error");
+	if (netconf_output_encap(framing, cbret) < 0)
+	    goto done;
+	if (netconf_output(1, cbret, "rpc-error") < 0)
+	    goto done;
 	goto ok;
     }
     if (ret == 0){
@@ -402,7 +434,10 @@ netconf_input_frame(clicon_handle h,
 	    goto done;
 	}
 	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
-	netconf_output_encap(1, cbret, "rpc-error");
+	if (netconf_output_encap(framing, cbret) < 0)
+	    goto done;
+	if (netconf_output(1, cbret, "rpc-error") < 0)
+	    goto done;
 	goto ok;
     }
     /* Check for empty frame (no mesaages), return empty message, not clear from RFC what to do */
@@ -411,7 +446,10 @@ netconf_input_frame(clicon_handle h,
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
 	}
-	netconf_output_encap(1, cbret, "rpc-error");
+	if (netconf_output_encap(framing, cbret) < 0)
+	    goto done;
+	if (netconf_output(1, cbret, "rpc-error") < 0)
+	    goto done;
 	goto ok;
     }
     /* Check for multi-messages in frame */
@@ -422,14 +460,17 @@ netconf_input_frame(clicon_handle h,
 	}
 	if (netconf_malformed_message(cbret, "More than one message in netconf rpc frame")< 0)
 	    goto done;
-	netconf_output_encap(1, cbret, "rpc-error"); 
+	if (netconf_output_encap(framing, cbret) < 0)
+	    goto done;
+	if (netconf_output(1, cbret, "rpc-error") < 0)
+	    goto done;
 	goto ok;
     }
     if ((xreq = xml_child_i_type(xtop, 0, CX_ELMNT)) == NULL){ /* Shouldnt happen */
 	clicon_err(OE_XML, EFAULT, "No xml req (shouldnt happen)");
 	goto done;
     }
-    if (netconf_input_packet(h, xreq, yspec) < 0)
+    if (netconf_input_packet(h, xreq, yspec, eof) < 0)
 	goto done;
  ok:
     retval = 0;
@@ -447,7 +488,7 @@ netconf_input_frame(clicon_handle h,
 
 /*! Get netconf message: detect end-of-msg 
  * @param[in]   s    Socket where input arrived. read from this.
- * @param[in]   arg  Clicon handle.
+ * @param[in]   arg  Clixon handle.
  * This routine continuously reads until no more data on s. There could
  * be risk of starvation, but the netconf client does little else than
  * read data so I do not see a danger of true starvation here.
@@ -460,17 +501,20 @@ static int
 netconf_input_cb(int   s, 
 		 void *arg)
 {
-    int           retval = -1;
-    clicon_handle h = arg;
-    unsigned char buf[BUFSIZ]; /* from stdio.h, typically 8K */
-    int           i;
-    int           len;
-    cbuf         *cb=NULL;
-    int           xml_state = 0;
-    int           poll;
-    clicon_hash_t *cdat = clicon_data(h); /* Save cbuf between calls if not done */
-    size_t         cdatlen = 0;
+    int            retval = -1;
+    unsigned char  buf[BUFSIZ]; /* from stdio.h, typically 8K */
+    clicon_handle  h = arg;
+    cbuf          *cb=NULL;
     void          *ptr;
+    size_t         cdatlen = 0;
+    clicon_hash_t *cdat = clicon_data(h); /* Save cbuf between calls if not done */
+    int            poll;
+    int            frame_state = 0;
+    int            i;
+    int            len;
+    size_t         frame_size;
+    int            ret;
+    int            eof = 0;  /* Set to 1 if pending close socket */
 
     if ((ptr = clicon_hash_value(cdat, NETCONF_HASH_BUF, &cdatlen)) != NULL){
 	if (cdatlen != sizeof(cb)){
@@ -498,28 +542,51 @@ netconf_input_cb(int   s,
 	    }
 	} /* read */
 	if (len == 0){ 	/* EOF */
-	    cc_closed++;
+	    clicon_debug(1, "%s len==0, closing", __FUNCTION__);
+	    clixon_event_unreg_fd(s, netconf_input_cb);
 	    close(s);
-	    retval = 0;
-	    goto done;
+	    clixon_exit_set(1);	    
+	    goto ok;
 	}
 	for (i=0; i<len; i++){
 	    if (buf[i] == 0)
 		continue; /* Skip NULL chars (eg from terminals) */
-	    cprintf(cb, "%c", buf[i]);
-	    if (detect_endtag("]]>]]>",
-			      buf[i],
-			      &xml_state)) {
-		/* OK, we have an xml string from a client */
-		/* Remove trailer */
-		*(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
-		if (netconf_input_frame(h, cb) < 0 &&
-		    !ignore_packet_errors) // default is to ignore errors
-		    goto done; 
-		if (cc_closed){
+	    if (clicon_option_int(h, "netconf-framing") == NETCONF_SSH_CHUNKED){
+		/* Track chunked framing defined in RFC6242 */
+		if ((ret = netconf_input_chunked_framing(buf[i], &frame_state, &frame_size)) < 0)
+		    goto done;
+		switch (ret){
+		case 1: /* chunk-data */
+		    cprintf(cb, "%c", buf[i]);
+		    break;
+		case 2: /* end-of-data */
+		    /* Somewhat complex error-handling:
+		     * Ignore packet errors, UNLESS an explicit termination request (eof)
+		     */
+		    if (netconf_input_frame(h, cb, &eof) < 0 &&
+			!ignore_packet_errors) 
+			goto done; 
+		    if (eof)
+			goto done;
+		    cbuf_reset(cb);
+		    break;
+		default:
 		    break;
 		}
-		cbuf_reset(cb);
+	    }
+	    else{
+		cprintf(cb, "%c", buf[i]);
+		if (detect_endtag("]]>]]>", buf[i], &frame_state)){
+		    /* OK, we have an xml string from a client */
+		    /* Remove trailer */
+		    *(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
+		    if (netconf_input_frame(h, cb, &eof) < 0 &&
+			!ignore_packet_errors) // default is to ignore errors
+			goto done; 
+		    if (eof)
+			goto done;
+		    cbuf_reset(cb);
+		}
 	    }
 	}
 	/* poll==1 if more, poll==0 if none */
@@ -535,17 +602,16 @@ netconf_input_cb(int   s,
 	    break; 
 	}
     } /* while */
+ ok:
     retval = 0;
-  done:
+ done:
     if (cb)
 	cbuf_free(cb);
-    if (cc_closed) 
-	retval = -1;
     return retval;
 }
 
 /*! Send netconf hello message
- * @param[in]   h   Clicon handle
+ * @param[in]   h   Clixon handle
  * @param[in]   s   File descriptor to write on (eg 1 - stdout)
  */
 static int
@@ -555,12 +621,16 @@ send_hello(clicon_handle h,
 {
     int   retval = -1;
     cbuf *cb;
-    
+    netconf_framing_type framing;
+
     if ((cb = cbuf_new()) == NULL){
 	clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
 	goto done;
     }
     if (netconf_hello_server(h, cb, id) < 0)
+	goto done;
+    framing = clicon_option_int(h, "netconf-framing");
+    if (netconf_output_encap(framing, cb) < 0)
 	goto done;
     if (netconf_output(s, cb, "hello") < 0)
 	goto done;
@@ -584,7 +654,6 @@ netconf_terminate(clicon_handle h)
     
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
-
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	ys_free(yspec);
@@ -628,7 +697,7 @@ timeout_fn(int s,
 }
 
 /*! Usage help routine
- * @param[in]  h      Clicon handle
+ * @param[in]  h      Clixon handle
  * @param[in]  argv0  command line
  */
 static void
@@ -642,8 +711,8 @@ usage(clicon_handle h,
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-E <dir> \tExtra configuration file directory\n"
 	    "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
-            "\t-q\t\tQuiet mode, do not send hello message\n"
-	    "\t-H \t\tDo not expect hello message from server.\n"
+            "\t-q\t\tServer does not send hello message on startup\n"
+	    "\t-H \t\tServer does not expect hello message from client.\n"
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
@@ -687,7 +756,7 @@ main(int    argc,
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
 
-    /* Set username to clicon handle. Use in all communication to backend */
+    /* Set username to clixon handle. Use in all communication to backend */
     if ((pw = getpwuid(getuid())) == NULL){
 	clicon_err(OE_UNIX, errno, "getpwuid");
 	goto done;
@@ -922,6 +991,7 @@ main(int    argc,
   done:
     if (ignore_packet_errors)
 	retval = 0;
+    clixon_exit_set(1); /* This is to disable resend mechanism in close-session */
     netconf_terminate(h);
     clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clicon_log(LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());

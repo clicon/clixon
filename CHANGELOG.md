@@ -37,13 +37,25 @@
 ## 5.7.0
 Expected: May 2022
 
+### New features
+
+* Implementation of "chunked framing" according to RFC6242 for Netconf 1.1.
+  * First hello is 1.0 EOM framing, then successing rpc is chunked framing
+  * See
+    * [Netconf framing](https://github.com/clicon/clixon/issues/50), and
+    * [Clixon does not switch to chunked framing after NETCONF 1.1 is negotiated](https://github.com/clicon/clixon/issues/314)
+
+### 
+
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
-* Netconf: Disabled default announcing of Netconf 1.1, instead only announce 1.0
-  * See [Clixon does not switch to chunked framing after NETCONF 1.1 is negotiated](https://github.com/clicon/clixon/issues/314)
-  * To enable Netconf 1.1, set `NETCONF_1_1_ANNOUNCE`
+* Netconf: Usage of chunked framing"
+    * To keep existing end-of-message encoding, set `CLICON_NETCONF_BASE_CAPABILITY` to `0`
+* New `clixon-config@2022-03-21.yang` revision
+  * Added option:
+    * `CLICON_NETCONF_BASE_CAPABILITY`
 * Netconf data-not-unique info changed to return schema nodes instead of XML for RFC7950 compliance
 * CLI reconnects to backend if backend restarts with a warning
   * Note that edits to the candidate database or locks will be lost
@@ -53,8 +65,8 @@ Users may have to change how they access the system
 ### Minor features
 
 * YANG unique: added single descendant node ids as special case
-  * This means that two variants are supported:
-    * unique "a b c", ie multiple direct chidlren
+c  * This means that two variants are supported:
+    * unique "a b c", ie multiple direct children
     * unique "a/b/c", ie single descendants
   * RFC 7950 Sec 7.8.3 is somewhat unclear
   * The combination is not supported

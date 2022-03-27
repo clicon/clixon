@@ -2,6 +2,9 @@
 # Advanced Client api test
 # Compile and run a client
 # INSTALLFLSAGS="" 
+# Why test only over external NETCONF? ie CLIXON_CLIENT_NETCONF
+# there is also     CLIXON_CLIENT_IPC,      /* Internal IPC API, only experimental use */
+#                   CLIXON_CLIENT_SSH       /* NYI External Netconf over SSH */
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -119,6 +122,7 @@ if [ "$LINKAGE" = static ]; then
 else
     COMPILE="$CC ${CFLAGS} -I/usr/local/include $cfile -o $app -L /usr/local/lib -lclixon"
 fi
+
 echo "COMPILE:$COMPILE"
 expectpart "$($COMPILE)" 0 ""
 

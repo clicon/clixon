@@ -26,9 +26,9 @@ if ! $TIMEFN true; then err "A working time function" "'$TIMEFN' does not work";
 
 APPNAME=example
 
-cfg=$dir/scaling-conf.xml
+cfg=$dir/perf-netconf-conf.xml
 fyang=$dir/scaling.yang
-fconfig=$dir/large.xml  
+fconfig=$dir/large.xml
 fconfigonly=$dir/config.xml # only config for test
 ftest=$dir/test.xml
 fconfig2=$dir/large2.xml # leaf-list
@@ -98,30 +98,39 @@ for (( i=0; i<$perfnr; i++ )); do
 done
 echo -n "</x>" >> $fconfigonly # No CR
 
-echo -n "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>" > $fconfig
-cat $fconfigonly >> $fconfig
-echo "</config></edit-config></rpc>]]>]]>" >> $fconfig
+rpc="<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>"
+rpc+="$(cat $fconfigonly)"
+rpc+="</config></edit-config></rpc>"
+
+echo -n "$DEFAULTHELLO" > $fconfig
+echo "$(chunked_framing "$rpc")" >> $fconfig
 
 # Now take large config file and write it via netconf to candidate
 new "test time exists"
 expectpart "$(time -p ls)" 0 
 
 new "netconf write large config"
-expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof_file "time -p $clixon_netconf -qef $cfg" 0 "$fconfig" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>$" 2>&1 | awk '/real/ {print $2}'
 
 # Here, there are $perfnr entries in candidate
 
 # Now commit it from candidate to running 
 new "netconf commit large config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof_netconf "time -p $clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" 2>&1 | awk '/real/ {print $2}'
 
 new "Check running-db contents"
-echo "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" | $clixon_netconf -qf $cfg > $foutput
+rpc=$(chunked_framing "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>")
+echo "$DEFAULTHELLO$rpc" | $clixon_netconf -qef $cfg > $foutput
+
+rpc="<rpc-reply $DEFAULTNS><data>"
+rpc+="$(cat $fconfigonly)"
+rpc+="</data></rpc-reply>"
+echo "$(chunked_framing "$rpc")" >> $ftest
 
 # Create a file to compare with
-echo -n "<rpc-reply $DEFAULTNS><data>" > $ftest
-cat $fconfigonly >> $ftest
-echo -n "</data></rpc-reply>]]>]]>" >> $ftest
+#echo -n "<rpc-reply $DEFAULTNS><data>" > $ftest
+#cat $fconfigonly >> $ftest
+#echo -n "</data></rpc-reply>]]>]]>" >> $ftest
 
 ret=$(diff $ftest $foutput)
 if [ $? -ne 0 ]; then
@@ -140,13 +149,15 @@ fi
 new "netconf get $perfreq small config 1 key index"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    echo "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:x/ex:y[ex:a=$rnd]\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>]]>]]>"
-done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
+    rpc=$(chunked_framing "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:x/ex:y[ex:a=$rnd]\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>")
+    echo "$rpc"
+done | $clixon_netconf -Hqef $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 new "netconf get $perfreq small config 1 key index start/stop"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    echo "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:x/ex:y[ex:a=$rnd]\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>]]>]]>"  | $clixon_netconf -qf $cfg > /dev/null; 
+    rpc=$(chunked_framing "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:x/ex:y[ex:a=$rnd]\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>")
+    echo "$DEFAULTHELLO$rpc"    | $clixon_netconf -qef $cfg > /dev/null; 
 done
 }  2>&1 | awk '/real/ {print $2}'
 
@@ -154,63 +165,69 @@ done
 new "netconf get $perfreq small config 1 key + 1 non-key index"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    echo "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:x/ex:y[ex:a=$rnd][ex:b=$rnd]\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>]]>]]>"
-done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
+    rpc=$(chunked_framing "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:x/ex:y[ex:a=$rnd][ex:b=$rnd]\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>")
+    echo "$rpc"
+done | $clixon_netconf -Hqef $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # NETCONF add
 new "netconf add $perfreq small config"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    echo "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
-done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
+    rpc=$(chunked_framing "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>")
+    echo "$rpc"
+done | $clixon_netconf -Hqef $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # Instead of many small entries, get one large in netconf and restconf
 # cli?
 new "netconf get large config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:clixon\"><y><a>0</a><b>0</b></y><y><a>1</a><b>1</b></y><y><a>2</a><b>2</b></y><y><a>3</a><b>3</b></y>" 2>&1 | awk '/real/ {print $2}'
+expecteof_netconf "time -p $clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:clixon\"><y><a>0</a><b>0</b></y><y><a>1</a><b>1</b></y><y><a>2</a><b>2</b></y><y><a>3</a><b>3</b></y>" "" 2>&1 | awk '/real/ {print $2}'
 
 # Delete entries (last since entries are removed from db)
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf delete $perfreq small config"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    echo "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><y nc:operation=\"delete\"><a>$rnd</a></y></x></config></edit-config></rpc>]]>]]>"
-done | $clixon_netconf -qf $cfg  > /dev/null; }  2>&1 | awk '/real/ {print $2}'
+    rpc=$(chunked_framing "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><y nc:operation=\"delete\"><a>$rnd</a></y></x></config></edit-config></rpc>")
+    echo "$rpc"
+done | $clixon_netconf -Hqef $cfg  > /dev/null; }  2>&1 | awk '/real/ {print $2}'
 
 #new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 # Now do leaf-lists istead of leafs
-
-#new "generate leaf-list config"
-echo -n "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">" > $fconfig2
+new "generate leaf-list config"
+rpc="<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">"
 for (( i=0; i<$perfnr; i++ )); do  
-    echo -n "<c>$i</c>" >> $fconfig2
+    rpc+="<c>$i</c>"
 done
-echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig2
+rpc+="</x></config></edit-config></rpc>"
+
+echo -n "$DEFAULTHELLO" > $fconfig2
+echo "$(chunked_framing "$rpc")" >> $fconfig2
 
 new "netconf replace large list-leaf config"
-expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig2" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof_file "time -p $clixon_netconf -qef $cfg" 0 "$fconfig2" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>$" 2>&1 | awk '/real/ {print $2}'
 
 new "netconf commit large leaf-list config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof_netconf "time -p $clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" 2>&1 | awk '/real/ {print $2}'
 
 new "netconf add $perfreq small leaf-list config"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    echo "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>$rnd</c></x></config></edit-config></rpc>]]>]]>"
-done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
+    rpc=$(chunked_framing "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>$rnd</c></x></config></edit-config></rpc>")
+    echo "$rpc"
+done | $clixon_netconf -Hqef $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 new "netconf add small leaf-list config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>x</c></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof_netconf "time -p $clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>x</c></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" 2>&1 | awk '/real/ {print $2}'
 
 new "netconf commit small leaf-list config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof_netconf "time -p $clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" 2>&1 | awk '/real/ {print $2}'
 
 new "netconf get large leaf-list config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:clixon\"><c>0</c><c>1</c>" 2>&1 | awk '/real/ {print $2}'
+expecteof_netconf "time -p $clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:clixon\"><c>0</c><c>1</c>" ""
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

@@ -1515,7 +1515,6 @@ netconf_module_load(clicon_handle h)
     /* Load restconf yang. Note this is also a part of clixon-config */
     if (yang_spec_parse_module(h, "clixon-restconf", NULL, yspec)< 0)
 	goto done;
-#if 1
     /* XXX: Both the following settings are because clicon-handle is not part of all API
      * functions
      * Treat unknown XML as anydata */
@@ -1524,13 +1523,21 @@ netconf_module_load(clicon_handle h)
     /* Make message-id attribute optional */
     if (clicon_option_bool(h, "CLICON_NETCONF_MESSAGE_ID_OPTIONAL") == 1)
 	xml_bind_netconf_message_id_optional(1);
-#endif
     /* Load ietf list pagination */
     if (yang_spec_parse_module(h, "ietf-list-pagination", NULL, yspec)< 0)
 	goto done;
     /* Load ietf list pagination netconf */
     if (yang_spec_parse_module(h, "ietf-list-pagination-nc", NULL, yspec)< 0)
 	goto done;
+    /* Framing: If hello protocol skipped, set framing direct, ie fix chunked framing if NETCONF-1.1
+     * But start with default: RFC 4741 EOM ]]>]]>
+     * For now this only applies to external protocol
+     */
+    clicon_option_int_set(h, "netconf-framing", NETCONF_SSH_EOM);
+    if (clicon_option_bool(h, "CLICON_NETCONF_HELLO_OPTIONAL")){
+	if (clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0) /* RFC 6241 */
+	    clicon_option_int_set(h, "netconf-framing", NETCONF_SSH_CHUNKED);
+    }
     retval = 0;
  done:
     return retval;
@@ -1694,7 +1701,8 @@ netconf_hello_server(clicon_handle h,
 	/* Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" 
 	 * RFC 6241 Sec 8.1
 	 */
-	cprintf(cb, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_1);
+	if (clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0) /* RFC 6241 */
+	    cprintf(cb, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_1);
     }
     /* A peer MAY include capabilities for previous NETCONF versions, to indicate
        that it supports multiple protocol versions. */
@@ -1716,27 +1724,10 @@ netconf_hello_server(clicon_handle h,
     if (session_id) 
 	cprintf(cb, "<session-id>%lu</session-id>", (long unsigned int)session_id);
     cprintf(cb, "</hello>");
-    cprintf(cb, "]]>]]>");
     retval = 0;
  done:
     if (encstr)
 	free(encstr);
-    return retval;
-}
-
-int
-netconf_hello_req(clicon_handle h,
-		  cbuf         *cb)
-{
-    int   retval = -1;
-
-    cprintf(cb, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
-    cprintf(cb, "<capabilities>");
-    cprintf(cb, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_1);
-    cprintf(cb, "</capabilities>");
-    cprintf(cb, "</hello>");
-    cprintf(cb, "]]>]]>");
-    retval = 0;
     return retval;
 }
 
@@ -1929,5 +1920,261 @@ netconf_parse_uint32_xml(char     *name,
     return retval;
  fail:
     retval = 0;
+    goto done;
+}
+
+/*! Add netconf xml postamble of message. I.e, xml after the body of the message.
+ *
+ * @param[in]      framing Netconf framing
+ * @param[in,out]  cb  Netconf packet (cligen buffer)
+ * XXX: copies body
+ */
+int
+netconf_framing_preamble(netconf_framing_type framing,
+			 cbuf                *cb)
+{
+    int   retval = -1;
+    char *body = NULL;
+
+    switch (framing){
+    case NETCONF_SSH_EOM:
+	break;
+    case NETCONF_SSH_CHUNKED:
+	if ((body = strdup(cbuf_get(cb))) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+	cbuf_reset(cb);
+	cprintf(cb, "\n#%zu\n", strlen(body));     /* Add RFC6242 chunked-end */
+	cbuf_append_str(cb, body);
+	break;
+    }
+    retval = 0;
+ done:
+    if (body)
+	free(body);
+    return retval;
+}
+
+/*! Add netconf xml postamble of message. I.e, xml after the body of the message.
+ *
+ * @param[in]      framing Netconf framing
+ * @param[in,out]  cb  Netconf packet (cligen buffer)
+ */
+int
+netconf_framing_postamble(netconf_framing_type framing,
+			  cbuf                *cb)
+{
+    switch (framing){
+    case NETCONF_SSH_EOM:
+	cprintf(cb, "]]>]]>");     /* Add RFC4742 end-of-message marker */
+	break;
+    case NETCONF_SSH_CHUNKED:
+	cprintf(cb, "\n##\n");     /* Add RFC6242 chunked-end */
+	break;
+    }
+    return 0;
+}
+
+/*! Send netconf message from cbuf on socket
+ * @param[in]   s    
+ * @param[in]   cb      Cligen buffer that contains the XML message
+ * @param[in]   msg     Only for debug
+ * @retval      0       OK
+ * @retval     -1       Error
+ * @see netconf_output_encap  for function with encapsulation
+ */
+int 
+netconf_output(int   s,
+	       cbuf *cb, 
+	       char *msg)
+{
+    int   retval = -1;
+    char *buf = cbuf_get(cb);
+    int   len = cbuf_len(cb);
+
+    clicon_debug(1, "SEND %s", msg);
+    if (clicon_debug_get() > 1){ /* XXX: below only works to stderr, clicon_debug may log to syslog */
+	cxobj *xt = NULL;
+	if (clixon_xml_parse_string(buf, YB_NONE, NULL, &xt, NULL) == 0){
+	    clicon_xml2file(stderr, xml_child_i(xt, 0), 0, 0);
+	    fprintf(stderr, "\n");
+	    xml_free(xt);
+	}
+    }
+    if (write(s, buf, len) < 0){
+	if (errno == EPIPE)
+	    ;
+	else
+	    clicon_log(LOG_ERR, "%s: write: %s", __FUNCTION__, strerror(errno));
+	goto done;
+    }
+    retval = 0;
+  done:
+    return retval;
+}
+	    
+/*! Encapsulate and send outgoing netconf packet as cbuf on socket
+ *
+ * @param[in]   h    Clixon handle
+ * @param[in]   cb   Cligen buffer that contains the XML message
+ * @retval      0    OK
+ * @retval     -1    Error
+ * @note Assumes "cb" contains valid XML
+ * @see netconf_output  without encapsulation
+ * @see netconf_hello_msg where framing is set
+ */
+int 
+netconf_output_encap(netconf_framing_type framing,
+		     cbuf                *cb)
+{
+    int  retval = -1;
+    
+    if (netconf_framing_preamble(framing, cb) < 0)
+	goto done;
+    if (netconf_framing_postamble(framing, cb) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Track chunked framing defined in RFC6242
+ *
+ * The function works by calling sequentially each received char and using 
+ * two state variables: state and size
+ * The function traverses the states 0-7, where state 4 also uses countdown of size
+ * The function returns one of four results: framing/control; chunk-data; end-of-frame; or error
+ * Anything not conforming is returned as error.
+ * Possibly one should accept whitespaces between frames?
+ * RFC6242 Sec 4.2
+ * <Chunked-Message> = <chunk>+ end-of-chunks
+ * <chunk>           = LF HASH <chunk-size> LF <chunk-data>
+ *   Example:  \n#4\n
+ *             data
+ * <end-of-chunks>   = LF HASH HASH LF
+ *   Example:  \n##\n
+ * <chunk-size>      = [1-9][0-9]*
+ *
+ * State: 0 No frame (begin/ended)
+ *        1 \n received
+ *        2 # received
+ *        3 read [1-9]
+ *        4 read chunk-size read: chunk-data
+ * @param[in]     ch     New input character
+ * @param[in,out] state  State machine state
+ * @param[in,out] size   Remaining expecting chunk bytes.
+ * @retval       -1      Error
+ * @retval        0      Framing char, not data
+ * @retval        1      Chunk-data      
+ * @retval        2      End-of-frame
+ * Example:
+   C:  \n#4\n
+   C:  <rpc
+   C:  \n#18\n
+   C:   message-id="102"\n
+   C:  \n#79\n
+   C:       xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">\n
+   C:    <close-session/>\n
+   C:  </rpc>
+   C:  \n##\n
+ */
+int
+netconf_input_chunked_framing(char    ch, 
+			      int    *state,
+			      size_t *size)
+{
+    int retval = 0;
+
+    clicon_debug(1, "%s ch:%c(%d) state:%d size:%lu", __FUNCTION__, ch, ch, *state, *size);
+    switch (*state){
+    case 0:
+	if (ch == '\n'){
+	    (*state)++;
+	    break;
+	}
+	clicon_err(OE_NETCONF, 0, "NETCONF framing error chunk-start: expected \\n but received %c (state:%d)", ch, *state);
+	goto err;
+	break;
+    case 1:
+    case 5:
+	if (ch == '#'){
+	    (*state)++;
+	    break;
+	}
+	clicon_err(OE_NETCONF, 0, "NETCONF framing error: expected # but received %c (state:%d)", ch, *state);
+	goto err;
+	break;
+    case 2:
+	if (ch == '#'){
+	    (*state) = 0;
+	    retval = 2; /* end of frame (empty data) */
+	    break;
+	}
+	else if (ch >= '1' && ch <= '9'){ /* first num */
+	    (*state)++;
+	    *size = ch-'0';
+	    break;
+	}
+	clicon_err(OE_NETCONF, 0, "NETCONF framing error chunk-start: expected 1-9 or # but received %c (state:%d)", ch, *state);
+	goto err;
+	break;
+    case 3:
+	if (ch >= '0' && ch <= '9'){ /* other nums */
+	    *size = (*size)*10 + ch-'0';
+	    break;
+	}
+	else if (ch == '\n'){ 
+	    (*state)++;
+	    break;
+	}
+	clicon_err(OE_NETCONF, 0, "NETCONF framing error chunk-size: expected 0-9 or \\n but received %c (state:%d)", ch, *state);
+	goto err;
+	break;
+    case 4:
+	if (*size > 0){ /* chunk-data */
+	    (*size)--;
+	    retval = 1; /* chunk-data */
+	    break;
+	}
+	else if (*size == 0 && ch == '\n'){
+	    (*state)++;
+	    break;
+	}
+	clicon_err(OE_NETCONF, 0, "NETCONF framing error chunk-end: expected \\n but received %c (state:%d)", ch, *state);
+	goto err;
+	break;
+    case 6:
+	if (ch == '#'){
+	    (*state)++;
+	    break;
+	}
+	else if (ch >= '1' && ch <= '9'){ /* first num */
+	    *state=3;
+	    *size = ch-'0';
+	    break;
+	}
+	clicon_err(OE_NETCONF, 0, "NETCONF framing error: expected # but received %c (state:%d)", ch, *state);
+	goto err;
+	break;
+    case 7:
+	if (ch == '\n'){
+	    (*state) = 0;
+	    retval = 2; /* end of frame */
+	    break;
+	}
+	clicon_err(OE_NETCONF, 0, "NETCONF framing error chunk-end: expected \\n but received %c (state:%d)", ch, *state);
+	goto err;
+	break;
+    default:
+	clicon_err(OE_NETCONF, 0, "NETCONF framing error %c , invalid state:%d", ch, *state);
+	goto err;
+	break;
+    }
+ done:
+    return retval;
+ err:
+    *state = 0;
+    retval = -1; /* Error */
     goto done;
 }

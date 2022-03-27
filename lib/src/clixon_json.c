@@ -1462,7 +1462,7 @@ _json_parse(char      *str,
 /*! Parse string containing JSON and return an XML tree
  *
  * @param[in]     str   String containing JSON
- * @param[in]  rfc7951 Do sanity checks according to RFC 7951 JSON Encoding of Data Modeled with YANG
+ * @param[in]  rfc7951  Do sanity checks according to RFC 7951 JSON Encoding of Data Modeled with YANG
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification, mandatory to make module->xmlns translation
  * @param[in,out] xt    Top object, if not exists, on success it is created with name 'top'

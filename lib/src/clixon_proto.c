@@ -75,6 +75,7 @@
 #include "clixon_sig.h"
 #include "clixon_xml.h"
 #include "clixon_xml_io.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_options.h"
 #include "clixon_proto.h"
 
@@ -427,7 +428,7 @@ clicon_msg_rcv(int                s,
 /*! Receive a message using plain NETCONF
  *
  * @param[in]   s      socket (unix or inet) to communicate with backend
- * @param[out]  cb1    cligen buf struct containing the incoming message
+ * @param[out]  cb     cligen buf struct containing the incoming message
  * @param[out]  eof    Set if eof encountered
  * @see netconf_input_cb()
  * @see clicon_msg_rcv using IPC message struct
@@ -499,7 +500,6 @@ clicon_msg_send1(int   s,
 { 
     int retval = -1;
 
-    cprintf(cb, "]]>]]>");
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
 		 s, cbuf_get(cb), cbuf_len(cb)+1) < 0){
 	clicon_err(OE_CFG, errno, "atomicio");
@@ -667,6 +667,10 @@ clicon_rpc1(int   sock,
     int    retval = -1;
 
     clicon_debug(1, "%s", __FUNCTION__);
+    if (netconf_framing_preamble(NETCONF_SSH_CHUNKED, msg) < 0)
+	goto done;
+    if (netconf_framing_postamble(NETCONF_SSH_CHUNKED, msg) < 0)
+	goto done;
     if (clicon_msg_send1(sock, msg) < 0)
 	goto done;
     if (clicon_msg_rcv1(sock, msgret, eof) < 0)

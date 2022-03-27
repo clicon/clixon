@@ -426,7 +426,6 @@ clixon_event_loop(clicon_handle h)
 		if ((*e->e_fn)(e->e_fd, e->e_arg) < 0){
 		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, e->e_string);
 		    goto err;
-
 		}
 		if (_ee_unreg){
 		    _ee_unreg = 0;
@@ -440,6 +439,8 @@ clixon_event_loop(clicon_handle h)
 	clicon_debug(1, "%s err", __FUNCTION__);
 	break;
     }
+    if (clixon_exit_get() == 1)
+	retval = 0;
     clicon_debug(1, "%s done:%d", __FUNCTION__, retval);
     return retval;
 }

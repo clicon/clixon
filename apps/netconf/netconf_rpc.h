@@ -45,6 +45,7 @@
 int 
 netconf_rpc_dispatch(clicon_handle h,
 		     cxobj        *xn, 
-		     cxobj       **xret);
+		     cxobj       **xret,
+		     int          *eof);
 
 #endif  /* _NETCONF_RPC_H_ */

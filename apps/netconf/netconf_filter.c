@@ -63,7 +63,6 @@
 #include <clixon/clixon.h>
 
 #include "netconf_rpc.h"
-#include "netconf_lib.h"
 #include "netconf_filter.h"
 
 /* xf specifices a filter, and xn is an xml tree.

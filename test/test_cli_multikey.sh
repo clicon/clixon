@@ -104,7 +104,7 @@ new "set 1 v2 again"
 expectpart "$($clixon_cli -1 -f $cfg set ex x a 1 b v2)" 0 ""
 
 new "show conf"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><ex xmlns=\"urn:example:clixon\"><x><a>1</a><b>v1</b></x><x><a>1</a><b>v2</b></x><x><a>1</a><b>v3</b></x><x><a>2</a><b>v1</b></x><x><a>2</a><b>v2</b></x><x><a>2</a><b>v3</b></x></ex></data></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><ex xmlns=\"urn:example:clixon\"><x><a>1</a><b>v1</b></x><x><a>1</a><b>v2</b></x><x><a>1</a><b>v3</b></x><x><a>2</a><b>v1</b></x><x><a>2</a><b>v2</b></x><x><a>2</a><b>v3</b></x></ex></data></rpc-reply>"
 
 # ordered-by user
 new "set 1 v1"
@@ -123,7 +123,7 @@ new "set 2 v2"
 expectpart "$($clixon_cli -1 -f $cfg set ex y a 2 b v2)" 0 ""
 
 new "show conf"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><ex xmlns=\"urn:example:clixon\"><x><a>1</a><b>v1</b></x><x><a>1</a><b>v2</b></x><x><a>1</a><b>v3</b></x><x><a>2</a><b>v1</b></x><x><a>2</a><b>v2</b></x><x><a>2</a><b>v3</b></x><y><a>1</a><b>v1</b></y><y><a>2</a><b>v1</b></y><y><a>1</a><b>v2</b></y><y><a>1</a><b>v3</b></y><y><a>2</a><b>v2</b></y></ex></data></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><ex xmlns=\"urn:example:clixon\"><x><a>1</a><b>v1</b></x><x><a>1</a><b>v2</b></x><x><a>1</a><b>v3</b></x><x><a>2</a><b>v1</b></x><x><a>2</a><b>v2</b></x><x><a>2</a><b>v3</b></x><y><a>1</a><b>v1</b></y><y><a>2</a><b>v1</b></y><y><a>1</a><b>v2</b></y><y><a>1</a><b>v3</b></y><y><a>2</a><b>v2</b></y></ex></data></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

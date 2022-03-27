@@ -118,13 +118,13 @@ wait_backend
 
 # The main example implements ex:e4
 new "Add extension foo (not implemented)"
-expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><foo xmlns=\"urn:example:clixon\">a string</foo></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>foo</bad-element></error-info><error-severity>error</error-severity>"
+expecteof_netconf "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><foo xmlns=\"urn:example:clixon\">a string</foo></config></edit-config></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>foo</bad-element></error-info><error-severity>error</error-severity>" ""
 
 new "Add extension bar (is implemented)"
-expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><bar xmlns=\"urn:example:clixon\">a string</bar></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>"
+expecteof_netconf "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><bar xmlns=\"urn:example:clixon\">a string</bar></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf get config"
-expecteof "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><bar xmlns=\"urn:example:clixon\">a string</bar></data></rpc-reply>]]>]]>"
+expecteof_netconf "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><bar xmlns=\"urn:example:clixon\">a string</bar></data></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

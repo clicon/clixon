@@ -87,10 +87,6 @@ APPSRC  += netconf_rpc.c
 APPSRC  += netconf_filter.c
 APPOBJ   = $(APPSRC:.c=.o)
 
-# Accessible from plugin
-LIBSRC   = netconf_lib.c 
-
-
 LIBOBJ   = $(LIBSRC:.c=.o)
 
 # Name of lib

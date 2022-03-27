@@ -91,7 +91,8 @@ function testrun(){
     pid=$(cat $pidfile)
 
     new "netconf get stats"
-    res=$(echo "$DEFAULTHELLO<rpc $DEFAULTNS><stats $LIBNS/></rpc>]]>]]>" | $clixon_netconf -qf $cfg)
+    rpc=$(chunked_framing "<rpc $DEFAULTNS><stats $LIBNS/></rpc>")
+    res=$(echo "$DEFAULTHELLO$rpc" | $clixon_netconf -qef $cfg)
 #    echo "res:$res"
     err0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/rpc-error")
     err=${err0#"nodeset:"}

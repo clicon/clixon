@@ -110,10 +110,10 @@ wait_backend
 
 # The list
 new "Add three list options"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>opta</name><value>42</value></parameter><parameter><name>optb</name><value>43</value></parameter><parameter><name>optc</name><value>44</value></parameter></table></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>opta</name><value>42</value></parameter><parameter><name>optb</name><value>43</value></parameter><parameter><name>optc</name><value>44</value></parameter></table></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf commit"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "${DEFAULTHELLO}" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "show config"
 expectpart "$($clixon_cli -1 -f $cfg show conf)" 0 "<table xmlns=\"urn:example:clixon\"><parameter><name>opta</name><value>42</value></parameter><parameter><name>optb</name><value>43</value></parameter><parameter><name>optc</name><value>44</value></parameter></table>"
@@ -126,10 +126,10 @@ expectpart "$(echo "set table parameter 	" | $clixon_cli -f $cfg 2>&1)" 0 opta o
 
 # Leafs
 new "Add leafs"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>opta</name><value>42</value><value2>43</value2><value3>44</value3></parameter></table></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>opta</name><value>42</value><value2>43</value2><value3>44</value3></parameter></table></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf commit"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "show config leafs"
 expectpart "$($clixon_cli -1 -f $cfg show conf)" 0 "<table xmlns=\"urn:example:clixon\"><parameter><name>opta</name><value>42</value><value2>43</value2><value3>44</value3></parameter><parameter><name>optb</name><value>43</value></parameter><parameter><name>optc</name><value>44</value></parameter></table>"

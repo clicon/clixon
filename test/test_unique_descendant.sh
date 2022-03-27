@@ -68,7 +68,7 @@ new "wait backend"
 wait_backend
 
 RPC=$(cat<<EOF
-$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config>
+<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config>
     <outer xmlns="urn:example:clixon">
        <name>x</name><c>
           <inner><name>a</name><value>foo</value></inner>
@@ -81,73 +81,41 @@ $DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-
           <inner><name>b</name><value>fum</value></inner>
        </c>
     </outer>
-</config></edit-config></rpc>]]>]]>
+</config></edit-config></rpc>
 EOF
       )
 
-# RFC test two-field caes
+# RFC test two-field cases
 new "Add valid example"
-expecteof "$clixon_netconf -qf $cfg" 0 "${RPC}" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "${RPC}" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf validate ok"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-RPC=$(cat<<EOF
-$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config>
-    <outer xmlns="urn:example:clixon">
-       <name>x</name><c>
-          <inner><name>a</name><value>foo</value></inner>
-          <inner><name>b</name><value>foo</value></inner>
-       </c>
-    </outer>
-    <outer xmlns="urn:example:clixon">
-       <name>y</name><c>
-          <inner><name>a</name><value>fie</value></inner>
-          <inner><name>b</name><value>fum</value></inner>
-       </c>
-    </outer>
-</config></edit-config></rpc>]]>]]>
-EOF
-      )
+rpc="<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><outer xmlns=\"urn:example:clixon\"><name>x</name><c><inner><name>a</name><value>foo</value></inner><inner><name>b</name><value>foo</value></inner></c></outer><outer xmlns=\"urn:example:clixon\"><name>y</name><c><inner><name>a</name><value>fie</value></inner><inner><name>b</name><value>fum</value></inner></c></outer></config></edit-config></rpc>"
 
 new "Add invalid example"
-expecteof "$clixon_netconf -qf $cfg" 0 "${RPC}" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "${rpc}" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf validate same inner (should fail)"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique>c/inner/value</non-unique></error-info></rpc-error></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique>c/inner/value</non-unique></error-info></rpc-error></rpc-reply>"
 
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-RPC=$(cat<<EOF
-$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config>
-    <outer xmlns="urn:example:clixon">
-       <name>x</name><c>
-          <inner><name>a</name><value>foo</value></inner>
-          <inner><name>b</name><value>bar</value></inner>
-       </c>
-    </outer>
-    <outer xmlns="urn:example:clixon">
-       <name>y</name><c>
-          <inner><name>a</name><value>fie</value></inner>
-          <inner><name>b</name><value>bar</value></inner>
-       </c>
-    </outer>
-</config></edit-config></rpc>]]>]]>
-EOF
-      )
+rpc="<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><outer xmlns=\"urn:example:clixon\"><name>x</name><c><inner><name>a</name><value>foo</value></inner><inner><name>b</name><value>bar</value></inner></c></outer><outer xmlns=\"urn:example:clixon\"><name>y</name><c><inner><name>a</name><value>fie</value></inner><inner><name>b</name><value>bar</value></inner></c></outer></config></edit-config></rpc>"
 
 new "Add invalid example"
-expecteof "$clixon_netconf -qf $cfg" 0 "${RPC}" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "${rpc}" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf validate same in different outers (should fail)"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique>c/inner/value</non-unique></error-info></rpc-error></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique>c/inner/value</non-unique></error-info></rpc-error></rpc-reply>"
 
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

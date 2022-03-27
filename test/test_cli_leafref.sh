@@ -207,7 +207,7 @@ expectpart "$($clixon_cli -1 -l o -f $cfg set leafrefs leafref str)" 255 "'str' 
 
 # Make a netconf request to set wrong type to fail in validate
 new "netconf set leafref str wrong type"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><leafrefs xmlns=\"urn:example:clixon\"><leafref><name>str</name></leafref></leafrefs></config><default-operation>merge</default-operation></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><leafrefs xmlns=\"urn:example:clixon\"><leafref><name>str</name></leafref></leafrefs></config><default-operation>merge</default-operation></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "cli validate"
 expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 255 "'str' is not a number <bad-element>name</bad-element>"

@@ -73,6 +73,7 @@
 #include "clixon_xpath.h"
 #include "clixon_proto.h"
 #include "clixon_err.h"
+#include "clixon_event.h"
 #include "clixon_stream.h"
 #include "clixon_err_string.h"
 #include "clixon_xml_nsctx.h"
@@ -187,7 +188,7 @@ clicon_rpc_msg(clicon_handle      h,
 #endif
     clicon_debug(1, "%s request:%s", __FUNCTION__, msg->op_body);
     /* Create a socket and connect to it, either UNIX, IPv4 or IPv6 per config options */
-    if (clicon_rpc_msg_once(h, msg, &retdata, &eof, NULL) < 0)
+    if (clicon_rpc_msg_once(h, msg, &retdata, &eof, &s) < 0)
 	goto done;
     if (eof){
 	/* 2. check socket shutdown AFTER rpc */
@@ -195,17 +196,20 @@ clicon_rpc_msg(clicon_handle      h,
 	s = -1;
 	clicon_client_socket_set(h, -1);
 #ifdef PROTO_RESTART_RECONNECT
-	if (clicon_rpc_msg_once(h, msg, &retdata, &eof, NULL) < 0)
-	    goto done;
-	if (eof){
-	    close(s);
-	    s = -1;
-	    clicon_client_socket_set(h, -1);
-	    clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
-	    goto done;
+	if (!clixon_exit_get()) { /* May be part of termination */
+	    if (clicon_rpc_msg_once(h, msg, &retdata, &eof, NULL) < 0)
+		goto done;
+	    if (eof){
+		close(s);
+		s = -1;
+		clicon_client_socket_set(h, -1);
+		    
+		clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
+		goto done;
+	    }
+	    /* To disable this restart, unset PROTO_RESTART_RECONNECT */
+	    clicon_log(LOG_WARNING, "The backend was probably restarted and the client has reconnected to the backend. Any locks or candidate edits are lost.");
 	}
-	/* To disable this restart, unset PROTO_RESTART_RECONNECT */
-	clicon_log(LOG_WARNING, "The backend was probably restarted and the client has reconnected to the backend. Any locks or candidate edits are lost.");
 #else
 	clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
 	goto done;
@@ -269,6 +273,9 @@ clicon_rpc_msg_persistent(clicon_handle      h,
 	close(s);
 	s = -1;
 	clicon_client_socket_set(h, -1);
+	/* Note here one could try a restart as done in clicon_rpc_msg, but seems not 
+	 * right since if backend is restarted, the notification stream is gone.
+	 */
 	clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
 	goto done;
     }

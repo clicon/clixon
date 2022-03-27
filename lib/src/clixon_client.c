@@ -226,6 +226,7 @@ clixon_client_hello(int sock)
     cprintf(msg, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(msg, "<capabilities><capability>%s</capability></capabilities>", NETCONF_BASE_CAPABILITY_1_1);
     cprintf(msg, "</hello>");
+    cprintf(msg, "]]>]]>");
     if (clicon_msg_send1(sock, msg) < 0)
 	goto done;
     retval = 0;
@@ -444,6 +445,8 @@ clixon_client_get_xdata(int         sock,
 	cprintf(msg, "/>");
     }
     cprintf(msg, "</get-config></rpc>");
+    if (netconf_output_encap(NETCONF_SSH_CHUNKED, msg) < 0)
+	goto done;
     if (clicon_rpc1(sock, msg, msgret, &eof) < 0)
 	goto done;
     if (eof){

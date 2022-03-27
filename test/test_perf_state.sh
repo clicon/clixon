@@ -123,35 +123,42 @@ fi
 new "wait restconf"
 wait_restconf
 
-new "generate 'large' config with $perfnr list entries"
-echo -n "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b>" > $fconfig
+rpc="<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>"
+rpc+="<interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b>"
 for (( i=0; i<$perfnr; i++ )); do  
-    echo -n "<interface><name>e$i</name><type>ex:eth</type></interface>" >> $fconfig
+    rpc+="<interface><name>e$i</name><type>ex:eth</type></interface>"
 done
-echo "</b></a></interfaces></config></edit-config></rpc>]]>]]>" >> $fconfig
+rpc+="</b></a></interfaces>"
+rpc+="$(cat $fconfig)"
+rpc+="</config></edit-config></rpc>"
+echo foo
+echo -n "$DEFAULTHELLO" > $fconfig
+echo "$(chunked_framing "$rpc")" >> $fconfig
 
 # Now take large config file and write it via netconf to candidate
 new "netconf write large config"
-expecteof_file "time -p $clixon_netconf -qf $cfg" 0 "$fconfig" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof_file "time -p $clixon_netconf -qef $cfg" 0 "$fconfig" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>$" 2>&1 | awk '/real/ {print $2}'
 
 # Now commit it from candidate to running 
 new "netconf commit large config"
-expecteof "time -p $clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof_netconf "time -p $clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" 2>&1 | awk '/real/ {print $2}'
 
 # START actual tests
 # Having a large db, get single entries many times
 # NETCONF get
 new "netconf get test single req"
 sel="/ex:interfaces/ex:a[ex:name='foo']/ex:b/ex:interface[ex:name='e1']"
-msg="$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>"
-expecteof "$clixon_netconf -qf $cfg" 0 "$msg" "^<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b><interface><name>e1</name><type>ex:eth</type><enabled>true</enabled><status>up</status></interface></b></a></interfaces></data></rpc-reply>]]>]]>$"
+rpc=$(chunked_framing "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>")
+
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "$rpc" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b><interface><name>e1</name><type>ex:eth</type><enabled>true</enabled><status>up</status></interface></b></a></interfaces></data></rpc-reply>"
 
 new "netconf get $perfreq single reqs"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
     sel="/ex:interfaces/ex:a[ex:name='foo']/ex:b/ex:interface[ex:name='e$rnd']"
-    echo "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>"
-done | $clixon_netconf -qf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
+    rpc=$(chunked_framing "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>")
+    echo "$rpc"
+done | $clixon_netconf -Hqef $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF get
 new "restconf get test single req"
@@ -181,7 +188,8 @@ done } 2>&1 | awk '/real/ {print $2}'
 
 # Get config in one large get
 new "netconf get large config"
-{ time -p echo "$DEFAULTHELLO<rpc $DEFAULTNS><get> <filter type=\"xpath\" select=\"/ex:interfaces/ex:a[name='foo']/ex:b\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>]]>]]>" | $clixon_netconf -qf $cfg  > /tmp/netconf; } 2>&1 | awk '/real/ {print $2}'
+rpc=$(chunked_framing "<rpc $DEFAULTNS><get> <filter type=\"xpath\" select=\"/ex:interfaces/ex:a[name='foo']/ex:b\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>")
+{ time -p echo "$DEFAULTHELLO$rpc" | $clixon_netconf -qef $cfg  > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 new "restconf get large config"
 $TIMEFN curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b 2>&1 | awk '/real/ {print $2}'

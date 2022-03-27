@@ -70,8 +70,6 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include "clixon_netconf.h"
-#include "netconf_lib.h"
 #include "netconf_filter.h"
 #include "netconf_rpc.h"
 
@@ -486,15 +484,18 @@ netconf_notification_cb(int   s,
     if (clicon_xml2cbuf(cb, xn, 0, 0, -1) < 0)
 	goto done;
     /* Send it to listening client on stdout */
-    if (netconf_output_encap(1, cb, "notification") < 0){
+    if (netconf_output_encap(clicon_option_int(h, "netconf-framing"), cb) < 0){
 	cbuf_free(cb);
 	goto done;
     }
+    if (netconf_output(1, cb, "notification") < 0)
+	goto done;
     fflush(stdout);
     cbuf_free(cb);
  ok:
     retval = 0;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (xt != NULL)
@@ -680,13 +681,15 @@ netconf_application_rpc(clicon_handle h,
  * @param[in]  h       clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
  * @param[out] xret    Return XML, error or OK
+ * @param[out] eof     Set to 1 if pending close socket
  * @retval     0       OK, can also be netconf error 
  * @retval    -1       Error, fatal
  */
 int
 netconf_rpc_dispatch(clicon_handle h,
 		     cxobj        *xn, 
-		     cxobj       **xret)
+		     cxobj       **xret,
+		     int          *eof)
 {
     int         retval = -1;
     cxobj      *xe;
@@ -735,7 +738,7 @@ netconf_rpc_dispatch(clicon_handle h,
 		goto done;
 	}
 	else if (strcmp(xml_name(xe), "close-session") == 0){
-	    cc_closed++;
+	    *eof = 1; /* Pending close */
 	    if (clicon_rpc_netconf_xml(h, xml_parent(xe), xret, NULL) < 0)
 		goto done;	
 	}

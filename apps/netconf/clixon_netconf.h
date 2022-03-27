@@ -45,9 +45,6 @@
  * Prototypes
  * (Duplicated. Also in netconf_*.h)
  */
-int netconf_output(int s, cbuf *xf, char *msg);
-int netconf_output_encap(int s, cbuf *xf, char *msg);
-
 int netconf_xpath(cxobj *xsearch,
 		  cxobj *xfilter, 
 		   cbuf *xf, cbuf *xf_err, 

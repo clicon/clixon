@@ -71,8 +71,31 @@ new "wait backend"
 wait_backend
 
 # Hello
-new "Netconf 1.0 eom framing"
+new "Netconf 1.0 eom framing, edit-config"
 expecteof "$clixon_netconf -qef $cfg -o CLICON_NETCONF_BASE_CAPABILITY=0" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>]]>]]><rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>a</name></parameter></table></config></edit-config></rpc>]]>]]>$" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+
+new "Netconf 1.0 eom framing get-config"
+expecteof "$clixon_netconf -qef $cfg -o CLICON_NETCONF_BASE_CAPABILITY=0" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>]]>]]><rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>$" "^<rpc-reply $DEFAULTNS><data><table xmlns=\"urn:example:clixon\"><parameter><name>a</name></parameter></table></data></rpc-reply>]]>]]>$"
+
+new "Netconf 1.1 eom framing, expect error"
+expecteof "$clixon_netconf -qef $cfg -o CLICON_NETCONF_BASE_CAPABILITY=1" 255 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]><rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>$" ""
+
+new "Netconf 1.1 chunked framing"
+expecteof_netconf "$clixon_netconf -qef $cfg -o CLICON_NETCONF_BASE_CAPABILITY=1" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><table xmlns=\"urn:example:clixon\"><parameter><name>a</name></parameter></table></data></rpc-reply>"
+
+# cant use expecteof_netconf since it relies on a whole frame, here we split into multiple
+rpc=$(cat <<EOF
+<?xml version="1.0" encoding="UTF-8"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>
+#85
+<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="42"><get-config><sou
+#44
+rce><candidate/></source></get-config></rpc>
+##
+EOF
+   )
+
+new "Netconf 1.1 multi-chunked framing"
+expecteof_netconf "$clixon_netconf -qef $cfg -o CLICON_NETCONF_BASE_CAPABILITY=1" 0 "$rpc" "" "" "<rpc-reply $DEFAULTNS><data><table xmlns=\"urn:example:clixon\"><parameter><name>a</name></parameter></table></data></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

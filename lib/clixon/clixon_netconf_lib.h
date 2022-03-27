@@ -83,6 +83,30 @@ enum netconf_content{
 };
 typedef enum netconf_content netconf_content;
 
+enum target_type{ /* netconf */
+    RUNNING,
+    CANDIDATE
+}; 
+
+enum test_option{ /* edit-config */
+    SET,
+    TEST_THEN_SET,
+    TEST_ONLY
+};
+
+enum error_option{ /* edit-config */
+    STOP_ON_ERROR,
+    CONTINUE_ON_ERROR
+};
+
+/* NETCONF framing
+ */
+enum framing_type{ 
+    NETCONF_SSH_EOM,     /* RFC 4742, RFC 6242 hello msg (end-of-msg: ]]>]]>)*/
+    NETCONF_SSH_CHUNKED, /* RFC 6242 Chunked framing */
+};
+typedef enum framing_type netconf_framing_type;
+
 /*
  * Macros
  */
@@ -142,6 +166,10 @@ int clixon_netconf_error_fn(const char *fn, const int line, cxobj *xerr, const c
 int clixon_netconf_internal_error(cxobj *xerr, char *msg, char *arg);
 int netconf_parse_uint32(char *name, char *valstr, char *defaultstr, uint32_t defaultval, cbuf *cbret, uint32_t *value);
 int netconf_parse_uint32_xml(char *name, char *valstr, char *defaultstr, uint32_t defaultval, cxobj **xerr, uint32_t *value);
-
+int netconf_framing_preamble(netconf_framing_type framing, cbuf *cb);
+int netconf_framing_postamble(netconf_framing_type framing, cbuf *cb);
+int netconf_output(int s, cbuf *xf, char *msg);
+int netconf_output_encap(netconf_framing_type framing, cbuf *cb);
+int netconf_input_chunked_framing(char ch, int *state, size_t *size);
 
 #endif /* _CLIXON_NETCONF_LIB_H */

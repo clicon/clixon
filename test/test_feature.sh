@@ -130,16 +130,16 @@ function testrun()
     
     if $enabled; then
 	new "netconf set $node"
-	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\">foo</$node></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\">foo</$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 	new "netconf validate $node"
-	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
     else
 	new "netconf set $node, expect fail"
-	expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\">foo</$node></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>$node</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: $node with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>]]>]]>$"
+	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\">foo</$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>$node</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: $node with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>"
     fi
     new "netconf discard-changes"
-    expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 }
 
 new "test params: -f $cfg"
@@ -170,7 +170,7 @@ new "cli disabled feature in other module"
 expectpart "$($clixon_cli -1f $cfg -l o set routing ribs rib default-rib false)" 255 "CLI syntax error: \"set routing ribs rib default-rib false\": Unknown command"
 
 new "netconf discard-changes"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 # Single if-feature
 testrun x true
@@ -190,8 +190,9 @@ testrun m8 false
 # This test has been broken up into all different modules instead of one large
 # reply since the modules change so often
 new "netconf schema resource, RFC 7895"
+rpc=$(chunked_framing "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"l:yang-library/l:module-set[l:name='default']/l:module\" xmlns:l=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>")
 ret=$($clixon_netconf -qf $cfg<<EOF 
-$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type="xpath" select="l:yang-library/l:module-set[l:name='default']/l:module" xmlns:l="urn:ietf:params:xml:ns:yang:ietf-yang-library"/></get></rpc>]]>]]>
+$DEFAULTHELLO$rpc
 EOF
    )
 #echo $ret

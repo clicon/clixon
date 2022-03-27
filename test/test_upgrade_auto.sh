@@ -262,7 +262,7 @@ new "waiting"
 wait_backend
 
 new "Check running db content"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "^<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

@@ -114,34 +114,34 @@ if [ $? -ne 0 ]; then
 fi
 
 new "check running defaults"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><d0>88</d0><b><c>0</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><d0>88</d0><b><c>0</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>"
 
 new "delete existing list element"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><edit-config><target><candidate/></target><config><a xmlns=\"urn:example:default\"><b nc:operation=\"delete\"><c>0</c></b></a></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><edit-config><target><candidate/></target><config><a xmlns=\"urn:example:default\"><b nc:operation=\"delete\"><c>0</c></b></a></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><ok/></rpc-reply>"
 
 new "netconf commit"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS ><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS ><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "set new list element"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><a xmlns=\"urn:example:default\"><b><c>17</c></b></a></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><a xmlns=\"urn:example:default\"><b><c>17</c></b></a></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "get the list top"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><d0>88</d0><b><c>17</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><d0>88</d0><b><c>17</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>"
 
 new "get the list xpath /a"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'/></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><d0>88</d0><b><c>17</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'/></filter></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><d0>88</d0><b><c>17</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>"
 
 new "get the list xpath /a/b"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'><b/></a></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>17</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'><b/></a></filter></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>17</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>"
 
 new "get the list xpath /a/b/c"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'><b><c/></b></a></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>17</c></b></a></data></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'><b><c/></b></a></filter></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>17</c></b></a></data></rpc-reply>"
 
 new "get the list xpath /a/b/c=17"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'><b><c>17</c></b></a></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>17</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'><b><c>17</c></b></a></filter></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>17</c><d1>foo</d1><d2>42</d2></b></a></data></rpc-reply>"
 
 new "get the list xpath /a/b/c=17/d1"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'><b><c>17</c><d1/></b></a></filter></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>17</c><d1>foo</d1></b></a></data></rpc-reply>]]>]]>$"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type='subtree'><a xmlns='urn:example:default'><b><c>17</c><d1/></b></a></filter></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>17</c><d1>foo</d1></b></a></data></rpc-reply>"
 
 if [ $BE -ne 0 ]; then     # Bring your own backend
     new "Kill backend"

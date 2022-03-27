@@ -26,6 +26,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_NETCONF_DIR>/usr/local/lib/$APPNAME/netconf</CLICON_NETCONF_DIR>
+  <CLICON_NETCONF_BASE_CAPABILITY>1</CLICON_NETCONF_BASE_CAPABILITY>
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -62,50 +63,60 @@ wait_backend
 
 # Hello
 new "Netconf snd hello with xmldecl"
-expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^$'
+expecteof "$clixon_netconf -qef $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>]]>]]>" '^$'
 
 # Hello, lowercase encoding
-new "Netconf snd hello with xmldecl (lowercase encoding)"
-expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"utf-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^$'
+new "Netconf snd hello with xmldecl (cap 1.0)"
+expecteof "$clixon_netconf -qef $cfg" 0 "<?xml version=\"1.0\" encoding=\"utf-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^$'
 
 new "Netconf snd hello without xmldecl"
-expecteof "$clixon_netconf -qf $cfg" 0 "<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^$'
+expecteof "$clixon_netconf -qef $cfg" 0 "<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^$'
 
-new "Netconf snd hello with RFC 4741 base capability"
-expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>]]>]]>" '^$'
+new "Netconf capability: 1.0 + 1.1 -> 1.0"
+expecteof "$clixon_netconf -ef $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>]]>]]>" '<capability>urn:ietf:params:netconf:base:1.0</capability>'
+
+new "Netconf capability: 1.1 + 1.1 -> 1.1"
+expecteof "$clixon_netconf -ef $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '<capability>urn:ietf:params:netconf:base:1.1</capability>'
+
+new "Netconf capability: 1.0 + 1.0 -> 1.0"
+expecteof "$clixon_netconf -ef $cfg -o CLICON_NETCONF_BASE_CAPABILITY=0" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>]]>]]>" '<capability>urn:ietf:params:netconf:base:1.0</capability>'
+
+new "Netconf capability: 1.1 + 1.0 -> Error"
+expecteof "$clixon_netconf -ef $cfg -o CLICON_NETCONF_BASE_CAPABILITY=0" 255 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '<capability>urn:ietf:params:netconf:base:1.0</capability>'
 
 new "Netconf snd hello with wrong base capability"
-expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.2</capability></capabilities></hello>]]>]]>" '^$' 'Server received hello without netconf base capability urn:ietf:params:netconf:base:1.1'
+expecteof "$clixon_netconf -qef $cfg" 255 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.2</capability></capabilities></hello>]]>]]>" '^$' 'Server received hello without matching netconf base capability'
 
 new "Netconf hello with MUST NOT have a session-id, terminate"
-expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><session-id>42</session-id><capabilities><capability>urn:ietf:params:netconf:base:1.2</capability></capabilities></hello>]]>]]>" '^$'
+expecteof "$clixon_netconf -qef $cfg" 255 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><session-id>42</session-id><capabilities><capability>urn:ietf:params:netconf:base:1.2</capability></capabilities></hello>]]>]]>" '^$'
 
 # When comparing protocol version capability URIs, only the base part is used, in the event any
 # parameters are encoded at the end of the URI string. 
 new "Netconf snd hello with base capability with extra arguments"
-expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1?arg=val</capability></capabilities></hello>]]>]]>" '^$'
+expecteof "$clixon_netconf -qef $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1?arg=val</capability></capabilities></hello>]]>]]>" '^$'
 
 new "Netconf hello with wrong namespace -> terminate"
-expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello xmlns='urn:xxx:wrong' message-id=\"42\"><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^$' 2> /dev/null
+expecteof "$clixon_netconf -qef $cfg" 255 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello xmlns='urn:xxx:wrong' message-id=\"42\"><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^$' 2> /dev/null
 
 # This is hello - shouldnt really get rpc back?
 new "Netconf snd hello with wrong prefix"
-expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><xx:hello xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><nc:capabilities><nc:capability>urn:ietf:params:netconf:base:1.1</nc:capability></nc:capabilities></xx:hello>]]>]]>" '^$' 2> /dev/null
+expecteof "$clixon_netconf -qef $cfg" 255 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><xx:hello xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><nc:capabilities><nc:capability>urn:ietf:params:netconf:base:1.1</nc:capability></nc:capabilities></xx:hello>]]>]]>" '^$' 2> /dev/null
 
 new "Netconf snd hello with prefix"
-expecteof "$clixon_netconf -qf $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><nc:hello xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><nc:capabilities><nc:capability>urn:ietf:params:netconf:base:1.1</nc:capability></nc:capabilities></nc:hello>]]>]]>" '^$'
+expecteof "$clixon_netconf -qef $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><nc:hello xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><nc:capabilities><nc:capability>urn:ietf:params:netconf:base:1.1</nc:capability></nc:capabilities></nc:hello>]]>]]>" '^$'
 
 new "netconf snd + rcv hello"
-expecteof "$clixon_netconf -f $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" "^<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=2019-01-04&amp;module-set-id=42</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]>$" '^$'
+expecteof "$clixon_netconf -f $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" "^<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=2019-01-04&amp;module-set-id=42</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>[0-9]*</session-id></hello>]]>]]>$" '^$'
 
 new "Netconf snd hello with extra element"
-expecteof "$clixon_netconf -qf $cfg" 0 "<hello $DEFAULTNS><capabilities><extra-element/><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="42"><rpc-error><error-type>protocol</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>extra-element</bad-element></error-info><error-severity>error</error-severity><error-message>Unrecognized hello/capabilities element</error-message></rpc-error></rpc-reply>]]>]]>$' '^$'
+expecteof "$clixon_netconf -qef $cfg" 0 "<hello $DEFAULTNS><capabilities><extra-element/><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="42"><rpc-error><error-type>protocol</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>extra-element</bad-element></error-info><error-severity>error</error-severity><error-message>Unrecognized hello/capabilities element</error-message></rpc-error></rpc-reply>]]>]]>$' '^$'
 
 new "Netconf send rpc without hello error"
-expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>rpc</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Client must send an hello element before any RPC</error-message></rpc-error></rpc-reply>]]>]]>" '^$'
+expecteof "$clixon_netconf -qef $cfg" 255 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>rpc</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Client must send an hello element before any RPC</error-message></rpc-error></rpc-reply>]]>]]>" '^$'
 
+# same as -H
 new "Netconf send rpc without hello w CLICON_NETCONF_HELLO_OPTIONAL"
-expecteof "$clixon_netconf -qf $cfg -o CLICON_NETCONF_HELLO_OPTIONAL=true" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>" '^$'
+expecteof_netconf "$clixon_netconf -qef $cfg -o CLICON_NETCONF_HELLO_OPTIONAL=true" 0 "" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

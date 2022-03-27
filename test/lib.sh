@@ -8,6 +8,7 @@
 # The functions are somewhat wildgrown, a little too many:
 # - expectpart
 # - expecteof
+# - expecteof_netconf
 # - expecteofx
 # - expecteofeq
 # - expecteof_file
@@ -91,7 +92,7 @@ DEFAULTONLY="xmlns=\"$BASENS\""
 DEFAULTNS="$DEFAULTONLY message-id=\"42\""
 
 # Minimal hello message as a prelude to netconf rpcs
-DEFAULTHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>"
+DEFAULTHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>"
 
 # Options passed to curl calls
 # -s : silent
@@ -354,6 +355,35 @@ function checkvalgrind(){
     fi
 }
 
+# Check if two RFC6242 NETCONF frames are equal
+# Since they use \n you cannot just use =
+function chunked_equal()
+{
+    echo "1:$1"
+    echo "2:$2"
+    if [ "$1" == "$2" ]; then
+	return 0
+    else
+	return 255
+    fi
+}
+
+# Given a string, add RFC6242 chunked franing around it
+# Args:
+# 0: string
+function chunked_framing()
+{
+    str=$1
+    length=${#str}
+    echo -n "
+#${length}
+"
+    echo -n "$str"
+    echo -n "
+##
+"
+}
+
 # Start backend with all varargs.
 # If valgrindtest == 2, start valgrind
 function start_backend(){
@@ -383,9 +413,12 @@ function stop_backend(){
 
 # Wait for restconf to stop sending  502 Bad Gateway
 function wait_backend(){
-    reply=$(echo "<rpc $DEFAULTNS><ping $LIBNS/></rpc>]]>]]>" | $clixon_netconf -qef $cfg 2> /dev/null) 
+    freq=$(chunked_framing "<rpc $DEFAULTNS><ping $LIBNS/></rpc>")
+    reply=$(echo "$freq" | $clixon_netconf -qHef $cfg) 
+#    freply=$(chunked_framing "<rpc-reply $DEFAULTNS><ok/></rpc-reply>")
+#    chunked_equal "$reply" "$freply"
     let i=0;
-    while [[ $reply != "<rpc-reply"* ]]; do
+    while [[ $reply != *"<rpc-reply"* ]]; do
 #	echo "sleep $DEMSLEEP"
 	sleep $DEMSLEEP
 	reply=$(echo "<rpc $ÐEFAULTSNS $LIBNS><ping/></rpc>]]>]]>" | clixon_netconf -qef $cfg 2> /dev/null)
@@ -554,23 +587,25 @@ function expectpart(){
   positive=true;
   let i=0;
   for exp in "$@"; do
-      if [ "$exp" == "--not--" ]; then
-	  positive=false;
-      elif [ $i -gt 1 ]; then
+      if [ $i -gt 1 ]; then
+	  if [ "$exp" == "--not--" ]; then
+	      positive=false;
+	  else
 #	   echo "echo \"$ret\" | grep --null -o \"$exp"\"
-	   match=$(echo "$ret" | grep --null -i -o "$exp") #-i ignore case XXX -EZo: -E cant handle {}
-	   r=$? 
-	   if $positive; then
-	       if [ $r != 0 ]; then
-		   err "$exp" "$ret"
-	       fi
-	   else
-	       if [ $r == 0 ]; then
-		   err "not $exp" "$ret"
-	       fi
-	   fi
-       fi
-       let i++;
+	      match=$(echo "$ret" | grep --null -i -o "$exp") #-i ignore case XXX -EZo: -E cant handle {}
+	      r=$? 
+	      if $positive; then
+		  if [ $r != 0 ]; then
+		      err "$exp" "$ret"
+		  fi
+	      else
+		  if [ $r == 0 ]; then
+		      err "not $exp" "$ret"
+		  fi
+	      fi
+	  fi
+      fi
+      let i++;
   done
 #  if [[ "$ret" != "$expect" ]]; then
 #      err "$expect" "$ret"
@@ -595,14 +630,14 @@ function expecteof(){
       expecterr=$5
 # Do while read stuff
       ret=$($cmd 2> $errfile <<EOF 
-$input 
+$input
 EOF
 	 )
       r=$? 
   else
 # Do while read stuff
       ret=$($cmd <<EOF 
-$input 
+$input
 EOF
  )
   r=$? 
@@ -648,6 +683,77 @@ EOF
   fi
 }
 
+# Pipe stdin to command and also do chunked framing (netconf 1.1)
+# Arguments:
+# - Command
+# - expected command return value (0 if OK)
+# - stdin input1  This is NOT encoded, eg preamble/hello
+# - stdin input2  This gets chunked encoding
+# - expect1 stdout outcome, can be partial and contain regexps
+# - expect2 stdout outcome This gets chunked encoding, must be complete netconf message
+# Use this if you want regex eg  ^foo$
+function expecteof_netconf(){
+  cmd=$1
+  retval=$2
+  input1=$3
+  input2=$4
+  expect1=$5
+  expect2=$6
+
+  if [ -n "${input2}" ]; then
+      inputenc=$(chunked_framing "${input2}")
+  else
+      inputenc=""
+  fi
+  if [ -n "${expect2}" ]; then
+      expectenc=$(chunked_framing "${expect2}")
+  else
+      expectenc=""
+  fi
+
+#  echo "input1:$input1"
+#  echo "input2:$input2"
+#  echo "inputenc:$inputenc"
+#  echo "expect1:$expect1"
+#  echo "expect2:$expect2"
+#  echo "expectenc:$expectenc"
+# Do while read stuff
+  ret=$($cmd <<EOF 
+${input1}${inputenc}
+EOF
+ )
+  r=$? 
+
+  if [ $r != $retval ]; then
+      echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
+      echo -e "\e[0m:"
+      exit -1
+  fi
+  # If error dont match output strings (why not?)
+  # Match if both are empty string
+  if [ -z "$ret" -a -z "$expect1" ]; then
+      : # null
+  else
+      r=$(echo "$ret" | grep --null -Go "$expect1")
+      match=$?
+      if [ $match -ne 0 ]; then
+	  err "$expect1" "$ret"
+      fi
+  fi
+  if [ -z "$ret" -a -z "$expectenc" ]; then
+      : # null
+  else
+      while read i
+      do
+	  r=$(echo "$ret" | grep --null -Go "$i")
+	  match=$?
+	  if [ $match -ne 0 ]; then
+	      err "$i" "$ret"
+	  fi
+      done <<< "$expectenc"
+  fi
+}
+
 # Like expecteof but with grep -Fxq instead of -EZq. Ie implicit ^$
 # Use this for fixed all line, ie must match exact.
 # - Command
@@ -675,6 +781,7 @@ EOF
 #  if [ $r != 0 ]; then
 #      return
 #  fi
+
   # Match if both are empty string
   if [ -z "$ret" -a -z "$expect" ]; then
       return
@@ -733,7 +840,6 @@ EOF
   fi
 }
 
-
 # clixon tester read from file for large tests
 # Arguments:
 # - Command
@@ -763,43 +869,92 @@ function expecteof_file(){
   fi
 }
 
-# clixon tester. First arg is command second is stdin and
-# third is expected outcome, fourth is how long to wait
+# test script with timeout, used for notificatin streams
 # - (not-evaluated) expression
-# - stdin string
-# - expected command return value (0 if OK)
+# - expected command return value (0 if OK) (NOOP for now)
+# - stdin input1  This is NOT encoded, eg preamble/hello
+# - stdin input2  This gets chunked encoding
+# - wait time in seconds
 # - expected stdout outcome*
 # - the token "--not--"
 # - not expected stdout outcome*
 #
-# XXX do expectwait like expectpart with multiple matches
+# Note: use of a file "result" as a way to collect results
 function expectwait(){
   cmd=$1
-  input=$2
-  expect=$3
-  wait=$4
+  ret=$2
+  input1=$3
+  input2=$4
+  wait=$5
+  expect=$6
 
+  if [ -n "${input2}" ]; then
+      inputenc=$(chunked_framing "${input2}")
+  else
+      inputenc=""
+  fi
+#  echo "cmd:$cmd"
+#  echo "ret:$ret"
+#  echo "input1:$input1"
+#  echo "inputenc:$inputenc"
+#  echo "wait:$wait"
+#  echo "expect:$expect"
 # Do while read stuff
-  echo timeout > /tmp/flag
+  echo timeout > $dir/expectwaitresult
   ret=""
-  sleep $wait |  cat <(echo $input) -| $cmd | while [ 1 ] ; do
+  sleep $wait | cat <(echo "$input1$inputenc") -| $cmd | while [ 1 ] ; do
     read -t 20 r
-#    echo "r:$r"
+#    echo "r:<$r>"
+    if [ -z "$r" ]; then
+	sleep 1
+	continue
+    fi
     # Append $r to $ret
     ret="$ret$r"
-    match=$(echo "$ret" | grep -Eo "$expect");
-    if [ -z "$match" ]; then
-	echo error > /tmp/flag
-	err "$expect" "$ret"
-    else
-	echo ok > /tmp/flag # only this is OK
-	break;
+#    echo "ret:$ret"
+    let i=0;
+    positive=true;
+    let ok=0
+    let fail=0
+    for exp in "$@"; do
+	if [ $i -gt 4 ]; then
+#	    echo "i:$i"
+#	    echo "exp:$exp"
+	    if [ "$exp" == "--not--" ]; then
+		positive=false;
+	    else
+		match=$(echo "$ret" | grep --null -i -o "$exp")
+#		match=$(echo "$ret" | grep -Eo "$exp");
+		r=$?
+		if $positive; then
+		    if [ $r != 0 ]; then
+#			echo "fail: $exp"
+			let fail++
+			break
+		    fi
+		else
+		    if [ $r == 0 ]; then
+#			echo "fail: $exp"
+			let fail++
+			break
+		    fi
+		fi
+	    fi
+	fi
+	let i++;
+    done # for exp
+#    echo "fail:$fail"
+    if [ $fail -eq 0 ]; then
+#	echo ok
+	echo ok > $dir/expectwaitresult	
+	#	break
+	exit 0
     fi
   done
-#  cat /tmp/flag
-  if [ $(cat /tmp/flag) != "ok" ]; then
-#      err "ok" $(cat /tmp/flag)
-#      cat /tmp/flag
+#  cat $dir/expectwaitresult
+  if [ $(cat $dir/expectwaitresult) != "ok" ]; then
+      err "ok" "$(cat $dir/expectwaitresult)"
+      cat $dir/expectwaitresult
       exit -1
   fi
 }
@@ -845,8 +1000,8 @@ function cacerts()
 	echo "cacerts function: Expected: cakey cacert"
 	exit 1
     fi
-    cakey=$1
-    cacert=$2
+    local cakey=$1
+    local cacert=$2
 
     tmpdir=$dir/tmpcertdir
 

@@ -42,6 +42,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_NETCONF_DIR>/usr/local/lib/$APPNAME/netconf</CLICON_NETCONF_DIR>
+  <CLICON_NETCONF_BASE_CAPABILITY>1</CLICON_NETCONF_BASE_CAPABILITY>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
@@ -57,15 +58,8 @@ module clixon-example{
 EOF
 
 cat <<EOF > $rpccmd
-$DEFAULTHELLO
-<rpc $DEFAULTNS>
-   <get-config>
-      <source><candidate/></source>
-   </get-config>
-</rpc>]]>]]>
-<rpc $DEFAULTNS>
-   <close-session/>
-</rpc>]]>]]>
+$DEFAULTHELLO$(chunked_framing "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>")
+$(chunked_framing "<rpc $DEFAULTNS><close-session/></rpc>")
 EOF
 
 # Generate temporary ssh keys without passphrase
@@ -138,7 +132,7 @@ EOF
 new "Start Listener client"
 echo "ssh -s -F $sshcfg -v -i $key -o ProxyUseFdpass=yes -o ProxyCommand=\"clixon_netconf_ssh_callhome_client -a 127.0.0.1\" . netconf"
 #-F $sshcfg
-expectpart "$(ssh -s -F $sshcfg -v -i $key -o ProxyUseFdpass=yes -o ProxyCommand="${clixon_netconf_ssh_callhome_client} -a 127.0.0.1" . netconf < $rpccmd)" 0 "<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=2019-01-04&amp;module-set-id=42</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>2</session-id></hello>]]>]]>" "<rpc-reply $DEFAULTNS><data/></rpc-reply>]]>]]>"
+expectpart "$(ssh -s -F $sshcfg -v -i $key -o ProxyUseFdpass=yes -o ProxyCommand="${clixon_netconf_ssh_callhome_client} -a 127.0.0.1" . netconf < $rpccmd)" 0 "<hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=2019-01-04&amp;module-set-id=42</capability><capability>urn:ietf:params:netconf:capability:candidate:1.0</capability><capability>urn:ietf:params:netconf:capability:validate:1.1</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:xpath:1.0</capability><capability>urn:ietf:params:netconf:capability:notification:1.0</capability></capabilities><session-id>2</session-id></hello>" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
 
 # Wait 
 wait
