@@ -26,7 +26,7 @@ fi
 # OPENCONFIG dir has a small number of extra yangs apart from OCDIR
 OCDIR=$OPENCONFIG/release/models
 
-files=$(find ${OPENCONFIG} -name "*.yang")
+files=$(find ${OPENCONFIG} -type f -name "*.yang")
 
 # Count nr of modules (exclude submodule) Assume "module" or "submodule"
 # first word on first line
