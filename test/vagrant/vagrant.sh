@@ -275,6 +275,7 @@ $sshcmd ./clixon.sh $release $wwwuser ${with_restconf}
 
 # Tests require yangmodels and openconfig
 cat<<EOF > $dir/yangmodels.sh
+set -eux
 cd /usr/local/share
 test -d yang || mkdir yang
 cd yang
@@ -284,10 +285,12 @@ git remote add -f origin https://github.com/YangModels/yang
 git config core.sparseCheckout true
 echo "standard/" >> .git/info/sparse-checkout
 echo "experimental/" >> .git/info/sparse-checkout
-git pull origin master
+git pull origin main
 # Patch yang syntax errors
 sed  s/=\ olt\'/=\ \'olt\'/g /usr/local/share/yang/standard/ieee/published/802.3/ieee802-ethernet-pon.yang > ieee802-ethernet-pon2.yang
 mv ieee802-ethernet-pon2.yang /usr/local/share/yang/standard/ieee/published/802.3/ieee802-ethernet-pon.yang
+sudo sed 's/”/"/' /usr/local/share/yang/standard/iana/iana-if-type@2022-03-07.yang > iana-if-type@2022-03-07-2.yang
+sudo mv iana-if-type@2022-03-07-2.yang /usr/local/share/yang/standard/iana/iana-if-type@2022-03-07.yang
 # openconfig
 cd /usr/local/share
 test -d openconfig || mkdir openconfig
