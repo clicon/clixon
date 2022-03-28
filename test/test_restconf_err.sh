@@ -329,6 +329,9 @@ expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml
 new "Add OK entry"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data -d '<table xmlns="urn:example:clixon"><parameter><name>1</name></parameter></table>')" 0 "HTTP/$HVER 201" 
 
+new "Multiple requests: POST + POST" # XXX Do for HTTP/1 ALSO
+expectpart "$(curl $CURLOPTS -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data/example:table -d '{"example:parameter":{"name":"local1","value":"nisse"}}' --next $CURLOPTS -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data/example:table -d '{"example:parameter":{"name":"local2","value":"laban"}}')" 0 "HTTP/$HVER 201" "localhost/restconf/data/example:table/parameter=local1" "localhost/restconf/data/example:table/parameter=local2"
+
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
     stop_restconf

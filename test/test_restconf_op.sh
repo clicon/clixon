@@ -208,6 +208,9 @@ expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "H
 new "Multiple requests: GET + POST using --next"
 expectpart "$(curl $CURLOPTS -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data?content=config --next $CURLOPTS -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data -d '{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}')" 0 "HTTP/$HVER 200" '<data/>' "HTTP/$HVER 201"
 
+new "Multiple requests: POST + POST" # XXX Do for HTTP/1 ALSO
+expectpart "$(curl $CURLOPTS -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"name":"local1","type":"regular"}}' --next $CURLOPTS -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"name":"local2","type":"regular"}}')" 0 "HTTP/$HVER 201" "localhost/restconf/data/example:cont1/interface=local1" "localhost/restconf/data/example:cont1/interface=local2"
+
 #--------------- json type tests
 new "restconf POST type x3 POST"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:types":{"tint":42,"tdec64":"42.123","tbool":false,"tstr":"str"}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201" "Location: $RCPROTO://localhost/restconf/data/example:types"

@@ -706,6 +706,7 @@ restconf_http1(restconf_conn        *rc,
     cvec_reset(sd->sd_outp_hdrs); /* Can be done in native_send_reply */
     cbuf_reset(sd->sd_outp_buf);
     cbuf_reset(sd->sd_inbuf);
+    cbuf_reset(sd->sd_indata);
     if (rc->rc_exit){  /* Server-initiated exit */
 	SSL_free(rc->rc_ssl);
 	rc->rc_ssl = NULL;

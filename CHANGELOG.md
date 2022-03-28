@@ -73,6 +73,7 @@ c  * This means that two variants are supported:
 
 ### Corrected Bugs
 
+* Fixed: HTTP/1 multiple write requests in single session appended data between writes, eg PUT+PUT.
 * Fixed: [Broken pipe error seen in client (cli) when backend restarts and CLICON_SOCK is recreated](https://github.com/clicon/clixon/issues/312)
 * Fixed: [Xpath API do not support filter data by wildcard](https://github.com/clicon/clixon/issues/313)
 * Fixed: SEGV in cli show yang
