@@ -50,7 +50,7 @@ RUN git config core.sparseCheckout true
 RUN echo "standard/" >> .git/info/sparse-checkout
 RUN echo "experimental/" >> .git/info/sparse-checkout
 
-RUN git pull origin master
+RUN git pull origin main
 
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon

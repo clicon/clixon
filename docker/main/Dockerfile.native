@@ -56,7 +56,7 @@ RUN git config core.sparseCheckout true
 RUN echo "standard/" >> .git/info/sparse-checkout
 RUN echo "experimental/" >> .git/info/sparse-checkout
 
-RUN git pull origin master
+RUN git pull origin main
 
 RUN mkdir /usr/local/share/openconfig
 WORKDIR /usr/local/share/openconfig

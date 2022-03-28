@@ -39,12 +39,22 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 # For clixon and cligen
 RUN apk add --update git make build-base gcc flex bison curl-dev
 
-# Checkut standard YANG models for tests (note >1G for full repo)
 WORKDIR /usr/local/share
-RUN mkdir yang; cd yang; git init; git remote add -f origin https://github.com/YangModels/yang; git config core.sparseCheckout true; echo "standard/" >> .git/info/sparse-checkout; echo "experimental/" >> .git/info/sparse-checkout
+
+# Checkout standard YANG models for tests (note >1G for full repo)
+RUN mkdir yang
 
 WORKDIR /usr/local/share/yang
-RUN git pull origin master
+
+RUN git config --global init.defaultBranch master
+RUN git init;
+RUN git remote add -f origin https://github.com/YangModels/yang;
+RUN git config core.sparseCheckout true
+RUN echo "standard/" >> .git/info/sparse-checkout
+RUN echo "experimental/" >> .git/info/sparse-checkout
+
+WORKDIR /usr/local/share/yang
+RUN git pull origin main
 
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
