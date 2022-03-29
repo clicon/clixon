@@ -34,7 +34,7 @@
 #
 # Note, for linkage=static, libclixon is linked twice:
 # First static when building:
-#    libclixon_backend, libclixon_cli, libclixon_restconf and libclixon_netconf
+#    libclixon_backend, libclixon_cli, and libclixon_restconf
 # Second in this Makefile dynamic using -lclixon
 # This means global variables used in plugin code is in separate domains and will not work
 # Dont know enough about dynamic/static linkage to fix it.
@@ -132,9 +132,9 @@ NETCONF_SRC  = $(APPNAME)_netconf.c
 NETCONF_OBJ  = $(NETCONF_SRC:%.c=%.o)
 $(NETCONF_PLUGIN): $(NETCONF_OBJ)
 ifeq ($(LINKAGE),dynamic)
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_netconf
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon
 else
-	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon -lclixon_netconf
+	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $^ -lclixon
 endif
 
 # See configure.ac
