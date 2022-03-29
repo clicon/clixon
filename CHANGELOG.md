@@ -64,8 +64,10 @@ Users may have to change how they access the system
 
 ### Minor features
 
+* [prevent clixon-restconf@2021-05-20.yang module from loading](https://github.com/clicon/clixon/issues/318)
+  * Instead of always loading it, load it to datastore YANGs only if `CLICON_BACKEND_RESTCONF_PROCESS` is `true`
 * YANG unique: added single descendant node ids as special case
-c  * This means that two variants are supported:
+  * This means that two variants are supported:
     * unique "a b c", ie multiple direct children
     * unique "a/b/c", ie single descendants
   * RFC 7950 Sec 7.8.3 is somewhat unclear

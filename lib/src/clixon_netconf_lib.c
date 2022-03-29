@@ -1483,7 +1483,6 @@ netconf_module_features(clicon_handle h)
     return retval;
 }
 
-
 /*! Load generic yang specs, ie ietf netconf yang module and set enabled features
  * @param[in] h  Clixon handle
  * @retval    0  OK
@@ -1512,9 +1511,10 @@ netconf_module_load(clicon_handle h)
     if (clicon_option_bool(h, "CLICON_XML_CHANGELOG"))
 	if (yang_spec_parse_module(h, "clixon-xml-changelog", NULL, yspec)< 0)
 	    goto done;
-    /* Load restconf yang. Note this is also a part of clixon-config */
-    if (yang_spec_parse_module(h, "clixon-restconf", NULL, yspec)< 0)
-	goto done;
+    /* Load restconf yang to data. Note clixon-restconf.yang is always part of clixon-config */
+    if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS"))
+	if (yang_spec_parse_module(h, "clixon-restconf", NULL, yspec)< 0)
+	    goto done;
     /* XXX: Both the following settings are because clicon-handle is not part of all API
      * functions
      * Treat unknown XML as anydata */
