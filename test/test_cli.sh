@@ -15,6 +15,12 @@ APPNAME=example
 # include err() and new() functions and creates $dir
 
 cfg=$dir/conf_yang.xml
+clidir=$dir/cli
+if [ -d $clidir ]; then
+    rm -rf $clidir/*
+else
+    mkdir $clidir
+fi
 
 # Use yang in example
 
@@ -27,11 +33,60 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
 </clixon-config>
+EOF
+
+cat <<EOF > $clidir/ex.cli
+# Clixon example specification
+CLICON_MODE="example";
+CLICON_PROMPT="%U@%H %W> ";
+CLICON_PLUGIN="example_cli";
+
+set @datamodel, cli_auto_set();
+delete("Delete a configuration item") {
+      @datamodel, cli_auto_del(); 
+      all("Delete whole candidate configuration"), delete_all("candidate");
+}
+validate("Validate changes"), cli_validate();
+commit("Commit the changes"), cli_commit();
+quit("Quit"), cli_quit();
+shell("System command") <source:rest>, cli_start_shell();
+copy("Copy and create a new object"){
+     interface("Copy interface"){
+	(<name:string>|<name:string expand_dbvar("candidate","/ietf-interfaces:interfaces/interface=%s/name")>("name of interface to copy from")) to("Copy to interface") <toname:string>("Name of interface to copy to"), cli_copy_config("candidate","//interface[%s='%s']","urn:ietf:params:xml:ns:yang:ietf-interfaces","name","name","toname");
+    }
+}
+discard("Discard edits (rollback 0)"), discard_changes();
+
+
+debug("Debugging parts of the system"){
+    cli("Set cli debug")	 <level:int32>("Set debug level (0..n)"), cli_debug_cli();
+}
+show("Show a particular state of the system"){
+    xpath("Show configuration") <xpath:string>("XPATH expression") <ns:string>("Namespace"), show_conf_xpath("candidate");
+    compare("Compare candidate and running databases"), compare_dbs((int32)0);{
+    		     xml("Show comparison in xml"), compare_dbs((int32)0);
+		     text("Show comparison in text"), compare_dbs((int32)1);
+    }
+    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
+	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", true, false, "set ");
+  }
+}
+save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_file("candidate","filename", "xml");
+load("Load configuration from XML file") <filename:string>("Filename (local filename)"),load_config_file("filename", "replace");
+
+rpc("example rpc") <a:string>("routing instance"), example_client_rpc("");
+
+# Special cli bug with choice+dbexpand, part1 set db symbol
+choicebug {
+    <name:string choice:foobar>;
+    <name:string expand_dbvar("candidate","/clixon-example:table/parameter/name")>;
+}
+
 EOF
 
 new "test params: -f $cfg"
@@ -131,6 +186,16 @@ expectpart "$($clixon_cli -1 -f $cfg -l o debug cli 0)" 0 "^$"
 new "cli rpc"
 # We dont know which message-id the cli app uses
 expectpart "$($clixon_cli -1 -f $cfg -l o rpc ipv4)" 0 "<rpc-reply $DEFAULTONLY message-id=" "><x xmlns=\"urn:example:clixon\">ipv4</x><y xmlns=\"urn:example:clixon\">42</y></rpc-reply>"
+
+new "cli bug with choice+dbexpand, part1 set db symbol"
+expectpart "$($clixon_cli -1 -f $cfg set table parameter foobar)" 0 "^$"
+
+# Here can be error: ambiguous
+new "cli bug with choice+dbexpand: part2, make same choice"
+expectpart "$($clixon_cli -1 -f $cfg choicebug foobar)" 0 "^$"
+
+new "cli discard"
+expectpart "$($clixon_cli -1 -f $cfg discard)" 0 "^$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

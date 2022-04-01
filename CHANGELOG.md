@@ -64,6 +64,7 @@ Users may have to change how they access the system
 
 ### Minor features
 
+* [provide support for load config of cli format along with json and xml format as save config is supported for all 3 formats](https://github.com/clicon/clixon/issues/320)
 * [prevent clixon-restconf@2021-05-20.yang module from loading](https://github.com/clicon/clixon/issues/318)
   * Instead of always loading it, load it to datastore YANGs only if `CLICON_BACKEND_RESTCONF_PROCESS` is `true`
 * YANG unique: added single descendant node ids as special case

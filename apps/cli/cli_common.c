@@ -68,6 +68,7 @@
 #include <clixon/clixon.h>
 
 #include "clixon_cli_api.h"
+#include "cli_plugin.h"
 #include "cli_common.h"
 
 /*! Register log notification stream
@@ -867,6 +868,36 @@ load_config_file(clicon_handle h,
 	    goto done;
 	}
 	break;
+    case FORMAT_CLI:
+	{
+	    char         *mode = cli_syntax_mode(h);
+	    cligen_result result;            /* match result */
+	    int           evalresult = 0;    /* if result == 1, calback result */
+	    char         *lineptr = NULL;
+	    size_t        n;
+
+	    while(!cligen_exiting(cli_cligen(h))) {
+		lineptr = NULL; n = 0;
+		if (getline(&lineptr, &n, fp) < 0){
+		    if (errno){
+			clicon_err(OE_UNIX, errno, "getline");
+			goto done;
+		    }
+		    goto ok; /* eof, skip backend rpc since this is done by cli code */
+		}
+		if (clicon_parse(h, lineptr, &mode, &result, &evalresult) < 0)
+		    goto done;	
+		if (result != 1) /* Not unique match */
+		    goto done;
+		if (evalresult < 0)
+		    goto done;
+		if (lineptr){
+		    free(lineptr);
+		    lineptr = NULL;
+		}
+	    }
+	    break;
+	}
     default:
 	clicon_err(OE_PLUGIN, 0, "format: %s not implemented", formatstr);
 	goto done;
@@ -888,6 +919,7 @@ load_config_file(clicon_handle h,
 			       cbuf_get(cbxml)) < 0)
 	goto done;
     cbuf_free(cbxml);
+ ok:
     ret = 0;
  done:
     if (xerr)
