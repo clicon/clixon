@@ -16,11 +16,9 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 clidir=$dir/cli
-if [ -d $clidir ]; then
-    rm -rf $clidir/*
-else
-    mkdir $clidir
-fi
+
+test -d ${clidir} || rm -rf ${clidir}
+mkdir $clidir
 
 # Use yang in example
 
