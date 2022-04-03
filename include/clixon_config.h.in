@@ -33,6 +33,9 @@
 /* Define to 1 if you have the `getresuid' function. */
 #undef HAVE_GETRESUID
 
+/* Enable HTTP/1 (default true) */
+#undef HAVE_HTTP1
+
 /* Define to 1 if you have the `inet_aton' function. */
 #undef HAVE_INET_ATON
 
@@ -59,9 +62,6 @@
 
 /* Define to 1 if you have the `nghttp2' library (-lnghttp2). */
 #undef HAVE_LIBNGHTTP2
-
-/* Set to true if HTTP/1 parser */
-#undef HAVE_HTTP1
 
 /* Define to 1 if you have the `socket' library (-lsocket). */
 #undef HAVE_LIBSOCKET

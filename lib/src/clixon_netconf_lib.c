@@ -1701,8 +1701,7 @@ netconf_hello_server(clicon_handle h,
 	/* Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" 
 	 * RFC 6241 Sec 8.1
 	 */
-	if (clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0) /* RFC 6241 */
-	    cprintf(cb, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_1);
+	cprintf(cb, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_1);
     }
     /* A peer MAY include capabilities for previous NETCONF versions, to indicate
        that it supports multiple protocol versions. */
