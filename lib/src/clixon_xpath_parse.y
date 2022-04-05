@@ -49,7 +49,6 @@
     void     *stack; /* xpath_tree */
 }
 
-%token <intval> AXISNAME
 %token <intval> LOGOP
 %token <intval> ADDOP
 %token <intval> RELOP
@@ -59,12 +58,15 @@
 %token <string> QUOTE
 %token <string> APOST
 %token <string> CHARS
-%token <string> NAME
+%token <string> NCNAME
+%token <string> NODETYPE
 %token <string> DOUBLEDOT
+%token <string> DOUBLECOLON
 %token <string> DOUBLESLASH
 %token <string> FUNCTIONNAME
 
 %type <intval>    axisspec
+%type <intval>    abbreviatedaxisspec
 
 %type <string>    string
 %type <stack>     args
@@ -79,9 +81,13 @@
 %type <stack>     abslocpath
 %type <stack>     rellocpath
 %type <stack>     step
+%type <stack>     abbreviatedstep
 %type <stack>     nodetest
+%type <stack>     nametest
 %type <stack>     predicates
 %type <stack>     primaryexpr
+%type <stack>     literal
+%type <stack>     functioncall
 
 %lex-param     {void *_xpy} /* Add this argument to parse() and lex() function */
 %parse-param   {void *_xpy}
@@ -319,15 +325,13 @@ xp_primary_function(clixon_xpath_yacc *xpy,
  */
 static xpath_tree *
 xp_nodetest_function(clixon_xpath_yacc *xpy,
-		     char              *name,
-		     xpath_tree        *xpt)
+		     char              *name)
 {
     xpath_tree                *xtret = NULL;
-    enum clixon_xpath_function fn;
     cbuf                      *cb = NULL;
-    int                        ret;
-    
-    if ((ret = xp_fnname_str2int(name)) < 0){
+    enum clixon_xpath_function fn;
+
+    if ((fn = xp_fnname_str2int(name)) < 0){
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
@@ -336,7 +340,6 @@ xp_nodetest_function(clixon_xpath_yacc *xpy,
 	clixon_xpath_parseerror(xpy, cbuf_get(cb));
 	goto done;
     }
-    fn = ret;
     switch (fn){
     case XPATHFN_COMMENT:  /* Group of not implemented node functions */
     case XPATHFN_PROCESSING_INSTRUCTIONS:
@@ -363,14 +366,40 @@ xp_nodetest_function(clixon_xpath_yacc *xpy,
     }
     if (cb)
 	cbuf_free(cb);
-    xtret = xp_new(XP_NODE_FN, fn, NULL, name, NULL, xpt, NULL);
-    name = NULL; /* Consumed by xp_new */
+    xtret = xp_new(XP_NODE_FN, fn, NULL, name, NULL, NULL, NULL);
  done:
     if (cb)
 	cbuf_free(cb);
-    if (name)
-	free(name);
     return xtret;
+}
+
+/*! Axisname functions
+ *
+ * See rule [6] AxisName ::= 'ancestor',...
+ * in https://www.w3.org/TR/xpath-10/
+ * @param[in]   xpy   XPath parse handle
+ * @param[in]   name  Name of axisname function
+ */
+static int
+xp_axisname_function(clixon_xpath_yacc *xpy,
+		     char              *name)
+{
+    int            fn = -1;
+    cbuf          *cb = NULL;
+
+    if ((fn = axis_type_str2int(name)) < 0){
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_XML, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cb, "Unknown xpath axisname \"%s\"", name);
+	clixon_xpath_parseerror(xpy, cbuf_get(cb));
+	goto done;
+    }
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return fn;
 }
 
 %} 
@@ -411,6 +440,7 @@ pathexpr    : locationpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL
             | filterexpr DOUBLESLASH rellocpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,strdup("//"),NULL,$1, $3);_XPY->xpy_top=$$;_PARSE_DEBUG("pathexpr-> filterexpr // rellocpath"); } 
             ;
 
+/* */
 filterexpr  : primaryexpr { $$=xp_new(XP_FILTEREXPR,A_NAN,NULL,NULL,NULL,$1, NULL);_PARSE_DEBUG("filterexpr-> primaryexpr"); } 
             /* Filterexpr predicate */
             ;
@@ -431,21 +461,58 @@ rellocpath  : step                 { $$=xp_new(XP_RELLOCPATH,A_NAN,NULL,NULL,NUL
             | rellocpath DOUBLESLASH step { $$=xp_new(XP_RELLOCPATH,A_DESCENDANT_OR_SELF,NULL,NULL,NULL,$1, $3); _PARSE_DEBUG("rellocpath-> rellocpath // step"); } 
             ;
 
-step        : axisspec nodetest predicates {$$=xp_new(XP_STEP,$1,NULL, NULL, NULL, $2, $3);_PARSE_DEBUG1("step->axisspec(%d) nodetest", $1); }
-            | '.' predicates              { $$=xp_new(XP_STEP,A_SELF, NULL,NULL, NULL, NULL, $2); _PARSE_DEBUG("step-> ."); } 
-            | DOUBLEDOT predicates        { $$=xp_new(XP_STEP, A_PARENT, NULL,NULL, NULL, NULL, $2); _PARSE_DEBUG("step-> .."); } 
+step        : nodetest predicates
+                 { $$=xp_new(XP_STEP, A_CHILD, NULL, NULL, NULL, $1, $2);
+		   _PARSE_DEBUG("step->nodetest predicates"); }
+            | axisspec nodetest predicates
+	         {$$=xp_new(XP_STEP, $1, NULL, NULL, NULL, $2, $3);
+		  _PARSE_DEBUG1("step->axisspec(%d) nodetest", $1); }
+            | abbreviatedstep { $$ = $1; }
+	    ;
+
+abbreviatedstep : '.' predicates     { $$=xp_new(XP_STEP,A_SELF, NULL,NULL, NULL, NULL, $2); _PARSE_DEBUG("step-> ."); } 
+                | DOUBLEDOT predicates   { $$=xp_new(XP_STEP, A_PARENT, NULL,NULL, NULL, NULL, $2); _PARSE_DEBUG("step-> .."); } 
+                ;
+
+/* [5] AxisSpecifier::=  AxisName '::'	
+                       | AbbreviatedAxisSpecifier 
+*/
+axisspec    : NCNAME DOUBLECOLON
+                 { if (($$=xp_axisname_function(_XPY, $1)) < 0) YYERROR;
+		     _PARSE_DEBUG2("axisspec-> AXISNAME(%s -> %d) ::", $1, $$);
+		 }
+            | abbreviatedaxisspec
+	         { $$ = $1; }
             ;
 
-axisspec    : AXISNAME { _PARSE_DEBUG1("axisspec-> AXISNAME(%d) ::", $1); $$=$1;}
-            | '@'      { $$=A_ATTRIBUTE; _PARSE_DEBUG("axisspec-> @"); } 
-            |          { _PARSE_DEBUG("axisspec-> "); $$=A_CHILD;} 
-           ;
+/* [13]  AbbreviatedAxisSpecifier	::= '@'? 
+ * empty built into 2nd step rule
+ */
+abbreviatedaxisspec :'@'      { $$=A_ATTRIBUTE; _PARSE_DEBUG("axisspec-> @"); }
+                    ;
 
-nodetest    : ADDOP              { $$=xp_new(XP_NODE,A_NAN,NULL, NULL, strdup(clicon_int2str(xpopmap,$1)), NULL, NULL); _PARSE_DEBUG("nodetest-> *"); } 
-            | NAME             { $$=xp_new(XP_NODE,A_NAN,NULL, NULL, $1, NULL, NULL); _PARSE_DEBUG1("nodetest-> name(%s)",$1); } 
-            | NAME ':' NAME    { $$=xp_new(XP_NODE,A_NAN,NULL, $1, $3, NULL, NULL);_PARSE_DEBUG2("nodetest-> name(%s) : name(%s)", $1, $3); } 
-            | NAME ':' '*'     { $$=xp_new(XP_NODE,A_NAN,NULL, $1, NULL, NULL, NULL);_PARSE_DEBUG1("nodetest-> name(%s) : *", $1); } 
-            | FUNCTIONNAME ')' { if (($$ = xp_nodetest_function(_XPY, $1, NULL)) == NULL) YYERROR;; _PARSE_DEBUG1("nodetest-> nodetype():%s", $1); } 
+nodetest    : nametest { $$ = $1;
+ 		   _PARSE_DEBUG("nodetest-> nametest");}
+            | NODETYPE ')'
+ 	       { if (($$ = xp_nodetest_function(_XPY, $1)) == NULL) YYERROR;
+		   _PARSE_DEBUG1("nodetest-> nodetype(%s)", $1);
+	       }
+            ;
+
+nametest    : ADDOP
+                 { char *str;
+		   str = strdup(clicon_int2str(xpopmap,$1));
+		   $$=xp_new(XP_NODE,A_NAN,NULL, NULL, str, NULL, NULL);
+		   _PARSE_DEBUG("nametest-> *"); }
+            | NCNAME
+	          { $$=xp_new(XP_NODE,A_NAN,NULL, NULL, $1, NULL, NULL);
+		   _PARSE_DEBUG1("nametest-> name[%s]",$1); } 
+            | NCNAME ':' NCNAME
+	          { $$=xp_new(XP_NODE,A_NAN,NULL, $1, $3, NULL, NULL);
+		    _PARSE_DEBUG2("nametest-> name[%s] : name[%s]", $1, $3); } 
+            | NCNAME ':' '*'
+	          { $$=xp_new(XP_NODE,A_NAN,NULL, $1, NULL, NULL, NULL);
+		    _PARSE_DEBUG1("nametest-> name[%s] : *", $1); } 
             ;
 
 /* evaluates to boolean */
@@ -453,13 +520,9 @@ predicates  : predicates '[' expr ']' { $$=xp_new(XP_PRED,A_NAN,NULL, NULL, NULL
             |                         { $$=xp_new(XP_PRED,A_NAN,NULL, NULL, NULL, NULL, NULL); _PARSE_DEBUG("predicates->"); } 
             ;
 primaryexpr : '(' expr ')'         { $$=xp_new(XP_PRI0,A_NAN,NULL, NULL, NULL, $2, NULL); _PARSE_DEBUG("primaryexpr-> ( expr )"); } 
-            | NUMBER               { $$=xp_new(XP_PRIME_NR,A_NAN, $1, NULL, NULL, NULL, NULL);_PARSE_DEBUG1("primaryexpr-> NUMBER(%s)", $1); /*XXX*/} 
-            | QUOTE string QUOTE   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, $2, NULL, NULL, NULL);_PARSE_DEBUG("primaryexpr-> \" string \""); }
-            | QUOTE QUOTE          { $$=xp_new(XP_PRIME_STR,A_NAN,NULL,  strdup(""), NULL, NULL, NULL);_PARSE_DEBUG("primaryexpr-> \" \""); } 
-            | APOST string APOST   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, $2, NULL, NULL, NULL);_PARSE_DEBUG("primaryexpr-> ' string '"); }
-            | APOST APOST          { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, strdup(""), NULL, NULL, NULL);_PARSE_DEBUG("primaryexpr-> ' '"); } 
-            | FUNCTIONNAME ')'      { if (($$ = xp_primary_function(_XPY, $1, NULL)) == NULL) YYERROR; _PARSE_DEBUG("primaryexpr-> functionname ()"); }
-            | FUNCTIONNAME args ')' { if (($$ = xp_primary_function(_XPY, $1, $2)) == NULL) YYERROR;  _PARSE_DEBUG("primaryexpr-> functionname (arguments)"); } 
+            | literal              { $$ = $1; }
+            | NUMBER               { $$=xp_new(XP_PRIME_NR,A_NAN, $1, NULL, NULL, NULL, NULL);_PARSE_DEBUG1("primaryexpr-> NUMBER(%s)", $1); /*XXX*/}  
+            | functioncall         { $$ = $1; }
             ;
 
 args        : args ',' expr { $$=xp_new(XP_EXP,A_NAN,NULL,NULL,NULL,$1, $3);
@@ -467,6 +530,29 @@ args        : args ',' expr { $$=xp_new(XP_EXP,A_NAN,NULL,NULL,NULL,$1, $3);
             | expr          { $$=xp_new(XP_EXP,A_NAN,NULL,NULL,NULL,$1, NULL);
                               _PARSE_DEBUG("args -> expr "); }
 	    ;
+
+literal     : QUOTE string QUOTE
+                   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, $2, NULL, NULL, NULL);
+		     _PARSE_DEBUG("literal-> \" string \""); }
+            | QUOTE QUOTE
+	           { $$=xp_new(XP_PRIME_STR,A_NAN,NULL,  strdup(""), NULL, NULL, NULL);
+		     _PARSE_DEBUG("primaryexpr-> \" \""); } 
+            | APOST string APOST
+	           { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, $2, NULL, NULL, NULL);
+		     _PARSE_DEBUG("primaryexpr-> ' string '"); }
+            | APOST APOST
+	           { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, strdup(""), NULL, NULL, NULL);
+		     _PARSE_DEBUG("primaryexpr-> ' '"); } 
+            ;
+
+functioncall : NCNAME '(' ')'
+                 { /* XXX warning: rule useless in parser due to conflicts */
+                   if (($$ = xp_primary_function(_XPY, $1, NULL)) == NULL) YYERROR;
+		   _PARSE_DEBUG("primaryexpr-> functionname ()"); }
+             | NCNAME '(' args ')'
+	         { if (($$ = xp_primary_function(_XPY, $1, $3)) == NULL) YYERROR;
+		   _PARSE_DEBUG("primaryexpr-> functionname (arguments)"); } 
+            ;
 
 string      : string CHARS  { 
      			 int len = strlen($1);

@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# test xpath functions in YANG conditionals
+# test xpath functions within YANG conditionals
 # XPATH base https://www.w3.org/TR/xpath-10/
 # YANG XPATH functions: https://tools.ietf.org/html/rfc7950
-# Tests:
-# - Contains
+# Test of xpath functions:
+# - contains
+# - derived-from
+# - derived-from-or-self
+# - bit-is-set
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -102,6 +105,24 @@ module $APPNAME{
          type uint32;
       }	 
    }
+   /* Example derved from yangmodels ietf-mpls-ldp.yang */
+   container mustnot{
+     list mustlist{
+       key name;
+       leaf name{
+         type string;
+       }
+       container mycont{
+          must "not (../../ex:mustlist[ex:name!=current()/../ex:name])" {
+	     description
+                "Only one list instance is allowed.";
+          }
+         leaf foo{
+             type string;
+}
+       }
+     }
+   }
 }
 EOF
 
@@ -120,7 +141,6 @@ fi
 new "wait backend"
 wait_backend
 
-# contains
 new "contains: Set site to foo that validates site OK"
 expecteof_netconf "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:clixon\"><class>foo</class><mylist><id>12</id><site>42</site></mylist></top></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 

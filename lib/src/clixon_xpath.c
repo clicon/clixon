@@ -160,6 +160,11 @@ axis_type_int2str(int axis_type)
     return (char*)clicon_int2str(axis_type_map, axis_type);
 }
 
+int
+axis_type_str2int(char *name)
+{
+    return clicon_str2int(axis_type_map, name);
+}
 
 /*! Map from xpath_tree node name int to string
  */

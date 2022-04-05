@@ -44,6 +44,7 @@ struct clixon_xpath_yacc{
     const char           *xpy_name;         /* Name of syntax (for error string) */
     int                   xpy_linenum;      /* Number of \n in parsed buffer */
     const char           *xpy_parse_string; /* original (copy of) parse string */
+    int                   xpy_lex_string_state; /* lex start condition (STRING) */
     void                 *xpy_lexbuf;       /* internal parse buffer from lex */
     xpath_tree           *xpy_top;
 };

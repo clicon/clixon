@@ -124,6 +124,7 @@ typedef struct xpath_tree xpath_tree;
  * Prototypes
  */
 char* axis_type_int2str(int axis_type);
+int   axis_type_str2int(char *name);
 char* xpath_tree_int2str(int nodetype);
 int   xpath_tree_print_cb(cbuf *cb, xpath_tree *xs);
 int   xpath_tree_print(FILE *f, xpath_tree *xs);

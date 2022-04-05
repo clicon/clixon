@@ -45,11 +45,6 @@ files=$(find ${YANG_STANDARD_DIR}/ietf/RFC -type f -name "*.yang")
 for f in $files; do
     if [ -n "$(head -1 $f|grep '^module')" ]; then
 	# Mask old revision
-	if [ $f = ${YANG_STANDARD_DIR}/ietf/RFC/ietf-mpls-ldp@2022-03-14.yang -o $f = ${YANG_STANDARD_DIR}/ietf/RFC/ietf-mpls-ldp-extended@2022-03-14.yang ]; then
-	    echo "FOOOOO"
-	    # XXX xpath parse error: new (..)
-	    continue;
-	fi
 	if [ $f = ${YANG_STANDARD_DIR}/ietf/RFC/ietf-yang-types@2010-09-24.yang ]; then
 	    continue;
 	fi
