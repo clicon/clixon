@@ -475,7 +475,9 @@ module clixon-config {
                  use with care.
                  The primary issue is that the unknown->anydata handling is not restricted to
                  only loading from startup but may occur in other circumstances as well. This
-                 means that sanity checks of erroneous XML/JSON may not be properly signalled.";
+                 means that sanity checks of erroneous XML/JSON may not be properly signalled.
+                 Note this is similar to what happens to YANG nodes that are disabled by a false
+                 if-feature statement.";
 	}
 	leaf CLICON_BACKEND_DIR {
 	    type string;

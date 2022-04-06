@@ -123,21 +123,31 @@ EOF
 # Run netconf feature test
 # 1: syntax node
 # 2: disabled or enabled
+# NOTE, this was before failures when disabled, but after https://github.com/clicon/clixon/issues/322 that
+# disabled nodes should be "ignored". Instead now if disabled a random node is inserted under the disabled node
+# which should not work 
 function testrun()
 {
     node=$1
     enabled=$2
     
+    new "netconf set $node"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\">foo</$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+    new "netconf validate $node"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
     if $enabled; then
-	new "netconf set $node"
-	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\">foo</$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+	new "netconf set extra element under $node (expect fail)"
+	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\"><kallekaka/></$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>kallekaka</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: kallekaka with parent: $node in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>"
+    else
+	new "netconf set extra element under $node"
+	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\"><kallekaka/></$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 	new "netconf validate $node"
 	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-    else
-	new "netconf set $node, expect fail"
-	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\">foo</$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>$node</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: $node with parent: config in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>"
     fi
+
     new "netconf discard-changes"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 }

@@ -264,6 +264,8 @@ yang_augment_node(clicon_handle h,
     /* The target node MUST be either a container, list, choice, case, input, output, or notification node.
      * which means it is slightly different than a schema-nodeid ? */
     targetkey = yang_keyword_get(ytarget);
+    if (targetkey == Y_ANYDATA)
+	goto ok;
 
     /* Find when statement, if present */
     if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL){
@@ -614,6 +616,9 @@ yang_expand_uses_node(yang_stmt *yn,
 	    goto done;
 	/* Not found, try next */
 	if (yrt == NULL) 		
+	    continue;
+	/* Refine ANYDATA does not make sense */
+	if (yang_keyword_get(yrt) == Y_ANYDATA || yang_keyword_get(yrt) == Y_ANYXML)
 	    continue;
 	/* Do the actual refinement */
 	if (ys_do_refine(yr, yrt) < 0)

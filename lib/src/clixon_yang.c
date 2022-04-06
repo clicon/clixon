@@ -93,7 +93,7 @@ static int yang_search_index_extension(clicon_handle h, yang_stmt *yext, yang_st
 /*
  * Local variables
  */
-/* Mapping between yang keyword string <--> clicon constants 
+/* Mapping between yang keyword string <--> clixon constants 
  * Here is also the place where doc on some types store variables (cv)
  */
 static const map_str2int ykmap[] = {
@@ -653,7 +653,7 @@ ys_free1(yang_stmt *ys,
 	free(ys->ys_filename);
     if (self){
 	free(ys);
-	_stats_yang_nr++;
+	_stats_yang_nr--;
     }
     return 0;
 }
@@ -723,6 +723,27 @@ ys_prune_self(yang_stmt *ys)
     return retval;
 }
 
+/*! Free all yang children tree recursively 
+ * @param[in]  ys   Yang node to its children recursively
+ */
+static int
+ys_freechildren(yang_stmt *ys)
+{
+    int i;
+    yang_stmt *yc;
+    
+    for (i=0; i<ys->ys_len; i++){
+	if ((yc = ys->ys_stmt[i]) != NULL)
+	    ys_free(yc);
+    }
+    ys->ys_len = 0;
+    if (ys->ys_stmt){
+	free(ys->ys_stmt);
+	ys->ys_stmt = NULL;
+    }
+    return 0;
+}
+
 /*! Free a yang statement tree recursively 
  * @param[in]  ys   Yang node to remove and all its children recursively
  * @note does not remove yang node from tree
@@ -731,13 +752,7 @@ ys_prune_self(yang_stmt *ys)
 int 
 ys_free(yang_stmt *ys)
 {
-    int i;
-    yang_stmt *yc;
-
-    for (i=0; i<ys->ys_len; i++){
-	if ((yc = ys->ys_stmt[i]) != NULL)
-	    ys_free(yc);
-    }
+    ys_freechildren(ys);
     ys_free1(ys, 1);
     return 0;
 }
@@ -2925,7 +2940,7 @@ yang_features(clicon_handle h,
     int        ret;
 
     i = 0;
-    while (i<yt->ys_len){ /* Note, children may be removed */
+    while (i<yt->ys_len){
 	ys = yt->ys_stmt[i];
 	if (ys->ys_keyword == Y_IF_FEATURE){
 	    if ((ret = yang_if_feature(h, ys)) < 0)
@@ -2933,25 +2948,34 @@ yang_features(clicon_handle h,
 	    if (ret == 0)
 		goto disabled;
 	}
-	else
-	    if (ys->ys_keyword == Y_FEATURE){
+	else if (ys->ys_keyword == Y_FEATURE){
 		if (ys_populate_feature(h, ys) < 0)
 		    goto done;
-	    } else switch (yang_features(h, ys)){
-	    case -1: /* error */
-		goto done;
-		break;
-	    case 0: /* disabled: remove ys */
-		for (j=i+1; j<yt->ys_len; j++)
-		    yt->ys_stmt[j-1] = yt->ys_stmt[j];
-		yt->ys_len--;
-		yt->ys_stmt[yt->ys_len] = NULL;
-		ys_free(ys);
-		continue; /* Don't increment i */
-		break;
-	    default: /* ok */
-		break;
-	    }
+	}
+	else
+	    switch (yang_features(h, ys)){
+		case -1: /* error */
+		    goto done;
+		    break;
+		case 0: /* disabled: remove ys */
+		    /* Change datanodes YANG to ANYDATA, other nodes are removed
+		     */
+		    if (yang_datanode(ys) && yang_config_ancestor(ys)){
+			ys->ys_keyword = Y_ANYDATA;
+			ys_freechildren(ys);
+			ys->ys_len = 0;
+			break;
+		    }
+		    for (j=i+1; j<yt->ys_len; j++)
+			yt->ys_stmt[j-1] = yt->ys_stmt[j];
+		    yt->ys_len--;
+		    yt->ys_stmt[yt->ys_len] = NULL;
+		    ys_free(ys);
+		    continue; /* Don't increment i */
+		    break;
+		default: /* ok */
+		    break;
+		}
 	i++;
     }
     retval = 1;
@@ -3723,7 +3747,7 @@ yang_anydata_add(yang_stmt *yp,
 	goto done;
     }
     yang_argument_set(ys, name);
-    if (yn_insert(yp, ys) < 0){ /* Insert into hierarchy */
+    if (yp && yn_insert(yp, ys) < 0){ /* Insert into hierarchy */
 	ys = NULL;
 	goto done;
     }
