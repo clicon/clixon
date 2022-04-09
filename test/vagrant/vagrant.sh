@@ -73,6 +73,7 @@ Vagrant.configure("2") do |config|
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://vagrantcloud.com/search.
   config.vm.box = "$box"
+  config.vm.box_download_insecure=true # 2021-04 required, hope this changes?
   if Vagrant.has_plugin?("vagrant-vbguest")
     config.vbguest.auto_update = false
   end
@@ -195,6 +196,9 @@ case $release in
 	esac
 	;;
     ubuntu) # ubuntu/apt based
+        # enable ipv6
+        $sshcmd sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
+
 	$sshcmd sudo apt-get update --fix-missing
 	$sshcmd sudo apt install -y git
 	# restconf user: $wwwuser
@@ -299,6 +303,7 @@ EOF
 chmod 755 $dir/yangmodels.sh
 $scpcmd $dir/yangmodels.sh vagrant@127.0.0.1:
 $sshcmd sudo ./yangmodels.sh
+
 
 # Run tests
 $sshcmd "(cd src/cligen/test; ./sum.sh)"

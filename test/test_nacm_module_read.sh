@@ -229,7 +229,7 @@ expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/da
 new "admin read top ok (all)"
 ret=$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)
 expect='{"ietf-restconf:data":{"clixon-example:table":'
-match=`echo $ret | grep --null -Eo "$expect"`
+match=`echo $ret | grep "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi

@@ -122,7 +122,7 @@ expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+jso
 new "restconf get config example1 and example2"
 ret=$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data)
 expect='"example1:x":42,"example2:x":{"y":99}'
-match=`echo $ret | grep --null -Eo "$expect"`
+match=`echo $ret | grep "$expect"`
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
