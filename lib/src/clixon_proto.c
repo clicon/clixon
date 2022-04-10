@@ -281,7 +281,8 @@ atomicio(ssize_t (*fn) (int, void *, size_t),
 		res = 0;
 	    else if (errno == EPIPE)     /* Client shutdown */
 		res = 0;
-	    /* SIGPIPE if client is killed */
+	    else if (errno == EBADF)     /* client shutdown - freebsd */
+		res = 0;
 	case 0: /* fall thru */
 	    return (res);
 	default:

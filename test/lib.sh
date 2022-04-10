@@ -375,13 +375,8 @@ function chunked_framing()
 {
     str=$1
     length=${#str}
-    echo -n "
-#${length}
-"
-    echo -n "$str"
-    echo -n "
-##
-"
+   
+    printf "\n#%s\n%s\n##\n" ${length} "${str}"
 }
 
 # Start backend with all varargs.

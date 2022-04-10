@@ -556,6 +556,9 @@ cli_set_mode(clicon_handle h,
 
 /*! Start bash from cli callback
  * Typical usage: shell("System Bash") <source:rest>, cli_start_shell();
+ * @param[in]   h     Clixon handle
+ * @param[in]   cvv   Vector of command variables
+ * @param[in]   argv  [<shell>], defaults to "sh"
  */ 
 int
 cli_start_shell(clicon_handle h, 
@@ -563,6 +566,7 @@ cli_start_shell(clicon_handle h,
 		cvec         *argv)
 {
     char          *cmd;
+    char          *shcmd = "sh";
     struct passwd *pw;
     int            retval = -1;
     char           bcmd[128];
@@ -570,6 +574,14 @@ cli_start_shell(clicon_handle h,
     sigset_t       oldsigset;
     struct sigaction oldsigaction[32] = {0,};
     
+    if (cvec_len(argv) > 1){
+	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: [<shell>]",
+		   cvec_len(argv));
+	goto done;
+    }
+    if (cvec_len(argv) == 1){
+	shcmd = cv_string_get(cvec_i(argv, 0));
+    }
     cmd = (cvec_len(vars)>1 ? cv_string_get(cv1) : NULL);
     if ((pw = getpwuid(getuid())) == NULL){
 	clicon_err(OE_UNIX, errno, "getpwuid");
@@ -587,19 +599,21 @@ cli_start_shell(clicon_handle h,
     cli_signal_flush(h);
     cli_signal_unblock(h);
     if (cmd){
-	snprintf(bcmd, 128, "bash -l -c \"%s\"", cmd);
+	snprintf(bcmd, 128, "%s -l -c \"%s\"", shcmd, cmd);
 	if (system(bcmd) < 0){
 	    cli_signal_block(h);
 	    clicon_err(OE_UNIX, errno, "system(bash -c)");
 	    goto done;
 	}
     }
-    else
-	if (system("bash -l") < 0){
+    else{
+	snprintf(bcmd, 128, "%s -l", shcmd);
+	if (system(bcmd) < 0){
 	    cli_signal_block(h);
 	    clicon_err(OE_UNIX, errno, "system(bash)");
 	    goto done;
 	}
+    }
     cli_signal_block(h);
 #if 0 /* Allow errcodes from bash */
     if (retval != 0){
@@ -729,7 +743,7 @@ compare_xmls(cxobj *xc1,
 /*! Compare two dbs using XML. Write to file and run diff
  * @param[in]   h     Clicon handle
  * @param[in]   cvv  
- * @param[in]   arg   arg: 0 as xml, 1: as text
+ * @param[in]   argv  arg: 0 as xml, 1: as text
  */
 int
 compare_dbs(clicon_handle h, 
@@ -1459,3 +1473,4 @@ cli_restart_plugin(clicon_handle h,
  done:
     return retval;
 }
+

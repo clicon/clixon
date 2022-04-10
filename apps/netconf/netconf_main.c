@@ -79,6 +79,8 @@
  * <foo/> ..wait 1min  ]]>]]>
  */
 #define NETCONF_HASH_BUF "netconf_input_cbuf"
+#define NETCONF_FRAME_STATE "netconf_input_frame_state"
+#define NETCONF_FRAME_SIZE "netconf_input_frame_size"
 
 /*! Ignore errors on packet errors: continue */
 static int ignore_packet_errors = 1;
@@ -509,13 +511,23 @@ netconf_input_cb(int   s,
     size_t         cdatlen = 0;
     clicon_hash_t *cdat = clicon_data(h); /* Save cbuf between calls if not done */
     int            poll;
-    int            frame_state = 0;
     int            i;
     int            len;
+    int            frame_state;
     size_t         frame_size;
     int            ret;
     int            eof = 0;  /* Set to 1 if pending close socket */
 
+    if (clicon_option_exists(h, NETCONF_FRAME_STATE) == 0)
+        frame_state = 0;
+    else
+	if ((frame_state = clicon_option_int(h, NETCONF_FRAME_STATE)) < 0)
+	    goto done;
+    if (clicon_option_exists(h, NETCONF_FRAME_SIZE) == 0)
+	frame_size = 0;
+    else
+	if ((frame_size = clicon_option_int(h, NETCONF_FRAME_SIZE)) < 0)
+	    goto done;
     if ((ptr = clicon_hash_value(cdat, NETCONF_HASH_BUF, &cdatlen)) != NULL){
 	if (cdatlen != sizeof(cb)){
 	    clicon_err(OE_XML, errno, "size mismatch %lu %lu",
@@ -577,6 +589,7 @@ netconf_input_cb(int   s,
 	    else{
 		cprintf(cb, "%c", buf[i]);
 		if (detect_endtag("]]>]]>", buf[i], &frame_state)){
+		    frame_state = 0;
 		    /* OK, we have an xml string from a client */
 		    /* Remove trailer */
 		    *(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
@@ -596,13 +609,15 @@ netconf_input_cb(int   s,
 	    /* No data to read, save data and continue on next round */
 	    if (cbuf_len(cb) != 0){
 		if (clicon_hash_add(cdat, NETCONF_HASH_BUF, &cb, sizeof(cb)) == NULL)
-		    return -1;
+		    goto done;
 		cb = NULL;
 	    }
 	    break; 
 	}
     } /* while */
  ok:
+    clicon_option_int_set(h, NETCONF_FRAME_STATE, frame_state);
+    clicon_option_int_set(h, NETCONF_FRAME_SIZE, frame_size);
     retval = 0;
  done:
     if (cb)

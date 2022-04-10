@@ -57,7 +57,9 @@ debug("Debugging parts of the system"){
     restconf("Set restconf debug") <level:int32>("Set debug level (0..n)"), cli_debug_restconf();
 }
 
-shell("System command") <source:rest>, cli_start_shell();
+shell("System command"), cli_start_shell("bash");{
+  <source:rest>("Single shell command"), cli_start_shell("bash");
+}
 copy("Copy and create a new object") {
     running("Copy from running db")  startup("Copy to startup config"), db_copy("running", "startup");
     interface("Copy interface"){

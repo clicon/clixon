@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # autocli extension strict expansion
 # See https://github.com/clicon/clixon/issues/163
-# test is: add a couple of expansion alternatives, ensure cli cannot select any oother option
+# test is: add a couple of expansion alternatives, ensure cli cannot select any other option
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

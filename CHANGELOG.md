@@ -73,7 +73,7 @@ Users may have to change how they access the system
   * There used to be some cornercases where function-names could not be used as nodes
   * For example, `node()` is a nodetest, so `/node/` caused an error.
   * In the grammar these include: axisnames,  nodetests, functionnames
-  * The NCNames vs functionnames is now impölemented according to the lexical structure section
+  * The NCNames vs functionnames is now implemented according to the lexical structure section
 * [provide support for load config of cli format along with json and xml format as save config is supported for all 3 formats](https://github.com/clicon/clixon/issues/320)
 * [prevent clixon-restconf@2021-05-20.yang module from loading](https://github.com/clicon/clixon/issues/318)
   * Instead of always loading it, load it to datastore YANGs only if `CLICON_BACKEND_RESTCONF_PROCESS` is `true`
