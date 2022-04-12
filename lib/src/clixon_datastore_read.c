@@ -299,9 +299,11 @@ text_read_modstate(clicon_handle       h,
 	rfc7895++;
     if (xmodfile && xmodsystem && msdiff){
 	msdiff->md_status = 1;  /* There is module state in the file */
-	/* Create modstate tree for this file */
+	/* Create modstate tree for this file 
+	 * Note, module-set is not a top-level symbol, so cannot bind using module-set
+	 */
 	if (clixon_xml_parse_string("<module-set xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>",
-				    YB_MODULE, yspec, &msdiff->md_diff, NULL) < 0)
+				    YB_NONE, yspec, &msdiff->md_diff, NULL) < 0)
 	    goto done;
 	if (xml_rootchild(msdiff->md_diff, 0, &msdiff->md_diff) < 0) 
 	    goto done;
