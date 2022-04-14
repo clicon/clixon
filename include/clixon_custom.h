@@ -59,9 +59,9 @@
 #define IDENTITYREF_KLUDGE
 
 /*! Optimize special list key searches in XPATH finds
- * Identify xpaths that search for exactly a list key, eg: "y[k=3]" and then call
+ * Identify xpaths that search for exactly a list key, eg: "y[k='3']" and then call
  * binary search. This only works if "y" has proper yang binding and is sorted by system
- * Dont optimize on "hierarchical" lists such as: a/b/y[k=3], where a or b is another list.
+ * Dont optimize on "hierarchical" lists such as: a/y[k='3'], where a is another list.
  */
 #define XPATH_LIST_OPTIMIZE
 

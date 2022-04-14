@@ -473,7 +473,9 @@ clixon_module_upgrade(clicon_handle    h,
     }
     if (msd->md_status == 0) /* No modstate in startup */
 	goto ok;
-    /* Iterate through xml modified module state */
+    /* Iterate through xml modified module state 
+     * Note top-level here is typically module-set
+     */
     xmod = NULL;
     while ((xmod = xml_child_each(msd->md_diff, xmod, CX_ELMNT)) != NULL) {
 	/* Extract namespace */

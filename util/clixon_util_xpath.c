@@ -301,7 +301,6 @@ main(int    argc,
 	    cvec_print(stdout, nsc);
 	goto ok; /* need a switch to continue, now just print and quit */
     }
-
     /* 
      * If fp=stdin, then continue reading from stdin (after CR)
      * XXX Note 0 above, stdin here
@@ -317,7 +316,7 @@ main(int    argc,
 	if ((ret = xml_bind_yang(x0, YB_MODULE, yspec, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    if ((cb = cbuf_new()) ==NULL){
+	    if ((cbret = cbuf_new()) ==NULL){
 		clicon_err(OE_XML, errno, "cbuf_new");
 		goto done;
 	    }

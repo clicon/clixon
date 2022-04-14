@@ -168,6 +168,9 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Disabled xpath optimization for hierarchical list
+  * When `XPATH_LIST_OPTIMIZE` is set, patterns like `y[k='3']` is optimized
+  * But hierarchical lists should not be, ie when `a/y[k='3']` and `a` is a list
 * Fixed: [Validate error when appending module B grouping to module A item use augment statement #308](https://github.com/clicon/clixon/issues/308)
 * Fixed: [Restconf PATCH method request failed on item defined by submodule #306](https://github.com/clicon/clixon/issues/306)
 * Fixed: [restconf GET json response does not encode top level node with namespace as per rfc #303](https://github.com/clicon/clixon/issues/303)

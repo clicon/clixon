@@ -845,7 +845,7 @@ module clixon-config {
 	    type boolean;
 	    default false;
        	    description
-		"If set, tag datastores with RFC 7895 YANG Module Library 
+		"If set, tag datastores with RFC 8525 YANG Module Library 
                  info. When loaded at startup, a check is made if the system
                  yang modules match.
                  See also CLICON_MODULE_LIBRARY_RFC7895";
