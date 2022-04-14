@@ -582,10 +582,11 @@ cli_show_config_state(clicon_handle h,
     return cli_show_config1(h, 1, cvv, argv);
 }
 
-/*! Show configuration as text given an xpath
+/*! Show configuration as text given an xpath using canonical namespace
+ *
  * Utility function used by cligen spec file
  * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line must contain xpath and ns variables
+ * @param[in]  cvv   Vector of variables from CLIgen command-line must contain xpath and default namespace (if any)
  * @param[in]  argv  A string: <dbname>
  * @note  Hardcoded that variable xpath and ns cvv must exist. (kludge)
  */
@@ -595,7 +596,7 @@ show_conf_xpath(clicon_handle h,
 		cvec         *argv)
 {
     int              retval = -1;
-    char            *str;
+    char            *dbname;
     char            *xpath;
     cg_var          *cv;
     cxobj           *xt = NULL;
@@ -603,42 +604,51 @@ show_conf_xpath(clicon_handle h,
     cxobj          **xv = NULL;
     size_t           xlen;
     int              i;
-    char            *namespace = NULL;
     cvec            *nsc = NULL;
+    yang_stmt       *yspec;
 
     if (cvec_len(argv) != 1){
 	clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be <dbname>");
 	goto done;
     }
-    str = cv_string_get(cvec_i(argv, 0));
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
+    dbname = cv_string_get(cvec_i(argv, 0));
     /* Dont get attr here, take it from arg instead */
-    if (strcmp(str, "running") != 0 && 
-	strcmp(str, "candidate") != 0 && 
-	strcmp(str, "startup") != 0){
-	clicon_err(OE_PLUGIN, 0, "No such db name: %s", str);	
+    if (strcmp(dbname, "running") != 0 && 
+	strcmp(dbname, "candidate") != 0 && 
+	strcmp(dbname, "startup") != 0){
+	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbname);	
 	goto done;
     }
     /* Look for xpath in command (kludge: cv must be called "xpath") */
-    cv = cvec_find(cvv, "xpath");
+    if ((cv = cvec_find(cvv, "xpath")) == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "Requires one variable to be <xpath>");
+	goto done;
+    }
     xpath = cv_string_get(cv);
 
-    /* Look for namespace in command (kludge: cv must be called "ns") */
-    cv = cvec_find(cvv, "ns");
-    namespace = cv_string_get(cv);
-    if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
+    /* Create canonical namespace */
+    if (xml_nsctx_yangspec(yspec, &nsc) < 0)
 	goto done;
+    /* Look for and add default namespace variable in command */
+    if ((cv = cvec_find(cvv, "ns")) != NULL){
+	if (xml_nsctx_add(nsc, NULL, cv_string_get(cv)) < 0)
+	    goto done;
+    }
 #if 0 /* Use state get instead of config (XXX: better use this but test_cli.sh fails) */
     if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
     	goto done;
 #else
-    if (clicon_rpc_get_config(h, NULL, str, xpath, nsc, &xt) < 0)
+    if (clicon_rpc_get_config(h, NULL, dbname, xpath, nsc, &xt) < 0)
     	goto done;
 #endif
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
     }
-
     if (xpath_vec(xt, nsc, "%s", &xv, &xlen, xpath) < 0) 
 	goto done;
     for (i=0; i<xlen; i++)

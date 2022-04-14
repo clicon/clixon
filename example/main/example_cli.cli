@@ -70,7 +70,8 @@ discard("Discard edits (rollback 0)"), discard_changes();
 
 show("Show a particular state of the system"){
     auto("Show expand") @datamodel, cli_show_auto("candidate", "xml");  
-    xpath("Show configuration") <xpath:string>("XPATH expression") <ns:string>("Namespace"), show_conf_xpath("candidate");
+    xpath("Show configuration") <xpath:string>("XPATH expression")
+       [<ns:string>("Namespace")], show_conf_xpath("candidate");
     version("Show version"), cli_show_version("candidate", "text", "/");
     options("Show clixon options"), cli_show_options();
     compare("Compare candidate and running databases"), compare_dbs((int32)0);{

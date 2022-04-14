@@ -90,7 +90,7 @@ xpath_list_optimize_stats(int *hits)
 }
 
 /*! Enable xpath optimize
- * Cant replace this with optin since there is no handle in xpath functions,...
+ * Cant replace this with option since there is no handle in xpath functions,...
  */
 int
 xpath_list_optimize_set(int enable)
@@ -245,6 +245,7 @@ xpath_list_optimize_fn(xpath_tree  *xt,
     cvec        *cvk = NULL; /* vector of index keys */
     cg_var      *cvi;
     int          i;
+    yang_stmt   *ypp;
     
     /* revert to non-optimized if no yang */
     if ((yp = xml_spec(xv)) == NULL)
@@ -252,6 +253,12 @@ xpath_list_optimize_fn(xpath_tree  *xt,
     /* or if not config data (state data should not be ordered) */
     if (yang_config_ancestor(yp) == 0)
 	goto ok;
+    /* Check that there is no "outer" list. */
+    ypp = yp;
+    do {
+	if (yang_keyword_get(ypp) == Y_LIST)
+	    goto ok;
+    } while((ypp = yang_parent_get(ypp)) != NULL);
     /* Check yang and that only a list with key as index is a special case can do bin search 
      * That is, ONLY check optimize cases of this type:_x[_y='_z']
      * Should we extend this simple example and have more cases (all cases?)
