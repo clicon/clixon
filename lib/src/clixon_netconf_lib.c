@@ -2003,7 +2003,7 @@ netconf_output(int   s,
     }
     if (write(s, buf, len) < 0){
 	if (errno == EPIPE)
-	    ;
+	    clicon_debug(1, "%s write err SIGPIPE", __FUNCTION__);
 	else
 	    clicon_log(LOG_ERR, "%s: write: %s", __FUNCTION__, strerror(errno));
 	goto done;

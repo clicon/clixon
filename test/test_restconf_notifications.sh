@@ -55,7 +55,7 @@ cat <<EOF > $cfg
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
-  <CLICON_BACKEND_PIDFILE>$dir/restconf.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -140,7 +140,7 @@ new "wait restconf"
 wait_restconf
 
 new "netconf event stream discovery RFC8040 Sec 6.2"
-expecteof "$clixon_netconf -D $DBG -qf $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"r:restconf-state/r:streams\" xmlns:r=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\"/></get></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><data><restconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\"><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>true</replay-support><access><encoding>xml</encoding><location>https://localhost/streams/EXAMPLE</location></access></stream></streams></restconf-state></data></rpc-reply>]]>]]>"
+expecteof_netconf "$clixon_netconf -D $DBG -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"r:restconf-state/r:streams\" xmlns:r=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\"/></get></rpc>" "" "<rpc-reply $DEFAULTNS><data><restconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\"><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>true</replay-support><access><encoding>xml</encoding><location>https://localhost/streams/EXAMPLE</location></access></stream></streams></restconf-state></data></rpc-reply>"
 
 #
 # 1.2 Netconf stream subscription

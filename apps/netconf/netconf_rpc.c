@@ -444,7 +444,7 @@ netconf_notification_cb(int   s,
     struct clicon_msg *reply = NULL;
     int                eof;
     int                retval = -1;
-    cbuf              *cb;
+    cbuf              *cb = NULL;
     cxobj             *xn = NULL; /* event xml */
     cxobj             *xt = NULL; /* top xml */
     clicon_handle      h = (clicon_handle)arg;
@@ -485,17 +485,22 @@ netconf_notification_cb(int   s,
 	goto done;
     /* Send it to listening client on stdout */
     if (netconf_output_encap(clicon_option_int(h, "netconf-framing"), cb) < 0){
-	cbuf_free(cb);
 	goto done;
     }
-    if (netconf_output(1, cb, "notification") < 0)
+    if (netconf_output(1, cb, "notification") < 0){
+	clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
+	close(s);
+	errno = ESHUTDOWN;
+	clixon_event_unreg_fd(s, netconf_notification_cb);
 	goto done;
+    }
     fflush(stdout);
-    cbuf_free(cb);
  ok:
     retval = 0;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    if (cb)
+	cbuf_free(cb);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (xt != NULL)
