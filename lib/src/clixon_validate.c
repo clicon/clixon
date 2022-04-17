@@ -715,10 +715,11 @@ check_mandatory(cxobj     *xt,
  * @retval    -1     Error
  */
 static int
-unique_search_one(cxobj  *x,
-		  char   *xpath,
-		  char ***svec,
-		  size_t *slen)
+unique_search_xpath(cxobj  *x,
+		    char   *xpath,
+		    cvec   *nsc,
+		    char ***svec,
+		    size_t *slen)
 {
     int     retval = -1;
     cxobj **xvec = NULL;
@@ -729,7 +730,7 @@ unique_search_one(cxobj  *x,
     char   *bi;
 
     /* Collect tuples */
-    if (xpath_vec(x, NULL, "%s", &xvec, &xveclen, xpath) < 0) 
+    if (xpath_vec(x, nsc, "%s", &xvec, &xveclen, xpath) < 0) 
 	goto done;	
     for (i=0; i<xveclen; i++){
 	xi = xvec[i];
@@ -833,12 +834,11 @@ check_insert_duplicate(char **vec,
  * when a list entry is created.
  */
 static int
-check_unique_list_mult(cxobj     *x, 
-		       cxobj     *xt, 
-		       yang_stmt *y,
-		       yang_stmt *yu,
-		       cvec      *cvk,
-		       cxobj    **xret)
+check_unique_list_direct(cxobj     *x, 
+			 cxobj     *xt, 
+			 yang_stmt *y,
+			 yang_stmt *yu,
+			 cxobj    **xret)
 {
     int       retval = -1;
     cg_var    *cvi; /* unique node name */
@@ -849,7 +849,10 @@ check_unique_list_mult(cxobj     *x,
     int        v;
     char      *bi;
     int        sorted;
-    
+    char      *str;
+    cvec      *cvk;
+
+    cvk = yang_cvec_get(yu);
     /* If list and is sorted by system, then it is assumed elements are in key-order which is optimized
      * Other cases are "unique" constraint or list sorted by user which is quadratic in complexity
      * This second case COULD be optimized if binary insert is made on the vec vector.
@@ -873,10 +876,16 @@ check_unique_list_mult(cxobj     *x,
     do {
 	cvi = NULL;
 	v = 0; /* index in each tuple */
+	/* XXX Quadratic if clen > 1 */
 	while ((cvi = cvec_each(cvk, cvi)) != NULL){
 	    /* RFC7950: Sec 7.8.3.1: entries that do not have value for all
 	     * referenced leafs are not taken into account */
-	    if ((xi = xml_find(x, cv_string_get(cvi))) == NULL)
+	    str = cv_string_get(cvi);
+	    if (index(str, '/') != NULL){
+		clicon_err(OE_YANG, 0, "Multiple descendant nodes not allowed (w /)");
+		goto done;
+	    }
+	    if ((xi = xml_find(x, str)) == NULL)
 		break;
 	    if ((bi = xml_body(xi)) == NULL)
 		break;
@@ -905,45 +914,6 @@ check_unique_list_mult(cxobj     *x,
     goto done;
 }
 
-static int
-check_unique_list_deep(cxobj     *x, 
-		       cxobj     *xt, 
-		       yang_stmt *y,
-		       cvec      *cvk,
-		       cxobj    **xret)
-{
-    int       retval = -1;
-    cg_var    *cvi; /* unique node name */
-    char     **svec = NULL; /* vector of search results */
-    size_t     slen = 0; 
-    int        ret;
-
-    do {
-	cvi = NULL;
-	while ((cvi = cvec_each(cvk, cvi)) != NULL){
-	    /* Collect search results from one */
-	    if ((ret = unique_search_one(x, cv_string_get(cvi), &svec, &slen)) < 0)
-		goto done;
-	    if (ret == 0){
-		if (xret && netconf_data_not_unique_xml(xret, x, cvk) < 0)
-		    goto done;
-		goto fail;
-	    }
-	} /* cvi: unique arguments */
-    	x = xml_child_each(xt, x, CX_ELMNT);
-    } while (x && y == xml_spec(x));  /* stop if list ends, others may follow */
-    // ok:
-    /* It would be possible to cache vec here as an optimization */
-    retval = 1;
- done:
-    if (svec)
-	free(svec);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-
 /*! Given a list with unique constraint, detect duplicates
  * @param[in]  x     The first element in the list (on return the last)
  * @param[in]  xt    The parent of x (a list)
@@ -951,7 +921,7 @@ check_unique_list_deep(cxobj     *x,
  * @param[in]  yu    A yang unique (Y_UNIQUE) for unique schema node ids or (Y_LIST) for list keys
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
- * @retval     0     Validation failed (cbret set)
+ * @retval     0     Validation failed (xret set)
  * @retval    -1     Error
  * Discussion: the RFC 7950 Sec 7.8.3: "constraints on valid list entries"
  * The arguments are "descendant schema node identifiers". A direct interpretation is that
@@ -974,13 +944,68 @@ check_unique_list(cxobj     *x,
 		  yang_stmt *yu,
 		  cxobj    **xret)
 {
-    cvec *cvk;
+    int       retval = -1;
+    cg_var    *cvi; /* unique node name */
+    char     **svec = NULL; /* vector of search results */
+    size_t     slen = 0; 
+    char      *xpath0 = NULL;
+    char      *xpath1 = NULL;
+    int        ret;
+    cvec      *cvk;
+    cvec      *nsc0 = NULL;
+    cvec      *nsc1 = NULL;
 
+    /* Check if multiple direct children */
     cvk = yang_cvec_get(yu);
-    if (cvec_len(cvk) != 1) /* case 1: set of direct descendants */
-	return check_unique_list_mult(x, xt, y, yu, cvk, xret);
-    else /* case 2: single deep schema node */
-	return check_unique_list_deep(x, xt, y, cvk, xret);
+    if (cvec_len(cvk) > 1){
+	retval = check_unique_list_direct(x, xt, y, yu, xret);
+	goto done;
+    }
+    cvi = cvec_i(cvk, 0);
+    if (cvi == NULL || (xpath0 = cv_string_get(cvi)) == NULL){
+	clicon_err(OE_YANG, 0, "No descendant schemanode");
+	goto done;
+    }
+    /* Check if direct schmeanode-id , ie not xpath */
+    if (index(xpath0, '/') == NULL){ 
+	retval = check_unique_list_direct(x, xt, y, yu, xret);
+	goto done;
+    }
+    /* Here proper xpath with at least one slash (can there be a descendant schemanodeid w/o slash?) */
+    if (xml_nsctx_yang(yu, &nsc0) < 0)
+    	goto done;
+    if ((ret = xpath2canonical(xpath0, nsc0, ys_spec(y),
+			       &xpath1, &nsc1, NULL)) < 0)
+	goto done;
+    if (ret == 0)
+	goto fail; // XXX set xret
+    do {
+	/* Collect search results from one */
+	if ((ret = unique_search_xpath(x, xpath1, nsc1, &svec, &slen)) < 0)
+	    goto done;
+	if (ret == 0){
+	    if (xret && netconf_data_not_unique_xml(xret, x, cvk) < 0)
+		goto done;
+	    goto fail;
+	}
+    	x = xml_child_each(xt, x, CX_ELMNT);
+    } while (x && y == xml_spec(x));  /* stop if list ends, others may follow */
+    // ok:
+    /* It would be possible to cache vec here as an optimization */
+    retval = 1;
+ done:
+    if (nsc0)
+	cvec_free(nsc0);
+    if (nsc1)
+	cvec_free(nsc1);
+    if (xpath1)
+	free(xpath1);
+    if (svec)
+	free(svec);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Given a list, check if any min/max-elemants constraints apply
@@ -1156,9 +1181,9 @@ check_list_unique_minmax(cxobj  *xt,
 	if (keyw != Y_LIST)
 	    continue;
 	/* Here new (first element) of lists only
-	 * First check unique keys
+	 * First check unique keys direct children
 	 */
-	if ((ret = check_unique_list(x, xt, y, y, xret)) < 0)
+	if ((ret = check_unique_list_direct(x, xt, y, y, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -1171,6 +1196,9 @@ check_list_unique_minmax(cxobj  *xt,
 	    /* Here is a list w unique constraints identified by:
 	     * its first element x, its yang spec y, its parent xt, and 
 	     * a unique yang spec yu,
+	     * Two cases: 
+	     * 1) multiple direct children (no prefixes), eg "a b"
+	     * 2) single xpath with canonical prefixes, eg "/ex:a/ex:b"
 	     */
 	    if ((ret = check_unique_list(x, xt, y, yu, xret)) < 0)
 		goto done;

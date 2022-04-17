@@ -479,7 +479,8 @@ abbreviatedstep : '.' predicates     { $$=xp_new(XP_STEP,A_SELF, NULL,NULL, NULL
 */
 axisspec    : NCNAME DOUBLECOLON
                  { if (($$=xp_axisname_function(_XPY, $1)) < 0) YYERROR;
-		     _PARSE_DEBUG2("axisspec-> AXISNAME(%s -> %d) ::", $1, $$);
+		   free($1);  
+		   _PARSE_DEBUG2("axisspec-> AXISNAME(%s -> %d) ::", $1, $$);
 		 }
             | abbreviatedaxisspec
 	         { $$ = $1; }
