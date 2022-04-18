@@ -21,6 +21,8 @@
 # 2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications
 # 2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications
 # Note the sleeps are mainly for valgrind usage
+#
+# XXX There is some state/timing issue introduced in 5.7, see test-pause
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -30,7 +32,7 @@ if [ "${WITH_RESTCONF}" != "fcgi" -o "$RCPROTO" = https ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
-SLEEP2=1
+: ${SLEEP2:=1}
 SLEEP5=.5
 APPNAME=example
 : ${clixon_util_stream:=clixon_util_stream}
@@ -113,6 +115,16 @@ cat <<EOF > $fyang
    }
 EOF
 
+# Temporary pause between tests to make state timeout
+# XXX This should not really be here, there is some state/timing issue introduced in 5.7
+function test-pause()
+{
+    sleep 5
+    # -m 1 means 1 sec timeout
+    curl -Ssik --http1.1 -X GET -m 1 -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" "http://localhost/streams/EXAMPLE" 2>&1 > /dev/null 
+ 
+}
+
 new "test params: -f $cfg"
 
 if [ $BE -ne 0 ]; then
@@ -164,8 +176,10 @@ new "restconf monitor event nonexist stream"
 # partial returns like expectpart can
 expectwait "curl -sk -X GET -H \"Accept: text/event-stream\" -H \"Cache-Control: no-cache\" -H \"Connection: keep-alive\" $RCPROTO://localhost/streams/NOTEXIST" 0 "" "" 2 '<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>'
 
+
 # 2a) start subscription 8s - expect 1-2 notifications
 new "2a) start subscriptions 8s - expect 1-2 notifications"
+
 ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 8)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 
@@ -178,7 +192,7 @@ if [ $nr -lt 1 -o $nr -gt 2 ]; then
     err 2 "$nr"
 fi
 
-sleep $SLEEP2
+test-pause
 
 # 2b) start subscription 8s - stoptime after 5s - expect 1-2 notifications
 new "2b) start subscriptions 8s - stoptime after 5s - expect 1-2 notifications"
@@ -193,7 +207,7 @@ if [ $nr -lt 1 -o $nr -gt 2 ]; then
     err 1 "$nr"
 fi
 
-sleep $SLEEP2
+test-pause
 
 # 2c
 new "2c) start sub 8s - replay from start -8s - expect 3-4 notifications"
@@ -208,7 +222,8 @@ nr=$(echo "$ret" | grep -c "data:")
 if [ $nr -lt 3 ]; then
     err 4 "$nr"
 fi
-sleep $SLEEP2
+
+test-pause
 
 # 2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications
 new "2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications"
@@ -224,11 +239,10 @@ if [ $nr -lt 4 ]; then
     err 6 "$nr"
 fi
 
-sleep $SLEEP2
+test-pause
 
 # 2e) start sub 8s - replay from -90s w retention 60s - expect 9-14 notifications
 new "2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications"
-echo "$clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 10 -s -90 -e +0"
 ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 10 -s -90 -e +0)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 
@@ -242,11 +256,12 @@ if [ $nr -lt 8 -o $nr -gt 14 ]; then
     err "8-14" "$nr"
 fi
 
-sleep $SLEEP2
+test-pause
+sleep 5
 
 # Try parallell
 # start background job
-curl $CURLOPTS -X GET  -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" "$RCPROTO://localhost/streams/EXAMPLE" > /dev/null &
+curl $CURLOPTS -X GET  -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" "$RCPROTO://localhost/streams/EXAMPLE" & # > /dev/null &
 PID=$!
 
 new "Start subscriptions in parallell"

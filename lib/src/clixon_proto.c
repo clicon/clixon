@@ -769,6 +769,7 @@ send_msg_notify_xml(clicon_handle h,
 	goto done;
     retval = 0;
   done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (cb)
 	cbuf_free(cb);
     return retval;

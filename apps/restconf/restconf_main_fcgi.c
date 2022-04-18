@@ -351,7 +351,7 @@ main(int    argc,
 		goto done;
 	    break;
 	} /* switch getopt */
-    dbg=1;
+
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */

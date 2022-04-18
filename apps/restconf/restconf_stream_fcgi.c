@@ -103,7 +103,7 @@
 /* Enable for forking stream subscription loop. 
  * Disable to get single threading but blocking on streams
  */
-#define STREAM_FORK 1
+#define STREAM_FORK
 
 /* Keep track of children - when they exit - their FCGX handle needs to be 
  * freed with  FCGX_Free(&rbk, 0);
@@ -119,6 +119,8 @@ struct stream_child{
 static struct stream_child *STREAM_CHILD = NULL; 
 
 /*! Find restconf child using PID and cleanup FCGI Request data
+ *
+ * For forked, called on SIGCHILD
  * @param[in]  h   Clicon handle
  * @param[in]  pid Process id of child
  * @note could hang STREAM_CHILD list on clicon handle instead.
@@ -144,6 +146,9 @@ stream_child_free(clicon_handle h,
     return 0;
 }
 
+/*! Free all streams
+ * Typically called on restconf exit
+ */
 int
 stream_child_freeall(clicon_handle h)
 {
@@ -160,6 +165,7 @@ stream_child_freeall(clicon_handle h)
 /*! Callback when stream notifications arrive from backend
  * @param[in]  s    Socket
  * @param[in]  req  Generic Www handle (can be part of clixon handle)
+ * @see netconf_notification_cb
  */
 static int
 restconf_stream_cb(int   s, 
@@ -236,7 +242,7 @@ restconf_stream_cb(int   s,
     return retval;
 }
 
-/*! Send subsctription to backend
+/*! Send subscription to backend
  * @param[in]  h     Clicon handle
  * @param[in]  req   Generic Www handle (can be part of clixon handle)
  * @param[in]  name  Stream name
@@ -475,19 +481,24 @@ api_stream(clicon_handle h,
 				    req,
 				    "stream socket") < 0)
 		goto done;
+	    clicon_debug(1, "%s before loop", __FUNCTION__);
 	    /* Poll upstream errors */
 	    stream_timeout(0, req);
 	    /* Start loop */
 	    clixon_event_loop(h);
-	    close(s);
+	    clicon_debug(1, "%s after loop", __FUNCTION__);
+	    clicon_rpc_close_session(h);
 	    clixon_event_unreg_fd(s, restconf_stream_cb);
+	    close(s);
 	    clixon_event_unreg_fd(rfcgi->listen_sock,
 				  restconf_stream_cb);
 	    clixon_event_unreg_timeout(stream_timeout, (void*)req);
 	    clixon_exit_set(0); /* reset */
 #ifdef STREAM_FORK
+#if 0 /* Seems to be a global resource, but there is till some timing error here */
 	    FCGX_Finish_r(rfcgi);
-	    FCGX_Free(rfcgi, 0);	    
+	    FCGX_Free(rfcgi, 0);
+#endif
 	    restconf_terminate(h);
 	    exit(0);
 	}
