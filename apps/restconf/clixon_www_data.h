@@ -32,29 +32,16 @@
 
   ***** END LICENSE BLOCK *****
   *
-  * Generic restconf root handlers eg for /restconf /.well-known, etc
+  * Limited www data handler embedded in restconf code
  */
 
-#ifndef _RESTCONF_ROOT_H_
-#define _RESTCONF_ROOT_H_
-
-/*
- * Constants
- */
-#define RESTCONF_API       "restconf"
-#define IETF_YANG_LIBRARY_REVISION    "2019-01-04"
-
-/* RESTCONF enables deployments to specify where the RESTCONF API is 
-   located.  The client discovers this by getting the "/.well-known/host-meta"
-   resource 
-*/
-#define RESTCONF_WELL_KNOWN  "/.well-known/host-meta"
+#ifndef _CLIXON_WWW_DATA_H_
+#define _CLIXON_WWW_DATA_H_
 
 /*
  * Prototypes
  */
-int api_path_is_restconf(clicon_handle h);
-int api_well_known(clicon_handle h, void *req);
-int api_root_restconf(clicon_handle h, void *req, cvec *qvec);
+int api_path_is_data(clicon_handle h, char **data);
+int api_www_data(clicon_handle h, void *req, cvec *qvec);
 
-#endif /* _RESTCONF_ROOT_H_ */
+#endif /* _CLIXON_WWW_DATA_H_ */

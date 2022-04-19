@@ -122,7 +122,8 @@ restconf_reply_header(void       *req0,
 
 /*! Send HTTP reply with potential message body
  * @param[in]     req   http request handle
- * @param[in]     cb    Body as a cbuf if non-NULL. Note: is consumed, dont free or reset after call
+ * @param[in]     code  Status code
+ * @param[in]     cb    Body as a cbuf if non-NULL. Note: is consumed
  * @param[in]     head  Only send headers, dont send body. 
  * 
  * Prerequisites: status code set, headers given, body if wanted set

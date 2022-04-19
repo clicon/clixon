@@ -66,6 +66,7 @@
 #include "restconf_err.h"
 #include "clixon_http1_parse.h"
 #include "restconf_http1.h"
+#include "clixon_www_data.h"
 
 /* Size of xml read buffer */
 #define BUFLEN 1024  
@@ -411,13 +412,27 @@ restconf_http1_path_root(clicon_handle  h,
     if (ret == 0) /* upgrade */
 	goto upgrade;
 #endif
-    /* call generic function */
+    /* Matching algorithm:
+     * 1. try well-known
+     * 2. try /restconf
+     * 3. try /data
+     * 4. call restconf anyway (because it handles errors a la restconf)
+     * This is for the situation where data is / and /restconf is more specific
+     */
     if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0){
 	if (api_well_known(h, sd) < 0)
 	    goto done;
     }
-    else if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
-	goto done;
+    else if (api_path_is_restconf(h)){
+	if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
+	    goto done;
+    }
+    else if (api_path_is_data(h, NULL)){
+	if (api_www_data(h, sd, sd->sd_qvec) < 0)
+	    goto done;
+    }
+    else if (api_root_restconf(h, sd, sd->sd_qvec) < 0) /* error handling */
+	goto done;	    
  fail:
    if (restconf_param_del_all(h) < 0)
 	goto done;

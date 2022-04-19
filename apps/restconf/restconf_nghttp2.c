@@ -85,8 +85,9 @@
 #include "restconf_err.h"
 #include "restconf_root.h"
 #include "restconf_native.h"    /* Restconf-openssl mode specific headers*/
-#ifdef HAVE_LIBNGHTTP2 
+#ifdef HAVE_LIBNGHTTP2          /* Ends at end-of-file */
 #include "restconf_nghttp2.h"   /* Restconf-openssl mode specific headers*/
+#include "clixon_www_data.h"
 
 #define ARRLEN(x) (sizeof(x) / sizeof(x[0]))
 
@@ -309,13 +310,27 @@ restconf_nghttp2_path(restconf_stream_data *sd)
     if (restconf_connection_sanity(h, rc, sd) < 0)
 	goto done;
     if (!rc->rc_exit){
-	/* call generic function */
+	/* Matching algorithm:
+	 * 1. try well-known
+	 * 2. try /restconf
+	 * 3. try /data
+	 * 4. call restconf anyway (because it handles errors)
+	 * This is for the situation where data is / and /restconf is more specific
+	 */
 	if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0){
 	    if (api_well_known(h, sd) < 0)
 		goto done;
 	}
-	else if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
-	    goto done;
+	else if (api_path_is_restconf(h)){
+	    if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
+		goto done;	    
+	}
+	else if (api_path_is_data(h, NULL)){
+	    if (api_www_data(h, sd, sd->sd_qvec) < 0)
+		goto done;
+	}
+	else if (api_root_restconf(h, sd, sd->sd_qvec) < 0) /* error handling */
+	    goto done;	    
     }
     /* Clear (fcgi) paramaters from this request */
     if (restconf_param_del_all(h) < 0)
@@ -458,8 +473,9 @@ http2_exec(restconf_conn        *rc,
     if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
 	goto done;
     sd->sd_proto = HTTP_2; /* XXX is this necessary? */
-    if (strncmp(sd->sd_path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0 ||
-	strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0){
+    if (strncmp(sd->sd_path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0 
+	|| strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0
+	|| api_path_is_data(rc->rc_h, NULL)){
 	if (restconf_nghttp2_path(sd) < 0)
 	    goto done;
     }

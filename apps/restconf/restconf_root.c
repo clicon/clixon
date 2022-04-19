@@ -70,6 +70,28 @@
 #include "restconf_methods_get.h"
 #include "restconf_methods_post.h"
 
+/*! Check if uri path denotes a restconf path
+ *
+ * @retval     0    No, not a restconf path
+ * @retval     1    Yes, a restconf path
+ */
+int
+api_path_is_restconf(clicon_handle h)
+{
+    char  *path;
+    char  *restconf_path = RESTCONF_API;
+
+   if ((path = restconf_uripath(h)) == NULL)
+       return 0;
+   if (strlen(path) < 1 + strlen(restconf_path)) /* "/" + restconf */
+       return 0;
+   if (path[0] != '/')
+       return 0;
+   if (strncmp(path+1, restconf_path, strlen(restconf_path)) != 0)
+       return 0;
+   return 1;
+}
+
 /*! Determine the root of the RESTCONF API by accessing /.well-known
  * @param[in]  h        Clicon handle
  * @param[in]  req      Generic Www handle (can be part of clixon handle)

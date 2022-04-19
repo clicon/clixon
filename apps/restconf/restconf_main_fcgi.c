@@ -301,7 +301,8 @@ main(int    argc,
     char          *dir;
     int            logdst = CLICON_LOG_SYSLOG;
     yang_stmt     *yspec = NULL;
-    char          *stream_path;
+    char          *query;
+    cvec          *qvec;
     int            finish = 0;
     char          *str;
     clixon_plugin_t *cp = NULL;
@@ -313,6 +314,7 @@ main(int    argc,
     char          *wwwuser;
     char          *inline_config = NULL;
     size_t         sz;
+
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -377,7 +379,6 @@ main(int    argc,
     if (clicon_options_main(h) < 0)
 	goto done;
 
-    stream_path = clicon_option_str(h, "CLICON_STREAM_PATH");
     /* Now rest of options, some overwrite option file */
     optind = 1;
     opterr = 0;
@@ -595,36 +596,37 @@ main(int    argc,
 	 */
 	if (fcgi_params_set(h, req->envp) < 0)
 	    goto done;
-	if ((path = restconf_param_get(h, "REQUEST_URI")) != NULL){
-	    clicon_debug(1, "path: %s", path);
-	    if (strncmp(path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0){
-		char  *query = NULL;
-		cvec  *qvec = NULL;
+	if ((path = restconf_param_get(h, "REQUEST_URI")) == NULL){
+	    clicon_debug(1, "NULL URI");
+	}
+	else {
+	    /* Matching algorithm:
+	     * 1. try well-known
+	     * 2. try /restconf
+	     * 3. try /stream
+	     * 4. return error
+	     */
+	    query = NULL;
+	    qvec = NULL;
+	    if (strcmp(path, RESTCONF_WELL_KNOWN) == 0){
+		if (api_well_known(h, req) < 0)
+		    goto done;
+	    }
+	    else if (api_path_is_restconf(h)){
 		query = restconf_param_get(h, "QUERY_STRING");
 		if (query != NULL && strlen(query))
 		    if (uri_str2cvec(query, '&', '=', 1, &qvec) < 0)
 			goto done;
-		api_root_restconf(h, req, qvec); /* This is the function */
-		if (qvec){
-		    cvec_free(qvec);
-		    qvec = NULL;
-		}
+		if (api_root_restconf(h, req, qvec) < 0)
+		    goto done;	    
 	    }
-	    else if (strncmp(path+1, stream_path, strlen(stream_path)) == 0) {
-		char  *query = NULL;
-		cvec  *qvec = NULL;
+	    else if (api_path_is_stream(h)){
 		query = restconf_param_get(h, "QUERY_STRING");
 		if (query != NULL && strlen(query))
 		    if (uri_str2cvec(query, '&', '=', 1, &qvec) < 0)
 			goto done;
-		api_stream(h, req, qvec, stream_path, &finish); 
-		if (qvec){
-		    cvec_free(qvec);
-		    qvec = NULL;
-		}
-	    }
-	    else if (strncmp(path, RESTCONF_WELL_KNOWN, strlen(RESTCONF_WELL_KNOWN)) == 0) {
-		api_well_known(h, req); /*  */
+		/* XXX doing goto done on error causes test errors */
+		(void)api_stream(h, req, qvec, &finish);
 	    }
 	    else{
 		clicon_debug(1, "top-level %s not found", path);
@@ -637,9 +639,11 @@ main(int    argc,
 		    xerr = NULL;
 		}
 	    }
+	    if (qvec){
+		cvec_free(qvec);
+		qvec = NULL;
+	    }
 	}
-	else
-	    clicon_debug(1, "NULL URI");
 	if (restconf_param_del_all(h) < 0)
 	    goto done;
 	if (finish)

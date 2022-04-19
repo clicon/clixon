@@ -118,6 +118,30 @@ struct stream_child{
  */
 static struct stream_child *STREAM_CHILD = NULL; 
 
+/*! Check if uri path denotes a stream/notification path
+ *
+ * @retval     0    No, not a stream path
+ * @retval     1    Yes, a stream path
+ */
+int
+api_path_is_stream(clicon_handle h)
+{
+    char  *path;
+    char  *stream_path;
+
+   if ((path = restconf_uripath(h)) == NULL)
+       return 0;
+   if ((stream_path = clicon_option_str(h, "CLICON_STREAM_PATH")) == NULL)
+       return 0;
+   if (strlen(path) < 1 + strlen(stream_path)) /* "/" + stream */
+       return 0;
+   if (path[0] != '/')
+       return 0;
+   if (strncmp(path+1, stream_path, strlen(stream_path)) != 0)
+       return 0;
+   return 1;
+}
+
 /*! Find restconf child using PID and cleanup FCGI Request data
  *
  * For forked, called on SIGCHILD
@@ -372,14 +396,12 @@ stream_timeout(int   s,
  * @param[in]  h          Clicon handle
  * @param[in]  req        Generic Www handle (can be part of clixon handle)
  * @param[in]  qvec       Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
- * @param[in]  streampath URI path for streams, eg /streams, see CLICON_STREAM_PATH
  * @param[out] finish 	  Set to zero, if request should not be finnished by upper layer
  */
 int
 api_stream(clicon_handle h,
 	   void         *req,
 	   cvec         *qvec,
-	   char         *streampath,
 	   int          *finish)
 {
     int            retval = -1;
@@ -397,12 +419,14 @@ api_stream(clicon_handle h,
     int            s = -1;
     int            ret;
     cxobj         *xerr = NULL;
+    char          *streampath;
 #ifdef STREAM_FORK
     int            pid;
     struct stream_child *sc;
 #endif
 
     clicon_debug(1, "%s", __FUNCTION__);
+    streampath = clicon_option_str(h, "CLICON_STREAM_PATH");
     if ((path = restconf_uripath(h)) == NULL)
 	goto done;
     pretty = restconf_pretty_get(h);

@@ -187,6 +187,7 @@ restconf_reply_body_add(void     *req0,
  * @param[in]     req   Fastcgi request handle
  * @param[in]     code  Status code
  * @param[in]     cb    Body as a cbuf if non-NULL. Note is consumed
+ * @param[in]     head  Only send headers, dont send body. 
  * 
  * Prerequisites: status code set, headers given, body if wanted set
  */

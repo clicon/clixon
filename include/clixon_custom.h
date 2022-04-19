@@ -157,4 +157,3 @@
  * If not set, client will exit
  */
 #define PROTO_RESTART_RECONNECT
-

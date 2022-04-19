@@ -15,6 +15,16 @@ module clixon-restconf {
 
     description
 	"This YANG module provides a data-model for the Clixon RESTCONF daemon.
+         There is also clixon-config also including some restconf options.
+         The separation is not always logical but there are some reasons for the split:
+         1. Some data (ie 'socket') is structurally complex and cannot be expressed as a 
+            simple option
+         2. clixon-restconf is defined as a macro/grouping and can be included in
+            other YANGs. In particular, it can be used inside a datastore, which
+            is not possible for clixon-config.
+         3. Related to (2), options that should not be settable in a datastore should be
+            in clixon-config
+
        ***** BEGIN LICENSE BLOCK *****
        Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 

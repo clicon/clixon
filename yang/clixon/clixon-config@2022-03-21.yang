@@ -50,6 +50,10 @@ module clixon-config {
 	description
 	    "Added option:
                     CLICON_NETCONF_BASE_CAPABILITY
+                    CLICON_WWW_DATA_PATH
+                    CLICON_WWW_DATA_ROOT
+             Added feature:
+                    www-data
 	     Released in Clixon 5.7";
     }
     revision 2022-02-11 {
@@ -212,6 +216,20 @@ module clixon-config {
 	description
 	    "Released in Clixon 3.8";
     }
+    feature www-data {
+	description
+	    "This feature allows for a very limited www-data function as
+             addition to RESTCONF.
+             it is limited to:
+             1. path: Local files within WWW_DATA_ROOT
+             2. operation GET or HEAD
+             3. query parameters not supported
+             4. indata should be NULL (no write operations)
+             5. Limited media: text/html, JavaScript, image, and css
+             6. Authentication as restconf
+             7. HTTP/1+2, TLS as restconf";
+    }
+
     extension search_index {
       description "This list argument acts as a search index using optimized binary search.
                   ";
@@ -600,6 +618,19 @@ module clixon-config {
                  upgrade/switch from http/1 to http/2. 
                  Note this also disables plain http/2 in prior-knowledge, that is, in http/2-only mode.
                  HTTP/2 in https(TLS) is unaffected";
+	}
+	leaf CLICON_WWW_DATA_PATH {
+	    if-feature "www-data";
+	    type string;
+    	    description
+		"If set, enable www data on this sub-path";
+	}
+	leaf CLICON_WWW_DATA_ROOT {
+	    if-feature "www-data";
+	    type string;
+	    default "/var/www";
+    	    description
+		"public web root";
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;
