@@ -89,6 +89,10 @@ clicon_files_recursive1(const char *dir,
     int     res = 0;
     struct stat    st;
     
+    if (dir == NULL){
+	clicon_err(OE_UNIX, EINVAL, "Requires dir != NULL");
+	goto done;
+    }
     if ((dirp = opendir(dir)) != NULL)
 	while ((dent = readdir(dirp)) != NULL) {
 	    if (dent->d_type == DT_DIR) {
@@ -128,6 +132,8 @@ clicon_files_recursive1(const char *dir,
     return retval;
 }
 
+/*! Find files recursively according to a regexp
+ */
 int
 clicon_files_recursive(const char *dir,
                        const char *regexp,

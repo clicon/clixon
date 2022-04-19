@@ -957,8 +957,8 @@ yang_parse_find_match(clicon_handle h,
 	    if (dp)
 		free(dp);
 	}
-        else if (strcmp(xml_name(xc), "CLICON_YANG_DIR") == 0){
-	    dir = xml_body(xc);
+        else if (strcmp(xml_name(xc), "CLICON_YANG_DIR") == 0 &&
+		 (dir = xml_body(xc)) != NULL){
 	    /* get all matching files in this directory recursively */
 	    if ((cvv = cvec_new(0)) == NULL){
 		clicon_err(OE_UNIX, errno, "cvec_new");

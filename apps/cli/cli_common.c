@@ -862,7 +862,7 @@ load_config_file(clicon_handle h,
     }
     /* Open and parse local file into xml */
     if ((fp = fopen(filename, "r")) == NULL){
-	clicon_err(OE_UNIX, errno, "open(%s)", filename);
+	clicon_err(OE_UNIX, errno, "fopen(%s)", filename);
 	goto done;
     }
     switch (format){

@@ -218,7 +218,7 @@ if [ ! -d $dir ]; then
     mkdir $dir
 fi
 
-# Default restconf configuration: http IPv4 
+# Default restconf configuration: IPv4 
 # Can be placed in clixon-config
 # Note that https clause assumes there exists certs and keys in /etc/ssl,...
 # Args:
