@@ -106,6 +106,8 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: YANG if-feature in config file of disables feature did not work, was always on
+  * This does not apply to the datastore, only the config file itself.
 * Fixed: YANG key list check bad performance
   * List key check did unique "xpath" lookup instead of direct child traverse
 * Fixed: YANG unique single schema-nodeid required "canonical" namespace
