@@ -102,7 +102,12 @@ DEFAULTHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capab
 : ${CURLOPTS:="-Ssik"}
 # Set HTTP version 1.1 or 2
 if ${HAVE_LIBNGHTTP2}; then
-    HVER=2
+    : ${HVER:=2}
+else
+    : ${HVER:=1.1}
+fi
+
+if [ ${HVER} = 2 ]; then
     if ${HAVE_HTTP1}; then
 	# This is if http/1 is enabled (unset proto=HTTP_2 in restconf_accept_client)
 	CURLOPTS="${CURLOPTS} --http2"
@@ -112,7 +117,6 @@ if ${HAVE_LIBNGHTTP2}; then
     fi
 else
     CURLOPTS="${CURLOPTS} --http1.1"
-    HVER=1.1
 fi
 
 # Wait after daemons (backend/restconf) start. See mem.sh for valgrind

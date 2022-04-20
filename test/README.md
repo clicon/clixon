@@ -1,8 +1,15 @@
-# Clixon tests and CI
+# Clixon Test and CI
 
 ## Overview
 
-Tests called 'test_*.sh' and placed in this directory will be
+This directory contains Clixon test suites. Files directly under this
+directory called `test_*.sh` are part of the regression CI tests.
+
+There are also sub-directories for various other tests:
+- cicd - Test scripts for running on remote hosts
+- fuzz - Fuzzing with [american fuzzy lop](https://github.com/google/AFL/releases)
+- vagrant - Scripts for booting local vagrant hosts, installing clixon and running clixon tests
+
 automatically run as part of the all.sh, sum.sh tests etc. The scripts
 need to follow some rules to work properly, please look at one or two
 to get the idea.
@@ -31,17 +38,13 @@ To download the openconfig and yang models required for the tests:
 
 ## Continuous Integration
 
-CI is done via [Travis CI](https://travis-ci.org/clicon/clixon).
+CI is done via github actions.
 
 In the CI process, the system is built and configured and then the
 [clixon test container](../docker/system) is built and the tests in
 this directory is executed.
 
 There are also [manual cicd scripts here](cicd/README.md)
-
-## Vagrant
-
-[Vagrant scripts are here](vagrant/README.md)
 
 ## Getting started
 
@@ -61,6 +64,8 @@ You may need to install the `time` utility (`/usr/bin/time`).
 ## Prefix variable
 
 You can prefix a test with `BE=0` if you want to run your own backend.
+
+You can prefix a test with `RC=0` if you want to run your own restconf process.
 
 To run with debug flags, use the `DBG=<number>` environment variable.
 
@@ -92,6 +97,16 @@ The above scripts work with the `pattern` variable to limit the scope of which t
 ```
   pattern="test_c*.sh" mem.sh
 ```
+
+## TLS and http/2
+
+With default configure options, most tests run http/2 and TLS by
+default. To pin tests to override this use the `HVER` and `RCPROTO` variables. Example:
+```
+HVER=1.1 RCPROTO=http ./test_restconf_plain_patch.sh
+```
+
+Some tests are pinned to certain settings and overriding will not will not work.
 
 ## Performance plots
 
