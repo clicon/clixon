@@ -228,6 +228,8 @@ fi
 # Args:
 # 1: auth-type (one of none, client-cert, user)
 # 2: pretty (if true pretty-print restconf return values)
+# [3: proto: http or https]
+# [4: http_data: true or false] # Note feature http-data must be enabled
 # Note, if AUTH=none then FEATURE clixon-restconf:allow-auth-none must be enabled
 # Note if https, check if server cert/key exists, if not generate them
 function restconf_config()
@@ -235,26 +237,42 @@ function restconf_config()
     AUTH=$1
     PRETTY=$2
 
-    if [ false -a ${WITH_RESTCONF} = "fcgi" ]; then
-	echo "<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE><restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug></restconf>"
+    # Change this to fixed parameters
+    if [ $# -gt 2 ]; then
+	proto=$3
     else
-	FEATURES="<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
-	if [ $RCPROTO = http ]; then
-	    echo "${FEATURES}<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
-	else
-	    certdir=$dir/certs
-	    if [ ! -f ${dir}/clixon-server-crt.pem ]; then
-		certdir=$dir/certs
-		test -d $certdir || mkdir $certdir
-		srvcert=${certdir}/clixon-server-crt.pem
-		srvkey=${certdir}/clixon-server-key.pem
-		cacert=${certdir}/clixon-ca-crt.pem
-		cakey=${certdir}/clixon-ca-key.pem
-		cacerts $cakey $cacert
-		servercerts $cakey $cacert $srvkey $srvcert
-	    fi
-	    echo "${FEATURES}<restconf><enable>true</enable><auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>${certdir}/clixon-server-crt.pem</server-cert-path><server-key-path>${certdir}/clixon-server-key.pem</server-key-path><server-ca-cert-path>${certdir}/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
+    	proto=$RCPROTO
+    fi
+    if [ $# -gt 3 ]; then
+	http_data=$4
+    else
+    	http_data=false
+    fi
+    
+    echo -n "<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
+    if [ $proto = http ]; then
+	echo -n "<restconf><enable>true</enable>"
+	if ${http_data}; then
+	    echo -n "<enable-http-data>true</enable-http-data>"
 	fi
+	echo "<auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
+    else
+	certdir=$dir/certs
+	if [ ! -f ${dir}/clixon-server-crt.pem ]; then
+	    certdir=$dir/certs
+	    test -d $certdir || mkdir $certdir
+	    srvcert=${certdir}/clixon-server-crt.pem
+	    srvkey=${certdir}/clixon-server-key.pem
+	    cacert=${certdir}/clixon-ca-crt.pem
+	    cakey=${certdir}/clixon-ca-key.pem
+	    cacerts $cakey $cacert
+	    servercerts $cakey $cacert $srvkey $srvcert
+	fi
+	echo -n "<restconf><enable>true</enable>"
+	if ${http_data}; then
+	    echo -n "<enable-http-data>true</enable-http-data>"
+	fi
+	echo "<auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>${certdir}/clixon-server-crt.pem</server-cert-path><server-key-path>${certdir}/clixon-server-key.pem</server-key-path><server-ca-cert-path>${certdir}/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
     fi
 }
 

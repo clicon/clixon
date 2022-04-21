@@ -87,7 +87,7 @@ static const map_str2str mime_map[] = {
 /*! Check if uri path denotes a data path
  *
  * @param[out] data Pointer to string where data starts if retval = 1
- * @retval     0    No, not a data path
+ * @retval     0    No, not a data path, or not enabled
  * @retval     1    Yes, a data path and "data" points to www-data if given
  */
 int
@@ -97,19 +97,21 @@ api_path_is_data(clicon_handle h,
     char  *path;
     char  *http_data_path;
 
-   if ((path = restconf_uripath(h)) == NULL)
-       return 0;
-   if ((http_data_path = clicon_option_str(h, "CLICON_HTTP_DATA_PATH")) == NULL)
-       return 0;
-   if (strlen(path) < strlen(http_data_path)) 
-       return 0;
-   if (path[0] != '/')
-       return 0;
-   if (strncmp(path, http_data_path, strlen(http_data_path)) != 0)
-       return 0;
-   if (data)
-       *data = path + strlen(http_data_path);
-   return 1;
+    if (restconf_http_data_get(h) == 0)
+    	return 0;
+    if ((path = restconf_uripath(h)) == NULL)
+	return 0;
+    if ((http_data_path = clicon_option_str(h, "CLICON_HTTP_DATA_PATH")) == NULL)
+	return 0;
+    if (strlen(path) < strlen(http_data_path)) 
+	return 0;
+    if (path[0] != '/')
+	return 0;
+    if (strncmp(path, http_data_path, strlen(http_data_path)) != 0)
+	return 0;
+    if (data)
+	*data = path + strlen(http_data_path);
+    return 1;
 }
 
 /*! Generic restconf error function on get/head request

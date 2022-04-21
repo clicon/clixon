@@ -90,9 +90,10 @@ struct restconf_handle {
     event_stream_t          *rh_stream;    /* notification streams, see clixon_stream.[ch] */
     
     /* ------ end of common handle ------ */
-    clicon_hash_t           *rh_params;    /* restconf parameters, including http headers */
-    clixon_auth_type_t       rh_auth_type; /* authentication type */
-    int                      rh_pretty;    /* pretty-print for http replies */
+    clicon_hash_t           *rh_params;      /* restconf parameters, including http headers */
+    clixon_auth_type_t       rh_auth_type;   /* authentication type */
+    int                      rh_pretty;      /* pretty-print for http replies */
+    int                      rh_http_data;   /* enable-http-data (and if-feature http-data) */
     char                    *rh_fcgi_socket; /* if-feature fcgi, XXX: use WITH_RESTCONF_FCGI ? */
 };
 
@@ -228,12 +229,10 @@ restconf_pretty_get(clicon_handle h)
 }
 
 /*! Set restconf pretty-print
- * @param[in]  h    Clicon handle
- * @param[in]  name Data name
- * @param[in]  val  Data value as null-terminated string
- * @retval     0    OK
- * @retval    -1    Error
- * Currently using clixon runtime data but there is risk for colliding names
+ * @param[in]  h      Clicon handle
+ * @param[in]  pretty 0 or 1
+ * @retval     0      OK
+ * @retval    -1      Error
  */
 int
 restconf_pretty_set(clicon_handle h,
@@ -242,6 +241,34 @@ restconf_pretty_set(clicon_handle h,
     struct restconf_handle *rh = handle(h);
 
     rh->rh_pretty = pretty;
+    return 0;
+}
+
+/*! Get restconf http-data
+ * @param[in]  h      Clixon handle
+ * @retval     0      Yes, http-data enabled
+ * @retval     1      No, http-data disabled
+ */
+int
+restconf_http_data_get(clicon_handle h)
+{
+    struct restconf_handle *rh = handle(h);
+
+    return rh->rh_http_data;
+}
+
+/*! Set restconf http-data
+ * @param[in]  h    Clixon handle
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+restconf_http_data_set(clicon_handle h,
+		       int           http_data)
+{
+    struct restconf_handle *rh = handle(h);
+
+    rh->rh_http_data = http_data;
     return 0;
 }
 

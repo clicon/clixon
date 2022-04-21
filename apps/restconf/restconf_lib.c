@@ -786,6 +786,13 @@ restconf_config_init(clicon_handle h,
 	else if (strcmp(bstr, "false") == 0)
 	    restconf_pretty_set(h, 0);
     }
+    if ((x = xpath_first(xrestconf, nsc, "enable-http-data")) != NULL &&
+	(bstr = xml_body(x)) != NULL){
+	if (strcmp(bstr, "true") == 0)
+	    restconf_http_data_set(h, 1);
+	else if (strcmp(bstr, "false") == 0)
+	    restconf_http_data_set(h, 0);
+    }
     if ((x = xpath_first(xrestconf, nsc, "fcgi-socket")) != NULL &&
 	(bstr = xml_body(x)) != NULL){
 	if (restconf_fcgi_socket_set(h, bstr) < 0)

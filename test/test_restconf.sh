@@ -534,6 +534,7 @@ function testrun()
     fi
 }
 
+protos=
 # Go thru all combinations of IPv4/IPv6, http/https, local/backend config
 if [ "${WITH_RESTCONF}" = "fcgi" ]; then
     protos="http"
@@ -541,7 +542,7 @@ elif ${HAVE_HTTP1}; then
     protos="http"    # No plain http for http/2 only
 fi
 if [ "${WITH_RESTCONF}" = "native" ]; then
-    # http only relevant for internal (for fcgi: need nginx config)
+    # https only relevant for internal (for fcgi: need nginx config)
     protos="$protos https"
 fi
 for proto in $protos; do

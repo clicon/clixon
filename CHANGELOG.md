@@ -49,9 +49,9 @@ Expected: May 2022
 	* path: Local static files within `CLICON_WWW_DATA_ROOT`
 	* operation GET, HEAD, or OPTIONS
 	* query parameters not supported
-  5. indata should be NULL (no write operations)
-  6. Limited media: text/html, JavaScript, image, and css
-  7. Authentication as restconf
+	* no indata
+        * media: html, css, js, fonts, image, 
+  7. Authentication, TLS, http/2 as restconf
 Generic changes:
   * Uniform path selection across fcgi, native http/1 + http/2
 

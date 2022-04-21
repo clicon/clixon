@@ -479,8 +479,10 @@ http2_exec(restconf_conn        *rc,
 	if (restconf_nghttp2_path(sd) < 0)
 	    goto done;
     }
-    else
+    else{
+	sd->sd_code = 400;
 	; /* ignore */
+    }
     /* If body, add a content-length header 
      *    A server MUST NOT send a Content-Length header field in any response
      * with a status code of 1xx (Informational) or 204 (No Content).  A
