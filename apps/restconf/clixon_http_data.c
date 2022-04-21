@@ -32,7 +32,7 @@
 
   ***** END LICENSE BLOCK *****
   *
-  * Limited www data handler embedded in restconf code
+  * Limited static http data service embedded in restconf code
  */
 
 
@@ -66,7 +66,23 @@
 #include "restconf_handle.h"
 #include "restconf_api.h"
 #include "restconf_err.h"
-#include "clixon_www_data.h"
+#include "clixon_http_data.h"
+
+/* File extension <-> HTTP Content media mapping
+ * File extensions (on the left) MIME types (to the right) 
+ * @see https://www.iana.org/assignments/media-types/media-types.xhtml
+ */
+static const map_str2str mime_map[] = {
+    {"html",  "text/html"},
+    {"css",   "text/css"},
+    {"eot",   "application/vnd.ms-fontobject"},
+    {"woff",  "application/font-woff"},
+    {"js",    "application/javascript"},
+    {"svg",   "image/svg+xml"},
+    {"ico",   "image/x-icon"},
+    {"woff2", "application/font-woff2"}, /* font/woff2? */
+    { NULL,    NULL} /* if not found: application/octet-stream */
+};
 
 /*! Check if uri path denotes a data path
  *
@@ -79,20 +95,20 @@ api_path_is_data(clicon_handle h,
 		 char        **data)
 {
     char  *path;
-    char  *www_data_path;
+    char  *http_data_path;
 
    if ((path = restconf_uripath(h)) == NULL)
        return 0;
-   if ((www_data_path = clicon_option_str(h, "CLICON_WWW_DATA_PATH")) == NULL)
+   if ((http_data_path = clicon_option_str(h, "CLICON_HTTP_DATA_PATH")) == NULL)
        return 0;
-   if (strlen(path) < 1 + strlen(www_data_path)) /* "/" + www_data_path */
+   if (strlen(path) < strlen(http_data_path)) 
        return 0;
    if (path[0] != '/')
        return 0;
-   if (strncmp(path+1, www_data_path, strlen(www_data_path)) != 0)
+   if (strncmp(path, http_data_path, strlen(http_data_path)) != 0)
        return 0;
    if (data)
-       *data = path + 1 + strlen(www_data_path);
+       *data = path + strlen(http_data_path);
    return 1;
 }
 
@@ -103,7 +119,7 @@ api_path_is_data(clicon_handle h,
  * @see api_return_err
  */
 static int
-api_www_data_err(clicon_handle  h,
+api_http_data_err(clicon_handle  h,
 		 void          *req,
 		 int            code)
 {
@@ -144,10 +160,11 @@ api_www_data_err(clicon_handle  h,
  * @param[in]  pathname  With stripped prefix (eg /data), ultimately a filename
  * @note: primitive file handling, just check if file exists and read it all
  * XXX 1: Buffer copying once too many, see #if 0 below
- * XXX 2: Generic file system below CLICON_WWW_DATA_ROOT, no checks for links or ..
+ * XXX 2: Generic file system below CLICON_HTTP_DATA_ROOT, no checks for links or ..
+ *           Need pathname santitization: no .. or ~, just a directory structure.
  */
 static int
-api_www_data_file(clicon_handle h,
+api_http_data_file(clicon_handle h,
 		  void         *req,
 		  char         *pathname,
 		  int           head)
@@ -161,28 +178,37 @@ api_www_data_file(clicon_handle h,
     long        fsize;
     size_t      sz;
     char       *www_data_root = NULL;
+    char       *suffix;
+    char       *media;
     
     if ((cbfile = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    if ((www_data_root = clicon_option_str(h, "CLICON_WWW_DATA_ROOT")) == NULL){
-	clicon_err(OE_RESTCONF, ENOENT, "CLICON_WWW_DATA_ROOT missing");
+    if ((www_data_root = clicon_option_str(h, "CLICON_HTTP_DATA_ROOT")) == NULL){
+	clicon_err(OE_RESTCONF, ENOENT, "CLICON_HTTP_DATA_ROOT missing");
 	goto done;
     }
-    /* Need pathname santitization: no .. or ~, just a directory structure.
-     */
+
+    if ((suffix = rindex(pathname, '.')) == NULL){
+	media = "application/octet-stream";
+    }
+    else {
+	suffix++;
+	if ((media = clicon_str2str(mime_map, suffix)) == NULL)
+	    media = "application/octet-stream";
+    }
     cprintf(cbfile, "%s", www_data_root);
     if (pathname)
 	cprintf(cbfile, "/%s", pathname);
     filename = cbuf_get(cbfile);
     if (stat(filename, &fstat) < 0){
-	if (api_www_data_err(h, req, 404) < 0) /* not found */
+	if (api_http_data_err(h, req, 404) < 0) /* not found */
 	    goto done;
 	goto ok;
     }
     if ((f = fopen(filename, "rb")) == NULL){
-	if (api_www_data_err(h, req, 403) < 0) /* Forbidden or 500? */
+	if (api_http_data_err(h, req, 403) < 0) /* Forbidden or 500? */
 	    goto done;
 	goto ok;
     }
@@ -218,7 +244,7 @@ api_www_data_file(clicon_handle h,
 	}
     }
 #endif
-    if (restconf_reply_header(req, "Content-Type", "%s", "text/html") < 0)
+    if (restconf_reply_header(req, "Content-Type", "%s", media) < 0)
 	goto done;
     if (restconf_reply_send(req, 200, cbdata, head) < 0)
 	goto done;
@@ -235,11 +261,11 @@ api_www_data_file(clicon_handle h,
  return retval;
 }
 
-/*! Gete data request
+/*! Get data request
  *
  * This implementation is constrained as follows:
- * 1. Enable as part of restconf and set feature www-data and CLICON_WWW_DATA_PATH
- * 2. path: Local files within CLICON_WWW_DATA_ROOT
+ * 1. Enable as part of restconf and set feature www-data and CLICON_HTTP_DATA_PATH
+ * 2. path: Local files within CLICON_HTTP_DATA_ROOT
  * 3. operations: GET, HEAD, OPTIONS
  * 4. query parameters not supported
  * 5. indata should be NULL (no write operations)
@@ -252,9 +278,9 @@ api_www_data_file(clicon_handle h,
  * Need to enable clixon-restconf.yang www-data feature
  */
 int
-api_www_data(clicon_handle  h,
-	     void          *req,
-	     cvec          *qvec)
+api_http_data(clicon_handle  h,
+	      void          *req,
+	      cvec          *qvec)
 {
     int   retval = -1;
     char *request_method = NULL;
@@ -273,7 +299,7 @@ api_www_data(clicon_handle  h,
     /* 1. path: with stripped prefix, ultimately: dir/filename 
      */
     if (!api_path_is_data(h, &pathname)){
-	if (api_www_data_err(h, req, 404) < 0) /* not found */
+	if (api_http_data_err(h, req, 404) < 0) /* not found */
 	    goto done;
 	goto ok;
     }
@@ -288,13 +314,13 @@ api_www_data(clicon_handle  h,
 	options = 1;
     }
     else {
-	if (api_www_data_err(h, req, 405) < 0) /* method not allowed */
+	if (api_http_data_err(h, req, 405) < 0) /* method not allowed */
 	    goto done;
 	goto ok;	
     }
     /* 3. query parameters not accepted */
     if (qvec != NULL){
-	if (api_www_data_err(h, req, 400) < 0) /* bad request */
+	if (api_http_data_err(h, req, 400) < 0) /* bad request */
 	    goto done;
 	goto ok;
     }
@@ -304,7 +330,7 @@ api_www_data(clicon_handle  h,
 	goto done;
     }
     if (cbuf_len(indata)){
-	if (api_www_data_err(h, req, 400) < 0) /* bad request */
+	if (api_http_data_err(h, req, 400) < 0) /* bad request */
 	    goto done;
 	goto ok;
     }
@@ -332,7 +358,7 @@ api_www_data(clicon_handle  h,
 	if (restconf_reply_send(req, 200, NULL, 0) < 0)
 	    goto done;
     }
-    else if (api_www_data_file(h, req, pathname, head) < 0)
+    else if (api_http_data_file(h, req, pathname, head) < 0)
 	goto done;
  ok:
     retval = 0;

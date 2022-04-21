@@ -32,16 +32,16 @@
 
   ***** END LICENSE BLOCK *****
   *
-  * Limited www data handler embedded in restconf code
+  * Limited static http data service embedded in restconf code
  */
 
-#ifndef _CLIXON_WWW_DATA_H_
-#define _CLIXON_WWW_DATA_H_
+#ifndef _CLIXON_HTTP_DATA_H_
+#define _CLIXON_HTTP_DATA_H_
 
 /*
  * Prototypes
  */
 int api_path_is_data(clicon_handle h, char **data);
-int api_www_data(clicon_handle h, void *req, cvec *qvec);
+int api_http_data(clicon_handle h, void *req, cvec *qvec);
 
-#endif /* _CLIXON_WWW_DATA_H_ */
+#endif /* _CLIXON_HTTP_DATA_H_ */

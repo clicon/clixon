@@ -87,7 +87,7 @@
 #include "restconf_native.h"    /* Restconf-openssl mode specific headers*/
 #ifdef HAVE_LIBNGHTTP2          /* Ends at end-of-file */
 #include "restconf_nghttp2.h"   /* Restconf-openssl mode specific headers*/
-#include "clixon_www_data.h"
+#include "clixon_http_data.h"
 
 #define ARRLEN(x) (sizeof(x) / sizeof(x[0]))
 
@@ -326,7 +326,7 @@ restconf_nghttp2_path(restconf_stream_data *sd)
 		goto done;	    
 	}
 	else if (api_path_is_data(h, NULL)){
-	    if (api_www_data(h, sd, sd->sd_qvec) < 0)
+	    if (api_http_data(h, sd, sd->sd_qvec) < 0)
 		goto done;
 	}
 	else if (api_root_restconf(h, sd, sd->sd_qvec) < 0) /* error handling */

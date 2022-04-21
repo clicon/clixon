@@ -787,6 +787,24 @@ clicon_str2int_search(const map_str2int *mstab,
     return -1; /* not found */
 }
 
+/*! Map from string to string using str2str map
+ * @param[in] mstab String, string map
+ * @param[in] str   Input string
+ * @retval    str   Output string
+ * @retval    NULL  Error, not found
+ */
+char*
+clicon_str2str(const map_str2str *mstab, 
+	       char              *str)
+{
+    const struct map_str2str *ms;
+
+    for (ms = &mstab[0]; ms->ms_s0; ms++)
+	if (strcmp(ms->ms_s0, str) == 0)
+	    return ms->ms_s1;
+    return NULL;
+}
+
 /*! Split colon-separated node identifier into prefix and name
  * @param[in]  node-id
  * @param[out] prefix  If non-NULL, return malloced string, or NULL.

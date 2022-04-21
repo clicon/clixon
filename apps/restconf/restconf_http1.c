@@ -66,7 +66,7 @@
 #include "restconf_err.h"
 #include "clixon_http1_parse.h"
 #include "restconf_http1.h"
-#include "clixon_www_data.h"
+#include "clixon_http_data.h"
 
 /* Size of xml read buffer */
 #define BUFLEN 1024  
@@ -428,7 +428,7 @@ restconf_http1_path_root(clicon_handle  h,
 	    goto done;
     }
     else if (api_path_is_data(h, NULL)){
-	if (api_www_data(h, sd, sd->sd_qvec) < 0)
+	if (api_http_data(h, sd, sd->sd_qvec) < 0)
 	    goto done;
     }
     else if (api_root_restconf(h, sd, sd->sd_qvec) < 0) /* error handling */

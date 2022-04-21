@@ -39,14 +39,16 @@ Expected: May 2022
 
 ### New features
 
-* Extended the Restconf implementation with a limited www-data
+* Extended the Restconf implementation with a limited http-data static service
   * Added two new config options to clixon-config.yang:
-     * `CLICON_WWW_DATA_PATH`
-     * `CLICON_WWW_DATA_ROOT`
-  * The limited implemtation is as follows:
-     * path: Local files within `CLICON_WWW_DATA_ROOT`
-     * operation GET, HEAD, or OPTIONS
-     * query parameters not supported
+     * `CLICON_HTTP_DATA_PATH`
+     * `CLICON_HTTP_DATA_ROOT`
+  * Added feature http-data to restconf-config.yang and the following option:
+     * `enable-http-data`
+  * The limited implementation is as follows:
+	* path: Local static files within `CLICON_WWW_DATA_ROOT`
+	* operation GET, HEAD, or OPTIONS
+	* query parameters not supported
   5. indata should be NULL (no write operations)
   6. Limited media: text/html, JavaScript, image, and css
   7. Authentication as restconf
@@ -68,10 +70,12 @@ Users may have to change how they access the system
 * New `clixon-config@2022-03-21.yang` revision
   * Added option:
     * `CLICON_NETCONF_BASE_CAPABILITY`
-    * `CLICON_WWW_DATA_PATH`
-    * `CLICON_WWW_DATA_ROOT`
-  * Added feature: `www-data`
-
+    * `CLICON_HTTP_DATA_PATH`
+    * `CLICON_HTTP_DATA_ROOT`
+* New `clixon-restconf@2022-03-21.yang` revision
+  * Added option:
+    * `enable-http-data`
+  * Added feature: `http-data`
 * Netconf data-not-unique info changed to return schema nodes instead of XML for RFC7950 compliance
 * CLI reconnects to backend if backend restarts with a warning
   * Note that edits to the candidate database or locks will be lost
