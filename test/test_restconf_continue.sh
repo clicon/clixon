@@ -133,6 +133,8 @@ fi
 unset RESTCONFIG
 unset nr
 unset HAVE_LIBNGHTTP2
+unset CURLOPTS
+unset HVER
 
 rm -rf $dir
 

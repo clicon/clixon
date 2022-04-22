@@ -239,20 +239,20 @@ function restconf_config()
 
     # Change this to fixed parameters
     if [ $# -gt 2 ]; then
-	proto=$3
+	myproto=$3
     else
-    	proto=$RCPROTO
+    	myproto=$RCPROTO
     fi
     if [ $# -gt 3 ]; then
-	http_data=$4
+	myhttpdata=$4
     else
-    	http_data=false
+    	myhttpdata=false
     fi
     
     echo -n "<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
-    if [ $proto = http ]; then
+    if [ $myproto = http ]; then
 	echo -n "<restconf><enable>true</enable>"
-	if ${http_data}; then
+	if ${myhttpdata}; then
 	    echo -n "<enable-http-data>true</enable-http-data>"
 	fi
 	echo "<auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
@@ -269,7 +269,7 @@ function restconf_config()
 	    servercerts $cakey $cacert $srvkey $srvcert
 	fi
 	echo -n "<restconf><enable>true</enable>"
-	if ${http_data}; then
+	if ${myhttpdata}; then
 	    echo -n "<enable-http-data>true</enable-http-data>"
 	fi
 	echo "<auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>${certdir}/clixon-server-crt.pem</server-cert-path><server-key-path>${certdir}/clixon-server-key.pem</server-key-path><server-ca-cert-path>${certdir}/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"

@@ -755,6 +755,7 @@ restconf_config_init(clicon_handle h,
     cvec  *nsc = NULL;
     int    auth_type;
     yang_stmt *yspec;
+    yang_stmt *y;
     
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
@@ -786,14 +787,27 @@ restconf_config_init(clicon_handle h,
 	else if (strcmp(bstr, "false") == 0)
 	    restconf_pretty_set(h, 0);
     }
+    /* Check if enable-http-data is true and that feature is enabled
+     * It is protected by if-feature http-data, which means if the feature is not enabled, its
+     * YANG spec will exist but by ANYDATA
+     */
     if ((x = xpath_first(xrestconf, nsc, "enable-http-data")) != NULL &&
-	(bstr = xml_body(x)) != NULL){
-	if (strcmp(bstr, "true") == 0)
-	    restconf_http_data_set(h, 1);
-	else if (strcmp(bstr, "false") == 0)
-	    restconf_http_data_set(h, 0);
+	(y = xml_spec(x)) != NULL &&
+	yang_keyword_get(y) != Y_ANYDATA &&
+	(bstr = xml_body(x)) != NULL &&
+	strcmp(bstr, "true") == 0) {
+	restconf_http_data_set(h, 1);
     }
+    else if (strcmp(bstr, "false") == 0){
+	restconf_http_data_set(h, 0);
+    }
+    /* Check if fcgi-socket is true and that feature is enabled
+     * It is protected by if-feature fcgi, which means if the feature is not enabled, then 
+     * YANG spec will exist but by ANYDATA
+     */
     if ((x = xpath_first(xrestconf, nsc, "fcgi-socket")) != NULL &&
+	(y = xml_spec(x)) != NULL &&
+	yang_keyword_get(y) != Y_ANYDATA &&
 	(bstr = xml_body(x)) != NULL){
 	if (restconf_fcgi_socket_set(h, bstr) < 0)
 	    goto done;

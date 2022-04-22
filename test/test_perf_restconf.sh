@@ -244,6 +244,8 @@ rm -rf $dir
 unset RESTCONFIG
 unset HAVE_LIBNGHTTP2
 unset RCPROTO
+unset HVER
+unset CURLOPTS
 
 # unset conditional parameters 
 unset format

@@ -557,6 +557,7 @@ for proto in $protos; do
 done
 
 # unset conditional parameters
+unset HVER
 unset RCPROTO
 
 # Set by restconf_config

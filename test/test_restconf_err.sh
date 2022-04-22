@@ -352,6 +352,7 @@ fi
 unset RESTCONFIG
 unset HVER
 unset RCPROTO
+unset CURLOPTS
 unset HAVE_LIBNGHTTP2
 
 rm -rf $dir
