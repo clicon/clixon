@@ -114,7 +114,8 @@ AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(LIBSTATIC_SUFFIX)
 AC_SUBST(LINKAGE)
-AC_SUBST(with_restconf) # Set to native or fcgi -> compile apps/restconf
+AC_SUBST(with_restconf)  # Set to native or fcgi -> compile apps/restconf
+AC_SUBST(enable_netsnmp) # Enable build of apps/snmp
 AC_SUBST(HAVE_LIBNGHTTP2,false) # consider using neutral constant such as with-http2
 AC_SUBST(HAVE_HTTP1,false) 
 AC_SUBST(with_libxml2)  
@@ -275,6 +276,24 @@ AC_ARG_WITH([restconf],
 AC_ARG_WITH([restconf],
 	    AS_HELP_STRING([--without-restconf],[Disable restconf altogether]))
 
+# This is for net-snmp
+AC_ARG_ENABLE(netsnmp, AS_HELP_STRING([--enable-netsnmp],[Enable net-snmp Clixon YANG mapping]),[
+   if test "$enableval" = no; then
+      enable_netsnmp=no
+   else	      
+      enable_netsnmp=yes
+   fi
+  ],
+  [ enable_netsnmp=no])
+AC_MSG_RESULT(checking netsnmp is enabled: $enable_netsnmp)
+
+if test "$enable_netsnmp" = "yes"; then
+   # All libs are:
+   # libnetsnmp, libnetsnmpmibs, libnetsnmpagent, libnetsnmptrapd, libnetsnmphelpers
+   AC_CHECK_LIB(netsnmp, snmp_open)      
+   AC_CHECK_HEADERS(net-snmp/net-snmp-config.h,[], AC_MSG_ERROR([snmp is missing]))
+fi 
+
 # Set default config file location
 CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml
 AC_ARG_WITH([configfile],
@@ -352,6 +371,7 @@ AC_OUTPUT(Makefile
 	  apps/backend/Makefile 
 	  apps/netconf/Makefile
 	  apps/restconf/Makefile
+  	  apps/snmp/Makefile
 	  include/Makefile
 	  etc/Makefile
 	  etc/clixonrc
@@ -373,4 +393,3 @@ AC_OUTPUT(Makefile
 	  test/cicd/Makefile
   	  test/vagrant/Makefile	
 )
-

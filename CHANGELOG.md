@@ -34,13 +34,34 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
+### New features
+
+* Clixon SNMP frontend
+  * net-snmp and MIB to YANG translation
+  * Experimental work
+
+* Extended the Restconf implementation with a limited http-data static service
+  * Added two new config options to clixon-config.yang:
+     * `CLICON_HTTP_DATA_PATH`
+     * `CLICON_HTTP_DATA_ROOT`
+  * Added feature http-data to restconf-config.yang and the following option:
+     * `enable-http-data`
+  * The limited implementation is as follows:
+	* path: Local static files within `CLICON_WWW_DATA_ROOT`
+	* operation GET, HEAD, or OPTIONS
+	* query parameters not supported
+	* no indata
+        * media: html, css, js, fonts, image, 
+  7. Authentication, TLS, http/2 as restconf
+Generic changes:
+  * Uniform path selection across fcgi, native http/1 + http/2
+
+	
 ## 5.7.0
 17 May 2022
 
 The Clixon 5.7 release introduces (long overdue) NETCONF chunked framing as defined
 in RFC 6242. It also introduces a limited http data service and lots of bugfixes.
-
-### New features
 
 * Implementation of "chunked framing" according to RFC6242 for Netconf 1.1.
   * First hello is 1.0 EOM framing, then successing rpc is chunked framing

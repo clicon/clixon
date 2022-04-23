@@ -36,6 +36,7 @@ VPATH       	= @srcdir@
 srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
 with_restconf	= @with_restconf@
+enable_netsnmp	= @enable_netsnmp@
 
 SHELL	= /bin/sh
 
@@ -46,6 +47,11 @@ SUBDIRS += netconf
 # See configure.ac
 ifdef with_restconf
 SUBDIRS += restconf
+endif
+ifdef enable_netsnmp
+ifeq ($(enable_netsnmp),yes)
+SUBDIRS += snmp
+endif
 endif
 
 .PHONY: all clean depend install $(SUBDIRS)

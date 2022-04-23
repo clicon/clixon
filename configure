@@ -638,6 +638,7 @@ CLIXON_YANG_PATCH
 with_libxml2
 HAVE_HTTP1
 HAVE_LIBNGHTTP2
+enable_netsnmp
 with_restconf
 LINKAGE
 LIBSTATIC_SUFFIX
@@ -722,6 +723,7 @@ enable_publish
 with_restconf
 enable_http1
 enable_nghttp2
+enable_netsnmp
 with_configfile
 with_libxml2
 with_sigaction
@@ -1374,6 +1376,7 @@ Optional Features:
                           only
   --disable-nghttp2       Disable nghttp2 for native restconf http/2, ie
                           http/1 only
+  --enable-netsnmp        Enable net-snmp Clixon YANG mapping
 
 
 Optional Packages:
@@ -3385,7 +3388,8 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
 
- # Set to native or fcgi -> compile apps/restconf
+  # Set to native or fcgi -> compile apps/restconf
+ # Enable build of apps/snmp
 HAVE_LIBNGHTTP2=false
  # consider using neutral constant such as with-http2
 HAVE_HTTP1=false
@@ -5301,6 +5305,87 @@ if test "${with_restconf+set}" = set; then :
 fi
 
 
+# This is for net-snmp
+# Check whether --enable-netsnmp was given.
+if test "${enable_netsnmp+set}" = set; then :
+  enableval=$enable_netsnmp;
+   if test "$enableval" = no; then
+      enable_netsnmp=no
+   else
+      enable_netsnmp=yes
+   fi
+
+else
+   enable_netsnmp=no
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: checking netsnmp is enabled: $enable_netsnmp" >&5
+$as_echo "checking netsnmp is enabled: $enable_netsnmp" >&6; }
+
+if test "$enable_netsnmp" = "yes"; then
+   # All libs are:
+   # libnetsnmp, libnetsnmpmibs, libnetsnmpagent, libnetsnmptrapd, libnetsnmphelpers
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for snmp_open in -lnetsnmp" >&5
+$as_echo_n "checking for snmp_open in -lnetsnmp... " >&6; }
+if ${ac_cv_lib_netsnmp_snmp_open+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lnetsnmp  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char snmp_open ();
+int
+main ()
+{
+return snmp_open ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_netsnmp_snmp_open=yes
+else
+  ac_cv_lib_netsnmp_snmp_open=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_netsnmp_snmp_open" >&5
+$as_echo "$ac_cv_lib_netsnmp_snmp_open" >&6; }
+if test "x$ac_cv_lib_netsnmp_snmp_open" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBNETSNMP 1
+_ACEOF
+
+  LIBS="-lnetsnmp $LIBS"
+
+fi
+
+   for ac_header in net-snmp/net-snmp-config.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "net-snmp/net-snmp-config.h" "ac_cv_header_net_snmp_net_snmp_config_h" "$ac_includes_default"
+if test "x$ac_cv_header_net_snmp_net_snmp_config_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_NET_SNMP_NET_SNMP_CONFIG_H 1
+_ACEOF
+
+else
+  as_fn_error $? "snmp is missing" "$LINENO" 5
+fi
+
+done
+
+fi
+
 # Set default config file location
 CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml
 
@@ -5569,7 +5654,7 @@ fi
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml extras/rpm/Makefile docker/Makefile docker/base/Makefile docker/clixon-dev/Makefile docker/main/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/snmp/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml extras/rpm/Makefile docker/Makefile docker/base/Makefile docker/clixon-dev/Makefile docker/main/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -6272,6 +6357,7 @@ do
     "apps/backend/Makefile") CONFIG_FILES="$CONFIG_FILES apps/backend/Makefile" ;;
     "apps/netconf/Makefile") CONFIG_FILES="$CONFIG_FILES apps/netconf/Makefile" ;;
     "apps/restconf/Makefile") CONFIG_FILES="$CONFIG_FILES apps/restconf/Makefile" ;;
+    "apps/snmp/Makefile") CONFIG_FILES="$CONFIG_FILES apps/snmp/Makefile" ;;
     "include/Makefile") CONFIG_FILES="$CONFIG_FILES include/Makefile" ;;
     "etc/Makefile") CONFIG_FILES="$CONFIG_FILES etc/Makefile" ;;
     "etc/clixonrc") CONFIG_FILES="$CONFIG_FILES etc/clixonrc" ;;
@@ -6877,5 +6963,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 
