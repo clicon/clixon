@@ -40,6 +40,11 @@ Planned: July 2022
 
 ### New features
 
+* Clixon SNMP frontend
+  * Support of SNMP for retreiving and setting values via netsnmp using a MIB-YANG mapping defined in RFC6643.
+  * For more details, see [SNMP section of user manual](https://clixon-docs.readthedocs.io/en/latest/snmp.html)
+  * Thanks Siklu for sponshoring 
+
 * YANG Action (RFC 7950 Section 7.15)
   * Register action callback with `action_callback_register()`, see main example
   * Remains: check list keys, validate output
@@ -116,8 +121,6 @@ Developers may need to change their code
 
 The Clixon 5.7 release introduces (long overdue) NETCONF chunked framing as defined
 in RFC 6242. It also introduces a limited http data service and lots of bugfixes.
-
-### New features
 
 * Implementation of "chunked framing" according to RFC6242 for Netconf 1.1.
   * First hello is 1.0 EOM framing, then successing rpc is chunked framing

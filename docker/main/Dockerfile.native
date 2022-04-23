@@ -41,6 +41,9 @@ RUN apk add --update git make build-base gcc flex bison curl-dev
 # nghttp2 dependencies
 RUN apk add --update nghttp2
 
+# For netsnmp
+RUN apk add --update net-snmp
+
 # Checkut models
 WORKDIR /usr/local/share/
 
@@ -88,7 +91,7 @@ WORKDIR /clixon/clixon
 COPY clixon .
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-restconf=native --enable-nghttp2 --enable-http1 --with-yang-standard-dir=/usr/local/share/yang/standard
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-restconf=native --enable-nghttp2 --enable-http1 --with-yang-standard-dir=/usr/local/share/yang/standard # --enable-netsnmp
 
 RUN make
 RUN make install
