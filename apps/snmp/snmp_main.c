@@ -43,6 +43,7 @@
 #include <syslog.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <signal.h>
 
 #include <net-snmp/net-snmp-config.h>
 
