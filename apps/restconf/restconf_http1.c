@@ -345,7 +345,7 @@ restconf_http1_path_root(clicon_handle  h,
 			 restconf_conn *rc)
 {
     int                   retval = -1;
-    restconf_stream_data *sd;
+    restconf_stream_data *sd = NULL;
     cvec                 *cvv = NULL;
     char                 *cn;
     char                 *subject = NULL;
@@ -380,6 +380,13 @@ restconf_http1_path_root(clicon_handle  h,
 	    goto done;
 	goto fail;
     }
+#if 1
+    /* XXX gives mem leak in multiple requests, 
+     * but maybe the error is that sd is not freed.
+     */
+    if (sd->sd_path != NULL) 
+	free(sd->sd_path);
+#endif
     if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
 	goto done; // XXX SHOULDNT EXIT if no REQUEST_URI
     if (rc->rc_proto_d2 == 0 && rc->rc_proto == HTTP_11)
@@ -427,7 +434,7 @@ restconf_http1_path_root(clicon_handle  h,
 	if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
 	    goto done;
     }
-    else if (api_path_is_data(h, NULL)){
+    else if (api_path_is_data(h)){
 	if (api_http_data(h, sd, sd->sd_qvec) < 0)
 	    goto done;
     }

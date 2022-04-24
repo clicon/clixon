@@ -126,20 +126,26 @@ static struct stream_child *STREAM_CHILD = NULL;
 int
 api_path_is_stream(clicon_handle h)
 {
-    char  *path;
+    int    retval = 0;
+    char  *path = NULL;
     char  *stream_path;
 
    if ((path = restconf_uripath(h)) == NULL)
-       return 0;
+       goto done;
    if ((stream_path = clicon_option_str(h, "CLICON_STREAM_PATH")) == NULL)
-       return 0;
+       goto done;
    if (strlen(path) < 1 + strlen(stream_path)) /* "/" + stream */
-       return 0;
+       goto done;
    if (path[0] != '/')
-       return 0;
+       goto done;
    if (strncmp(path+1, stream_path, strlen(stream_path)) != 0)
-       return 0;
-   return 1;
+       goto done;
+    retval = 1;
+ done:
+    if (path)
+	free(path);
+    return retval;
+
 }
 
 /*! Find restconf child using PID and cleanup FCGI Request data

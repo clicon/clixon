@@ -86,6 +86,7 @@ AC_DEFINE_UNQUOTED(CLIXON_VERSION_PATCH, $CLIXON_VERSION_PATCH, [Clixon path ver
 
 AC_CHECK_LIB(m, main)
 
+# defines: target_cpu, target_vendor, and target_os. 
 AC_CANONICAL_TARGET
 
 # AC_SUBST(var) makes @var@ appear in makefiles.

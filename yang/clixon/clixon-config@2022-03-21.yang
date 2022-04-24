@@ -605,16 +605,28 @@ module clixon-config {
 	}
 	leaf CLICON_HTTP_DATA_PATH {
 	    if-feature "clrc:http-data";
+	    default "/";
 	    type string;
     	    description
-		"If set, enable www data on this sub-path, must start with / (example: /data)";
+		"URI match for http-data serving files specified by CLICON_HTTP_DATA_ROOT.
+                 Must start with / (example: /)
+                 Restconf paths at /restconf is always done before data (or streams) 
+                 The PATH is appended to CLICON_HTTP_DATA_ROOT to find a file.
+                 Example, if PATH is /data and ROOT is /www, and a GET /index.html, the
+                 corresponding file is '/www/data/index.html'
+                 Both feature clixon-restconf:http-data and restconf/enable-http-data 
+                 must be enabled for this match to occur.";
 	}
 	leaf CLICON_HTTP_DATA_ROOT {
 	    if-feature "clrc:http-data";
 	    type string;
 	    default "/var/www";
     	    description
-		"public web root";
+		"Location in file system where http-data files are looked for.
+                 Soft links, '..', '~' etc are not followed. 
+                 See also CLICON_HTTP_DATA_PATH
+                 Both feature clixon-restconf:http-data and restconf/enable-http-data 
+                 must be enabled for this match to occur.";
 	}
 	leaf CLICON_CLI_DIR {
 	    type string;
@@ -1051,8 +1063,9 @@ module clixon-config {
 	leaf CLICON_STREAM_PATH {
 	    type string;
     	    default "streams";
-    	    description "Stream path appended to CLICON_STREAM_URL to form
-                         stream subscription URL.";
+    	    description
+		"Stream path appended to CLICON_STREAM_URL to form
+                 stream subscription URL.";
 	}
 	leaf CLICON_STREAM_URL {
 	    type string;

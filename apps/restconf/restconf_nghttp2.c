@@ -325,7 +325,7 @@ restconf_nghttp2_path(restconf_stream_data *sd)
 	    if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
 		goto done;	    
 	}
-	else if (api_path_is_data(h, NULL)){
+	else if (api_path_is_data(h)){
 	    if (api_http_data(h, sd, sd->sd_qvec) < 0)
 		goto done;
 	}
@@ -475,14 +475,17 @@ http2_exec(restconf_conn        *rc,
     sd->sd_proto = HTTP_2; /* XXX is this necessary? */
     if (strncmp(sd->sd_path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0 
 	|| strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0
-	|| api_path_is_data(rc->rc_h, NULL)){
+	|| api_path_is_data(rc->rc_h)){
 	if (restconf_nghttp2_path(sd) < 0)
 	    goto done;
     }
     else{
-	sd->sd_code = 400;
-	; /* ignore */
+	sd->sd_code = 404;    /* not found */
+
     }
+    if (restconf_param_del_all(rc->rc_h) < 0) // XXX
+    	goto done;
+
     /* If body, add a content-length header 
      *    A server MUST NOT send a Content-Length header field in any response
      * with a status code of 1xx (Informational) or 204 (No Content).  A

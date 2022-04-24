@@ -113,6 +113,16 @@ Use:
 - PRIu64 for uint64
 - %p for pointers
 
+### Include files
+
+Avoid include statements in .h files, place them in .c files whenever possible.
+
+The reason is to avoid deep include chains where file dependencies are
+difficult to analyze and understand. If include statements are only placed in .c
+files, there is only a single level of include file dependencies.
+
+The drawback is that the same include file may need to be repeated in many .c files.
+
 ## How to work in git
 
 Clixon uses semantic versioning (https://semver.org).

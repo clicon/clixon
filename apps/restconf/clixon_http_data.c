@@ -86,32 +86,34 @@ static const map_str2str mime_map[] = {
 
 /*! Check if uri path denotes a data path
  *
- * @param[out] data Pointer to string where data starts if retval = 1
+ * @param[in]  h      Clixon handle
  * @retval     0    No, not a data path, or not enabled
  * @retval     1    Yes, a data path and "data" points to www-data if given
  */
 int
-api_path_is_data(clicon_handle h,
-		 char        **data)
+api_path_is_data(clicon_handle h)
 {
-    char  *path;
+    int    retval = 0;
+    char  *path = NULL;
     char  *http_data_path;
 
     if (restconf_http_data_get(h) == 0)
-    	return 0;
+	goto done;
     if ((path = restconf_uripath(h)) == NULL)
-	return 0;
+	goto done;
     if ((http_data_path = clicon_option_str(h, "CLICON_HTTP_DATA_PATH")) == NULL)
-	return 0;
+	goto done;
     if (strlen(path) < strlen(http_data_path)) 
-	return 0;
+	goto done;
     if (path[0] != '/')
-	return 0;
+	goto done;
     if (strncmp(path, http_data_path, strlen(http_data_path)) != 0)
-	return 0;
-    if (data)
-	*data = path + strlen(http_data_path);
-    return 1;
+	goto done;
+    retval = 1;
+ done:
+    if (path)
+	free(path);
+    return retval;
 }
 
 /*! Generic restconf error function on get/head request
@@ -156,6 +158,75 @@ api_http_data_err(clicon_handle  h,
     return retval;
 }
 
+/*! Check validity of path, may only be regular dir or file
+ * No .., soft link, ~, etc
+ * @param[in]  prefix Prefix of path0, where to start file check
+ * @param[in]  path0  Filepath
+ * @param[out] code   Error code, if retval = 0
+ * @retval    -1      Error
+ * @retval     0      Invalid, code set
+ * @retval     1      OK
+ */
+static int
+check_file_path(char   *prefix,
+		char   *path0,
+		int    *code)
+{
+    int   retval = -1;
+    char *path = NULL;
+    int   i;
+    struct stat fstat;
+
+    if (prefix == NULL || path0 == NULL || code == NULL){
+	clicon_err(OE_UNIX, EINVAL, "prefix, path0 or code is NULL");
+	goto done;
+    }
+    if ((path = strdup(path0)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    for (i=strlen(prefix); i<strlen(path0); i++){
+	if (path[i] == '/'){ /* Check valid dir */
+	    path[i] = '\0';
+	    /* Ensure not soft link */
+	    if (lstat(path, &fstat) < 0){
+		*code = 404;
+		goto invalid;
+	    }
+	    if (!S_ISDIR(fstat.st_mode)){
+		*code = 403;
+		goto invalid;
+	    }
+	    path[i] = '/';
+	}
+	else if (path[i] == '~'){
+	    *code = 403;
+	    goto invalid;
+	}
+	else if (path[i] == '.' && i>strlen(prefix) && path[i-1] == '.'){
+	    *code = 403;
+	    goto invalid;
+	}
+    }
+    /* Resulting file (ensure not soft link) */
+    if (lstat(path, &fstat) < 0){
+	*code = 404;
+	goto invalid;
+    }
+    if (!S_ISREG(fstat.st_mode)){
+	*code = 403;
+	goto invalid;
+    }
+    retval = 1; /* OK */
+ done:
+    if (path)
+	free(path);
+    return retval;
+ invalid:
+    retval = 0;
+    goto done;
+}
+		   
 /*! Read file data request
  * @param[in]  h         Clicon handle
  * @param[in]  req       Generic Www handle (can be part of clixon handle)
@@ -167,21 +238,23 @@ api_http_data_err(clicon_handle  h,
  */
 static int
 api_http_data_file(clicon_handle h,
-		  void         *req,
-		  char         *pathname,
-		  int           head)
+		   void         *req,
+		   char         *pathname,
+		   int           head)
 {
     int         retval = -1;
     cbuf       *cbfile = NULL;
     char       *filename;
-    struct stat fstat;
     cbuf       *cbdata = NULL;
     FILE       *f = NULL;
     long        fsize;
-    size_t      sz;
     char       *www_data_root = NULL;
     char       *suffix;
     char       *media;
+    int         ret;
+    int         code = 0;
+    char       *str = NULL;
+    size_t      sz;
     
     if ((cbfile = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -204,8 +277,12 @@ api_http_data_file(clicon_handle h,
     if (pathname)
 	cprintf(cbfile, "/%s", pathname);
     filename = cbuf_get(cbfile);
-    if (stat(filename, &fstat) < 0){
-	if (api_http_data_err(h, req, 404) < 0) /* not found */
+    clicon_debug(1, "%s %s", __FUNCTION__, filename);
+    if ((ret = check_file_path(www_data_root, filename, &code)) < 0)
+	goto done;
+    if (ret == 0){
+	clicon_debug(1, "%s code:%d", __FUNCTION__, code);
+	if (api_http_data_err(h, req, code) < 0) 
 	    goto done;
 	goto ok;
     }
@@ -214,6 +291,9 @@ api_http_data_file(clicon_handle h,
 	    goto done;
 	goto ok;
     }
+    /* Size could have been taken from stat() but this reduces the race condition interval 
+     * There is still one without flock
+     */
     fseek(f, 0, SEEK_END);
     fsize = ftell(f);
     fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
@@ -221,31 +301,28 @@ api_http_data_file(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cbuf_new_alloc");
 	goto done;
     }
-#if 0 /* Direct read but cannot set cb_len via API */
-    fread(cbuf_get(cbdata), fsize, 1, f);
-#else
-    {
-	char *str;
-	if ((str = malloc(fsize + 1)) == NULL){
-	    clicon_err(OE_UNIX, errno, "malloc");
-	    goto done;
-	}
-	if ((sz = fread(str, fsize, 1, f)) < 0){
-	    clicon_err(OE_UNIX, errno, "fread");
-	    goto done;
-	}
-	if (sz != 1){
-	    clicon_log(LOG_NOTICE, "%s: file read %s", __FUNCTION__, filename);
-	    // XXX error handling: file read
-	    goto done;
-	}
-	str[fsize] = 0;
-	if (cbuf_append_str(cbdata, str) < 0){
-	    clicon_err(OE_UNIX, errno, "cbuf_append_str");
-	    goto done;
-	}
+    /* Unoptimized, no direct read but requires an extra copy,
+     * the cligen buf API should have some mechanism for this case without the extra copy.
+     */
+    if ((str = malloc(fsize + 1)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
     }
-#endif
+    if ((sz = fread(str, fsize, 1, f)) < 0){
+	clicon_err(OE_UNIX, errno, "fread");
+	goto done;
+    }
+    if (sz != 1){
+	if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
+	    goto done;
+	goto ok;
+    }
+    clicon_debug(1, "%s code:%d", __FUNCTION__, code);
+    str[fsize] = 0;
+    if (cbuf_append_str(cbdata, str) < 0){
+	clicon_err(OE_UNIX, errno, "cbuf_append_str");
+	goto done;
+    }
     if (restconf_reply_header(req, "Content-Type", "%s", media) < 0)
 	goto done;
     if (restconf_reply_send(req, 200, cbdata, head) < 0)
@@ -254,6 +331,8 @@ api_http_data_file(clicon_handle h,
  ok:
     retval = 0;
  done:
+    if (str)
+	free(str);
     if (f)
 	fclose(f);
     if (cbfile)
@@ -291,8 +370,8 @@ api_http_data(clicon_handle  h,
     int   options = 0;
     int   ret;
     cbuf *indata = NULL;
-    char *pathname = NULL;
-    
+    char *path = NULL;
+
     clicon_debug(1, "%s", __FUNCTION__);
     if (req == NULL){
 	errno = EINVAL;
@@ -300,11 +379,12 @@ api_http_data(clicon_handle  h,
     }
     /* 1. path: with stripped prefix, ultimately: dir/filename 
      */
-    if (!api_path_is_data(h, &pathname)){
+    if (!api_path_is_data(h)){
 	if (api_http_data_err(h, req, 404) < 0) /* not found */
 	    goto done;
 	goto ok;
     }
+    path = restconf_uripath(h);
     /* 2. operation GET or HEAD */
     request_method = restconf_param_get(h, "REQUEST_METHOD");
     if (strcmp(request_method, "GET") == 0){
@@ -360,11 +440,13 @@ api_http_data(clicon_handle  h,
 	if (restconf_reply_send(req, 200, NULL, 0) < 0)
 	    goto done;
     }
-    else if (api_http_data_file(h, req, pathname, head) < 0)
+    else if (api_http_data_file(h, req, path, head) < 0)
 	goto done;
  ok:
     retval = 0;
  done:
+    if (path)
+	free(path);
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }

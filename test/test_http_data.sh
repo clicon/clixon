@@ -14,6 +14,7 @@ APPNAME=example
 cfg=$dir/conf.xml
 rm -rf $dir/www
 mkdir $dir/www
+mkdir $dir/www/data
 
 # Does not work with fcgi
 if [ "${WITH_RESTCONF}" = "fcgi" ]; then
@@ -22,7 +23,7 @@ if [ "${WITH_RESTCONF}" = "fcgi" ]; then
 fi
 
 # Data file
-cat <<EOF > $dir/www/index.html
+cat <<EOF > $dir/www/data/index.html
 <!DOCTYPE html>
 <html>
 <head>
@@ -43,7 +44,7 @@ working. Further configuration is required.</p>
 </html>
 EOF
 
-cat <<EOF > $dir/www/example.css
+cat <<EOF > $dir/www/data/example.css
 img { 
     display: inline; 
     border: 
@@ -66,6 +67,54 @@ h1,h2,h3,h4,h5,h6 {
     color: white;
 }
 EOF
+
+# Outside wwwdir, should not be able to access this
+cat <<EOF > $dir/outside.html
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dont access this</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Dont access this!</h1>
+<p>If you see this page, you accessed a file outside the root domain</p>
+</body>
+</html>
+EOF
+
+# Create a soft link from inside to outside
+ln -s $dir/outside.html $dir/www/data/inside.html
+
+# Disable read access
+cat <<EOF > $dir/www/data/noread.html
+<!DOCTYPE html>
+<html>
+<head>
+<title>No read</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>No read!</h1>
+<p>If you see this page, you have read access to root</p>
+</body>
+</html>
+EOF
+
+# remove read access
+chmod 660 $dir/www/data/noread.html
 
 # Http test routine with arguments:
 # 1. proto:http/https
@@ -134,32 +183,55 @@ EOF
     new "wait restconf"
     wait_restconf $proto
 
-#    echo "curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html"
-    if $enable; then
+    echo "curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html"
+
+    if ! $enable; then
+	# XXX or bad request?
+	new "WWW get html, not enabled, expect not found"
+#	echo "curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html"
+	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 404"
+    else
 	new "WWW get html"
 	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
-    else
-	new "WWW get html, not enabled, expect bad request"
-	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 400"
-	return
-    fi
 
-    new "WWW get css"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/example.css)" 0 "HTTP/$HVER 200" "Content-Type: text/css" "display: inline;" --not-- "Content-Type: text/html"
+	new "WWW get css"
+	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/example.css)" 0 "HTTP/$HVER 200" "Content-Type: text/css" "display: inline;" --not-- "Content-Type: text/html"
 
-    new "WWW head"
-    expectpart "$(curl $CURLOPTS --head -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" --not-- "<title>Welcome to Clixon!</title>"
+	new "WWW head"
+	expectpart "$(curl $CURLOPTS --head -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" --not-- "<title>Welcome to Clixon!</title>"
 
-    new "WWW options"
-    expectpart "$(curl $CURLOPTS -X OPTIONS $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "allow: OPTIONS,HEAD,GET" 
+	new "WWW options"
+	expectpart "$(curl $CURLOPTS -X OPTIONS $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "allow: OPTIONS,HEAD,GET" 
 
-    # negative errors
-    new "WWW get http not found"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/notfound.html)" 0 "HTTP/$HVER 404" "Content-Type: text/html" "<title>404 Not Found</title>"
+	# negative errors
+	new "WWW get http not found"
+	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/notfound.html)" 0 "HTTP/$HVER 404" "Content-Type: text/html" "<title>404 Not Found</title>"
 
-    new "WWW post not allowed"
-    expectpart "$(curl $CURLOPTS -X POST -H 'Accept: text/html' -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}}' $proto://localhost/data/notfound.html)" 0 "HTTP/$HVER 405" "Content-Type: text/html" "<title>405 Method Not Allowed</title>"
+	new "WWW get http soft link"
+	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/inside.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>" --not-- "<title>Dont access this</title>"
+	
+	if [ ! -f /.dockerenv ] ; then	# XXX Privs dont not work on docker/alpine?
+	    new "WWW get http not read access"
+	    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/noread.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>"
+	fi
 
+	# Try .. Cannot get .. in path to work in curl (it seems to remove it)
+	if [ "$proto" = http -a -n "$netcat" ]; then    
+	    new "WWW get outside using .. netcat"
+	    expectpart "$(${netcat} 127.0.0.1 80 <<EOF
+GET /data/../../outside.html HTTP/1.1
+Host: localhost
+Accept: text_html
+
+EOF
+)" 0 "HTTP/1.1 403" "Forbidden"
+	fi
+
+	new "WWW post not allowed"
+	expectpart "$(curl $CURLOPTS -X POST -H 'Accept: text/html' -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}}' $proto://localhost/data/notfound.html)" 0 "HTTP/$HVER 405" "Content-Type: text/html" "<title>405 Method Not Allowed</title>"
+
+    fi 
+    
     if [ $RC -ne 0 ]; then
 	new "Kill restconf daemon"
 	stop_restconf
@@ -190,7 +262,7 @@ if [ "${WITH_RESTCONF}" = "native" ]; then
 fi
 
 for proto in $protos; do
-    for enable in true false; do    
+    for enable in true false; do    # false
 	new "http-data proto:$proto enabled:$enable"
 	testrun $proto $enable
     done

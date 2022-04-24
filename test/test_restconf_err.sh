@@ -209,19 +209,6 @@ expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml
 new "restconf GET initial datastore"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:a=0)" 0 "HTTP/$HVER 200" "$XML"
 
-# XXX cannot get this to work for all combinations of nc/netcat fcgi/native
-# But leave it here for debugging where netcat works properly
-# Alt try something like:
-# printf "Hello World!" | (exec 3<>/dev/tcp/127.0.0.1/80; cat >&3; cat <&3; exec 3<&-)
-# Look for netcat or nc for direct socket http calls
-if [ -n "$(type netcat 2> /dev/null)" ]; then
-    netcat="netcat -w 1" # -N does not work on fcgi
-# nc on freebsd does not work either
-#elif [ -n "$(type nc 2> /dev/null)" ]; then
-#    netcat=nc
-else
-    netcat=
-fi
 if [ -n "$netcat" -a "${WITH_RESTCONF}" != "fcgi" ]; then
 
 #    new "restconf try fuzz crash"
