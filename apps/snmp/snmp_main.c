@@ -204,6 +204,9 @@ clixon_snmp_init(clicon_handle h,
     /* make a agentx client. */
     netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_ROLE, 1);    
 
+    /* XXX: This should be configurable. */
+    netsnmp_ds_set_string(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_X_SOCKET, "unix:/tmp/clixon_snmp.sock");
+
     /* initialize the agent library */
     init_agent(__PROGRAM__);
   
