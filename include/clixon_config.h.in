@@ -63,6 +63,9 @@
 /* Define to 1 if you have the `netsnmp' library (-lnetsnmp). */
 #undef HAVE_LIBNETSNMP
 
+/* Define to 1 if you have the `netsnmpagent' library (-lnetsnmpagent). */
+#undef HAVE_LIBNETSNMPAGENT
+
 /* Define to 1 if you have the `nghttp2' library (-lnghttp2). */
 #undef HAVE_LIBNGHTTP2
 

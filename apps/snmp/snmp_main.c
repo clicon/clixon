@@ -30,7 +30,6 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
  */
 
 #ifdef HAVE_CONFIG_H
@@ -45,7 +44,10 @@
 #include <sys/types.h>
 #include <signal.h>
 
+/* net-snmp */
 #include <net-snmp/net-snmp-config.h>
+#include <net-snmp/net-snmp-includes.h>
+#include <net-snmp/agent/net-snmp-agent-includes.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -56,15 +58,178 @@
 /* Command line options to be passed to getopt(3) */
 #define SNMP_OPTS "hD:f:l:o:"
 
-/*! XXX netsnmp API goes here
+#if 1 // XXX hardcoded MIB object from https://github.com/net-snmp/subagent-example/blob/master/example-demon.c
+/* cp NET-SNMP-TUTORIAL-MIB.txt ~/.snmp/mibs/
+ * sudo /usr/local/sbin/snmpd -Lo -C --rwcommunity=public --master=agentx -f
+ * sudo example_demon
+ * snmpget -v 2c -c public localhost NET-SNMP-TUTORIAL-MIB::nstAgentSubagentObject.0
+ */
+/*! 
+ * our initialization routine, automatically called by the agent 
+ * (to get called, the function name must match init_FILENAME()) 
+ * the variable we want to tie an OID to.  The agent will handle all
+ * * GET and SET requests to this variable changing it's value as needed.
+ */
+static long      nstAgentSubagentObject = 2;
+
+static void
+init_nstAgentSubagentObject(clicon_handle h)
+{
+    static oid      nstAgentSubagentObject_oid[] =
+        { 1, 3, 6, 1, 4, 1, 8072, 2, 4, 1, 1, 2, 0 };
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    /*
+     * a debugging statement.  Run the agent with -DnstAgentSubagentObject to see
+     * the output of this debugging statement. 
+     */
+    DEBUGMSGTL(("nstAgentSubagentObject",
+                "Initializing the nstAgentSubagentObject module\n"));
+
+    /*
+     * the line below registers our variables defined above as
+     * accessible and makes it writable.  A read only version of any
+     * of these registration would merely call
+     * register_read_only_long_instance() instead.  The functions
+     * called below should be consistent with your MIB, however.
+     * 
+     * If we wanted a callback when the value was retrieved or set
+     * (even though the details of doing this are handled for you),
+     * you could change the NULL pointer below to a valid handler
+     * function. 
+     */
+    DEBUGMSGTL(("nstAgentSubagentObject",
+                "Initalizing nstAgentSubagentObject scalar integer.  Default value = %ld\n",
+                nstAgentSubagentObject));
+
+    netsnmp_register_long_instance("nstAgentSubagentObject",
+                                  nstAgentSubagentObject_oid,
+                                  OID_LENGTH(nstAgentSubagentObject_oid),
+                                  &nstAgentSubagentObject, NULL);
+
+    DEBUGMSGTL(("nstAgentSubagentObject",
+                "Done initalizing nstAgentSubagentObject module\n"));
+}
+#endif // XXX Hardcoded
+
+/*! Signal terminates process
+ * Just set exit flag for proper exit in event loop
+ */
+static void
+clixon_snmp_sig_term(int arg)
+{
+    clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
+	       __PROGRAM__, __FUNCTION__, getpid(), arg);
+    /* This should ensure no more accepts or incoming packets are processed because next time eventloop
+     * is entered, it will terminate.
+     * However there may be a case of sockets closing rather abruptly for clients
+     */
+    clixon_exit_set(1); 
+}
+
+/*! Callback for single socket 
+ * This is a workaround for netsnmps API usiing fdset:s, instead an fdset is created before calling
+ * the snmp api
+ * @param[in]  s   Read socket
+ * @param[in]  arg Clixon handle
  */
 static int
-snmp_input_cb(int   s, 
-	      void *arg)
+clixon_snmp_input_cb(int   s, 
+		     void *arg)
 {
-    int retval = -1;
+    int    retval = -1;
+    fd_set readfds;
+    //    clicon_handle h = (clicon_handle)arg;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    FD_ZERO(&readfds);
+    FD_SET(s, &readfds);
+    snmp_read(&readfds);
     retval = 0;
     // done:
+    return retval;
+}
+
+/*! Get which sockets are used from SNMP API, the register single sockets into clixon event system
+ *
+ * This is a workaround for netsnmps API usiing fdset:s, instead an fdset is created before calling
+ * the snmp api
+ * if you use select(), see snmp_select_info() in snmp_api(3) 
+ * snmp_select_info(int *numfds, fd_set *fdset, struct timeval *timeout, int *block)
+ * @see clixon_snmp_input_cb
+ */
+static int
+clixon_snmp_fdset_register(clicon_handle h)
+{
+    int             retval = -1;
+    int             numfds = 0;
+    fd_set          readfds;
+    struct timeval  timeout = { LONG_MAX, 0 };
+    int             block = 0;
+    int             nr;
+    int             i;
+
+    FD_ZERO(&readfds);
+    if ((nr = snmp_sess_select_info(NULL, &numfds, &readfds, &timeout, &block)) < 0){
+	clicon_err(OE_SNMP, errno, "snmp_select_error");
+	goto done;
+    }
+    for (i=0; i<numfds; i++){
+	if (FD_ISSET(i, &readfds)){
+	    if (clixon_event_reg_fd(i, clixon_snmp_input_cb, h, "snmp socket") < 0)
+		goto done;
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Init netsnmp agent connection
+ * @param[in]  h      Clixon handle
+ * @param[in]  logdst Log destination, see clixon_log.h
+ * @see snmp_terminate
+ */
+static int
+clixon_snmp_init(clicon_handle h,
+		 int           logdst)
+{
+    int retval = -1;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (logdst == CLICON_LOG_SYSLOG)
+	snmp_enable_calllog();
+    else
+	snmp_enable_stderrlog();
+    /* make a agentx client. */
+    netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_ROLE, 1);    
+
+    /* initialize the agent library */
+    init_agent(__PROGRAM__);
+  
+    /* XXX Hardcoded, replace this with generic MIB */
+    init_nstAgentSubagentObject(h);
+
+    /* example-demon will be used to read example-demon.conf files. */
+    init_snmp(__PROGRAM__);
+
+    if (set_signal(SIGTERM, clixon_snmp_sig_term, NULL) < 0){
+	clicon_err(OE_DAEMON, errno, "Setting signal");
+	goto done;
+    }
+    if (set_signal(SIGINT, clixon_snmp_sig_term, NULL) < 0){
+	clicon_err(OE_DAEMON, errno, "Setting signal");
+	goto done;
+    }
+    if (set_signal(SIGPIPE, SIG_IGN, NULL) < 0){
+	clicon_err(OE_UNIX, errno, "Setting DIGPIPE signal");
+	goto done;
+    }
+    /* Workaround for netsnmps API use of fdset:s instead of sockets */
+    if (clixon_snmp_fdset_register(h) < 0)
+	goto done;
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -80,6 +245,7 @@ snmp_terminate(clicon_handle h)
     cvec       *nsctx;
     cxobj      *x;
     
+    shutdown_agent();
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	ys_free(yspec);
@@ -97,21 +263,6 @@ snmp_terminate(clicon_handle h)
     return 0;
 }
 
-/*! Setup signal handlers
- */
-static int
-snmp_signal_init (clicon_handle h)
-{
-    int retval = -1;
-    
-    if (set_signal(SIGPIPE, SIG_IGN, NULL) < 0){
-	clicon_err(OE_UNIX, errno, "Setting DIGPIPE signal");
-	goto done;
-    }
-    retval = 0;
- done:
-    return retval;
-}
 
 /*! Usage help routine
  * @param[in]  h      Clixon handle
@@ -194,6 +345,7 @@ main(int    argc,
      */
     clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(dbg, NULL); 
+
     yang_init(h);
     
     /* Find, read and parse configfile */
@@ -246,13 +398,11 @@ main(int    argc,
     if (netconf_module_features(h) < 0)
 	goto done;
 
-    /* Setup signal handlers, int particular PIPE that occurs if backend closes / restarts */
-    if (snmp_signal_init(h) < 0)
-	goto done;
-    
     /* In case ietf-yang-metadata is loaded by application, handle annotation extension */
-    if (0 && yang_metadata_init(h) < 0)
+#if 0
+    if (yang_metadata_init(h) < 0)
 	goto done;    
+#endif
     /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;
@@ -292,13 +442,13 @@ main(int    argc,
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
 	goto done;
 
+#if 0
     /* Call start function is all plugins before we go interactive */
     if (clixon_plugin_start_all(h) < 0)
 	goto done;
-#if 1
-    /* XXX get session id from backend hello */
-    clicon_session_id_set(h, getpid()); 
 #endif
+    /* Get session id from backend hello */
+    clicon_session_id_set(h, getpid()); 
 
     /* Send hello request to backend to get session-id back
      * This is done once at the beginning of the session and then this is
@@ -309,12 +459,10 @@ main(int    argc,
 	goto done;
     clicon_session_id_set(h, id);
     
-    /* XXX Here should register an net-snmp interface socket
-     * But it registers stdin which is wrong
-     */
-    if (clixon_event_reg_fd(0, snmp_input_cb, h, "snmp socket") < 0)
+    /* Init snmp as subagent */
+    if (clixon_snmp_init(h, logdst) < 0)
 	goto done;
-
+    
     if (dbg)
 	clicon_option_dump(h, dbg);
     if (clixon_event_loop(h) < 0)

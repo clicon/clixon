@@ -5324,10 +5324,10 @@ $as_echo "checking netsnmp is enabled: $enable_netsnmp" >&6; }
 
 if test "$enable_netsnmp" = "yes"; then
    # All libs are:
-   # libnetsnmp, libnetsnmpmibs, libnetsnmpagent, libnetsnmptrapd, libnetsnmphelpers
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for snmp_open in -lnetsnmp" >&5
-$as_echo_n "checking for snmp_open in -lnetsnmp... " >&6; }
-if ${ac_cv_lib_netsnmp_snmp_open+:} false; then :
+   # libnetsnmp, libnetsnmpagent, libnetsnmpmibs, libnetsnmptrapd, libnetsnmphelpers
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for init_snmp in -lnetsnmp" >&5
+$as_echo_n "checking for init_snmp in -lnetsnmp... " >&6; }
+if ${ac_cv_lib_netsnmp_init_snmp+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
@@ -5341,32 +5341,77 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 #ifdef __cplusplus
 extern "C"
 #endif
-char snmp_open ();
+char init_snmp ();
 int
 main ()
 {
-return snmp_open ();
+return init_snmp ();
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_netsnmp_snmp_open=yes
+  ac_cv_lib_netsnmp_init_snmp=yes
 else
-  ac_cv_lib_netsnmp_snmp_open=no
+  ac_cv_lib_netsnmp_init_snmp=no
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_netsnmp_snmp_open" >&5
-$as_echo "$ac_cv_lib_netsnmp_snmp_open" >&6; }
-if test "x$ac_cv_lib_netsnmp_snmp_open" = xyes; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_netsnmp_init_snmp" >&5
+$as_echo "$ac_cv_lib_netsnmp_init_snmp" >&6; }
+if test "x$ac_cv_lib_netsnmp_init_snmp" = xyes; then :
   cat >>confdefs.h <<_ACEOF
 #define HAVE_LIBNETSNMP 1
 _ACEOF
 
   LIBS="-lnetsnmp $LIBS"
+
+fi
+
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for init_agent in -lnetsnmpagent" >&5
+$as_echo_n "checking for init_agent in -lnetsnmpagent... " >&6; }
+if ${ac_cv_lib_netsnmpagent_init_agent+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lnetsnmpagent  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char init_agent ();
+int
+main ()
+{
+return init_agent ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_netsnmpagent_init_agent=yes
+else
+  ac_cv_lib_netsnmpagent_init_agent=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_netsnmpagent_init_agent" >&5
+$as_echo "$ac_cv_lib_netsnmpagent_init_agent" >&6; }
+if test "x$ac_cv_lib_netsnmpagent_init_agent" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBNETSNMPAGENT 1
+_ACEOF
+
+  LIBS="-lnetsnmpagent $LIBS"
 
 fi
 

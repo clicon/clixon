@@ -74,6 +74,7 @@ enum clicon_err{
     OE_RESTCONF, /* RESTCONF errors */
     OE_PLUGIN,   /* plugin loading, etc */
     OE_YANG ,    /* Yang error */
+    OE_SNMP ,    /* Netsnmp error */
     OE_FATAL,    /* Fatal error */
     OE_UNDEF,
     /*-- From here error extensions using clixon_err_cat_reg, XXX register dynamically? --*/

@@ -289,8 +289,9 @@ AC_MSG_RESULT(checking netsnmp is enabled: $enable_netsnmp)
 
 if test "$enable_netsnmp" = "yes"; then
    # All libs are:
-   # libnetsnmp, libnetsnmpmibs, libnetsnmpagent, libnetsnmptrapd, libnetsnmphelpers
-   AC_CHECK_LIB(netsnmp, snmp_open)      
+   # libnetsnmp, libnetsnmpagent, libnetsnmpmibs, libnetsnmptrapd, libnetsnmphelpers
+   AC_CHECK_LIB(netsnmp, init_snmp)
+   AC_CHECK_LIB(netsnmpagent, init_agent)	
    AC_CHECK_HEADERS(net-snmp/net-snmp-config.h,[], AC_MSG_ERROR([snmp is missing]))
 fi 
 
