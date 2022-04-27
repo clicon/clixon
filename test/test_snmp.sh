@@ -11,9 +11,9 @@ if [ $valgrindtest -ne 0 ]; then
     return 0 # skip
 fi
 
-snmpd="/usr/local/sbin/snmpd"
-snmpget="/usr/local/bin/snmpget -c public -v2c localhost:1161 "
-snmpset="/usr/local/bin/snmpset -c public -v2c localhost:1161 "
+snmpd="/usr/sbin/snmpd"
+snmpget="/usr/bin/snmpget -c public -v2c localhost:1161 "
+snmpset="/usr/bin/snmpset -c public -v2c localhost:1161 "
 clixon_snmp="/usr/local/sbin/clixon_snmp"
 cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
