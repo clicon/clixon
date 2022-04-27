@@ -1132,5 +1132,17 @@ module clixon-config {
                  0 means no limit";
 
 	}
+	leaf CLICON_SNMP_AGENT_SOCK {
+	    type string;
+	    default "unix:/tmp/clixon_snmp.sock";
+	    description
+		"String description of AgentX socket that clixon_snmp listens to.
+                 For example, for net-snmpd, the socket is created by using the following:
+                      --agentXSocket=unix:<path>
+                 This string currently only supports UNIX socket path.
+                 Note also that the user should consider setting permissions appropriately
+                 XXX: This should be in later yang revision and documented as added when
+                 merged with master";
+	}
     }
 }

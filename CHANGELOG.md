@@ -34,12 +34,19 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
-### New features
+## SNMP branch
 
 * Clixon SNMP frontend
   * net-snmp and MIB to YANG translation
   * Experimental work
+  * YANG `clixon-config@2022-03-21.yang` changes:
+    * Added option:
+      * `CLICON_SNMP_AGENT_SOCK`
 
+## 5.7.0
+Expected: May 2022
+
+### New features
 * Extended the Restconf implementation with a limited http-data static service
   * Added two new config options to clixon-config.yang:
      * `CLICON_HTTP_DATA_PATH`

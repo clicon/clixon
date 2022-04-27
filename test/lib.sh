@@ -182,6 +182,8 @@ BUSER=clicon
 
 : ${clixon_backend:=clixon_backend}
 
+: ${clixon_snmp:=$(type -p clixon_snmp)}
+
 # Source the site-specific definitions for test script variables, if site.sh
 # exists. The variables defined in site.sh override any variables of the same
 # names in the environment in the current execution.
