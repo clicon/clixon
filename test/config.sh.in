@@ -52,6 +52,9 @@ HAVE_HTTP1=@HAVE_HTTP1@
 # use it you need to set Clixon config option CLICON_YANG_REGEXP to libxml2
 WITH_LIBXML2=@with_libxml2@
 
+# Check if we have support for Net-SNMP enabled or not.
+WITH_NETSNMP=@enable_netsnmp@
+
 # C++ compiler
 CXX=@CXX@
 

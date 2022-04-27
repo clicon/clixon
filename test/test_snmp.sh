@@ -11,6 +11,11 @@ if [ $valgrindtest -ne 0 ]; then
     return 0 # skip
 fi
 
+if [ ${WITH_NETSNMP} != "yes" ]; then
+    echo "Skipping test, Net-SNMP support not enabled."
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
+
 snmpd=$(type -p snmpd)
 snmpget="$(type -p snmpget) -c public -v2c localhost:1161 "
 snmpset="$(type -p snmpset) -c public -v2c localhost:1161 "
