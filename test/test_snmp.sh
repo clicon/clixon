@@ -11,9 +11,9 @@ if [ $valgrindtest -ne 0 ]; then
     return 0 # skip
 fi
 
-snmpd="/usr/sbin/snmpd"
-snmpget="/usr/bin/snmpget -c public -v2c localhost:1161 "
-snmpset="/usr/bin/snmpset -c public -v2c localhost:1161 "
+snmpd=$(type -p snmpd)
+snmpget="$(type -p snmpget) -c public -v2c localhost:1161 "
+snmpset="$(type -p snmpset) -c public -v2c localhost:1161 "
 clixon_snmp="/usr/local/sbin/clixon_snmp"
 cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
@@ -77,6 +77,10 @@ function testinit(){
     fi
 }
 
+function testexit(){
+    sudo killall snmpd
+}
+
 new "SNMP tests"
 testinit
 
@@ -88,6 +92,9 @@ expectpart "$($snmpset .1.3.6.1.4.1.8072.2.4.1.1.2.0 i 1234)" 0 "NET-SNMP-EXAMPL
 
 new "Get new value"
 expectpart "$($snmpget .1.3.6.1.4.1.8072.2.4.1.1.2.0)" 0 "NET-SNMP-EXAMPLES-MIB::netSnmpExamples.4.1.1.2.0 = INTEGER: 1234"
+
+new "Cleaning up"
+testexit
 
 new "endtest"
 endtest
