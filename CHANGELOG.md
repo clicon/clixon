@@ -35,15 +35,20 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
+## SNMP branch
+
+* Clixon SNMP frontend
+  * Support of SNMP for retreiving and setting values via net-snmp using a MIB-YANG mapping defined in RFC6643.
+  * For details, see [SNMP section of user manual](https://clixon-docs.readthedocs.io/en/latest/snmp.html)
+  * YANG `clixon-config@2022-03-21.yang` changes:
+    * Added option:
+      * `CLICON_SNMP_AGENT_SOCK`
+  * Thanks Siklu for sponshoring 
+
 ## 5.8.0
 Planned: July 2022
 
 ### New features
-
-* Clixon SNMP frontend
-  * Support of SNMP for retreiving and setting values via netsnmp using a MIB-YANG mapping defined in RFC6643.
-  * For more details, see [SNMP section of user manual](https://clixon-docs.readthedocs.io/en/latest/snmp.html)
-  * Thanks Siklu for sponshoring 
 
 * YANG Action (RFC 7950 Section 7.15)
   * Register action callback with `action_callback_register()`, see main example

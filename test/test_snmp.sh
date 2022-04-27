@@ -17,11 +17,14 @@ if [ ${WITH_NETSNMP} != "yes" ]; then
 fi
 
 snmpd=$(type -p snmpd)
-snmpget="$(type -p snmpget) -c public -v2c localhost:1161 "
-snmpset="$(type -p snmpset) -c public -v2c localhost:1161 "
-clixon_snmp="/usr/local/sbin/clixon_snmp"
+snmpget="$(type -p snmpget) -On -c public -v2c localhost:1161 "
+snmpset="$(type -p snmpset) -On -c public -v2c localhost:1161 "
+
 cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
+
+# AgentX unix socket
+SOCK=/tmp/clixon_snmp.sock
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -31,6 +34,7 @@ cat <<EOF > $cfg
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/var/tmp/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+  <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
 </clixon-config>
 EOF
 
@@ -47,8 +51,8 @@ function testinit(){
     new "kill old snmp daemons"
     sudo killall snmpd
 
-    new "Starting snmpd"
-    $snmpd --rwcommunity=public --master=agentx --agentXSocket=unix:/tmp/clixon_snmp.sock udp:127.0.0.1:1161
+    new "Starting $snmpd --rwcommunity=public --master=agentx --agentXSocket=unix:/tmp/clixon_snmp.sock udp:127.0.0.1:1161"
+    $snmpd --rwcommunity=public --master=agentx --agentXSocket=unix:$SOCK udp:127.0.0.1:1161
 
     pgrep snmpd
     if [ $? != 0 ]; then
@@ -65,14 +69,14 @@ function testinit(){
     sudo pkill -f clixon_backend
 
     new "Starting backend"
-    start_backend -s init -f $cfg -- -s
+    start_backend -s init -f $cfg
 
     # Kill old clixon_snmp, if any
     new "Terminating any old clixon_snmp processes"
     sudo killall clixon_snmp
 
     new "Starting clixon_snmp"
-    $clixon_snmp -f $cfg &
+    $clixon_snmp -f $cfg -D $DBG -l s &
 
     sleep 1
     
@@ -89,14 +93,16 @@ function testexit(){
 new "SNMP tests"
 testinit
 
+OID=".1.2.3.6.1"
+
 new "Test SNMP get for default value"
-expectpart "$($snmpget .1.3.6.1.4.1.8072.2.4.1.1.2.0)" 0 "NET-SNMP-EXAMPLES-MIB::netSnmpExamples.4.1.1.2.0 = INTEGER: 2"
+expectpart "$($snmpget $OID)" 0 "$OID = Gauge32: 42"
 
 new "Set new value to OID"
-expectpart "$($snmpset .1.3.6.1.4.1.8072.2.4.1.1.2.0 i 1234)" 0 "NET-SNMP-EXAMPLES-MIB::netSnmpExamples.4.1.1.2.0 = INTEGER: 1234"
+expectpart "$($snmpset $OID u 1234)" 0 "$OID = Gauge32: 1234"
 
 new "Get new value"
-expectpart "$($snmpget .1.3.6.1.4.1.8072.2.4.1.1.2.0)" 0 "NET-SNMP-EXAMPLES-MIB::netSnmpExamples.4.1.1.2.0 = INTEGER: 1234"
+expectpart "$($snmpget $OID)" 0 "$OID = Gauge32: 1234"
 
 new "Cleaning up"
 testexit
