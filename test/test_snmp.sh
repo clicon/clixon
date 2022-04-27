@@ -5,12 +5,6 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=snmp
 
-# Dont run this test with valgrind
-if [ $valgrindtest -ne 0 ]; then
-    echo "...skipped "
-    return 0 # skip
-fi
-
 if [ ${WITH_NETSNMP} != "yes" ]; then
     echo "Skipping test, Net-SNMP support not enabled."
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -76,18 +70,15 @@ function testinit(){
     sudo killall clixon_snmp
 
     new "Starting clixon_snmp"
-    $clixon_snmp -f $cfg -D $DBG -l s &
+    start_snmp $cfg &
 
-    sleep 1
-    
-    pgrep clixon_snmp
-    if [ $? != 0 ]; then
-	    err "Failed to start clixon_snmp"
-    fi
+    # Wait for things to settle
+    sleep 3
 }
 
 function testexit(){
     sudo killall snmpd
+    stop_snmp
 }
 
 new "SNMP tests"

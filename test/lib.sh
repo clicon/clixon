@@ -415,6 +415,30 @@ function chunked_framing()
     printf "\n#%s\n%s\n##\n" ${length} "${str}"
 }
 
+# Start clixon_snmp
+function start_snmp(){
+    cfg=$1
+
+    $clixon_snmp -f $cfg -D $DBG -l s &
+
+    if [ $? -ne 0 ]; then
+	    err
+    fi
+
+    if [ $valgrindtest != 0 ]; then
+        checkvalgrind
+    fi
+}
+
+# Stop clixon_snmp and Valgrind if needed
+function stop_snmp(){
+    if [ $valgrindtest != 0 ]; then
+        kill `ps aux | grep [v]algrind | awk '{print $2}' | tail -n1`
+    else
+        killall clixon_snmp
+    fi
+}
+
 # Start backend with all varargs.
 # If valgrindtest == 2, start valgrind
 function start_backend(){
