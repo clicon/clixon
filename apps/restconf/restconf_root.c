@@ -80,15 +80,15 @@ api_path_is_restconf(clicon_handle h)
 {
     int    retval = 0;
     char  *path = NULL;
-    char  *restconf_path = RESTCONF_API;
+    char  *restconf_api_path;
 
    if ((path = restconf_uripath(h)) == NULL)
        goto done;
-   if (strlen(path) < 1 + strlen(restconf_path)) /* "/" + restconf */
+    if ((restconf_api_path = clicon_option_str(h, "CLICON_RESTCONF_API_ROOT")) == NULL)
+	goto done;
+   if (strlen(path) < strlen(restconf_api_path)) /* "/" + restconf */
        goto done;
-   if (path[0] != '/')
-       goto done;
-   if (strncmp(path+1, restconf_path, strlen(restconf_path)) != 0)
+   if (strncmp(path, restconf_api_path, strlen(restconf_api_path)) != 0)
        goto done;
     retval = 1;
  done:
@@ -510,14 +510,7 @@ api_root_restconf(clicon_handle        h,
 	goto ok;
     }
     if (strlen(pvec[0]) != 0){
-	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /restconf/ expected") < 0)
-	    goto done; 
-	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
-    }
-    if (strcmp(pvec[1], RESTCONF_API)){
-	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /restconf/ expected") < 0)
+	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, restconf api root expected") < 0)
 	    goto done; 
 	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
 	    goto done;

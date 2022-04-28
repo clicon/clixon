@@ -473,9 +473,9 @@ http2_exec(restconf_conn        *rc,
     if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
 	goto done;
     sd->sd_proto = HTTP_2; /* XXX is this necessary? */
-    if (strncmp(sd->sd_path, "/" RESTCONF_API, strlen("/" RESTCONF_API)) == 0 
-	|| strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0
-	|| api_path_is_data(rc->rc_h)){
+	if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0
+	    || api_path_is_restconf(rc->rc_h)
+	    || api_path_is_data(rc->rc_h)){
 	if (restconf_nghttp2_path(sd) < 0)
 	    goto done;
     }

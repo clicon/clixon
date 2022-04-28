@@ -438,8 +438,8 @@ restconf_http1_path_root(clicon_handle  h,
 	if (api_http_data(h, sd, sd->sd_qvec) < 0)
 	    goto done;
     }
-    else if (api_root_restconf(h, sd, sd->sd_qvec) < 0) /* error handling */
-	goto done;	    
+    else
+	sd->sd_code = 404; /* catch all without body/media */
  fail:
    if (restconf_param_del_all(h) < 0)
 	goto done;

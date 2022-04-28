@@ -160,69 +160,105 @@ api_http_data_err(clicon_handle  h,
 
 /*! Check validity of path, may only be regular dir or file
  * No .., soft link, ~, etc
- * @param[in]  prefix Prefix of path0, where to start file check
- * @param[in]  path0  Filepath
- * @param[out] code   Error code, if retval = 0
- * @retval    -1      Error
- * @retval     0      Invalid, code set
- * @retval     1      OK
+ * @param[in]      h       Clicon handle
+ * @param[in]      req     Generic Www handle (can be part of clixon handle)
+ * @param[in]      prefix  Prefix of path0, where to start file check
+ * @param[in,out]  cbpath  Filepath as cbuf, internal redirection may change it
+ * @param[out]     fp      Open file, if retval = 1
+ * @param[out]     fsz     Size of file, if retval = 1
+ * @retval        -1       Error
+ * @retval         0       Invalid
+ * @retval         1       OK, fp,fsz set
  */
 static int
-check_file_path(char   *prefix,
-		char   *path0,
-		int    *code)
+http_data_check_file_path(clicon_handle h,
+			  void         *req,
+			  char         *prefix,
+			  cbuf         *cbpath,
+			  FILE        **fp,
+			  off_t        *fsz)
 {
-    int   retval = -1;
-    char *path = NULL;
-    int   i;
+    int         retval = -1;
     struct stat fstat;
+    char       *p;
+    int         i;
+    int         code = 0;
+    FILE       *f;
 
-    if (prefix == NULL || path0 == NULL || code == NULL){
-	clicon_err(OE_UNIX, EINVAL, "prefix, path0 or code is NULL");
+    if (prefix == NULL || cbpath == NULL || fp == NULL){
+	clicon_err(OE_UNIX, EINVAL, "prefix, cbpath0 or fp is NULL");
 	goto done;
     }
-    if ((path = strdup(path0)) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
+    p = cbuf_get(cbpath);
+    clicon_debug(1, "%s %s", __FUNCTION__, p);
+    if (strncmp(prefix, p, strlen(prefix)) != 0){
+	clicon_err(OE_UNIX, EINVAL, "prefix is not prefix of cbpath");
 	goto done;
     }
-    for (i=strlen(prefix); i<strlen(path0); i++){
-	if (path[i] == '/'){ /* Check valid dir */
-	    path[i] = '\0';
+    for (i=strlen(prefix); i<strlen(p); i++){
+	if (p[i] == '/'){ /* Check valid dir */
+	    p[i] = '\0';
 	    /* Ensure not soft link */
-	    if (lstat(path, &fstat) < 0){
-		*code = 404;
+	    if (lstat(p, &fstat) < 0){
+		clicon_debug(1, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
+		code = 404;
 		goto invalid;
 	    }
 	    if (!S_ISDIR(fstat.st_mode)){
-		*code = 403;
+		clicon_debug(1, "%s Error lstat(%s): Not dir", __FUNCTION__, p);
+		code = 403;
 		goto invalid;
 	    }
-	    path[i] = '/';
+	    p[i] = '/';
 	}
-	else if (path[i] == '~'){
-	    *code = 403;
+	else if (p[i] == '~'){
+	    clicon_debug(1, "%s Error lstat(%s): ~ not allowed in file path", __FUNCTION__, p);
+	    code = 403;
 	    goto invalid;
 	}
-	else if (path[i] == '.' && i>strlen(prefix) && path[i-1] == '.'){
-	    *code = 403;
+	else if (p[i] == '.' && i>strlen(prefix) && p[i-1] == '.'){
+	    clicon_debug(1, "%s Error lstat(%s): .. not allowed in file path", __FUNCTION__, p);
+	    code = 403;
 	    goto invalid;
 	}
     }
     /* Resulting file (ensure not soft link) */
-    if (lstat(path, &fstat) < 0){
-	*code = 404;
+    if (lstat(p, &fstat) < 0){
+	clicon_debug(1, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
+	code = 404;
 	goto invalid;
     }
+#ifdef HTTP_DATA_INTERNAL_REDIRECT
+    /* If dir try redirect, not cbpath is extended */
+    if (S_ISDIR(fstat.st_mode)){
+	cprintf(cbpath, "/%s", HTTP_DATA_INTERNAL_REDIRECT);
+	p = cbuf_get(cbpath);
+	clicon_debug(1, "%s internal redirect: %s", __FUNCTION__, p);
+	if (lstat(p, &fstat) < 0){
+	    clicon_debug(1, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
+	    code = 404;
+	    goto invalid;
+	}	
+    }
+#endif
     if (!S_ISREG(fstat.st_mode)){
-	*code = 403;
+	clicon_debug(1, "%s Error lstat(%s): Not regular file", __FUNCTION__, p);
+	code = 403;
 	goto invalid;
     }
+    *fsz = fstat.st_size;
+    if ((f = fopen(p, "rb")) == NULL){
+	clicon_debug(1, "%s Error fopen(%s) %s", __FUNCTION__, p, strerror(errno));
+	code = 403;
+	goto invalid;
+    }
+    *fp = f;
     retval = 1; /* OK */
  done:
-    if (path)
-	free(path);
     return retval;
  invalid:
+    if (api_http_data_err(h, req, code) < 0) 
+	goto done;
     retval = 0;
     goto done;
 }
@@ -231,10 +267,9 @@ check_file_path(char   *prefix,
  * @param[in]  h         Clicon handle
  * @param[in]  req       Generic Www handle (can be part of clixon handle)
  * @param[in]  pathname  With stripped prefix (eg /data), ultimately a filename
+ * @param[in]  head      HEAD not GET
  * @note: primitive file handling, just check if file exists and read it all
  * XXX 1: Buffer copying once too many, see #if 0 below
- * XXX 2: Generic file system below CLICON_HTTP_DATA_ROOT, no checks for links or ..
- *           Need pathname santitization: no .. or ~, just a directory structure.
  */
 static int
 api_http_data_file(clicon_handle h,
@@ -247,15 +282,16 @@ api_http_data_file(clicon_handle h,
     char       *filename;
     cbuf       *cbdata = NULL;
     FILE       *f = NULL;
+    off_t       fsz = 0;
     long        fsize;
     char       *www_data_root = NULL;
     char       *suffix;
     char       *media;
     int         ret;
-    int         code = 0;
     char       *str = NULL;
     size_t      sz;
-    
+
+    clicon_debug(1, "%s", __FUNCTION__);    
     if ((cbfile = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
@@ -265,7 +301,24 @@ api_http_data_file(clicon_handle h,
 	goto done;
     }
 
-    if ((suffix = rindex(pathname, '.')) == NULL){
+    cprintf(cbfile, "%s", www_data_root);
+    if (pathname){
+	if (strlen(pathname) && pathname[0] != '/'){
+	    clicon_debug(1, "%s Error fopen(%s) pathname not prefixed with /",
+			 __FUNCTION__, pathname);
+	    if (api_http_data_err(h, req, 404) < 0) 
+		goto done;
+	    goto ok;
+	}
+	cprintf(cbfile, "%s", pathname); /* Assume pathname starts with '/' */
+    }
+    if ((ret = http_data_check_file_path(h, req, www_data_root, cbfile, &f, &fsz)) < 0)
+	goto done;
+    if (ret == 0) /* Invalid, return code set */
+	goto ok;
+    filename = cbuf_get(cbfile);
+    /* Find media from file suffix, note there may have been internal indirection */
+    if ((suffix = rindex(filename, '.')) == NULL){
 	media = "application/octet-stream";
     }
     else {
@@ -273,29 +326,19 @@ api_http_data_file(clicon_handle h,
 	if ((media = clicon_str2str(mime_map, suffix)) == NULL)
 	    media = "application/octet-stream";
     }
-    cprintf(cbfile, "%s", www_data_root);
-    if (pathname)
-	cprintf(cbfile, "/%s", pathname);
-    filename = cbuf_get(cbfile);
-    clicon_debug(1, "%s %s", __FUNCTION__, filename);
-    if ((ret = check_file_path(www_data_root, filename, &code)) < 0)
-	goto done;
-    if (ret == 0){
-	clicon_debug(1, "%s code:%d", __FUNCTION__, code);
-	if (api_http_data_err(h, req, code) < 0) 
-	    goto done;
-	goto ok;
-    }
-    if ((f = fopen(filename, "rb")) == NULL){
-	if (api_http_data_err(h, req, 403) < 0) /* Forbidden or 500? */
-	    goto done;
-	goto ok;
-    }
     /* Size could have been taken from stat() but this reduces the race condition interval 
      * There is still one without flock
      */
     fseek(f, 0, SEEK_END);
     fsize = ftell(f);
+    /* Extra sanity check, had some problems with wrong file types */
+    if (fsz != fsize){
+	clicon_debug(1, "%s Error file %s size mismatch sz:%zu vs %zu",
+		     __FUNCTION__, filename, fsz, fsize);
+	if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
+	    goto done;
+	goto ok;
+    }
     fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
     if ((cbdata = cbuf_new_alloc(fsize+1)) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new_alloc");
@@ -313,11 +356,11 @@ api_http_data_file(clicon_handle h,
 	goto done;
     }
     if (sz != 1){
+	clicon_debug(1, "%s Error fread(%s) sz:%zu", __FUNCTION__, filename, sz);
 	if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
 	    goto done;
 	goto ok;
     }
-    clicon_debug(1, "%s code:%d", __FUNCTION__, code);
     str[fsize] = 0;
     if (cbuf_append_str(cbdata, str) < 0){
 	clicon_err(OE_UNIX, errno, "cbuf_append_str");
@@ -329,6 +372,7 @@ api_http_data_file(clicon_handle h,
 	goto done;
     cbdata = NULL; /* consumed by reply-send */
  ok:
+    clicon_debug(1, "%s Read %s OK", __FUNCTION__, filename);
     retval = 0;
  done:
     if (str)

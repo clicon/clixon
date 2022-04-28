@@ -49,6 +49,7 @@ module clixon-config {
     revision 2022-03-21 {
 	description
 	    "Added option:
+                    CLICON_RESTCONF_API_ROOT
                     CLICON_NETCONF_BASE_CAPABILITY
                     CLICON_HTTP_DATA_PATH
                     CLICON_HTTP_DATA_ROOT
@@ -535,6 +536,13 @@ module clixon-config {
                  RFC6242 for example.
                  This only applies to the external NETCONF";
 	}
+	leaf CLICON_RESTCONF_API_ROOT {
+	    type string;
+	    default "/restconf";
+	    description
+		"The RESTCONF API root path
+                 See RFC 8040 Sec 1.16 and 3.1";
+	}
 	leaf CLICON_RESTCONF_DIR {
 	    type string;
 	    description
@@ -617,7 +625,7 @@ module clixon-config {
                  Both feature clixon-restconf:http-data and restconf/enable-http-data 
                  must be enabled for this match to occur.";
 	}
-	leaf CLICON_HTTP_DATA_ROOT {
+	leaf CLICON_HTTP_DATA_ROOT{ 
 	    if-feature "clrc:http-data";
 	    type string;
 	    default "/var/www";
@@ -1065,7 +1073,9 @@ module clixon-config {
     	    default "streams";
     	    description
 		"Stream path appended to CLICON_STREAM_URL to form
-                 stream subscription URL.";
+                 stream subscription URL.
+                 See CLICON_RESTCONF_API_ROOT and CLICON_HTTP_DATA_ROOT
+                 Should be changed to include '/' ";
 	}
 	leaf CLICON_STREAM_URL {
 	    type string;

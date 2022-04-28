@@ -41,6 +41,7 @@
 %union {
     char *string;
     int   intval;
+    void *stack;
 }
 
 %token SP
@@ -62,8 +63,8 @@
 %token <intval> DIGIT
 
 %type <string> body
-%type <string> absolute_paths
-%type <string> absolute_paths1
+%type <stack>  absolute_paths
+%type <stack>  absolute_paths1
 %type <string> absolute_path
 %type <string> field_vchars
 %type <string> field_values
@@ -259,16 +260,16 @@ method        : TOKEN
  */
 request_target : absolute_paths1
                  {
-		      if (restconf_param_set(_HY->hy_h, "REQUEST_URI", $1) < 0)
+		     if (restconf_param_set(_HY->hy_h, "REQUEST_URI", cbuf_get($1)) < 0)
 			  YYABORT;
-		      free($1);
+		      cbuf_free($1);
 		     _PARSE_DEBUG("request-target -> absolute-paths1");
 		 }
 	        | absolute_paths1 QMARK QUERY
 		  {
-		      if (restconf_param_set(_HY->hy_h, "REQUEST_URI", $1) < 0)
+		      if (restconf_param_set(_HY->hy_h, "REQUEST_URI", cbuf_get($1)) < 0)
 			  YYABORT;
-		      free($1);
+		      cbuf_free($1);
 		      if (http1_parse_query(_HY, $3) < 0)
 			  YYABORT;
 		      free($3);
@@ -285,21 +286,25 @@ absolute_paths1 : absolute_paths
 		      { $$ = $1;_PARSE_DEBUG("absolute-paths1 -> absolute-paths / "); }
 ;
 
-/* absolute-path = 1*( "/" segment ) */
+/* absolute-path = 1*( "/" segment ) 
+*/
 absolute_paths : absolute_paths absolute_path
                  {
-		     if (($$ = clixon_string_del_join($1, "/", $2)) == NULL) { free($2); YYABORT;}
-		     free($2);
+		     $$ = $1;
+		     cprintf($$, "/");
+		     if ($2)
+			 cprintf($$, "%s", $2);
 		     _PARSE_DEBUG("absolute-paths -> absolute-paths absolute-path");
 		  }
                | absolute_path
 	         {
-		     if (($$ = clixon_string_del_join(NULL, "/", $1)) == NULL) { free($1); YYABORT;}
-		     free($1);
+		     if (($$ = cbuf_new()) == NULL){ YYABORT;}
+		     cprintf($$, "/");
+		     if ($1)
+			 cprintf($$, "%s", $1);
 		     _PARSE_DEBUG("absolute-paths -> absolute-path");
 	         }
 ;
-
 /* segment = <segment, see [RFC3986], Section 3.3> 
  * segment = *pchar
  * pchar   = unreserved / pct-encoded / sub-delims / ":" / "@"
@@ -310,8 +315,13 @@ absolute_paths : absolute_paths absolute_path
  */
 absolute_path   : SLASH PCHARS
                    {
-		       if (($$=strdup($2)) == NULL) YYABORT;
-		       _PARSE_DEBUG("absolute-path -> PCHARS");
+		       $$ = $2;
+		       _PARSE_DEBUG("absolute-path -> / PCHARS");
+		   }
+                   | SLASH
+                   {
+		       $$ = NULL;
+		       _PARSE_DEBUG("absolute-path -> /");
 		   }
 ;
 

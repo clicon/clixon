@@ -40,20 +40,19 @@ Expected: May 2022
 ### New features
 
 * Extended the Restconf implementation with a limited http-data static service
-  * Added two new config options to clixon-config.yang:
-     * `CLICON_HTTP_DATA_PATH`
-     * `CLICON_HTTP_DATA_ROOT`
-  * Added feature http-data to restconf-config.yang and the following option:
-     * `enable-http-data`
-  * The limited implementation is as follows:
-	* path: Local static files within `CLICON_WWW_DATA_ROOT`
-	* operation GET, HEAD, or OPTIONS
-	* query parameters not supported
-	* no indata
-        * media: html, css, js, fonts, image, 
-  7. Authentication, TLS, http/2 as restconf
-Generic changes:
-  * Uniform path selection across fcgi, native http/1 + http/2
+   * The limited implementation is as follows:
+      * path: Local static files within `CLICON_WWW_DATA_ROOT`
+      * operation GET, HEAD, or OPTIONS
+      * query parameters not supported
+      * no indata
+      * media: html, css, js, fonts, image.
+      * authentication, TLS, http/2 as restconf
+   * Added two new config options to clixon-config.yang:
+      * `CLICON_HTTP_DATA_PATH`
+      * `CLICON_HTTP_DATA_ROOT`
+   * Added feature http-data to restconf-config.yang and the following option that needs to be true
+      * `enable-http-data`
+   * Added `HTTP_DATA_INTERNAL_REDIRECT` compile-time option for internal redirects to `index.html`
 
 * Implementation of "chunked framing" according to RFC6242 for Netconf 1.1.
   * First hello is 1.0 EOM framing, then successing rpc is chunked framing
@@ -65,10 +64,13 @@ Generic changes:
 
 Users may have to change how they access the system
 
+* Restconf
+    * Added 404 return without body if neither restconf, data or streams prefix match
 * Netconf: Usage of chunked framing"
     * To keep existing end-of-message encoding, set `CLICON_NETCONF_BASE_CAPABILITY` to `0`
 * New `clixon-config@2022-03-21.yang` revision
   * Added option:
+    * `CLICON_RESTCONF_API_ROOT`
     * `CLICON_NETCONF_BASE_CAPABILITY`
     * `CLICON_HTTP_DATA_PATH`
     * `CLICON_HTTP_DATA_ROOT`
@@ -106,6 +108,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: HTTP/1 parse error for '/' path
 * Fixed: YANG if-feature in config file of disables feature did not work, was always on
   * This does not apply to the datastore, only the config file itself.
 * Fixed: YANG key list check bad performance

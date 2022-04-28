@@ -99,6 +99,12 @@
  */
 #define RESTCONF_NETNS_DEFAULT "default"
 
+/*! If set make an internal redirect if URI path indetifies a directory
+ * For example, path is /local, and redirect is 'index.html, the request 
+ * will be redirected to /local/index.html
+ */
+#define HTTP_DATA_INTERNAL_REDIRECT "index.html"
+
 /*! Set a temporary parent for use in special case "when" xpath calls
  * Problem is when changing an existing (candidate) in-memory datastore that yang "when" conditionals
  * should be changed in clixon_datastore_write.c:text_modify().

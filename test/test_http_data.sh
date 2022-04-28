@@ -4,7 +4,7 @@
 # Get them via http and https
 # Send options and head request
 # Errors: not found, post, 
-# XXX: feature disabled
+# See RFC 7230
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -125,12 +125,15 @@ function testrun()
     
     RESTCONFIG=$(restconf_config none false $proto $enable)
 
-    datapath=/data
-    wdir=$dir/www
-# Host setup:
-#    datapath=/
-#    wdir=/var/www/html
-
+    if true; then
+	# Proper test setup
+	datapath=/data
+	wdir=$dir/www
+    else
+	# Experiments with local host
+	datapath=/
+	wdir=/var/www/html
+    fi
     # Clixon config
     cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -191,9 +194,24 @@ EOF
 #	echo "curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html"
 	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 404"
     else
-	new "WWW get html"
+	new "WWW get root expect 404 without body"
+	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/)" 0 "HTTP/$HVER 404" --not-- "Content-Type"
+	
+	new "WWW get index.html"
 	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
+	
+	new "WWW get dir -> expect index.html"
+	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
 
+	# remove index
+	mv $dir/www/data/index.html $dir/www/data/tmp.index.html
+
+	new "WWW get dir -> no indirection expect 404"
+	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data)" 0 "HTTP/$HVER 404" "Content-Type: text/html" "<title>404 Not Found</title>"
+
+	# move index back
+	mv $dir/www/data/tmp.index.html $dir/www/data/index.html 
+	
 	new "WWW get css"
 	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/example.css)" 0 "HTTP/$HVER 200" "Content-Type: text/css" "display: inline;" --not-- "Content-Type: text/html"
 
@@ -209,6 +227,7 @@ EOF
 
 	new "WWW get http soft link"
 	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/inside.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>" --not-- "<title>Dont access this</title>"
+
 	
 	if [ ! -f /.dockerenv ] ; then	# XXX Privs dont not work on docker/alpine?
 	    new "WWW get http not read access"
