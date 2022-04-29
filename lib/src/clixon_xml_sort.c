@@ -1148,10 +1148,6 @@ match_base_child(cxobj      *x0,
     cg_var      *cvi;
     cxobj       *xb;
     char        *keyname;
-    cxobj       *x0c = NULL;
-    yang_stmt   *y0c;
-    yang_stmt   *y0p;
-    yang_stmt   *yp; /* yang parent */
     clixon_xvec *xvec = NULL;
     
     *x0cp = NULL; /* init return value */
@@ -1159,21 +1155,6 @@ match_base_child(cxobj      *x0,
     if (yc == NULL){ 
 	*x0cp = xml_find(x0, xml_name(x1c));
 	goto ok;
-    }
-    /* Special case is if yc parent (yp) is choice/case
-     * then find x0 child with same yc even though it does not match lexically
-     * However this will give another y0c != yc
-     */
-    if ((yp = yang_choice(yc)) != NULL){
-	x0c = NULL;
-	while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
-	    if ((y0c = xml_spec(x0c)) != NULL &&
-		(y0p = yang_choice(y0c)) != NULL &&
-		y0p == yp)
-		break;	/* x0c will have a value */
-	}
-	*x0cp = x0c;
-	goto ok; /* What to do if not found? */
     }
     switch (yang_keyword_get(yc)){
     case Y_CONTAINER: 	/* Equal regardless */

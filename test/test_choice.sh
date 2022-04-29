@@ -148,7 +148,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 if [ $RC -ne 0 ]; then
@@ -158,9 +158,10 @@ if [ $RC -ne 0 ]; then
     new "start restconf daemon"
     start_restconf -f $cfg
 
-    new "waiting"
-    wait_restconf
 fi
+
+new "wait restconf"
+wait_restconf
 
 # First vanilla (protocol) case
 new "netconf validate empty"
@@ -283,26 +284,32 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 # Choice with multiple items
 
 new "netconf choice multiple items first"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\" op=\"replace\">
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\" nc:operation=\"replace\" xmlns:nc=\"$BASENS\">
   <ma>0</ma>
   <ma>1</ma>
   <mb>2</mb>
 </system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
+new "netconf get multiple items"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:config\"><ma>0</ma><ma>1</ma><mb>2</mb></system>" ""
+
 new "netconf validate multiple ok"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf choice multiple items second"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\" op=\"replace\">
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\" nc:operation=\"replace\" xmlns:nc=\"$BASENS\">
   <mb>0</mb>
   <mb>1</mb>
 </system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "netconf validate multiple ok"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+new "netconf get items second"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:config\"><mb>0</mb><mb>1</mb></system>" ""
+
+new "netconf validate items second expect fail"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-many-elements</error-app-tag><error-severity>error</error-severity><error-path>/system/mb</error-path></rpc-error></rpc-reply>"
 
 new "netconf choice multiple items mix"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\" op=\"replace\">
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\" nc:operation=\"replace\" xmlns:nc=\"$BASENS\">
   <ma>0</ma>
   <mb>2</mb>
   <mc>2</mc>
@@ -310,6 +317,23 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 new "netconf validate multiple error"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>mc</bad-element></error-info><error-severity>error</error-severity><error-message>Element in choice statement already exists</error-message></rpc-error></rpc-reply>"
+
+# Double merge
+new "netconf choice single item"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\" nc:operation=\"replace\" xmlns:nc=\"$BASENS\">
+  <ma>12</ma>
+</system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf choice merge second item"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\" nc:operation=\"merge\" xmlns:nc=\"$BASENS\">
+  <mb>99</mb>
+</system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf get both items"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:config\"><ma>12</ma><mb>99</mb></system>" ""
+
+new "netconf validate ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

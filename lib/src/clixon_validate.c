@@ -1128,7 +1128,7 @@ check_list_unique_minmax(cxobj  *xt,
 	    ych = y;
 	keyw = yang_keyword_get(y);
 	if (keyw != Y_LIST && keyw != Y_LEAF_LIST){
-	    if (yprev != NULL && y == yprev && yang_choice(y)==NULL){
+	    if (yprev != NULL && y == yprev){
 		/* Only lists and leaf-lists are allowed to be many 
 		 * This checks duplicate container and leafs
 		 */

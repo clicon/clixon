@@ -274,6 +274,86 @@ check_when_condition(cxobj              *x0p,
     goto done;
 }
 
+/*! Check if choice nodes and implicitly remove all other cases.
+ *
+ * Special case is if yc parent (yp) is choice/case
+ * then find x0 child with same yc even though it does not match lexically
+ * However this will give another y0c != yc
+ * @param[in]  x0      Base tree node
+ * @param[in]  y1c     Yang spec of tree child. If null revert to linear search.
+ * @retval     0       OK
+ * @retval    -1       Error
+ *
+ * From RFC 7950 Sec 7.9
+ * Since only one of the choice's cases can be valid at any time in the
+ * data tree, the creation of a node from one case implicitly deletes
+ * all nodes from all other cases.  If a request creates a node from a
+ * case, the server will delete any existing nodes that are defined in
+ * other cases inside the choice.
+ */
+static int
+check_delete_existing_case(cxobj     *x0,
+    			   yang_stmt *y1c)
+{
+    int        retval = -1;
+    yang_stmt *yp;
+    yang_stmt *y0case;
+    yang_stmt *y1case;
+    yang_stmt *y0choice;
+    yang_stmt *y1choice;
+    yang_stmt *y0c;
+    cxobj     *x0c;
+    cxobj     *x0prev;
+
+    if ((yp = yang_parent_get(y1c)) == NULL)
+	goto ok;
+    if (yang_keyword_get(yp) == Y_CASE){
+	y1case = yp;
+	y1choice = yang_parent_get(y1case);
+    }
+    else if (yang_keyword_get(yp) == Y_CHOICE){
+	y1case = NULL;
+	y1choice = yp;
+    }
+    else
+	goto ok;
+    x0prev = NULL;
+    x0c = NULL;
+    while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
+	if ((y0c = xml_spec(x0c)) == NULL ||
+	    (yp = yang_parent_get(y0c)) == NULL){
+	    x0prev = x0c;
+	    continue;
+	}
+	if (yang_keyword_get(yp) == Y_CASE){
+	    y0case = yp;
+	    y0choice = yang_parent_get(y0case);
+	}
+	else if (yang_keyword_get(yp) == Y_CHOICE){
+	    y0case = NULL;
+	    y0choice = yp;
+	}
+	else{
+	    x0prev = x0c;
+	    continue;
+	}
+	if (y0choice == y1choice){
+	    if (y0case == NULL ||
+		y0case != y1case){
+		if (xml_purge(x0c) < 0)
+		    goto done;
+		x0c = x0prev;
+		continue;
+	    }
+	}
+	x0prev = x0c;
+    }
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
  * @param[in]  h        Clicon handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
@@ -695,7 +775,7 @@ text_modify(clicon_handle       h,
 	    }
 	    x1c = NULL; 
 	    i = 0;
-	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) { 
 		x1cname = xml_name(x1c);
 		/* Get yang spec of the child by child matching */
 		yc = yang_find_datanode(y0, x1cname);
@@ -724,16 +804,13 @@ text_modify(clicon_handle       h,
 			       x1cname, yang_find_mynamespace(y0));
 		    goto done;
 		}
+		/* Check if existing case should be deleted */
+		if (check_delete_existing_case(x0, yc) < 0)
+		    goto done;
 		/* See if there is a corresponding node in the base tree */
 		x0c = NULL;
 		if (match_base_child(x0, x1c, yc, &x0c) < 0)
 		    goto done;
-		if (x0c && (yc != xml_spec(x0c))){
-		    /* There is a match but is should be replaced (choice)*/
-		    if (xml_purge(x0c) < 0)
-			goto done;
-		    x0c = NULL;
-		}
 		x0vec[i++] = x0c; /* != NULL if x0c is matching x1c */
 	    }
 	    /* Second pass: Loop through children of the x1 modification tree again

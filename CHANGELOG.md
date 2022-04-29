@@ -111,6 +111,8 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [if choice is declared with multiple elements or leaf-list with in a case scope , addition or updation is not happening as expected](https://github.com/clicon/clixon/issues/327)
+  * This includes several choice/case adjustments to follow RFC 7950 Sec 7.9 better
 * Fixed: HTTP/1 parse error for '/' path
 * Fixed: YANG if-feature in config file of disables feature did not work, was always on
   * This does not apply to the datastore, only the config file itself.
