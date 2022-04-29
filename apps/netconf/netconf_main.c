@@ -70,7 +70,7 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hD:f:E:l:qHa:u:d:p:y:U:t:eo:"
+#define NETCONF_OPTS "hD:f:E:l:q01ca:u:d:p:y:U:t:eo:"
 
 #define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
 
@@ -727,7 +727,8 @@ usage(clicon_handle h,
 	    "\t-E <dir> \tExtra configuration file directory\n"
 	    "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
             "\t-q\t\tServer does not send hello message on startup\n"
-	    "\t-H \t\tServer does not expect hello message from client.\n"
+	    "\t-0 \t\tSet netconf base capability to 0, server does not expect hello, force EOM framing\n"
+	    "\t-1 \t\tSet netconf base capability to 1, server does not expect hello, force chunked framing\n"
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
     	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
 	    "\t-d <dir>\tSpecify netconf plugin directory dir (default: %s)\n"
@@ -866,7 +867,12 @@ main(int    argc,
 	case 'e': /* dont ignore packet errors */
 	    ignore_packet_errors = 0;
 	    break;
-	case 'H': /* Hello messages are optional */
+	case '0': /* Force EOM */
+	    clicon_option_int_set(h, "CLICON_NETCONF_BASE_CAPABILITY", 0);
+	    clicon_option_bool_set(h, "CLICON_NETCONF_HELLO_OPTIONAL", 1);
+	    break;
+	case '1': /* Hello messages are optional */
+	    clicon_option_int_set(h, "CLICON_NETCONF_BASE_CAPABILITY", 1);
 	    clicon_option_bool_set(h, "CLICON_NETCONF_HELLO_OPTIONAL", 1);
 	    break;
 	case 'o':{ /* Configuration option */
