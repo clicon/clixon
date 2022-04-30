@@ -448,7 +448,7 @@ usage(clicon_handle h,
     	    "\t-D <level>\tDebug level\n"
     	    "\t-f <file>\tClixon config file\n"
 	    "\t-E <dir> \tExtra configuration file directory\n"
-	    "\t-l (s|e|o|f<file>) Log on (s)yslog, std(e)rr, std(o)ut or (f)ile. Syslog is default. If foreground, then syslog and stderr is default. Filename is given after -f as follows: -lf<file>\n"
+	    "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
 	    "\t-d <dir>\tSpecify backend plugin directory (default: %s)\n"
 	    "\t-p <dir>\tAdd Yang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-b <dir>\tSpecify datastore directory\n"

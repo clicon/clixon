@@ -89,6 +89,7 @@ Users may have to change how they access the system
 
 ### Minor features
 
+* Extended `-l` command-line option to all clixon commands with a `none` option, eg `-l n` directs logging to `dev/null`
 * [Adding feature to top level container doesn't work](https://github.com/clicon/clixon/issues/322)
   * Instead of removing YANG which is disabled by `if-feature`, replace it with an yang `anydata` node.
   * This means XML specified by such YANG is ignored, and it is not an error to access it
@@ -111,6 +112,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [Error message seen twice in some cases](https://github.com/clicon/clixon/issues/325)
 * Fixed: [if choice is declared with multiple elements or leaf-list with in a case scope , addition or updation is not happening as expected](https://github.com/clicon/clixon/issues/327)
   * This includes several choice/case adjustments to follow RFC 7950 Sec 7.9 better
 * Fixed: HTTP/1 parse error for '/' path

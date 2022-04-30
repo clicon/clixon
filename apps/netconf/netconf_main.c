@@ -725,7 +725,7 @@ usage(clicon_handle h,
 	    "\t-D <level>\tDebug level\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-E <dir> \tExtra configuration file directory\n"
-	    "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
+	    "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (stderr is default)\n"
             "\t-q\t\tServer does not send hello message on startup\n"
 	    "\t-0 \t\tSet netconf base capability to 0, server does not expect hello, force EOM framing\n"
 	    "\t-1 \t\tSet netconf base capability to 1, server does not expect hello, force chunked framing\n"

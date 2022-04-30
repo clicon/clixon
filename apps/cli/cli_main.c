@@ -428,7 +428,7 @@ usage(clicon_handle h,
 	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-G \t\tPrint auo-cli CLI syntax generated from YANG\n"
 	    "\t-L \t\tDebug print dynamic CLI syntax including completions and expansions\n"
-	    "\t-l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut or (f)ile (stderr is default)\n"
+	    "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (stderr is default)\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
 	    "\t-c <file>\tSpecify cli spec file.\n"
 	    "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"

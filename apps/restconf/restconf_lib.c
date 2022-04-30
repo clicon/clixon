@@ -572,7 +572,7 @@ restconf_uripath(clicon_handle h)
 
 /*! Drop privileges from root to user (or already at user)
  * @param[in]  h    Clicon handle
- * Group set to clicon to communicate with backend
+ * Group set to CLICON_SOCK_GROUP to communicate with backend
  */
 int
 restconf_drop_privileges(clicon_handle h)

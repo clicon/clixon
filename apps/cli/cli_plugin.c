@@ -509,12 +509,15 @@ cli_plugin_finish(clicon_handle h)
 /*! Help function to print a meaningful error string. 
  * Sometimes the libraries specify an error string, if so print that.
  * Otherwise just print 'command error'.
+ * But do not print it if error is already logged in eg clicon_err() using STDERR logging
+ * See eg https://github.com/clicon/clixon/issues/325
  * @param[in]  f   File handler to write error to.
  */
 int 
 cli_handler_err(FILE *f)
 {
-    if (clicon_errno){
+    if (clicon_errno &&
+	(clicon_get_logflags() & CLICON_LOG_STDERR) == 0){
 	fprintf(f,  "%s: %s", clicon_strerror(clicon_errno), clicon_err_reason);
 	if (clicon_suberrno)
 	    fprintf(f, ": %s", strerror(clicon_suberrno));

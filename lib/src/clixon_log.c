@@ -138,6 +138,9 @@ clicon_log_opt(char c)
     case 'f':
 	logdst = CLICON_LOG_FILE;
 	break;
+    case 'n':
+	logdst = 0;
+	break;
     default:
 	break;
     } 

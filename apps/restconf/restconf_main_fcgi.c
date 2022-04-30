@@ -268,7 +268,7 @@ usage(clicon_handle h,
 	    "\t-D <level>\t  Debug level\n"
     	    "\t-f <file>\t  Configuration file (mandatory)\n"
 	    "\t-E <dir> \t  Extra configuration file directory\n"
-	    "\t-l <s|f<file>> \t  Log on (s)yslog, (f)ile (syslog is default)\n"
+	    "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
 	    "\t-p <dir>\t  Yang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-y <file>\t  Load yang spec file (override yang main module)\n"
     	    "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
