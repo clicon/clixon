@@ -47,7 +47,7 @@ function testinit(){
 
     new "Starting $snmpd -C --rwcommunity=public --master=agentx --agentXSocket=unix:/tmp/clixon_snmp.sock udp:127.0.0.1:1161"
 
-    # Dity workaround for snmpd in Alpine
+    # Dirty workaround for snmpd in Alpine
     if [ -f /.dockerenv ]; then
         $snmpd -C --rwcommunity=public --master=agentx --agentXSocket=unix:$SOCK udp:127.0.0.1:1161
     else
