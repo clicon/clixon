@@ -51,7 +51,13 @@ function testinit(){
     sudo killall snmpd
 
     new "Starting $snmpd --rwcommunity=public --master=agentx --agentXSocket=unix:/tmp/clixon_snmp.sock udp:127.0.0.1:1161"
-    $snmpd --rwcommunity=public --master=agentx --agentXSocket=unix:$SOCK udp:127.0.0.1:1161
+
+    # Dirty workaround for snmpd in Alpine
+    if [ -f /.dockerenv ]; then
+        $snmpd -C --rwcommunity=public --master=agentx --agentXSocket=unix:$SOCK udp:127.0.0.1:1161
+    else
+        $snmpd --rwcommunity=public --master=agentx --agentXSocket=unix:$SOCK udp:127.0.0.1:1161
+    fi
 
     pgrep snmpd
     if [ $? != 0 ]; then
@@ -78,7 +84,7 @@ function testinit(){
     start_snmp $cfg &
 
     # Wait for things to settle
-    sleep 10
+    sleep 3
 }
 
 function testexit(){
