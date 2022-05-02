@@ -137,6 +137,15 @@ restconf_reply_send(void  *req0,
     int                   retval = -1;
     restconf_stream_data *sd = (restconf_stream_data *)req0;
 
+    if (restconf_reply_header(req, "Access-Control-Allow-Origin", "*") < 0)
+        goto done;
+    if (restconf_reply_header(req, "Access-Control-Allow-Methods", "GET, OPTIONS, POST, PUT") < 0)
+        goto done;
+    if (restconf_reply_header(req, "Access-Control-Allow-Headers", "Content-Type") < 0)
+        goto done;
+    if (restconf_reply_header(req, "Access-Control-Max-Age", "86400") < 0)
+        goto done;
+
     clicon_debug(1, "%s code:%d", __FUNCTION__, code);
     if (sd == NULL){
 	clicon_err(OE_CFG, EINVAL, "sd is NULL");

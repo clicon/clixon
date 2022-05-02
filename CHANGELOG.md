@@ -53,6 +53,7 @@ Expected: May 2022
    * Added feature http-data to restconf-config.yang and the following option that needs to be true
       * `enable-http-data`
    * Added `HTTP_DATA_INTERNAL_REDIRECT` compile-time option for internal redirects to `index.html`
+   * Added headers to calm requests from Javascript running in a browser
 
 * Implementation of "chunked framing" according to RFC6242 for Netconf 1.1.
   * First hello is 1.0 EOM framing, then successing rpc is chunked framing
