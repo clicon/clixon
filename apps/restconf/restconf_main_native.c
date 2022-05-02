@@ -583,7 +583,7 @@ ssl_alpn_check(clicon_handle        h,
     int   ret;
     cbuf *cberr = NULL;
     
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(1, "%s %s", __FUNCTION__, alpn);
     /* Alternatively, call  restconf_str2proto but alpn is not a proper string */
     if (alpn && alpnlen == 8 && memcmp("http/1.1", alpn, 8) == 0){
 	*proto = HTTP_11;
@@ -612,7 +612,7 @@ ssl_alpn_check(clicon_handle        h,
 	}
 	else{
 	    /* XXX Sending badrequest here gives a segv in SSL_shutdown() later or a SIGPIPE here */
-	    clicon_log(LOG_INFO, "%s Warning: ALPN: No protocol selected", __FUNCTION__);
+	    clicon_log(LOG_INFO, "%s Warning: ALPN: No protocol selected, or no ALPN?", __FUNCTION__);
 	}
 
 	if (rc->rc_ssl){

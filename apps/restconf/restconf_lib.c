@@ -798,9 +798,9 @@ restconf_config_init(clicon_handle h,
 	strcmp(bstr, "true") == 0) {
 	restconf_http_data_set(h, 1);
     }
-    else if (strcmp(bstr, "false") == 0){
+    else 
 	restconf_http_data_set(h, 0);
-    }
+
     /* Check if fcgi-socket is true and that feature is enabled
      * It is protected by if-feature fcgi, which means if the feature is not enabled, then 
      * YANG spec will exist but by ANYDATA

@@ -939,7 +939,8 @@ int
 http2_send_server_connection(restconf_conn *rc)
 {
     int                    retval = -1;
-    nghttp2_settings_entry iv[1] = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
+    nghttp2_settings_entry iv[2] = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}
+				    ,{NGHTTP2_SETTINGS_ENABLE_PUSH, 0}};
     nghttp2_error          ngerr;
 
     if ((ngerr = nghttp2_submit_settings(rc->rc_ngsession,

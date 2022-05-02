@@ -279,7 +279,7 @@ api_http_data_file(clicon_handle h,
 {
     int         retval = -1;
     cbuf       *cbfile = NULL;
-    char       *filename;
+    char       *filename = NULL;
     cbuf       *cbdata = NULL;
     FILE       *f = NULL;
     off_t       fsz = 0;
@@ -371,8 +371,8 @@ api_http_data_file(clicon_handle h,
     if (restconf_reply_send(req, 200, cbdata, head) < 0)
 	goto done;
     cbdata = NULL; /* consumed by reply-send */
- ok:
     clicon_debug(1, "%s Read %s OK", __FUNCTION__, filename);
+ ok:
     retval = 0;
  done:
     if (str)
