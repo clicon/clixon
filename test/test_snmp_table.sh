@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Use NET-SNMP-EXAMPLES-MIB
+# with OID: .iso.org.dod.internet.private.enterprises.netSnmp.netSnmpExamples (.1.3.6.1.4.1.8072.2)
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -22,7 +24,10 @@ fyang=$dir/clixon-example.yang
 SOCK=/tmp/clixon_snmp.sock
 
 # OID
-OID=".1.3.6.1.4.1.8072.2.2.1"
+# .netSnmpExampleTables.netSnmpIETFWGTable
+# NET-SNMP-EXAMPLES-MIB::netSnmpExamples
+MIB=".1.3.6.1.4.1.8072.2"
+OID="${MIB}.2.1"
 OID_SET="${OID}.1.2.6.115.110.109.112.118.51"
 
 cat <<EOF > $cfg

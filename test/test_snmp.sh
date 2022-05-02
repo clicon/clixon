@@ -90,16 +90,18 @@ function testexit(){
 new "SNMP tests"
 testinit
 
-OID=".1.2.3.6.1"
+# NET-SNMP-EXAMPLES-MIB::netSnmpExamples
+MIB=".1.3.6.1.4.1.8072.2"
+OID="${MIB}.1.1" # netSnmpExampleInteger
 
 new "Test SNMP get for default value"
-expectpart "$($snmpget $OID)" 0 "$OID = Gauge32: 42"
+expectpart "$($snmpget $OID)" 0 "$OID = INTEGER: 42"
 
 new "Set new value to OID"
-expectpart "$($snmpset $OID u 1234)" 0 "$OID = Gauge32: 1234"
+expectpart "$($snmpset $OID i 1234)" 0 "$OID = INTEGER: 1234"
 
 new "Get new value"
-expectpart "$($snmpget $OID)" 0 "$OID = Gauge32: 1234"
+expectpart "$($snmpget $OID)" 0 "$OID = INTEGER: 1234"
 
 new "Cleaning up"
 testexit
