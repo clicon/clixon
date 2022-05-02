@@ -43,6 +43,9 @@
   * YANG `clixon-config@2022-03-21.yang` changes:
     * Added option:
       * `CLICON_SNMP_AGENT_SOCK`
+  * New configure options:
+    * `--enable-netsnmp`
+    * `--with-mib-generated-yang-dir=DIR`
   * Thanks Siklu for sponshoring 
 
 ## 5.8.0

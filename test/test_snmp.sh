@@ -24,6 +24,8 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>${YANG_STANDARD_DIR}</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>${MIB_GENERATED_YANG_DIR}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/var/tmp/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
@@ -37,6 +39,9 @@ module clixon-example{
   yang-version 1.1;
   namespace "urn:example:clixon";
   prefix ex;
+  import NET-SNMP-EXAMPLES-MIB {
+      prefix "net-snmp-examples";
+  }
 }
 EOF
 
@@ -59,6 +64,7 @@ function testinit(){
 	err "Failed to start snmpd"
     fi
 
+    new "test params: -f $cfg"
     # Kill old backend and start a new one
     new "kill old backend"
     sudo clixon_backend -zf $cfg

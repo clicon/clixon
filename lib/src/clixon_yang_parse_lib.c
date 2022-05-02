@@ -790,7 +790,10 @@ yang_parse_str(char         *str,
 	if (yang_scan_exit(&yy) < 0)
 	    goto done;		
     }
-    ymod = yy.yy_module;
+    if ((ymod = yy.yy_module) == NULL){
+	clicon_err(OE_YANG, 0, "No module in YANG %s", name);
+	goto done;
+    }
     /* Add filename for debugging and errors, see also ys_linenum on (each symbol?) */
     if (yang_filename_set(ymod, name) < 0)
 	goto done;
