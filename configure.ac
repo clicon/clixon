@@ -124,6 +124,8 @@ AC_SUBST(CLIXON_YANG_PATCH)
 AC_SUBST(YANG_INSTALLDIR) 
 # Examples require standard IETF YANGs. You need to provide these for example and tests
 AC_SUBST(YANG_STANDARD_DIR)
+# SNMP tests require generated YANGs from MIBs
+AC_SUBST(MIB_GENERATED_YANG_DIR)
 
 #
 AC_PROG_CC()
@@ -293,6 +295,18 @@ if test "$enable_netsnmp" = "yes"; then
    AC_CHECK_LIB(netsnmp, init_snmp)
    AC_CHECK_LIB(netsnmpagent, init_agent)	
    AC_CHECK_HEADERS(net-snmp/net-snmp-config.h,[], AC_MSG_ERROR([snmp is missing]))
+
+
+   # MIB_GENERATED_YANG_DIR is where clixon assumes generated YANGs from MIBs are stored
+   # This is NOT installed by Clixon and is not needed for core system
+   # However, it is required by SNMP tests.
+   # To generate: for i in /usr/share/snmp/mibs/*; do smidump -f yang $i > `basename -s .txt $i`.yang; done
+   AC_ARG_WITH(mib-generated-yang-dir,
+      [AS_HELP_STRING([--with-mib-generated-yang-dir=DIR],[Directory of generated YANG specs (default: $prefix/share/mibyang)])],
+      [MIB_GENERATED_YANG_DIR="$withval"],
+      [MIB_GENERATED_YANG_DIR="${prefix}/share/mibyang"]		
+    )
+    AC_MSG_RESULT(Generated YANGs from MIB files are expected to be in ${MIB_GENERATED_YANG_DIR})
 fi 
 
 # Set default config file location

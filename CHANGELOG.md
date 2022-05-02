@@ -36,12 +36,14 @@
 
 ## SNMP branch
 
-* Clixon SNMP frontend
+* Clixon SNMP frontend (experimental)
   * net-snmp and MIB to YANG translation
-  * Experimental work
   * YANG `clixon-config@2022-03-21.yang` changes:
     * Added option:
       * `CLICON_SNMP_AGENT_SOCK`
+  * New configure options:
+    * `--enable-netsnmp`
+    * `--with-mib-generated-yang-dir=DIR`
 
 ## 5.7.0
 Expected: May 2022
