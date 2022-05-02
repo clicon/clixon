@@ -58,27 +58,99 @@
 /* Command line options to be passed to getopt(3) */
 #define SNMP_OPTS "hD:f:l:o:"
 
-#if 1 // XXX hardcoded from https://github.com/net-snmp/net-snmp/blob/master/agent/mibgroup/testhandler.c
+#if 1 /* scalar example */
 
-Netsnmp_Node_Handler my_test_handler;
-Netsnmp_Node_Handler my_test_table_handler;
-Netsnmp_Node_Handler my_data_table_handler;
-Netsnmp_Node_Handler my_test_instance_handler;
+#define TESTHANDLER_SET_NAME "my_test"
+int
+my_test_instance_handler(netsnmp_mib_handler *handler,
+                         netsnmp_handler_registration *reginfo,
+                         netsnmp_agent_request_info *reqinfo,
+                         netsnmp_request_info *requests)
+{
 
-static oid      my_test_oid[4] = { 1, 2, 3, 4 };
-static oid      my_table_oid[4] = { 1, 2, 3, 5 };
-static oid      my_instance_oid[5] = { 1, 2, 3, 6, 1 };
-static oid      my_data_table_oid[4] = { 1, 2, 3, 7 };
-static oid      my_data_ulong_instance[4] = { 1, 2, 3, 9 };
+    static int  accesses = 42;
+    u_long     *accesses_cache = NULL;
 
-u_long          my_ulong = 42;
+    clicon_debug(1, "%s", __FUNCTION__);
 
+    switch (reqinfo->mode) {
+    case MODE_GET:
+        snmp_set_var_typed_value(requests->requestvb, ASN_INTEGER,
+                                 (u_char *) & accesses, sizeof(accesses));
+        break;
+    case MODE_SET_RESERVE1:
+        if (requests->requestvb->type != ASN_INTEGER)
+            netsnmp_set_request_error(reqinfo, requests,
+                                      SNMP_ERR_WRONGTYPE);
+        break;
+
+    case MODE_SET_RESERVE2:
+        /*
+         * store old info for undo later 
+         */
+        accesses_cache = netsnmp_memdup(&accesses, sizeof(accesses));
+        if (accesses_cache == NULL) {
+            netsnmp_set_request_error(reqinfo, requests,
+                                      SNMP_ERR_RESOURCEUNAVAILABLE);
+            return SNMP_ERR_NOERROR;
+        }
+        netsnmp_request_add_list_data(requests,
+                                      netsnmp_create_data_list
+                                      (TESTHANDLER_SET_NAME,
+                                       accesses_cache, free));
+        break;
+
+    case MODE_SET_ACTION:
+        /*
+         * update current 
+         */
+        accesses = *(requests->requestvb->val.integer);
+        DEBUGMSGTL(("testhandler", "updated accesses -> %d\n", accesses));
+        break;
+
+    case MODE_SET_UNDO:
+        accesses =
+            *((u_long *) netsnmp_request_get_list_data(requests,
+                                                       TESTHANDLER_SET_NAME));
+        break;
+
+    case MODE_SET_COMMIT:
+    case MODE_SET_FREE:
+        /*
+         * nothing to do 
+         */
+        break;
+    }
+
+    return SNMP_ERR_NOERROR;
+}
+
+static void
+init_testscalar(void)
+{
+    oid            my_oid[] = { 1, 3, 6, 1, 4, 1, 8072, 2, 1, 1 };
+
+    clicon_debug(1, "%s", __FUNCTION__);
+
+    /*
+     * instance handler test
+     */
+
+    netsnmp_register_instance(netsnmp_create_handler_registration
+                              ("netSnmpExampleInteger", my_test_instance_handler,
+			       my_oid, OID_LENGTH(my_oid),
+			       HANDLER_CAN_RWRITE));
+}
+
+#endif
+
+#if 1 /* table example */
 static netsnmp_table_data_set *table_set;
 
 /*
  * https://net-snmp.sourceforge.io/dev/agent/data_set_8c-example.html#_a0
  */
-void
+static void
 init_testtable(void)
 {
     netsnmp_table_row *row;
@@ -88,8 +160,7 @@ init_testtable(void)
      * * OID node for the entire table.  In our case this is the
      * * netSnmpIETFWGTable oid definition
      */
-    oid             my_registration_oid[] =
-        { 1, 3, 6, 1, 4, 1, 8072, 2, 2, 1 };
+    oid     my_oid[] = { 1, 3, 6, 1, 4, 1, 8072, 2, 2, 1 };
 
     /*
      * a debugging statement.  Run the agent with -Dexample_data_set to see
@@ -147,8 +218,7 @@ init_testtable(void)
      */
     netsnmp_register_table_data_set(netsnmp_create_handler_registration
                                     ("netSnmpIETFWGTable", NULL,
-                                     my_registration_oid,
-                                     OID_LENGTH(my_registration_oid),
+                                     my_oid, OID_LENGTH(my_oid),
                                      HANDLER_CAN_RWRITE), table_set, NULL);
 
 
@@ -206,399 +276,7 @@ init_testtable(void)
 
     DEBUGMSGTL(("example_data_set", "Done initializing.\n"));
 }
-
-void
-init_testhandler(void)
-{
-    /*
-     * we're registering at .1.2.3.4 
-     */
-    netsnmp_handler_registration *my_test;
-    netsnmp_table_registration_info *table_info;
-    u_long          ind1;
-    netsnmp_table_data *table;
-    netsnmp_table_row *row;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-
-    /*
-     * basic handler test
-     */
-    netsnmp_register_handler(netsnmp_create_handler_registration
-                             ("myTest", my_test_handler, my_test_oid, 4,
-                              HANDLER_CAN_RONLY));
-
-    /*
-     * instance handler test
-     */
-
-    netsnmp_register_instance(netsnmp_create_handler_registration
-                              ("myInstance", my_test_instance_handler,
-                               my_instance_oid, 5, HANDLER_CAN_RWRITE));
-
-    netsnmp_register_ulong_instance("myulong",
-                                    my_data_ulong_instance, 4,
-                                    &my_ulong, NULL);
-
-    /*
-     * table helper test
-     */
-
-    my_test = netsnmp_create_handler_registration("myTable",
-                                                  my_test_table_handler,
-                                                  my_table_oid, 4,
-                                                  HANDLER_CAN_RONLY);
-    if (!my_test)
-        return;
-
-    table_info = SNMP_MALLOC_TYPEDEF(netsnmp_table_registration_info);
-    if (table_info == NULL)
-        return;
-
-    netsnmp_table_helper_add_indexes(table_info, ASN_INTEGER, ASN_INTEGER,
-                                     0);
-    table_info->min_column = 3;
-    table_info->max_column = 3;
-    netsnmp_register_table(my_test, table_info);
-
-    /*
-     * data table helper test
-     */
-    /*
-     * we'll construct a simple table here with two indexes: an
-     * integer and a string (why not).  It'll contain only one
-     * column so the data pointer is merely the data in that
-     * column. 
-     */
-
-    table = netsnmp_create_table_data("data_table_test");
-
-    netsnmp_table_data_add_index(table, ASN_INTEGER);
-    netsnmp_table_data_add_index(table, ASN_OCTET_STR);
-
-    /*
-     * 1 partridge in a pear tree 
-     */
-    row = netsnmp_create_table_data_row();
-    ind1 = 1;
-    netsnmp_table_row_add_index(row, ASN_INTEGER, &ind1, sizeof(ind1));
-    netsnmp_table_row_add_index(row, ASN_OCTET_STR, "partridge",
-                                strlen("partridge"));
-    row->data = NETSNMP_REMOVE_CONST(void *, "pear tree");
-    netsnmp_table_data_add_row(table, row);
-
-    /*
-     * 2 turtle doves 
-     */
-    row = netsnmp_create_table_data_row();
-    ind1 = 2;
-    netsnmp_table_row_add_index(row, ASN_INTEGER, &ind1, sizeof(ind1));
-    netsnmp_table_row_add_index(row, ASN_OCTET_STR, "turtle",
-                                strlen("turtle"));
-    row->data = NETSNMP_REMOVE_CONST(void *, "doves");
-    netsnmp_table_data_add_row(table, row);
-
-    /*
-     * we're going to register it as a normal table too, so we get the
-     * automatically parsed column and index information 
-     */
-    table_info = SNMP_MALLOC_TYPEDEF(netsnmp_table_registration_info);
-    if (table_info == NULL)
-        return;
-
-    netsnmp_table_helper_add_indexes(table_info, ASN_INTEGER,
-                                     ASN_OCTET_STR, 0);
-    table_info->min_column = 3;
-    table_info->max_column = 3;
-
-    netsnmp_register_read_only_table_data(
-	  netsnmp_create_handler_registration("12days", my_data_table_handler, my_data_table_oid, 4,
-					   HANDLER_CAN_RONLY),
-	  table, table_info);
-
-}
-
-int
-my_test_handler(netsnmp_mib_handler *handler,
-                netsnmp_handler_registration *reginfo,
-                netsnmp_agent_request_info *reqinfo,
-                netsnmp_request_info *requests)
-{
-
-    oid             myoid1[] = { 1, 2, 3, 4, 5, 6 };
-    static u_long   accesses = 0;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    /*
-     * loop through requests 
-     */
-    while (requests) {
-        netsnmp_variable_list *var = requests->requestvb;
-
-        DEBUGMSGTL(("testhandler", "  oid:"));
-        DEBUGMSGOID(("testhandler", var->name, var->name_length));
-        DEBUGMSG(("testhandler", "\n"));
-
-        switch (reqinfo->mode) {
-        case MODE_GET:
-            if (netsnmp_oid_equals(var->name, var->name_length, myoid1, 6)
-                == 0) {
-                snmp_set_var_typed_value(var, ASN_INTEGER,
-                                         (u_char *) & accesses,
-                                         sizeof(accesses));
-                return SNMP_ERR_NOERROR;
-            }
-            break;
-
-        case MODE_GETNEXT:
-            if (snmp_oid_compare(var->name, var->name_length, myoid1, 6)
-                < 0) {
-                snmp_set_var_objid(var, myoid1, 6);
-                snmp_set_var_typed_value(var, ASN_INTEGER,
-                                         (u_char *) & accesses,
-                                         sizeof(accesses));
-                return SNMP_ERR_NOERROR;
-            }
-            break;
-
-        default:
-            netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_GENERR);
-            break;
-        }
-
-        requests = requests->next;
-    }
-    return SNMP_ERR_NOERROR;
-}
-
-/*
- * functionally this is a simply a multiplication table for 12x12
- */
-
-#define MAX_COLONE 12
-#define MAX_COLTWO 12
-#define RESULT_COLUMN 3
-int
-my_test_table_handler(netsnmp_mib_handler *handler,
-                      netsnmp_handler_registration *reginfo,
-                      netsnmp_agent_request_info *reqinfo,
-                      netsnmp_request_info *requests)
-{
-
-    netsnmp_table_registration_info
-        *handler_reg_info =
-        (netsnmp_table_registration_info *) handler->prev->myvoid;
-
-    netsnmp_table_request_info *table_info;
-    u_long          result;
-    int             x, y;
-
-    DEBUGMSGTL(("testhandler", "Got request:\n"));
-
-    while (requests) {
-        netsnmp_variable_list *var = requests->requestvb;
-
-        if (requests->processed != 0)
-            continue;
-
-        DEBUGMSGTL(("testhandler_table", "Got request:\n"));
-        DEBUGMSGTL(("testhandler_table", "  oid:"));
-        DEBUGMSGOID(("testhandler_table", var->name, var->name_length));
-        DEBUGMSG(("testhandler_table", "\n"));
-
-        table_info = netsnmp_extract_table_info(requests);
-        if (table_info == NULL) {
-            requests = requests->next;
-            continue;
-        }
-
-        switch (reqinfo->mode) {
-        case MODE_GETNEXT:
-            /*
-             * beyond our search range? 
-             */
-            if (table_info->colnum > RESULT_COLUMN)
-                break;
-
-            /*
-             * below our minimum column? 
-             */
-            if (table_info->colnum < RESULT_COLUMN ||
-                /*
-                 * or no index specified 
-                 */
-                table_info->indexes->val.integer == NULL) {
-                table_info->colnum = RESULT_COLUMN;
-                x = 0;
-                y = 0;
-            } else {
-                x = *(table_info->indexes->val.integer);
-                y = *(table_info->indexes->next_variable->val.integer);
-            }
-
-            if (table_info->number_indexes ==
-                handler_reg_info->number_indexes) {
-                y++;            /* GETNEXT is basically just y+1 for this table */
-                if (y > MAX_COLTWO) {   /* (with wrapping) */
-                    y = 0;
-                    x++;
-                }
-            }
-            if (x <= MAX_COLONE) {
-                result = x * y;
-
-                *(table_info->indexes->val.integer) = x;
-                *(table_info->indexes->next_variable->val.integer) = y;
-                netsnmp_table_build_result(reginfo, requests,
-                                           table_info, ASN_INTEGER,
-                                           (u_char *) & result,
-                                           sizeof(result));
-            }
-
-            break;
-
-        case MODE_GET:
-            if (var->type == ASN_NULL) {        /* valid request if ASN_NULL */
-                /*
-                 * is it the right column? 
-                 */
-                if (table_info->colnum == RESULT_COLUMN &&
-                    /*
-                     * and within the max boundries? 
-                     */
-                    *(table_info->indexes->val.integer) <= MAX_COLONE &&
-                    *(table_info->indexes->next_variable->val.integer)
-                    <= MAX_COLTWO) {
-
-                    /*
-                     * then, the result is column1 * column2 
-                     */
-                    result = *(table_info->indexes->val.integer) *
-                        *(table_info->indexes->next_variable->val.integer);
-                    snmp_set_var_typed_value(var, ASN_INTEGER,
-                                             (u_char *) & result,
-                                             sizeof(result));
-                }
-            }
-            break;
-
-        }
-
-        requests = requests->next;
-    }
-
-    return SNMP_ERR_NOERROR;
-}
-
-#define TESTHANDLER_SET_NAME "my_test"
-int
-my_test_instance_handler(netsnmp_mib_handler *handler,
-                         netsnmp_handler_registration *reginfo,
-                         netsnmp_agent_request_info *reqinfo,
-                         netsnmp_request_info *requests)
-{
-
-    static u_long   accesses = 42;
-    u_long         *accesses_cache = NULL;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-
-    switch (reqinfo->mode) {
-    case MODE_GET:
-        snmp_set_var_typed_value(requests->requestvb, ASN_UNSIGNED,
-                                 (u_char *) & accesses, sizeof(accesses));
-        break;
-
-#ifndef NETSNMP_NO_WRITE_SUPPORT
-    case MODE_SET_RESERVE1:
-        if (requests->requestvb->type != ASN_UNSIGNED)
-            netsnmp_set_request_error(reqinfo, requests,
-                                      SNMP_ERR_WRONGTYPE);
-        break;
-
-    case MODE_SET_RESERVE2:
-        /*
-         * store old info for undo later 
-         */
-        accesses_cache = netsnmp_memdup(&accesses, sizeof(accesses));
-        if (accesses_cache == NULL) {
-            netsnmp_set_request_error(reqinfo, requests,
-                                      SNMP_ERR_RESOURCEUNAVAILABLE);
-            return SNMP_ERR_NOERROR;
-        }
-        netsnmp_request_add_list_data(requests,
-                                      netsnmp_create_data_list
-                                      (TESTHANDLER_SET_NAME,
-                                       accesses_cache, free));
-        break;
-
-    case MODE_SET_ACTION:
-        /*
-         * update current 
-         */
-        accesses = *(requests->requestvb->val.integer);
-        DEBUGMSGTL(("testhandler", "updated accesses -> %lu\n", accesses));
-        break;
-
-    case MODE_SET_UNDO:
-        accesses =
-            *((u_long *) netsnmp_request_get_list_data(requests,
-                                                       TESTHANDLER_SET_NAME));
-        break;
-
-    case MODE_SET_COMMIT:
-    case MODE_SET_FREE:
-        /*
-         * nothing to do 
-         */
-        break;
-#endif /* NETSNMP_NO_WRITE_SUPPORT */
-    }
-
-    return SNMP_ERR_NOERROR;
-}
-
-int
-my_data_table_handler(netsnmp_mib_handler *handler,
-                      netsnmp_handler_registration *reginfo,
-                      netsnmp_agent_request_info *reqinfo,
-                      netsnmp_request_info *requests)
-{
-
-    char           *column3;
-    netsnmp_table_request_info *table_info;
-    netsnmp_table_row *row;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-
-    while (requests) {
-        if (requests->processed) {
-            requests = requests->next;
-            continue;
-        }
-
-        /*
-         * extract our stored data and table info 
-         */
-        row = netsnmp_extract_table_row(requests);
-        table_info = netsnmp_extract_table_info(requests);
-        if (!table_info || !row || !row->data)
-            continue;
-        column3 = (char *) row->data;
-
-        /*
-         * there's only one column, we don't need to check if it's right 
-         */
-        netsnmp_table_data_build_result(reginfo, reqinfo, requests, row,
-                                        table_info->colnum,
-                                        ASN_OCTET_STR, (u_char*)column3,
-                                        strlen(column3));
-        requests = requests->next;
-    }
-    return SNMP_ERR_NOERROR;
-}
-
-#endif
+#endif /* table example */
 
 /*! Signal terminates process
  * Just set exit flag for proper exit in event loop
@@ -704,12 +382,8 @@ clixon_snmp_init(clicon_handle h,
     init_agent(__PROGRAM__);
 
     /* XXX Hardcoded, replace this with generic MIB */
-#if 1
-    init_testhandler();
+    init_testscalar();
     init_testtable();
-#else
-    init_nstAgentSubagentObject(h);
-#endif
 
     /* example-demon will be used to read example-demon.conf files. */
     init_snmp(__PROGRAM__);
@@ -733,7 +407,6 @@ clixon_snmp_init(clicon_handle h,
  done:
     return retval;
 }
-
 
 /*! Clean and close all state of netconf process (but dont exit). 
  * Cannot use h after this 
