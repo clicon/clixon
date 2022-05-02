@@ -465,8 +465,8 @@ native_send_badrequest(clicon_handle       h,
  * @retval    -1    Error
  */
 static int
-native_clear_input(clicon_handle         h,
-		   restconf_stream_data *sd)
+http1_native_clear_input(clicon_handle         h,
+			 restconf_stream_data *sd)
 {
     int retval = -1;
 
@@ -524,6 +524,7 @@ read_ssl(restconf_conn *rc,
     }
     retval = 0;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -577,7 +578,8 @@ read_regular(restconf_conn *rc,
 }
 
 #ifdef HAVE_HTTP1
-/*! RESTCONF HTTP/1 processing after chunk of bytes read
+
+/*! Restconf HTTP/1 processing after chunk of bytes read
  *
  * @param[in]  rc           Restconf connection handle 
  * @param[in]  buf          Input buffer
@@ -588,10 +590,10 @@ read_regular(restconf_conn *rc,
  * @retval     1            OK
  */
 static int
-restconf_http1(restconf_conn        *rc,
-	       char                 *buf,
-	       size_t                n,
-	       int                  *readmore)
+restconf_http1_process(restconf_conn        *rc,
+		       char                 *buf,
+		       size_t                n,
+		       int                  *readmore)
 {
     int                   retval = -1;
     restconf_stream_data *sd;
@@ -641,7 +643,7 @@ restconf_http1(restconf_conn        *rc,
 	    else if ((ret = clixon_event_poll(rc->rc_s)) < 0)
 		goto done;
 	    if (ret > 0){
-		if (native_clear_input(h, sd) < 0)
+		if (http1_native_clear_input(h, sd) < 0)
 		    goto done;
 		(*readmore)++;
 		goto ok;
@@ -790,18 +792,21 @@ restconf_http2_upgrade(restconf_conn *rc)
 }
 #endif /* HAVE_LIBHTTP1 */
 
-/*!
+/*! Restconf HTTP/2 processing after chunk of bytes read
+ * @param[in]  rc       Restconf connection
  * @param[in]  buf      Input buffer
  * @param[in]  n        Size of input buffer
+ * @param[in]  n        Length of data in input buffer
+ * @param[out] readmore If set, read data again, do not continue processing
  * @retval     -1       Error
  * @retval     0        Socket closed, quit
  * @retval     1        OK
  */
 static int
-restconf_http2(restconf_conn *rc,
-	       char          *buf,
-	       size_t         n,
-	       int           *readmore)
+restconf_http2_process(restconf_conn *rc,
+		       char          *buf,
+		       size_t         n,
+		       int           *readmore)
 {
     int           retval = -1;
     int           ret;
@@ -823,8 +828,14 @@ restconf_http2(restconf_conn *rc,
 	    retval = 0;
 	    goto done;
 	}
-	/* There may be more data frames */
-	(*readmore)++;
+	/* Check if read more data frames */
+	ret = 0;
+	if (rc->rc_ssl)
+	    ret = SSL_pending(rc->rc_ssl);
+	else if ((ret = clixon_event_poll(rc->rc_s)) < 0)
+	    goto done;
+	if (ret > 0)
+	    (*readmore)++;
     }
     retval = 1;
  done:
@@ -891,7 +902,7 @@ restconf_connection(int   s,
 #ifdef HAVE_HTTP1
 	case HTTP_10:
 	case HTTP_11:
-	    if ((ret = restconf_http1(rc, buf, n, &readmore)) < 0)
+	    if ((ret = restconf_http1_process(rc, buf, n, &readmore)) < 0)
 		goto done;
 	    if (ret == 0)
 		goto ok;
@@ -905,12 +916,10 @@ restconf_connection(int   s,
 #endif /* HAVE_HTTP1 */
 #ifdef HAVE_LIBNGHTTP2
 	case HTTP_2:
-	    if ((ret = restconf_http2(rc, buf, n, &readmore)) < 0)
+	    if ((ret = restconf_http2_process(rc, buf, n, &readmore)) < 0)
 		goto done;
 	    if (ret == 0)
 		goto ok;
-	    if (readmore)
-		continue;
 	    break;
 #endif /* HAVE_LIBNGHTTP2 */
 	default:

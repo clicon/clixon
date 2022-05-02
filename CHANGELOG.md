@@ -68,7 +68,7 @@ Users may have to change how they access the system
     * Added 404 return without body if neither restconf, data or streams prefix match
 * Netconf: Usage of chunked framing"
     * To keep existing end-of-message encoding, set `CLICON_NETCONF_BASE_CAPABILITY` to `0`
-    * Added `clixon_netconf` command-line option `-0`and changed `-H` to `-1`
+    * Added `clixon_netconf` command-line option `-0` and changed `-H` to `-1`
        * `-0` means dont send hello, but fix netconf base version to 0 and use EOM framing
        * `-1` means dont send hello, but fix netconf base version to 1 and use chunked framing 
 * New `clixon-config@2022-03-21.yang` revision
@@ -112,6 +112,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: A long TLS+HTTP/2 request such as by a browser causing block of other requests.
 * Fixed: [Error message seen twice in some cases](https://github.com/clicon/clixon/issues/325)
 * Fixed: [if choice is declared with multiple elements or leaf-list with in a case scope , addition or updation is not happening as expected](https://github.com/clicon/clixon/issues/327)
   * This includes several choice/case adjustments to follow RFC 7950 Sec 7.9 better

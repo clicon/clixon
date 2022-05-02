@@ -227,11 +227,15 @@ EOF
 
 	new "WWW get http soft link"
 	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/inside.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>" --not-- "<title>Dont access this</title>"
-
 	
-	if [ ! -f /.dockerenv ] ; then	# XXX Privs dont not work on docker/alpine?
-	    new "WWW get http not read access"
-	    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/noread.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>"
+	# Two cases where the privileges test is not run:
+	# 1) Docker in alpine for some reason
+	# 2) Restconf run explicitly as root (eg coverage)
+	if [ ! -f /.dockerenv ] ; then  
+            if [[ "$clixon_restconf" != *"-r"* ]]; then
+		new "WWW get http not read access"
+		expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/noread.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>"
+            fi
 	fi
 
 	# Try .. Cannot get .. in path to work in curl (it seems to remove it)
