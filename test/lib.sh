@@ -206,6 +206,27 @@ if [ ! -z ${YANG_STANDARD_DIR} ]; then
     : ${IETFRFC=$YANG_STANDARD_DIR/ietf/RFC}
 fi
 
+: ${SNMPCHECK:=true}
+
+if $SNMPCHECK; then
+    if [ "${WITH_NETSNMP}" == "yes" ]; then
+        if [ ! -f /var/run/snmpd.pid ]; then
+		    echo -e "\e[31m\nenable-netsnmp set but snmpd not running, start with:"
+		    echo "systemctl start snmpd"
+            echo ""
+            echo "snmpd must be configured to use a Unix socket for agent communication"
+            echo "and have a rwcommunity configured, make sure the following lines are"
+            echo "added to /etc/snmp/snmpd.conf:"
+            echo ""
+            echo "  rwcommunity     public  localhost"
+            echo "  agentXSocket    unix:/var/run/snmp.sock"
+            echo "  agentxperms     777 777"
+		    echo -e "\e[0m"
+		    exit -1
+        fi
+    fi
+fi
+
 # Check sanity between --with-restconf setting and if nginx is started by systemd or not
 # This check is optional because some installs, such as vagrant make a non-systemd/direct
 # start

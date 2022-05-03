@@ -11,14 +11,14 @@ if [ ${WITH_NETSNMP} != "yes" ]; then
 fi
 
 snmpd=$(type -p snmpd)
-snmpget="$(type -p snmpget) -On -c public -v2c localhost:1161 "
-snmpset="$(type -p snmpset) -On -c public -v2c localhost:1161 "
+snmpget="$(type -p snmpget) -On -c public -v2c localhost "
+snmpset="$(type -p snmpset) -On -c public -v2c localhost "
 
 cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
 
 # AgentX unix socket
-SOCK=/tmp/clixon_snmp.sock
+SOCK=/var/run/snmp.sock
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -46,24 +46,6 @@ module clixon-example{
 EOF
 
 function testinit(){
-    # Kill old snmp daemon and start a new ones
-    new "kill old snmp daemons"
-    sudo killall snmpd
-
-    new "Starting $snmpd -C --rwcommunity=public --master=agentx --agentXSocket=unix:/tmp/clixon_snmp.sock udp:127.0.0.1:1161"
-
-    # Dirty workaround for snmpd in Alpine
-    if [ -f /.dockerenv ]; then
-        $snmpd -C --rwcommunity=public --master=agentx --agentXSocket=unix:$SOCK udp:127.0.0.1:1161
-    else
-        $snmpd --rwcommunity=public --master=agentx --agentXSocket=unix:$SOCK udp:127.0.0.1:1161
-    fi
-
-    pgrep snmpd
-    if [ $? != 0 ]; then
-	err "Failed to start snmpd"
-    fi
-
     new "test params: -f $cfg"
     # Kill old backend and start a new one
     new "kill old backend"
@@ -89,8 +71,7 @@ function testinit(){
 }
 
 function testexit(){
-    sudo killall snmpd
-    stop_snmp
+    sudo killall clixon_snmp
 }
 
 new "SNMP tests"
