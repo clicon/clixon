@@ -133,7 +133,7 @@ static const map_str2int yang_regexp_map[] = {
  * @param[in] dbglevel Debug level
  * @retval    0        OK
  * @retval   -1        Error
- * @note CLICON_FEATURE and CLICON_YANG_DIR are treated specially since they are lists
+ * @note CLICON_FEATURE, CLICON_YANG_DIR and CLICON_SNMP_MIB are treated specially since they are lists
  */
 int
 clicon_option_dump(clicon_handle h, 
@@ -161,7 +161,7 @@ clicon_option_dump(clicon_handle h,
 	else
 	    clicon_debug(dbglevel, "%s = NULL", keys[i]);
     }
-    /* Next print CLICON_FEATURE and CLICON_YANG_DIR from config tree
+    /* Next print CLICON_FEATURE, CLICON_YANG_DIR and CLICON_SNMP_DIR from config tree
      * Since they are lists they are placed in the config tree.
      */
     x = NULL;
@@ -173,6 +173,12 @@ clicon_option_dump(clicon_handle h,
     x = NULL;
     while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
 	if (strcmp(xml_name(x), "CLICON_FEATURE") != 0)
+	    continue;
+	clicon_debug(dbglevel, "%s =\t \"%s\"", xml_name(x), xml_body(x));
+    }
+    x = NULL;
+    while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
+	if (strcmp(xml_name(x), "CLICON_SNMP_MIB") != 0)
 	    continue;
 	clicon_debug(dbglevel, "%s =\t \"%s\"", xml_name(x), xml_body(x));
     }
@@ -333,7 +339,8 @@ parse_configfile(clicon_handle  h,
 		    continue;
 		/* List options for configure options that are lists or leaf-lists: append to main */
 		if (strcmp(name,"CLICON_FEATURE")==0 ||
-		    strcmp(name,"CLICON_YANG_DIR")==0){
+		    strcmp(name,"CLICON_YANG_DIR")==0 ||
+		    strcmp(name,"CLICON_SNMP_MIB")==0){
 		    if (xml_addsub(xt, xec) < 0)
 			goto done;
 		    continue;
@@ -381,6 +388,8 @@ parse_configfile(clicon_handle  h,
 	    continue;
 	if (strcmp(name,"CLICON_YANG_DIR")==0)
 	    continue;
+	if (strcmp(name,"CLICON_SNMP_MIB")==0)
+	    continue;
 	if (clicon_hash_add(copt, 
 			    name,
 			    body,
@@ -424,7 +433,8 @@ clicon_option_add(clicon_handle h,
     cxobj         *x;
 
     if (strcmp(name, "CLICON_FEATURE")==0 ||
-	strcmp(name, "CLICON_YANG_DIR")==0){
+	strcmp(name, "CLICON_YANG_DIR")==0 ||
+	strcmp(name, "CLICON_SNMP_MIB")==0){
 	if ((x = clicon_conf_xml(h)) == NULL){
 	    clicon_err(OE_UNIX, ENOENT, "option %s not found (clicon_conf_xml_set has not been called?)", name);
 	    goto done;

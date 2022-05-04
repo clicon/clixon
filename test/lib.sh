@@ -442,7 +442,7 @@ function chunked_framing()
 function start_snmp(){
     cfg=$1
 
-    $clixon_snmp -f $cfg -D $DBG -l s &
+    $clixon_snmp -f $cfg -D $DBG &
 
     if [ $? -ne 0 ]; then
 	    err
@@ -458,7 +458,7 @@ function stop_snmp(){
     if [ $valgrindtest != 0 ]; then
         kill `ps aux | grep [v]algrind | awk '{print $2}' | tail -n1`
     else
-        killall clixon_snmp
+        killall -q clixon_snmp
     fi
 }
 

@@ -39,8 +39,9 @@
 * Clixon SNMP frontend (experimental)
   * net-snmp and MIB to YANG translation
   * YANG `clixon-config@2022-03-21.yang` changes:
-    * Added option:
+    * Added options:
       * `CLICON_SNMP_AGENT_SOCK`
+      * `CLICON_SNMP_MIB`
   * New configure options:
     * `--enable-netsnmp`
     * `--with-mib-generated-yang-dir=DIR`

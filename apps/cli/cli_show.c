@@ -880,7 +880,7 @@ cli_show_options(clicon_handle h,
 	else
 	    fprintf(stdout, "%s: NULL\n", keys[i]);
     }
-    /* Next print CLICON_FEATURE and CLICON_YANG_DIR from config tree
+    /* Next print CLICON_FEATURE, CLICON_YANG_DIR and CLICON_SNMP_MIB from config tree
      * Since they are lists they are placed in the config tree.
      */
     x = NULL;
@@ -892,6 +892,12 @@ cli_show_options(clicon_handle h,
     x = NULL;
     while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
 	if (strcmp(xml_name(x), "CLICON_FEATURE") != 0)
+	    continue;
+	fprintf(stdout, "%s: \"%s\"\n", xml_name(x), xml_body(x));
+    }
+    x = NULL;
+    while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
+	if (strcmp(xml_name(x), "CLICON_SNMP_MIB") != 0)
 	    continue;
 	fprintf(stdout, "%s: \"%s\"\n", xml_name(x), xml_body(x));
     }
