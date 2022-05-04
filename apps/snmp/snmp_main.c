@@ -55,228 +55,10 @@
 /* clicon */
 #include <clixon/clixon.h>
 
+#include "snmp_mib_yang.h"
+
 /* Command line options to be passed to getopt(3) */
 #define SNMP_OPTS "hD:f:l:o:"
-
-#if 1 /* scalar example */
-
-#define TESTHANDLER_SET_NAME "my_test"
-int
-my_test_instance_handler(netsnmp_mib_handler *handler,
-                         netsnmp_handler_registration *reginfo,
-                         netsnmp_agent_request_info *reqinfo,
-                         netsnmp_request_info *requests)
-{
-
-    static int  accesses = 42;
-    u_long     *accesses_cache = NULL;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-
-    switch (reqinfo->mode) {
-    case MODE_GET:
-        snmp_set_var_typed_value(requests->requestvb, ASN_INTEGER,
-                                 (u_char *) & accesses, sizeof(accesses));
-        break;
-    case MODE_SET_RESERVE1:
-        if (requests->requestvb->type != ASN_INTEGER)
-            netsnmp_set_request_error(reqinfo, requests,
-                                      SNMP_ERR_WRONGTYPE);
-        break;
-
-    case MODE_SET_RESERVE2:
-        /*
-         * store old info for undo later 
-         */
-        accesses_cache = netsnmp_memdup(&accesses, sizeof(accesses));
-        if (accesses_cache == NULL) {
-            netsnmp_set_request_error(reqinfo, requests,
-                                      SNMP_ERR_RESOURCEUNAVAILABLE);
-            return SNMP_ERR_NOERROR;
-        }
-        netsnmp_request_add_list_data(requests,
-                                      netsnmp_create_data_list
-                                      (TESTHANDLER_SET_NAME,
-                                       accesses_cache, free));
-        break;
-
-    case MODE_SET_ACTION:
-        /*
-         * update current 
-         */
-        accesses = *(requests->requestvb->val.integer);
-        DEBUGMSGTL(("testhandler", "updated accesses -> %d\n", accesses));
-        break;
-
-    case MODE_SET_UNDO:
-        accesses =
-            *((u_long *) netsnmp_request_get_list_data(requests,
-                                                       TESTHANDLER_SET_NAME));
-        break;
-
-    case MODE_SET_COMMIT:
-    case MODE_SET_FREE:
-        /*
-         * nothing to do 
-         */
-        break;
-    }
-
-    return SNMP_ERR_NOERROR;
-}
-
-static void
-init_testscalar(void)
-{
-    oid            my_oid[] = { 1, 3, 6, 1, 4, 1, 8072, 2, 1, 1 };
-
-    clicon_debug(1, "%s", __FUNCTION__);
-
-    /*
-     * instance handler test
-     */
-
-    netsnmp_register_instance(netsnmp_create_handler_registration
-                              ("netSnmpExampleInteger", my_test_instance_handler,
-			       my_oid, OID_LENGTH(my_oid),
-			       HANDLER_CAN_RWRITE));
-}
-
-#endif
-
-#if 1 /* table example */
-static netsnmp_table_data_set *table_set;
-
-/*
- * https://net-snmp.sourceforge.io/dev/agent/data_set_8c-example.html#_a0
- */
-static void
-init_testtable(void)
-{
-    netsnmp_table_row *row;
-
-    /*
-     * the OID we want to register our integer at.  This should be the
-     * * OID node for the entire table.  In our case this is the
-     * * netSnmpIETFWGTable oid definition
-     */
-    oid     my_oid[] = { 1, 3, 6, 1, 4, 1, 8072, 2, 2, 1 };
-
-    /*
-     * a debugging statement.  Run the agent with -Dexample_data_set to see
-     * * the output of this debugging statement.
-     */
-    DEBUGMSGTL(("example_data_set",
-                "Initalizing example dataset table\n"));
-
-    /*
-     * It's going to be the "working group chairs" table, since I'm
-     * * sitting at an IETF convention while I'm writing this.
-     * *
-     * *  column 1 = index = string = WG name
-     * *  column 2 = string = chair #1
-     * *  column 3 = string = chair #2  (most WGs have 2 chairs now)
-     */
-
-    table_set = netsnmp_create_table_data_set("netSnmpIETFWGTable");
-
-    /*
-     * allow the creation of new rows via SNMP SETs
-     */
-    table_set->allow_creation = 1;
-
-    /*
-     * set up what a row "should" look like, starting with the index
-     */
-    netsnmp_table_dataset_add_index(table_set, ASN_OCTET_STR);
-
-    /*
-     * define what the columns should look like.  both are octet strings here
-     */
-    netsnmp_table_set_multi_add_default_row(table_set,
-                                            /*
-                                             * column 2 = OCTET STRING,
-                                             * writable = 1,
-                                             * default value = NULL,
-                                             * default value len = 0
-                                             */
-                                            2, ASN_OCTET_STR, 1, NULL, 0,
-                                            /*
-                                             * similar
-                                             */
-                                            3, ASN_OCTET_STR, 1, NULL, 0,
-                                            0 /* done */ );
-
-    /*
-     * register the table
-     */
-    /*
-     * if we wanted to handle specific data in a specific way, or note
-     * * when requests came in we could change the NULL below to a valid
-     * * handler method in which we could over ride the default
-     * * behaviour of the table_dataset helper
-     */
-    netsnmp_register_table_data_set(netsnmp_create_handler_registration
-                                    ("netSnmpIETFWGTable", NULL,
-                                     my_oid, OID_LENGTH(my_oid),
-                                     HANDLER_CAN_RWRITE), table_set, NULL);
-
-
-    /*
-     * create the a row for the table, and add the data
-     */
-    row = netsnmp_create_table_data_row();
-    /*
-     * set the index to the IETF WG name "snmpv3"
-     */
-    netsnmp_table_row_add_index(row, ASN_OCTET_STR, "snmpv3",
-                                strlen("snmpv3"));
-
-
-    /*
-     * set column 2 to be the WG chair name "Russ Mundy"
-     */
-    netsnmp_set_row_column(row, 2, ASN_OCTET_STR,
-                           "Russ Mundy", strlen("Russ Mundy"));
-    netsnmp_mark_row_column_writable(row, 2, 1);        /* make writable via SETs */
-
-    /*
-     * set column 3 to be the WG chair name "David Harrington"
-     */
-    netsnmp_set_row_column(row, 3, ASN_OCTET_STR, "David Harrington",
-                           strlen("David Harrington"));
-    netsnmp_mark_row_column_writable(row, 3, 1);        /* make writable via SETs */
-
-    /*
-     * add the row to the table
-     */
-    netsnmp_table_dataset_add_row(table_set, row);
-
-    /*
-     * add the data, for the second row
-     */
-    row = netsnmp_create_table_data_row();
-    netsnmp_table_row_add_index(row, ASN_OCTET_STR, "snmpconf",
-                                strlen("snmpconf"));
-    netsnmp_set_row_column(row, 2, ASN_OCTET_STR, "David Partain",
-                           strlen("David Partain"));
-    netsnmp_mark_row_column_writable(row, 2, 1);        /* make writable */
-    netsnmp_set_row_column(row, 3, ASN_OCTET_STR, "Jon Saperia",
-                           strlen("Jon Saperia"));
-    netsnmp_mark_row_column_writable(row, 3, 1);        /* make writable */
-    netsnmp_table_dataset_add_row(table_set, row);
-
-    /*
-     * Finally, this actually allows the "add_row" token it the
-     * * snmpd.conf file to add rows to this table.
-     * * Example snmpd.conf line:
-     * *   add_row netSnmpIETFWGTable eos "Glenn Waters" "Dale Francisco"
-     */
-    netsnmp_register_auto_data_table(table_set, NULL);
-
-    DEBUGMSGTL(("example_data_set", "Done initializing.\n"));
-}
-#endif /* table example */
 
 /*! Signal terminates process
  * Just set exit flag for proper exit in event loop
@@ -357,8 +139,8 @@ clixon_snmp_fdset_register(clicon_handle h)
  * @see snmp_terminate
  */
 static int
-clixon_snmp_init(clicon_handle h,
-		 int           logdst)
+clixon_snmp_subagent(clicon_handle h,
+		     int           logdst)
 {
     int   retval = -1;
     char *sockpath = NULL;
@@ -378,12 +160,9 @@ clixon_snmp_init(clicon_handle h,
     /* XXX: This should be configurable. */
     netsnmp_ds_set_string(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_X_SOCKET, sockpath);
 
+
     /* initialize the agent library */
     init_agent(__PROGRAM__);
-
-    /* XXX Hardcoded, replace this with generic MIB */
-    init_testscalar();
-    init_testtable();
 
     /* example-demon will be used to read example-demon.conf files. */
     init_snmp(__PROGRAM__);
@@ -397,7 +176,7 @@ clixon_snmp_init(clicon_handle h,
 	goto done;
     }
     if (set_signal(SIGPIPE, SIG_IGN, NULL) < 0){
-	clicon_err(OE_UNIX, errno, "Setting DIGPIPE signal");
+	clicon_err(OE_UNIX, errno, "Setting SIGPIPE signal");
 	goto done;
     }
     /* Workaround for netsnmps API use of fdset:s instead of sockets */
@@ -633,7 +412,10 @@ main(int    argc,
     clicon_session_id_set(h, id);
     
     /* Init snmp as subagent */
-    if (clixon_snmp_init(h, logdst) < 0)
+    if (clixon_snmp_subagent(h, logdst) < 0)
+	goto done;
+    /* Init mib-translated yangs and register callbacks */
+    if (clixon_snmp_mib_yangs(h) < 0)
 	goto done;
     
     if (dbg)

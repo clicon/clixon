@@ -1364,7 +1364,7 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
     goto done;
 }
 
-/*! Given a yang statement and local prefi valid in module , find namespace
+/*! Given a yang statement and local prefix valid in module, find namespace
  *
  * @param[in]  ys        Yang statement in module tree (or module itself)
  * @param[in]  prefix    Local prefix to access module with (direct pointer)
@@ -3661,7 +3661,7 @@ yang_anydata_add(yang_stmt *yp,
 
 /*! Find extension argument and return if extension exists and its argument value
  *
- * @param[in]  ys     Yang statement where unknown statement may occur referncing to extension
+ * @param[in]  ys     Yang statement where unknown statement may occur referencing to extension
  * @param[in]  name   Name of the extension 
  * @param[in]  ns     The namespace of the module where the extension is defined
  * @param[out] exist  The extension exists.
@@ -3678,7 +3678,7 @@ yang_anydata_add(yang_stmt *yp,
  *        // use extension value
  *     }
  * @endcode
- * @see ys_populate_unknown  Called when parsing YANGo
+ * @see ys_populate_unknown  Called when parsing YANG
  */
 int
 yang_extension_value(yang_stmt *ys,

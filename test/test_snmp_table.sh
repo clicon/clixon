@@ -41,6 +41,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/var/tmp/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
+  <CLICON_SNMP_MIB>NET-SNMP-EXAMPLES-MIB</CLICON_SNMP_MIB>
 </clixon-config>
 EOF
 
@@ -71,7 +72,7 @@ function testinit(){
 
     # Kill old clixon_snmp, if any
     new "Terminating any old clixon_snmp processes"
-    sudo killall clixon_snmp
+    sudo killall -q clixon_snmp
 
     new "Starting clixon_snmp"
     start_snmp $cfg &
@@ -81,7 +82,7 @@ function testinit(){
 }
 
 function testexit(){
-    sudo killall clixon_snmp
+    stop_snmp
 }
 
 new "SNMP table tests"

@@ -1132,6 +1132,16 @@ module clixon-config {
                  0 means no limit";
 
 	}
+	leaf-list CLICON_SNMP_MIB {
+	    description
+		"Names of MIBs that are used by clixon_snmp. 
+                 For each MIB M, a YANG file M.yang is expected to be found.
+                 If not found, an error is genereated.
+                 The YANG file M.yang is typically generated from the source MIB but can also
+                 be handcrafted. An example of such a script is scripts/mib_to_yang.sh.
+                 A list of these options should be in the configuration.";
+	    type string;
+	}
 	leaf CLICON_SNMP_AGENT_SOCK {
 	    type string;
 	    default "unix:/tmp/clixon_snmp.sock";
