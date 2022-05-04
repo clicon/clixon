@@ -130,6 +130,10 @@ chmod g+w /www-data/fastcgi_restconf.sock
 /usr/local/sbin/clixon_backend -D $DBG -s running -l e # logs on docker logs
 >&2 echo "clixon_backend started"
 
+# Start snmpd, we need this for the SNMP tests and the app clixon_snmp. Log to stdout, then we can
+# use Docker logs to see what's happening.
+snmpd -Lo -p /run/snmpd.pid
+
 # Alt: let backend be in foreground, but test scripts may
 # want to restart backend
 /bin/sleep 100000000

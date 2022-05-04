@@ -210,7 +210,7 @@ fi
 
 if $SNMPCHECK; then
     if [ "${WITH_NETSNMP}" == "yes" ]; then
-        if [ ! -f /var/run/snmpd.pid ]; then
+        if [ ! -f /run/snmpd.pid ]; then
 		    echo -e "\e[31m\nenable-netsnmp set but snmpd not running, start with:"
 		    echo "systemctl start snmpd"
             echo ""
@@ -221,6 +221,9 @@ if $SNMPCHECK; then
             echo "  rwcommunity     public  localhost"
             echo "  agentXSocket    unix:/var/run/snmp.sock"
             echo "  agentxperms     777 777"
+            echo ""
+            echo "If you don't rely on systemd you can configure the lines above"
+            echo "and start snmpd manually with 'snmpd -Lo -p /var/run/snmpd.pid'."
 		    echo -e "\e[0m"
 		    exit -1
         fi
