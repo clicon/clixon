@@ -41,6 +41,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/var/tmp/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
+  <CLICON_SNMP_MIB>NET-SNMP-EXAMPLES-MIB</CLICON_SNMP_MIB>
 </clixon-config>
 EOF
 
@@ -57,31 +58,41 @@ EOF
 
 function testinit(){
     new "test params: -f $cfg"
-    # Kill old backend and start a new one
-    new "kill old backend"
-    sudo clixon_backend -zf $cfg
-    if [ $? -ne 0 ]; then
-        err "Failed to start backend"
+    if [ $BE -ne 0 ]; then
+	# Kill old backend and start a new one
+	new "kill old backend"
+	sudo clixon_backend -zf $cfg
+	if [ $? -ne 0 ]; then
+            err "Failed to start backend"
+	fi
+
+	sudo pkill -f clixon_backend
+
+	new "Starting backend"
+	start_backend -s init -f $cfg
+    fi
+    
+    new "wait backend"
+    wait_backend
+    
+    if [ $CS -ne 0 ]; then
+	# Kill old clixon_snmp, if any
+	new "Terminating any old clixon_snmp processes"
+	sudo killall -q clixon_snmp
+
+	new "Starting clixon_snmp"
+	start_snmp $cfg &
     fi
 
-    sudo pkill -f clixon_backend
-
-    new "Starting backend"
-    start_backend -s init -f $cfg
-
-    # Kill old clixon_snmp, if any
-    new "Terminating any old clixon_snmp processes"
-    sudo killall -q clixon_snmp
-
-    new "Starting clixon_snmp"
-    start_snmp $cfg &
-
-    # Wait for things to settle
-    sleep 3
+    new "wait snmp"
+    wait_snmp
 }
 
-function testexit(){
-    stop_snmp
+function testexit()
+{
+    if [ $CS -ne 0 ]; then
+	stop_snmp
+    fi
 }
 
 new "SNMP table tests"

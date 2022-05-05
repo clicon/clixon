@@ -292,6 +292,7 @@ my_test_instance_handler(netsnmp_mib_handler          *handler,
 
     return SNMP_ERR_NOERROR;
 }
+
 #endif
 
 /*! Parse smiv2 extensions for YANG leaf
@@ -318,8 +319,6 @@ mib_yang_leaf(clicon_handle h,
     char      *origtype=NULL;   /* original type */
     char      *name;
 
-
-    clicon_debug(1, "%s %s", __FUNCTION__, oidstr);
     if (yang_extension_value(ys, "oid", IETF_YANG_SMIV2_NS, NULL, &oidstr) < 0)
 	goto done;
     if (oidstr == NULL)
@@ -347,10 +346,12 @@ mib_yang_leaf(clicon_handle h,
 	goto done;
     //    restype = yrestype?yang_argument_get(yrestype):NULL;
     name = yang_argument_get(ys);
+
     if ((handler = netsnmp_create_handler(name, my_test_instance_handler)) == NULL){
 	clicon_err(OE_SNMP, errno, "netsnmp_create_handler");
 	goto done;
     }
+
     //    handler->myvoid = h;
     handler->myvoid =(void*)99;
     if ((nh = netsnmp_handler_registration_create(name,
@@ -362,12 +363,13 @@ mib_yang_leaf(clicon_handle h,
 	netsnmp_handler_free(handler);
 	goto done;
     }
-    clicon_debug(1, "%s %p", __FUNCTION__, nh);
     if ((ret = netsnmp_register_instance(nh)) < 0){
 	/* XXX Failures are MIB_REGISTRATION_FAILED and MIB_DUPLICATE_REGISTRATION. */
 	clicon_err(OE_SNMP, ret, "netsnmp_register_instance");
 	goto done;
     }
+    clicon_debug(1, "%s %s registered", __FUNCTION__, oidstr);
+
  ok:
     retval = 0;
  done:
@@ -386,29 +388,67 @@ mib_yang_leaf(clicon_handle h,
  * @see yang_extension_value 
  * @see ys_populate_unknown
  */
-static int
-mib_yang_extension(yang_stmt *ys,
-		   void      *arg)
-{
-    int           retval = -1;
-    clicon_handle h = (clicon_handle)arg;
 
-    switch(yang_keyword_get(ys)){
+/*! Traverse mib-yang tree, identify scalars and tables, register OID and callbacks
+ *
+ * The tree is traversed depth-first, which at least guarantees that a parent is
+ * traversed before a child.
+  * Extensions are grouped in some categories, the one I have seen are, example:
+  * 1. leaf
+  *      smiv2:max-access "read-write";
+  *      smiv2:oid "1.3.6.1.4.1.8072.2.1.1";
+  *      smiv2:defval "42"; (not always)
+  * 2. container, list
+  *      smiv2:oid "1.3.6.1.4.1.8072.2.1";	
+  * 3. module level
+  *      smiv2:alias "netSnmpExamples" {
+  *        smiv2:oid "1.3.6.1.4.1.8072.2";
+
+ * @param[in]  h    Clixon handle
+ * @param[in]  yn   yang node
+ * @retval    -1    Error, aborted at first error encounter
+ * @retval     0    OK, all nodes traversed
+ */
+static int
+mib_traverse(clicon_handle h,
+	     yang_stmt    *yn)
+{
+    int        retval = -1;
+    yang_stmt *ys = NULL;
+    yang_stmt *yp;
+    int        ret;
+
+    switch(yang_keyword_get(yn)){
     case Y_LEAF:
-	if (mib_yang_leaf(h, ys) < 0)
+	if (mib_yang_leaf(h, yn) < 0)
 	    goto done;
 	break;
     case Y_CONTAINER: // XXX
 	break;
     case Y_LIST: // XXX
+	yp = yang_parent_get(yn);
+	if (yang_keyword_get(yp) == Y_CONTAINER){
+	    /* XXX ad-hoc method to find table? now skip */
+	    goto ok;
+	}
 	break;
     default:
 	break;
     }
+    ys = NULL;
+    while ((ys = yn_each(yn, ys)) != NULL) {
+	if ((ret = mib_traverse(h, ys)) < 0)
+	    goto done;
+	if (ret > 0){
+	    retval = ret;
+	    goto done;
+	}
+    }
+ ok:
     retval = 0;
-done:
+ done:
     return retval;
-}
+}    
 
 int
 clixon_snmp_mib_yangs(clicon_handle h)
@@ -420,8 +460,6 @@ clixon_snmp_mib_yangs(clicon_handle h)
     yang_stmt *ymod;
 
     /* XXX Hardcoded, replace this with generic MIB */
-    init_testtable(); // XXX
-
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
@@ -444,9 +482,10 @@ clixon_snmp_mib_yangs(clicon_handle h)
 	    goto done;
 	}
 	/* Recursively traverse the mib-yang to find extensions */
-	if (yang_apply(ymod, -1, mib_yang_extension, 1, h) < 0)
+	if (mib_traverse(h, ymod) < 0)
 	    goto done;
     }
+    init_testtable(); // XXX NOTE Must be AFTER loop ^ for unknown reason
     retval = 0;
  done:
     return retval;

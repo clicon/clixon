@@ -394,11 +394,6 @@ main(int    argc,
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
 	goto done;
 
-#if 0
-    /* Call start function is all plugins before we go interactive */
-    if (clixon_plugin_start_all(h) < 0)
-	goto done;
-#endif
     /* Get session id from backend hello */
     clicon_session_id_set(h, getpid()); 
 
