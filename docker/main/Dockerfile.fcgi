@@ -123,9 +123,11 @@ RUN apk add --update flex bison fcgi-dev
 RUN apk add --update net-snmp net-snmp-tools
 
 # Some custom configuration for SNMP
-RUN sed -i 's/#rocommunity public  localhost/rocommunity public  localhost/' /etc/snmp/snmpd.conf
-RUN echo "agentXSocket    unix:/var/run/snmp.sock" >> /etc/snmpd.conf
-RUN echo "agentxperms     777 777" >> /etc/snmpd.conf
+RUN echo "master  agentx" > /etc/snmp/snmpd.conf
+RUN echo "agentaddress  127.0.0.1" >> /etc/snmp/snmpd.conf
+RUN echo "rwcommunity   public  localhost" >> /etc/snmp/snmpd.conf
+RUN echo "agentXSocket  unix:/var/run/snmp.sock" >> /etc/snmp/snmpd.conf
+RUN echo "agentxperms   777 777" >> /etc/snmp/snmpd.conf
 
 # Need to add www user manually, but group www-data already exists on Alpine
 RUN adduser -D -H -G www-data www-data
