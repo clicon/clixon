@@ -10,7 +10,6 @@ lex.*_parse.c
 Makefile
 apps/Makefile
 apps/*/Makefile
-datastore/Makefile
 docker/Makefile
 docker/*/Makefile
 etc/Makefile
@@ -34,11 +33,9 @@ apps/backend/test.c
 apps/cli/clixon_cli
 apps/cli/test
 apps/cli/test.c
-apps/dbctrl/clixon_dbctrl
 apps/netconf/clixon_netconf
 apps/restconf/clixon_restconf
 apps/restconf/clixon_restconf_libhttp
-apps/xmldb/clixon_xmldb
 
 etc/clixonrc
 
