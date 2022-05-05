@@ -163,7 +163,8 @@ fi
 # Only compare relevant data line
 echo -n "<data>">> $ftest
 cat $fdataxml >> $ftest
-echo "</data>" >> $ftest
+#echo "</data>" >> $ftest
+echo -n "</data>" >> $ftest
 sed '/<data>/!d' $foutput > $foutput2
 mv $foutput2 $foutput
 

@@ -144,11 +144,12 @@ if [ $r -ne 0 ]; then
     err1 "retval 0" $r
 fi
 
+# XXX ftest har \n
 # Only compare relevant data line
 echo -n "<data>">> $ftest
 cat $fdataxml >> $ftest
-echo "</data>" >> $ftest
-# -i dont always work properly
+echo -n "</data>" >> $ftest
+# -i (ignore case) dont always work properly
 sed '/<data>/!d' $foutput > $foutput2
 mv $foutput2 $foutput
 

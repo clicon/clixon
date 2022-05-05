@@ -288,7 +288,7 @@ api_http_data_file(clicon_handle h,
     char       *suffix;
     char       *media;
     int         ret;
-    char       *str = NULL;
+    char       *buf = NULL;
     size_t      sz;
 
     clicon_debug(1, "%s", __FUNCTION__);    
@@ -347,11 +347,11 @@ api_http_data_file(clicon_handle h,
     /* Unoptimized, no direct read but requires an extra copy,
      * the cligen buf API should have some mechanism for this case without the extra copy.
      */
-    if ((str = malloc(fsize + 1)) == NULL){
+    if ((buf = malloc(fsize)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
-    if ((sz = fread(str, fsize, 1, f)) < 0){
+    if ((sz = fread(buf, fsize, 1, f)) < 0){
 	clicon_err(OE_UNIX, errno, "fread");
 	goto done;
     }
@@ -361,8 +361,7 @@ api_http_data_file(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    str[fsize] = 0;
-    if (cbuf_append_str(cbdata, str) < 0){
+    if (cbuf_append_buf(cbdata, buf, fsize) < 0){
 	clicon_err(OE_UNIX, errno, "cbuf_append_str");
 	goto done;
     }
@@ -375,8 +374,8 @@ api_http_data_file(clicon_handle h,
  ok:
     retval = 0;
  done:
-    if (str)
-	free(str);
+    if (buf)
+	free(buf);
     if (f)
 	fclose(f);
     if (cbfile)

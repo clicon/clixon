@@ -145,7 +145,6 @@ restconf_reply_send(void  *req0,
     sd->sd_code = code;
     if (cb != NULL){
 	if (cbuf_len(cb)){
-	    cprintf(cb, "\r\n");
 	    sd->sd_body_len = cbuf_len(cb); 
 	    if (head){
 		cbuf_free(cb);
