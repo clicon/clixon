@@ -48,27 +48,35 @@ EOF
 
 function testinit(){
     new "test params: -f $cfg"
-    # Kill old backend and start a new one
-    new "kill old backend"
-    sudo clixon_backend -zf $cfg
-    if [ $? -ne 0 ]; then
+
+    if [ $BE -ne 0 ]; then
+	# Kill old backend and start a new one
+	new "kill old backend"
+	sudo clixon_backend -zf $cfg
+	if [ $? -ne 0 ]; then
 	    err "Failed to start backend"
+	fi
+
+	sudo pkill -f clixon_backend
+
+	new "Starting backend"
+	start_backend -s init -f $cfg
     fi
 
-    sudo pkill -f clixon_backend
+    new "wait backend"
+    wait_backend
+	
+    if [ $CS -ne 0 ]; then
+	# Kill old clixon_snmp, if any
+	new "Terminating any old clixon_snmp processes"
+	sudo killall -q clixon_snmp
 
-    new "Starting backend"
-    start_backend -s init -f $cfg
+	new "Starting clixon_snmp"
+	start_snmp $cfg &
+    fi
 
-    # Kill old clixon_snmp, if any
-    new "Terminating any old clixon_snmp processes"
-    sudo killall -q clixon_snmp
-
-    new "Starting clixon_snmp"
-    start_snmp $cfg &
-
-    # Wait for things to settle
-    sleep 3
+    new "wait snmp"
+    wait_snmp
 }
 
 function testexit(){
