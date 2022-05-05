@@ -73,6 +73,9 @@ testname=
 # eg logging to a file: RCLOG="-l f/www-data/restconf.log"
 : ${RCLOG:=}
 
+# If set to 0, override starting of clixon_snmp in test (you bring your own)
+: ${CS:=1}
+
 # Namespace: netconf base
 BASENS='urn:ietf:params:xml:ns:netconf:base:1.0'
 
@@ -596,6 +599,12 @@ function wait_restconf_stopped(){
     fi
 }
 
+# need a better way to detect liveness of clixon_snmp
+function wait_snmp()
+{
+    sleep 3
+}
+    
 # End of test, final tests before normal exit of test
 # Note this is a single test started by new, not a total test suite
 function endtest()
