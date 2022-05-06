@@ -581,7 +581,7 @@ clicon_rpc_get_config(clicon_handle h,
  * @note xml arg need to have <config> as top element
  * @code
  * if (clicon_rpc_edit_config(h, "running", OP_MERGE, 
- *                            "<config><a>4</a></config>") < 0)
+ *                            "<config><a xmlns="urn:example:clixon">4</a></config>") < 0)
  *    err;
  * @endcode
  */

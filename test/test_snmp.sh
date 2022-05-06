@@ -16,6 +16,7 @@ snmpset="$(type -p snmpset) -On -c public -v2c localhost "
 
 cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
+fstate=$dir/state.xml
 
 # AgentX unix socket
 SOCK=/var/run/snmp.sock
@@ -46,8 +47,15 @@ module clixon-example{
 }
 EOF
 
+# This is state data written to file that backend reads from (on request)
+cat <<EOF > $fstate
+   <sender-state xmlns="urn:example:example">
+      <ref>x</ref>
+   </sender-state>
+EOF
+
 function testinit(){
-    new "test params: -f $cfg"
+    new "test params: -f $cfg -- -sS $fstate"
 
     if [ $BE -ne 0 ]; then
 	# Kill old backend and start a new one
@@ -60,7 +68,7 @@ function testinit(){
 	sudo pkill -f clixon_backend
 
 	new "Starting backend"
-	start_backend -s init -f $cfg
+	start_backend -s init -f $cfg -- -sS $fstate
     fi
 
     new "wait backend"
