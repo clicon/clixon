@@ -30,6 +30,7 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
+  * See RFC 6643
   * Extensions are grouped in some categories, the one I have seen are, example:
   * 1. leaf
   *      smiv2:max-access "read-write";
@@ -72,6 +73,18 @@
 #define IETF_YANG_SMIV2_NS "urn:ietf:params:xml:ns:yang:ietf-yang-smiv2"
 
 /*
+ * Local Types
+ */
+/* Userdata to pass around in netsmp callbacks
+ */
+struct clixon_snmp_handle {
+    clicon_handle sh_h;
+    yang_stmt    *sh_ys;
+    int           sh_type;  /* ASN.1 type */
+};
+typedef struct clixon_snmp_handle clixon_snmp_handle;
+
+/*
  * Local variables
  */
 /* Mapping between yang keyword string <--> clixon constants 
@@ -81,12 +94,28 @@
  * Here is also the place where doc on some types store variables (cv)
  * see netsnmp_handler_registration_create()
  */
-static const map_str2int acc_map[] = {
+static const map_str2int snmp_access_map[] = {
     {"read-only",             HANDLER_CAN_RONLY}, /* HANDLER_CAN_GETANDGETNEXT */
     {"read-write",            HANDLER_CAN_RWRITE}, /* HANDLER_CAN_GETANDGETNEXT | HANDLER_CAN_SET */
     {"not-accessible",        0}, // XXX
     {"accessible-for-notify", 0}, // XXX
-    {NULL,               -1}
+    {NULL,                   -1}
+};
+
+/* Map between clixon and ASN.1 types. 
+ * @see net-snmp/library/asn1.h
+ * @see union netsnmp_vardata in net-snmp/types.h
+ */
+static const map_str2int snmp_type_map[] = {
+    {"bool",         ASN_BOOLEAN},
+    {"int32",        ASN_INTEGER},
+    {"bits",         ASN_BIT_STR},
+    {"string",       ASN_OCTET_STR},
+    {"empty",        ASN_NULL},
+    //XXX  {"", ASN_OBJECT_ID},
+    // XXX {"", ASN_SEQUENCE},
+    // XXX {"", ASN_SET},
+    {NULL,           -1}
 };
 
 #if 1 /* table example */
@@ -223,77 +252,222 @@ init_testtable(void)
 }
 #endif /* table example */
 
-#if 1 /* scalar example */
-
-
-#define TESTHANDLER_SET_NAME "my_test"
-int
-my_test_instance_handler(netsnmp_mib_handler          *handler,
-                         netsnmp_handler_registration *reginfo,
-                         netsnmp_agent_request_info   *reqinfo,
-                         netsnmp_request_info         *requests)
+/*! Construct an xpath from yang statement
+ * Recursively construct it to the top.
+ * @param[in]  ys    Yang statement
+ * @param[out] cb    xpath as cbuf
+ * @retval     0     OK
+ * @retval    -1     Error
+ * XXX Not lists
+ */ 
+static int
+yang2xpath(yang_stmt *ys, 
+	   cbuf      *cb)
 {
+    yang_stmt *yp; /* parent */
+    int        i;
+    cvec      *cvk = NULL; /* vector of index keys */
+    int        retval = -1;
+    
+    if ((yp = yang_parent_get(ys)) == NULL){
+	clicon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
+	goto done;
+    }
+    if (yp != NULL && /* XXX rm */
+	yang_keyword_get(yp) != Y_MODULE && 
+	yang_keyword_get(yp) != Y_SUBMODULE){
 
-    static int  accesses = 42;
-    u_long     *accesses_cache = NULL;
-    //    clicon_handle h = (clicon_handle)handler->myvoid;
+	if (yang2xpath(yp, cb) < 0) /* recursive call */
+	    goto done;
+	if (yang_keyword_get(yp) != Y_CHOICE && yang_keyword_get(yp) != Y_CASE){
+	    cprintf(cb, "/");
+	}
+    }
+    cprintf(cb, "/%s:", yang_find_myprefix(ys));
+    if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE)
+	cprintf(cb, "%s", yang_argument_get(ys));
+    switch (yang_keyword_get(ys)){
+    case Y_LIST: // XXX not xpaths
+	cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
+	if (cvec_len(cvk))
+	    cprintf(cb, "=");
+	/* Iterate over individual keys  */
+	for (i=0; i<cvec_len(cvk); i++){
+	    if (i)
+		cprintf(cb, ",");
+	    cprintf(cb, "%%s");
+	}
+	break;
+    case Y_LEAF_LIST:
+	cprintf(cb, "=%%s");
+	break;
+    default:
+	break;
+    } /* switch */
+    retval = 0;
+ done:
+    return retval;
+}
 
+/*! SNMP Scalar operation handler
+ * Calls come: READ:160, 
+ *             WRITE: 0, 1, 2, 3, 
+ * MODE_SET_RESEVE1, MODE_SET_RESERVE2, MODE_SET_ACTION, MODE_SET_COMMIT
+ *
+ */
+int
+snmp_scalar_handler(netsnmp_mib_handler          *handler,
+		    netsnmp_handler_registration *reginfo,
+		    netsnmp_agent_request_info   *reqinfo,
+		    netsnmp_request_info         *requests)
+{
+    int                 retval = -1;
+    clixon_snmp_handle *sh;
+    int                accesses;
+    //    u_long             *accesses_cache = NULL;
+    yang_stmt          *ys;
+    clicon_handle       h;
+    cbuf               *cb = NULL;
+    int                 ret;
+
+    /*
+     * can be used to pass information on a per-pdu basis from a
+     * helper to the later handlers 
+     netsnmp_agent_request_info   *reqinfo,
+     netsnmp_data_list *agent_data;
+     netsnmp_free_agent_data_set()
+    */
     clicon_debug(1, "%s", __FUNCTION__);
     clicon_debug(1, "%s %p", __FUNCTION__, reginfo);
 
+    sh = (clixon_snmp_handle*)handler->myvoid;
+    ys = sh->sh_ys;
+    h = sh->sh_h;
+    clicon_debug(1, "%s mode:%d", __FUNCTION__, reqinfo->mode);
+    /* see net-snmp/agent/snmp_agent.h / net-snmp/library/snmp.h */
     switch (reqinfo->mode) {
-    case MODE_GET:
-        snmp_set_var_typed_value(requests->requestvb, ASN_INTEGER,
-                                 (u_char *) & accesses, sizeof(accesses));
+    case MODE_GET: // 160
+	requests->requestvb->type = sh->sh_type; // ASN_NULL on input
+
+	/* get xpath: see yang2api_path_fmt / api_path2xpath 
+	   New fn: yang2xpath?
+	   clicon_rpc_get()
+	   <rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/if:interfaces\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" /></get></rpc>"
+
+	*/
+	cxobj *xt = NULL;
+	cxobj *xerr;
+	cvec *nsc = NULL;
+	cxobj *x;
+	char *xpath;
+	cg_var *cv = NULL;
+	char   *reason = NULL;
+
+	if (xml_nsctx_yang(ys, &nsc) < 0)
+	    goto done;
+
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	if (yang2xpath(ys, cb) < 0)
+	    goto done;
+	xpath = cbuf_get(cb);
+	if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
+	    goto done;
+	if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+	    clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
+	    goto done;
+	}
+	if ((x = xpath_first(xt, nsc, "%s", xpath)) < 0) 
+	    goto done;
+	xml_body(x);
+	if ((cv = cv_new(CGV_INT32)) == NULL){
+	    clicon_err(OE_UNIX, errno, "cv_new");
+	    goto done;
+	}
+	if ((ret = cv_parse1(xml_body(x), cv, &reason)) < 0){
+	    cv_free(cv);
+	    goto done;
+	}
+	if (ret == 0){
+	    clicon_debug(1, "%s %s", __FUNCTION__, reason);
+	    netsnmp_set_request_error(reqinfo, requests,
+				      SNMP_ERR_WRONGTYPE);
+	}
+
+	accesses = cv_int32_get(cv); // XXX Use cv type space
+
+	if (reason)
+	    free(reason);
+	if (xt)
+	    xml_free(xt);
+	if (nsc)
+	    xml_nsctx_free(nsc);
+	/* 1. use cligen object and get rwa buf / size from that, OR
+	 *    + have parse function from YANG
+	 *    - does not have 
+	 * 2. use union netsnmp_vardata and pass that here?
+	 * 3. Make cv2asn1 conversion function <--
+	 */
+	
+	/* see snmplib/snmp_client.c */
+        if (snmp_set_var_value(requests->requestvb,
+			       (u_char *) & accesses,
+			       sizeof(accesses)) != 0){
+	    clicon_err(OE_SNMP, 0, "snmp_set_var_value");
+	    goto done;
+	}
         break;
-    case MODE_SET_RESERVE1:
-        if (requests->requestvb->type != ASN_INTEGER)
+    case MODE_SET_RESERVE1: // 0
+        if (requests->requestvb->type != sh->sh_type)
             netsnmp_set_request_error(reqinfo, requests,
                                       SNMP_ERR_WRONGTYPE);
         break;
 
-    case MODE_SET_RESERVE2:
-        /*
-         * store old info for undo later 
-         */
-        accesses_cache = netsnmp_memdup(&accesses, sizeof(accesses));
-        if (accesses_cache == NULL) {
-            netsnmp_set_request_error(reqinfo, requests,
-                                      SNMP_ERR_RESOURCEUNAVAILABLE);
-            return SNMP_ERR_NOERROR;
-        }
-        netsnmp_request_add_list_data(requests,
-                                      netsnmp_create_data_list
-                                      (TESTHANDLER_SET_NAME,
-                                       accesses_cache, free));
+    case MODE_SET_RESERVE2: // 1
         break;
 
-    case MODE_SET_ACTION:
+    case MODE_SET_ACTION: // 2
         /*
          * update current 
          */
-        accesses = *(requests->requestvb->val.integer);
-        DEBUGMSGTL(("testhandler", "updated accesses -> %d\n", accesses));
+	/* yang2xpath -> xpath2xml 
+	 *        accesses = *(requests->requestvb->val.integer);
+	 * rpc edit-config
+<data></data>
+	 */
+
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cb, "<config><NET-SNMP-EXAMPLES-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:NET-SNMP-EXAMPLES-MIB\"><netSnmpExampleScalars><netSnmpExampleInteger>%ld</netSnmpExampleInteger></netSnmpExampleScalars></NET-SNMP-EXAMPLES-MIB></config>", *requests->requestvb->val.integer);
+	if (clicon_rpc_edit_config(h, "candidate", OP_MERGE, cbuf_get(cb)) < 0)
+	    goto done;
         break;
 
-    case MODE_SET_UNDO:
-        accesses =
-            *((u_long *) netsnmp_request_get_list_data(requests,
-                                                       TESTHANDLER_SET_NAME));
+    case MODE_SET_UNDO: // 5
+	if (clicon_rpc_discard_changes(h) < 0)
+	    goto done;	
         break;
 
-    case MODE_SET_COMMIT:
-    case MODE_SET_FREE:
+    case MODE_SET_COMMIT: // 3
+	if (clicon_rpc_commit(h) < 0)
+	    goto done;	
+	break;
+    case MODE_SET_FREE: // 4
         /*
          * nothing to do 
          */
         break;
     }
-
-    return SNMP_ERR_NOERROR;
+    retval = SNMP_ERR_NOERROR;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
 }
-
-#endif
 
 /*! Parse smiv2 extensions for YANG leaf
   * Typical leaf:
@@ -315,9 +489,12 @@ mib_yang_leaf(clicon_handle h,
     size_t     sz1 = MAX_OID_LEN;
     int        modes;
     yang_stmt *yrestype;  /* resolved type */
-    //    char      *restype;  /* resolved type */
+    char      *restype;  /* resolved type */
     char      *origtype=NULL;   /* original type */
+    int                 asn1_type;
+
     char      *name;
+    clixon_snmp_handle *sh;
 
     if (yang_extension_value(ys, "oid", IETF_YANG_SMIV2_NS, NULL, &oidstr) < 0)
 	goto done;
@@ -330,30 +507,42 @@ mib_yang_leaf(clicon_handle h,
     if (yang_extension_value(ys, "max-access", IETF_YANG_SMIV2_NS, NULL, &modes_str) < 0)
 	goto done;
 
-    /* read-only, read-write, not-accessible, oaccessible-for-notify
+    /* Get modes (access) read-only, read-write, not-accessible, oaccessible-for-notify
      */
     if (modes_str == NULL)
 	goto ok;
-    modes = clicon_str2int(acc_map, modes_str);
+    modes = clicon_str2int(snmp_access_map, modes_str);
 
     /* Default value, XXX How is this different from yang defaults?
      */
     //     if (yang_extension_value(ys, "defval", IETF_YANG_SMIV2_NS, NULL, &modes_str) < 0)
     //	goto done;
 
-    /* get yang type of leaf */
+    /* Get yang type of leaf and trasnslate to ASN.1 */
     if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
 	goto done;
-    //    restype = yrestype?yang_argument_get(yrestype):NULL;
+    restype = yrestype?yang_argument_get(yrestype):NULL;
+    /* translate to asn.1 */
+    asn1_type = clicon_str2int(snmp_type_map, restype);
+
     name = yang_argument_get(ys);
 
-    if ((handler = netsnmp_create_handler(name, my_test_instance_handler)) == NULL){
+    if ((handler = netsnmp_create_handler(name, snmp_scalar_handler)) == NULL){
 	clicon_err(OE_SNMP, errno, "netsnmp_create_handler");
 	goto done;
     }
 
-    //    handler->myvoid = h;
-    handler->myvoid =(void*)99;
+    /* Userdata to pass around in netsmp callbacks 
+     * XXX: not deallocated
+     */
+    if ((sh = malloc(sizeof(*sh))) == NULL){
+       clicon_err(OE_UNIX, errno, "malloc");
+       goto done;
+    }
+    sh->sh_h = h;
+    sh->sh_ys = ys;
+    sh->sh_type = asn1_type;
+    handler->myvoid =(void*)sh;
     if ((nh = netsnmp_handler_registration_create(name,
 						  handler,
 						  oid1,
@@ -363,6 +552,9 @@ mib_yang_leaf(clicon_handle h,
 	netsnmp_handler_free(handler);
 	goto done;
     }
+    /* 
+     * XXX: nh->agent_data
+     */
     if ((ret = netsnmp_register_instance(nh)) < 0){
 	/* XXX Failures are MIB_REGISTRATION_FAILED and MIB_DUPLICATE_REGISTRATION. */
 	clicon_err(OE_SNMP, ret, "netsnmp_register_instance");
