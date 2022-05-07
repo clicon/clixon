@@ -213,7 +213,8 @@ fi
 
 if $SNMPCHECK; then
     if [ "${WITH_NETSNMP}" == "yes" ]; then
-        if [ ! -f /run/snmpd.pid ]; then
+	pgrep snmpd > /dev/null
+        if [ $? != 0 ]; then
 		    echo -e "\e[31m\nenable-netsnmp set but snmpd not running, start with:"
 		    echo "systemctl start snmpd"
             echo ""
