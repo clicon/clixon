@@ -337,8 +337,7 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
      netsnmp_data_list *agent_data;
      netsnmp_free_agent_data_set()
     */
-    clicon_debug(1, "%s", __FUNCTION__);
-    clicon_debug(1, "%s %p", __FUNCTION__, reginfo);
+    clicon_debug(1, "%s %s", __FUNCTION__, handler->handler_name);
 
     sh = (clixon_snmp_handle*)handler->myvoid;
     ys = sh->sh_ys;
@@ -381,7 +380,6 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
 	}
 	if ((x = xpath_first(xt, nsc, "%s", xpath)) < 0) 
 	    goto done;
-	xml_body(x);
 	if ((cv = cv_new(CGV_INT32)) == NULL){
 	    clicon_err(OE_UNIX, errno, "cv_new");
 	    goto done;
@@ -392,8 +390,7 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
 	}
 	if (ret == 0){
 	    clicon_debug(1, "%s %s", __FUNCTION__, reason);
-	    netsnmp_set_request_error(reqinfo, requests,
-				      SNMP_ERR_WRONGTYPE);
+	    // XXX	    netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
 	}
 
 	accesses = cv_int32_get(cv); // XXX Use cv type space

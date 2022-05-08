@@ -48,6 +48,11 @@ module clixon-example{
   import NET-SNMP-EXAMPLES-MIB {
       prefix "net-snmp-examples";
   }
+  deviation "/net-snmp-examples:NET-SNMP-EXAMPLES-MIB" {
+     deviate replace {
+        config true;
+     }
+  }
 }
 EOF
 
