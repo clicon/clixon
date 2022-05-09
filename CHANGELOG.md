@@ -136,6 +136,8 @@ Users may have to change how they access the system
 
 Developers may need to change their code
 
+* Added `nsc` parameter to `xml2xpath()` and ensured the xpath uses prefixes.
+  * Old code: add `NULL` as second parameter
 * Added `eof` parameter to `clicon_rpc()` and `clicon_rpc1()` and error handling modified
 
 ## 5.6.0

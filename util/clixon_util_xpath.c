@@ -60,7 +60,7 @@ See https://www.w3.org/TR/xpath/
 #include "clixon/clixon.h"
 
 /* Command line options to be passed to getopt(3) */
-#define XPATH_OPTS "hD:f:p:i:n:cl:y:Y:"
+#define XPATH_OPTS "hD:f:p:i:In:cl:y:Y:"
 
 static int
 usage(char *argv0)
@@ -72,6 +72,7 @@ usage(char *argv0)
 	    "\t-f <file>  \tXML file\n"
 	    "\t-p <xpath> \tPrimary XPATH string\n"
 	    "\t-i <xpath0>\t(optional) Initial XPATH string\n"
+            "\t-I \t\tCheck inverse, map back xml result to xpath and check if equal\n"
 	    "\t-n <pfx:id>\tNamespace binding (pfx=NULL for default)\n"
 	    "\t-c \t\tMap xpath to canonical form\n"
 	    "\t-l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut or (f)ile (stderr is default)\n"
@@ -120,7 +121,6 @@ main(int    argc,
     int         retval = -1;
     char       *argv0 = argv[0];
     int         i;
-    cxobj     **xv = NULL;
     cxobj      *x0 = NULL;
     cxobj      *x;
     int         c;
@@ -144,6 +144,7 @@ main(int    argc,
     cxobj      *xerr = NULL; /* malloced must be freed */
     int         logdst = CLICON_LOG_STDERR;
     int         dbg = 0;
+    int         xpath_inverse = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init("xpath", LOG_DEBUG, logdst); 
@@ -179,6 +180,9 @@ main(int    argc,
 	    break;
 	case 'i': /* Optional initial XPATH string */
 	    xpath0 = optarg;
+	    break;
+	case 'I': /* Check inverse */
+	    xpath_inverse++;
 	    break;
 	case 'n':{ /* Namespace binding */
 	    char *prefix;
@@ -307,7 +311,7 @@ main(int    argc,
      */
     if (clixon_xml_parse_file(fp, YB_NONE, NULL, &x0, NULL) < 0){
 	fprintf(stderr, "Error: parsing: %s\n", clicon_err_reason);
-	return -1;
+	goto done;
     }
 
     /* Validate XML as well */
@@ -361,6 +365,23 @@ main(int    argc,
 	x = x0;
     if (xpath_vec_ctx(x, nsc, xpath, 0, &xc) < 0)
 	return -1;
+    /* Check inverse, eg XML back to xpath and compare with original, only if nodes */
+    if (xpath_inverse && xc->xc_type == XT_NODESET){
+	cxobj *xi;
+	char  *xpathi = NULL;
+	for (i=0; i<xc->xc_size; i++){
+	    xi = xc->xc_nodeset[i];
+	    if (xml2xpath(xi, nsc, &xpathi) < 0)
+		goto done;
+	    fprintf(stdout, "Inverse: %s\n", xpathi);
+	    if (xpathi){
+		free(xpathi);
+		xpathi = NULL;
+	    }
+	}
+	goto ok;
+    }
+
     /* Print results */
     cb = cbuf_new();
     ctx_print2(cb, xc);
@@ -376,8 +397,6 @@ main(int    argc,
 	ctx_free(xc);
     if (xcfg)
 	xml_free(xcfg);
-    if (xv)
-	free(xv);
     if (buf)
 	free(buf);
     if (x0)

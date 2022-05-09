@@ -1291,12 +1291,16 @@ xml_non_config_data(cxobj  *xt,
     return retval;
 }
 
-/*! Given an XML node, build an xpath to root, internal function
+/*! Given an XML node, build an xpath  recursively to root, internal function
+ * @param[in]  x      XML object
+ * @param[in]  nsc    Namespace context
+ * @param[out] cb     XPath string as cbuf.
  * @retval     0      OK
  * @retval    -1      Error. eg XML malformed
  */
 static int
 xml2xpath1(cxobj *x,
+	   cvec  *nsc,
 	   cbuf  *cb)
 {
     int           retval = -1;
@@ -1309,12 +1313,30 @@ xml2xpath1(cxobj *x,
     cxobj        *xb;
     char         *b;
     enum rfc_6020 keyword;
+    char         *prefix = NULL;
+    char         *namespace;
     
     if ((xp = xml_parent(x)) == NULL)
 	goto ok;
-    xml2xpath1(xp, cb);
+    if (xml2xpath1(xp, nsc, cb) < 0)
+	goto done;
+    if (nsc){
+	if (xml2ns(x, xml_prefix(x), &namespace) < 0)
+	    goto done;
+	if (namespace){
+	    if (xml_nsctx_get_prefix(nsc, namespace, &prefix) == 0)
+		; /* maybe NULL? */
+	}
+	else
+	    prefix = xml_prefix(x); /* maybe NULL? */
+    }
+    else
+	prefix = xml_prefix(x);
     /* XXX: sometimes there should be a /, sometimes not */
-    cprintf(cb, "/%s", xml_name(x));
+    cprintf(cb, "/");
+    if (prefix)
+	cprintf(cb, "%s:", prefix);
+    cprintf(cb, "%s", xml_name(x));
     if ((y = xml_spec(x)) != NULL){
 	keyword = yang_keyword_get(y);
 	switch (keyword){
@@ -1334,7 +1356,10 @@ xml2xpath1(cxobj *x,
 		if ((xb = xml_find(x, keyname)) == NULL)
 		    goto done;
 		b = xml_body(xb);
-		cprintf(cb, "[%s=\"%s\"]", keyname, b?b:"");
+		cprintf(cb, "[");
+		if (prefix)
+		    cprintf(cb, "%s:", prefix);
+		cprintf(cb, "%s=\"%s\"]", keyname, b?b:"");
 	    }
 	    break;
 	default:
@@ -1348,8 +1373,14 @@ xml2xpath1(cxobj *x,
 }
 
 /*! Given an XML node, build an xpath to root
- * Builds only unqualified xpaths, ie no predicates []
+ *
+ * Creates an XPath from an XML node with some limitations, see notes below.
+ * The prefixes used are from the given namespace context if any, otherwise the native prefixes are used, if any.
+ * Note that this means that prefixes may be translated such as if the XML namespace mapping is different than the once used
+ * in the XML.
+ * Therefore, if nsc is "canonical", the returned xpath is also "canonical", even though the XML is not.
  * @param[in]  x      XML object
+ * @param[in]  nsc    Namespace context
  * @param[out] xpath  Malloced xpath string. Need to free() after use
  * @retval     0      OK
  * @retval    -1      Error. (eg XML malformed)
@@ -1357,6 +1388,7 @@ xml2xpath1(cxobj *x,
  */
 int
 xml2xpath(cxobj *x,
+	  cvec  *nsc,
 	  char **xpathp)
 {
     int   retval = -1;
@@ -1367,7 +1399,7 @@ xml2xpath(cxobj *x,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (xml2xpath1(x, cb) < 0)
+    if (xml2xpath1(x, nsc, cb) < 0)
 	goto done;
     /* XXX: see xpath in test statement,.. */
     xpath = cbuf_get(cb);
