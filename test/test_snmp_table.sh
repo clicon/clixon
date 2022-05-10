@@ -86,6 +86,9 @@ function testinit(){
 
     new "wait snmp"
     wait_snmp
+
+    # XXX: This should be remoeved!
+    $($snmptable $OID)
 }
 
 function testexit()
