@@ -64,6 +64,16 @@ Expected: May 2022
 
 Users may have to change how they access the system
 
+* CLI expansion of leafrefs default behavior changed
+    * In the autocli and handcrafted CLI:s using `expand_dbvar()` the CLI expansion followed the leafrefs to the sources, ie the origin of the leafrefs
+    * Instead leafref expansion now only looks at the leafrefs
+    * Example:
+       * Assume ifref with leafref pointing to source if values:
+          * `<if>a</if><if>b</if><if>c</if>`
+	  * `<ifref>b</ifref>`
+       * Existing behavior: propose: `a, b, c`
+       * New default behavior: propose: `b` 
+    * To keep existing behavior, set `<CLICON_CLI_EXPAND_LEAFREF>true<CLICON_CLI_EXPAND_LEAFREF>`
 * Restconf
     * Added 404 return without body if neither restconf, data or streams prefix match
 * Netconf: Usage of chunked framing"
@@ -77,6 +87,7 @@ Users may have to change how they access the system
     * `CLICON_NETCONF_BASE_CAPABILITY`
     * `CLICON_HTTP_DATA_PATH`
     * `CLICON_HTTP_DATA_ROOT`
+    * `CLICON_CLI_EXPAND_LEAFREF`
 * New `clixon-restconf@2022-03-21.yang` revision
   * Added option:
     * `enable-http-data`
