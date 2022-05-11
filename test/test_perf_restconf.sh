@@ -151,7 +151,8 @@ cat $fdataxml >> $ftest
 echo -n "</data>" >> $ftest
 # -i (ignore case) dont always work properly
 sed '/<data>/!d' $foutput > $foutput2
-mv $foutput2 $foutput
+# Strip potential newlines, curl seems to leave trailing newlines on some platforms/versions
+tr -d "\n\r" < $foutput2 > $foutput
 
 ret=$(diff -i $ftest $foutput)
 if [ $? -ne 0 ]; then

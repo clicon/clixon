@@ -333,8 +333,8 @@ api_http_data_file(clicon_handle h,
     fsize = ftell(f);
     /* Extra sanity check, had some problems with wrong file types */
     if (fsz != fsize){
-	clicon_debug(1, "%s Error file %s size mismatch sz:%zu vs %zu",
-		     __FUNCTION__, filename, fsz, fsize);
+	clicon_debug(1, "%s Error file %s size mismatch sz:%zu vs %li",
+		     __FUNCTION__, filename, (size_t)fsz, fsize);
 	if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
 	    goto done;
 	goto ok;
