@@ -81,6 +81,7 @@ struct clixon_snmp_handle {
     clicon_handle sh_h;
     yang_stmt    *sh_ys;
     int           sh_type;  /* ASN.1 type */
+    char         *sh_default; 
 };
 typedef struct clixon_snmp_handle clixon_snmp_handle;
 
@@ -244,11 +245,17 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
     int                 retval = -1;
     clixon_snmp_handle *sh;
     int                accesses;
-    //    u_long             *accesses_cache = NULL;
     yang_stmt          *ys;
     clicon_handle       h;
     cbuf               *cb = NULL;
     int                 ret;
+    cg_var             *cv = NULL;
+    cxobj              *xt = NULL;
+    cxobj              *xerr;
+    cvec               *nsc = NULL;
+    cxobj              *x;
+    char               *xpath;
+    char               *reason = NULL;
 
     /*
      * can be used to pass information on a per-pdu basis from a
@@ -274,13 +281,6 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
 	   <rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/if:interfaces\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" /></get></rpc>"
 
 	*/
-	cxobj *xt = NULL;
-	cxobj *xerr;
-	cvec *nsc = NULL;
-	cxobj *x;
-	char *xpath;
-	cg_var *cv = NULL;
-	char   *reason = NULL;
 
 	if (xml_nsctx_yang(ys, &nsc) < 0)
 	    goto done;
@@ -298,29 +298,31 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
 	    clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
 	    goto done;
 	}
-	if ((x = xpath_first(xt, nsc, "%s", xpath)) < 0) 
-	    goto done;
 	if ((cv = cv_new(CGV_INT32)) == NULL){
 	    clicon_err(OE_UNIX, errno, "cv_new");
 	    goto done;
 	}
-	if ((ret = cv_parse1(xml_body(x), cv, &reason)) < 0){
-	    cv_free(cv);
-	    goto done;
+	if ((x = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
+	    if ((ret = cv_parse1(xml_body(x), cv, &reason)) < 0)
+		goto done;
+	    if (ret == 0){
+		clicon_debug(1, "%s %s", __FUNCTION__, reason);
+		netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
+		goto ok; // Wrong type
+	    }
 	}
-	if (ret == 0){
-	    clicon_debug(1, "%s %s", __FUNCTION__, reason);
-	    // XXX	    netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
+	else { /* default */
+	    if (sh->sh_default != NULL){
+		if ((ret = cv_parse1(sh->sh_default, cv, &reason)) < 0)
+		    goto done;
+	    }
+	    else{
+		goto ok; // No value or default value
+	    }
 	}
 
 	accesses = cv_int32_get(cv); // XXX Use cv type space
 
-	if (reason)
-	    free(reason);
-	if (xt)
-	    xml_free(xt);
-	if (nsc)
-	    xml_nsctx_free(nsc);
 	/* 1. use cligen object and get rwa buf / size from that, OR
 	 *    + have parse function from YANG
 	 *    - does not have 
@@ -379,8 +381,17 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
          */
         break;
     }
+ ok:
     retval = SNMP_ERR_NOERROR;
  done:
+    if (reason)
+	free(reason);
+    if (xt)
+	xml_free(xt);
+    if (nsc)
+	xml_nsctx_free(nsc);
+    if (cv)
+	cv_free(cv);
     if (cb)
 	cbuf_free(cb);
     return retval;
@@ -402,13 +413,14 @@ mib_yang_leaf(clicon_handle h,
     int        ret;
     char      *oidstr = NULL;
     char      *modes_str = NULL;
+    char      *default_str = NULL;
     oid        oid1[MAX_OID_LEN] = {0,};
     size_t     sz1 = MAX_OID_LEN;
     int        modes;
     yang_stmt *yrestype;  /* resolved type */
     char      *restype;  /* resolved type */
     char      *origtype=NULL;   /* original type */
-    int                 asn1_type;
+    int        asn1_type;
 
     char      *name;
     clixon_snmp_handle *sh;
@@ -430,10 +442,10 @@ mib_yang_leaf(clicon_handle h,
 	goto ok;
     modes = clicon_str2int(snmp_access_map, modes_str);
 
-    /* Default value, XXX How is this different from yang defaults?
+    /* SMI default value, How is this different from yang defaults?
      */
-    //     if (yang_extension_value(ys, "defval", IETF_YANG_SMIV2_NS, NULL, &modes_str) < 0)
-    //	goto done;
+    if (yang_extension_value(ys, "defval", IETF_YANG_SMIV2_NS, NULL, &default_str) < 0)
+    	goto done;
 
     /* Get yang type of leaf and trasnslate to ASN.1 */
     if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
@@ -459,6 +471,7 @@ mib_yang_leaf(clicon_handle h,
     sh->sh_h = h;
     sh->sh_ys = ys;
     sh->sh_type = asn1_type;
+    sh->sh_default = default_str;
     handler->myvoid =(void*)sh;
     if ((nh = netsnmp_handler_registration_create(name,
 						  handler,

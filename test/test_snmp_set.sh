@@ -11,8 +11,6 @@ if [ ${WITH_NETSNMP} != "yes" ]; then
     echo "Skipping test, Net-SNMP support not enabled."
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
-echo "NYI"
-if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 snmpd=$(type -p snmpd)
 snmpget="$(type -p snmpget) -On -c public -v2c localhost "
@@ -64,7 +62,7 @@ cat <<EOF > $fstate
 EOF
 
 function testinit(){
-    new "test params: -f $cfg -- -sS $fstate"
+    new "test params: -f $cfg"
 
     if [ $BE -ne 0 ]; then
 	# Kill old backend and start a new one
@@ -77,7 +75,7 @@ function testinit(){
 	sudo pkill -f clixon_backend
 
 	new "Starting backend"
-	start_backend -s init -f $cfg -- -sS $fstate
+	start_backend -s init -f $cfg
     fi
 
     new "wait backend"
