@@ -123,6 +123,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [Returning a string while Querying leaf-list for single entry](https://github.com/clicon/clixon/issues/326)
 * Fixed: A long TLS+HTTP/2 request such as by a browser causing block of other requests.
 * Fixed: [Error message seen twice in some cases](https://github.com/clicon/clixon/issues/325)
 * Fixed: [if choice is declared with multiple elements or leaf-list with in a case scope , addition or updation is not happening as expected](https://github.com/clicon/clixon/issues/327)
