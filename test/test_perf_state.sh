@@ -158,7 +158,7 @@ new "netconf get $perfreq single reqs"
     sel="/ex:interfaces/ex:a[ex:name='foo']/ex:b/ex:interface[ex:name='e$rnd']"
     rpc=$(chunked_framing "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>")
     echo "$rpc"
-done | $clixon_netconf -Hqef $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
+done | $clixon_netconf -qe1f $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF get
 new "restconf get test single req"
