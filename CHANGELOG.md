@@ -123,6 +123,8 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [Keywords containing '-' hyphen are missing from the auto-completion list](https://github.com/clicon/clixon/issues/330)
+  * Fixed by disabling `cligen_preference_mode`. This may have other side effects.
 * Fixed: [Returning a string while Querying leaf-list for single entry](https://github.com/clicon/clixon/issues/326)
 * Fixed: A long TLS+HTTP/2 request such as by a browser causing block of other requests.
 * Fixed: [Error message seen twice in some cases](https://github.com/clicon/clixon/issues/325)
