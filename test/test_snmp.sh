@@ -105,8 +105,13 @@ testinit
 MIB=".1.3.6.1.4.1.8072.2"
 OID="${MIB}.1.1" # netSnmpExampleInteger
 
-new "Test SNMP get for value in state file"
+new "Test SNMP get for int value in state file"
 expectpart "$($snmpget $OID)" 0 "$OID = INTEGER: 42"
+
+OID="${MIB}.1.3" # netSnmpExampleString
+
+new "Test SNMP get for string value in state file"
+expectpart "$($snmpget $OID)" 0 "$OID = STRING: So long, and thanks for all the fish!"
 
 new "Cleaning up"
 testexit

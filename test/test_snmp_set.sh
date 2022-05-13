@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # snmpset. This requires deviation of MIB-YANG to make write operations
+# Get default value, set new value via SNMP and check it, set new value via NETCONF and check
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -113,6 +114,15 @@ expectpart "$($snmpset $OID i 1234)" 0 "$OID = INTEGER: 1234"
 
 new "Get new value"
 expectpart "$($snmpget $OID)" 0 "$OID = INTEGER: 1234"
+
+new "Set new value via NETCONF"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><default-operation>none</default-operation><target><candidate/></target><config><NET-SNMP-EXAMPLES-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:NET-SNMP-EXAMPLES-MIB\"><netSnmpExampleScalars><netSnmpExampleInteger>999</netSnmpExampleInteger></netSnmpExampleScalars></NET-SNMP-EXAMPLES-MIB></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf commit"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Get new value"
+expectpart "$($snmpget $OID)" 0 "$OID = INTEGER: 999"
 
 new "Cleaning up"
 testexit
