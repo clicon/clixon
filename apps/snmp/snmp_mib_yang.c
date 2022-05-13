@@ -80,7 +80,6 @@
 struct clixon_snmp_handle {
     clicon_handle sh_h;
     yang_stmt    *sh_ys;
-    int           sh_type;  /* ASN.1 type */
     char         *sh_default; 
 };
 typedef struct clixon_snmp_handle clixon_snmp_handle;
@@ -118,6 +117,31 @@ static const map_str2int snmp_type_map[] = {
     // XXX {"", ASN_SET},
     {NULL,           -1}
 };
+
+
+static int
+yang2snmp_types(yang_stmt    *ys,
+		int          *asn1_type,
+		enum cv_type *cvtype)
+{
+    int        retval = -1;
+    yang_stmt *yrestype;  /* resolved type */
+    char      *restype;  /* resolved type */
+    char      *origtype=NULL;   /* original type */
+
+    /* Get yang type of leaf and trasnslate to ASN.1 */
+    if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+	goto done;
+    restype = yrestype?yang_argument_get(yrestype):NULL;
+    if (clicon_type2cv(origtype, restype, ys, cvtype) < 0)
+	goto done;
+    /* translate to asn.1 */
+    *asn1_type = clicon_str2int(snmp_type_map, restype);
+    clicon_debug(1, "%s type:%s", __FUNCTION__, restype);
+    retval = 0;
+ done:
+    return retval;
+}
 
 #if 1 /* table example */
 
@@ -230,6 +254,81 @@ yang2xpath(yang_stmt *ys,
     return retval;
 }
 
+/*! Translate from yang/xml/clixon to SNMP/ASN.1
+**
+* The tran
+ * @param[in]   valstr   Clixon/yang/xml string value
+ * @param[in]   cvtype   Type of clixon type
+ * @param[out]  snmpval  Malloc:ed snmp type
+ * @param[out]  snmplen  Length of snmp type
+ * @retval      1        OK
+ * @retval      0        Invalid value
+ * @retval      -1       Error
+ */
+static int
+type_yang2snmp(char                       *valstr,
+	       enum cv_type                cvtype,
+	       netsnmp_agent_request_info *reqinfo,
+	       netsnmp_request_info       *requests,
+	       u_char                    **snmpval,
+	       size_t                     *snmplen)
+{
+    int     retval = -1;
+    int     ret;
+    char   *reason = NULL;
+    size_t  cvlen;
+    cg_var *cv;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (snmpval == NULL || snmplen == NULL){
+	clicon_err(OE_UNIX, EINVAL, "snmpval or snmplen is NULL");
+	goto done;
+    }
+    if ((cv = cv_new(cvtype)) == NULL){
+	clicon_err(OE_UNIX, errno, "cv_new");
+	goto done; 
+    }
+    if ((ret = cv_parse1(valstr, cv, &reason)) < 0)
+	goto done;
+    if (ret == 0){
+	clicon_debug(1, "%s %s", __FUNCTION__, reason);
+	netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
+	goto fail;
+    }
+    cvlen = cv_len(cv);
+    if ((*snmpval = malloc(cvlen)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    switch (cvtype){
+    case CGV_INT32:{
+	int i = cv_int32_get(cv);
+	memcpy(*snmpval, &i, cvlen);
+	*snmplen = cvlen;
+	break;
+    }
+    case CGV_STRING:{
+	strcpy(*snmpval, cv_string_get(cv));
+	*snmplen = cvlen;
+	break;
+    }
+    default:
+	clicon_debug(1, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
+	netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
+	goto fail;
+	break;
+    }
+    retval = 1;
+ done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    if (reason)
+	free(reason);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! SNMP Scalar operation handler
  * Calls come: READ:160, 
  *             WRITE: 0, 1, 2, 3, 
@@ -244,19 +343,22 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
 {
     int                 retval = -1;
     clixon_snmp_handle *sh;
-    int                accesses;
     yang_stmt          *ys;
     clicon_handle       h;
     cbuf               *cb = NULL;
-    int                 ret;
     cg_var             *cv = NULL;
     cxobj              *xt = NULL;
     cxobj              *xerr;
     cvec               *nsc = NULL;
     cxobj              *x;
     char               *xpath;
-    char               *reason = NULL;
-
+    int                 asn1_type;
+    enum cv_type        cvtype;
+    char               *valstr;
+    u_char             *snmpval = NULL;
+    size_t              snmplen;
+    int                 ret;
+    
     /*
      * can be used to pass information on a per-pdu basis from a
      * helper to the later handlers 
@@ -270,10 +372,14 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
     ys = sh->sh_ys;
     h = sh->sh_h;
     clicon_debug(1, "%s mode:%d", __FUNCTION__, reqinfo->mode);
+
+    if (yang2snmp_types(ys, &asn1_type, &cvtype) < 0)
+	goto done;
+
     /* see net-snmp/agent/snmp_agent.h / net-snmp/library/snmp.h */
     switch (reqinfo->mode) {
     case MODE_GET: // 160
-	requests->requestvb->type = sh->sh_type; // ASN_NULL on input
+	requests->requestvb->type = asn1_type; // ASN_NULL on input
 
 	/* get xpath: see yang2api_path_fmt / api_path2xpath 
 	   New fn: yang2xpath?
@@ -298,30 +404,18 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
 	    clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
 	    goto done;
 	}
-	if ((cv = cv_new(CGV_INT32)) == NULL){
-	    clicon_err(OE_UNIX, errno, "cv_new");
-	    goto done;
-	}
+	/* Get value, either from xml, or smiv2 default */
 	if ((x = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
-	    if ((ret = cv_parse1(xml_body(x), cv, &reason)) < 0)
-		goto done;
-	    if (ret == 0){
-		clicon_debug(1, "%s %s", __FUNCTION__, reason);
-		netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
-		goto ok; // Wrong type
-	    }
+	    valstr = xml_body(x);
 	}
-	else { /* default */
-	    if (sh->sh_default != NULL){
-		if ((ret = cv_parse1(sh->sh_default, cv, &reason)) < 0)
-		    goto done;
-	    }
-	    else{
-		goto ok; // No value or default value
-	    }
-	}
-
-	accesses = cv_int32_get(cv); // XXX Use cv type space
+	else if ((valstr = sh->sh_default) != NULL)
+	    ;
+	else
+	    valstr = "0"; // XXX table calls leafs with no value?
+	if ((ret = type_yang2snmp(valstr, cvtype, reqinfo, requests, &snmpval, &snmplen)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto ok;
 
 	/* 1. use cligen object and get rwa buf / size from that, OR
 	 *    + have parse function from YANG
@@ -332,14 +426,14 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
 	
 	/* see snmplib/snmp_client.c */
         if (snmp_set_var_value(requests->requestvb,
-			       (u_char *) & accesses,
-			       sizeof(accesses)) != 0){
+			       snmpval,
+			       snmplen) != 0){
 	    clicon_err(OE_SNMP, 0, "snmp_set_var_value");
 	    goto done;
 	}
         break;
     case MODE_SET_RESERVE1: // 0
-        if (requests->requestvb->type != sh->sh_type)
+        if (requests->requestvb->type != asn1_type)
             netsnmp_set_request_error(reqinfo, requests,
                                       SNMP_ERR_WRONGTYPE);
         break;
@@ -384,8 +478,8 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
  ok:
     retval = SNMP_ERR_NOERROR;
  done:
-    if (reason)
-	free(reason);
+    if (snmpval)
+	free(snmpval);
     if (xt)
 	xml_free(xt);
     if (nsc)
@@ -417,11 +511,6 @@ mib_yang_leaf(clicon_handle h,
     oid        oid1[MAX_OID_LEN] = {0,};
     size_t     sz1 = MAX_OID_LEN;
     int        modes;
-    yang_stmt *yrestype;  /* resolved type */
-    char      *restype;  /* resolved type */
-    char      *origtype=NULL;   /* original type */
-    int        asn1_type;
-
     char      *name;
     clixon_snmp_handle *sh;
 
@@ -447,13 +536,6 @@ mib_yang_leaf(clicon_handle h,
     if (yang_extension_value(ys, "defval", IETF_YANG_SMIV2_NS, NULL, &default_str) < 0)
     	goto done;
 
-    /* Get yang type of leaf and trasnslate to ASN.1 */
-    if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
-	goto done;
-    restype = yrestype?yang_argument_get(yrestype):NULL;
-    /* translate to asn.1 */
-    asn1_type = clicon_str2int(snmp_type_map, restype);
-
     name = yang_argument_get(ys);
 
     if ((handler = netsnmp_create_handler(name, snmp_scalar_handler)) == NULL){
@@ -470,7 +552,6 @@ mib_yang_leaf(clicon_handle h,
     }
     sh->sh_h = h;
     sh->sh_ys = ys;
-    sh->sh_type = asn1_type;
     sh->sh_default = default_str;
     handler->myvoid =(void*)sh;
     if ((nh = netsnmp_handler_registration_create(name,
