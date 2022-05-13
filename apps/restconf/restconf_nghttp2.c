@@ -153,7 +153,10 @@ nghttp2_print_headers(nghttp2_nv *nva,
  * `nghttp2_session_send()` to send data to the remote endpoint.  If
  * the application uses solely `nghttp2_session_mem_send()` instead,
  * this callback function is unnecessary.
- * XXX see buf_write
+ * It must return the number of bytes sent if it succeeds.  
+ * If it cannot send any single byte without blocking,
+ * it must return :enum:`NGHTTP2_ERR_WOULDBLOCK`.  
+ * For other errors, it must return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
 static ssize_t
 session_send_callback(nghttp2_session *session,
@@ -162,24 +165,22 @@ session_send_callback(nghttp2_session *session,
 		      int              flags,
 		      void            *user_data)
 {
-    int            retval = -1;
+    int            retval = NGHTTP2_ERR_CALLBACK_FAILURE;
     restconf_conn *rc = (restconf_conn *)user_data;
     int            er;
     ssize_t        len;
     ssize_t        totlen = 0;
     int            s;
-    SSL           *ssl; 
     int            sslerr;
     
     clicon_debug(1, "%s buflen:%zu", __FUNCTION__, buflen);
     s = rc->rc_s;
-    ssl = rc->rc_ssl;
     while (totlen < buflen){
-	if (ssl){
-	    if ((len = SSL_write(ssl, buf+totlen, buflen-totlen)) <= 0){
+	if (rc->rc_ssl){
+	    if ((len = SSL_write(rc->rc_ssl, buf+totlen, buflen-totlen)) <= 0){
 		er = errno;
-		sslerr = SSL_get_error(ssl, len);
-		clicon_debug(1, "%s errno:;%d sslerr:%d", __FUNCTION__, errno, sslerr);
+		sslerr = SSL_get_error(rc->rc_ssl, len);
+		clicon_debug(1, "%s errno:%d sslerr:%d", __FUNCTION__, errno, sslerr);
 		switch (sslerr){
 		case SSL_ERROR_WANT_WRITE:           /* 3 */
 		    clicon_debug(1, "%s write SSL_ERROR_WANT_WRITE", __FUNCTION__);
@@ -187,12 +188,9 @@ session_send_callback(nghttp2_session *session,
 		    continue;
 		    break;
 		case SSL_ERROR_SYSCALL:              /* 5 */
-		    if (er == ECONNRESET) {/* Connection reset by peer */
-			if (ssl)
-			    SSL_free(ssl);
-			close(s);
-			// XXX			clixon_event_unreg_fd(s, restconf_connection);
-			goto ok; /* Close socket and ssl */
+		    if (er == ECONNRESET || /* Connection reset by peer */
+			er == EPIPE) {      /* Reading end of socket is closed */
+			goto done; /* Cleanup in http2_recv() */
 		    }
 		    else if (er == EAGAIN){
 			/* same as want_write above, but different behaviour on different 
@@ -204,7 +202,7 @@ session_send_callback(nghttp2_session *session,
 			continue;
 		    }
 		    else{
-			clicon_err(OE_RESTCONF, er, "SSL_write %d", er);
+			clicon_err(OE_RESTCONF, er, "SSL_write %d", sslerr);
 			goto done;
 		    }
 		    break;
@@ -247,7 +245,7 @@ session_send_callback(nghttp2_session *session,
 	return retval;
     }
     clicon_debug(1, "%s retval:%zd", __FUNCTION__, totlen);
-    return totlen;
+    return retval == 0 ? totlen : retval;
 }
 
 /*! Invoked when |session| wants to receive data from the remote peer.  
@@ -473,15 +471,14 @@ http2_exec(restconf_conn        *rc,
     if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
 	goto done;
     sd->sd_proto = HTTP_2; /* XXX is this necessary? */
-	if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0
-	    || api_path_is_restconf(rc->rc_h)
-	    || api_path_is_data(rc->rc_h)){
+    if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0
+	|| api_path_is_restconf(rc->rc_h)
+	|| api_path_is_data(rc->rc_h)){
 	if (restconf_nghttp2_path(sd) < 0)
 	    goto done;
     }
     else{
 	sd->sd_code = 404;    /* not found */
-
     }
     if (restconf_param_del_all(rc->rc_h) < 0) // XXX
     	goto done;
@@ -882,7 +879,7 @@ error_callback2(nghttp2_session *session,
  * @param[in] buf  Character buffer
  * @param[in] n    Lenght of buf
  * @retval    1    OK
- * @retval    0    Invald request
+ * @retval    0    Invalid request
  * @retval   -1    Fatal error
  */
 int
@@ -918,11 +915,15 @@ http2_recv(restconf_conn       *rc,
     }
     /* sends highest prio frame from outbound queue to remote peer.  It does this as
      * many as possible until user callback :type:`nghttp2_send_callback` returns
-     * * :enum:`NGHTTP2_ERR_WOULDBLOCK` or the outbound queue becomes empty.
+     * :enum:`NGHTTP2_ERR_WOULDBLOCK` or the outbound queue becomes empty.
+     * @see session_send_callback()
      */
+    clicon_err_reset();
     if ((ngerr = nghttp2_session_send(rc->rc_ngsession)) != 0){
-	clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_send");
-	goto done;
+	if (clicon_errno) 
+	    goto done;
+	else
+	    goto fail; /* Not fatal error */
     }
     retval = 1; /* OK */
  done:
@@ -943,6 +944,7 @@ http2_send_server_connection(restconf_conn *rc)
 				    ,{NGHTTP2_SETTINGS_ENABLE_PUSH, 0}};
     nghttp2_error          ngerr;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     if ((ngerr = nghttp2_submit_settings(rc->rc_ngsession,
 					 NGHTTP2_FLAG_NONE,
 					 iv,
@@ -956,6 +958,7 @@ http2_send_server_connection(restconf_conn *rc)
     }
     retval = 0;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 

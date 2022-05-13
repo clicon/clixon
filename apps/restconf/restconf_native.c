@@ -358,9 +358,11 @@ native_buf_write(char   *buf,
 		er = errno;
 		switch (SSL_get_error(ssl, len)){
 		case SSL_ERROR_SYSCALL:              /* 5 */
-		    if (er == ECONNRESET) {/* Connection reset by peer */
-			if (ssl)
+		    if (er == ECONNRESET || /* Connection reset by peer */
+			er == EPIPE) {      /* Reading end of socket is closed */
+			if (ssl){
 			    SSL_free(ssl);
+			}
 			close(s);
 			clixon_event_unreg_fd(s, restconf_connection);
 			goto ok; /* Close socket and ssl */
@@ -812,6 +814,7 @@ restconf_http2_process(restconf_conn *rc,
     int           ret;
     nghttp2_error ngerr;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     if (rc->rc_exit){ /* Server-initiated exit for http/2 */
 	if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, 0)) < 0){
 	    clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
@@ -822,7 +825,7 @@ restconf_http2_process(restconf_conn *rc,
 	if ((ret = http2_recv(rc, (unsigned char *)buf, n)) < 0)
 	    goto done;
 	if (ret == 0){
-	    restconf_close_ssl_socket(rc, 1);
+	    restconf_close_ssl_socket(rc, 0);
 	    if (restconf_conn_free(rc) < 0)
 		goto done;
 	    retval = 0;
@@ -839,6 +842,7 @@ restconf_http2_process(restconf_conn *rc,
     }
     retval = 1;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 #endif /* HAVE_LIBNGHTTP2 */
