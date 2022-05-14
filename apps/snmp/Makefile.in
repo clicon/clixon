@@ -85,6 +85,7 @@ APPL	  = clixon_snmp
 APPSRC    =
 APPSRC   += snmp_main.c
 APPSRC   += snmp_mib_yang.c
+APPSRC   += snmp_lib.c
 
 APPOBJ    = $(APPSRC:.c=.o)
 

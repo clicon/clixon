@@ -8,7 +8,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 APPNAME=snmp
 
 # XXX skip for now
-if [ ${WITH_NETSNMP} != "yes" ]; then
+if [ ${ENABLE_NETSNMP} != "yes" ]; then
     echo "Skipping test, Net-SNMP support not enabled."
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
