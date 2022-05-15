@@ -4,6 +4,7 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
+# Re-use main example backend state callbacks
 APPNAME=example
 
 if [ ${ENABLE_NETSNMP} != "yes" ]; then
@@ -37,7 +38,6 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
   <CLICON_SNMP_MIB>NET-SNMP-EXAMPLES-MIB</CLICON_SNMP_MIB>
-
 </clixon-config>
 EOF
 
@@ -63,7 +63,6 @@ EOF
 
 function testinit(){
     new "test params: -f $cfg -- -sS $fstate"
-
     if [ $BE -ne 0 ]; then
 	# Kill old backend and start a new one
 	new "kill old backend"
