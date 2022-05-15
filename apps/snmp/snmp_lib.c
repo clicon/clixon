@@ -104,16 +104,32 @@ static const map_str2int snmp_type_map[] = {
     {NULL,           -1}
 };
 
+/* Map between SNMP message / mode str and int form
+ */
+static const map_str2int snmp_msg_map[] = {
+    {"MODE_SET_RESERVE1",    MODE_SET_RESERVE1},
+    {"MODE_SET_RESERVE2",    MODE_SET_RESERVE2},
+    {"MODE_SET_ACTION",      MODE_SET_ACTION},
+    {"MODE_SET_COMMIT",      MODE_SET_COMMIT},
+    {"MODE_GET",             MODE_GET}, 
+    {"MODE_GETNEXT",         MODE_GETNEXT}, 
+    {NULL,                   -1}
+};
 
 /*! Translate from snmp string to int representation
  * @note Internal snmpd, maybe find something in netsnmpd?
  */
 int
-snmp_modes_str2int(char *modes_str)
+snmp_access_str2int(char *modes_str)
 {
     return clicon_str2int(snmp_access_map, modes_str);
 }
 
+const char *
+snmp_msg_int2str(int msg)
+{
+    return clicon_int2str(snmp_msg_map, msg);
+}
 /*!
  */
 int
@@ -249,7 +265,7 @@ yang2xpath(yang_stmt *ys,
 	    cprintf(cb, "/");
 	}
     }
-    cprintf(cb, "/%s:", yang_find_myprefix(ys));
+    cprintf(cb, "%s:", yang_find_myprefix(ys));
     if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE)
 	cprintf(cb, "%s", yang_argument_get(ys));
     switch (yang_keyword_get(ys)){

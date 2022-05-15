@@ -42,7 +42,13 @@
   *      smiv2:alias "netSnmpExamples" {
   *        smiv2:oid "1.3.6.1.4.1.8072.2";
   *
-
+  * SNMP messages:
+  * 160 MODE_GETNEXT / SNMP_MSG_GET
+  * 161 MODE_GET / SNMP_MSG_GETNEXT
+  * 0   MODE_SET_RESERVE1
+  * 1   MODE_SET_RESERVE2
+  * 2   MODE_SET_ACTION
+  * 3   MODE_SET_COMMIT
  */
 
 #ifdef HAVE_CONFIG_H
@@ -56,6 +62,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <assert.h>
 
 /* net-snmp */
 #include <net-snmp/net-snmp-config.h>
@@ -81,70 +88,118 @@
 struct clixon_snmp_handle {
     clicon_handle sh_h;
     yang_stmt    *sh_ys;
-    char         *sh_default; 
+    char         *sh_default;         /* MIB default value leaf only */
+    netsnmp_table_data_set *sh_table; /* table struct, table only */
 };
 typedef struct clixon_snmp_handle clixon_snmp_handle;
 
-/*
- * https://net-snmp.sourceforge.io/dev/agent/data_set_8c-example.html#_a0
+/*! SNMP table operation handlre
+
+ * Callorder: 161,160,.... 0, 1,2,3, 160,161,...
+ * see https://net-snmp.sourceforge.io/dev/agent/data_set_8c-example.html#_a0
  */
 int
-table_handler(netsnmp_mib_handler *handler,
-	      netsnmp_handler_registration *reginfo,
-	      netsnmp_agent_request_info *reqinfo,
-	      netsnmp_request_info *requests)
+snmp_table_handler(netsnmp_mib_handler          *handler,
+		   netsnmp_handler_registration *nhreg,
+		   netsnmp_agent_request_info   *reqinfo,
+		   netsnmp_request_info         *requests)
 {
-    netsnmp_table_data_set     *table = (netsnmp_table_data_set *)reginfo->my_reg_void;
-    netsnmp_table_row          *row;
-
-    row = netsnmp_create_table_data_row();
-
-    netsnmp_table_row_add_index(row, ASN_OCTET_STR, "snmpv3", strlen("snmpv3"));
-
-    netsnmp_set_row_column(row, 2, ASN_OCTET_STR, "Russ Mundy", strlen("Russ Mundy"));
-    netsnmp_mark_row_column_writable(row, 2, 1);
-    netsnmp_set_row_column(row, 3, ASN_OCTET_STR, "David Harrington", strlen("David Harrington"));
-    netsnmp_mark_row_column_writable(row, 3, 1);
-
-    netsnmp_table_dataset_add_row(table, row);
-
-    return SNMP_ERR_NOERROR;
-}
-
-static void
-init_testtable(void)
-{
-    netsnmp_handler_registration *handler;
+    int                     retval = -1;
+    clixon_snmp_handle     *sh;
     netsnmp_table_data_set *table;
+    netsnmp_table_row      *row;
+    yang_stmt              *ys; /* container */
+    yang_stmt              *ylist;
+    clicon_handle           h;
+    cvec                   *nsc = NULL;
+    cxobj                  *xt = NULL;
+    cbuf                   *cb = NULL;
+    cxobj                  *xerr;
+    char                   *xpath;
+    cxobj                  *xtable;
+    cxobj                  *xe;
+    cxobj                  *xleaf;
+    int                     i;
+    char                   *valstr;
 
-    oid my_registration_oid[] = { 1, 3, 6, 1, 4, 1, 8072, 2, 2, 1 };
+    clicon_debug(1, "%s %s %s", __FUNCTION__,
+		 handler->handler_name,
+		 snmp_msg_int2str(reqinfo->mode));
+    sh = (clixon_snmp_handle*)nhreg->my_reg_void;
+    ys = sh->sh_ys;
+    h = sh->sh_h;
+    table = sh->sh_table;
+    if ((ylist = yang_find(ys, Y_LIST, NULL)) == NULL)
+	goto ok;
+    switch(reqinfo->mode){
+    case MODE_GETNEXT: // 160
+	if (xml_nsctx_yang(ys, &nsc) < 0)
+	    goto done;
+	/* XXX just for yang2xpath */
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	if (yang2xpath(ys, cb) < 0)
+	    goto done;
+	xpath = cbuf_get(cb);
+	if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
+	    goto done;
+	if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+	    clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
+	    goto done;
+	}
+	if ((xtable = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
 
-    netsnmp_ds_set_string(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_X_SOCKET, "/var/run/snmp.sock");
-
-    table = netsnmp_create_table_data_set("netSnmpIETFWGTable");
-
-    netsnmp_table_dataset_add_index(table, ASN_OCTET_STR);
-    netsnmp_table_set_multi_add_default_row(table, 2, ASN_OCTET_STR, 1, NULL, 0, 3, ASN_OCTET_STR, 1, NULL, 0, 0);
-
-    handler = netsnmp_create_handler_registration("netSnmpIETFWGTable", table_handler,
-						  my_registration_oid,
-						  OID_LENGTH(my_registration_oid),
-						  HANDLER_CAN_RWRITE);
-    handler->my_reg_void = table;
-
-    netsnmp_register_table_data_set(handler, table, NULL);
-    netsnmp_register_auto_data_table(table, NULL);
+	    xe = NULL; /* Loop thru entries in table */
+	    while ((xe = xml_child_each(xtable, xe, CX_ELMNT)) != NULL) {
+		row = netsnmp_create_table_data_row();
+		xleaf = NULL; /* Loop thru leafs in entry */
+		i = 1; /* tableindex start at 1 */
+		while ((xleaf = xml_child_each(xe, xleaf, CX_ELMNT)) != NULL) {
+		    valstr = xml_body(xleaf);
+		    if (i == 1) // Assume first netry is key XXX should check YANG
+			netsnmp_table_row_add_index(row, ASN_OCTET_STR, valstr, strlen(valstr));
+		    else{
+			netsnmp_set_row_column(row, i, ASN_OCTET_STR, valstr, strlen(valstr));
+			netsnmp_mark_row_column_writable(row, i, 1);
+		    }
+		    i++;
+		}
+		netsnmp_table_dataset_add_row(table, row);
+	    }
+	}
+	break;
+    case MODE_GET: // 160
+    case MODE_SET_RESERVE1:
+    case MODE_SET_RESERVE2:
+    case MODE_SET_ACTION:
+    case MODE_SET_COMMIT:
+	break;
+	
+    }
+ ok:
+    retval = SNMP_ERR_NOERROR;
+ done:
+    if (xt)
+	xml_free(xt);
+    if (cb)
+	cbuf_free(cb);
+    if (nsc)
+	xml_nsctx_free(nsc);
+    return retval;
 }
+
 
 /*! SNMP Scalar operation handler
- * Calls come: READ:160, 
- *             WRITE: 0, 1, 2, 3, 
- * MODE_SET_RESEVE1, MODE_SET_RESERVE2, MODE_SET_ACTION, MODE_SET_COMMIT
+ * Calls order: READ:160, 
+ *              WRITE: 0, 1, 2, 3, 
+ * MODE_SET_RESERVE1, MODE_SET_RESERVE2, MODE_SET_ACTION, MODE_SET_COMMIT
  *
  */
 int
 snmp_scalar_handler(netsnmp_mib_handler          *handler,
-		    netsnmp_handler_registration *reginfo,
+		    netsnmp_handler_registration *nhreg,
 		    netsnmp_agent_request_info   *reqinfo,
 		    netsnmp_request_info         *requests)
 {
@@ -173,12 +228,12 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
      netsnmp_data_list *agent_data;
      netsnmp_free_agent_data_set()
     */
-    clicon_debug(1, "%s %s", __FUNCTION__, handler->handler_name);
-
-    sh = (clixon_snmp_handle*)handler->myvoid;
+    clicon_debug(1, "%s %s %s", __FUNCTION__,
+		 handler->handler_name,
+		 snmp_msg_int2str(reqinfo->mode));
+    sh = (clixon_snmp_handle*)nhreg->my_reg_void;
     ys = sh->sh_ys;
     h = sh->sh_h;
-    clicon_debug(1, "%s mode:%d", __FUNCTION__, reqinfo->mode);
 
     if (yang2snmp_types(ys, &asn1_type, &cvtype) < 0)
 	goto done;
@@ -197,7 +252,7 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
 
 	if (xml_nsctx_yang(ys, &nsc) < 0)
 	    goto done;
-
+	/* XXX just for yang2xpath */
 	if ((cb = cbuf_new()) == NULL){
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
@@ -298,29 +353,116 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
     return retval;
 }
 
+/*! Parse smiv2 extensions for YANG container/list 
+ *
+  * Typical table:
+  *   container x {
+  *      smiv2:oid "1.3.6.1.4.1.8072.2.2.1";
+  *      list y{
+  *      
+  *      }
+  *   }
+ * @param[in]  h    Clixon handle
+ * @param[in]  ys   Mib-Yang node
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+static int
+mib_yang_table(clicon_handle h,
+	       yang_stmt    *ys)
+{
+    int                           retval = -1;
+    netsnmp_handler_registration *nhreg;
+    netsnmp_table_data_set       *table;
+    char                         *oidstr = NULL;
+    oid                           oid1[MAX_OID_LEN] = {0,};
+    size_t                        sz1 = MAX_OID_LEN;
+    char                         *name;
+    clixon_snmp_handle           *sh;
+    int                           ret;
+
+    /* Get OID from parent container  */
+    if (yang_extension_value(ys, "oid", IETF_YANG_SMIV2_NS, NULL, &oidstr) < 0)
+	goto done;
+    if (oidstr == NULL)
+	goto ok;
+    if (snmp_parse_oid(oidstr, oid1, &sz1) == NULL){
+	clicon_err(OE_SNMP, 0, "snmp_parse_oid");
+	goto done;
+    }
+    name = yang_argument_get(ys);
+
+    if ((table = netsnmp_create_table_data_set(name)) == NULL){
+	clicon_err(OE_SNMP, errno, "netsnmp_create_table_data_set");
+	goto done;
+    }
+    /* Userdata to pass around in netsmp callbacks 
+     * XXX: not deallocated
+     */
+    if ((sh = malloc(sizeof(*sh))) == NULL){
+       clicon_err(OE_UNIX, errno, "malloc");
+       goto done;
+    }
+    sh->sh_h = h;
+    sh->sh_ys = ys;
+    sh->sh_table = table;
+
+    (void)netsnmp_table_dataset_add_index(table, ASN_OCTET_STR);
+    (void)netsnmp_table_set_multi_add_default_row(table, 2, ASN_OCTET_STR, 1, NULL, 0, 3, ASN_OCTET_STR, 1, NULL, 0, 0);
+
+    if ((nhreg = netsnmp_create_handler_registration(name,
+						     snmp_table_handler,
+						     oid1,
+						     sz1,
+						     HANDLER_CAN_RWRITE)) == NULL){
+	clicon_err(OE_SNMP, errno, "netsnmp_create_handler_registration");
+	goto done;
+    }
+
+    nhreg->my_reg_void = sh;
+
+    if ((ret = netsnmp_register_table_data_set(nhreg, table, NULL)) != SNMPERR_SUCCESS){
+	//XXX	err return? clicon_err(OE_SNMP, ret, "netsnmp_register_table_data_set");
+	//	goto done;
+	
+    }
+    (void)netsnmp_register_auto_data_table(table, NULL);
+
+    clicon_debug(1, "%s %s registered", __FUNCTION__, oidstr);
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Parse smiv2 extensions for YANG leaf
-  * Typical leaf:
-  *      smiv2:oid "1.3.6.1.4.1.8072.2.1.1";
-  *      smiv2:max-access "read-write";
-  *      smiv2:defval "42"; (optional)
+ * Typical leaf:
+ *      smiv2:oid "1.3.6.1.4.1.8072.2.1.1";
+ *      smiv2:max-access "read-write";
+ *      smiv2:defval "42"; (optional)
+ * @param[in]  h    Clixon handle
+ * @param[in]  ys   Mib-Yang node
+ * @retval     0    OK
+ * @retval    -1    Error
  */
 static int
 mib_yang_leaf(clicon_handle h,
 	      yang_stmt    *ys)
 {
-    int        retval = -1;
-    netsnmp_handler_registration *nh = NULL;
-    netsnmp_mib_handler *handler;
-    int        ret;
-    char      *oidstr = NULL;
-    char      *modes_str = NULL;
-    char      *default_str = NULL;
-    oid        oid1[MAX_OID_LEN] = {0,};
-    size_t     sz1 = MAX_OID_LEN;
-    int        modes;
-    char      *name;
-    clixon_snmp_handle *sh;
+    int                           retval = -1;
+    netsnmp_handler_registration *nhreg = NULL;
+    netsnmp_mib_handler          *handler;
+    int                           ret;
+    char                         *modes_str = NULL;
+    char                         *default_str = NULL;
+    char                         *oidstr = NULL;
+    oid                           oid1[MAX_OID_LEN] = {0,};
+    size_t                        sz1 = MAX_OID_LEN;
+    int                           modes;
+    char                         *name;
+    clixon_snmp_handle           *sh;
 
+    /* Get OID from leaf */
     if (yang_extension_value(ys, "oid", IETF_YANG_SMIV2_NS, NULL, &oidstr) < 0)
 	goto done;
     if (oidstr == NULL)
@@ -336,7 +478,7 @@ mib_yang_leaf(clicon_handle h,
      */
     if (modes_str == NULL)
 	goto ok;
-    modes = snmp_modes_str2int(modes_str);
+    modes = snmp_access_str2int(modes_str);
 
     /* SMI default value, How is this different from yang defaults?
      */
@@ -360,8 +502,7 @@ mib_yang_leaf(clicon_handle h,
     sh->sh_h = h;
     sh->sh_ys = ys;
     sh->sh_default = default_str;
-    handler->myvoid =(void*)sh;
-    if ((nh = netsnmp_handler_registration_create(name,
+    if ((nhreg = netsnmp_handler_registration_create(name,
 						  handler,
 						  oid1,
 						  sz1,
@@ -370,16 +511,16 @@ mib_yang_leaf(clicon_handle h,
 	netsnmp_handler_free(handler);
 	goto done;
     }
+    nhreg->my_reg_void =(void*)sh;
     /* 
-     * XXX: nh->agent_data
+     * XXX: nhreg->agent_data
      */
-    if ((ret = netsnmp_register_instance(nh)) < 0){
+    if ((ret = netsnmp_register_instance(nhreg)) < 0){
 	/* XXX Failures are MIB_REGISTRATION_FAILED and MIB_DUPLICATE_REGISTRATION. */
 	clicon_err(OE_SNMP, ret, "netsnmp_register_instance");
 	goto done;
     }
     clicon_debug(1, "%s %s registered", __FUNCTION__, oidstr);
-
  ok:
     retval = 0;
  done:
@@ -420,13 +561,14 @@ mib_traverse(clicon_handle h,
 	if (mib_yang_leaf(h, yn) < 0)
 	    goto done;
 	break;
-    case Y_CONTAINER: // XXX
+    case Y_CONTAINER: /* See list case */
 	break;
-    case Y_LIST: // XXX
+    case Y_LIST: /* If parent is container -> identify as table */
 	yp = yang_parent_get(yn);
 	if (yang_keyword_get(yp) == Y_CONTAINER){
-	    /* XXX ad-hoc method to find table? now skip */
-	    goto ok;
+	    if (mib_yang_table(h, yp) < 0)
+		goto done;
+	    goto ok; /* Dont traverse child leafs further */
 	}
 	break;
     default:
@@ -488,7 +630,6 @@ clixon_snmp_mib_yangs(clicon_handle h)
 	if (mib_traverse(h, ymod) < 0)
 	    goto done;
     }
-    init_testtable(); // XXX NOTE Must be AFTER loop ^ for unknown reason
     retval = 0;
  done:
     return retval;
