@@ -505,7 +505,7 @@ read_ssl(restconf_conn *rc,
     int  retval = -1;
     int  sslerr;
     
-    if ((*np = SSL_read(rc->rc_ssl, buf, sz)) < 0){
+    if ((*np = SSL_read(rc->rc_ssl, buf, sz)) <= 0){
 	sslerr = SSL_get_error(rc->rc_ssl, *np);
 	clicon_debug(1, "%s SSL_read() n:%zd errno:%d sslerr:%d", __FUNCTION__, *np, errno, sslerr);
 	switch (sslerr){
@@ -520,12 +520,17 @@ read_ssl(restconf_conn *rc,
 	    *again = 1;
 	    break;
 	default:
-	    clicon_err(OE_XML, errno, "SSL_read");
-	    goto done;              
+#if 1 /* Make socket read error handling more resilient: log and continue instead of exit */
+	    clicon_log(LOG_WARNING, "%s SSL_read(): %s", __FUNCTION__, strerror(errno));
+	    *np = 0;	    
+#else
+	    clicon_err(OE_XML, errno, "SSL_read %d", sslerr);
+	    goto done;
+#endif
 	} /* switch */
     }
     retval = 0;
- done:
+    // done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }
