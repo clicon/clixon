@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [5.7.0](#560) Expected: May 2022
+* [5.7.0](#570) 16 May 2022
 * [5.6.0](#560) 8 March 2022
 * [5.5.0](#550) 20 January 2022
 * [5.4.0](#540) 30 November 2021
@@ -35,84 +35,90 @@
 * [3.3.1](#331) June 7 2017
 
 ## 5.7.0
-Expected: May 2022
+16 May 2022
+
+Clixon 5.7 upgrades the NETCONF framing to chunked framing as defined
+in RFC 6242 and also introduces a limited http data service. As
+always, multiple bugfixes as well.
 
 ### New features
-
-* Extended the Restconf implementation with a limited http-data static service
-   * The limited implementation is as follows:
-      * path: Local static files within `CLICON_WWW_DATA_ROOT`
-      * operation GET, HEAD, or OPTIONS
-      * query parameters not supported
-      * no indata
-      * media: html, css, js, fonts, image.
-      * authentication, TLS, http/2 as restconf
-   * Added two new config options to clixon-config.yang:
-      * `CLICON_HTTP_DATA_PATH`
-      * `CLICON_HTTP_DATA_ROOT`
-   * Added feature http-data to restconf-config.yang and the following option that needs to be true
-      * `enable-http-data`
-   * Added `HTTP_DATA_INTERNAL_REDIRECT` compile-time option for internal redirects to `index.html`
 
 * Implementation of "chunked framing" according to RFC6242 for Netconf 1.1.
   * First hello is 1.0 EOM framing, then successing rpc is chunked framing
   * See
     * [Netconf framing](https://github.com/clicon/clixon/issues/50), and
     * [Clixon does not switch to chunked framing after NETCONF 1.1 is negotiated](https://github.com/clicon/clixon/issues/314)
+* Extended the Restconf implementation with a limited http-data static service
+   * Added two new config options to clixon-config.yang:
+      * `CLICON_HTTP_DATA_PATH`
+      * `CLICON_HTTP_DATA_ROOT`
+   * Added feature http-data to restconf-config.yang and the following option that needs to be true
+      * `enable-http-data`
+   * Added `HTTP_DATA_INTERNAL_REDIRECT` compile-time option for internal redirects to `index.html`
+   * For more info, see [user manual documentation](https://clixon-docs.readthedocs.io/en/latest/restconf.html#http-data)
 
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
-* CLI expansion of leafrefs default behavior changed
+* CLI
+  * `clixon_cli` reconnects to backend if backend restarts with a warning
+    * Note that edits to the candidate database or locks will be lost
+    * To force the CLI to exit if backend restarts, undef `PROTO_RESTART_RECONNECT`
+    * This is an effect of the fix of [Broken pipe error seen in client (cli) when backend restarts and CLICON_SOCK is recreated](https://github.com/clicon/clixon/issues/312), the CLI behavior on backend restart is changed.
+  * Expansion of YANG leafref type default behavior has changed
     * In the autocli and handcrafted CLI:s using `expand_dbvar()` the CLI expansion followed the leafrefs to the sources, ie the origin of the leafrefs
-    * Instead leafref expansion now only looks at the leafrefs
+    * Instead leafref expansion now expands according to existing leafrefs by default
     * Example:
-       * Assume ifref with leafref pointing to source if values:
-          * `<if>a</if><if>b</if><if>c</if>`
-	  * `<ifref>b</ifref>`
-       * Existing behavior: propose: `a, b, c`
-       * New default behavior: propose: `b` 
+       * Assume leafref with leafref pointing to source if values:
+          * `<if>a</if><if>b</if><if>c</if>
+	     <ifref>b</ifref>`
+       * Existing behavior: expand to: `a, b, c`
+       * New default behavior: expand to: `b` 
     * To keep existing behavior, set `<CLICON_CLI_EXPAND_LEAFREF>true<CLICON_CLI_EXPAND_LEAFREF>`
+
 * Restconf
-    * Added 404 return without body if neither restconf, data or streams prefix match
-* Netconf: Usage of chunked framing"
+  * Added 404 return without body if neither restconf, data or streams prefix match
+* Netconf:
+  * Usage of chunked framing
     * To keep existing end-of-message encoding, set `CLICON_NETCONF_BASE_CAPABILITY` to `0`
     * Added `clixon_netconf` command-line option `-0` and changed `-H` to `-1`
        * `-0` means dont send hello, but fix netconf base version to 0 and use EOM framing
        * `-1` means dont send hello, but fix netconf base version to 1 and use chunked framing 
-* New `clixon-config@2022-03-21.yang` revision
-  * Added option:
-    * `CLICON_RESTCONF_API_ROOT`
-    * `CLICON_NETCONF_BASE_CAPABILITY`
-    * `CLICON_HTTP_DATA_PATH`
-    * `CLICON_HTTP_DATA_ROOT`
-    * `CLICON_CLI_EXPAND_LEAFREF`
-* New `clixon-restconf@2022-03-21.yang` revision
-  * Added option:
-    * `enable-http-data`
-  * Added feature: `http-data`
-* Netconf data-not-unique info changed to return schema nodes instead of XML for RFC7950 compliance
-* CLI reconnects to backend if backend restarts with a warning
-  * Note that edits to the candidate database or locks will be lost
-  * To force the CLI to exit if backend restarts, undef `PROTO_RESTART_RECONNECT`
-  * This is an effect of the fix of [Broken pipe error seen in client (cli) when backend restarts and CLICON_SOCK is recreated](https://github.com/clicon/clixon/issues/312), the CLI behavior on backend restart is changed.
+  * Error message `data-not-unique` changed to return schema nodes instead of XML for RFC7950 compliance
+* YANG
+  * Instead of removing YANG which is disabled by `if-feature`, replace it with an yang `anydata` node.
+    * See [Adding feature to top level container doesn't work](https://github.com/clicon/clixon/issues/322)
+    * This means XML specified by such YANG is ignored, and it is not an error to access it
+    * Note the similarity with `CLICON_YANG_UNKNOWN_ANYDATA`
+  * New `clixon-config@2022-03-21.yang` revision
+    * Added option:
+      * `CLICON_RESTCONF_API_ROOT`
+      * `CLICON_NETCONF_BASE_CAPABILITY`
+      * `CLICON_HTTP_DATA_PATH`
+      * `CLICON_HTTP_DATA_ROOT`
+      * `CLICON_CLI_EXPAND_LEAFREF`
+  * New `clixon-restconf@2022-03-21.yang` revision
+    * Added option:
+      * `enable-http-data`
+    * Added feature:
+      * `http-data`
+
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Added `nsc` parameter to `xml2xpath()` and ensured the xpath uses prefixes.
+  * Old code: add `NULL` as second parameter
+* Added `eof` parameter to `clicon_rpc()` and `clicon_rpc1()` and error handling modified
 
 ### Minor features
 
-* Extended `-l` command-line option to all clixon commands with a `none` option, eg `-l n` directs logging to `dev/null`
-* [Adding feature to top level container doesn't work](https://github.com/clicon/clixon/issues/322)
-  * Instead of removing YANG which is disabled by `if-feature`, replace it with an yang `anydata` node.
-  * This means XML specified by such YANG is ignored, and it is not an error to access it
-  * Note the similarity with `CLICON_YANG_UNKNOWN_ANYDATA`
-* XPath parser: fixing lexical issues cornercases
-  * Some complexities in Section 3.7 Lexical Structure of XPath 1.0 spec
-  * There used to be some cornercases where function-names could not be used as nodes
-  * For example, `node()` is a nodetest, so `/node/` caused an error.
-  * In the grammar these include: axisnames,  nodetests, functionnames
-  * The NCNames vs functionnames is now implemented according to the lexical structure section
-* [provide support for load config of cli format along with json and xml format as save config is supported for all 3 formats](https://github.com/clicon/clixon/issues/320)
-* [prevent clixon-restconf@2021-05-20.yang module from loading](https://github.com/clicon/clixon/issues/318)
+* Command-line option: Extended `-l` of all clixon commands with `-l n` which directs logging to `/dev/null`
+* New: CLI load command for CLI syntax files (not only XML and JSON)
+  * See [provide support for load config of cli format along with json and xml format as save config is supported for all 3 formats](https://github.com/clicon/clixon/issues/320)
+* New: Do not load clixon-restconf YANG file by default
+  * See [prevent clixon-restconf@2021-05-20.yang module from loading](https://github.com/clicon/clixon/issues/318)
   * Instead of always loading it, load it to datastore YANGs only if `CLICON_BACKEND_RESTCONF_PROCESS` is `true`
 * YANG unique: added single descendant node ids as special case
   * This means that two variants are supported:
@@ -123,6 +129,12 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* XPath parser: fixed some lexical issues
+  * Some complexities in Section 3.7 Lexical Structure of XPath 1.0 spec as follows
+  * There used to be some cornercases where function-names could not be used as nodes
+  * For example, `node()` is a nodetest, so `/node/` caused an error.
+  * In the grammar these include: axisnames,  nodetests, functionnames
+  * The NCNames vs functionnames is now implemented according to the lexical structure section
 * Fixed: [Keywords containing '-' hyphen are missing from the auto-completion list](https://github.com/clicon/clixon/issues/330)
   * Fixed by disabling `cligen_preference_mode`. This may have other side effects.
 * Fixed: [Returning a string while Querying leaf-list for single entry](https://github.com/clicon/clixon/issues/326)
@@ -145,14 +157,6 @@ Users may have to change how they access the system
 * Fixed: [Broken pipe error seen in client (cli) when backend restarts and CLICON_SOCK is recreated](https://github.com/clicon/clixon/issues/312)
 * Fixed: [Xpath API do not support filter data by wildcard](https://github.com/clicon/clixon/issues/313)
 * Fixed: SEGV in cli show yang
-
-### C/CLI-API changes on existing features
-
-Developers may need to change their code
-
-* Added `nsc` parameter to `xml2xpath()` and ensured the xpath uses prefixes.
-  * Old code: add `NULL` as second parameter
-* Added `eof` parameter to `clicon_rpc()` and `clicon_rpc1()` and error handling modified
 
 ## 5.6.0
 8 March 2022
