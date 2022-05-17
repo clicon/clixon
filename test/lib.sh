@@ -187,6 +187,8 @@ BUSER=clicon
 
 : ${clixon_snmp:=$(type -p clixon_snmp)}
 
+: ${clixon_snmp_pidfile:="/var/tmp/clixon_snmp.pid"}
+
 # Source the site-specific definitions for test script variables, if site.sh
 # exists. The variables defined in site.sh override any variables of the same
 # names in the environment in the current execution.
@@ -447,6 +449,8 @@ function chunked_framing()
 function start_snmp(){
     cfg=$1
 
+    rm -f ${clixon_snmp_pidfile}
+    
     $clixon_snmp -f $cfg -D $DBG &
 
     if [ $? -ne 0 ]; then
@@ -465,6 +469,7 @@ function stop_snmp(){
     else
         killall -q clixon_snmp
     fi
+    rm -f ${clixon_snmp_pidfile}
 }
 
 # Start backend with all varargs.
@@ -601,7 +606,14 @@ function wait_restconf_stopped(){
 # need a better way to detect liveness of clixon_snmp
 function wait_snmp()
 {
-    sleep 3
+    let i=0;
+    while [ ! -f ${clixon_snmp_pidfile} ]; do
+	if [ $i -ge $DEMLOOP ]; then
+	    err1 "snmp timeout $DEMWAIT seconds"
+	fi
+	sleep $DEMSLEEP
+	let i++;
+    done
 }
     
 # End of test, final tests before normal exit of test

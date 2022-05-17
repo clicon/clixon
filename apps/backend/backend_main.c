@@ -1004,7 +1004,7 @@ main(int    argc,
 	goto done;
 
     /* Write pid-file */
-    if ((pid = pidfile_write(pidfile)) <  0)
+    if (pidfile_write(pidfile) <  0)
 	goto done;
 
     if (set_signal(SIGTERM, backend_sig_term, NULL) < 0){
