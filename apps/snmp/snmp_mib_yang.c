@@ -214,7 +214,7 @@ snmp_table_handler(netsnmp_mib_handler          *handler,
     }
 ok:
     retval = SNMP_ERR_NOERROR;
-done:
+    //done:
     if (xt)
         xml_free(xt);
     if (cb)
@@ -254,10 +254,7 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
     u_char             *snmpval = NULL;
     size_t              snmplen;
     int                 ret;
-<<<<<<< HEAD
-=======
     netsnmp_variable_list *requestvb; /* sub of requests */
->>>>>>> SNMP frontend: getnext, oid sanity checks and scalar debug
 
     /*
      * can be used to pass information on a per-pdu basis from a

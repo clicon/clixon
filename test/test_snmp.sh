@@ -108,7 +108,6 @@ MIB=".1.3.6.1.4.1.8072.2"
 OID1="${MIB}.1.1"   # netSnmpExampleInteger
 OID2="${MIB}.1.2"   # netSnmpExampleSleeper
 OID3="${MIB}.1.3"   # netSnmpExampleString
-OID4="${MIB}.3.2.1" # netSnmpExampleHeartbeatRate
 
 new "$snmpget"
 

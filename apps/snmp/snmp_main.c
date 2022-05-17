@@ -60,6 +60,14 @@
 /* Command line options to be passed to getopt(3) */
 #define SNMP_OPTS "hD:f:l:o:"
 
+/*! Return (hardcoded) pid file
+ */
+static char*
+clicon_snmp_pidfile(clicon_handle h)
+{
+    return "/var/tmp/clixon_snmp.pid";
+}
+
 /*! Signal terminates process
  * Just set exit flag for proper exit in event loop
  */
@@ -197,6 +205,7 @@ snmp_terminate(clicon_handle h)
     yang_stmt  *yspec;
     cvec       *nsctx;
     cxobj      *x;
+    char      *pidfile = clicon_snmp_pidfile(h);
     
     shutdown_agent();
     clicon_rpc_close_session(h);
@@ -213,6 +222,8 @@ snmp_terminate(clicon_handle h)
     clicon_handle_exit(h);
     clixon_err_exit();
     clicon_log_exit();
+    if (pidfile)
+	unlink(pidfile);
     return 0;
 }
 
@@ -254,6 +265,7 @@ main(int    argc,
     size_t           cligen_bufthreshold;
     int              dbg = 0;
     size_t           sz;
+    char            *pidfile = NULL;
     
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
@@ -415,6 +427,14 @@ main(int    argc,
     
     if (dbg)
 	clicon_option_dump(h, dbg);
+    /* Check pid-file, if zap kil the old daemon, else return here */
+    if ((pidfile = clicon_snmp_pidfile(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "pidfile not set");
+	goto done;
+    }
+    /* Write pid-file */
+    if (pidfile_write(pidfile) <  0)
+	goto done;
     /* main event loop */
     if (clixon_event_loop(h) < 0)
 	goto done;
