@@ -108,6 +108,7 @@ int clixon_table_create(netsnmp_table_data_set *table, yang_stmt *ys, clicon_han
     int                     i;
     char                   *valstr;
     netsnmp_table_row      *row, *tmprow;
+    int                    retval = -1;
 
     if (xml_nsctx_yang(ys, &nsc) < 0)
         goto done;
@@ -157,6 +158,8 @@ int clixon_table_create(netsnmp_table_data_set *table, yang_stmt *ys, clicon_han
         }
     }
 
+    retval = 1;
+
 done:
     if (xt)
         xml_free(xt);
@@ -165,7 +168,7 @@ done:
     if (cb)
         cbuf_free(cb);
 
-    return 0;
+    return retval;
 }
 
 /*! SNMP table operation handlre
@@ -179,7 +182,7 @@ snmp_table_handler(netsnmp_mib_handler          *handler,
 		   netsnmp_agent_request_info   *reqinfo,
 		   netsnmp_request_info         *requests)
 {
-    int                     retval = -1;
+    int                     retval = SNMP_ERR_GENERR;
     clixon_snmp_handle     *sh;
     netsnmp_table_data_set *table;
     yang_stmt *ys;
@@ -199,7 +202,9 @@ snmp_table_handler(netsnmp_mib_handler          *handler,
 
     if ((ylist = yang_find(ys, Y_LIST, NULL)) == NULL)
         goto ok;
-    clixon_table_create(table, ys, h);
+
+    if (clixon_table_create(table, ys, h) < 0)
+        goto done;
 
     switch(reqinfo->mode){
     case MODE_GETNEXT: // 160
@@ -214,7 +219,8 @@ snmp_table_handler(netsnmp_mib_handler          *handler,
     }
 ok:
     retval = SNMP_ERR_NOERROR;
-    //done:
+
+done:
     if (xt)
         xml_free(xt);
     if (cb)
@@ -437,7 +443,7 @@ static int
 mib_yang_table(clicon_handle h,
 	       yang_stmt    *ys)
 {
-    int                           retval = -1;
+    int                           retval = SNMP_ERR_GENERR;
     netsnmp_handler_registration *nhreg;
     netsnmp_table_data_set       *table;
     char                         *oidstr = NULL;
@@ -477,7 +483,8 @@ mib_yang_table(clicon_handle h,
     memcpy(sh->sh_oid, oid1, sizeof(oid1));
     sh->sh_oidlen = sz1;
 
-    clixon_table_create(table, ys, h);
+    if (clixon_table_create(table, ys, h) < 0)
+        goto done;
 
     if ((nhreg = netsnmp_create_handler_registration(name,
 						     snmp_table_handler,
