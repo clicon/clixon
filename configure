@@ -1391,7 +1391,7 @@ Optional Packages:
   --without-restconf      Disable restconf altogether
   --with-mib-generated-yang-dir=DIR
                           Directory of generated YANG specs (default:
-                          $prefix/share/mibyang)
+                          $prefix/share/mib-yangs)
   --with-configfile=FILE  Set default path to config file
   --with-libxml2          Use gnome/libxml2 regex engine
   --without-sigaction     Don't use sigaction
@@ -5447,7 +5447,7 @@ done
 if test "${with_mib_generated_yang_dir+set}" = set; then :
   withval=$with_mib_generated_yang_dir; MIB_GENERATED_YANG_DIR="$withval"
 else
-  MIB_GENERATED_YANG_DIR="${prefix}/share/mibyang"
+  MIB_GENERATED_YANG_DIR="${prefix}/share/mib-yangs"
 
 fi
 
