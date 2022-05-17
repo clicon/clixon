@@ -302,9 +302,9 @@ if test "$enable_netsnmp" = "yes"; then
    # However, it is required by SNMP tests.
    # To generate: for i in /usr/share/snmp/mibs/*; do smidump -f yang $i > `basename -s .txt $i`.yang; done
    AC_ARG_WITH(mib-generated-yang-dir,
-      [AS_HELP_STRING([--with-mib-generated-yang-dir=DIR],[Directory of generated YANG specs (default: $prefix/share/mibyang)])],
+      [AS_HELP_STRING([--with-mib-generated-yang-dir=DIR],[Directory of generated YANG specs (default: $prefix/share/mib-yangs)])],
       [MIB_GENERATED_YANG_DIR="$withval"],
-      [MIB_GENERATED_YANG_DIR="${prefix}/share/mibyang"]		
+      [MIB_GENERATED_YANG_DIR="${prefix}/share/mib-yangs"]
     )
     AC_MSG_RESULT(Generated YANGs from MIB files are expected to be in ${MIB_GENERATED_YANG_DIR})
 fi 

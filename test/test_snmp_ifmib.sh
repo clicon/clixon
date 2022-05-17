@@ -37,7 +37,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/var/tmp/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
-  <CLICON_SNMP_MIB>NET-SNMP-EXAMPLES-MIB</CLICON_SNMP_MIB>
+  <CLICON_SNMP_MIB>IF-MIB</CLICON_SNMP_MIB>
 </clixon-config>
 EOF
 
@@ -46,8 +46,8 @@ module clixon-example{
   yang-version 1.1;
   namespace "urn:example:clixon";
   prefix ex;
-  import NET-SNMP-EXAMPLES-MIB {
-      prefix "net-snmp-examples";
+  import IF-MIB {
+      prefix "if-mib";
   }
 }
 EOF
@@ -103,31 +103,15 @@ function testexit(){
 new "SNMP tests"
 testinit
 
-# NET-SNMP-EXAMPLES-MIB::netSnmpExamples
-MIB=".1.3.6.1.4.1.8072.2"
-OID1="${MIB}.1.1"   # netSnmpExampleInteger
-OID2="${MIB}.1.2"   # netSnmpExampleSleeper
-OID3="${MIB}.1.3"   # netSnmpExampleString
+# IF-MIB::interfaces
+MIB=".1.3.6.1.2.1"
+OID1="${MIB}.2.1.0"   # XXX interfaces
+OID2="${MIB}.31"   # ifMIB
 
 new "$snmpget"
 
 new "Test SNMP get int"
-expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 42"
-
-new "Test SNMP getnext int (should be sleeper)"
-expectpart "$($snmpgetnext $OID1)" 0 "$OID2 = INTEGER: 1"
-
-new "Test SNMP get sleeper (default)"
-expectpart "$($snmpget $OID2)" 0 "$OID2 = INTEGER: 1"
-
-new "Test SNMP getnext sleeper (expect string)"
-expectpart "$($snmpgetnext $OID2)" 0 "$OID3 = STRING: This is not default"
-
-new "Test SNMP get string"
-expectpart "$($snmpget $OID3)" 0 "$OID3 = STRING: This is not default" --not-- "fish"
-
-new "Test SNMP getnext string"
-expectpart "$($snmpgetnext $OID3)" 0 "" # "$OID3 = No more variables" Can be any object
+expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 8"
 
 new "Cleaning up"
 testexit
