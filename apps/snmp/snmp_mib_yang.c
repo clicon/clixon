@@ -88,8 +88,10 @@
 struct clixon_snmp_handle {
     clicon_handle sh_h;
     yang_stmt    *sh_ys;
-    char         *sh_default;         /* MIB default value leaf only */
-    netsnmp_table_data_set *sh_table; /* table struct, table only */
+    oid           sh_oid[MAX_OID_LEN]; /* OID for debug, may be removed? */
+    size_t        sh_oidlen;           
+    char         *sh_default;          /* MIB default value leaf only */
+    netsnmp_table_data_set *sh_table;  /* table struct, table only */
 };
 typedef struct clixon_snmp_handle clixon_snmp_handle;
 
@@ -252,6 +254,10 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
     u_char             *snmpval = NULL;
     size_t              snmplen;
     int                 ret;
+<<<<<<< HEAD
+=======
+    netsnmp_variable_list *requestvb; /* sub of requests */
+>>>>>>> SNMP frontend: getnext, oid sanity checks and scalar debug
 
     /*
      * can be used to pass information on a per-pdu basis from a
@@ -260,12 +266,37 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
      netsnmp_data_list *agent_data;
      netsnmp_free_agent_data_set()
     */
-    clicon_debug(1, "%s %s %s", __FUNCTION__,
+    requestvb = requests->requestvb;
+    if (0)
+	fprintf(stderr, "%s %s %s\n", __FUNCTION__,
+		handler->handler_name,
+		snmp_msg_int2str(reqinfo->mode)
+		);
+
+    if (0)
+	fprintf(stderr, "inclusive:%d\n", 
+		requests->inclusive
+		);
+    clicon_debug(1, "%s %s %s %d", __FUNCTION__,
 		 handler->handler_name,
-		 snmp_msg_int2str(reqinfo->mode));
+		 snmp_msg_int2str(reqinfo->mode),
+		 requests->inclusive);
     sh = (clixon_snmp_handle*)nhreg->my_reg_void;
     ys = sh->sh_ys;
     h = sh->sh_h;
+    //    fprint_objid(stderr, nhreg->rootoid, nhreg->rootoid_len);
+    assert(sh->sh_oidlen == requestvb->name_length);
+    assert(requestvb->name_length == nhreg->rootoid_len);
+    assert(snmp_oid_compare(sh->sh_oid, sh->sh_oidlen,
+			    requestvb->name, requestvb->name_length) == 0);
+    assert(snmp_oid_compare(requestvb->name, requestvb->name_length,
+			    nhreg->rootoid, nhreg->rootoid_len) == 0);
+
+#if 0 /* If oid match fails */
+    netsnmp_set_request_error(reqinfo, requests,
+			      SNMP_NOSUCHOBJECT);
+    return SNMP_ERR_NOERROR;
+#endif
 
     if (yang2snmp_types(ys, &asn1_type, &cvtype) < 0)
 	goto done;
@@ -273,7 +304,7 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
     /* see net-snmp/agent/snmp_agent.h / net-snmp/library/snmp.h */
     switch (reqinfo->mode) {
     case MODE_GET: // 160
-	requests->requestvb->type = asn1_type; // ASN_NULL on input
+	requestvb->type = asn1_type; // ASN_NULL on input
 
 	/* get xpath: see yang2api_path_fmt / api_path2xpath 
 	   New fn: yang2xpath?
@@ -304,8 +335,10 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
 	}
 	else if ((valstr = sh->sh_default) != NULL)
 	    ;
-	else
-	    valstr = "0"; // XXX table calls leafs with no value?
+	else{
+	    netsnmp_set_request_error(reqinfo, requests, SNMP_NOSUCHINSTANCE);
+	    goto ok;
+	}
 	if ((ret = type_yang2snmp(valstr, cvtype, reqinfo, requests, &snmpval, &snmplen)) < 0)
 	    goto done;
 	if (ret == 0)
@@ -319,15 +352,18 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
 	 */
 	
 	/* see snmplib/snmp_client.c */
-        if (snmp_set_var_value(requests->requestvb,
+        if (snmp_set_var_value(requestvb,
 			       snmpval,
 			       snmplen) != 0){
 	    clicon_err(OE_SNMP, 0, "snmp_set_var_value");
 	    goto done;
 	}
         break;
+    case MODE_GETNEXT: // 161
+	assert(0); // Not seen?
+	break;
     case MODE_SET_RESERVE1: // 0
-        if (requests->requestvb->type != asn1_type)
+        if (requestvb->type != asn1_type)
             netsnmp_set_request_error(reqinfo, requests,
                                       SNMP_ERR_WRONGTYPE);
         break;
@@ -340,7 +376,7 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
          * update current 
          */
 	/* yang2xpath -> xpath2xml 
-	 *        accesses = *(requests->requestvb->val.integer);
+	 *        accesses = *(requestvb->val.integer);
 	 * rpc edit-config
 <data></data>
 	 */
@@ -349,7 +385,8 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
 	}
-	cprintf(cb, "<config><NET-SNMP-EXAMPLES-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:NET-SNMP-EXAMPLES-MIB\"><netSnmpExampleScalars><netSnmpExampleInteger>%ld</netSnmpExampleInteger></netSnmpExampleScalars></NET-SNMP-EXAMPLES-MIB></config>", *requests->requestvb->val.integer);
+	/*! XXX only int */
+	cprintf(cb, "<config><NET-SNMP-EXAMPLES-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:NET-SNMP-EXAMPLES-MIB\"><netSnmpExampleScalars><netSnmpExampleInteger>%ld</netSnmpExampleInteger></netSnmpExampleScalars></NET-SNMP-EXAMPLES-MIB></config>", *requestvb->val.integer);
 	if (clicon_rpc_edit_config(h, "candidate", OP_MERGE, cbuf_get(cb)) < 0)
 	    goto done;
         break;
@@ -436,9 +473,12 @@ mib_yang_table(clicon_handle h,
        clicon_err(OE_UNIX, errno, "malloc");
        goto done;
     }
+    memset(sh, 0, sizeof(*sh));
     sh->sh_h = h;
     sh->sh_ys = ys;
     sh->sh_table = table;
+    memcpy(sh->sh_oid, oid1, sizeof(oid1));
+    sh->sh_oidlen = sz1;
 
     clixon_table_create(table, ys, h);
 
@@ -531,8 +571,11 @@ mib_yang_leaf(clicon_handle h,
        clicon_err(OE_UNIX, errno, "malloc");
        goto done;
     }
+    memset(sh, 0, sizeof(*sh));
     sh->sh_h = h;
     sh->sh_ys = ys;
+    memcpy(sh->sh_oid, oid1, sizeof(oid1));
+    sh->sh_oidlen = sz1;
     sh->sh_default = default_str;
     if ((nhreg = netsnmp_handler_registration_create(name,
 						  handler,
