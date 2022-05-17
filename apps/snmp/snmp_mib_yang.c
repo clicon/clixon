@@ -93,6 +93,79 @@ struct clixon_snmp_handle {
 };
 typedef struct clixon_snmp_handle clixon_snmp_handle;
 
+int clixon_table_create(netsnmp_table_data_set *table, yang_stmt *ys, clicon_handle h)
+{
+    cvec                   *nsc = NULL;
+    cxobj                  *xt = NULL;
+    cbuf                   *cb = NULL;
+    cxobj                  *xerr;
+    char                   *xpath;
+    cxobj                  *xtable;
+    cxobj                  *xe;
+    cxobj                  *xleaf;
+    int                     i;
+    char                   *valstr;
+    netsnmp_table_row      *row, *tmprow;
+
+    if (xml_nsctx_yang(ys, &nsc) < 0)
+        goto done;
+
+    /* XXX just for yang2xpath */
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+
+    if (yang2xpath(ys, cb) < 0)
+        goto done;
+
+    xpath = cbuf_get(cb);
+    if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
+        goto done;
+
+    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+        clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
+        goto done;
+    }
+
+    netsnmp_table_dataset_add_index(table, ASN_OCTET_STR);
+    netsnmp_table_set_multi_add_default_row(table, 2, ASN_OCTET_STR, 1, NULL, 0, 3, ASN_OCTET_STR, 1, NULL, 0, 0);
+
+    if ((xtable = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
+        for (tmprow = table->table->first_row; tmprow; tmprow = tmprow->next)
+            netsnmp_table_dataset_remove_and_delete_row(table, tmprow);
+
+        xe = NULL; /* Loop thru entries in table */
+        while ((xe = xml_child_each(xtable, xe, CX_ELMNT)) != NULL) {
+            row = netsnmp_create_table_data_row();
+            xleaf = NULL; /* Loop thru leafs in entry */
+            i = 1; /* tableindex start at 1 */
+            while ((xleaf = xml_child_each(xe, xleaf, CX_ELMNT)) != NULL) {
+                valstr = xml_body(xleaf);
+                if (i == 1) // Assume first netry is key XXX should check YANG
+                    netsnmp_table_row_add_index(row, ASN_OCTET_STR, valstr, strlen(valstr));
+                else{
+                    netsnmp_set_row_column(row, i, ASN_OCTET_STR, valstr, strlen(valstr));
+                    netsnmp_mark_row_column_writable(row, i, 1);
+                }
+                i++;
+            }
+
+            netsnmp_table_dataset_add_row(table, row);
+        }
+    }
+
+done:
+    if (xt)
+        xml_free(xt);
+    if (nsc)
+        xml_nsctx_free(nsc);
+    if (cb)
+        cbuf_free(cb);
+
+    return 0;
+}
+
 /*! SNMP table operation handlre
 
  * Callorder: 161,160,.... 0, 1,2,3, 160,161,...
@@ -107,86 +180,45 @@ snmp_table_handler(netsnmp_mib_handler          *handler,
     int                     retval = -1;
     clixon_snmp_handle     *sh;
     netsnmp_table_data_set *table;
-    netsnmp_table_row      *row;
-    yang_stmt              *ys; /* container */
+    yang_stmt *ys;
+    clicon_handle       h;
     yang_stmt              *ylist;
-    clicon_handle           h;
     cvec                   *nsc = NULL;
     cxobj                  *xt = NULL;
     cbuf                   *cb = NULL;
-    cxobj                  *xerr;
-    char                   *xpath;
-    cxobj                  *xtable;
-    cxobj                  *xe;
-    cxobj                  *xleaf;
-    int                     i;
-    char                   *valstr;
 
     clicon_debug(1, "%s %s %s", __FUNCTION__,
-		 handler->handler_name,
-		 snmp_msg_int2str(reqinfo->mode));
+                 handler->handler_name,
+                 snmp_msg_int2str(reqinfo->mode));
     sh = (clixon_snmp_handle*)nhreg->my_reg_void;
     ys = sh->sh_ys;
     h = sh->sh_h;
     table = sh->sh_table;
+
     if ((ylist = yang_find(ys, Y_LIST, NULL)) == NULL)
-	goto ok;
+        goto ok;
+    clixon_table_create(table, ys, h);
+
     switch(reqinfo->mode){
     case MODE_GETNEXT: // 160
-	if (xml_nsctx_yang(ys, &nsc) < 0)
-	    goto done;
-	/* XXX just for yang2xpath */
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	if (yang2xpath(ys, cb) < 0)
-	    goto done;
-	xpath = cbuf_get(cb);
-	if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
-	    goto done;
-	if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	    clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
-	    goto done;
-	}
-	if ((xtable = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
-
-	    xe = NULL; /* Loop thru entries in table */
-	    while ((xe = xml_child_each(xtable, xe, CX_ELMNT)) != NULL) {
-		row = netsnmp_create_table_data_row();
-		xleaf = NULL; /* Loop thru leafs in entry */
-		i = 1; /* tableindex start at 1 */
-		while ((xleaf = xml_child_each(xe, xleaf, CX_ELMNT)) != NULL) {
-		    valstr = xml_body(xleaf);
-		    if (i == 1) // Assume first netry is key XXX should check YANG
-			netsnmp_table_row_add_index(row, ASN_OCTET_STR, valstr, strlen(valstr));
-		    else{
-			netsnmp_set_row_column(row, i, ASN_OCTET_STR, valstr, strlen(valstr));
-			netsnmp_mark_row_column_writable(row, i, 1);
-		    }
-		    i++;
-		}
-		netsnmp_table_dataset_add_row(table, row);
-	    }
-	}
-	break;
+        break;
     case MODE_GET: // 160
     case MODE_SET_RESERVE1:
     case MODE_SET_RESERVE2:
     case MODE_SET_ACTION:
     case MODE_SET_COMMIT:
-	break;
-	
+        break;
+
     }
- ok:
+ok:
     retval = SNMP_ERR_NOERROR;
- done:
+done:
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     return retval;
 }
 
@@ -220,7 +252,7 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
     u_char             *snmpval = NULL;
     size_t              snmplen;
     int                 ret;
-    
+
     /*
      * can be used to pass information on a per-pdu basis from a
      * helper to the later handlers 
@@ -381,6 +413,7 @@ mib_yang_table(clicon_handle h,
     clixon_snmp_handle           *sh;
     int                           ret;
 
+
     /* Get OID from parent container  */
     if (yang_extension_value(ys, "oid", IETF_YANG_SMIV2_NS, NULL, &oidstr) < 0)
 	goto done;
@@ -407,8 +440,7 @@ mib_yang_table(clicon_handle h,
     sh->sh_ys = ys;
     sh->sh_table = table;
 
-    (void)netsnmp_table_dataset_add_index(table, ASN_OCTET_STR);
-    (void)netsnmp_table_set_multi_add_default_row(table, 2, ASN_OCTET_STR, 1, NULL, 0, 3, ASN_OCTET_STR, 1, NULL, 0, 0);
+    clixon_table_create(table, ys, h);
 
     if ((nhreg = netsnmp_create_handler_registration(name,
 						     snmp_table_handler,
@@ -424,7 +456,7 @@ mib_yang_table(clicon_handle h,
     if ((ret = netsnmp_register_table_data_set(nhreg, table, NULL)) != SNMPERR_SUCCESS){
 	//XXX	err return? clicon_err(OE_SNMP, ret, "netsnmp_register_table_data_set");
 	//	goto done;
-	
+
     }
     (void)netsnmp_register_auto_data_table(table, NULL);
 
