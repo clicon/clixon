@@ -14,7 +14,7 @@ fi
 
 snmpd=$(type -p snmpd)
 snmpget="$(type -p snmpget) -On -c public -v2c localhost "
-snmpset="$(type -p snmpset) -On -c public -v2c localhost "
+snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
 
 cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
@@ -53,10 +53,13 @@ module clixon-example{
 EOF
 
 # This is state data written to file that backend reads from (on request)
+# integer and string have values, sleeper does not and uses default (=1)
 cat <<EOF > $fstate
   <NET-SNMP-EXAMPLES-MIB xmlns="urn:ietf:params:xml:ns:yang:smiv2:NET-SNMP-EXAMPLES-MIB">
     <netSnmpExampleScalars>
       <netSnmpExampleInteger>42</netSnmpExampleInteger>
+      <!--  netSnmpExampleSleeper>1</netSnmpExampleSleeper -->
+      <netSnmpExampleString>This is not default</netSnmpExampleString>
     </netSnmpExampleScalars>
   </NET-SNMP-EXAMPLES-MIB>
 EOF
@@ -102,15 +105,30 @@ testinit
 
 # NET-SNMP-EXAMPLES-MIB::netSnmpExamples
 MIB=".1.3.6.1.4.1.8072.2"
-OID="${MIB}.1.1" # netSnmpExampleInteger
+OID1="${MIB}.1.1"   # netSnmpExampleInteger
+OID2="${MIB}.1.2"   # netSnmpExampleSleeper
+OID3="${MIB}.1.3"   # netSnmpExampleString
+OID4="${MIB}.3.2.1" # netSnmpExampleHeartbeatRate
 
-new "Test SNMP get for int value in state file"
-expectpart "$($snmpget $OID)" 0 "$OID = INTEGER: 42"
+new "$snmpget"
 
-OID="${MIB}.1.3" # netSnmpExampleString
+new "Test SNMP get int"
+expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 42"
 
-new "Test SNMP get for string value in state file"
-expectpart "$($snmpget $OID)" 0 "$OID = STRING: So long, and thanks for all the fish!"
+new "Test SNMP getnext int (should be sleeper)"
+expectpart "$($snmpgetnext $OID1)" 0 "$OID2 = INTEGER: 1"
+
+new "Test SNMP get sleeper (default)"
+expectpart "$($snmpget $OID2)" 0 "$OID2 = INTEGER: 1"
+
+new "Test SNMP getnext sleeper (expect string)"
+expectpart "$($snmpgetnext $OID2)" 0 "$OID3 = STRING: This is not default"
+
+new "Test SNMP get string"
+expectpart "$($snmpget $OID3)" 0 "$OID3 = STRING: This is not default" --not-- "fish"
+
+new "Test SNMP getnext string (expect heartbeat / no such object?)"
+expectpart "$($snmpgetnext $OID3)" 0 "$OID3 = No more variables" # XXX this is a notification?
 
 new "Cleaning up"
 testexit
