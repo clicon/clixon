@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [5.7.0](#570) 16 May 2022
+* [5.7.0](#570) 17 May 2022
 * [5.6.0](#560) 8 March 2022
 * [5.5.0](#550) 20 January 2022
 * [5.4.0](#540) 30 November 2021
@@ -35,11 +35,10 @@
 * [3.3.1](#331) June 7 2017
 
 ## 5.7.0
-16 May 2022
+17 May 2022
 
-Clixon 5.7 upgrades the NETCONF framing to chunked framing as defined
-in RFC 6242 and also introduces a limited http data service. As
-always, multiple bugfixes as well.
+The Clixon 5.7 release introduces (long overdue) NETCONF chunked framing as defined
+in RFC 6242. It also introduces a limited http data service and lots of bugfixes.
 
 ### New features
 
