@@ -53,6 +53,7 @@ testname=
 # 1: Start valgrind at every new testcase. Check result every next new
 # 2: Start valgrind every new backend start. Check when backend stops
 # 3: Start valgrind every new restconf start. Check when restconf stops
+# 4: Start valgrind every new snmp start. Check when snmp stops
 # 
 : ${valgrindtest=0}
 
@@ -458,18 +459,16 @@ function start_snmp(){
     if [ $? -ne 0 ]; then
 	    err
     fi
-
-    if [ $valgrindtest != 0 ]; then
-        checkvalgrind
-    fi
 }
 
 # Stop clixon_snmp and Valgrind if needed
 function stop_snmp(){
-    if [ $valgrindtest != 0 ]; then
-        kill `ps aux | grep [v]algrind | awk '{print $2}' | tail -n1`
+    if [ $valgrindtest -eq 4 ]; then 
+	pkill -f clixon_snmp
+	sleep 1
+	checkvalgrind
     else
-        killall -q clixon_snmp
+	killall -q clixon_snmp
     fi
     rm -f ${clixon_snmp_pidfile}
 }
@@ -605,7 +604,7 @@ function wait_restconf_stopped(){
     fi
 }
 
-# need a better way to detect liveness of clixon_snmp
+# Use pidfile to check snmp started. pidfile is created after init in clixon_snmp
 function wait_snmp()
 {
     let i=0;

@@ -41,8 +41,9 @@
 #include <pwd.h>
 #include <syslog.h>
 #include <errno.h>
-#include <sys/types.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 /* net-snmp */
 #include <net-snmp/net-snmp-config.h>
@@ -58,7 +59,7 @@
 #include "snmp_mib_yang.h"
 
 /* Command line options to be passed to getopt(3) */
-#define SNMP_OPTS "hD:f:l:o:"
+#define SNMP_OPTS "hD:f:l:o:z"
 
 /*! Return (hardcoded) pid file
  */
@@ -241,8 +242,9 @@ usage(clicon_handle h,
 	    "\t-D <level>\tDebug level\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
+    	    "\t-z\t\tKill other %s daemon and exit\n"
 	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
-	    argv0
+	    argv0, argv0
 	    );
     exit(0);
 }
@@ -251,21 +253,24 @@ int
 main(int    argc,
      char **argv)
 {
-    int              retval = -1;
-    int              c;
-    char            *argv0 = argv[0];
-    clicon_handle    h;
-    int              logdst = CLICON_LOG_STDERR;
-    struct passwd   *pw;
-    yang_stmt       *yspec = NULL;
-    char            *str;
-    uint32_t         id;
-    cvec            *nsctx_global = NULL; /* Global namespace context */
-    size_t           cligen_buflen;
-    size_t           cligen_bufthreshold;
-    int              dbg = 0;
-    size_t           sz;
-    char            *pidfile = NULL;
+    int            retval = -1;
+    int            c;
+    char          *argv0 = argv[0];
+    clicon_handle  h;
+    int            logdst = CLICON_LOG_STDERR;
+    struct passwd *pw;
+    yang_stmt     *yspec = NULL;
+    char          *str;
+    uint32_t       id;
+    cvec          *nsctx_global = NULL; /* Global namespace context */
+    size_t         cligen_buflen;
+    size_t         cligen_bufthreshold;
+    int            dbg = 0;
+    size_t         sz;
+    int            pid;
+    char          *pidfile = NULL;
+    struct stat    st;
+    int            zap = 0;
     
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
@@ -335,6 +340,9 @@ main(int    argc,
 		goto done;
 	    break;
 	}
+	case 'z': /* Zap other process */
+	    zap++;
+	    break;
 	default:
 	    usage(h, argv[0]);
 	    break;
@@ -344,6 +352,30 @@ main(int    argc,
 
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
+
+    /* Check pid-file, if zap kill the old daemon, else return here */
+    if ((pidfile = clicon_snmp_pidfile(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "pidfile not set");
+	goto done;
+    }
+    if (pidfile_get(pidfile, &pid) < 0)
+	goto done;
+    if (zap){
+	if (pid && pidfile_zapold(pid) < 0)
+	    return -1;
+	if (lstat(pidfile, &st) == 0)
+	    unlink(pidfile);   
+	snmp_terminate(h);
+	exit(0); /* OK */
+    }
+    else if (pid){
+	clicon_err(OE_DAEMON, 0, "Clixon_snmp daemon already running with pid %d\n(Try killing it with %s -z)", 
+		   pid, argv0);
+	return -1; /* goto done deletes pidfile */
+    }
+    /* Here there is either no old process or we have killed it,.. */
+    if (lstat(pidfile, &st) == 0)
+	unlink(pidfile);   
 
     /* Init cligen buffers */
     cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
@@ -362,11 +394,6 @@ main(int    argc,
     if (netconf_module_features(h) < 0)
 	goto done;
 
-    /* In case ietf-yang-metadata is loaded by application, handle annotation extension */
-#if 0
-    if (yang_metadata_init(h) < 0)
-	goto done;    
-#endif
     /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
 	goto done;
@@ -427,11 +454,6 @@ main(int    argc,
     
     if (dbg)
 	clicon_option_dump(h, dbg);
-    /* Check pid-file, if zap kil the old daemon, else return here */
-    if ((pidfile = clicon_snmp_pidfile(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "pidfile not set");
-	goto done;
-    }
     /* Write pid-file */
     if (pidfile_write(pidfile) <  0)
 	goto done;
