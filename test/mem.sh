@@ -45,10 +45,10 @@ function memonce(){
 
 	    ;;
 	'snmp')
-	    valgrindtest=1 # This means snmp valgrind test
-        sudo chmod 660 $valgrindfile
-	    : ${DEMWAIT:=15} # valgrind backend needs some time to get up
-	    clixon_snmp="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile /usr/local/sbin/clixon_snmp"
+	    valgrindtest=4 # This means snmp valgrind test
+            sudo chmod 660 $valgrindfile
+	    : ${DEMWAIT:=15} # valgrind snmp needs some time to get up
+	    clixon_snmp="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile clixon_snmp"
 	    ;;
 
 	*)
