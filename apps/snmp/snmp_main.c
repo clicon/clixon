@@ -56,7 +56,7 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include "snmp_mib_yang.h"
+#include "snmp_register.h"
 
 /* Command line options to be passed to getopt(3) */
 #define SNMP_OPTS "hD:f:l:o:z"

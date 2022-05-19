@@ -37,15 +37,15 @@
 extern "C" {
 #endif
 
-#ifndef _SNMP_MIB_YANG_H_
-#define _SNMP_MIB_YANG_H_
+#ifndef _SNMP_REGISTER_H_
+#define _SNMP_REGISTER_H_
 
 /*
  * Prototypes
  */
 int clixon_snmp_mib_yangs(clicon_handle h);
 
-#endif /* _SNMP_MIB_YANG_H_ */
+#endif /* _SNMP_REGISTER_H_ */
 
 #ifdef __cplusplus
 } /* extern "C" */

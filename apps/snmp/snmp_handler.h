@@ -37,37 +37,22 @@
 extern "C" {
 #endif
 
-#ifndef _SNMP_LIB_H_
-#define _SNMP_LIB_H_
-
-/*
- * Types 
- */
-/* Userdata to pass around in netsmp callbacks
- */
-struct clixon_snmp_handle {
-    clicon_handle sh_h;
-    yang_stmt    *sh_ys;
-    oid           sh_oid[MAX_OID_LEN]; /* OID for debug, may be removed? */
-    size_t        sh_oidlen;           
-    char         *sh_default;          /* MIB default value leaf only */
-    netsnmp_table_data_set *sh_table;  /* table struct, table only */
-};
-typedef struct clixon_snmp_handle clixon_snmp_handle;
+#ifndef _SNMP_HANDLER_H_
+#define _SNMP_HANDLER_H_
 
 /*
  * Prototypes
  */
-int   snmp_access_str2int(char *modes_str);
-const char *snmp_msg_int2str(int msg);
-int   yang2snmp_types(yang_stmt *ys, int *asn1_type, enum cv_type *cvtype);
-int   type_yang2snmp(char *valstr, enum cv_type cvtype,
-		     netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests,
-		     u_char **snmpval, size_t *snmplen);
-int   yang2xpath(yang_stmt *ys, char **xpath);
-int   clixon_table_create(netsnmp_table_data_set *table, yang_stmt *ys, clicon_handle h);
+int snmp_table_handler(netsnmp_mib_handler          *handler,
+		       netsnmp_handler_registration *nhreg,
+		       netsnmp_agent_request_info   *reqinfo,
+		       netsnmp_request_info         *requests);
+int snmp_scalar_handler(netsnmp_mib_handler          *handler,
+			netsnmp_handler_registration *nhreg,
+			netsnmp_agent_request_info   *reqinfo,
+			netsnmp_request_info         *requests);
 
-#endif /* _SNMP_LIB_H_ */
+#endif /* _SNMP_HANDLER_H_ */
 
 #ifdef __cplusplus
 } /* extern "C" */

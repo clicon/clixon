@@ -323,3 +323,70 @@ yang2xpath(yang_stmt *ys,
 	cbuf_free(cb);
     return retval;
 }
+
+int
+clixon_table_create(netsnmp_table_data_set *table, yang_stmt *ys, clicon_handle h)
+{
+    cvec                   *nsc = NULL;
+    cxobj                  *xt = NULL;
+    cxobj                  *xerr;
+    char                   *xpath;
+    cxobj                  *xtable;
+    cxobj                  *xe;
+    cxobj                  *xleaf;
+    int                     i;
+    char                   *valstr;
+    netsnmp_table_row      *row, *tmprow;
+    int                    retval = -1;
+
+    if (xml_nsctx_yang(ys, &nsc) < 0)
+        goto done;
+
+    if (yang2xpath(ys, &xpath) < 0)
+        goto done;
+
+    if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
+        goto done;
+
+    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+        clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
+        goto done;
+    }
+
+    netsnmp_table_dataset_add_index(table, ASN_OCTET_STR);
+    netsnmp_table_set_multi_add_default_row(table, 2, ASN_OCTET_STR, 1, NULL, 0, 3, ASN_OCTET_STR, 1, NULL, 0, 0);
+
+    if ((xtable = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
+        for (tmprow = table->table->first_row; tmprow; tmprow = tmprow->next)
+            netsnmp_table_dataset_remove_and_delete_row(table, tmprow);
+
+        xe = NULL; /* Loop thru entries in table */
+        while ((xe = xml_child_each(xtable, xe, CX_ELMNT)) != NULL) {
+            row = netsnmp_create_table_data_row();
+            xleaf = NULL; /* Loop thru leafs in entry */
+            i = 1; /* tableindex start at 1 */
+            while ((xleaf = xml_child_each(xe, xleaf, CX_ELMNT)) != NULL) {
+                valstr = xml_body(xleaf);
+                if (i == 1) // Assume first netry is key XXX should check YANG
+                    netsnmp_table_row_add_index(row, ASN_OCTET_STR, valstr, strlen(valstr));
+                else{
+                    netsnmp_set_row_column(row, i, ASN_OCTET_STR, valstr, strlen(valstr));
+                    netsnmp_mark_row_column_writable(row, i, 1);
+                }
+                i++;
+            }
+
+            netsnmp_table_dataset_add_row(table, row);
+        }
+    }
+
+    retval = 1;
+
+done:
+    if (xt)
+        xml_free(xt);
+    if (nsc)
+        xml_nsctx_free(nsc);
+
+    return retval;
+}
