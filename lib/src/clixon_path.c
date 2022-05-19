@@ -1652,7 +1652,7 @@ clixon_xml_find_api_path(cxobj        *xt,
     if (ret == 0)
 	goto fail;
     /* Convert to api xvec format */
-    if (clixon_xvec_extract(xv, xvec, xlen) < 0)
+    if (clixon_xvec_extract(xv, xvec, xlen, NULL) < 0)
 	goto done;
     retval = 1;
  done:
@@ -1745,7 +1745,7 @@ clixon_xml_find_instance_id(cxobj     *xt,
     if (ret == 0)
 	goto fail;
     /* Convert to api xvec format */
-    if (xv && clixon_xvec_extract(xv, xvec, xlen) < 0)
+    if (xv && clixon_xvec_extract(xv, xvec, xlen, NULL) < 0)
 	goto done;
     retval = 1;
  done:

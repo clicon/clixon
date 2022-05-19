@@ -125,28 +125,6 @@ cvec_append(cvec *cvv0,
     return cvv2;
 }
 
-/*! x is element and has exactly one child which in turn has none 
- * @see child_type in clixon_json.c
- */
-static int
-tleaf(cxobj *x)
-{
-    cxobj *xc;
-
-    if (xml_type(x) != CX_ELMNT)
-	return 0;
-    if (xml_child_nr_notype(x, CX_ATTR) != 1)
-	return 0;
-    /* From here exactly one noattr child, get it */
-    xc = NULL;
-    while ((xc = xml_child_each(x, xc, -1)) != NULL)
-	if (xml_type(xc) != CX_ATTR)
-	    break;
-    if (xc == NULL)
-	return -1; /* n/a */
-    return (xml_child_nr_notype(xc, CX_ATTR) == 0);
-}
-
 /*! Print an XML tree structure from an auto-cli env to stdout and encode chars "<>&"
  *
  * @param[in]   xn          clicon xml tree
@@ -253,64 +231,6 @@ cli_xml2file(cxobj            *xn,
  done:
     if (encstr)
 	free(encstr);
-    return retval;
-}
-
-/*! Translate XML to a "pseudo-code" textual format using a callback - internal function
- * @param[in]  xn     XML object to print
- * @param[in]  fn     Callback to make print function
- * @param[in]  level  print 4 spaces per level in front of each line
- */
-int
-cli_xml2txt(cxobj            *xn,
-	    clicon_output_cb *fn,
-	    int               level)
-{
-    cxobj *xc = NULL;
-    int    children=0;
-    int    retval = -1;
-    int           exist = 0;
-
-    if (xn == NULL || fn == NULL){
-	clicon_err(OE_XML, EINVAL, "xn or fn is NULL");
-	goto done;
-    }
-    if (yang_extension_value(xml_spec(xn), "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
-	goto done;
-    if (exist)
-	goto ok;
-    xc = NULL;     /* count children (elements and bodies, not attributes) */
-    while ((xc = xml_child_each(xn, xc, -1)) != NULL)
-	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
-	    children++;
-    if (!children){ /* If no children print line */
-	switch (xml_type(xn)){
-	case CX_BODY:
-	    (*fn)(stdout, "%s;\n", xml_value(xn));
-	    break;
-	case CX_ELMNT:
-	    (*fn)(stdout, "%*s%s;\n", 4*level, "", xml_name(xn));
-	    break;
-	default:
-	    break;
-	}
-	goto ok;
-    }
-    (*fn)(stdout, "%*s", 4*level, "");
-    (*fn)(stdout, "%s ", xml_name(xn));
-    if (!tleaf(xn))
-	(*fn)(stdout, "{\n");
-    xc = NULL;
-    while ((xc = xml_child_each(xn, xc, -1)) != NULL){
-	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
-	    if (cli_xml2txt(xc, fn, level+1) < 0)
-		break;
-    }
-    if (!tleaf(xn))
-	(*fn)(stdout, "%*s}\n", 4*level, "");
- ok:
-    retval = 0;
- done:
     return retval;
 }
 
@@ -657,10 +577,10 @@ cli_auto_show(clicon_handle h,
 	    break;
 	case FORMAT_TEXT:
 	    if (isroot)
-		cli_xml2txt(xp, cligen_output, 0); /* tree-formed text */
+		xml2txt(xp, cligen_output, stdout, 0); /* tree-formed text */
 	    else
 		while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL)
-		    cli_xml2txt(xc, cligen_output, 0); /* tree-formed text */
+		    xml2txt(xc, cligen_output, stdout, 0); /* tree-formed text */
 	    break;
 	case FORMAT_CLI:
 	    if (xml2cli(h, stdout, xp, prefix, cligen_output, !isroot) < 0)

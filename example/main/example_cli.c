@@ -122,7 +122,7 @@ example_client_rpc(clicon_handle h,
     fprintf(stdout,"\n");
 
     /* pretty-print:
-       xml2txt_cb(stdout, xml_child_i(xret, 0), cligen_output);
+       xml2txt(xml_child_i(xret, 0), cligen_output, stdout, 0);
     */
     retval = 0;
  done:

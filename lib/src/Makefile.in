@@ -85,14 +85,15 @@ SRC     = clixon_sig.c clixon_uid.c clixon_log.c clixon_err.c clixon_event.c \
           clixon_xpath_optimize.c clixon_xpath_yang.c \
 	  clixon_datastore.c clixon_datastore_write.c clixon_datastore_read.c \
 	  clixon_netconf_lib.c clixon_stream.c clixon_nacm.c clixon_client.c clixon_netns.c \
-	  clixon_dispatcher.c
+	  clixon_dispatcher.c clixon_text_syntax.c
 
 YACCOBJS = lex.clixon_xml_parse.o clixon_xml_parse.tab.o \
 	    lex.clixon_yang_parse.o  clixon_yang_parse.tab.o \
 	    lex.clixon_json_parse.o  clixon_json_parse.tab.o \
             lex.clixon_xpath_parse.o clixon_xpath_parse.tab.o \
             lex.clixon_api_path_parse.o clixon_api_path_parse.tab.o \
-            lex.clixon_instance_id_parse.o clixon_instance_id_parse.tab.o 
+            lex.clixon_instance_id_parse.o clixon_instance_id_parse.tab.o \
+            lex.clixon_text_syntax_parse.o clixon_text_syntax_parse.tab.o 
 
 # Generated src 
 GENSRC  = build.c 
@@ -123,6 +124,7 @@ clean:
 	rm -f clixon_xpath_parse.tab.[ch] clixon_xpath_parse.[co]
 	rm -f clixon_api_path_parse.tab.[ch] clixon_api_path_parse.[co]
 	rm -f clixon_instance_id_parse.tab.[ch] clixon_instance_id_parse.[co]
+	rm -f clixon_text_syntax_parse.tab.[ch] clixon_text_syntax_parse.[co]
 	rm -f lex.clixon_xml_parse.c
 	rm -f lex.clixon_yang_parse.c
 	rm -f lex.clixon_json_parse.c
@@ -219,6 +221,19 @@ clixon_instance_id_parse.tab.h: clixon_instance_id_parse.y
 clixon_instance_id_parse.tab.c:	clixon_instance_id_parse.tab.h
 
 lex.clixon_instance_id_parse.o : lex.clixon_instance_id_parse.c clixon_instance_id_parse.tab.h
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
+
+# text syntax parser
+lex.clixon_text_syntax_parse.c : clixon_text_syntax_parse.l clixon_text_syntax_parse.tab.h
+	$(LEX) -Pclixon_text_syntax_parse clixon_text_syntax_parse.l # -d is debug
+
+clixon_text_syntax_parse.tab.h: clixon_text_syntax_parse.y
+	$(YACC) -l -d -b clixon_text_syntax_parse -p clixon_text_syntax_parse clixon_text_syntax_parse.y # -t is debug
+
+# extra rule to avoid parallell yaccs
+clixon_text_syntax_parse.tab.c:	clixon_text_syntax_parse.tab.h
+
+lex.clixon_text_syntax_parse.o : lex.clixon_text_syntax_parse.c clixon_text_syntax_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
 
 distclean: clean

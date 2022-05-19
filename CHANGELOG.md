@@ -38,6 +38,14 @@
 ## 5.8.0
 Planned: July 2022
 
+### New features
+
+* Text syntax parser/loader
+  * Added new text syntax parsing and loading from CLI
+  * Text output format changed:
+    * Namespace/modulename added to top-level
+  * See [Support performant load_config_file(...) for TEXT format](https://github.com/clicon/clixon/issues/324)
+
 ### C/CLI-API changes on existing features
 
 Developers may need to change their code
@@ -52,7 +60,8 @@ Developers may need to change their code
     * Replace `xml2json_cb(...)` with `xml2json_file(..., 0)`
   * `clicon_xml2cbuf()`: Added `skiptop` parameter: `clicon_xml2cbuf(..., int skiptop)`
   * `xml2cli()`: Added `skiptop` parameter: `xml2cli(..., int skiptop)`
-
+  * Merged `cli_xml2txt()` and `xml2txt_cb()` with `xml2txt()`
+	
 ## 5.7.0
 17 May 2022
 

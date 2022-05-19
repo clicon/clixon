@@ -111,11 +111,13 @@ load("Load configuration from XML file") <filename:string>("Filename (local file
 	cli("Replace candidate with file containing CLI commands"), load_config_file("","filename", "replace", "cli");
 	xml("Replace candidate with file containing XML"), load_config_file("","filename", "replace", "xml");
 	json("Replace candidate with file containing JSON"), load_config_file("","filename", "replace", "json");
+	text("Replace candidate with file containing TEXT"), load_config_file("","filename", "replace", "text");
     }
     merge("Merge file with existent candidate"), load_config_file("filename", "merge");{
 	cli("Merge candidate with file containing CLI commands"), load_config_file("","filename", "merge", "cli");
 	xml("Merge candidate with file containing XML"), load_config_file("","filename", "merge", "xml");
 	json("Merge candidate with file containing JSON"), load_config_file("","filename", "merge", "json");
+	text("Merge candidate with file containing TEXT"), load_config_file("","filename", "merge", "text");
     }
 }
 example("This is a comment") <var:int32>("Just a random number"), mycallback("myarg");

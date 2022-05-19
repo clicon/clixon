@@ -936,7 +936,6 @@ xml_child_each(cxobj           *xparent,
     return xn;
 }
 
-
 /*! Extend child vector with one and insert xml node there
  * @note does not do anything with child, you may need to set its parent, etc
  * @see xml_child_insert_pos
@@ -1036,6 +1035,33 @@ xml_childvec_get(cxobj *x)
     if (!is_element(x))
 	return NULL;
     return x->x_childvec;
+}
+
+/*! Given an XML object and a vector of children xvec, append the children to the object
+ *
+ * @param[in]  x   XML node
+ * @param[in]  xv  Clixon xml vector
+ * @retval     0   OK
+ * @retval     -1  Error
+ * @note xv is not same type as x_childvec
+ */
+int
+clixon_child_xvec_append(cxobj       *xn,
+			 clixon_xvec *xv)
+{
+    int    retval = -1;
+    cxobj *xc;
+    int    i;
+
+    for (i=0; i<clixon_xvec_len(xv); i++){
+	xc = clixon_xvec_i(xv, i);
+	if (xml_addsub(xn, xc) < 0)
+	//	if (xml_child_append(xn, xc) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Create new xml node given a name and parent. Free with xml_free().
@@ -1968,29 +1994,6 @@ xml_dup(cxobj *x0)
 }
 
 #if 1 /* XXX At some point migrate this code to the clixon_xml_vec.[ch] API */
-/*! Copy XML vector from vec0 to vec1
- * @param[in]  vec0    Source XML tree vector
- * @param[in]  len0    Length of source XML tree vector
- * @param[out] vec1    Destination XML tree vector
- * @param[out] len1    Length of destination XML tree vector
- */
-int
-cxvec_dup(cxobj  **vec0, 
-	  int      len0, 
-	  cxobj ***vec1, 
-	  int     *len1)
-{
-    int retval = -1;
-
-    *len1 = len0;
-    if ((*vec1 = calloc(len0, sizeof(cxobj*))) == NULL)
-	goto done;
-    memcpy(*vec1, vec0, len0*sizeof(cxobj*));
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Append a new xml tree to an existing xml vector last in the list
  * @param[in]      x      XML tree (append this to vector)
  * @param[in,out]  vec    XML tree vector
@@ -2065,6 +2068,7 @@ cxvec_prepend(cxobj   *x,
     return retval;
 }
 #endif
+
 
 /*! Apply a function call recursively on all xml node children recursively
  * Recursively traverse all xml nodes in a parse-tree and apply fn(arg) for 

@@ -2,8 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2017-2019 Olof Hagsand
-  Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC (Netgate)
+  Copyright (C) 2022 Olof Hagsand and Rubicon Communications, LLC (Netgate)
 
   This file is part of CLIXON.
 
@@ -32,8 +31,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * JSON utility command
- * http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+  * Text syntax utility command
  */
 
 #ifdef HAVE_CONFIG_H
@@ -57,14 +55,12 @@
 /* clixon */
 #include "clixon/clixon.h"
 
+/* Command line options passed to getopt(3) */
+#define UTIL_TEXT_SYNTAX_OPTS "hD:f:tl:y:"
+
 /*
- * JSON parse and pretty print test program
- * Usage: xpath
- * read json from input
+ * Text syntax parse and pretty print test program
  * Example compile:
- gcc -g -o json -I. -I../clixon ./clixon_json.c -lclixon -lcligen
- * Example run:
-    echo '{"foo": -23}' | ./json
 */
 static int
 usage(char *argv0)
@@ -73,9 +69,9 @@ usage(char *argv0)
 	    "where options are\n"
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug\n"
-	    "\t-j \t\tOutput as JSON (default is as XML)\n"
+	    "\t-f <file>\tTEXT syntax input file (overrides stdin)\n"
+	    "\t-t \t\tOutput as TEXT syntax (default is as XML)\n"
 	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n"
-	    "\t-p \t\tPretty-print output\n"
 	    "\t-y <filename> \tyang filename to parse (must be stand-alone)\n"	    ,
 	    argv0);
     exit(0);
@@ -87,20 +83,22 @@ main(int    argc,
 {
     int        retval = -1;
     cxobj     *xt = NULL;
+    cxobj     *xc;
     cbuf      *cb = cbuf_new();
     int        c;
     int        logdst = CLICON_LOG_STDERR;
-    int        json = 0;
+    int        text_syntax_output = 0;
     char      *yang_filename = NULL;
     yang_stmt *yspec = NULL;
     cxobj     *xerr = NULL; /* malloced must be freed */
     int        ret;
-    int        pretty = 0;
     int        dbg = 0;
+    char      *input_filename = NULL;
+    FILE      *fp = stdin; /* base file, stdin */
     
     optind = 1;
     opterr = 0;
-    while ((c = getopt(argc, argv, "hD:jl:py:")) != -1)
+    while ((c = getopt(argc, argv, UTIL_TEXT_SYNTAX_OPTS)) != -1)
 	switch (c) {
 	case 'h':
 	    usage(argv[0]);
@@ -109,15 +107,15 @@ main(int    argc,
 	    if (sscanf(optarg, "%d", &dbg) != 1)
 		usage(argv[0]);
 	    break;
-	case 'j':
-	    json++;
+	case 'f':
+	    input_filename = optarg;
+	    break;
+	case 't':
+	    text_syntax_output++;
 	    break;
 	case 'l': /* Log destination: s|e|o|f */
 	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
 		usage(argv[0]);
-	    break;
-	case 'p':
-	    pretty++;
 	    break;
 	case 'y':
 	    yang_filename = optarg;
@@ -137,17 +135,27 @@ main(int    argc,
 	    return -1;
 	}
     }
-    if ((ret = clixon_json_parse_file(stdin, yspec?1:0, yspec?YB_MODULE:YB_NONE, yspec, &xt, &xerr)) < 0)
+    if (input_filename){
+	if ((fp = fopen(input_filename, "r")) == NULL){
+	    clicon_err(OE_YANG, errno, "open(%s)", input_filename);	
+	    goto done;
+	}
+    }
+    if ((ret = clixon_text_syntax_parse_file(fp, yspec?YB_MODULE:YB_NONE, yspec, &xt, &xerr)) < 0)
 	goto done;
     if (ret == 0){
 	xml_print(stderr, xerr);
 	goto done;
     }
-    if (json)
-	xml2json_cbuf(cb, xt, pretty, 1); /* print json */
-    else
-	clicon_xml2cbuf(cb, xt, 0, pretty, -1, 1); /* print xml */
-    fprintf(stdout, "%s", cbuf_get(cb));
+    xc = NULL;
+    while ((xc = xml_child_each(xt, xc, -1)) != NULL){
+	if (text_syntax_output)
+	    xml2txt(xc, fprintf, stdout, 0);
+	else{
+	    clicon_xml2cbuf(cb, xc, 0, 1, -1); /* print xml */
+	    fprintf(stdout, "%s", cbuf_get(cb));
+	}
+    }
     fflush(stdout);
     retval = 0;
  done:

@@ -2,9 +2,7 @@
  *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
-  Copyright (C) 2017-2019 Olof Hagsand
-  Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+  Copyright (C) 2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -33,44 +31,39 @@
 
   ***** END LICENSE BLOCK *****
 
- * XML parser
- * @see https://www.w3.org/TR/2008/REC-xml-20081126
- *      https://www.w3.org/TR/2009/REC-xml-names-20091208
+ * TEXT / curly-brace syntax parsing and translations
  */
-#ifndef _CLIXON_XML_PARSE_H_
-#define _CLIXON_XML_PARSE_H_
+#ifndef _CLIXON_TEXT_SYNTAX_PARSE_H_
+#define _CLIXON_TEXT_SYNTAX_PARSE_H_
 
 /*
  * Types
  */
 /*! XML parser yacc handler struct */
-struct clixon_xml_parse_yacc {
-    char       *xy_parse_string; /* original (copy of) parse string */
-    int         xy_linenum;      /* Number of \n in parsed buffer */
-    void       *xy_lexbuf;       /* internal parse buffer from lex */
-    cxobj      *xy_xtop;         /* cxobj top element (fixed) */
-    cxobj      *xy_xelement;     /* cxobj active element (changes with parse context) */
-    cxobj      *xy_xparent;      /* cxobj parent element (changes with parse context) */
-    yang_stmt  *xy_yspec;        /* If set, top-level yang-spec */
-    int         xy_lex_state;    /* lex return state */
-    cxobj     **xy_xvec;         /* Vector of created top-level nodes (to know which are created) */
-    int         xy_xlen;         /* Length of xy_xvec */
+struct clixon_text_syntax_parse_yacc {
+    char      *ts_parse_string; /* original (copy of) parse string */
+    int        ts_linenum;      /* Number of \n in parsed buffer */
+    void      *ts_lexbuf;       /* internal parse buffer from lex */
+    cxobj     *ts_xtop;         /* Vector of created top-level nodes (to know which are created) */
+    int        ts_xlen;         /* Length of ts_xvec */
+    int        ts_lex_state;    /* lex return state */
+    yang_stmt *ts_yspec;        /* Yang spec */
 };
-typedef struct clixon_xml_parse_yacc clixon_xml_yacc;
+typedef struct clixon_text_syntax_parse_yacc clixon_text_syntax_yacc;
 
 /*
  * Variables
  */
-extern char *clixon_xml_parsetext;
+extern char *clixon_text_syntax_parsetext;
 
 /*
  * Prototypes
  */
-int clixon_xml_parsel_init(clixon_xml_yacc *ya);
-int clixon_xml_parsel_exit(clixon_xml_yacc *ya);
+int clixon_text_syntax_parsel_init(clixon_text_syntax_yacc *ya);
+int clixon_text_syntax_parsel_exit(clixon_text_syntax_yacc *ya);
 
-int clixon_xml_parsel_linenr(void);
-int clixon_xml_parselex(void *);
-int clixon_xml_parseparse(void *);
+int clixon_text_syntax_parsel_linenr(void);
+int clixon_text_syntax_parselex(void *);
+int clixon_text_syntax_parseparse(void *);
 
-#endif	/* _CLIXON_XML_PARSE_H_ */
+#endif	/* _CLIXON_TEXT_SYNTAX_PARSE_H_ */

@@ -133,8 +133,8 @@ ret=$($clixon_cli -1 -f $cfg show config)
 if [ $? -ne 0 ]; then
     err 0 $r
 fi  
-if [ "$ret" != "hello     world;" ]; then
-    err "$ret" "hello     world;"
+if [ "$ret" != "clixon-hello:hello     world;" ]; then
+    err "$ret" "clixon-hello:hello     world;"
 fi
 
 new "netconf edit-config"

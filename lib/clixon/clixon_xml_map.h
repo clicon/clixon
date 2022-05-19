@@ -50,8 +50,6 @@ typedef enum yang_class yang_class;
  * Prototypes
  */
 int isxmlns(cxobj *x);
-int xml2txt_cb(FILE *f, cxobj *x, clicon_output_cb *fn);
-int xml2txt(FILE *f, cxobj *x, int level);
 int xmlns_assign(cxobj *x);
 int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
 int cvec2xml_1(cvec *cvv, char *toptag, cxobj *xp, cxobj **xt0);

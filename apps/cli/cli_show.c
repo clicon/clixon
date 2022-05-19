@@ -505,7 +505,7 @@ cli_show_config1(clicon_handle h,
     case FORMAT_TEXT:
 	xc = NULL; /* Dont print xt itself */
 	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	    cli_xml2txt(xc, cligen_output, 0); /* tree-formed text */
+	    xml2txt(xc, cligen_output, stdout, 0); /* tree-formed text */
 	break;
     case FORMAT_CLI:
 	if (xml2cli(h, stdout, xt, prefix, cligen_output, 1) < 0)
@@ -789,7 +789,7 @@ cli_show_generated(clicon_handle h,
 		    cli_xml2file(xp_helper, 0, 1, fprintf);
 		    break;
 		case FORMAT_TEXT:	
-		    cli_xml2txt(xp_helper, cligen_output, 0);  /* tree-formed text */
+		    xml2txt(xp_helper, cligen_output, stdout, 0);  /* tree-formed text */
 		    break;
 		default: /* see cli_show_config() */
 		    break;
@@ -986,7 +986,7 @@ cli_pagination(clicon_handle h,
 		xml2json_file(stdout, xc, 1, cligen_output, 0);
 		break;
 	    case FORMAT_TEXT:
-		xml2txt_cb(stdout, xc, cligen_output); /* tree-formed text */
+		xml2txt(xc, cligen_output, stdout, 0); /* tree-formed text */
 		break;
 	    case FORMAT_CLI:
 		/* hardcoded to compress and list-keyword = nokey */

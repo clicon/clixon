@@ -87,7 +87,7 @@
 /* Size of json read buffer when reading from file*/
 #define BUFLEN 1024
 
-/* Name of xml top object created by xml parse functions */
+/* Name of xml top object created by parse functions */
 #define JSON_TOP_SYMBOL "top"
 
 enum array_element_type{
@@ -1545,6 +1545,7 @@ clixon_json_parse_string(char      *str,
  * 
  * @param[in]     fp    File descriptor to the JSON file (ASCII string)
  * @param[in]  rfc7951 Do sanity checks according to RFC 7951 JSON Encoding of Data Modeled with YANG
+ * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification, or NULL
  * @param[in,out] xt    Pointer to (XML) parse tree. If empty, create.
  * @param[out]    xerr  Reason for invalid returned as netconf err msg 

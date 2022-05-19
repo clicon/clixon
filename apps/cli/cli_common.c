@@ -698,7 +698,7 @@ compare_xmls(cxobj *xc1,
     xc = NULL;
     if (astext)
 	while ((xc = xml_child_each(xc1, xc, -1)) != NULL)
-	    xml2txt_cb(f, xc, cligen_output);
+	    xml2txt(xc, cligen_output, f, 0);
     else
 	while ((xc = xml_child_each(xc1, xc, -1)) != NULL)
 	    clicon_xml2file_cb(f, xc, 0, 1, cligen_output);
@@ -715,7 +715,7 @@ compare_xmls(cxobj *xc1,
     xc = NULL;
     if (astext)
 	while ((xc = xml_child_each(xc2, xc, -1)) != NULL)
-	    xml2txt_cb(f, xc, cligen_output);
+	    xml2txt(xc, cligen_output, f, 0);
     else
 	while ((xc = xml_child_each(xc2, xc, -1)) != NULL)
 	    clicon_xml2file_cb(f, xc, 0, 1, cligen_output);
@@ -882,6 +882,14 @@ load_config_file(clicon_handle h,
 	    goto done;
 	}
 	break;
+    case FORMAT_TEXT:
+	if ((ret = clixon_text_syntax_parse_file(fp, YB_NONE, yspec, &xt, &xerr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    clixon_netconf_error(xerr, "Loading", filename);
+	    goto done;
+	}
+	break;
     case FORMAT_CLI:
 	{
 	    char         *mode = cli_syntax_mode(h);
@@ -1034,7 +1042,7 @@ save_config_file(clicon_handle h,
 	    goto done;
 	break;
     case FORMAT_TEXT:
-	if (xml2txt(f, xt, 0) < 0)
+	if (xml2txt(xt, fprintf, f, 0) < 0)
 	    goto done;
 	break;
     case FORMAT_CLI:
@@ -1165,7 +1173,7 @@ cli_notification_cb(int   s,
 		    goto done;
 		break;
 	    case FORMAT_TEXT:
-		if (xml2txt_cb(stdout, x, cligen_output) < 0)
+		if (xml2txt(x, cligen_output, stdout, 0) < 0)
 		    goto done;
 		break;
 	    default:
