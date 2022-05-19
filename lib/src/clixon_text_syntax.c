@@ -118,6 +118,7 @@ xml2txt(cxobj            *xn,
     yang_stmt *ymod;
     yang_stmt *ypmod;
     char      *prefix = NULL;
+    char      *value;
 
     if (xn == NULL || fn == NULL){
 	clicon_err(OE_XML, EINVAL, "xn or fn is NULL");
@@ -148,7 +149,12 @@ xml2txt(cxobj            *xn,
     if (!children){ /* If no children print line */
 	switch (xml_type(xn)){
 	case CX_BODY:
-	    (*fn)(f, "%s;\n", xml_value(xn));
+	    value = xml_value(xn);
+	    /* Add quotes if string contains spaces */
+	    if (index(value, ' ') != NULL)
+		(*fn)(f, "\"%s\";\n", xml_value(xn));
+	    else
+		(*fn)(f, "%s;\n", xml_value(xn));
 	    break;
 	case CX_ELMNT:
 	    (*fn)(f, "%*s%s;\n", 4*level, "", xml_name(xn));

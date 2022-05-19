@@ -119,18 +119,21 @@ text_add_value(cxobj *xn,
 
 static cxobj*
 text_create_node(clixon_text_syntax_yacc *ts,
-		 char                    *module,
 		 char                    *name)
 {
     cxobj     *xn;
     yang_stmt *ymod;
     char      *ns;
+    char      *prefix = NULL;
+    char      *id = NULL;
 
-    if ((xn = xml_new(name, NULL, CX_ELMNT)) == NULL)
+    if (nodeid_split(name, &prefix, &id) < 0)
 	goto done;
-    if (module && ts->ts_yspec){
+    if ((xn = xml_new(id, NULL, CX_ELMNT)) == NULL)
+	goto done;
+    if (prefix && ts->ts_yspec){
 	/* Silently ignore if module name not found */
-	if ((ymod = yang_find(ts->ts_yspec, Y_MODULE, NULL)) != NULL){
+	if ((ymod = yang_find(ts->ts_yspec, Y_MODULE, prefix)) != NULL){
 	    if ((ns = yang_find_mynamespace(ymod)) == NULL){
 		clicon_err(OE_YANG, 0, "No namespace");
 		goto done;
@@ -141,6 +144,10 @@ text_create_node(clixon_text_syntax_yacc *ts,
 	}
     }
  done:
+    if (prefix)
+	free(prefix);
+    if (id)
+	free(id);
     return xn;
 }
  
@@ -166,6 +173,10 @@ stmt       : id value ';'      { _PARSE_DEBUG("stmt-> id value ;");
                                  if (text_add_value($1, $2) < 0) YYERROR;
 				 $$ = $1;
                                }
+           | id '"' value '"' ';' { _PARSE_DEBUG("stmt-> id \" value \" ;");
+                                 if (text_add_value($1, $3) < 0) YYERROR;
+				 $$ = $1;
+                               }
            | id '{' stmts '}'  { _PARSE_DEBUG("stmt-> id { stmts }");
 				 if (clixon_child_xvec_append($1, $3) < 0) YYERROR;
 				 clixon_xvec_free($3);
@@ -176,11 +187,8 @@ stmt       : id value ';'      { _PARSE_DEBUG("stmt-> id value ;");
            ;
 
 id         : TOKEN             { _PARSE_DEBUG("id->TOKEN");
-                                  if (($$ = text_create_node(_TS, NULL, $1)) == NULL) YYERROR;;
+                                  if (($$ = text_create_node(_TS, $1)) == NULL) YYERROR;;
                                }
-           | TOKEN ':' TOKEN   { _PARSE_DEBUG("id->TOKEN : TOKEN");
-                                 if (($$ = text_create_node(_TS, $1, $3)) == NULL) YYERROR;;
-	                       }
            ;
 
 values     : values TOKEN      { _PARSE_DEBUG("values->values TOKEN"); } 

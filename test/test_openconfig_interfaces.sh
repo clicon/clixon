@@ -20,7 +20,7 @@ fi
 OCDIR=$OPENCONFIG/release/models
 
 # Generate autocli for these modules
-AUTOCLI=$(autocli_config clixon-example kw-nokey false)
+AUTOCLI=$(autocli_config openconfig* kw-nokey false)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -196,7 +196,6 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
-
 
 rm -rf $dir
 
