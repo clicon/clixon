@@ -49,7 +49,7 @@ int   yang2snmp_types(yang_stmt *ys, int *asn1_type, enum cv_type *cvtype);
 int   type_yang2snmp(char *valstr, enum cv_type cvtype,
 		     netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests,
 		     u_char **snmpval, size_t *snmplen);
-int yang2xpath(yang_stmt *ys, cbuf *cb);
+int   yang2xpath(yang_stmt *ys, char **xpath);
 
 #endif /* _SNMP_LIB_H_ */
 
