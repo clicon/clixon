@@ -84,7 +84,8 @@ APPL	  = clixon_snmp
 # Common source - not accessible from plugin - independent of restconf package (fcgi|native)
 APPSRC    =
 APPSRC   += snmp_main.c
-APPSRC   += snmp_mib_yang.c
+APPSRC   += snmp_register.c
+APPSRC   += snmp_handler.c
 APPSRC   += snmp_lib.c
 
 APPOBJ    = $(APPSRC:.c=.o)
