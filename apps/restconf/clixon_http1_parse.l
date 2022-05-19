@@ -143,7 +143,6 @@ query   [A-Za-z0-9\-\._~!$&'()*+,;=:@?/]|%[0-9a-fA-F][0-9a-fA-F]
                      _HY->hy_linenum++;
                      return BODY; } 
 <BODYM><<EOF>>     { return X_EOF; }
-<BODYM>.           { clixon_http1_parseerror(_HY, "LEXICAL ERROR\n"); return ERROR; }
 
 %%
 

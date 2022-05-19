@@ -279,7 +279,7 @@ api_http_data_file(clicon_handle h,
 {
     int         retval = -1;
     cbuf       *cbfile = NULL;
-    char       *filename;
+    char       *filename = NULL;
     cbuf       *cbdata = NULL;
     FILE       *f = NULL;
     off_t       fsz = 0;
@@ -288,7 +288,7 @@ api_http_data_file(clicon_handle h,
     char       *suffix;
     char       *media;
     int         ret;
-    char       *str = NULL;
+    char       *buf = NULL;
     size_t      sz;
 
     clicon_debug(1, "%s", __FUNCTION__);    
@@ -333,8 +333,8 @@ api_http_data_file(clicon_handle h,
     fsize = ftell(f);
     /* Extra sanity check, had some problems with wrong file types */
     if (fsz != fsize){
-	clicon_debug(1, "%s Error file %s size mismatch sz:%zu vs %zu",
-		     __FUNCTION__, filename, fsz, fsize);
+	clicon_debug(1, "%s Error file %s size mismatch sz:%zu vs %li",
+		     __FUNCTION__, filename, (size_t)fsz, fsize);
 	if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
 	    goto done;
 	goto ok;
@@ -347,11 +347,11 @@ api_http_data_file(clicon_handle h,
     /* Unoptimized, no direct read but requires an extra copy,
      * the cligen buf API should have some mechanism for this case without the extra copy.
      */
-    if ((str = malloc(fsize + 1)) == NULL){
+    if ((buf = malloc(fsize)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
-    if ((sz = fread(str, fsize, 1, f)) < 0){
+    if ((sz = fread(buf, fsize, 1, f)) < 0){
 	clicon_err(OE_UNIX, errno, "fread");
 	goto done;
     }
@@ -361,8 +361,7 @@ api_http_data_file(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    str[fsize] = 0;
-    if (cbuf_append_str(cbdata, str) < 0){
+    if (cbuf_append_buf(cbdata, buf, fsize) < 0){
 	clicon_err(OE_UNIX, errno, "cbuf_append_str");
 	goto done;
     }
@@ -371,12 +370,12 @@ api_http_data_file(clicon_handle h,
     if (restconf_reply_send(req, 200, cbdata, head) < 0)
 	goto done;
     cbdata = NULL; /* consumed by reply-send */
- ok:
     clicon_debug(1, "%s Read %s OK", __FUNCTION__, filename);
+ ok:
     retval = 0;
  done:
-    if (str)
-	free(str);
+    if (buf)
+	free(buf);
     if (f)
 	fclose(f);
     if (cbfile)

@@ -781,8 +781,13 @@ main(int    argc,
     /* Join rest of argv to a single command */
     restarg = clicon_strjoin(argc, argv, " ");
 
-    /* If several cligen object variables match same preference, select first */
-    cligen_preference_mode_set(cli_cligen(h), 1);
+    /* If several cligen object variables match same preference, select first 
+     * There is some unclarities if this should be set to 0 or 1.
+     * By default in CLIgen, it is 0
+     * It used to be 1 in Clixon. But see eg https://github.com/clicon/clixon/issues/330
+     * There may be cases where there will be "ambiguous".
+     */
+    cligen_preference_mode_set(cli_cligen(h), 0);
 
     /* Call start function in all plugins before we go interactive 
      */

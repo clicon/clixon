@@ -178,13 +178,16 @@ new "expand identityref 1st level"
 expectpart "$(echo "set identityrefs identityref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "ex:des" "ex:des2" "ex:des3"
 
 new "expand leafref 1st level"
-expectpart "$(echo "set leafrefs leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "91" "92" "93"
+expectpart "$(echo "set leafrefs leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=false 2> /dev/null)" 0 "<name>" --not-- "91" "92" "93"
+
+new "expand leafref 1st level with leafref expand"
+expectpart "$(echo "set leafrefs leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=true 2> /dev/null)" 0 "91" "92" "93"
 
 new "expand leafref top"
-expectpart "$(echo "set leafrefsabs leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "91" "92" "93"
+expectpart "$(echo "set leafrefsabs leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=true 2> /dev/null)" 0 "91" "92" "93"
 
 new "expand leafref require-instance"
-expectpart "$(echo "set leafrefsreqinst leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "91" "92" "93"
+expectpart "$(echo "set leafrefsreqinst leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=true 2> /dev/null)" 0 "91" "92" "93"
 
 # First level id/leaf refs
 new "set identityref des"
@@ -237,7 +240,7 @@ expectpart "$(echo "set identityrefs2 identityref ?" | $clixon_cli -f $cfg 2> /d
 
 # Note CI may have random number as host which may match "92"
 new "expand leafref 2nd level"
-expectpart "$(echo "set leafrefs2 leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 " 91" " 93" --not-- " 92"
+expectpart "$(echo "set leafrefs2 leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=true 2> /dev/null)" 0 " 91" " 93" --not-- " 92"
 
 new "set identityref2 des"
 expectpart "$($clixon_cli -1 -f $cfg set identityrefs2 identityref ex:des)" 0 "^$"

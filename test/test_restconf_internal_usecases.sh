@@ -141,6 +141,12 @@ EOF
     fi
 }
 
+new "Ensure no zombies before test"
+retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
+if [ -n "$retx" ]; then
+    err "No zombie process before test" "$retx"
+fi
+
 # FIRST usecase
 
 new "FIRST usecase: Empty status message"

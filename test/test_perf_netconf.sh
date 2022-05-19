@@ -151,7 +151,7 @@ new "netconf get $perfreq small config 1 key index"
     rnd=$(( ( RANDOM % $perfnr ) ))
     rpc=$(chunked_framing "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:x/ex:y[ex:a=$rnd]\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>")
     echo "$rpc"
-done | $clixon_netconf -Hqef $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
+done | $clixon_netconf -qe1f $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 new "netconf get $perfreq small config 1 key index start/stop"
 { time -p for (( i=0; i<$perfreq; i++ )); do
@@ -167,7 +167,7 @@ new "netconf get $perfreq small config 1 key + 1 non-key index"
     rnd=$(( ( RANDOM % $perfnr ) ))
     rpc=$(chunked_framing "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:x/ex:y[ex:a=$rnd][ex:b=$rnd]\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>")
     echo "$rpc"
-done | $clixon_netconf -Hqef $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
+done | $clixon_netconf -qe1f $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # NETCONF add
 new "netconf add $perfreq small config"
@@ -175,7 +175,7 @@ new "netconf add $perfreq small config"
     rnd=$(( ( RANDOM % $perfnr ) ))
     rpc=$(chunked_framing "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>")
     echo "$rpc"
-done | $clixon_netconf -Hqef $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
+done | $clixon_netconf -qe1f $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # Instead of many small entries, get one large in netconf and restconf
 # cli?
@@ -191,7 +191,7 @@ new "netconf delete $perfreq small config"
     rnd=$(( ( RANDOM % $perfnr ) ))
     rpc=$(chunked_framing "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><y nc:operation=\"delete\"><a>$rnd</a></y></x></config></edit-config></rpc>")
     echo "$rpc"
-done | $clixon_netconf -Hqef $cfg  > /dev/null; }  2>&1 | awk '/real/ {print $2}'
+done | $clixon_netconf -qe1f $cfg  > /dev/null; }  2>&1 | awk '/real/ {print $2}'
 
 #new "netconf discard-changes"
 expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -218,7 +218,7 @@ new "netconf add $perfreq small leaf-list config"
     rnd=$(( ( RANDOM % $perfnr ) ))
     rpc=$(chunked_framing "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>$rnd</c></x></config></edit-config></rpc>")
     echo "$rpc"
-done | $clixon_netconf -Hqef $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
+done | $clixon_netconf -qe1f $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 new "netconf add small leaf-list config"
 expecteof_netconf "time -p $clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>x</c></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" 2>&1 | awk '/real/ {print $2}'

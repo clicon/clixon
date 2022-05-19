@@ -599,7 +599,7 @@ cli_start_shell(clicon_handle h,
     cli_signal_flush(h);
     cli_signal_unblock(h);
     if (cmd){
-	snprintf(bcmd, 128, "%s -l -c \"%s\"", shcmd, cmd);
+	snprintf(bcmd, 128, "%s -c \"%s\"", shcmd, cmd);
 	if (system(bcmd) < 0){
 	    cli_signal_block(h);
 	    clicon_err(OE_UNIX, errno, "system(bash -c)");
@@ -607,7 +607,7 @@ cli_start_shell(clicon_handle h,
 	}
     }
     else{
-	snprintf(bcmd, 128, "%s -l", shcmd);
+	snprintf(bcmd, 128, "%s ", shcmd); /* -l (login shell) but is applicable to bash only */
 	if (system(bcmd) < 0){
 	    cli_signal_block(h);
 	    clicon_err(OE_UNIX, errno, "system(bash)");
