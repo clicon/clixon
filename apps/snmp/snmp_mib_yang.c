@@ -99,7 +99,6 @@ int clixon_table_create(netsnmp_table_data_set *table, yang_stmt *ys, clicon_han
 {
     cvec                   *nsc = NULL;
     cxobj                  *xt = NULL;
-    cbuf                   *cb = NULL;
     cxobj                  *xerr;
     char                   *xpath;
     cxobj                  *xtable;
@@ -113,16 +112,9 @@ int clixon_table_create(netsnmp_table_data_set *table, yang_stmt *ys, clicon_han
     if (xml_nsctx_yang(ys, &nsc) < 0)
         goto done;
 
-    /* XXX just for yang2xpath */
-    if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
-        goto done;
-    }
-
-    if (yang2xpath(ys, cb) < 0)
+    if (yang2xpath(ys, &xpath) < 0)
         goto done;
 
-    xpath = cbuf_get(cb);
     if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
         goto done;
 
@@ -165,8 +157,6 @@ done:
         xml_free(xt);
     if (nsc)
         xml_nsctx_free(nsc);
-    if (cb)
-        cbuf_free(cb);
 
     return retval;
 }
@@ -247,13 +237,12 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
     clixon_snmp_handle *sh;
     yang_stmt          *ys;
     clicon_handle       h;
-    cbuf               *cb = NULL;
     cg_var             *cv = NULL;
     cxobj              *xt = NULL;
     cxobj              *xerr;
     cvec               *nsc = NULL;
     cxobj              *x;
-    char               *xpath;
+    char               *xpath = NULL;
     int                 asn1_type;
     enum cv_type        cvtype;
     char               *valstr;
@@ -261,6 +250,7 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
     size_t              snmplen;
     int                 ret;
     netsnmp_variable_list *requestvb; /* sub of requests */
+    cbuf                  *cb = NULL;
 
     /*
      * can be used to pass information on a per-pdu basis from a
@@ -318,14 +308,8 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
 
 	if (xml_nsctx_yang(ys, &nsc) < 0)
 	    goto done;
-	/* XXX just for yang2xpath */
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	if (yang2xpath(ys, &xpath) < 0)
 	    goto done;
-	}
-	if (yang2xpath(ys, cb) < 0)
-	    goto done;
-	xpath = cbuf_get(cb);
 	if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
 	    goto done;
 	if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
@@ -414,14 +398,16 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
  done:
     if (snmpval)
 	free(snmpval);
+    if (cb)
+	cbuf_free(cb);
+    if (xpath)
+	free(xpath);
     if (xt)
 	xml_free(xt);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (cv)
 	cv_free(cv);
-    if (cb)
-	cbuf_free(cb);
     return retval;
 }
 
@@ -634,8 +620,10 @@ mib_traverse(clicon_handle h,
     yang_stmt *ys = NULL;
     yang_stmt *yp;
     int        ret;
-
-    switch(yang_keyword_get(yn)){
+    enum rfc_6020 keyw;
+	
+    keyw = yang_keyword_get(yn);
+    switch(keyw){
     case Y_LEAF:
 	if (mib_yang_leaf(h, yn) < 0)
 	    goto done;
@@ -653,15 +641,17 @@ mib_traverse(clicon_handle h,
     default:
 	break;
     }
+    /* Traverse data nodes in tree (module is special case */
     ys = NULL;
-    while ((ys = yn_each(yn, ys)) != NULL) {
-	if ((ret = mib_traverse(h, ys)) < 0)
-	    goto done;
-	if (ret > 0){
-	    retval = ret;
-	    goto done;
+    if (yang_schemanode(yn) || keyw == Y_MODULE|| keyw == Y_SUBMODULE)
+	while ((ys = yn_each(yn, ys)) != NULL) {
+	    if ((ret = mib_traverse(h, ys)) < 0)
+		goto done;
+	    if (ret > 0){
+		retval = ret;
+		goto done;
+	    }
 	}
-    }
  ok:
     retval = 0;
  done:

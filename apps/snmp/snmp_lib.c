@@ -232,19 +232,17 @@ type_yang2snmp(char                       *valstr,
     goto done;
 }
 
-/*! Construct an xpath from yang statement
+/*! Construct an xpath from yang statement, internal fn using cb
  * Recursively construct it to the top.
  * @param[in]  ys    Yang statement
  * @param[out] cb    xpath as cbuf
  * @retval     0     OK
  * @retval    -1     Error
- * @note
- * 1. This should really be in a core .c file, like clixon_yang, BUT
- * 2. It is far from complete so maybe keep it here as a special case
+ * @see yang2xpath
  */ 
-int
-yang2xpath(yang_stmt *ys, 
-	   cbuf      *cb)
+static int
+yang2xpath_cb(yang_stmt *ys, 
+	      cbuf      *cb)
 {
     yang_stmt *yp; /* parent */
     int        i;
@@ -259,7 +257,7 @@ yang2xpath(yang_stmt *ys,
 	yang_keyword_get(yp) != Y_MODULE && 
 	yang_keyword_get(yp) != Y_SUBMODULE){
 
-	if (yang2xpath(yp, cb) < 0) /* recursive call */
+	if (yang2xpath_cb(yp, cb) < 0) /* recursive call */
 	    goto done;
 	if (yang_keyword_get(yp) != Y_CHOICE && yang_keyword_get(yp) != Y_CASE){
 	    cprintf(cb, "/");
@@ -288,5 +286,40 @@ yang2xpath(yang_stmt *ys,
     } /* switch */
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Construct an xpath from yang statement
+
+ * Recursively construct it to the top.
+ * @param[in]  ys    Yang statement
+ * @param[out] xpath Malloced xpath string, use free() after use
+ * @retval     0     OK
+ * @retval     -1    Error
+ * @note
+ * 1. This should really be in a core .c file, like clixon_yang, BUT
+ * 2. It is far from complete so maybe keep it here as a special case
+ */ 
+int
+yang2xpath(yang_stmt *ys,
+	   char     **xpath)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    if (yang2xpath_cb(ys, cb) < 0)
+	goto done;
+    if (xpath && (*xpath = strdup(cbuf_get(cb))) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
