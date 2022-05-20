@@ -99,7 +99,7 @@ typedef struct restconf_conn {
     clicon_handle       rc_h;         /* Clixon handle */
     SSL                *rc_ssl;       /* Structure for SSL connection */
     restconf_stream_data *rc_streams; /* List of http/2 session streams */
-    int                   rc_exit;    /* Set to close socket server-side */
+    int                   rc_exit;    /* Set to close socket server-side (NYI) */
     /* Decision to keep lib-specific data here, otherwise new struct necessary
      * drawback is specific includes need to go everywhere */
 #ifdef HAVE_LIBNGHTTP2

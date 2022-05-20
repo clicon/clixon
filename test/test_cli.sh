@@ -52,7 +52,7 @@ delete("Delete a configuration item") {
 validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
-shell("System command") <source:rest>, cli_start_shell("bash");
+shell("System command") <source:rest>, cli_start_shell();
 copy("Copy and create a new object"){
      interface("Copy interface"){
 	(<name:string>|<name:string expand_dbvar("candidate","/ietf-interfaces:interfaces/interface=%s/name")>("name of interface to copy from")) to("Copy to interface") <toname:string>("Name of interface to copy to"), cli_copy_config("candidate","//interface[%s='%s']","urn:ietf:params:xml:ns:yang:ietf-interfaces","name","name","toname");

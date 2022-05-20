@@ -68,7 +68,7 @@ int xml_nopresence_default(cxobj *xt);
 int xml_nopresence_default_mark(cxobj *x, void *arg);
 int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, cxobj **xerr);
-int xml2xpath(cxobj *x, cvec *nsc, char **xpath);
+int xml2xpath(cxobj *x, char **xpath);
 int assign_namespace_element(cxobj *x0, cxobj *x1, cxobj *x1p);
 int assign_namespace_body(cxobj *x0, cxobj *x1);
 int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);

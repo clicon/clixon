@@ -277,8 +277,7 @@ expand_dbvar(void   *h,
 	goto done;
     }
     cprintf(cbxpath, "%s", xpath);
-    if (clicon_option_bool(h, "CLICON_CLI_EXPAND_LEAFREF") &&
-	(ytype = yang_find(y, Y_TYPE, NULL)) != NULL &&
+    if ((ytype = yang_find(y, Y_TYPE, NULL)) != NULL &&
 	strcmp(yang_argument_get(ytype), "leafref") == 0){
 	/* Special case for leafref. Detect leafref via Yang-type, 
 	 * Get Yang path element, tentatively add the new syntax to the whole

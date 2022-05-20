@@ -153,7 +153,7 @@ new "nmap ssl-cert-intaddr"
 expectpart "$(nmap --script ssl-cert-intaddr -p 443 127.0.0.1)" 0 "443/tcp open  https"
 
 new "nmap ssl-cert"
-expectpart "$(nmap --script ssl-cert -p 443 127.0.0.1)" 0 "443/tcp open  https" "| ssl-cert: Subject: commonName=${SSLCN}/organizationName=Clixon/countryName=SE"
+expectpart "$(nmap --script ssl-cert -p 443 127.0.0.1)" 0 "443/tcp open  https" "| ssl-cert: Subject: commonName=www.clicon.org/organizationName=Clixon/countryName=SE"
 
 new "nmap ssl-date"
 expectpart "$(nmap --script ssl-date -p 443 127.0.0.1)" 0 "443/tcp open  https"

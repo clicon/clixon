@@ -293,7 +293,7 @@ edit table
 show config json
 EOF
 new "show config json"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '{"clixon-example:parameter":\[{"name":"a","value":"42"}\]}'
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '{"clixon-example:parameter":{"name":"a","value":"42"}}'
 
 cat <<EOF > $fin
 edit table

@@ -163,8 +163,7 @@ fi
 # Only compare relevant data line
 echo -n "<data>">> $ftest
 cat $fdataxml >> $ftest
-#echo "</data>" >> $ftest
-echo -n "</data>" >> $ftest
+echo "</data>" >> $ftest
 sed '/<data>/!d' $foutput > $foutput2
 mv $foutput2 $foutput
 
@@ -229,7 +228,7 @@ new "netconf add $perfreq small leaf-list config"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
     rpc=$(chunked_framing "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>$rnd</c></x></config></edit-config></rpc>")
-done | $clixon_netconf -qe1f $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
+done | $clixon_netconf -Hqf $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 new "netconf add small leaf-list config"
 expecteof_netconf "time -p $clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>x</c></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" 2>&1 | awk '/real/ {print $2}'

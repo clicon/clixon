@@ -116,9 +116,6 @@ EOF
 # remove read access
 chmod 660 $dir/www/data/noread.html
 
-# bitmap
-cp ./clixon.png  $dir/www/data/
-
 # Http test routine with arguments:
 # 1. proto:http/https
 function testrun()
@@ -224,30 +221,17 @@ EOF
 	new "WWW options"
 	expectpart "$(curl $CURLOPTS -X OPTIONS $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "allow: OPTIONS,HEAD,GET" 
 
-	# Remove -i option for binary transfer
-	CURLOPTS2=$(echo $CURLOPTS | sed 's/i//')
-	new "WWW binary bitmap"
-	curl $CURLOPTS2 -X GET $proto://localhost/data/clixon.png -o $dir/foo.png
-	cmp $dir/foo.png $dir/www/data/clixon.png
-	if [ $? -ne 0 ]; then
-	    err1 "$dir/foo.png $dir/www/data/example.css should be equal" "Not equal"
-	fi
-
 	# negative errors
 	new "WWW get http not found"
 	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/notfound.html)" 0 "HTTP/$HVER 404" "Content-Type: text/html" "<title>404 Not Found</title>"
 
 	new "WWW get http soft link"
 	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/inside.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>" --not-- "<title>Dont access this</title>"
+
 	
-	# Two cases where the privileges test is not run:
-	# 1) Docker in alpine for some reason
-	# 2) Restconf run explicitly as root (eg coverage)
-	if [ ! -f /.dockerenv ] ; then  
-            if [[ "$clixon_restconf" != *"-r"* ]]; then
-		new "WWW get http not read access"
-		expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/noread.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>"
-            fi
+	if [ ! -f /.dockerenv ] ; then	# XXX Privs dont not work on docker/alpine?
+	    new "WWW get http not read access"
+	    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/noread.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>"
 	fi
 
 	# Try .. Cannot get .. in path to work in curl (it seems to remove it)
@@ -266,7 +250,7 @@ EOF
 	expectpart "$(curl $CURLOPTS -X POST -H 'Accept: text/html' -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}}' $proto://localhost/data/notfound.html)" 0 "HTTP/$HVER 405" "Content-Type: text/html" "<title>405 Method Not Allowed</title>"
 
     fi 
-
+    
     if [ $RC -ne 0 ]; then
 	new "Kill restconf daemon"
 	stop_restconf

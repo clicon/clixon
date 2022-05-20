@@ -1062,29 +1062,15 @@ xml2json_cbuf(cbuf      *cb,
 	      cxobj     *x, 
 	      int        pretty)
 {
-    int                     retval = 1;
-    int                     level = 0;
-    yang_stmt              *y;
-    enum array_element_type arraytype = NO_ARRAY;
-	
+    int    retval = 1;
+    int    level = 0;
+
     cprintf(cb, "%*s{%s", 
 	    pretty?level*JSON_INDENT:0,"", 
 	    pretty?"\n":"");
-    
-    if ((y = xml_spec(x)) != NULL){
-	switch (yang_keyword_get(y)){
-	case Y_LEAF_LIST:
-	case Y_LIST:
-	    arraytype = SINGLE_ARRAY;
-	    break;
-	default:
-	    arraytype = NO_ARRAY;
-	    break;
-	}
-    }
     if (xml2json1_cbuf(cb, 
 		       x, 
-		       arraytype,
+		       NO_ARRAY,
 		       level+1,
 		       pretty,
 		       0,

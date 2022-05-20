@@ -29,20 +29,6 @@ module json{
          type string;
       }
    }
-   leaf-list l1{
-      description "top-level";
-      type int32;
-   }
-   list l2{
-      description "top-level";
-      key name;
-      leaf name{
-         type int32;
-      }
-      leaf value{
-         type string;
-      }
-   }
 }
 EOF
 
@@ -68,14 +54,6 @@ function testrun()
 
 new "test params: -y $fyang"
 
-testrun "top one leaf-list" '{"json:l1":[1]}' '<l1 xmlns="urn:example:clixon">1</l1>'
-
-# XXX There is a problem with how clixon shows json and xml on top-level
-# Typically, there is a loop over xml children to cope with the case if there is more
-# than one top-level which is invalid in XML.
-# See for example clixon_util_xml.c, clixon_util_json.c, cli_auto_show, cli_show_config
-#testrun "top two leaf-list" '{"json:l1":[1,2]}' '<l1 xmlns="urn:example:clixon">1</l1><l1 xmlns="urn:example:clixon">2</l1>'
-
 testrun "one leaf-list" '{"json:c":{"l1":[1]}}' '<c xmlns="urn:example:clixon"><l1>1</l1></c>'
 
 testrun "two leaf-list" '{"json:c":{"l1":[1,2]}}' '<c xmlns="urn:example:clixon"><l1>1</l1><l1>2</l1></c>'
@@ -84,10 +62,6 @@ testrun "three leaf-list" '{"json:c":{"l1":[1,2,3]}}' '<c xmlns="urn:example:cli
 
 testrun "multiple leaf-list" '{"json:c":{"l1":[1,2],"extra":"abc"}}' '<c xmlns="urn:example:clixon"><l1>1</l1><l1>2</l1><extra>abc</extra></c>'
 
-testrun "top one list" '{"json:l2":[{"name":1,"value":"x"}]}' '<l2 xmlns="urn:example:clixon"><name>1</name><value>x</value></l2>'
-
-# XXX
-#testrun "top two list" '{"json:l2":[{"name":1,"value":"x"},{"name":2,"value":"x"}]}' '<l2 xmlns="urn:example:clixon"><name>1</name><value>x</value></l2><l2 xmlns="urn:example:clixon"><name>2</name><value>x</value></l2>'
 
 testrun "one list" '{"json:c":{"l2":[{"name":1,"value":"x"}]}}' '<c xmlns="urn:example:clixon"><l2><name>1</name><value>x</value></l2></c>'
 
