@@ -104,16 +104,17 @@ testinit
 
 # NET-SNMP-EXAMPLES-MIB::netSnmpExamples
 MIB=".1.3.6.1.4.1.8072.2"
-OID="${MIB}.1.1" # netSnmpExampleInteger
+OID1="${MIB}.1.1"    # netSnmpExampleInteger
+OID3="${MIB}.1.3"   # netSnmpExampleString
 
 new "Test SNMP get for default value"
-expectpart "$($snmpget $OID)" 0 "$OID = INTEGER: 42"
+expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 42"
 
-new "Set new value to OID"
-expectpart "$($snmpset $OID i 1234)" 0 "$OID = INTEGER: 1234"
+new "Set new value to OID1"
+expectpart "$($snmpset $OID1 i 1234)" 0 "$OID1 = INTEGER: 1234"
 
 new "Get new value"
-expectpart "$($snmpget $OID)" 0 "$OID = INTEGER: 1234"
+expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 1234"
 
 new "Set new value via NETCONF"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><default-operation>none</default-operation><target><candidate/></target><config><NET-SNMP-EXAMPLES-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:NET-SNMP-EXAMPLES-MIB\"><netSnmpExampleScalars><netSnmpExampleInteger>999</netSnmpExampleInteger></netSnmpExampleScalars></NET-SNMP-EXAMPLES-MIB></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -122,7 +123,16 @@ new "netconf commit"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "Get new value"
-expectpart "$($snmpget $OID)" 0 "$OID = INTEGER: 999"
+expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 999"
+
+new "Test SNMP get string for default value"
+expectpart "$($snmpget $OID3)" 0 "$OID3 = STRING: So long, and thanks for all the fish!."
+
+new "Set new string value to OID3"
+expectpart "$($snmpset $OID3 s foobar)" 0 "$OID3 = STRING: foobar"
+
+new "Get new value"
+expectpart "$($snmpget $OID3)" 0 "$OID3 = STRING: foobar"
 
 new "Cleaning up"
 testexit
