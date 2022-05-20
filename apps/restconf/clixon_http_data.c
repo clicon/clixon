@@ -279,7 +279,7 @@ api_http_data_file(clicon_handle h,
 {
     int         retval = -1;
     cbuf       *cbfile = NULL;
-    char       *filename = NULL;
+    char       *filename;
     cbuf       *cbdata = NULL;
     FILE       *f = NULL;
     off_t       fsz = 0;
@@ -288,7 +288,7 @@ api_http_data_file(clicon_handle h,
     char       *suffix;
     char       *media;
     int         ret;
-    char       *buf = NULL;
+    char       *str = NULL;
     size_t      sz;
 
     clicon_debug(1, "%s", __FUNCTION__);    
@@ -333,8 +333,8 @@ api_http_data_file(clicon_handle h,
     fsize = ftell(f);
     /* Extra sanity check, had some problems with wrong file types */
     if (fsz != fsize){
-	clicon_debug(1, "%s Error file %s size mismatch sz:%zu vs %li",
-		     __FUNCTION__, filename, (size_t)fsz, fsize);
+	clicon_debug(1, "%s Error file %s size mismatch sz:%zu vs %zu",
+		     __FUNCTION__, filename, fsz, fsize);
 	if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
 	    goto done;
 	goto ok;
@@ -347,11 +347,11 @@ api_http_data_file(clicon_handle h,
     /* Unoptimized, no direct read but requires an extra copy,
      * the cligen buf API should have some mechanism for this case without the extra copy.
      */
-    if ((buf = malloc(fsize)) == NULL){
+    if ((str = malloc(fsize + 1)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
-    if ((sz = fread(buf, fsize, 1, f)) < 0){
+    if ((sz = fread(str, fsize, 1, f)) < 0){
 	clicon_err(OE_UNIX, errno, "fread");
 	goto done;
     }
@@ -361,7 +361,8 @@ api_http_data_file(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    if (cbuf_append_buf(cbdata, buf, fsize) < 0){
+    str[fsize] = 0;
+    if (cbuf_append_str(cbdata, str) < 0){
 	clicon_err(OE_UNIX, errno, "cbuf_append_str");
 	goto done;
     }
@@ -370,12 +371,12 @@ api_http_data_file(clicon_handle h,
     if (restconf_reply_send(req, 200, cbdata, head) < 0)
 	goto done;
     cbdata = NULL; /* consumed by reply-send */
-    clicon_debug(1, "%s Read %s OK", __FUNCTION__, filename);
  ok:
+    clicon_debug(1, "%s Read %s OK", __FUNCTION__, filename);
     retval = 0;
  done:
-    if (buf)
-	free(buf);
+    if (str)
+	free(str);
     if (f)
 	fclose(f);
     if (cbfile)

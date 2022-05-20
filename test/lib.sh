@@ -105,9 +105,6 @@ else
     netcat=
 fi
 
-# SSL serv cert common name XXX should use DNS resolve
-: ${SSLCN:="localhost"}
-
 # Options passed to curl calls
 # -s : silent
 # -S : show error
@@ -1107,7 +1104,7 @@ prompt = no
 distinguished_name = dn
 req_extensions = ext
 [dn]
-CN = ${SSLCN} # localhost
+CN = www.clicon.org # localhost
 emailAddress = olof@hagsand.se
 O = Clixon
 L = Stockholm

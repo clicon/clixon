@@ -132,13 +132,6 @@ module clixon-example{
 }
 EOF
 
-# prereq check no zombies BEFORE test
-new "Ensure no zombies before test"
-retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
-if [ -n "$retx" ]; then
-    err "No zombie process before test" "$retx"
-fi
-
 new "Create netns: $netns"
 sudo ip netns delete $netns
 # Create netns

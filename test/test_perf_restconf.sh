@@ -144,15 +144,13 @@ if [ $r -ne 0 ]; then
     err1 "retval 0" $r
 fi
 
-# XXX ftest har \n
 # Only compare relevant data line
 echo -n "<data>">> $ftest
 cat $fdataxml >> $ftest
-echo -n "</data>" >> $ftest
-# -i (ignore case) dont always work properly
+echo "</data>" >> $ftest
+# -i dont always work properly
 sed '/<data>/!d' $foutput > $foutput2
-# Strip potential newlines, curl seems to leave trailing newlines on some platforms/versions
-tr -d "\n\r" < $foutput2 > $foutput
+mv $foutput2 $foutput
 
 ret=$(diff -i $ftest $foutput)
 if [ $? -ne 0 ]; then

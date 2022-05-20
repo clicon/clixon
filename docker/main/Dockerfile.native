@@ -104,12 +104,11 @@ RUN make
 RUN make install
 RUN install example.xml /clixon/build/etc/clixon.xml
 
-# Copy tests (why not everything?)
+# Copy tests
 WORKDIR /clixon/clixon/test
 RUN install -d /clixon/build/bin/test
 RUN install *.sh /clixon/build/bin/test
 RUN install *.exp /clixon/build/bin/test
-RUN install clixon.png /clixon/build/bin/test
 
 # Copy startscript
 WORKDIR /clixon

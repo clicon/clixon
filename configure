@@ -2268,7 +2268,7 @@ ac_configure="$SHELL $ac_aux_dir/configure"  # Please don't use this var.
 CLIXON_VERSION_MAJOR="5"
 CLIXON_VERSION_MINOR="7"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}_PRE\""
 
 # Debug flag
 # Check whether --enable-debug was given.
@@ -3155,7 +3155,6 @@ _ACEOF
 fi
 
 
-# defines: target_cpu, target_vendor, and target_os.
 # Make sure we can run config.sub.
 $SHELL "$ac_aux_dir/config.sub" sun4 >/dev/null 2>&1 ||
   as_fn_error $? "cannot run $SHELL $ac_aux_dir/config.sub" "$LINENO" 5

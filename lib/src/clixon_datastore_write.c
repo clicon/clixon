@@ -297,7 +297,6 @@ check_delete_existing_case(cxobj     *x0,
 {
     int        retval = -1;
     yang_stmt *yp;
-    yang_stmt *y0p;
     yang_stmt *y0case;
     yang_stmt *y1case;
     yang_stmt *y0choice;
@@ -318,30 +317,28 @@ check_delete_existing_case(cxobj     *x0,
     }
     else
 	goto ok;
-    /* Now traverse existing tree and compare with choice yang structure of added tree */
     x0prev = NULL;
     x0c = NULL;
     while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
 	if ((y0c = xml_spec(x0c)) == NULL ||
-	    yang_parent_get(y0c) == NULL){
+	    (yp = yang_parent_get(y0c)) == NULL){
 	    x0prev = x0c;
 	    continue;
 	}
-	y0p = yang_parent_get(y0c);
-	if (yang_keyword_get(y0p) == Y_CASE){
-	    y0case = y0p;
+	if (yang_keyword_get(yp) == Y_CASE){
+	    y0case = yp;
 	    y0choice = yang_parent_get(y0case);
 	}
-	else if (yang_keyword_get(y0p) == Y_CHOICE){
+	else if (yang_keyword_get(yp) == Y_CHOICE){
 	    y0case = NULL;
-	    y0choice = y0p;
+	    y0choice = yp;
 	}
 	else{
 	    x0prev = x0c;
 	    continue;
 	}
 	if (y0choice == y1choice){
-	    if ((y0case == NULL && y0c != y1c) ||
+	    if (y0case == NULL ||
 		y0case != y1case){
 		if (xml_purge(x0c) < 0)
 		    goto done;

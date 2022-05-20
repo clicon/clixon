@@ -337,21 +337,12 @@ main(int    argc,
     }
     /* 4. Output data (xml/json) */
     if (output){
-#if 0
-	if (jsonout)
-	    xml2json_cbuf(cb, xt, pretty); /* print json */
-	else
-	    clicon_xml2cbuf(cb, xt, 0, pretty, -1); /* print xml */
-#else
 	xc = NULL;
-	/* XXX This is troublesome for JSON top-level lists */
-	while ((xc = xml_child_each(xt, xc, -1)) != NULL){
+	while ((xc = xml_child_each(xt, xc, -1)) != NULL) 
 	    if (jsonout)
-		xml2json_cbuf(cb, xc, pretty); /* print json */
+		xml2json_cbuf(cb, xc, pretty); /* print xml */
 	    else
 		clicon_xml2cbuf(cb, xc, 0, pretty, -1); /* print xml */
-	}
-#endif
 	fprintf(stdout, "%s", cbuf_get(cb));
 	fflush(stdout);
     }

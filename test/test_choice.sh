@@ -106,25 +106,6 @@ module system{
         }
       }
     }
-    /* Choice shorthand with sub-container */
-    container choice-subcontainer {
-       presence true;
-         choice name {
-             container udp {
-	       leaf udp1{
-	         type string;
-               }
-	       leaf udp2{
-	         type string;
-               }
-             }
-             container tcp {
-	       leaf tcp1{
-	         type string;
-               }
-             }
-         }
-     }
   }
 }
 EOF
@@ -353,29 +334,6 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 new "netconf validate ok"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-
-new "netconf discard-changes"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-
-# Merge in choice-subcontainer
-new "netconf choice sub-container 1st leaf"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\" nc:operation=\"replace\" xmlns:nc=\"$BASENS\">
-<choice-subcontainer><udp><udp1>42</udp1></udp></choice-subcontainer>
-</system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-
-new "netconf choice sub-container 2nd leaf (dont remove 1st)"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\" xmlns:nc=\"$BASENS\">
-<choice-subcontainer><udp><udp2 nc:operation=\"replace\">99</udp2></udp></choice-subcontainer>
-</system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-
-new "netconf get both items"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:config\"><choice-subcontainer><udp><udp1>42</udp1><udp2>99</udp2></udp></choice-subcontainer></system></data></rpc-reply>" ""
-
-new "netconf validate ok"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-
-new "netconf discard-changes"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

@@ -101,6 +101,16 @@ api_data_options(clicon_handle h,
 	goto done;
     if (restconf_reply_header(req, "Accept-Patch", "application/yang-data+xml,application/yang-data+json") < 0)
 	goto done;
+
+    if (restconf_reply_header(req, "Access-Control-Allow-Origin", "*") < 0)
+	goto done;
+    if (restconf_reply_header(req, "Access-Control-Allow-Methods", "GET, OPTIONS, POST, PUT") < 0)
+	goto done;
+    if (restconf_reply_header(req, "Access-Control-Allow-Headers", "Content-Type") < 0)
+	goto done;
+    if (restconf_reply_header(req, "Access-Control-Max-Age", "86400") < 0)
+	goto done;
+
     if (restconf_reply_send(req, 200, NULL, 0) < 0)
 	goto done;
     retval = 0;

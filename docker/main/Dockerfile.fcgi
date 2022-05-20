@@ -97,7 +97,6 @@ WORKDIR /clixon/clixon/test
 RUN install -d /clixon/build/bin/test
 RUN install *.sh /clixon/build/bin/test
 RUN install *.exp /clixon/build/bin/test
-RUN install clixon.png /clixon/build/bin/test
 
 # Copy startscript
 WORKDIR /clixon

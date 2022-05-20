@@ -1375,7 +1375,7 @@ netconf_minmax_elements_xml(cxobj **xret,
 	goto done;
     }
     if (xml_parent(xp)){ /* Dont include root, eg <config> */
-	if (xml2xpath(xp, NULL, &path) < 0)
+	if (xml2xpath(xp, &path) < 0)
 	    goto done;
 	if (path)
 	    cprintf(cb, "%s", path);
@@ -2085,7 +2085,7 @@ netconf_input_chunked_framing(char    ch,
 {
     int retval = 0;
 
-    clicon_debug(1, "%s ch:%c(%d) state:%d size:%zu", __FUNCTION__, ch, ch, *state, *size);
+    clicon_debug(1, "%s ch:%c(%d) state:%d size:%lu", __FUNCTION__, ch, ch, *state, *size);
     switch (*state){
     case 0:
 	if (ch == '\n'){

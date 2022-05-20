@@ -329,10 +329,7 @@ restconf_http1_reply(restconf_conn        *rc,
     cprintf(sd->sd_outp_buf, "\r\n");
     /* Write a body */
     if (sd->sd_body){
-	if (cbuf_append_buf(sd->sd_outp_buf, cbuf_get(sd->sd_body), cbuf_len(sd->sd_body)) < 0){
-	    clicon_err(OE_RESTCONF, errno, "cbuf_append_buf");
-	    goto done;
-	}
+	cbuf_append_str(sd->sd_outp_buf, cbuf_get(sd->sd_body));
     }
     retval = 0;
  done:

@@ -53,7 +53,6 @@ module clixon-config {
                     CLICON_NETCONF_BASE_CAPABILITY
                     CLICON_HTTP_DATA_PATH
                     CLICON_HTTP_DATA_ROOT
-                    CLICON_CLI_EXPAND_LEAFREF
 	     Released in Clixon 5.7";
     }
     revision 2022-02-11 {
@@ -762,21 +761,6 @@ module clixon-config {
 		"CLIgen help string on query (?) limit of number of lines to show, 0 means unlimited.
                  This only applies if you have multi-line help strings, such as when generating 
                  from a spec, such as in the autocli.";
-	}
-	leaf CLICON_CLI_EXPAND_LEAFREF {
-	    type boolean;
-	    default false;
-	    description
-		"If true, then CLI expansion of leafrefs (in expand_dbvar) are done using the 
-                 source values, not the references. 
-                 This applies to the autocli but also in a handcrafted CLI if expand_dbvar is used. 
-                 Example, assume ifref with leafref pointing to source if values:
-                   <if>a</if><if>b</if><if>c</if>
-                   <ifref>b</ifref>
-                 If true, expansion will suggest a, b, c (source if values)
-                 If false, expansion will suggest b (destination ifref values)
-                 While setting this value makes sense for adding new values, it makes less sense for
-                 deleting.";
 	}
 	leaf CLICON_SOCK_FAMILY {
 	    type socket_address_family;
