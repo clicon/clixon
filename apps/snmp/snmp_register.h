@@ -43,7 +43,7 @@ extern "C" {
 /*
  * Prototypes
  */
-int clixon_snmp_mib_yangs(clicon_handle h);
+int clixon_snmp_traverse_mibyangs(clicon_handle h);
 
 #endif /* _SNMP_REGISTER_H_ */
 

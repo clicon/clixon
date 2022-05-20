@@ -54,8 +54,9 @@
 #include <pwd.h>
 #include <syslog.h>
 #include <errno.h>
-#include <sys/types.h>
 #include <signal.h>
+#include <assert.h>
+#include <sys/types.h>
 
 /* net-snmp */
 #include <net-snmp/net-snmp-config.h>
@@ -91,16 +92,19 @@ static const map_str2int snmp_access_map[] = {
 /* Map between clixon and ASN.1 types. 
  * @see net-snmp/library/asn1.h
  * @see union netsnmp_vardata in net-snmp/types.h
+ * XXX not complete
+ * XXX TimeTicks
  */
 static const map_str2int snmp_type_map[] = {
-    {"bool",         ASN_BOOLEAN},
+
     {"int32",        ASN_INTEGER},
-    {"bits",         ASN_BIT_STR},
     {"string",       ASN_OCTET_STR},
-    {"empty",        ASN_NULL},
-    //XXX  {"", ASN_OBJECT_ID},
-    // XXX {"", ASN_SEQUENCE},
-    // XXX {"", ASN_SET},
+    //  {"bool",         ASN_BOOLEAN},
+    //  {"empty",        ASN_NULL},
+    //  {"bits",         ASN_BIT_STR},
+    //  {"", ASN_OBJECT_ID},
+    //  {"", ASN_SEQUENCE},
+    //  {"", ASN_SET},
     {NULL,           -1}
 };
 
@@ -130,7 +134,13 @@ snmp_msg_int2str(int msg)
 {
     return clicon_int2str(snmp_msg_map, msg);
 }
-/*!
+/*! Translate from YANG to SNMP asn1.1 type ids (not value)
+ *
+ * @param[in]    ys         YANG leaf node
+ * @param[out]   asn1_type  ASN.1 type id
+ * @param[out]   cvtype     Clixon cv type
+ * @retval   0   OK
+ * @retval   -1  Error
  */
 int
 yang2snmp_types(yang_stmt    *ys,
@@ -141,31 +151,38 @@ yang2snmp_types(yang_stmt    *ys,
     yang_stmt *yrestype;  /* resolved type */
     char      *restype;  /* resolved type */
     char      *origtype=NULL;   /* original type */
+    int        at;
 
     /* Get yang type of leaf and trasnslate to ASN.1 */
     if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
 	goto done;
     restype = yrestype?yang_argument_get(yrestype):NULL;
-    if (clicon_type2cv(origtype, restype, ys, cvtype) < 0)
-	goto done;
     /* translate to asn.1 */
-    *asn1_type = clicon_str2int(snmp_type_map, restype);
+    if ((at = clicon_str2int(snmp_type_map, restype)) < 0){
+	clicon_err(OE_YANG, 0, "No snmp translation for YANG %s type:%s",
+		   yang_argument_get(ys), restype);
+	//	goto done;
+    }
+    if (asn1_type)
+	*asn1_type = at;
+    if (cvtype && clicon_type2cv(origtype, restype, ys, cvtype) < 0)
+	goto done;
     clicon_debug(1, "%s type:%s", __FUNCTION__, restype);
     retval = 0;
  done:
     return retval;
 }
 
-
 /*! Translate from yang/xml/clixon to SNMP/ASN.1
-**
-* The tran
+ *
  * @param[in]   valstr   Clixon/yang/xml string value
  * @param[in]   cvtype   Type of clixon type
+ * @param[in]   reqinfo  snmpd API struct for error
+ * @param[in]   requests snmpd API struct for error
  * @param[out]  snmpval  Malloc:ed snmp type
  * @param[out]  snmplen  Length of snmp type
  * @retval      1        OK
- * @retval      0        Invalid value
+ * @retval      0        Invalid value or type
  * @retval      -1       Error
  */
 int
@@ -216,6 +233,7 @@ type_yang2snmp(char                       *valstr,
 	break;
     }
     default:
+	assert(0); // XXX
 	clicon_debug(1, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
 	netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
 	goto fail;
@@ -226,6 +244,66 @@ type_yang2snmp(char                       *valstr,
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (reason)
 	free(reason);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+/*! Translate from yang/xml/clixon to SNMP/ASN.1
+ *
+ * @param[in]   snmpval  Malloc:ed snmp type
+ * @param[in]   snmplen  Length of snmp type
+ * @param[in]   reqinfo  snmpd API struct for error
+ * @param[in]   requests snmpd API struct for error
+ * @param[out]  valstr   Clixon/yang/xml string value, free after use)
+ * @retval      1        OK, and valstr set
+ * @retval      0        Invalid value or type
+ * @retval      -1       Error
+ */
+int
+type_snmp2yang(netsnmp_variable_list      *requestvb,
+	       netsnmp_agent_request_info *reqinfo,
+	       netsnmp_request_info       *requests,
+	       char                      **valstr)
+{
+    int          retval = -1;
+    char        *cvtypestr;
+    enum cv_type cvtype;
+    cg_var      *cv;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (valstr == NULL){
+	clicon_err(OE_UNIX, EINVAL, "valstr is NULL");
+	goto done;
+    }
+    cvtypestr = (char*)clicon_int2str(snmp_type_map, requestvb->type);
+    cvtype = cv_str2type(cvtypestr);
+    if ((cv = cv_new(cvtype)) == NULL){
+	clicon_err(OE_UNIX, errno, "cv_new");
+	goto done; 
+    }
+    switch (requestvb->type){
+    case ASN_BOOLEAN:
+    case ASN_INTEGER:
+	cv_int32_set(cv, *requestvb->val.integer);
+	break;
+    case ASN_OCTET_STR:
+	cv_string_set(cv, (char*)requestvb->val.string);
+	break;
+    default:
+	assert(0); // XXX
+	clicon_debug(1, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
+	netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
+	goto fail;
+	break;
+    }
+    if ((*valstr = cv2str_dup(cv)) == NULL){
+	clicon_err(OE_UNIX, errno, "cv2str_dup");
+	goto done;
+    }
+    retval = 1;
+ done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
  fail:
     retval = 0;
@@ -263,9 +341,10 @@ yang2xpath_cb(yang_stmt *ys,
 	    cprintf(cb, "/");
 	}
     }
-    cprintf(cb, "%s:", yang_find_myprefix(ys));
-    if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE)
+    if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE){
+	cprintf(cb, "%s:", yang_find_myprefix(ys));
 	cprintf(cb, "%s", yang_argument_get(ys));
+    }
     switch (yang_keyword_get(ys)){
     case Y_LIST: // XXX not xpaths
 	cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
@@ -290,7 +369,6 @@ yang2xpath_cb(yang_stmt *ys,
 }
 
 /*! Construct an xpath from yang statement
-
  * Recursively construct it to the top.
  * @param[in]  ys    Yang statement
  * @param[out] xpath Malloced xpath string, use free() after use

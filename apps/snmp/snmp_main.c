@@ -448,8 +448,8 @@ main(int    argc,
     /* Init snmp as subagent */
     if (clixon_snmp_subagent(h, logdst) < 0)
 	goto done;
-    /* Init mib-translated yangs and register callbacks */
-    if (clixon_snmp_mib_yangs(h) < 0)
+    /* Init and traverse mib-translated yangs and register callbacks */
+    if (clixon_snmp_traverse_mibyangs(h) < 0)
 	goto done;
     
     if (dbg)
