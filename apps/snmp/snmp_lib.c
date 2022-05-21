@@ -99,6 +99,7 @@ static const map_str2int snmp_type_map[] = {
 
     {"int32",        ASN_INTEGER},
     {"string",       ASN_OCTET_STR},
+    {"uint32",       ASN_INTEGER},
     //  {"bool",         ASN_BOOLEAN},
     //  {"empty",        ASN_NULL},
     //  {"bits",         ASN_BIT_STR},
@@ -232,9 +233,15 @@ type_yang2snmp(char                       *valstr,
 	*snmplen = cvlen;
 	break;
     }
+    case CGV_UINT32:{
+        uint32_t i = cv_uint32_get(cv);
+        memcpy(*snmpval, &i, cvlen);
+        *snmplen = cvlen;
+        break;
+    }
     default:
+       clicon_debug(1, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
 	assert(0); // XXX
-	clicon_debug(1, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
 	netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
 	goto fail;
 	break;
