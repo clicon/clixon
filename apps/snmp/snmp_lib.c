@@ -100,6 +100,7 @@ static const map_str2int snmp_type_map[] = {
     {"int32",        ASN_INTEGER},
     {"string",       ASN_OCTET_STR},
     {"uint32",       ASN_INTEGER},
+    {"uint64",       ASN_INTEGER},
     //  {"bool",         ASN_BOOLEAN},
     //  {"empty",        ASN_NULL},
     //  {"bits",         ASN_BIT_STR},
@@ -235,6 +236,12 @@ type_yang2snmp(char                       *valstr,
     }
     case CGV_UINT32:{
         uint32_t i = cv_uint32_get(cv);
+        memcpy(*snmpval, &i, cvlen);
+        *snmplen = cvlen;
+        break;
+    }
+    case CGV_UINT64:{
+        uint64_t i = cv_uint32_get(cv);
         memcpy(*snmpval, &i, cvlen);
         *snmplen = cvlen;
         break;
