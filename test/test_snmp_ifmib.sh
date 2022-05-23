@@ -58,7 +58,9 @@ EOF
 if false; then
     cat <<EOF > $fstate
 <IF-MIB xmlns="urn:ietf:params:xml:ns:yang:smiv2:IF-MIB">
-  <ifNumber>1</ifNumber>
+  <interfaces>
+    <ifNumber>1</ifNumber>
+  </interfaces>
   <ifMIBObjects>
     <ifTableLastChange>0</ifTableLastChange>
     <ifStackLastChange>0</ifStackLastChange>
