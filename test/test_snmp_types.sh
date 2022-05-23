@@ -135,15 +135,15 @@ MIB=".1.3.6.1.4.1.8072.2"
 OID1="${MIB}.1.1"      # netSnmpExampleInteger
 OID2="${MIB}.1.2"      # netSnmpExampleSleeper
 OID3="${MIB}.1.3"      # netSnmpExampleString
-OID4="${MIB}.1.4"      # ifTableLastChange
-OID5="${MIB}.1.5"      # ifType
-OID6="${MIB}.1.6"      # ifSpeed
-OID7="${MIB}.1.7"      # ifAdminStatus
-OID8="${MIB}.1.8"      # ifInOctets
-OID9="${MIB}.1.9"      # ifHCInOctets
-OID10="${MIB}.1.10"    # ifPromiscuousMode
-OID11="${MIB}.1.11"    # ifCounterDiscontinuityTime
-OID12="${MIB}.1.12"    # ifStackStatus
+OID4="${MIB}.1.4"      # ifTableLastChange 12345678
+OID5="${MIB}.1.5"      # ifType modem(48)
+OID6="${MIB}.1.6"      # ifSpeed 123123123
+OID7="${MIB}.1.7"      # ifAdminStatus testing(3)
+OID8="${MIB}.1.8"      # ifInOctets 123456
+OID9="${MIB}.1.9"      # ifHCInOctets 4294967296
+OID10="${MIB}.1.10"    # ifPromiscuousMode true(1)
+OID11="${MIB}.1.11"    # ifCounterDiscontinuityTime 1234567890 TimeStamp
+OID12="${MIB}.1.12"    # ifStackStatus active(1)
 OID13="${MIB}.2.1"     # netSnmpIETFWGTable
 OID14="${MIB}.2.1.1"   # netSnmpIETFWGEntry
 OID15="${MIB}.2.1.1.1" # nsIETFWGName
@@ -155,7 +155,6 @@ OID20="${MIB}.2.2.1.2" # netSnmpHostAddressType
 OID21="${MIB}.2.2.1.3" # netSnmpHostAddress
 OID22="${MIB}.2.2.1.4" # netSnmpHostStorage
 OID23="${MIB}.2.2.1.5" # netSnmpHostRowStatus
-
 
 new "$snmpget"
 
@@ -177,13 +176,13 @@ expectpart "$($snmpget $OID3)" 0 "$OID3 = STRING: This is not default" --not-- "
 new "Test SNMP getnext netSnmpExampleString"
 expectpart "$($snmpgetnext $OID3)" 0 ""
 
-new "Test SNMP get ipTableLastChnage"
+new "Test SNMP get ipTableLastChnage" # TimeTicks
 expectpart "$($snmpget $OID4)" 0 "$OID4 = Gauge32: 12345678"
 
-new "Test SNMP getnext ipTableLastChnage"
+new "Test SNMP getnext ipTableLastChange"
 expectpart "$($snmpgetnext $OID4)" 0 ""
 
-new "Test SNMP get ifType"
+new "Test SNMP get ifType" # modem(48)
 expectpart "$($snmpget $OID5)" 0 "$OID5 = INTEGER: 48"
 
 new "Test SNMP getnext ifType"

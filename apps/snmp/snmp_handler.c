@@ -249,7 +249,7 @@ snmp_scalar_set(clicon_handle               h,
     }
     if ((xb = xml_new("body", xbot, CX_BODY)) == NULL)
 	goto done; 
-    if ((ret = type_snmp2xml(requestvb, reqinfo, requests, &valstr)) < 0)
+    if ((ret = type_snmp2xml(ys, requestvb, reqinfo, requests, &valstr)) < 0)
 	goto done;
     if (ret == 0)
 	goto ok;

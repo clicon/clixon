@@ -1810,32 +1810,63 @@ xml_merge(cxobj     *x0,
     goto done;
 }
 
+/*! Given a YANG (enum) type node and a value, return the string containing corresponding int str
+ *
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  valstr  Integer string value
+ * @param[out] enumstr Value of enum, dont free
+ */
+int
+yang_valstr2enum(yang_stmt *ytype,
+		 char      *valstr,
+		 char     **enumstr)
+{
+    int        retval = -1;
+    yang_stmt *yenum = NULL;
+    yang_stmt *yval; 
+
+    if (enumstr == NULL){
+	clicon_err(OE_UNIX, EINVAL, "str is NULL");
+	goto done;
+    }
+    while ((yenum = yn_each(ytype, yenum)) != NULL) {
+	if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
+	    goto done;
+	if (strcmp(yang_argument_get(yval), valstr) == 0)
+	    break;
+    }
+    if (yenum)
+	*enumstr = yang_argument_get(yenum);
+    retval = 0;
+ done:
+    return retval;
+}
 
 /*! Given a YANG (enum) type node and a value, return the string containing corresponding int str
  *
  * @param[in]  ytype   YANG type noden
- * @param[in]  valstr  Value of enum
- * @param[out] intstr  Corresponding string containing an int (direct pointer, dont free)
+ * @param[in]  enumstr Value of enum
+ * @param[out] valstr  Corresponding string containing an int (direct pointer, dont free)
  */
 int
-yang_enum2intstr(yang_stmt *ytype,
-		 char      *valstr,
-		 char     **intstr)
+yang_enum2valstr(yang_stmt *ytype,
+		 char      *enumstr,
+		 char     **valstr)
 {
     int        retval = -1;
     yang_stmt *yenum; 
     yang_stmt *yval; 
 
-    if (intstr == NULL){
-	clicon_err(OE_UNIX, EINVAL, "intstr is NULL");
+    if (valstr == NULL){
+	clicon_err(OE_UNIX, EINVAL, "valstr is NULL");
 	goto done;
     }
-    if ((yenum = yang_find(ytype, Y_ENUM, valstr)) == NULL)
+    if ((yenum = yang_find(ytype, Y_ENUM, enumstr)) == NULL)
 	goto done;
     /* Should assign value if yval not found */
     if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
 	goto done;
-    *intstr = yang_argument_get(yval);
+    *valstr = yang_argument_get(yval);
     retval = 0;
  done:
     return retval;
@@ -1883,7 +1914,7 @@ yang_enum_int_value(cxobj   *node,
     }
     if (yrestype==NULL || strcmp(yang_argument_get(yrestype), "enumeration"))
 	goto done;
-    if (yang_enum2intstr(yrestype, xml_body(node), &intstr) < 0)
+    if (yang_enum2valstr(yrestype, xml_body(node), &intstr) < 0)
 	goto done;
     /* reason is string containing why int could not be parsed */
     if (parse_int32(intstr, val, &reason) < 0)

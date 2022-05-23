@@ -29,13 +29,14 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_STANDARD_DIR}</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>${MIB_GENERATED_YANG_DIR}</CLICON_YANG_DIR>
+  <!--CLICON_YANG_DIR>${MIB_GENERATED_YANG_DIR}</CLICON_YANG_DIR-->
+  <CLICON_YANG_DIR>/home/olof/src/mib-yangs</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/var/tmp/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
-  <CLICON_SNMP_MIB>NET-SNMP-EXAMPLES-MIB</CLICON_SNMP_MIB>
+  <CLICON_SNMP_MIB>CLIXON-TYPES-MIB</CLICON_SNMP_MIB>
 </clixon-config>
 EOF
 
@@ -44,22 +45,15 @@ module clixon-example{
   yang-version 1.1;
   namespace "urn:example:clixon";
   prefix ex;
-  import NET-SNMP-EXAMPLES-MIB {
-      prefix "net-snmp-examples";
+  import CLIXON-TYPES-MIB {
+      prefix "clixon-types";
   }
-  deviation "/net-snmp-examples:NET-SNMP-EXAMPLES-MIB" {
+  deviation "/clixon-types:CLIXON-TYPES-MIB" {
      deviate replace {
         config true;
      }
   }
 }
-EOF
-
-# This is state data written to file that backend reads from (on request)
-cat <<EOF > $fstate
-   <sender-state xmlns="urn:example:example">
-      <ref>x</ref>
-   </sender-state>
 EOF
 
 function testinit(){
@@ -104,8 +98,29 @@ testinit
 
 # NET-SNMP-EXAMPLES-MIB::netSnmpExamples
 MIB=".1.3.6.1.4.1.8072.2"
-OID1="${MIB}.1.1"    # netSnmpExampleInteger
-OID3="${MIB}.1.3"   # netSnmpExampleString
+OID1="${MIB}.1.1"      # netSnmpExampleInteger
+OID2="${MIB}.1.2"      # netSnmpExampleSleeper
+OID3="${MIB}.1.3"      # netSnmpExampleString
+OID4="${MIB}.1.4"      # ifTableLastChange
+OID5="${MIB}.1.5"      # ifType
+OID6="${MIB}.1.6"      # ifSpeed
+OID7="${MIB}.1.7"      # ifAdminStatus
+OID8="${MIB}.1.8"      # ifInOctets
+OID9="${MIB}.1.9"      # ifHCInOctets
+OID10="${MIB}.1.10"    # ifPromiscuousMode
+OID11="${MIB}.1.11"    # ifCounterDiscontinuityTime
+OID12="${MIB}.1.12"    # ifStackStatus
+OID13="${MIB}.2.1"     # netSnmpIETFWGTable
+OID14="${MIB}.2.1.1"   # netSnmpIETFWGEntry
+OID15="${MIB}.2.1.1.1" # nsIETFWGName
+OID16="${MIB}.2.1.1.2" # nsIETFWGChair1
+OID17="${MIB}.2.1.1.3" # nsIETFWGChair2
+OID18="${MIB}.2.2"     # netSnmpHostsTable
+OID19="${MIB}.2.2.1.1" # netSnmpHostName
+OID20="${MIB}.2.2.1.2" # netSnmpHostAddressType
+OID21="${MIB}.2.2.1.3" # netSnmpHostAddress
+OID22="${MIB}.2.2.1.4" # netSnmpHostStorage
+OID23="${MIB}.2.2.1.5" # netSnmpHostRowStatus
 
 new "Test SNMP get for default value"
 expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 42"
@@ -117,7 +132,7 @@ new "Get new value"
 expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 1234"
 
 new "Set new value via NETCONF"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><default-operation>none</default-operation><target><candidate/></target><config><NET-SNMP-EXAMPLES-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:NET-SNMP-EXAMPLES-MIB\"><netSnmpExampleScalars><netSnmpExampleInteger>999</netSnmpExampleInteger></netSnmpExampleScalars></NET-SNMP-EXAMPLES-MIB></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><default-operation>none</default-operation><target><candidate/></target><config><CLIXON-TYPES-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:CLIXON-TYPES-MIB\"><netSnmpExampleScalars><netSnmpExampleInteger>999</netSnmpExampleInteger></netSnmpExampleScalars></CLIXON-TYPES-MIB></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf commit"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -133,6 +148,111 @@ expectpart "$($snmpset $OID3 s foobar)" 0 "$OID3 = STRING: foobar"
 
 new "Get new value"
 expectpart "$($snmpget $OID3)" 0 "$OID3 = STRING: foobar"
+
+NAME=ifTableLastChange
+OID=$OID4
+VALUE=12345678
+TYPE=Gauge32 # TimeTicks
+
+new "Get $NAME"
+expectpart "$($snmpget $OID)" 0 "$OID = No Such Instance currently exists at this OID"
+
+new "Set $NAME $VALUE"
+expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
+
+NAME=ifType
+OID=$OID5
+VALUE=48 # modem(48)
+TYPE=INTEGER # enum IANAifType modem(48)
+
+new "Set $NAME $VALUE"
+expectpart "$($snmpset $OID i $VALUE)" 0 "$OID = $TYPE: $VALUE"
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
+
+NAME=ifSpeed
+OID=$OID6
+VALUE=123123123
+TYPE=Gauge32
+
+new "Set $NAME $VALUE"
+expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
+
+NAME=ifAdminStatus
+OID=$OID7
+VALUE=3 # testing(3)
+TYPE=INTEGER
+
+new "Set $NAME $VALUE"
+expectpart "$($snmpset $OID i $VALUE)" 0 "$OID = $TYPE: $VALUE"
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
+
+NAME=ifInOctets
+OID=$OID8
+VALUE=123456
+TYPE=Gauge32
+
+new "Set $NAME $VALUE"
+expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
+
+if false; then # XXX i/u/c doesnt work?
+NAME=ifHCInOctets
+OID=$OID9
+VALUE=4294967296
+TYPE=Counter64
+
+new "Set $NAME $VALUE"
+#expectpart "$($snmpset $OID C $VALUE)" 0 "$OID = $TYPE: $VALUE"
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
+
+fi
+
+NAME=ifPromiscuousMode
+OID=$OID10
+VALUE=1 # true(1)
+TYPE=INTEGER
+
+new "Set $NAME $VALUE"
+expectpart "$($snmpset $OID i $VALUE)" 0 "$OID = $TYPE: $VALUE"
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
+
+NAME=ifCounterDiscontinuityTime
+OID=$OID11
+VALUE=1234567890
+TYPE=Gauge32
+
+new "Set $NAME $VALUE"
+expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
+
+NAME=ifStackStatus
+OID=$OID12
+VALUE=1 # active(1)
+TYPE=INTEGER
+
+new "Set $NAME $VALUE"
+expectpart "$($snmpset $OID i $VALUE)" 0 "$OID = $TYPE: $VALUE"
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Cleaning up"
 testexit

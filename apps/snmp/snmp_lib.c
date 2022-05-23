@@ -99,7 +99,7 @@ static const map_str2int snmp_type_map[] = {
     {"int32",        ASN_INTEGER},   // 2
     {"string",       ASN_OCTET_STR}, // 4
     {"enumeration",  ASN_INTEGER},   // 2 special case
-    {"uint32",       ASN_GAUGE},     // 0x42 
+    {"uint32",       ASN_GAUGE},     // 0x42 / 66
     {"uint64",       ASN_COUNTER64}, // 0x46 / 70
     {"boolean",      ASN_INTEGER},   // 2 special case -> enumeration
     {NULL,           -1}
@@ -168,97 +168,6 @@ type_yang2asn1(yang_stmt    *ys,
     return retval;
 }
 
-#if 0
-/*! Translate from yang/xml/clixon to SNMP/ASN.1
- *
- * @param[in]   valstr   Clixon/yang/xml string value
- * @param[in]   cvtype   Type of clixon type
- * @param[in]   reqinfo  snmpd API struct for error
- * @param[in]   requests snmpd API struct for error
- * @param[out]  snmpval  Malloc:ed snmp type
- * @param[out]  snmplen  Length of snmp type
- * @retval      1        OK
- * @retval      0        Invalid value or type
- * @retval      -1       Error
- */
-int
-type_yang2snmp(char                       *valstr,
-	       enum cv_type                cvtype,
-	       netsnmp_agent_request_info *reqinfo,
-	       netsnmp_request_info       *requests,
-	       u_char                    **snmpval,
-	       size_t                     *snmplen)
-{
-    int     retval = -1;
-    int     ret;
-    char   *reason = NULL;
-    size_t  cvlen;
-    cg_var *cv;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (snmpval == NULL || snmplen == NULL){
-	clicon_err(OE_UNIX, EINVAL, "snmpval or snmplen is NULL");
-	goto done;
-    }
-    if ((cv = cv_new(cvtype)) == NULL){
-	clicon_err(OE_UNIX, errno, "cv_new");
-	goto done; 
-    }
-    if ((ret = cv_parse1(valstr, cv, &reason)) < 0)
-	goto done;
-    if (ret == 0){
-	clicon_debug(1, "%s %s", __FUNCTION__, reason);
-	netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
-	goto fail;
-    }
-    cvlen = cv_len(cv);
-    if ((*snmpval = malloc(cvlen)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
-    }
-    switch (cvtype){
-    case CGV_INT32:{
-	int i = cv_int32_get(cv);
-	memcpy(*snmpval, &i, cvlen);
-	*snmplen = cvlen;
-	break;
-    }
-    case CGV_STRING:{
-	strcpy((char*)*snmpval, cv_string_get(cv));
-	*snmplen = cvlen;
-	break;
-    }
-    case CGV_UINT32:{
-        uint32_t i = cv_uint32_get(cv);
-        memcpy(*snmpval, &i, cvlen);
-        *snmplen = cvlen;
-        break;
-    }
-    case CGV_UINT64:{
-        uint64_t i = cv_uint32_get(cv);
-        memcpy(*snmpval, &i, cvlen);
-        *snmplen = cvlen;
-        break;
-    }
-    default:
-       clicon_debug(1, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
-	assert(0); // XXX
-	netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
-	goto fail;
-	break;
-    }
-    retval = 1;
- done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
-    if (reason)
-	free(reason);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-#endif
-
 /*! Translate from yang/xml/clixon to SNMP/ASN.1
  *
  * @param[in]   snmpval  Malloc:ed snmp type
@@ -269,37 +178,85 @@ type_yang2snmp(char                       *valstr,
  * @retval      1        OK, and valstr set
  * @retval      0        Invalid value or type
  * @retval      -1       Error
+ * @see type_xml2snmpstr  for snmpget
  */
 int
-type_snmp2xml(netsnmp_variable_list      *requestvb,
+type_snmp2xml(yang_stmt                  *ys,
+	      netsnmp_variable_list      *requestvb,
 	      netsnmp_agent_request_info *reqinfo,
 	      netsnmp_request_info       *requests,
 	      char                      **valstr)
 {
     int          retval = -1;
-    char        *cvtypestr;
+    char        *cvstr;
     enum cv_type cvtype;
     cg_var      *cv;
+    yang_stmt   *yrestype;  /* resolved type */
+    char        *restype;  /* resolved type */
+    char        *origtype=NULL;   /* original type */
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (valstr == NULL){
 	clicon_err(OE_UNIX, EINVAL, "valstr is NULL");
 	goto done;
     }
-    cvtypestr = (char*)clicon_int2str(snmp_type_map, requestvb->type);
-    cvtype = cv_str2type(cvtypestr);
+    cvstr = (char*)clicon_int2str(snmp_type_map, requestvb->type);
+    /* Get yang type of leaf and trasnslate to ASN.1 */
+    if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+	goto done;
+    restype = yrestype?yang_argument_get(yrestype):NULL;
+    /* special case for enum */
+    if (strcmp(cvstr, "int32")==0 && strcmp(restype, "enumeration") == 0)
+	cvstr = "string";
+    else if (strcmp(cvstr, "int32")==0 && strcmp(restype, "boolean") == 0)
+	cvstr = "string";
+    cvtype = cv_str2type(cvstr);
     if ((cv = cv_new(cvtype)) == NULL){
 	clicon_err(OE_UNIX, errno, "cv_new");
 	goto done; 
     }
     switch (requestvb->type){
-    case ASN_BOOLEAN:
-    case ASN_INTEGER:
-	cv_int32_set(cv, *requestvb->val.integer);
+    case ASN_INTEGER:   // 2
+	if (cvtype == CGV_STRING){ 	/* special case for enum */
+	    char *xmlstr;
+	    cbuf *cb = NULL;
+
+	    if (strcmp(restype, "enumeration") == 0){
+		if ((cb = cbuf_new()) == NULL){
+		    clicon_err(OE_UNIX, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cb, "%ld", *requestvb->val.integer);
+		if (yang_valstr2enum(yrestype, cbuf_get(cb), &xmlstr) < 0)
+		    goto done;
+		cbuf_free(cb);
+	    }
+	    else if (strcmp(restype, "boolean") == 0){
+		if (*requestvb->val.integer == 1)
+		    xmlstr = "true";
+		else
+		    xmlstr = "false";
+	    }
+	    cv_string_set(cv, xmlstr);
+	}
+	else
+	    cv_int32_set(cv, *requestvb->val.integer);
 	break;
-    case ASN_OCTET_STR:
+    case ASN_GAUGE:     // 0x42
+	cv_uint32_set(cv, *requestvb->val.integer);
+	break;
+    case ASN_OCTET_STR: // 4
 	cv_string_set(cv, (char*)requestvb->val.string);
 	break;
+    case ASN_COUNTER64:{ // 0x46 / 70
+	uint64_t u64;
+	struct counter64 *c64;
+	c64 = requestvb->val.counter64;
+	u64 = c64->low;
+	u64 += c64->high*0x100000000;
+	cv_uint64_set(cv, u64);
+	break;
+    }
     default:
 	assert(0); // XXX
 	clicon_debug(1, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
@@ -307,6 +264,7 @@ type_snmp2xml(netsnmp_variable_list      *requestvb,
 	goto fail;
 	break;
     }
+      
     if ((*valstr = cv2str_dup(cv)) == NULL){
 	clicon_err(OE_UNIX, errno, "cv2str_dup");
 	goto done;
@@ -323,6 +281,7 @@ type_snmp2xml(netsnmp_variable_list      *requestvb,
 /*! Given xml value and YANG,m return corresponding malloced snmp string
  * There is a special case for enumeration which is integer in snmp, string in YANG
  * @param[in]  xmlstr
+ * @see type_snmp2xml  for snmpset
  */
 int
 type_xml2snmpstr(char      *xmlstr,
@@ -345,7 +304,7 @@ type_xml2snmpstr(char      *xmlstr,
 	goto done;
     restype = yrestype?yang_argument_get(yrestype):NULL;
     if (strcmp(restype, "enumeration") == 0){ 	/* special case for enum */
-	if (yang_enum2intstr(yrestype, xmlstr, &str) < 0)
+	if (yang_enum2valstr(yrestype, xmlstr, &str) < 0)
 	    goto done;
     }
     /* special case for bool: although smidump translates TruthValue to boolean
@@ -398,8 +357,6 @@ type_snmpstr2val(char       *snmpstr,
 	goto done;
     }
     switch (asn1type){
-    case ASN_BOOLEAN:   // 1
-	break;
     case ASN_INTEGER:   // 2
 	*snmplen = 4;
 	if ((*snmpval = malloc(*snmplen)) == NULL){
