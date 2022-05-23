@@ -60,14 +60,14 @@ typedef struct clixon_snmp_handle clixon_snmp_handle;
  */
 int   snmp_access_str2int(char *modes_str);
 const char *snmp_msg_int2str(int msg);
-int   yang2snmp_types(yang_stmt *ys, int *asn1_type, enum cv_type *cvtype);
-int   type_yang2snmp(char *valstr, enum cv_type cvtype,
-		     netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests,
-		     u_char **snmpval, size_t *snmplen);
-int   type_snmp2yang(netsnmp_variable_list      *requestvb,
-		     netsnmp_agent_request_info *reqinfo,
-		     netsnmp_request_info       *requests,
-		     char                      **valstr);
+int   type_yang2asn1(yang_stmt *ys, int *asn1_type);
+int   type_snmp2xml(netsnmp_variable_list      *requestvb,
+		    netsnmp_agent_request_info *reqinfo,
+		    netsnmp_request_info       *requests,
+		    char                      **valstr);
+int   type_xml2snmpstr(char *xmlstr, yang_stmt *ys, char **snmpstr);
+
+int   type_snmpstr2val(char *snmpstr, int asn1type, u_char **snmpval, size_t *snmplen, char **reason);
 int   yang2xpath(yang_stmt *ys, char **xpath);
 int   clixon_table_create(netsnmp_table_data_set *table, yang_stmt *ys, clicon_handle h);
 

@@ -205,8 +205,8 @@ mib_yang_leaf(clicon_handle h,
     }
     if (yang_extension_value(ys, "max-access", IETF_YANG_SMIV2_NS, NULL, &modes_str) < 0)
 	goto done;
-#if 0 /* Sanity check of types */
-    if (yang2snmp_types(ys, NULL, NULL) < 0)
+#if 1 /* Sanity check of types */
+    if (type_yang2asn1(ys, NULL) < 0)
 	goto done;
 #endif
     /* Get modes (access) read-only, read-write, not-accessible, oaccessible-for-notify

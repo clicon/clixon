@@ -1922,6 +1922,37 @@ xml_merge(cxobj     *x0,
     goto done;
 }
 
+
+/*! Given a YANG (enum) type node and a value, return the string containing corresponding int str
+ *
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  valstr  Value of enum
+ * @param[out] intstr  Corresponding string containing an int (direct pointer, dont free)
+ */
+int
+yang_enum2intstr(yang_stmt *ytype,
+		 char      *valstr,
+		 char     **intstr)
+{
+    int        retval = -1;
+    yang_stmt *yenum; 
+    yang_stmt *yval; 
+
+    if (intstr == NULL){
+	clicon_err(OE_UNIX, EINVAL, "intstr is NULL");
+	goto done;
+    }
+    if ((yenum = yang_find(ytype, Y_ENUM, valstr)) == NULL)
+	goto done;
+    /* Should assign value if yval not found */
+    if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
+	goto done;
+    *intstr = yang_argument_get(yval);
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Get integer value from xml node from yang enumeration 
  * @param[in]  node XML node in a tree
  * @param[out] val  Integer value returned
@@ -1944,9 +1975,8 @@ yang_enum_int_value(cxobj   *node,
     yang_stmt *ys;
     yang_stmt *ytype;
     yang_stmt *yrestype;  /* resolved type */
-    yang_stmt *yenum; 
-    yang_stmt *yval; 
     char      *reason = NULL;
+    char      *intstr = NULL;
 
     if (node == NULL)
 	goto done;
@@ -1965,19 +1995,15 @@ yang_enum_int_value(cxobj   *node,
     }
     if (yrestype==NULL || strcmp(yang_argument_get(yrestype), "enumeration"))
 	goto done;
-    if ((yenum = yang_find(yrestype, Y_ENUM, xml_body(node))) == NULL)
-	goto done;
-    /* Should assign value if yval not found */
-    if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
+    if (yang_enum2intstr(yrestype, xml_body(node), &intstr) < 0)
 	goto done;
     /* reason is string containing why int could not be parsed */
-    if (parse_int32(yang_argument_get(yval), val, &reason) < 0)
+    if (parse_int32(intstr, val, &reason) < 0)
 	goto done;
     retval = 0;
 done:
     return retval;
 }
-
 
 /*! Given XML tree x0 with marked nodes, copy marked nodes to new tree x1
  * Two marks are used: XML_FLAG_MARK and XML_FLAG_CHANGE
