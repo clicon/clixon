@@ -59,8 +59,8 @@ EOF
 cat <<EOF > $fstate
 <CLIXON-TYPES-MIB xmlns="urn:ietf:params:xml:ns:yang:smiv2:CLIXON-TYPES-MIB">
   <netSnmpExampleScalars>
-    <netSnmpExampleInteger>999</netSnmpExampleInteger>
-    <netSnmpExampleSleeper>1</netSnmpExampleSleeper>
+    <netSnmpExampleInteger>0x7fffffff</netSnmpExampleInteger>
+    <netSnmpExampleSleeper>-1</netSnmpExampleSleeper>
     <netSnmpExampleString>This is not default</netSnmpExampleString>
     <ifTableLastChange>12345678</ifTableLastChange>
     <ifType>modem</ifType>
@@ -160,13 +160,13 @@ OID23="${MIB}.2.2.1.5" # netSnmpHostRowStatus
 new "$snmpget"
 
 new "Test SNMP get netSnmpExampleInteger"
-expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 999"
+expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 2147483647"
 
 new "Test SNMP getnext netSnmpExampleInteger"
-expectpart "$($snmpgetnext $OID1)" 0 "$OID2 = INTEGER: 1"
+expectpart "$($snmpgetnext $OID1)" 0 "$OID2 = INTEGER: -1"
 
 new "Test SNMP get netSnmpExampleSleeper"
-expectpart "$($snmpget $OID2)" 0 "$OID2 = INTEGER: 1"
+expectpart "$($snmpget $OID2)" 0 "$OID2 = INTEGER: -1"
 
 new "Test SNMP getnext netSnmpExampleSleeper"
 expectpart "$($snmpgetnext $OID2)" 0 "$OID3 = STRING: This is not default"
