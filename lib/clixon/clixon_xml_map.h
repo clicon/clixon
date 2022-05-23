@@ -70,6 +70,7 @@ int xml2xpath(cxobj *x, cvec *nsc, char **xpath);
 int assign_namespace_element(cxobj *x0, cxobj *x1, cxobj *x1p);
 int assign_namespace_body(cxobj *x0, cxobj *x1);
 int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
+int yang_enum2intstr(yang_stmt *ytype, char *value, char **intstr);
 int yang_enum_int_value(cxobj *node, int32_t *val);
 int xml_copy_marked(cxobj *x0, cxobj *x1);
 int yang_check_when_xpath(cxobj *xn, cxobj *xp, yang_stmt *yn, int *hit, int *nrp, char **xpathp);

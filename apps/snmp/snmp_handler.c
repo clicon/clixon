@@ -126,54 +126,69 @@ snmp_scalar_get(clicon_handle               h,
 		yang_stmt                  *ys,
 		netsnmp_variable_list      *requestvb,
 		char                       *defaultval,
-		enum cv_type                cvtype,
 		netsnmp_agent_request_info *reqinfo,
 		netsnmp_request_info       *requests)
 {
-    int    retval = -1;
-    cvec  *nsc = NULL;
-    char  *xpath = NULL;
-    cxobj *xt = NULL;
-    cxobj *xerr;
-    cxobj *x;
-    char  *valstr = NULL;
+    int     retval = -1;
+    cvec   *nsc = NULL;
+    char   *xpath = NULL;
+    cxobj  *xt = NULL;
+    cxobj  *xerr;
+    cxobj  *x;
+    char   *snmpstr = NULL;
     u_char *snmpval = NULL;
-    size_t  snmplen;
-    int    ret;
+    size_t  snmplen = 0;
+    int     ret;
+    int     asn1type;
+    char   *reason = NULL;
 
+    /* Prepare backend call by constructing namespace context */
     if (xml_nsctx_yang(ys, &nsc) < 0)
 	goto done;
+    /* Create xpath from yang (XXX works not for lists) */
     if (yang2xpath(ys, &xpath) < 0)
 	goto done;
+    /* Do the backend call */
     if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
 	goto done;
+    /* Detect error XXX Error handling could improve */
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
 	goto done;
     }
-    /* Get value, either from xml, or smiv2 default */
-    if ((x = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
-	valstr = xml_body(x);
+    /* 
+     * The xml to snmp value conversion is done here. It is done in two steps:
+     * 1. From XML to SNMP string, there is a special case for enumeration, and for default value
+     * 2. From SNMP string to SNMP binary value which invloves parsing
+     */
+    if ((x = xpath_first(xt, nsc, "%s", xpath)) != NULL){
+	assert(xml_spec(x) == ys);
+	if (type_xml2snmpstr(xml_body(x), ys, &snmpstr) < 0)
+	    goto done;
     }
-    else if ((valstr = defaultval) != NULL)
-	;
+    else if (defaultval != NULL){
+	if ((snmpstr = strdup(defaultval)) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+    }
     else{
 	netsnmp_set_request_error(reqinfo, requests, SNMP_NOSUCHINSTANCE);
 	goto ok;
     }
-    if ((ret = type_yang2snmp(valstr, cvtype, reqinfo, requests, &snmpval, &snmplen)) < 0)
+    if (type_yang2asn1(ys, &asn1type) < 0)
 	goto done;
-    if (ret == 0)
-	goto ok;
 
-    /* 1. use cligen object and get rwa buf / size from that, OR
-     *    + have parse function from YANG
-     *    - does not have 
-     * 2. use union netsnmp_vardata and pass that here?
-     * 3. Make cv2asn1 conversion function <--
+    if ((ret = type_snmpstr2val(snmpstr, asn1type, &snmpval, &snmplen, &reason)) < 0)
+	goto done;
+    if (ret == 0){
+	clicon_debug(1, "%s %s", __FUNCTION__, reason);
+	netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
+	goto ok;
+    }
+    /* see snmplib/snmp_client. somewhat indirect
      */
-	
-    /* see snmplib/snmp_client.c */
+    requestvb->type = asn1type; // ASN_NULL on input
     if (snmp_set_var_value(requestvb,
 			   snmpval,
 			   snmplen) != 0){
@@ -183,6 +198,10 @@ snmp_scalar_get(clicon_handle               h,
  ok:
     retval = 0;
  done:
+    if (reason)
+	free(reason);
+    if (snmpstr)
+	free(snmpstr);
     if (snmpval)
 	free(snmpval);
     if (xt)
@@ -230,7 +249,7 @@ snmp_scalar_set(clicon_handle               h,
     }
     if ((xb = xml_new("body", xbot, CX_BODY)) == NULL)
 	goto done; 
-    if ((ret = type_snmp2yang(requestvb, reqinfo, requests, &valstr)) < 0)
+    if ((ret = type_snmp2xml(requestvb, reqinfo, requests, &valstr)) < 0)
 	goto done;
     if (ret == 0)
 	goto ok;
@@ -273,7 +292,6 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
     yang_stmt             *ys;
     int                    asn1_type;
     netsnmp_variable_list *requestvb; /* sub of requests */
-    enum cv_type           cvtype;
     
     /*
      * can be used to pass information on a per-pdu basis from a
@@ -312,20 +330,19 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
 			      SNMP_NOSUCHOBJECT);
     return SNMP_ERR_NOERROR;
 #endif
-    if (yang2snmp_types(ys, &asn1_type, &cvtype) < 0)
-	goto done;
-
     /* see net-snmp/agent/snmp_agent.h / net-snmp/library/snmp.h */
     switch (reqinfo->mode) {
     case MODE_GET:          /* 160 */
-	requestvb->type = asn1_type; // ASN_NULL on input
-	if (snmp_scalar_get(sh->sh_h, ys, requestvb, sh->sh_default, cvtype, reqinfo, requests) < 0)
+	if (snmp_scalar_get(sh->sh_h, ys, requestvb, sh->sh_default, reqinfo, requests) < 0)
 	    goto done;
         break;
     case MODE_GETNEXT:      /* 161 */
 	assert(0); // Not seen?
 	break;
     case MODE_SET_RESERVE1: /* 0 */
+	/* Translate from YANG ys leaf type to SNMP asn1.1 type ids (not value), also cvtype */
+	if (type_yang2asn1(ys, &asn1_type) < 0)
+	    goto done;
         if (requestvb->type != asn1_type)
             netsnmp_set_request_error(reqinfo, requests,
                                       SNMP_ERR_WRONGTYPE);
