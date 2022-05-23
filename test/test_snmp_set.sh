@@ -29,8 +29,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_STANDARD_DIR}</CLICON_YANG_DIR>
-  <!--CLICON_YANG_DIR>${MIB_GENERATED_YANG_DIR}</CLICON_YANG_DIR-->
-  <CLICON_YANG_DIR>/home/olof/src/mib-yangs</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>${MIB_GENERATED_YANG_DIR}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/var/tmp/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
@@ -207,15 +206,16 @@ expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
 new "Get $NAME $VALUE"
 expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
-if false; then # XXX i/u/c doesnt work?
+if false; then # XXX i/u/c doesnt work for counter64?
 NAME=ifHCInOctets
 OID=$OID9
 VALUE=4294967296
 TYPE=Counter64
 
 new "Set $NAME $VALUE"
-#expectpart "$($snmpset $OID C $VALUE)" 0 "$OID = $TYPE: $VALUE"
-
+echo "$snmpset $OID C $VALUE"
+expectpart "$($snmpset $OID C $VALUE)" 0 "$OID = $TYPE: $VALUE"
+exit
 new "Get $NAME $VALUE"
 expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
