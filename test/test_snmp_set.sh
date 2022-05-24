@@ -105,7 +105,7 @@ OID5="${MIB}.1.5"      # ifType
 OID6="${MIB}.1.6"      # ifSpeed
 OID7="${MIB}.1.7"      # ifAdminStatus
 OID8="${MIB}.1.8"      # ifInOctets
-OID9="${MIB}.1.9"      # ifHCInOctets
+OID9="${MIB}.1.9"      # ifHCInOctets NB 64-bit not tested and seems not supported
 OID10="${MIB}.1.10"    # ifPromiscuousMode
 OID11="${MIB}.1.11"    # ifCounterDiscontinuityTime
 OID12="${MIB}.1.12"    # ifStackStatus
@@ -121,32 +121,42 @@ OID21="${MIB}.2.2.1.3" # netSnmpHostAddress
 OID22="${MIB}.2.2.1.4" # netSnmpHostStorage
 OID23="${MIB}.2.2.1.5" # netSnmpHostRowStatus
 
-new "Test SNMP get for default value"
-expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 42"
+NAME=netSnmpExampleInteger
+OID=$OID1
+VALUE=1234
+TYPE=INTEGER # Integer32
 
-new "Set new value to OID1"
-expectpart "$($snmpset $OID1 i 1234)" 0 "$OID1 = INTEGER: 1234"
+new "Get $NAME default"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: 42"
 
-new "Get new value"
-expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 1234"
+new "Set $NAME $VALUE"
+expectpart "$($snmpset $OID i "$VALUE")" 0 "$OID = $TYPE: $VALUE"
 
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
+    
 new "Set new value via NETCONF"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><default-operation>none</default-operation><target><candidate/></target><config><CLIXON-TYPES-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:CLIXON-TYPES-MIB\"><netSnmpExampleScalars><netSnmpExampleInteger>999</netSnmpExampleInteger></netSnmpExampleScalars></CLIXON-TYPES-MIB></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><default-operation>none</default-operation><target><candidate/></target><config><CLIXON-TYPES-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:CLIXON-TYPES-MIB\"><netSnmpExampleScalars><$NAME>999</$NAME></netSnmpExampleScalars></CLIXON-TYPES-MIB></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf commit"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "Get new value"
-expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 999"
+new "Get $NAME again"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: 999"
 
-new "Test SNMP get string for default value"
-expectpart "$($snmpget $OID3)" 0 "$OID3 = STRING: So long, and thanks for all the fish!."
+NAME=netSnmpExampleString
+OID=$OID3
+VALUE="foo bar"
+TYPE=STRING # SnmpAdminString
 
-new "Set new string value to OID3"
-expectpart "$($snmpset $OID3 s foobar)" 0 "$OID3 = STRING: foobar"
+new "Get $NAME default"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: So long, and thanks for all the fish!."
 
-new "Get new value"
-expectpart "$($snmpget $OID3)" 0 "$OID3 = STRING: foobar"
+new "Set $NAME $VALUE"
+expectpart "$($snmpset $OID s "$VALUE")" 0 "$OID = $TYPE: $VALUE"
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 NAME=ifTableLastChange
 OID=$OID4
@@ -165,7 +175,7 @@ expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 NAME=ifType
 OID=$OID5
 VALUE=48 # modem(48)
-TYPE=INTEGER # enum IANAifType modem(48)
+TYPE=INTEGER # IANAifType /enum
 
 new "Set $NAME $VALUE"
 expectpart "$($snmpset $OID i $VALUE)" 0 "$OID = $TYPE: $VALUE"
@@ -198,7 +208,7 @@ expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 NAME=ifInOctets
 OID=$OID8
 VALUE=123456
-TYPE=Gauge32
+TYPE=Gauge32 # Counter32
 
 new "Set $NAME $VALUE"
 expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
@@ -206,25 +216,10 @@ expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
 new "Get $NAME $VALUE"
 expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
-if false; then # XXX i/u/c doesnt work for counter64?
-NAME=ifHCInOctets
-OID=$OID9
-VALUE=4294967296
-TYPE=Counter64
-
-new "Set $NAME $VALUE"
-echo "$snmpset $OID C $VALUE"
-expectpart "$($snmpset $OID C $VALUE)" 0 "$OID = $TYPE: $VALUE"
-exit
-new "Get $NAME $VALUE"
-expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
-
-fi
-
 NAME=ifPromiscuousMode
 OID=$OID10
 VALUE=1 # true(1)
-TYPE=INTEGER
+TYPE=INTEGER # TruthValue
 
 new "Set $NAME $VALUE"
 expectpart "$($snmpset $OID i $VALUE)" 0 "$OID = $TYPE: $VALUE"
@@ -235,7 +230,7 @@ expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 NAME=ifCounterDiscontinuityTime
 OID=$OID11
 VALUE=1234567890
-TYPE=Gauge32
+TYPE=Gauge32 # TomeStamp
 
 new "Set $NAME $VALUE"
 expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
@@ -246,7 +241,7 @@ expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 NAME=ifStackStatus
 OID=$OID12
 VALUE=1 # active(1)
-TYPE=INTEGER
+TYPE=INTEGER # RowStatus / enum
 
 new "Set $NAME $VALUE"
 expectpart "$($snmpset $OID i $VALUE)" 0 "$OID = $TYPE: $VALUE"
