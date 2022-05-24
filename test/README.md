@@ -150,6 +150,15 @@ If you do not have them, generate self-signed certs, eg as follows:
 
 There are also client-cert tests, eg `test_ssl_certs.sh`
 
+## SNMP
+
+Clixon snmp frontend tests require a running netsnmpd and converted YANG files from MIB.
+
+Netsnmpd is 5.9 or later and can be started via systemd. For the tests
+to run, the systems IFMIB should be disabled: `-I -ifTable,ifNumber,ifXTable`
+
+Converted YANG files are available at `https://github.com/clicon/mib-yangs` or alternatively use `smidump` version 0.5 or later.
+
 ## Known issues
 
 [Workaround: Unicode double-quote in iana-if-type@2022-03-07.yang](https://github.com/clicon/clixon/issues/315)
