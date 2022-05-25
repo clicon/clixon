@@ -177,6 +177,12 @@ wait_backend
 new "expand identityref 1st level"
 expectpart "$(echo "set identityrefs identityref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "ex:des" "ex:des2" "ex:des3"
 
+# XXX something wrong sometimes in this test on docker.
+# Expected:
+# <name>
+# CLI syntax error: "set leafrefs leafref": Incomplete command
+echo "set leafrefs leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=false
+
 new "expand leafref 1st level"
 expectpart "$(echo "set leafrefs leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=false 2> /dev/null)" 0 "<name>" --not-- "91" "92" "93"
 

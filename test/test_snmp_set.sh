@@ -230,7 +230,7 @@ expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 NAME=ifCounterDiscontinuityTime
 OID=$OID11
 VALUE=1234567890
-TYPE=Gauge32 # TomeStamp
+TYPE=Gauge32 # TimeStamp
 
 new "Set $NAME $VALUE"
 expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
