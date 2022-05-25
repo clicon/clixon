@@ -158,77 +158,139 @@ OID23="${MIB}.2.2.1.5" # netSnmpHostRowStatus
 
 new "$snmpget"
 
-new "Test SNMP get netSnmpExampleInteger"
-expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 2147483647"
+NAME=netSnmpExampleInteger
+OID=$OID1
+VALUE=2147483647
+TYPE=INTEGER # Integer32
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Test SNMP getnext netSnmpExampleInteger"
 expectpart "$($snmpgetnext $OID1)" 0 "$OID2 = INTEGER: -1"
 
-new "Test SNMP get netSnmpExampleSleeper"
-expectpart "$($snmpget $OID2)" 0 "$OID2 = INTEGER: -1"
+NAME=netSnmpExampleSleeper
+OID=$OID2
+VALUE=-1
+TYPE=INTEGER # Integer32
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Test SNMP getnext netSnmpExampleSleeper"
 expectpart "$($snmpgetnext $OID2)" 0 "$OID3 = STRING: This is not default"
 
-new "Test SNMP get netSNmpExampleString"
-expectpart "$($snmpget $OID3)" 0 "$OID3 = STRING: This is not default" --not-- "fish"
+NAME=netSnmpExampleString
+OID=$OID3
+VALUE="This is not default"
+TYPE=STRING # SnmpAdminString
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Test SNMP getnext netSnmpExampleString"
-expectpart "$($snmpgetnext $OID3)" 0 ""
+expectpart "$($snmpgetnext $OID3)" 0 "$OID4 = Gauge32: 12345678"
 
-new "Test SNMP get ipTableLastChnage" # TimeTicks
-expectpart "$($snmpget $OID4)" 0 "$OID4 = Gauge32: 12345678"
+NAME=ifTableLastChange
+OID=$OID4
+VALUE=12345678
+TYPE=Gauge32 # TimeTicks
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Test SNMP getnext ipTableLastChange"
-expectpart "$($snmpgetnext $OID4)" 0 ""
+expectpart "$($snmpgetnext $OID4)" 0 "$OID5 = INTEGER: 48"
 
-new "Test SNMP get ifType" # modem(48)
-expectpart "$($snmpget $OID5)" 0 "$OID5 = INTEGER: 48"
+NAME=ifType
+OID=$OID5
+VALUE=48 # modem(48)
+TYPE=INTEGER # IANAifType /enum
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Test SNMP getnext ifType"
-expectpart "$($snmpgetnext $OID5)" 0 ""
+expectpart "$($snmpgetnext $OID5)" 0 "$OID6 = Gauge32: 123123123"
 
-new "Test SNMP get ifSpeed"
-expectpart "$($snmpget $OID6)" 0 "$OID6 = Gauge32: 123123123"
+NAME=ifSpeed
+OID=$OID6
+VALUE=123123123
+TYPE=Gauge32
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Test SNMP getnext ifSpeed"
-expectpart "$($snmpgetnext $OID6)" 0 ""
+expectpart "$($snmpgetnext $OID6)" 0 "$OID7 = INTEGER: 3"
 
-new "Test SNMP get ifAdminStatus"
-expectpart "$($snmpget $OID7)" 0 "$OID7 = INTEGER: 3"
+NAME=ifAdminStatus
+OID=$OID7
+VALUE=3 # testing(3)
+TYPE=INTEGER
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Test SNMP getnext ifAdminStatus"
-expectpart "$($snmpgetnext $OID7)" 0 ""
+expectpart "$($snmpgetnext $OID7)" 0 "$OID8 = Gauge32: 123456"
 
-new "Test SNMP get ifInOnctets"
-expectpart "$($snmpget $OID8)" 0 "$OID8 = Gauge32: 123456"
+NAME=ifInOctets
+OID=$OID8
+VALUE=123456
+TYPE=Gauge32 # Counter32
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Test SNMP getnext ifInOctets"
-expectpart "$($snmpgetnext $OID8)" 0 ""
+expectpart "$($snmpgetnext $OID8)" 0 "$OID9 = Counter64: 4294967296"
 
-new "Test SNMP get ifHCInOctets"
-expectpart "$($snmpget $OID9)" 0 "$OID9 = Counter64: 4294967296"
+NAME=ifHCInOctets
+OID=$OID9
+VALUE=4294967296
+TYPE=Counter64
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Test SNMP getnext ifHCInOctets"
-expectpart "$($snmpgetnext $OID9)" 0 ""
+expectpart "$($snmpgetnext $OID9)" 0 "$OID10 = INTEGER: 1"
 
-new "Test SNMP get ifPromiscuousMode"
-expectpart "$($snmpget $OID10)" 0 "$OID10 = INTEGER: 1"
+NAME=ifPromiscuousMode
+OID=$OID10
+VALUE=1 # true(1)
+TYPE=INTEGER # TruthValue
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Test SNMP getnext ifPromiscuousMode"
-expectpart "$($snmpgetnext $OID10)" 0 ""
+expectpart "$($snmpgetnext $OID10)" 0 "$OID11 = Gauge32: 1234567890"
 
-new "Test SNMP get ifCounterDiscontinuityTime"
-expectpart "$($snmpget $OID11)" 0 "$OID11 = Gauge32: 1234567890"
+NAME=ifCounterDiscontinuityTime
+OID=$OID11
+VALUE=1234567890
+TYPE=Gauge32 # TimeStamp
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Test SNMP getnext ifCounterDiscontinuityTime"
-expectpart "$($snmpgetnext $OID11)" 0 ""
+expectpart "$($snmpgetnext $OID11)" 0 "$OID12 = INTEGER: 1"
 
-new "Test SNMP get ifStackStatus"
-expectpart "$($snmpget $OID12)" 0 "$OID12 = INTEGER: 1"
+NAME=ifStackStatus
+OID=$OID12
+VALUE=1 # active(1)
+TYPE=INTEGER # RowStatus / enum
+
+new "Get $NAME $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Test SNMP getnext ifStackStatus"
-expectpart "$($snmpgetnext $OID12)" 0 ""
+expectpart "$($snmpgetnext $OID12)" 0 "" # XXX table OID
+
+#----------------- table
 
 new "Test SNMP table netSnmpIETFWGTable"
 expectpart "$($snmptable $OID13)" 0 "Name1"
