@@ -43,14 +43,14 @@ extern "C" {
 /*
  * Prototypes
  */
-int snmp_table_handler(netsnmp_mib_handler          *handler,
-		       netsnmp_handler_registration *nhreg,
-		       netsnmp_agent_request_info   *reqinfo,
-		       netsnmp_request_info         *requests);
-int snmp_scalar_handler(netsnmp_mib_handler          *handler,
-			netsnmp_handler_registration *nhreg,
-			netsnmp_agent_request_info   *reqinfo,
-			netsnmp_request_info         *requests);
+int clixon_snmp_table_handler(netsnmp_mib_handler          *handler,
+			      netsnmp_handler_registration *nhreg,
+			      netsnmp_agent_request_info   *reqinfo,
+			      netsnmp_request_info         *requests);
+int clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
+			       netsnmp_handler_registration *nhreg,
+			       netsnmp_agent_request_info   *reqinfo,
+			       netsnmp_request_info         *requests);
 
 #endif /* _SNMP_HANDLER_H_ */
 

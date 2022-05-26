@@ -208,13 +208,15 @@ expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 NAME=ifInOctets
 OID=$OID8
 VALUE=123456
-TYPE=Gauge32 # Counter32
+TYPE=Counter32
 
 new "Set $NAME $VALUE"
-expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
+# XXXYYY
+#expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
 
 new "Get $NAME $VALUE"
-expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
+# XXXYYY
+#expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 NAME=ifPromiscuousMode
 OID=$OID10

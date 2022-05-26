@@ -51,7 +51,7 @@ struct clixon_snmp_handle {
     oid           sh_oid[MAX_OID_LEN]; /* OID for debug, may be removed? */
     size_t        sh_oidlen;           
     char         *sh_default;          /* MIB default value leaf only */
-    netsnmp_table_data_set *sh_table;  /* table struct, table only */
+    cvec         *sh_cvk;              /* Index/Key variables */
 };
 typedef struct clixon_snmp_handle clixon_snmp_handle;
 
@@ -60,6 +60,7 @@ typedef struct clixon_snmp_handle clixon_snmp_handle;
  */
 int   snmp_access_str2int(char *modes_str);
 const char *snmp_msg_int2str(int msg);
+int   snmp_handle_free(clixon_snmp_handle *sh);
 int   type_yang2asn1(yang_stmt *ys, int *asn1_type);
 int   type_snmp2xml(yang_stmt                  *ys,
 		    netsnmp_variable_list      *requestvb,
@@ -67,10 +68,8 @@ int   type_snmp2xml(yang_stmt                  *ys,
 		    netsnmp_request_info       *requests,
 		    char                      **valstr);
 int   type_xml2snmpstr(char *xmlstr, yang_stmt *ys, char **snmpstr);
-
 int   type_snmpstr2val(char *snmpstr, int asn1type, u_char **snmpval, size_t *snmplen, char **reason);
-int   yang2xpath(yang_stmt *ys, char **xpath);
-int   clixon_table_create(netsnmp_table_data_set *table, yang_stmt *ys, clicon_handle h);
+int   yang2xpath(yang_stmt *ys, cvec *keyvec, char **xpath);
 
 #endif /* _SNMP_LIB_H_ */
 

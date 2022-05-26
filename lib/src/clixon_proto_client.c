@@ -186,7 +186,7 @@ clicon_rpc_msg(clicon_handle      h,
 #ifdef RPC_USERNAME_ASSERT
     assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
 #endif
-    clicon_debug(1, "%s request:%s", __FUNCTION__, msg->op_body);
+    clicon_debug(2, "%s request:%s", __FUNCTION__, msg->op_body);
     /* Create a socket and connect to it, either UNIX, IPv4 or IPv6 per config options */
     if (clicon_rpc_msg_once(h, msg, &retdata, &eof, &s) < 0)
 	goto done;
@@ -215,7 +215,7 @@ clicon_rpc_msg(clicon_handle      h,
 	goto done;
 #endif
     }
-    clicon_debug(1, "%s retdata:%s", __FUNCTION__, retdata);
+    clicon_debug(2, "%s retdata:%s", __FUNCTION__, retdata);
 
     if (retdata){
 	/* Cannot populate xret here because need to know RPC name (eg "lock") in order to associate yang

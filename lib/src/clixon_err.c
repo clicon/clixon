@@ -124,6 +124,7 @@ static struct errvec EV[] = {
     {"Undefined",              OE_UNDEF},
     /* From here error extensions using clixon_err_cat_reg */
     {"OpenSSL error",          OE_SSL},
+    {"SNMP error",             OE_SNMP},
     {"Nghttp2 error",          OE_NGHTTP2},
     {NULL,                     -1}
 };

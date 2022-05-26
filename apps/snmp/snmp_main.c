@@ -98,7 +98,7 @@ clixon_snmp_input_cb(int   s,
     fd_set readfds;
     //    clicon_handle h = (clicon_handle)arg;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(2, "%s", __FUNCTION__);
     FD_ZERO(&readfds);
     FD_SET(s, &readfds);
     snmp_read(&readfds);
@@ -128,7 +128,7 @@ clixon_snmp_fdset_register(clicon_handle h)
 
     FD_ZERO(&readfds);
     if ((nr = snmp_sess_select_info(NULL, &numfds, &readfds, &timeout, &block)) < 0){
-	clicon_err(OE_SNMP, errno, "snmp_select_error");
+	clicon_err(OE_XML, errno, "snmp_select_error");
 	goto done;
     }
     for (i=0; i<numfds; i++){
@@ -163,7 +163,7 @@ clixon_snmp_subagent(clicon_handle h,
     netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_ROLE, 1);    
 
     if ((sockpath = clicon_option_str(h, "CLICON_SNMP_AGENT_SOCK")) == NULL){
-	clicon_err(OE_SNMP, 0, "CLICON_SNMP_AGENT_SOCK not set");
+	clicon_err(OE_XML, 0, "CLICON_SNMP_AGENT_SOCK not set");
 	goto done;
     }
     /* XXX: This should be configurable. */
@@ -194,6 +194,36 @@ clixon_snmp_subagent(clicon_handle h,
     retval = 0;
  done:
     return retval;
+}
+
+/* Specialized SNMP error category log/err callback
+ *
+ * This function displays all negative SNMP errors on the form SNMPERR_* that are not SNMPERR_SUCCESS(=0)
+ * There are also positive SNMP errors on the form SNMP_ERR_* which are not properly handled below
+ * @param[in]    handle  Application-specific handle
+ * @param[in]    suberr  Application-specific handle
+ * @param[out]   cb      Read log/error string into this buffer
+ * @note Some SNMP API functions sometimes returns NULL/ptr or other return values that do not fall into
+ * this category, then OE_SNMP should NOT be used.
+ */
+static int
+clixon_snmp_err_cb(void *handle,
+		   int   suberr,
+		   cbuf *cb)
+{
+    const char *errstr;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (suberr < 0){
+	if ((errstr = snmp_api_errstring(suberr)) == NULL)
+	    cprintf(cb, "unknown error %d", suberr);
+	else
+	    cprintf(cb, "%s", errstr);
+    }
+    else{ /* See eg SNMP_ERR_* in snmp.h for positive error numbers, are they applicable here? */
+	cprintf(cb, "unknown error %d", suberr);
+    }
+    return 0;
 }
 
 /*! Clean and close all state of netconf process (but dont exit). 
@@ -315,6 +345,15 @@ main(int    argc,
     clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(dbg, NULL); 
 
+    /*
+     * Register error category and error/log callbacks for netsnmp special error handling
+     */
+    if (clixon_err_cat_reg(OE_SNMP,              /* category */
+			   h,                    /* handle (can be NULL) */
+			   clixon_snmp_err_cb    /* log fn */
+			   ) < 0)
+	goto done;
+    
     yang_init(h);
     
     /* Find, read and parse configfile */
@@ -433,6 +472,9 @@ main(int    argc,
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
 	goto done;
 
+    if (dbg)
+	clicon_option_dump(h, dbg);
+    
     /* Get session id from backend hello */
     clicon_session_id_set(h, getpid()); 
 
@@ -445,15 +487,17 @@ main(int    argc,
 	goto done;
     clicon_session_id_set(h, id);
     
+
+    
     /* Init snmp as subagent */
     if (clixon_snmp_subagent(h, logdst) < 0)
 	goto done;
+
     /* Init and traverse mib-translated yangs and register callbacks */
     if (clixon_snmp_traverse_mibyangs(h) < 0)
 	goto done;
     
-    if (dbg)
-	clicon_option_dump(h, dbg);
+
     /* Write pid-file */
     if (pidfile_write(pidfile) <  0)
 	goto done;

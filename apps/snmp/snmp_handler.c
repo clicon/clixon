@@ -59,43 +59,107 @@
 #include "snmp_lib.h"
 #include "snmp_handler.h"
 
-/*! SNMP table operation handlre
+static int
+snmp_common_handler(netsnmp_mib_handler          *handler,
+		    netsnmp_handler_registration *nhreg,
+		    netsnmp_agent_request_info   *reqinfo,
+		    netsnmp_request_info         *requests,
+		    clixon_snmp_handle          **shp,
+		    int                           tablehandler)
+{
+    int                    retval = -1;
+    netsnmp_variable_list *requestvb; /* sub of requests */
+    clixon_snmp_handle    *sh;
+    char                   oidstr0[MAX_OID_LEN*2] = {0,};
+    char                   oidstr1[MAX_OID_LEN*2] = {0,};
+    char                   oidstr2[MAX_OID_LEN*2] = {0,};
 
+    requestvb = requests->requestvb;
+    if (snprint_objid(oidstr0, sizeof(oidstr0),
+		      requestvb->name, requestvb->name_length) < 0){
+	clicon_err(OE_XML, 0, "snprint_objid buffer too small");
+    }
+    if ((sh = (clixon_snmp_handle*)handler->myvoid) != NULL){
+	if (snprint_objid(oidstr1, sizeof(oidstr1),
+			  nhreg->rootoid, nhreg->rootoid_len) < 0){
+	    clicon_err(OE_XML, 0, "snprint_objid buffer too small");
+	    goto done;
+	}
+	if (snprint_objid(oidstr2, sizeof(oidstr2),
+			  sh->sh_oid, sh->sh_oidlen) < 0){
+	    clicon_err(OE_XML, 0, "snprint_objid buffer too small");
+	    goto done;
+	}
+	if (shp)
+	    *shp = sh;
+	if (strcmp(oidstr0, oidstr2) == 0)
+	    clicon_debug(1, "%s \"%s\" %s inclusive:%d %s", __FUNCTION__,
+			 oidstr2,
+			 snmp_msg_int2str(reqinfo->mode),
+			 requests->inclusive, tablehandler?"table":"");
+	else
+	    clicon_debug(1, "%s \"%s\"/\"%s\" %s inclusive:%d %s", __FUNCTION__,
+			 oidstr2, oidstr0,
+			 snmp_msg_int2str(reqinfo->mode),
+			 requests->inclusive, tablehandler?"table":"");
+    }
+    else{
+	assert(0);
+    }
+
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! SNMP table operation handler
  * Callorder: 161,160,.... 0, 1,2,3, 160,161,...
  * see https://net-snmp.sourceforge.io/dev/agent/data_set_8c-example.html#_a0
+ *
+ * see table_array.[ch] simplify the task of
+ * writing a table handler for the net-snmp agent when the data being
+ * accessed is in an oid sorted form and must be accessed externally.
+ *
+ * netsnmp_table_build_oid_from_index()
+ *
+ * table_container.[ch]
+ *
+ * build_new_oid
+ * XXX Check expected return values for these netsnmp handler functions
  */
 int
-snmp_table_handler(netsnmp_mib_handler          *handler,
-		   netsnmp_handler_registration *nhreg,
-		   netsnmp_agent_request_info   *reqinfo,
-		   netsnmp_request_info         *requests)
+clixon_snmp_table_handler(netsnmp_mib_handler          *handler,
+			  netsnmp_handler_registration *nhreg,
+			  netsnmp_agent_request_info   *reqinfo,
+			  netsnmp_request_info         *requests)
 {
-    int                     retval = SNMP_ERR_GENERR;
-    clixon_snmp_handle     *sh;
-    netsnmp_table_data_set *table;
-    yang_stmt *ys;
-    clicon_handle       h;
-    yang_stmt              *ylist;
+    int                     retval = -1;
+    clixon_snmp_handle     *sh = NULL;
     cvec                   *nsc = NULL;
     cxobj                  *xt = NULL;
     cbuf                   *cb = NULL;
+    int                     ret;
 
-    clicon_debug(1, "%s %s %s", __FUNCTION__,
-                 handler->handler_name,
-                 snmp_msg_int2str(reqinfo->mode));
-    sh = (clixon_snmp_handle*)nhreg->my_reg_void;
-    ys = sh->sh_ys;
-    h = sh->sh_h;
-    table = sh->sh_table;
-
-    if ((ylist = yang_find(ys, Y_LIST, NULL)) == NULL)
-        goto ok;
-
-    if (clixon_table_create(table, ys, h) < 0)
-        goto done;
-
+    if ((ret = snmp_common_handler(handler, nhreg, reqinfo, requests, &sh, 1)) < 0)
+	goto done;
     switch(reqinfo->mode){
-    case MODE_GETNEXT: // 160
+    case MODE_GETNEXT:{ // 160
+#ifdef NOTYET
+	char  *oidstr = NULL;
+	oid    oid1[MAX_OID_LEN] = {0,};
+	size_t sz1 = MAX_OID_LEN;
+
+	oidstr = ".1.3.6.1.2.1.2.2.1.1.1";
+	if (snmp_parse_oid(oidstr, oid1, &sz1) == NULL){
+	    clicon_err(OE_XML, errno, "snmp_parse_oid");
+	    goto done;
+	}
+	if (snmp_set_var_objid(requests->requestvb, oid1, sz1) != 0){
+	    clicon_err(OE_XML, 0, "snmp_set_var_objid");
+	    goto done;
+	}
+#endif
+	}
         break;
     case MODE_GET: // 160
     case MODE_SET_RESERVE1:
@@ -105,10 +169,9 @@ snmp_table_handler(netsnmp_mib_handler          *handler,
         break;
 
     }
-ok:
+//    ok:
     retval = SNMP_ERR_NOERROR;
-
-done:
+ done:
     if (xt)
         xml_free(xt);
     if (cb)
@@ -119,11 +182,19 @@ done:
 }
 
 /*! Scalar handler, set a value to clixon 
- * get xpath: see yang2api_path_fmt / api_path2xpath 
+ * get xpath: see yang2api_path_fmt / api_path2xpath
+ * @param[in]  h          Clixon handle
+ * @param[in]  ys         Yang node
+ * @param[in]  cvk        Vector of index/Key variables, if any
+ * @param[in]  requestvb  SNMP variables
+ * @param[in]  defaultval
+ * @param[in]  reqinfo
+ * @param[in]  requests
  */
 static int
 snmp_scalar_get(clicon_handle               h,
 		yang_stmt                  *ys,
+		cvec                       *cvk,
 		netsnmp_variable_list      *requestvb,
 		char                       *defaultval,
 		netsnmp_agent_request_info *reqinfo,
@@ -146,7 +217,7 @@ snmp_scalar_get(clicon_handle               h,
     if (xml_nsctx_yang(ys, &nsc) < 0)
 	goto done;
     /* Create xpath from yang (XXX works not for lists) */
-    if (yang2xpath(ys, &xpath) < 0)
+    if (yang2xpath(ys, cvk, &xpath) < 0)
 	goto done;
     /* Do the backend call */
     if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
@@ -163,8 +234,12 @@ snmp_scalar_get(clicon_handle               h,
      */
     if ((x = xpath_first(xt, nsc, "%s", xpath)) != NULL){
 	assert(xml_spec(x) == ys);
-	if (type_xml2snmpstr(xml_body(x), ys, &snmpstr) < 0)
+	if ((ret = type_xml2snmpstr(xml_body(x), ys, &snmpstr)) < 0)
 	    goto done;
+	if (ret == 0){
+	    netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGVALUE);
+	    goto ok;
+	}
     }
     else if (defaultval != NULL){
 	if ((snmpstr = strdup(defaultval)) == NULL){
@@ -178,7 +253,6 @@ snmp_scalar_get(clicon_handle               h,
     }
     if (type_yang2asn1(ys, &asn1type) < 0)
 	goto done;
-
     if ((ret = type_snmpstr2val(snmpstr, asn1type, &snmpval, &snmplen, &reason)) < 0)
 	goto done;
     if (ret == 0){
@@ -189,10 +263,8 @@ snmp_scalar_get(clicon_handle               h,
     /* see snmplib/snmp_client. somewhat indirect
      */
     requestvb->type = asn1type; // ASN_NULL on input
-    if (snmp_set_var_value(requestvb,
-			   snmpval,
-			   snmplen) != 0){
-	clicon_err(OE_SNMP, 0, "snmp_set_var_value");
+    if ((ret = snmp_set_var_value(requestvb, snmpval, snmplen)) != SNMPERR_SUCCESS){
+	clicon_err(OE_SNMP, ret, "snmp_set_var_value");
 	goto done;
     }
  ok:
@@ -282,49 +354,20 @@ snmp_scalar_set(clicon_handle               h,
  *
  */
 int
-snmp_scalar_handler(netsnmp_mib_handler          *handler,
-		    netsnmp_handler_registration *nhreg,
-		    netsnmp_agent_request_info   *reqinfo,
-		    netsnmp_request_info         *requests)
+clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
+			   netsnmp_handler_registration *nhreg,
+			   netsnmp_agent_request_info   *reqinfo,
+			   netsnmp_request_info         *requests)
 {
     int                    retval = -1;
-    clixon_snmp_handle    *sh;
+    clixon_snmp_handle    *sh = NULL;
     yang_stmt             *ys;
     int                    asn1_type;
-    netsnmp_variable_list *requestvb; /* sub of requests */
-    
-    /*
-     * can be used to pass information on a per-pdu basis from a
-     * helper to the later handlers 
-     netsnmp_agent_request_info   *reqinfo,
-     netsnmp_data_list *agent_data;
-     netsnmp_free_agent_data_set()
-    */
-    requestvb = requests->requestvb;
-    if (0)
-	fprintf(stderr, "%s %s %s\n", __FUNCTION__,
-		handler->handler_name,
-		snmp_msg_int2str(reqinfo->mode)
-		);
+    netsnmp_variable_list *requestvb = requests->requestvb;
 
-    if (0)
-	fprintf(stderr, "inclusive:%d\n", 
-		requests->inclusive
-		);
-    clicon_debug(1, "%s %s %s %d", __FUNCTION__,
-		 handler->handler_name,
-		 snmp_msg_int2str(reqinfo->mode),
-		 requests->inclusive);
-    sh = (clixon_snmp_handle*)nhreg->my_reg_void;
+    if (snmp_common_handler(handler, nhreg, reqinfo, requests, &sh, 0) < 0)
+	goto done;
     ys = sh->sh_ys;
-    //    fprint_objid(stderr, nhreg->rootoid, nhreg->rootoid_len);
-    assert(sh->sh_oidlen == requestvb->name_length);
-    assert(requestvb->name_length == nhreg->rootoid_len);
-    assert(snmp_oid_compare(sh->sh_oid, sh->sh_oidlen,
-			    requestvb->name, requestvb->name_length) == 0);
-    assert(snmp_oid_compare(requestvb->name, requestvb->name_length,
-			    nhreg->rootoid, nhreg->rootoid_len) == 0);
-
 #if 0 /* If oid match fails */
     netsnmp_set_request_error(reqinfo, requests,
 			      SNMP_NOSUCHOBJECT);
@@ -333,7 +376,8 @@ snmp_scalar_handler(netsnmp_mib_handler          *handler,
     /* see net-snmp/agent/snmp_agent.h / net-snmp/library/snmp.h */
     switch (reqinfo->mode) {
     case MODE_GET:          /* 160 */
-	if (snmp_scalar_get(sh->sh_h, ys, requestvb, sh->sh_default, reqinfo, requests) < 0)
+	if (snmp_scalar_get(sh->sh_h, ys, sh->sh_cvk,
+			    requestvb, sh->sh_default, reqinfo, requests) < 0)
 	    goto done;
         break;
     case MODE_GETNEXT:      /* 161 */
