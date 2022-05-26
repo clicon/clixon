@@ -84,7 +84,7 @@ chmod 775 /usr/local/bin/test/site.sh
 
 # Start snmpd, we need this for the SNMP tests and the app clixon_snmp. Log to stdout, then we can
 # use Docker logs to see what's happening.
-snmpd -Lo -p /var/run/snmpd.pid
+snmpd -Lo -p /var/run/snmpd.pid -I -ifXTable -I -ifTable -I -system_mib -I -sysORTable
 
 # Alt: let backend be in foreground, but test scripts may
 # want to restart backend
