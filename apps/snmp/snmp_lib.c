@@ -100,6 +100,7 @@ static const map_str2int snmp_type_map[] = {
     {"string",       ASN_OCTET_STR}, // 4
     {"enumeration",  ASN_INTEGER},   // 2 special case
     {"uint32",       ASN_GAUGE},     // 0x42 / 66
+    {"uint32",       ASN_COUNTER},   // 0x41 / 65
     {"uint64",       ASN_COUNTER64}, // 0x46 / 70
     {"boolean",      ASN_INTEGER},   // 2 special case -> enumeration
     {NULL,           -1}
@@ -112,8 +113,8 @@ static const map_str2int snmp_msg_map[] = {
     {"MODE_SET_RESERVE2",    MODE_SET_RESERVE2},
     {"MODE_SET_ACTION",      MODE_SET_ACTION},
     {"MODE_SET_COMMIT",      MODE_SET_COMMIT},
-    {"MODE_GET",             MODE_GET}, 
-    {"MODE_GETNEXT",         MODE_GETNEXT}, 
+    {"MODE_GET",             MODE_GET},     // 160
+    {"MODE_GETNEXT",         MODE_GETNEXT}, // 161
     {NULL,                   -1}
 };
 
@@ -130,6 +131,17 @@ const char *
 snmp_msg_int2str(int msg)
 {
     return clicon_int2str(snmp_msg_map, msg);
+}
+
+/*! Free clixon snmp handler struct
+ */
+int
+snmp_handle_free(clixon_snmp_handle *sh)
+{
+    if (sh->sh_cvk)
+	cvec_free(sh->sh_cvk);
+    free(sh);
+    return 0;
 }
 
 /*! Translate from YANG to SNMP asn1.1 type ids (not value)
@@ -149,20 +161,40 @@ type_yang2asn1(yang_stmt    *ys,
     char      *restype;  /* resolved type */
     char      *origtype=NULL;   /* original type */
     int        at;
+    yang_stmt *ypath;
+    yang_stmt *yref;
 
     /* Get yang type of leaf and trasnslate to ASN.1 */
     if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
 	goto done;
     restype = yrestype?yang_argument_get(yrestype):NULL;
+    /* Special case: leafref, find original type */
+    if (strcmp(restype, "leafref")==0){
+	if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL){
+	    clicon_err(OE_YANG, 0, "No path in leafref");
+	    goto done;
+	}
+	if (yang_path_arg(ys, yang_argument_get(ypath), &yref) < 0)
+	    goto done;
+	if (yang_type_get(yref, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+	    goto done;
+	restype = yrestype?yang_argument_get(yrestype):NULL;
+    }
+    /* Special case: counter32, maps to same resolved type as gauge32 */
+    if (strcmp(origtype, "counter32")==0){
+	at = ASN_COUNTER;
+    }
+    else if (strcmp(origtype, "object-identifier-128")==0){
+	at = ASN_OBJECT_ID;
+    }
     /* translate to asn.1 */
-    if ((at = clicon_str2int(snmp_type_map, restype)) < 0){
+    else if ((at = clicon_str2int(snmp_type_map, restype)) < 0){
 	clicon_err(OE_YANG, 0, "No snmp translation for YANG %s type:%s",
 		   yang_argument_get(ys), restype);
 	goto done;
     }
     if (asn1_type)
 	*asn1_type = at;
-    clicon_debug(1, "%s type:%s", __FUNCTION__, restype);
     retval = 0;
  done:
     return retval;
@@ -281,6 +313,9 @@ type_snmp2xml(yang_stmt                  *ys,
 /*! Given xml value and YANG,m return corresponding malloced snmp string
  * There is a special case for enumeration which is integer in snmp, string in YANG
  * @param[in]  xmlstr
+ * @retval     1     OK
+ * @retval     0     Invalid type
+ * @retval     -1    Error
  * @see type_snmp2xml  for snmpset
  */
 int
@@ -294,6 +329,7 @@ type_xml2snmpstr(char      *xmlstr,
     char      *restype;  /* resolved type */
     char      *origtype=NULL;   /* original type */
     char      *str = NULL;
+    int        ret;
 
     if (snmpstr == NULL){
 	clicon_err(OE_UNIX, EINVAL, "snmpstr");
@@ -304,8 +340,10 @@ type_xml2snmpstr(char      *xmlstr,
 	goto done;
     restype = yrestype?yang_argument_get(yrestype):NULL;
     if (strcmp(restype, "enumeration") == 0){ 	/* special case for enum */
-	if (yang_enum2valstr(yrestype, xmlstr, &str) < 0)
+	if ((ret = yang_enum2valstr(yrestype, xmlstr, &str)) < 0)
 	    goto done;
+	if (ret == 0)
+	    goto fail;
     }
     /* special case for bool: although smidump translates TruthValue to boolean
      * and there is an ASN_BOOLEAN constant:
@@ -325,10 +363,13 @@ type_xml2snmpstr(char      *xmlstr,
 	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
     }
-    retval = 0;
+    retval = 1;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clicon_debug(2, "%s %d", __FUNCTION__, retval);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Given snmp string value (as translated frm XML) parse into snmp value
@@ -368,6 +409,7 @@ type_snmpstr2val(char       *snmpstr,
 	if (ret == 0)
 	    goto fail;
 	break;
+    case ASN_COUNTER: // 0x41
     case ASN_GAUGE:   // 0x42
 	*snmplen = 4;
 	if ((*snmpval = malloc(*snmplen)) == NULL){
@@ -380,6 +422,7 @@ type_snmpstr2val(char       *snmpstr,
 	    goto fail;
 
 	break;
+    case ASN_OBJECT_ID: // 6
     case ASN_OCTET_STR: // 4
 	*snmplen = strlen(snmpstr)+1;
 	if ((*snmpval = (u_char*)strdup((snmpstr))) == NULL){
@@ -410,7 +453,7 @@ type_snmpstr2val(char       *snmpstr,
     }
     retval = 1;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clicon_debug(2, "%s %d", __FUNCTION__, retval);
     return retval;
  fail:
     retval = 0;
@@ -419,20 +462,23 @@ type_snmpstr2val(char       *snmpstr,
 
 /*! Construct an xpath from yang statement, internal fn using cb
  * Recursively construct it to the top.
- * @param[in]  ys    Yang statement
- * @param[out] cb    xpath as cbuf
- * @retval     0     OK
- * @retval    -1     Error
+ * @param[in]  ys      Yang statement
+ * @param[in]  keyvec  Array of [name,val]s as a cvec of key name and values
+ * @param[out] cb      xpath as cbuf
+ * @retval     0       OK
+ * @retval    -1       Error
  * @see yang2xpath
  */ 
 static int
 yang2xpath_cb(yang_stmt *ys, 
+	      cvec      *keyvec,
 	      cbuf      *cb)
 {
     yang_stmt *yp; /* parent */
     int        i;
     cvec      *cvk = NULL; /* vector of index keys */
     int        retval = -1;
+    char      *prefix = NULL;
     
     if ((yp = yang_parent_get(ys)) == NULL){
 	clicon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
@@ -441,31 +487,34 @@ yang2xpath_cb(yang_stmt *ys,
     if (yp != NULL && /* XXX rm */
 	yang_keyword_get(yp) != Y_MODULE && 
 	yang_keyword_get(yp) != Y_SUBMODULE){
-
-	if (yang2xpath_cb(yp, cb) < 0) /* recursive call */
+	if (yang2xpath_cb(yp, keyvec, cb) < 0) /* recursive call */
 	    goto done;
 	if (yang_keyword_get(yp) != Y_CHOICE && yang_keyword_get(yp) != Y_CASE){
 	    cprintf(cb, "/");
 	}
     }
+    prefix = yang_find_myprefix(ys);
     if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE){
-	cprintf(cb, "%s:", yang_find_myprefix(ys));
+	if (prefix)
+	    cprintf(cb, "%s:", prefix);
 	cprintf(cb, "%s", yang_argument_get(ys));
     }
     switch (yang_keyword_get(ys)){
-    case Y_LIST: // XXX not xpaths
+    case Y_LIST:
 	cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
-	if (cvec_len(cvk))
-	    cprintf(cb, "=");
 	/* Iterate over individual keys  */
+	assert(keyvec && cvec_len(cvk) == cvec_len(keyvec));
 	for (i=0; i<cvec_len(cvk); i++){
-	    if (i)
-		cprintf(cb, ",");
-	    cprintf(cb, "%%s");
+	    cprintf(cb, "[");
+	    if (prefix)
+		cprintf(cb, "%s:", prefix);
+	    cprintf(cb, "%s='%s']",
+		    cv_string_get(cvec_i(cvk, i)),
+		    cv_string_get(cvec_i(keyvec, i)));
 	}
 	break;
     case Y_LEAF_LIST:
-	cprintf(cb, "=%%s");
+	assert(0); // NYI
 	break;
     default:
 	break;
@@ -478,6 +527,7 @@ yang2xpath_cb(yang_stmt *ys,
 /*! Construct an xpath from yang statement
  * Recursively construct it to the top.
  * @param[in]  ys    Yang statement
+ * @param[in]  keyvec  Array of [name,val]s as a cvec of key name and values
  * @param[out] xpath Malloced xpath string, use free() after use
  * @retval     0     OK
  * @retval     -1    Error
@@ -487,6 +537,7 @@ yang2xpath_cb(yang_stmt *ys,
  */ 
 int
 yang2xpath(yang_stmt *ys,
+	   cvec      *keyvec,
 	   char     **xpath)
 {
     int   retval = -1;
@@ -496,7 +547,7 @@ yang2xpath(yang_stmt *ys,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    if (yang2xpath_cb(ys, cb) < 0)
+    if (yang2xpath_cb(ys, keyvec, cb) < 0)
 	goto done;
     if (xpath && (*xpath = strdup(cbuf_get(cb))) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
@@ -509,25 +560,42 @@ yang2xpath(yang_stmt *ys,
     return retval;
 }
 
+#ifdef NOTUSED
+/*!
+ * @param[in]  ys    Yang statement
+ * @param[out] xpath Malloced xpath string, use free() after use
+ * @retval     0     OK
+ * @retval     -1    Error
+ */
 int
-clixon_table_create(netsnmp_table_data_set *table, yang_stmt *ys, clicon_handle h)
+clixon_table_create(netsnmp_table_data_set *table0,
+		    yang_stmt              *ys,
+		    clicon_handle           h)
 {
-    cvec                   *nsc = NULL;
-    cxobj                  *xt = NULL;
-    cxobj                  *xerr;
-    char                   *xpath;
-    cxobj                  *xtable;
-    cxobj                  *xe;
-    cxobj                  *xleaf;
-    int                     i;
-    char                   *valstr;
-    netsnmp_table_row      *row, *tmprow;
-    int                    retval = -1;
+    int                 retval = -1;
+    cvec               *nsc = NULL;
+    cxobj              *xt = NULL;
+    cxobj              *xerr;
+    char               *xpath;
+    cxobj              *xtable;
+    cxobj              *xe;
+    cxobj              *xleaf;
+    char               *valstr;
+    netsnmp_table_data *table;
+    netsnmp_table_row  *row;
+    netsnmp_table_row  *tmprow;
+    int                 i;
+    int                 ret;
+    cvec               *keyvec = NULL;
 
+    if (table0 == NULL || (table = table0->table) == NULL){
+	clicon_err(OE_UNIX, EINVAL, "table0 /->table is NULL");
+	goto done;
+    }
     if (xml_nsctx_yang(ys, &nsc) < 0)
         goto done;
 
-    if (yang2xpath(ys, &xpath) < 0)
+    if (yang2xpath(ys, keyvec, &xpath) < 0)
         goto done;
 
     if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
@@ -538,40 +606,77 @@ clixon_table_create(netsnmp_table_data_set *table, yang_stmt *ys, clicon_handle 
         goto done;
     }
 
+#if 1
+    /* Boils down to snmp_varlist_add_variable */
+    if (snmp_varlist_add_variable(&table->indexes_template,
+				  NULL,
+				  0,
+				  ASN_OCTET_STR,
+				  NULL,
+				  0) == NULL){
+	clicon_err(OE_XML, errno, "snmp_varlist_add_variable");
+	goto done;
+    }
+    if ((ret = netsnmp_table_set_add_default_row(table0,  2, ASN_OCTET_STR, 1, NULL, 0)) != SNMPERR_SUCCESS){
+	clicon_err(OE_SNMP, ret, "netsnmp_table_set_add_default_row");
+	goto done;
+    }
+    if ((ret = netsnmp_table_set_add_default_row(table0,  3, ASN_OCTET_STR, 1, NULL, 0)) != SNMPERR_SUCCESS){
+	clicon_err(OE_SNMP, ret, "netsnmp_table_set_add_default_row");
+	goto done;
+    }
+#else
     netsnmp_table_dataset_add_index(table, ASN_OCTET_STR);
-    netsnmp_table_set_multi_add_default_row(table, 2, ASN_OCTET_STR, 1, NULL, 0, 3, ASN_OCTET_STR, 1, NULL, 0, 0);
-
+    netsnmp_table_set_multi_add_default_row(table0, 2, ASN_OCTET_STR, 1, NULL, 0, 3, ASN_OCTET_STR, 1, NULL, 0, 0);
+#endif
     if ((xtable = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
-        for (tmprow = table->table->first_row; tmprow; tmprow = tmprow->next)
-            netsnmp_table_dataset_remove_and_delete_row(table, tmprow);
+        for (tmprow = table->first_row; tmprow; tmprow = tmprow->next)
+            netsnmp_table_dataset_remove_and_delete_row(table0, tmprow);
 
         xe = NULL; /* Loop thru entries in table */
         while ((xe = xml_child_each(xtable, xe, CX_ELMNT)) != NULL) {
-            row = netsnmp_create_table_data_row();
+            if ((row = netsnmp_create_table_data_row()) == NULL){
+		clicon_err(OE_UNIX, errno, "netsnmp_create_table_data_row");
+		goto done;
+	    }
             xleaf = NULL; /* Loop thru leafs in entry */
             i = 1; /* tableindex start at 1 */
             while ((xleaf = xml_child_each(xe, xleaf, CX_ELMNT)) != NULL) {
                 valstr = xml_body(xleaf);
-                if (i == 1) // Assume first netry is key XXX should check YANG
+                if (i == 1){ // Assume first entry is key XXX should check YANG
+#if 1
+		    if ((snmp_varlist_add_variable(&row->indexes, NULL, 0, ASN_OCTET_STR, (const u_char *)valstr, strlen(valstr))) == NULL){
+			clicon_err(OE_XML, errno, "snmp_varlist_add_variable");
+			goto done;
+		    }
+#else
                     netsnmp_table_row_add_index(row, ASN_OCTET_STR, valstr, strlen(valstr));
+#endif
+		}
                 else{
-                    netsnmp_set_row_column(row, i, ASN_OCTET_STR, valstr, strlen(valstr));
-                    netsnmp_mark_row_column_writable(row, i, 1);
+                    if ((ret = netsnmp_set_row_column(row, i, ASN_OCTET_STR, valstr, strlen(valstr))) != SNMPERR_SUCCESS){
+			clicon_err(OE_SNMP, ret, "netsnmp_set_row_column");
+			goto done;
+		    }
+                    if ((ret = netsnmp_mark_row_column_writable(row, i, 1)) != SNMPERR_SUCCESS){
+			clicon_err(OE_SNMP, ret, "netsnmp_set_row_column");
+			goto done;
+		    }
                 }
                 i++;
             }
 
-            netsnmp_table_dataset_add_row(table, row);
+            netsnmp_table_dataset_add_row(table0, row);
         }
     }
 
-    retval = 1;
+    retval = 0;
 
 done:
     if (xt)
         xml_free(xt);
     if (nsc)
         xml_nsctx_free(nsc);
-
     return retval;
 }
+#endif

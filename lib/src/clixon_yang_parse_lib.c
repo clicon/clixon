@@ -473,7 +473,7 @@ ys_do_refine(yang_stmt *yr,
     return retval;
 }
 
-/*! Yang node yg is a leaf in yang node list yn
+/*! Check if Yang node y is a leaf in yang node list yp
  * Could be made to a generic function used elsewhere as well
  * @param[in]  y    Yang leaf
  * @param[in]  yp   Yang list parent 
@@ -502,7 +502,6 @@ ys_iskey(yang_stmt *y,
     }
     return 0;
 }
-
 
 /*! Helper function to yang_expand_grouping
  * @param[in] yn     Yang parent node of uses ststement

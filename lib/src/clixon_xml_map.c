@@ -1959,6 +1959,9 @@ yang_valstr2enum(yang_stmt *ytype,
  * @param[in]  ytype   YANG type noden
  * @param[in]  enumstr Value of enum
  * @param[out] valstr  Corresponding string containing an int (direct pointer, dont free)
+ * @retval     1       OK, result in valstr
+ * @retval     0       Invalid, not found
+ * @retval     -1      Error
  */
 int
 yang_enum2valstr(yang_stmt *ytype,
@@ -1974,14 +1977,17 @@ yang_enum2valstr(yang_stmt *ytype,
 	goto done;
     }
     if ((yenum = yang_find(ytype, Y_ENUM, enumstr)) == NULL)
-	goto done;
+	goto fail;
     /* Should assign value if yval not found */
     if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
 	goto done;
     *valstr = yang_argument_get(yval);
-    retval = 0;
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Get integer value from xml node from yang enumeration 
