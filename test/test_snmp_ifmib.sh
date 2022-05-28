@@ -15,6 +15,7 @@ fi
 snmpd=$(type -p snmpd)
 snmpget="$(type -p snmpget) -On -c public -v2c localhost "
 snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
+snmptable="$(type -p snmptable) -c public -v2c localhost "
 
 cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
@@ -74,14 +75,14 @@ cat <<EOF > $fstate
       <ifPhysAddress>aa:bb:cc:dd:ee:ff</ifPhysAddress>
       <ifAdminStatus>testing</ifAdminStatus>
       <ifOperStatus>up</ifOperStatus>
-      <ifLastChange>0</ifLastChange>    
-      <ifInOctets>123</ifInOctets>      
+      <ifLastChange>0</ifLastChange>
+      <ifInOctets>123</ifInOctets>
       <ifInUcastPkts>124</ifInUcastPkts>
       <ifInNUcastPkts>124</ifInNUcastPkts>
       <ifInDiscards>125</ifInDiscards>
-      <ifInErrors>126</ifInErrors>   
+      <ifInErrors>126</ifInErrors>
       <ifInUnknownProtos>127</ifInUnknownProtos>
-      <ifOutOctets>128</ifOutOctets>     
+      <ifOutOctets>128</ifOutOctets>
       <ifOutUcastPkts>129</ifOutUcastPkts>
       <ifOutNUcastPkts>129</ifOutNUcastPkts>
       <ifOutDiscards>130</ifOutDiscards>
@@ -92,6 +93,26 @@ cat <<EOF > $fstate
     <ifEntry>
       <ifIndex>2</ifIndex>
       <ifDescr>Test 2</ifDescr>
+      <ifType>ethernetCsmacd</ifType>
+      <ifMtu>1400</ifMtu>
+      <ifSpeed>1000</ifSpeed>
+      <ifPhysAddress>11:22:33:44:55:66</ifPhysAddress>
+      <ifAdminStatus>down</ifAdminStatus>
+      <ifOperStatus>down</ifOperStatus>
+      <ifLastChange>0</ifLastChange>
+      <ifInOctets>111</ifInOctets>
+      <ifInUcastPkts>222</ifInUcastPkts>
+      <ifInNUcastPkts>333</ifInNUcastPkts>
+      <ifInDiscards>444</ifInDiscards>
+      <ifInErrors>555</ifInErrors>
+      <ifInUnknownProtos>666</ifInUnknownProtos>
+      <ifOutOctets>777</ifOutOctets>
+      <ifOutUcastPkts>888</ifOutUcastPkts>
+      <ifOutNUcastPkts>999</ifOutNUcastPkts>
+      <ifOutDiscards>101010</ifOutDiscards>
+      <ifOutErrors>111111</ifOutErrors>
+      <ifOutQLen>111</ifOutQLen>
+      <ifSpecific>SNMPv2-SMI::zeroDotZero</ifSpecific>
     </ifEntry>
   </ifTable>
 </IF-MIB>
@@ -163,7 +184,7 @@ testinit
 
 # IF-MIB::interfaces
 MIB=".1.3.6.1.2.1"
-for (( i=1; i<23; i++ )); do  
+for (( i=1; i<23; i++ )); do
     eval OID${i}="${MIB}.2.2.1.$i.1"
 done
 
@@ -236,6 +257,9 @@ expectpart "$($snmpget $OID21)" 0 "$OID21 = Gauge32: 132"
 
 new "Test $OID22 ifSpecific"
 expectpart "$($snmpget $OID22)" 0 "$OID22 = OID: .0.0"
+
+new "Test ifTable"
+expectpart "$($snmptable IF-MIB::ifTable)" 0 "Test 2" "1400" "1000" "11:22:33:44:55:66" "down" "111" "222" "333" "444" "555" "666" "777" "888" "999" "101010" "111111" "111"
 
 new "Cleaning up"
 testexit
