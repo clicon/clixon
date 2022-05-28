@@ -61,7 +61,7 @@ typedef struct clixon_snmp_handle clixon_snmp_handle;
 int   snmp_access_str2int(char *modes_str);
 const char *snmp_msg_int2str(int msg);
 int   snmp_handle_free(clixon_snmp_handle *sh);
-int   type_yang2asn1(yang_stmt *ys, int *asn1_type);
+int   type_yang2asn1(yang_stmt *ys, int *asn1_type, int extended);
 int   type_snmp2xml(yang_stmt                  *ys,
 		    netsnmp_variable_list      *requestvb,
 		    netsnmp_agent_request_info *reqinfo,
