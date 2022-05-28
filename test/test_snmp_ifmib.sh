@@ -77,15 +77,17 @@ cat <<EOF > $fstate
       <ifLastChange>0</ifLastChange>    
       <ifInOctets>123</ifInOctets>      
       <ifInUcastPkts>124</ifInUcastPkts>
+      <ifInNUcastPkts>124</ifInNUcastPkts>
       <ifInDiscards>125</ifInDiscards>
       <ifInErrors>126</ifInErrors>   
       <ifInUnknownProtos>127</ifInUnknownProtos>
       <ifOutOctets>128</ifOutOctets>     
       <ifOutUcastPkts>129</ifOutUcastPkts>
+      <ifOutNUcastPkts>129</ifOutNUcastPkts>
       <ifOutDiscards>130</ifOutDiscards>
       <ifOutErrors>131</ifOutErrors>
       <ifOutQLen>132</ifOutQLen>
-      <!-- ifSpecific>SNMPv2-SMI::zeroDotZero</ifSpecific--> <!-- objid type -->
+      <ifSpecific>SNMPv2-SMI::zeroDotZero</ifSpecific>
     </ifEntry>
     <ifEntry>
       <ifIndex>2</ifIndex>
@@ -164,100 +166,76 @@ MIB=".1.3.6.1.2.1"
 for (( i=1; i<23; i++ )); do  
     eval OID${i}="${MIB}.2.2.1.$i.1"
 done
-if false; then
-OID1="${MIB}.2.2.1.1.1"
-OID2="${MIB}.2.2.1.2.1"
-OID3="${MIB}.2.2.1.3.1"
-OID4="${MIB}.2.2.1.4.1"
-OID5="${MIB}.2.2.1.5.1"
-OID6="${MIB}.2.2.1.6.1"
-OID7="${MIB}.2.2.1.7.1"
-OID8="${MIB}.2.2.1.8.1"
-OID9="${MIB}.2.2.1.9.1"
-OID10="${MIB}.2.2.1.10.1"
-OID11="${MIB}.2.2.1.11.1"
-OID12="${MIB}.2.2.1.12.1"
-OID13="${MIB}.2.2.1.13.1"
-OID14="${MIB}.2.2.1.14.1"
-OID15="${MIB}.2.2.1.15.1"
-OID16="${MIB}.2.2.1.16.1"
-OID17="${MIB}.2.2.1.17.1"
-OID18="${MIB}.2.2.1.18.1"
-OID19="${MIB}.2.2.1.19.1"
-OID20="${MIB}.2.2.1.20.1"
-OID21="${MIB}.2.2.1.21.1"
-OID22="${MIB}.2.2.1.22.1"
-fi
 
 new "$snmpget"
 
 new "Test SNMP get all entries in ifTable"
 
-new "Test $OID2"
+new "Test $OID1 ifIndex"
 expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 1"
 
-new "Test $OID2"
+new "Test $OID2 ifDescr"
 expectpart "$($snmpget $OID2)" 0 "$OID2 = STRING: Test"
 
-new "Test $OID3"
+new "Test $OID3 ifType"
 expectpart "$($snmpget $OID3)" 0 "$OID3 = INTEGER: ethernetCsmacd(6)"
 
-new "Test $OID4"
+new "Test $OID4 ifMtu"
 expectpart "$($snmpget $OID4)" 0 "$OID4 = INTEGER: 1500"
 
-new "Test $OID5"
+new "Test $OID5 ifSpeed"
 expectpart "$($snmpget $OID5)" 0 "$OID5 = Gauge32: 10000000"
 
-new "Test $OID6"
-#expectpart "$($snmpget $OID6)" 0 "$OID6 = STRING: aa.bb:cc:dd:ee:ff"
+new "Test $OID6 ifPhysAddress yang:phys-address"
+expectpart "$($snmpget $OID6)" 0 "$OID6 = STRING: aa.bb:cc:dd:ee:ff"
 
-new "Test $OID7"
+new "Test $OID7 ifAdminStatus"
 expectpart "$($snmpget $OID7)" 0 "$OID7 = INTEGER: testing(3)"
 
-new "Test $OID8"
+new "Test $OID8 ifOperStatus"
 expectpart "$($snmpget $OID8)" 0 "$OID8 = INTEGER: up(1)"
 
-new "Test $OID9"
-#expectpart "$($snmpget $OID9)" 0 "$OID9 = Timeticks: (0) 0:00:00.00"
+new "Test $OID9 ifLastChange"
+expectpart "$($snmpget $OID9)" 0 "$OID9 = Timeticks: (0) 0:00:00.00"
 
-new "Test $OID10"
+new "Test $OID10 ifInOctets"
 expectpart "$($snmpget $OID10)" 0 "$OID10 = Counter32: 123"
 
-new "Test $OID11"
+new "Test $OID11 ifInUcastPkts"
 expectpart "$($snmpget $OID11)" 0 "$OID11 = Counter32: 124"
 
-new "Test $OID12"
-#expectpart "$($snmpget $OID12)" 0 "$OID12 = Counter32: 125"
+new "Test $OID12 ifInNUcastPkts"
+expectpart "$($snmpget $OID12)" 0 "$OID12 = Counter32: 124"
 
-new "Test $OID13"
+new "Test $OID13 ifInDiscards"
 expectpart "$($snmpget $OID13)" 0 "$OID13 = Counter32: 125"
 
-new "Test $OID14"
+new "Test $OID14 ifInErrors"
 expectpart "$($snmpget $OID14)" 0 "$OID14 = Counter32: 126"
 
-new "Test $OID15"
+new "Test $OID15 ifInUnknownProtos"
 expectpart "$($snmpget $OID15)" 0 "$OID15 = Counter32: 127"
 
-new "Test $OID16"
+new "Test $OID16 ifOutOctets"
 expectpart "$($snmpget $OID16)" 0 "$OID16 = Counter32: 128"
 
-new "Test $OID17"
+new "Test $OID17 ifOutUcastPkts"
 expectpart "$($snmpget $OID17)" 0 "$OID17 = Counter32: 129"
 
-new "Test $OID18"
-#expectpart "$($snmpget $OID18)" 0 "$OID18 = Counter32: 130"
+new "Test $OID18 ifOutNUcastPkts"
+expectpart "$($snmpget $OID18)" 0 "$OID18 = Counter32: 129"
 
-new "Test $OID19"
+new "Test $OID19 ifOutDiscards"
 expectpart "$($snmpget $OID19)" 0 "$OID19 = Counter32: 130"
 
-new "Test $OID20"
+new "Test $OID20 ifOutErrors"
 expectpart "$($snmpget $OID20)" 0 "$OID20 = Counter32: 131"
 
-new "Test $OID21"
+new "Test $OID21 ifOutQLen"
 expectpart "$($snmpget $OID21)" 0 "$OID21 = Gauge32: 132"
 
-new "Test $OID22"
-#expectpart "$($snmpget $OID22)" 0 "$OID22 = OID: SNMPv2-SMI::zeroDotZero"
+new "Test $OID22 ifSpecific"
+expectpart "$($snmpget $OID22)" 0 "$OID22 = OID: .0.0"
 
 new "Cleaning up"
 testexit
