@@ -36,8 +36,11 @@
 
 ## SNMP branch
 
-* Clixon SNMP frontend (experimental)
-  * net-snmp and MIB to YANG translation
+* Clixon SNMP frontend
+  * net-snmp and MIB to YANG translation according to RFC 6643
+    * Scalar and table translation
+    * Spec: between YANG and SMI
+    * Data: between XML and ASN.1
   * YANG `clixon-config@2022-03-21.yang` changes:
     * Added options:
       * `CLICON_SNMP_AGENT_SOCK`
@@ -45,6 +48,10 @@
   * New configure options:
     * `--enable-netsnmp`
     * `--with-mib-generated-yang-dir=DIR`
+  * Current limitations:
+    * Only static tables
+    * No advanced table indexes, (only integers)
+    * Memory leaks
 
 ## 5.7.0
 Expected: May 2022

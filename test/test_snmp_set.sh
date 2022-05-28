@@ -160,17 +160,17 @@ expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 NAME=ifTableLastChange
 OID=$OID4
-VALUE=12345678
-TYPE=Gauge32 # TimeTicks
+VALUE=12345 # (12345) 0:02:03.45
+TYPE=TimeTicks
 
 new "Get $NAME"
 expectpart "$($snmpget $OID)" 0 "$OID = No Such Instance currently exists at this OID"
 
 new "Set $NAME $VALUE"
-expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
+expectpart "$($snmpset $OID t $VALUE)" 0 "$OID = $TYPE: ($VALUE) 0:02:03.45"
 
 new "Get $NAME $VALUE"
-expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: ($VALUE) 0:02:03.45"
 
 NAME=ifType
 OID=$OID5
@@ -204,19 +204,6 @@ expectpart "$($snmpset $OID i $VALUE)" 0 "$OID = $TYPE: $VALUE"
 
 new "Get $NAME $VALUE"
 expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
-
-NAME=ifInOctets
-OID=$OID8
-VALUE=123456
-TYPE=Counter32
-
-new "Set $NAME $VALUE"
-# XXXYYY
-#expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
-
-new "Get $NAME $VALUE"
-# XXXYYY
-#expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 NAME=ifPromiscuousMode
 OID=$OID10

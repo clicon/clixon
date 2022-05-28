@@ -62,7 +62,7 @@ cat <<EOF > $fstate
     <netSnmpExampleInteger>0x7fffffff</netSnmpExampleInteger>
     <netSnmpExampleSleeper>-1</netSnmpExampleSleeper>
     <netSnmpExampleString>This is not default</netSnmpExampleString>
-    <ifTableLastChange>12345678</ifTableLastChange>
+    <ifTableLastChange>12345</ifTableLastChange>
     <ifType>modem</ifType>
     <ifSpeed>123123123</ifSpeed>
     <ifAdminStatus>testing</ifAdminStatus>
@@ -189,12 +189,12 @@ new "Get $NAME $VALUE"
 expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 
 new "Test SNMP getnext netSnmpExampleString"
-expectpart "$($snmpgetnext $OID3)" 0 "$OID4 = Gauge32: 12345678"
+expectpart "$($snmpgetnext $OID3)" 0 "$OID4 = Timeticks: (12345) 0:02:03.45"
 
 NAME=ifTableLastChange
 OID=$OID4
-VALUE=12345678
-TYPE=Gauge32 # TimeTicks
+VALUE="(12345) 0:02:03.45"
+TYPE=TimeTicks
 
 new "Get $NAME $VALUE"
 expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
@@ -271,7 +271,7 @@ expectpart "$($snmpgetnext $OID10)" 0 "$OID11 = Gauge32: 1234567890"
 NAME=ifCounterDiscontinuityTime
 OID=$OID11
 VALUE=1234567890
-TYPE=Gauge32 # TimeStamp
+TYPE=Gauge32 # timestamp
 
 new "Get $NAME $VALUE"
 expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
@@ -292,20 +292,22 @@ expectpart "$($snmpgetnext $OID12)" 0 "" # XXX table OID
 
 #----------------- table
 
+# the index/key netSnmpHostName has type binary translates to string
+# which requires a transaltion to numeric OID which is NYI
+if false; then
 new "Test SNMP table netSnmpIETFWGTable"
-#XXXYYY
-#expectpart "$($snmptable $OID13)" 0 "Name1" "Name2"
+expectpart "$($snmptable $OID13)" 0 "Name1" "Name2"
 
 new "Test SNMP getnext netSnmpIETFWGTable"
-#XXXYYY
-#expectpart "$($snmpgetnext $OID13)" 0 ""
+expectpart "$($snmpgetnext $OID13)" 0 ""
 
 new "Test SNMP table netSnmpHostsTable"
-#XXXYYY
-#expectpart "$($snmptable $OID18)" 0 "10.20.30.40" # Should verify all columns
+expectpart "$($snmptable $OID18)" 0 "10.20.30.40" # Should verify all columns
 
 new "Test SNMP getnext netSnmpHostsTable $OID18"
 expectpart "$($snmpgetnext $OID18)" 0 ""
+
+fi
 
 new "Cleaning up"
 testexit

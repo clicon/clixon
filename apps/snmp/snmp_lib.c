@@ -57,6 +57,7 @@
 #include <signal.h>
 #include <assert.h>
 #include <sys/types.h>
+#include <netinet/ether.h> /* ether_aton */
 
 /* net-snmp */
 #include <net-snmp/net-snmp-config.h>
@@ -101,20 +102,23 @@ static const map_str2int snmp_type_map[] = {
     {"enumeration",  ASN_INTEGER},   // 2 special case
     {"uint32",       ASN_GAUGE},     // 0x42 / 66
     {"uint32",       ASN_COUNTER},   // 0x41 / 65
+    {"uint32",       ASN_TIMETICKS}, // 0x43 / 67
     {"uint64",       ASN_COUNTER64}, // 0x46 / 70
     {"boolean",      ASN_INTEGER},   // 2 special case -> enumeration
     {NULL,           -1}
 };
+#define CLIXON_ASN_PHYS_ADDR 0x4242
 
 /* Map between SNMP message / mode str and int form
  */
 static const map_str2int snmp_msg_map[] = {
-    {"MODE_SET_RESERVE1",    MODE_SET_RESERVE1},
-    {"MODE_SET_RESERVE2",    MODE_SET_RESERVE2},
-    {"MODE_SET_ACTION",      MODE_SET_ACTION},
-    {"MODE_SET_COMMIT",      MODE_SET_COMMIT},
-    {"MODE_GET",             MODE_GET},     // 160
-    {"MODE_GETNEXT",         MODE_GETNEXT}, // 161
+    {"MODE_SET_RESERVE1",    MODE_SET_RESERVE1}, // 0
+    {"MODE_SET_RESERVE2",    MODE_SET_RESERVE2}, // 1
+    {"MODE_SET_ACTION",      MODE_SET_ACTION},   // 2
+    {"MODE_SET_COMMIT",      MODE_SET_COMMIT},   // 3
+    {"MODE_SET_FREE",        MODE_SET_FREE},     // 4
+    {"MODE_GET",             MODE_GET},          // 160
+    {"MODE_GETNEXT",         MODE_GETNEXT},      // 161
     {NULL,                   -1}
 };
 
@@ -187,6 +191,16 @@ type_yang2asn1(yang_stmt    *ys,
     else if (strcmp(origtype, "object-identifier-128")==0){
 	at = ASN_OBJECT_ID;
     }
+    else if (strcmp(origtype, "binary")==0){
+	at = ASN_OCTET_STR;
+    }
+    else if (strcmp(origtype, "timeticks")==0){
+	at = ASN_TIMETICKS; /* Clixon extended string type */
+    }
+    else if (strcmp(origtype, "phys-address")==0){
+	at = CLIXON_ASN_PHYS_ADDR; /* Clixon extended string type */
+    }
+
     /* translate to asn.1 */
     else if ((at = clicon_str2int(snmp_type_map, restype)) < 0){
 	clicon_err(OE_YANG, 0, "No snmp translation for YANG %s type:%s",
@@ -248,6 +262,7 @@ type_snmp2xml(yang_stmt                  *ys,
 	goto done; 
     }
     switch (requestvb->type){
+    case ASN_TIMETICKS:   // 67
     case ASN_INTEGER:   // 2
 	if (cvtype == CGV_STRING){ 	/* special case for enum */
 	    char *xmlstr;
@@ -342,8 +357,10 @@ type_xml2snmpstr(char      *xmlstr,
     if (strcmp(restype, "enumeration") == 0){ 	/* special case for enum */
 	if ((ret = yang_enum2valstr(yrestype, xmlstr, &str)) < 0)
 	    goto done;
-	if (ret == 0)
+	if (ret == 0){
+	    clicon_debug(1, "Invalid enum valstr %s", xmlstr);
 	    goto fail;
+	}
     }
     /* special case for bool: although smidump translates TruthValue to boolean
      * and there is an ASN_BOOLEAN constant:
@@ -374,18 +391,20 @@ type_xml2snmpstr(char      *xmlstr,
 
 /*! Given snmp string value (as translated frm XML) parse into snmp value
  *
- * @param[in]  snmpstr  SNMP type string
- * @param[in]  asn1type ASN.1 type id
- * @param[out] snmpval  Malloc:ed snmp type
- * @param[out] snmplen  Length of snmp type
- * @param[out] reason   Error reason if retval is 0
- * @retval     1        OK
- * @retval     0        Invalid
- * @retval     -1       Error
+ * @param[in]     snmpstr  SNMP type string
+ * @param[in,out] asn1type ASN.1 type id
+ * @param[out]    snmpval  Malloc:ed snmp type
+ * @param[out]    snmplen  Length of snmp type
+ * @param[out]    reason   Error reason if retval is 0
+ * @retval        1        OK
+ * @retval        0        Invalid
+ * @retval       -1        Error
+ * @note asn1type can be rewritten from CLIXON_ASN_ to ASN_
+ * XXX See  sprint_realloc_timeticks
  */
 int
 type_snmpstr2val(char       *snmpstr,
-		 int         asn1type,
+		 int        *asn1type,
 		 u_char    **snmpval,
 		 size_t     *snmplen,
 		 char      **reason)
@@ -397,7 +416,7 @@ type_snmpstr2val(char       *snmpstr,
 	clicon_err(OE_UNIX, EINVAL, "snmpval or snmplen is NULL");
 	goto done;
     }
-    switch (asn1type){
+    switch (*asn1type){
     case ASN_INTEGER:   // 2
 	*snmplen = 4;
 	if ((*snmpval = malloc(*snmplen)) == NULL){
@@ -409,6 +428,7 @@ type_snmpstr2val(char       *snmpstr,
 	if (ret == 0)
 	    goto fail;
 	break;
+    case ASN_TIMETICKS:
     case ASN_COUNTER: // 0x41
     case ASN_GAUGE:   // 0x42
 	*snmplen = 4;
@@ -422,7 +442,21 @@ type_snmpstr2val(char       *snmpstr,
 	    goto fail;
 
 	break;
-    case ASN_OBJECT_ID: // 6
+    case ASN_OBJECT_ID:{ // 6
+	oid    oid1[MAX_OID_LEN] = {0,};
+	size_t sz1 = MAX_OID_LEN;
+	if (snmp_parse_oid(snmpstr, oid1, &sz1) == NULL){
+	    clicon_debug(1, "Failed to parse OID %s", snmpstr);
+	    goto fail;
+	}
+	*snmplen = sizeof(oid)*sz1;
+	if ((*snmpval = malloc(*snmplen)) == NULL){
+	    clicon_err(OE_UNIX, errno, "malloc");
+	    goto done;
+	}
+	memcpy(*snmpval, oid1, *snmplen);
+	break;
+    }
     case ASN_OCTET_STR: // 4
 	*snmplen = strlen(snmpstr)+1;
 	if ((*snmpval = (u_char*)strdup((snmpstr))) == NULL){
@@ -448,6 +482,22 @@ type_snmpstr2val(char       *snmpstr,
 	    goto fail;
     }
 	break;
+    case CLIXON_ASN_PHYS_ADDR:{
+	struct ether_addr *eaddr;
+	*snmplen = sizeof(*eaddr);
+	if ((*snmpval = malloc(*snmplen + 1)) == NULL){
+	    clicon_err(OE_UNIX, errno, "malloc");
+	    goto done;
+	}
+	memset(*snmpval, 0, *snmplen + 1);
+	if ((eaddr = ether_aton(snmpstr)) == NULL){
+	    clicon_debug(1, "ether_aton(%s)", snmpstr);
+	    goto fail;
+	}
+	memcpy(*snmpval, eaddr, sizeof(*eaddr));
+	*asn1type = ASN_OCTET_STR;
+	break;
+    }
     default:
 	assert(0);
     }

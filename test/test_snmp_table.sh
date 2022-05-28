@@ -116,11 +116,11 @@ function testexit()
 new "SNMP table tests"
 testinit
 
-new "Test SNMP table for netSnmpIETFWGTable"
-# XXXYYY
-#expectpart "$($snmptable $OID)" 0 "SNMP table: NET-SNMP-EXAMPLES-MIB::netSnmpIETFWGTable" "Russ Mundy" "David Harrington"
-
 if false; then # NOT YET
+    new "Test SNMP table for netSnmpIETFWGTable"
+    expectpart "$($snmptable $OID)" 0 "SNMP table: NET-SNMP-EXAMPLES-MIB::netSnmpIETFWGTable" "Russ Mundy" "David Harrington"
+
+
     new "Set new value for one cell"
     expectpart "$($snmpset $OID_SET s newstring)" 0 "$OID_SET = STRING: \"newstring\""
 

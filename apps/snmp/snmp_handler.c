@@ -69,43 +69,44 @@ snmp_common_handler(netsnmp_mib_handler          *handler,
 {
     int                    retval = -1;
     netsnmp_variable_list *requestvb; /* sub of requests */
-    clixon_snmp_handle    *sh;
     char                   oidstr0[MAX_OID_LEN*2] = {0,};
     char                   oidstr1[MAX_OID_LEN*2] = {0,};
     char                   oidstr2[MAX_OID_LEN*2] = {0,};
 
+    if (requests == NULL || shp == NULL){
+	clicon_err(OE_XML, EINVAL, "requests or shp is null");
+	goto done;
+    }
     requestvb = requests->requestvb;
     if (snprint_objid(oidstr0, sizeof(oidstr0),
 		      requestvb->name, requestvb->name_length) < 0){
 	clicon_err(OE_XML, 0, "snprint_objid buffer too small");
+	goto done;
     }
-    if ((sh = (clixon_snmp_handle*)handler->myvoid) != NULL){
-	if (snprint_objid(oidstr1, sizeof(oidstr1),
-			  nhreg->rootoid, nhreg->rootoid_len) < 0){
-	    clicon_err(OE_XML, 0, "snprint_objid buffer too small");
-	    goto done;
-	}
-	if (snprint_objid(oidstr2, sizeof(oidstr2),
-			  sh->sh_oid, sh->sh_oidlen) < 0){
-	    clicon_err(OE_XML, 0, "snprint_objid buffer too small");
-	    goto done;
-	}
-	if (shp)
-	    *shp = sh;
-	if (strcmp(oidstr0, oidstr2) == 0)
-	    clicon_debug(1, "%s \"%s\" %s inclusive:%d %s", __FUNCTION__,
-			 oidstr2,
-			 snmp_msg_int2str(reqinfo->mode),
-			 requests->inclusive, tablehandler?"table":"");
-	else
-	    clicon_debug(1, "%s \"%s\"/\"%s\" %s inclusive:%d %s", __FUNCTION__,
-			 oidstr2, oidstr0,
-			 snmp_msg_int2str(reqinfo->mode),
-			 requests->inclusive, tablehandler?"table":"");
+    if ((*shp = (clixon_snmp_handle*)handler->myvoid) == NULL){
+	clicon_err(OE_XML, 0, "No myvoid handler");
+	goto done;
     }
-    else{
-	assert(0);
+    if (snprint_objid(oidstr1, sizeof(oidstr1),
+		      nhreg->rootoid, nhreg->rootoid_len) < 0){
+	clicon_err(OE_XML, 0, "snprint_objid buffer too small");
+	goto done;
     }
+    if (snprint_objid(oidstr2, sizeof(oidstr2),
+		      (*shp)->sh_oid, (*shp)->sh_oidlen) < 0){
+	clicon_err(OE_XML, 0, "snprint_objid buffer too small");
+	goto done;
+    }
+    if (strcmp(oidstr0, oidstr2) == 0)
+	clicon_debug(1, "%s \"%s\" %s inclusive:%d %s", __FUNCTION__,
+		     oidstr2,
+		     snmp_msg_int2str(reqinfo->mode),
+		     requests->inclusive, tablehandler?"table":"");
+    else
+	clicon_debug(1, "%s \"%s\"/\"%s\" %s inclusive:%d %s", __FUNCTION__,
+		     oidstr2, oidstr0,
+		     snmp_msg_int2str(reqinfo->mode),
+		     requests->inclusive, tablehandler?"table":"");
 
     retval = 0;
  done:
@@ -140,6 +141,7 @@ clixon_snmp_table_handler(netsnmp_mib_handler          *handler,
     cbuf                   *cb = NULL;
     int                     ret;
 
+    clicon_debug(2, "%s", __FUNCTION__);
     if ((ret = snmp_common_handler(handler, nhreg, reqinfo, requests, &sh, 1)) < 0)
 	goto done;
     switch(reqinfo->mode){
@@ -253,7 +255,7 @@ snmp_scalar_get(clicon_handle               h,
     }
     if (type_yang2asn1(ys, &asn1type) < 0)
 	goto done;
-    if ((ret = type_snmpstr2val(snmpstr, asn1type, &snmpval, &snmplen, &reason)) < 0)
+    if ((ret = type_snmpstr2val(snmpstr, &asn1type, &snmpval, &snmplen, &reason)) < 0)
 	goto done;
     if (ret == 0){
 	clicon_debug(1, "%s %s", __FUNCTION__, reason);
@@ -365,14 +367,10 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
     int                    asn1_type;
     netsnmp_variable_list *requestvb = requests->requestvb;
 
+    clicon_debug(2, "%s", __FUNCTION__);
     if (snmp_common_handler(handler, nhreg, reqinfo, requests, &sh, 0) < 0)
 	goto done;
     ys = sh->sh_ys;
-#if 0 /* If oid match fails */
-    netsnmp_set_request_error(reqinfo, requests,
-			      SNMP_NOSUCHOBJECT);
-    return SNMP_ERR_NOERROR;
-#endif
     /* see net-snmp/agent/snmp_agent.h / net-snmp/library/snmp.h */
     switch (reqinfo->mode) {
     case MODE_GET:          /* 160 */
@@ -387,9 +385,11 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
 	/* Translate from YANG ys leaf type to SNMP asn1.1 type ids (not value), also cvtype */
 	if (type_yang2asn1(ys, &asn1_type) < 0)
 	    goto done;
-        if (requestvb->type != asn1_type)
+        if (requestvb->type != asn1_type){
+	    clicon_debug(1, "%s Expected type:%d, got: %d", __FUNCTION__, requestvb->type, asn1_type);
             netsnmp_set_request_error(reqinfo, requests,
                                       SNMP_ERR_WRONGTYPE);
+	}
         break;
     case MODE_SET_RESERVE2: /* 1 */
         break;

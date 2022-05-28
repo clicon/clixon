@@ -68,7 +68,7 @@ int   type_snmp2xml(yang_stmt                  *ys,
 		    netsnmp_request_info       *requests,
 		    char                      **valstr);
 int   type_xml2snmpstr(char *xmlstr, yang_stmt *ys, char **snmpstr);
-int   type_snmpstr2val(char *snmpstr, int asn1type, u_char **snmpval, size_t *snmplen, char **reason);
+int   type_snmpstr2val(char *snmpstr, int *asn1type, u_char **snmpval, size_t *snmplen, char **reason);
 int   yang2xpath(yang_stmt *ys, cvec *keyvec, char **xpath);
 
 #endif /* _SNMP_LIB_H_ */
