@@ -154,6 +154,7 @@ snmp_handle_free(clixon_snmp_handle *sh)
  *
  * @param[in]    ys         YANG leaf node
  * @param[out]   asn1_type  ASN.1 type id
+ * @param[in]    extended   Special case clixon extended types used in xml<->asn1 data conversions
  * @retval   0   OK
  * @retval   -1  Error
  * @see type_yang2snmp, yang only
@@ -162,7 +163,8 @@ snmp_handle_free(clixon_snmp_handle *sh)
  */
 int
 type_yang2asn1(yang_stmt    *ys,
-	       int          *asn1_type)
+	       int          *asn1_type,
+	       int           extended)
 {
     int        retval = -1;
     yang_stmt *yrestype;  /* resolved type */
@@ -201,10 +203,10 @@ type_yang2asn1(yang_stmt    *ys,
     else if (strcmp(origtype, "timeticks")==0){
 	at = ASN_TIMETICKS; /* Clixon extended string type */
     }
-    else if (strcmp(origtype, "phys-address")==0){
+    else if (extended && strcmp(origtype, "phys-address")==0){
 	at = CLIXON_ASN_PHYS_ADDR; /* Clixon extended string type */
     }
-    else if (strcmp(origtype, "SnmpAdminString")==0){
+    else if (extended && strcmp(origtype, "SnmpAdminString")==0){
 	at = CLIXON_ASN_ADMIN_STRING; /* cf extension display-type 255T? */
     }
 

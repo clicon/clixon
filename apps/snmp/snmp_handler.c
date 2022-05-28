@@ -253,7 +253,7 @@ snmp_scalar_get(clicon_handle               h,
 	netsnmp_set_request_error(reqinfo, requests, SNMP_NOSUCHINSTANCE);
 	goto ok;
     }
-    if (type_yang2asn1(ys, &asn1type) < 0)
+    if (type_yang2asn1(ys, &asn1type, 1) < 0)
 	goto done;
     if ((ret = type_snmpstr2val(snmpstr, &asn1type, &snmpval, &snmplen, &reason)) < 0)
 	goto done;
@@ -383,7 +383,7 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
 	break;
     case MODE_SET_RESERVE1: /* 0 */
 	/* Translate from YANG ys leaf type to SNMP asn1.1 type ids (not value), also cvtype */
-	if (type_yang2asn1(ys, &asn1_type) < 0)
+	if (type_yang2asn1(ys, &asn1_type, 0) < 0)
 	    goto done;
         if (requestvb->type != asn1_type){
 	    clicon_debug(1, "%s Expected type:%d, got: %d", __FUNCTION__, requestvb->type, asn1_type);

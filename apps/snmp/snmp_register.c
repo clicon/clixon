@@ -136,7 +136,7 @@ mib_yang_leaf(clicon_handle h,
     if (yang_extension_value(ys, "max-access", IETF_YANG_SMIV2_NS, NULL, &modes_str) < 0)
 	goto done;
     /* Sanity check of types */
-    if (type_yang2asn1(ys, NULL) < 0)
+    if (type_yang2asn1(ys, NULL, 0) < 0)
 	goto done;
 
     /* Get modes (access) read-only, read-write, not-accessible, accessible-for-notify
@@ -292,7 +292,7 @@ mib_yang_table(clicon_handle h,
 		       yang_argument_get(ylist), keyname);
 	    goto done;
 	}
-	if (type_yang2asn1(yleaf, &asn1type) < 0)
+	if (type_yang2asn1(yleaf, &asn1type, 0) < 0)
 	    //	    goto done;
 	    goto ok; // XXX skip
 	if (snmp_varlist_add_variable(&table_info->indexes,
