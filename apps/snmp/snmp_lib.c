@@ -107,7 +107,9 @@ static const map_str2int snmp_type_map[] = {
     {"boolean",      ASN_INTEGER},   // 2 special case -> enumeration
     {NULL,           -1}
 };
-#define CLIXON_ASN_PHYS_ADDR 0x4242
+
+#define CLIXON_ASN_PHYS_ADDR    0x4242 /* Special case phy-address */
+#define CLIXON_ASN_ADMIN_STRING 0x4243 /* Special case SnmpAdminString */
 
 /* Map between SNMP message / mode str and int form
  */
@@ -155,6 +157,8 @@ snmp_handle_free(clixon_snmp_handle *sh)
  * @retval   0   OK
  * @retval   -1  Error
  * @see type_yang2snmp, yang only
+ * @note there are some special cases where extended clixon asn1-types are used to convey info
+ * to type_snmpstr2val, these types are prefixed with CLIXON_ASN_
  */
 int
 type_yang2asn1(yang_stmt    *ys,
@@ -199,6 +203,9 @@ type_yang2asn1(yang_stmt    *ys,
     }
     else if (strcmp(origtype, "phys-address")==0){
 	at = CLIXON_ASN_PHYS_ADDR; /* Clixon extended string type */
+    }
+    else if (strcmp(origtype, "SnmpAdminString")==0){
+	at = CLIXON_ASN_ADMIN_STRING; /* cf extension display-type 255T? */
     }
 
     /* translate to asn.1 */
@@ -498,6 +505,14 @@ type_snmpstr2val(char       *snmpstr,
 	*asn1type = ASN_OCTET_STR;
 	break;
     }
+    case CLIXON_ASN_ADMIN_STRING: /* OCTET-STRING with decrement length */
+	*snmplen = strlen(snmpstr);
+	if ((*snmpval = (u_char*)strdup((snmpstr))) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+	*asn1type = ASN_OCTET_STR;
+	break;
     default:
 	assert(0);
     }

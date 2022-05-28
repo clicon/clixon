@@ -150,7 +150,7 @@ VALUE="foo bar"
 TYPE=STRING # SnmpAdminString
 
 new "Get $NAME default"
-expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: So long, and thanks for all the fish!."
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: So long, and thanks for all the fish!"
 
 new "Set $NAME $VALUE"
 expectpart "$($snmpset $OID s "$VALUE")" 0 "$OID = $TYPE: $VALUE"
