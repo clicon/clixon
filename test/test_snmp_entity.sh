@@ -15,6 +15,7 @@ fi
 snmpd=$(type -p snmpd)
 snmpget="$(type -p snmpget) -On -c public -v2c localhost "
 snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
+snmptable="$(type -p snmptable) -c public -v2c localhost "
 
 cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
@@ -94,7 +95,7 @@ cat <<EOF > $fstate
             <entPhysicalMfgName>Olof Hagsand Datakonsult AB</entPhysicalMfgName>
             <entPhysicalModelName>Model CC.DD</entPhysicalModelName>
             <entPhysicalAlias>Alias 456</entPhysicalAlias>
-            <entPhysicalAssetID>Asset 465</entPhysicalAssetID>
+            <entPhysicalAssetID>Asset 456</entPhysicalAssetID>
             <entPhysicalIsFRU>false</entPhysicalIsFRU>
 <!--            <entPhysicalMfgDate></entPhysicalMfgDate> -->
 <!--            <entPhysicalUris>1</entPhysicalUris> -->
@@ -156,7 +157,7 @@ OID_PARENT_1="${ENTITY_OID}.1.6.1"
 OID_PARENT_2="${ENTITY_OID}.1.6.2"
 
 OID_NAME_1="${ENTITY_OID}.1.7.1"
-OID_NAME_2="${ENTITY_OID}.1.7.1"
+OID_NAME_2="${ENTITY_OID}.1.7.2"
 
 OID_HWREV_1="${ENTITY_OID}.1.8.1"
 OID_HWREV_2="${ENTITY_OID}.1.8.2"
@@ -198,17 +199,17 @@ new "Get index, $OID_INDEX_2"
 expectpart "$($snmpget $OID_INDEX_2)" 0 "$OID_INDEX_2 = INTEGER: 2"
 
 # XXX: Why do we get a hex string?
-# new "Get next $OID_INDEX_2"
-# expectpart "$($snmpgetnext $OID_INDEX_2)" 0 "$OID_DESCR_1 = STRING: Entity 1"
+new "Get next $OID_INDEX_2"
+expectpart "$($snmpgetnext $OID_INDEX_2)" 0 "$OID_DESCR_1 = STRING: \"Entity 1\""
 
-# new "Get index, $OID_DESCR_1"
-# expectpart "$($snmpget $OID_DESCR_1)" 0 "$OID_DESCR_1 = STRING: Entity 1."
+new "Get index, $OID_DESCR_1"
+expectpart "$($snmpget $OID_DESCR_1)" 0 "$OID_DESCR_1 = STRING: \"Entity 1\""
 
-# new "Get next $OID_DESCR_1"
-# expectpart "$($snmpgetnext $OID_DESCR_1)" 0 "$OID_DESCR_2 = STRING: Entity 2"
+new "Get next $OID_DESCR_1"
+expectpart "$($snmpgetnext $OID_DESCR_1)" 0 "$OID_DESCR_2 = STRING: \"Entity 2\""
 
-# new "Get index, $OID_DESCR_2"
-# expectpart "$($snmpget $OID_DESCR_2)" 0 "$OID_DESCR_2 = STRING: Entity 2."
+new "Get index, $OID_DESCR_2"
+expectpart "$($snmpget $OID_DESCR_2)" 0 "$OID_DESCR_2 = STRING: \"Entity 2\""
 
 new "Get next $OID_DESCR_2"
 expectpart "$($snmpgetnext $OID_DESCR_2)" 0 "$OID_CONTAINER_1 = INTEGER: 9"
@@ -234,113 +235,113 @@ expectpart "$($snmpgetnext $OID_PARENT_1)" 0 "$OID_PARENT_2 = INTEGER: 999"
 new "Get container, $OID_PARENT_2"
 expectpart "$($snmpget $OID_PARENT_2)" 0 "$OID_PARENT_2 = INTEGER: 999"
 
-# new "Get next container, $OID_PARENT_2"
-# expectpart "$($snmpgetnext $OID_PARENT_2)" 0 "$OID_NAME_1 = STRING: ABCD1234"
+new "Get next container, $OID_PARENT_2"
+expectpart "$($snmpgetnext $OID_PARENT_2)" 0 "$OID_NAME_1 = STRING: \"ABCD1234\""
 
-# new "Get name, $OID_NAME_1"
-# expectpart "$($snmpgetnext $OID_NAME_1)" 0 "$OID_NAME_1 = STRING: ABCD1234"
+new "Get name, $OID_NAME_1"
+expectpart "$($snmpget $OID_NAME_1)" 0 "$OID_NAME_1 = STRING: \"ABCD1234\""
 
-# new "Get next container, $OID_NAME_1"
-# expectpart "$($snmpgetnext $OID_NAME_1)" 0 "$OID_NAME_2 = STRING: XXZZ11994"
+new "Get next container, $OID_NAME_1"
+expectpart "$($snmpgetnext $OID_NAME_1)" 0 "$OID_NAME_2 = STRING: \"XXZZ11994\""
 
-# new "Get name, $OID_NAME_2"
-# expectpart "$($snmpget $OID_NAME_2)" 0 "$OID_NAME_2 = STRING: XXZZ11994"
+new "Get name, $OID_NAME_2"
+expectpart "$($snmpget $OID_NAME_2)" 0 "$OID_NAME_2 = STRING: \"XXZZ11994\""
 
-# new "Get next, $OID_NAME_2"
-# expectpart "$($snmpgetnext $OID_NAME_2)" 0 "$OID_NAME_2 = STRING: REV 099"
+new "Get next, $OID_NAME_2"
+expectpart "$($snmpgetnext $OID_NAME_2)" 0 "$OID_HWREV_1 = STRING: \"REV 099\""
 
-# new "Get rev, $OID_HWREV_1"
-# expectpart "$($snmpget $OID_HWREV_1)" 0 "$OID_HWREV_1 = STRING: REV 099"
+new "Get rev, $OID_HWREV_1"
+expectpart "$($snmpget $OID_HWREV_1)" 0 "$OID_HWREV_1 = STRING: \"REV 099\""
 
-# new "Get next rev, $OID_HWREV_1"
-# expectpart "$($snmpgetnext $OID_HWREV_1)" 0 "$OID_HWREV_2 = STRING: REV 100"
+new "Get next hw rev, $OID_HWREV_1"
+expectpart "$($snmpgetnext $OID_HWREV_1)" 0 "$OID_HWREV_2 = STRING: \"REV 100\""
 
-# new "Get rev, $OID_HWREV_2"
-# expectpart "$($snmpget $OID_HWREV_2)" 0 "$OID_HWREV_2 = STRING: REV 100"
+new "Get hw rev, $OID_HWREV_2"
+expectpart "$($snmpget $OID_HWREV_2)" 0 "$OID_HWREV_2 = STRING: \"REV 100\""
 
-# new "Get next rev, $OID_HWREV_2"
-# expectpart "$($snmpgetnext $OID_HWREV_2)" 0 "$OID_FWREV_1 = STRING: REV 123"
+new "Get next hw rev, $OID_HWREV_2"
+expectpart "$($snmpgetnext $OID_HWREV_2)" 0 "$OID_FWREV_1 = STRING: \"REV 123\""
 
-# new "Get rev, $OID_FWREV_1"
-# expectpart "$($snmpget $OID_FWREV_1)" 0 "$OID_FWREV_1 = STRING: REV 123"
+new "Get fw rev, $OID_FWREV_1"
+expectpart "$($snmpget $OID_FWREV_1)" 0 "$OID_FWREV_1 = STRING: \"REV 123\""
 
-# new "Get next rev, $OID_FWREV_1"
-# expectpart "$($snmpgetnext $OID_FWREV_1)" 0 "$OID_FWREV_2 = STRING: REV 234"
+new "Get next fw rev, $OID_FWREV_1"
+expectpart "$($snmpgetnext $OID_FWREV_1)" 0 "$OID_FWREV_2 = STRING: \"REV 234\""
 
-# new "Get rev, $OID_FWREV_2"
-# expectpart "$($snmpget $OID_FWREV_2)" 0 "$OID_FWREV_2 = STRING: REV 234"
+new "Get fw rev, $OID_FWREV_2"
+expectpart "$($snmpget $OID_FWREV_2)" 0 "$OID_FWREV_2 = STRING: \"REV 234\""
 
-# new "Get next rev, $OID_FWREV_2"
-# expectpart "$($snmpgetnext $OID_FWREV_2)" 0 "$OID_SWREV_1 = STRING: Clixon Version XXX.YYY year ZZZ"
+new "Get next fw rev, $OID_FWREV_2"
+expectpart "$($snmpgetnext $OID_FWREV_2)" 0 "$OID_SWREV_1 = STRING: \"Clixon Version XXX.YYY year ZZZ\""
 
-# new "Get rev, $OID_SWREV_1"
-# expectpart "$($snmpget $OID_SWREV_1)" 0 "$OID_SWREV_1 = STRING: Clixon Version XXX.YYY year ZZZ"
+new "Get sw rev, $OID_SWREV_1"
+expectpart "$($snmpget $OID_SWREV_1)" 0 "$OID_SWREV_1 = STRING: \"Clixon Version XXX.YYY year ZZZ\""
 
-# new "Get next rev, $OID_SWREV_1"
-# expectpart "$($snmpgetnext $OID_SWREV_1)" 0 "$OID_SWREV_2 = STRING: Clixon Version XXX.YYY year ZZZ"
+new "Get next sw rev, $OID_SWREV_1"
+expectpart "$($snmpgetnext $OID_SWREV_1)" 0 "$OID_SWREV_2 = STRING: \"Clixon Version XXX.YYY year ZZZ\""
 
-# new "Get rev, $OID_SWREV_2"
-# expectpart "$($snmpget $OID_SWREV_2)" 0 "$OID_SWREV_2 = STRING: Clixon Version XXX.YYY year ZZZ"
+new "Get sw rev, $OID_SWREV_2"
+expectpart "$($snmpget $OID_SWREV_2)" 0 "$OID_SWREV_2 = STRING: \"Clixon Version XXX.YYY year ZZZ\""
 
-# new "Get next rev, $OID_SWREV_2"
-# expectpart "$($snmpgetnext $OID_SWREV_2)" 0 "$OID_SERIAL_2 = STRING: 1234-1234-ABCD-ABCD"
+new "Get next sw rev, $OID_SWREV_2"
+expectpart "$($snmpgetnext $OID_SWREV_2)" 0 "$OID_SERIAL_1 = STRING: \"1234-1234-ABCD-ABCD\""
 
-# new "Get serial, $OID_SERIAL_1"
-# expectpart "$($snmpget $OID_SERIAL_1)" 0 "$OID_SERIAL_1 = STRING: 1234-1234-ABCD-ABCD"
+new "Get serial, $OID_SERIAL_1"
+expectpart "$($snmpget $OID_SERIAL_1)" 0 "$OID_SERIAL_1 = STRING: \"1234-1234-ABCD-ABCD\""
 
-# new "Get next serial, $OID_SERIAL_1"
-# expectpart "$($snmpgetnext $OID_SERIAL_1)" 0 "$OID_SERIAL_2 = STRING: 2345-2345-ABCD-ABCD"
+new "Get next serial, $OID_SERIAL_1"
+expectpart "$($snmpgetnext $OID_SERIAL_1)" 0 "$OID_SERIAL_2 = STRING: \"2345-2345-ABCD-ABCD\""
 
-# new "Get serial, $OID_SERIAL_2"
-# expectpart "$($snmpget $OID_SERIAL_2)" 0 "$OID_SERIAL_2 = STRING: 2345-2345-ABCD-ABCD"
+new "Get serial, $OID_SERIAL_2"
+expectpart "$($snmpget $OID_SERIAL_2)" 0 "$OID_SERIAL_2 = STRING: \"2345-2345-ABCD-ABCD\""
 
-# new "Get next serial, $OID_SERIAL_2"
-# expectpart "$($snmpgetnext $OID_SERIAL_2)" 0 "$OID_MFGNAME_1 = STRING: Olof Hagsand Datakonsult AB"
+new "Get next serial, $OID_SERIAL_2"
+expectpart "$($snmpgetnext $OID_SERIAL_2)" 0 "$OID_MFGNAME_1 = STRING: \"Olof Hagsand Datakonsult AB\""
 
-# new "Get manufacturer, $OID_MFGNAME_1"
-# expectpart "$($snmpget $OID_MFGNAME_1)" 0 "$OID_MFGNAME_1 = STRING: Olof Hagsand Datakonsult AB"
+new "Get manufacturer, $OID_MFGNAME_1"
+expectpart "$($snmpget $OID_MFGNAME_1)" 0 "$OID_MFGNAME_1 = STRING: \"Olof Hagsand Datakonsult AB\""
 
-# new "Get next manufacturer, $OID_MFGNAME_1"
-# expectpart "$($snmpgetnext $OID_MFGNAME_1)" 0 "$OID_MFGNAME_2 = STRING: Olof Hagsand Datakonsult AB"
+new "Get next manufacturer, $OID_MFGNAME_1"
+expectpart "$($snmpgetnext $OID_MFGNAME_1)" 0 "$OID_MFGNAME_2 = STRING: \"Olof Hagsand Datakonsult AB\""
 
-# new "Get manufacturer, $OID_MFGNAME_2"
-# expectpart "$($snmpget $OID_MFGNAME_2)" 0 "$OID_MFGNAME_2 = STRING: Olof Hagsand Datakonsult AB"
+new "Get manufacturer, $OID_MFGNAME_2"
+expectpart "$($snmpget $OID_MFGNAME_2)" 0 "$OID_MFGNAME_2 = STRING: \"Olof Hagsand Datakonsult AB\""
 
-# new "Get next manufacturer, $OID_MFGNAME_2"
-# expectpart "$($snmpgetnext $OID_MFGNAME_2)" 0 "$OID_MODEL_1 = STRING: Model AA.BB"
+new "Get next manufacturer, $OID_MFGNAME_2"
+expectpart "$($snmpgetnext $OID_MFGNAME_2)" 0 "$OID_MODEL_1 = STRING: \"Model AA.BB\""
 
-# new "Get model, $OID_MODEL_1"
-# expectpart "$($snmpget $OID_MODEL_1)" 0 "$OID_MODEL_1 = STRING: Model AA.BB"
+new "Get model, $OID_MODEL_1"
+expectpart "$($snmpget $OID_MODEL_1)" 0 "$OID_MODEL_1 = STRING: \"Model AA.BB\""
 
-# new "Get next model, $OID_MODEL_1"
-# expectpart "$($snmpgetnext $OID_MODEL_1)" 0 "$OID_MODEL_2 = STRING: Model CC.DD"
+new "Get next model, $OID_MODEL_1"
+expectpart "$($snmpgetnext $OID_MODEL_1)" 0 "$OID_MODEL_2 = STRING: \"Model CC.DD\""
 
-# new "Get model, $OID_MODEL_2"
-# expectpart "$($snmpget $OID_MODEL_2)" 0 "$OID_MODEL_2 = STRING: Model CC.DD"
+new "Get model, $OID_MODEL_2"
+expectpart "$($snmpget $OID_MODEL_2)" 0 "$OID_MODEL_2 = STRING: \"Model CC.DD\""
 
-# new "Get next model, $OID_MODEL_2"
-# expectpart "$($snmpgetnext $OID_MODEL_2)" 0 "$OID_ALIAS_1 = STRING: Alias 123"
+new "Get next model, $OID_MODEL_2"
+expectpart "$($snmpgetnext $OID_MODEL_2)" 0 "$OID_ALIAS_1 = STRING: \"Alias 123\""
 
-# new "Get alias, $OID_ALIAS_1"
-# expectpart "$($snmpget $OID_ALIAS_1)" 0 "$OID_ALIAS_1 = STRING: Alias 123"
+new "Get alias, $OID_ALIAS_1"
+expectpart "$($snmpget $OID_ALIAS_1)" 0 "$OID_ALIAS_1 = STRING: \"Alias 123\""
 
-# new "Get next alias, $OID_ALIAS_1"
-# expectpart "$($snmpgetnext $OID_ALIAS_1)" 0 "$OID_ALIAS_2 = STRING: Alias 456"
+new "Get next alias, $OID_ALIAS_1"
+expectpart "$($snmpgetnext $OID_ALIAS_1)" 0 "$OID_ALIAS_2 = STRING: \"Alias 456\""
 
-# new "Get alias, $OID_ALIAS_2"
-# expectpart "$($snmpgetnext $OID_ALIAS_2)" 0 "$OID_ALIAS_2 = STRING: Alias 456"
+new "Get alias, $OID_ALIAS_2"
+expectpart "$($snmpgetnext $OID_ALIAS_2)" 0 "$OID_ASSET_1 = STRING: \"Asset 123\""
 
-# new "Get next alias, $OID_ALIAS_2"
-# expectpart "$($snmpgetnext $OID_ALIAS_2)" 0 "$OID_ASSET_1 = STRING: Asset 123"
+new "Get next alias, $OID_ALIAS_2"
+expectpart "$($snmpgetnext $OID_ALIAS_2)" 0 "$OID_ASSET_1 = STRING: \"Asset 123\""
 
-# new "Get asset, $OID_ASSET_1"
-# expectpart "$($snmpget $OID_ASSET_1)" 0 "$OID_ASSET_1 = STRING: ASSET 123"
+new "Get asset, $OID_ASSET_1"
+expectpart "$($snmpget $OID_ASSET_1)" 0 "$OID_ASSET_1 = STRING: \"ASSET 123\""
 
-# new "Get next asset, $OID_ASSET_1"
-# expectpart "$($snmpgetnext $OID_ASSET_1)" 0 "$OID_ASSET_2 = STRING: Asset 456"
+new "Get next asset, $OID_ASSET_1"
+expectpart "$($snmpgetnext $OID_ASSET_1)" 0 "$OID_ASSET_2 = STRING: \"Asset 456\""
 
-# new "Get asset, $OID_ASSET_2"
-# expectpart "$($snmpget $OID_ASSET_2)" 0 "$OID_ASSET_2 = STRING: ASSET 456"
+new "Get asset, $OID_ASSET_2"
+expectpart "$($snmpget $OID_ASSET_2)" 0 "$OID_ASSET_2 = STRING: \"ASSET 456\""
 
 new "Get next asset, $OID_ASSET_2"
 expectpart "$($snmpgetnext $OID_ASSET_2)" 0 "$OID_FRU_1 = INTEGER: 1"
@@ -354,8 +355,11 @@ expectpart "$($snmpgetnext $OID_FRU_1)" 0 "$OID_FRU_2 = INTEGER: 0"
 new "Get fru, $OID_FRU_2"
 expectpart "$($snmpget $OID_FRU_2)" 0 "$OID_FRU_12= INTEGER: 0"
 
+new "Get ENTITY-MIB::entPhysicalTable"
+expectpart "$($snmptable ENTITY-MIB::entPhysicalTable)" 0 "Entity 2" "REV 234" "Model CC.DD" "999"
+
 new "Cleaning up"
-testexit
+# testexit
 
 new "endtest"
 endtest
