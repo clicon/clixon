@@ -64,21 +64,21 @@ cat <<EOF > $fstate
         <sysContact>clixon@clicon.com</sysContact>
         <sysLocation>Clixon HQ</sysLocation>
         <sysDescr>System description</sysDescr>
-<!--        <sysUpTime>0</sysUpTime> -->
+        <sysUpTime>11223344</sysUpTime>
         <sysServices>72</sysServices>
     </system>
     <sysORTable>
         <sysOREntry>
             <sysORIndex>1</sysORIndex>
-<!--            <sysORID>IP-MIB::ip</sysORID> -->
+            <sysORID>IP-MIB::ip</sysORID>
             <sysORDescr>Entry 1 description</sysORDescr>
-<!--            <sysORUpTime>0</sysORUpTime> -->
+            <sysORUpTime>11223344</sysORUpTime>
         </sysOREntry>
         <sysOREntry>
             <sysORIndex>2</sysORIndex>
-<!--            <sysORID>IF-MIB:if</sysORID> -->
+            <sysORID>IF-MIB:ifTable</sysORID>
             <sysORDescr>Entry 2 description</sysORDescr>
-<!--            <sysORUpTime>0</sysORUpTime> -->
+            <sysORUpTime>1122111111</sysORUpTime>
         </sysOREntry>
     </sysORTable>
 </SNMPv2-MIB>
@@ -125,6 +125,7 @@ testinit
 
 OID_SYS=".1.3.6.1.2.1.1"
 OID_DESCR=".1.3.6.1.2.1.1.1"
+OID_UPTIME=".1.3.6.1.2.1.1.3"
 OID_CONTACT=".1.3.6.1.2.1.1.4"
 OID_LOCATION=".1.3.6.1.2.1.1.6"
 OID_SYSNAME=".1.3.6.1.2.1.1.5"
@@ -140,7 +141,7 @@ new "Get description, $OID_DESCR"
 expectpart "$($snmpget $OID_DESCR)" 0 "$OID_DESCR = STRING: System description"
 
 new "Get next $OID_DESCR"
-expectpart "$($snmpgetnext $OID_DESCR)" 0 "$OID_CONTACT = STRING: clixon@clicon.com"
+expectpart "$($snmpgetnext $OID_DESCR)" 0 "$OID_UPTIME = Timeticks: (11223344) 1 day, 7:10:33.44"
 
 new "Get contact, $OID_CONTACT"
 expectpart "$($snmpget $OID_CONTACT)" 0 "$OID_CONTACT = STRING: clixon@clicon.com"
@@ -182,8 +183,8 @@ new "Get sysORTable, entry 2 $OID_ORTABLE2"
 expectpart "$($snmpget $OID_ORTABLE2)" 0 "STRING: Entry 2 description"
 
 new "Get table sysORTable $OID_ORTABLE"
-expectpart "$($snmptable $OID_ORTABLE)" 0 ".*Entry 1 description.*"
-expectpart "$($snmptable $OID_ORTABLE)" 0 ".*Entry 2 description.*"
+expectpart "$($snmptable $OID_ORTABLE)" 0 ".*Entry 1 description.*" "IP-MIB::ip" "1:7:10:33.44"
+expectpart "$($snmptable $OID_ORTABLE)" 0 ".*Entry 2 description.*" "IF-MIB::ifTable" "129:20:58:31.11"
 
 new "Cleaning up"
 testexit
