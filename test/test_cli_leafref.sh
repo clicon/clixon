@@ -165,10 +165,14 @@ delete("Delete a configuration item") {
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 show("Show a particular state of the system"){
+
     configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
-      xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", false, false);
+        cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", true, false, "set ");
 }
 }
+validate("Validate changes"), cli_validate();
+commit("Commit the changes"), cli_commit();
+discard("Discard edits (rollback 0)"), discard_changes();
 EOF
 
 cat <<EOF > $dir/startup_db
