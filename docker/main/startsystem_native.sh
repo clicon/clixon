@@ -129,6 +129,8 @@ openssl req -x509 -config ./ca.cnf -nodes -newkey rsa:4096 -keyout /etc/ssl/priv
 # use Docker logs to see what's happening.
 snmpd -Lo -p /var/run/snmpd.pid -I -ifXTable -I -ifTable -I -system_mib -I -sysORTable
 
+sleep 3
+
 # Alt: let backend be in foreground, but test scripts may
 # want to restart backend
 /bin/sleep 100000000
