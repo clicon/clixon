@@ -67,9 +67,10 @@ int   type_snmp2xml(yang_stmt                  *ys,
 		    netsnmp_agent_request_info *reqinfo,
 		    netsnmp_request_info       *requests,
 		    char                      **valstr);
-int   type_xml2snmpstr(char *xmlstr, yang_stmt *ys, char **snmpstr);
-int   type_snmpstr2val(char *snmpstr, int *asn1type, u_char **snmpval, size_t *snmplen, char **reason);
+int   type_xml2snmp_pre(char *xmlstr, yang_stmt *ys, char **snmpstr);
+int   type_xml2snmp(char *snmpstr, int *asn1type, u_char **snmpval, size_t *snmplen, char **reason);
 int   yang2xpath(yang_stmt *ys, cvec *keyvec, char **xpath);
+int   snmp_body2oid(cxobj  *xi, cg_var *cv);
 
 #endif /* _SNMP_LIB_H_ */
 
