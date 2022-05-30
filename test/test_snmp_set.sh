@@ -219,13 +219,15 @@ expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
 NAME=ifCounterDiscontinuityTime
 OID=$OID11
 VALUE=1234567890
-TYPE=Gauge32 # TimeStamp
+#TYPE=Gauge32 # TimeStamp
+TYPE=Timeticks
 
 new "Set $NAME $VALUE"
-expectpart "$($snmpset $OID u $VALUE)" 0 "$OID = $TYPE: $VALUE"
+echo "$snmpset $OID t $VALUE"
+expectpart "$($snmpset $OID t $VALUE)" 0 "$OID = $TYPE: ($VALUE) 142 days, 21:21:18.90"
 
 new "Get $NAME $VALUE"
-expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: $VALUE"
+expectpart "$($snmpget $OID)" 0 "$OID = $TYPE: ($VALUE) 142 days, 21:21:18.90"
 
 NAME=ifStackStatus
 OID=$OID12

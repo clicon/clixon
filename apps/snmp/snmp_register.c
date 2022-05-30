@@ -94,9 +94,9 @@
  * @retval    -1    Error
  */
 static int
-mib_yang_leaf(clicon_handle h,
-	      yang_stmt    *ys,
-	      cvec         *cvk)
+mibyang_leaf_register(clicon_handle h,
+		      yang_stmt    *ys,
+		      cvec         *cvk)
 {
     int                           retval = -1;
     netsnmp_handler_registration *nhreg = NULL;
@@ -135,7 +135,7 @@ mib_yang_leaf(clicon_handle h,
     }
     if (yang_extension_value(ys, "max-access", IETF_YANG_SMIV2_NS, NULL, &modes_str) < 0)
 	goto done;
-    /* Sanity check of types */
+    /* Only for sanity check of types initially to fail early */
     if (type_yang2asn1(ys, NULL, 0) < 0)
 	goto done;
 
@@ -200,7 +200,9 @@ mib_yang_leaf(clicon_handle h,
     return retval;
 }
 
-/*! Parse smiv2 extensions for YANG container/list 
+/*! Register table entry handler itself (not column/row leafs) 
+ *
+ * Parse smiv2 extensions for YANG container/list 
  *
   * Typical table:
   *   container x {
@@ -216,9 +218,9 @@ mib_yang_leaf(clicon_handle h,
  * @retval    -1    Error
  */
 static int
-mib_yang_table(clicon_handle h,
-	       yang_stmt    *ys,
-	       yang_stmt    *ylist)
+mibyang_table_register(clicon_handle h,
+		       yang_stmt    *ys,
+		       yang_stmt    *ylist)
 {
     int                              retval = -1;
     netsnmp_handler_registration    *nhreg;
@@ -325,7 +327,7 @@ mib_yang_table(clicon_handle h,
     return retval;
 }
 
-/*! Register table sub-oid:s
+/*! Register table sub-oid:s of existing entries in clixon
  * This assumes a table contains a set of keys and a list of leafs only
  * The function makes a query to the datastore and registers all table entries that
  * currently exists. This means it registers for a static table. If new rows or columns
@@ -338,9 +340,9 @@ mib_yang_table(clicon_handle h,
  * @retval    -1     Error
  */
 static int
-mib_traverse_table(clicon_handle h,
-		   yang_stmt    *ys,
-    		   yang_stmt    *ylist)
+mibyang_table_traverse_static(clicon_handle h,
+			      yang_stmt    *ys,
+			      yang_stmt    *ylist)
 {
     int        retval = -1;
     cvec      *nsc = NULL;
@@ -358,6 +360,7 @@ mib_traverse_table(clicon_handle h,
     int        i;
     cxobj     *xi;
     
+    clicon_debug(1, "%s %s", __FUNCTION__, yang_argument_get(ys));
     if (xml_nsctx_yang(ys, &nsc) < 0)
         goto done;
     if (yang2xpath(ys, NULL, &xpath) < 0)
@@ -389,7 +392,8 @@ mib_traverse_table(clicon_handle h,
 		cv = cvec_i(cvk, i); 
 		if ((xi = xml_find_type(xrow, NULL, cv_string_get(cv0), CX_ELMNT)) == NULL)
 		    break;
-		cv_string_set(cv, xml_body(xi));
+		if (snmp_body2oid(xi, cv) < 0)
+		    goto done;
 	    }
 	    if (i<cvec_len(cvk0))
 		continue; /* skip row, not all indexes */
@@ -397,7 +401,7 @@ mib_traverse_table(clicon_handle h,
 	    while ((xcol = xml_child_each(xrow, xcol, CX_ELMNT)) != NULL) {
 		if ((y = xml_spec(xcol)) == NULL)
 		    continue;
-		if (mib_yang_leaf(h, y, cvk) < 0) 
+		if (mibyang_leaf_register(h, y, cvk) < 0) 
 		    goto done;
 	    }
 	}
@@ -435,17 +439,18 @@ mib_traverse_table(clicon_handle h,
  * @retval    -1     Error, aborted at first error encounter
  */
 static int
-mib_traverse(clicon_handle h,
-	     yang_stmt    *yn)
+mibyang_traverse(clicon_handle h,
+		 yang_stmt    *yn)
 {
     int        retval = -1;
     yang_stmt *ys = NULL;
     yang_stmt *yp;
     int        ret;
 	
+    clicon_debug(1, "%s %s", __FUNCTION__, yang_argument_get(yn));
     switch(yang_keyword_get(yn)){
     case Y_LEAF:
-	if (mib_yang_leaf(h, yn, NULL) < 0)
+	if (mibyang_leaf_register(h, yn, NULL) < 0)
 	    goto done;
 	break;
     case Y_CONTAINER: /* See list case */
@@ -453,10 +458,11 @@ mib_traverse(clicon_handle h,
     case Y_LIST: /* If parent is container -> identify as table */
 	yp = yang_parent_get(yn);
 	if (yang_keyword_get(yp) == Y_CONTAINER){
-	    /* Specialize table traversal */
-	    if (mib_yang_table(h, yp, yn) < 0)
+	    /* Register table entry handler itself (not column/row leafs) */
+	    if (mibyang_table_register(h, yp, yn) < 0)
 		goto done;
-	    if (mib_traverse_table(h, yp, yn) < 0)
+	    /* Register table sub-oid:s of existing entries in clixon */
+	    if (mibyang_table_traverse_static(h, yp, yn) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -469,7 +475,7 @@ mib_traverse(clicon_handle h,
     while ((ys = yn_each(yn, ys)) != NULL) {
 	if (!yang_schemanode(ys))
 	    continue;
-	if ((ret = mib_traverse(h, ys)) < 0)
+	if ((ret = mibyang_traverse(h, ys)) < 0)
 	    goto done;
 	if (ret > 0){
 	    retval = ret;
@@ -497,11 +503,13 @@ clixon_snmp_traverse_mibyangs(clicon_handle h)
     yang_stmt *yspec;
     yang_stmt *ymod;
 
-    /* XXX Hardcoded, replace this with generic MIB */
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
     }
+    /* Loop over clixon configuration file to find all CLICON_SNMP_MIB, and
+     * then loop over all those MIBs to register OIDs with netsnmp
+     */
     x = NULL;
     while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
 	if (strcmp(xml_name(x), "CLICON_SNMP_MIB") != 0)
@@ -520,7 +528,7 @@ clixon_snmp_traverse_mibyangs(clicon_handle h)
 	    goto done;
 	}
 	/* Recursively traverse the mib-yang to find extensions */
-	if (mib_traverse(h, ymod) < 0)
+	if (mibyang_traverse(h, ymod) < 0)
 	    goto done;
     }
     retval = 0;

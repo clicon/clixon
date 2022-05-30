@@ -201,7 +201,13 @@ type_yang2asn1(yang_stmt    *ys,
 	at = ASN_OCTET_STR;
     }
     else if (strcmp(origtype, "timeticks")==0){
-	at = ASN_TIMETICKS; /* Clixon extended string type */
+	at = ASN_TIMETICKS;
+    }
+    else if (strcmp(origtype, "timestamp")==0){
+	at = ASN_TIMETICKS;
+    }
+    else if (strcmp(origtype, "InetAddress")==0){
+	at = ASN_IPADDRESS;
     }
     else if (extended && strcmp(origtype, "phys-address")==0){
 	at = CLIXON_ASN_PHYS_ADDR; /* Clixon extended string type */
@@ -335,17 +341,21 @@ type_snmp2xml(yang_stmt                  *ys,
 }
 
 /*! Given xml value and YANG,m return corresponding malloced snmp string
- * There is a special case for enumeration which is integer in snmp, string in YANG
- * @param[in]  xmlstr
- * @retval     1     OK
- * @retval     0     Invalid type
- * @retval     -1    Error
+ *
+ * For special cases to prepare for proper xml2snmp translation. This includes translating
+ * from string values to numeric values for enumeration and boolean.
+ * @param[in]   xmlstr0  XML string pre
+ * @param[in]   ys       Yang node
+ * @param[out]  xmlstr1  XML string ready for translation
+ * @retval      1        OK
+ * @retval      0        Invalid type
+ * @retval      -1       Error
  * @see type_snmp2xml  for snmpset
  */
 int
-type_xml2snmpstr(char      *xmlstr,
-		 yang_stmt *ys,
-		 char      **snmpstr)
+type_xml2snmp_pre(char      *xmlstr0,
+		  yang_stmt *ys,
+		  char     **xmlstr1)
 
 {
     int        retval = -1;
@@ -355,8 +365,8 @@ type_xml2snmpstr(char      *xmlstr,
     char      *str = NULL;
     int        ret;
 
-    if (snmpstr == NULL){
-	clicon_err(OE_UNIX, EINVAL, "snmpstr");
+    if (xmlstr1 == NULL){
+	clicon_err(OE_UNIX, EINVAL, "xmlstr1");
 	goto done;
     }
     /* Get yang type of leaf and trasnslate to ASN.1 */
@@ -364,10 +374,10 @@ type_xml2snmpstr(char      *xmlstr,
 	goto done;
     restype = yrestype?yang_argument_get(yrestype):NULL;
     if (strcmp(restype, "enumeration") == 0){ 	/* special case for enum */
-	if ((ret = yang_enum2valstr(yrestype, xmlstr, &str)) < 0)
+	if ((ret = yang_enum2valstr(yrestype, xmlstr0, &str)) < 0)
 	    goto done;
 	if (ret == 0){
-	    clicon_debug(1, "Invalid enum valstr %s", xmlstr);
+	    clicon_debug(1, "Invalid enum valstr %s", xmlstr0);
 	    goto fail;
 	}
     }
@@ -377,15 +387,15 @@ type_xml2snmpstr(char      *xmlstr,
      * 2) Truthvalue actually translates to enum true(1)/false(0)
      */
     else if (strcmp(restype, "boolean") == 0){ 	
-	if (strcmp(xmlstr, "false")==0)
+	if (strcmp(xmlstr0, "false")==0)
 	    str = "0";
 	else
 	    str = "1";
     }
     else{
-	str = xmlstr;
+	str = xmlstr0;
     }
-    if ((*snmpstr = strdup(str)) == NULL){
+    if ((*xmlstr1 = strdup(str)) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
     }
@@ -409,14 +419,14 @@ type_xml2snmpstr(char      *xmlstr,
  * @retval        0        Invalid
  * @retval       -1        Error
  * @note asn1type can be rewritten from CLIXON_ASN_ to ASN_
- * XXX See  sprint_realloc_timeticks
+ * @see type_xml2snmp_pre for some pre-condition XML special cases (eg enums and bool)
  */
 int
-type_snmpstr2val(char       *snmpstr,
-		 int        *asn1type,
-		 u_char    **snmpval,
-		 size_t     *snmplen,
-		 char      **reason)
+type_xml2snmp(char       *snmpstr,
+	      int        *asn1type,
+	      u_char    **snmpval,
+	      size_t     *snmplen,
+	      char      **reason)
 {
     int   retval = -1;
     int   ret;
@@ -627,123 +637,59 @@ yang2xpath(yang_stmt *ys,
     return retval;
 }
 
-#ifdef NOTUSED
 /*!
- * @param[in]  ys    Yang statement
- * @param[out] xpath Malloced xpath string, use free() after use
- * @retval     0     OK
- * @retval     -1    Error
  */
 int
-clixon_table_create(netsnmp_table_data_set *table0,
-		    yang_stmt              *ys,
-		    clicon_handle           h)
+snmp_body2oid(cxobj  *xi,
+	      cg_var *cv)
 {
-    int                 retval = -1;
-    cvec               *nsc = NULL;
-    cxobj              *xt = NULL;
-    cxobj              *xerr;
-    char               *xpath;
-    cxobj              *xtable;
-    cxobj              *xe;
-    cxobj              *xleaf;
-    char               *valstr;
-    netsnmp_table_data *table;
-    netsnmp_table_row  *row;
-    netsnmp_table_row  *tmprow;
-    int                 i;
-    int                 ret;
-    cvec               *keyvec = NULL;
+    int        retval = -1;
+    yang_stmt *yi;
+    int        asn1_type;
+    char      *body;
+    size_t     len;
+    cbuf      *enc = NULL;
+    int        i;
 
-    if (table0 == NULL || (table = table0->table) == NULL){
-	clicon_err(OE_UNIX, EINVAL, "table0 /->table is NULL");
+    if ((yi = xml_spec(xi)) == NULL)
+	goto ok;
+    if (type_yang2asn1(yi, &asn1_type, 0) < 0)
 	goto done;
+    body = xml_body(xi);
+    switch (asn1_type){
+    case ASN_INTEGER:
+    case ASN_GAUGE:
+    case ASN_TIMETICKS:
+    case ASN_COUNTER64:
+    case ASN_COUNTER:
+    case ASN_IPADDRESS:
+	if (cv_string_set(cv, body) < 0){
+	    clicon_err(OE_UNIX,errno, "cv_string_set");
+	    goto done;
+	}
+	break;
+    case ASN_OCTET_STR:{ /* encode to N.c.c.c.c */
+	if ((enc = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	len = strlen(body);
+	cprintf(enc, "%zu", len);
+	for (i=0; i<len; i++)
+	    cprintf(enc, ".%u", body[i]&0xff);
+	if (cv_string_set(cv, cbuf_get(enc)) < 0){
+	    clicon_err(OE_UNIX,errno, "cv_string_set");
+	    goto done;
+	}
+	break;
     }
-    if (xml_nsctx_yang(ys, &nsc) < 0)
-        goto done;
-
-    if (yang2xpath(ys, keyvec, &xpath) < 0)
-        goto done;
-
-    if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
-        goto done;
-
-    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
-        goto done;
+    default:
+	break;
     }
-
-#if 1
-    /* Boils down to snmp_varlist_add_variable */
-    if (snmp_varlist_add_variable(&table->indexes_template,
-				  NULL,
-				  0,
-				  ASN_OCTET_STR,
-				  NULL,
-				  0) == NULL){
-	clicon_err(OE_XML, errno, "snmp_varlist_add_variable");
-	goto done;
-    }
-    if ((ret = netsnmp_table_set_add_default_row(table0,  2, ASN_OCTET_STR, 1, NULL, 0)) != SNMPERR_SUCCESS){
-	clicon_err(OE_SNMP, ret, "netsnmp_table_set_add_default_row");
-	goto done;
-    }
-    if ((ret = netsnmp_table_set_add_default_row(table0,  3, ASN_OCTET_STR, 1, NULL, 0)) != SNMPERR_SUCCESS){
-	clicon_err(OE_SNMP, ret, "netsnmp_table_set_add_default_row");
-	goto done;
-    }
-#else
-    netsnmp_table_dataset_add_index(table, ASN_OCTET_STR);
-    netsnmp_table_set_multi_add_default_row(table0, 2, ASN_OCTET_STR, 1, NULL, 0, 3, ASN_OCTET_STR, 1, NULL, 0, 0);
-#endif
-    if ((xtable = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
-        for (tmprow = table->first_row; tmprow; tmprow = tmprow->next)
-            netsnmp_table_dataset_remove_and_delete_row(table0, tmprow);
-
-        xe = NULL; /* Loop thru entries in table */
-        while ((xe = xml_child_each(xtable, xe, CX_ELMNT)) != NULL) {
-            if ((row = netsnmp_create_table_data_row()) == NULL){
-		clicon_err(OE_UNIX, errno, "netsnmp_create_table_data_row");
-		goto done;
-	    }
-            xleaf = NULL; /* Loop thru leafs in entry */
-            i = 1; /* tableindex start at 1 */
-            while ((xleaf = xml_child_each(xe, xleaf, CX_ELMNT)) != NULL) {
-                valstr = xml_body(xleaf);
-                if (i == 1){ // Assume first entry is key XXX should check YANG
-#if 1
-		    if ((snmp_varlist_add_variable(&row->indexes, NULL, 0, ASN_OCTET_STR, (const u_char *)valstr, strlen(valstr))) == NULL){
-			clicon_err(OE_XML, errno, "snmp_varlist_add_variable");
-			goto done;
-		    }
-#else
-                    netsnmp_table_row_add_index(row, ASN_OCTET_STR, valstr, strlen(valstr));
-#endif
-		}
-                else{
-                    if ((ret = netsnmp_set_row_column(row, i, ASN_OCTET_STR, valstr, strlen(valstr))) != SNMPERR_SUCCESS){
-			clicon_err(OE_SNMP, ret, "netsnmp_set_row_column");
-			goto done;
-		    }
-                    if ((ret = netsnmp_mark_row_column_writable(row, i, 1)) != SNMPERR_SUCCESS){
-			clicon_err(OE_SNMP, ret, "netsnmp_set_row_column");
-			goto done;
-		    }
-                }
-                i++;
-            }
-
-            netsnmp_table_dataset_add_row(table0, row);
-        }
-    }
-
+ ok:
     retval = 0;
-
-done:
-    if (xt)
-        xml_free(xt);
-    if (nsc)
-        xml_nsctx_free(nsc);
+ done:
+    if (enc)
+	cbuf_free(enc);
     return retval;
 }
-#endif
