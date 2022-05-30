@@ -41,9 +41,20 @@ module clixon-autocli{
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2022-05-30 {
+	description
+	    "
+             Released in Clixon 5.8";
+    }
+    revision 2022-02-11 {
+	description
+	    "Initial version
+             Released in Clixon 5.6";
+    }
     revision 2021-12-05 {
 	description
-	    "Initial version";
+	    "Initial version
+             Released in Clixon 5.5";
     }
     extension hide {
 	description 
@@ -56,6 +67,11 @@ module clixon-autocli{
 	description 
 	    "Modify the autocli by hiding the command associated with a YANG node and its 
              sub-commands in CLI show commands.";
+    }
+    extension strict-expand  {
+	description 
+	    "Modify the autocli by only showing exactly the expanded values of a variable.
+             It should not be possible to add a new value that is not in the expanded list.";
     }
     typedef autocli-op {
 	description

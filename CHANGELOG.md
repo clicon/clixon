@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [5.8.0](#580) Planned: July 2022
 * [5.7.0](#570) 17 May 2022
 * [5.6.0](#560) 8 March 2022
 * [5.5.0](#550) 20 January 2022

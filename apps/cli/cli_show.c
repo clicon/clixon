@@ -309,7 +309,6 @@ expand_dbvar(void   *h,
 	    clicon_err(OE_DB, 0, "Leafref %s requires path statement", yang_argument_get(ytype));
 	    goto done;
 	}
-	/*  */
 	/* Extend xpath with leafref path: Append yang_argument_get(ypath) to xpath
 	 */
 	if (xpath_append(cbxpath, yang_argument_get(ypath), y, nsc) < 0)
