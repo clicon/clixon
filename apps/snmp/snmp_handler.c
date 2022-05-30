@@ -208,7 +208,7 @@ snmp_scalar_get(clicon_handle               h,
     cxobj  *xt = NULL;
     cxobj  *xerr;
     cxobj  *x;
-    char   *snmpstr = NULL;
+    char   *xmlstr = NULL;
     u_char *snmpval = NULL;
     size_t  snmplen = 0;
     int     ret;
@@ -230,13 +230,13 @@ snmp_scalar_get(clicon_handle               h,
 	goto done;
     }
     /* 
-     * The xml to snmp value conversion is done here. It is done in two steps:
+     * The xml to snmp value conversion is done in two steps:
      * 1. From XML to SNMP string, there is a special case for enumeration, and for default value
      * 2. From SNMP string to SNMP binary value which invloves parsing
      */
     if ((x = xpath_first(xt, nsc, "%s", xpath)) != NULL){
 	assert(xml_spec(x) == ys);
-	if ((ret = type_xml2snmpstr(xml_body(x), ys, &snmpstr)) < 0)
+	if ((ret = type_xml2snmp_pre(xml_body(x), ys, &xmlstr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGVALUE);
@@ -244,7 +244,7 @@ snmp_scalar_get(clicon_handle               h,
 	}
     }
     else if (defaultval != NULL){
-	if ((snmpstr = strdup(defaultval)) == NULL){
+	if ((xmlstr = strdup(defaultval)) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
 	    goto done;
 	}
@@ -255,7 +255,7 @@ snmp_scalar_get(clicon_handle               h,
     }
     if (type_yang2asn1(ys, &asn1type, 1) < 0)
 	goto done;
-    if ((ret = type_snmpstr2val(snmpstr, &asn1type, &snmpval, &snmplen, &reason)) < 0)
+    if ((ret = type_xml2snmp(xmlstr, &asn1type, &snmpval, &snmplen, &reason)) < 0)
 	goto done;
     if (ret == 0){
 	clicon_debug(1, "%s %s", __FUNCTION__, reason);
@@ -274,8 +274,8 @@ snmp_scalar_get(clicon_handle               h,
  done:
     if (reason)
 	free(reason);
-    if (snmpstr)
-	free(snmpstr);
+    if (xmlstr)
+	free(xmlstr);
     if (snmpval)
 	free(snmpval);
     if (xt)
