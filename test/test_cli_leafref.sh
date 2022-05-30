@@ -11,7 +11,10 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/example-leafref.yang
-
+clidir=$dir/clidir
+if [ ! -d $clidir ]; then
+    mkdir $clidir
+fi
 # Use yang in example
 
 cat <<EOF > $cfg
@@ -24,7 +27,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
@@ -142,6 +145,34 @@ module example-leafref{
         }
     }
 }
+EOF
+
+# clispec files 1..6 for submodes AAA and BBB as described in top comment
+
+cat <<EOF > $clidir/cli1.cli
+CLICON_MODE="example";
+CLICON_PROMPT="cli> ";
+
+# Autocli syntax tree operations
+edit @datamodel, cli_auto_edit("datamodel");
+up, cli_auto_up("datamodel");
+top, cli_auto_top("datamodel");
+set @datamodel, cli_auto_set();
+merge @datamodel, cli_auto_merge();
+create @datamodel, cli_auto_create();
+delete("Delete a configuration item") {
+      @datamodel, cli_auto_del(); 
+      all("Delete whole candidate configuration"), delete_all("candidate");
+}
+show("Show a particular state of the system"){
+
+    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
+        cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", true, false, "set ");
+}
+}
+validate("Validate changes"), cli_validate();
+commit("Commit the changes"), cli_commit();
+discard("Discard edits (rollback 0)"), discard_changes();
 EOF
 
 cat <<EOF > $dir/startup_db
