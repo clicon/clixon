@@ -138,5 +138,7 @@ COPY --from=0 /clixon/build/ /usr/local/
 COPY --from=0 /usr/local/share/yang/* /usr/local/share/yang/standard/
 COPY --from=0 /usr/local/share/mib-yangs/* /usr/local/share/mib-yangs/
 
+RUN cp /usr/local/bin/test/mib/* /usr/share/snmp/mibs/
+
 # Log to stderr.
 CMD /usr/local/bin/startsystem.sh
