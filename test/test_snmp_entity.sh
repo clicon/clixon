@@ -12,14 +12,6 @@ if [ ${ENABLE_NETSNMP} != "yes" ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
-snmpd=$(type -p snmpd)
-snmpget="$(type -p snmpget) -On -c public -v2c localhost "
-snmpgetstr="$(type -p snmpget) -c public -v2c localhost "
-snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
-snmpgetnextstr="$(type -p snmpgetnext) -c public -v2c localhost "
-snmptable="$(type -p snmptable) -c public -v2c localhost "
-snmptranslate="$(type -p snmptranslate) "
-
 cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
 fstate=$dir/state.xml
@@ -118,30 +110,6 @@ cat <<EOF > $fstate
     </entLogicalTable>
 </ENTITY-MIB>
 EOF
-
-function validate_oid(){
-    oid=$1
-    oid2=$2
-    type=$3
-    value=$4
-
-    name="$($snmptranslate $oid)"
-    name2="$($snmptranslate $oid2)"
-
-    if [ $oid == $oid2 ]; then
-        new "Validating numerical OID: $oid2 = $type: $value"
-        expectpart "$($snmpget $oid)" 0 "$oid2 = $type: $value"
-
-        new "Validating textual OID: $name2 = $type: $value"
-        expectpart "$($snmpgetstr $name)" 0 "$name2 = $type: $value"
-    else
-        new "Validating numerical next OID: $oid2 = $type: $value"
-        expectpart "$($snmpgetnext $oid)" 0 "$oid2 = $type: $value"
-
-        new "Validating textual next OID: $name2 = $type: $value"
-        expectpart "$($snmpgetnextstr $name)" 0 "$name2 = $type: $value"
-    fi
-}
 
 function testinit(){
     new "test params: -f $cfg -- -sS $fstate"
