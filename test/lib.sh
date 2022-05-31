@@ -215,6 +215,13 @@ fi
 : ${SNMPCHECK:=true}
 
 if $SNMPCHECK; then
+    snmpget="$(type -p snmpget) -On -c public -v2c localhost "
+    snmpgetstr="$(type -p snmpget) -c public -v2c localhost "
+    snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
+    snmpgetnextstr="$(type -p snmpgetnext) -c public -v2c localhost "
+    snmptable="$(type -p snmptable) -c public -v2c localhost "
+    snmptranslate="$(type -p snmptranslate) "
+
     if [ "${ENABLE_NETSNMP}" == "yes" ]; then
 	pgrep snmpd > /dev/null
         if [ $? != 0 ]; then
@@ -235,6 +242,30 @@ if $SNMPCHECK; then
 		    exit -1
         fi
     fi
+
+    function validate_oid(){
+        oid=$1
+        oid2=$2
+        type=$3
+        value=$4
+
+        name="$($snmptranslate $oid)"
+        name2="$($snmptranslate $oid2)"
+
+        if [ $oid == $oid2 ]; then
+            new "Validating numerical OID: $oid2 = $type: $value"
+            expectpart "$($snmpget $oid)" 0 "$oid2 = $type: $value"
+
+            new "Validating textual OID: $name2 = $type: $value"
+            expectpart "$($snmpgetstr $name)" 0 "$name2 = $type: $value"
+        else
+            new "Validating numerical next OID: $oid2 = $type: $value"
+            expectpart "$($snmpgetnext $oid)" 0 "$oid2 = $type: $value"
+
+            new "Validating textual next OID: $name2 = $type: $value"
+            expectpart "$($snmpgetnextstr $name)" 0 "$name2 = $type: $value"
+        fi
+    }
 fi
 
 # Check sanity between --with-restconf setting and if nginx is started by systemd or not
