@@ -1056,7 +1056,6 @@ clixon_child_xvec_append(cxobj       *xn,
     for (i=0; i<clixon_xvec_len(xv); i++){
 	xc = clixon_xvec_i(xv, i);
 	if (xml_addsub(xn, xc) < 0)
-	//	if (xml_child_append(xn, xc) < 0)
 	    goto done;
     }
     retval = 0;

@@ -163,3 +163,10 @@
  * If not set, client will exit
  */
 #define PROTO_RESTART_RECONNECT
+
+/*! Text output keys as identifiers instead of ordinary leafs
+ * Ie:        list a { val 42; }      If defined
+ * instead of list { keyname a; val 42; } If undefined
+ * Problem is, Parser is YANG unaware therefore doe not know "keyname"
+ */
+#undef TEXT_LIST_KEYS

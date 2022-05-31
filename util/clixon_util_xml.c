@@ -326,14 +326,6 @@ main(int    argc,
 	}
     }
 
-    /* Dump data structures (for debug) */
-    if (clicon_debug_get()){
-	cbuf_reset(cb);
-	xmltree2cbuf(cb, xt, 0);       
-	fprintf(stderr, "%s\n", cbuf_get(cb));
-	cbuf_reset(cb);
-    }
-
     /* 3. Validate data (if yspec) */
     if (validate){
 	if (validate_tree(h, xt, yspec) < 0)

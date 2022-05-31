@@ -45,6 +45,7 @@
 %type <stack>  stmt
 %type <stack>  id
 %type <string> value
+%type <stack>  leaflist
 
 %start top
 
@@ -80,7 +81,7 @@
 #include "clixon_text_syntax_parse.h"
 
 /* Enable for debugging, steals some cycles otherwise */
-#if 0
+#if 1
 #define _PARSE_DEBUG(s) clicon_debug(1,(s))
 #else
 #define _PARSE_DEBUG(s)
@@ -99,22 +100,21 @@ clixon_text_syntax_parseerror(void *arg,
     return;
 }
 
-static int
+static cxobj*
 text_add_value(cxobj *xn,
-	       char   *value)
+	       char  *value)
 {
-    int    retval = -1;
     cxobj *xb = NULL;
 
     if ((xb = xml_new("body", xn, CX_BODY)) == NULL)
 	goto done;
     if (xml_value_set(xb,  value) < 0){
 	xml_free(xb);
+	xb = NULL;
 	goto done;
     }
-    retval = 0;
  done:
-    return retval;
+    return xb;
 }
 
 static cxobj*
@@ -150,18 +150,65 @@ text_create_node(clixon_text_syntax_yacc *ts,
 	free(id);
     return xn;
 }
+
+static char*
+strjoin(char *str0,
+        char *str1)
+{
+    size_t len0;
+    size_t len;
+
+    len0 = strlen(str0);
+    len = len0 + strlen(str1) + 1;
+    if ((str0 = realloc(str0, len)) == NULL){
+	clicon_err(OE_YANG, errno, "realloc");
+	return NULL;
+    }
+    strcpy(str0+len0, str1);
+    return str0;
+}
+
+/*! Given a vector of XML bodies, transform it to a vector of ELEMENT entries
+ */
+static int
+text_leaflist_create(clixon_xvec *xvec0,
+		     cxobj       *x1,
+		     clixon_xvec *xvec1)
+{
+    int    retval = -1;
+    cxobj *xb;
+    cxobj *x2;
+    int    i;
+
+    for (i=0; i<clixon_xvec_len(xvec1); i++){
+	xb = clixon_xvec_i(xvec1, i);
+	if ((x2 = xml_dup(x1)) == NULL)
+	    goto done;
+	if (xml_addsub(x2, xb) < 0)
+	    goto done;
+	if (clixon_xvec_append(xvec0, x2) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
  
 %} 
  
 %%
 
 top        : stmt MY_EOF       { _PARSE_DEBUG("top->stmt");
-                                 if (xml_addsub(_TS->ts_xtop, $1) < 0) YYERROR;
+     //                                 if (xml_addsub(_TS->ts_xtop, $1) < 0) YYERROR;
+				 if (clixon_child_xvec_append(_TS->ts_xtop, $1) < 0) YYERROR;
+				 clixon_xvec_free($1);
                                  YYACCEPT; }
            ;
 
 stmts      : stmts stmt        { _PARSE_DEBUG("stmts->stmts stmt");
-                                 if (clixon_xvec_append($1, $2) < 0) YYERROR;
+     //                                 if (clixon_xvec_append($1, $2) < 0) YYERROR;
+                                 if (clixon_xvec_merge($1, $2) < 0) YYERROR;
+				 clixon_xvec_free($2);
 				 $$ = $1;
                                } 
            |                   { _PARSE_DEBUG("stmts->stmt");
@@ -170,33 +217,56 @@ stmts      : stmts stmt        { _PARSE_DEBUG("stmts->stmts stmt");
            ;
 
 stmt       : id value ';'      { _PARSE_DEBUG("stmt-> id value ;");
-                                 if (text_add_value($1, $2) < 0) YYERROR;
-				 $$ = $1;
+                                 if (text_add_value($1, $2) == NULL) YYERROR;
+				 free($2);
+                                 if (($$ = clixon_xvec_new()) == NULL) YYERROR;
+				 if (clixon_xvec_append($$, $1) < 0) YYERROR;
                                }
            | id '"' value '"' ';' { _PARSE_DEBUG("stmt-> id \" value \" ;");
-                                 if (text_add_value($1, $3) < 0) YYERROR;
-				 $$ = $1;
-                               }
+                                    if (text_add_value($1, $3) == NULL) YYERROR;
+				    free($3);
+                                    if (($$ = clixon_xvec_new()) == NULL) YYERROR;
+				    if (clixon_xvec_append($$, $1) < 0) YYERROR;
+                                  }
            | id '{' stmts '}'  { _PARSE_DEBUG("stmt-> id { stmts }");
 				 if (clixon_child_xvec_append($1, $3) < 0) YYERROR;
 				 clixon_xvec_free($3);
-				 $$ = $1;
+                                 if (($$ = clixon_xvec_new()) == NULL) YYERROR;
+				 if (clixon_xvec_append($$, $1) < 0) YYERROR;
  	                       }
-
-           | id '[' values ']' { _PARSE_DEBUG("stmt-> id [ values ]"); }
+           | id '[' leaflist ']'
+		               { _PARSE_DEBUG("stmt-> id [ leaflist ]");
+                                 if (($$ = clixon_xvec_new()) == NULL) YYERROR;
+				 if (text_leaflist_create($$, $1, $3) < 0) YYERROR;
+				 xml_free($1);
+				 clixon_xvec_free($3);
+	                       }
            ;
 
 id         : TOKEN             { _PARSE_DEBUG("id->TOKEN");
-                                  if (($$ = text_create_node(_TS, $1)) == NULL) YYERROR;;
+                                 if (($$ = text_create_node(_TS, $1)) == NULL) YYERROR;
+				 free($1);
                                }
            ;
 
-values     : values TOKEN      { _PARSE_DEBUG("values->values TOKEN"); } 
-           |                   { _PARSE_DEBUG("values->"); } 
+value      : value TOKEN       { _PARSE_DEBUG("value->value TOKEN");
+                                 $$ = strjoin($1, $2); free($2);}
+           | TOKEN             { _PARSE_DEBUG("value->TOKEN");
+                                 $$ = $1; } 
            ;
 
-value      : TOKEN             { _PARSE_DEBUG("value->TOKEN"); $$ = $1; } 
+leaflist   : leaflist TOKEN    { _PARSE_DEBUG("leaflist->leaflist TOKEN");
+                                 cxobj* x;
+				 if ((x = text_add_value(NULL, $2)) == NULL) YYERROR;;
+				 free($2);
+                                 if (clixon_xvec_append($1, x) < 0) YYERROR;
+				 $$ = $1;
+                               } 
+           |                   { _PARSE_DEBUG("leaflist->");
+                                 if (($$ = clixon_xvec_new()) == NULL) YYERROR;
+                               } 
            ;
+
 
 
 %%

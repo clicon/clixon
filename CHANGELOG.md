@@ -40,7 +40,7 @@ Planned: July 2022
 
 ### New features
 
-* Text syntax parser/loader
+* Text syntax parser and loader
   * Added new text syntax parsing and loading from CLI
   * Text output format changed:
     * Namespace/modulename added to top-level

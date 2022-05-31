@@ -97,28 +97,36 @@ tleaf(cxobj *x)
 }
 
 /*! Translate XML to a "pseudo-code" textual format using a callback - internal function
- * @param[in]  xn     XML object to print
- * @param[in]  fn     Callback to make print function
- * @param[in]  f      File to print to
- * @param[in]  level  print 4 spaces per level in front of each line
- * @see xml2txt  XXX why are these different?
+ * @param[in]     xn       XML object to print
+ * @param[in]     fn       Callback to make print function
+ * @param[in]     f        File to print to
+ * @param[in]     level    Print 4 spaces per level in front of each line
+ * @param[in,out] leaflist Leaflist state for [] 
+ * leaflist state:
+ * 0: No leaflist
+ * 1: In leaflist
  */
-int
-xml2txt(cxobj            *xn,
-	    clicon_output_cb *fn,
-	    FILE             *f, 
-	    int               level)
+static int
+xml2txt1(cxobj            *xn,
+	 clicon_output_cb *fn,
+	 FILE             *f, 
+	 int               level,
+	 int              *leaflist)
 {
     cxobj     *xc = NULL;
     int        children=0;
     int        retval = -1;
     int        exist = 0;
     yang_stmt *yn;
-    yang_stmt *yp;
+    yang_stmt *yp = NULL;
     yang_stmt *ymod;
     yang_stmt *ypmod;
     char      *prefix = NULL;
     char      *value;
+#ifdef TEXT_LIST_KEYS
+    cg_var    *cvi;
+    cvec      *cvk = NULL; /* vector of index keys */
+#endif
 
     if (xn == NULL || fn == NULL){
 	clicon_err(OE_XML, EINVAL, "xn or fn is NULL");
@@ -141,40 +149,84 @@ xml2txt(cxobj            *xn,
 	}
 	else
 	    prefix = yang_argument_get(ymod);
+#ifdef TEXT_LIST_KEYS
+	if (yang_keyword_get(yn) == Y_LIST){
+	    if ((cvk = yang_cvec_get(yn)) == NULL){
+		clicon_err(OE_YANG, 0, "No keys");
+		goto done;
+	    }
+	}
+#endif
     }
     xc = NULL;     /* count children (elements and bodies, not attributes) */
     while ((xc = xml_child_each(xn, xc, -1)) != NULL)
 	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
 	    children++;
-    if (!children){ /* If no children print line */
+    if (children == 0){ /* If no children print line */
 	switch (xml_type(xn)){
 	case CX_BODY:
 	    value = xml_value(xn);
 	    /* Add quotes if string contains spaces */
-	    if (index(value, ' ') != NULL)
+	    if (*leaflist)
+		(*fn)(f, "%*s%s\n", 4*level, "", xml_value(xn));
+	    else if (index(value, ' ') != NULL)
 		(*fn)(f, "\"%s\";\n", xml_value(xn));
 	    else
 		(*fn)(f, "%s;\n", xml_value(xn));
 	    break;
 	case CX_ELMNT:
-	    (*fn)(f, "%*s%s;\n", 4*level, "", xml_name(xn));
+	    (*fn)(f, "%*s%s", 4*level, "", xml_name(xn));
+#ifdef TEXT_LIST_KEYS
+	    cvi = NULL; 	    /* Lists only */
+	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+		if ((xc = xml_find_type(xn, NULL, cv_string_get(cvi), CX_ELMNT)) != NULL)
+		    (*fn)(f, " %s", xml_body(xc));
+	    }
+#endif
+	    (*fn)(f, ";\n");
 	    break;
 	default:
 	    break;
 	}
 	goto ok;
     }
-    (*fn)(f, "%*s", 4*level, "");
-    if (prefix)
-	(*fn)(f, "%s:", prefix);
-    (*fn)(f, "%s ", xml_name(xn));
-    if (!tleaf(xn))
-	(*fn)(f, "{\n");
+    if (*leaflist == 0){
+	(*fn)(f, "%*s", 4*level, "");
+	if (prefix)
+	    (*fn)(f, "%s:", prefix);
+	(*fn)(f, "%s", xml_name(xn));
+    }
+#ifdef TEXT_LIST_KEYS
+    cvi = NULL; 	/* Lists only */
+    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+	if ((xc = xml_find_type(xn, NULL, cv_string_get(cvi), CX_ELMNT)) != NULL)
+	    (*fn)(f, " %s", xml_body(xc));
+    }
+#endif
+    if (yn && yang_keyword_get(yn) == Y_LEAF_LIST && *leaflist)
+	;
+    else if (yn && yang_keyword_get(yn) == Y_LEAF_LIST && *leaflist == 0){
+	*leaflist = 1;
+	(*fn)(f, " [\n");
+    }
+    else if (!tleaf(xn))
+	(*fn)(f, " {\n");
+    else
+	(*fn)(f, " ");
     xc = NULL;
     while ((xc = xml_child_each(xn, xc, -1)) != NULL){
-	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
-	    if (xml2txt(xc, fn, f, level+1) < 0)
+	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY){
+#ifdef TEXT_LIST_KEYS
+	    if (yang_key_match(yn, xml_name(xc), NULL))
+		continue; /* Skip keys, already printed */
+#endif
+	    if (xml2txt1(xc, fn, f, level+1, leaflist) < 0)
 		break;
+	}
+    }
+    if (yn && yang_keyword_get(yn) != Y_LEAF_LIST && *leaflist != 0){
+	*leaflist = 0;
+	(*fn)(f, "%*s\n", 4*(level+1), "]");
     }
     if (!tleaf(xn))
 	(*fn)(f, "%*s}\n", 4*level, "");
@@ -182,6 +234,23 @@ xml2txt(cxobj            *xn,
     retval = 0;
  done:
     return retval;
+}
+
+/*! Translate XML to a "pseudo-code" textual format using a callback
+ * @param[in]     xn       XML object to print
+ * @param[in]     fn       Callback to make print function
+ * @param[in]     f        File to print to
+ * @param[in]     level    Print 4 spaces per level in front of each line
+ */
+int
+xml2txt(cxobj            *xn,
+	clicon_output_cb *fn,
+	FILE             *f, 
+	int               level)
+{
+    int leaflist = 0;
+
+    return xml2txt1(xn, fn, f, level, &leaflist);
 }
 
 /*! Parse a string containing text syntax and return an XML tree

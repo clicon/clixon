@@ -261,6 +261,36 @@ clixon_xvec_append(clixon_xvec *xv,
     return retval;
 }
 
+/*! Append a second clixon-xvec into a first
+ *
+ * @param[in,out] xv0   XML tree vector
+ * @param[in]     xv1   XML tree (append this to vector)
+ * @retval        0     OK, with xv0 with new entries from xv1
+ * @retval       -1     Error
+ * @code
+ *  if (clixon_xvec_merge(xv0, xv1) < 0) 
+ *     err;
+ * @endcode
+ */
+int
+clixon_xvec_merge(clixon_xvec *xv0,
+		  clixon_xvec *xv1)
+{
+    int    retval = -1;
+    cxobj *x;
+    int    i;
+
+    for (i=0; i<clixon_xvec_len(xv1); i++){
+	x = clixon_xvec_i(xv1, i);
+	if (clixon_xvec_inc(xv0) < 0)
+	    goto done;
+	xv0->xv_vec[xv0->xv_len-1] = x;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Prepend a new xml tree to an existing xml vector first in the list
  *
  * @param[in]  xv    XML tree vector

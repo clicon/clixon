@@ -92,7 +92,7 @@ int clixon_text_syntax_parsewrap(void)
 <INITIAL>\;               { return *yytext; }
 <INITIAL>\"               { _TS->ts_lex_state =INITIAL; BEGIN(STRING);  return *yytext; }
 <INITIAL>[^\n\r \t\[\]\{\}\;\"]+  {
-                          clixon_text_syntax_parselval.string = strdup(yytext);
+                            clixon_text_syntax_parselval.string = strdup(yytext);
                             return TOKEN; }
 <INITIAL>.                { return -1; }
 
@@ -100,10 +100,13 @@ int clixon_text_syntax_parsewrap(void)
 <COMMENT><<EOF>>          { return MY_EOF; }
 <COMMENT>[^\n]+
 
+<STRING>\n                { _TS->ts_linenum++;
+                            clixon_text_syntax_parselval.string = strdup(yytext);
+                            return TOKEN;}
 <STRING>\"                { BEGIN(_TS->ts_lex_state); return *yytext; }
-<STRING>[^\n\r\"]+        { clixon_text_syntax_parselval.string = strdup(yytext);
+<STRING>[^\n\"]+          { clixon_text_syntax_parselval.string = strdup(yytext);
                             return TOKEN; }
-<STRING>.                { return -1; }
+<STRING>.                 { return -1; }
 
 %%
 

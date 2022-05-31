@@ -16,15 +16,21 @@ module example{
     /* Generic config data */
    container table{
       list parameter{
-         key name;
-	    leaf name{
-	       type string;
-	    }
-	    leaf value{
-		type string;
-	    }
-        }
-    }
+         key "name index";
+	 leaf name{
+	    type string;
+	 }
+	 leaf index{
+	    type int32;
+	 }
+	 leaf value{
+	    type string;
+	 }
+	 leaf-list array{
+	    type string;
+         }
+      }
+   }
 }
 EOF
 
@@ -32,11 +38,17 @@ cat <<EOF > $dir/x1.xml
 <table xmlns="urn:example:clixon">
    <parameter>
       <name>a</name>
-      <value>foo bar</value>
+      <index>0</index>
+      <value>foo bar\n
+             description</value>
    </parameter>
    <parameter>
       <name>b</name>
+      <index>17</index>
       <value>bar:fie</value>
+      <array>bar</array>
+      <array>fie</array>
+      <array>foo</array>
    </parameter>
 </table>
 EOF
@@ -45,11 +57,19 @@ cat <<EOF > $dir/x1.txt
 example:table {
     parameter {
         name a;
-        value "foo bar";
+        index 0;
+        value "foo bar\n
+             description";
     }
     parameter {
         name b;
+        index 17;
         value bar:fie;
+        array [
+            bar
+            fie
+            foo
+       ]
     }
 }
 EOF
