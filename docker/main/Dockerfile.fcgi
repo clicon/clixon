@@ -149,6 +149,8 @@ COPY --from=0 /clixon/build/ /usr/local/
 COPY --from=0 /usr/local/share/yang/* /usr/local/share/yang/standard/
 COPY --from=0 /usr/local/share/mib-yangs/* /usr/local/share/mib-yangs/
 
+RUN cp /usr/local/bin/test/mib/* /usr/share/snmp/mibs/
+
 # Manually created
 RUN mkdir /www-data
 RUN chown www-data /www-data
