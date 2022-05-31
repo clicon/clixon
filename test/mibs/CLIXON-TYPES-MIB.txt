@@ -29,7 +29,7 @@ netSnmpExamples MODULE-IDENTITY
     REVISION     "200202060000Z"
     DESCRIPTION
     "First draft"
-    ::= { netSnmp 2 }
+    ::= { netSnmp 200 }
 --
 -- top level structure
 --
@@ -45,7 +45,7 @@ netSnmpExampleNotificationObjects OBJECT IDENTIFIER
 -- Example scalars
 --
 
-netSnmpExampleInteger OBJECT-TYPE
+clixonExampleInteger OBJECT-TYPE
     SYNTAX      Integer32
     MAX-ACCESS  read-write
     STATUS      current
@@ -58,7 +58,7 @@ netSnmpExampleInteger OBJECT-TYPE
      agent/mibgroup/examples/scalar_int.c file."
     DEFVAL { 42 }
     ::= { netSnmpExampleScalars 1 }
-netSnmpExampleSleeper OBJECT-TYPE
+clixonExampleSleeper OBJECT-TYPE
     SYNTAX      Integer32
     MAX-ACCESS  read-write
     STATUS      current
@@ -79,7 +79,7 @@ netSnmpExampleSleeper OBJECT-TYPE
      agent/mibgroup/examples/delayed_instance.c file."
     DEFVAL { 1 }
     ::= { netSnmpExampleScalars 2 }
-netSnmpExampleString OBJECT-TYPE
+clixonExampleString OBJECT-TYPE
     SYNTAX      SnmpAdminString
     MAX-ACCESS  read-write
     STATUS      current
@@ -218,7 +218,7 @@ ifStackStatus  OBJECT-TYPE
 --
 --  Example Tables
 --
-netSnmpIETFWGTable OBJECT-TYPE
+clixonIETFWGTable OBJECT-TYPE
     SYNTAX      SEQUENCE OF NetSnmpIETFWGEntry
     MAX-ACCESS  not-accessible
     STATUS      current
@@ -230,7 +230,7 @@ netSnmpIETFWGTable OBJECT-TYPE
      This example table is implemented in the
      agent/mibgroup/examples/data_set.c file."
     ::= { netSnmpExampleTables 1 }
-netSnmpIETFWGEntry OBJECT-TYPE
+clixonIETFWGEntry OBJECT-TYPE
     SYNTAX      NetSnmpIETFWGEntry
     MAX-ACCESS  not-accessible
     STATUS      current
@@ -269,7 +269,7 @@ nsIETFWGChair2 OBJECT-TYPE
 -- A table used in a table_iterator example
 --   (agent/mibgroup/examples/netSnmpHostsTable*.[ch])
 --
-netSnmpHostsTable OBJECT-TYPE
+clixonHostsTable OBJECT-TYPE
     SYNTAX      SEQUENCE OF NetSnmpHostsEntry
     MAX-ACCESS  not-accessible
     STATUS      current
@@ -277,7 +277,7 @@ netSnmpHostsTable OBJECT-TYPE
     "An example table that implements a wrapper around the
     /etc/hosts file on a machine using the iterator helper API."
     ::= { netSnmpExampleTables 2 }
-netSnmpHostsEntry OBJECT-TYPE
+clixonHostsEntry OBJECT-TYPE
     SYNTAX      NetSnmpHostsEntry
     MAX-ACCESS  not-accessible
     STATUS      current
@@ -293,42 +293,42 @@ NetSnmpHostsEntry ::= SEQUENCE {
     netSnmpHostRowStatus    RowStatus
 }
 
-netSnmpHostName OBJECT-TYPE
+clixonHostName OBJECT-TYPE
     SYNTAX      OCTET STRING (SIZE(0..64))
     MAX-ACCESS  not-accessible
     STATUS      current
     DESCRIPTION
     "A host name that exists in the /etc/hosts (unix) file."
     ::= { netSnmpHostsEntry 1 }
-netSnmpHostAddressType OBJECT-TYPE
+clixonHostAddressType OBJECT-TYPE
     SYNTAX      InetAddressType
     MAX-ACCESS  read-create
     STATUS      current
     DESCRIPTION
     "The address type of then given host."
     ::= { netSnmpHostsEntry 2 }
-netSnmpHostAddress OBJECT-TYPE
+clixonHostAddress OBJECT-TYPE
     SYNTAX      InetAddress
     MAX-ACCESS  read-create
     STATUS      current
     DESCRIPTION
     "The address of then given host."
     ::= { netSnmpHostsEntry 3 }
-netSnmpHostStorage OBJECT-TYPE
+clixonHostStorage OBJECT-TYPE
     SYNTAX       StorageType
     MAX-ACCESS   read-create
     STATUS       current
     DESCRIPTION "The storage type for this conceptual row."
     DEFVAL      { nonVolatile }
     ::= { netSnmpHostsEntry 4 }
-netSnmpHostRowStatus OBJECT-TYPE
+clixonHostRowStatus OBJECT-TYPE
     SYNTAX       RowStatus
     MAX-ACCESS   read-create
     STATUS       current
     DESCRIPTION "The status of this conceptual row."
     ::= { netSnmpHostsEntry 5 }
 
-netSnmpObjectID OBJECT-TYPE
+clixonObjectID OBJECT-TYPE
     SYNTAX      OBJECT IDENTIFIER
     MAX-ACCESS  read-only
     STATUS      current
