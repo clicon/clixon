@@ -94,8 +94,8 @@
  * @param[in]   level       how many spaces to insert before each line
  * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
  * @param[in]   fn          Callback to make print function
- * @see clicon_xml2cbuf
- * One can use clicon_xml2cbuf to get common code, but using fprintf is
+ * @see clixon_xml2cbuf
+ * One can use clixon_xml2cbuf to get common code, but using fprintf is
  * much faster than using cbuf and then printing that,...
  */
 int
@@ -113,8 +113,13 @@ xml2file_recurse(FILE             *f,
     int    haselement;
     char  *val;
     char  *encstr = NULL; /* xml encoded string */
+    int    exist = 0;
 	
     if (x == NULL)
+	goto ok;
+    if (yang_extension_value(xml_spec(x), "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+	goto done;
+    if (exist)
 	goto ok;
     name = xml_name(x);
     namespace = xml_prefix(x);
@@ -195,48 +200,53 @@ xml2file_recurse(FILE             *f,
 
 /*! Print an XML tree structure to an output stream and encode chars "<>&"
  *
- * @param[in]   f           UNIX output stream
- * @param[in]   xn          clicon xml tree
- * @param[in]   level       how many spaces to insert before each line
- * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
- * @see clicon_xml2cbuf print to a cbuf string
- * @see clicon_xml2cbuf_cb print using a callback
+ * @param[in]  f       Output file
+ * @param[in]  xn      XML tree
+ * @param[in]  level   How many spaces to insert before each line
+ * @param[in]  pretty  Insert \n and spaces tomake the xml more readable.
+ * @param[in]  fn       File print function (if NULL, use fprintf)
+ * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @see clixon_xml2cbuf print to a cbuf string
  */
 int
-clicon_xml2file(FILE  *f, 
-		cxobj *x, 
-		int    level, 
-		int    prettyprint)
+clixon_xml2file(FILE             *f, 
+		cxobj            *xn, 
+		int               level, 
+		int               pretty,
+		clicon_output_cb *fn,
+		int               skiptop)
 {
-    return xml2file_recurse(f, x, level, prettyprint, fprintf);
-}
+    int   retval = 1;
+    cxobj *xc;
 
-/*! Print an XML tree structure to an output stream and encode chars "<>&"
- *
- * @param[in]   f           UNIX output stream
- * @param[in]   xn          clicon xml tree
- * @param[in]   level       how many spaces to insert before each line
- * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
- * @see clicon_xml2cbuf
- */
-int
-clicon_xml2file_cb(FILE             *f, 
-		   cxobj            *x, 
-		   int               level, 
-		   int               prettyprint,
-		   clicon_output_cb *fn)
-{
-    return xml2file_recurse(f, x, level, prettyprint, fn);
+    if (fn == NULL)
+	fn = fprintf;
+    if (skiptop){
+	xc = NULL;
+	while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+	    if (xml2file_recurse(f, xc, level, pretty, fn) < 0)
+		goto done;
+    }
+    else {
+	if (xml2file_recurse(f, xn, level, pretty, fn) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+
 }
 
 /*! Print an XML tree structure to an output stream
  *
- * Uses clicon_xml2file internally
+ * Uses clixon_xml2file internally
  *
  * @param[in]   f           UNIX output stream
  * @param[in]   xn          clicon xml tree
- * @see clicon_xml2cbuf
- * @see clicon_xml2cbuf_cb print using a callback
+ * @see clixon_xml2cbuf
+ * @see clixon_xml2cbuf_cb print using a callback
  */
 int
 xml_print(FILE  *f, 
@@ -245,6 +255,8 @@ xml_print(FILE  *f,
     return xml2file_recurse(f, x, 0, 1, fprintf);
 }
 
+/*! Dump cxobj structure with pointers and flags for debugging, internal function
+ */
 static int
 xml_dump1(FILE  *f, 
 	  cxobj *x,
@@ -297,7 +309,7 @@ xml_dump(FILE  *f,
  * @param[in]     depth       Limit levels of child resources: -1 is all, 0 is none, 1 is node itself
  */
 static int
-clicon_xml2cbuf1(cbuf   *cb, 
+clixon_xml2cbuf1(cbuf   *cb, 
 		 cxobj  *x, 
 		 int     level,
 		 int     prettyprint,
@@ -347,7 +359,7 @@ clicon_xml2cbuf1(cbuf   *cb,
 	while ((xc = xml_child_each(x, xc, -1)) != NULL) 
 	    switch (xml_type(xc)){
 	    case CX_ATTR:
-		if (clicon_xml2cbuf1(cb, xc, level+1, prettyprint, -1) < 0)
+		if (clixon_xml2cbuf1(cb, xc, level+1, prettyprint, -1) < 0)
 		    goto done;
 		break;
 	    case CX_BODY:
@@ -369,7 +381,7 @@ clicon_xml2cbuf1(cbuf   *cb,
 	    xc = NULL;
 	    while ((xc = xml_child_each(x, xc, -1)) != NULL) 
 		if (xml_type(xc) != CX_ATTR)
-		    if (clicon_xml2cbuf1(cb, xc, level+1, prettyprint, depth-1) < 0)
+		    if (clixon_xml2cbuf1(cb, xc, level+1, prettyprint, depth-1) < 0)
 			goto done;
 	    if (prettyprint && hasbody == 0)
 		cprintf(cb, "%*s", level*XML_INDENT, "");
@@ -396,27 +408,26 @@ clicon_xml2cbuf1(cbuf   *cb,
 /*! Print an XML tree structure to a cligen buffer and encode chars "<>&"
  *
  * @param[in,out] cb          Cligen buffer to write to
- * @param[in]     xt          Top-level xml object
+ * @param[in]     xn          Top-level xml object
  * @param[in]     level       Indentation level for prettyprint
  * @param[in]     prettyprint insert \n and spaces tomake the xml more readable.
  * @param[in]     depth       Limit levels of child resources: -1: all, 0: none, 1: node itself
  * @param[in]     skiptop     0: Include top object 1: Skip top-object, only children, 
  * @retval        0           OK
  * @retval        -1          Error
- *
+ * Depth is used in NACM
  * @code
- * cbuf *cb;
- * cb = cbuf_new();
- * if (clicon_xml2cbuf(cb, xn, 0, 1, -1, 0) < 0)
- *   goto err;
- * fprintf(stderr, "%s", cbuf_get(cb));
- * cbuf_free(cb);
+ *   cbuf *cb = cbuf_new();
+ *   if (clixon_xml2cbuf(cb, xn, 0, 1, -1, 0) < 0)
+ *     goto err;
+ *   fprintf(stderr, "%s", cbuf_get(cb));
+ *   cbuf_free(cb);
  * @endcode
- * @see  clicon_xml2file
+ * @see  clixon_xml2file
  */
 int
-clicon_xml2cbuf(cbuf   *cb, 
-		cxobj  *xt,
+clixon_xml2cbuf(cbuf   *cb, 
+		cxobj  *xn,
 		int     level,
 		int     pretty,
 		int32_t depth,
@@ -427,41 +438,17 @@ clicon_xml2cbuf(cbuf   *cb,
     
     if (skiptop){
 	xc = NULL;
-	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
-	    if (clicon_xml2cbuf1(cb, xc, level, pretty, depth) < 0)
+	while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+	    if (clixon_xml2cbuf1(cb, xc, level, pretty, depth) < 0)
 		goto done;
     }
     else {
-	if (clicon_xml2cbuf1(cb, xt, level, pretty, depth) < 0)
+	if (clixon_xml2cbuf1(cb, xn, level, pretty, depth) < 0)
 	    goto done;
     }
     retval = 0;
  done:
     return retval;
-}
-
-/*! Return an xml tree as a pretty-printed malloced string.
- * @param[in]  x    XML tree
- * @retval     str  Malloced pretty-printed string (should be free:d after use)
- * @retval     NULL Error
- */
-char *
-clicon_xml2str(cxobj  *x)
-{
-    cbuf  *cb;
-    char  *str;
-    
-    if ((cb = cbuf_new()) == NULL){
-       clicon_err(OE_XML, errno, "cbuf_new");
-       return NULL;
-    }
-    if (clicon_xml2cbuf(cb, x, 0, 1, -1, 0) < 0)
-       return NULL;
-    if ((str = strdup(cbuf_get(cb))) == NULL){
-       clicon_err(OE_XML, errno, "strdup");
-       return NULL;
-    }
-    return str;
 }
 
 /*! Print actual xml tree datastructures (not xml), mainly for debugging

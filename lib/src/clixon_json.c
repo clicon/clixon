@@ -1046,14 +1046,7 @@ xml2json1_cbuf(cbuf                   *cb,
  * @retval        0      OK
  * @retval       -1      Error
  *
- * @code
- * cbuf *cb;
- * cb = cbuf_new();
- * if (xml2json_cbuf(cb, xn, 0, 0) < 0)
- *   goto err;
- * cbuf_free(cb);
- * @endcode
- * @see clicon_xml2cbuf     XML corresponding function
+ * @see clixon_xml2cbuf     XML corresponding function
  * @see xml2json_cbuf_vec   Top symbol is list
  */
 static int 
@@ -1110,13 +1103,19 @@ xml2json_cbuf1(cbuf   *cb,
  * @param[in]     skiptop 0: Include top object 1: Skip top-object, only children, 
  * @retval        0       OK
  * @retval       -1       Error
+ * @code
+ *   cbuf *cb = cbuf_new();
+ *   if (xml2json_cbuf(cb, xn, 0, 0, 0) < 0)
+ *     goto err;
+ *   cbuf_free(cb);
+ * @endcode
  * @see xml2json_cbuf where the top level object is included
  */
 int 
-xml2json_cbuf(cbuf  *cb, 
-	      cxobj *xt, 
-	      int    pretty,
-	      int    skiptop)
+clixon_json2cbuf(cbuf  *cb, 
+		 cxobj *xt, 
+		 int    pretty,
+		 int    skiptop)
 {
     int    retval = -1;
     cxobj *xc;
@@ -1126,7 +1125,6 @@ xml2json_cbuf(cbuf  *cb,
 	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
 	    if (xml2json_cbuf1(cb, xc, pretty) < 0)
 		goto done;
-
     }
     else {
 	if (xml2json_cbuf1(cb, xt, pretty) < 0)
@@ -1148,7 +1146,7 @@ xml2json_cbuf(cbuf  *cb,
  * @retval    -1      Error
  * @note This only works if the vector is uniform, ie same object name.
  * Example: <b/><c/> --> <a><b/><c/></a> --> {"b" : null,"c" : null}
- * @see xml2json_cbuf
+ * @see clixon_json2cbuf
  */
 int 
 xml2json_cbuf_vec(cbuf      *cb, 
@@ -1204,8 +1202,9 @@ xml2json_cbuf_vec(cbuf      *cb,
 
 /*! Translate from xml tree to JSON and print to file using a callback
  * @param[in]  f       File to print to
- * @param[in]  x       XML tree to translate from
+ * @param[in]  xn      XML tree to translate from
  * @param[in]  pretty  Set if output is pretty-printed
+ * @param[in]  fn       File print function (if NULL, use fprintf)
  * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
  * @retval     0       OK
  * @retval    -1       Error
@@ -1213,25 +1212,27 @@ xml2json_cbuf_vec(cbuf      *cb,
  * @note yang is necessary to translate to one-member lists,
  * eg if a is a yang LIST <a>0</a> -> {"a":["0"]} and not {"a":"0"}
  * @code
- * if (xml2json_file(stderr, xn, 0, fprintf, 0) < 0)
+ * if (clixon_json2file(stderr, xn, 0, fprintf, 0) < 0)
  *   goto err;
  * @endcode
  */
 int 
-xml2json_file(FILE             *f, 
-	      cxobj            *x, 
-	      int               pretty,
-	      clicon_output_cb *fn,
-	      int               skiptop)
+clixon_json2file(FILE             *f, 
+		 cxobj            *xn,
+		 int               pretty,
+		 clicon_output_cb *fn,
+		 int               skiptop)
 {
     int   retval = 1;
     cbuf *cb = NULL;
 
+    if (fn == NULL)
+	fn = fprintf;
     if ((cb = cbuf_new()) ==NULL){
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (xml2json_cbuf(cb, x, pretty, skiptop) < 0)
+    if (clixon_json2cbuf(cb, xn, pretty, skiptop) < 0)
 	goto done;
     (*fn)(f, "%s", cbuf_get(cb));
     retval = 0;
@@ -1250,7 +1251,7 @@ int
 json_print(FILE  *f, 
 	   cxobj *x)
 {
-    return xml2json_file(f, x, 1, fprintf, 0);
+    return clixon_json2file(f, x, 1, fprintf, 0);
 }
 
 /*! Translate a vector of xml objects to JSON File.

@@ -360,7 +360,7 @@ api_data_post(clicon_handle h,
     cprintf(cbx, " autocommit=\"true\"");
     cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
-    if (clicon_xml2cbuf(cbx, xtop, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cbx, xtop, 0, 0, -1, 0) < 0)
 	goto done;
     cprintf(cbx, "</edit-config></rpc>");
     clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
@@ -874,12 +874,12 @@ api_operations_post(clicon_handle h,
     cbuf_reset(cbret);
     switch (media_out){
     case YANG_DATA_XML:
-	if (clicon_xml2cbuf(cbret, xoutput, 0, pretty, -1, 0) < 0)
+	if (clixon_xml2cbuf(cbret, xoutput, 0, pretty, -1, 0) < 0)
 	    goto done;
 	/* xoutput should now look: <output xmlns="uri"><x>0</x></output> */
 	break;
     case YANG_DATA_JSON:
-	if (xml2json_cbuf(cbret, xoutput, pretty, 0) < 0)
+	if (clixon_json2cbuf(cbret, xoutput, pretty, 0) < 0)
 	    goto done;
 	/* xoutput should now look: {"example:output": {"x":0,"y":42}} */
 	break;

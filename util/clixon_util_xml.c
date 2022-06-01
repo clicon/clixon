@@ -334,16 +334,15 @@ main(int    argc,
     /* 4. Output data (xml/json/text) */
     if (output){
 	if (textout){
-	    xc = NULL;
-	    while ((xc = xml_child_each(xt, xc, -1)) != NULL){
-		if (xml2txt(xc, fprintf, stdout, 0) < 0)
-		    goto done;
-	    }
+	    if (clixon_txt2file(stdout, xt, 0, fprintf, 1) < 0)
+		goto done;
 	}
-	else if (jsonout)
-	    xml2json_cbuf(cb, xt, pretty, 1); /* print json */
-	else
-	    clicon_xml2cbuf(cb, xt, 0, pretty, -1, 1); /* print xml */
+	else if (jsonout){
+	    if (clixon_json2cbuf(cb, xt, pretty, 1) < 0)
+		goto done;
+	}
+	else if (clixon_xml2cbuf(cb, xt, 0, pretty, -1, 1) < 0)
+	    goto done;
 	fprintf(stdout, "%s", cbuf_get(cb));
 	fflush(stdout);
     }

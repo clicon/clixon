@@ -368,6 +368,7 @@ clixon_xvec_rm_pos(clixon_xvec *xv,
  * @param[in]  f     UNIX output stream
  * @param[in]  xv    XML tree vector
  * @retval     0     OK
+ * @retval     -1    Error
  */
 int
 clixon_xvec_print(FILE        *f,
@@ -376,7 +377,8 @@ clixon_xvec_print(FILE        *f,
     int i;
     
     for (i=0; i<xv->xv_len; i++)
-	clicon_xml2file(f, xv->xv_vec[i], 0, 1);
+	if (clixon_xml2file(f, xv->xv_vec[i], 0, 1, fprintf, 0) < 0)
+	    return -1;
     return 0;
 }
 

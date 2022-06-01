@@ -237,20 +237,41 @@ xml2txt1(cxobj            *xn,
 }
 
 /*! Translate XML to a "pseudo-code" textual format using a callback
- * @param[in]     xn       XML object to print
- * @param[in]     fn       Callback to make print function
- * @param[in]     f        File to print to
- * @param[in]     level    Print 4 spaces per level in front of each line
+ *
+ * @param[in]  f        File to print to
+ * @param[in]  xn       XML object to print
+ * @param[in]  level    Print 4 spaces per level in front of each line
+ * @param[in]  fn       File print function (if NULL, use fprintf)
+ * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 int
-xml2txt(cxobj            *xn,
-	clicon_output_cb *fn,
-	FILE             *f, 
-	int               level)
+clixon_txt2file(FILE             *f,
+		cxobj            *xn, 
+		int               level,
+		clicon_output_cb *fn,
+		int               skiptop)
 {
-    int leaflist = 0;
+    int    retval = 1;
+    cxobj *xc;
+    int    leaflist = 0;
 
-    return xml2txt1(xn, fn, f, level, &leaflist);
+    if (fn == NULL)
+	fn = fprintf;
+    if (skiptop){
+	xc = NULL;
+	while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+	    if (xml2txt1(xc, fn, f, level, &leaflist) < 0)
+		goto done;
+    }
+    else {
+	if (xml2txt1(xn, fn, f, level, &leaflist) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Parse a string containing text syntax and return an XML tree

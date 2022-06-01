@@ -100,9 +100,9 @@ yang_patch_op2int(char *op)
 }
 
 /*! Add square brackets after the surrounding curly brackets in JSON
-  * Needed, in order to modify the result of xml2json_cbuf() to be valid input
+  * Needed, in order to modify the result of clixon_json2cbuf() to be valid input
   * to api_data_post() and api_data_write()
-  * @param[in]  x_simple_patch  a cxobj to pass to xml2json_cbuf()
+  * @param[in]  x_simple_patch  a cxobj to pass to clixon_json2cbuf()
   * @retva      cbuf            With the modified json
   * @retva      NULL            Error
   */
@@ -119,7 +119,8 @@ yang_patch_xml2json_modified_cbuf(cxobj *x_simple_patch)
     if (json_simple_patch == NULL)
         return NULL;
     cb = cbuf_new();
-    xml2json_cbuf(cb, x_simple_patch, 0);
+    if (clixon_json2cbuf(cb, x_simple_patch, 0) < 0)
+	goto done;
 
     // Insert a '[' after the first '{' to get the JSON to match what api_data_post/write() expect
     json_simple_patch_tmp = cbuf_get(cb);
@@ -266,7 +267,8 @@ yang_patch_do_replace(clicon_handle  h,
 	}
     }
     // Convert the data to json
-    xml2json_cbuf(json_simple_patch, x_simple_patch, 0);
+    if (clixon_json2cbuf(json_simple_patch, x_simple_patch, 0) < 0)
+	goto done;
 
     // Send the POST request
     if (api_data_post(h, req, cbuf_get(simple_patch_request_uri), pi, qvec, cbuf_get(json_simple_patch), pretty, YANG_DATA_JSON, media_out, ds ) < 0)
@@ -327,7 +329,7 @@ yang_patch_do_create(clicon_handle  h,
 	    xml_addsub(x_simple_patch, value_vec_tmp);
 	}
     }
-    if (xml2json_cbuf(cb, x_simple_patch, 0) < 0)
+    if (clixon_json2cbuf(cb, x_simple_patch, 0) < 0)
 	goto done;
     if (api_data_post(h, req, cbuf_get(simple_patch_request_uri),
 		      pi, qvec,
@@ -477,7 +479,8 @@ yang_patch_do_merge(clicon_handle  h,
 	    xml_addsub(x_simple_patch, value_vec_tmp);
 	}
 	cbuf_reset(cb); /* reuse cb */
-	xml2json_cbuf(cb, x_simple_patch, 0);
+	if (clixon_json2cbuf(cb, x_simple_patch, 0) < 0)
+	    goto done;
 
         if ((json_simple_patch = yang_patch_xml2json_modified_cbuf(x_simple_patch)) == NULL)
 	    goto done;

@@ -83,7 +83,6 @@ main(int    argc,
 {
     int        retval = -1;
     cxobj     *xt = NULL;
-    cxobj     *xc;
     cbuf      *cb = cbuf_new();
     int        c;
     int        logdst = CLICON_LOG_STDERR;
@@ -147,14 +146,14 @@ main(int    argc,
 	xml_print(stderr, xerr);
 	goto done;
     }
-    xc = NULL;
-    while ((xc = xml_child_each(xt, xc, -1)) != NULL){
-	if (text_syntax_output)
-	    xml2txt(xc, fprintf, stdout, 0);
-	else{
-	    clicon_xml2cbuf(cb, xc, 0, 1, -1); /* print xml */
-	    fprintf(stdout, "%s", cbuf_get(cb));
-	}
+    if (text_syntax_output){
+	if (clixon_txt2file(stdout, xt, 0, fprintf, 1) < 0)
+	    goto done;
+    }
+    else{
+	if (clixon_xml2cbuf(cb, xt, 0, 1, -1, 1) < 0)
+	    goto done;
+	fprintf(stdout, "%s", cbuf_get(cb));
     }
     fflush(stdout);
     retval = 0;

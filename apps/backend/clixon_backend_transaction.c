@@ -256,7 +256,8 @@ transaction_log(clicon_handle      h,
     }
     for (i=0; i<td->td_dlen; i++){
 	xn = td->td_dvec[i];
-	clicon_xml2cbuf(cb, xn, 0, 0, -1, 0);
+	if (clixon_xml2cbuf(cb, xn, 0, 0, -1, 0) < 0)
+	    goto done;
     }
     if (i)
 	clicon_log(level, "%s %" PRIu64 " %s del: %s",
@@ -264,7 +265,8 @@ transaction_log(clicon_handle      h,
     cbuf_reset(cb);
     for (i=0; i<td->td_alen; i++){
 	xn = td->td_avec[i];
-	clicon_xml2cbuf(cb, xn, 0, 0, -1, 0);
+	if (clixon_xml2cbuf(cb, xn, 0, 0, -1, 0) < 0)
+	    goto done;
     }
     if (i)
 	clicon_log(level, "%s %" PRIu64 " %s add: %s", __FUNCTION__, td->td_id, op, cbuf_get(cb));
@@ -272,10 +274,12 @@ transaction_log(clicon_handle      h,
     for (i=0; i<td->td_clen; i++){
 	if (td->td_scvec){
 	    xn = td->td_scvec[i];
-	    clicon_xml2cbuf(cb, xn, 0, 0, -1, 0);
+	    if (clixon_xml2cbuf(cb, xn, 0, 0, -1, 0) < 0)
+		goto done;
 	}
 	xn = td->td_tcvec[i];
-	clicon_xml2cbuf(cb, xn, 0, 0, -1, 0);
+	if (clixon_xml2cbuf(cb, xn, 0, 0, -1, 0) < 0)
+	    goto done;
     }
     if (i)
 	clicon_log(level, "%s %" PRIu64 " %s change: %s", __FUNCTION__, td->td_id, op, cbuf_get(cb));

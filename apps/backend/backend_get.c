@@ -365,7 +365,7 @@ get_nacm_and_reply(clicon_handle h,
 	if (xml_name_set(xret, NETCONF_OUTPUT_DATA) < 0)
 	    goto done;
 	/* Top level is data, so add 1 to depth if significant */
-	if (clicon_xml2cbuf(cbret, xret, 0, 0, depth>0?depth+1:depth, 0) < 0)
+	if (clixon_xml2cbuf(cbret, xret, 0, 0, depth>0?depth+1:depth, 0) < 0)
 	    goto done;
     }
     cprintf(cbret, "</rpc-reply>");
@@ -605,7 +605,7 @@ get_list_pagination(clicon_handle        h,
 		    clicon_err_reason);
 	    if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
 		goto done;
-	    if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+	    if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -620,7 +620,7 @@ get_list_pagination(clicon_handle        h,
 					      ". Internal error, state callback returned invalid XML",
 					      NULL) < 0)
 		goto done;
-	    if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+	    if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -832,7 +832,7 @@ get_common(clicon_handle        h,
 	if ((ret = get_client_statedata(h, xpath?xpath:"/", nsc, &xret)) < 0)
 	    goto done;
 	if (ret == 0){ /* Error from callback (error in xret) */
-	    if (clicon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+	    if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -857,7 +857,7 @@ get_common(clicon_handle        h,
 					      ". Internal error, state callback returned invalid XML",
 					      NULL) < 0)
 		goto done;
-	    if (clicon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+	    if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
 		goto done;
 	    goto ok;
 	}

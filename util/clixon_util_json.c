@@ -143,10 +143,12 @@ main(int    argc,
 	xml_print(stderr, xerr);
 	goto done;
     }
-    if (json)
-	xml2json_cbuf(cb, xt, pretty, 1); /* print json */
-    else
-	clicon_xml2cbuf(cb, xt, 0, pretty, -1, 1); /* print xml */
+    if (json){
+	if (clixon_json2cbuf(cb, xt, pretty, 1) < 0)
+	    goto done;
+    }
+    else if (clixon_xml2cbuf(cb, xt, 0, pretty, -1, 1) < 0)
+	goto done;
     fprintf(stdout, "%s", cbuf_get(cb));
     fflush(stdout);
     retval = 0;

@@ -43,18 +43,15 @@
 /*
  * Prototypes
  */
-int clicon_xml2file_cb(FILE *f, cxobj *x, int level, int prettyprint, clicon_output_cb *fn);
-int clicon_xml2file(FILE *f, cxobj *x, int level, int prettyprint);
-int xml_print(FILE *f, cxobj *xn);
-int xml_dump(FILE  *f, cxobj *x);
-int clicon_xml2cbuf(cbuf *cb, cxobj *x, int level, int prettyprint, int32_t depth, int skiptop);
-char *clicon_xml2str(cxobj *x);
-int xmltree2cbuf(cbuf *cb, cxobj *x, int level);
-
-int clixon_xml_parse_file(FILE *f, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
-int clixon_xml_parse_string(const char *str, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
-int clixon_xml_parse_va(yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr, 
+int   clixon_xml2file(FILE *f, cxobj *xn, int level, int pretty, clicon_output_cb *fn, int skiptop);
+int   xml_print(FILE *f, cxobj *xn);
+int   xml_dump(FILE  *f, cxobj *x);
+int   clixon_xml2cbuf(cbuf *cb, cxobj *x, int level, int prettyprint, int32_t depth, int skiptop);
+int   xmltree2cbuf(cbuf *cb, cxobj *x, int level);
+int   clixon_xml_parse_file(FILE *f, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
+int   clixon_xml_parse_string(const char *str, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
+int   clixon_xml_parse_va(yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr, 
 			const char *format, ...)  __attribute__ ((format (printf, 5, 6)));
-int clixon_xml_attr_copy(cxobj *xin, cxobj *xout, char *name);
+int   clixon_xml_attr_copy(cxobj *xin, cxobj *xout, char *name);
 
 #endif	/* _CLIXON_XML_IO_H_ */

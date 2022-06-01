@@ -186,7 +186,7 @@ netconf_invalid_value(cbuf *cb,
 
     if (netconf_invalid_value_xml(&xret, type, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -309,7 +309,7 @@ netconf_missing_attribute(cbuf *cb,
 
     if (netconf_missing_attribute_xml(&xret, type, attr, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -338,7 +338,7 @@ netconf_bad_attribute(cbuf *cb,
 
     if (netconf_bad_attribute_xml(&xret, type, info, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -521,7 +521,7 @@ netconf_missing_element(cbuf      *cb,
     if (netconf_common_xml(&xret, type, "missing-element",
 			   "bad-element", element, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -567,7 +567,7 @@ netconf_bad_element(cbuf *cb,
     if (netconf_common_xml(&xret, type, "bad-element",
 			   "bad-element",element, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -605,7 +605,7 @@ netconf_unknown_element(cbuf *cb,
     if (netconf_common_xml(&xret, type, "unknown-element",
 			   "bad-element", element, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -652,7 +652,7 @@ netconf_unknown_namespace(cbuf *cb,
     if (netconf_common_xml(&xret, type, "unknown-namespace",
 			   "bad-namespace", ns, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -690,7 +690,7 @@ netconf_access_denied(cbuf *cb,
 
     if (netconf_access_denied_xml(&xret, type, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -936,7 +936,7 @@ netconf_data_missing(cbuf *cb,
 
     if (netconf_data_missing_xml(&xret, missing_choice, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1085,7 +1085,7 @@ netconf_operation_not_supported(cbuf *cb,
 
     if (netconf_operation_not_supported_xml(&xret, type, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1113,7 +1113,7 @@ netconf_operation_failed(cbuf  *cb,
 
     if (netconf_operation_failed_xml(&xret, type, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1201,7 +1201,7 @@ netconf_malformed_message(cbuf  *cb,
 
     if (netconf_malformed_message_xml(&xret, message) < 0)
 	goto done;
-    if (clicon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
     retval = 0;
  done:
@@ -1606,13 +1606,15 @@ netconf_err2cb(cxobj *xerr,
 	cprintf(cberr, "%s ", xml_body(x));
     if ((x=xpath_first(xerr, NULL, "//error-info")) != NULL &&
 	xml_child_nr(x) > 0){
-	clicon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, -1, 0);
+	if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, -1, 0) < 0)
+	    goto done;
     }
     if ((x=xpath_first(xerr, NULL, "//error-app-tag"))!=NULL)
 	cprintf(cberr, ": %s ", xml_body(x));
     if ((x=xpath_first(xerr, NULL, "//error-path"))!=NULL)
 	cprintf(cberr, ": %s ", xml_body(x));
     retval = 0;
+ done:
     return retval;
 }
 
@@ -1996,7 +1998,8 @@ netconf_output(int   s,
     if (clicon_debug_get() > 1){ /* XXX: below only works to stderr, clicon_debug may log to syslog */
 	cxobj *xt = NULL;
 	if (clixon_xml_parse_string(buf, YB_NONE, NULL, &xt, NULL) == 0){
-	    clicon_xml2file(stderr, xml_child_i(xt, 0), 0, 0);
+	    if (clixon_xml2file(stderr, xml_child_i(xt, 0), 0, 0, fprintf, 0) < 0)
+		goto done;
 	    fprintf(stderr, "\n");
 	    xml_free(xt);
 	}

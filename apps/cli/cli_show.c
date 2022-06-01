@@ -434,7 +434,6 @@ cli_show_config1(clicon_handle h,
     cbuf            *cbxpath = NULL;
     char            *val = NULL;
     cxobj           *xt = NULL;
-    cxobj           *xc;
     cxobj           *xerr;
     yang_stmt       *yspec;
     char            *namespace = NULL;
@@ -495,28 +494,26 @@ cli_show_config1(clicon_handle h,
     /* Print configuration according to format */
     switch (format){
     case FORMAT_XML:
-	xc = NULL; /* Dont print xt itself */
-	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	    cli_xml2file(xc, 0, 1, cligen_output);
+	if (clixon_xml2file(stdout, xt, 0, 1, cligen_output, 1) < 0)
+	    goto done;
 	break;
     case FORMAT_JSON:
-	xml2json_file(stdout, xt, 1, cligen_output, 0);
+	if (clixon_json2file(stdout, xt, 1, cligen_output, 0) < 0)
+	    goto done;
 	break;
     case FORMAT_TEXT:
-	xc = NULL; /* Dont print xt itself */
-	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	    xml2txt(xc, cligen_output, stdout, 0); /* tree-formed text */
+	if (clixon_txt2file(stdout, xt, 0, cligen_output, 1) < 0)
+	    goto done;
 	break;
     case FORMAT_CLI:
-	if (xml2cli(h, stdout, xt, prefix, cligen_output, 1) < 0)
+	if (clixon_cli2file(h, stdout, xt, prefix, cligen_output, 1) < 0)
 	    goto done;
 	break;
     case FORMAT_NETCONF:
 	cligen_output(stdout, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target><config>\n",
 		      NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
-	xc = NULL; /* Dont print xt itself */
-	while ((xc = xml_child_each(xt, xc, -1)) != NULL)
-	    cli_xml2file(xc, 2, 1, cligen_output);
+	if (clixon_xml2file(stdout, xt, 2, 1, cligen_output, 1) < 0)
+	    goto done;
 	cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	break;
     }
@@ -650,7 +647,8 @@ show_conf_xpath(clicon_handle h,
     if (xpath_vec(xt, nsc, "%s", &xv, &xlen, xpath) < 0) 
 	goto done;
     for (i=0; i<xlen; i++)
-	cli_xml2file(xv[i], 0, 1, fprintf);
+	if (clixon_xml2file(stdout, xv[i], 0, 1, fprintf, 0) < 0)
+	    goto done;
 
     retval = 0;
 done:
@@ -671,7 +669,7 @@ int cli_show_version(clicon_handle h,
     return 0;
 }
 
-/*! Generic show configuration CLIgen callback using generated CLI syntax
+/*! Generic show configuration CLIgen callback using auto CLI syntax
  *
  * This callback can be used only in context of an autocli generated syntax tree, such as:
  *   show @datamodel, cli_show_auto();
@@ -690,10 +688,10 @@ int cli_show_version(clicon_handle h,
  * @see cli_show_config1
  */
 static int 
-cli_show_generated(clicon_handle h,
-		   int           state,
-		   cvec         *cvv,
-		   cvec         *argv)
+cli_show_auto1(clicon_handle h,
+	       int           state,
+	       cvec         *cvv,
+	       cvec         *argv)
 {
     int              retval = 1;
     yang_stmt       *yspec;
@@ -705,12 +703,9 @@ cli_show_generated(clicon_handle h,
     enum format_enum format = FORMAT_XML;
     cxobj           *xt = NULL;
     cxobj           *xp;
-    cxobj           *xp_helper;
     cxobj           *xerr;
     char            *api_path = NULL;
     char            *prefix = NULL;
-    enum rfc_6020    ys_keyword;
-    int		     i = 0;
     int              cvvi = 0;
 
     if (cvec_len(argv) < 3 || cvec_len(argv) > 4){
@@ -763,40 +758,28 @@ cli_show_generated(clicon_handle h,
     }
     if ((xp = xpath_first(xt, nsc, "%s", xpath)) != NULL){
 	/* Print configuration according to format */
-	ys_keyword = yang_keyword_get(xml_spec(xp));
-	if (ys_keyword == Y_LIST)
-		xp_helper = xml_child_i(xml_parent(xp), i);
-	else
-		xp_helper = xp;
-
 	switch (format){
 	case FORMAT_CLI:
-	    if (xml2cli(h, stdout, xp, prefix, cligen_output, 0) < 0) /* cli syntax */
+	    if (clixon_cli2file(h, stdout, xp, prefix, cligen_output, 0) < 0) /* cli syntax */
 		goto done;
 	    break;
 	case FORMAT_NETCONF:
 	    fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
-	    cli_xml2file(xp, 2, 1, fprintf);
+	    if (clixon_xml2file(stdout, xp, 2, 1, fprintf, 0) < 0)
+		goto done;
 	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	    break;
 	case FORMAT_JSON:
-	    xml2json_file(stdout, xp_helper, 1, cligen_output, 1);
+	    if (clixon_json2file(stdout, xp, 1, cligen_output, 1) < 0) // XXX helper?
+		goto done;
 	    break;
-	default:
-	    for (; i < xml_child_nr(xml_parent(xp)) ; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
-		switch (format){
-		case FORMAT_XML:
-		    cli_xml2file(xp_helper, 0, 1, fprintf);
-		    break;
-		case FORMAT_TEXT:	
-		    xml2txt(xp_helper, cligen_output, stdout, 0);  /* tree-formed text */
-		    break;
-		default: /* see cli_show_config() */
-		    break;
-		}
-		if (ys_keyword != Y_LIST)
-		    break;
-	    }
+	case FORMAT_TEXT:
+	    if (clixon_txt2file(stdout, xp, 0, cligen_output, 1) < 0) // XXX helper?
+		goto done;
+	    break;
+	case FORMAT_XML:
+	    if (clixon_xml2file(stdout, xp, 0, 1, fprintf, 0) < 0) // XXX helper?
+		goto done;
 	    break;
 	}
     }
@@ -828,7 +811,7 @@ cli_show_auto(clicon_handle h,
 	      cvec         *cvv,
 	      cvec         *argv)
 {
-    return cli_show_generated(h, 0, cvv, argv);
+    return cli_show_auto1(h, 0, cvv, argv);
 }
 
 /*! Generic show config and state CLIgen callback using generated CLI syntax
@@ -845,7 +828,7 @@ cli_show_auto_state(clicon_handle h,
 		    cvec         *cvv,
 		    cvec         *argv)
 {
-    return cli_show_generated(h, 1, cvv, argv);
+    return cli_show_auto1(h, 1, cvv, argv);
 }
 
 /*! Show clixon configuration options as loaded
@@ -980,17 +963,21 @@ cli_pagination(clicon_handle h,
 	    xc = xvec[j];
 	    switch (format){
 	    case FORMAT_XML:
-		clicon_xml2file_cb(stdout, xc, 0, 1, cligen_output);
+		if (clixon_xml2file(stdout, xc, 0, 1, cligen_output, 0) < 0)
+		    goto done;
 		break;
 	    case FORMAT_JSON:
-		xml2json_file(stdout, xc, 1, cligen_output, 0);
+		if (clixon_json2file(stdout, xc, 1, cligen_output, 0) < 0)
+		    goto done;
 		break;
 	    case FORMAT_TEXT:
-		xml2txt(xc, cligen_output, stdout, 0); /* tree-formed text */
+		if (clixon_txt2file(stdout, xc, 0, cligen_output, 0) < 0)
+		    goto done;
 		break;
 	    case FORMAT_CLI:
 		/* hardcoded to compress and list-keyword = nokey */
-		xml2cli(h, stdout, xc, NULL, cligen_output, 0);
+		if (clixon_cli2file(h, stdout, xc, NULL, cligen_output, 0) < 0)
+		    goto done;
 		break;
 	    default:
 		break;
@@ -1155,21 +1142,24 @@ xml2cli1(clicon_handle     h,
  * @param[in] f        Output FILE (eg stdout)
  * @param[in] xn       XML Parse-tree (to translate)
  * @param[in] prepend  Print this text in front of all commands.
- * @param[in] fn       Callback to make print function
+ * @param[in] fn       File print function (if NULL, use fprintf)
  * @param[in] skiptop  0: Include top object 1: Skip top-object, only children, 
-
+ * @retval    0        OK
+ * @retval   -1        Error
  */
 int
-xml2cli(clicon_handle     h,
-	FILE             *f, 
-	cxobj            *xn,
-	char             *prepend,
-	clicon_output_cb *fn,
-	int               skiptop)
+clixon_cli2file(clicon_handle     h,
+		FILE             *f, 
+		cxobj            *xn,
+		char             *prepend,
+		clicon_output_cb *fn,
+		int               skiptop)
 {
     int   retval = 1;
     cxobj *xc;
 
+    if (fn == NULL)
+	fn = fprintf;
     if (skiptop){
 	xc = NULL;
 	while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)

@@ -420,7 +420,7 @@ clicon_rpc_netconf_xml(clicon_handle  h,
 	goto done;
     }
     rpcname = xml_name(xname); /* Store rpc name and use in yang binding after reply */
-    if (clicon_xml2cbuf(cb, xml, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xml, 0, 0, -1, 0) < 0)
 	goto done;
     if (clicon_rpc_netconf(h, cbuf_get(cb), xret, sp) < 0)
 	goto done;

@@ -366,7 +366,7 @@ from_client_edit_config(clicon_handle h,
     if ((ret = xml_bind_yang(xc, YB_MODULE, yspec, &xret)) < 0)
 	goto done;
     if (ret == 0){
-	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+	if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -374,7 +374,7 @@ from_client_edit_config(clicon_handle h,
     if ((ret = xml_non_config_data(xc, &xret)) < 0)
 	goto done;
     if (ret == 0){
-	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+	if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -387,7 +387,7 @@ from_client_edit_config(clicon_handle h,
     if ((ret = xml_yang_validate_list_key_only(xc, &xret)) < 0)
 	goto done;
     if (ret == 0){
-	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+	if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
 	    goto done;
 	goto ok;
     }
@@ -1241,7 +1241,7 @@ from_client_msg(clicon_handle        h,
 	goto reply;
     }
     if (ret == 0){
-	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+	if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
 	    goto done;
 	goto reply;
     }
@@ -1303,7 +1303,7 @@ from_client_msg(clicon_handle        h,
     if ((ret = xml_yang_validate_rpc(h, x, &xret)) < 0)
 	goto done;
     if (ret == 0){
-	if (clicon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+	if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
 	    goto done;
 	goto reply;
     }

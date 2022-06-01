@@ -50,17 +50,30 @@ Planned: July 2022
 
 Developers may need to change their code
 
-* Changed C-API for xml translation/print to other formats.
-  * Added `skiptop` parameter, if set only apply to children of a node, skip top node
-    * default is 0
+* Changed C-API for xml translation/print the internal `cxobj` tree data structure to other formats.
   * Functions are merged, ie removed and replaced with more generic functions
-  * `xml2json_cbuf()`: Added `skiptop` parameter: `xml2json_cbuf(..., int skiptop)`
-  * `xml2json()` and `xml2json_cb()` merged into `xml2json_file()` with `skiptop`
-    * Replace `xml2json(...)` with `xml2json_file(..., stdout, 0)`
-    * Replace `xml2json_cb(...)` with `xml2json_file(..., 0)`
-  * `clicon_xml2cbuf()`: Added `skiptop` parameter: `clicon_xml2cbuf(..., int skiptop)`
-  * `xml2cli()`: Added `skiptop` parameter: `xml2cli(..., int skiptop)`
-  * Merged `cli_xml2txt()` and `xml2txt_cb()` with `xml2txt()`
+  * Added `skiptop` parameter, if set only apply to children of a node, skip top node
+     * default is 0
+  * The new API is as follows, with how to change old functions to new:
+     * `clixon_xml2file()` - Print internal tree as XML to file
+     * `clixon_xml2cbuf()` - Print internal tree as XML to buffer
+     * `clixon_json2file()` - Print internal tree as JSON to file
+     * `clixon_json2cbuf()` - Print internal tree as JSON to buffer
+     * `clixon_cli2file()` - Print internal tree as CLI format to file
+     * `clixon_txt2file()` - Print internal tree as text format to file
+  * As developer, you need to replace the old functions to the new API as follows:
+     * `clicon_xml2file(f, x, l, p)` -> `clixon_xml2file(f, x, l, p, NULL, 0)`
+     * `clicon_xml2file_cb(f, x, l, p, fn)` -> `clixon_xml2file(f, x, l, p, fn, 0)`
+     * `cli_xml2file(x, l, p, fn)` -> `clixon_xml2file(stdout, x, l, p, fn, 0)`
+     * `clicon_xml2cbuf(c, x, l, p, d)` -> `clixon_xml2cbuf(c, x, l, p, d, 0)`
+     * `clicon_xml2str(x)` -> Rewrite using cbufs and `clixon_xml2cbuf()`
+     * `xml2json(f, x, p)` -> `clixon_json2file(f, x, p, NULL, 0)`
+     * `xml2json_cb(f, x, p, fn)` -> `clixon_json2file(f, x, p, fn, 0)`
+     * `xml2json_cbuf(c, x, p)` -> `clixon_json2cbuf(c, x, p, 0)`
+     * `xml2cli(h, f, x, p, fn)` -> `clixon_cli2file(h, f, x, p, fn, 0)`
+     * `cli_xml2txt(x, fn, l)` -> `clixon_txt2file(stdout, x, l, NULL, 0)`
+     * `xml2txt(f, x, l)` -> `clixon_txt2file(f, x, l, NULL, 0)`
+     * `xml2txt_cb(f, x, fn)` -> `clixon_txt2file(f, x, 0, NULL, 0)`
 	
 ## 5.7.0
 17 May 2022

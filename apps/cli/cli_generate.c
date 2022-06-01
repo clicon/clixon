@@ -882,7 +882,7 @@ yang2cli_container(clicon_handle h,
 	goto done;
     /* If non-presence container && HIDE mode && only child is 
      * a list, then skip container keyword
-     * See also xml2cli
+     * See also clixon_cli2file
      */
     if (autocli_compress(h, ys, &compress) < 0)
 	goto done;

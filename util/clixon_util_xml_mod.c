@@ -281,10 +281,14 @@ main(int argc, char **argv)
     }
     if (sort)
 	xml_sort_recurse(xb);
-    if (strcmp(xml_name(xb),"top")==0)
-	clicon_xml2file(stdout, xml_child_i_type(xb, 0, CX_ELMNT), 0, 0);
-    else
-	clicon_xml2file(stdout, xb, 0, 0);
+    if (strcmp(xml_name(xb),"top")==0){
+	if (clixon_xml2file(stdout, xb, 0, 0, fprintf, 1) < 0)
+	    goto done;
+    }
+    else{
+	if (clixon_xml2file(stdout, xb, 0, 0, fprintf, 0) < 0)
+	    goto done;
+    }
     fprintf(stdout, "\n");
     retval = 0;
  done:
