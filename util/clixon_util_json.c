@@ -88,7 +88,6 @@ main(int    argc,
 {
     int        retval = -1;
     cxobj     *xt = NULL;
-    cxobj     *xc;
     cbuf      *cb = cbuf_new();
     int        c;
     int        logdst = CLICON_LOG_STDERR;
@@ -145,20 +144,10 @@ main(int    argc,
 	xml_print(stderr, xerr);
 	goto done;
     }
-#if 0
     if (json)
-	xml2json_cbuf(cb, xt, pretty); /* print json */
+	xml2json_cbuf(cb, xt, pretty, 1); /* print json */
     else
-	clicon_xml2cbuf(cb, xt, 0, pretty, -1); /* print xml */
-#else
-    xc = NULL;
-    /* XXX This is troublesome for JSON top-level lists */
-    while ((xc = xml_child_each(xt, xc, -1)) != NULL) 
-	if (json)
-	    xml2json_cbuf(cb, xc, pretty); /* print json */
-	else
-	    clicon_xml2cbuf(cb, xc, 0, pretty, -1); /* print xml */
-#endif
+	clicon_xml2cbuf(cb, xt, 0, pretty, -1, 1); /* print xml */
     fprintf(stdout, "%s", cbuf_get(cb));
     fflush(stdout);
     retval = 0;

@@ -500,7 +500,7 @@ cli_show_config1(clicon_handle h,
 	    cli_xml2file(xc, 0, 1, cligen_output);
 	break;
     case FORMAT_JSON:
-	xml2json_cb(stdout, xt, 1, cligen_output);
+	xml2json_file(stdout, xt, 1, cligen_output, 0);
 	break;
     case FORMAT_TEXT:
 	xc = NULL; /* Dont print xt itself */
@@ -508,10 +508,8 @@ cli_show_config1(clicon_handle h,
 	    cli_xml2txt(xc, cligen_output, 0); /* tree-formed text */
 	break;
     case FORMAT_CLI:
-	xc = NULL; /* Dont print xt itself */
-	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
-	    if (xml2cli(h, stdout, xc, prefix, cligen_output) < 0)
-		goto done;
+	if (xml2cli(h, stdout, xt, prefix, cligen_output, 1) < 0)
+	    goto done;
 	break;
     case FORMAT_NETCONF:
 	cligen_output(stdout, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target><config>\n",
@@ -773,7 +771,7 @@ cli_show_generated(clicon_handle h,
 
 	switch (format){
 	case FORMAT_CLI:
-	    if (xml2cli(h, stdout, xp, prefix, cligen_output) < 0) /* cli syntax */
+	    if (xml2cli(h, stdout, xp, prefix, cligen_output, 0) < 0) /* cli syntax */
 		goto done;
 	    break;
 	case FORMAT_NETCONF:
@@ -781,14 +779,14 @@ cli_show_generated(clicon_handle h,
 	    cli_xml2file(xp, 2, 1, fprintf);
 	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	    break;
+	case FORMAT_JSON:
+	    xml2json_file(stdout, xp_helper, 1, cligen_output, 1);
+	    break;
 	default:
 	    for (; i < xml_child_nr(xml_parent(xp)) ; ++i, xp_helper = xml_child_i(xml_parent(xp), i)) {
 		switch (format){
 		case FORMAT_XML:
 		    cli_xml2file(xp_helper, 0, 1, fprintf);
-		    break;
-		case FORMAT_JSON:
-		    xml2json_cb(stdout, xp_helper, 1, cligen_output);
 		    break;
 		case FORMAT_TEXT:	
 		    cli_xml2txt(xp_helper, cligen_output, 0);  /* tree-formed text */
@@ -985,14 +983,14 @@ cli_pagination(clicon_handle h,
 		clicon_xml2file_cb(stdout, xc, 0, 1, cligen_output);
 		break;
 	    case FORMAT_JSON:
-		xml2json_cb(stdout, xc, 1, cligen_output);
+		xml2json_file(stdout, xc, 1, cligen_output, 0);
 		break;
 	    case FORMAT_TEXT:
 		xml2txt_cb(stdout, xc, cligen_output); /* tree-formed text */
 		break;
 	    case FORMAT_CLI:
 		/* hardcoded to compress and list-keyword = nokey */
-		xml2cli(h, stdout, xc, NULL, cligen_output);
+		xml2cli(h, stdout, xc, NULL, cligen_output, 0);
 		break;
 	    default:
 		break;
@@ -1028,7 +1026,7 @@ cli_pagination(clicon_handle h,
     return retval;
 }
 
-/*! Translate from XML to CLI commands
+/*! Translate from XML to CLI commands, internal
  *
  * Howto: join strings and pass them down. 
  * Identify unique/index keywords for correct set syntax.
@@ -1037,14 +1035,13 @@ cli_pagination(clicon_handle h,
  * @param[in] xn       XML Parse-tree (to translate)
  * @param[in] prepend  Print this text in front of all commands.
  * @param[in] fn       Callback to make print function
- * @see xml2cli  XXX should probably use the generic function
  */
-int
-xml2cli(clicon_handle    h,
-	FILE            *f, 
-	cxobj           *xn,
-	char            *prepend,
-	clicon_output_cb *fn)
+static int
+xml2cli1(clicon_handle     h,
+	 FILE             *f, 
+	 cxobj            *xn,
+	 char             *prepend,
+	 clicon_output_cb *fn)
 {
     int        retval = -1;
     cxobj     *xe = NULL;
@@ -1139,7 +1136,7 @@ xml2cli(clicon_handle    h,
 	    if (match)
 		continue; /* Not key itself */
 	}
-	if (xml2cli(h, f, xe, cbuf_get(cbpre), fn) < 0)
+	if (xml2cli1(h, f, xe, cbuf_get(cbpre), fn) < 0)
 	    goto done;
     }
  ok:
@@ -1147,5 +1144,43 @@ xml2cli(clicon_handle    h,
  done:
     if (cbpre)
 	cbuf_free(cbpre);
+    return retval;
+}
+
+/*! Translate from XML to CLI commands
+ *
+ * Howto: join strings and pass them down. 
+ * Identify unique/index keywords for correct set syntax.
+ * @param[in] h        Clicon handle
+ * @param[in] f        Output FILE (eg stdout)
+ * @param[in] xn       XML Parse-tree (to translate)
+ * @param[in] prepend  Print this text in front of all commands.
+ * @param[in] fn       Callback to make print function
+ * @param[in] skiptop  0: Include top object 1: Skip top-object, only children, 
+
+ */
+int
+xml2cli(clicon_handle     h,
+	FILE             *f, 
+	cxobj            *xn,
+	char             *prepend,
+	clicon_output_cb *fn,
+	int               skiptop)
+{
+    int   retval = 1;
+    cxobj *xc;
+
+    if (skiptop){
+	xc = NULL;
+	while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+	    if (xml2cli1(h, f, xc, prepend, fn) < 0)
+		goto done;
+    }
+    else {
+	if (xml2cli1(h, f, xn, prepend, fn) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
     return retval;
 }

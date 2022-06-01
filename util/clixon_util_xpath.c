@@ -98,7 +98,7 @@ ctx_print2(cbuf   *cb,
     case XT_NODESET:
 	for (i=0; i<xc->xc_size; i++){
 	    cprintf(cb, "%d:", i);
-	    clicon_xml2cbuf(cb, xc->xc_nodeset[i], 0, 0, -1);
+	    clicon_xml2cbuf(cb, xc->xc_nodeset[i], 0, 0, -1, 0);
 	}
 	break;
     case XT_BOOL:

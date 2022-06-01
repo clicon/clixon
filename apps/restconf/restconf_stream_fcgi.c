@@ -254,7 +254,7 @@ restconf_stream_cb(int   s,
 	FCGX_FPrintF(r->out, "M#id: %02d:0\r\n", tv.tv_sec);
     }
 #endif
-    if (clicon_xml2cbuf(cb, xn, 0, pretty, -1) < 0)
+    if (clicon_xml2cbuf(cb, xn, 0, pretty, -1, 0) < 0)
 	goto done;
     FCGX_FPrintF(r->out, "data: %s\r\n", cbuf_get(cb));
     FCGX_FPrintF(r->out, "\r\n");

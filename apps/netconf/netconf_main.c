@@ -211,7 +211,7 @@ netconf_rpc_message(clicon_handle h,
 	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}
-	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
+	clicon_xml2cbuf(cbret, xret, 0, 0, -1, 0);
 	if (netconf_output_encap(framing, cbret) < 0)
 	    goto done;
 	if (netconf_output(1, cbret, "rpc-error") < 0)
@@ -231,7 +231,7 @@ netconf_rpc_message(clicon_handle h,
 	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}
-	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
+	clicon_xml2cbuf(cbret, xret, 0, 0, -1, 0);
 	if (netconf_output_encap(framing, cbret) < 0)
 	    goto done;
 	if (netconf_output(1, cbret, "rpc-error") < 0)
@@ -251,7 +251,7 @@ netconf_rpc_message(clicon_handle h,
 	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}
-	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
+	clicon_xml2cbuf(cbret, xret, 0, 0, -1, 0);
 	if (netconf_output_encap(framing, cbret) < 0)
 	    goto done;
 	if (netconf_output(1, cbret, "rpc-error") < 0)
@@ -266,7 +266,7 @@ netconf_rpc_message(clicon_handle h,
 	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}
-	clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0, -1);
+	clicon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0, -1, 0);
 	if (netconf_output_encap(framing, cbret) < 0)
 	    goto done;
 	if (netconf_output(1, cbret, "rpc-reply") < 0)
@@ -322,7 +322,7 @@ netconf_input_packet(clicon_handle h,
 		clicon_err(OE_XML, errno, "cbuf_new");
 		goto done;
 	    }
-	    clicon_xml2cbuf(cbret, xret, 0, 0, -1);
+	    clicon_xml2cbuf(cbret, xret, 0, 0, -1, 0);
 	    if (netconf_output_encap(framing, cbret) < 0)
 		goto done;
 	    if (netconf_output(1, cbret, "rpc-error") < 0)
@@ -435,7 +435,7 @@ netconf_input_frame(clicon_handle h,
 	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}
-	clicon_xml2cbuf(cbret, xret, 0, 0, -1);
+	clicon_xml2cbuf(cbret, xret, 0, 0, -1, 0);
 	if (netconf_output_encap(framing, cbret) < 0)
 	    goto done;
 	if (netconf_output(1, cbret, "rpc-error") < 0)

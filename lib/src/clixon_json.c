@@ -1043,24 +1043,23 @@ xml2json1_cbuf(cbuf                   *cb,
  * @param[in,out] cb     Cligen buffer to write to
  * @param[in]     x      XML tree to translate from
  * @param[in]     pretty Set if output is pretty-printed
- * @param[in]     top    By default only children are printed, set if include top
  * @retval        0      OK
  * @retval       -1      Error
  *
  * @code
  * cbuf *cb;
  * cb = cbuf_new();
- * if (xml2json_cbuf(cb, xn, 0, 1) < 0)
+ * if (xml2json_cbuf(cb, xn, 0, 0) < 0)
  *   goto err;
  * cbuf_free(cb);
  * @endcode
  * @see clicon_xml2cbuf     XML corresponding function
  * @see xml2json_cbuf_vec   Top symbol is list
  */
-int 
-xml2json_cbuf(cbuf      *cb, 
-	      cxobj     *x, 
-	      int        pretty)
+static int 
+xml2json_cbuf1(cbuf   *cb, 
+	       cxobj  *x, 
+	       int     pretty)
 {
     int                     retval = 1;
     int                     level = 0;
@@ -1095,6 +1094,44 @@ xml2json_cbuf(cbuf      *cb,
 	    pretty?"\n":"",
 	    pretty?level*JSON_INDENT:0,"",
 	    pretty?"\n":"");
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Translate an XML tree to JSON in a CLIgen buffer skip top-level object
+ *
+ * XML-style namespace notation in tree, but RFC7951 in output assume yang 
+ * populated 
+ *
+ * @param[in,out] cb      Cligen buffer to write to
+ * @param[in]     xt      Top-level xml object
+ * @param[in]     pretty  Set if output is pretty-printed
+ * @param[in]     skiptop 0: Include top object 1: Skip top-object, only children, 
+ * @retval        0       OK
+ * @retval       -1       Error
+ * @see xml2json_cbuf where the top level object is included
+ */
+int 
+xml2json_cbuf(cbuf  *cb, 
+	      cxobj *xt, 
+	      int    pretty,
+	      int    skiptop)
+{
+    int    retval = -1;
+    cxobj *xc;
+
+    if (skiptop){
+	xc = NULL;
+	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
+	    if (xml2json_cbuf1(cb, xc, pretty) < 0)
+		goto done;
+
+    }
+    else {
+	if (xml2json_cbuf1(cb, xt, pretty) < 0)
+	    goto done;
+    }
     retval = 0;
  done:
     return retval;
@@ -1166,24 +1203,26 @@ xml2json_cbuf_vec(cbuf      *cb,
 }
 
 /*! Translate from xml tree to JSON and print to file using a callback
- * @param[in]  f      File to print to
- * @param[in]  x      XML tree to translate from
- * @param[in]  pretty Set if output is pretty-printed
- * @retval     0      OK
- * @retval    -1      Error
+ * @param[in]  f       File to print to
+ * @param[in]  x       XML tree to translate from
+ * @param[in]  pretty  Set if output is pretty-printed
+ * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
+ * @retval     0       OK
+ * @retval    -1       Error
  *
  * @note yang is necessary to translate to one-member lists,
  * eg if a is a yang LIST <a>0</a> -> {"a":["0"]} and not {"a":"0"}
  * @code
- * if (xml2json(stderr, xn, 0) < 0)
+ * if (xml2json_file(stderr, xn, 0, fprintf, 0) < 0)
  *   goto err;
  * @endcode
  */
 int 
-xml2json_cb(FILE             *f, 
-	    cxobj            *x, 
-	    int               pretty,
-	    clicon_output_cb *fn)
+xml2json_file(FILE             *f, 
+	      cxobj            *x, 
+	      int               pretty,
+	      clicon_output_cb *fn,
+	      int               skiptop)
 {
     int   retval = 1;
     cbuf *cb = NULL;
@@ -1192,7 +1231,7 @@ xml2json_cb(FILE             *f,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (xml2json_cbuf(cb, x, pretty) < 0)
+    if (xml2json_cbuf(cb, x, pretty, skiptop) < 0)
 	goto done;
     (*fn)(f, "%s", cbuf_get(cb));
     retval = 0;
@@ -1201,29 +1240,6 @@ xml2json_cb(FILE             *f,
 	cbuf_free(cb);
     return retval;
 }
-
-/*! Translate from xml tree to JSON and print to file
- * @param[in]  f      File to print to
- * @param[in]  x      XML tree to translate from
- * @param[in]  pretty Set if output is pretty-printed
- * @retval     0      OK
- * @retval    -1      Error
- *
- * @note yang is necessary to translate to one-member lists,
- * eg if a is a yang LIST <a>0</a> -> {"a":["0"]} and not {"a":"0"}
- * @code
- * if (xml2json(stderr, xn, 0) < 0)
- *   goto err;
- * @endcode
- */
-int 
-xml2json(FILE      *f, 
-	 cxobj     *x, 
-	 int        pretty)
-{
-    return xml2json_cb(f, x, pretty, fprintf);
-}
-
 
 /*! Print an XML tree structure to an output stream as JSON
  *
@@ -1234,7 +1250,7 @@ int
 json_print(FILE  *f, 
 	   cxobj *x)
 {
-    return xml2json_cb(f, x, 1, fprintf);
+    return xml2json_file(f, x, 1, fprintf, 0);
 }
 
 /*! Translate a vector of xml objects to JSON File.

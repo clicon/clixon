@@ -139,7 +139,6 @@ main(int    argc,
     int           retval = -1;
     int           ret;
     cxobj        *xt = NULL;   /* Base cxobj tree parsed from xml or json */
-    cxobj        *xc;
     cbuf         *cb = cbuf_new();
     int           c;
     int           logdst = CLICON_LOG_STDERR;
@@ -337,21 +336,10 @@ main(int    argc,
     }
     /* 4. Output data (xml/json) */
     if (output){
-#if 0
 	if (jsonout)
-	    xml2json_cbuf(cb, xt, pretty); /* print json */
+	    xml2json_cbuf(cb, xt, pretty, 1); /* print json */
 	else
-	    clicon_xml2cbuf(cb, xt, 0, pretty, -1); /* print xml */
-#else
-	xc = NULL;
-	/* XXX This is troublesome for JSON top-level lists */
-	while ((xc = xml_child_each(xt, xc, -1)) != NULL){
-	    if (jsonout)
-		xml2json_cbuf(cb, xc, pretty); /* print json */
-	    else
-		clicon_xml2cbuf(cb, xc, 0, pretty, -1); /* print xml */
-	}
-#endif
+	    clicon_xml2cbuf(cb, xt, 0, pretty, -1, 1); /* print xml */
 	fprintf(stdout, "%s", cbuf_get(cb));
 	fflush(stdout);
     }

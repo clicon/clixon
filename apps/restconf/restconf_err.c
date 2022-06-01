@@ -279,13 +279,13 @@ api_return_err(clicon_handle  h,
 	clicon_debug(1, "%s code:%d", __FUNCTION__, code);
 	if (pretty){
 	    cprintf(cb, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n");
-	    if (clicon_xml2cbuf(cb, xerr, 2, pretty, -1) < 0)
+	    if (clicon_xml2cbuf(cb, xerr, 2, pretty, -1, 0) < 0)
 		goto done;
 	    cprintf(cb, "    </errors>\r\n");
 	}
 	else {
 	    cprintf(cb, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">");
-	    if (clicon_xml2cbuf(cb, xerr, 2, pretty, -1) < 0)
+	    if (clicon_xml2cbuf(cb, xerr, 2, pretty, -1, 0) < 0)
 		goto done;
 	    cprintf(cb, "</errors>\r\n");
 	}
@@ -295,14 +295,14 @@ api_return_err(clicon_handle  h,
 	clicon_debug(1, "%s code:%d", __FUNCTION__, code);
 	if (pretty){
 	    cprintf(cb, "{\n\"ietf-restconf:errors\" : ");
-	    if (xml2json_cbuf(cb, xerr, pretty) < 0)
+	    if (xml2json_cbuf(cb, xerr, pretty, 0) < 0)
 		goto done;
 	    cprintf(cb, "\n}\r\n");
 	}
 	else{
 	    cprintf(cb, "{");
 	    cprintf(cb, "\"ietf-restconf:errors\":");
-	    if (xml2json_cbuf(cb, xerr, pretty) < 0)
+	    if (xml2json_cbuf(cb, xerr, pretty, 0) < 0)
 		goto done;
 	    cprintf(cb, "}\r\n");
 	}

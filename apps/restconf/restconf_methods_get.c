@@ -225,11 +225,11 @@ api_data_get2(clicon_handle  h,
     if (xpath==NULL || strcmp(xpath,"/")==0){ /* Special case: data root */
 	switch (media_out){
 	case YANG_DATA_XML:
-	    if (clicon_xml2cbuf(cbx, xret, 0, pretty, -1) < 0) /* Dont print top object?  */
+	    if (clicon_xml2cbuf(cbx, xret, 0, pretty, -1, 0) < 0) /* Dont print top object?  */
 		goto done;
 	    break;
 	case YANG_DATA_JSON:
-	    if (xml2json_cbuf(cbx, xret, pretty) < 0)
+	    if (xml2json_cbuf(cbx, xret, pretty, 0) < 0)
 		goto done;
 	    break;
 	default:
@@ -270,7 +270,7 @@ api_data_get2(clicon_handle  h,
 		    if (namespace && xmlns_set(x, prefix, namespace) < 0)
 			goto done;
 		}
-		if (clicon_xml2cbuf(cbx, x, 0, pretty, -1) < 0) /* Dont print top object?  */
+		if (clicon_xml2cbuf(cbx, x, 0, pretty, -1, 0) < 0) /* Dont print top object?  */
 		    goto done;
 	    }
 	    break;
@@ -535,7 +535,7 @@ api_data_pagination(clicon_handle  h,
 	    if (xml_insert(xpr, xp, INS_LAST, NULL, NULL) < 0) 
 		goto done;
 	}
-	if (clicon_xml2cbuf(cbx, xpr, 0, pretty, -1) < 0) /* Dont print top object?  */
+	if (clicon_xml2cbuf(cbx, xpr, 0, pretty, -1, 0) < 0) /* Dont print top object?  */
 	    goto done;
 	break;
     case YANG_DATA_JSON:

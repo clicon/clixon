@@ -38,6 +38,21 @@
 ## 5.8.0
 Planned: July 2022
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Changed C-API for xml translation/print to other formats.
+  * Added `skiptop` parameter, if set only apply to children of a node, skip top node
+    * default is 0
+  * Functions are merged, ie removed and replaced with more generic functions
+  * `xml2json_cbuf()`: Added `skiptop` parameter: `xml2json_cbuf(..., int skiptop)`
+  * `xml2json()` and `xml2json_cb()` merged into `xml2json_file()` with `skiptop`
+    * Replace `xml2json(...)` with `xml2json_file(..., stdout, 0)`
+    * Replace `xml2json_cb(...)` with `xml2json_file(..., 0)`
+  * `clicon_xml2cbuf()`: Added `skiptop` parameter: `clicon_xml2cbuf(..., int skiptop)`
+  * `xml2cli()`: Added `skiptop` parameter: `xml2cli(..., int skiptop)`
+
 ## 5.7.0
 17 May 2022
 

@@ -651,12 +651,8 @@ cli_auto_show(clicon_handle h,
 	    fprintf(stdout, "\n");
 	    break;
 	case FORMAT_JSON:
-	    if (isroot)
-		xml2json_cb(stdout, xp, pretty, cligen_output);
-	    else{
-		while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL)
-		    xml2json_cb(stdout, xc, pretty, cligen_output);
-	    }
+	    if (xml2json_file(stdout, xp, pretty, cligen_output, !isroot) < 0)
+		goto done;
 	    fprintf(stdout, "\n");
 	    break;
 	case FORMAT_TEXT:
@@ -667,11 +663,8 @@ cli_auto_show(clicon_handle h,
 		    cli_xml2txt(xc, cligen_output, 0); /* tree-formed text */
 	    break;
 	case FORMAT_CLI:
-	    if (isroot)
-		xml2cli(h, stdout, xp, prefix, cligen_output);
-	    else
-		while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL)
-		    xml2cli(h, stdout, xc, prefix, cligen_output);
+	    if (xml2cli(h, stdout, xp, prefix, cligen_output, !isroot) < 0)
+		goto done;
 	    break;
 	case FORMAT_NETCONF:
 	    fprintf(stdout, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target><config>",

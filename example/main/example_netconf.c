@@ -85,12 +85,14 @@ netconf_client_rpc(clicon_handle h,
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     if (!xml_child_nr_type(xe, CX_ELMNT))
 	cprintf(cbret, "<ok/>");
-    else while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
+    else{
+	while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
 	    if (xmlns_set(x, NULL, namespace) < 0)
 		goto done;
-	    if (clicon_xml2cbuf(cbret, x, 0, 0, -1) < 0)
-		goto done;
 	}
+	if (clicon_xml2cbuf(cbret, xe, 0, 0, -1, 1) < 0)
+	    goto done;
+    }
     cprintf(cbret, "</rpc-reply>");
     retval = 0;
  done:

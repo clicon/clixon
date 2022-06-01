@@ -137,7 +137,7 @@ int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv,
 		  cvec *commands, cvec *helptexts);
 int cli_xml2file (cxobj *xn, int level, int prettyprint, clicon_output_cb *fn);
 int cli_xml2txt(cxobj *xn, clicon_output_cb *fn, int level);
-int xml2cli(clicon_handle h, FILE *f, cxobj *xn, char *prepend, clicon_output_cb  *fn);
+int xml2cli(clicon_handle h, FILE *f, cxobj *xn, char *prepend, clicon_output_cb *fn, int skiptop);
 
 /* cli_show.c: CLIgen new vector arg callbacks */
 int show_yang(clicon_handle h, cvec *vars, cvec *argv);

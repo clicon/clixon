@@ -2350,7 +2350,7 @@ clicon_log_xml(int         level,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (clicon_xml2cbuf(cb, x, 0, 0, -1) < 0)
+    if (clicon_xml2cbuf(cb, x, 0, 0, -1, 0) < 0)
 	goto done;
     
     /* first round: compute length of debug message */

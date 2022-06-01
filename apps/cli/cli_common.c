@@ -325,7 +325,7 @@ cli_dbxml(clicon_handle       h,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (clicon_xml2cbuf(cb, xtop, 0, 0, -1) < 0)
+    if (clicon_xml2cbuf(cb, xtop, 0, 0, -1, 0) < 0)
 	goto done;
     if (clicon_rpc_edit_config(h, "candidate", OP_NONE, cbuf_get(cb)) < 0)
 	goto done;
@@ -925,9 +925,9 @@ load_config_file(clicon_handle h,
     while ((x = xml_child_each(xt, x, -1)) != NULL) {
 	/* Read as datastore-top but transformed into an edit-config "config" */
 	xml_name_set(x, NETCONF_INPUT_CONFIG);
-	if (clicon_xml2cbuf(cbxml, x, 0, 0, -1) < 0)
-	    goto done;
     }
+    if (clicon_xml2cbuf(cbxml, xt, 0, 0, -1, 1) < 0)
+	goto done;
     if (clicon_rpc_edit_config(h, "candidate",
 			       replace?OP_REPLACE:OP_MERGE, 
 			       cbuf_get(cbxml)) < 0)
@@ -973,7 +973,6 @@ save_config_file(clicon_handle h,
     char              *dbstr;
     char              *varstr;
     cxobj             *xt = NULL;
-    cxobj             *x;
     cxobj             *xerr;
     FILE              *f = NULL;
     char              *formatstr;
@@ -1031,7 +1030,7 @@ save_config_file(clicon_handle h,
 	    goto done;
 	break;
     case FORMAT_JSON:
-	if (xml2json(f, xt, pretty) < 0)
+	if (xml2json_file(f, xt, pretty, fprintf, 0) < 0)
 	    goto done;
 	break;
     case FORMAT_TEXT:
@@ -1039,11 +1038,8 @@ save_config_file(clicon_handle h,
 	    goto done;
 	break;
     case FORMAT_CLI:
-	x = NULL;
-	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	    if (xml2cli(h, f, x, prefix, fprintf) < 0)
-		goto done;
-	}
+	if (xml2cli(h, f, xt, prefix, fprintf, 1) < 0)
+	    goto done;
 	break;
     case FORMAT_NETCONF:
 	fprintf(f, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target>",
@@ -1153,6 +1149,13 @@ cli_notification_cb(int   s,
 	clicon_err(OE_NETCONF, EFAULT, "Notification malformed");
 	goto done;
     }
+    switch (format){
+    case FORMAT_JSON:
+	if (xml2json_file(stdout, xt, 1, cligen_output, 1) < 0)
+	    goto done;
+    default:
+	break;
+    }
     if ((xe = xpath_first(xt, NULL, "//event")) != NULL){
 	x = NULL;
 	while ((x = xml_child_each(xe, x, -1)) != NULL) {
@@ -1163,10 +1166,6 @@ cli_notification_cb(int   s,
 		break;
 	    case FORMAT_TEXT:
 		if (xml2txt_cb(stdout, x, cligen_output) < 0)
-		    goto done;
-		break;
-	    case FORMAT_JSON:
-		if (xml2json_cb(stdout, x, 1, cligen_output) < 0)
 		    goto done;
 		break;
 	    default:
@@ -1417,7 +1416,7 @@ cli_copy_config(clicon_handle h,
     /* resuse cb */
     cbuf_reset(cb);
     /* create xml copy tree and merge it with database configuration */
-    clicon_xml2cbuf(cb, x2, 0, 0, -1);
+    clicon_xml2cbuf(cb, x2, 0, 0, -1, 0);
     if (clicon_rpc_edit_config(h, db, OP_MERGE, cbuf_get(cb)) < 0)
 	goto done;
     retval = 0;
