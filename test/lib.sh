@@ -216,6 +216,7 @@ fi
 
 if $SNMPCHECK; then
     snmpget="$(type -p snmpget) -On -c public -v2c localhost "
+    snmpset="$(type -p snmpset) -On -c public -v2c localhost "
     snmpgetstr="$(type -p snmpget) -c public -v2c localhost "
     snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
     snmpgetnextstr="$(type -p snmpgetnext) -c public -v2c localhost "
@@ -264,6 +265,33 @@ if $SNMPCHECK; then
 
             new "Validating textual next OID: $name2 = $type: $value"
             expectpart "$($snmpgetnextstr $name)" 0 "$name2 = $type: $value"
+        fi
+    }
+
+    function validate_set(){
+        oid=$1
+        type=$2
+        value=$3
+
+        case $type in
+            "INTEGER")
+                set_type="i"
+                ;;
+            "STRING")
+                set_type="s"
+                ;;
+        esac
+
+        if [ $type == "INTEGER" ]; then
+            set_type="i"
+        fi
+
+        new "Setting value $value to OID $oid with type $set_type"
+
+        if [ $type == "STRING" ]; then
+            expectpart "$($snmpset $oid $set_type "$value")" 0 "$type: \"$value\""
+        else
+            expectpart "$($snmpset $oid $set_type "$value")" 0 "$type: $value"
         fi
     }
 fi
