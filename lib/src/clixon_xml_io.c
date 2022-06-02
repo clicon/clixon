@@ -89,11 +89,11 @@
 
 /*! Print an XML tree structure to an output stream and encode chars "<>&"
  *
- * @param[in]   f           UNIX output stream
- * @param[in]   xn          clicon xml tree
- * @param[in]   level       how many spaces to insert before each line
- * @param[in]   prettyprint insert \n and spaces tomake the xml more readable.
- * @param[in]   fn          Callback to make print function
+ * @param[in]   f       UNIX output stream
+ * @param[in]   xn      Clicon xml tree
+ * @param[in]   level   How many spaces to insert before each line
+ * @param[in]   pretty  Insert \n and spaces to make the xml more readable.
+ * @param[in]   fn      Callback to make print function
  * @see clixon_xml2cbuf
  * One can use clixon_xml2cbuf to get common code, but using fprintf is
  * much faster than using cbuf and then printing that,...
@@ -102,7 +102,7 @@ int
 xml2file_recurse(FILE             *f, 
 		 cxobj            *x, 
 		 int               level, 
-		 int               prettyprint,
+		 int               pretty,
 		 clicon_output_cb *fn)
 {
     int    retval = -1;
@@ -138,7 +138,7 @@ xml2file_recurse(FILE             *f,
 	(*fn)(f, "%s=\"%s\"", name, xml_value(x));
 	break;
     case CX_ELMNT:
-	(*fn)(f, "%*s<", prettyprint?(level*XML_INDENT):0, "");
+	(*fn)(f, "%*s<", pretty?(level*XML_INDENT):0, "");
 	if (namespace)
 	    (*fn)(f, "%s:", namespace);
 	(*fn)(f, "%s", name);
@@ -149,7 +149,7 @@ xml2file_recurse(FILE             *f,
 	while ((xc = xml_child_each(x, xc, -1)) != NULL) {
 	    switch (xml_type(xc)){
 	    case CX_ATTR:
-		if (xml2file_recurse(f, xc, level+1, prettyprint, fn) <0)
+		if (xml2file_recurse(f, xc, level+1, pretty, fn) <0)
 		    goto done;
 		break;
 	    case CX_BODY:
@@ -169,22 +169,22 @@ xml2file_recurse(FILE             *f,
 	    (*fn)(f, "/>");
 	else{
 	    (*fn)(f, ">");
-	    if (prettyprint && hasbody == 0)
+	    if (pretty && hasbody == 0)
 		    (*fn)(f, "\n");
 	    xc = NULL;
 	    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
 		if (xml_type(xc) != CX_ATTR)
-		    if (xml2file_recurse(f, xc, level+1, prettyprint, fn) <0)
+		    if (xml2file_recurse(f, xc, level+1, pretty, fn) <0)
 			goto done;
 	    }
-	    if (prettyprint && hasbody==0)
+	    if (pretty && hasbody==0)
 		(*fn)(f, "%*s", level*XML_INDENT, "");
 	    (*fn)(f, "</");
 	    if (namespace)
 		(*fn)(f, "%s:", namespace);
 	    (*fn)(f, "%s>", name);
 	}
-	if (prettyprint)
+	if (pretty)
 	    (*fn)(f, "\n");
 	break;
     default:
@@ -203,7 +203,7 @@ xml2file_recurse(FILE             *f,
  * @param[in]  f       Output file
  * @param[in]  xn      XML tree
  * @param[in]  level   How many spaces to insert before each line
- * @param[in]  pretty  Insert \n and spaces tomake the xml more readable.
+ * @param[in]  pretty  Insert \n and spaces to make the xml more readable.
  * @param[in]  fn       File print function (if NULL, use fprintf)
  * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
  * @retval     0       OK
@@ -302,17 +302,17 @@ xml_dump(FILE  *f,
 
 /*! Internal: print  XML tree structure to a cligen buffer and encode chars "<>&"
  *
- * @param[in,out] cb          Cligen buffer to write to
- * @param[in]     xn          Clicon xml tree
- * @param[in]     level       Indentation level for prettyprint
- * @param[in]     prettyprint insert \n and spaces tomake the xml more readable.
- * @param[in]     depth       Limit levels of child resources: -1 is all, 0 is none, 1 is node itself
+ * @param[in,out] cb       Cligen buffer to write to
+ * @param[in]     xn       Clixon xml tree
+ * @param[in]     level    Indentation level for prettyprint
+ * @param[in]     pretty   Insert \n and spaces to make the xml more readable.
+ * @param[in]     depth    Limit levels of child resources: -1 is all, 0 is none, 1 is node itself
  */
 static int
 clixon_xml2cbuf1(cbuf   *cb, 
 		 cxobj  *x, 
 		 int     level,
-		 int     prettyprint,
+		 int     pretty,
 		 int32_t depth)
 {
     int    retval = -1;
@@ -343,7 +343,7 @@ clixon_xml2cbuf1(cbuf   *cb,
 	cprintf(cb, "%s=\"%s\"", name, xml_value(x));
 	break;
     case CX_ELMNT:
-	if (prettyprint)
+	if (pretty)
 	    cprintf(cb, "%*s<", level*XML_INDENT, "");
 	else
 	    cbuf_append_str(cb, "<");
@@ -359,7 +359,7 @@ clixon_xml2cbuf1(cbuf   *cb,
 	while ((xc = xml_child_each(x, xc, -1)) != NULL) 
 	    switch (xml_type(xc)){
 	    case CX_ATTR:
-		if (clixon_xml2cbuf1(cb, xc, level+1, prettyprint, -1) < 0)
+		if (clixon_xml2cbuf1(cb, xc, level+1, pretty, -1) < 0)
 		    goto done;
 		break;
 	    case CX_BODY:
@@ -376,14 +376,14 @@ clixon_xml2cbuf1(cbuf   *cb,
 	    cbuf_append_str(cb, "/>");
 	else{
 	    cbuf_append_str(cb, ">");
-	    if (prettyprint && hasbody == 0)
+	    if (pretty && hasbody == 0)
 		cbuf_append_str(cb, "\n");
 	    xc = NULL;
 	    while ((xc = xml_child_each(x, xc, -1)) != NULL) 
 		if (xml_type(xc) != CX_ATTR)
-		    if (clixon_xml2cbuf1(cb, xc, level+1, prettyprint, depth-1) < 0)
+		    if (clixon_xml2cbuf1(cb, xc, level+1, pretty, depth-1) < 0)
 			goto done;
-	    if (prettyprint && hasbody == 0)
+	    if (pretty && hasbody == 0)
 		cprintf(cb, "%*s", level*XML_INDENT, "");
 	    cbuf_append_str(cb, "</");
 	    if (namespace){
@@ -393,7 +393,7 @@ clixon_xml2cbuf1(cbuf   *cb,
 	    cbuf_append_str(cb, name);
 	    cbuf_append_str(cb, ">");
 	}
-	if (prettyprint)
+	if (pretty)
 	    cbuf_append_str(cb, "\n");
 	break;
     default:
@@ -407,14 +407,14 @@ clixon_xml2cbuf1(cbuf   *cb,
 
 /*! Print an XML tree structure to a cligen buffer and encode chars "<>&"
  *
- * @param[in,out] cb          Cligen buffer to write to
- * @param[in]     xn          Top-level xml object
- * @param[in]     level       Indentation level for prettyprint
- * @param[in]     prettyprint insert \n and spaces tomake the xml more readable.
- * @param[in]     depth       Limit levels of child resources: -1: all, 0: none, 1: node itself
- * @param[in]     skiptop     0: Include top object 1: Skip top-object, only children, 
- * @retval        0           OK
- * @retval        -1          Error
+ * @param[in,out] cb      Cligen buffer to write to
+ * @param[in]     xn      Top-level xml object
+ * @param[in]     level   Indentation level for pretty
+ * @param[in]     pretty  Insert \n and spaces to make the xml more readable.
+ * @param[in]     depth   Limit levels of child resources: -1: all, 0: none, 1: node itself
+ * @param[in]     skiptop 0: Include top object 1: Skip top-object, only children, 
+ * @retval        0       OK
+ * @retval        -1      Error
  * Depth is used in NACM
  * @code
  *   cbuf *cb = cbuf_new();

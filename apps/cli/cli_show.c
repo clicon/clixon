@@ -805,6 +805,7 @@ cli_show_auto1(clicon_handle h,
  * @see cli_show_auto_state  For config and state
  * @note SHOULD be used: ... @datamodel, cli_show_auto(<dbname>,...) to get correct #args
  * @see cli_auto_show
+ * @see cli_show_config
  */
 int 
 cli_show_auto(clicon_handle h,

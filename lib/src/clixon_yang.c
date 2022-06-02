@@ -2130,14 +2130,15 @@ static int
 ys_populate_list(clicon_handle h,
 		 yang_stmt    *ys)
 {
-    yang_stmt  *ykey;
+    yang_stmt *ykey;
+    cvec      *cvv;
     
     if ((ykey = yang_find(ys, Y_KEY, NULL)) == NULL)
 	return 0;
-    if (ys->ys_cvec)
-	cvec_free(ys->ys_cvec);
-    if ((ys->ys_cvec = yang_arg2cvec(ykey, " ")) == NULL)
+
+    if ((cvv = yang_arg2cvec(ykey, " ")) == NULL)
 	return -1;
+    yang_cvec_set(ys, cvv);
     return 0;
 }
 
@@ -2544,10 +2545,11 @@ static int
 ys_populate_unique(clicon_handle h,
 		   yang_stmt    *ys)
 {
-    if (ys->ys_cvec)
-	cvec_free(ys->ys_cvec);
-    if ((ys->ys_cvec = yang_arg2cvec(ys, " ")) == NULL)
+    cvec *cvv;
+
+    if ((cvv = yang_arg2cvec(ys, " ")) == NULL)
 	return -1;
+    yang_cvec_set(ys, cvv);
     return 0;
 }
 
@@ -3516,7 +3518,6 @@ yang_key_match(yang_stmt *yn,
 		    retval = 1; /* match */
 		    goto done;
 		}
-
 	    }
 	    cvec_free(cvv);
 	    cvv = NULL;
