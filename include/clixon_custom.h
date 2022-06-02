@@ -165,8 +165,16 @@
 #define PROTO_RESTART_RECONNECT
 
 /*! Text output keys as identifiers instead of ordinary leafs
- * Ie:        list a { val 42; }      If defined
- * instead of list { keyname a; val 42; } If undefined
- * Problem is, Parser is YANG unaware therefore doe not know "keyname"
+ * That is, given list "list" with key value "a", if set, the output of show config or save
+ * as text command is:
+ *    list a { 
+ *       val 42; 
+ *    }
+ * If not set, the output is:
+ *    list { 
+ *       keyname a; 
+ *       val 42; 
+ *    }
+ * The TEXT parser (ie load) accepts both formats.
  */
-#undef TEXT_LIST_KEYS
+#define TEXT_LIST_KEYS

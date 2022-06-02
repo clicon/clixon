@@ -1734,8 +1734,8 @@ xml_find_type(cxobj           *xt,
 	      enum cxobj_type  type)
 {
     cxobj *x = NULL;
-    int    pmatch; /* prefix match */
-    char  *xprefix;     /* xprefix */
+    int    pmatch;  /* prefix match */
+    char  *xprefix; /* xprefix */
     
     if (!is_element(xt))
 	return NULL;
@@ -1746,7 +1746,7 @@ xml_find_type(cxobj           *xt,
 	}
 	else
 	    pmatch = 1;
-	if (pmatch && strcmp(name, xml_name(x)) == 0)
+	if (pmatch && (name==NULL || strcmp(name, xml_name(x)) == 0))
 	    return x;
     }
     return NULL;
@@ -2010,7 +2010,7 @@ xml_dup(cxobj *x0)
  *     free(xvec);
  * @endcode
  * @see cxvec_prepend
- * @see clixon_cxvec_append  which is its own encapsulated xml vector datatype
+ * @see clixon_xvec_append  which is its own encapsulated xml vector datatype
  */
 int
 cxvec_append(cxobj   *x, 
@@ -2045,8 +2045,8 @@ cxvec_append(cxobj   *x,
  *  if (xvec)
  *     free(xvec);
  * @endcode
- * @see cxvec_prepend
- * @see clixon_cxvec_prepend  which is its own encapsulated xml vector datatype
+ * @see cxvec_append
+ * @see clixon_xvec_prepend  which is its own encapsulated xml vector datatype
  */
 int
 cxvec_prepend(cxobj   *x, 

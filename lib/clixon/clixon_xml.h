@@ -178,6 +178,7 @@ typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c
 #define XML_FLAG_NONE      0x20 /* Node is added as NONE */
 #define XML_FLAG_DEFAULT   0x40 /* Added when a value is set as default @see xml_default */
 #define XML_FLAG_TOP       0x80 /* Top datastore symbol */
+#define XML_FLAG_BODYKEY  0x100 /* Text parsing key to be translated from body to key */
 
 /*
  * Prototypes

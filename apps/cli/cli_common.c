@@ -832,6 +832,7 @@ load_config_file(clicon_handle h,
     enum format_enum format = FORMAT_XML;
     yang_stmt       *yspec;
     cxobj           *xerr = NULL; 
+    char            *lineptr = NULL;
 
     if (cvec_len(argv) < 2 || cvec_len(argv) > 4){
 	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<varname>[,<format>]",
@@ -891,7 +892,10 @@ load_config_file(clicon_handle h,
 	}
 	break;
     case FORMAT_TEXT:
-	if ((ret = clixon_text_syntax_parse_file(fp, YB_NONE, yspec, &xt, &xerr)) < 0)
+	/* text parser requires YANG and since load/save files have a "config" top-level 
+	 * the yang-bind parameter must be YB_MODULE_NEXT
+	 */
+	if ((ret = clixon_text_syntax_parse_file(fp, YB_MODULE_NEXT, yspec, &xt, &xerr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    clixon_netconf_error(xerr, "Loading", filename);
@@ -903,7 +907,6 @@ load_config_file(clicon_handle h,
 	    char         *mode = cli_syntax_mode(h);
 	    cligen_result result;            /* match result */
 	    int           evalresult = 0;    /* if result == 1, calback result */
-	    char         *lineptr = NULL;
 	    size_t        n;
 
 	    while(!cligen_exiting(cli_cligen(h))) {
@@ -952,7 +955,9 @@ load_config_file(clicon_handle h,
  ok:
     ret = 0;
  done:
-    if (xerr)
+    if (lineptr)
+	free(lineptr); 
+   if (xerr)
 	xml_free(xerr);
     if (xt)
 	xml_free(xt);

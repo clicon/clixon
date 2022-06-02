@@ -107,22 +107,28 @@ xml_bind_netconf_message_id_optional(int val)
 
 /*! After yang binding, bodies of containers and lists are stripped from XML bodies
  * May apply to other nodes?
+ * Exception for bodies marked with XML_FLAG_BODYKEY, see text syntax parsing
+ * @see text_mark_bodies
  */
 static int
-strip_whitespace(cxobj *xt)
+strip_body_objects(cxobj *xt)
 {
     yang_stmt    *yt;
     enum rfc_6020 keyword;
-    cxobj        *xc;
+    cxobj        *xb;
     
     if ((yt = xml_spec(xt)) != NULL){
 	keyword = yang_keyword_get(yt);
 	if (keyword == Y_LIST || keyword == Y_CONTAINER){
-	    xc = NULL;
-	    while ((xc = xml_find_type(xt, NULL, "body", CX_BODY)) != NULL)
-		xml_purge(xc);
+	    xb = NULL;
+	    /* Quits if marked object, assume all are same */
+	    while ((xb = xml_find_type(xt, NULL, "body", CX_BODY)) != NULL &&
+		   !xml_flag(xb, XML_FLAG_BODYKEY)){
+		xml_purge(xb);
+	    }
 	}
     }
+
     return 0;
 }
 
@@ -367,7 +373,7 @@ xml_bind_yang(cxobj     *xt,
     cxobj *xc;         /* xml child */
     int    ret;
 
-    strip_whitespace(xt);
+    strip_body_objects(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
 	if ((ret = xml_bind_yang0(xc, yb, yspec, xerr)) < 0)
@@ -414,7 +420,7 @@ xml_bind_yang0_opt(cxobj     *xt,
 	goto fail;
     else if (ret == 2)     /* ret=2 for anyxml from parent^ */
     	goto ok;
-    strip_whitespace(xt);
+    strip_body_objects(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
 	/* It is xml2ns in populate_self_parent that needs improvement */
@@ -493,7 +499,7 @@ xml_bind_yang0(cxobj     *xt,
 	goto fail;
     else if (ret == 2)     /* ret=2 for anyxml from parent^ */
     	goto ok;
-    strip_whitespace(xt);
+    strip_body_objects(xt);
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
 	if ((ret = xml_bind_yang0_opt(xc, YB_PARENT, NULL, xerr)) < 0)

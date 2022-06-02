@@ -274,6 +274,69 @@ clixon_txt2file(FILE             *f,
     return retval;
 }
 
+/*! Look for YANG lists nodes and convert bodies to keys
+ *
+ * This is a compromise between making the text parser (1) YANG aware or (2) not.
+ * (1) The reason for is that some constructs such as "list <keyval1> {" does not
+ * contain enough info (eg name of XML tag for <keyval1>)
+ * (2) The reason against is of principal of making the parser design simpler in a bottom-up mode
+ * The compromise between (1) and (2) is to first parse without YANG (2)  and then call a special
+ * function after YANG binding to populate key tags properly.
+ * @param[in]  x   XML node
+ * @see TEXT_LIST_KEYS which controls output/save, whereas this is parsing/input
+ * @see text_mark_bodies where marking of bodies made transformed here
+ */
+static int
+text_populate_list(cxobj *xn)
+{
+    int        retval = -1;
+    yang_stmt *yn;
+    yang_stmt *yc;
+    cxobj     *xc;
+    cxobj     *xb;
+    cvec      *cvk; /* vector of index keys */
+    cg_var    *cvi = NULL;
+    char      *namei;
+
+    if ((yn = xml_spec(xn)) == NULL)
+	goto ok;
+    if (yang_keyword_get(yn) == Y_LIST){
+	cvk = yang_cvec_get(yn);
+	/* Loop over bodies and keys and create key leafs 
+	 */
+	cvi = NULL;
+	xb = NULL;
+	while ((xb = xml_find_type(xn, NULL, NULL, CX_BODY)) != NULL) {
+	    if (!xml_flag(xb, XML_FLAG_BODYKEY))
+		continue;
+	    xml_flag_reset(xb, XML_FLAG_BODYKEY);
+	    if ((cvi = cvec_next(cvk, cvi)) == NULL){
+		clicon_err(OE_XML, 0, "text parser, key and body mismatch");
+		goto done;
+	    }
+	    namei = cv_string_get(cvi);
+	    if ((xc = xml_new(namei, xn, CX_ELMNT)) == NULL)
+		goto done;
+	    yc = yang_find(yn, Y_LEAF, namei);
+	    xml_spec_set(xc, yc);
+	    if ((xml_addsub(xc, xb)) < 0)
+		goto done;
+
+	}
+	if (xml_sort(xn) < 0)
+	    goto done;
+    }
+    xc = NULL;
+    while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL) {    
+	if (text_populate_list(xc) < 0)
+	    goto done;
+    }
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Parse a string containing text syntax and return an XML tree
  *
 
@@ -283,11 +346,11 @@ clixon_txt2file(FILE             *f,
  * @param[in]  yspec  Yang specification (if rfc 7951)
  * @param[out] xt     XML top of tree typically w/o children on entry (but created)
  * @param[out] xerr   Reason for invalid returned as netconf err msg 
- * 
- * @see _xml_parse for XML variant
  * @retval        1   OK and valid
  * @retval        0   Invalid (only if yang spec)
  * @retval       -1   Error with clicon_err called
+ * @see _xml_parse for XML variant
+ * @note Parsing requires YANG, which means yb must be YB_MODULE/_NEXT
  */
 static int 
 _text_syntax_parse(char      *str, 
@@ -302,8 +365,13 @@ _text_syntax_parse(char      *str,
     cxobj                  *x;
     cbuf                   *cberr = NULL;
     int                     failed = 0; /* yang assignment */
+    cxobj                  *xc;
     
     clicon_debug(1, "%s %d %s", __FUNCTION__, yb, str);
+    if (yb != YB_MODULE && yb != YB_MODULE_NEXT){
+	clicon_err(OE_YANG, EINVAL, "yb must be YB_MODULE or YB_MODULE_NEXT");
+	return -1;
+    }
     ts.ts_parse_string = str;
     ts.ts_linenum = 1;
     ts.ts_xtop = xt;
@@ -322,17 +390,6 @@ _text_syntax_parse(char      *str,
 	/* Populate, ie associate xml nodes with yang specs 
 	 */
 	switch (yb){
-	case YB_NONE:
-	    break;
-	case YB_PARENT:
-	    /* xt:n         Has spec
-	     * x:   <a> <-- populate from parent
-	     */
-	    if ((ret = xml_bind_yang0(x, YB_PARENT, NULL, xerr)) < 0)
-		goto done;
-	    if (ret == 0)
-		failed++;
-	    break;
 	case YB_MODULE_NEXT:
 	    if ((ret = xml_bind_yang(x, YB_MODULE, yspec, xerr)) < 0)
 		goto done;
@@ -348,19 +405,18 @@ _text_syntax_parse(char      *str,
 	    if (ret == 0)
 		failed++;
 	    break;
-	case YB_RPC:
-	    if ((ret = xml_bind_yang_rpc(x, yspec, xerr)) < 0)
-		goto done;
-	    if (ret == 0){ /* Add message-id */
-		if (*xerr && clixon_xml_attr_copy(x, *xerr, "message-id") < 0)
-		    goto done;
-		failed++;
-	    }
-	    break;
+	default: /* shouldnt happen */
+	    break; 
 	} /* switch */
+	/*! Look for YANG lists nodes and convert bodies to keys */
+	xc = NULL;
+	while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) 
+	    if (text_populate_list(xc) < 0)
+		goto done;
     }
     if (failed)
 	goto fail;
+
     /* Sort the complete tree after parsing. Sorting is not really meaningful if Yang 
        not bound */
     if (yb != YB_NONE)
@@ -439,6 +495,7 @@ clixon_text_syntax_parse_string(char      *str,
  * @note  you need to free the xml parse tree after use, using xml_free()
  * @note, If xt empty, a top-level symbol will be added so that <tree../> will be:  <top><tree.../></tree></top>
  * @note May block on file I/O
+ * @note Parsing requires YANG, which means yb must be YB_MODULE/_NEXT
  *
  * @retval        1     OK and valid
  * @retval        0     Invalid (only if yang spec) w xerr set
@@ -462,7 +519,7 @@ clixon_text_syntax_parse_file(FILE      *fp,
     char      ch;
     int       len = 0;
 
-    if (xt==NULL){
+    if (xt == NULL){
 	clicon_err(OE_XML, EINVAL, "xt is NULL");
 	return -1;
     }

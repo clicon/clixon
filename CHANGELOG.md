@@ -40,11 +40,22 @@ Planned: July 2022
 
 ### New features
 
-* Text syntax parser and loader
-  * Added new text syntax parsing and loading from CLI
-  * Text output format changed:
-    * Namespace/modulename added to top-level
+* TEXT syntax parseable for loading files
+  * Previously only supported output
+  * TEXT output format changed (see API changes)
+  * [Documentation](https://clixon-docs.readthedocs.io/en/latest/datastore.html#other-formats)
   * See [Support performant load_config_file(...) for TEXT format](https://github.com/clicon/clixon/issues/324)
+	
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* TEXT file format changed
+  * With new parsing of TEXT format, the output is changed
+    * Namespace/modulename added to top-level
+    * Leaf-list support: `a [ x y z ]`
+    * List key support: `a x y { ... }`
+    * See compile-time option `TEXT_LIST_KEYS`
 
 ### C/CLI-API changes on existing features
 
