@@ -216,6 +216,7 @@ fi
 
 if $SNMPCHECK; then
     snmpget="$(type -p snmpget) -On -c public -v2c localhost "
+    snmpbulkget="$(type -p snmpbulkget) -On -c public -v2c localhost "
     snmpset="$(type -p snmpset) -On -c public -v2c localhost "
     snmpgetstr="$(type -p snmpget) -c public -v2c localhost "
     snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
@@ -224,7 +225,7 @@ if $SNMPCHECK; then
     snmptranslate="$(type -p snmptranslate) "
 
     if [ "${ENABLE_NETSNMP}" == "yes" ]; then
-	pgrep snmpd > /dev/null
+	    pgrep snmpd > /dev/null
         if [ $? != 0 ]; then
 		    echo -e "\e[31m\nenable-netsnmp set but snmpd not running, start with:"
 		    echo "systemctl start snmpd"
