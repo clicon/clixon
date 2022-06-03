@@ -353,8 +353,6 @@ netconf_edit_config(clicon_handle h,
 
 /*! Get running configuration and device state information
  * 
- *
-
  * @param[in]  h       Clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
  * @param[out] xret    Return XML, error or OK
@@ -726,7 +724,9 @@ netconf_rpc_dispatch(clicon_handle h,
 	    strcmp(xml_name(xe), "validate") == 0 ||  /* :validate */
 	    strcmp(xml_name(xe), "commit") == 0 || /* :candidate */
 	    strcmp(xml_name(xe), "cancel-commit") == 0 || 
-	    strcmp(xml_name(xe), "discard-changes") == 0){
+	    strcmp(xml_name(xe), "discard-changes") == 0 ||
+	    strcmp(xml_name(xe), "action") == 0
+	    ){
 	    if (clicon_rpc_netconf_xml(h, xml_parent(xe), xret, NULL) < 0)
 		goto done;	
 	}

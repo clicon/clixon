@@ -66,7 +66,9 @@
 #include "clixon_options.h"
 #include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
+#include "clixon_xml_map.h"
 #include "clixon_yang_module.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_validate.h"
 #include "clixon_plugin.h"
 
@@ -95,26 +97,6 @@ struct clixon_plugin{
 };
 
 /*
- * RPC callbacks for both client/frontend and backend plugins.
- * RPC callbacks are explicitly registered in the plugin_init() function
- * with a tag and a function
- * When the the tag is encountered, the callback is called.
- * Primarily backend, but also netconf and restconf frontend plugins.
- * CLI frontend so far have direct callbacks, ie functions in the cligen
- * specification are directly dlsym:ed to the CLI plugin.
- * It would be possible to use this rpc registering API for CLI plugins as well.
- * 
- * When namespace and name match, the callback is made
- */
-typedef struct {
-    qelem_t       rc_qelem;	/* List header */
-    clicon_rpc_cb rc_callback;  /* RPC Callback */
-    void         *rc_arg;	/* Application specific argument to cb */
-    char         *rc_namespace;/* Namespace to combine with name tag */
-    char         *rc_name;	/* Xml/json tag/name */
-} rpc_callback_t;
-
-/*
  * Upgrade callbacks for backend upgrade of datastore
  * Register upgrade callbacks in plugin_init() with a module and a "from" and "to"
  * revision.
@@ -137,7 +119,6 @@ struct plugin_module_struct {
     upgrade_callback_t *ms_upgrade_callbacks;
 };
 typedef struct plugin_module_struct plugin_module_struct;
-
 
 /*! Get plugin handle containing plugin and callback lists
  * @param[in]  h     Clicon handle
@@ -1043,7 +1024,7 @@ rpc_callback_dump(clicon_handle h)
 }
 #endif
 
-/*! Register a RPC callback by appending a new RPC to the list
+/*! Register a RPC callback by appending a new RPC to a global list
  *
  * @param[in]  h         clicon handle
  * @param[in]  cb        Callback called 
@@ -1122,9 +1103,9 @@ rpc_callback_delete_all(clicon_handle h)
  * @param[in]   arg     Domain-speific arg (eg client_entry)
  * @param[out]  nrp     Number of callbacks handled: 0, 1, n (retval = 1) or NULL
  * @param[out]  cbret   Return XML (as string in CLIgen buffer), error or OK
- * @retval -1   Error
- * @retval  0   Failed, error return in cbret
- * @retval  1   OK, see nr
+ * @retval      1       OK, see nr
+ * @retval      0       Failed, error return in cbret
+ * @retval     -1       Error
  * @see rpc_callback_register  which register a callback function
  * @note that several callbacks can be registered. They need to cooperate on
  * return values, ie if one writes cbret, the other needs to handle that by
@@ -1137,14 +1118,14 @@ rpc_callback_call(clicon_handle h,
 		  int          *nrp,
 		  cbuf         *cbret)
 {
-    int            retval = -1;
+    int                   retval = -1;
     rpc_callback_t       *rc;
     char                 *name;
     char                 *prefix;
     char                 *ns;
     int                   nr = 0; /* How many callbacks */
     plugin_module_struct *ms = plugin_module_struct_get(h);
-    void                 *wh = NULL;
+    void                 *wh;
     int                   ret;
 
     if (ms == NULL){
@@ -1174,7 +1155,8 @@ rpc_callback_call(clicon_handle h,
 	    }
 	    rc = NEXTQ(rpc_callback_t *, rc);
 	} while (rc != ms->ms_rpc_callbacks);
-    if (nr){
+    /* action reply checked in action_callback_call */
+    if (nr && !xml_rpc_isaction(xe)){
 	if ((ret = rpc_reply_check(h, name, cbret)) < 0)
 	    goto done;
 	if (ret == 0)
@@ -1189,6 +1171,129 @@ rpc_callback_call(clicon_handle h,
  fail:
     retval = 0;
     goto done;
+}
+
+/*--------------------------------------------------------------------
+ * Action callback API. Reuse many of the same data structures as RPC, but
+ * context is given by a yang node
+ */
+
+/*! Register a RPC action callback by appending a new RPC to a yang action node
+ * @param[in]  h     clicon handle
+ * @param[in]  ys    YANG node where action resides
+ * @param[in]  cb    Callback
+ * @param[in]  arg   Domain-specific argument to send to callback 
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @see rpc_callback_register  which registers global callbacks
+ */
+int
+action_callback_register(clicon_handle  h,
+			 yang_stmt     *ya,
+			 clicon_rpc_cb  cb,
+			 void          *arg)
+{
+    int             retval = -1;
+    rpc_callback_t *rc = NULL;
+    char           *name;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (ya == NULL){
+	clicon_err(OE_DB, EINVAL, "yang node is NULL");
+	goto done;
+    }
+    name = yang_argument_get(ya);
+    if ((rc = malloc(sizeof(rpc_callback_t))) == NULL) {
+	clicon_err(OE_DB, errno, "malloc");
+	goto done;
+    }
+    memset(rc, 0, sizeof(*rc));
+    rc->rc_callback = cb;
+    rc->rc_arg  = arg;
+    rc->rc_namespace  = strdup(YANG_XML_NAMESPACE); // XXX
+    rc->rc_name  = strdup(name);
+    if (yang_action_cb_add(ya, rc) < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Search Action callbacks and invoke if XML match with tag
+ *
+ * @param[in]   h       clicon handle
+ * @param[in]   xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
+ * @param[in]   arg     Domain-speific arg (eg client_entry)
+ * @param[out]  nrp     Number of callbacks handled: 0, 1, n (retval = 1) or NULL
+ * @param[out]  cbret   Return XML (as string in CLIgen buffer), error or OK
+ * @retval      1       OK, see nr
+ * @retval      0       Failed, error return in cbret
+ * @retval     -1       Error
+ * @see rpc_callback_register  which register a callback function
+ * @note that several callbacks can be registered. They need to cooperate on
+ * return values, ie if one writes cbret, the other needs to handle that by
+ * leaving it, replacing it or amending it.
+ */
+int
+action_callback_call(clicon_handle h,
+		     cxobj        *xe, 
+		     cbuf         *cbret,
+		     void         *arg,
+		     void         *regarg)
+{
+    int             retval = -1;
+    cxobj          *xa = NULL;
+    yang_stmt      *ya = NULL;
+    char           *name;
+    int             nr = 0; /* How many callbacks */
+    void           *wh = NULL;
+    rpc_callback_t *rc;
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (xml_find_action(xe, 1, &xa) < 0)
+	goto done;
+    if (xa == NULL){
+	if (netconf_operation_not_supported(cbret, "application", "Action not found") < 0)
+	    goto done;
+	goto ok;		
+    }
+    if ((ya = xml_spec(xa)) == NULL){
+	if (netconf_operation_not_supported(cbret, "application", "Action spec not found") < 0)
+	    goto done;
+	goto ok;		
+    }
+    name = xml_name(xa);
+    /* Action callback */
+    if ((rc = (rpc_callback_t *)yang_action_cb_get(ya)) != NULL){
+	do {
+	    if (strcmp(rc->rc_name, name) == 0){
+		if (plugin_context_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
+		    goto done;
+		if (rc->rc_callback(h, xa, cbret, arg, rc->rc_arg) < 0){
+		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, rc->rc_name);
+		    if (plugin_context_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
+			goto done;
+		    goto done;
+		}
+		nr++;
+		if (plugin_context_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
+		    goto done;
+	    }
+	    rc = NEXTQ(rpc_callback_t *, rc);
+	} while (rc != yang_action_cb_get(ya));
+    }
+    if (nr){
+#ifdef NYI
+	if ((ret = rpc_action_reply_check(h, xe, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+#endif
+    }
+ ok:
+    retval = 1;
+ done:
+    return retval;
 }
 
 /*--------------------------------------------------------------------

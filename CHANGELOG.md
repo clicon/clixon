@@ -40,6 +40,11 @@ Planned: July 2022
 
 ### New features
 
+* YANG Action (RFC 7950 Section 7.15)
+  * Register action callback with `action_callback_register()`, see main example
+  * Remains: check list keys, validate output
+  * See [Support for "action" statement](https://github.com/clicon/clixon/issues/101)
+
 * TEXT syntax parseable for loading files
   * Previously only supported output
   * TEXT output format changed (see API changes)

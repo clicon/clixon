@@ -371,7 +371,6 @@ xml_yang_validate_rpc(clicon_handle h,
 		      cxobj       **xret)
 {
     int        retval = -1;
-    yang_stmt *yn=NULL;  /* rpc name */
     cxobj     *xn;       /* rpc name */
     char      *rpcprefix;
     char      *namespace = NULL;
@@ -393,7 +392,7 @@ xml_yang_validate_rpc(clicon_handle h,
     xn = NULL;
     /* xn is name of rpc, ie <rcp><xn/></rpc> */
     while ((xn = xml_child_each(xrpc, xn, CX_ELMNT)) != NULL) {
-	if ((yn = xml_spec(xn)) == NULL){
+	if (xml_spec(xn) == NULL){
 	    if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xn), NULL) < 0)
 		goto done;
 	    goto fail;

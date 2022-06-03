@@ -73,5 +73,7 @@ int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
 int yang_enum_int_value(cxobj *node, int32_t *val);
 int xml_copy_marked(cxobj *x0, cxobj *x1);
 int yang_check_when_xpath(cxobj *xn, cxobj *xp, yang_stmt *yn, int *hit, int *nrp, char **xpathp);
+int xml_rpc_isaction(cxobj *xn);
+int xml_find_action(cxobj *xn, int top, cxobj **xap);
 
 #endif  /* _CLIXON_XML_MAP_H_ */

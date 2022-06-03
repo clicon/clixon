@@ -361,6 +361,26 @@ typedef struct clixon_plugin clixon_plugin_t;
 typedef struct plugin_context plugin_context_t;
 
 /*
+ * RPC callbacks for both client/frontend and backend plugins.
+ * RPC callbacks are explicitly registered in the plugin_init() function
+ * with a tag and a function
+ * When the the tag is encountered, the callback is called.
+ * Primarily backend, but also netconf and restconf frontend plugins.
+ * CLI frontend so far have direct callbacks, ie functions in the cligen
+ * specification are directly dlsym:ed to the CLI plugin.
+ * It would be possible to use this rpc registering API for CLI plugins as well.
+ * 
+ * When namespace and name match, the callback is made
+ */
+typedef struct {
+    qelem_t       rc_qelem;	/* List header */
+    clicon_rpc_cb rc_callback;  /* RPC Callback */
+    void         *rc_arg;	/* Application specific argument to cb */
+    char         *rc_namespace;/* Namespace to combine with name tag */
+    char         *rc_name;	/* Xml/json tag/name */
+} rpc_callback_t;
+
+/*
  * Prototypes
  */
 
@@ -402,6 +422,11 @@ int clixon_plugin_datastore_upgrade_all(clicon_handle h, const char *db, cxobj *
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, const char *ns, const char *name);
 int rpc_callback_call(clicon_handle h, cxobj *xe, void *arg, int *nrp, cbuf *cbret);
+
+/* action callback API */
+int action_callback_register(clicon_handle h, yang_stmt *ya, clicon_rpc_cb cb, void *arg);
+int action_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
+
 /* upgrade callback API */
 int upgrade_callback_reg_fn(clicon_handle h, clicon_upgrade_cb cb, const char *strfn, const char *ns, void *arg);
 int upgrade_callback_call(clicon_handle h, cxobj *xt, char *ns, uint16_t op, uint32_t from, uint32_t to, cbuf *cbret);

@@ -101,10 +101,10 @@ struct yang_stmt{
     cvec              *ys_when_nsc;   /* Special conditional for a "when"-associated augment/uses namespace ctx */
     char              *ys_filename;   /* For debug/errors: filename (only (sub)modules) */
     int                ys_linenum;    /* For debug/errors: line number (in ys_filename) */
+    rpc_callback_t    *ys_action_cb;  /* Action callback list, only for Y_ACTION */
     /* Internal use */
     int               _ys_vector_i;   /* internal use: yn_each */
 };
-
 
 #endif  /* _CLIXON_YANG_INTERNAL_H_ */
 

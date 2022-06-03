@@ -867,7 +867,6 @@ from_client_kill_session(clicon_handle h,
     return retval;
 }
 
-
 /*! Create a notification subscription
  * @param[in]  h       Clicon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
@@ -1203,7 +1202,6 @@ from_client_hello(clicon_handle       h,
     return retval;
 }
 
-
 /*! An internal clicon message has arrived from a client. Receive and dispatch.
  * @param[in]   h    Clicon handle
  * @param[in]   s    Socket where message arrived. read from this.
@@ -1508,6 +1506,9 @@ backend_rpc_init(clicon_handle h)
 	goto done;
     if (rpc_callback_register(h, from_client_kill_session, NULL,
 		      NETCONF_BASE_NAMESPACE, "kill-session") < 0)
+	goto done;
+    if (rpc_callback_register(h, action_callback_call, NULL,
+		      YANG_XML_NAMESPACE, "action") < 0)
 	goto done;
     /* In backend_commit.? */
     if (rpc_callback_register(h, from_client_commit, NULL,

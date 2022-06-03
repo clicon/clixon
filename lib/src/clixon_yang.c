@@ -625,7 +625,8 @@ int
 ys_free1(yang_stmt *ys,
 	 int        self)
 {
-    cg_var *cv;
+    cg_var         *cv;
+    rpc_callback_t *rc;
 
     if (ys->ys_argument){
 	free(ys->ys_argument);
@@ -651,6 +652,14 @@ ys_free1(yang_stmt *ys,
 	free(ys->ys_stmt);
     if (ys->ys_filename)
 	free(ys->ys_filename);
+    while((rc = ys->ys_action_cb) != NULL) {
+	DELQ(rc, ys->ys_action_cb, rpc_callback_t *);
+	if (rc->rc_namespace)
+	    free(rc->rc_namespace);
+	if (rc->rc_name)
+	    free(rc->rc_name);
+	free(rc);
+    }
     if (self){
 	free(ys);
 	_stats_yang_nr--;
@@ -1106,19 +1115,22 @@ yang_find_datanode(yang_stmt *yn,
 				ysmatch = yc;
 		    }
 		if (ysmatch)
-		    goto match;
+		    goto match; // maybe break?
 	    }
 	} /* Y_CHOICE */
-	else{
-	    if (yang_datanode(ys)){
-		if (argument == NULL)
+	else if (yang_keyword_get(ys) == Y_INPUT ||
+		 yang_keyword_get(ys) == Y_OUTPUT){ /* Look for its children */
+	    if ((ysmatch = yang_find_datanode(ys, argument)) != NULL)
+		break;
+	}
+	else if (yang_datanode(ys)){
+	    if (argument == NULL)
+		ysmatch = ys;
+	    else
+		if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
 		    ysmatch = ys;
-		else
-		    if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
-			ysmatch = ys;
-		if (ysmatch)
-		    goto match;
-	    }
+	    if (ysmatch)
+		goto match; // maybe break?
 	}
     }
     /* Special case: if not match and yang node is module or submodule, extend
@@ -1146,6 +1158,7 @@ yang_find_datanode(yang_stmt *yn,
  * @param[in]  argument   if NULL, match any(first) argument.
  * @note XXX unify code with yang_find_datanode?
  * @see yang_find_datanode
+ * @see yang_abs_schema_nodeid  Top level function
  */
 yang_stmt *
 yang_find_schemanode(yang_stmt *yn, 
@@ -3994,3 +4007,28 @@ yang_single_child_type(yang_stmt    *ys,
     return 1; /* Passed all tests: yes you can hide this keyword */
 }
 
+/*! Get action callback list
+ * XXX rc shouldnt really be void* but the type definitions in .h file got complicated
+ */
+void *
+yang_action_cb_get(yang_stmt *ys)
+{
+    return ys->ys_action_cb;
+}
+
+/*! Add an action callback to YANG node
+ * XXX rc shouldnt really be void* but the type definitions in .h file got complicated
+ */
+int
+yang_action_cb_add(yang_stmt *ys,
+		   void      *arg)
+{
+    rpc_callback_t *rc = (rpc_callback_t *)arg;
+
+    if (rc == NULL){
+	clicon_err(OE_YANG, EINVAL, "arg is NULL");
+	return -1;
+    }    
+    ADDQ(rc, ys->ys_action_cb);
+    return 0;
+}

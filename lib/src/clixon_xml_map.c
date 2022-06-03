@@ -2025,3 +2025,66 @@ yang_check_when_xpath(cxobj        *xn,
     return retval;
 }
 
+/*! Is XML node (ie under <rpc>) an action, ie name action and belong to YANG_XML_NAMESPACE?
+ * @param[in]   xn   XML node
+ * @retval      1    Yes, an action
+ * @retval      0    No, not an action
+ * @retval     -1    Error
+ */
+int
+xml_rpc_isaction(cxobj *xn)
+{
+    int   retval = -1;
+    char *ns = NULL;
+
+    if (strcmp(xml_name(xn), "action") != 0)
+	goto fail;
+    if (xml2ns(xn, xml_prefix(xn), &ns) < 0)
+	goto done;
+    if (strcmp(YANG_XML_NAMESPACE, ns) != 0)
+	goto fail;
+    retval = 1; // is action
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Find innermost node under <action> carrying the name of the defined action
+ *  Find innermost container or list contains an XML element
+ *  that carries the name of the defined action. 
+ * @param[in]   xn   XML node
+ * @param[in]   top  If set, dont look for action node since top-level
+ * @param[out]  xap  Pointer to xml action node
+ * @retval      0    OK
+ * @retval     -1    Error
+ * XXX: does not look at list key
+ */
+int
+xml_find_action(cxobj  *xn,
+		int     top,
+		cxobj **xap)
+{
+    int        retval = -1;
+    cxobj     *xc = NULL;
+    yang_stmt *yc;
+
+    while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL) {
+	if ((yc = xml_spec(xc)) == NULL)
+	    continue;
+	if (!top && yang_keyword_get(yc) == Y_ACTION){
+	    *xap = xc;
+	    break;
+	}
+	if (yang_keyword_get(yc) != Y_CONTAINER && yang_keyword_get(yc) != Y_LIST)
+	    continue;
+	/* XXX check key */
+	if (xml_find_action(xc, 0, xap) < 0)
+	    goto done;
+	break;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
