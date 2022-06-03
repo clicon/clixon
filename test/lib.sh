@@ -254,18 +254,20 @@ if $SNMPCHECK; then
         name="$($snmptranslate $oid)"
         name2="$($snmptranslate $oid2)"
 
-        if [ $oid == $oid2 ]; then
-            new "Validating numerical OID: $oid2 = $type: $value"
-            expectpart "$($snmpget $oid)" 0 "$oid2 = $type: $value"
-
-            new "Validating textual OID: $name2 = $type: $value"
-            expectpart "$($snmpgetstr $name)" 0 "$name2 = $type: $value"
+        if [[ $oid =~ ^([0-9]|\.)+$ ]]; then
+            get=$snmpget
+            getnext=$snmpgetnext
         else
-            new "Validating numerical next OID: $oid2 = $type: $value"
-            expectpart "$($snmpgetnext $oid)" 0 "$oid2 = $type: $value"
+            get=$snmpgetstr
+            getnext=$snmpgetnextstr
+        fi
 
-            new "Validating textual next OID: $name2 = $type: $value"
-            expectpart "$($snmpgetnextstr $name)" 0 "$name2 = $type: $value"
+        if [ $oid == $oid2 ]; then
+            new "Validating OID: $oid2 = $type: $value"
+            expectpart "$($get $oid)" 0 "$oid = $type: $value"
+        else
+            new "Validating next OID: $oid2 = $type: $value"
+            expectpart "$($getnext $oid)" 0 "$oid2 = $type: $value"
         fi
     }
 
