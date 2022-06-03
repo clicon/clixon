@@ -151,54 +151,101 @@ OID21="${MIB}.2.2.1.3" # netSnmpHostAddress
 OID22="${MIB}.2.2.1.4" # netSnmpHostStorage
 OID23="${MIB}.2.2.1.5" # netSnmpHostRowStatus
 
+NAME1="NET-SNMP-MIB::netSnmp.200.1.1"
+NAME2="NET-SNMP-MIB::netSnmp.200.1.2"
+NAME3="NET-SNMP-MIB::netSnmp.200.1.3"
+NAME4="NET-SNMP-MIB::netSnmp.200.1.4"
+NAME5="NET-SNMP-MIB::netSnmp.200.1.5"
+NAME6="NET-SNMP-MIB::netSnmp.200.1.6"
+NAME7="NET-SNMP-MIB::netSnmp.200.1.7"
+NAME8="NET-SNMP-MIB::netSnmp.200.1.8"
+NAME9="NET-SNMP-MIB::netSnmp.200.1.9"
+NAME10="NET-SNMP-MIB::netSnmp.200.1.10"
+NAME11="NET-SNMP-MIB::netSnmp.200.1.11"
+NAME12="NET-SNMP-MIB::netSnmp.200.1.12"
+NAME13="NET-SNMP-MIB::netSnmp.200.2.1"
+NAME14="NET-SNMP-MIB::netSnmp.200.2.1.1"
+NAME15="NET-SNMP-MIB::netSnmp.200.2.1.1.1"
+NAME16="NET-SNMP-MIB::netSnmp.200.2.1.1.2"
+NAME17="NET-SNMP-MIB::netSnmp.200.2.1.1.3"
+NAME18="NET-SNMP-MIB::netSnmp.200.2.2"
+NAME19="NET-SNMP-MIB::netSnmp.200.2.2.1.1"
+NAME20="NET-SNMP-MIB::netSnmp.200.2.2.1.2"
+NAME21="NET-SNMP-MIB::netSnmp.200.2.2.1.3"
+NAME22="NET-SNMP-MIB::netSnmp.200.2.2.1.4"
+NAME23="NET-SNMP-MIB::netSnmp.200.2.2.1.5"
+
 new "$snmpget"
 
 new "Get netSnmpExampleInteger"
 validate_oid $OID1 $OID1 "INTEGER" 2147483647
 validate_oid $OID1 $OID2 "INTEGER" -1
+validate_oid $NAME1 $NAME1 "INTEGER" 2147483647
+validate_oid $NAME1 $NAME2 "INTEGER" -1
 
 new "Get netSnmpExampleSleeper"
 validate_oid $OID2 $OID2 "INTEGER" -1
 validate_oid $OID2 $OID3 "STRING" "\"This is not default\""
+validate_oid $NAME2 $NAME2 "INTEGER" -1
+validate_oid $NAME2 $NAME3 "STRING" "\"This is not default\""
 
 new "Get netSnmpExampleString"
 validate_oid $OID3 $OID3 "STRING" "\"This is not default\""
 validate_oid $OID3 $OID4 "Timeticks" "(12345) 0:02:03.45"
+validate_oid $NAME3 $NAME3 "STRING" "\"This is not default\""
+validate_oid $NAME3 $NAME4 "Timeticks" "(12345) 0:02:03.45"
 
 new "Get ifTableLastChange"
 validate_oid $OID4 $OID4 "Timeticks" "(12345) 0:02:03.45"
 validate_oid $OID4 $OID5 "INTEGER" 48
+validate_oid $NAME4 $NAME4 "Timeticks" "(12345) 0:02:03.45"
+validate_oid $NAME4 $NAME5 "INTEGER" 48
 
 new "Get ifType"
 validate_oid $OID5 $OID5 "INTEGER" 48
 validate_oid $OID5 $OID6 "Gauge32" 123123123
+validate_oid $NAME5 $NAME5 "INTEGER" 48
+validate_oid $NAME5 $NAME6 "Gauge32" 123123123
 
 new "Get ifSpeed"
 validate_oid $OID6 $OID6 "Gauge32" 123123123
 validate_oid $OID6 $OID7 "INTEGER" 3
+validate_oid $NAME6 $NAME6 "Gauge32" 123123123
+validate_oid $NAME6 $NAME7 "INTEGER" 3
 
 new "Get ifAdminStatus"
 validate_oid $OID7 $OID7 "INTEGER" 3
 validate_oid $OID7 $OID8 "Counter32" 123456
+validate_oid $NAME7 $NAME7 "INTEGER" 3
+validate_oid $NAME7 $NAME8 "Counter32" 123456
 
 new "Get ifInOctets"
 validate_oid $OID8 $OID8 "Counter32" 123456
 validate_oid $OID8 $OID9 "Counter64" 4294967296
+validate_oid $NAME8 $NAME8 "Counter32" 123456
+validate_oid $NAME8 $NAME9 "Counter64" 4294967296
 
 new "Get ifInHCOctets"
 validate_oid $OID9 $OID9 "Counter64" 4294967296
 validate_oid $OID9 $OID10 "INTEGER" 1
+validate_oid $NAME9 $NAME9 "Counter64" 4294967296
+validate_oid $NAME9 $NAME10 "INTEGER" 1
 
 new "Get ifPromiscuousMode"
 validate_oid $OID10 $OID10 "INTEGER" 1
 validate_oid $OID10 $OID11 "Timeticks" "(1234567890) 142 days, 21:21:18.90"
+validate_oid $NAME10 $NAME10 "INTEGER" 1
+validate_oid $NAME10 $NAME11 "Timeticks" "(1234567890) 142 days, 21:21:18.90"
 
 new "Get ifCounterDiscontinuityTime"
 validate_oid $OID11 $OID11 "Timeticks" "(1234567890) 142 days, 21:21:18.90"
 validate_oid $OID11 $OID12 "INTEGER" 1
+validate_oid $NAME11 $NAME11 "Timeticks" "(1234567890) 142 days, 21:21:18.90"
+validate_oid $NAME11 $NAME12 "INTEGER" 1
 
 new "Get ifStackStatus"
 validate_oid $OID12 $OID12 "INTEGER" 1
+validate_oid $NAME12 $NAME12 "INTEGER" 1
 
 new "Get bulk OIDs"
 expectpart "$($snmpbulkget $OID1)" 0 "$OID2 = INTEGER: -1" "$OID3 = STRING: \"This is not default\"" "$OID4 = Timeticks: (12345) 0:02:03.45" "$OID5 = INTEGER: 48" "$OID6 = Gauge32: 123123123" "$OID7 = INTEGER: 3" "$OID8 = Counter32: 123456" "$OID9 = Counter64: 4294967296" "$OID10 = INTEGER: 1" "$OID11 = Timeticks: (1234567890) 142 days, 21:21:18.90"

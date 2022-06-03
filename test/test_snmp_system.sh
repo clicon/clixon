@@ -124,63 +124,89 @@ new "SNMP tests"
 testinit
 
 OID_SYS=".1.3.6.1.2.1.1"
-OID_DESCR=".1.3.6.1.2.1.1.1"
-OID_UPTIME=".1.3.6.1.2.1.1.3"
-OID_CONTACT=".1.3.6.1.2.1.1.4"
-OID_LOCATION=".1.3.6.1.2.1.1.6"
-OID_SYSNAME=".1.3.6.1.2.1.1.5"
-OID_SERVICES=".1.3.6.1.2.1.1.7"
-OID_ORTABLE=".1.3.6.1.2.1.1.9"
+OID_DESCR="${OID_SYS}.1"
+OID_UPTIME="${OID_SYS}.3"
+OID_CONTACT="${OID_SYS}.4"
+OID_SYSNAME="${OID_SYS}.5"
+OID_LOCATION="${OID_SYS}.6"
+OID_SERVICES="${OID_SYS}.7"
+OID_ORTABLE="${OID_SYS}.9"
+OID_ORTABLE1_IDX="${OID_SYS}.9.1.1.1"
+OID_ORTABLE2_IDX="${OID_SYS}.9.1.1.2"
+OID_ORTABLE1="${OID_SYS}.9.1.3.1"
+OID_ORTABLE2="${OID_SYS}.9.1.3.2"
 
-OID_ORTABLE1_IDX=".1.3.6.1.2.1.1.9.1.1.1"
-OID_ORTABLE2_IDX=".1.3.6.1.2.1.1.9.1.1.2"
-OID_ORTABLE1=".1.3.6.1.2.1.1.9.1.3.1"
-OID_ORTABLE2=".1.3.6.1.2.1.1.9.1.3.2"
+NAME_DESCR="SNMPv2-MIB::sysDescr"
+NAME_UPTIME="SNMPv2-MIB::sysUpTime"
+NAME_CONTACT="SNMPv2-MIB::sysContact"
+NAME_SYSNAME="SNMPv2-MIB::sysName"
+NAME_LOCATION="SNMPv2-MIB::sysLocation"
+NAME_SERVICES="SNMPv2-MIB::sysServices"
+NAME_ORTABLE="SNMPv2-MIB::sysORTable"
+NAME_ORTABLE1_IDX="SNMPv2-MIB::sysORIndex.1"
+NAME_ORTABLE2_IDX="SNMPv2-MIB::sysORIndex.2"
+NAME_ORTABLE1="SNMPv2-MIB::sysORDescr.1"
+NAME_ORTABLE2="SNMPv2-MIB::sysORDescr.2"
 
 new "Get description, $OID_DESCR"
-expectpart "$($snmpget $OID_DESCR)" 0 "$OID_DESCR = STRING: System description"
+validate_oid $OID_DESCR $OID_DESCR "STRING" "System description"
+validate_oid $NAME_DESCR $NAME_DESCR "STRING" "System description"
 
 new "Get next $OID_DESCR"
-expectpart "$($snmpgetnext $OID_DESCR)" 0 "$OID_UPTIME = Timeticks: (11223344) 1 day, 7:10:33.44"
+validate_oid $OID_DESCR $OID_UPTIME "Timeticks" "(11223344) 1 day, 7:10:33.44"
+validate_oid $NAME_DESCR $NAME_UPTIME "Timeticks" "(11223344) 1 day, 7:10:33.44"
 
 new "Get contact, $OID_CONTACT"
-expectpart "$($snmpget $OID_CONTACT)" 0 "$OID_CONTACT = STRING: clixon@clicon.com"
+validate_oid $OID_CONTACT $OID_CONTACT "STRING" "clixon@clicon.com"
+validate_oid $NAME_CONTACT $NAME_CONTACT "STRING" "clixon@clicon.com"
 
 new "Get next OID after contact $OID_CONTACT"
-expectpart "$($snmpgetnext $OID_CONTACT)" 0 "$OID_SYSNAME = STRING: Test"
+validate_oid $OID_CONTACT  $OID_SYSNAME  "STRING" "Test"
+validate_oid $NAME_CONTACT $NAME_SYSNAME "STRING" "Test"
 
 new "Get sysName $OID_SYSNAME"
-expectpart "$($snmpget $OID_SYSNAME)" 0 "$OID_SYSNAME = STRING: Test"
+validate_oid $OID_SYSNAME $OID_SYSNAME "STRING" "Test"
+validate_oid $NAME_SYSNAME $NAME_SYSNAME "STRING" "Test"
 
 new "Get next OID after sysName $OID_SYSNAME"
-expectpart "$($snmpgetnext $OID_SYSNAME)" 0 "$OID_LOCATION = STRING: Clixon HQ"
+validate_oid $OID_SYSNAME $OID_LOCATION "STRING" "Clixon HQ"
+validate_oid $NAME_SYSNAME $NAME_LOCATION "STRING" "Clixon HQ"
 
 new "Get sysLocation $OID_LOCATION"
-expectpart "$($snmpget $OID_LOCATION)" 0 "$OID_LOCATION = STRING: Clixon HQ"
+validate_oid $OID_LOCATION $OID_LOCATION "STRING" "Clixon HQ"
+validate_oid $NAME_LOCATION $NAME_LOCATION "STRING" "Clixon HQ"
 
 new "Get next OID after sysLocation $OID_LOCATION"
-expectpart "$($snmpgetnext $OID_LOCATION)" 0 "$OID_SERVICES = INTEGER: 72"
+validate_oid $OID_LOCATION $OID_SERVICES "INTEGER" 72
+validate_oid $NAME_LOCATION $NAME_SERVICES "INTEGER" 72
 
 new "Get sysServices $OID_SERVICES"
-expectpart "$($snmpget $OID_SERVICES)" 0 "$OID_SERVICES = INTEGER: 72"
+validate_oid $OID_SERVICES $OID_SERVICES "INTEGER" "72"
+validate_oid $NAME_SERVICES $NAME_SERVICES "INTEGER" "72"
 
 new "Get next OID after sysServices $OID_SERVICES"
-expectpart "$($snmpgetnext $OID_SERVICES)" 0 "$OID_ORTABLE1_IDX = INTEGER: 1"
+validate_oid $OID_SERVICES $OID_ORTABLE1_IDX "INTEGER" 1
+validate_oid $NAME_SERVICES $NAME_ORTABLE1_IDX "INTEGER" 1
 
 new "Get first index of OR table $OID_ORTABLE1_IDX"
-expectpart "$($snmpget $OID_ORTABLE1_IDX)" 0 "$OID_ORTABLE1_IDX = INTEGER: 1"
+validate_oid $OID_ORTABLE1_IDX $OID_ORTABLE1_IDX "INTEGER" 1
+validate_oid $NAME_ORTABLE1_IDX $NAME_ORTABLE1_IDX "INTEGER" 1
 
 new "Get next OID after index $OID_ORTABLE1_IDX"
-expectpart "$($snmpgetnext $OID_ORTABLE1_IDX)" 0 "$OID_ORTABLE2_IDX = INTEGER: 2"
+validate_oid $OID_ORTABLE1_IDX $OID_ORTABLE2_IDX "INTEGER" 2
+validate_oid $NAME_ORTABLE1_IDX $NAME_ORTABLE2_IDX "INTEGER" 2
 
 new "Get second index $OID_ORTABLE2_IDX"
-expectpart "$($snmpget $OID_ORTABLE2_IDX)" 0 "$OID_ORTABLE2_IDX = INTEGER: 2"
+validate_oid $OID_ORTABLE2_IDX $OID_ORTABLE2_IDX "INTEGER" 2
+validate_oid $NAME_ORTABLE2_IDX $NAME_ORTABLE2_IDX "INTEGER" 2
 
 new "Get sysORTable, entry 1 $OID_ORTABLE1"
-expectpart "$($snmpget $OID_ORTABLE1)" 0 "STRING: Entry 1 description"
+validate_oid $OID_ORTABLE1 $OID_ORTABLE1 "STRING" "Entry 1 description"
+validate_oid $NAME_ORTABLE1 $NAME_ORTABLE1 "STRING" "Entry 1 description"
 
 new "Get sysORTable, entry 2 $OID_ORTABLE2"
-expectpart "$($snmpget $OID_ORTABLE2)" 0 "STRING: Entry 2 description"
+validate_oid $OID_ORTABLE2 $OID_ORTABLE2 "STRING" "Entry 2 description"
+validate_oid $NAME_ORTABLE2 $NAME_ORTABLE2 "STRING" "Entry 2 description"
 
 new "Get table sysORTable $OID_ORTABLE"
 expectpart "$($snmptable $OID_ORTABLE)" 0 ".*Entry 1 description.*" "IP-MIB::ip" "1:7:10:33.44"

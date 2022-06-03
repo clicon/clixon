@@ -137,36 +137,43 @@ OID21="${MIB}.2.2.1.3" # netSnmpHostAddress
 OID22="${MIB}.2.2.1.4" # netSnmpHostStorage
 OID23="${MIB}.2.2.1.5" # netSnmpHostRowStatus
 
+new "Setting netSnmpExampleInteger"
 validate_set $OID1 "INTEGER" 1234
 validate_oid $OID1 $OID1 "INTEGER" 1234
 
+new "Setting netSnmpExampleSleeper"
 validate_set $OID2 "INTEGER" -1
 validate_oid $OID2 $OID2 "INTEGER" -1
-    
+
 new "Set new value via NETCONF"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><default-operation>none</default-operation><target><candidate/></target><config><CLIXON-TYPES-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:CLIXON-TYPES-MIB\"><clixonExampleScalars><clixonExampleInteger>999</clixonExampleInteger></clixonExampleScalars></CLIXON-TYPES-MIB></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf commit"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
+new "Validate value set from NETCONF"
 validate_oid $OID1 $OID1 "INTEGER" 999
 
+new "Setting netSnmpExampleString"
 validate_oid $OID3 $OID3 "STRING" "\"So long, and thanks for all the fish!\""
 validate_set $OID3 "STRING" "foo bar"
 validate_oid $OID3 $OID3 "STRING" "\"foo bar\""
 
+# new "Setting column nsIETFWGChair1"
 # validate_set $OID16 "STRING" "asd"
 # validate_oid $OID16 $OID16 "STRING" "asd"
- 
+
+# new "Setting column nsIETFWGChair2"
 # validate_set $OID17 "STRING" "asd"
 # validate_oid $OID17 $OID16 "STRING" "asdasd"
 
+# new "Setting column netSnmpHostName"
 # validate_set $OID19 "STRING" "asd"
 # validate_oid $OID19 $OID19 "STRING" "asdasd"
 
+# new "Setting netSnmpHostName"
 # validate_set $OID20 "STRING" ipv6
 # validate_oid $OID20 $OID20 "STRING" "asdasd"
-
 
 new "Cleaning up"
 testexit
