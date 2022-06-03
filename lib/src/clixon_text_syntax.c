@@ -101,7 +101,8 @@ tleaf(cxobj *x)
  * @param[in]     fn       Callback to make print function
  * @param[in]     f        File to print to
  * @param[in]     level    Print 4 spaces per level in front of each line
- * @param[in,out] leaflist Leaflist state for [] 
+ * @param[in,out] leafl    Leaflist state for keeping track of when [] ends
+ * @param[in,out] leaflname Leaflist state for [] 
  * leaflist state:
  * 0: No leaflist
  * 1: In leaflist
@@ -111,7 +112,8 @@ xml2txt1(cxobj            *xn,
 	 clicon_output_cb *fn,
 	 FILE             *f, 
 	 int               level,
-	 int              *leaflist)
+	 int              *leafl,
+    	 char            **leaflname)
 {
     cxobj     *xc = NULL;
     int        children=0;
@@ -123,10 +125,8 @@ xml2txt1(cxobj            *xn,
     yang_stmt *ypmod;
     char      *prefix = NULL;
     char      *value;
-#ifdef TEXT_LIST_KEYS
     cg_var    *cvi;
     cvec      *cvk = NULL; /* vector of index keys */
-#endif
 
     if (xn == NULL || fn == NULL){
 	clicon_err(OE_XML, EINVAL, "xn or fn is NULL");
@@ -149,14 +149,20 @@ xml2txt1(cxobj            *xn,
 	}
 	else
 	    prefix = yang_argument_get(ymod);
-#ifdef TEXT_LIST_KEYS
 	if (yang_keyword_get(yn) == Y_LIST){
 	    if ((cvk = yang_cvec_get(yn)) == NULL){
 		clicon_err(OE_YANG, 0, "No keys");
 		goto done;
 	    }
 	}
-#endif
+    }
+    if (yn && yang_keyword_get(yn) == Y_LEAF_LIST && *leafl){
+	if (strcmp(*leaflname, yang_argument_get(yn)) != 0){
+	    *leafl = 0;
+	    *leaflname = NULL;
+	    (*fn)(f, "%*s\n", 4*(level), "]");
+	    // XXX	    
+	}
     }
     xc = NULL;     /* count children (elements and bodies, not attributes) */
     while ((xc = xml_child_each(xn, xc, -1)) != NULL)
@@ -166,23 +172,20 @@ xml2txt1(cxobj            *xn,
 	switch (xml_type(xn)){
 	case CX_BODY:
 	    value = xml_value(xn);
-	    /* Add quotes if string contains spaces */
-	    if (*leaflist)
+	    if (*leafl)                              /* Skip keyword if leaflist */
 		(*fn)(f, "%*s%s\n", 4*level, "", xml_value(xn));
-	    else if (index(value, ' ') != NULL)
+	    else if (index(value, ' ') != NULL)      /* Add quotes if string contains spaces */
 		(*fn)(f, "\"%s\";\n", xml_value(xn));
 	    else
 		(*fn)(f, "%s;\n", xml_value(xn));
 	    break;
 	case CX_ELMNT:
 	    (*fn)(f, "%*s%s", 4*level, "", xml_name(xn));
-#ifdef TEXT_LIST_KEYS
 	    cvi = NULL; 	    /* Lists only */
 	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 		if ((xc = xml_find_type(xn, NULL, cv_string_get(cvi), CX_ELMNT)) != NULL)
 		    (*fn)(f, " %s", xml_body(xc));
 	    }
-#endif
 	    (*fn)(f, ";\n");
 	    break;
 	default:
@@ -190,23 +193,23 @@ xml2txt1(cxobj            *xn,
 	}
 	goto ok;
     }
-    if (*leaflist == 0){
+    if (*leafl == 0){
 	(*fn)(f, "%*s", 4*level, "");
 	if (prefix)
 	    (*fn)(f, "%s:", prefix);
 	(*fn)(f, "%s", xml_name(xn));
     }
-#ifdef TEXT_LIST_KEYS
     cvi = NULL; 	/* Lists only */
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
 	if ((xc = xml_find_type(xn, NULL, cv_string_get(cvi), CX_ELMNT)) != NULL)
 	    (*fn)(f, " %s", xml_body(xc));
     }
-#endif
-    if (yn && yang_keyword_get(yn) == Y_LEAF_LIST && *leaflist)
+    if (yn && yang_keyword_get(yn) == Y_LEAF_LIST && *leafl){
 	;
-    else if (yn && yang_keyword_get(yn) == Y_LEAF_LIST && *leaflist == 0){
-	*leaflist = 1;
+    }
+    else if (yn && yang_keyword_get(yn) == Y_LEAF_LIST && *leafl == 0){
+	*leafl = 1;
+	*leaflname = yang_argument_get(yn);
 	(*fn)(f, " [\n");
     }
     else if (!tleaf(xn))
@@ -216,18 +219,30 @@ xml2txt1(cxobj            *xn,
     xc = NULL;
     while ((xc = xml_child_each(xn, xc, -1)) != NULL){
 	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY){
-#ifdef TEXT_LIST_KEYS
 	    if (yang_key_match(yn, xml_name(xc), NULL))
 		continue; /* Skip keys, already printed */
-#endif
-	    if (xml2txt1(xc, fn, f, level+1, leaflist) < 0)
+	    if (xml2txt1(xc, fn, f, level+1, leafl, leaflname) < 0)
 		break;
 	}
     }
-    if (yn && yang_keyword_get(yn) != Y_LEAF_LIST && *leaflist != 0){
-	*leaflist = 0;
+    /* Stop leaf-list printing (ie []) if no longer leaflist and same name */
+#if 0
+    if (*leafl != 0){
+	if (yn && yang_keyword_get(yn) == Y_LEAF_LIST &&
+	    strcmp(*leaflname, yang_argument_get(yn))==0)
+	    ;
+	else{
+	    *leafl = 0;
+	    *leaflname = NULL;
+	    (*fn)(f, "%*s\n", 4*(level+1), "]");
+	}	
+    }
+#else
+    if (yn && yang_keyword_get(yn) != Y_LEAF_LIST && *leafl != 0){
+	*leafl = 0;
 	(*fn)(f, "%*s\n", 4*(level+1), "]");
     }
+#endif
     if (!tleaf(xn))
 	(*fn)(f, "%*s}\n", 4*level, "");
  ok:
@@ -255,18 +270,19 @@ clixon_txt2file(FILE             *f,
 {
     int    retval = 1;
     cxobj *xc;
-    int    leaflist = 0;
+    int    leafl = 0;
+    char  *leaflname = NULL;
 
     if (fn == NULL)
 	fn = fprintf;
     if (skiptop){
 	xc = NULL;
 	while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-	    if (xml2txt1(xc, fn, f, level, &leaflist) < 0)
+	    if (xml2txt1(xc, fn, f, level, &leafl, &leaflname) < 0)
 		goto done;
     }
     else {
-	if (xml2txt1(xn, fn, f, level, &leaflist) < 0)
+	if (xml2txt1(xn, fn, f, level, &leafl, &leaflname) < 0)
 	    goto done;
     }
     retval = 0;
@@ -283,7 +299,6 @@ clixon_txt2file(FILE             *f,
  * The compromise between (1) and (2) is to first parse without YANG (2)  and then call a special
  * function after YANG binding to populate key tags properly.
  * @param[in]  x   XML node
- * @see TEXT_LIST_KEYS which controls output/save, whereas this is parsing/input
  * @see text_mark_bodies where marking of bodies made transformed here
  */
 static int
