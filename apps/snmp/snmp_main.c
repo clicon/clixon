@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2022 Olof Hagsand and Kristofer Hallin
+  Sponsored by Siklu Communications LTD
 
   This file is part of CLIXON.
 
