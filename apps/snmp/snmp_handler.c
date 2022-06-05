@@ -340,6 +340,8 @@ snmp_scalar_set(clicon_handle               h,
  ok:
     retval = 0;
  done:
+    if (api_path)
+	free(api_path);
     if (cb)
 	cbuf_free(cb);
     if (xtop)

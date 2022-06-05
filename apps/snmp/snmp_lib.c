@@ -139,15 +139,51 @@ snmp_msg_int2str(int msg)
     return clicon_int2str(snmp_msg_map, msg);
 }
 
-/*! Free clixon snmp handler struct
+/*! Duplicate clixon snmp handler struct
+ * Use signature of libnetsnmp data_clone field of netsnmp_mib_handler in agent_handler.h
+ * @param[in]  arg
  */
-int
-snmp_handle_free(clixon_snmp_handle *sh)
+void*
+snmp_handle_clone(void *arg)
 {
-    if (sh->sh_cvk)
-	cvec_free(sh->sh_cvk);
-    free(sh);
-    return 0;
+    clixon_snmp_handle *sh0 = (clixon_snmp_handle *)arg;
+    clixon_snmp_handle *sh1 = NULL;
+
+    if (sh0 == NULL)
+	return NULL;
+    if ((sh1 = malloc(sizeof(*sh1))) == NULL){
+       clicon_err(OE_UNIX, errno, "malloc");
+       return NULL;
+    }
+    memset(sh1, 0, sizeof(*sh1));
+    if (sh0->sh_cvk &&
+	(sh1->sh_cvk = cvec_dup(sh0->sh_cvk)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_dup");
+	return NULL;
+    }
+    return (void*)sh1;
+}
+
+/*! Free clixon snmp handler struct
+ * Use signature of libnetsnmp data_free field of netsnmp_mib_handler in agent_handler.h
+ * @param[in]  arg
+ */
+void
+snmp_handle_free(void *arg)
+{
+    clixon_snmp_handle *sh = (clixon_snmp_handle *)arg;
+
+    if (sh != NULL){
+	if (sh->sh_cvk)
+	    cvec_free(sh->sh_cvk);
+	if (sh->sh_table_info){
+	    if (sh->sh_table_info->indexes){
+		snmp_free_varbind(sh->sh_table_info->indexes);
+	    }
+	    free(sh->sh_table_info);
+	}
+	free(sh);
+    }
 }
 
 /*! Translate from YANG to SNMP asn1.1 type ids (not value)
@@ -167,9 +203,9 @@ type_yang2asn1(yang_stmt    *ys,
 	       int           extended)
 {
     int        retval = -1;
-    yang_stmt *yrestype;  /* resolved type */
-    char      *restype;  /* resolved type */
-    char      *origtype=NULL;   /* original type */
+    yang_stmt *yrestype;        /* resolved type */
+    char      *restype;         /* resolved type */
+    char      *origtype = NULL; /* original type */
     int        at;
     yang_stmt *ypath;
     yang_stmt *yref;
@@ -186,6 +222,10 @@ type_yang2asn1(yang_stmt    *ys,
 	}
 	if (yang_path_arg(ys, yang_argument_get(ypath), &yref) < 0)
 	    goto done;
+	if (origtype){
+	    free(origtype);
+	    origtype = NULL;
+	}
 	if (yang_type_get(yref, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
 	    goto done;
 	restype = yrestype?yang_argument_get(yrestype):NULL;
@@ -226,6 +266,8 @@ type_yang2asn1(yang_stmt    *ys,
 	*asn1_type = at;
     retval = 0;
  done:
+    if (origtype)
+	free(origtype);
     return retval;
 }
 
@@ -251,10 +293,10 @@ type_snmp2xml(yang_stmt                  *ys,
     int          retval = -1;
     char        *cvstr;
     enum cv_type cvtype;
-    cg_var      *cv;
-    yang_stmt   *yrestype;  /* resolved type */
-    char        *restype;  /* resolved type */
-    char        *origtype=NULL;   /* original type */
+    cg_var      *cv = NULL;
+    yang_stmt   *yrestype;        /* resolved type */
+    char        *restype;         /* resolved type */
+    char        *origtype = NULL; /* original type */
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (valstr == NULL){
@@ -326,14 +368,17 @@ type_snmp2xml(yang_stmt                  *ys,
 	goto fail;
 	break;
     }
-      
     if ((*valstr = cv2str_dup(cv)) == NULL){
 	clicon_err(OE_UNIX, errno, "cv2str_dup");
 	goto done;
     }
     retval = 1;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clicon_debug(2, "%s %d", __FUNCTION__, retval);
+    if (cv)
+	cv_free(cv);
+    if (origtype)
+	free(origtype);
     return retval;
  fail:
     retval = 0;
@@ -359,9 +404,9 @@ type_xml2snmp_pre(char      *xmlstr0,
 
 {
     int        retval = -1;
-    yang_stmt *yrestype;  /* resolved type */
-    char      *restype;  /* resolved type */
-    char      *origtype=NULL;   /* original type */
+    yang_stmt *yrestype;        /* resolved type */
+    char      *restype;         /* resolved type */
+    char      *origtype = NULL; /* original type */
     char      *str = NULL;
     int        ret;
 
@@ -402,6 +447,8 @@ type_xml2snmp_pre(char      *xmlstr0,
     retval = 1;
  done:
     clicon_debug(2, "%s %d", __FUNCTION__, retval);
+    if (origtype)
+	free(origtype);
     return retval;
  fail:
     retval = 0;
@@ -603,11 +650,11 @@ yang2xpath_cb(yang_stmt *ys,
 
 /*! Construct an xpath from yang statement
  * Recursively construct it to the top.
- * @param[in]  ys    Yang statement
- * @param[in]  keyvec  Array of [name,val]s as a cvec of key name and values
- * @param[out] xpath Malloced xpath string, use free() after use
- * @retval     0     OK
- * @retval     -1    Error
+ * @param[in]  ys     Yang statement
+ * @param[in]  keyvec Array of [name,val]s as a cvec of key name and values
+ * @param[out] xpath  Malloced xpath string, use free() after use
+ * @retval     0      OK
+ * @retval     -1     Error
  * @note
  * 1. This should really be in a core .c file, like clixon_yang, BUT
  * 2. It is far from complete so maybe keep it here as a special case
@@ -692,4 +739,35 @@ snmp_body2oid(cxobj  *xi,
     if (enc)
 	cbuf_free(enc);
     return retval;
+}
+
+/*========== libnetsnmp-specific code ===============
+ * Peeks into internal lib global variables, may be sensitive to library change
+ */
+/*! Check if netsnmp is connected 
+ * @retval 1 yes, running
+ * @retval 0 No, not running
+ * XXX: this peeks into the "main_session" global variable in agent/snmp_agent.c
+ *      Tried to find API function but failed
+ */
+int
+snmp_agent_check(void)
+{
+    extern netsnmp_session *main_session;
+    
+    return (main_session != NULL) ? 1 : 0;
+}
+
+/*! Cleanup remaining libnetsnmb memory
+ * XXX: this peeks into the "tclist" global variable in snmplib/parse.c
+ *      Tried to find API function but failed
+ */
+int
+snmp_agent_cleanup(void)
+{
+    extern void *tclist;
+    
+    if (tclist)
+	free(tclist);
+    return 0;
 }
