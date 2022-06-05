@@ -182,7 +182,11 @@ mibyang_leaf_register(clicon_handle h,
 	netsnmp_handler_free(handler);
 	goto done;
     }
-    handler->myvoid =(void*)sh;
+    /* Register our application data and how to free it */
+    handler->myvoid = (void*)sh;
+    handler->data_clone = snmp_handle_clone;
+    handler->data_free = snmp_handle_free;
+
     /* 
      * XXX: nhreg->agent_data
      */
@@ -231,7 +235,7 @@ mibyang_table_register(clicon_handle h,
     clixon_snmp_handle              *sh;
     int                              ret;
     netsnmp_mib_handler             *handler;
-    netsnmp_table_registration_info *table_info=NULL;
+    netsnmp_table_registration_info *table_info = NULL;
     cvec                            *cvk = NULL; /* vector of index keys */
     cg_var                          *cvi;
     char                            *keyname;
@@ -274,7 +278,11 @@ mibyang_table_register(clicon_handle h,
 	netsnmp_handler_free(handler);
 	goto done;
     }
+    /* Register our application data and how to free it */
     handler->myvoid =(void*)sh;
+    handler->data_clone = snmp_handle_clone;
+    handler->data_free = snmp_handle_free;
+    
     /* See netsnmp_register_table_data_set */
     if ((table_info = SNMP_MALLOC_TYPEDEF(netsnmp_table_registration_info)) == NULL){
 	clicon_err(OE_UNIX, errno, "SNMP_MALLOC_TYPEDEF");
@@ -320,6 +328,7 @@ mibyang_table_register(clicon_handle h,
 	clicon_err(OE_SNMP, ret, "netsnmp_register_table");
 	goto done;
     }
+    sh->sh_table_info = table_info;
     clicon_debug(1, "%s %s registered", __FUNCTION__, oidstr);
  ok:
     retval = 0;
@@ -346,7 +355,7 @@ mibyang_table_traverse_static(clicon_handle h,
 {
     int        retval = -1;
     cvec      *nsc = NULL;
-    char      *xpath;
+    char      *xpath = NULL;
     cxobj     *xt = NULL;
     cxobj     *xerr;
     cxobj     *xtable;
@@ -408,6 +417,8 @@ mibyang_table_traverse_static(clicon_handle h,
     }
     retval = 0;
  done:
+    if (xpath)
+	free(xpath);
     if (cvk)
         cvec_free(cvk);
     if (xt)

@@ -30,6 +30,13 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
+  * This is the clixon_snmp daemon
+  * It assumes a netsnmp damon is running. 
+  * - If netsnmp does not run, clixon_snmp will not start
+  * - If netsnmp dies, clixon_snmp will exit
+  * - If netsnmp is restarted, so should clixon_snmp be
+  * It is possible to be more resilient, such as setting a timer and trying again, in fact, libnetsnmp
+  * has some such mechanisms
  */
 
 #ifdef HAVE_CONFIG_H
@@ -56,11 +63,15 @@
 /* clicon */
 #include <clixon/clixon.h>
 
+#include "snmp_lib.h"
 #include "snmp_register.h"
 
 /* Command line options to be passed to getopt(3) */
 #define SNMP_OPTS "hD:f:l:o:z"
 
+/* Forward */
+static int clixon_snmp_input_cb(int s, void *arg);
+    
 /*! Return (hardcoded) pid file
  */
 static char*
@@ -84,6 +95,87 @@ clixon_snmp_sig_term(int arg)
     clixon_exit_set(1); 
 }
 
+/*! Clean and close all state of netconf process (but dont exit). 
+ * Cannot use h after this 
+ * @param[in]  h  Clixon handle
+ */
+static int
+snmp_terminate(clicon_handle h)
+{
+    yang_stmt *yspec;
+    cvec      *nsctx;
+    cxobj     *x;
+    char      *pidfile = clicon_snmp_pidfile(h);
+
+    snmp_shutdown(__FUNCTION__);
+    shutdown_agent();
+    snmp_agent_cleanup();
+    clicon_rpc_close_session(h);
+    if ((yspec = clicon_dbspec_yang(h)) != NULL)
+	ys_free(yspec);
+    if ((yspec = clicon_config_yang(h)) != NULL)
+	ys_free(yspec);
+    if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
+	cvec_free(nsctx);
+    if ((x = clicon_conf_xml(h)) != NULL)
+	xml_free(x);
+    xpath_optimize_exit();
+    clixon_event_exit();
+    clicon_handle_exit(h);
+    clixon_err_exit();
+    clicon_log_exit();
+    if (pidfile)
+	unlink(pidfile);
+    return 0;
+}
+
+/*! Get which sockets are used from SNMP API, the register single sockets into clixon event system
+ *
+ * @param[in]  h        Clixon handle
+ * @param[in]  register if 1 register snmp sockets with event handler. If 0 close and unregister
+ * This is a workaround for netsnmps API usiing fdset:s, instead an fdset is created before calling
+ * the snmp api
+ * if you use select(), see snmp_select_info() in snmp_api(3) 
+ * snmp_select_info(int *numfds, fd_set *fdset, struct timeval *timeout, int *block)
+ * @see clixon_snmp_input_cb
+ */
+static int
+clixon_snmp_fdset_register(clicon_handle h,
+			   int           regfd)
+{
+    int             retval = -1;
+    int             numfds = 0;
+    fd_set          readfds;
+    struct timeval  timeout = { LONG_MAX, 0 };
+    int             block = 0;
+    int             nr;
+    int             s;
+
+    FD_ZERO(&readfds);
+    if ((nr = snmp_sess_select_info(NULL, &numfds, &readfds, &timeout, &block)) < 0){
+	clicon_err(OE_XML, errno, "snmp_select_error");
+	goto done;
+    }
+    /* eg 4, 6, 8 */
+    for (s=0; s<numfds; s++){
+	if (FD_ISSET(s, &readfds)){
+	    clicon_debug(1, "%s %d", __FUNCTION__, s);
+	    if (regfd){
+		if (clixon_event_reg_fd(s, clixon_snmp_input_cb, h, "snmp socket") < 0)
+		    goto done;
+	    }
+	    else{
+		if (clixon_event_unreg_fd(s, clixon_snmp_input_cb) < 0)
+		    goto done;
+		close(s);
+	    }
+	}
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Callback for single socket 
  * This is a workaround for netsnmps API usiing fdset:s, instead an fdset is created before calling
  * the snmp api
@@ -94,47 +186,37 @@ static int
 clixon_snmp_input_cb(int   s, 
 		     void *arg)
 {
-    int    retval = -1;
-    fd_set readfds;
-    //    clicon_handle h = (clicon_handle)arg;
+    int            retval = -1;
+    fd_set         readfds;
+    clicon_handle  h = (clicon_handle)arg;
+    int            ret;
 
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(1, "%s %d", __FUNCTION__, s);
     FD_ZERO(&readfds);
     FD_SET(s, &readfds);
-    snmp_read(&readfds);
-    retval = 0;
-    // done:
-    return retval;
-}
-
-/*! Get which sockets are used from SNMP API, the register single sockets into clixon event system
- *
- * This is a workaround for netsnmps API usiing fdset:s, instead an fdset is created before calling
- * the snmp api
- * if you use select(), see snmp_select_info() in snmp_api(3) 
- * snmp_select_info(int *numfds, fd_set *fdset, struct timeval *timeout, int *block)
- * @see clixon_snmp_input_cb
- */
-static int
-clixon_snmp_fdset_register(clicon_handle h)
-{
-    int             retval = -1;
-    int             numfds = 0;
-    fd_set          readfds;
-    struct timeval  timeout = { LONG_MAX, 0 };
-    int             block = 0;
-    int             nr;
-    int             i;
-
-    FD_ZERO(&readfds);
-    if ((nr = snmp_sess_select_info(NULL, &numfds, &readfds, &timeout, &block)) < 0){
-	clicon_err(OE_XML, errno, "snmp_select_error");
-	goto done;
-    }
-    for (i=0; i<numfds; i++){
-	if (FD_ISSET(i, &readfds)){
-	    if (clixon_event_reg_fd(i, clixon_snmp_input_cb, h, "snmp socket") < 0)
+    (void)snmp_read(&readfds);
+    if (clixon_event_poll(s) < 0){
+	if (errno == EBADF){
+	    clicon_err_reset();
+	    /* Close the active socket */
+	    if (clixon_event_unreg_fd(s, clixon_snmp_input_cb) < 0)
 		goto done;
+	    close(s);
+	    /* and then the others */
+	    if (clixon_snmp_fdset_register(h, 0) < 0)
+		goto done;
+	    if ((ret = snmp_close_sessions()) != 1){
+		clicon_err(OE_SNMP, ret, "snmp_close_sessions");
+		goto done;
+	    }
+	    /* Signal normal exit to upper layers (=event handling)
+	     * One can signal error and return -1, but it is nicer with an orderly exit
+	     */
+	    clixon_exit_set(1);
+	}
+	else {
+	    clicon_err(OE_UNIX, errno, "poll");
+	    goto done;
 	}
     }
     retval = 0;
@@ -142,14 +224,15 @@ clixon_snmp_fdset_register(clicon_handle h)
     return retval;
 }
 
+
 /*! Init netsnmp agent connection
  * @param[in]  h      Clixon handle
  * @param[in]  logdst Log destination, see clixon_log.h
  * @see snmp_terminate
  */
 static int
-clixon_snmp_subagent(clicon_handle h,
-		     int           logdst)
+clixon_snmp_init_subagent(clicon_handle h,
+			  int           logdst)
 {
     int   retval = -1;
     char *sockpath = NULL;
@@ -159,8 +242,17 @@ clixon_snmp_subagent(clicon_handle h,
 	snmp_enable_calllog();
     else
 	snmp_enable_stderrlog();
-    /* make a agentx client. */
-    netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_ROLE, 1);    
+    /* 0 if master, 1 if client */
+    netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_ROLE, 1);
+    /* don't load config and don't load/save persistent file */
+    netsnmp_ds_set_boolean(NETSNMP_DS_LIBRARY_ID, NETSNMP_DS_LIB_DONT_PERSIST_STATE, 1);
+    /* don't load persistent file */
+    netsnmp_ds_set_boolean(NETSNMP_DS_LIBRARY_ID, NETSNMP_DS_LIB_DISABLE_PERSISTENT_LOAD, 1);    
+    /* don't save persistent file */
+    netsnmp_ds_set_boolean(NETSNMP_DS_LIBRARY_ID, NETSNMP_DS_LIB_DISABLE_PERSISTENT_SAVE, 1);    
+
+    if (clicon_debug_get())
+	netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_VERBOSE, 1);
 
     if ((sockpath = clicon_option_str(h, "CLICON_SNMP_AGENT_SOCK")) == NULL){
 	clicon_err(OE_XML, 0, "CLICON_SNMP_AGENT_SOCK not set");
@@ -169,13 +261,17 @@ clixon_snmp_subagent(clicon_handle h,
     /* XXX: This should be configurable. */
     netsnmp_ds_set_string(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_X_SOCKET, sockpath);
 
-
     /* initialize the agent library */
     init_agent(__PROGRAM__);
 
     /* example-demon will be used to read example-demon.conf files. */
     init_snmp(__PROGRAM__);
 
+    if (!snmp_agent_check()){
+	clicon_err(OE_DAEMON, 0, "Connection to SNMP agent failed");
+	goto done;
+    }
+	
     if (set_signal(SIGTERM, clixon_snmp_sig_term, NULL) < 0){
 	clicon_err(OE_DAEMON, errno, "Setting signal");
 	goto done;
@@ -188,8 +284,8 @@ clixon_snmp_subagent(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "Setting SIGPIPE signal");
 	goto done;
     }
-    /* Workaround for netsnmps API use of fdset:s instead of sockets */
-    if (clixon_snmp_fdset_register(h) < 0)
+   /* Workaround for netsnmps API use of fdset:s instead of sockets */
+    if (clixon_snmp_fdset_register(h, 1) < 0)
 	goto done;
     retval = 0;
  done:
@@ -226,37 +322,6 @@ clixon_snmp_err_cb(void *handle,
     return 0;
 }
 
-/*! Clean and close all state of netconf process (but dont exit). 
- * Cannot use h after this 
- * @param[in]  h  Clixon handle
- */
-static int
-snmp_terminate(clicon_handle h)
-{
-    yang_stmt  *yspec;
-    cvec       *nsctx;
-    cxobj      *x;
-    char      *pidfile = clicon_snmp_pidfile(h);
-    
-    shutdown_agent();
-    clicon_rpc_close_session(h);
-    if ((yspec = clicon_dbspec_yang(h)) != NULL)
-	ys_free(yspec);
-    if ((yspec = clicon_config_yang(h)) != NULL)
-	ys_free(yspec);
-    if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
-	cvec_free(nsctx);
-    if ((x = clicon_conf_xml(h)) != NULL)
-	xml_free(x);
-    xpath_optimize_exit();
-    clixon_event_exit();
-    clicon_handle_exit(h);
-    clixon_err_exit();
-    clicon_log_exit();
-    if (pidfile)
-	unlink(pidfile);
-    return 0;
-}
 
 /*! Usage help routine
  * @param[in]  h      Clixon handle
@@ -487,16 +552,13 @@ main(int    argc,
 	goto done;
     clicon_session_id_set(h, id);
     
-
-    
     /* Init snmp as subagent */
-    if (clixon_snmp_subagent(h, logdst) < 0)
+    if (clixon_snmp_init_subagent(h, logdst) < 0)
 	goto done;
 
     /* Init and traverse mib-translated yangs and register callbacks */
     if (clixon_snmp_traverse_mibyangs(h) < 0)
 	goto done;
-    
 
     /* Write pid-file */
     if (pidfile_write(pidfile) <  0)
