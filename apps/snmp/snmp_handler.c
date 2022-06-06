@@ -377,7 +377,7 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
     /* see net-snmp/agent/snmp_agent.h / net-snmp/library/snmp.h */
     switch (reqinfo->mode) {
     case MODE_GET:          /* 160 */
-	if (snmp_scalar_get(sh->sh_h, ys, sh->sh_cvk,
+	if (snmp_scalar_get(sh->sh_h, ys, sh->sh_cvk_orig,
 			    requestvb, sh->sh_default, reqinfo, requests) < 0)
 	    goto done;
         break;

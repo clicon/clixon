@@ -157,8 +157,13 @@ snmp_handle_clone(void *arg)
        return NULL;
     }
     memset(sh1, 0, sizeof(*sh1));
-    if (sh0->sh_cvk &&
-	(sh1->sh_cvk = cvec_dup(sh0->sh_cvk)) == NULL){
+    if (sh0->sh_cvk_orig &&
+	(sh1->sh_cvk_orig = cvec_dup(sh0->sh_cvk_orig)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_dup");
+	return NULL;
+    }
+    if (sh0->sh_cvk_oid &&
+	(sh1->sh_cvk_oid = cvec_dup(sh0->sh_cvk_oid)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_dup");
 	return NULL;
     }
@@ -175,8 +180,10 @@ snmp_handle_free(void *arg)
     clixon_snmp_handle *sh = (clixon_snmp_handle *)arg;
 
     if (sh != NULL){
-	if (sh->sh_cvk)
-	    cvec_free(sh->sh_cvk);
+	if (sh->sh_cvk_orig)
+	    cvec_free(sh->sh_cvk_orig);
+	if (sh->sh_cvk_oid)
+	    cvec_free(sh->sh_cvk_oid);
 	if (sh->sh_table_info){
 	    if (sh->sh_table_info->indexes){
 		snmp_free_varbind(sh->sh_table_info->indexes);
@@ -685,7 +692,9 @@ yang2xpath(yang_stmt *ys,
     return retval;
 }
 
-/*!
+/*! Translate from xml body to OID
+ * For ints this is one to one, eg 42 -> 42
+ * But for eg strings this is more comples, eg foo -> 3.6.22.22 (or something,...)
  */
 int
 snmp_body2oid(cxobj  *xi,
@@ -712,7 +721,7 @@ snmp_body2oid(cxobj  *xi,
     case ASN_COUNTER:
     case ASN_IPADDRESS:
 	if (cv_string_set(cv, body) < 0){
-	    clicon_err(OE_UNIX,errno, "cv_string_set");
+	    clicon_err(OE_UNIX, errno, "cv_string_set");
 	    goto done;
 	}
 	break;
@@ -726,7 +735,7 @@ snmp_body2oid(cxobj  *xi,
 	for (i=0; i<len; i++)
 	    cprintf(enc, ".%u", body[i]&0xff);
 	if (cv_string_set(cv, cbuf_get(enc)) < 0){
-	    clicon_err(OE_UNIX,errno, "cv_string_set");
+	    clicon_err(OE_UNIX, errno, "cv_string_set");
 	    goto done;
 	}
 	break;
