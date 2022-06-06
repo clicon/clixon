@@ -219,7 +219,7 @@ ifStackStatus  OBJECT-TYPE
 --  Example Tables
 --
 clixonIETFWGTable OBJECT-TYPE
-    SYNTAX      SEQUENCE OF NetSnmpIETFWGEntry
+    SYNTAX      SEQUENCE OF ClixonIETFWGEntry
     MAX-ACCESS  not-accessible
     STATUS      current
     DESCRIPTION
@@ -231,14 +231,14 @@ clixonIETFWGTable OBJECT-TYPE
      agent/mibgroup/examples/data_set.c file."
     ::= { netSnmpExampleTables 1 }
 clixonIETFWGEntry OBJECT-TYPE
-    SYNTAX      NetSnmpIETFWGEntry
+    SYNTAX      ClixonIETFWGEntry
     MAX-ACCESS  not-accessible
     STATUS      current
     DESCRIPTION
     "A row describing a given working group"
     INDEX   { nsIETFWGName }
-    ::= {netSnmpIETFWGTable 1 }
-NetSnmpIETFWGEntry ::= SEQUENCE {
+    ::= {clixonIETFWGTable 1 }
+ClixonIETFWGEntry ::= SEQUENCE {
     nsIETFWGName    OCTET STRING,
     nsIETFWGChair1  OCTET STRING,
     nsIETFWGChair2  OCTET STRING
@@ -249,14 +249,14 @@ nsIETFWGName OBJECT-TYPE
     STATUS      current
     DESCRIPTION
     "The name of the IETF Working Group this table describes."
-    ::= { netSnmpIETFWGEntry 1 }
+    ::= { clixonIETFWGEntry 1 }
 nsIETFWGChair1 OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-create
     STATUS      current
     DESCRIPTION
     "One of the names of the chairs for the IETF working group."
-    ::= { netSnmpIETFWGEntry 2 }
+    ::= { clixonIETFWGEntry 2 }
 nsIETFWGChair2 OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-create
@@ -264,13 +264,13 @@ nsIETFWGChair2 OBJECT-TYPE
     DESCRIPTION
     "The other name, if one exists, of the chairs for the IETF
     working group."
-    ::= { netSnmpIETFWGEntry 3 }
+    ::= { clixonIETFWGEntry 3 }
 --
 -- A table used in a table_iterator example
 --   (agent/mibgroup/examples/netSnmpHostsTable*.[ch])
 --
 clixonHostsTable OBJECT-TYPE
-    SYNTAX      SEQUENCE OF NetSnmpHostsEntry
+    SYNTAX      SEQUENCE OF ClixonHostsEntry
     MAX-ACCESS  not-accessible
     STATUS      current
     DESCRIPTION
@@ -278,19 +278,19 @@ clixonHostsTable OBJECT-TYPE
     /etc/hosts file on a machine using the iterator helper API."
     ::= { netSnmpExampleTables 2 }
 clixonHostsEntry OBJECT-TYPE
-    SYNTAX      NetSnmpHostsEntry
+    SYNTAX      ClixonHostsEntry
     MAX-ACCESS  not-accessible
     STATUS      current
     DESCRIPTION
     "A host name mapped to an ip address"
-    INDEX   { netSnmpHostName }
-    ::= { netSnmpHostsTable 1 }
-NetSnmpHostsEntry ::= SEQUENCE {
-    netSnmpHostName         OCTET STRING,
-    netSnmpHostAddressType  InetAddressType,
-    netSnmpHostAddress      InetAddress,
-    netSnmpHostStorage      StorageType,
-    netSnmpHostRowStatus    RowStatus
+    INDEX   { clixonHostName }
+    ::= { clixonHostsTable 1 }
+ClixonHostsEntry ::= SEQUENCE {
+    clixonHostName         OCTET STRING,
+    clixonHostAddressType  InetAddressType,
+    clixonHostAddress      InetAddress,
+    clixonHostStorage      StorageType,
+    clixonHostRowStatus    RowStatus
 }
 
 clixonHostName OBJECT-TYPE
@@ -299,34 +299,34 @@ clixonHostName OBJECT-TYPE
     STATUS      current
     DESCRIPTION
     "A host name that exists in the /etc/hosts (unix) file."
-    ::= { netSnmpHostsEntry 1 }
+    ::= { clixonHostsEntry 1 }
 clixonHostAddressType OBJECT-TYPE
     SYNTAX      InetAddressType
     MAX-ACCESS  read-create
     STATUS      current
     DESCRIPTION
     "The address type of then given host."
-    ::= { netSnmpHostsEntry 2 }
+    ::= { clixonHostsEntry 2 }
 clixonHostAddress OBJECT-TYPE
     SYNTAX      InetAddress
     MAX-ACCESS  read-create
     STATUS      current
     DESCRIPTION
     "The address of then given host."
-    ::= { netSnmpHostsEntry 3 }
+    ::= { clixonHostsEntry 3 }
 clixonHostStorage OBJECT-TYPE
     SYNTAX       StorageType
     MAX-ACCESS   read-create
     STATUS       current
     DESCRIPTION "The storage type for this conceptual row."
     DEFVAL      { nonVolatile }
-    ::= { netSnmpHostsEntry 4 }
+    ::= { clixonHostsEntry 4 }
 clixonHostRowStatus OBJECT-TYPE
     SYNTAX       RowStatus
     MAX-ACCESS   read-create
     STATUS       current
     DESCRIPTION "The status of this conceptual row."
-    ::= { netSnmpHostsEntry 5 }
+    ::= { clixonHostsEntry 5 }
 
 clixonObjectID OBJECT-TYPE
     SYNTAX      OBJECT IDENTIFIER
