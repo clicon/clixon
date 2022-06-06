@@ -52,7 +52,8 @@ struct clixon_snmp_handle {
     oid           sh_oid[MAX_OID_LEN]; /* OID for debug, may be removed? */
     size_t        sh_oidlen;           
     char         *sh_default;          /* MIB default value leaf only */
-    cvec         *sh_cvk;              /* Index/Key variables */
+    cvec         *sh_cvk_orig;         /* Index/Key variables (original) */
+    cvec         *sh_cvk_oid;          /* Index/Key variables (OID translated) */
     netsnmp_table_registration_info *sh_table_info; /* To mimic table-handler in libnetsnmp code*/
 };
 typedef struct clixon_snmp_handle clixon_snmp_handle;

@@ -88,16 +88,19 @@
  *      smiv2:oid "1.3.6.1.4.1.8072.2.1.1";
  *      smiv2:max-access "read-write";
  *      smiv2:defval "42"; (optional)
- * @param[in]  h    Clixon handle
- * @param[in]  ys   Mib-Yang node
- * @param[in]  cvk  Vector of key/index values. NB: not for scalars, only tables
+ * @param[in]  h        Clixon handle
+ * @param[in]  ys       Mib-Yang node
+ * @param[in]  cvk_orig Vector of untranslated key/index values (eg "foo")
+ * @param[in]  cvk_oid  Vector of translated to OID key/index values. (eg "3.6.22.22")
+
  * @retval     0    OK
  * @retval    -1    Error
  */
 static int
 mibyang_leaf_register(clicon_handle h,
 		      yang_stmt    *ys,
-		      cvec         *cvk)
+		      cvec         *cvk_orig,
+		      cvec         *cvk_oid)
 {
     int                           retval = -1;
     netsnmp_handler_registration *nhreg = NULL;
@@ -127,7 +130,7 @@ mibyang_leaf_register(clicon_handle h,
     }
     cprintf(cboid, "%s", oidstr);
     cvi = NULL;
-    while ((cvi = cvec_each(cvk, cvi)) != NULL)
+    while ((cvi = cvec_each(cvk_oid, cvi)) != NULL)
 	cprintf(cboid, ".%s", cv_string_get(cvi));
     if (snmp_parse_oid(cbuf_get(cboid), oid1, &sz1) == NULL){
 	clicon_err(OE_XML, 0, "snmp_parse_oid(%s)", cbuf_get(cboid));
@@ -171,8 +174,13 @@ mibyang_leaf_register(clicon_handle h,
     memcpy(sh->sh_oid, oid1, sizeof(oid1));
     sh->sh_oidlen = sz1;
     sh->sh_default = default_str;
-    if (cvk &&
-	(sh->sh_cvk = cvec_dup(cvk)) == NULL){
+    if (cvk_orig &&
+	(sh->sh_cvk_orig = cvec_dup(cvk_orig)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_dup");
+	goto done;
+    }
+    if (cvk_oid &&
+	(sh->sh_cvk_oid = cvec_dup(cvk_oid)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_dup");
 	goto done;
     }
@@ -363,9 +371,10 @@ mibyang_table_traverse_static(clicon_handle h,
     cxobj     *xrow;
     cxobj     *xcol;
     yang_stmt *y;
-    cvec      *cvk0;
+    cvec      *cvk_name;
     cg_var    *cv0;
-    cvec      *cvk = NULL; /* vector of index keys */
+    cvec      *cvk_orig = NULL; /* vector of index keys: original index */
+    cvec      *cvk_oid = NULL;  /* vector of index keys: translated to OID */
     cg_var    *cv;
     int        i;
     cxobj     *xi;
@@ -383,35 +392,48 @@ mibyang_table_traverse_static(clicon_handle h,
     }
     if ((xtable = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
 	/* Make a clone of key-list, but replace names with values */
-	if ((cvk0 = yang_cvec_get(ylist)) == NULL){
+	if ((cvk_name = yang_cvec_get(ylist)) == NULL){
 	    clicon_err(OE_YANG, 0, "No keys");
 	    goto done;
 	}
 	xrow = NULL;
 	while ((xrow = xml_child_each(xtable, xrow, CX_ELMNT)) != NULL) {
-	    if (cvk){
-		cvec_free(cvk);
-		cvk = NULL;
+	    if (cvk_orig){
+		cvec_free(cvk_orig);
+		cvk_orig = NULL;
 	    }
-	    if ((cvk = cvec_dup(cvk0)) == NULL){
+	    if ((cvk_orig = cvec_dup(cvk_name)) == NULL){
 		clicon_err(OE_UNIX, errno, "cvec_dup");
 		goto done;
 	    }
-	    for (i=0; i<cvec_len(cvk0); i++){
-		cv0 = cvec_i(cvk0, i); 
-		cv = cvec_i(cvk, i); 
+	    if (cvk_oid){
+		cvec_free(cvk_oid);
+		cvk_oid = NULL;
+	    }
+	    if ((cvk_oid = cvec_dup(cvk_name)) == NULL){
+		clicon_err(OE_UNIX, errno, "cvec_dup");
+		goto done;
+	    }
+	    for (i=0; i<cvec_len(cvk_name); i++){
+		cv0 = cvec_i(cvk_name, i); 
 		if ((xi = xml_find_type(xrow, NULL, cv_string_get(cv0), CX_ELMNT)) == NULL)
 		    break;
+		cv = cvec_i(cvk_orig, i); 
+		if (cv_string_set(cv, xml_body(xi)) < 0){
+		    clicon_err(OE_UNIX, errno, "cv_string_set");
+		    goto done;
+		}
+		cv = cvec_i(cvk_oid, i); 
 		if (snmp_body2oid(xi, cv) < 0)
 		    goto done;
 	    }
-	    if (i<cvec_len(cvk0))
+	    if (i<cvec_len(cvk_name))
 		continue; /* skip row, not all indexes */
 	    xcol = NULL;
 	    while ((xcol = xml_child_each(xrow, xcol, CX_ELMNT)) != NULL) {
 		if ((y = xml_spec(xcol)) == NULL)
 		    continue;
-		if (mibyang_leaf_register(h, y, cvk) < 0) 
+		if (mibyang_leaf_register(h, y, cvk_orig, cvk_oid) < 0) 
 		    goto done;
 	    }
 	}
@@ -420,8 +442,11 @@ mibyang_table_traverse_static(clicon_handle h,
  done:
     if (xpath)
 	free(xpath);
-    if (cvk)
-        cvec_free(cvk);
+    if (cvk_orig)
+        cvec_free(cvk_orig);
+    if (cvk_oid)
+        cvec_free(cvk_oid);
+
     if (xt)
         xml_free(xt);
     if (nsc)
@@ -462,7 +487,7 @@ mibyang_traverse(clicon_handle h,
     clicon_debug(1, "%s %s", __FUNCTION__, yang_argument_get(yn));
     switch(yang_keyword_get(yn)){
     case Y_LEAF:
-	if (mibyang_leaf_register(h, yn, NULL) < 0)
+	if (mibyang_leaf_register(h, yn, NULL, NULL) < 0)
 	    goto done;
 	break;
     case Y_CONTAINER: /* See list case */
