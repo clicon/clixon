@@ -156,12 +156,13 @@ xml2txt1(cxobj            *xn,
 	    }
 	}
     }
-    if (yn && yang_keyword_get(yn) == Y_LEAF_LIST && *leafl){
-	if (strcmp(*leaflname, yang_argument_get(yn)) != 0){
+    if (*leafl && yn){	
+	if (yang_keyword_get(yn) == Y_LEAF_LIST && strcmp(*leaflname, yang_argument_get(yn)) == 0)
+	    ;
+	else{
 	    *leafl = 0;
 	    *leaflname = NULL;
 	    (*fn)(f, "%*s\n", 4*(level), "]");
-	    // XXX	    
 	}
     }
     xc = NULL;     /* count children (elements and bodies, not attributes) */
