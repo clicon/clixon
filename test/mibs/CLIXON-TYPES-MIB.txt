@@ -239,12 +239,12 @@ clixonIETFWGEntry OBJECT-TYPE
     INDEX   { nsIETFWGName }
     ::= {clixonIETFWGTable 1 }
 ClixonIETFWGEntry ::= SEQUENCE {
-    nsIETFWGName    OCTET STRING,
+    nsIETFWGName    INTEGER,
     nsIETFWGChair1  OCTET STRING,
     nsIETFWGChair2  OCTET STRING
 }
 nsIETFWGName OBJECT-TYPE
-    SYNTAX      OCTET STRING (SIZE(1..32))
+    SYNTAX      INTEGER
     MAX-ACCESS  not-accessible
     STATUS      current
     DESCRIPTION
