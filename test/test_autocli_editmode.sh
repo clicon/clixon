@@ -128,21 +128,21 @@ wait_backend
 
 # First go down in structure and show config
 new "show top tree"
-expectpart "$(echo "show config xml" | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
+expectpart "$(echo "show config xml" | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
 
 cat <<EOF > $fin
 up
 show config xml
 EOF
 new "up show"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
 
 cat <<EOF > $fin
 edit table
 show config xml
 EOF
 new "edit table; show"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table>" "<parameter><name>a</name><value>42</value></parameter>$" --not-- '<table xmlns="urn:example:clixon">'
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table>" "<parameter><name>a</name><value>42</value></parameter>" --not-- '<table xmlns="urn:example:clixon">'
 
 cat <<EOF > $fin
 edit table parameter a
@@ -186,7 +186,7 @@ top
 show config xml
 EOF
 new "edit table parameter a value 42; top; show"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
 
 cat <<EOF > $fin
 edit table parameter a
@@ -194,7 +194,7 @@ top
 show config xml
 EOF
 new "edit table parameter a; top; show"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
 
 # edit -> up
 
@@ -204,7 +204,7 @@ up
 show config xml
 EOF
 new "edit table; up; show"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
 
 if $LEAFMODE; then
 cat <<EOF > $fin
@@ -223,7 +223,7 @@ up
 show config xml
 EOF
 new "edit table parameter a; up up; show"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
 
 cat <<EOF > $fin
 edit table parameter a
@@ -275,7 +275,7 @@ up
 show config xml
 EOF
 new "delete parameter b"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>$'
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table>'
 
 # Back to startup
 # show state
@@ -285,7 +285,7 @@ edit table
 show state
 EOF
 new "show state"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<parameter><name>a</name><value>42</value><stat>99</stat></parameter>$"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<parameter><name>a</name><value>42</value><stat>99</stat></parameter>"
 
 # Show other formats
 cat <<EOF > $fin
@@ -314,7 +314,7 @@ edit table
 show config netconf
 EOF
 new "show config netconf"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><parameter><name>a</name><value>42</value></parameter></config></edit-config></rpc>]]>]]>"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><parameter><name>a</name><value>42</value></parameter>" "</config></edit-config></rpc>]]>]]>"
 
 # Negative test
 new "config parameter only expect fail"
