@@ -250,7 +250,6 @@ validate_oid $NAME12 $NAME12 "INTEGER" 1
 new "Get bulk OIDs"
 expectpart "$($snmpbulkget $OID1)" 0 "$OID2 = INTEGER: -1" "$OID3 = STRING: \"This is not default\"" "$OID4 = Timeticks: (12345) 0:02:03.45" "$OID5 = INTEGER: 48" "$OID6 = Gauge32: 123123123" "$OID7 = INTEGER: 3" "$OID8 = Counter32: 123456" "$OID9 = Counter64: 4294967296" "$OID10 = INTEGER: 1" "$OID11 = Timeticks: (1234567890) 142 days, 21:21:18.90"
 
-snmp_debug=false
 if $snmp_debug; then
     new "Test SNMP table netSnmpIETFWGTable"
     expectpart "$($snmptable $OID13)" 0 "Name1" "Name2"
