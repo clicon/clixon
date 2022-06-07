@@ -19,7 +19,6 @@ snmpset="$(type -p snmpset) -On -c public -v2c localhost "
 
 cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
-fstate=$dir/state.xml
 
 # AgentX unix socket
 SOCK=/var/run/snmp.sock
@@ -37,32 +36,6 @@ cat <<EOF > $cfg
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
   <CLICON_SNMP_MIB>CLIXON-TYPES-MIB</CLICON_SNMP_MIB>
 </clixon-config>
-EOF
-
-cat <<EOF > $fstate
-<CLIXON-TYPES-MIB xmlns="urn:ietf:params:xml:ns:yang:smiv2:CLIXON-TYPES-MIB">
-  <clixonExampleScalars>
-    <clixonExampleInteger>0x7fffffff</clixonExampleInteger>
-    <clixonExampleSleeper>-1</clixonExampleSleeper>
-    <clixonExampleString>This is not default</clixonExampleString>
-  </clixonExampleScalars>
-  <clixonIETFWGTable>
-    <clixonIETFWGEntry>
-      <nsIETFWGName>index</nsIETFWGName>
-      <nsIETFWGChair1>Name1</nsIETFWGChair1>
-      <nsIETFWGChair2>Name2</nsIETFWGChair2>
-    </clixonIETFWGEntry>
-  </clixonIETFWGTable>
-  <clixonHostsTable>
-    <clixonHostsEntry>
-      <clixonHostName>test</clixonHostName>
-      <clixonHostAddressType>ipv4</clixonHostAddressType>
-      <clixonHostAddress>10.20.30.40</clixonHostAddress>
-      <clixonHostStorage>permanent</clixonHostStorage>
-      <clixonHostRowStatus>active</clixonHostRowStatus>
-    </clixonHostsEntry>
-  </clixonHostsTable>
-</CLIXON-TYPES-MIB>
 EOF
 
 cat <<EOF > $fyang
@@ -95,7 +68,7 @@ function testinit(){
 	sudo pkill -f clixon_backend
 
 	new "Starting backend"
-	start_backend -s init -f $cfg -- -sS $fstate
+	start_backend -s init -f $cfg
     fi
 
     new "wait backend"
