@@ -127,6 +127,7 @@ xml2txt1(cxobj            *xn,
     char      *value;
     cg_var    *cvi;
     cvec      *cvk = NULL; /* vector of index keys */
+    cbuf      *cb = NULL;
 
     if (xn == NULL || fn == NULL){
 	clicon_err(OE_XML, EINVAL, "xn or fn is NULL");
@@ -171,15 +172,22 @@ xml2txt1(cxobj            *xn,
 	    children++;
     if (children == 0){ /* If no children print line */
 	switch (xml_type(xn)){
-	case CX_BODY:
+	case CX_BODY:{
+	    if ((cb = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
 	    value = xml_value(xn);
-	    if (*leafl)                              /* Skip keyword if leaflist */
-		(*fn)(f, "%*s%s\n", 4*level, "", xml_value(xn));
-	    else if (index(value, ' ') != NULL)      /* Add quotes if string contains spaces */
-		(*fn)(f, "\"%s\";\n", xml_value(xn));
+	    if (index(value, ' ') != NULL)
+		cprintf(cb, "\"%s\"", value);
 	    else
-		(*fn)(f, "%s;\n", xml_value(xn));
+		cprintf(cb, "%s", value);
+	    if (*leafl)                            /* Skip keyword if leaflist */
+		(*fn)(f, "%*s%s\n", 4*level, "", cbuf_get(cb));
+	    else
+		(*fn)(f, "%s;\n", cbuf_get(cb));
 	    break;
+	}
 	case CX_ELMNT:
 	    (*fn)(f, "%*s%s", 4*level, "", xml_name(xn));
 	    cvi = NULL; 	    /* Lists only */
@@ -227,28 +235,17 @@ xml2txt1(cxobj            *xn,
 	}
     }
     /* Stop leaf-list printing (ie []) if no longer leaflist and same name */
-#if 0
-    if (*leafl != 0){
-	if (yn && yang_keyword_get(yn) == Y_LEAF_LIST &&
-	    strcmp(*leaflname, yang_argument_get(yn))==0)
-	    ;
-	else{
-	    *leafl = 0;
-	    *leaflname = NULL;
-	    (*fn)(f, "%*s\n", 4*(level+1), "]");
-	}	
-    }
-#else
     if (yn && yang_keyword_get(yn) != Y_LEAF_LIST && *leafl != 0){
 	*leafl = 0;
 	(*fn)(f, "%*s\n", 4*(level+1), "]");
     }
-#endif
     if (!tleaf(xn))
 	(*fn)(f, "%*s}\n", 4*level, "");
  ok:
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 

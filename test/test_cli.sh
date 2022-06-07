@@ -131,8 +131,6 @@ copy("Copy and create a new object"){
     }
 }
 discard("Discard edits (rollback 0)"), discard_changes();
-
-
 debug("Debugging parts of the system"){
     cli("Set cli debug")	 <level:int32>("Set debug level (0..n)"), cli_debug_cli();
 }
@@ -247,11 +245,11 @@ expectpart "$($clixon_cli -1 -f $cfg -l o shell echo foo)" 0 "foo"
 new "cli create leaflist array1 a"
 expectpart "$($clixon_cli -1 -f $cfg -l o set table parameter a array1 a)" 0 "^$"
 
-new "cli create leaflist array1 b"
-expectpart "$($clixon_cli -1 -f $cfg -l o set table parameter a array1 b)" 0 "^$"
+new "cli create leaflist array1 b1 b2"
+expectpart "$($clixon_cli -1 -f $cfg -l o set table parameter a array1 \"b1 b2\")" 0 "^$"
 
-new "cli create leaflist array2 c"
-expectpart "$($clixon_cli -1 -f $cfg -l o set table parameter a array2 c)" 0 "^$"
+new "cli create leaflist array2 c1 c2"
+expectpart "$($clixon_cli -1 -f $cfg -l o set table parameter a array2 \"c1 c2\")" 0 "^$"
 
 new "cli commit"
 expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
@@ -262,7 +260,6 @@ for format in cli text xml json; do
 
     new "cli delete all"
     expectpart "$($clixon_cli -1 -f $cfg -l o delete all)" 0 "^$"
-
 
     new "cli load $format"
     expectpart "$($clixon_cli -1 -f $cfg -l o load $dir/config.$format $format)" 0 "^$"

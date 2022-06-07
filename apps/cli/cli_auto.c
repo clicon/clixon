@@ -452,7 +452,7 @@ cli_auto_show(clicon_handle h,
 	/* Print configuration according to format */
 	switch (format){
 	case FORMAT_XML:
-	    if (clixon_xml2file(stdout, xp, 0, pretty, fprintf, skiproot) < 0)
+	    if (clixon_xml2file(stdout, xp, 0, pretty, cligen_output, skiproot) < 0)
 		goto done;
 	    fprintf(stdout, "\n");
 	    break;
@@ -474,7 +474,7 @@ cli_auto_show(clicon_handle h,
 		    NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
 	    if (pretty)
 		fprintf(stdout, "\n");
-	    if (clixon_xml2file(stdout, xp, 2, pretty, fprintf, skiproot) < 0)
+	    if (clixon_xml2file(stdout, xp, 2, pretty, cligen_output, skiproot) < 0)
 		goto done;
 	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	    break;
