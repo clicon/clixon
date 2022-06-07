@@ -16,6 +16,7 @@ snmpd=$(type -p snmpd)
 snmpget="$(type -p snmpget) -On -c public -v2c localhost "
 snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
 snmptable="$(type -p snmptable) -c public -v2c localhost "
+snmpwalk="$(type -p snmpwalk) -c public -v2c localhost "
 
 cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
@@ -188,80 +189,191 @@ for (( i=1; i<23; i++ )); do
     eval OID${i}="${MIB}.2.2.1.$i.1"
 done
 
+NAME1="IF-MIB::ifIndex"
+NAME2="IF-MIB::ifDescr"
+NAME3="IF-MIB::ifType"
+NAME4="IF-MIB::ifMtu"
+NAME5="IF-MIB::ifSpeed"
+NAME6="IF-MIB::ifPhysAddress"
+NAME7="IF-MIB::ifAdminStatus"
+NAME8="IF-MIB::ifOperStatus"
+NAME9="IF-MIB::ifLastChange"
+NAME10="IF-MIB::ifInOctets"
+NAME11="IF-MIB::ifInUcastPkts"
+NAME12="IF-MIB::ifInNUcastPkts"
+NAME13="IF-MIB::ifInDiscards"
+NAME14="IF-MIB::ifInErrors"
+NAME15="IF-MIB::ifInUnknownProtos"
+NAME16="IF-MIB::ifOutOctets"
+NAME17="IF-MIB::ifOutUcastPkts"
+NAME18="IF-MIB::ifOutNUcastPkts"
+NAME19="IF-MIB::ifOutDiscards"
+NAME20="IF-MIB::ifOutErrors"
+NAME21="IF-MIB::ifOutQLen"
+NAME22="IF-MIB::ifSpecific"
+
 new "$snmpget"
 
 new "Test SNMP get all entries in ifTable"
 
 new "Test $OID1 ifIndex"
-expectpart "$($snmpget $OID1)" 0 "$OID1 = INTEGER: 1"
+validate_oid $OID1 $OID1 "INTEGER" "1"
+validate_oid "$NAME1.1" "$NAME1.1" "INTEGER" 1
+validate_oid "$NAME1.1" "$NAME1.2" "INTEGER" 2
 
 new "Test $OID2 ifDescr"
-expectpart "$($snmpget $OID2)" 0 "$OID2 = STRING: Test"
+validate_oid $OID2 $OID2 "STRING" "Test"
+validate_oid $NAME2.1 $NAME2.1 "STRING" "Test"
+validate_oid $NAME2.2 $NAME2.2 "STRING" "Test"
 
 new "Test $OID3 ifType"
-expectpart "$($snmpget $OID3)" 0 "$OID3 = INTEGER: ethernetCsmacd(6)"
+validate_oid $OID3 $OID3 "INTEGER" "ethernetCsmacd(6)"
+validate_oid $NAME3.1 $NAME3.1 "INTEGER" "ethernetCsmacd(6)"
+validate_oid $NAME3.2 $NAME3.2 "INTEGER" "ethernetCsmacd(6)"
 
 new "Test $OID4 ifMtu"
-expectpart "$($snmpget $OID4)" 0 "$OID4 = INTEGER: 1500"
+validate_oid $OID4 $OID4 "INTEGER" "1500"
+validate_oid $NAME4.1 $NAME4.1 "INTEGER" 1500
+validate_oid $NAME4.2 $NAME4.2 "INTEGER" 1400
 
 new "Test $OID5 ifSpeed"
-expectpart "$($snmpget $OID5)" 0 "$OID5 = Gauge32: 10000000"
+validate_oid $OID5 $OID5 "Gauge32" "10000000"
+validate_oid $NAME5.1 $NAME5.1 "Gauge32" 10000000
+validate_oid $NAME5.2 $NAME5.2 "Gauge32" 1000
 
 new "Test $OID6 ifPhysAddress yang:phys-address"
-expectpart "$($snmpget $OID6)" 0 "$OID6 = STRING: aa.bb:cc:dd:ee:ff"
+validate_oid $OID6 $OID6 "STRING" "aa.bb:cc:dd:ee:ff"
+validate_oid $NAME6.1 $NAME6.1 "STRING" "aa.bb:cc:dd:ee:ff"
+validate_oid $NAME6.2 $NAME6.2 "STRING" "11:22:33:44:55:66"
 
 new "Test $OID7 ifAdminStatus"
-expectpart "$($snmpget $OID7)" 0 "$OID7 = INTEGER: testing(3)"
+validate_oid $OID7 $OID7 "INTEGER" "testing(3)"
+validate_oid $NAME7.1 $NAME7.1 "INTEGER" "testing(3)"
+validate_oid $NAME7.2 $NAME7.2 "INTEGER" "down(2)"
 
 new "Test $OID8 ifOperStatus"
-expectpart "$($snmpget $OID8)" 0 "$OID8 = INTEGER: up(1)"
+validate_oid $OID8 $OID8 "INTEGER" "up(1)"
+validate_oid $NAME8.1 $NAME8.1 "INTEGER" "up(1)"
+validate_oid $NAME8.2 $NAME8.2 "INTEGER" "down(2)"
 
 new "Test $OID9 ifLastChange"
-expectpart "$($snmpget $OID9)" 0 "$OID9 = Timeticks: (0) 0:00:00.00"
+validate_oid $OID9 $OID9 "Timeticks" "(0) 0:00:00.00"
+validate_oid $NAME9.1 $NAME9.1 "Timeticks" "(0) 0:00:00.00"
+validate_oid $NAME9.2 $NAME9.2 "Timeticks" "(0) 0:00:00.00"
 
 new "Test $OID10 ifInOctets"
-expectpart "$($snmpget $OID10)" 0 "$OID10 = Counter32: 123"
+validate_oid $OID10 $OID10 "Counter32" 123
+validate_oid $NAME10.1 $NAME10.1 "Counter32" 123
+validate_oid $NAME10.2 $NAME10.2 "Counter32" 111
 
 new "Test $OID11 ifInUcastPkts"
-expectpart "$($snmpget $OID11)" 0 "$OID11 = Counter32: 124"
+validate_oid $OID11 $OID11 "Counter32" 124
+validate_oid $NAME11.1 $NAME11.1 "Counter32" 124
+validate_oid $NAME11.2 $NAME11.2 "Counter32" 222
 
 new "Test $OID12 ifInNUcastPkts"
-expectpart "$($snmpget $OID12)" 0 "$OID12 = Counter32: 124"
+validate_oid $OID12 $OID12 "Counter32" 124
+validate_oid $NAME12.1 $NAME12.1 "Counter32" 124
+validate_oid $NAME12.2 $NAME12.2 "Counter32" 333
 
 new "Test $OID13 ifInDiscards"
-expectpart "$($snmpget $OID13)" 0 "$OID13 = Counter32: 125"
+validate_oid $OID13 $OID13 "Counter32" 125
+validate_oid $NAME13.1 $NAME13.1 "Counter32" 125
+validate_oid $NAME13.2 $NAME13.2 "Counter32" 444
 
 new "Test $OID14 ifInErrors"
-expectpart "$($snmpget $OID14)" 0 "$OID14 = Counter32: 126"
+validate_oid $OID14 $OID14 "Counter32" 126
+validate_oid $NAME14.1 $NAME14.1 "Counter32" 126
+validate_oid $NAME14.2 $NAME14.2 "Counter32" 555
 
 new "Test $OID15 ifInUnknownProtos"
-expectpart "$($snmpget $OID15)" 0 "$OID15 = Counter32: 127"
+validate_oid $OID15 $OID15 "Counter32" 127
+validate_oid $NAME15.1 $NAME15.1 "Counter32" 127
+validate_oid $NAME15.2 $NAME15.2 "Counter32" 666
 
 new "Test $OID16 ifOutOctets"
-expectpart "$($snmpget $OID16)" 0 "$OID16 = Counter32: 128"
+validate_oid $OID16 $OID16 "Counter32" 128
+validate_oid $NAME16.1 $NAME16.1 "Counter32" 128
+validate_oid $NAME16.2 $NAME16.2 "Counter32" 777
 
 new "Test $OID17 ifOutUcastPkts"
-expectpart "$($snmpget $OID17)" 0 "$OID17 = Counter32: 129"
+validate_oid $OID17 $OID17 "Counter32" 129
+validate_oid $NAME17.1 $NAME17.1 "Counter32" 129
+validate_oid $NAME17.2 $NAME17.2 "Counter32" 888
 
 new "Test $OID18 ifOutNUcastPkts"
-expectpart "$($snmpget $OID18)" 0 "$OID18 = Counter32: 129"
+validate_oid $OID18 $OID18 "Counter32" 129
+validate_oid $NAME18.1 $NAME18.1 "Counter32" 129
+validate_oid $NAME18.2 $NAME18.2 "Counter32" 999
 
 new "Test $OID19 ifOutDiscards"
-expectpart "$($snmpget $OID19)" 0 "$OID19 = Counter32: 130"
+validate_oid $OID19 $OID19 "Counter32" 130
+validate_oid $NAME19.1 $NAME19.1 "Counter32" 130
+validate_oid $NAME19.2 $NAME19.2 "Counter32" 101010
 
 new "Test $OID20 ifOutErrors"
-expectpart "$($snmpget $OID20)" 0 "$OID20 = Counter32: 131"
+validate_oid $OID20 $OID20 "Counter32" 131
+validate_oid $NAME20.1 $NAME20.1 "Counter32" 131
+validate_oid $NAME20.2 $NAME20.2 "Counter32" 111111
 
 new "Test $OID21 ifOutQLen"
-expectpart "$($snmpget $OID21)" 0 "$OID21 = Gauge32: 132"
+validate_oid $OID21 $OID21 "Gauge32" 132
+validate_oid $NAME21.1 $NAME21.1 "Gauge32" 132
+validate_oid $NAME21.2 $NAME21.2 "Gauge32" 111
 
 new "Test $OID22 ifSpecific"
-expectpart "$($snmpget $OID22)" 0 "$OID22 = OID: .0.0"
+validate_oid $OID22 $OID22 "OID" ".0.0"
+validate_oid $NAME22.1 $NAME22.1 "OID" "SNMPv2-SMI::zeroDotZero"
+validate_oid $NAME22.2 $NAME22.2 "OID" "SNMPv2-SMI::zeroDotZero"
 
 new "Test ifTable"
 expectpart "$($snmptable IF-MIB::ifTable)" 0 "Test 2" "1400" "1000" "11:22:33:44:55:66" "down" "111" "222" "333" "444" "555" "666" "777" "888" "999" "101010" "111111" "111"
 
-new "Cleaning up"
+new "Walk the walk..."
+expectpart "$($snmpwalk IF-MIB::ifTable)" 0 "IF-MIB::ifIndex.1 = INTEGER: 1" \
+           "IF-MIB::ifIndex.2 = INTEGER: 2" \
+           "IF-MIB::ifDescr.1 = STRING: Test." \
+           "IF-MIB::ifDescr.2 = STRING: Test 2." \
+           "IF-MIB::ifType.1 = INTEGER: ethernetCsmacd(6)" \
+           "IF-MIB::ifType.2 = INTEGER: ethernetCsmacd(6)" \
+           "IF-MIB::ifMtu.1 = INTEGER: 1500" \
+           "IF-MIB::ifMtu.2 = INTEGER: 1400" \
+           "IF-MIB::ifSpeed.1 = Gauge32: 10000000" \
+           "IF-MIB::ifSpeed.2 = Gauge32: 1000" \
+           "IF-MIB::ifPhysAddress.1 = STRING: aa:bb:cc:dd:ee:ff" \
+           "IF-MIB::ifPhysAddress.2 = STRING: 11:22:33:44:55:66" \
+           "IF-MIB::ifAdminStatus.1 = INTEGER: testing(3)" \
+           "IF-MIB::ifAdminStatus.2 = INTEGER: down(2)" \
+           "IF-MIB::ifOperStatus.1 = INTEGER: up(1)" \
+           "IF-MIB::ifOperStatus.2 = INTEGER: down(2)" \
+           "IF-MIB::ifLastChange.1 = Timeticks: (0) 0:00:00.00" \
+           "IF-MIB::ifLastChange.2 = Timeticks: (0) 0:00:00.00" \
+           "IF-MIB::ifInOctets.1 = Counter32: 123" \
+           "IF-MIB::ifInOctets.2 = Counter32: 111" \
+           "IF-MIB::ifInUcastPkts.1 = Counter32: 124" \
+           "IF-MIB::ifInUcastPkts.2 = Counter32: 222" \
+           "IF-MIB::ifInNUcastPkts.1 = Counter32: 124" \
+           "IF-MIB::ifInNUcastPkts.2 = Counter32: 333" \
+           "IF-MIB::ifInDiscards.1 = Counter32: 125" \
+           "IF-MIB::ifInDiscards.2 = Counter32: 444" \
+           "IF-MIB::ifInErrors.1 = Counter32: 126" \
+           "IF-MIB::ifInErrors.2 = Counter32: 555" \
+           "IF-MIB::ifInUnknownProtos.1 = Counter32: 127" \
+           "IF-MIB::ifInUnknownProtos.2 = Counter32: 666" \
+           "IF-MIB::ifOutOctets.1 = Counter32: 128" \
+           "IF-MIB::ifOutOctets.2 = Counter32: 777" \
+           "IF-MIB::ifOutUcastPkts.1 = Counter32: 129" \
+           "IF-MIB::ifOutUcastPkts.2 = Counter32: 888" \
+           "IF-MIB::ifOutNUcastPkts.1 = Counter32: 129" \
+           "IF-MIB::ifOutNUcastPkts.2 = Counter32: 999" \
+           "IF-MIB::ifOutDiscards.1 = Counter32: 130" \
+           "IF-MIB::ifOutDiscards.2 = Counter32: 101010" \
+           "IF-MIB::ifOutErrors.1 = Counter32: 131" \
+           "IF-MIB::ifOutErrors.2 = Counter32: 111111" \
+           "IF-MIB::ifOutQLen.1 = Gauge32: 132" \
+           "IF-MIB::ifOutQLen.2 = Gauge32: 111" \
+           "IF-MIB::ifSpecific.1 = OID: SNMPv2-SMI::zeroDotZero" \
+           "IF-MIB::ifSpecific.2 = OID: SNMPv2-SMI::zeroDotZero"
 testexit
 
 new "endtest"
