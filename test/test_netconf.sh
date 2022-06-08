@@ -143,7 +143,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$rpc" "" "<rpc-r
 rpc="<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/if:interfaces/if:interface[if:name='eth1']/if:enabled/../..\" xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"/></get-config></rpc>"
 
 new "netconf get config xpath parent"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$rpc" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth/0/0</name><enabled>true</enabled></interface><interface><name>eth1</name><enabled>true</enabled><ip:ipv4 xmlns:ip=\"urn:ietf:params:xml:ns:yang:ietf-ip\"><ip:enabled>true</ip:enabled><ip:forwarding>false</ip:forwarding><ip:address><ip:ip>9.2.3.4</ip:ip><ip:prefix-length>24</ip:prefix-length></ip:address></ip:ipv4></interface></interfaces></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$rpc" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth/0/0</name><enabled>true</enabled></interface><interface><name>eth1</name><enabled>true</enabled><ipv4 xmlns=\"urn:ietf:params:xml:ns:yang:ietf-ip\"><enabled>true</enabled><forwarding>false</forwarding><address><ip>9.2.3.4</ip><prefix-length>24</prefix-length></address></ipv4></interface></interfaces></data></rpc-reply>"
 
 new "netconf validate missing type"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-reply $DEFAULTNS><rpc-error>" ""

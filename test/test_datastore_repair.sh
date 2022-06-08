@@ -77,7 +77,7 @@ sudo chmod 666 $dir/startup_db
 
 # This is how it should look after repair, using prefixes
 AFTER=$(cat <<EOF
-<x xmlns="urn:example:a"><y><b:z xmlns:b="urn:example:b"><b:w>foo</b:w></b:z></y></x>
+<x xmlns="urn:example:a"><y><z xmlns="urn:example:b"><w>foo</w></z></y></x>
 EOF
 )
 

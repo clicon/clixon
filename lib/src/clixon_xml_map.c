@@ -1359,23 +1359,24 @@ xmlns_assign(cxobj *x)
 }
 
 /*! Given a src element node x0 and a target node x1, assign (optional) prefix and namespace
+ * @param[in]  x1       XML tree
+ * @param[in]  x1p      XML tree parent
+ * @retval     0        OK
+ * @retval     -1       OK
  * @see assign_namespace_element  this is a subroutine
  */
 static int
-assign_namespace(cxobj *x0, /* source */
-		 cxobj *x1, /* target */
-		 cxobj *x1p,
-		 int    isroot,
-		 char  *ns,
-		 char  *prefix0)
+assign_namespace(cxobj     *x1, /* target */
+		 cxobj     *x1p,
+		 int        isroot,
+		 char      *ns,
+		 char      *prefix0)
 {
-    int        retval = -1;
-    char      *prefix1 = NULL;
-    char      *pexist = NULL;
-    cvec      *nsc0 = NULL;
-    cvec      *nsc = NULL;
-    yang_stmt *y;
-    int        ret;
+    int    retval = -1;
+    char  *prefix1 = NULL;
+    char  *pexist = NULL;
+    cvec  *nsc0 = NULL;
+    cvec  *nsc = NULL;
     
     /* 2a. Detect if namespace is declared in x1 target parent */
     if (xml2prefix(x1p, ns, &pexist) == 1){
@@ -1416,8 +1417,7 @@ assign_namespace(cxobj *x0, /* source */
 	    }
 	    goto ok; /* skip */
 	}
-	else { /* namespace does not exist in target x1, use source prefix 
-		* use the prefix defined in the module
+	else { /* namespace does not exist in target x1, 
 		*/
 	    if (isroot){
 		if (prefix0 && (prefix1 = strdup(prefix0)) == NULL){
@@ -1426,20 +1426,11 @@ assign_namespace(cxobj *x0, /* source */
 		}
 	    }
 	    else{
-		char *ptmp;
-		if ((y = xml_spec(x0)) == NULL){
-		    clicon_err(OE_YANG, ENOENT, "XML %s does not have yang spec",
-			       xml_name(x0));
-		    goto done;
+		if (prefix0 == NULL){ /* Use default namespace, may break use of previous default 
+				       * somewhere in x1
+				       */
+		    prefix1 = NULL;
 		}
-		/* Find local (imported) prefix for that module namespace */
-		if ((ret = yang_find_prefix_by_namespace(y, ns, &ptmp)) < 0)
-		    goto done;
-		if (ret == 1 && (prefix1 = strdup(ptmp)) == NULL){
-		    clicon_err(OE_UNIX, errno, "strdup");
-		    goto done;
-		}   
-
 	    }
 	}
 	if (add_namespace(x1, x1, prefix1, ns) < 0)
@@ -1465,7 +1456,8 @@ assign_namespace(cxobj *x0, /* source */
  * 1. Find N=namespace(x0)
  * 2. Detect if N is declared in x1 parent
  * 3. If yes, assign prefix to x1
- * 4. If no, create new prefix/namespace binding and assign that to x1p (x1 if x1p is root)
+ * 4. If no, if default namespace use that, otherwise create new prefix/namespace binding and assign 
+ *    that to x1p
  * 5. Add prefix to x1, if any
  * 6. Ensure x1 cache is updated
  * @note switch use of x0 and x1 compared to datastore text_modify
@@ -1493,7 +1485,7 @@ assign_namespace_element(cxobj *x0, /* source */
 		   prefix0?prefix0:"NULL");
 	goto done;
     }
-    if (assign_namespace(x0, x1, x1p, isroot, namespace, prefix0) < 0)
+    if (assign_namespace(x1, x1p, isroot, namespace, prefix0) < 0)
 	goto done;
     /* 6. Ensure x1 cache is updated (I think it is done w xmlns_set above) */
     retval = 0;

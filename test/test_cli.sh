@@ -16,7 +16,6 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 clidir=$dir/cli
-
 fyang=$dir/clixon-example.yang
 
 test -d ${clidir} || rm -rf ${clidir}
@@ -71,12 +70,6 @@ module clixon-example {
 	    leaf value{
 		type string;
 	    }
-	    leaf-list array1{
-	      type string;
-            }
-	    leaf-list array2{
-	      type string;
-            }	    
 	}
     }
     rpc example {
@@ -241,35 +234,17 @@ expectpart "$($clixon_cli -1 -f $cfg -l o show compare text)" 0 "+            ad
 new "cli start shell"
 expectpart "$($clixon_cli -1 -f $cfg -l o shell echo foo)" 0 "foo" 
 
-# For formats, create three leaf-lists
-new "cli create leaflist array1 a"
-expectpart "$($clixon_cli -1 -f $cfg -l o set table parameter a array1 a)" 0 "^$"
+new "cli save"
+expectpart "$($clixon_cli -1 -f $cfg -l o save $dir/foo cli)" 0 "^$"
 
-new "cli create leaflist array1 b1 b2"
-expectpart "$($clixon_cli -1 -f $cfg -l o set table parameter a array1 \"b1 b2\")" 0 "^$"
+new "cli delete all"
+expectpart "$($clixon_cli -1 -f $cfg -l o delete all)" 0 "^$"
 
-new "cli create leaflist array2 c1 c2"
-expectpart "$($clixon_cli -1 -f $cfg -l o set table parameter a array2 \"c1 c2\")" 0 "^$"
+new "cli load"
+expectpart "$($clixon_cli -1 -f $cfg -l o load $dir/foo cli)" 0 "^$"
 
-new "cli commit"
-expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
-
-for format in cli text xml json; do
-    new "cli save $format"
-    expectpart "$($clixon_cli -1 -f $cfg -l o save $dir/config.$format $format)" 0 "^$"
-
-    new "cli delete all"
-    expectpart "$($clixon_cli -1 -f $cfg -l o delete all)" 0 "^$"
-
-    new "cli load $format"
-    expectpart "$($clixon_cli -1 -f $cfg -l o load $dir/config.$format $format)" 0 "^$"
-
-    if [ $format != json ]; then # XXX JSON identity problem
-	new "cli check compare $format"
-	expectpart "$($clixon_cli -1 -f $cfg -l o show compare xml)" 0 "^$" --not-- "i" # interface?
-    fi
-
-done
+new "cli check load"
+expectpart "$($clixon_cli -1 -f $cfg -l o show conf cli)" 0 "interfaces interface eth/0/0 ipv4 enabled true"
 
 new "cli debug set"
 expectpart "$($clixon_cli -1 -f $cfg -l o debug cli 1)" 0 "^$"

@@ -124,7 +124,7 @@ static cxobj*
 text_create_node(clixon_text_syntax_yacc *ts,
 		 char                    *name)
 {
-    cxobj     *xn;
+    cxobj     *xn = NULL;
     yang_stmt *ymod;
     char      *ns;
     char      *prefix = NULL;

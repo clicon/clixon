@@ -307,7 +307,7 @@ new "delete interfaces"
 expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 204"
 
 # augmented lists
-XML="<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><mymod:ports xmlns:mymod=\"urn:example:augment\"><mymod:id>22</mymod:id><mymod:str>nisse</mymod:str></mymod:ports><mymod:ports xmlns:mymod=\"urn:example:augment\"><mymod:id>44</mymod:id><mymod:str>kalle</mymod:str></mymod:ports></interfaces>"
+XML="<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><ports xmlns=\"urn:example:augment\"><id>22</id><str>nisse</str></ports><ports xmlns=\"urn:example:augment\"><id>44</id><str>kalle</str></ports></interfaces>"
 new "netconf PUT augmented list"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><default-operation>merge</default-operation><target><candidate/></target><config>$XML</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" 
 

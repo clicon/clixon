@@ -50,6 +50,12 @@ Planned: July 2022
 
 Users may have to change how they access the system
 
+* Augmented XML uses default namespace
+  * Instead of using prefixes for augmented XML, assign the default namespace
+  * This does not change the semantics, but changes the way XML rpefixes are used
+  * Example augmented ipv4 into interface:
+    * Previously: `<interface><ip:ipv4 xmlns:ip="urn:...:ietf-ip"><ip:enabled>...`
+    * Now: `<interface><ipv4 xmlns="urn:...:ietf-ip"><enabled>...` 
 * TEXT file format changed
   * With new parsing of TEXT format, the output is changed
     * Namespace/modulename added to top-level
