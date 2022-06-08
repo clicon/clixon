@@ -34,6 +34,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
   <CLICON_SNMP_MIB>ENTITY-MIB</CLICON_SNMP_MIB>
+  <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
 </clixon-config>
 EOF
 
@@ -57,9 +58,9 @@ cat <<EOF > $fstate
         <entPhysicalEntry>
             <entPhysicalIndex>1</entPhysicalIndex>
             <entPhysicalDescr>Entity 1</entPhysicalDescr>
-            <entPhysicalVendorType>1</entPhysicalVendorType>
+<!--            <entPhysicalVendorType>0</entPhysicalVendorType>-->
             <entPhysicalContainedIn>9</entPhysicalContainedIn>
-<!--            <entPhysicalClass>6</entPhysicalClass> -->
+            <entPhysicalClass>powerSupply</entPhysicalClass>
             <entPhysicalParentRelPos>123</entPhysicalParentRelPos>
             <entPhysicalName>ABCD1234</entPhysicalName>
             <entPhysicalHardwareRev>REV 099</entPhysicalHardwareRev>
@@ -71,15 +72,16 @@ cat <<EOF > $fstate
             <entPhysicalAlias>Alias 123</entPhysicalAlias>
             <entPhysicalAssetID>Asset 123</entPhysicalAssetID>
             <entPhysicalIsFRU>true</entPhysicalIsFRU>
-<!--            <entPhysicalUris>1</entPhysicalUris> -->
+<!--            <entPhysicalMfgDate>1234567890</entPhysicalMfgDate> -->
+            <entPhysicalUris>1</entPhysicalUris>
 <!--            <entPhysicalUUID></entPhysicalUUID> -->
         </entPhysicalEntry>
         <entPhysicalEntry>
             <entPhysicalIndex>2</entPhysicalIndex>
             <entPhysicalDescr>Entity 2</entPhysicalDescr>
-<!--            <entPhysicalVendorType></entPhysicalVendorType> -->
+<!--            <entPhysicalVendorType>32</entPhysicalVendorType> -->
             <entPhysicalContainedIn>4</entPhysicalContainedIn>
-<!--            <entPhysicalClass>6</entPhysicalClass> -->
+            <entPhysicalClass>powerSupply</entPhysicalClass>
             <entPhysicalParentRelPos>999</entPhysicalParentRelPos>
             <entPhysicalName>XXZZ11994</entPhysicalName>
             <entPhysicalHardwareRev>REV 100</entPhysicalHardwareRev>
@@ -91,23 +93,11 @@ cat <<EOF > $fstate
             <entPhysicalAlias>Alias 456</entPhysicalAlias>
             <entPhysicalAssetID>Asset 456</entPhysicalAssetID>
             <entPhysicalIsFRU>false</entPhysicalIsFRU>
-<!--            <entPhysicalMfgDate></entPhysicalMfgDate> -->
-<!--            <entPhysicalUris>1</entPhysicalUris> -->
+<!--            <entPhysicalMfgDate>1234567890</entPhysicalMfgDate> -->
+            <entPhysicalUris>1</entPhysicalUris>
 <!--            <entPhysicalUUID></entPhysicalUUID> -->
         </entPhysicalEntry>
     </entPhysicalTable>
-    <entLogicalTable>
-        <entLogicalEntry>
-            <entLogicalIndex>111</entLogicalIndex>
-            <entLogicalDescr>Entry 1</entLogicalDescr>
-<!--            <entLogicalType></entLogicalType> -->
-            <entLogicalCommunity>public</entLogicalCommunity>
-<!--            <entLogicalTAddress></entLogicalTAddress> -->
-<!--            <entLogicalTDomain></entLogicalTDomain> -->
-<!--            <entLogicalContextEngineID></entLogicalContextEngineID> -->
-            <entLogicalContextName>Context name</entLogicalContextName>
-        </entLogicalEntry>
-    </entLogicalTable>
 </ENTITY-MIB>
 EOF
 
@@ -149,218 +139,342 @@ function testexit(){
 
 ENTITY_OID=".1.3.6.1.2.1.47.1.1.1"
 
-OID_INDEX_1="${ENTITY_OID}.1.1.1"
-OID_INDEX_2="${ENTITY_OID}.1.1.2"
+OID1="${ENTITY_OID}.1.1.1"
+OID2="${ENTITY_OID}.1.1.2"
+OID3="${ENTITY_OID}.1.2.1"
+OID4="${ENTITY_OID}.1.2.2"
+OID5="${ENTITY_OID}.1.4.1"
+OID6="${ENTITY_OID}.1.4.2"
+OID7="${ENTITY_OID}.1.5.1"
+OID8="${ENTITY_OID}.1.5.2"
+OID9="${ENTITY_OID}.1.6.1"
+OID10="${ENTITY_OID}.1.6.2"
+OID11="${ENTITY_OID}.1.7.1"
+OID12="${ENTITY_OID}.1.7.2"
+OID13="${ENTITY_OID}.1.8.1"
+OID14="${ENTITY_OID}.1.8.2"
+OID15="${ENTITY_OID}.1.9.1"
+OID16="${ENTITY_OID}.1.9.2"
+OID17="${ENTITY_OID}.1.10.1"
+OID18="${ENTITY_OID}.1.10.2"
+OID19="${ENTITY_OID}.1.11.1"
+OID20="${ENTITY_OID}.1.11.2"
+OID21="${ENTITY_OID}.1.12.1"
+OID22="${ENTITY_OID}.1.12.2"
+OID23="${ENTITY_OID}.1.13.1"
+OID24="${ENTITY_OID}.1.13.2"
+OID25="${ENTITY_OID}.1.14.1"
+OID26="${ENTITY_OID}.1.14.2"
+OID27="${ENTITY_OID}.1.15.1"
+OID28="${ENTITY_OID}.1.15.2"
+OID29="${ENTITY_OID}.1.16.1"
+OID30="${ENTITY_OID}.1.16.2"
 
-OID_DESCR_1="${ENTITY_OID}.1.2.1"
-OID_DESCR_2="${ENTITY_OID}.1.2.2"
-
-OID_CONTAINED_1="${ENTITY_OID}.1.4.1"
-OID_CONTAINED_2="${ENTITY_OID}.1.4.2"
-
-OID_PARENT_1="${ENTITY_OID}.1.6.1"
-OID_PARENT_2="${ENTITY_OID}.1.6.2"
-
-OID_NAME_1="${ENTITY_OID}.1.7.1"
-OID_NAME_2="${ENTITY_OID}.1.7.2"
-
-OID_HWREV_1="${ENTITY_OID}.1.8.1"
-OID_HWREV_2="${ENTITY_OID}.1.8.2"
-
-OID_FWREV_1="${ENTITY_OID}.1.9.1"
-OID_FWREV_2="${ENTITY_OID}.1.9.2"
-
-OID_SWREV_1="${ENTITY_OID}.1.10.1"
-OID_SWREV_2="${ENTITY_OID}.1.10.2"
-
-OID_SERIAL_1="${ENTITY_OID}.1.11.1"
-OID_SERIAL_2="${ENTITY_OID}.1.11.2"
-
-OID_MFGNAME_1="${ENTITY_OID}.1.12.1"
-OID_MFGNAME_2="${ENTITY_OID}.1.12.2"
-
-OID_MODEL_1="${ENTITY_OID}.1.13.1"
-OID_MODEL_2="${ENTITY_OID}.1.13.2"
-
-OID_ALIAS_1="${ENTITY_OID}.1.14.1"
-OID_ALIAS_2="${ENTITY_OID}.1.14.2"
-
-OID_ASSET_1="${ENTITY_OID}.1.15.1"
-OID_ASSET_2="${ENTITY_OID}.1.15.2"
-
-OID_FRU_1="${ENTITY_OID}.1.16.1"
-OID_FRU_2="${ENTITY_OID}.1.16.2"
+NAME1="ENTITY-MIB::entPhysicalIndex.1"
+NAME2="ENTITY-MIB::entPhysicalIndex.2"
+NAME3="ENTITY-MIB::entPhysicalDescr.1"
+NAME4="ENTITY-MIB::entPhysicalDescr.2"
+NAME5="ENTITY-MIB::entPhysicalContainedIn.1"
+NAME6="ENTITY-MIB::entPhysicalContainedIn.2"
+NAME7="ENTITY-MIB::entPhysicalClass.1"
+NAME8="ENTITY-MIB::entPhysicalClass.2"
+NAME9="ENTITY-MIB::entPhysicalParentRelPos.1"
+NAME10="ENTITY-MIB::entPhysicalParentRelPos.2"
+NAME11="ENTITY-MIB::entPhysicalName.1"
+NAME12="ENTITY-MIB::entPhysicalName.2"
+NAME13="ENTITY-MIB::entPhysicalHardwareRev.1"
+NAME14="ENTITY-MIB::entPhysicalHardwareRev.2"
+NAME15="ENTITY-MIB::entPhysicalFirmwareRev.1"
+NAME16="ENTITY-MIB::entPhysicalFirmwareRev.2"
+NAME17="ENTITY-MIB::entPhysicalSoftwareRev.1"
+NAME18="ENTITY-MIB::entPhysicalSoftwareRev.2"
+NAME19="ENTITY-MIB::entPhysicalSerialNum.1"
+NAME20="ENTITY-MIB::entPhysicalSerialNum.2"
+NAME21="ENTITY-MIB::entPhysicalMfgName.1"
+NAME22="ENTITY-MIB::entPhysicalMfgName.2"
+NAME23="ENTITY-MIB::entPhysicalModelName.1"
+NAME24="ENTITY-MIB::entPhysicalModelName.2"
+NAME25="ENTITY-MIB::entPhysicalAlias.1"
+NAME26="ENTITY-MIB::entPhysicalAlias.2"
+NAME27="ENTITY-MIB::entPhysicalAssetID.1"
+NAME28="ENTITY-MIB::entPhysicalAssetID.2"
+NAME29="ENTITY-MIB::entPhysicalIsFRU.1"
+NAME30="ENTITY-MIB::entPhysicalIsFRU.2"
+NAME31="ENTITY-MIB::entPhysicalMfgDate.1"
+NAME31="ENTITY-MIB::entPhysicalMfgDate.2"
+NAME32="ENTITY-MIB::entPhysicalUris.1"
+NAME33="ENTITY-MIB::entPhysicalUris.2"
+NAME34="ENTITY-MIB::entPhysicalUris.2"
 
 new "SNMP system tests"
 testinit
 
-new "Get index, $OID_INDEX_1"
-validate_oid $OID_INDEX_1 $OID_INDEX_1 "INTEGER" "1"
+new "Get index, $OID1"
+validate_oid $OID1 $OID1 "INTEGER" "1"
+validate_oid $NAME1 $NAME1 "INTEGER" "1"
 
-new "Get next $OID_INDEX_1"
-validate_oid $OID_INDEX_1 $OID_INDEX_2 "INTEGER" "2"
+new "Get next $OID1"
+validate_oid $OID1 $OID2 "INTEGER" "2"
+validate_oid $NAME1 $NAME2 "INTEGER" "2"
 
-new "Get index, $OID_INDEX_2"
-validate_oid $OID_INDEX_2 $OID_INDEX_2 "INTEGER" "2"
+new "Get index, $OID2"
+validate_oid $OID2 $OID2 "INTEGER" "2"
+validate_oid $NAME2 $NAME2 "INTEGER" "2"
 
-new "Get next $OID_INDEX_2"
-validate_oid $OID_INDEX_2 $OID_DESCR_1 "STRING" "\"Entity 1\""
+new "Get next $OID2"
+validate_oid $OID2 $OID3 "STRING" "\"Entity 1\""
+validate_oid $NAME2 $NAME3 "STRING" "Entity 1"
 
-new "Get index, $OID_DESCR_1"
-validate_oid $OID_DESCR_1 $OID_DESCR_1 "STRING" "\"Entity 1\""
+new "Get index, $OID3"
+validate_oid $OID3 $OID3 "STRING" "\"Entity 1\""
+validate_oid $NAME3 $NAME3 "STRING" "Entity 1"
 
-new "Get next $OID_DESCR_1"
-validate_oid $OID_DESCR_1 $OID_DESCR_2 "STRING" "\"Entity 2\""
+new "Get next $OID4"
+validate_oid $OID3 $OID4 "STRING" "\"Entity 2\""
+validate_oid $NAME3 $NAME4 "STRING" "Entity 2"
 
-new "Get index, $OID_DESCR_2"
-validate_oid $OID_DESCR_2 $OID_DESCR_2 "STRING" "\"Entity 2\""
+new "Get index, $OID4"
+validate_oid $OID4 $OID4 "STRING" "\"Entity 2\""
+validate_oid $NAME4 $NAME4 "STRING" "Entity 2"
 
-# new "Get next $OID_DESCR_2"
-# validate_oid $OID_DESCR_2 $OID_CONTAINER_1 "INTEGER" "9"
+#new "Get next $OID4"
+#validate_oid $OID4 $OID5 "INTEGER" "9"
+#validate_oid $NAME4 $NAME5 "INTEGER" "9"
 
-# new "Get container, $OID_CONTAINED_1"
-# validate_oid $OID_CONTAINED_1 $OID_CONTAINED_1 "INTEGER" "9"
+#new "Get container, $OID5"
+#validate_oid $OID5 $OID5 "INTEGER" "9"
+#validate_oid $NAME5 $NAME5 "INTEGER" "9"
 
-new "Get next container, $OID_CONTAINED_1"
-validate_oid $OID_CONTAINED_1 $OID_CONTAINED_2 "INTEGER" "4"
+new "Get next container, $OID5"
+validate_oid $OID5 $OID6 "INTEGER" "4"
+validate_oid $NAME5 $NAME6 "INTEGER" "4"
 
-new "Get container, $OID_CONTAINED_2"
-validate_oid $OID_CONTAINED_2 $OID_CONTAINED_2 "INTEGER" "4"
+new "Get container, $OID6"
+validate_oid $OID6 $OID6 "INTEGER" "4"
+validate_oid $NAME6 $NAME6 "INTEGER" "4"
 
-new "Get next container, $OID_CONTAINED_2"
-validate_oid $OID_CONTAINED_2 $OID_PARENT_1 "INTEGER" "123"
+new "Get next container, $OID6"
+validate_oid $OID6 $OID7 "INTEGER" "6"
+validate_oid $NAME6 $NAME7 "INTEGER" "powerSupply(6)"
 
-new "Get container, $OID_PARENT_1"
-validate_oid $OID_PARENT_1 $OID_PARENT_1 "INTEGER" "123"
+new "Get container, $OID7"
+validate_oid $OID7 $OID7 "INTEGER" "6"
+validate_oid $NAME7 $NAME7 "INTEGER" "powerSupply(6)"
 
-new "Get next container, $OID_PARENT_1"
-validate_oid $OID_PARENT_1 $OID_PARENT_2 "INTEGER" "999"
+new "Get next container, $OID7"
+validate_oid $OID7 $OID8 "INTEGER" "6"
+validate_oid $NAME7 $NAME8 "INTEGER" "powerSupply(6)"
 
-new "Get container, $OID_PARENT_2"
-validate_oid $OID_PARENT_2 $OID_PARENT_2 "INTEGER" "999"
+new "Get container, $OID8"
+validate_oid $OID8 $OID8 "INTEGER" "6"
+validate_oid $NAME8 $NAME8 "INTEGER" "powerSupply(6)"
 
-new "Get next container, $OID_PARENT_2"
-validate_oid $OID_PARENT_2 $OID_NAME_1 "STRING" "\"ABCD1234\""
+new "Get next container, $OID8"
+validate_oid $OID8 $OID9 "INTEGER" 123
+validate_oid $NAME8 $NAME9 "INTEGER" 123
 
-new "Get name, $OID_NAME_1"
-validate_oid $OID_NAME_1 $OID_NAME_1 "STRING" "\"ABCD1234\""
+new "Get name, $OID9"
+validate_oid $OID9 $OID9 "INTEGER" 123
+validate_oid $NAME9 $NAME9 "INTEGER" 123
 
-new "Get next container, $OID_NAME_1"
-validate_oid $OID_NAME_1 $OID_NAME_2 "STRING" "\"XXZZ11994\""
+new "Get next, $OID9"
+validate_oid $OID9 $OID10 "INTEGER" 999
+validate_oid $NAME9 $NAME10 "INTEGER" 999
 
-new "Get name, $OID_NAME_2"
-validate_oid $OID_NAME_2 $OID_NAME_2 "STRING" "\"XXZZ11994\""
+new "Get name, $OID10"
+validate_oid $OID10 $OID10 "INTEGER" 999
+validate_oid $NAME10 $NAME10 "INTEGER" 999
 
-new "Get next, $OID_NAME_2"
-validate_oid $OID_NAME_2 $OID_HWREV_1 "STRING" "\"REV 099\""
+new "Get name, $OID11"
+validate_oid $OID11 $OID11 "STRING" "\"ABCD1234\""
+validate_oid $NAME11 $NAME11 "STRING" "ABCD1234"
 
-new "Get rev, $OID_HWREV_1"
-validate_oid $OID_HWREV_1 $OID_HWREV_1 "STRING" "\"REV 099\""
+new "Get next, $OID11"
+validate_oid $OID11 $OID12 "STRING" "\"XXZZ11994\""
+validate_oid $NAME11 $NAME12 "STRING" "XXZZ11994"
 
-new "Get next hw rev, $OID_HWREV_1"
-validate_oid $OID_HWREV_1 $OID_HWREV_2 "STRING" "\"REV 100\""
+new "Get name, $OID12"
+validate_oid $OID12 $OID12 "STRING" "\"XXZZ11994\""
+validate_oid $NAME12 $NAME12 "STRING" "XXZZ11994"
 
-new "Get hw rev, $OID_HWREV_2"
-validate_oid $OID_HWREV_2 $OID_HWREV_2 "STRING" "\"REV 100\""
+new "Get next, $OID12"
+validate_oid $OID12 $OID13 "STRING" "\"REV 099\""
+validate_oid $NAME12 $NAME13 "STRING" "REV 099"
 
-new "Get next hw rev, $OID_HWREV_2"
-validate_oid $OID_HWREV_2 $OID_FWREV_1 "STRING" "\"REV 123\""
+new "Get rev, $OID13"
+validate_oid $OID13 $OID13 "STRING" "\"REV 099\""
+validate_oid $NAME13 $NAME13 "STRING" "REV 099"
 
-new "Get fw rev, $OID_FWREV_1"
-validate_oid $OID_FWREV_1 $OID_FWREV_1 "STRING" "\"REV 123\""
+new "Get next hw rev, $OID13"
+validate_oid $OID13 $OID14 "STRING" "\"REV 100\""
+validate_oid $NAME13 $NAME14 "STRING" "REV 100"
 
-new "Get next fw rev, $OID_FWREV_1"
-validate_oid $OID_FWREV_1 $OID_FWREV_2 "STRING" "\"REV 234\""
+new "Get hw rev, $OID14"
+validate_oid $OID14 $OID14 "STRING" "\"REV 100\""
+validate_oid $NAME14 $NAME14 "STRING" "REV 100"
 
-new "Get fw rev, $OID_FWREV_2"
-validate_oid $OID_FWREV_2 $OID_FWREV_2 "STRING" "\"REV 234\""
+new "Get next hw rev, $OID14"
+validate_oid $OID14 $OID15 "STRING" "\"REV 123\""
+validate_oid $NAME14 $NAME15 "STRING" "REV 123"
 
-new "Get next fw rev, $OID_FWREV_2"
-validate_oid $OID_FWREV_2 $OID_SWREV_1 "STRING" "\"Clixon Version XXX.YYY year ZZZ\""
+new "Get fw rev, $OID15"
+validate_oid $OID15 $OID15 "STRING" "\"REV 123\""
+validate_oid $NAME15 $NAME15 "STRING" "REV 123"
 
-new "Get sw rev, $OID_SWREV_1"
-validate_oid $OID_SWREV_1 $OID_SWREV_1 "STRING" "\"Clixon Version XXX.YYY year ZZZ\""
+new "Get next fw rev, $OID15"
+validate_oid $OID15 $OID16 "STRING" "\"REV 234\""
+validate_oid $NAME15 $NAME16 "STRING" "REV 234"
 
-new "Get next sw rev, $OID_SWREV_1"
-validate_oid $OID_SWREV_1 $OID_SWREV_2 "STRING" "\"Clixon Version XXX.YYY year ZZZ\""
+new "Get fw rev, $OID16"
+validate_oid $OID16 $OID16 "STRING" "\"REV 234\""
+validate_oid $NAME16 $NAME16 "STRING" "REV 234"
 
-new "Get sw rev, $OID_SWREV_2"
-validate_oid $OID_SWREV_2 $OID_SWREV_2 "STRING" "\"Clixon Version XXX.YYY year ZZZ\""
+new "Get next fw rev, $OID16"
+validate_oid $OID16 $OID17 "STRING" "\"Clixon Version XXX.YYY year ZZZ\""
+validate_oid $NAME16 $NAME17 "STRING" "Clixon Version XXX.YYY year ZZZ"
 
-new "Get next sw rev, $OID_SWREV_2"
-validate_oid $OID_SWREV_2 $OID_SERIAL_1 "STRING" "\"1234-1234-ABCD-ABCD\""
+new "Get sw rev, $OID7"
+validate_oid $OID17 $OID17 "STRING" "\"Clixon Version XXX.YYY year ZZZ\""
+validate_oid $NAME17 $NAME17 "STRING" "Clixon Version XXX.YYY year ZZZ"
 
-new "Get serial, $OID_SERIAL_1"
-validate_oid $OID_SERIAL_1 $OID_SERIAL_1 "STRING" "\"1234-1234-ABCD-ABCD\""
+new "Get next sw rev, $OID17"
+validate_oid $OID17 $OID18 "STRING" "\"Clixon Version XXX.YYY year ZZZ\""
+validate_oid $NAME17 $NAME18 "STRING" "Clixon Version XXX.YYY year ZZZ"
 
-new "Get next serial, $OID_SERIAL_1"
-validate_oid $OID_SERIAL_1 $OID_SERIAL_2 "STRING" "\"2345-2345-ABCD-ABCD\""
+new "Get sw rev, $OID18"
+validate_oid $OID18 $OID18 "STRING" "\"Clixon Version XXX.YYY year ZZZ\""
+validate_oid $NAME18 $NAME18 "STRING" "Clixon Version XXX.YYY year ZZZ"
 
-new "Get serial, $OID_SERIAL_2"
-validate_oid $OID_SERIAL_2 $OID_SERIAL_2 "STRING" "\"2345-2345-ABCD-ABCD\""
+new "Get next sw rev, $OID18"
+validate_oid $OID18 $OID19 "STRING" "\"1234-1234-ABCD-ABCD\""
+validate_oid $NAME18 $NAME19 "STRING" "1234-1234-ABCD-ABCD"
 
-new "Get next serial, $OID_SERIAL_2"
-validate_oid $OID_SERIAL_2 $OID_MFGNAME_1 "STRING" "\"Olof Hagsand Datakonsult AB\""
+new "Get serial, $OID19"
+validate_oid $OID19 $OID19 "STRING" "\"1234-1234-ABCD-ABCD\""
+validate_oid $NAME19 $NAME19 "STRING" "1234-1234-ABCD-ABCD"
 
-new "Get manufacturer, $OID_MFGNAME_1"
-validate_oid $OID_MFGNAME_1 $OID_MFGNAME_1 "STRING" "\"Olof Hagsand Datakonsult AB\""
+new "Get next serial, $OID19"
+validate_oid $OID19 $OID20 "STRING" "\"2345-2345-ABCD-ABCD\""
+validate_oid $NAME19 $NAME20 "STRING" "2345-2345-ABCD-ABCD"
 
-new "Get next manufacturer, $OID_MFGNAME_1"
-validate_oid $OID_MFGNAME_1 $OID_MFGNAME_2 "STRING" "\"Olof Hagsand Datakonsult AB\""
+new "Get serial, $OID20"
+validate_oid $OID20 $OID20 "STRING" "\"2345-2345-ABCD-ABCD\""
+validate_oid $NAME20 $NAME20 "STRING" "2345-2345-ABCD-ABCD"
 
-new "Get manufacturer, $OID_MFGNAME_2"
-validate_oid $OID_MFGNAME_2 $OID_MFGNAME_2 "STRING" "\"Olof Hagsand Datakonsult AB\""
+new "Get next serial, $OID20"
+validate_oid $OID20 $OID21 "STRING" "\"Olof Hagsand Datakonsult AB\""
+validate_oid $NAME20 $NAME21 "STRING" "Olof Hagsand Datakonsult AB"
 
-new "Get next manufacturer, $OID_MFGNAME_2"
-validate_oid $OID_MFGNAME_2 $OID_MODEL_1 "STRING" "\"Model AA.BB\""
+new "Get manufacturer, $OID21"
+validate_oid $OID21 $OID21 "STRING" "\"Olof Hagsand Datakonsult AB\""
+validate_oid $NAME21 $NAME21 "STRING" "Olof Hagsand Datakonsult AB"
 
-new "Get model, $OID_MODEL_1"
-validate_oid $OID_MODEL_1 $OID_MODEL_1 "STRING" "\"Model AA.BB\""
+new "Get next manufacturer, $OID21"
+validate_oid $OID21 $OID22 "STRING" "\"Olof Hagsand Datakonsult AB\""
+validate_oid $NAME21 $NAME22 "STRING" "Olof Hagsand Datakonsult AB"
 
-new "Get next model, $OID_MODEL_1"
-validate_oid $OID_MODEL_1 $OID_MODEL_2 "STRING" "\"Model CC.DD\""
+new "Get manufacturer, $OID22"
+validate_oid $OID22 $OID22 "STRING" "\"Olof Hagsand Datakonsult AB\""
+validate_oid $NAME22 $NAME22 "STRING" "Olof Hagsand Datakonsult AB"
 
-new "Get model, $OID_MODEL_2"
-validate_oid $OID_MODEL_2 $OID_MODEL_2 "STRING" "\"Model CC.DD\""
+new "Get next manufacturer, $OID22"
+validate_oid $OID22 $OID23 "STRING" "\"Model AA.BB\""
+validate_oid $NAME22 $NAME23 "STRING" "Model AA.BB"
 
-new "Get next model, $OID_MODEL_2"
-validate_oid $OID_MODEL_2 $OID_ALIAS_1 "STRING" "\"Alias 123\""
+new "Get model, $OID23"
+validate_oid $OID23 $OID23 "STRING" "\"Model AA.BB\""
+validate_oid $NAME23 $NAME23 "STRING" "Model AA.BB"
 
-new "Get alias, $OID_ALIAS_1"
-validate_oid $OID_ALIAS_1 $OID_ALIAS_1 "STRING" "\"Alias 123\""
+new "Get next model, $OID23"
+validate_oid $OID23 $OID24 "STRING" "\"Model CC.DD\""
+validate_oid $NAME23 $NAME24 "STRING" "Model CC.DD"
 
-new "Get next alias, $OID_ALIAS_1"
-validate_oid $OID_ALIAS_1 $OID_ALIAS_2 "STRING" "\"Alias 456\""
+new "Get model, $OID24"
+validate_oid $OID24 $OID24 "STRING" "\"Model CC.DD\""
+validate_oid $NAME24 $NAME24 "STRING" "Model CC.DD"
 
-new "Get alias, $OID_ALIAS_2"
-validate_oid $OID_ALIAS_2 $OID_ASSET_1 "STRING" "\"Asset 123\""
+new "Get next model, $OID24"
+validate_oid $OID24 $OID25 "STRING" "\"Alias 123\""
+validate_oid $NAME24 $NAME25 "STRING" "Alias 123"
 
-new "Get next alias, $OID_ALIAS_2"
-validate_oid $OID_ALIAS_2 $OID_ASSET_1 "STRING" "\"Asset 123\""
+new "Get alias, $OID25"
+validate_oid $OID25 $OID25 "STRING" "\"Alias 123\""
+validate_oid $NAME25 $NAME25 "STRING" "Alias 123"
 
-new "Get asset, $OID_ASSET_1"
-validate_oid $OID_ASSET_1 $OID_ASSET_1 "STRING" "\"ASSET 123\""
+new "Get next alias, $OID25"
+validate_oid $OID25 $OID26 "STRING" "\"Alias 456\""
+validate_oid $NAME25 $NAME26 "STRING" "Alias 456"
 
-new "Get next asset, $OID_ASSET_1"
-validate_oid $OID_ASSET_1 $OID_ASSET_2 "STRING" "\"Asset 456\""
+new "Get alias, $OID26"
+validate_oid $OID26 $OID26 "STRING" "\"Alias 456\""
+validate_oid $NAME26 $NAME26 "STRING" "Alias 456"
 
-new "Get asset, $OID_ASSET_2"
-validate_oid $OID_ASSET_2 $OID_ASSET_2 "STRING" "\"ASSET 456\""
+new "Get next alias, $OID26"
+validate_oid $OID26 $OID27 "STRING" "\"Asset 123\""
+validate_oid $NAME26 $NAME27 "STRING" "Asset 123"
 
-new "Get next asset, $OID_ASSET_2"
-validate_oid $OID_ASSET_2 $OID_FRU_1 "INTEGER" "1"
+new "Get asset, $OID27"
+validate_oid $OID27 $OID27 "STRING" "\"Asset 123\""
+validate_oid $NAME27 $NAME27 "STRING" "Asset 123"
 
-new "Get fru, $OID_FRU_1"
-validate_oid $OID_FRU_1 $OID_FRU_1 "INTEGER" "1"
+new "Get next asset, $OID27"
+validate_oid $OID27 $OID28 "STRING" "\"Asset 456\""
+validate_oid $NAME27 $NAME28 "STRING" "Asset 456"
 
-new "Get next fru, $OID_FRU_1"
-validate_oid $OID_FRU_1 $OID_FRU_2 "INTEGER" "0"
+new "Get asset, $OID28"
+validate_oid $OID28 $OID28 "STRING" "\"ASSET 456\""
+validate_oid $NAME28 $NAME28 "STRING" "ASSET 456"
 
-new "Get fru 2, $OID_FRU_2"
-validate_oid $OID_FRU_2 $OID_FRU_2 "INTEGER" "0"
+new "Get next asset, $OID28"
+validate_oid $OID28 $OID29 "INTEGER" "1"
+validate_oid $NAME28 $NAME29 "INTEGER" "true(1)"
+
+new "Get fru, $OID29"
+validate_oid $OID29 $OID29 "INTEGER" "1"
+validate_oid $NAME29 $NAME29 "INTEGER" "true(1)"
+
+new "Get next fru, $OID29"
+validate_oid $OID29 $OID30 "INTEGER" "0"
+validate_oid $NAME29 $NAME30 "INTEGER" "0"
+
+new "Get fru 2, $OID30"
+validate_oid $OID30 $OID30 "INTEGER" "0"
+validate_oid $NAME30 $NAME30 "INTEGER" "0"
+
+new "Validate snmpwalk"
+expectpart "$($snmpwalk $ENTITY_OID)" 0 "SNMPv2-SMI::mib-2.47.1.1.1.1.1.1 = INTEGER: 1" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.1.2 = INTEGER: 2" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.2.1 = STRING: \"Entity 1\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.2.2 = STRING: \"Entity 2\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.4.1 = INTEGER: 9" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.4.2 = INTEGER: 4" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.5.1 = INTEGER: 6" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.5.2 = INTEGER: 6" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.6.1 = INTEGER: 123" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.6.2 = INTEGER: 999" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.7.1 = STRING: \"ABCD1234\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.7.2 = STRING: \"XXZZ11994\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.8.1 = STRING: \"REV 099\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.8.2 = STRING: \"REV 100\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.9.1 = STRING: \"REV 123\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.9.2 = STRING: \"REV 234\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.10.1 = STRING: \"Clixon Version XXX.YYY year ZZZ\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.10.2 = STRING: \"Clixon Version XXX.YYY year ZZZ\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.11.1 = STRING: \"1234-1234-ABCD-ABCD\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.11.2 = STRING: \"2345-2345-ABCD-ABCD\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.12.1 = STRING: \"Olof Hagsand Datakonsult AB\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.12.2 = STRING: \"Olof Hagsand Datakonsult AB\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.13.1 = STRING: \"Model AA.BB\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.13.2 = STRING: \"Model CC.DD\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.14.1 = STRING: \"Alias 123\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.14.2 = STRING: \"Alias 456\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.15.1 = STRING: \"Asset 123\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.15.2 = STRING: \"Asset 456\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.16.1 = INTEGER: 1" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.16.2 = INTEGER: 0" \
 
 new "Cleaning up"
-testexit
+# testexit
 
 new "endtest"
 endtest

@@ -225,6 +225,7 @@ if $SNMPCHECK; then
     snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
     snmpgetnextstr="$(type -p snmpgetnext) -c public -v2c localhost "
     snmptable="$(type -p snmptable) -c public -v2c localhost "
+    snmpwalk="$(type -p snmpwalk) -c public -v2c localhost "
     snmptranslate="$(type -p snmptranslate) "
 
     if [ "${ENABLE_NETSNMP}" == "yes" ]; then
