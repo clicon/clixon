@@ -70,7 +70,7 @@ cat <<EOF > $fstate
   </clixonExampleScalars>
   <clixonIETFWGTable>
     <clixonIETFWGEntry>
-      <nsIETFWGName>1</nsIETFWGName>
+      <nsIETFWGName>42</nsIETFWGName>
       <nsIETFWGChair1>Name1</nsIETFWGChair1>
       <nsIETFWGChair2>Name2</nsIETFWGChair2>
     </clixonIETFWGEntry>
@@ -142,12 +142,12 @@ OID11="${MIB}.1.11"    # ifCounterDiscontinuityTime 1234567890 TimeStamp
 OID12="${MIB}.1.12"    # ifStackStatus active(1)
 OID13="${MIB}.2.1"     # netSnmpIETFWGTable
 OID14="${MIB}.2.1.1"   # netSnmpIETFWGEntry
-OID15="${MIB}.2.1.1.1" # nsIETFWGName
-OID16="${MIB}.2.1.1.2" # nsIETFWGChair1
-OID17="${MIB}.2.1.1.3" # nsIETFWGChair2
+OID15="${MIB}.2.1.1.1.42" # nsIETFWGName
+OID16="${MIB}.2.1.1.2.42" # nsIETFWGChair1
+OID17="${MIB}.2.1.1.3.42" # nsIETFWGChair2
 OID18="${MIB}.2.2"     # netSnmpHostsTable
-OID19="${MIB}.2.2.1.1" # netSnmpHostName
-OID20="${MIB}.2.2.1.2" # netSnmpHostAddressType
+OID19="${MIB}.2.2.1.1.4.116.101.115.116" # netSnmpHostName
+OID20="${MIB}.2.2.1.2.4.116.101.115.116" # netSnmpHostAddressType
 OID21="${MIB}.2.2.1.3" # netSnmpHostAddress
 OID22="${MIB}.2.2.1.4" # netSnmpHostStorage
 OID23="${MIB}.2.2.1.5" # netSnmpHostRowStatus
@@ -251,19 +251,23 @@ validate_oid $NAME12 $NAME12 "INTEGER" 1
 new "Get bulk OIDs"
 expectpart "$($snmpbulkget $OID1)" 0 "$OID2 = INTEGER: -1" "$OID3 = STRING: \"This is not default\"" "$OID4 = Timeticks: (12345) 0:02:03.45" "$OID5 = INTEGER: 48" "$OID6 = Gauge32: 123123123" "$OID7 = INTEGER: 3" "$OID8 = Counter32: 123456" "$OID9 = Counter64: 4294967296" "$OID10 = INTEGER: 1" "$OID11 = Timeticks: (1234567890) 142 days, 21:21:18.90"
 
-if $snmp_debug; then
-    new "Test SNMP table netSnmpIETFWGTable"
-    expectpart "$($snmptable $OID13)" 0 "Name1" "Name2"
+new "Test SNMP getnext netSnmpIETFWGTable"
+expectpart "$($snmpgetnext $OID13)" 0 "$OID15 = INTEGER: 42"
 
-    new "Test SNMP getnext netSnmpIETFWGTable"
-    expectpart "$($snmpgetnext $OID13)" 0 ""
+new "Test SNMP get nsIETFWGName"
+expectpart "$($snmpget $OID15)" 0 "INTEGER: 42"
 
-    new "Test SNMP table netSnmpHostsTable"
-    expectpart "$($snmptable $OID18)" 0 "10.20.30.40" # Should verify all columns
+new "Test SNMP getnext nsIETFWGName"
+expectpart "$($snmpgetnext $OID15)" 0 "Hex-STRING: 4E 61 6D 65 31 00"
 
-    new "Test SNMP getnext netSnmpHostsTable $OID18"
-    expectpart "$($snmpgetnext $OID18)" 0 ""
-fi
+new "Test SNMP getnext netSnmpHostsTable"
+expectpart "$($snmpgetnext $OID18)" 0 "$OID19 = Hex-STRING: 74 65 73 74 00"
+
+new "Test SNMP get netSnmpHostName"
+expectpart "$($snmpget $OID19)" 0 "$OID19 = Hex-STRING: 74 65 73 74 00"
+
+new "Test SNMP getnext netSnmpHostName"
+expectpart "$($snmpgetnext $OID19)" 0 "$OID20 = INTEGER: 1"
 
 new "Cleaning up"
 testexit
