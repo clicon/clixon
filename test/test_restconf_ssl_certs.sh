@@ -288,10 +288,10 @@ EOF
 #	expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0 "HTTP/$HVER 400"
 
     new "limited invalid cert"
-    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0  "HTTP/$HVER 400" "\"error-message\": \"HTTP cert verification failed, unknown ca"
+    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0  "HTTP/$HVER 400" "\"error-message\": \"HTTP cert verification failed: certificate has expired"
 
     new "limited invalid cert, xml"
-    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0  "HTTP/$HVER 400" "<error-message>HTTP cert verification failed, unknown ca"
+    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0  "HTTP/$HVER 400" "<error-message>HTTP cert verification failed: certificate has expired"
 
     new "too weak cert (sign w md5)"
     # Either curl error or error return                                                                ret=$(curl $CURLOPTS --key $certdir/mymd5.key --cert $certdir/mymd5.crt  -X GET $RCPROTO://localhost/restconf/data/example:x 2> /dev/null)

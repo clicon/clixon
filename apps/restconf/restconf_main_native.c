@@ -849,13 +849,22 @@ restconf_accept_client(int   fd,
 	/* Get the actual peer, XXX this maybe could be done in ca-auth client-cert code ? 
 	 * Note this _only_ works if SSL_set1_host() was set previously,...
 	 */
-	if (SSL_get_verify_result(rc->rc_ssl) == X509_V_OK) { /* for peer cert */
+	if ((ret = SSL_get_verify_result(rc->rc_ssl)) == X509_V_OK) { /* for peer cert */
 	    const char *peername = SSL_get0_peername(rc->rc_ssl);
  	    if (peername != NULL) {
 		/* Name checks were in scope and matched the peername */
 		clicon_debug(1, "%s peername:%s", __FUNCTION__, peername);
 	    }
 	}
+#if 0
+	else{
+	    clicon_log(LOG_NOTICE, "Cert error: %s", X509_verify_cert_error_string(ret));
+	    /* Maybe should return already  here, but to get proper return message need to
+	     * continue to http/1 or http/2 handling
+	     * @see restconf_connection_sanity
+	     */
+	}
+#endif
 #if 0 /* debug */
 	if (clicon_debug_get())
 	    restconf_listcerts(rc->rc_ssl);

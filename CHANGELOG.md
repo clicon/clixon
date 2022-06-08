@@ -91,7 +91,14 @@ Developers may need to change their code
      * `cli_xml2txt(x, fn, l)` -> `clixon_txt2file(stdout, x, l, NULL, 0)`
      * `xml2txt(f, x, l)` -> `clixon_txt2file(f, x, l, NULL, 0)`
      * `xml2txt_cb(f, x, fn)` -> `clixon_txt2file(f, x, 0, NULL, 0)`
-	
+
+### Minor features
+
+* [Feature Request: Log SSL events](https://github.com/clicon/clixon/issues/331)
+  * Added syslog NOTICE on failed user certs
+
+### Corrected Bugs
+
 ## 5.7.0
 17 May 2022
 
