@@ -15,7 +15,7 @@ fi
 snmpd=$(type -p snmpd)
 snmpget="$(type -p snmpget) -On -c public -v2c localhost "
 snmpwalk="$(type -p snmpwalk) -On -c public -v2c localhost "
-snmpwalkstr="$(type -p snmpwalk) s-c public -v2c localhost "
+snmpwalkstr="$(type -p snmpwalk) -c public -v2c localhost "
 snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
 snmptable="$(type -p snmptable) -c public -v2c localhost "
 
@@ -41,6 +41,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
   <CLICON_SNMP_MIB>SNMPv2-MIB</CLICON_SNMP_MIB>
+  <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
 </clixon-config>
 EOF
 
@@ -71,13 +72,13 @@ cat <<EOF > $fstate
     <sysORTable>
         <sysOREntry>
             <sysORIndex>1</sysORIndex>
-            <sysORID>IP-MIB::ip</sysORID>
+            <sysORID>1.3.6.1.2.1.4</sysORID>
             <sysORDescr>Entry 1 description</sysORDescr>
             <sysORUpTime>11223344</sysORUpTime>
         </sysOREntry>
         <sysOREntry>
             <sysORIndex>2</sysORIndex>
-            <sysORID>IF-MIB:ifTable</sysORID>
+            <sysORID>1.3.6.1.2.1.2.2</sysORID>
             <sysORDescr>Entry 2 description</sysORDescr>
             <sysORUpTime>1122111111</sysORUpTime>
         </sysOREntry>

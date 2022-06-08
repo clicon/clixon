@@ -40,6 +40,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
   <CLICON_SNMP_MIB>IF-MIB</CLICON_SNMP_MIB>
+  <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
 </clixon-config>
 EOF
 
@@ -89,7 +90,7 @@ cat <<EOF > $fstate
       <ifOutDiscards>130</ifOutDiscards>
       <ifOutErrors>131</ifOutErrors>
       <ifOutQLen>132</ifOutQLen>
-      <ifSpecific>SNMPv2-SMI::zeroDotZero</ifSpecific>
+      <ifSpecific>0.0</ifSpecific>
     </ifEntry>
     <ifEntry>
       <ifIndex>2</ifIndex>
@@ -113,7 +114,7 @@ cat <<EOF > $fstate
       <ifOutDiscards>101010</ifOutDiscards>
       <ifOutErrors>111111</ifOutErrors>
       <ifOutQLen>111</ifOutQLen>
-      <ifSpecific>SNMPv2-SMI::zeroDotZero</ifSpecific>
+      <ifSpecific>1.2.3</ifSpecific>
     </ifEntry>
   </ifTable>
 </IF-MIB>
@@ -324,7 +325,7 @@ validate_oid $NAME21.2 $NAME21.2 "Gauge32" 111
 new "Test $OID22 ifSpecific"
 validate_oid $OID22 $OID22 "OID" ".0.0"
 validate_oid $NAME22.1 $NAME22.1 "OID" "SNMPv2-SMI::zeroDotZero"
-validate_oid $NAME22.2 $NAME22.2 "OID" "SNMPv2-SMI::zeroDotZero"
+validate_oid $NAME22.2 $NAME22.2 "OID" "iso.2.3"
 
 new "Test ifTable"
 expectpart "$($snmptable IF-MIB::ifTable)" 0 "Test 2" "1400" "1000" "11:22:33:44:55:66" "down" "111" "222" "333" "444" "555" "666" "777" "888" "999" "101010" "111111" "111"
@@ -373,7 +374,7 @@ expectpart "$($snmpwalk IF-MIB::ifTable)" 0 "IF-MIB::ifIndex.1 = INTEGER: 1" \
            "IF-MIB::ifOutQLen.1 = Gauge32: 132" \
            "IF-MIB::ifOutQLen.2 = Gauge32: 111" \
            "IF-MIB::ifSpecific.1 = OID: SNMPv2-SMI::zeroDotZero" \
-           "IF-MIB::ifSpecific.2 = OID: SNMPv2-SMI::zeroDotZero"
+           "IF-MIB::ifSpecific.2 = OID: iso.2.3"
 testexit
 
 new "endtest"
