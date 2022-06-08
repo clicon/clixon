@@ -34,6 +34,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
   <CLICON_SNMP_MIB>CLIXON-TYPES-MIB</CLICON_SNMP_MIB>
+  <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
 </clixon-config>
 EOF
 
@@ -69,7 +70,7 @@ cat <<EOF > $fstate
   </clixonExampleScalars>
   <clixonIETFWGTable>
     <clixonIETFWGEntry>
-      <nsIETFWGName>index</nsIETFWGName>
+      <nsIETFWGName>1</nsIETFWGName>
       <nsIETFWGChair1>Name1</nsIETFWGChair1>
       <nsIETFWGChair2>Name2</nsIETFWGChair2>
     </clixonIETFWGEntry>
