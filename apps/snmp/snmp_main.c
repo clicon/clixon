@@ -225,7 +225,6 @@ clixon_snmp_input_cb(int   s,
     return retval;
 }
 
-
 /*! Init netsnmp agent connection
  * @param[in]  h      Clixon handle
  * @param[in]  logdst Log destination, see clixon_log.h
@@ -292,37 +291,6 @@ clixon_snmp_init_subagent(clicon_handle h,
  done:
     return retval;
 }
-
-/* Specialized SNMP error category log/err callback
- *
- * This function displays all negative SNMP errors on the form SNMPERR_* that are not SNMPERR_SUCCESS(=0)
- * There are also positive SNMP errors on the form SNMP_ERR_* which are not properly handled below
- * @param[in]    handle  Application-specific handle
- * @param[in]    suberr  Application-specific handle
- * @param[out]   cb      Read log/error string into this buffer
- * @note Some SNMP API functions sometimes returns NULL/ptr or other return values that do not fall into
- * this category, then OE_SNMP should NOT be used.
- */
-static int
-clixon_snmp_err_cb(void *handle,
-		   int   suberr,
-		   cbuf *cb)
-{
-    const char *errstr;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (suberr < 0){
-	if ((errstr = snmp_api_errstring(suberr)) == NULL)
-	    cprintf(cb, "unknown error %d", suberr);
-	else
-	    cprintf(cb, "%s", errstr);
-    }
-    else{ /* See eg SNMP_ERR_* in snmp.h for positive error numbers, are they applicable here? */
-	cprintf(cb, "unknown error %d", suberr);
-    }
-    return 0;
-}
-
 
 /*! Usage help routine
  * @param[in]  h      Clixon handle

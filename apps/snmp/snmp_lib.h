@@ -42,13 +42,19 @@ extern "C" {
 #define _SNMP_LIB_H_
 
 /*
+ * Constants
+ */
+/* Need some way to multiplex SNMP_ and MIB errors on OE_SNMP error handler */
+#define CLIXON_ERR_SNMP_MIB 0x1000
+
+/*
  * Types 
  */
 /* Userdata to pass around in netsmp callbacks
  */
 struct clixon_snmp_handle {
     clicon_handle sh_h;
-    yang_stmt    *sh_ys;
+    yang_stmt    *sh_ys;               /* Leaf for scalar, list for table */
     oid           sh_oid[MAX_OID_LEN]; /* OID for debug, may be removed? */
     size_t        sh_oidlen;           
     char         *sh_default;          /* MIB default value leaf only */
@@ -77,6 +83,7 @@ int   yang2xpath(yang_stmt *ys, cvec *keyvec, char **xpath);
 int   snmp_body2oid(cxobj  *xi, cg_var *cv);
 int   snmp_agent_check(void);
 int   snmp_agent_cleanup(void);
+int   clixon_snmp_err_cb(void *handle, int suberr, cbuf *cb);
 
 #endif /* _SNMP_LIB_H_ */
 

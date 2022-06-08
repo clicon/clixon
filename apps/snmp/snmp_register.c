@@ -200,8 +200,8 @@ mibyang_leaf_register(clicon_handle h,
      * XXX: nhreg->agent_data
      */
     if ((ret = netsnmp_register_instance(nhreg)) != SNMPERR_SUCCESS){
-	/* XXX Failures are MIB_REGISTRATION_FAILED and MIB_DUPLICATE_REGISTRATION. */
-	clicon_err(OE_SNMP, ret, "netsnmp_register_instance");
+	/* Note MIB_ errors, not regular SNMPERR_ */
+	clicon_err(OE_SNMP, ret-CLIXON_ERR_SNMP_MIB, "netsnmp_register_instance");
 	goto done;
     }
     clicon_debug(1, "%s %s registered", __FUNCTION__, cbuf_get(cboid));
@@ -232,7 +232,6 @@ mibyang_leaf_register(clicon_handle h,
  */
 static int
 mibyang_table_register(clicon_handle h,
-		       yang_stmt    *ys,
 		       yang_stmt    *ylist)
 {
     int                              retval = -1;
@@ -250,7 +249,13 @@ mibyang_table_register(clicon_handle h,
     char                            *keyname;
     yang_stmt                       *yleaf;
     int                              asn1type;
-
+    yang_stmt                       *ys;
+    
+    if ((ys = yang_parent_get(ylist)) == NULL ||
+	yang_keyword_get(ys) != Y_CONTAINER){
+	clicon_err(OE_YANG, EINVAL, "ylist parent is not list");
+	goto done;
+    }
     /* Get OID from parent container  */
     if (yang_extension_value(ys, "oid", IETF_YANG_SMIV2_NS, NULL, &oidstr) < 0)
 	goto done;
@@ -271,7 +276,7 @@ mibyang_table_register(clicon_handle h,
     }
     memset(sh, 0, sizeof(*sh));
     sh->sh_h = h;
-    sh->sh_ys = ys;
+    sh->sh_ys = ylist;
 
     memcpy(sh->sh_oid, oid1, sizeof(oid1));
     sh->sh_oidlen = sz1;
@@ -357,10 +362,9 @@ mibyang_table_register(clicon_handle h,
  * @retval     0     OK
  * @retval    -1     Error
  */
-static int
-mibyang_table_traverse_static(clicon_handle h,
-			      yang_stmt    *ys,
-			      yang_stmt    *ylist)
+int
+mibyang_table_poll(clicon_handle h,
+		   yang_stmt    *ylist)
 {
     int        retval = -1;
     cvec      *nsc = NULL;
@@ -378,8 +382,14 @@ mibyang_table_traverse_static(clicon_handle h,
     cg_var    *cv;
     int        i;
     cxobj     *xi;
+    yang_stmt *ys;
     
-    clicon_debug(1, "%s %s", __FUNCTION__, yang_argument_get(ys));
+    clicon_debug(1, "%s", __FUNCTION__);
+    if ((ys = yang_parent_get(ylist)) == NULL ||
+	yang_keyword_get(ys) != Y_CONTAINER){
+	clicon_err(OE_YANG, EINVAL, "ylist parent is not list");
+	goto done;
+    }
     if (xml_nsctx_yang(ys, &nsc) < 0)
         goto done;
     if (yang2xpath(ys, NULL, &xpath) < 0)
@@ -496,11 +506,13 @@ mibyang_traverse(clicon_handle h,
 	yp = yang_parent_get(yn);
 	if (yang_keyword_get(yp) == Y_CONTAINER){
 	    /* Register table entry handler itself (not column/row leafs) */
-	    if (mibyang_table_register(h, yp, yn) < 0)
+	    if (mibyang_table_register(h, yn) < 0)
 		goto done;
+#ifndef SNMP_TABLE_DYNAMIC
 	    /* Register table sub-oid:s of existing entries in clixon */
-	    if (mibyang_table_traverse_static(h, yp, yn) < 0)
+	    if (mibyang_table_poll(h, yn) < 0)
 		goto done;
+#endif
 	    goto ok;
 	}
 	break;
