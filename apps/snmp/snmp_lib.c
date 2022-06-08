@@ -781,3 +781,47 @@ snmp_agent_cleanup(void)
 	free(tclist);
     return 0;
 }
+
+/* Specialized SNMP error category log/err callback
+ *
+ * This function displays all negative SNMP errors on the form SNMPERR_* that are not SNMPERR_SUCCESS(=0)
+ * There are also positive SNMP errors on the form SNMP_ERR_* which are not properly handled below
+ * @param[in]    handle  Application-specific handle
+ * @param[in]    suberr  Application-specific handle, points to SNMP_ERR_* unless < -0x1000 in which 
+                         case they are MIB_* errors defined in agent_registry.h
+  * @param[out]   cb      Read log/error string into this buffer
+ * @note Some SNMP API functions sometimes returns NULL/ptr or other return values that do not fall into
+ * this category, then OE_SNMP should NOT be used.
+ */
+int
+clixon_snmp_err_cb(void *handle,
+		   int   suberr,
+		   cbuf *cb)
+{
+    const char *errstr;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    if (suberr < 0){
+	if (suberr < -CLIXON_ERR_SNMP_MIB){
+	    switch (suberr+CLIXON_ERR_SNMP_MIB){
+	    case MIB_DUPLICATE_REGISTRATION:
+		cprintf(cb, "Duplicate MIB registration");
+		break;
+	    case  MIB_REGISTRATION_FAILED:
+		cprintf(cb, "MIB registration failed");
+		break;
+	    default:
+		cprintf(cb, "unknown MIB error %d", suberr+CLIXON_ERR_SNMP_MIB);
+		break;
+	    }
+	}
+	else if ((errstr = snmp_api_errstring(suberr)) == NULL)
+	    cprintf(cb, "unknown SNMP error %d", suberr);
+	else
+	    cprintf(cb, "%s", errstr);
+    }
+    else{ /* See eg SNMP_ERR_* in snmp.h for positive error numbers, are they applicable here? */
+	cprintf(cb, "unknown error %d", suberr);
+    }
+    return 0;
+}

@@ -163,3 +163,7 @@
  * If not set, client will exit
  */
 #define PROTO_RESTART_RECONNECT
+
+/*! Re-register table entries when quering
+ */
+#undef SNMP_TABLE_DYNAMIC

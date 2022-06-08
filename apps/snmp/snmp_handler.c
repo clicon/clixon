@@ -58,6 +58,7 @@
 #include <clixon/clixon.h>
 
 #include "snmp_lib.h"
+#include "snmp_register.h"
 #include "snmp_handler.h"
 
 static int
@@ -127,7 +128,6 @@ snmp_common_handler(netsnmp_mib_handler          *handler,
  * table_container.[ch]
  *
  * build_new_oid
- * XXX Check expected return values for these netsnmp handler functions
  */
 int
 clixon_snmp_table_handler(netsnmp_mib_handler          *handler,
@@ -142,27 +142,16 @@ clixon_snmp_table_handler(netsnmp_mib_handler          *handler,
     cbuf                   *cb = NULL;
     int                     ret;
 
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(1, "%s", __FUNCTION__);
     if ((ret = snmp_common_handler(handler, nhreg, reqinfo, requests, &sh, 1)) < 0)
 	goto done;
     switch(reqinfo->mode){
-    case MODE_GETNEXT:{ // 160
-#ifdef NOTYET
-	char  *oidstr = NULL;
-	oid    oid1[MAX_OID_LEN] = {0,};
-	size_t sz1 = MAX_OID_LEN;
-
-	oidstr = ".1.3.6.1.2.1.2.2.1.1.1";
-	if (snmp_parse_oid(oidstr, oid1, &sz1) == NULL){
-	    clicon_err(OE_XML, errno, "snmp_parse_oid");
+    case MODE_GETNEXT: // 160
+#ifdef SNMP_TABLE_DYNAMIC
+	/* Register table sub-oid:s of existing entries in clixon */
+	if (mibyang_table_poll(sh->sh_h, sh->sh_ys) < 0)
 	    goto done;
-	}
-	if (snmp_set_var_objid(requests->requestvb, oid1, sz1) != 0){
-	    clicon_err(OE_XML, 0, "snmp_set_var_objid");
-	    goto done;
-	}
 #endif
-	}
         break;
     case MODE_GET: // 160
     case MODE_SET_RESERVE1:
@@ -216,6 +205,7 @@ snmp_scalar_get(clicon_handle               h,
     int     asn1type;
     char   *reason = NULL;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     /* Prepare backend call by constructing namespace context */
     if (xml_nsctx_yang(ys, &nsc) < 0)
 	goto done;
