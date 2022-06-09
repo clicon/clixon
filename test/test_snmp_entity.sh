@@ -72,8 +72,8 @@ cat <<EOF > $fstate
             <entPhysicalAlias>Alias 123</entPhysicalAlias>
             <entPhysicalAssetID>Asset 123</entPhysicalAssetID>
             <entPhysicalIsFRU>true</entPhysicalIsFRU>
-<!--            <entPhysicalMfgDate>1234567890</entPhysicalMfgDate> -->
-            <entPhysicalUris>1</entPhysicalUris>
+            <entPhysicalMfgDate>11111111</entPhysicalMfgDate>
+<!--            <entPhysicalUris></entPhysicalUris>-->
 <!--            <entPhysicalUUID></entPhysicalUUID> -->
         </entPhysicalEntry>
         <entPhysicalEntry>
@@ -93,8 +93,8 @@ cat <<EOF > $fstate
             <entPhysicalAlias>Alias 456</entPhysicalAlias>
             <entPhysicalAssetID>Asset 456</entPhysicalAssetID>
             <entPhysicalIsFRU>false</entPhysicalIsFRU>
-<!--            <entPhysicalMfgDate>1234567890</entPhysicalMfgDate> -->
-            <entPhysicalUris>1</entPhysicalUris>
+            <entPhysicalMfgDate>22222222</entPhysicalMfgDate>
+<!--            <entPhysicalUris></entPhysicalUris> -->
 <!--            <entPhysicalUUID></entPhysicalUUID> -->
         </entPhysicalEntry>
     </entPhysicalTable>
@@ -171,6 +171,8 @@ OID27="${ENTITY_OID}.1.15.1"
 OID28="${ENTITY_OID}.1.15.2"
 OID29="${ENTITY_OID}.1.16.1"
 OID30="${ENTITY_OID}.1.16.2"
+OID31="${ENTITY_OID}.1.17.1"
+OID32="${ENTITY_OID}.1.17.2"
 
 NAME1="ENTITY-MIB::entPhysicalIndex.1"
 NAME2="ENTITY-MIB::entPhysicalIndex.2"
@@ -205,10 +207,10 @@ NAME28="ENTITY-MIB::entPhysicalAssetID.2"
 NAME29="ENTITY-MIB::entPhysicalIsFRU.1"
 NAME30="ENTITY-MIB::entPhysicalIsFRU.2"
 NAME31="ENTITY-MIB::entPhysicalMfgDate.1"
-NAME31="ENTITY-MIB::entPhysicalMfgDate.2"
-NAME32="ENTITY-MIB::entPhysicalUris.1"
-NAME33="ENTITY-MIB::entPhysicalUris.2"
+NAME32="ENTITY-MIB::entPhysicalMfgDate.2"
+NAME33="ENTITY-MIB::entPhysicalUris.1"
 NAME34="ENTITY-MIB::entPhysicalUris.2"
+NAME35="ENTITY-MIB::entPhysicalUris.2"
 
 new "SNMP system tests"
 testinit
@@ -460,6 +462,18 @@ validate_oid $NAME29 $NAME30 "INTEGER" "0"
 new "Get fru 2, $OID30"
 validate_oid $OID30 $OID30 "INTEGER" "0"
 validate_oid $NAME30 $NAME30 "INTEGER" "0"
+
+new "Get next fru 2, $OID30"
+validate_oid $NAME30 $NAME31 "STRING" "12593-49-49,49:49:49.49"
+
+new "Get mfg date, $OID31"
+validate_oid $NAME31 $NAME31 "STRING" "12593-49-49,49:49:49.49"
+
+new "Get next mfg date, $OID31"
+validate_oid $NAME31 $NAME32 "STRING" "12850-50-50,50:50:50.50"
+
+new "Get mfg date, $OID32"
+validate_oid $NAME32 $NAME32 "STRING" "12850-50-50,50:50:50.50"
 
 new "Validate snmpwalk"
 expectpart "$($snmpwalk $ENTITY_OID)" 0 "SNMPv2-SMI::mib-2.47.1.1.1.1.1.1 = INTEGER: 1" \
