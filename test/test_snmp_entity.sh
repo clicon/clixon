@@ -58,7 +58,7 @@ cat <<EOF > $fstate
         <entPhysicalEntry>
             <entPhysicalIndex>1</entPhysicalIndex>
             <entPhysicalDescr>Entity 1</entPhysicalDescr>
-<!--            <entPhysicalVendorType>0</entPhysicalVendorType>-->
+            <entPhysicalVendorType>1.3.6.1.2.1.4</entPhysicalVendorType>
             <entPhysicalContainedIn>9</entPhysicalContainedIn>
             <entPhysicalClass>powerSupply</entPhysicalClass>
             <entPhysicalParentRelPos>123</entPhysicalParentRelPos>
@@ -79,7 +79,7 @@ cat <<EOF > $fstate
         <entPhysicalEntry>
             <entPhysicalIndex>2</entPhysicalIndex>
             <entPhysicalDescr>Entity 2</entPhysicalDescr>
-<!--            <entPhysicalVendorType>32</entPhysicalVendorType> -->
+            <entPhysicalVendorType>1.3.6.1.2.1.4</entPhysicalVendorType>
             <entPhysicalContainedIn>4</entPhysicalContainedIn>
             <entPhysicalClass>powerSupply</entPhysicalClass>
             <entPhysicalParentRelPos>999</entPhysicalParentRelPos>
@@ -143,6 +143,8 @@ OID1="${ENTITY_OID}.1.1.1"
 OID2="${ENTITY_OID}.1.1.2"
 OID3="${ENTITY_OID}.1.2.1"
 OID4="${ENTITY_OID}.1.2.2"
+OIDX="${ENTITY_OID}.1.3.1"
+OIDY="${ENTITY_OID}.1.3.2"
 OID5="${ENTITY_OID}.1.4.1"
 OID6="${ENTITY_OID}.1.4.2"
 OID7="${ENTITY_OID}.1.5.1"
@@ -174,6 +176,8 @@ NAME1="ENTITY-MIB::entPhysicalIndex.1"
 NAME2="ENTITY-MIB::entPhysicalIndex.2"
 NAME3="ENTITY-MIB::entPhysicalDescr.1"
 NAME4="ENTITY-MIB::entPhysicalDescr.2"
+NAMEX="ENTITY-MIB::entPhysicalVendorType.1"
+NAMEY="ENTITY-MIB::entPhysicalVendorType.2"
 NAME5="ENTITY-MIB::entPhysicalContainedIn.1"
 NAME6="ENTITY-MIB::entPhysicalContainedIn.2"
 NAME7="ENTITY-MIB::entPhysicalClass.1"
@@ -237,13 +241,29 @@ new "Get index, $OID4"
 validate_oid $OID4 $OID4 "STRING" "\"Entity 2\""
 validate_oid $NAME4 $NAME4 "STRING" "Entity 2"
 
-#new "Get next $OID4"
-#validate_oid $OID4 $OID5 "INTEGER" "9"
-#validate_oid $NAME4 $NAME5 "INTEGER" "9"
+new "Get next $OID4"
+validate_oid $OID4 $OIDX "OID" ".1.3.6.1.2.1.4"
+validate_oid $NAME4 $NAMEX "OID" "IP-MIB::ip"
 
-#new "Get container, $OID5"
-#validate_oid $OID5 $OID5 "INTEGER" "9"
-#validate_oid $NAME5 $NAME5 "INTEGER" "9"
+new "Get $NAMEX"
+validate_oid $OIDX $OIDX "OID" ".1.3.6.1.2.1.4"
+validate_oid $NAMEX $NAMEX "OID" "IP-MIB::ip"
+
+new "Get next $NAMEX"
+validate_oid $OIDX $OIDY "OID" ".1.3.6.1.2.1.4"
+validate_oid $NAMEX $NAMEY "OID" "IP-MIB::ip"
+
+new "Get $NAMEY"
+validate_oid $OIDY $OIDY "OID" ".1.3.6.1.2.1.4"
+validate_oid $NAMEY $NAMEY "OID" "IP-MIB::ip"
+
+new "Get next $NAMEY"
+validate_oid $OIDY $OID5 "INTEGER" 9
+validate_oid $NAMEY $NAME5 "INTEGER" 9
+
+new "Get container, $OID5"
+validate_oid $OID5 $OID5 "INTEGER" "9"
+validate_oid $NAME5 $NAME5 "INTEGER" "9"
 
 new "Get next container, $OID5"
 validate_oid $OID5 $OID6 "INTEGER" "4"
@@ -446,6 +466,8 @@ expectpart "$($snmpwalk $ENTITY_OID)" 0 "SNMPv2-SMI::mib-2.47.1.1.1.1.1.1 = INTE
     "SNMPv2-SMI::mib-2.47.1.1.1.1.1.2 = INTEGER: 2" \
     "SNMPv2-SMI::mib-2.47.1.1.1.1.2.1 = STRING: \"Entity 1\"" \
     "SNMPv2-SMI::mib-2.47.1.1.1.1.2.2 = STRING: \"Entity 2\"" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.3.1 = OID: IP-MIB::ip" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.3.2 = OID: IP-MIB::ip" \
     "SNMPv2-SMI::mib-2.47.1.1.1.1.4.1 = INTEGER: 9" \
     "SNMPv2-SMI::mib-2.47.1.1.1.1.4.2 = INTEGER: 4" \
     "SNMPv2-SMI::mib-2.47.1.1.1.1.5.1 = INTEGER: 6" \
