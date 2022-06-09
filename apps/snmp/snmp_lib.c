@@ -94,8 +94,6 @@ static const map_str2int snmp_access_map[] = {
 /* Map between clixon and ASN.1 types. 
  * @see net-snmp/library/asn1.h
  * @see union netsnmp_vardata in net-snmp/types.h
- * XXX not complete
- * XXX TimeTicks
  */
 static const map_str2int snmp_type_map[] = {
     {"int32",        ASN_INTEGER},   // 2
@@ -109,8 +107,27 @@ static const map_str2int snmp_type_map[] = {
     {NULL,           -1}
 };
 
-#define CLIXON_ASN_PHYS_ADDR    0x4242 /* Special case phy-address */
-#define CLIXON_ASN_ADMIN_STRING 0x4243 /* Special case SnmpAdminString */
+//#define CLIXON_ASN_PHYS_ADDR    0x4242 /* Special case phy-address */
+//#define CLIXON_ASN_ADMIN_STRING 0x4243 /* Special case SnmpAdminString */
+#define CLIXON_ASN_PHYS_ADDR    253 /* Special case phy-address */
+#define CLIXON_ASN_ADMIN_STRING 254 /* Special case SnmpAdminString */
+
+/* Map between clixon "orig" resolved type and ASN.1 types. 
+ */
+static const map_str2int snmp_orig_map[] = {
+    {"counter32",             ASN_COUNTER},   // 0x41 / 65
+    {"object-identifier-128", ASN_OBJECT_ID}, // 6
+    {"AutonomousType",        ASN_OBJECT_ID}, // 6
+    {"DateAndTime",           ASN_OCTET_STR}, // 4
+    {"UUIDorZero",            ASN_OCTET_STR}, // 4
+    {"binary",                ASN_OCTET_STR}, // 4
+    {"timeticks",             ASN_TIMETICKS}, // 0x43 / 67
+    {"timestamp",             ASN_TIMETICKS}, // 0x43 / 67
+    {"InetAddress",           ASN_IPADDRESS}, // 0x40 / 64
+    {"phys-address",          CLIXON_ASN_PHYS_ADDR},    /* Clixon extended string type */
+    {"SnmpAdminString",       CLIXON_ASN_ADMIN_STRING}, /* cf extension display-type 255T? */
+    {NULL,                    -1}
+};
 
 /* Map between SNMP message / mode str and int form
  */
@@ -238,40 +255,14 @@ type_yang2asn1(yang_stmt    *ys,
 	    goto done;
 	restype = yrestype?yang_argument_get(yrestype):NULL;
     }
-    /* Special case: counter32, maps to same resolved type as gauge32 */
-    if (strcmp(origtype, "counter32")==0){
-	at = ASN_COUNTER;
+    /* Translate to asn.1 
+     * First try original type, first type 
+     */
+    if ((at = clicon_str2int(snmp_orig_map, origtype)) >= 0 &&
+	(extended || (at != CLIXON_ASN_PHYS_ADDR && at != CLIXON_ASN_ADMIN_STRING))){
+	;
     }
-    else if (strcmp(origtype, "object-identifier-128") == 0 ||
-	     strcmp(origtype, "AutonomousType") == 0){
-	at = ASN_OBJECT_ID;
-    }
-    else if (strcmp(origtype, "binary")==0){
-	at = ASN_OCTET_STR;
-    }
-    else if (strcmp(origtype, "timeticks")==0){
-	at = ASN_TIMETICKS;
-    }
-    else if (strcmp(origtype, "DateAndTime")==0) {
-        at = ASN_OCTET_STR;
-    }
-    else if (strcmp(origtype, "UUIDorZero")==0) {
-        at = ASN_OCTET_STR;
-    }
-    else if (strcmp(origtype, "timestamp")==0){
-	at = ASN_TIMETICKS;
-    }
-    else if (strcmp(origtype, "InetAddress")==0){
-	at = ASN_IPADDRESS;
-    }
-    else if (extended && strcmp(origtype, "phys-address")==0){
-	at = CLIXON_ASN_PHYS_ADDR; /* Clixon extended string type */
-    }
-    else if (extended && strcmp(origtype, "SnmpAdminString")==0){
-	at = CLIXON_ASN_ADMIN_STRING; /* cf extension display-type 255T? */
-    }
-
-    /* translate to asn.1 */
+    /* Then try fully resolved type */
     else if ((at = clicon_str2int(snmp_type_map, restype)) < 0){
 	clicon_err(OE_YANG, 0, "No snmp translation for YANG %s type:%s",
 		   yang_argument_get(ys), restype);
@@ -363,6 +354,10 @@ type_snmp2xml(yang_stmt                  *ys,
 	break;
     case ASN_GAUGE:     // 0x42
 	cv_uint32_set(cv, *requestvb->val.integer);
+	break;
+    case CLIXON_ASN_ADMIN_STRING: // XXX
+    case CLIXON_ASN_PHYS_ADDR:    // XXX
+	assert(0);
 	break;
     case ASN_OCTET_STR: // 4
 	cv_string_set(cv, (char*)requestvb->val.string);
