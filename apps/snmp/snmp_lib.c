@@ -252,6 +252,12 @@ type_yang2asn1(yang_stmt    *ys,
     else if (strcmp(origtype, "timeticks")==0){
 	at = ASN_TIMETICKS;
     }
+    else if (strcmp(origtype, "DateAndTime")==0) {
+        at = ASN_OCTET_STR;
+    }
+    else if (strcmp(origtype, "UUIDorZero")==0) {
+        at = ASN_OCTET_STR;
+    }
     else if (strcmp(origtype, "timestamp")==0){
 	at = ASN_TIMETICKS;
     }
