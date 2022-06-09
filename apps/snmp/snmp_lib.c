@@ -242,7 +242,8 @@ type_yang2asn1(yang_stmt    *ys,
     if (strcmp(origtype, "counter32")==0){
 	at = ASN_COUNTER;
     }
-    else if (strcmp(origtype, "object-identifier-128")==0){
+    else if (strcmp(origtype, "object-identifier-128") == 0 ||
+	     strcmp(origtype, "AutonomousType") == 0){
 	at = ASN_OBJECT_ID;
     }
     else if (strcmp(origtype, "binary")==0){
