@@ -156,6 +156,18 @@ snmp_msg_int2str(int msg)
 {
     return clicon_int2str(snmp_msg_map, msg);
 }
+/*! Should be netsnmp lib function, cant find it
+ */
+int
+oid_eq(const oid *objid0,
+       size_t     objid0len,
+       const oid *objid1,
+       size_t     objid1len)
+{
+    if (objid0len != objid1len)
+	return 0;
+    return memcmp(objid0, objid1, objid0len*sizeof(*objid0));
+}
 
 /*! Duplicate clixon snmp handler struct
  * Use signature of libnetsnmp data_clone field of netsnmp_mib_handler in agent_handler.h
@@ -753,45 +765,17 @@ snmp_body2oid(cxobj  *xi,
     return retval;
 }
 
-/*========== libnetsnmp-specific code ===============
- * Peeks into internal lib global variables, may be sensitive to library change
- */
-/*! Check if netsnmp is connected 
- * @retval 1 yes, running
- * @retval 0 No, not running
- * XXX: this peeks into the "main_session" global variable in agent/snmp_agent.c
- *      Tried to find API function but failed
- */
-int
-snmp_agent_check(void)
-{
-    extern netsnmp_session *main_session;
-    
-    return (main_session != NULL) ? 1 : 0;
-}
-
-/*! Cleanup remaining libnetsnmb memory
- * XXX: this peeks into the "tclist" global variable in snmplib/parse.c
- *      Tried to find API function but failed
- */
-int
-snmp_agent_cleanup(void)
-{
-    extern void *tclist;
-    
-    if (tclist)
-	free(tclist);
-    return 0;
-}
-
-/* Specialized SNMP error category log/err callback
+/*! Specialized SNMP error category log/err callback
  *
- * This function displays all negative SNMP errors on the form SNMPERR_* that are not SNMPERR_SUCCESS(=0)
- * There are also positive SNMP errors on the form SNMP_ERR_* which are not properly handled below
+ * This function displays all negative SNMP errors on the form SNMPERR_* that are not 
+ * SNMPERR_SUCCESS(=0)
+ * There are also positive SNMP errors on the form SNMP_ERR_* which are not properly handled 
+ * below
  * @param[in]    handle  Application-specific handle
- * @param[in]    suberr  Application-specific handle, points to SNMP_ERR_* unless < -0x1000 in which 
-                         case they are MIB_* errors defined in agent_registry.h
-  * @param[out]   cb      Read log/error string into this buffer
+ * @param[in]    suberr  Application-specific handle, points to SNMP_ERR_* unless 
+                         < CLIXON_ERR_SNMP_MIB in which case they are MIB_* errors defined 
+                         in agent_registry.h
+  * @param[out]   cb     Read log/error string into this buffer
  * @note Some SNMP API functions sometimes returns NULL/ptr or other return values that do not fall into
  * this category, then OE_SNMP should NOT be used.
  */
@@ -826,4 +810,61 @@ clixon_snmp_err_cb(void *handle,
 	cprintf(cb, "unknown error %d", suberr);
     }
     return 0;
+}
+
+/*========== libnetsnmp-specific code ===============
+ * Peeks into internal lib global variables, may be sensitive to library change
+ */
+/*! Check if netsnmp is connected 
+ * @retval 1 yes, running
+ * @retval 0 No, not running
+ * XXX: this peeks into the "main_session" global variable in agent/snmp_agent.c
+ *      Tried to find API function but failed
+ */
+int
+clixon_snmp_api_agent_check(void)
+{
+    extern netsnmp_session *main_session;
+    
+    return (main_session != NULL) ? 1 : 0;
+}
+
+/*! Cleanup remaining libnetsnmb memory
+ * XXX: this peeks into the "tclist" global variable in snmplib/parse.c
+ *      Tried to find API function but failed
+ */
+int
+clixon_snmp_api_agent_cleanup(void)
+{
+    extern void *tclist;
+    
+    if (tclist)
+	free(tclist);
+    return 0;
+}
+
+/*! See if oid is registered
+ * This is good enough for add,
+ * But for delete a more advanced function is needed
+ * @see netsnmp_subtree_load
+ * @retval -1 Error
+ * @retval  0 Not found
+ * @retval  1 Found
+ */
+int
+clixon_snmp_api_oid_find(oid   *oid0,
+			 size_t oid0len)
+{
+    int              retval = -1;
+    netsnmp_subtree *tree1 = NULL;
+    
+    if ((tree1 = netsnmp_subtree_find(oid0, oid0len, NULL, "")) != NULL &&
+	oid_eq(oid0, oid0len, tree1->name_a, tree1->namelen)){
+	fprintf(stderr, "%s EQUAL==================\n", __FUNCTION__);
+	retval = 1;
+    }
+    else
+	retval = 0;
+    // done:
+    return retval;
 }
