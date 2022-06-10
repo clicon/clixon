@@ -110,7 +110,7 @@ snmp_terminate(clicon_handle h)
 
     snmp_shutdown(__FUNCTION__);
     shutdown_agent();
-    snmp_agent_cleanup();
+    clixon_snmp_api_agent_cleanup();
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	ys_free(yspec);
@@ -267,7 +267,7 @@ clixon_snmp_init_subagent(clicon_handle h,
     /* example-demon will be used to read example-demon.conf files. */
     init_snmp(__PROGRAM__);
 
-    if (!snmp_agent_check()){
+    if (!clixon_snmp_api_agent_check()){
 	clicon_err(OE_DAEMON, 0, "Connection to SNMP agent failed");
 	goto done;
     }
