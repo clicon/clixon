@@ -94,8 +94,6 @@ static const map_str2int snmp_access_map[] = {
 /* Map between clixon and ASN.1 types. 
  * @see net-snmp/library/asn1.h
  * @see union netsnmp_vardata in net-snmp/types.h
- * XXX not complete
- * XXX TimeTicks
  */
 static const map_str2int snmp_type_map[] = {
     {"int32",        ASN_INTEGER},   // 2
@@ -109,8 +107,27 @@ static const map_str2int snmp_type_map[] = {
     {NULL,           -1}
 };
 
-#define CLIXON_ASN_PHYS_ADDR    0x4242 /* Special case phy-address */
-#define CLIXON_ASN_ADMIN_STRING 0x4243 /* Special case SnmpAdminString */
+//#define CLIXON_ASN_PHYS_ADDR    0x4242 /* Special case phy-address */
+//#define CLIXON_ASN_ADMIN_STRING 0x4243 /* Special case SnmpAdminString */
+#define CLIXON_ASN_PHYS_ADDR    253 /* Special case phy-address */
+#define CLIXON_ASN_ADMIN_STRING 254 /* Special case SnmpAdminString */
+
+/* Map between clixon "orig" resolved type and ASN.1 types. 
+ */
+static const map_str2int snmp_orig_map[] = {
+    {"counter32",             ASN_COUNTER},   // 0x41 / 65
+    {"object-identifier-128", ASN_OBJECT_ID}, // 6
+    {"AutonomousType",        ASN_OBJECT_ID}, // 6
+    {"DateAndTime",           ASN_OCTET_STR}, // 4
+    {"UUIDorZero",            ASN_OCTET_STR}, // 4
+    {"binary",                ASN_OCTET_STR}, // 4
+    {"timeticks",             ASN_TIMETICKS}, // 0x43 / 67
+    {"timestamp",             ASN_TIMETICKS}, // 0x43 / 67
+    {"InetAddress",           ASN_IPADDRESS}, // 0x40 / 64
+    {"phys-address",          CLIXON_ASN_PHYS_ADDR},    /* Clixon extended string type */
+    {"SnmpAdminString",       CLIXON_ASN_ADMIN_STRING}, /* cf extension display-type 255T? */
+    {NULL,                    -1}
+};
 
 /* Map between SNMP message / mode str and int form
  */
@@ -138,6 +155,18 @@ const char *
 snmp_msg_int2str(int msg)
 {
     return clicon_int2str(snmp_msg_map, msg);
+}
+/*! Should be netsnmp lib function, cant find it
+ */
+int
+oid_eq(const oid *objid0,
+       size_t     objid0len,
+       const oid *objid1,
+       size_t     objid1len)
+{
+    if (objid0len != objid1len)
+	return 0;
+    return memcmp(objid0, objid1, objid0len*sizeof(*objid0));
 }
 
 /*! Duplicate clixon snmp handler struct
@@ -238,40 +267,14 @@ type_yang2asn1(yang_stmt    *ys,
 	    goto done;
 	restype = yrestype?yang_argument_get(yrestype):NULL;
     }
-    /* Special case: counter32, maps to same resolved type as gauge32 */
-    if (strcmp(origtype, "counter32")==0){
-	at = ASN_COUNTER;
+    /* Translate to asn.1 
+     * First try original type, first type 
+     */
+    if ((at = clicon_str2int(snmp_orig_map, origtype)) >= 0 &&
+	(extended || (at != CLIXON_ASN_PHYS_ADDR && at != CLIXON_ASN_ADMIN_STRING))){
+	;
     }
-    else if (strcmp(origtype, "object-identifier-128") == 0 ||
-	     strcmp(origtype, "AutonomousType") == 0){
-	at = ASN_OBJECT_ID;
-    }
-    else if (strcmp(origtype, "binary")==0){
-	at = ASN_OCTET_STR;
-    }
-    else if (strcmp(origtype, "timeticks")==0){
-	at = ASN_TIMETICKS;
-    }
-    else if (strcmp(origtype, "DateAndTime")==0) {
-        at = ASN_OCTET_STR;
-    }
-    else if (strcmp(origtype, "UUIDorZero")==0) {
-        at = ASN_OCTET_STR;
-    }
-    else if (strcmp(origtype, "timestamp")==0){
-	at = ASN_TIMETICKS;
-    }
-    else if (strcmp(origtype, "InetAddress")==0){
-	at = ASN_IPADDRESS;
-    }
-    else if (extended && strcmp(origtype, "phys-address")==0){
-	at = CLIXON_ASN_PHYS_ADDR; /* Clixon extended string type */
-    }
-    else if (extended && strcmp(origtype, "SnmpAdminString")==0){
-	at = CLIXON_ASN_ADMIN_STRING; /* cf extension display-type 255T? */
-    }
-
-    /* translate to asn.1 */
+    /* Then try fully resolved type */
     else if ((at = clicon_str2int(snmp_type_map, restype)) < 0){
 	clicon_err(OE_YANG, 0, "No snmp translation for YANG %s type:%s",
 		   yang_argument_get(ys), restype);
@@ -363,6 +366,10 @@ type_snmp2xml(yang_stmt                  *ys,
 	break;
     case ASN_GAUGE:     // 0x42
 	cv_uint32_set(cv, *requestvb->val.integer);
+	break;
+    case CLIXON_ASN_ADMIN_STRING: // XXX
+    case CLIXON_ASN_PHYS_ADDR:    // XXX
+	assert(0);
 	break;
     case ASN_OCTET_STR: // 4
 	cv_string_set(cv, (char*)requestvb->val.string);
@@ -758,45 +765,17 @@ snmp_body2oid(cxobj  *xi,
     return retval;
 }
 
-/*========== libnetsnmp-specific code ===============
- * Peeks into internal lib global variables, may be sensitive to library change
- */
-/*! Check if netsnmp is connected 
- * @retval 1 yes, running
- * @retval 0 No, not running
- * XXX: this peeks into the "main_session" global variable in agent/snmp_agent.c
- *      Tried to find API function but failed
- */
-int
-snmp_agent_check(void)
-{
-    extern netsnmp_session *main_session;
-    
-    return (main_session != NULL) ? 1 : 0;
-}
-
-/*! Cleanup remaining libnetsnmb memory
- * XXX: this peeks into the "tclist" global variable in snmplib/parse.c
- *      Tried to find API function but failed
- */
-int
-snmp_agent_cleanup(void)
-{
-    extern void *tclist;
-    
-    if (tclist)
-	free(tclist);
-    return 0;
-}
-
-/* Specialized SNMP error category log/err callback
+/*! Specialized SNMP error category log/err callback
  *
- * This function displays all negative SNMP errors on the form SNMPERR_* that are not SNMPERR_SUCCESS(=0)
- * There are also positive SNMP errors on the form SNMP_ERR_* which are not properly handled below
+ * This function displays all negative SNMP errors on the form SNMPERR_* that are not 
+ * SNMPERR_SUCCESS(=0)
+ * There are also positive SNMP errors on the form SNMP_ERR_* which are not properly handled 
+ * below
  * @param[in]    handle  Application-specific handle
- * @param[in]    suberr  Application-specific handle, points to SNMP_ERR_* unless < -0x1000 in which 
-                         case they are MIB_* errors defined in agent_registry.h
-  * @param[out]   cb      Read log/error string into this buffer
+ * @param[in]    suberr  Application-specific handle, points to SNMP_ERR_* unless 
+                         < CLIXON_ERR_SNMP_MIB in which case they are MIB_* errors defined 
+                         in agent_registry.h
+  * @param[out]   cb     Read log/error string into this buffer
  * @note Some SNMP API functions sometimes returns NULL/ptr or other return values that do not fall into
  * this category, then OE_SNMP should NOT be used.
  */
@@ -831,4 +810,61 @@ clixon_snmp_err_cb(void *handle,
 	cprintf(cb, "unknown error %d", suberr);
     }
     return 0;
+}
+
+/*========== libnetsnmp-specific code ===============
+ * Peeks into internal lib global variables, may be sensitive to library change
+ */
+/*! Check if netsnmp is connected 
+ * @retval 1 yes, running
+ * @retval 0 No, not running
+ * XXX: this peeks into the "main_session" global variable in agent/snmp_agent.c
+ *      Tried to find API function but failed
+ */
+int
+clixon_snmp_api_agent_check(void)
+{
+    extern netsnmp_session *main_session;
+    
+    return (main_session != NULL) ? 1 : 0;
+}
+
+/*! Cleanup remaining libnetsnmb memory
+ * XXX: this peeks into the "tclist" global variable in snmplib/parse.c
+ *      Tried to find API function but failed
+ */
+int
+clixon_snmp_api_agent_cleanup(void)
+{
+    extern void *tclist;
+    
+    if (tclist)
+	free(tclist);
+    return 0;
+}
+
+/*! See if oid is registered
+ * This is good enough for add,
+ * But for delete a more advanced function is needed
+ * @see netsnmp_subtree_load
+ * @retval -1 Error
+ * @retval  0 Not found
+ * @retval  1 Found
+ */
+int
+clixon_snmp_api_oid_find(oid   *oid0,
+			 size_t oid0len)
+{
+    int              retval = -1;
+    netsnmp_subtree *tree1 = NULL;
+    
+    if ((tree1 = netsnmp_subtree_find(oid0, oid0len, NULL, "")) != NULL &&
+	oid_eq(oid0, oid0len, tree1->name_a, tree1->namelen)){
+	fprintf(stderr, "%s EQUAL==================\n", __FUNCTION__);
+	retval = 1;
+    }
+    else
+	retval = 0;
+    // done:
+    return retval;
 }

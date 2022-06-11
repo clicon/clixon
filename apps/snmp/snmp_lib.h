@@ -67,23 +67,28 @@ typedef struct clixon_snmp_handle clixon_snmp_handle;
 /*
  * Prototypes
  */
-int   snmp_access_str2int(char *modes_str);
+
+int    oid_eq(const oid * objid0, size_t objid0len, const oid * objid1, size_t objid1len);
+int    snmp_access_str2int(char *modes_str);
 const char *snmp_msg_int2str(int msg);
 void  *snmp_handle_clone(void *arg);
 void   snmp_handle_free(void *arg);
-int   type_yang2asn1(yang_stmt *ys, int *asn1_type, int extended);
-int   type_snmp2xml(yang_stmt                  *ys,
-		    netsnmp_variable_list      *requestvb,
-		    netsnmp_agent_request_info *reqinfo,
-		    netsnmp_request_info       *requests,
-		    char                      **valstr);
-int   type_xml2snmp_pre(char *xmlstr, yang_stmt *ys, char **snmpstr);
-int   type_xml2snmp(char *snmpstr, int *asn1type, u_char **snmpval, size_t *snmplen, char **reason);
-int   yang2xpath(yang_stmt *ys, cvec *keyvec, char **xpath);
-int   snmp_body2oid(cxobj  *xi, cg_var *cv);
-int   snmp_agent_check(void);
-int   snmp_agent_cleanup(void);
-int   clixon_snmp_err_cb(void *handle, int suberr, cbuf *cb);
+int    type_yang2asn1(yang_stmt *ys, int *asn1_type, int extended);
+int    type_snmp2xml(yang_stmt                  *ys,
+		     netsnmp_variable_list      *requestvb,
+		     netsnmp_agent_request_info *reqinfo,
+		     netsnmp_request_info       *requests,
+		     char                      **valstr);
+int    type_xml2snmp_pre(char *xmlstr, yang_stmt *ys, char **snmpstr);
+int    type_xml2snmp(char *snmpstr, int *asn1type, u_char **snmpval, size_t *snmplen, char **reason);
+int    yang2xpath(yang_stmt *ys, cvec *keyvec, char **xpath);
+int    snmp_body2oid(cxobj  *xi, cg_var *cv);
+int    clixon_snmp_err_cb(void *handle, int suberr, cbuf *cb);
+
+/*========== libnetsnmp-specific code =============== */
+int    clixon_snmp_api_agent_check(void);
+int    clixon_snmp_api_agent_cleanup(void);
+int    clixon_snmp_api_oid_find(oid *oid1, size_t oidlen);
 
 #endif /* _SNMP_LIB_H_ */
 

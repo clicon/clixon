@@ -95,6 +95,7 @@
 
  * @retval     0    OK
  * @retval    -1    Error
+ *  netsnmp_subtree_find(oid1,sz1,  0, 0)
  */
 static int
 mibyang_leaf_register(clicon_handle h,
@@ -110,7 +111,7 @@ mibyang_leaf_register(clicon_handle h,
     char                         *default_str = NULL;
     char                         *oidstr = NULL;
     oid                           oid1[MAX_OID_LEN] = {0,};
-    size_t                        sz1 = MAX_OID_LEN;
+    size_t                        oid1len = MAX_OID_LEN;
     int                           modes;
     char                         *name;
     clixon_snmp_handle           *sh;
@@ -132,11 +133,14 @@ mibyang_leaf_register(clicon_handle h,
     cvi = NULL;
     while ((cvi = cvec_each(cvk_oid, cvi)) != NULL)
 	cprintf(cboid, ".%s", cv_string_get(cvi));
-    if (snmp_parse_oid(cbuf_get(cboid), oid1, &sz1) == NULL){
+    if (snmp_parse_oid(cbuf_get(cboid), oid1, &oid1len) == NULL){
 	clicon_err(OE_XML, 0, "snmp_parse_oid(%s)", cbuf_get(cboid));
 	//	goto done;
 	goto ok; // XXX skip
     }
+    /* Check if already registered */
+    if (clixon_snmp_api_oid_find(oid1, oid1len) == 1)
+	goto ok;
     if (yang_extension_value(ys, "max-access", IETF_YANG_SMIV2_NS, NULL, &modes_str) < 0)
 	goto done;
     /* Only for sanity check of types initially to fail early */
@@ -155,7 +159,7 @@ mibyang_leaf_register(clicon_handle h,
     	goto done;
 
     name = yang_argument_get(ys);
-
+    /* Stateless function, just returns ptr */ 
     if ((handler = netsnmp_create_handler(name, clixon_snmp_scalar_handler)) == NULL){
 	clicon_err(OE_XML, errno, "netsnmp_create_handler");
 	goto done;
@@ -172,7 +176,7 @@ mibyang_leaf_register(clicon_handle h,
     sh->sh_h = h;
     sh->sh_ys = ys;
     memcpy(sh->sh_oid, oid1, sizeof(oid1));
-    sh->sh_oidlen = sz1;
+    sh->sh_oidlen = oid1len;
     sh->sh_default = default_str;
     if (cvk_orig &&
 	(sh->sh_cvk_orig = cvec_dup(cvk_orig)) == NULL){
@@ -184,8 +188,9 @@ mibyang_leaf_register(clicon_handle h,
 	clicon_err(OE_UNIX, errno, "cvec_dup");
 	goto done;
     }
+    /* Stateless function, just returns ptr */ 
     if ((nhreg = netsnmp_handler_registration_create(name, handler,
-						     oid1, sz1,
+						     oid1, oid1len,
 						     modes)) == NULL){
 	clicon_err(OE_XML, errno, "netsnmp_handler_registration_create");
 	netsnmp_handler_free(handler);
@@ -238,7 +243,7 @@ mibyang_table_register(clicon_handle h,
     netsnmp_handler_registration    *nhreg;
     char                            *oidstr = NULL;
     oid                              oid1[MAX_OID_LEN] = {0,};
-    size_t                           sz1 = MAX_OID_LEN;
+    size_t                           oid1len = MAX_OID_LEN;
     char                            *name;
     clixon_snmp_handle              *sh;
     int                              ret;
@@ -261,7 +266,7 @@ mibyang_table_register(clicon_handle h,
 	goto done;
     if (oidstr == NULL)
 	goto ok;
-    if (snmp_parse_oid(oidstr, oid1, &sz1) == NULL){
+    if (snmp_parse_oid(oidstr, oid1, &oid1len) == NULL){
 	clicon_err(OE_XML, errno, "snmp_parse_oid");
 	goto done;
     }
@@ -279,14 +284,14 @@ mibyang_table_register(clicon_handle h,
     sh->sh_ys = ylist;
 
     memcpy(sh->sh_oid, oid1, sizeof(oid1));
-    sh->sh_oidlen = sz1;
+    sh->sh_oidlen = oid1len;
 
     if ((handler = netsnmp_create_handler(name, clixon_snmp_table_handler)) == NULL){
 	clicon_err(OE_XML, errno, "netsnmp_create_handler");
 	goto done;
     }
     if ((nhreg = netsnmp_handler_registration_create(name, handler,
-						     oid1, sz1,
+						     oid1, oid1len,
 						     HANDLER_CAN_RWRITE)) == NULL){
 	clicon_err(OE_XML, errno, "netsnmp_handler_registration_create");
 	netsnmp_handler_free(handler);

@@ -103,75 +103,18 @@ snmp_common_handler(netsnmp_mib_handler          *handler,
 	clicon_debug(1, "%s \"%s\" %s inclusive:%d %s", __FUNCTION__,
 		     oidstr2,
 		     snmp_msg_int2str(reqinfo->mode),
-		     requests->inclusive, tablehandler?"table":"");
+		     requests->inclusive, tablehandler?"table":"scalar");
     else
 	clicon_debug(1, "%s \"%s\"/\"%s\" %s inclusive:%d %s", __FUNCTION__,
 		     oidstr2, oidstr0,
 		     snmp_msg_int2str(reqinfo->mode),
-		     requests->inclusive, tablehandler?"table":"");
+		     requests->inclusive, tablehandler?"table":"scalar");
 
     retval = 0;
  done:
     return retval;
 }
 
-/*! SNMP table operation handler
- * Callorder: 161,160,.... 0, 1,2,3, 160,161,...
- * see https://net-snmp.sourceforge.io/dev/agent/data_set_8c-example.html#_a0
- *
- * see table_array.[ch] simplify the task of
- * writing a table handler for the net-snmp agent when the data being
- * accessed is in an oid sorted form and must be accessed externally.
- *
- * netsnmp_table_build_oid_from_index()
- *
- * table_container.[ch]
- *
- * build_new_oid
- */
-int
-clixon_snmp_table_handler(netsnmp_mib_handler          *handler,
-			  netsnmp_handler_registration *nhreg,
-			  netsnmp_agent_request_info   *reqinfo,
-			  netsnmp_request_info         *requests)
-{
-    int                     retval = -1;
-    clixon_snmp_handle     *sh = NULL;
-    cvec                   *nsc = NULL;
-    cxobj                  *xt = NULL;
-    cbuf                   *cb = NULL;
-    int                     ret;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    if ((ret = snmp_common_handler(handler, nhreg, reqinfo, requests, &sh, 1)) < 0)
-	goto done;
-    switch(reqinfo->mode){
-    case MODE_GETNEXT: // 160
-#ifdef SNMP_TABLE_DYNAMIC
-	/* Register table sub-oid:s of existing entries in clixon */
-	if (mibyang_table_poll(sh->sh_h, sh->sh_ys) < 0)
-	    goto done;
-#endif
-        break;
-    case MODE_GET: // 160
-    case MODE_SET_RESERVE1:
-    case MODE_SET_RESERVE2:
-    case MODE_SET_ACTION:
-    case MODE_SET_COMMIT:
-        break;
-
-    }
-//    ok:
-    retval = SNMP_ERR_NOERROR;
- done:
-    if (xt)
-        xml_free(xt);
-    if (cb)
-        cbuf_free(cb);
-    if (nsc)
-        xml_nsctx_free(nsc);
-    return retval;
-}
 
 /*! Scalar handler, set a value to clixon 
  * get xpath: see yang2api_path_fmt / api_path2xpath
@@ -356,18 +299,16 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
 {
     int                    retval = -1;
     clixon_snmp_handle    *sh = NULL;
-    yang_stmt             *ys;
     int                    asn1_type;
     netsnmp_variable_list *requestvb = requests->requestvb;
 
     clicon_debug(2, "%s", __FUNCTION__);
     if (snmp_common_handler(handler, nhreg, reqinfo, requests, &sh, 0) < 0)
 	goto done;
-    ys = sh->sh_ys;
     /* see net-snmp/agent/snmp_agent.h / net-snmp/library/snmp.h */
     switch (reqinfo->mode) {
     case MODE_GET:          /* 160 */
-	if (snmp_scalar_get(sh->sh_h, ys, sh->sh_cvk_orig,
+	if (snmp_scalar_get(sh->sh_h, sh->sh_ys, sh->sh_cvk_orig,
 			    requestvb, sh->sh_default, reqinfo, requests) < 0)
 	    goto done;
         break;
@@ -376,7 +317,7 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
 	break;
     case MODE_SET_RESERVE1: /* 0 */
 	/* Translate from YANG ys leaf type to SNMP asn1.1 type ids (not value), also cvtype */
-	if (type_yang2asn1(ys, &asn1_type, 0) < 0)
+	if (type_yang2asn1(sh->sh_ys, &asn1_type, 0) < 0)
 	    goto done;
         if (requestvb->type != asn1_type){
 	    clicon_debug(1, "%s Expected type:%d, got: %d", __FUNCTION__, requestvb->type, asn1_type);
@@ -387,7 +328,7 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
     case MODE_SET_RESERVE2: /* 1 */
         break;
     case MODE_SET_ACTION:   /* 2 */
-	if (snmp_scalar_set(sh->sh_h, ys, requestvb, reqinfo, requests) < 0)
+	if (snmp_scalar_set(sh->sh_h, sh->sh_ys, requestvb, reqinfo, requests) < 0)
 	    goto done;
         break;
     case MODE_SET_UNDO:     /* 5 */
@@ -404,5 +345,85 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
     }
     retval = SNMP_ERR_NOERROR;
  done:
+    return retval;
+}
+
+/*! SNMP table operation handler
+ * Callorder: 161,160,.... 0, 1,2,3, 160,161,...
+ * see https://net-snmp.sourceforge.io/dev/agent/data_set_8c-example.html#_a0
+ *
+ * see table_array.[ch] simplify the task of
+ * writing a table handler for the net-snmp agent when the data being
+ * accessed is in an oid sorted form and must be accessed externally.
+ *
+ * netsnmp_table_build_oid_from_index()
+ *
+ * table_container.[ch]
+ *
+ * build_new_oid
+ */
+int
+clixon_snmp_table_handler(netsnmp_mib_handler          *handler,
+			  netsnmp_handler_registration *nhreg,
+			  netsnmp_agent_request_info   *reqinfo,
+			  netsnmp_request_info         *requests)
+{
+    int                     retval = -1;
+    clixon_snmp_handle     *sh = NULL;
+    cvec                   *nsc = NULL;
+    cxobj                  *xt = NULL;
+    cbuf                   *cb = NULL;
+    int                     ret;
+
+    clicon_debug(2, "%s", __FUNCTION__);
+    if ((ret = snmp_common_handler(handler, nhreg, reqinfo, requests, &sh, 1)) < 0)
+	goto done;
+    if (sh->sh_ys == NULL){
+	clicon_debug(1, "%s Error table not registered", __FUNCTION__);
+	goto ok;
+    }
+    switch(reqinfo->mode){
+    case MODE_GET: // 160
+#ifdef SNMP_TABLE_DYNAMIC
+	/* Register table sub-oid:s of existing entries in clixon */
+	if (mibyang_table_poll(sh->sh_h, sh->sh_ys) < 0)
+	    goto done;
+#if 1
+	{
+	    if ((ret = netsnmp_call_next_handler(handler, nhreg, reqinfo, requests)) < 0){
+		clicon_err(OE_SNMP, ret, "netsnmp_call_next_handler");
+		goto done;
+	    }
+	}
+#endif
+	// Wrong sh, need to make another call
+	//	if (snmp_scalar_get(sh->sh_h, sh->sh_ys, sh->sh_cvk_orig,
+	//		    requestvb, sh->sh_default, reqinfo, requests) < 0)
+#endif
+	// Then try and get actual scalar
+	break;
+    case MODE_GETNEXT: // 161
+#ifdef SNMP_TABLE_DYNAMIC
+	/* Register table sub-oid:s of existing entries in clixon */
+	if (mibyang_table_poll(sh->sh_h, sh->sh_ys) < 0)
+	    goto done;
+#endif
+        break;
+    case MODE_SET_RESERVE1:
+    case MODE_SET_RESERVE2:
+    case MODE_SET_ACTION:
+    case MODE_SET_COMMIT:
+        break;
+
+    }
+ ok:
+    retval = SNMP_ERR_NOERROR;
+ done:
+    if (xt)
+        xml_free(xt);
+    if (cb)
+        cbuf_free(cb);
+    if (nsc)
+        xml_nsctx_free(nsc);
     return retval;
 }
