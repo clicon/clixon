@@ -13,7 +13,7 @@ IMPORTS
     InetAddressType, InetAddress            FROM INET-ADDRESS-MIB
     IANAifType                              FROM IANAifType-MIB
 ;
-netSnmpExamples MODULE-IDENTITY
+clixonExamples MODULE-IDENTITY
     LAST-UPDATED "200406150000Z"
     ORGANIZATION "www.net-snmp.org"
     CONTACT-INFO    
@@ -33,14 +33,14 @@ netSnmpExamples MODULE-IDENTITY
 --
 -- top level structure
 --
-netSnmpExampleScalars       OBJECT IDENTIFIER ::= { netSnmpExamples 1 }
-netSnmpExampleTables        OBJECT IDENTIFIER ::= { netSnmpExamples 2 }
-netSnmpExampleNotifications OBJECT IDENTIFIER ::= { netSnmpExamples 3 }
-netSnmpExampleNotificationPrefix  OBJECT IDENTIFIER
-                                  ::= { netSnmpExampleNotifications 0 }
-netSnmpExampleNotificationObjects OBJECT IDENTIFIER
-                                  ::= { netSnmpExampleNotifications 2 }
--- netSnmpTutorial          OBJECT IDENTIFIER ::= { netSnmpExamples 4 }
+clixonExampleScalars       OBJECT IDENTIFIER ::= { clixonExamples 1 }
+clixonExampleTables        OBJECT IDENTIFIER ::= { clixonExamples 2 }
+clixonExampleNotifications OBJECT IDENTIFIER ::= { clixonExamples 3 }
+clixonExampleNotificationPrefix  OBJECT IDENTIFIER
+                                  ::= { clixonExampleNotifications 0 }
+clixonExampleNotificationObjects OBJECT IDENTIFIER
+                                  ::= { clixonExampleNotifications 2 }
+-- clixonTutorial          OBJECT IDENTIFIER ::= { clixonExamples 4 }
 --
 -- Example scalars
 --
@@ -57,7 +57,7 @@ clixonExampleInteger OBJECT-TYPE
      This example object is implemented in the
      agent/mibgroup/examples/scalar_int.c file."
     DEFVAL { 42 }
-    ::= { netSnmpExampleScalars 1 }
+    ::= { clixonExampleScalars 1 }
 clixonExampleSleeper OBJECT-TYPE
     SYNTAX      Integer32
     MAX-ACCESS  read-write
@@ -78,7 +78,7 @@ clixonExampleSleeper OBJECT-TYPE
      This example object is implemented in the
      agent/mibgroup/examples/delayed_instance.c file."
     DEFVAL { 1 }
-    ::= { netSnmpExampleScalars 2 }
+    ::= { clixonExampleScalars 2 }
 clixonExampleString OBJECT-TYPE
     SYNTAX      SnmpAdminString
     MAX-ACCESS  read-write
@@ -91,7 +91,7 @@ clixonExampleString OBJECT-TYPE
      This example object is implemented in the
      agent/mibgroup/examples/watched.c file."
     DEFVAL { "So long, and thanks for all the fish!" }
-    ::= { netSnmpExampleScalars 3 }
+    ::= { clixonExampleScalars 3 }
 ifTableLastChange  OBJECT-TYPE
     SYNTAX      TimeTicks
     MAX-ACCESS  read-only
@@ -102,7 +102,7 @@ ifTableLastChange  OBJECT-TYPE
             entries has been unchanged since the last re-initialization
             of the local network management subsystem, then this object
             contains a zero value."
-    ::= { netSnmpExampleScalars 4 }
+    ::= { clixonExampleScalars 4 }
 ifType OBJECT-TYPE
     SYNTAX      IANAifType
     MAX-ACCESS  read-only
@@ -112,7 +112,7 @@ ifType OBJECT-TYPE
             assigned by the Internet Assigned Numbers Authority (IANA),
             through updating the syntax of the IANAifType textual
             convention."
-    ::= { netSnmpExampleScalars 5 }
+    ::= { clixonExampleScalars 5 }
 ifSpeed OBJECT-TYPE
     SYNTAX      Gauge32
     MAX-ACCESS  read-only
@@ -127,7 +127,7 @@ ifSpeed OBJECT-TYPE
             maximum value (4,294,967,295) and ifHighSpeed must be used
             to report the interace's speed.  For a sub-layer which has
             no concept of bandwidth, this object should be zero."
-    ::= { netSnmpExampleScalars 6 }
+    ::= { clixonExampleScalars 6 }
 ifAdminStatus OBJECT-TYPE
     SYNTAX  INTEGER {
                 up(1),       -- ready to pass packets
@@ -145,7 +145,7 @@ ifAdminStatus OBJECT-TYPE
             retained by the managed system, ifAdminStatus is then
             changed to either the up(1) or testing(3) states (or remains
             in the down(2) state)."
-    ::= { netSnmpExampleScalars 7} 
+    ::= { clixonExampleScalars 7} 
 ifInOctets OBJECT-TYPE
     SYNTAX      Counter32
     MAX-ACCESS  read-only
@@ -157,7 +157,7 @@ ifInOctets OBJECT-TYPE
             re-initialization of the management system, and at other
             times as indicated by the value of
             ifCounterDiscontinuityTime."
-    ::= { netSnmpExampleScalars 8} 
+    ::= { clixonExampleScalars 8} 
 ifHCInOctets OBJECT-TYPE
     SYNTAX      Counter64
     MAX-ACCESS  read-only
@@ -170,7 +170,7 @@ ifHCInOctets OBJECT-TYPE
             re-initialization of the management system, and at other
             times as indicated by the value of
             ifCounterDiscontinuityTime."
-    ::= { netSnmpExampleScalars 9} 
+    ::= { clixonExampleScalars 9} 
 ifPromiscuousMode  OBJECT-TYPE
     SYNTAX      TruthValue
     MAX-ACCESS  read-write
@@ -185,7 +185,7 @@ ifPromiscuousMode  OBJECT-TYPE
             interface to be reset before becoming effective.
             The value of ifPromiscuousMode does not affect the reception
             of broadcast and multicast packets/frames by the interface."
-    ::= { netSnmpExampleScalars 10 }
+    ::= { clixonExampleScalars 10 }
 ifCounterDiscontinuityTime OBJECT-TYPE
     SYNTAX      TimeStamp
     MAX-ACCESS  read-only
@@ -199,7 +199,7 @@ ifCounterDiscontinuityTime OBJECT-TYPE
             no such discontinuities have occurred since the last re-
             initialization of the local management subsystem, then this
             object contains a zero value."
-    ::= { netSnmpExampleScalars 11 }
+    ::= { clixonExampleScalars 11 }
 ifStackStatus  OBJECT-TYPE
     SYNTAX         RowStatus
 --    MAX-ACCESS     read-create
@@ -213,7 +213,7 @@ ifStackStatus  OBJECT-TYPE
             object is likely to be inappropriate for some types of
             interfaces, and many implementations will choose not to
             support write-access for any type of interface."
-    ::= { netSnmpExampleScalars 12 }
+    ::= { clixonExampleScalars 12 }
     
 --
 --  Example Tables
@@ -229,7 +229,7 @@ clixonIETFWGTable OBJECT-TYPE
      names of the two working group chairs.
      This example table is implemented in the
      agent/mibgroup/examples/data_set.c file."
-    ::= { netSnmpExampleTables 1 }
+    ::= { clixonExampleTables 1 }
 clixonIETFWGEntry OBJECT-TYPE
     SYNTAX      ClixonIETFWGEntry
     MAX-ACCESS  not-accessible
@@ -252,7 +252,7 @@ nsIETFWGName OBJECT-TYPE
     ::= { clixonIETFWGEntry 1 }
 nsIETFWGChair1 OBJECT-TYPE
     SYNTAX      OCTET STRING
-    MAX-ACCESS  read-create
+    MAX-ACCESS  read-write
     STATUS      current
     DESCRIPTION
     "One of the names of the chairs for the IETF working group."
@@ -267,7 +267,7 @@ nsIETFWGChair2 OBJECT-TYPE
     ::= { clixonIETFWGEntry 3 }
 --
 -- A table used in a table_iterator example
---   (agent/mibgroup/examples/netSnmpHostsTable*.[ch])
+--   (agent/mibgroup/examples/clixonHostsTable*.[ch])
 --
 clixonHostsTable OBJECT-TYPE
     SYNTAX      SEQUENCE OF ClixonHostsEntry
@@ -276,7 +276,7 @@ clixonHostsTable OBJECT-TYPE
     DESCRIPTION
     "An example table that implements a wrapper around the
     /etc/hosts file on a machine using the iterator helper API."
-    ::= { netSnmpExampleTables 2 }
+    ::= { clixonExampleTables 2 }
 clixonHostsEntry OBJECT-TYPE
     SYNTAX      ClixonHostsEntry
     MAX-ACCESS  not-accessible
