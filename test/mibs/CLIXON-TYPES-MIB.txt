@@ -244,7 +244,7 @@ ClixonIETFWGEntry ::= SEQUENCE {
     nsIETFWGChair2  OCTET STRING
 }
 nsIETFWGName OBJECT-TYPE
-    SYNTAX      INTEGER
+    SYNTAX      INTEGER (1..2147483647)
     MAX-ACCESS  not-accessible
     STATUS      current
     DESCRIPTION
