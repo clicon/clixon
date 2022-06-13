@@ -287,11 +287,10 @@ if $SNMPCHECK; then
             "STRING")
                 set_type="s"
                 ;;
+            "TIMETICKS")
+                set_type="t"
+                ;;
         esac
-
-        if [ $type == "INTEGER" ]; then
-            set_type="i"
-        fi
 
         new "Setting value $value to OID $oid with type $set_type"
 
