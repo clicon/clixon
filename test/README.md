@@ -33,7 +33,7 @@ To download the openconfig and yang models required for the tests:
    git config core.sparseCheckout true
    echo "standard/" >> .git/info/sparse-checkout
    echo "experimental/" >> .git/info/sparse-checkout
-   git pull origin master
+   git pull origin main
 ```
 
 ## Continuous Integration
