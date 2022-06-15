@@ -47,6 +47,8 @@ extern "C" {
 /* Need some way to multiplex SNMP_ and MIB errors on OE_SNMP error handler */
 #define CLIXON_ERR_SNMP_MIB 0x1000
 
+#define IETF_YANG_SMIV2_NS "urn:ietf:params:xml:ns:yang:ietf-yang-smiv2"
+    
 /*
  * Types 
  */
@@ -58,17 +60,21 @@ struct clixon_snmp_handle {
     oid           sh_oid[MAX_OID_LEN]; /* OID for debug, may be removed? */
     size_t        sh_oidlen;           
     char         *sh_default;          /* MIB default value leaf only */
-    cvec         *sh_cvk_orig;         /* Index/Key variables (original) */
-    cvec         *sh_cvk_oid;          /* Index/Key variables (OID translated) */
-    netsnmp_table_registration_info *sh_table_info; /* To mimic table-handler in libnetsnmp code*/
+    cvec         *sh_cvk_orig;         /* Index/Key variable values (original) */
+    netsnmp_table_registration_info *sh_table_info; /* To mimic table-handler in libnetsnmp code 
+						     * save only to free properly */
+
 };
 typedef struct clixon_snmp_handle clixon_snmp_handle;
 
 /*
  * Prototypes
  */
-
 int    oid_eq(const oid * objid0, size_t objid0len, const oid * objid1, size_t objid1len);
+int    oid_append(const oid *objid0, size_t *objid0len, const oid *objid1, size_t objid1len);
+int    oid_cbuf(cbuf *cb, const oid *objid, size_t objidlen);
+int    oid_print(FILE *f, const oid *objid, size_t objidlen);
+int    yangext_oid_get(yang_stmt *yn, oid *objid, size_t *objidlen, char **objidstr);
 int    snmp_access_str2int(char *modes_str);
 const char *snmp_msg_int2str(int msg);
 void  *snmp_handle_clone(void *arg);
@@ -81,9 +87,11 @@ int    type_snmp2xml(yang_stmt                  *ys,
 		     char                      **valstr);
 int    type_xml2snmp_pre(char *xmlstr, yang_stmt *ys, char **snmpstr);
 int    type_xml2snmp(char *snmpstr, int *asn1type, u_char **snmpval, size_t *snmplen, char **reason);
-int    yang2xpath(yang_stmt *ys, cvec *keyvec, char **xpath);
-int    snmp_body2oid(cxobj  *xi, cg_var *cv);
+int    snmp_yang2xpath(yang_stmt *ys, cvec *keyvec, char **xpath);
+int    snmp_str2oid(char *str, yang_stmt *yi, oid *objid, size_t *objidlen);
+int    snmp_oid2str(oid **oidi, size_t *oidilen, yang_stmt *yi, cg_var *cv);
 int    clixon_snmp_err_cb(void *handle, int suberr, cbuf *cb);
+int    snmp_xmlkey2val_oid(cxobj *xrow, cvec *cvk_name, cvec **cvk_orig, oid *objidk, size_t *objidklen);
 
 /*========== libnetsnmp-specific code =============== */
 int    clixon_snmp_api_agent_check(void);

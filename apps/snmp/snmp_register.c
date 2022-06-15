@@ -80,9 +80,6 @@
 #include "snmp_register.h"
 #include "snmp_handler.h"
 
-#define IETF_YANG_SMIV2_NS "urn:ietf:params:xml:ns:yang:ietf-yang-smiv2"
-
-
 /*! Parse smiv2 extensions for YANG leaf
  * Typical leaf:
  *      smiv2:oid "1.3.6.1.4.1.8072.2.1.1";
@@ -91,8 +88,8 @@
  * @param[in]  h        Clixon handle
  * @param[in]  ys       Mib-Yang node
  * @param[in]  cvk_orig Vector of untranslated key/index values (eg "foo")
- * @param[in]  cvk_oid  Vector of translated to OID key/index values. (eg "3.6.22.22")
-
+ * @param[in]  oidk     Part of OID thatrepresents key
+ * @param[in]  oidklen  Length of oidk
  * @retval     0    OK
  * @retval    -1    Error
  *  netsnmp_subtree_find(oid1,sz1,  0, 0)
@@ -100,8 +97,9 @@
 static int
 mibyang_leaf_register(clicon_handle h,
 		      yang_stmt    *ys,
-		      cvec         *cvk_orig,
-		      cvec         *cvk_oid)
+		      cvec         *cvk_val,
+		      oid          *oidk,
+		      size_t        oidklen)
 {
     int                           retval = -1;
     netsnmp_handler_registration *nhreg = NULL;
@@ -109,35 +107,23 @@ mibyang_leaf_register(clicon_handle h,
     int                           ret;
     char                         *modes_str = NULL;
     char                         *default_str = NULL;
-    char                         *oidstr = NULL;
     oid                           oid1[MAX_OID_LEN] = {0,};
     size_t                        oid1len = MAX_OID_LEN;
     int                           modes;
     char                         *name;
     clixon_snmp_handle           *sh;
-    cg_var                       *cvi;
     cbuf                         *cboid = NULL;
 
-    /* Get OID from leaf */
-    if (yang_extension_value(ys, "oid", IETF_YANG_SMIV2_NS, NULL, &oidstr) < 0)
-	goto done;
-    if (oidstr == NULL)
-	goto ok;
-    /* Append sub-keys to original oidstr, use cligen-buf
-     */
     if ((cboid = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    cprintf(cboid, "%s", oidstr);
-    cvi = NULL;
-    while ((cvi = cvec_each(cvk_oid, cvi)) != NULL)
-	cprintf(cboid, ".%s", cv_string_get(cvi));
-    if (snmp_parse_oid(cbuf_get(cboid), oid1, &oid1len) == NULL){
-	clicon_err(OE_XML, 0, "snmp_parse_oid(%s)", cbuf_get(cboid));
-	//	goto done;
-	goto ok; // XXX skip
-    }
+    if ((ret = yangext_oid_get(ys, oid1, &oid1len, NULL)) < 0)
+	goto done;
+    if (ret == 0)
+	goto ok;
+    if (oid_append(oid1, &oid1len, oidk, oidklen) < 0)
+	goto done;
     /* Check if already registered */
     if (clixon_snmp_api_oid_find(oid1, oid1len) == 1)
 	goto ok;
@@ -178,13 +164,8 @@ mibyang_leaf_register(clicon_handle h,
     memcpy(sh->sh_oid, oid1, sizeof(oid1));
     sh->sh_oidlen = oid1len;
     sh->sh_default = default_str;
-    if (cvk_orig &&
-	(sh->sh_cvk_orig = cvec_dup(cvk_orig)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_dup");
-	goto done;
-    }
-    if (cvk_oid &&
-	(sh->sh_cvk_oid = cvec_dup(cvk_oid)) == NULL){
+    if (cvk_val &&
+	(sh->sh_cvk_orig = cvec_dup(cvk_val)) == NULL){
 	clicon_err(OE_UNIX, errno, "cvec_dup");
 	goto done;
     }
@@ -209,7 +190,8 @@ mibyang_leaf_register(clicon_handle h,
 	clicon_err(OE_SNMP, ret-CLIXON_ERR_SNMP_MIB, "netsnmp_register_instance");
 	goto done;
     }
-    clicon_debug(1, "%s %s registered", __FUNCTION__, cbuf_get(cboid));
+    oid_cbuf(cboid, oid1, oid1len);
+    clicon_debug(1, "%s register: %s %s", __FUNCTION__, name, cbuf_get(cboid));
  ok:
     retval = 0;
  done:
@@ -262,14 +244,10 @@ mibyang_table_register(clicon_handle h,
 	goto done;
     }
     /* Get OID from parent container  */
-    if (yang_extension_value(ys, "oid", IETF_YANG_SMIV2_NS, NULL, &oidstr) < 0)
+    if ((ret = yangext_oid_get(ys, oid1, &oid1len, &oidstr)) < 0)
 	goto done;
-    if (oidstr == NULL)
+    if (ret == 0)
 	goto ok;
-    if (snmp_parse_oid(oidstr, oid1, &oid1len) == NULL){
-	clicon_err(OE_XML, errno, "snmp_parse_oid");
-	goto done;
-    }
     name = yang_argument_get(ys);
 
     /* Userdata to pass around in netsmp callbacks 
@@ -347,8 +325,8 @@ mibyang_table_register(clicon_handle h,
 	clicon_err(OE_SNMP, ret, "netsnmp_register_table");
 	goto done;
     }
-    sh->sh_table_info = table_info;
-    clicon_debug(1, "%s %s registered", __FUNCTION__, oidstr);
+    sh->sh_table_info = table_info; /* Keep to free at exit */
+    clicon_debug(1, "%s register: %s %s", __FUNCTION__, name, oidstr);
  ok:
     retval = 0;
  done:
@@ -381,13 +359,11 @@ mibyang_table_poll(clicon_handle h,
     cxobj     *xcol;
     yang_stmt *y;
     cvec      *cvk_name;
-    cg_var    *cv0;
-    cvec      *cvk_orig = NULL; /* vector of index keys: original index */
-    cvec      *cvk_oid = NULL;  /* vector of index keys: translated to OID */
-    cg_var    *cv;
-    int        i;
-    cxobj     *xi;
+    cvec      *cvk_val = NULL; /* vector of index keys: original index */
     yang_stmt *ys;
+    int        ret;
+    oid        oidk[MAX_OID_LEN] = {0,};
+    size_t     oidklen = MAX_OID_LEN;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((ys = yang_parent_get(ylist)) == NULL ||
@@ -397,7 +373,7 @@ mibyang_table_poll(clicon_handle h,
     }
     if (xml_nsctx_yang(ys, &nsc) < 0)
         goto done;
-    if (yang2xpath(ys, NULL, &xpath) < 0)
+    if (snmp_yang2xpath(ys, NULL, &xpath) < 0)
         goto done;
     if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
         goto done;
@@ -413,42 +389,15 @@ mibyang_table_poll(clicon_handle h,
 	}
 	xrow = NULL;
 	while ((xrow = xml_child_each(xtable, xrow, CX_ELMNT)) != NULL) {
-	    if (cvk_orig){
-		cvec_free(cvk_orig);
-		cvk_orig = NULL;
-	    }
-	    if ((cvk_orig = cvec_dup(cvk_name)) == NULL){
-		clicon_err(OE_UNIX, errno, "cvec_dup");
+	    if ((ret = snmp_xmlkey2val_oid(xrow, cvk_name, &cvk_val, oidk, &oidklen)) < 0)
 		goto done;
-	    }
-	    if (cvk_oid){
-		cvec_free(cvk_oid);
-		cvk_oid = NULL;
-	    }
-	    if ((cvk_oid = cvec_dup(cvk_name)) == NULL){
-		clicon_err(OE_UNIX, errno, "cvec_dup");
-		goto done;
-	    }
-	    for (i=0; i<cvec_len(cvk_name); i++){
-		cv0 = cvec_i(cvk_name, i); 
-		if ((xi = xml_find_type(xrow, NULL, cv_string_get(cv0), CX_ELMNT)) == NULL)
-		    break;
-		cv = cvec_i(cvk_orig, i); 
-		if (cv_string_set(cv, xml_body(xi)) < 0){
-		    clicon_err(OE_UNIX, errno, "cv_string_set");
-		    goto done;
-		}
-		cv = cvec_i(cvk_oid, i); 
-		if (snmp_body2oid(xi, cv) < 0)
-		    goto done;
-	    }
-	    if (i<cvec_len(cvk_name))
+	    if (ret == 0)
 		continue; /* skip row, not all indexes */
 	    xcol = NULL;
 	    while ((xcol = xml_child_each(xrow, xcol, CX_ELMNT)) != NULL) {
 		if ((y = xml_spec(xcol)) == NULL)
 		    continue;
-		if (mibyang_leaf_register(h, y, cvk_orig, cvk_oid) < 0) 
+		if (mibyang_leaf_register(h, y, cvk_val, oidk, oidklen) < 0) 
 		    goto done;
 	    }
 	}
@@ -457,11 +406,8 @@ mibyang_table_poll(clicon_handle h,
  done:
     if (xpath)
 	free(xpath);
-    if (cvk_orig)
-        cvec_free(cvk_orig);
-    if (cvk_oid)
-        cvec_free(cvk_oid);
-
+    if (cvk_val)
+        cvec_free(cvk_val);
     if (xt)
         xml_free(xt);
     if (nsc)
@@ -502,7 +448,7 @@ mibyang_traverse(clicon_handle h,
     clicon_debug(1, "%s %s", __FUNCTION__, yang_argument_get(yn));
     switch(yang_keyword_get(yn)){
     case Y_LEAF:
-	if (mibyang_leaf_register(h, yn, NULL, NULL) < 0)
+	if (mibyang_leaf_register(h, yn, NULL, NULL, 0) < 0)
 	    goto done;
 	break;
     case Y_CONTAINER: /* See list case */

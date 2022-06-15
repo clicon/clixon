@@ -71,50 +71,120 @@ snmp_common_handler(netsnmp_mib_handler          *handler,
 {
     int                    retval = -1;
     netsnmp_variable_list *requestvb; /* sub of requests */
-    char                   oidstr0[MAX_OID_LEN*2] = {0,};
-    char                   oidstr1[MAX_OID_LEN*2] = {0,};
-    char                   oidstr2[MAX_OID_LEN*2] = {0,};
+    cbuf                  *cb;
 
     if (requests == NULL || shp == NULL){
 	clicon_err(OE_XML, EINVAL, "requests or shp is null");
 	goto done;
     }
     requestvb = requests->requestvb;
-    if (snprint_objid(oidstr0, sizeof(oidstr0),
-		      requestvb->name, requestvb->name_length) < 0){
-	clicon_err(OE_XML, 0, "snprint_objid buffer too small");
-	goto done;
-    }
     if ((*shp = (clixon_snmp_handle*)handler->myvoid) == NULL){
 	clicon_err(OE_XML, 0, "No myvoid handler");
 	goto done;
     }
-    if (snprint_objid(oidstr1, sizeof(oidstr1),
-		      nhreg->rootoid, nhreg->rootoid_len) < 0){
-	clicon_err(OE_XML, 0, "snprint_objid buffer too small");
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    if (snprint_objid(oidstr2, sizeof(oidstr2),
-		      (*shp)->sh_oid, (*shp)->sh_oidlen) < 0){
-	clicon_err(OE_XML, 0, "snprint_objid buffer too small");
-	goto done;
-    }
-    if (strcmp(oidstr0, oidstr2) == 0)
+    oid_cbuf(cb, (*shp)->sh_oid, (*shp)->sh_oidlen);    
+    if (oid_eq(requestvb->name, requestvb->name_length,
+	       (*shp)->sh_oid, (*shp)->sh_oidlen) == 0){ /* equal */
 	clicon_debug(1, "%s \"%s\" %s inclusive:%d %s", __FUNCTION__,
-		     oidstr2,
+		     cbuf_get(cb),
 		     snmp_msg_int2str(reqinfo->mode),
 		     requests->inclusive, tablehandler?"table":"scalar");
-    else
-	clicon_debug(1, "%s \"%s\"/\"%s\" %s inclusive:%d %s", __FUNCTION__,
-		     oidstr2, oidstr0,
+    }
+    else{ /* not equal */
+	cprintf(cb, " (");
+	oid_cbuf(cb, requestvb->name, requestvb->name_length);
+	cprintf(cb, ")");
+	// nhreg->rootoid same as shp
+	clicon_debug(1, "%s \"%s\" %s inclusive:%d %s", __FUNCTION__,
+		     cbuf_get(cb),
 		     snmp_msg_int2str(reqinfo->mode),
 		     requests->inclusive, tablehandler?"table":"scalar");
-
+    }
     retval = 0;
  done:
+    if (cb)
+	cbuf_free(cb);
     return retval;
 }
 
+#ifdef SNMP_TABLE_DYNAMIC
+/*!
+ */
+static int
+snmp_scalar_return(cxobj                      *xs,
+		   yang_stmt                  *ys,
+		   oid                        *oidc,
+		   size_t                      oidclen,
+		   netsnmp_agent_request_info *reqinfo,
+		   netsnmp_request_info       *requests)
+{
+    int                    retval = -1;
+    int                    asn1type;
+    char                  *xmlstr = NULL;	
+    char                  *defaultval = NULL;
+    u_char                *snmpval = NULL;
+    size_t                 snmplen = 0;
+    char                  *reason = NULL;
+    netsnmp_variable_list *requestvb = requests->requestvb;
+    int                    ret;
+
+    /* SMI default value, How is this different from yang defaults?
+     */
+    if (yang_extension_value(ys, "defval", IETF_YANG_SMIV2_NS, NULL, &defaultval) < 0)
+	goto done;
+    if (xs != NULL){
+	if ((ret = type_xml2snmp_pre(xml_body(xs), ys, &xmlstr)) < 0)
+	    goto done;
+	if (ret == 0){
+	    netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGVALUE);
+	    goto ok;
+	}
+    }
+    else if (defaultval != NULL){
+	if ((xmlstr = strdup(defaultval)) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+    }
+    else{
+	netsnmp_set_request_error(reqinfo, requests, SNMP_NOSUCHINSTANCE);
+	goto ok;
+    }
+    if (type_yang2asn1(ys, &asn1type, 1) < 0)
+	goto done;
+    if ((ret = type_xml2snmp(xmlstr, &asn1type, &snmpval, &snmplen, &reason)) < 0)
+	goto done;
+    if (ret == 0){
+	clicon_debug(1, "%s %s", __FUNCTION__, reason);
+	netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
+	goto ok;
+    }
+    /* see snmplib/snmp_client. somewhat indirect
+     */
+    if ((ret = snmp_set_var_typed_value(requestvb, asn1type, snmpval, snmplen)) != SNMPERR_SUCCESS){
+	clicon_err(OE_SNMP, ret, "snmp_set_var_typed_value");
+	goto done;
+    }
+    if ((ret = snmp_set_var_objid(requestvb, oidc, oidclen)) != SNMPERR_SUCCESS){
+	clicon_err(OE_SNMP, ret, "snmp_set_var_objid");
+	goto done;
+    }
+ ok:
+    retval = 0;
+ done:
+    if (xmlstr)
+	free(xmlstr);
+    if (snmpval)
+	free(snmpval);
+    if (reason)
+	free(reason);
+    return retval;
+}
+#endif /* SNMP_TABLE_DYNAMIC */
 
 /*! Scalar handler, set a value to clixon 
  * get xpath: see yang2api_path_fmt / api_path2xpath
@@ -125,12 +195,13 @@ snmp_common_handler(netsnmp_mib_handler          *handler,
  * @param[in]  defaultval
  * @param[in]  reqinfo
  * @param[in]  requests
+ * @retval     0          OK
+ * @retval     -1         Error
  */
 static int
 snmp_scalar_get(clicon_handle               h,
 		yang_stmt                  *ys,
 		cvec                       *cvk,
-		netsnmp_variable_list      *requestvb,
 		char                       *defaultval,
 		netsnmp_agent_request_info *reqinfo,
 		netsnmp_request_info       *requests)
@@ -147,13 +218,14 @@ snmp_scalar_get(clicon_handle               h,
     int     ret;
     int     asn1type;
     char   *reason = NULL;
+    netsnmp_variable_list *requestvb = requests->requestvb;
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* Prepare backend call by constructing namespace context */
     if (xml_nsctx_yang(ys, &nsc) < 0)
 	goto done;
     /* Create xpath from yang (XXX works not for lists) */
-    if (yang2xpath(ys, cvk, &xpath) < 0)
+    if (snmp_yang2xpath(ys, cvk, &xpath) < 0)
 	goto done;
     /* Do the backend call */
     if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
@@ -198,9 +270,8 @@ snmp_scalar_get(clicon_handle               h,
     }
     /* see snmplib/snmp_client. somewhat indirect
      */
-    requestvb->type = asn1type; // ASN_NULL on input
-    if ((ret = snmp_set_var_value(requestvb, snmpval, snmplen)) != SNMPERR_SUCCESS){
-	clicon_err(OE_SNMP, ret, "snmp_set_var_value");
+    if ((ret = snmp_set_var_typed_value(requestvb, asn1type, snmpval, snmplen)) != SNMPERR_SUCCESS){
+	clicon_err(OE_SNMP, ret, "snmp_set_var_typed_value");
 	goto done;
     }
  ok:
@@ -226,7 +297,6 @@ snmp_scalar_get(clicon_handle               h,
 static int
 snmp_scalar_set(clicon_handle               h,
 		yang_stmt                  *ys,
-		netsnmp_variable_list      *requestvb,
 		netsnmp_agent_request_info *reqinfo,
 		netsnmp_request_info       *requests)
 {
@@ -239,7 +309,8 @@ snmp_scalar_set(clicon_handle               h,
     int        ret;
     char      *valstr = NULL;
     cbuf      *cb = NULL;
-    
+    netsnmp_variable_list *requestvb = requests->requestvb;
+
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
 	goto done;
@@ -250,7 +321,6 @@ snmp_scalar_set(clicon_handle               h,
 	goto done;
     if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, NULL, NULL)) < 0)
 	goto done;
-	    
     if (ret == 0){
 	clicon_err(OE_XML, 0, "api_path2xml %s invalid", api_path);
 	goto done;
@@ -309,7 +379,7 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
     switch (reqinfo->mode) {
     case MODE_GET:          /* 160 */
 	if (snmp_scalar_get(sh->sh_h, sh->sh_ys, sh->sh_cvk_orig,
-			    requestvb, sh->sh_default, reqinfo, requests) < 0)
+			    sh->sh_default, reqinfo, requests) < 0)
 	    goto done;
         break;
     case MODE_GETNEXT:      /* 161 */
@@ -328,7 +398,7 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
     case MODE_SET_RESERVE2: /* 1 */
         break;
     case MODE_SET_ACTION:   /* 2 */
-	if (snmp_scalar_set(sh->sh_h, sh->sh_ys, requestvb, reqinfo, requests) < 0)
+	if (snmp_scalar_set(sh->sh_h, sh->sh_ys, reqinfo, requests) < 0)
 	    goto done;
         break;
     case MODE_SET_UNDO:     /* 5 */
@@ -347,6 +417,227 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
  done:
     return retval;
 }
+
+#ifdef SNMP_TABLE_DYNAMIC
+/*! Create xpath from YANG table OID + 1 + n + cvk/key = requestvb->name 
+ * Get yang of leaf from first part of OID
+ * Create xpath with right keys from later part of OID
+ * Query clixon if object exists, if so return value
+ * @param[in]  h       Clixon handle
+ * @param[in]  yt      Yang of table (of list type)
+ * @param[in]  oids    OID of ultimate scalar value
+ * @param[in]  oidslen OID length of scalar
+ * @param[in]  reginfo
+ * @param[in]  requests
+ * @retval     -1      Error
+ * @retval     0       Object not found
+ * @retval     1       OK
+ */
+static int
+snmp_table_get(clicon_handle               h,
+	       yang_stmt                  *yt,
+	       oid                        *oids,
+	       size_t                      oidslen,
+	       netsnmp_agent_request_info *reqinfo,
+	       netsnmp_request_info       *requests)
+{
+    int        retval = -1;
+    oid        oidt[MAX_OID_LEN] = {0,}; /* Table / list oid */
+    size_t     oidtlen = MAX_OID_LEN;
+    oid        oidleaf[MAX_OID_LEN] = {0,}; /* Leaf */
+    size_t     oidleaflen = MAX_OID_LEN;
+    oid       *oidi;
+    size_t     oidilen;
+    yang_stmt *ys;
+    yang_stmt *yk;
+    char      *xpath = NULL;
+    cvec      *cvk_orig;
+    cvec      *cvk_val;
+    int        i;
+    cg_var    *cv;
+    char      *defaultval = NULL;
+    int        ret;
+
+    /* Get OID from table /list  */
+    if ((ret = yangext_oid_get(yt, oidt, &oidtlen, NULL)) < 0)
+	goto done;
+    if (ret == 0)
+	goto done;
+    /* Get yang of leaf from first part of OID */
+    ys = NULL;
+    while ((ys = yn_each(yt, ys)) != NULL) {
+	if (yang_keyword_get(ys) != Y_LEAF)
+	    continue;
+	if ((ret = yangext_oid_get(ys, oidleaf, &oidleaflen, NULL)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto done;
+	assert(oidtlen + 1 == oidleaflen);
+	if (oids[oidleaflen-1] == oidleaf[oidleaflen-1])
+	    break;
+    }
+    if (ys == NULL){
+	/* No leaf with matching OID */
+	goto fail;
+    }
+    /* SMI default value, How is this different from yang defaults?
+     */
+    if (yang_extension_value(ys, "defval", IETF_YANG_SMIV2_NS, NULL, &defaultval) < 0)
+    	goto done;
+    
+    /* Create xpath with right keys from later part of OID 
+     * Inverse of snmp_str2oid
+     */
+    if ((cvk_orig = yang_cvec_get(yt)) == NULL){
+	clicon_err(OE_YANG, 0, "No keys");
+	goto done;
+    }
+    if ((cvk_val = cvec_dup(cvk_orig)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_dup");
+	goto done;
+    }
+    oidilen = oidslen-(oidtlen+1);
+    oidi = oids+oidtlen+1;
+    /* Add keys */
+    for (i=0; i<cvec_len(cvk_val); i++){
+	cv = cvec_i(cvk_val, i); 
+	if ((yk = yang_find(yt, Y_LEAF, cv_string_get(cv))) == NULL){
+	    clicon_err(OE_YANG, 0, "List key %s not found", cv_string_get(cv));
+	    goto done;
+	}
+	if (snmp_oid2str(&oidi, &oidilen, yk, cv) < 0) 
+	    goto done;
+    }
+    if (oidilen != 0){
+	clicon_err(OE_YANG, 0, "Expected oidlen 0 but is %zu", oidilen);
+	goto fail;
+    }
+    /* Get scalar value */
+    if (snmp_scalar_get(h, ys, cvk_val,
+			defaultval,
+			reqinfo,
+			requests) < 0)
+	goto done;
+    // ok:
+    retval = 1;
+ done:
+    if (cvk_val)
+	cvec_free(cvk_val);
+    if (xpath)
+	free(xpath);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Find "next" objct from oids minus key and return that.
+ * @param[in]  h       Clixon handle
+ * @param[in]  ylist   Yang of table (of list type)
+ * @param[in]  oids    OID of ultimate scalar value
+ * @param[in]  oidslen OID length of scalar
+ * @retval     -1      Error
+ * @retval     0       OK
+ */
+static int
+snmp_table_getnext(clicon_handle               h,
+		   yang_stmt                  *ylist,
+		   oid                        *oids,
+		   size_t                      oidslen,
+		   netsnmp_agent_request_info *reqinfo,
+		   netsnmp_request_info       *requests)
+{
+    int        retval = -1;
+    cvec      *nsc = NULL;
+    char      *xpath = NULL;
+    cxobj     *xt = NULL;
+    cxobj     *xerr;
+    cxobj     *xtable;
+    cxobj     *xrow;
+    cxobj     *xcol;
+    yang_stmt *ycol;
+    yang_stmt *ys;
+    int        ret;
+    cvec      *cvk_name;
+    oid        oidc[MAX_OID_LEN] = {0,}; /* Table / list oid */
+    size_t     oidclen = MAX_OID_LEN;
+    oid        oidk[MAX_OID_LEN] = {0,}; /* Key oid */
+    size_t     oidklen = MAX_OID_LEN;
+    int        getnext = 0; 
+    int        found = 0; 
+    
+    clicon_debug(1, "%s", __FUNCTION__);
+    if ((ys = yang_parent_get(ylist)) == NULL ||
+	yang_keyword_get(ys) != Y_CONTAINER){
+	clicon_err(OE_YANG, EINVAL, "ylist parent is not list");
+	goto done;
+    }
+    if (xml_nsctx_yang(ys, &nsc) < 0)
+        goto done;
+    if (snmp_yang2xpath(ys, NULL, &xpath) < 0)
+        goto done;
+    if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
+        goto done;
+    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+        clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
+        goto done;
+    }
+    if ((xtable = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
+	/* Make a clone of key-list, but replace names with values */
+	if ((cvk_name = yang_cvec_get(ylist)) == NULL){
+	    clicon_err(OE_YANG, 0, "No keys");
+	    goto done;
+	}
+	xrow = NULL;
+	while ((xrow = xml_child_each(xtable, xrow, CX_ELMNT)) != NULL) {
+	    /* Get key part of OID from XML list entry */
+	    if ((ret = snmp_xmlkey2val_oid(xrow, cvk_name, NULL, /*&cvk_oid,*/ oidk, &oidklen)) < 0)
+		goto done;
+	    if (ret == 0)
+		continue; /* skip row, not all indexes */
+	    xcol = NULL;
+	    while ((xcol = xml_child_each(xrow, xcol, CX_ELMNT)) != NULL) {
+		if ((ycol = xml_spec(xcol)) == NULL)
+		    continue;
+		if (yang_keyword_get(ycol) != Y_LEAF)
+		    continue;
+		if ((ret = yangext_oid_get(ycol, oidc, &oidclen, NULL)) < 0)
+		    goto done;
+		/* Append key oid */
+		if (oid_append(oidc, &oidclen, oidk, oidklen) < 0)
+		    goto done;
+		if (getnext){
+		    found++; /* return this */
+		    break;
+		}
+		/* Match oidc - key */
+		if ((ret = oid_eq(oidc, oidclen, oids, oidslen)) == 0){
+		    getnext++; /* return next object if any */
+		}
+		else if (ret > 0){
+		    found++; /* return this */
+		    break;
+		}
+	    } /* while xcol */
+	    if (found)
+		break;
+	} /* while xrow */
+    }
+    if (found){
+	if (snmp_scalar_return(xcol, ycol, oidc, oidclen, reqinfo, requests) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    if (xpath)
+	free(xpath);
+    if (xt)
+        xml_free(xt);
+    if (nsc)
+        xml_nsctx_free(nsc);    
+    return retval;
+}
+#endif /* SNMP_TABLE_DYNAMIC */
 
 /*! SNMP table operation handler
  * Callorder: 161,160,.... 0, 1,2,3, 160,161,...
@@ -374,7 +665,10 @@ clixon_snmp_table_handler(netsnmp_mib_handler          *handler,
     cxobj                  *xt = NULL;
     cbuf                   *cb = NULL;
     int                     ret;
-
+#ifdef SNMP_TABLE_DYNAMIC
+    netsnmp_variable_list  *requestvb;
+#endif
+    
     clicon_debug(2, "%s", __FUNCTION__);
     if ((ret = snmp_common_handler(handler, nhreg, reqinfo, requests, &sh, 1)) < 0)
 	goto done;
@@ -382,30 +676,28 @@ clixon_snmp_table_handler(netsnmp_mib_handler          *handler,
 	clicon_debug(1, "%s Error table not registered", __FUNCTION__);
 	goto ok;
     }
+#ifdef SNMP_TABLE_DYNAMIC
+    requestvb = requests->requestvb;
+#endif
     switch(reqinfo->mode){
     case MODE_GET: // 160
 #ifdef SNMP_TABLE_DYNAMIC
-	/* Register table sub-oid:s of existing entries in clixon */
-	if (mibyang_table_poll(sh->sh_h, sh->sh_ys) < 0)
+	/* Create xpath from YANG table OID + 1 + n + cvk/key = requestvb->name 
+	 */
+	if ((ret = snmp_table_get(sh->sh_h, sh->sh_ys,
+				  requestvb->name, requestvb->name_length,
+				  reqinfo, requests)) < 0)
 	    goto done;
-#if 1
-	{
-	    if ((ret = netsnmp_call_next_handler(handler, nhreg, reqinfo, requests)) < 0){
-		clicon_err(OE_SNMP, ret, "netsnmp_call_next_handler");
-		goto done;
-	    }
-	}
+	if (ret == 0)
+            netsnmp_set_request_error(reqinfo, requests, SNMP_NOSUCHINSTANCE);
 #endif
-	// Wrong sh, need to make another call
-	//	if (snmp_scalar_get(sh->sh_h, sh->sh_ys, sh->sh_cvk_orig,
-	//		    requestvb, sh->sh_default, reqinfo, requests) < 0)
-#endif
-	// Then try and get actual scalar
 	break;
     case MODE_GETNEXT: // 161
 #ifdef SNMP_TABLE_DYNAMIC
 	/* Register table sub-oid:s of existing entries in clixon */
-	if (mibyang_table_poll(sh->sh_h, sh->sh_ys) < 0)
+	if (snmp_table_getnext(sh->sh_h, sh->sh_ys,
+			       requestvb->name, requestvb->name_length,
+			       reqinfo, requests) < 0)
 	    goto done;
 #endif
         break;
