@@ -156,7 +156,16 @@ snmp_msg_int2str(int msg)
 {
     return clicon_int2str(snmp_msg_map, msg);
 }
-/*! Should be netsnmp lib function, cant find it
+
+/*! Check equality of two OIDs
+ *
+ * @param[in] objid0     First OID vector 
+ * @param[in] objid0len  Length of first OID vector 
+ * @param[in] objid1     Second OID vector 
+ * @param[in] objid1len  Length of second OID vector 
+ * @retval   0  Equal
+ * @retval !=0  Not equal, see man memcmp
+ * (Should be netsnmp lib function, cant find it)
  */
 int
 oid_eq(const oid *objid0,
@@ -164,9 +173,183 @@ oid_eq(const oid *objid0,
        const oid *objid1,
        size_t     objid1len)
 {
-    if (objid0len != objid1len)
-	return 0;
-    return memcmp(objid0, objid1, objid0len*sizeof(*objid0));
+    if (objid0len < objid1len)
+	return -1;
+    else if (objid0len > objid1len)
+	return 1;
+    else
+	return memcmp(objid0, objid1, objid0len*sizeof(*objid0));
+}
+
+/*! Append a second OID to a first
+ * @param[in,out] objid0     First OID vector 
+ * @param[in,out] objid0len  Length of first OID vector 
+ * @param[in]     objid1     Second OID vector 
+ * @param[in]     objid1len  Length of second OID vector 
+ * @retval        0          OK
+ * @retval       -1          Error
+ * Assume objid0 is allocated with MAX_OID_LEN > oid0len+oid1len
+ */
+int
+oid_append(const oid *objid0,
+	   size_t    *objid0len,
+	   const oid *objid1,
+	   size_t     objid1len)
+{
+    void *dst;
+
+    dst =  (void*)objid0;
+    dst += (*objid0len)*sizeof(*objid0);
+    if (memcpy(dst, objid1, objid1len*sizeof(*objid0)) < 0){
+	clicon_err(OE_UNIX, errno, "memcpy");
+	return -1;
+    }
+    *objid0len += objid1len;
+    return 0;
+}
+
+/*! Print objid to file
+ * @see fprint_objid but prints symbolic
+ */
+int
+oid_cbuf(cbuf       *cb,
+	 const oid *objid,
+	 size_t     objidlen)
+{
+    size_t i;
+
+    for (i=0; i<objidlen; i++)
+	cprintf(cb, ".%lu", objid[i]);
+    return 0;
+}
+
+int
+oid_print(FILE      *f,
+	  const oid *objid,
+	  size_t     objidlen)
+{
+    int retval = -1;
+    cbuf *cb;
+
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    oid_cbuf(cb, objid, objidlen);
+    fprintf(stderr, "%s", cbuf_get(cb));
+    fprintf(stderr, "\n");
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
+/*! Variant of yang_type_get that follows leafrefs
+ */
+static int
+snmp_yang_type_get(yang_stmt  *ys,
+		   yang_stmt **yrefp,
+		   char      **origtypep,
+		   yang_stmt **yrestypep,
+		   char      **restypep)
+{
+    int        retval = -1;
+    yang_stmt *yrestype;        /* resolved type */
+    char      *restype;         /* resolved type */
+    char      *origtype = NULL; /* original type */
+    yang_stmt *ypath;
+    yang_stmt *yref = NULL;
+
+    /* Get yang type of leaf and trasnslate to ASN.1 */
+    if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+	goto done;
+    restype = yrestype?yang_argument_get(yrestype):NULL;
+    if (strcmp(restype, "leafref")==0){
+	if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL){
+	    clicon_err(OE_YANG, 0, "No path in leafref");
+	    goto done;
+	}
+	if (yang_path_arg(ys, yang_argument_get(ypath), &yref) < 0)
+	    goto done;
+	if (yref == NULL){ 
+	    clicon_err(OE_YANG, 0, "No referred YANG node found for leafref path %s", yang_argument_get(ypath));
+	    goto done;
+	}
+	if (origtype){
+	    free(origtype);
+	    origtype = NULL;
+	}
+	if (yang_type_get(yref, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+	    goto done;
+	restype = yrestype?yang_argument_get(yrestype):NULL;
+    }
+    if (yrefp){
+	if (yref)
+	    *yrefp = yref;
+	else
+	    *yrefp = ys;
+    }
+    if (origtypep){
+	*origtypep = origtype;
+	origtype = NULL;
+    }
+    if (yrestypep)
+	*yrestypep = yrestype;
+    if (restypep)
+	*restypep = restype;
+    retval = 0;
+ done:
+    if (origtype)
+	free(origtype);
+    return retval;
+}
+
+/*! Given a YANG node, return SMIv2 oid extension as OID 
+ * @param[in]  yn        Yang node
+ * @param[out] objid     OID vector, assume allocated with MAX_OID_LEN > oidlen
+ * @param[out] objidlen  Length of OID vector on return
+ * @param[out] objidstrp Pointer to string (direct not malloced) optional
+ * @retval     1         OK
+ * @retval     0         Invalid, not found
+ * @retval    -1         Error
+ */
+int
+yangext_oid_get(yang_stmt *yn,
+		oid       *objid,
+		size_t    *objidlen,
+    		char     **objidstrp)
+{
+    int        retval = -1;
+    int        exist = 0;
+    char      *oidstr = NULL;
+    yang_stmt *yref = NULL;
+    
+    if (yang_keyword_get(yn) == Y_LEAF){
+	if (snmp_yang_type_get(yn, &yref, NULL, NULL, NULL) < 0)
+	    goto done;
+    }
+    else
+	yref = yn;
+    /* Get OID from table /list  */
+    if (yang_extension_value(yref, "oid", IETF_YANG_SMIV2_NS, &exist, &oidstr) < 0)
+	goto done;
+    if (exist == 0 || oidstr == NULL){
+	clicon_debug(1, "OID not found as SMIv2 yang extension of %s", yang_argument_get(yref));
+	goto fail;
+    }
+    if (snmp_parse_oid(oidstr, objid, objidlen) == NULL){
+	clicon_err(OE_XML, errno, "snmp_parse_oid");
+	goto done;
+    }
+    if (objidstrp)
+	*objidstrp = oidstr;
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Duplicate clixon snmp handler struct
@@ -191,11 +374,6 @@ snmp_handle_clone(void *arg)
 	clicon_err(OE_UNIX, errno, "cvec_dup");
 	return NULL;
     }
-    if (sh0->sh_cvk_oid &&
-	(sh1->sh_cvk_oid = cvec_dup(sh0->sh_cvk_oid)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_dup");
-	return NULL;
-    }
     return (void*)sh1;
 }
 
@@ -211,8 +389,6 @@ snmp_handle_free(void *arg)
     if (sh != NULL){
 	if (sh->sh_cvk_orig)
 	    cvec_free(sh->sh_cvk_orig);
-	if (sh->sh_cvk_oid)
-	    cvec_free(sh->sh_cvk_oid);
 	if (sh->sh_table_info){
 	    if (sh->sh_table_info->indexes){
 		snmp_free_varbind(sh->sh_table_info->indexes);
@@ -240,33 +416,13 @@ type_yang2asn1(yang_stmt    *ys,
 	       int           extended)
 {
     int        retval = -1;
-    yang_stmt *yrestype;        /* resolved type */
     char      *restype;         /* resolved type */
     char      *origtype = NULL; /* original type */
     int        at;
-    yang_stmt *ypath;
-    yang_stmt *yref;
 
-    /* Get yang type of leaf and trasnslate to ASN.1 */
-    if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+    /* Get yang type of leaf and translate to ASN.1 */
+    if (snmp_yang_type_get(ys, NULL, &origtype, NULL, &restype) < 0)
 	goto done;
-    restype = yrestype?yang_argument_get(yrestype):NULL;
-    /* Special case: leafref, find original type */
-    if (strcmp(restype, "leafref")==0){
-	if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL){
-	    clicon_err(OE_YANG, 0, "No path in leafref");
-	    goto done;
-	}
-	if (yang_path_arg(ys, yang_argument_get(ypath), &yref) < 0)
-	    goto done;
-	if (origtype){
-	    free(origtype);
-	    origtype = NULL;
-	}
-	if (yang_type_get(yref, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
-	    goto done;
-	restype = yrestype?yang_argument_get(yrestype):NULL;
-    }
     /* Translate to asn.1 
      * First try original type, first type 
      */
@@ -312,9 +468,8 @@ type_snmp2xml(yang_stmt                  *ys,
     char        *cvstr;
     enum cv_type cvtype;
     cg_var      *cv = NULL;
-    yang_stmt   *yrestype;        /* resolved type */
-    char        *restype;         /* resolved type */
-    char        *origtype = NULL; /* original type */
+    char        *restype = NULL;         /* resolved type */
+    yang_stmt   *yrestype = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (valstr == NULL){
@@ -323,9 +478,8 @@ type_snmp2xml(yang_stmt                  *ys,
     }
     cvstr = (char*)clicon_int2str(snmp_type_map, requestvb->type);
     /* Get yang type of leaf and trasnslate to ASN.1 */
-    if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+    if (snmp_yang_type_get(ys, NULL, NULL, &yrestype, &restype) < 0)
 	goto done;
-    restype = yrestype?yang_argument_get(yrestype):NULL;
     /* special case for enum */
     if (strcmp(cvstr, "int32")==0 && strcmp(restype, "enumeration") == 0)
 	cvstr = "string";
@@ -399,8 +553,6 @@ type_snmp2xml(yang_stmt                  *ys,
     clicon_debug(2, "%s %d", __FUNCTION__, retval);
     if (cv)
 	cv_free(cv);
-    if (origtype)
-	free(origtype);
     return retval;
  fail:
     retval = 0;
@@ -427,8 +579,7 @@ type_xml2snmp_pre(char      *xmlstr0,
 {
     int        retval = -1;
     yang_stmt *yrestype;        /* resolved type */
-    char      *restype;         /* resolved type */
-    char      *origtype = NULL; /* original type */
+    char      *restype = NULL;         /* resolved type */
     char      *str = NULL;
     int        ret;
 
@@ -437,9 +588,8 @@ type_xml2snmp_pre(char      *xmlstr0,
 	goto done;
     }
     /* Get yang type of leaf and trasnslate to ASN.1 */
-    if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+    if (snmp_yang_type_get(ys, NULL, NULL, &yrestype, &restype) < 0) // XXX yrestype
 	goto done;
-    restype = yrestype?yang_argument_get(yrestype):NULL;
     if (strcmp(restype, "enumeration") == 0){ 	/* special case for enum */
 	if ((ret = yang_enum2valstr(yrestype, xmlstr0, &str)) < 0)
 	    goto done;
@@ -469,8 +619,6 @@ type_xml2snmp_pre(char      *xmlstr0,
     retval = 1;
  done:
     clicon_debug(2, "%s %d", __FUNCTION__, retval);
-    if (origtype)
-	free(origtype);
     return retval;
  fail:
     retval = 0;
@@ -608,17 +756,17 @@ type_xml2snmp(char       *snmpstr,
 
 /*! Construct an xpath from yang statement, internal fn using cb
  * Recursively construct it to the top.
- * @param[in]  ys      Yang statement
- * @param[in]  keyvec  Array of [name,val]s as a cvec of key name and values
- * @param[out] cb      xpath as cbuf
- * @retval     0       OK
- * @retval    -1       Error
+ * @param[in]  ys     Yang statement
+ * @param[in]  keyvec Cvec of key values
+ * @param[out] cb     xpath as cbuf
+ * @retval     0      OK
+ * @retval    -1      Error
  * @see yang2xpath
  */ 
 static int
-yang2xpath_cb(yang_stmt *ys, 
-	      cvec      *keyvec,
-	      cbuf      *cb)
+snmp_yang2xpath_cb(yang_stmt *ys, 
+		   cvec      *keyvec,
+		   cbuf      *cb)
 {
     yang_stmt *yp; /* parent */
     int        i;
@@ -633,7 +781,7 @@ yang2xpath_cb(yang_stmt *ys,
     if (yp != NULL && /* XXX rm */
 	yang_keyword_get(yp) != Y_MODULE && 
 	yang_keyword_get(yp) != Y_SUBMODULE){
-	if (yang2xpath_cb(yp, keyvec, cb) < 0) /* recursive call */
+	if (snmp_yang2xpath_cb(yp, keyvec, cb) < 0) /* recursive call */
 	    goto done;
 	if (yang_keyword_get(yp) != Y_CHOICE && yang_keyword_get(yp) != Y_CASE){
 	    cprintf(cb, "/");
@@ -670,10 +818,10 @@ yang2xpath_cb(yang_stmt *ys,
     return retval;
 }
 
-/*! Construct an xpath from yang statement
+/*! Construct an xpath from yang statement, limited to SNMP table translations
  * Recursively construct it to the top.
  * @param[in]  ys     Yang statement
- * @param[in]  keyvec Array of [name,val]s as a cvec of key name and values
+ * @param[in]  keyvec Cvec of key values
  * @param[out] xpath  Malloced xpath string, use free() after use
  * @retval     0      OK
  * @retval     -1     Error
@@ -682,9 +830,9 @@ yang2xpath_cb(yang_stmt *ys,
  * 2. It is far from complete so maybe keep it here as a special case
  */ 
 int
-yang2xpath(yang_stmt *ys,
-	   cvec      *keyvec,
-	   char     **xpath)
+snmp_yang2xpath(yang_stmt *ys,
+		cvec      *keyvec,
+		char     **xpath)
 {
     int   retval = -1;
     cbuf *cb = NULL;
@@ -693,7 +841,7 @@ yang2xpath(yang_stmt *ys,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    if (yang2xpath_cb(ys, keyvec, cb) < 0)
+    if (snmp_yang2xpath_cb(ys, keyvec, cb) < 0)
 	goto done;
     if (xpath && (*xpath = strdup(cbuf_get(cb))) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
@@ -706,27 +854,27 @@ yang2xpath(yang_stmt *ys,
     return retval;
 }
 
-/*! Translate from xml body to OID
+/*! Translate from xml body string to SMI OID representation
  * For ints this is one to one, eg 42 -> 42
- * But for eg strings this is more comples, eg foo -> 3.6.22.22 (or something,...)
+ * But for eg strings this is more complex, eg foo -> 3.6.22.22 (or something,...)
+ * @param[in]  str      XML body string
+ * @param[in]  yi       Yang statement
+ * @param[out] objid    OID vector 
+ * @param[out] objidlen Length of OID vector 
  */
 int
-snmp_body2oid(cxobj  *xi,
-	      cg_var *cv)
+snmp_str2oid(char      *str,
+	     yang_stmt *yi,
+	     oid       *objid,
+	     size_t    *objidlen)	     
 {
     int        retval = -1;
-    yang_stmt *yi;
     int        asn1_type;
-    char      *body;
-    size_t     len;
-    cbuf      *enc = NULL;
     int        i;
+    int        j = 0;
 
-    if ((yi = xml_spec(xi)) == NULL)
-	goto ok;
     if (type_yang2asn1(yi, &asn1_type, 0) < 0)
 	goto done;
-    body = xml_body(xi);
     switch (asn1_type){
     case ASN_INTEGER:
     case ASN_GAUGE:
@@ -734,30 +882,76 @@ snmp_body2oid(cxobj  *xi,
     case ASN_COUNTER64:
     case ASN_COUNTER:
     case ASN_IPADDRESS:
-	if (cv_string_set(cv, body) < 0){
-	    clicon_err(OE_UNIX, errno, "cv_string_set");
-	    goto done;
-	}
+	objid[j++] = atoi(str);
 	break;
     case ASN_OCTET_STR:{ /* encode to N.c.c.c.c */
-	if ((enc = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	len = strlen(body);
-	cprintf(enc, "%zu", len);
-	for (i=0; i<len; i++)
-	    cprintf(enc, ".%u", body[i]&0xff);
-	if (cv_string_set(cv, cbuf_get(enc)) < 0){
-	    clicon_err(OE_UNIX, errno, "cv_string_set");
-	    goto done;
-	}
+	objid[j++] = strlen(str);
+	for (i=0; i<strlen(str); i++)
+	    objid[j++] = str[i]&0xff;
 	break;
     }
     default:
 	break;
     }
- ok:
+    *objidlen = j;
+    // ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Translate from SMI OID representation to name
+ * For ints this is one to one, eg 42 -> 42
+ * But for eg strings this is more comples, eg foo -> 3.6.22.22 (or something,...)
+ * @param[in,out] oidi     ObjID vector
+ * @param[in,out] oidilen  Length of ObjID vector
+ * @param[in]     yk       Yang statement of key
+ * @param[out]    cv       CLIgen variable string notation as "x.y.z"
+ */
+int
+snmp_oid2str(oid      **oidi,
+	     size_t    *oidilen,
+	     yang_stmt *yk,
+	     cg_var    *cv)
+{
+    int    retval = -1;
+    int    asn1_type;
+    int    i = 0;
+    cbuf  *enc = NULL;
+    size_t len;
+
+    if (type_yang2asn1(yk, &asn1_type, 0) < 0)
+	goto done;
+    if ((enc = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    switch (asn1_type){
+    case ASN_INTEGER:
+    case ASN_GAUGE:
+    case ASN_TIMETICKS:
+    case ASN_COUNTER64:
+    case ASN_COUNTER:
+    case ASN_IPADDRESS:
+	cprintf(enc, "%lu", (*oidi)[i++]);
+	if (cv_string_set(cv, cbuf_get(enc)) < 0){
+	    clicon_err(OE_UNIX, errno, "cv_string_set");
+	    goto done;
+	}
+	break;
+    case ASN_OCTET_STR: /* decode from N.c.c.c.c */
+	len = (*oidi)[i++];
+	for (; i<len; i++){
+	    cprintf(enc, "%c", (char)((*oidi)[i]&0xff));
+	}
+	break;
+    default:
+	break;
+    }
+    if (i){
+	(*oidi) += i;
+	(*oidilen) -= i;
+    }
     retval = 0;
  done:
     if (enc)
@@ -812,6 +1006,79 @@ clixon_snmp_err_cb(void *handle,
     return 0;
 }
 
+/*! Given a XML list entry, return value and OID vector
+ *
+ * Given an XML list/table entry x with keys [i,j], such as:
+ *   <x><i>1</i><j>a</j>...</x>
+ * where i and j are list keys (table indexes)
+ * Return two vectors:
+ * - cvk_val: A vector of key values: [1,a]
+ * - cvk_oid: A vector of OIDs: [1, 1.97]
+ *
+ * @param[in]  xentry   XML list entry
+ * @param[in]  cvk_name Vector of list keys
+ * @param[out] cvk_val  Vector of XML key values
+ * @param[out] objidk   OID key part, to be appended to node OID
+ * @retval     -1       Error
+ * @retval     0        Invalid (not all indexes present)
+ * @retval     1        OK
+ * Both cvk_val and cvk_oid can be re-used in successive calls but need to be freed w cvec_free after use
+ */
+int
+snmp_xmlkey2val_oid(cxobj     *xentry,
+		    cvec      *cvk_name,
+		    cvec     **cvk_val,
+		    oid       *objidk,
+		    size_t    *objidklen)
+{
+    int     retval = -1;
+    cxobj  *xi;
+    int     i;
+    cg_var *cv;
+    cg_var *cv0;
+    oid     objid[MAX_OID_LEN] = {0,};
+    size_t  objidlen = MAX_OID_LEN;
+    
+    *objidklen = 0;
+    if (cvk_val){
+	if (*cvk_val){
+	    cvec_free(*cvk_val);
+	    if ((*cvk_val = cvec_dup(cvk_name)) == NULL){
+		clicon_err(OE_UNIX, errno, "cvec_dup");
+		goto done;
+	    }
+	}
+	else if ((*cvk_val = cvec_dup(cvk_name)) == NULL){
+	    clicon_err(OE_UNIX, errno, "cvec_dup");
+	    goto done;
+	}
+    }
+    for (i=0; i<cvec_len(cvk_name); i++){
+	cv0 = cvec_i(cvk_name, i); 
+	if ((xi = xml_find_type(xentry, NULL, cv_string_get(cv0), CX_ELMNT)) == NULL)
+	    break;
+	if (cvk_val){
+	    cv = cvec_i(*cvk_val, i); 
+	    if (cv_string_set(cv, xml_body(xi)) < 0){
+		clicon_err(OE_UNIX, errno, "cv_string_set");
+		goto done;
+	    }
+	}
+	if (snmp_str2oid(xml_body(xi), xml_spec(xi), objid, &objidlen) < 0)
+	    goto done;
+	if (oid_append(objidk, objidklen, objid, objidlen) < 0)
+	    goto done;
+    }
+    if (i < cvec_len(cvk_name))
+	goto fail; /* skip row, not all indexes */
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*========== libnetsnmp-specific code ===============
  * Peeks into internal lib global variables, may be sensitive to library change
  */
@@ -859,8 +1126,7 @@ clixon_snmp_api_oid_find(oid   *oid0,
     netsnmp_subtree *tree1 = NULL;
     
     if ((tree1 = netsnmp_subtree_find(oid0, oid0len, NULL, "")) != NULL &&
-	oid_eq(oid0, oid0len, tree1->name_a, tree1->namelen)){
-	fprintf(stderr, "%s EQUAL==================\n", __FUNCTION__);
+	oid_eq(oid0, oid0len, tree1->name_a, tree1->namelen)==0){
 	retval = 1;
     }
     else
@@ -868,3 +1134,4 @@ clixon_snmp_api_oid_find(oid   *oid0,
     // done:
     return retval;
 }
+
