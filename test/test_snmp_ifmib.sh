@@ -40,7 +40,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
   <CLICON_SNMP_MIB>IF-MIB</CLICON_SNMP_MIB>
-  <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
+  <CLICON_VALIDATE_STATE_XML>false</CLICON_VALIDATE_STATE_XML>
 </clixon-config>
 EOF
 
@@ -117,6 +117,20 @@ cat <<EOF > $fstate
       <ifSpecific>1.2.3</ifSpecific>
     </ifEntry>
   </ifTable>
+  <ifRcvAddressTable>
+    <ifRcvAddressEntry>
+      <ifIndex>1</ifIndex>
+      <ifRcvAddressAddress>11:bb:cc:dd:ee:ff</ifRcvAddressAddress>
+      <ifRcvAddressStatus>active</ifRcvAddressStatus>
+      <ifRcvAddressType>other</ifRcvAddressType>
+    </ifRcvAddressEntry>
+    <ifRcvAddressEntry>
+      <ifIndex>2</ifIndex>
+      <ifRcvAddressAddress>aa:22:33:44:55:66</ifRcvAddressAddress>
+      <ifRcvAddressStatus>createAndGo</ifRcvAddressStatus>
+      <ifRcvAddressType>volatile</ifRcvAddressType>
+    </ifRcvAddressEntry>
+  </ifRcvAddressTable>
 </IF-MIB>
 EOF
 
@@ -190,6 +204,13 @@ for (( i=1; i<23; i++ )); do
     eval OID${i}="${MIB}.2.2.1.$i.1"
 done
 
+OID24=".1.3.6.1.2.1.31.1.4.1.1.1.17.49.49.58.98.98.58.99.99.58.100.100.58.101.101.58.102.102"
+OID25=".1.3.6.1.2.1.31.1.4.1.1.2.17.97.97.58.50.50.58.51.51.58.52.52.58.53.53.58.54.54"
+OID26=".1.3.6.1.2.1.31.1.4.1.2.1.17.49.49.58.98.98.58.99.99.58.100.100.58.101.101.58.102.102"
+OID27=".1.3.6.1.2.1.31.1.4.1.2.2.17.97.97.58.50.50.58.51.51.58.52.52.58.53.53.58.54.54"
+OID28=".1.3.6.1.2.1.31.1.4.1.3.1.17.49.49.58.98.98.58.99.99.58.100.100.58.101.101.58.102.102"
+OID29=".1.3.6.1.2.1.31.1.4.1.3.2.17.97.97.58.50.50.58.51.51.58.52.52.58.53.53.58.54.54"
+
 NAME1="IF-MIB::ifIndex"
 NAME2="IF-MIB::ifDescr"
 NAME3="IF-MIB::ifType"
@@ -212,6 +233,12 @@ NAME19="IF-MIB::ifOutDiscards"
 NAME20="IF-MIB::ifOutErrors"
 NAME21="IF-MIB::ifOutQLen"
 NAME22="IF-MIB::ifSpecific"
+NAME24="IF-MIB::ifRcvAddressAddress.1.\"11:bb:Cc:dd:ee:ff\""
+NAME25="IF-MIB::ifRcvAddressAddress.2.\"aa:22:33:44:55:66\""
+NAME26="IF-MIB::ifRcvAddressStatus.1.\"11:bb:cc:dd:ee:ff\""
+NAME27="IF-MIB::ifRcvAddressStatus.2.\"aa:22:33:44:55:66\""
+NAME28="IF-MIB::ifRcvAddressType.1.\"11:bb:cc:dd:ee:ff\""
+NAME29="IF-MIB::ifRcvAddressType.2.\"aa:22:33:44:55:66\""
 
 new "$snmpget"
 
@@ -375,6 +402,66 @@ expectpart "$($snmpwalk IF-MIB::ifTable)" 0 "IF-MIB::ifIndex.1 = INTEGER: 1" \
            "IF-MIB::ifOutQLen.2 = Gauge32: 111" \
            "IF-MIB::ifSpecific.1 = OID: SNMPv2-SMI::zeroDotZero" \
            "IF-MIB::ifSpecific.2 = OID: iso.2.3"
+
+new "Test $OID24"
+validate_oid $OID24 $OID24 "STRING" "11:bb:cc:dd:ee:ff"
+#validate_oid $NAME24 $NAME24 "STRING" "11:bb:cc:dd:ee:ff"
+
+new "Get next $OID24"
+validate_oid $OID24 $OID25 "STRING" "aa:22:33:44:55:66"
+# validate_oid $NAME24 $NAME25 "STRING" "aa:22:33:44:55:66"
+
+new "Get $NAME25"
+
+validate_oid $OID25 $OID25 "STRING" "aa:22:33:44:55:66"
+# validate_oid $NAME25 $NAME25 "STRING" "aa:22:33:44:55:66"
+
+new "Get next $OID25"
+
+validate_oid $OID25 $OID26 "INTEGER" "active(1)"
+# validate_oid $NAME25 $NAME26 "INTEGER" "active(1)"
+
+new "Get $OID26"
+
+validate_oid $OID26 $OID26 "INTEGER" "active(1)"
+# validate_oid $NAME26 $NAME26 "INTEGER" "active(1)"
+
+new "Get next $OID26"
+
+validate_oid $OID26 $OID27 "INTEGER" "createAndGo(4)"
+# validate_oid $NAME26 $NAME27 "INTEGER" "createAndGo(4)"
+
+new "Get $OID27"
+
+validate_oid $OID27 $OID27 "INTEGER" "createAndGo(4)"
+# validate_oid $NAME27 $NAME27 "INTEGER" "createAndGo(4)"
+
+new "Get next $OID27"
+
+validate_oid $OID27 $OID28 "INTEGER" "other(1)"
+# validate_oid $NAME27 $NAME28 "INTEGER" "other(1)"
+
+new "Get $OID28"
+
+validate_oid $OID28 $OID28 "INTEGER" "other(1)"
+# validate_oid $NAME28 $NAME28 "INTEGER" "other(1)"
+
+new "Get next $OID28"
+
+validate_oid $OID28 $OID29 "INTEGER" "volatile(2)"
+# validate_oid $NAME28 $NAME29 "INTEGER" "volatile(2)"
+
+new "Test ifTable"
+expectpart "$($snmptable IF-MIB::ifRcvAddressTable)" 0 "SNMP table: IF-MIB::ifRcvAddressTable" "ifRcvAddressStatus" "ifRcvAddressType" "active" "other" "createAndGo" "volatile"
+
+new "Walk ifRcvTable"
+expectpart "$($snmpwalk IF-MIB::ifRcvAddressTable)" 0 "IF-MIB::ifRcvAddressAddress.1.\"11:bb:cc:dd:ee:ff\" = STRING: 11:bb:cc:dd:ee:ff" \
+           "IF-MIB::ifRcvAddressAddress.2.\"aa:22:33:44:55:66\" = STRING: aa:22:33:44:55:66" \
+           "IF-MIB::ifRcvAddressStatus.1.\"11:bb:cc:dd:ee:ff\" = INTEGER: active(1)" \
+           "IF-MIB::ifRcvAddressStatus.2.\"aa:22:33:44:55:66\" = INTEGER: createAndGo(4)" \
+           "IF-MIB::ifRcvAddressType.1.\"11:bb:cc:dd:ee:ff\" = INTEGER: other(1)" \
+           "IF-MIB::ifRcvAddressType.2.\"aa:22:33:44:55:66\" = INTEGER: volatile(2)"
+
 testexit
 
 new "endtest"

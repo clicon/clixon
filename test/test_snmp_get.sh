@@ -126,7 +126,6 @@ function testexit(){
 new "SNMP tests"
 testinit
 
-# NET-SNMP-EXAMPLES-MIB::netSnmpExamples
 MIB=".1.3.6.1.4.1.8072.200"
 OID1="${MIB}.1.1"      # netSnmpExampleInteger
 OID2="${MIB}.1.2"      # netSnmpExampleSleeper
