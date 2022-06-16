@@ -254,6 +254,7 @@ if $SNMPCHECK; then
         oid2=$2
         type=$3
         value=$4
+        result=$5
 
         name="$($snmptranslate $oid)"
         name2="$($snmptranslate $oid2)"
@@ -267,11 +268,19 @@ if $SNMPCHECK; then
         fi
 
         if [ $oid == $oid2 ]; then
+            if [ -z "$result" ]; then
+                result="$oid = $type: $value"
+            fi
+
             new "Validating OID: $oid2 = $type: $value"
-            expectpart "$($get $oid)" 0 "$oid = $type: $value"
+            expectpart "$($get $oid)" 0 $result
         else
+            if [ -z "$result" ]; then
+                result="$oid2 = $type: $value"
+            fi
+
             new "Validating next OID: $oid2 = $type: $value"
-            expectpart "$($getnext $oid)" 0 "$oid2 = $type: $value"
+            expectpart "$($getnext $oid)" 0 $result
         fi
     }
 
