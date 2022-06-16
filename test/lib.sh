@@ -273,14 +273,14 @@ if $SNMPCHECK; then
             fi
 
             new "Validating OID: $oid2 = $type: $value"
-            expectpart "$($get $oid)" 0 $result
+            expectpart "$($get $oid)" 0 "$result"
         else
             if [ -z "$result" ]; then
                 result="$oid2 = $type: $value"
             fi
 
             new "Validating next OID: $oid2 = $type: $value"
-            expectpart "$($getnext $oid)" 0 $result
+            expectpart "$($getnext $oid)" 0 "$result"
         fi
     }
 
