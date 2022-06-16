@@ -233,12 +233,13 @@ NAME19="IF-MIB::ifOutDiscards"
 NAME20="IF-MIB::ifOutErrors"
 NAME21="IF-MIB::ifOutQLen"
 NAME22="IF-MIB::ifSpecific"
-NAME24="IF-MIB::ifRcvAddressAddress.1.\"11:bb:Cc:dd:ee:ff\""
-NAME25="IF-MIB::ifRcvAddressAddress.2.\"aa:22:33:44:55:66\""
-NAME26="IF-MIB::ifRcvAddressStatus.1.\"11:bb:cc:dd:ee:ff\""
-NAME27="IF-MIB::ifRcvAddressStatus.2.\"aa:22:33:44:55:66\""
-NAME28="IF-MIB::ifRcvAddressType.1.\"11:bb:cc:dd:ee:ff\""
-NAME29="IF-MIB::ifRcvAddressType.2.\"aa:22:33:44:55:66\""
+
+NAME24="IF-MIB::ifRcvAddressAddress.1.17.49.49.58.98.98.58.99.99.58.100.100.58.101.101.58.102.102"
+NAME25="IF-MIB::ifRcvAddressAddress.2.17.97.97.58.50.50.58.51.51.58.52.52.58.53.53.58.54.54"
+NAME26="IF-MIB::ifRcvAddressStatus.1.17.49.49.58.98.98.58.99.99.58.100.100.58.101.101.58.102.102"
+NAME27="IF-MIB::ifRcvAddressStatus.2.17.97.97.58.50.50.58.51.51.58.52.52.58.53.53.58.54.54"
+NAME28="IF-MIB::ifRcvAddressType.1.17.49.49.58.98.98.58.99.99.58.100.100.58.101.101.58.102.102"
+NAME29="IF-MIB::ifRcvAddressType.2.17.97.97.58.50.50.58.51.51.58.52.52.58.53.53.58.54.54"
 
 new "$snmpget"
 
@@ -405,51 +406,51 @@ expectpart "$($snmpwalk IF-MIB::ifTable)" 0 "IF-MIB::ifIndex.1 = INTEGER: 1" \
 
 new "Test $OID24"
 validate_oid $OID24 $OID24 "STRING" "11:bb:cc:dd:ee:ff"
-#validate_oid $NAME24 $NAME24 "STRING" "11:bb:cc:dd:ee:ff"
+validate_oid $NAME24 $NAME24 "STRING" "11:bb:cc:dd:ee:ff" "IF-MIB::ifRcvAddressAddress.1.\"11:bb:cc:dd:ee:ff\" = STRING: 11:bb:cc:dd:ee:ff"
 
 new "Get next $OID24"
 validate_oid $OID24 $OID25 "STRING" "aa:22:33:44:55:66"
-# validate_oid $NAME24 $NAME25 "STRING" "aa:22:33:44:55:66"
+validate_oid $NAME24 $NAME25 "STRING" "aa:22:33:44:55:66" "IF-MIB::ifRcvAddressAddress.2.\"aa:22:33:44:55:66\" = STRING: aa:22:33:44:55:66"
 
 new "Get $NAME25"
 
 validate_oid $OID25 $OID25 "STRING" "aa:22:33:44:55:66"
-# validate_oid $NAME25 $NAME25 "STRING" "aa:22:33:44:55:66"
+validate_oid $NAME25 $NAME25 "STRING" "aa:22:33:44:55:66" "IF-MIB::ifRcvAddressAddress.2.\"aa:22:33:44:55:66\" = STRING: aa:22:33:44:55:66"
 
 new "Get next $OID25"
 
 validate_oid $OID25 $OID26 "INTEGER" "active(1)"
-# validate_oid $NAME25 $NAME26 "INTEGER" "active(1)"
+validate_oid $NAME25 $NAME26 "INTEGER" "active(1)" "IF-MIB::ifRcvAddressStatus.1.\"11:bb:cc:dd:ee:ff\" = INTEGER: active(1)"
 
 new "Get $OID26"
 
 validate_oid $OID26 $OID26 "INTEGER" "active(1)"
-# validate_oid $NAME26 $NAME26 "INTEGER" "active(1)"
+validate_oid $NAME26 $NAME26 "INTEGER" "active(1)" "IF-MIB::ifRcvAddressStatus.1.\"11:bb:cc:dd:ee:ff\" = INTEGER: active(1)"
 
 new "Get next $OID26"
 
 validate_oid $OID26 $OID27 "INTEGER" "createAndGo(4)"
-# validate_oid $NAME26 $NAME27 "INTEGER" "createAndGo(4)"
+validate_oid $NAME26 $NAME27 "INTEGER" "createAndGo(4)" "IF-MIB::ifRcvAddressStatus.2.\"aa:22:33:44:55:66\" = INTEGER: createAndGo(4)"
 
 new "Get $OID27"
 
 validate_oid $OID27 $OID27 "INTEGER" "createAndGo(4)"
-# validate_oid $NAME27 $NAME27 "INTEGER" "createAndGo(4)"
+validate_oid $NAME27 $NAME27 "INTEGER" "createAndGo(4)" "IF-MIB::ifRcvAddressStatus.2.\"aa:22:33:44:55:66\" = INTEGER: createAndGo(4)"
 
 new "Get next $OID27"
 
 validate_oid $OID27 $OID28 "INTEGER" "other(1)"
-# validate_oid $NAME27 $NAME28 "INTEGER" "other(1)"
+validate_oid $NAME27 $NAME28 "INTEGER" "other(1)" "IF-MIB::ifRcvAddressType.1.\"11:bb:cc:dd:ee:ff\" = INTEGER: other(1)"
 
 new "Get $OID28"
 
 validate_oid $OID28 $OID28 "INTEGER" "other(1)"
-# validate_oid $NAME28 $NAME28 "INTEGER" "other(1)"
+validate_oid $NAME28 $NAME28 "INTEGER" "other(1)" "IF-MIB::ifRcvAddressType.1.\"11:bb:cc:dd:ee:ff\" = INTEGER: other(1)"
 
 new "Get next $OID28"
 
 validate_oid $OID28 $OID29 "INTEGER" "volatile(2)"
-# validate_oid $NAME28 $NAME29 "INTEGER" "volatile(2)"
+validate_oid $NAME28 $NAME29 "INTEGER" "volatile(2)" "IF-MIB::ifRcvAddressType.2.\"aa:22:33:44:55:66\" = INTEGER: volatile(2)"
 
 new "Test ifTable"
 expectpart "$($snmptable IF-MIB::ifRcvAddressTable)" 0 "SNMP table: IF-MIB::ifRcvAddressTable" "ifRcvAddressStatus" "ifRcvAddressType" "active" "other" "createAndGo" "volatile"
