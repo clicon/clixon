@@ -165,7 +165,7 @@ snmp_msg_int2str(int msg)
  * @param[in] objid1len  Length of second OID vector 
  * @retval   0  Equal
  * @retval !=0  Not equal, see man memcmp
- * (Should be netsnmp lib function, cant find it)
+ * Should really be netsnmp lib function, but cant find any?
  */
 int
 oid_eq(const oid *objid0,
@@ -173,12 +173,24 @@ oid_eq(const oid *objid0,
        const oid *objid1,
        size_t     objid1len)
 {
+    size_t min;
+    int    ret;
+
+    if (objid0len < objid1len)
+	min = objid0len;
+    else
+	min = objid1len;
+    /* First compare common prefix */
+    ret = memcmp(objid0, objid1, min*sizeof(*objid0));
+    if (ret != 0)
+	return ret;
+    /* If equal, check lengths */
     if (objid0len < objid1len)
 	return -1;
     else if (objid0len > objid1len)
 	return 1;
     else
-	return memcmp(objid0, objid1, objid0len*sizeof(*objid0));
+	return 0;
 }
 
 /*! Append a second OID to a first
@@ -470,6 +482,7 @@ type_snmp2xml(yang_stmt                  *ys,
     cg_var      *cv = NULL;
     char        *restype = NULL;         /* resolved type */
     yang_stmt   *yrestype = NULL;
+    int          ret;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (valstr == NULL){
@@ -540,7 +553,10 @@ type_snmp2xml(yang_stmt                  *ys,
     default:
 	assert(0); // XXX
 	clicon_debug(1, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
-	netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
+	if ((ret = netsnmp_request_set_error(requests, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
+	    clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
+	    goto done;
+	}
 	goto fail;
 	break;
     }
@@ -934,19 +950,21 @@ snmp_oid2str(oid      **oidi,
     case ASN_COUNTER:
     case ASN_IPADDRESS:
 	cprintf(enc, "%lu", (*oidi)[i++]);
-	if (cv_string_set(cv, cbuf_get(enc)) < 0){
-	    clicon_err(OE_UNIX, errno, "cv_string_set");
-	    goto done;
-	}
 	break;
     case ASN_OCTET_STR: /* decode from N.c.c.c.c */
 	len = (*oidi)[i++];
-	for (; i<len; i++){
+	for (; i<len+1; i++){
 	    cprintf(enc, "%c", (char)((*oidi)[i]&0xff));
 	}
 	break;
     default:
 	break;
+    }
+    if (cbuf_len(enc)){
+	if (cv_string_set(cv, cbuf_get(enc)) < 0){
+	    clicon_err(OE_UNIX, errno, "cv_string_set");
+	    goto done;
+	}
     }
     if (i){
 	(*oidi) += i;
