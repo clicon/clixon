@@ -140,7 +140,10 @@ snmp_scalar_return(cxobj                      *xs,
 	if ((ret = type_xml2snmp_pre(xml_body(xs), ys, &xmlstr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGVALUE);
+	    if ((ret = netsnmp_request_set_error(requests, SNMP_ERR_WRONGVALUE)) != SNMPERR_SUCCESS){
+		clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
+		goto done;
+	    }
 	    goto ok;
 	}
     }
@@ -151,7 +154,10 @@ snmp_scalar_return(cxobj                      *xs,
 	}
     }
     else{
-	netsnmp_set_request_error(reqinfo, requests, SNMP_NOSUCHINSTANCE);
+	if ((ret = netsnmp_request_set_error(requests, SNMP_NOSUCHINSTANCE)) != SNMPERR_SUCCESS){
+	    clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
+	    goto done;
+	}
 	goto ok;
     }
     if (type_yang2asn1(ys, &asn1type, 1) < 0)
@@ -160,7 +166,10 @@ snmp_scalar_return(cxobj                      *xs,
 	goto done;
     if (ret == 0){
 	clicon_debug(1, "%s %s", __FUNCTION__, reason);
-	netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
+	if ((ret = netsnmp_request_set_error(requests, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
+	    clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
+	    goto done;
+	}
 	goto ok;
     }
     /* see snmplib/snmp_client. somewhat indirect
@@ -245,7 +254,10 @@ snmp_scalar_get(clicon_handle               h,
 	if ((ret = type_xml2snmp_pre(xml_body(x), ys, &xmlstr)) < 0)
 	    goto done;
 	if (ret == 0){
-	    netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGVALUE);
+	    if ((ret = netsnmp_request_set_error(requests, SNMP_ERR_WRONGVALUE)) != SNMPERR_SUCCESS){
+		clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
+		goto done;
+	    }
 	    goto ok;
 	}
     }
@@ -256,7 +268,10 @@ snmp_scalar_get(clicon_handle               h,
 	}
     }
     else{
-	netsnmp_set_request_error(reqinfo, requests, SNMP_NOSUCHINSTANCE);
+	if ((ret = netsnmp_request_set_error(requests, SNMP_NOSUCHINSTANCE)) != SNMPERR_SUCCESS){
+	    clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
+	    goto done;
+	}
 	goto ok;
     }
     if (type_yang2asn1(ys, &asn1type, 1) < 0)
@@ -265,7 +280,10 @@ snmp_scalar_get(clicon_handle               h,
 	goto done;
     if (ret == 0){
 	clicon_debug(1, "%s %s", __FUNCTION__, reason);
-	netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_WRONGTYPE);
+	if ((ret = netsnmp_request_set_error(requests, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
+	    clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
+	    goto done;
+	}
 	goto ok;
     }
     /* see snmplib/snmp_client. somewhat indirect
@@ -371,6 +389,7 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
     clixon_snmp_handle    *sh = NULL;
     int                    asn1_type;
     netsnmp_variable_list *requestvb = requests->requestvb;
+    int                    ret;
 
     clicon_debug(2, "%s", __FUNCTION__);
     if (snmp_common_handler(handler, nhreg, reqinfo, requests, &sh, 0) < 0)
@@ -391,8 +410,10 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
 	    goto done;
         if (requestvb->type != asn1_type){
 	    clicon_debug(1, "%s Expected type:%d, got: %d", __FUNCTION__, requestvb->type, asn1_type);
-            netsnmp_set_request_error(reqinfo, requests,
-                                      SNMP_ERR_WRONGTYPE);
+	    if ((ret = netsnmp_request_set_error(requests, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
+		clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
+		goto done;
+	    }
 	}
         break;
     case MODE_SET_RESERVE2: /* 1 */
@@ -496,6 +517,7 @@ snmp_table_get(clicon_handle               h,
 	clicon_err(OE_UNIX, errno, "cvec_dup");
 	goto done;
     }
+    /* read through keys and create cvk */
     oidilen = oidslen-(oidtlen+1);
     oidi = oids+oidtlen+1;
     /* Add keys */
@@ -536,8 +558,9 @@ snmp_table_get(clicon_handle               h,
  * @param[in]  ylist   Yang of table (of list type)
  * @param[in]  oids    OID of ultimate scalar value
  * @param[in]  oidslen OID length of scalar
- * @retval     -1      Error
- * @retval     0       OK
+ * @retval     1       OK
+ * @retval     0       Failed
+ * @retval    -1       Error
  */
 static int
 snmp_table_getnext(clicon_handle               h,
@@ -563,9 +586,13 @@ snmp_table_getnext(clicon_handle               h,
     size_t     oidclen = MAX_OID_LEN;
     oid        oidk[MAX_OID_LEN] = {0,}; /* Key oid */
     size_t     oidklen = MAX_OID_LEN;
-    int        getnext = 0; 
+    oid        oidnext[MAX_OID_LEN] = {0x7fffffff,}; /* Next oid: start with high value */
+    size_t     oidnextlen = MAX_OID_LEN;
     int        found = 0; 
-    
+    cxobj     *xnext = NULL;
+    yang_stmt *ynext = NULL;
+    cbuf      *cb = NULL;
+
     clicon_debug(1, "%s", __FUNCTION__);
     if ((ys = yang_parent_get(ylist)) == NULL ||
 	yang_keyword_get(ys) != Y_CONTAINER){
@@ -606,29 +633,32 @@ snmp_table_getnext(clicon_handle               h,
 		/* Append key oid */
 		if (oid_append(oidc, &oidclen, oidk, oidklen) < 0)
 		    goto done;
-		if (getnext){
-		    found++; /* return this */
-		    break;
-		}
-		/* Match oidc - key */
-		if ((ret = oid_eq(oidc, oidclen, oids, oidslen)) == 0){
-		    getnext++; /* return next object if any */
-		}
-		else if (ret > 0){
-		    found++; /* return this */
-		    break;
+		/* Get smallest larger */
+		if (oid_eq(oidc, oidclen, oids, oidslen) > 0 &&
+		    oid_eq(oidc, oidclen, oidnext, oidnextlen) < 0){
+		    memcpy(oidnext, oidc, oidclen*sizeof(*oidnext));
+		    oidnextlen = oidclen;
+		    xnext = xcol;
+		    ynext = ycol;
+		    found++;
 		}
 	    } /* while xcol */
-	    if (found)
-		break;
 	} /* while xrow */
     }
     if (found){
-	if (snmp_scalar_return(xcol, ycol, oidc, oidclen, reqinfo, requests) < 0)
+	if (snmp_scalar_return(xnext, ynext, oidnext, oidnextlen, reqinfo, requests) < 0)
 	    goto done;
+	if ((cb = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	oid_cbuf(cb, oidnext, oidnextlen);
+	clicon_debug(1, "%s next: %s", __FUNCTION__, cbuf_get(cb));
     }
-    retval = 0;
+    retval = found;
  done:
+    if (cb)
+	cbuf_free(cb);
     if (xpath)
 	free(xpath);
     if (xt)
@@ -688,17 +718,31 @@ clixon_snmp_table_handler(netsnmp_mib_handler          *handler,
 				  requestvb->name, requestvb->name_length,
 				  reqinfo, requests)) < 0)
 	    goto done;
-	if (ret == 0)
-            netsnmp_set_request_error(reqinfo, requests, SNMP_NOSUCHINSTANCE);
+	if (ret == 0){
+	    if ((ret = netsnmp_request_set_error(requests, SNMP_NOSUCHINSTANCE)) != SNMPERR_SUCCESS){
+		clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
+		goto done;
+	    }
+	    clicon_debug(1, "%s Nosuchinstance", __FUNCTION__);
+	}
 #endif
 	break;
     case MODE_GETNEXT: // 161
 #ifdef SNMP_TABLE_DYNAMIC
 	/* Register table sub-oid:s of existing entries in clixon */
-	if (snmp_table_getnext(sh->sh_h, sh->sh_ys,
-			       requestvb->name, requestvb->name_length,
-			       reqinfo, requests) < 0)
+	if ((ret = snmp_table_getnext(sh->sh_h, sh->sh_ys,
+				      requestvb->name, requestvb->name_length,
+				      reqinfo, requests)) < 0)
 	    goto done;
+	if (ret == 0){
+	    //	    if ((ret = netsnmp_request_set_error(requests, SNMP_NOSUCHOBJECT)) != SNMPERR_SUCCESS){
+	    if ((ret = netsnmp_request_set_error(requests, SNMP_NOSUCHOBJECT)) != SNMPERR_SUCCESS){
+
+		clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
+		goto done;
+	    }
+	    clicon_debug(1, "%s No such object", __FUNCTION__);
+	}
 #endif
         break;
     case MODE_SET_RESERVE1:
