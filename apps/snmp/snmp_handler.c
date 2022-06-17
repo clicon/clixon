@@ -489,11 +489,14 @@ snmp_table_get(clicon_handle               h,
     while ((ys = yn_each(yt, ys)) != NULL) {
 	if (yang_keyword_get(ys) != Y_LEAF)
 	    continue;
+	/* reset oid */
+	oidleaflen = MAX_OID_LEN;
 	if ((ret = yangext_oid_get(ys, oidleaf, &oidleaflen, NULL)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto done;
-	assert(oidtlen + 1 == oidleaflen);
+	if (oidtlen + 1 != oidleaflen) /* Indexes may be from other OID scope, skip those */
+	    continue;
 	if (oids[oidleaflen-1] == oidleaf[oidleaflen-1])
 	    break;
     }

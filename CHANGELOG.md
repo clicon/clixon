@@ -49,9 +49,7 @@
     * `--enable-netsnmp`
     * `--with-mib-generated-yang-dir=DIR`
   * Current limitations:
-    * Only static tables
-    * No advanced table indexes, (only integers)
-    * Memory leaks
+    * Table add rows/columns via netsnmp API
 
 ## 5.7.0
 Expected: May 2022

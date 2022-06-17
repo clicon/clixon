@@ -166,4 +166,4 @@
 
 /*! Re-register table entries when quering
  */
-#undef SNMP_TABLE_DYNAMIC
+#define SNMP_TABLE_DYNAMIC
