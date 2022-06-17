@@ -312,7 +312,7 @@ mibyang_table_register(clicon_handle h,
 	    goto done;
 	}
     }
-    table_info->min_column = cvec_len(cvk);
+    table_info->min_column = 1;
 
     /* Count columns */
     yleaf = NULL;

@@ -35,9 +35,11 @@
   * It assumes a netsnmp damon is running. 
   * - If netsnmp does not run, clixon_snmp will not start
   * - If netsnmp dies, clixon_snmp will exit
-  * - If netsnmp is restarted, so should clixon_snmp be
+  * - If netsnmp is restarted, clixon_snmp  should also be restarted
   * It is possible to be more resilient, such as setting a timer and trying again, in fact, libnetsnmp
-  * has some such mechanisms
+  * has some such mechanisms but these are NOT implemented
+  * @see RFC 6643 Translation of Structure of Management Information Version 2 (SMIv2)
+  *               MIB Modules to YANG Modules
  */
 
 #ifdef HAVE_CONFIG_H
