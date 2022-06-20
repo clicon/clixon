@@ -779,7 +779,7 @@ EOF
 	  r=$(echo "$ret" | grep --null -Go "$i")
 	  match=$?
 	  if [ $match -ne 0 ]; then
-	      err "$i" "$ret"
+	      err "$expectenc" "$ret"
 	  fi
       done <<< "$expectenc"
   fi

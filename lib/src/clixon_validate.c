@@ -1093,9 +1093,9 @@ check_min_max(cxobj     *xp,
  * XML node. This may not be a large problem since it would mean empty configs
  * are not allowed.
  */
-static int
-check_list_unique_minmax(cxobj  *xt,
-			 cxobj **xret)
+int
+xml_yang_check_list_unique_minmax(cxobj  *xt,
+				  cxobj **xret)
 {
     int         retval = -1;
     cxobj      *x = NULL;
@@ -1458,7 +1458,6 @@ xml_yang_validate_leaf_union(clicon_handle h,
  * @endcode
  * @see xml_yang_validate_add
  * @see xml_yang_validate_rpc
- * @note Should need a variant accepting cxobj **xret
  */
 int
 xml_yang_validate_all(clicon_handle h,
@@ -1601,7 +1600,7 @@ xml_yang_validate_all(clicon_handle h,
     /* Check unique and min-max after choice test for example*/
     if (yang_config(yt) != 0){
 	/* Checks if next level contains any unique list constraints */
-	if ((ret = check_list_unique_minmax(xt, xret)) < 0)
+	if ((ret = xml_yang_check_list_unique_minmax(xt, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -1618,7 +1617,8 @@ xml_yang_validate_all(clicon_handle h,
     retval = 0;
     goto done;
 }
-/*! Translate a single xml node to a cligen variable vector. Note not recursive 
+
+/*! Validate a single XML node with yang specification
  * @param[out] xret    Error XML tree (if ret == 0). Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (xret set)
@@ -1637,7 +1637,7 @@ xml_yang_validate_all_top(clicon_handle h,
 	if ((ret = xml_yang_validate_all(h, x, xret)) < 1)
 	    return ret;
     }
-    if ((ret = check_list_unique_minmax(xt, xret)) < 1)
+    if ((ret = xml_yang_check_list_unique_minmax(xt, xret)) < 1)
 	return ret;
     return 1;
 }

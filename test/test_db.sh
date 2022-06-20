@@ -2,6 +2,7 @@
 # Datastore tests:
 # - XML and JSON
 # - save and load config files
+# Pretty and not
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -47,6 +48,11 @@ module clixon-example{
 	    leaf value{
 		type string;
 	    }
+	    container two{
+	       leaf a{
+	          type string;
+ 	       }
+            }
         }
     }
 }
@@ -69,6 +75,7 @@ discard("Discard edits (rollback 0)"), discard_changes();
 load("Load configuration from XML file") <filename:string>("Filename (local filename)"){
     xml("Replace candidate with file containing XML"), load_config_file("","filename", "replace", "xml");
     json("Replace candidate with file containing JSON"), load_config_file("","filename", "replace", "json");
+    merge("Merge file with existent candidate"), load_config_file("filename", "merge");
 }
 save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"){
     xml("Save configuration as XML"), save_config_file("candidate","filename", "xml");
@@ -181,17 +188,79 @@ EOF
 
 new "test params: -f $cfg"
 
-new "test db xml"
-testrun xml false
+for format in xml json; do
+    for pretty in false true json; do
+	new "test db $format pretty=$pretty"
+	testrun xml false
+    done
+done
 
-new "test db xml pretty"
-testrun xml true
+# Negative test, load yang-invalid xml
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -z -f $cfg
+    if [ $? -ne 0 ]; then
+	err
+    fi
+    new "start backend -s init -f $cfg -o CLICON_XMLDB_FORMAT=$format -o CLICON_XMLDB_PRETTY=$pretty"
+    start_backend -s init -f $cfg -o CLICON_XMLDB_FORMAT=$format -o CLICON_XMLDB_PRETTY=$pretty
+fi
 
-new "test db json"
-testrun json false
+new "wait backend"
+wait_backend
 
-new "test db json pretty"
-testrun json true
+# Wrong: two toplevels
+cat <<EOF > $dir/myconfig
+<${DATASTORE_TOP}>
+   <table xmlns="urn:example:clixon">
+      <parameter>
+         <name>a</name>
+         <value>42</value>
+      </parameter>
+   </table>
+   <table xmlns="urn:example:clixon">
+      <parameter>
+         <name>b</name>
+         <value>99</value>
+      </parameter>
+   </table>
+</${DATASTORE_TOP}>
+EOF
+
+new "load invalid file: 2 top-level containers, expect fail"
+expectpart "$($clixon_cli -1 -f $cfg load $dir/myconfig xml 2>&1)" 0 "Editing configuration: protocol operation-failed : too-many-elements : /rpc/edit-config/config/table"
+
+# Wrong: two toplevels
+cat <<EOF > $dir/myconfig
+<${DATASTORE_TOP}>
+   <table xmlns="urn:example:clixon">
+      <parameter>
+         <name>a</name>
+         <value>42</value>
+	 <two><a>1</a></two>
+	 <two><a>2</a></two>
+      </parameter>
+   </table>
+</${DATASTORE_TOP}>
+EOF
+
+# XXX This is invalid but not detected at load will be checked with validate
+new "load invalid file: 2 inner containers, expect fail"
+expectpart "$($clixon_cli -1 -f $cfg load $dir/myconfig xml 2>&1)" 0 ""
+
+new "Validate expect fail"
+expectpart "$($clixon_cli -1 -f $cfg validate 2>&1)" 255 "too-many-elements"
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+	err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+fi
 
 rm -rf $dir
 

@@ -797,6 +797,7 @@ compare_dbs(clicon_handle h,
 
 /*! Load a configuration file to candidate database
  * Utility function used by cligen spec file
+ * Note that the CLI function makes no Validation of the XML sent to the backend
  * @param[in] h     CLICON handle
  * @param[in] cvv   Vector of variables (where <varname> is found)
  * @param[in] argv  A string: "<varname> <operation> [<format>]"

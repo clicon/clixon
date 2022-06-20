@@ -65,7 +65,7 @@ module clixon-example{
   yang-version 1.1;
   namespace "urn:example:clixon";
   prefix ex;
-    container table{
+  container table{
 	list parameter{
 	    key name;
 	    leaf name{
@@ -167,8 +167,8 @@ RULES=$(cat <<EOF
 
    </nacm>
    <x xmlns="urn:example:nacm">42</x>
-   <table xmlns="urn:example:clixon"><parameter><name>key42</name><value>val42</value></parameter></table>
-   <table xmlns="urn:example:clixon"><parameter><name>key43</name><value>val43</value></parameter></table>
+   <table xmlns="urn:example:clixon"><parameter><name>key42</name><value>val42</value></parameter>
+           b<parameter><name>key43</name><value>val43</value></parameter></table>
 EOF
 )
 

@@ -99,6 +99,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [RPC edit-config payloads are not fully validated](https://github.com/clicon/clixon/issues/337)
+
 ## 5.7.0
 17 May 2022
 
