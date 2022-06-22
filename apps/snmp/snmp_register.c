@@ -459,11 +459,6 @@ mibyang_traverse(clicon_handle h,
 	    /* Register table entry handler itself (not column/row leafs) */
 	    if (mibyang_table_register(h, yn) < 0)
 		goto done;
-#ifndef SNMP_TABLE_DYNAMIC
-	    /* Register table sub-oid:s of existing entries in clixon */
-	    if (mibyang_table_poll(h, yn) < 0)
-		goto done;
-#endif
 	    goto ok;
 	}
 	break;

@@ -58,6 +58,9 @@
 #include <signal.h>
 #include <assert.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>    /* inet_addr */
+#include <arpa/inet.h>
 #include <netinet/ether.h> /* ether_aton */
 
 /* net-snmp */
@@ -104,6 +107,7 @@ static const map_str2int snmp_type_map[] = {
     {"uint32",       ASN_TIMETICKS}, // 0x43 / 67
     {"uint64",       ASN_COUNTER64}, // 0x46 / 70
     {"boolean",      ASN_INTEGER},   // 2 special case -> enumeration
+    {"string",       ASN_IPADDRESS}, // 64
     {NULL,           -1}
 };
 
@@ -467,10 +471,11 @@ type_yang2asn1(yang_stmt    *ys,
  * @retval      1        OK, and valstr set
  * @retval      0        Invalid value or type
  * @retval      -1       Error
- * @see type_xml2snmpstr  for snmpget
+ * @see type_xml2snmp  for snmpget
  */
 int
 type_snmp2xml(yang_stmt                  *ys,
+	      int                        *asn1type,
 	      netsnmp_variable_list      *requestvb,
 	      netsnmp_agent_request_info *reqinfo,
 	      netsnmp_request_info       *requests,
@@ -481,6 +486,7 @@ type_snmp2xml(yang_stmt                  *ys,
     enum cv_type cvtype;
     cg_var      *cv = NULL;
     char        *restype = NULL;         /* resolved type */
+    char      *origtype = NULL; /* original type */
     yang_stmt   *yrestype = NULL;
     int          ret;
 
@@ -489,9 +495,12 @@ type_snmp2xml(yang_stmt                  *ys,
 	clicon_err(OE_UNIX, EINVAL, "valstr is NULL");
 	goto done;
     }
-    cvstr = (char*)clicon_int2str(snmp_type_map, requestvb->type);
+    if ((cvstr = (char*)clicon_int2str(snmp_type_map, requestvb->type)) == NULL){
+	clicon_err(OE_XML, 0, "No mapping for snmp type %d", requestvb->type);
+	goto done;
+    }
     /* Get yang type of leaf and trasnslate to ASN.1 */
-    if (snmp_yang_type_get(ys, NULL, NULL, &yrestype, &restype) < 0)
+    if (snmp_yang_type_get(ys, NULL, &origtype, &yrestype, &restype) < 0)
 	goto done;
     /* special case for enum */
     if (strcmp(cvstr, "int32")==0 && strcmp(restype, "enumeration") == 0)
@@ -503,7 +512,7 @@ type_snmp2xml(yang_stmt                  *ys,
 	clicon_err(OE_UNIX, errno, "cv_new");
 	goto done; 
     }
-    switch (requestvb->type){
+    switch (*asn1type){
     case ASN_TIMETICKS:   // 67
     case ASN_INTEGER:   // 2
 	if (cvtype == CGV_STRING){ 	/* special case for enum */
@@ -534,9 +543,19 @@ type_snmp2xml(yang_stmt                  *ys,
     case ASN_GAUGE:     // 0x42
 	cv_uint32_set(cv, *requestvb->val.integer);
 	break;
-    case CLIXON_ASN_ADMIN_STRING: // XXX
-    case CLIXON_ASN_PHYS_ADDR:    // XXX
-	assert(0);
+    case ASN_IPADDRESS:{
+	struct in_addr addr;
+	memcpy(&addr.s_addr, requestvb->val.string, 4);	
+	cv_string_set(cv, inet_ntoa(addr));
+	break;
+    }
+    case CLIXON_ASN_ADMIN_STRING:
+	cv_string_set(cv, (char*)requestvb->val.string);
+	*asn1type = ASN_OCTET_STR;
+	break;
+    case CLIXON_ASN_PHYS_ADDR:
+	cv_string_set(cv, ether_ntoa((const struct ether_addr *)requestvb->val.string));
+	*asn1type = ASN_OCTET_STR;	
 	break;
     case ASN_OCTET_STR: // 4
 	cv_string_set(cv, (char*)requestvb->val.string);
@@ -567,6 +586,8 @@ type_snmp2xml(yang_stmt                  *ys,
     retval = 1;
  done:
     clicon_debug(2, "%s %d", __FUNCTION__, retval);
+    if (origtype)
+	free(origtype);
     if (cv)
 	cv_free(cv);
     return retval;
@@ -734,6 +755,17 @@ type_xml2snmp(char       *snmpstr,
 	    goto fail;
     }
 	break;
+    case ASN_IPADDRESS:{
+	in_addr_t saddr;
+	*snmplen = 4;
+	if ((*snmpval = malloc(*snmplen)) == NULL){
+	    clicon_err(OE_UNIX, errno, "malloc");
+	    goto done;
+	}
+	saddr = (int32_t)inet_addr(snmpstr);
+	memcpy(*snmpval, &saddr, 4);
+	break;
+    }
     case CLIXON_ASN_PHYS_ADDR:{
 	struct ether_addr *eaddr;
 	*snmplen = sizeof(*eaddr);

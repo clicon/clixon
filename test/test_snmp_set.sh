@@ -5,7 +5,7 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-APPNAME=snmp
+APPNAME=example
 
 # XXX skip for now
 if [ ${ENABLE_NETSNMP} != "yes" ]; then
@@ -17,7 +17,7 @@ snmpd=$(type -p snmpd)
 snmpget="$(type -p snmpget) -On -c public -v2c localhost "
 snmpset="$(type -p snmpset) -On -c public -v2c localhost "
 
-cfg=$dir/conf_startup.xml
+cfg=$dir/conf.xml
 fyang=$dir/clixon-example.yang
 
 # AgentX unix socket
@@ -35,7 +35,12 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
   <CLICON_SNMP_MIB>CLIXON-TYPES-MIB</CLICON_SNMP_MIB>
+  <CLICON_SNMP_MIB>IF-MIB</CLICON_SNMP_MIB>
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
 </clixon-config>
 EOF
 
@@ -47,13 +52,47 @@ module clixon-example{
   import CLIXON-TYPES-MIB {
       prefix "clixon-types";
   }
+  import IF-MIB {
+      prefix "if-mib";
+  }
   deviation "/clixon-types:CLIXON-TYPES-MIB" {
+     deviate replace {
+        config true;
+     }
+  }
+  deviation "/if-mib:IF-MIB" {
      deviate replace {
         config true;
      }
   }
 }
 EOF
+
+if true; then  # Dont start with a state (default)
+cat <<EOF > $dir/startup_db
+EOF
+
+else # Start with a state (debug)
+
+cat <<EOF > $dir/startup_db
+<${DATASTORE_TOP}>
+  <CLIXON-TYPES-MIB xmlns="urn:ietf:params:xml:ns:yang:smiv2:CLIXON-TYPES-MIB">
+     <clixonExampleScalars>
+        <clixonExampleInteger>42</clixonExampleInteger>
+        <ifIpAddr>4.3.2.1</ifIpAddr>
+     </clixonExampleScalars>
+  </CLIXON-TYPES-MIB>
+  <IF-MIB xmlns="urn:ietf:params:xml:ns:yang:smiv2:IF-MIB">
+    <ifTable>
+      <ifEntry>
+        <ifIndex>1</ifIndex>
+        <ifPhysAddress>aa:bb:cc:dd:ee:ff</ifPhysAddress>
+      </ifEntry>
+    </ifTable>	
+  </IF-MIB>
+</${DATASTORE_TOP}>
+EOF
+fi
 
 function testinit(){
     new "test params: -f $cfg"
@@ -69,7 +108,7 @@ function testinit(){
 	sudo pkill -f clixon_backend
 
 	new "Starting backend"
-	start_backend -s init -f $cfg
+	start_backend -s startup -f $cfg
     fi
 
     new "wait backend"
@@ -88,6 +127,59 @@ function testinit(){
     wait_snmp
 }
 
+# Set value via SNMP, read value via SNMP and CLI
+# Args:
+# 1: name
+# 2: type    
+# 3: value   SNMP value
+# 4: xvalue  XML/Clixon value
+# 5: OID
+function testrun()
+{
+    name=$1
+    type=$2
+    value=$3
+    xvalue=$4
+    oid=$5
+
+    # Type from man snmpset 
+    case $type in
+        "INTEGER")
+            set_type="i"
+            ;;
+        "STRING")
+            set_type="s"
+            ;;
+        "TIMETICKS")
+            set_type="t"
+            ;;
+	"IPADDRESS")
+            set_type="a"
+            ;;
+	*)
+	    set_type="s"
+	    ;;
+    esac
+
+    new "Set $name via SNMP"
+    if [ $type == "STRING" ]; then
+	echo "$snmpset $oid $set_type $value"
+	expectpart "$($snmpset $oid $set_type $value)" 0 "$type:" "$value"
+    else
+	echo "$snmpset $oid $set_type $value"
+	expectpart "$($snmpset $oid $set_type $value)" 0 "$type: $value"
+    fi
+	new "Check $name via SNMP"
+    if [ $type == "STRING" ]; then
+	expectpart "$($snmpget $oid)" 0 "$type:" "$value"
+    else
+	expectpart "$($snmpget $oid)" 0 "$type: $value"
+    fi
+
+    new "Check $name via CLI"
+    expectpart "$($clixon_cli -1 -f $cfg show config xml)" 0 "<$name>$xvalue</$name>"    
+}
+
 function testexit(){
     stop_snmp
 }
@@ -95,59 +187,16 @@ function testexit(){
 new "SNMP tests"
 testinit
 
-# NET-SNMP-EXAMPLES-MIB::netSnmpExamples
 MIB=".1.3.6.1.4.1.8072.200"
-OID1="${MIB}.1.1"      # netSnmpExampleInteger
-OID2="${MIB}.1.2"      # netSnmpExampleSleeper
-OID3="${MIB}.1.3"      # netSnmpExampleString
+IFMIB=".1.3.6.1.2.1"
 
-OID15="${MIB}.2.1.1.1" # nsIETFWGName
-OID16="${MIB}.2.1.1.2" # nsIETFWGChair1
-OID17="${MIB}.2.1.1.3" # nsIETFWGChair2
-OID18="${MIB}.2.2"     # netSnmpHostsTable
-OID19="${MIB}.2.2.1.1" # netSnmpHostName
-OID20="${MIB}.2.2.1.2" # netSnmpHostAddressType
-OID21="${MIB}.2.2.1.3" # netSnmpHostAddress
-OID22="${MIB}.2.2.1.4" # netSnmpHostStorage
-OID23="${MIB}.2.2.1.5" # netSnmpHostRowStatus
+testrun clixonExampleInteger INTEGER 1234 1234 ${MIB}.1.1
+testrun clixonExampleSleeper INTEGER -1 -1 ${MIB}.1.2
+testrun clixonExampleString STRING foobar foobar ${MIB}.1.3
+testrun ifPromiscuousMode INTEGER 1 true ${MIB}.1.10 # boolean
+testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 ${MIB}.1.13 # InetAddress
 
-new "Setting netSnmpExampleInteger"
-validate_set $OID1 "INTEGER" 1234
-validate_oid $OID1 $OID1 "INTEGER" 1234
-
-new "Setting netSnmpExampleSleeper"
-validate_set $OID2 "INTEGER" -1
-validate_oid $OID2 $OID2 "INTEGER" -1
-
-new "Set new value via NETCONF"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><default-operation>none</default-operation><target><candidate/></target><config><CLIXON-TYPES-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:CLIXON-TYPES-MIB\"><clixonExampleScalars><clixonExampleInteger>999</clixonExampleInteger></clixonExampleScalars></CLIXON-TYPES-MIB></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-
-new "netconf commit"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-
-new "Validate value set from NETCONF"
-validate_oid $OID1 $OID1 "INTEGER" 999
-
-new "Setting netSnmpExampleString"
-validate_oid $OID3 $OID3 "STRING" "\"So long, and thanks for all the fish!\""
-validate_set $OID3 "STRING" "foo bar"
-validate_oid $OID3 $OID3 "STRING" "\"foo bar\""
-
-# new "Setting column nsIETFWGChair1"
-# validate_set $OID16 "STRING" "asd"
-# validate_oid $OID16 $OID16 "STRING" "asd"
-
-# new "Setting column nsIETFWGChair2"
-# validate_set $OID17 "STRING" "asd"
-# validate_oid $OID17 $OID16 "STRING" "asdasd"
-
-# new "Setting column netSnmpHostName"
-# validate_set $OID19 "STRING" "asd"
-# validate_oid $OID19 $OID19 "STRING" "asdasd"
-
-# new "Setting netSnmpHostName"
-# validate_set $OID20 "STRING" ipv6
-# validate_oid $OID20 $OID20 "STRING" "asdasd"
+testrun ifPhysAddress STRING ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ${IFMIB}.2.2.1.6.1 # active
 
 new "Cleaning up"
 testexit
