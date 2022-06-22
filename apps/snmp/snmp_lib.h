@@ -81,6 +81,7 @@ void  *snmp_handle_clone(void *arg);
 void   snmp_handle_free(void *arg);
 int    type_yang2asn1(yang_stmt *ys, int *asn1_type, int extended);
 int    type_snmp2xml(yang_stmt                  *ys,
+		     int                        *asn1type,
 		     netsnmp_variable_list      *requestvb,
 		     netsnmp_agent_request_info *reqinfo,
 		     netsnmp_request_info       *requests,

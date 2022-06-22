@@ -164,6 +164,3 @@
  */
 #define PROTO_RESTART_RECONNECT
 
-/*! Re-register table entries when quering
- */
-#define SNMP_TABLE_DYNAMIC

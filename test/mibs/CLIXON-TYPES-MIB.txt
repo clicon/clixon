@@ -214,7 +214,15 @@ ifStackStatus  OBJECT-TYPE
             interfaces, and many implementations will choose not to
             support write-access for any type of interface."
     ::= { clixonExampleScalars 12 }
-    
+
+ifIpAddr OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Example IP"
+    ::= { clixonExampleScalars 13 }
+
 --
 --  Example Tables
 --
@@ -265,6 +273,7 @@ nsIETFWGChair2 OBJECT-TYPE
     "The other name, if one exists, of the chairs for the IETF
     working group."
     ::= { clixonIETFWGEntry 3 }
+
 --
 -- A table used in a table_iterator example
 --   (agent/mibgroup/examples/clixonHostsTable*.[ch])
