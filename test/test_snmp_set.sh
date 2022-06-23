@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # snmpset. This requires deviation of MIB-YANG to make write operations
 # Get default value, set new value via SNMP and check it, set new value via NETCONF and check
+# Selected types from CLIXON/IF-MIB/ENTITY mib
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -36,6 +37,7 @@ cat <<EOF > $cfg
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
   <CLICON_SNMP_MIB>CLIXON-TYPES-MIB</CLICON_SNMP_MIB>
   <CLICON_SNMP_MIB>IF-MIB</CLICON_SNMP_MIB>
+  <CLICON_SNMP_MIB>ENTITY-MIB</CLICON_SNMP_MIB>
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -55,6 +57,10 @@ module clixon-example{
   import IF-MIB {
       prefix "if-mib";
   }
+  import ENTITY-MIB {
+      prefix "entity-mib";
+  }
+
   deviation "/clixon-types:CLIXON-TYPES-MIB" {
      deviate replace {
         config true;
@@ -65,11 +71,18 @@ module clixon-example{
         config true;
      }
   }
+  deviation "/entity-mib:ENTITY-MIB" {
+     deviate replace {
+        config true;
+     }
+  }
 }
 EOF
 
 if true; then  # Dont start with a state (default)
 cat <<EOF > $dir/startup_db
+<${DATASTORE_TOP}>
+</${DATASTORE_TOP}>
 EOF
 
 else # Start with a state (debug)
@@ -83,6 +96,12 @@ cat <<EOF > $dir/startup_db
      </clixonExampleScalars>
   </CLIXON-TYPES-MIB>
   <IF-MIB xmlns="urn:ietf:params:xml:ns:yang:smiv2:IF-MIB">
+    <ifStackTable>	
+      <ifStackEntry>	
+        <ifStackHigherLayer>9</ifStackHigherLayer>
+        <ifStackLowerLayer>9</ifStackLowerLayer>
+      </ifStackEntry>	
+    </ifStackTable> 
     <ifTable>
       <ifEntry>
         <ifIndex>1</ifIndex>
@@ -132,15 +151,17 @@ function testinit(){
 # 1: name
 # 2: type    
 # 3: value   SNMP value
-# 4: xvalue  XML/Clixon value
-# 5: OID
+# 4: value2   SNMP value2 (as shown "after" snmpset)
+# 5: xvalue  XML/Clixon value
+# 6: OID
 function testrun()
 {
     name=$1
     type=$2
     value=$3
-    xvalue=$4
-    oid=$5
+    value2=$4
+    xvalue=$5
+    oid=$6
 
     # Type from man snmpset 
     case $type in
@@ -150,11 +171,20 @@ function testrun()
         "STRING")
             set_type="s"
             ;;
+	"HEX STRING")
+            set_type="x"
+            ;;
         "TIMETICKS")
             set_type="t"
             ;;
 	"IPADDRESS")
             set_type="a"
+            ;;
+	"OBJID")
+            set_type="o"
+            ;;
+	"BITS")
+            set_type="b"
             ;;
 	*)
 	    set_type="s"
@@ -167,13 +197,13 @@ function testrun()
 	expectpart "$($snmpset $oid $set_type $value)" 0 "$type:" "$value"
     else
 	echo "$snmpset $oid $set_type $value"
-	expectpart "$($snmpset $oid $set_type $value)" 0 "$type: $value"
+	expectpart "$($snmpset $oid $set_type $value)" 0 "$type: $value2"
     fi
 	new "Check $name via SNMP"
     if [ $type == "STRING" ]; then
 	expectpart "$($snmpget $oid)" 0 "$type:" "$value"
     else
-	expectpart "$($snmpget $oid)" 0 "$type: $value"
+	expectpart "$($snmpget $oid)" 0 "$type: $value2"
     fi
 
     new "Check $name via CLI"
@@ -189,14 +219,15 @@ testinit
 
 MIB=".1.3.6.1.4.1.8072.200"
 IFMIB=".1.3.6.1.2.1"
+ENTMIB=".1.3.6.1.2.1.47.1.1.1"
 
-testrun clixonExampleInteger INTEGER 1234 1234 ${MIB}.1.1
-testrun clixonExampleSleeper INTEGER -1 -1 ${MIB}.1.2
-testrun clixonExampleString STRING foobar foobar ${MIB}.1.3
-testrun ifPromiscuousMode INTEGER 1 true ${MIB}.1.10 # boolean
-testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 ${MIB}.1.13 # InetAddress
-
-testrun ifPhysAddress STRING ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ${IFMIB}.2.2.1.6.1 # active
+testrun clixonExampleInteger INTEGER 1234 1234 1234 ${MIB}.1.1
+testrun clixonExampleSleeper INTEGER -1 -1 -1 ${MIB}.1.2
+testrun clixonExampleString STRING foobar foobar foobar ${MIB}.1.3
+testrun ifPromiscuousMode INTEGER 1 1 true ${MIB}.1.10 # boolean
+testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 1.2.3.4 ${MIB}.1.13 # InetAddress
+testrun ifPhysAddress STRING ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ${IFMIB}.2.2.1.6.1
+testrun ifStackStatus INTEGER 4 "createAndGo(4)" createAndGo ${IFMIB}.31.1.2.1.3.5.9
 
 new "Cleaning up"
 testexit
