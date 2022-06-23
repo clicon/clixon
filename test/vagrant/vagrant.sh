@@ -281,7 +281,8 @@ $sshcmd ./clixon.sh $release $wwwuser ${with_restconf}
 cat<<EOF > $dir/yangmodels.sh
 set -eux
 cd /usr/local/share
-test -d yang || mkdir yang
+rm -rf yang
+mkdir yang
 cd yang
 git config --global init.defaultBranch master
 git init
@@ -293,11 +294,11 @@ git pull origin main
 # Patch yang syntax errors
 sed  s/=\ olt\'/=\ \'olt\'/g /usr/local/share/yang/standard/ieee/published/802.3/ieee802-ethernet-pon.yang > ieee802-ethernet-pon2.yang
 mv ieee802-ethernet-pon2.yang /usr/local/share/yang/standard/ieee/published/802.3/ieee802-ethernet-pon.yang
-sudo sed 's/”/"/' /usr/local/share/yang/standard/iana/iana-if-type@2022-03-07.yang > iana-if-type@2022-03-07-2.yang
-sudo mv iana-if-type@2022-03-07-2.yang /usr/local/share/yang/standard/iana/iana-if-type@2022-03-07.yang
 # openconfig
 cd /usr/local/share
-test -d openconfig || mkdir openconfig
+rm -rf openconfig
+mkdir openconfig
+cd openconfig
 git clone https://github.com/openconfig/public
 EOF
 chmod 755 $dir/yangmodels.sh

@@ -83,7 +83,7 @@ push:
 #      therefore the sleep 1 before tests start
 test: docker
 	./cleanup.sh ; ./start.sh # kill (ignore error) and the start it
-	sudo docker exec -t clixon-system bash -c 'sleep 2 && cd /usr/local/bin/test && ./all.sh'
+	sudo docker exec -t clixon-system bash -c 'sleep 2 && cd /usr/local/bin/test && ./sum.sh'
 
 depend:
 
