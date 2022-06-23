@@ -303,6 +303,10 @@ filter_xpath_again(clicon_handle h,
     int     retval = -1;
     int     i;
 
+    if (xret == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "xret is NULL");
+	goto done;
+    }
     /* If vectors are specified then mark the nodes found and
      * then filter out everything else,
      * otherwise return complete tree.

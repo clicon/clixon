@@ -238,7 +238,7 @@ clicon_file_dirent(const char     *dir,
 	   clicon_err(OE_UNIX, errno, "realloc");
 	   goto quit;
        } /* realloc */
-       clicon_debug(1, "%s memcpy(%p %p %u", __FUNCTION__, &new[nent], dent, direntStructSize);
+       clicon_debug(2, "%s memcpy(%p %p %u", __FUNCTION__, &new[nent], dent, direntStructSize);
        /* man (3) readdir: 
 	* By implication, the  use sizeof(struct dirent) to capture the size of the record including 
 	* the size of d_name is also incorrect. */

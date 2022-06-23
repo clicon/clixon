@@ -164,19 +164,4 @@
  */
 #define PROTO_RESTART_RECONNECT
 
-/*! Text output keys as identifiers instead of ordinary leafs
- * That is, given list "list" with key value "a", if set, the output of show config or save
- * as text command is:
- *    list a { 
- *       val 42; 
- *    }
- * If not set, the output is:
- *    list { 
- *       keyname a; 
- *       val 42; 
- *    }
- * The TEXT parser (ie load) accepts both formats.
- */
-#define TEXT_LIST_KEYS
-
 
