@@ -2791,6 +2791,7 @@ ys_populate2(yang_stmt    *ys,
  * @note if-feature syntax is restricted to single, and, or, syntax, such as "a or b"
  * but RFC7950 allows for nested expr/term/factor syntax.
  * XXX This should really be parsed in yang/lex.
+ * XXX: work-around for https://github.com/clicon/clixon/issues/341
  */
 static int
 yang_if_feature(clicon_handle h,
@@ -2827,6 +2828,7 @@ yang_if_feature(clicon_handle h,
 	    switch (opand){
 	    case -1:
 		if (i != 1){
+		    goto ok;
 		    clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
 		    goto done;
 		}
@@ -2835,6 +2837,7 @@ yang_if_feature(clicon_handle h,
 	    case 0:
 		break;
 	    case 1:
+		goto ok;
 		clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
 		goto done;
 		break;
@@ -2844,12 +2847,14 @@ yang_if_feature(clicon_handle h,
 	    switch (opand){
 	    case -1:
 		if (i != 1){
+		    goto ok;
 		    clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
 		    goto done;
 		}
 		opand = 1;
 		break;
 	    case 0:
+		goto ok;
 		clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
 		goto done;
 		break;
@@ -2858,11 +2863,13 @@ yang_if_feature(clicon_handle h,
 	    }
 	}
 	else{
+	    goto ok;
 	    clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
 	    goto done;
 	}
     } /* for step 1 */
     if (j%2 == 0){ /* Must be odd: eg a / "a or b" etc */
+	goto ok;
 	clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
 	goto done;
     }
@@ -2920,6 +2927,7 @@ yang_if_feature(clicon_handle h,
     }
     if (!enabled)
 	goto disabled;
+ ok:
     retval = 1;
  done:
     if (vec)
