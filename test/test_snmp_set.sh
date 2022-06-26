@@ -60,7 +60,6 @@ module clixon-example{
   import ENTITY-MIB {
       prefix "entity-mib";
   }
-
   deviation "/clixon-types:CLIXON-TYPES-MIB" {
      deviate replace {
         config true;
@@ -198,6 +197,7 @@ function testrun()
     else
 	echo "$snmpset $oid $set_type $value"
 	expectpart "$($snmpset $oid $set_type $value)" 0 "$type: $value2"
+
     fi
 	new "Check $name via SNMP"
     if [ $type == "STRING" ]; then
