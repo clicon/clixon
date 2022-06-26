@@ -80,6 +80,7 @@
 #include "clixon_plugin.h"
 #include "clixon_data.h"
 #include "clixon_options.h"
+#include "clixon_if_feature_parse.h"
 #include "clixon_yang_parse.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_yang_cardinality.h"
@@ -2782,164 +2783,42 @@ ys_populate2(yang_stmt    *ys,
     return retval;
 }
 
-/*! Handle complexity of if-feature node
- * @param[in] h   Clixon handle
- * @param[in] ys  Yang if-feature statement
- * @retval   -1   Error
- * @retval    0   Feature not enabled: remove yt
- * @retval    1   OK
- * @note if-feature syntax is restricted to single, and, or, syntax, such as "a or b"
- * but RFC7950 allows for nested expr/term/factor syntax.
- * XXX This should really be parsed in yang/lex.
- * XXX: work-around for https://github.com/clicon/clixon/issues/341
+/*! Invoke yang if-feature sub-parser on string
+ *
+ * @param[in]  str      If-feature-expr string
+ * @param[in]  ys       Yang if-feature statement
+ * @param[in]  linenum  Line number context
+ * @param[out] enabled  0: Disabled, 1: Enabled
+ * @retval     0        OK
+ * @retval    -1        Error
  */
-static int
-yang_if_feature(clicon_handle h,
-		yang_stmt    *ys)
+int
+yang_if_feature_parse(char      *str,
+		      yang_stmt *ys,
+		      int        linenum,
+		      int       *enabled)
 {
-    int         retval = -1;
-    char      **vec = NULL;
-    int         nvec;
-    char       *f;
-    int         i;
-    int         j;
-    char       *prefix = NULL;
-    char       *feature = NULL;
-    yang_stmt  *ymod;  /* module yang node */
-    yang_stmt  *yfeat; /* feature yang node */
-    int         opand = -1; /* -1:not set, 0:or, 1:and */
-    int         enabled = 0;
-    cg_var     *cv;
+    int                    retval = -1;
+    clixon_if_feature_yacc ife = {0,};
 
-    if ((vec = clicon_strsep(ys->ys_argument, " \t\r\n", &nvec)) == NULL)
+    clicon_debug(2, "%s %s", __FUNCTION__, str);
+    ife.if_parse_string = str;
+    ife.if_linenum = linenum;
+    ife.if_ys = ys;
+    if (clixon_if_feature_parsel_init(&ife) < 0)
 	goto done;
-    /* Two steps: first detect operators
-     * Step 1: support "a" or "a or b or c" or "a and b and c "
-     */
-    j = 0;
-    for (i=0; i<nvec; i++){
-	f = vec[i]; 
-	if (strcmp(f, "") == 0) /* skip empty */
-	    continue;
-	if ((j++)%2==0) /* only keep odd i:s 1,3,... */
-	    continue;
-	/* odd i: operator "and" or "or" */
-	if (strcmp(f, "or") == 0){
-	    switch (opand){
-	    case -1:
-		if (i != 1){
-		    goto ok;
-		    clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
-		    goto done;
-		}
-		opand = 0;
-		break;
-	    case 0:
-		break;
-	    case 1:
-		goto ok;
-		clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
-		goto done;
-		break;
-	    }
-	}
-	else if (strcmp(f, "and") == 0){
-	    switch (opand){
-	    case -1:
-		if (i != 1){
-		    goto ok;
-		    clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
-		    goto done;
-		}
-		opand = 1;
-		break;
-	    case 0:
-		goto ok;
-		clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
-		goto done;
-		break;
-	    case 1:
-		break;
-	    }
-	}
-	else{
-	    goto ok;
-	    clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
-	    goto done;
-	}
-    } /* for step 1 */
-    if (j%2 == 0){ /* Must be odd: eg a / "a or b" etc */
-	goto ok;
-	clicon_err(OE_YANG, EINVAL, "Syntax error IF_FEATURE \"%s\" (only single if-feature-expr and/or lists allowed)", ys->ys_argument);
+    if (clixon_if_feature_parseparse(&ife) != 0) { /* yacc returns 1 on error */
+	clicon_log(LOG_NOTICE, "If-feature error: line %d", ife.if_linenum);
+	if (clicon_errno == 0)
+	    clicon_err(OE_JSON, 0, "If-feature parser error with no error code (should not happen)");
 	goto done;
     }
-
-    if (opand == -1) /* Uninitialized means single operand */
-	opand = 1;
-    if (opand) /* if AND,  start as enabled, if OR start as disabled */
-	enabled = 1;
-    else
-	enabled = 0;
-    /* Step 2: Boolean operations on operands */
-    j = 0;
-    for (i=0; i<nvec; i++){
-	f = vec[i]; 
-	if (strcmp(f, "") == 0) /* skip empty */
-	    continue;
-	if ((j++)%2==1) /* only keep even i:s 0,2,... */
-	    continue;
-	if (nodeid_split(f, &prefix, &feature) < 0)
-	    goto done;
-	/* Specifically need to handle? strcmp(prefix, myprefix)) */
-	if (prefix == NULL)
-	    ymod = ys_module(ys);
-	else
-	    ymod = yang_find_module_by_prefix(ys, prefix);
-	/* Check if feature exists, and is set, otherwise remove */
-	if ((yfeat = yang_find(ymod, Y_FEATURE, feature)) == NULL){
-	    clicon_err(OE_YANG, EINVAL, "Yang module %s has IF_FEATURE %s, but no such FEATURE statement exists",
-		       ymod?yang_argument_get(ymod):"none",
-		       feature);
-	    goto done;
-	}
-	/* Check if this feature is enabled or not 
-	 * Continue loop to catch unbound features and make verdict at end
-	 */
-	cv = yang_cv_get(yfeat);
-	if (cv == NULL || !cv_bool_get(cv)){    /* disabled */
-	    /* if AND then this is permanently disabled */
-	    if (opand && enabled)
-		enabled = 0;
-	}
-	else{                                                       /* enabled */
-	    /* if OR then this is permanently enabled */
-	    if (!opand && !enabled)
-		enabled = 1;
-	}
-	if (prefix){
-	    free(prefix);
-	    prefix = NULL;
-	}
-	if (feature){
-	    free(feature);
-	    feature = NULL;
-	}
-    }
-    if (!enabled)
-	goto disabled;
- ok:
-    retval = 1;
+    if (enabled)
+	*enabled = ife.if_enabled;
+    retval = 0;
  done:
-    if (vec)
-	free(vec); 
-    if (prefix)
-	free(prefix);
-    if (feature)
-	free(feature);
+    clixon_if_feature_parsel_exit(&ife);
     return retval;
- disabled: 
-    retval = 0;  /* feature not enabled */
-    goto done;
 }
 
 /*! Find feature and if-feature nodes, check features and remove disabled nodes
@@ -2966,8 +2845,11 @@ yang_features(clicon_handle h,
     while (i<yt->ys_len){
 	ys = yt->ys_stmt[i];
 	if (ys->ys_keyword == Y_IF_FEATURE){
-	    if ((ret = yang_if_feature(h, ys)) < 0)
+	    /* Parse the if-feature-expr string */
+	    ret = 0;
+	    if (yang_if_feature_parse(yang_argument_get(ys), ys, 1, &ret) < 0)
 		goto done;
+	    clicon_debug(1, "%s %s %d", __FUNCTION__, yang_argument_get(ys), ret);
 	    if (ret == 0)
 		goto disabled;
 	}

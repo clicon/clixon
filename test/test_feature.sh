@@ -117,6 +117,23 @@ module example{
      description "Not enabled";
      type "string";
    }
+   leaf m9{
+     if-feature "(A or B "
+      	       + "or B1) and A1";
+     description "Enabled";
+     type "string";
+   }
+   leaf m10{
+     if-feature "(A and A1 "
+      	       + "and B1) or not A";
+     description "Disabled";
+     type "string";
+   }
+   leaf m11{
+     if-feature "not (A or B)";
+     description "Disabled";
+     type "string";
+   }
 }
 EOF
 
@@ -196,6 +213,9 @@ testrun m5 false
 testrun m6 false
 testrun m7 true
 testrun m8 false
+testrun m9 true
+testrun m10 false
+testrun m11 false
 
 # This test has been broken up into all different modules instead of one large
 # reply since the modules change so often

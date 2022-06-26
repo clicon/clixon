@@ -316,10 +316,9 @@ ysp_add(clixon_yang_yacc *yy,
     yang_argument_set(ys, argument);
     if (yn_insert(yn, ys) < 0) /* Insert into hierarchy */
 	goto err; 
+    yang_linenum_set(ys, yy->yy_linenum); /* For error/debugging */
     if (ys_parse_sub(ys, extra) < 0)     /* Check statement-specific syntax */
 	goto err2; /* dont free since part of tree */
-    yang_linenum_set(ys, yy->yy_linenum); /* For error/debugging */
-//  done:
     return ys;
   err:
     if (ys)

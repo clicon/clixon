@@ -1956,6 +1956,13 @@ ys_parse_sub(yang_stmt *ys,
 	    goto done;
 	}
 	break;
+    case Y_IF_FEATURE:
+	/* Invoke next level parser on if-feature-expr string. Note do not send ys since 
+	 * pass 1 is not yet resolved, only check syntax, actual feature check made in next pass
+	 */
+	if (yang_if_feature_parse(yang_argument_get(ys), NULL, yang_linenum_get(ys), NULL) < 0)
+	    goto done;
+	break;
     case Y_UNKNOWN:{ /* save (optional) argument in ys_cv */
 	if (extra == NULL)
 	    break;

@@ -99,11 +99,16 @@ Developers may need to change their code
 
 ### Minor features
 
+* Full RFC 7950 if-feature-expr support (Section 7.20.2)
+  * Previous implementation did not handle nested if-feature expressions
+  * As part of fixing: [YANG if-feature does not support nested boolean expression](https://github.com/clicon/clixon/issues/341)
+  * Added new yacc/lex parser for if-feature-expr string
 * [Feature Request: Log SSL events](https://github.com/clicon/clixon/issues/331)
   * Added syslog NOTICE on failed user certs
 
 ### Corrected Bugs
 
+* Fixed: [YANG if-feature does not support nested boolean expression](https://github.com/clicon/clixon/issues/341)
 * Fixed: [RPC edit-config payloads are not fully validated](https://github.com/clicon/clixon/issues/337)
 
 ## 5.7.0

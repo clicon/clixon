@@ -93,7 +93,8 @@ YACCOBJS = lex.clixon_xml_parse.o clixon_xml_parse.tab.o \
             lex.clixon_xpath_parse.o clixon_xpath_parse.tab.o \
             lex.clixon_api_path_parse.o clixon_api_path_parse.tab.o \
             lex.clixon_instance_id_parse.o clixon_instance_id_parse.tab.o \
-            lex.clixon_text_syntax_parse.o clixon_text_syntax_parse.tab.o 
+            lex.clixon_text_syntax_parse.o clixon_text_syntax_parse.tab.o \
+            lex.clixon_if_feature_parse.o clixon_if_feature_parse.tab.o 
 
 # Generated src 
 GENSRC  = build.c 
@@ -125,12 +126,15 @@ clean:
 	rm -f clixon_api_path_parse.tab.[ch] clixon_api_path_parse.[co]
 	rm -f clixon_instance_id_parse.tab.[ch] clixon_instance_id_parse.[co]
 	rm -f clixon_text_syntax_parse.tab.[ch] clixon_text_syntax_parse.[co]
+	rm -f clixon_if_feature_parse.tab.[ch] clixon_if_feature_parse.[co]
 	rm -f lex.clixon_xml_parse.c
 	rm -f lex.clixon_yang_parse.c
 	rm -f lex.clixon_json_parse.c
 	rm -f lex.clixon_xpath_parse.c
 	rm -f lex.clixon_api_path_parse.c
 	rm -f lex.clixon_instance_id_parse.c
+	rm -f lex.clixon_text_syntax_parse.c
+	rm -f lex.clixon_if_feature_parse.c
 	rm -f *.gcda *.gcno *.gcov # coverage
 
 #############################################################################
@@ -234,6 +238,19 @@ clixon_text_syntax_parse.tab.h: clixon_text_syntax_parse.y
 clixon_text_syntax_parse.tab.c:	clixon_text_syntax_parse.tab.h
 
 lex.clixon_text_syntax_parse.o : lex.clixon_text_syntax_parse.c clixon_text_syntax_parse.tab.h
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
+
+# if-feature-expr parser
+lex.clixon_if_feature_parse.c : clixon_if_feature_parse.l clixon_if_feature_parse.tab.h
+	$(LEX) -Pclixon_if_feature_parse clixon_if_feature_parse.l # -d is debug
+
+clixon_if_feature_parse.tab.h: clixon_if_feature_parse.y
+	$(YACC) -l -d -b clixon_if_feature_parse -p clixon_if_feature_parse clixon_if_feature_parse.y # -t is debug
+
+# extra rule to avoid parallell yaccs
+clixon_if_feature_parse.tab.c:	clixon_if_feature_parse.tab.h
+
+lex.clixon_if_feature_parse.o : lex.clixon_if_feature_parse.c clixon_if_feature_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
 
 distclean: clean
