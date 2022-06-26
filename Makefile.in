@@ -207,7 +207,7 @@ example: checkinstall util warnroot
 # Run a clixon test container.
 # Alt: cd test; ./all.sh
 test:
-	(cd docker && $(MAKE) $(MFLAGS) test)
+	$(MAKE) -C docker $(MFLAGS) $@
 
 docker:
 	for i in docker; \

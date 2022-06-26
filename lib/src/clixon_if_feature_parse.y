@@ -115,6 +115,8 @@ clixon_if_feature_parseerror(void *arg,
 }
 
 /*! Check if feature "str" is enabled or not in context of yang node ys
+ * @param[in]  str  feature str. 
+ * @param[in]  ys   If-feature type yang node
  */
 static int
 if_feature_check(char      *str,
@@ -198,7 +200,11 @@ iffactor   : NOT sep1 iffactor     { _PARSE_DEBUG("factor-> NOT sep factor");
            | TOKEN                 {
 	       _PARSE_DEBUG("factor->TOKEN");
 	       if (_IF->if_ys == NULL) $$ = 0;
-	       else if (($$ = if_feature_check($1, _IF->if_ys)) < 0) YYERROR;
+	       else if (($$ = if_feature_check($1, _IF->if_ys)) < 0) {
+		   free($1);
+		   YYERROR;
+	       }
+	       free($1);
 	     }
            ;
 

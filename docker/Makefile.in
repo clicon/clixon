@@ -62,8 +62,7 @@ distclean: clean
 	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
 test:
-	for i in $(SUBDIRS); \
-	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
+	$(MAKE) -C main $(MFLAGS) $@
 
 depend:
 	for i in $(SUBDIRS); \
