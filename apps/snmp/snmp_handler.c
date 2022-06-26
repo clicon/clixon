@@ -372,7 +372,7 @@ snmp_scalar_set(clicon_handle               h,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    if (clicon_xml2cbuf(cb, xtop, 0, 0, -1) < 0)
+    if (clixon_xml2cbuf(cb, xtop, 0, 0, -1, 0) < 0)
 	goto done;
     if (clicon_rpc_edit_config(h, "candidate", OP_MERGE, cbuf_get(cb)) < 0)
 	goto done;
