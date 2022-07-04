@@ -84,6 +84,16 @@ cat <<EOF > $fstate
       <clixonHostRowStatus>active</clixonHostRowStatus>
     </clixonHostsEntry>
   </clixonHostsTable>
+  <clixonInetTable>
+    <clixonInetEntry>
+      <clixonAddress>1.2.3.4</clixonAddress>
+      <clixonString>foo</clixonString>
+    </clixonInetEntry>
+    <clixonInetEntry>
+      <clixonAddress>2.2.2.2</clixonAddress>
+      <clixonString>bar</clixonString>
+    </clixonInetEntry>
+  </clixonInetTable>
 </CLIXON-TYPES-MIB>
 EOF
 

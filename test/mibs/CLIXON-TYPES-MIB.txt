@@ -36,6 +36,8 @@ clixonExamples MODULE-IDENTITY
 clixonExampleScalars       OBJECT IDENTIFIER ::= { clixonExamples 1 }
 clixonExampleTables        OBJECT IDENTIFIER ::= { clixonExamples 2 }
 clixonExampleNotifications OBJECT IDENTIFIER ::= { clixonExamples 3 }
+clixonTables        	   OBJECT IDENTIFIER ::= { clixonExamples 4 }
+clixonInetTables      	   OBJECT IDENTIFIER ::= { clixonExamples 5 }
 clixonExampleNotificationPrefix  OBJECT IDENTIFIER
                                   ::= { clixonExampleNotifications 0 }
 clixonExampleNotificationObjects OBJECT IDENTIFIER
@@ -214,15 +216,7 @@ ifStackStatus  OBJECT-TYPE
             interfaces, and many implementations will choose not to
             support write-access for any type of interface."
     ::= { clixonExampleScalars 12 }
-
-ifIpAddr OBJECT-TYPE
-    SYNTAX      InetAddress
-    MAX-ACCESS  read-write
-    STATUS      current
-    DESCRIPTION
-    "Example IP"
-    ::= { clixonExampleScalars 13 }
-
+    
 --
 --  Example Tables
 --
@@ -273,6 +267,59 @@ nsIETFWGChair2 OBJECT-TYPE
     "The other name, if one exists, of the chairs for the IETF
     working group."
     ::= { clixonIETFWGEntry 3 }
+
+
+
+
+
+clixonTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ClixonEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "This table merely contains a set of data which is otherwise
+     useless for true network management.  It is a table which
+     describes properies about a IETF Working Group, such as the
+     names of the two working group chairs.
+     This example table is implemented in the
+     agent/mibgroup/examples/data_set.c file."
+    ::= { clixonTables 1 }
+clixonEntry OBJECT-TYPE
+    SYNTAX      ClixonEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "A row describing a given working group"
+    INDEX   { nsName }
+    ::= {clixonTable 1 }
+ClixonEntry ::= SEQUENCE {
+    nsName    INTEGER,
+    nsChair1  OCTET STRING,
+    nsChair2  OCTET STRING
+}
+nsName OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "The name of the IETF Working Group this table describes."
+    ::= { clixonEntry 1 }
+nsChair1 OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "One of the names of the chairs for the IETF working group."
+    ::= { clixonEntry 2 }
+nsChair2 OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+    "The other name, if one exists, of the chairs for the IETF
+    working group."
+    ::= { clixonEntry 3 }
+
 
 --
 -- A table used in a table_iterator example
@@ -352,5 +399,45 @@ clixonObjectID OBJECT-TYPE
             it could assign the identifier 1.3.6.1.4.1.424242.1.1
             to its `Fred Router'."
     ::= { netSnmp 3 }
+
+
+clixonInetTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ClixonInetEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "This table merely contains a set of data which is otherwise
+     useless for true network management.  It is a table which
+     describes properies about a IETF Working Group, such as the
+     names of the two working group chairs.
+     This example table is implemented in the
+     agent/mibgroup/examples/data_set.c file."
+    ::= { clixonExampleTables 3 }
+clixonInetEntry OBJECT-TYPE
+    SYNTAX      ClixonInetEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "A row describing a given working group"
+    INDEX   { clixonAddress }
+    ::= {clixonInetTable 1 }
+ClixonInetEntry ::= SEQUENCE {
+    clixonAddress InetAddress,
+    clixonString  OCTET STRING
+}
+clixonAddress OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "The name of the IETF Working Group this table describes."
+    ::= { clixonInetEntry 2 }
+clixonString OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "One of the names of the chairs for the IETF working group."
+    ::= { clixonInetEntry 3 }
 
 END
