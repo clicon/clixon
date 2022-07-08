@@ -1070,6 +1070,11 @@ xp_eval(xp_ctx     *xc,
 		    goto done;
 		goto ok;
 		break;
+	    case XPATHFN_BOOLEAN:
+		if (xp_function_boolean(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+		    goto done;
+		goto ok;
+		break;
 	    case XPATHFN_NOT:
 		if (xp_function_not(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
 		    goto done;

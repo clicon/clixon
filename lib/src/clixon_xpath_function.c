@@ -635,16 +635,22 @@ xp_function_contains(xp_ctx            *xc,
     return retval;
 }
 
-/*! The not function returns true if its argument is false, and false otherwise.
+/*! The boolean function converts its argument to a boolean
  *
- * Signature: boolean not(boolean)
+ * Conversion is as follows:
+ * - a number is true if and only if it is neither positive or negative zero nor NaN
+ * - a node-set is true if and only if it is non-empty
+ * - a string is true if and only if its length is non-zero
+ * - an object of a type other than the four basic types is converted to a boolean in a way that 
+ *   is dependent on that type
+ * Signature: boolean boolean(object)
  */
 int
-xp_function_not(xp_ctx            *xc,
-		struct xpath_tree *xs,
-		cvec              *nsc,
-		int                localonly,
-		xp_ctx           **xrp)
+xp_function_boolean(xp_ctx            *xc,
+		    struct xpath_tree *xs,
+		    cvec              *nsc,
+		    int                localonly,
+		    xp_ctx           **xrp)
 {
     int         retval = -1;
     xp_ctx     *xr = NULL;
@@ -664,13 +670,30 @@ xp_function_not(xp_ctx            *xc,
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_BOOL;
-    xr->xc_bool = !bool;
+    xr->xc_bool = bool;
     *xrp = xr;
     retval = 0;
  done:
     if (xr0)
 	ctx_free(xr0);
     return retval;
+}
+
+/*! The not function returns true if its argument is false, and false otherwise.
+ *
+ * Signature: boolean not(boolean)
+ */
+int
+xp_function_not(xp_ctx            *xc,
+		struct xpath_tree *xs,
+		cvec              *nsc,
+		int                localonly,
+		xp_ctx           **xrp)
+{
+    if (xp_function_boolean(xc, xs, nsc, localonly, xrp) < 0)
+	return -1;
+    (*xrp)->xc_bool = !(*xrp)->xc_bool;
+    return 0;
 }
 
 /*! The true function returns true.

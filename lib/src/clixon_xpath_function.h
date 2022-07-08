@@ -71,7 +71,7 @@ enum clixon_xpath_function{
     XPATHFN_STRING_LENGTH,          /* XPATH 1.0 4.2   NYI */
     XPATHFN_NORMALIZE_SPACE,        /* XPATH 1.0 4.2   NYI */
     XPATHFN_TRANSLATE,              /* XPATH 1.0 4.2   NYI */
-    XPATHFN_BOOLEAN,                /* XPATH 1.0 4.3   NYI */
+    XPATHFN_BOOLEAN,                /* XPATH 1.0 4.3 */
     XPATHFN_NOT,                    /* XPATH 1.0 4.3 */
     XPATHFN_TRUE,                   /* XPATH 1.0 4.3 */
     XPATHFN_FALSE,                  /* XPATH 1.0 4.3 */
@@ -101,6 +101,7 @@ int xp_function_position(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int local
 int xp_function_count(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_name(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_contains(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_boolean(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_not(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_true(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_false(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
