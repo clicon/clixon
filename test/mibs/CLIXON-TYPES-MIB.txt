@@ -5,7 +5,7 @@ CLIXON-TYPES-MIB DEFINITIONS ::= BEGIN
 IMPORTS
     MODULE-IDENTITY, OBJECT-TYPE, Integer32,
     TimeTicks, Counter32, Gauge32, Counter64,
-    NOTIFICATION-TYPE                       FROM SNMPv2-SMI
+    NOTIFICATION-TYPE, IpAddress            FROM SNMPv2-SMI
     SnmpAdminString                         FROM SNMP-FRAMEWORK-MIB
     netSnmp                                 FROM NET-SNMP-MIB
     TruthValue, TimeStamp,
@@ -204,7 +204,6 @@ ifCounterDiscontinuityTime OBJECT-TYPE
     ::= { clixonExampleScalars 11 }
 ifStackStatus  OBJECT-TYPE
     SYNTAX         RowStatus
---    MAX-ACCESS     read-create
     MAX-ACCESS     read-only
     STATUS         current
     DESCRIPTION
@@ -216,7 +215,15 @@ ifStackStatus  OBJECT-TYPE
             interfaces, and many implementations will choose not to
             support write-access for any type of interface."
     ::= { clixonExampleScalars 12 }
-    
+
+ifIpAddr  OBJECT-TYPE
+    SYNTAX         IpAddress
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+            "IP address example."
+    ::= { clixonExampleScalars 13 }
+
 --
 --  Example Tables
 --

@@ -127,7 +127,8 @@ static const map_str2int snmp_orig_map[] = {
     {"binary",                ASN_OCTET_STR}, // 4
     {"timeticks",             ASN_TIMETICKS}, // 0x43 / 67
     {"timestamp",             ASN_TIMETICKS}, // 0x43 / 67
-    {"InetAddress",           ASN_IPADDRESS}, // 0x40 / 64
+    {"InetAddress",           ASN_IPADDRESS}, // 0x40 / 64 (Dont see this being used)
+    {"ipv4-address",          ASN_IPADDRESS}, // 0x40 / 64 (This is used instead)
     {"phys-address",          CLIXON_ASN_PHYS_ADDR},    /* Clixon extended string type */
     {"SnmpAdminString",       CLIXON_ASN_ADMIN_STRING}, /* cf extension display-type 255T? */
     {NULL,                    -1}
