@@ -228,7 +228,7 @@ xml2txt1(cxobj            *xn,
     xc = NULL;
     while ((xc = xml_child_each(xn, xc, -1)) != NULL){
 	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY){
-	    if (yang_key_match(yn, xml_name(xc), NULL))
+	    if (yn && yang_key_match(yn, xml_name(xc), NULL))
 		continue; /* Skip keys, already printed */
 	    if (xml2txt1(xc, fn, f, level+1, leafl, leaflname) < 0)
 		break;

@@ -266,7 +266,6 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     case XPATHFN_STRING_LENGTH:
     case XPATHFN_NORMALIZE_SPACE:
     case XPATHFN_TRANSLATE:
-    case XPATHFN_BOOLEAN:
     case XPATHFN_LANG:
     case XPATHFN_NUMBER:
     case XPATHFN_SUM:
@@ -290,6 +289,7 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     case XPATHFN_COUNT:
     case XPATHFN_NAME:
     case XPATHFN_CONTAINS:
+    case XPATHFN_BOOLEAN:
     case XPATHFN_NOT:
     case XPATHFN_TRUE:
     case XPATHFN_FALSE:

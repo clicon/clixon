@@ -99,6 +99,8 @@ Developers may need to change their code
 
 ### Minor features
 
+* Added XPATH function `boolean()`
+  * This caused problem for new NTP YANG in RFC 9249
 * Full RFC 7950 if-feature-expr support (Section 7.20.2)
   * Previous implementation did not handle nested if-feature expressions
   * As part of fixing: [YANG if-feature does not support nested boolean expression](https://github.com/clicon/clixon/issues/341)

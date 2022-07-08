@@ -123,6 +123,28 @@ module $APPNAME{
        }
      }
    }
+   /* This is from ietf-ntp@2022-07-05.yang for testing boolean() 
+   * But note I reversed true/false
+   */
+   container system {
+       container ntp {
+              presence
+	              "Enables the NTP client unless the 'enabled' leaf
+	               (which defaults to 'true') is set to 'false'";
+      }
+   }
+   container ntp {
+      when 'true() = boolean(/sys:system/sys:ntp)' {
+         description
+           "Applicable when the system /sys/ntp/ is not used.";
+       }
+       presence "NTP is enabled and system should attempt to
+                 synchronize the system clock with an NTP server
+                 from the 'ntp/associations' list.";
+       leaf port {
+         type int16;
+       }		 
+   }
 }
 EOF
 
@@ -206,6 +228,18 @@ expecteof_netconf "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO" "<rpc $DE
 
 new "netconf bit-is-set"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:interface[bit-is-set(ex:flags, 'PROMISCUOUS')]\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interface xmlns=\"urn:example:clixon\"><name>e1</name><flags>UP PROMISCUOUS</flags></interface><interface xmlns=\"urn:example:clixon\"><name>e2</name><flags>PROMISCUOUS</flags></interface></data></rpc-reply>"
+
+new "netconf set ntp port"
+expecteof_netconf "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><ntp xmlns=\"urn:example:clixon\"><port>99</port></ntp></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf validate fail"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Failed WHEN condition of ntp in module example (WHEN xpath is true() = boolean(/sys:system/sys:ntp))</error-message></rpc-error></rpc-reply>"
+
+new "netconf set system boolean"
+expecteof_netconf "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:clixon\"><ntp/></system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf validate ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
