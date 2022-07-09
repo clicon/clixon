@@ -111,10 +111,8 @@ static const map_str2int snmp_type_map[] = {
     {NULL,           -1}
 };
 
-//#define CLIXON_ASN_PHYS_ADDR    0x4242 /* Special case phy-address */
-//#define CLIXON_ASN_ADMIN_STRING 0x4243 /* Special case SnmpAdminString */
 #define CLIXON_ASN_PHYS_ADDR    253 /* Special case phy-address */
-#define CLIXON_ASN_ADMIN_STRING 254 /* Special case SnmpAdminString */
+#define CLIXON_ASN_FIXED_STRING 254 /* RFC2578 Sec 7.7: String-valued, fixed-length */
 
 /* Map between clixon "orig" resolved type and ASN.1 types. 
  */
@@ -129,8 +127,7 @@ static const map_str2int snmp_orig_map[] = {
     {"timestamp",             ASN_TIMETICKS}, // 0x43 / 67
     {"InetAddress",           ASN_IPADDRESS}, // 0x40 / 64 (Dont see this being used)
     {"ipv4-address",          ASN_IPADDRESS}, // 0x40 / 64 (This is used instead)
-    {"phys-address",          CLIXON_ASN_PHYS_ADDR},    /* Clixon extended string type */
-    {"SnmpAdminString",       CLIXON_ASN_ADMIN_STRING}, /* cf extension display-type 255T? */
+    {"phys-address",          CLIXON_ASN_PHYS_ADDR}, /* Clixon extended string type */
     {NULL,                    -1}
 };
 
@@ -436,15 +433,16 @@ type_yang2asn1(yang_stmt    *ys,
     char      *restype;         /* resolved type */
     char      *origtype = NULL; /* original type */
     int        at;
+    yang_stmt *yrestype = NULL;
 
     /* Get yang type of leaf and translate to ASN.1 */
-    if (snmp_yang_type_get(ys, NULL, &origtype, NULL, &restype) < 0)
+    if (snmp_yang_type_get(ys, NULL, &origtype, &yrestype, &restype) < 0)
 	goto done;
     /* Translate to asn.1 
      * First try original type, first type 
      */
     if ((at = clicon_str2int(snmp_orig_map, origtype)) >= 0 &&
-	(extended || (at != CLIXON_ASN_PHYS_ADDR && at != CLIXON_ASN_ADMIN_STRING))){
+	(extended || (at != CLIXON_ASN_PHYS_ADDR && at != CLIXON_ASN_FIXED_STRING))){
 	;
     }
     /* Then try fully resolved type */
@@ -452,6 +450,16 @@ type_yang2asn1(yang_stmt    *ys,
 	clicon_err(OE_YANG, 0, "No snmp translation for YANG %s type:%s",
 		   yang_argument_get(ys), restype);
 	goto done;
+    }
+    if (extended && at == ASN_OCTET_STR && yrestype){
+	yang_stmt *yrp;
+	char *display_hint = NULL;
+	yrp = yang_parent_get(yrestype);
+	if (yang_extension_value(yrp, "display-hint", IETF_YANG_SMIV2_NS, NULL, &display_hint) < 0)
+	    goto done;	
+	/* RFC2578/2579 but maybe all strings with display-hint should use this, eg exist>0? */
+	if (display_hint && strcmp(display_hint, "255t")==0)
+	    at = CLIXON_ASN_FIXED_STRING;
     }
     if (asn1_type)
 	*asn1_type = at;
@@ -550,7 +558,7 @@ type_snmp2xml(yang_stmt                  *ys,
 	cv_string_set(cv, inet_ntoa(addr));
 	break;
     }
-    case CLIXON_ASN_ADMIN_STRING:
+    case CLIXON_ASN_FIXED_STRING:
 	cv_string_set(cv, (char*)requestvb->val.string);
 	*asn1type = ASN_OCTET_STR;
 	break;
@@ -783,7 +791,7 @@ type_xml2snmp(char       *snmpstr,
 	*asn1type = ASN_OCTET_STR;
 	break;
     }
-    case CLIXON_ASN_ADMIN_STRING: /* OCTET-STRING with decrement length */
+    case CLIXON_ASN_FIXED_STRING: /* OCTET-STRING with decrement length */
 	*snmplen = strlen(snmpstr);
 	if ((*snmpval = (u_char*)strdup((snmpstr))) == NULL){
 	    clicon_err(OE_UNIX, errno, "strdup");
@@ -951,11 +959,12 @@ snmp_str2oid(char      *str,
 
 /*! Translate from SMI OID representation to name
  * For ints this is one to one, eg 42 -> 42
- * But for eg strings this is more comples, eg foo -> 3.6.22.22 (or something,...)
+ * But for eg strings this is more complex, eg foo -> 3.6.22.22 (or something,...)
  * @param[in,out] oidi     ObjID vector
  * @param[in,out] oidilen  Length of ObjID vector
  * @param[in]     yk       Yang statement of key
  * @param[out]    cv       CLIgen variable string notation as "x.y.z"
+ * @see rfc2578 Section 7.7
  */
 int
 snmp_oid2str(oid      **oidi,
@@ -969,7 +978,7 @@ snmp_oid2str(oid      **oidi,
     cbuf  *enc = NULL;
     size_t len;
 
-    if (type_yang2asn1(yk, &asn1_type, 0) < 0)
+    if (type_yang2asn1(yk, &asn1_type, 1) < 0)
 	goto done;
     if ((enc = cbuf_new()) == NULL){
 	clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -984,9 +993,15 @@ snmp_oid2str(oid      **oidi,
     case ASN_IPADDRESS:
 	cprintf(enc, "%lu", (*oidi)[i++]);
 	break;
+    case CLIXON_ASN_PHYS_ADDR: /* XXX may need special mapping: ether_aton() ?  */
     case ASN_OCTET_STR: /* decode from N.c.c.c.c */
 	len = (*oidi)[i++];
 	for (; i<len+1; i++){
+	    cprintf(enc, "%c", (char)((*oidi)[i]&0xff));
+	}
+	break;
+    case CLIXON_ASN_FIXED_STRING: // XXX
+	for (; i<7; i++){
 	    cprintf(enc, "%c", (char)((*oidi)[i]&0xff));
 	}
 	break;

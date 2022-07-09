@@ -155,9 +155,18 @@ There are also client-cert tests, eg `test_ssl_certs.sh`
 Clixon snmp frontend tests require a running netsnmpd and converted YANG files from MIB.
 
 Netsnmpd is 5.9 or later and can be started via systemd. For the tests
-to run, the systems IFMIB should be disabled: `-I -ifTable,ifNumber,ifXTable`
+to run, the systems IFMIB should be disabled: `-I -ifTable,ifNumber,ifXTable`, etc.
 
-Converted YANG files are available at `https://github.com/clicon/mib-yangs` or alternatively use `smidump` version 0.5 or later.
+Converted YANG files are available at `https://github.com/clicon/mib-yangs` or alternatively use `smidump` version 0.5 or later. Clixon expects them to be at `/usr/local/share/mib-yangs/` by default, or configured by `--with-mib-generated-yang-dir=DIR`.
+
+You also need to configure a unix socket for agent. Example of /etc/snmp/snmpd.conf:
+```
+master  agentx
+agentaddress  127.0.0.1,[::1]
+rwcommunity     public  localhost
+agentXSocket    unix:/var/run/snmp.sock
+agentxperms     777 777
+```
 
 ## Known issues
 

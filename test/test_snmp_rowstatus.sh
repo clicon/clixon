@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# snmpset. This requires deviation of MIB-YANG to make write operations
-# Get default value, set new value via SNMP and check it, set new value via NETCONF and check
-# Selected types from CLIXON/IF-MIB/ENTITY mib
+# SNMP table rowstatus tests
+# 
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -102,34 +101,37 @@ function testrun_createAndGo()
 {
     new "createAndGo"
 
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyTag.'notify1' = 2)" 0 "Error in packet."
+    new "Configuring a value without a row is a failure"
+    echo "$snmpset SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'notify1\' = 2"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'notify1\' = 2)" 0 "Error in packet."
+    new "RowStatus is active after createAndGo; can configure additional values afterwards"
+    echo "$snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\' = createAndGo SNMP-NOTIFICATION-MIB::snmpNotifyTag.'notify1' = 2"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\' = createAndGo SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'notify1\' = 2)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: createAndGo(4)"
 
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = createAndGo SNMP-NOTIFICATION-MIB::snmpNotifyTag.'notify1' = 2)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: createAndGo(4)"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: active(1)"
 
-    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: active(1)"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'notify1\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyTag.'notify1' = 2"
 
-    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyTag.'notify1')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyTag.'notify1' = 2"
-
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'notify1' = 1)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'notify1' = 1"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.\'notify1\' = 1)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'notify1' = 1"
 }
 
 function testrun_createAndWait()
 {
     new "createAndWait"
 
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = createAndWait SNMP-NOTIFICATION-MIB::snmpNotifyTag.'notify1' = 2)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = createAndWait"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\' = createAndWait SNMP-NOTIFICATION-MIB::snmpNotifyTag.'notify1' = 2)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = createAndWait"
 
-    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyTag.'notify1')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyTag.'notify1' = 2"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'notify1\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyTag.'notify1' = 2"
 
-    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: notInService(2)"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: notInService(2)"
 
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'notify1' = 1)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'notify1' = 1"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.\'notify1\' = 1)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'notify1' = 1"
 
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = active)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = active"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\' = active)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = active"
 
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'notify1' = 5)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'notify1' = 5"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.\'notify1\' = 5)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'notify1' = 5"
 
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = createAndWait)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = createAndWait"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\' = createAndWait)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = createAndWait"
 
     expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify2' = createAndGo)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify2' = createAndGo"
 
@@ -137,20 +139,20 @@ function testrun_createAndWait()
 
     expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify3' = active)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify3' = active"
 
-    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: notInService(2)"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: notInService(2)"
 }
 
 function testrun_removeRows()
 {
     new "removeRows"
 
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = createAndGo)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1'"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\' = createAndGo)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1'"
 
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = destroy)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = destroy"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\' = destroy)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = destroy"
 
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1'"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1'"
 
-    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1')" 0 "No Such Instance currently exists at this OID)"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\')" 0 "No Such Instance currently exists at this OID)"
 }
 
 function testexit()
@@ -161,7 +163,7 @@ function testexit()
 new "SNMP tests"
 testinit
 
-if [ -n "$SNMP_DEBUG" ]; then
+if $snmp_debug; then
     testrun_createAndGo
     testrun_createAndWait
     testrun_removeRows
