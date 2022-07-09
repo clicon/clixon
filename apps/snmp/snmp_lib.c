@@ -261,7 +261,7 @@ oid_print(FILE      *f,
 
 /*! Variant of yang_type_get that follows leafrefs
  */
-static int
+int
 snmp_yang_type_get(yang_stmt  *ys,
 		   yang_stmt **yrefp,
 		   char      **origtypep,
@@ -1000,10 +1000,9 @@ snmp_oid2str(oid      **oidi,
 	    cprintf(enc, "%c", (char)((*oidi)[i]&0xff));
 	}
 	break;
-    case CLIXON_ASN_FIXED_STRING: // XXX
-	for (; i<7; i++){
+    case CLIXON_ASN_FIXED_STRING:
+	for (; i < *oidilen; i++)
 	    cprintf(enc, "%c", (char)((*oidi)[i]&0xff));
-	}
 	break;
     default:
 	break;

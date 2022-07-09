@@ -197,10 +197,9 @@ function testrun()
     else
 	echo "$snmpset $oid $set_type $value"
 	expectpart "$($snmpset $oid $set_type $value)" 0 "$type: $value2"
-
     fi
-	new "Check $name via SNMP"
-    if [ $type == "STRING" ]; then
+    new "Check $name via SNMP"
+    if [ "$type" == "STRING" ]; then
 	expectpart "$($snmpget $oid)" 0 "$type:" "$value"
     else
 	expectpart "$($snmpget $oid)" 0 "$type: $value2"
@@ -227,7 +226,10 @@ testrun clixonExampleString STRING foobar foobar foobar ${MIB}.1.3
 testrun ifPromiscuousMode INTEGER 1 1 true ${MIB}.1.10 # boolean
 testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 1.2.3.4 ${MIB}.1.13 # InetAddress
 testrun ifPhysAddress STRING ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ${IFMIB}.2.2.1.6.1
-testrun ifStackStatus INTEGER 4 "createAndGo(4)" createAndGo ${IFMIB}.31.1.2.1.3.5.9
+
+if $snmp_debug; then # rowstatus
+    testrun ifStackStatus INTEGER 4 "createAndGo(4)" active ${IFMIB}.31.1.2.1.3.5.9
+fi
 
 new "Cleaning up"
 testexit

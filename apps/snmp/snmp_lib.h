@@ -63,7 +63,6 @@ struct clixon_snmp_handle {
     cvec         *sh_cvk_orig;         /* Index/Key variable values (original) */
     netsnmp_table_registration_info *sh_table_info; /* To mimic table-handler in libnetsnmp code 
 						     * save only to free properly */
-
 };
 typedef struct clixon_snmp_handle clixon_snmp_handle;
 
@@ -74,6 +73,7 @@ int    oid_eq(const oid * objid0, size_t objid0len, const oid * objid1, size_t o
 int    oid_append(const oid *objid0, size_t *objid0len, const oid *objid1, size_t objid1len);
 int    oid_cbuf(cbuf *cb, const oid *objid, size_t objidlen);
 int    oid_print(FILE *f, const oid *objid, size_t objidlen);
+int    snmp_yang_type_get(yang_stmt *ys, yang_stmt **yrefp, char **origtypep, yang_stmt **yrestypep, char **restypep);
 int    yangext_oid_get(yang_stmt *yn, oid *objid, size_t *objidlen, char **objidstr);
 int    snmp_access_str2int(char *modes_str);
 const char *snmp_msg_int2str(int msg);
