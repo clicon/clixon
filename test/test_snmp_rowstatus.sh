@@ -99,77 +99,86 @@ function testinit(){
 
 function testrun_createAndGo()
 {
-    new "createAndGo"
-
+    index=go
+    
     new "Configuring a value without a row is a failure"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'notify1\' = 2 2>&1)" 2 "Reason: inconsistentValue"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'$index\' = 2 2>&1)" 2 "Reason: inconsistentValue"
 
     new "Set RowStatus to CreateAndGo and set tag"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\' = createAndGo SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'notify1\' = 2)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: createAndGo(4)"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\' = createAndGo SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'$index\' = 2)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: createAndGo(4)"
 
     new "Rowstatus is active"
-    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: active(1)"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: active(1)"
 
     new "Get tag"
-    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'notify1\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyTag.'notify1' = STRING: 2"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyTag.'$index' = STRING: 2"
 
     new "set storage type"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.\'notify1\' = 1)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'notify1' = INTEGER: other(1)"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.\'$index\' = 1)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'$index' = INTEGER: other(1)"
 }
 
 function testrun_createAndWait()
 {
-    new "createAndWait"
-
+    index=wait
+    
+    new "Configuring a value without a row is a failure"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'$index\' = 2 2>&1)" 2 "Reason: inconsistentValue"
+    
     new "Set RowStatus to CreateAndWait and set tag"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\' = createAndWait SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'notify1\' = 2)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: createAndWait(5)"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\' = createAndWait SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'$index\' = 2)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: createAndWait(5)"
 
     new "Get tag"
-    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'notify1\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyTag.'notify1' = STRING: 2"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyTag.'$index' = STRING: 2"
 
     new "Get rowstatus"
-    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: notInService(2)"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: notInService(2)"
 
     new "Set storagetype"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.\'notify1\' = 1)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'notify1' = INTEGER: other(1)"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.\'$index\' = 1)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'$index' = INTEGER: other(1)"
 
     new "Set rowstatus to active/ commit"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\' = active)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: active(1)"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\' = active)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: active(1)"
 
     new "Set storagetype again"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.\'notify1\' = 5)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'notify1' = INTEGER: readOnly(5)"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.\'$index\' = 5)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'$index' = INTEGER: readOnly(5)"
 
     new "Set rowstatus to createAndWait"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\' = createAndWait)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: createAndWait(5)"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\' = createAndWait)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: createAndWait(5)"
 
     new "Set second rowstatus to createAndGo"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify2\' = createAndGo)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify2' = INTEGER: createAndGo(4)"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'${index}2\' = createAndGo)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'${index}2' = INTEGER: createAndGo(4)"
 
     new "Set third rowstatus to createAndWait"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify3\' = createAndWait)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify3' = INTEGER: createAndWait(5)"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'${index}3\' = createAndWait)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'${index}3' = INTEGER: createAndWait(5)"
 
     new "Set third rowstatus to active"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify3\' = active)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify3' = INTEGER: active(1)"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'${index}3\' = active)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'${index}3' = INTEGER: active(1)"
 
     new "Get rowstatus"
-    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = INTEGER: notInService(2)"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: notInService(2)"
 }
 
 function testrun_removeRows()
 {
-    new "removeRows"
+    index=remove
 
     new "Set rowstatus to createandgo"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\' = createAndGo)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1'"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\' = createAndGo)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index'"
 
     new "Set rowstatus to destroy"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\' = destroy)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1' = destroy"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\' = destroy)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: destroy(6)"
 
+    new "Get rowstatus"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = No Such Instance currently exists at this OID"
+
+    new "Set rowstatus to createandwait"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\' = createAndWait)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index'"
+    
     new "Set rowstatus to destroy"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'notify1'"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\' = destroy)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: destroy(6)"
 
-    new "get rowstatus"
-    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'notify1\')" 0 "No Such Instance currently exists at this OID)"
+    new "Get rowstatus"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = No Such Instance currently exists at this OID"
 }
 
 function testexit()
@@ -180,14 +189,14 @@ function testexit()
 new "SNMP tests"
 testinit
 
+new "createAndGo"
 testrun_createAndGo
 
+new "createAndWait"
 testrun_createAndWait
 
-if $snmp_debug; then
-    # NYI
-    testrun_removeRows
-fi
+new "removeRows"
+testrun_removeRows
 
 new "Cleaning up"
 testexit

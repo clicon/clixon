@@ -47,7 +47,7 @@
   * New configure options:
     * `--enable-netsnmp`
     * `--with-mib-generated-yang-dir=DIR`
-  * Thanks to Siklu Communications LTD for sponshoring this work
+  * Thanks to Siklu Communications LTD for sponsoring this work
 
 ## 5.8.0
 Planned: July 2022

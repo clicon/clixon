@@ -313,18 +313,17 @@ snmp_scalar_get(clicon_handle               h,
  * @param[in]  ys         Yang node
  * @param[in]  cvk        Vector of index/Key variables, if any
  * @param[in]  db         Clixon datastore, typically "candidate"
- * @param[in]  rowstatus  Special case: transform createAndGo -> active, createAndWait -> notInService
  * @param[in]  reqinfo
  * @param[in]  requestvb  SNMP variables
  * @retval     0          OK
  * @retval     -1         Error
+ * @note contains special logic for rowstatus handling
  */
 static int
 snmp_scalar_set(clicon_handle               h,
 		yang_stmt                  *ys,
 		cvec                       *cvk,
 		char                       *db,
-		int                         rowstatus,
 		netsnmp_agent_request_info *reqinfo,
 		netsnmp_request_info       *requests)
 {
@@ -342,6 +341,8 @@ snmp_scalar_set(clicon_handle               h,
     cvec      *cvk1;
     int        i;
     int        asn1_type;
+    int        rowstatus = 0;
+    enum operation_type op = OP_MERGE;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -372,6 +373,10 @@ snmp_scalar_set(clicon_handle               h,
     /* Extended */
     if (type_yang2asn1(ys, &asn1_type, 1) < 0)
 	goto done;
+    if (asn1_type == CLIXON_ASN_ROWSTATUS){
+	/* Must be done before type_snmp2xml: it translates asn1_type */
+	rowstatus = 1;
+    }
     if ((ret = type_snmp2xml(ys, &asn1_type, requestvb, reqinfo, requests, &valstr)) < 0)
 	goto done;
     if (ret == 0)
@@ -394,6 +399,19 @@ snmp_scalar_set(clicon_handle               h,
 		goto done;
 	    }
 	}
+	else if (strcmp(valstr, "destroy") == 0){ /* Remove entry */
+	    cxobj *xe;
+	    cxobj *xa;
+	    if ((xe = xml_parent(xbot)) != NULL){
+		if ((xa = xml_new("operation", xe, CX_ATTR)) == NULL)
+		    goto done;
+		if (xml_value_set(xa, "delete") < 0)
+		    goto done;
+		if (xml_namespace_change(xa, NETCONF_BASE_NAMESPACE, NETCONF_BASE_PREFIX) < 0)
+		    goto done;
+		op = OP_NONE;
+	    }
+	}
     }
     if (xml_value_set(xb, valstr) < 0)
 	goto done;
@@ -403,7 +421,7 @@ snmp_scalar_set(clicon_handle               h,
     }
     if (clixon_xml2cbuf(cb, xtop, 0, 0, -1, 0) < 0)
 	goto done;
-    if (clicon_rpc_edit_config(h, db, OP_MERGE, cbuf_get(cb)) < 0)
+    if (clicon_rpc_edit_config(h, db, op, cbuf_get(cb)) < 0)
 	goto done;
  ok:
     retval = 0;
@@ -469,7 +487,7 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
     case MODE_SET_RESERVE2: /* 1 */
         break;
     case MODE_SET_ACTION:   /* 2 */
-	if (snmp_scalar_set(sh->sh_h, sh->sh_ys, NULL, "candidate", 0, reqinfo, requests) < 0)
+	if (snmp_scalar_set(sh->sh_h, sh->sh_ys, NULL, "candidate", reqinfo, requests) < 0)
 	    goto done;
         break;
     case MODE_SET_COMMIT:   /* 3 */
@@ -805,7 +823,6 @@ snmp_table_set(clicon_handle               h,
 	if (snmp_scalar_set(h, ys,
 			    cvk_val,
 			    "candidate",
-			    1,
 			    reqinfo,
 			    requests) < 0)
 	    goto done;
@@ -836,7 +853,6 @@ snmp_table_set(clicon_handle               h,
 	    if (snmp_scalar_set(h, ys,
 				cvk_val,
 				"candidate",
-				0,
 				reqinfo,
 				requests) < 0)
 		goto done;
@@ -846,19 +862,16 @@ snmp_table_set(clicon_handle               h,
 	    if (snmp_scalar_set(h, ys,
 				cvk_val,
 				"candidate",
-				0,
 				reqinfo,
 				requests) < 0)
 		goto done;
 	    break;
 	case 3: // notReady
+	case 6: // destroy
 	    if ((ret = netsnmp_request_set_error(requests, SNMP_ERR_INCONSISTENTVALUE)) != SNMPERR_SUCCESS){
 		clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
 		goto ok;
 	    }
-	    break;
-	case 6: // destroy
-	    // XXX NYI
 	    break;
 	}
     }

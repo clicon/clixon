@@ -111,8 +111,6 @@ static const map_str2int snmp_type_map[] = {
     {NULL,           -1}
 };
 
-#define CLIXON_ASN_PHYS_ADDR    253 /* Special case phy-address */
-#define CLIXON_ASN_FIXED_STRING 254 /* RFC2578 Sec 7.7: String-valued, fixed-length */
 
 /* Map between clixon "orig" resolved type and ASN.1 types. 
  */
@@ -127,6 +125,7 @@ static const map_str2int snmp_orig_map[] = {
     {"timestamp",             ASN_TIMETICKS}, // 0x43 / 67
     {"InetAddress",           ASN_IPADDRESS}, // 0x40 / 64 (Dont see this being used)
     {"ipv4-address",          ASN_IPADDRESS}, // 0x40 / 64 (This is used instead)
+    {"RowStatus",             CLIXON_ASN_ROWSTATUS}, // 0x40 / 64 (This is used instead)
     {"phys-address",          CLIXON_ASN_PHYS_ADDR}, /* Clixon extended string type */
     {NULL,                    -1}
 };
@@ -442,7 +441,7 @@ type_yang2asn1(yang_stmt    *ys,
      * First try original type, first type 
      */
     if ((at = clicon_str2int(snmp_orig_map, origtype)) >= 0 &&
-	(extended || (at != CLIXON_ASN_PHYS_ADDR && at != CLIXON_ASN_FIXED_STRING))){
+	(extended || (at < CLIXON_ASN_EXTRAS))){
 	;
     }
     /* Then try fully resolved type */
@@ -522,6 +521,9 @@ type_snmp2xml(yang_stmt                  *ys,
 	goto done; 
     }
     switch (*asn1type){
+    case CLIXON_ASN_ROWSTATUS:
+	*asn1type = ASN_INTEGER;
+	/* fall through */
     case ASN_TIMETICKS:   // 67
     case ASN_INTEGER:   // 2
 	if (cvtype == CGV_STRING){ 	/* special case for enum */
@@ -699,6 +701,9 @@ type_xml2snmp(char       *snmpstr,
 	goto done;
     }
     switch (*asn1type){
+    case CLIXON_ASN_ROWSTATUS:
+	*asn1type = ASN_INTEGER;
+	/* fall through */
     case ASN_INTEGER:   // 2
 	*snmplen = 4;
 	if ((*snmpval = malloc(*snmplen)) == NULL){
@@ -991,6 +996,7 @@ snmp_oid2str(oid      **oidi,
     case ASN_COUNTER64:
     case ASN_COUNTER:
     case ASN_IPADDRESS:
+    case CLIXON_ASN_ROWSTATUS:
 	cprintf(enc, "%lu", (*oidi)[i++]);
 	break;
     case CLIXON_ASN_PHYS_ADDR: /* XXX may need special mapping: ether_aton() ?  */

@@ -48,7 +48,17 @@ extern "C" {
 #define CLIXON_ERR_SNMP_MIB 0x1000
 
 #define IETF_YANG_SMIV2_NS "urn:ietf:params:xml:ns:yang:ietf-yang-smiv2"
-    
+
+/* Special case/extended Clixon ASN1 types
+ * Set in type_yang2asn1() if extended is true
+ * Must be back to proper net-snmp ASN_ types in type_snmp2xml and type_xml2snmp
+ * before calling netsnmp API
+*/
+#define CLIXON_ASN_EXTRAS       253 /* Special case clixon address >= this */
+#define CLIXON_ASN_PHYS_ADDR    253 /* Special case phy-address */
+#define CLIXON_ASN_FIXED_STRING 254 /* RFC2578 Sec 7.7: String-valued, fixed-length */
+#define CLIXON_ASN_ROWSTATUS    255 
+
 /*
  * Types 
  */

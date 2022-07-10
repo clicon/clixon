@@ -227,9 +227,19 @@ testrun ifPromiscuousMode INTEGER 1 1 true ${MIB}.1.10 # boolean
 testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 1.2.3.4 ${MIB}.1.13 # InetAddress
 testrun ifPhysAddress STRING ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ${IFMIB}.2.2.1.6.1
 
-if $snmp_debug; then # rowstatus
-    testrun ifStackStatus INTEGER 4 "createAndGo(4)" active ${IFMIB}.31.1.2.1.3.5.9
-fi
+# Inline testrun for rowstatus complicated logic
+name=ifStackStatus
+type=INTEGER
+oid=${IFMIB}.31.1.2.1.3.5.9
+
+new "Set $name via SNMP"
+expectpart "$($snmpset $oid i 4)" 0 "$type: createAndGo(4)"
+
+new "Check $name via SNMP"
+expectpart "$($snmpget $oid)" 0 "$type: active(1)"
+
+new "Check $name via CLI"
+expectpart "$($clixon_cli -1 -f $cfg show config xml)" 0 "<$name>active</$name>"    
 
 new "Cleaning up"
 testexit
