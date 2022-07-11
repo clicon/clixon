@@ -67,6 +67,8 @@ You can prefix a test with `BE=0` if you want to run your own backend.
 
 You can prefix a test with `RC=0` if you want to run your own restconf process.
 
+You can prefix a test with `SN=0` if you want to run your own SNMP process (in combination with `BE=0`)
+
 To run with debug flags, use the `DBG=<number>` environment variable.
 
 Other variables include:

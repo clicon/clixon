@@ -107,12 +107,16 @@ snmp_terminate(clicon_handle h)
 {
     yang_stmt *yspec;
     cvec      *nsctx;
-    cxobj     *x;
+    cxobj     *x = NULL;
     char      *pidfile = clicon_snmp_pidfile(h);
 
     snmp_shutdown(__FUNCTION__);
     shutdown_agent();
     clixon_snmp_api_agent_cleanup();
+    if (clicon_ptr_get(h, "snmp-rowstatus-tree", (void**)&x) == 0 && x){
+	xml_free(x);
+	x = NULL;
+    }
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
 	ys_free(yspec);

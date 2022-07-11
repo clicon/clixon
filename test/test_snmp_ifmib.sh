@@ -178,13 +178,13 @@ function testinit(){
     new "wait backend"
     wait_backend
 
-    if [ $CS -ne 0 ]; then
-    # Kill old clixon_snmp, if any
-    new "Terminating any old clixon_snmp processes"
-    sudo killall -q clixon_snmp
+    if [ $SN -ne 0 ]; then
+	# Kill old clixon_snmp, if any
+	new "Terminating any old clixon_snmp processes"
+	sudo killall -q clixon_snmp
 
-    new "Starting clixon_snmp"
-    start_snmp $cfg &
+	new "Starting clixon_snmp"
+	start_snmp $cfg &
     fi
 
     new "wait snmp"

@@ -473,8 +473,8 @@ type_yang2asn1(yang_stmt    *ys,
  *
  * @param[in]   snmpval  Malloc:ed snmp type
  * @param[in]   snmplen  Length of snmp type
- * @param[in]   reqinfo  snmpd API struct for error
- * @param[in]   requests snmpd API struct for error
+ * @param[in]   reqinfo  Agent transaction request structure
+ * @param[in]   request  The netsnmp request info structure.
  * @param[out]  valstr   Clixon/yang/xml string value, free after use)
  * @retval      1        OK, and valstr set
  * @retval      0        Invalid value or type
@@ -486,7 +486,7 @@ type_snmp2xml(yang_stmt                  *ys,
 	      int                        *asn1type,
 	      netsnmp_variable_list      *requestvb,
 	      netsnmp_agent_request_info *reqinfo,
-	      netsnmp_request_info       *requests,
+	      netsnmp_request_info       *request,
 	      char                      **valstr)
 {
     int          retval = -1;
@@ -494,7 +494,7 @@ type_snmp2xml(yang_stmt                  *ys,
     enum cv_type cvtype;
     cg_var      *cv = NULL;
     char        *restype = NULL;         /* resolved type */
-    char      *origtype = NULL; /* original type */
+    char        *origtype = NULL; /* original type */
     yang_stmt   *yrestype = NULL;
     int          ret;
 
@@ -583,7 +583,7 @@ type_snmp2xml(yang_stmt                  *ys,
     default:
 	assert(0); // XXX
 	clicon_debug(1, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
-	if ((ret = netsnmp_request_set_error(requests, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
+	if ((ret = netsnmp_request_set_error(request, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
 	    clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
 	    goto done;
 	}

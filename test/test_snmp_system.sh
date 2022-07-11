@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SNMP "smoketest" Basic snmpget test for a scalar
+# SNMP system MIB test
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -105,7 +105,7 @@ function testinit(){
     new "wait backend"
     wait_backend
 
-    if [ $CS -ne 0 ]; then
+    if [ $SN -ne 0 ]; then
     # Kill old clixon_snmp, if any
     new "Terminating any old clixon_snmp processes"
     sudo killall -q clixon_snmp

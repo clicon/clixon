@@ -116,7 +116,7 @@ function testinit(){
     new "wait backend"
     wait_backend
 
-    if [ $CS -ne 0 ]; then
+    if [ $SN -ne 0 ]; then
         # Kill old clixon_snmp, if any
         new "Terminating any old clixon_snmp processes"
         sudo killall -q clixon_snmp

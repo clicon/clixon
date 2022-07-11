@@ -75,7 +75,7 @@ testname=
 : ${RCLOG:=}
 
 # If set to 0, override starting of clixon_snmp in test (you bring your own)
-: ${CS:=1}
+: ${SN:=1}
 
 # Namespace: netconf base
 BASENS='urn:ietf:params:xml:ns:netconf:base:1.0'
@@ -281,32 +281,6 @@ if $SNMPCHECK; then
 
             new "Validating next OID: $oid2 = $type: $value"
             expectpart "$($getnext $oid)" 0 "$result"
-        fi
-    }
-
-    function validate_set(){
-        oid=$1
-        type=$2
-        value=$3
-
-        case $type in
-            "INTEGER")
-                set_type="i"
-                ;;
-            "STRING")
-                set_type="s"
-                ;;
-            "TIMETICKS")
-                set_type="t"
-                ;;
-        esac
-
-        new "Setting value $value to OID $oid with type $set_type"
-
-        if [ $type == "STRING" ]; then
-            expectpart "$($snmpset $oid $set_type "$value")" 0 "$type: \"$value\""
-        else
-            expectpart "$($snmpset $oid $set_type "$value")" 0 "$type: $value"
         fi
     }
 fi

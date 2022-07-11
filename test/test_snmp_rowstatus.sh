@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # SNMP table rowstatus tests
-# 
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -84,7 +83,7 @@ function testinit(){
     new "wait backend"
     wait_backend
 
-    if [ $CS -ne 0 ]; then
+    if [ $SN -ne 0 ]; then
         # Kill old clixon_snmp, if any
         new "Terminating any old clixon_snmp processes"
         sudo killall -q clixon_snmp
@@ -106,12 +105,18 @@ function testrun_createAndGo()
 
     new "Set RowStatus to CreateAndGo and set tag"
     expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\' = createAndGo SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'$index\' = 2)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: createAndGo(4)"
-
-    new "Rowstatus is active"
+    
+    new "Check rowstatus is active"
     expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: active(1)"
 
     new "Get tag"
     expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyTag.'$index' = STRING: 2"
+
+    new "Get tag via netconf: candidate"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/sn:SNMP-NOTIFICATION-MIB/sn:snmpNotifyTable/sn:snmpNotifyEntry[sn:snmpNotifyName='$index']/sn:snmpNotifyTag\" xmlns:sn=\"urn:ietf:params:xml:ns:yang:smiv2:SNMP-NOTIFICATION-MIB\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><SNMP-NOTIFICATION-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:SNMP-NOTIFICATION-MIB\"><snmpNotifyTable><snmpNotifyEntry><snmpNotifyName>$index</snmpNotifyName><snmpNotifyTag>2</snmpNotifyTag></snmpNotifyEntry></snmpNotifyTable></SNMP-NOTIFICATION-MIB></data></rpc-reply>"
+
+    new "Get tag via netconf: running"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/sn:SNMP-NOTIFICATION-MIB/sn:snmpNotifyTable/sn:snmpNotifyEntry[sn:snmpNotifyName='$index']/sn:snmpNotifyTag\" xmlns:sn=\"urn:ietf:params:xml:ns:yang:smiv2:SNMP-NOTIFICATION-MIB\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><SNMP-NOTIFICATION-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:SNMP-NOTIFICATION-MIB\"><snmpNotifyTable><snmpNotifyEntry><snmpNotifyName>$index</snmpNotifyName><snmpNotifyTag>2</snmpNotifyTag></snmpNotifyEntry></snmpNotifyTable></SNMP-NOTIFICATION-MIB></data></rpc-reply>"
 
     new "set storage type"
     expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.\'$index\' = 1)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyStorageType.'$index' = INTEGER: other(1)"
@@ -129,6 +134,9 @@ function testrun_createAndWait()
 
     new "Get tag"
     expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyTag.'$index' = STRING: 2"
+
+    new "Get tag via netconf: candidate expect fail"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/sn:SNMP-NOTIFICATION-MIB/sn:snmpNotifyTable/sn:snmpNotifyEntry[sn:snmpNotifyName='$index']/sn:snmpNotifyTag\" xmlns:sn=\"urn:ietf:params:xml:ns:yang:smiv2:SNMP-NOTIFICATION-MIB\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
 
     new "Get rowstatus"
     expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: notInService(2)"
@@ -162,14 +170,27 @@ function testrun_removeRows()
 {
     index=remove
 
-    new "Set rowstatus to createandgo"
-    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\' = createAndGo)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index'"
+    new "Set RowStatus to CreateAndGo and set tag"
+    expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\' = createAndGo SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'$index\' = 2)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: createAndGo(4)"
+
+    new "Get tag"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyTag.'$index' = STRING: 2"
+
+    new "Get tag via netconf"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/sn:SNMP-NOTIFICATION-MIB/sn:snmpNotifyTable/sn:snmpNotifyEntry[sn:snmpNotifyName='$index']/sn:snmpNotifyTag\" xmlns:sn=\"urn:ietf:params:xml:ns:yang:smiv2:SNMP-NOTIFICATION-MIB\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><SNMP-NOTIFICATION-MIB xmlns=\"urn:ietf:params:xml:ns:yang:smiv2:SNMP-NOTIFICATION-MIB\"><snmpNotifyTable><snmpNotifyEntry><snmpNotifyName>$index</snmpNotifyName><snmpNotifyTag>2</snmpNotifyTag></snmpNotifyEntry></snmpNotifyTable></SNMP-NOTIFICATION-MIB></data></rpc-reply>"
 
     new "Set rowstatus to destroy"
     expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\' = destroy)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = INTEGER: destroy(6)"
 
     new "Get rowstatus"
     expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index' = No Such Instance currently exists at this OID"
+
+    # Default value is ""
+    new "Get tag"
+    expectpart "$($snmpget SNMP-NOTIFICATION-MIB::snmpNotifyTag.\'$index\')" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyTag.'$index' = STRING: " --not-- "= STRING: 2" 
+
+    new "Get tag via netconf: candidate expect fail"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/sn:SNMP-NOTIFICATION-MIB/sn:snmpNotifyTable/sn:snmpNotifyEntry[sn:snmpNotifyName='$index']/sn:snmpNotifyTag\" xmlns:sn=\"urn:ietf:params:xml:ns:yang:smiv2:SNMP-NOTIFICATION-MIB\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
 
     new "Set rowstatus to createandwait"
     expectpart "$($snmpset SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.\'$index\' = createAndWait)" 0 "SNMP-NOTIFICATION-MIB::snmpNotifyRowStatus.'$index'"
