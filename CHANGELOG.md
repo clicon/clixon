@@ -110,6 +110,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Nested YANG choice does not work #342](https://github.com/clicon/clixon/issues/342)
 * Fixed: [YANG if-feature does not support nested boolean expression](https://github.com/clicon/clixon/issues/341)
 * Fixed: [RPC edit-config payloads are not fully validated](https://github.com/clicon/clixon/issues/337)
 

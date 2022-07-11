@@ -274,50 +274,22 @@ check_when_condition(cxobj              *x0p,
     goto done;
 }
 
-/*! Check if choice nodes and implicitly remove all other cases.
- *
- * Special case is if yc parent (yp) is choice/case
- * then find x0 child with same yc even though it does not match lexically
- * However this will give another y0c != yc
- * @param[in]  x0      Base tree node
- * @param[in]  y1c     Yang spec of tree child. If null revert to linear search.
- * @retval     0       OK
- * @retval    -1       Error
- *
- * From RFC 7950 Sec 7.9
- * Since only one of the choice's cases can be valid at any time in the
- * data tree, the creation of a node from one case implicitly deletes
- * all nodes from all other cases.  If a request creates a node from a
- * case, the server will delete any existing nodes that are defined in
- * other cases inside the choice.
+/*! Given choice/case, remove all other cases.
  */
 static int
-check_delete_existing_case(cxobj     *x0,
-    			   yang_stmt *y1c)
+choice_delete_existing_children(cxobj     *x0,
+				yang_stmt *y1c,
+				yang_stmt *y1case,
+				yang_stmt *y1choice)
 {
     int        retval = -1;
-    yang_stmt *yp;
-    yang_stmt *y0p;
-    yang_stmt *y0case;
-    yang_stmt *y1case;
-    yang_stmt *y0choice;
-    yang_stmt *y1choice;
-    yang_stmt *y0c;
     cxobj     *x0c;
+    yang_stmt *y0c;
+    yang_stmt *y0case;
+    yang_stmt *y0choice;
     cxobj     *x0prev;
-
-    if ((yp = yang_parent_get(y1c)) == NULL)
-	goto ok;
-    if (yang_keyword_get(yp) == Y_CASE){
-	y1case = yp;
-	y1choice = yang_parent_get(y1case);
-    }
-    else if (yang_keyword_get(yp) == Y_CHOICE){
-	y1case = NULL;
-	y1choice = yp;
-    }
-    else
-	goto ok;
+    yang_stmt *y0p;
+    
     /* Now traverse existing tree and compare with choice yang structure of added tree */
     x0prev = NULL;
     x0c = NULL;
@@ -351,6 +323,54 @@ check_delete_existing_case(cxobj     *x0,
 	}
 	x0prev = x0c;
     }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Check if choice nodes and implicitly remove all other cases.
+ *
+ * Special case is if yc parent (yp) is choice/case
+ * then find x0 child with same yc even though it does not match lexically
+ * However this will give another y0c != yc
+ * @param[in]  x0      Base tree node
+ * @param[in]  y1c     Yang spec of tree child. If null revert to linear search.
+ * @retval     0       OK
+ * @retval    -1       Error
+ *
+ * From RFC 7950 Sec 7.9
+ * Since only one of the choice's cases can be valid at any time in the
+ * data tree, the creation of a node from one case implicitly deletes
+ * all nodes from all other cases.  If a request creates a node from a
+ * case, the server will delete any existing nodes that are defined in
+ * other cases inside the choice.
+ */
+static int
+check_delete_existing_case(cxobj     *x0,
+    			   yang_stmt *y1c)
+{
+    int        retval = -1;
+    yang_stmt *yp;
+    yang_stmt *y1case;
+    yang_stmt *y1choice;
+
+    if ((yp = yang_parent_get(y1c)) == NULL)
+	goto ok;
+    if (yang_keyword_get(yp) == Y_CASE){
+	y1case = yp;
+	y1choice = yang_parent_get(y1case);
+    }
+    else if (yang_keyword_get(yp) == Y_CHOICE){
+	y1case = NULL;
+	y1choice = yp;
+    }
+    else
+	goto ok;
+    if (choice_delete_existing_children(x0, y1c, y1case, y1choice) < 0)
+	goto done;
+    /* Recursive call */
+    if (check_delete_existing_case(x0, y1choice) < 0)
+	goto done;
  ok:
     retval = 0;
  done:
@@ -772,7 +792,7 @@ text_modify(clicon_handle       h,
 	    /* First pass: Loop through children of the x1 modification tree 
 	     * collect matching nodes from x0 in x0vec (no changes to x0 children)
 	     */
-	    if ((x0vec = calloc(xml_child_nr(x1), sizeof(x1))) == NULL){
+	    if ((x0vec = calloc(xml_child_nr_type(x1, CX_ELMNT), sizeof(x1))) == NULL){
 		clicon_err(OE_UNIX, errno, "calloc");
 		goto done;
 	    }
