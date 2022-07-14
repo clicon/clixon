@@ -426,7 +426,7 @@ usage(clicon_handle h,
             "\t-m <mode>\tSpecify plugin syntax mode\n"
 	    "\t-q \t\tQuiet mode, dont print greetings or prompt, terminate on ctrl-C\n"
 	    "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
-	    "\t-G \t\tPrint auo-cli CLI syntax generated from YANG\n"
+	    "\t-G \t\tPrint auto-cli CLI syntax generated from YANG\n"
 	    "\t-L \t\tDebug print dynamic CLI syntax including completions and expansions\n"
 	    "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (stderr is default)\n"
 	    "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"

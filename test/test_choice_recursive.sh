@@ -40,12 +40,16 @@ module system{
 	choice top{
 	    case topA {
 		choice A{
-		    leaf A1x{
+		    case A1{
+ 		      leaf A1x{
 			type string;
-		    }
-		    leaf A2x{
+		      }
+                    }
+		    case A2{
+  		      leaf A2x{
 			type string;
-		    }
+		      }
+                    }
 		}
 		leaf Ay{
 		    type string;
@@ -112,17 +116,41 @@ fi
 new "wait backend"
 wait_backend
 
-new "cli set 2nd A stmt"
-expectpart "$($clixon_cli -1 -f $cfg -l o set c Ay foo)" 0 "^$"
+new "cli set 1st A stmt"
+expectpart "$($clixon_cli -1 -f $cfg -l o set c A1x aaa)" 0 "^$"
 
 new "show config"
-expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><Ay>foo</Ay></c>$"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><A1x>aaa</A1x></c>$"
+
+new "cli set 2nd A stmt"
+expectpart "$($clixon_cli -1 -f $cfg -l o set c A2x bbb)" 0 "^$"
+
+new "show config, only A2x"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><A2x>bbb</A2x></c>$"
+
+new "cli set 3rd A stmt"
+expectpart "$($clixon_cli -1 -f $cfg -l o set c Ay ccc)" 0 "^$"
+
+new "show config: A2x + Ay"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><A2x>bbb</A2x><Ay>ccc</Ay></c>$"
 
 new "cli set 1st B stmt"
-expectpart "$($clixon_cli -1 -f $cfg -l o set c B1x bar)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg -l o set c B1x ddd)" 0 "^$"
 
-new "show config, Ay removed"
-expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><B1x>bar</B1x></c>$" --not-- "<Ay>foo</Ay>"
+new "show config: B1x"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><B1x>ddd</B1x></c>$"
+
+new "cli set 3rd A stmt"
+expectpart "$($clixon_cli -1 -f $cfg -l o set c Ay ccc)" 0 "^$"
+
+new "show config: Ay"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><Ay>ccc</Ay></c>$"
+
+new "cli set 3rd B stmt"
+expectpart "$($clixon_cli -1 -f $cfg -l o set c By fff)" 0 "^$"
+
+new "show config: By"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><By>fff</By></c>$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
