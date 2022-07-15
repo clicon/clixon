@@ -39,6 +39,9 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 # For clixon and cligen
 RUN apk add --update git make build-base gcc flex bison curl-dev
 
+# For netsnmp
+RUN apk add --update net-snmp net-snmp-dev
+
 WORKDIR /usr/local/share
 
 # Checkout standard YANG models for tests (note >1G for full repo)
@@ -76,7 +79,7 @@ WORKDIR /clixon/clixon
 COPY clixon .
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --without-restconf --with-yang-standard-dir=/usr/local/share/yang/standard
+RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --without-restconf --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/
 RUN make
 RUN make install
 
@@ -103,6 +106,9 @@ WORKDIR /clixon
 COPY startsystem.sh startsystem.sh 
 RUN install startsystem.sh /clixon/build/bin/
 
+# Add our generated YANG files
+RUN git clone https://github.com/clicon/mib-yangs.git /usr/local/share/mib-yangs
+
 #
 # Stage 2
 # The second step skips the development environment and builds a runtime system
@@ -112,6 +118,16 @@ MAINTAINER Olof Hagsand <olof@hagsand.se>
 # For clixon and cligen
 RUN apk add --update flex bison fcgi-dev
 
+# For SNMP
+RUN apk add --update net-snmp net-snmp-tools
+
+# Some custom configuration for SNMP
+RUN echo "master  agentx" > /etc/snmp/snmpd.conf
+RUN echo "agentaddress  127.0.0.1" >> /etc/snmp/snmpd.conf
+RUN echo "rwcommunity   public  localhost" >> /etc/snmp/snmpd.conf
+RUN echo "agentXSocket  unix:/var/run/snmp.sock" >> /etc/snmp/snmpd.conf
+RUN echo "agentxperms   777 777" >> /etc/snmp/snmpd.conf
+
 # Test-specific (for test scripts)
 RUN apk add --update sudo curl procps grep make bash expect
 
@@ -120,6 +136,7 @@ RUN adduser -D -H clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
 COPY --from=0 /usr/local/share/yang/* /usr/local/share/yang/standard/
+COPY --from=0 /usr/local/share/mib-yangs/* /usr/local/share/mib-yangs/
 
 # Log to stderr.
 CMD /usr/local/bin/startsystem.sh

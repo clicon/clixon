@@ -453,7 +453,7 @@ usage(clicon_handle h,
 	    "\t-p <dir>\tAdd Yang directory path (see CLICON_YANG_DIR)\n"
 	    "\t-b <dir>\tSpecify datastore directory\n"
     	    "\t-F\t\tRun in foreground, do not run as daemon\n"
-    	    "\t-z\t\tKill other config daemon and exit\n"
+    	    "\t-z\t\tKill other backend daemon and exit\n"
     	    "\t-a UNIX|IPv4|IPv6  Internal backend socket family\n"
     	    "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)(default: %s)\n"
     	    "\t-P <file>\tPid filename (default: %s)\n"
@@ -1004,7 +1004,7 @@ main(int    argc,
 	goto done;
 
     /* Write pid-file */
-    if ((pid = pidfile_write(pidfile)) <  0)
+    if (pidfile_write(pidfile) <  0)
 	goto done;
 
     if (set_signal(SIGTERM, backend_sig_term, NULL) < 0){

@@ -114,7 +114,8 @@ AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(LIBSTATIC_SUFFIX)
 AC_SUBST(LINKAGE)
-AC_SUBST(with_restconf) # Set to native or fcgi -> compile apps/restconf
+AC_SUBST(with_restconf)  # Set to native or fcgi -> compile apps/restconf
+AC_SUBST(enable_netsnmp) # Enable build of apps/snmp
 AC_SUBST(HAVE_LIBNGHTTP2,false) # consider using neutral constant such as with-http2
 AC_SUBST(HAVE_HTTP1,false) 
 AC_SUBST(with_libxml2)  
@@ -123,6 +124,8 @@ AC_SUBST(CLIXON_YANG_PATCH)
 AC_SUBST(YANG_INSTALLDIR) 
 # Examples require standard IETF YANGs. You need to provide these for example and tests
 AC_SUBST(YANG_STANDARD_DIR)
+# SNMP tests require generated YANGs from MIBs
+AC_SUBST(MIB_GENERATED_YANG_DIR)
 
 #
 AC_PROG_CC()
@@ -275,6 +278,37 @@ AC_ARG_WITH([restconf],
 AC_ARG_WITH([restconf],
 	    AS_HELP_STRING([--without-restconf],[Disable restconf altogether]))
 
+# This is for net-snmp
+AC_ARG_ENABLE(netsnmp, AS_HELP_STRING([--enable-netsnmp],[Enable net-snmp Clixon YANG mapping]),[
+   if test "$enableval" = no; then
+      enable_netsnmp=no
+   else	      
+      enable_netsnmp=yes
+   fi
+  ],
+  [ enable_netsnmp=no])
+AC_MSG_RESULT(checking netsnmp is enabled: $enable_netsnmp)
+
+if test "$enable_netsnmp" = "yes"; then
+   # All libs are:
+   # libnetsnmp, libnetsnmpagent, libnetsnmpmibs, libnetsnmptrapd, libnetsnmphelpers
+   AC_CHECK_LIB(netsnmp, init_snmp)
+   AC_CHECK_LIB(netsnmpagent, init_agent)	
+   AC_CHECK_HEADERS(net-snmp/net-snmp-config.h,[], AC_MSG_ERROR([snmp is missing]))
+
+
+   # MIB_GENERATED_YANG_DIR is where clixon assumes generated YANGs from MIBs are stored
+   # This is NOT installed by Clixon and is not needed for core system
+   # However, it is required by SNMP tests.
+   # To generate: for i in /usr/share/snmp/mibs/*; do smidump -f yang $i > `basename -s .txt $i`.yang; done
+   AC_ARG_WITH(mib-generated-yang-dir,
+      [AS_HELP_STRING([--with-mib-generated-yang-dir=DIR],[Directory of generated YANG specs (default: $prefix/share/mib-yangs)])],
+      [MIB_GENERATED_YANG_DIR="$withval"],
+      [MIB_GENERATED_YANG_DIR="${prefix}/share/mib-yangs"]
+    )
+    AC_MSG_RESULT(Generated YANGs from MIB files are expected to be in ${MIB_GENERATED_YANG_DIR})
+fi 
+
 # Set default config file location
 CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml
 AC_ARG_WITH([configfile],
@@ -352,6 +386,7 @@ AC_OUTPUT(Makefile
 	  apps/backend/Makefile 
 	  apps/netconf/Makefile
 	  apps/restconf/Makefile
+  	  apps/snmp/Makefile
 	  include/Makefile
 	  etc/Makefile
 	  etc/clixonrc
@@ -373,4 +408,3 @@ AC_OUTPUT(Makefile
 	  test/cicd/Makefile
   	  test/vagrant/Makefile	
 )
-

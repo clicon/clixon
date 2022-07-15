@@ -55,7 +55,8 @@
 
 /*
  * Types
- * Add error category here, but must also add an entry in EV variable in clixon_err.c
+ * Add error category here, 
+ * @see EV variable in clixon_err.c but must also add an entry there
  */ 
 enum clicon_err{
     /* 0 means error not set) */  
@@ -78,6 +79,7 @@ enum clicon_err{
     OE_UNDEF,
     /*-- From here error extensions using clixon_err_cat_reg, XXX register dynamically? --*/
     OE_SSL,      /* Openssl errors, see eg ssl_get_error */
+    OE_SNMP ,    /* Netsnmp error */    
     OE_NGHTTP2,  /* nghttp2 errors, see HAVE_LIBNGHTTP2 */
 };
 

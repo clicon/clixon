@@ -1810,6 +1810,74 @@ xml_merge(cxobj     *x0,
     goto done;
 }
 
+/*! Given a YANG (enum) type node and a value, return the string containing corresponding int str
+ *
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  valstr  Integer string value
+ * @param[out] enumstr Value of enum, dont free
+ */
+int
+yang_valstr2enum(yang_stmt *ytype,
+		 char      *valstr,
+		 char     **enumstr)
+{
+    int        retval = -1;
+    yang_stmt *yenum = NULL;
+    yang_stmt *yval; 
+
+    if (enumstr == NULL){
+	clicon_err(OE_UNIX, EINVAL, "str is NULL");
+	goto done;
+    }
+    while ((yenum = yn_each(ytype, yenum)) != NULL) {
+	if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
+	    goto done;
+	if (strcmp(yang_argument_get(yval), valstr) == 0)
+	    break;
+    }
+    if (yenum)
+	*enumstr = yang_argument_get(yenum);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Given a YANG (enum) type node and a value, return the string containing corresponding int str
+ *
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  enumstr Value of enum
+ * @param[out] valstr  Corresponding string containing an int (direct pointer, dont free)
+ * @retval     1       OK, result in valstr
+ * @retval     0       Invalid, not found
+ * @retval     -1      Error
+ */
+int
+yang_enum2valstr(yang_stmt *ytype,
+		 char      *enumstr,
+		 char     **valstr)
+{
+    int        retval = -1;
+    yang_stmt *yenum; 
+    yang_stmt *yval; 
+
+    if (valstr == NULL){
+	clicon_err(OE_UNIX, EINVAL, "valstr is NULL");
+	goto done;
+    }
+    if ((yenum = yang_find(ytype, Y_ENUM, enumstr)) == NULL)
+	goto fail;
+    /* Should assign value if yval not found */
+    if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
+	goto done;
+    *valstr = yang_argument_get(yval);
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Get integer value from xml node from yang enumeration 
  * @param[in]  node XML node in a tree
  * @param[out] val  Integer value returned
@@ -1832,9 +1900,8 @@ yang_enum_int_value(cxobj   *node,
     yang_stmt *ys;
     yang_stmt *ytype;
     yang_stmt *yrestype;  /* resolved type */
-    yang_stmt *yenum; 
-    yang_stmt *yval; 
     char      *reason = NULL;
+    char      *intstr = NULL;
 
     if (node == NULL)
 	goto done;
@@ -1853,19 +1920,15 @@ yang_enum_int_value(cxobj   *node,
     }
     if (yrestype==NULL || strcmp(yang_argument_get(yrestype), "enumeration"))
 	goto done;
-    if ((yenum = yang_find(yrestype, Y_ENUM, xml_body(node))) == NULL)
-	goto done;
-    /* Should assign value if yval not found */
-    if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
+    if (yang_enum2valstr(yrestype, xml_body(node), &intstr) < 0)
 	goto done;
     /* reason is string containing why int could not be parsed */
-    if (parse_int32(yang_argument_get(yval), val, &reason) < 0)
+    if (parse_int32(intstr, val, &reason) < 0)
 	goto done;
     retval = 0;
 done:
     return retval;
 }
-
 
 /*! Given XML tree x0 with marked nodes, copy marked nodes to new tree x1
  * Two marks are used: XML_FLAG_MARK and XML_FLAG_CHANGE

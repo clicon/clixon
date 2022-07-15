@@ -386,6 +386,8 @@ yang2api_path_fmt_1(yang_stmt *ys,
  * @param[in]  ys           Yang statement
  * @param[in]  inclkey      If set include key leaf (eg last leaf d in ex)
  * @param[out] api_path_fmt XML api path. Needs to be freed after use.
+ * @retval     0            OK
+ * @retval     -1           Error
  * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
  */ 
 int
@@ -424,7 +426,7 @@ yang2api_path_fmt(yang_stmt   *ys,
  * @param[in]  api_path_fmt  XML key format, eg /aaa/%s/name
  * @param[in]  cvv           cligen variable vector, one for every wildchar in api_path_fmt
  * @param[out] api_path      api_path, eg /aaa/17. Free after use
- * @param[out] cvvi          1..cvv-len. Index into cvv of last cvv entry used, For example, 
+ * @param[out] cvv_i          1..cvv-len. Index into cvv of last cvv entry used, For example, 
  *                           if same as len of cvv, all were used, if < some entries were not
  * @retval     0             OK
  * @retval     -1            Error
@@ -902,7 +904,7 @@ api_path2xpath(char       *api_path,
  * @param[in]   nodeclass Set to schema nodes, data nodes, etc
  * @param[in]   strict    Break if api-path is not "complete" otherwise ignore and continue
  * @param[out]  xbotp     Resulting xml tree 
- * @param[out]  ybotp    Yang spec matching xpathp
+ * @param[out]  ybotp     Yang spec matching xpathp
  * @param[out]  xerr      Netconf error message (if retval=0)
  * @retval      1         OK
  * @retval      0         Invalid api_path or associated XML, netconf error
@@ -1144,7 +1146,7 @@ api_path2xml_vec(char      **vec,
  * @param[in,out] xtop       Incoming XML tree
  * @param[in]     nodeclass  Set to schema nodes, data nodes, etc
  * @param[in]     strict     Break if api-path is not "complete" otherwise ignore and continue
- * @param[out]    xbotp      Resulting xml tree (end of xpath)
+ * @param[out]    xbotp      Resulting xml tree (end of xpath) (optional)
  * @param[out]    ybotp      Yang spec matching xbotp
  * @param[out]    xerr       Netconf error message (if retval=0)
  * @retval        1          OK

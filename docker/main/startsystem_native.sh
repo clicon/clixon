@@ -125,6 +125,12 @@ openssl req -x509 -config ./ca.cnf -nodes -newkey rsa:4096 -keyout /etc/ssl/priv
 /usr/local/sbin/clixon_backend -D $DBG -s running -l e # logs on docker logs
 >&2 echo "clixon_backend started"
 
+# Start snmpd, we need this for the SNMP tests and the app clixon_snmp. Log to stdout, then we can
+# use Docker logs to see what's happening.
+snmpd -Lo -p /var/run/snmpd.pid -I -ifXTable -I -ifTable -I -system_mib -I -sysORTable -I -snmpNotifyFilterTable -I -snmpNotifyTable -I -snmpNotifyFilterProfileTable
+
+sleep 3
+
 # Alt: let backend be in foreground, but test scripts may
 # want to restart backend
 /bin/sleep 100000000

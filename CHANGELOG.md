@@ -35,6 +35,20 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
+## SNMP branch
+
+* Clixon SNMP frontend
+  * Support of SNMP for retreiving and setting values via net-snmp using a MIB-YANG mapping defined in RFC6643.
+  * For details, see [SNMP section of user manual](https://clixon-docs.readthedocs.io/en/latest/snmp.html)
+  * YANG `clixon-config@2022-03-21.yang` changes:
+    * Added options:
+      * `CLICON_SNMP_AGENT_SOCK`
+      * `CLICON_SNMP_MIB`
+  * New configure options:
+    * `--enable-netsnmp`
+    * `--with-mib-generated-yang-dir=DIR`
+  * Thanks to Siklu Communications LTD for sponsoring this work
+
 ## 5.8.0
 Planned: July 2022
 
@@ -120,8 +134,6 @@ Developers may need to change their code
 
 The Clixon 5.7 release introduces (long overdue) NETCONF chunked framing as defined
 in RFC 6242. It also introduces a limited http data service and lots of bugfixes.
-
-### New features
 
 * Implementation of "chunked framing" according to RFC6242 for Netconf 1.1.
   * First hello is 1.0 EOM framing, then successing rpc is chunked framing

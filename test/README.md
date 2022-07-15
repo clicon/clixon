@@ -67,6 +67,8 @@ You can prefix a test with `BE=0` if you want to run your own backend.
 
 You can prefix a test with `RC=0` if you want to run your own restconf process.
 
+You can prefix a test with `SN=0` if you want to run your own SNMP process (in combination with `BE=0`)
+
 To run with debug flags, use the `DBG=<number>` environment variable.
 
 Other variables include:
@@ -149,6 +151,26 @@ If you do not have them, generate self-signed certs, eg as follows:
 ```
 
 There are also client-cert tests, eg `test_ssl_certs.sh`
+
+## SNMP
+
+Clixon snmp frontend tests require a running netsnmpd and converted YANG files from MIB.
+
+Netsnmpd is 5.9 or later and can be started via systemd. For the tests
+to run, the systems IFMIB should be disabled: `-I -ifTable,ifNumber,ifXTable,`, etc.
+
+One way to start snmpd on Ubuntu, known to be working for the tests are: snmpd -Lo -p /var/run/snmpd.pid -I -ifXTable -I -ifTable -I -system_mib -I -sysORTable -I -snmpNotifyFilterTable -I -snmpNotifyTable -I -snmpNotifyFilterProfileTable
+
+Converted YANG files are available at `https://github.com/clicon/mib-yangs` or alternatively use `smidump` version 0.5 or later. Clixon expects them to be at `/usr/local/share/mib-yangs/` by default, or configured by `--with-mib-generated-yang-dir=DIR`.
+
+You also need to configure a unix socket for agent. Example of /etc/snmp/snmpd.conf:
+```
+master  agentx
+agentaddress  127.0.0.1,[::1]
+rwcommunity     public  localhost
+agentXSocket    unix:/var/run/snmp.sock
+agentxperms     777 777
+```
 
 ## Known issues
 

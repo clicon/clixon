@@ -1,0 +1,134 @@
+#
+# ***** BEGIN LICENSE BLOCK *****
+# 
+# Copyright (C) 2022 Olof Hagsand and Kristofer Hallin
+#
+# This file is part of CLIXON
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Alternatively, the contents of this file may be used under the terms of
+# the GNU General Public License Version 3 or later (the "GPL"),
+# in which case the provisions of the GPL are applicable instead
+# of those above. If you wish to allow use of your version of this file only
+# under the terms of the GPL, and not to allow others to
+# use your version of this file under the terms of Apache License version 2, 
+# indicate your decision by deleting the provisions above and replace them with
+# the notice and other provisions required by the GPL. If you do not delete
+# the provisions above, a recipient may use your version of this file under
+# the terms of any one of the Apache License version 2 or the GPL.
+#
+# ***** END LICENSE BLOCK *****
+#
+#
+VPATH       	= @srcdir@
+srcdir  	= @srcdir@
+top_srcdir  	= @top_srcdir@
+CC		= @CC@
+CFLAGS  	= @CFLAGS@ 
+LINKAGE         = @LINKAGE@
+INSTALLFLAGS  	= @INSTALLFLAGS@ 
+LDFLAGS 	= @LDFLAGS@
+
+prefix 		= @prefix@
+datarootdir	= @datarootdir@
+exec_prefix 	= @exec_prefix@
+bindir 		= @bindir@
+libdir		= @libdir@
+sbindir 	= @sbindir@
+mandir		= @mandir@
+libexecdir	= @libexecdir@
+localstatedir	= @localstatedir@
+sysconfdir	= @sysconfdir@
+includedir	= @includedir@
+HOST_VENDOR     = @host_vendor@
+
+SH_SUFFIX	= @SH_SUFFIX@
+LIBSTATIC_SUFFIX = @LIBSTATIC_SUFFIX@
+CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
+CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
+
+# Use this clixon lib for linking
+ifeq ($(LINKAGE),dynamic)
+	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+else
+	CLIXON_LIB	= libclixon$(LIBSTATIC_SUFFIX)
+endif
+
+# For dependency
+LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
+
+LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@ 
+
+CPPFLAGS  	= @CPPFLAGS@
+
+ifeq ($(LINKAGE),dynamic)
+CPPFLAGS  	+= -fPIC
+endif
+
+INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
+
+# Application
+APPL	  = clixon_snmp
+
+# Common source - not accessible from plugin - independent of restconf package (fcgi|native)
+APPSRC    =
+APPSRC   += snmp_main.c
+APPSRC   += snmp_register.c
+APPSRC   += snmp_handler.c
+APPSRC   += snmp_lib.c
+
+APPOBJ    = $(APPSRC:.c=.o)
+
+all:	 $(APPL)
+
+# Dependency of clixon library (LIBDEPS)
+$(top_srcdir)/lib/src/$(CLIXON_LIB):
+	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
+
+clean:
+	rm -f *.core $(APPL) $(APPOBJ) *.o 
+	rm -f *.gcda *.gcno *.gcov # coverage
+
+distclean: clean
+	rm -f Makefile *~ .depend
+
+# Put daemon in bin 
+# Put other executables in libexec/
+install:	$(APPL)
+	install -d -m 0755 $(DESTDIR)$(sbindir)
+	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(sbindir)
+
+install-include:
+
+uninstall:
+	rm -f $(DESTDIR)$(sbindir)/$(APPL)
+
+.SUFFIXES:
+.SUFFIXES: .c .o
+
+.c.o:
+	$(CC) $(INCLUDES) -D__PROGRAM__=\"clixon_snmp\" $(CPPFLAGS) $(CFLAGS) -c $<
+
+$(APPL) : $(APPOBJ) $(LIBDEPS)
+	echo $(APPOBJ)
+	echo $(LIBDEPS)
+	$(CC) $(LDFLAGS) $^ $(LIBS) -o $@
+
+TAGS:
+	find . -name '*.[chyl]' -print | etags -
+
+depend:
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(APPFCGI) $(APPSRC) > .depend
+
+#include .depend

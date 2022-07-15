@@ -53,6 +53,7 @@ testname=
 # 1: Start valgrind at every new testcase. Check result every next new
 # 2: Start valgrind every new backend start. Check when backend stops
 # 3: Start valgrind every new restconf start. Check when restconf stops
+# 4: Start valgrind every new snmp start. Check when snmp stops
 # 
 : ${valgrindtest=0}
 
@@ -72,6 +73,9 @@ testname=
 # Where to log restconf. Some systems may not have syslog,
 # eg logging to a file: RCLOG="-l f/www-data/restconf.log"
 : ${RCLOG:=}
+
+# If set to 0, override starting of clixon_snmp in test (you bring your own)
+: ${SN:=1}
 
 # Namespace: netconf base
 BASENS='urn:ietf:params:xml:ns:netconf:base:1.0'
@@ -182,6 +186,13 @@ BUSER=clicon
 
 : ${clixon_backend:=clixon_backend}
 
+: ${clixon_snmp:=$(type -p clixon_snmp)}
+
+: ${clixon_snmp_pidfile:="/var/tmp/clixon_snmp.pid"}
+
+# Temporary debug var, set to trigger remaining snmp errors
+: ${snmp_debug:=false}
+
 # Source the site-specific definitions for test script variables, if site.sh
 # exists. The variables defined in site.sh override any variables of the same
 # names in the environment in the current execution.
@@ -202,6 +213,76 @@ fi
 # Standard IETF RFC yang files. 
 if [ ! -z ${YANG_STANDARD_DIR} ]; then
     : ${IETFRFC=$YANG_STANDARD_DIR/ietf/RFC}
+fi
+
+: ${SNMPCHECK:=true}
+
+if $SNMPCHECK; then
+    snmpget="$(type -p snmpget) -On -c public -v2c localhost "
+    snmpbulkget="$(type -p snmpbulkget) -On -c public -v2c localhost "
+    snmpset="$(type -p snmpset) -On -c public -v2c localhost "
+    snmpgetstr="$(type -p snmpget) -c public -v2c localhost "
+    snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
+    snmpgetnextstr="$(type -p snmpgetnext) -c public -v2c localhost "
+    snmptable="$(type -p snmptable) -c public -v2c localhost "
+    snmpwalk="$(type -p snmpwalk) -c public -v2c localhost "
+    snmptranslate="$(type -p snmptranslate) "
+
+    if [ "${ENABLE_NETSNMP}" == "yes" ]; then
+	    pgrep snmpd > /dev/null
+        if [ $? != 0 ]; then
+		    echo -e "\e[31m\nenable-netsnmp set but snmpd not running, start with:"
+		    echo "systemctl start snmpd"
+            echo ""
+            echo "snmpd must be configured to use a Unix socket for agent communication"
+            echo "and have a rwcommunity configured, make sure the following lines are"
+            echo "added to /etc/snmp/snmpd.conf:"
+            echo ""
+            echo "  rwcommunity     public  localhost"
+            echo "  agentXSocket    unix:/var/run/snmp.sock"
+            echo "  agentxperms     777 777"
+            echo ""
+            echo "If you don't rely on systemd you can configure the lines above"
+            echo "and start snmpd manually with 'snmpd -Lo -p /var/run/snmpd.pid'."
+		    echo -e "\e[0m"
+		    exit -1
+        fi
+    fi
+
+    function validate_oid(){
+        oid=$1
+        oid2=$2
+        type=$3
+        value=$4
+        result=$5
+
+        name="$($snmptranslate $oid)"
+        name2="$($snmptranslate $oid2)"
+
+        if [[ $oid =~ ^([0-9]|\.)+$ ]]; then
+            get=$snmpget
+            getnext=$snmpgetnext
+        else
+            get=$snmpgetstr
+            getnext=$snmpgetnextstr
+        fi
+
+        if [ $oid == $oid2 ]; then
+            if [ -z "$result" ]; then
+                result="$oid = $type: $value"
+            fi
+
+            new "Validating OID: $oid2 = $type: $value"
+            expectpart "$($get $oid)" 0 "$result"
+        else
+            if [ -z "$result" ]; then
+                result="$oid2 = $type: $value"
+            fi
+
+            new "Validating next OID: $oid2 = $type: $value"
+            expectpart "$($getnext $oid)" 0 "$result"
+        fi
+    }
 fi
 
 # Check sanity between --with-restconf setting and if nginx is started by systemd or not
@@ -413,6 +494,31 @@ function chunked_framing()
     printf "\n#%s\n%s\n##\n" ${length} "${str}"
 }
 
+# Start clixon_snmp
+function start_snmp(){
+    cfg=$1
+
+    rm -f ${clixon_snmp_pidfile}
+    
+    $clixon_snmp -f $cfg -D $DBG &
+
+    if [ $? -ne 0 ]; then
+	    err
+    fi
+}
+
+# Stop clixon_snmp and Valgrind if needed
+function stop_snmp(){
+    if [ $valgrindtest -eq 4 ]; then 
+	pkill -f clixon_snmp
+	sleep 1
+	checkvalgrind
+    else
+	killall -q clixon_snmp
+    fi
+    rm -f ${clixon_snmp_pidfile}
+}
+
 # Start backend with all varargs.
 # If valgrindtest == 2, start valgrind
 function start_backend(){
@@ -544,6 +650,19 @@ function wait_restconf_stopped(){
     fi
 }
 
+# Use pidfile to check snmp started. pidfile is created after init in clixon_snmp
+function wait_snmp()
+{
+    let i=0;
+    while [ ! -f ${clixon_snmp_pidfile} ]; do
+	if [ $i -ge $DEMLOOP ]; then
+	    err1 "snmp timeout $DEMWAIT seconds"
+	fi
+	sleep $DEMSLEEP
+	let i++;
+    done
+}
+    
 # End of test, final tests before normal exit of test
 # Note this is a single test started by new, not a total test suite
 function endtest()

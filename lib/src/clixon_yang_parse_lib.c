@@ -474,7 +474,7 @@ ys_do_refine(yang_stmt *yr,
     return retval;
 }
 
-/*! Yang node yg is a leaf in yang node list yn
+/*! Check if Yang node y is a leaf in yang node list yp
  * Could be made to a generic function used elsewhere as well
  * @param[in]  y    Yang leaf
  * @param[in]  yp   Yang list parent 
@@ -503,7 +503,6 @@ ys_iskey(yang_stmt *y,
     }
     return 0;
 }
-
 
 /*! Helper function to yang_expand_grouping
  * @param[in] yn     Yang parent node of uses ststement
@@ -790,7 +789,10 @@ yang_parse_str(char         *str,
 	if (yang_scan_exit(&yy) < 0)
 	    goto done;		
     }
-    ymod = yy.yy_module;
+    if ((ymod = yy.yy_module) == NULL){
+	clicon_err(OE_YANG, 0, "No module in YANG %s", name);
+	goto done;
+    }
     /* Add filename for debugging and errors, see also ys_linenum on (each symbol?) */
     if (yang_filename_set(ymod, name) < 0)
 	goto done;

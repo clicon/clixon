@@ -1,0 +1,450 @@
+CLIXON-TYPES-MIB DEFINITIONS ::= BEGIN
+--
+-- Example MIB objects for agent module example implementations
+--
+IMPORTS
+    MODULE-IDENTITY, OBJECT-TYPE, Integer32,
+    TimeTicks, Counter32, Gauge32, Counter64,
+    NOTIFICATION-TYPE, IpAddress            FROM SNMPv2-SMI
+    SnmpAdminString                         FROM SNMP-FRAMEWORK-MIB
+    netSnmp                                 FROM NET-SNMP-MIB
+    TruthValue, TimeStamp,
+    RowStatus, StorageType                  FROM SNMPv2-TC
+    InetAddressType, InetAddress            FROM INET-ADDRESS-MIB
+    IANAifType                              FROM IANAifType-MIB
+;
+clixonExamples MODULE-IDENTITY
+    LAST-UPDATED "200406150000Z"
+    ORGANIZATION "www.net-snmp.org"
+    CONTACT-INFO    
+     "postal:   Wes Hardaker
+                    P.O. Box 382
+                    Davis CA  95617
+          email:    net-snmp-coders@lists.sourceforge.net"
+    DESCRIPTION
+    "Example MIB objects for agent module example implementations"
+    REVISION     "200406150000Z"
+    DESCRIPTION
+    "Corrected notification example definitions"
+    REVISION     "200202060000Z"
+    DESCRIPTION
+    "First draft"
+    ::= { netSnmp 200 }
+--
+-- top level structure
+--
+clixonExampleScalars       OBJECT IDENTIFIER ::= { clixonExamples 1 }
+clixonExampleTables        OBJECT IDENTIFIER ::= { clixonExamples 2 }
+clixonExampleNotifications OBJECT IDENTIFIER ::= { clixonExamples 3 }
+clixonTables        	   OBJECT IDENTIFIER ::= { clixonExamples 4 }
+clixonInetTables      	   OBJECT IDENTIFIER ::= { clixonExamples 5 }
+clixonExampleNotificationPrefix  OBJECT IDENTIFIER
+                                  ::= { clixonExampleNotifications 0 }
+clixonExampleNotificationObjects OBJECT IDENTIFIER
+                                  ::= { clixonExampleNotifications 2 }
+-- clixonTutorial          OBJECT IDENTIFIER ::= { clixonExamples 4 }
+--
+-- Example scalars
+--
+
+clixonExampleInteger OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "This is a simple object which merely houses a writable
+     integer.  It's only purposes is to hold the value of a single
+     integer.  Writing to it will simply change the value for
+     subsequent GET/GETNEXT/GETBULK retrievals.
+     This example object is implemented in the
+     agent/mibgroup/examples/scalar_int.c file."
+    DEFVAL { 42 }
+    ::= { clixonExampleScalars 1 }
+clixonExampleSleeper OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "This is a simple object which is a basic integer.  It's value
+     indicates the number of seconds that the agent will take in
+     responding to requests of this object.  This is implemented
+     in a way which will allow the agent to keep responding to
+     other requests while access to this object is blocked.  It is
+     writable, and changing it's value will change the amount of
+     time the agent will effectively wait for before returning a
+     response when this object is manipulated.  Note that SET
+     requests through this object will take longer, since the
+     delay is applied to each internal transaction phase, which
+     could result in delays of up to 4 times the value of this
+     object.
+     This example object is implemented in the
+     agent/mibgroup/examples/delayed_instance.c file."
+    DEFVAL { 1 }
+    ::= { clixonExampleScalars 2 }
+clixonExampleString OBJECT-TYPE
+    SYNTAX      SnmpAdminString
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "This is a simple object which merely houses a writable
+     string.  It's only purposes is to hold the value of a single
+     string.  Writing to it will simply change the value for
+     subsequent GET/GETNEXT/GETBULK retrievals.
+     This example object is implemented in the
+     agent/mibgroup/examples/watched.c file."
+    DEFVAL { "So long, and thanks for all the fish!" }
+    ::= { clixonExampleScalars 3 }
+ifTableLastChange  OBJECT-TYPE
+    SYNTAX      TimeTicks
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The value of sysUpTime at the time of the last creation or
+            deletion of an entry in the ifTable.  If the number of
+            entries has been unchanged since the last re-initialization
+            of the local network management subsystem, then this object
+            contains a zero value."
+    ::= { clixonExampleScalars 4 }
+ifType OBJECT-TYPE
+    SYNTAX      IANAifType
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The type of interface.  Additional values for ifType are
+            assigned by the Internet Assigned Numbers Authority (IANA),
+            through updating the syntax of the IANAifType textual
+            convention."
+    ::= { clixonExampleScalars 5 }
+ifSpeed OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "An estimate of the interface's current bandwidth in bits
+            per second.  For interfaces which do not vary in bandwidth
+            or for those where no accurate estimation can be made, this
+            object should contain the nominal bandwidth.  If the
+            bandwidth of the interface is greater than the maximum value
+            reportable by this object then this object should report its
+            maximum value (4,294,967,295) and ifHighSpeed must be used
+            to report the interace's speed.  For a sub-layer which has
+            no concept of bandwidth, this object should be zero."
+    ::= { clixonExampleScalars 6 }
+ifAdminStatus OBJECT-TYPE
+    SYNTAX  INTEGER {
+                up(1),       -- ready to pass packets
+                down(2),
+                testing(3)   -- in some test mode
+            }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "The desired state of the interface.  The testing(3) state
+            indicates that no operational packets can be passed.  When a
+            managed system initializes, all interfaces start with
+            ifAdminStatus in the down(2) state.  As a result of either
+            explicit management action or per configuration information
+            retained by the managed system, ifAdminStatus is then
+            changed to either the up(1) or testing(3) states (or remains
+            in the down(2) state)."
+    ::= { clixonExampleScalars 7} 
+ifInOctets OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The total number of octets received on the interface,
+            including framing characters.
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."
+    ::= { clixonExampleScalars 8} 
+ifHCInOctets OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The total number of octets received on the interface,
+            including framing characters.  This object is a 64-bit
+            version of ifInOctets.
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."
+    ::= { clixonExampleScalars 9} 
+ifPromiscuousMode  OBJECT-TYPE
+    SYNTAX      TruthValue
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+            "This object has a value of false(2) if this interface only
+            accepts packets/frames that are addressed to this station.
+            This object has a value of true(1) when the station accepts
+            all packets/frames transmitted on the media.  The value
+            true(1) is only legal on certain types of media.  If legal,
+            setting this object to a value of true(1) may require the
+            interface to be reset before becoming effective.
+            The value of ifPromiscuousMode does not affect the reception
+            of broadcast and multicast packets/frames by the interface."
+    ::= { clixonExampleScalars 10 }
+ifCounterDiscontinuityTime OBJECT-TYPE
+    SYNTAX      TimeStamp
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The value of sysUpTime on the most recent occasion at which
+            any one or more of this interface's counters suffered a
+            discontinuity.  The relevant counters are the specific
+            instances associated with this interface of any Counter32 or
+            Counter64 object contained in the ifTable or ifXTable.  If
+            no such discontinuities have occurred since the last re-
+            initialization of the local management subsystem, then this
+            object contains a zero value."
+    ::= { clixonExampleScalars 11 }
+ifStackStatus  OBJECT-TYPE
+    SYNTAX         RowStatus
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+            "The status of the relationship between two sub-layers.
+            Changing the value of this object from 'active' to
+            'notInService' or 'destroy' will likely have consequences up
+            and down the interface stack.  Thus, write access to this
+            object is likely to be inappropriate for some types of
+            interfaces, and many implementations will choose not to
+            support write-access for any type of interface."
+    ::= { clixonExampleScalars 12 }
+
+ifIpAddr  OBJECT-TYPE
+    SYNTAX         IpAddress
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+            "IP address example."
+    ::= { clixonExampleScalars 13 }
+
+--
+--  Example Tables
+--
+clixonIETFWGTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ClixonIETFWGEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "This table merely contains a set of data which is otherwise
+     useless for true network management.  It is a table which
+     describes properies about a IETF Working Group, such as the
+     names of the two working group chairs.
+     This example table is implemented in the
+     agent/mibgroup/examples/data_set.c file."
+    ::= { clixonExampleTables 1 }
+clixonIETFWGEntry OBJECT-TYPE
+    SYNTAX      ClixonIETFWGEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "A row describing a given working group"
+    INDEX   { nsIETFWGName }
+    ::= {clixonIETFWGTable 1 }
+ClixonIETFWGEntry ::= SEQUENCE {
+    nsIETFWGName    INTEGER,
+    nsIETFWGChair1  OCTET STRING,
+    nsIETFWGChair2  OCTET STRING
+}
+nsIETFWGName OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "The name of the IETF Working Group this table describes."
+    ::= { clixonIETFWGEntry 1 }
+nsIETFWGChair1 OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "One of the names of the chairs for the IETF working group."
+    ::= { clixonIETFWGEntry 2 }
+nsIETFWGChair2 OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+    "The other name, if one exists, of the chairs for the IETF
+    working group."
+    ::= { clixonIETFWGEntry 3 }
+
+
+
+
+
+clixonTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ClixonEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "This table merely contains a set of data which is otherwise
+     useless for true network management.  It is a table which
+     describes properies about a IETF Working Group, such as the
+     names of the two working group chairs.
+     This example table is implemented in the
+     agent/mibgroup/examples/data_set.c file."
+    ::= { clixonTables 1 }
+clixonEntry OBJECT-TYPE
+    SYNTAX      ClixonEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "A row describing a given working group"
+    INDEX   { nsName }
+    ::= {clixonTable 1 }
+ClixonEntry ::= SEQUENCE {
+    nsName    INTEGER,
+    nsChair1  OCTET STRING,
+    nsChair2  OCTET STRING
+}
+nsName OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "The name of the IETF Working Group this table describes."
+    ::= { clixonEntry 1 }
+nsChair1 OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "One of the names of the chairs for the IETF working group."
+    ::= { clixonEntry 2 }
+nsChair2 OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+    "The other name, if one exists, of the chairs for the IETF
+    working group."
+    ::= { clixonEntry 3 }
+
+
+--
+-- A table used in a table_iterator example
+--   (agent/mibgroup/examples/clixonHostsTable*.[ch])
+--
+clixonHostsTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ClixonHostsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "An example table that implements a wrapper around the
+    /etc/hosts file on a machine using the iterator helper API."
+    ::= { clixonExampleTables 2 }
+clixonHostsEntry OBJECT-TYPE
+    SYNTAX      ClixonHostsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "A host name mapped to an ip address"
+    INDEX   { clixonHostName }
+    ::= { clixonHostsTable 1 }
+ClixonHostsEntry ::= SEQUENCE {
+    clixonHostName         OCTET STRING,
+    clixonHostAddressType  InetAddressType,
+    clixonHostAddress      InetAddress,
+    clixonHostStorage      StorageType,
+    clixonHostRowStatus    RowStatus
+}
+
+clixonHostName OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..64))
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "A host name that exists in the /etc/hosts (unix) file."
+    ::= { clixonHostsEntry 1 }
+clixonHostAddressType OBJECT-TYPE
+    SYNTAX      InetAddressType
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+    "The address type of then given host."
+    ::= { clixonHostsEntry 2 }
+clixonHostAddress OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+    "The address of then given host."
+    ::= { clixonHostsEntry 3 }
+clixonHostStorage OBJECT-TYPE
+    SYNTAX       StorageType
+    MAX-ACCESS   read-create
+    STATUS       current
+    DESCRIPTION "The storage type for this conceptual row."
+    DEFVAL      { nonVolatile }
+    ::= { clixonHostsEntry 4 }
+clixonHostRowStatus OBJECT-TYPE
+    SYNTAX       RowStatus
+    MAX-ACCESS   read-create
+    STATUS       current
+    DESCRIPTION "The status of this conceptual row."
+    ::= { clixonHostsEntry 5 }
+
+clixonObjectID OBJECT-TYPE
+    SYNTAX      OBJECT IDENTIFIER
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+            "The vendor's authoritative identification of the
+            network management subsystem contained in the entity.
+            This value is allocated within the SMI enterprises
+            subtree (1.3.6.1.4.1) and provides an easy and
+            unambiguous means for determining `what kind of box' is
+            being managed.  For example, if vendor `Flintstones,
+            Inc.' was assigned the subtree 1.3.6.1.4.1.424242,
+            it could assign the identifier 1.3.6.1.4.1.424242.1.1
+            to its `Fred Router'."
+    ::= { netSnmp 3 }
+
+
+clixonInetTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ClixonInetEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "This table merely contains a set of data which is otherwise
+     useless for true network management.  It is a table which
+     describes properies about a IETF Working Group, such as the
+     names of the two working group chairs.
+     This example table is implemented in the
+     agent/mibgroup/examples/data_set.c file."
+    ::= { clixonExampleTables 3 }
+clixonInetEntry OBJECT-TYPE
+    SYNTAX      ClixonInetEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "A row describing a given working group"
+    INDEX   { clixonAddress }
+    ::= {clixonInetTable 1 }
+ClixonInetEntry ::= SEQUENCE {
+    clixonAddress InetAddress,
+    clixonString  OCTET STRING
+}
+clixonAddress OBJECT-TYPE
+    SYNTAX      InetAddress
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "The name of the IETF Working Group this table describes."
+    ::= { clixonInetEntry 2 }
+clixonString OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "One of the names of the chairs for the IETF working group."
+    ::= { clixonInetEntry 3 }
+
+END

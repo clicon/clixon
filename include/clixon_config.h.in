@@ -33,7 +33,7 @@
 /* Define to 1 if you have the `getresuid' function. */
 #undef HAVE_GETRESUID
 
-/* Enable HTTP/1 (default true) */
+/* Set to true to enable Native HTTP/1 */
 #undef HAVE_HTTP1
 
 /* Define to 1 if you have the `inet_aton' function. */
@@ -60,6 +60,12 @@
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM
 
+/* Define to 1 if you have the `netsnmp' library (-lnetsnmp). */
+#undef HAVE_LIBNETSNMP
+
+/* Define to 1 if you have the `netsnmpagent' library (-lnetsnmpagent). */
+#undef HAVE_LIBNETSNMPAGENT
+
 /* Define to 1 if you have the `nghttp2' library (-lnghttp2). */
 #undef HAVE_LIBNGHTTP2
 
@@ -74,6 +80,9 @@
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the <net-snmp/net-snmp-config.h> header file. */
+#undef HAVE_NET_SNMP_NET_SNMP_CONFIG_H
 
 /* Define to 1 if you have the <nghttp2/nghttp2.h> header file. */
 #undef HAVE_NGHTTP2_NGHTTP2_H
