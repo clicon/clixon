@@ -126,6 +126,25 @@ module system{
          }
      }
   }
+  /* Case with mandatory leaf */
+  container manleaf {
+     choice name {
+        case a {
+           leaf a1 {
+	      type string;
+           }
+           leaf a2 {
+	      mandatory true;
+	      type string;
+           }
+        }
+        case b {
+           leaf b1 {
+	      type string;
+           }
+        }
+     }
+  }
 }
 EOF
 
@@ -370,6 +389,21 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 new "netconf get both items"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:config\"><choice-subcontainer><udp><udp1>42</udp1><udp2>99</udp2></udp></choice-subcontainer></system></data></rpc-reply>" ""
+
+new "netconf validate ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf set non-mandatory leaf"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><manleaf xmlns=\"urn:example:config\"><a1>xxx</a1></manleaf></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf validate missing"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>a2</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable a2 in module system</error-message></rpc-error></rpc-reply>"
+
+new "netconf set mandatory leaf"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><manleaf xmlns=\"urn:example:config\"><a2>yyy</a2></manleaf></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf validate ok"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"

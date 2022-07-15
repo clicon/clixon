@@ -609,12 +609,56 @@ check_list_key(cxobj     *xt,
     goto done;
 }
 
+/*! Go through all case:s children, ensure all mandatory nodes are marked, else error. Then clear
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (xret set)
+ * @retval    -1     Error
+ */
+static int
+choice_mandatory_check(yang_stmt *ycase,
+		       cxobj    **xret)
+{
+    int        retval = -1;
+    yang_stmt *yc = NULL;
+    cbuf      *cb = NULL;
+    int        fail = 0;
+
+    while ((yc = yn_each(ycase, yc)) != NULL) {
+	if (yang_mandatory(yc)){
+	    if (yang_flag_get(yc, YANG_FLAG_MARK))
+		yang_flag_reset(yc, YANG_FLAG_MARK);
+	    else if (fail == 0){
+		fail++;
+		if (xret){
+		    if ((cb = cbuf_new()) == NULL){
+			clicon_err(OE_UNIX, errno, "cbuf_new");
+			goto done;
+		    }
+		    cprintf(cb, "Mandatory variable %s in module %s",
+			    yang_argument_get(yc),
+			    yang_argument_get(ys_module(ycase)));
+		    if (netconf_missing_element_xml(xret, "application", yang_argument_get(yc), cbuf_get(cb)) < 0)
+			goto done;
+		}
+	    }
+	}
+    }
+    if (fail)
+	retval = 0;
+    else
+	retval = 1;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
 /*! Check if an xml node lacks mandatory children
  * @param[in]  xt    XML node to be validated
  * @param[in]  yt    xt:s yang statement
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
- * @retval     0     Validation failed (cbret set)
+ * @retval     0     Validation failed (xret set)
  * @retval    -1     Error
  */
 static int
@@ -628,6 +672,7 @@ check_mandatory(cxobj     *xt,
     yang_stmt *y;
     yang_stmt *yc;
     yang_stmt *yp;
+    yang_stmt *ycase;
     cbuf      *cb = NULL;
     int        ret;
     
@@ -643,7 +688,71 @@ check_mandatory(cxobj     *xt,
     }
     yc = NULL;
     while ((yc = yn_each(yt, yc)) != NULL) {
-	if (!yang_mandatory(yc))
+	/* Choice is more complex because of choice/case structure and possibly hierarchical */
+	if (yang_keyword_get(yc) == Y_CHOICE){ 
+	    if (yang_mandatory(yc)){
+		x = NULL;
+		while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+		    if ((y = xml_spec(x)) != NULL &&
+			(yp = yang_choice(y)) != NULL &&
+			yp == yc){
+			break; /* leave loop with x set */
+		    }
+		}
+		if (x == NULL){
+		    /* @see RFC7950: 15.6 Error Message for Data That Violates 
+		     * a Mandatory "choice" Statement */
+		    if (xret && netconf_data_missing_xml(xret, yang_argument_get(yc), NULL) < 0)
+			goto done;
+		    goto fail;
+		}
+	    }
+	    /* RFC7950 7.9.4:
+	     * if this ancestor is a case node, the constraint is
+	     * enforced if any other node from the case exists.
+	     * Algorithm uses a yang mark flag to detect if mandatory xml nodes exist
+	     */
+	    ycase = NULL;
+	    x = NULL;
+	    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+		if ((y = xml_spec(x)) != NULL &&
+		    (yp = yang_parent_get(y)) != NULL){
+		    if (yang_keyword_get(yp) == Y_CASE){
+			if (yang_mandatory(y)){
+			    assert(yang_flag_get(y, YANG_FLAG_MARK) == 0);
+			    yang_flag_set(y, YANG_FLAG_MARK);
+			}
+			if (ycase != NULL){
+			    if (yp != ycase){ /* End of case, new case */
+				/* Check and clear marked mandatory */
+				if ((ret = choice_mandatory_check(ycase, xret)) < 0)
+				    goto done;
+				if (ret == 0)
+				    goto fail;
+				ycase = yp;
+			    }
+			}
+			else /* New case */
+			    ycase = yp;
+		    }			
+		    else if (ycase != NULL){ /* End of case */
+			/* Check and clear marked mandatory */
+			if ((ret = choice_mandatory_check(ycase, xret)) < 0)
+			    goto done;
+			if (ret == 0)
+			    goto fail;
+			ycase = NULL;
+		    }
+		}
+	    }
+	    if (ycase){
+		if ((ret = choice_mandatory_check(ycase, xret)) < 0)
+		    goto done;
+		if (ret == 0)
+		    goto fail;
+	    }
+	}
+	if (!yang_mandatory(yc)) /* Rest of yangs are immediate children */
 	    continue;
 	switch (yang_keyword_get(yc)){
 	case Y_CONTAINER:
@@ -667,23 +776,6 @@ check_mandatory(cxobj     *xt,
 		cprintf(cb, "Mandatory variable of %s in module %s", xml_name(xt), yang_argument_get(ys_module(yc)));
 		if (xret && netconf_missing_element_xml(xret, "application", yang_argument_get(yc), cbuf_get(cb)) < 0)
 			    goto done;
-		goto fail;
-	    }
-	    break;
-	case Y_CHOICE: /* More complex because of choice/case structure */
-	    x = NULL;
-	    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-		if ((y = xml_spec(x)) != NULL &&
-		    (yp = yang_choice(y)) != NULL &&
-		    yp == yc){
-		    break; /* leave loop with x set */
-		}
-	    }
-	    if (x == NULL){
-		/* @see RFC7950: 15.6 Error Message for Data That Violates 
-		 * a Mandatory "choice" Statement */
-		if (xret && netconf_data_missing_xml(xret, yang_argument_get(yc), NULL) < 0)
-		    goto done;
 		goto fail;
 	    }
 	    break;

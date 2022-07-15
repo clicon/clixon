@@ -40,6 +40,7 @@ module system{
 	choice top{
 	    case topA {
 		choice A{
+		mandatory true;
 		    case A1{
  		      leaf A1x{
 			type string;
@@ -119,11 +120,17 @@ wait_backend
 new "cli set 1st A stmt"
 expectpart "$($clixon_cli -1 -f $cfg -l o set c A1x aaa)" 0 "^$"
 
+new "netconf validate ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 new "show config"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><A1x>aaa</A1x></c>$"
 
 new "cli set 2nd A stmt"
 expectpart "$($clixon_cli -1 -f $cfg -l o set c A2x bbb)" 0 "^$"
+
+new "netconf validate ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "show config, only A2x"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><A2x>bbb</A2x></c>$"
@@ -142,6 +149,9 @@ expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:examp
 
 new "cli set 3rd A stmt"
 expectpart "$($clixon_cli -1 -f $cfg -l o set c Ay ccc)" 0 "^$"
+
+new "netconf validate fail (choice A is mandatory)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>A</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable A in module system</error-message></rpc-error></rpc-reply>"
 
 new "show config: Ay"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><Ay>ccc</Ay></c>$"
