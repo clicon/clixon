@@ -2,9 +2,9 @@ name: Clixon CI
 
 on:
   push:
-    branches: [ master, snmp ]
+    branches: [ master, callhome ]
   pull_request:
-    branches: [ master, snmp ]
+    branches: [ master, callhome ]
 
 jobs:
   build:

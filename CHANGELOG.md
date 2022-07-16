@@ -35,7 +35,10 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
-## SNMP branch
+## 5.8.0
+Planned: July 2022
+
+### New features
 
 * Clixon SNMP frontend
   * Support of SNMP for retreiving and setting values via net-snmp using a MIB-YANG mapping defined in RFC6643.
@@ -48,11 +51,6 @@
     * `--enable-netsnmp`
     * `--with-mib-generated-yang-dir=DIR`
   * Thanks to Siklu Communications LTD for sponsoring this work
-
-## 5.8.0
-Planned: July 2022
-
-### New features
 
 * YANG Action (RFC 7950 Section 7.15)
   * Register action callback with `action_callback_register()`, see main example
@@ -124,6 +122,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Schema Ambiguity Error with openconfig-system re: NTP](https://github.com/clicon/clixon/issues/334)
 * Fixed: [YANG mandatory statements within case nodes do not work](https://github.com/clicon/clixon/issues/344)
 * Fixed: [Nested YANG choice does not work](https://github.com/clicon/clixon/issues/342)
 * Fixed: [YANG if-feature does not support nested boolean expression](https://github.com/clicon/clixon/issues/341)

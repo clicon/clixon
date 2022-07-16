@@ -781,13 +781,14 @@ main(int    argc,
     /* Join rest of argv to a single command */
     restarg = clicon_strjoin(argc, argv, " ");
 
-    /* If several cligen object variables match same preference, select first 
-     * There is some unclarities if this should be set to 0 or 1.
-     * By default in CLIgen, it is 0
-     * It used to be 1 in Clixon. But see eg https://github.com/clicon/clixon/issues/330
-     * There may be cases where there will be "ambiguous".
+    /* Clixon hardcodes variable tie-breaks to non-terminals (2)
+     * There are cases in the autocli such as: 
+     *    (<string regexp:"r1" | <string regexp:"r2"){ ... }
+     *  where r1 and r2 are regexps that overlap.
+     * Alterntaive is to add "preference" keyword in the CLIgen syntax that overrides this.
+     * Note there may be terminal tiebreaks liuke this which would motivate a setting to "3"?
      */
-    cligen_preference_mode_set(cli_cligen(h), 0);
+    cligen_preference_mode_set(cli_cligen(h), 2);
 
     /* Call start function in all plugins before we go interactive 
      */
