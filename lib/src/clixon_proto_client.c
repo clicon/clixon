@@ -457,8 +457,8 @@ clicon_rpc_netconf_xml(clicon_handle  h,
  * @param[in]  username If NULL, use default
  * @param[in]  db       Name of database
  * @param[in]  xpath    XPath (or "")
- * @param[in]  nsc       Namespace context for filter
- * @param[out] xt       XML tree. Free with xml_free. 
+ * @param[in]  nsc      Namespace context for filter
+ * @param[out] xt       New XML tree. Free with xml_free. 
  *                      Either <config> or <rpc-error>. 
  * @retval    0         OK
  * @retval   -1         Error, fatal or xml

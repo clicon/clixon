@@ -52,6 +52,7 @@ localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 includedir	= @includedir@
 HOST_VENDOR     = @host_vendor@
+CLIXON_TLS      = @CLIXON_TLS@
 
 SH_SUFFIX	= @SH_SUFFIX@
 LIBSTATIC_SUFFIX = @LIBSTATIC_SUFFIX@
@@ -80,6 +81,7 @@ INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/inclu
 
 # Name of application
 APPL	 = clixon_netconf
+APPS     = $(APPL)
 
 # Not accessible from plugin
 APPSRC   = netconf_main.c
@@ -87,14 +89,21 @@ APPSRC  += netconf_rpc.c
 APPSRC  += netconf_filter.c
 APPOBJ   = $(APPSRC:.c=.o)
 
-all:	 $(APPL)
+ifdef CLIXON_TLS
+APPL2	 = clixon_netconf_tls
+APPS    += $(APPL2)
+APPSRC2  = netconf_tls_main.c
+APPOBJ2  = $(APPSRC2:.c=.o)
+endif
+
+all:	 $(APPS)
 
 # Dependency of clixon library (LIBDEPS)
 $(top_srcdir)/lib/src/$(CLIXON_LIB):
 	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
 
 clean: 
-	rm -f $(APPL) $(APPOBJ) *.core
+	rm -f $(APPS) $(APPOBJ) $(ABBOBJ2) *.core
 	rm -f *.gcda *.gcno *.gcov # coverage
 
 distclean: clean
@@ -104,16 +113,16 @@ distclean: clean
 # Put other executables in libexec/
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
-install:	$(APPL)
+install:	$(APPS)
 	install -d -m 0755 $(DESTDIR)$(bindir)
-	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(bindir)
+	install -m 0755 $(INSTALLFLAGS) $(APPS) $(DESTDIR)$(bindir)
 
 install-include:	clixon_netconf.h
 	install -d -m 0755 $(DESTDIR)$(includedir)/clixon
 	install -m 0644 $^ $(DESTDIR)$(includedir)/clixon
 
 uninstall:
-	rm -f $(DESTDIR)$(bindir)/$(APPL)
+	(cd $(DESTDIR)$(bindir); rm -f $(APPS))
 	rm -f $(DESTDIR)$(includedir)/clixon/*
 
 .SUFFIXES:
@@ -124,6 +133,14 @@ uninstall:
 
 $(APPL) : $(APPOBJ) $(LIBDEPS)
 	$(CC) $(LDFLAGS) -L. $^ $(LIBS) -o $@
+
+ifdef CLIXON_TLS
+netconf_tls_main.o: netconf_tls_main.c
+	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$(APPL2)\" $(CFLAGS) -c $<
+
+$(APPL2) : $(APPOBJ2) $(LIBDEPS)
+	$(CC) $(LDFLAGS) -L. $^ $(CFLAGS) $(LIBS) -o $@ # cflags for -g
+endif
 
 TAGS:
 	find . -name '*.[chyl]' -print | etags -

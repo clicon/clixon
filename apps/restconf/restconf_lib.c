@@ -826,8 +826,8 @@ restconf_config_init(clicon_handle h,
  * @param[in]  addrstr   Address as string, eg "0.0.0.0", "::"
  * @param[in]  addrtype  One of inet:ipv4-address or inet:ipv6-address
  * @param[in]  port      TCP port
- * @param[in]  backlog  Listen backlog, queie of pending connections
- * @param[in]  flags    Socket flags OR:ed in with the socket(2) type parameter
+ * @param[in]  backlog   Listen backlog, queie of pending connections
+ * @param[in]  flags     Socket flags OR:ed in with the socket(2) type parameter
  * @param[out] ss        Server socket (bound for accept)
  */
 int

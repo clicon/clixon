@@ -923,18 +923,16 @@ netconf_data_exists(cbuf      *cb,
  * does not exist.  For example, a "delete" operation was attempted on
  * data that does not exist.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
- * @param[in]  missing_choice  If set, see RFC7950: 15.6 violates mandatory choice
  * @param[in]  message Error message
  */
 int
 netconf_data_missing(cbuf *cb,
-		     char *missing_choice,
 		     char *message)
 {
     int   retval = -1;
     cxobj *xret = NULL;
 
-    if (netconf_data_missing_xml(&xret, missing_choice, message) < 0)
+    if (netconf_data_missing_xml(&xret, message) < 0)
 	goto done;
     if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
@@ -951,12 +949,10 @@ netconf_data_missing(cbuf *cb,
  * does not exist.  For example, a "delete" operation was attempted on
  * data that does not exist.
  * @param[out] xret    Error XML tree. Free with xml_free after use
- * @param[in]  missing_choice  If set, see RFC7950: 15.6 violates mandatiry choice
  * @param[in]  message Error message
  */
 int
 netconf_data_missing_xml(cxobj **xret,
-			 char   *missing_choice,
 			 char   *message)
 {
     int   retval = -1;
@@ -984,12 +980,6 @@ netconf_data_missing_xml(cxobj **xret,
 			    "<error-type>application</error-type>"
 			    "<error-tag>data-missing</error-tag>") < 0)
 	goto done;
-    if (missing_choice) /* NYI: RFC7950: 15.6 <error-path> */
-	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
-				"<error-app-tag>missing-choice</error-app-tag>"
-				"<error-info><missing-choice>%s</missing-choice></error-info>",
-				missing_choice) < 0)
-	    goto done;
     if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
 			    "<error-severity>error</error-severity>") < 0)
 	goto done;
@@ -1006,7 +996,65 @@ netconf_data_missing_xml(cxobj **xret,
 	free(encstr);
     return retval;
 }
-    
+
+/*! Create Netconf data-missing error XML tree according to RFC 6241 App A
+ *
+ * Request could not be completed because the relevant data model content 
+ * does not exist.  For example, a "delete" operation was attempted on
+ * data that does not exist.
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[in]  missing_choice  
+ * @param[in]  message Error message
+ * @see RFC7950: 15.6 
+ */
+int
+netconf_missing_choice_xml(cxobj **xret,
+			   char   *missing_choice,
+			   char   *path)
+{
+    int   retval = -1;
+    char *encstr = NULL;
+    cxobj *xerr;
+    cxobj *xa;
+
+    if (xret == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+	goto done;	
+    }
+    if (*xret == NULL){
+	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
+	    goto done;
+    }
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
+	goto done;
+    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+	goto done;
+    if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
+	goto done;
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
+			    "<error-type>application</error-type>"
+			    "<error-tag>data-missing</error-tag>") < 0)
+	goto done;
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
+			    "<error-app-tag>missing-choice</error-app-tag>"
+			    "<error-path>%s</error-path>"
+			    "<error-info><missing-choice>%s</missing-choice></error-info>",
+			    path,
+			    missing_choice) < 0)
+	goto done;
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
+			    "<error-severity>error</error-severity>") < 0)
+	goto done;
+
+    retval = 0;
+ done:
+    if (encstr)
+	free(encstr);
+    return retval;
+}
+
 /*! Create Netconf operation-not-supported error XML according to RFC 6241 App A
  *
  * Request could not be completed because the requested operation is not

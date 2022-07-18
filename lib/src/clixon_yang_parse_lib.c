@@ -935,7 +935,13 @@ yang_parse_find_match(clicon_handle h,
      * module-or-submodule-name ['@' revision-date] ( '.yang' / '.yin' )
      * revision-date ::= 4DIGIT "-" 2DIGIT "-" 2DIGIT
      */
-    if (revision)
+    if (revision
+#ifdef YANG_CALLHOME_REVISION_IGNORE
+	&& strcmp(module, "ietf-ssh-common") != 0
+	&& strcmp(module, "ietf-ssh-server") != 0
+	&& strcmp(module, "ietf-tls-server") != 0
+#endif
+	)
         cprintf(regex, "^%s@%s(.yang)$", module, revision);
     else
         cprintf(regex, "^%s(@[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])?(.yang)$",

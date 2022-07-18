@@ -675,6 +675,7 @@ check_mandatory(cxobj     *xt,
     yang_stmt *ycase;
     cbuf      *cb = NULL;
     int        ret;
+    char      *xpath = NULL;
     
     if (yt == NULL || !yang_config(yt)){
 	clicon_err(OE_YANG, EINVAL, "yt is not config true");
@@ -702,8 +703,12 @@ check_mandatory(cxobj     *xt,
 		if (x == NULL){
 		    /* @see RFC7950: 15.6 Error Message for Data That Violates 
 		     * a Mandatory "choice" Statement */
-		    if (xret && netconf_data_missing_xml(xret, yang_argument_get(yc), NULL) < 0)
-			goto done;
+		    if (xret){
+			if (xml2xpath(xt, NULL, &xpath) < 0)
+			    goto done;
+			if (netconf_missing_choice_xml(xret, yang_argument_get(yc), xpath) < 0)
+			    goto done;
+		    }
 		    goto fail;
 		}
 	    }
@@ -785,6 +790,8 @@ check_mandatory(cxobj     *xt,
     }
     retval = 1;
  done:
+    if (xpath)
+	free(xpath);
     if (cb)
 	cbuf_free(cb);
     return retval;

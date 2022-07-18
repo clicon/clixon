@@ -124,7 +124,7 @@ EOF
 	openssl req -new -config $dir/$name.cnf -key $certdir/$name.key -out $certdir/$name.csr
 
 	# Sign by CA
-	openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt  ||  err "Generate signing client cert"
+	openssl x509 -req -extfile $dir/$name.cnf -days 7 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt  ||  err "Generate signing client cert"
     done # client key
 
     # invalid (days = 0)

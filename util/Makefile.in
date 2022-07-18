@@ -46,6 +46,7 @@ localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 HOST_VENDOR     = @host_vendor@
 with_restconf	= @with_restconf@
+CLIXON_TLS	= @CLIXON_TLS@
 HAVE_LIBXML2	= @HAVE_LIBXML2@
 
 SH_SUFFIX	= @SH_SUFFIX@
@@ -98,10 +99,11 @@ APPSRC   += clixon_netconf_ssh_callhome_client.c
 ifdef with_restconf
 APPSRC   += clixon_util_stream.c # Needs curl
 endif
-ifdef with_http2
-APPSRC   += clixon_util_ssl.c # requires http/2
-#APPSRC   += clixon_util_grpc.c # work in progress
+ifdef CLIXON_TLS
+APPSRC   += clixon_util_tls_client.c
 endif
+#APPSRC   += clixon_util_grpc.c # work in progress
+
 
 APPS	  = $(APPSRC:.c=)
 
@@ -155,13 +157,15 @@ clixon_util_dispatcher: clixon_util_dispatcher.c $(LIBDEPS)
 ifdef with_restconf
 clixon_util_stream: clixon_util_stream.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lcurl -o $@
-
-clixon_util_ssl: clixon_util_ssl.c $(LIBDEPS)
-	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
-
-clixon_util_grpc: clixon_util_grpc.c $(LIBDEPS)
+endif
+ifdef CLIXON_TLS
+clixon_util_tls_client: clixon_util_tls_client.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 endif
+
+#clixon_util_grpc: clixon_util_grpc.c $(LIBDEPS)
+#	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
+
 
 distclean: clean
 	rm -f Makefile *~ .depend

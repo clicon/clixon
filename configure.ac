@@ -116,6 +116,7 @@ AC_SUBST(LIBSTATIC_SUFFIX)
 AC_SUBST(LINKAGE)
 AC_SUBST(with_restconf)  # Set to native or fcgi -> compile apps/restconf
 AC_SUBST(enable_netsnmp) # Enable build of apps/snmp
+AC_SUBST(CLIXON_TLS)     # RFC 7589 Netconf over TLS + native RESTCONF with tls
 AC_SUBST(HAVE_LIBNGHTTP2,false) # consider using neutral constant such as with-http2
 AC_SUBST(HAVE_HTTP1,false) 
 AC_SUBST(with_libxml2)  
@@ -212,6 +213,7 @@ AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR([CLIgen missing. Try: git clone 
 
 AC_CHECK_LIB(cligen, cligen_init,, AC_MSG_ERROR([CLIgen missing. Try: git clone https://github.com/clicon/cligen.git]))
 
+
 # This is for restconf.  There are three options:
 # --without-restconf     No restconf support
 # --with-restconf=fcgi   FCGI interface for separate web reverse proxy like nginx
@@ -229,6 +231,8 @@ if test "x${with_restconf}" == xfcgi; then
 elif test "x${with_restconf}" == xnative; then
    AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
    AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
+   CLIXON_TLS=1
+   AC_DEFINE(CLIXON_TLS, 1, [Enable TLS for NETCONF over TLS and native RESTCONF])
    # Check if http/1 enabled
    AC_ARG_ENABLE(http1, AS_HELP_STRING([--disable-http1],[Disable http1 for native restconf http/1, ie http/2 only]),[
    	  if test "$enableval" = no; then
@@ -308,6 +312,25 @@ if test "$enable_netsnmp" = "yes"; then
     )
     AC_MSG_RESULT(Generated YANGs from MIB files are expected to be in ${MIB_GENERATED_YANG_DIR})
 fi 
+
+# Enable TLS for Netconf over TLS and native RESTCONF
+AC_ARG_ENABLE(tls, AS_HELP_STRING([--enable-tls],[Enable TLS for NETCONF over TLS and native RESTCONF, default: no]),[
+	  if test "$enableval" = no; then
+	      enable_tls=no
+	  else	      
+	      enable_tls=yes
+          fi
+        ],
+	[ enable_tls=no])
+
+# Note ssl can be enabled via --with-restconf=native as well
+AC_MSG_RESULT(enable-tls is ${enable_tls})
+if test "${enable_tls}" = "yes"; then
+   AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
+   AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
+   CLIXON_TLS=1
+   AC_DEFINE(CLIXON_TLS, 1, [Enable TLS for NETCONF over TLS and native RESTCONF])
+fi
 
 # Set default config file location
 CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml

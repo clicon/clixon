@@ -76,7 +76,7 @@ function testrun(){
 
     new "test params: -f $cfg"
 
-    new "start backend -D $DBG -s startup -f $cfg -q -l o"
+    new "start backend -D $DBG -s startup -f $cfg -q"
     expectpart "$(sudo $clixon_backend -D $DBG -o CLICON_XMLDB_UPGRADE_CHECKOLD=$checkold -s startup -f $cfg -q -l e 2>&1)" 0 "$expectxml"
 }
 

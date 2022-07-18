@@ -156,7 +156,7 @@ main(int    argc,
     int           output = 0;
     clicon_handle h;
     struct stat   st;
-    FILE         *fp = stdin; /* base file, stdin */
+    FILE         *fp = stdin; /* base file, stdin, can be overridden with -f */
     FILE         *tfp = NULL; /* top file */
     cxobj        *xcfg = NULL;
     cbuf         *cbret = NULL;

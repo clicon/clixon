@@ -639,6 +639,7 @@ CLIXON_YANG_PATCH
 with_libxml2
 HAVE_HTTP1
 HAVE_LIBNGHTTP2
+CLIXON_TLS
 enable_netsnmp
 with_restconf
 LINKAGE
@@ -726,6 +727,7 @@ enable_http1
 enable_nghttp2
 enable_netsnmp
 with_mib_generated_yang_dir
+enable_tls
 with_configfile
 with_libxml2
 with_sigaction
@@ -1379,6 +1381,8 @@ Optional Features:
   --disable-nghttp2       Disable nghttp2 for native restconf http/2, ie
                           http/1 only
   --enable-netsnmp        Enable net-snmp Clixon YANG mapping
+  --enable-tls            Enable TLS for NETCONF over TLS and native RESTCONF,
+                          default: no
 
 
 Optional Packages:
@@ -3395,6 +3399,7 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
   # Set to native or fcgi -> compile apps/restconf
  # Enable build of apps/snmp
+     # RFC 7589 Netconf over TLS + native RESTCONF with tls
 HAVE_LIBNGHTTP2=false
  # consider using neutral constant such as with-http2
 HAVE_HTTP1=false
@@ -5014,6 +5019,7 @@ else
 fi
 
 
+
 # This is for restconf.  There are three options:
 # --without-restconf     No restconf support
 # --with-restconf=fcgi   FCGI interface for separate web reverse proxy like nginx
@@ -5175,6 +5181,10 @@ _ACEOF
 else
   as_fn_error $? "libcrypto missing" "$LINENO" 5
 fi
+
+   CLIXON_TLS=1
+
+$as_echo "#define CLIXON_TLS 1" >>confdefs.h
 
    # Check if http/1 enabled
    # Check whether --enable-http1 was given.
@@ -5453,6 +5463,125 @@ fi
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: Generated YANGs from MIB files are expected to be in ${MIB_GENERATED_YANG_DIR}" >&5
 $as_echo "Generated YANGs from MIB files are expected to be in ${MIB_GENERATED_YANG_DIR}" >&6; }
+fi
+
+# Enable TLS for Netconf over TLS and native RESTCONF
+# Check whether --enable-tls was given.
+if test "${enable_tls+set}" = set; then :
+  enableval=$enable_tls;
+	  if test "$enableval" = no; then
+	      enable_tls=no
+	  else
+	      enable_tls=yes
+          fi
+
+else
+   enable_tls=no
+fi
+
+
+# Note ssl can be enabled via --with-restconf=native as well
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: enable-tls is ${enable_tls}" >&5
+$as_echo "enable-tls is ${enable_tls}" >&6; }
+if test "${enable_tls}" = "yes"; then
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
+$as_echo_n "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
+if ${ac_cv_lib_ssl_OPENSSL_init_ssl_+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lssl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char OPENSSL_init_ssl  ();
+int
+main ()
+{
+return OPENSSL_init_ssl  ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_ssl_OPENSSL_init_ssl_=yes
+else
+  ac_cv_lib_ssl_OPENSSL_init_ssl_=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssl_OPENSSL_init_ssl_" >&5
+$as_echo "$ac_cv_lib_ssl_OPENSSL_init_ssl_" >&6; }
+if test "x$ac_cv_lib_ssl_OPENSSL_init_ssl_" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBSSL 1
+_ACEOF
+
+  LIBS="-lssl $LIBS"
+
+else
+  as_fn_error $? "libssl missing" "$LINENO" 5
+fi
+
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for CRYPTO_new_ex_data in -lcrypto" >&5
+$as_echo_n "checking for CRYPTO_new_ex_data in -lcrypto... " >&6; }
+if ${ac_cv_lib_crypto_CRYPTO_new_ex_data+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcrypto  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char CRYPTO_new_ex_data ();
+int
+main ()
+{
+return CRYPTO_new_ex_data ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_crypto_CRYPTO_new_ex_data=yes
+else
+  ac_cv_lib_crypto_CRYPTO_new_ex_data=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypto_CRYPTO_new_ex_data" >&5
+$as_echo "$ac_cv_lib_crypto_CRYPTO_new_ex_data" >&6; }
+if test "x$ac_cv_lib_crypto_CRYPTO_new_ex_data" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBCRYPTO 1
+_ACEOF
+
+  LIBS="-lcrypto $LIBS"
+
+else
+  as_fn_error $? "libcrypto missing" "$LINENO" 5
+fi
+
+   CLIXON_TLS=1
+
+$as_echo "#define CLIXON_TLS 1" >>confdefs.h
+
 fi
 
 # Set default config file location

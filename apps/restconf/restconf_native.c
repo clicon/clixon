@@ -509,17 +509,17 @@ http1_native_clear_input(clicon_handle         h,
  * @retval     0     OK
  */
 static int
-read_ssl(restconf_conn *rc,
-	 char          *buf,
-	 size_t         sz,
-	 ssize_t       *np,
-	 int           *again)
+restconf_read_ssl(SSL           *ssl,
+		  char          *buf,
+		  size_t         sz,
+		  ssize_t       *np,
+		  int           *again)
 {
     int  retval = -1;
     int  sslerr;
     
-    if ((*np = SSL_read(rc->rc_ssl, buf, sz)) <= 0){
-	sslerr = SSL_get_error(rc->rc_ssl, *np);
+    if ((*np = SSL_read(ssl, buf, sz)) <= 0){
+	sslerr = SSL_get_error(ssl, *np);
 	clicon_debug(1, "%s SSL_read() n:%zd errno:%d sslerr:%d", __FUNCTION__, *np, errno, sslerr);
 	switch (sslerr){
 	case SSL_ERROR_WANT_READ:            /* 2 */
@@ -899,7 +899,7 @@ restconf_connection(int   s,
 	readmore = 0;
 	/* Example: curl -Ssik -u wilma:bar -X GET https://localhost/restconf/data/example:x */
 	if (rc->rc_ssl){
-	    if (read_ssl(rc, buf, sizeof(buf), &n, &readmore) < 0)
+	    if (restconf_read_ssl(rc->rc_ssl, buf, sizeof(buf), &n, &readmore) < 0)
 		goto done;
 	}
 	else{ /* Not SSL */

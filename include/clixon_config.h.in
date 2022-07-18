@@ -6,6 +6,9 @@
 /* Enable publish of notification streams using SSE and curl */
 #undef CLIXON_PUBLISH_STREAMS
 
+/* Enable TLS for NETCONF over TLS and native RESTCONF */
+#undef CLIXON_TLS
+
 /* Clixon major release */
 #undef CLIXON_VERSION_MAJOR
 

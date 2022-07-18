@@ -299,7 +299,7 @@ restconf_verify_certs(int             preverify_ok,
      * - 0 (preferity_ok) the session terminates here in SSL negotiation, an http client
      *     will get a low level error (not http reply)
      * - 1 Check if the cert is valid using SSL_get_verify_result(rc->rc_ssl)
-     * @see restconf_nghttp2_sanity where this is done for http/1 and http/2
+     * @see restconf_connection_sanity where this is done for http/1 and http/2
      */
     return 1;
 }
@@ -422,6 +422,7 @@ restconf_ssl_context_configure(clixon_handle h,
 {
     int retval = -1;
 
+    /* This macro is deprecated in favor of SSL_CTX_set1_groups(3). */
     SSL_CTX_set_ecdh_auto(ctx, 1);
 
     /* Specifies the locations where CA certificates are located. The certificates available via
@@ -1110,7 +1111,7 @@ openssl_init_socket(clicon_handle h,
  * @retval     0     OK
  * @retval    -1     Error
  */
-int
+static int
 restconf_openssl_init(clicon_handle h,
 		      int           dbg0,
 		      cxobj        *xrestconf)
@@ -1196,7 +1197,7 @@ restconf_openssl_init(clicon_handle h,
 		goto done;
 	}
     }
-    retval = 1;
+    retval = 0;
  done:
     if (vec)
 	free(vec);

@@ -164,3 +164,9 @@
  */
 #define PROTO_RESTART_RECONNECT
 
+/*! Temp ignore revision-date
+ * ietf-netconf-server seems temporary broken 
+ * XXX remove when ietf-netconf-server becomes RFC:s?
+ */
+#define YANG_CALLHOME_REVISION_IGNORE
+

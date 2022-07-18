@@ -44,6 +44,13 @@
     * [String concatenation in YANG model leads to syntax error ](https://github.com/clicon/clixon/issues/265)
     * [Can't use + symbol in the enum statement without quotes](https://github.com/clicon/clixon/issues/241)
 
+## Callhome branch
+
+### New features
+
+* RFC 7589 Netconf over TLS (Experimental)
+  * Added configure option: `enable-tls`
+
 ## 5.8.0
 Planned: July 2022
 
