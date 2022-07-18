@@ -66,8 +66,6 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <syslog.h>
-#include <assert.h>
-#include <libgen.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <netinet/in.h>
@@ -99,6 +97,7 @@
 #include "clixon_yang_cardinality.h"
 #include "clixon_plugin.h"
 #include "clixon_yang_internal.h"
+#include "clixon_yang_parse_sub.h"
 #include "clixon_yang_parse_lib.h"
 
 /* Size of json read buffer when reading from file*/
@@ -1961,6 +1960,7 @@ ys_parse_sub(yang_stmt *ys,
     case Y_IF_FEATURE:
 	/* Invoke next level parser on if-feature-expr string. Note do not send ys since 
 	 * pass 1 is not yet resolved, only check syntax, actual feature check made in next pass
+	 * @see yang_features
 	 */
 	if (yang_if_feature_parse(yang_argument_get(ys), NULL, yang_linenum_get(ys), NULL) < 0)
 	    goto done;

@@ -42,7 +42,7 @@
   *  -i  read state file on init not by request for optimization (requires -sS <file>)
   *  -u  enable upgrade function - auto-upgrade testing
   *  -U  general-purpose upgrade
-  *  -t  enable transaction logging (cal syslog for every transaction)
+  *  -t  enable transaction logging (call syslog for every transaction)
   *  -v <xpath> Failing validate and commit if <xpath> is present (synthetic error)
  */
 #include <stdio.h>
@@ -67,7 +67,7 @@
 #include <clixon/clixon_backend.h> 
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_EXAMPLE_OPTS "a:rsS:x:iuUt:v:"
+#define BACKEND_EXAMPLE_OPTS "a:rsS:x:iuUtv:"
 
 /*! Yang action
  * Start backend with -- -a <instance-id>
@@ -132,13 +132,6 @@ static int _general_upgrade = 0;
  */
 static int _transaction_log = 0;
 
-/*! Variable to control transaction logging (for debug)
- * If set, call syslog for every transaction callback 
- * Start backend with -- -v <xpath>
- */
-static char *_validate_fail_xpath = NULL;
-static int   _validate_fail_toggle = 0; /* fail at validate and commit */
-
 /* forward */
 static int example_stream_timer_setup(clicon_handle h);
 
@@ -158,14 +151,6 @@ main_validate(clicon_handle    h,
 {
     if (_transaction_log)
 	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
-    if (_validate_fail_xpath){
-	if (_validate_fail_toggle==0 &&
-	    xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
-	    _validate_fail_toggle = 1; /* toggle if triggered */
-	    clicon_err(OE_XML, 0, "User error");
-	    return -1; /* induce fail */
-	}
-    }
     return 0;
 }
 
@@ -192,15 +177,6 @@ main_commit(clicon_handle    h,
 
     if (_transaction_log)
 	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
-
-    if (_validate_fail_xpath){
-	if (_validate_fail_toggle==1 &&
-	    xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
-	    _validate_fail_toggle = 0; /* toggle if triggered */
-	    clicon_err(OE_XML, 0, "User error");
-	    return -1; /* induce fail */
-	}
-    }
 
     /* Create namespace context for xpath */
     if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
@@ -1332,9 +1308,6 @@ clixon_plugin_init(clicon_handle h)
 	   break;
 	case 't': /* transaction log */
 	    _transaction_log = 1;
-	    break;
-	case 'v': /* validate fail */
-	    _validate_fail_xpath = optarg;
 	    break;
 	}
 

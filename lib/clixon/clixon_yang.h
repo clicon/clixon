@@ -262,7 +262,6 @@ int        yang_spec_dump(yang_stmt *yspec, int debuglevel);
 int        if_feature(yang_stmt *yspec, char *module, char *feature);
 int        ys_populate(yang_stmt *ys, void *arg);
 int        ys_populate2(yang_stmt *ys, void *arg);
-int        yang_if_feature_parse(char *str, yang_stmt *ys, int linenum, int *enabled);
 int        yang_apply(yang_stmt *yn, enum rfc_6020 key, yang_applyfn_t fn, int from, void *arg);
 int        yang_datanode(yang_stmt *ys);
 int        yang_abs_schema_nodeid(yang_stmt *ys, char *schema_nodeid, yang_stmt **yres);

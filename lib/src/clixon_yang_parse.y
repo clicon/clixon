@@ -69,6 +69,7 @@
 %type <string>    string
 %type <string>    integer_value_str
 %type <string>    identifier_ref
+%type <string>    if_feature_expr_str
 %type <string>    abs_schema_nodeid
 %type <string>    desc_schema_nodeid_strs
 %type <string>    desc_schema_nodeid_str
@@ -688,9 +689,18 @@ feature_substmt : if_feature_stmt    { _PARSE_DEBUG("feature-substmt -> if-featu
               ;
 
 /* if-feature-stmt = if-feature-keyword sep if-feature-expr-str */
-if_feature_stmt : K_IF_FEATURE string stmtend 
+if_feature_stmt : K_IF_FEATURE if_feature_expr_str stmtend 
 		{ if (ysp_add(_yy, Y_IF_FEATURE, $2, NULL) == NULL) _YYERROR("if_feature_stmt"); 
-                            _PARSE_DEBUG("if-feature-stmt -> IF-FEATURE identifier-ref-arg-str"); }
+                            _PARSE_DEBUG("if-feature-stmt -> IF-FEATURE if-feature-expr-str"); }
+              ;
+
+/* a string that matches the rule if-feature-expr
+ * @see yang_if_feature_parse
+ */
+if_feature_expr_str : string
+                  { $$=$1;
+		  _PARSE_DEBUG("if-feature-expr-str -> string that matches the rule if-feature-expr");
+		  }
               ;
 
 /* Typedef */

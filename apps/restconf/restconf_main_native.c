@@ -951,6 +951,7 @@ restconf_native_terminate(clicon_handle h)
 
 /*! Query backend of config.
  * Loop to wait for backend starting, try again if not done 
+ * @param[in]  h         Clixon handle
  * @param[out] xrestconf XML restconf config, malloced (if retval = 1)
  * @retval     1         OK  (and xrestconf set)
  * @retval     0         Fail - no config

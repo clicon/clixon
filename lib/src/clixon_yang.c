@@ -59,7 +59,6 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <netinet/in.h>
-#include <libgen.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -80,8 +79,8 @@
 #include "clixon_plugin.h"
 #include "clixon_data.h"
 #include "clixon_options.h"
-#include "clixon_if_feature_parse.h"
 #include "clixon_yang_parse.h"
+#include "clixon_yang_parse_sub.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_yang_cardinality.h"
 #include "clixon_yang_type.h"
@@ -2783,44 +2782,6 @@ ys_populate2(yang_stmt    *ys,
     return retval;
 }
 
-/*! Invoke yang if-feature sub-parser on string
- *
- * @param[in]  str      If-feature-expr string
- * @param[in]  ys       Yang if-feature statement
- * @param[in]  linenum  Line number context
- * @param[out] enabled  0: Disabled, 1: Enabled
- * @retval     0        OK
- * @retval    -1        Error
- */
-int
-yang_if_feature_parse(char      *str,
-		      yang_stmt *ys,
-		      int        linenum,
-		      int       *enabled)
-{
-    int                    retval = -1;
-    clixon_if_feature_yacc ife = {0,};
-
-    clicon_debug(2, "%s %s", __FUNCTION__, str);
-    ife.if_parse_string = str;
-    ife.if_linenum = linenum;
-    ife.if_ys = ys;
-    if (clixon_if_feature_parsel_init(&ife) < 0)
-	goto done;
-    if (clixon_if_feature_parseparse(&ife) != 0) { /* yacc returns 1 on error */
-	clicon_log(LOG_NOTICE, "If-feature error: line %d", ife.if_linenum);
-	if (clicon_errno == 0)
-	    clicon_err(OE_JSON, 0, "If-feature parser error with no error code (should not happen)");
-	goto done;
-    }
-    if (enabled)
-	*enabled = ife.if_enabled;
-    retval = 0;
- done:
-    clixon_if_feature_parsel_exit(&ife);
-    return retval;
-}
-
 /*! Find feature and if-feature nodes, check features and remove disabled nodes
  * @param[in] h   Clixon handle
  * @param[in] yt  Yang statement
@@ -2829,7 +2790,7 @@ yang_if_feature_parse(char      *str,
  * @retval    1   OK
  * @note On return 1 the over-lying function need to remove yt from its parent
  * @note cannot use yang_apply here since child-list is modified (destructive) 
- * @note if-feature syntax is restricted to single, and, or, syntax, such as "a or b"
+ * @note if-features is parsed in full context here, previous restricted pass in ys_parse_sub
  */
 int
 yang_features(clicon_handle h,
@@ -2845,7 +2806,7 @@ yang_features(clicon_handle h,
     while (i<yt->ys_len){
 	ys = yt->ys_stmt[i];
 	if (ys->ys_keyword == Y_IF_FEATURE){
-	    /* Parse the if-feature-expr string */
+	    /* Parse the if-feature-expr string using yang sub-parser */
 	    ret = 0;
 	    if (yang_if_feature_parse(yang_argument_get(ys), ys, 1, &ret) < 0)
 		goto done;

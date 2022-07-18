@@ -68,7 +68,7 @@
 static int _transaction_log = 0;
 
 /*! Variable to control transaction logging (for debug)
- * If set, call syslog for every transaction callback 
+ * XPath to trigger validation error 
  * Start backend with -- -v <xpath>
  */
 static char *_validate_fail_xpath = NULL;

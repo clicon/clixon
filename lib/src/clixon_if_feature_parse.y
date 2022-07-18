@@ -58,7 +58,7 @@
 %token <string> TOKEN
 %token SEP
 
-%type <number> iffactor ifexpr
+%type <number> if_feature_factor if_feature_expr
 
 %start top
 
@@ -167,38 +167,40 @@ if_feature_check(char      *str,
  
 %%
 
-top        : ifexpr MY_EOF
+/* See RFC 7950 Sec 14 if-feature-expr-str */
+top        : if_feature_expr MY_EOF
                     {
-			_PARSE_DEBUG("top->expr");
+			_PARSE_DEBUG("top->if-feature-expr");
 			_IF->if_enabled = $1;
 			YYACCEPT;
 		    }
            ;
 
-ifexpr     : iffactor sep1 OR sep1 ifexpr
+if_feature_expr     : if_feature_factor sep1 OR sep1 if_feature_expr
                     {
-			_PARSE_DEBUG("expr->factor sep OR sep expr");
+			_PARSE_DEBUG("if-feature-expr->if-feature-factor sep OR sep expr");
 			$$ = $1 || $5;
 		    }
-           | iffactor sep1 AND sep1 ifexpr
+           | if_feature_factor sep1 AND sep1 if_feature_expr
 	            {
-			_PARSE_DEBUG("expr->factor sep AND sep expr");
+			_PARSE_DEBUG("if-feature-expr->if-feature-factor sep AND sep if-feature-expr");
 			$$ = $1 && $5;
 		    }
-           | iffactor
+           | if_feature_factor
 	            {
-			_PARSE_DEBUG("expr->factor");
+			_PARSE_DEBUG("if-feature-expr->if-feature-factor");
 			$$ = $1;
 		    }
            ;
 
-iffactor   : NOT sep1 iffactor     { _PARSE_DEBUG("factor-> NOT sep factor");
-		                     $$ = !$3; }
-           | '(' optsep ifexpr optsep ')'
-		                   { _PARSE_DEBUG("factor-> ( optsep expr optsep )");
+if_feature_factor   : NOT sep1 if_feature_factor
+                              { _PARSE_DEBUG("if-feature-factor-> NOT sep if-feature-factor");
+				  $$ = !$3; }
+           | '(' optsep if_feature_expr optsep ')'
+		                   { _PARSE_DEBUG("if-feature-factor-> ( optsep if-feature-expr optsep )");
 		                     $$ = $3; }
            | TOKEN                 {
-	       _PARSE_DEBUG("factor->TOKEN");
+	       _PARSE_DEBUG("if-feature-factor-> TOKEN");
 	       if (_IF->if_ys == NULL) $$ = 0;
 	       else if (($$ = if_feature_check($1, _IF->if_ys)) < 0) {
 		   free($1);

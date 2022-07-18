@@ -98,7 +98,7 @@ function checklog(){
     if [ -z "$t" ]; then
 	echo -e "\e[31m\nError in Test$testnr [$testname]:"
 	if [ $# -gt 0 ]; then 
-	    echo "Not found in log"
+	    echo "Not found \"$s\" on line $l0"
 	    echo
 	fi
 	echo -e "\e[0m"
@@ -126,7 +126,7 @@ if [ $BE -ne 0 ]; then
 	err
     fi
     new "start backend  -s init -f $cfg -l f$flog -- -t -v /x/y[a=$errnr]"
-    start_backend -s init -f $cfg -l f$flog -- -t -v /x/y[a=$errnr] # -t means transaction logging
+    start_backend -s init -f $cfg -l f$flog -- -t -v "/x/y[a='$errnr']" # -t means transaction logging
 fi
 
 new "wait backend"

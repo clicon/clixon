@@ -9,7 +9,7 @@ APPNAME=example
 # include err() and new() functions and creates $dir
 
 cfg=$dir/conf_yang.xml
-fspec=$dir/automode.cli
+clispec=$dir/automode.cli
 fin=$dir/in
 fstate=$dir/state.xml
 fyang=$dir/clixon-example.yang
@@ -65,7 +65,7 @@ module clixon-example2 {
 }
 EOF
 
-cat <<EOF > $fspec
+cat <<EOF > $clispec
 CLICON_MODE="example";
 CLICON_PROMPT="%U@%H %W> ";
 CLICON_PLUGIN="example_cli";
