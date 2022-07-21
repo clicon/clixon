@@ -186,7 +186,7 @@ if [ $BE -ne 0 ]; then
     fi
     sudo pkill -f clixon_backend # to be sure
     new "start backend -s init -f $cfg -- -sS $fstate -v /table/parameter[name=\"4242\"]"
-    start_backend -s init -f $cfg -- -sS $fstate -v /table/parameter[name="4242"]
+    start_backend -s init -f $cfg -- -sS $fstate -V "/table/parameter[name='4242']"
 fi
 
 new "wait backend"

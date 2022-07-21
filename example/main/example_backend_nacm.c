@@ -67,11 +67,17 @@
  */
 static int _transaction_log = 0;
 
-/*! Variable to control transaction logging (for debug)
- * XPath to trigger validation error 
+/*! Variable to trigger validation/commit errors (synthetic errors) for tests
+ * XPath to trigger validation error, ie if the XPath matches, then validate fails
+ * This is to make tests where a transaction fails midway and aborts/reverts the transaction.
  * Start backend with -- -v <xpath>
+ * Note that the first backend plugin has a corresponding -V <xpath> to do the same thing
  */
 static char *_validate_fail_xpath = NULL;
+
+/*! Sub state variable to fail on validate/commit, 
+ * Obscure, but a way to first trigger a validation error, next time to trigger a commit error
+ */
 static int   _validate_fail_toggle = 0; /* fail at validate and commit */
 
 int

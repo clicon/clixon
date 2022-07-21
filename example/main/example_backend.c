@@ -43,7 +43,7 @@
   *  -u  enable upgrade function - auto-upgrade testing
   *  -U  general-purpose upgrade
   *  -t  enable transaction logging (call syslog for every transaction)
-  *  -v <xpath> Failing validate and commit if <xpath> is present (synthetic error)
+  *  -V <xpath> Failing validate and commit if <xpath> is present (synthetic error)
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,7 +67,7 @@
 #include <clixon/clixon_backend.h> 
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_EXAMPLE_OPTS "a:rsS:x:iuUtv:"
+#define BACKEND_EXAMPLE_OPTS "a:rsS:x:iuUtV:"
 
 /*! Yang action
  * Start backend with -- -a <instance-id>
@@ -132,6 +132,19 @@ static int _general_upgrade = 0;
  */
 static int _transaction_log = 0;
 
+/*! Variable to trigger validation/commit errors (synthetic errors) for tests
+ * XPath to trigger validation error, ie if the XPath matches, then validate fails
+ * This is to make tests where a transaction fails midway and aborts/reverts the transaction.
+ * Start backend with -- -V <xpath>
+ * Note that the second backend plugin has a corresponding -v <xpath> to do the same thing
+ */
+static char *_validate_fail_xpath = NULL;
+
+/*! Sub state variable to fail on validate/commit (not configured)
+ * Obscure, but a way to first trigger a validation error, next time to trigger a commit error
+ */
+static int   _validate_fail_toggle = 0; /* fail at validate and commit */
+
 /* forward */
 static int example_stream_timer_setup(clicon_handle h);
 
@@ -151,6 +164,14 @@ main_validate(clicon_handle    h,
 {
     if (_transaction_log)
 	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+    if (_validate_fail_xpath){
+	if (_validate_fail_toggle==0 &&
+	    xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
+	    _validate_fail_toggle = 1; /* toggle if triggered */
+	    clicon_err(OE_XML, 0, "User error");
+	    return -1; /* induce fail */
+	}
+    }
     return 0;
 }
 
@@ -177,6 +198,14 @@ main_commit(clicon_handle    h,
 
     if (_transaction_log)
 	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+    if (_validate_fail_xpath){
+	if (_validate_fail_toggle==1 &&
+	    xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
+	    _validate_fail_toggle = 0; /* toggle if triggered */
+	    clicon_err(OE_XML, 0, "User error");
+	    return -1; /* induce fail */
+	}
+    }
 
     /* Create namespace context for xpath */
     if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
@@ -1308,6 +1337,9 @@ clixon_plugin_init(clicon_handle h)
 	   break;
 	case 't': /* transaction log */
 	    _transaction_log = 1;
+	    break;
+	case 'V': /* validate fail */
+	    _validate_fail_xpath = optarg;
 	    break;
 	}
 
