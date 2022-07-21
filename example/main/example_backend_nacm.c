@@ -75,7 +75,7 @@ static int _transaction_log = 0;
  */
 static char *_validate_fail_xpath = NULL;
 
-/*! Sub state variable to fail on validate/commit, 
+/*! Sub state variable to fail on validate/commit (not configured)
  * Obscure, but a way to first trigger a validation error, next time to trigger a commit error
  */
 static int   _validate_fail_toggle = 0; /* fail at validate and commit */

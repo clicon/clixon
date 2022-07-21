@@ -83,7 +83,7 @@ snmp_common_handler(netsnmp_mib_handler          *handler,
 {
     int                    retval = -1;
     netsnmp_variable_list *requestvb; /* sub of request */
-    cbuf                  *cb;
+    cbuf                  *cb = NULL;
 
     if (request == NULL || shp == NULL){
 	clicon_err(OE_XML, EINVAL, "request or shp is null");
@@ -832,7 +832,7 @@ snmp_table_get(clicon_handle               h,
     yang_stmt *yk;
     char      *xpath = NULL;
     cvec      *cvk_orig;
-    cvec      *cvk_val;
+    cvec      *cvk_val = NULL;
     int        i;
     cg_var    *cv;
     char      *defaultval = NULL;
@@ -951,7 +951,7 @@ snmp_table_set(clicon_handle               h,
     yang_stmt *yrestype = NULL;
     char      *xpath = NULL;
     cvec      *cvk_orig;
-    cvec      *cvk_val;
+    cvec      *cvk_val = NULL;
     int        i;
     cg_var    *cv;
     int        ret;

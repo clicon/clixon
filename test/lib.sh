@@ -312,6 +312,7 @@ if $NGINXCHECK; then
     fi # systemctl
 fi
 
+# Temp directory where all tests write their data to
 dir=/var/tmp/$0
 if [ ! -d $dir ]; then
     mkdir $dir
