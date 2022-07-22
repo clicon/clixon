@@ -86,6 +86,11 @@ Run all tests but continue after errors and only print a summary test output ide
   sum.sh
 ```
 
+Add a detailed error print of the first test that failed, if any:
+```
+  detail=true sum.sh
+```
+
 ## Memory leak test
 The `mem.sh` runs memory checks using valgrind. Start it with no arguments to test all components (backend, restconf, cli, netconf), or specify which components to run:
 ```

@@ -3656,6 +3656,10 @@ yang_extension_value(yang_stmt *ys,
     cbuf      *cb = NULL;
     int        ret;
 
+    if (ys == NULL){
+	clicon_err(OE_YANG, EINVAL, "ys is NULL");
+	goto done;
+    }
     if (exist)
 	*exist = 0;
     if ((cb = cbuf_new()) == NULL){
