@@ -101,6 +101,7 @@ tleaf(cxobj *x)
  * @param[in]     fn       Callback to make print function
  * @param[in]     f        File to print to
  * @param[in]     level    Print 4 spaces per level in front of each line
+ * @param[in]     autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @param[in,out] leafl    Leaflist state for keeping track of when [] ends
  * @param[in,out] leaflname Leaflist state for [] 
  * leaflist state:
@@ -112,8 +113,10 @@ xml2txt1(cxobj            *xn,
 	 clicon_output_cb *fn,
 	 FILE             *f, 
 	 int               level,
+	 int               autocliext,
 	 int              *leafl,
     	 char            **leaflname)
+
 {
     cxobj     *xc = NULL;
     int        children=0;
@@ -134,10 +137,12 @@ xml2txt1(cxobj            *xn,
 	goto done;
     }
     if ((yn = xml_spec(xn)) != NULL){
-	if (yang_extension_value(yn, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
-	    goto done;
-	if (exist)
-	    goto ok;
+	if (autocliext){
+	    if (yang_extension_value(yn, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+		goto done;
+	    if (exist)
+		goto ok;
+	}
 	/* Find out prefix if needed: topmost or new module a la API-PATH */
 	if (ys_real_module(yn, &ymod) < 0)
 	    goto done;
@@ -230,7 +235,7 @@ xml2txt1(cxobj            *xn,
 	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY){
 	    if (yn && yang_key_match(yn, xml_name(xc), NULL))
 		continue; /* Skip keys, already printed */
-	    if (xml2txt1(xc, fn, f, level+1, leafl, leaflname) < 0)
+	    if (xml2txt1(xc, fn, f, level+1, autocliext, leafl, leaflname) < 0)
 		break;
 	}
     }
@@ -256,6 +261,7 @@ xml2txt1(cxobj            *xn,
  * @param[in]  level    Print 4 spaces per level in front of each line
  * @param[in]  fn       File print function (if NULL, use fprintf)
  * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
+ * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @retval     0        OK
  * @retval    -1        Error
  */
@@ -264,7 +270,8 @@ clixon_txt2file(FILE             *f,
 		cxobj            *xn, 
 		int               level,
 		clicon_output_cb *fn,
-		int               skiptop)
+		int               skiptop,
+		int               autocliext)
 {
     int    retval = 1;
     cxobj *xc;
@@ -276,11 +283,11 @@ clixon_txt2file(FILE             *f,
     if (skiptop){
 	xc = NULL;
 	while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-	    if (xml2txt1(xc, fn, f, level, &leafl, &leaflname) < 0)
+	    if (xml2txt1(xc, fn, f, level, autocliext, &leafl, &leaflname) < 0)
 		goto done;
     }
     else {
-	if (xml2txt1(xn, fn, f, level, &leafl, &leaflname) < 0)
+	if (xml2txt1(xn, fn, f, level, autocliext, &leafl, &leaflname) < 0)
 	    goto done;
     }
     retval = 0;

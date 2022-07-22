@@ -66,7 +66,7 @@
 #include <clixon/clixon.h>
 
 /* Command line options to be passed to getopt(3) */
-#define DATASTORE_OPTS "hDd:b:f:x:y:"
+#define DATASTORE_OPTS "hDd:b:f:x:y:Y:"
 
 /*! usage
  */
@@ -74,29 +74,30 @@ static void
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s <options>* [<command>]\n"
-		"where options are\n"
-		"\t-h\t\tHelp\n"
-		"\t-D\t\tDebug\n"
-		"\t-d <db>\t\tDatabase name. Default: running. Alt: candidate,startup\n"
-		"\t-b <dir>\tDatabase directory. Mandatory\n"
-	        "\t-f <fmt>\tDatabase format: xml or json\n"
-		"\t-x <xml>\tXML file. Alternative to put <xml> argument\n"
-		"\t-y <file>\tYang file. Mandatory\n"
-		"and command is either:\n"
-		"\tget [<xpath>]\n"
- 	        "\tmget <nr> [<xpath>]\n"
-		"\tput (merge|replace|create|delete|remove) [<xml>]\n"
-		"\tcopy <todb>\n"
-		"\tlock <pid>\n"
-		"\tunlock\n"
-		"\tunlock_all <pid>\n"
-		"\tislocked\n"
-		"\texists\n"
-		"\tdelete\n"
-		"\tinit\n"
-		,
-		argv0
-		);
+	    "where options are\n"
+	    "\t-h\t\tHelp\n"
+	    "\t-D\t\tDebug\n"
+	    "\t-d <db>\t\tDatabase name. Default: running. Alt: candidate,startup\n"
+	    "\t-b <dir>\tDatabase directory. Mandatory\n"
+	    "\t-f <fmt>\tDatabase format: xml or json\n"
+	    "\t-x <xml>\tXML file. Alternative to put <xml> argument\n"
+	    "\t-y <file>\tYang file. Mandatory\n"
+	    "\t-Y <dir> \tYang dirs (can be several)\n"
+	    "and command is either:\n"
+	    "\tget [<xpath>]\n"
+	    "\tmget <nr> [<xpath>]\n"
+	    "\tput (merge|replace|create|delete|remove) [<xml>]\n"
+	    "\tcopy <todb>\n"
+	    "\tlock <pid>\n"
+	    "\tunlock\n"
+	    "\tunlock_all <pid>\n"
+	    "\tislocked\n"
+	    "\texists\n"
+	    "\tdelete\n"
+	    "\tinit\n"
+	    ,
+	    argv0
+	    );
     exit(0);
 }
 
@@ -122,6 +123,7 @@ main(int argc, char **argv)
     cbuf               *cbret = NULL;
     int                 dbg = 0;
     cxobj              *xerr = NULL;
+    cxobj              *xcfg = NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -129,6 +131,10 @@ main(int argc, char **argv)
     argv0 = argv[0];
     /* Defaults */
     if ((h = clicon_handle_init()) == NULL)
+	goto done;
+    if ((xcfg = xml_new("clixon-config", NULL, CX_ELMNT)) == NULL)
+	goto done;
+    if (clicon_conf_xml_set(h, xcfg) < 0)
 	goto done;
     /* getopt in two steps, first find config-file before over-riding options. */
     clicon_option_str_set(h, "CLICON_XMLDB_FORMAT", "xml"); /* default */
@@ -165,6 +171,10 @@ main(int argc, char **argv)
 	    if (!optarg)
 	        usage(argv0);
 	    yangfilename = optarg;
+	    break;
+	case 'Y':
+	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+		goto done;
 	    break;
 	}
     /* 
@@ -206,7 +216,7 @@ main(int argc, char **argv)
 	    xpath = "/";
 	if (xmldb_get(h, db, NULL, xpath, &xt) < 0)
 	    goto done;
-	if (clixon_xml2file(stdout, xt, 0, 0, fprintf, 0) < 0)
+	if (clixon_xml2file(stdout, xt, 0, 0, fprintf, 0, 0) < 0)
 	    goto done;
 	fprintf(stdout, "\n");
 	if (xt){
@@ -230,7 +240,7 @@ main(int argc, char **argv)
 		clicon_err(OE_DB, 0, "xt is NULL");
 		goto done;
 	    }
-	    if (clixon_xml2file(stdout, xt, 0, 0, fprintf, 0) < 0)
+	    if (clixon_xml2file(stdout, xt, 0, 0, fprintf, 0, 0) < 0)
 		goto done;
 	    if (xt){
 		xml_free(xt);
@@ -341,6 +351,8 @@ main(int argc, char **argv)
 	goto done;
     retval = 0;
   done:
+    if (xcfg)
+	xml_free(xcfg);
     if (cbret)
 	cbuf_free(cbret);
     if (xt)

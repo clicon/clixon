@@ -96,18 +96,18 @@ Developers may need to change their code
      * `clixon_cli2file()` - Print internal tree as CLI format to file
      * `clixon_txt2file()` - Print internal tree as text format to file
   * As developer, you need to replace the old functions to the new API as follows:
-     * `clicon_xml2file(f, x, l, p)` -> `clixon_xml2file(f, x, l, p, NULL, 0)`
-     * `clicon_xml2file_cb(f, x, l, p, fn)` -> `clixon_xml2file(f, x, l, p, fn, 0)`
-     * `cli_xml2file(x, l, p, fn)` -> `clixon_xml2file(stdout, x, l, p, fn, 0)`
+     * `clicon_xml2file(f, x, l, p)` -> `clixon_xml2file(f, x, l, p, NULL, 0, 0)`
+     * `clicon_xml2file_cb(f, x, l, p, fn)` -> `clixon_xml2file(f, x, l, p, fn, 0, 0)`
+     * `cli_xml2file(x, l, p, fn)` -> `clixon_xml2file(stdout, x, l, p, fn, 0, 0)`
      * `clicon_xml2cbuf(c, x, l, p, d)` -> `clixon_xml2cbuf(c, x, l, p, d, 0)`
      * `clicon_xml2str(x)` -> Rewrite using cbufs and `clixon_xml2cbuf()`
-     * `xml2json(f, x, p)` -> `clixon_json2file(f, x, p, NULL, 0)`
-     * `xml2json_cb(f, x, p, fn)` -> `clixon_json2file(f, x, p, fn, 0)`
-     * `xml2json_cbuf(c, x, p)` -> `clixon_json2cbuf(c, x, p, 0)`
+     * `xml2json(f, x, p)` -> `clixon_json2file(f, x, p, NULL, 0, 0)`
+     * `xml2json_cb(f, x, p, fn)` -> `clixon_json2file(f, x, p, fn, 0, 0)`
+     * `xml2json_cbuf(c, x, p)` -> `clixon_json2cbuf(c, x, p, 0, 0)`
      * `xml2cli(h, f, x, p, fn)` -> `clixon_cli2file(h, f, x, p, fn, 0)`
-     * `cli_xml2txt(x, fn, l)` -> `clixon_txt2file(stdout, x, l, NULL, 0)`
-     * `xml2txt(f, x, l)` -> `clixon_txt2file(f, x, l, NULL, 0)`
-     * `xml2txt_cb(f, x, fn)` -> `clixon_txt2file(f, x, 0, NULL, 0)`
+     * `cli_xml2txt(x, fn, l)` -> `clixon_txt2file(stdout, x, l, NULL, 0, 0)`
+     * `xml2txt(f, x, l)` -> `clixon_txt2file(f, x, l, NULL, 0, 0)`
+     * `xml2txt_cb(f, x, fn)` -> `clixon_txt2file(f, x, 0, NULL, 0, 0)`
 
 ### Minor features
 
@@ -122,6 +122,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: ["autocli:hide-show" extension cause bug in xmldb_put method #343](https://github.com/clicon/clixon/issues/343)
 * Fixed: [Schema Ambiguity Error with openconfig-system re: NTP](https://github.com/clicon/clixon/issues/334)
 * Fixed: [YANG mandatory statements within case nodes do not work](https://github.com/clicon/clixon/issues/344)
 * Fixed: [Nested YANG choice does not work](https://github.com/clicon/clixon/issues/342)

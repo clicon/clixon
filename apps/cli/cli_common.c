@@ -696,12 +696,12 @@ compare_xmls(cxobj           *xc1,
 	goto done;
     switch(format){
     case FORMAT_TEXT:
-	if (clixon_txt2file(f, xc1, 0, cligen_output, 1) < 0)
+	if (clixon_txt2file(f, xc1, 0, cligen_output, 1, 1) < 0)
 	    goto done;
 	break;
     case FORMAT_XML:
     default:
-	if (clixon_xml2file(f, xc1, 0, 1, cligen_output, 1) < 0)
+	if (clixon_xml2file(f, xc1, 0, 1, cligen_output, 1, 1) < 0)
 	    goto done;
 	break;
     }
@@ -717,12 +717,12 @@ compare_xmls(cxobj           *xc1,
 
     switch(format){
     case FORMAT_TEXT:
-	if (clixon_txt2file(f, xc2, 0, cligen_output, 1) < 0)
+	if (clixon_txt2file(f, xc2, 0, cligen_output, 1, 1) < 0)
 	    goto done;
 	break;
     case FORMAT_XML:
     default:
-	if (clixon_xml2file(f, xc2, 0, 1, cligen_output, 1) < 0)
+	if (clixon_xml2file(f, xc2, 0, 1, cligen_output, 1, 1) < 0)
 	    goto done;
 	break;
     }
@@ -1048,15 +1048,15 @@ save_config_file(clicon_handle h,
     } 
     switch (format){
     case FORMAT_XML:
-	if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0) < 0)
+	if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0, 1) < 0)
 	    goto done;
 	break;
     case FORMAT_JSON:
-	if (clixon_json2file(f, xt, pretty, fprintf, 0) < 0)
+	if (clixon_json2file(f, xt, pretty, fprintf, 0, 1) < 0)
 	    goto done;
 	break;
     case FORMAT_TEXT:
-	if (clixon_txt2file(f, xt, 0, fprintf, 0) < 0)
+	if (clixon_txt2file(f, xt, 0, fprintf, 0, 1) < 0)
 	    goto done;
 	break;
     case FORMAT_CLI:
@@ -1067,7 +1067,7 @@ save_config_file(clicon_handle h,
 	fprintf(f, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target>",
 		NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
 	fprintf(f, "\n");
-	if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0) < 0)
+	if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0, 1) < 0)
 	    goto done;
 	fprintf(f, "</edit-config></rpc>]]>]]>\n");
 	break;
@@ -1171,14 +1171,14 @@ cli_notification_cb(int   s,
     }
     switch (format){
     case FORMAT_JSON:
-	if (clixon_json2file(stdout, xt, 1, cligen_output, 1) < 0)
+	if (clixon_json2file(stdout, xt, 1, cligen_output, 1, 1) < 0)
 	    goto done;
     case FORMAT_TEXT:
-	if (clixon_txt2file(stdout, xt, 0, cligen_output, 1) < 0)
+	if (clixon_txt2file(stdout, xt, 0, cligen_output, 1, 1) < 0)
 	    goto done;
 	break;
     case FORMAT_XML:
-	if (clixon_xml2file(stdout, xt, 0, 1, cligen_output, 1) < 0)
+	if (clixon_xml2file(stdout, xt, 0, 1, cligen_output, 1, 1) < 0)
 	    goto done;
 	break;
     default:

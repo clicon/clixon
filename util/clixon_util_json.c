@@ -144,7 +144,7 @@ main(int    argc,
 	goto done;
     }
     if (json){
-	if (clixon_json2cbuf(cb, xt, pretty, 1) < 0)
+	if (clixon_json2cbuf(cb, xt, pretty, 1, 0) < 0)
 	    goto done;
     }
     else if (clixon_xml2cbuf(cb, xt, 0, pretty, -1, 1) < 0)

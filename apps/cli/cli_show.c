@@ -494,15 +494,15 @@ cli_show_config1(clicon_handle h,
     /* Print configuration according to format */
     switch (format){
     case FORMAT_XML:
-	if (clixon_xml2file(stdout, xt, 0, 1, cligen_output, 1) < 0)
+	if (clixon_xml2file(stdout, xt, 0, 1, cligen_output, 1, 1) < 0)
 	    goto done;
 	break;
     case FORMAT_JSON:
-	if (clixon_json2file(stdout, xt, 1, cligen_output, 0) < 0)
+	if (clixon_json2file(stdout, xt, 1, cligen_output, 0, 1) < 0)
 	    goto done;
 	break;
     case FORMAT_TEXT:
-	if (clixon_txt2file(stdout, xt, 0, cligen_output, 1) < 0)
+	if (clixon_txt2file(stdout, xt, 0, cligen_output, 1, 1) < 0)
 	    goto done;
 	break;
     case FORMAT_CLI:
@@ -512,7 +512,7 @@ cli_show_config1(clicon_handle h,
     case FORMAT_NETCONF:
 	cligen_output(stdout, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target><config>\n",
 		      NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
-	if (clixon_xml2file(stdout, xt, 2, 1, cligen_output, 1) < 0)
+	if (clixon_xml2file(stdout, xt, 2, 1, cligen_output, 1, 1) < 0)
 	    goto done;
 	cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	break;
@@ -647,7 +647,7 @@ show_conf_xpath(clicon_handle h,
     if (xpath_vec(xt, nsc, "%s", &xv, &xlen, xpath) < 0) 
 	goto done;
     for (i=0; i<xlen; i++)
-	if (clixon_xml2file(stdout, xv[i], 0, 1, fprintf, 0) < 0)
+	if (clixon_xml2file(stdout, xv[i], 0, 1, fprintf, 0, 1) < 0)
 	    goto done;
 
     retval = 0;
@@ -765,20 +765,20 @@ cli_show_auto1(clicon_handle h,
 	    break;
 	case FORMAT_NETCONF:
 	    fprintf(stdout, "<rpc><edit-config><target><candidate/></target><config>\n");
-	    if (clixon_xml2file(stdout, xp, 2, 1, fprintf, 0) < 0)
+	    if (clixon_xml2file(stdout, xp, 2, 1, fprintf, 0, 1) < 0)
 		goto done;
 	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	    break;
 	case FORMAT_JSON:
-	    if (clixon_json2file(stdout, xp, 1, cligen_output, 1) < 0) // XXX helper?
+	    if (clixon_json2file(stdout, xp, 1, cligen_output, 1, 1) < 0)
 		goto done;
 	    break;
 	case FORMAT_TEXT:
-	    if (clixon_txt2file(stdout, xp, 0, cligen_output, 1) < 0) // XXX helper?
+	    if (clixon_txt2file(stdout, xp, 0, cligen_output, 1, 1) < 0)
 		goto done;
 	    break;
 	case FORMAT_XML:
-	    if (clixon_xml2file(stdout, xp, 0, 1, fprintf, 0) < 0) // XXX helper?
+	    if (clixon_xml2file(stdout, xp, 0, 1, fprintf, 0, 1) < 0)
 		goto done;
 	    break;
 	}
@@ -970,15 +970,15 @@ cli_pagination(clicon_handle h,
 	    xc = xvec[j];
 	    switch (format){
 	    case FORMAT_XML:
-		if (clixon_xml2file(stdout, xc, 0, 1, cligen_output, 0) < 0)
+		if (clixon_xml2file(stdout, xc, 0, 1, cligen_output, 0, 1) < 0)
 		    goto done;
 		break;
 	    case FORMAT_JSON:
-		if (clixon_json2file(stdout, xc, 1, cligen_output, 0) < 0)
+		if (clixon_json2file(stdout, xc, 1, cligen_output, 0, 1) < 0)
 		    goto done;
 		break;
 	    case FORMAT_TEXT:
-		if (clixon_txt2file(stdout, xc, 0, cligen_output, 0) < 0)
+		if (clixon_txt2file(stdout, xc, 0, cligen_output, 0, 1) < 0)
 		    goto done;
 		break;
 	    case FORMAT_CLI:

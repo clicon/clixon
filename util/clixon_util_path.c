@@ -281,7 +281,7 @@ main(int    argc,
     for (i = 0; i < xlen; i++){
 	xc = xvec[i];
 	fprintf(stdout, "%d: ", i);
-	clixon_xml2file(stdout, xc, 0, 0, fprintf, 0);
+	clixon_xml2file(stdout, xc, 0, 0, fprintf, 0, 0);
 	fprintf(stdout, "\n");
 	fflush(stdout);
     }

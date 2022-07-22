@@ -1043,6 +1043,7 @@ xml2json1_cbuf(cbuf                   *cb,
  * @param[in,out] cb     Cligen buffer to write to
  * @param[in]     x      XML tree to translate from
  * @param[in]     pretty Set if output is pretty-printed
+ * @param[in]     autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @retval        0      OK
  * @retval       -1      Error
  *
@@ -1052,18 +1053,27 @@ xml2json1_cbuf(cbuf                   *cb,
 static int 
 xml2json_cbuf1(cbuf   *cb, 
 	       cxobj  *x, 
-	       int     pretty)
+	       int     pretty,
+	       int     autocliext)
 {
     int                     retval = 1;
     int                     level = 0;
     yang_stmt              *y;
     enum array_element_type arraytype = NO_ARRAY;
+    int                     exist = 0;
 	
+    y = xml_spec(x);
+    if (autocliext && y != NULL) {
+	if (yang_extension_value(y, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+	    goto done;
+	if (exist)
+	    goto ok;
+    }
     cprintf(cb, "%*s{%s", 
 	    pretty?level*JSON_INDENT:0,"", 
 	    pretty?"\n":"");
     
-    if ((y = xml_spec(x)) != NULL){
+    if (y != NULL){
 	switch (yang_keyword_get(y)){
 	case Y_LEAF_LIST:
 	case Y_LIST:
@@ -1087,6 +1097,7 @@ xml2json_cbuf1(cbuf   *cb,
 	    pretty?"\n":"",
 	    pretty?level*JSON_INDENT:0,"",
 	    pretty?"\n":"");
+ ok:
     retval = 0;
  done:
     return retval;
@@ -1101,6 +1112,7 @@ xml2json_cbuf1(cbuf   *cb,
  * @param[in]     xt      Top-level xml object
  * @param[in]     pretty  Set if output is pretty-printed
  * @param[in]     skiptop 0: Include top object 1: Skip top-object, only children, 
+ * @param[in]     autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @retval        0       OK
  * @retval       -1       Error
  * @code
@@ -1115,7 +1127,8 @@ int
 clixon_json2cbuf(cbuf  *cb, 
 		 cxobj *xt, 
 		 int    pretty,
-		 int    skiptop)
+		 int    skiptop,
+		 int    autocliext)
 {
     int    retval = -1;
     cxobj *xc;
@@ -1123,11 +1136,11 @@ clixon_json2cbuf(cbuf  *cb,
     if (skiptop){
 	xc = NULL;
 	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
-	    if (xml2json_cbuf1(cb, xc, pretty) < 0)
+	    if (xml2json_cbuf1(cb, xc, pretty, autocliext) < 0)
 		goto done;
     }
     else {
-	if (xml2json_cbuf1(cb, xt, pretty) < 0)
+	if (xml2json_cbuf1(cb, xt, pretty, autocliext) < 0)
 	    goto done;
     }
     retval = 0;
@@ -1206,13 +1219,14 @@ xml2json_cbuf_vec(cbuf      *cb,
  * @param[in]  pretty  Set if output is pretty-printed
  * @param[in]  fn       File print function (if NULL, use fprintf)
  * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
+ * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @retval     0       OK
  * @retval    -1       Error
  *
  * @note yang is necessary to translate to one-member lists,
  * eg if a is a yang LIST <a>0</a> -> {"a":["0"]} and not {"a":"0"}
  * @code
- * if (clixon_json2file(stderr, xn, 0, fprintf, 0) < 0)
+ * if (clixon_json2file(stderr, xn, 0, fprintf, 0, 0) < 0)
  *   goto err;
  * @endcode
  */
@@ -1221,7 +1235,8 @@ clixon_json2file(FILE             *f,
 		 cxobj            *xn,
 		 int               pretty,
 		 clicon_output_cb *fn,
-		 int               skiptop)
+		 int               skiptop,
+		 int               autocliext)
 {
     int   retval = 1;
     cbuf *cb = NULL;
@@ -1232,7 +1247,7 @@ clixon_json2file(FILE             *f,
 	clicon_err(OE_XML, errno, "cbuf_new");
 	goto done;
     }
-    if (clixon_json2cbuf(cb, xn, pretty, skiptop) < 0)
+    if (clixon_json2cbuf(cb, xn, pretty, skiptop, autocliext) < 0)
 	goto done;
     (*fn)(f, "%s", cbuf_get(cb));
     retval = 0;
@@ -1251,7 +1266,7 @@ int
 json_print(FILE  *f, 
 	   cxobj *x)
 {
-    return clixon_json2file(f, x, 1, fprintf, 0);
+    return clixon_json2file(f, x, 1, fprintf, 0, 0);
 }
 
 /*! Translate a vector of xml objects to JSON File.

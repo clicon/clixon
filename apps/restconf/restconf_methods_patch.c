@@ -119,7 +119,7 @@ yang_patch_xml2json_modified_cbuf(cxobj *x_simple_patch)
     if (json_simple_patch == NULL)
         return NULL;
     cb = cbuf_new();
-    if (clixon_json2cbuf(cb, x_simple_patch, 0) < 0)
+    if (clixon_json2cbuf(cb, x_simple_patch, 0, 0) < 0)
 	goto done;
 
     // Insert a '[' after the first '{' to get the JSON to match what api_data_post/write() expect
@@ -267,7 +267,7 @@ yang_patch_do_replace(clicon_handle  h,
 	}
     }
     // Convert the data to json
-    if (clixon_json2cbuf(json_simple_patch, x_simple_patch, 0) < 0)
+    if (clixon_json2cbuf(json_simple_patch, x_simple_patch, 0, 0) < 0)
 	goto done;
 
     // Send the POST request
@@ -329,7 +329,7 @@ yang_patch_do_create(clicon_handle  h,
 	    xml_addsub(x_simple_patch, value_vec_tmp);
 	}
     }
-    if (clixon_json2cbuf(cb, x_simple_patch, 0) < 0)
+    if (clixon_json2cbuf(cb, x_simple_patch, 0, 0) < 0)
 	goto done;
     if (api_data_post(h, req, cbuf_get(simple_patch_request_uri),
 		      pi, qvec,
@@ -479,7 +479,7 @@ yang_patch_do_merge(clicon_handle  h,
 	    xml_addsub(x_simple_patch, value_vec_tmp);
 	}
 	cbuf_reset(cb); /* reuse cb */
-	if (clixon_json2cbuf(cb, x_simple_patch, 0) < 0)
+	if (clixon_json2cbuf(cb, x_simple_patch, 0, 0) < 0)
 	    goto done;
 
         if ((json_simple_patch = yang_patch_xml2json_modified_cbuf(x_simple_patch)) == NULL)

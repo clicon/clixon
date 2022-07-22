@@ -1998,7 +1998,7 @@ netconf_output(int   s,
     if (clicon_debug_get() > 1){ /* XXX: below only works to stderr, clicon_debug may log to syslog */
 	cxobj *xt = NULL;
 	if (clixon_xml_parse_string(buf, YB_NONE, NULL, &xt, NULL) == 0){
-	    if (clixon_xml2file(stderr, xml_child_i(xt, 0), 0, 0, fprintf, 0) < 0)
+	    if (clixon_xml2file(stderr, xml_child_i(xt, 0), 0, 0, fprintf, 0, 0) < 0)
 		goto done;
 	    fprintf(stderr, "\n");
 	    xml_free(xt);

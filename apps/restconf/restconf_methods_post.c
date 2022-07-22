@@ -879,7 +879,7 @@ api_operations_post(clicon_handle h,
 	/* xoutput should now look: <output xmlns="uri"><x>0</x></output> */
 	break;
     case YANG_DATA_JSON:
-	if (clixon_json2cbuf(cbret, xoutput, pretty, 0) < 0)
+	if (clixon_json2cbuf(cbret, xoutput, pretty, 0, 0) < 0)
 	    goto done;
 	/* xoutput should now look: {"example:output": {"x":0,"y":42}} */
 	break;

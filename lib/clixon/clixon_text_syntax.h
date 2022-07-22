@@ -39,7 +39,7 @@
 /*
  * Prototypes
  */
-int clixon_txt2file(FILE *f, cxobj *xn, int level, clicon_output_cb *fn, int skiptop);
+int clixon_txt2file(FILE *f, cxobj *xn, int level, clicon_output_cb *fn, int skiptop, int autocliext);
 int clixon_text_syntax_parse_string(char *str, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
 int clixon_text_syntax_parse_file(FILE *fp, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
 

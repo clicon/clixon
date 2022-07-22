@@ -89,21 +89,26 @@
 
 /*! Print an XML tree structure to an output stream and encode chars "<>&"
  *
- * @param[in]   f       UNIX output stream
- * @param[in]   xn      Clicon xml tree
- * @param[in]   level   How many spaces to insert before each line
- * @param[in]   pretty  Insert \n and spaces to make the xml more readable.
- * @param[in]   fn      Callback to make print function
+ * @param[in]   f          UNIX output stream
+ * @param[in]   xn         Clicon xml tree
+ * @param[in]   level      How many spaces to insert before each line
+ * @param[in]   pretty     Insert \n and spaces to make the xml more readable.
+ * @param[in]   fn         Callback to make print function
+ * @param[in]   autocliext How to handle autocli extensions: 0: ignore 1: follow
+ * @retval      0          OK
+ * @retval     -1          Error
  * @see clixon_xml2cbuf
  * One can use clixon_xml2cbuf to get common code, but using fprintf is
  * much faster than using cbuf and then printing that,...
+ *
  */
-int
+static int
 xml2file_recurse(FILE             *f, 
 		 cxobj            *x, 
 		 int               level, 
 		 int               pretty,
-		 clicon_output_cb *fn)
+		 clicon_output_cb *fn,
+		 int               autocliext)
 {
     int    retval = -1;
     char  *name;
@@ -114,13 +119,17 @@ xml2file_recurse(FILE             *f,
     char  *val;
     char  *encstr = NULL; /* xml encoded string */
     int    exist = 0;
+    yang_stmt *y;
 	
     if (x == NULL)
 	goto ok;
-    if (yang_extension_value(xml_spec(x), "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
-	goto done;
-    if (exist)
-	goto ok;
+    if (autocliext &&
+	(y = xml_spec(x)) != NULL){
+	if (yang_extension_value(y, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+	    goto done;
+	if (exist)
+	    goto ok;
+    }
     name = xml_name(x);
     namespace = xml_prefix(x);
     switch(xml_type(x)){
@@ -149,7 +158,7 @@ xml2file_recurse(FILE             *f,
 	while ((xc = xml_child_each(x, xc, -1)) != NULL) {
 	    switch (xml_type(xc)){
 	    case CX_ATTR:
-		if (xml2file_recurse(f, xc, level+1, pretty, fn) <0)
+		if (xml2file_recurse(f, xc, level+1, pretty, fn, autocliext) <0)
 		    goto done;
 		break;
 	    case CX_BODY:
@@ -174,7 +183,7 @@ xml2file_recurse(FILE             *f,
 	    xc = NULL;
 	    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
 		if (xml_type(xc) != CX_ATTR)
-		    if (xml2file_recurse(f, xc, level+1, pretty, fn) <0)
+		    if (xml2file_recurse(f, xc, level+1, pretty, fn, autocliext) <0)
 			goto done;
 	    }
 	    if (pretty && hasbody==0)
@@ -206,9 +215,12 @@ xml2file_recurse(FILE             *f,
  * @param[in]  pretty  Insert \n and spaces to make the xml more readable.
  * @param[in]  fn       File print function (if NULL, use fprintf)
  * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
+ * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @retval     0       OK
  * @retval    -1       Error
  * @see clixon_xml2cbuf print to a cbuf string
+ * @note There is a slight "layer violation" with the autocli parameter: it should normally be set
+ *       for CLI calls, but not for others.
  */
 int
 clixon_xml2file(FILE             *f, 
@@ -216,7 +228,8 @@ clixon_xml2file(FILE             *f,
 		int               level, 
 		int               pretty,
 		clicon_output_cb *fn,
-		int               skiptop)
+		int               skiptop,
+		int               autocliext)
 {
     int   retval = 1;
     cxobj *xc;
@@ -226,11 +239,11 @@ clixon_xml2file(FILE             *f,
     if (skiptop){
 	xc = NULL;
 	while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-	    if (xml2file_recurse(f, xc, level, pretty, fn) < 0)
+	    if (xml2file_recurse(f, xc, level, pretty, fn, autocliext) < 0)
 		goto done;
     }
     else {
-	if (xml2file_recurse(f, xn, level, pretty, fn) < 0)
+	if (xml2file_recurse(f, xn, level, pretty, fn, autocliext) < 0)
 	    goto done;
     }
     retval = 0;
@@ -241,8 +254,7 @@ clixon_xml2file(FILE             *f,
 
 /*! Print an XML tree structure to an output stream
  *
- * Uses clixon_xml2file internally
- *
+ * Utility function eg in gdb. For code, use clixon_xml2file
  * @param[in]   f           UNIX output stream
  * @param[in]   xn          clicon xml tree
  * @see clixon_xml2cbuf
@@ -252,7 +264,7 @@ int
 xml_print(FILE  *f, 
 	  cxobj *x)
 {
-    return xml2file_recurse(f, x, 0, 1, fprintf);
+    return xml2file_recurse(f, x, 0, 1, fprintf, 0);
 }
 
 /*! Dump cxobj structure with pointers and flags for debugging, internal function

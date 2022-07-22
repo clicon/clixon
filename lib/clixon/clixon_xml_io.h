@@ -43,7 +43,7 @@
 /*
  * Prototypes
  */
-int   clixon_xml2file(FILE *f, cxobj *xn, int level, int pretty, clicon_output_cb *fn, int skiptop);
+int   clixon_xml2file(FILE *f, cxobj *xn, int level, int pretty, clicon_output_cb *fn, int skiptop, int autocliext);
 int   xml_print(FILE *f, cxobj *xn);
 int   xml_dump(FILE  *f, cxobj *x);
 int   clixon_xml2cbuf(cbuf *cb, cxobj *x, int level, int prettyprint, int32_t depth, int skiptop);

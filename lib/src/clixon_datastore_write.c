@@ -1244,10 +1244,10 @@ xmldb_put(clicon_handle       h,
     } 
     pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
     if (strcmp(format,"json")==0){
-	if (clixon_json2file(f, x0, pretty, fprintf, 0) < 0)
+	if (clixon_json2file(f, x0, pretty, fprintf, 0, 0) < 0)
 	    goto done;
     }
-    else if (clixon_xml2file(f, x0, 0, pretty, fprintf, 0) < 0)
+    else if (clixon_xml2file(f, x0, 0, pretty, fprintf, 0, 0) < 0)
 	goto done;
     /* Remove modules state after writing to file
      */
@@ -1302,10 +1302,10 @@ xmldb_dump(clicon_handle   h,
     }
     pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
     if (strcmp(format,"json")==0){
-	if (clixon_json2file(f, xt, pretty, fprintf, 0) < 0)
+	if (clixon_json2file(f, xt, pretty, fprintf, 0, 0) < 0)
 	    goto done;
     }
-    else if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0) < 0)
+    else if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0, 0) < 0)
 	goto done;
     retval = 0;
  done:
