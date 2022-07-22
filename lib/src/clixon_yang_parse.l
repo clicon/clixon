@@ -119,7 +119,6 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <KEYWORD>anydata          { BEGIN(STRARG);  return K_ANYDATA; }
 <KEYWORD>anyxml           { BEGIN(STRARG);  return K_ANYXML; }
 <KEYWORD>argument         { BEGIN(STRARG);  return K_ARGUMENT; }
-<KEYWORD>base             { BEGIN(STRARG);  return K_BASE; }
 <KEYWORD>belongs-to       { BEGIN(STRARG);  return K_BELONGS_TO; }
 <KEYWORD>bit              { BEGIN(STRARG);  return K_BIT; }
 <KEYWORD>case             { BEGIN(STRARG);  return K_CASE; }
@@ -137,12 +136,9 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <KEYWORD>module           { BEGIN(STRARG);  return K_MODULE; }
 <KEYWORD>notification     { BEGIN(STRARG);  return K_NOTIFICATION; }
 <KEYWORD>prefix           { BEGIN(STRARG);  return K_PREFIX; }
-<KEYWORD>refine           { BEGIN(STRARG);  return K_REFINE; }
 <KEYWORD>rpc              { BEGIN(STRARG);  return K_RPC; }
 <KEYWORD>submodule        { BEGIN(STRARG);  return K_SUBMODULE; }
-<KEYWORD>type             { BEGIN(STRARG);  return K_TYPE; }
 <KEYWORD>typedef          { BEGIN(STRARG);  return K_TYPEDEF; }
-<KEYWORD>uses             { BEGIN(STRARG);  return K_USES; }
 
  /* RFC 7950 keywords using boolean string arguments */
 <KEYWORD>config           { BEGIN(BOOLEAN); return K_CONFIG; }
@@ -157,6 +153,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 
  /* RFC 7950 keywords using strings  */
 <KEYWORD>augment          { BEGIN(STRING);  return K_AUGMENT; }
+<KEYWORD>base             { BEGIN(STRING);  return K_BASE; }
 <KEYWORD>contact          { BEGIN(STRING);  return K_CONTACT; }
 <KEYWORD>default          { BEGIN(STRING);  return K_DEFAULT; }
 <KEYWORD>description      { BEGIN(STRING);  return K_DESCRIPTION; }
@@ -178,13 +175,16 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <KEYWORD>path             { BEGIN(STRING);  return K_PATH; }
 <KEYWORD>pattern          { BEGIN(STRING);  return K_PATTERN; }
 <KEYWORD>presence         { BEGIN(STRING);  return K_PRESENCE; }
+<KEYWORD>type             { BEGIN(STRING);  return K_TYPE; }
 <KEYWORD>unique           { BEGIN(STRING);  return K_UNIQUE; }
 <KEYWORD>range            { BEGIN(STRING);  return K_RANGE; }
 <KEYWORD>reference        { BEGIN(STRING);  return K_REFERENCE; }
+<KEYWORD>refine           { BEGIN(STRING);  return K_REFINE; }
 <KEYWORD>revision         { BEGIN(STRING);  return K_REVISION; }
 <KEYWORD>revision-date    { BEGIN(STRING);  return K_REVISION_DATE; }
 <KEYWORD>status           { BEGIN(STRING);  return K_STATUS; }
 <KEYWORD>units            { BEGIN(STRING);  return K_UNITS; }
+<KEYWORD>uses             { BEGIN(STRING);  return K_USES; }
 <KEYWORD>when             { BEGIN(STRING);  return K_WHEN; }
 <KEYWORD>yang-version     { BEGIN(STRING);  return K_YANG_VERSION; }
 <KEYWORD>:                { return *yytext; }
@@ -239,7 +239,6 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <STRARG>;                  { BEGIN(KEYWORD); return *yytext; }
 <STRARG>{identifier}       { clixon_yang_parselval.string = strdup(yytext);
                              return IDENTIFIER;}
-
 <STRARG>.                  { return *yytext; }
 
 <STRING>\{                { BEGIN(KEYWORD); return *yytext; }
@@ -247,7 +246,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <STRING>\"                { _YY->yy_lex_string_state =STRING; BEGIN(STRINGDQ); return *yytext; }
 <STRING>\'                { _YY->yy_lex_string_state =STRING; BEGIN(STRINGSQ); return *yytext; }
 <STRING>\+                { return *yytext; }
-<STRING>[^\"\'\+\{\;\n \t\r]+    { clixon_yang_parselval.string = strdup(yytext); /* XXX [.]+ */
+<STRING>[^\"\'\{\;\n \t\r]+ { clixon_yang_parselval.string = strdup(yytext); /* XXX [.]+ */
                             return CHARS;}
 
 <STRINGDQ>\\              { _YY->yy_lex_state = STRINGDQ; BEGIN(DQESC); }

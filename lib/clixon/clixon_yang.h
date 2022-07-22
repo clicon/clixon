@@ -229,6 +229,7 @@ int       yang_stats(yang_stmt *y, uint64_t *nrp, size_t *szp);
 yang_stmt *yspec_new(void);
 yang_stmt *ys_new(enum rfc_6020 keyw);
 yang_stmt *ys_prune(yang_stmt *yp, int i);
+int        ys_prune_self(yang_stmt *ys);
 int        ys_free1(yang_stmt *ys, int self);
 int        ys_free(yang_stmt *ys);
 int        ys_cp(yang_stmt *nw, yang_stmt *old);

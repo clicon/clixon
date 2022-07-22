@@ -36,8 +36,7 @@ module example3{
      type union {
        type w;
        type enumeration {
-         enum "bounded";
-         enum "un bounded"; /* note w space */
+         enum bounded;
        }
      }
   }
@@ -271,9 +270,6 @@ EOF
 
     new "cli validate"
     expectpart "$($clixon_cli -1f $cfg -l o -l o validate)" 0 '^$'
-
-    new "cli set transitive union string (and space)"
-    expectpart "$($clixon_cli -1f $cfg -l o set c ulle "un\ bounded")" 0 '^$'
 
     new "cli validate"
     expectpart "$($clixon_cli -1f $cfg -l o -l o validate)" 0 '^$'

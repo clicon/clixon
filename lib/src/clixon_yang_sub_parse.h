@@ -1,8 +1,8 @@
 /*
- *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+  Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -31,36 +31,49 @@
 
   ***** END LICENSE BLOCK *****
 
- * if-feature-expr RFC7950 14
+ * Sub-parsers to upper-level YANG parser: everything that is "stringified"
  */
-#ifndef _CLIXON_IF_FEATURE_PARSE_H_
-#define _CLIXON_IF_FEATURE_PARSE_H_
+#ifndef _CLIXON_YANG_SUB_PARSE_H_
+#define _CLIXON_YANG_SUB_PARSE_H_
 
 /*
  * Types
  */
+/*! Sub-parse rule to accept */
+enum yang_sub_parse_accept{
+    YA_IF_FEATURE,
+    YA_ID_REF,
+    YA_ABS_SCHEMANODEID,
+    YA_DESC_SCHEMANODEID
+};
+
 /*! XML parser yacc handler struct */
-struct clixon_if_feature_parse_yacc {
-    char      *if_parse_string; /* original (copy of) parse string */
-    int        if_linenum;      /* Number of \n in parsed buffer */
+struct clixon_yang_sub_parse_yacc {
+    char       *if_parse_string; /* original (copy of) parse string */
+    const char *if_mainfile;     /* Original main-file (this is a sib-parser) */
+    int         if_linenum;      /* Number of \n in parsed buffer (in mainfile) */
     void      *if_lexbuf;       /* Internal parse buffer from lex */
     yang_stmt *if_ys;           /* Yang statement, NULL if no check */
-    int        if_enabled;      /* Result: 0: feature disabled, 1: enabled */
+    enum yang_sub_parse_accept if_accept; /* Which sub-parse rule to accept */ 
+    int         if_enabled;      /* Result: 0: feature disabled, 1: enabled */
 };
-typedef struct clixon_if_feature_parse_yacc clixon_if_feature_yacc;
+typedef struct clixon_yang_sub_parse_yacc clixon_yang_sub_parse_yacc;
 
 /*
  * Variables
  */
-extern char *clixon_if_feature_parsetext;
+extern char *clixon_yang_sub_parsetext;
 
 /*
  * Prototypes
  */
-int clixon_if_feature_parsel_init(clixon_if_feature_yacc *ya);
-int clixon_if_feature_parsel_exit(clixon_if_feature_yacc *ya);
-int clixon_if_feature_parsel_linenr(void);
-int clixon_if_feature_parselex(void *);
-int clixon_if_feature_parseparse(void *);
+int clixon_yang_sub_parsel_init(clixon_yang_sub_parse_yacc *ya);
+int clixon_yang_sub_parsel_exit(clixon_yang_sub_parse_yacc *ya);
+int clixon_yang_sub_parsel_linenr(void);
+int clixon_yang_sub_parselex(void *);
+int clixon_yang_sub_parseparse(void *);
 
-#endif	/* _CLIXON_IF_FEATURE_PARSE_H_ */
+int  yang_subparse(char *str, yang_stmt *ys, enum yang_sub_parse_accept accept, const char *mainfile, int linenum, int *enabled);
+int  yang_schema_nodeid_subparse(char *str, enum yang_sub_parse_accept accept, const char *mainfile, int linenum);
+
+#endif	/* _CLIXON_YANG_SUB_PARSER_H_ */

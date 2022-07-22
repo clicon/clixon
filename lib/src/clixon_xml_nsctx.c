@@ -95,7 +95,7 @@ xml_nsctx_namespace_netconf_default(clicon_handle h)
 
 /*! Create and initialize XML namespace context
  * @param[in] prefix    Namespace prefix, or NULL for default
- * @param[in] ns	    Set this namespace. If NULL create empty nsctx
+ * @param[in] ns        Set this namespace. If NULL create empty nsctx
  * @retval    nsc       Return namespace context in form of a cvec
  * @retval    NULL      Error
  * @code

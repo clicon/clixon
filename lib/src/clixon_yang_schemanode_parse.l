@@ -31,7 +31,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * TEXT / curly-brace syntax parsing and translations
+ * decendant-schema-nodeid RFC7950 14
  */
 
 %{
@@ -42,7 +42,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "clixon_text_syntax_parse.tab.h"   /* generated file */
+#include "clixon_yang_schemanode_parse.tab.h"   /* generated file */
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -53,19 +53,20 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
-#include "clixon_text_syntax_parse.h"
+#include "clixon_yang_sub_parse.h"
+#include "clixon_yang_schemanode_parse.h"
 
-/* Redefine main lex function so that you can send arguments to it: _ts is added to arg list */
-#define YY_DECL int clixon_text_syntax_parselex(void *_ts)
+/* Redefine main lex function so that you can send arguments to it: _if is added to arg list */
+#define YY_DECL int clixon_yang_schemanode_parselex(void *_if)
 
 /* Dont use input function (use user-buffer) */
 #define YY_NO_INPUT
 
 /* typecast macro */
-#define _TS ((clixon_text_syntax_yacc *)_ts) 
+#define _IF ((clixon_yang_schemanode_yacc *)_if) 
 
 #undef clixon_xml_parsewrap
-int clixon_text_syntax_parsewrap(void)
+int clixon_yang_schemanode_parsewrap(void)
 {
   return 1;
 }
@@ -75,46 +76,27 @@ int clixon_text_syntax_parsewrap(void)
 
 %}
 
-%x COMMENT
-%x STRING
+identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 
 %%
 
-<INITIAL>[ \t]*
-<INITIAL>\n               { _TS->ts_linenum++; }
-<INITIAL>\r
+<INITIAL>\n               { _IF->if_linenum++; return *yytext; }
+<INITIAL>:                { return *yytext; }
+<INITIAL>\/               { return *yytext; }
+<INITIAL>{identifier}     { clixon_yang_schemanode_parselval.string = strdup(yytext);
+                            return IDENTIFIER;}
 <INITIAL><<EOF>>          { return MY_EOF; }
-<INITIAL>#                { _TS->ts_lex_state =INITIAL; BEGIN(COMMENT); }
-<INITIAL>\{               { return *yytext; }
-<INITIAL>\}               { return *yytext; }
-<INITIAL>\[               { return *yytext; }
-<INITIAL>\]               { return *yytext; }
-<INITIAL>\;               { return *yytext; }
-<INITIAL>\"               { _TS->ts_lex_state =INITIAL; BEGIN(STRING);  return *yytext; }
-<INITIAL>[^\n\r \t\[\]\{\}\;\"]+  {
-                            clixon_text_syntax_parselval.string = strdup(yytext);
-                            return TOKEN; }
-
-<COMMENT>\n               { _TS->ts_linenum++; BEGIN(_TS->ts_lex_state);}
-<COMMENT><<EOF>>          { return MY_EOF; }
-<COMMENT>[^\n]+
-
-<STRING>\n                { _TS->ts_linenum++;
-                            clixon_text_syntax_parselval.string = strdup(yytext);
-                            return TOKEN;}
-<STRING>\"                { BEGIN(_TS->ts_lex_state); return *yytext; }
-<STRING>[^\n\"]+          { clixon_text_syntax_parselval.string = strdup(yytext);
-                            return TOKEN; }
+<INITIAL>.                { return -1; }
 
 %%
 
 /*! Initialize XML scanner.
  */
 int
-clixon_text_syntax_parsel_init(clixon_text_syntax_yacc *ts)
+clixon_yang_schemanode_parsel_init(clixon_yang_schemanode_yacc *ife)
 {
   BEGIN(INITIAL);
-  ts->ts_lexbuf = yy_scan_string (ts->ts_parse_string);
+  ife->if_lexbuf = yy_scan_string (ife->if_parse_string);
   if (0)
     yyunput(0, "");  /* XXX: just to use unput to avoid warning  */
   return 0;
@@ -122,10 +104,10 @@ clixon_text_syntax_parsel_init(clixon_text_syntax_yacc *ts)
 
 /*! Exit xml scanner */
 int
-clixon_text_syntax_parsel_exit(clixon_text_syntax_yacc *ts)
+clixon_yang_schemanode_parsel_exit(clixon_yang_schemanode_yacc *ife)
 {
-   yy_delete_buffer(ts->ts_lexbuf);
-   clixon_text_syntax_parselex_destroy();  /* modern */
+   yy_delete_buffer(ife->if_lexbuf);
+   clixon_yang_schemanode_parselex_destroy();  /* modern */
 
   return 0;
 }

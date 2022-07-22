@@ -38,7 +38,7 @@ module example3{
           range "4..44";
        }
        type enumeration {
-         enum "unbounded";
+         enum unbounded;
        }
      }
   }

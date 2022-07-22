@@ -35,6 +35,15 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
+## Refine branch
+
+* Break-out RFC 7950 Section 6.1 tokenization
+  * This enables full string lexical parsing of some rules previously not fully compliant, including:
+    * refine, uses-augment, augment, if-feature, type, base.
+  * Also solves previous tokenization issues
+    * [String concatenation in YANG model leads to syntax error ](https://github.com/clicon/clixon/issues/265)
+    * [Can't use + symbol in the enum statement without quotes](https://github.com/clicon/clixon/issues/241)
+
 ## 5.8.0
 Planned: July 2022
 
@@ -122,6 +131,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Can't use + symbol in the enum statement without quotes](https://github.com/clicon/clixon/issues/241)
+* Fixed: [String concatenation in YANG model leads to syntax error ](https://github.com/clicon/clixon/issues/265)
 * Fixed: ["autocli:hide-show" extension cause bug in xmldb_put method #343](https://github.com/clicon/clixon/issues/343)
 * Fixed: [Schema Ambiguity Error with openconfig-system re: NTP](https://github.com/clicon/clixon/issues/334)
 * Fixed: [YANG mandatory statements within case nodes do not work](https://github.com/clicon/clixon/issues/344)

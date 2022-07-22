@@ -97,7 +97,7 @@
 #include "clixon_yang_cardinality.h"
 #include "clixon_plugin.h"
 #include "clixon_yang_internal.h"
-#include "clixon_yang_parse_sub.h"
+#include "clixon_yang_sub_parse.h"
 #include "clixon_yang_parse_lib.h"
 
 /* Size of json read buffer when reading from file*/
@@ -562,7 +562,7 @@ yang_expand_uses_node(yang_stmt *yn,
 	    goto done;
     }
     /* Make a copy of the grouping, then make refinements to this copy
-     * Note this ygrouping2 object does not gave a parent and does not work in many
+     * Note this ygrouping2 object does not have a parent and does not work in many
      * functions which assume a full hierarchy, use the original ygrouping in those cases.
      */
     if ((ygrouping2 = ys_dup(ygrouping)) == NULL)
@@ -600,6 +600,11 @@ yang_expand_uses_node(yang_stmt *yn,
 	if (xml_nsctx_yang(ywhen, &wnsc) < 0)
 	    goto done;
     }
+    /* Note: yang_desc_schema_nodeid() requires ygrouping2 to be in yspec tree,
+     * cannot be dangling, insert into tree here and then prune immediately after while loop
+     */
+    if (yn_insert(yang_parent_get(ygrouping), ygrouping2) < 0)
+	goto done;
     /* Iterate through refinements and modify grouping copy 
      * See RFC 7950 7.13.2 yrt is the refine target node
      */
@@ -609,7 +614,7 @@ yang_expand_uses_node(yang_stmt *yn,
 	if (yang_keyword_get(yr) != Y_REFINE)
 	    continue;
 	/* Find a node */
-	if (yang_desc_schema_nodeid(ygrouping, /* Cannot use ygrouping2 */
+	if (yang_desc_schema_nodeid(ygrouping2,
 				    yang_argument_get(yr),
 				    &yrt) < 0)
 	    goto done;
@@ -622,10 +627,10 @@ yang_expand_uses_node(yang_stmt *yn,
 	/* Do the actual refinement */
 	if (ys_do_refine(yr, yrt) < 0)
 	    goto done;
-	/* RFC: The argument is a string that identifies a node in the 
-	 * grouping.  I interpret that as only one node --> break */
-	break;
     } /* while yr */
+    /* Note: prune here to make dangling again after while loop */
+    if (ys_prune_self(ygrouping2) < 0)
+	goto done;
     /* Then copy and insert each child element from ygrouping2 to yn */
     k=0;
     for (j=0; j<yang_len_get(ygrouping2); j++){
@@ -1862,8 +1867,11 @@ ys_parse(yang_stmt   *ys,
  * Specific syntax checks  and variable creation for stand-alone yang statements.
  * That is, siblings, etc, may not be there. Complete checks are made in
  * ys_populate instead.
- * @param[in] ys    yang statement
- * @param[in] extra Yang extra for cornercases (unknown/extension). Is consumed
+ * @param[in] ys       yang statement
+ * @param[in] filename Name of parsed file, if any
+ * @param[in] extra    Yang extra for cornercases (unknown/extension). Is consumed
+ * @retval    0        OK
+ * @retval   -1        Error
  *
  * The cv:s created in parse-tree as follows:
  * fraction-digits : Create cv as uint8, check limits [1:8] (must be made in 1st pass)
@@ -1873,8 +1881,9 @@ ys_parse(yang_stmt   *ys,
  * @see ys_populate
  */
 int
-ys_parse_sub(yang_stmt *ys,
-	     char      *extra)
+ys_parse_sub(yang_stmt  *ys,
+	     const char *filename,
+	     char       *extra)
 {
     int        retval = -1;
     uint8_t    fd;
@@ -1885,10 +1894,19 @@ ys_parse_sub(yang_stmt *ys,
     int        ret;
     uint32_t   minmax;
     cg_var    *cv = NULL;
+    yang_stmt *yp;
     
     arg = yang_argument_get(ys);
     keyword = yang_keyword_get(ys);
     switch (keyword){
+    case Y_BASE:
+    case Y_TYPE:
+    case Y_USES:
+	/* Invoke next level parser 
+	 */
+	if (yang_schema_nodeid_subparse(yang_argument_get(ys), YA_ID_REF, filename, yang_linenum_get(ys)) < 0)
+	    goto done;
+	break;
     case Y_FRACTION_DIGITS:
 	if (ys_parse(ys, CGV_UINT8) == NULL) 
 	    goto done;
@@ -1962,7 +1980,23 @@ ys_parse_sub(yang_stmt *ys,
 	 * pass 1 is not yet resolved, only check syntax, actual feature check made in next pass
 	 * @see yang_features
 	 */
-	if (yang_if_feature_parse(yang_argument_get(ys), NULL, yang_linenum_get(ys), NULL) < 0)
+	if (yang_subparse(yang_argument_get(ys), ys, YA_IF_FEATURE, filename, yang_linenum_get(ys), NULL) < 0)
+	    goto done;
+	break;
+    case Y_AUGMENT: /* If parent is module/submodule: absolute-schema-nodeid
+		     * If parent is uses: descendant-schema-nodeid 
+		     */
+	if ((yp = yang_parent_get(ys)) &&
+	    yang_keyword_get(yp) != Y_USES){
+	    if (yang_schema_nodeid_subparse(yang_argument_get(ys), YA_ABS_SCHEMANODEID, filename, yang_linenum_get(ys)) < 0)
+		goto done;
+	    break;
+	}
+	// fall through
+    case Y_REFINE:
+	/* Invoke next level parser on refine-arg-str / descendant-schema-nodeid
+	 */
+	if (yang_schema_nodeid_subparse(yang_argument_get(ys), YA_DESC_SCHEMANODEID, filename, yang_linenum_get(ys)) < 0)
 	    goto done;
 	break;
     case Y_UNKNOWN:{ /* save (optional) argument in ys_cv */

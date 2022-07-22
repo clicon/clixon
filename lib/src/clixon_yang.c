@@ -80,7 +80,7 @@
 #include "clixon_data.h"
 #include "clixon_options.h"
 #include "clixon_yang_parse.h"
-#include "clixon_yang_parse_sub.h"
+#include "clixon_yang_sub_parse.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_yang_cardinality.h"
 #include "clixon_yang_type.h"
@@ -673,6 +673,7 @@ ys_free1(yang_stmt *ys,
  * @retval     NULL No such node, nothing done
  * @retval     yc   returned orphaned yang node
  * @see ys_free Deallocate yang node
+ * @see ys_prune_self Prune child itself
  * @note Do not call this in a loop of yang children (unless you know what you are doing)
  */
 yang_stmt *
@@ -705,7 +706,7 @@ ys_prune(yang_stmt *yp,
  * @see ys_free Deallocate yang node
  * @note Do not call this in a loop of yang children (unless you know what you are doing)
  */
-static int
+int
 ys_prune_self(yang_stmt *ys)
 {
     int        retval = -1;
@@ -2800,6 +2801,8 @@ yang_features(clicon_handle h,
     int        i;
     int        j;
     yang_stmt *ys = NULL;
+    yang_stmt *ymod;
+    const char *mainfile = NULL;
     int        ret;
 
     i = 0;
@@ -2807,8 +2810,10 @@ yang_features(clicon_handle h,
 	ys = yt->ys_stmt[i];
 	if (ys->ys_keyword == Y_IF_FEATURE){
 	    /* Parse the if-feature-expr string using yang sub-parser */
+	    if ((ymod = ys_module(ys)) != NULL)
+		mainfile = yang_filename_get(ymod);
 	    ret = 0;
-	    if (yang_if_feature_parse(yang_argument_get(ys), ys, 1, &ret) < 0)
+	    if (yang_subparse(yang_argument_get(ys), ys, YA_IF_FEATURE, mainfile, 1, &ret) < 0)
 		goto done;
 	    clicon_debug(1, "%s %s %d", __FUNCTION__, yang_argument_get(ys), ret);
 	    if (ret == 0)
@@ -2938,6 +2943,7 @@ yang_datanode(yang_stmt *ys)
 /*! All the work for schema_nodeid functions both absolute and descendant
  *
  * @param[in]  yn    Yang node. For absolute schemanodeids this should be a module, otherwise any yang
+ * @param[in]  yspec Yang spec (Cornsercase if yn is pruned)
  * @param[in]  cvv   Schema-node path encoded as a name/value pair list.
  * @param[in]  nsc   Namespace context from yang for the prefixes (names) of cvv
  * @param[out] yres  Result yang statement node, or NULL if not found
@@ -2954,6 +2960,7 @@ yang_datanode(yang_stmt *ys)
  */
 static int
 schema_nodeid_iterate(yang_stmt    *yn,
+		      yang_stmt    *yspec,
 		      cvec         *nodeid_cvv,
 		      cvec         *nsc,
 		      yang_stmt   **yres)
@@ -2966,9 +2973,7 @@ schema_nodeid_iterate(yang_stmt    *yn,
     yang_stmt       *yp;
     cg_var          *cv;
     char            *ns;
-    yang_stmt       *yspec;
 
-    yspec = ys_spec(yn);
     yp = yn;
     /* Iterate over node identifiers /prefix:id/... */
     cv = NULL;    
@@ -3050,8 +3055,11 @@ yang_abs_schema_nodeid(yang_stmt    *yn,
     yang_stmt    *ymod;
     char         *str;
 
+    if ((yspec = ys_spec(yn)) == NULL){
+	clicon_err(OE_YANG, EINVAL, "No yang spec");
+	goto done;
+    }
     *yres = NULL;
-    yspec = ys_spec(yn);
     /* check absolute schema_nodeid */
     if (schema_nodeid[0] != '/'){
 	clicon_err(OE_YANG, EINVAL, "absolute schema nodeid should start with /");
@@ -3099,7 +3107,7 @@ yang_abs_schema_nodeid(yang_stmt    *yn,
 	goto done;
     }
     /* Iterate through cvv to find schemanode using ymod as starting point (since it is absolute) */
-    if (schema_nodeid_iterate(ymod, nodeid_cvv, nsc, yres) < 0)
+    if (schema_nodeid_iterate(ymod, yspec, nodeid_cvv, nsc, yres) < 0)
 	goto done;
  ok:
     retval = 0;
@@ -3112,9 +3120,10 @@ yang_abs_schema_nodeid(yang_stmt    *yn,
 }
 
 /*! Given a descendant schema-nodeid (eg a/b/c) find matching yang spec  
- * @param[in]  yn            Yang node
+ * @param[in]  yn            Yang node (must be part of yspec tree, cannot be "dangling")
  * @param[in]  schema_nodeid Descendant schema-node-id, ie a/b
  * @param[in]  keyword       A schemode of this type, or -1 if any
+ * @param[in]  ns            Namespace context
  * @param[out] yres          First yang node matching schema nodeid
  * @retval     0             OK
  * @retval    -1             Error, with clicon_err called
@@ -3130,10 +3139,15 @@ yang_desc_schema_nodeid(yang_stmt    *yn,
     cvec         *nodeid_cvv = NULL;
     cg_var       *cv;
     char         *str;
+    yang_stmt    *yspec;
     cvec         *nsc = NULL;
     
     if (schema_nodeid == NULL || strlen(schema_nodeid) == 0){
 	clicon_err(OE_YANG, EINVAL, "nodeid is empty");
+	goto done;
+    }
+    if ((yspec = ys_spec(yn)) == NULL){
+	clicon_err(OE_YANG, EINVAL, "No yang spec");
 	goto done;
     }
     *yres = NULL;
@@ -3161,11 +3175,13 @@ yang_desc_schema_nodeid(yang_stmt    *yn,
 	    cv_name_set(cv, NULL);
 	}
     }
-    /* Make a namespace context from yang for the prefixes (names) of nodeid_cvv */
+    /* Make a namespace context from yang for the prefixes (names) of nodeid_cvv 
+     * Requires yn exist in hierarchy
+     */
     if (xml_nsctx_yang(yn, &nsc) < 0)
 	goto done;
     /* Iterate through cvv to find schemanode using yn as relative starting point */
-    if (schema_nodeid_iterate(yn, nodeid_cvv, nsc, yres) < 0)
+    if (schema_nodeid_iterate(yn, yspec, nodeid_cvv, nsc, yres) < 0)
 	goto done;
  ok:
     retval = 0;

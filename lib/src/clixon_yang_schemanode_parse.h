@@ -1,8 +1,8 @@
 /*
+ *
   ***** BEGIN LICENSE BLOCK *****
  
-  Copyright (C) 2009-2019 Olof Hagsand
-  Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+  Copyright (C) 2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -31,14 +31,37 @@
 
   ***** END LICENSE BLOCK *****
 
- * Sub-parsers to upper-level YANG parser: everything that is "stringified"
+ * decendant-schema-nodeid RFC7950 14
  */
-#ifndef _CLIXON_YANG_PARSE_SUB_H_
-#define _CLIXON_YANG_PARSE_SUB_H_
+#ifndef _CLIXON_YANG_SCHEMANODE_PARSE_H_
+#define _CLIXON_YANG_SCHEMANODE_PARSE_H_
+
+/*
+ * Types
+ */
+/*! XML parser yacc handler struct */
+struct clixon_yang_schemanode_parse_yacc {
+    char      *if_parse_string; /* original (copy of) parse string */
+    const char *if_mainfile;     /* Original main-file (this is a sib-parser) */
+    int        if_linenum;      /* Number of \n in parsed buffer */
+    void      *if_lexbuf;       /* Internal parse buffer from lex */
+    yang_stmt *if_ys;           /* Yang statement, NULL if no check */
+    enum yang_sub_parse_accept if_accept;
+};
+typedef struct clixon_yang_schemanode_parse_yacc clixon_yang_schemanode_yacc;
+
+/*
+ * Variables
+ */
+extern char *clixon_yang_schemanode_parsetext;
 
 /*
  * Prototypes
  */
-int  yang_if_feature_parse(char *str, yang_stmt *ys, int linenum, int *enabled);
+int clixon_yang_schemanode_parsel_init(clixon_yang_schemanode_yacc *ya);
+int clixon_yang_schemanode_parsel_exit(clixon_yang_schemanode_yacc *ya);
+int clixon_yang_schemanode_parsel_linenr(void);
+int clixon_yang_schemanode_parselex(void *);
+int clixon_yang_schemanode_parseparse(void *);
 
-#endif	/* _CLIXON_YANG_PARSER_SUB_H_ */
+#endif	/* _CLIXON_YANG_SCHEMANODE_PARSE_H_ */

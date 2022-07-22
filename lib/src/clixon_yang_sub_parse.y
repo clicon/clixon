@@ -31,7 +31,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * if-feature-expr RFC7950 14
+  * Sub-parser for if-feature AND identifier-ref as defined in RFC7950 Section 14
    if-feature-expr     = if-feature-term
                            [sep or-keyword sep if-feature-expr]
 
@@ -41,8 +41,14 @@
    if-feature-factor   = not-keyword sep if-feature-factor /
                          "(" optsep if-feature-expr optsep ")" /
                          identifier-ref-arg
+   identifier-ref-arg  = identifier-ref
+   identifier-ref      = [prefix ":"] identifier
+   prefix              = identifier
+   identifier          = (ALPHA / "_")
+                         *(ALPHA / DIGIT / "_" / "-" / ".")
+
   Called twice:
-  1. In parsing just for syntac checks (dont do feature-check)
+  1. In parsing just for syntax checks (dont do feature-check)
   2. In populate when all yangs are resolved, then do semantic feature-check
  */
 %union {
@@ -55,10 +61,11 @@
 %token AND
 %token NOT
 %token OR
-%token <string> TOKEN
+%token <string> IDENTIFIER
 %token SEP
 
 %type <number> if_feature_factor if_feature_expr
+%type <string> identifier_ref identifier prefix
 
 %start top
 
@@ -68,8 +75,9 @@
 %{
 
 /* typecast macro */
-#define _IF ((clixon_if_feature_yacc *)_if)
-
+#define _IF ((clixon_yang_sub_parse_yacc *)_if)
+#define _YYERROR(msg) {clicon_err(OE_YANG, 0, "%s", (msg)); YYERROR;}
+    
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -92,7 +100,7 @@
 #include "clixon_yang_module.h"
 #include "clixon_xml_vec.h"
 #include "clixon_data.h"
-#include "clixon_if_feature_parse.h"
+#include "clixon_yang_sub_parse.h"
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
@@ -102,15 +110,17 @@
 #endif
     
 void 
-clixon_if_feature_parseerror(void *arg,
+clixon_yang_sub_parseerror(void *arg,
 			     char *s) 
 {
-    clixon_if_feature_yacc *ife = (clixon_if_feature_yacc *)arg;
+    clixon_yang_sub_parse_yacc *ife = (clixon_yang_sub_parse_yacc *)arg;
 
-    clicon_err(OE_XML, XMLPARSE_ERRNO, "if_feature_parse: line %d: %s: at or before: %s", 
+    clicon_err_fn(NULL, 0, OE_YANG, 0, "yang_sub_parse: file:%s:%d \"%s\" %s: at or before: %s", 
+	       ife->if_mainfile,
 	       ife->if_linenum,
+	       ife->if_parse_string,
 	       s,
-	       clixon_if_feature_parsetext); 
+	       clixon_yang_sub_parsetext); 
     return;
 }
 
@@ -119,8 +129,8 @@ clixon_if_feature_parseerror(void *arg,
  * @param[in]  ys   If-feature type yang node
  */
 static int
-if_feature_check(char      *str,
-		 yang_stmt *ys)
+if_feature_check(clixon_yang_sub_parse_yacc *ife,
+		 char                       *str)
 {
     int         retval = -1;
     char       *prefix = NULL;
@@ -128,8 +138,9 @@ if_feature_check(char      *str,
     yang_stmt  *ymod;  /* module yang node */
     yang_stmt  *yfeat; /* feature yang node */
     cg_var     *cv;
+    yang_stmt  *ys;
     
-    if (ys == NULL)
+    if ((ys = ife->if_ys) == NULL)
 	return 0;
     if (nodeid_split(str, &prefix, &feature) < 0)
 	goto done;
@@ -172,7 +183,12 @@ top        : if_feature_expr MY_EOF
                     {
 			_PARSE_DEBUG("top->if-feature-expr");
 			_IF->if_enabled = $1;
-			YYACCEPT;
+			if (_IF->if_accept == YA_IF_FEATURE){
+			    YYACCEPT;
+			}
+			else{
+			    _YYERROR("Expected if-feature-expr"); 
+			}
 		    }
            ;
 
@@ -199,16 +215,51 @@ if_feature_factor   : NOT sep1 if_feature_factor
            | '(' optsep if_feature_expr optsep ')'
 		                   { _PARSE_DEBUG("if-feature-factor-> ( optsep if-feature-expr optsep )");
 		                     $$ = $3; }
-           | TOKEN                 {
-	       _PARSE_DEBUG("if-feature-factor-> TOKEN");
-	       if (_IF->if_ys == NULL) $$ = 0;
-	       else if (($$ = if_feature_check($1, _IF->if_ys)) < 0) {
+           | identifier_ref  {
+	       _PARSE_DEBUG("if-feature-factor-> identifier-ref");
+	       if (($$ = if_feature_check(_IF, $1)) < 0) {
 		   free($1);
 		   YYERROR;
 	       }
 	       free($1);
 	     }
            ;
+
+/*   identifier-ref     = [prefix ":"] identifier */
+identifier_ref : identifier
+		   {
+		       // XXX memory leak?
+		       _PARSE_DEBUG("identifier-ref -> identifier");
+			if (_IF->if_accept == YA_ID_REF){
+			    YYACCEPT;
+			}
+		       $$=$1;
+		   }
+                | prefix ':' identifier
+		{
+		    if (($$=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("identifier_ref");
+		    free($3);
+		    if (_IF->if_accept == YA_ID_REF){
+			YYACCEPT;
+		    }
+		    _PARSE_DEBUG("identifier-ref -> prefix : identifier");
+		}
+                ;
+
+prefix   : IDENTIFIER
+		{
+		    _PARSE_DEBUG("prefix -> IDENTIFIER");
+		    $$=$1;
+
+		}
+         ;
+
+identifier : IDENTIFIER
+		{
+		    _PARSE_DEBUG("identifier -> IDENTIFIER");
+		    $$=$1;
+		}
+         ;
 
 optsep     : sep1                  { _PARSE_DEBUG("optsep->sep"); }
            |                       { _PARSE_DEBUG("optsep->"); }

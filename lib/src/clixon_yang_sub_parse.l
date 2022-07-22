@@ -42,7 +42,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "clixon_if_feature_parse.tab.h"   /* generated file */
+#include "clixon_yang_sub_parse.tab.h"   /* generated file */
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -53,19 +53,19 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
-#include "clixon_if_feature_parse.h"
+#include "clixon_yang_sub_parse.h"
 
 /* Redefine main lex function so that you can send arguments to it: _if is added to arg list */
-#define YY_DECL int clixon_if_feature_parselex(void *_if)
+#define YY_DECL int clixon_yang_sub_parselex(void *_if)
 
 /* Dont use input function (use user-buffer) */
 #define YY_NO_INPUT
 
 /* typecast macro */
-#define _IF ((clixon_if_feature_yacc *)_if) 
+#define _IF ((clixon_yang_sub_parse_yacc *)_if) 
 
 #undef clixon_xml_parsewrap
-int clixon_if_feature_parsewrap(void)
+int clixon_yang_sub_parsewrap(void)
 {
   return 1;
 }
@@ -78,19 +78,21 @@ int clixon_if_feature_parsewrap(void)
 %x COMMENT
 %x STRING
 
+identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
+
 %%
 
 <INITIAL>[ \t\r]*         { return SEP; }
 <INITIAL>\n               { _IF->if_linenum++; return SEP; }
 <INITIAL>\(               { return *yytext; }
 <INITIAL>\)               { return *yytext; }
+<INITIAL>:                { return *yytext; }
 <INITIAL>not              { return NOT; }
 <INITIAL>and              { return AND; }
 <INITIAL>or               { return OR; }
+<INITIAL>{identifier}     { clixon_yang_sub_parselval.string = strdup(yytext);
+                            return IDENTIFIER;}
 <INITIAL><<EOF>>          { return MY_EOF; }
-<INITIAL>[^\n\r \t\(\)]+  {
-                            clixon_if_feature_parselval.string = strdup(yytext);
-                            return TOKEN; }
 <INITIAL>.                { return -1; }
 
 %%
@@ -98,7 +100,7 @@ int clixon_if_feature_parsewrap(void)
 /*! Initialize XML scanner.
  */
 int
-clixon_if_feature_parsel_init(clixon_if_feature_yacc *ife)
+clixon_yang_sub_parsel_init(clixon_yang_sub_parse_yacc *ife)
 {
   BEGIN(INITIAL);
   ife->if_lexbuf = yy_scan_string (ife->if_parse_string);
@@ -109,10 +111,10 @@ clixon_if_feature_parsel_init(clixon_if_feature_yacc *ife)
 
 /*! Exit xml scanner */
 int
-clixon_if_feature_parsel_exit(clixon_if_feature_yacc *ife)
+clixon_yang_sub_parsel_exit(clixon_yang_sub_parse_yacc *ife)
 {
    yy_delete_buffer(ife->if_lexbuf);
-   clixon_if_feature_parselex_destroy();  /* modern */
+   clixon_yang_sub_parselex_destroy();  /* modern */
 
   return 0;
 }

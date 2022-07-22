@@ -59,6 +59,6 @@ int        yang_spec_parse_file(clicon_handle h, char *filename, yang_stmt *yspe
 int        yang_spec_load_dir(clicon_handle h, char *dir, yang_stmt *yspec);
 int        ys_parse_date_arg(char *datearg, uint32_t *dateint);
 cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
-int        ys_parse_sub(yang_stmt *ys, char *extra);
+int        ys_parse_sub(yang_stmt *ys, const char *filename, char *extra);
 
 #endif  /* _CLIXON_YANG_LIB_H_ */

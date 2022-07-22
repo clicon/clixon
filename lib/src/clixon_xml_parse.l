@@ -139,7 +139,6 @@ ncname     {namestart}{namechar}*
 <STATEA>\r            { clixon_xml_parselval.string = "\n";return WHITESPACE; }
 <STATEA>\n            { clixon_xml_parselval.string = "\n"; _XY->xy_linenum++;return WHITESPACE; }
 <STATEA>[^&\r\n \t\<]+ { clixon_xml_parselval.string = yytext; return CHARDATA; /* Optimized */}
-<STATEA>.             { clixon_xml_parselval.string = yytext; return CHARDATA; }
 
 	/* @see xml_chardata_encode */
 <AMPERSAND>"amp;"    { BEGIN(_XY->xy_lex_state); clixon_xml_parselval.string = "&"; return CHARDATA;}

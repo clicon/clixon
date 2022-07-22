@@ -68,15 +68,12 @@
 %type <string>    qstring
 %type <string>    string
 %type <string>    integer_value_str
-%type <string>    identifier_ref
+%type <string>    identifier_ref_arg_str
 %type <string>    if_feature_expr_str
-%type <string>    abs_schema_nodeid
-%type <string>    desc_schema_nodeid_strs
-%type <string>    desc_schema_nodeid_str
-%type <string>    desc_schema_nodeid
-%type <string>    node_identifier
+%type <string>    refine_arg_str
+%type <string>    augment_arg_str
+%type <string>    uses_augment_arg_str
 %type <string>    identifier_str
-%type <string>    identifier_ref_str
 %type <string>    bool_str
 
 /* rfc 6020 keywords 
@@ -293,7 +290,7 @@ ystack_push(clixon_yang_yacc *yy,
  * @note consumes 'argument' and 'extra' which assumes it is malloced and not freed by caller
  */
 static yang_stmt *
-ysp_add(clixon_yang_yacc *yy, 
+ysp_add(clixon_yang_yacc *yy,
 	enum rfc_6020     keyword, 
 	char             *argument,
     	char             *extra)
@@ -318,7 +315,7 @@ ysp_add(clixon_yang_yacc *yy,
     if (yn_insert(yn, ys) < 0) /* Insert into hierarchy */
 	goto err; 
     yang_linenum_set(ys, yy->yy_linenum); /* For error/debugging */
-    if (ys_parse_sub(ys, extra) < 0)     /* Check statement-specific syntax */
+    if (ys_parse_sub(ys, yy->yy_name, extra) < 0)     /* Check statement-specific syntax */
 	goto err2; /* dont free since part of tree */
     return ys;
   err:
@@ -657,7 +654,7 @@ identity_substmt : if_feature_stmt   { _PARSE_DEBUG("identity-substmt -> if-feat
               |                      { _PARSE_DEBUG("identity-substmt -> "); }
               ;
 
-base_stmt     : K_BASE identifier_ref_str stmtend
+base_stmt     : K_BASE identifier_ref_arg_str stmtend
 		{ if (ysp_add(_yy, Y_BASE, $2, NULL)== NULL) _YYERROR("base_stmt"); 
                             _PARSE_DEBUG("base-stmt -> BASE identifier-ref-arg-str"); }
               ;
@@ -728,10 +725,10 @@ typedef_substmt : type_stmt          { _PARSE_DEBUG("typedef-substmt -> type-stm
               ;
 
 /* Type */
-type_stmt     : K_TYPE identifier_ref_str ';' 
+type_stmt     : K_TYPE identifier_ref_arg_str ';' 
 	       { if (ysp_add(_yy, Y_TYPE, $2, NULL) == NULL) _YYERROR("type_stmt"); 
 			   _PARSE_DEBUG("type-stmt -> TYPE identifier-ref-arg-str ;");}
-              | K_TYPE identifier_ref_str
+              | K_TYPE identifier_ref_arg_str
 	      { if (ysp_add_push(_yy, Y_TYPE, $2, NULL) == NULL) _YYERROR("type_stmt"); 
 			 }
                 '{' type_body_stmts '}'
@@ -1298,14 +1295,14 @@ anyxml_substmt  : when_stmt          { _PARSE_DEBUG("anyxml-substmt -> when-stmt
               ;
 
 /* uses-stmt = uses-keyword identifier-ref-arg-str */
-uses_stmt     : K_USES identifier_ref_str ';' 
+uses_stmt     : K_USES identifier_ref_arg_str ';' 
 	       { if (ysp_add(_yy, Y_USES, $2, NULL) == NULL) _YYERROR("uses_stmt"); 
-			   _PARSE_DEBUG("uses-stmt -> USES id-arg-str ;"); }
-              | K_USES identifier_ref_str
+			   _PARSE_DEBUG("uses-stmt -> USES identifier-ref-arg-str ;"); }
+              | K_USES identifier_ref_arg_str
 	      { if (ysp_add_push(_yy, Y_USES, $2, NULL) == NULL) _YYERROR("uses_stmt"); }
 	       '{' uses_substmts '}' 
                            { if (ystack_pop(_yy) < 0) _YYERROR("uses_stmt");
-			     _PARSE_DEBUG("uses-stmt -> USES id-arg-str { uses-substmts }"); }
+			     _PARSE_DEBUG("uses-stmt -> USES identifier-ref-arg-str { uses-substmts }"); }
               ;
 
 uses_substmts : uses_substmts uses_substmt 
@@ -1326,12 +1323,12 @@ uses_substmt  : when_stmt            { _PARSE_DEBUG("uses-substmt -> when-stmt")
               ;
 
 /* refine-stmt = refine-keyword sep refine-arg-str */
-refine_stmt   : K_REFINE desc_schema_nodeid_strs ';' 
+refine_stmt   : K_REFINE refine_arg_str ';' 
 	       { if (ysp_add(_yy, Y_REFINE, $2, NULL) == NULL) _YYERROR("refine_stmt"); 
 		   _PARSE_DEBUG("refine-stmt -> REFINE id-arg-str ;"); }
-              | K_REFINE desc_schema_nodeid_strs
+              | K_REFINE refine_arg_str '{' 
 	      { if (ysp_add_push(_yy, Y_REFINE, $2, NULL) == NULL) _YYERROR("refine_stmt"); }
-	       '{' refine_substmts '}' 
+	          refine_substmts '}' 
                            { if (ystack_pop(_yy) < 0) _YYERROR("refine_stmt");
 			       _PARSE_DEBUG("refine-stmt -> REFINE id-arg-str { refine-substmts }"); }
               ;
@@ -1356,21 +1353,28 @@ refine_substmt  : if_feature_stmt  { _PARSE_DEBUG("refine-substmt -> if-feature-
               |                    { _PARSE_DEBUG("refine-substmt -> "); }
               ;
 
-/* uses-augment-stmt = augment-keyword augment-arg-str 
-uses_augment_stmt : K_AUGMENT desc_schema_nodeid_strs
-*/
-uses_augment_stmt : K_AUGMENT string
-                      { if (ysp_add_push(_yy, Y_AUGMENT, $2, NULL) == NULL) _YYERROR("uses_augment_stmt"); }
+/* refine-arg-str      = < a string that matches the rule refine-arg >
+ * @see yang_schema_nodeid_subparse sub-parser
+ */
+refine_arg_str :  string
+                 { $$ = $1;
+     		   _PARSE_DEBUG("refine-arg-str -> < a string that matches the rule refine-arg >"); }
+               ;
+
+/* uses-augment-stmt = augment-keyword uses-augment-arg-str 
+ * Same keyword as in augment-stmt, but here is sub of uses
+ */
+uses_augment_stmt : K_AUGMENT uses_augment_arg_str 
+                    { if (ysp_add_push(_yy, Y_AUGMENT, $2, NULL) == NULL) _YYERROR("uses_augment_stmt"); }
                     '{' augment_substmts '}'
                       { if (ystack_pop(_yy) < 0) _YYERROR("uses_augment_stmt");
-			     _PARSE_DEBUG("uses-augment-stmt -> AUGMENT desc-schema-node-str { augment-substmts }"); }
-
+			     _PARSE_DEBUG("uses-augment-stmt -> AUGMENT uses-augment-arg-str { augment-substmts }"); }
 		    
 /* augment-stmt = augment-keyword sep augment-arg-str 
- * XXX abs-schema-nodeid-str is too difficult, it needs the + semantics
-augment_stmt   : K_AUGMENT abs_schema_nodeid_strs
+ * augment_stmt   : K_AUGMENT abs_schema_nodeid_strs
+ * Same keyword as in uses-augment-stmt, but here is sub of (sub)module
  */
-augment_stmt   : K_AUGMENT string
+augment_stmt   : K_AUGMENT augment_arg_str 
                    { if (ysp_add_push(_yy, Y_AUGMENT, $2, NULL) == NULL) _YYERROR("augment_stmt"); }
 	       '{' augment_substmts '}' 
                    { if (ystack_pop(_yy) < 0) _YYERROR("augment_stmt");
@@ -1395,6 +1399,22 @@ augment_substmt : when_stmt          { _PARSE_DEBUG("augment-substmt -> when-stm
               | unknown_stmt         { _PARSE_DEBUG("augment-substmt -> unknown-stmt");} 
               |                      { _PARSE_DEBUG("augment-substmt -> "); }
               ;
+
+/* augment-arg-str = < a string that matches the rule augment-arg >
+ * @see yang_schema_nodeid_subparse sub-parser
+ */
+augment_arg_str :  string
+                 { $$ = $1;
+     		   _PARSE_DEBUG("augment-arg-str -> < a string that matches the rule augment-arg >"); }
+               ;
+
+/* uses-augment-arg-str = < a string that matches the rule uses-augment-arg >
+ * @see yang_schema_nodeid_subparse sub-parser
+ */
+uses_augment_arg_str :  string
+                 { $$ = $1;
+     		   _PARSE_DEBUG("uses-augment-arg-str -> < a string that matches the rule uses-augment-arg >"); }
+               ;
 
 /* when */
 when_stmt   : K_WHEN string ';' 
@@ -1799,6 +1819,8 @@ output_stmt  : K_OUTPUT  /* XXX reuse input-substatements since they are same */
 		       _PARSE_DEBUG("output-stmt -> OUTPUT { input-substmts }"); }
               ;
 
+/* XXX this is not the "string" rule in Section 14, rather it is the string as described in 6.1 
+ */
 string        : qstrings { $$=$1;
 		   _PARSE_DEBUG("string -> qstrings"); } 
               | ustring  { $$=$1;
@@ -1844,68 +1866,12 @@ ustring       : ustring CHARS
                       {  _PARSE_DEBUG1("ustring-> ERRCHARS(%s)", $1); _YYERROR("Invalid string chars"); }
               ;
 
-abs_schema_nodeid : abs_schema_nodeid '/' node_identifier
-                 {
-		     if (($$=clixon_string_del_join($1, "/", $3)) == NULL) _YYERROR("abs_schema_nodeid");
-		     free($3);
-		     _PARSE_DEBUG("absolute-schema-nodeid -> absolute-schema-nodeid / node-identifier"); }
-              | '/' node_identifier
-                 {
-		     if (($$=clixon_string_del_join(NULL, "/", $2)) == NULL) _YYERROR("abs_schema_nodeid");
-		     free($2);
-		     _PARSE_DEBUG("absolute-schema-nodeid -> / node-identifier"); }
-              ;
-
-desc_schema_nodeid_strs : desc_schema_nodeid_strs '+' desc_schema_nodeid_str
-                     {
-			 int len = strlen($1);
-			 $$ = realloc($1, len + strlen($3) + 1); 
-			 sprintf($$+len, "%s", $3);
-			 free($3); 
-			 _PARSE_DEBUG("desc-schema-nodeid-strs-> desc-schema-nodeid-strs + desc-schema-nodeid-str");
-		     }
-                      | desc_schema_nodeid_str
-                           { $$=$1;
-			       _PARSE_DEBUG("desc-schema-nodeid-strs-> desc-schema-nodeid-str"); }
-                      ;
-
-desc_schema_nodeid_str : desc_schema_nodeid
-                         { $$=$1;
-			     _PARSE_DEBUG("descendant-schema-nodeid-str -> descendant-schema-nodeid"); }
-                     | '"' desc_schema_nodeid '"'
-                         { $$=$2;
-			     _PARSE_DEBUG("descendant-schema-nodeid-str -> \" descendant-schema-nodeid \" "); }
-                     | '\'' desc_schema_nodeid '\''
-                         { $$=$2;
-			     _PARSE_DEBUG("descendant-schema-nodeid-str -> ' descendant-schema-nodeid '"); }
-
-;
-
-/* descendant-schema-nodeid */
-desc_schema_nodeid : node_identifier
-                     { $$= $1;
-			 _PARSE_DEBUG("descendant-schema-nodeid -> node_identifier"); }
-                   | node_identifier abs_schema_nodeid
-		   {
-		       if (($$=clixon_string_del_join($1, "", $2)) == NULL) _YYERROR("desc_schema_nodeid");
-		       free($2);
-		       _PARSE_DEBUG("descendant-schema-nodeid -> node_identifier abs_schema_nodeid"); }
-                   ;
-
 identifier_str : '"' IDENTIFIER '"' { $$ = $2;
  		         _PARSE_DEBUG("identifier_str -> \" IDENTIFIER \" ");}
                | '\'' IDENTIFIER '\'' { $$ = $2;
  		         _PARSE_DEBUG("identifier_str -> ' IDENTIFIER ' ");}
                | IDENTIFIER           { $$ = $1;
 		         _PARSE_DEBUG("identifier_str -> IDENTIFIER ");}
-               ;
-
-identifier_ref_str : '"' identifier_ref '"' { $$ = $2;
-		   _PARSE_DEBUG("identifier_ref_str -> \" identifier_ref \" ");}
-               | '\'' identifier_ref '\'' { $$ = $2;
-		   _PARSE_DEBUG("identifier_ref_str -> ' identifier_ref ' ");}
-               | identifier_ref           { $$ = $1;
-		   _PARSE_DEBUG("identifier_ref_str -> identifier_ref ");}
                ;
 
 integer_value_str : '"' INT '"' { $$=$2; }
@@ -1922,21 +1888,14 @@ bool_str       : '"' BOOL '"' { $$ = $2;
                ;
 
 
-/*   node-identifier     = [prefix ":"] identifier */
-node_identifier : IDENTIFIER
-		   { $$=$1;
-		       _PARSE_DEBUG("identifier-ref-arg-str -> string"); }
-                | IDENTIFIER ':' IDENTIFIER
-		{
-		    if (($$=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("node_identifier");
-		    free($3);
-		    _PARSE_DEBUG("identifier-ref-arg-str -> prefix : string"); }
-                ;
-
 /* ;;; Basic Rules */
 
-/* identifier-ref = [prefix ":"] identifier */
-identifier_ref : node_identifier { $$=$1;}
+/* identifier-ref-arg-str      = < a string that matches the rule idenetifier-ref-arg >
+ * @see yang_schema_nodeid_subparse sub-parser
+ */
+identifier_ref_arg_str :  string
+                 { $$ = $1;
+     		   _PARSE_DEBUG("identifier-ref-arg-str -> < a string that matches the rule identifier-ref-arg >"); }
                ;
 
 /*   optsep = *(WSP / line-break) */
