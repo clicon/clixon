@@ -853,6 +853,9 @@ get_common(clicon_handle        h,
 		/* Remove default configuration nodes from XML */
 		if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_MARK|XML_FLAG_DEFAULT) < 0)
 		  goto done;
+		/* Restore marked nodes */
+		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+		    goto done;
 	     }
 	     else if (strcmp(with_defaults, "report-all") == 0) {
 	       /* Accept mode, do nothing */
@@ -864,7 +867,7 @@ get_common(clicon_handle        h,
 		    goto done;
 		}
 		cprintf(cbmsg, "with-defaults retrieval mode \"%s\" is not supported", with_defaults);
-		if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
+		if (netconf_operation_not_supported(cbret, "application", cbuf_get(cbmsg)) < 0)
 		    goto done;
 		goto ok;
 	     }
