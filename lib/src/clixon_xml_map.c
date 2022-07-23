@@ -561,6 +561,42 @@ xml_tree_prune_flagged(cxobj *xt,
     return retval;
 }
 
+/*! Prune everything that passes test
+ * @param[in]   xt      XML tree with some node marked
+ * @param[in]   flags   Flags set
+ * @param[in]   mask    Which flags to test for
+ * The function removes all branches that does pass test
+ * @code
+ *    xml_tree_prune_flaggs(xt, XML_FLAG_MARK, XML_FLAG_MARK|XML_FLAG_DEFAULT);
+ * @endcode
+ */
+int
+xml_tree_prune_flags(cxobj *xt,
+		       int    flags,
+		       int    mask)
+{
+    int        retval = -1;
+    cxobj     *x;
+    cxobj     *xprev;
+
+    x = NULL;
+    xprev = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	if (xml_flag(x, mask) == flags){ 	/* Pass test means purge */
+	    if (xml_purge(x) < 0)
+		goto done;
+	    x = xprev;
+	    continue;
+	}
+	if (xml_tree_prune_flags(x, flags, mask) < 0)
+	    goto done;
+	xprev = x;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Add prefix:namespace pair to xml node, set cache, etc
  * @param[in]  x         XML node whose namespace should change
  * @param[in]  xp        XML node where namespace attribute should be declared (can be same)

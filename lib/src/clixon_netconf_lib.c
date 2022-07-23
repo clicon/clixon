@@ -1529,6 +1529,9 @@ netconf_module_load(clicon_handle h)
     /* Load ietf list pagination netconf */
     if (yang_spec_parse_module(h, "ietf-list-pagination-nc", NULL, yspec)< 0)
 	goto done;
+    /* Load rfc6243 with-defaults module explicit (imported by ietf-list-pagination-nc) */
+    if (yang_spec_parse_module(h, "ietf-netconf-with-defaults", NULL, yspec)< 0)
+	goto done;
     /* Framing: If hello protocol skipped, set framing direct, ie fix chunked framing if NETCONF-1.1
      * But start with default: RFC 4741 EOM ]]>]]>
      * For now this only applies to external protocol
@@ -1721,6 +1724,8 @@ netconf_hello_server(clicon_handle h,
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:startup:1.0</capability>");
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:xpath:1.0</capability>");
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:notification:1.0</capability>");
+    /* rfc6243 with-defaults capability modes */
+    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit</capability>");
     cprintf(cb, "</capabilities>");
     if (session_id) 
 	cprintf(cb, "<session-id>%lu</session-id>", (long unsigned int)session_id);

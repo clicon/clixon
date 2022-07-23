@@ -721,7 +721,8 @@ get_common(clicon_handle        h,
     int             list_pagination = 0;
     cxobj         **xvec = NULL;
     size_t          xlen;
-    cxobj          *xlistpag;
+    cxobj          *xfind;
+    char	   *with_defaults;
     
     clicon_debug(1, "%s", __FUNCTION__);
     username = clicon_username_get(h);
@@ -762,14 +763,14 @@ get_common(clicon_handle        h,
 	}
     }
     /* Check if list pagination */
-    if ((xlistpag = xml_find_type(xe, NULL, "list-pagination", CX_ELMNT)) != NULL)
+    if ((xfind = xml_find_type(xe, NULL, "list-pagination", CX_ELMNT)) != NULL)
 	list_pagination = 1;
     /* Sanity check for list pagination: path must be a list/leaf-list, if it is,
      * check config/state
      */
     if (list_pagination){
 	if (get_list_pagination(h, ce,
-				xlistpag,
+				xfind,
 				content, db,
 				depth, yspec, xpath, nsc, username,
 				cbret) < 0)
@@ -842,7 +843,33 @@ get_common(clicon_handle        h,
 	}
 	break;
     }
-
+    /* rfc6243 Handle with-defaults. */
+    if ((xfind = xml_find(xe, "with-defaults")) != NULL) {
+	 if ((with_defaults = xml_find_value(xfind, "body")) != NULL) {
+	     if (strcmp(with_defaults, "explicit") == 0) {
+		/* Traverse XML and mark state nodes */
+		if (xml_non_config_data(xret, NULL) < 0)
+		    goto done;
+		/* Remove default configuration nodes from XML */
+		if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_MARK|XML_FLAG_DEFAULT) < 0)
+		  goto done;
+	     }
+	     else if (strcmp(with_defaults, "report-all") == 0) {
+	       /* Accept mode, do nothing */
+	     }
+	     else {
+		 /* Mode not supported */
+		if ((cbmsg = cbuf_new()) == NULL){
+		    clicon_err(OE_UNIX, errno, "cbuf_new");
+		    goto done;
+		}
+		cprintf(cbmsg, "with-defaults retrieval mode \"%s\" is not supported", with_defaults);
+		if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
+		    goto done;
+		goto ok;
+	     }
+	 }
+    }
     if (content != CONTENT_CONFIG &&
 	clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
 	/* Check XML  by validating it. return internal error with error cause 
