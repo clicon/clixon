@@ -93,7 +93,7 @@
 #include "clixon_yang_schemanode_parse.h"
 
 /* Enable for debugging, steals some cycles otherwise */
-#if 1
+#if 0
 #define _PARSE_DEBUG(s) clicon_debug(1,(s))
 #else
 #define _PARSE_DEBUG(s)

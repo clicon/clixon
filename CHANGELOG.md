@@ -35,15 +35,6 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
-## Refine branch
-
-* Break-out RFC 7950 Section 6.1 tokenization
-  * This enables full string lexical parsing of some rules previously not fully compliant, including:
-    * refine, uses-augment, augment, if-feature, type, base.
-  * Also solves previous tokenization issues
-    * [String concatenation in YANG model leads to syntax error ](https://github.com/clicon/clixon/issues/265)
-    * [Can't use + symbol in the enum statement without quotes](https://github.com/clicon/clixon/issues/241)
-
 ## 5.8.0
 Planned: July 2022
 
@@ -120,6 +111,12 @@ Developers may need to change their code
 
 ### Minor features
 
+* Break-out RFC 7950 Section 6.1 tokenization
+  * This enables full string lexical parsing of some rules previously not fully compliant, including:
+    * refine, uses-augment, augment, if-feature, type, base.
+  * Also solves previous tokenization issues
+    * [String concatenation in YANG model leads to syntax error ](https://github.com/clicon/clixon/issues/265)
+    * [Can't use + symbol in the enum statement without quotes](https://github.com/clicon/clixon/issues/241)
 * Added XPATH function `boolean()`
   * This caused problem for new NTP YANG in RFC 9249
 * Full RFC 7950 if-feature-expr support (Section 7.20.2)
