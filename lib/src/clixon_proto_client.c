@@ -859,6 +859,21 @@ clicon_rpc_get(clicon_handle   h,
 	       int32_t         depth,
 	       cxobj         **xt)
 {
+	return clicon_rpc_get2(h, xpath, nsc, content, depth, NULL, xt);
+}
+
+/*! Same functionality as the 'clicon_rpc_get' function, but with an additional input parameter 'with-defaults'.
+ * @see clicon_rpc_get
+ */
+int
+clicon_rpc_get2(clicon_handle   h,
+	       char           *xpath,
+	       cvec           *nsc, /* namespace context for filter */
+	       netconf_content content,
+	       int32_t         depth,
+		   char			  *with_defaults,
+	       cxobj         **xt)
+{
     int                retval = -1;
     struct clicon_msg *msg = NULL;
     cbuf              *cb = NULL;
@@ -897,6 +912,8 @@ clicon_rpc_get(clicon_handle   h,
 	    goto done;
 	cprintf(cb, "/>");
     }
+    if (with_defaults != NULL)
+    	cprintf(cb, "<with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">%s</with-defaults>", with_defaults);
     cprintf(cb, "</get></rpc>");
     if ((msg = clicon_msg_encode(session_id,
 				 "%s", cbuf_get(cb))) == NULL)

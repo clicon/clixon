@@ -124,6 +124,7 @@ api_data_get2(clicon_handle  h,
     cxobj     *xtop = NULL;
     cxobj     *xbot = NULL;
     yang_stmt *y = NULL;
+    char	  *with_defaults = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -194,8 +195,13 @@ api_data_get2(clicon_handle  h,
 	    }
 	}
     }
+    if ((attr = cvec_find_str(qvec, "with-defaults")) != NULL){
+    	clicon_debug(1, "%s with_defaults=%s", __FUNCTION__, attr);
+    	with_defaults = attr;
+    }
+
     clicon_debug(1, "%s path:%s", __FUNCTION__, xpath);
-    ret = clicon_rpc_get(h, xpath, nsc, content, depth, &xret);
+    ret = clicon_rpc_get2(h, xpath, nsc, content, depth, with_defaults, &xret);
 
     if (ret < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)

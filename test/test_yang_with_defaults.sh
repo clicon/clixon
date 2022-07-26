@@ -14,6 +14,7 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 fyang=$dir/example-default.yang
 fstate=$dir/state.xml
+RESTCONFIG=$(restconf_config none false)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -26,13 +27,16 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_NETCONF_DIR>/usr/local/lib/$APPNAME/netconf</CLICON_NETCONF_DIR>
-  <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
+  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
+  <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
+  <CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -154,6 +158,18 @@ ret=$(diff $dir/running_db <(echo -n "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>"
 if [ $? -ne 0 ]; then
     err "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>" "$ret"
 fi
+
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    stop_restconf_pre
+
+    new "start restconf daemon"
+    start_restconf -f $cfg
+fi
+
+new "wait restconf"
+wait_restconf
+
 
 new "rfc4243 4.3.  Capability Identifier"
 expecteof "$clixon_netconf -ef $cfg" 0 "$DEFAULTHELLO" \
@@ -316,6 +332,54 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 <interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface>\
 </interfaces></data></rpc-reply>" ""
 
+
+new "rfc8040 4.3. RESTCONF GET"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces)" \
+0 \
+"HTTP/$HVER 200" \
+"Content-Type: application/yang-data+json" \
+"Cache-Control: no-cache" \
+'{"example:interfaces":{"interface":\[{"name":"eth0","mtu":8192,"status":"ok"},{"name":"eth1","mtu":1500,"status":"ok"},{"name":"eth2","mtu":9000,"status":"not feeling so good"},{"name":"eth3","mtu":1500,"status":"waking up"}\]}}'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:interfaces)" \
+0 \
+"HTTP/$HVER 200" \
+"Content-Type: application/yang-data+xml" \
+"Cache-Control: no-cache" \
+'<interfaces xmlns="http://example.com/ns/interfaces"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface></interfaces>'
+
+new "rfc8040 B.3.9. RESTCONF with-defaults parameter = report-all"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=report-all)" \
+0 \
+"HTTP/$HVER 200" \
+"Content-Type: application/yang-data+json" \
+"Cache-Control: no-cache" \
+'{"example:interface":\[{"name":"eth1","mtu":1500,"status":"ok"}\]}'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=report-all)" \
+0 \
+"HTTP/$HVER 200" \
+"Content-Type: application/yang-data+xml" \
+"Cache-Control: no-cache" \
+'<interface xmlns="http://example.com/ns/interfaces"><name>eth1</name><mtu>1500</mtu><status>ok</status></interface>'
+
+new "rfc8040 B.3.9. RESTONF with-defaults parameter = explicit"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=explicit)" \
+0 \
+"HTTP/$HVER 200" \
+"Content-Type: application/yang-data+json" \
+"Cache-Control: no-cache" \
+'{"example:interface":\[{"name":"eth1","status":"ok"}\]}'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=explicit)" \
+0 \
+"HTTP/$HVER 200" \
+"Content-Type: application/yang-data+xml" \
+"Cache-Control: no-cache" \
+'<interface xmlns="http://example.com/ns/interfaces"><name>eth1</name><status>ok</status></interface>'
+
+
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
 
 if [ $BE -ne 0 ]; then     # Bring your own backend
     new "Kill backend"
