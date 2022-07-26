@@ -123,15 +123,16 @@ xml2txt1(cxobj            *xn,
     int        retval = -1;
     int        exist = 0;
     yang_stmt *yn;
-    yang_stmt *yp = NULL;
-    yang_stmt *ymod;
-    yang_stmt *ypmod;
-    char      *prefix = NULL;
     char      *value;
     cg_var    *cvi;
     cvec      *cvk = NULL; /* vector of index keys */
     cbuf      *cb = NULL;
-
+#ifndef TEXT_SYNTAX_NOPREFIX
+    yang_stmt *yp = NULL;
+    yang_stmt *ymod;
+    yang_stmt *ypmod;
+    char      *prefix = NULL;
+#endif
     if (xn == NULL || fn == NULL){
 	clicon_err(OE_XML, EINVAL, "xn or fn is NULL");
 	goto done;
@@ -143,6 +144,7 @@ xml2txt1(cxobj            *xn,
 	    if (exist)
 		goto ok;
 	}
+#ifndef TEXT_SYNTAX_NOPREFIX
 	/* Find out prefix if needed: topmost or new module a la API-PATH */
 	if (ys_real_module(yn, &ymod) < 0)
 	    goto done;
@@ -155,6 +157,7 @@ xml2txt1(cxobj            *xn,
 	}
 	else
 	    prefix = yang_argument_get(ymod);
+#endif
 	if (yang_keyword_get(yn) == Y_LIST){
 	    if ((cvk = yang_cvec_get(yn)) == NULL){
 		clicon_err(OE_YANG, 0, "No keys");
@@ -209,8 +212,10 @@ xml2txt1(cxobj            *xn,
     }
     if (*leafl == 0){
 	(*fn)(f, "%*s", 4*level, "");
+#ifndef TEXT_SYNTAX_NOPREFIX
 	if (prefix)
 	    (*fn)(f, "%s:", prefix);
+#endif
 	(*fn)(f, "%s", xml_name(xn));
     }
     cvi = NULL; 	/* Lists only */

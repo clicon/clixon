@@ -164,3 +164,8 @@
  */
 #define PROTO_RESTART_RECONNECT
 
+/*! Disable top-level prefix for text syntax printing and parsing introduced in 5.8
+ * Note this is for showing/saving/printing, it is NOT for parsing/loading.
+ * This means that text output can not be parsed and loaded.
+ */
+#undef TEXT_SYNTAX_NOPREFIX

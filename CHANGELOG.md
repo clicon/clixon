@@ -79,6 +79,7 @@ Users may have to change how they access the system
     * Leaf-list support: `a [ x y z ]`
     * List key support: `a x y { ... }`
     * See compile-time option `TEXT_LIST_KEYS`
+  * Keep backward-compatible non-top-level prefix with compile-time option `TEXT_SYNTAX_NOPREFIX`
 
 ### C/CLI-API changes on existing features
 
