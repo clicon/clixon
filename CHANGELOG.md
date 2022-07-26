@@ -128,6 +128,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Clixon CLI issue: when I try to print the value of the leaf node nothing appeared](https://github.com/clicon/clixon/issues/345)
 * Fixed: [Can't use + symbol in the enum statement without quotes](https://github.com/clicon/clixon/issues/241)
 * Fixed: [String concatenation in YANG model leads to syntax error ](https://github.com/clicon/clixon/issues/265)
 * Fixed: ["autocli:hide-show" extension cause bug in xmldb_put method #343](https://github.com/clicon/clixon/issues/343)
