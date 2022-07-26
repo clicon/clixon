@@ -774,7 +774,7 @@ cli_show_auto1(clicon_handle h,
 		goto done;
 	    break;
 	case FORMAT_TEXT:
-	    if (clixon_txt2file(stdout, xp, 0, cligen_output, 1, 1) < 0)
+	    if (clixon_txt2file(stdout, xp, 0, cligen_output, 0, 1) < 0)
 		goto done;
 	    break;
 	case FORMAT_XML:
