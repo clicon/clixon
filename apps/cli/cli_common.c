@@ -828,7 +828,7 @@ load_config_file(clicon_handle h,
     FILE            *fp = NULL;
     cxobj           *xt = NULL;
     cxobj           *x;
-    cbuf            *cbxml;
+    cbuf            *cbxml = NULL;
     char            *formatstr = NULL;
     enum format_enum format = FORMAT_XML;
     yang_stmt       *yspec;
@@ -952,10 +952,11 @@ load_config_file(clicon_handle h,
 			       replace?OP_REPLACE:OP_MERGE, 
 			       cbuf_get(cbxml)) < 0)
 	goto done;
-    cbuf_free(cbxml);
  ok:
     ret = 0;
  done:
+    if (cbxml)
+	cbuf_free(cbxml);
     if (lineptr)
 	free(lineptr); 
    if (xerr)
