@@ -308,7 +308,7 @@ $sshcmd sudo ./yangmodels.sh
 
 # Run tests
 $sshcmd "(cd src/cligen/test; ./sum.sh)"
-$sshcmd "(cd src/clixon/test; ./sum.sh)"
+$sshcmd "(cd src/clixon/test; detail=true ./sum.sh)"
 
 # destroy vm
 #if $destroy; then

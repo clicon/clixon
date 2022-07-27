@@ -44,7 +44,8 @@ set -ux # e but clixon_backend may fail if test is run in parallell
 
 >&2 echo "$0"
 
-DBG=${DBG:-0}
+# If set, enable debugging (of backend and restconf daemons)
+: ${DBG:=0}
 
 # Initiate clixon configuration (env variable)
 echo "$CONFIG" > /usr/local/etc/clixon.xml

@@ -41,9 +41,12 @@ RUN apk add --update git make build-base gcc flex bison fcgi-dev curl-dev
 # For netsnmp
 RUN apk add --update net-snmp net-snmp-dev
 
-# Checkut standard YANG models for tests (note >1G for full repo)
-WORKDIR /usr/local/share
+# Checkut models
+WORKDIR /usr/local/share/
+
+# Checkout standard YANG models for tests (note >1G for full repo)
 RUN mkdir yang
+
 WORKDIR /usr/local/share/yang
 
 RUN git config --global init.defaultBranch master
@@ -54,6 +57,12 @@ RUN echo "standard/" >> .git/info/sparse-checkout
 RUN echo "experimental/" >> .git/info/sparse-checkout
 
 RUN git pull origin main
+
+RUN mkdir /usr/local/share/openconfig
+WORKDIR /usr/local/share/openconfig
+
+# Checkut Openconfig models for tests
+RUN git clone https://github.com/openconfig/public
 
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir /clixon
@@ -102,6 +111,9 @@ RUN install *.sh /clixon/build/bin/test
 RUN install *.exp /clixon/build/bin/test
 RUN install clixon.png /clixon/build/bin/test
 
+RUN install -d /clixon/build/mibs
+RUN install mibs/* /clixon/build/mibs
+
 # Copy startscript
 WORKDIR /clixon
 COPY startsystem_fcgi.sh startsystem.sh 
@@ -148,6 +160,7 @@ RUN adduser www-data clicon
 COPY --from=0 /clixon/build/ /usr/local/
 COPY --from=0 /usr/local/share/yang/* /usr/local/share/yang/standard/
 COPY --from=0 /usr/local/share/mib-yangs/* /usr/local/share/mib-yangs/
+COPY --from=0 /clixon/build/mibs/* /usr/share/snmp/mibs/
 
 # Manually created
 RUN mkdir /www-data
