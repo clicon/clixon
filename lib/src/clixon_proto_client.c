@@ -824,6 +824,7 @@ clicon_rpc_unlock(clicon_handle h,
  * @param[in]  nsc       Namespace context for filter
  * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
  * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
+ * @param[in]  defaults  Value of the with-defaults mode, rfc6243, or NULL
  * @param[out] xt        XML tree. Free with xml_free. 
  *                       Either <config> or <rpc-error>. 
  * @retval    0          OK
@@ -852,26 +853,12 @@ clicon_rpc_unlock(clicon_handle h,
  * @note the netconf return message is yang populated, as well as the return data
  */
 int
-clicon_rpc_get(clicon_handle   h, 
+clicon_rpc_get(clicon_handle   h,
 	       char           *xpath,
 	       cvec           *nsc, /* namespace context for filter */
 	       netconf_content content,
 	       int32_t         depth,
-	       cxobj         **xt)
-{
-	return clicon_rpc_get2(h, xpath, nsc, content, depth, NULL, xt);
-}
-
-/*! Same functionality as the 'clicon_rpc_get' function, but with an additional input parameter 'with-defaults'.
- * @see clicon_rpc_get
- */
-int
-clicon_rpc_get2(clicon_handle   h,
-	       char           *xpath,
-	       cvec           *nsc, /* namespace context for filter */
-	       netconf_content content,
-	       int32_t         depth,
-		   char			  *with_defaults,
+		   char			  *defaults,
 	       cxobj         **xt)
 {
     int                retval = -1;
@@ -912,8 +899,8 @@ clicon_rpc_get2(clicon_handle   h,
 	    goto done;
 	cprintf(cb, "/>");
     }
-    if (with_defaults != NULL)
-    	cprintf(cb, "<with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">%s</with-defaults>", with_defaults);
+    if (defaults != NULL)
+    	cprintf(cb, "<with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">%s</with-defaults>", defaults);
     cprintf(cb, "</get></rpc>");
     if ((msg = clicon_msg_encode(session_id,
 				 "%s", cbuf_get(cb))) == NULL)

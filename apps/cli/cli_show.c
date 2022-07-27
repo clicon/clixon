@@ -484,7 +484,7 @@ cli_show_config1(clicon_handle h,
 	    clicon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
 	    goto done;
 	}
-	if (clicon_rpc_get(h, cbuf_get(cbxpath), nsc, CONTENT_ALL, -1, &xt) < 0)
+	if (clicon_rpc_get(h, cbuf_get(cbxpath), nsc, CONTENT_ALL, -1, NULL, &xt) < 0)
 	    goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
@@ -749,7 +749,7 @@ cli_show_auto1(clicon_handle h,
 	    clicon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
 	    goto done;
 	}
-	if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
+	if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, NULL, &xt) < 0)
 	    goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){

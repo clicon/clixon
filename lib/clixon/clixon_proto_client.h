@@ -54,8 +54,7 @@ int clicon_rpc_copy_config(clicon_handle h, char *db1, char *db2);
 int clicon_rpc_delete_config(clicon_handle h, char *db);
 int clicon_rpc_lock(clicon_handle h, char *db);
 int clicon_rpc_unlock(clicon_handle h, char *db);
-int clicon_rpc_get2(clicon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, char *with_defaults, cxobj **xret);
-int clicon_rpc_get(clicon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, cxobj **xret);
+int clicon_rpc_get(clicon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, char *defaults, cxobj **xret);
 int clicon_rpc_get_pageable_list(clicon_handle h, char *datastore, char *xpath, 
 				 cvec *nsc, netconf_content content, int32_t depth,
 				 uint32_t offset, uint32_t limit,

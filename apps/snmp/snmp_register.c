@@ -375,7 +375,7 @@ mibyang_table_poll(clicon_handle h,
         goto done;
     if (snmp_yang2xpath(ys, NULL, &xpath) < 0)
         goto done;
-    if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
+    if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, NULL, &xt) < 0)
         goto done;
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
         clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
