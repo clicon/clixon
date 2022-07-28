@@ -35,7 +35,6 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
-  <CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>
   $RESTCONFIG
 </clixon-config>
 EOF
