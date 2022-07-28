@@ -217,11 +217,12 @@ wait_restconf
 new "try restconf rpc status"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}')" 0 "HTTP/$HVER 200" '{"clixon-lib:output":' '"active":' '"pid":'
 
-new "Set backend debug using restconf"
-expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/operations/clixon-lib:debug -d '{"clixon-lib:input":{"level":1}}')" 0 "HTTP/$HVER 204"
+# debug setting clutters screen
+#new "Set backend debug using restconf"
+#expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' $RCPROTO://localhost/restconf/operations/clixon-lib:debug -d '{"clixon-lib:input":{"level":1}}')" 0 "HTTP/$HVER 204"
 
 new "Set restconf debug using netconf"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><restconf $RESTCONFNS><debug>1</debug></restconf></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+#expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><restconf $RESTCONFNS><debug>1</debug></restconf></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "2. Get status"
 rpcstatus true running

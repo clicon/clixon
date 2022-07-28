@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [5.8.0](#580) Planned: July 2022
+* [5.8.0](#580) 28 July 2022
 * [5.7.0](#570) 17 May 2022
 * [5.6.0](#560) 8 March 2022
 * [5.5.0](#550) 20 January 2022
@@ -36,12 +36,12 @@
 * [3.3.1](#331) June 7 2017
 
 ## 5.8.0
-Planned: July 2022
+28 July 2022
 
 ### New features
 
-* Clixon SNMP frontend
-  * Support of SNMP for retreiving and setting values via net-snmp using a MIB-YANG mapping defined in RFC6643.
+* New SNMP frontend
+  * Support for SNMP for retreiving and setting values via net-snmp using MIB-YANG mapping defined in RFC6643.
   * For details, see [SNMP section of user manual](https://clixon-docs.readthedocs.io/en/latest/snmp.html)
   * YANG `clixon-config@2022-03-21.yang` changes:
     * Added options:
@@ -49,30 +49,26 @@ Planned: July 2022
       * `CLICON_SNMP_MIB`
   * New configure options:
     * `--enable-netsnmp`
-    * `--with-mib-generated-yang-dir=DIR`
-  * Thanks to Siklu Communications LTD for sponsoring this work
+    * `--with-mib-generated-yang-dir=DIR` (test only)
+  * Thanks: Siklu Communications LTD for sponsoring this work
 
 * YANG Action (RFC 7950 Section 7.15)
-  * Register action callback with `action_callback_register()`, see main example
+  * Register action callback with `action_callback_register()`
+    * The main example contains example code
   * Remains: check list keys, validate output
   * See [Support for "action" statement](https://github.com/clicon/clixon/issues/101)
 
-* TEXT syntax parseable for loading files
-  * Previously only supported output
+* TEXT syntax is now parseable
+  * This means you can save and load TEXT syntax files, as additions to XML/JSON/CLI formats
+  * Previously only output was supported.
   * TEXT output format changed (see API changes)
-  * [Documentation](https://clixon-docs.readthedocs.io/en/latest/datastore.html#other-formats)
+  * FOr more info, see [user manual](https://clixon-docs.readthedocs.io/en/latest/datastore.html#other-formats)
   * See [Support performant load_config_file(...) for TEXT format](https://github.com/clicon/clixon/issues/324)
 	
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
-* Augmented XML uses default namespace
-  * Instead of using prefixes for augmented XML, assign the default namespace
-  * This does not change the semantics, but changes the way XML rpefixes are used
-  * Example augmented ipv4 into interface:
-    * Previously: `<interface><ip:ipv4 xmlns:ip="urn:...:ietf-ip"><ip:enabled>...`
-    * Now: `<interface><ipv4 xmlns="urn:...:ietf-ip"><enabled>...` 
 * TEXT file format changed
   * With new parsing of TEXT format, the output is changed
     * Namespace/modulename added to top-level
@@ -80,6 +76,12 @@ Users may have to change how they access the system
     * List key support: `a x y { ... }`
     * See compile-time option `TEXT_LIST_KEYS`
   * Keep backward-compatible non-top-level prefix with compile-time option `TEXT_SYNTAX_NOPREFIX`
+* Augmented XML uses default namespace
+  * Instead of using prefixes for augmented XML, assign the default namespace
+  * This does not change the semantics, but changes the way XML prefixes are used
+  * Example augmented ipv4 into interface:
+    * Previously: `<interface><ip:ipv4 xmlns:ip="urn:...:ietf-ip"><ip:enabled>...`
+    * Now: `<interface><ipv4 xmlns="urn:...:ietf-ip"><enabled>...` 
 
 ### C/CLI-API changes on existing features
 
@@ -89,11 +91,9 @@ Developers may need to change their code
   * Functions are merged, ie removed and replaced with more generic functions
   * Added `skiptop` parameter, if set only apply to children of a node, skip top node
      * default is 0
-  * The new API is as follows, with how to change old functions to new:
-     * `clixon_xml2file()` - Print internal tree as XML to file
-     * `clixon_xml2cbuf()` - Print internal tree as XML to buffer
-     * `clixon_json2file()` - Print internal tree as JSON to file
-     * `clixon_json2cbuf()` - Print internal tree as JSON to buffer
+  * The new API is as follows:
+     * `clixon_xml2file()` / `clixon_xml2cbuf()` - Print internal tree as XML to file or buffer, respectively
+     * `clixon_json2file()` / `clixon_json2cbuf()` - Print internal tree as JSON to file or buffer, respectively
      * `clixon_cli2file()` - Print internal tree as CLI format to file
      * `clixon_txt2file()` - Print internal tree as text format to file
   * As developer, you need to replace the old functions to the new API as follows:
@@ -115,15 +115,15 @@ Developers may need to change their code
 * Break-out RFC 7950 Section 6.1 tokenization
   * This enables full string lexical parsing of some rules previously not fully compliant, including:
     * refine, uses-augment, augment, if-feature, type, base.
-  * Also solves previous tokenization issues
+  * Also fixes some previous tokenization issues
     * [String concatenation in YANG model leads to syntax error ](https://github.com/clicon/clixon/issues/265)
     * [Can't use + symbol in the enum statement without quotes](https://github.com/clicon/clixon/issues/241)
-* Added XPATH function `boolean()`
-  * This caused problem for new NTP YANG in RFC 9249
 * Full RFC 7950 if-feature-expr support (Section 7.20.2)
   * Previous implementation did not handle nested if-feature expressions
   * As part of fixing: [YANG if-feature does not support nested boolean expression](https://github.com/clicon/clixon/issues/341)
   * Added new yacc/lex parser for if-feature-expr string
+* Added XPATH function `boolean()`
+  * This caused problem for new NTP YANG in RFC 9249
 * [Feature Request: Log SSL events](https://github.com/clicon/clixon/issues/331)
   * Added syslog NOTICE on failed user certs
 
