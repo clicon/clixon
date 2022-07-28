@@ -810,3 +810,49 @@ detect_endtag(char *tag,
 	*state = 0;
     return retval;
 }
+
+/*! Given family, addr str, port, return sockaddr and length
+ *
+ * @param[in]  addrtype  Address family: inet:ipv4-address or inet:ipv6-address
+ * @param[in]  addrstr   IP address as string
+ * @param[in]  port      TCP port host byte order
+ * @param[out] sa        sockaddr, should be allocated
+ * @param[out] salen     length of sockaddr data
+ * @code
+ *    struct sockaddr     sa = {0,};
+ *    size_t              sa_len;
+ *    if (clixon_inet2sin(inet:ipv4-address, "0.0.0.0", 80, &sa, &sa_len) < 0)
+ *       err;
+ * @endcode
+ * Probably misplaced, need a clixon_network file?
+ */
+int
+clixon_inet2sin(const char       *addrtype,
+		const char       *addrstr,
+		uint16_t          port,
+		struct sockaddr  *sa,
+		size_t           *sa_len)
+{
+    struct sockaddr_in6 *sin6;
+    struct sockaddr_in  *sin;
+
+    if (strcmp(addrtype, "inet:ipv6-address") == 0) {
+	sin6 = (struct sockaddr_in6 *)sa;
+        *sa_len          = sizeof(struct sockaddr_in6);
+        sin6->sin6_port   = htons(port);
+        sin6->sin6_family = AF_INET6;
+        inet_pton(AF_INET6, addrstr, &sin6->sin6_addr);
+    }
+    else if (strcmp(addrtype, "inet:ipv4-address") == 0) {
+	sin = (struct sockaddr_in *)sa;
+        *sa_len             = sizeof(struct sockaddr_in);
+        sin->sin_family      = AF_INET;
+        sin->sin_port        = htons(port);
+        sin->sin_addr.s_addr = inet_addr(addrstr);
+    }
+    else{
+	clicon_err(OE_XML, EINVAL, "Unexpected addrtype: %s", addrtype);
+	return -1;
+    }
+    return 0;
+}

@@ -583,7 +583,7 @@ ssl_alpn_check(clicon_handle        h,
     int   ret;
     cbuf *cberr = NULL;
     
-    clicon_debug(1, "%s %s", __FUNCTION__, alpn);
+    clicon_debug(1, "%s", __FUNCTION__);
     /* Alternatively, call  restconf_str2proto but alpn is not a proper string */
     if (alpn && alpnlen == 8 && memcmp("http/1.1", alpn, 8) == 0){
 	*proto = HTTP_11;
@@ -642,23 +642,20 @@ ssl_alpn_check(clicon_handle        h,
     return retval;
 } /* ssl_alpn_check */
 
-/*! Accept new socket client
+
+/*! Accept new socket client (ssl not ip)
  * @param[in]  fd   Socket (unix or ip)
  * @param[in]  arg  typecast clicon_handle
  * @see openssl_init_socket where this callback is registered
  */
 static int
-restconf_accept_client(int   fd,
-		       void *arg) 
+restconf_ssl_accept_client(clicon_handle    h,
+			   int              s,
+			   restconf_socket *rsock)
 {
     int                     retval = -1;
-    restconf_socket        *rsock;
     restconf_native_handle *rh = NULL;
     restconf_conn          *rc = NULL;
-    clicon_handle           h;
-    int                     s;
-    struct sockaddr         from = {0,};
-    socklen_t               len;
     char                   *name = NULL;
     int                     ret;
     int                     e;
@@ -668,30 +665,18 @@ restconf_accept_client(int   fd,
     unsigned int            alpnlen = 0;
     restconf_http_proto     proto = HTTP_11;  /* Non-SSL negotiation NYI */
 
-    clicon_debug(1, "%s %d", __FUNCTION__, fd);
+    clicon_debug(1, "%s", __FUNCTION__);
 #ifdef HAVE_LIBNGHTTP2
 #ifndef HAVE_HTTP1
     proto = HTTP_2;     /* If nghttp2 only let default be 2.0  */
 #endif
 #endif
-    if ((rsock = (restconf_socket *)arg) == NULL){
-	clicon_err(OE_YANG, EINVAL, "rsock is NULL");
-	goto done;
-    }
-    clicon_debug(1, "%s type:%s addr:%s port:%hu", __FUNCTION__,
-		 rsock->rs_addrtype,
-		 rsock->rs_addrstr,
-		 rsock->rs_port);
-    h = rsock->rs_h;
+#if 1
     if ((rh = restconf_native_handle_get(h)) == NULL){
 	clicon_err(OE_XML, EFAULT, "No openssl handle");
 	goto done;
     }
-    len = sizeof(from);
-    if ((s = accept(rsock->rs_ss, &from, &len)) < 0){
-	clicon_err(OE_UNIX, errno, "accept");
-	goto done;
-    }
+#endif
     /*
      * Register callbacks for actual data socket 
      */
@@ -919,6 +904,50 @@ restconf_accept_client(int   fd,
     if (name)
 	free(name);
     return retval;
+} /* restconf_ssl_accept_client */
+
+/*! Accept new socket client
+ * @param[in]  fd   Socket (unix or ip)
+ * @param[in]  arg  typecast clicon_handle
+ * @see openssl_init_socket where this callback is registered
+ */
+static int
+restconf_accept_client(int   fd,
+		       void *arg)
+
+{
+    int                     retval = -1;
+    restconf_socket        *rsock;
+    clicon_handle           h;
+    int                     s;
+    struct sockaddr         from = {0,};
+    socklen_t               len;
+    char                   *name = NULL;
+
+    clicon_debug(1, "%s %d", __FUNCTION__, fd);
+    if ((rsock = (restconf_socket *)arg) == NULL){
+	clicon_err(OE_YANG, EINVAL, "rsock is NULL");
+	goto done;
+   } 
+    clicon_debug(1, "%s type:%s addr:%s port:%hu", __FUNCTION__,
+		 rsock->rs_addrtype,
+		 rsock->rs_addrstr,
+		 rsock->rs_port);
+    h = rsock->rs_h;
+    len = sizeof(from);
+    if ((s = accept(rsock->rs_ss, &from, &len)) < 0){
+	clicon_err(OE_UNIX, errno, "accept");
+	goto done;
+    }
+    /* Accept SSL */
+    if (restconf_ssl_accept_client(h, s, rsock) < 0)
+	goto done;
+    retval = 0;
+ done:
+    clicon_debug(1, "%s retval %d", __FUNCTION__, retval);
+    if (name)
+	free(name);
+    return retval;
 } /* restconf_accept_client */
 
 /*!
@@ -1019,10 +1048,63 @@ restconf_clixon_backend(clicon_handle h,
     goto done;
 }
 
+/*! Periodically try to connect to callhome client
+ */
+int
+restconf_callhome_timer(int   fd,
+			void *arg)
+{
+    int              retval = -1;
+    clicon_handle    h;
+    struct timeval   now;
+    struct timeval   t;
+    struct timeval   t1 = {1, 0}; // XXX once every second
+    restconf_socket *rs;
+    struct sockaddr  sa = {0,};
+    size_t           sa_len;
+    int              s;
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    gettimeofday(&now, NULL);
+    if ((rs = (restconf_socket *)arg) == NULL){
+	clicon_err(OE_YANG, EINVAL, "rsock is NULL");
+	goto done;
+    }
+    h = rs->rs_h;
+    if (clixon_inet2sin(rs->rs_addrtype, rs->rs_addrstr, rs->rs_port, &sa, &sa_len) < 0)
+	goto done;
+    if ((s = socket(sa.sa_family, SOCK_STREAM, 0)) < 0) {
+	clicon_err(OE_UNIX, errno, "socket");
+	goto done;
+    }
+    clicon_debug(1, "%s connect", __FUNCTION__);
+    if (connect(s, &sa, sa_len) < 0){
+	close(s);
+	/* Fail: Initiate new timer */
+	timeradd(&now, &t1, &t);
+	if (clixon_event_reg_timeout(t,
+				     restconf_callhome_timer, /* this function */
+				     rs,
+				     "restconf callhome timer") < 0)
+	    goto done;
+    }
+    else {
+	rs->rs_ss = s;
+	if (restconf_ssl_accept_client(h, rs->rs_ss, rs) < 0)
+	    goto done;
+    }
+    clicon_debug(1, "%s connect done", __FUNCTION__);
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Per-socket openssl inits
  * @param[in]  h        Clicon handle
  * @param[in]  xs       XML config of single restconf socket
  * @param[in]  nsc      Namespace context
+ * @retval     0        OK
+ * @retval     -1       Error
  */
 static int
 openssl_init_socket(clicon_handle h,
@@ -1033,6 +1115,7 @@ openssl_init_socket(clicon_handle h,
     char           *netns = NULL;
     char           *address = NULL;
     char           *addrtype = NULL;
+    int             callhome = 0;
     uint16_t        ssl = 0;
     uint16_t        port = 0;
     int             ss = -1;
@@ -1041,23 +1124,9 @@ openssl_init_socket(clicon_handle h,
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* Extract socket parameters from single socket config: ns, addr, port, ssl */
-    if (restconf_socket_extract(h, xs, nsc, &netns, &address, &addrtype, &port, &ssl) < 0)
+    if (restconf_socket_extract(h, xs, nsc, &netns, &address, &addrtype, &port, &ssl, &callhome) < 0)
 	goto done;
-    /* Open restconf socket and bind */
-    if (restconf_socket_init(netns, address, addrtype, port,
-			     SOCKET_LISTEN_BACKLOG,
-#ifdef RESTCONF_OPENSSL_NONBLOCKING
-			     SOCK_NONBLOCK, /* Also 0 is possible */
-#else /* blocking */
-			     0,
-#endif
-			     &ss
-			     ) < 0)
-	goto done;
-    if ((rh = restconf_native_handle_get(h)) == NULL){
-	clicon_err(OE_XML, EFAULT, "No openssl handle");
-	goto done;
-    }
+
     /*
      * Create per-socket openssl handle
      * See restconf_native_terminate for freeing
@@ -1068,8 +1137,33 @@ openssl_init_socket(clicon_handle h,
     }
     memset(rsock, 0, sizeof *rsock);
     rsock->rs_h = h;
+    rsock->rs_ssl = ssl; /* true/false */
+    if (callhome){
+	if (!ssl){
+	    clicon_err(OE_SSL, EINVAL, "Restconf callhome requires SSL");
+	    goto done;
+	}
+    }
+    else { /* listen/accept */
+	/* Open restconf socket and bind for later accept */
+	if (restconf_socket_init(netns, address, addrtype, port,
+			     SOCKET_LISTEN_BACKLOG,
+#ifdef RESTCONF_OPENSSL_NONBLOCKING
+				 SOCK_NONBLOCK, /* Also 0 is possible */
+#else /* blocking */
+				 0,
+#endif
+				 &ss
+				 ) < 0)
+	    goto done;
+    }
+    if ((rh = restconf_native_handle_get(h)) == NULL){
+	clicon_err(OE_XML, EFAULT, "No openssl handle");
+	goto done;
+    }
+
     rsock->rs_ss = ss;
-    rsock->rs_ssl = ssl;
+
     if ((rsock->rs_addrstr = strdup(address)) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
@@ -1081,29 +1175,24 @@ openssl_init_socket(clicon_handle h,
     rsock->rs_port = port;
     INSQ(rsock, rh->rh_sockets);
 
-    /* ss is a server socket that the clients connect to. The callback
-       therefore accepts clients on ss */
-#ifdef RESTCONF_HTTP1_UNITTEST
-    {
-	restconf_conn *rc;
-	if ((rc = restconf_conn_new(h, 0)) == NULL)
-	    goto done;
-	rc->rc_s = 0;
-	if (restconf_stream_data_new(rc, 0) == NULL)
-	    goto done;
-	if (clixon_event_reg_fd(0, restconf_connection, rc, "restconf socket") < 0) 
+    if (callhome){
+	if (restconf_callhome_timer(ss, rsock) < 0)
 	    goto done;
     }
-#else
-    if (clixon_event_reg_fd(ss, restconf_accept_client, rsock, "restconf socket") < 0) 
-	goto done;
-#endif
+    else {
+	/* ss is a server socket that the clients connect to. The callback
+	   therefore accepts clients on ss */
+	if (clixon_event_reg_fd(ss, restconf_accept_client, rsock, "restconf socket") < 0) 
+	    goto done;
+    }
     retval = 0;
  done:
     return retval;
 }
 
 /*! Init openssl, open and register server socket (ready for accept)
+ *
+ * Given a fully populated configuration tree.
  * @param[in]  h         Clicon handle
  * @param[in]  dbg0      Manually set debug flag, if set overrides configuration setting
  * @param[in]  xrestconf XML tree containing restconf config

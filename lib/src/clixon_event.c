@@ -172,6 +172,7 @@ clicon_sig_ignore_get(void)
  * }
  * clixon_event_reg_fd(fd, fn, (void*)42, "call fn on input on fd");
  * @endcode 
+ * @see clixon_event_unreg_fd
  */
 int
 clixon_event_reg_fd(int   fd, 

@@ -152,11 +152,6 @@
  */
 #define USE_CONFIG_FLAG_CACHE
 
-/*! Restconf native unit test for fuzzing of http/1 parser
- * See test/fuzz/http1
- */
-#undef RESTCONF_HTTP1_UNITTEST
-
 /*! If backend is restarted, cli and netconf client will retry (once) and reconnect
  * Note, if client has locked or had edits in progress, these will be lost
  * A warning will be printed

@@ -26,7 +26,7 @@ module clixon-restconf {
             in clixon-config
 
        ***** BEGIN LICENSE BLOCK *****
-       Copyright (C) 2020 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+       Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
        This file is part of CLIXON
 
@@ -53,6 +53,17 @@ module clixon-restconf {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2022-08-01 {
+	description
+	    "Added socket/call-home container
+             Released in Clixon 5.9";
+    }
+    revision 2022-03-21 {
+	description
+	    "Added feature:
+                    http-data - Limited static http server
+             Released in Clixon 5.7";
+    }
     revision 2021-05-20 {
 	description
 	    "Added log-destination for restconf
@@ -74,7 +85,6 @@ module clixon-restconf {
 	description
 	    "Initial release";
     }
-
     feature fcgi {
 	description
 	    "This feature indicates that the restconf server supports the fast-cgi reverse
@@ -89,6 +99,19 @@ module clixon-restconf {
 	  "This feature allows the use of authentication-type none.";
     }
 
+    feature http-data {
+	description
+	    "This feature allows for a very limited static http-data function as
+             addition to RESTCONF.
+             It is limited to:
+             1. path: Local static files within WWW_DATA_ROOT
+             2. operation GET, HEAD, OPTIONS
+             3. query parameters not supported
+             4. indata should be NULL (no write operations)
+             5. Limited media: text/html, JavaScript, image, and css
+             6. Authentication as restconf
+             7. HTTP/1+2, TLS as restconf";
+    }
     typedef http-auth-type {
 	type enumeration {
 	    enum none {
@@ -139,6 +162,14 @@ module clixon-restconf {
                  enabled or not.
                  For example, if the restconf daemon is under systemd management, the restconf
                  daemon will only start if enable=true.";
+	}
+	leaf enable-http-data {
+	    type boolean;
+	    default "false";
+	    if-feature "http-data";
+	    description
+		"Enables Limited static http-data functionality.
+                 enable must be true for this option to be meaningful.";
 	}
 	leaf auth-type {
 	    type http-auth-type;
@@ -239,6 +270,38 @@ module clixon-restconf {
 		type boolean;
 		default true;
 		description "Enable for HTTPS otherwise HTTP protocol";
+	    }
+	    /* Some of this in-lined from ietf-restconf-server@2022-05-24.yang */
+	    container call-home {
+		presence
+		    "Identifies that the server has been configured to initiate
+                     call home connections. 
+		     If set, address/port refers to destination.";
+		description
+		    "See RFC 8071 NETCONF Call Home and RESTCONF Call Home";
+		container connection-type {
+		    description
+			"Indicates the RESTCONF server's preference for how the
+                         RESTCONF connection is maintained.";
+		    choice connection-type {
+			mandatory true;
+			description
+			    "Selects between available connection types.";
+			case persistent-connection {
+			    container persistent {
+				presence
+				    "Indicates that a persistent connection is to be
+                                     maintained.";
+			    }
+			}
+			case periodic-connection {
+			    container periodic {
+				presence
+				    "Indicates periodic connects";
+			    }
+			}
+		    }
+		}
 	    }
 	}
     }

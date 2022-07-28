@@ -105,6 +105,39 @@ callhome_connect(struct sockaddr *sa,
     return retval;
 }
 
+/* @see clixon_inet2sin */
+static int
+inet2sin(const char       *addrtype,
+		const char       *addrstr,
+		uint16_t          port,
+		struct sockaddr  *sa,
+		size_t           *sa_len)
+{
+    struct sockaddr_in6 *sin6;
+    struct sockaddr_in  *sin;
+
+    if (strcmp(addrtype, "inet:ipv6-address") == 0) {
+	sin6 = (struct sockaddr_in6 *)sa;
+        *sa_len          = sizeof(struct sockaddr_in6);
+        sin6->sin6_port   = htons(port);
+        sin6->sin6_family = AF_INET6;
+        inet_pton(AF_INET6, addrstr, &sin6->sin6_addr);
+    }
+    else if (strcmp(addrtype, "inet:ipv4-address") == 0) {
+	sin = (struct sockaddr_in *)sa;
+        *sa_len             = sizeof(struct sockaddr_in);
+        sin->sin_family      = AF_INET;
+        sin->sin_port        = htons(port);
+        sin->sin_addr.s_addr = inet_addr(addrstr);
+    }
+    else{
+	fprintf(stderr, "Unexpected addrtype: %s\n", addrtype);
+	return -1;
+    }
+    return 0;
+}
+
+
 static int
 ssh_server_exec(int   s,
 	  char *sshdbin,
@@ -220,10 +253,8 @@ main(int    argc,
     int                 c;
     char               *family = "ipv4";
     char               *addr = NULL;
-    struct sockaddr    *sa;
-    struct sockaddr_in6 sin6   = { 0 };
-    struct sockaddr_in  sin    = { 0 };
-    size_t              sin_len;
+    struct sockaddr     sa = {0, };
+    size_t              sa_len;
     int                 dbg = 0;
     uint16_t            port = NETCONF_CH_SSH;
     int                 s = -1;
@@ -273,6 +304,10 @@ main(int    argc,
 	usage(argv[0]);
 	goto done;
     }
+#if 1
+    if (inet2sin(family, addr, port, &sa, &sa_len) < 0)
+	goto done;
+#else
     if (strcmp(family, "ipv6") == 0){
         sin_len          = sizeof(struct sockaddr_in6);
         sin6.sin6_port   = htons(port);
@@ -291,7 +326,8 @@ main(int    argc,
 	fprintf(stderr, "-f <%s> is invalid family\n", family);
 	goto done;
     }
-    if (callhome_connect(sa, sin_len, &s) < 0)
+#endif
+    if (callhome_connect(&sa, sa_len, &s) < 0)
 	goto done;
     /* For some reason this sshd returns -1 which is unclear why */
     if (ssh_server_exec(s, sshdbin, sshdconfigfile, clixonconfigfile, dbg) < 0)

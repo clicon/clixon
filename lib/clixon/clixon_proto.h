@@ -97,4 +97,6 @@ int send_msg_reply(int s, char *data, uint32_t datalen);
 
 int detect_endtag(char *tag, char  ch, int  *state);
 
+int clixon_inet2sin(const char *addrtype, const char *addrstr, uint16_t port, struct sockaddr *sa, size_t *sa_len);
+
 #endif  /* _CLIXON_PROTO_H_ */

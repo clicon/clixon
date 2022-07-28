@@ -97,6 +97,7 @@ APPSRC   += clixon_netconf_ssh_callhome.c
 APPSRC   += clixon_netconf_ssh_callhome_client.c
 ifdef with_restconf
 APPSRC   += clixon_util_stream.c # Needs curl
+APPSRC   += clixon_restconf_callhome_client.c
 endif
 ifdef with_http2
 APPSRC   += clixon_util_ssl.c # requires http/2
@@ -156,12 +157,12 @@ ifdef with_restconf
 clixon_util_stream: clixon_util_stream.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -lcurl -o $@
 
-clixon_util_ssl: clixon_util_ssl.c $(LIBDEPS)
-	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
-
-clixon_util_grpc: clixon_util_grpc.c $(LIBDEPS)
+clixon_restconf_callhome_client: clixon_restconf_callhome_client.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 endif
+
+#clixon_util_grpc: clixon_util_grpc.c $(LIBDEPS)
+#	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 
 distclean: clean
 	rm -f Makefile *~ .depend

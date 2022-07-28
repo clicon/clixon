@@ -820,6 +820,7 @@ restconf_config_init(clicon_handle h,
     goto done;
 }
 
+
 /*! Create and bind restconf socket
  * 
  * @param[in]  netns0    Network namespace, special value "default" is same as NULL
@@ -840,10 +841,8 @@ restconf_socket_init(const char   *netns0,
 		     int          *ss)
 {
     int                 retval = -1;
-    struct sockaddr   * sa;
-    struct sockaddr_in6 sin6   = { 0 };
-    struct sockaddr_in  sin    = { 0 };
-    size_t              sin_len;
+    struct sockaddr     sa = {0,};
+    size_t              sa_len;
     const char         *netns;
 
     clicon_debug(1, "%s %s %s %s %hu", __FUNCTION__, netns0, addrtype, addrstr, port);
@@ -852,27 +851,9 @@ restconf_socket_init(const char   *netns0,
 	netns = NULL;
     else
 	netns = netns0;
-    if (strcmp(addrtype, "inet:ipv6-address") == 0) {
-        sin_len          = sizeof(struct sockaddr_in6);
-        sin6.sin6_port   = htons(port);
-        sin6.sin6_family = AF_INET6;
-
-        inet_pton(AF_INET6, addrstr, &sin6.sin6_addr);
-        sa = (struct sockaddr *)&sin6;
-    }
-    else if (strcmp(addrtype, "inet:ipv4-address") == 0) {
-        sin_len             = sizeof(struct sockaddr_in);
-        sin.sin_family      = AF_INET;
-        sin.sin_port        = htons(port);
-        sin.sin_addr.s_addr = inet_addr(addrstr);
-
-        sa = (struct sockaddr *)&sin;
-    }
-    else{
-	clicon_err(OE_XML, EINVAL, "Unexpected addrtype: %s", addrtype);
-	return -1;
-    }
-    if (clixon_netns_socket(netns, sa, sin_len, backlog, flags, addrstr, ss) < 0)
+    if (clixon_inet2sin(addrtype, addrstr, port, &sa, &sa_len) < 0)
+	goto done;
+    if (clixon_netns_socket(netns, &sa, sa_len, backlog, flags, addrstr, ss) < 0)
 	goto done;
     clicon_debug(1, "%s ss=%d", __FUNCTION__, *ss);
     retval = 0;
@@ -888,8 +869,9 @@ restconf_socket_init(const char   *netns0,
  * @param[out] namespace 
  * @param[out] address   Address as string, eg "0.0.0.0", "::"
  * @param[out] addrtype  One of inet:ipv4-address or inet:ipv6-address
- * @param[out] port
- * @param[out] ssl
+ * @param[out] port      TCP Port
+ * @param[out] ssl       SSL enabled?
+ * @param[out] callhome  Callhome enabled?
  */
 int
 restconf_socket_extract(clicon_handle h,
@@ -899,7 +881,8 @@ restconf_socket_extract(clicon_handle h,
 			char        **address,
 			char        **addrtype,
 			uint16_t     *port,
-			uint16_t     *ssl)
+			uint16_t     *ssl,
+			int          *callhome)
 {
     int        retval = -1;
     cxobj     *x;
@@ -979,6 +962,10 @@ restconf_socket_extract(clicon_handle h,
 	    goto done;
 	}
     }
+    if ((x = xpath_first(xs, nsc, "call-home")) != NULL)
+	*callhome = 1;
+    else
+	*callhome = 0;
     retval = 0;
  done:
     if (cv)

@@ -97,7 +97,7 @@ int   restconf_drop_privileges(clicon_handle h);
 int   restconf_authentication_cb(clicon_handle h, void *req, int pretty, restconf_media media_out);
 int   restconf_config_init(clicon_handle h, cxobj *xrestconf);
 int   restconf_socket_init(const char *netns0, const char *addrstr, const char *addrtype, uint16_t port, int backlog, int flags, int *ss);
-int   restconf_socket_extract(clicon_handle h, cxobj *xs, cvec *nsc, char **namespace, char **address, char **addrtype, uint16_t *port, uint16_t *ssl);
+int   restconf_socket_extract(clicon_handle h, cxobj *xs, cvec *nsc, char **namespace, char **address, char **addrtype, uint16_t *port, uint16_t *ssl, int *callhome);
 
 #endif /* _RESTCONF_LIB_H_ */
 

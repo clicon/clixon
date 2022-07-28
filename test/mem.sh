@@ -61,6 +61,12 @@ function memonce(){
 
     memerr=0
     for test in $pattern; do
+	# Can happen if no pattern, eg pattern=foo but "foo" does not exist
+	if [ ! -f $test ]; then
+	    echo -e "\e[31mNo such file: $test"
+	    echo -ne "\e[0m"
+	    exit -1
+	fi
 	if [ $testnr != 0 ]; then echo; fi
 	perfnr=1000 # Limit performance tests
 	testfile=$test

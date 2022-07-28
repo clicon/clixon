@@ -39,6 +39,10 @@
 ## 5.9.0
 Expected: September 2022
 
+### New features
+
+* RESTCONF call home according to RFC 8071
+
 ## 5.8.0
 28 July 2022
 

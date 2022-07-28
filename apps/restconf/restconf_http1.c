@@ -455,6 +455,8 @@ restconf_http1_path_root(clicon_handle  h,
     retval = 0;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    if (subject)
+	free(subject);
     if (xerr)
 	xml_free(xerr);
     if (cvv)
