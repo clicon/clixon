@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [5.9.0](#590) Expected: September 2022
 * [5.8.0](#580) 28 July 2022
 * [5.7.0](#570) 17 May 2022
 * [5.6.0](#560) 8 March 2022
@@ -35,8 +36,13 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
+## 5.9.0
+Expected: September 2022
+
 ## 5.8.0
 28 July 2022
+
+New features in Clixon 5.8.0 include a new SNMP frontend, YANG action and parseable TEXT syntax.
 
 ### New features
 

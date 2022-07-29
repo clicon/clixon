@@ -275,6 +275,7 @@ gdb clixon_cli
 ## New release
 What to think about when doing a new release.
 * Ensure all tests run OK
+* review CHANGELOG, write one-liner
 * New yang/clicon/clixon-config@XXX.yang revision?
 * In configure.ac, for minor releases change CLIXON_VERSION in configure.ac to eg: (minor should have been bumped):
 ```
