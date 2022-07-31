@@ -841,7 +841,8 @@ restconf_socket_init(const char   *netns0,
 		     int          *ss)
 {
     int                 retval = -1;
-    struct sockaddr     sa = {0,};
+    struct sockaddr_in6 sin6 = {0,}; // because its larger than sin and sa
+    struct sockaddr    *sa = (struct sockaddr *)&sin6;
     size_t              sa_len;
     const char         *netns;
 
@@ -851,9 +852,9 @@ restconf_socket_init(const char   *netns0,
 	netns = NULL;
     else
 	netns = netns0;
-    if (clixon_inet2sin(addrtype, addrstr, port, &sa, &sa_len) < 0)
+    if (clixon_inet2sin(addrtype, addrstr, port, sa, &sa_len) < 0)
 	goto done;
-    if (clixon_netns_socket(netns, &sa, sa_len, backlog, flags, addrstr, ss) < 0)
+    if (clixon_netns_socket(netns, sa, sa_len, backlog, flags, addrstr, ss) < 0)
 	goto done;
     clicon_debug(1, "%s ss=%d", __FUNCTION__, *ss);
     retval = 0;

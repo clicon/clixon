@@ -8,6 +8,11 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
+# Only works with native
+if [ "${WITH_RESTCONF}" != "native" ]; then
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
+fi
+
 : ${clixon_restconf_callhome_client:=clixon_restconf_callhome_client}
 
 cfg=$dir/conf_yang.xml

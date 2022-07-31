@@ -135,7 +135,7 @@ RUN apk add --update sudo curl procps grep make bash expect
 RUN adduser -D -H clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
-COPY --from=0 /usr/local/share/yang/* /usr/local/share/yang/standard/
+COPY --from=0 /usr/local/share/yang/ /usr/local/share/yang/
 COPY --from=0 /usr/local/share/mib-yangs/* /usr/local/share/mib-yangs/
 
 # Log to stderr.

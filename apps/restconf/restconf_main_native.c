@@ -1060,7 +1060,8 @@ restconf_callhome_timer(int   fd,
     struct timeval   t;
     struct timeval   t1 = {1, 0}; // XXX once every second
     restconf_socket *rs;
-    struct sockaddr  sa = {0,};
+    struct sockaddr_in6 sin6 = {0,}; // because its larger than sin and sa
+    struct sockaddr *sa = (struct sockaddr *)&sin6;
     size_t           sa_len;
     int              s;
 
@@ -1071,14 +1072,14 @@ restconf_callhome_timer(int   fd,
 	goto done;
     }
     h = rs->rs_h;
-    if (clixon_inet2sin(rs->rs_addrtype, rs->rs_addrstr, rs->rs_port, &sa, &sa_len) < 0)
+    if (clixon_inet2sin(rs->rs_addrtype, rs->rs_addrstr, rs->rs_port, sa, &sa_len) < 0)
 	goto done;
-    if ((s = socket(sa.sa_family, SOCK_STREAM, 0)) < 0) {
+    if ((s = socket(sa->sa_family, SOCK_STREAM, 0)) < 0) {
 	clicon_err(OE_UNIX, errno, "socket");
 	goto done;
     }
     clicon_debug(1, "%s connect", __FUNCTION__);
-    if (connect(s, &sa, sa_len) < 0){
+    if (connect(s, sa, sa_len) < 0){
 	close(s);
 	/* Fail: Initiate new timer */
 	timeradd(&now, &t1, &t);

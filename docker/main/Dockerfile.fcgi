@@ -158,7 +158,7 @@ RUN adduser nginx clicon
 RUN adduser www-data clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
-COPY --from=0 /usr/local/share/yang/* /usr/local/share/yang/standard/
+COPY --from=0 /usr/local/share/yang/ /usr/local/share/yang/
 COPY --from=0 /usr/local/share/mib-yangs/* /usr/local/share/mib-yangs/
 COPY --from=0 /clixon/build/mibs/* /usr/share/snmp/mibs/
 

@@ -108,24 +108,24 @@ callhome_connect(struct sockaddr *sa,
 /* @see clixon_inet2sin */
 static int
 inet2sin(const char       *addrtype,
-		const char       *addrstr,
-		uint16_t          port,
-		struct sockaddr  *sa,
-		size_t           *sa_len)
+	 const char       *addrstr,
+	 uint16_t          port,
+	 struct sockaddr  *sa,
+	 size_t           *sa_len)
 {
     struct sockaddr_in6 *sin6;
     struct sockaddr_in  *sin;
 
     if (strcmp(addrtype, "inet:ipv6-address") == 0) {
 	sin6 = (struct sockaddr_in6 *)sa;
-        *sa_len          = sizeof(struct sockaddr_in6);
+        *sa_len           = sizeof(struct sockaddr_in6);
         sin6->sin6_port   = htons(port);
         sin6->sin6_family = AF_INET6;
         inet_pton(AF_INET6, addrstr, &sin6->sin6_addr);
     }
     else if (strcmp(addrtype, "inet:ipv4-address") == 0) {
 	sin = (struct sockaddr_in *)sa;
-        *sa_len             = sizeof(struct sockaddr_in);
+        *sa_len              = sizeof(struct sockaddr_in);
         sin->sin_family      = AF_INET;
         sin->sin_port        = htons(port);
         sin->sin_addr.s_addr = inet_addr(addrstr);
@@ -234,7 +234,7 @@ usage(char *argv0)
 	    "where options are\n"
             "\t-h           \tHelp\n"
     	    "\t-D <level>   \tDebug\n"
-	    "\t-f ipv4|ipv6 \tSocket address family(ipv4 default)\n"
+	    "\t-f ipv4|ipv6 \tSocket address family(inet:ipv4-address default)\n"
 	    "\t-a <addrstr> \tIP address (eg 1.2.3.4) - mandatory\n"
 	    "\t-p <port>    \tPort (default 4334)\n"
 	    "\t-c <file>    \tClixon config file - (default /usr/local/etc/clixon.xml)\n"
@@ -251,9 +251,10 @@ main(int    argc,
 {
     int                 retval = -1;
     int                 c;
-    char               *family = "ipv4";
+    char               *family = "inet:ipv4-address";
     char               *addr = NULL;
-    struct sockaddr     sa = {0, };
+    struct sockaddr_in6 sin6 = {0, };
+    struct sockaddr    *sa = (struct sockaddr *)&sin6;
     size_t              sa_len;
     int                 dbg = 0;
     uint16_t            port = NETCONF_CH_SSH;
@@ -304,30 +305,9 @@ main(int    argc,
 	usage(argv[0]);
 	goto done;
     }
-#if 1
-    if (inet2sin(family, addr, port, &sa, &sa_len) < 0)
+    if (inet2sin(family, addr, port, sa, &sa_len) < 0)
 	goto done;
-#else
-    if (strcmp(family, "ipv6") == 0){
-        sin_len          = sizeof(struct sockaddr_in6);
-        sin6.sin6_port   = htons(port);
-        sin6.sin6_family = AF_INET6;
-        inet_pton(AF_INET6, addr, &sin6.sin6_addr);
-        sa = (struct sockaddr *)&sin6;	
-    }
-    else if (strcmp(family, "ipv4") == 0){
-        sin_len             = sizeof(struct sockaddr_in);
-        sin.sin_family      = AF_INET;
-        sin.sin_port        = htons(port);
-        sin.sin_addr.s_addr = inet_addr(addr);
-        sa = (struct sockaddr *)&sin;
-    }
-    else{
-	fprintf(stderr, "-f <%s> is invalid family\n", family);
-	goto done;
-    }
-#endif
-    if (callhome_connect(&sa, sa_len, &s) < 0)
+    if (callhome_connect(sa, sa_len, &s) < 0)
 	goto done;
     /* For some reason this sshd returns -1 which is unclear why */
     if (ssh_server_exec(s, sshdbin, sshdconfigfile, clixonconfigfile, dbg) < 0)

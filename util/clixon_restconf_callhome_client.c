@@ -422,10 +422,11 @@ main(int    argc,
     char               *cert_path = NULL;
     char               *key_path = NULL;
     FILE               *fp = stdin; /* base file, stdin, can be overridden with -f */
+    struct sockaddr_in6 sin6 = {0,}; // because its larger than sin and sa
+    struct sockaddr    *sa = (struct sockaddr *)&sin6;
     size_t              sa_len;
     char               *addr = "127.0.0.1";
     char               *family = "inet:ipv4-address";
-    struct sockaddr     sa = {0,};
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
@@ -499,10 +500,10 @@ main(int    argc,
 	usage(argv[0]);
 	goto done;
     }
-    if (clixon_inet2sin(family, addr, port, &sa, &sa_len) < 0)
+    if (clixon_inet2sin(family, addr, port, sa, &sa_len) < 0)
 	goto done;
    /* Bind port */
-    if (callhome_bind(&sa, sa_len, 1, &ss) < 0) 
+    if (callhome_bind(sa, sa_len, 1, &ss) < 0) 
 	goto done;
     clicon_debug(1, "bind");
     if ((ta = malloc(sizeof(*ta))) == NULL){

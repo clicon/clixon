@@ -819,9 +819,10 @@ detect_endtag(char *tag,
  * @param[out] sa        sockaddr, should be allocated
  * @param[out] salen     length of sockaddr data
  * @code
- *    struct sockaddr     sa = {0,};
+ *    struct sockaddr_in6 sin6 = {0,}; // because its larger than sin and sa
+ *    struct sockaddr    *sa = &sin6;
  *    size_t              sa_len;
- *    if (clixon_inet2sin(inet:ipv4-address, "0.0.0.0", 80, &sa, &sa_len) < 0)
+ *    if (clixon_inet2sin(inet:ipv4-address, "0.0.0.0", 80, sa, &sa_len) < 0)
  *       err;
  * @endcode
  * Probably misplaced, need a clixon_network file?
