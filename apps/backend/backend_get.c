@@ -847,15 +847,20 @@ get_common(clicon_handle        h,
     if ((xfind = xml_find(xe, "with-defaults")) != NULL) {
 	 if ((with_defaults = xml_find_value(xfind, "body")) != NULL) {
 	     if (strcmp(with_defaults, "explicit") == 0) {
+		/* Clear marked nodes */
+		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+		    goto done;
 		/* Traverse XML and mark state nodes */
 		if (xml_non_config_data(xret, NULL) < 0)
 		    goto done;
 		/* Remove default configuration nodes from XML */
 		if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_MARK|XML_FLAG_DEFAULT) < 0)
 		  goto done;
-		/* Restore marked nodes */
-		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-		    goto done;
+	     }
+	     else if (strcmp(with_defaults, "trim") == 0) {
+		/* Remove default nodes from XML */
+		if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_DEFAULT) < 0)
+		  goto done;
 	     }
 	     else if (strcmp(with_defaults, "report-all") == 0) {
 	       /* Accept mode, do nothing */

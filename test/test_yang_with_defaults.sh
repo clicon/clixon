@@ -191,9 +191,12 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><interfaces $EXAMPLENS/></filter>\
 <with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">trim</with-defaults></get></rpc>" \
 "" \
-"<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-not-supported</error-tag>\
-<error-severity>error</error-severity>\
-<error-message>with-defaults retrieval mode \"trim\" is not supported</error-message></rpc-error></rpc-reply>"
+"<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
+<interface><name>eth0</name><mtu>8192</mtu></interface>\
+<interface><name>eth1</name></interface>\
+<interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface>\
+<interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface>\
+</interfaces></data></rpc-reply>"
 
 new "rfc6243 3.3.  'explicit' Retrieval Mode"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
