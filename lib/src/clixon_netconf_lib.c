@@ -1725,7 +1725,7 @@ netconf_hello_server(clicon_handle h,
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:xpath:1.0</capability>");
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:notification:1.0</capability>");
     /* rfc6243 with-defaults capability modes */
-    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit</capability>");
+    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=report-all&also-supported=explicit,trim</capability>");
     cprintf(cb, "</capabilities>");
     if (session_id) 
 	cprintf(cb, "<session-id>%lu</session-id>", (long unsigned int)session_id);

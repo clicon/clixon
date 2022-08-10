@@ -172,7 +172,7 @@ wait_restconf
 
 new "rfc4243 4.3.  Capability Identifier"
 expecteof "$clixon_netconf -ef $cfg" 0 "$DEFAULTHELLO" \
-"<capability>urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit</capability>"
+"<capability>urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=report-all&also-supported=explicit,trim</capability>"
 
 new "rfc6243 3.1.  'report-all' Retrieval Mode"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
@@ -376,6 +376,20 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 "Content-Type: application/yang-data+xml" \
 "Cache-Control: no-cache" \
 '<interface xmlns="http://example.com/ns/interfaces"><name>eth1</name><status>ok</status></interface>'
+
+new "rfc8040 B.3.9. RESTONF with-defaults parameter = trim"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=trim)" \
+0 \
+"HTTP/$HVER 200" \
+"Content-Type: application/yang-data+json" \
+"Cache-Control: no-cache" \
+'{"example:interface":\[{"name":"eth1"}\]}'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=trim)" \
+0 \
+"HTTP/$HVER 200" \
+"Content-Type: application/yang-data+xml" \
+"Cache-Control: no-cache" \
+'<interface xmlns="http://example.com/ns/interfaces"><name>eth1</name></interface>'
 
 
 if [ $RC -ne 0 ]; then
