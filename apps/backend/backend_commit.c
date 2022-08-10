@@ -94,13 +94,10 @@ generic_validate(clicon_handle       h,
 		 cxobj             **xret)
 {
     int        retval = -1;
-    cxobj     *x1;
     cxobj     *x2;
-    yang_stmt *ys;
     int        i;
     int        ret;
     cbuf      *cb = NULL;
-    yang_stmt *yp;
 
     /* All entries */
     if ((ret = xml_yang_validate_all_top(h, td->td_target, xret)) < 0) 
@@ -109,34 +106,12 @@ generic_validate(clicon_handle       h,
 	goto fail;
     /* changed entries */
     for (i=0; i<td->td_clen; i++){
-	x1 = td->td_scvec[i]; /* source changed */
 	x2 = td->td_tcvec[i]; /* target changed */
 	/* Should this be recursive? */
 	if ((ret = xml_yang_validate_add(h, x2, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
-    }
-    /* deleted entries */
-    for (i=0; i<td->td_dlen; i++){
-	x1 = td->td_dvec[i];
-	ys = xml_spec(x1);
-	if (ys && yang_mandatory(ys) && yang_config(ys)==1){
-	    yp = yang_parent_get(ys);
-	    if (yp == NULL ||
-		(yang_keyword_get(yp) != Y_MODULE && yang_keyword_get(yp) != Y_SUBMODULE)){
-		if ((cb = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cb, "Mandatory variable of %s in module %s",
-			xml_parent(x1)?xml_name(xml_parent(x1)):"",
-			yang_argument_get(ys_module(ys)));
-		if (xret && netconf_missing_element_xml(xret, "protocol", xml_name(x1), cbuf_get(cb)) < 0)
-		    goto done;
-		goto fail;
-	    }
-	}
     }
     /* added entries */
     for (i=0; i<td->td_alen; i++){

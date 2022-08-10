@@ -143,6 +143,19 @@ module system{
 	      type string;
            }
         }
+        case c {
+	   leaf c1 {
+	      mandatory true;
+	      type string;
+           }
+	   choice c2 {
+	      case cc1 {
+	        leaf ccc1 {
+	          type string;
+                }
+              }
+           }
+        }
      }
   }
 }
@@ -405,8 +418,22 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "netconf set mandatory leaf"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><manleaf xmlns=\"urn:example:config\"><a2>yyy</a2></manleaf></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
+new "netconf commit ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf set other case"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><manleaf xmlns=\"urn:example:config\"><b1>zzz</b1></manleaf></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+# This tests https://github.com/clicon/clixon/issues/349 part 1
 new "netconf validate ok"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+# This tests https://github.com/clicon/clixon/issues/349 part 2
+new "set case with choice"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><manleaf xmlns=\"urn:example:config\"><ccc1>kkk</ccc1></manleaf></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "validate expect error"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>c1</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable c1 in module system</error-message></rpc-error></rpc-reply>"
 
 new "netconf discard-changes"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"

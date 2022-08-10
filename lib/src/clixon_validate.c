@@ -50,7 +50,6 @@
 #include <string.h>
 #include <syslog.h>
 #include <fcntl.h>
-#include <assert.h>
 #include <arpa/inet.h>
 #include <sys/param.h>
 #include <netinet/in.h>
@@ -530,7 +529,7 @@ check_choice(cxobj     *xt,
 	yp = yang_parent_get(y);
 	switch (yang_keyword_get(yp)){
 	case Y_CASE:
-	    if (yang_parent_get(yp) != ytchoice) /* Not same choice (not releveant)  */
+	    if (yang_parent_get(yp) != ytchoice) /* Not same choice (not relevant)  */
 		continue;
 	    if (yp == ytcase) /* same choice but different case */
 		continue;
@@ -653,6 +652,125 @@ choice_mandatory_check(yang_stmt *ycase,
     return retval;
 }
 
+
+/*! Find yang node which is ancestor of ys (or ys itself) and child of ytop
+ * Assume tree: ytop ... ys
+ * Return: ytop --- ymp --- ym ... ys
+ * @retval: 0 No match
+ * @retval: 1 Match, ym, ymp set
+ * Maybe move to clixon_yang.c ?
+ */
+static int
+yang_ancestor_child(yang_stmt  *ys,
+		    yang_stmt  *ytop,
+		    yang_stmt **ym,
+		    yang_stmt **ymp)
+{
+    yang_stmt *y;
+    yang_stmt *yprev = NULL;
+    yang_stmt *yp;
+    
+    y = ys;
+    while (y != NULL){
+	yp = yang_parent_get(y);
+	if (yp != NULL && yp == ytop){
+	    *ym = yprev;
+	    *ymp = y;
+	    return 1;
+	}
+	yprev = y;
+	y = yp;
+    }
+    *ym = NULL;
+    *ymp = NULL;
+    return 0;
+}
+
+/*! Check mandatory nodes in current case 
+ *
+ * RFC7950 7.9.4 states:
+ *   if this ancestor is a case node, the constraint is
+ *   enforced if any other node from the case exists.
+ * Algorithm uses a yang mark flag to detect if mandatory xml nodes exist:
+ * A priori: 
+ * - xt is any XML node
+ * - xt has a choice child with YANG node yc (The xt child is not needed)
+ * Algoritm:
+ * - For each x child of xt with yang spec y:
+ *   1. if y has an ancestor ym with a CASE parent and grand-parent yc, eg:
+ *        yc(CHOICE) --- ycnew(CASE) --- ym ... y
+ *       then mark ym
+ *   2. If any child of ycnew has any unmarked mandatory child, then failure
+ * @note Only works for first case in hierarchy, does not work for mandatory
+ *       nodes in a deeper choicce hierarchy (choice in choice).
+ * @param[in]  xt    XML node to be validated
+ * @param[in]  yc    Yang choice
+ * @param[out] xret  Error XML tree. Free with xml_free after use
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (xret set)
+ * @retval    -1     Error
+ */
+static int
+check_mandatory_case(cxobj     *xt,
+		     yang_stmt *yc,
+		     cxobj    **xret)
+{
+    int retval = 0;
+    cxobj     *x;
+    yang_stmt *y;
+    yang_stmt *ym;
+    yang_stmt *ycnew;
+    yang_stmt *ycase;
+    int        ret;
+    
+    ycase = NULL;
+    x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+	if ((y = xml_spec(x)) != NULL &&
+	    yang_ancestor_child(y, yc, &ym, &ycnew) != 0 &&
+	    yang_keyword_get(ycnew) == Y_CASE){
+	    if (ym && yang_mandatory(ym)){
+		if (yang_flag_get(ym, YANG_FLAG_MARK) != 0){
+		    clicon_debug(1, "%s Already marked, shouldnt happen", __FUNCTION__);
+		}
+		yang_flag_set(ym, YANG_FLAG_MARK);
+	    }
+	    if (ycase != NULL){
+		if (ycnew != ycase){ /* End of case, new case */
+		    /* Check and clear marked mandatory */
+		    if ((ret = choice_mandatory_check(ycase, xret)) < 0)
+			goto done;
+		    if (ret == 0)
+			goto fail;
+		    ycase = ycnew;
+		}
+	    }
+	    else /* New case */
+		ycase = ycnew;
+	}
+	else if (ycase != NULL){ /* End of case */
+	    /* Check and clear marked mandatory */
+	    if ((ret = choice_mandatory_check(ycase, xret)) < 0)
+		goto done;
+	    if (ret == 0)
+		goto fail;
+	    ycase = NULL;
+	}
+    }
+    if (ycase){
+	if ((ret = choice_mandatory_check(ycase, xret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Check if an xml node lacks mandatory children
  * @param[in]  xt    XML node to be validated
  * @param[in]  yt    xt:s yang statement
@@ -672,7 +790,6 @@ check_mandatory(cxobj     *xt,
     yang_stmt *y;
     yang_stmt *yc;
     yang_stmt *yp;
-    yang_stmt *ycase;
     cbuf      *cb = NULL;
     int        ret;
     
@@ -707,50 +824,11 @@ check_mandatory(cxobj     *xt,
 		    goto fail;
 		}
 	    }
-	    /* RFC7950 7.9.4:
-	     * if this ancestor is a case node, the constraint is
-	     * enforced if any other node from the case exists.
-	     * Algorithm uses a yang mark flag to detect if mandatory xml nodes exist
-	     */
-	    ycase = NULL;
-	    x = NULL;
-	    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-		if ((y = xml_spec(x)) != NULL &&
-		    (yp = yang_parent_get(y)) != NULL){
-		    if (yang_keyword_get(yp) == Y_CASE){
-			if (yang_mandatory(y)){
-			    assert(yang_flag_get(y, YANG_FLAG_MARK) == 0);
-			    yang_flag_set(y, YANG_FLAG_MARK);
-			}
-			if (ycase != NULL){
-			    if (yp != ycase){ /* End of case, new case */
-				/* Check and clear marked mandatory */
-				if ((ret = choice_mandatory_check(ycase, xret)) < 0)
-				    goto done;
-				if (ret == 0)
-				    goto fail;
-				ycase = yp;
-			    }
-			}
-			else /* New case */
-			    ycase = yp;
-		    }			
-		    else if (ycase != NULL){ /* End of case */
-			/* Check and clear marked mandatory */
-			if ((ret = choice_mandatory_check(ycase, xret)) < 0)
-			    goto done;
-			if (ret == 0)
-			    goto fail;
-			ycase = NULL;
-		    }
-		}
-	    }
-	    if (ycase){
-		if ((ret = choice_mandatory_check(ycase, xret)) < 0)
-		    goto done;
-		if (ret == 0)
-		    goto fail;
-	    }
+	    /*! Check mandatory nodes in case according to RFC7950 7.9.4 */
+	    if ((ret = check_mandatory_case(xt, yc, xret)) < 0)
+		goto done;
+	    if (ret == 0)
+		goto fail;
 	}
 	if (!yang_mandatory(yc)) /* Rest of yangs are immediate children */
 	    continue;
@@ -1372,10 +1450,6 @@ xml_yang_validate_add(clicon_handle h,
 	    goto done;
 	if (ret == 0)
 	    goto fail;
-	if ((ret = check_mandatory(xt, yt, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
 	/* Check leaf values */
 	switch (yang_keyword_get(yt)){
 	case Y_LEAF:
@@ -1594,6 +1668,10 @@ xml_yang_validate_all(clicon_handle h,
 	goto fail;
     }
     if (yang_config(yt) != 0){
+	if ((ret = check_mandatory(xt, yt, xret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
 	/* Node-specific validation */
 	switch (yang_keyword_get(yt)){
 	case Y_ANYXML:

@@ -33,23 +33,23 @@ EOF
 
 cat <<EOF > $fyang
 module system{
-  yang-version 1.1;
-  namespace "urn:example:config";
-  prefix ex;
+    yang-version 1.1;
+    namespace "urn:example:config";
+    prefix ex;
     container c {
 	choice top{
 	    case topA {
 		choice A{
-		mandatory true;
+		    mandatory true;
 		    case A1{
- 		      leaf A1x{
-			type string;
-		      }
+			leaf A1x{
+			    type string;
+			}
                     }
 		    case A2{
-  		      leaf A2x{
-			type string;
-		      }
+			leaf A2x{
+			    type string;
+			}
                     }
 		}
 		leaf Ay{

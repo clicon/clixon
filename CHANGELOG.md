@@ -43,6 +43,10 @@ Expected: September 2022
 
 * RESTCONF call home according to RFC 8071
 
+### Corrected Bugs
+
+* Fixed: [Validation of mandatory in choice/case does not work in some cases](https://github.com/clicon/clixon/issues/349)
+
 ## 5.8.0
 28 July 2022
 
