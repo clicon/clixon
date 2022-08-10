@@ -36,6 +36,17 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
+## with-defaults branch
+
+### New features
+
+* With-defaults RFC6243
+  * see [Netconf With-defaults Capability](https://github.com/clicon/clixon/issues/262)
+
+### Corrected Bugs
+
+* Fixed: [with-defaults=trim does not work due to dodgy handling of state data marked as default](https://github.com/clicon/clixon/issues/348)
+
 ## 5.9.0
 Expected: September 2022
 

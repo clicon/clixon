@@ -31,6 +31,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_YANG_LIBRARY>false</CLICON_YANG_LIBRARY>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
@@ -128,7 +129,7 @@ if [ $BE -ne 0 ]; then     # Bring your own backend
     if [ $? -ne 0 ]; then
 	err
     fi
-    new "start backend -s $db -f $cfg"
+    new "start backend -s $db -f $cfg -- -sS $fstate"
     start_backend  -s $db -f $cfg -- -sS $fstate
 fi
 
@@ -168,7 +169,6 @@ fi
 
 new "wait restconf"
 wait_restconf
-
 
 new "rfc4243 4.3.  Capability Identifier"
 expecteof "$clixon_netconf -ef $cfg" 0 "$DEFAULTHELLO" \
