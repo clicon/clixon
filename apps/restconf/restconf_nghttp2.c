@@ -224,7 +224,10 @@ session_send_callback(nghttp2_session *session,
 #if 1
 		else if (errno == ECONNRESET) {/* Connection reset by peer */
 		    close(s);
-		    // XXX		    clixon_event_unreg_fd(s, restconf_connection);
+		    // XXXUnclear why this is commented, maybe should call
+		    // restconf_connection_close?
+		    //  clixon_event_unreg_fd(s, restconf_connection);
+
 		    goto ok; /* Close socket and ssl */
 		}
 #endif

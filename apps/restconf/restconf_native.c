@@ -135,7 +135,6 @@ restconf_stream_find(restconf_conn *rc,
     return NULL;
 }
 
-
 /*
  * @param[in]  sd       Restconf data stream
  */
@@ -338,10 +337,11 @@ restconf_connection_sanity(clicon_handle         h,
  * see also this function in restcont_api_openssl.c
  */
 static int
-native_buf_write(char   *buf,
-		 size_t  buflen,
-		 int     s,
-		 SSL    *ssl)
+native_buf_write(clicon_handle h,
+		 char         *buf,
+		 size_t        buflen,
+		 int           s,
+		 SSL          *ssl)
 {
     int     retval = -1;
     ssize_t len;
@@ -376,8 +376,8 @@ native_buf_write(char   *buf,
 			if (ssl){
 			    SSL_free(ssl);
 			}
-			close(s);
-			clixon_event_unreg_fd(s, restconf_connection);
+			if (restconf_connection_close(h, s) < 0)
+			    goto done;
 			goto ok; /* Close socket and ssl */
 		    }
 		    else if (er == EAGAIN){
@@ -408,8 +408,8 @@ native_buf_write(char   *buf,
 		    break;
 		case ECONNRESET: /* Connection reset by peer */
 		case EPIPE:   /* Broken pipe */
-		    close(s);
-		    clixon_event_unreg_fd(s, restconf_connection);
+		    if (restconf_connection_close(h, s) < 0)
+			goto done;
 		    goto ok; /* Close socket and ssl */
 		    break;
 		default:
@@ -461,7 +461,7 @@ native_send_badrequest(clicon_handle       h,
     cprintf(cb, "\r\n");
     if (body)
 	cprintf(cb, "%s\r\n", body);
-    if (native_buf_write(cbuf_get(cb), cbuf_len(cb), s, ssl) < 0)
+    if (native_buf_write(h, cbuf_get(cb), cbuf_len(cb), s, ssl) < 0)
 	goto done;
     retval = 0;
  done:
@@ -574,8 +574,8 @@ read_regular(restconf_conn *rc,
 	switch(errno){
 	case ECONNRESET:/* Connection reset by peer */
 	    clicon_debug(1, "%s %d Connection reset by peer", __FUNCTION__, rc->rc_s);
-	    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
-	    close(rc->rc_s);
+	    if (restconf_connection_close(rc->rc_h, rc->rc_s) < 0)
+		goto done;
 	    restconf_conn_free(rc);
 	    retval = 0; /* Close socket and ssl */
 	    goto done;
@@ -685,7 +685,7 @@ restconf_http1_process(restconf_conn        *rc,
 	if ((ret = http1_check_expect(h, rc, sd)) < 0)
 	    goto done;
 	if (ret == 1){
-	    if (native_buf_write(cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
+	    if (native_buf_write(h, cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
 				 rc->rc_s, rc->rc_ssl) < 0)
 		goto done;
 	    cvec_reset(sd->sd_outp_hdrs);
@@ -713,7 +713,7 @@ restconf_http1_process(restconf_conn        *rc,
     /* main restconf processing */
     if (restconf_http1_path_root(h, rc) < 0)
 	goto done;
-    if (native_buf_write(cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
+    if (native_buf_write(h, cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
 			 rc->rc_s, rc->rc_ssl) < 0)
 	goto done;
     cvec_reset(sd->sd_outp_hdrs); /* Can be done in native_send_reply */
@@ -723,11 +723,8 @@ restconf_http1_process(restconf_conn        *rc,
     if (rc->rc_exit){  /* Server-initiated exit */
 	SSL_free(rc->rc_ssl);
 	rc->rc_ssl = NULL;
-	if (close(rc->rc_s) < 0){
-	    clicon_err(OE_UNIX, errno, "close");
+	if (restconf_connection_close(h, rc->rc_s) < 0)
 	    goto done;
-	}
-	clixon_event_unreg_fd(rc->rc_s, restconf_connection);
 	restconf_conn_free(rc);
 	retval = 0;
 	goto done;
@@ -856,6 +853,22 @@ restconf_http2_process(restconf_conn *rc,
 }
 #endif /* HAVE_LIBNGHTTP2 */
 
+/*! Get restconf native handle
+ * @param[in]  h     Clicon handle
+ * @retval     rh    Restconf native handle
+ */
+restconf_native_handle *
+restconf_native_handle_get(clicon_handle h)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+    size_t          len;
+    void           *p;
+
+    if ((p = clicon_hash_value(cdat, "restconf-native-handle", &len)) != NULL)
+	return *(restconf_native_handle **)p;
+    return NULL;
+}
+
 /*! New data connection after accept, receive and reply on data socket
  *
  * @param[in]   s    Socket where message arrived. read from this.
@@ -945,3 +958,38 @@ restconf_connection(int   s,
     clicon_debug(1, "%s retval %d", __FUNCTION__, retval);
     return retval;
 } /* restconf_connection */
+
+int restconf_callhome_timer(int fd, void *arg); // XXX FIX HEADERS INSTEAD
+
+/*! Close Restconf native connection socket and unregister callback
+ * For callhome also start reconnect timer
+ */
+int
+restconf_connection_close(clicon_handle h,
+			  int           s)
+{
+    int                     retval = -1;
+    restconf_native_handle *rh = NULL;
+    restconf_socket        *rsock;
+
+    if (close(s) < 0){
+	clicon_err(OE_UNIX, errno, "close");
+	goto done;
+    }
+    clixon_event_unreg_fd(s, restconf_connection);
+
+    if (0 && (rh = restconf_native_handle_get(h)) != NULL){
+	while ((rsock = rh->rh_sockets) != NULL)
+	    if (rsock->rs_callhome && s == rsock->rs_ss){
+		/* Maybe we should have a special wrapper function that only sets timer here? */
+		if (restconf_callhome_timer(0, rsock) < 0)
+		    goto done;
+		break;
+	    }
+    }
+
+    retval = 0;
+ done:
+    return retval;
+}
+    

@@ -171,21 +171,6 @@
 
 static int             session_id_context = 1;
 
-/*! Get restconf native handle
- * @param[in]  h     Clicon handle
- * @retval     rh    Restconf native handle
- */
-static restconf_native_handle *
-restconf_native_handle_get(clicon_handle h)
-{
-    clicon_hash_t  *cdat = clicon_data(h);
-    size_t          len;
-    void           *p;
-
-    if ((p = clicon_hash_value(cdat, "restconf-native-handle", &len)) != NULL)
-	return *(restconf_native_handle **)p;
-    return NULL;
-}
 
 /*! Set restconf native handle
  * @param[in]  h     Clicon handle
@@ -489,11 +474,8 @@ Note that in this case SSL_ERROR_ZERO_RETURN does not necessarily indicate that 
 	SSL_free(rc->rc_ssl);
 	rc->rc_ssl = NULL;
     }
-    if (close(rc->rc_s) < 0){
-	clicon_err(OE_UNIX, errno, "close");
+    if (restconf_connection_close(rc->rc_h, rc->rc_s) < 0)
 	goto done;
-    }
-    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -643,9 +625,10 @@ ssl_alpn_check(clicon_handle        h,
 } /* ssl_alpn_check */
 
 
-/*! Accept new socket client (ssl not ip)
- * @param[in]  fd   Socket (unix or ip)
- * @param[in]  arg  typecast clicon_handle
+/*! Accept new socket client. Note SSL not ip, this applies also to callhome
+ * @param[in]  h     Clixon handle
+ * @param[in]  s     Socket (unix or ip)
+ * @param[in]  rsock Socket struct
  * @see openssl_init_socket where this callback is registered
  */
 static int
@@ -671,12 +654,10 @@ restconf_ssl_accept_client(clicon_handle    h,
     proto = HTTP_2;     /* If nghttp2 only let default be 2.0  */
 #endif
 #endif
-#if 1
     if ((rh = restconf_native_handle_get(h)) == NULL){
 	clicon_err(OE_XML, EFAULT, "No openssl handle");
 	goto done;
     }
-#endif
     /*
      * Register callbacks for actual data socket 
      */
@@ -737,11 +718,8 @@ restconf_ssl_accept_client(clicon_handle    h,
 #endif
 		    SSL_free(rc->rc_ssl);
 		    rc->rc_ssl = NULL;
-		    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
-		    if (close(rc->rc_s) < 0){
-			clicon_err(OE_UNIX, errno, "close");
+		    if (restconf_connection_close(h, rc->rc_s) < 0)
 			goto done;
-		    }
 		    restconf_conn_free(rc);
 		    goto ok;
 		    break;
@@ -961,8 +939,10 @@ restconf_native_terminate(clicon_handle h)
     clicon_debug(1, "%s", __FUNCTION__);
     if ((rh = restconf_native_handle_get(h)) != NULL){
 	while ((rsock = rh->rh_sockets) != NULL){
-	    clixon_event_unreg_fd(rsock->rs_ss, restconf_accept_client);
-	    close(rsock->rs_ss);
+	    if (rsock->rs_ss != -1){
+		clixon_event_unreg_fd(rsock->rs_ss, restconf_accept_client);
+		close(rsock->rs_ss);
+	    }
 	    DELQ(rsock, rh->rh_sockets, restconf_socket *);
 	    if (rsock->rs_addrstr)
 		free(rsock->rs_addrstr);
@@ -1049,9 +1029,12 @@ restconf_clixon_backend(clicon_handle h,
 }
 
 /*! Periodically try to connect to callhome client
+ *
+ * @param[in]  fd   No-op
+ * @param[in]  arg  restconf_socket
  */
 int
-restconf_callhome_timer(int   fd,
+restconf_callhome_timer(int   fdxxx,
 			void *arg)
 {
     int              retval = -1;
@@ -1059,7 +1042,7 @@ restconf_callhome_timer(int   fd,
     struct timeval   now;
     struct timeval   t;
     struct timeval   t1 = {1, 0}; // XXX once every second
-    restconf_socket *rs;
+    restconf_socket *rsock = NULL;
     struct sockaddr_in6 sin6 = {0,}; // because its larger than sin and sa
     struct sockaddr *sa = (struct sockaddr *)&sin6;
     size_t           sa_len;
@@ -1067,12 +1050,13 @@ restconf_callhome_timer(int   fd,
 
     clicon_debug(1, "%s", __FUNCTION__);
     gettimeofday(&now, NULL);
-    if ((rs = (restconf_socket *)arg) == NULL){
+    if ((rsock = (restconf_socket *)arg) == NULL){
 	clicon_err(OE_YANG, EINVAL, "rsock is NULL");
 	goto done;
     }
-    h = rs->rs_h;
-    if (clixon_inet2sin(rs->rs_addrtype, rs->rs_addrstr, rs->rs_port, sa, &sa_len) < 0)
+    h = rsock->rs_h;
+    /* Already computed in restconf_socket_init, could be saved in rsock? */
+    if (clixon_inet2sin(rsock->rs_addrtype, rsock->rs_addrstr, rsock->rs_port, sa, &sa_len) < 0)
 	goto done;
     if ((s = socket(sa->sa_family, SOCK_STREAM, 0)) < 0) {
 	clicon_err(OE_UNIX, errno, "socket");
@@ -1080,18 +1064,18 @@ restconf_callhome_timer(int   fd,
     }
     clicon_debug(1, "%s connect", __FUNCTION__);
     if (connect(s, sa, sa_len) < 0){
+	clicon_debug(1, "%s connect:%d %s", __FUNCTION__, errno, strerror(errno));
 	close(s);
 	/* Fail: Initiate new timer */
 	timeradd(&now, &t1, &t);
 	if (clixon_event_reg_timeout(t,
 				     restconf_callhome_timer, /* this function */
-				     rs,
+				     rsock,
 				     "restconf callhome timer") < 0)
 	    goto done;
     }
     else {
-	rs->rs_ss = s;
-	if (restconf_ssl_accept_client(h, rs->rs_ss, rs) < 0)
+	if (restconf_ssl_accept_client(h, s, rsock) < 0)
 	    goto done;
     }
     clicon_debug(1, "%s connect done", __FUNCTION__);
@@ -1139,6 +1123,7 @@ openssl_init_socket(clicon_handle h,
     memset(rsock, 0, sizeof *rsock);
     rsock->rs_h = h;
     rsock->rs_ssl = ssl; /* true/false */
+    rsock->rs_callhome = callhome;
     if (callhome){
 	if (!ssl){
 	    clicon_err(OE_SSL, EINVAL, "Restconf callhome requires SSL");
@@ -1162,9 +1147,6 @@ openssl_init_socket(clicon_handle h,
 	clicon_err(OE_XML, EFAULT, "No openssl handle");
 	goto done;
     }
-
-    rsock->rs_ss = ss;
-
     if ((rsock->rs_addrstr = strdup(address)) == NULL){
 	clicon_err(OE_UNIX, errno, "strdup");
 	goto done;
@@ -1177,13 +1159,15 @@ openssl_init_socket(clicon_handle h,
     INSQ(rsock, rh->rh_sockets);
 
     if (callhome){
-	if (restconf_callhome_timer(ss, rsock) < 0)
+	rsock->rs_ss = -1; /* Not applicable fro callhome */
+	if (restconf_callhome_timer(0, rsock) < 0)
 	    goto done;
     }
     else {
 	/* ss is a server socket that the clients connect to. The callback
 	   therefore accepts clients on ss */
-	if (clixon_event_reg_fd(ss, restconf_accept_client, rsock, "restconf socket") < 0) 
+	rsock->rs_ss = ss;
+	if (clixon_event_reg_fd(rsock->rs_ss, restconf_accept_client, rsock, "restconf socket") < 0) 
 	    goto done;
     }
     retval = 0;

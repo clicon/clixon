@@ -92,9 +92,9 @@ typedef struct restconf_conn {
     /* XXX rc_proto and rc_proto_d1/d2 may not both be necessary. 
      * remove rc_proto?
      */
-    restconf_http_proto rc_proto; /* HTTP protocol: http/1 or http/2 */
-    int                 rc_proto_d1; /* parsed version digit 1 */
-    int                 rc_proto_d2; /* parsed version digit 2 */
+    restconf_http_proto rc_proto;     /* HTTP protocol: http/1 or http/2 */
+    int                 rc_proto_d1;  /* parsed version digit 1 */
+    int                 rc_proto_d2;  /* parsed version digit 2 */
     int                 rc_s;         /* Connection socket */
     clicon_handle       rc_h;         /* Clixon handle */
     SSL                *rc_ssl;       /* Structure for SSL connection */
@@ -108,11 +108,18 @@ typedef struct restconf_conn {
 } restconf_conn;
 
 /* Restconf per socket handle
+ * Two types: listen and callhome.
+ * Listen: Uses socket rs_ss to listen for connections and accepts them, creates one
+ *         restconf_conn for each new accept.
+ * Callhome: Calls connect according to timer to setup single restconf_conn.
+ *           when this is closed, new connect is made, according to connection-type.
  */
 typedef struct {
     qelem_t       rs_qelem;     /* List header */
     clicon_handle rs_h;         /* Clixon handle */
-    int           rs_ss;        /* Server socket (ready for accept) */
+    int           rs_callhome;  /* 0: listen, 1: callhome */
+    int           rs_ss;        /* Listen: Server socket, ready for accept
+				 * Callhome: connect socket (same as restconf_conn->rc_s) */
     int           rs_ssl;       /* 0: Not SSL socket, 1:SSL socket */
     char         *rs_addrtype;  /* Address type according to ietf-inet-types:
                                    eg inet:ipv4-address or inet:ipv6-address */
@@ -142,7 +149,9 @@ int               ssl_x509_name_oneline(SSL *ssl, char **oneline);
 int               restconf_close_ssl_socket(restconf_conn *rc, int shutdown); /* XXX in restconf_main_native.c */
 int               restconf_connection_sanity(clicon_handle h, restconf_conn *rc, restconf_stream_data *sd);
 int               native_send_badrequest(clicon_handle h, int s, SSL *ssl, char *media, char *body);
+restconf_native_handle *restconf_native_handle_get(clicon_handle h);
 int               restconf_connection(int s, void *arg);
+int               restconf_connection_close(clicon_handle h, int s);
     
 #endif /* _RESTCONF_NATIVE_H_ */
 

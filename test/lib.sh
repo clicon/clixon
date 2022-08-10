@@ -190,9 +190,6 @@ BUSER=clicon
 
 : ${clixon_snmp_pidfile:="/var/tmp/clixon_snmp.pid"}
 
-# Temporary debug var, set to trigger remaining snmp errors
-: ${snmp_debug:=false}
-
 # Source the site-specific definitions for test script variables, if site.sh
 # exists. The variables defined in site.sh override any variables of the same
 # names in the environment in the current execution.

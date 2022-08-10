@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # test of Restconf callhome
 # See RFC 8071 NETCONF Call Home and RESTCONF Call Home
-# No NACM for now
+# Simple NACM for single "andy" user
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -49,6 +49,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_LIBRARY>false</CLICON_YANG_LIBRARY>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <restconf>
      <enable>true</enable>
@@ -109,6 +110,9 @@ module clixon-example{
    yang-version 1.1;
    namespace "urn:example:clixon";
    prefix ex;
+   import ietf-netconf-acm {
+      prefix nacm;
+   }
    /* Generic config data */
    container table{
       list parameter{
@@ -123,6 +127,37 @@ module clixon-example{
    }
 }
 EOF
+
+# NACM rules
+# Two groups: admin allow all, guest allow nothing
+RULES=$(cat <<EOF
+   <nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
+     <enable-nacm>false</enable-nacm>
+     <read-default>permit</read-default>
+     <write-default>deny</write-default>
+     <exec-default>deny</exec-default>
+     <groups>
+       <group>
+         <name>admin</name>
+         <user-name>andy</user-name>
+       </group>
+     </groups>
+     <rule-list>
+       <name>admin-acl</name>
+       <group>admin</group>
+       <rule>
+         <name>permit-all</name>
+         <module-name>*</module-name>
+         <access-operations>*</access-operations>
+         <action>permit</action>
+         <comment>
+             Allow the 'admin' group complete access to all operations and data.
+         </comment>
+       </rule>
+     </rule-list>
+   </nacm>
+EOF
+)
 
 cat <<EOF > $clispec
 CLICON_MODE="example";
@@ -177,15 +212,16 @@ EOF
     openssl x509 -req -extfile $dir/$name.cnf -days 7 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt  ||  err "Generate signing client cert"
 done
 
-# hardcoded to andy
+# Just NACM for now
 cat <<EOF > $dir/startup_db
 <${DATASTORE_TOP}>
+     $RULES
 </${DATASTORE_TOP}>
 EOF
 
 # Callhome request from client
 cat <<EOF > $dir/data
-GET /restconf/data HTTP/$HVERCH
+GET /restconf/data/clixon-example:table HTTP/$HVERCH
 Host: localhost
 Accept: application/yang-data+xml
 
@@ -223,6 +259,7 @@ new "restconf Add init data"
 expectpart "$(curl $CURLOPTS  --key $certdir/andy.key --cert $certdir/andy.crt -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" -d '{"clixon-example:table":{"parameter":{"name":"x","value":"foo"}}}' $RCPROTO://127.0.0.1/restconf/data)" 0 "HTTP/$HVER 201"
 
 new "Send GET via callhome client"
+echo "${clixon_restconf_callhome_client} -D $DBG -f $dir/data -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert"
 expectpart "$(${clixon_restconf_callhome_client} -D $DBG -f $dir/data -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert)" 0 "HTTP/$HVERCH 200 OK" "Content-Type: application/yang-data+xml"
 
 # Kill old

@@ -42,6 +42,7 @@ Expected: September 2022
 ### New features
 
 * RESTCONF call home according to RFC 8071
+  * Experimental, work-in-progress
 
 ### Corrected Bugs
 
@@ -102,7 +103,7 @@ Users may have to change how they access the system
 Developers may need to change their code
 
 * Changed C-API for xml translation/print the internal `cxobj` tree data structure to other formats.
-  * Functions are merged, ie removed and replaced with more generic functions
+  * Functions are merged, ie removed and with replaced more generic functions
   * Added `skiptop` parameter, if set only apply to children of a node, skip top node
      * default is 0
   * The new API is as follows:

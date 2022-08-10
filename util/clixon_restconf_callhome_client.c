@@ -38,7 +38,9 @@
   | clixon_restconf | ---------------->  | callhome-client |   <------  3) HTTP
   |                 |   2) tls           |                 |
   +-----------------+ <---------------   +-----------------+
-
+  
+  The callhome-client listens on accept, when connect comes in, creates data socket and sends
+  RESTCONF GET to server, then re-waits for new accepts.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -64,15 +66,15 @@
 /* clixon */
 #include "clixon/clixon.h"
 
-#define UTIL_TLS_OPTS "hD:f:F:a:p:c:C:k:"
+#define UTIL_TLS_OPTS "hD:f:F:a:p:c:C:k:n:"
 
 #define RESTCONF_CH_TLS 4336
 
 /* User struct for context / accept  */
 typedef struct {
-    int              ta_ss;  /* accept socket */
-    SSL_CTX         *ta_ctx; /* SSL context */
-    FILE            *ta_f;   /* Input data file */
+    int              ta_ss;       /* Accept socket */
+    SSL_CTX         *ta_ctx;      /* SSL context */
+    FILE            *ta_f;        /* Input data file */
 } tls_accept_handle;
 
 /* User connection-specific data handle  */
@@ -80,6 +82,9 @@ typedef struct {
     int              sd_s;   /* data socket */
     SSL             *sd_ssl; /* SSL connection data */
 } tls_session_data;
+
+/* Expected connects */
+static int _connects = 1; 
 
 /*! Create and bind stream socket
  * @param[in]  sa       Socketaddress
@@ -168,8 +173,13 @@ tls_input_cb(int   s,
     clixon_event_unreg_fd(s, tls_input_cb);
     close(s);
     free(sd);
-    clixon_exit_set(1); /* XXX more elaborate logic: 1) continue request, 2) close and accept new */
+    if (_connects == 1)
+	clixon_exit_set(1); /* XXX more elaborate logic: 1) continue request, 2) close and accept new */
+    else
+	_connects--;
+    retval = 0;
  done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -383,8 +393,6 @@ tls_ctx_init(const char *cert_path,
     return NULL;
 }
 
-
-
 static int
 usage(char *argv0)
 {
@@ -399,6 +407,7 @@ usage(char *argv0)
 	    "\t-c <path> \tcert\n"
 	    "\t-C <path> \tcacert\n"
    	    "\t-k <path> \tkey\n"
+	    "\t-n <nr>   \tExpected incoming connections, 0 means no limit. Default: 1\n"
 	    ,
 	    argv0,
 	    RESTCONF_CH_TLS);
@@ -471,6 +480,11 @@ main(int    argc,
 	    if (optarg == NULL || *optarg == '-')
 		usage(argv[0]);
 	    key_path = optarg;
+	    break;
+	case 'n':
+	    if (optarg == NULL || *optarg == '-')
+		usage(argv[0]);
+	    _connects = atoi(optarg);
 	    break;
 	default:
 	    usage(argv[0]);

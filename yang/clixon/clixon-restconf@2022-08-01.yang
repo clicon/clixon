@@ -289,7 +289,7 @@ module clixon-restconf {
 			    "Selects between available connection types.";
 			case persistent-connection {
 			    container persistent {
-				presence
+ 				presence
 				    "Indicates that a persistent connection is to be
                                      maintained.";
 			    }
@@ -298,6 +298,25 @@ module clixon-restconf {
 			    container periodic {
 				presence
 				    "Indicates periodic connects";
+				leaf period {
+				    type uint16;
+				    units "minutes";
+				    default "60";
+				    description
+					"Duration of time between periodic connections.";
+				}
+				leaf idle-timeout {
+				    type uint16;
+				    units "seconds";
+				    default "120"; // two minutes
+				    description
+					"Specifies the maximum number of seconds that
+                                         the underlying TCP session may remain idle.
+                                         A TCP session will be dropped if it is idle
+                                         for an interval longer than this number of
+                                         seconds.  If set to zero, then the server
+                                         will never drop a session because it is idle.";
+				}
 			    }
 			}
 		    }
