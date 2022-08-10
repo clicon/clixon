@@ -619,7 +619,7 @@ EOF
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:manc\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><manc xmlns=\"urn:example:clixon\"/></data></rpc-reply>"
 
     new "netconf validate should fail"
-    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>missing-element</error-tag><error-info><bad-element>man</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable of manc in module example</error-message></rpc-error></rpc-reply>"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>man</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable of manc in module example</error-message></rpc-error></rpc-reply>"
 
     new "netconf discard-changes"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
