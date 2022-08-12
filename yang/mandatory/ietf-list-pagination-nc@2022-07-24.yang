@@ -64,6 +64,7 @@ module ietf-list-pagination-nc {
 	description "A grouping for list pagination parameters.";
 	container list-pagination {
 	    description "List pagination parameters.";
+	    presence "Flag that request contains pagination parameters";
 	    uses lp:where-param-grouping;
 	    uses lp:sort-by-param-grouping;
 	    uses lp:direction-param-grouping;
