@@ -57,13 +57,11 @@
 /* List pagination namespaces
  */
 
-/* draft-wwlh-netconf-list-pagination-00.txt
- * ietf-list-pagination@2021-10-25.yang
+/* ietf-list-pagination.yang
  */
 #define IETF_PAGINATON_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-list-pagination"
 
-/* draft-wwlh-netconf-list-pagination-nc-02.txt
- * ietf-list-pagination-nc@2021-10-25.yang
+/* ietf-list-pagination-nc.yang
  */
 #define IETF_PAGINATON_NC_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc"
 

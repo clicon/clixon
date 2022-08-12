@@ -61,10 +61,10 @@ YANGSPECS += ietf-netconf-nmda@2019-01-07.yang
 YANGSPECS += ietf-origin@2018-02-14.yang
 YANGSPECS += ietf-netconf-with-defaults@2011-06-01.yang
 
-# in draft-wwlh-netconf-list-pagination-00.txt
-YANGSPECS += ietf-list-pagination@2021-10-25.yang
-# in draft-wwlh-netconf-list-pagination-nc-02.txt
-YANGSPECS += ietf-list-pagination-nc@2021-10-25.yang 
+# in draft-ietf-netconf-list-pagination-00.html
+YANGSPECS += ietf-list-pagination@2022-07-24.yang
+# in draft-ietf-netconf-list-pagination-nc-00
+YANGSPECS += ietf-list-pagination-nc@2022-07-24.yang 
 
 all:	
 
