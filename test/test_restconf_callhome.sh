@@ -2,6 +2,13 @@
 # test of Restconf callhome
 # See RFC 8071 NETCONF Call Home and RESTCONF Call Home
 # Simple NACM for single "andy" user
+# The client is clixon_restconf_callhome_client that waits for accept, connects, sends a GET immediately,
+# closes the socket and re-listens
+# The server opens three sockets:
+# 1) regular listen socket for setting init value
+# 2) persistent socket
+# 3) periodic socket (10s) port 8336
+# XXX periodic: idle-timeout not tested
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -18,6 +25,10 @@ fi
 cfg=$dir/conf_yang.xml
 fyang=$dir/clixon-example.yang
 clispec=$dir/spec.cli
+
+# HTTP request client->server 
+frequest=$dir/frequest
+# HTTP expected reply server->client
 
 certdir=$dir/certs
 cakey=$certdir/ca_key.pem
@@ -60,17 +71,39 @@ cat <<EOF > $cfg
      <server-ca-cert-path>$cacert</server-ca-cert-path>
      <debug>1</debug>
      <socket>
+        <description>callhome persistent</description>
         <namespace>default</namespace>
 	<call-home>
 	   <connection-type>
 	      <persistent/>
 	   </connection-type>
+	   <reconnect-strategy>
+	      <max-attempts>3</max-attempts>
+	   </reconnect-strategy>
 	</call-home>
         <address>127.0.0.1</address>
         <port>4336</port>
         <ssl>true</ssl>
       </socket>
       <socket>
+        <description>callhome periodic</description>
+        <namespace>default</namespace>
+	<call-home>
+	   <connection-type>
+	      <periodic>
+		<period>10</period>
+	      </periodic>
+	   </connection-type>
+	   <reconnect-strategy>
+	      <max-attempts>3</max-attempts>
+	   </reconnect-strategy>
+	</call-home>
+        <address>127.0.0.1</address>
+        <port>8336</port>
+        <ssl>true</ssl>
+      </socket>
+      <socket>
+         <description>listen</description>	
          <namespace>default</namespace>
          <address>0.0.0.0</address>
          <port>443</port>
@@ -219,13 +252,15 @@ cat <<EOF > $dir/startup_db
 </${DATASTORE_TOP}>
 EOF
 
-# Callhome request from client
-cat <<EOF > $dir/data
+# Callhome request from client->server
+cat <<EOF > $frequest
 GET /restconf/data/clixon-example:table HTTP/$HVERCH
 Host: localhost
 Accept: application/yang-data+xml
 
 EOF
+
+expectreply="<table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value>foo</value></parameter></table>"
 
 new "test params: -f $cfg"
 # Bring your own backend
@@ -249,7 +284,7 @@ if [ $RC -ne 0 ]; then
     stop_restconf_pre
 
     new "start restconf daemon"
-    start_restconf -f $cfg
+    start_restconf -f $cfg -D 1 -l s
 fi
 
 new "wait restconf"
@@ -258,9 +293,39 @@ wait_restconf
 new "restconf Add init data"
 expectpart "$(curl $CURLOPTS  --key $certdir/andy.key --cert $certdir/andy.crt -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" -d '{"clixon-example:table":{"parameter":{"name":"x","value":"foo"}}}' $RCPROTO://127.0.0.1/restconf/data)" 0 "HTTP/$HVER 201"
 
-new "Send GET via callhome client"
-echo "${clixon_restconf_callhome_client} -D $DBG -f $dir/data -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert"
-expectpart "$(${clixon_restconf_callhome_client} -D $DBG -f $dir/data -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert)" 0 "HTTP/$HVERCH 200 OK" "Content-Type: application/yang-data+xml"
+# tests for (one) well-formed HTTP status and three replies and that the time is reasonable
+t0=$(date +"%s")
+new "Send GET via callhome persistence client port 4336"
+expectpart "$(${clixon_restconf_callhome_client} -p 4336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 3)" 0 "HTTP/$HVERCH 200" "OK 1" "OK 2" "OK 3" $expectreply --not-- "OK 4"
+t1=$(date +"%s")
+
+let t=t1-t0
+new "Check persistent interval ($t) is in interval [2,4]"
+if [ $t -lt 2 -o $t -ge 4 ]; then
+    err1 "timer in interval [2,4] but is: $t"
+fi
+
+t0=$(date +"%s")
+new "Send GET via callhome client periodic port 8336"
+expectpart "$(${clixon_restconf_callhome_client} -p 8336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 3)" 0 "HTTP/$HVERCH 200" "OK 1" "OK 2" "OK 3" $expectreply --not-- "OK "4
+t1=$(date +"%s")
+
+let t=t1-t0
+new "Check periodic interval ($t) is larger than 20 and less than 31"
+if [ $t -lt 20 -o $t -ge 31 ]; then
+    err1 "timer in interval [20-31] but is: $t"
+fi
+
+t0=$(date +"%s")
+new "Send GET via callhome persistence again"
+expectpart "$(${clixon_restconf_callhome_client} -p 4336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 3)" 0 "OK 1" "OK 2" "OK 3" --not-- "OK 4"
+t1=$(date +"%s")
+
+let t=t1-t0
+new "Check persistent interval ($t) is in interval [2,4]"
+if [ $t -lt 2 -o $t -ge 4 ]; then
+    err1 "timer in interval [2,4] but is: $t"
+fi
 
 # Kill old
 if [ $RC -ne 0 ]; then

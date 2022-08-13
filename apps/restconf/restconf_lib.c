@@ -867,23 +867,32 @@ restconf_socket_init(const char   *netns0,
  * @param[in]  h         Clicon handle
  * @param[in]  xs        socket config
  * @param[in]  nsc       Namespace context
+ * @param[out] description
  * @param[out] namespace 
  * @param[out] address   Address as string, eg "0.0.0.0", "::"
  * @param[out] addrtype  One of inet:ipv4-address or inet:ipv6-address
  * @param[out] port      TCP Port
  * @param[out] ssl       SSL enabled?
- * @param[out] callhome  Callhome enabled?
+ * @param[out] callhome  Callhome 
+ * if callhome:
+ * @param[out] periodic  persistent:0, periodic:1
+ * @param[out] period    in s. (if periodic)
+ * @param[out] attempts  Number of max reconnect attempts
  */
 int
 restconf_socket_extract(clicon_handle h,
 			cxobj        *xs,
 			cvec         *nsc,
+			char        **description,
 			char        **namespace,
 			char        **address,
 			char        **addrtype,
 			uint16_t     *port,
 			uint16_t     *ssl,
-			int          *callhome)
+			int          *callhome,
+    			int          *periodic,
+			uint32_t     *period,
+    			uint8_t      *attempts)
 {
     int        retval = -1;
     cxobj     *x;
@@ -900,6 +909,9 @@ restconf_socket_extract(clicon_handle h,
 	goto done;
     }
     *namespace = xml_body(x);
+    if ((x = xpath_first(xs, nsc, "description")) != NULL){
+	*description = xml_body(x);
+    }
     if ((x = xpath_first(xs, nsc, "address")) == NULL){
 	clicon_err(OE_XML, EINVAL, "Mandatory address not given");
 	goto done;
@@ -963,8 +975,37 @@ restconf_socket_extract(clicon_handle h,
 	    goto done;
 	}
     }
-    if ((x = xpath_first(xs, nsc, "call-home")) != NULL)
+    if (xpath_first(xs, nsc, "call-home") != NULL){
 	*callhome = 1;
+	if (xpath_first(xs, nsc, "call-home/connection-type/persistent") != NULL){
+	    *periodic = 0;
+	}
+	else if (xpath_first(xs, nsc, "call-home/connection-type/periodic") != NULL){
+	    *periodic = 1;
+	    if ((x = xpath_first(xs, nsc, "call-home/connection-type/periodic/period")) != NULL && 
+		(str = xml_body(x)) != NULL){
+		if ((ret = parse_uint32(str, period, &reason)) < 0){
+		    clicon_err(OE_XML, errno, "parse_uint16");
+		    goto done;
+		}
+		if (ret == 0){
+		    clicon_err(OE_XML, EINVAL, "Unrecognized value of period: %s", str);
+		    goto done;
+		}	
+	    }
+	}
+	if ((x = xpath_first(xs, nsc, "call-home/reconnect-strategy/max-attempts")) != NULL && 
+	    (str = xml_body(x)) != NULL){
+	    if ((ret = parse_uint8(str, attempts, &reason)) < 0){
+		clicon_err(OE_XML, errno, "parse_uint8");
+		goto done;
+	    }
+	    if (ret == 0){
+		clicon_err(OE_XML, EINVAL, "Unrecognized value of max-attempts: %s", str);
+		goto done;
+	    }	
+	}
+    }
     else
 	*callhome = 0;
     retval = 0;

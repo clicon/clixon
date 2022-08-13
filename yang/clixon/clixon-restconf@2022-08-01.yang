@@ -258,6 +258,9 @@ module clixon-restconf {
                      On platforms where namespaces are not suppported, 'default'
                      Default value can be changed by RESTCONF_NETNS_DEFAULT";
 	    }
+	    leaf description{
+		type string;
+	    }
 	    leaf address {
 		type inet:ip-address;
 		description "IP address to bind to";
@@ -299,26 +302,26 @@ module clixon-restconf {
 				presence
 				    "Indicates periodic connects";
 				leaf period {
-				    type uint16;
-				    units "minutes";
+				    type uint32;     /* XXX: note uit16 in std */
+				    units "seconds"; /* XXX: note minutes in standard */
 				    default "60";
 				    description
 					"Duration of time between periodic connections.";
 				}
-				leaf idle-timeout {
-				    type uint16;
-				    units "seconds";
-				    default "120"; // two minutes
-				    description
-					"Specifies the maximum number of seconds that
-                                         the underlying TCP session may remain idle.
-                                         A TCP session will be dropped if it is idle
-                                         for an interval longer than this number of
-                                         seconds.  If set to zero, then the server
-                                         will never drop a session because it is idle.";
-				}
 			    }
 			}
+		    }
+		}
+		container reconnect-strategy {
+		    leaf max-attempts {
+			type uint8 {
+			    range "1..max";
+			}
+			default "3";
+			description
+			    "Specifies the number times the RESTCONF server tries
+                             to connect to a specific endpoint before moving on to
+                             the next endpoint in the list (round robin).";
 		    }
 		}
 	    }

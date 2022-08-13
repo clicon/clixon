@@ -41,6 +41,8 @@
   
   The callhome-client listens on accept, when connect comes in, creates data socket and sends
   RESTCONF GET to server, then re-waits for new accepts.
+  When accepting a connection, send HTTP data from input or -f <file> tehn wait for reply
+  Reply is matched with -e <expectfile> or printed on stdout
  */
 
 #ifdef HAVE_CONFIG_H
@@ -66,7 +68,7 @@
 /* clixon */
 #include "clixon/clixon.h"
 
-#define UTIL_TLS_OPTS "hD:f:F:a:p:c:C:k:n:"
+#define UTIL_TLS_OPTS "hD:f:e:F:a:p:c:C:k:n:"
 
 #define RESTCONF_CH_TLS 4336
 
@@ -143,18 +145,63 @@ callhome_bind(struct sockaddr *sa,
     return retval;
 }
 
-/*! Client data socket
+/*! read data from file return a malloced buffer
+ * Note same file is reread multiple times: same request/reply is made each iteration
+ * Also, the file read is limited to 1024 bytes
  */
 static int
-tls_input_cb(int   s, 
-	     void *arg)
+read_data_file(FILE   *fe,
+	       char  **bufp,
+	       size_t *lenp)
 {
-    int           retval = -1;
+    int    retval = -1;
+    char  *buf = NULL;
+    int    buflen = 1024; /* start size */
+    char   ch;
+    size_t len = 0;
+    int    ret;
+
+    if ((buf = malloc(buflen)) == NULL){
+	clicon_err(OE_UNIX, errno, "malloc");
+	goto done;
+    }
+    memset(buf, 0, buflen);
+    /* Start file form beginning */
+    rewind(fe);
+    while (1){
+	if ((ret = fread(&ch, 1, 1, fe)) < 0){
+	    clicon_err(OE_JSON, errno, "fread");
+	    goto done;
+	}
+	if (ret == 0)
+	    break;
+	buf[len++] = ch;
+	// XXX No realloc, can overflow
+    }
+    *bufp = buf;
+    *lenp = len;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Client data socket, receive reply from server
+ */
+static int
+tls_server_reply_cb(int   s, 
+		    void *arg)
+{
+    int            retval = -1;
     tls_session_data *sd = (tls_session_data *)arg;
-    SSL          *ssl;
-    char          buf[1024];
-    int           n;
-    
+    SSL           *ssl;
+    char           buf[1024];
+    int            n;
+    char          *expbuf = NULL;
+    struct timeval tn;
+    struct timeval td;
+    static int     seq = 1;
+    static struct timeval t0 = {0,};
+	
     clicon_debug(1, "%s", __FUNCTION__);
     ssl = sd->sd_ssl;
     /* get reply & decrypt */
@@ -167,10 +214,14 @@ tls_input_cb(int   s,
 	goto done;
     }
     buf[n] = 0;
-    fprintf(stdout, "%s\n", buf);
+    if (seq == 1)
+	gettimeofday(&t0, NULL);
+    gettimeofday(&tn, NULL);
+    timersub(&tn, &t0, &td);
+    fprintf(stdout, "OK %d %lu\n%s\n", seq++, td.tv_sec, buf);
     SSL_shutdown(ssl);
     SSL_free(ssl);
-    clixon_event_unreg_fd(s, tls_input_cb);
+    clixon_event_unreg_fd(s, tls_server_reply_cb);
     close(s);
     free(sd);
     if (_connects == 1)
@@ -179,6 +230,8 @@ tls_input_cb(int   s,
 	_connects--;
     retval = 0;
  done:
+    if (expbuf)
+	free(expbuf);
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }
@@ -260,30 +313,15 @@ tls_write_file(FILE *fp,
 {
     int    retval = -1;
     char  *buf = NULL;
-    int    buflen = 1024; /* start size */
-    char   ch;
+    size_t len = 0;
     int    ret;
     int    sslerr;
-    size_t len = 0;
     
-    if ((buf = malloc(buflen)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
+    if (read_data_file(fp, &buf, &len) < 0)
 	goto done;
-    }
-    memset(buf, 0, buflen);
-    while (1){
-	if ((ret = fread(&ch, 1, 1, fp)) < 0){
-	    clicon_err(OE_JSON, errno, "read");
-	    goto done;
-	}
-	if (ret == 0)
-	    break;
-	buf[len++] = ch;
-	// XXX No realloc, can overflow
-    }
     if ((ret = SSL_write(ssl, buf, len)) < 1){
 	sslerr = SSL_get_error(ssl, ret);
-	clicon_debug(1, "%s SSL_read() n:%d errno:%d sslerr:%d", __FUNCTION__, ret, errno, sslerr);
+	clicon_debug(1, "%s SSL_write() n:%d errno:%d sslerr:%d", __FUNCTION__, ret, errno, sslerr);
     }
     retval = 0;
  done:
@@ -292,11 +330,11 @@ tls_write_file(FILE *fp,
     return retval;
 }
 
-/*! Callhome-server accept socket 
+/*! Callhome-server accept socket
  */
 static int
-tls_accept_cb(int   ss, 
-	      void *arg)
+tls_server_accept_cb(int   ss, 
+		     void *arg)
 {
     int                retval = -1;
     tls_accept_handle *ta = (tls_accept_handle *)arg;
@@ -327,7 +365,7 @@ tls_accept_cb(int   ss,
     if (tls_write_file(ta->ta_f, ssl) < 0)
 	goto done;
     /* register callback for reply */
-    if (clixon_event_reg_fd(s, tls_input_cb, sd, "tls data") < 0)
+    if (clixon_event_reg_fd(s, tls_server_reply_cb, sd, "tls server reply") < 0)
 	goto done;
     retval = 0;
  done:
@@ -400,7 +438,8 @@ usage(char *argv0)
 	    "where options are\n"
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug\n"
-	    "\t-f <file> \tHHTP input file (overrides stdin)\n"
+	    "\t-f <file> \tHTTP input file (overrides stdin)\n"
+	    "\t-e <file> \tFile including HTTP output (otherwise echo to stdout)\n"
 	    "\t-F ipv4|ipv6 \tSocket address family(ipv4 default)\n"
 	    "\t-a <addrstr> \tIP address (eg 1.2.3.4) - mandatory\n"
 	    "\t-p <port>    \tPort (default %d)\n"
@@ -528,14 +567,14 @@ main(int    argc,
     ta->ta_ctx = ctx;
     ta->ta_ss = ss;
     ta->ta_f = fp;
-    if (clixon_event_reg_fd(ss, tls_accept_cb, ta, "tls accept socket") < 0)
+    if (clixon_event_reg_fd(ss, tls_server_accept_cb, ta, "tls server accept") < 0)
 	goto done;
     if (clixon_event_loop(h) < 0)
 	goto done;
     retval = 0;
  done:
     if (ss != -1)
-	clixon_event_unreg_fd(ss, tls_accept_cb);
+	clixon_event_unreg_fd(ss, tls_server_accept_cb);
     if (ta)
 	free(ta);
     if (fp)

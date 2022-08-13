@@ -474,7 +474,7 @@ Note that in this case SSL_ERROR_ZERO_RETURN does not necessarily indicate that 
 	SSL_free(rc->rc_ssl);
 	rc->rc_ssl = NULL;
     }
-    if (restconf_connection_close(rc->rc_h, rc->rc_s) < 0)
+    if (restconf_connection_close(rc->rc_h, rc->rc_s, rc->rc_socket) < 0)
 	goto done;
     retval = 0;
  done:
@@ -548,342 +548,6 @@ restconf_checkcert_file(cxobj      *xrestconf,
     return retval;
 }
 
-/*! Check ALPN result
- * @proto[out] proto 
- * @retval     1      OK with proto set
- * @retval     0      Fail, ALPN null or not recognized
- * @retval    -1      Error
-*/
-static int
-ssl_alpn_check(clicon_handle        h,
-	       const unsigned char *alpn,
-	       unsigned int         alpnlen,
-	       restconf_conn       *rc,
-	       restconf_http_proto *proto)
-{
-    int   retval = -1;
-    int   ret;
-    cbuf *cberr = NULL;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
-    /* Alternatively, call  restconf_str2proto but alpn is not a proper string */
-    if (alpn && alpnlen == 8 && memcmp("http/1.1", alpn, 8) == 0){
-	*proto = HTTP_11;
-	retval = 1; /* http/1.1 */
-	goto done; 
-    }
-#ifdef HAVE_LIBNGHTTP2
-    else if (alpn && alpnlen == 2 && memcmp("h2", alpn, 2) == 0){
-	*proto = HTTP_2;
-	retval = 1; /* http/2 */
-	goto done;
-    }
-#endif
-    else {
-	if ((cberr = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	if (alpn != NULL){
-	    cprintf(cberr, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>ALPN: protocol not recognized: %s</error-message></error></errors>", alpn);
-	    clicon_log(LOG_INFO, "%s Warning: %s", __FUNCTION__, cbuf_get(cberr));
-	    if (native_send_badrequest(h, rc->rc_s, rc->rc_ssl,
-				"application/yang-data+xml",
-				cbuf_get(cberr)) < 0)
-		goto done;
-	}
-	else{
-	    /* XXX Sending badrequest here gives a segv in SSL_shutdown() later or a SIGPIPE here */
-	    clicon_log(LOG_INFO, "%s Warning: ALPN: No protocol selected, or no ALPN?", __FUNCTION__);
-	}
-
-	if (rc->rc_ssl){
-            /* nmap ssl-known-key SEGV at s->method->ssl_shutdown(s); 
-	     * OR OpenSSL error: : SSL_shutdown, err: SSL_ERROR_SYSCALL(5)
-	     */
-	    if ((ret = SSL_shutdown(rc->rc_ssl)) < 0){ 
-		int e = SSL_get_error(rc->rc_ssl, ret);
-		if (e == SSL_ERROR_SYSCALL){
-		    clicon_log(LOG_INFO, "%s Warning: SSL_shutdown SSL_ERROR_SYSCALL", __FUNCTION__);
-		    /* Continue */
-		}
-		else {
-		    clicon_err(OE_SSL, 0, "SSL_shutdown, err:%d", e);
-		    goto done;
-		}
-	    }
-	    SSL_free(rc->rc_ssl);
-	}
-	restconf_conn_free(rc);
-    }
-    retval = 0; /* ALPN not OK */
- done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    if (cberr)
-	cbuf_free(cberr);
-    return retval;
-} /* ssl_alpn_check */
-
-
-/*! Accept new socket client. Note SSL not ip, this applies also to callhome
- * @param[in]  h     Clixon handle
- * @param[in]  s     Socket (unix or ip)
- * @param[in]  rsock Socket struct
- * @see openssl_init_socket where this callback is registered
- */
-static int
-restconf_ssl_accept_client(clicon_handle    h,
-			   int              s,
-			   restconf_socket *rsock)
-{
-    int                     retval = -1;
-    restconf_native_handle *rh = NULL;
-    restconf_conn          *rc = NULL;
-    char                   *name = NULL;
-    int                     ret;
-    int                     e;
-    int                     er;
-    int                     readmore;
-    const unsigned char    *alpn = NULL;
-    unsigned int            alpnlen = 0;
-    restconf_http_proto     proto = HTTP_11;  /* Non-SSL negotiation NYI */
-
-    clicon_debug(1, "%s", __FUNCTION__);
-#ifdef HAVE_LIBNGHTTP2
-#ifndef HAVE_HTTP1
-    proto = HTTP_2;     /* If nghttp2 only let default be 2.0  */
-#endif
-#endif
-    if ((rh = restconf_native_handle_get(h)) == NULL){
-	clicon_err(OE_XML, EFAULT, "No openssl handle");
-	goto done;
-    }
-    /*
-     * Register callbacks for actual data socket 
-     */
-    if ((rc = restconf_conn_new(h, s)) == NULL)
-	goto done;
-    clicon_debug(1, "%s s:%d", __FUNCTION__, rc->rc_s);
-    if (rsock->rs_ssl){
-	if ((rc->rc_ssl = SSL_new(rh->rh_ctx)) == NULL){
-	    clicon_err(OE_SSL, 0, "SSL_new");
-	    goto done;
-	}
-	clicon_debug(1, "%s SSL_new(%p)", __FUNCTION__, rc->rc_ssl);
-	/* CCL_CTX_set_verify already set, need not call SSL_set_verify again for this server
-	 */
-	/* X509_CHECK_FLAG_NO_WILDCARDS disables wildcard expansion */
-	SSL_set_hostflags(rc->rc_ssl, X509_CHECK_FLAG_NO_WILDCARDS);
-#if 0
-	/* XXX This code is kept for the time being just for reference, it does not belong here.
-	 * If you want to restrict client certs to a specific set.
-	 * Otherwise this is done in restcon ca-auth callback and ultimately NACM
-	 * SSL_set1_host() sets the expected DNS hostname to name
-	   C                      = SE  
-	   L                      = Stockholm
-	   O                      = Clixon
-	   OU                     = clixon
-	   CN                     = ca <---
-	   emailAddress           = olof@hagsand.se
-	*/
-	if (SSL_set1_host(rc->rc_ssl, "andy") != 1) { /* for peer cert */
-	    clicon_err(OE_SSL, 0, "SSL_set1_host");
-	    goto done;
-	}
-	if (SSL_add1_host(rc->rc_ssl, "olof") != 1) { /* for peer cert */
-	    clicon_err(OE_SSL, 0, "SSL_set1_host");
-	    goto done;
-	}
-#endif
-	if (SSL_set_fd(rc->rc_ssl, rc->rc_s) != 1){
-	    clicon_err(OE_SSL, 0, "SSL_set_fd");
-	    goto done;
-	}
-	readmore = 1;
-	while (readmore){
-	    readmore = 0;
-	    /* 1: OK, -1 fatal, 0: TLS/SSL handshake was not successful
-	     * Both error cases: Call SSL_get_error() with the return value ret 
-	     */
-	    if ((ret = SSL_accept(rc->rc_ssl)) != 1) {
-		clicon_debug(1, "%s SSL_accept() ret:%d errno:%d", __FUNCTION__, ret, er=errno);
-		e = SSL_get_error(rc->rc_ssl, ret);
-		switch (e){
-		case SSL_ERROR_SSL:                  /* 1 */
-		    clicon_debug(1, "%s SSL_ERROR_SSL (non-ssl message on ssl socket)", __FUNCTION__);
-#if 1
-		    if (native_send_badrequest(h, rc->rc_s, NULL, "application/yang-data+xml",
-					"<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The plain HTTP request was sent to HTTPS port</error-message></error></errors>") < 0)
-			goto done;
-#endif
-		    SSL_free(rc->rc_ssl);
-		    rc->rc_ssl = NULL;
-		    if (restconf_connection_close(h, rc->rc_s) < 0)
-			goto done;
-		    restconf_conn_free(rc);
-		    goto ok;
-		    break;
-		case SSL_ERROR_SYSCALL:              /* 5 */
-		    /* Some non-recoverable, fatal I/O error occurred. The OpenSSL error queue 
-		       may contain more information on the error. For socket I/O on Unix systems, 
-		       consult errno for details. If this error occurs then no further I/O
-		       operations should be performed on the connection and SSL_shutdown() must 
-		       not be called.*/
-		    clicon_debug(1, "%s SSL_accept() SSL_ERROR_SYSCALL %d", __FUNCTION__, er);
-		    if (restconf_close_ssl_socket(rc, 0) < 0)
-			goto done;
-		    restconf_conn_free(rc);    
-		    rc = NULL;
-		    goto ok;
-		    break;
-		case SSL_ERROR_WANT_READ:            /* 2 */
-		case SSL_ERROR_WANT_WRITE:           /* 3 */
-		    /* SSL_ERROR_WANT_READ is returned when the last operation was a read operation 
-		     * from a nonblocking BIO. 
-		     * That is, it can happen if restconf_socket_init() below is called 
-		     * with SOCK_NONBLOCK
-		     */
-		    clicon_debug(1, "%s write SSL_ERROR_WANT_READ", __FUNCTION__);
-		    usleep(10000);
-		    readmore = 1;
-		    break;
-		case SSL_ERROR_NONE:                 /* 0 */
-		case SSL_ERROR_ZERO_RETURN:          /* 6 */
-		case SSL_ERROR_WANT_CONNECT:         /* 7 */
-		case SSL_ERROR_WANT_ACCEPT:          /* 8 */
-		case SSL_ERROR_WANT_X509_LOOKUP:     /* 4 */
-		case SSL_ERROR_WANT_ASYNC:           /* 8 */
-		case SSL_ERROR_WANT_ASYNC_JOB:       /* 10 */
-#ifdef SSL_ERROR_WANT_CLIENT_HELLO_CB
-		case SSL_ERROR_WANT_CLIENT_HELLO_CB: /* 11 */
-#endif
-		default:
-		    clicon_err(OE_SSL, 0, "SSL_accept:%d", e);
-		    goto done;
-		    break;
-		}
-	    } /* SSL_accept */
-	} /* while(readmore) */
-	/* Sets data and len to point to the client's requested protocol for this connection. */
-#ifndef OPENSSL_NO_NEXTPROTONEG
-	SSL_get0_next_proto_negotiated(rc->rc_ssl, &alpn, &alpnlen);
-#endif /* !OPENSSL_NO_NEXTPROTONEG */
-	if (alpn == NULL) {
-	    /* Returns a pointer to the selected protocol in data with length len. */
-	    SSL_get0_alpn_selected(rc->rc_ssl, &alpn, &alpnlen);
-	}
-	if ((ret = ssl_alpn_check(h, alpn, alpnlen, rc, &proto)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto ok;
-	clicon_debug(1, "%s proto:%s", __FUNCTION__, restconf_proto2str(proto));
-
-#if 0 /* Seems too early to fail here, instead let authentication callback deal with this */
-	/* For client-cert authentication, check if any certs are present,
-	* if not, send bad request
-	* Alt: set SSL_CTX_set_verify(ctx, SSL_VERIFY_FAIL_IF_NO_PEER_CERT)
-	* but then SSL_accept fails.
-	*/
-	if (restconf_auth_type_get(h) == CLIXON_AUTH_CLIENT_CERTIFICATE){
-	    X509 *peercert;
-
-	    if ((peercert = SSL_get_peer_certificate(rc->rc_ssl)) != NULL){
-		X509_free(peercert);
-	    }
-	    else { /* Get certificates (if available) */
-		if (proto != HTTP_2 &&
-		    native_send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
-				    "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>Peer certificate required</error-message></error></errors>") < 0)
-		    goto done;
-		restconf_conn_free(rc);
-		if (rc->rc_ssl){
-		    if ((ret = SSL_shutdown(rc->rc_ssl)) < 0){
-			int e = SSL_get_error(rc->rc_ssl, ret);
-			clicon_err(OE_SSL, 0, "SSL_shutdown, err:%d", e);
-			goto done;
-		    }
-		    SSL_free(rc->rc_ssl);
-		    rc->rc_ssl = NULL;
-		}
-		goto ok;
-	    }
-	}
-#endif
-	/* Get the actual peer, XXX this maybe could be done in ca-auth client-cert code ? 
-	 * Note this _only_ works if SSL_set1_host() was set previously,...
-	 */
-	if ((ret = SSL_get_verify_result(rc->rc_ssl)) == X509_V_OK) { /* for peer cert */
-	    const char *peername = SSL_get0_peername(rc->rc_ssl);
- 	    if (peername != NULL) {
-		/* Name checks were in scope and matched the peername */
-		clicon_debug(1, "%s peername:%s", __FUNCTION__, peername);
-	    }
-	}
-#if 0
-	else{
-	    clicon_log(LOG_NOTICE, "Cert error: %s", X509_verify_cert_error_string(ret));
-	    /* Maybe should return already  here, but to get proper return message need to
-	     * continue to http/1 or http/2 handling
-	     * @see restconf_connection_sanity
-	     */
-	}
-#endif
-#if 0 /* debug */
-	if (clicon_debug_get())
-	    restconf_listcerts(rc->rc_ssl);
-#endif
-    } /* if ssl */
-    rc->rc_proto = proto;
-    switch (rc->rc_proto){
-#ifdef HAVE_HTTP1
-    case HTTP_10:
-    case HTTP_11:
-	/* Create a default stream for http/1 */
-	if (restconf_stream_data_new(rc, 0) == NULL)
-	    goto done;
-	break;
-#endif /* HAVE_HTTP1 */
-#ifdef HAVE_LIBNGHTTP2
-    case HTTP_2:{
-	if (http2_session_init(rc) < 0){
-	    restconf_close_ssl_socket(rc, 1);
-	    goto done;
-	}
-	if (http2_send_server_connection(rc) < 0){
-	    restconf_close_ssl_socket(rc, 1);
-#ifdef NYI
-	    if (ssl) {
-		SSL_shutdown(ssl);
-	    }
-	    bufferevent_free(session_data->bev);
-	    nghttp2_session_del(session_data->session);
-	    for (stream_data = session_data->root.next; stream_data;) {
-		http2_stream_data *next = stream_data->next;
-		delete_http2_stream_data(stream_data);
-		stream_data = next;
-	    }
-	    free(session_data->client_addr);
-	    free(session_data);
-#endif
-	    goto done;
-	}
-	break;
-    }
-#endif /* HAVE_LIBNGHTTP2 */
-    default:
-	break;
-    } /* switch proto */
-    if (clixon_event_reg_fd(rc->rc_s, restconf_connection, (void*)rc, "restconf client socket") < 0)
-	goto done;
- ok:
-    retval = 0;
- done:
-    clicon_debug(1, "%s retval %d", __FUNCTION__, retval);
-    if (name)
-	free(name);
-    return retval;
-} /* restconf_ssl_accept_client */
-
 /*! Accept new socket client
  * @param[in]  fd   Socket (unix or ip)
  * @param[in]  arg  typecast clicon_handle
@@ -939,11 +603,16 @@ restconf_native_terminate(clicon_handle h)
     clicon_debug(1, "%s", __FUNCTION__);
     if ((rh = restconf_native_handle_get(h)) != NULL){
 	while ((rsock = rh->rh_sockets) != NULL){
-	    if (rsock->rs_ss != -1){
+	    if (rsock->rs_callhome){
+		clixon_event_unreg_timeout(restconf_callhome_cb, rsock);
+	    }
+	    else if (rsock->rs_ss != -1){
 		clixon_event_unreg_fd(rsock->rs_ss, restconf_accept_client);
 		close(rsock->rs_ss);
 	    }
 	    DELQ(rsock, rh->rh_sockets, restconf_socket *);
+	    if (rsock->rs_description)
+		free(rsock->rs_description);
 	    if (rsock->rs_addrstr)
 		free(rsock->rs_addrstr);
 	    if (rsock->rs_addrtype)
@@ -1028,62 +697,6 @@ restconf_clixon_backend(clicon_handle h,
     goto done;
 }
 
-/*! Periodically try to connect to callhome client
- *
- * @param[in]  fd   No-op
- * @param[in]  arg  restconf_socket
- */
-int
-restconf_callhome_timer(int   fdxxx,
-			void *arg)
-{
-    int              retval = -1;
-    clicon_handle    h;
-    struct timeval   now;
-    struct timeval   t;
-    struct timeval   t1 = {1, 0}; // XXX once every second
-    restconf_socket *rsock = NULL;
-    struct sockaddr_in6 sin6 = {0,}; // because its larger than sin and sa
-    struct sockaddr *sa = (struct sockaddr *)&sin6;
-    size_t           sa_len;
-    int              s;
-
-    clicon_debug(1, "%s", __FUNCTION__);
-    gettimeofday(&now, NULL);
-    if ((rsock = (restconf_socket *)arg) == NULL){
-	clicon_err(OE_YANG, EINVAL, "rsock is NULL");
-	goto done;
-    }
-    h = rsock->rs_h;
-    /* Already computed in restconf_socket_init, could be saved in rsock? */
-    if (clixon_inet2sin(rsock->rs_addrtype, rsock->rs_addrstr, rsock->rs_port, sa, &sa_len) < 0)
-	goto done;
-    if ((s = socket(sa->sa_family, SOCK_STREAM, 0)) < 0) {
-	clicon_err(OE_UNIX, errno, "socket");
-	goto done;
-    }
-    clicon_debug(1, "%s connect", __FUNCTION__);
-    if (connect(s, sa, sa_len) < 0){
-	clicon_debug(1, "%s connect:%d %s", __FUNCTION__, errno, strerror(errno));
-	close(s);
-	/* Fail: Initiate new timer */
-	timeradd(&now, &t1, &t);
-	if (clixon_event_reg_timeout(t,
-				     restconf_callhome_timer, /* this function */
-				     rsock,
-				     "restconf callhome timer") < 0)
-	    goto done;
-    }
-    else {
-	if (restconf_ssl_accept_client(h, s, rsock) < 0)
-	    goto done;
-    }
-    clicon_debug(1, "%s connect done", __FUNCTION__);
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Per-socket openssl inits
  * @param[in]  h        Clicon handle
  * @param[in]  xs       XML config of single restconf socket
@@ -1097,6 +710,7 @@ openssl_init_socket(clicon_handle h,
 		    cvec         *nsc)
 {
     int             retval = -1;
+    char           *description = NULL;
     char           *netns = NULL;
     char           *address = NULL;
     char           *addrtype = NULL;
@@ -1106,10 +720,14 @@ openssl_init_socket(clicon_handle h,
     int             ss = -1;
     restconf_native_handle *rh = NULL;
     restconf_socket *rsock = NULL; /* openssl per socket struct */
+    int              periodic = 0;
+    uint32_t         period = 0;
+    uint8_t          max_attempts = 0;
+    struct timeval   now;
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* Extract socket parameters from single socket config: ns, addr, port, ssl */
-    if (restconf_socket_extract(h, xs, nsc, &netns, &address, &addrtype, &port, &ssl, &callhome) < 0)
+    if (restconf_socket_extract(h, xs, nsc, &description, &netns, &address, &addrtype, &port, &ssl, &callhome, &periodic, &period, &max_attempts) < 0)
 	goto done;
 
     /*
@@ -1124,6 +742,16 @@ openssl_init_socket(clicon_handle h,
     rsock->rs_h = h;
     rsock->rs_ssl = ssl; /* true/false */
     rsock->rs_callhome = callhome;
+    rsock->rs_periodic = periodic;
+    rsock->rs_period = period;
+    rsock->rs_max_attempts = max_attempts;
+    gettimeofday(&now, NULL);
+    rsock->rs_start = now.tv_sec;
+    if (description &&
+	(rsock->rs_description = strdup(description)) == NULL){
+	clicon_err(OE_UNIX, errno, "strdup");
+	goto done;
+    }
     if (callhome){
 	if (!ssl){
 	    clicon_err(OE_SSL, EINVAL, "Restconf callhome requires SSL");
@@ -1159,8 +787,8 @@ openssl_init_socket(clicon_handle h,
     INSQ(rsock, rh->rh_sockets);
 
     if (callhome){
-	rsock->rs_ss = -1; /* Not applicable fro callhome */
-	if (restconf_callhome_timer(0, rsock) < 0)
+	rsock->rs_ss = -1; /* Not applicable from callhome */
+	if (restconf_callhome_timer(rsock, 0) < 0)
 	    goto done;
     }
     else {

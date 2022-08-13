@@ -85,28 +85,6 @@ typedef struct  {
     uint8_t              *sd_settings2; /* Settings for upgrade to http/2 request */
 } restconf_stream_data;
 
-/* Restconf connection handle 
- * Per connection request
- */
-typedef struct restconf_conn {
-    /* XXX rc_proto and rc_proto_d1/d2 may not both be necessary. 
-     * remove rc_proto?
-     */
-    restconf_http_proto rc_proto;     /* HTTP protocol: http/1 or http/2 */
-    int                 rc_proto_d1;  /* parsed version digit 1 */
-    int                 rc_proto_d2;  /* parsed version digit 2 */
-    int                 rc_s;         /* Connection socket */
-    clicon_handle       rc_h;         /* Clixon handle */
-    SSL                *rc_ssl;       /* Structure for SSL connection */
-    restconf_stream_data *rc_streams; /* List of http/2 session streams */
-    int                   rc_exit;    /* Set to close socket server-side */
-    /* Decision to keep lib-specific data here, otherwise new struct necessary
-     * drawback is specific includes need to go everywhere */
-#ifdef HAVE_LIBNGHTTP2
-    nghttp2_session    *rc_ngsession; /* XXX Not sure it is needed */
-#endif
-} restconf_conn;
-
 /* Restconf per socket handle
  * Two types: listen and callhome.
  * Listen: Uses socket rs_ss to listen for connections and accepts them, creates one
@@ -117,6 +95,7 @@ typedef struct restconf_conn {
 typedef struct {
     qelem_t       rs_qelem;     /* List header */
     clicon_handle rs_h;         /* Clixon handle */
+    char         *rs_description; /* Description */
     int           rs_callhome;  /* 0: listen, 1: callhome */
     int           rs_ss;        /* Listen: Server socket, ready for accept
 				 * Callhome: connect socket (same as restconf_conn->rc_s) */
@@ -125,7 +104,41 @@ typedef struct {
                                    eg inet:ipv4-address or inet:ipv6-address */
     char         *rs_addrstr;   /* Address as string, eg 127.0.0.1, ::1 */
     uint16_t      rs_port;      /* Protocol port */
+    int           rs_periodic;  /* 0: persistent, 1: periodic (if callhome) */
+    uint32_t      rs_period;    /* Period in s (if callhome & periodic) */
+    uint8_t       rs_max_attempts;  /* max connect attempts (if callhome) */
+
+    uint64_t      rs_start;     /* First period start, next is start+periods*period */
+    uint64_t      rs_period_nr; /* Dynamic succeeding or timed out periods. 
+				   Set in restconf_callhome_timer*/
+    uint8_t       rs_attempts;  /* Dynamic connect attempts in this round (if callhome) 
+				 * Set in restconf_callhome_cb
+				 */
 } restconf_socket;
+
+/* Restconf connection handle 
+ * Per connection request
+ */
+typedef struct restconf_conn {
+    /* XXX rc_proto and rc_proto_d1/d2 may not both be necessary. 
+     * remove rc_proto?
+     */
+    restconf_http_proto   rc_proto;     /* HTTP protocol: http/1 or http/2 */
+    int                   rc_proto_d1;  /* parsed version digit 1 */
+    int                   rc_proto_d2;  /* parsed version digit 2 */
+    int                   rc_s;         /* Connection socket */
+    clicon_handle         rc_h;         /* Clixon handle */
+    SSL                  *rc_ssl;       /* Structure for SSL connection */
+    restconf_stream_data *rc_streams; /* List of http/2 session streams */
+    int                   rc_exit;    /* Set to close socket server-side */
+    /* Decision to keep lib-specific data here, otherwise new struct necessary
+     * drawback is specific includes need to go everywhere */
+#ifdef HAVE_LIBNGHTTP2
+    nghttp2_session      *rc_ngsession; /* XXX Not sure it is needed */
+#endif
+    restconf_socket      *rc_socket;    /* Backpointer to restconf_socket needed for callhome */
+} restconf_conn;
+
 
 /* Restconf handle 
  * Global data about ssl (not per packet/request)
@@ -142,16 +155,19 @@ typedef struct {
 restconf_stream_data *restconf_stream_data_new(restconf_conn *rc, int32_t stream_id);
 restconf_stream_data *restconf_stream_find(restconf_conn *rc, int32_t id);
 int               restconf_stream_free(restconf_stream_data *sd);
-restconf_conn    *restconf_conn_new(clicon_handle h, int s);
+restconf_conn    *restconf_conn_new(clicon_handle h, int s, restconf_socket *socket);
 int               restconf_conn_free(restconf_conn *rc);
 int               ssl_x509_name_oneline(SSL *ssl, char **oneline);
 
 int               restconf_close_ssl_socket(restconf_conn *rc, int shutdown); /* XXX in restconf_main_native.c */
 int               restconf_connection_sanity(clicon_handle h, restconf_conn *rc, restconf_stream_data *sd);
-int               native_send_badrequest(clicon_handle h, int s, SSL *ssl, char *media, char *body);
 restconf_native_handle *restconf_native_handle_get(clicon_handle h);
 int               restconf_connection(int s, void *arg);
-int               restconf_connection_close(clicon_handle h, int s);
+int               restconf_connection_close(clicon_handle h, int s, restconf_socket *rsock);
+int               restconf_ssl_accept_client(clicon_handle h, int s, restconf_socket *rsock);
+int               restconf_callhome_cb(int fd, void *arg);
+
+int               restconf_callhome_timer(restconf_socket *rsock, int new);
     
 #endif /* _RESTCONF_NATIVE_H_ */
 
