@@ -181,15 +181,34 @@ clixon_proc_socket(char **argv,
     sigfn_t  oldhandler = NULL;
     sigset_t oset;
     int      sig = 0;
+
+#ifdef __APPLE__
+    int         sock_flags = SOCK_DGRAM;
+#else
+    int         sock_flags = SOCK_DGRAM | SOCK_CLOEXEC;
+#endif
     
     if (argv == NULL){
 	clicon_err(OE_UNIX, EINVAL, "argv is NULL");
 	goto done;
     }
-    if (socketpair(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0, sp) < 0){
+    if (socketpair(AF_UNIX, sock_flags, 0, sp) < 0){
 	clicon_err(OE_UNIX, errno, "socketpair");
 	goto done;
     }
+
+#ifdef __APPLE__
+    if (fcntl(sp[0], O_CLOEXEC)) {
+	clicon_err(OE_UNIX, errno, "fcntl, sp[0]");
+	goto done;
+    }
+
+    if (fcntl(sp[1], O_CLOEXEC)) {
+	clicon_err(OE_UNIX, errno, "fcntl, sp[1]");
+	goto done;
+    }
+#endif
+
     sigprocmask(0, NULL, &oset);
     set_signal(SIGINT, clixon_proc_sigint, &oldhandler);
     sig++;
