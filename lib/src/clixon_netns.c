@@ -134,12 +134,26 @@ create_socket(struct sockaddr *sa,
 	goto done;
     }
     /* create inet socket */
-    if ((s = socket(sa->sa_family,
-		    SOCK_STREAM | SOCK_CLOEXEC | flags,
+
+#ifndef __APPLE__
+    flags = SOCK_STREAM | SOCK_CLOEXEC | flags;
+#else
+    flags = SOCK_STREAM | flags;
+#endif
+
+    if ((s = socket(sa->sa_family, flags,
 		    0)) < 0) {
 	clicon_err(OE_UNIX, errno, "socket");
 	goto done;
     }
+
+#ifdef __APPLE__
+    if (fcntl(s, O_CLOEXEC)) {
+	clicon_err(OE_UNIX, errno, "fcntl");
+	goto done;
+    }
+#endif
+
     if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, sizeof(on)) == -1) {
 	clicon_err(OE_UNIX, errno, "setsockopt SO_KEEPALIVE");
 	goto done;
@@ -201,11 +215,30 @@ fork_netns_socket(const char      *netns,
     char        nspath[MAXPATHLEN]; /* Path to namespace file */
     struct stat st;
 
+#ifdef __APPLE__
+    int         sock_flags = SOCK_DGRAM;
+#else
+    int         sock_flags = SOCK_DGRAM | SOCK_CLOEXEC;
+#endif
+
     clicon_debug(1, "%s %s", __FUNCTION__, netns);
-    if (socketpair(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0, sp) < 0){
+    if (socketpair(AF_UNIX, sock_flags, 0, sp) < 0){
 	clicon_err(OE_UNIX, errno, "socketpair");
 	goto done;
     }
+
+#ifdef __APPLE__
+    if (fcntl(sp[0], O_CLOEXEC)) {
+	clicon_err(OE_UNIX, errno, "fcntl, sp[0]");
+	goto done;
+    }
+
+    if (fcntl(sp[1], O_CLOEXEC)) {
+	clicon_err(OE_UNIX, errno, "fcntl, sp[1]");
+	goto done;
+    }
+#endif
+
     /* Check namespace exists */
     sprintf(nspath,"/var/run/netns/%s", netns);	
     if (stat(nspath, &st) < 0){

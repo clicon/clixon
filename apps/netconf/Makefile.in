@@ -38,7 +38,13 @@ top_srcdir  	= @top_srcdir@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
 LINKAGE         = @LINKAGE@
-INSTALLFLAGS  	= @INSTALLFLAGS@ 
+
+ifeq ($(HOST_VENDOR),apple)
+INSTALLFLAGS =
+else
+INSTALLFLAGS = @INSTALLFLAGS@
+endif
+
 LDFLAGS 	= @LDFLAGS@
 
 prefix 		= @prefix@

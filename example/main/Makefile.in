@@ -60,7 +60,13 @@ CLIXON_DEFAULT_CONFIG = @CLIXON_DEFAULT_CONFIG@
 
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ -fPIC
-INSTALLFLAGS  	= @INSTALLFLAGS@ 
+
+ifeq ($(HOST_VENDOR),apple)
+INSTALLFLAGS =
+else
+INSTALLFLAGS = @INSTALLFLAGS@
+endif
+
 with_restconf	= @with_restconf@
 
 INCLUDES 	= -I$(includedir) @INCLUDES@ 
