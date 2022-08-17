@@ -172,7 +172,7 @@ wait_restconf
 
 new "rfc4243 4.3.  Capability Identifier"
 expecteof "$clixon_netconf -ef $cfg" 0 "$DEFAULTHELLO" \
-"<capability>urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=report-all&also-supported=explicit,trim</capability>"
+"<capability>urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit&also-supported=report-all,trim,report-all-tagged</capability>"
 
 new "rfc6243 3.1.  'report-all' Retrieval Mode"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
@@ -195,7 +195,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 <interface><name>eth0</name><mtu>8192</mtu></interface>\
 <interface><name>eth1</name></interface>\
 <interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface>\
-<interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface>\
+<interface><name>eth3</name><status>waking up</status></interface>\
 </interfaces></data></rpc-reply>"
 
 new "rfc6243 3.3.  'explicit' Retrieval Mode"
@@ -215,9 +215,12 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><interfaces $EXAMPLENS/></filter>\
 <with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all-tagged</with-defaults></get></rpc>" \
 "" \
-"<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-not-supported</error-tag>\
-<error-severity>error</error-severity>\
-<error-message>with-defaults retrieval mode \"report-all-tagged\" is not supported</error-message></rpc-error></rpc-reply>"
+"<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
+<interface><name>eth0</name><mtu>8192</mtu><status wd:default=\"true\">ok</status></interface>\
+<interface><name>eth1</name><mtu wd:default=\"true\">1500</mtu><status wd:default=\"true\">ok</status></interface>\
+<interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface>\
+<interface><name>eth3</name><mtu wd:default=\"true\">1500</mtu><status>waking up</status></interface>\
+</interfaces></data></rpc-reply>"
 
 new "rfc6243 2.3.1.  'explicit' Basic Mode Retrieval"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
