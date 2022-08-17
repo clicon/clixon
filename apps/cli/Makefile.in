@@ -50,12 +50,6 @@ endif
 SH_SUFFIX	= @SH_SUFFIX@
 LIBSTATIC_SUFFIX = @LIBSTATIC_SUFFIX@
 
-ifeq ($(HOST_VENDOR),apple)
-INSTALLFLAGS =
-else
-INSTALLFLAGS = @INSTALLFLAGS@
-endif
-
 LDFLAGS 	= @LDFLAGS@	
 ifneq ($(LINKAGE),dynamic)
  # -rdynamic for using -ldl
@@ -76,6 +70,12 @@ HOST_VENDOR     = @host_vendor@
 
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
+
+ifeq ($(HOST_VENDOR),apple)
+INSTALLFLAGS =
+else
+INSTALLFLAGS = @INSTALLFLAGS@
+endif
 
 # Use this clixon lib for linking
 ifeq ($(LINKAGE),dynamic)
