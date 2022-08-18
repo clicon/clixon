@@ -46,6 +46,7 @@ Expected: September 2022
 
 ### Corrected Bugs
 
+* Fixed: [Issues with ietf-snmp modules](https://github.com/clicon/clixon/issues/353)
 * Fixed: [Missing/no namespace error in YANG augments with default values](https://github.com/clicon/clixon/issues/354)
 * Fixed: [Validation of mandatory in choice/case does not work in some cases](https://github.com/clicon/clixon/issues/349)
 

@@ -2789,7 +2789,7 @@ ys_populate2(yang_stmt    *ys,
  * @retval   -1   Error
  * @retval    0   Feature not enabled: remove yt
  * @retval    1   OK
- * @note On return 1 the over-lying function need to remove yt from its parent
+ * @note On return 0 the over-lying function need to remove yt from its parent
  * @note cannot use yang_apply here since child-list is modified (destructive) 
  * @note if-features is parsed in full context here, previous restricted pass in ys_parse_sub
  */
@@ -2835,6 +2835,7 @@ yang_features(clicon_handle h,
 			ys->ys_keyword = Y_ANYDATA;
 			ys_freechildren(ys);
 			ys->ys_len = 0;
+			yang_flag_set(ys, YANG_FLAG_DISABLED);
 			break;
 		    }
 		    for (j=i+1; j<yt->ys_len; j++)

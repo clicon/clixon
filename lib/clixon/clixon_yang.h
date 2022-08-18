@@ -66,6 +66,11 @@
 #define YANG_FLAG_CONFIG_VALUE 0x20  /* Ancestor config cache value */
 #endif
 
+#define YANG_FLAG_DISABLED     0x40  /* Disabled due to if-feature evaluate to false 
+				      * Transformed to ANYDATA but some code may need to check
+				      * why it is an ANYDATA
+				      */
+
 /*
  * Types
  */

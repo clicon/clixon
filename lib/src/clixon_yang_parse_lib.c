@@ -289,10 +289,13 @@ yang_augment_node(clicon_handle h,
 	    if (childkey != Y_ACTION && childkey != Y_NOTIFICATION && childkey != Y_UNKNOWN &&
 		childkey != Y_CONTAINER && childkey != Y_LEAF && childkey != Y_LIST &&
 		childkey != Y_LEAF_LIST && childkey != Y_USES && childkey != Y_CHOICE){
-		clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: node %s %d cannot be added to target node %s",
+		/* Special case if yc0 is disabled by if-feature=false, then it is transformed to ANYDATA
+		 */
+		if (yang_flag_get(yc0, YANG_FLAG_DISABLED) == 0)
+		    clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: node %s of type %s cannot be added to target node %s (see RFC 7950 Sec 17)",
 			   yang_argument_get(ys_module(ys)),
+			   yang_argument_get(yc0),
 			   yang_key2str(childkey),
-			   childkey,
 			   schema_nodeid);
 		goto ok;
 	    }
