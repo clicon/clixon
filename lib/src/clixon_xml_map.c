@@ -651,10 +651,11 @@ xml_namespace_change(cxobj *x,
     return retval;
 }
 
-int
+/*!
+ */
+static int
 xml_default_create1(yang_stmt *y,
 		    cxobj     *xt,
-		    int        top,
 		    cxobj    **xcp)
 {
     int        retval = -1;
@@ -678,12 +679,6 @@ xml_default_create1(yang_stmt *y,
 	}
 	else{ /* Namespace does not exist in target, must add it w xmlns attr. 
 		 use source prefix */
-	    if (!top){
-		if ((prefix = yang_find_myprefix(y)) == NULL){
-		    clicon_err(OE_UNIX, errno, "strdup");
-		    goto done;
-		}		
-	    }
 	    if (add_namespace(xc, xc, prefix, namespace) < 0)
 		goto done;
 	    /* Add prefix to x, if any */
@@ -718,7 +713,7 @@ xml_default_create(yang_stmt *y,
     char      *str;
     cg_var    *cv;
 	
-    if (xml_default_create1(y, xt, top, &xc) < 0)
+    if (xml_default_create1(y, xt, &xc) < 0)
 	goto done;
     xml_flag_set(xc, XML_FLAG_DEFAULT);
     if ((xb = xml_new("body", xc, CX_BODY)) == NULL)
@@ -869,7 +864,7 @@ xml_default1(yang_stmt *yt,
 			if (create){
 			    /* Retval shows there is a default value need to create the 
 			     * container */
-			    if (xml_default_create1(yc, xt, top, &xc) < 0)
+			    if (xml_default_create1(yc, xt, &xc) < 0)
 				goto done;
 			    xml_sort(xt);
 			    /* Then call it recursively */
@@ -923,6 +918,7 @@ xml_default(cxobj *xt,
  * @param[in]   state   If set expand defaults also for state data, otherwise only config
  * @retval      0       OK
  * @retval      -1      Error
+ * @see xml_global_defaults
  */
 int
 xml_default_recurse(cxobj *xn,
@@ -989,6 +985,7 @@ xml_global_defaults_create(cxobj     *xt,
  * @retval      0       OK
  * @retval      -1      Error
  * Uses cache?
+ * @see xml_default_recurse
  */
 int
 xml_global_defaults(clicon_handle h,
@@ -1567,28 +1564,31 @@ xml_merge1(cxobj              *x0,  /* the target */
 	   cxobj              *x1,  /* the source */
 	   char              **reason)
 {
-    int        retval = -1;
-    char      *x1cname; /* child name */
-    cxobj     *x0c; /* base child */
-    cxobj     *x0b; /* base body */
-    cxobj     *x1c; /* mod child */
-    char      *x1bstr; /* mod body string */
-    yang_stmt *yc;  /* yang child */
-    cbuf      *cbr = NULL; /* Reason buffer */
-    int        ret;
-    int        i;
+    int             retval = -1;
+    char           *x1cname; /* child name */
+    cxobj          *x0c; /* base child */
+    cxobj          *x0b; /* base body */
+    cxobj          *x1c; /* mod child */
+    char           *x1bstr; /* mod body string */
+    yang_stmt      *yc;  /* yang child */
+    cbuf           *cbr = NULL; /* Reason buffer */
+    int             ret;
+    int             i;
     merge_twophase *twophase = NULL;
-    int twophase_len;
+    int             twophase_len;
+    cvec           *nsc = NULL;
+    cg_var         *cv;
+    char           *ns;
+    char           *px;
+    char           *pxe;
     
-    assert(x1 && xml_type(x1) == CX_ELMNT);
-    assert(y0);
-
+    if (x1 == NULL || xml_type(x1) != CX_ELMNT || y0 == NULL){
+	clicon_err(OE_XML, EINVAL, "x1 is NULL or not XML element, or lacks yang spec");
+	goto done;
+    }
     if (x0 == NULL){
-	cvec   *nsc = NULL;
-	cg_var *cv;
-	char   *ns;
-	char   *px;
-	nsc = cvec_dup(nscache_get_all(x1));
+	if (xml_nsctx_node(x1, &nsc) < 0)
+	    goto done;
 	if (xml_rm(x1) < 0)
 	    goto done;
 	/* This is to make the anydata case a little more robust, more could be done */
@@ -1603,13 +1603,16 @@ xml_merge1(cxobj              *x0,  /* the target */
 	while ((cv = cvec_each(nsc, cv)) != NULL){
 	    px = cv_name_get(cv);
 	    ns = cv_string_get(cv);
-	    /* Check if it exists */
-	    if (xml2prefix(x1, ns, NULL) == 0)
+	    /* Check if namespace exists */
+	    if ((ret = xml2prefix(x1, ns, &pxe)) < 0)
+		goto done;
+	    if (ret == 0 ||  /* Not exist */
+		clicon_strcmp(px, pxe) != 0){ /* Exists and not equal (can be NULL) */
 		if (xmlns_set(x1, px, ns) < 0)
 		    goto done;
+		xml_sort(x1);
+	    }
 	}
-	if (nsc)
-	    cvec_free(nsc);
 	goto ok;
     }
     if (yang_keyword_get(y0) == Y_LEAF_LIST || yang_keyword_get(y0) == Y_LEAF){
@@ -1692,6 +1695,8 @@ xml_merge1(cxobj              *x0,  /* the target */
  ok:
     retval = 1;
  done:
+    if (nsc)
+	cvec_free(nsc);
     if (twophase)
 	free(twophase);
     if (cbr)

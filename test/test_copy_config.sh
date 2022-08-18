@@ -129,7 +129,7 @@ new "wait restconf"
 wait_restconf
 
 new "Add config to candidate"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface nc:operation=\"create\"><name>eth/0/0</name><type>if:fddi</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface nc:operation=\"create\"><name>eth/0/0</name><type xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">if:fddi</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf commit to running"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -153,10 +153,10 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 # Here startup and candidate have content
 new "Check candidate content"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth/0/0</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><name>eth/0/0</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>"
 
 new "Check startup content"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><startup/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth/0/0</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><startup/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><name>eth/0/0</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>"
 
 new "Delete startup"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><delete-config><target><startup/></target></delete-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -169,8 +169,8 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "copy candidate->startup"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><copy-config><target><startup/></target><source><candidate/></source></copy-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "Check startup content"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><startup/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth/0/0</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>"
+new "Check startup content xxx"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><startup/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><name>eth/0/0</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>"
 
 new "Delete candidate"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface nc:operation=\"delete\"><name>eth/0/0</name><type>if:fddi</type></interface></interfaces></config><default-operation>none</default-operation> </edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -184,7 +184,7 @@ new "copy startup->candidate"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><copy-config><target><candidate/></target><source><startup/></source></copy-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "Check candidate content"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth/0/0</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><name>eth/0/0</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>"
 
 # Negative test: check copying to running is not allowed
 new "Delete candidate"

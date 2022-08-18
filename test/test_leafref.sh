@@ -88,7 +88,7 @@ module example{
 EOF
 
 BASEXML=$(cat <<EOF
-<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces" xmlns:ex="urn:example:clixon">
    <interface xmlns:ip="urn:ietf:params:xml:ns:yang:ietf-ip">
       <name>eth0</name>
       <type>ex:eth</type>

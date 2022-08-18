@@ -81,22 +81,22 @@ module ietf-interfaces {
 EOF
 
 # Create running-db containin the interface "run" OK
-runvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>run</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces>'
+runvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>run</name><type xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces">if:fddi</type><enabled>true</enabled></interface></interfaces>'
 
 # Create startup-db containing the interface "startup" OK
-startvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>startup</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces>'
+startvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces"><name>startup</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces>'
 
 # extra OK
-extravar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces>'
+extravar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces"><name>extra</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces>'
 
 # invalid (contains <not-defined/>), but OK XML syntax
-invalidvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><not-defined/><name>invalid</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces>'
+invalidvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces"><not-defined/><name>invalid</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces>'
 
 # Broken XML (contains </nmae>)
-brokenvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>broken</nmae><type>if:fddi</type><enabled>true</enabled></interface></interfaces>'
+brokenvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces"><name>broken</nmae><type>if:fddi</type><enabled>true</enabled></interface></interfaces>'
 
 # Startup XML with state
-statevar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>startup</name><oper-status>up</oper-status><type>if:fddi</type><enabled>true</enabled></interface></interfaces>'
+statevar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>startup</name><oper-status>up</oper-status><type xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces">if:fddi</type><enabled>true</enabled></interface></interfaces>'
 
 # Create a pre-set running, startup and (extra) config.
 # The configs are identified by an interface called run, startup, extra.
@@ -204,10 +204,10 @@ testrun init "$runvar" "$startvar" "$extravar" "<data>$extravar</data>"
 testrun none  "$runvar" "$startvar" "$extravar" "<data>$runvar</data>"
 
 # Running mode: keep running but load also extra
-testrun running "$runvar" "$startvar" "$extravar" '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>if:fddi</type><enabled>true</enabled></interface><interface><name>run</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces></data>'
+testrun running "$runvar" "$startvar" "$extravar" '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces"><name>extra</name><type>if:fddi</type><enabled>true</enabled></interface><interface xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces"><name>run</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces></data>'
 
 # Startup mode: scratch running, load startup with extra on top
-testrun startup "$runvar" "$startvar" "$extravar" '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>extra</name><type>if:fddi</type><enabled>true</enabled></interface><interface><name>startup</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces></data>' 
+testrun startup "$runvar" "$startvar" "$extravar" '<data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces"><name>extra</name><type>if:fddi</type><enabled>true</enabled></interface><interface xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces"><name>startup</name><type>if:fddi</type><enabled>true</enabled></interface></interfaces></data>' 
 
 # 2. Try different modes on Invalid running/startup/extra WITHOUT failsafe
 # ensure all db:s are unchanged after failure.

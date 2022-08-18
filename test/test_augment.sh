@@ -245,7 +245,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
     <name>e2</name>
     <type>mymod:some-new-iftype</type> 
     <mymod:mandatory-leaf>true</mymod:mandatory-leaf>
-    <mymod:other>if:fddi</mymod:other>
+    <mymod:other xmlns:if=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">if:fddi</mymod:other>
   </interface></interfaces></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf validate ok"

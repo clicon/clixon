@@ -155,7 +155,7 @@ cat <<EOF > $fstate
 EOF
 
 EXPSTATE=$(cat <<EOF
-<global-state xmlns="urn:example:lib"><gbds>gbds</gbds><aug:gads xmlns:aug="urn:example:augment">gads</aug:gads></global-state>
+<global-state xmlns="urn:example:lib"><gbds>gbds</gbds><gads xmlns="urn:example:augment">gads</gads></global-state>
 EOF
 )
 
@@ -184,13 +184,13 @@ new "4. Empty config + optional state, expect global default + optional state"
 cat <<EOF > $fstate
 <global-state xmlns="urn:example:lib">
   <gbos>gbos</gbos>
-  <aug:gaos xmlns:aug="urn:example:augment">gaos</aug:gaos>
+  <gaos xmlns="urn:example:augment">gaos</gaos>
 </global-state>
 EOF
 
 # Note Expect gbds(default) + gbos(optional), the latter given by file above
 EXPSTATE=$(cat <<EOF
-<global-state xmlns="urn:example:lib"><gbds>gbds</gbds><gbos>gbos</gbos><aug:gads xmlns:aug="urn:example:augment">gads</aug:gads><aug:gaos xmlns:aug="urn:example:augment">gaos</aug:gaos></global-state>
+<global-state xmlns="urn:example:lib"><gbds>gbds</gbds><gbos>gbos</gbos><gads xmlns="urn:example:augment">gads</gads><gaos xmlns="urn:example:augment">gaos</gaos></global-state>
 EOF
 )
 
@@ -209,7 +209,7 @@ cat <<EOF > $fstate
 EOF
 
 EXPSTATE=$(cat <<EOF
-<global-state xmlns="urn:example:lib"><gbds>gbds</gbds><aug:gads xmlns:aug="urn:example:augment">gads</aug:gads></global-state><base-config xmlns="urn:example:lib"><parameter><name>a</name><param-state><lbds>lbds</lbds><aug:lads xmlns:aug="urn:example:augment">lads</aug:lads></param-state></parameter></base-config>
+<global-state xmlns="urn:example:lib"><gbds>gbds</gbds><gads xmlns="urn:example:augment">gads</gads></global-state><base-config xmlns="urn:example:lib"><parameter><name>a</name><param-state><lbds>lbds</lbds><lads xmlns="urn:example:augment">lads</lads></param-state></parameter></base-config>
 EOF
 )
 
@@ -238,7 +238,7 @@ cat <<EOF > $fstate
 EOF
 
 EXPSTATE=$(cat <<EOF
-<global-state xmlns="urn:example:lib"><gbds>gbds</gbds><aug:gads xmlns:aug="urn:example:augment">gads</aug:gads></global-state><base-config xmlns="urn:example:lib"><parameter><name>a</name><param-state><lbds>lbds</lbds><lbos>lbos</lbos><aug:lads xmlns:aug="urn:example:augment">lads</aug:lads><laos xmlns="urn:example:augment">laos</laos></param-state></parameter></base-config>
+<global-state xmlns="urn:example:lib"><gbds>gbds</gbds><gads xmlns="urn:example:augment">gads</gads></global-state><base-config xmlns="urn:example:lib"><parameter><name>a</name><param-state><lbds>lbds</lbds><lbos>lbos</lbos><lads xmlns="urn:example:augment">lads</lads><laos xmlns="urn:example:augment">laos</laos></param-state></parameter></base-config>
 EOF
 )
 

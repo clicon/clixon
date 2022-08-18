@@ -69,7 +69,7 @@ cat <<EOF > $dir/startup_db
       <name>e</name>
       <config>
          <name>e</name>
-         <type>ex:eth</type>
+         <type xmlns:ex="urn:example:clixon">ex:eth</type>
          <loopback-mode>false</loopback-mode>
          <enabled>true</enabled>
       </config>
@@ -103,7 +103,7 @@ new "$clixon_cli -D $DBG -1f $cfg show version"
 expectpart "$($clixon_cli -D $DBG -1f $cfg show version)" 0 "${CLIXON_VERSION}"
 
 new "$clixon_netconf -qf $cfg"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"http://openconfig.net/yang/interfaces\"><interface><name>e</name><config><name>e</name><type>ex:eth</type><loopback-mode>false</loopback-mode><enabled>true</enabled></config><hold-time><config><up>0</up><down>0</down></config></hold-time></interface></interfaces></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"http://openconfig.net/yang/interfaces\"><interface><name>e</name><config><name>e</name><type xmlns:ex=\"urn:example:clixon\">ex:eth</type><loopback-mode>false</loopback-mode><enabled>true</enabled></config><hold-time><config><up>0</up><down>0</down></config></hold-time></interface></interfaces></data></rpc-reply>"
 
 new "cli show configuration"
 expectpart "$($clixon_cli -1 -f $cfg show conf xml)" 0 "^<interfaces xmlns=\"http://openconfig.net/yang/interfaces\">" --not-- "<oc-eth:ethernet xmlns:oc-eth=\"http://openconfig.net/yang/interfaces/ethernet\">"
@@ -153,10 +153,10 @@ cat <<EOF > $dir/startup_db
          <name>eth1</name>
          <config>
             <name>eth1</name>
-            <type>ianaift:ethernetCsmacd</type>
+            <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
             <mtu>9206</mtu>
             <enabled>true</enabled>
-            <oc-vlan:tpid xmlns:oc-vlan="http://openconfig.net/yang/vlan">oc-vlan-types:TPID_0X8100</oc-vlan:tpid>
+            <oc-vlan:tpid  xmlns:oc-vlan="http://openconfig.net/yang/vlan" xmlns:oc-vlan-types="http://openconfig.net/yang/vlan-types">oc-vlan-types:TPID_0X8100</oc-vlan:tpid>
          </config>
          <oc-eth:ethernet xmlns:oc-eth="http://openconfig.net/yang/interfaces/ethernet">
             <oc-eth:config>

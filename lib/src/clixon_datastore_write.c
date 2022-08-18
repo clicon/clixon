@@ -133,16 +133,27 @@ attr_ns_value(cxobj *x,
 }
 
 /*! When new body is added, some needs type lookup is made and namespace checked
+ *
  * This includes identityrefs, paths
  * This code identifies x0 as an identityref, looks at the _body_ string and ensures the right
  * namespace is inserted in x1.
+ * @param[in]  x1       Base xml tree (can be NULL in add scenarios)
+ * @param[in]  x0       XML tree which modifies base
+ * @param[in]  x0p      Parent of x0
+ * @param[in]  x1bstr   Body string of x1
+ * @param[in]  y        Yang of x0 (and x1)
+ * @param[out] cbret    Initialized cligen buffer. Contains return XML if retval is 0.
+ * @retval    -1        Error
+ * @retval     0        Failed (cbret set)
+ * @retval     1        OK
  */
 static int
 check_body_namespace(cxobj     *x0,
+		     cxobj     *x0p,		  
 		     cxobj     *x1,
-		     cxobj     *x1p,		  
 		     char      *x1bstr,
-		     yang_stmt *y)
+		     yang_stmt *y,
+		     cbuf      *cbret)		     
 {
     int        retval = -1;
     char      *prefix = NULL;
@@ -151,56 +162,102 @@ check_body_namespace(cxobj     *x0,
     cxobj     *xa;
     cxobj     *x;
     int        isroot;
+    cbuf      *cberr = NULL;
+    int        ret;
 
     /* XXX: need to identify root better than hiereustics and strcmp,... */
-    isroot = xml_parent(x1p)==NULL &&
-	strcmp(xml_name(x1p), DATASTORE_TOP_SYMBOL) == 0 &&
-	xml_prefix(x1p)==NULL;
+    isroot = xml_parent(x0p)==NULL &&
+	strcmp(xml_name(x0p), DATASTORE_TOP_SYMBOL) == 0 &&
+	xml_prefix(x0p)==NULL;
     if (nodeid_split(x1bstr, &prefix, NULL) < 0)
 	goto done;
     if (prefix == NULL)
 	goto ok; /* skip */
-    if (xml2ns(x0, prefix, &ns0) < 0)
+    if (xml2ns(x1, prefix, &ns0) < 0)
 	goto done;
-    if (xml2ns(x1, prefix, &ns1) < 0)
+    if (xml2ns(x0, prefix, &ns1) < 0)
 	goto done;
-    if (ns0 != NULL){
-	if (ns1){
-	    if (strcmp(ns0, ns1)){
-		clicon_err(OE_YANG, EFAULT, "identity namespace collision: %s: %s vs %s", x1bstr, ns0, ns1);
+    if (ns0 != NULL && ns1 != NULL){  /* namespace exists in both x1 and x0 */
+	if (strcmp(ns0, ns1)){
+	    /* prefixes in x1 and x0 refers to different namespaces 
+	     * XXX return netconf error instead 
+bad-attribue?
+	     */
+	    if ((cberr = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
 		goto done;
 	    }
+	    cprintf(cberr, "identityref: \"%s\": namespace collision %s vs %s", x1bstr, ns0, ns1);
+	    if (netconf_invalid_value(cbret, "application", cbuf_get(cberr)) < 0)
+		goto done;
+	    goto fail;
+	}
+    }
+    else if (ns0 != NULL && ns1 == NULL){ /* namespace exists in x0 but not in x1: add it to x1*/
+	if (isroot)
+	    x = x0;
+	else
+	    x = x0p;
+	if (nscache_set(x, prefix, ns0) < 0)
+	    goto done;
+	/* Create xmlns attribute to x0 XXX same code ^*/
+	if (prefix){
+	    if ((xa = xml_new(prefix, x, CX_ATTR)) == NULL)
+		goto done;
+	    if (xml_prefix_set(xa, "xmlns") < 0)
+		goto done;
 	}
 	else{
-	    if (isroot)
-		x = x1;
-	    else
-		x = x1p;
-	    if (nscache_set(x, prefix, ns0) < 0)
+	    if ((xa = xml_new("xmlns", x, CX_ATTR)) == NULL)
 		goto done;
-	    /* Create xmlns attribute to x1 XXX same code ^*/
-	    if (prefix){
-		if ((xa = xml_new(prefix, x, CX_ATTR)) == NULL)
+	}
+	if (xml_value_set(xa, ns0) < 0)
+	    goto done;
+	xml_sort(x); /* Ensure attr is first / XXX xml_insert? */
+    }
+#if 0
+    else if (ns0 == NULL && ns1 != NULL){ /* namespace exists in x1 but not in x0: OK (but request is realy invalid */
+    }
+#endif
+    else{ /* Namespace does not exist in x0: error */
+#ifdef IDENTITYREF_KLUDGE
+	if (ns1 == NULL){
+	    if ((ret = yang_find_namespace_by_prefix(y, prefix, &ns0)) < 0)
+		goto done;
+	    if (ret == 0){ /* no such namespace in yang */
+		;
+	    }
+	    else{ /* Add it according to the kludge,... */
+		if ((xa = xml_new(prefix, x0, CX_ATTR)) == NULL)
 		    goto done;
 		if (xml_prefix_set(xa, "xmlns") < 0)
 		    goto done;
-
-	    }
-	    else{
-		if ((xa = xml_new("xmlns", x, CX_ATTR)) == NULL)
+		if (xml_value_set(xa, ns0) < 0)
 		    goto done;
 	    }
-	    if (xml_value_set(xa, ns0) < 0)
-		goto done;
-	    xml_sort(x); /* Ensure attr is first / XXX xml_insert? */
 	}
+#else
+	if ((cberr = cbuf_new()) == NULL){
+	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	    goto done;
+	}
+	cprintf(cberr, "identityref: \"%s\": prefix \"%s\" has no associated namespace", x1bstr, prefix);
+	if (netconf_invalid_value(cbret, "application", cbuf_get(cberr)) < 0)
+	    goto done;
+	goto fail;
+#endif
     }
  ok:
-    retval = 0;
+    retval = 1;
  done:
+    if (cberr)
+	cbuf_free(cberr);
     if (prefix)
 	free(prefix);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Check yang when condition between a new xml x1 and old x0
@@ -602,13 +659,15 @@ text_modify(clicon_handle       h,
 	    }
 	    restype = yang_argument_get(yrestype);
 	    /* Differentiate between an empty type (NULL) and an empty string "" */
-	    if (x1bstr==NULL && strcmp(restype,"string")==0)
+	    if (x1bstr==NULL && strcmp(restype, "string")==0)
 		x1bstr="";
 	    if (x1bstr){
 		if (strcmp(restype, "identityref") == 0){
 		    x1bstr = clixon_trim2(x1bstr, " \t\n"); 
-		    if (check_body_namespace(x1, x0, x0p, x1bstr, y0) < 0)
+		    if ((ret = check_body_namespace(x0, x0p, x1, x1bstr, y0, cbret)) < 0)
 			goto done;
+		    if (ret == 0)
+			goto fail;
 		}
 		else{
 		    /* Some bodies strip pretty-printed here, unsure where to do this,.. */
