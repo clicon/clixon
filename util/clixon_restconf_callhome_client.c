@@ -68,7 +68,7 @@
 /* clixon */
 #include "clixon/clixon.h"
 
-#define UTIL_TLS_OPTS "hD:f:e:F:a:p:c:C:k:n:"
+#define UTIL_TLS_OPTS "hD:f:F:a:p:c:C:k:n:ot:"
 
 #define RESTCONF_CH_TLS 4336
 
@@ -86,7 +86,13 @@ typedef struct {
 } tls_session_data;
 
 /* Expected connects */
-static int _connects = 1; 
+static int _connects = 1;
+
+/* Keep socket open, dont close immediately after reply */
+static int _keep_open = 0;
+
+/* Timeout in seconds after each accept, if fired just exit */
+static int _timeout_s = 60;
 
 /*! Create and bind stream socket
  * @param[in]  sa       Socketaddress
@@ -186,6 +192,9 @@ read_data_file(FILE   *fe,
 }
 
 /*! Client data socket, receive reply from server
+ * Print info on stdout
+ * If keep_open = 0, then close socket directly after 1st reply (client close)
+ * If keep_open = 1, then keep socket open (server close)
  */
 static int
 tls_server_reply_cb(int   s, 
@@ -199,10 +208,12 @@ tls_server_reply_cb(int   s,
     char          *expbuf = NULL;
     struct timeval tn;
     struct timeval td;
-    static int     seq = 1;
+    static int     seq = 0;
     static struct timeval t0 = {0,};
 	
     clicon_debug(1, "%s", __FUNCTION__);
+    if (seq == 0)
+	gettimeofday(&t0, NULL);
     ssl = sd->sd_ssl;
     /* get reply & decrypt */
     if ((n = SSL_read(ssl, buf, sizeof(buf))) < 0){
@@ -210,24 +221,42 @@ tls_server_reply_cb(int   s,
 	goto done;
     }
     if (n == 0){
-	clicon_debug(1, "%s closed", __FUNCTION__);
-	goto done;
+	SSL_shutdown(ssl);
+	SSL_free(ssl);
+	clixon_event_unreg_fd(s, tls_server_reply_cb);
+	fprintf(stdout, "Close %d remote %lu\n", seq, td.tv_sec);
+	close(s);
+	free(sd);
+	if (_connects == 0)
+	    ;
+	else if (_connects == 1)
+	    clixon_exit_set(1); /* XXX more elaborate logic: 1) continue request, 2) close and accept new */
+	else
+	    _connects--;
+	goto ok;
     }
+    seq++;
     buf[n] = 0;
-    if (seq == 1)
-	gettimeofday(&t0, NULL);
     gettimeofday(&tn, NULL);
     timersub(&tn, &t0, &td);
-    fprintf(stdout, "OK %d %lu\n%s\n", seq++, td.tv_sec, buf);
-    SSL_shutdown(ssl);
-    SSL_free(ssl);
-    clixon_event_unreg_fd(s, tls_server_reply_cb);
-    close(s);
-    free(sd);
-    if (_connects == 1)
-	clixon_exit_set(1); /* XXX more elaborate logic: 1) continue request, 2) close and accept new */
-    else
-	_connects--;
+    fprintf(stdout, "OK %d %lu\n%s\n", seq, td.tv_sec, buf);
+    if (!_keep_open){
+	SSL_shutdown(ssl);
+	SSL_free(ssl);
+	clixon_event_unreg_fd(s, tls_server_reply_cb);
+	fprintf(stdout, "Close %d local %lu\n", seq, td.tv_sec);
+	close(s);
+	if (_connects == 0)
+	    ;
+	else if (_connects == 1){
+	    if (!_keep_open)
+		clixon_exit_set(1); /* XXX more elaborate logic: 1) continue request, 2) close and accept new */ 
+	}
+	else
+	    _connects--;
+	free(sd);
+    }
+ ok:
     retval = 0;
  done:
     if (expbuf)
@@ -330,6 +359,42 @@ tls_write_file(FILE *fp,
     return retval;
 }
 
+static int
+tls_timeout_cb(int   fd,
+	       void *arg)
+{
+    tls_accept_handle *ta = (tls_accept_handle *)arg;
+
+    fprintf(stderr, "Timeout on socket:%d\n", ta->ta_ss);
+    exit(200);
+}
+
+/*! Timeout in seconds after each accept, if fired just exit 
+ */
+static int
+tls_client_timeout(void *arg)
+{
+    int            retval = -1;
+    struct timeval now;
+    struct timeval t;
+    struct timeval t1 = {0, 0};
+
+    /* Unregister existing timeout */
+    clixon_event_unreg_timeout(tls_timeout_cb, arg);
+    /* Set timeout */
+    gettimeofday(&now, NULL);
+    t1.tv_sec = _timeout_s;
+    timeradd(&now, &t1, &t);
+    if (clixon_event_reg_timeout(t,
+				 tls_timeout_cb,
+				 arg,
+				 "tls client timeout") < 0)
+	goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Callhome-server accept socket
  */
 static int
@@ -367,6 +432,10 @@ tls_server_accept_cb(int   ss,
     /* register callback for reply */
     if (clixon_event_reg_fd(s, tls_server_reply_cb, sd, "tls server reply") < 0)
 	goto done;
+    /* Unregister old + register new timeout */
+    if (tls_client_timeout(ta) < 0)
+	goto done;
+
     retval = 0;
  done:
     return retval;
@@ -439,14 +508,15 @@ usage(char *argv0)
             "\t-h \t\tHelp\n"
     	    "\t-D <level> \tDebug\n"
 	    "\t-f <file> \tHTTP input file (overrides stdin)\n"
-	    "\t-e <file> \tFile including HTTP output (otherwise echo to stdout)\n"
 	    "\t-F ipv4|ipv6 \tSocket address family(ipv4 default)\n"
 	    "\t-a <addrstr> \tIP address (eg 1.2.3.4) - mandatory\n"
 	    "\t-p <port>    \tPort (default %d)\n"
 	    "\t-c <path> \tcert\n"
 	    "\t-C <path> \tcacert\n"
    	    "\t-k <path> \tkey\n"
-	    "\t-n <nr>   \tExpected incoming connections, 0 means no limit. Default: 1\n"
+	    "\t-n <nr>   \tQuit after this many incoming connections, 0 means no limit. Default: 1\n"
+	    "\t-o        \tKeep open after receiving first reply. Otherwise close directly after receiving 1st reply\n"
+	    "\t-t <sec>  \tTimeout in seconds after each accept, if fired just exit. Default: 60s\n"
 	    ,
 	    argv0,
 	    RESTCONF_CH_TLS);
@@ -525,6 +595,14 @@ main(int    argc,
 		usage(argv[0]);
 	    _connects = atoi(optarg);
 	    break;
+	case 'o': /* keep open, do not close after first reply */
+	    _keep_open = 1;
+	    break;
+	case 't': /* timeout */
+	    if (optarg == NULL || *optarg == '-')
+		usage(argv[0]);
+	    _timeout_s = atoi(optarg);
+	    break;
 	default:
 	    usage(argv[0]);
 	    break;
@@ -568,6 +646,8 @@ main(int    argc,
     ta->ta_ss = ss;
     ta->ta_f = fp;
     if (clixon_event_reg_fd(ss, tls_server_accept_cb, ta, "tls server accept") < 0)
+	goto done;
+    if (tls_client_timeout(ta) < 0)
 	goto done;
     if (clixon_event_loop(h) < 0)
 	goto done;

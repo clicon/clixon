@@ -284,8 +284,10 @@ clixon_event_reg_timeout(struct timeval t,
  * Note: deregister when exactly function and function arguments match, not time. So you
  * cannot have same function and argument callback on different timeouts. This is a little
  * different from clixon_event_unreg_fd.
- * @param[in]  fn  Function to call at time t
- * @param[in]  arg Argument to function fn
+ * @param[in]  fn   Function to call at time t
+ * @param[in]  arg  Argument to function fn
+ * @retval     0    OK, timeout unregistered
+ * @retval    -1    OK, but timeout not found
  * @see clixon_event_reg_timeout
  * @see clixon_event_unreg_fd
  */

@@ -78,7 +78,7 @@ cat <<EOF > $cfg
 	      <persistent/>
 	   </connection-type>
 	   <reconnect-strategy>
-	      <max-attempts>3</max-attempts>
+	      <max-attempts>1</max-attempts>
 	   </reconnect-strategy>
 	</call-home>
         <address>127.0.0.1</address>
@@ -92,10 +92,11 @@ cat <<EOF > $cfg
 	   <connection-type>
 	      <periodic>
 		<period>10</period>
+		<idle-timeout>5</idle-timeout>
 	      </periodic>
 	   </connection-type>
 	   <reconnect-strategy>
-	      <max-attempts>3</max-attempts>
+	      <max-attempts>1</max-attempts>
 	   </reconnect-strategy>
 	</call-home>
         <address>127.0.0.1</address>
@@ -290,13 +291,13 @@ fi
 new "wait restconf"
 wait_restconf
 
+
 new "restconf Add init data"
 expectpart "$(curl $CURLOPTS  --key $certdir/andy.key --cert $certdir/andy.crt -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" -d '{"clixon-example:table":{"parameter":{"name":"x","value":"foo"}}}' $RCPROTO://127.0.0.1/restconf/data)" 0 "HTTP/$HVER 201"
 
-# tests for (one) well-formed HTTP status and three replies and that the time is reasonable
 t0=$(date +"%s")
 new "Send GET via callhome persistence client port 4336"
-expectpart "$(${clixon_restconf_callhome_client} -p 4336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 3)" 0 "HTTP/$HVERCH 200" "OK 1" "OK 2" "OK 3" $expectreply --not-- "OK 4"
+expectpart "$(${clixon_restconf_callhome_client} -p 4336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 3)" 0 "HTTP/$HVERCH 200" "OK 1" "Close 1 local" "OK 2" "Close 2 local" "OK 3" "Close 3 local"  $expectreply --not-- "OK 4" "Close 4"
 t1=$(date +"%s")
 
 let t=t1-t0
@@ -307,18 +308,18 @@ fi
 
 t0=$(date +"%s")
 new "Send GET via callhome client periodic port 8336"
-expectpart "$(${clixon_restconf_callhome_client} -p 8336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 3)" 0 "HTTP/$HVERCH 200" "OK 1" "OK 2" "OK 3" $expectreply --not-- "OK "4
+expectpart "$(${clixon_restconf_callhome_client} -t 30 -p 8336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 2)" 0 "HTTP/$HVERCH 200" "OK 1" "Close 1" "OK 2" "Close 2" $expectreply --not-- "OK 3" "Close 3"
 t1=$(date +"%s")
 
 let t=t1-t0
-new "Check periodic interval ($t) is larger than 20 and less than 31"
-if [ $t -lt 20 -o $t -ge 31 ]; then
-    err1 "timer in interval [20-31] but is: $t"
+new "Check periodic interval ($t) is in interval [10-21]"
+if [ $t -lt 10 -o $t -ge 21 ]; then
+    err1 "timer in interval [10-21] but is: $t"
 fi
 
 t0=$(date +"%s")
 new "Send GET via callhome persistence again"
-expectpart "$(${clixon_restconf_callhome_client} -p 4336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 3)" 0 "OK 1" "OK 2" "OK 3" --not-- "OK 4"
+expectpart "$(${clixon_restconf_callhome_client} -p 4336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 3)" 0 "HTTP/$HVERCH 200" "OK 1" "Close 1 local" "OK 2" "Close 2 local" "OK 3" "Close 3 local"  $expectreply --not-- "OK 4" "Close 4"
 t1=$(date +"%s")
 
 let t=t1-t0
@@ -327,7 +328,17 @@ if [ $t -lt 2 -o $t -ge 4 ]; then
     err1 "timer in interval [2,4] but is: $t"
 fi
 
-# Kill old
+t0=$(date +"%s")
+new "Send GET and try idle-timeout, clients keeps socket open"
+expectpart "$(${clixon_restconf_callhome_client} -o -t 30 -p 8336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 1)" 0 "HTTP/$HVERCH 200" "OK 1" $expectreply "Close 1 remote" --not-- "OK 2" "Close 2"
+t1=$(date +"%s")
+
+let t=t1-t0
+new "Check periodic interval ($t) is in interval [5-15]"
+if [ $t -lt 5 -o $t -ge 15 ]; then
+    err1 "timer in interval [5-15] but is: $t"
+fi
+
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
     stop_restconf

@@ -107,7 +107,7 @@ typedef struct {
     int           rs_periodic;  /* 0: persistent, 1: periodic (if callhome) */
     uint32_t      rs_period;    /* Period in s (if callhome & periodic) */
     uint8_t       rs_max_attempts;  /* max connect attempts (if callhome) */
-
+    uint16_t      rs_idle_timeout; /* Max underlying TCP session remains idle (if callhome and periodic) */
     uint64_t      rs_start;     /* First period start, next is start+periods*period */
     uint64_t      rs_period_nr; /* Dynamic succeeding or timed out periods. 
 				   Set in restconf_callhome_timer*/
@@ -165,9 +165,12 @@ restconf_native_handle *restconf_native_handle_get(clicon_handle h);
 int               restconf_connection(int s, void *arg);
 int               restconf_connection_close(clicon_handle h, int s, restconf_socket *rsock);
 int               restconf_ssl_accept_client(clicon_handle h, int s, restconf_socket *rsock);
-int               restconf_callhome_cb(int fd, void *arg);
-
-int               restconf_callhome_timer(restconf_socket *rsock, int new);
+int               restconf_idle_timer_unreg(restconf_socket *rsock);
+int               restconf_idle_timer(restconf_socket *rsock);
+int               restconf_callhome_timer_unreg(restconf_socket *rsock);
+int               restconf_callhome_timer(restconf_socket *rsock, int status);
+int               restconf_socket_extract(clicon_handle h, cxobj *xs, cvec *nsc, restconf_socket *rsock,
+					  char **namespace, char **address, char **addrtype, uint16_t *port);
     
 #endif /* _RESTCONF_NATIVE_H_ */
 

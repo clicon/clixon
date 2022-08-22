@@ -309,8 +309,8 @@ restconf_connection_sanity(clicon_handle         h,
 	    clicon_err(OE_UNIX, errno, "cbuf_new");
 	    goto done;
 	}
-	cprintf(cberr, "HTTP cert verification failed: %s",
-		X509_verify_cert_error_string(code));
+	cprintf(cberr, "HTTP cert verification failed: %s[%ld]",
+		X509_verify_cert_error_string(code), code);
 	if (netconf_invalid_value_xml(&xerr, "protocol", cbuf_get(cberr)) < 0)
 	    goto done;
 	if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
@@ -975,16 +975,20 @@ restconf_connection_close(clicon_handle    h,
 {
     int                     retval = -1;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(1, "%s %s", __FUNCTION__, rsock->rs_description);
     if (close(s) < 0){
 	clicon_err(OE_UNIX, errno, "close");
 	goto done;
     }
     clixon_event_unreg_fd(s, restconf_connection);
     /* re-set timer */
-    if (rsock->rs_callhome &&
-	restconf_callhome_timer(rsock, 1) < 0)
-	goto done;
+    if (rsock->rs_callhome){
+	if (rsock->rs_periodic &&
+	    restconf_idle_timer_unreg(rsock) < 0)
+	    goto done;
+	if (restconf_callhome_timer(rsock, 1) < 0)
+	    goto done;
+    }
     retval = 0;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
@@ -1328,6 +1332,81 @@ restconf_ssl_accept_client(clicon_handle    h,
     return retval;
 } /* restconf_ssl_accept_client */
 
+/*! idle timeout timer callback
+ */
+static int
+restconf_idle_cb(int   fd,
+		 void *arg)
+{
+    int              retval = -1;
+    restconf_socket *rsock;
+
+    if ((rsock = (restconf_socket *)arg) == NULL){
+	clicon_err(OE_YANG, EINVAL, "rsock is NULL");
+	goto done;
+    }
+    clicon_debug(1, "%s %s", __FUNCTION__, rsock->rs_description);
+    /* sanity */
+    if (rsock->rs_callhome && rsock->rs_periodic && rsock->rs_idle_timeout && rsock->rs_ss > 0){
+	if (restconf_connection_close(rsock->rs_h, rsock->rs_ss, rsock) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+int
+restconf_idle_timer_unreg(restconf_socket *rsock)
+{
+    return clixon_event_unreg_timeout(restconf_idle_cb, rsock);
+}
+
+/*! Set callhome periodic idle-timeout
+ * 1) If callhome and periodic, set timer for t0+idle-timeout(ti)
+ * 2) Timestamp any data passing on the socket(td)
+ * 3) At timeout (ti) check if ti = td+idle-timeout (for first timeout same as t0=td), 
+ *    if so close socket
+ * 4) Else, reset timer to ti = td + idle-timeout. Goto (2)
+ * socket.
+ * XXX: now just timeout dont keep track of data (td)
+ * @see restconf_idle_timer_unreg
+ */
+int
+restconf_idle_timer(restconf_socket *rsock)
+{
+    int            retval = -1;
+    struct timeval now;
+    struct timeval t;
+    struct timeval t1 = {0, 0};
+    cbuf          *cb = NULL;
+
+    if (rsock == NULL || !rsock->rs_callhome || !rsock->rs_periodic || rsock->rs_idle_timeout==0){
+	clicon_err(OE_YANG, EINVAL, "rsock is NULL or not periodic callhome");
+	goto done;
+    }    
+    clicon_debug(1, "%s %s register", __FUNCTION__, rsock->rs_description);
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "restconf idle timer %s", rsock->rs_description);
+    gettimeofday(&now, NULL);
+    t1.tv_sec = rsock->rs_idle_timeout;
+    timeradd(&now, &t1, &t);
+    clicon_debug(1, "%s now:%lu timeout:%lu.%lu", __FUNCTION__, now.tv_sec, t.tv_sec, t.tv_usec);
+    if (clixon_event_reg_timeout(t,
+				 restconf_idle_cb,
+				 rsock,
+				 cbuf_get(cb)) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+    
 /*! Callhome timer callback
  *
  * @param[in]  fd   No-op
@@ -1336,7 +1415,7 @@ restconf_ssl_accept_client(clicon_handle    h,
  * the reason is that this function may continue with SSL accept handling whereas the wrapper always
  * returns directly.
  */
-int
+static int
 restconf_callhome_cb(int   fd,
 		     void *arg)
 {
@@ -1348,14 +1427,12 @@ restconf_callhome_cb(int   fd,
     size_t           sa_len;
     int              s;
 
-    if ((rsock = (restconf_socket *)arg) == NULL){
+    rsock = (restconf_socket *)arg;
+    if (rsock == NULL || !rsock->rs_callhome){
 	clicon_err(OE_YANG, EINVAL, "rsock is NULL");
 	goto done;
     }
-    if (rsock->rs_description)
-	clicon_debug(1, "%s %s", __FUNCTION__, rsock->rs_description);
-    else
-	clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(1, "%s %s", __FUNCTION__, rsock->rs_description);
     h = rsock->rs_h;
     /* Already computed in restconf_socket_init, could be saved in rsock? */
     if (clixon_inet2sin(rsock->rs_addrtype, rsock->rs_addrstr, rsock->rs_port, sa, &sa_len) < 0)
@@ -1379,6 +1456,9 @@ restconf_callhome_cb(int   fd,
 	rsock->rs_attempts = 0;
 	if (restconf_ssl_accept_client(h, s, rsock) < 0)
 	    goto done;
+	if (rsock->rs_periodic && rsock->rs_idle_timeout &&
+	    restconf_idle_timer(rsock) < 0)
+	    goto done;
     }
     clicon_debug(1, "%s connect done", __FUNCTION__);
     retval = 0;
@@ -1386,16 +1466,23 @@ restconf_callhome_cb(int   fd,
     return retval;
 }
 
+int
+restconf_callhome_timer_unreg(restconf_socket *rsock)
+{
+    return clixon_event_unreg_timeout(restconf_callhome_cb, rsock);
+}
+
 /*! Set callhome timer, which tries to connect to callhome client
  *
  * Implement callhome re-connect strategies in ietf-restconf-server.yang
  * NYI: start-with, anchor-time, idle-timeout
  * @param[in]  rsock  restconf_socket
- * @param[in]  new    Start a new period (if periodic)
+ * @param[in]  new    if periodic: 1: Force a new period
+ * @see restconf_callhome_timer_unreg
  */
 int
 restconf_callhome_timer(restconf_socket *rsock,
-			int              new)
+			int              status)
 {
     int            retval = -1;
     struct timeval now;
@@ -1403,15 +1490,16 @@ restconf_callhome_timer(restconf_socket *rsock,
     struct timeval t1 = {0, 0};
     cbuf          *cb = NULL;
     
-    if (rsock->rs_description)
-	clicon_debug(1, "%s %s", __FUNCTION__, rsock->rs_description);
-    else
-	clicon_debug(1, "%s", __FUNCTION__);
+    if (rsock == NULL || !rsock->rs_callhome){
+	clicon_err(OE_YANG, EINVAL, "rsock is NULL or not callhome");
+	goto done;
+    }    
+    clicon_debug(1, "%s %s", __FUNCTION__, rsock->rs_description);
     if (!rsock->rs_callhome)
 	goto ok; /* shouldnt happen */
     gettimeofday(&now, NULL);
     if (rsock->rs_periodic){
-	if (new || rsock->rs_attempts >= rsock->rs_max_attempts){
+	if ((status == 1) || rsock->rs_attempts >= rsock->rs_max_attempts){
 	    rsock->rs_period_nr++;
 	    rsock->rs_attempts = 0;
 	    t1.tv_sec = rsock->rs_start + rsock->rs_period_nr*rsock->rs_period;
@@ -1432,10 +1520,7 @@ restconf_callhome_timer(restconf_socket *rsock,
 	clicon_err(OE_UNIX, errno, "cbuf_new");
 	goto done;
     }
-    if (rsock->rs_description)
-	cprintf(cb, "restconf callhome timer %s", rsock->rs_description);
-    else
-	cprintf(cb, "restconf callhome timer");
+    cprintf(cb, "restconf callhome timer %s", rsock->rs_description);
     if (rsock->rs_description)
 	clicon_debug(1, "%s registering %s: %lu", __FUNCTION__, rsock->rs_description, t.tv_sec);
     else
@@ -1453,3 +1538,159 @@ restconf_callhome_timer(restconf_socket *rsock,
 	cbuf_free(cb);
     return retval;
 }
+
+/*! Extract socket info from backend config 
+ * @param[in]  h         Clicon handle
+ * @param[in]  xs        socket config
+ * @param[in]  nsc       Namespace context
+ * @param[out] rsock     restconf socket data, filled in with many fields
+ * @param[out] namespace 
+ * @param[out] address   Address as string, eg "0.0.0.0", "::"
+ * @param[out] addrtype  One of inet:ipv4-address or inet:ipv6-address
+ * @param[out] port      TCP Port
+ */
+int
+restconf_socket_extract(clicon_handle    h,
+			cxobj           *xs,
+			cvec            *nsc,
+			restconf_socket *rsock,
+			char           **namespace,
+			char           **address,
+			char           **addrtype,
+			uint16_t        *port)
+{
+    int        retval = -1;
+    cxobj     *x;
+    char      *str = NULL;
+    char      *reason = NULL;
+    int        ret;
+    char      *body;
+    cg_var    *cv = NULL;
+    yang_stmt *y;
+    yang_stmt *ysub = NULL;
+
+    if ((x = xpath_first(xs, nsc, "namespace")) == NULL){
+	clicon_err(OE_XML, EINVAL, "Mandatory namespace not given");
+	goto done;
+    }
+    *namespace = xml_body(x);
+    if ((x = xpath_first(xs, nsc, "description")) != NULL){
+	if ((rsock->rs_description = strdup(xml_body(x))) == NULL){
+	    clicon_err(OE_UNIX, errno, "strdup");
+	    goto done;
+	}
+    }
+    if ((x = xpath_first(xs, nsc, "address")) == NULL){
+	clicon_err(OE_XML, EINVAL, "Mandatory address not given");
+	goto done;
+    }
+    /* address is a union type and needs a special investigation to see which type (ipv4 or ipv6)
+     * the address is
+     */
+    body = xml_body(x);
+    y = xml_spec(x);
+    if ((cv = cv_dup(yang_cv_get(y))) == NULL){
+	clicon_err(OE_UNIX, errno, "cv_dup");
+	goto done;
+    }
+    if ((ret = cv_parse1(body, cv, &reason)) < 0){
+	clicon_err(OE_XML, errno, "cv_parse1");
+	goto done;
+    }
+    if (ret == 0){
+	clicon_err(OE_XML, EFAULT, "%s", reason);
+	goto done;
+    }
+    if ((ret = ys_cv_validate(h, cv, y, &ysub, &reason)) < 0)
+	goto done;
+    if (ret == 0){
+	clicon_err(OE_XML, EFAULT, "Validation os address: %s", reason);
+	goto done;
+    }
+    if (ysub == NULL){
+	clicon_err(OE_XML, EFAULT, "No address union type");
+	goto done;
+    }
+    *address = body;
+    /* This is YANG type name of ip-address:
+     *   typedef ip-address {
+     *     type union {
+     *       type inet:ipv4-address; <---
+     *       type inet:ipv6-address; <---
+     *     }
+     */
+    *addrtype = yang_argument_get(ysub); 
+    if ((x = xpath_first(xs, nsc, "port")) != NULL &&
+	(str = xml_body(x)) != NULL){
+	if ((ret = parse_uint16(str, port, &reason)) < 0){
+	    clicon_err(OE_XML, errno, "parse_uint16");
+	    goto done;
+	}
+	if (ret == 0){
+	    clicon_err(OE_XML, EINVAL, "Unrecognized value of port: %s", str);
+	    goto done;
+	}
+    }
+    if ((x = xpath_first(xs, nsc, "ssl")) != NULL &&
+	(str = xml_body(x)) != NULL){
+	/* XXX use parse_bool but it is legacy static */
+	if (strcmp(str, "false") == 0)
+	    rsock->rs_ssl = 0;
+	else if (strcmp(str, "true") == 0)
+	    rsock->rs_ssl = 1;
+	else {
+	    clicon_err(OE_XML, EINVAL, "Unrecognized value of ssl: %s", str);
+	    goto done;
+	}
+    }
+    if (xpath_first(xs, nsc, "call-home") != NULL){
+	rsock->rs_callhome = 1;
+	if (xpath_first(xs, nsc, "call-home/connection-type/persistent") != NULL){
+	    rsock->rs_periodic = 0;
+	}
+	else if (xpath_first(xs, nsc, "call-home/connection-type/periodic") != NULL){
+	    rsock->rs_periodic = 1;
+	    if ((x = xpath_first(xs, nsc, "call-home/connection-type/periodic/period")) != NULL && 
+		(str = xml_body(x)) != NULL){
+		if ((ret = parse_uint32(str, &rsock->rs_period, &reason)) < 0){
+		    clicon_err(OE_XML, errno, "parse_uint16");
+		    goto done;
+		}
+		if (ret == 0){
+		    clicon_err(OE_XML, EINVAL, "Unrecognized value of period: %s", str);
+		    goto done;
+		}	
+	    }
+	    if ((x = xpath_first(xs, nsc, "call-home/connection-type/periodic/idle-timeout")) != NULL && 
+		(str = xml_body(x)) != NULL){
+		if ((ret = parse_uint16(str, &rsock->rs_idle_timeout, &reason)) < 0){
+		    clicon_err(OE_XML, errno, "parse_uint16");
+		    goto done;
+		}
+		if (ret == 0){
+		    clicon_err(OE_XML, EINVAL, "Unrecognized value of idle-timeout: %s", str);
+		    goto done;
+		}	
+	    }
+	}
+	if ((x = xpath_first(xs, nsc, "call-home/reconnect-strategy/max-attempts")) != NULL && 
+	    (str = xml_body(x)) != NULL){
+	    if ((ret = parse_uint8(str, &rsock->rs_max_attempts, &reason)) < 0){
+		clicon_err(OE_XML, errno, "parse_uint8");
+		goto done;
+	    }
+	    if (ret == 0){
+		clicon_err(OE_XML, EINVAL, "Unrecognized value of max-attempts: %s", str);
+		goto done;
+	    }	
+	}
+    }
+    retval = 0;
+ done:
+    if (cv)
+        cv_free(cv);
+    if (reason)
+	free(reason);
+    return retval;
+}
+

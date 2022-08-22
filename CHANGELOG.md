@@ -42,7 +42,13 @@ Expected: September 2022
 ### New features
 
 * RESTCONF call home according to RFC 8071
-  * Experimental, work-in-progress
+  * clixon-restconf.yang extended with callhome inspired by ietf-restconf-server.yang
+    * See e.g., draft-ietf-netconf-restconf-client-server-26.txt
+  * The `<socket>` list has been extended with a `call-home` presence container including:
+    * reconnect-strategy/max-attempts
+    * connection-type: either persistent or periodic
+    * idle-timeout for periodic call-homes.
+  * An example util client is `clixon_restconf_callhome_client.c` used in test cases
 
 ### Corrected Bugs
 

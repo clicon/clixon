@@ -171,7 +171,6 @@
 
 static int             session_id_context = 1;
 
-
 /*! Set restconf native handle
  * @param[in]  h     Clicon handle
  * @param[in]  rh    Restconf native handle (malloced pointer)
@@ -604,7 +603,9 @@ restconf_native_terminate(clicon_handle h)
     if ((rh = restconf_native_handle_get(h)) != NULL){
 	while ((rsock = rh->rh_sockets) != NULL){
 	    if (rsock->rs_callhome){
-		clixon_event_unreg_timeout(restconf_callhome_cb, rsock);
+		restconf_callhome_timer_unreg(rsock);
+		if (rsock->rs_periodic)
+		    restconf_idle_timer_unreg(rsock);
 	    }
 	    else if (rsock->rs_ss != -1){
 		clixon_event_unreg_fd(rsock->rs_ss, restconf_accept_client);
@@ -710,26 +711,16 @@ openssl_init_socket(clicon_handle h,
 		    cvec         *nsc)
 {
     int             retval = -1;
-    char           *description = NULL;
     char           *netns = NULL;
     char           *address = NULL;
     char           *addrtype = NULL;
-    int             callhome = 0;
-    uint16_t        ssl = 0;
     uint16_t        port = 0;
     int             ss = -1;
     restconf_native_handle *rh = NULL;
     restconf_socket *rsock = NULL; /* openssl per socket struct */
-    int              periodic = 0;
-    uint32_t         period = 0;
-    uint8_t          max_attempts = 0;
     struct timeval   now;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    /* Extract socket parameters from single socket config: ns, addr, port, ssl */
-    if (restconf_socket_extract(h, xs, nsc, &description, &netns, &address, &addrtype, &port, &ssl, &callhome, &periodic, &period, &max_attempts) < 0)
-	goto done;
-
     /*
      * Create per-socket openssl handle
      * See restconf_native_terminate for freeing
@@ -740,20 +731,13 @@ openssl_init_socket(clicon_handle h,
     }
     memset(rsock, 0, sizeof *rsock);
     rsock->rs_h = h;
-    rsock->rs_ssl = ssl; /* true/false */
-    rsock->rs_callhome = callhome;
-    rsock->rs_periodic = periodic;
-    rsock->rs_period = period;
-    rsock->rs_max_attempts = max_attempts;
     gettimeofday(&now, NULL);
     rsock->rs_start = now.tv_sec;
-    if (description &&
-	(rsock->rs_description = strdup(description)) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
+    /* Extract socket parameters from single socket config: ns, addr, port, ssl */
+    if (restconf_socket_extract(h, xs, nsc, rsock, &netns, &address, &addrtype, &port) < 0)
 	goto done;
-    }
-    if (callhome){
-	if (!ssl){
+    if (rsock->rs_callhome){
+	if (!rsock->rs_ssl){
 	    clicon_err(OE_SSL, EINVAL, "Restconf callhome requires SSL");
 	    goto done;
 	}
@@ -786,7 +770,7 @@ openssl_init_socket(clicon_handle h,
     rsock->rs_port = port;
     INSQ(rsock, rh->rh_sockets);
 
-    if (callhome){
+    if (rsock->rs_callhome){
 	rsock->rs_ss = -1; /* Not applicable from callhome */
 	if (restconf_callhome_timer(rsock, 0) < 0)
 	    goto done;
