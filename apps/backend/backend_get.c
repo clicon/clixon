@@ -933,6 +933,8 @@ get_common(clicon_handle        h,
 		/* TODO. Remove empty containers */
 	     }
 	     else if (strcmp(with_defaults, "report-all-tagged") == 0) {
+		if (xmlns_set(xret, "wd", "urn:ietf:params:xml:ns:netconf:default:1.0") < 0)
+		    goto done;
 		/* Mark nodes having default schema values */
 		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_default_value, (void*)XML_FLAG_MARK) < 0)
 		    goto done;

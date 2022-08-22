@@ -215,7 +215,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><interfaces $EXAMPLENS/></filter>\
 <with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all-tagged</with-defaults></get></rpc>" \
 "" \
-"<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
+"<rpc-reply $DEFAULTNS><data xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\"><interfaces $EXAMPLENS>\
 <interface><name>eth0</name><mtu>8192</mtu><status wd:default=\"true\">ok</status></interface>\
 <interface><name>eth1</name><mtu wd:default=\"true\">1500</mtu><status wd:default=\"true\">ok</status></interface>\
 <interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface>\
