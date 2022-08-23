@@ -1223,6 +1223,52 @@ check_min_max(cxobj     *xp,
     goto done;
 }
 
+/*! Check if there is any empty list (no x elements) and check min-elements
+ * Note recurse for non-presence container 
+ * @param[in]  xt    XML node
+ * @param[in]  yt    YANG node
+ * @param[out] xret  Error XML tree. Free with xml_free after use
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (xret set)
+ * @retval    -1     Error
+ */
+static int
+check_empty_list_minmax(cxobj     *xt,
+			yang_stmt *ye,
+			cxobj    **xret)
+{
+    int        retval = -1;
+    int        ret;
+    yang_stmt *yprev = NULL;
+
+    if (yang_config(ye) == 1){
+	if(yang_keyword_get(ye) == Y_CONTAINER &&
+	   yang_find(ye, Y_PRESENCE, NULL) == NULL){
+	    yprev = NULL;
+	    while ((yprev = yn_each(ye, yprev)) != NULL) {
+		if ((ret = check_empty_list_minmax(xt, yprev, xret)) < 0)
+		    goto done;
+		if (ret == 0)
+		    goto fail;
+	    }
+	}
+	else if (yang_keyword_get(ye) == Y_LIST ||
+		 yang_keyword_get(ye) == Y_LEAF_LIST){
+	    /* Check if the list length violates min/max */
+	    if ((ret = check_min_max(xt, ye, 0, xret)) < 0)
+		goto done;
+	    if (ret == 0)
+		goto fail;
+	}
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Detect unique constraint for duplicates from parent node and minmax
  * @param[in]  xt    XML parent (may have lists w unique constraints as child)
  * @param[out] xret  Error XML tree. Free with xml_free after use
@@ -1289,7 +1335,7 @@ xml_yang_check_list_unique_minmax(cxobj  *xt,
      * o  Otherwise, it is enforced if the ancestor node exists.
      */
     yt = xml_spec(xt); /* If yt == NULL, then no gap-analysis is done */
-    /* Traverse all elemenents */
+    /* Traverse all elements */
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 	if ((y = xml_spec(x)) == NULL)
 	    continue;
@@ -1335,14 +1381,10 @@ xml_yang_check_list_unique_minmax(cxobj  *xt,
 	    ye = yn_each(yt, ye);
 	    if (ye && ych != ye)
 		do {
-		    if (yang_config(ye) == 1 &&
-			(yang_keyword_get(ye) == Y_LIST || yang_keyword_get(ye) == Y_LEAF_LIST)){
-			/* Check if the list length violates min/max */
-			if ((ret = check_min_max(xt, ye, 0, xret)) < 0)
-			    goto done;
-			if (ret == 0)
-			    goto fail;
-		    }
+		    if ((ret = check_empty_list_minmax(xt, ye, xret)) < 0)
+			goto done;
+		    if (ret == 0)
+			goto fail;	    
 		    ye = yn_each(yt, ye);
 		} while(ye != NULL && /* to avoid livelock (shouldnt happen) */
 			ye != ych); 
@@ -1389,17 +1431,14 @@ xml_yang_check_list_unique_minmax(cxobj  *xt,
     /* Check if there is any empty list between after last non-empty list 
      * Note, does not detect empty lists within choice/case (too complicated)
      */
-    if ((ye = yn_each(yt, ye)) != NULL)
+    if ((ye = yn_each(yt, ye)) != NULL){
 	do {
-	    if (yang_config(ye) == 1 &&
-		(yang_keyword_get(ye) == Y_LIST || yang_keyword_get(ye) == Y_LEAF_LIST)){
-		/* Check if the list length violates min/max */
-		if ((ret = check_min_max(xt, ye, 0, xret)) < 0)
-		    goto done;
-		if (ret == 0)
-		    goto fail;
-	    }
+	    if ((ret = check_empty_list_minmax(xt, ye, xret)) < 0)
+		goto done;
+	    if (ret == 0)
+		goto fail;	    
 	} while((ye = yn_each(yt, ye)) != NULL);
+    }
     retval = 1;
  done:
     return retval;

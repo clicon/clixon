@@ -97,6 +97,24 @@ module $APPNAME{
      min-elements 1;
      max-elements 2;
   }
+  container c3{
+    list b2{
+      description "RFC7950 7.7.5 : it is enforced if the ancestor node exists.";
+      key kb;
+      leaf kb {
+        type string;
+      }
+      container b2c {
+        leaf-list b2ll{
+ 	  min-elements 1;
+	  type string;
+        }
+      }
+      leaf-list b3ll{
+	  type string;
+      }
+    }
+  }
 }
 EOF
 
@@ -243,6 +261,21 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS 
 
 new "minmax: validate should fail empty list"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-few-elements</error-app-tag><error-severity>error</error-severity><error-path>/c/a1</error-path></rpc-error></rpc-reply>"
+
+new "delete c"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS $DEFAULTNS><edit-config><target><candidate/></target><default-operation>none</default-operation><config><c xmlns=\"urn:example:clixon\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"delete\"/></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "add empty list entry with a min-element leaf within a non-presence container"
+expecteof_netconf "$clixon_netconf -qf $cfg -D 1 -l s" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS $DEFAULTNS><edit-config><target><candidate/></target><config><c3 xmlns=\"urn:example:clixon\"><b2><kb>0</kb></b2></c3></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "minmax: validate should fail, there should be a b2ll trailing"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-few-elements</error-app-tag><error-severity>error</error-severity><error-path>/c3/b2\[kb=\"0\"\]/b2ll</error-path></rpc-error></rpc-reply>" ""
+
+new "add b3ll after missing b2ll"
+expecteof_netconf "$clixon_netconf -qf $cfg -D 1 -l s" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS $DEFAULTNS><edit-config><target><candidate/></target><config><c3 xmlns=\"urn:example:clixon\"><b2><kb>0</kb><b3ll>42</b3ll></b2></c3></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "minmax: validate should fail, there should be a b2ll before b3ll"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-few-elements</error-app-tag><error-severity>error</error-severity><error-path>/c3/b2\[kb=\"0\"\]/b2ll</error-path></rpc-error></rpc-reply>" ""
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
