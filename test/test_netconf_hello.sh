@@ -85,7 +85,7 @@ new "Netconf capability: 1.1 + 1.0 -> Error"
 expecteof "$clixon_netconf -ef $cfg -o CLICON_NETCONF_BASE_CAPABILITY=0" 255 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '<capability>urn:ietf:params:netconf:base:1.0</capability>'
 
 new "Netconf snd hello with wrong base capability"
-expecteof "$clixon_netconf -qef $cfg" 255 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.2</capability></capabilities></hello>]]>]]>" '^$' 'Server received hello without matching netconf base capability'
+expecteof "$clixon_netconf -qef $cfg -l e" 255 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.2</capability></capabilities></hello>]]>]]>" '^$' 'Server received hello without matching netconf base capability'
 
 new "Netconf hello with MUST NOT have a session-id, terminate"
 expecteof "$clixon_netconf -qef $cfg" 255 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><session-id>42</session-id><capabilities><capability>urn:ietf:params:netconf:base:1.2</capability></capabilities></hello>]]>]]>" '^$'

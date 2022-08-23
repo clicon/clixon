@@ -731,7 +731,7 @@ usage(clicon_handle h,
 	    "\t-D <level>\tDebug level\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-E <dir> \tExtra configuration file directory\n"
-	    "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (stderr is default)\n"
+	    "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
             "\t-q\t\tServer does not send hello message on startup\n"
 	    "\t-0 \t\tSet netconf base capability to 0, server does not expect hello, force EOM framing\n"
 	    "\t-1 \t\tSet netconf base capability to 1, server does not expect hello, force chunked framing\n"
@@ -760,7 +760,7 @@ main(int    argc,
     int              quiet = 0;
     clicon_handle    h;
     char            *dir;
-    int              logdst = CLICON_LOG_STDERR;
+    int              logdst = CLICON_LOG_SYSLOG;
     struct passwd   *pw;
     struct timeval   tv = {0,}; /* timeout */
     yang_stmt       *yspec = NULL;
