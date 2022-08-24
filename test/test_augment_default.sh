@@ -89,21 +89,18 @@ new "wait backend"
 wait_backend
 
 new "cli show config startup"
-#expectpart "$($clixon_cli -1 -f $cfg -l o show config xml)" 0 '<table xmlns="urn:example:clixon">' '<map xmlns="urn:example:augment">' '<aug:enable xmlns:aug="urn:example:augment">true</aug:enable>'
 expectpart "$($clixon_cli -1 -f $cfg -l o show config xml)" 0 '<table xmlns="urn:example:clixon">' '<map xmlns="urn:example:augment">' '<enable>true</enable>'
 
 new "cli delete map name"
 expectpart "$($clixon_cli -1 -f $cfg -l o delete table map name me)" 0 ""
 
 new "cli show config deleted"
-#expectpart "$($clixon_cli -1 -f $cfg -l o show config xml)" 0 '<table xmlns="urn:example:clixon">' '<aug:map xmlns:aug="urn:example:augment">' '<aug:enable>true</aug:enable>'
 expectpart "$($clixon_cli -1 -f $cfg -l o show config xml)" 0 '<table xmlns="urn:example:clixon">' '<map xmlns="urn:example:augment">' '<enable>true</enable>'
 
 new "cli set map name"
 expectpart "$($clixon_cli -1 -f $cfg -l o set table map name x)" 0 ""
 
 new "cli show config set"
-#expectpart "$($clixon_cli -1 -f $cfg -l o show config xml)" 0 '<table xmlns="urn:example:clixon">' '<map xmlns="urn:example:augment">' '<aug:enable xmlns:aug="urn:example:augment">true</aug:enable>'
 expectpart "$($clixon_cli -1 -f $cfg -l o show config xml)" 0 '<table xmlns="urn:example:clixon">' '<map xmlns="urn:example:augment">' '<enable>true</enable>'
 
 if [ $BE -ne 0 ]; then

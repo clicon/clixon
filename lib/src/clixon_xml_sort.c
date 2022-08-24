@@ -182,19 +182,18 @@ xml_cv_cache_clear(cxobj *xt)
  * Example: x1: <x><k1>1</k1></x> and x2: <x><k1>1</k1><k2>2</k2></x> are considered equal.
  * This is useful in searching for indexes in trees, where x1 is a search index and not a 
  * complete tree.
- * 
- * @note empty value/NULL is smallest value
- * @note some error cases return as -1 (qsort cant handle errors)
- * @note some error cases return as -1 (qsort cant handle errors)
- * 
- * @note "comparing" x1 and x2 here judges equality from a structural (model)
+ *
+ * "Comparing" x1 and x2 here determines equality from a structural (model)
  * perspective, ie both have the same yang spec, if they are lists, they have the
  * the same keys. NOT that the values are equal!
- * In other words, if x is a leaf with the same yang spec, <x>1</x> and <x>2</x> are
- * "equal". 
+ * In other words, if x is a leaf with the same yang spec, <x>1</x> and <x>2</x> are "equal". 
  * If x is a list element (with key "k"), 
- * <x><k>42</42><y>foo</y></x> and <x><k>42</42><y>bar</y></x> are equal, 
+ *    <x><k>42</42><y>foo</y></x> and <x><k>42</42><y>bar</y></x> are equal, 
  * but is not equal to <x><k>71</42><y>bar</y></x>
+ * 
+ * @note empty value/NULL is smallest value
+ * @note some error cases return as -1 (qsort cant handle errors) (which?)
+ *     - yang_order() is one
  */
 int
 xml_cmp(cxobj  *x1,
@@ -256,6 +255,7 @@ xml_cmp(cxobj  *x1,
         goto done;
     }
     if (y1 != y2){ 
+	/* XXX handle errors */
 	yi1 = yang_order(y1);
 	yi2 = yang_order(y2);
 	if ((equal = yi1-yi2) != 0)
@@ -388,7 +388,7 @@ xml_cmp(cxobj  *x1,
 }
 
 /*!
- * @note args are pointer ot pointers, to fit into qsort cmp function
+ * @note args are pointer to pointers, to fit into qsort cmp function
  */
 static int
 xml_cmp_qsort(const void* arg1, 
@@ -476,11 +476,14 @@ xml_find_keys_notsorted(cxobj   *xp,
     int        i;
     cxobj     *xc;
     yang_stmt *yc;
+    int        yi;
     
     for (i=mid+1; i<xml_child_nr(xp); i++){ /* First increment */
 	xc = xml_child_i(xp, i);
 	yc = xml_spec(xc);
-	if (yangi != yang_order(yc)) /* wrong yang */
+	if ((yi = yang_order(yc)) < -1)
+	    goto done;
+	if (yangi != yi) /* wrong yang */
 	    break;
 	if (xml_cmp(xc, x1, 0, skip1, NULL) == 0){
 	    if (clixon_xvec_append(xvec, xc) < 0)
@@ -491,7 +494,9 @@ xml_find_keys_notsorted(cxobj   *xp,
     for (i=mid-1; i>=0; i--){ /* Then decrement */
 	xc = xml_child_i(xp, i);
 	yc = xml_spec(xc);
-	if (yangi != yang_order(yc)) /* wrong yang */
+	if ((yi = yang_order(yc)) < -1)
+	    goto done;
+	if (yangi != yi) /* wrong yang */
 	    break;
 	if (xml_cmp(xc, x1, 0, skip1, NULL) == 0){
 	    if (clixon_xvec_append(xvec, xc) < 0)
@@ -528,11 +533,14 @@ search_multi_equals(cxobj  **childvec,
     int        i;
     cxobj     *xc;
     yang_stmt *yc;
+    int        yi;
     
     for (i=mid-1; i>=0; i--){ /* First decrement */
 	xc = childvec[i];
 	yc = xml_spec(xc);
-	if (yangi != yang_order(yc)) /* wrong yang */
+	if ((yi = yang_order(yc)) < -1)
+	    goto done;
+	if (yangi != yi) /* wrong yang */
 	    break;
 	if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
 	    break;
@@ -542,7 +550,9 @@ search_multi_equals(cxobj  **childvec,
     for (i=mid+1; i<childlen; i++){ /* Then increment */
 	xc = childvec[i];
 	yc = xml_spec(xc);
-	if (yangi != yang_order(yc)) /* wrong yang */
+	if ((yi = yang_order(yc)) < -1)
+	    goto done;
+	if (yangi != yi) /* wrong yang */
 	    break;
 	if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
 	    break;
@@ -569,11 +579,14 @@ search_multi_equals_xvec(clixon_xvec  *childvec,
     int        i;
     cxobj     *xc;
     yang_stmt *yc;
+    int        yi;
     
     for (i=mid-1; i>=0; i--){ /* First decrement */
 	xc = clixon_xvec_i(childvec, i);
 	yc = xml_spec(xc);
-	if (yangi != yang_order(yc)) /* wrong yang */
+	if ((yi = yang_order(yc)) < -1)
+	    goto done;
+	if (yangi != yi) /* wrong yang */
 	    break;
 	if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
 	    break;
@@ -583,7 +596,9 @@ search_multi_equals_xvec(clixon_xvec  *childvec,
     for (i=mid+1; i<clixon_xvec_len(childvec); i++){ /* Then increment */
 	xc = clixon_xvec_i(childvec, i);
 	yc = xml_spec(xc);
-	if (yangi != yang_order(yc)) /* wrong yang */
+	if ((yi = yang_order(yc)) < -1)
+	    goto done;
+	if (yangi != yi) /* wrong yang */
 	    break;
 	if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
 	    break;
@@ -734,6 +749,7 @@ xml_search_binary(cxobj   *xp,
     int        cmp;
     cxobj     *xc;
     yang_stmt *y;
+    int        yi;
 
     if (upper < low)
     	goto ok;
@@ -743,7 +759,9 @@ xml_search_binary(cxobj   *xp,
     xc = xml_child_i(xp, mid);
     if ((y = xml_spec(xc)) == NULL)
 	goto ok;
-    cmp = yangi-yang_order(y);
+    if ((yi = yang_order(y)) < -1)
+	goto done;
+    cmp = yangi - yi;
     /* Here is right yang order == same yang? */
     if (cmp == 0){
 #ifdef XML_EXPLICIT_INDEX
@@ -827,8 +845,8 @@ xml_search_yang(cxobj       *xp,
 #endif
 	if (yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST)
 	    sorted = (yang_find(yc, Y_ORDERED_BY, "user") == NULL);
-    yangi = yang_order(yc);
-    
+    if ((yangi = yang_order(yc)) < -1)
+	goto done;
     if (xml_search_binary(xp, x1, sorted, yangi, low, upper, skip1, indexvar, xvec) < 0)
 	goto done;
     retval = 0;
@@ -962,6 +980,7 @@ xml_insert2(cxobj           *xp,
     int        cmp;
     cxobj     *xc;
     yang_stmt *yc;
+    int        yi;
     
     if (low > upper){  /* beyond range */
 	clicon_err(OE_XML, 0, "low>upper %d %d", low, upper);	
@@ -994,7 +1013,9 @@ xml_insert2(cxobj           *xp,
 	    cmp = xml_cmp(xn, xc, 0, 0, NULL);
     }
     else{ /* Not equal yang - compute diff */
-	cmp = yni - yang_order(yc);
+	if ((yi = yang_order(yc)) < -1)
+	    goto done;
+	cmp = yni - yi;
 	/* One case is a choice where 
 	 * xc = <tcp/>, xn = <udp/>
 	 * same order but different yang spec
@@ -1072,7 +1093,8 @@ xml_insert(cxobj           *xp,
 #endif
 	if (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST)
 	    userorder = (yang_find(y, Y_ORDERED_BY, "user") != NULL);
-    yi = yang_order(y);
+    if ((yi = yang_order(y)) < -1)
+	goto done;
     if ((i = xml_insert2(xp, xi, y, yi,
 			 userorder, ins, key_val, nsc_key,
 			 low, upper)) < 0)

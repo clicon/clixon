@@ -1466,40 +1466,46 @@ yang_choice(yang_stmt *y)
  * In (2) we increment with only 1.
  */
 static int
-order1_choice(yang_stmt *yp,
-	      yang_stmt *y,
-	      int       *index)
+yang_order1_choice(yang_stmt *yp,
+		   yang_stmt *y,
+		   int       *index)
 {
     yang_stmt  *ys;
     yang_stmt  *yc;
     int         i;
     int         j;
-    int         shortcut=0;
     int         max=0;
+    int         index0;
 
+    index0 = *index;
     for (i=0; i<yp->ys_len; i++){ /* Loop through choice */
 	ys = yp->ys_stmt[i];
 	if (ys->ys_keyword == Y_CASE){ /* Loop through case */
+	    *index = index0;
 	    for (j=0; j<ys->ys_len; j++){
 		yc = ys->ys_stmt[j];
-		if (yang_datanode(yc) && yc == y){
-		    *index += j;
-		    return 1;
+		if (yc->ys_keyword == Y_CHOICE){
+		    if (yang_order1_choice(yc, y, index) == 1) /* If one of the choices is "y" */
+			return 1;
+		}
+		else {
+		    if (yang_datanode(yc) && yc == y){
+			//			*index = index0 + j;
+			return 1;
+		    }
+		    (*index)++;
 		}
 	    }
-	    if (j>max)
-		max = j;
+	    if (*index-index0 > max)
+		max = *index-index0;
 	}
 	else {
-	    shortcut = 1;   /* Shortcut, no case */
+	    max = 1;   /* Shortcut, no case */
 	    if (yang_datanode(ys) && ys == y) 
 		return 1;
 	}
     }
-    if (shortcut)
-	(*index)++;
-    else
-	*index += max;
+    *index += max;
     return 0;
 }
 
@@ -1507,44 +1513,52 @@ order1_choice(yang_stmt *yp,
  * @param[in]  yp     Parent
  * @param[in]  y      Yang datanode to find
  * @param[out] index  Index of y in yp:s list of children
- * @retval     0      not found (must be datanode)
- * @retval     1      found
+ * @retval     0      OK: found
+ * @retval     -1     Error: not found (must be datanode)
  */
 static int
-order1(yang_stmt *yp,
-       yang_stmt *y,
-       int       *index)
+yang_order1(yang_stmt *yp,
+	    yang_stmt *y,
+	    int       *index)
 {
+    int         retval = -1;
     yang_stmt  *ys;
     int         i;
     
     for (i=0; i<yp->ys_len; i++){
 	ys = yp->ys_stmt[i];
 	if (ys->ys_keyword == Y_CHOICE){
-	    if (order1_choice(ys, y, index) == 1) /* If one of the choices is "y" */
-		return 1;
+	    if (yang_order1_choice(ys, y, index) == 1) /* If one of the choices is "y" */
+		break;
 	}
 	else {
-	    if (!yang_datanode(ys))
+	    if (!yang_datanode(ys) &&
+		yang_keyword_get(ys) != Y_ACTION) /* action is special case */
 		continue;
 	    if (ys == y)
-		return 1;
+		break;
 	    (*index)++; 
 	}
     }
-    return 0;
+    if (i < yp->ys_len) /* break -> found */
+	retval = 0; 
+    else
+	assert(0); // XXX
+    return retval;
 }
 
 /*! Return order of yang statement y in parents child vector
  * @param[in]  y      Find position of this data-node
  * @param[out] index  Index of y in yp:s list of children
  * @retval   >=0      Order of child with specified argument
- * @retval    -1      Not found
+ * @retval    -1      No spec, y is NULL, which applies to eg attributes and are placed first
+ * @retval    -2      Error: Not found
  * @note special handling if y is child of (sub)module
  */
 int
 yang_order(yang_stmt *y)
 {
+    int         retval = -2;
     yang_stmt  *yp;
     yang_stmt  *ypp;
     yang_stmt  *ym;
@@ -1552,9 +1566,10 @@ yang_order(yang_stmt *y)
     int         j=0;
     int         tot = 0;
 
-    if (y == NULL)
-	return -1;
-
+    if (y == NULL){
+	retval = -1; 
+	goto done;
+    }
     /* Some special handling if yp is choice (or case)
      * if so, the real parent (from an xml point of view) is the parents
      * parent. 
@@ -1578,9 +1593,13 @@ yang_order(yang_stmt *y)
 	    tot += ym->ys_len;
 	}
     }
-    if (order1(yp, y, &j) == 1)
-	return tot + j;
-    return -1;
+    if (yang_order1(yp, y, &j) < 0){
+	clicon_err(OE_YANG, 0, "YANG node %s not ordered: not found", yang_argument_get(y));
+	goto done;
+    }
+    retval = tot + j;
+ done:
+    return retval;
 }
 
 char *

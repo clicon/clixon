@@ -158,6 +158,27 @@ module system{
         }
      }
   }
+  list mylist {
+     key k;
+     leaf k{
+        type string;
+     }
+     choice c {
+       case c1 {
+         leaf c1 {
+	    mandatory true;
+	    type string;
+	 }
+	 choice c1c {
+	    case c1c1 {
+	       leaf c1c1l {
+                 type string;
+ 	       }
+            }
+         }
+      }
+    }
+  }
 }
 EOF
 
@@ -181,6 +202,7 @@ discard("Discard edits (rollback 0)"), discard_changes();
 show("Show a particular state of the system"){
     configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
 	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", true, false, "set ");
+	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", true, false, NULL);
     }
 }
 EOF
@@ -437,6 +459,21 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 new "netconf discard-changes"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "set case mandatory + non"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><manleaf xmlns=\"urn:example:config\"><c1>a</c1><ccc1>b</ccc1></manleaf></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf validate ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "set list+mandatory case"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><mylist xmlns=\"urn:example:config\"><k>0</k><c1>x</c1><c1c1l>y</c1c1l></mylist></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf validate ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
