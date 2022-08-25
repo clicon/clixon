@@ -409,6 +409,128 @@ element2value(clicon_handle  h,
     return 1;
 }
 
+/*! Set flag on node having schema default value.
+ * @param[in]   x	XML node
+ * @param[in]   flag	Flag to be used
+ * @retval      0    	OK
+
+ */
+static int
+xml_flag_default_value(cxobj *x, uint16_t flag)
+{
+    yang_stmt	*y;
+    cg_var	*cv;
+    char	*yv;
+    char	*xv;
+
+    xml_flag_reset(x, flag); /* Assume not default value */
+    if ((xv = xml_body(x)) == NULL)
+ 	goto done;
+    if ((y = xml_spec(x)) == NULL)
+	goto done;
+    if ((cv = yang_cv_get(y)) == NULL)
+	goto done;
+    if ((cv = yang_cv_get(y)) == NULL)
+	goto done;
+    if (cv_name_get(cv) == NULL)
+	goto done;
+    if ((yv = cv2str_dup(cv)) == NULL)
+	goto done;
+    if (strcmp(xv, yv) == 0)
+	xml_flag_set(x, flag); /* Actual value same as default value */
+    free(yv);
+
+  done:
+    return 0;
+}
+
+/*! Add default attribute to node with default value.
+ * @param[in]   x      	XML node
+ * @param[in]   flags 	Flags indicatiing default nodes
+ * @retval      0    	OK
+ * @retval     -1    	Error
+ */
+static int
+xml_add_default_tag(cxobj *x, uint16_t flags)
+{
+    int retval = -1;
+    cxobj *xattr;
+
+    if (xml_flag(x, flags)) {
+	/* set default attribute */
+	if ((xattr = xml_new("default", x, CX_ATTR)) == NULL)
+	    goto done;
+	if (xml_value_set(xattr, "true") < 0)
+	    goto done;
+	if (xml_prefix_set(xattr, "wd") < 0)
+	    goto done;
+    }
+    retval = 0;
+    done:
+    return retval;
+}
+
+/*! Update XML return tree according to RFC6243: with-defaults
+ * @param[in]   xe      Request: <rpc><xn></rpc>
+ * @param[in]   xret    XML return tree to be updated
+ * @retval      0    	OK
+ * @retval     -1    	Error
+ */
+
+static int
+with_defaults(cxobj *xe, cxobj *xret) {
+    int retval = -1;
+    cxobj *xfind;
+    char  *mode;
+
+    if ((xfind = xml_find(xe, "with-defaults")) != NULL) {
+	if ((mode = xml_find_value(xfind, "body")) != NULL) {
+
+	    if (strcmp(mode, "explicit") == 0) {
+		/* Clear marked nodes */
+		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_reset,(void*) XML_FLAG_MARK) < 0)
+		    goto done;
+		/* Mark state nodes */
+		if (xml_non_config_data(xret, NULL) < 0)
+		    goto done;
+		/* Remove default configuration nodes*/
+		if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_MARK | XML_FLAG_DEFAULT) < 0)
+		    goto done;
+		/* TODO. Remove empty containers */
+
+	    } else if (strcmp(mode, "trim") == 0) {
+		/* Remove default nodes from XML */
+		if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_DEFAULT) < 0)
+		    goto done;
+		/* Mark and remove nodes having schema default values */
+		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
+		    goto done;
+		if (xml_tree_prune_flags(xret, XML_FLAG_MARK, XML_FLAG_MARK)
+			< 0)
+		    goto done;
+		/* TODO. Remove empty containers */
+
+	    } else if (strcmp(mode, "report-all-tagged") == 0) {
+		if (xmlns_set(xret, "wd", "urn:ietf:params:xml:ns:netconf:default:1.0") < 0)
+		    goto done;
+		/* Mark nodes having default schema values */
+		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
+		    goto done;
+		/* Add tag attributes to default nodes */
+		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_add_default_tag, (void*) (XML_FLAG_DEFAULT | XML_FLAG_MARK)) < 0)
+		    goto done;
+
+	    } else if (strcmp(mode, "report-all") == 0) {
+		/* Accept mode, do nothing */
+	    }
+	}
+    }
+    ok:
+        retval = 0;
+     done:
+        return retval;
+}
+
 /*! Specialized get for list-pagination
  *
  * It is specialized enough to have its own function. Specifically, extra attributes as well
@@ -629,6 +751,8 @@ get_list_pagination(clicon_handle        h,
 	    goto ok;
 	}
     }
+    if (with_defaults(xml_parent(xe), xret) < 0)
+	goto done;
     if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
 	goto done;
     /* Help function to filter out anything that is outside of xpath */
@@ -680,68 +804,6 @@ get_list_pagination(clicon_handle        h,
     return retval;
 }
 
-/*! Set flag on node having schema default value.
- * @param[in]   x	XML node
- * @param[in]   flag	Flag to be used
- * @retval      0    	OK
-
- */
-static int
-xml_flag_default_value(cxobj *x, uint16_t flag)
-{
-    yang_stmt	*y;
-    cg_var	*cv;
-    char	*yv;
-    char	*xv;
-
-    xml_flag_reset(x, flag); /* Assume not default value */
-    if ((xv = xml_body(x)) == NULL)
- 	goto done;
-    if ((y = xml_spec(x)) == NULL)
-	goto done;
-    if ((cv = yang_cv_get(y)) == NULL)
-	goto done;
-    if ((cv = yang_cv_get(y)) == NULL)
-	goto done;
-    if (cv_name_get(cv) == NULL)
-	goto done;
-    if ((yv = cv2str_dup(cv)) == NULL)
-	goto done;
-    if (strcmp(xv, yv) == 0)
-	xml_flag_set(x, flag); /* Actual value same as default value */
-    free(yv);
-
-  done:
-    return 0;
-}
-
-/*! Add default attribute to node with default value.
- * @param[in]   x      	XML node
- * @param[in]   flags 	Flags indicatiing default nodes
- * @retval      0    	OK
- * @retval     -1    	Error
- */
-static int
-xml_add_default_tag(cxobj *x, uint16_t flags)
-{
-    int retval = -1;
-    cxobj *xattr;
-
-    if (xml_flag(x, flags)) {
-	/* set default attribute */
-	if ((xattr = xml_new("default", x, CX_ATTR)) == NULL)
-	    goto done;
-	if (xml_value_set(xattr, "true") < 0)
-	    goto done;
-	if (xml_prefix_set(xattr, "wd") < 0)
-	    goto done;
-    }
-    retval = 0;
-    done:
-    return retval;
-}
-
-
 /*! Common get/get-config code for retrieving  configuration and state information.
  *
  * @param[in]  h       Clicon handle 
@@ -784,7 +846,6 @@ get_common(clicon_handle        h,
     cxobj         **xvec = NULL;
     size_t          xlen;
     cxobj          *xfind;
-    char	   *with_defaults;
     
     clicon_debug(1, "%s", __FUNCTION__);
     username = clicon_username_get(h);
@@ -905,59 +966,8 @@ get_common(clicon_handle        h,
 	}
 	break;
     }
-    /* rfc6243 Handle with-defaults. */
-    if ((xfind = xml_find(xe, "with-defaults")) != NULL) {
-	 if ((with_defaults = xml_find_value(xfind, "body")) != NULL) {
-
-	     if (strcmp(with_defaults, "explicit") == 0) {
-		/* Clear marked nodes */
-		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-		    goto done;
-		/* Mark state nodes */
-		if (xml_non_config_data(xret, NULL) < 0)
-		    goto done;
-		/* Remove default configuration nodes*/
-		if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_MARK|XML_FLAG_DEFAULT) < 0)
-		  goto done;
-		/* TODO. Remove empty containers */
-	     }
-	     else if (strcmp(with_defaults, "trim") == 0) {
-		/* Remove default nodes from XML */
-		if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_DEFAULT) < 0)
-		  goto done;
-		/* Mark and remove nodes having schema default values */
-		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_default_value, (void*)XML_FLAG_MARK) < 0)
-		    goto done;
-		if (xml_tree_prune_flags(xret, XML_FLAG_MARK, XML_FLAG_MARK) < 0)
-		  goto done;
-		/* TODO. Remove empty containers */
-	     }
-	     else if (strcmp(with_defaults, "report-all-tagged") == 0) {
-		if (xmlns_set(xret, "wd", "urn:ietf:params:xml:ns:netconf:default:1.0") < 0)
-		    goto done;
-		/* Mark nodes having default schema values */
-		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_default_value, (void*)XML_FLAG_MARK) < 0)
-		    goto done;
-		/* Add tag attributes to default nodes */
-		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_add_default_tag, (void*)(XML_FLAG_DEFAULT | XML_FLAG_MARK)) < 0)
-		    goto done;
-	     }
- 	     else if (strcmp(with_defaults, "report-all") == 0) {
-	       /* Accept mode, do nothing */
-	     }
-	     else {
-		 /* Mode not supported */
-		if ((cbmsg = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cbmsg, "with-defaults retrieval mode \"%s\" is not supported", with_defaults);
-		if (netconf_operation_not_supported(cbret, "application", cbuf_get(cbmsg)) < 0)
-		    goto done;
-		goto ok;
-	     }
-	 }
-    }
+    if (with_defaults(xe, xret) < 0)
+	goto done;
     if (content != CONTENT_CONFIG &&
 	clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
 	/* Check XML  by validating it. return internal error with error cause 

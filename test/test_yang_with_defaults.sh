@@ -337,6 +337,79 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 <interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface>\
 </interfaces></data></rpc-reply>" ""
 
+new "Pagination"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
+"<rpc $DEFAULTNS><get-config>\
+<source><running/></source>\
+<filter type=\"xpath\" select=\"/e:interfaces/e:interface\" xmlns:e=\"http://example.com/ns/interfaces\"/>\
+<list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><offset>1</offset><limit>2</limit></list-pagination>\
+ </get-config></rpc>" \
+"" \
+"<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
+<interface><name>eth1</name><mtu>1500</mtu></interface>\
+<interface><name>eth2</name><mtu>9000</mtu></interface>\
+</interfaces></data></rpc-reply>"
+
+new "Pagination with-defaults=report-all"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
+"<rpc $DEFAULTNS><get-config>\
+<source><running/></source>\
+<filter type=\"xpath\" select=\"/e:interfaces/e:interface\" xmlns:e=\"http://example.com/ns/interfaces\"/>\
+<list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><offset>1</offset><limit>2</limit></list-pagination>\
+ <with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults>\
+ </get-config></rpc>" \
+"" \
+"<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
+<interface><name>eth1</name><mtu>1500</mtu></interface>\
+<interface><name>eth2</name><mtu>9000</mtu></interface>\
+</interfaces></data></rpc-reply>"
+
+new "Pagination with-defaults=trim"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
+"<rpc $DEFAULTNS><get-config>\
+<source><running/></source>\
+<filter type=\"xpath\" select=\"/e:interfaces/e:interface\" xmlns:e=\"http://example.com/ns/interfaces\"/>\
+<list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><offset>1</offset><limit>2</limit></list-pagination>\
+ <with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">trim</with-defaults>\
+ </get-config></rpc>" \
+"" \
+"<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
+<interface><name>eth1</name></interface>\
+<interface><name>eth2</name><mtu>9000</mtu></interface>\
+</interfaces></data></rpc-reply>"
+
+new "Pagination with-defaults=explicit"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
+"<rpc $DEFAULTNS><get-config>\
+<source><running/></source>\
+<filter type=\"xpath\" select=\"/e:interfaces/e:interface\" xmlns:e=\"http://example.com/ns/interfaces\"/>\
+<list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><offset>0</offset><limit>4</limit></list-pagination>\
+ <with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">explicit</with-defaults>\
+ </get-config></rpc>" \
+"" \
+"<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
+<interface><name>eth0</name><mtu>8192</mtu></interface>\
+<interface><name>eth1</name></interface>\
+<interface><name>eth2</name><mtu>9000</mtu></interface>\
+<interface><name>eth3</name><mtu>1500</mtu></interface>\
+</interfaces></data></rpc-reply>"
+
+new "Pagination with-defaults=report-all-tagged"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
+"<rpc $DEFAULTNS><get-config>\
+<source><running/></source>\
+<filter type=\"xpath\" select=\"/e:interfaces/e:interface\" xmlns:e=\"http://example.com/ns/interfaces\"/>\
+<list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><offset>0</offset><limit>4</limit></list-pagination>\
+ <with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all-tagged</with-defaults>\
+ </get-config></rpc>" \
+"" \
+"<rpc-reply $DEFAULTNS><data xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\"><interfaces $EXAMPLENS>\
+<interface><name>eth0</name><mtu>8192</mtu></interface>\
+<interface><name>eth1</name><mtu wd:default=\"true\">1500</mtu></interface>\
+<interface><name>eth2</name><mtu>9000</mtu></interface>\
+<interface><name>eth3</name><mtu wd:default=\"true\">1500</mtu></interface>\
+</interfaces></data></rpc-reply>"
+
 
 new "rfc8040 4.3. RESTCONF GET"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces)" \
