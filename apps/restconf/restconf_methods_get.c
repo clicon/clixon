@@ -116,7 +116,6 @@ api_data_get2(clicon_handle  h,
     int        i;
     cxobj     *x;
     int        ret;
-    char      *namespace = NULL;
     cvec      *nsc = NULL;
     char      *attr; /* attribute value string */
     netconf_content content = CONTENT_ALL;
@@ -124,7 +123,8 @@ api_data_get2(clicon_handle  h,
     cxobj     *xtop = NULL;
     cxobj     *xbot = NULL;
     yang_stmt *y = NULL;
-    char	  *defaults = NULL;
+    char      *defaults = NULL;
+    cvec      *nscd = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -266,16 +266,11 @@ api_data_get2(clicon_handle  h,
 	switch (media_out){
 	case YANG_DATA_XML:
 	    for (i=0; i<xlen; i++){
-		char *prefix;
 		x = xvec[i];
-		/* Some complexities in grafting namespace in existing trees to new */
-		prefix = xml_prefix(x);
-		if (xml_find_type_value(x, prefix, "xmlns", CX_ATTR) == NULL){
-		    if (xml2ns(x, prefix, &namespace) < 0)
-			goto done;
-		    if (namespace && xmlns_set(x, prefix, namespace) < 0)
-			goto done;
-		}
+		if (xml_nsctx_node(x, &nscd) < 0)
+		    goto done;
+		if (xmlns_set_all(x, nscd) < 0)
+		    goto done;
 		if (clixon_xml2cbuf(cbx, x, 0, pretty, -1, 0) < 0) /* Dont print top object?  */
 		    goto done;
 	    }
@@ -305,6 +300,8 @@ api_data_get2(clicon_handle  h,
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (xpath)
 	free(xpath);
+    if (nscd)
+	xml_nsctx_free(nscd);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (xtop)

@@ -194,8 +194,6 @@ cvec     *nscache_get_all(cxobj *x);
 int       nscache_set(cxobj *x,	char *prefix, char *ns);
 int       nscache_clear(cxobj *x);
 int       nscache_replace(cxobj *x, cvec *ns);
-
-int       xmlns_set(cxobj *x, char *prefix, char *ns);
 cxobj    *xml_parent(cxobj *xn);
 int       xml_parent_set(cxobj *xn, cxobj *parent);
 #ifdef XML_PARENT_CANDIDATE

@@ -146,11 +146,11 @@ fi
 
 # XXX ftest har \n
 # Only compare relevant data line
-echo -n "<data>">> $ftest
+echo -n "<data $DEFAULTONLY>">> $ftest
 cat $fdataxml >> $ftest
 echo -n "</data>" >> $ftest
 # -i (ignore case) dont always work properly
-sed '/<data>/!d' $foutput > $foutput2
+sed "/<data $DEFAULTONLY>/!d" $foutput > $foutput2
 # Strip potential newlines, curl seems to leave trailing newlines on some platforms/versions
 tr -d "\n\r" < $foutput2 > $foutput
 

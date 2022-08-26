@@ -479,7 +479,7 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 "HTTP/$HVER 200" \
 "Content-Type: application/yang-data+xml" \
 "Cache-Control: no-cache" \
-'<interface xmlns="http://example.com/ns/interfaces"><name>eth1</name><mtu wd:default="true">1500</mtu><status wd:default="true">ok</status></interface>'
+'<interface xmlns="http://example.com/ns/interfaces" xmlns:wd="urn:ietf:params:xml:ns:netconf:default:1.0"><name>eth1</name><mtu wd:default="true">1500</mtu><status wd:default="true">ok</status></interface>'
 
 
 if [ $RC -ne 0 ]; then

@@ -77,6 +77,7 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xml_nsctx.h"
 #include "clixon_xml_vec.h"
 #include "clixon_data.h"
 #include "clixon_text_syntax_parse.h"

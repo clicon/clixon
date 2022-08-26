@@ -500,6 +500,7 @@ clicon_rpc_get_config(clicon_handle h,
     uint32_t           session_id;
     int                ret;
     yang_stmt         *yspec;
+    cvec              *nscd = NULL;
     
     if (session_id_check(h, &session_id) < 0)
 	goto done;
@@ -554,12 +555,20 @@ clicon_rpc_get_config(clicon_handle h,
 	}
     }
     if (xt && xd){
+	/* Sync namespaces, ie explicitly set all xmlns attributes to xd */
+	if (xml_nsctx_node(xd, &nscd) < 0)
+	    goto done;
 	if (xml_rm(xd) < 0)
 	    goto done;
+	if (xmlns_set_all(xd, nscd) < 0)
+	    goto done;
+	xml_sort(xd); /* Ensure attr is first */
 	*xt = xd;
     }
     retval = 0;
   done:
+    if (nscd)
+	cvec_free(nscd);
     if (cb)
 	cbuf_free(cb);
     if (xerr)
@@ -858,7 +867,7 @@ clicon_rpc_get(clicon_handle   h,
 	       cvec           *nsc, /* namespace context for filter */
 	       netconf_content content,
 	       int32_t         depth,
-		   char			  *defaults,
+	       char	      *defaults,
 	       cxobj         **xt)
 {
     int                retval = -1;
@@ -871,6 +880,7 @@ clicon_rpc_get(clicon_handle   h,
     uint32_t           session_id;
     int                ret;
     yang_stmt         *yspec;
+    cvec              *nscd = NULL;
     
     if (session_id_check(h, &session_id) < 0)
 	goto done;
@@ -932,12 +942,20 @@ clicon_rpc_get(clicon_handle   h,
 	}
     }
     if (xt && xd){
+	/* Sync namespaces, ie explicitly set all xmlns attributes to xd */
+	if (xml_nsctx_node(xd, &nscd) < 0)
+	    goto done;
 	if (xml_rm(xd) < 0)
 	    goto done;
+	if (xmlns_set_all(xd, nscd) < 0)
+	    goto done;
+	xml_sort(xd); /* Ensure attr is first */
 	*xt = xd;
     }
     retval = 0;
   done:
+    if (nscd)
+	cvec_free(nscd);
     if (cb)
 	cbuf_free(cb);
     if (xerr)
@@ -993,6 +1011,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     uint32_t           session_id;
     int                ret;
     yang_stmt         *yspec;
+    cvec              *nscd = NULL;
     
     if (datastore == NULL){
 	clicon_err(OE_XML, EINVAL, "datastore not given");
@@ -1072,12 +1091,20 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 	}
     }
     if (xt && xd){
+	/* Sync namespaces, ie explicitly set all xmlns attributes to xd */
+	if (xml_nsctx_node(xd, &nscd) < 0)
+	    goto done;
 	if (xml_rm(xd) < 0)
 	    goto done;
+	if (xmlns_set_all(xd, nscd) < 0)
+	    goto done;
+	xml_sort(xd); /* Ensure attr is first */
 	*xt = xd;
     }
     retval = 0;
   done:
+    if (nscd)
+	cvec_free(nscd);
     if (cb)
 	cbuf_free(cb);
     if (xerr)

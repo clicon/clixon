@@ -252,7 +252,7 @@ new "PATCH on root resource extra c" # merge extra/c
 expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH  -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data -d '{"ietf-restconf:data":{"example-jukebox:extra":"c"}}')" 0 "HTTP/$HVER 204"
 
 new "GET check" # XXX: "data" should probably be namespaced?
-expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data?content=config -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" '<extra xmlns="http://example.com/ns/example-jukebox">c</extra>' '<data>'
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data?content=config -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" '<extra xmlns="http://example.com/ns/example-jukebox">c</extra>' "<data $DEFAULTONLY>"
 
 new "Add empty leaf"
 expectpart "$(curl -u andy:bar $CURLOPTS -X POST $RCPROTO://localhost/restconf/data -H 'Content-Type: application/yang-data+json' -d '{"example-system:system":{"extraleaf":""}}')" 0 "HTTP/$HVER 201"

@@ -597,6 +597,42 @@ xmlns_set(cxobj *x,
     return retval;
 }
 
+/*! Given an xml node x and a namespace context, add namespace xmlns attributes to x
+ * 
+ * As a side-effect, the namespace cache is set
+ * Check if already there
+ * @param[in]  x    XML tree
+ * @param[in]  nsc  Namespace context
+ * @note you need to do an xml_sort(x) after the call
+ */
+int
+xmlns_set_all(cxobj *x,
+	      cvec  *nsc)
+{
+    int     retval = -1;
+    char   *ns;
+    char   *pf;
+    cg_var *cv = NULL;
+
+    while ((cv = cvec_each(nsc, cv)) != NULL){
+	pf = cv_name_get(cv);
+	/* Check already added */
+	if (pf != NULL) /* xmlns:<prefix>="<uri>" */
+	    ns = xml_find_type_value(x, "xmlns", pf, CX_ATTR);
+	else{                /* xmlns="<uri>" */
+	    ns = xml_find_type_value(x, NULL, "xmlns", CX_ATTR);
+	}
+	if (ns)
+	    continue;
+	ns = cv_string_get(cv);
+	if (ns && xmlns_set(x, pf, ns) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Get prefix of given namespace recursively 
  * @param[in]  xn        XML node
  * @param[in]  namespace Namespace

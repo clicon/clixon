@@ -161,11 +161,11 @@ if [ $r -ne 0 ]; then
 fi
 
 # Only compare relevant data line
-echo -n "<data>">> $ftest
+echo -n "<data $DEFAULTONLY>">> $ftest
 cat $fdataxml >> $ftest
 #echo "</data>" >> $ftest
 echo -n "</data>" >> $ftest
-sed '/<data>/!d' $foutput > $foutput2
+sed "/<data $DEFAULTONLY>/!d" $foutput > $foutput2
 mv $foutput2 $foutput
 
 ret=$(diff -i $ftest $foutput)

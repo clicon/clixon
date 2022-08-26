@@ -525,7 +525,6 @@ with_defaults(cxobj *xe, cxobj *xret) {
 	    }
 	}
     }
-    ok:
         retval = 0;
      done:
         return retval;
