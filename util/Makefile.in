@@ -103,7 +103,9 @@ APPSRC   += clixon_netconf_ssh_callhome.c
 APPSRC   += clixon_netconf_ssh_callhome_client.c
 ifdef with_restconf
 APPSRC   += clixon_util_stream.c # Needs curl
+ifeq ($(with_restconf), native)
 APPSRC   += clixon_restconf_callhome_client.c
+endif
 endif
 ifdef with_http2
 APPSRC   += clixon_util_ssl.c # requires http/2

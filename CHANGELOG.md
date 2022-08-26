@@ -52,7 +52,7 @@ Expected: September 2022
 
 ### Corrected Bugs
 
-* Fixed: [YANG ordering fails for nested choice and action](YANG ordering fails for nested choice and action)
+* Fixed: [YANG ordering fails for nested choice and action](https://github.com/clicon/clixon/issues/356)
 * Fixed: [YANG min-elements within non-presence container does not work](https://github.com/clicon/clixon/issues/355)
 * Fixed: [Issues with ietf-snmp modules](https://github.com/clicon/clixon/issues/353)
 * Fixed: [Missing/no namespace error in YANG augments with default values](https://github.com/clicon/clixon/issues/354)

@@ -96,7 +96,7 @@ cat <<EOF > $cfg
 	      </periodic>
 	   </connection-type>
 	   <reconnect-strategy>
-	      <max-attempts>1</max-attempts>
+	      <max-attempts>3</max-attempts>
 	   </reconnect-strategy>
 	</call-home>
         <address>127.0.0.1</address>
