@@ -387,15 +387,9 @@ clixon_plugin_statedata_all(clicon_handle   h,
 	}
 	if (xml_sort_recurse(x) < 0)
 	    goto done;
-	/* Mark non-presence containers */
-	if (xml_apply(x, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_TRANSIENT) < 0)
+	/* Remove global defaults and empty non-presence containers */
+	if (xml_defaults_nopresence(x, 1) < 0)
 	    goto done;
-	/* Clear XML tree of defaults */
-	if (xml_tree_prune_flagged(x, XML_FLAG_TRANSIENT, 1) < 0)
-	    goto done;
-        /* clear mark and change */
-	xml_apply0(x, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
-		   (void*)(0xffff));
 	if (xml_default_recurse(x, 1) < 0)
 	    goto done;
 	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)

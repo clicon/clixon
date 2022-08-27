@@ -889,15 +889,8 @@ xmldb_get_cache(clicon_handle    h,
 	if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
 	    goto done;
     }
-    /* Remove global defaults from cache 
-     * Mark non-presence containers */
-    if (xml_apply(x0t, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_TRANSIENT) < 0)
-	goto done;
-    /* clear XML tree of defaults */
-    if (xml_tree_prune_flagged(x0t, XML_FLAG_DEFAULT, 1) < 0)
-	goto done;
-    /* Clear XML tree of defaults */
-    if (xml_tree_prune_flagged(x0t, XML_FLAG_TRANSIENT, 1) < 0)
+    /* Remove global defaults and empty non-presence containers */
+    if (xml_defaults_nopresence(x0t, 1) < 0)
 	goto done;
     if (yb != YB_NONE){
 	/* Add default global values */
@@ -1169,14 +1162,10 @@ xmldb_get0_clear(clicon_handle    h,
     
     if (x == NULL)
 	goto ok;
-    /* Mark non-presence containers */
-    if (xml_apply(x, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_TRANSIENT) < 0)
+    /* Remove global defaults and empty non-presence containers */
+    if (xml_defaults_nopresence(x, 1) < 0)
 	goto done;
-    /* Clear XML tree of defaults */
-    if (xml_tree_prune_flagged(x, XML_FLAG_TRANSIENT, 1) < 0)
-	goto done;
-
-    /* clear mark and change */
+    /* clear flags: mark and change */
     xml_apply0(x, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
 	       (void*)(XML_FLAG_MARK|XML_FLAG_ADD|XML_FLAG_CHANGE));
  ok:

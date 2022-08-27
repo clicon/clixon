@@ -535,7 +535,7 @@ text_modify(clicon_handle       h,
 	goto fail;
     if (createstr != NULL &&
 	(op == OP_REPLACE || op == OP_MERGE || op == OP_CREATE)){
-	if (x0 == NULL || xml_nopresence_default(x0)){ /* does not exist or is default */
+	if (x0 == NULL || xml_defaults_nopresence(x0, 0)){ /* does not exist or is default */
 	    if (strcmp(createstr, "false")==0){
 		/* RFC 8040 4.6 PATCH:
 		 * If the target resource instance does not exist, the server MUST NOT create it. 
@@ -784,7 +784,7 @@ text_modify(clicon_handle       h,
 	switch(op){ 
 	case OP_CREATE:
 	    if (x0){
-		if (xml_nopresence_default(x0) == 0){
+		if (xml_defaults_nopresence(x0, 0) == 0){
 		    if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
 			goto done;
 		    goto fail;
@@ -1257,11 +1257,8 @@ xmldb_put(clicon_handle       h,
     if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, 
 		  (void*)(XML_FLAG_NONE|XML_FLAG_MARK)) < 0)
 	goto done;
-    /* Mark non-presence containers */
-    if (xml_apply(x0, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_TRANSIENT) < 0)
-	goto done;
-    /* Clear XML tree of defaults */
-    if (xml_tree_prune_flagged(x0, XML_FLAG_TRANSIENT, 1) < 0)
+    /* Remove global defaults and empty non-presence containers */
+    if (xml_defaults_nopresence(x0, 1) < 0)
 	goto done;
 #if 0 /* debug */
     if (xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)

@@ -1092,55 +1092,55 @@ xml_global_defaults(clicon_handle h,
     return retval;
 }
 
-/*! This node is a default set value or (recursively) a non-presence container
- * @retval 1  xt is a nopresence/default node (ie "virtual")
- * @retval 0  xt is not such a node
+/*! Recursively find empty nopresence containers and default leaves, optionally purge
+ *
+ * @param[in] xn       XML tree
+ * @param[in] purge    Remove sub-nodes that is empty non-presence container or default leaf
+ * @retval    1        Node is an (recursive) empty non-presence container or default leaf
+ * @retval    0        Other node
+ * @retval   -1        Error
+ * @note xn is not itself removed if purge
  */
 int
-xml_nopresence_default(cxobj *xt)
+xml_defaults_nopresence(cxobj *xn,
+			int    purge)
 {
-    cxobj     *xc;
-    yang_stmt *yt;
-
-    if ((yt = xml_spec(xt)) == NULL)
-	return 0;
-    switch (yang_keyword_get(yt)){
-    case Y_CONTAINER:
-	if (yang_find(yt, Y_PRESENCE, NULL))
-	    return 0;
-	break;
-    case Y_LEAF:
-	return xml_flag(xt, XML_FLAG_DEFAULT)?1:0;
-	break;
-    default:
-	return 0;
+    int           retval = -1;
+    cxobj        *x;
+    cxobj        *xprev;
+    yang_stmt    *yn;
+    int           rmx = 0; /* If set, remove this xn */
+    int           ret;
+    enum rfc_6020 keyw;
+    
+    if ((yn = xml_spec(xn)) != NULL){
+	keyw = yang_keyword_get(yn);
+	if (keyw == Y_CONTAINER &&
+	    yang_find(yn, Y_PRESENCE, NULL) == NULL)
+	    rmx = 1;
+	else if (keyw == Y_LEAF &&
+		 xml_flag(xn, XML_FLAG_DEFAULT))
+	    rmx = 1;
     }
-    xc = NULL;
-    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	if (xml_nopresence_default(xc) == 0)
-	    return 0;
+    /* Loop thru children */
+    x = NULL;
+    xprev = NULL;
+    while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
+	if ((ret = xml_defaults_nopresence(x, purge)) < 0)
+	    goto done;
+	if (ret == 1){
+	    if (purge){
+		if (xml_purge(x) < 0)
+		    goto done;
+		x = xprev;
+	    }
+	}
+	else if (rmx)
+	    rmx = 0;
     }
-    return 1;
-}
-
-/*! Remove xml container if it is non-presence and only contains default leafs
- * Called from xml_apply. Reason for marking is to delete it afterwords.
- * @param[in] x
- * @param[in] arg  (flag value)
- * @code
- *    if (xml_apply(xt, CX_ELMNT, xml_nopresence_default_mark, (void*)XML_FLAG_TRANSIENT) < 0)
- *	err;
- *    if (xml_tree_prune_flagged(xt, XML_FLAG_TRANSIENT, 1) < 0)
- *	goto done;
- * @endcode
- */
-int
-xml_nopresence_default_mark(cxobj *x,
-			    void  *arg)
-{
-    if (xml_nopresence_default(x))
-	xml_flag_set(x, (intptr_t)arg);
-    return 0;
+    retval = rmx;
+ done:
+    return retval;
 }
 
 /*! Sanitize an xml tree: xml node has matching yang_stmt pointer 
