@@ -416,7 +416,8 @@ element2value(clicon_handle  h,
 
  */
 static int
-xml_flag_default_value(cxobj *x, uint16_t flag)
+xml_flag_default_value(cxobj *x,
+		       uint16_t flag)
 {
     yang_stmt	*y;
     cg_var	*cv;
@@ -451,7 +452,8 @@ xml_flag_default_value(cxobj *x, uint16_t flag)
  * @retval     -1    	Error
  */
 static int
-xml_add_default_tag(cxobj *x, uint16_t flags)
+xml_add_default_tag(cxobj *x,
+		    uint16_t flags)
 {
     int retval = -1;
     cxobj *xattr;
@@ -478,55 +480,62 @@ xml_add_default_tag(cxobj *x, uint16_t flags)
  */
 
 static int
-with_defaults(cxobj *xe, cxobj *xret) {
-    int retval = -1;
+with_defaults(cxobj *xe,
+	      cxobj *xret)
+{
+    int    retval = -1;
     cxobj *xfind;
     char  *mode;
 
     if ((xfind = xml_find(xe, "with-defaults")) != NULL) {
-	if ((mode = xml_find_value(xfind, "body")) != NULL) {
+	if ((mode = xml_find_value(xfind, "body")) == NULL)
+	    goto done;
 
-	    if (strcmp(mode, "explicit") == 0) {
-		/* Clear marked nodes */
-		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_reset,(void*) XML_FLAG_MARK) < 0)
-		    goto done;
-		/* Mark state nodes */
-		if (xml_non_config_data(xret, NULL) < 0)
-		    goto done;
-		/* Remove default configuration nodes*/
-		if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_MARK | XML_FLAG_DEFAULT) < 0)
-		    goto done;
-		/* TODO. Remove empty containers */
-
-	    } else if (strcmp(mode, "trim") == 0) {
-		/* Remove default nodes from XML */
-		if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_DEFAULT) < 0)
-		    goto done;
-		/* Mark and remove nodes having schema default values */
-		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
-		    goto done;
-		if (xml_tree_prune_flags(xret, XML_FLAG_MARK, XML_FLAG_MARK)
-			< 0)
-		    goto done;
-		/* TODO. Remove empty containers */
-
-	    } else if (strcmp(mode, "report-all-tagged") == 0) {
-		if (xmlns_set(xret, "wd", "urn:ietf:params:xml:ns:netconf:default:1.0") < 0)
-		    goto done;
-		/* Mark nodes having default schema values */
-		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
-		    goto done;
-		/* Add tag attributes to default nodes */
-		if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_add_default_tag, (void*) (XML_FLAG_DEFAULT | XML_FLAG_MARK)) < 0)
-		    goto done;
-
-	    } else if (strcmp(mode, "report-all") == 0) {
-		/* Accept mode, do nothing */
-	    }
+	if (strcmp(mode, "explicit") == 0) {
+	    /* Clear marked nodes */
+	    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_reset,(void*) XML_FLAG_MARK) < 0)
+		goto done;
+	    /* Mark state nodes */
+	    if (xml_non_config_data(xret, NULL) < 0)
+		goto done;
+	    /* Remove default configuration nodes*/
+	    if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_MARK | XML_FLAG_DEFAULT) < 0)
+		goto done;
+	    /* TODO. Remove empty containers */
+	    goto ok;
+	}
+	if (strcmp(mode, "trim") == 0) {
+	    /* Remove default nodes from XML */
+	    if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_DEFAULT) < 0)
+		goto done;
+	    /* Mark and remove nodes having schema default values */
+	    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
+		goto done;
+	    if (xml_tree_prune_flags(xret, XML_FLAG_MARK, XML_FLAG_MARK)
+		    < 0)
+		goto done;
+	    /* TODO. Remove empty containers */
+	    goto ok;
+	}
+	if (strcmp(mode, "report-all-tagged") == 0) {
+	    if (xmlns_set(xret, "wd", "urn:ietf:params:xml:ns:netconf:default:1.0") < 0)
+		goto done;
+	    /* Mark nodes having default schema values */
+	    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
+		goto done;
+	    /* Add tag attributes to default nodes */
+	    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_add_default_tag, (void*) (XML_FLAG_DEFAULT | XML_FLAG_MARK)) < 0)
+		goto done;
+	    goto ok;
+	}
+	if (strcmp(mode, "report-all") == 0) {
+	    /* Accept mode, do nothing */
+	    goto ok;
 	}
     }
+    ok:
         retval = 0;
-     done:
+    done:
         return retval;
 }
 
