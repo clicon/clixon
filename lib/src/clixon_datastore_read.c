@@ -1165,7 +1165,10 @@ xmldb_get0_clear(clicon_handle    h,
     /* Remove global defaults and empty non-presence containers */
     if (xml_defaults_nopresence(x, 1) < 0)
 	goto done;
-    /* clear flags: mark and change */
+    /* Clear XML tree of defaults */
+    if (xml_tree_prune_flagged(x, XML_FLAG_TRANSIENT, 1) < 0)
+	goto done;
+    /* clear mark and change */
     xml_apply0(x, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
 	       (void*)(XML_FLAG_MARK|XML_FLAG_ADD|XML_FLAG_CHANGE));
  ok:

@@ -393,7 +393,7 @@ from_client_edit_config(clicon_handle h,
     }
     /* Limited validation of incoming payload
      */
-    if ((ret = xml_yang_check_list_unique_minmax(xc, &xret)) < 0)
+    if ((ret = xml_yang_minmax_recurse(xc, &xret)) < 0)
 	goto done;
     /* xmldb_put (difflist handling) requires list keys */
     if (ret==1 && (ret = xml_yang_validate_list_key_only(xc, &xret)) < 0)

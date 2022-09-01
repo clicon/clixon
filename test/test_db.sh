@@ -189,7 +189,7 @@ EOF
 new "test params: -f $cfg"
 
 for format in xml json; do
-    for pretty in false true json; do
+    for pretty in false true; do
 	new "test db $format pretty=$pretty"
 	testrun xml false
     done

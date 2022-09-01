@@ -134,7 +134,7 @@ if [ $? -ne 0 ]; then
     err 0 $r
 fi  
 if [ "$ret" != "clixon-hello:hello     world;" ]; then
-    err "$ret" "clixon-hello:hello     world;"
+    err "clixon-hello:hello     world;" "$ret"
 fi
 
 new "netconf edit-config"

@@ -96,6 +96,7 @@ extern "C" {
 #include <clixon/clixon_xml_map.h>
 #include <clixon/clixon_xml_bind.h>
 #include <clixon/clixon_xml_io.h>
+#include <clixon/clixon_validate_minmax.h>
 #include <clixon/clixon_validate.h>
 #include <clixon/clixon_datastore.h>
 #include <clixon/clixon_xpath_ctx.h>

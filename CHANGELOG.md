@@ -61,6 +61,16 @@ Expected: September 2022
     * idle-timeout for periodic call-homes.
   * An example util client is `clixon_restconf_callhome_client.c` used in test cases
 
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* Constraints on number of elements have been made stricter (ie unique, min/max-elements)
+  * Usecases that passed previously may now return error
+  * This includes:
+    * Check of incoming RPCs
+    * Check of non-presence containers
+
 ### Corrected Bugs
 
 * Fixed: [YANG ordering fails for nested choice and action](https://github.com/clicon/clixon/issues/356)

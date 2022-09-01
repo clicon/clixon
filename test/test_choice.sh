@@ -373,13 +373,7 @@ new "netconf choice multiple items second"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\" nc:operation=\"replace\" xmlns:nc=\"$BASENS\">
   <mb>0</mb>
   <mb>1</mb>
-</system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-
-new "netconf get items second"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:config\"><mb>0</mb><mb>1</mb></system>" ""
-
-new "netconf validate items second expect fail"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-many-elements</error-app-tag><error-severity>error</error-severity><error-path>/system/mb</error-path></rpc-error></rpc-reply>"
+</system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-many-elements</error-app-tag><error-severity>error</error-severity><error-path>/rpc/edit-config/config/system/mb</error-path></rpc-error></rpc-reply>"
 
 new "netconf choice multiple items mix"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\" nc:operation=\"replace\" xmlns:nc=\"$BASENS\">

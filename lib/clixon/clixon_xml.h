@@ -218,7 +218,6 @@ cxobj    *xml_child_i_type(cxobj *xn, int i, enum cxobj_type type);
 cxobj    *xml_child_i_set(cxobj *xt, int i, cxobj *xc);
 int       xml_child_order(cxobj *xn, cxobj *xc);
 cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
-
 int       xml_child_insert_pos(cxobj *x, cxobj *xc, int i);
 int       xml_childvec_set(cxobj *x, int len);
 cxobj   **xml_childvec_get(cxobj *x);

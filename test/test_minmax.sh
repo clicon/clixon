@@ -152,7 +152,6 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "minmax: replace with 0x a1,b1"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\"/></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-#XXX echo "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" |$clixon_netconf -qf $cfg 
 new "minmax: validate should fail"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-few-elements</error-app-tag><error-severity>error</error-severity><error-path>/c/a1</error-path></rpc-error></rpc-reply>"
 
@@ -204,16 +203,13 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "minmax choice: many a2 validate ok"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "minmax choice: too many a1"
+new "minmax choice: too many a1 should fail"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c2 xmlns=\"urn:example:clixon\">
   <a1><k>0</k></a1>
   <a1><k>1</k></a1>
   <a1><k>2</k></a1>
   <b1>0</b1>
-</c2></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-
-new "minmax choice: too many validate should fail"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-many-elements</error-app-tag><error-severity>error</error-severity><error-path>/c2/a1</error-path></rpc-error></rpc-reply>"
+</c2></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-many-elements</error-app-tag><error-severity>error</error-severity><error-path>/rpc/edit-config/config/c2/a1</error-path></rpc-error></rpc-reply>"
 
 new "netconf discard-changes"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -245,7 +241,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 # Also need to do commit tests when running has elements and candidate has fewer
 
 new "Set maximal: 2x a1,b1"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\"><a1><k>0</k></a1><a1><k>1</k></a1><b1>1</b1><b1>0</b1></c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg -D 1" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\"><a1><k>0</k></a1><a1><k>1</k></a1><b1>1</b1><b1>0</b1></c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf commit"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -265,17 +261,34 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "delete c"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS $DEFAULTNS><edit-config><target><candidate/></target><default-operation>none</default-operation><config><c xmlns=\"urn:example:clixon\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"delete\"/></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
+# <b2><kb>0</kb></b2>
 new "add empty list entry with a min-element leaf within a non-presence container"
 expecteof_netconf "$clixon_netconf -qf $cfg -D 1 -l s" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS $DEFAULTNS><edit-config><target><candidate/></target><config><c3 xmlns=\"urn:example:clixon\"><b2><kb>0</kb></b2></c3></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "minmax: validate should fail, there should be a b2ll trailing"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-few-elements</error-app-tag><error-severity>error</error-severity><error-path>/c3/b2\[kb=\"0\"\]/b2ll</error-path></rpc-error></rpc-reply>" ""
 
+# <b2><kb>0</kb><b3ll>42</b3ll></b2>
 new "add b3ll after missing b2ll"
 expecteof_netconf "$clixon_netconf -qf $cfg -D 1 -l s" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS $DEFAULTNS><edit-config><target><candidate/></target><config><c3 xmlns=\"urn:example:clixon\"><b2><kb>0</kb><b3ll>42</b3ll></b2></c3></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "minmax: validate should fail, there should be a b2ll before b3ll"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>operation-failed</error-tag><error-app-tag>too-few-elements</error-app-tag><error-severity>error</error-severity><error-path>/c3/b2\[kb=\"0\"\]/b2ll</error-path></rpc-error></rpc-reply>" ""
+
+# Positive tests
+# <b2><kb>0</kb><b2c><b2ll>71</b2ll></b2c><b3ll>42</b3ll></b2>
+new "add b2ll to satisfy min-elements, gap"
+expecteof_netconf "$clixon_netconf -qf $cfg -D 1 -l s" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS $DEFAULTNS><edit-config><target><candidate/></target><config><c3 xmlns=\"urn:example:clixon\"><b2><kb>0</kb><b2c><b2ll>71</b2ll></b2c></b2></c3></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "validate expect OK xxx"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+# <b2><kb>0</kb><b2c><b2ll>71</b2ll></b2c></b2>
+new "delete b3ll, empty"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS $DEFAULTNS><edit-config><target><candidate/></target><default-operation>none</default-operation><config><c3 xmlns=\"urn:example:clixon\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><b2><kb>0</kb><b3ll nc:operation=\"delete\">42</b3ll></b2></c3></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "validate expect OK"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

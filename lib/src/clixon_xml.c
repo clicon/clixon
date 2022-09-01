@@ -881,6 +881,8 @@ xml_child_order(cxobj *xp,
  * @param[in] xparent xml tree node whose children should be iterated
  * @param[in] xprev   previous child, or NULL on init
  * @param[in] type    matching type or -1 for any
+ * @retval    xn      Next XML node
+ * @retval    NULL    End of list
  * @code
  *   cxobj *x = NULL;
  *   while ((x = xml_child_each(x_top, x, -1)) != NULL) {
@@ -905,9 +907,7 @@ xml_child_order(cxobj *xp,
  *      xprev = x;
  *   }
  * @endcode
-#ifdef XML_EXPLICIT_INDEX
  * @see xml_child_index_each
-#endif XML_EXPLICIT_INDEX 
  */
 cxobj *
 xml_child_each(cxobj           *xparent, 
