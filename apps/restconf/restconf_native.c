@@ -409,6 +409,7 @@ native_buf_write(clicon_handle    h,
 		    usleep(10000);
 		    continue;
 		    break;
+		    //		case EBADF: // XXX if this happens there is some larger error
 		case ECONNRESET: /* Connection reset by peer */
 		case EPIPE:   /* Broken pipe */
 		    if (restconf_connection_close(h, s, rsock) < 0)
@@ -1159,11 +1160,6 @@ restconf_ssl_accept_client(clicon_handle    h,
 		switch (e){
 		case SSL_ERROR_SSL:                  /* 1 */
 		    clicon_debug(1, "%s SSL_ERROR_SSL (non-ssl message on ssl socket)", __FUNCTION__);
-#if 1
-		    if (native_send_badrequest(h, rc->rc_s, NULL, "application/yang-data+xml",
-					"<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The plain HTTP request was sent to HTTPS port</error-message></error></errors>", rc->rc_socket) < 0)
-			goto done;
-#endif
 		    SSL_free(rc->rc_ssl);
 		    rc->rc_ssl = NULL;
 		    if (restconf_connection_close(h, rc->rc_s, rc->rc_socket) < 0)
@@ -1274,6 +1270,7 @@ restconf_ssl_accept_client(clicon_handle    h,
 	     * continue to http/1 or http/2 handling
 	     * @see restconf_connection_sanity
 	     */
+
 	}
 #endif
 #if 0 /* debug */

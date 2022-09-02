@@ -155,7 +155,7 @@ function testrun()
 	new "start restconf daemon"
 	# inline of start_restconf, cant make quotes to work
 	echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R $RESTCONFIG1"
-	sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R "$RESTCONFIG1" &
+	sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R "$RESTCONFIG1" </dev/null &>/dev/null &
 	if [ $? -ne 0 ]; then
 	    err1 "expected 0" "$?"
 	fi
@@ -206,8 +206,12 @@ function testrun()
 	    expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
 	else # see (1) http to https port in restconf_main_native.c
 	    new "Wrong proto=http on https port, expect bad request"
-	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/" "400"
-	    # expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
+	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
+	    # An effort to return an HTTP error on HTTPS socket, but it breaks other
+	    # error cases, more stable is to just close the socket, but
+	    # curl gets an error code instead, see ^
+#	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/" "400"
+
 	fi
 	
     #------------------------------------------------------- HTTP/2 ONLY

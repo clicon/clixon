@@ -569,7 +569,7 @@ function wait_backend(){
 function start_restconf(){
     # Start in background 
     echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $*"
-    sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $* &
+    sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $* </dev/null &>/dev/null &
     if [ $? -ne 0 ]; then
 	err1 "expected 0" "$?"
     fi
@@ -989,7 +989,6 @@ EOF
 # clixon tester read from file for large tests
 # Arguments:
 # - Command
-# - Expected retval
 # - Filename to pipe to stdin 
 # - expected stdout outcome
 function expecteof_file(){
