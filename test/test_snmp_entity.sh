@@ -9,6 +9,7 @@ APPNAME=example
 
 if [ ${ENABLE_NETSNMP} != "yes" ]; then
     echo "Skipping test, Net-SNMP support not enabled."
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
@@ -510,7 +511,9 @@ expectpart "$($snmpwalk $ENTITY_OID)" 0 "SNMPv2-SMI::mib-2.47.1.1.1.1.1.1 = INTE
     "SNMPv2-SMI::mib-2.47.1.1.1.1.16.2 = INTEGER: 0" \
 
 new "Cleaning up"
-# testexit
+testexit
+
+rm -rf $dir
 
 new "endtest"
 endtest

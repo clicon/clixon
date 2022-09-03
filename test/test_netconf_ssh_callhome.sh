@@ -7,12 +7,14 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 # Skip it if no openssh
 if ! [ -x "$(command -v ssh)" ]; then
     echo "...ssh not installed"
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
 # Dont run this test with valgrind
 if [ $valgrindtest -ne 0 ]; then
     echo "...skipped "
+    rm -rf $dir
     return 0 # skip
 fi
 

@@ -9,6 +9,7 @@ APPNAME=example
 
 if [ ${ENABLE_NETSNMP} != "yes" ]; then
     echo "Skipping test, Net-SNMP support not enabled."
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
@@ -162,19 +163,21 @@ EOF
 function testinit(){
     new "test params: -f $cfg -- -sS $fstate"
     if [ $BE -ne 0 ]; then
-    # Kill old backend and start a new one
-    new "kill old backend"
-    sudo clixon_backend -zf $cfg
-    if [ $? -ne 0 ]; then
-        err "Failed to start backend"
+	# Kill old backend and start a new one
+	new "kill old backend"
+	sudo clixon_backend -zf $cfg
+	if [ $? -ne 0 ]; then
+            err "Failed to start backend"
+	fi
+	sudo pkill -f clixon_backend
+
+	new "Starting backend"
+	start_backend -s init -f $cfg -- -sS $fstate
     fi
-
-    sudo pkill -f clixon_backend
-
-    new "Starting backend"
-    start_backend -s init -f $cfg -- -sS $fstate
-    fi
-
+if true; then
+    rm -rf $dir
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
     new "wait backend"
     wait_backend
 
@@ -195,8 +198,10 @@ function testexit(){
     stop_snmp
 }
 
+
 new "SNMP tests"
 testinit
+
 
 # IF-MIB::interfaces
 MIB=".1.3.6.1.2.1"
@@ -464,6 +469,8 @@ expectpart "$($snmpwalk IF-MIB::ifRcvAddressTable)" 0 "IF-MIB::ifRcvAddressAddre
            "IF-MIB::ifRcvAddressType.2.\"aa:22:33:44:55:66\" = INTEGER: volatile(2)"
 
 testexit
+
+rm -rf $dir
 
 new "endtest"
 endtest

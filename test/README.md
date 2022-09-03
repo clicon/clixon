@@ -164,7 +164,10 @@ Clixon snmp frontend tests require a running netsnmpd and converted YANG files f
 Netsnmpd is 5.9 or later and can be started via systemd. For the tests
 to run, the systems IFMIB should be disabled: `-I -ifTable,ifNumber,ifXTable,`, etc.
 
-One way to start snmpd on Ubuntu, known to be working for the tests are: snmpd -Lo -p /var/run/snmpd.pid -I -ifXTable -I -ifTable -I -system_mib -I -sysORTable -I -snmpNotifyFilterTable -I -snmpNotifyTable -I -snmpNotifyFilterProfileTable
+One way to start snmpd on Ubuntu, known to be working for the tests is:
+```
+snmpd -c /etc/snmp/snmpd.conf -Lo -p /var/run/snmpd.pid -I -ifXTable -I -ifTable -I -system_mib -I -sysORTable -I -snmpNotifyFilterTable -I -snmpNotifyTable -I -snmpNotifyFilterProfileTable
+```
 
 Converted YANG files are available at `https://github.com/clicon/mib-yangs` or alternatively use `smidump` version 0.5 or later. Clixon expects them to be at `/usr/local/share/mib-yangs/` by default, or configured by `--with-mib-generated-yang-dir=DIR`.
 

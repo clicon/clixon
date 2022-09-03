@@ -10,12 +10,14 @@ APPNAME=example
 
 if [ -z "$(type expect 2> /dev/null)" ]; then
     echo "...skipped: Expect not installed"
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
 # Skip test if valgrind
 if [ $valgrindtest -ne 0 ]; then
     echo "...skipped for valgrind "
+    rm -rf $dir
     return 0 # skip
 fi
 

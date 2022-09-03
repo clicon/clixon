@@ -29,6 +29,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 if [ "${WITH_RESTCONF}" = "native" -a ${HAVE_HTTP1} = false ]; then
 #if ! ${HAVE_HTTP1}; then
     echo "...skipped: must run with http/1"
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 

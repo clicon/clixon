@@ -8,9 +8,9 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
-# XXX skip for now
 if [ ${ENABLE_NETSNMP} != "yes" ]; then
     echo "Skipping test, Net-SNMP support not enabled."
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
@@ -243,6 +243,8 @@ expectpart "$($clixon_cli -1 -f $cfg show config xml)" 0 "<$name>active</$name>"
 
 new "Cleaning up"
 testexit
+
+rm -rf $dir
 
 new "endtest"
 endtest

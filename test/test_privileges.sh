@@ -13,6 +13,7 @@ APPNAME=example
 # Dont run this test with valgrind
 if [ $valgrindtest -ne 0 ]; then
     echo "...skipped "
+    rm -rf $dir
     return 0 # skip
 fi
 

@@ -13,16 +13,19 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Skip if other than native
 if [ "${WITH_RESTCONF}" != "native" ]; then
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
 if ! ${HAVE_HTTP1}; then
     echo "...skipped: HAVE_HTTP1 is false, must run with http/1"
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
 # Skip if valgrind restconf (actually valgrind version < 3.16 27 May 2020)
 if [ $valgrindtest -eq 3 ]; then
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
@@ -30,6 +33,7 @@ fi
 ip netns 2> /dev/null
 if [ $? -ne 0 ]; then
     echo "...ip netns does not work"
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 

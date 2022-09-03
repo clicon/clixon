@@ -29,11 +29,15 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Skip it other than fcgi and http
 if [ "${WITH_RESTCONF}" != "fcgi" -o "$RCPROTO" = https ]; then
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
 # Skip regardless, broken in 5.7
-if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
+if true; then
+    rm -rf $dir
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
+fi
 : ${SLEEP2:=1}
 SLEEP5=.5
 APPNAME=example

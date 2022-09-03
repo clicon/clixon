@@ -19,6 +19,7 @@ mkdir $dir/www/data
 # Does not work with fcgi
 if [ "${WITH_RESTCONF}" = "fcgi" ]; then
     echo "...skipped: Must run with --with-restconf=native"
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 

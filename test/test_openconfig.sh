@@ -20,6 +20,7 @@ new "openconfig"
 if [ ! -d "$OPENCONFIG" ]; then
 #    err "Hmm Openconfig dir does not seem to exist, try git clone https://github.com/openconfig/public?"
     echo "...skipped: OPENCONFIG not set"
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 

@@ -661,7 +661,7 @@ function wait_snmp()
     done
 }
     
-# End of test, final tests before normal exit of test
+# End of single test, final tests before normal exit of test
 # Note this is a single test started by new, not a total test suite
 function endtest()
 {
@@ -679,7 +679,7 @@ function new(){
     >&2 echo "Test $testi($testnr) [$1]"
 }
 
-# End of complete test-suite, eg a test file
+# End of complete test-suite, eg a test file, mem.sh
 function endsuite()
 {
     unset CURLOPTS

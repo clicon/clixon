@@ -12,12 +12,14 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Only works with native
 if [ "${WITH_RESTCONF}" != "native" ]; then
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
 # Cant make it work in sum.sh...
 if ! ${HAVE_HTTP1}; then
     echo "...skipped: must run with http/1"
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 

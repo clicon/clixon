@@ -9,6 +9,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Enable if YANG_PATCH
 echo "...skipped: YANG_PATCH JSON NYI"
+rm -rf $dir
 if [ -z "${CLIXON_YANG_PATCH}" -a "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
