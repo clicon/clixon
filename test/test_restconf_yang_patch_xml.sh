@@ -7,9 +7,11 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-echo "...skipped: YANG_PATCH XML NYI"
-rm -rf $dir
-if [ -z "${CLIXON_YANG_PATCH}" -a "$s" = $0 ]; then exit 0; else return 0; fi
+if true; then
+    echo "...skipped: YANG_PATCH XML NYI"
+    rm -rf $dir
+    if [ -z "${CLIXON_YANG_PATCH}" -a "$s" = $0 ]; then exit 0; else return 0; fi
+fi
     
 APPNAME=example
     

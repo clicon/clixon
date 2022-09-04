@@ -17,7 +17,24 @@ APPNAME=example
 
 # Only works with native
 if [ "${WITH_RESTCONF}" != "native" ]; then
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
+fi
+
+if ! ${HAVE_HTTP1}; then
+    echo "...skipped: Must run with http/1"
+    rm -rf $dir
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
+# Callhome stream is HTTP/1.1, other communication is HTTP/2
+HVERCH=1.1
+if [ ${HAVE_LIBNGHTTP2} = true ]; then
+    # Pin to http/1
+    HAVE_LIBNGHTTP2=false
+    CURLOPTS="${CURLOPTS} --http1.1"
+    HVER=2
+else
+    HVER=1.1
 fi
 
 : ${clixon_restconf_callhome_client:=clixon_restconf_callhome_client}
@@ -39,9 +56,6 @@ srvcert=$certdir/srv_cert.pem
 users="andy" # generate certs for some users
 
 RCPROTO=https
-# Callhome stream is HTTP/1.1, other communication is HTTP/2
-HVER=2
-HVERCH=1.1
 
 test -d $certdir || mkdir $certdir
 
@@ -293,7 +307,7 @@ wait_restconf
 
 
 new "restconf Add init data"
-expectpart "$(curl $CURLOPTS  --key $certdir/andy.key --cert $certdir/andy.crt -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" -d '{"clixon-example:table":{"parameter":{"name":"x","value":"foo"}}}' $RCPROTO://127.0.0.1/restconf/data)" 0 "HTTP/$HVER 201"
+expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" -d '{"clixon-example:table":{"parameter":{"name":"x","value":"foo"}}}' $RCPROTO://127.0.0.1/restconf/data)" 0 "HTTP/$HVER 201"
 
 t0=$(date +"%s")
 new "Send GET via callhome persistence client port 4336"

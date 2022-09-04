@@ -19,6 +19,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Only works with native and https
 if [ "${WITH_RESTCONF}" != "native" ]; then
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
@@ -30,6 +31,7 @@ fyang=$dir/clixon-example.yang
 
 # If nmap not installed just quietly quit
 if [ ! -n "$(type nmap 2> /dev/null)" ]; then
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 

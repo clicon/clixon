@@ -9,6 +9,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Only works with native and https
 if [ "${WITH_RESTCONF}" != "native" ]; then
+    rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 

@@ -15,6 +15,11 @@
 # - The tests runs through both (if compiled with native)
 # See also test_restconf_op.sh
 # See test_restconf_rpc.sh for cases when CLICON_BACKEND_RESTCONF_PROCESS is set
+#
+# Note, for tests: "Wrong proto=http on https port, expect bad reques"
+# there was an effort to return an HTTP error on HTTPS socket, but it breaks other
+# error cases, more stable is to just close the socket, but
+# curl gets an error code instead.
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -207,9 +212,6 @@ function testrun()
 	else # see (1) http to https port in restconf_main_native.c
 	    new "Wrong proto=http on https port, expect bad request"
 	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
-	    # An effort to return an HTTP error on HTTPS socket, but it breaks other
-	    # error cases, more stable is to just close the socket, but
-	    # curl gets an error code instead, see ^
 #	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/" "400"
 
 	fi
@@ -262,7 +264,7 @@ function testrun()
 	    expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
 	else # see (1) http to https port in restconf_main_native.c
 	    new "Wrong proto=http on https port, expect bad request"
-	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" "16 52 55" --not-- 'HTTP'
+	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" "16 52 55 56" --not-- 'HTTP'
 	fi
 
     else #------------------------------------------------------- HTTP/1 only
@@ -303,8 +305,8 @@ function testrun()
 	    expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
 	else # see (1) http to https port in restconf_main_native.c
 	    new "Wrong proto=http on https port, expect bad request"
-	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/" "400"
-	    # expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
+	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
+#	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/" "400"
 	fi
     fi # HTTP/2    
 
