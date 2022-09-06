@@ -310,7 +310,8 @@ xml_diff1(cxobj     *x0,
     int        retval = -1;
     cxobj     *x0c = NULL; /* x0 child */
     cxobj     *x1c = NULL; /* x1 child */
-    yang_stmt *yc;
+    yang_stmt *yc0;
+    yang_stmt *yc1;
     char      *b1;
     char      *b2;
     int        eq;
@@ -352,29 +353,36 @@ xml_diff1(cxobj     *x0,
 	    /* xml-spec NULL could happen with anydata children for example,
 	     * if so, continute compare children but without yang
 	     */
-	    yc = xml_spec(x0c);
-	    if (yc && yang_keyword_get(yc) == Y_LEAF){
-		/* if x0c and x1c are leafs w bodies, then they may be changed */
-		b1 = xml_body(x0c);
-		b2 = xml_body(x1c);
-		if (b1 == NULL && b2 == NULL)
-		    ;
-		else if (b1 == NULL || b2 == NULL
-			 || strcmp(b1, b2) != 0 
-			 || strcmp(xml_name(x0c), xml_name(x1c)) != 0 /* Ex: choice { a:bool; b:bool } */
-			 ){
-		    if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
-			goto done;
-		    (*changedlen)--; /* append two vectors */
-		    if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
-			goto done;
-		}
+	    yc0 = xml_spec(x0c);
+	    yc1 = xml_spec(x1c);
+	    if (yc0 && yc1 && yc0 != yc1){ /* choice */
+		if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
+		    goto done;
+		if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
+		    goto done;
 	    }
-	    else if (xml_diff1(x0c, x1c,   
-			       x0vec, x0veclen, 
-			       x1vec, x1veclen, 
-			       changed_x0, changed_x1, changedlen)< 0)
-		goto done;
+	    else
+		if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
+		    /* if x0c and x1c are leafs w bodies, then they may be changed */
+		    b1 = xml_body(x0c);
+		    b2 = xml_body(x1c);
+		    if (b1 == NULL && b2 == NULL)
+			;
+		    else if (b1 == NULL || b2 == NULL
+			     || strcmp(b1, b2) != 0 
+			     ){
+			if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
+			    goto done;
+			(*changedlen)--; /* append two vectors */
+			if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
+			    goto done;
+		    }
+		}
+		else if (xml_diff1(x0c, x1c,   
+				   x0vec, x0veclen, 
+				   x1vec, x1veclen, 
+				   changed_x0, changed_x1, changedlen)< 0)
+		    goto done;
 	}
 	x0c = xml_child_each(x0, x0c, CX_ELMNT);
 	x1c = xml_child_each(x1, x1c, CX_ELMNT);

@@ -28,7 +28,7 @@ fyang=$dir/trans.yang
 flog=$dir/backend.log
 touch $flog
 
-# Used as a trigger for user-validittion errors, eg <a>$errnr</a> = <a>42</a> is invalid
+# Used as a trigger for user-validation errors, eg <a>$errnr</a> = <a>42</a> is invalid
 errnr=42
 
 cat <<EOF > $fyang
@@ -64,7 +64,33 @@ module trans{
         leaf second {
           type boolean;
         }
+    }
+    choice cempty {
+      case a{
+        leaf aaa {
+          type empty;
+        }
       }
+      case b{
+        leaf bbb {
+          type boolean;
+        }
+        leaf ccc {
+          type empty;
+        }
+      }
+    }
+    choice canydata {
+      case a{
+        anydata ddd;
+      }
+      case b{
+        leaf eee {
+          type boolean;
+        }
+        anydata fff;
+      }
+    }
   }
 }
 EOF
@@ -82,7 +108,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
 </clixon-config>
 EOF
 
@@ -93,7 +119,7 @@ function checklog(){
     s=$1 # statement
     l0=$2 # linenr
     new "Check $s in log"
-#    echo "grep \"transaction_log $s line:$l0\"  $flog"
+    echo "grep \"transaction_log $s line:$l0\"  $flog"
     t=$(grep -n "transaction_log $s" $flog)
     if [ -z "$t" ]; then
 	echo -e "\e[31m\nError in Test$testnr [$testname]:"
@@ -125,7 +151,7 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
-    new "start backend  -s init -f $cfg -l f$flog -- -t -v /x/y[a=$errnr]"
+    new "start backend  -s init -f $cfg -l f$flog -- -t -v \"/x/y[a='$errnr']\""
     start_backend -s init -f $cfg -l f$flog -- -t -v "/x/y[a='$errnr']" # -t means transaction logging
 fi
 
@@ -313,9 +339,7 @@ for op in begin validate complete commit commit_done end; do
     let line++
 done
 
-# Variant check that only b,c
-
-new "8. Set first choice"
+new "8. Choice"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><first>true</first></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf commit same"
@@ -324,27 +348,104 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "Set second choice"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><second>true</second></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-# choice chanmge with same value did not show up in log
 new "netconf commit second"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 let nr++
 let nr++
 
 let line+=12
-# check complete
+
 for op in begin validate complete commit commit_done; do
-    checklog "$nr main_$op change: <first>true</first><second>true</second>" $line
+    checklog "$nr main_$op del: <first>true</first>" $line
     let line++
-    checklog "$nr nacm_$op change: <first>true</first><second>true</second>" $line
+    checklog "$nr main_$op add: <second>true</second>" $line
+    let line++
+    checklog "$nr nacm_$op del: <first>true</first>" $line
+    let line++
+    checklog "$nr nacm_$op add: <second>true</second>" $line
     let line++
 done
 
 # End is special because change does not have old element
-checklog "$nr main_end change: <second>true</second>" $line
+checklog "$nr main_end add: <second>true</second>" $line
 let line++
 # This check does not work if  MOVE_TRANS_END is set
-checklog "$nr nacm_end change: <second>true</second>" $line
+checklog "$nr nacm_end add: <second>true</second>" $line
 let line++
+
+new "9. Choice/case with empty type"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><aaa/></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf commit first"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Set second choice"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><ccc/></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf commit second"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+let nr++
+let nr++
+
+let line+=12
+
+for op in begin validate complete commit commit_done; do
+    checklog "$nr main_$op del: <aaa/>" $line
+    let line++
+    checklog "$nr main_$op add: <ccc/>" $line
+    let line++
+    checklog "$nr nacm_$op del: <aaa/>" $line
+    let line++
+    checklog "$nr nacm_$op add: <ccc/>" $line
+    let line++
+done
+
+# End is special because change does not have old element
+checklog "$nr main_end add: <ccc/>" $line
+let line++
+
+checklog "$nr nacm_end add: <ccc/>" $line
+let line++
+
+#---------------------------------------------
+
+new "10. Choice/case with anydata"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><ddd><foo>a</foo></ddd></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf commit first"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Set second choice"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><fff><bar/></fff></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf commit second"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+let nr++
+let nr++
+
+let line+=12
+
+for op in begin validate complete commit commit_done; do
+    checklog "$nr main_$op del: <ddd><foo>a</foo></ddd>" $line
+    let line++
+    checklog "$nr main_$op add: <fff><bar/></fff>" $line
+    let line++
+    checklog "$nr nacm_$op del: <ddd><foo>a</foo></ddd>" $line
+    let line++
+    checklog "$nr nacm_$op add: <fff><bar/></fff>" $line
+    let line++
+done
+
+# End is special because change does not have old element
+checklog "$nr main_end add: <fff><bar/></fff>" $line
+let line++
+
+checklog "$nr nacm_end add: <fff><bar/></fff>" $line
+let line++
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill

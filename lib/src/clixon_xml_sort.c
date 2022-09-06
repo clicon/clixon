@@ -258,6 +258,7 @@ xml_cmp(cxobj  *x1,
 	/* XXX handle errors */
 	yi1 = yang_order(y1);
 	yi2 = yang_order(y2);
+	/* this is for choice */
 	if ((equal = yi1-yi2) != 0)
 	    goto done;
     }

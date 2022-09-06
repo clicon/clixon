@@ -36,22 +36,13 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
-## with-defaults branch
-
-### New features
-
-* With-defaults RFC6243
-  * see [Netconf With-defaults Capability](https://github.com/clicon/clixon/issues/262)
-
-### Corrected Bugs
-
-* Fixed: [with-defaults=trim does not work due to dodgy handling of state data marked as default](https://github.com/clicon/clixon/issues/348)
-
 ## 5.9.0
 Expected: September 2022
 
 ### New features
 
+* With-defaults RFC6243
+  * see [Netconf With-defaults Capability](https://github.com/clicon/clixon/issues/262)
 * RESTCONF call home according to RFC 8071
   * clixon-restconf.yang extended with callhome inspired by ietf-restconf-server.yang
     * See e.g., draft-ietf-netconf-restconf-client-server-26.txt
@@ -65,6 +56,9 @@ Expected: September 2022
 
 Users may have to change how they access the system
 
+* Backend transaction plugins: edit of choice node will always result in a "del/add" event for all edits of change nodes, never a "change" event.
+  * Before, some cases were using a "change" event if the "yang ordering" happended to be the same.
+  * See more details in: [Clixon backend transactions for choice/case is not logical](https://github.com/clicon/clixon/issues/361)
 * Constraints on number of elements have been made stricter (ie unique, min/max-elements)
   * Usecases that passed previously may now return error
   * This includes:
@@ -73,6 +67,9 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [Clixon backend transactions for choice/case is not logical](https://github.com/clicon/clixon/issues/361)
+* Fixed: [Clixon backend transaction callback fails for empty types](https://github.com/clicon/clixon/issues/360)
+* Fixed: [with-defaults=trim does not work due to dodgy handling of state data marked as default](https://github.com/clicon/clixon/issues/348)
 * Fixed: [YANG ordering fails for nested choice and action](https://github.com/clicon/clixon/issues/356)
 * Fixed: [YANG min-elements within non-presence container does not work](https://github.com/clicon/clixon/issues/355)
 * Fixed: [Issues with ietf-snmp modules](https://github.com/clicon/clixon/issues/353)
