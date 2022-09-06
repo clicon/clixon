@@ -26,16 +26,9 @@ if ! ${HAVE_HTTP1}; then
     rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
-# Callhome stream is HTTP/1.1, other communication is HTTP/2
+
+# Callhome stream pin to HTTP/1.1, other communication is HTTP/2 if present
 HVERCH=1.1
-if [ ${HAVE_LIBNGHTTP2} = true ]; then
-    # Pin to http/1
-    HAVE_LIBNGHTTP2=false
-    CURLOPTS="${CURLOPTS} --http1.1"
-    HVER=2
-else
-    HVER=1.1
-fi
 
 : ${clixon_restconf_callhome_client:=clixon_restconf_callhome_client}
 
@@ -305,7 +298,6 @@ fi
 new "wait restconf"
 wait_restconf
 
-
 new "restconf Add init data"
 expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" -d '{"clixon-example:table":{"parameter":{"name":"x","value":"foo"}}}' $RCPROTO://127.0.0.1/restconf/data)" 0 "HTTP/$HVER 201"
 
@@ -316,7 +308,7 @@ t1=$(date +"%s")
 
 let t=t1-t0
 new "Check persistent interval ($t) is in interval [2,4]"
-if [ $t -lt 2 -o $t -ge 4 ]; then
+if [ $t -lt 2 -o $t -gt 4 ]; then
     err1 "timer in interval [2,4] but is: $t"
 fi
 
@@ -327,7 +319,7 @@ t1=$(date +"%s")
 
 let t=t1-t0
 new "Check periodic interval ($t) is in interval [10-21]"
-if [ $t -lt 10 -o $t -ge 21 ]; then
+if [ $t -lt 10 -o $t -gt 21 ]; then
     err1 "timer in interval [10-21] but is: $t"
 fi
 
@@ -338,7 +330,7 @@ t1=$(date +"%s")
 
 let t=t1-t0
 new "Check persistent interval ($t) is in interval [2,4]"
-if [ $t -lt 2 -o $t -ge 4 ]; then
+if [ $t -lt 2 -o $t -gt 4 ]; then
     err1 "timer in interval [2,4] but is: $t"
 fi
 
@@ -349,7 +341,7 @@ t1=$(date +"%s")
 
 let t=t1-t0
 new "Check periodic interval ($t) is in interval [5-15]"
-if [ $t -lt 5 -o $t -ge 15 ]; then
+if [ $t -lt 5 -o $t -gt 15 ]; then
     err1 "timer in interval [5-15] but is: $t"
 fi
 

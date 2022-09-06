@@ -190,7 +190,7 @@ EOF
     new "wait restconf"
     wait_restconf $proto
 
-    echo "curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html"
+#    echo "curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html"
 
     if ! $enable; then
 	# XXX or bad request?

@@ -221,8 +221,8 @@ function testrun()
 	HVER=2
 	
 	new "wait restconf"
-	wait_restconf https
-    
+	wait_restconf
+
 	new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
 	echo "curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta"
 	expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"

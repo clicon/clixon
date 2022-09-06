@@ -44,9 +44,6 @@ x3users="mymd5"     # Too weak ca
 # Whether to generate new keys or not (only if $dir is not removed)
 # Here dont generate keys if restconf started stand-alone (RC=0)
 : ${genkeys:=true}
-#if [ $RC -eq 0 ]; then
-#    genkeys=false
-#fi
 
 test -d $certdir || mkdir $certdir
 
@@ -254,8 +251,13 @@ EOF
 	start_restconf -f $cfg
     fi
 
+    # Note, the root resource is accessed by wait_restconf to detect liveness.
+    # The root resource is not a protected resource in clixon (see RFC8040 sec 2.5)
+    # therefore the client cert is not necessary
+    #    wait_restconf # --key $certdir/andy.key --cert $certdir/andy.crt
+    # (should it be?)
     new "wait for restconf"
-    wait_restconf --key $certdir/andy.key --cert $certdir/andy.crt
+    wait_restconf
 
     new "enable nacm"
     expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-netconf-acm:enable-nacm": true}' $RCPROTO://localhost/restconf/data/ietf-netconf-acm:nacm/enable-nacm)" 0 "HTTP/$HVER 204"
