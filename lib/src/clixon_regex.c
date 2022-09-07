@@ -181,10 +181,10 @@ regexp_xsd2posix(char  *xsd,
 		break;
 	    case 'w': /* word */
 		//cprintf(cb, "[0-9a-zA-Z_\\\\-]")
-		cprintf(cb, "[^[:punct:][:space:][:cntrl:]]"); 
+		cprintf(cb, "[[:alnum:]|_]"); 
 		break;
 	    case 'W': /* inverse of \w */
-		cprintf(cb, "[[:punct:][:space:][:cntrl:]]"); 
+		cprintf(cb, "[^[[:alnum:]|_]]"); 
 		break;
 	    default:
 		cprintf(cb, "\\%c", x);
