@@ -388,7 +388,7 @@ clixon_plugin_statedata_all(clicon_handle   h,
 	if (xml_sort_recurse(x) < 0)
 	    goto done;
 	/* Remove global defaults and empty non-presence containers */
-	if (xml_defaults_nopresence(x, 1) < 0)
+	if (xml_defaults_nopresence(x, 2) < 0)
 	    goto done;
 	if (xml_default_recurse(x, 1) < 0)
 	    goto done;

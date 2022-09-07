@@ -1258,7 +1258,7 @@ xmldb_put(clicon_handle       h,
 		  (void*)(XML_FLAG_NONE|XML_FLAG_MARK)) < 0)
 	goto done;
     /* Remove global defaults and empty non-presence containers */
-    if (xml_defaults_nopresence(x0, 1) < 0)
+    if (xml_defaults_nopresence(x0, 2) < 0)
 	goto done;
 #if 0 /* debug */
     if (xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)

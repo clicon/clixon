@@ -1103,11 +1103,14 @@ xml_global_defaults(clicon_handle h,
 /*! Recursively find empty nopresence containers and default leaves, optionally purge
  *
  * @param[in] xn       XML tree
- * @param[in] purge    Remove sub-nodes that is empty non-presence container or default leaf
+ * @param[in] purge    0: Dont remove any nodes
+ *                     1: Remove config sub-nodes that are empty non-presence container or default leaf
+ *		       2: Remove all sub-nodes that are empty non-presence container or default leaf
  * @retval    1        Node is an (recursive) empty non-presence container or default leaf
  * @retval    0        Other node
  * @retval   -1        Error
  * @note xn is not itself removed if purge
+ * @note for purge=1 are removed only if config or no yang spec(!)
  */
 int
 xml_defaults_nopresence(cxobj *xn,
@@ -1117,9 +1120,11 @@ xml_defaults_nopresence(cxobj *xn,
     cxobj        *x;
     cxobj        *xprev;
     yang_stmt    *yn;
+    yang_stmt    *y;
     int           rmx = 0; /* If set, remove this xn */
     int           ret;
     enum rfc_6020 keyw;
+    int           config = 0;
     
     if ((yn = xml_spec(xn)) != NULL){
 	keyw = yang_keyword_get(yn);
@@ -1129,6 +1134,7 @@ xml_defaults_nopresence(cxobj *xn,
 	else if (keyw == Y_LEAF &&
 		 xml_flag(xn, XML_FLAG_DEFAULT))
 	    rmx = 1;
+	config = yang_config_ancestor(yn);
     }
     /* Loop thru children */
     x = NULL;
@@ -1137,14 +1143,26 @@ xml_defaults_nopresence(cxobj *xn,
 	if ((ret = xml_defaults_nopresence(x, purge)) < 0)
 	    goto done;
 	if (ret == 1){
-	    if (purge){
+	    switch (purge){
+	    case 1: /* config nodes only */
+		if (!config)
+		    break;
+		if ((y = xml_spec(x)) != NULL &&
+		    !yang_config(y))
+		    break;
+		/* fall thru */
+	    case 2: /* purge all nodes */
 		if (xml_purge(x) < 0)
 		    goto done;
 		x = xprev;
+		break;
+	    default:
+		break;
 	    }
 	}
 	else if (rmx)
-	    rmx = 0;
+	    /* May switch an empty non-presence container (rmx=1) to non-empty non-presence container (rmx=0) */
+	    rmx = 0; 
     }
     retval = rmx;
  done:

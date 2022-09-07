@@ -249,8 +249,12 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 <error-message>Data already exists; cannot create new resource</error-message>\
 </rpc-error></rpc-reply>"
 # nothing to commit here, but just to verify
+
+new "2.3.3 (part 1) commit"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS ><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 # verify no change
+new "2.3.3 (part 1) verify"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><interfaces $EXAMPLENS/></filter></get></rpc>" "" \
 "<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
@@ -272,9 +276,13 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 </interfaces></config><default-operation>none</default-operation> </edit-config></rpc>" \
 "" \
 "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 # commit change
+new "2.3.3 (part 2) commit"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS ><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 # verify that the mtu value has changed
+new "2.3.3 (part 2) verify"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><interfaces $EXAMPLENS/></filter></get></rpc>" "" \
 "<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
@@ -296,9 +304,13 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 </interfaces></config><default-operation>none</default-operation></edit-config></rpc>" \
 "" \
 "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 # commit delete
+new "2.3.3 (part 3) commit"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS ><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-# check thet the default mtu vale has been restored
+
+# check that the default mtu vale has been restored
+new "2.3.3 (part 3) verify"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><interfaces $EXAMPLENS/></filter></get></rpc>" "" \
 "<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
@@ -325,9 +337,13 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 <error-severity>error</error-severity>\
 <error-message>Data does not exist; cannot delete resource</error-message>\
 </rpc-error></rpc-reply>"
+
 # nothing to commit
+new "2.3.3 (part 4) commit"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS ><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 # verify that the configuration has not changed
+new "2.3.3 (part 4) verify"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><interfaces $EXAMPLENS/></filter></get></rpc>" "" \
 "<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
@@ -411,13 +427,15 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 </interfaces></data></rpc-reply>"
 
 
-new "rfc8040 4.3. RESTCONF GET"
+new "rfc8040 4.3. RESTCONF GET json"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces)" \
 0 \
 "HTTP/$HVER 200" \
 "Content-Type: application/yang-data+json" \
 "Cache-Control: no-cache" \
 '{"example:interfaces":{"interface":\[{"name":"eth0","mtu":8192,"status":"ok"},{"name":"eth1","mtu":1500,"status":"ok"},{"name":"eth2","mtu":9000,"status":"not feeling so good"},{"name":"eth3","mtu":1500,"status":"waking up"}\]}}'
+
+new "rfc8040 4.3. RESTCONF GET xml"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:interfaces)" \
 0 \
 "HTTP/$HVER 200" \
@@ -425,13 +443,15 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 "Cache-Control: no-cache" \
 '<interfaces xmlns="http://example.com/ns/interfaces"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface></interfaces>'
 
-new "rfc8040 B.3.9. RESTCONF with-defaults parameter = report-all"
+new "rfc8040 B.3.9. RESTCONF with-defaults parameter = report-all json"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=report-all)" \
 0 \
 "HTTP/$HVER 200" \
 "Content-Type: application/yang-data+json" \
 "Cache-Control: no-cache" \
 '{"example:interface":\[{"name":"eth1","mtu":1500,"status":"ok"}\]}'
+
+new "rfc8040 B.3.9. RESTCONF with-defaults parameter = report-all xml"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=report-all)" \
 0 \
 "HTTP/$HVER 200" \
@@ -439,7 +459,7 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 "Cache-Control: no-cache" \
 '<interface xmlns="http://example.com/ns/interfaces"><name>eth1</name><mtu>1500</mtu><status>ok</status></interface>'
 
-new "rfc8040 B.3.9. RESTONF with-defaults parameter = explicit"
+new "rfc8040 B.3.9. RESTONF with-defaults parameter = explicit "
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=explicit)" \
 0 \
 "HTTP/$HVER 200" \

@@ -890,7 +890,7 @@ xmldb_get_cache(clicon_handle    h,
 	    goto done;
     }
     /* Remove global defaults and empty non-presence containers */
-    if (xml_defaults_nopresence(x0t, 1) < 0)
+    if (xml_defaults_nopresence(x0t, 2) < 0)
 	goto done;
     if (yb != YB_NONE){
 	/* Add default global values */
@@ -1163,7 +1163,7 @@ xmldb_get0_clear(clicon_handle    h,
     if (x == NULL)
 	goto ok;
     /* Remove global defaults and empty non-presence containers */
-    if (xml_defaults_nopresence(x, 1) < 0)
+    if (xml_defaults_nopresence(x, 2) < 0)
 	goto done;
     /* Clear XML tree of defaults */
     if (xml_tree_prune_flagged(x, XML_FLAG_TRANSIENT, 1) < 0)
