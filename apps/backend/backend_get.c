@@ -498,10 +498,12 @@ with_defaults(cxobj *xe,
 	    /* Mark state nodes */
 	    if (xml_non_config_data(xret, NULL) < 0)
 		goto done;
-	    /* Remove default configuration nodes*/
+	    /* Remove default configuration nodes */
 	    if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_MARK | XML_FLAG_DEFAULT) < 0)
 		goto done;
-	    /* TODO. Remove empty containers */
+	    /* Remove empty containers */
+	    if (xml_defaults_nopresence(xret, 1) < 0)
+	    	goto done;
 	    goto ok;
 	}
 	if (strcmp(mode, "trim") == 0) {
@@ -514,7 +516,9 @@ with_defaults(cxobj *xe,
 	    if (xml_tree_prune_flags(xret, XML_FLAG_MARK, XML_FLAG_MARK)
 		    < 0)
 		goto done;
-	    /* TODO. Remove empty containers */
+	    /* Remove empty containers */
+	    if (xml_defaults_nopresence(xret, 1) < 0)
+	    	goto done;
 	    goto ok;
 	}
 	if (strcmp(mode, "report-all-tagged") == 0) {
