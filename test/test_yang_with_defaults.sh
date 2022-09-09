@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-
 # Test of the IETF rfc6243: With-defaults Capability for NETCONF
 #
 # Test cases below follows the RFC.
@@ -14,6 +13,7 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 fyang=$dir/example-default.yang
 fstate=$dir/state.xml
+clispec=$dir/spec.cli
 RESTCONFIG=$(restconf_config none false)
 
 cat <<EOF > $cfg
@@ -23,7 +23,7 @@ cat <<EOF > $cfg
   <CLICON_MODULE_SET_ID>42</CLICON_MODULE_SET_ID>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLISPEC_DIR>$dir</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_NETCONF_DIR>/usr/local/lib/$APPNAME/netconf</CLICON_NETCONF_DIR>
@@ -114,6 +114,41 @@ module example {
           }
        }
      }
+EOF
+
+# CLIspec for cli tests
+cat <<EOF > $clispec
+CLICON_MODE="example";
+CLICON_PROMPT="%U@%H %W> ";
+CLICON_PLUGIN="example_cli";
+
+set @datamodel, cli_auto_set();
+validate("Validate changes"), cli_validate();
+commit("Commit the changes"), cli_commit();
+quit("Quit"), cli_quit();
+discard("Discard edits (rollback 0)"), discard_changes();
+show("Show a particular state of the system"){
+    configuration("Show configuration")
+     xml("Show configuration and state as XML")
+      default("With-default mode"){
+          report-all, cli_auto_show("datamodel", "candidate", "xml", false, false, "report-all");
+	  trim, cli_auto_show("datamodel", "candidate", "xml", false, false, "trim");
+	  explicit, cli_auto_show("datamodel", "candidate", "xml", false, false, "explicit");
+	  report-all-tagged, cli_auto_show("datamodel", "candidate", "xml", false, false, "report-all-tagged");
+	  report-all-tagged-default, cli_auto_show("datamodel", "candidate", "xml", false, false, "report-all-tagged-default");
+	  report-all-tagged-strip, cli_auto_show("datamodel", "candidate", "xml", false, false, "report-all-tagged-strip");
+    }
+    state("Show configuration and state")
+     xml("Show configuration and state as XML")
+      default("With-default mode"){
+    	  report-all, cli_auto_show("datamodel", "running", "xml", false, true, "report-all");
+	  trim, cli_auto_show("datamodel", "running", "xml", false, true, "trim");
+	  explicit, cli_auto_show("datamodel", "running", "xml", false, true, "explicit");
+	  report-all-tagged, cli_auto_show("datamodel", "running", "xml", false, true, "report-all-tagged");
+	  report-all-tagged-default, cli_auto_show("datamodel", "running", "xml", false, true, "report-all-tagged-default");
+	  report-all-tagged-strip, cli_auto_show("datamodel", "running", "xml", false, true, "report-all-tagged-strip");
+    }
+}
 EOF
 
 # A.2.  Example  Data Set
@@ -527,6 +562,52 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 "Cache-Control: no-cache" \
 '<interface xmlns="http://example.com/ns/interfaces" xmlns:wd="urn:ietf:params:xml:ns:netconf:default:1.0"><name>eth1</name><mtu wd:default="true">1500</mtu><status wd:default="true">ok</status></interface>'
 
+# CLI tests
+mode=explicit
+new "cli with-default config $mode"
+expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name><mtu>1500</mtu></interface></interfaces>$"
+
+new "cli with-default state $mode"
+expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface></interfaces>$"
+
+mode=report-all
+new "cli with-default config $mode"
+expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name><mtu>1500</mtu></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name><mtu>1500</mtu></interface></interfaces>$"
+
+new "cli with-default state $mode"
+expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface></interfaces>$"
+
+mode=report-all-tagged
+new "cli with-default config $mode"
+expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name><mtu wd:default=\"true\">1500</mtu></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name><mtu wd:default=\"true\">1500</mtu></interface></interfaces>$"
+
+new "cli with-default state $mode"
+expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu><status wd:default=\"true\">ok</status></interface><interface><name>eth1</name><mtu wd:default=\"true\">1500</mtu><status wd:default=\"true\">ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu wd:default=\"true\">1500</mtu><status>waking up</status></interface></interfaces>$"
+
+mode=trim
+new "cli with-default config $mode"
+expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name></interface></interfaces>$"
+
+new "cli with-default state $mode"
+expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><status>waking up</status></interface></interfaces>$"
+
+mode=report-all-tagged-default
+new "cli with-default config $mode"
+expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name><mtu>1500</mtu></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name><mtu>1500</mtu></interface></interfaces>$"
+
+new "cli with-default state $mode"
+expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface></interfaces>$"
+
+mode=report-all-tagged-strip
+new "cli with-default config $mode"
+expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name></interface></interfaces>$"
+
+new "cli with-default state $mode"
+expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><status>waking up</status></interface></interfaces>$"
+
+mode=negative-test
+new "cli with-default config $mode"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config xml default $mode)" 255 "Unknown command"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

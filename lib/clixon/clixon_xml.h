@@ -65,6 +65,16 @@
  */
 #define IETF_PAGINATON_NC_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc"
 
+/* RFC 6243 With-defaults Capability for NETCONF
+ * ietf-netconf-with-defaults
+ * First in use in get requests
+ */
+#define IETF_NETCONF_WITH_DEFAULTS_YANG_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults"
+
+/* Second in use in by replies for tagged attributes */
+#define IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE "urn:ietf:params:xml:ns:netconf:default:1.0"
+#define IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX "wd"
+
 /* Output symbol for netconf get/get-config
  *    ietf-netconf.yang defines it as output:
  *       output {    anyxml data; 

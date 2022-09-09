@@ -921,7 +921,7 @@ nacm_datanode_read_recurse(clicon_handle h,
 	    if (xml_flag(x, XML_FLAG_DEL)){
 		if (xml_purge(x) < 0)
 		    goto done;
-	    x = xprev;
+		x = xprev;
 	    }
 	}
     }

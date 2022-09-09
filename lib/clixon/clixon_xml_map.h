@@ -77,5 +77,6 @@ int xml_copy_marked(cxobj *x0, cxobj *x1);
 int yang_check_when_xpath(cxobj *xn, cxobj *xp, yang_stmt *yn, int *hit, int *nrp, char **xpathp);
 int xml_rpc_isaction(cxobj *xn);
 int xml_find_action(cxobj *xn, int top, cxobj **xap);
+int purge_tagged_nodes(cxobj *xn, char *ns, char *name, char *value, int keepnode);
 
 #endif  /* _CLIXON_XML_MAP_H_ */

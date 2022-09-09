@@ -670,7 +670,7 @@ restconf_clixon_backend(clicon_handle h,
 	goto done;
     }
     /* XXX xconfig leaked */
-    if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, &xconfig) < 0)
+    if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, NULL, &xconfig) < 0)
 	goto done;
     if ((xerr = xpath_first(xconfig, NULL, "/rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Get backend restconf config", NULL);

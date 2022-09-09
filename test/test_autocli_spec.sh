@@ -81,7 +81,7 @@ quit("Quit"), cli_quit();
 show("Show a particular state of the system"){
     configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
 	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", false, false);
-	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", false, false, "set ");
+	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", false, false, "report-all", "set ");
 	    netconf("Show configuration as netconf edit-config operation"), cli_auto_show("datamodel", "candidate", "netconf", false, false);
 	    text("Show configuration as text"), cli_auto_show("datamodel", "candidate", "text", false, false);
 	    json("Show configuration as JSON"), cli_auto_show("datamodel", "candidate", "json", false, false);

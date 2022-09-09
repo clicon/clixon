@@ -58,7 +58,6 @@ cat <<EOF > $cfg
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
-  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -216,7 +215,7 @@ quit("Quit"), cli_quit();
 show("Show a particular state of the system"){
     configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
 	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", true, false);
-	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", false, false, "set ");
+	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", false, false, "report-all", "set ");
 	    netconf("Show configuration as netconf edit-config operation"), cli_auto_show("datamodel", "candidate", "netconf", false, false);
 	    text("Show configuration as text"), cli_auto_show("datamodel", "candidate", "text", false, false);
 	    json("Show configuration as JSON"), cli_auto_show("datamodel", "candidate", "json", false, false);

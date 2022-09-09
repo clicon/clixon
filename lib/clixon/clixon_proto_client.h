@@ -47,7 +47,7 @@ int clicon_rpc_msg(clicon_handle h, struct clicon_msg *msg, cxobj **xret0);
 int clicon_rpc_msg_persistent(clicon_handle h, struct clicon_msg *msg, cxobj **xret0, int *sock0);
 int clicon_rpc_netconf(clicon_handle h, char *xmlst, cxobj **xret, int *sp);
 int clicon_rpc_netconf_xml(clicon_handle h, cxobj *xml, cxobj **xret, int *sp);
-int clicon_rpc_get_config(clicon_handle h, char *username, char *db, char *xpath, cvec *nsc, cxobj **xret);
+int clicon_rpc_get_config(clicon_handle h, char *username, char *db, char *xpath, cvec *nsc, char *defaults, cxobj **xret);
 int clicon_rpc_edit_config(clicon_handle h, char *db, enum operation_type op, 
 			   char *xml);
 int clicon_rpc_copy_config(clicon_handle h, char *db1, char *db2);

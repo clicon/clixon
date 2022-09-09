@@ -315,7 +315,7 @@ expand_dbvar(void   *h,
 	    goto done;
     }
     /* Get configuration based on cbxpath */
-    if (clicon_rpc_get_config(h, NULL, dbstr, cbuf_get(cbxpath), nsc, &xt) < 0) 
+    if (clicon_rpc_get_config(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, &xt) < 0) 
 	goto done;
     if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clixon_netconf_error(xe, "Get configuration", NULL);
@@ -476,7 +476,7 @@ cli_show_config1(clicon_handle h,
 	prefix = cv_string_get(cvec_i(argv, 4));
     }
     if (state == 0){     /* Get configuration-only from database */
-	if (clicon_rpc_get_config(h, NULL, db, cbuf_get(cbxpath), nsc, &xt) < 0)
+	if (clicon_rpc_get_config(h, NULL, db, cbuf_get(cbxpath), nsc, NULL, &xt) < 0)
 	    goto done;
     }
     else {               /* Get configuration and state from database */
@@ -637,7 +637,7 @@ show_conf_xpath(clicon_handle h,
     if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
     	goto done;
 #else
-    if (clicon_rpc_get_config(h, NULL, dbname, xpath, nsc, &xt) < 0)
+    if (clicon_rpc_get_config(h, NULL, dbname, xpath, nsc, NULL, &xt) < 0)
     	goto done;
 #endif
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
@@ -741,7 +741,7 @@ cli_show_auto1(clicon_handle h,
 	xpath[strlen(xpath)-1] = '\0';
 
     if (state == 0){   /* Get configuration-only from database */
-	if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, &xt) < 0)
+	if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, NULL, &xt) < 0)
 	    goto done;
     }
     else{              /* Get configuration and state from database */

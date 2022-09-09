@@ -347,8 +347,14 @@ cli_auto_top(clicon_handle h,
  *   <format>       "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
  *   <pretty>       true|false: pretty-print or not
  *   <state>        true|false: pretty-print or not
- *   <prefix>       to print before cli syntax output
+ *   <default>      Retrieval default mode: report-all, trim, explicit, report-all-tagged, 
+ *                  report-all-tagged-default, report-all-tagged-strip
+ *   <prefix>       CLI prefix: to print before cli syntax output
  * @see cli_show_auto
+ * @note default mods accorsing to RFC6243 + two extra modes based on report-all-tagged:
+ *       report-all-tagged-default  Strip "default" attribute (=report-all xxx)
+ *       report-all-tagged-strip Strip "default" attribute and all nodes tagged with it (=trim)
+ * XXX Merge with cli_show_auto
  */
 int
 cli_auto_show(clicon_handle h,
@@ -376,9 +382,11 @@ cli_auto_show(clicon_handle h,
     char       *prefix = NULL;
     int         state;
     cg_var     *boolcv = NULL;
+    char       *defaultstr = NULL; /* with extended tagged modes */
+    char       *withdefaultstr = NULL; /* RFC 6243 modes */
 
-    if (cvec_len(argv) != 5 && cvec_len(argv) != 6){
-	clicon_err(OE_PLUGIN, EINVAL, "Usage: <treename> <database> <format> <pretty> <state> [<prefix>].");
+    if (cvec_len(argv) < 5 || cvec_len(argv) > 7){
+	clicon_err(OE_PLUGIN, EINVAL, "Usage: <treename> <database> <format> <pretty> <state> [<default> <cli-prefix>].");
 	goto done;
     }
     /* First argv argument: treename */
@@ -407,10 +415,27 @@ cli_auto_show(clicon_handle h,
 	goto done;
     }
     state = cv_bool_get(boolcv);
-
-    /* Sixth: prefix */
-    if (cvec_len(argv) == 6) {     
-	prefix = cv_string_get(cvec_i(argv, 5));
+    /* Sixth: default */
+    if (cvec_len(argv) > 5) {     
+	defaultstr = cv_string_get(cvec_i(argv, 5));
+	/* From extended to RFC6243 withdefault modes */
+	if (strcmp(defaultstr, "report-all-tagged-strip") == 0)
+	    withdefaultstr = "report-all-tagged";
+	else if (strcmp(defaultstr, "report-all-tagged-default") == 0)
+	    withdefaultstr = "report-all-tagged";
+	else if (strcmp(defaultstr, "report-all") != 0 &&
+		 strcmp(defaultstr, "trim") != 0 &&
+		 strcmp(defaultstr, "explicit") != 0 &&
+		 strcmp(defaultstr, "report-all-tagged") != 0){
+	    clicon_err(OE_YANG, EINVAL, "Unexpected with-default option: %s", defaultstr);
+	    goto done;
+	}
+	else
+	    withdefaultstr = defaultstr;
+    }
+    /* Seventh: cli prefix */
+    if (cvec_len(argv) > 6) {     
+	prefix = cv_string_get(cvec_i(argv, 6));
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_FATAL, 0, "No DB_SPEC");
@@ -428,21 +453,30 @@ cli_auto_show(clicon_handle h,
     if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
 	goto done;
     skiproot = (xpath != NULL) && (strcmp(xpath,"/") != 0);
-    if (state == 0){     /* Get configuration-only from database */
-	if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, &xt) < 0)
+    if (state && strcmp(db, "running") != 0){
+	clicon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
+	goto done;
+    }
+    if (state == 0){     /* Get configuration-only from a database */
+	if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, withdefaultstr, &xt) < 0)
 	    goto done;
     }
-    else {               /* Get configuration and state from database */
-	if (strcmp(db, "running") != 0){
-	    clicon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
-	    goto done;
-	}
-	if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, NULL, &xt) < 0)
+    else {               /* Get configuration and state from running */
+	if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, withdefaultstr, &xt) < 0)
 	    goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
+    }
+    /* Special tagged modes: strip wd:default=true attribute and (optionally) nodes associated with it */
+    if (defaultstr &&
+	(strcmp(defaultstr, "report-all-tagged-strip") == 0 ||
+	 strcmp(defaultstr, "report-all-tagged-default") == 0)){
+	if (purge_tagged_nodes(xt, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE, "default", "true",
+			       strcmp(defaultstr, "report-all-tagged-strip")
+			       ) < 0)
+	    goto done;	
     }
     if (xpath_vec(xt, nsc, "%s", &vec, &veclen, xpath) < 0) 
 	goto done;

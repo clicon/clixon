@@ -1367,7 +1367,7 @@ xml_wrap(cxobj *xc,
  * @param[in]   xc          xml child node (to be removed and freed)
  * @retval      0           OK
  * @retval      -1
- * @note you cannot remove xchild in the loop (unless yoy keep track of xprev)
+ * @note you cannot remove xchild in the loop (unless you keep track of xprev)
  * @note Linear complexity - use xml_child_rm if possible
  * @see xml_free      Free, dont remove from parent
  * @see xml_child_rm  Remove if child order is known (does not free)
@@ -1499,6 +1499,7 @@ xml_rm_children(cxobj          *xp,
  done:
     return retval;
 }
+
 
 /*! Remove top XML object and all children except a single child
  * Given a root xml node, and the i:th child, remove the child from its parent

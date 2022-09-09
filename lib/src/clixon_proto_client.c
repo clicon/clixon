@@ -457,7 +457,8 @@ clicon_rpc_netconf_xml(clicon_handle  h,
  * @param[in]  username If NULL, use default
  * @param[in]  db       Name of database
  * @param[in]  xpath    XPath (or "")
- * @param[in]  nsc       Namespace context for filter
+ * @param[in]  nsc      Namespace context for filter
+ * @param[in]  defaults  Value of the with-defaults mode, rfc6243, or NULL
  * @param[out] xt       XML tree. Free with xml_free. 
  *                      Either <config> or <rpc-error>. 
  * @retval    0         OK
@@ -468,7 +469,7 @@ clicon_rpc_netconf_xml(clicon_handle  h,
  *
  *   if ((nsc = xml_nsctx_init(NULL, "urn:example:hello")) == NULL)
  *       err;
- *   if (clicon_rpc_get_config(h, NULL, "running", "/hello/world", nsc, &xt) < 0)
+ *   if (clicon_rpc_get_config(h, NULL, "running", "/hello/world", nsc, "explicit", &xt) < 0)
  *       err;
  *   if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
  *	clixon_netconf_error(xerr, "msg", "/hello/world");
@@ -489,6 +490,7 @@ clicon_rpc_get_config(clicon_handle h,
 		      char         *db, 
 		      char         *xpath,
 		      cvec         *nsc,
+		      char	   *defaults,
 		      cxobj       **xt)
 {
     int                retval = -1;
@@ -523,6 +525,10 @@ clicon_rpc_get_config(clicon_handle h,
 	    goto done;
 	cprintf(cb, "/>");
     }
+    if (defaults != NULL)
+    	cprintf(cb, "<with-defaults xmlns=\"%s\">%s</with-defaults>",
+		IETF_NETCONF_WITH_DEFAULTS_YANG_NAMESPACE,
+		defaults);
     cprintf(cb, "</get-config></rpc>");
     if ((msg = clicon_msg_encode(session_id, "%s", cbuf_get(cb))) == NULL)
 	goto done;
@@ -910,7 +916,9 @@ clicon_rpc_get(clicon_handle   h,
 	cprintf(cb, "/>");
     }
     if (defaults != NULL)
-    	cprintf(cb, "<with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">%s</with-defaults>", defaults);
+    	cprintf(cb, "<with-defaults xmlns=\"%s\">%s</with-defaults>",
+		IETF_NETCONF_WITH_DEFAULTS_YANG_NAMESPACE,
+		defaults);
     cprintf(cb, "</get></rpc>");
     if ((msg = clicon_msg_encode(session_id,
 				 "%s", cbuf_get(cb))) == NULL)

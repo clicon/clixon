@@ -772,13 +772,13 @@ compare_dbs(clicon_handle h,
 	format = FORMAT_TEXT;
     else
 	format = FORMAT_XML;
-    if (clicon_rpc_get_config(h, NULL, "running", "/", NULL, &xc1) < 0)
+    if (clicon_rpc_get_config(h, NULL, "running", "/", NULL, NULL, &xc1) < 0)
 	goto done;
     if ((xerr = xpath_first(xc1, NULL, "/rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
     }
-    if (clicon_rpc_get_config(h, NULL, "candidate", "/", NULL, &xc2) < 0)
+    if (clicon_rpc_get_config(h, NULL, "candidate", "/", NULL, NULL, &xc2) < 0)
 	goto done;
     if ((xerr = xpath_first(xc2, NULL, "/rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Get configuration", NULL);
@@ -1028,7 +1028,7 @@ save_config_file(clicon_handle h,
 	goto done;
     }
     filename = cv_string_get(cv);
-    if (clicon_rpc_get_config(h, NULL, dbstr,"/", NULL, &xt) < 0)
+    if (clicon_rpc_get_config(h, NULL, dbstr,"/", NULL, NULL, &xt) < 0)
 	goto done;
     if (xt == NULL){
 	clicon_err(OE_CFG, 0, "get config: empty tree"); /* Shouldnt happen */
@@ -1396,7 +1396,7 @@ cli_copy_config(clicon_handle h,
     if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
 	goto done;
     /* Get from object configuration and store in x1 */
-    if (clicon_rpc_get_config(h, NULL, db, cbuf_get(cb), nsc, &x1) < 0)
+    if (clicon_rpc_get_config(h, NULL, db, cbuf_get(cb), nsc, NULL, &x1) < 0)
 	goto done;
     if ((xerr = xpath_first(x1, NULL, "/rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Get configuration", NULL);

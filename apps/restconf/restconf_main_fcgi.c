@@ -181,7 +181,7 @@ restconf_main_config(clicon_handle h,
 	    clicon_err(OE_UNIX, errno, "getpwuid");
 	    goto done;
 	}
-	if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, &xconfig) < 0)
+	if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, NULL, &xconfig) < 0)
 	    goto done;
 	if ((xerr = xpath_first(xconfig, NULL, "/rpc-error")) != NULL){
 	    clixon_netconf_error(xerr, "Get backend restconf config", NULL);

@@ -2218,3 +2218,52 @@ xml_find_action(cxobj  *xn,
  done:
     return retval;
 }
+
+/*! Utility function: recursive traverse an XML tree and remove nodes based on attribute value
+ * Conditionally remove attribute and node
+ * @param[in]  xn       XML node
+ * @param[in]  ns       Namespace of attribute
+ * @param[in]  name     Attribute name
+ * @param[in]  value    Attribute value
+ * @param[in]  keepnode 0: remove node associated with attribute; 1: keep node but remove attr
+ */
+int
+purge_tagged_nodes(cxobj *xn,
+		   char  *ns,
+		   char  *name,
+		   char  *value,
+		   int    keepnode)
+{
+    int    retval = -1;
+    cxobj *x;
+    cxobj *xa;
+    cxobj *xprev;
+    char  *prefix;
+    char  *v;
+    int    ret;
+
+    x = NULL;
+    xprev = NULL;
+    while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
+	if ((ret = xml2prefix(x, ns, &prefix)) < 0)
+	    goto done;
+	if (ret == 0)
+	    continue;
+	if ((xa = xml_find_type(x, prefix, "default", CX_ATTR)) != NULL){
+	    if (!keepnode &&
+		(v = xml_value(xa)) != NULL &&
+		strcmp(v, value) == 0){
+		xml_purge(x);
+		x = xprev;
+		continue;
+	    }
+	    xml_purge(xa); /* remove attribute regardless */
+	}
+	if (purge_tagged_nodes(x, ns, name, value, keepnode) < 0)
+	    goto done;
+	xprev = x;
+    }
+    retval = 0;
+ done:
+    return retval;
+}

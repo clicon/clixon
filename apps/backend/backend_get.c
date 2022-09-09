@@ -413,7 +413,6 @@ element2value(clicon_handle  h,
  * @param[in]   x	XML node
  * @param[in]   flag	Flag to be used
  * @retval      0    	OK
-
  */
 static int
 xml_flag_default_value(cxobj *x,
@@ -464,11 +463,11 @@ xml_add_default_tag(cxobj *x,
 	    goto done;
 	if (xml_value_set(xattr, "true") < 0)
 	    goto done;
-	if (xml_prefix_set(xattr, "wd") < 0)
+	if (xml_prefix_set(xattr, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX) < 0)
 	    goto done;
     }
     retval = 0;
-    done:
+ done:
     return retval;
 }
 
@@ -478,7 +477,6 @@ xml_add_default_tag(cxobj *x,
  * @retval      0    	OK
  * @retval     -1    	Error
  */
-
 static int
 with_defaults(cxobj *xe,
 	      cxobj *xret)
@@ -506,7 +504,7 @@ with_defaults(cxobj *xe,
 	    	goto done;
 	    goto ok;
 	}
-	if (strcmp(mode, "trim") == 0) {
+	else if (strcmp(mode, "trim") == 0) {
 	    /* Remove default nodes from XML */
 	    if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_DEFAULT) < 0)
 		goto done;
@@ -521,8 +519,8 @@ with_defaults(cxobj *xe,
 	    	goto done;
 	    goto ok;
 	}
-	if (strcmp(mode, "report-all-tagged") == 0) {
-	    if (xmlns_set(xret, "wd", "urn:ietf:params:xml:ns:netconf:default:1.0") < 0)
+	else if (strcmp(mode, "report-all-tagged") == 0) {
+	    if (xmlns_set(xret, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
 		goto done;
 	    /* Mark nodes having default schema values */
 	    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
@@ -532,7 +530,7 @@ with_defaults(cxobj *xe,
 		goto done;
 	    goto ok;
 	}
-	if (strcmp(mode, "report-all") == 0) {
+	else if (strcmp(mode, "report-all") == 0) {
 	    /* Accept mode, do nothing */
 	    goto ok;
 	}
