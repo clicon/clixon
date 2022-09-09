@@ -269,7 +269,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><interfaces $EXAMPLENS/></filter>\
 <with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all-tagged</with-defaults></get></rpc>" \
 "" \
-"<rpc-reply $DEFAULTNS><data xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\"><interfaces $EXAMPLENS>\
+"<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\">\
 <interface><name>eth0</name><mtu>8192</mtu><status wd:default=\"true\">ok</status></interface>\
 <interface><name>eth1</name><mtu wd:default=\"true\">1500</mtu><status wd:default=\"true\">ok</status></interface>\
 <interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface>\
@@ -479,14 +479,13 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
  <with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all-tagged</with-defaults>\
  </get-config></rpc>" \
 "" \
-"<rpc-reply $DEFAULTNS><data xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\"><interfaces $EXAMPLENS>\
+"<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\">\
 <interface><name>eth0</name><mtu>8192</mtu></interface>\
 <interface><name>eth1</name><mtu wd:default=\"true\">1500</mtu></interface>\
 <interface><name>eth2</name><mtu>9000</mtu></interface>\
 <interface><name>eth3</name><mtu wd:default=\"true\">1500</mtu></interface>\
 <cedv><edv wd:default=\"true\">edv</edv></cedv><cdv><dv wd:default=\"true\">dv</dv></cdv>\
 </interfaces></data></rpc-reply>"
-
 
 new "rfc8040 4.3. RESTCONF GET json"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces)" \
@@ -520,13 +519,15 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 "Cache-Control: no-cache" \
 '<interface xmlns="http://example.com/ns/interfaces"><name>eth1</name><mtu>1500</mtu><status>ok</status></interface>'
 
-new "rfc8040 B.3.9. RESTONF with-defaults parameter = explicit "
+new "rfc8040 B.3.9. RESTONF with-defaults parameter = explicit json"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=explicit)" \
 0 \
 "HTTP/$HVER 200" \
 "Content-Type: application/yang-data+json" \
 "Cache-Control: no-cache" \
 '{"example:interface":\[{"name":"eth1","status":"ok"}\]}'
+
+new "rfc8040 B.3.9. RESTONF with-defaults parameter = explicit xml"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=explicit)" \
 0 \
 "HTTP/$HVER 200" \
@@ -534,13 +535,15 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 "Cache-Control: no-cache" \
 '<interface xmlns="http://example.com/ns/interfaces"><name>eth1</name><status>ok</status></interface>'
 
-new "rfc8040 B.3.9. RESTONF with-defaults parameter = trim"
+new "rfc8040 B.3.9. RESTONF with-defaults parameter = trim json"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth3?with-defaults=trim)" \
 0 \
 "HTTP/$HVER 200" \
 "Content-Type: application/yang-data+json" \
 "Cache-Control: no-cache" \
 '{"example:interface":\[{"name":"eth3","status":"waking up"}\]}'
+
+new "rfc8040 B.3.9. RESTONF with-defaults parameter = trim xml"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth3?with-defaults=trim)" \
 0 \
 "HTTP/$HVER 200" \
@@ -548,13 +551,15 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 "Cache-Control: no-cache" \
 '<interface xmlns="http://example.com/ns/interfaces"><name>eth3</name><status>waking up</status></interface>'
 
-new "rfc8040 B.3.9. RESTCONF with-defaults parameter = report-all-tagged"
+new "rfc8040 B.3.9. RESTCONF with-defaults parameter = report-all-tagged json"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=report-all-tagged)" \
 0 \
 "HTTP/$HVER 200" \
 "Content-Type: application/yang-data+json" \
 "Cache-Control: no-cache" \
 '{"example:interface":\[{"name":"eth1","mtu":1500,"status":"ok"}\]}'
+
+new "rfc8040 B.3.9. RESTCONF with-defaults parameter = report-all-tagged xml"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=report-all-tagged)" \
 0 \
 "HTTP/$HVER 200" \
@@ -565,24 +570,24 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 # CLI tests
 mode=explicit
 new "cli with-default config $mode"
-expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name><mtu>1500</mtu></interface></interfaces>$"
+expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name><mtu>1500</mtu></interface><cedv><edv>edv</edv></cedv></interfaces>$"
 
 new "cli with-default state $mode"
-expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface></interfaces>$"
+expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface><cedv><edv>edv</edv></cedv></interfaces>$"
 
 mode=report-all
 new "cli with-default config $mode"
-expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name><mtu>1500</mtu></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name><mtu>1500</mtu></interface></interfaces>$"
+expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name><mtu>1500</mtu></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name><mtu>1500</mtu></interface><cedv><edv>edv</edv></cedv><cdv><dv>dv</dv></cdv></interfaces>$"
 
 new "cli with-default state $mode"
-expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface></interfaces>$"
+expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface><cedv><edv>edv</edv></cedv><cdv><dv>dv</dv></cdv></interfaces>$"
 
 mode=report-all-tagged
 new "cli with-default config $mode"
-expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name><mtu wd:default=\"true\">1500</mtu></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name><mtu wd:default=\"true\">1500</mtu></interface></interfaces>$"
+expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\" xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name><mtu wd:default=\"true\">1500</mtu></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name><mtu wd:default=\"true\">1500</mtu></interface><cedv><edv wd:default=\"true\">edv</edv></cedv><cdv><dv wd:default=\"true\">dv</dv></cdv></interfaces>$"
 
 new "cli with-default state $mode"
-expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu><status wd:default=\"true\">ok</status></interface><interface><name>eth1</name><mtu wd:default=\"true\">1500</mtu><status wd:default=\"true\">ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu wd:default=\"true\">1500</mtu><status>waking up</status></interface></interfaces>$"
+expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\" xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\"><interface><name>eth0</name><mtu>8192</mtu><status wd:default=\"true\">ok</status></interface><interface><name>eth1</name><mtu wd:default=\"true\">1500</mtu><status wd:default=\"true\">ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu wd:default=\"true\">1500</mtu><status>waking up</status></interface><cedv><edv wd:default=\"true\">edv</edv></cedv><cdv><dv wd:default=\"true\">dv</dv></cdv></interfaces>$"
 
 mode=trim
 new "cli with-default config $mode"
@@ -593,17 +598,17 @@ expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfa
 
 mode=report-all-tagged-default
 new "cli with-default config $mode"
-expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name><mtu>1500</mtu></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name><mtu>1500</mtu></interface></interfaces>$"
+expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\" xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name><mtu>1500</mtu></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name><mtu>1500</mtu></interface><cedv><edv>edv</edv></cedv><cdv><dv>dv</dv></cdv></interfaces>$"
 
 new "cli with-default state $mode"
-expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface></interfaces>$"
+expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\" xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface><cedv><edv>edv</edv></cedv><cdv><dv>dv</dv></cdv></interfaces>$"
 
 mode=report-all-tagged-strip
 new "cli with-default config $mode"
-expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name></interface></interfaces>$"
+expectpart "$($clixon_cli -1 -f $cfg show config xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\" xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name></interface><interface><name>eth2</name><mtu>9000</mtu></interface><interface><name>eth3</name></interface></interfaces>$"
 
 new "cli with-default state $mode"
-expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><status>waking up</status></interface></interfaces>$"
+expectpart "$($clixon_cli -1 -f $cfg show state xml default $mode)" 0 "^<interfaces xmlns=\"http://example.com/ns/interfaces\" xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\"><interface><name>eth0</name><mtu>8192</mtu></interface><interface><name>eth1</name></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><status>waking up</status></interface></interfaces>$"
 
 mode=negative-test
 new "cli with-default config $mode"
