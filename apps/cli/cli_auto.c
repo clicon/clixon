@@ -477,6 +477,9 @@ cli_auto_show(clicon_handle h,
 			       strcmp(defaultstr, "report-all-tagged-strip")
 			       ) < 0)
 	    goto done;	
+	/* Remove empty containers */
+	if (xml_defaults_nopresence(xt, 2) < 0)
+	    goto done;
     }
     if (xpath_vec(xt, nsc, "%s", &vec, &veclen, xpath) < 0) 
 	goto done;

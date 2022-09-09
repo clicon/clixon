@@ -484,6 +484,7 @@ with_defaults(cxobj *xe,
     int    retval = -1;
     cxobj *xfind;
     char  *mode;
+    cxobj *x;
 
     if ((xfind = xml_find(xe, "with-defaults")) != NULL) {
 	if ((mode = xml_find_value(xfind, "body")) == NULL)
@@ -520,8 +521,10 @@ with_defaults(cxobj *xe,
 	    goto ok;
 	}
 	else if (strcmp(mode, "report-all-tagged") == 0) {
-	    if (xmlns_set(xret, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
-		goto done;
+	    x = NULL;
+	    while ((x = xml_child_each(xret, x, CX_ELMNT)) != NULL)
+		if (xmlns_set(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
+		    goto done;
 	    /* Mark nodes having default schema values */
 	    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
 		goto done;
