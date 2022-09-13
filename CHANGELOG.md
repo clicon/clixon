@@ -67,6 +67,7 @@ Users may have to change how they access the system
 
 ### Corrected Bugs
 
+* Fixed: [yang regular char \w not include underline char](https://github.com/clicon/clixon/issues/357)
 * Fixed: [Clixon backend transactions for choice/case is not logical](https://github.com/clicon/clixon/issues/361)
 * Fixed: [Clixon backend transaction callback fails for empty types](https://github.com/clicon/clixon/issues/360)
 * Fixed: [with-defaults=trim does not work due to dodgy handling of state data marked as default](https://github.com/clicon/clixon/issues/348)

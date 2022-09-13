@@ -180,7 +180,7 @@ session_send_callback(nghttp2_session *session,
 	    if ((len = SSL_write(rc->rc_ssl, buf+totlen, buflen-totlen)) <= 0){
 		er = errno;
 		sslerr = SSL_get_error(rc->rc_ssl, len);
-		clicon_debug(1, "%s errno:%d sslerr:%d", __FUNCTION__, errno, sslerr);
+		clicon_debug(1, "%s errno:%d sslerr:%d", __FUNCTION__, er, sslerr);
 		switch (sslerr){
 		case SSL_ERROR_WANT_WRITE:           /* 3 */
 		    clicon_debug(1, "%s write SSL_ERROR_WANT_WRITE", __FUNCTION__);
@@ -640,11 +640,9 @@ on_stream_close_callback(nghttp2_session   *session,
     //    restconf_conn *rc = (restconf_conn *)user_data;
 
     clicon_debug(1, "%s %d %s", __FUNCTION__, error_code, nghttp2_strerror(error_code));
-#ifdef NOTNEEDED /* XXX think this is not necessary? */
+#if 0 // NOTNEEDED /* XXX think this is not necessary? */
     if (error_code){
-	if (restconf_close_ssl_socket(rc, 0) < 0)
-	    return -1;
-	if (restconf_conn_free(rc) < 0)
+	if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
 	    return -1;
     }
 #endif

@@ -164,3 +164,18 @@
  * This means that text output can not be parsed and loaded.
  */
 #undef TEXT_SYNTAX_NOPREFIX
+
+/*! Reply with HTTP error when HTTP request on HTTPS socket
+ * If not set, just close socket and return with TCP reset.
+ * If set: Incoming request on an SSL socket is known to be non-TLS.
+ * Problematic part is it is not known it is proper non-TLS HTTP, for that it
+ * needs parsing/ALPN etc.
+ * This is the approx algorithm:
+ * s = accept();
+ * ssl = SSL_new()
+ * if (SSL_accept(ssl) < 0){
+ *  if (SSL_get_error(ssl, ) == SSL_ERROR_SSL){
+ *    SSL_free(ssl);
+ *     // Here "s" is still open and you can reply on the non-ssl underlying socket
+ */
+#define HTTP_ON_HTTPS_REPLY

@@ -78,7 +78,7 @@ enum clicon_err{
     OE_FATAL,    /* Fatal error */
     OE_UNDEF,
     /*-- From here error extensions using clixon_err_cat_reg, XXX register dynamically? --*/
-    OE_SSL,      /* Openssl errors, see eg ssl_get_error */
+    OE_SSL,      /* Openssl errors, see eg ssl_get_error and clixon_openssl_log_cb */
     OE_SNMP ,    /* Netsnmp error */    
     OE_NGHTTP2,  /* nghttp2 errors, see HAVE_LIBNGHTTP2 */
 };

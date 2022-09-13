@@ -271,6 +271,10 @@ api_data_get2(clicon_handle  h,
 		    goto done;
 		if (xmlns_set_all(x, nscd) < 0)
 		    goto done;
+		if (nscd){
+		    cvec_free(nscd);
+		    nscd = NULL;
+		}
 		if (clixon_xml2cbuf(cbx, x, 0, pretty, -1, 0) < 0) /* Dont print top object?  */
 		    goto done;
 	    }
@@ -301,7 +305,7 @@ api_data_get2(clicon_handle  h,
     if (xpath)
 	free(xpath);
     if (nscd)
-	xml_nsctx_free(nscd);
+	cvec_free(nscd);
     if (nsc)
 	xml_nsctx_free(nsc);
     if (xtop)

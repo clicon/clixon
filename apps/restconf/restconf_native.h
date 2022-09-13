@@ -32,16 +32,25 @@
 
   ***** END LICENSE BLOCK *****
   *
+  * Data structures:
   *                     1                                             1
   * +--------------------+   restconf_handle_get  +--------------------+
-  * | rh restconf_handle | <--------------------- |  h  clicon_handle  |
-  * +--------------------+                        +--------------------+
-  *  common SSL config     \                                  ^         
-  *                          \                                |       n
-  *                            \  rh_sockets      +--------------------+
-  *                              +----------->    | rs restconf_socket | 
+  * | rn restconf_native | <--------------------- |  h  clicon_handle  |
+  * |     _handle        |                        +--------------------+
+  * +--------------------+                                   ^
+  *  common SSL config     \                                 |         
+  *                          \                               |        n
+  *                            \  rn_sockets      +--------------------+ 
+  *                              +----------->    | rs restconf_socket |
   *                                               +--------------------+
-  *                     n                          per-socket SSL config
+  *                                               per-server socket (per config)
+  *                                                     |   ^
+  *                                            rs_conns v   |        n
+  *                                               +--------------------+
+  *                                               | rc restconf_conn   |
+  *                                               +--------------------+
+  *                                                per-connection (transient)
+  *                     n                          
   * +--------------------+
   * | rr restconf_request| per-packet
   * +--------------------+
@@ -85,44 +94,17 @@ typedef struct  {
     uint8_t              *sd_settings2; /* Settings for upgrade to http/2 request */
 } restconf_stream_data;
 
-/* Restconf per socket handle
- * Two types: listen and callhome.
- * Listen: Uses socket rs_ss to listen for connections and accepts them, creates one
- *         restconf_conn for each new accept.
- * Callhome: Calls connect according to timer to setup single restconf_conn.
- *           when this is closed, new connect is made, according to connection-type.
- */
-typedef struct {
-    qelem_t       rs_qelem;     /* List header */
-    clicon_handle rs_h;         /* Clixon handle */
-    char         *rs_description; /* Description */
-    int           rs_callhome;  /* 0: listen, 1: callhome */
-    int           rs_ss;        /* Listen: Server socket, ready for accept
-				 * Callhome: connect socket (same as restconf_conn->rc_s) */
-    int           rs_ssl;       /* 0: Not SSL socket, 1:SSL socket */
-    char         *rs_addrtype;  /* Address type according to ietf-inet-types:
-                                   eg inet:ipv4-address or inet:ipv6-address */
-    char         *rs_addrstr;   /* Address as string, eg 127.0.0.1, ::1 */
-    uint16_t      rs_port;      /* Protocol port */
-    int           rs_periodic;  /* 0: persistent, 1: periodic (if callhome) */
-    uint32_t      rs_period;    /* Period in s (if callhome & periodic) */
-    uint8_t       rs_max_attempts;  /* max connect attempts (if callhome) */
-    uint16_t      rs_idle_timeout; /* Max underlying TCP session remains idle (if callhome and periodic) */
-    uint64_t      rs_start;     /* First period start, next is start+periods*period */
-    uint64_t      rs_period_nr; /* Dynamic succeeding or timed out periods. 
-				   Set in restconf_callhome_timer*/
-    uint8_t       rs_attempts;  /* Dynamic connect attempts in this round (if callhome) 
-				 * Set in restconf_callhome_cb
-				 */
-} restconf_socket;
-
+typedef struct restconf_socket restconf_socket;
+    
 /* Restconf connection handle 
  * Per connection request
  */
 typedef struct restconf_conn {
+    qelem_t               rc_qelem;     /* List header */
     /* XXX rc_proto and rc_proto_d1/d2 may not both be necessary. 
      * remove rc_proto?
      */
+    int                   rc_callhome;  /* 0: listen, 1: callhome */
     restconf_http_proto   rc_proto;     /* HTTP protocol: http/1 or http/2 */
     int                   rc_proto_d1;  /* parsed version digit 1 */
     int                   rc_proto_d2;  /* parsed version digit 2 */
@@ -139,14 +121,47 @@ typedef struct restconf_conn {
     restconf_socket      *rc_socket;    /* Backpointer to restconf_socket needed for callhome */
 } restconf_conn;
 
+/* Restconf per socket handle
+ * Two types: listen and callhome.
+ * Listen: Uses socket rs_ss to listen for connections and accepts them, creates one
+ *         restconf_conn for each new accept.
+ * Callhome: Calls connect according to timer to setup single restconf_conn.
+ *           when this is closed, new connect is made, according to connection-type.
+ */
+typedef struct restconf_socket{
+    qelem_t       rs_qelem;     /* List header */
+    clicon_handle rs_h;         /* Clixon handle */
+    char         *rs_description; /* Description */
+    int           rs_callhome;  /* 0: listen, 1: callhome */
+    int           rs_ss;        /* Listen: Server socket, ready for accept
+				 * XXXCallhome: connect socket (same as restconf_conn->rc_s) 
+				 * Callhome: No-op, see restconf_conn->rc_s
+				 */
+    int           rs_ssl;       /* 0: Not SSL socket, 1:SSL socket */
+    char         *rs_addrtype;  /* Address type according to ietf-inet-types:
+                                   eg inet:ipv4-address or inet:ipv6-address */
+    char         *rs_addrstr;   /* Address as string, eg 127.0.0.1, ::1 */
+    uint16_t      rs_port;      /* Protocol port */
+    int           rs_periodic;  /* 0: persistent, 1: periodic (if callhome) */
+    uint32_t      rs_period;    /* Period in s (if callhome & periodic) */
+    uint8_t       rs_max_attempts;  /* max connect attempts (if callhome) */
+    uint16_t      rs_idle_timeout; /* Max underlying TCP session remains idle (if callhome and periodic) */
+    uint64_t      rs_start;     /* First period start, next is start+periods*period */
+    uint64_t      rs_period_nr; /* Dynamic succeeding or timed out periods. 
+				   Set in restconf_callhome_timer*/
+    uint8_t       rs_attempts;  /* Dynamic connect attempts in this round (if callhome) 
+				 * Set in restconf_callhome_cb
+				 */
+    restconf_conn *rs_conns;  /* List of transient connect sockets */
+} restconf_socket;
 
 /* Restconf handle 
  * Global data about ssl (not per packet/request)
  */
 typedef struct {
-    SSL_CTX         *rh_ctx;       /* SSL context */
-    restconf_socket *rh_sockets;   /* List of restconf server (ready for accept) sockets */
-    void            *rh_arg;       /* Packet specific handle */
+    SSL_CTX         *rn_ctx;       /* SSL context */
+    restconf_socket *rn_sockets;   /* List of restconf server (ready for accept) sockets */
+    void            *rn_arg;       /* Packet specific handle */
 } restconf_native_handle;
 
 /*
@@ -156,17 +171,15 @@ restconf_stream_data *restconf_stream_data_new(restconf_conn *rc, int32_t stream
 restconf_stream_data *restconf_stream_find(restconf_conn *rc, int32_t id);
 int               restconf_stream_free(restconf_stream_data *sd);
 restconf_conn    *restconf_conn_new(clicon_handle h, int s, restconf_socket *socket);
-int               restconf_conn_free(restconf_conn *rc);
 int               ssl_x509_name_oneline(SSL *ssl, char **oneline);
 
-int               restconf_close_ssl_socket(restconf_conn *rc, int shutdown); /* XXX in restconf_main_native.c */
+int               restconf_close_ssl_socket(restconf_conn *rc, const char *callfn, int sslerr0);
 int               restconf_connection_sanity(clicon_handle h, restconf_conn *rc, restconf_stream_data *sd);
 restconf_native_handle *restconf_native_handle_get(clicon_handle h);
 int               restconf_connection(int s, void *arg);
-int               restconf_connection_close(clicon_handle h, int s, restconf_socket *rsock);
-int               restconf_ssl_accept_client(clicon_handle h, int s, restconf_socket *rsock);
-int               restconf_idle_timer_unreg(restconf_socket *rsock);
-int               restconf_idle_timer(restconf_socket *rsock);
+int               restconf_ssl_accept_client(clicon_handle h, int s, restconf_socket *rsock, restconf_conn  **rcp);
+int               restconf_idle_timer_unreg(restconf_conn *rc);
+int               restconf_idle_timer(restconf_conn *rc);
 int               restconf_callhome_timer_unreg(restconf_socket *rsock);
 int               restconf_callhome_timer(restconf_socket *rsock, int status);
 int               restconf_socket_extract(clicon_handle h, cxobj *xs, cvec *nsc, restconf_socket *rsock,

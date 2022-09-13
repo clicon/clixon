@@ -36,14 +36,22 @@
   * Data structures:
   *                     1                                             1
   * +--------------------+   restconf_handle_get  +--------------------+
-  * | rh restconf_handle | <--------------------- |  h  clicon_handle  |
-  * +--------------------+                        +--------------------+
-  *  common SSL config     \                                  ^         
-  *                          \                                |       n
-  *                            \  rh_sockets      +--------------------+
-  *                              +----------->    | rs restconf_socket | 
+  * | rn restconf_native | <--------------------- |  h  clicon_handle  |
+  * |     _handle        |                        +--------------------+
+  * +--------------------+                                   ^
+  *  common SSL config     \                                 |         
+  *                          \                               |        n
+  *                            \  rn_sockets      +--------------------+ 
+  *                              +----------->    | rs restconf_socket |
   *                                               +--------------------+
-  *                     n                          per-socket SSL config
+  *                                               per-server socket (per config)
+  *                                                     |   ^
+  *                                            rs_conns v   |        n
+  *                                               +--------------------+
+  *                                               | rc restconf_conn   |
+  *                                               +--------------------+
+  *                                                per-connection (transient)
+  *                     n
   * +--------------------+
   * | rr restconf_request| per-packet
   * +--------------------+
@@ -449,38 +457,6 @@ restconf_ssl_context_configure(clixon_handle h,
     return retval;
 }
 
-/*! Utility function to close restconf server ssl socket.
- * There are many variants to closing, one could probably make this more generic
- * and always use this function, but it is difficult.
- */
-int
-restconf_close_ssl_socket(restconf_conn *rc,
-			  int            shutdown)
-{
-    int retval = -1;
-    int                 ret;
-
-    if (rc->rc_ssl != NULL){
-	if (shutdown && (ret = SSL_shutdown(rc->rc_ssl)) < 0){
-#if 0
-		case SSL_ERROR_ZERO_RETURN:          /* 6 */ 
-Note that in this case SSL_ERROR_ZERO_RETURN does not necessarily indicate that the underlying transport has been closed.
-#endif
-	    int e = SSL_get_error(rc->rc_ssl, ret);
-	    clicon_err(OE_SSL, 0, "SSL_shutdown, err:%d", e);
-	    goto done;
-	}
-	SSL_free(rc->rc_ssl);
-	rc->rc_ssl = NULL;
-    }
-    if (restconf_connection_close(rc->rc_h, rc->rc_s, rc->rc_socket) < 0)
-	goto done;
-    retval = 0;
- done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-    return retval;
-}
-
 #if 0 /* debug */
 /*! Debug print all loaded certs
  */
@@ -581,7 +557,7 @@ restconf_accept_client(int   fd,
 	goto done;
     }
     /* Accept SSL */
-    if (restconf_ssl_accept_client(h, s, rsock) < 0)
+    if (restconf_ssl_accept_client(h, s, rsock, NULL) < 0)
 	goto done;
     retval = 0;
  done:
@@ -596,22 +572,29 @@ restconf_accept_client(int   fd,
 static int
 restconf_native_terminate(clicon_handle h)
 {
-    restconf_native_handle *rh;
+    restconf_native_handle *rn;
     restconf_socket        *rsock;
+    restconf_conn          *rc;
 
     clicon_debug(1, "%s", __FUNCTION__);
-    if ((rh = restconf_native_handle_get(h)) != NULL){
-	while ((rsock = rh->rh_sockets) != NULL){
+    if ((rn = restconf_native_handle_get(h)) != NULL){
+	while ((rsock = rn->rn_sockets) != NULL){
+	    while ((rc = rsock->rs_conns) != NULL){
+		if (rc->rc_s != -1){
+		    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
+		    close(rc->rc_s);
+		}
+		DELQ(rc, rsock->rs_conns, restconf_conn *);
+		restconf_close_ssl_socket(rc, __FUNCTION__, 0);
+	    }
 	    if (rsock->rs_callhome){
 		restconf_callhome_timer_unreg(rsock);
-		if (rsock->rs_periodic)
-		    restconf_idle_timer_unreg(rsock);
 	    }
 	    else if (rsock->rs_ss != -1){
 		clixon_event_unreg_fd(rsock->rs_ss, restconf_accept_client);
 		close(rsock->rs_ss);
 	    }
-	    DELQ(rsock, rh->rh_sockets, restconf_socket *);
+	    DELQ(rsock, rn->rn_sockets, restconf_socket *);
 	    if (rsock->rs_description)
 		free(rsock->rs_description);
 	    if (rsock->rs_addrstr)
@@ -620,9 +603,9 @@ restconf_native_terminate(clicon_handle h)
 		free(rsock->rs_addrtype);
 	    free(rsock);
 	}
-	if (rh->rh_ctx)
-	    SSL_CTX_free(rh->rh_ctx);
-	free(rh);
+	if (rn->rn_ctx)
+	    SSL_CTX_free(rn->rn_ctx);
+	free(rn);
     }
     EVP_cleanup();
     return 0;
@@ -716,7 +699,7 @@ openssl_init_socket(clicon_handle h,
     char           *addrtype = NULL;
     uint16_t        port = 0;
     int             ss = -1;
-    restconf_native_handle *rh = NULL;
+    restconf_native_handle *rn = NULL;
     restconf_socket *rsock = NULL; /* openssl per socket struct */
     struct timeval   now;
 
@@ -755,7 +738,7 @@ openssl_init_socket(clicon_handle h,
 				 ) < 0)
 	    goto done;
     }
-    if ((rh = restconf_native_handle_get(h)) == NULL){
+    if ((rn = restconf_native_handle_get(h)) == NULL){
 	clicon_err(OE_XML, EFAULT, "No openssl handle");
 	goto done;
     }
@@ -768,7 +751,7 @@ openssl_init_socket(clicon_handle h,
 	goto done;
     }
     rsock->rs_port = port;
-    INSQ(rsock, rh->rh_sockets);
+    INSQ(rsock, rn->rn_sockets);
 
     if (rsock->rs_callhome){
 	rsock->rs_ss = -1; /* Not applicable from callhome */
@@ -809,7 +792,7 @@ restconf_openssl_init(clicon_handle h,
     char              *server_cert_path = NULL;
     char              *server_key_path = NULL;
     char              *server_ca_cert_path = NULL;
-    restconf_native_handle   *rh;
+    restconf_native_handle   *rn;
     clixon_auth_type_t auth_type;
     int                dbg;
     char              *bstr;
@@ -868,8 +851,8 @@ restconf_openssl_init(clicon_handle h,
 	if (restconf_ssl_context_configure(h, ctx, server_cert_path, server_key_path, server_ca_cert_path) < 0)
 	    goto done;
     }
-    rh = restconf_native_handle_get(h);
-    rh->rh_ctx = ctx;
+    rn = restconf_native_handle_get(h);
+    rn->rn_ctx = ctx;
     /* get the list of socket config-data */
     if (xpath_vec(xrestconf, nsc, "socket", &vec, &veclen) < 0)
 	goto done;
@@ -1123,7 +1106,7 @@ main(int    argc,
     clicon_handle   h;
     int             dbg = 0;
     int             logdst = CLICON_LOG_SYSLOG;
-    restconf_native_handle *rh = NULL;
+    restconf_native_handle *rn = NULL;
     int             ret;
     cxobj          *xrestconf = NULL;
     char           *inline_config = NULL;
@@ -1286,12 +1269,12 @@ main(int    argc,
 	goto done;
     }
     /* Create and stroe global openssl handle */ 
-    if ((rh = malloc(sizeof *rh)) == NULL){
+    if ((rn = malloc(sizeof *rn)) == NULL){
 	clicon_err(OE_UNIX, errno, "malloc");
 	goto done;
     }
-    memset(rh, 0, sizeof *rh);
-    if (restconf_native_handle_set(h, rh) < 0)
+    memset(rn, 0, sizeof *rn);
+    if (restconf_native_handle_set(h, rn) < 0)
 	goto done;
     /* Openssl inits */ 
     if (restconf_openssl_init(h, dbg, xrestconf) < 0)
@@ -1305,7 +1288,6 @@ main(int    argc,
     /* Main event loop */ 
     if (clixon_event_loop(h) < 0)
 	goto done;
-    clicon_debug(1, "%s after", __FUNCTION__);
     retval = 0;
  done:
     clicon_debug(1, "restconf_main_openssl done");

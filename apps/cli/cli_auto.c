@@ -346,7 +346,7 @@ cli_auto_top(clicon_handle h,
  *   <dbname>       "running"|"candidate"|"startup"
  *   <format>       "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
  *   <pretty>       true|false: pretty-print or not
- *   <state>        true|false: pretty-print or not
+ *   <state>        true|false: include state in output
  *   <default>      Retrieval default mode: report-all, trim, explicit, report-all-tagged, 
  *                  report-all-tagged-default, report-all-tagged-strip
  *   <prefix>       CLI prefix: to print before cli syntax output

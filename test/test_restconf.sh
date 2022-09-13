@@ -210,9 +210,9 @@ function testrun()
 	    new "Wrong proto=https on http port, expect err 35 wrong version number"
 	    expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
 	else # see (1) http to https port in restconf_main_native.c
-	    new "Wrong proto=http on https port, expect bad request"
-	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
-#	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/" "400"
+	    new "Wrong proto=http on https port, expect bad request http1+2"
+#	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
+	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/" "400"
 
 	fi
 	
@@ -263,7 +263,7 @@ function testrun()
 	    new "Wrong proto=https on http port, expect err 35 wrong version number"
 	    expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
 	else # see (1) http to https port in restconf_main_native.c
-	    new "Wrong proto=http on https port, expect bad request"
+	    new "Wrong proto=http on https port, expect bad request http2-only"
 	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" "16 52 55 56" --not-- 'HTTP'
 	fi
 
@@ -304,9 +304,9 @@ function testrun()
 	    new "Wrong proto=https on http port, expect err 35 wrong version number"
 	    expectpart "$(curl $CURLOPTS -X GET https://$addr:80/.well-known/host-meta 2>&1)" 35 #"wrong version number" # dependent on curl version
 	else # see (1) http to https port in restconf_main_native.c
-	    new "Wrong proto=http on https port, expect bad request"
-	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
-#	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/" "400"
+	    new "Wrong proto=http on https port, expect bad request http/1 only"
+#	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta 2>&1)" 56 "Connection reset by peer"
+	    expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/" "400"
 	fi
     fi # HTTP/2    
 
