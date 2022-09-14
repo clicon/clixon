@@ -51,6 +51,7 @@ Expected: September 2022
     * connection-type: either persistent or periodic
     * idle-timeout for periodic call-homes.
   * An example util client is `clixon_restconf_callhome_client.c` used in test cases
+  * See [call-home user guide](https://clixon-docs.readthedocs.io/en/latest/restconf.html#callhome)
 
 ### API changes on existing protocol/config features
 

@@ -119,6 +119,8 @@ typedef struct restconf_conn {
     nghttp2_session      *rc_ngsession; /* XXX Not sure it is needed */
 #endif
     restconf_socket      *rc_socket;    /* Backpointer to restconf_socket needed for callhome */
+    struct timeval        rc_t;         /* Timestamp of last read/write activity, used by callhome
+					   idle-timeout algorithm */
 } restconf_conn;
 
 /* Restconf per socket handle

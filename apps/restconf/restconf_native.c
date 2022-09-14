@@ -44,7 +44,6 @@
 #include <syslog.h>
 #include <pwd.h>
 #include <ctype.h>
-#include <assert.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -77,6 +76,9 @@
 #ifdef HAVE_HTTP1
 #include "restconf_http1.h"
 #endif
+
+/* Forward */
+static int restconf_idle_cb(int fd, void *arg);
 
 /*!
  * @param[in]  rc       Restconf connection handle 
@@ -452,7 +454,6 @@ native_buf_write(clicon_handle    h,
 		    break;
 		}
 	    }
-	    assert(len != 0);
 	}
 	totlen += len;
     } /* while */
@@ -924,19 +925,23 @@ int
 restconf_connection(int   s,
 		    void *arg)
 {
-    int                   retval = -1;
-    restconf_conn        *rc = NULL;
-    ssize_t               n;
-    char                  buf[1024]; /* Alter BUFSIZ (8K) from stdio.h 8K. 256 fails some tests */
-    int                   readmore = 1;
-    int                   ret;
+    int            retval = -1;
+    restconf_conn *rc = NULL;
+    ssize_t        n;
+    char           buf[1024]; /* Alter BUFSIZ (8K) from stdio.h 8K. 256 fails some tests */
+    int            readmore = 1;
+    int            ret;
 
     clicon_debug(1, "%s %d", __FUNCTION__, s);
     if ((rc = (restconf_conn*)arg) == NULL){
 	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
 	goto done;
     }
-    assert(s == rc->rc_s);
+    if (s != rc->rc_s){
+	clicon_err(OE_RESTCONF, EINVAL, "s != rc->rc_s");
+	goto done;
+    }
+    gettimeofday(&rc->rc_t, NULL); /* activity timer */
     while (readmore) {
 	clicon_debug(1, "%s readmore", __FUNCTION__);
 	readmore = 0;
@@ -967,6 +972,7 @@ restconf_connection(int   s,
 	case HTTP_11:
 	    if ((ret = restconf_http1_process(rc, buf, n, &readmore)) < 0)
 		goto done;
+	    gettimeofday(&rc->rc_t, NULL); /* activity timer */
 	    if (ret == 0)
 		goto ok;
 	    if (readmore)
@@ -981,6 +987,7 @@ restconf_connection(int   s,
 	case HTTP_2:
 	    if ((ret = restconf_http2_process(rc, buf, n, &readmore)) < 0)
 		goto done;
+	    gettimeofday(&rc->rc_t, NULL); /* activity timer */
 	    if (ret == 0)
 		goto ok;
 	    break;
@@ -1375,6 +1382,7 @@ restconf_ssl_accept_client(clicon_handle    h,
     default:
 	break;
     } /* switch proto */
+    gettimeofday(&rc->rc_t, NULL); /* activity timer */
     if (clixon_event_reg_fd(rc->rc_s, restconf_connection, (void*)rc, "restconf client socket") < 0)
 	goto done;
     if (rcp)
@@ -1388,8 +1396,44 @@ restconf_ssl_accept_client(clicon_handle    h,
     return retval;
 } /* restconf_ssl_accept_client */
 
+static int
+restconf_idle_timer_set(struct timeval t,
+			void          *arg,
+			char          *descr)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+    
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "restconf idle timer %s", descr);
+    if (clixon_event_reg_timeout(t,
+				 restconf_idle_cb,
+				 arg,
+				 cbuf_get(cb)) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (cb)
+	cbuf_free(cb);
+    return retval;
+}
+
 /*! idle timeout timer callback
  * @param[in]  rc  restconf connection, more specifically: callhome connection
+ *
+ * t0        tp          t1                   tn
+ * |---------|-----------|--------------------|
+ *  <---idle-timeout----> <---idle-timeout---->
+ *            <---td---->
+ * t0: rc connection creation
+ * tp: last packet activity
+ * t1: timeout (when this cb is called first time)
+ * td: duration from last activity
+ * tn: next timeout, set to t1+idle-timeout. 
+ * XXX one could set  tn = tp+idle-timeout but may lead to small intervals
  */
 static int
 restconf_idle_cb(int   fd,
@@ -1398,6 +1442,10 @@ restconf_idle_cb(int   fd,
     int              retval = -1;
     restconf_socket *rsock;
     restconf_conn   *rc;
+    struct timeval   now = {0,};
+    struct timeval   td;
+    struct timeval   tn;
+    struct timeval   to = {0,};
 
     if ((rc = (restconf_conn *)arg) == NULL){
 	clicon_err(OE_YANG, EINVAL, "rc is NULL");
@@ -1408,10 +1456,21 @@ restconf_idle_cb(int   fd,
 	goto done;
     }
     clicon_debug(1, "%s \"%s\"", __FUNCTION__, rsock->rs_description);
-    /* sanity */
-    if (rc->rc_callhome && rsock->rs_periodic && rsock->rs_idle_timeout && rc->rc_s > 0){
-	if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
-	    goto done;
+    if (rc->rc_callhome && rsock->rs_periodic && rc->rc_s > 0 && rsock->rs_idle_timeout){
+	gettimeofday(&now, NULL);
+	timersub(&now, &rc->rc_t, &td);	
+	if (td.tv_sec < rsock->rs_idle_timeout){
+	    if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+		goto done;
+	}
+	else{
+	    to.tv_sec = rsock->rs_idle_timeout;
+	    timeradd(&now, &to, &tn);
+	    clicon_debug(1, "%s now:%lu timeout:%lu.%lu", __FUNCTION__,
+			 now.tv_sec, tn.tv_sec, tn.tv_usec);
+	    if (restconf_idle_timer_set(tn, rc, rsock->rs_description) < 0)
+		goto done;
+	}
     }
     retval = 0;
  done:
@@ -1437,11 +1496,10 @@ restconf_idle_timer_unreg(restconf_conn *rc)
 int
 restconf_idle_timer(restconf_conn *rc)
 {
-    int            retval = -1;
-    struct timeval now;
-    struct timeval t;
-    struct timeval t1 = {0, 0};
-    cbuf          *cb = NULL;
+    int              retval = -1;
+    struct timeval   now;
+    struct timeval   t;
+    struct timeval   to = {0, 0};
     restconf_socket *rsock;
 
     if (rc == NULL || !rc->rc_callhome){
@@ -1454,24 +1512,13 @@ restconf_idle_timer(restconf_conn *rc)
 	goto done;
     }    
     clicon_debug(1, "%s \"%s\" register", __FUNCTION__, rsock->rs_description);
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
-    cprintf(cb, "restconf idle timer %s", rsock->rs_description);
     gettimeofday(&now, NULL);
-    t1.tv_sec = rsock->rs_idle_timeout;
-    timeradd(&now, &t1, &t);
-    clicon_debug(1, "%s now:%lu timeout:%lu.%lu", __FUNCTION__, now.tv_sec, t.tv_sec, t.tv_usec);
-    if (clixon_event_reg_timeout(t,
-				 restconf_idle_cb,
-				 rc,
-				 cbuf_get(cb)) < 0)
+    to.tv_sec = rsock->rs_idle_timeout;
+    timeradd(&now, &to, &t);
+    if (restconf_idle_timer_set(t, rc, rsock->rs_description) < 0)
 	goto done;
     retval = 0;
  done:
-    if (cb)
-	cbuf_free(cb);
     return retval;
 }
     

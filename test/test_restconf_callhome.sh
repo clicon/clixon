@@ -8,7 +8,7 @@
 # 1) regular listen socket for setting init value
 # 2) persistent socket
 # 3) periodic socket (10s) port 8336
-# XXX periodic: idle-timeout not tested
+# XXX periodic: idle-timeout not properly tested
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -334,7 +334,7 @@ if [ $t -lt 2 -o $t -gt 4 ]; then
 fi
 
 t0=$(date +"%s")
-new "Send GET and try idle-timeout, clients keeps socket open"
+new "Send GET and try idle-timeout, client keeps socket open"
 expectpart "$(${clixon_restconf_callhome_client} -o -t 30 -p 8336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 1)" 0 "HTTP/$HVERCH 200" "OK 1" $expectreply "Close 1 remote" --not-- "OK 2" "Close 2"
 t1=$(date +"%s")
 
