@@ -69,7 +69,13 @@ copy("Copy and create a new object") {
 discard("Discard edits (rollback 0)"), discard_changes();
 
 show("Show a particular state of the system"){
-    auto("Show expand") @datamodelshow, cli_show_auto("candidate", "xml");  
+    auto("Show expand x"){
+      xml @datamodelshow, cli_show_auto("candidate", "xml", true, false, "report-all");
+      text @datamodelshow, cli_show_auto("candidate", "text", true, false, "report-all");
+      json @datamodelshow, cli_show_auto("candidate", "json", true, false, "report-all");
+      netconf @datamodelshow, cli_show_auto("candidate", "netconf", true, false, "report-all");
+      cli @datamodelshow, cli_show_auto("candidate", "cli", true, false, "report-all", "set ");
+    }
     xpath("Show configuration") <xpath:string>("XPATH expression")
        [<ns:string>("Namespace")], show_conf_xpath("candidate");
     version("Show version"), cli_show_version("candidate", "text", "/");

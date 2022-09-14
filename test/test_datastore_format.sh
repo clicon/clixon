@@ -60,10 +60,6 @@ module clixon-example {
 	    leaf-list array1{
 	      type string;
             }
-/*	    leaf-list array2{
-	      type string;
-            }	    
-*/
 	}
     }
 }
@@ -109,8 +105,8 @@ show("Show a particular state of the system"){
     }
     configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
 	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", true, false, "report-all", "set ");
-	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", true, false, "set ");
-	    text("Show configuration as TEXT"), cli_auto_show("datamodel", "candidate", "text", true, false, "set ");
+	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", true, false);
+	    text("Show configuration as TEXT"), cli_auto_show("datamodel", "candidate", "text", true, false);
   }
 }
 save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_file("candidate","filename", "xml"){

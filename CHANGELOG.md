@@ -66,8 +66,18 @@ Users may have to change how they access the system
     * Check of incoming RPCs
     * Check of non-presence containers
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* CLISPEC change: Changed signature of `cli_show_auto()` and `cli_show_auto_state()`
+  * Added parameters for pretty-print, state and with-default
+  * As developer, you only need to replace the old functions if you have the cli prefix parameter set:
+      * `cli_show_auto(<db>, <format>, <prefix>)` -> `cli_show_auto(<db>, <format>, true, false, "report-all", <prefix>)`
+
 ### Corrected Bugs
 
+* Fixed: [All values in list don't appear when writing "show <list>" in cli](https://github.com/clicon/clixon/issues/359)
 * Fixed: [yang regular char \w not include underline char](https://github.com/clicon/clixon/issues/357)
 * Fixed: [Clixon backend transactions for choice/case is not logical](https://github.com/clicon/clixon/issues/361)
 * Fixed: [Clixon backend transaction callback fails for empty types](https://github.com/clicon/clixon/issues/360)

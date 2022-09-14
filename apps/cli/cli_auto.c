@@ -346,7 +346,7 @@ cli_auto_top(clicon_handle h,
  *   <dbname>       "running"|"candidate"|"startup"
  *   <format>       "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
  *   <pretty>       true|false: pretty-print or not
- *   <state>        true|false: include state in output
+ *   <state>        true|false: also print state
  *   <default>      Retrieval default mode: report-all, trim, explicit, report-all-tagged, 
  *                  report-all-tagged-default, report-all-tagged-strip
  *   <prefix>       CLI prefix: to print before cli syntax output
@@ -507,13 +507,13 @@ cli_auto_show(clicon_handle h,
 		goto done;
 	    break;
 	case FORMAT_NETCONF:
-	    fprintf(stdout, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target><config>",
+	    cligen_output(stdout, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target><config>",
 		    NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
 	    if (pretty)
-		fprintf(stdout, "\n");
+		cligen_output(stdout, "\n");
 	    if (clixon_xml2file(stdout, xp, 2, pretty, cligen_output, skiproot, 1) < 0)
 		goto done;
-	    fprintf(stdout, "</config></edit-config></rpc>]]>]]>\n");
+	    cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
 	    break;
 	} /* switch */
     }

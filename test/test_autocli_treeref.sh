@@ -111,9 +111,9 @@ CLICON_MODE="example";
 CLICON_PROMPT="%U@%H> ";
 
 show {
-   base @datamodel, cli_show_auto_state("running", "cli", "set ");
-   add-nonconfig  @datamodelstate, cli_show_auto_state("running", "cli", "set ");
-   add-show @datamodelshow, cli_show_auto_state("running", "cli", "set ");
+   base @datamodel, cli_show_auto_state("running", "cli", true, false, "report-all","set ");
+   add-nonconfig  @datamodelstate, cli_show_auto_state("running", "cli", true, false, "report-all","set ");
+   add-show @datamodelshow, cli_show_auto_state("running", "cli", true, false, "report-all","set ");
 }
 
 auto {
