@@ -93,8 +93,8 @@ commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
 show("Show a particular state of the system"){
     auto("Show expand") @datamodel, cli_show_auto("running", "xml");  
-    candidate("Show configuration"), cli_auto_show("datamodel", "candidate", "xml", false, false);
-    running("Show configuration"), cli_auto_show("datamodel", "running", "xml", false, false);
+    candidate("Show configuration"), cli_show_auto_mode("candidate", "xml", false, false);
+    running("Show configuration"), cli_show_auto_mode("running", "xml", false, false);
 }
 EOF
 

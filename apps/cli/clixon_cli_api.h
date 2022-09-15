@@ -148,8 +148,6 @@ int cli_show_config_state(clicon_handle h, cvec *cvv, cvec *argv);
 
 int cli_show_auto(clicon_handle h, cvec *cvv, cvec *argv);
 
-int cli_show_auto_state(clicon_handle h, cvec *cvv, cvec *argv);
-
 int cli_show_options(clicon_handle h, cvec *cvv, cvec *argv);
 
 /* cli_auto.c: Autocli mode support */
@@ -157,7 +155,10 @@ int cli_show_options(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_auto_edit(clicon_handle h, cvec *cvv1, cvec *argv);
 int cli_auto_up(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_auto_top(clicon_handle h, cvec *cvv, cvec *argv);
+#if 1 // Obsolete: Use cli_show_auto_mode instead
 int cli_auto_show(clicon_handle h, cvec *cvv, cvec *argv);
+#endif
+int cli_show_auto_mode(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_auto_set(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_auto_merge(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_auto_create(clicon_handle h, cvec *cvv,	cvec *argv);

@@ -100,7 +100,7 @@ save("Save candidate configuration to XML file") <filename:string>("Filename (lo
     cli("Save configuration as CLI commands"), save_config_file("candidate","filename", "cli");
 }
 show("Show a particular state of the system"){
-    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "xml", false, false);
+    configuration("Show configuration"), cli_show_auto_mode("candidate", "xml", false, false);
     version("Show version"), cli_show_version("candidate", "text", "/");
 }
 validate("Validate changes"), cli_validate();

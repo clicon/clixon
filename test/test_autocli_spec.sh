@@ -79,14 +79,14 @@ validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
 show("Show a particular state of the system"){
-    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
-	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", false, false);
-	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", false, false, "report-all", "set ");
-	    netconf("Show configuration as netconf edit-config operation"), cli_auto_show("datamodel", "candidate", "netconf", false, false);
-	    text("Show configuration as text"), cli_auto_show("datamodel", "candidate", "text", false, false);
-	    json("Show configuration as JSON"), cli_auto_show("datamodel", "candidate", "json", false, false);
+    configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
+	    xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", false, false);
+	    cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", false, false, "report-all", "set ");
+	    netconf("Show configuration as netconf edit-config operation"), cli_show_auto_mode("candidate", "netconf", false, false);
+	    text("Show configuration as text"), cli_show_auto_mode("candidate", "text", false, false);
+	    json("Show configuration as JSON"), cli_show_auto_mode("candidate", "json", false, false);
     }
-    state("Show configuration and state"), cli_auto_show("datamodel", "running", "xml", false, true);
+    state("Show configuration and state"), cli_show_auto_mode("running", "xml", false, true);
 }
 EOF
 

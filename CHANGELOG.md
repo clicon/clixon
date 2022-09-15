@@ -70,10 +70,31 @@ Users may have to change how they access the system
 
 Developers may need to change their code
 
-* CLISPEC change: Changed signature of `cli_show_auto()` and `cli_show_auto_state()`
-  * Added parameters for pretty-print, state and with-default
-  * As developer, you only need to replace the old functions if you have the cli prefix parameter set:
-      * `cli_show_auto(<db>, <format>, <prefix>)` -> `cli_show_auto(<db>, <format>, true, false, "report-all", <prefix>)`
+* CLISPEC changes of cli show functions
+  * For details of updated API, see https://clixon-docs.readthedocs.io/en/latest/cli.html#show-commands
+  * Changed `cli_show_auto()` 
+     * Added parameters for pretty-print, state and with-default
+     * If you have the <prefix> parameter, you need to change the call as follows:
+        * `cli_show_auto(<db>, <format>, <prefix>)` -> `cli_show_auto(<db>, <format>, true, false, NULL, <prefix>)`
+     * Otherwise it is backward-compatible
+  * Changed `cli_show_config()` 
+     * Added parameters for pretty-print, state and with-default
+     * If you have the <prefix> parameter, you need to change the call as follows:
+        * `cli_show_config(<db>, <format>, <xpath>, <ns>, <prefix>)` -> `cli_show_auto(<db>, <format>, <xpath>, <ns>, true, false, NULL, <prefix>)`
+     * Otherwise it is backward-compatible
+  * Removed `cli_show_auto_state()`, replace with `cli_show_auto` with state set to `true`
+  * Removed `cli_show_config_state()`, replace with `cli_auto_show` with state set to `tru
+e`
+  * Replaced `cli_auto_show()` with `cli_show_auto_mode()`
+     * The first argument is removed. You need to change all calls as follows:
+       * `cli_show_config(<treename>, <db>, ...` -> `cli_show_auto_menu(<db>, ...)`
+     * The `cli_auto_show()` callback remains in 5.9.0 for backward compatible reasons, but will be removed in later releaes.
+      
+### Minor features
+
+* Restconf:
+  * Openssl 3.0 is supported
+  * Refactoring of the closing of SSL sockets. Some cornercase bugs have been removed.
 
 ### Corrected Bugs
 

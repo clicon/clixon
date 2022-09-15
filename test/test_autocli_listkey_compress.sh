@@ -148,11 +148,13 @@ set @datamodel, cli_set();
 merge @datamodel, cli_merge();
 create @datamodel, cli_create();
 delete @datamodel, cli_del();
-show config, cli_show_config("candidate", "cli", "/", 0, "set ");
+show config, cli_show_config("candidate", "cli", "/", NULL, true, false, NULL,"set ");
 show config @datamodel, cli_show_auto("candidate", "cli", true, false, "report-all", "set ");
-show state, cli_show_config_state("running", "cli", "/", "set ");
-show state @datamodelstate, cli_show_auto_state("running", "cli", true, true, "report-all", "set ");
-show xml, cli_show_config("candidate", "xml", "/");
+
+show state, cli_show_auto_mode("running", "cli", true, true, NULL, "set ");
+
+show state @datamodelstate, cli_show_auto("running", "cli", true, true, "report-all", "set ");
+show xml, cli_show_config("candidate", "xml");
 show xml @datamodel, cli_show_auto("candidate", "xml");
 commit, cli_commit();
 discard, discard_changes();
@@ -267,7 +269,6 @@ function testrun()
     fi
 
     new "set a"
-    echo "$clixon_cli -1 -f $cfg set$table parameter$name a value x"
     expectpart "$($clixon_cli -1 -f $cfg set$table parameter$name a value x)" 0 ""
     
     new "set b"

@@ -213,14 +213,14 @@ validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
 show("Show a particular state of the system"){
-    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
-	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", true, false);
-	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", false, false, "report-all", "set ");
-	    netconf("Show configuration as netconf edit-config operation"), cli_auto_show("datamodel", "candidate", "netconf", false, false);
-	    text("Show configuration as text"), cli_auto_show("datamodel", "candidate", "text", false, false);
-	    json("Show configuration as JSON"), cli_auto_show("datamodel", "candidate", "json", false, false);
+    configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
+	    xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", true, false);
+	    cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", false, false, "report-all", "set ");
+	    netconf("Show configuration as netconf edit-config operation"), cli_show_auto_mode("candidate", "netconf", false, false);
+	    text("Show configuration as text"), cli_show_auto_mode("candidate", "text", false, false);
+	    json("Show configuration as JSON"), cli_show_auto_mode("candidate", "json", false, false);
     }
-    state("Show configuration and state"), cli_auto_show("datamodel", "running", "xml", false, true);
+    state("Show configuration and state"), cli_show_auto_mode("running", "xml", false, true);
 }
 EOF
 
@@ -334,8 +334,8 @@ if [ $t -lt 2 -o $t -gt 4 ]; then
 fi
 
 t0=$(date +"%s")
-new "Send GET and try idle-timeout, client keeps socket open"
-expectpart "$(${clixon_restconf_callhome_client} -o -t 30 -p 8336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 1)" 0 "HTTP/$HVERCH 200" "OK 1" $expectreply "Close 1 remote" --not-- "OK 2" "Close 2"
+new "Send GET: idle-timeout, client keeps socket open, server closes"
+expectpart "$(${clixon_restconf_callhome_client} -o -t 60 -p 8336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 1)" 0 "HTTP/$HVERCH 200" "OK 1" $expectreply "Close 1 remote" --not-- "OK 2" "Close 2"
 t1=$(date +"%s")
 
 let t=t1-t0

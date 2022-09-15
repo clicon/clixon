@@ -131,22 +131,22 @@ show("Show a particular state of the system"){
     configuration("Show configuration")
      xml("Show configuration and state as XML")
       default("With-default mode"){
-          report-all, cli_auto_show("datamodel", "candidate", "xml", false, false, "report-all");
-	  trim, cli_auto_show("datamodel", "candidate", "xml", false, false, "trim");
-	  explicit, cli_auto_show("datamodel", "candidate", "xml", false, false, "explicit");
-	  report-all-tagged, cli_auto_show("datamodel", "candidate", "xml", false, false, "report-all-tagged");
-	  report-all-tagged-default, cli_auto_show("datamodel", "candidate", "xml", false, false, "report-all-tagged-default");
-	  report-all-tagged-strip, cli_auto_show("datamodel", "candidate", "xml", false, false, "report-all-tagged-strip");
+          report-all, cli_show_auto_mode("candidate", "xml", false, false, "report-all");
+	  trim, cli_show_auto_mode("candidate", "xml", false, false, "trim");
+	  explicit, cli_show_auto_mode("candidate", "xml", false, false, "explicit");
+	  report-all-tagged, cli_show_auto_mode("candidate", "xml", false, false, "report-all-tagged");
+	  report-all-tagged-default, cli_show_auto_mode("candidate", "xml", false, false, "report-all-tagged-default");
+	  report-all-tagged-strip, cli_show_auto_mode("candidate", "xml", false, false, "report-all-tagged-strip");
     }
     state("Show configuration and state")
      xml("Show configuration and state as XML")
       default("With-default mode"){
-    	  report-all, cli_auto_show("datamodel", "running", "xml", false, true, "report-all");
-	  trim, cli_auto_show("datamodel", "running", "xml", false, true, "trim");
-	  explicit, cli_auto_show("datamodel", "running", "xml", false, true, "explicit");
-	  report-all-tagged, cli_auto_show("datamodel", "running", "xml", false, true, "report-all-tagged");
-	  report-all-tagged-default, cli_auto_show("datamodel", "running", "xml", false, true, "report-all-tagged-default");
-	  report-all-tagged-strip, cli_auto_show("datamodel", "running", "xml", false, true, "report-all-tagged-strip");
+    	  report-all, cli_show_auto_mode("running", "xml", false, true, "report-all");
+	  trim, cli_show_auto_mode("running", "xml", false, true, "trim");
+	  explicit, cli_show_auto_mode("running", "xml", false, true, "explicit");
+	  report-all-tagged, cli_show_auto_mode("running", "xml", false, true, "report-all-tagged");
+	  report-all-tagged-default, cli_show_auto_mode("running", "xml", false, true, "report-all-tagged-default");
+	  report-all-tagged-strip, cli_show_auto_mode("running", "xml", false, true, "report-all-tagged-strip");
     }
 }
 EOF

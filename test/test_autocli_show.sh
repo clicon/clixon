@@ -80,18 +80,18 @@ quit("Quit"), cli_quit();
 discard("Discard edits (rollback 0)"), discard_changes();
 show("Show a particular state of the system"){
    configuration("Show configuration"){
-      xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", false, false);
-      json("Show configuration as JSON"), cli_auto_show("datamodel", "candidate", "json", false, false);
-      text("Show configuration as TEXT"), cli_auto_show("datamodel", "candidate", "text", false, false);
-      cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", false, false, "report-all", "set ");
-      netconf("Show configuration as NETCONF"), cli_auto_show("datamodel", "candidate", "netconf", false, false);
+      xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", false, false);
+      json("Show configuration as JSON"), cli_show_auto_mode("candidate", "json", false, false);
+      text("Show configuration as TEXT"), cli_show_auto_mode("candidate", "text", false, false);
+      cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", false, false, NULL, "set ");
+      netconf("Show configuration as NETCONF"), cli_show_auto_mode("candidate", "netconf", false, false);
    }
    auto("Show auto") {
-      xml("Show configuration as XML") @datamodelshow, cli_show_auto("candidate", "xml", false, false, "report-all");
-      json("Show configuration as JSON") @datamodelshow, cli_show_auto("candidate", "json", false, false, "report-all");
-      text("Show configuration as TEXT")@datamodelshow, cli_show_auto("candidate", "text", false, false, "report-all");
-      cli("Show configuration as CLI commands") @datamodelshow, cli_show_auto("candidate", "cli", false, false, "report-all", "set ");
-      netconf("Show configuration as NETCONF")@datamodelshow, cli_show_auto("candidate", "netconf", false, false, "report-all");
+      xml("Show configuration as XML") @datamodelshow, cli_show_auto("candidate", "xml", false, false, NULL);
+      json("Show configuration as JSON") @datamodelshow, cli_show_auto("candidate", "json", false, false, NULL);
+      text("Show configuration as TEXT")@datamodelshow, cli_show_auto("candidate", "text", false, false, NULL);
+      cli("Show configuration as CLI commands") @datamodelshow, cli_show_auto("candidate", "cli", false, false, NULL, "set ");
+      netconf("Show configuration as NETCONF")@datamodelshow, cli_show_auto("candidate", "netconf", false, false, NULL);
    }
 }
 EOF

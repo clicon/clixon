@@ -164,7 +164,7 @@ cat <<EOF > $dclispec/clispec.cli
    set @datamodel, cli_set();
    merge @datamodel, cli_merge();
    create @datamodel, cli_create();
-   show, cli_show_config("candidate", "text", "/");
+   show, cli_show_config("candidate", "text");
    quit("Quit"), cli_quit();
 EOF
 

@@ -96,7 +96,7 @@ quit("Quit"), cli_quit();
 discard("Discard edits (rollback 0)"), discard_changes();
 
 show("Show a particular state of the system"){
-    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "xml", false, false);
+    configuration("Show configuration"), cli_show_auto_mode("candidate", "xml", false, false);
 }
 EOF
 

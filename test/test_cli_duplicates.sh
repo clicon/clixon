@@ -93,7 +93,7 @@ validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
 show("Show a particular state of the system")
-    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);
+    configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);
 @extra;
 EOF
 

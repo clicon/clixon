@@ -166,8 +166,8 @@ delete("Delete a configuration item") {
 }
 show("Show a particular state of the system"){
 
-    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
-        cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", true, false, "report-all", "set ");
+    configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
+        cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "report-all", "set ");
 }
 }
 validate("Validate changes"), cli_validate();

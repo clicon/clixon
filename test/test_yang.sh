@@ -153,7 +153,7 @@ set @datamodel, cli_set();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
 show("Show a particular state of the system"){
-    configuration("Show configuration"), cli_show_config("candidate", "text", "/");
+    configuration("Show configuration"), cli_show_config("candidate", "text");
     version("Show version"), cli_show_version("candidate", "text", "/");
     xpath("Show configuration") <xpath:string>("XPATH expression") <ns:string>("Namespace"), show_conf_xpath("candidate");
     yang("Show yang specs"), show_yang(); {

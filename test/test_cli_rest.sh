@@ -51,7 +51,7 @@ cat <<EOF > $clidir/cli1.cli
     ( <desc:rest>
     | <desc:rest expand_dbvar("candidate","/clixon-example:description")> ),
         cli_set("/clixon-example:description");
-    show configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "xml", false, false);
+    show configuration("Show configuration"), cli_show_auto_mode("candidate", "xml", false, false);
 EOF
 
 new "test params: -f $cfg"

@@ -200,9 +200,9 @@ quit("Quit"), cli_quit();
 discard("Discard edits (rollback 0)"), discard_changes();
 
 show("Show a particular state of the system"){
-    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
-	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", true, false, "report-all", "set ");
-	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", true, false, NULL);
+    configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
+	    cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "report-all", "set ");
+	    xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", true, false, NULL);
     }
 }
 EOF

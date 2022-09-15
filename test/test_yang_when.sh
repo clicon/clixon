@@ -58,8 +58,8 @@ delete("Delete a configuration item") {
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 show("Show a particular state of the system"){
-    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
-      xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", false, false);
+    configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
+      xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", false, false);
 }
 }
 validate("Validate changes"), cli_validate();

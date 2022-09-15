@@ -103,10 +103,10 @@ show("Show a particular state of the system"){
     		     xml("Show comparison in xml"), compare_dbs((int32)0);
 		     text("Show comparison in text"), compare_dbs((int32)1);
     }
-    configuration("Show configuration"), cli_auto_show("datamodel", "candidate", "text", true, false);{
-	    cli("Show configuration as CLI commands"), cli_auto_show("datamodel", "candidate", "cli", true, false, "report-all", "set ");
-	    xml("Show configuration as XML"), cli_auto_show("datamodel", "candidate", "xml", true, false);
-	    text("Show configuration as TEXT"), cli_auto_show("datamodel", "candidate", "text", true, false);
+    configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
+	    cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "report-all", "set ");
+	    xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", true, false);
+	    text("Show configuration as TEXT"), cli_show_auto_mode("candidate", "text", true, false);
   }
 }
 save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_file("candidate","filename", "xml"){

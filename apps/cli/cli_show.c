@@ -402,411 +402,71 @@ show_yang(clicon_handle h,
     return 0;
 }
 
-/*! Show configuration and state internal function
+/*! Common internal show routine for several show cli callbacks
  *
- * @param[in]  h     CLICON handle
- * @param[in]  state If set, show both config and state, otherwise only config
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  argv  String vector: <dbname> <format> <xpath> [<varname>]
- * Format of argv:
- *   <dbname>  "running"|"candidate"|"startup" # note only running state=1
- *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
- *   <xpath>   xpath expression, that may contain one %, eg "/sender[name='foo']"
- *   <namespace> If xpath set, the namespace the symbols in xpath belong to (optional)
- *   <prefix>   to print before cli syntax output (optional)
- * @code
- *   show config id <n:string>, cli_show_config("running","xml","iface[name='foo']","urn:example:example");
- * @endcode
- * @note if state parameter is set, then db must be running
- * @see cli_show_auto1
- */
+ * @param[in] h            Clixon handle
+ * @param[in] db           Datastore
+ * @param[in] format       Output format
+ * @param[in] pretty        
+ * @param[in] state
+ * @param[in] withdefault  RFC 6243 with-default modes
+ * @param[in] extdefault   with-defaults with propriatary extensions
+ * @param[in] prefix       CLI prefix to prepend cli syntax, eg "set "
+ * @param[in] xpath        XPath
+ * @param[in] nsc          Namespace mapping for xpath
+ * @param[in] skiproot     If set, do not show object itself, only its children
+  */
 static int
-cli_show_config1(clicon_handle h, 
-		 int           state,
-		 cvec         *cvv, 
-		 cvec         *argv)
+cli_show_common(clicon_handle    h,
+		char            *db,
+		enum format_enum format,
+		int              pretty,
+		int              state,
+		char            *withdefault,
+		char            *extdefault,
+		char            *prefix,
+		char            *xpath,
+		cvec            *nsc,
+		int              skiproot
+		)
 {
-    int              retval = -1;
-    char            *db;
-    char            *formatstr;
-    char            *xpath;
-    enum format_enum format;
-    cbuf            *cbxpath = NULL;
-    char            *val = NULL;
-    cxobj           *xt = NULL;
-    cxobj           *xerr;
-    yang_stmt       *yspec;
-    char            *namespace = NULL;
-    cvec            *nsc = NULL;
-    char            *prefix = NULL;
+    int           retval = -1;    
+    cxobj        *xt = NULL;
+    cxobj        *xerr;
+    cxobj       **vec = NULL;
+    size_t        veclen;
+    cxobj        *xp;
+    yang_stmt    *yp;
+    enum rfc_6020 ys_keyword;
+    int           i;
 
-    if (cvec_len(argv) < 3 || cvec_len(argv) > 5){
-	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<format>,<xpath>[,<namespace>, [<prefix>]]", cvec_len(argv));
-
-	goto done;
-    }
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	goto done;
-    }
-    /* First argv argument: Database */
-    db = cv_string_get(cvec_i(argv, 0));
-    /* Second argv argument: Format */
-    formatstr = cv_string_get(cvec_i(argv, 1));
-    if ((int)(format = format_str2int(formatstr)) < 0){
-	clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
-	goto done;
-    }
-    /* Third argv argument: xpath */
-    xpath = cv_string_get(cvec_i(argv, 2));
-
-    /* Create XPATH variable string */
-    if ((cbxpath = cbuf_new()) == NULL){
-	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
-	goto done;
-    }
-    cprintf(cbxpath, "%s", xpath);	
-    /* Fourth argument is namespace */
-    if (cvec_len(argv) > 3){
-	namespace = cv_string_get(cvec_i(argv, 3));
-	if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
-	    goto done;
-    }
-    if (cvec_len(argv) > 4){
-	prefix = cv_string_get(cvec_i(argv, 4));
-    }
-    if (state == 0){     /* Get configuration-only from database */
-	if (clicon_rpc_get_config(h, NULL, db, cbuf_get(cbxpath), nsc, NULL, &xt) < 0)
-	    goto done;
-    }
-    else {               /* Get configuration and state from database */
-	if (strcmp(db, "running") != 0){
-	    clicon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
-	    goto done;
-	}
-	if (clicon_rpc_get(h, cbuf_get(cbxpath), nsc, CONTENT_ALL, -1, NULL, &xt) < 0)
-	    goto done;
-    }
-    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(xerr, "Get configuration", NULL);
-	goto done;
-    }
-    /* Print configuration according to format */
-    switch (format){
-    case FORMAT_XML:
-	if (clixon_xml2file(stdout, xt, 0, 1, cligen_output, 1, 1) < 0)
-	    goto done;
-	break;
-    case FORMAT_JSON:
-	if (clixon_json2file(stdout, xt, 1, cligen_output, 0, 1) < 0)
-	    goto done;
-	break;
-    case FORMAT_TEXT:
-	if (clixon_txt2file(stdout, xt, 0, cligen_output, 1, 1) < 0)
-	    goto done;
-	break;
-    case FORMAT_CLI:
-	if (clixon_cli2file(h, stdout, xt, prefix, cligen_output, 1) < 0)
-	    goto done;
-	break;
-    case FORMAT_NETCONF:
-	cligen_output(stdout, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target><config>\n",
-		      NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
-	if (clixon_xml2file(stdout, xt, 2, 1, cligen_output, 1, 1) < 0)
-	    goto done;
-	cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
-	break;
-    }
-    retval = 0;
-done:
-    if (nsc)
-	xml_nsctx_free(nsc);
-    if (xt)
-	xml_free(xt);
-    if (val)
-	free(val);
-    if (cbxpath)
-	cbuf_free(cbxpath);
-    return retval;
-}
-
-/*! Show configuration and state CLIGEN callback function
- *
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  argv  String vector: <dbname> <format> <xpath> [<varname>]
- * Format of argv:
- *   <dbname>  "running"|"candidate"|"startup"
- *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
- *   <xpath>   xpath expression, that may contain one %, eg "/sender[name="%s"]"
- *   <namespace> If xpath set, the namespace the symbols in xpath belong to (optional)
- *   <prefix>   to print before cli syntax output
- * @code
- *   show config id <n:string>, cli_show_config("running","xml","iface[name='foo']","urn:example:example");
- * @endcode
- * @see cli_show_config_state  For config and state data (not only config)
- */
-int
-cli_show_config(clicon_handle h, 
-		cvec         *cvv, 
-		cvec         *argv)
-{
-    return cli_show_config1(h, 0, cvv, argv);
-}
-
-/*! Show configuration and state CLIgen callback function
- *
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  argv  String vector: <dbname> <format> <xpath> [<varname>]
- * Format of argv:
- *   <dbname>  "running"
- *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
- *   <xpath>   xpath expression, that may contain one %, eg "/sender[name="%s"]"
- *   <varname> optional name of variable in cvv. If set, xpath must have a '%s'
- * @code
- *   show state id <n:string>, cli_show_config_state("running","xml","iface[name='foo']","urn:example:example");
- * @endcode
- * @see cli_show_config  For config-only, no state
- */
-int
-cli_show_config_state(clicon_handle h, 
-		      cvec         *cvv, 
-		      cvec         *argv)
-{
-    return cli_show_config1(h, 1, cvv, argv);
-}
-
-/*! Show configuration as text given an xpath using canonical namespace
- *
- * Utility function used by cligen spec file
- * @param[in]  h     CLICON handle
- * @param[in]  cvv   Vector of variables from CLIgen command-line must contain xpath and default namespace (if any)
- * @param[in]  argv  A string: <dbname>
- * @note  Hardcoded that variable xpath and ns cvv must exist. (kludge)
- */
-int
-show_conf_xpath(clicon_handle h, 
-		cvec         *cvv, 
-		cvec         *argv)
-{
-    int              retval = -1;
-    char            *dbname;
-    char            *xpath;
-    cg_var          *cv;
-    cxobj           *xt = NULL;
-    cxobj           *xerr;
-    cxobj          **xv = NULL;
-    size_t           xlen;
-    int              i;
-    cvec            *nsc = NULL;
-    yang_stmt       *yspec;
-
-    if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be <dbname>");
-	goto done;
-    }
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	goto done;
-    }
-    dbname = cv_string_get(cvec_i(argv, 0));
-    /* Dont get attr here, take it from arg instead */
-    if (strcmp(dbname, "running") != 0 && 
-	strcmp(dbname, "candidate") != 0 && 
-	strcmp(dbname, "startup") != 0){
-	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbname);	
-	goto done;
-    }
-    /* Look for xpath in command (kludge: cv must be called "xpath") */
-    if ((cv = cvec_find(cvv, "xpath")) == NULL){
-	clicon_err(OE_PLUGIN, EINVAL, "Requires one variable to be <xpath>");
-	goto done;
-    }
-    xpath = cv_string_get(cv);
-
-    /* Create canonical namespace */
-    if (xml_nsctx_yangspec(yspec, &nsc) < 0)
-	goto done;
-    /* Look for and add default namespace variable in command */
-    if ((cv = cvec_find(cvv, "ns")) != NULL){
-	if (xml_nsctx_add(nsc, NULL, cv_string_get(cv)) < 0)
-	    goto done;
-    }
-#if 0 /* Use state get instead of config (XXX: better use this but test_cli.sh fails) */
-    if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, &xt) < 0)
-    	goto done;
-#else
-    if (clicon_rpc_get_config(h, NULL, dbname, xpath, nsc, NULL, &xt) < 0)
-    	goto done;
-#endif
-    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(xerr, "Get configuration", NULL);
-	goto done;
-    }
-    if (xpath_vec(xt, nsc, "%s", &xv, &xlen, xpath) < 0) 
-	goto done;
-    for (i=0; i<xlen; i++)
-	if (clixon_xml2file(stdout, xv[i], 0, 1, fprintf, 0, 1) < 0)
-	    goto done;
-
-    retval = 0;
-done:
-    if (nsc)
-	xml_nsctx_free(nsc);
-    if (xv)
-	free(xv);
-    if (xt)
-	xml_free(xt);
-    return retval;
-}
-
-int cli_show_version(clicon_handle h,
-		     cvec         *vars,
-		     cvec         *argv)
-{
-    fprintf(stdout, "%s\n", CLIXON_VERSION_STRING);
-    return 0;
-}
-
-/*! Generic show configuration CLIgen callback using auto CLI syntax
- *
- * This callback can be used only in context of an autocli generated syntax tree, such as:
- *   show @datamodel, cli_show_auto();
- * @param[in]  h     CLICON handle
- * @param[in]  state If set, show both config and state, otherwise only config
- * @param[in]  cvv   Vector of variables from CLIgen command-line
- * @param[in]  argv  String vector: <dbname> <format> <xpath> [<varname>]
- * Format of argv:
- *   <api_path_fmt> Generated API PATH
- *   <dbname>       "running"|"candidate"|"startup"
- *   <format>       "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
- *   <pretty>       true|false: pretty-print or not (Optional)
- *   <state>        true|false: also print state
- *   <default>      Retrieval default mode: report-all, trim, explicit, report-all-tagged, 
- *                  report-all-tagged-default, report-all-tagged-strip (Optional)
- *   <prefix>       To print before cli syntax outptu
- * @note if state parameter is set, then db must be running
- * @note that first argument is generated by code.
- * @see cli_show_config1
- * XXX Merge with cli_auto_show
- */
-static int 
-cli_show_auto1(clicon_handle h,
-	       int           state,
-	       cvec         *cvv,
-	       cvec         *argv)
-{
-    int              retval = 1;
-    yang_stmt       *yspec;
-    char            *api_path_fmt;  /* xml key format */
-    char            *db;
-    char            *xpath = NULL;
-    cvec            *nsc = NULL;
-    char            *formatstr;
-    enum format_enum format = FORMAT_XML;
-    cxobj           *xt = NULL;
-    cxobj           *xp;
-    cxobj           *xerr;
-    char            *api_path = NULL;
-    char            *prefix = NULL;
-    int              cvvi = 0;
-    cg_var          *boolcv = NULL;
-    char            *defaultstr = NULL; /* with extended tagged modes */
-    char            *withdefaultstr = NULL; /* RFC 6243 modes */
-    int              pretty = 1;
-    cxobj          **vec = NULL;
-    size_t           veclen;
-    int              i;
-    yang_stmt       *yp;
-    enum rfc_6020    ys_keyword;
-
-    if (cvec_len(argv) < 3 || cvec_len(argv) > 7){
-	clicon_err(OE_PLUGIN, EINVAL, "Usage: <api-path-fmt>* <database> <format> [<pretty> <state> <default> <prefix>]. Number of args:%d", cvec_len(argv));
-	goto done;
-    }
-    /* First argv argument: API_path format */
-    api_path_fmt = cv_string_get(cvec_i(argv, 0));
-    /* Second argv argument: Database */
-    db = cv_string_get(cvec_i(argv, 1));
-    /* Third format: output format */
-    formatstr = cv_string_get(cvec_i(argv, 2));
-    if ((int)(format = format_str2int(formatstr)) < 0){
-	clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
-	goto done;
-    }
-    if (cvec_len(argv) > 3){
-	/* Fourth: pretty-print */
-	if ((boolcv = cv_new(CGV_BOOL)) == NULL){
-	    clicon_err(OE_UNIX, errno, "cv_new");
-	    goto done;
-	}
-	if (cv_parse(cv_string_get(cvec_i(argv, 3)), boolcv) < 0){
-	    clicon_err(OE_UNIX, errno, "Parse boolean %s", cv_string_get(cvec_i(argv, 3)));
-	    goto done;
-	}
-	pretty = cv_bool_get(boolcv);
-    }
-    if (cvec_len(argv) > 4){
-	if (cv_parse(cv_string_get(cvec_i(argv, 4)), boolcv) < 0){
-	    clicon_err(OE_UNIX, errno, "Parse boolean %s", cv_string_get(cvec_i(argv, 4)));
-	    goto done;
-	}
-	state = cv_bool_get(boolcv);
-    }
-    if (cvec_len(argv) > 5){
-	defaultstr = cv_string_get(cvec_i(argv, 5));
-	/* From extended to RFC6243 withdefault modes */
-	if (strcmp(defaultstr, "report-all-tagged-strip") == 0)
-	    withdefaultstr = "report-all-tagged";
-	else if (strcmp(defaultstr, "report-all-tagged-default") == 0)
-	    withdefaultstr = "report-all-tagged";
-	else if (strcmp(defaultstr, "report-all") != 0 &&
-		 strcmp(defaultstr, "trim") != 0 &&
-		 strcmp(defaultstr, "explicit") != 0 &&
-		 strcmp(defaultstr, "report-all-tagged") != 0){
-	    clicon_err(OE_YANG, EINVAL, "Unexpected with-default option: %s", defaultstr);
-	    goto done;
-	}
-	else
-	    withdefaultstr = defaultstr;
-    }
-    if (cvec_len(argv) > 6){
-	/* Fourth format: prefix to print before cli syntax */
-	prefix = cv_string_get(cvec_i(argv, 6));
-    }
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	goto done;
-    }
-    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
-	goto done;
-    if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
-	goto done;
-    if (xpath == NULL){
-	clicon_err(OE_FATAL, 0, "Invalid api-path-fmt: %s", api_path_fmt);
-	goto done;
-    }
-    /* XXX Kludge to overcome a trailing / in show, that I cannot add to
-     * yang2api_path_fmt_1 where it should belong.
-     */
-    if (xpath && xpath[strlen(xpath)-1] == '/')
-	xpath[strlen(xpath)-1] = '\0';
     if (state && strcmp(db, "running") != 0){
 	clicon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
 	goto done;
     }
     if (state == 0){     /* Get configuration-only from a database */
-	if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, withdefaultstr, &xt) < 0)
+	if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, withdefault, &xt) < 0)
 	    goto done;
     }
     else {               /* Get configuration and state from running */
-	if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, withdefaultstr, &xt) < 0)
+	if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, withdefault, &xt) < 0)
 	    goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
 	clixon_netconf_error(xerr, "Get configuration", NULL);
 	goto done;
+    }
+    /* Special tagged modes: strip wd:default=true attribute and (optionally) nodes associated with it */
+    if (extdefault &&
+	(strcmp(extdefault, "report-all-tagged-strip") == 0 ||
+	 strcmp(extdefault, "report-all-tagged-default") == 0)){
+	if (purge_tagged_nodes(xt, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE, "default", "true",
+			       strcmp(extdefault, "report-all-tagged-strip")
+			       ) < 0)
+	    goto done;	
+	/* Remove empty containers */
+	if (xml_defaults_nopresence(xt, 2) < 0)
+	    goto done;
     }
     if (xpath_vec(xt, nsc, "%s", &vec, &veclen, xpath) < 0) 
 	goto done;
@@ -837,21 +497,21 @@ cli_show_auto1(clicon_handle h,
 		/* Print configuration according to format */
 		switch (format){
 		case FORMAT_XML:
-		    if (clixon_xml2file(stdout, xp, 0, pretty, cligen_output, 0, 1) < 0)
+		    if (clixon_xml2file(stdout, xp, 0, pretty, cligen_output, skiproot, 1) < 0)
 			goto done;
 		    if (!pretty && i == veclen-1)
 			cligen_output(stdout, "\n");
 		    break;
 		case FORMAT_JSON:
-		    if (clixon_json2file(stdout, xp, pretty, cligen_output, 0, 1) < 0)
+		    if (clixon_json2file(stdout, xp, pretty, cligen_output, skiproot, 1) < 0)
 			goto done;
 		    break;
 		case FORMAT_TEXT: /* XXX does not handle multiple leaf-list */
-		    if (clixon_txt2file(stdout, xp, 0, cligen_output, 0, 1) < 0)
+		    if (clixon_txt2file(stdout, xp, 0, cligen_output, skiproot, 1) < 0)
 			goto done;
 		    break;
 		case FORMAT_CLI:
-		    if (clixon_cli2file(h, stdout, xp, prefix, cligen_output, 0) < 0) /* cli syntax */
+		    if (clixon_cli2file(h, stdout, xp, prefix, cligen_output, skiproot) < 0) /* cli syntax */
 			goto done;
 		    break;
 		case FORMAT_NETCONF:
@@ -861,74 +521,549 @@ cli_show_auto1(clicon_handle h,
 			if (pretty)
 			    cligen_output(stdout, "\n");
 		    }
-		    if (clixon_xml2file(stdout, xp, 2, pretty, cligen_output, 0, 1) < 0)
+		    if (clixon_xml2file(stdout, xp, 2, pretty, cligen_output, skiproot, 1) < 0)
 			goto done;
 		    if (i == veclen-1)
 			cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
 		    break;
 		}
 	    }
-
-
     }
     retval = 0;
- done:
-    if (boolcv)
-	cv_free(boolcv);
-    if (nsc)
-	xml_nsctx_free(nsc);
-    if (api_path)
-	free(api_path);
+done:
     if (vec)
 	free(vec);
-    if (xpath)
-	free(xpath);
     if (xt)
 	xml_free(xt);
     return retval;
 }
 
-/*! Generic show configuration CLIgen callback using generated CLI syntax
- * Format of argv:
- *   <api_path_fmt> Generated API PATH
- *   <dbname>       "running"|"candidate"|"startup"
- *   <format>       "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
- *   <pretty>       true|false: pretty-print or not (Optional)
- *   <state>        true|false: also print state
- *   <default>      Retrieval default mode: report-all, trim, explicit, report-all-tagged, 
- *                  report-all-tagged-default, report-all-tagged-strip (Optional)
- *   <prefix>       To print before cli syntax outptu
- * @see cli_show_auto_state  For config and state
- * @note SHOULD be used: ... @datamodel, cli_show_auto(<dbname>,...) to get correct #args
- * @see cli_auto_show
- * @see cli_show_config
+/*! Common internal parse cli show format option
+ *
+ * @param[in]  argv   String vector: <dbname> <format> <xpath> [<varname>]
+ * @param[in]  argc   Index into argv
+ * @param[out] format Output format
+ * @retval     0      OK
+ * @retval     -1     Error
+ */
+static int 
+cli_show_option_format(cvec             *argv,
+		       int               argc,
+		       enum format_enum *format)
+{
+    int   retval = -1;
+    char *formatstr;
+
+    formatstr = cv_string_get(cvec_i(argv, argc));
+    if ((int)(*format = format_str2int(formatstr)) < 0){
+	clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
+	goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Common internal parse cli show boolean option
+ *
+ * @param[in]  argv  String vector: <dbname> <format> <xpath> [<varname>]
+ * @param[in]  argc  Index into argv
+ * @param[out] bool  result boolean: 0 or 1
+ * @retval     0     OK
+ * @retval     -1    Error
+ */
+static int 
+cli_show_option_bool(cvec *argv,
+		     int   argc,
+		     int  *bool
+		     )
+{
+    int     retval = -1;
+    char   *boolstr;
+    cg_var *boolcv = NULL;
+
+    boolstr = cv_string_get(cvec_i(argv, argc));
+    if ((boolcv = cv_new(CGV_BOOL)) == NULL){
+	clicon_err(OE_UNIX, errno, "cv_new");
+	goto done;
+    }
+    if (cv_parse(boolstr, boolcv) < 0){
+	clicon_err(OE_UNIX, errno, "Parse boolean %s", boolstr);
+	goto done;
+    }
+    *bool = cv_bool_get(boolcv);
+    retval = 0;
+ done:
+    if (boolcv)
+	cv_free(boolcv);
+    return retval;
+}
+
+/*! Common internal parse cli show with-default option
+ *
+ * Ddefault modes accorsing to RFC6243 + three extra modes based on report-all-tagged:
+ * 1) NULL
+ * 2) report-all-tagged-default  Strip "default" attribute (=report-all)
+ * 3) report-all-tagged-strip Strip "default" attribute and all nodes tagged with it (=trim)
+ * @param[in]  argv         String vector: <dbname> <format> <xpath> [<varname>]
+ * @param[in]  argc         Index into argv
+ * @param[in]  withdefault  RFC 6243 with-default modes
+ * @param[in]  extdefault   with-defaults with propriatary extensions
+ * @retval     0     OK
+ * @retval     -1    Error
+ */
+static int 
+cli_show_option_withdefault(cvec  *argv,
+			    int    argc,
+			    char **withdefault,
+			    char **extdefault)
+{
+    int   retval = -1;
+    char *e;
+
+    e = cv_string_get(cvec_i(argv, argc));
+    /* From extended to RFC6243 withdefault modes */
+    if (strcmp(e, "report-all-tagged-strip") == 0)
+	*withdefault = "report-all-tagged";
+    else if (strcmp(e, "report-all-tagged-default") == 0)
+	*withdefault = "report-all-tagged";
+    else if (strcmp(e, "NULL") == 0){
+	e = NULL;
+	*withdefault = NULL;
+    }
+    else if (strcmp(e, "report-all") != 0 &&
+	     strcmp(e, "trim") != 0 &&
+	     strcmp(e, "explicit") != 0 &&
+	     strcmp(e, "report-all-tagged") != 0){
+	clicon_err(OE_YANG, EINVAL, "Unexpected with-default option: %s", e);
+	goto done;
+    }
+    else
+	*withdefault = e;
+    *extdefault = e;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Generic show configuration callback
+ *
+ * Does not need to be used with the autocli as cli_show_auto does
+ * @param[in]  h     CLICON handle
+ * @param[in]  cvv   Vector of variables from CLIgen command-line
+ * @param[in]  argv  String vector of show options, format:
+ *   <dbname>        Name of datastore, such as "running"
+ * -- from here optional:
+ *   <format>        "text"|"xml"|"json"|"cli"|"netconf" (see format_enum), default: xml
+ *   <xpath>         xpath expression, that may contain one %, eg "/sender[name='foo']"
+ *   <namespace>     xpath default namespace (or NULL) not needed for xpath=NULL
+ *   <pretty>        true|false: pretty-print or not
+ *   <state>         true|false: also print state
+ *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged, 
+ *                   NULL, report-all-tagged-default, report-all-tagged-strip (extended)
+ *   <prefix>        CLI prefix: prepend before cli syntax output
+ * @code
+ *   clispec:
+ *      show config, cli_show_config("running","xml");
+ *   cli run:
+ *      > set table parameter a value x
+ *      > show config
+ *        <table xmlns="urn:example:clixon">
+ *           <parameter>
+ *              <name>a</name>
+ *              <value>x</value>
+ *           </parameter>
+ *        </table>
+ * @endcode
+ * @see cli_show_auto       autocli with expansion
+ * @see cli_show_auto_mode  autocli with edit menu support
+ */
+int
+cli_show_config(clicon_handle h, 
+		cvec         *cvv, 
+		cvec         *argv)
+{
+    int              retval = -1;
+    char            *dbname;
+    enum format_enum format = FORMAT_XML;
+    cvec            *nsc = NULL;
+    int              pretty = 1;
+    char            *prefix = NULL;
+    int              state = 0;
+    char            *withdefault = NULL; /* RFC 6243 modes */
+    char            *extdefault = NULL; /* with extended tagged modes */
+    int              argc = 0;
+    int              skiproot = 0;
+    char            *xpath = "/";
+    char            *namespace = NULL;
+    
+    if (cvec_len(argv) < 2 || cvec_len(argv) > 8){
+	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname> [<format><xpath> <namespace> <pretty> <state> <default> <prefix>]", cvec_len(argv));
+	goto done;
+    }
+    dbname = cv_string_get(cvec_i(argv, argc++));
+    if (cvec_len(argv) > argc)
+	if (cli_show_option_format(argv, argc++, &format) < 0)
+	    goto done;
+    if (cvec_len(argv) > argc)
+	xpath = cv_string_get(cvec_i(argv, argc++));
+    if (cvec_len(argv) > argc){
+	namespace = cv_string_get(cvec_i(argv, argc++));
+	/* Special symbol NULL means no namespace */
+	if (strcmp(namespace, "NULL") != 0)
+	    if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
+		goto done;
+    }
+    if (cvec_len(argv) > argc){
+	if (cli_show_option_bool(argv, argc++, &pretty) < 0)
+	    goto done;
+    }
+    if (cvec_len(argv) > argc){
+	if (cli_show_option_bool(argv, argc++, &state) < 0)
+	    goto done;
+    }
+    if (cvec_len(argv) > argc){
+	if (cli_show_option_withdefault(argv, argc++,
+					&withdefault,
+					&extdefault) < 0)
+	    goto done;
+    }
+    if (cvec_len(argv) > argc){
+	prefix = cv_string_get(cvec_i(argv, argc++));
+    }
+    if (cli_show_common(h, dbname, format, pretty, state,
+			withdefault, extdefault,
+			prefix, xpath, nsc, skiproot) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (nsc)
+	xml_nsctx_free(nsc);
+    return retval;
+}
+
+/*! Show configuration and state CLIGEN callback function
+ *
+ * @param[in]  h     CLICON handle
+ * @param[in]  cvv   Vector of variables from CLIgen command-line
+ * @param[in]  argv  String vector of show options, format:
+ *   <dbname>  "running"|"candidate"|"startup"
+ * @code
+ *   show config id <n:string>, cli_show_config("running","xml","iface[name='foo']","urn:example:example");
+ * @endcode
+ * @see cli_show_config_state  For config and state data (not only config)
+ */
+
+/*! Show configuration as text given an xpath using canonical namespace
+ *
+ * Utility function used by cligen spec file
+ * @param[in]  h     CLICON handle
+ * @param[in]  cvv   Vector of variables from CLIgen command-line must contain xpath and default namespace (if any)
+ * @param[in]  argv  A string: <dbname>
+ * @note  Different from cli_show_conf: values taken cvv "xpath" and "ns" instead of argv
+ */
+int
+show_conf_xpath(clicon_handle h, 
+		cvec         *cvv, 
+		cvec         *argv)
+{
+    int              retval = -1;
+    char            *dbname;
+    char            *xpath;
+    cg_var          *cv;
+    cvec            *nsc = NULL;
+    yang_stmt       *yspec;
+    
+    if (cvec_len(argv) != 1){
+	clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be <dbname>");
+	goto done;
+    }
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
+    dbname = cv_string_get(cvec_i(argv, 0));
+    /* Look for xpath in command (kludge: cv must be called "xpath") */
+    if ((cv = cvec_find(cvv, "xpath")) == NULL){
+	clicon_err(OE_PLUGIN, EINVAL, "Requires one variable to be <xpath>");
+	goto done;
+    }
+    xpath = cv_string_get(cv);
+    /* Create canonical namespace */
+    if (xml_nsctx_yangspec(yspec, &nsc) < 0)
+	goto done;
+    /* Look for and add default namespace variable in command */
+    if ((cv = cvec_find(cvv, "ns")) != NULL){
+	if (xml_nsctx_add(nsc, NULL, cv_string_get(cv)) < 0)
+	    goto done;
+    }
+    if (cli_show_common(h, dbname, FORMAT_XML, 1, 0,
+			NULL, NULL,
+			NULL, xpath, nsc, 0) < 0)
+	goto done;
+    retval = 0;
+done:
+    if (nsc)
+	xml_nsctx_free(nsc);
+    return retval;
+}
+
+int cli_show_version(clicon_handle h,
+		     cvec         *vars,
+		     cvec         *argv)
+{
+    fprintf(stdout, "%s\n", CLIXON_VERSION_STRING);
+    return 0;
+}
+
+/*! Show configuration callback using auto CLI syntax with expansion
+ *
+ * Can be used only in context of an autocli generated syntax tree, such as:
+ *   show @datamodel, cli_show_auto();
+ * This show command can use expansion to "TAB" inside the syntax tree to show
+ * portions of the syntax.
+ * @param[in]  h     Clixon handle
+ * @param[in]  cvv   Vector of variables from CLIgen command-line
+ * @param[in]  argv  String vector of show options, format:
+ *   <api_path_fmt>  Generated API PATH
+ *   <dbname>        Name of datastore, such as "running"
+ * -- from here optional:
+ *   <format>        "text"|"xml"|"json"|"cli"|"netconf" (see format_enum), default: xml
+ *   <pretty>        true|false: pretty-print or not
+ *   <state>         true|false: also print state
+ *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged, 
+ *                   NULL, report-all-tagged-default, report-all-tagged-strip (extended)
+ *   <prefix>        CLI prefix: prepend before cli syntax output
+ * @code
+ *   clispec: 
+ *      show config @datamodelshow, cli_show_auto("candidate", "xml");
+ *   cli run:
+ *      > set table parameter a value x
+ *      > show config table parameter a
+ *        <parameter>
+ *           <name>a</name>
+ *           <value>x</value>
+ *        </parameter>
+ * @endcode
+ * @see cli_show_config     with no autocli coupling
+ * @see cli_show_auto_mode  autocli with edit menu support
+ *
+ * XXX merge cli_show_auto and cli_show_auto_mode
  */
 int 
 cli_show_auto(clicon_handle h,
 	      cvec         *cvv,
 	      cvec         *argv)
 {
-    return cli_show_auto1(h, 0, cvv, argv);
+    int              retval = -1;
+    char            *dbname;
+    enum format_enum format = FORMAT_XML;
+    cvec            *nsc = NULL;
+    int              pretty = 1;
+    char            *prefix = NULL;
+    int              state = 0;
+    char            *withdefault = NULL; /* RFC 6243 modes */
+    char            *extdefault = NULL; /* with extended tagged modes */
+    int              argc = 0;
+    int              skiproot = 0;
+    char            *xpath = NULL;
+    yang_stmt       *yspec;
+    char            *api_path = NULL;
+    int              cvvi = 0;
+    char            *api_path_fmt;  /* xml key format */
+
+    if (cvec_len(argv) < 2 || cvec_len(argv) > 7){
+	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <api-path-fmt>* <database> [<format> <pretty> <state> <default> <cli-prefix>]", cvec_len(argv));
+	goto done;
+    }
+    api_path_fmt = cv_string_get(cvec_i(argv, argc++));
+    dbname = cv_string_get(cvec_i(argv, argc++));
+    if (cvec_len(argv) > argc)
+	if (cli_show_option_format(argv, argc++, &format) < 0)
+	    goto done;
+    if (cvec_len(argv) > argc){
+	if (cli_show_option_bool(argv, argc++, &pretty) < 0)
+	    goto done;
+    }
+    if (cvec_len(argv) > argc){
+	if (cli_show_option_bool(argv, argc++, &state) < 0)
+	    goto done;
+    }
+    if (cvec_len(argv) > argc){
+	if (cli_show_option_withdefault(argv, argc++,
+					&withdefault,
+					&extdefault) < 0)
+	    goto done;
+    }
+    if (cvec_len(argv) > argc){
+	prefix = cv_string_get(cvec_i(argv, argc++));
+    }
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
+    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
+	goto done;
+    if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
+	goto done;
+    if (xpath == NULL){
+	clicon_err(OE_FATAL, 0, "Invalid api-path-fmt: %s", api_path_fmt);
+	goto done;
+    }
+    if (cli_show_common(h, dbname, format, pretty, state,
+			withdefault, extdefault,
+			prefix, xpath, nsc, skiproot) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (nsc)
+	xml_nsctx_free(nsc);
+    if (xpath)
+	free(xpath);
+    if (api_path)
+	free(api_path);
+    return retval;
 }
 
-/*! Generic show config and state CLIgen callback using generated CLI syntax
- * Format of argv:
- *   <api_path_fmt> Generated API PATH
- *   <dbname>  "running"
- *   <format>  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
- *   <pretty>  true|false: pretty-print or not (Optional)
- *   <default> Retrieval default mode: report-all, trim, explicit, report-all-tagged, 
- *                  report-all-tagged-default, report-all-tagged-strip (Optional)
- *   <prefix>   to print before cli syntax output
- * @see cli_show_auto    For config only
- * @see cli_show_config_state Not auto-generated
+/*! Show configuration callback for autocli edit modes using tree working point
+ *
+ * Can be used together with "edit modes". The xpath is derived from
+ * the current "cli-edit-mode" as described here: 
+ *     https://clixon-docs.readthedocs.io/en/latest/cli.html#edit-modes
+ * @param[in]  h     Clixon handle
+ * @param[in]  cvv   Vector of variables from CLIgen command-line
+ * @param[in]  argv  String vector of show options, format:
+ *   <dbname>        Name of datastore, such as "running"
+ * -- from here optional:
+ *   <format>        "text"|"xml"|"json"|"cli"|"netconf" (see format_enum), default: xml
+ *   <pretty>        true|false: pretty-print or not
+ *   <state>         true|false: also print state
+ *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged, 
+ *                   NULL, report-all-tagged-default, report-all-tagged-strip (extended)
+ *   <prefix>        CLI prefix: prepend before cli syntax output
+ * @code
+ *   clispec:
+ *      show config, cli_show_auto_mode("candidate");
+ *   cli run:
+ *      > set table parameter a value x
+ *      > edit table
+ *      > show config
+ *        <parameter>
+ *           <name>a</name>
+ *           <value>x</value>
+ *        </parameter>
+ * @endcode
+ * @see cli_show_auto    autocli with expansion 
+ * @see cli_show_config  with no autocli coupling
+ *
+ * XXX merge cli_show_auto and cli_show_auto_mode
+ */
+int
+cli_show_auto_mode(clicon_handle h,
+		   cvec         *cvv,
+		   cvec         *argv)
+{
+    int              retval = -1;
+    char            *dbname;
+    enum format_enum format = FORMAT_XML;
+    cvec            *nsc = NULL;
+    int              pretty = 1;
+    char            *prefix = NULL;
+    int              state = 0;
+    char            *withdefault = NULL; /* RFC 6243 modes */
+    char            *extdefault = NULL; /* with extended tagged modes */
+    int              argc = 0;
+    int              skiproot = 0;
+    char            *xpath = NULL;
+    yang_stmt       *yspec;
+    char            *api_path = NULL;
+    
+    if (cvec_len(argv) < 2 || cvec_len(argv) > 7){
+	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <database> [ <format> <pretty> <state> <default> <cli-prefix>]", cvec_len(argv));
+	goto done;
+    }
+    dbname = cv_string_get(cvec_i(argv, argc++));
+    if (cvec_len(argv) > argc)
+	if (cli_show_option_format(argv, argc++, &format) < 0)
+	    goto done;
+    if (cvec_len(argv) > argc){
+	if (cli_show_option_bool(argv, argc++, &pretty) < 0)
+	    goto done;
+    }
+    if (cvec_len(argv) > argc){
+	if (cli_show_option_bool(argv, argc++, &state) < 0)
+	    goto done;
+    }
+    if (cvec_len(argv) > argc){
+	if (cli_show_option_withdefault(argv, argc++,
+					&withdefault,
+					&extdefault) < 0)
+	    goto done;
+    }
+    if (cvec_len(argv) > argc){
+	prefix = cv_string_get(cvec_i(argv, argc++));
+    }
+    /* Store this as edit-mode */
+    if (clicon_data_get(h, "cli-edit-mode", &api_path) == 0 && strlen(api_path))
+	;
+    else
+	api_path = "/";
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_FATAL, 0, "No DB_SPEC");
+	goto done;
+    }
+    if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
+	goto done;
+    if (xpath == NULL){
+	clicon_err(OE_FATAL, 0, "Invalid api-path: %s", api_path);
+	goto done;
+    }
+    skiproot = (strcmp(xpath,"/") != 0);
+    if (cli_show_common(h, dbname, format, pretty, state,
+			withdefault, extdefault,
+			prefix, xpath, nsc, skiproot) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (nsc)
+	xml_nsctx_free(nsc);
+    if (xpath)
+	free(xpath);
+    return retval;
+}
+
+/*! Obsolete Show configuration callback for autocli edit modes using tree working point
+ *
+ * @note Please use cli_show_auto_mode instead,
+ * but since that function does not use treename(argv[0]) that must be stripped
  */
 int 
-cli_show_auto_state(clicon_handle h,
-		    cvec         *cvv,
-		    cvec         *argv)
+cli_auto_show(clicon_handle h,
+	      cvec         *cvv,
+	      cvec         *argv0)
 {
-    return cli_show_auto1(h, 1, cvv, argv);
+    int    retval = -1;
+    cvec  *argv1 = NULL;
+    cg_var *cv;
+
+    if ((argv1 = cvec_new(0)) == NULL){
+	clicon_err(OE_UNIX, errno, "cvec_new");
+	goto done;
+    }
+    cv = NULL;
+    while ((cv = cvec_each1(argv0, cv)) != NULL) {
+	if (cvec_append_var(argv1, cv) == NULL){
+	    clicon_err(OE_UNIX, errno, "cvec_append_var");
+	    goto done;
+	}
+    }
+    if (cli_show_auto_mode(h, cvv, argv1) < 0)
+	goto done;
+    retval = 0;
+ done:
+    if (argv1)
+	cvec_free(argv1);
+    return retval;
 }
 
 /*! Show clixon configuration options as loaded

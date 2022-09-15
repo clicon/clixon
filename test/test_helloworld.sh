@@ -90,7 +90,7 @@ validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
 show("Show a particular state of the system")
-    configuration("Show configuration"), cli_show_config("candidate", "text", "/");
+    configuration("Show configuration"), cli_show_config("candidate", "text");
 
 EOF
 
