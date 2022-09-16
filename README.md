@@ -17,6 +17,6 @@ Clixon has a master branch continuously tested with CI, but releases are made ca
 
 Clixon interaction is best done posting issues, pull requests, or joining the
 [slack channel](https://clixondev.slack.com).
-[Slack invite](https://join.slack.com/t/clixondev/shared_invite/zt-1da9fdr51-G~W5CES01_TRVdg5oXo43w)(updated 28/7 2022, valid 30d)
+[Slack invite](https://join.slack.com/t/clixondev/shared_invite/zt-1fz8at20n-KGNmKD7KH2j2jIFGU_EhMQ)(updated 15/9 2022, valid 30d)
 
 Clixon is sponsored by [Rubicon Communications LLC(Netgate)](https://www.netgate.com/)

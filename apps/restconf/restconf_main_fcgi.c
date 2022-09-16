@@ -315,7 +315,6 @@ main(int    argc,
     char          *inline_config = NULL;
     size_t         sz;
 
-
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
 

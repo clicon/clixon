@@ -557,7 +557,7 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCP
 "HTTP/$HVER 200" \
 "Content-Type: application/yang-data+json" \
 "Cache-Control: no-cache" \
-'{"example:interface":\[{"name":"eth1","mtu":1500,"status":"ok"}\]}'
+'{"example:interface":\[{"name":"eth1","mtu":1500,"status":"ok","@mtu":{"ietf-netconf-with-defaults:default":true},"@status":{"ietf-netconf-with-defaults:default":true}}\]}'
 
 new "rfc8040 B.3.9. RESTCONF with-defaults parameter = report-all-tagged xml"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=report-all-tagged)" \

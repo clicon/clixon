@@ -697,48 +697,126 @@ nullchild(cbuf      *cb,
     return retval;
 }
 
-/*!
-{
-     "example-social:uint8-numbers": [17],
-     "@example-social:uint8-numbers": [
-        {
-           "ietf-list-pagination:remaining": 5
-        }
-      ]
-   }
+/*! Encode json metadata
+ * This function could be more general, code based on two examples:
+ * 1) ietf-list-pagination:remaining
+ *  {
+ *     "example-social:uint8-numbers": [17],
+ *     "@example-social:uint8-numbers": [
+ *        {
+ *           "ietf-list-pagination:remaining": 5
+ *        }
+ *      ]
+ *    }
+ * 2) ietf-netconf-with-defaults:default:
+ *     "@mtu" : {
+ *          "ietf-netconf-with-defaults:default" : true
+ *      },
  */
 static int
-json_metadata_encoding(cbuf      *cb,
-		       cxobj     *x,
-		       int        level,
-		       int        pretty,
-		       char      *modname,
-    		       char      *name,
-		       char      *modname2,
-    		       char      *name2,
-		       char      *val)
+json_metadata_encoding(cbuf  *cb,
+		       cxobj *x,
+		       int    level,
+		       int    pretty,
+		       char  *prefix,
+    		       char  *name,
+		       char  *modname2,
+    		       char  *name2,
+		       char  *val,
+		       int    list)
 {
-    int retval = -1;
-
-    cprintf(cb, ",\"@%s:%s\":[", modname, name);
+    cprintf(cb, ",\"@");
+    if (prefix)
+	cprintf(cb, "%s:", prefix);
+    cprintf(cb, "%s\":", name);
+    if (list)
+	cprintf(cb, "[");
     cprintf(cb, "%*s", pretty?((level+1)*JSON_INDENT):0, "{");
     cprintf(cb, "\"%s:%s\":%s", modname2, name2, val);
     cprintf(cb, "%*s", pretty?((level+1)*JSON_INDENT):0, "}");
-    cprintf(cb, "%*s", pretty?(level*JSON_INDENT):0, "]");
+    if (list)
+	cprintf(cb, "%*s", pretty?(level*JSON_INDENT):0, "]");
+    return 0;
+}
+
+/*! Encode XML attributes as JSON meta-data
+ *
+ * There are two methods for this:
+ * 1) Registered meta-data according to RFC 7952 using md:annotate. 
+ *    This is derived from a YANG module
+ *    Examples: ietf-origin:origin, ietf-list-pagination: remaining
+ * 2) Assigned, if someother mechanism, eg XSD is used
+ *    Example: ietf-restconf: default
+ * If neither matches, the attribute is skipped
+ * @param[in]     xc       XML attribute
+ * @param[in]     xp       XML node, parent of xa
+ * @param[in]     yp       Yang spec of xp
+ * @param[in]     level    Indentation level
+ * @param[in]     level    Indentation level
+ * @param[in]     pretty   Pretty-print output (2 means debug)
+ * @param[in]     modname  Name of yang module
+ * @param[in,out] metacb   Encode into cbuf
+ * @see RFC7952
+ */
+static int
+xml2json_encode_attr(cxobj     *xa,
+		     cxobj     *xp,
+		     yang_stmt *yp,
+		     int        level,
+		     int        pretty,
+		     char      *modname,
+		     cbuf      *metacb)
+{
+    int           retval = -1;
+    int           ismeta = 0;
+    char         *namespace = NULL;
+    yang_stmt    *ymod;
+    enum rfc_6020 ykeyw;
+    
+    if (xml2ns(xa, xml_prefix(xa), &namespace) < 0)
+	goto done;
+    /* Check for (1) registered meta-data */
+    if (namespace != NULL && yp){
+	ykeyw = yang_keyword_get(yp);
+	if ((ymod = yang_find_module_by_namespace(ys_spec(yp), namespace)) != NULL){
+	    if (yang_metadata_annotation_check(xa, ymod, &ismeta) < 0)
+		goto done;
+	    if (ismeta)
+		if (json_metadata_encoding(metacb, xp, level, pretty,
+					   modname, xml_name(xp),
+					   yang_argument_get(ymod),
+					   xml_name(xa),
+					   xml_value(xa),
+					   ykeyw == Y_LEAF_LIST || ykeyw == Y_LIST) < 0)
+		    goto done;
+	}
+	/* Check for (2) assigned - hardcoded for now */
+	else if (strcmp(namespace, "urn:ietf:params:xml:ns:netconf:default:1.0") == 0 &&
+		 strcmp(xml_name(xa), "default") == 0){
+	    /* RFC 7952 / RFC 8040 defaults attribute */
+	    if (json_metadata_encoding(metacb, xp, level, pretty,
+				       modname, xml_name(xp),
+				       "ietf-netconf-with-defaults",
+				       xml_name(xa),
+				       xml_value(xa),
+				       ykeyw == Y_LEAF_LIST || ykeyw == Y_LIST) < 0)
+		goto done;
+	}
+    }
     retval = 0;
-    // done:
+ done:
     return retval;
 }
 
 /*! Do the actual work of translating XML to JSON 
  * @param[out]   cb        Cligen text buffer containing json on exit
  * @param[in]    x         XML tree structure containing XML to translate
- * @param[in]    yp        Parent yang spec needed for body
  * @param[in]    arraytype Does x occur in a array (of its parent) and how?
  * @param[in]    level     Indentation level
  * @param[in]    pretty    Pretty-print output (2 means debug)
  * @param[in]    flat      Dont print NO_ARRAY object name (for _vec call)
- * @param[in]    bodystr   Set if value is string, 0 otherwise. Only if body
+ * @param[in]    modname0
+ * @param[out]   metacbp   Meta encoding of attribute
  *
  * @note Does not work with XML attributes
  * The following matrix explains how the mapping is done.
@@ -776,7 +854,7 @@ xml2json1_cbuf(cbuf                   *cb,
 	       int                     pretty,
 	       int                     flat,
 	       char                   *modname0,
-	       cbuf                  **metacbp)
+	       cbuf                   *metacbp)
 {
     int              retval = -1;
     int              i;
@@ -883,6 +961,10 @@ xml2json1_cbuf(cbuf                   *cb,
     default:
 	break;
     }
+    if ((metacbc = cbuf_new()) == NULL){
+	clicon_err(OE_UNIX, errno, "cbuf_new");
+	goto done;
+    }
     /* Check for typed sub-body if:
      * arraytype=* but child-type is BODY_CHILD 
      * This is code for writing <a>42</a> as "a":42 and not "a":"42"
@@ -891,38 +973,10 @@ xml2json1_cbuf(cbuf                   *cb,
     for (i=0; i<xml_child_nr(x); i++){
 	xc = xml_child_i(x, i);
 	if (xml_type(xc) == CX_ATTR){
-	    int        ismeta = 0;
-	    char      *namespace = NULL;
-	    yang_stmt *ymod;
-	    cbuf      *metacb = NULL;
-	    
-	    if (xml2ns(xc, xml_prefix(xc), &namespace) < 0)
+	    if (metacbp &&
+		xml2json_encode_attr(xc, x, ys, level, pretty, modname, metacbp) < 0)
 		goto done;
-	    if (namespace == NULL)
-		continue;
-	    if ((ymod = yang_find_module_by_namespace(ys_spec(ys), namespace)) == NULL)
-		continue;
-	    if (xml2ns(xc, xml_prefix(xc), &namespace) < 0)
-		goto done;
-	    if (yang_metadata_annotation_check(xc, ymod, &ismeta) < 0)
-		goto done;
-	    if (!ismeta)
-		continue;
-	    if ((metacb = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
-	    }
-	    if (json_metadata_encoding(metacb, x, level, pretty,
-				       modname, xml_name(x),
-				       yang_argument_get(ymod),
-				       xml_name(xc),
-				       xml_value(xc)) < 0)
-		goto done;
-	    if (metacbp)
-		*metacbp = metacb;
-	    else
-		cbuf_free(metacb);
-	    continue; /* XXX Only xmlns attributes mapped */
+	    continue;
 	}
 	xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
 				xc, 
@@ -931,46 +985,17 @@ xml2json1_cbuf(cbuf                   *cb,
 			   xc, 
 			   xc_arraytype,
 			   level+1, pretty, 0, modname0,
-			   &metacbc) < 0)
+			   metacbc) < 0)
 	    goto done;
 	if (commas > 0) {
 	    cprintf(cb, ",%s", pretty?"\n":"");
 	    --commas;
 	}
     }
-    if (metacbc){
+    if (cbuf_len(metacbc)){
 	cprintf(cb, "%s", cbuf_get(metacbc));
     }
 
-#if 0 /* identify md:annotations as RFC 7952 Sec 5.2.1*/
-    for (i=0; i<xml_child_nr(x); i++){
-	xc = xml_child_i(x, i);
-	if (xml_type(xc) == CX_ATTR){
-	    int        ismeta = 0;
-	    char      *namespace = NULL;
-	    yang_stmt *ymod;
-	    
-	    if (xml2ns(xc, xml_prefix(xc), &namespace) < 0)
-		goto done;
-	    if (namespace == NULL)
-		continue;
-	    if ((ymod = yang_find_module_by_namespace(ys_spec(ys), namespace)) == NULL)
-		continue;
-	    if (xml2ns(xc, xml_prefix(xc), &namespace) < 0)
-		goto done;
-	    if (yang_metadata_annotation_check(xc, ymod, &ismeta) < 0)
-		goto done;
-	    if (!ismeta)
-		continue;
-	    if (json_metadata_encoding(cb, x, level, pretty,
-				       modname, xml_name(x),
-				       yang_argument_get(ymod),
-				       xml_name(xc),
-				       xml_value(xc)) < 0)
-		goto done;
-	}
-    }
-#endif
     switch (arraytype){
     case BODY_ARRAY:
 	break;

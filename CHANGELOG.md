@@ -41,9 +41,21 @@ Expected: September 2022
 
 ### New features
 
-* With-defaults RFC6243
-  * see [Netconf With-defaults Capability](https://github.com/clicon/clixon/issues/262)
-* RESTCONF call home according to RFC 8071
+* With-defaults capability
+  * Standards
+    * RFC 6243 "With-defaults Capability for NETCONF"
+    * RFC 8040 "RESTCONF Protocol": Section 4.8.9
+  * Features:
+    * `:with-defaults` capability
+    * `explicit` basic mode
+    * Full retrieval modes: `explicit`, `trim`, `report-all`, `report-all-tagged`.
+    * RESTCONF with-defaults query for XML and JSON
+       * Assigned meta-data for the `ietf-netconf-with-defaults:default` attribute for JSON (RFC8040 Sec 5.3.2)
+  * Added `withdefault` option to cli show commands
+    * See `CLISPEC changes of cli show functions` below
+  * See [Netconf With-defaults Capability](https://github.com/clicon/clixon/issues/262)
+* RESTCONF call home
+  * Standard: RFC 8071 "NETCONF Call Home and RESTCONF Call Home"
   * clixon-restconf.yang extended with callhome inspired by ietf-restconf-server.yang
     * See e.g., draft-ietf-netconf-restconf-client-server-26.txt
   * The `<socket>` list has been extended with a `call-home` presence container including:

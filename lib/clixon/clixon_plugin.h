@@ -141,8 +141,8 @@ typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
  * @param[in] h    Clixon handle
  * @param[in] yext Yang node of extension 
  * @param[in] ys   Yang node of (unknown) statement belonging to extension
- * @retval     0   OK, all callbacks executed OK
- * @retval    -1   Error in one callback
+ * @retval    0    OK, all callbacks executed OK
+ * @retval   -1    Error in one callback
  */
 typedef int (plgextension_t)(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
 

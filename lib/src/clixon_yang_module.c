@@ -790,7 +790,6 @@ yang_metadata_init(clicon_handle h)
     int              retval = -1;
     clixon_plugin_t *cp = NULL;
 
-
     /* Create a pseudo-plugin to create extension callback to set the ietf-yang-meta
      * yang-data extension for api-root top-level restconf function.
      */

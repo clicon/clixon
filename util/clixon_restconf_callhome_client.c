@@ -224,7 +224,7 @@ tls_server_reply_cb(int   s,
 	SSL_shutdown(ssl);
 	SSL_free(ssl);
 	clixon_event_unreg_fd(s, tls_server_reply_cb);
-	fprintf(stdout, "Close %d remote %lu\n", seq, td.tv_sec);
+	fprintf(stdout, "Close %d remote\n", seq);
 	close(s);
 	free(sd);
 	if (_connects == 0)
@@ -365,7 +365,7 @@ tls_timeout_cb(int   fd,
 {
     tls_accept_handle *ta = (tls_accept_handle *)arg;
 
-    fprintf(stderr, "Timeout on socket:%d\n", ta->ta_ss);
+    fprintf(stderr, "Timeout(%ds) after accept on socket:%d\n", _timeout_s, ta->ta_ss);
     exit(200);
 }
 
