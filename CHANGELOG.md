@@ -69,6 +69,15 @@ Expected: September 2022
 
 Users may have to change how they access the system
 
+* NETCONF error handling for `data-not-unique` and `missing-choice` follows standard more closely
+  * data-not-unique:
+    * Added YANG namespace to `<non-unique>` tag
+    * Changed `yang-unique` value to path insytead of  single name
+    * See RFC 7950 Sec 15.1
+  * missing-choice:
+    * Added `<error-path>`
+    * Added YANG namespace to `<missing-choice>` tag
+    * See RFC 7950 Sec 15.6
 * Backend transaction plugins: edit of choice node will always result in a "del/add" event for all edits of change nodes, never a "change" event.
   * Before, some cases were using a "change" event if the "yang ordering" happended to be the same.
   * See more details in: [Clixon backend transactions for choice/case is not logical](https://github.com/clicon/clixon/issues/361)
@@ -110,6 +119,8 @@ e`
 
 ### Corrected Bugs
 
+* Fixed: [When multiple lists have same key name, need more elaborate error message in case of configuration having duplicate keys](https://github.com/clicon/clixon/issues/362)
+  * Solved by implementing RFC7950 Sec 5.1 correctly
 * Fixed: [All values in list don't appear when writing "show <list>" in cli](https://github.com/clicon/clixon/issues/359)
 * Fixed: [yang regular char \w not include underline char](https://github.com/clicon/clixon/issues/357)
 * Fixed: [Clixon backend transactions for choice/case is not logical](https://github.com/clicon/clixon/issues/361)

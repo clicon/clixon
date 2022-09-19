@@ -923,18 +923,16 @@ netconf_data_exists(cbuf      *cb,
  * does not exist.  For example, a "delete" operation was attempted on
  * data that does not exist.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
- * @param[in]  missing_choice  If set, see RFC7950: 15.6 violates mandatory choice
  * @param[in]  message Error message
  */
 int
 netconf_data_missing(cbuf *cb,
-		     char *missing_choice,
 		     char *message)
 {
     int   retval = -1;
     cxobj *xret = NULL;
 
-    if (netconf_data_missing_xml(&xret, missing_choice, message) < 0)
+    if (netconf_data_missing_xml(&xret, message) < 0)
 	goto done;
     if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
 	goto done;
@@ -945,18 +943,16 @@ netconf_data_missing(cbuf *cb,
     return retval;
 }
 
-/*! Create Netconf data-missing error XML tree according to RFC 6241 App A
+/*! Create Netconf data-missing error XML tree according to RFC 6241 App A / RFC 7950 15.6(choice)
  *
  * Request could not be completed because the relevant data model content 
  * does not exist.  For example, a "delete" operation was attempted on
  * data that does not exist.
  * @param[out] xret    Error XML tree. Free with xml_free after use
- * @param[in]  missing_choice  If set, see RFC7950: 15.6 violates mandatiry choice
  * @param[in]  message Error message
  */
 int
 netconf_data_missing_xml(cxobj **xret,
-			 char   *missing_choice,
 			 char   *message)
 {
     int   retval = -1;
@@ -984,12 +980,6 @@ netconf_data_missing_xml(cxobj **xret,
 			    "<error-type>application</error-type>"
 			    "<error-tag>data-missing</error-tag>") < 0)
 	goto done;
-    if (missing_choice) /* NYI: RFC7950: 15.6 <error-path> */
-	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
-				"<error-app-tag>missing-choice</error-app-tag>"
-				"<error-info><missing-choice>%s</missing-choice></error-info>",
-				missing_choice) < 0)
-	    goto done;
     if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
 			    "<error-severity>error</error-severity>") < 0)
 	goto done;
@@ -1006,7 +996,80 @@ netconf_data_missing_xml(cxobj **xret,
 	free(encstr);
     return retval;
 }
-    
+
+/*! Create Netconf data-missing / missing-choice as defeind in RFC 7950 15.6
+ *
+ * If a NETCONF operation would result in configuration data where no
+ * nodes exists in a mandatory choice, the following error MUST be
+ * returned:
+ * @param[out] xret       Error XML tree. Free with xml_free after use
+ * @param[in]  x          Element with missing choice
+ * @param[in]  name       Name of missing mandatory choice   
+ * @param[in]  message    Error message
+ */
+int
+netconf_missing_choice_xml(cxobj **xret,
+			   cxobj  *x,
+			   char   *name,
+			   char   *message)
+{
+    int    retval = -1;
+    char  *encstr = NULL;
+    cxobj *xerr;
+    cxobj *xa;
+    char  *path = NULL;
+    char  *encpath = NULL;
+
+    if (xret == NULL || name == NULL){
+	clicon_err(OE_NETCONF, EINVAL, "xret or name is NULL");
+	goto done;	
+    }
+    if (*xret == NULL){
+	if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
+	    goto done;
+    }
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
+	goto done;
+    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
+	goto done;
+    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+	goto done;
+    if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
+	goto done;
+    /* error-path:     Path to the element with the missing choice. */
+    if (xml2xpath(x, NULL, &path) < 0)
+    	goto done;
+    if (xml_chardata_encode(&encpath, "%s", path) < 0)
+	goto done;
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
+			    "<error-type>application</error-type>"
+			    "<error-tag>data-missing</error-tag>"
+                            "<error-app-tag>missing-choice</error-app-tag>"
+			    "<error-path>%s</error-path>"
+			    "<error-info><missing-choice xmlns=\"%s\">%s</missing-choice></error-info>"
+			    "<error-severity>error</error-severity>",
+			    encpath,
+			    YANG_XML_NAMESPACE,
+			    name) < 0)
+	goto done;
+    if (message){
+	if (xml_chardata_encode(&encstr, "%s", message) < 0)
+	    goto done;
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
+				"<error-message>%s</error-message>", encstr) < 0)
+	    goto done;
+    }
+    retval = 0;
+ done:
+    if (path)
+	free(path);
+    if (encstr)
+	free(encstr);
+    if (encpath)
+	free(encpath);
+    return retval;
+}
+
 /*! Create Netconf operation-not-supported error XML according to RFC 6241 App A
  *
  * Request could not be completed because the requested operation is not
@@ -1272,7 +1335,7 @@ netconf_malformed_message_xml(cxobj **xret,
 /*! Create Netconf data-not-unique error message according to RFC 7950 15.1
  *
  * A NETCONF operation would result in configuration data where a
- *   "unique" constraint is invalidated.
+ * "unique" constraint is invalidated.
  * @param[out]  xret   Error XML tree. Free with xml_free after use
  * @param[in]   x      List element containing duplicate
  * @param[in]   cvk    List of components in x that are non-unique
@@ -1287,9 +1350,10 @@ netconf_data_not_unique_xml(cxobj **xret,
     cg_var *cvi = NULL; 
     cxobj  *xerr;
     cxobj  *xinfo;
-    cbuf   *cb = NULL;
     cxobj  *xa;
-    
+    char   *path = NULL;
+    char  *encpath = NULL;
+
     if (xret == NULL){
 	clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
 	goto done;	
@@ -1312,23 +1376,31 @@ netconf_data_not_unique_xml(cxobj **xret,
 			    "<error-app-tag>data-not-unique</error-app-tag>"
 			    "<error-severity>error</error-severity>") < 0)
 	goto done;
+    /* error-info: <non-unique> Contains an instance identifier that  points to a leaf
+     * that invalidates the "unique" constraint.  This element is present once for each
+     * non-unique leaf. */
     if (cvec_len(cvk)){
 	if ((xinfo = xml_new("error-info", xerr, CX_ELMNT)) == NULL)
 	    goto done;
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
+	if (xml2xpath(x, NULL, &path) < 0)
 	    goto done;
-	}
+	if (xml_chardata_encode(&encpath, "%s", path) < 0)
+	    goto done;
 	while ((cvi = cvec_each(cvk, cvi)) != NULL){
 	    if (clixon_xml_parse_va(YB_NONE, NULL, &xinfo, NULL,
-				    "<non-unique>%s</non-unique>", cv_string_get(cvi)) < 0)
+				    "<non-unique xmlns=\"%s\">%s/%s</non-unique>",
+				    YANG_XML_NAMESPACE,
+				    encpath,
+				    cv_string_get(cvi)) < 0)
 		goto done;
 	}
     }
     retval = 0;
  done:
-    if (cb)
-	cbuf_free(cb);
+    if (path)
+	free(path);
+    if (encpath)
+	free(encpath);
     return retval;
 }
 
@@ -1351,7 +1423,7 @@ netconf_minmax_elements_xml(cxobj **xret,
     int    retval = -1;
     cxobj *xerr;
     char  *path = NULL;
-    cbuf  *cb = NULL;
+    char  *encpath = NULL;
     cxobj *xa;
     
     if (xret == NULL){
@@ -1370,31 +1442,27 @@ netconf_minmax_elements_xml(cxobj **xret,
 	goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
 	goto done;
-    if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
-    }
     if (xml_parent(xp)){ /* Dont include root, eg <config> */
-	if (xml2xpath(xp, NULL, &path) < 0)
+       if (xml2xpath(xp, NULL, &path) < 0)
+           goto done;
+	if (xml_chardata_encode(&encpath, "%s", path) < 0)
 	    goto done;
-	if (path)
-	    cprintf(cb, "%s", path);
     }
-    cprintf(cb, "/%s", name);
     if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>protocol</error-type>"
 			    "<error-tag>operation-failed</error-tag>"
 			    "<error-app-tag>too-%s-elements</error-app-tag>"
 			    "<error-severity>error</error-severity>"
-			    "<error-path>%s</error-path>",
+			    "<error-path>%s/%s</error-path>",
 			    max?"many":"few",
-			    cbuf_get(cb)) < 0)
+			    encpath?encpath:"",
+			    name) < 0)
 	goto done;
     retval = 0;
  done:
     if (path)
 	free(path);
-    if (cb)
-	cbuf_free(cb);
+    if (encpath)
+	free(encpath);
     return retval;
 }
 

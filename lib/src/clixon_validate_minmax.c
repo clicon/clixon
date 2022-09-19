@@ -138,17 +138,15 @@ unique_search_xpath(cxobj  *x,
     goto done;
 }
 
-/*! New element last in list, check if already exists if sp return -1
+/*! New element last in list, return error if already exists 
+ *
  * @param[in]  vec   Vector of existing entries (new is last)
  * @param[in]  i1    The new entry is placed at vec[i1]
- * @param[in]  vlen  Lenght of entry
+ * @param[in]  vlen  Length of vec
  * @param[in]  sorted Sorted by system, ie sorted by key, otherwise no assumption
  * @retval     0     OK, entry is unique
  * @retval    -1     Duplicate detected
  * @note This is currently quadratic complexity. It could be improved by inserting new element sorted and binary search.
- * @retval     1     Validation OK
- * @retval     0     Validation failed (cbret set)
- * @retval    -1     Error
  */
 static int
 check_insert_duplicate(char **vec,
@@ -684,9 +682,9 @@ xml_yang_minmax_recurse(cxobj  *xt,
 	    nr=1;
 	    /* new list check */
 	    if (ret &&
-		keyw == Y_LIST &&
-		(ret = xml_yang_minmax_newlist(x, xt, y, xret)) < 0)
-		goto done;
+		keyw == Y_LIST)
+		if ((ret = xml_yang_minmax_newlist(x, xt, y, xret)) < 0)
+		    goto done;
 	    if (ret == 0)
 		goto fail;
 	    yprev = y;

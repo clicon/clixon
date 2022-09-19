@@ -98,12 +98,12 @@ expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS
 rpc="<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><outer xmlns=\"urn:example:clixon\"><name>x</name><c><inner><name>a</name><value>foo</value></inner><inner><name>b</name><value>foo</value></inner></c></outer><outer xmlns=\"urn:example:clixon\"><name>y</name><c><inner><name>a</name><value>fie</value></inner><inner><name>b</name><value>fum</value></inner></c></outer></config></edit-config></rpc>"
 
 new "Add invalid example 1"
-expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "${rpc}" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique>c/inner/value</non-unique></error-info></rpc-error></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "${rpc}" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique xmlns=\"urn:ietf:params:xml:ns:yang:1\">/rpc/edit-config/config/outer[name=\"x\"]/c/inner/value</non-unique></error-info></rpc-error></rpc-reply>"
 
 rpc="<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><outer xmlns=\"urn:example:clixon\"><name>x</name><c><inner><name>a</name><value>foo</value></inner><inner><name>b</name><value>bar</value></inner></c></outer><outer xmlns=\"urn:example:clixon\"><name>y</name><c><inner><name>a</name><value>fie</value></inner><inner><name>b</name><value>bar</value></inner></c></outer></config></edit-config></rpc>"
 
 new "Add invalid example 2"
-expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "${rpc}" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique>c/inner/value</non-unique></error-info></rpc-error></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "${rpc}" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique xmlns=\"urn:ietf:params:xml:ns:yang:1\">/rpc/edit-config/config/outer[name=\"y\"]/c/inner/value</non-unique></error-info></rpc-error></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

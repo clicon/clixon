@@ -818,7 +818,7 @@ check_mandatory(cxobj     *xt,
 		if (x == NULL){
 		    /* @see RFC7950: 15.6 Error Message for Data That Violates 
 		     * a Mandatory "choice" Statement */
-		    if (xret && netconf_data_missing_xml(xret, yang_argument_get(yc), NULL) < 0)
+		    if (xret && netconf_missing_choice_xml(xret, xt, yang_argument_get(yc), NULL) < 0)
 			goto done;
 		    goto fail;
 		}
