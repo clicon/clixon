@@ -420,6 +420,8 @@ fi
 # Assumes: $dir and $expect are set
 # see err1
 function err(){
+  expect=$1
+  ret=$2
   echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
       echo "Expected: $1"
@@ -891,7 +893,10 @@ EOF
   else
       while read i
       do
-	  r=$(echo "$ret" | grep --null -Go "$i")
+	  # -F fixed strings
+	  # -G basic regexp
+	  # r=$(echo "$ret" | grep --null -Go "$i")
+	  r=$(echo "$ret" | grep --null -Fo "$i")
 	  match=$?
 	  if [ $match -ne 0 ]; then
 	      err "$expectenc" "$ret"
