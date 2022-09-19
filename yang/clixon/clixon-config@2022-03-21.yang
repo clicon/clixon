@@ -1074,15 +1074,20 @@ module clixon-config {
 	leaf CLICON_STREAM_DISCOVERY_RFC5277 {
 	    type boolean;
 	    default false;
-	    description "Enable event stream discovery as described in RFC 5277
-                         sections 3.2. If enabled, available streams will appear
-                         when doing netconf get or restconf GET";
+	    description
+		"Enable event stream discovery as described in RFC 5277
+                 sections 3.2. If enabled, available streams will appear
+                 when doing netconf get or restconf GET";
 	}
 	leaf CLICON_STREAM_DISCOVERY_RFC8040 {
 	    type boolean;
 	    default false;
     	    description
-		"Enable monitoring information for the RESTCONF protocol from RFC 8040";
+		"Enable monitoring information for the RESTCONF protocol from RFC 8040 as specified
+                 in module ietf-restconf-monitoring.yang
+                 Note that the name of this option is misleading, the monitoring module defines state
+                 for both capabilities and streams, not only streams which the name indicates.
+                 Also, consider changinf default to true.";
 	}
 	leaf CLICON_STREAM_PATH {
 	    type string;
