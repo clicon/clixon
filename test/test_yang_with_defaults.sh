@@ -35,6 +35,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
+  <CLICON_STREAM_DISCOVERY_RFC8040>true</CLICON_STREAM_DISCOVERY_RFC8040>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   $RESTCONFIG
 </clixon-config>
@@ -502,6 +503,20 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 "Content-Type: application/yang-data+xml" \
 "Cache-Control: no-cache" \
 '<interfaces xmlns="http://example.com/ns/interfaces"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface><cedv><edv>edv</edv></cedv><cdv><dv>dv</dv></cdv></interfaces>'
+
+new "rfc8040 B.1.3.  Retrieve the Server Capability Information json"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/capabilities)" \
+0 \
+"HTTP/$HVER 200" "Content-Type: application/yang-data+json" \
+'Cache-Control: no-cache' \
+'{"ietf-restconf-monitoring:capabilities":{"capability":\["urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit","urn:ietf:params:restconf:capability:depth:1.0","urn:ietf:params:restconf:capability:with-defaults:1.0"\]}}'
+
+new "rfc8040 B.1.3.  Retrieve the Server Capability Information xml"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/capabilities)" \
+0 \
+"HTTP/$HVER 200" "Content-Type: application/yang-data+xml" \
+'Cache-Control: no-cache' \
+'<capabilities xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring"><capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability><capability>urn:ietf:params:restconf:capability:depth:1.0</capability><capability>urn:ietf:params:restconf:capability:with-defaults:1.0</capability></capabilities>'
 
 new "rfc8040 B.3.9. RESTCONF with-defaults parameter = report-all json"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=report-all)" \
