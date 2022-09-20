@@ -1124,7 +1124,7 @@ xml_defaults_nopresence(cxobj *xn,
     int           rmx = 0; /* If set, remove this xn */
     int           ret;
     enum rfc_6020 keyw;
-    int           config = 0;
+    int           config = 1;
     
     if ((yn = xml_spec(xn)) != NULL){
 	keyw = yang_keyword_get(yn);
