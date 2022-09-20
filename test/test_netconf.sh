@@ -11,6 +11,7 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 tmp=$dir/tmp.x
+fyang=$dir/clixon-example.yang
 
 # Use yang in example
 
@@ -19,9 +20,10 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_MODULE_SET_ID>42</CLICON_MODULE_SET_ID>
+  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
@@ -34,6 +36,101 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
 </clixon-config>
+EOF
+
+cat <<EOF > $fyang
+module clixon-example{
+   yang-version 1.1;
+   namespace "urn:example:clixon";
+   prefix ex;
+   import ietf-interfaces { 
+	prefix if;
+   }
+   import ietf-ip {
+	prefix ip;
+   }
+   /* Example interface type for tests, local callbacks, etc */
+   identity eth {
+	base if:interface-type;
+   }
+    /* Generic config data */
+    container table{
+	list parameter{
+	    key name;
+	    leaf name{
+		type string;
+	    }
+	}
+    }
+   /* State data (not config) for the example application*/
+   container state {
+	config false;
+	description "state data for the example application (must be here for example get operation)";
+	leaf-list op {
+            type string;
+	}
+   }
+   augment "/if:interfaces/if:interface" {
+	container my-status {
+	    config false;
+	    description "For testing augment+state";
+	    leaf int {
+		type int32;
+	    }
+	    leaf str {
+		type string;
+	    }
+	}
+    }
+    rpc client-rpc {
+	description "Example local client-side RPC that is processed by the
+                     the netconf/restconf and not sent to the backend.
+                     This is a clixon implementation detail: some rpc:s
+                     are better processed by the client for API or perf reasons";
+	input {
+	    leaf x {
+		type string;
+	    }
+	}
+	output {
+	    leaf x {
+		type string;
+	    }
+	}
+    }
+    rpc empty {
+	description "Smallest possible RPC with no input or output sections";
+    }
+    rpc example {
+	description "Some example input/output for testing RFC7950 7.14.
+                     RPC simply echoes the input for debugging.";
+	input {
+	    leaf x {
+		description
+         	    "If a leaf in the input tree has a 'mandatory' statement with
+                   the value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		mandatory true;
+	    }
+	    leaf y {
+		description
+		    "If a leaf in the input tree has a 'mandatory' statement with the
+                  value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		default "42";
+	    }
+	}
+	output {
+	    leaf x {
+		type string;
+	    }
+	    leaf y {
+		type string;
+	    }
+	}
+    }
+
+}
 EOF
 
 new "test params: -f $cfg -- -s"

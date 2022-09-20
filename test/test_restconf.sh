@@ -27,17 +27,11 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 APPNAME=example
 
 cfg=$dir/conf.xml
+fyang=$dir/clixon-example.yang
 
-# clixon-example and clixon-restconf is used in the test, need local copy
+# clixon-restconf is used in the test, need local copy
 # This is a kludge: look in src otherwise assume it is installed in /usr/local/share
 # Note that revisions may change and may need to be updated
-y="clixon-example@${CLIXON_EXAMPLE_REV}.yang"
-
-if [ -d ${TOP_SRCDIR}/example/main/$y ]; then 
-    cp ${TOP_SRCDIR}/example/main/$y $dir/
-else
-    cp /usr/local/share/clixon/$y $dir/
-fi
 y=clixon-restconf@${CLIXON_RESTCONF_REV}.yang
 if [ -d ${TOP_SRCDIR}/yang/clixon ]; then 
     cp ${TOP_SRCDIR}/yang/clixon/$y $dir/
@@ -117,6 +111,146 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   $RESTCONFIG <!-- only fcgi -->
 </clixon-config>
+EOF
+
+cat <<EOF > $fyang
+module clixon-example {
+    yang-version 1.1;
+    namespace "urn:example:clixon";
+    prefix ex;
+    import ietf-interfaces { 
+	/* is in yang/optional which means clixon must be installed using --opt-yang-installdir */
+	prefix if;
+    }
+    import ietf-ip {
+	prefix ip;
+    }
+    import iana-if-type {
+	prefix ianaift;
+    }
+    import ietf-datastores {
+	prefix ds;
+    }
+    import clixon-autocli{
+	prefix autocli;
+    }
+    description
+	"Clixon example used as a part of the Clixon test suite.
+         It can be used as a basis for making new Clixon applications.
+         Note, may change without updating revision, just for testing current master.
+         ";
+    /* Example interface type for tests, local callbacks, etc */
+    identity eth {
+	base if:interface-type;
+    }
+    identity loopback {
+	base if:interface-type;
+    }
+    /* Generic config data */
+    container table{
+	list parameter{
+	    key name;
+	    leaf name{
+		type string;
+	    }
+	    leaf value{
+		type string;
+	    }
+	    leaf hidden{
+		type string;
+		autocli:hide;
+	    }
+	    leaf stat{
+		description "Inline state data for example application";
+		config false;
+		type int32;
+	    }
+	}
+    }
+    /* State data (not config) for the example application*/
+    container state {
+	config false;
+	description "state data for the example application (must be here for example get operation)";
+	leaf-list op {
+            type string;
+	}
+    }
+    augment "/if:interfaces/if:interface" {
+	container my-status {
+	    config false;
+	    description "For testing augment+state";
+	    leaf int {
+		type int32;
+	    }
+	    leaf str {
+		type string;
+	    }
+	}
+    }
+    /* yang extension implemented by the example backend code. */
+    extension e4 {
+	description
+	    "The first child of the ex:e4 (unknown) statement is inserted into 
+	    the module as a regular data statement. This means that 'uses bar;'
+	    in the ex:e4 statement below is a valid data node";
+	argument arg;
+    }
+    grouping bar {
+	leaf bar{
+	    type string;
+	}
+    }
+    ex:e4 arg1{
+	uses bar;
+    }
+    rpc client-rpc {
+	description "Example local client-side RPC that is processed by the
+                     the netconf/restconf and not sent to the backend.
+                     This is a clixon implementation detail: some rpc:s
+                     are better processed by the client for API or perf reasons";
+	input {
+	    leaf x {
+		type string;
+	    }
+	}
+	output {
+	    leaf x {
+		type string;
+	    }
+	}
+    }
+    rpc empty {
+	description "Smallest possible RPC with no input or output sections";
+    }
+    rpc example {
+	description "Some example input/output for testing RFC7950 7.14.
+                     RPC simply echoes the input for debugging.";
+	input {
+	    leaf x {
+		description
+         	    "If a leaf in the input tree has a 'mandatory' statement with
+                   the value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		mandatory true;
+	    }
+	    leaf y {
+		description
+		    "If a leaf in the input tree has a 'mandatory' statement with the
+                  value 'true', the leaf MUST be present in an RPC invocation.";
+		type string;
+		default "42";
+	    }
+	}
+	output {
+	    leaf x {
+		type string;
+	    }
+	    leaf y {
+		type string;
+	    }
+         }
+   }
+}
 EOF
 
 # Restconf test routine with arguments:
@@ -320,11 +454,11 @@ function testrun()
 
     # Should be alphabetically ordered
     new "restconf get restconf/operations. RFC8040 3.3.2 (json)"
-    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/operations)" 0 "HTTP/$HVER 200" '{"operations":{' '"clixon-example:client-rpc":\[null\],"clixon-example:empty":\[null\],"clixon-example:optional":\[null\],"clixon-example:example":\[null\]' '"clixon-lib:debug":\[null\],"clixon-lib:ping":\[null\],"clixon-lib:stats":\[null\],"clixon-lib:restart-plugin":\[null\]' '"ietf-netconf:get-config":\[null\],"ietf-netconf:edit-config":\[null\],"ietf-netconf:copy-config":\[null\],"ietf-netconf:delete-config":\[null\],"ietf-netconf:lock":\[null\],"ietf-netconf:unlock":\[null\],"ietf-netconf:get":\[null\],"ietf-netconf:close-session":\[null\],"ietf-netconf:kill-session":\[null\],"ietf-netconf:commit":\[null\],"ietf-netconf:discard-changes":\[null\],"ietf-netconf:validate":\[null\]'
+    expectpart "$(curl $CURLOPTS -X GET $proto://$addr/restconf/operations)" 0 "HTTP/$HVER 200" '{"operations":{' '"clixon-example:empty":\[null\]' '"clixon-lib:debug":\[null\],"clixon-lib:ping":\[null\],"clixon-lib:stats":\[null\],"clixon-lib:restart-plugin":\[null\]' '"ietf-netconf:get-config":\[null\],"ietf-netconf:edit-config":\[null\],"ietf-netconf:copy-config":\[null\],"ietf-netconf:delete-config":\[null\],"ietf-netconf:lock":\[null\],"ietf-netconf:unlock":\[null\],"ietf-netconf:get":\[null\],"ietf-netconf:close-session":\[null\],"ietf-netconf:kill-session":\[null\],"ietf-netconf:commit":\[null\],"ietf-netconf:discard-changes":\[null\],"ietf-netconf:validate":\[null\]'
 
     new "restconf get restconf/operations. RFC8040 3.3.2 (xml)"
     ret=$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $proto://$addr/restconf/operations)
-    expect='<operations><client-rpc xmlns="urn:example:clixon"/><empty xmlns="urn:example:clixon"/><optional xmlns="urn:example:clixon"/><example xmlns="urn:example:clixon"/>'
+    expect='<operations><client-rpc xmlns="urn:example:clixon"/><empty xmlns="urn:example:clixon"/>'
     match=`echo $ret | grep --null -Eo "$expect"`
     if [ -z "$match" ]; then
 	err "$expect" "$ret"
@@ -345,7 +479,7 @@ function testrun()
     expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:yang-library/module-set=default/module=ietf-interfaces)" 0 "HTTP/$HVER 200" '{"ietf-yang-library:module":\[{"name":"ietf-interfaces","revision":"2018-02-20","namespace":"urn:ietf:params:xml:ns:yang:ietf-interfaces"}\]}'
 
     new "restconf schema resource, mod-state top-level"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:yang-library/module-set=default)" 0 "HTTP/$HVER 200" "{\"ietf-yang-library:module-set\":\[{\"name\":\"default\",\"module\":\[{\"name\":\"clixon-autocli\",\"revision\":\"${CLIXON_AUTOCLI_REV}\",\"namespace\":\"http://clicon.org/autocli\"},{\"name\":\"clixon-example\",\"revision\":\"${CLIXON_EXAMPLE_REV}\",\"namespace\":\"urn:example:clixon\"},{\"name\":\"clixon-lib\",\"revision\":\"${CLIXON_LIB_REV}\",\""
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:yang-library/module-set=default)" 0 "HTTP/$HVER 200" "{\"ietf-yang-library:module-set\":\[{\"name\":\"default\",\"module\":\[{\"name\":\"clixon-autocli\",\"revision\":\"${CLIXON_AUTOCLI_REV}\",\"namespace\":\"http://clicon.org/autocli\"}" "{\"name\":\"clixon-lib\",\"revision\":\"${CLIXON_LIB_REV}\",\""
 
     new "restconf options. RFC 8040 4.1"
     expectpart "$(curl $CURLOPTS -X OPTIONS $proto://$addr/restconf/data)" 0 "HTTP/$HVER 200" "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE"

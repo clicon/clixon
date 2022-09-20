@@ -33,11 +33,6 @@ if [ "${WITH_RESTCONF}" != "fcgi" -o "$RCPROTO" = https ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
-# Skip regardless, broken in 5.7
-if true; then
-    rm -rf $dir
-    if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
-fi
 : ${SLEEP2:=1}
 SLEEP5=.5
 APPNAME=example
@@ -139,8 +134,8 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
-    new "start backend -s init -f $cfg"
-    start_backend -s init -f $cfg
+    new "start backend -s init -f $cfg -- -n"
+    start_backend -s init -f $cfg -- -n # create example notification stream
 fi
 
 new "waiting"
@@ -180,7 +175,6 @@ new "restconf monitor event nonexist stream"
 # Note cant use -S or -i here, the former dont know, latter because expectwait cant take
 # partial returns like expectpart can
 expectwait "curl -sk -X GET -H \"Accept: text/event-stream\" -H \"Cache-Control: no-cache\" -H \"Connection: keep-alive\" $RCPROTO://localhost/streams/NOTEXIST" 0 "" "" 2 '<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>'
-
 
 # 2a) start subscription 8s - expect 1-2 notifications
 new "2a) start subscriptions 8s - expect 1-2 notifications"

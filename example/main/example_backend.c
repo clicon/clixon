@@ -36,6 +36,7 @@
   * The example have the following optional arguments that you can pass as 
   * argc/argv after -- in clixon_backend:
   *  -a <..> Register callback for this yang action
+  *  -n  Notification streams example
   *  -r  enable the reset function 
   *  -s  enable the state function
   *  -S <file>  read state data from file, otherwise construct it programmatically (requires -s)
@@ -67,7 +68,7 @@
 #include <clixon/clixon_backend.h> 
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_EXAMPLE_OPTS "a:rsS:x:iuUtV:"
+#define BACKEND_EXAMPLE_OPTS "a:nrsS:x:iuUtV:"
 
 /*! Yang action
  * Start backend with -- -a <instance-id>
@@ -75,6 +76,12 @@
  * Hard-coded to action "reset" from RFC7950 7.15
  */
 static char *_action_instanceid = NULL;
+
+/*! Notification stream
+ * Enable notification streams for netconf/restconf 
+ * Start backend with -- -n
+ */
+static int _notification_stream = 0;
 
 /*! Variable to control if reset code is run.
  * The reset code inserts "extra XML" which assumes ietf-interfaces is
@@ -1314,6 +1321,9 @@ clixon_plugin_init(clicon_handle h)
 	case 'a':
 	    _action_instanceid = optarg;
 	    break;
+	case 'n':
+	    _notification_stream = 1;
+	    break;
 	case 'r':
 	    _reset = 1;
 	    break;
@@ -1355,24 +1365,25 @@ clixon_plugin_init(clicon_handle h)
 	}
     }
 	
-    /* Example stream initialization:
-     * 1) Register EXAMPLE stream 
-     * 2) setup timer for notifications, so something happens on stream
-     * 3) setup stream callbacks for notification to push channel
-     */
-    if (clicon_option_exists(h, "CLICON_STREAM_RETENTION"))
-	retention.tv_sec = clicon_option_int(h, "CLICON_STREAM_RETENTION");
-    if (stream_add(h, "EXAMPLE", "Example event stream", 1, &retention) < 0)
-	goto done;
-    /* Enable nchan pub/sub streams
-     * assumes: CLIXON_PUBLISH_STREAMS, eg configure --enable-publish
-     */
-    if (clicon_option_exists(h, "CLICON_STREAM_PUB") &&
-	stream_publish(h, "EXAMPLE") < 0)
-	goto done;
-    if (example_stream_timer_setup(h) < 0)
-	goto done;
-
+    if (_notification_stream){
+	/* Example stream initialization:
+	 * 1) Register EXAMPLE stream 
+	 * 2) setup timer for notifications, so something happens on stream
+	 * 3) setup stream callbacks for notification to push channel
+	 */
+	if (clicon_option_exists(h, "CLICON_STREAM_RETENTION"))
+	    retention.tv_sec = clicon_option_int(h, "CLICON_STREAM_RETENTION");
+	if (stream_add(h, "EXAMPLE", "Example event stream", 1, &retention) < 0)
+	    goto done;
+	/* Enable nchan pub/sub streams
+	 * assumes: CLIXON_PUBLISH_STREAMS, eg configure --enable-publish
+	 */
+	if (clicon_option_exists(h, "CLICON_STREAM_PUB") &&
+	    stream_publish(h, "EXAMPLE") < 0)
+	    goto done;
+	if (example_stream_timer_setup(h) < 0)
+	    goto done;
+    }
     /* Register callback for routing rpc calls 
      */
     /* From example.yang (clicon) */

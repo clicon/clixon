@@ -119,6 +119,7 @@ e`
 
 ### Corrected Bugs
 
+* [Replace operation](https://github.com/clicon/clixon/issues/350)
 * Fixed: [When multiple lists have same key name, need more elaborate error message in case of configuration having duplicate keys](https://github.com/clicon/clixon/issues/362)
   * Solved by implementing RFC7950 Sec 5.1 correctly
 * Fixed: [All values in list don't appear when writing "show <list>" in cli](https://github.com/clicon/clixon/issues/359)
