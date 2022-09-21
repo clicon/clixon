@@ -372,7 +372,7 @@ function testrun()
 	    expectpart "$(curl $CURLOPTS --http1.0 -X GET $proto://$addr/.well-known/host-meta | tr '\0' '\n')" 0 "" --not-- 'HTTP'
 	else
 	    new "restconf GET https/1.0  - close"
-	    expectpart "$(curl $CURLOPTS --http1.0 -X GET $proto://$addr/.well-known/host-meta)" 52 "" --not-- 'HTTP'
+	    expectpart "$(curl $CURLOPTS --http1.0 -X GET $proto://$addr/.well-known/host-meta)" "52 56" "" --not-- 'HTTP'
 
 	fi
 
@@ -381,7 +381,7 @@ function testrun()
 	    expectpart "$(curl $CURLOPTS --http1.1 -X GET $proto://$addr/.well-known/host-meta | tr '\0' '\n')" 0 --not-- 'HTTP'
 	else
 	    new "restconf GET https/1.1 - close"
-	    expectpart "$(curl $CURLOPTS --http1.1 -X GET $proto://$addr/.well-known/host-meta)" 52 --not-- 'HTTP'
+	    expectpart "$(curl $CURLOPTS --http1.1 -X GET $proto://$addr/.well-known/host-meta)" "52 56" --not-- 'HTTP'
 	fi
 	
 	if [ $proto = http ]; then
