@@ -301,6 +301,7 @@ restconf_http1_reply(restconf_conn        *rc,
     int     retval = -1;
     cg_var *cv;
 
+    clicon_debug(1, "%s", __FUNCTION__);
     /* If body, add a content-length header 
      *    A server MUST NOT send a Content-Length header field in any response
      * with a status code of 1xx (Informational) or 204 (No Content).  A
@@ -333,6 +334,8 @@ restconf_http1_reply(restconf_conn        *rc,
 	    clicon_err(OE_RESTCONF, errno, "cbuf_append_buf");
 	    goto done;
 	}
+	cbuf_free(sd->sd_body);
+	sd->sd_body = NULL;
     }
     retval = 0;
  done:
@@ -387,8 +390,10 @@ restconf_http1_path_root(clicon_handle  h,
     /* XXX gives mem leak in multiple requests, 
      * but maybe the error is that sd is not freed.
      */
-    if (sd->sd_path != NULL) 
+    if (sd->sd_path != NULL){
 	free(sd->sd_path);
+	sd->sd_path = NULL; 
+    }
 #endif
     if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
 	goto done; // XXX SHOULDNT EXIT if no REQUEST_URI

@@ -147,7 +147,7 @@ typedef struct restconf_socket{
     int           rs_periodic;  /* 0: persistent, 1: periodic (if callhome) */
     uint32_t      rs_period;    /* Period in s (if callhome & periodic) */
     uint8_t       rs_max_attempts;  /* max connect attempts (if callhome) */
-    uint16_t      rs_idle_timeout; /* Max underlying TCP session remains idle (if callhome and periodic) */
+    uint16_t      rs_idle_timeout; /* Max underlying TCP session remains idle (if callhome and periodic) (in seconds)*/
     uint64_t      rs_start;     /* First period start, next is start+periods*period */
     uint64_t      rs_period_nr; /* Dynamic succeeding or timed out periods. 
 				   Set in restconf_callhome_timer*/

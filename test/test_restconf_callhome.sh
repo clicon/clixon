@@ -40,6 +40,12 @@ clispec=$dir/spec.cli
 frequest=$dir/frequest
 # HTTP expected reply server->client
 
+# Duration of time between periodic connections (in seconds)
+PERIOD_S=10
+
+# Maximum number of seconds the underlying TCP session may remain idle (in seconds)
+IDLE_TIMEOUT_S=5
+
 certdir=$dir/certs
 cakey=$certdir/ca_key.pem
 cacert=$certdir/ca_cert.pem
@@ -97,8 +103,8 @@ cat <<EOF > $cfg
 	<call-home>
 	   <connection-type>
 	      <periodic>
-		<period>10</period>
-		<idle-timeout>5</idle-timeout>
+		<period>${PERIOD_S}</period>
+		<idle-timeout>${IDLE_TIMEOUT_S}</idle-timeout>
 	      </periodic>
 	   </connection-type>
 	   <reconnect-strategy>
@@ -291,7 +297,7 @@ if [ $RC -ne 0 ]; then
     stop_restconf_pre
 
     new "start restconf daemon"
-    start_restconf -f $cfg -D 1 -l s
+    start_restconf -f $cfg -D 1 -l s # XXX DONT debug
 fi
 
 new "wait restconf"
@@ -302,7 +308,7 @@ expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X
 
 t0=$(date +"%s")
 new "Send GET via callhome persistence client port 4336"
-expectpart "$(${clixon_restconf_callhome_client} -p 4336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 3)" 0 "HTTP/$HVERCH 200" "OK 1" "Close 1 local" "OK 2" "Close 2 local" "OK 3" "Close 3 local"  $expectreply --not-- "OK 4" "Close 4"
+expectpart "$(${clixon_restconf_callhome_client} -p 4336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -e 2 -n 3)" 0 "HTTP/$HVERCH 200" "Reply: 1" "Close: 1 local" "Reply: 2" "Close: 2 local" "Reply: 3" "Close: 3 local"  $expectreply --not-- "Reply: 4" "Close: 4"
 t1=$(date +"%s")
 
 let t=t1-t0
@@ -313,7 +319,7 @@ fi
 
 t0=$(date +"%s")
 new "Send GET via callhome client periodic port 8336"
-expectpart "$(${clixon_restconf_callhome_client} -t 30 -p 8336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 2)" 0 "HTTP/$HVERCH 200" "OK 1" "Close 1" "OK 2" "Close 2" $expectreply --not-- "OK 3" "Close 3"
+expectpart "$(${clixon_restconf_callhome_client} -t 30 -p 8336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -e 2 -n 2)" 0 "HTTP/$HVERCH 200" "Reply: 1" "Close: 1" "Reply: 2" "Close: 2" $expectreply --not-- "Reply: 3" "Close: 3"
 t1=$(date +"%s")
 
 let t=t1-t0
@@ -324,7 +330,7 @@ fi
 
 t0=$(date +"%s")
 new "Send GET via callhome persistence again"
-expectpart "$(${clixon_restconf_callhome_client} -p 4336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 3)" 0 "HTTP/$HVERCH 200" "OK 1" "Close 1 local" "OK 2" "Close 2 local" "OK 3" "Close 3 local"  $expectreply --not-- "OK 4" "Close 4"
+expectpart "$(${clixon_restconf_callhome_client} -p 4336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -e 2 -n 3)" 0 "HTTP/$HVERCH 200" "Reply: 1" "Close: 1 local" "Reply: 2" "Close: 2 local" "Reply: 3" "Close: 3 local"  $expectreply --not-- "Reply: 4" "Close: 4"
 t1=$(date +"%s")
 
 let t=t1-t0
@@ -335,13 +341,26 @@ fi
 
 t0=$(date +"%s")
 new "Send GET: idle-timeout, client keeps socket open, server closes"
-expectpart "$(${clixon_restconf_callhome_client} -o -t 60 -p 8336 -D $DBG -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -n 1)" 0 "HTTP/$HVERCH 200" "OK 1" $expectreply "Close 1 remote" --not-- "OK 2" "Close 2"
+expectpart "$(${clixon_restconf_callhome_client} -t 60 -p 8336 -D 0 -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -e 2 -n 2 -i)" 0 "HTTP/$HVERCH 200" "Accept: 1" "Reply: 1" $expectreply "Close: 1 remote" "Accept: 2" "Reply: 2" "Close: 2" --not-- "Accept: 3"
 t1=$(date +"%s")
 
 let t=t1-t0
-new "Check periodic interval ($t) is in interval [5-15]"
-if [ $t -lt 5 -o $t -gt 15 ]; then
-    err1 "timer in interval [5-15] but is: $t"
+new "Check periodic interval ($t) is in interval [15-30]"
+if [ $t -lt 15 -o $t -gt 30 ]; then
+    err1 "timer in interval [15-30] but is: $t"
+fi
+
+t0=$(date +"%s")
+
+new "Send GET: idle-timeout, client sends data then idle, server closes"
+expectpart "$(${clixon_restconf_callhome_client} -t 60 -p 8336 -D 0 -f $frequest -a 127.0.0.1 -c $srvcert -k $srvkey -C $cacert -e 2 -n 2 -i -d 3)" 0 "HTTP/$HVERCH 200" "Accept: 1" "Reply: 1" $expectreply "Close: 1 remote" "Accept: 2" "Reply: 2" "Close: 2" --not-- "Accept: 3"
+
+t1=$(date +"%s")
+
+let t=t1-t0
+new "Check periodic interval ($t) is in interval [15-30]"
+if [ $t -lt 15 -o $t -gt 30 ]; then
+    err1 "timer in interval [15-30] but is: $t"
 fi
 
 if [ $RC -ne 0 ]; then

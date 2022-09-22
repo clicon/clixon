@@ -288,8 +288,8 @@ ssl_x509_name_oneline(SSL   *ssl,
  * @param[in]  rc    Restconf connection handle 
  * @param[in]  sd    Http stream
  * @param[out] term  Terminate session
- * @retval    -1     Error
  * @retval     0     OK
+ * @retval    -1     Error
  * @see restconf_accept_client where connection can be exited at an earlier stage
  */
 int
@@ -365,6 +365,11 @@ restconf_connection_sanity(clicon_handle         h,
 
 /* Write buf to socket
  * see also this function in restcont_api_openssl.c
+ * @param[in]  h        Clixon handle
+ * @param[in]  buf      Buffer to write
+ * @param[in]  buflen   Length of buffer
+ * @param[in]  rc       Connection struct
+ * @param[in]  callfn   For debug
  * @retval  1  OK
  * @retval  0  OK, but socket write returned error, caller should close rc
  * @retval -1  Error
@@ -373,7 +378,8 @@ static int
 native_buf_write(clicon_handle    h,
 		 char            *buf,
 		 size_t           buflen,
-		 restconf_conn   *rc)
+		 restconf_conn   *rc,
+		 const char      *callfn)		 
 {
     int     retval = -1;
     ssize_t len;
@@ -400,7 +406,7 @@ native_buf_write(clicon_handle    h,
 	}
 	memcpy(dbgstr, buf, sz);
 	dbgstr[sz] = '\0';
-	clicon_debug(1, "%s buflen:%zu buf:\n%s", __FUNCTION__, buflen, dbgstr);
+	clicon_debug(1, "%s %s buflen:%zu buf:\n%s", __FUNCTION__, callfn, buflen, dbgstr);
 	free(dbgstr);
     }
     while (totlen < buflen){
@@ -411,8 +417,6 @@ native_buf_write(clicon_handle    h,
 		case SSL_ERROR_SYSCALL:              /* 5 */
 		    if (er == ECONNRESET || /* Connection reset by peer */
 			er == EPIPE) {      /* Reading end of socket is closed */
-			if (0 && restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
-			    goto done;
 			goto closed; /* Close socket and ssl */
 		    }
 		    else if (er == EAGAIN){
@@ -444,8 +448,6 @@ native_buf_write(clicon_handle    h,
 		    //		case EBADF: // XXX if this happens there is some larger error
 		case ECONNRESET: /* Connection reset by peer */
 		case EPIPE:   /* Broken pipe */
-		    if (0 && restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
-			goto done;
 		    goto closed; /* Close socket and ssl */
 		    break;
 		default:
@@ -500,7 +502,7 @@ native_send_badrequest(clicon_handle    h,
     cprintf(cb, "\r\n");
     if (body)
 	cprintf(cb, "%s\r\n", body);
-    retval = native_buf_write(h, cbuf_get(cb), cbuf_len(cb), rc);
+    retval = native_buf_write(h, cbuf_get(cb), cbuf_len(cb), rc, __FUNCTION__);
  done:
     if (cb)
 	cbuf_free(cb);
@@ -721,7 +723,8 @@ restconf_http1_process(restconf_conn *rc,
 	if ((ret = http1_check_expect(h, rc, sd)) < 0)
 	    goto done;
 	if (ret == 1){
-	    if ((ret = native_buf_write(h, cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf), rc)) < 0)
+	    if ((ret = native_buf_write(h, cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
+					rc, __FUNCTION__)) < 0)
 		goto done;
 	    cvec_reset(sd->sd_outp_hdrs);
 	    cbuf_reset(sd->sd_outp_buf);
@@ -755,12 +758,17 @@ restconf_http1_process(restconf_conn *rc,
     /* main restconf processing */
     if (restconf_http1_path_root(h, rc) < 0)
 	goto done;
-    if ((ret = native_buf_write(h, cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf), rc)) < 0)
+    if ((ret = native_buf_write(h, cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
+				rc, __FUNCTION__)) < 0)
 	goto done;
     cvec_reset(sd->sd_outp_hdrs); /* Can be done in native_send_reply */
     cbuf_reset(sd->sd_outp_buf);
     cbuf_reset(sd->sd_inbuf);
     cbuf_reset(sd->sd_indata);
+    if (sd->sd_qvec){
+	cvec_free(sd->sd_qvec);
+	sd->sd_qvec = NULL;
+    }
     if (ret == 0 || rc->rc_exit){  /* Server-initiated exit */
 	if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
 	    goto done;
@@ -1056,7 +1064,7 @@ restconf_close_ssl_socket(restconf_conn *rc,
     int sslerr;
     int er;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(1, "%s %s", __FUNCTION__, callfn);
     if (rc->rc_ssl != NULL){
 	if (!dontshutdown &&
 	    (ret = SSL_shutdown(rc->rc_ssl)) < 0){
@@ -1158,15 +1166,17 @@ ssl_alpn_check(clicon_handle        h,
  * @param[in]  h     Clixon handle
  * @param[in]  s     Socket (unix or ip)
  * @param[in]  rsock Socket struct
- * @param[out] rcp   Restconf connection
+ * @param[out] rcp   Restconf connection, if present and retval=1
+ * @retval     1     OK, connection is up, rcp set
+ * @retval     0     OK, but connection closed
+ * @retval    -1     Error
  * @see openssl_init_socket where this callback is registered
  */
 int
 restconf_ssl_accept_client(clicon_handle    h,
 			   int              s,
 			   restconf_socket *rsock,
-			   restconf_conn  **rcp
-			   )
+			   restconf_conn  **rcp)
 {
     int                     retval = -1;
     restconf_native_handle *rn = NULL;
@@ -1252,7 +1262,7 @@ restconf_ssl_accept_client(clicon_handle    h,
 #endif
 		    if (restconf_close_ssl_socket(rc, __FUNCTION__, 1) < 0)
 			goto done;
-		    goto ok;
+		    goto closed;
 		    break;
 		case SSL_ERROR_SYSCALL:              /* 5 */
 		    /* Some non-recoverable, fatal I/O error occurred. The OpenSSL error queue 
@@ -1264,7 +1274,7 @@ restconf_ssl_accept_client(clicon_handle    h,
 		    if (restconf_close_ssl_socket(rc, __FUNCTION__, 1) < 0)
 			goto done;
 		    rc = NULL;
-		    goto ok;
+		    goto closed;
 		    break;
 		case SSL_ERROR_WANT_READ:            /* 2 */
 		case SSL_ERROR_WANT_WRITE:           /* 3 */
@@ -1305,7 +1315,7 @@ restconf_ssl_accept_client(clicon_handle    h,
 	if ((ret = ssl_alpn_check(h, alpn, alpnlen, rc, &proto)) < 0)
 	    goto done;
 	if (ret == 0)
-	    goto ok;
+	    goto closed;
 	clicon_debug(1, "%s proto:%s", __FUNCTION__, restconf_proto2str(proto));
 
 #if 0 /* Seems too early to fail here, instead let authentication callback deal with this */
@@ -1327,7 +1337,7 @@ restconf_ssl_accept_client(clicon_handle    h,
 		    goto done;
 		if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
 		    goto done;
-		goto ok;
+		goto closed;
 	    }
 	}
 #endif
@@ -1387,13 +1397,15 @@ restconf_ssl_accept_client(clicon_handle    h,
 	goto done;
     if (rcp)
 	*rcp = rc;
- ok:
-    retval = 0;
+    retval = 1; /* OK, up */
  done:
     clicon_debug(1, "%s retval %d", __FUNCTION__, retval);
     if (name)
 	free(name);
     return retval;
+ closed:
+    retval = 0; /* OK, closed */
+    goto done;
 } /* restconf_ssl_accept_client */
 
 static int
@@ -1458,8 +1470,8 @@ restconf_idle_cb(int   fd,
     clicon_debug(1, "%s \"%s\"", __FUNCTION__, rsock->rs_description);
     if (rc->rc_callhome && rsock->rs_periodic && rc->rc_s > 0 && rsock->rs_idle_timeout){
 	gettimeofday(&now, NULL);
-	timersub(&now, &rc->rc_t, &td);	
-	if (td.tv_sec < rsock->rs_idle_timeout){
+	timersub(&now, &rc->rc_t, &td);	/* Last packet timestamp */
+	if (td.tv_sec >= rsock->rs_idle_timeout){
 	    if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
 		goto done;
 	}
@@ -1503,7 +1515,7 @@ restconf_idle_timer(restconf_conn *rc)
     restconf_socket *rsock;
 
     if (rc == NULL || !rc->rc_callhome){
-	clicon_err(OE_YANG, EINVAL, "rc is NULL or not callhome");
+	clicon_err(OE_RESTCONF, EINVAL, "rc is NULL or not callhome");
 	goto done;
     }    
     rsock = rc->rc_socket;
@@ -1542,6 +1554,7 @@ restconf_callhome_cb(int   fd,
     size_t           sa_len;
     int              s;
     restconf_conn   *rc = NULL;
+    int              ret;
 
     rsock = (restconf_socket *)arg;
     if (rsock == NULL || !rsock->rs_callhome){
@@ -1568,11 +1581,13 @@ restconf_callhome_cb(int   fd,
     else {
 	clicon_debug(1, "%s connect %hu OK", __FUNCTION__, rsock->rs_port);
 	rsock->rs_attempts = 0;
-	if (restconf_ssl_accept_client(h, s, rsock, &rc) < 0)
+	if ((ret = restconf_ssl_accept_client(h, s, rsock, &rc)) < 0)
 	    goto done;
-	if (rsock->rs_periodic && rsock->rs_idle_timeout &&
-	    restconf_idle_timer(rc) < 0)
-	    goto done;
+	/* ret == 0 means already closed */
+	if (ret == 1 && rsock->rs_periodic && rsock->rs_idle_timeout){
+	    if (restconf_idle_timer(rc) < 0)
+		goto done;
+	}
     }
     retval = 0;
  done:
@@ -1588,7 +1603,7 @@ restconf_callhome_timer_unreg(restconf_socket *rsock)
 /*! Set callhome timer, which tries to connect to callhome client
  *
  * Implement callhome re-connect strategies in ietf-restconf-server.yang
- * NYI: start-with, anchor-time, idle-timeout
+ * NYI: start-with, anchor-time
  * @param[in]  rsock  restconf_socket
  * @param[in]  new    if periodic: 1: Force a new period
  * @see restconf_callhome_timer_unreg
@@ -1635,7 +1650,7 @@ restconf_callhome_timer(restconf_socket *rsock,
     }
     cprintf(cb, "restconf callhome timer %s", rsock->rs_description);
     if (rsock->rs_description)
-	clicon_debug(1, "%s registering \"%s\": %lu", __FUNCTION__, rsock->rs_description, t.tv_sec);
+	clicon_debug(1, "%s registering \"%s\": +%lu", __FUNCTION__, rsock->rs_description, t.tv_sec-now.tv_sec);
     else
 	clicon_debug(1, "%s: %lu", __FUNCTION__, t.tv_sec);
     /* Should be only place restconf_callhome_cb is registered */
