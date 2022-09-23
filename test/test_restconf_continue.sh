@@ -17,7 +17,7 @@ APPNAME=example
 if [ ${HAVE_LIBNGHTTP2} = true ]; then
     # Pin to http/1
     HAVE_LIBNGHTTP2=false
-    CURLOPTS="${CURLOPTS} --http1.1"
+    CURLOPTS=${CURLOPTS/http2/http1.1}
     HVER=1.1
 fi
 

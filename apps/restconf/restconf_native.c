@@ -765,6 +765,8 @@ restconf_http1_process(restconf_conn *rc,
     cbuf_reset(sd->sd_outp_buf);
     cbuf_reset(sd->sd_inbuf);
     cbuf_reset(sd->sd_indata);
+    if (sd->sd_body)
+	cbuf_reset(sd->sd_body);
     if (sd->sd_qvec){
 	cvec_free(sd->sd_qvec);
 	sd->sd_qvec = NULL;

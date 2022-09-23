@@ -13,7 +13,7 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 # Pin to http/1
 if [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_HTTP1} = true ]; then
     HAVE_LIBNGHTTP2=false
-    CURLOPTS="${CURLOPTS} --http1.1"
+    CURLOPTS=${CURLOPTS/http2/http1.1}
     HVER=1.1
 fi
 
