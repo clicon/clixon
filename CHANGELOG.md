@@ -39,7 +39,7 @@
 ## 5.9.0
 24 September 2022
 
-The 5.9 release features RFC 6243 with-defaults and RFC 8071 RESTCONF Call-home
+The 5.9 release features with-defaults (RFC 6243) and RESTCONF Call-home (RFC 8071) along with numerous bugfixes and usability improvements.
 
 ### New features
 
