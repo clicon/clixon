@@ -535,6 +535,7 @@ xml_chardata_encode(char      **escp,
 /*! Escape characters according to XML definition and append to cbuf
  * @param[in]   cb     CLIgen buf
  * @param[in]   str    Not-encoded input string
+ * @retdata     0      OK
  * @see xml_chardata_encode for the generic function
  */
 int

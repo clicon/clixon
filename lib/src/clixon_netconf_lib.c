@@ -1786,6 +1786,10 @@ netconf_hello_server(clicon_handle h,
 				module_set_id) < 0)
 	    goto done;
 	cprintf(cb, "<capability>%s</capability>", encstr);
+	if (encstr){
+	    free(encstr);
+	    encstr = NULL;
+	}
     }
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:candidate:1.0</capability>");
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:validate:1.1</capability>");
@@ -1793,7 +1797,9 @@ netconf_hello_server(clicon_handle h,
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:xpath:1.0</capability>");
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:notification:1.0</capability>");
     /* rfc6243 with-defaults capability modes */
-    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit&also-supported=report-all,trim,report-all-tagged</capability>");
+    cprintf(cb, "<capability>");
+    xml_chardata_cbuf_append(cb, "urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit&also-supported=report-all,trim,report-all-tagged");
+    cprintf(cb, "</capability>");
     cprintf(cb, "</capabilities>");
     if (session_id) 
 	cprintf(cb, "<session-id>%lu</session-id>", (long unsigned int)session_id);
@@ -2091,10 +2097,10 @@ netconf_output(int   s,
 	    
 /*! Encapsulate and send outgoing netconf packet as cbuf on socket
  *
- * @param[in]   h    Clixon handle
- * @param[in]   cb   Cligen buffer that contains the XML message
- * @retval      0    OK
- * @retval     -1    Error
+ * @param[in]   framing Framing type, ie EOM(1.0) or chunked (1.1)
+ * @param[in]   cb      Cligen buffer that contains the XML message
+ * @retval      0       OK
+ * @retval     -1       Error
  * @note Assumes "cb" contains valid XML
  * @see netconf_output  without encapsulation
  * @see netconf_hello_msg where framing is set
