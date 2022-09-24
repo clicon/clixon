@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [5.9.0](#590) Expected: September 2022
+* [5.9.0](#590) 24 September 2022
 * [5.8.0](#580) 28 July 2022
 * [5.7.0](#570) 17 May 2022
 * [5.6.0](#560) 8 March 2022
@@ -37,7 +37,9 @@
 * [3.3.1](#331) June 7 2017
 
 ## 5.9.0
-Expected: September 2022
+24 September 2022
+
+The 5.9 release features RFC 6243 with-defaults and RFC 8071 RESTCONF Call-home
 
 ### New features
 
@@ -52,7 +54,8 @@ Expected: September 2022
     * RESTCONF with-defaults query for XML and JSON
        * Assigned meta-data for the `ietf-netconf-with-defaults:default` attribute for JSON (RFC8040 Sec 5.3.2)
   * Added `withdefault` option to cli show commands
-    * See `CLISPEC changes of cli show functions` below
+    * See [User manual](https://clixon-docs.readthedocs.io/en/latest/cli.html#show-commands)
+    * See [CLISPEC changes](#api-changes-on-existing-protocolconfig-features)
   * See [Netconf With-defaults Capability](https://github.com/clicon/clixon/issues/262)
 * RESTCONF call home
   * Standard: RFC 8071 "NETCONF Call Home and RESTCONF Call Home"
@@ -95,17 +98,16 @@ Developers may need to change their code
   * For details of updated API, see https://clixon-docs.readthedocs.io/en/latest/cli.html#show-commands
   * Changed `cli_show_auto()` 
      * Added parameters for pretty-print, state and with-default
-     * If you have the <prefix> parameter, you need to change the call as follows:
+     * If the `<prefix>`is used, you need to change the call as follows:
         * `cli_show_auto(<db>, <format>, <prefix>)` -> `cli_show_auto(<db>, <format>, true, false, NULL, <prefix>)`
-     * Otherwise it is backward-compatible
+     * Otherwise the API is backward-compatible
   * Changed `cli_show_config()` 
      * Added parameters for pretty-print, state and with-default
-     * If you have the <prefix> parameter, you need to change the call as follows:
+     * If the `<prefix>` parameter is used, you need to change the call as follows:
         * `cli_show_config(<db>, <format>, <xpath>, <ns>, <prefix>)` -> `cli_show_auto(<db>, <format>, <xpath>, <ns>, true, false, NULL, <prefix>)`
-     * Otherwise it is backward-compatible
+     * Otherwise the API is backward-compatible
   * Removed `cli_show_auto_state()`, replace with `cli_show_auto` with state set to `true`
-  * Removed `cli_show_config_state()`, replace with `cli_auto_show` with state set to `tru
-e`
+  * Removed `cli_show_config_state()`, replace with `cli_auto_show` with state set to `true`
   * Replaced `cli_auto_show()` with `cli_show_auto_mode()`
      * The first argument is removed. You need to change all calls as follows:
        * `cli_show_config(<treename>, <db>, ...` -> `cli_show_auto_menu(<db>, ...)`
@@ -115,11 +117,12 @@ e`
 
 * Restconf:
   * Openssl 3.0 is supported
-  * Refactoring of the closing of SSL sockets. Some cornercase bugs have been removed.
+  * Refactoring of code closing sockets. Some cornercase bugs have been removed.
 
 ### Corrected Bugs
 
-* [Replace operation](https://github.com/clicon/clixon/issues/350)
+* Fixed: Leak in restconf http/1 data path: when multiple packets in same connection. 
+* Fixed: [Replace operation](https://github.com/clicon/clixon/issues/350)
 * Fixed: [When multiple lists have same key name, need more elaborate error message in case of configuration having duplicate keys](https://github.com/clicon/clixon/issues/362)
   * Solved by implementing RFC7950 Sec 5.1 correctly
 * Fixed: [All values in list don't appear when writing "show <list>" in cli](https://github.com/clicon/clixon/issues/359)
