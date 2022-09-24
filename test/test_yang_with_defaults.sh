@@ -225,7 +225,7 @@ wait_restconf
 
 new "rfc4243 4.3.  Capability Identifier"
 expecteof "$clixon_netconf -ef $cfg" 0 "$DEFAULTHELLO" \
-"<capability>urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit&also-supported=report-all,trim,report-all-tagged</capability>"
+"<capability>urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit&amp;also-supported=report-all,trim,report-all-tagged</capability>"
 
 new "rfc6243 3.1.  'report-all' Retrieval Mode"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
