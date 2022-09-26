@@ -92,6 +92,7 @@ cat <<EOF > $fstate
       <ifOutErrors>131</ifOutErrors>
       <ifOutQLen>132</ifOutQLen>
       <ifSpecific>0.0</ifSpecific>
+      <ifName>test1</ifName>
     </ifEntry>
     <ifEntry>
       <ifIndex>2</ifIndex>
@@ -116,6 +117,7 @@ cat <<EOF > $fstate
       <ifOutErrors>111111</ifOutErrors>
       <ifOutQLen>111</ifOutQLen>
       <ifSpecific>1.2.3</ifSpecific>
+      <ifName>test2</ifName>
     </ifEntry>
   </ifTable>
   <ifRcvAddressTable>
@@ -174,10 +176,7 @@ function testinit(){
 	new "Starting backend"
 	start_backend -s init -f $cfg -- -sS $fstate
     fi
-if true; then
-    rm -rf $dir
-    if [ "$s" = $0 ]; then exit 0; else return 0; fi
-fi
+
     new "wait backend"
     wait_backend
 
@@ -238,6 +237,7 @@ NAME19="IF-MIB::ifOutDiscards"
 NAME20="IF-MIB::ifOutErrors"
 NAME21="IF-MIB::ifOutQLen"
 NAME22="IF-MIB::ifSpecific"
+NAME23="IF-MIB::ifName"
 
 NAME24="IF-MIB::ifRcvAddressAddress.1.17.49.49.58.98.98.58.99.99.58.100.100.58.101.101.58.102.102"
 NAME25="IF-MIB::ifRcvAddressAddress.2.17.97.97.58.50.50.58.51.51.58.52.52.58.53.53.58.54.54"
@@ -359,6 +359,12 @@ new "Test $OID22 ifSpecific"
 validate_oid $OID22 $OID22 "OID" ".0.0"
 validate_oid $NAME22.1 $NAME22.1 "OID" "SNMPv2-SMI::zeroDotZero"
 validate_oid $NAME22.2 $NAME22.2 "OID" "iso.2.3"
+
+if [ $AUGMENTTEST ]; then
+   new "Test ifName"
+   validate_oid $NAME23.1 $NAME23.1 "STRING" "test1"
+   validate_oid $NAME23.2 $NAME23.2 "STRING" "test2"
+fi
 
 new "Test ifTable"
 expectpart "$($snmptable IF-MIB::ifTable)" 0 "Test 2" "1400" "1000" "11:22:33:44:55:66" "down" "111" "222" "333" "444" "555" "666" "777" "888" "999" "101010" "111111" "111"
