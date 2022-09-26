@@ -47,10 +47,10 @@ AC_INIT(lib/clixon/clixon.h.in)
 # where autotool scripts are: install-sh, config.sub, config.guess
 AC_CONFIG_AUX_DIR(config-aux)
 
-CLIXON_VERSION_MAJOR="5"
-CLIXON_VERSION_MINOR="9"
+CLIXON_VERSION_MAJOR="6"
+CLIXON_VERSION_MINOR="0"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
 # Debug flag
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, default: no]),[
@@ -204,6 +204,7 @@ AC_MSG_RESULT(publish is $ac_enable_publish)
 
 if test "$ac_enable_publish" = "yes"; then
    # publish streams uses libcurl
+   AC_CHECK_HEADERS(curl.h,[], AC_MSG_ERROR([curl missing]))	
    AC_CHECK_LIB(curl, curl_global_init,, AC_MSG_ERROR([libcurl missing]))
    AC_DEFINE(CLIXON_PUBLISH_STREAMS, 1, [Enable publish of notification streams using SSE and curl])
 fi
