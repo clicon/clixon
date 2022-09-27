@@ -67,8 +67,10 @@ extern "C" {
 struct clixon_snmp_handle {
     clicon_handle sh_h;
     yang_stmt    *sh_ys;               /* Leaf for scalar, list for table */
-    oid           sh_oid[MAX_OID_LEN]; /* OID for debug, may be removed? */
-    size_t        sh_oidlen;           
+    oid           sh_oid[MAX_OID_LEN]; /* OID of registered table (list) */
+    size_t        sh_oidlen;
+    oid           sh_oid2[MAX_OID_LEN]; /* OID of registered container */
+    size_t        sh_oid2len;           
     char         *sh_default;          /* MIB default value leaf only */
     cvec         *sh_cvk_orig;         /* Index/Key variable values (original) */
     netsnmp_table_registration_info *sh_table_info; /* To mimic table-handler in libnetsnmp code 

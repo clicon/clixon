@@ -40,6 +40,10 @@
 ## 6.0.0
 Expected: November 2022
 
+### Corrected Bugs
+
+* Fixed: [SNMP "smiv2" yang extension doesn't work on augmented nodes](https://github.com/clicon/clixon/issues/366)
+
 ## 5.9.0
 24 September 2022
 

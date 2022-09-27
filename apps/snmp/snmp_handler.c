@@ -805,6 +805,8 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
  * Query clixon if object exists, if so return value
  * @param[in]  h        Clixon handle
  * @param[in]  yt       Yang of table (of list type)
+ * @param[in]  oidt     OID of registered top container object (above list), may be different from yt
+ * @param[in]  oidtlen  OID length of list object OID
  * @param[in]  oids     OID of ultimate scalar value
  * @param[in]  oidslen  OID length of scalar
  * @param[in]  reqinfo  Agent transaction request structure
@@ -816,14 +818,14 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
 static int
 snmp_table_get(clicon_handle               h,
 	       yang_stmt                  *yt,
+	       oid                        *oidt,
+	       size_t                      oidtlen,
 	       oid                        *oids,
 	       size_t                      oidslen,
 	       netsnmp_agent_request_info *reqinfo,
 	       netsnmp_request_info       *request)
 {
     int        retval = -1;
-    oid        oidt[MAX_OID_LEN] = {0,}; /* Table / list oid */
-    size_t     oidtlen = MAX_OID_LEN;
     oid        oidleaf[MAX_OID_LEN] = {0,}; /* Leaf */
     size_t     oidleaflen = MAX_OID_LEN;
     oid       *oidi;
@@ -838,11 +840,6 @@ snmp_table_get(clicon_handle               h,
     char      *defaultval = NULL;
     int        ret;
 
-    /* Get OID from table /list  */
-    if ((ret = yangext_oid_get(yt, oidt, &oidtlen, NULL)) < 0)
-	goto done;
-    if (ret == 0)
-	goto done;
     /* Get yang of leaf from first part of OID */
     ys = NULL;
     while ((ys = yn_each(yt, ys)) != NULL) {
@@ -1259,6 +1256,7 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
 	/* Create xpath from YANG table OID + 1 + n + cvk/key = requestvb->name 
 	 */
 	if ((ret = snmp_table_get(sh->sh_h, sh->sh_ys,
+				  sh->sh_oid2, sh->sh_oid2len, 
 				  requestvb->name, requestvb->name_length,
 				  reqinfo, request)) < 0)
 	    goto done;

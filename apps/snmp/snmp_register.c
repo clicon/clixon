@@ -200,33 +200,33 @@ mibyang_leaf_register(clicon_handle h,
     return retval;
 }
 
-/*! Register table entry handler itself (not column/row leafs) 
+/*! Register table entry handler itself (not column/row leafs) from list or augment
  *
  * Parse smiv2 extensions for YANG container/list 
  *
-  * Typical table:
-  *   container x {
-  *      smiv2:oid "1.3.6.1.4.1.8072.2.2.1";
-  *      list y{
-  *      
-  *      }
-  *   }
- * @param[in]  h    Clixon handle
- * @param[in]  ys   Mib-Yang node (container)
- * @param[in]  yl   Mib-Yang node (list)
- * @retval     0    OK
- * @retval    -1    Error
+ * Typical table:
+ *   container x {
+ *      smiv2:oid "1.3.6.1.4.1.8072.2.2.1";
+ *      list y{
+ *      
+ *      }
+ *   }
+ * @param[in]  h     Clixon handle
+ * @param[in]  ylist Mib-Yang node (list)
+ * @retval     0     OK
+ * @retval    -1     Error
  */
 static int
 mibyang_table_register(clicon_handle h,
-		       yang_stmt    *ylist)
+		       yang_stmt    *ylist,
+		       oid          *oid1,
+		       size_t        oid1len,
+		       oid          *oid2,
+		       size_t        oid2len,
+		       char         *oidstr)
 {
     int                              retval = -1;
     netsnmp_handler_registration    *nhreg;
-    char                            *oidstr = NULL;
-    oid                              oid1[MAX_OID_LEN] = {0,};
-    size_t                           oid1len = MAX_OID_LEN;
-    char                            *name;
     clixon_snmp_handle              *sh;
     int                              ret;
     netsnmp_mib_handler             *handler;
@@ -237,19 +237,19 @@ mibyang_table_register(clicon_handle h,
     yang_stmt                       *yleaf;
     int                              asn1type;
     yang_stmt                       *ys;
+    char                            *name;
     
     if ((ys = yang_parent_get(ylist)) == NULL ||
 	yang_keyword_get(ys) != Y_CONTAINER){
 	clicon_err(OE_YANG, EINVAL, "ylist parent is not list");
 	goto done;
     }
-    /* Get OID from parent container  */
-    if ((ret = yangext_oid_get(ys, oid1, &oid1len, &oidstr)) < 0)
-	goto done;
-    if (ret == 0)
-	goto ok;
-    name = yang_argument_get(ys);
-
+    /* Note: This is wrong for augmented nodes where name is the original list, not the 
+     * augmented. For example, for IFMIB you get ifTable twice where you should get ifTable for
+     * the original and ifXTable for the augmented.
+     * But the name does not seem to have semantic significance, so I leave it as is.
+     */
+    name = yang_argument_get(ys); 
     /* Userdata to pass around in netsmp callbacks 
      * XXX: not deallocated
      */
@@ -260,9 +260,10 @@ mibyang_table_register(clicon_handle h,
     memset(sh, 0, sizeof(*sh));
     sh->sh_h = h;
     sh->sh_ys = ylist;
-
-    memcpy(sh->sh_oid, oid1, sizeof(oid1));
+    memcpy(sh->sh_oid, oid1, oid1len*sizeof(*oid1));
     sh->sh_oidlen = oid1len;
+    memcpy(sh->sh_oid2, oid2, sizeof(*oid2)*oid2len);
+    sh->sh_oid2len = oid2len;
 
     if ((handler = netsnmp_create_handler(name, clixon_snmp_table_handler)) == NULL){
 	clicon_err(OE_XML, errno, "netsnmp_create_handler");
@@ -327,6 +328,117 @@ mibyang_table_register(clicon_handle h,
     }
     sh->sh_table_info = table_info; /* Keep to free at exit */
     clicon_debug(1, "%s register: %s %s", __FUNCTION__, name, oidstr);
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Register table entry handler from YANG list
+ *
+ * Parse smiv2 extensions for YANG container/list. For example:
+ *   container x {
+ *      smiv2:oid "1.3.6.1.4.1.8072.2.2.1";
+ *      list ylist{
+ *      
+ *      }
+ *   }
+ * @param[in]  h     Clixon handle
+ * @param[in]  ylist Mib-Yang node (list)
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @see mibyang_augment_register
+ */
+static int
+mibyang_list_register(clicon_handle h,
+		      yang_stmt    *ylist)
+{
+    int        retval = -1;
+    yang_stmt *yc;
+    char      *oidstr = NULL;
+    oid        oid1[MAX_OID_LEN] = {0,};
+    size_t     oid1len = MAX_OID_LEN;
+    oid        oid2[MAX_OID_LEN] = {0,};
+    size_t     oid2len = MAX_OID_LEN;
+    int        ret;
+
+    if ((yc = yang_parent_get(ylist)) == NULL ||
+	yang_keyword_get(yc) != Y_CONTAINER){
+	clicon_err(OE_YANG, EINVAL, "ylist parent is not container");
+	goto done;
+    }
+    if ((ret = yangext_oid_get(ylist, oid2, &oid2len, NULL)) < 0)
+	goto done;
+    if (ret == 0)
+	goto ok;
+    if ((ret = yangext_oid_get(yc, oid1, &oid1len, &oidstr)) < 0)
+	goto done;
+    if (ret == 0)
+	goto ok;
+    if (mibyang_table_register(h, ylist, 
+			       oid1, oid1len,
+			       oid2, oid2len,
+			       oidstr) < 0)
+	goto done;
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Register table entry handler from YANG augment
+ *
+ * Difference from register a list is that the OIDs are taken from the augment statement
+ * Parse smiv2 extensions for YANG augment. For example (from IF-MIB):
+ * 
+ * smiv2:alias "ifXTable"
+ *    smiv2:oid "1.3.6.1.2.1.31.1.1";
+ * smiv2:alias "ifXEntry" 
+ *    smiv2:oid "1.3.6.1.2.1.31.1.1.1";
+ * augment "/if-mib:IF-MIB/if-mib:ifTable/if-mib:ifEntry" {
+ *     smiv2:oid "1.3.6.1.2.1.31.1.1.1";
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  yaug Mib-Yang node (augment)
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @see mibyang_list_register
+ */
+static int
+mibyang_augment_register(clicon_handle h,
+			 yang_stmt    *yaug)
+{
+    int        retval = -1;
+    char      *schema_nodeid;
+    yang_stmt *ylist;
+    char      *oidstr = NULL;
+    oid        oid1[MAX_OID_LEN] = {0,};
+    size_t     oid1len = MAX_OID_LEN;
+    oid        oid2[MAX_OID_LEN] = {0,};
+    size_t     oid2len = MAX_OID_LEN;
+    int        ret;
+    char      *ri;
+
+    if ((ret = yangext_oid_get(yaug, oid2, &oid2len, &oidstr)) < 0)
+	goto done;
+    if (ret == 0)
+	goto ok;
+    /* Decrement oid of list object (oid2) to container object (oid1) */
+    memcpy(oid1, oid2, sizeof(oid2));
+    oid1len = oid2len - 1;
+    oid1[oid1len] = 0;
+    if ((ri = rindex(oidstr, '.')) != NULL)
+	*ri = '\0';
+    schema_nodeid = yang_argument_get(yaug);
+    if (yang_abs_schema_nodeid(yaug, schema_nodeid, &ylist) < 0)
+	goto done;
+    if (yang_keyword_get(ylist) != Y_LIST)
+	goto ok; /* skip */
+    if (mibyang_table_register(h, ylist,
+			       oid1, oid1len,
+			       oid2, oid2len,
+			       oidstr) < 0)
+	goto done;
  ok:
     retval = 0;
  done:
@@ -447,6 +559,11 @@ mibyang_traverse(clicon_handle h,
 	
     clicon_debug(1, "%s %s", __FUNCTION__, yang_argument_get(yn));
     switch(yang_keyword_get(yn)){
+    case Y_AUGMENT:
+	if (mibyang_augment_register(h, yn) < 0)
+	    goto done;
+	goto ok;
+	break;
     case Y_LEAF:
 	if (mibyang_leaf_register(h, yn, NULL, NULL, 0) < 0)
 	    goto done;
@@ -456,8 +573,9 @@ mibyang_traverse(clicon_handle h,
     case Y_LIST: /* If parent is container -> identify as table */
 	yp = yang_parent_get(yn);
 	if (yang_keyword_get(yp) == Y_CONTAINER){
+
 	    /* Register table entry handler itself (not column/row leafs) */
-	    if (mibyang_table_register(h, yn) < 0)
+	    if (mibyang_list_register(h, yn) < 0)
 		goto done;
 	    goto ok;
 	}
@@ -468,7 +586,8 @@ mibyang_traverse(clicon_handle h,
     /* Traverse data nodes in tree (module is special case */
     ys = NULL;
     while ((ys = yn_each(yn, ys)) != NULL) {
-	if (!yang_schemanode(ys))
+	/* augment special case of table */
+	if (!yang_schemanode(ys) && yang_keyword_get(ys) != Y_AUGMENT) 
 	    continue;
 	if ((ret = mibyang_traverse(h, ys)) < 0)
 	    goto done;

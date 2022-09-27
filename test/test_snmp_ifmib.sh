@@ -360,11 +360,9 @@ validate_oid $OID22 $OID22 "OID" ".0.0"
 validate_oid $NAME22.1 $NAME22.1 "OID" "SNMPv2-SMI::zeroDotZero"
 validate_oid $NAME22.2 $NAME22.2 "OID" "iso.2.3"
 
-if [ $AUGMENTTEST ]; then
-   new "Test ifName"
-   validate_oid $NAME23.1 $NAME23.1 "STRING" "test1"
-   validate_oid $NAME23.2 $NAME23.2 "STRING" "test2"
-fi
+new "Test ifXTable ifName"
+validate_oid $NAME23.1 $NAME23.1 "STRING" "test1"
+validate_oid $NAME23.2 $NAME23.2 "STRING" "test2"
 
 new "Test ifTable"
 expectpart "$($snmptable IF-MIB::ifTable)" 0 "Test 2" "1400" "1000" "11:22:33:44:55:66" "down" "111" "222" "333" "444" "555" "666" "777" "888" "999" "101010" "111111" "111"
