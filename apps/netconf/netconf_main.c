@@ -434,7 +434,9 @@ netconf_input_frame(clicon_handle h,
     if (ret == 0){
 	/* Note: xtop can be "hello" in which case one (maybe) should drop the session and log
 	 * However, its not until netconf_input_packet that rpc vs hello vs other identification is 
-	 * actually made
+	 * actually made.
+	 * Actually, there are no error replies to hello messages according to any RFC, so
+	 * rpc error reply here is non-standard, but may be useful.
 	 */
 	if ((cbret = cbuf_new()) == NULL){ 
 	    clicon_err(OE_XML, errno, "cbuf_new");

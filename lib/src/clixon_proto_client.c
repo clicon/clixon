@@ -1506,7 +1506,7 @@ clicon_hello_req(clicon_handle h,
     int                ret;
 
     username = clicon_username_get(h);
-    if ((msg = clicon_msg_encode(0, "<hello username=\"%s\" xmlns=\"%s\" message-id=\"42\"><capabilities><capability>%s</capability></capabilities></hello>",
+    if ((msg = clicon_msg_encode(0, "<hello username=\"%s\" xmlns=\"%s\"><capabilities><capability>%s</capability></capabilities></hello>",
 				 username?username:"",
 				 NETCONF_BASE_NAMESPACE,
 				 NETCONF_BASE_CAPABILITY_1_1)) == NULL)

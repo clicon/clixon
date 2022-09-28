@@ -528,6 +528,7 @@ xmltree2cbuf(cbuf  *cb,
  * therefore not well-formed.
  * Therefore checking for empty XML must be done by a calling function which knows wether the 
  * the XML represents a full document or not.
+ * @note may be called recursively, some yang-bind (eg rpc) semantic checks may trigger error message
  */
 static int 
 _xml_parse(const char *str, 
@@ -855,8 +856,8 @@ clixon_xml_attr_copy(cxobj *xin,
 	clicon_err(OE_XML, EINVAL, "xin or xout NULL");
 	goto done;
     }
-    if ((msgid = xml_find_value(xin, "message-id")) != NULL){
-	if ((xa = xml_new("message-id", xout, CX_ATTR)) == NULL)
+    if ((msgid = xml_find_value(xin, name)) != NULL){
+	if ((xa = xml_new(name, xout, CX_ATTR)) == NULL)
 	    goto done;
 	if (xml_value_set(xa, msgid) < 0)
 	    goto done;

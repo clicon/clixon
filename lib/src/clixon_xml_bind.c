@@ -642,6 +642,8 @@ xml_bind_yang_rpc(cxobj        *xrpc,
 	/* Hello: dont bind, dont appear in any yang spec, just ensure there is nothing apart from
 	 * session-id or capabilities/capability tags
 	 * If erro, just log, drop and close, rpc-error should not be sent since it is not rpc
+	 * Actually, there are no error replies to hello messages according to any RFC, so
+	 * rpc error reply here is non-standard, but may be useful.
 	 */
 	x = NULL;
 	while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {

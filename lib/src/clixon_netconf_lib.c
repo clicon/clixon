@@ -1767,8 +1767,7 @@ netconf_hello_server(clicon_handle h,
     char *encstr = NULL;
 
     module_set_id = clicon_option_str(h, "CLICON_MODULE_SET_ID");
-
-    cprintf(cb, "<hello xmlns=\"%s\" message-id=\"%u\">", NETCONF_BASE_NAMESPACE, 42);
+    cprintf(cb, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(cb, "<capabilities>");
     if (clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0){
 	/* Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" 

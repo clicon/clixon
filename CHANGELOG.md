@@ -42,6 +42,7 @@ Expected: November 2022
 
 ### Corrected Bugs
 
+* Fixed: [message-id present on netconf app "hello"](https://github.com/clicon/clixon/issues/369)
 * Fixed: [SNMP "smiv2" yang extension doesn't work on augmented nodes](https://github.com/clicon/clixon/issues/366)
 
 ## 5.9.0

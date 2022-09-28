@@ -89,14 +89,14 @@ LIBNS='xmlns="http://clicon.org/lib"'
 # Namespace: Clixon restconf
 RESTCONFNS='xmlns="http://clicon.org/restconf"'
 
-# Default netconf namespace statement, typically as placed on top-level <rpc xmlns=""
+# Default netconf namespace statement, typically as placed on top-level <hello xmlns=""
 DEFAULTONLY="xmlns=\"$BASENS\""
 
-# Default netconf namespace + message-id
+# Default netconf namespace + message-id, ie for <rpc xmlns="" message-id="", but NOT for hello
 DEFAULTNS="$DEFAULTONLY message-id=\"42\""
 
 # Minimal hello message as a prelude to netconf rpcs
-DEFAULTHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>"
+DEFAULTHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>"
 
 # XXX cannot get this to work for all combinations of nc/netcat fcgi/native
 # But leave it here for debugging where netcat works properly
