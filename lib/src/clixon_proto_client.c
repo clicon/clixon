@@ -982,6 +982,7 @@ clicon_rpc_get(clicon_handle   h,
  * @param[in]  nsc       Namespace context for filter
  * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
  * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
+ * @param[in]  defaults  Value of the with-defaults mode, rfc6243, or NULL
  * @param[in]  offset     uint32, 0 means none
  * @param[in]  limit     uint32, 0 means unbounded
  * @param[in]  direction Collection/clixon extension
@@ -1002,6 +1003,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 			     cvec           *nsc, /* namespace context for xpath */
 			     netconf_content content,
 			     int32_t         depth,
+			     char	    *defaults,
 			     uint32_t        offset,
 			     uint32_t        limit,
 			     char           *direction,
@@ -1053,6 +1055,10 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 	    goto done;
 	cprintf(cb, "/>");
     }
+    if (defaults != NULL)
+    	cprintf(cb, "<with-defaults xmlns=\"%s\">%s</with-defaults>",
+		IETF_NETCONF_WITH_DEFAULTS_YANG_NAMESPACE,
+		defaults);
     /* Explicit use of list-pagination */
     cprintf(cb, "<list-pagination xmlns=\"%s\">", IETF_PAGINATON_NC_NAMESPACE);
     if (offset != 0)

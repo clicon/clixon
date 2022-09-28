@@ -56,7 +56,7 @@ int clicon_rpc_lock(clicon_handle h, char *db);
 int clicon_rpc_unlock(clicon_handle h, char *db);
 int clicon_rpc_get(clicon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, char *defaults, cxobj **xret);
 int clicon_rpc_get_pageable_list(clicon_handle h, char *datastore, char *xpath, 
-				 cvec *nsc, netconf_content content, int32_t depth,
+				 cvec *nsc, netconf_content content, int32_t depth, char *defaults,
 				 uint32_t offset, uint32_t limit,
 				 char *direction, char *sort, char *where,
 				 cxobj **xt);

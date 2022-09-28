@@ -486,7 +486,7 @@ api_data_pagination(clicon_handle  h,
     sort = cvec_find_str(qvec, "sort-by");
     where = cvec_find_str(qvec, "where");
     if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc, content,
-				     depth, offset, limit, direction, sort, where, 
+				     depth, NULL, offset, limit, direction, sort, where, 
 				     &xret) < 0){
 	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
 	    goto done;

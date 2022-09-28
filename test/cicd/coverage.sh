@@ -36,7 +36,7 @@ find . -name "*.gcda" | xargs sudo chmod 777
 (cd test; clixon_restconf="clixon_restconf -r" ./sum.sh)
 
 # Push coverage
-bash <(curl -s https://codecov.io/bash) -t ${TOKEN}
+codecov -t ${CODECOV_TOKEN} -g -f *.gcda -r clicon/clixon.git
 
 # Remove all coverage files (after gcov push)
 find . -name "*.gcda" | xargs rm

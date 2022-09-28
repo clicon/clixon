@@ -1187,7 +1187,8 @@ cli_pagination(clicon_handle h,
     for (i = 0;; i++){
 	if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc,
 					 CONTENT_ALL,
-					 -1,        /* depth */
+					 -1,       /* depth */
+					 NULL,     /* with-default */
 					 limit*i,  /* offset */
 					 limit,    /* limit */
 					 NULL, NULL, NULL, /* nyi */

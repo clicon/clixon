@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [6.0.0](#600) Expected: November 2022
+* [6.0.0](#600) Expected: End of 2022
 * [5.9.0](#590) 24 September 2022
 * [5.8.0](#580) 28 July 2022
 * [5.7.0](#570) 17 May 2022
@@ -38,7 +38,21 @@
 * [3.3.1](#331) June 7 2017
 
 ## 6.0.0
-Expected: November 2022
+Expected: End of 2022
+
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* NETCONF: Removed `message-id` from hello protocol following RFC 6241
+  * See [message-id present on netconf app "hello"](https://github.com/clicon/clixon/issues/369)
+  
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* C API changes
+  * Added `defaults` parameter to `clicon_rpc_get_pageable_list()`
 
 ### Corrected Bugs
 
@@ -103,6 +117,9 @@ Users may have to change how they access the system
 
 Developers may need to change their code
 
+* C API changes
+  * Added `defaults` parameter to `clicon_rpc_get()` and `clicon_rpc_get_config()`
+     * For upgrade, add new sixth parameter and set it to `NULL`.
 * CLISPEC changes of cli show functions
   * For details of updated API, see https://clixon-docs.readthedocs.io/en/latest/cli.html#show-commands
   * Changed `cli_show_auto()` 
