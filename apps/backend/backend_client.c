@@ -159,6 +159,8 @@ release_all_dbs(clicon_handle h,
  * Finally actually remove client struct in handle
  * @param[in]  h   Clicon handle
  * @param[in]  ce  Client handle
+ * @retval     -1  Error (fatal)
+ * @retval      0  Ok
  * @see backend_client_delete for actual deallocation of client entry struct
  */
 int
@@ -168,6 +170,33 @@ backend_client_rm(clicon_handle        h,
     struct client_entry  *c;
     struct client_entry  *c0;
     struct client_entry **ce_prev;
+    uint32_t              myid = ce->ce_id;
+    yang_stmt            *yspec;
+    int                   retval = -1;
+
+    /* If the confirmed-commit feature is enabled, rollback any ephemeral commit originated by this client */
+    if ((yspec = clicon_dbspec_yang(h)) == NULL) {
+        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        goto done;
+    }
+
+    if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
+        if (confirmed_commit.state == EPHEMERAL) {
+            /* See if this client is the origin */
+            clicon_debug(1, "session_id: %u, confirmed_commit.session_id: %u", ce->ce_id, confirmed_commit.session_id);
+
+            if (myid == confirmed_commit.session_id) {
+                clicon_debug(1, "ok, rolling back");
+                clicon_log(LOG_NOTICE, "a client with an active ephemeral confirmed-commit has disconnected; rolling back");
+
+                /* do_rollback errors are logged internally and there is no client to report errors to, so errors are
+                 * ignored here.
+                 */
+                cancel_rollback_event();
+                do_rollback(h, NULL);
+            }
+        }
+    }
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* for all streams: XXX better to do it top-level? */
@@ -187,7 +216,10 @@ backend_client_rm(clicon_handle        h,
 	}
 	ce_prev = &c->ce_next;
     }
-    return backend_client_delete(h, ce); /* actually purge it */
+    retval = backend_client_delete(h, ce); /* actually purge it */
+
+    done:
+        return retval;
 }
 
 /*! Get clixon per datastore stats
@@ -423,7 +455,20 @@ from_client_edit_config(clicon_handle h,
 	autocommit = 1;
     /* If autocommit option is set or requested by client */
     if (clicon_autocommit(h) || autocommit) {
-	if ((ret = candidate_commit(h, "candidate", cbret)) < 0){ /* Assume validation fail, nofatal */
+        // TODO: if this is from a restconf client ...
+        //      and, if there is an existing ephemeral commit, set is_valid_confirming_commit=1 such that
+        //          candidate_commit will apply the configuration per RFC 8040 1.4:
+        //              If a confirmed commit procedure is
+        //              in progress by any NETCONF client, then any new commit will act as
+        //              the confirming commit.
+        //      and, if there is an existing persistent commit, netconf_operation_failed with "in-use", so
+        //          that the restconf server will return "409 Conflict" per RFC 8040 1.4:
+        //              If the NETCONF server is expecting a
+        //              "persist-id" parameter to complete the confirmed commit procedure,
+        //              then the RESTCONF edit operation MUST fail with a "409 Conflict"
+        //              status-line.  The error-tag "in-use" is used in this case.
+
+        if ((ret = candidate_commit(h, "candidate", cbret)) < 0){ /* Assume validation fail, nofatal */
 	    if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
 		goto done;
 	    xmldb_copy(h, "running", "candidate");

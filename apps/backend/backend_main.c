@@ -154,6 +154,10 @@ backend_sig_term(int arg)
     if (i++ == 0)
 	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
 		   __PROGRAM__, __FUNCTION__, getpid(), arg);
+    if (confirmed_commit.persist_id != NULL) {
+	    free(confirmed_commit.persist_id);
+	    confirmed_commit.persist_id = NULL;
+    }
     clixon_exit_set(1); /* checked in clixon_event_loop() */
 }
 
@@ -883,6 +887,9 @@ main(int    argc,
     }
     switch (startup_mode){
     case SM_INIT: /* Scratch running and start from empty */
+        /* Delete any rollback database, if it exists */
+        // TODO: xmldb_delete doesn't actually unlink; need to look at this
+        xmldb_delete(h, "rollback");
 	/* [Delete and] create running db */
 	if (xmldb_db_reset(h, "running") < 0)
 	    goto done;

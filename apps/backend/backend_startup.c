@@ -134,6 +134,7 @@ startup_mode_startup(clicon_handle        h,
 {
     int         retval = -1;
     int         ret;
+    int         db_exists;
     
     if (strcmp(db, "running")==0){
 	clicon_err(OE_FATAL, 0, "Invalid startup db: %s", db);
@@ -144,7 +145,45 @@ startup_mode_startup(clicon_handle        h,
 	if (xmldb_create(h, db) < 0) /* diff */
 	    return -1;
     }
-    if ((ret = startup_commit(h, db, cbret)) < 0)
+
+    /* When a confirming-commit is issued, the confirmed-commit timeout
+     * callback is removed and then the rollback database is deleted.
+     *
+     * The presence of a rollback database means that before the rollback
+     * database was deleted, either clixon_backend crashed or the machine
+     * rebooted.
+     */
+    yang_stmt *yspec = clicon_dbspec_yang(h);
+    if (if_feature(yspec, "ietf-netconf", "configmed-commit")) {
+        db_exists = xmldb_exists(h, "rollback");
+        if (db_exists < 0) {
+            clicon_err(OE_DAEMON, 0, "Error checking for the existence of the rollback database");
+            goto done;
+        } else if (db_exists == 1) {
+            ret = startup_commit(h, "rollback", cbret);
+            switch(ret) {
+                case -1:
+                case 0:
+                    /* validation failed, cbret set */
+                    if ((ret = startup_commit(h, "failsafe", cbret)) < 0)
+                        goto fail;
+
+                    /* Rename the errored rollback database so that it is not tried on a subsequent startup */
+                    xmldb_rename(h, db, NULL, ".error");
+
+                    retval = 1;
+                    goto done;
+                case 1:
+                    /* validation ok */
+                    retval = 1;
+                    xmldb_delete(h, "rollback");
+                    goto done;
+                default:
+                    /* Unexpected response */
+                    goto fail;
+            }
+        }
+    } else if ((ret = startup_commit(h, db, cbret)) < 0)
 	goto done;
     if (ret == 0)
 	goto fail;

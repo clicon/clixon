@@ -1,4 +1,5 @@
 /*
+ * t
  *
   ***** BEGIN LICENSE BLOCK *****
  
@@ -63,7 +64,7 @@ int clicon_rpc_get_pageable_list(clicon_handle h, char *datastore, char *xpath,
 int clicon_rpc_close_session(clicon_handle h);
 int clicon_rpc_kill_session(clicon_handle h, uint32_t session_id);
 int clicon_rpc_validate(clicon_handle h, char *db);
-int clicon_rpc_commit(clicon_handle h);
+int clicon_rpc_commit(clicon_handle h, int confirmed, int cancel, uint32_t timeout, char *persist, char *persist_id);
 int clicon_rpc_discard_changes(clicon_handle h);
 int clicon_rpc_create_subscription(clicon_handle h, char *stream, char *filter, int *s);
 int clicon_rpc_debug(clicon_handle h, int level);

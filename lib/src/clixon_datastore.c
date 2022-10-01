@@ -418,10 +418,18 @@ xmldb_delete(clicon_handle h,
     if (xmldb_db2file(h, db, &filename) < 0)
 	goto done;
     if (lstat(filename, &sb) == 0)
-	if (truncate(filename, 0) < 0){
-	    clicon_err(OE_DB, errno, "truncate %s", filename);
-	    goto done;
-	}
+        // TODO this had been changed from unlink to truncate some time ago.  It was changed back for confirmed-commit
+        // as the presence of the rollback_db at startup triggers loading of the rollback rather than the startup
+        // configuration.  It might not be sufficient to check for a truncated file.  Needs more review, switching back
+        // to unlink temporarily.
+//	if (truncate(filename, 0) < 0){
+//	    clicon_err(OE_DB, errno, "truncate %s", filename);
+//	    goto done;
+//	}
+        if (unlink(filename) < 0) {
+            clicon_err(OE_UNIX, errno, "unlink %s: %s", filename, strerror(errno));
+            goto done;
+        }
     retval = 0;
  done:
     if (filename)
@@ -592,5 +600,66 @@ xmldb_print(clicon_handle h,
     }
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Rename an XML database
+ * @param[in]  h        Clicon handle
+ * @param[in]  db       Database name
+ * @param[in]  newdb    New Database name; if NULL, then same as new
+ * @param[in]  suffix   Suffix to append to new database name
+ * @retval    -1        Error
+ * @retval     0        OK
+ * @note if newdb and suffix are null, OK is returned as it is a no-op
+ */
+int
+xmldb_rename(clicon_handle h,
+             const char    *db,
+             const char    *newdb,
+             const char    *suffix)
+{
+    char *old;
+    char *fname;
+    int retval = -1;
+
+    if ((xmldb_db2file(h, db, &old)) < 0) {
+        goto done;
+    };
+
+    if (newdb == NULL && suffix == NULL)
+        // no-op
+        goto done;
+
+    newdb  = newdb == NULL ? old : newdb;
+    suffix = suffix == NULL ? "" : suffix;
+
+    size_t size = strlen(newdb) + strlen(suffix);
+
+    if ((fname = malloc(size + 1)) == NULL) {
+        clicon_err(OE_UNIX, errno, "malloc: %s", strerror(errno));
+        goto done;
+    };
+
+    int actual = 0;
+    if ((actual = snprintf(fname, size, "%s%s", newdb, suffix)) < size) {
+        clicon_err(OE_UNIX, 0, "snprintf wrote fewer bytes (%d) than requested (%zu)", actual, size);
+        goto done;
+    };
+
+    if ((rename(old, fname)) < 0) {
+        clicon_err(OE_UNIX, errno, "rename: %s", strerror(errno));
+        goto done;
+    };
+
+
+    retval = 0;
+
+    done:
+    if (old)
+        free(old);
+
+    if (fname)
+        free(fname);
+
     return retval;
 }

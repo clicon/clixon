@@ -39,9 +39,40 @@
 #ifndef _CLIXON_BACKEND_COMMIT_H_
 #define _CLIXON_BACKEND_COMMIT_H_
 
+#define ROLLBACK_NOT_APPLIED        1
+#define ROLLBACK_DB_NOT_DELETED     2
+#define ROLLBACK_FAILSAFE_APPLIED   4
+
+#define COMMIT_NOT_CONFIRMED "Commit was not confirmed; automatic rollback complete."
+
+enum confirmed_commit_state {
+    INACTIVE,       // a confirmed-commit is not in progress
+    PERSISTENT,     // a confirmed-commit is in progress and a persist value was given
+    EPHEMERAL,      // a confirmed-commit is in progress and a persist value was not given
+    ROLLBACK
+};
+
+/* A struct to store the information necessary for tracking the status and relevant details of
+ * one or more overlapping confirmed-commit events.
+ */
+struct confirmed_commit {
+    enum confirmed_commit_state state;
+    char *persist_id;                   // a value given by a client in the confirmed-commit
+    uint32_t session_id;                // the session_id of the client that gave no <persist> value
+
+    cxobj *xe;                          // the commit confirmed request
+    int (*fn)(int, void*);              // the function pointer for the rollback event (rollback_fn())
+    void *arg;                          // the clicon_handle that will be passed to rollback_fn()
+};
+
+extern struct confirmed_commit confirmed_commit;
+
 /*
  * Prototypes
- */ 
+ */
+int do_rollback(clicon_handle h, uint8_t *errs);
+int cancel_rollback_event();
+
 int startup_validate(clicon_handle h, char *db, cxobj **xtr, cbuf *cbret);
 int startup_commit(clicon_handle h, char *db, cbuf *cbret);
 int candidate_validate(clicon_handle h, char *db, cbuf *cbret);

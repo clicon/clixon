@@ -648,8 +648,23 @@ cli_commit(clicon_handle h,
 	    cvec         *argv)
 {
     int            retval = -1;
+    uint32_t       timeout = 0; /* any non-zero value means "confirmed-commit" */
+    cg_var        *timeout_var;
+    char          *persist = NULL;
+    char          *persist_id = NULL;
+
+    int confirmed = (cvec_find_str(vars, "confirmed") != NULL);
+    int cancel = (cvec_find_str(vars, "cancel") != NULL);
+
+    if ((timeout_var = cvec_find(vars, "timeout")) != NULL) {
+        timeout = cv_uint32_get(timeout_var);
+        clicon_debug(1, "commit confirmed with timeout %ul", timeout);
+    }
+
+    persist = cvec_find_str(vars, "persist-val");
+    persist_id = cvec_find_str(vars, "persist-id-val");
     
-    if ((retval = clicon_rpc_commit(h)) < 0)
+    if ((retval = clicon_rpc_commit(h, confirmed, cancel, timeout, persist, persist_id)) < 0)
 	goto done;
     retval = 0;
   done:

@@ -83,6 +83,10 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_proto_client.h"
 
+#define PERSIST_ID_XML_FMT "<persist-id>%s</persist-id>"
+#define PERSIST_XML_FMT "<persist>%s</persist>"
+#define TIMEOUT_XML_FMT "<confirm-timeout>%u</confirm-timeout>"
+
 /*! Connect to internal netconf socket
  */
 int
@@ -1266,7 +1270,12 @@ clicon_rpc_validate(clicon_handle h,
  * @retval   -1        Error and logged to syslog
  */
 int
-clicon_rpc_commit(clicon_handle h)
+clicon_rpc_commit(clicon_handle h,
+                  int           confirmed,
+                  int           cancel,
+                  uint32_t      timeout,
+                  char         *persist,
+                  char         *persist_id)
 {
     int                retval = -1;
     struct clicon_msg *msg = NULL;
@@ -1274,15 +1283,65 @@ clicon_rpc_commit(clicon_handle h)
     cxobj             *xerr;
     char              *username;
     uint32_t           session_id;
-    
+    char              *persist_id_xml = NULL;
+    char              *persist_xml = NULL;
+    char              *timeout_xml = NULL;
+
+    if (persist_id) {
+        if ((persist_id_xml = malloc(strlen(persist_id) + strlen(PERSIST_ID_XML_FMT) + 1)) == NULL) {
+            clicon_err(OE_UNIX, 0, "malloc: %s", strerror(errno));
+        }
+        sprintf(persist_id_xml, PERSIST_ID_XML_FMT, persist_id);
+    }
+
+    if (persist) {
+        if ((persist_xml = malloc(strlen(persist) + strlen(PERSIST_XML_FMT) + 1)) == NULL) {
+            clicon_err(OE_UNIX, 0, "malloc: %s", strerror(errno));
+        };
+        sprintf(persist_xml, PERSIST_XML_FMT, persist);
+    }
+
+    if (timeout > 0) {
+
+        /* timeout is a uint32_t, so max value is 2^32, a 10-digit number, we'll just always malloc for a string that
+         * may be that large rather than calculate the string length
+         */
+
+        if ((timeout_xml = malloc(10 + 1 + strlen(TIMEOUT_XML_FMT))) == NULL) {
+            clicon_err(OE_UNIX, 0, "malloc: %s", strerror(errno));
+        };
+        sprintf(timeout_xml, TIMEOUT_XML_FMT, timeout);
+    }
+
+
     if (session_id_check(h, &session_id) < 0)
 	goto done;
     username = clicon_username_get(h);
-    if ((msg = clicon_msg_encode(session_id,
-				 "<rpc xmlns=\"%s\" username=\"%s\" %s><commit/></rpc>",
-				 NETCONF_BASE_NAMESPACE,
-				 username?username:"",
-				 NETCONF_MESSAGE_ID_ATTR)) == NULL)
+    if (cancel) {
+        msg = clicon_msg_encode(session_id,
+                                "<rpc xmlns=\"%s\" username=\"%s\" %s><cancel-commit>%s</cancel-commit></rpc>",
+                                NETCONF_BASE_NAMESPACE,
+                                username ? username : "",
+                                NETCONF_MESSAGE_ID_ATTR,
+                                persist_id ? persist_id_xml : "");
+    } else if (confirmed) {
+        msg = clicon_msg_encode(session_id,
+                                "<rpc xmlns=\"%s\" username=\"%s\" %s><commit><confirmed/>%s%s%s</commit></rpc>",
+                                NETCONF_BASE_NAMESPACE,
+                                username ? username : "",
+                                NETCONF_MESSAGE_ID_ATTR,
+                                timeout ? timeout_xml : "",
+                                persist_id ? persist_id_xml : "",
+                                persist ? persist_xml : "");
+    } else {
+        msg = clicon_msg_encode(session_id,
+                                "<rpc xmlns=\"%s\" username=\"%s\" %s><commit>%s</commit></rpc>",
+                                NETCONF_BASE_NAMESPACE,
+                                username ? username : "",
+                                NETCONF_MESSAGE_ID_ATTR,
+                                persist ? persist_xml : "");
+    }
+    if (msg == NULL)
 	goto done;
     if (clicon_rpc_msg(h, msg, &xret) < 0)
 	goto done;
@@ -1296,6 +1355,12 @@ clicon_rpc_commit(clicon_handle h)
 	xml_free(xret);
     if (msg)
 	free(msg);
+    if (persist_id_xml)
+        free(persist_id_xml);
+    if (persist_xml)
+        free(persist_xml);
+    if (timeout_xml)
+        free(timeout_xml);
     return retval;
 }
 
@@ -1479,7 +1544,7 @@ clicon_rpc_restconf_debug(clicon_handle h,
 	clicon_err(OE_XML, 0, "rpc error"); /* XXX extract info from rpc-error */
 	goto done;
     }
-    if ((retval = clicon_rpc_commit(h)) < 0)
+    if ((retval = clicon_rpc_commit(h, 0, 0, 0, NULL, NULL)) < 0)
 	goto done;
  done:
     if (msg)

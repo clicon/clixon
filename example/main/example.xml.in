@@ -1,6 +1,7 @@
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>/usr/local/etc/example.xml</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-netconf:confirmed-commit</CLICON_FEATURE>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE>
   <CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>
   <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
