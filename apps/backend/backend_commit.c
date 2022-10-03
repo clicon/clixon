@@ -200,6 +200,11 @@ startup_common(clicon_handle       h,
 	if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, &xt, msdiff, &xerr) < 0)
 	    goto done;
     }
+    if (msdiff && msdiff->md_status == 0){ // Possibly check for CLICON_XMLDB_MODSTATE
+	clicon_log(LOG_WARNING, "Modstate expected in startup datastore but not found\n"
+                   "This may indicate that the datastore is not initialized corrrectly, such as copy/pasted.\n"
+                   "It may also be normal bootstrapping since module state will be written on next datastore save");
+    }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
 	clicon_err(OE_YANG, 0, "Yang spec not set");
 	goto done;

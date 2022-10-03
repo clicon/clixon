@@ -54,6 +54,10 @@ Developers may need to change their code
 * C API changes
   * Added `defaults` parameter to `clicon_rpc_get_pageable_list()`
 
+### Minor features
+
+* Added warning if modstate is not present in datastore if `CLICON_XMLDB_MODSTATE` is set.
+
 ### Corrected Bugs
 
 * Fixed: [message-id present on netconf app "hello"](https://github.com/clicon/clixon/issues/369)
