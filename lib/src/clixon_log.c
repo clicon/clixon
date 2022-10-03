@@ -238,7 +238,7 @@ slogtime(void)
  * @note syslog makes its own filtering, but if log to stderr we do it here
  * @see  clicon_debug
  */
-static int
+int
 clicon_log_str(int           level, 
 	       char         *msg)
 {
