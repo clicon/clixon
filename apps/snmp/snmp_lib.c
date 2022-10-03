@@ -457,7 +457,9 @@ type_yang2asn1(yang_stmt    *ys,
 	if (yang_extension_value(yrp, "display-hint", IETF_YANG_SMIV2_NS, NULL, &display_hint) < 0)
 	    goto done;	
 	/* RFC2578/2579 but maybe all strings with display-hint should use this, eg exist>0? */
-	if (display_hint && strcmp(display_hint, "255t")==0)
+	if (display_hint &&
+            (strcmp(display_hint, "255a")==0 ||
+             strcmp(display_hint, "255t")==0))
 	    at = CLIXON_ASN_FIXED_STRING;
     }
     if (asn1_type)

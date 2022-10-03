@@ -370,8 +370,8 @@ expectpart "$($snmptable IF-MIB::ifTable)" 0 "Test 2" "1400" "1000" "11:22:33:44
 new "Walk the walk..."
 expectpart "$($snmpwalk IF-MIB::ifTable)" 0 "IF-MIB::ifIndex.1 = INTEGER: 1" \
            "IF-MIB::ifIndex.2 = INTEGER: 2" \
-           "IF-MIB::ifDescr.1 = STRING: Test." \
-           "IF-MIB::ifDescr.2 = STRING: Test 2." \
+           "IF-MIB::ifDescr.1 = STRING: Test" \
+           "IF-MIB::ifDescr.2 = STRING: Test 2" \
            "IF-MIB::ifType.1 = INTEGER: ethernetCsmacd(6)" \
            "IF-MIB::ifType.2 = INTEGER: ethernetCsmacd(6)" \
            "IF-MIB::ifMtu.1 = INTEGER: 1500" \

@@ -60,6 +60,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [unneeded trailing zero character on SNMP strings](https://github.com/clicon/clixon/issues/367)
 * Fixed: [message-id present on netconf app "hello"](https://github.com/clicon/clixon/issues/369)
 * Fixed: [SNMP "smiv2" yang extension doesn't work on augmented nodes](https://github.com/clicon/clixon/issues/366)
 
