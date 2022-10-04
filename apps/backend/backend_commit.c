@@ -676,7 +676,7 @@ rollback_fn(int  fd,
 {
     clicon_handle h = arg;
 
-    clicon_log(LOG_EMERG, "a confirming-commit was not received before the confirm-timeout expired; rolling back");
+    clicon_log(LOG_CRIT, "a confirming-commit was not received before the confirm-timeout expired; rolling back");
 
     return do_rollback(h, NULL);
 }
@@ -1017,7 +1017,7 @@ do_rollback(clicon_handle h, uint8_t *errs)
          *   restart the backend, which will try to load the rollback_db, and delete it if successful
          *     (otherwise it will load the failsafe)
          */
-        clicon_log(LOG_EMERG, "An error occurred during rollback and the rollback_db wasn't deleted.");
+        clicon_log(LOG_CRIT, "An error occurred during rollback and the rollback_db wasn't deleted.");
         errstate |= ROLLBACK_NOT_APPLIED | ROLLBACK_DB_NOT_DELETED;
         goto done;
     }
@@ -1044,7 +1044,7 @@ do_rollback(clicon_handle h, uint8_t *errs)
         /* Attempt to load the failsafe config */
 
         if (load_failsafe(h, "Rollback") < 0) {
-            clicon_log(LOG_EMERG, "An error occurred committing the failsafe database.  Exiting.");
+            clicon_log(LOG_CRIT, "An error occurred committing the failsafe database.  Exiting.");
             /* Invoke our own signal handler to exit */
             raise(SIGINT);
 

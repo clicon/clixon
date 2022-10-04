@@ -35,6 +35,8 @@ cat <<EOF > $cfg
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  <CLICON_BACKEND_USER>$USER</CLICON_BACKEND_USER>
+  <CLICON_BACKEND_PRIVILEGES>drop_perm</CLICON_BACKEND_PRIVILEGES>
 </clixon-config>
 EOF
 
@@ -213,12 +215,16 @@ fi
 new "wait backend"
 wait_backend
 
+################################################################################
+
 new "netconf ephemeral confirmed-commit rolls back after disconnect"
 reset
 edit_config "candidate" "$CONFIGB"
 assert_config_equals "candidate" "$CONFIGB"
 commit "<confirmed/><confirm-timeout>30</confirm-timeout>"
 assert_config_equals "running" ""
+
+################################################################################
 
 new "netconf persistent confirmed-commit"
 reset
@@ -229,11 +235,17 @@ edit_config "candidate" "$CONFIGC"
 commit "<confirmed/><persist>ab</persist><persist-id>a</persist-id>"
 assert_config_equals "running" "$CONFIGBPLUSC"
 
+################################################################################
+
 new "netconf cancel-commit with invalid persist-id"
 rpc "<cancel-commit><persist-id>abc</persist-id></cancel-commit>" "<rpc-error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>a confirmed-commit with the given persist-id was not found</error-message></rpc-error>"
 
+################################################################################
+
 new "netconf cancel-commit with valid persist-id"
 rpc "<cancel-commit><persist-id>ab</persist-id></cancel-commit>" "<ok/>"
+
+################################################################################
 
 new "netconf persistent confirmed-commit with timeout"
 reset
@@ -242,6 +254,8 @@ commit "<confirmed/><confirm-timeout>2</confirm-timeout><persist>abcd</persist>"
 assert_config_equals "running" "$CONFIGB"
 sleep 2
 assert_config_equals "running" ""
+
+################################################################################
 
 new "netconf persistent confirmed-commit with reset timeout"
 reset
@@ -257,6 +271,8 @@ assert_config_equals "running" "$CONFIGBPLUSC"
 sleep 5
 assert_config_equals "running" ""
 
+################################################################################
+
 new "netconf persistent confirming-commit to epehemeral confirmed-commit should rollback"
 reset
 edit_config "candidate" "$CONFIGB"
@@ -264,6 +280,8 @@ commit "<confirmed/><persist/><confirm-timeout>10</confirm-timeout>"
 assert_config_equals "running" "$CONFIGB"
 commit "<confirmed/><persist-id/>"
 assert_config_equals "running" ""
+
+################################################################################
 
 new "netconf confirming-commit for persistent confirmed-commit with empty persist value"
 reset
@@ -273,8 +291,10 @@ assert_config_equals "running" "$CONFIGB"
 commit "<persist-id/>"
 assert_config_equals "running" "$CONFIGB"
 
-# TODO the next two tests are broken.  The whole idea of presence or absence of rollback_db indicating something might
-# need reconsideration. see clixon_datastore.c#xmldb_delete() and backend_startup.c#startup_mode_startup()
+################################################################################
+
+# TODO reconsider logic around presence/absence of rollback_db as a signal as dropping permissions may impact ability
+# to unlink and/or create that file. see clixon_datastore.c#xmldb_delete() and backend_startup.c#startup_mode_startup()
 
 new "backend loads rollback if present at startup"
 reset
@@ -292,6 +312,8 @@ assert_config_equals "running" "$CONFIGB"
 
 stop_backend -f $cfg
 start_backend -s init -f $cfg -- -s
+
+################################################################################
 
 new "backend loads failsafe at startup if rollback present but cannot be loaded"
 reset
@@ -316,26 +338,118 @@ start_backend -s running -f $cfg -- -s
 wait_backend
 assert_config_equals "running" "$FAILSAFE_CFG"
 
-
-# TODO this test is now broken too, but not sure why; suspicion that the initial confirmed-commit session is not kept alive as intended
 stop_backend -f $cfg
 start_backend -s init -f $cfg -lf/tmp/clixon.log -D1 -- -s
 wait_backend
+
+################################################################################
+
 new "ephemeral confirmed-commit survives unrelated ephemeral session disconnect"
 reset
 edit_config "candidate" "$CONFIGB"
+assert_config_equals "candidate" "$CONFIGB"
 # start a new ephemeral confirmed commit, but keep the confirmed-commit session alive (need to put it in the background)
-sleep 60 |  cat <(echo "$DEFAULTHELLO<rpc $DEFAULTNS><commit><confirmed/><confirm-timeout>60</confirm-timeout></commit></rpc>]]>]]>") -| $clixon_netconf -qf $cfg  >> /dev/null &
+# use HELLONO11 which uses older EOM framing
+sleep 60 |  cat <(echo "$HELLONO11<rpc $DEFAULTNS><commit><confirmed/><confirm-timeout>60</confirm-timeout></commit></rpc>]]>]]>") -| $clixon_netconf -qf $cfg  >> /dev/null &
 PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
 assert_config_equals "running" "$CONFIGB"                       # assert config twice to prove it surives disconnect
 assert_config_equals "running" "$CONFIGB"                       # of ephemeral sessions
 
 kill -9 ${PIDS[0]}                                              # kill the while loop above to close STDIN on 1st
-                                                                # ephemeral session and cause rollback
+
+################################################################################
+
+new "cli ephemeral confirmed-commit rolls back after disconnect"
+reset
+
+tmppipe=$(mktemp -u)
+mkfifo -m 600 "$tmppipe"
+cat << EOF | clixon_cli -f $cfg >> /dev/null &
+set interfaces interface eth0 type ex:eth
+set interfaces interface eth0 enabled true
+commit confirmed 60
+shell echo >> $tmppipe
+shell cat $tmppipe
+quit
+EOF
+cat $tmppipe >> /dev/null
+assert_config_equals "running" "$CONFIGB"
+echo >> $tmppipe
+sleep 1
+assert_config_equals "running" ""
+rm $tmppipe
+
+################################################################################
+
+new "cli persistent confirmed-commit"
+reset
+cat << EOF | clixon_cli -f $cfg >> /dev/null
+set interfaces interface eth0 type ex:eth
+set interfaces interface eth0 enabled true
+commit confirmed persist a
+quit
+EOF
+assert_config_equals "running" "$CONFIGB"
+
+cat << EOF | clixon_cli -f $cfg >> /dev/null
+set interfaces interface eth1 type ex:eth
+set interfaces interface eth1 enabled true
+commit persist-id a confirmed persist ab
+quit
+EOF
+assert_config_equals "running" "$CONFIGBPLUSC"
+
+################################################################################
+
+new "cli cancel-commit with invalid persist-id"
+expectpart "$($clixon_cli -lo -1 -f $cfg commit persist-id abc cancel)" 255 "a confirmed-commit with the given persist-id was not found"
+
+################################################################################
+
+new "cli cancel-commit with valid persist-id"
+expectpart "$($clixon_cli -lo -1 -f $cfg commit persist-id ab cancel)" 0 "^$"
+assert_config_equals "running" ""
+
+################################################################################
+
+new "cli cancel-commit with no confirmed-commit in progress"
+expectpart "$($clixon_cli -lo -1 -f $cfg commit persist-id ab cancel)" 255 "no confirmed-commit is in progress"
+
+################################################################################
+
+new "cli persistent confirmed-commit with timeout"
+reset
+cat << EOF | clixon_cli -f $cfg >> /dev/null
+set interfaces interface eth0 type ex:eth
+set interfaces interface eth0 enabled true
+commit confirmed persist abcd 2
+EOF
+assert_config_equals "running" "$CONFIGB"
+sleep 2
+assert_config_equals "running" ""
+
+################################################################################
+
+new "cli persistent confirmed-commit with reset timeout"
+reset
+cat << EOF | clixon_cli -f $cfg >> /dev/null
+set interfaces interface eth0 type ex:eth
+set interfaces interface eth0 enabled true
+commit confirmed persist abcd 5
+EOF
+assert_config_equals "running" "$CONFIGB"
+cat << EOF | clixon_cli -f $cfg >> /dev/null
+set interfaces interface eth1 type ex:eth
+set interfaces interface eth1 enabled true
+commit persist-id abcd confirmed persist abcdef 10
+EOF
+sleep 6
+assert_config_equals "running" "$CONFIGBPLUSC"
+# now sleep long enough for rollback to happen; get config, assert == A
+sleep 5
 assert_config_equals "running" ""
 
 
-# TODO test same cli methods as tested for netconf
 # TODO test restconf receives "409 conflict" when there is a persistent confirmed-commit active
 # TODO test restconf causes confirming-commit for ephemeral confirmed-commit
 
@@ -343,7 +457,7 @@ assert_config_equals "running" ""
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
-    pid=$(pgrep -u root -f clixon_backend)
+    pid=$(pgrep -u ${USER} -f clixon_backend)
     if [ -z "$pid" ]; then
 	err "backend already dead"
     fi

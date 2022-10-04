@@ -133,7 +133,7 @@ startup_mode_startup(clicon_handle        h,
 		     cbuf                *cbret)
 {
     int         retval = -1;
-    int         ret;
+    int         ret = 0;
     int         db_exists;
     
     if (strcmp(db, "running")==0){
@@ -154,7 +154,7 @@ startup_mode_startup(clicon_handle        h,
      * rebooted.
      */
     yang_stmt *yspec = clicon_dbspec_yang(h);
-    if (if_feature(yspec, "ietf-netconf", "configmed-commit")) {
+    if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
         db_exists = xmldb_exists(h, "rollback");
         if (db_exists < 0) {
             clicon_err(OE_DAEMON, 0, "Error checking for the existence of the rollback database");

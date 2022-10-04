@@ -418,7 +418,8 @@ xmldb_delete(clicon_handle h,
     if (xmldb_db2file(h, db, &filename) < 0)
 	goto done;
     if (lstat(filename, &sb) == 0)
-        // TODO this had been changed from unlink to truncate some time ago.  It was changed back for confirmed-commit
+        // TODO this had been changed from unlink to truncate some time ago, likely related to dropping privileges.
+        // It was changed back for confirmed-commit, and test_confirmed_commit.sh drops privileges.
         // as the presence of the rollback_db at startup triggers loading of the rollback rather than the startup
         // configuration.  It might not be sufficient to check for a truncated file.  Needs more review, switching back
         // to unlink temporarily.
@@ -619,7 +620,7 @@ xmldb_rename(clicon_handle h,
              const char    *suffix)
 {
     char *old;
-    char *fname;
+    char *fname = NULL;
     int retval = -1;
 
     if ((xmldb_db2file(h, db, &old)) < 0) {

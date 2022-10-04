@@ -98,6 +98,9 @@ DEFAULTNS="$DEFAULTONLY message-id=\"42\""
 # Minimal hello message as a prelude to netconf rpcs
 DEFAULTHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>"
 
+# Minimal hello message that excludes 1.1 capability, in the case EOM style framing is needed
+HELLONO11="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>]]>]]>"
+
 # XXX cannot get this to work for all combinations of nc/netcat fcgi/native
 # But leave it here for debugging where netcat works properly
 if [ -n "$(type netcat 2> /dev/null)" ]; then
@@ -569,6 +572,7 @@ function wait_backend(){
 # Start restconf daemon
 # @see wait_restconf
 function start_restconf(){
+    STTYSETTINGS=`stty -g`
     # Start in background 
     echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $*"
     sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $* </dev/null &>/dev/null &
@@ -625,6 +629,8 @@ function wait_restconf(){
     if [ $valgrindtest -eq 3 ]; then 
 	sleep 2 # some problems with valgrind
     fi
+
+  stty $STTYSETTINGS
 }
 
 # Wait for restconf to stop 

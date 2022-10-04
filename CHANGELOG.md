@@ -40,6 +40,19 @@
 ## 6.0.0
 Expected: End of 2022
 
+### New features
+
+* Confirmed-commit capability
+  * Standards
+    * RFC 4741 "NETCONF Configuration Protocol": Section 8.4
+    * RFC 6241 "Network Configuration Protocol (NETCONF)": Section 8.4
+  * Features
+    * `:confirmed-commit:1.0` capability
+    * `:confirmed-commit:1.1` capability
+  * Added support for relevant arguments to CLI commit
+    * See [example_cli.cli](https://github.com/clicon/clixon/blob/master/example/main/example_cli.cli)
+  * See [Netconf Confirmed Commit Capability](https://github.com/clicon/clixon/issues/255)
+
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
@@ -53,6 +66,8 @@ Developers may need to change their code
 
 * C API changes
   * Added `defaults` parameter to `clicon_rpc_get_pageable_list()`
+  * Added `confirmed`, `cancel`, `timeout`, `persist-id`, and `persist-id-val` parameters to
+    `cli_commit(...)`
 
 ### Minor features
 

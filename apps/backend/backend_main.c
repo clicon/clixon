@@ -888,7 +888,6 @@ main(int    argc,
     switch (startup_mode){
     case SM_INIT: /* Scratch running and start from empty */
         /* Delete any rollback database, if it exists */
-        // TODO: xmldb_delete doesn't actually unlink; need to look at this
         xmldb_delete(h, "rollback");
 	/* [Delete and] create running db */
 	if (xmldb_db_reset(h, "running") < 0)

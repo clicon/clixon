@@ -1765,6 +1765,7 @@ netconf_hello_server(clicon_handle h,
     char *module_set_id;
     char *ietf_yang_library_revision;
     char *encstr = NULL;
+    yang_stmt *yspec = clicon_dbspec_yang(h);
 
     module_set_id = clicon_option_str(h, "CLICON_MODULE_SET_ID");
     cprintf(cb, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
@@ -1799,6 +1800,13 @@ netconf_hello_server(clicon_handle h,
     cprintf(cb, "<capability>");
     xml_chardata_cbuf_append(cb, "urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit&also-supported=report-all,trim,report-all-tagged");
     cprintf(cb, "</capability>");
+
+    /* rfc 4741 and 6241 confirmed-commit capabilities */
+    if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
+        cprintf(cb, "<capability>urn:ietf:params:netconf:capability:confirmed-commit:1.0</capability>");
+        cprintf(cb, "<capability>urn:ietf:params:netconf:capability:confirmed-commit:1.1</capability>");
+    }
+
     cprintf(cb, "</capabilities>");
     if (session_id) 
 	cprintf(cb, "<session-id>%lu</session-id>", (long unsigned int)session_id);
