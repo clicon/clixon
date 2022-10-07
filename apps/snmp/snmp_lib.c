@@ -633,8 +633,8 @@ type_xml2snmp_pre(char      *xmlstr0,
     char      *str = NULL;
     int        ret;
 
-    if (xmlstr1 == NULL){
-	clicon_err(OE_UNIX, EINVAL, "xmlstr1");
+    if (xmlstr0 == NULL || xmlstr1 == NULL){
+	clicon_err(OE_UNIX, EINVAL, "xmlstr0/1 is NULL");
 	goto done;
     }
     /* Get yang type of leaf and trasnslate to ASN.1 */

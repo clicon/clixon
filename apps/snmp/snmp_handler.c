@@ -146,13 +146,14 @@ snmp_scalar_return(cxobj                      *xs,
     char                  *reason = NULL;
     netsnmp_variable_list *requestvb = request->requestvb;
     int                    ret;
+    char                  *body = NULL;
 
     /* SMI default value, How is this different from yang defaults?
      */
     if (yang_extension_value(ys, "defval", IETF_YANG_SMIV2_NS, NULL, &defaultval) < 0)
 	goto done;
-    if (xs != NULL){
-	if ((ret = type_xml2snmp_pre(xml_body(xs), ys, &xmlstr)) < 0)
+    if (xs != NULL && (body = xml_body(xs)) != NULL){
+	if ((ret = type_xml2snmp_pre(body, ys, &xmlstr)) < 0) // XXX <---
 	    goto done;
 	if (ret == 0){
 	    if ((ret = netsnmp_request_set_error(request, SNMP_ERR_WRONGVALUE)) != SNMPERR_SUCCESS){
@@ -242,6 +243,7 @@ snmp_scalar_get(clicon_handle               h,
     char   *reason = NULL;
     netsnmp_variable_list *requestvb = request->requestvb;
     cxobj  *xcache = NULL;
+    char   *body = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* Prepare backend call by constructing namespace context */
@@ -270,9 +272,8 @@ snmp_scalar_get(clicon_handle               h,
      * 1. From XML to SNMP string, there is a special case for enumeration, and for default value
      * 2. From SNMP string to SNMP binary value which invloves parsing
      */
-    if (x != NULL){
-	assert(xml_spec(x) == ys);
-	if ((ret = type_xml2snmp_pre(xml_body(x), ys, &xmlstr)) < 0)
+    if (x != NULL && (body = xml_body(x)) != NULL){
+	if ((ret = type_xml2snmp_pre(body, ys, &xmlstr)) < 0)
 	    goto done;
 	if (ret == 0){
 	    if ((ret = netsnmp_request_set_error(request, SNMP_ERR_WRONGVALUE)) != SNMPERR_SUCCESS){
