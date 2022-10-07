@@ -132,9 +132,10 @@ startup_mode_startup(clicon_handle        h,
 		     char                *db,
 		     cbuf                *cbret)
 {
-    int         retval = -1;
-    int         ret = 0;
-    int         db_exists;
+    int        retval = -1;
+    int        ret = 0;
+    int        rollback_exists;
+    yang_stmt *yspec = clicon_dbspec_yang(h);
     
     if (strcmp(db, "running")==0){
 	clicon_err(OE_FATAL, 0, "Invalid startup db: %s", db);
@@ -153,13 +154,12 @@ startup_mode_startup(clicon_handle        h,
      * database was deleted, either clixon_backend crashed or the machine
      * rebooted.
      */
-    yang_stmt *yspec = clicon_dbspec_yang(h);
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
-        db_exists = xmldb_exists(h, "rollback");
-        if (db_exists < 0) {
+        if ((rollback_exists = xmldb_exists(h, "rollback")) < 0) {
             clicon_err(OE_DAEMON, 0, "Error checking for the existence of the rollback database");
             goto done;
-        } else if (db_exists == 1) {
+        }
+	if (rollback_exists == 1) {
             ret = startup_commit(h, "rollback", cbret);
             switch(ret) {
                 case -1:
@@ -170,23 +170,30 @@ startup_mode_startup(clicon_handle        h,
 
                     /* Rename the errored rollback database so that it is not tried on a subsequent startup */
                     xmldb_rename(h, db, NULL, ".error");
-
-                    retval = 1;
-                    goto done;
+                    goto ok;
                 case 1:
                     /* validation ok */
-                    retval = 1;
                     xmldb_delete(h, "rollback");
-                    goto done;
+                    goto ok;
                 default:
                     /* Unexpected response */
                     goto fail;
             }
         }
-    } else if ((ret = startup_commit(h, db, cbret)) < 0)
-	goto done;
-    if (ret == 0)
-	goto fail;
+	else {
+	    if ((ret = startup_commit(h, db, cbret)) < 0)
+		goto done;
+	    if (ret == 0)
+		goto fail;
+	}
+    }
+    else {
+	if ((ret = startup_commit(h, db, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto fail;
+    }
+ ok:
     retval = 1;
  done:
     return retval;
@@ -330,56 +337,6 @@ startup_extraxml(clicon_handle        h,
  fail:
     retval = 0;
     goto done;
-}
-
-/*! Reset running and start in failsafe mode. If no failsafe then quit.
-  Typically done when startup status is not OK so
-
-failsafe      ----------------------+
-                            reset    \ commit
-running                   ----|-------+---------------> RUNNING FAILSAFE
-                           \
-tmp                         |----------------------> 
- */
-int
-startup_failsafe(clicon_handle h)
-{
-    int   retval = -1;
-    int   ret;
-    char *db = "failsafe";
-    cbuf *cbret = NULL;
-
-    if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
-    }
-    if ((ret = xmldb_exists(h, db)) < 0)
-	goto done;
-    if (ret == 0){ /* No it does not exist, fail */
-	clicon_err(OE_DB, 0, "Startup failed and no Failsafe database found, exiting");
-	goto done;
-    }
-    /* Copy original running to tmp as backup (restore if error) */
-    if (xmldb_copy(h, "running", "tmp") < 0)
-	goto done;
-    if (xmldb_db_reset(h, "running") < 0)
-	goto done;
-    ret = candidate_commit(h, db, cbret);
-    if (ret != 1)
-	if (xmldb_copy(h, "tmp", "running") < 0)
-	    goto done;
-    if (ret < 0)
-	goto done;
-    if (ret == 0){
-	clicon_err(OE_DB, 0, "Startup failed, Failsafe database validation failed %s", cbuf_get(cbret));
-	goto done;
-    }
-    clicon_log(LOG_NOTICE, "Startup failed, Failsafe database loaded ");
-    retval = 0;
- done:
-    if (cbret)
-	cbuf_free(cbret);
-    return retval;
 }
 
 /*! Init modules state of the backend (server). To compare with startup XML

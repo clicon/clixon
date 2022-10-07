@@ -70,7 +70,6 @@
 #include "backend_handle.h"
 #include "clixon_backend_commit.h"
 #include "backend_client.h"
-#include "backend_failsafe.h"
 
 /* a global instance of the confirmed_commit struct for reference throughout the procedure */
 struct confirmed_commit confirmed_commit = {
@@ -1577,3 +1576,58 @@ from_client_restart_one(clicon_handle h,
     goto done;
 }
 
+/*! Reset running and start in failsafe mode. If no failsafe then quit.
+ * 
+ * param[in] h     Clixon handle
+ * param[in] phase Debug string
+  Typically done when startup status is not OK so
+
+failsafe      ----------------------+
+                            reset    \ commit
+running                   ----|-------+---------------> RUNNING FAILSAFE
+                           \
+tmp                         |---------------------->
+ */
+int
+load_failsafe(clicon_handle h,
+	      char         *phase)
+{
+    int   retval = -1;
+    int   ret;
+    char *db = "failsafe";
+    cbuf *cbret = NULL;
+
+    phase = phase == NULL ? "(unknown)" : phase;
+
+    if ((cbret = cbuf_new()) == NULL){
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    if ((ret = xmldb_exists(h, db)) < 0)
+        goto done;
+    if (ret == 0){ /* No it does not exist, fail */
+        clicon_err(OE_DB, 0, "%s failed and no Failsafe database found, exiting", phase);
+        goto done;
+    }
+    /* Copy original running to tmp as backup (restore if error) */
+    if (xmldb_copy(h, "running", "tmp") < 0)
+        goto done;
+    if (xmldb_db_reset(h, "running") < 0)
+        goto done;
+    ret = candidate_commit(h, db, cbret);
+    if (ret != 1)
+        if (xmldb_copy(h, "tmp", "running") < 0)
+            goto done;
+    if (ret < 0)
+        goto done;
+    if (ret == 0){
+        clicon_err(OE_DB, 0, "%s failed, Failsafe database validation failed %s", phase, cbuf_get(cbret));
+        goto done;
+    }
+    clicon_log(LOG_NOTICE, "%s failed, Failsafe database loaded ", phase);
+    retval = 0;
+    done:
+    if (cbret)
+        cbuf_free(cbret);
+    return retval;
+}

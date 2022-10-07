@@ -1,5 +1,4 @@
 /*
- * t
  *
   ***** BEGIN LICENSE BLOCK *****
  

@@ -10,7 +10,6 @@
 # The SKIPLIST has precedence over the 'pattern' variable that you can use to
 # specify included file when running the various test scripts such as "all.sh".
 #SKIPLIST="test_[a-t]*\.sh test_openconfig.sh test_yangmodels.sh"
-SKIPLIST="test_http_data.sh test_netconf_ssh_callhome.sh test_privileges.sh test_restconf.sh test_yang_models_ieee.sh"
 #
 # Parse yang openconfig models from https://github.com/openconfig/public
 OPENCONFIG=/usr/local/share/openconfig/public

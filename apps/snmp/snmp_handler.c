@@ -750,7 +750,7 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
 	    goto done;
         break;
     case MODE_SET_COMMIT:   /* 3 */
-	if (clicon_rpc_commit(sh->sh_h) < 0)
+	if (clicon_rpc_commit(sh->sh_h, 0, 0, 0, NULL, NULL) < 0)
 	    goto done;	
 	break;
     case MODE_SET_FREE:     /* 4 */
@@ -1303,7 +1303,7 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
 	}
 	break;
     case MODE_SET_COMMIT:   // 3
-	if (clicon_rpc_commit(sh->sh_h) < 0)
+	if (clicon_rpc_commit(sh->sh_h, 0, 0, 0, NULL, NULL) < 0)
 	    goto done;	
 	break;
     case MODE_SET_FREE:     // 4

@@ -1266,8 +1266,14 @@ clicon_rpc_validate(clicon_handle h,
 
 /*! Commit changes send a commit request to backend daemon
  * @param[in] h          CLICON handle
- * @retval    0        OK
- * @retval   -1        Error and logged to syslog
+ * @param[in] confirmed  If set, send commit/confirmed
+ * @param[in] cancel     If set, send cancle-commit
+ * @param[in] timeout    For confirmed, a timeout in seconds (default 600s)
+ * @param[in] persist    A persist identifier to use
+ * @param[in] persist_id If cancel or confirmed, the persist id
+ * @retval    0          OK
+ * @retval   -1          Error and logged to syslog
+ * @see rfc6241 Sec 8.4 Confirmed Commit Capability
  */
 int
 clicon_rpc_commit(clicon_handle h,

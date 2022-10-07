@@ -1752,7 +1752,8 @@ netconf_content_int2str(netconf_content nr)
  *  backend, and backend may implement more modules - please consider if using
  *  library routines for detecting capabilities here. In contrast, yang module 
  * list (RFC7895) is processed by the backend.
- * @note encode bodies, see xml_chardata_encode()
+ * @note If you add new, remember to encode bodies if needed, see xml_chardata_encode()
+ * @note
  * @see yang_modules_state_get
  * @see netconf_module_load
  */
@@ -1779,6 +1780,7 @@ netconf_hello_server(clicon_handle h,
     /* A peer MAY include capabilities for previous NETCONF versions, to indicate
        that it supports multiple protocol versions. */
     cprintf(cb, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_0);
+
     /* Check if RFC7895 loaded and revision found */
     if ((ietf_yang_library_revision = yang_modules_revision(h)) != NULL){
 	if (xml_chardata_encode(&encstr, "urn:ietf:params:netconf:capability:yang-library:1.0?revision=%s&module-set-id=%s",
@@ -1791,21 +1793,25 @@ netconf_hello_server(clicon_handle h,
 	    encstr = NULL;
 	}
     }
+    /* RFC6241 Sec 8.3.  Candidate Configuration Capability */
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:candidate:1.0</capability>");
+    /* RFC6241 Sec 8.6.  Validate Capability */
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:validate:1.1</capability>");
-    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:startup:1.0</capability>");
+    /* rfc 6241 Sec 8.7 Distinct Startup Capability */
+    if (if_feature(yspec, "ietf-netconf", "startup"))
+	cprintf(cb, "<capability>urn:ietf:params:netconf:capability:startup:1.0</capability>");
+    /* RFC6241 Sec 8.9.  XPath Capability */
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:xpath:1.0</capability>");
-    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:notification:1.0</capability>");
     /* rfc6243 with-defaults capability modes */
     cprintf(cb, "<capability>");
     xml_chardata_cbuf_append(cb, "urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit&also-supported=report-all,trim,report-all-tagged");
     cprintf(cb, "</capability>");
-
-    /* rfc 4741 and 6241 confirmed-commit capabilities */
-    if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
-        cprintf(cb, "<capability>urn:ietf:params:netconf:capability:confirmed-commit:1.0</capability>");
+    /* RFC5277 Notification Capability */
+    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:notification:1.0</capability>");
+    /* It is somewhat arbitrary why some features/capabilities are hardocded and why some are not
+     * rfc 6241 Sec 8.4 confirmed-commit capabilities */
+    if (if_feature(yspec, "ietf-netconf", "confirmed-commit"))
         cprintf(cb, "<capability>urn:ietf:params:netconf:capability:confirmed-commit:1.1</capability>");
-    }
 
     cprintf(cb, "</capabilities>");
     if (session_id) 

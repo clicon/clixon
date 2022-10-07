@@ -962,7 +962,7 @@ main(int    argc,
     if (status != STARTUP_OK){
 	if (cbuf_len(cbret))
 	    clicon_log(LOG_NOTICE, "%s: %u %s", __PROGRAM__, getpid(), cbuf_get(cbret));
-	if (startup_failsafe(h) < 0){
+	if (load_failsafe(h, "Startup") < 0){
 	    goto done;
 	}
 	status = STARTUP_OK;

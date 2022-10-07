@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Basic Netconf functionality
-# Mainly default/null prefix, but also xx: prefix
-# XXX: could add tests for dual prefixes xx and xy with doppelganger names, ie xy:filter that is
-# syntactic correct but wrong
+# Netconf confirm commit capability
+# See RFC 6241 Section 8.4
+# Test uses privileges drop
+# TODO:
+# - privileges drop
+# - restconf
+# - lock check
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -13,13 +16,17 @@ cfg=$dir/conf_yang.xml
 tmp=$dir/tmp.x
 fyang=$dir/clixon-example.yang
 
-# Use yang in example
+# Backend user for priv drop, otherwise root
+USER=root #${BUSER}
+
+# Define default restconfig config: RESTCONFIG
+RESTCONFIG=$(restconf_config none false)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_FEATURE>ietf-netconf:confirmed-commit</CLICON_FEATURE>
+  <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_MODULE_SET_ID>42</CLICON_MODULE_SET_ID>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
@@ -37,6 +44,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_BACKEND_USER>$USER</CLICON_BACKEND_USER>
   <CLICON_BACKEND_PRIVILEGES>drop_perm</CLICON_BACKEND_PRIVILEGES>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -45,16 +53,7 @@ module clixon-example{
    yang-version 1.1;
    namespace "urn:example:clixon";
    prefix ex;
-   import ietf-interfaces {
-	prefix if;
-   }
-   import ietf-ip {
-	prefix ip;
-   }
-   /* Example interface type for tests, local callbacks, etc */
-   identity eth {
-	base if:interface-type;
-   }
+
     /* Generic config data */
     container table{
 	list parameter{
@@ -64,74 +63,6 @@ module clixon-example{
 	    }
 	}
     }
-   /* State data (not config) for the example application*/
-   container state {
-	config false;
-	description "state data for the example application (must be here for example get operation)";
-	leaf-list op {
-            type string;
-	}
-   }
-   augment "/if:interfaces/if:interface" {
-	container my-status {
-	    config false;
-	    description "For testing augment+state";
-	    leaf int {
-		type int32;
-	    }
-	    leaf str {
-		type string;
-	    }
-	}
-    }
-    rpc client-rpc {
-	description "Example local client-side RPC that is processed by the
-                     the netconf/restconf and not sent to the backend.
-                     This is a clixon implementation detail: some rpc:s
-                     are better processed by the client for API or perf reasons";
-	input {
-	    leaf x {
-		type string;
-	    }
-	}
-	output {
-	    leaf x {
-		type string;
-	    }
-	}
-    }
-    rpc empty {
-	description "Smallest possible RPC with no input or output sections";
-    }
-    rpc example {
-	description "Some example input/output for testing RFC7950 7.14.
-                     RPC simply echoes the input for debugging.";
-	input {
-	    leaf x {
-		description
-         	    "If a leaf in the input tree has a 'mandatory' statement with
-                   the value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		mandatory true;
-	    }
-	    leaf y {
-		description
-		    "If a leaf in the input tree has a 'mandatory' statement with the
-                  value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		default "42";
-	    }
-	}
-	output {
-	    leaf x {
-		type string;
-	    }
-	    leaf y {
-		type string;
-	    }
-	}
-    }
-
 }
 EOF
 
@@ -176,6 +107,7 @@ function edit_config() {
 function assert_config_equals() {
   TARGET="$1"
   EXPECTED="$2"
+#  new "get-config: $TARGET"
   rpc "<get-config><source><$TARGET/></source></get-config>" "$(data "$EXPECTED")"
 }
 
@@ -191,15 +123,12 @@ RUNNING_PATH="/usr/local/var/$APPNAME/running_db"
 ROLLBACK_PATH="/usr/local/var/$APPNAME/rollback_db"
 FAILSAFE_PATH="/usr/local/var/$APPNAME/failsafe_db"
 
-CONFIGB="<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth0</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces>"
-CONFIGC="<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth1</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces>"
-CONFIGBPLUSC="<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth0</name><type>ex:eth</type><enabled>true</enabled></interface><interface><name>eth1</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces>"
-FAILSAFE_CFG="<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>eth99</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces>"
+CONFIGB="<table xmlns=\"urn:example:clixon\"><parameter><name>eth0</name></parameter></table>"
+CONFIGC="<table xmlns=\"urn:example:clixon\"><parameter><name>eth1</name></parameter></table>"
+CONFIGBPLUSC="<table xmlns=\"urn:example:clixon\"><parameter><name>eth0</name></parameter><parameter><name>eth1</name></parameter></table>"
+FAILSAFE_CFG="<table xmlns=\"urn:example:clixon\"><parameter><name>eth99</name></parameter></table>"
 
-# TODO this test suite is somewhat brittle as it relies on the presence of the example configuration that one gets with
-# make install-example in the Clixon distribution.  It would be better if the dependencies were entirely self contained.
-
-new "test params: -f $cfg -- -s"
+new "test params: -f $cfg"
 # Bring your own backend
 if [ $BE -ne 0 ]; then
     # kill old backend (if any)
@@ -208,15 +137,19 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
 	err
     fi
-    new "start backend  -s init -f $cfg -- -s"
-    start_backend -s init -f $cfg -- -s
+    new "start backend  -s init -f $cfg"
+    start_backend -s init -f $cfg
 fi
 
 new "wait backend"
 wait_backend
 
-################################################################################
 
+
+new "Hello check confirm-commit capability"
+expecteof "$clixon_netconf -f $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" "<capability>urn:ietf:params:netconf:capability:confirmed-commit:1.1</capability>" '^$'
+
+################################################################################
 new "netconf ephemeral confirmed-commit rolls back after disconnect"
 reset
 edit_config "candidate" "$CONFIGB"
@@ -305,13 +238,13 @@ commit "<persist>abcdefg</persist><confirmed/>"
 assert_config_equals "running" "$CONFIGBPLUSC"
 stop_backend -f $cfg                                            # kill backend and restart
 [ -f "$ROLLBACK_PATH" ] || err "rollback_db doesn't exist!"     # assert rollback_db exists
-start_backend -s running -f $cfg -- -s
+start_backend -s running -f $cfg
 wait_backend
 assert_config_equals "running" "$CONFIGB"
 [ -f "ROLLBACK_PATH" ] && err "rollback_db still exists!"       # assert rollback_db doesn't exist
 
 stop_backend -f $cfg
-start_backend -s init -f $cfg -- -s
+start_backend -s init -f $cfg
 
 ################################################################################
 
@@ -334,12 +267,12 @@ sudo tee "$ROLLBACK_PATH" > /dev/null << EOF
     </bar>
 </foo>
 EOF
-start_backend -s running -f $cfg -- -s
+start_backend -s running -f $cfg
 wait_backend
 assert_config_equals "running" "$FAILSAFE_CFG"
 
 stop_backend -f $cfg
-start_backend -s init -f $cfg -lf/tmp/clixon.log -D1 -- -s
+start_backend -s init -f $cfg -lf/tmp/clixon.log -D1
 wait_backend
 
 ################################################################################
@@ -364,14 +297,15 @@ reset
 
 tmppipe=$(mktemp -u)
 mkfifo -m 600 "$tmppipe"
+
 cat << EOF | clixon_cli -f $cfg >> /dev/null &
-set interfaces interface eth0 type ex:eth
-set interfaces interface eth0 enabled true
+set table parameter eth0
 commit confirmed 60
 shell echo >> $tmppipe
 shell cat $tmppipe
 quit
 EOF
+
 cat $tmppipe >> /dev/null
 assert_config_equals "running" "$CONFIGB"
 echo >> $tmppipe
@@ -383,17 +317,17 @@ rm $tmppipe
 
 new "cli persistent confirmed-commit"
 reset
+
 cat << EOF | clixon_cli -f $cfg >> /dev/null
-set interfaces interface eth0 type ex:eth
-set interfaces interface eth0 enabled true
+set table parameter eth0
 commit confirmed persist a
 quit
 EOF
+
 assert_config_equals "running" "$CONFIGB"
 
 cat << EOF | clixon_cli -f $cfg >> /dev/null
-set interfaces interface eth1 type ex:eth
-set interfaces interface eth1 enabled true
+set table parameter eth1
 commit persist-id a confirmed persist ab
 quit
 EOF
@@ -420,8 +354,7 @@ expectpart "$($clixon_cli -lo -1 -f $cfg commit persist-id ab cancel)" 255 "no c
 new "cli persistent confirmed-commit with timeout"
 reset
 cat << EOF | clixon_cli -f $cfg >> /dev/null
-set interfaces interface eth0 type ex:eth
-set interfaces interface eth0 enabled true
+set table parameter eth0
 commit confirmed persist abcd 2
 EOF
 assert_config_equals "running" "$CONFIGB"
@@ -433,16 +366,16 @@ assert_config_equals "running" ""
 new "cli persistent confirmed-commit with reset timeout"
 reset
 cat << EOF | clixon_cli -f $cfg >> /dev/null
-set interfaces interface eth0 type ex:eth
-set interfaces interface eth0 enabled true
+set table parameter eth0
 commit confirmed persist abcd 5
 EOF
+
 assert_config_equals "running" "$CONFIGB"
 cat << EOF | clixon_cli -f $cfg >> /dev/null
-set interfaces interface eth1 type ex:eth
-set interfaces interface eth1 enabled true
+set table parameter eth1
 commit persist-id abcd confirmed persist abcdef 10
 EOF
+
 sleep 6
 assert_config_equals "running" "$CONFIGBPLUSC"
 # now sleep long enough for rollback to happen; get config, assert == A
@@ -452,7 +385,21 @@ assert_config_equals "running" ""
 
 # TODO test restconf receives "409 conflict" when there is a persistent confirmed-commit active
 # TODO test restconf causes confirming-commit for ephemeral confirmed-commit
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    stop_restconf_pre
 
+    new "start restconf daemon"
+    start_restconf -f $cfg
+fi
+
+new "wait restconf"
+wait_restconf
+
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf 
+fi
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -464,6 +411,9 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
+
+# Set by restconf_config
+unset RESTCONFIG
 
 new "endtest"
 endtest

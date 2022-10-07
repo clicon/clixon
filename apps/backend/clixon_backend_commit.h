@@ -83,5 +83,6 @@ int from_client_discard_changes(clicon_handle h, cxobj *xe, cbuf *cbret, void *a
 int from_client_cancel_commit(clicon_handle h,	cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_validate(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_restart_one(clicon_handle h, clixon_plugin_t *cp, cbuf *cbret);
+int load_failsafe(clicon_handle h, char *phase);
 
 #endif  /* _CLIXON_BACKEND_COMMIT_H_ */

@@ -87,10 +87,6 @@ INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/inclu
 # Name of application
 APPL	= clixon_backend
 
-# Source / objects called from plugin and otherwise
-COMMONSRC  = backend_failsafe.c
-COMMONOBJ  = $(COMMONSRC:.c=.o)
-
 # Not accessible from plugin
 APPSRC  = backend_main.c
 APPSRC += backend_socket.c
@@ -98,14 +94,14 @@ APPSRC += backend_client.c
 APPSRC += backend_get.c
 APPSRC += backend_plugin_restconf.c # Pseudo plugin for restconf daemon
 APPSRC += backend_startup.c
-APPOBJ  = $(APPSRC:.c=.o) $(COMMONOBJ)
+APPOBJ  = $(APPSRC:.c=.o)
 
 # Accessible from plugin
 LIBSRC	= clixon_backend_transaction.c
 LIBSRC += clixon_backend_handle.c
 LIBSRC += backend_commit.c
 LIBSRC += backend_plugin.c
-LIBOBJ	= $(LIBSRC:.c=.o) $(COMMONOBJ)
+LIBOBJ	= $(LIBSRC:.c=.o)
 
 # Name of lib
 MYNAME		= clixon_backend
