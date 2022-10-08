@@ -44,7 +44,6 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <assert.h>
 
 /* net-snmp */
 #include <net-snmp/net-snmp-config.h>
@@ -730,7 +729,6 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
 	    goto done;
         break;
     case MODE_GETNEXT:      /* 161 */
-	assert(0); // Not seen?
 	break;
     case MODE_SET_RESERVE1: /* 0 */
 	/* Translate from YANG ys leaf type to SNMP asn1.1 type ids (not value), also cvtype */
@@ -751,8 +749,12 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
 	    goto done;
         break;
     case MODE_SET_COMMIT:   /* 3 */
-	if (clicon_rpc_commit(sh->sh_h, 0, 0, 0, NULL, NULL) < 0)
-	    goto done;	
+	if ((ret = clicon_rpc_commit(sh->sh_h, 0, 0, 0, NULL, NULL)) < 0)
+	    goto done;
+	if (ret == 0){
+	    clicon_rpc_discard_changes(sh->sh_h);
+	    goto done;
+	}
 	break;
     case MODE_SET_FREE:     /* 4 */
         break;
@@ -1304,8 +1306,12 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
 	}
 	break;
     case MODE_SET_COMMIT:   // 3
-	if (clicon_rpc_commit(sh->sh_h, 0, 0, 0, NULL, NULL) < 0)
-	    goto done;	
+	if ((ret = clicon_rpc_commit(sh->sh_h, 0, 0, 0, NULL, NULL)) < 0)
+	    goto done;
+	if (ret == 0){
+	    clicon_rpc_discard_changes(sh->sh_h);
+	    goto done;
+	}
 	break;
     case MODE_SET_FREE:     // 4
 	break;

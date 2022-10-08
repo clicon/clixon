@@ -664,7 +664,7 @@ cli_commit(clicon_handle h,
     persist = cvec_find_str(vars, "persist-val");
     persist_id = cvec_find_str(vars, "persist-id-val");
     
-    if ((retval = clicon_rpc_commit(h, confirmed, cancel, timeout, persist, persist_id)) < 0)
+    if (clicon_rpc_commit(h, confirmed, cancel, timeout, persist, persist_id) < 1)
 	goto done;
     retval = 0;
   done:
@@ -680,7 +680,7 @@ cli_validate(clicon_handle h,
 {
     int     retval = -1;
 
-    if ((retval = clicon_rpc_validate(h, "candidate")) < 0)
+    if (clicon_rpc_validate(h, "candidate") < 1)
 	goto done;
     retval = 0;
  done:

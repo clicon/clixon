@@ -1225,8 +1225,10 @@ clicon_rpc_kill_session(clicon_handle h,
 /*! Send validate request to backend daemon
  * @param[in] h        CLICON handle
  * @param[in] db       Name of database
- * @retval    0        OK
+ * @retval    1        OK
+ * @retval    0        Invalid, netconf error return, and logged to syslog
  * @retval   -1        Error and logged to syslog
+ * @note error returns are logged but not returned
  */
 int
 clicon_rpc_validate(clicon_handle h, 
@@ -1253,9 +1255,10 @@ clicon_rpc_validate(clicon_handle h,
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, CLIXON_ERRSTR_VALIDATE_FAILED, NULL);
+	retval = 0;
 	goto done;	
     }
-    retval = 0;
+    retval = 1;
  done:
     if (msg)
 	free(msg);
@@ -1271,9 +1274,11 @@ clicon_rpc_validate(clicon_handle h,
  * @param[in] timeout    For confirmed, a timeout in seconds (default 600s)
  * @param[in] persist    A persist identifier to use
  * @param[in] persist_id If cancel or confirmed, the persist id
- * @retval    0          OK
- * @retval   -1          Error and logged to syslog
+ * @retval    1          OK
+ * @retval    0          Invalid, netconf error return, and logged to syslog
+ * @retval   -1          Error
  * @see rfc6241 Sec 8.4 Confirmed Commit Capability
+ * @note error returns are logged but not returned
  */
 int
 clicon_rpc_commit(clicon_handle h,
@@ -1318,8 +1323,6 @@ clicon_rpc_commit(clicon_handle h,
         };
         sprintf(timeout_xml, TIMEOUT_XML_FMT, timeout);
     }
-
-
     if (session_id_check(h, &session_id) < 0)
 	goto done;
     username = clicon_username_get(h);
@@ -1353,9 +1356,10 @@ clicon_rpc_commit(clicon_handle h,
 	goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
 	clixon_netconf_error(xerr, CLIXON_ERRSTR_COMMIT_FAILED, NULL);
+	retval = 0;
 	goto done;
     }
-    retval = 0;
+    retval = 1;
  done:
     if (xret)
 	xml_free(xret);
@@ -1550,7 +1554,7 @@ clicon_rpc_restconf_debug(clicon_handle h,
 	clicon_err(OE_XML, 0, "rpc error"); /* XXX extract info from rpc-error */
 	goto done;
     }
-    if ((retval = clicon_rpc_commit(h, 0, 0, 0, NULL, NULL)) < 0)
+    if ((retval = clicon_rpc_commit(h, 0, 0, 0, NULL, NULL)) < 1)
 	goto done;
  done:
     if (msg)

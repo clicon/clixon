@@ -66,15 +66,19 @@ Developers may need to change their code
 
 * C API changes
   * Added `defaults` parameter to `clicon_rpc_get_pageable_list()`
-  * Added `confirmed`, `cancel`, `timeout`, `persist-id`, and `persist-id-val` parameters to
-    `cli_commit(...)`
-
+  * `clicon_rpc_commit()` and `cli_commit`
+    * Added `confirmed`, `cancel`, `timeout`, `persist-id`, and `persist-id-val` parameters to
+  * `clicon_rpc_commit()` and `clicon_rpc_validate`
+    * Added three-value return.
+    * Code need to be changed from: checking for `<0` to `<1` to keep same semantics
+	
 ### Minor features
 
 * Added warning if modstate is not present in datastore if `CLICON_XMLDB_MODSTATE` is set.
 
 ### Corrected Bugs
 
+* Fixed: [Non-obvious behavior of clixon_snmp after snmpset command when transaction validation returns an error](https://github.com/clicon/clixon/issues/375)
 * Fixed: [clixon_snmp module crashes on snmpwalk command](https://github.com/clicon/clixon/issues/378)
 * Fixed: [unneeded trailing zero character on SNMP strings](https://github.com/clicon/clixon/issues/367)
 * Fixed: [message-id present on netconf app "hello"](https://github.com/clicon/clixon/issues/369)
