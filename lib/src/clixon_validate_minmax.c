@@ -658,7 +658,6 @@ xml_yang_minmax_recurse(cxobj  *xt,
     
     yt = xml_spec(xt); /* If yt == NULL, then no gap-analysis is done */
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
-	clicon_debug(1, "%s x:%s", __FUNCTION__, xml_name(x));
 	if ((y = xml_spec(x)) == NULL)
 	    continue;
 	keyw = yang_keyword_get(y);

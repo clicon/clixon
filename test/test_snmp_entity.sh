@@ -136,6 +136,17 @@ function testinit(){
 
 function testexit(){
     stop_snmp
+
+    if [ $BE -ne 0 ]; then
+	new "Kill backend"
+	# Check if premature kill
+	pid=$(pgrep -u root -f clixon_backend)
+	if [ -z "$pid" ]; then
+	    err "backend already dead"
+	fi
+	# kill backend
+	stop_backend -f $cfg
+    fi
 }
 
 ENTITY_OID=".1.3.6.1.2.1.47.1.1.1"
