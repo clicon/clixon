@@ -239,7 +239,8 @@ testrun clixonExampleSleeper INTEGER -1 -1 -1 ${MIB}.1.2
 testrun clixonExampleString STRING foobar foobar foobar ${MIB}.1.3
 testrun ifPromiscuousMode INTEGER 1 1 true ${MIB}.1.10 # boolean
 testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 1.2.3.4 ${MIB}.1.13 # InetAddress
-testrun ifPhysAddress STRING ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ${IFMIB}.2.2.1.6.1
+# XXX It was supposed to test writing hardware address type, but it is also read-only
+#testrun ifPhysAddress STRING ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ${IFMIB}.2.2.1.6.1
 
 # Inline testrun for rowstatus complicated logic
 name=ifStackStatus

@@ -731,7 +731,8 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
     case MODE_GETNEXT:      /* 161 */
 	break;
     case MODE_SET_RESERVE1: /* 0 */
-	if (!yang_config_ancestor(sh->sh_ys)){
+	if (!yang_config_ancestor(sh->sh_ys) ||
+	    nhreg->modes == HANDLER_CAN_RONLY){
 	    retval = SNMP_ERR_NOTWRITABLE;
 	    goto done;;	    
 	}
@@ -757,7 +758,7 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
 	    goto done;
 	if (ret == 0){
 	    clicon_rpc_discard_changes(sh->sh_h);
-	    retval = SNMP_ERR_COMMITFAILED;
+	    netsnmp_request_set_error(request, SNMP_ERR_NOTWRITABLE);
 	    goto done;
 	}
 	break;
@@ -929,9 +930,10 @@ snmp_table_get(clicon_handle               h,
  * @param[in]  oids     OID of ultimate scalar value
  * @param[in]  oidslen  OID length of scalar
  * @param[in]  reqinfo  Agent transaction request structure
- * @param[in]  request The netsnmp request info structure.
+ * @param[in]  request  The netsnmp request info structure.
+ * @param[out] err      Error code if failed (retval = 0)
  * @retval     -1       Error
- * @retval     0        Object not found
+ * @retval     0        Failed, err set
  * @retval     1        OK
  */
 static int
@@ -940,7 +942,8 @@ snmp_table_set(clicon_handle               h,
 	       oid                        *oids,
 	       size_t                      oidslen,
 	       netsnmp_agent_request_info *reqinfo,
-	       netsnmp_request_info       *request)
+	       netsnmp_request_info       *request,
+	       int                        *err)
 {
     int        retval = -1;
     oid        oidt[MAX_OID_LEN] = {0,}; /* Table / list oid */
@@ -1003,7 +1006,26 @@ snmp_table_set(clicon_handle               h,
     }
     if (ys == NULL){
 	/* No leaf with matching OID */
+	*err = SNMP_NOSUCHOBJECT;
 	goto fail;
+    }
+    if (!yang_config_ancestor(ys)){
+	*err = SNMP_ERR_NOTWRITABLE;
+	goto fail;
+    }
+    {
+	char *modes_str = NULL;
+	int   modes;
+
+	if (yang_extension_value(ys, "max-access", IETF_YANG_SMIV2_NS, NULL, &modes_str) < 0)
+	    goto done;
+	if (modes_str){
+	    modes = snmp_access_str2int(modes_str);
+	    if (modes == HANDLER_CAN_RONLY){
+		*err = SNMP_ERR_NOTWRITABLE;
+		goto fail;
+	    }
+	}
     }
     if (type_yang2asn1(ys, &asn1_type, 0) < 0)
 	goto done;
@@ -1041,6 +1063,7 @@ snmp_table_set(clicon_handle               h,
     }
     if (oidilen != 0){
 	clicon_err(OE_YANG, 0, "Expected oidlen 0 but is %zu", oidilen);
+	*err = SNMP_NOSUCHOBJECT;
 	goto fail;
     }
     if (yrowst){
@@ -1250,6 +1273,7 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
     cbuf                   *cb = NULL;
     int                     ret;
     netsnmp_variable_list  *requestvb;
+    int                     err = 0;
     
     clicon_debug(2, "%s", __FUNCTION__);
     if ((ret = snmp_common_handler(handler, nhreg, reqinfo, request, 1, &sh)) < 0)
@@ -1304,10 +1328,10 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
     case MODE_SET_ACTION:   // 2
 	if ((ret = snmp_table_set(sh->sh_h, sh->sh_ys,
 				  requestvb->name, requestvb->name_length,
-				  reqinfo, request)) < 0)
+				  reqinfo, request, &err)) < 0)
 	    goto done;
 	if (ret == 0){
-	    if ((ret = netsnmp_request_set_error(request, SNMP_NOSUCHINSTANCE)) != SNMPERR_SUCCESS){
+	    if ((ret = netsnmp_request_set_error(request, err)) != SNMPERR_SUCCESS){
 		clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
 		goto done;
 	    }
@@ -1319,7 +1343,7 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
 	    goto done;
 	if (ret == 0){
 	    clicon_rpc_discard_changes(sh->sh_h);
-	    retval = SNMP_ERR_COMMITFAILED;
+	    netsnmp_request_set_error(request, SNMP_ERR_COMMITFAILED);
 	    goto done;
 	}
 	break;

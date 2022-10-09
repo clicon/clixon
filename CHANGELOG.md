@@ -78,6 +78,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Trying to change the "read-only" node through snmpset](https://github.com/clicon/clixon/issues/376)
 * Fixed: [Trying to change the "config false" node through snmpset](https://github.com/clicon/clixon/issues/377)
   * Fixed by returning `SNMP_ERR_NOTWRITABLE` when trying to reserve object
 * Fixed: [Non-obvious behavior of clixon_snmp after snmpset command when transaction validation returns an error](https://github.com/clicon/clixon/issues/375)
