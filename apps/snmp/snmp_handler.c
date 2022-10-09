@@ -731,6 +731,10 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
     case MODE_GETNEXT:      /* 161 */
 	break;
     case MODE_SET_RESERVE1: /* 0 */
+	if (!yang_config_ancestor(sh->sh_ys)){
+	    retval = SNMP_ERR_NOTWRITABLE;
+	    goto done;;	    
+	}
 	/* Translate from YANG ys leaf type to SNMP asn1.1 type ids (not value), also cvtype */
 	if (type_yang2asn1(sh->sh_ys, &asn1_type, 0) < 0)
 	    goto done;
@@ -1289,6 +1293,10 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
 	}
         break;
     case MODE_SET_RESERVE1: // 0
+	if (!yang_config_ancestor(sh->sh_ys)){
+	    retval = SNMP_ERR_NOTWRITABLE;
+	    goto done;;	    
+	}
 	// Check types: compare type in requestvb to yang type (or do later)
 	break;
     case MODE_SET_RESERVE2: // 1

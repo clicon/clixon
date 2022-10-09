@@ -78,6 +78,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Trying to change the "config false" node through snmpset](https://github.com/clicon/clixon/issues/377)
+  * Fixed by returning `SNMP_ERR_NOTWRITABLE` when trying to reserve object
 * Fixed: [Non-obvious behavior of clixon_snmp after snmpset command when transaction validation returns an error](https://github.com/clicon/clixon/issues/375)
 * Fixed: [clixon_snmp module crashes on snmpwalk command](https://github.com/clicon/clixon/issues/378)
 * Fixed: [unneeded trailing zero character on SNMP strings](https://github.com/clicon/clixon/issues/367)

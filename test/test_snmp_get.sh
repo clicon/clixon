@@ -290,6 +290,9 @@ expectpart "$($snmpget $OID19)" 0 "$OID19 = Hex-STRING: 74 65 73 74 00"
 new "Test SNMP getnext netSnmpHostName"
 expectpart "$($snmpgetnext $OID19)" 0 "$OID20 = INTEGER: 1"
 
+new "Negative test: Try to set object"
+expectpart "$($snmpset $OID1 i 4 2> /dev/null)" 2 "^$"
+
 new "Cleaning up"
 testexit
 
