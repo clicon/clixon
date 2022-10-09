@@ -753,6 +753,7 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
 	    goto done;
 	if (ret == 0){
 	    clicon_rpc_discard_changes(sh->sh_h);
+	    retval = SNMP_ERR_COMMITFAILED;
 	    goto done;
 	}
 	break;
@@ -1227,10 +1228,10 @@ snmp_table_getnext(clicon_handle               h,
 
 /*! SNMP table operation handler
  *
- * @param[in]  handler      Registered MIB handler structure
- * @param[in]  nhreg        Root registration info.
- * @param[in]  reqinfo      Agent transaction request structure
- * @param[in]  request     The netsnmp request info structure.
+ * @param[in]  handler Registered MIB handler structure
+ * @param[in]  nhreg   Root registration info.
+ * @param[in]  reqinfo Agent transaction request structure
+ * @param[in]  request The netsnmp request info structure.
  */
 static int
 clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
@@ -1310,6 +1311,7 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
 	    goto done;
 	if (ret == 0){
 	    clicon_rpc_discard_changes(sh->sh_h);
+	    retval = SNMP_ERR_COMMITFAILED;
 	    goto done;
 	}
 	break;
