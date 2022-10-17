@@ -78,6 +78,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [YANG when condition evaluated as false combined with a mandatory leaf does not work](https://github.com/clicon/clixon/issues/380)
 * Fixed: [Trying to change the "read-only" node through snmpset](https://github.com/clicon/clixon/issues/376)
 * Fixed: [Trying to change the "config false" node through snmpset](https://github.com/clicon/clixon/issues/377)
   * Fixed by returning `SNMP_ERR_NOTWRITABLE` when trying to reserve object

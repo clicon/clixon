@@ -2089,10 +2089,14 @@ xml_copy_marked(cxobj *x0,
 
 /*! Check when condition 
  * 
- * @param[in]   h    Clixon handle
- * @param[in]   xn   XML node, can be NULL, in which case it is added as dummy under xp
- * @param[in]   xp   XML parent
- * @param[in]   ys   Yang node
+ * @param[in]   xn     XML node, can be NULL, in which case it is added as dummy under xp
+ * @param[in]   xp     XML parent
+ * @param[in]   yn     Yang node
+ * @param[out]  hit    when statement found
+ * @param[out]  nrp    1: when stmt evaluates to true
+ * @param[out]  xpathp when stmts xpath
+ * @retval      0      OK
+ * @retval      -1     Error
  * First variants of WHEN: Augmented and uses when using special info in node
  * Second variant of when, actual "when" sub-node RFC 7950 Sec 7.21.5. Can only be one.
  */
@@ -2153,6 +2157,77 @@ yang_check_when_xpath(cxobj        *xn,
     if (nsc && nscmalloc)
 	xml_nsctx_free(nsc);
     return retval;
+}
+
+/*! Check if node is (recursively) mandatory also checking when conditional
+ *
+ * @param[in]  xn  Optional XML node
+ * @param[in]  xp  XML parent
+ * @param[in]  ys  YANG node
+ * @retval     1   Recursively contains a mandatory node
+ * @retval     0   Does not contain a mandatory node
+ * @retval    -1   Error
+ * @see RFC7950 Sec 3:
+ *   o  mandatory node: A mandatory node is one of:
+ *      1)  A leaf, choice, anydata, or anyxml node with a "mandatory"
+ *         statement with the value "true".
+ *      2) # see below
+ *      3)  A container node without a "presence" statement and that has at
+ *         least one mandatory node as a child.
+ */
+int
+yang_xml_mandatory(cxobj     *xt,
+		   yang_stmt *ys)
+{
+    int           retval = -1;
+    yang_stmt    *ym;
+    cg_var       *cv;
+    enum rfc_6020 keyw;
+    cxobj        *xs = NULL;
+    int           ret;
+    yang_stmt    *yc;
+    int           hit;
+    int           nr;
+
+    /* Create dummy xs if not exist */
+    if ((xs = xml_new(yang_argument_get(ys), xt, CX_ELMNT)) == NULL)
+	goto done;
+    xml_spec_set(xs, ys);
+    if (yang_check_when_xpath(xs, xt, ys, &hit, &nr, NULL) < 0)
+	goto done;
+    if (hit && !nr){
+	retval = 0;
+	goto done;
+    }
+    keyw = yang_keyword_get(ys);
+    if (keyw == Y_LEAF || keyw == Y_CHOICE || keyw == Y_ANYDATA || keyw == Y_ANYXML){
+	if ((ym = yang_find(ys, Y_MANDATORY, NULL)) != NULL){
+	    if ((cv = yang_cv_get(ym)) != NULL){ /* shouldnt happen */
+		retval = cv_bool_get(cv);
+		goto done;
+	    }
+	}
+    }
+    /* 3) A container node without a "presence" statement and that has at
+     *    least one mandatory node as a child. */
+    else if (keyw == Y_CONTAINER && 
+	     yang_find(ys, Y_PRESENCE, NULL) == NULL){
+	yc = NULL;
+	while ((yc = yn_each(ys, yc)) != NULL) {
+	    if ((ret = yang_xml_mandatory(xs, yc)) < 0)
+		goto done;
+	    if (ret == 1)
+		goto mandatory;
+	}
+    }
+    retval = 0; /* Does not contain mandatory node */
+ done:
+    if (xs != NULL)
+	xml_purge(xs);
+    return retval;
+ mandatory:
+    retval = 1;
+    goto done;
 }
 
 /*! Is XML node (ie under <rpc>) an action, ie name action and belong to YANG_XML_NAMESPACE?

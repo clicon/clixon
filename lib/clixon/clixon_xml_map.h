@@ -75,6 +75,7 @@ int yang_enum2valstr(yang_stmt *ytype, char *enumstr, char **valstr);
 int yang_enum_int_value(cxobj *node, int32_t *val);
 int xml_copy_marked(cxobj *x0, cxobj *x1);
 int yang_check_when_xpath(cxobj *xn, cxobj *xp, yang_stmt *yn, int *hit, int *nrp, char **xpathp);
+int yang_xml_mandatory(cxobj *xt, yang_stmt *ys);
 int xml_rpc_isaction(cxobj *xn);
 int xml_find_action(cxobj *xn, int top, cxobj **xap);
 int purge_tagged_nodes(cxobj *xn, char *ns, char *name, char *value, int keepnode);

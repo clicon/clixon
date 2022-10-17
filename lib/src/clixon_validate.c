@@ -613,16 +613,20 @@ check_list_key(cxobj     *xt,
  * @retval    -1     Error
  */
 static int
-choice_mandatory_check(yang_stmt *ycase,
+choice_mandatory_check(cxobj     *xt,
+		       yang_stmt *ycase,
 		       cxobj    **xret)
 {
     int        retval = -1;
     yang_stmt *yc = NULL;
     cbuf      *cb = NULL;
     int        fail = 0;
+    int        ret;
 
     while ((yc = yn_each(ycase, yc)) != NULL) {
-	if (yang_mandatory(yc)){
+	if ((ret = yang_xml_mandatory(xt, yc)) < 0)
+	    goto done;
+	if (ret == 1){
 	    if (yang_flag_get(yc, YANG_FLAG_MARK))
 		yang_flag_reset(yc, YANG_FLAG_MARK);
 	    else if (fail == 0){
@@ -728,16 +732,20 @@ check_mandatory_case(cxobj     *xt,
 	if ((y = xml_spec(x)) != NULL &&
 	    yang_ancestor_child(y, yc, &ym, &ycnew) != 0 &&
 	    yang_keyword_get(ycnew) == Y_CASE){
-	    if (ym && yang_mandatory(ym)){
+	    if (ym){
+		if ((ret = yang_xml_mandatory(xt, ym)) < 0)
+		    goto done;
+		if (ret == 1){
 		if (yang_flag_get(ym, YANG_FLAG_MARK) != 0){
 		    clicon_debug(1, "%s Already marked, shouldnt happen", __FUNCTION__);
 		}
 		yang_flag_set(ym, YANG_FLAG_MARK);
+		}
 	    }
 	    if (ycase != NULL){
 		if (ycnew != ycase){ /* End of case, new case */
 		    /* Check and clear marked mandatory */
-		    if ((ret = choice_mandatory_check(ycase, xret)) < 0)
+		    if ((ret = choice_mandatory_check(xt, ycase, xret)) < 0)
 			goto done;
 		    if (ret == 0)
 			goto fail;
@@ -749,7 +757,7 @@ check_mandatory_case(cxobj     *xt,
 	}
 	else if (ycase != NULL){ /* End of case */
 	    /* Check and clear marked mandatory */
-	    if ((ret = choice_mandatory_check(ycase, xret)) < 0)
+	    if ((ret = choice_mandatory_check(xt, ycase, xret)) < 0)
 		goto done;
 	    if (ret == 0)
 		goto fail;
@@ -757,7 +765,7 @@ check_mandatory_case(cxobj     *xt,
 	}
     }
     if (ycase){
-	if ((ret = choice_mandatory_check(ycase, xret)) < 0)
+	if ((ret = choice_mandatory_check(xt, ycase, xret)) < 0)
 	    goto done;
 	if (ret == 0)
 	    goto fail;
@@ -806,7 +814,7 @@ check_mandatory(cxobj     *xt,
     while ((yc = yn_each(yt, yc)) != NULL) {
 	/* Choice is more complex because of choice/case structure and possibly hierarchical */
 	if (yang_keyword_get(yc) == Y_CHOICE){ 
-	    if (yang_mandatory(yc)){
+	    if (yang_xml_mandatory(xt, yc)){
 		x = NULL;
 		while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
 		    if ((y = xml_spec(x)) != NULL &&
@@ -829,7 +837,9 @@ check_mandatory(cxobj     *xt,
 	    if (ret == 0)
 		goto fail;
 	}
-	if (!yang_mandatory(yc)) /* Rest of yangs are immediate children */
+	if ((ret = yang_xml_mandatory(xt, yc)) < 0) /* Rest of yangs are immediate children */
+	    goto done;
+	if (ret == 0)
 	    continue;
 	switch (yang_keyword_get(yc)){
 	case Y_CONTAINER:
@@ -1130,6 +1140,22 @@ xml_yang_validate_all(clicon_handle h,
 	goto fail;
     }
     if (yang_config(yt) != 0){
+	if (yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath) < 0)
+	    goto done;
+	if (hit && nr == 0){
+	    if ((cb = cbuf_new()) == NULL){
+		clicon_err(OE_UNIX, errno, "cbuf_new");
+		goto done;
+	    }
+	    cprintf(cb, "Failed WHEN condition of %s in module %s (WHEN xpath is %s)",
+		    xml_name(xt),
+		    yang_argument_get(ys_module(yt)),
+		    xpath);
+	    if (xret && netconf_operation_failed_xml(xret, "application", 
+						     cbuf_get(cb)) < 0)
+		goto done;
+	    goto fail;
+	}
 	if ((ret = check_mandatory(xt, yt, xret)) < 0)
 	    goto done;
 	if (ret == 0)
@@ -1203,22 +1229,6 @@ xml_yang_validate_all(clicon_handle h,
 		xml_nsctx_free(nsc);
 		nsc = NULL;
 	    }
-	}
-	if (yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath) < 0)
-	    goto done;
-	if (hit && nr == 0){
-	    if ((cb = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
-	    }
-	    cprintf(cb, "Failed WHEN condition of %s in module %s (WHEN xpath is %s)",
-		    xml_name(xt),
-		    yang_argument_get(ys_module(yt)),
-		    xpath);
-	    if (xret && netconf_operation_failed_xml(xret, "application", 
-						     cbuf_get(cb)) < 0)
-		goto done;
-	    goto fail;
 	}
     }
     x = NULL;

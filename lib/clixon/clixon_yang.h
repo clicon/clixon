@@ -272,7 +272,6 @@ int        yang_apply(yang_stmt *yn, enum rfc_6020 key, yang_applyfn_t fn, int f
 int        yang_datanode(yang_stmt *ys);
 int        yang_abs_schema_nodeid(yang_stmt *ys, char *schema_nodeid, yang_stmt **yres);
 int        yang_desc_schema_nodeid(yang_stmt *yn, char *schema_nodeid, yang_stmt **yres);
-int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
 int        yang_config_ancestor(yang_stmt *ys);
 int        yang_features(clicon_handle h, yang_stmt *yt);
