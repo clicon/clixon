@@ -648,7 +648,7 @@ candidate_validate(clicon_handle h,
  * @retval      -1      No Rollback event was found
  */
 int
-cancel_rollback_event()
+cancel_rollback_event(void)
 {
     int retval;
 
@@ -721,6 +721,28 @@ schedule_rollback_event(clicon_handle h,
 
     done:
     return retval;
+}
+
+/*! Cancel a confirming commit by removing rollback, and free state
+ * @param[in]  h
+ * @param[out] cbret
+ * @retval     0      OK
+ */
+int
+cancel_confirmed_commit(clicon_handle h)
+{
+    cancel_rollback_event();
+
+    if (confirmed_commit.state == PERSISTENT && confirmed_commit.persist_id != NULL) {
+	free(confirmed_commit.persist_id);
+	confirmed_commit.persist_id = NULL;
+    }
+
+    confirmed_commit.state = INACTIVE;
+
+    if (xmldb_delete(h, "rollback") < 0)
+	clicon_err(OE_DB, 0, "Error deleting the rollback configuration");
+    return 0;
 }
 
 /*! Handle the second phase of confirmed-commit processing.
@@ -1211,20 +1233,8 @@ from_client_commit(clicon_handle h,
         /* If <confirmed/> is *not* present, this will conclude the confirmed-commit, so cancel the rollback. */
         if (xml_find_type(confirmed_commit.xe, NULL, "confirmed", CX_ELMNT) == NULL
                 && is_valid_confirming_commit) {
-            cancel_rollback_event();
-
-            if (confirmed_commit.state == PERSISTENT && confirmed_commit.persist_id != NULL) {
-                free(confirmed_commit.persist_id);
-                confirmed_commit.persist_id = NULL;
-            }
-
-            confirmed_commit.state = INACTIVE;
-
-            if (xmldb_delete(h, "rollback") < 0)
-                clicon_err(OE_DB, 0, "Error deleting the rollback configuration");
-
-            cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
-
+	    cancel_confirmed_commit(h);
+	    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
             goto ok;
         }
     }

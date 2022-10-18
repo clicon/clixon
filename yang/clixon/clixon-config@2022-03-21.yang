@@ -862,6 +862,8 @@ module clixon-config {
 	    description
 		"Set if all configuration changes are committed automatically 
                  on every edit change. Explicit commit commands unnecessary
+                 If confirm-commit, follow RESTCONF semantics: commit ephemeral but fail on
+                 persistent confirming commit.
                  (consider boolean)";
 	}
 	leaf CLICON_XMLDB_DIR {

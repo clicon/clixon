@@ -52,6 +52,9 @@ Expected: End of 2022
   * Added support for relevant arguments to CLI commit
     * See [example_cli.cli](https://github.com/clicon/clixon/blob/master/example/main/example_cli.cli)
   * See [Netconf Confirmed Commit Capability](https://github.com/clicon/clixon/issues/255)
+  * Known issues
+    * Backend privileges drop
+    * Lock check, see RFC 6241 7.5
 
 ### API changes on existing protocol/config features
 

@@ -65,13 +65,14 @@ struct confirmed_commit {
     void *arg;                          // the clicon_handle that will be passed to rollback_fn()
 };
 
-extern struct confirmed_commit confirmed_commit;
+extern struct confirmed_commit confirmed_commit; // XXX global
 
 /*
  * Prototypes
  */
 int do_rollback(clicon_handle h, uint8_t *errs);
-int cancel_rollback_event();
+int cancel_rollback_event(void);
+int cancel_confirmed_commit(clicon_handle h);
 
 int startup_validate(clicon_handle h, char *db, cxobj **xtr, cbuf *cbret);
 int startup_commit(clicon_handle h, char *db, cbuf *cbret);

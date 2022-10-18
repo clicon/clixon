@@ -455,19 +455,34 @@ from_client_edit_config(clicon_handle h,
 	autocommit = 1;
     /* If autocommit option is set or requested by client */
     if (clicon_autocommit(h) || autocommit) {
-        // TODO: if this is from a restconf client ...
-        //      and, if there is an existing ephemeral commit, set is_valid_confirming_commit=1 such that
-        //          candidate_commit will apply the configuration per RFC 8040 1.4:
-        //              If a confirmed commit procedure is
-        //              in progress by any NETCONF client, then any new commit will act as
-        //              the confirming commit.
-        //      and, if there is an existing persistent commit, netconf_operation_failed with "in-use", so
-        //          that the restconf server will return "409 Conflict" per RFC 8040 1.4:
-        //              If the NETCONF server is expecting a
-        //              "persist-id" parameter to complete the confirmed commit procedure,
-        //              then the RESTCONF edit operation MUST fail with a "409 Conflict"
-        //              status-line.  The error-tag "in-use" is used in this case.
-
+        /* if this is from a restconf client ...
+	 *      and, if there is an existing ephemeral commit, set is_valid_confirming_commit=1 such that
+	 *          candidate_commit will apply the configuration per RFC 8040 1.4:
+	 *              If a confirmed commit procedure is
+	 *              in progress by any NETCONF client, then any new commit will act as
+	 *              the confirming commit.
+	 *      and, if there is an existing persistent commit, netconf_operation_failed with "in-use", so
+	 *          that the restconf server will return "409 Conflict" per RFC 8040 1.4:
+	 *              If the NETCONF server is expecting a
+	 *              "persist-id" parameter to complete the confirmed commit procedure,
+	 *              then the RESTCONF edit operation MUST fail with a "409 Conflict"
+	 *              status-line.  The error-tag "in-use" is used in this case.
+	 */
+	if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
+	    switch (confirmed_commit.state){
+	    case INACTIVE:
+		break;
+	    case PERSISTENT:
+		if (netconf_in_use(cbret, "application", "Persistent commit is ongoing")< 0)
+		    goto done;
+		goto ok;
+		break;
+	    case EPHEMERAL:
+	    case ROLLBACK:
+		cancel_confirmed_commit(h);
+		break;
+	    }
+	}
         if ((ret = candidate_commit(h, "candidate", cbret)) < 0){ /* Assume validation fail, nofatal */
 	    if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
 		goto done;

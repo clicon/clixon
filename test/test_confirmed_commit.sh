@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 # Netconf confirm commit capability
-# See RFC 6241 Section 8.4
-# Test uses privileges drop
+# See RFC 6241 Section 8.4 and RFC 8040 Section 1.4
 # TODO:
 # - privileges drop
-# - restconf
 # - lock check
 
 # Magic line must be first in script (see README.md)
@@ -24,19 +22,12 @@ RESTCONFIG=$(restconf_config none false)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
-  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:confirmed-commit</CLICON_FEATURE>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
-  <CLICON_MODULE_SET_ID>42</CLICON_MODULE_SET_ID>
+  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
-  <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
-  <CLICON_NETCONF_DIR>/usr/local/lib/$APPNAME/netconf</CLICON_NETCONF_DIR>
-  <CLICON_NETCONF_MESSAGE_ID_OPTIONAL>false</CLICON_NETCONF_MESSAGE_ID_OPTIONAL>
-  <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
@@ -90,6 +81,7 @@ function rpc() {
 }
 
 function commit() {
+  new "commit $1"
   if [[ "$1" == "" ]]
   then
     rpc "<commit/>" "<ok/>"
@@ -101,6 +93,7 @@ function commit() {
 function edit_config() {
   TARGET="$1"
   CONFIG="$2"
+  new "edit-config $1 $2"
   rpc "<edit-config><target><$TARGET/></target><config>$CONFIG</config></edit-config>" "<ok/>"
 }
 
@@ -111,6 +104,7 @@ function assert_config_equals() {
   rpc "<get-config><source><$TARGET/></source></get-config>" "$(data "$EXPECTED")"
 }
 
+# delete all
 function reset() {
   rpc "<edit-config><target><candidate/></target><default-operation>none</default-operation><config operation=\"delete\"/></edit-config>" "<ok/>"
   commit
@@ -123,8 +117,10 @@ RUNNING_PATH="/usr/local/var/$APPNAME/running_db"
 ROLLBACK_PATH="/usr/local/var/$APPNAME/rollback_db"
 FAILSAFE_PATH="/usr/local/var/$APPNAME/failsafe_db"
 
+
 CONFIGB="<table xmlns=\"urn:example:clixon\"><parameter><name>eth0</name></parameter></table>"
 CONFIGC="<table xmlns=\"urn:example:clixon\"><parameter><name>eth1</name></parameter></table>"
+CONFIGCONLY="<parameter xmlns=\"urn:example:clixon\"><name>eth1</name></parameter>" # restcpnf
 CONFIGBPLUSC="<table xmlns=\"urn:example:clixon\"><parameter><name>eth0</name></parameter><parameter><name>eth1</name></parameter></table>"
 FAILSAFE_CFG="<table xmlns=\"urn:example:clixon\"><parameter><name>eth99</name></parameter></table>"
 
@@ -143,8 +139,6 @@ fi
 
 new "wait backend"
 wait_backend
-
-
 
 new "Hello check confirm-commit capability"
 expecteof "$clixon_netconf -f $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" "<capability>urn:ietf:params:netconf:capability:confirmed-commit:1.1</capability>" '^$'
@@ -225,7 +219,6 @@ commit "<persist-id/>"
 assert_config_equals "running" "$CONFIGB"
 
 ################################################################################
-
 # TODO reconsider logic around presence/absence of rollback_db as a signal as dropping permissions may impact ability
 # to unlink and/or create that file. see clixon_datastore.c#xmldb_delete() and backend_startup.c#startup_mode_startup()
 
@@ -247,14 +240,16 @@ stop_backend -f $cfg
 start_backend -s init -f $cfg
 
 ################################################################################
-
 new "backend loads failsafe at startup if rollback present but cannot be loaded"
+
+if [ ${valgrindtest} -eq 2 ]; then # backend valgrind
+    sleep 3
+fi
 reset
 
 sudo tee "$FAILSAFE_PATH" > /dev/null << EOF                    # create a failsafe database
 <config>$FAILSAFE_CFG</config>
 EOF
-
 edit_config "candidate" "$CONFIGC"
 commit "<persist>foobar</persist><confirmed/>"
 assert_config_equals "running" "$CONFIGC"
@@ -382,7 +377,6 @@ assert_config_equals "running" "$CONFIGBPLUSC"
 sleep 5
 assert_config_equals "running" ""
 
-
 # TODO test restconf receives "409 conflict" when there is a persistent confirmed-commit active
 # TODO test restconf causes confirming-commit for ephemeral confirmed-commit
 if [ $RC -ne 0 ]; then
@@ -395,6 +389,42 @@ fi
 
 new "wait restconf"
 wait_restconf
+
+new "restconf as confirmed commit"
+reset
+edit_config "candidate" "$CONFIGB"
+assert_config_equals "candidate" "$CONFIGB"
+# use HELLONO11 which uses older EOM framing
+sleep 60 |  cat <(echo "$HELLONO11<rpc $DEFAULTNS><commit><confirmed/><confirm-timeout>60</confirm-timeout></commit></rpc>]]>]]><rpc $DEFAULTNS><commit></commit></rpc>]]>]]>") -| $clixon_netconf -qf $cfg  >> /dev/null &
+PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
+assert_config_equals "running" "$CONFIGB"                       # assert config twice to prove it surives disconnect
+
+new "restconf POST"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" -d "$CONFIGCONLY" $RCPROTO://localhost/restconf/data/clixon-example:table)" 0 "HTTP/$HVER 201" "location:"
+
+assert_config_equals "running" "$CONFIGBPLUSC"
+
+new "soft kill"
+kill ${PIDS[0]}                   # kill the while loop above to close STDIN on 1st
+
+assert_config_equals "running" "$CONFIGBPLUSC"
+
+kill -9 ${PIDS[0]} 2> /dev/null   # kill the while loop above to close STDIN on 1st
+
+assert_config_equals "running" "$CONFIGBPLUSC"
+
+################################################################################
+
+new "restconf persistid expect fail"
+reset
+edit_config "candidate" "$CONFIGB"
+commit "<confirmed/><persist>a</persist>"
+assert_config_equals "running" "$CONFIGB"
+
+new "restconf POST"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" -d "$CONFIGCONLY" $RCPROTO://localhost/restconf/data/clixon-example:table)" 0 # "HTTP/$HVER 409"
+
+assert_config_equals "running" "$CONFIGB"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
