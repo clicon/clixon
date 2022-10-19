@@ -227,7 +227,7 @@ main(int    argc,
 	goto done;
     }
     if (commit){
-	if ((ret = candidate_commit(h, database, cb)) < 0)
+	if ((ret = candidate_commit(h, NULL, database, cb)) < 0)
 	    goto done;
     }
     else{

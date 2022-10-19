@@ -181,18 +181,18 @@ backend_client_rm(clicon_handle        h,
     }
 
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
-        if (confirmed_commit.state == EPHEMERAL) {
+        if (confirmed_commit_state_get(h) == EPHEMERAL) {
             /* See if this client is the origin */
-            clicon_debug(1, "session_id: %u, confirmed_commit.session_id: %u", ce->ce_id, confirmed_commit.session_id);
+            clicon_debug(1, "session_id: %u, confirmed_commit.session_id: %u", ce->ce_id, confirmed_commit_session_id_get(h));
 
-            if (myid == confirmed_commit.session_id) {
+            if (myid == confirmed_commit_session_id_get(h)) {
                 clicon_debug(1, "ok, rolling back");
                 clicon_log(LOG_NOTICE, "a client with an active ephemeral confirmed-commit has disconnected; rolling back");
 
                 /* do_rollback errors are logged internally and there is no client to report errors to, so errors are
                  * ignored here.
                  */
-                cancel_rollback_event();
+                cancel_rollback_event(h);
                 do_rollback(h, NULL);
             }
         }
@@ -469,7 +469,7 @@ from_client_edit_config(clicon_handle h,
 	 *              status-line.  The error-tag "in-use" is used in this case.
 	 */
 	if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
-	    switch (confirmed_commit.state){
+	    switch (confirmed_commit_state_get(h)){
 	    case INACTIVE:
 		break;
 	    case PERSISTENT:
@@ -483,7 +483,7 @@ from_client_edit_config(clicon_handle h,
 		break;
 	    }
 	}
-        if ((ret = candidate_commit(h, "candidate", cbret)) < 0){ /* Assume validation fail, nofatal */
+        if ((ret = candidate_commit(h, NULL, "candidate", cbret)) < 0){ /* Assume validation fail, nofatal */
 	    if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
 		goto done;
 	    xmldb_copy(h, "running", "candidate");

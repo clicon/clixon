@@ -66,6 +66,7 @@ int clicon_data_get(clicon_handle h, const char *name, char **val);
 int clicon_data_set(clicon_handle h, const char *name, char *val);
 int clicon_data_del(clicon_handle h, const char *name);
 
+/* Get generic clixon data on the form <name>=<ptr> where <ptr> is void* */
 int clicon_ptr_get(clicon_handle h, const char *name, void **ptr);
 int clicon_ptr_set(clicon_handle h, const char *name, void *ptr);
 int clicon_ptr_del(clicon_handle h, const char *name);

@@ -52,36 +52,29 @@ enum confirmed_commit_state {
     ROLLBACK
 };
 
-/* A struct to store the information necessary for tracking the status and relevant details of
- * one or more overlapping confirmed-commit events.
- */
-struct confirmed_commit {
-    enum confirmed_commit_state state;
-    char *persist_id;                   // a value given by a client in the confirmed-commit
-    uint32_t session_id;                // the session_id of the client that gave no <persist> value
-
-    cxobj *xe;                          // the commit confirmed request
-    int (*fn)(int, void*);              // the function pointer for the rollback event (rollback_fn())
-    void *arg;                          // the clicon_handle that will be passed to rollback_fn()
-};
-
-extern struct confirmed_commit confirmed_commit; // XXX global
-
 /*
  * Prototypes
  */
-int do_rollback(clicon_handle h, uint8_t *errs);
-int cancel_rollback_event(void);
+/* backend_confirm.c */
+int confirmed_commit_init(clicon_handle h);
+int confirmed_commit_free(clicon_handle h);
+enum confirmed_commit_state confirmed_commit_state_get(clicon_handle h);
+uint32_t confirmed_commit_session_id_get(clicon_handle h);
+int cancel_rollback_event(clicon_handle h);
 int cancel_confirmed_commit(clicon_handle h);
+int handle_confirmed_commit(clicon_handle h, cxobj *xe);
+int do_rollback(clicon_handle h, uint8_t *errs);
+int from_client_cancel_commit(clicon_handle h,	cxobj *xe, cbuf *cbret, void *arg, void *regarg);
+int from_client_confirmed_commit(clicon_handle h, cxobj *xe, uint32_t myid, cbuf *cbret);
 
+/* backend_commit.c */
 int startup_validate(clicon_handle h, char *db, cxobj **xtr, cbuf *cbret);
 int startup_commit(clicon_handle h, char *db, cbuf *cbret);
 int candidate_validate(clicon_handle h, char *db, cbuf *cbret);
-int candidate_commit(clicon_handle h, char *db, cbuf *cbret);
+int candidate_commit(clicon_handle h, cxobj *xe, char *db, cbuf *cbret);
 
 int from_client_commit(clicon_handle h,	cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_discard_changes(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
-int from_client_cancel_commit(clicon_handle h,	cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_validate(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_restart_one(clicon_handle h, clixon_plugin_t *cp, cbuf *cbret);
 int load_failsafe(clicon_handle h, char *phase);

@@ -124,6 +124,7 @@ backend_terminate(clicon_handle h)
 	xml_free(x);
     if ((x = clicon_conf_xml(h)) != NULL)
 	xml_free(x);
+    confirmed_commit_free(h);
     stream_publish_exit();
     /* Delete all plugins, RPC callbacks, and upgrade callbacks */
     clixon_plugin_module_exit(h);
@@ -154,10 +155,6 @@ backend_sig_term(int arg)
     if (i++ == 0)
 	clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
 		   __PROGRAM__, __FUNCTION__, getpid(), arg);
-    if (confirmed_commit.persist_id != NULL) {
-	    free(confirmed_commit.persist_id);
-	    confirmed_commit.persist_id = NULL;
-    }
     clixon_exit_set(1); /* checked in clixon_event_loop() */
 }
 
@@ -850,7 +847,11 @@ main(int    argc,
     if (clicon_option_bool(h, "CLICON_XML_CHANGELOG"))
 	if (clixon_xml_changelog_init(h) < 0)
 	    goto done;
-    
+    /* Init commit confirmed */
+    if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
+	if (confirmed_commit_init(h) < 0)
+	    goto done;
+    }
     /* Save modules state of the backend (server). Compare with startup XML */
     if (startup_module_state(h, yspec) < 0)
 	goto done;

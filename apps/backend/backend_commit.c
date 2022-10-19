@@ -32,7 +32,7 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
+  Commit and validate
  */
 
 #ifdef HAVE_CONFIG_H
@@ -70,14 +70,6 @@
 #include "backend_handle.h"
 #include "clixon_backend_commit.h"
 #include "backend_client.h"
-
-/* a global instance of the confirmed_commit struct for reference throughout the procedure */
-struct confirmed_commit confirmed_commit = {
-        .state = INACTIVE,
-};
-
-/* flag to carry indication if an RPC bearing <commit/> satisfies conditions to cancel the rollback timer */
-static int is_valid_confirming_commit = 0;
 
 /*! Key values are checked for validity independent of user-defined callbacks
  *
@@ -642,275 +634,24 @@ candidate_validate(clicon_handle h,
     goto done;
 }
 
-/*! Cancel a scheduled rollback as previously registered by schedule_rollback_event()
- *
- * @retval      0       Rollback event successfully cancelled
- * @retval      -1      No Rollback event was found
- */
-int
-cancel_rollback_event(void)
-{
-    int retval;
-
-    if ((retval = clixon_event_unreg_timeout(confirmed_commit.fn, confirmed_commit.arg)) == 0) {
-        clicon_log(LOG_INFO, "a scheduled rollback event has been cancelled");
-    } else {
-        clicon_log(LOG_WARNING, "the specified scheduled rollback event was not found");
-    }
-
-    return retval;
-}
-
-/*! Apply the rollback configuration upon expiration of the confirm-timeout
- *
- * @param[in]   fd      a dummy argument per the event callback semantics
- * @param[in]   arg     a void pointer to a clicon_handle
- * @retval      0       the rollback was successful
- * @retval      -1      the rollback failed
- * @see                 do_rollback()
- */
-static int
-rollback_fn(int  fd,
-            void *arg)
-{
-    clicon_handle h = arg;
-
-    clicon_log(LOG_CRIT, "a confirming-commit was not received before the confirm-timeout expired; rolling back");
-
-    return do_rollback(h, NULL);
-}
-
-/*! Schedule a rollback in case no confirming-commit is received before the confirm-timeout
- *
- * @param[in]   h       a clicon handle
- * @param[in]   timeout a uint32 representing the number of seconds before the rollback event should fire
- *
- * @retval      0       Rollback event successfully scheduled
- * @retval      -1      Rollback event was not scheduled
- */
-static int
-schedule_rollback_event(clicon_handle h,
-                        uint32_t      timeout)
-{
-    int retval = -1;
-
-    // register a new scheduled event
-    struct timeval t, t1;
-    if (gettimeofday(&t, NULL) < 0) {
-        clicon_err(OE_UNIX, 0, "failed to get time of day: %s", strerror(errno));
-        goto done;
-    };
-    t1.tv_sec = timeout; t1.tv_usec = 0;
-    timeradd(&t, &t1, &t);
-
-    /* The confirmed-commit is either:
-     * - ephemeral, and the client requesting the new confirmed-commit is on the same session, OR
-     * - persistent, and the client provided the persist-id in the new confirmed-commit
-     */
-
-    /* remember the function pointer and args so the confirming-commit can cancel the rollback */
-    confirmed_commit.fn = rollback_fn;
-    confirmed_commit.arg = h;
-
-    if (clixon_event_reg_timeout(t, rollback_fn, h, "rollback after timeout") < 0) {
-        /* error is logged in called function */
-        goto done;
-    };
-
-    retval = 0;
-
-    done:
-    return retval;
-}
-
-/*! Cancel a confirming commit by removing rollback, and free state
- * @param[in]  h
- * @param[out] cbret
- * @retval     0      OK
- */
-int
-cancel_confirmed_commit(clicon_handle h)
-{
-    cancel_rollback_event();
-
-    if (confirmed_commit.state == PERSISTENT && confirmed_commit.persist_id != NULL) {
-	free(confirmed_commit.persist_id);
-	confirmed_commit.persist_id = NULL;
-    }
-
-    confirmed_commit.state = INACTIVE;
-
-    if (xmldb_delete(h, "rollback") < 0)
-	clicon_err(OE_DB, 0, "Error deleting the rollback configuration");
-    return 0;
-}
-
-/*! Handle the second phase of confirmed-commit processing.
- *
- * In the first phase, the proper action was taken in the case of a valid confirming-commit, but no subsequent
- * confirmed-commit.
- *
- * In the second phase, the action taken is to handle both confirming- and confirmed-commit by creating the
- * rollback database as required, then deleting it once the sequence is complete.
- *
- * @param[in]   h       Clicon handle
- * @param[out]  cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
- * @retval      0       OK
- * @retval      -1      Error
- */
-static int
-handle_confirmed_commit(clicon_handle h,
-                        cbuf         *cbret)
-{
-    cxobj *persist_xml;
-    char *persist;
-    cxobj *confirm_timeout_xml;
-    char *confirm_timeout_str;
-    unsigned long confirm_timeout = 0L;
-    int retval = -1;
-
-    /* The case of a valid confirming-commit is also handled in the first phase, but only if there is no subsequent
-     * confirmed-commit.  It is tested again here as the case of a valid confirming-commit *with* a subsequent
-     * confirmed-commit must be handled once the transaction has begun and after all the plugins' validate callbacks
-     * have been called.
-     */
-    if (is_valid_confirming_commit) {
-        if (cancel_rollback_event() < 0) {
-            clicon_err(OE_DAEMON, 0, "A valid confirming-commit was received, but the corresponding rollback event was not found");
-        }
-
-        if (confirmed_commit.state == PERSISTENT && confirmed_commit.persist_id != NULL) {
-            free(confirmed_commit.persist_id);
-            confirmed_commit.persist_id = NULL;
-        }
-
-        confirmed_commit.state = INACTIVE;
-    }
-
-    /* Now, determine if there is a subsequent confirmed-commit */
-    if (xml_find_type(confirmed_commit.xe, NULL, "confirmed", CX_ELMNT) != NULL) {
-
-        /* There is, get it's confirm-timeout value, which will default per the yang schema if not client-specified */
-        /* Clixon also pre-validates input according to the schema, so bounds checking here is redundant */
-        if ((confirm_timeout_xml = xml_find_type(confirmed_commit.xe, NULL, "confirm-timeout", CX_ELMNT)) != NULL) {
-            if ((confirm_timeout_str = xml_body(confirm_timeout_xml)) == NULL) {
-                clicon_err(OE_DAEMON, 0, "%s: schema compliance error", __FUNCTION__);
-                goto done;
-            };
-            confirm_timeout = strtoul(confirm_timeout_str, NULL, 10);
-        }
-
-        if ((persist_xml = xml_find_type(confirmed_commit.xe, NULL, "persist", CX_ELMNT)) != NULL) {
-            /* an empty string is permitted, but it is represeted as NULL */
-            persist = xml_body(persist_xml);
-            if (persist == NULL) {
-                confirmed_commit.persist_id = NULL;
-            } else if ((confirmed_commit.persist_id = strdup4(persist)) == NULL) {
-                clicon_err(OE_UNIX, errno, "strdup4");
-                goto done;
-            }
-
-            /* The client has passed <persist>; the confirming-commit MUST now be accompanied by a matching
-             * <persist-id>
-             */
-            confirmed_commit.state = PERSISTENT;
-            clicon_log(LOG_INFO,
-                       "a persistent confirmed-commit has been requested with persist id of '%s' and a timeout of %lu seconds",
-                       confirmed_commit.persist_id, confirm_timeout);
-        } else {
-            /* The client did not pass a value for <persist> and therefore any subsequent confirming-commit must be
-             * issued within the same session.
-             */
-            if (clicon_session_id_get(h, &confirmed_commit.session_id) < 0) {
-                clicon_err(OE_DAEMON, 0,
-                           "an ephemeral confirmed-commit was issued, but the session-id could not be determined");
-                if (netconf_operation_failed(cbret, "application",
-                                             "there was an error while performing the confirmed-commit") < 0)
-                    clicon_err(OE_DAEMON, 0, "there was an error sending a netconf response to the client");
-                goto done;
-            };
-            confirmed_commit.state = EPHEMERAL;
-            clicon_log(LOG_INFO,
-                       "an ephemeral confirmed-commit has been requested by session-id %u and a timeout of %lu seconds",
-                       confirmed_commit.session_id, confirm_timeout);
-        }
-
-        /* The confirmed-commits and confirming-commits can overlap; the rollback database is created at the beginning
-         * of such a sequence and deleted at the end; hence its absence implies this is the first of a sequence. **
-         *
-         *
-         * |    edit
-         * |    | confirmed-commit
-         * |    | copy t=0 running to rollback
-         * |    | | edit
-         * |    | | | both
-         * |    | | | | edit
-         * |    | | | | | both
-         * |    | | | | | | confirming-commit
-         * |    | | | | | | | delete rollback
-         * +----|-|-|-|-|-|-|-|---------------
-         * t=0  1 2 3 4 5 6 7 8
-         *
-         * edit = edit of the candidate configuration
-         * both = both a confirmed-commit and confirming-commit in the same RPC
-         *
-         * As shown, the rollback database created at t=2 is comprised of the running database from t=0
-         * Thus, if there is a rollback event at t=7, the t=0 configuration will be committed.
-         *
-         *  ** the rollback database may be present at system startup if there was a crash during a confirmed-commit;
-         *     in the case the system is configured to startup from running and the rollback database is present, the
-         *     rollback database will be committed to running and then deleted.  If the system is configured to use a
-         *     startup configuration instead, any present rollback database will be deleted.
-         *
-         */
-
-        int db_exists = xmldb_exists(h, "rollback");
-        if (db_exists == -1) {
-            clicon_err(OE_DAEMON, 0, "there was an error while checking existence of the rollback database");
-            goto done;
-        } else if (db_exists == 0) {
-            // db does not yet exists
-            if (xmldb_copy(h, "running", "rollback") < 0) {
-                clicon_err(OE_DAEMON, 0, "there was an error while copying the running configuration to rollback database.");
-                goto done;
-            };
-        }
-
-        if (schedule_rollback_event(h, confirm_timeout) < 0) {
-            clicon_err(OE_DAEMON, 0, "the rollback event could not be scheduled");
-            goto done;
-        };
-
-    } else {
-        /* There was no subsequent confirmed-commit, meaning this is the end of the confirmed/confirming sequence;
-         * The new configuration is already committed to running and the rollback database can now be deleted
-         */
-        if (xmldb_delete(h, "rollback") < 0) {
-            clicon_err(OE_DB, 0, "Error deleting the rollback configuration");
-            goto done;
-        }
-    }
-
-    retval = 0;
-
-    done:
-
-    return retval;
-}
 
 /*! Do a diff between candidate and running, then start a commit transaction
  *
  * The code reverts changes if the commit fails. But if the revert
  * fails, we just ignore the errors and proceed. Maybe we should
  * do something more drastic?
- * @param[in]  h    Clicon handle
- * @param[in]  db   A candidate database, not necessarily "candidate"
- * @retval    -1    Error - or validation failed 
- * @retval     0    Validation failed (with cbret set)
- * @retval     1    Validation OK       
+ * @param[in]  h          Clicon handle
+ * @param[in]  xe         Request: <rpc><xn></rpc>  (or NULL)
+ * @param[in]  session_id Client session id, only if xe
+ * @param[in]  db         A candidate database, not necessarily "candidate"
+ * @param[out] cbret      Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @retval    -1          Error - or validation failed 
+ * @retval     0          Validation failed (with cbret set)
+ * @retval     1          Validation OK       
  */
 int
 candidate_commit(clicon_handle h, 
+		 cxobj        *xe,
 		 char         *db,
 		 cbuf         *cbret)
 {
@@ -946,10 +687,11 @@ candidate_commit(clicon_handle h,
     }
 
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit")
-            && confirmed_commit.state != ROLLBACK
-            && handle_confirmed_commit(h, cbret) < 0)
-        goto done;
-
+	&& confirmed_commit_state_get(h) != ROLLBACK
+	&& xe != NULL){
+	if (handle_confirmed_commit(h, xe) < 0)
+	    goto done;
+    }
     if (ret == 0){
 	if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
 	    goto done;
@@ -1006,177 +748,6 @@ candidate_commit(clicon_handle h,
     goto done;
 }
 
-/*! Do a rollback of the running configuration to the state prior to initiation of a confirmed-commit
- *
- * The "running" configuration prior to the first confirmed-commit was stored in another database named "rollback".
- * Here, it is committed as if it is the candidate configuration.
- *
- * @param[in]   h       Clicon handle
- * @retval      -1      Error
- * @retval      0       Success
- * @see                 backend_client_rm()
- * @see                 from_client_cancel_commit()
- * @see                 rollback_fn()
- */
-int
-do_rollback(clicon_handle h, uint8_t *errs)
-{
-    /* Execution has arrived here because do_rollback() was called by one of:
-     *  1. backend_client_rm()          (client disconnected and confirmed-commit is ephemeral)
-     *  2. from_client_cancel_commit()  (invoked either by netconf client, or CLI)
-     *  3. rollback_fn()                (invoked by expiration of the rollback event timer)
-     */
-    uint8_t errstate = 0;
-
-    int  res    = -1;
-    cbuf *cbret;
-
-    if ((cbret = cbuf_new()) == NULL) {
-        clicon_err(OE_DAEMON, 0, "rollback was not performed. (cbuf_new: %s)", strerror(errno));
-        /* the rollback_db won't be deleted, so one can try recovery by:
-         *   load rollback running
-         *   restart the backend, which will try to load the rollback_db, and delete it if successful
-         *     (otherwise it will load the failsafe)
-         */
-        clicon_log(LOG_CRIT, "An error occurred during rollback and the rollback_db wasn't deleted.");
-        errstate |= ROLLBACK_NOT_APPLIED | ROLLBACK_DB_NOT_DELETED;
-        goto done;
-    }
-
-    if (confirmed_commit.state == PERSISTENT && confirmed_commit.persist_id != NULL) {
-        free(confirmed_commit.persist_id);
-        confirmed_commit.persist_id = NULL;
-    }
-
-    confirmed_commit.state = ROLLBACK;
-    if (candidate_commit(h, "rollback", cbret) < 0) { /* Assume validation fail, nofatal */
-        /* theoretically, this should never error, since the rollback database was previously active and therefore
-         * had itself been previously and successfully committed.
-         */
-        clicon_log(LOG_CRIT, "An error occurred committing the rollback database.");
-        errstate |= ROLLBACK_NOT_APPLIED;
-
-        /* Rename the errored rollback database */
-        if (xmldb_rename(h, "rollback", NULL, ".error") < 0) {
-            clicon_log(LOG_CRIT, "An error occurred renaming the rollback database.");
-            errstate |= ROLLBACK_DB_NOT_DELETED;
-        }
-
-        /* Attempt to load the failsafe config */
-
-        if (load_failsafe(h, "Rollback") < 0) {
-            clicon_log(LOG_CRIT, "An error occurred committing the failsafe database.  Exiting.");
-            /* Invoke our own signal handler to exit */
-            raise(SIGINT);
-
-            /* should never make it here */
-        }
-
-        errstate |= ROLLBACK_FAILSAFE_APPLIED;
-        goto done;
-    }
-    cbuf_free(cbret);
-
-    if (xmldb_delete(h, "rollback") < 0) {
-        clicon_log(LOG_WARNING, "A rollback occurred but the rollback_db wasn't deleted.");
-        errstate |= ROLLBACK_DB_NOT_DELETED;
-        goto done;
-    };
-
-    res = 0;
-
-    done:
-
-    confirmed_commit.state = INACTIVE;
-    if (errs)
-        *errs = errstate;
-    return res;
-}
-
-
-/*! Determine if the present commit RPC invocation constitutes a valid "confirming-commit".
- *
- * To be considered a valid confirming-commit, the <commit/> must either:
- *   1) be presented without a <persist-id> value, and on the same session as a prior confirmed-commit that itself was
- *      without a <persist> value, OR
- *   2) be presented with a <persist-id> value that matches the <persist> value accompanying the prior confirmed-commit
- *
- * @param[in]   h       Clicon handle
- * @param[in]   myid    current client session-id
- * @param[out]  cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
- * @retval      0       The confirming-commit is not valid
- * @retval      1       The confirming-commit is valid
- * @retval      -1      Error
- */
-static int
-check_valid_confirming_commit(clicon_handle h,
-                              uint32_t      myid,
-                              cbuf         *cbret)
-{
-    int retval = -1;
-    cxobj *persist_id_xml = NULL;
-    char *persist_id = NULL;
-
-    if (confirmed_commit.xe == NULL) {
-        retval = 0;
-        goto done;
-    }
-
-    switch (confirmed_commit.state) {
-        case PERSISTENT:
-            if ((persist_id_xml = xml_find_type(confirmed_commit.xe, NULL, "persist-id", CX_ELMNT)) != NULL) {
-                persist_id = xml_body(persist_id_xml);
-                if ((persist_id == NULL && confirmed_commit.persist_id == NULL) ||     // empty strings deserialized as NULL
-                    (persist_id != NULL && confirmed_commit.persist_id != NULL &&
-                     strcmp(persist_id, confirmed_commit.persist_id) == 0)) {
-                    /* the RPC included a <persist-id> matching the prior confirming-commit's <persist> */
-                    retval = 1;
-                    break;
-                } else {
-                    netconf_invalid_value(cbret, "protocol", "No such persist-id");
-                    clicon_log(LOG_INFO,
-                               "a persistent confirmed-commit is in progress but the client issued a "
-                               "confirming-commit with an incorrect persist-id");
-                    retval = 0;
-                    break;
-                }
-            } else {
-                netconf_invalid_value(cbret, "protocol", "Persist-id not given");
-                clicon_log(LOG_INFO,
-                           "a persistent confirmed-commit is in progress but the client issued a confirming-commit"
-                           "without a persist-id");
-                retval = 0;
-                break;
-            }
-        case EPHEMERAL:
-            if (myid == confirmed_commit.session_id) {
-                /* the RPC lacked a <persist-id>, the prior confirming-commit lacked <persist>, and both were issued
-                 * on the same session.
-                 */
-                retval = 1;
-                break;
-            }
-
-            if (netconf_invalid_value(cbret, "protocol","confirming-commit not performed on originating session") < 0) {
-                clicon_err(OE_NETCONF, 0, "error sending response");
-                break;
-            };
-
-            clicon_log(LOG_DEBUG, "an ephemeral confirmed-commit is in progress, but there confirming-commit was"
-                                  "not issued on the same session as the confirmed-commit");
-            retval = 0;
-            break;
-
-        default:
-            clicon_debug(1, "commit-confirmed state !? %d", confirmed_commit.state);
-            retval = 0;
-            break;
-    }
-
-    done:
-    return retval;
-}
-
 /*! Commit the candidate configuration as the device's new current configuration
  *
  * @param[in]  h       Clicon handle 
@@ -1226,17 +797,10 @@ from_client_commit(clicon_handle h,
     }
 
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
-        confirmed_commit.xe = xe;
-        if ((is_valid_confirming_commit = check_valid_confirming_commit(h, myid, cbret)) < 0)
-            goto done;
-
-        /* If <confirmed/> is *not* present, this will conclude the confirmed-commit, so cancel the rollback. */
-        if (xml_find_type(confirmed_commit.xe, NULL, "confirmed", CX_ELMNT) == NULL
-                && is_valid_confirming_commit) {
-	    cancel_confirmed_commit(h);
-	    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
-            goto ok;
-        }
+	if ((ret = from_client_confirmed_commit(h, xe, myid, cbret)) < 0)
+	    goto done;
+	if (ret == 0)
+	    goto ok;
     }
 
     /* Check if target locked by other client */
@@ -1251,7 +815,7 @@ from_client_commit(clicon_handle h,
 	    goto done;
 	goto ok;
     }
-    if ((ret = candidate_commit(h, "candidate", cbret)) < 0){ /* Assume validation fail, nofatal */
+    if ((ret = candidate_commit(h, xe, "candidate", cbret)) < 0){ /* Assume validation fail, nofatal */
 	clicon_debug(1, "Commit candidate failed");
 	if (ret < 0)
 	    if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
@@ -1263,7 +827,6 @@ from_client_commit(clicon_handle h,
  ok:
     retval = 0;
  done:
-    confirmed_commit.xe = NULL;
     if (cbx)
 	cbuf_free(cbx);
     return retval; /* may be zero if we ignoring errors from commit */
@@ -1319,111 +882,6 @@ from_client_discard_changes(clicon_handle h,
     if (cbx)
 	cbuf_free(cbx);
     return retval; /* may be zero if we ignoring errors from commit */
-}
-
-/*! Cancel an ongoing confirmed commit.
- * If the confirmed commit is persistent, the parameter 'persist-id' must be
- * given, and it must match the value of the 'persist' parameter.
- * If the confirmed-commit is ephemeral, the 'persist-id' must not be given and both the confirmed-commit and the
- * cancel-commit must originate from the same session.
- *
- * @param[in]  h       Clicon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
- * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
- * @retval  0  OK. This may indicate both ok and err msg back to client
- * @retval     0       OK
- * @retval    -1       Error
- * @see RFC 6241 Sec 8.4
- */
-int
-from_client_cancel_commit(clicon_handle h,
-			  cxobj        *xe,
-			  cbuf         *cbret,
-			  void         *arg,
-			  void         *regarg)
-{
-    cxobj   *persist_id_xml;
-    char    *persist_id = NULL;
-    uint32_t cur_session_id;
-    int      retval = -1;
-
-    if ((persist_id_xml = xml_find_type(xe, NULL, "persist-id", CX_ELMNT)) != NULL) {
-        /* persist == persist_id == NULL is legal */
-        persist_id = xml_body(persist_id_xml);
-    }
-
-    switch(confirmed_commit.state) {
-        case EPHEMERAL:
-            if (persist_id_xml != NULL) {
-                if (netconf_invalid_value(cbret, "protocol", "current confirmed-commit is not persistent") < 0)
-                    goto netconf_response_error;
-                goto done;
-            }
-
-            if (clicon_session_id_get(h, &cur_session_id) < 0) {
-                if (netconf_invalid_value(cbret, "application", "session-id was not set") < 0)
-                    goto netconf_response_error;
-                goto done;
-            }
-
-            if (cur_session_id != confirmed_commit.session_id) {
-                if (netconf_invalid_value(cbret, "protocol", "confirming-commit must be given within session that gave the confirmed-commit") < 0)
-                    goto netconf_response_error;
-                goto done;
-            }
-
-            goto rollback;
-
-        case PERSISTENT:
-            if (persist_id_xml == NULL) {
-                if (netconf_invalid_value(cbret, "protocol", "persist-id is required") < 0)
-                    goto netconf_response_error;
-                goto done;
-            }
-
-            if (persist_id == confirmed_commit.persist_id ||
-                    (persist_id != NULL && confirmed_commit.persist_id != NULL
-                    && strcmp(persist_id, confirmed_commit.persist_id) == 0)) {
-                goto rollback;
-            }
-
-            if (netconf_invalid_value(cbret, "application", "a confirmed-commit with the given persist-id was not found") < 0)
-                goto netconf_response_error;
-            goto done;
-
-        case INACTIVE:
-            if (netconf_invalid_value(cbret, "application", "no confirmed-commit is in progress") < 0)
-                goto netconf_response_error;
-            goto done;
-
-        default:
-            clicon_err(OE_DAEMON, 0, "Unhandled confirmed-commit state");
-            if (netconf_invalid_value(cbret, "application", "server error") < 0)
-                goto netconf_response_error;
-            goto done;
-    }
-
-    /* all invalid conditions jump to done: and valid code paths jump to or fall through to here. */
-
-    rollback:
-        cancel_rollback_event();
-        if ((retval = do_rollback(h, NULL)) < 0) {
-            if (netconf_operation_failed(cbret, "application", "rollback failed") < 0)
-                goto netconf_response_error;
-        } else {
-            cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
-            retval = 0;
-            clicon_log(LOG_INFO, "a confirmed-commit has been cancelled by client request");
-        }
-        goto done;
-
-    netconf_response_error:
-        clicon_err(OE_DAEMON, 0, "failed to write netconf response");
-
-    done:
-        return retval;
 }
 
 /*! Validates the contents of the specified configuration.
@@ -1624,7 +1082,7 @@ load_failsafe(clicon_handle h,
         goto done;
     if (xmldb_db_reset(h, "running") < 0)
         goto done;
-    ret = candidate_commit(h, db, cbret);
+    ret = candidate_commit(h, NULL, db, cbret);
     if (ret != 1)
         if (xmldb_copy(h, "tmp", "running") < 0)
             goto done;
