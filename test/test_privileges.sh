@@ -96,7 +96,7 @@ function testrun(){
 	err 1 $c
     fi
 
-    new "waiting"
+    new "wait backend"
     wait_backend
 
     if [ $expecterr -eq 1 ]; then

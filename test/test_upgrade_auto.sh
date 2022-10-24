@@ -258,7 +258,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s $mode -f $cfg
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 new "Check running db content"

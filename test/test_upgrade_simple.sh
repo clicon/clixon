@@ -111,10 +111,10 @@ EOF
 if [ $BE -ne 0 ]; then
     new "start backend -s running -f $cfg"
     start_backend -s running -f $cfg
-
-    new "waiting"
-    wait_backend
 fi
+
+new "wait backend"
+wait_backend
 
 new "netconf get config"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><hello xmlns=\"urn:example:simple\"><world/></hello></data></rpc-reply>"

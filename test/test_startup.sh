@@ -124,7 +124,7 @@ function testrun(){
         new "start backend -f $cfg -s $mode -c $dir/extra_db"
 	start_backend -s $mode -f $cfg -c $dir/extra_db
 
-	new "waiting"
+	new "wait backend"
 	wait_backend
     else
 	new "Restart backend as eg follows: -Ff $cfg -s $mode -c $dir/extra_db # $BETIMEOUT s"

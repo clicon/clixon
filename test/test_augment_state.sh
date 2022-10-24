@@ -144,7 +144,8 @@ if [ $BE -ne 0 ]; then
     new "start backend -s init -f $cfg -- -sS $fstate"
     start_backend -s init -f $cfg -- -sS $fstate
 fi
-new "waiting"
+
+new "wait backend"
 wait_backend
 
 #-----------------------------

@@ -109,7 +109,8 @@ if [ $BE -ne 0 ]; then
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
 fi
-new "waiting"
+
+new "wait backend"
 wait_backend
 
 new "get-config empty"

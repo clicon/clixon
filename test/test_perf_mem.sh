@@ -85,7 +85,7 @@ function testrun(){
 	start_backend -s startup -f $cfg
     fi
 
-    new "waiting"
+    new "wait backend"
     wait_backend
 
     pid=$(cat $pidfile)

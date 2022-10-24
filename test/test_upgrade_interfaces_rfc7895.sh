@@ -268,7 +268,7 @@ function testrun(){
 	start_backend -s startup -f $cfg -- -u
     fi
 
-    new "waiting"
+    new "wait backend"
     wait_backend
     
     new "Check running db content"

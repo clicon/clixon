@@ -135,7 +135,7 @@ EOF
 	start_backend -s init -f $cfg 
     fi
     
-    new "waiting"
+    new "wait backend"
     wait_backend
 
     # First push in nacm rules via regular means
