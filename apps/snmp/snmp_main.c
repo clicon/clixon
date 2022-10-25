@@ -309,7 +309,7 @@ usage(clicon_handle h,
     fprintf(stderr, "usage:%s\n"
 	    "where options are\n"
             "\t-h\t\tHelp\n"
-	    "\t-D <level>\tDebug level\n"
+	    "\t-D <level>\tDebug level (>1 for extensive libnetsnmp debug)\n"
     	    "\t-f <file>\tConfiguration file (mandatory)\n"
 	    "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
     	    "\t-z\t\tKill other %s daemon and exit\n"
@@ -384,7 +384,9 @@ main(int    argc,
      */
     clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(dbg, NULL); 
-
+    /* This is netsnmplib debugging which is quite extensive + only if compiled w debug */
+    if (dbg > 1)
+    	snmp_set_do_debugging(1);
     /*
      * Register error category and error/log callbacks for netsnmp special error handling
      */

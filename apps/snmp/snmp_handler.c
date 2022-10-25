@@ -733,8 +733,8 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
     case MODE_SET_RESERVE1: /* 0 */
 	if (!yang_config_ancestor(sh->sh_ys) ||
 	    nhreg->modes == HANDLER_CAN_RONLY){
-	    retval = SNMP_ERR_NOTWRITABLE;
-	    goto done;;	    
+	    netsnmp_request_set_error(request, SNMP_ERR_NOTWRITABLE);
+	    goto done;
 	}
 	/* Translate from YANG ys leaf type to SNMP asn1.1 type ids (not value), also cvtype */
 	if (type_yang2asn1(sh->sh_ys, &asn1_type, 0) < 0)
@@ -752,13 +752,28 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
     case MODE_SET_ACTION:   /* 2 */
 	if (snmp_scalar_set(sh->sh_h, sh->sh_ys, NULL, NULL, reqinfo, request) < 0)
 	    goto done;
+	/*
+	 * There does not seem to be a separate validation action and commit does not 
+	 * return an error.
+	 * Therefore validation is done here directly as well as discard if it fails.
+	 */
+	if ((ret = clicon_rpc_validate(sh->sh_h, "candidate")) < 0)
+	    goto done;
+	if (ret == 0){
+	    clicon_rpc_discard_changes(sh->sh_h);
+	    netsnmp_request_set_error(request, SNMP_ERR_COMMITFAILED);
+	    goto done;
+	}
         break;
     case MODE_SET_COMMIT:   /* 3 */
 	if ((ret = clicon_rpc_commit(sh->sh_h, 0, 0, 0, NULL, NULL)) < 0)
 	    goto done;
 	if (ret == 0){
+	    /* Note that error given in commit is not propagated to the snmp client,
+	     * therefore validation is in the ACTION instead
+	     */
 	    clicon_rpc_discard_changes(sh->sh_h);
-	    netsnmp_request_set_error(request, SNMP_ERR_NOTWRITABLE);
+	    netsnmp_request_set_error(request, SNMP_ERR_COMMITFAILED);
 	    goto done;
 	}
 	break;
@@ -772,6 +787,7 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
  ok:
     retval = SNMP_ERR_NOERROR;
  done:
+    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -1307,7 +1323,6 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
 				      reqinfo, request)) < 0)
 	    goto done;
 	if (ret == 0){
-	    //	    if ((ret = netsnmp_request_set_error(request, SNMP_NOSUCHOBJECT)) != SNMPERR_SUCCESS){
 	    if ((ret = netsnmp_request_set_error(request, SNMP_NOSUCHOBJECT)) != SNMPERR_SUCCESS){
 
 		clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
@@ -1318,7 +1333,7 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
         break;
     case MODE_SET_RESERVE1: // 0
 	if (!yang_config_ancestor(sh->sh_ys)){
-	    retval = SNMP_ERR_NOTWRITABLE;
+	    netsnmp_request_set_error(request, SNMP_ERR_NOTWRITABLE);
 	    goto done;;	    
 	}
 	// Check types: compare type in requestvb to yang type (or do later)
@@ -1336,6 +1351,18 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
 		goto done;
 	    }
 	    clicon_debug(1, "%s Nosuchinstance", __FUNCTION__);
+	}
+	/*
+	 * There does not seem to be a separate validation action and commit does not 
+	 * return an error.
+	 * Therefore validation is done here directly as well as discard if it fails.
+	 */
+	if ((ret = clicon_rpc_validate(sh->sh_h, "candidate")) < 0)
+	    goto done;
+	if (ret == 0){
+	    clicon_rpc_discard_changes(sh->sh_h);
+	    netsnmp_request_set_error(request, SNMP_ERR_COMMITFAILED);
+	    goto done;
 	}
 	break;
     case MODE_SET_COMMIT:   // 3

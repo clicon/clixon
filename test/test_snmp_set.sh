@@ -276,7 +276,7 @@ new "wait backend"
 wait_backend
 
 new "set value with error"
-expectpart "$($snmpset ${MIB}.1.1  i 4321)" 0 "INTEGER: 4321"
+expectpart "$($snmpset ${MIB}.1.1  i 4321 2>&1)" 2 "commitFailed"
 
 new "Cleaning up"
 testexit

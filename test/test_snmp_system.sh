@@ -107,12 +107,14 @@ function testinit(){
     wait_backend
 
     if [ $SN -ne 0 ]; then
-    # Kill old clixon_snmp, if any
-    new "Terminating any old clixon_snmp processes"
-    sudo killall -q clixon_snmp
+	# Kill old clixon_snmp, if any
+	new "Terminating any old clixon_snmp processes"
+	sudo killall -q clixon_snmp
+	
+	new "Starting clixon_snmp"
+	# XXX augmented objects seem to be registered twice: error: duplicate registration: MIB modules snmpSetSerialNo and AgentX subagent 52, session 0x562087a70e20, subsession 0x562087a820c0 (oid .1.3.6.1.6.3.1.1.6.1).
 
-    new "Starting clixon_snmp"
-    start_snmp $cfg &
+	start_snmp $cfg &
     fi
 
     new "wait snmp"

@@ -81,6 +81,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Non-obvious behavior of clixon_snmp after snmpset command when transaction validation returns an error](https://github.com/clicon/clixon/issues/375)
+  * Fixed by validating writes on ACTION instead of COMMIT since libnetsnmp seems not to accept commit errors
 * Fixed: [YANG when condition evaluated as false combined with a mandatory leaf does not work](https://github.com/clicon/clixon/issues/380)
 * Fixed: [Trying to change the "read-only" node through snmpset](https://github.com/clicon/clixon/issues/376)
 * Fixed: [Trying to change the "config false" node through snmpset](https://github.com/clicon/clixon/issues/377)
