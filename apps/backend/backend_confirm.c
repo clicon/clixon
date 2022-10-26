@@ -72,14 +72,6 @@
 #include "backend_client.h"
 
 /* 
- * Local constants
- */
-/*! Use a global variable to :
- * if an RPC bearing <commit/> satisfies conditions to cancel the rollback timer
- */
-#undef _GLOBAL_VALID_CONFIRMING_COMMIT
-
-/* 
  * Local types 
  */
 /* A struct to store the information necessary for tracking the status and relevant details of
@@ -92,14 +84,6 @@ struct confirmed_commit {
     int        (*cc_fn)(int, void*); /* function pointer for rollback event (rollback_fn()) */
     void        *cc_arg;             /* clicon_handle that will be passed to rollback_fn() */
 };
-
-#ifdef _GLOBAL_VALID_CONFIRMING_COMMIT
-/* 
- * Local global variables
- */
-/* if an RPC bearing <commit/> satisfies conditions to cancel the rollback timer */
-static int _is_valid_confirming_commit = 0;
-#endif
 
 int
 confirmed_commit_init(clicon_handle h)
@@ -514,12 +498,7 @@ handle_confirmed_commit(clicon_handle h,
      * confirmed-commit must be handled once the transaction has begun and after all the plugins' validate callbacks
      * have been called.
      */
-#ifdef _GLOBAL_VALID_CONFIRMING_COMMIT
-    cc_valid = _is_valid_confirming_commit;
-    //    assert(cc_valid == check_valid_confirming_commit(h, xe, session_id));
-#else
     cc_valid = check_valid_confirming_commit(h, xe, session_id);
-#endif
     if (cc_valid) {
         if (cancel_rollback_event(h) < 0) {
             clicon_err(OE_DAEMON, 0, "A valid confirming-commit was received, but the corresponding rollback event was not found");
@@ -815,10 +794,6 @@ from_client_confirmed_commit(clicon_handle h,
 
     if ((cc_valid = check_valid_confirming_commit(h, xe, myid)) < 0)
 	goto done;
-#ifdef _GLOBAL_VALID_CONFIRMING_COMMIT
-    _is_valid_confirming_commit = cc_valid;
-#endif
-
     /* If <confirmed/> is *not* present, this will conclude the confirmed-commit, so cancel the rollback. */
     if (!xe_confirmed(xe) && cc_valid) {
 	cancel_confirmed_commit(h);
