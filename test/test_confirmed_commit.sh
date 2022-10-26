@@ -15,7 +15,7 @@ tmp=$dir/tmp.x
 fyang=$dir/clixon-example.yang
 
 # Backend user for priv drop, otherwise root
-USER=root #${BUSER}
+USER=${BUSER}
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
@@ -125,14 +125,13 @@ CONFIGBPLUSC="<table xmlns=\"urn:example:clixon\"><parameter><name>eth0</name></
 FAILSAFE_CFG="<table xmlns=\"urn:example:clixon\"><parameter><name>eth99</name></parameter></table>"
 
 new "test params: -f $cfg"
+
 # Bring your own backend
 if [ $BE -ne 0 ]; then
     # kill old backend (if any)
     new "kill old backend"
-    sudo clixon_backend -zf $cfg
-    if [ $? -ne 0 ]; then
-	err
-    fi
+    stop_backend -f $cfg
+
     new "start backend  -s init -f $cfg"
     start_backend -s init -f $cfg
 fi
@@ -229,32 +228,52 @@ commit ""
 edit_config "candidate" "$CONFIGC"
 commit "<persist>abcdefg</persist><confirmed/>"
 assert_config_equals "running" "$CONFIGBPLUSC"
+
+new "kill old backend"
 stop_backend -f $cfg                                            # kill backend and restart
+
+new "Check $ROLLBACK_PATH"
 [ -f "$ROLLBACK_PATH" ] || err "rollback_db doesn't exist!"     # assert rollback_db exists
+
+new "start backend -s running -f $cfg"
 start_backend -s running -f $cfg
+
+new "wait backend"
 wait_backend
+
 assert_config_equals "running" "$CONFIGB"
+
+new "Check $ROLLBACK_PATH removed"
 [ -f "ROLLBACK_PATH" ] && err "rollback_db still exists!"       # assert rollback_db doesn't exist
 
+new "kill old backend"
 stop_backend -f $cfg
+
+new "start backend -s init -f $cfg"
 start_backend -s init -f $cfg
 
 ################################################################################
 new "backend loads failsafe at startup if rollback present but cannot be loaded"
 
-if [ ${valgrindtest} -eq 2 ]; then # backend valgrind
-    sleep 3
-fi
+new "wait backend"
+wait_backend
+
 reset
 
 sudo tee "$FAILSAFE_PATH" > /dev/null << EOF                    # create a failsafe database
 <config>$FAILSAFE_CFG</config>
 EOF
 edit_config "candidate" "$CONFIGC"
+
 commit "<persist>foobar</persist><confirmed/>"
+
 assert_config_equals "running" "$CONFIGC"
+
+new "kill old backend"
 stop_backend -f $cfg                                            # kill the backend
+
 sudo rm $ROLLBACK_PATH                                          # modify rollback_db so it won't commit successfully
+
 sudo tee "$ROLLBACK_PATH" > /dev/null << EOF
 <foo>
   <bar>
@@ -262,12 +281,22 @@ sudo tee "$ROLLBACK_PATH" > /dev/null << EOF
     </bar>
 </foo>
 EOF
+
+new "start backend -s running -f $cfg"
 start_backend -s running -f $cfg
+
+new "wait backend"
 wait_backend
+
 assert_config_equals "running" "$FAILSAFE_CFG"
 
+new "kill old backend"
 stop_backend -f $cfg
+
+new "start backend -s init -f $cfg"
 start_backend -s init -f $cfg -lf/tmp/clixon.log -D1
+
+new "wait backend"
 wait_backend
 
 ################################################################################

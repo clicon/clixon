@@ -199,6 +199,7 @@ xmldb_copy(clicon_handle h,
     cxobj              *x1 = NULL;  /* from */
     cxobj              *x2 = NULL;  /* to */
 
+    clicon_debug(1, "%s %s %s", __FUNCTION__, from, to);
     /* XXX lock */
     if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
 	/* Copy in-memory cache */
@@ -252,7 +253,6 @@ xmldb_copy(clicon_handle h,
     if (tofile)
 	free(tofile);
     return retval;
-
 }
 
 /*! Lock database
@@ -350,12 +350,13 @@ xmldb_islocked(clicon_handle h,
     return de->de_id;
 }
 
-/*! Check if db exists 
+/*! Check if db exists or is empty
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database
  * @retval -1  Error
  * @retval  0  No it does not exist
  * @retval  1  Yes it exists
+ * @note  An empty datastore is treated as not existent so that a backend after dropping priviliges can re-create it
  */
 int 
 xmldb_exists(clicon_handle h, 
@@ -365,12 +366,18 @@ xmldb_exists(clicon_handle h,
     char               *filename = NULL;
     struct stat         sb;
 
+    clicon_debug(2, "%s %s", __FUNCTION__, db);
     if (xmldb_db2file(h, db, &filename) < 0)
 	goto done;
     if (lstat(filename, &sb) < 0)
 	retval = 0;
-    else
-	retval = 1;
+
+    else{
+	if (sb.st_size == 0)
+	    retval = 0;
+	else
+	    retval = 1;
+    }
  done:
     if (filename)
 	free(filename);
@@ -404,6 +411,7 @@ xmldb_clear(clicon_handle h,
  * @param[in]  db  Database
  * @retval -1  Error
  * @retval  0  OK
+ * @note  Datastore is not actually deleted so that a backend after dropping priviliges can re-create it
  */
 int 
 xmldb_delete(clicon_handle h, 
@@ -413,24 +421,16 @@ xmldb_delete(clicon_handle h,
     char               *filename = NULL;
     struct stat         sb;
     
+    clicon_debug(2, "%s %s", __FUNCTION__, db);
     if (xmldb_clear(h, db) < 0)
 	goto done;
     if (xmldb_db2file(h, db, &filename) < 0)
 	goto done;
     if (lstat(filename, &sb) == 0)
-        // TODO this had been changed from unlink to truncate some time ago, likely related to dropping privileges.
-        // It was changed back for confirmed-commit, and test_confirmed_commit.sh drops privileges.
-        // as the presence of the rollback_db at startup triggers loading of the rollback rather than the startup
-        // configuration.  It might not be sufficient to check for a truncated file.  Needs more review, switching back
-        // to unlink temporarily.
-//	if (truncate(filename, 0) < 0){
-//	    clicon_err(OE_DB, errno, "truncate %s", filename);
-//	    goto done;
-//	}
-        if (unlink(filename) < 0) {
-            clicon_err(OE_UNIX, errno, "unlink %s: %s", filename, strerror(errno));
-            goto done;
-        }
+	if (truncate(filename, 0) < 0){
+	    clicon_err(OE_DB, errno, "truncate %s", filename);
+	    goto done;
+	}
     retval = 0;
  done:
     if (filename)
@@ -454,6 +454,7 @@ xmldb_create(clicon_handle h,
     db_elmnt           *de = NULL;
     cxobj              *xt = NULL;
 
+    clicon_debug(2, "%s %s", __FUNCTION__, db);
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
 	if ((xt = de->de_xml) != NULL){
 	    xml_free(xt);
@@ -607,7 +608,7 @@ xmldb_print(clicon_handle h,
 /*! Rename an XML database
  * @param[in]  h        Clicon handle
  * @param[in]  db       Database name
- * @param[in]  newdb    New Database name; if NULL, then same as new
+ * @param[in]  newdb    New Database name; if NULL, then same as old
  * @param[in]  suffix   Suffix to append to new database name
  * @retval    -1        Error
  * @retval     0        OK
@@ -619,48 +620,32 @@ xmldb_rename(clicon_handle h,
              const char    *newdb,
              const char    *suffix)
 {
-    char *old;
-    char *fname = NULL;
-    int retval = -1;
+    int    retval = -1;
+    char  *old;
+    char  *fname = NULL;
+    cbuf  *cb = NULL;
 
-    if ((xmldb_db2file(h, db, &old)) < 0) {
+    if ((xmldb_db2file(h, db, &old)) < 0)
         goto done;
-    };
-
-    if (newdb == NULL && suffix == NULL)
-        // no-op
+    if (newdb == NULL && suffix == NULL)        // no-op
         goto done;
-
-    newdb  = newdb == NULL ? old : newdb;
-    suffix = suffix == NULL ? "" : suffix;
-
-    size_t size = strlen(newdb) + strlen(suffix);
-
-    if ((fname = malloc(size + 1)) == NULL) {
-        clicon_err(OE_UNIX, errno, "malloc: %s", strerror(errno));
-        goto done;
-    };
-
-    int actual = 0;
-    if ((actual = snprintf(fname, size, "%s%s", newdb, suffix)) < size) {
-        clicon_err(OE_UNIX, 0, "snprintf wrote fewer bytes (%d) than requested (%zu)", actual, size);
-        goto done;
-    };
-
+    if ((cb = cbuf_new()) == NULL){
+	clicon_err(OE_XML, errno, "cbuf_new");
+	goto done;
+    }
+    cprintf(cb, "%s", newdb == NULL ? old : newdb);
+    if (suffix)
+	cprintf(cb, "%s", suffix);
+    fname = cbuf_get(cb);
     if ((rename(old, fname)) < 0) {
         clicon_err(OE_UNIX, errno, "rename: %s", strerror(errno));
         goto done;
     };
-
-
     retval = 0;
-
-    done:
+ done:
+    if (cb)
+	cbuf_free(cb);
     if (old)
         free(old);
-
-    if (fname)
-        free(fname);
-
     return retval;
 }

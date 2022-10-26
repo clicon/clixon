@@ -280,14 +280,14 @@ xmldb_drop_priv(clicon_handle h,
  */
 static int
 check_drop_priv(clicon_handle h,
-		gid_t         gid)
+		gid_t         gid,
+    		yang_stmt    *yspec)
 {
     int              retval = -1;
     uid_t            uid;
     uid_t            newuid = -1;
     enum priv_mode_t priv_mode = PM_NONE;
     char            *backend_user = NULL;
-
 
     /* Get privileges mode (for dropping privileges) */
     if ((priv_mode = clicon_backend_privileges_mode(h)) == PM_NONE)
@@ -325,12 +325,20 @@ check_drop_priv(clicon_handle h,
 	    goto done;
     if (xmldb_drop_priv(h, "candidate", newuid, gid) < 0)
 	goto done;
-    if (xmldb_exists(h, "startup") != 1)
-	if (xmldb_create(h, "startup") < 0)
+    if (if_feature(yspec, "ietf-netconf", "startup")) {
+	if (xmldb_exists(h, "startup") != 1)
+	    if (xmldb_create(h, "startup") < 0)
+		goto done;
+	if (xmldb_drop_priv(h, "startup", newuid, gid) < 0)
 	    goto done;
-    if (xmldb_drop_priv(h, "startup", newuid, gid) < 0)
-	goto done;
-
+    }
+    if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
+	if (xmldb_exists(h, "rollback") != 1)
+	    if (xmldb_create(h, "rollback") < 0)
+		goto done;
+	if (xmldb_drop_priv(h, "rollback", newuid, gid) < 0)
+	    goto done;
+    }
     if (setgid(gid) == -1) {
 	clicon_err(OE_DAEMON, errno, "setgid %d", gid);
 	goto done;
@@ -1041,7 +1049,7 @@ main(int    argc,
 	clicon_option_dump(h, dbg);
     /* Depending on configure setting, privileges may be dropped here after
      * initializations */
-    if (check_drop_priv(h, gid) < 0)
+    if (check_drop_priv(h, gid, yspec) < 0)
 	goto done;
 
     /* Start session-id for clients */
