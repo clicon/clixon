@@ -312,7 +312,8 @@ PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
 assert_config_equals "running" "$CONFIGB"                       # assert config twice to prove it surives disconnect
 assert_config_equals "running" "$CONFIGB"                       # of ephemeral sessions
 
-kill -9 ${PIDS[0]}                                              # kill the while loop above to close STDIN on 1st
+new "soft kill ${PIDS[0]}"
+kill ${PIDS[0]}                   # kill the while loop above to close STDIN on 1st
 
 ################################################################################
 
@@ -433,12 +434,8 @@ expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml
 
 assert_config_equals "running" "$CONFIGBPLUSC"
 
-new "soft kill"
+new "soft kill ${PIDS[0]}"
 kill ${PIDS[0]}                   # kill the while loop above to close STDIN on 1st
-
-assert_config_equals "running" "$CONFIGBPLUSC"
-
-kill -9 ${PIDS[0]} 2> /dev/null   # kill the while loop above to close STDIN on 1st
 
 assert_config_equals "running" "$CONFIGBPLUSC"
 

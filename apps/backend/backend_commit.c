@@ -761,6 +761,19 @@ candidate_commit(clicon_handle h,
  *  configuration datastore that are actually different and only check
  *  "create", "update", and "delete" access permissions for this set of
  *  nodes, which could be empty.
+ *
+ * Handling of the first phase of confirmed-commit:
+ * First, it must be determined if the given <commit> RPC constitutes a "confirming-commit", roughly meaning:
+ *   1) it was issued in the same session as a prior confirmed-commit
+ *   2) it bears a <persist-id> element matching the <persist> element that accompanied the prior confirmed-commit
+ *
+ *   If it is a valid "confirming-commit" and this RPC does not bear another <confirmed/> element, then the
+ *   confirmed-commit is complete, the rollback event can be cancelled and the rollback database deleted.
+ *
+ *   No further action is necessary as the candidate configuration was already copied to the running configuration.
+ *
+ *   If the RPC does bear another <confirmed/> element, that will be handled in phase two, from within the
+ *   candidate_commit() method.
  */
 int
 from_client_commit(clicon_handle h,
@@ -777,20 +790,6 @@ from_client_commit(clicon_handle h,
     int                  ret;
     yang_stmt           *yspec;
 
-    /* Handle the first phase of confirmed-commit
-     *
-     * First, it must be determined if the given <commit> RPC constitutes a "confirming-commit", roughly meaning:
-     *   1) it was issued in the same session as a prior confirmed-commit
-     *   2) it bears a <persist-id> element matching the <persist> element that accompanied the prior confirmed-commit
-     *
-     *   If it is a valid "confirming-commit" and this RPC does not bear another <confirmed/> element, then the
-     *   confirmed-commit is complete, the rollback event can be cancelled and the rollback database deleted.
-     *
-     *   No further action is necessary as the candidate configuration was already copied to the running configuration.
-     *
-     *   If the RPC does bear another <confirmed/> element, that will be handled in phase two, from within the
-     *   candidate_commit() method.
-     */
     if ((yspec = clicon_dbspec_yang(h)) == NULL) {
         clicon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
@@ -810,8 +809,7 @@ from_client_commit(clicon_handle h,
 	    clicon_err(OE_XML, errno, "cbuf_new");
 	    goto done;
 	}	
-	cprintf(cbx, "<session-id>%u</session-id>", iddb);
-	if (netconf_in_use(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
+	if (netconf_in_use(cbret, "protocol", "Operation failed, lock is already held") < 0)
 	    goto done;
 	goto ok;
     }

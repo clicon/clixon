@@ -716,9 +716,15 @@ from_client_lock(clicon_handle h,
     struct client_entry *ce = (struct client_entry *)arg;
     uint32_t             id = ce->ce_id;
     uint32_t             iddb;
+    uint32_t             otherid;
     char                *db;
     cbuf                *cbx = NULL; /* Assist cbuf */
-    
+    yang_stmt           *yspec;
+
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+	clicon_err(OE_YANG, ENOENT, "No yang spec9");
+	goto done;
+    }
     if ((db = netconf_db_find(xe, "target")) == NULL){
 	if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
 	    goto done;
@@ -753,6 +759,20 @@ from_client_lock(clicon_handle h,
 				"Operation failed, candidate has already been modified and the changes have not been committed or rolled back (RFC 6241 7.5)") < 0)
 	    goto done;
 	goto ok;
+    }
+    /* 3) The target configuration is <running>, and another NETCONF
+     *    session has an ongoing confirmed commi
+     */
+    if (strcmp(db, "running") == 0 &&
+	if_feature(yspec, "ietf-netconf", "confirmed-commit") &&
+	confirmed_commit_state_get(h) != INACTIVE){
+	if ((otherid = confirmed_commit_session_id_get(h)) != 0){
+	    cprintf(cbx, "<session-id>%u</session-id>", otherid);
+	    if (netconf_lock_denied(cbret, cbuf_get(cbx),
+				    "Operation failed, another session has an ongoing confirmed commit") < 0)
+		goto done;
+	    goto ok;
+	}
     }
     if (xmldb_lock(h, db, id) < 0)
 	goto done;

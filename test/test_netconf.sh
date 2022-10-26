@@ -19,6 +19,7 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-netconf:confirmed-commit</CLICON_FEATURE>
   <CLICON_MODULE_SET_ID>42</CLICON_MODULE_SET_ID>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
@@ -355,6 +356,30 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 new "kill-session using prefix xx"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:kill-session><xx:session-id>44</xx:session-id></xx:kill-session></xx:rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><ok/></rpc-reply>"
+
+new "asynchronous lock running"
+sleep 60 |  cat <(echo "$HELLONO11<rpc $DEFAULTNS><lock><target><running/></target></lock></rpc>]]>]]>") -| $clixon_netconf -qf $cfg  >> /dev/null &
+
+PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
+
+new "try commit should fail"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>in-use</error-tag><error-severity>error</error-severity><error-message>Operation failed, lock is already held</error-message></rpc-error></rpc-reply>"
+
+new "soft kill ${PIDS[0]}"
+kill ${PIDS[0]}                   # kill the while loop above to close STDIN on 1st
+
+new "asynchronous confirmed commit"
+sleep 60 |  cat <(echo "$HELLONO11<rpc $DEFAULTNS><commit><confirmed/><confirm-timeout>60</confirm-timeout></commit></rpc>]]>]]>") -| $clixon_netconf -qf $cfg  >> /dev/null &
+PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
+
+new "try lock should fail"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><lock><target><running/></target></lock></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>[0-9]*</session-id></error-info><error-severity>error</error-severity><error-message>Operation failed, another session has an ongoing confirmed commit</error-message></rpc-error></rpc-reply>"
+
+new "soft kill ${PIDS[0]}"
+kill ${PIDS[0]}                   # kill the while loop above to close STDIN on 1st
+
+new "netconf discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 # modify candidate, then lock, should fail.
 new "netconf edit config"
