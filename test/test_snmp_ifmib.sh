@@ -487,8 +487,9 @@ expectpart "$($snmpwalk IF-MIB::ifXTable)" 0 "IF-MIB::ifName.1 = STRING: ifname1
 expectpart "$($snmpwalk $OID30)" 0 "IF-MIB::ifName.1 = STRING: ifname1" \
            "IF-MIB::ifName.2 = STRING: ifname2"
 
-rm -rf $dir
 testexit
+rm -rf $dir
+
 
 new "endtest"
 endtest
