@@ -92,7 +92,7 @@ cat <<EOF > $fstate
       <ifOutErrors>131</ifOutErrors>
       <ifOutQLen>132</ifOutQLen>
       <ifSpecific>0.0</ifSpecific>
-      <ifName>test1</ifName>
+      <ifName>ifname1</ifName>
     </ifEntry>
     <ifEntry>
       <ifIndex>2</ifIndex>
@@ -117,7 +117,7 @@ cat <<EOF > $fstate
       <ifOutErrors>111111</ifOutErrors>
       <ifOutQLen>111</ifOutQLen>
       <ifSpecific>1.2.3</ifSpecific>
-      <ifName>test2</ifName>
+      <ifName>ifname2</ifName>
     </ifEntry>
   </ifTable>
   <ifRcvAddressTable>
@@ -222,6 +222,7 @@ OID26=".1.3.6.1.2.1.31.1.4.1.2.1.17.49.49.58.98.98.58.99.99.58.100.100.58.101.10
 OID27=".1.3.6.1.2.1.31.1.4.1.2.2.17.97.97.58.50.50.58.51.51.58.52.52.58.53.53.58.54.54"
 OID28=".1.3.6.1.2.1.31.1.4.1.3.1.17.49.49.58.98.98.58.99.99.58.100.100.58.101.101.58.102.102"
 OID29=".1.3.6.1.2.1.31.1.4.1.3.2.17.97.97.58.50.50.58.51.51.58.52.52.58.53.53.58.54.54"
+OID30=".1.3.6.1.2.1.31.1.1"
 
 NAME1="IF-MIB::ifIndex"
 NAME2="IF-MIB::ifDescr"
@@ -369,8 +370,8 @@ validate_oid $NAME22.1 $NAME22.1 "OID" "SNMPv2-SMI::zeroDotZero"
 validate_oid $NAME22.2 $NAME22.2 "OID" "iso.2.3"
 
 new "Test ifXTable ifName"
-validate_oid $NAME23.1 $NAME23.1 "STRING" "test1"
-validate_oid $NAME23.2 $NAME23.2 "STRING" "test2"
+validate_oid $NAME23.1 $NAME23.1 "STRING" "ifname1"
+validate_oid $NAME23.2 $NAME23.2 "STRING" "ifname2"
 
 new "Test ifTable"
 expectpart "$($snmptable IF-MIB::ifTable)" 0 "Test 2" "1400" "1000" "11:22:33:44:55:66" "down" "111" "222" "333" "444" "555" "666" "777" "888" "999" "101010" "111111" "111"
@@ -480,9 +481,14 @@ expectpart "$($snmpwalk IF-MIB::ifRcvAddressTable)" 0 "IF-MIB::ifRcvAddressAddre
            "IF-MIB::ifRcvAddressType.1.\"11:bb:cc:dd:ee:ff\" = INTEGER: other(1)" \
            "IF-MIB::ifRcvAddressType.2.\"aa:22:33:44:55:66\" = INTEGER: volatile(2)"
 
-testexit
+new "Walk ifXTable"
+expectpart "$($snmpwalk IF-MIB::ifXTable)" 0 "IF-MIB::ifName.1 = STRING: ifname1" \
+           "IF-MIB::ifName.2 = STRING: ifname2"
+expectpart "$($snmpwalk $OID30)" 0 "IF-MIB::ifName.1 = STRING: ifname1" \
+           "IF-MIB::ifName.2 = STRING: ifname2"
 
 rm -rf $dir
+testexit
 
 new "endtest"
 endtest
